@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Search, ChevronDown, ChevronRight, Flame, Sparkles, Radio, Shapes } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { EFFECT_LIBRARY, useProjectStore, type Effect } from '@/store/useProjectStore';
@@ -12,7 +12,8 @@ const CATEGORIES = [
 ];
 
 function EffectCard({ effect }: { effect: Effect }) {
-  const { selectedEffectId, selectEffect, addTimelineItem, currentTime, timelineItems } = useProjectStore();
+  const { selectedEffectId, selectEffect, addTimelineItem, currentTime } = useProjectStore();
+  const [isDragging, setIsDragging] = useState(false);
   const isSelected = selectedEffectId === effect.id;
 
   const handleDoubleClick = () => {
@@ -30,15 +31,29 @@ function EffectCard({ effect }: { effect: Effect }) {
     addTimelineItem(newItem);
   };
 
+  const handleDragStart = useCallback((e: React.DragEvent) => {
+    e.dataTransfer.setData('application/effect-id', effect.id);
+    e.dataTransfer.effectAllowed = 'copy';
+    setIsDragging(true);
+  }, [effect.id]);
+
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
   return (
     <button
+      draggable="true"
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       onClick={() => selectEffect(effect.id)}
       onDoubleClick={handleDoubleClick}
       className={cn(
         "w-full flex items-center gap-2 px-2 py-1.5 rounded-sm text-left transition-colors text-sm",
         isSelected
           ? "bg-primary/15 text-primary border border-primary/30"
-          : "hover:bg-surface-3 text-secondary-foreground border border-transparent"
+          : "hover:bg-surface-3 text-secondary-foreground border border-transparent",
+        isDragging && "opacity-50"
       )}
     >
       <span className="text-base flex-shrink-0">{effect.icon}</span>
@@ -118,7 +133,7 @@ export default function EffectLibrary() {
 
       {/* Tip */}
       <div className="px-3 py-2 border-t border-border">
-        <p className="text-[10px] text-muted-foreground">Double-click to add to timeline</p>
+        <p className="text-[10px] text-muted-foreground">Drag or double-click to add to timeline</p>
       </div>
     </div>
   );

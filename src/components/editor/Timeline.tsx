@@ -1,4 +1,4 @@
-import { useRef, useCallback, useMemo } from 'react';
+import { useRef, useState, useCallback, useMemo } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Square, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
@@ -36,24 +36,83 @@ function TimelineTrackRow({
   trackIndex,
   pixelsPerSecond,
   color,
+  duration,
+  scrollRef,
 }: {
   label: string;
   trackIndex: number;
   pixelsPerSecond: number;
   color: string;
+  duration: number;
+  scrollRef: React.RefObject<HTMLDivElement>;
 }) {
-  const { timelineItems, selectedTimelineItemId, selectTimelineItem } = useProjectStore();
+  const { timelineItems, selectedTimelineItemId, selectTimelineItem, addTimelineItem } = useProjectStore();
+  const [isDragOver, setIsDragOver] = useState(false);
   const items = timelineItems.filter((i) => i.trackIndex === trackIndex);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    const effectId = e.dataTransfer.types.includes('application/effect-id');
+    if (!effectId || trackIndex === 2) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }, [trackIndex]);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes('application/effect-id') || trackIndex === 2) return;
+    e.preventDefault();
+    setIsDragOver(true);
+  }, [trackIndex]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragOver(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const effectId = e.dataTransfer.getData('application/effect-id');
+    if (!effectId) return;
+    const effect = EFFECT_LIBRARY.find((ef) => ef.id === effectId);
+    if (!effect) return;
+    // Validate track match
+    if (effect.type === 'firework' && trackIndex !== 0) return;
+    if (effect.type === 'drone' && trackIndex !== 1) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const time = Math.max(0, Math.min(x / pixelsPerSecond, duration));
+
+    addTimelineItem({
+      id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      effectId: effect.id,
+      startTime: time,
+      trackIndex,
+      position: {
+        x: (Math.random() - 0.5) * 16,
+        y: effect.type === 'firework' ? 8 + Math.random() * 6 : 5 + Math.random() * 10,
+        z: (Math.random() - 0.5) * 8,
+      },
+    });
+  }, [pixelsPerSecond, duration, trackIndex, addTimelineItem]);
 
   return (
     <div className="flex border-b border-border/50">
-      {/* Track label */}
       <div className="w-28 flex-shrink-0 flex items-center px-3 border-r border-border/50 bg-surface-1">
         <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: color }} />
         <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{label}</span>
       </div>
-      {/* Track content */}
-      <div className="flex-1 relative h-10 bg-surface-0/50">
+      <div
+        className={cn(
+          "flex-1 relative h-10 bg-surface-0/50 transition-colors",
+          isDragOver && "ring-1 ring-primary/50 bg-primary/5"
+        )}
+        onDragOver={handleDragOver}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         {items.map((item) => {
           const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
           if (!effect) return null;
@@ -179,9 +238,9 @@ export default function Timeline() {
               </div>
             </div>
           </div>
-          <TimelineTrackRow label="Fireworks" trackIndex={0} pixelsPerSecond={pixelsPerSecond} color="#FF6B35" />
-          <TimelineTrackRow label="Drones" trackIndex={1} pixelsPerSecond={pixelsPerSecond} color="#00B4D8" />
-          <TimelineTrackRow label="Audio" trackIndex={2} pixelsPerSecond={pixelsPerSecond} color="#7B68EE" />
+          <TimelineTrackRow label="Fireworks" trackIndex={0} pixelsPerSecond={pixelsPerSecond} color="#FF6B35" duration={duration} scrollRef={scrollRef} />
+          <TimelineTrackRow label="Drones" trackIndex={1} pixelsPerSecond={pixelsPerSecond} color="#00B4D8" duration={duration} scrollRef={scrollRef} />
+          <TimelineTrackRow label="Audio" trackIndex={2} pixelsPerSecond={pixelsPerSecond} color="#7B68EE" duration={duration} scrollRef={scrollRef} />
         </div>
       </div>
     </div>
