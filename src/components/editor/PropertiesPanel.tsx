@@ -1,5 +1,7 @@
-import { Settings2, Download, FileJson, FileSpreadsheet, Box } from 'lucide-react';
+import { useState } from 'react';
+import { Settings2, Download, FileJson, FileSpreadsheet, Box, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { Separator } from '@/components/ui/separator';
 
@@ -72,8 +74,89 @@ function ExportSection() {
   );
 }
 
+function NumberField({
+  label,
+  value,
+  onChange,
+  color,
+  step = 0.1,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  color?: string;
+  step?: number;
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      <span className="text-[10px] font-mono-code w-3" style={{ color }}>{label}</span>
+      <Input
+        type="number"
+        value={value}
+        step={step}
+        onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+        className="h-6 text-[10px] font-mono-code px-1.5 bg-surface-2 border-border w-full"
+      />
+    </div>
+  );
+}
+
+function PositionInspector() {
+  const { selectedPositionId, positions, updatePosition, removePosition } = useProjectStore();
+  const pos = positions.find((p) => p.id === selectedPositionId);
+
+  if (!pos) return null;
+
+  const color = pos.type === 'pyro' ? '#FF6B35' : '#00B4D8';
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
+        <div className="flex-1">
+          <Input
+            value={pos.name}
+            onChange={(e) => updatePosition(pos.id, { name: e.target.value })}
+            className="h-6 text-xs font-medium bg-surface-2 border-border px-1.5"
+          />
+        </div>
+      </div>
+      <p className="text-[10px] text-muted-foreground capitalize">{pos.type === 'pyro' ? 'Pyro Position' : 'Drone Launch Pad'}</p>
+
+      {/* Coordinates */}
+      <div className="bg-surface-2 rounded-sm p-2 space-y-1.5">
+        <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Position (VVIZ)</p>
+        <div className="grid grid-cols-3 gap-1">
+          <NumberField label="X" value={pos.x} onChange={(v) => updatePosition(pos.id, { x: v })} color="hsl(0 72% 51%)" />
+          <NumberField label="Y" value={pos.y} onChange={(v) => updatePosition(pos.id, { y: v })} color="hsl(142 70% 45%)" />
+          <NumberField label="Z" value={pos.z} onChange={(v) => updatePosition(pos.id, { z: v })} color="hsl(207 90% 54%)" />
+        </div>
+      </div>
+
+      {/* Orientation */}
+      <div className="bg-surface-2 rounded-sm p-2 space-y-1.5">
+        <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Orientation (°)</p>
+        <div className="grid grid-cols-3 gap-1">
+          <NumberField label="H" value={pos.heading} onChange={(v) => updatePosition(pos.id, { heading: v })} step={1} color="hsl(24 95% 53%)" />
+          <NumberField label="P" value={pos.pitch} onChange={(v) => updatePosition(pos.id, { pitch: v })} step={1} color="hsl(24 95% 53%)" />
+          <NumberField label="R" value={pos.roll} onChange={(v) => updatePosition(pos.id, { roll: v })} step={1} color="hsl(24 95% 53%)" />
+        </div>
+      </div>
+
+      <Button
+        variant="ghost"
+        size="sm"
+        className="w-full justify-start gap-2 h-7 text-xs text-destructive hover:text-destructive"
+        onClick={() => removePosition(pos.id)}
+      >
+        <Trash2 className="h-3 w-3" /> Remove Position
+      </Button>
+    </div>
+  );
+}
+
 export default function PropertiesPanel() {
-  const { selectedTimelineItemId, timelineItems, selectedEffectId } = useProjectStore();
+  const { selectedTimelineItemId, timelineItems, selectedEffectId, selectedPositionId } = useProjectStore();
 
   const selectedItem = timelineItems.find((i) => i.id === selectedTimelineItemId);
   const selectedEffect = selectedItem
@@ -81,6 +164,8 @@ export default function PropertiesPanel() {
     : selectedEffectId
       ? EFFECT_LIBRARY.find((e) => e.id === selectedEffectId)
       : null;
+
+  const showPosition = selectedPositionId && !selectedEffect;
 
   return (
     <div className="h-full flex flex-col bg-card border-l border-border">
@@ -91,7 +176,9 @@ export default function PropertiesPanel() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
-        {selectedEffect ? (
+        {showPosition ? (
+          <PositionInspector />
+        ) : selectedEffect ? (
           <>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
@@ -136,7 +223,7 @@ export default function PropertiesPanel() {
         ) : (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <Settings2 className="h-6 w-6 text-muted-foreground/30 mb-2" />
-            <p className="text-xs text-muted-foreground">Select an effect or timeline item</p>
+            <p className="text-xs text-muted-foreground">Select an effect, timeline item, or position pin</p>
           </div>
         )}
 
