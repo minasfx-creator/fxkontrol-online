@@ -3,6 +3,7 @@ import { OrbitControls, Stars, Grid, PerspectiveCamera } from '@react-three/drei
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { useRef, useMemo, useEffect } from 'react';
 import * as THREE from 'three';
+import PositionPins from './PositionPins';
 
 // --- Playback clock: advances currentTime each frame when playing ---
 function PlaybackClock() {
@@ -292,8 +293,11 @@ function LaunchSites() {
 }
 
 export default function SkyCanvas() {
+  const editorMode = useProjectStore((s) => s.editorMode);
+  const cursorStyle = editorMode !== 'select' ? 'crosshair' : 'default';
+
   return (
-    <div className="w-full h-full relative">
+    <div className="w-full h-full relative" style={{ cursor: cursorStyle }}>
       <Canvas shadows>
         <PerspectiveCamera makeDefault position={[0, 8, 25]} fov={60} />
         <OrbitControls
@@ -313,6 +317,7 @@ export default function SkyCanvas() {
         
         <GroundPlane />
         <LaunchSites />
+        <PositionPins />
         <TimelineEffects />
         <PlaybackClock />
       </Canvas>

@@ -6,7 +6,7 @@ export interface Effect {
   category: 'morteiros' | 'peonias' | 'drones' | 'formacoes';
   type: 'firework' | 'drone';
   color: string;
-  duration: number; // seconds
+  duration: number;
   cost: number;
   icon: string;
 }
@@ -14,10 +14,26 @@ export interface Effect {
 export interface TimelineItem {
   id: string;
   effectId: string;
-  startTime: number; // seconds
+  startTime: number;
   trackIndex: number;
   position: { x: number; y: number; z: number };
 }
+
+export type PositionType = 'pyro' | 'drone-pad';
+
+export interface Position {
+  id: string;
+  name: string;
+  type: PositionType;
+  x: number;
+  y: number;
+  z: number;
+  heading: number;
+  pitch: number;
+  roll: number;
+}
+
+export type EditorMode = 'select' | 'add-pyro' | 'add-drone';
 
 export interface ProjectState {
   projectName: string;
@@ -27,6 +43,9 @@ export interface ProjectState {
   timelineItems: TimelineItem[];
   selectedEffectId: string | null;
   selectedTimelineItemId: string | null;
+  positions: Position[];
+  selectedPositionId: string | null;
+  editorMode: EditorMode;
 
   setPlaying: (playing: boolean) => void;
   setCurrentTime: (time: number) => void;
@@ -36,6 +55,11 @@ export interface ProjectState {
   selectEffect: (id: string | null) => void;
   selectTimelineItem: (id: string | null) => void;
   setProjectName: (name: string) => void;
+  addPosition: (pos: Position) => void;
+  updatePosition: (id: string, updates: Partial<Omit<Position, 'id'>>) => void;
+  removePosition: (id: string) => void;
+  selectPosition: (id: string | null) => void;
+  setEditorMode: (mode: EditorMode) => void;
 }
 
 export const EFFECT_LIBRARY: Effect[] = [
@@ -68,6 +92,9 @@ export const useProjectStore = create<ProjectState>((set) => ({
   timelineItems: [],
   selectedEffectId: null,
   selectedTimelineItemId: null,
+  positions: [],
+  selectedPositionId: null,
+  editorMode: 'select',
 
   setPlaying: (playing) => set({ isPlaying: playing }),
   setCurrentTime: (time) => set({ currentTime: time }),
@@ -77,4 +104,14 @@ export const useProjectStore = create<ProjectState>((set) => ({
   selectEffect: (id) => set({ selectedEffectId: id }),
   selectTimelineItem: (id) => set({ selectedTimelineItemId: id }),
   setProjectName: (name) => set({ projectName: name }),
+  addPosition: (pos) => set((s) => ({ positions: [...s.positions, pos] })),
+  updatePosition: (id, updates) => set((s) => ({
+    positions: s.positions.map((p) => p.id === id ? { ...p, ...updates } : p),
+  })),
+  removePosition: (id) => set((s) => ({
+    positions: s.positions.filter((p) => p.id !== id),
+    selectedPositionId: s.selectedPositionId === id ? null : s.selectedPositionId,
+  })),
+  selectPosition: (id) => set({ selectedPositionId: id }),
+  setEditorMode: (mode) => set({ editorMode: mode }),
 }));
