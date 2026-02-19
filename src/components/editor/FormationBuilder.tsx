@@ -131,6 +131,7 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
         heading: 0,
         pitch: 0,
         roll: 0,
+        color: '#00B4D8',
       });
     });
     onOpenChange(false);

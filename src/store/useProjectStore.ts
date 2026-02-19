@@ -31,6 +31,7 @@ export interface Position {
   heading: number;
   pitch: number;
   roll: number;
+  color: string; // RGB color for drone LED
 }
 
 export interface Waypoint {
@@ -58,6 +59,7 @@ export interface ProjectState {
   selectedTimelineItemId: string | null;
   positions: Position[];
   selectedPositionId: string | null;
+  selectedPositionIds: string[]; // multi-select
   editorMode: EditorMode;
   trajectories: Trajectory[];
   selectedTrajectoryId: string | null;
@@ -75,6 +77,8 @@ export interface ProjectState {
   updatePosition: (id: string, updates: Partial<Omit<Position, 'id'>>) => void;
   removePosition: (id: string) => void;
   selectPosition: (id: string | null) => void;
+  togglePositionSelection: (id: string) => void; // shift+click multi-select
+  selectMultiplePositions: (ids: string[]) => void;
   setEditorMode: (mode: EditorMode) => void;
   addTrajectory: (traj: Trajectory) => void;
   updateTrajectory: (id: string, updates: Partial<Omit<Trajectory, 'id'>>) => void;
@@ -118,6 +122,7 @@ export const useProjectStore = create<ProjectState>((set) => ({
   selectedTimelineItemId: null,
   positions: [],
   selectedPositionId: null,
+  selectedPositionIds: [],
   editorMode: 'select',
   trajectories: [],
   selectedTrajectoryId: null,
@@ -139,7 +144,14 @@ export const useProjectStore = create<ProjectState>((set) => ({
     positions: s.positions.filter((p) => p.id !== id),
     selectedPositionId: s.selectedPositionId === id ? null : s.selectedPositionId,
   })),
-  selectPosition: (id) => set({ selectedPositionId: id }),
+  selectPosition: (id) => set({ selectedPositionId: id, selectedPositionIds: id ? [id] : [] }),
+  togglePositionSelection: (id) => set((s) => {
+    const ids = s.selectedPositionIds.includes(id)
+      ? s.selectedPositionIds.filter((i) => i !== id)
+      : [...s.selectedPositionIds, id];
+    return { selectedPositionIds: ids, selectedPositionId: ids[ids.length - 1] ?? null };
+  }),
+  selectMultiplePositions: (ids) => set({ selectedPositionIds: ids, selectedPositionId: ids[ids.length - 1] ?? null }),
   setEditorMode: (mode) => set({ editorMode: mode }),
 
   addTrajectory: (traj) => set((s) => ({ trajectories: [...s.trajectories, traj] })),

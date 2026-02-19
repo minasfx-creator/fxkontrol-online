@@ -171,6 +171,7 @@ function TrajectoryDrones() {
         if (!startPos || traj.waypoints.length === 0) return null;
 
         const sortedWps = [...traj.waypoints].sort((a, b) => a.time - b.time);
+        const droneColor = startPos.color || '#00B4D8';
 
         // Build timeline: start at time=0 at pad position, then waypoints
         const pathPoints = [
@@ -190,7 +191,6 @@ function TrajectoryDrones() {
             const b = pathPoints[i + 1];
             if (currentTime >= a.time && currentTime <= b.time) {
               const t = (currentTime - a.time) / (b.time - a.time);
-              // Smooth step for nicer motion
               const smoothT = t * t * (3 - 2 * t);
               dronePos = lerpVec3(a.position, b.position, smoothT);
               break;
@@ -202,7 +202,7 @@ function TrajectoryDrones() {
           <QuadcopterModel
             key={`traj-drone-${traj.id}`}
             position={[dronePos.x, dronePos.y, dronePos.z]}
-            color="#00B4D8"
+            color={droneColor}
             scale={0.8}
           />
         );
