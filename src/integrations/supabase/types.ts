@@ -14,13 +14,228 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      positions: {
+        Row: {
+          color: string
+          created_at: string
+          heading: number
+          id: string
+          name: string
+          pitch: number
+          project_id: string
+          roll: number
+          sort_order: number
+          type: string
+          x: number
+          y: number
+          z: number
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          heading?: number
+          id?: string
+          name: string
+          pitch?: number
+          project_id: string
+          roll?: number
+          sort_order?: number
+          type?: string
+          x?: number
+          y?: number
+          z?: number
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          heading?: number
+          id?: string
+          name?: string
+          pitch?: number
+          project_id?: string
+          roll?: number
+          sort_order?: number
+          type?: string
+          x?: number
+          y?: number
+          z?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "positions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          audio_url: string | null
+          bpm: number | null
+          created_at: string
+          duration: number
+          id: string
+          name: string
+          playback_speed: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          audio_url?: string | null
+          bpm?: number | null
+          created_at?: string
+          duration?: number
+          id?: string
+          name?: string
+          playback_speed?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          audio_url?: string | null
+          bpm?: number | null
+          created_at?: string
+          duration?: number
+          id?: string
+          name?: string
+          playback_speed?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      timeline_items: {
+        Row: {
+          created_at: string
+          effect_id: string
+          id: string
+          pos_x: number
+          pos_y: number
+          pos_z: number
+          project_id: string
+          start_time: number
+          track_index: number
+        }
+        Insert: {
+          created_at?: string
+          effect_id: string
+          id?: string
+          pos_x?: number
+          pos_y?: number
+          pos_z?: number
+          project_id: string
+          start_time?: number
+          track_index?: number
+        }
+        Update: {
+          created_at?: string
+          effect_id?: string
+          id?: string
+          pos_x?: number
+          pos_y?: number
+          pos_z?: number
+          project_id?: string
+          start_time?: number
+          track_index?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timeline_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trajectories: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          position_id: string
+          project_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string
+          position_id: string
+          project_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          position_id?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trajectories_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "positions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trajectories_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      waypoints: {
+        Row: {
+          created_at: string
+          id: string
+          sort_order: number
+          time_seconds: number
+          trajectory_id: string
+          x: number
+          y: number
+          z: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          sort_order?: number
+          time_seconds?: number
+          trajectory_id: string
+          x?: number
+          y?: number
+          z?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          sort_order?: number
+          time_seconds?: number
+          trajectory_id?: string
+          x?: number
+          y?: number
+          z?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waypoints_trajectory_id_fkey"
+            columns: ["trajectory_id"]
+            isOneToOne: false
+            referencedRelation: "trajectories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_project_owner: { Args: { p_project_id: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
