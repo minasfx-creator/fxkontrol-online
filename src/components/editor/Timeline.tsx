@@ -143,6 +143,62 @@ function TimelineTrackRow({
   );
 }
 
+function WaypointTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number; duration: number }) {
+  const { trajectories, positions, selectedTrajectoryId, selectTrajectory } = useProjectStore();
+
+  // Flatten all waypoints with their trajectory/position info
+  const wpEvents = useMemo(() => {
+    return trajectories.flatMap((traj) => {
+      const pad = positions.find((p) => p.id === traj.positionId);
+      if (!pad) return [];
+      const sorted = [...traj.waypoints].sort((a, b) => a.time - b.time);
+      return sorted.map((wp, i) => ({
+        wp,
+        traj,
+        pad,
+        index: i,
+        nextWp: sorted[i + 1],
+      }));
+    });
+  }, [trajectories, positions]);
+
+  return (
+    <div className="flex border-b border-border/50">
+      <div className="w-28 flex-shrink-0 flex items-center px-3 border-r border-border/50 bg-surface-1">
+        <div className="w-2 h-2 rounded-full mr-2 bg-[#FFD700]" />
+        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Waypoints</span>
+      </div>
+      <div className="flex-1 relative h-10 bg-surface-0/50">
+        {wpEvents.map(({ wp, traj, pad, index, nextWp }) => {
+          const isSelected = selectedTrajectoryId === traj.id;
+          const endTime = nextWp ? nextWp.time : wp.time + 1;
+          const widthPx = Math.max((endTime - wp.time) * pixelsPerSecond, 14);
+          return (
+            <button
+              key={wp.id}
+              onClick={() => selectTrajectory(traj.id)}
+              className={cn(
+                "absolute top-1 h-8 rounded-sm flex items-center px-1 text-[9px] font-mono-code transition-all cursor-pointer border",
+                isSelected
+                  ? "border-primary/60 shadow-[0_0_6px_hsl(var(--electric)/0.2)] z-10"
+                  : "border-transparent hover:border-border"
+              )}
+              style={{
+                left: `${wp.time * pixelsPerSecond}px`,
+                width: `${widthPx}px`,
+                backgroundColor: `${pad.color || '#00B4D8'}22`,
+              }}
+            >
+              <div className="w-1 h-full rounded-full mr-0.5 flex-shrink-0" style={{ backgroundColor: pad.color || '#00B4D8' }} />
+              <span className="truncate text-secondary-foreground">WP{index + 1}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function Timeline() {
   const {
     isPlaying, setPlaying, currentTime, setCurrentTime, duration,
@@ -240,6 +296,7 @@ export default function Timeline() {
           </div>
           <TimelineTrackRow label="Fireworks" trackIndex={0} pixelsPerSecond={pixelsPerSecond} color="#FF6B35" duration={duration} scrollRef={scrollRef} />
           <TimelineTrackRow label="Drones" trackIndex={1} pixelsPerSecond={pixelsPerSecond} color="#00B4D8" duration={duration} scrollRef={scrollRef} />
+          <WaypointTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
           <TimelineTrackRow label="Audio" trackIndex={2} pixelsPerSecond={pixelsPerSecond} color="#7B68EE" duration={duration} scrollRef={scrollRef} />
         </div>
       </div>
