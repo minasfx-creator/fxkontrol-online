@@ -33,7 +33,20 @@ export interface Position {
   roll: number;
 }
 
-export type EditorMode = 'select' | 'add-pyro' | 'add-drone';
+export interface Waypoint {
+  id: string;
+  position: { x: number; y: number; z: number };
+  time: number; // seconds from trajectory start
+}
+
+export interface Trajectory {
+  id: string;
+  positionId: string; // which drone-pad/formation this trajectory belongs to
+  waypoints: Waypoint[];
+  name: string;
+}
+
+export type EditorMode = 'select' | 'add-pyro' | 'add-drone' | 'add-waypoint';
 
 export interface ProjectState {
   projectName: string;
@@ -46,6 +59,9 @@ export interface ProjectState {
   positions: Position[];
   selectedPositionId: string | null;
   editorMode: EditorMode;
+  trajectories: Trajectory[];
+  selectedTrajectoryId: string | null;
+  showTrajectories: boolean;
 
   setPlaying: (playing: boolean) => void;
   setCurrentTime: (time: number) => void;
@@ -60,6 +76,14 @@ export interface ProjectState {
   removePosition: (id: string) => void;
   selectPosition: (id: string | null) => void;
   setEditorMode: (mode: EditorMode) => void;
+  addTrajectory: (traj: Trajectory) => void;
+  updateTrajectory: (id: string, updates: Partial<Omit<Trajectory, 'id'>>) => void;
+  removeTrajectory: (id: string) => void;
+  selectTrajectory: (id: string | null) => void;
+  addWaypoint: (trajectoryId: string, waypoint: Waypoint) => void;
+  updateWaypoint: (trajectoryId: string, waypointId: string, updates: Partial<Omit<Waypoint, 'id'>>) => void;
+  removeWaypoint: (trajectoryId: string, waypointId: string) => void;
+  setShowTrajectories: (show: boolean) => void;
 }
 
 export const EFFECT_LIBRARY: Effect[] = [
@@ -95,6 +119,9 @@ export const useProjectStore = create<ProjectState>((set) => ({
   positions: [],
   selectedPositionId: null,
   editorMode: 'select',
+  trajectories: [],
+  selectedTrajectoryId: null,
+  showTrajectories: true,
 
   setPlaying: (playing) => set({ isPlaying: playing }),
   setCurrentTime: (time) => set({ currentTime: time }),
@@ -114,4 +141,34 @@ export const useProjectStore = create<ProjectState>((set) => ({
   })),
   selectPosition: (id) => set({ selectedPositionId: id }),
   setEditorMode: (mode) => set({ editorMode: mode }),
+
+  addTrajectory: (traj) => set((s) => ({ trajectories: [...s.trajectories, traj] })),
+  updateTrajectory: (id, updates) => set((s) => ({
+    trajectories: s.trajectories.map((t) => t.id === id ? { ...t, ...updates } : t),
+  })),
+  removeTrajectory: (id) => set((s) => ({
+    trajectories: s.trajectories.filter((t) => t.id !== id),
+    selectedTrajectoryId: s.selectedTrajectoryId === id ? null : s.selectedTrajectoryId,
+  })),
+  selectTrajectory: (id) => set({ selectedTrajectoryId: id }),
+  addWaypoint: (trajectoryId, waypoint) => set((s) => ({
+    trajectories: s.trajectories.map((t) =>
+      t.id === trajectoryId ? { ...t, waypoints: [...t.waypoints, waypoint] } : t
+    ),
+  })),
+  updateWaypoint: (trajectoryId, waypointId, updates) => set((s) => ({
+    trajectories: s.trajectories.map((t) =>
+      t.id === trajectoryId
+        ? { ...t, waypoints: t.waypoints.map((w) => w.id === waypointId ? { ...w, ...updates } : w) }
+        : t
+    ),
+  })),
+  removeWaypoint: (trajectoryId, waypointId) => set((s) => ({
+    trajectories: s.trajectories.map((t) =>
+      t.id === trajectoryId
+        ? { ...t, waypoints: t.waypoints.filter((w) => w.id !== waypointId) }
+        : t
+    ),
+  })),
+  setShowTrajectories: (show) => set({ showTrajectories: show }),
 }));

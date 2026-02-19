@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { Rocket, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes } from 'lucide-react';
+import { Rocket, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, Route } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import FormationBuilder from './FormationBuilder';
 
-export default function Toolbar() {
+export default function Toolbar({ onToggleScript, showScript }: { onToggleScript: () => void; showScript: boolean }) {
   const { projectName, timelineItems, positions, editorMode, setEditorMode } = useProjectStore();
   const [formationOpen, setFormationOpen] = useState(false);
 
@@ -96,6 +96,16 @@ export default function Toolbar() {
           onClick={() => setFormationOpen(true)}
         >
           <Shapes className="h-3.5 w-3.5" />
+        </Button>
+        <Separator orientation="vertical" className="h-4 mx-1" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn("h-7 w-7", showScript && "bg-surface-3 text-primary")}
+          title="Toggle Script Panel"
+          onClick={onToggleScript}
+        >
+          <Route className="h-3.5 w-3.5" />
         </Button>
       </div>
 
