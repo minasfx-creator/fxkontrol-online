@@ -1,4 +1,4 @@
-import { type TimelineItem, type Position, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { type TimelineItem, type Position, type Trajectory, EFFECT_LIBRARY } from '@/store/useProjectStore';
 
 // ─── VVIZ Drone Export ───────────────────────────────────────────────
 // Generates a .vviz JSON file following the VVIZ specification:
@@ -46,17 +46,18 @@ export function exportVVIZ(
   duration: number,
   timelineItems: TimelineItem[],
   positions: Position[],
+  trajectories: Trajectory[] = [],
 ): string {
   const droneItems = timelineItems.filter((item) => {
     const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
     return effect?.type === 'drone';
   });
 
-  const drones: VVIZDrone[] = droneItems.map((item, index) => {
+  // Build drones from timeline items
+  const timelineDrones: VVIZDrone[] = droneItems.map((item, index) => {
     const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId)!;
     const rgb = hexToRgb(effect.color);
 
-    // Find nearest launch pad
     const dronePads = positions.filter((p) => p.type === 'drone-pad');
     let launchPad: string | null = null;
     if (dronePads.length > 0) {
@@ -74,42 +75,10 @@ export function exportVVIZ(
     }
 
     const keyframes: VVIZKeyframe[] = [
-      // Launch position (ground)
-      {
-        t: Math.max(0, item.startTime - 1),
-        x: item.position.x,
-        y: 0,
-        z: item.position.z,
-        h: 0,
-        ...rgb,
-      },
-      // Active position
-      {
-        t: item.startTime,
-        x: item.position.x,
-        y: item.position.y,
-        z: item.position.z,
-        h: 0,
-        ...rgb,
-      },
-      // End position
-      {
-        t: item.startTime + effect.duration,
-        x: item.position.x,
-        y: item.position.y,
-        z: item.position.z,
-        h: 0,
-        ...rgb,
-      },
-      // Return to ground
-      {
-        t: item.startTime + effect.duration + 1,
-        x: item.position.x,
-        y: 0,
-        z: item.position.z,
-        h: 0,
-        r: 0, g: 0, b: 0,
-      },
+      { t: Math.max(0, item.startTime - 1), x: item.position.x, y: 0, z: item.position.z, h: 0, ...rgb },
+      { t: item.startTime, x: item.position.x, y: item.position.y, z: item.position.z, h: 0, ...rgb },
+      { t: item.startTime + effect.duration, x: item.position.x, y: item.position.y, z: item.position.z, h: 0, ...rgb },
+      { t: item.startTime + effect.duration + 1, x: item.position.x, y: 0, z: item.position.z, h: 0, r: 0, g: 0, b: 0 },
     ];
 
     return {
@@ -119,6 +88,52 @@ export function exportVVIZ(
       keyframes,
     };
   });
+
+  // Build drones from trajectories
+  const trajectoryDrones: VVIZDrone[] = trajectories.map((traj, index) => {
+    const pad = positions.find((p) => p.id === traj.positionId);
+    if (!pad) return null;
+
+    const sortedWps = [...traj.waypoints].sort((a, b) => a.time - b.time);
+    const rgb = hexToRgb('#00B4D8'); // drone default color
+
+    const keyframes: VVIZKeyframe[] = [
+      // Start at pad
+      { t: 0, x: pad.x, y: pad.y || 0, z: pad.z, h: pad.heading || 0, ...rgb },
+    ];
+
+    // Add waypoints
+    for (const wp of sortedWps) {
+      keyframes.push({
+        t: wp.time,
+        x: wp.position.x,
+        y: wp.position.y,
+        z: wp.position.z,
+        h: 0,
+        ...rgb,
+      });
+    }
+
+    // Return to pad at end
+    const lastTime = sortedWps.length > 0 ? sortedWps[sortedWps.length - 1].time + 2 : 5;
+    keyframes.push({
+      t: lastTime,
+      x: pad.x,
+      y: pad.y || 0,
+      z: pad.z,
+      h: 0,
+      r: 0, g: 0, b: 0,
+    });
+
+    return {
+      id: `traj-drone-${String(index + 1).padStart(3, '0')}`,
+      name: traj.name,
+      launchPad: pad.name,
+      keyframes,
+    };
+  }).filter(Boolean) as VVIZDrone[];
+
+  const drones = [...timelineDrones, ...trajectoryDrones];
 
   const vviz: VVIZFile = {
     version: '1.0',

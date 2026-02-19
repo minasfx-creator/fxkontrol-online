@@ -7,12 +7,12 @@ import { Separator } from '@/components/ui/separator';
 import { exportVVIZ, exportFiringCSV, downloadFile } from '@/lib/exportEngine';
 
 function ExportSection() {
-  const { timelineItems, positions, projectName, duration } = useProjectStore();
+  const { timelineItems, positions, projectName, duration, trajectories } = useProjectStore();
 
   const droneCount = timelineItems.filter((item) => {
     const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
     return effect?.type === 'drone';
-  }).length;
+  }).length + trajectories.length;
 
   const pyroCount = timelineItems.filter((item) => {
     const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
@@ -20,7 +20,7 @@ function ExportSection() {
   }).length;
 
   const handleExportVVIZ = () => {
-    const content = exportVVIZ(projectName, duration, timelineItems, positions);
+    const content = exportVVIZ(projectName, duration, timelineItems, positions, trajectories);
     downloadFile(content, `${projectName.replace(/\s+/g, '_')}.vviz`, 'application/json');
   };
 

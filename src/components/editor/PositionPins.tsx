@@ -8,7 +8,7 @@ const PYRO_COLOR = '#FF6B35';
 const DRONE_COLOR = '#00B4D8';
 
 function Pin({ position }: { position: Position }) {
-  const { selectedPositionId, selectPosition } = useProjectStore();
+  const { selectedPositionId, selectPosition, editorMode } = useProjectStore();
   const isSelected = selectedPositionId === position.id;
   const color = position.type === 'pyro' ? PYRO_COLOR : DRONE_COLOR;
   const meshRef = useRef<THREE.Mesh>(null);
@@ -33,6 +33,7 @@ function Pin({ position }: { position: Position }) {
         ref={meshRef}
         position={[0, 0.4, 0]}
         onClick={(e) => {
+          if (editorMode !== 'select') return; // Don't intercept clicks in placement modes
           e.stopPropagation();
           selectPosition(position.id);
         }}
@@ -117,7 +118,7 @@ function GroundClickPlane() {
   const { camera, raycaster } = useThree();
 
   const handleClick = useCallback((e: THREE.Event & { point: THREE.Vector3 }) => {
-    if (editorMode === 'select') return;
+    if (editorMode !== 'add-pyro' && editorMode !== 'add-drone') return;
 
     const type = editorMode === 'add-pyro' ? 'pyro' as const : 'drone-pad' as const;
     const prefix = type === 'pyro' ? 'POS' : 'PAD';
@@ -138,7 +139,7 @@ function GroundClickPlane() {
     setEditorMode('select');
   }, [editorMode, addPosition, setEditorMode]);
 
-  if (editorMode === 'select') return null;
+  if (editorMode !== 'add-pyro' && editorMode !== 'add-drone') return null;
 
   return (
     <mesh
