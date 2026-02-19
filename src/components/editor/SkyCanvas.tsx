@@ -5,6 +5,8 @@ import { useRef, useMemo, useEffect } from 'react';
 import * as THREE from 'three';
 import PositionPins from './PositionPins';
 import PostProcessing from './PostProcessing';
+import TrajectoryPaths from './TrajectoryPaths';
+import QuadcopterModel from './QuadcopterModel';
 
 // --- Playback clock: advances currentTime each frame when playing ---
 function PlaybackClock() {
@@ -206,17 +208,7 @@ function FireworkBurst({
 // --- Drone light point (unchanged) ---
 function LightPoint({ position, color }: { position: [number, number, number]; color: string }) {
   return (
-    <group position={position}>
-      <mesh>
-        <sphereGeometry args={[0.15, 16, 16]} />
-        <meshBasicMaterial color={color} />
-      </mesh>
-      <pointLight color={color} intensity={2} distance={8} decay={2} />
-      <mesh>
-        <sphereGeometry args={[0.4, 16, 16]} />
-        <meshBasicMaterial color={color} transparent opacity={0.15} />
-      </mesh>
-    </group>
+    <QuadcopterModel position={position} color={color} />
   );
 }
 
@@ -319,6 +311,7 @@ export default function SkyCanvas() {
         <GroundPlane />
         <LaunchSites />
         <PositionPins />
+        <TrajectoryPaths />
         <TimelineEffects />
         <PlaybackClock />
         <PostProcessing />

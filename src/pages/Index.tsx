@@ -1,8 +1,10 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import Toolbar from '@/components/editor/Toolbar';
 import EffectLibrary from '@/components/editor/EffectLibrary';
 import Timeline from '@/components/editor/Timeline';
 import PropertiesPanel from '@/components/editor/PropertiesPanel';
+import ScriptPanel from '@/components/editor/ScriptPanel';
+import { cn } from '@/lib/utils';
 
 const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
 
@@ -18,10 +20,12 @@ function CanvasLoader() {
 }
 
 export default function Index() {
+  const [showScript, setShowScript] = useState(true);
+
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
       {/* Top toolbar */}
-      <Toolbar />
+      <Toolbar onToggleScript={() => setShowScript(!showScript)} showScript={showScript} />
 
       {/* Main editor area */}
       <div className="flex-1 flex overflow-hidden">
@@ -37,9 +41,16 @@ export default function Index() {
           </Suspense>
         </div>
 
-        {/* Right sidebar - Properties */}
-        <div className="w-52 flex-shrink-0">
-          <PropertiesPanel />
+        {/* Right panels */}
+        <div className="flex flex-shrink-0">
+          {showScript && (
+            <div className="w-56">
+              <ScriptPanel />
+            </div>
+          )}
+          <div className="w-52">
+            <PropertiesPanel />
+          </div>
         </div>
       </div>
 
