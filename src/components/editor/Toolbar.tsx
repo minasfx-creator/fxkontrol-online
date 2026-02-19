@@ -1,11 +1,14 @@
-import { Rocket, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer } from 'lucide-react';
+import { useState } from 'react';
+import { Rocket, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import FormationBuilder from './FormationBuilder';
 
 export default function Toolbar() {
   const { projectName, timelineItems, positions, editorMode, setEditorMode } = useProjectStore();
+  const [formationOpen, setFormationOpen] = useState(false);
 
   return (
     <div className="flex items-center h-10 px-2 bg-surface-1 border-b border-border">
@@ -84,7 +87,19 @@ export default function Toolbar() {
             Click ground to place
           </span>
         )}
+        <Separator orientation="vertical" className="h-4 mx-1" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          title="Formation Builder"
+          onClick={() => setFormationOpen(true)}
+        >
+          <Shapes className="h-3.5 w-3.5" />
+        </Button>
       </div>
+
+      <FormationBuilder open={formationOpen} onOpenChange={setFormationOpen} />
 
       <div className="flex-1" />
 
