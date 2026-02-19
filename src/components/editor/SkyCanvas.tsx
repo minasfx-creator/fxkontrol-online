@@ -4,6 +4,7 @@ import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { useRef, useMemo, useEffect } from 'react';
 import * as THREE from 'three';
 import PositionPins from './PositionPins';
+import PostProcessing from './PostProcessing';
 
 // --- Playback clock: advances currentTime each frame when playing ---
 function PlaybackClock() {
@@ -320,6 +321,7 @@ export default function SkyCanvas() {
         <PositionPins />
         <TimelineEffects />
         <PlaybackClock />
+        <PostProcessing />
       </Canvas>
       
       <div className="absolute top-3 left-3 flex items-center gap-2">

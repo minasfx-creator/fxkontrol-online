@@ -1,14 +1,35 @@
 import { useState } from 'react';
-import { Settings2, Download, FileJson, FileSpreadsheet, Box, Trash2 } from 'lucide-react';
+import { Settings2, Download, FileJson, FileSpreadsheet, Box, Trash2, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { Separator } from '@/components/ui/separator';
+import { exportVVIZ, exportFiringCSV, downloadFile } from '@/lib/exportEngine';
 
 function ExportSection() {
-  const { timelineItems, projectName } = useProjectStore();
+  const { timelineItems, positions, projectName, duration } = useProjectStore();
 
-  const exportJSON = () => {
+  const droneCount = timelineItems.filter((item) => {
+    const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+    return effect?.type === 'drone';
+  }).length;
+
+  const pyroCount = timelineItems.filter((item) => {
+    const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+    return effect?.type === 'firework';
+  }).length;
+
+  const handleExportVVIZ = () => {
+    const content = exportVVIZ(projectName, duration, timelineItems, positions);
+    downloadFile(content, `${projectName.replace(/\s+/g, '_')}.vviz`, 'application/json');
+  };
+
+  const handleExportFiringCSV = () => {
+    const content = exportFiringCSV(timelineItems, positions);
+    downloadFile(content, `${projectName.replace(/\s+/g, '_')}_firing.csv`, 'text/csv');
+  };
+
+  const handleExportJSON = () => {
     const data = {
       project: projectName,
       exportedAt: new Date().toISOString(),
@@ -16,59 +37,37 @@ function ExportSection() {
         const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
         return { ...item, effectName: effect?.name, effectType: effect?.type };
       }),
+      positions,
     };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${projectName.replace(/\s+/g, '_')}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const exportCSV = () => {
-    const header = 'id,effectId,effectName,startTime,trackIndex,posX,posY,posZ\n';
-    const rows = timelineItems.map((item) => {
-      const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
-      return `${item.id},${item.effectId},${effect?.name ?? ''},${item.startTime},${item.trackIndex},${item.position.x.toFixed(2)},${item.position.y.toFixed(2)},${item.position.z.toFixed(2)}`;
-    }).join('\n');
-    const blob = new Blob([header + rows], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${projectName.replace(/\s+/g, '_')}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const exportVVIZ = () => {
-    const droneItems = timelineItems.filter((item) => {
-      const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
-      return effect?.type === 'drone';
-    });
-    const lines = droneItems.map((item) => {
-      return `${item.startTime.toFixed(3)},${item.position.x.toFixed(3)},${item.position.y.toFixed(3)},${item.position.z.toFixed(3)},0.000`;
-    });
-    const content = `# VVIZ Drone Show Format\n# Time,X,Y,Z,Heading\n${lines.join('\n')}`;
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${projectName.replace(/\s+/g, '_')}.vviz`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadFile(JSON.stringify(data, null, 2), `${projectName.replace(/\s+/g, '_')}.json`, 'application/json');
   };
 
   return (
     <div className="space-y-1.5">
-      <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-7 text-xs" onClick={exportJSON}>
-        <FileJson className="h-3.5 w-3.5 text-electric" /> Export JSON
-      </Button>
-      <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-7 text-xs" onClick={exportCSV}>
-        <FileSpreadsheet className="h-3.5 w-3.5 text-success" /> Export CSV
-      </Button>
-      <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-7 text-xs" onClick={exportVVIZ}>
-        <Box className="h-3.5 w-3.5 text-safety" /> Export .VVIZ
+      {/* Drone export */}
+      <div className="bg-surface-2 rounded-sm p-1.5 space-y-1">
+        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground px-1">Drone Show</p>
+        <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-7 text-xs" onClick={handleExportVVIZ}>
+          <Box className="h-3.5 w-3.5 text-electric" />
+          <span className="flex-1 text-left">Export .VVIZ</span>
+          <span className="text-[9px] text-muted-foreground">{droneCount} drones</span>
+        </Button>
+      </div>
+
+      {/* Pyro export */}
+      <div className="bg-surface-2 rounded-sm p-1.5 space-y-1">
+        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground px-1">Firing System</p>
+        <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-7 text-xs" onClick={handleExportFiringCSV}>
+          <Zap className="h-3.5 w-3.5 text-safety" />
+          <span className="flex-1 text-left">Cobra / FireTEK CSV</span>
+          <span className="text-[9px] text-muted-foreground">{pyroCount} cues</span>
+        </Button>
+      </div>
+
+      {/* Generic */}
+      <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-7 text-xs" onClick={handleExportJSON}>
+        <FileJson className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="flex-1 text-left">Export Project JSON</span>
       </Button>
     </div>
   );
