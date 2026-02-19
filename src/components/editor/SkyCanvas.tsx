@@ -10,13 +10,13 @@ import QuadcopterModel from './QuadcopterModel';
 
 // --- Playback clock: advances currentTime each frame when playing ---
 function PlaybackClock() {
-  const { isPlaying, currentTime, duration, setCurrentTime, setPlaying } = useProjectStore();
+  const { isPlaying, currentTime, duration, setCurrentTime, setPlaying, playbackSpeed } = useProjectStore();
   const prevTime = useRef(performance.now());
 
   useFrame(() => {
     const now = performance.now();
     if (isPlaying) {
-      const delta = (now - prevTime.current) / 1000;
+      const delta = ((now - prevTime.current) / 1000) * playbackSpeed;
       const next = currentTime + delta;
       if (next >= duration) {
         setCurrentTime(duration);

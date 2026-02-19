@@ -1,8 +1,9 @@
 import { useRef, useState, useCallback, useMemo } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Square, Trash2 } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Square, Trash2, Gauge } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
+import AudioWaveform from './AudioWaveform';
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -203,6 +204,7 @@ export default function Timeline() {
   const {
     isPlaying, setPlaying, currentTime, setCurrentTime, duration,
     selectedTimelineItemId, removeTimelineItem, timelineItems,
+    playbackSpeed, setPlaybackSpeed,
   } = useProjectStore();
   const scrollRef = useRef<HTMLDivElement>(null);
   const pixelsPerSecond = 12;
@@ -259,6 +261,25 @@ export default function Timeline() {
           <span className="font-mono-code text-xs text-muted-foreground">{formatTime(duration)}</span>
         </div>
 
+        {/* Playback speed */}
+        <div className="flex items-center gap-1 mr-2">
+          <Gauge className="h-3 w-3 text-muted-foreground" />
+          {[0.25, 0.5, 1, 2].map((s) => (
+            <button
+              key={s}
+              className={cn(
+                "text-[9px] font-mono-code px-1 py-0.5 rounded-sm border",
+                playbackSpeed === s
+                  ? "bg-primary/20 text-primary border-primary/40"
+                  : "bg-surface-2 text-muted-foreground border-border hover:text-foreground"
+              )}
+              onClick={() => setPlaybackSpeed(s)}
+            >
+              {s}x
+            </button>
+          ))}
+        </div>
+
         <div className="flex-1" />
 
         {/* Stats */}
@@ -297,7 +318,7 @@ export default function Timeline() {
           <TimelineTrackRow label="Fireworks" trackIndex={0} pixelsPerSecond={pixelsPerSecond} color="#FF6B35" duration={duration} scrollRef={scrollRef} />
           <TimelineTrackRow label="Drones" trackIndex={1} pixelsPerSecond={pixelsPerSecond} color="#00B4D8" duration={duration} scrollRef={scrollRef} />
           <WaypointTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
-          <TimelineTrackRow label="Audio" trackIndex={2} pixelsPerSecond={pixelsPerSecond} color="#7B68EE" duration={duration} scrollRef={scrollRef} />
+          <AudioWaveform pixelsPerSecond={pixelsPerSecond} />
         </div>
       </div>
     </div>

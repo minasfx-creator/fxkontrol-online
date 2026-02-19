@@ -64,6 +64,11 @@ export interface ProjectState {
   trajectories: Trajectory[];
   selectedTrajectoryId: string | null;
   showTrajectories: boolean;
+  audioUrl: string | null;
+  bpm: number | null;
+  snapToBeat: boolean;
+  playbackSpeed: number;
+  projectId: string | null; // DB project id
 
   setPlaying: (playing: boolean) => void;
   setCurrentTime: (time: number) => void;
@@ -77,7 +82,7 @@ export interface ProjectState {
   updatePosition: (id: string, updates: Partial<Omit<Position, 'id'>>) => void;
   removePosition: (id: string) => void;
   selectPosition: (id: string | null) => void;
-  togglePositionSelection: (id: string) => void; // shift+click multi-select
+  togglePositionSelection: (id: string) => void;
   selectMultiplePositions: (ids: string[]) => void;
   setEditorMode: (mode: EditorMode) => void;
   addTrajectory: (traj: Trajectory) => void;
@@ -88,6 +93,11 @@ export interface ProjectState {
   updateWaypoint: (trajectoryId: string, waypointId: string, updates: Partial<Omit<Waypoint, 'id'>>) => void;
   removeWaypoint: (trajectoryId: string, waypointId: string) => void;
   setShowTrajectories: (show: boolean) => void;
+  setAudioUrl: (url: string | null) => void;
+  setBpm: (bpm: number | null) => void;
+  setSnapToBeat: (snap: boolean) => void;
+  setPlaybackSpeed: (speed: number) => void;
+  setProjectId: (id: string | null) => void;
 }
 
 export const EFFECT_LIBRARY: Effect[] = [
@@ -127,6 +137,11 @@ export const useProjectStore = create<ProjectState>((set) => ({
   trajectories: [],
   selectedTrajectoryId: null,
   showTrajectories: true,
+  audioUrl: null,
+  bpm: null,
+  snapToBeat: false,
+  playbackSpeed: 1,
+  projectId: null,
 
   setPlaying: (playing) => set({ isPlaying: playing }),
   setCurrentTime: (time) => set({ currentTime: time }),
@@ -183,4 +198,9 @@ export const useProjectStore = create<ProjectState>((set) => ({
     ),
   })),
   setShowTrajectories: (show) => set({ showTrajectories: show }),
+  setAudioUrl: (url) => set({ audioUrl: url }),
+  setBpm: (bpm) => set({ bpm }),
+  setSnapToBeat: (snap) => set({ snapToBeat: snap }),
+  setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
+  setProjectId: (id) => set({ projectId: id }),
 }));

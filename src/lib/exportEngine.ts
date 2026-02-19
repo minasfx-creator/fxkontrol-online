@@ -95,7 +95,7 @@ export function exportVVIZ(
     if (!pad) return null;
 
     const sortedWps = [...traj.waypoints].sort((a, b) => a.time - b.time);
-    const rgb = hexToRgb('#00B4D8'); // drone default color
+    const rgb = hexToRgb(pad?.color || '#00B4D8');
 
     const keyframes: VVIZKeyframe[] = [
       // Start at pad

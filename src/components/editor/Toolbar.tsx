@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { Rocket, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, Route } from 'lucide-react';
+import { Rocket, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, Route, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useAuth } from '@/hooks/useAuth';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import FormationBuilder from './FormationBuilder';
 
 export default function Toolbar({ onToggleScript, showScript }: { onToggleScript: () => void; showScript: boolean }) {
   const { projectName, timelineItems, positions, editorMode, setEditorMode } = useProjectStore();
+  const { signOut, user } = useAuth();
   const [formationOpen, setFormationOpen] = useState(false);
 
   return (
@@ -119,6 +121,9 @@ export default function Toolbar({ onToggleScript, showScript }: { onToggleScript
         <span>{positions.length} pins</span>
         <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse-glow" />
         <span className="text-success">Ready</span>
+        <Button variant="ghost" size="icon" className="h-6 w-6 ml-1" title="Sair" onClick={signOut}>
+          <LogOut className="h-3 w-3" />
+        </Button>
       </div>
     </div>
   );
