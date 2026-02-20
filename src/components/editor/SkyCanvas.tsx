@@ -1,12 +1,22 @@
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars, Grid, PerspectiveCamera } from '@react-three/drei';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
-import { useRef, useMemo, useEffect } from 'react';
+import { useRef, useMemo, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import PositionPins from './PositionPins';
 import PostProcessing from './PostProcessing';
 import TrajectoryPaths from './TrajectoryPaths';
 import QuadcopterModel from './QuadcopterModel';
+import { Camera, Eye, Video, Plane, Users } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+const CAMERA_PRESETS = [
+  { id: 'free', label: 'Free', icon: Eye, position: [0, 8, 25] as [number, number, number], target: [0, 5, 0] as [number, number, number] },
+  { id: 'audience', label: 'Plateia', icon: Users, position: [0, 3, 35] as [number, number, number], target: [0, 8, 0] as [number, number, number] },
+  { id: 'aerial', label: 'Aéreo', icon: Plane, position: [0, 40, 5] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
+  { id: 'side', label: 'Lateral', icon: Video, position: [35, 8, 0] as [number, number, number], target: [0, 8, 0] as [number, number, number] },
+  { id: 'closeup', label: 'Close-up', icon: Camera, position: [5, 6, 8] as [number, number, number], target: [0, 8, 0] as [number, number, number] },
+] as const;
 
 // --- Playback clock: advances currentTime each frame when playing ---
 function PlaybackClock() {
@@ -285,21 +295,50 @@ function LaunchSites() {
   );
 }
 
+function CameraController({ targetPosition, targetLookAt }: { targetPosition: [number, number, number]; targetLookAt: [number, number, number] }) {
+  const { camera } = useThree();
+  const controlsRef = useRef<any>(null);
+  const targetPos = useRef(new THREE.Vector3(...targetPosition));
+  const targetLook = useRef(new THREE.Vector3(...targetLookAt));
+  const animating = useRef(false);
+
+  useEffect(() => {
+    targetPos.current.set(...targetPosition);
+    targetLook.current.set(...targetLookAt);
+    animating.current = true;
+  }, [targetPosition, targetLookAt]);
+
+  useFrame(() => {
+    if (!animating.current || !controlsRef.current) return;
+    camera.position.lerp(targetPos.current, 0.06);
+    controlsRef.current.target.lerp(targetLook.current, 0.06);
+    controlsRef.current.update();
+    if (camera.position.distanceTo(targetPos.current) < 0.05) animating.current = false;
+  });
+
+  return (
+    <OrbitControls
+      ref={controlsRef}
+      enableDamping
+      dampingFactor={0.05}
+      maxPolarAngle={Math.PI / 2}
+      minDistance={3}
+      maxDistance={100}
+    />
+  );
+}
+
 export default function SkyCanvas() {
   const editorMode = useProjectStore((s) => s.editorMode);
   const cursorStyle = editorMode !== 'select' ? 'crosshair' : 'default';
+  const [activePreset, setActivePreset] = useState('free');
+  const preset = CAMERA_PRESETS.find((p) => p.id === activePreset) || CAMERA_PRESETS[0];
 
   return (
     <div className="w-full h-full relative" style={{ cursor: cursorStyle }}>
       <Canvas shadows>
-        <PerspectiveCamera makeDefault position={[0, 8, 25]} fov={60} />
-        <OrbitControls
-          enableDamping
-          dampingFactor={0.05}
-          maxPolarAngle={Math.PI / 2}
-          minDistance={5}
-          maxDistance={80}
-        />
+        <PerspectiveCamera makeDefault position={preset.position} fov={60} />
+        <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} />
         
         <ambientLight intensity={0.05} />
         <directionalLight position={[10, 10, 5]} intensity={0.1} />
@@ -317,14 +356,25 @@ export default function SkyCanvas() {
         <PostProcessing />
       </Canvas>
       
-      <div className="absolute top-3 left-3 flex items-center gap-2">
-        <span className="text-xs font-mono-code text-muted-foreground bg-surface-1/80 px-2 py-1 rounded-sm border border-border/50">
-          3D VIEWPORT
-        </span>
-        <span className="text-xs font-mono-code text-electric bg-surface-1/80 px-2 py-1 rounded-sm border border-border/50">
-          PERSPECTIVE
-        </span>
+      {/* Camera presets */}
+      <div className="absolute top-3 left-3 flex items-center gap-1">
+        {CAMERA_PRESETS.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setActivePreset(id)}
+            className={cn(
+              "flex items-center gap-1 px-2 py-1 rounded-sm text-[10px] font-mono-code transition-all border",
+              activePreset === id
+                ? "bg-primary/20 text-primary border-primary/40 glow-electric"
+                : "bg-surface-1/80 text-muted-foreground border-border/50 hover:text-foreground hover:bg-surface-2/80"
+            )}
+          >
+            <Icon className="w-3 h-3" />
+            <span className="hidden sm:inline">{label}</span>
+          </button>
+        ))}
       </div>
+
       <div className="absolute bottom-3 right-3 text-xs font-mono-code text-muted-foreground bg-surface-1/80 px-2 py-1 rounded-sm border border-border/50">
         Orbit: LMB · Pan: MMB · Zoom: Scroll
       </div>

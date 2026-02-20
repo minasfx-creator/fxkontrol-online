@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useMemo } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Square, Trash2, Gauge } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Square, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
@@ -261,23 +261,34 @@ export default function Timeline() {
           <span className="font-mono-code text-xs text-muted-foreground">{formatTime(duration)}</span>
         </div>
 
-        {/* Playback speed */}
-        <div className="flex items-center gap-1 mr-2">
-          <Gauge className="h-3 w-3 text-muted-foreground" />
-          {[0.25, 0.5, 1, 2].map((s) => (
-            <button
-              key={s}
-              className={cn(
-                "text-[9px] font-mono-code px-1 py-0.5 rounded-sm border",
-                playbackSpeed === s
-                  ? "bg-primary/20 text-primary border-primary/40"
-                  : "bg-surface-2 text-muted-foreground border-border hover:text-foreground"
-              )}
-              onClick={() => setPlaybackSpeed(s)}
-            >
-              {s}x
-            </button>
-          ))}
+        {/* Playback speed slider */}
+        <div className="flex items-center gap-1.5 mr-2">
+          <span className="text-[9px] font-mono-code text-muted-foreground w-7 text-right">{playbackSpeed.toFixed(playbackSpeed < 1 ? 2 : 1)}x</span>
+          <input
+            type="range"
+            min={0.1}
+            max={2}
+            step={0.05}
+            value={playbackSpeed}
+            onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))}
+            className="w-20 h-1 accent-primary bg-surface-3 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-[0_0_6px_hsl(207_90%_54%/0.4)]"
+          />
+          <div className="flex gap-0.5">
+            {[0.25, 0.5, 1].map((s) => (
+              <button
+                key={s}
+                className={cn(
+                  "text-[9px] font-mono-code px-1 py-0.5 rounded-sm border",
+                  Math.abs(playbackSpeed - s) < 0.01
+                    ? "bg-primary/20 text-primary border-primary/40"
+                    : "bg-surface-2 text-muted-foreground border-border hover:text-foreground"
+                )}
+                onClick={() => setPlaybackSpeed(s)}
+              >
+                {s}x
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex-1" />
