@@ -120,6 +120,30 @@ export const EFFECT_LIBRARY: Effect[] = [
   { id: 'form-02', name: 'Star Formation', category: 'formacoes', type: 'drone', color: '#FFD700', duration: 15, cost: 50, icon: '⭐' },
   { id: 'form-03', name: 'Wave Pattern', category: 'formacoes', type: 'drone', color: '#00BFFF', duration: 12, cost: 40, icon: '🌊' },
   { id: 'form-04', name: 'Spiral Ascent', category: 'formacoes', type: 'drone', color: '#FF4500', duration: 20, cost: 60, icon: '🌀' },
+  // Spark
+  { id: 'spark-01', name: 'Silver Spark Fountain', category: 'morteiros', type: 'firework', color: '#C0C0C0', duration: 3, cost: 8, icon: '✳️' },
+  { id: 'spark-02', name: 'Gold Spark Jet', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 4, cost: 10, icon: '⚜️' },
+  // Shell
+  { id: 'shell-01', name: 'Titanium Shell 4"', category: 'morteiros', type: 'firework', color: '#E8E8E8', duration: 3, cost: 20, icon: '💫' },
+  { id: 'shell-02', name: 'Color Shell 6"', category: 'morteiros', type: 'firework', color: '#FF1493', duration: 4.5, cost: 30, icon: '🎇' },
+  // Comet
+  { id: 'comet-01', name: 'Rising Comet', category: 'peonias', type: 'firework', color: '#00FFFF', duration: 1.5, cost: 6, icon: '☄️' },
+  { id: 'comet-02', name: 'Falling Comet Trail', category: 'peonias', type: 'firework', color: '#FFA07A', duration: 2, cost: 8, icon: '🌠' },
+  // Flare
+  { id: 'flare-01', name: 'Red Signal Flare', category: 'peonias', type: 'firework', color: '#FF0000', duration: 5, cost: 4, icon: '🔥' },
+  { id: 'flare-02', name: 'White Magnesium Flare', category: 'peonias', type: 'firework', color: '#FFFAFA', duration: 6, cost: 5, icon: '💡' },
+  // MultiBurst
+  { id: 'mburst-01', name: 'Triple Burst 3"', category: 'morteiros', type: 'firework', color: '#FF6347', duration: 3.5, cost: 22, icon: '🎆' },
+  { id: 'mburst-02', name: 'Penta Burst 5"', category: 'morteiros', type: 'firework', color: '#9400D3', duration: 5, cost: 40, icon: '💥' },
+  // Fan
+  { id: 'fan-01', name: 'Fan Spread 90°', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 2, cost: 15, icon: '🪭' },
+  { id: 'fan-02', name: 'Wide Fan 180°', category: 'morteiros', type: 'firework', color: '#00FF7F', duration: 2.5, cost: 20, icon: '🌈' },
+  // AerialRing
+  { id: 'aring-01', name: 'Saturn Ring', category: 'formacoes', type: 'drone', color: '#FFD700', duration: 12, cost: 45, icon: '💍' },
+  { id: 'aring-02', name: 'Neon Halo', category: 'formacoes', type: 'drone', color: '#00FFFF', duration: 10, cost: 35, icon: '⭕' },
+  // Shockwave
+  { id: 'shock-01', name: 'Ground Shockwave', category: 'morteiros', type: 'firework', color: '#FF4500', duration: 1.5, cost: 18, icon: '💢' },
+  { id: 'shock-02', name: 'Aerial Shockwave', category: 'morteiros', type: 'firework', color: '#FFFFFF', duration: 2, cost: 25, icon: '🔆' },
 ];
 
 export const useProjectStore = create<ProjectState>((set) => ({
