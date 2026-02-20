@@ -7,7 +7,7 @@ import PositionPins from './PositionPins';
 import PostProcessing from './PostProcessing';
 import TrajectoryPaths from './TrajectoryPaths';
 import QuadcopterModel from './QuadcopterModel';
-import { Camera, Eye, Video, Plane, Users } from 'lucide-react';
+import { Camera, Eye, Video, Plane, Users, Maximize, Minimize } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const CAMERA_PRESETS = [
@@ -335,7 +335,7 @@ export default function SkyCanvas() {
   const preset = CAMERA_PRESETS.find((p) => p.id === activePreset) || CAMERA_PRESETS[0];
 
   return (
-    <div className="w-full h-full relative" style={{ cursor: cursorStyle }}>
+    <div className="w-full h-full relative bg-[#0a0a12]" data-sky-canvas style={{ cursor: cursorStyle }}>
       <Canvas shadows>
         <PerspectiveCamera makeDefault position={preset.position} fov={60} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} />
@@ -373,6 +373,16 @@ export default function SkyCanvas() {
             <span className="hidden sm:inline">{label}</span>
           </button>
         ))}
+        <button
+          onClick={() => {
+            const el = document.querySelector('[data-sky-canvas]') as HTMLElement;
+            if (!el) return;
+            document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen();
+          }}
+          className="bg-surface-1/80 text-muted-foreground border border-border/50 hover:text-foreground hover:bg-surface-2/80 px-2 py-1 rounded-sm transition-all"
+        >
+          {document.fullscreenElement ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
+        </button>
       </div>
 
       <div className="absolute bottom-3 right-3 text-xs font-mono-code text-muted-foreground bg-surface-1/80 px-2 py-1 rounded-sm border border-border/50">
