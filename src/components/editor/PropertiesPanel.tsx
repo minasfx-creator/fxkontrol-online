@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Settings2, Download, FileJson, FileSpreadsheet, Box, Trash2, Zap } from 'lucide-react';
+import { Settings2, Download, FileJson, FileSpreadsheet, Box, Trash2, Zap, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { Separator } from '@/components/ui/separator';
 import { exportVVIZ, exportFiringCSV, downloadFile } from '@/lib/exportEngine';
+import SafetyPanel from './SafetyPanel';
 
 function ExportSection() {
   const { timelineItems, positions, projectName, duration, trajectories } = useProjectStore();
@@ -225,6 +226,11 @@ export default function PropertiesPanel() {
             <p className="text-xs text-muted-foreground">Select an effect, timeline item, or position pin</p>
           </div>
         )}
+
+        <Separator />
+
+        {/* Safety */}
+        <SafetyPanel />
 
         <Separator />
 
