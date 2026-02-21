@@ -9,6 +9,7 @@ import TrajectoryPaths from './TrajectoryPaths';
 import QuadcopterModel from './QuadcopterModel';
 import { Camera, Eye, Video, Plane, Users, Maximize, Minimize } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CometEffect, ShockwaveEffect, MultiBurstEffect, FanEffect } from './effects';
 
 const CAMERA_PRESETS = [
   { id: 'free', label: 'Free', icon: Eye, position: [0, 8, 25] as [number, number, number], target: [0, 5, 0] as [number, number, number] },
@@ -240,15 +241,27 @@ function TimelineEffects() {
     <>
       {activeEffects.map(({ item, effect, progress }) => {
         const pos: [number, number, number] = [item.position.x, item.position.y, item.position.z];
+        const eid = effect.id;
+
+        // Route to specialized renderers by effect ID prefix
+        if (eid.startsWith('comet-')) {
+          return <CometEffect key={item.id} position={pos} color={effect.color} progress={progress} direction={eid === 'comet-02' ? 'down' : 'up'} />;
+        }
+        if (eid.startsWith('shock-')) {
+          return <ShockwaveEffect key={item.id} position={pos} color={effect.color} progress={progress} />;
+        }
+        if (eid.startsWith('mburst-')) {
+          const count = eid === 'mburst-02' ? 5 : 3;
+          return <MultiBurstEffect key={item.id} position={pos} color={effect.color} progress={progress} burstCount={count} />;
+        }
+        if (eid.startsWith('fan-')) {
+          const angle = eid === 'fan-02' ? 180 : 90;
+          return <FanEffect key={item.id} position={pos} color={effect.color} progress={progress} spreadAngle={angle} />;
+        }
+
+        // Default firework / drone
         if (effect.type === 'firework') {
-          return (
-            <FireworkBurst
-              key={item.id}
-              position={pos}
-              color={effect.color}
-              progress={progress}
-            />
-          );
+          return <FireworkBurst key={item.id} position={pos} color={effect.color} progress={progress} />;
         }
         return <LightPoint key={item.id} position={pos} color={effect.color} />;
       })}
