@@ -2,6 +2,7 @@ import { useRef, useState, useCallback, useMemo } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Square, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { getPreFireTime } from '@/lib/safetyEngine';
 import { cn } from '@/lib/utils';
 import AudioWaveform from './AudioWaveform';
 
@@ -118,25 +119,37 @@ function TimelineTrackRow({
           const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
           if (!effect) return null;
           const isSelected = selectedTimelineItemId === item.id;
+          const pft = effect.type === 'firework' ? getPreFireTime(effect.name) : 0;
+          const pftPx = pft * pixelsPerSecond;
           return (
-            <button
-              key={item.id}
-              onClick={() => selectTimelineItem(item.id)}
-              className={cn(
-                "absolute top-1 h-8 rounded-sm flex items-center px-1.5 text-[10px] font-medium transition-all cursor-pointer border",
-                isSelected
-                  ? "border-primary shadow-[0_0_8px_hsl(var(--electric)/0.3)] z-10"
-                  : "border-transparent hover:border-border"
+            <div key={item.id} className="absolute top-1" style={{ left: `${item.startTime * pixelsPerSecond}px` }}>
+              {/* PFT indicator (fire before burst) */}
+              {pft > 0 && (
+                <div
+                  className="absolute h-8 rounded-l-sm bg-warning/10 border-l-2 border-warning/40"
+                  style={{ left: `-${pftPx}px`, width: `${pftPx}px` }}
+                  title={`Pre-Fire: ${pft.toFixed(1)}s`}
+                >
+                  <span className="text-[7px] font-mono-code text-warning/60 absolute bottom-0 left-0.5">PFT</span>
+                </div>
               )}
-              style={{
-                left: `${item.startTime * pixelsPerSecond}px`,
-                width: `${Math.max(effect.duration * pixelsPerSecond, 20)}px`,
-                backgroundColor: `${effect.color}22`,
-              }}
-            >
-              <div className="w-1 h-full rounded-full mr-1 flex-shrink-0" style={{ backgroundColor: effect.color }} />
-              <span className="truncate text-secondary-foreground">{effect.name}</span>
-            </button>
+              <button
+                onClick={() => selectTimelineItem(item.id)}
+                className={cn(
+                  "h-8 rounded-sm flex items-center px-1.5 text-[10px] font-medium transition-all cursor-pointer border",
+                  isSelected
+                    ? "border-primary shadow-[0_0_8px_hsl(var(--electric)/0.3)] z-10"
+                    : "border-transparent hover:border-border"
+                )}
+                style={{
+                  width: `${Math.max(effect.duration * pixelsPerSecond, 20)}px`,
+                  backgroundColor: `${effect.color}22`,
+                }}
+              >
+                <div className="w-1 h-full rounded-full mr-1 flex-shrink-0" style={{ backgroundColor: effect.color }} />
+                <span className="truncate text-secondary-foreground">{effect.name}</span>
+              </button>
+            </div>
           );
         })}
       </div>

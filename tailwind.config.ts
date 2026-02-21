@@ -54,6 +54,7 @@ export default {
           glow: "hsl(var(--safety-glow))",
         },
         success: "hsl(var(--success))",
+        warning: "hsl(var(--warning))",
         surface: {
           0: "hsl(var(--surface-0))",
           1: "hsl(var(--surface-1))",

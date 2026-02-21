@@ -7,6 +7,7 @@ import PositionPins from './PositionPins';
 import PostProcessing from './PostProcessing';
 import TrajectoryPaths from './TrajectoryPaths';
 import QuadcopterModel from './QuadcopterModel';
+import GeofenceVisual from './GeofenceVisual';
 import { Camera, Eye, Video, Plane, Users, Maximize, Minimize } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CometEffect, ShockwaveEffect, MultiBurstEffect, FanEffect } from './effects';
@@ -365,6 +366,7 @@ export default function SkyCanvas() {
         <PositionPins />
         <TrajectoryPaths />
         <TimelineEffects />
+        <GeofenceVisual />
         <PlaybackClock />
         <PostProcessing />
       </Canvas>
