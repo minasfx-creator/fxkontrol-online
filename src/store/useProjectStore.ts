@@ -17,6 +17,13 @@ export interface TimelineItem {
   startTime: number;
   trackIndex: number;
   position: { x: number; y: number; z: number };
+  // Finale 3D Script fields
+  pan?: number;       // counter-clockwise around Y-axis, 0 = facing viewer
+  tilt?: number;      // angle from vertical
+  chainRef?: string;  // chain reference ID - all items in same chain share this
+  chainGap?: number;  // delay (ms) from previous item in chain
+  positionName?: string; // assigned position name
+  notes?: string;
 }
 
 export type PositionType = 'pyro' | 'drone-pad';
@@ -31,18 +38,18 @@ export interface Position {
   heading: number;
   pitch: number;
   roll: number;
-  color: string; // RGB color for drone LED
+  color: string;
 }
 
 export interface Waypoint {
   id: string;
   position: { x: number; y: number; z: number };
-  time: number; // seconds from trajectory start
+  time: number;
 }
 
 export interface Trajectory {
   id: string;
-  positionId: string; // which drone-pad/formation this trajectory belongs to
+  positionId: string;
   waypoints: Waypoint[];
   name: string;
 }
@@ -59,7 +66,7 @@ export interface ProjectState {
   selectedTimelineItemId: string | null;
   positions: Position[];
   selectedPositionId: string | null;
-  selectedPositionIds: string[]; // multi-select
+  selectedPositionIds: string[];
   editorMode: EditorMode;
   trajectories: Trajectory[];
   selectedTrajectoryId: string | null;
@@ -68,13 +75,14 @@ export interface ProjectState {
   bpm: number | null;
   snapToBeat: boolean;
   playbackSpeed: number;
-  projectId: string | null; // DB project id
+  projectId: string | null;
 
   setPlaying: (playing: boolean) => void;
   setCurrentTime: (time: number) => void;
   setDuration: (duration: number) => void;
   addTimelineItem: (item: TimelineItem) => void;
   removeTimelineItem: (id: string) => void;
+  updateTimelineItem: (id: string, updates: Partial<Omit<TimelineItem, 'id'>>) => void;
   selectEffect: (id: string | null) => void;
   selectTimelineItem: (id: string | null) => void;
   setProjectName: (name: string) => void;
@@ -98,6 +106,9 @@ export interface ProjectState {
   setSnapToBeat: (snap: boolean) => void;
   setPlaybackSpeed: (speed: number) => void;
   setProjectId: (id: string | null) => void;
+  // Chain operations
+  combineAsChain: (itemIds: string[], gap?: number) => void;
+  breakChain: (chainRef: string) => void;
 }
 
 export const EFFECT_LIBRARY: Effect[] = [
@@ -172,6 +183,9 @@ export const useProjectStore = create<ProjectState>((set) => ({
   setDuration: (duration) => set({ duration }),
   addTimelineItem: (item) => set((s) => ({ timelineItems: [...s.timelineItems, item] })),
   removeTimelineItem: (id) => set((s) => ({ timelineItems: s.timelineItems.filter((i) => i.id !== id) })),
+  updateTimelineItem: (id, updates) => set((s) => ({
+    timelineItems: s.timelineItems.map((i) => i.id === id ? { ...i, ...updates } : i),
+  })),
   selectEffect: (id) => set({ selectedEffectId: id }),
   selectTimelineItem: (id) => set({ selectedTimelineItemId: id }),
   setProjectName: (name) => set({ projectName: name }),
@@ -227,4 +241,34 @@ export const useProjectStore = create<ProjectState>((set) => ({
   setSnapToBeat: (snap) => set({ snapToBeat: snap }),
   setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
   setProjectId: (id) => set({ projectId: id }),
+
+  // Chain operations
+  combineAsChain: (itemIds, gap = 0) => set((s) => {
+    if (itemIds.length < 2) return s;
+    const chainRef = `chain-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+    const items = itemIds
+      .map((id) => s.timelineItems.find((i) => i.id === id))
+      .filter(Boolean)
+      .sort((a, b) => a!.startTime - b!.startTime) as TimelineItem[];
+
+    return {
+      timelineItems: s.timelineItems.map((item) => {
+        const idx = items.findIndex((i) => i.id === item.id);
+        if (idx === -1) return item;
+        return {
+          ...item,
+          chainRef,
+          chainGap: idx === 0 ? 0 : gap || Math.round((items[idx].startTime - items[idx - 1].startTime) * 1000),
+        };
+      }),
+    };
+  }),
+
+  breakChain: (chainRef) => set((s) => ({
+    timelineItems: s.timelineItems.map((item) =>
+      item.chainRef === chainRef
+        ? { ...item, chainRef: undefined, chainGap: undefined }
+        : item
+    ),
+  })),
 }));

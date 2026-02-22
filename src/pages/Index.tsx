@@ -3,7 +3,7 @@ import Toolbar from '@/components/editor/Toolbar';
 import EffectLibrary from '@/components/editor/EffectLibrary';
 import Timeline from '@/components/editor/Timeline';
 import PropertiesPanel from '@/components/editor/PropertiesPanel';
-import ScriptPanel from '@/components/editor/ScriptPanel';
+import ScriptWindow from '@/components/editor/ScriptWindow';
 import { cn } from '@/lib/utils';
 
 const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
@@ -44,8 +44,8 @@ export default function Index() {
         {/* Right panels */}
         <div className="flex flex-shrink-0">
           {showScript && (
-            <div className="w-56">
-              <ScriptPanel />
+            <div className="w-[420px]">
+              <ScriptWindow />
             </div>
           )}
           <div className="w-52">
