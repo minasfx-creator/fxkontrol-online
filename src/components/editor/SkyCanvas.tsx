@@ -1,16 +1,39 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars, Grid, PerspectiveCamera } from '@react-three/drei';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
-import { useRef, useMemo, useEffect, useState } from 'react';
+import { useRef, useMemo, useEffect, useState, Component, ErrorInfo, ReactNode } from 'react';
 import * as THREE from 'three';
 import PositionPins from './PositionPins';
 import PostProcessing from './PostProcessing';
 import TrajectoryPaths from './TrajectoryPaths';
 import QuadcopterModel from './QuadcopterModel';
 import GeofenceVisual from './GeofenceVisual';
-import { Camera, Eye, Video, Plane, Users, Maximize, Minimize } from 'lucide-react';
+import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CometEffect, ShockwaveEffect, MultiBurstEffect, FanEffect } from './effects';
+
+class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.warn('WebGL unavailable:', error.message);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center bg-surface-0 gap-3 p-8 text-center">
+          <AlertTriangle className="w-10 h-10 text-yellow-500" />
+          <h3 className="text-sm font-semibold text-foreground">3D Engine Unavailable</h3>
+          <p className="text-xs text-muted-foreground max-w-md">
+            WebGL could not be initialized. This usually means hardware acceleration is disabled in your browser.
+            Try enabling it in your browser settings, or open this app in a different browser/device.
+          </p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const CAMERA_PRESETS = [
   { id: 'free', label: 'Free', icon: Eye, position: [0, 8, 25] as [number, number, number], target: [0, 5, 0] as [number, number, number] },
@@ -350,6 +373,7 @@ export default function SkyCanvas() {
 
   return (
     <div className="w-full h-full relative bg-[#0a0a12]" data-sky-canvas style={{ cursor: cursorStyle }}>
+      <WebGLErrorBoundary>
       <Canvas shadows>
         <PerspectiveCamera makeDefault position={preset.position} fov={60} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} />
@@ -370,6 +394,7 @@ export default function SkyCanvas() {
         <PlaybackClock />
         <PostProcessing />
       </Canvas>
+      </WebGLErrorBoundary>
       
       {/* Camera presets */}
       <div className="absolute top-3 left-3 flex items-center gap-1">
