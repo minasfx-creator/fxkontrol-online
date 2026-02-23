@@ -18,11 +18,14 @@
 - VDL Quick Add input in Effect Library sidebar (Enter to add)
 - toVDL() reverse generator from params
 
-## Phase 3: Camera Animation + Wind (CURRENT)
-- Camera keyframe system (position, lookAt, FOV over time)
-- Camera path preview with spline interpolation
-- Wind simulation affecting particles (direction, speed)
-- Smoke/drift physics
+## Phase 3: Camera Animation + Wind (DONE ✅)
+- Camera keyframe system with Catmull-Rom spline interpolation (position, lookAt, FOV)
+- Camera path 3D preview (cyan spline + octahedron markers at keyframes)
+- CameraAnimator component driving camera during playback
+- Wind simulation: direction (0-360°), speed (0-15 m/s), gust strength (0-100%)
+- Wind affects all particle physics (firework bursts drift with wind)
+- WindCameraPanel UI with sliders + keyframe list
+- Toolbar toggle button for Wind & Camera panel
 
 ## Phase 4: Reports + Rack Management
 - PDF report generation (Safety Distance, Wiring Script, Chain Specs, Pinboard Cue Sheet)
