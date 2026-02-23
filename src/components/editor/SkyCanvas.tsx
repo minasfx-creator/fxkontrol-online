@@ -5,6 +5,7 @@ import { useRef, useMemo, useEffect, useState, Component, ErrorInfo, ReactNode }
 import * as THREE from 'three';
 import PositionPins from './PositionPins';
 import PostProcessing from './PostProcessing';
+import CameraAnimator, { CameraPathPreview } from './CameraAnimator';
 import TrajectoryPaths from './TrajectoryPaths';
 import QuadcopterModel from './QuadcopterModel';
 import GeofenceVisual from './GeofenceVisual';
@@ -71,6 +72,16 @@ const PARTICLE_COUNT = 120;
 const TRAIL_LENGTH = 6; // number of past positions per particle
 const GRAVITY = -4;
 
+/** Get current wind force vector from store */
+function getWindForce(): [number, number, number] {
+  const { wind } = useProjectStore.getState();
+  if (!wind.enabled) return [0, 0, 0];
+  const rad = (wind.direction * Math.PI) / 180;
+  const gust = 1 + (Math.sin(performance.now() * 0.001) * 0.5 + 0.5) * wind.gustStrength;
+  const s = wind.speed * gust * 0.15; // scale down for visual
+  return [Math.sin(rad) * s, 0, Math.cos(rad) * s];
+}
+
 function createParticleGeometry() {
   const velocities = new Float32Array(PARTICLE_COUNT * 3);
   const lifetimes = new Float32Array(PARTICLE_COUNT);
@@ -87,12 +98,12 @@ function createParticleGeometry() {
   return { velocities, lifetimes };
 }
 
-/** Compute particle position at a given physics time */
-function particlePos(vx: number, vy: number, vz: number, t: number): [number, number, number] {
+/** Compute particle position at a given physics time, with wind */
+function particlePos(vx: number, vy: number, vz: number, t: number, wind: [number, number, number]): [number, number, number] {
   return [
-    vx * t * 0.5,
+    vx * t * 0.5 + wind[0] * t * t * 0.5,
     vy * t * 0.5 + 0.5 * GRAVITY * t * t * 0.25,
-    vz * t * 0.5,
+    vz * t * 0.5 + wind[2] * t * t * 0.5,
   ];
 }
 
@@ -127,7 +138,8 @@ function FireworkBurst({
     const tCol = trailColRef.current;
 
     const t = progress * 2.5;
-    const trailDt = 0.06; // time step between trail samples
+    const trailDt = 0.06;
+    const w = getWindForce();
 
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       const vx = velocities[i * 3];
@@ -136,8 +148,8 @@ function FireworkBurst({
       const lt = lifetimes[i];
       const fade = Math.max(0, 1 - progress / lt);
 
-      // Head position
-      const [hx, hy, hz] = particlePos(vx, vy, vz, t);
+      // Head position with wind
+      const [hx, hy, hz] = particlePos(vx, vy, vz, t, w);
       pos[i * 3] = hx;
       pos[i * 3 + 1] = hy;
       pos[i * 3 + 2] = hz;
@@ -150,17 +162,16 @@ function FireworkBurst({
       cols[i * 3 + 1] = g;
       cols[i * 3 + 2] = b;
 
-      // Trail segments (line pairs going back in time)
+      // Trail segments with wind
       for (let s = 0; s < TRAIL_LENGTH; s++) {
         const t0 = Math.max(0, t - s * trailDt);
         const t1 = Math.max(0, t - (s + 1) * trailDt);
-        const [x0, y0, z0] = particlePos(vx, vy, vz, t0);
-        const [x1, y1, z1] = particlePos(vx, vy, vz, t1);
-        const base = (i * TRAIL_LENGTH + s) * 6; // 2 verts * 3 components
+        const [x0, y0, z0] = particlePos(vx, vy, vz, t0, w);
+        const [x1, y1, z1] = particlePos(vx, vy, vz, t1, w);
+        const base = (i * TRAIL_LENGTH + s) * 6;
         tPos[base] = x0; tPos[base + 1] = y0; tPos[base + 2] = z0;
         tPos[base + 3] = x1; tPos[base + 4] = y1; tPos[base + 5] = z1;
 
-        // Trail fades along its length
         const segFade = fade * (1 - s / TRAIL_LENGTH) * 0.6;
         tCol[base] = r * segFade; tCol[base + 1] = g * segFade; tCol[base + 2] = b * segFade;
         const endFade = fade * (1 - (s + 1) / TRAIL_LENGTH) * 0.6;
@@ -392,6 +403,8 @@ export default function SkyCanvas() {
         <TimelineEffects />
         <GeofenceVisual />
         <PlaybackClock />
+        <CameraAnimator />
+        <CameraPathPreview />
         <PostProcessing />
       </Canvas>
       </WebGLErrorBoundary>

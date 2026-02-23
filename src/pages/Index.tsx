@@ -5,6 +5,7 @@ import Timeline from '@/components/editor/Timeline';
 import PropertiesPanel from '@/components/editor/PropertiesPanel';
 import ScriptWindow from '@/components/editor/ScriptWindow';
 import EffectEditor from '@/components/editor/EffectEditor';
+import WindCameraPanel from '@/components/editor/WindCameraPanel';
 import { cn } from '@/lib/utils';
 
 const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
@@ -23,11 +24,17 @@ function CanvasLoader() {
 export default function Index() {
   const [showScript, setShowScript] = useState(true);
   const [showEffectEditor, setShowEffectEditor] = useState(false);
+  const [showWindCamera, setShowWindCamera] = useState(false);
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
       {/* Top toolbar */}
-      <Toolbar onToggleScript={() => setShowScript(!showScript)} showScript={showScript} />
+      <Toolbar
+        onToggleScript={() => setShowScript(!showScript)}
+        showScript={showScript}
+        onToggleWindCamera={() => setShowWindCamera(!showWindCamera)}
+        showWindCamera={showWindCamera}
+      />
 
       {/* Main editor area */}
       <div className="flex-1 flex overflow-hidden">
@@ -45,6 +52,11 @@ export default function Index() {
 
         {/* Right panels */}
         <div className="flex flex-shrink-0">
+          {showWindCamera && (
+            <div className="w-52">
+              <WindCameraPanel />
+            </div>
+          )}
           {showEffectEditor && (
             <div className="w-56">
               <EffectEditor onClose={() => setShowEffectEditor(false)} />

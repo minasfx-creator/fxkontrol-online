@@ -56,6 +56,21 @@ export interface Trajectory {
 
 export type EditorMode = 'select' | 'add-pyro' | 'add-drone' | 'add-waypoint';
 
+export interface CameraKeyframe {
+  id: string;
+  time: number; // seconds
+  position: [number, number, number];
+  lookAt: [number, number, number];
+  fov: number;
+}
+
+export interface WindSettings {
+  enabled: boolean;
+  direction: number; // degrees, 0 = north (+Z)
+  speed: number;     // m/s
+  gustStrength: number; // 0-1 multiplier for random gusts
+}
+
 export interface ProjectState {
   projectName: string;
   isPlaying: boolean;
@@ -76,6 +91,11 @@ export interface ProjectState {
   snapToBeat: boolean;
   playbackSpeed: number;
   projectId: string | null;
+  // Camera animation
+  cameraKeyframes: CameraKeyframe[];
+  cameraAnimationEnabled: boolean;
+  // Wind
+  wind: WindSettings;
 
   setPlaying: (playing: boolean) => void;
   setCurrentTime: (time: number) => void;
@@ -109,6 +129,13 @@ export interface ProjectState {
   // Chain operations
   combineAsChain: (itemIds: string[], gap?: number) => void;
   breakChain: (chainRef: string) => void;
+  // Camera keyframe operations
+  addCameraKeyframe: (kf: CameraKeyframe) => void;
+  updateCameraKeyframe: (id: string, updates: Partial<Omit<CameraKeyframe, 'id'>>) => void;
+  removeCameraKeyframe: (id: string) => void;
+  setCameraAnimationEnabled: (enabled: boolean) => void;
+  // Wind
+  setWind: (updates: Partial<WindSettings>) => void;
 }
 
 export const EFFECT_LIBRARY: Effect[] = [
@@ -177,6 +204,9 @@ export const useProjectStore = create<ProjectState>((set) => ({
   snapToBeat: false,
   playbackSpeed: 1,
   projectId: null,
+  cameraKeyframes: [],
+  cameraAnimationEnabled: false,
+  wind: { enabled: false, direction: 0, speed: 3, gustStrength: 0.3 },
 
   setPlaying: (playing) => set({ isPlaying: playing }),
   setCurrentTime: (time) => set({ currentTime: time }),
@@ -271,4 +301,19 @@ export const useProjectStore = create<ProjectState>((set) => ({
         : item
     ),
   })),
+
+  // Camera keyframe operations
+  addCameraKeyframe: (kf) => set((s) => ({
+    cameraKeyframes: [...s.cameraKeyframes, kf].sort((a, b) => a.time - b.time),
+  })),
+  updateCameraKeyframe: (id, updates) => set((s) => ({
+    cameraKeyframes: s.cameraKeyframes.map((kf) => kf.id === id ? { ...kf, ...updates } : kf).sort((a, b) => a.time - b.time),
+  })),
+  removeCameraKeyframe: (id) => set((s) => ({
+    cameraKeyframes: s.cameraKeyframes.filter((kf) => kf.id !== id),
+  })),
+  setCameraAnimationEnabled: (enabled) => set({ cameraAnimationEnabled: enabled }),
+
+  // Wind
+  setWind: (updates) => set((s) => ({ wind: { ...s.wind, ...updates } })),
 }));
