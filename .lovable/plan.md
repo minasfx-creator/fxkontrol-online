@@ -6,14 +6,19 @@
 - Script row grouping and collapsing
 - Sort/filter expressions
 
-## Phase 2: VDL + Effect Editor
-- Visual Descriptive Language parser (e.g., "3in Red Peony" auto-generates simulation)
-- VDL color support (Red, Green, Blue, Gold, Silver, etc.)
-- VDL timing terms (PFT, LFT, DLY, DUR, CDS)
-- Effect Editor panel for fine-tuning: height, spread angle, star count, tail, strobe
-- Per-show effects collection
+## Phase 2: VDL + Effect Editor (DONE ✅)
+- VDL parser (src/lib/vdlParser.ts) — parses "3in Red Peony w/ tail" into structured params
+- VDL colors: 20 named colors (red, gold, silver, titanium, brocade, etc.)
+- VDL types: 25 effect types (peony, chrysanthemum, willow, kamuro, comet, mine, fan, etc.)
+- VDL modifiers: tail, glitter, strobe, crackle, pistol, twinkle, whistle, report
+- VDL caliber scaling: height, spread, duration, star count, cost auto-calculated
+- Effect Editor panel with sliders: caliber, height, spread angle, star count, duration
+- Color picker grid with 20 VDL colors
+- Modifier toggle badges
+- VDL Quick Add input in Effect Library sidebar (Enter to add)
+- toVDL() reverse generator from params
 
-## Phase 3: Camera Animation + Wind
+## Phase 3: Camera Animation + Wind (CURRENT)
 - Camera keyframe system (position, lookAt, FOV over time)
 - Camera path preview with spline interpolation
 - Wind simulation affecting particles (direction, speed)

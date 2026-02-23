@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Settings2, Download, FileJson, FileSpreadsheet, Box, Trash2, Zap, Shield } from 'lucide-react';
+import { Settings2, Download, FileJson, FileSpreadsheet, Box, Trash2, Zap, Shield, Sliders } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
@@ -155,7 +155,7 @@ function PositionInspector() {
   );
 }
 
-export default function PropertiesPanel() {
+export default function PropertiesPanel({ onToggleEffectEditor, showEffectEditor }: { onToggleEffectEditor?: () => void; showEffectEditor?: boolean }) {
   const { selectedTimelineItemId, timelineItems, selectedEffectId, selectedPositionId } = useProjectStore();
 
   const selectedItem = timelineItems.find((i) => i.id === selectedTimelineItemId);
@@ -229,7 +229,20 @@ export default function PropertiesPanel() {
 
         <Separator />
 
-        {/* Safety */}
+        {/* Effect Editor Toggle */}
+        {onToggleEffectEditor && (
+          <Button
+            variant={showEffectEditor ? 'default' : 'outline'}
+            size="sm"
+            className="w-full h-7 text-xs gap-1.5"
+            onClick={onToggleEffectEditor}
+          >
+            <Sliders className="h-3 w-3" />
+            {showEffectEditor ? 'Hide Effect Editor' : 'Effect Editor (VDL)'}
+          </Button>
+        )}
+
+        <Separator />
         <SafetyPanel />
 
         <Separator />
