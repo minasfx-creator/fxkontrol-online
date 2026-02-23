@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react';
-import { Search, ChevronDown, ChevronRight, Flame, Sparkles, Radio, Shapes } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, Flame, Sparkles, Radio, Shapes, Wand2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { EFFECT_LIBRARY, useProjectStore, type Effect } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
+import { parseVDL } from '@/lib/vdlParser';
 
 const CATEGORIES = [
   { key: 'morteiros' as const, label: 'Morteiros', icon: Flame },
@@ -71,7 +72,9 @@ function EffectCard({ effect }: { effect: Effect }) {
 
 export default function EffectLibrary() {
   const [search, setSearch] = useState('');
+  const [vdlInput, setVdlInput] = useState('');
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set(['morteiros', 'drones']));
+  const { addTimelineItem, currentTime } = useProjectStore();
 
   const toggleCategory = (key: string) => {
     setOpenCategories((prev) => {
@@ -84,6 +87,27 @@ export default function EffectLibrary() {
   const filteredEffects = EFFECT_LIBRARY.filter((e) =>
     e.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleVDLSubmit = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Enter' || !vdlInput.trim()) return;
+    const vdl = parseVDL(vdlInput);
+    if (!vdl.valid) return;
+    const colorStr = vdl.colorNames.map(c => c.charAt(0).toUpperCase() + c.slice(1)).join('/');
+    const newItem = {
+      id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      effectId: `vdl-${Date.now()}`,
+      startTime: currentTime,
+      trackIndex: 0,
+      position: {
+        x: (Math.random() - 0.5) * 16,
+        y: vdl.height / 10,
+        z: (Math.random() - 0.5) * 8,
+      },
+      notes: `VDL: ${vdl.caliber}" ${colorStr} ${vdl.typeName} | Stars:${vdl.starCount} Spread:${vdl.spread}°`,
+    };
+    addTimelineItem(newItem);
+    setVdlInput('');
+  };
 
   return (
     <div className="h-full flex flex-col bg-card border-r border-border">
@@ -131,9 +155,27 @@ export default function EffectLibrary() {
         })}
       </div>
 
-      {/* Tip */}
-      <div className="px-3 py-2 border-t border-border">
-        <p className="text-[10px] text-muted-foreground">Drag or double-click to add to timeline</p>
+      {/* VDL Quick Add */}
+      <div className="px-3 py-2 border-t border-border space-y-1.5">
+        <div className="flex items-center gap-1.5">
+          <Wand2 className="h-3 w-3 text-primary" />
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">VDL Quick Add</span>
+        </div>
+        <Input
+          placeholder='e.g. 4in Red Peony'
+          value={vdlInput}
+          onChange={(e) => setVdlInput(e.target.value)}
+          onKeyDown={handleVDLSubmit}
+          className="h-7 text-xs bg-surface-2 border-border font-mono-code"
+        />
+        {vdlInput && (
+          <p className={cn("text-[10px]", parseVDL(vdlInput).valid ? "text-primary" : "text-muted-foreground")}>
+            {parseVDL(vdlInput).valid
+              ? `✓ ${parseVDL(vdlInput).typeName} · ${parseVDL(vdlInput).caliber}" · ${parseVDL(vdlInput).duration}s — Enter to add`
+              : 'Keep typing...'}
+          </p>
+        )}
+        <p className="text-[9px] text-muted-foreground">Drag, double-click, or type VDL to add</p>
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import EffectLibrary from '@/components/editor/EffectLibrary';
 import Timeline from '@/components/editor/Timeline';
 import PropertiesPanel from '@/components/editor/PropertiesPanel';
 import ScriptWindow from '@/components/editor/ScriptWindow';
+import EffectEditor from '@/components/editor/EffectEditor';
 import { cn } from '@/lib/utils';
 
 const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
@@ -21,6 +22,7 @@ function CanvasLoader() {
 
 export default function Index() {
   const [showScript, setShowScript] = useState(true);
+  const [showEffectEditor, setShowEffectEditor] = useState(false);
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
@@ -43,13 +45,18 @@ export default function Index() {
 
         {/* Right panels */}
         <div className="flex flex-shrink-0">
+          {showEffectEditor && (
+            <div className="w-56">
+              <EffectEditor onClose={() => setShowEffectEditor(false)} />
+            </div>
+          )}
           {showScript && (
             <div className="w-[420px]">
               <ScriptWindow />
             </div>
           )}
           <div className="w-52">
-            <PropertiesPanel />
+            <PropertiesPanel onToggleEffectEditor={() => setShowEffectEditor(!showEffectEditor)} showEffectEditor={showEffectEditor} />
           </div>
         </div>
       </div>
