@@ -8,6 +8,7 @@ import EffectEditor from '@/components/editor/EffectEditor';
 import WindCameraPanel from '@/components/editor/WindCameraPanel';
 import ReportsPanel from '@/components/editor/ReportsPanel';
 import RackManager from '@/components/editor/RackManager';
+import AddressingPanel from '@/components/editor/AddressingPanel';
 import { cn } from '@/lib/utils';
 
 const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
@@ -29,6 +30,7 @@ export default function Index() {
   const [showWindCamera, setShowWindCamera] = useState(false);
   const [showReports, setShowReports] = useState(false);
   const [showRacks, setShowRacks] = useState(false);
+  const [showAddressing, setShowAddressing] = useState(false);
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
@@ -42,6 +44,8 @@ export default function Index() {
         showReports={showReports}
         onToggleRacks={() => setShowRacks(!showRacks)}
         showRacks={showRacks}
+        onToggleAddressing={() => setShowAddressing(!showAddressing)}
+        showAddressing={showAddressing}
       />
 
       {/* Main editor area */}
@@ -60,6 +64,11 @@ export default function Index() {
 
         {/* Right panels */}
         <div className="flex flex-shrink-0">
+          {showAddressing && (
+            <div className="w-60">
+              <AddressingPanel onClose={() => setShowAddressing(false)} />
+            </div>
+          )}
           {showRacks && (
             <div className="w-56">
               <RackManager onClose={() => setShowRacks(false)} />
