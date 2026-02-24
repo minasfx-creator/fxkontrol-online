@@ -27,12 +27,14 @@
 - WindCameraPanel UI with sliders + keyframe list
 - Toolbar toggle button for Wind & Camera panel
 
-## Phase 4: Reports + Rack Management
-- PDF report generation (Safety Distance, Wiring Script, Chain Specs, Pinboard Cue Sheet)
-- Rack types (circle, tiltable, fan, variable tube)
-- Rack layout diagrams (visual arrangement)
-- Labels generation
-- Site layout diagrams
+## Phase 4: Reports + Rack Management (DONE ✅)
+- PDF report generation via printable HTML: Safety Distance (NFPA 1123), Wiring Script, Chain Specs, Pinboard Cue Sheet
+- Report engine (src/lib/reportEngine.ts) with open-in-window + download
+- Rack store (src/store/useRackStore.ts) with types: circle, tiltable, fan, variable-tube
+- Rack Manager panel with SVG visual layout diagrams
+- Tube generation per rack type with angle/heading distribution
+- Labels generation (printable HTML labels per tube)
+- Toolbar buttons for Reports (📄) and Racks (📦)
 
 ## Phase 5: Advanced Addressing
 - Module/Slat/Pin addressing with constraints and sorts

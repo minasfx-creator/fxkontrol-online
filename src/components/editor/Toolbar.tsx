@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Rocket, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, Route, LogOut, Upload, Wind } from 'lucide-react';
+import { Rocket, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, Route, LogOut, Upload, Wind, FileText, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useAuth } from '@/hooks/useAuth';
@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import FormationBuilder from './FormationBuilder';
 import CSVImporter from './CSVImporter';
 
-export default function Toolbar({ onToggleScript, showScript, onToggleWindCamera, showWindCamera }: { onToggleScript: () => void; showScript: boolean; onToggleWindCamera?: () => void; showWindCamera?: boolean }) {
+export default function Toolbar({ onToggleScript, showScript, onToggleWindCamera, showWindCamera, onToggleReports, showReports, onToggleRacks, showRacks }: { onToggleScript: () => void; showScript: boolean; onToggleWindCamera?: () => void; showWindCamera?: boolean; onToggleReports?: () => void; showReports?: boolean; onToggleRacks?: () => void; showRacks?: boolean }) {
   const { projectName, timelineItems, positions, editorMode, setEditorMode } = useProjectStore();
   const { signOut, user } = useAuth();
   const [formationOpen, setFormationOpen] = useState(false);
@@ -129,6 +129,24 @@ export default function Toolbar({ onToggleScript, showScript, onToggleWindCamera
           onClick={onToggleWindCamera}
         >
           <Wind className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn("h-7 w-7", showReports && "bg-surface-3 text-primary")}
+          title="Reports"
+          onClick={onToggleReports}
+        >
+          <FileText className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn("h-7 w-7", showRacks && "bg-surface-3 text-primary")}
+          title="Rack Manager"
+          onClick={onToggleRacks}
+        >
+          <Package className="h-3.5 w-3.5" />
         </Button>
       </div>
 

@@ -6,6 +6,8 @@ import PropertiesPanel from '@/components/editor/PropertiesPanel';
 import ScriptWindow from '@/components/editor/ScriptWindow';
 import EffectEditor from '@/components/editor/EffectEditor';
 import WindCameraPanel from '@/components/editor/WindCameraPanel';
+import ReportsPanel from '@/components/editor/ReportsPanel';
+import RackManager from '@/components/editor/RackManager';
 import { cn } from '@/lib/utils';
 
 const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
@@ -25,6 +27,8 @@ export default function Index() {
   const [showScript, setShowScript] = useState(true);
   const [showEffectEditor, setShowEffectEditor] = useState(false);
   const [showWindCamera, setShowWindCamera] = useState(false);
+  const [showReports, setShowReports] = useState(false);
+  const [showRacks, setShowRacks] = useState(false);
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
@@ -34,6 +38,10 @@ export default function Index() {
         showScript={showScript}
         onToggleWindCamera={() => setShowWindCamera(!showWindCamera)}
         showWindCamera={showWindCamera}
+        onToggleReports={() => setShowReports(!showReports)}
+        showReports={showReports}
+        onToggleRacks={() => setShowRacks(!showRacks)}
+        showRacks={showRacks}
       />
 
       {/* Main editor area */}
@@ -52,6 +60,16 @@ export default function Index() {
 
         {/* Right panels */}
         <div className="flex flex-shrink-0">
+          {showRacks && (
+            <div className="w-56">
+              <RackManager onClose={() => setShowRacks(false)} />
+            </div>
+          )}
+          {showReports && (
+            <div className="w-56">
+              <ReportsPanel onClose={() => setShowReports(false)} />
+            </div>
+          )}
           {showWindCamera && (
             <div className="w-52">
               <WindCameraPanel />
