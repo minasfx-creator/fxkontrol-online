@@ -36,13 +36,17 @@
 - Labels generation (printable HTML labels per tube)
 - Toolbar buttons for Reports (📄) and Racks (📦)
 
-## Phase 5: Advanced Addressing
-- Module/Slat/Pin addressing with constraints and sorts
-- Custom module specifications
-- Virtual slats and splitter boxes
-- Multiple firing systems/universes
-- Rack-based addressing
-- Lock addresses
+## Phase 5: Advanced Addressing (DONE ✅)
+- Addressing store (src/store/useAddressingStore.ts) with Module/Slat/Pin assignment
+- 6 pre-configured module specs (Cobra 18R2/R3, FireOne 32, PyroDigital 32, Galaxis G2, Custom)
+- Auto-assign algorithm respecting locked addresses and occupied slots
+- Virtual slats via splitter boxes (expandable pin count per physical pin)
+- Multiple firing systems / universes with independent module specs
+- Rack-based addressing (assigns by rack tube order)
+- Lock/unlock individual addresses to preserve during re-assignment
+- Sort by time, module, position, or rack
+- AddressingPanel UI with 4 tabs: Addresses, Modules, Splitters, Systems
+- Toolbar button (⚡ Cpu icon) for Addressing panel toggle
 
 ## Phase 6: Inventory Management
 - Quantities tracking (On Hand, Available, Remaining)
