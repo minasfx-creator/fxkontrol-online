@@ -7,6 +7,7 @@ import PositionPins from './PositionPins';
 import PostProcessing from './PostProcessing';
 import CameraAnimator, { CameraPathPreview } from './CameraAnimator';
 import TrajectoryPaths from './TrajectoryPaths';
+import DroneChoreography from './DroneChoreography';
 import QuadcopterModel from './QuadcopterModel';
 import GeofenceVisual from './GeofenceVisual';
 import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle } from 'lucide-react';
@@ -400,6 +401,7 @@ export default function SkyCanvas() {
         <LaunchSites />
         <PositionPins />
         <TrajectoryPaths />
+        <DroneChoreography />
         <TimelineEffects />
         <GeofenceVisual />
         <PlaybackClock />

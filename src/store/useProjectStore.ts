@@ -56,6 +56,21 @@ export interface Trajectory {
 
 export type EditorMode = 'select' | 'add-pyro' | 'add-drone' | 'add-waypoint';
 
+export interface DroneFormation {
+  id: string;
+  formationType: string; // heart, star, circle, etc.
+  droneCount: number;
+  height: number; // meters
+  radius: number;
+  spacing: number;
+  rotation: number;
+  startTime: number; // seconds - when transition starts
+  transitionDuration: number; // seconds - time to reach formation
+  holdDuration: number; // seconds - time to hold formation
+  color: string;
+  points: { x: number; z: number }[]; // 2D formation points
+}
+
 export interface CameraKeyframe {
   id: string;
   time: number; // seconds
@@ -96,6 +111,9 @@ export interface ProjectState {
   cameraAnimationEnabled: boolean;
   // Wind
   wind: WindSettings;
+  // Drone choreography formations
+  droneFormations: DroneFormation[];
+  selectedFormationId: string | null;
 
   setPlaying: (playing: boolean) => void;
   setCurrentTime: (time: number) => void;
@@ -136,6 +154,11 @@ export interface ProjectState {
   setCameraAnimationEnabled: (enabled: boolean) => void;
   // Wind
   setWind: (updates: Partial<WindSettings>) => void;
+  // Drone formations
+  addDroneFormation: (formation: DroneFormation) => void;
+  updateDroneFormation: (id: string, updates: Partial<Omit<DroneFormation, 'id'>>) => void;
+  removeDroneFormation: (id: string) => void;
+  selectFormation: (id: string | null) => void;
 }
 
 export const EFFECT_LIBRARY: Effect[] = [
@@ -207,6 +230,8 @@ export const useProjectStore = create<ProjectState>((set) => ({
   cameraKeyframes: [],
   cameraAnimationEnabled: false,
   wind: { enabled: false, direction: 0, speed: 3, gustStrength: 0.3 },
+  droneFormations: [],
+  selectedFormationId: null,
 
   setPlaying: (playing) => set({ isPlaying: playing }),
   setCurrentTime: (time) => set({ currentTime: time }),
@@ -316,4 +341,17 @@ export const useProjectStore = create<ProjectState>((set) => ({
 
   // Wind
   setWind: (updates) => set((s) => ({ wind: { ...s.wind, ...updates } })),
+
+  // Drone formations
+  addDroneFormation: (formation) => set((s) => ({
+    droneFormations: [...s.droneFormations, formation],
+  })),
+  updateDroneFormation: (id, updates) => set((s) => ({
+    droneFormations: s.droneFormations.map((f) => f.id === id ? { ...f, ...updates } : f),
+  })),
+  removeDroneFormation: (id) => set((s) => ({
+    droneFormations: s.droneFormations.filter((f) => f.id !== id),
+    selectedFormationId: s.selectedFormationId === id ? null : s.selectedFormationId,
+  })),
+  selectFormation: (id) => set({ selectedFormationId: id }),
 }));
