@@ -180,7 +180,7 @@ function WaypointRow({ wp, index, traj, prevWp }: {
 export default function WaypointEditor({ onClose }: { onClose: () => void }) {
   const {
     trajectories, positions, selectedTrajectoryId,
-    selectTrajectory, addWaypoint, setEditorMode, editorMode,
+    selectTrajectory, addTrajectory, addWaypoint, setEditorMode, editorMode,
   } = useProjectStore();
 
   const dronePads = positions.filter((p) => p.type === 'drone-pad');
@@ -248,9 +248,24 @@ export default function WaypointEditor({ onClose }: { onClose: () => void }) {
                 </button>
               );
             })}
-            {trajectories.length === 0 && (
+            {/* Create trajectory for drone pads */}
+            {dronePads.filter((pad) => !trajectories.some((t) => t.positionId === pad.id)).map((pad) => (
+              <button
+                key={`create-${pad.id}`}
+                onClick={() => {
+                  const id = `traj-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+                  addTrajectory({ id, positionId: pad.id, waypoints: [], name: `Traj ${pad.name}` });
+                  selectTrajectory(id);
+                }}
+                className="w-full flex items-center gap-1.5 px-2 py-1 rounded-sm text-[9px] font-mono-code bg-primary/5 text-primary/70 hover:bg-primary/15 border border-dashed border-primary/20 transition-colors"
+              >
+                <Plus className="h-2.5 w-2.5" />
+                <span className="flex-1 text-left truncate">New: {pad.name}</span>
+              </button>
+            ))}
+            {dronePads.length === 0 && trajectories.length === 0 && (
               <p className="text-[9px] text-muted-foreground/50 text-center py-2">
-                Crie trajetórias no Script panel
+                Adicione drone pads no viewport primeiro
               </p>
             )}
           </div>
