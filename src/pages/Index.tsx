@@ -11,6 +11,7 @@ import ReportsPanel from '@/components/editor/ReportsPanel';
 import RackManager from '@/components/editor/RackManager';
 import AddressingPanel from '@/components/editor/AddressingPanel';
 import InventoryPanel from '@/components/editor/InventoryPanel';
+import WaypointEditor from '@/components/editor/WaypointEditor';
 import { cn } from '@/lib/utils';
 
 const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
@@ -34,6 +35,7 @@ export default function Index() {
   const [showRacks, setShowRacks] = useState(false);
   const [showAddressing, setShowAddressing] = useState(false);
   const [showInventory, setShowInventory] = useState(false);
+  const [showWaypointEditor, setShowWaypointEditor] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [fleetSize, setFleetSize] = useState(500);
   const [pyroPositions, setPyroPositions] = useState(24);
@@ -64,6 +66,8 @@ export default function Index() {
         showAddressing={showAddressing}
         onToggleInventory={() => setShowInventory(!showInventory)}
         showInventory={showInventory}
+        onToggleWaypointEditor={() => setShowWaypointEditor(!showWaypointEditor)}
+        showWaypointEditor={showWaypointEditor}
       />
 
       {/* Main editor area */}
@@ -82,6 +86,11 @@ export default function Index() {
 
         {/* Right panels */}
         <div className="flex flex-shrink-0">
+          {showWaypointEditor && (
+            <div className="w-60">
+              <WaypointEditor onClose={() => setShowWaypointEditor(false)} />
+            </div>
+          )}
           {showInventory && (
             <div className="w-64">
               <InventoryPanel onClose={() => setShowInventory(false)} />
