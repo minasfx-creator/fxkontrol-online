@@ -8,6 +8,25 @@ import { cn } from '@/lib/utils';
 import FormationBuilder from './FormationBuilder';
 import CSVImporter from './CSVImporter';
 
+function TimecodeDisplay() {
+  const { currentTime, isPlaying } = useProjectStore();
+  const h = Math.floor(currentTime / 3600);
+  const m = Math.floor((currentTime % 3600) / 60);
+  const s = Math.floor(currentTime % 60);
+  const f = Math.floor((currentTime % 1) * 30); // 30fps frame count
+  const tc = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}:${f.toString().padStart(2,'0')}`;
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-0.5 bg-surface-0 rounded border border-border">
+      <span className="font-mono-code text-sm tracking-[0.12em] text-electric font-bold">{tc}</span>
+      <div className={cn(
+        "w-1.5 h-1.5 rounded-full",
+        isPlaying ? "bg-success animate-pulse-glow" : "bg-muted-foreground"
+      )} />
+    </div>
+  );
+}
+
 export default function Toolbar({ onToggleScript, showScript, onToggleWindCamera, showWindCamera, onToggleReports, showReports, onToggleRacks, showRacks, onToggleAddressing, showAddressing }: { onToggleScript: () => void; showScript: boolean; onToggleWindCamera?: () => void; showWindCamera?: boolean; onToggleReports?: () => void; showReports?: boolean; onToggleRacks?: () => void; showRacks?: boolean; onToggleAddressing?: () => void; showAddressing?: boolean }) {
   const { projectName, timelineItems, positions, editorMode, setEditorMode } = useProjectStore();
   const { signOut, user } = useAuth();
@@ -164,12 +183,15 @@ export default function Toolbar({ onToggleScript, showScript, onToggleWindCamera
 
       <div className="flex-1" />
 
+      {/* Timecode Display */}
+      <TimecodeDisplay />
+
       {/* Status */}
-      <div className="flex items-center gap-3 text-[10px] font-mono-code text-muted-foreground">
+      <div className="flex items-center gap-3 text-[10px] font-mono-code text-muted-foreground ml-3">
         <span>{timelineItems.length} items</span>
         <span>{positions.length} pins</span>
         <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse-glow" />
-        <span className="text-success">Ready</span>
+        <span className="text-success">Sync: Locked</span>
         <Button variant="ghost" size="icon" className="h-6 w-6 ml-1" title="Sair" onClick={signOut}>
           <LogOut className="h-3 w-3" />
         </Button>

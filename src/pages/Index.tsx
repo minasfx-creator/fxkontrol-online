@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState } from 'react';
 import Toolbar from '@/components/editor/Toolbar';
+import SplashScreen from '@/components/editor/SplashScreen';
 import EffectLibrary from '@/components/editor/EffectLibrary';
 import Timeline from '@/components/editor/Timeline';
 import PropertiesPanel from '@/components/editor/PropertiesPanel';
@@ -31,6 +32,17 @@ export default function Index() {
   const [showReports, setShowReports] = useState(false);
   const [showRacks, setShowRacks] = useState(false);
   const [showAddressing, setShowAddressing] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
+  const [fleetSize, setFleetSize] = useState(500);
+
+  const handleSplashStart = (size: number) => {
+    setFleetSize(size);
+    setShowSplash(false);
+  };
+
+  if (showSplash) {
+    return <SplashScreen onStart={handleSplashStart} />;
+  }
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
