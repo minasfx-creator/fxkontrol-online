@@ -10,6 +10,7 @@ import WindCameraPanel from '@/components/editor/WindCameraPanel';
 import ReportsPanel from '@/components/editor/ReportsPanel';
 import RackManager from '@/components/editor/RackManager';
 import AddressingPanel from '@/components/editor/AddressingPanel';
+import InventoryPanel from '@/components/editor/InventoryPanel';
 import { cn } from '@/lib/utils';
 
 const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
@@ -32,6 +33,7 @@ export default function Index() {
   const [showReports, setShowReports] = useState(false);
   const [showRacks, setShowRacks] = useState(false);
   const [showAddressing, setShowAddressing] = useState(false);
+  const [showInventory, setShowInventory] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [fleetSize, setFleetSize] = useState(500);
   const [pyroPositions, setPyroPositions] = useState(24);
@@ -60,6 +62,8 @@ export default function Index() {
         showRacks={showRacks}
         onToggleAddressing={() => setShowAddressing(!showAddressing)}
         showAddressing={showAddressing}
+        onToggleInventory={() => setShowInventory(!showInventory)}
+        showInventory={showInventory}
       />
 
       {/* Main editor area */}
@@ -78,6 +82,11 @@ export default function Index() {
 
         {/* Right panels */}
         <div className="flex flex-shrink-0">
+          {showInventory && (
+            <div className="w-64">
+              <InventoryPanel onClose={() => setShowInventory(false)} />
+            </div>
+          )}
           {showAddressing && (
             <div className="w-60">
               <AddressingPanel onClose={() => setShowAddressing(false)} />
