@@ -34,9 +34,11 @@ export default function Index() {
   const [showAddressing, setShowAddressing] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [fleetSize, setFleetSize] = useState(500);
+  const [pyroPositions, setPyroPositions] = useState(24);
 
-  const handleSplashStart = (size: number) => {
+  const handleSplashStart = (size: number, pyroPos: number) => {
     setFleetSize(size);
+    setPyroPositions(pyroPos);
     setShowSplash(false);
   };
 
