@@ -213,6 +213,67 @@ function WaypointTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numb
   );
 }
 
+function FormationTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number; duration: number }) {
+  const { droneFormations, selectFormation, selectedFormationId } = useProjectStore();
+
+  if (droneFormations.length === 0) return null;
+
+  return (
+    <div className="flex border-b border-border/50">
+      <div className="w-28 flex-shrink-0 flex items-center px-3 border-r border-border/50 bg-surface-1">
+        <div className="w-2 h-2 rounded-full mr-2 bg-[#7B68EE]" />
+        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Formações</span>
+      </div>
+      <div className="flex-1 relative h-10 bg-surface-0/50">
+        {droneFormations.map((f, i) => {
+          const totalDuration = f.transitionDuration + f.holdDuration;
+          const widthPx = Math.max(totalDuration * pixelsPerSecond, 20);
+          const isSelected = selectedFormationId === f.id;
+          const preset = FORMATION_PRESETS_MAP[f.formationType];
+          return (
+            <button
+              key={f.id}
+              onClick={() => selectFormation(f.id)}
+              className={cn(
+                "absolute top-1 h-8 rounded-sm flex items-center px-1.5 text-[9px] font-mono-code transition-all cursor-pointer border",
+                isSelected
+                  ? "border-primary/60 shadow-[0_0_6px_hsl(var(--electric)/0.2)] z-10"
+                  : "border-transparent hover:border-border"
+              )}
+              style={{
+                left: `${f.startTime * pixelsPerSecond}px`,
+                width: `${widthPx}px`,
+                backgroundColor: `${f.color}22`,
+              }}
+            >
+              <div
+                className="w-1 h-full rounded-full mr-1 flex-shrink-0"
+                style={{ backgroundColor: f.color }}
+              />
+              <span className="truncate text-secondary-foreground">
+                {preset || f.formationType} #{i + 1}
+              </span>
+              {/* Transition indicator */}
+              <div
+                className="absolute top-0 h-full border-r border-dashed opacity-30"
+                style={{
+                  left: `${f.transitionDuration * pixelsPerSecond}px`,
+                  borderColor: f.color,
+                }}
+              />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+const FORMATION_PRESETS_MAP: Record<string, string> = {
+  heart: '❤️', star: '⭐', circle: '⭕', grid: '⊞',
+  wave: '🌊', spiral: '🌀', line: '➖', 'v-shape': '✌️',
+};
+
 export default function Timeline() {
   const {
     isPlaying, setPlaying, currentTime, setCurrentTime, duration,
@@ -339,9 +400,11 @@ export default function Timeline() {
               </div>
             </div>
           </div>
+          <FormationTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
           <TimelineTrackRow label="DRONE FX" trackIndex={1} pixelsPerSecond={pixelsPerSecond} color="#00B4D8" duration={duration} scrollRef={scrollRef} />
           <TimelineTrackRow label="PYRO SYS" trackIndex={0} pixelsPerSecond={pixelsPerSecond} color="#FF6B35" duration={duration} scrollRef={scrollRef} />
           <WaypointTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
+          <AudioWaveform pixelsPerSecond={pixelsPerSecond} />
           <AudioWaveform pixelsPerSecond={pixelsPerSecond} />
         </div>
       </div>

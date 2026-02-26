@@ -1,4 +1,4 @@
-import { type TimelineItem, type Position, type Trajectory, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { type TimelineItem, type Position, type Trajectory, type DroneFormation, EFFECT_LIBRARY } from '@/store/useProjectStore';
 
 // ─── VVIZ Drone Export (Finale 3D Spec) ─────────────────────────────
 // Generates a valid .vviz JSON file following the official Finale 3D specification:
@@ -143,6 +143,7 @@ export function exportVVIZ(
   timelineItems: TimelineItem[],
   positions: Position[],
   trajectories: Trajectory[] = [],
+  droneFormations: DroneFormation[] = [],
 ): string {
   let performanceId = 0;
   const performances: VVIZPerformance[] = [];
@@ -244,6 +245,64 @@ export function exportVVIZ(
       },
       payloadDescription: [buildLightPayload(colorKeyframes)],
     });
+  }
+
+  // ── Build performances from drone formations (choreography) ──
+  if (droneFormations.length > 0) {
+    const droneCount = droneFormations[0].droneCount;
+    const landingDuration = 10;
+    const lastFormation = droneFormations[droneFormations.length - 1];
+    const lastEnd = lastFormation.startTime + lastFormation.transitionDuration + lastFormation.holdDuration;
+
+    for (let d = 0; d < droneCount; d++) {
+      const homeX = droneFormations[0].points[d]?.x ?? 0;
+      const homeZ = droneFormations[0].points[d]?.z ?? 0;
+
+      // Build keyframes through all formations
+      const keyframes: { t: number; x: number; y: number; z: number; h: number }[] = [
+        { t: 0, x: homeX, y: 0, z: homeZ, h: 0 },
+      ];
+
+      for (const f of droneFormations) {
+        const pt = f.points[d] || { x: 0, z: 0 };
+        const transEnd = f.startTime + f.transitionDuration;
+        const holdEnd = transEnd + f.holdDuration;
+
+        // Start of transition (current position handled by previous keyframe)
+        keyframes.push({ t: f.startTime, x: keyframes[keyframes.length - 1].x, y: keyframes[keyframes.length - 1].y, z: keyframes[keyframes.length - 1].z, h: 0 });
+        // Formed
+        keyframes.push({ t: transEnd, x: pt.x, y: f.height, z: pt.z, h: 0 });
+        // Hold end
+        keyframes.push({ t: holdEnd, x: pt.x, y: f.height, z: pt.z, h: 0 });
+      }
+
+      // Landing
+      keyframes.push({ t: lastEnd + landingDuration, x: homeX, y: 0, z: homeZ, h: 0 });
+
+      // Color keyframes: match formation colors
+      const colorKeyframes: { t: number; r: number; g: number; b: number }[] = [
+        { t: 0, r: 0, g: 0, b: 0 },
+      ];
+      for (const f of droneFormations) {
+        const rgb = hexToRgb(f.color);
+        colorKeyframes.push({ t: f.startTime, r: 0, g: 0, b: 0 });
+        colorKeyframes.push({ t: f.startTime + 1, ...rgb });
+        colorKeyframes.push({ t: f.startTime + f.transitionDuration + f.holdDuration - 0.5, ...rgb });
+        colorKeyframes.push({ t: f.startTime + f.transitionDuration + f.holdDuration, r: 0, g: 0, b: 0 });
+      }
+
+      performances.push({
+        id: performanceId++,
+        agentDescription: {
+          homeX,
+          homeY: 0,
+          homeZ,
+          homeH: 0,
+          agentTraversal: buildTraversal(keyframes),
+        },
+        payloadDescription: [buildLightPayload(colorKeyframes)],
+      });
+    }
   }
 
   const vviz: VVIZFile = {

@@ -8,45 +8,81 @@ const PYRO_COLOR = '#FF6B35';
 const DRONE_COLOR = '#00B4D8';
 
 function Pin({ position }: { position: Position }) {
-  const { selectedPositionIds, selectPosition, togglePositionSelection, editorMode } = useProjectStore();
+  const { selectedPositionIds, selectPosition, togglePositionSelection, editorMode, updatePosition } = useProjectStore();
   const isSelected = selectedPositionIds.includes(position.id);
   const color = position.type === 'pyro' ? PYRO_COLOR : (position.color || DRONE_COLOR);
   const meshRef = useRef<THREE.Mesh>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const { camera, raycaster, gl } = useThree();
+  const dragPlane = useRef(new THREE.Plane());
+  const intersection = useRef(new THREE.Vector3());
+
+  const onPointerDown = useCallback((e: any) => {
+    if (editorMode !== 'select') return;
+    e.stopPropagation();
+
+    if (e.nativeEvent?.shiftKey || e.shiftKey) {
+      togglePositionSelection(position.id);
+      return;
+    }
+
+    selectPosition(position.id);
+
+    // Start dragging - create a horizontal plane at Y=0 for ground dragging
+    setIsDragging(true);
+    (gl.domElement as HTMLElement).style.cursor = 'grabbing';
+    dragPlane.current.setFromNormalAndCoplanarPoint(
+      new THREE.Vector3(0, 1, 0),
+      new THREE.Vector3(position.x, 0, position.z)
+    );
+  }, [editorMode, position, selectPosition, togglePositionSelection, gl]);
+
+  const onPointerMove = useCallback((e: any) => {
+    if (!isDragging) return;
+    e.stopPropagation();
+
+    const rect = gl.domElement.getBoundingClientRect();
+    const mouse = new THREE.Vector2(
+      ((e.clientX - rect.left) / rect.width) * 2 - 1,
+      -((e.clientY - rect.top) / rect.height) * 2 + 1,
+    );
+    raycaster.setFromCamera(mouse, camera);
+    raycaster.ray.intersectPlane(dragPlane.current, intersection.current);
+
+    updatePosition(position.id, {
+      x: Math.round(intersection.current.x * 10) / 10,
+      z: Math.round(intersection.current.z * 10) / 10,
+    });
+  }, [isDragging, position.id, updatePosition, camera, raycaster, gl]);
+
+  const onPointerUp = useCallback(() => {
+    if (isDragging) {
+      setIsDragging(false);
+      (gl.domElement as HTMLElement).style.cursor = '';
+    }
+  }, [isDragging, gl]);
 
   return (
     <group position={[position.x, position.y, position.z]}>
       {/* Base disc */}
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, 0.02, 0]}
-      >
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
         <circleGeometry args={[0.5, 24]} />
-        <meshBasicMaterial
-          color={color}
-          transparent
-          opacity={isSelected ? 0.4 : 0.2}
-        />
+        <meshBasicMaterial color={color} transparent opacity={isSelected ? 0.4 : 0.2} />
       </mesh>
 
-      {/* Pin body */}
+      {/* Pin body - draggable */}
       <mesh
         ref={meshRef}
         position={[0, 0.4, 0]}
-        onClick={(e: any) => {
-          if (editorMode !== 'select') return;
-          e.stopPropagation();
-          if (e.nativeEvent?.shiftKey || e.shiftKey) {
-            togglePositionSelection(position.id);
-          } else {
-            selectPosition(position.id);
-          }
-        }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
       >
         <cylinderGeometry args={[0.08, 0.15, 0.8, 8]} />
         <meshStandardMaterial
           color={color}
           emissive={color}
-          emissiveIntensity={isSelected ? 0.6 : 0.15}
+          emissiveIntensity={isDragging ? 0.8 : isSelected ? 0.6 : 0.15}
           metalness={0.7}
           roughness={0.3}
         />
@@ -70,24 +106,14 @@ function Pin({ position }: { position: Position }) {
       {isSelected && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
           <ringGeometry args={[0.55, 0.65, 24]} />
-          <meshBasicMaterial
-            color={color}
-            transparent
-            opacity={0.6}
-          />
+          <meshBasicMaterial color={color} transparent opacity={0.6} />
         </mesh>
       )}
 
       {/* Glow light */}
-      <pointLight
-        color={color}
-        intensity={isSelected ? 3 : 0.8}
-        distance={4}
-        decay={2}
-        position={[0, 0.85, 0]}
-      />
+      <pointLight color={color} intensity={isSelected ? 3 : 0.8} distance={4} decay={2} position={[0, 0.85, 0]} />
 
-      {/* Direction arrow showing heading */}
+      {/* Direction arrow */}
       <group rotation={[0, -position.heading * (Math.PI / 180), 0]}>
         <mesh position={[0, 0.1, -0.7]} rotation={[-Math.PI / 2, 0, 0]}>
           <coneGeometry args={[0.08, 0.25, 4]} />
@@ -96,11 +122,7 @@ function Pin({ position }: { position: Position }) {
       </group>
 
       {/* Label */}
-      <Html
-        position={[0, 1.2, 0]}
-        center
-        style={{ pointerEvents: 'none' }}
-      >
+      <Html position={[0, 1.2, 0]} center style={{ pointerEvents: 'none' }}>
         <div
           className="px-1.5 py-0.5 rounded-sm text-[9px] font-mono whitespace-nowrap"
           style={{
@@ -110,16 +132,20 @@ function Pin({ position }: { position: Position }) {
           }}
         >
           {position.name}
+          {isDragging && (
+            <span className="ml-1 opacity-70">
+              ({position.x.toFixed(1)}, {position.z.toFixed(1)})
+            </span>
+          )}
         </div>
       </Html>
     </group>
   );
 }
 
-/** Invisible ground plane that captures clicks for placing new pins */
+/** Invisible ground plane for placing new pins */
 function GroundClickPlane() {
   const { editorMode, addPosition, setEditorMode } = useProjectStore();
-  const { camera, raycaster } = useThree();
 
   const handleClick = useCallback((e: THREE.Event & { point: THREE.Vector3 }) => {
     if (editorMode !== 'add-pyro' && editorMode !== 'add-drone') return;
@@ -147,11 +173,7 @@ function GroundClickPlane() {
   if (editorMode !== 'add-pyro' && editorMode !== 'add-drone') return null;
 
   return (
-    <mesh
-      rotation={[-Math.PI / 2, 0, 0]}
-      position={[0, 0.01, 0]}
-      onClick={handleClick}
-    >
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} onClick={handleClick}>
       <planeGeometry args={[200, 200]} />
       <meshBasicMaterial visible={false} />
     </mesh>

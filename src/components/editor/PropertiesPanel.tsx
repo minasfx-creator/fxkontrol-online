@@ -8,12 +8,13 @@ import { exportVVIZ, exportFiringCSV, downloadFile } from '@/lib/exportEngine';
 import SafetyPanel from './SafetyPanel';
 
 function ExportSection() {
-  const { timelineItems, positions, projectName, duration, trajectories } = useProjectStore();
+  const { timelineItems, positions, projectName, duration, trajectories, droneFormations } = useProjectStore();
 
-  const droneCount = timelineItems.filter((item) => {
-    const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
-    return effect?.type === 'drone';
-  }).length + trajectories.length;
+  const droneCount = (droneFormations.length > 0 ? droneFormations[0].droneCount : 0) +
+    timelineItems.filter((item) => {
+      const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+      return effect?.type === 'drone';
+    }).length + trajectories.length;
 
   const pyroCount = timelineItems.filter((item) => {
     const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
@@ -21,7 +22,7 @@ function ExportSection() {
   }).length;
 
   const handleExportVVIZ = () => {
-    const content = exportVVIZ(projectName, duration, timelineItems, positions, trajectories);
+    const content = exportVVIZ(projectName, duration, timelineItems, positions, trajectories, droneFormations);
     downloadFile(content, `${projectName.replace(/\s+/g, '_')}.vviz`, 'application/json');
   };
 
