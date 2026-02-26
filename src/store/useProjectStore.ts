@@ -41,10 +41,22 @@ export interface Position {
   color: string;
 }
 
+export interface BezierHandle {
+  x: number;
+  y: number;
+  z: number;
+}
+
 export interface Waypoint {
   id: string;
   position: { x: number; y: number; z: number };
   time: number;
+  /** Incoming Bézier control handle (relative to position) */
+  controlIn?: BezierHandle;
+  /** Outgoing Bézier control handle (relative to position) */
+  controlOut?: BezierHandle;
+  /** Max speed in m/s to reach this waypoint (0 = auto) */
+  maxSpeed?: number;
 }
 
 export interface Trajectory {
