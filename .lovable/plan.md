@@ -48,11 +48,13 @@
 - AddressingPanel UI with 4 tabs: Addresses, Modules, Splitters, Systems
 - Toolbar button (⚡ Cpu icon) for Addressing panel toggle
 
-## Phase 6: Inventory Management
-- Quantities tracking (On Hand, Available, Remaining)
-- Cost summaries per show
-- Effect import from CSV/Excel with VDL auto-simulation
-- Supplier catalog integration
+## Phase 6: Inventory Management (DONE ✅)
+- Inventory store (src/store/useInventoryStore.ts) with on-hand, allocated, remaining tracking
+- Cost summaries with markup multiplier per show
+- CSV import with VDL auto-detection for effect matching
+- InventoryPanel UI with 3 tabs: Stock, Costs, Import
+- Low-stock warnings with visual indicators
+- Toolbar button ($) for Inventory panel toggle
 
 ## Phase 7: Additional Exports
 - 40+ firing system formats (Galaxis, FireOne, Pyrodigital, etc.)
