@@ -6,9 +6,9 @@ import { cn } from '@/lib/utils';
 import { parseVDL } from '@/lib/vdlParser';
 
 const CATEGORIES = [
-  { key: 'drones' as const, label: 'Drones', icon: Radio, emoji: '🛸' },
+  { key: 'drones' as const, label: 'Drone Formations', icon: Radio, emoji: '🛸' },
   { key: 'formacoes' as const, label: 'Formations', icon: Shapes, emoji: '🔷' },
-  { key: 'morteiros' as const, label: 'Pyro Shells', icon: Flame, emoji: '🎆' },
+  { key: 'morteiros' as const, label: 'Pyro VDL', icon: Flame, emoji: '🎆' },
   { key: 'peonias' as const, label: 'Pyro Effects', icon: Sparkles, emoji: '✨' },
 ];
 

@@ -339,8 +339,8 @@ export default function Timeline() {
               </div>
             </div>
           </div>
-          <TimelineTrackRow label="PYRO" trackIndex={0} pixelsPerSecond={pixelsPerSecond} color="#FF6B35" duration={duration} scrollRef={scrollRef} />
-          <TimelineTrackRow label="DRONES" trackIndex={1} pixelsPerSecond={pixelsPerSecond} color="#00B4D8" duration={duration} scrollRef={scrollRef} />
+          <TimelineTrackRow label="DRONE FX" trackIndex={1} pixelsPerSecond={pixelsPerSecond} color="#00B4D8" duration={duration} scrollRef={scrollRef} />
+          <TimelineTrackRow label="PYRO SYS" trackIndex={0} pixelsPerSecond={pixelsPerSecond} color="#FF6B35" duration={duration} scrollRef={scrollRef} />
           <WaypointTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
           <AudioWaveform pixelsPerSecond={pixelsPerSecond} />
         </div>
