@@ -112,7 +112,10 @@ export interface ProjectState {
   editorMode: EditorMode;
   trajectories: Trajectory[];
   selectedTrajectoryId: string | null;
+  selectedWaypointId: string | null;
   showTrajectories: boolean;
+  drawHeight: number;
+  waypointUndoStack: { trajectoryId: string; waypoint: Waypoint }[];
   audioUrl: string | null;
   bpm: number | null;
   snapToBeat: boolean;
@@ -147,10 +150,13 @@ export interface ProjectState {
   updateTrajectory: (id: string, updates: Partial<Omit<Trajectory, 'id'>>) => void;
   removeTrajectory: (id: string) => void;
   selectTrajectory: (id: string | null) => void;
+  selectWaypoint: (id: string | null) => void;
   addWaypoint: (trajectoryId: string, waypoint: Waypoint) => void;
   updateWaypoint: (trajectoryId: string, waypointId: string, updates: Partial<Omit<Waypoint, 'id'>>) => void;
   removeWaypoint: (trajectoryId: string, waypointId: string) => void;
   setShowTrajectories: (show: boolean) => void;
+  setDrawHeight: (h: number) => void;
+  undoLastWaypoint: () => void;
   setAudioUrl: (url: string | null) => void;
   setBpm: (bpm: number | null) => void;
   setSnapToBeat: (snap: boolean) => void;
@@ -233,7 +239,10 @@ export const useProjectStore = create<ProjectState>((set) => ({
   editorMode: 'select',
   trajectories: [],
   selectedTrajectoryId: null,
+  selectedWaypointId: null,
   showTrajectories: true,
+  drawHeight: 10,
+  waypointUndoStack: [],
   audioUrl: null,
   bpm: null,
   snapToBeat: false,
@@ -283,10 +292,12 @@ export const useProjectStore = create<ProjectState>((set) => ({
     selectedTrajectoryId: s.selectedTrajectoryId === id ? null : s.selectedTrajectoryId,
   })),
   selectTrajectory: (id) => set({ selectedTrajectoryId: id }),
+  selectWaypoint: (id) => set({ selectedWaypointId: id }),
   addWaypoint: (trajectoryId, waypoint) => set((s) => ({
     trajectories: s.trajectories.map((t) =>
       t.id === trajectoryId ? { ...t, waypoints: [...t.waypoints, waypoint] } : t
     ),
+    waypointUndoStack: [...s.waypointUndoStack, { trajectoryId, waypoint }],
   })),
   updateWaypoint: (trajectoryId, waypointId, updates) => set((s) => ({
     trajectories: s.trajectories.map((t) =>
@@ -303,6 +314,19 @@ export const useProjectStore = create<ProjectState>((set) => ({
     ),
   })),
   setShowTrajectories: (show) => set({ showTrajectories: show }),
+  setDrawHeight: (h) => set({ drawHeight: h }),
+  undoLastWaypoint: () => set((s) => {
+    if (s.waypointUndoStack.length === 0) return s;
+    const last = s.waypointUndoStack[s.waypointUndoStack.length - 1];
+    return {
+      waypointUndoStack: s.waypointUndoStack.slice(0, -1),
+      trajectories: s.trajectories.map((t) =>
+        t.id === last.trajectoryId
+          ? { ...t, waypoints: t.waypoints.filter((w) => w.id !== last.waypoint.id) }
+          : t
+      ),
+    };
+  }),
   setAudioUrl: (url) => set({ audioUrl: url }),
   setBpm: (bpm) => set({ bpm }),
   setSnapToBeat: (snap) => set({ snapToBeat: snap }),

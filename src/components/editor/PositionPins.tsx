@@ -145,32 +145,42 @@ function Pin({ position }: { position: Position }) {
 
 /** Invisible ground plane for placing new pins */
 function GroundClickPlane() {
-  const { editorMode, addPosition, setEditorMode } = useProjectStore();
+  const { editorMode, addPosition, setEditorMode, addWaypoint, selectedTrajectoryId, drawHeight } = useProjectStore();
 
   const handleClick = useCallback((e: THREE.Event & { point: THREE.Vector3 }) => {
-    if (editorMode !== 'add-pyro' && editorMode !== 'add-drone') return;
+    if (editorMode === 'add-pyro' || editorMode === 'add-drone') {
+      const type = editorMode === 'add-pyro' ? 'pyro' as const : 'drone-pad' as const;
+      const prefix = type === 'pyro' ? 'POS' : 'PAD';
+      const id = `pos-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+      addPosition({
+        id,
+        name: `${prefix}-${Math.floor(Math.random() * 900 + 100)}`,
+        type,
+        x: Math.round(e.point.x * 10) / 10,
+        y: 0,
+        z: Math.round(e.point.z * 10) / 10,
+        heading: 0, pitch: 0, roll: 0,
+        color: type === 'drone-pad' ? '#00B4D8' : '#FF6B35',
+      });
+      setEditorMode('select');
+      return;
+    }
 
-    const type = editorMode === 'add-pyro' ? 'pyro' as const : 'drone-pad' as const;
-    const prefix = type === 'pyro' ? 'POS' : 'PAD';
-    const id = `pos-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+    if (editorMode === 'add-waypoint' && selectedTrajectoryId) {
+      const store = useProjectStore.getState();
+      const traj = store.trajectories.find((t) => t.id === selectedTrajectoryId);
+      const sorted = traj ? [...traj.waypoints].sort((a, b) => a.time - b.time) : [];
+      const lastWp = sorted[sorted.length - 1];
+      const time = lastWp ? lastWp.time + 2 : 2;
+      addWaypoint(selectedTrajectoryId, {
+        id: `wp-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+        position: { x: Math.round(e.point.x * 10) / 10, y: drawHeight, z: Math.round(e.point.z * 10) / 10 },
+        time,
+      });
+    }
+  }, [editorMode, addPosition, setEditorMode, addWaypoint, selectedTrajectoryId, drawHeight]);
 
-    addPosition({
-      id,
-      name: `${prefix}-${Math.floor(Math.random() * 900 + 100)}`,
-      type,
-      x: Math.round(e.point.x * 10) / 10,
-      y: 0,
-      z: Math.round(e.point.z * 10) / 10,
-      heading: 0,
-      pitch: 0,
-      roll: 0,
-      color: type === 'drone-pad' ? '#00B4D8' : '#FF6B35',
-    });
-
-    setEditorMode('select');
-  }, [editorMode, addPosition, setEditorMode]);
-
-  if (editorMode !== 'add-pyro' && editorMode !== 'add-drone') return null;
+  if (editorMode !== 'add-pyro' && editorMode !== 'add-drone' && editorMode !== 'add-waypoint') return null;
 
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} onClick={handleClick}>
