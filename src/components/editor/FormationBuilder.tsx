@@ -1,8 +1,9 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { useProjectStore, type DroneFormation } from '@/store/useProjectStore';
 import {
@@ -12,15 +13,20 @@ import {
   type FormationConfig,
   type FormationPoint,
 } from '@/lib/formations';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, MessageSquare, Image, Sparkles, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FormationBuilderProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-/** 2D preview canvas rendering formation points */
-function FormationPreview({ points, radius }: { points: FormationPoint[]; radius: number }) {
+type GenerationTab = 'presets' | 'text' | 'image' | 'generative';
+
+/* ── 2D Preview Canvas ─────────────────────────────────────── */
+
+function FormationPreview({ points }: { points: FormationPoint[] }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -66,9 +72,9 @@ function FormationPreview({ points, radius }: { points: FormationPoint[]; radius
     maxDist = Math.max(maxDist, 1);
     const scale = Math.min(drawW, drawH) / (maxDist * 2.4);
 
-    for (let i = 0; i < points.length; i++) {
-      const px = w / 2 + points[i].x * scale;
-      const py = h / 2 + points[i].z * scale;
+    for (const p of points) {
+      const px = w / 2 + p.x * scale;
+      const py = h / 2 + p.z * scale;
 
       const gradient = ctx.createRadialGradient(px, py, 0, px, py, 8);
       gradient.addColorStop(0, 'hsla(207, 90%, 54%, 0.5)');
@@ -86,7 +92,7 @@ function FormationPreview({ points, radius }: { points: FormationPoint[]; radius
     ctx.font = '10px "JetBrains Mono", monospace';
     ctx.textAlign = 'right';
     ctx.fillText(`${points.length} drones`, w - padding, h - padding + 14);
-  }, [points, radius]);
+  }, [points]);
 
   return (
     <canvas
@@ -98,6 +104,8 @@ function FormationPreview({ points, radius }: { points: FormationPoint[]; radius
     />
   );
 }
+
+/* ── Slider Field ──────────────────────────────────────────── */
 
 function SliderField({ label, value, onChange, min, max, step, unit }: {
   label: string; value: number; onChange: (v: number) => void;
@@ -114,8 +122,260 @@ function SliderField({ label, value, onChange, min, max, step, unit }: {
   );
 }
 
+/* ── AI Generation Hook ────────────────────────────────────── */
+
+function useAIFormation() {
+  const [loading, setLoading] = useState(false);
+  const [aiPoints, setAiPoints] = useState<FormationPoint[] | null>(null);
+  const [aiMeta, setAiMeta] = useState<{ name: string; height: number; transition: number } | null>(null);
+
+  const generate = useCallback(async (mode: 'text' | 'image' | 'generative', prompt: string, droneCount: number, imageBase64?: string) => {
+    setLoading(true);
+    setAiPoints(null);
+    setAiMeta(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-formation', {
+        body: { mode, prompt, droneCount, imageBase64 },
+      });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      const pts: FormationPoint[] = (data.points || []).map((p: any) => ({ x: p.x, z: p.z }));
+      setAiPoints(pts);
+      setAiMeta({
+        name: data.formationName || 'AI Formation',
+        height: data.suggestedHeight || 20,
+        transition: data.suggestedTransitionTime || 10,
+      });
+      toast.success(`Formação "${data.formationName}" gerada com ${pts.length} pontos`);
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao gerar formação');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { loading, aiPoints, aiMeta, generate, setAiPoints };
+}
+
+/* ── Formation Queue ───────────────────────────────────────── */
+
+function FormationQueue() {
+  const { droneFormations, removeDroneFormation, selectFormation, selectedFormationId } = useProjectStore();
+
+  return (
+    <div className="space-y-1 max-h-[350px] overflow-y-auto">
+      {droneFormations.map((f) => {
+        const preset = FORMATION_PRESETS.find(p => p.type === f.formationType);
+        const endTime = f.startTime + f.transitionDuration + f.holdDuration;
+        return (
+          <div
+            key={f.id}
+            onClick={() => selectFormation(f.id)}
+            className={cn(
+              "p-1.5 rounded-sm border cursor-pointer transition-colors text-[10px]",
+              selectedFormationId === f.id
+                ? "border-primary/40 bg-primary/10"
+                : "border-transparent hover:bg-surface-3"
+            )}
+          >
+            <div className="flex items-center gap-1.5">
+              <span>{preset?.icon || '🤖'}</span>
+              <span className="font-medium text-foreground">{preset?.label || f.formationType}</span>
+              <button
+                className="ml-auto text-muted-foreground hover:text-destructive"
+                onClick={(e) => { e.stopPropagation(); removeDroneFormation(f.id); }}
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+            <div className="font-mono-code text-muted-foreground mt-0.5">
+              {f.startTime.toFixed(0)}s → {endTime.toFixed(0)}s · {f.height}m · {f.droneCount}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Tab: Presets ───────────────────────────────────────────── */
+
+function PresetsTab({ selectedType, onSelect }: { selectedType: FormationType; onSelect: (t: FormationType) => void }) {
+  return (
+    <div className="space-y-1">
+      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider px-2 mb-1">Presets</p>
+      {FORMATION_PRESETS.map((preset) => (
+        <button
+          key={preset.type}
+          onClick={() => onSelect(preset.type)}
+          className={cn(
+            'w-full flex items-center gap-2 px-2 py-1.5 rounded-sm text-left transition-colors text-xs',
+            selectedType === preset.type
+              ? 'bg-primary/15 text-primary border border-primary/30'
+              : 'hover:bg-surface-3 text-secondary-foreground border border-transparent'
+          )}
+        >
+          <span className="text-base">{preset.icon}</span>
+          <div>
+            <p className="font-medium">{preset.label}</p>
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ── Tab: Text AI ──────────────────────────────────────────── */
+
+function TextAITab({ droneCount, onGenerate, loading }: {
+  droneCount: number;
+  onGenerate: (prompt: string) => void;
+  loading: boolean;
+}) {
+  const [prompt, setPrompt] = useState('');
+
+  return (
+    <div className="space-y-2 p-1">
+      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Texto → Formação</p>
+      <Textarea
+        placeholder="Descreva a formação desejada... Ex: 'Um logotipo do Brasil com estrelas formando a bandeira'"
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        className="h-20 text-xs bg-surface-2 border-border resize-none"
+      />
+      <Button
+        size="sm"
+        className="w-full h-7 text-xs"
+        disabled={loading || !prompt.trim()}
+        onClick={() => onGenerate(prompt)}
+      >
+        {loading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <MessageSquare className="h-3 w-3 mr-1" />}
+        Gerar com IA ({droneCount} drones)
+      </Button>
+      <p className="text-[9px] text-muted-foreground">
+        A IA interpreta sua descrição e gera coordenadas para {droneCount} drones.
+      </p>
+    </div>
+  );
+}
+
+/* ── Tab: Image AI ─────────────────────────────────────────── */
+
+function ImageAITab({ droneCount, onGenerate, loading }: {
+  droneCount: number;
+  onGenerate: (imageBase64: string) => void;
+  loading: boolean;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+
+  const handleFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setPreview(result);
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleGenerate = useCallback(() => {
+    if (!preview) return;
+    const base64 = preview.split(',')[1];
+    onGenerate(base64);
+  }, [preview, onGenerate]);
+
+  return (
+    <div className="space-y-2 p-1">
+      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Imagem → Formação</p>
+      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+      {preview ? (
+        <div className="relative">
+          <img src={preview} alt="Preview" className="w-full h-24 object-contain rounded-sm border border-border bg-surface-2" />
+          <button
+            onClick={() => { setPreview(null); if (fileRef.current) fileRef.current.value = ''; }}
+            className="absolute top-1 right-1 bg-surface-1 rounded-sm p-0.5 text-muted-foreground hover:text-destructive"
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => fileRef.current?.click()}
+          className="w-full h-24 border-2 border-dashed border-border rounded-sm flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+        >
+          <Image className="h-5 w-5" />
+          <span className="text-[10px]">Carregar imagem</span>
+        </button>
+      )}
+      <Button
+        size="sm"
+        className="w-full h-7 text-xs"
+        disabled={loading || !preview}
+        onClick={handleGenerate}
+      >
+        {loading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Image className="h-3 w-3 mr-1" />}
+        Extrair Formação ({droneCount} drones)
+      </Button>
+      <p className="text-[9px] text-muted-foreground">
+        A IA analisa os contornos da imagem e gera posições de drones.
+      </p>
+    </div>
+  );
+}
+
+/* ── Tab: Generative AI ────────────────────────────────────── */
+
+function GenerativeAITab({ droneCount, onGenerate, loading }: {
+  droneCount: number;
+  onGenerate: (theme: string) => void;
+  loading: boolean;
+}) {
+  const themes = [
+    { id: 'abstract', label: 'Abstrato Geométrico', emoji: '🔷' },
+    { id: 'nature', label: 'Formas da Natureza', emoji: '🌿' },
+    { id: 'celebration', label: 'Celebração', emoji: '🎉' },
+    { id: 'cosmic', label: 'Cósmico', emoji: '🌌' },
+    { id: 'symmetric', label: 'Simetria Radical', emoji: '🔮' },
+    { id: 'random', label: 'Surpresa Criativa', emoji: '🎲' },
+  ];
+
+  return (
+    <div className="space-y-2 p-1">
+      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">IA Generativa</p>
+      <div className="grid grid-cols-2 gap-1">
+        {themes.map((theme) => (
+          <button
+            key={theme.id}
+            disabled={loading}
+            onClick={() => onGenerate(theme.label)}
+            className="flex items-center gap-1.5 px-2 py-2 rounded-sm text-left transition-colors text-[10px] bg-surface-2 hover:bg-surface-3 border border-border/50 hover:border-primary/30 disabled:opacity-50"
+          >
+            <span className="text-sm">{theme.emoji}</span>
+            <span className="text-foreground">{theme.label}</span>
+          </button>
+        ))}
+      </div>
+      {loading && (
+        <div className="flex items-center gap-2 text-[10px] text-primary">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          Gerando formação criativa...
+        </div>
+      )}
+      <p className="text-[9px] text-muted-foreground">
+        A IA cria padrões únicos e visualmente impressionantes para {droneCount} drones.
+      </p>
+    </div>
+  );
+}
+
+/* ── Main FormationBuilder ─────────────────────────────────── */
+
 export default function FormationBuilder({ open, onOpenChange }: FormationBuilderProps) {
-  const { droneFormations, addDroneFormation } = useProjectStore();
+  const { droneFormations, addDroneFormation, materializeFormation } = useProjectStore();
+  const [activeTab, setActiveTab] = useState<GenerationTab>('presets');
   const [selectedType, setSelectedType] = useState<FormationType>('circle');
   const [count, setCount] = useState(24);
   const [radius, setRadius] = useState(10);
@@ -126,29 +386,41 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
   const [holdDuration, setHoldDuration] = useState(15);
   const [color, setColor] = useState('#00B4D8');
 
-  // Auto-calculate start time: after previous formation ends
+  const { loading: aiLoading, aiPoints, aiMeta, generate: aiGenerate, setAiPoints } = useAIFormation();
+
   const lastFormationEnd = useMemo(() => {
     if (droneFormations.length === 0) return 0;
     const last = droneFormations[droneFormations.length - 1];
     return last.startTime + last.transitionDuration + last.holdDuration;
   }, [droneFormations]);
 
-  // Match drone count to first formation if subsequent
   const isFirstFormation = droneFormations.length === 0;
   const effectiveCount = isFirstFormation ? count : droneFormations[0].droneCount;
+
+  // Apply AI meta when received
+  useEffect(() => {
+    if (aiMeta) {
+      setHeight(aiMeta.height);
+      setTransitionDuration(aiMeta.transition);
+    }
+  }, [aiMeta]);
 
   const config: FormationConfig = useMemo(
     () => ({ type: selectedType, count: effectiveCount, radius, spacing, rotation }),
     [selectedType, effectiveCount, radius, spacing, rotation]
   );
 
-  const points = useMemo(() => generateFormation(config), [config]);
+  const presetPoints = useMemo(() => generateFormation(config), [config]);
+
+  // Use AI points when available, otherwise preset points
+  const displayPoints = activeTab !== 'presets' && aiPoints ? aiPoints : presetPoints;
+  const effectivePoints = displayPoints;
 
   const handleApply = () => {
     const formation: DroneFormation = {
       id: `form-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-      formationType: selectedType,
-      droneCount: effectiveCount,
+      formationType: activeTab !== 'presets' && aiPoints ? 'ai-generated' : selectedType,
+      droneCount: effectivePoints.length > 0 ? effectivePoints.length : effectiveCount,
       height,
       radius,
       spacing,
@@ -157,92 +429,123 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
       transitionDuration,
       holdDuration,
       color,
-      points: points.map(p => ({ x: p.x, z: p.z })),
+      points: effectivePoints.map(p => ({ x: p.x, z: p.z })),
     };
     addDroneFormation(formation);
+    materializeFormation(formation);
+    toast.success(`Formação materializada: ${formation.droneCount} drone pads + trajetórias criados`);
+    setAiPoints(null);
     onOpenChange(false);
   };
 
-  const needsRadius = ['heart', 'star', 'circle', 'wave', 'spiral'].includes(selectedType);
+  const needsRadius = ['heart', 'star', 'circle', 'wave', 'spiral', 'diamond', 'cross', 'double-helix', 'firework'].includes(selectedType);
   const needsSpacing = ['grid', 'line', 'v-shape'].includes(selectedType);
 
-  // Calculate realistic max speed (drone ~15 m/s)
   const maxTransitionDistance = Math.sqrt(radius * radius + height * height) * 2;
   const minTransitionTime = Math.ceil(maxTransitionDistance / 15);
 
+  const tabs: { id: GenerationTab; label: string; icon: React.ElementType }[] = [
+    { id: 'presets', label: 'Presets', icon: Plus },
+    { id: 'text', label: 'Texto', icon: MessageSquare },
+    { id: 'image', label: 'Imagem', icon: Image },
+    { id: 'generative', label: 'IA', icon: Sparkles },
+  ];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[680px] bg-card border-border p-0 gap-0">
+      <DialogContent className="sm:max-w-[720px] bg-card border-border p-0 gap-0">
         <DialogHeader className="px-4 py-3 border-b border-border">
           <DialogTitle className="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
             Formation Builder
             {!isFirstFormation && (
               <span className="text-[10px] font-normal text-muted-foreground bg-surface-2 px-2 py-0.5 rounded">
-                Formação #{droneFormations.length + 1} · {effectiveCount} drones (da 1ª formação)
+                Formação #{droneFormations.length + 1} · {effectiveCount} drones
               </span>
             )}
           </DialogTitle>
         </DialogHeader>
 
+        {/* Tabs */}
+        <div className="flex border-b border-border">
+          {tabs.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider transition-colors border-b-2",
+                activeTab === id
+                  ? "text-primary border-primary bg-primary/5"
+                  : "text-muted-foreground border-transparent hover:text-foreground hover:bg-surface-2/50"
+              )}
+            >
+              <Icon className="h-3 w-3" />
+              {label}
+            </button>
+          ))}
+        </div>
+
         <div className="flex">
-          {/* Left: Preset selector */}
-          <div className="w-[160px] border-r border-border p-2 space-y-1">
-            <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider px-2 mb-1">
-              Presets
-            </p>
-            {FORMATION_PRESETS.map((preset) => (
-              <button
-                key={preset.type}
-                onClick={() => setSelectedType(preset.type)}
-                className={cn(
-                  'w-full flex items-center gap-2 px-2 py-1.5 rounded-sm text-left transition-colors text-xs',
-                  selectedType === preset.type
-                    ? 'bg-primary/15 text-primary border border-primary/30'
-                    : 'hover:bg-surface-3 text-secondary-foreground border border-transparent'
-                )}
-              >
-                <span className="text-base">{preset.icon}</span>
-                <div>
-                  <p className="font-medium">{preset.label}</p>
-                </div>
-              </button>
-            ))}
+          {/* Left: Tab content */}
+          <div className="w-[180px] border-r border-border p-2 overflow-y-auto max-h-[480px]">
+            {activeTab === 'presets' && (
+              <PresetsTab selectedType={selectedType} onSelect={setSelectedType} />
+            )}
+            {activeTab === 'text' && (
+              <TextAITab
+                droneCount={effectiveCount}
+                loading={aiLoading}
+                onGenerate={(prompt) => aiGenerate('text', prompt, effectiveCount)}
+              />
+            )}
+            {activeTab === 'image' && (
+              <ImageAITab
+                droneCount={effectiveCount}
+                loading={aiLoading}
+                onGenerate={(base64) => aiGenerate('image', '', effectiveCount, base64)}
+              />
+            )}
+            {activeTab === 'generative' && (
+              <GenerativeAITab
+                droneCount={effectiveCount}
+                loading={aiLoading}
+                onGenerate={(theme) => aiGenerate('generative', theme, effectiveCount)}
+              />
+            )}
           </div>
 
           {/* Center: Preview + Parameters */}
           <div className="flex-1 p-3 space-y-2">
-            <FormationPreview points={points} radius={radius} />
+            <FormationPreview points={displayPoints} />
 
             <div className="space-y-2">
-              {isFirstFormation && (
+              {isFirstFormation && activeTab === 'presets' && (
                 <SliderField label="Drones" value={count} onChange={setCount} min={4} max={500} step={1} />
               )}
 
-              {needsRadius && (
+              {activeTab === 'presets' && needsRadius && (
                 <SliderField label="Raio" value={radius} onChange={setRadius} min={2} max={50} step={1} unit="m" />
               )}
 
-              {needsSpacing && (
+              {activeTab === 'presets' && needsSpacing && (
                 <SliderField label="Espaçamento" value={spacing} onChange={setSpacing} min={0.5} max={10} step={0.5} unit="m" />
               )}
 
-              <SliderField label="Rotação" value={rotation} onChange={setRotation} min={0} max={360} step={5} unit="°" />
+              {activeTab === 'presets' && (
+                <SliderField label="Rotação" value={rotation} onChange={setRotation} min={0} max={360} step={5} unit="°" />
+              )}
 
               <div className="border-t border-border pt-2 space-y-2">
                 <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Coreografia</p>
-                
                 <SliderField label="Altura" value={height} onChange={setHeight} min={5} max={120} step={1} unit="m" />
-                
-                <SliderField 
-                  label="Tempo de Transição" 
-                  value={transitionDuration} 
-                  onChange={setTransitionDuration} 
-                  min={Math.max(3, minTransitionTime)} 
-                  max={60} 
-                  step={1} 
-                  unit="s" 
+                <SliderField
+                  label="Tempo de Transição"
+                  value={transitionDuration}
+                  onChange={setTransitionDuration}
+                  min={Math.max(3, minTransitionTime)}
+                  max={60}
+                  step={1}
+                  unit="s"
                 />
-                
                 <SliderField label="Tempo em Formação" value={holdDuration} onChange={setHoldDuration} min={3} max={120} step={1} unit="s" />
               </div>
 
@@ -276,6 +579,12 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
                     {maxTransitionDistance / transitionDuration > 15 && " ⚠️"}
                   </span>
                 </div>
+                {activeTab !== 'presets' && aiPoints && (
+                  <div className="flex justify-between text-primary">
+                    <span>Fonte</span>
+                    <span>🤖 IA ({aiMeta?.name})</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -288,9 +597,10 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
                 size="sm"
                 className="flex-1 text-xs h-8 bg-primary text-primary-foreground"
                 onClick={handleApply}
+                disabled={effectivePoints.length === 0}
               >
                 <Plus className="h-3 w-3 mr-1" />
-                Adicionar Formação ({effectiveCount} drones)
+                Materializar ({effectivePoints.length} drones)
               </Button>
             </div>
           </div>
@@ -309,44 +619,5 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function FormationQueue() {
-  const { droneFormations, removeDroneFormation, selectFormation, selectedFormationId } = useProjectStore();
-
-  return (
-    <div className="space-y-1 max-h-[350px] overflow-y-auto">
-      {droneFormations.map((f, i) => {
-        const preset = FORMATION_PRESETS.find(p => p.type === f.formationType);
-        const endTime = f.startTime + f.transitionDuration + f.holdDuration;
-        return (
-          <div
-            key={f.id}
-            onClick={() => selectFormation(f.id)}
-            className={cn(
-              "p-1.5 rounded-sm border cursor-pointer transition-colors text-[10px]",
-              selectedFormationId === f.id
-                ? "border-primary/40 bg-primary/10"
-                : "border-transparent hover:bg-surface-3"
-            )}
-          >
-            <div className="flex items-center gap-1.5">
-              <span>{preset?.icon || '⭕'}</span>
-              <span className="font-medium text-foreground">{preset?.label || f.formationType}</span>
-              <button
-                className="ml-auto text-muted-foreground hover:text-destructive"
-                onClick={(e) => { e.stopPropagation(); removeDroneFormation(f.id); }}
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
-            </div>
-            <div className="font-mono-code text-muted-foreground mt-0.5">
-              {f.startTime.toFixed(0)}s → {endTime.toFixed(0)}s · {f.height}m · {f.droneCount}
-            </div>
-          </div>
-        );
-      })}
-    </div>
   );
 }
