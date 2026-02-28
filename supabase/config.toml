@@ -1,1 +1,4 @@
 project_id = "kyywqpyhsgdthcqqohyv"
+
+[functions.generate-formation]
+verify_jwt = false

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { materializeFormation as materialize } from '@/lib/formationMaterializer';
 
 export interface Effect {
   id: string;
@@ -177,6 +178,7 @@ export interface ProjectState {
   updateDroneFormation: (id: string, updates: Partial<Omit<DroneFormation, 'id'>>) => void;
   removeDroneFormation: (id: string) => void;
   selectFormation: (id: string | null) => void;
+  materializeFormation: (formation: DroneFormation) => void;
 }
 
 export const EFFECT_LIBRARY: Effect[] = [
@@ -390,4 +392,20 @@ export const useProjectStore = create<ProjectState>((set) => ({
     selectedFormationId: s.selectedFormationId === id ? null : s.selectedFormationId,
   })),
   selectFormation: (id) => set({ selectedFormationId: id }),
+  materializeFormation: (formation) => set((s) => {
+    const existingPadIds = s.droneFormations.length > 0
+      ? s.positions.filter(p => p.type === 'drone-pad').map(p => p.id).slice(0, formation.droneCount)
+      : undefined;
+    const { positions: newPads, trajectories: newTrajs } = materialize(
+      formation,
+      s.droneFormations.length,
+      existingPadIds && existingPadIds.length === formation.droneCount ? existingPadIds : undefined,
+    );
+    return {
+      positions: existingPadIds && existingPadIds.length === formation.droneCount
+        ? s.positions
+        : [...s.positions, ...newPads],
+      trajectories: [...s.trajectories, ...newTrajs],
+    };
+  }),
 }));

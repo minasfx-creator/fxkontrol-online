@@ -1,7 +1,7 @@
 // Formation generation utilities
 // Generates 2D point arrays (x, z) for drone launch pad layouts
 
-export type FormationType = 'heart' | 'star' | 'circle' | 'grid' | 'wave' | 'spiral' | 'line' | 'v-shape';
+export type FormationType = 'heart' | 'star' | 'circle' | 'grid' | 'wave' | 'spiral' | 'line' | 'v-shape' | 'diamond' | 'cross' | 'double-helix' | 'firework';
 
 export interface FormationConfig {
   type: FormationType;
@@ -21,8 +21,12 @@ export const FORMATION_PRESETS: { type: FormationType; label: string; icon: stri
   { type: 'star', label: 'Estrela', icon: '⭐', description: 'Formação em estrela 5 pontas' },
   { type: 'circle', label: 'Círculo', icon: '⭕', description: 'Formação circular uniforme' },
   { type: 'grid', label: 'Grid', icon: '⊞', description: 'Grade retangular uniforme' },
+  { type: 'diamond', label: 'Diamante', icon: '💎', description: 'Formação em losango' },
+  { type: 'cross', label: 'Cruz', icon: '✚', description: 'Formação em cruz' },
   { type: 'wave', label: 'Onda', icon: '🌊', description: 'Onda senoidal' },
   { type: 'spiral', label: 'Espiral', icon: '🌀', description: 'Espiral de Arquimedes' },
+  { type: 'double-helix', label: 'Dupla Hélice', icon: '🧬', description: 'Dupla hélice DNA' },
+  { type: 'firework', label: 'Fogos', icon: '🎆', description: 'Explosão radial com camadas' },
   { type: 'line', label: 'Linha', icon: '➖', description: 'Linha reta com espaçamento' },
   { type: 'v-shape', label: 'V-Shape', icon: '✌️', description: 'Formação em V' },
 ];
@@ -126,6 +130,82 @@ function generateVShape(count: number, spacing: number): FormationPoint[] {
   return points.slice(0, count);
 }
 
+function generateDiamond(count: number, radius: number): FormationPoint[] {
+  const points: FormationPoint[] = [];
+  const perSide = Math.floor(count / 4);
+  const corners = [
+    { x: 0, z: -radius },
+    { x: radius, z: 0 },
+    { x: 0, z: radius },
+    { x: -radius, z: 0 },
+  ];
+  for (let side = 0; side < 4 && points.length < count; side++) {
+    const from = corners[side];
+    const to = corners[(side + 1) % 4];
+    for (let i = 0; i < perSide && points.length < count; i++) {
+      const t = i / perSide;
+      points.push({ x: from.x + (to.x - from.x) * t, z: from.z + (to.z - from.z) * t });
+    }
+  }
+  return points;
+}
+
+function generateCross(count: number, radius: number): FormationPoint[] {
+  const points: FormationPoint[] = [];
+  const armLength = radius;
+  const perArm = Math.floor(count / 4);
+  const thickness = 2;
+  // Horizontal arm
+  for (let i = 0; i < perArm * 2 && points.length < count; i++) {
+    const t = i / (perArm * 2 - 1);
+    const x = (t - 0.5) * armLength * 2;
+    const z = (i % 2 === 0 ? 1 : -1) * thickness * 0.3;
+    points.push({ x, z });
+  }
+  // Vertical arm
+  for (let i = 0; i < perArm * 2 && points.length < count; i++) {
+    const t = i / (perArm * 2 - 1);
+    const z = (t - 0.5) * armLength * 2;
+    const x = (i % 2 === 0 ? 1 : -1) * thickness * 0.3;
+    if (Math.abs(z) > thickness) points.push({ x, z });
+  }
+  // Fill remaining
+  while (points.length < count) {
+    points.push({ x: (Math.random() - 0.5) * 2, z: (Math.random() - 0.5) * 2 });
+  }
+  return points.slice(0, count);
+}
+
+function generateDoubleHelix(count: number, radius: number): FormationPoint[] {
+  const points: FormationPoint[] = [];
+  const half = Math.ceil(count / 2);
+  for (let i = 0; i < half; i++) {
+    const t = i / half;
+    const angle = t * Math.PI * 4;
+    const z = (t - 0.5) * radius * 2;
+    points.push({ x: Math.cos(angle) * radius * 0.4, z });
+    if (points.length < count) {
+      points.push({ x: Math.cos(angle + Math.PI) * radius * 0.4, z });
+    }
+  }
+  return points.slice(0, count);
+}
+
+function generateFireworkShape(count: number, radius: number): FormationPoint[] {
+  const points: FormationPoint[] = [];
+  const rings = 3;
+  const perRing = Math.floor(count / rings);
+  for (let ring = 0; ring < rings; ring++) {
+    const r = (radius * (ring + 1)) / rings;
+    const n = ring === rings - 1 ? count - points.length : perRing;
+    for (let i = 0; i < n; i++) {
+      const angle = (i / n) * Math.PI * 2 + ring * 0.3;
+      points.push({ x: Math.cos(angle) * r, z: Math.sin(angle) * r });
+    }
+  }
+  return points.slice(0, count);
+}
+
 export function generateFormation(config: FormationConfig): FormationPoint[] {
   let points: FormationPoint[];
 
@@ -138,6 +218,10 @@ export function generateFormation(config: FormationConfig): FormationPoint[] {
     case 'spiral': points = generateSpiral(config.count, config.radius); break;
     case 'line': points = generateLine(config.count, config.spacing); break;
     case 'v-shape': points = generateVShape(config.count, config.spacing); break;
+    case 'diamond': points = generateDiamond(config.count, config.radius); break;
+    case 'cross': points = generateCross(config.count, config.radius); break;
+    case 'double-helix': points = generateDoubleHelix(config.count, config.radius); break;
+    case 'firework': points = generateFireworkShape(config.count, config.radius); break;
     default: points = generateCircle(config.count, config.radius);
   }
 
