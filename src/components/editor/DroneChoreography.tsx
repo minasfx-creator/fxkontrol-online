@@ -91,14 +91,14 @@ function computeDronePositions(
 }
 
 export default function DroneChoreography() {
-  const { droneFormations, currentTime } = useProjectStore();
+  const { droneFormations, currentTime, showFormations } = useProjectStore();
 
   const positions = useMemo(
     () => computeDronePositions(droneFormations, currentTime),
     [droneFormations, currentTime]
   );
 
-  if (!positions) return null;
+  if (!showFormations || !positions) return null;
 
   return (
     <>

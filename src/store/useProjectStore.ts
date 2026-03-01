@@ -130,6 +130,9 @@ export interface ProjectState {
   // Drone choreography formations
   droneFormations: DroneFormation[];
   selectedFormationId: string | null;
+  // Batch editing
+  selectedTrajectoryIds: string[];
+  showFormations: boolean;
 
   setPlaying: (playing: boolean) => void;
   setCurrentTime: (time: number) => void;
@@ -179,6 +182,13 @@ export interface ProjectState {
   removeDroneFormation: (id: string) => void;
   selectFormation: (id: string | null) => void;
   materializeFormation: (formation: DroneFormation) => void;
+  // Batch editing
+  toggleTrajectorySelection: (id: string) => void;
+  selectAllFormationTrajectories: (formationIndex: number) => void;
+  clearTrajectorySelection: () => void;
+  batchOffsetWaypoints: (trajectoryIds: string[], offset: { x: number; y: number; z: number }) => void;
+  batchScaleWaypoints: (trajectoryIds: string[], scale: number) => void;
+  setShowFormations: (show: boolean) => void;
 }
 
 export const EFFECT_LIBRARY: Effect[] = [
@@ -255,6 +265,8 @@ export const useProjectStore = create<ProjectState>((set) => ({
   wind: { enabled: false, direction: 0, speed: 3, gustStrength: 0.3 },
   droneFormations: [],
   selectedFormationId: null,
+  selectedTrajectoryIds: [],
+  showFormations: true,
 
   setPlaying: (playing) => set({ isPlaying: playing }),
   setCurrentTime: (time) => set({ currentTime: time }),
@@ -408,4 +420,57 @@ export const useProjectStore = create<ProjectState>((set) => ({
       trajectories: [...s.trajectories, ...newTrajs],
     };
   }),
+
+  // Batch editing
+  toggleTrajectorySelection: (id) => set((s) => {
+    const ids = s.selectedTrajectoryIds.includes(id)
+      ? s.selectedTrajectoryIds.filter((i) => i !== id)
+      : [...s.selectedTrajectoryIds, id];
+    return { selectedTrajectoryIds: ids };
+  }),
+  selectAllFormationTrajectories: (formationIndex) => set((s) => {
+    // Select all trajectories linked to drone pads from a specific formation
+    const pads = s.positions.filter(p => p.type === 'drone-pad');
+    const formation = s.droneFormations[formationIndex];
+    if (!formation) return s;
+    const padIds = pads.slice(0, formation.droneCount).map(p => p.id);
+    const trajIds = s.trajectories.filter(t => padIds.includes(t.positionId)).map(t => t.id);
+    return { selectedTrajectoryIds: trajIds };
+  }),
+  clearTrajectorySelection: () => set({ selectedTrajectoryIds: [] }),
+  batchOffsetWaypoints: (trajectoryIds, offset) => set((s) => ({
+    trajectories: s.trajectories.map((t) =>
+      trajectoryIds.includes(t.id)
+        ? {
+          ...t,
+          waypoints: t.waypoints.map((w) => ({
+            ...w,
+            position: {
+              x: Math.round((w.position.x + offset.x) * 10) / 10,
+              y: Math.max(0.1, Math.round((w.position.y + offset.y) * 10) / 10),
+              z: Math.round((w.position.z + offset.z) * 10) / 10,
+            },
+          })),
+        }
+        : t
+    ),
+  })),
+  batchScaleWaypoints: (trajectoryIds, scale) => set((s) => ({
+    trajectories: s.trajectories.map((t) =>
+      trajectoryIds.includes(t.id)
+        ? {
+          ...t,
+          waypoints: t.waypoints.map((w) => ({
+            ...w,
+            position: {
+              x: Math.round(w.position.x * scale * 10) / 10,
+              y: Math.max(0.1, Math.round(w.position.y * scale * 10) / 10),
+              z: Math.round(w.position.z * scale * 10) / 10,
+            },
+          })),
+        }
+        : t
+    ),
+  })),
+  setShowFormations: (show) => set({ showFormations: show }),
 }));
