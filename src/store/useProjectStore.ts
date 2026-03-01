@@ -405,18 +405,19 @@ export const useProjectStore = create<ProjectState>((set) => ({
   })),
   selectFormation: (id) => set({ selectedFormationId: id }),
   materializeFormation: (formation) => set((s) => {
-    const existingPadIds = s.droneFormations.length > 0
+    const existingPadCount = s.positions.filter(p => p.type === 'drone-pad').length;
+    const isReuse = existingPadCount >= formation.droneCount;
+    const existingPadIds = isReuse
       ? s.positions.filter(p => p.type === 'drone-pad').map(p => p.id).slice(0, formation.droneCount)
       : undefined;
     const { positions: newPads, trajectories: newTrajs } = materialize(
       formation,
       s.droneFormations.length,
-      existingPadIds && existingPadIds.length === formation.droneCount ? existingPadIds : undefined,
+      existingPadIds,
     );
+    // Debug removed
     return {
-      positions: existingPadIds && existingPadIds.length === formation.droneCount
-        ? s.positions
-        : [...s.positions, ...newPads],
+      positions: isReuse ? s.positions : [...s.positions, ...newPads],
       trajectories: [...s.trajectories, ...newTrajs],
     };
   }),
