@@ -1,11 +1,12 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Route, Trash2, Plus, Gauge, Spline, X, ChevronDown, ChevronRight, AlertTriangle, Undo2, PenTool, ArrowUpDown, Circle, Square, Zap, Shield } from 'lucide-react';
+import { Route, Trash2, Plus, Gauge, Spline, X, ChevronDown, ChevronRight, AlertTriangle, Undo2, PenTool, ArrowUpDown, Circle, Square, Zap, Shield, Eye, EyeOff, Move, CheckSquare, Minimize2, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { useProjectStore, type Waypoint, type Trajectory } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { toast } from 'sonner';
 
 /* ── helpers ─────────────────────────────────────────────────── */
 
@@ -181,10 +182,18 @@ export default function WaypointEditor({ onClose }: { onClose: () => void }) {
     selectTrajectory, selectWaypoint, addTrajectory, addWaypoint,
     removeWaypoint, updateWaypoint, setEditorMode, editorMode,
     drawHeight, setDrawHeight, undoLastWaypoint,
+    showTrajectories, setShowTrajectories, showFormations, setShowFormations,
+    selectedTrajectoryIds, toggleTrajectorySelection, selectAllFormationTrajectories,
+    clearTrajectorySelection, batchOffsetWaypoints, batchScaleWaypoints,
+    droneFormations,
   } = useProjectStore();
 
   const [presetRadius, setPresetRadius] = useState(15);
   const [presetCount, setPresetCount] = useState(12);
+  const [batchMode, setBatchMode] = useState(false);
+  const [offsetX, setOffsetX] = useState(0);
+  const [offsetY, setOffsetY] = useState(0);
+  const [offsetZ, setOffsetZ] = useState(0);
 
   const dronePads = positions.filter((p) => p.type === 'drone-pad');
   const selectedTraj = trajectories.find((t) => t.id === selectedTrajectoryId);
@@ -278,6 +287,133 @@ export default function WaypointEditor({ onClose }: { onClose: () => void }) {
           <p><kbd className="bg-surface-1 px-0.5 rounded text-foreground">Del</kbd> remover WP · <kbd className="bg-surface-1 px-0.5 rounded text-foreground">B</kbd> toggle Bézier · <kbd className="bg-surface-1 px-0.5 rounded text-foreground">Ctrl+Z</kbd> undo</p>
         </div>
 
+        {/* Visibility toggles */}
+        <div className="flex gap-1">
+          <Button
+            variant={showTrajectories ? 'outline' : 'ghost'}
+            size="sm" className="flex-1 h-6 text-[8px] gap-1"
+            onClick={() => setShowTrajectories(!showTrajectories)}
+          >
+            {showTrajectories ? <Eye className="h-2.5 w-2.5" /> : <EyeOff className="h-2.5 w-2.5" />}
+            Trajetórias
+          </Button>
+          <Button
+            variant={showFormations ? 'outline' : 'ghost'}
+            size="sm" className="flex-1 h-6 text-[8px] gap-1"
+            onClick={() => setShowFormations(!showFormations)}
+          >
+            {showFormations ? <Eye className="h-2.5 w-2.5" /> : <EyeOff className="h-2.5 w-2.5" />}
+            Formações
+          </Button>
+        </div>
+
+        <Separator />
+
+        {/* Batch / Single mode toggle */}
+        <div className="flex gap-1">
+          <Button
+            variant={!batchMode ? 'default' : 'outline'}
+            size="sm" className="flex-1 h-6 text-[8px] gap-1"
+            onClick={() => setBatchMode(false)}
+          >
+            Individual
+          </Button>
+          <Button
+            variant={batchMode ? 'default' : 'outline'}
+            size="sm" className="flex-1 h-6 text-[8px] gap-1"
+            onClick={() => setBatchMode(true)}
+          >
+            <CheckSquare className="h-2.5 w-2.5" /> Coletivo ({selectedTrajectoryIds.length})
+          </Button>
+        </div>
+
+        {batchMode && (
+          <>
+            {/* Formation quick-select */}
+            {droneFormations.length > 0 && (
+              <div>
+                <p className="text-[8px] font-mono-code text-muted-foreground uppercase mb-1">Selecionar por Formação</p>
+                <div className="flex flex-wrap gap-1">
+                  {droneFormations.map((f, i) => (
+                    <Button key={f.id} variant="outline" size="sm" className="h-5 text-[8px] px-1.5"
+                      onClick={() => selectAllFormationTrajectories(i)}>
+                      F{i + 1} ({f.droneCount})
+                    </Button>
+                  ))}
+                  <Button variant="ghost" size="sm" className="h-5 text-[8px] px-1.5"
+                    onClick={clearTrajectorySelection}>
+                    Limpar
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Multi-select trajectory list */}
+            <div className="space-y-0.5 max-h-24 overflow-auto">
+              {trajectories.map((traj) => {
+                const pad = positions.find((p) => p.id === traj.positionId);
+                const isSel = selectedTrajectoryIds.includes(traj.id);
+                return (
+                  <button key={traj.id} onClick={() => toggleTrajectorySelection(traj.id)}
+                    className={cn(
+                      "w-full flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[8px] font-mono-code transition-colors",
+                      isSel ? "bg-primary/15 text-primary border border-primary/30" : "bg-surface-2/30 text-muted-foreground hover:bg-surface-2 border border-transparent"
+                    )}>
+                    <div className={cn("w-2 h-2 rounded-sm border", isSel ? "bg-primary border-primary" : "border-muted-foreground/40")} />
+                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: pad?.color || '#00B4D8' }} />
+                    <span className="flex-1 text-left truncate">{traj.name}</span>
+                    <span className="text-muted-foreground/50">{traj.waypoints.length}wp</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Offset controls */}
+            {selectedTrajectoryIds.length > 0 && (
+              <div className="space-y-1.5">
+                <Separator />
+                <p className="text-[8px] font-mono-code text-muted-foreground uppercase">Offset Coletivo</p>
+                <div className="grid grid-cols-3 gap-1">
+                  {[
+                    { label: 'X', value: offsetX, set: setOffsetX },
+                    { label: 'Y', value: offsetY, set: setOffsetY },
+                    { label: 'Z', value: offsetZ, set: setOffsetZ },
+                  ].map(({ label, value, set }) => (
+                    <div key={label}>
+                      <p className="text-[7px] text-muted-foreground text-center">{label}</p>
+                      <Input type="number" step={1} value={value}
+                        onChange={(e) => set(parseFloat(e.target.value) || 0)}
+                        className="h-5 text-[9px] font-mono-code px-1 bg-surface-2 border-border text-center" />
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-1">
+                  <Button variant="default" size="sm" className="flex-1 h-6 text-[8px] gap-1"
+                    onClick={() => {
+                      batchOffsetWaypoints(selectedTrajectoryIds, { x: offsetX, y: offsetY, z: offsetZ });
+                      toast.success(`Offset aplicado a ${selectedTrajectoryIds.length} trajetórias`);
+                      setOffsetX(0); setOffsetY(0); setOffsetZ(0);
+                    }}>
+                    <Move className="h-2.5 w-2.5" /> Aplicar Offset
+                  </Button>
+                </div>
+                <div className="flex gap-1">
+                  <Button variant="outline" size="sm" className="flex-1 h-5 text-[7px]"
+                    onClick={() => { batchScaleWaypoints(selectedTrajectoryIds, 1.2); toast.success('Escala +20%'); }}>
+                    <Maximize2 className="h-2 w-2" /> +20%
+                  </Button>
+                  <Button variant="outline" size="sm" className="flex-1 h-5 text-[7px]"
+                    onClick={() => { batchScaleWaypoints(selectedTrajectoryIds, 0.8); toast.success('Escala -20%'); }}>
+                    <Minimize2 className="h-2 w-2" /> -20%
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {!batchMode && (
+          <>
         {/* Draw height control */}
         <div>
           <div className="flex items-center gap-1 mb-0.5">
@@ -414,6 +550,8 @@ export default function WaypointEditor({ onClose }: { onClose: () => void }) {
                 </p>
               )}
             </div>
+          </>
+        )}
           </>
         )}
       </div>
