@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Rocket, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, Route, LogOut, Upload, Wind, FileText, Package, Cpu, Download, Activity, DollarSign, Spline } from 'lucide-react';
+import { Rocket, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useAuth } from '@/hooks/useAuth';
@@ -38,7 +38,7 @@ function MenuButton({ label, onClick }: { label: string; onClick?: () => void })
   );
 }
 
-export default function Toolbar({ onToggleScript, showScript, onToggleWindCamera, showWindCamera, onToggleReports, showReports, onToggleRacks, showRacks, onToggleAddressing, showAddressing, onToggleInventory, showInventory, onToggleWaypointEditor, showWaypointEditor }: { onToggleScript: () => void; showScript: boolean; onToggleWindCamera?: () => void; showWindCamera?: boolean; onToggleReports?: () => void; showReports?: boolean; onToggleRacks?: () => void; showRacks?: boolean; onToggleAddressing?: () => void; showAddressing?: boolean; onToggleInventory?: () => void; showInventory?: boolean; onToggleWaypointEditor?: () => void; showWaypointEditor?: boolean }) {
+export default function Toolbar() {
   const { projectName, timelineItems, positions, editorMode, setEditorMode } = useProjectStore();
   const { signOut, user } = useAuth();
   const [formationOpen, setFormationOpen] = useState(false);
@@ -115,35 +115,13 @@ export default function Toolbar({ onToggleScript, showScript, onToggleWindCamera
 
       <Separator orientation="vertical" className="h-4 mx-1" />
 
-      {/* Panel toggles */}
+      {/* Tools */}
       <div className="flex items-center gap-0.5">
         <Button variant="ghost" size="icon" className="h-7 w-7" title="Formations" onClick={() => setFormationOpen(true)}>
           <Shapes className="h-3.5 w-3.5" />
         </Button>
         <Button variant="ghost" size="icon" className="h-7 w-7" title="Import CSV" onClick={() => setCsvOpen(true)}>
           <Upload className="h-3.5 w-3.5" />
-        </Button>
-        <Separator orientation="vertical" className="h-4 mx-0.5" />
-        <Button variant="ghost" size="icon" className={cn("h-7 w-7", showScript && "bg-surface-3 text-primary")} title="Script" onClick={onToggleScript}>
-          <Route className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant="ghost" size="icon" className={cn("h-7 w-7", showWindCamera && "bg-surface-3 text-primary")} title="Wind & Camera" onClick={onToggleWindCamera}>
-          <Wind className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant="ghost" size="icon" className={cn("h-7 w-7", showReports && "bg-surface-3 text-primary")} title="Reports" onClick={onToggleReports}>
-          <FileText className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant="ghost" size="icon" className={cn("h-7 w-7", showRacks && "bg-surface-3 text-primary")} title="Racks" onClick={onToggleRacks}>
-          <Package className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant="ghost" size="icon" className={cn("h-7 w-7", showAddressing && "bg-surface-3 text-primary")} title="Addressing" onClick={onToggleAddressing}>
-          <Cpu className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant="ghost" size="icon" className={cn("h-7 w-7", showInventory && "bg-surface-3 text-primary")} title="Inventory" onClick={onToggleInventory}>
-          <DollarSign className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant="ghost" size="icon" className={cn("h-7 w-7", showWaypointEditor && "bg-surface-3 text-primary")} title="Waypoint Editor" onClick={onToggleWaypointEditor}>
-          <Spline className="h-3.5 w-3.5" />
         </Button>
       </div>
 
