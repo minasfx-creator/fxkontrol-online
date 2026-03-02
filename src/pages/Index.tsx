@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useState, useCallback } from 'react';
 import Toolbar from '@/components/editor/Toolbar';
 import SplashScreen from '@/components/editor/SplashScreen';
 import EffectLibrary from '@/components/editor/EffectLibrary';
@@ -12,7 +12,7 @@ import RackManager from '@/components/editor/RackManager';
 import AddressingPanel from '@/components/editor/AddressingPanel';
 import InventoryPanel from '@/components/editor/InventoryPanel';
 import WaypointEditor from '@/components/editor/WaypointEditor';
-import { cn } from '@/lib/utils';
+import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 
 const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
 
@@ -27,18 +27,27 @@ function CanvasLoader() {
   );
 }
 
+const PANEL_WIDTHS: Record<PanelId, string> = {
+  script: 'w-[400px]',
+  wind: 'w-56',
+  reports: 'w-60',
+  racks: 'w-56',
+  addressing: 'w-60',
+  inventory: 'w-64',
+  waypoints: 'w-64',
+  effects: 'w-56',
+  properties: 'w-56',
+};
+
 export default function Index() {
-  const [showScript, setShowScript] = useState(true);
-  const [showEffectEditor, setShowEffectEditor] = useState(false);
-  const [showWindCamera, setShowWindCamera] = useState(false);
-  const [showReports, setShowReports] = useState(false);
-  const [showRacks, setShowRacks] = useState(false);
-  const [showAddressing, setShowAddressing] = useState(false);
-  const [showInventory, setShowInventory] = useState(false);
-  const [showWaypointEditor, setShowWaypointEditor] = useState(false);
+  const [activePanel, setActivePanel] = useState<PanelId | null>('properties');
   const [showSplash, setShowSplash] = useState(true);
   const [fleetSize, setFleetSize] = useState(500);
   const [pyroPositions, setPyroPositions] = useState(24);
+
+  const handleTogglePanel = useCallback((id: PanelId) => {
+    setActivePanel((prev) => (prev === id ? null : id));
+  }, []);
 
   const handleSplashStart = (size: number, pyroPos: number) => {
     setFleetSize(size);
@@ -50,30 +59,33 @@ export default function Index() {
     return <SplashScreen onStart={handleSplashStart} />;
   }
 
+  const renderPanel = () => {
+    if (!activePanel) return null;
+    const width = PANEL_WIDTHS[activePanel];
+    return (
+      <div className={width}>
+        {activePanel === 'properties' && <PropertiesPanel />}
+        {activePanel === 'script' && <ScriptWindow />}
+        {activePanel === 'waypoints' && <WaypointEditor onClose={() => setActivePanel(null)} />}
+        {activePanel === 'effects' && <EffectEditor onClose={() => setActivePanel(null)} />}
+        {activePanel === 'wind' && <WindCameraPanel />}
+        {activePanel === 'reports' && <ReportsPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'racks' && <RackManager onClose={() => setActivePanel(null)} />}
+        {activePanel === 'addressing' && <AddressingPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'inventory' && <InventoryPanel onClose={() => setActivePanel(null)} />}
+      </div>
+    );
+  };
+
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
       {/* Top toolbar */}
-      <Toolbar
-        onToggleScript={() => setShowScript(!showScript)}
-        showScript={showScript}
-        onToggleWindCamera={() => setShowWindCamera(!showWindCamera)}
-        showWindCamera={showWindCamera}
-        onToggleReports={() => setShowReports(!showReports)}
-        showReports={showReports}
-        onToggleRacks={() => setShowRacks(!showRacks)}
-        showRacks={showRacks}
-        onToggleAddressing={() => setShowAddressing(!showAddressing)}
-        showAddressing={showAddressing}
-        onToggleInventory={() => setShowInventory(!showInventory)}
-        showInventory={showInventory}
-        onToggleWaypointEditor={() => setShowWaypointEditor(!showWaypointEditor)}
-        showWaypointEditor={showWaypointEditor}
-      />
+      <Toolbar />
 
       {/* Main editor area */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left sidebar - Effect Library */}
-        <div className="w-56 flex-shrink-0">
+        <div className="w-52 flex-shrink-0">
           <EffectLibrary />
         </div>
 
@@ -84,56 +96,15 @@ export default function Index() {
           </Suspense>
         </div>
 
-        {/* Right panels */}
+        {/* Right: active panel + icon tab bar */}
         <div className="flex flex-shrink-0">
-          {showWaypointEditor && (
-            <div className="w-60">
-              <WaypointEditor onClose={() => setShowWaypointEditor(false)} />
-            </div>
-          )}
-          {showInventory && (
-            <div className="w-64">
-              <InventoryPanel onClose={() => setShowInventory(false)} />
-            </div>
-          )}
-          {showAddressing && (
-            <div className="w-60">
-              <AddressingPanel onClose={() => setShowAddressing(false)} />
-            </div>
-          )}
-          {showRacks && (
-            <div className="w-56">
-              <RackManager onClose={() => setShowRacks(false)} />
-            </div>
-          )}
-          {showReports && (
-            <div className="w-56">
-              <ReportsPanel onClose={() => setShowReports(false)} />
-            </div>
-          )}
-          {showWindCamera && (
-            <div className="w-52">
-              <WindCameraPanel />
-            </div>
-          )}
-          {showEffectEditor && (
-            <div className="w-56">
-              <EffectEditor onClose={() => setShowEffectEditor(false)} />
-            </div>
-          )}
-          {showScript && (
-            <div className="w-[420px]">
-              <ScriptWindow />
-            </div>
-          )}
-          <div className="w-52">
-            <PropertiesPanel onToggleEffectEditor={() => setShowEffectEditor(!showEffectEditor)} showEffectEditor={showEffectEditor} />
-          </div>
+          {renderPanel()}
+          <PanelTabBar activePanel={activePanel} onTogglePanel={handleTogglePanel} />
         </div>
       </div>
 
       {/* Bottom timeline */}
-      <div className="h-44 flex-shrink-0">
+      <div className="h-40 flex-shrink-0">
         <Timeline />
       </div>
     </div>
