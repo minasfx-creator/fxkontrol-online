@@ -1,5 +1,5 @@
-import { useRef, useState, useCallback, useMemo } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Square, Trash2 } from 'lucide-react';
+import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
+import { Play, Pause, SkipBack, SkipForward, Square, Trash2, ZoomIn, ZoomOut, Magnet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { getPreFireTime } from '@/lib/safetyEngine';
@@ -13,18 +13,58 @@ function formatTime(seconds: number): string {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
 }
 
+/** Snap a time value to the nearest beat if within threshold */
+function snapTimeToBeat(time: number, bpm: number | null, snapEnabled: boolean, pixelsPerSecond: number): number {
+  if (!snapEnabled || !bpm) return time;
+  const beatInterval = 60 / bpm;
+  const nearestBeat = Math.round(time / beatInterval) * beatInterval;
+  // Snap if within 8px equivalent
+  const threshold = 8 / pixelsPerSecond;
+  return Math.abs(time - nearestBeat) < threshold ? nearestBeat : time;
+}
+
+function BeatGrid({ duration, pixelsPerSecond, bpm }: { duration: number; pixelsPerSecond: number; bpm: number | null }) {
+  if (!bpm) return null;
+  const beatInterval = 60 / bpm;
+  const lines = [];
+  for (let t = 0; t < duration; t += beatInterval) {
+    const isMeasure = Math.round(t / beatInterval) % 4 === 0;
+    lines.push(
+      <div
+        key={t}
+        className="absolute top-0 bottom-0 pointer-events-none"
+        style={{
+          left: `${t * pixelsPerSecond}px`,
+          width: '1px',
+          backgroundColor: isMeasure ? 'hsla(24, 95%, 53%, 0.25)' : 'hsla(24, 95%, 53%, 0.08)',
+        }}
+      />
+    );
+  }
+  return <>{lines}</>;
+}
+
 function TimeRuler({ duration, pixelsPerSecond }: { duration: number; pixelsPerSecond: number }) {
   const marks = [];
-  const step = pixelsPerSecond >= 15 ? 1 : pixelsPerSecond >= 5 ? 5 : 10;
+  // Adaptive step based on zoom level
+  let step: number;
+  if (pixelsPerSecond >= 40) step = 1;
+  else if (pixelsPerSecond >= 15) step = 2;
+  else if (pixelsPerSecond >= 8) step = 5;
+  else step = 10;
+
+  const labelStep = step <= 2 ? 5 : 10;
+
   for (let i = 0; i <= duration; i += step) {
+    const isMajor = i % labelStep === 0;
     marks.push(
       <div
         key={i}
         className="absolute top-0 flex flex-col items-center"
         style={{ left: `${i * pixelsPerSecond}px` }}
       >
-        <div className={cn("w-px", i % 10 === 0 ? "h-3 bg-muted-foreground/60" : "h-2 bg-border")} />
-        {i % 10 === 0 && (
+        <div className={cn("w-px", isMajor ? "h-3 bg-muted-foreground/60" : "h-2 bg-border/60")} />
+        {isMajor && (
           <span className="text-[9px] font-mono-code text-muted-foreground mt-0.5">{formatTime(i)}</span>
         )}
       </div>
@@ -48,7 +88,7 @@ function TimelineTrackRow({
   duration: number;
   scrollRef: React.RefObject<HTMLDivElement>;
 }) {
-  const { timelineItems, selectedTimelineItemId, selectTimelineItem, addTimelineItem } = useProjectStore();
+  const { timelineItems, selectedTimelineItemId, selectTimelineItem, addTimelineItem, bpm, snapToBeat } = useProjectStore();
   const [isDragOver, setIsDragOver] = useState(false);
   const items = timelineItems.filter((i) => i.trackIndex === trackIndex);
 
@@ -78,13 +118,13 @@ function TimelineTrackRow({
     if (!effectId) return;
     const effect = EFFECT_LIBRARY.find((ef) => ef.id === effectId);
     if (!effect) return;
-    // Validate track match
     if (effect.type === 'firework' && trackIndex !== 0) return;
     if (effect.type === 'drone' && trackIndex !== 1) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
-    const time = Math.max(0, Math.min(x / pixelsPerSecond, duration));
+    let time = Math.max(0, Math.min(x / pixelsPerSecond, duration));
+    time = snapTimeToBeat(time, bpm, snapToBeat, pixelsPerSecond);
 
     addTimelineItem({
       id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -97,7 +137,7 @@ function TimelineTrackRow({
         z: (Math.random() - 0.5) * 8,
       },
     });
-  }, [pixelsPerSecond, duration, trackIndex, addTimelineItem]);
+  }, [pixelsPerSecond, duration, trackIndex, addTimelineItem, bpm, snapToBeat]);
 
   return (
     <div className="flex border-b border-border/50">
@@ -123,7 +163,6 @@ function TimelineTrackRow({
           const pftPx = pft * pixelsPerSecond;
           return (
             <div key={item.id} className="absolute top-1" style={{ left: `${item.startTime * pixelsPerSecond}px` }}>
-              {/* PFT indicator (fire before burst) */}
               {pft > 0 && (
                 <div
                   className="absolute h-8 rounded-l-sm bg-warning/10 border-l-2 border-warning/40"
@@ -134,7 +173,7 @@ function TimelineTrackRow({
                 </div>
               )}
               <button
-                onClick={() => selectTimelineItem(item.id)}
+                onClick={(e) => { e.stopPropagation(); selectTimelineItem(item.id); }}
                 className={cn(
                   "h-8 rounded-sm flex items-center px-1.5 text-[10px] font-medium transition-all cursor-pointer border",
                   isSelected
@@ -160,18 +199,13 @@ function TimelineTrackRow({
 function WaypointTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number; duration: number }) {
   const { trajectories, positions, selectedTrajectoryId, selectTrajectory } = useProjectStore();
 
-  // Flatten all waypoints with their trajectory/position info
   const wpEvents = useMemo(() => {
     return trajectories.flatMap((traj) => {
       const pad = positions.find((p) => p.id === traj.positionId);
       if (!pad) return [];
       const sorted = [...traj.waypoints].sort((a, b) => a.time - b.time);
       return sorted.map((wp, i) => ({
-        wp,
-        traj,
-        pad,
-        index: i,
-        nextWp: sorted[i + 1],
+        wp, traj, pad, index: i, nextWp: sorted[i + 1],
       }));
     });
   }, [trajectories, positions]);
@@ -190,7 +224,7 @@ function WaypointTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numb
           return (
             <button
               key={wp.id}
-              onClick={() => selectTrajectory(traj.id)}
+              onClick={(e) => { e.stopPropagation(); selectTrajectory(traj.id); }}
               className={cn(
                 "absolute top-1 h-8 rounded-sm flex items-center px-1 text-[9px] font-mono-code transition-all cursor-pointer border",
                 isSelected
@@ -233,7 +267,7 @@ function FormationTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: num
           return (
             <button
               key={f.id}
-              onClick={() => selectFormation(f.id)}
+              onClick={(e) => { e.stopPropagation(); selectFormation(f.id); }}
               className={cn(
                 "absolute top-1 h-8 rounded-sm flex items-center px-1.5 text-[9px] font-mono-code transition-all cursor-pointer border",
                 isSelected
@@ -246,14 +280,10 @@ function FormationTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: num
                 backgroundColor: `${f.color}22`,
               }}
             >
-              <div
-                className="w-1 h-full rounded-full mr-1 flex-shrink-0"
-                style={{ backgroundColor: f.color }}
-              />
+              <div className="w-1 h-full rounded-full mr-1 flex-shrink-0" style={{ backgroundColor: f.color }} />
               <span className="truncate text-secondary-foreground">
                 {preset || f.formationType} #{i + 1}
               </span>
-              {/* Transition indicator */}
               <div
                 className="absolute top-0 h-full border-r border-dashed opacity-30"
                 style={{
@@ -274,14 +304,17 @@ const FORMATION_PRESETS_MAP: Record<string, string> = {
   wave: '🌊', spiral: '🌀', line: '➖', 'v-shape': '✌️',
 };
 
+const MIN_PPS = 4;
+const MAX_PPS = 80;
+
 export default function Timeline() {
   const {
     isPlaying, setPlaying, currentTime, setCurrentTime, duration,
     selectedTimelineItemId, removeTimelineItem, timelineItems,
-    playbackSpeed, setPlaybackSpeed,
+    playbackSpeed, setPlaybackSpeed, bpm, snapToBeat, setSnapToBeat,
   } = useProjectStore();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const pixelsPerSecond = 12;
+  const [pixelsPerSecond, setPixelsPerSecond] = useState(12);
 
   const totalCost = useMemo(() => {
     return timelineItems.reduce((sum, item) => {
@@ -290,24 +323,62 @@ export default function Timeline() {
     }, 0);
   }, [timelineItems]);
 
+  // Scroll wheel zoom — Ctrl/Meta + scroll to zoom, plain scroll for horizontal pan
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const rect = el.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left + el.scrollLeft - 112;
+        const timeAtCursor = mouseX / pixelsPerSecond;
+
+        setPixelsPerSecond((prev) => {
+          const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+          const next = Math.min(MAX_PPS, Math.max(MIN_PPS, prev * factor));
+
+          // Adjust scroll to keep time under cursor stable
+          requestAnimationFrame(() => {
+            if (scrollRef.current) {
+              const newX = timeAtCursor * next + 112;
+              scrollRef.current.scrollLeft = newX - (e.clientX - rect.left);
+            }
+          });
+
+          return next;
+        });
+      }
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [pixelsPerSecond]);
+
   const handleTrackClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       const rect = e.currentTarget.getBoundingClientRect();
       const scrollLeft = scrollRef.current?.scrollLeft ?? 0;
-      const x = e.clientX - rect.left + scrollLeft - 112; // subtract label width
+      const x = e.clientX - rect.left + scrollLeft - 112;
       if (x < 0) return;
-      const time = Math.max(0, Math.min(x / pixelsPerSecond, duration));
+      let time = Math.max(0, Math.min(x / pixelsPerSecond, duration));
+      time = snapTimeToBeat(time, bpm, snapToBeat, pixelsPerSecond);
       setCurrentTime(time);
     },
-    [duration, pixelsPerSecond, setCurrentTime]
+    [duration, pixelsPerSecond, setCurrentTime, bpm, snapToBeat]
   );
 
   const handleDeleteSelected = () => {
     if (selectedTimelineItemId) removeTimelineItem(selectedTimelineItemId);
   };
 
+  const zoomIn = () => setPixelsPerSecond((p) => Math.min(MAX_PPS, p * 1.3));
+  const zoomOut = () => setPixelsPerSecond((p) => Math.max(MIN_PPS, p / 1.3));
+  const zoomPercent = Math.round((pixelsPerSecond / 12) * 100);
+
   return (
-    <div className="flex flex-col bg-card border-t border-border">
+    <div className="flex flex-col bg-card border-t border-border h-full">
       {/* Transport controls */}
       <div className="flex items-center gap-1 px-3 py-1.5 border-b border-border bg-surface-1">
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCurrentTime(0)}>
@@ -335,7 +406,7 @@ export default function Timeline() {
           <span className="font-mono-code text-xs text-muted-foreground">{formatTime(duration)}</span>
         </div>
 
-        {/* Playback speed slider */}
+        {/* Playback speed */}
         <div className="flex items-center gap-1.5 mr-2">
           <span className="text-[9px] font-mono-code text-muted-foreground w-7 text-right">{playbackSpeed.toFixed(playbackSpeed < 1 ? 2 : 1)}x</span>
           <input
@@ -365,6 +436,35 @@ export default function Timeline() {
           </div>
         </div>
 
+        {/* Separator */}
+        <div className="w-px h-4 bg-border mx-1" />
+
+        {/* Zoom controls */}
+        <div className="flex items-center gap-0.5">
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={zoomOut} title="Zoom out">
+            <ZoomOut className="h-3 w-3" />
+          </Button>
+          <span className="text-[9px] font-mono-code text-muted-foreground w-8 text-center">{zoomPercent}%</span>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={zoomIn} title="Zoom in">
+            <ZoomIn className="h-3 w-3" />
+          </Button>
+        </div>
+
+        {/* Beat snap toggle */}
+        <button
+          className={cn(
+            "flex items-center gap-1 text-[9px] font-mono-code px-1.5 py-0.5 rounded-sm border ml-1 transition-colors",
+            snapToBeat
+              ? "bg-safety/20 text-safety border-safety/40"
+              : "bg-surface-2 text-muted-foreground border-border hover:text-foreground"
+          )}
+          onClick={() => setSnapToBeat(!snapToBeat)}
+          title={`Beat snap ${snapToBeat ? 'ON' : 'OFF'}${bpm ? ` (${bpm} BPM)` : ''}`}
+        >
+          <Magnet className="h-3 w-3" />
+          {bpm && <span>{bpm}</span>}
+        </button>
+
         <div className="flex-1" />
 
         {/* Stats */}
@@ -391,6 +491,8 @@ export default function Timeline() {
             <div className="w-28 flex-shrink-0" />
             <div className="flex-1 relative">
               <TimeRuler duration={duration} pixelsPerSecond={pixelsPerSecond} />
+              {/* Beat grid overlay */}
+              <BeatGrid duration={duration} pixelsPerSecond={pixelsPerSecond} bpm={bpm} />
               {/* Playhead */}
               <div
                 className="absolute top-0 bottom-0 w-px bg-primary z-20 pointer-events-none"
@@ -404,7 +506,6 @@ export default function Timeline() {
           <TimelineTrackRow label="DRONE FX" trackIndex={1} pixelsPerSecond={pixelsPerSecond} color="#00B4D8" duration={duration} scrollRef={scrollRef} />
           <TimelineTrackRow label="PYRO SYS" trackIndex={0} pixelsPerSecond={pixelsPerSecond} color="#FF6B35" duration={duration} scrollRef={scrollRef} />
           <WaypointTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
-          <AudioWaveform pixelsPerSecond={pixelsPerSecond} />
           <AudioWaveform pixelsPerSecond={pixelsPerSecond} />
         </div>
       </div>
