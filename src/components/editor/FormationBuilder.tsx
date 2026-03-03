@@ -140,14 +140,24 @@ function useAIFormation() {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      const pts: FormationPoint[] = (data.points || []).map((p: any) => ({ x: p.x, z: p.z }));
+      const pts: FormationPoint[] = (data.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
+      
+      // Validate point count
+      if (pts.length !== droneCount) {
+        console.warn(`AI returned ${pts.length} points, expected ${droneCount} (post-processed on server)`);
+      }
+
       setAiPoints(pts);
       setAiMeta({
         name: data.formationName || 'AI Formation',
-        height: data.suggestedHeight || 20,
-        transition: data.suggestedTransitionTime || 10,
+        height: data.suggestedHeight || 25,
+        transition: data.suggestedTransitionTime || 12,
       });
-      toast.success(`Formação "${data.formationName}" gerada com ${pts.length} pontos`);
+      
+      const accuracy = pts.length === droneCount ? '✓' : `⚠ ${pts.length}/${droneCount}`;
+      toast.success(`Formação "${data.formationName}" gerada ${accuracy}`, {
+        description: `${pts.length} drones · ${data.suggestedHeight}m altitude`,
+      });
     } catch (e: any) {
       toast.error(e.message || 'Erro ao gerar formação');
     } finally {
