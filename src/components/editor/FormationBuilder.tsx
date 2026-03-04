@@ -134,15 +134,19 @@ function useAIFormation() {
     setAiPoints(null);
     setAiMeta(null);
     try {
+      // Get previous formation points for transition optimization
+      const { droneFormations } = useProjectStore.getState();
+      const lastFormation = droneFormations.length > 0 ? droneFormations[droneFormations.length - 1] : null;
+      const previousFormation = lastFormation?.points?.slice(0, droneCount);
+
       const { data, error } = await supabase.functions.invoke('generate-formation', {
-        body: { mode, prompt, droneCount, imageBase64 },
+        body: { mode, prompt, droneCount, imageBase64, previousFormation },
       });
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
       const pts: FormationPoint[] = (data.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
       
-      // Validate point count
       if (pts.length !== droneCount) {
         console.warn(`AI returned ${pts.length} points, expected ${droneCount} (post-processed on server)`);
       }
@@ -156,7 +160,7 @@ function useAIFormation() {
       
       const accuracy = pts.length === droneCount ? '✓' : `⚠ ${pts.length}/${droneCount}`;
       toast.success(`Formação "${data.formationName}" gerada ${accuracy}`, {
-        description: `${pts.length} drones · ${data.suggestedHeight}m altitude`,
+        description: `${pts.length} drones · ${data.suggestedHeight}m altitude · Otimizada para transição`,
       });
     } catch (e: any) {
       toast.error(e.message || 'Erro ao gerar formação');
@@ -244,15 +248,35 @@ function TextAITab({ droneCount, onGenerate, loading }: {
   loading: boolean;
 }) {
   const [prompt, setPrompt] = useState('');
+  const quickEmojis = ['⭐', '❤️', '🎄', '🎵', '🌙', '🦋', '🔔', '✝️', '☮️', '♾️', '🏠', '🐬'];
 
   return (
     <div className="space-y-2 p-1">
-      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Texto → Formação</p>
+      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Texto / Emoji → Formação</p>
+      
+      {/* Quick emoji buttons */}
+      <div className="flex flex-wrap gap-1">
+        {quickEmojis.map((emoji) => (
+          <button
+            key={emoji}
+            onClick={() => setPrompt(emoji)}
+            className={cn(
+              "w-7 h-7 rounded-sm text-base flex items-center justify-center border transition-colors",
+              prompt === emoji
+                ? "border-primary/40 bg-primary/10"
+                : "border-border/50 bg-surface-2 hover:bg-surface-3"
+            )}
+          >
+            {emoji}
+          </button>
+        ))}
+      </div>
+
       <Textarea
-        placeholder="Descreva a formação desejada... Ex: 'Um logotipo do Brasil com estrelas formando a bandeira'"
+        placeholder="Descreva a formação... Ex: 'estrela de 5 pontas', '🌙', 'bandeira do Brasil', ou cole SVG path data"
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
-        className="h-20 text-xs bg-surface-2 border-border resize-none"
+        className="h-16 text-xs bg-surface-2 border-border resize-none"
       />
       <Button
         size="sm"
@@ -264,7 +288,7 @@ function TextAITab({ droneCount, onGenerate, loading }: {
         Gerar com IA ({droneCount} drones)
       </Button>
       <p className="text-[9px] text-muted-foreground">
-        A IA interpreta sua descrição e gera coordenadas para {droneCount} drones.
+        Suporta texto, emojis, formas e SVG paths.
       </p>
     </div>
   );

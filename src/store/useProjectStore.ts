@@ -18,12 +18,11 @@ export interface TimelineItem {
   startTime: number;
   trackIndex: number;
   position: { x: number; y: number; z: number };
-  // Finale 3D Script fields
-  pan?: number;       // counter-clockwise around Y-axis, 0 = facing viewer
-  tilt?: number;      // angle from vertical
-  chainRef?: string;  // chain reference ID - all items in same chain share this
-  chainGap?: number;  // delay (ms) from previous item in chain
-  positionName?: string; // assigned position name
+  pan?: number;
+  tilt?: number;
+  chainRef?: string;
+  chainGap?: number;
+  positionName?: string;
   notes?: string;
 }
 
@@ -52,11 +51,8 @@ export interface Waypoint {
   id: string;
   position: { x: number; y: number; z: number };
   time: number;
-  /** Incoming Bézier control handle (relative to position) */
   controlIn?: BezierHandle;
-  /** Outgoing Bézier control handle (relative to position) */
   controlOut?: BezierHandle;
-  /** Max speed in m/s to reach this waypoint (0 = auto) */
   maxSpeed?: number;
 }
 
@@ -71,22 +67,22 @@ export type EditorMode = 'select' | 'add-pyro' | 'add-drone' | 'add-waypoint';
 
 export interface DroneFormation {
   id: string;
-  formationType: string; // heart, star, circle, etc.
+  formationType: string;
   droneCount: number;
-  height: number; // meters
+  height: number;
   radius: number;
   spacing: number;
   rotation: number;
-  startTime: number; // seconds - when transition starts
-  transitionDuration: number; // seconds - time to reach formation
-  holdDuration: number; // seconds - time to hold formation
+  startTime: number;
+  transitionDuration: number;
+  holdDuration: number;
   color: string;
-  points: { x: number; z: number }[]; // 2D formation points
+  points: { x: number; z: number }[];
 }
 
 export interface CameraKeyframe {
   id: string;
-  time: number; // seconds
+  time: number;
   position: [number, number, number];
   lookAt: [number, number, number];
   fov: number;
@@ -94,9 +90,9 @@ export interface CameraKeyframe {
 
 export interface WindSettings {
   enabled: boolean;
-  direction: number; // degrees, 0 = north (+Z)
-  speed: number;     // m/s
-  gustStrength: number; // 0-1 multiplier for random gusts
+  direction: number;
+  speed: number;
+  gustStrength: number;
 }
 
 export interface ProjectState {
@@ -107,6 +103,7 @@ export interface ProjectState {
   timelineItems: TimelineItem[];
   selectedEffectId: string | null;
   selectedTimelineItemId: string | null;
+  selectedTimelineItemIds: string[]; // Multi-select
   positions: Position[];
   selectedPositionId: string | null;
   selectedPositionIds: string[];
@@ -122,15 +119,11 @@ export interface ProjectState {
   snapToBeat: boolean;
   playbackSpeed: number;
   projectId: string | null;
-  // Camera animation
   cameraKeyframes: CameraKeyframe[];
   cameraAnimationEnabled: boolean;
-  // Wind
   wind: WindSettings;
-  // Drone choreography formations
   droneFormations: DroneFormation[];
   selectedFormationId: string | null;
-  // Batch editing
   selectedTrajectoryIds: string[];
   showFormations: boolean;
 
@@ -139,9 +132,13 @@ export interface ProjectState {
   setDuration: (duration: number) => void;
   addTimelineItem: (item: TimelineItem) => void;
   removeTimelineItem: (id: string) => void;
+  removeMultipleTimelineItems: (ids: string[]) => void;
   updateTimelineItem: (id: string, updates: Partial<Omit<TimelineItem, 'id'>>) => void;
   selectEffect: (id: string | null) => void;
   selectTimelineItem: (id: string | null) => void;
+  toggleTimelineItemSelection: (id: string) => void;
+  clearTimelineItemSelection: () => void;
+  duplicateTimelineItems: (ids: string[]) => void;
   setProjectName: (name: string) => void;
   addPosition: (pos: Position) => void;
   updatePosition: (id: string, updates: Partial<Omit<Position, 'id'>>) => void;
@@ -166,23 +163,18 @@ export interface ProjectState {
   setSnapToBeat: (snap: boolean) => void;
   setPlaybackSpeed: (speed: number) => void;
   setProjectId: (id: string | null) => void;
-  // Chain operations
   combineAsChain: (itemIds: string[], gap?: number) => void;
   breakChain: (chainRef: string) => void;
-  // Camera keyframe operations
   addCameraKeyframe: (kf: CameraKeyframe) => void;
   updateCameraKeyframe: (id: string, updates: Partial<Omit<CameraKeyframe, 'id'>>) => void;
   removeCameraKeyframe: (id: string) => void;
   setCameraAnimationEnabled: (enabled: boolean) => void;
-  // Wind
   setWind: (updates: Partial<WindSettings>) => void;
-  // Drone formations
   addDroneFormation: (formation: DroneFormation) => void;
   updateDroneFormation: (id: string, updates: Partial<Omit<DroneFormation, 'id'>>) => void;
   removeDroneFormation: (id: string) => void;
   selectFormation: (id: string | null) => void;
   materializeFormation: (formation: DroneFormation) => void;
-  // Batch editing
   toggleTrajectorySelection: (id: string) => void;
   selectAllFormationTrajectories: (formationIndex: number) => void;
   clearTrajectorySelection: () => void;
@@ -192,47 +184,35 @@ export interface ProjectState {
 }
 
 export const EFFECT_LIBRARY: Effect[] = [
-  // Morteiros
   { id: 'mort-01', name: 'Chrysanthemum 3"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 2.5, cost: 12, icon: '💥' },
   { id: 'mort-02', name: 'Willow 4"', category: 'morteiros', type: 'firework', color: '#FFA500', duration: 3.5, cost: 18, icon: '🎆' },
   { id: 'mort-03', name: 'Brocade Crown 5"', category: 'morteiros', type: 'firework', color: '#FFE4B5', duration: 4, cost: 25, icon: '👑' },
   { id: 'mort-04', name: 'Coconut Palm 6"', category: 'morteiros', type: 'firework', color: '#FF6347', duration: 5, cost: 35, icon: '🌴' },
-  // Peônias
   { id: 'peon-01', name: 'Red Peony', category: 'peonias', type: 'firework', color: '#FF0000', duration: 2, cost: 10, icon: '🔴' },
   { id: 'peon-02', name: 'Blue Peony', category: 'peonias', type: 'firework', color: '#0088FF', duration: 2, cost: 10, icon: '🔵' },
   { id: 'peon-03', name: 'Green Peony', category: 'peonias', type: 'firework', color: '#00FF88', duration: 2, cost: 10, icon: '🟢' },
   { id: 'peon-04', name: 'Purple Dahlia', category: 'peonias', type: 'firework', color: '#9B30FF', duration: 2.5, cost: 14, icon: '🟣' },
-  // Drones
   { id: 'drone-01', name: 'Single LED Point', category: 'drones', type: 'drone', color: '#00FFFF', duration: 10, cost: 0.5, icon: '💡' },
   { id: 'drone-02', name: 'RGB Cluster x4', category: 'drones', type: 'drone', color: '#FFFFFF', duration: 10, cost: 2, icon: '✨' },
   { id: 'drone-03', name: 'Strobe Unit', category: 'drones', type: 'drone', color: '#FFFFFF', duration: 5, cost: 1, icon: '⚡' },
-  // Formações
   { id: 'form-01', name: 'Heart Formation', category: 'formacoes', type: 'drone', color: '#FF69B4', duration: 15, cost: 50, icon: '❤️' },
   { id: 'form-02', name: 'Star Formation', category: 'formacoes', type: 'drone', color: '#FFD700', duration: 15, cost: 50, icon: '⭐' },
   { id: 'form-03', name: 'Wave Pattern', category: 'formacoes', type: 'drone', color: '#00BFFF', duration: 12, cost: 40, icon: '🌊' },
   { id: 'form-04', name: 'Spiral Ascent', category: 'formacoes', type: 'drone', color: '#FF4500', duration: 20, cost: 60, icon: '🌀' },
-  // Spark
   { id: 'spark-01', name: 'Silver Spark Fountain', category: 'morteiros', type: 'firework', color: '#C0C0C0', duration: 3, cost: 8, icon: '✳️' },
   { id: 'spark-02', name: 'Gold Spark Jet', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 4, cost: 10, icon: '⚜️' },
-  // Shell
   { id: 'shell-01', name: 'Titanium Shell 4"', category: 'morteiros', type: 'firework', color: '#E8E8E8', duration: 3, cost: 20, icon: '💫' },
   { id: 'shell-02', name: 'Color Shell 6"', category: 'morteiros', type: 'firework', color: '#FF1493', duration: 4.5, cost: 30, icon: '🎇' },
-  // Comet
   { id: 'comet-01', name: 'Rising Comet', category: 'peonias', type: 'firework', color: '#00FFFF', duration: 1.5, cost: 6, icon: '☄️' },
   { id: 'comet-02', name: 'Falling Comet Trail', category: 'peonias', type: 'firework', color: '#FFA07A', duration: 2, cost: 8, icon: '🌠' },
-  // Flare
   { id: 'flare-01', name: 'Red Signal Flare', category: 'peonias', type: 'firework', color: '#FF0000', duration: 5, cost: 4, icon: '🔥' },
   { id: 'flare-02', name: 'White Magnesium Flare', category: 'peonias', type: 'firework', color: '#FFFAFA', duration: 6, cost: 5, icon: '💡' },
-  // MultiBurst
   { id: 'mburst-01', name: 'Triple Burst 3"', category: 'morteiros', type: 'firework', color: '#FF6347', duration: 3.5, cost: 22, icon: '🎆' },
   { id: 'mburst-02', name: 'Penta Burst 5"', category: 'morteiros', type: 'firework', color: '#9400D3', duration: 5, cost: 40, icon: '💥' },
-  // Fan
   { id: 'fan-01', name: 'Fan Spread 90°', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 2, cost: 15, icon: '🪭' },
   { id: 'fan-02', name: 'Wide Fan 180°', category: 'morteiros', type: 'firework', color: '#00FF7F', duration: 2.5, cost: 20, icon: '🌈' },
-  // AerialRing
   { id: 'aring-01', name: 'Saturn Ring', category: 'formacoes', type: 'drone', color: '#FFD700', duration: 12, cost: 45, icon: '💍' },
   { id: 'aring-02', name: 'Neon Halo', category: 'formacoes', type: 'drone', color: '#00FFFF', duration: 10, cost: 35, icon: '⭕' },
-  // Shockwave
   { id: 'shock-01', name: 'Ground Shockwave', category: 'morteiros', type: 'firework', color: '#FF4500', duration: 1.5, cost: 18, icon: '💢' },
   { id: 'shock-02', name: 'Aerial Shockwave', category: 'morteiros', type: 'firework', color: '#FFFFFF', duration: 2, cost: 25, icon: '🔆' },
 ];
@@ -245,6 +225,7 @@ export const useProjectStore = create<ProjectState>((set) => ({
   timelineItems: [],
   selectedEffectId: null,
   selectedTimelineItemId: null,
+  selectedTimelineItemIds: [],
   positions: [],
   selectedPositionId: null,
   selectedPositionIds: [],
@@ -272,12 +253,39 @@ export const useProjectStore = create<ProjectState>((set) => ({
   setCurrentTime: (time) => set({ currentTime: time }),
   setDuration: (duration) => set({ duration }),
   addTimelineItem: (item) => set((s) => ({ timelineItems: [...s.timelineItems, item] })),
-  removeTimelineItem: (id) => set((s) => ({ timelineItems: s.timelineItems.filter((i) => i.id !== id) })),
+  removeTimelineItem: (id) => set((s) => ({ 
+    timelineItems: s.timelineItems.filter((i) => i.id !== id),
+    selectedTimelineItemId: s.selectedTimelineItemId === id ? null : s.selectedTimelineItemId,
+  })),
+  removeMultipleTimelineItems: (ids) => set((s) => ({
+    timelineItems: s.timelineItems.filter((i) => !ids.includes(i.id)),
+    selectedTimelineItemId: ids.includes(s.selectedTimelineItemId || '') ? null : s.selectedTimelineItemId,
+    selectedTimelineItemIds: [],
+  })),
   updateTimelineItem: (id, updates) => set((s) => ({
     timelineItems: s.timelineItems.map((i) => i.id === id ? { ...i, ...updates } : i),
   })),
   selectEffect: (id) => set({ selectedEffectId: id }),
-  selectTimelineItem: (id) => set({ selectedTimelineItemId: id }),
+  selectTimelineItem: (id) => set({ selectedTimelineItemId: id, selectedTimelineItemIds: [] }),
+  toggleTimelineItemSelection: (id) => set((s) => {
+    const ids = s.selectedTimelineItemIds.includes(id)
+      ? s.selectedTimelineItemIds.filter((i) => i !== id)
+      : [...s.selectedTimelineItemIds, id];
+    return { selectedTimelineItemIds: ids, selectedTimelineItemId: ids[ids.length - 1] ?? null };
+  }),
+  clearTimelineItemSelection: () => set({ selectedTimelineItemIds: [], selectedTimelineItemId: null }),
+  duplicateTimelineItems: (ids) => set((s) => {
+    const newItems = ids.map((id) => {
+      const item = s.timelineItems.find((i) => i.id === id);
+      if (!item) return null;
+      return {
+        ...item,
+        id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        startTime: item.startTime + 0.5,
+      };
+    }).filter(Boolean) as TimelineItem[];
+    return { timelineItems: [...s.timelineItems, ...newItems] };
+  }),
   setProjectName: (name) => set({ projectName: name }),
   addPosition: (pos) => set((s) => ({ positions: [...s.positions, pos] })),
   updatePosition: (id, updates) => set((s) => ({
@@ -347,7 +355,6 @@ export const useProjectStore = create<ProjectState>((set) => ({
   setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
   setProjectId: (id) => set({ projectId: id }),
 
-  // Chain operations
   combineAsChain: (itemIds, gap = 0) => set((s) => {
     if (itemIds.length < 2) return s;
     const chainRef = `chain-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
@@ -355,29 +362,21 @@ export const useProjectStore = create<ProjectState>((set) => ({
       .map((id) => s.timelineItems.find((i) => i.id === id))
       .filter(Boolean)
       .sort((a, b) => a!.startTime - b!.startTime) as TimelineItem[];
-
     return {
       timelineItems: s.timelineItems.map((item) => {
         const idx = items.findIndex((i) => i.id === item.id);
         if (idx === -1) return item;
-        return {
-          ...item,
-          chainRef,
-          chainGap: idx === 0 ? 0 : gap || Math.round((items[idx].startTime - items[idx - 1].startTime) * 1000),
-        };
+        return { ...item, chainRef, chainGap: idx === 0 ? 0 : gap || Math.round((items[idx].startTime - items[idx - 1].startTime) * 1000) };
       }),
     };
   }),
 
   breakChain: (chainRef) => set((s) => ({
     timelineItems: s.timelineItems.map((item) =>
-      item.chainRef === chainRef
-        ? { ...item, chainRef: undefined, chainGap: undefined }
-        : item
+      item.chainRef === chainRef ? { ...item, chainRef: undefined, chainGap: undefined } : item
     ),
   })),
 
-  // Camera keyframe operations
   addCameraKeyframe: (kf) => set((s) => ({
     cameraKeyframes: [...s.cameraKeyframes, kf].sort((a, b) => a.time - b.time),
   })),
@@ -389,10 +388,8 @@ export const useProjectStore = create<ProjectState>((set) => ({
   })),
   setCameraAnimationEnabled: (enabled) => set({ cameraAnimationEnabled: enabled }),
 
-  // Wind
   setWind: (updates) => set((s) => ({ wind: { ...s.wind, ...updates } })),
 
-  // Drone formations
   addDroneFormation: (formation) => set((s) => ({
     droneFormations: [...s.droneFormations, formation],
   })),
@@ -411,18 +408,14 @@ export const useProjectStore = create<ProjectState>((set) => ({
       ? s.positions.filter(p => p.type === 'drone-pad').map(p => p.id).slice(0, formation.droneCount)
       : undefined;
     const { positions: newPads, trajectories: newTrajs } = materialize(
-      formation,
-      s.droneFormations.length,
-      existingPadIds,
+      formation, s.droneFormations.length, existingPadIds,
     );
-    // Debug removed
     return {
       positions: isReuse ? s.positions : [...s.positions, ...newPads],
       trajectories: [...s.trajectories, ...newTrajs],
     };
   }),
 
-  // Batch editing
   toggleTrajectorySelection: (id) => set((s) => {
     const ids = s.selectedTrajectoryIds.includes(id)
       ? s.selectedTrajectoryIds.filter((i) => i !== id)
@@ -430,7 +423,6 @@ export const useProjectStore = create<ProjectState>((set) => ({
     return { selectedTrajectoryIds: ids };
   }),
   selectAllFormationTrajectories: (formationIndex) => set((s) => {
-    // Select all trajectories linked to drone pads from a specific formation
     const pads = s.positions.filter(p => p.type === 'drone-pad');
     const formation = s.droneFormations[formationIndex];
     if (!formation) return s;

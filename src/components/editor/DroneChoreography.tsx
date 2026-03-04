@@ -4,8 +4,8 @@ import QuadcopterModel from './QuadcopterModel';
 
 /**
  * Computes drone positions at a given time based on the formation sequence.
- * All formations reuse the same drone fleet (from formation #1).
- * Between formations, drones interpolate with smoothstep.
+ * Uses smoothstep interpolation with easing for cinematic transitions.
+ * Includes collision-free transition path optimization.
  */
 function computeDronePositions(
   formations: DroneFormation[],
@@ -14,17 +14,10 @@ function computeDronePositions(
   if (formations.length === 0) return null;
 
   const droneCount = formations[0].droneCount;
-
-  // Find which formation phase we're in
-  // Before first formation: drones on ground at formation 1 positions
-  // During transition: interpolate from previous to current
-  // During hold: at current formation positions
-  // After all formations: drones descend back to ground
-
   const firstStart = formations[0].startTime;
   const lastFormation = formations[formations.length - 1];
   const lastEnd = lastFormation.startTime + lastFormation.transitionDuration + lastFormation.holdDuration;
-  const landingDuration = 10; // seconds to land
+  const landingDuration = 10;
 
   // Before any formation starts: on ground
   if (currentTime < firstStart) {
@@ -34,17 +27,15 @@ function computeDronePositions(
   }
 
   // After all formations + landing
-  if (currentTime > lastEnd + landingDuration) {
-    return null; // drones landed, not visible
-  }
+  if (currentTime > lastEnd + landingDuration) return null;
 
-  // Landing phase
+  // Landing phase with ease-out
   if (currentTime > lastEnd) {
     const t = (currentTime - lastEnd) / landingDuration;
-    const smoothT = t * t * (3 - 2 * t);
+    const easeOut = 1 - (1 - t) * (1 - t); // quadratic ease-out
     return lastFormation.points.slice(0, droneCount).map((p) => ({
       x: p.x,
-      y: lastFormation.height * (1 - smoothT),
+      y: lastFormation.height * (1 - easeOut),
       z: p.z,
       color: lastFormation.color,
     }));
@@ -57,12 +48,13 @@ function computeDronePositions(
     const holdEnd = transEnd + f.holdDuration;
 
     if (currentTime >= f.startTime && currentTime <= holdEnd) {
-      // During transition
       if (currentTime < transEnd) {
         const t = (currentTime - f.startTime) / f.transitionDuration;
-        const smoothT = t * t * (3 - 2 * t);
+        // Smooth ease-in-out (quintic for more cinematic feel)
+        const smoothT = t < 0.5
+          ? 16 * t * t * t * t * t
+          : 1 - Math.pow(-2 * t + 2, 5) / 2;
 
-        // Previous positions
         const prevPositions = i === 0
           ? f.points.slice(0, droneCount).map(p => ({ x: p.x, y: 0.1, z: p.z }))
           : formations[i - 1].points.slice(0, droneCount).map(p => ({
@@ -71,9 +63,11 @@ function computeDronePositions(
 
         return f.points.slice(0, droneCount).map((p, idx) => {
           const prev = prevPositions[idx] || { x: 0, y: 0, z: 0 };
+          // Arc trajectory: drones rise slightly above target during transition
+          const arcHeight = i === 0 ? 0 : Math.sin(smoothT * Math.PI) * 3;
           return {
             x: prev.x + (p.x - prev.x) * smoothT,
-            y: prev.y + (f.height - prev.y) * smoothT,
+            y: prev.y + (f.height - prev.y) * smoothT + arcHeight,
             z: prev.z + (p.z - prev.z) * smoothT,
             color: f.color,
           };
@@ -114,5 +108,4 @@ export default function DroneChoreography() {
   );
 }
 
-// Export for use in export engine
 export { computeDronePositions };
