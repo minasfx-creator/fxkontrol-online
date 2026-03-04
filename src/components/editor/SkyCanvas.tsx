@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Stars, Grid, PerspectiveCamera } from '@react-three/drei';
+import { OrbitControls, Stars, Grid, PerspectiveCamera, useTexture, Instances, Instance } from '@react-three/drei';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { useRef, useMemo, useEffect, useState, Component, ErrorInfo, ReactNode } from 'react';
 import * as THREE from 'three';
@@ -27,8 +27,7 @@ class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
           <AlertTriangle className="w-10 h-10 text-yellow-500" />
           <h3 className="text-sm font-semibold text-foreground">3D Engine Unavailable</h3>
           <p className="text-xs text-muted-foreground max-w-md">
-            WebGL could not be initialized. This usually means hardware acceleration is disabled in your browser.
-            Try enabling it in your browser settings, or open this app in a different browser/device.
+            WebGL could not be initialized. Try enabling hardware acceleration or use a different browser.
           </p>
         </div>
       );
@@ -45,7 +44,7 @@ const CAMERA_PRESETS = [
   { id: 'closeup', label: 'Close-up', icon: Camera, position: [5, 6, 8] as [number, number, number], target: [0, 8, 0] as [number, number, number] },
 ] as const;
 
-// --- Playback clock: advances currentTime each frame when playing ---
+// --- Playback clock ---
 function PlaybackClock() {
   const { isPlaying, currentTime, duration, setCurrentTime, setPlaying, playbackSpeed } = useProjectStore();
   const prevTime = useRef(performance.now());
@@ -55,38 +54,30 @@ function PlaybackClock() {
     if (isPlaying) {
       const delta = ((now - prevTime.current) / 1000) * playbackSpeed;
       const next = currentTime + delta;
-      if (next >= duration) {
-        setCurrentTime(duration);
-        setPlaying(false);
-      } else {
-        setCurrentTime(next);
-      }
+      if (next >= duration) { setCurrentTime(duration); setPlaying(false); } else { setCurrentTime(next); }
     }
     prevTime.current = now;
   });
-
   return null;
 }
 
-// --- Particle system constants ---
+// --- Particle system ---
 const PARTICLE_COUNT = 120;
-const TRAIL_LENGTH = 6; // number of past positions per particle
+const TRAIL_LENGTH = 6;
 const GRAVITY = -4;
 
-/** Get current wind force vector from store */
 function getWindForce(): [number, number, number] {
   const { wind } = useProjectStore.getState();
   if (!wind.enabled) return [0, 0, 0];
   const rad = (wind.direction * Math.PI) / 180;
   const gust = 1 + (Math.sin(performance.now() * 0.001) * 0.5 + 0.5) * wind.gustStrength;
-  const s = wind.speed * gust * 0.15; // scale down for visual
+  const s = wind.speed * gust * 0.15;
   return [Math.sin(rad) * s, 0, Math.cos(rad) * s];
 }
 
 function createParticleGeometry() {
   const velocities = new Float32Array(PARTICLE_COUNT * 3);
   const lifetimes = new Float32Array(PARTICLE_COUNT);
-
   for (let i = 0; i < PARTICLE_COUNT; i++) {
     const theta = Math.random() * Math.PI * 2;
     const phi = Math.acos(2 * Math.random() - 1);
@@ -99,7 +90,6 @@ function createParticleGeometry() {
   return { velocities, lifetimes };
 }
 
-/** Compute particle position at a given physics time, with wind */
 function particlePos(vx: number, vy: number, vz: number, t: number, wind: [number, number, number]): [number, number, number] {
   return [
     vx * t * 0.5 + wind[0] * t * t * 0.5,
@@ -108,62 +98,39 @@ function particlePos(vx: number, vy: number, vz: number, t: number, wind: [numbe
   ];
 }
 
-// --- Single firework burst with trails ---
-function FireworkBurst({
-  position,
-  color,
-  progress,
-}: {
-  position: [number, number, number];
-  color: string;
-  progress: number;
-}) {
+function FireworkBurst({ position, color, progress }: { position: [number, number, number]; color: string; progress: number }) {
   const pointsRef = useRef<THREE.Points>(null);
   const trailRef = useRef<THREE.LineSegments>(null);
   const { velocities, lifetimes } = useMemo(() => createParticleGeometry(), []);
   const positionsRef = useRef(new Float32Array(PARTICLE_COUNT * 3));
   const colorsRef = useRef(new Float32Array(PARTICLE_COUNT * 3));
-  // Trail: each particle has TRAIL_LENGTH segments → TRAIL_LENGTH * 2 vertices per particle
   const trailVertCount = PARTICLE_COUNT * TRAIL_LENGTH * 2;
   const trailPosRef = useRef(new Float32Array(trailVertCount * 3));
   const trailColRef = useRef(new Float32Array(trailVertCount * 3));
-
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
 
   useFrame(() => {
     if (!pointsRef.current || !trailRef.current) return;
-
     const pos = positionsRef.current;
     const cols = colorsRef.current;
     const tPos = trailPosRef.current;
     const tCol = trailColRef.current;
-
     const t = progress * 2.5;
     const trailDt = 0.06;
     const w = getWindForce();
 
     for (let i = 0; i < PARTICLE_COUNT; i++) {
-      const vx = velocities[i * 3];
-      const vy = velocities[i * 3 + 1];
-      const vz = velocities[i * 3 + 2];
+      const vx = velocities[i * 3], vy = velocities[i * 3 + 1], vz = velocities[i * 3 + 2];
       const lt = lifetimes[i];
       const fade = Math.max(0, 1 - progress / lt);
-
-      // Head position with wind
       const [hx, hy, hz] = particlePos(vx, vy, vz, t, w);
-      pos[i * 3] = hx;
-      pos[i * 3 + 1] = hy;
-      pos[i * 3 + 2] = hz;
+      pos[i * 3] = hx; pos[i * 3 + 1] = hy; pos[i * 3 + 2] = hz;
 
-      // Head color
       const r = THREE.MathUtils.lerp(baseColor.r, 0.8, progress * 0.6) * fade;
       const g = THREE.MathUtils.lerp(baseColor.g, 0.2, progress * 0.8) * fade;
       const b = THREE.MathUtils.lerp(baseColor.b, 0.05, progress * 0.9) * fade;
-      cols[i * 3] = r;
-      cols[i * 3 + 1] = g;
-      cols[i * 3 + 2] = b;
+      cols[i * 3] = r; cols[i * 3 + 1] = g; cols[i * 3 + 2] = b;
 
-      // Trail segments with wind
       for (let s = 0; s < TRAIL_LENGTH; s++) {
         const t0 = Math.max(0, t - s * trailDt);
         const t1 = Math.max(0, t - (s + 1) * trailDt);
@@ -172,7 +139,6 @@ function FireworkBurst({
         const base = (i * TRAIL_LENGTH + s) * 6;
         tPos[base] = x0; tPos[base + 1] = y0; tPos[base + 2] = z0;
         tPos[base + 3] = x1; tPos[base + 4] = y1; tPos[base + 5] = z1;
-
         const segFade = fade * (1 - s / TRAIL_LENGTH) * 0.6;
         tCol[base] = r * segFade; tCol[base + 1] = g * segFade; tCol[base + 2] = b * segFade;
         const endFade = fade * (1 - (s + 1) / TRAIL_LENGTH) * 0.6;
@@ -180,14 +146,12 @@ function FireworkBurst({
       }
     }
 
-    // Update head points
     const pGeo = pointsRef.current.geometry;
     pGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     pGeo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
     pGeo.attributes.position.needsUpdate = true;
     pGeo.attributes.color.needsUpdate = true;
 
-    // Update trail lines
     const lGeo = trailRef.current.geometry;
     lGeo.setAttribute('position', new THREE.BufferAttribute(tPos, 3));
     lGeo.setAttribute('color', new THREE.BufferAttribute(tCol, 3));
@@ -197,72 +161,37 @@ function FireworkBurst({
 
   return (
     <group position={position}>
-      {/* Central flash at start */}
-      {progress < 0.15 && (
-        <pointLight
-          color={color}
-          intensity={8 * (1 - progress / 0.15)}
-          distance={15}
-          decay={2}
-        />
-      )}
-      {/* Particle heads */}
+      {progress < 0.15 && <pointLight color={color} intensity={8 * (1 - progress / 0.15)} distance={15} decay={2} />}
       <points ref={pointsRef}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[new Float32Array(PARTICLE_COUNT * 3), 3]} />
           <bufferAttribute attach="attributes-color" args={[new Float32Array(PARTICLE_COUNT * 3), 3]} />
         </bufferGeometry>
-        <pointsMaterial
-          size={0.18}
-          vertexColors
-          transparent
-          opacity={0.95}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-          sizeAttenuation
-        />
+        <pointsMaterial size={0.18} vertexColors transparent opacity={0.95} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
-      {/* Trailing streaks */}
       <lineSegments ref={trailRef}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[new Float32Array(trailVertCount * 3), 3]} />
           <bufferAttribute attach="attributes-color" args={[new Float32Array(trailVertCount * 3), 3]} />
         </bufferGeometry>
-        <lineBasicMaterial
-          vertexColors
-          transparent
-          opacity={0.7}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-        />
+        <lineBasicMaterial vertexColors transparent opacity={0.7} depthWrite={false} blending={THREE.AdditiveBlending} />
       </lineSegments>
-      {/* Glow sphere */}
       {progress < 0.4 && (
         <mesh>
           <sphereGeometry args={[0.6 + progress * 3, 16, 16]} />
-          <meshBasicMaterial
-            color={color}
-            transparent
-            opacity={0.08 * (1 - progress / 0.4)}
-            blending={THREE.AdditiveBlending}
-          />
+          <meshBasicMaterial color={color} transparent opacity={0.08 * (1 - progress / 0.4)} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
     </group>
   );
 }
 
-// --- Drone light point (unchanged) ---
 function LightPoint({ position, color }: { position: [number, number, number]; color: string }) {
-  return (
-    <QuadcopterModel position={position} color={color} />
-  );
+  return <QuadcopterModel position={position} color={color} />;
 }
 
-// --- Render active timeline effects ---
 function TimelineEffects() {
   const { timelineItems, currentTime } = useProjectStore();
-
   const activeEffects = useMemo(() => {
     return timelineItems.map((item) => {
       const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
@@ -278,47 +207,113 @@ function TimelineEffects() {
       {activeEffects.map(({ item, effect, progress }) => {
         const pos: [number, number, number] = [item.position.x, item.position.y, item.position.z];
         const eid = effect.id;
-
-        // Route to specialized renderers by effect ID prefix
-        if (eid.startsWith('comet-')) {
-          return <CometEffect key={item.id} position={pos} color={effect.color} progress={progress} direction={eid === 'comet-02' ? 'down' : 'up'} />;
-        }
-        if (eid.startsWith('shock-')) {
-          return <ShockwaveEffect key={item.id} position={pos} color={effect.color} progress={progress} />;
-        }
-        if (eid.startsWith('mburst-')) {
-          const count = eid === 'mburst-02' ? 5 : 3;
-          return <MultiBurstEffect key={item.id} position={pos} color={effect.color} progress={progress} burstCount={count} />;
-        }
-        if (eid.startsWith('fan-')) {
-          const angle = eid === 'fan-02' ? 180 : 90;
-          return <FanEffect key={item.id} position={pos} color={effect.color} progress={progress} spreadAngle={angle} />;
-        }
-
-        // Default firework / drone
-        if (effect.type === 'firework') {
-          return <FireworkBurst key={item.id} position={pos} color={effect.color} progress={progress} />;
-        }
+        if (eid.startsWith('comet-')) return <CometEffect key={item.id} position={pos} color={effect.color} progress={progress} direction={eid === 'comet-02' ? 'down' : 'up'} />;
+        if (eid.startsWith('shock-')) return <ShockwaveEffect key={item.id} position={pos} color={effect.color} progress={progress} />;
+        if (eid.startsWith('mburst-')) return <MultiBurstEffect key={item.id} position={pos} color={effect.color} progress={progress} burstCount={eid === 'mburst-02' ? 5 : 3} />;
+        if (eid.startsWith('fan-')) return <FanEffect key={item.id} position={pos} color={effect.color} progress={progress} spreadAngle={eid === 'fan-02' ? 180 : 90} />;
+        if (effect.type === 'firework') return <FireworkBurst key={item.id} position={pos} color={effect.color} progress={progress} />;
         return <LightPoint key={item.id} position={pos} color={effect.color} />;
       })}
     </>
   );
 }
 
-function GroundPlane() {
+// --- Enhanced atmosphere ---
+function SkyGradient() {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const uniforms = useMemo(() => ({
+    topColor: { value: new THREE.Color('#050510') },
+    midColor: { value: new THREE.Color('#0a0e2a') },
+    bottomColor: { value: new THREE.Color('#121830') },
+    horizonColor: { value: new THREE.Color('#1a2040') },
+  }), []);
+
   return (
-    <Grid
-      position={[0, 0, 0]}
-      args={[100, 100]}
-      cellSize={2}
-      cellThickness={0.5}
-      cellColor="#1a2a3a"
-      sectionSize={10}
-      sectionThickness={1}
-      sectionColor="#2a4a6a"
-      fadeDistance={80}
-      infiniteGrid
-    />
+    <mesh ref={meshRef} scale={[1, 1, 1]}>
+      <sphereGeometry args={[90, 32, 32]} />
+      <shaderMaterial
+        side={THREE.BackSide}
+        uniforms={uniforms}
+        vertexShader={`
+          varying vec3 vWorldPosition;
+          void main() {
+            vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+            vWorldPosition = worldPosition.xyz;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `}
+        fragmentShader={`
+          uniform vec3 topColor;
+          uniform vec3 midColor;
+          uniform vec3 bottomColor;
+          uniform vec3 horizonColor;
+          varying vec3 vWorldPosition;
+          void main() {
+            float h = normalize(vWorldPosition).y;
+            vec3 color;
+            if (h > 0.3) {
+              color = mix(midColor, topColor, smoothstep(0.3, 0.9, h));
+            } else if (h > -0.05) {
+              color = mix(horizonColor, midColor, smoothstep(-0.05, 0.3, h));
+            } else {
+              color = mix(bottomColor, horizonColor, smoothstep(-0.3, -0.05, h));
+            }
+            gl_FragColor = vec4(color, 1.0);
+          }
+        `}
+      />
+    </mesh>
+  );
+}
+
+// --- Stage & Ground ---
+function StageGround() {
+  return (
+    <group>
+      {/* Main grid */}
+      <Grid
+        position={[0, 0, 0]}
+        args={[100, 100]}
+        cellSize={2}
+        cellThickness={0.5}
+        cellColor="#141830"
+        sectionSize={10}
+        sectionThickness={1}
+        sectionColor="#1e2850"
+        fadeDistance={80}
+        infiniteGrid
+      />
+      {/* Stage platform */}
+      <mesh position={[0, -0.05, 0]} receiveShadow>
+        <cylinderGeometry args={[20, 22, 0.1, 64]} />
+        <meshStandardMaterial color="#0c0e1a" metalness={0.4} roughness={0.7} />
+      </mesh>
+      {/* Stage rim glow */}
+      <mesh position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[19.5, 20.5, 64]} />
+        <meshBasicMaterial color="#1a3060" transparent opacity={0.4} />
+      </mesh>
+      {/* Audience area markers */}
+      {[28, 32, 36].map((z, i) => (
+        <mesh key={i} position={[0, 0.01, z]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[40 + i * 4, 0.5]} />
+          <meshBasicMaterial color="#151a2e" transparent opacity={0.3} />
+        </mesh>
+      ))}
+      {/* Scale reference poles */}
+      {[-15, -10, -5, 0, 5, 10, 15].map((x) => (
+        <group key={x} position={[x, 0, -18]}>
+          <mesh position={[0, 2.5, 0]}>
+            <cylinderGeometry args={[0.03, 0.03, 5, 6]} />
+            <meshStandardMaterial color="#1a2040" metalness={0.5} roughness={0.5} />
+          </mesh>
+          <mesh position={[0, 5.1, 0]}>
+            <sphereGeometry args={[0.08, 8, 8]} />
+            <meshBasicMaterial color="#304080" transparent opacity={0.5} />
+          </mesh>
+        </group>
+      ))}
+    </group>
   );
 }
 
@@ -332,15 +327,53 @@ function LaunchSites() {
         <group key={i} position={pos}>
           <mesh>
             <boxGeometry args={[0.6, 0.1, 0.6]} />
-            <meshStandardMaterial color="#3a3a3a" />
+            <meshStandardMaterial color="#2a2a3e" metalness={0.6} roughness={0.4} />
           </mesh>
           <mesh position={[0, 0.08, 0]}>
             <cylinderGeometry args={[0.08, 0.1, 0.3, 8]} />
-            <meshStandardMaterial color="#555" metalness={0.8} roughness={0.3} />
+            <meshStandardMaterial color="#3a3a55" metalness={0.8} roughness={0.3} />
           </mesh>
+          {/* Small launch indicator LED */}
+          <pointLight color="#ff4500" intensity={0.3} distance={1.5} decay={2} position={[0, 0.15, 0]} />
         </group>
       ))}
     </>
+  );
+}
+
+// --- Ambient atmosphere particles (floating dust/fog) ---
+function AtmosphereParticles() {
+  const ref = useRef<THREE.Points>(null);
+  const count = 200;
+  const positions = useMemo(() => {
+    const arr = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      arr[i * 3] = (Math.random() - 0.5) * 80;
+      arr[i * 3 + 1] = Math.random() * 40;
+      arr[i * 3 + 2] = (Math.random() - 0.5) * 80;
+    }
+    return arr;
+  }, []);
+
+  useFrame(({ clock }) => {
+    if (!ref.current) return;
+    const pos = ref.current.geometry.attributes.position;
+    const t = clock.getElapsedTime() * 0.05;
+    for (let i = 0; i < count; i++) {
+      const ix = i * 3;
+      (pos.array as Float32Array)[ix] += Math.sin(t + i * 0.1) * 0.002;
+      (pos.array as Float32Array)[ix + 1] += Math.cos(t + i * 0.15) * 0.001;
+    }
+    pos.needsUpdate = true;
+  });
+
+  return (
+    <points ref={ref}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial size={0.08} color="#304080" transparent opacity={0.15} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+    </points>
   );
 }
 
@@ -366,14 +399,7 @@ function CameraController({ targetPosition, targetLookAt }: { targetPosition: [n
   });
 
   return (
-    <OrbitControls
-      ref={controlsRef}
-      enableDamping
-      dampingFactor={0.05}
-      maxPolarAngle={Math.PI / 2}
-      minDistance={3}
-      maxDistance={100}
-    />
+    <OrbitControls ref={controlsRef} enableDamping dampingFactor={0.05} maxPolarAngle={Math.PI / 2} minDistance={3} maxDistance={100} />
   );
 }
 
@@ -384,20 +410,23 @@ export default function SkyCanvas() {
   const preset = CAMERA_PRESETS.find((p) => p.id === activePreset) || CAMERA_PRESETS[0];
 
   return (
-    <div className="w-full h-full relative bg-[#0a0a12]" data-sky-canvas style={{ cursor: cursorStyle }}>
+    <div className="w-full h-full relative bg-[#050510]" data-sky-canvas style={{ cursor: cursorStyle }}>
       <WebGLErrorBoundary>
-      <Canvas shadows>
+      <Canvas shadows gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 0.8 }}>
         <PerspectiveCamera makeDefault position={preset.position} fov={60} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} />
         
-        <ambientLight intensity={0.05} />
-        <directionalLight position={[10, 10, 5]} intensity={0.1} />
+        {/* Improved lighting */}
+        <ambientLight intensity={0.03} color="#1a2040" />
+        <directionalLight position={[10, 20, 5]} intensity={0.08} color="#2a3a6a" />
+        <hemisphereLight args={['#0a0e2a', '#050510', 0.06]} />
         
-        <Stars radius={100} depth={50} count={3000} factor={3} saturation={0} fade speed={0.5} />
-        <color attach="background" args={['#0a0a12']} />
-        <fog attach="fog" args={['#0a0a12', 40, 100]} />
+        <SkyGradient />
+        <Stars radius={100} depth={50} count={4000} factor={3} saturation={0.2} fade speed={0.3} />
+        <AtmosphereParticles />
+        <fog attach="fog" args={['#080a18', 50, 120]} />
         
-        <GroundPlane />
+        <StageGround />
         <LaunchSites />
         <PositionPins />
         <TrajectoryPaths />
