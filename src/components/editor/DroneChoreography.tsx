@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useProjectStore, type DroneFormation } from '@/store/useProjectStore';
-import QuadcopterModel from './QuadcopterModel';
+import InstancedDroneSwarm from './InstancedDroneSwarm';
 
 /**
  * Computes drone positions at a given time based on the formation sequence.
@@ -95,17 +95,9 @@ export default function DroneChoreography() {
   if (!showFormations || !positions) return null;
 
   return (
-    <>
-      {positions.map((pos, i) => (
-        <QuadcopterModel
-          key={`choreo-drone-${i}`}
-          position={[pos.x, pos.y, pos.z]}
-          color={pos.color}
-          scale={0.6}
-        />
-      ))}
-    </>
+    <InstancedDroneSwarm positions={positions} scale={0.6} />
   );
 }
+
 
 export { computeDronePositions };
