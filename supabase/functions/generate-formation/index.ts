@@ -5,101 +5,149 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `You are an expert drone light show choreographer and computational geometry specialist. You generate precise 2D coordinates (x, z) for drone formations.
+const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
-CRITICAL RULES FOR MAXIMUM ACCURACY:
-1. Return ONLY valid JSON via the tool call. No extra text.
-2. Points MUST be centered around (0,0) with the centroid at origin.
-3. Coordinates are in meters. Typical range: -40 to 40.
-4. The number of points MUST EXACTLY match the requested drone count. Count them carefully.
-5. Minimum spacing between ANY two drones: 2.0 meters (FAA safety requirement).
-6. suggestedHeight: 15-80 meters (scale with formation size).
-7. suggestedTransitionTime: 8-30 seconds.
+// ── System prompt with extreme precision focus ──────────────
 
-FORMATION QUALITY GUIDELINES:
-- OUTLINE SHAPES: Place points at EQUAL arc-length intervals. Use parametric equations.
-  - Heart: x=16sin³(t), z=13cos(t)-5cos(2t)-2cos(3t)-cos(4t), t∈[0,2π]
-  - Star: alternate between inner and outer radius at angular intervals
-  - Circle: simple θ = 2π*i/N
-- FILLED SHAPES: Use concentric layers or Poisson disk sampling within the boundary.
-- TEXT/LETTERS: Each letter needs 8-15 points minimum. Space letters 8-12m apart. Use sans-serif block forms.
-- COMPLEX SHAPES: Allocate 60% of points to distinctive features, 40% to fill.
-- Viewers see this from BELOW looking UP - do NOT mirror shapes.
-- For symmetric shapes: compute one side, then mirror precisely.
+const SYSTEM_PROMPT = `You are a drone light show formation generator. You output EXACT coordinates.
 
-SCALING FORMULA:
-- radius ≈ sqrt(N) * 1.8 meters. Min: 8m, Max: 50m.
-- More drones → proportionally larger formation for readability.
+ABSOLUTE RULES — VIOLATION = FAILURE:
+1. You MUST return EXACTLY N points where N is specified. Not N-1, not N+1. EXACTLY N.
+2. Before returning, COUNT your points array. If length ≠ N, fix it.
+3. Coordinates are in meters, centered at (0,0). Range: typically -50 to +50.
+4. Minimum distance between ANY two points: 2.0 meters.
+5. suggestedHeight: 15-80m. suggestedTransitionTime: 8-30s.
 
-SVG PATH SUPPORT:
-- If the prompt contains SVG path data (d="..."), parse the path and sample N points along it evenly.
-- Normalize to fit within the radius constraint.
+HOW TO GENERATE EXACTLY N POINTS:
+- Step 1: Determine the shape boundary/outline mathematically.
+- Step 2: Sample EXACTLY N points using parametric sampling: t_i = i/N for i=0..N-1
+- Step 3: Verify count = N before returning.
 
-EMOJI SUPPORT:
-- If the prompt is an emoji (🌟⭐❤️🎄🎵 etc.), create the recognizable shape of that emoji.
-- Stars: 5 points with inner/outer radius alternation.
-- Hearts: parametric heart curve.
-- Trees: triangle + rectangle trunk.`;
+SHAPE RECIPES:
+• Circle: x=R*cos(2π*i/N), z=R*sin(2π*i/N), R=sqrt(N)*1.5
+• Heart: x=16*sin³(t), z=13*cos(t)-5*cos(2t)-2*cos(3t)-cos(4t), scale to R
+• Star(5pt): alternate between R_outer and R_inner=R*0.38 at angles 2π*i/10
+• Grid: cols=ceil(sqrt(N)), spacing=2.5m, centered
+• Text/Letters: Block font, 8-15 pts per char, 10m letter spacing. Total MUST = N.
+• Filled shapes: Concentric rings. Ring_k has round(N * ring_k_circumference / total_circumference) points.
+• Emoji shapes: Map emoji to its recognizable geometric form.
+• SVG paths: Parse d="..." and sample N equidistant points along total path length.
 
-const FEW_SHOT_EXAMPLES = {
-  text: `Example: "heart" with 24 drones → sample 24 points on parametric heart curve, scale to ~15m radius, verify 2m minimum spacing.
-Example: "LOVE" with 50 drones → L(10pts) O(12pts) V(10pts) E(10pts) + 8 fill pts. Letters ~8m wide, spaced 10m apart.`,
-  image: `Extract PRIMARY contour of the main subject. Ignore background. Place drones along the most recognizable outline edges at equal intervals. For portraits: focus on face silhouette. For logos: trace the main shape.`,
-  generative: `Create visually stunning patterns using mathematical beauty:
-- Golden spiral: r = φ^(θ/90°), sample N points along the spiral
-- Fibonacci sunflower: θ = 2π * i * φ⁻¹, r = sqrt(i) * scale
-- Lissajous: x=A*sin(a*t+δ), z=B*sin(b*t)
-- Sacred geometry: Flower of Life (overlapping circles)
-- Fractal: Simplified Koch snowflake or Sierpinski to N points`,
-};
+SCALING: radius = max(8, min(50, sqrt(N) * 1.8))
+
+CRITICAL: The "points" array length MUST EQUAL the requested count. Double-check before responding.`;
+
+// ── Trajectory generation system prompt ──────────────────────
+
+const TRAJECTORY_SYSTEM_PROMPT = `You are a drone choreography trajectory designer. You create smooth, cinematic drone movement sequences described in natural language.
+
+Given a description of desired drone movement, you generate a sequence of keyframe waypoints for each phase of the choreography.
+
+OUTPUT RULES:
+1. Each phase has: name, duration (seconds), and a movement pattern.
+2. Movement patterns are parametric: for drone index i (0-based) out of N total drones, compute position at time t (0-1).
+3. All coordinates in meters. Y = altitude (up). X,Z = horizontal.
+4. Transitions between phases should be smooth (avoid discontinuities).
+5. Consider visual impact from ground-level audience perspective.
+
+MOVEMENT VOCABULARY:
+- "expand" / "contract": scale formation outward/inward
+- "rotate": spin around Y axis
+- "wave": sinusoidal vertical oscillation with phase offset per drone
+- "spiral": helical motion combining rotation and altitude change  
+- "scatter": random spread from formation
+- "converge": gather to center point
+- "pulse": rhythmic scale oscillation
+- "cascade": sequential movement rippling through drones
+- "morph": interpolate between two shape definitions
+- "orbit": circular path around a center point
+- "bloom": flower-like opening pattern
+- "rain": drones fall like raindrops with staggered timing`;
+
+// ── Helper: build user message ──────────────────────────────
 
 function buildUserMessage(mode: string, prompt: string, droneCount: number): string {
-  const base = `Generate a drone formation with EXACTLY ${droneCount} drones. You MUST return exactly ${droneCount} points.`;
-  const hint = FEW_SHOT_EXAMPLES[mode as keyof typeof FEW_SHOT_EXAMPLES] || "";
+  const N = droneCount;
+  const base = `Generate a drone formation with EXACTLY ${N} points. The "points" array MUST have exactly ${N} elements. Count carefully.`;
 
   if (mode === "text") {
-    return `${base}\nShape: "${prompt}"\n${hint}\nIMPORTANT: Count your points. You need EXACTLY ${droneCount}. Double-check before returning.`;
+    return `${base}\n\nShape requested: "${prompt}"\n\nRemember: EXACTLY ${N} points. Not more, not less. Count your output.`;
   }
   if (mode === "image") {
-    return `${base}\nAnalyze the image and recreate its main shape/silhouette using exactly ${droneCount} points.\n${hint}`;
+    return `${base}\n\nAnalyze the uploaded image. Extract the main subject's outline/silhouette. Place EXACTLY ${N} drone points along the most recognizable contour edges at equal intervals. Focus on the primary shape, ignore background details.`;
   }
   if (mode === "generative") {
-    return `${base}\nTheme: "${prompt || 'abstract geometric'}"\n${hint}\nCreate a unique, symmetrical, visually impressive pattern with EXACTLY ${droneCount} points.`;
+    return `${base}\n\nCreate a visually stunning, unique pattern for theme: "${prompt || 'abstract geometric'}"\n\nUse mathematical beauty: golden ratio spirals, Fibonacci patterns, Lissajous curves, sacred geometry, fractals, or organic forms. Make it MEMORABLE and SYMMETRICAL. EXACTLY ${N} points.`;
   }
   throw new Error(`Invalid mode: ${mode}`);
 }
 
-/** Post-process points to enforce constraints */
+// ── Post-processing for safety ──────────────────────────────
+
 function postProcess(
   points: { x: number; z: number }[],
   targetCount: number,
   minSpacing: number = 2.0,
 ): { x: number; z: number }[] {
-  if (points.length === 0) return points;
+  if (points.length === 0) return [];
 
-  // 1. Center at origin
+  // Center at origin
   let cx = 0, cz = 0;
   for (const p of points) { cx += p.x; cz += p.z; }
   cx /= points.length; cz /= points.length;
-  let centered = points.map(p => ({ x: p.x - cx, z: p.z - cz }));
+  let pts = points.map(p => ({ x: p.x - cx, z: p.z - cz }));
 
-  // 2. Enforce minimum spacing with iterative relaxation
-  for (let iter = 0; iter < 20; iter++) {
+  // Adjust count FIRST (before spacing enforcement)
+  if (pts.length > targetCount) {
+    // Remove points that are closest to their nearest neighbor (least important)
+    while (pts.length > targetCount) {
+      let minDist = Infinity, removeIdx = 0;
+      for (let i = 0; i < pts.length; i++) {
+        let closest = Infinity;
+        for (let j = 0; j < pts.length; j++) {
+          if (i === j) continue;
+          const d = Math.hypot(pts[i].x - pts[j].x, pts[i].z - pts[j].z);
+          if (d < closest) closest = d;
+        }
+        if (closest < minDist) { minDist = closest; removeIdx = i; }
+      }
+      pts.splice(removeIdx, 1);
+    }
+  } else if (pts.length < targetCount) {
+    // Add interpolated points between most distant pairs
+    while (pts.length < targetCount) {
+      let maxDist = 0, bestI = 0, bestJ = 1;
+      for (let i = 0; i < pts.length; i++) {
+        for (let j = i + 1; j < pts.length; j++) {
+          const d = Math.hypot(pts[i].x - pts[j].x, pts[i].z - pts[j].z);
+          if (d > maxDist) { maxDist = d; bestI = i; bestJ = j; }
+        }
+      }
+      const jitter = () => (Math.random() - 0.5) * 0.2;
+      pts.push({
+        x: (pts[bestI].x + pts[bestJ].x) / 2 + jitter(),
+        z: (pts[bestI].z + pts[bestJ].z) / 2 + jitter(),
+      });
+    }
+  }
+
+  // Enforce minimum spacing with relaxation
+  for (let iter = 0; iter < 30; iter++) {
     let moved = false;
-    for (let i = 0; i < centered.length; i++) {
-      for (let j = i + 1; j < centered.length; j++) {
-        const dx = centered[j].x - centered[i].x;
-        const dz = centered[j].z - centered[i].z;
-        const dist = Math.sqrt(dx * dx + dz * dz);
+    for (let i = 0; i < pts.length; i++) {
+      for (let j = i + 1; j < pts.length; j++) {
+        const dx = pts[j].x - pts[i].x;
+        const dz = pts[j].z - pts[i].z;
+        const dist = Math.hypot(dx, dz);
         if (dist < minSpacing && dist > 0.001) {
           const push = (minSpacing - dist) / 2 + 0.05;
           const nx = dx / dist, nz = dz / dist;
-          centered[i] = { x: centered[i].x - nx * push, z: centered[i].z - nz * push };
-          centered[j] = { x: centered[j].x + nx * push, z: centered[j].z + nz * push };
+          pts[i] = { x: pts[i].x - nx * push, z: pts[i].z - nz * push };
+          pts[j] = { x: pts[j].x + nx * push, z: pts[j].z + nz * push };
           moved = true;
         } else if (dist <= 0.001) {
-          const angle = Math.random() * Math.PI * 2;
-          centered[j] = { x: centered[j].x + Math.cos(angle) * minSpacing, z: centered[j].z + Math.sin(angle) * minSpacing };
+          const a = Math.random() * Math.PI * 2;
+          pts[j] = { x: pts[j].x + Math.cos(a) * minSpacing, z: pts[j].z + Math.sin(a) * minSpacing };
           moved = true;
         }
       }
@@ -107,79 +155,156 @@ function postProcess(
     if (!moved) break;
   }
 
-  // 3. Adjust count if needed
-  if (centered.length > targetCount) {
-    // Remove least-important points (closest to neighbors)
-    while (centered.length > targetCount) {
-      let minDist = Infinity, removeIdx = 0;
-      for (let i = 0; i < centered.length; i++) {
-        let closest = Infinity;
-        for (let j = 0; j < centered.length; j++) {
-          if (i === j) continue;
-          const d = Math.sqrt((centered[i].x - centered[j].x) ** 2 + (centered[i].z - centered[j].z) ** 2);
-          if (d < closest) closest = d;
-        }
-        if (closest < minDist) { minDist = closest; removeIdx = i; }
-      }
-      centered.splice(removeIdx, 1);
-    }
-  } else if (centered.length < targetCount) {
-    // Add interpolated points between most distant consecutive pairs
-    while (centered.length < targetCount) {
-      let maxDist = 0, insertAfter = 0;
-      for (let i = 0; i < centered.length; i++) {
-        const j = (i + 1) % centered.length;
-        const d = Math.sqrt((centered[i].x - centered[j].x) ** 2 + (centered[i].z - centered[j].z) ** 2);
-        if (d > maxDist) { maxDist = d; insertAfter = i; }
-      }
-      const j = (insertAfter + 1) % centered.length;
-      // Add some jitter to avoid coincident points
-      const jitter = () => (Math.random() - 0.5) * 0.3;
-      const mid = {
-        x: (centered[insertAfter].x + centered[j].x) / 2 + jitter(),
-        z: (centered[insertAfter].z + centered[j].z) / 2 + jitter(),
-      };
-      centered.splice(insertAfter + 1, 0, mid);
-    }
-  }
-
-  // 4. Re-center after adjustments
+  // Re-center and round
   cx = 0; cz = 0;
-  for (const p of centered) { cx += p.x; cz += p.z; }
-  cx /= centered.length; cz /= centered.length;
-
-  // 5. Round to 2 decimal places
-  return centered.map(p => ({
+  for (const p of pts) { cx += p.x; cz += p.z; }
+  cx /= pts.length; cz /= pts.length;
+  return pts.map(p => ({
     x: Math.round((p.x - cx) * 100) / 100,
     z: Math.round((p.z - cz) * 100) / 100,
   }));
 }
 
-/** Optimize transition paths between two formations using greedy nearest-neighbor matching */
+// ── Transition optimizer ────────────────────────────────────
+
 function optimizeTransitionOrder(
   from: { x: number; z: number }[],
   to: { x: number; z: number }[],
 ): { x: number; z: number }[] {
   if (from.length === 0 || to.length === 0 || from.length !== to.length) return to;
-  
   const n = from.length;
-  const result: { x: number; z: number }[] = new Array(n);
+  const result = new Array(n);
   const used = new Set<number>();
-  
-  // Greedy matching: for each source point, find nearest unmatched target
   for (let i = 0; i < n; i++) {
     let bestJ = -1, bestDist = Infinity;
     for (let j = 0; j < n; j++) {
       if (used.has(j)) continue;
-      const d = Math.sqrt((from[i].x - to[j].x) ** 2 + (from[i].z - to[j].z) ** 2);
+      const d = Math.hypot(from[i].x - to[j].x, from[i].z - to[j].z);
       if (d < bestDist) { bestDist = d; bestJ = j; }
     }
     result[i] = to[bestJ];
     used.add(bestJ);
   }
-  
   return result;
 }
+
+// ── AI call with retry + model fallback ─────────────────────
+
+async function callAI(
+  apiKey: string,
+  model: string,
+  messages: any[],
+  tools: any[],
+  toolChoice: any,
+  temperature: number = 0.1,
+): Promise<any> {
+  const response = await fetch(GATEWAY, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ model, messages, tools, tool_choice: toolChoice, temperature }),
+  });
+
+  if (!response.ok) {
+    if (response.status === 429) throw { status: 429, message: "Rate limit exceeded. Try again shortly." };
+    if (response.status === 402) throw { status: 402, message: "Credits exhausted." };
+    const t = await response.text();
+    console.error(`AI error (${model}):`, response.status, t);
+    throw new Error(`AI error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+  if (!toolCall) throw new Error("No tool call in response");
+  return JSON.parse(toolCall.function.arguments);
+}
+
+// ── Build tool schema ───────────────────────────────────────
+
+function buildFormationTool(count: number) {
+  return {
+    type: "function",
+    function: {
+      name: "create_formation",
+      description: `Create a drone formation. The points array MUST have EXACTLY ${count} elements.`,
+      parameters: {
+        type: "object",
+        properties: {
+          points: {
+            type: "array",
+            description: `EXACTLY ${count} drone positions. You MUST provide exactly ${count} items.`,
+            minItems: count,
+            maxItems: count,
+            items: {
+              type: "object",
+              properties: {
+                x: { type: "number", description: "X coordinate in meters" },
+                z: { type: "number", description: "Z coordinate in meters" },
+              },
+              required: ["x", "z"],
+              additionalProperties: false,
+            },
+          },
+          formationName: { type: "string", description: "Short descriptive name for the formation" },
+          suggestedHeight: { type: "number", description: "Suggested altitude 15-80m" },
+          suggestedTransitionTime: { type: "number", description: "Transition time 8-30s" },
+        },
+        required: ["points", "formationName", "suggestedHeight", "suggestedTransitionTime"],
+        additionalProperties: false,
+      },
+    },
+  };
+}
+
+// ── Trajectory tool schema ──────────────────────────────────
+
+function buildTrajectoryTool() {
+  return {
+    type: "function",
+    function: {
+      name: "create_trajectory_sequence",
+      description: "Create a choreography sequence of movement phases for drones.",
+      parameters: {
+        type: "object",
+        properties: {
+          phases: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string", description: "Phase name" },
+                duration: { type: "number", description: "Duration in seconds" },
+                movement: { type: "string", enum: ["expand", "contract", "rotate", "wave", "spiral", "scatter", "converge", "pulse", "cascade", "morph", "orbit", "bloom", "rain", "hold", "custom"] },
+                intensity: { type: "number", description: "0-1 intensity of the movement" },
+                parameters: {
+                  type: "object",
+                  properties: {
+                    axis: { type: "string", enum: ["x", "y", "z", "xz"] },
+                    speed: { type: "number" },
+                    scale: { type: "number" },
+                    offset: { type: "number" },
+                    targetFormation: { type: "string", description: "Target shape name if morphing" },
+                  },
+                  additionalProperties: false,
+                },
+              },
+              required: ["name", "duration", "movement", "intensity"],
+              additionalProperties: false,
+            },
+          },
+          totalDuration: { type: "number", description: "Total sequence duration in seconds" },
+          description: { type: "string", description: "Natural language description of the choreography" },
+        },
+        required: ["phases", "totalDuration", "description"],
+        additionalProperties: false,
+      },
+    },
+  };
+}
+
+// ── Main handler ────────────────────────────────────────────
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -188,14 +313,37 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const { mode, prompt, droneCount, imageBase64, previousFormation } = await req.json();
+    const { mode, prompt, droneCount, imageBase64, previousFormation, generateTrajectory } = await req.json();
+
+    // ── Trajectory generation mode ──────────────────────────
+    if (generateTrajectory) {
+      const trajMessages = [
+        { role: "system", content: TRAJECTORY_SYSTEM_PROMPT },
+        { role: "user", content: `Create a drone choreography sequence for ${droneCount || 24} drones based on this description: "${prompt}"\n\nMake it visually stunning, with smooth transitions between phases. Consider audience perspective from below.` },
+      ];
+
+      const trajResult = await callAI(
+        LOVABLE_API_KEY,
+        "google/gemini-2.5-pro",
+        trajMessages,
+        [buildTrajectoryTool()],
+        { type: "function", function: { name: "create_trajectory_sequence" } },
+        0.3,
+      );
+
+      return new Response(JSON.stringify(trajResult), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── Formation generation mode ───────────────────────────
     const count = droneCount || 24;
-
     const userMessage = buildUserMessage(mode, prompt, count);
+    const tool = buildFormationTool(count);
+    const toolChoice = { type: "function", function: { name: "create_formation" } };
 
-    const messages: any[] = [
-      { role: "system", content: SYSTEM_PROMPT },
-    ];
+    const messages: any[] = [{ role: "system", content: SYSTEM_PROMPT }];
 
     if (mode === "image" && imageBase64) {
       messages.push({
@@ -209,86 +357,64 @@ serve(async (req) => {
       messages.push({ role: "user", content: userMessage });
     }
 
-    const body: any = {
-      model: mode === "image" ? "google/gemini-2.5-pro" : "google/gemini-2.5-flash",
-      messages,
-      temperature: 0.2,
-      tools: [
-        {
-          type: "function",
-          function: {
-            name: "create_formation",
-            description: `Create a drone formation with EXACTLY ${count} 2D coordinates. Each point has x and z in meters. You MUST provide exactly ${count} points.`,
-            parameters: {
-              type: "object",
-              properties: {
-                points: {
-                  type: "array",
-                  description: `Array of EXACTLY ${count} drone positions. COUNT CAREFULLY.`,
-                  items: {
-                    type: "object",
-                    properties: {
-                      x: { type: "number", description: "X coordinate in meters" },
-                      z: { type: "number", description: "Z coordinate in meters" },
-                    },
-                    required: ["x", "z"],
-                    additionalProperties: false,
-                  },
-                },
-                formationName: { type: "string", description: "Short descriptive name" },
-                suggestedHeight: { type: "number", description: "Altitude in meters (15-80)" },
-                suggestedTransitionTime: { type: "number", description: "Transition time in seconds (8-30)" },
-              },
-              required: ["points", "formationName", "suggestedHeight", "suggestedTransitionTime"],
-              additionalProperties: false,
-            },
-          },
-        },
-      ],
-      tool_choice: { type: "function", function: { name: "create_formation" } },
-    };
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Try again shortly." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Credits exhausted. Add funds in Settings > Workspace > Usage." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      throw new Error(`AI gateway error: ${response.status}`);
+    // Model selection strategy:
+    // - Image mode: gemini-2.5-pro (best multimodal)
+    // - Text with high count (>100): gemini-2.5-pro (better precision)
+    // - Text with low count: gemini-2.5-flash (faster, good enough)
+    // - Generative: gemini-2.5-pro (creativity + precision)
+    let primaryModel: string;
+    if (mode === "image") {
+      primaryModel = "google/gemini-2.5-pro";
+    } else if (mode === "generative" || count > 100) {
+      primaryModel = "google/gemini-2.5-pro";
+    } else {
+      primaryModel = "google/gemini-2.5-flash";
     }
 
-    const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) throw new Error("No tool call in AI response");
+    let raw: any;
+    let usedModel = primaryModel;
 
-    const raw = JSON.parse(toolCall.function.arguments);
-    const rawPoints = (raw.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
+    try {
+      raw = await callAI(LOVABLE_API_KEY, primaryModel, messages, [tool], toolChoice, 0.1);
+    } catch (e: any) {
+      // If primary fails with non-rate-limit error, try fallback model
+      if (e.status === 429 || e.status === 402) throw e;
+      console.warn(`Primary model ${primaryModel} failed, trying fallback...`);
+      const fallback = primaryModel === "google/gemini-2.5-pro" ? "google/gemini-2.5-flash" : "google/gemini-2.5-pro";
+      raw = await callAI(LOVABLE_API_KEY, fallback, messages, [tool], toolChoice, 0.1);
+      usedModel = fallback;
+    }
 
-    // Post-process for safety and accuracy
+    const rawPoints = (raw.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) })).filter((p: any) => !isNaN(p.x) && !isNaN(p.z));
+
+    // Post-process
     let processedPoints = postProcess(rawPoints, count);
-    
-    // Optimize transition order if previous formation provided
+
+    // Optimize transition if previous formation provided
     if (previousFormation && Array.isArray(previousFormation) && previousFormation.length === processedPoints.length) {
       processedPoints = optimizeTransitionOrder(previousFormation, processedPoints);
     }
 
-    console.log(`Formation "${raw.formationName}": requested=${count}, raw=${rawPoints.length}, final=${processedPoints.length}`);
+    // Validation: if count is WAY off and we used flash, retry with pro
+    if (rawPoints.length !== count && Math.abs(rawPoints.length - count) > count * 0.3 && usedModel !== "google/gemini-2.5-pro") {
+      console.warn(`Flash returned ${rawPoints.length}/${count}, retrying with Pro...`);
+      try {
+        const retryRaw = await callAI(LOVABLE_API_KEY, "google/gemini-2.5-pro", messages, [tool], toolChoice, 0.05);
+        const retryPoints = (retryRaw.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) })).filter((p: any) => !isNaN(p.x) && !isNaN(p.z));
+        // Use retry if it's closer to target count
+        if (Math.abs(retryPoints.length - count) < Math.abs(rawPoints.length - count)) {
+          processedPoints = postProcess(retryPoints, count);
+          if (previousFormation && Array.isArray(previousFormation) && previousFormation.length === processedPoints.length) {
+            processedPoints = optimizeTransitionOrder(previousFormation, processedPoints);
+          }
+          raw = retryRaw;
+          usedModel = "google/gemini-2.5-pro (retry)";
+          console.log(`Retry succeeded: ${retryPoints.length} points`);
+        }
+      } catch { /* keep original result */ }
+    }
+
+    console.log(`Formation "${raw.formationName}": requested=${count}, raw=${rawPoints.length}, final=${processedPoints.length}, model=${usedModel}`);
 
     return new Response(JSON.stringify({
       points: processedPoints,
@@ -296,14 +422,16 @@ serve(async (req) => {
       suggestedHeight: Math.max(15, Math.min(80, raw.suggestedHeight || 25)),
       suggestedTransitionTime: Math.max(8, Math.min(30, raw.suggestedTransitionTime || 12)),
       rawPointCount: rawPoints.length,
+      model: usedModel,
     }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (e) {
+  } catch (e: any) {
+    const status = e.status || 500;
     console.error("generate-formation error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500,
+    return new Response(JSON.stringify({ error: e.message || "Unknown error" }), {
+      status,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
