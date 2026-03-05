@@ -127,14 +127,13 @@ function SliderField({ label, value, onChange, min, max, step, unit }: {
 function useAIFormation() {
   const [loading, setLoading] = useState(false);
   const [aiPoints, setAiPoints] = useState<FormationPoint[] | null>(null);
-  const [aiMeta, setAiMeta] = useState<{ name: string; height: number; transition: number } | null>(null);
+  const [aiMeta, setAiMeta] = useState<{ name: string; height: number; transition: number; model?: string } | null>(null);
 
   const generate = useCallback(async (mode: 'text' | 'image' | 'generative', prompt: string, droneCount: number, imageBase64?: string) => {
     setLoading(true);
     setAiPoints(null);
     setAiMeta(null);
     try {
-      // Get previous formation points for transition optimization
       const { droneFormations } = useProjectStore.getState();
       const lastFormation = droneFormations.length > 0 ? droneFormations[droneFormations.length - 1] : null;
       const previousFormation = lastFormation?.points?.slice(0, droneCount);
@@ -146,21 +145,18 @@ function useAIFormation() {
       if (data.error) throw new Error(data.error);
 
       const pts: FormationPoint[] = (data.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
-      
-      if (pts.length !== droneCount) {
-        console.warn(`AI returned ${pts.length} points, expected ${droneCount} (post-processed on server)`);
-      }
 
       setAiPoints(pts);
       setAiMeta({
         name: data.formationName || 'AI Formation',
         height: data.suggestedHeight || 25,
         transition: data.suggestedTransitionTime || 12,
+        model: data.model,
       });
-      
+
       const accuracy = pts.length === droneCount ? '✓' : `⚠ ${pts.length}/${droneCount}`;
-      toast.success(`Formação "${data.formationName}" gerada ${accuracy}`, {
-        description: `${pts.length} drones · ${data.suggestedHeight}m altitude · Otimizada para transição`,
+      toast.success(`"${data.formationName}" ${accuracy}`, {
+        description: `${pts.length} drones · ${data.suggestedHeight}m · raw=${data.rawPointCount} · ${data.model || 'AI'}`,
       });
     } catch (e: any) {
       toast.error(e.message || 'Erro ao gerar formação');
@@ -169,7 +165,25 @@ function useAIFormation() {
     }
   }, []);
 
-  return { loading, aiPoints, aiMeta, generate, setAiPoints };
+  const generateTrajectory = useCallback(async (prompt: string, droneCount: number) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-formation', {
+        body: { generateTrajectory: true, prompt, droneCount },
+      });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      toast.success(`Coreografia gerada: ${data.phases?.length || 0} fases · ${data.totalDuration}s`);
+      return data;
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao gerar coreografia');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { loading, aiPoints, aiMeta, generate, generateTrajectory, setAiPoints };
 }
 
 /* ── Formation Queue ───────────────────────────────────────── */
@@ -362,11 +376,13 @@ function ImageAITab({ droneCount, onGenerate, loading }: {
 
 /* ── Tab: Generative AI ────────────────────────────────────── */
 
-function GenerativeAITab({ droneCount, onGenerate, loading }: {
+function GenerativeAITab({ droneCount, onGenerate, onGenerateTrajectory, loading }: {
   droneCount: number;
   onGenerate: (theme: string) => void;
+  onGenerateTrajectory: (prompt: string) => void;
   loading: boolean;
 }) {
+  const [trajPrompt, setTrajPrompt] = useState('');
   const themes = [
     { id: 'abstract', label: 'Abstrato Geométrico', emoji: '🔷' },
     { id: 'nature', label: 'Formas da Natureza', emoji: '🌿' },
@@ -378,7 +394,7 @@ function GenerativeAITab({ droneCount, onGenerate, loading }: {
 
   return (
     <div className="space-y-2 p-1">
-      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">IA Generativa</p>
+      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Formação Generativa</p>
       <div className="grid grid-cols-2 gap-1">
         {themes.map((theme) => (
           <button
@@ -392,15 +408,32 @@ function GenerativeAITab({ droneCount, onGenerate, loading }: {
           </button>
         ))}
       </div>
+
+      <div className="border-t border-border pt-2 space-y-1.5">
+        <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">🎬 Coreografia por Linguagem</p>
+        <Textarea
+          placeholder="Descreva a coreografia... Ex: 'expandir em espiral, depois pulsar ritmicamente e convergir ao centro'"
+          value={trajPrompt}
+          onChange={(e) => setTrajPrompt(e.target.value)}
+          className="h-14 text-xs bg-surface-2 border-border resize-none"
+        />
+        <Button
+          size="sm"
+          className="w-full h-7 text-xs"
+          disabled={loading || !trajPrompt.trim()}
+          onClick={() => onGenerateTrajectory(trajPrompt)}
+        >
+          {loading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Sparkles className="h-3 w-3 mr-1" />}
+          Gerar Coreografia IA
+        </Button>
+      </div>
+
       {loading && (
         <div className="flex items-center gap-2 text-[10px] text-primary">
           <Loader2 className="h-3 w-3 animate-spin" />
-          Gerando formação criativa...
+          Gerando com modelo avançado...
         </div>
       )}
-      <p className="text-[9px] text-muted-foreground">
-        A IA cria padrões únicos e visualmente impressionantes para {droneCount} drones.
-      </p>
     </div>
   );
 }
@@ -420,7 +453,7 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
   const [holdDuration, setHoldDuration] = useState(15);
   const [color, setColor] = useState('#00B4D8');
 
-  const { loading: aiLoading, aiPoints, aiMeta, generate: aiGenerate, setAiPoints } = useAIFormation();
+  const { loading: aiLoading, aiPoints, aiMeta, generate: aiGenerate, generateTrajectory: aiGenerateTrajectory, setAiPoints } = useAIFormation();
 
   const lastFormationEnd = useMemo(() => {
     if (droneFormations.length === 0) return 0;
@@ -543,6 +576,7 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
                 droneCount={effectiveCount}
                 loading={aiLoading}
                 onGenerate={(theme) => aiGenerate('generative', theme, effectiveCount)}
+                onGenerateTrajectory={(prompt) => aiGenerateTrajectory(prompt, effectiveCount)}
               />
             )}
           </div>
