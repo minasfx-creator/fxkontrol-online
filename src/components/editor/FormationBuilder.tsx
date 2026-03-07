@@ -499,6 +499,8 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
       transitionDuration,
       holdDuration,
       color,
+      endColor: endColor !== color ? endColor : undefined,
+      colorTransition: colorTransition !== 'instant' ? colorTransition : 'instant',
       points: effectivePoints.map(p => ({ x: p.x, z: p.z })),
     };
     addDroneFormation(formation);
