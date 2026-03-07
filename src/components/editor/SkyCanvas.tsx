@@ -222,23 +222,31 @@ function TimelineEffects() {
 function SkyGradient() {
   const meshRef = useRef<THREE.Mesh>(null);
   const uniforms = useMemo(() => ({
-    topColor: { value: new THREE.Color('#050510') },
-    midColor: { value: new THREE.Color('#0a0e2a') },
-    bottomColor: { value: new THREE.Color('#121830') },
-    horizonColor: { value: new THREE.Color('#1a2040') },
+    topColor: { value: new THREE.Color('#020208') },
+    midColor: { value: new THREE.Color('#060c22') },
+    bottomColor: { value: new THREE.Color('#0e1428') },
+    horizonColor: { value: new THREE.Color('#1a2545') },
+    horizonGlow: { value: new THREE.Color('#2a3868') },
+    time: { value: 0 },
   }), []);
 
+  useFrame(({ clock }) => {
+    uniforms.time.value = clock.getElapsedTime();
+  });
+
   return (
-    <mesh ref={meshRef} scale={[1, 1, 1]}>
-      <sphereGeometry args={[90, 32, 32]} />
+    <mesh ref={meshRef}>
+      <sphereGeometry args={[200, 64, 64]} />
       <shaderMaterial
         side={THREE.BackSide}
         uniforms={uniforms}
         vertexShader={`
           varying vec3 vWorldPosition;
+          varying vec2 vUv;
           void main() {
             vec4 worldPosition = modelMatrix * vec4(position, 1.0);
             vWorldPosition = worldPosition.xyz;
+            vUv = uv;
             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
           }
         `}
@@ -247,17 +255,50 @@ function SkyGradient() {
           uniform vec3 midColor;
           uniform vec3 bottomColor;
           uniform vec3 horizonColor;
+          uniform vec3 horizonGlow;
+          uniform float time;
           varying vec3 vWorldPosition;
+          varying vec2 vUv;
+
+          // Simple noise
+          float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453); }
+          float noise(vec2 p) {
+            vec2 i = floor(p); vec2 f = fract(p);
+            f = f*f*(3.0-2.0*f);
+            return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
+                       mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+          }
+
           void main() {
             float h = normalize(vWorldPosition).y;
             vec3 color;
-            if (h > 0.3) {
-              color = mix(midColor, topColor, smoothstep(0.3, 0.9, h));
-            } else if (h > -0.05) {
-              color = mix(horizonColor, midColor, smoothstep(-0.05, 0.3, h));
+
+            // Multi-band sky gradient
+            if (h > 0.5) {
+              color = mix(midColor, topColor, smoothstep(0.5, 1.0, h));
+            } else if (h > 0.1) {
+              color = mix(horizonGlow, midColor, smoothstep(0.1, 0.5, h));
+            } else if (h > -0.02) {
+              // Horizon band with atmospheric glow
+              float band = 1.0 - abs(h - 0.04) * 12.0;
+              band = max(band, 0.0);
+              color = mix(horizonColor, horizonGlow, band * 0.6);
+              // Add warm horizon glow
+              color += vec3(0.08, 0.04, 0.02) * band * 0.5;
             } else {
-              color = mix(bottomColor, horizonColor, smoothstep(-0.3, -0.05, h));
+              color = mix(bottomColor, horizonColor, smoothstep(-0.3, -0.02, h));
             }
+
+            // Subtle cloud wisps
+            float cloudNoise = noise(vUv * 8.0 + time * 0.01);
+            cloudNoise *= noise(vUv * 16.0 - time * 0.005);
+            float cloudMask = smoothstep(0.35, 0.55, cloudNoise) * smoothstep(-0.1, 0.3, h) * smoothstep(0.8, 0.3, h);
+            color += vec3(0.03, 0.04, 0.06) * cloudMask * 0.4;
+
+            // Atmospheric scattering at horizon
+            float scatter = exp(-abs(h) * 8.0) * 0.15;
+            color += vec3(0.05, 0.06, 0.12) * scatter;
+
             gl_FragColor = vec4(color, 1.0);
           }
         `}
@@ -266,52 +307,161 @@ function SkyGradient() {
   );
 }
 
+// --- Moon ---
+function Moon() {
+  const ref = useRef<THREE.Group>(null);
+  return (
+    <group ref={ref} position={[60, 65, -80]}>
+      <mesh>
+        <sphereGeometry args={[4, 32, 32]} />
+        <meshBasicMaterial color="#c8c8d0" />
+      </mesh>
+      {/* Moon glow */}
+      <mesh>
+        <sphereGeometry args={[6, 32, 32]} />
+        <meshBasicMaterial color="#8090b0" transparent opacity={0.08} blending={THREE.AdditiveBlending} />
+      </mesh>
+      <mesh>
+        <sphereGeometry args={[10, 32, 32]} />
+        <meshBasicMaterial color="#405070" transparent opacity={0.03} blending={THREE.AdditiveBlending} />
+      </mesh>
+      <pointLight color="#8899bb" intensity={0.3} distance={200} decay={1} />
+    </group>
+  );
+}
+
 // --- Stage & Ground ---
 function StageGround() {
   return (
     <group>
-      {/* Main grid */}
+      {/* Large terrain ground plane */}
+      <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[400, 400, 64, 64]} />
+        <meshStandardMaterial color="#0a0f08" roughness={0.95} metalness={0.05} />
+      </mesh>
+
+      {/* Main operational grid */}
       <Grid
-        position={[0, 0, 0]}
-        args={[100, 100]}
+        position={[0, 0.01, 0]}
+        args={[200, 200]}
         cellSize={2}
-        cellThickness={0.5}
-        cellColor="#141830"
+        cellThickness={0.3}
+        cellColor="#0d1520"
         sectionSize={10}
-        sectionThickness={1}
-        sectionColor="#1e2850"
-        fadeDistance={80}
+        sectionThickness={0.8}
+        sectionColor="#152040"
+        fadeDistance={120}
         infiniteGrid
       />
-      {/* Stage platform */}
-      <mesh position={[0, -0.05, 0]} receiveShadow>
-        <cylinderGeometry args={[20, 22, 0.1, 64]} />
-        <meshStandardMaterial color="#0c0e1a" metalness={0.4} roughness={0.7} />
+
+      {/* Central stage platform */}
+      <mesh position={[0, -0.01, 0]} receiveShadow>
+        <cylinderGeometry args={[25, 27, 0.08, 128]} />
+        <meshStandardMaterial color="#0e1018" metalness={0.2} roughness={0.85} />
       </mesh>
-      {/* Stage rim glow */}
-      <mesh position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[19.5, 20.5, 64]} />
-        <meshBasicMaterial color="#1a3060" transparent opacity={0.4} />
+
+      {/* Stage safety rim */}
+      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[24.5, 25, 128]} />
+        <meshBasicMaterial color="#c8a020" transparent opacity={0.25} />
       </mesh>
-      {/* Audience area markers */}
-      {[28, 32, 36].map((z, i) => (
-        <mesh key={i} position={[0, 0.01, z]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[40 + i * 4, 0.5]} />
-          <meshBasicMaterial color="#151a2e" transparent opacity={0.3} />
-        </mesh>
-      ))}
-      {/* Scale reference poles */}
-      {[-15, -10, -5, 0, 5, 10, 15].map((x) => (
-        <group key={x} position={[x, 0, -18]}>
-          <mesh position={[0, 2.5, 0]}>
-            <cylinderGeometry args={[0.03, 0.03, 5, 6]} />
-            <meshStandardMaterial color="#1a2040" metalness={0.5} roughness={0.5} />
-          </mesh>
-          <mesh position={[0, 5.1, 0]}>
-            <sphereGeometry args={[0.08, 8, 8]} />
-            <meshBasicMaterial color="#304080" transparent opacity={0.5} />
+
+      {/* Ground fog layer */}
+      <mesh position={[0, 0.3, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[120, 120]} />
+        <meshBasicMaterial color="#101828" transparent opacity={0.04} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+
+      {/* Audience rows */}
+      {[30, 34, 38, 42, 46].map((z, i) => (
+        <group key={`aud-${i}`}>
+          <mesh position={[0, 0.01, z]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[50 + i * 6, 0.3]} />
+            <meshBasicMaterial color="#121828" transparent opacity={0.4} />
           </mesh>
         </group>
+      ))}
+
+      {/* Scale reference poles */}
+      {[-20, -15, -10, -5, 0, 5, 10, 15, 20].map((x) => (
+        <group key={`pole-${x}`} position={[x, 0, -22]}>
+          <mesh position={[0, 3, 0]}>
+            <cylinderGeometry args={[0.025, 0.03, 6, 8]} />
+            <meshStandardMaterial color="#1a2040" metalness={0.6} roughness={0.4} />
+          </mesh>
+          {[2, 4, 6].map((h) => (
+            <mesh key={h} position={[0, h, 0]}>
+              <boxGeometry args={[0.08, 0.01, 0.08]} />
+              <meshBasicMaterial color="#304080" transparent opacity={0.3} />
+            </mesh>
+          ))}
+          <mesh position={[0, 6.1, 0]}>
+            <sphereGeometry args={[0.06, 8, 8]} />
+            <meshBasicMaterial color="#3050a0" transparent opacity={0.4} />
+          </mesh>
+        </group>
+      ))}
+
+      <TreelineSilhouette />
+      <DistantCityLights />
+    </group>
+  );
+}
+
+function TreelineSilhouette() {
+  const trees = useMemo(() => {
+    const result: { x: number; z: number; h: number; w: number }[] = [];
+    for (let i = 0; i < 80; i++) {
+      const angle = (i / 80) * Math.PI * 2;
+      const dist = 85 + Math.random() * 15;
+      result.push({
+        x: Math.cos(angle) * dist,
+        z: Math.sin(angle) * dist,
+        h: 3 + Math.random() * 6,
+        w: 1.5 + Math.random() * 2,
+      });
+    }
+    return result;
+  }, []);
+
+  return (
+    <group>
+      {trees.map((t, i) => (
+        <mesh key={i} position={[t.x, t.h * 0.5, t.z]}
+          rotation={[0, Math.atan2(t.x, t.z), 0]}>
+          <planeGeometry args={[t.w, t.h]} />
+          <meshBasicMaterial color="#040608" transparent opacity={0.85} side={THREE.DoubleSide} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function DistantCityLights() {
+  const lights = useMemo(() => {
+    const result: { x: number; z: number; y: number; color: string; op: number }[] = [];
+    const colors = ['#ff8844', '#ffaa33', '#ffcc66', '#88aaff', '#ffffff'];
+    for (let i = 0; i < 40; i++) {
+      const angle = (i / 40) * Math.PI + Math.PI * 0.6 + (Math.random() - 0.5) * 0.3;
+      const dist = 110 + Math.random() * 30;
+      result.push({
+        x: Math.cos(angle) * dist,
+        z: Math.sin(angle) * dist,
+        y: 0.5 + Math.random() * 2,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        op: 0.02 + Math.random() * 0.04,
+      });
+    }
+    return result;
+  }, []);
+
+  return (
+    <group>
+      {lights.map((l, i) => (
+        <mesh key={i} position={[l.x, l.y, l.z]}>
+          <sphereGeometry args={[0.15, 4, 4]} />
+          <meshBasicMaterial color={l.color} transparent opacity={l.op} blending={THREE.AdditiveBlending} />
+        </mesh>
       ))}
     </group>
   );
@@ -325,55 +475,94 @@ function LaunchSites() {
     <>
       {positions.map((pos, i) => (
         <group key={i} position={pos}>
-          <mesh>
-            <boxGeometry args={[0.6, 0.1, 0.6]} />
-            <meshStandardMaterial color="#2a2a3e" metalness={0.6} roughness={0.4} />
+          <mesh receiveShadow>
+            <boxGeometry args={[0.7, 0.12, 0.7]} />
+            <meshStandardMaterial color="#1a1a2e" metalness={0.7} roughness={0.3} />
           </mesh>
-          <mesh position={[0, 0.08, 0]}>
-            <cylinderGeometry args={[0.08, 0.1, 0.3, 8]} />
-            <meshStandardMaterial color="#3a3a55" metalness={0.8} roughness={0.3} />
+          <mesh position={[0, 0.2, 0]}>
+            <cylinderGeometry args={[0.06, 0.08, 0.35, 12]} />
+            <meshStandardMaterial color="#2a2a40" metalness={0.85} roughness={0.2} />
           </mesh>
-          {/* Small launch indicator LED */}
-          <pointLight color="#ff4500" intensity={0.3} distance={1.5} decay={2} position={[0, 0.15, 0]} />
+          <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[0.8, 0.85, 16]} />
+            <meshBasicMaterial color="#c83030" transparent opacity={0.15} />
+          </mesh>
+          <mesh position={[0.3, 0.08, 0.3]}>
+            <sphereGeometry args={[0.02, 6, 6]} />
+            <meshBasicMaterial color="#00ff44" />
+          </mesh>
+          <pointLight color="#ff4500" intensity={0.15} distance={1.2} decay={2} position={[0, 0.25, 0]} />
         </group>
       ))}
     </>
   );
 }
 
-// --- Ambient atmosphere particles (floating dust/fog) ---
+// --- Enhanced atmosphere particles ---
 function AtmosphereParticles() {
-  const ref = useRef<THREE.Points>(null);
-  const count = 200;
-  const positions = useMemo(() => {
-    const arr = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      arr[i * 3] = (Math.random() - 0.5) * 80;
-      arr[i * 3 + 1] = Math.random() * 40;
-      arr[i * 3 + 2] = (Math.random() - 0.5) * 80;
+  const dustRef = useRef<THREE.Points>(null);
+  const fogRef = useRef<THREE.Points>(null);
+  const dustCount = 300;
+  const fogCount = 80;
+
+  const dustPositions = useMemo(() => {
+    const arr = new Float32Array(dustCount * 3);
+    for (let i = 0; i < dustCount; i++) {
+      arr[i * 3] = (Math.random() - 0.5) * 120;
+      arr[i * 3 + 1] = Math.random() * 50;
+      arr[i * 3 + 2] = (Math.random() - 0.5) * 120;
+    }
+    return arr;
+  }, []);
+
+  const fogPositions = useMemo(() => {
+    const arr = new Float32Array(fogCount * 3);
+    for (let i = 0; i < fogCount; i++) {
+      arr[i * 3] = (Math.random() - 0.5) * 100;
+      arr[i * 3 + 1] = 0.3 + Math.random() * 2;
+      arr[i * 3 + 2] = (Math.random() - 0.5) * 100;
     }
     return arr;
   }, []);
 
   useFrame(({ clock }) => {
-    if (!ref.current) return;
-    const pos = ref.current.geometry.attributes.position;
-    const t = clock.getElapsedTime() * 0.05;
-    for (let i = 0; i < count; i++) {
-      const ix = i * 3;
-      (pos.array as Float32Array)[ix] += Math.sin(t + i * 0.1) * 0.002;
-      (pos.array as Float32Array)[ix + 1] += Math.cos(t + i * 0.15) * 0.001;
+    const t = clock.getElapsedTime();
+    if (dustRef.current) {
+      const pos = dustRef.current.geometry.attributes.position;
+      for (let i = 0; i < dustCount; i++) {
+        const ix = i * 3;
+        (pos.array as Float32Array)[ix] += Math.sin(t * 0.03 + i * 0.2) * 0.003;
+        (pos.array as Float32Array)[ix + 1] += Math.cos(t * 0.02 + i * 0.15) * 0.001;
+        (pos.array as Float32Array)[ix + 2] += Math.sin(t * 0.025 + i * 0.3) * 0.002;
+      }
+      pos.needsUpdate = true;
     }
-    pos.needsUpdate = true;
+    if (fogRef.current) {
+      const fp = fogRef.current.geometry.attributes.position;
+      for (let i = 0; i < fogCount; i++) {
+        const ix = i * 3;
+        (fp.array as Float32Array)[ix] += Math.sin(t * 0.01 + i) * 0.008;
+        (fp.array as Float32Array)[ix + 2] += Math.cos(t * 0.008 + i) * 0.006;
+      }
+      fp.needsUpdate = true;
+    }
   });
 
   return (
-    <points ref={ref}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-      </bufferGeometry>
-      <pointsMaterial size={0.08} color="#304080" transparent opacity={0.15} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
-    </points>
+    <group>
+      <points ref={dustRef}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[dustPositions, 3]} />
+        </bufferGeometry>
+        <pointsMaterial size={0.06} color="#3050a0" transparent opacity={0.12} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+      </points>
+      <points ref={fogRef}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[fogPositions, 3]} />
+        </bufferGeometry>
+        <pointsMaterial size={1.5} color="#101830" transparent opacity={0.06} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+      </points>
+    </group>
   );
 }
 
@@ -399,7 +588,7 @@ function CameraController({ targetPosition, targetLookAt }: { targetPosition: [n
   });
 
   return (
-    <OrbitControls ref={controlsRef} enableDamping dampingFactor={0.05} maxPolarAngle={Math.PI / 2} minDistance={3} maxDistance={100} />
+    <OrbitControls ref={controlsRef} enableDamping dampingFactor={0.05} maxPolarAngle={Math.PI * 0.48} minDistance={3} maxDistance={150} />
   );
 }
 
@@ -412,19 +601,22 @@ export default function SkyCanvas() {
   return (
     <div className="w-full h-full relative bg-[#050510]" data-sky-canvas style={{ cursor: cursorStyle }}>
       <WebGLErrorBoundary>
-      <Canvas shadows gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 0.8 }}>
-        <PerspectiveCamera makeDefault position={preset.position} fov={60} />
+      <Canvas shadows="soft" gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 0.65, powerPreference: 'high-performance' }}>
+        <PerspectiveCamera makeDefault position={preset.position} fov={55} near={0.5} far={500} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} />
         
-        {/* Improved lighting */}
-        <ambientLight intensity={0.03} color="#1a2040" />
-        <directionalLight position={[10, 20, 5]} intensity={0.08} color="#2a3a6a" />
-        <hemisphereLight args={['#0a0e2a', '#050510', 0.06]} />
+        {/* Realistic night lighting */}
+        <ambientLight intensity={0.02} color="#0e1530" />
+        <directionalLight position={[60, 65, -80]} intensity={0.06} color="#8899bb" castShadow shadow-mapSize={[1024, 1024]} shadow-camera-far={200} />
+        <hemisphereLight args={['#0a0e2a', '#030508', 0.04]} />
+        {/* Subtle ground bounce light */}
+        <pointLight position={[0, -1, 0]} color="#0a1020" intensity={0.02} distance={60} />
         
         <SkyGradient />
-        <Stars radius={100} depth={50} count={4000} factor={3} saturation={0.2} fade speed={0.3} />
+        <Moon />
+        <Stars radius={180} depth={80} count={6000} factor={4} saturation={0.15} fade speed={0.2} />
         <AtmosphereParticles />
-        <fog attach="fog" args={['#080a18', 50, 120]} />
+        <fog attach="fog" args={['#060a14', 60, 180]} />
         
         <StageGround />
         <LaunchSites />
