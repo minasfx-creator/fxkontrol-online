@@ -222,23 +222,31 @@ function TimelineEffects() {
 function SkyGradient() {
   const meshRef = useRef<THREE.Mesh>(null);
   const uniforms = useMemo(() => ({
-    topColor: { value: new THREE.Color('#050510') },
-    midColor: { value: new THREE.Color('#0a0e2a') },
-    bottomColor: { value: new THREE.Color('#121830') },
-    horizonColor: { value: new THREE.Color('#1a2040') },
+    topColor: { value: new THREE.Color('#020208') },
+    midColor: { value: new THREE.Color('#060c22') },
+    bottomColor: { value: new THREE.Color('#0e1428') },
+    horizonColor: { value: new THREE.Color('#1a2545') },
+    horizonGlow: { value: new THREE.Color('#2a3868') },
+    time: { value: 0 },
   }), []);
 
+  useFrame(({ clock }) => {
+    uniforms.time.value = clock.getElapsedTime();
+  });
+
   return (
-    <mesh ref={meshRef} scale={[1, 1, 1]}>
-      <sphereGeometry args={[90, 32, 32]} />
+    <mesh ref={meshRef}>
+      <sphereGeometry args={[200, 64, 64]} />
       <shaderMaterial
         side={THREE.BackSide}
         uniforms={uniforms}
         vertexShader={`
           varying vec3 vWorldPosition;
+          varying vec2 vUv;
           void main() {
             vec4 worldPosition = modelMatrix * vec4(position, 1.0);
             vWorldPosition = worldPosition.xyz;
+            vUv = uv;
             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
           }
         `}
@@ -247,22 +255,78 @@ function SkyGradient() {
           uniform vec3 midColor;
           uniform vec3 bottomColor;
           uniform vec3 horizonColor;
+          uniform vec3 horizonGlow;
+          uniform float time;
           varying vec3 vWorldPosition;
+          varying vec2 vUv;
+
+          // Simple noise
+          float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453); }
+          float noise(vec2 p) {
+            vec2 i = floor(p); vec2 f = fract(p);
+            f = f*f*(3.0-2.0*f);
+            return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
+                       mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+          }
+
           void main() {
             float h = normalize(vWorldPosition).y;
             vec3 color;
-            if (h > 0.3) {
-              color = mix(midColor, topColor, smoothstep(0.3, 0.9, h));
-            } else if (h > -0.05) {
-              color = mix(horizonColor, midColor, smoothstep(-0.05, 0.3, h));
+
+            // Multi-band sky gradient
+            if (h > 0.5) {
+              color = mix(midColor, topColor, smoothstep(0.5, 1.0, h));
+            } else if (h > 0.1) {
+              color = mix(horizonGlow, midColor, smoothstep(0.1, 0.5, h));
+            } else if (h > -0.02) {
+              // Horizon band with atmospheric glow
+              float band = 1.0 - abs(h - 0.04) * 12.0;
+              band = max(band, 0.0);
+              color = mix(horizonColor, horizonGlow, band * 0.6);
+              // Add warm horizon glow
+              color += vec3(0.08, 0.04, 0.02) * band * 0.5;
             } else {
-              color = mix(bottomColor, horizonColor, smoothstep(-0.3, -0.05, h));
+              color = mix(bottomColor, horizonColor, smoothstep(-0.3, -0.02, h));
             }
+
+            // Subtle cloud wisps
+            float cloudNoise = noise(vUv * 8.0 + time * 0.01);
+            cloudNoise *= noise(vUv * 16.0 - time * 0.005);
+            float cloudMask = smoothstep(0.35, 0.55, cloudNoise) * smoothstep(-0.1, 0.3, h) * smoothstep(0.8, 0.3, h);
+            color += vec3(0.03, 0.04, 0.06) * cloudMask * 0.4;
+
+            // Atmospheric scattering at horizon
+            float scatter = exp(-abs(h) * 8.0) * 0.15;
+            color += vec3(0.05, 0.06, 0.12) * scatter;
+
             gl_FragColor = vec4(color, 1.0);
           }
         `}
       />
     </mesh>
+  );
+}
+
+// --- Moon ---
+function Moon() {
+  const ref = useRef<THREE.Group>(null);
+  return (
+    <group ref={ref} position={[60, 65, -80]}>
+      <mesh>
+        <sphereGeometry args={[4, 32, 32]} />
+        <meshBasicMaterial color="#c8c8d0" />
+      </mesh>
+      {/* Moon glow */}
+      <mesh>
+        <sphereGeometry args={[6, 32, 32]} />
+        <meshBasicMaterial color="#8090b0" transparent opacity={0.08} blending={THREE.AdditiveBlending} />
+      </mesh>
+      <mesh>
+        <sphereGeometry args={[10, 32, 32]} />
+        <meshBasicMaterial color="#405070" transparent opacity={0.03} blending={THREE.AdditiveBlending} />
+      </mesh>
+      <pointLight color="#8899bb" intensity={0.3} distance={200} decay={1} />
+    </group>
   );
 }
 
