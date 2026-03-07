@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { useProjectStore, type DroneFormation } from '@/store/useProjectStore';
+import type { ColorTransitionMode } from '@/lib/colorInterpolation';
 import {
   generateFormation,
   FORMATION_PRESETS,
@@ -452,6 +453,8 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
   const [transitionDuration, setTransitionDuration] = useState(10);
   const [holdDuration, setHoldDuration] = useState(15);
   const [color, setColor] = useState('#00B4D8');
+  const [endColor, setEndColor] = useState('#00B4D8');
+  const [colorTransition, setColorTransition] = useState<ColorTransitionMode>('linear');
 
   const { loading: aiLoading, aiPoints, aiMeta, generate: aiGenerate, generateTrajectory: aiGenerateTrajectory, setAiPoints } = useAIFormation();
 
@@ -496,6 +499,8 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
       transitionDuration,
       holdDuration,
       color,
+      endColor: endColor !== color ? endColor : undefined,
+      colorTransition: colorTransition !== 'instant' ? colorTransition : 'instant',
       points: effectivePoints.map(p => ({ x: p.x, z: p.z })),
     };
     addDroneFormation(formation);
@@ -617,10 +622,42 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
                 <SliderField label="Tempo em Formação" value={holdDuration} onChange={setHoldDuration} min={3} max={120} step={1} unit="s" />
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-muted-foreground font-semibold uppercase">Cor LED</span>
-                <input type="color" value={color} onChange={e => setColor(e.target.value)} className="w-6 h-6 rounded border border-border cursor-pointer" />
-                <span className="text-[10px] font-mono-code text-muted-foreground">{color}</span>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground font-semibold uppercase">Cor Início</span>
+                  <input type="color" value={color} onChange={e => setColor(e.target.value)} className="w-6 h-6 rounded border border-border cursor-pointer" />
+                  <span className="text-[10px] font-mono-code text-muted-foreground">{color}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground font-semibold uppercase">Cor Fim</span>
+                  <input type="color" value={endColor} onChange={e => setEndColor(e.target.value)} className="w-6 h-6 rounded border border-border cursor-pointer" />
+                  <span className="text-[10px] font-mono-code text-muted-foreground">{endColor}</span>
+                </div>
+                <div className="space-y-0.5">
+                  <span className="text-[10px] text-muted-foreground font-semibold uppercase">Transição de Cor</span>
+                  <div className="flex gap-1 flex-wrap">
+                    {([
+                      { id: 'instant', label: '⚡ Instantânea' },
+                      { id: 'linear', label: '↗️ Linear' },
+                      { id: 'pulse', label: '💫 Pulsar' },
+                      { id: 'rainbow', label: '🌈 Arco-íris' },
+                      { id: 'wave', label: '🌊 Onda' },
+                    ] as { id: ColorTransitionMode; label: string }[]).map(m => (
+                      <button
+                        key={m.id}
+                        onClick={() => setColorTransition(m.id)}
+                        className={cn(
+                          "px-1.5 py-0.5 rounded text-[9px] border transition-colors",
+                          colorTransition === m.id
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-surface-2 text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* Timeline info */}

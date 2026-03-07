@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
 import { useProjectStore, type DroneFormation } from '@/store/useProjectStore';
+import { interpolateColor, type ColorTransitionMode } from '@/lib/colorInterpolation';
 import InstancedDroneSwarm from './InstancedDroneSwarm';
 
 /**
  * Computes drone positions at a given time based on the formation sequence.
  * Uses smoothstep interpolation with easing for cinematic transitions.
- * Includes collision-free transition path optimization.
+ * Includes per-drone synchronized color interpolation.
  */
 function computeDronePositions(
   formations: DroneFormation[],
@@ -32,13 +33,18 @@ function computeDronePositions(
   // Landing phase with ease-out
   if (currentTime > lastEnd) {
     const t = (currentTime - lastEnd) / landingDuration;
-    const easeOut = 1 - (1 - t) * (1 - t); // quadratic ease-out
-    return lastFormation.points.slice(0, droneCount).map((p) => ({
-      x: p.x,
-      y: lastFormation.height * (1 - easeOut),
-      z: p.z,
-      color: lastFormation.color,
-    }));
+    const easeOut = 1 - (1 - t) * (1 - t);
+    const holdColor = lastFormation.endColor || lastFormation.color;
+    return lastFormation.points.slice(0, droneCount).map((p, idx) => {
+      // Fade to dim during landing
+      const landColor = interpolateColor(holdColor, '#111111', t, 'linear', idx, droneCount);
+      return {
+        x: p.x,
+        y: lastFormation.height * (1 - easeOut),
+        z: p.z,
+        color: landColor,
+      };
+    });
   }
 
   // Find active formation
@@ -48,9 +54,15 @@ function computeDronePositions(
     const holdEnd = transEnd + f.holdDuration;
 
     if (currentTime >= f.startTime && currentTime <= holdEnd) {
+      // Determine colors
+      const prevColor = i === 0 ? f.color : (formations[i - 1].endColor || formations[i - 1].color);
+      const targetColor = f.color;
+      const endColor = f.endColor || f.color;
+      const colorMode: ColorTransitionMode = f.colorTransition || 'linear';
+
       if (currentTime < transEnd) {
         const t = (currentTime - f.startTime) / f.transitionDuration;
-        // Smooth ease-in-out (quintic for more cinematic feel)
+        // Quintic ease-in-out for position
         const smoothT = t < 0.5
           ? 16 * t * t * t * t * t
           : 1 - Math.pow(-2 * t + 2, 5) / 2;
@@ -63,20 +75,30 @@ function computeDronePositions(
 
         return f.points.slice(0, droneCount).map((p, idx) => {
           const prev = prevPositions[idx] || { x: 0, y: 0, z: 0 };
-          // Arc trajectory: drones rise slightly above target during transition
           const arcHeight = i === 0 ? 0 : Math.sin(smoothT * Math.PI) * 3;
+          // Color interpolation: from previous formation color → this formation color
+          const droneColor = interpolateColor(prevColor, targetColor, smoothT, colorMode, idx, droneCount);
           return {
             x: prev.x + (p.x - prev.x) * smoothT,
             y: prev.y + (f.height - prev.y) * smoothT + arcHeight,
             z: prev.z + (p.z - prev.z) * smoothT,
-            color: f.color,
+            color: droneColor,
           };
         });
       }
 
-      // During hold
+      // During hold: interpolate from color → endColor over hold duration
+      if (endColor !== targetColor) {
+        const holdT = (currentTime - transEnd) / f.holdDuration;
+        return f.points.slice(0, droneCount).map((p, idx) => ({
+          x: p.x, y: f.height, z: p.z,
+          color: interpolateColor(targetColor, endColor, holdT, colorMode, idx, droneCount),
+        }));
+      }
+
+      // Static hold
       return f.points.slice(0, droneCount).map((p) => ({
-        x: p.x, y: f.height, z: p.z, color: f.color,
+        x: p.x, y: f.height, z: p.z, color: targetColor,
       }));
     }
   }
