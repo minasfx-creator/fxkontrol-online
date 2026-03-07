@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { useProjectStore, type DroneFormation } from '@/store/useProjectStore';
+import type { ColorTransitionMode } from '@/lib/colorInterpolation';
 import {
   generateFormation,
   FORMATION_PRESETS,
