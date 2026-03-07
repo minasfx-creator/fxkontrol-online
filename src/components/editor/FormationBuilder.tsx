@@ -453,6 +453,8 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
   const [transitionDuration, setTransitionDuration] = useState(10);
   const [holdDuration, setHoldDuration] = useState(15);
   const [color, setColor] = useState('#00B4D8');
+  const [endColor, setEndColor] = useState('#00B4D8');
+  const [colorTransition, setColorTransition] = useState<ColorTransitionMode>('linear');
 
   const { loading: aiLoading, aiPoints, aiMeta, generate: aiGenerate, generateTrajectory: aiGenerateTrajectory, setAiPoints } = useAIFormation();
 
