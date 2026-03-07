@@ -601,19 +601,22 @@ export default function SkyCanvas() {
   return (
     <div className="w-full h-full relative bg-[#050510]" data-sky-canvas style={{ cursor: cursorStyle }}>
       <WebGLErrorBoundary>
-      <Canvas shadows gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 0.8 }}>
-        <PerspectiveCamera makeDefault position={preset.position} fov={60} />
+      <Canvas shadows="soft" gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 0.65, powerPreference: 'high-performance' }}>
+        <PerspectiveCamera makeDefault position={preset.position} fov={55} near={0.5} far={500} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} />
         
-        {/* Improved lighting */}
-        <ambientLight intensity={0.03} color="#1a2040" />
-        <directionalLight position={[10, 20, 5]} intensity={0.08} color="#2a3a6a" />
-        <hemisphereLight args={['#0a0e2a', '#050510', 0.06]} />
+        {/* Realistic night lighting */}
+        <ambientLight intensity={0.02} color="#0e1530" />
+        <directionalLight position={[60, 65, -80]} intensity={0.06} color="#8899bb" castShadow shadow-mapSize={[1024, 1024]} shadow-camera-far={200} />
+        <hemisphereLight args={['#0a0e2a', '#030508', 0.04]} />
+        {/* Subtle ground bounce light */}
+        <pointLight position={[0, -1, 0]} color="#0a1020" intensity={0.02} distance={60} />
         
         <SkyGradient />
-        <Stars radius={100} depth={50} count={4000} factor={3} saturation={0.2} fade speed={0.3} />
+        <Moon />
+        <Stars radius={180} depth={80} count={6000} factor={4} saturation={0.15} fade speed={0.2} />
         <AtmosphereParticles />
-        <fog attach="fog" args={['#080a18', 50, 120]} />
+        <fog attach="fog" args={['#060a14', 60, 180]} />
         
         <StageGround />
         <LaunchSites />
