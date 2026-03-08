@@ -563,7 +563,7 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
   const [endColor, setEndColor] = useState('#00B4D8');
   const [colorTransition, setColorTransition] = useState<ColorTransitionMode>('linear');
 
-  const { loading: aiLoading, aiPoints, aiMeta, generate: aiGenerate, generateTrajectory: aiGenerateTrajectory, setAiPoints } = useAIFormation();
+  const { loading: aiLoading, loadingPhase: aiLoadingPhase, aiPoints, aiMeta, generate: aiGenerate, generateTrajectory: aiGenerateTrajectory, generateFullShow: aiGenerateFullShow, setAiPoints } = useAIFormation();
 
   const lastFormationEnd = useMemo(() => {
     if (droneFormations.length === 0) return 0;
