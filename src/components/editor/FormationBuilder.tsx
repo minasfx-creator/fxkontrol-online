@@ -718,8 +718,17 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
               <GenerativeAITab
                 droneCount={effectiveCount}
                 loading={aiLoading}
+                loadingPhase={aiLoadingPhase}
                 onGenerate={(theme) => aiGenerate('generative', theme, effectiveCount)}
                 onGenerateTrajectory={(prompt) => aiGenerateTrajectory(prompt, effectiveCount)}
+              />
+            )}
+            {activeTab === 'full-show' && (
+              <FullShowTab
+                droneCount={effectiveCount}
+                loading={aiLoading}
+                loadingPhase={aiLoadingPhase}
+                onGenerateFullShow={handleFullShowApply}
               />
             )}
           </div>
