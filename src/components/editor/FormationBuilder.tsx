@@ -127,6 +127,7 @@ function SliderField({ label, value, onChange, min, max, step, unit }: {
 
 function useAIFormation() {
   const [loading, setLoading] = useState(false);
+  const [loadingPhase, setLoadingPhase] = useState<string>('');
   const [aiPoints, setAiPoints] = useState<FormationPoint[] | null>(null);
   const [aiMeta, setAiMeta] = useState<{ name: string; height: number; transition: number; model?: string } | null>(null);
 
@@ -134,17 +135,20 @@ function useAIFormation() {
     setLoading(true);
     setAiPoints(null);
     setAiMeta(null);
+    setLoadingPhase(mode === 'image' ? 'Analisando imagem...' : mode === 'generative' ? 'Criando padrão criativo...' : 'Interpretando forma...');
     try {
       const { droneFormations } = useProjectStore.getState();
       const lastFormation = droneFormations.length > 0 ? droneFormations[droneFormations.length - 1] : null;
       const previousFormation = lastFormation?.points?.slice(0, droneCount);
 
+      setLoadingPhase('Gerando coordenadas com IA...');
       const { data, error } = await supabase.functions.invoke('generate-formation', {
         body: { mode, prompt, droneCount, imageBase64, previousFormation },
       });
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
+      setLoadingPhase('Processando resultado...');
       const pts: FormationPoint[] = (data.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
 
       setAiPoints(pts);
@@ -155,19 +159,28 @@ function useAIFormation() {
         model: data.model,
       });
 
-      const accuracy = pts.length === droneCount ? '✓' : `⚠ ${pts.length}/${droneCount}`;
+      const accuracy = pts.length === droneCount ? '✓ perfeito' : `⚠ ${pts.length}/${droneCount} (corrigido)`;
       toast.success(`"${data.formationName}" ${accuracy}`, {
-        description: `${pts.length} drones · ${data.suggestedHeight}m · raw=${data.rawPointCount} · ${data.model || 'AI'}`,
+        description: `${pts.length} drones · ${data.suggestedHeight}m · ${data.model || 'AI'}`,
       });
     } catch (e: any) {
-      toast.error(e.message || 'Erro ao gerar formação');
+      const msg = e.message || 'Erro ao gerar formação';
+      if (msg.includes('429') || msg.includes('Limite')) {
+        toast.error('Limite de requisições excedido', { description: 'Aguarde alguns segundos e tente novamente.' });
+      } else if (msg.includes('402') || msg.includes('Créditos')) {
+        toast.error('Créditos esgotados', { description: 'Adicione créditos no seu workspace.' });
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setLoading(false);
+      setLoadingPhase('');
     }
   }, []);
 
   const generateTrajectory = useCallback(async (prompt: string, droneCount: number) => {
     setLoading(true);
+    setLoadingPhase('Gerando coreografia...');
     try {
       const { data, error } = await supabase.functions.invoke('generate-formation', {
         body: { generateTrajectory: true, prompt, droneCount },
@@ -181,10 +194,33 @@ function useAIFormation() {
       return null;
     } finally {
       setLoading(false);
+      setLoadingPhase('');
     }
   }, []);
 
-  return { loading, aiPoints, aiMeta, generate, generateTrajectory, setAiPoints };
+  const generateFullShow = useCallback(async (prompt: string, droneCount: number) => {
+    setLoading(true);
+    setLoadingPhase('Desenhando show completo com IA...');
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-formation', {
+        body: { generateFullShow: true, prompt, droneCount },
+      });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      toast.success(`Show "${data.showName}" gerado!`, {
+        description: `${data.formations?.length || 0} formações · ${data.totalDuration}s · ${data.model || 'AI'}`,
+      });
+      return data;
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao gerar show');
+      return null;
+    } finally {
+      setLoading(false);
+      setLoadingPhase('');
+    }
+  }, []);
+
+  return { loading, loadingPhase, aiPoints, aiMeta, generate, generateTrajectory, generateFullShow, setAiPoints };
 }
 
 /* ── Formation Queue ───────────────────────────────────────── */
