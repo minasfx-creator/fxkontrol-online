@@ -617,6 +617,36 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
     onOpenChange(false);
   };
 
+  const handleFullShowApply = async (prompt: string) => {
+    const result = await aiGenerateFullShow(prompt, effectiveCount);
+    if (!result?.formations?.length) return;
+    
+    let currentEnd = lastFormationEnd;
+    for (const f of result.formations) {
+      const formation: DroneFormation = {
+        id: `form-${Date.now()}-${Math.random().toString(36).slice(2, 5)}-${Math.random().toString(36).slice(2, 4)}`,
+        formationType: 'ai-generated',
+        droneCount: f.points.length,
+        height: f.height,
+        radius: 10,
+        spacing: 2,
+        rotation: 0,
+        startTime: currentEnd,
+        transitionDuration: f.transitionDuration,
+        holdDuration: f.holdDuration,
+        color: f.color,
+        endColor: f.endColor || undefined,
+        colorTransition: f.colorTransition || 'linear',
+        points: f.points.map((p: any) => ({ x: p.x, z: p.z })),
+      };
+      addDroneFormation(formation);
+      materializeFormation(formation);
+      currentEnd += f.transitionDuration + f.holdDuration;
+    }
+    toast.success(`Show "${result.showName}" materializado: ${result.formations.length} formações`);
+    onOpenChange(false);
+  };
+
   const needsRadius = ['heart', 'star', 'circle', 'wave', 'spiral', 'diamond', 'cross', 'double-helix', 'firework'].includes(selectedType);
   const needsSpacing = ['grid', 'line', 'v-shape'].includes(selectedType);
 
