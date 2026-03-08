@@ -658,6 +658,7 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
     { id: 'text', label: 'Texto', icon: MessageSquare },
     { id: 'image', label: 'Imagem', icon: Image },
     { id: 'generative', label: 'IA', icon: Sparkles },
+    { id: 'full-show', label: 'Show', icon: Film },
   ];
 
   return (
