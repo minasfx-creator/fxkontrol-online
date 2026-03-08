@@ -413,11 +413,12 @@ function ImageAITab({ droneCount, onGenerate, loading }: {
 
 /* ── Tab: Generative AI ────────────────────────────────────── */
 
-function GenerativeAITab({ droneCount, onGenerate, onGenerateTrajectory, loading }: {
+function GenerativeAITab({ droneCount, onGenerate, onGenerateTrajectory, loading, loadingPhase }: {
   droneCount: number;
   onGenerate: (theme: string) => void;
   onGenerateTrajectory: (prompt: string) => void;
   loading: boolean;
+  loadingPhase: string;
 }) {
   const [trajPrompt, setTrajPrompt] = useState('');
   const themes = [
@@ -466,9 +467,79 @@ function GenerativeAITab({ droneCount, onGenerate, onGenerateTrajectory, loading
       </div>
 
       {loading && (
-        <div className="flex items-center gap-2 text-[10px] text-primary">
+        <div className="flex items-center gap-2 text-[10px] text-primary animate-pulse">
           <Loader2 className="h-3 w-3 animate-spin" />
-          Gerando com modelo avançado...
+          {loadingPhase || 'Gerando com modelo avançado...'}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Tab: Full Show AI ─────────────────────────────────────── */
+
+function FullShowTab({ droneCount, onGenerateFullShow, loading, loadingPhase }: {
+  droneCount: number;
+  onGenerateFullShow: (prompt: string) => void;
+  loading: boolean;
+  loadingPhase: string;
+}) {
+  const [prompt, setPrompt] = useState('');
+  const showThemes = [
+    { id: 'new-year', label: 'Réveillon', emoji: '🎆', prompt: 'Celebração de Ano Novo com contagem regressiva, fogos e estrelas' },
+    { id: 'wedding', label: 'Casamento', emoji: '💒', prompt: 'Casamento romântico com corações, anéis e borboletas' },
+    { id: 'national', label: 'Pátria', emoji: '🇧🇷', prompt: 'Celebração patriótica com bandeira do Brasil, estrelas e mapa do país' },
+    { id: 'christmas', label: 'Natal', emoji: '🎄', prompt: 'Natal com árvore, estrela de Belém, sino e floco de neve' },
+    { id: 'nature', label: 'Natureza', emoji: '🌍', prompt: 'Homenagem à natureza com borboleta, árvore, onda do mar e sol' },
+    { id: 'space', label: 'Espaço', emoji: '🚀', prompt: 'Exploração espacial com foguete, planeta, estrelas e galáxia espiral' },
+    { id: 'music', label: 'Musical', emoji: '🎵', prompt: 'Show musical com notas musicais, clave de sol, guitarra e coração pulsante' },
+    { id: 'sports', label: 'Esportes', emoji: '⚽', prompt: 'Evento esportivo com bola, troféu, estrela e círculos olímpicos' },
+  ];
+
+  return (
+    <div className="space-y-2 p-1">
+      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">🎬 Show Completo por IA</p>
+      <p className="text-[9px] text-muted-foreground">
+        Gera automaticamente 4-6 formações com cores, alturas e transições otimizadas.
+      </p>
+
+      <div className="grid grid-cols-2 gap-1">
+        {showThemes.map((theme) => (
+          <button
+            key={theme.id}
+            disabled={loading}
+            onClick={() => onGenerateFullShow(theme.prompt)}
+            className="flex items-center gap-1.5 px-2 py-2 rounded-sm text-left transition-colors text-[10px] bg-surface-2 hover:bg-surface-3 border border-border/50 hover:border-primary/30 disabled:opacity-50"
+          >
+            <span className="text-sm">{theme.emoji}</span>
+            <span className="text-foreground">{theme.label}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="border-t border-border pt-2 space-y-1.5">
+        <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Tema Personalizado</p>
+        <Textarea
+          placeholder="Descreva o tema do show... Ex: 'homenagem aos 100 anos da cidade com marcos históricos'"
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          className="h-14 text-xs bg-surface-2 border-border resize-none"
+        />
+        <Button
+          size="sm"
+          className="w-full h-7 text-xs"
+          disabled={loading || !prompt.trim()}
+          onClick={() => onGenerateFullShow(prompt)}
+        >
+          {loading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Film className="h-3 w-3 mr-1" />}
+          Gerar Show Completo ({droneCount} drones)
+        </Button>
+      </div>
+
+      {loading && (
+        <div className="flex items-center gap-2 text-[10px] text-primary animate-pulse">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          {loadingPhase || 'Desenhando show com IA avançada...'}
         </div>
       )}
     </div>
