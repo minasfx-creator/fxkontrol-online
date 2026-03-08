@@ -334,10 +334,22 @@ function Moon() {
 function StageGround() {
   return (
     <group>
-      {/* Large terrain ground plane */}
+      {/* Reflective ground plane — captures firework & drone LED reflections */}
       <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[400, 400, 64, 64]} />
-        <meshStandardMaterial color="#0a0f08" roughness={0.95} metalness={0.05} />
+        <planeGeometry args={[400, 400, 1, 1]} />
+        <MeshReflectorMaterial
+          mirror={0.35}
+          resolution={512}
+          mixBlur={8}
+          mixStrength={0.6}
+          roughness={0.85}
+          depthScale={1.2}
+          minDepthThreshold={0.4}
+          maxDepthThreshold={1.4}
+          color="#0a0f08"
+          metalness={0.15}
+          blur={[300, 100]}
+        />
       </mesh>
 
       {/* Main operational grid */}
@@ -354,10 +366,22 @@ function StageGround() {
         infiniteGrid
       />
 
-      {/* Central stage platform */}
-      <mesh position={[0, -0.01, 0]} receiveShadow>
-        <cylinderGeometry args={[25, 27, 0.08, 128]} />
-        <meshStandardMaterial color="#0e1018" metalness={0.2} roughness={0.85} />
+      {/* Reflective central stage platform */}
+      <mesh position={[0, -0.005, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <circleGeometry args={[26, 128]} />
+        <MeshReflectorMaterial
+          mirror={0.5}
+          resolution={512}
+          mixBlur={6}
+          mixStrength={0.8}
+          roughness={0.7}
+          depthScale={1}
+          minDepthThreshold={0.3}
+          maxDepthThreshold={1.2}
+          color="#0e1018"
+          metalness={0.3}
+          blur={[200, 80]}
+        />
       </mesh>
 
       {/* Stage safety rim */}
