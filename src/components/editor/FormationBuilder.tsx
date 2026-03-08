@@ -14,7 +14,7 @@ import {
   type FormationConfig,
   type FormationPoint,
 } from '@/lib/formations';
-import { Trash2, Plus, MessageSquare, Image, Sparkles, Loader2 } from 'lucide-react';
+import { Trash2, Plus, MessageSquare, Image, Sparkles, Loader2, Wand2, Film } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -23,7 +23,7 @@ interface FormationBuilderProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type GenerationTab = 'presets' | 'text' | 'image' | 'generative';
+type GenerationTab = 'presets' | 'text' | 'image' | 'generative' | 'full-show';
 
 /* ── 2D Preview Canvas ─────────────────────────────────────── */
 
@@ -127,6 +127,7 @@ function SliderField({ label, value, onChange, min, max, step, unit }: {
 
 function useAIFormation() {
   const [loading, setLoading] = useState(false);
+  const [loadingPhase, setLoadingPhase] = useState<string>('');
   const [aiPoints, setAiPoints] = useState<FormationPoint[] | null>(null);
   const [aiMeta, setAiMeta] = useState<{ name: string; height: number; transition: number; model?: string } | null>(null);
 
@@ -134,17 +135,20 @@ function useAIFormation() {
     setLoading(true);
     setAiPoints(null);
     setAiMeta(null);
+    setLoadingPhase(mode === 'image' ? 'Analisando imagem...' : mode === 'generative' ? 'Criando padrão criativo...' : 'Interpretando forma...');
     try {
       const { droneFormations } = useProjectStore.getState();
       const lastFormation = droneFormations.length > 0 ? droneFormations[droneFormations.length - 1] : null;
       const previousFormation = lastFormation?.points?.slice(0, droneCount);
 
+      setLoadingPhase('Gerando coordenadas com IA...');
       const { data, error } = await supabase.functions.invoke('generate-formation', {
         body: { mode, prompt, droneCount, imageBase64, previousFormation },
       });
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
+      setLoadingPhase('Processando resultado...');
       const pts: FormationPoint[] = (data.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
 
       setAiPoints(pts);
@@ -155,19 +159,28 @@ function useAIFormation() {
         model: data.model,
       });
 
-      const accuracy = pts.length === droneCount ? '✓' : `⚠ ${pts.length}/${droneCount}`;
+      const accuracy = pts.length === droneCount ? '✓ perfeito' : `⚠ ${pts.length}/${droneCount} (corrigido)`;
       toast.success(`"${data.formationName}" ${accuracy}`, {
-        description: `${pts.length} drones · ${data.suggestedHeight}m · raw=${data.rawPointCount} · ${data.model || 'AI'}`,
+        description: `${pts.length} drones · ${data.suggestedHeight}m · ${data.model || 'AI'}`,
       });
     } catch (e: any) {
-      toast.error(e.message || 'Erro ao gerar formação');
+      const msg = e.message || 'Erro ao gerar formação';
+      if (msg.includes('429') || msg.includes('Limite')) {
+        toast.error('Limite de requisições excedido', { description: 'Aguarde alguns segundos e tente novamente.' });
+      } else if (msg.includes('402') || msg.includes('Créditos')) {
+        toast.error('Créditos esgotados', { description: 'Adicione créditos no seu workspace.' });
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setLoading(false);
+      setLoadingPhase('');
     }
   }, []);
 
   const generateTrajectory = useCallback(async (prompt: string, droneCount: number) => {
     setLoading(true);
+    setLoadingPhase('Gerando coreografia...');
     try {
       const { data, error } = await supabase.functions.invoke('generate-formation', {
         body: { generateTrajectory: true, prompt, droneCount },
@@ -181,10 +194,33 @@ function useAIFormation() {
       return null;
     } finally {
       setLoading(false);
+      setLoadingPhase('');
     }
   }, []);
 
-  return { loading, aiPoints, aiMeta, generate, generateTrajectory, setAiPoints };
+  const generateFullShow = useCallback(async (prompt: string, droneCount: number) => {
+    setLoading(true);
+    setLoadingPhase('Desenhando show completo com IA...');
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-formation', {
+        body: { generateFullShow: true, prompt, droneCount },
+      });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      toast.success(`Show "${data.showName}" gerado!`, {
+        description: `${data.formations?.length || 0} formações · ${data.totalDuration}s · ${data.model || 'AI'}`,
+      });
+      return data;
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao gerar show');
+      return null;
+    } finally {
+      setLoading(false);
+      setLoadingPhase('');
+    }
+  }, []);
+
+  return { loading, loadingPhase, aiPoints, aiMeta, generate, generateTrajectory, generateFullShow, setAiPoints };
 }
 
 /* ── Formation Queue ───────────────────────────────────────── */
@@ -377,11 +413,12 @@ function ImageAITab({ droneCount, onGenerate, loading }: {
 
 /* ── Tab: Generative AI ────────────────────────────────────── */
 
-function GenerativeAITab({ droneCount, onGenerate, onGenerateTrajectory, loading }: {
+function GenerativeAITab({ droneCount, onGenerate, onGenerateTrajectory, loading, loadingPhase }: {
   droneCount: number;
   onGenerate: (theme: string) => void;
   onGenerateTrajectory: (prompt: string) => void;
   loading: boolean;
+  loadingPhase: string;
 }) {
   const [trajPrompt, setTrajPrompt] = useState('');
   const themes = [
@@ -430,9 +467,79 @@ function GenerativeAITab({ droneCount, onGenerate, onGenerateTrajectory, loading
       </div>
 
       {loading && (
-        <div className="flex items-center gap-2 text-[10px] text-primary">
+        <div className="flex items-center gap-2 text-[10px] text-primary animate-pulse">
           <Loader2 className="h-3 w-3 animate-spin" />
-          Gerando com modelo avançado...
+          {loadingPhase || 'Gerando com modelo avançado...'}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Tab: Full Show AI ─────────────────────────────────────── */
+
+function FullShowTab({ droneCount, onGenerateFullShow, loading, loadingPhase }: {
+  droneCount: number;
+  onGenerateFullShow: (prompt: string) => void;
+  loading: boolean;
+  loadingPhase: string;
+}) {
+  const [prompt, setPrompt] = useState('');
+  const showThemes = [
+    { id: 'new-year', label: 'Réveillon', emoji: '🎆', prompt: 'Celebração de Ano Novo com contagem regressiva, fogos e estrelas' },
+    { id: 'wedding', label: 'Casamento', emoji: '💒', prompt: 'Casamento romântico com corações, anéis e borboletas' },
+    { id: 'national', label: 'Pátria', emoji: '🇧🇷', prompt: 'Celebração patriótica com bandeira do Brasil, estrelas e mapa do país' },
+    { id: 'christmas', label: 'Natal', emoji: '🎄', prompt: 'Natal com árvore, estrela de Belém, sino e floco de neve' },
+    { id: 'nature', label: 'Natureza', emoji: '🌍', prompt: 'Homenagem à natureza com borboleta, árvore, onda do mar e sol' },
+    { id: 'space', label: 'Espaço', emoji: '🚀', prompt: 'Exploração espacial com foguete, planeta, estrelas e galáxia espiral' },
+    { id: 'music', label: 'Musical', emoji: '🎵', prompt: 'Show musical com notas musicais, clave de sol, guitarra e coração pulsante' },
+    { id: 'sports', label: 'Esportes', emoji: '⚽', prompt: 'Evento esportivo com bola, troféu, estrela e círculos olímpicos' },
+  ];
+
+  return (
+    <div className="space-y-2 p-1">
+      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">🎬 Show Completo por IA</p>
+      <p className="text-[9px] text-muted-foreground">
+        Gera automaticamente 4-6 formações com cores, alturas e transições otimizadas.
+      </p>
+
+      <div className="grid grid-cols-2 gap-1">
+        {showThemes.map((theme) => (
+          <button
+            key={theme.id}
+            disabled={loading}
+            onClick={() => onGenerateFullShow(theme.prompt)}
+            className="flex items-center gap-1.5 px-2 py-2 rounded-sm text-left transition-colors text-[10px] bg-surface-2 hover:bg-surface-3 border border-border/50 hover:border-primary/30 disabled:opacity-50"
+          >
+            <span className="text-sm">{theme.emoji}</span>
+            <span className="text-foreground">{theme.label}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="border-t border-border pt-2 space-y-1.5">
+        <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Tema Personalizado</p>
+        <Textarea
+          placeholder="Descreva o tema do show... Ex: 'homenagem aos 100 anos da cidade com marcos históricos'"
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          className="h-14 text-xs bg-surface-2 border-border resize-none"
+        />
+        <Button
+          size="sm"
+          className="w-full h-7 text-xs"
+          disabled={loading || !prompt.trim()}
+          onClick={() => onGenerateFullShow(prompt)}
+        >
+          {loading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Film className="h-3 w-3 mr-1" />}
+          Gerar Show Completo ({droneCount} drones)
+        </Button>
+      </div>
+
+      {loading && (
+        <div className="flex items-center gap-2 text-[10px] text-primary animate-pulse">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          {loadingPhase || 'Desenhando show com IA avançada...'}
         </div>
       )}
     </div>
@@ -456,7 +563,7 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
   const [endColor, setEndColor] = useState('#00B4D8');
   const [colorTransition, setColorTransition] = useState<ColorTransitionMode>('linear');
 
-  const { loading: aiLoading, aiPoints, aiMeta, generate: aiGenerate, generateTrajectory: aiGenerateTrajectory, setAiPoints } = useAIFormation();
+  const { loading: aiLoading, loadingPhase: aiLoadingPhase, aiPoints, aiMeta, generate: aiGenerate, generateTrajectory: aiGenerateTrajectory, generateFullShow: aiGenerateFullShow, setAiPoints } = useAIFormation();
 
   const lastFormationEnd = useMemo(() => {
     if (droneFormations.length === 0) return 0;
@@ -510,6 +617,36 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
     onOpenChange(false);
   };
 
+  const handleFullShowApply = async (prompt: string) => {
+    const result = await aiGenerateFullShow(prompt, effectiveCount);
+    if (!result?.formations?.length) return;
+    
+    let currentEnd = lastFormationEnd;
+    for (const f of result.formations) {
+      const formation: DroneFormation = {
+        id: `form-${Date.now()}-${Math.random().toString(36).slice(2, 5)}-${Math.random().toString(36).slice(2, 4)}`,
+        formationType: 'ai-generated',
+        droneCount: f.points.length,
+        height: f.height,
+        radius: 10,
+        spacing: 2,
+        rotation: 0,
+        startTime: currentEnd,
+        transitionDuration: f.transitionDuration,
+        holdDuration: f.holdDuration,
+        color: f.color,
+        endColor: f.endColor || undefined,
+        colorTransition: f.colorTransition || 'linear',
+        points: f.points.map((p: any) => ({ x: p.x, z: p.z })),
+      };
+      addDroneFormation(formation);
+      materializeFormation(formation);
+      currentEnd += f.transitionDuration + f.holdDuration;
+    }
+    toast.success(`Show "${result.showName}" materializado: ${result.formations.length} formações`);
+    onOpenChange(false);
+  };
+
   const needsRadius = ['heart', 'star', 'circle', 'wave', 'spiral', 'diamond', 'cross', 'double-helix', 'firework'].includes(selectedType);
   const needsSpacing = ['grid', 'line', 'v-shape'].includes(selectedType);
 
@@ -521,6 +658,7 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
     { id: 'text', label: 'Texto', icon: MessageSquare },
     { id: 'image', label: 'Imagem', icon: Image },
     { id: 'generative', label: 'IA', icon: Sparkles },
+    { id: 'full-show', label: 'Show', icon: Film },
   ];
 
   return (
@@ -580,8 +718,17 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
               <GenerativeAITab
                 droneCount={effectiveCount}
                 loading={aiLoading}
+                loadingPhase={aiLoadingPhase}
                 onGenerate={(theme) => aiGenerate('generative', theme, effectiveCount)}
                 onGenerateTrajectory={(prompt) => aiGenerateTrajectory(prompt, effectiveCount)}
+              />
+            )}
+            {activeTab === 'full-show' && (
+              <FullShowTab
+                droneCount={effectiveCount}
+                loading={aiLoading}
+                loadingPhase={aiLoadingPhase}
+                onGenerateFullShow={handleFullShowApply}
               />
             )}
           </div>
