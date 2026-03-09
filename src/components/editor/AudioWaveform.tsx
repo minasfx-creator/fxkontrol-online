@@ -1,6 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { Upload, Music, Zap, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Upload, Music, Zap, Volume2, VolumeX } from 'lucide-react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -10,11 +9,9 @@ import { cn } from '@/lib/utils';
 function detectBPM(audioBuffer: AudioBuffer): number {
   const data = audioBuffer.getChannelData(0);
   const sampleRate = audioBuffer.sampleRate;
-  
-  // Simple onset detection using energy peaks
-  const windowSize = Math.floor(sampleRate * 0.05); // 50ms windows
+  const windowSize = Math.floor(sampleRate * 0.05);
   const energies: number[] = [];
-  
+
   for (let i = 0; i < data.length - windowSize; i += windowSize) {
     let sum = 0;
     for (let j = i; j < i + windowSize; j++) {
@@ -22,8 +19,7 @@ function detectBPM(audioBuffer: AudioBuffer): number {
     }
     energies.push(sum / windowSize);
   }
-  
-  // Find peaks
+
   const threshold = energies.reduce((a, b) => a + b, 0) / energies.length * 1.5;
   const peaks: number[] = [];
   for (let i = 1; i < energies.length - 1; i++) {
@@ -31,23 +27,21 @@ function detectBPM(audioBuffer: AudioBuffer): number {
       peaks.push(i);
     }
   }
-  
-  if (peaks.length < 2) return 120; // default
-  
-  // Calculate average interval
+
+  if (peaks.length < 2) return 120;
+
   const intervals: number[] = [];
   for (let i = 1; i < Math.min(peaks.length, 50); i++) {
     intervals.push(peaks[i] - peaks[i - 1]);
   }
-  
+
   const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
   const secondsPerBeat = (avgInterval * windowSize) / sampleRate;
   let bpm = Math.round(60 / secondsPerBeat);
-  
-  // Normalize to reasonable range
+
   while (bpm > 180) bpm /= 2;
   while (bpm < 60) bpm *= 2;
-  
+
   return bpm;
 }
 
@@ -63,31 +57,90 @@ function getBeats(bpm: number, duration: number): number[] {
 export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { user } = useAuth();
-  const { currentTime, duration, audioUrl, bpm, setAudioUrl, setBpm, snapToBeat, setSnapToBeat } = useProjectStore();
-  const [waveformData, setWaveformData] = useState<Float32Array | null>(null);
-  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const [beats, setBeats] = useState<number[]>([]);
+  const {
+    currentTime, duration, audioUrl, bpm, isPlaying, playbackSpeed,
+    setAudioUrl, setBpm, snapToBeat, setSnapToBeat,
+  } = useProjectStore();
 
-  // Load and decode audio
+  const [waveformData, setWaveformData] = useState<Float32Array | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [beats, setBeats] = useState<number[]>([]);
+  const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(0.8);
+
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const syncingRef = useRef(false);
+
+  // Create / configure <audio> element
+  useEffect(() => {
+    if (!audioUrl) return;
+    const audio = new Audio(audioUrl);
+    audio.preload = 'auto';
+    audio.volume = muted ? 0 : volume;
+    audio.playbackRate = playbackSpeed;
+    audioRef.current = audio;
+
+    return () => {
+      audio.pause();
+      audio.src = '';
+      audioRef.current = null;
+    };
+  }, [audioUrl]);
+
+  // Sync volume / mute
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = muted ? 0 : volume;
+  }, [muted, volume]);
+
+  // Sync playback speed
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.playbackRate = playbackSpeed;
+  }, [playbackSpeed]);
+
+  // Sync play / pause
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isPlaying) {
+      // Sync position before playing
+      if (Math.abs(audio.currentTime - currentTime) > 0.15) {
+        audio.currentTime = currentTime;
+      }
+      audio.play().catch(() => {});
+    } else {
+      audio.pause();
+    }
+  }, [isPlaying]);
+
+  // Sync seek (when user clicks timeline)
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || isPlaying) return;
+    // Only seek when paused to avoid fighting the playback loop
+    if (Math.abs(audio.currentTime - currentTime) > 0.15) {
+      audio.currentTime = currentTime;
+    }
+  }, [currentTime, isPlaying]);
+
+  // Load and decode audio for waveform + BPM
   const loadAudio = useCallback(async (url: string) => {
     try {
       const response = await fetch(url);
       const arrayBuffer = await response.arrayBuffer();
-      
+
       if (!audioContextRef.current) {
         audioContextRef.current = new AudioContext();
       }
-      
+
       const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
-      
-      // Downsample for waveform display
+
       const rawData = audioBuffer.getChannelData(0);
       const samples = Math.floor(duration * pixelsPerSecond * 2);
       const blockSize = Math.floor(rawData.length / samples);
       const downsampled = new Float32Array(samples);
-      
+
       for (let i = 0; i < samples; i++) {
         let sum = 0;
         const start = i * blockSize;
@@ -96,15 +149,14 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
         }
         downsampled[i] = sum / blockSize;
       }
-      
+
       setWaveformData(downsampled);
-      
-      // BPM detection
+
       const detectedBpm = detectBPM(audioBuffer);
       setBpm(detectedBpm);
       setBeats(getBeats(detectedBpm, duration));
-      
-      toast.success(`Áudio carregado! BPM detectado: ${detectedBpm}`);
+
+      toast.success(`Áudio carregado · BPM: ${detectedBpm}`);
     } catch (err) {
       console.error('Failed to decode audio:', err);
       toast.error('Erro ao decodificar áudio');
@@ -112,17 +164,14 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
   }, [duration, pixelsPerSecond, setBpm]);
 
   useEffect(() => {
-    if (audioUrl) {
-      loadAudio(audioUrl);
-    }
+    if (audioUrl) loadAudio(audioUrl);
   }, [audioUrl, loadAudio]);
 
-  // Update beats when BPM changes
   useEffect(() => {
     if (bpm) setBeats(getBeats(bpm, duration));
   }, [bpm, duration]);
 
-  // Draw waveform
+  // Draw waveform + beat markers + playhead
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -136,29 +185,47 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
 
     ctx.clearRect(0, 0, width, height);
 
-    // Draw beat markers
+    // Beat markers
     if (beats.length > 0) {
-      ctx.strokeStyle = 'hsla(24, 95%, 53%, 0.3)';
-      ctx.lineWidth = 1;
-      beats.forEach((beat) => {
+      beats.forEach((beat, idx) => {
         const x = beat * pixelsPerSecond;
+        const isMeasure = idx % 4 === 0;
+        ctx.strokeStyle = isMeasure ? 'hsla(24, 95%, 53%, 0.4)' : 'hsla(24, 95%, 53%, 0.15)';
+        ctx.lineWidth = isMeasure ? 1.5 : 0.5;
         ctx.beginPath();
         ctx.moveTo(x, 0);
         ctx.lineTo(x, height);
         ctx.stroke();
+
+        // Measure number
+        if (isMeasure && pixelsPerSecond > 8) {
+          ctx.fillStyle = 'hsla(24, 95%, 53%, 0.5)';
+          ctx.font = '7px monospace';
+          ctx.fillText(`${Math.floor(idx / 4) + 1}`, x + 2, 8);
+        }
       });
     }
 
-    // Draw waveform
+    // Waveform
     if (waveformData) {
       const mid = height / 2;
-      ctx.fillStyle = 'hsla(207, 90%, 54%, 0.5)';
+      // Gradient for waveform
+      const grad = ctx.createLinearGradient(0, 0, 0, height);
+      grad.addColorStop(0, 'hsla(207, 90%, 64%, 0.6)');
+      grad.addColorStop(0.5, 'hsla(207, 90%, 54%, 0.8)');
+      grad.addColorStop(1, 'hsla(207, 90%, 64%, 0.6)');
+      ctx.fillStyle = grad;
 
       for (let i = 0; i < waveformData.length; i++) {
         const x = (i / waveformData.length) * width;
-        const barHeight = waveformData[i] * height * 0.8;
-        ctx.fillRect(x, mid - barHeight / 2, 1, barHeight);
+        const barHeight = waveformData[i] * height * 0.85;
+        ctx.fillRect(x, mid - barHeight / 2, Math.max(1, width / waveformData.length - 0.5), barHeight);
       }
+
+      // Played region overlay
+      const playX = currentTime * pixelsPerSecond;
+      ctx.fillStyle = 'hsla(207, 90%, 54%, 0.12)';
+      ctx.fillRect(0, 0, playX, height);
     }
 
     // Playhead
@@ -181,15 +248,12 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
       const { error: uploadError } = await supabase.storage.from('audio').upload(path, file);
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage.from('audio').getPublicUrl(path);
-      
-      // For private bucket, use signed URL
       const { data: signedData, error: signError } = await supabase.storage
         .from('audio')
         .createSignedUrl(path, 3600);
-      
+
       if (signError) throw signError;
-      
+
       setAudioUrl(signedData.signedUrl);
       toast.success('Áudio enviado!');
     } catch (err: any) {
@@ -205,10 +269,23 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
         <div className="flex items-center gap-1 w-full">
           <Music className="h-3 w-3 text-electric flex-shrink-0" />
           <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider flex-1">Audio</span>
+
+          {/* Volume toggle */}
+          {audioUrl && (
+            <button
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => setMuted(!muted)}
+              title={muted ? 'Unmute' : 'Mute'}
+            >
+              {muted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+            </button>
+          )}
+
           <label className="cursor-pointer">
             <Upload className="h-3 w-3 text-muted-foreground hover:text-primary" />
             <input type="file" accept="audio/*" className="hidden" onChange={handleUpload} disabled={uploading} />
           </label>
+
           {bpm && (
             <button
               className={cn(
