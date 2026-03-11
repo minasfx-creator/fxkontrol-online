@@ -524,100 +524,114 @@ function Moon() {
   );
 }
 
-// --- UE5-Quality Ground with PBR ---
+// --- UE5-Quality Ground with PBR + wet surface ---
 function StageGround() {
   return (
     <group>
-      {/* Main reflective ground — higher quality reflections */}
+      {/* Main reflective ground — wet asphalt look */}
       <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[500, 500, 1, 1]} />
         <MeshReflectorMaterial
-          mirror={0.4}
-          resolution={1024}
-          mixBlur={10}
-          mixStrength={0.7}
-          roughness={0.82}
-          depthScale={1.5}
-          minDepthThreshold={0.3}
-          maxDepthThreshold={1.6}
-          color="#060a04"
-          metalness={0.12}
-          blur={[400, 150]}
+          mirror={0.5}
+          resolution={2048}
+          mixBlur={8}
+          mixStrength={0.85}
+          roughness={0.7}
+          depthScale={2.0}
+          minDepthThreshold={0.2}
+          maxDepthThreshold={1.8}
+          color="#040806"
+          metalness={0.15}
+          blur={[500, 200]}
         />
       </mesh>
 
-      {/* Operational grid — subtle */}
+      {/* Operational grid — finer, more subtle */}
       <Grid
         position={[0, 0.01, 0]}
         args={[200, 200]}
         cellSize={2}
-        cellThickness={0.2}
-        cellColor="#0a1218"
+        cellThickness={0.15}
+        cellColor="#080f16"
         sectionSize={10}
-        sectionThickness={0.6}
-        sectionColor="#121d35"
-        fadeDistance={100}
+        sectionThickness={0.5}
+        sectionColor="#0e1830"
+        fadeDistance={120}
         infiniteGrid
       />
 
-      {/* Central stage platform — high-res reflector */}
+      {/* Central stage platform — high-quality wet reflector */}
       <mesh position={[0, -0.005, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[26, 128]} />
         <MeshReflectorMaterial
-          mirror={0.55}
-          resolution={1024}
-          mixBlur={5}
-          mixStrength={0.9}
-          roughness={0.6}
-          depthScale={1.2}
-          minDepthThreshold={0.2}
-          maxDepthThreshold={1.4}
-          color="#0c0e16"
-          metalness={0.35}
-          blur={[250, 100]}
+          mirror={0.65}
+          resolution={2048}
+          mixBlur={4}
+          mixStrength={1.0}
+          roughness={0.45}
+          depthScale={1.5}
+          minDepthThreshold={0.15}
+          maxDepthThreshold={1.5}
+          color="#080a14"
+          metalness={0.4}
+          blur={[300, 120]}
         />
       </mesh>
 
-      {/* Stage safety rim — golden */}
+      {/* Stage safety rim — golden with subtle pulse */}
       <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[24.5, 25, 128]} />
-        <meshBasicMaterial color="#c8a020" transparent opacity={0.25} />
+        <meshBasicMaterial color="#c8a020" transparent opacity={0.3} />
       </mesh>
-      {/* Rim glow */}
       <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[24, 25.5, 128]} />
-        <meshBasicMaterial color="#c8a020" transparent opacity={0.04} blending={THREE.AdditiveBlending} />
+        <meshBasicMaterial color="#c8a020" transparent opacity={0.06} blending={THREE.AdditiveBlending} />
+      </mesh>
+      {/* Inner accent ring */}
+      <mesh position={[0, 0.025, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[23.8, 24, 128]} />
+        <meshBasicMaterial color="#806010" transparent opacity={0.12} />
       </mesh>
 
-      {/* Volumetric ground fog — multiple layers for depth */}
+      {/* Volumetric ground fog */}
       <GroundFog />
 
-      {/* Audience rows */}
-      {[30, 34, 38, 42, 46].map((z, i) => (
+      {/* Audience rows with subtle depth */}
+      {[30, 34, 38, 42, 46, 50].map((z, i) => (
         <group key={`aud-${i}`}>
-          <mesh position={[0, 0.01, z]} rotation={[-Math.PI / 2, 0, 0]}>
+          <mesh position={[0, 0.01 + i * 0.005, z]} rotation={[-Math.PI / 2, 0, 0]}>
             <planeGeometry args={[50 + i * 6, 0.3]} />
-            <meshBasicMaterial color="#121828" transparent opacity={0.4} />
+            <meshBasicMaterial color="#0c1420" transparent opacity={0.5 - i * 0.05} />
           </mesh>
+          {/* Subtle audience silhouette dots */}
+          {Array.from({ length: 15 + i * 3 }).map((_, j) => {
+            const x = (j - (15 + i * 3) / 2) * 2.8 + (Math.random() - 0.5) * 1.5;
+            return (
+              <mesh key={j} position={[x, 1.0 + Math.random() * 0.3, z + (Math.random() - 0.5) * 0.5]}>
+                <sphereGeometry args={[0.15 + Math.random() * 0.08, 4, 4]} />
+                <meshBasicMaterial color="#060810" transparent opacity={0.6 - i * 0.08} />
+              </mesh>
+            );
+          })}
         </group>
       ))}
 
-      {/* Scale reference poles */}
+      {/* Scale reference poles — enhanced PBR */}
       {[-20, -15, -10, -5, 0, 5, 10, 15, 20].map((x) => (
         <group key={`pole-${x}`} position={[x, 0, -22]}>
-          <mesh position={[0, 3, 0]}>
+          <mesh position={[0, 3, 0]} castShadow>
             <cylinderGeometry args={[0.025, 0.03, 6, 8]} />
-            <meshStandardMaterial color="#1a2040" metalness={0.6} roughness={0.4} />
+            <meshStandardMaterial color="#141830" metalness={0.7} roughness={0.3} />
           </mesh>
           {[2, 4, 6].map((h) => (
             <mesh key={h} position={[0, h, 0]}>
               <boxGeometry args={[0.08, 0.01, 0.08]} />
-              <meshBasicMaterial color="#304080" transparent opacity={0.3} />
+              <meshBasicMaterial color="#203060" transparent opacity={0.25} />
             </mesh>
           ))}
           <mesh position={[0, 6.1, 0]}>
             <sphereGeometry args={[0.06, 8, 8]} />
-            <meshBasicMaterial color="#3050a0" transparent opacity={0.4} />
+            <meshBasicMaterial color="#2040a0" transparent opacity={0.5} />
           </mesh>
         </group>
       ))}
