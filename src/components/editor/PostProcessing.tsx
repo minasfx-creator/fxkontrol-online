@@ -1,52 +1,65 @@
-import { EffectComposer, Bloom, Vignette, ChromaticAberration, ToneMapping, DepthOfField, Noise, HueSaturation } from '@react-three/postprocessing';
+import { EffectComposer, Bloom, Vignette, ChromaticAberration, ToneMapping, DepthOfField, Noise, HueSaturation, BrightnessContrast } from '@react-three/postprocessing';
 import { KernelSize, BlendFunction, ToneMappingMode } from 'postprocessing';
 import * as THREE from 'three';
 
 export default function PostProcessing() {
   return (
-    <EffectComposer multisampling={4}>
-      {/* UE5-style bloom: multi-layer glow with wide kernel */}
+    <EffectComposer multisampling={8}>
+      {/* Primary bloom: ultra-wide cinematic glow — UE5 exponential fog style */}
       <Bloom
-        intensity={2.4}
-        luminanceThreshold={0.08}
-        luminanceSmoothing={0.9}
+        intensity={3.2}
+        luminanceThreshold={0.04}
+        luminanceSmoothing={0.95}
         kernelSize={KernelSize.HUGE}
         mipmapBlur
       />
-      {/* Secondary subtle bloom for atmospheric glow */}
+      {/* Secondary bloom: tighter highlights for LED and pyro punch */}
       <Bloom
-        intensity={0.6}
-        luminanceThreshold={0.4}
-        luminanceSmoothing={0.5}
+        intensity={1.2}
+        luminanceThreshold={0.25}
+        luminanceSmoothing={0.6}
         kernelSize={KernelSize.LARGE}
         mipmapBlur
       />
-      {/* Depth of field — cinematic bokeh */}
+      {/* Tertiary subtle bloom: atmospheric light wrap */}
+      <Bloom
+        intensity={0.35}
+        luminanceThreshold={0.5}
+        luminanceSmoothing={0.3}
+        kernelSize={KernelSize.MEDIUM}
+        mipmapBlur
+      />
+      {/* Cinematic depth of field — shallow focus */}
       <DepthOfField
-        focusDistance={0.02}
-        focalLength={0.06}
-        bokehScale={3}
+        focusDistance={0.015}
+        focalLength={0.05}
+        bokehScale={4}
       />
-      {/* Chromatic aberration — lens distortion */}
+      {/* Chromatic aberration — subtle lens imperfection */}
       <ChromaticAberration
-        offset={new THREE.Vector2(0.0006, 0.0006)}
+        offset={new THREE.Vector2(0.0008, 0.0008)}
         radialModulation={true}
-        modulationOffset={0.4}
+        modulationOffset={0.35}
       />
-      {/* Film grain for cinematic feel */}
+      {/* Film grain — 35mm cinematic texture */}
       <Noise
         premultiply
         blendFunction={BlendFunction.SOFT_LIGHT}
       />
-      {/* Slight color grading: deepen blues, warm highlights */}
+      {/* Color grading: push shadows cool, highlights warm */}
       <HueSaturation
-        saturation={0.15}
-        hue={0}
+        saturation={0.2}
+        hue={-0.02}
       />
-      {/* Cinematic vignette — heavier than before */}
+      {/* Slight contrast boost for cinematic punch */}
+      <BrightnessContrast
+        brightness={-0.03}
+        contrast={0.12}
+      />
+      {/* Heavy cinematic vignette */}
       <Vignette
-        offset={0.25}
-        darkness={0.7}
+        offset={0.2}
+        darkness={0.82}
         blendFunction={BlendFunction.NORMAL}
       />
       <ToneMapping mode={ToneMappingMode.AGX} />
