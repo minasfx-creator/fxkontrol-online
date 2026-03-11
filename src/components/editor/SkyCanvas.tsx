@@ -628,31 +628,40 @@ function StageGround() {
   );
 }
 
-// --- Volumetric ground fog (UE5-style layered) ---
+// --- Volumetric ground fog with animated shader ---
 function GroundFog() {
   const fogRef = useRef<THREE.Group>(null);
+  const uniforms = useMemo(() => ({
+    time: { value: 0 },
+    fogColor: { value: new THREE.Color('#060e1c') },
+    fogColor2: { value: new THREE.Color('#0a0614') },
+  }), []);
   
   const fogLayers = useMemo(() => {
     const layers: { y: number; scale: number; opacity: number; speed: number }[] = [];
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 12; i++) {
       layers.push({
-        y: 0.1 + i * 0.25,
-        scale: 80 + i * 15,
-        opacity: 0.025 - i * 0.002,
-        speed: 0.002 + Math.random() * 0.003,
+        y: 0.05 + i * 0.18,
+        scale: 90 + i * 12,
+        opacity: 0.032 - i * 0.002,
+        speed: 0.0015 + Math.random() * 0.004,
       });
     }
     return layers;
   }, []);
 
   useFrame(({ clock }) => {
+    uniforms.time.value = clock.getElapsedTime();
     if (!fogRef.current) return;
     const t = clock.getElapsedTime();
     fogRef.current.children.forEach((child, i) => {
       const layer = fogLayers[i];
       if (layer) {
-        (child as THREE.Mesh).position.x = Math.sin(t * layer.speed) * 5;
-        (child as THREE.Mesh).position.z = Math.cos(t * layer.speed * 0.7) * 3;
+        const mesh = child as THREE.Mesh;
+        mesh.position.x = Math.sin(t * layer.speed + i * 0.7) * 8;
+        mesh.position.z = Math.cos(t * layer.speed * 0.6 + i * 1.2) * 5;
+        // Subtle vertical breathing
+        mesh.position.y = layer.y + Math.sin(t * 0.3 + i * 0.5) * 0.08;
       }
     });
   });
@@ -662,13 +671,64 @@ function GroundFog() {
       {fogLayers.map((layer, i) => (
         <mesh key={i} position={[0, layer.y, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[layer.scale, layer.scale]} />
-          <meshBasicMaterial
-            color="#0c1420"
+          <shaderMaterial
             transparent
-            opacity={layer.opacity}
-            blending={THREE.AdditiveBlending}
             depthWrite={false}
+            blending={THREE.AdditiveBlending}
             side={THREE.DoubleSide}
+            uniforms={{
+              ...uniforms,
+              layerOpacity: { value: layer.opacity },
+              layerIndex: { value: i },
+            }}
+            vertexShader={`
+              varying vec2 vUv;
+              void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+              }
+            `}
+            fragmentShader={`
+              uniform float time;
+              uniform vec3 fogColor;
+              uniform vec3 fogColor2;
+              uniform float layerOpacity;
+              uniform float layerIndex;
+              varying vec2 vUv;
+              
+              float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453); }
+              float noise(vec2 p) {
+                vec2 i = floor(p); vec2 f = fract(p);
+                f = f*f*(3.0-2.0*f);
+                return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
+                           mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+              }
+              float fbm(vec2 p) {
+                float v = 0.0; float a = 0.5;
+                for(int i = 0; i < 5; i++) {
+                  v += a * noise(p); p *= 2.0; a *= 0.5;
+                }
+                return v;
+              }
+              
+              void main() {
+                vec2 uv = vUv - 0.5;
+                float dist = length(uv) * 2.0;
+                
+                // Animated wisps
+                float n = fbm(uv * 3.0 + time * 0.02 + layerIndex * 1.5);
+                float n2 = fbm(uv * 6.0 - time * 0.015 + layerIndex * 2.3);
+                float wisps = smoothstep(0.35, 0.7, n) * 0.7 + smoothstep(0.4, 0.75, n2) * 0.3;
+                
+                // Radial falloff
+                float falloff = 1.0 - smoothstep(0.3, 0.5, dist);
+                
+                vec3 color = mix(fogColor, fogColor2, n * 0.6);
+                float alpha = wisps * falloff * layerOpacity;
+                
+                gl_FragColor = vec4(color, alpha);
+              }
+            `}
           />
         </mesh>
       ))}
