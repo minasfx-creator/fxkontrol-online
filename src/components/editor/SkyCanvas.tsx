@@ -875,21 +875,23 @@ function LaunchSites() {
   );
 }
 
-// --- Enhanced atmosphere particles: dust, fireflies, and volumetric haze ---
+// --- Ultra-realistic atmosphere: dust motes, volumetric haze, fireflies ---
 function AtmosphereParticles() {
   const dustRef = useRef<THREE.Points>(null);
   const fogRef = useRef<THREE.Points>(null);
   const fireflyRef = useRef<THREE.Points>(null);
-  const dustCount = 500;
-  const fogCount = 150;
-  const fireflyCount = 60;
+  const hazeRef = useRef<THREE.Points>(null);
+  const dustCount = 800;
+  const fogCount = 200;
+  const fireflyCount = 80;
+  const hazeCount = 100;
 
   const dustPositions = useMemo(() => {
     const arr = new Float32Array(dustCount * 3);
     for (let i = 0; i < dustCount; i++) {
-      arr[i * 3] = (Math.random() - 0.5) * 150;
-      arr[i * 3 + 1] = Math.random() * 60;
-      arr[i * 3 + 2] = (Math.random() - 0.5) * 150;
+      arr[i * 3] = (Math.random() - 0.5) * 180;
+      arr[i * 3 + 1] = Math.random() * 50;
+      arr[i * 3 + 2] = (Math.random() - 0.5) * 180;
     }
     return arr;
   }, []);
@@ -897,9 +899,9 @@ function AtmosphereParticles() {
   const fogPositions = useMemo(() => {
     const arr = new Float32Array(fogCount * 3);
     for (let i = 0; i < fogCount; i++) {
-      arr[i * 3] = (Math.random() - 0.5) * 120;
-      arr[i * 3 + 1] = 0.2 + Math.random() * 3;
-      arr[i * 3 + 2] = (Math.random() - 0.5) * 120;
+      arr[i * 3] = (Math.random() - 0.5) * 140;
+      arr[i * 3 + 1] = 0.1 + Math.random() * 2.5;
+      arr[i * 3 + 2] = (Math.random() - 0.5) * 140;
     }
     return arr;
   }, []);
@@ -907,9 +909,9 @@ function AtmosphereParticles() {
   const fireflyPositions = useMemo(() => {
     const arr = new Float32Array(fireflyCount * 3);
     for (let i = 0; i < fireflyCount; i++) {
-      arr[i * 3] = (Math.random() - 0.5) * 60;
-      arr[i * 3 + 1] = 0.5 + Math.random() * 4;
-      arr[i * 3 + 2] = (Math.random() - 0.5) * 60;
+      arr[i * 3] = (Math.random() - 0.5) * 70;
+      arr[i * 3 + 1] = 0.3 + Math.random() * 5;
+      arr[i * 3 + 2] = (Math.random() - 0.5) * 70;
     }
     return arr;
   }, []);
@@ -917,9 +919,10 @@ function AtmosphereParticles() {
   const fireflyColors = useMemo(() => {
     const arr = new Float32Array(fireflyCount * 3);
     const colors = [
-      [0.2, 1.0, 0.3],  // green
-      [1.0, 0.8, 0.2],  // warm yellow
-      [0.3, 0.8, 1.0],  // cyan
+      [0.15, 0.9, 0.25],
+      [0.9, 0.7, 0.15],
+      [0.2, 0.7, 0.9],
+      [0.8, 0.4, 0.1],
     ];
     for (let i = 0; i < fireflyCount; i++) {
       const c = colors[Math.floor(Math.random() * colors.length)];
@@ -930,68 +933,99 @@ function AtmosphereParticles() {
     return arr;
   }, []);
 
+  const hazePositions = useMemo(() => {
+    const arr = new Float32Array(hazeCount * 3);
+    for (let i = 0; i < hazeCount; i++) {
+      arr[i * 3] = (Math.random() - 0.5) * 100;
+      arr[i * 3 + 1] = 3 + Math.random() * 20;
+      arr[i * 3 + 2] = (Math.random() - 0.5) * 100;
+    }
+    return arr;
+  }, []);
+
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
     
     if (dustRef.current) {
       const pos = dustRef.current.geometry.attributes.position;
+      const arr = pos.array as Float32Array;
       for (let i = 0; i < dustCount; i++) {
         const ix = i * 3;
-        (pos.array as Float32Array)[ix] += Math.sin(t * 0.02 + i * 0.15) * 0.004;
-        (pos.array as Float32Array)[ix + 1] += Math.cos(t * 0.015 + i * 0.1) * 0.0015;
-        (pos.array as Float32Array)[ix + 2] += Math.sin(t * 0.018 + i * 0.25) * 0.003;
+        arr[ix] += Math.sin(t * 0.015 + i * 0.12) * 0.003;
+        arr[ix + 1] += Math.cos(t * 0.012 + i * 0.08) * 0.001;
+        arr[ix + 2] += Math.sin(t * 0.014 + i * 0.2) * 0.0025;
       }
       pos.needsUpdate = true;
     }
     
     if (fogRef.current) {
       const fp = fogRef.current.geometry.attributes.position;
+      const arr = fp.array as Float32Array;
       for (let i = 0; i < fogCount; i++) {
         const ix = i * 3;
-        (fp.array as Float32Array)[ix] += Math.sin(t * 0.008 + i * 0.5) * 0.01;
-        (fp.array as Float32Array)[ix + 2] += Math.cos(t * 0.006 + i * 0.4) * 0.008;
+        arr[ix] += Math.sin(t * 0.006 + i * 0.4) * 0.012;
+        arr[ix + 2] += Math.cos(t * 0.005 + i * 0.35) * 0.01;
       }
       fp.needsUpdate = true;
     }
 
     if (fireflyRef.current) {
       const fp = fireflyRef.current.geometry.attributes.position;
+      const arr = fp.array as Float32Array;
       const mat = fireflyRef.current.material as THREE.PointsMaterial;
       for (let i = 0; i < fireflyCount; i++) {
         const ix = i * 3;
-        (fp.array as Float32Array)[ix] += Math.sin(t * 0.3 + i * 2.0) * 0.008;
-        (fp.array as Float32Array)[ix + 1] += Math.cos(t * 0.4 + i * 1.5) * 0.005;
-        (fp.array as Float32Array)[ix + 2] += Math.sin(t * 0.25 + i * 1.8) * 0.007;
+        arr[ix] += Math.sin(t * 0.4 + i * 2.3) * 0.006;
+        arr[ix + 1] += Math.cos(t * 0.5 + i * 1.7) * 0.004;
+        arr[ix + 2] += Math.sin(t * 0.35 + i * 2.1) * 0.005;
       }
       fp.needsUpdate = true;
-      // Pulse opacity
-      mat.opacity = 0.3 + Math.sin(t * 2) * 0.15;
+      mat.opacity = 0.25 + Math.sin(t * 1.5) * 0.15;
+    }
+
+    if (hazeRef.current) {
+      const hp = hazeRef.current.geometry.attributes.position;
+      const arr = hp.array as Float32Array;
+      for (let i = 0; i < hazeCount; i++) {
+        const ix = i * 3;
+        arr[ix] += Math.sin(t * 0.003 + i * 0.6) * 0.015;
+        arr[ix + 1] += Math.cos(t * 0.004 + i * 0.9) * 0.003;
+        arr[ix + 2] += Math.cos(t * 0.0025 + i * 0.5) * 0.012;
+      }
+      hp.needsUpdate = true;
     }
   });
 
   return (
     <group>
-      {/* Atmospheric dust */}
+      {/* Atmospheric dust motes — visible in moonlight */}
       <points ref={dustRef}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[dustPositions, 3]} />
         </bufferGeometry>
-        <pointsMaterial size={0.05} color="#2040a0" transparent opacity={0.1} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        <pointsMaterial size={0.04} color="#1a3070" transparent opacity={0.12} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
-      {/* Low fog particles */}
+      {/* Low fog particles — volumetric depth */}
       <points ref={fogRef}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[fogPositions, 3]} />
         </bufferGeometry>
-        <pointsMaterial size={2.5} color="#0c1828" transparent opacity={0.05} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        <pointsMaterial size={3.0} color="#0a1424" transparent opacity={0.04} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
-      {/* Fireflies */}
+      {/* Fireflies — bioluminescent */}
       <points ref={fireflyRef}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[fireflyPositions, 3]} />
           <bufferAttribute attach="attributes-color" args={[fireflyColors, 3]} />
         </bufferGeometry>
-        <pointsMaterial size={0.12} vertexColors transparent opacity={0.3} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        <pointsMaterial size={0.1} vertexColors transparent opacity={0.25} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+      </points>
+      {/* Mid-altitude haze — atmospheric depth */}
+      <points ref={hazeRef}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[hazePositions, 3]} />
+        </bufferGeometry>
+        <pointsMaterial size={5.0} color="#060c1e" transparent opacity={0.02} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
     </group>
   );
