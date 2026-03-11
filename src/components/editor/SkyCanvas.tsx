@@ -524,100 +524,114 @@ function Moon() {
   );
 }
 
-// --- UE5-Quality Ground with PBR ---
+// --- UE5-Quality Ground with PBR + wet surface ---
 function StageGround() {
   return (
     <group>
-      {/* Main reflective ground — higher quality reflections */}
+      {/* Main reflective ground — wet asphalt look */}
       <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[500, 500, 1, 1]} />
         <MeshReflectorMaterial
-          mirror={0.4}
-          resolution={1024}
-          mixBlur={10}
-          mixStrength={0.7}
-          roughness={0.82}
-          depthScale={1.5}
-          minDepthThreshold={0.3}
-          maxDepthThreshold={1.6}
-          color="#060a04"
-          metalness={0.12}
-          blur={[400, 150]}
+          mirror={0.5}
+          resolution={2048}
+          mixBlur={8}
+          mixStrength={0.85}
+          roughness={0.7}
+          depthScale={2.0}
+          minDepthThreshold={0.2}
+          maxDepthThreshold={1.8}
+          color="#040806"
+          metalness={0.15}
+          blur={[500, 200]}
         />
       </mesh>
 
-      {/* Operational grid — subtle */}
+      {/* Operational grid — finer, more subtle */}
       <Grid
         position={[0, 0.01, 0]}
         args={[200, 200]}
         cellSize={2}
-        cellThickness={0.2}
-        cellColor="#0a1218"
+        cellThickness={0.15}
+        cellColor="#080f16"
         sectionSize={10}
-        sectionThickness={0.6}
-        sectionColor="#121d35"
-        fadeDistance={100}
+        sectionThickness={0.5}
+        sectionColor="#0e1830"
+        fadeDistance={120}
         infiniteGrid
       />
 
-      {/* Central stage platform — high-res reflector */}
+      {/* Central stage platform — high-quality wet reflector */}
       <mesh position={[0, -0.005, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[26, 128]} />
         <MeshReflectorMaterial
-          mirror={0.55}
-          resolution={1024}
-          mixBlur={5}
-          mixStrength={0.9}
-          roughness={0.6}
-          depthScale={1.2}
-          minDepthThreshold={0.2}
-          maxDepthThreshold={1.4}
-          color="#0c0e16"
-          metalness={0.35}
-          blur={[250, 100]}
+          mirror={0.65}
+          resolution={2048}
+          mixBlur={4}
+          mixStrength={1.0}
+          roughness={0.45}
+          depthScale={1.5}
+          minDepthThreshold={0.15}
+          maxDepthThreshold={1.5}
+          color="#080a14"
+          metalness={0.4}
+          blur={[300, 120]}
         />
       </mesh>
 
-      {/* Stage safety rim — golden */}
+      {/* Stage safety rim — golden with subtle pulse */}
       <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[24.5, 25, 128]} />
-        <meshBasicMaterial color="#c8a020" transparent opacity={0.25} />
+        <meshBasicMaterial color="#c8a020" transparent opacity={0.3} />
       </mesh>
-      {/* Rim glow */}
       <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[24, 25.5, 128]} />
-        <meshBasicMaterial color="#c8a020" transparent opacity={0.04} blending={THREE.AdditiveBlending} />
+        <meshBasicMaterial color="#c8a020" transparent opacity={0.06} blending={THREE.AdditiveBlending} />
+      </mesh>
+      {/* Inner accent ring */}
+      <mesh position={[0, 0.025, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[23.8, 24, 128]} />
+        <meshBasicMaterial color="#806010" transparent opacity={0.12} />
       </mesh>
 
-      {/* Volumetric ground fog — multiple layers for depth */}
+      {/* Volumetric ground fog */}
       <GroundFog />
 
-      {/* Audience rows */}
-      {[30, 34, 38, 42, 46].map((z, i) => (
+      {/* Audience rows with subtle depth */}
+      {[30, 34, 38, 42, 46, 50].map((z, i) => (
         <group key={`aud-${i}`}>
-          <mesh position={[0, 0.01, z]} rotation={[-Math.PI / 2, 0, 0]}>
+          <mesh position={[0, 0.01 + i * 0.005, z]} rotation={[-Math.PI / 2, 0, 0]}>
             <planeGeometry args={[50 + i * 6, 0.3]} />
-            <meshBasicMaterial color="#121828" transparent opacity={0.4} />
+            <meshBasicMaterial color="#0c1420" transparent opacity={0.5 - i * 0.05} />
           </mesh>
+          {/* Subtle audience silhouette dots */}
+          {Array.from({ length: 15 + i * 3 }).map((_, j) => {
+            const x = (j - (15 + i * 3) / 2) * 2.8 + (Math.random() - 0.5) * 1.5;
+            return (
+              <mesh key={j} position={[x, 1.0 + Math.random() * 0.3, z + (Math.random() - 0.5) * 0.5]}>
+                <sphereGeometry args={[0.15 + Math.random() * 0.08, 4, 4]} />
+                <meshBasicMaterial color="#060810" transparent opacity={0.6 - i * 0.08} />
+              </mesh>
+            );
+          })}
         </group>
       ))}
 
-      {/* Scale reference poles */}
+      {/* Scale reference poles — enhanced PBR */}
       {[-20, -15, -10, -5, 0, 5, 10, 15, 20].map((x) => (
         <group key={`pole-${x}`} position={[x, 0, -22]}>
-          <mesh position={[0, 3, 0]}>
+          <mesh position={[0, 3, 0]} castShadow>
             <cylinderGeometry args={[0.025, 0.03, 6, 8]} />
-            <meshStandardMaterial color="#1a2040" metalness={0.6} roughness={0.4} />
+            <meshStandardMaterial color="#141830" metalness={0.7} roughness={0.3} />
           </mesh>
           {[2, 4, 6].map((h) => (
             <mesh key={h} position={[0, h, 0]}>
               <boxGeometry args={[0.08, 0.01, 0.08]} />
-              <meshBasicMaterial color="#304080" transparent opacity={0.3} />
+              <meshBasicMaterial color="#203060" transparent opacity={0.25} />
             </mesh>
           ))}
           <mesh position={[0, 6.1, 0]}>
             <sphereGeometry args={[0.06, 8, 8]} />
-            <meshBasicMaterial color="#3050a0" transparent opacity={0.4} />
+            <meshBasicMaterial color="#2040a0" transparent opacity={0.5} />
           </mesh>
         </group>
       ))}
@@ -628,31 +642,40 @@ function StageGround() {
   );
 }
 
-// --- Volumetric ground fog (UE5-style layered) ---
+// --- Volumetric ground fog with animated shader ---
 function GroundFog() {
   const fogRef = useRef<THREE.Group>(null);
+  const uniforms = useMemo(() => ({
+    time: { value: 0 },
+    fogColor: { value: new THREE.Color('#060e1c') },
+    fogColor2: { value: new THREE.Color('#0a0614') },
+  }), []);
   
   const fogLayers = useMemo(() => {
     const layers: { y: number; scale: number; opacity: number; speed: number }[] = [];
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 12; i++) {
       layers.push({
-        y: 0.1 + i * 0.25,
-        scale: 80 + i * 15,
-        opacity: 0.025 - i * 0.002,
-        speed: 0.002 + Math.random() * 0.003,
+        y: 0.05 + i * 0.18,
+        scale: 90 + i * 12,
+        opacity: 0.032 - i * 0.002,
+        speed: 0.0015 + Math.random() * 0.004,
       });
     }
     return layers;
   }, []);
 
   useFrame(({ clock }) => {
+    uniforms.time.value = clock.getElapsedTime();
     if (!fogRef.current) return;
     const t = clock.getElapsedTime();
     fogRef.current.children.forEach((child, i) => {
       const layer = fogLayers[i];
       if (layer) {
-        (child as THREE.Mesh).position.x = Math.sin(t * layer.speed) * 5;
-        (child as THREE.Mesh).position.z = Math.cos(t * layer.speed * 0.7) * 3;
+        const mesh = child as THREE.Mesh;
+        mesh.position.x = Math.sin(t * layer.speed + i * 0.7) * 8;
+        mesh.position.z = Math.cos(t * layer.speed * 0.6 + i * 1.2) * 5;
+        // Subtle vertical breathing
+        mesh.position.y = layer.y + Math.sin(t * 0.3 + i * 0.5) * 0.08;
       }
     });
   });
@@ -662,13 +685,64 @@ function GroundFog() {
       {fogLayers.map((layer, i) => (
         <mesh key={i} position={[0, layer.y, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[layer.scale, layer.scale]} />
-          <meshBasicMaterial
-            color="#0c1420"
+          <shaderMaterial
             transparent
-            opacity={layer.opacity}
-            blending={THREE.AdditiveBlending}
             depthWrite={false}
+            blending={THREE.AdditiveBlending}
             side={THREE.DoubleSide}
+            uniforms={{
+              ...uniforms,
+              layerOpacity: { value: layer.opacity },
+              layerIndex: { value: i },
+            }}
+            vertexShader={`
+              varying vec2 vUv;
+              void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+              }
+            `}
+            fragmentShader={`
+              uniform float time;
+              uniform vec3 fogColor;
+              uniform vec3 fogColor2;
+              uniform float layerOpacity;
+              uniform float layerIndex;
+              varying vec2 vUv;
+              
+              float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453); }
+              float noise(vec2 p) {
+                vec2 i = floor(p); vec2 f = fract(p);
+                f = f*f*(3.0-2.0*f);
+                return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
+                           mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+              }
+              float fbm(vec2 p) {
+                float v = 0.0; float a = 0.5;
+                for(int i = 0; i < 5; i++) {
+                  v += a * noise(p); p *= 2.0; a *= 0.5;
+                }
+                return v;
+              }
+              
+              void main() {
+                vec2 uv = vUv - 0.5;
+                float dist = length(uv) * 2.0;
+                
+                // Animated wisps
+                float n = fbm(uv * 3.0 + time * 0.02 + layerIndex * 1.5);
+                float n2 = fbm(uv * 6.0 - time * 0.015 + layerIndex * 2.3);
+                float wisps = smoothstep(0.35, 0.7, n) * 0.7 + smoothstep(0.4, 0.75, n2) * 0.3;
+                
+                // Radial falloff
+                float falloff = 1.0 - smoothstep(0.3, 0.5, dist);
+                
+                vec3 color = mix(fogColor, fogColor2, n * 0.6);
+                float alpha = wisps * falloff * layerOpacity;
+                
+                gl_FragColor = vec4(color, alpha);
+              }
+            `}
           />
         </mesh>
       ))}
@@ -801,21 +875,23 @@ function LaunchSites() {
   );
 }
 
-// --- Enhanced atmosphere particles: dust, fireflies, and volumetric haze ---
+// --- Ultra-realistic atmosphere: dust motes, volumetric haze, fireflies ---
 function AtmosphereParticles() {
   const dustRef = useRef<THREE.Points>(null);
   const fogRef = useRef<THREE.Points>(null);
   const fireflyRef = useRef<THREE.Points>(null);
-  const dustCount = 500;
-  const fogCount = 150;
-  const fireflyCount = 60;
+  const hazeRef = useRef<THREE.Points>(null);
+  const dustCount = 800;
+  const fogCount = 200;
+  const fireflyCount = 80;
+  const hazeCount = 100;
 
   const dustPositions = useMemo(() => {
     const arr = new Float32Array(dustCount * 3);
     for (let i = 0; i < dustCount; i++) {
-      arr[i * 3] = (Math.random() - 0.5) * 150;
-      arr[i * 3 + 1] = Math.random() * 60;
-      arr[i * 3 + 2] = (Math.random() - 0.5) * 150;
+      arr[i * 3] = (Math.random() - 0.5) * 180;
+      arr[i * 3 + 1] = Math.random() * 50;
+      arr[i * 3 + 2] = (Math.random() - 0.5) * 180;
     }
     return arr;
   }, []);
@@ -823,9 +899,9 @@ function AtmosphereParticles() {
   const fogPositions = useMemo(() => {
     const arr = new Float32Array(fogCount * 3);
     for (let i = 0; i < fogCount; i++) {
-      arr[i * 3] = (Math.random() - 0.5) * 120;
-      arr[i * 3 + 1] = 0.2 + Math.random() * 3;
-      arr[i * 3 + 2] = (Math.random() - 0.5) * 120;
+      arr[i * 3] = (Math.random() - 0.5) * 140;
+      arr[i * 3 + 1] = 0.1 + Math.random() * 2.5;
+      arr[i * 3 + 2] = (Math.random() - 0.5) * 140;
     }
     return arr;
   }, []);
@@ -833,9 +909,9 @@ function AtmosphereParticles() {
   const fireflyPositions = useMemo(() => {
     const arr = new Float32Array(fireflyCount * 3);
     for (let i = 0; i < fireflyCount; i++) {
-      arr[i * 3] = (Math.random() - 0.5) * 60;
-      arr[i * 3 + 1] = 0.5 + Math.random() * 4;
-      arr[i * 3 + 2] = (Math.random() - 0.5) * 60;
+      arr[i * 3] = (Math.random() - 0.5) * 70;
+      arr[i * 3 + 1] = 0.3 + Math.random() * 5;
+      arr[i * 3 + 2] = (Math.random() - 0.5) * 70;
     }
     return arr;
   }, []);
@@ -843,9 +919,10 @@ function AtmosphereParticles() {
   const fireflyColors = useMemo(() => {
     const arr = new Float32Array(fireflyCount * 3);
     const colors = [
-      [0.2, 1.0, 0.3],  // green
-      [1.0, 0.8, 0.2],  // warm yellow
-      [0.3, 0.8, 1.0],  // cyan
+      [0.15, 0.9, 0.25],
+      [0.9, 0.7, 0.15],
+      [0.2, 0.7, 0.9],
+      [0.8, 0.4, 0.1],
     ];
     for (let i = 0; i < fireflyCount; i++) {
       const c = colors[Math.floor(Math.random() * colors.length)];
@@ -856,68 +933,99 @@ function AtmosphereParticles() {
     return arr;
   }, []);
 
+  const hazePositions = useMemo(() => {
+    const arr = new Float32Array(hazeCount * 3);
+    for (let i = 0; i < hazeCount; i++) {
+      arr[i * 3] = (Math.random() - 0.5) * 100;
+      arr[i * 3 + 1] = 3 + Math.random() * 20;
+      arr[i * 3 + 2] = (Math.random() - 0.5) * 100;
+    }
+    return arr;
+  }, []);
+
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
     
     if (dustRef.current) {
       const pos = dustRef.current.geometry.attributes.position;
+      const arr = pos.array as Float32Array;
       for (let i = 0; i < dustCount; i++) {
         const ix = i * 3;
-        (pos.array as Float32Array)[ix] += Math.sin(t * 0.02 + i * 0.15) * 0.004;
-        (pos.array as Float32Array)[ix + 1] += Math.cos(t * 0.015 + i * 0.1) * 0.0015;
-        (pos.array as Float32Array)[ix + 2] += Math.sin(t * 0.018 + i * 0.25) * 0.003;
+        arr[ix] += Math.sin(t * 0.015 + i * 0.12) * 0.003;
+        arr[ix + 1] += Math.cos(t * 0.012 + i * 0.08) * 0.001;
+        arr[ix + 2] += Math.sin(t * 0.014 + i * 0.2) * 0.0025;
       }
       pos.needsUpdate = true;
     }
     
     if (fogRef.current) {
       const fp = fogRef.current.geometry.attributes.position;
+      const arr = fp.array as Float32Array;
       for (let i = 0; i < fogCount; i++) {
         const ix = i * 3;
-        (fp.array as Float32Array)[ix] += Math.sin(t * 0.008 + i * 0.5) * 0.01;
-        (fp.array as Float32Array)[ix + 2] += Math.cos(t * 0.006 + i * 0.4) * 0.008;
+        arr[ix] += Math.sin(t * 0.006 + i * 0.4) * 0.012;
+        arr[ix + 2] += Math.cos(t * 0.005 + i * 0.35) * 0.01;
       }
       fp.needsUpdate = true;
     }
 
     if (fireflyRef.current) {
       const fp = fireflyRef.current.geometry.attributes.position;
+      const arr = fp.array as Float32Array;
       const mat = fireflyRef.current.material as THREE.PointsMaterial;
       for (let i = 0; i < fireflyCount; i++) {
         const ix = i * 3;
-        (fp.array as Float32Array)[ix] += Math.sin(t * 0.3 + i * 2.0) * 0.008;
-        (fp.array as Float32Array)[ix + 1] += Math.cos(t * 0.4 + i * 1.5) * 0.005;
-        (fp.array as Float32Array)[ix + 2] += Math.sin(t * 0.25 + i * 1.8) * 0.007;
+        arr[ix] += Math.sin(t * 0.4 + i * 2.3) * 0.006;
+        arr[ix + 1] += Math.cos(t * 0.5 + i * 1.7) * 0.004;
+        arr[ix + 2] += Math.sin(t * 0.35 + i * 2.1) * 0.005;
       }
       fp.needsUpdate = true;
-      // Pulse opacity
-      mat.opacity = 0.3 + Math.sin(t * 2) * 0.15;
+      mat.opacity = 0.25 + Math.sin(t * 1.5) * 0.15;
+    }
+
+    if (hazeRef.current) {
+      const hp = hazeRef.current.geometry.attributes.position;
+      const arr = hp.array as Float32Array;
+      for (let i = 0; i < hazeCount; i++) {
+        const ix = i * 3;
+        arr[ix] += Math.sin(t * 0.003 + i * 0.6) * 0.015;
+        arr[ix + 1] += Math.cos(t * 0.004 + i * 0.9) * 0.003;
+        arr[ix + 2] += Math.cos(t * 0.0025 + i * 0.5) * 0.012;
+      }
+      hp.needsUpdate = true;
     }
   });
 
   return (
     <group>
-      {/* Atmospheric dust */}
+      {/* Atmospheric dust motes — visible in moonlight */}
       <points ref={dustRef}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[dustPositions, 3]} />
         </bufferGeometry>
-        <pointsMaterial size={0.05} color="#2040a0" transparent opacity={0.1} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        <pointsMaterial size={0.04} color="#1a3070" transparent opacity={0.12} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
-      {/* Low fog particles */}
+      {/* Low fog particles — volumetric depth */}
       <points ref={fogRef}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[fogPositions, 3]} />
         </bufferGeometry>
-        <pointsMaterial size={2.5} color="#0c1828" transparent opacity={0.05} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        <pointsMaterial size={3.0} color="#0a1424" transparent opacity={0.04} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
-      {/* Fireflies */}
+      {/* Fireflies — bioluminescent */}
       <points ref={fireflyRef}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[fireflyPositions, 3]} />
           <bufferAttribute attach="attributes-color" args={[fireflyColors, 3]} />
         </bufferGeometry>
-        <pointsMaterial size={0.12} vertexColors transparent opacity={0.3} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        <pointsMaterial size={0.1} vertexColors transparent opacity={0.25} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+      </points>
+      {/* Mid-altitude haze — atmospheric depth */}
+      <points ref={hazeRef}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[hazePositions, 3]} />
+        </bufferGeometry>
+        <pointsMaterial size={5.0} color="#060c1e" transparent opacity={0.02} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
     </group>
   );
@@ -963,42 +1071,55 @@ export default function SkyCanvas() {
         gl={{ 
           antialias: true, 
           toneMapping: THREE.ACESFilmicToneMapping, 
-          toneMappingExposure: 0.55,
+          toneMappingExposure: 0.5,
           powerPreference: 'high-performance',
           alpha: false,
           stencil: false,
         }}
         dpr={[1, 2]}
       >
-        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.3} far={600} />
+        <PerspectiveCamera makeDefault position={preset.position} fov={48} near={0.2} far={800} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} />
         
-        {/* UE5-style night lighting setup */}
-        <ambientLight intensity={0.015} color="#0a1225" />
+        {/* UE5 ultra-realistic night lighting rig */}
+        <ambientLight intensity={0.01} color="#060c1e" />
+        
+        {/* Moonlight — primary directional */}
         <directionalLight 
           position={[60, 65, -80]} 
-          intensity={0.08} 
-          color="#8899bb" 
+          intensity={0.1} 
+          color="#7a8dbb" 
           castShadow 
-          shadow-mapSize={[2048, 2048]} 
-          shadow-camera-far={250}
-          shadow-camera-left={-50}
-          shadow-camera-right={50}
-          shadow-camera-top={50}
-          shadow-camera-bottom={-50}
-          shadow-bias={-0.0001}
+          shadow-mapSize={[4096, 4096]} 
+          shadow-camera-far={300}
+          shadow-camera-left={-60}
+          shadow-camera-right={60}
+          shadow-camera-top={60}
+          shadow-camera-bottom={-60}
+          shadow-bias={-0.00005}
+          shadow-normalBias={0.02}
         />
-        <hemisphereLight args={['#080e28', '#020406', 0.03]} />
-        {/* Subtle rim light from behind */}
-        <directionalLight position={[-30, 20, -40]} intensity={0.02} color="#334466" />
-        {/* Cool fill light */}
-        <pointLight position={[0, 15, 30]} color="#0a1530" intensity={0.03} distance={80} />
+        
+        {/* Sky fill — subtle blue dome light */}
+        <hemisphereLight args={['#060e28', '#010204', 0.025]} />
+        
+        {/* Counter rim light — cool backlight */}
+        <directionalLight position={[-40, 25, -50]} intensity={0.025} color="#2a3855" />
+        
+        {/* Warm ground bounce */}
+        <directionalLight position={[0, -5, 20]} intensity={0.008} color="#1a1008" />
+        
+        {/* Cool fill from audience side */}
+        <pointLight position={[0, 12, 35]} color="#081020" intensity={0.02} distance={60} decay={2} />
+        
+        {/* Stage up-light — subtle warm */}
+        <pointLight position={[0, 0.5, 0]} color="#120a04" intensity={0.015} distance={30} decay={2} />
         
         <SkyGradient />
         <Moon />
-        <Stars radius={190} depth={100} count={8000} factor={4.5} saturation={0.2} fade speed={0.15} />
+        <Stars radius={190} depth={100} count={10000} factor={5} saturation={0.15} fade speed={0.12} />
         <AtmosphereParticles />
-        <fog attach="fog" args={['#040810', 50, 200]} />
+        <fog attach="fog" args={['#030610', 40, 220]} />
         
         <StageGround />
         <LaunchSites />
