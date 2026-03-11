@@ -1037,42 +1037,55 @@ export default function SkyCanvas() {
         gl={{ 
           antialias: true, 
           toneMapping: THREE.ACESFilmicToneMapping, 
-          toneMappingExposure: 0.55,
+          toneMappingExposure: 0.5,
           powerPreference: 'high-performance',
           alpha: false,
           stencil: false,
         }}
         dpr={[1, 2]}
       >
-        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.3} far={600} />
+        <PerspectiveCamera makeDefault position={preset.position} fov={48} near={0.2} far={800} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} />
         
-        {/* UE5-style night lighting setup */}
-        <ambientLight intensity={0.015} color="#0a1225" />
+        {/* UE5 ultra-realistic night lighting rig */}
+        <ambientLight intensity={0.01} color="#060c1e" />
+        
+        {/* Moonlight — primary directional */}
         <directionalLight 
           position={[60, 65, -80]} 
-          intensity={0.08} 
-          color="#8899bb" 
+          intensity={0.1} 
+          color="#7a8dbb" 
           castShadow 
-          shadow-mapSize={[2048, 2048]} 
-          shadow-camera-far={250}
-          shadow-camera-left={-50}
-          shadow-camera-right={50}
-          shadow-camera-top={50}
-          shadow-camera-bottom={-50}
-          shadow-bias={-0.0001}
+          shadow-mapSize={[4096, 4096]} 
+          shadow-camera-far={300}
+          shadow-camera-left={-60}
+          shadow-camera-right={60}
+          shadow-camera-top={60}
+          shadow-camera-bottom={-60}
+          shadow-bias={-0.00005}
+          shadow-normalBias={0.02}
         />
-        <hemisphereLight args={['#080e28', '#020406', 0.03]} />
-        {/* Subtle rim light from behind */}
-        <directionalLight position={[-30, 20, -40]} intensity={0.02} color="#334466" />
-        {/* Cool fill light */}
-        <pointLight position={[0, 15, 30]} color="#0a1530" intensity={0.03} distance={80} />
+        
+        {/* Sky fill — subtle blue dome light */}
+        <hemisphereLight args={['#060e28', '#010204', 0.025]} />
+        
+        {/* Counter rim light — cool backlight */}
+        <directionalLight position={[-40, 25, -50]} intensity={0.025} color="#2a3855" />
+        
+        {/* Warm ground bounce */}
+        <directionalLight position={[0, -5, 20]} intensity={0.008} color="#1a1008" />
+        
+        {/* Cool fill from audience side */}
+        <pointLight position={[0, 12, 35]} color="#081020" intensity={0.02} distance={60} decay={2} />
+        
+        {/* Stage up-light — subtle warm */}
+        <pointLight position={[0, 0.5, 0]} color="#120a04" intensity={0.015} distance={30} decay={2} />
         
         <SkyGradient />
         <Moon />
-        <Stars radius={190} depth={100} count={8000} factor={4.5} saturation={0.2} fade speed={0.15} />
+        <Stars radius={190} depth={100} count={10000} factor={5} saturation={0.15} fade speed={0.12} />
         <AtmosphereParticles />
-        <fog attach="fog" args={['#040810', 50, 200]} />
+        <fog attach="fog" args={['#030610', 40, 220]} />
         
         <StageGround />
         <LaunchSites />
