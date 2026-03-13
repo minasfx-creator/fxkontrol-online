@@ -1,11 +1,12 @@
 /// <reference types="google.maps" />
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
-import { MapPin, Navigation, Crosshair, Layers, X, Globe, Locate, Copy, Ruler } from 'lucide-react';
+import { MapPin, Navigation, Crosshair, Layers, X, Globe, Locate, Copy, Ruler, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { exportFormationsToKML, downloadFile } from '@/lib/exportEngine';
 
 interface GeoLocation {
   lat: number;
@@ -45,13 +46,18 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
   const circleRef = useRef<google.maps.Circle | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [location, setLocation] = useState<GeoLocation>(DEFAULT_LOCATION);
   const [mapType, setMapType] = useState<'satellite' | 'hybrid' | 'terrain'>('hybrid');
   const [showDrones, setShowDrones] = useState(true);
   const [showGeofence, setShowGeofence] = useState(true);
 
   const positions = useProjectStore((s) => s.positions);
   const droneFormations = useProjectStore((s) => s.droneFormations);
+  const trajectories = useProjectStore((s) => s.trajectories);
+  const projectName = useProjectStore((s) => s.projectName);
+  const gpsOrigin = useProjectStore((s) => s.gpsOrigin);
+  const setGpsOrigin = useProjectStore((s) => s.setGpsOrigin);
+
+  const location = gpsOrigin;
 
   // Initialize map
   useEffect(() => {
@@ -86,12 +92,10 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
 
         map.addListener('click', (e: google.maps.MapMouseEvent) => {
           if (!e.latLng) return;
-          setLocation(prev => ({
-            ...prev,
-            lat: e.latLng!.lat(),
-            lng: e.latLng!.lng(),
-          }));
-          toast.success(`Origem: ${e.latLng!.lat().toFixed(6)}, ${e.latLng!.lng().toFixed(6)}`);
+          const lat = e.latLng.lat();
+          const lng = e.latLng.lng();
+          setGpsOrigin({ ...gpsOrigin, lat, lng });
+          toast.success(`Origem: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
         });
 
         setLoaded(true);
@@ -211,7 +215,7 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
         };
-        setLocation(newLoc);
+        setGpsOrigin(newLoc);
         mapInstanceRef.current?.panTo({ lat: newLoc.lat, lng: newLoc.lng });
         toast.success('Localização atualizada');
       },
@@ -223,6 +227,12 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
     navigator.clipboard.writeText(`${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`);
     toast.success('Coordenadas copiadas');
   }, [location]);
+
+  const handleExportKML = useCallback(() => {
+    const kml = exportFormationsToKML(droneFormations, trajectories, positions, location, projectName);
+    downloadFile(kml, `${projectName.replace(/\s+/g, '_')}_show.kml`, 'application/vnd.google-earth.kml+xml');
+    toast.success('KML exportado — abra no Google Earth Pro');
+  }, [droneFormations, trajectories, positions, location, projectName]);
 
   return (
     <div className="h-full flex flex-col bg-surface-0 border-l border-border">
@@ -295,7 +305,7 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
             value={location.heading}
             onChange={(e) => {
               const h = Number(e.target.value) % 360;
-              setLocation(prev => ({ ...prev, heading: h }));
+              setGpsOrigin({ ...location, heading: h });
               mapInstanceRef.current?.setHeading(h);
             }}
             className="w-12 h-5 text-[9px] bg-surface-0 border border-border rounded px-1 text-foreground font-mono-code"
@@ -326,7 +336,16 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
           </Button>
         </div>
 
-        {/* Quick location presets */}
+        {/* KML Export */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full h-6 text-[8px] gap-1"
+          onClick={handleExportKML}
+        >
+          <Download className="w-2.5 h-2.5" />
+          Exportar KML (Google Earth)
+        </Button>
         <div className="flex gap-1 flex-wrap">
           {[
             { label: 'São Paulo', lat: -23.5505, lng: -46.6333 },
@@ -336,8 +355,8 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
           ].map((preset) => (
             <button
               key={preset.label}
-              onClick={() => {
-                setLocation(prev => ({ ...prev, lat: preset.lat, lng: preset.lng }));
+            onClick={() => {
+                setGpsOrigin({ ...location, lat: preset.lat, lng: preset.lng });
                 mapInstanceRef.current?.panTo({ lat: preset.lat, lng: preset.lng });
               }}
               className="text-[7px] font-mono-code px-1.5 py-0.5 rounded bg-surface-0 border border-border/50 text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-all"
