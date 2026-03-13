@@ -60,16 +60,16 @@ export interface SceneSettings {
 
 const DEFAULT_SETTINGS: SceneSettings = {
   skyPreset: 'night-clear',
-  ambientIntensity: 0.06,
-  moonIntensity: 0.45,
+  ambientIntensity: 0.07,
+  moonIntensity: 0.5,
   moonColor: '#8899cc',
-  skyBrightness: 1.0,
-  starDensity: 1.0,
+  skyBrightness: 1.1,
+  starDensity: 1.2,
   fogDensity: 0.5,
   fogColor: '#080e1a',
   fogNear: 200,
   fogFar: 1800,
-  horizonGlow: 0.35,
+  horizonGlow: 0.4,
 
   groundStyle: 'finale-dark',
   groundBrightness: 1.0,
