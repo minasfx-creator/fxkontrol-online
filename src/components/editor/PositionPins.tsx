@@ -77,6 +77,7 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
       return;
     }
 
+    // Shift+click adds/removes from selection (but only if not starting a box-select drag)
     if (e.nativeEvent?.shiftKey || e.shiftKey) {
       togglePositionSelection(position.id);
       return;
