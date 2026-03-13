@@ -1269,9 +1269,9 @@ export default function SkyCanvas() {
       <SelectionStatusBar />
       <AlignmentTools />
 
-      <div className="absolute bottom-3 right-3 text-xs font-mono-code text-muted-foreground bg-surface-1/80 px-2 py-1 rounded-sm border border-border/50 space-y-0.5">
+      <div className="absolute bottom-3 right-3 text-[9px] font-mono-code text-muted-foreground/60 bg-surface-1/60 backdrop-blur-sm px-2 py-1 rounded border border-border/30 space-y-0.5">
         <div>Orbit: LMB · Pan: MMB · Zoom: Scroll</div>
-        <div className="text-[9px]">Grid: 2m · Snap: 10m · Scale poles: 10m</div>
+        <div>Box: Alt+Drag · Multi: Shift+Click · Edit: Dbl-Click</div>
       </div>
     </div>
   );
