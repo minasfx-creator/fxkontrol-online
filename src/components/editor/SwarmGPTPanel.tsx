@@ -356,7 +356,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
       setLoading(false);
       setLoadingPhase('');
     }
-  }, [prompt, droneCount, bpm, musicSyncBPM, musicSyncBeats, addDroneFormation, setCurrentTime]);
+  }, [prompt, droneCount, bpm, musicSyncBPM, musicSyncBeats, addDroneFormation, addTimelineItem, setCurrentTime]);
 
   const handleError = (e: any) => {
     const msg = e.message || 'Erro';
