@@ -71,3 +71,24 @@
 - Effect macros
 - Spread out based on durations
 - Keyboard shortcuts
+
+## Phase 9: Advanced Drone Physics (DONE ✅)
+- PID Controller engine (src/lib/pidController.ts) — 5-axis PID with Kp/Ki/Kd tuning
+- PID presets: DJI Matrice 600, Show Drone 250g, Custom
+- Realistic tilt/roll/pitch from acceleration, drag model, wind forces
+- PIDPanel UI with per-axis gain sliders, test flight simulator, visual stats
+- DMX512/Art-Net engine (src/lib/dmxEngine.ts) — virtual fixture patching, universes, keyframes
+- Auto-patch drones as RGBW fixtures across DMX universes
+- DMX keyframe interpolation and Art-Net CSV export
+- DMXPanel UI with universe grid, fixture selector, keyframe controls
+- Battery discharge model (src/lib/batteryModel.ts) — LiPo simulation with temp derating
+- RTL safety margin alerts (30% reserve), voltage sag under load
+- Battery presets: 2S/4S/6S configurations
+- BatteryPanel UI with visual battery bar, real-time simulation, flight condition sliders
+
+## Phase 10: Next
+- MAVLink telemetry protocol virtual bridge
+- AR/Hybrid show overlay mode
+- Micro-drone GPS-denied indoor simulation
+- Video export (WebM recording of 3D viewport)
+- SMPTE/LTC timecode synchronization
