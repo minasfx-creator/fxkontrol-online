@@ -115,7 +115,12 @@ function DraggableTimelineItem({
       >
         <GripVertical className="w-2 h-2 text-muted-foreground/40 group-hover:text-muted-foreground mr-0.5 flex-shrink-0" />
         <div className="w-1 h-full rounded-full mr-1 flex-shrink-0" style={{ backgroundColor: effect.color }} />
-        <span className="truncate text-secondary-foreground">{effect.name}</span>
+        <div className="flex flex-col items-start min-w-0 overflow-hidden">
+          <span className="truncate text-secondary-foreground leading-tight">{effect.name}</span>
+          {item.positionName && (
+            <span className="truncate text-[7px] text-muted-foreground leading-tight">📍 {item.positionName}</span>
+          )}
+        </div>
       </button>
     </div>
   );

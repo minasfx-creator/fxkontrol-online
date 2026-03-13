@@ -22,23 +22,49 @@ const CATEGORIES = [
 type FilterType = 'all' | 'firework' | 'drone' | 'sfx' | 'laser' | 'light';
 
 function EffectCard({ effect }: { effect: Effect }) {
-  const { selectedEffectId, selectEffect, addTimelineItem, currentTime } = useProjectStore();
+  const { selectedEffectId, selectEffect, addTimelineItem, currentTime, positions, selectedPositionId, selectedPositionIds } = useProjectStore();
   const [isDragging, setIsDragging] = useState(false);
   const isSelected = selectedEffectId === effect.id;
 
   const handleDoubleClick = () => {
-    const newItem = {
-      id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      effectId: effect.id,
-      startTime: currentTime,
-      trackIndex: effect.type === 'firework' ? 0 : effect.type === 'drone' ? 1 : 2,
-      position: {
-        x: (Math.random() - 0.5) * 16,
-        y: effect.type === 'firework' ? 8 + Math.random() * 6 : 5 + Math.random() * 10,
-        z: (Math.random() - 0.5) * 8,
-      },
-    };
-    addTimelineItem(newItem);
+    // Finale 3D logic: link effect to selected pyro position(s)
+    const pyroPositions = positions.filter(p => p.type === 'pyro');
+    const targetIds = selectedPositionIds.length > 0
+      ? selectedPositionIds.filter(id => positions.find(p => p.id === id)?.type === 'pyro')
+      : selectedPositionId && positions.find(p => p.id === selectedPositionId)?.type === 'pyro'
+        ? [selectedPositionId]
+        : [];
+
+    if (targetIds.length > 0) {
+      // Fire from each selected position
+      targetIds.forEach((posId, i) => {
+        const pos = positions.find(p => p.id === posId);
+        if (!pos) return;
+        addTimelineItem({
+          id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${i}`,
+          effectId: effect.id,
+          startTime: currentTime,
+          trackIndex: effect.type === 'firework' ? 0 : effect.type === 'drone' ? 1 : 2,
+          position: { x: pos.x, y: pos.y, z: pos.z },
+          positionId: posId,
+          positionIds: targetIds.length > 1 ? targetIds : undefined,
+          positionName: pos.name,
+        });
+      });
+    } else {
+      // No position selected — place at random (legacy behavior)
+      addTimelineItem({
+        id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        effectId: effect.id,
+        startTime: currentTime,
+        trackIndex: effect.type === 'firework' ? 0 : effect.type === 'drone' ? 1 : 2,
+        position: {
+          x: (Math.random() - 0.5) * 16,
+          y: effect.type === 'firework' ? 0 : 5 + Math.random() * 10,
+          z: (Math.random() - 0.5) * 8,
+        },
+      });
+    }
   };
 
   const handleDragStart = useCallback((e: React.DragEvent) => {
