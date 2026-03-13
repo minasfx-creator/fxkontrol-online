@@ -194,10 +194,18 @@ function FireworkBurst({ position, color, progress }: { position: [number, numbe
         </bufferGeometry>
         <lineBasicMaterial vertexColors transparent opacity={0.7} depthWrite={false} blending={THREE.AdditiveBlending} />
       </lineSegments>
-      {progress < 0.4 && (
+      {/* Initial flash sphere */}
+      {progress < 0.3 && (
         <mesh>
-          <sphereGeometry args={[0.6 + progress * 3, 16, 16]} />
-          <meshBasicMaterial color={color} transparent opacity={0.08 * (1 - progress / 0.4)} blending={THREE.AdditiveBlending} />
+          <sphereGeometry args={[0.8 + progress * 4, 16, 16]} />
+          <meshBasicMaterial color={color} transparent opacity={0.12 * (1 - progress / 0.3)} blending={THREE.AdditiveBlending} />
+        </mesh>
+      )}
+      {/* Secondary flash ring */}
+      {progress < 0.15 && (
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[progress * 8, progress * 8 + 0.3, 32]} />
+          <meshBasicMaterial color={color} transparent opacity={0.06 * (1 - progress / 0.15)} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
     </group>
