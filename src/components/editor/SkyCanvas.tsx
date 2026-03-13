@@ -1356,14 +1356,15 @@ export default function SkyCanvas() {
       <Canvas
         shadows
         gl={{
-          antialias: false, // SMAA handles this in post
+          antialias: false,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.0,
+          toneMappingExposure: 1.1,
           powerPreference: 'high-performance',
           alpha: false,
           stencil: false,
+          logarithmicDepthBuffer: true,
         }}
-        dpr={[1, 1.5]}
+        dpr={[1, 2]}
       >
         <PerspectiveCamera makeDefault position={preset.position} fov={55} near={0.2} far={2500} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} />
