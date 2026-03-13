@@ -1,13 +1,17 @@
-import { useState } from 'react';
-import { Rocket, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Rocket, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useAuth } from '@/hooks/useAuth';
+import { useProjectPersistence } from '@/hooks/useProjectPersistence';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import FormationBuilder from './FormationBuilder';
 import CSVImporter from './CSVImporter';
 import VVIZImporter from './VVIZImporter';
+import ProjectBrowser from './ProjectBrowser';
+import { exportVVIZ, exportFiringCSV, downloadFile } from '@/lib/exportEngine';
 
 function TimecodeDisplay() {
   const { currentTime, isPlaying } = useProjectStore();
@@ -40,11 +44,55 @@ function MenuButton({ label, onClick }: { label: string; onClick?: () => void })
 }
 
 export default function Toolbar() {
-  const { projectName, timelineItems, positions, editorMode, setEditorMode } = useProjectStore();
+  const { projectName, timelineItems, positions, editorMode, setEditorMode, duration, trajectories, droneFormations } = useProjectStore();
   const { signOut, user } = useAuth();
+  const { saveProject } = useProjectPersistence();
   const [formationOpen, setFormationOpen] = useState(false);
   const [csvOpen, setCsvOpen] = useState(false);
   const [vvizOpen, setVvizOpen] = useState(false);
+  const [browserOpen, setBrowserOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = useCallback(async () => {
+    setSaving(true);
+    const ok = await saveProject();
+    setSaving(false);
+    if (ok) toast.success('Projeto salvo!');
+    else toast.error('Erro ao salvar');
+  }, [saveProject]);
+
+  const handleExport = useCallback(() => {
+    const content = exportVVIZ(projectName, duration, timelineItems, positions, trajectories, droneFormations);
+    downloadFile(content, `${projectName.replace(/\s+/g, '_')}.vviz`, 'application/json');
+    toast.success('VVIZ exportado!');
+  }, [projectName, duration, timelineItems, positions, trajectories, droneFormations]);
+
+  const handleNewProject = useCallback(() => {
+    if (timelineItems.length > 0 || positions.length > 0) {
+      if (!confirm('Criar novo projeto? Dados não salvos serão perdidos.')) return;
+    }
+    window.location.reload();
+  }, [timelineItems, positions]);
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const ctrl = e.ctrlKey || e.metaKey;
+      if (ctrl && e.key === 's') { e.preventDefault(); handleSave(); }
+      if (ctrl && e.key === 'o') { e.preventDefault(); setBrowserOpen(true); }
+      if (ctrl && e.key === 'e') { e.preventDefault(); handleExport(); }
+      if (e.key === 'v' && !ctrl && !e.shiftKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        setEditorMode('select');
+      }
+      if (e.key === ' ' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        const { isPlaying, setPlaying } = useProjectStore.getState();
+        setPlaying(!isPlaying);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [handleSave, handleExport, setEditorMode]);
 
   return (
     <div className="flex items-center h-10 px-2 bg-surface-1 border-b border-border">
@@ -58,11 +106,12 @@ export default function Toolbar() {
 
       <Separator orientation="vertical" className="h-5 mr-2" />
 
-      {/* Menu items */}
+      {/* File menu */}
       <div className="flex items-center gap-0.5">
-        <MenuButton label="File: New" />
-        <MenuButton label="Diagnostic" />
-        <MenuButton label="Export" />
+        <MenuButton label="New" onClick={handleNewProject} />
+        <MenuButton label="Open" onClick={() => setBrowserOpen(true)} />
+        <MenuButton label="Save" onClick={handleSave} />
+        <MenuButton label="Export" onClick={handleExport} />
       </div>
 
       <Separator orientation="vertical" className="h-4 mx-2" />
@@ -133,6 +182,7 @@ export default function Toolbar() {
       <FormationBuilder open={formationOpen} onOpenChange={setFormationOpen} />
       <CSVImporter open={csvOpen} onOpenChange={setCsvOpen} />
       <VVIZImporter open={vvizOpen} onOpenChange={setVvizOpen} />
+      <ProjectBrowser open={browserOpen} onOpenChange={setBrowserOpen} />
 
       <div className="flex-1" />
 
@@ -145,7 +195,17 @@ export default function Toolbar() {
         <span>{positions.length} pins</span>
         <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse-glow" />
         <span className="text-success">Sync: Locked</span>
-        <Button variant="ghost" size="icon" className="h-6 w-6 ml-1" title="Sair" onClick={signOut}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 ml-1"
+          title="Salvar (Ctrl+S)"
+          onClick={handleSave}
+          disabled={saving}
+        >
+          <Save className={cn("h-3 w-3", saving && "animate-spin")} />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-6 w-6" title="Sair" onClick={signOut}>
           <LogOut className="h-3 w-3" />
         </Button>
       </div>
