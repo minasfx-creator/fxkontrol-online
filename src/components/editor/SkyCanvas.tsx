@@ -915,18 +915,18 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
 function TreelineSilhouette() {
   const trees = useMemo(() => {
     const result: { x: number; z: number; h: number; w: number; layer: number }[] = [];
-    // 5 depth layers — Google Earth-scale world
-    for (let layer = 0; layer < 5; layer++) {
-      const count = 100 - layer * 15;
-      const baseDist = 200 + layer * 80;
+    // 6 depth layers — expanded world
+    for (let layer = 0; layer < 6; layer++) {
+      const count = 120 - layer * 15;
+      const baseDist = 300 + layer * 120;
       for (let i = 0; i < count; i++) {
         const angle = (i / count) * Math.PI * 2 + layer * 0.05;
-        const dist = baseDist + Math.random() * 40;
+        const dist = baseDist + Math.random() * 60;
         result.push({
           x: Math.cos(angle) * dist,
           z: Math.sin(angle) * dist,
-          h: 5 + Math.random() * 18 + layer * 4,
-          w: 4 + Math.random() * 8,
+          h: 6 + Math.random() * 22 + layer * 5,
+          w: 5 + Math.random() * 10,
           layer,
         });
       }
