@@ -14,6 +14,7 @@ const PANEL_TABS: { id: PanelId; label: string; icon: typeof Route; shortcut?: s
   { id: 'racks', label: 'Racks', icon: Package },
   { id: 'addressing', label: 'Addressing', icon: Cpu },
   { id: 'inventory', label: 'Inventory', icon: DollarSign },
+  { id: 'boids', label: 'Boids Swarm', icon: Bug },
 ];
 
 interface PanelTabBarProps {
