@@ -187,8 +187,7 @@ function buildFullShowTool(count: number) {
                 formationName: { type: "string" },
                 points: {
                   type: "array",
-                  minItems: count,
-                  maxItems: count,
+                  description: `EXACTLY ${count} points per formation.`,
                   items: {
                     type: "object",
                     properties: {
