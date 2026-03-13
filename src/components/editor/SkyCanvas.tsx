@@ -20,6 +20,7 @@ import MiniMap from './MiniMap';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+// SkyCanvas v2 — force chunk rebuild
 class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
   static getDerivedStateFromError() { return { hasError: true }; }
