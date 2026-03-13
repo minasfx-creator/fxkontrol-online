@@ -99,6 +99,8 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   summary: 'w-64',
   scene: 'w-64',
   soundlevel: 'w-64',
+  aroverlay: 'w-64',
+  share: 'w-64',
 };
 
 export default function Index() {
