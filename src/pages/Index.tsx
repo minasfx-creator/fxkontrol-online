@@ -13,6 +13,9 @@ import AddressingPanel from '@/components/editor/AddressingPanel';
 import InventoryPanel from '@/components/editor/InventoryPanel';
 import WaypointEditor from '@/components/editor/WaypointEditor';
 import BoidsPanel from '@/components/editor/BoidsPanel';
+import PIDPanel from '@/components/editor/PIDPanel';
+import DMXPanel from '@/components/editor/DMXPanel';
+import BatteryPanel from '@/components/editor/BatteryPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 
 const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
@@ -39,6 +42,9 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   effects: 'w-56',
   properties: 'w-56',
   boids: 'w-64',
+  pid: 'w-64',
+  dmx: 'w-64',
+  battery: 'w-64',
 };
 
 export default function Index() {
@@ -76,6 +82,9 @@ export default function Index() {
         {activePanel === 'addressing' && <AddressingPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'inventory' && <InventoryPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'boids' && <BoidsPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'pid' && <PIDPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'dmx' && <DMXPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'battery' && <BatteryPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
