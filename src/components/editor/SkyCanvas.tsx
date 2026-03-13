@@ -922,14 +922,26 @@ function CameraController({ targetPosition, targetLookAt }: { targetPosition: [n
 
   useFrame(() => {
     if (!animating.current || !controlsRef.current) return;
-    camera.position.lerp(targetPos.current, 0.06);
-    controlsRef.current.target.lerp(targetLook.current, 0.06);
+    // Smooth cinematic interpolation
+    camera.position.lerp(targetPos.current, 0.04);
+    controlsRef.current.target.lerp(targetLook.current, 0.04);
     controlsRef.current.update();
     if (camera.position.distanceTo(targetPos.current) < 0.05) animating.current = false;
   });
 
   return (
-    <OrbitControls ref={controlsRef} enableDamping dampingFactor={0.05} maxPolarAngle={Math.PI * 0.48} minDistance={3} maxDistance={800} />
+    <OrbitControls
+      ref={controlsRef}
+      enableDamping
+      dampingFactor={0.08}
+      rotateSpeed={0.6}
+      panSpeed={0.8}
+      zoomSpeed={1.2}
+      maxPolarAngle={Math.PI * 0.48}
+      minDistance={2}
+      maxDistance={1200}
+      enablePan
+    />
   );
 }
 
