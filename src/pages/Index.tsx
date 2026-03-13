@@ -38,6 +38,7 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   waypoints: 'w-64',
   effects: 'w-56',
   properties: 'w-56',
+  boids: 'w-64',
 };
 
 export default function Index() {
