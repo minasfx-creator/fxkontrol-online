@@ -218,9 +218,13 @@ function useAIFormation() {
         throw new Error(errMsg);
       }
       if (data?.error) throw new Error(data.error);
-      toast.success(`Show "${data.showName}" gerado!`, {
-        description: `${data.formations?.length || 0} formações · ${data.totalDuration}s · ${data.model || 'AI'}`,
-      });
+      if (data.fallback) {
+        toast.warning(`Show gerado em modo local (sem IA)`, { description: data.warning || 'Adicione créditos para narrativa inteligente.', duration: 8000 });
+      } else {
+        toast.success(`Show "${data.showName}" gerado!`, {
+          description: `${data.formations?.length || 0} formações · ${data.totalDuration}s · ${data.model || 'AI'}`,
+        });
+      }
       return data;
     } catch (e: any) {
       toast.error(e.message || 'Erro ao gerar show');
