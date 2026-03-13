@@ -121,8 +121,19 @@
 - Access controls: public/private, password protection, expiry (1h/24h/7d/30d/never)
 - Content visibility toggles: timeline, positions, comments, watermark
 
-## Phase 13: Next
-- Multi-user collaboration (real-time sync)
-- Cloud rendering / server-side video export
-- Custom effect particle editor
-- Show versioning and revision history
+## Phase 13: Collaboration, Particles & Versioning (DONE ✅)
+- Multi-user collaboration engine (src/lib/collaborationEngine.ts) — Supabase Realtime presence + broadcast
+- Real-time cursor sharing, presence tracking, edit broadcasting with last-writer-wins conflict resolution
+- CollaborationPanel UI with room codes, online user list, activity log
+- Custom Particle Editor (ParticleEditorPanel) — granular particle system designer
+- 6 built-in presets (Peony, Willow, Crackle, Waterfall, Smoke, Comet)
+- Full parameter control: emission, physics (speed/gravity/drag/turbulence), appearance (colors/shape/blend/trail)
+- Live 2D canvas preview with real-time particle simulation
+- Show Versioning (VersioningPanel) — named snapshots with diff comparison and restore
+- Snapshot save/restore with position and cue count tracking
+
+## Phase 14: Next
+- Multi-language localization (PT-BR, EN, ES)
+- Advanced collision detection between drones
+- Weather API integration for real venue conditions
+- Client approval workflow (comments + sign-off on shared previews)
