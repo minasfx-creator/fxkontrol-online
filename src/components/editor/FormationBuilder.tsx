@@ -147,8 +147,11 @@ function useAIFormation() {
       const { data, error } = await supabase.functions.invoke('generate-formation', {
         body: { mode, prompt, droneCount, imageBase64, previousFormation },
       });
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      if (error) {
+        const errMsg = (data as any)?.error || error.message || String(error);
+        throw new Error(errMsg);
+      }
+      if (data?.error) throw new Error(data.error);
 
       setLoadingPhase('Processando resultado...');
       const pts: FormationPoint[] = (data.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
