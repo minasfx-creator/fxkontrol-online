@@ -1,6 +1,7 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars, Grid, PerspectiveCamera } from '@react-three/drei';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useSceneStore } from '@/store/useSceneStore';
 import { useRef, useMemo, useEffect, useState, useCallback, Component, ErrorInfo, ReactNode } from 'react';
 import { PerfCollector, PerformanceHUD, type PerfStats } from './PerformanceHUD';
 import ViewportTerminal, { pushLog } from './ViewportTerminal';
@@ -209,7 +210,14 @@ function LightPoint({ position, color }: { position: [number, number, number]; c
 
 function TimelineEffects() {
   const { timelineItems, currentTime, positions } = useProjectStore();
+  const sceneSettings = useSceneStore(st => st.settings);
   const activeEffects = useMemo(() => {
+    const effectScale = sceneSettings.effectScale;
+    const weatherDampening = sceneSettings.weather === 'heavy-rain' ? 0.6 :
+      sceneSettings.weather === 'light-rain' ? 0.8 :
+      sceneSettings.weather === 'fog' ? 0.7 : 1.0;
+    const humidityFactor = 1 - sceneSettings.humidity * 0.3; // humidity shortens burn time
+
     return timelineItems.map((item) => {
       const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
       if (!effect) return null;
@@ -221,24 +229,24 @@ function TimelineEffects() {
         if (linkedPos) resolvedPos = { x: linkedPos.x, y: linkedPos.y, z: linkedPos.z };
       }
 
-      // ── Prefire-aware timing for shells ──
-      // Shell effects have a prefire (lift) phase before the burst duration
+      // ── Real physics: caliber-based heights ──
       const caliber = effect.caliber || 4;
       const isShellType = effect.partType === 'shell' || effect.partType === 'single_shot' || effect.type === 'firework';
       const prefireDuration = isShellType ? (effect.prefire || getLiftTime(caliber)) : 0;
-      const totalDuration = prefireDuration + effect.duration;
+      // Weather affects duration: rain shortens, humidity shortens
+      const weatherDuration = effect.duration * weatherDampening * humidityFactor;
+      const totalDuration = prefireDuration + weatherDuration;
 
       if (currentTime < item.startTime || currentTime > item.startTime + totalDuration) return null;
       const elapsed = currentTime - item.startTime;
 
-      // Are we in prefire (lift) phase or burst phase?
       const inPrefire = isShellType && elapsed < prefireDuration;
       const prefireProgress = prefireDuration > 0 ? Math.min(1, elapsed / prefireDuration) : 0;
       const burstProgress = prefireDuration > 0
-        ? Math.max(0, (elapsed - prefireDuration) / effect.duration)
-        : elapsed / effect.duration;
+        ? Math.max(0, (elapsed - prefireDuration) / weatherDuration)
+        : elapsed / weatherDuration;
 
-      return { item, effect, progress: burstProgress, inPrefire, prefireProgress, caliber, prefireDuration, resolvedPos };
+      return { item, effect, progress: burstProgress, inPrefire, prefireProgress, caliber, prefireDuration, resolvedPos, effectScale };
     }).filter(Boolean) as {
       item: typeof timelineItems[0];
       effect: typeof EFFECT_LIBRARY[0];
@@ -248,12 +256,13 @@ function TimelineEffects() {
       caliber: number;
       prefireDuration: number;
       resolvedPos: { x: number; y: number; z: number };
+      effectScale: number;
     }[];
-  }, [timelineItems, currentTime, positions]);
+  }, [timelineItems, currentTime, positions, sceneSettings.effectScale, sceneSettings.weather, sceneSettings.humidity]);
 
   return (
     <>
-      {activeEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos }) => {
+      {activeEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale }) => {
         const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
         const eid = effect.id;
         const pt = effect.partType;
@@ -271,18 +280,21 @@ function TimelineEffects() {
           );
         }
 
-        // ── Specialized renderers by partType (Finale 3D logic) ──
-        // For shells: position burst at break height
+        // ── Real break height with scene scale ──
         const isShell = pt === 'shell' || pt === 'single_shot';
+        const realBreakHeight = getBreakHeight(caliber) * effectScale;
         const burstPos: [number, number, number] = isShell
-          ? [pos[0], pos[1] + getBreakHeight(caliber), pos[2]]
+          ? [pos[0], pos[1] + realBreakHeight, pos[2]]
           : pos;
+
+        // Heights from effect library, scaled by scene
+        const scaledHeight = (effect.heightMeters || 4) * effectScale;
 
         if (pt === 'mine') return <MineEffect key={item.id} position={pos} color={effect.color} progress={progress} />;
         if (pt === 'candle') return <RomanCandleEffect key={item.id} position={pos} color={effect.color} progress={progress} shotCount={effect.shotCount || 8} />;
-        if (pt === 'waterfall') return <WaterfallEffect key={item.id} position={pos} color={effect.color} progress={progress} width={effect.heightMeters || 5} />;
-        if (pt === 'gerb') return <GerbEffect key={item.id} position={pos} color={effect.color} progress={progress} height={effect.heightMeters || 4} />;
-        if (pt === 'flame') return <FlameEffect key={item.id} position={pos} color={effect.color} progress={progress} height={effect.heightMeters || 8} />;
+        if (pt === 'waterfall') return <WaterfallEffect key={item.id} position={pos} color={effect.color} progress={progress} width={scaledHeight} />;
+        if (pt === 'gerb') return <GerbEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight} />;
+        if (pt === 'flame') return <FlameEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight} />;
         if (pt === 'cake') return <CakeEffect key={item.id} position={pos} color={effect.color} progress={progress} shotCount={effect.shotCount || 25} />;
         if (pt === 'laser') return <LaserEffect key={item.id} position={pos} color={effect.color} progress={progress} pattern={effect.laserPattern || 'fan'} />;
         if (pt === 'light' && effect.beamType) return <MovingHeadEffect key={item.id} position={pos} color={effect.color} progress={progress} beamType={effect.beamType} />;
@@ -841,51 +853,68 @@ function GroundFog() {
 }
 
 function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) {
+  const sc = useSceneStore(st => st.settings);
+
+  // Ground style: finale-dark uses darker grass, flat-black uses a simple plane
+  const showGrass = sc.groundStyle !== 'flat-black';
+  
   return (
     <group>
-      <GrassGround />
+      {showGrass ? <GrassGround /> : (
+        <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+          <planeGeometry args={[4000, 4000]} />
+          <meshStandardMaterial color="#050505" roughness={0.95} metalness={0} />
+        </mesh>
+      )}
       {satelliteTexture && <SatelliteOverlay textureUrl={satelliteTexture} />}
-      <GroundFog />
+      {sc.groundFogIntensity > 0 && <GroundFog />}
 
-      {/* Operational grid — subtle professional */}
-      <Grid
-        position={[0, 0.01, 0]}
-        args={[1000, 1000]}
-        cellSize={2}
-        cellThickness={0.15}
-        cellColor="#1a3a1a"
-        sectionSize={10}
-        sectionThickness={0.4}
-        sectionColor="#2a4a2a"
-        fadeDistance={350}
-        infiniteGrid
-      />
-      {/* 50m major grid */}
-      <Grid
-        position={[0, 0.015, 0]}
-        args={[1000, 1000]}
-        cellSize={50}
-        cellThickness={0.6}
-        cellColor="#2a4a2a"
-        sectionSize={100}
-        sectionThickness={0.8}
-        sectionColor="#3a5a3a"
-        fadeDistance={600}
-        infiniteGrid
-      />
+      {/* Operational grid */}
+      {sc.showGrid && (
+        <>
+          <Grid
+            position={[0, 0.01, 0]}
+            args={[1000, 1000]}
+            cellSize={2}
+            cellThickness={0.15}
+            cellColor={sc.gridColor}
+            sectionSize={10}
+            sectionThickness={0.4}
+            sectionColor="#2a4a2a"
+            fadeDistance={350}
+            infiniteGrid
+          />
+          <Grid
+            position={[0, 0.015, 0]}
+            args={[1000, 1000]}
+            cellSize={50}
+            cellThickness={0.6}
+            cellColor="#2a4a2a"
+            sectionSize={100}
+            sectionThickness={0.8}
+            sectionColor="#3a5a3a"
+            fadeDistance={600}
+            infiniteGrid
+          />
+        </>
+      )}
 
-      {/* Subtle center cross — origin marker (no red squares) */}
-      <mesh position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[0.15, 6]} />
-        <meshBasicMaterial color="#5a8a5a" transparent opacity={0.3} />
-      </mesh>
-      <mesh position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[6, 0.15]} />
-        <meshBasicMaterial color="#5a8a5a" transparent opacity={0.3} />
-      </mesh>
+      {/* Origin marker */}
+      {sc.showOriginMarker && (
+        <>
+          <mesh position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[0.15, 6]} />
+            <meshBasicMaterial color="#5a8a5a" transparent opacity={0.3} />
+          </mesh>
+          <mesh position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[6, 0.15]} />
+            <meshBasicMaterial color="#5a8a5a" transparent opacity={0.3} />
+          </mesh>
+        </>
+      )}
 
-      {/* Scale reference poles — wider spread */}
-      {[-60, -30, 0, 30, 60].map((x) => (
+      {/* Scale reference poles */}
+      {sc.showScalePoles && [-60, -30, 0, 30, 60].map((x) => (
         <group key={`pole-${x}`} position={[x, 0, -45]}>
           <mesh position={[0, 5, 0]} castShadow>
             <cylinderGeometry args={[0.04, 0.05, 10, 8]} />
@@ -909,7 +938,7 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
       ))}
 
       {/* Horizon treeline */}
-      <TreelineSilhouette />
+      {sc.showTreeline && <TreelineSilhouette />}
     </group>
   );
 }
@@ -961,6 +990,102 @@ function TreelineSilhouette() {
 }
 
 // LaunchSites removed — positions are now user-created via toolbar
+
+// ─── Scene-Settings-Driven Components ────────────────────────────────
+
+const SHADOW_MAP_SIZES: Record<string, number> = { low: 1024, medium: 2048, high: 4096, ultra: 8192 };
+
+function SceneLighting() {
+  const s = useSceneStore(st => st.settings);
+  const shadowSize = SHADOW_MAP_SIZES[s.shadowQuality] || 4096;
+
+  return (
+    <>
+      <ambientLight intensity={s.ambientIntensity} color="#506880" />
+      <directionalLight
+        position={[60, 55, -80]}
+        intensity={s.moonIntensity}
+        color={s.moonColor}
+        castShadow={s.shadowsEnabled}
+        shadow-mapSize={[shadowSize, shadowSize]}
+        shadow-camera-far={500}
+        shadow-camera-left={-150}
+        shadow-camera-right={150}
+        shadow-camera-top={150}
+        shadow-camera-bottom={-150}
+        shadow-bias={-0.00005}
+      />
+      <hemisphereLight args={['#152050', '#0c1a0a', 0.12]} />
+      <directionalLight position={[-40, 20, 60]} intensity={s.rimLightIntensity * 0.2} color="#4466aa" />
+      <directionalLight position={[0, -10, 30]} intensity={s.fillLightIntensity * 0.1} color="#1a2a1a" />
+    </>
+  );
+}
+
+function SceneFog() {
+  const s = useSceneStore(st => st.settings);
+  if (s.fogDensity <= 0) return null;
+  return <fog attach="fog" args={[s.fogColor, s.fogNear, s.fogFar / Math.max(s.fogDensity, 0.1)]} />;
+}
+
+function SceneStars() {
+  const density = useSceneStore(st => st.settings.starDensity);
+  if (density <= 0.05) return null;
+  return <Stars radius={450} depth={200} count={Math.round(10000 * density)} factor={5} saturation={0.2} fade speed={0.03} />;
+}
+
+function WeatherEffects() {
+  const weather = useSceneStore(st => st.settings.weather);
+  const rainIntensity = useSceneStore(st => st.settings.rainIntensity);
+  const pointsRef = useRef<THREE.Points>(null);
+
+  const rainData = useMemo(() => {
+    if (weather !== 'light-rain' && weather !== 'heavy-rain' && weather !== 'snow') return null;
+    const count = weather === 'heavy-rain' ? 3000 : weather === 'snow' ? 1500 : 1000;
+    const positions = new Float32Array(count * 3);
+    const velocities = new Float32Array(count);
+    for (let i = 0; i < count; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * 300;
+      positions[i * 3 + 1] = Math.random() * 100;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 300;
+      velocities[i] = weather === 'snow' ? 1 + Math.random() * 2 : 15 + Math.random() * 25;
+    }
+    return { count, positions, velocities };
+  }, [weather]);
+
+  useFrame(() => {
+    if (!pointsRef.current || !rainData) return;
+    const posAttr = pointsRef.current.geometry.getAttribute('position') as THREE.BufferAttribute;
+    const arr = posAttr.array as Float32Array;
+    for (let i = 0; i < rainData.count; i++) {
+      arr[i * 3 + 1] -= rainData.velocities[i] * 0.016 * rainIntensity;
+      if (arr[i * 3 + 1] < 0) {
+        arr[i * 3 + 1] = 80 + Math.random() * 20;
+        arr[i * 3] = (Math.random() - 0.5) * 300;
+        arr[i * 3 + 2] = (Math.random() - 0.5) * 300;
+      }
+    }
+    posAttr.needsUpdate = true;
+  });
+
+  if (!rainData) return null;
+
+  return (
+    <points ref={pointsRef}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[rainData.positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial
+        size={weather === 'snow' ? 0.15 : 0.04}
+        color={weather === 'snow' ? '#e8e8ff' : '#aabbcc'}
+        transparent
+        opacity={rainIntensity * 0.6}
+        depthWrite={false}
+        sizeAttenuation
+      />
+    </points>
+  );
+}
 
 // --- Camera controller ---
 function CameraController({ targetPosition, targetLookAt }: { targetPosition: [number, number, number]; targetLookAt: [number, number, number] }) {
@@ -1066,38 +1191,14 @@ export default function SkyCanvas() {
         <PerspectiveCamera makeDefault position={preset.position} fov={55} near={0.2} far={2500} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} />
 
-        {/* Cinematic lighting — richer, more dramatic */}
-        <ambientLight intensity={0.06} color="#506880" />
-        
-        {/* Moonlight — key light with warmer fill */}
-        <directionalLight
-          position={[60, 55, -80]}
-          intensity={0.45}
-          color="#8899cc"
-          castShadow
-          shadow-mapSize={[4096, 4096]}
-          shadow-camera-far={500}
-          shadow-camera-left={-150}
-          shadow-camera-right={150}
-          shadow-camera-top={150}
-          shadow-camera-bottom={-150}
-          shadow-bias={-0.00005}
-        />
-        
-        {/* Hemisphere — deep blue sky + warm ground bounce */}
-        <hemisphereLight args={['#152050', '#0c1a0a', 0.12]} />
-        
-        {/* Rim backlight — atmospheric depth */}
-        <directionalLight position={[-40, 20, 60]} intensity={0.1} color="#4466aa" />
-        
-        {/* Fill from below — ground bounce */}
-        <directionalLight position={[0, -10, 30]} intensity={0.03} color="#1a2a1a" />
+        <SceneLighting />
 
         <SkyGradient />
         <Moon />
-        <Stars radius={450} depth={200} count={10000} factor={5} saturation={0.2} fade speed={0.03} />
+        <SceneStars />
         <AtmosphericParticles />
-        <fog attach="fog" args={['#080e1a', 200, 1800]} />
+        <SceneFog />
+        <WeatherEffects />
 
         <StageGround satelliteTexture={satelliteTexture} />
         {/* LaunchSites removed — user creates positions via toolbar */}
