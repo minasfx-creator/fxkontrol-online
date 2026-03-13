@@ -1020,8 +1020,10 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
             <FormationPreview points={displayPoints} />
 
             <div className="space-y-2">
-              {isFirstFormation && activeTab === 'presets' && (
-                <SliderField label="Drones" value={count} onChange={setCount} min={4} max={2000} step={1} />
+              {/* Drone count — always visible */}
+              <SliderField label="Drones" value={count} onChange={setCount} min={4} max={2000} step={1} />
+              {!isFirstFormation && droneFormations[0]?.droneCount !== count && (
+                <p className="text-[8px] text-yellow-400">⚠ Frota original: {droneFormations[0].droneCount} — será normalizado</p>
               )}
 
               {activeTab === 'presets' && needsRadius && (
