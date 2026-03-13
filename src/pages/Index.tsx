@@ -41,6 +41,7 @@ import SafetyPanel from '@/components/editor/SafetyPanel';
 import ChainEditorPanel from '@/components/editor/ChainEditorPanel';
 import PositionGroupsPanel from '@/components/editor/PositionGroupsPanel';
 import ShowSummaryPanel from '@/components/editor/ShowSummaryPanel';
+import SceneEditorPanel from '@/components/editor/SceneEditorPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
