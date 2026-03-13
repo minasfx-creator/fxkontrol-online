@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
-import { Lightbulb, Plus, Trash2 } from 'lucide-react';
+import { Lightbulb, Plus, Trash2, Send, Wifi } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useProjectStore } from '@/store/useProjectStore';
 import {
@@ -13,6 +14,7 @@ import {
   type DMXKeyframe,
 } from '@/lib/dmxEngine';
 import { downloadFile } from '@/lib/exportEngine';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export default function DMXPanel({ onClose }: { onClose: () => void }) {
