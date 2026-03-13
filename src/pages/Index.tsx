@@ -110,6 +110,9 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   collab: 'w-64',
   particles: 'w-64',
   versioning: 'w-64',
+  weather: 'w-64',
+  collisions: 'w-64',
+  approval: 'w-72',
 };
 
 export default function Index() {
