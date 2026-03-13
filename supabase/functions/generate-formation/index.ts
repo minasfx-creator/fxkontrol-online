@@ -621,6 +621,12 @@ function generateShapePoints(
     case 'crown': return genCrown(count, R);
     case 'flag_br': return genFlagBR(count, R);
     case 'dragon': return genDragon(count, R);
+    case 'anchor': return genAnchor(count, R);
+    case 'trophy_detailed': return genTrophyDetailed(count, R);
+    case 'laurel_wreath': return genLaurelWreath(count, R);
+    case 'runner': return genRunner(count, R);
+    case 'shield': return genShield(count, R);
+    case 'compass': return genCompass(count, R);
     case 'custom_outline': return outlinePoints?.length ? genFromOutline(count, outlinePoints) : genFilledCircle(count, R);
     default: return genFilledCircle(count, R);
   }
