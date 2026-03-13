@@ -1016,7 +1016,7 @@ export default function SkyCanvas() {
         <AtmosphericParticles />
         <fog attach="fog" args={['#0a1020', 200, 900]} />
 
-        <StageGround />
+        <StageGround satelliteTexture={satelliteTexture} />
         <LaunchSites />
         <PositionPins />
         <TrajectoryPaths />
