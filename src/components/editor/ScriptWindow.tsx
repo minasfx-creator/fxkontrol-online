@@ -337,7 +337,7 @@ export default function ScriptWindow() {
     
     setSelectedIds(new Set(newIds));
     toast.success(`${items.length} duplicado(s)`);
-  }, [selectedIds, timelineItems, addTimelineItem]);
+  }, [selectedIds, timelineItems, addTimelineItem, pushUndo]);
 
   // ─── Fill Handle: create N copies with incremental offsets ───────
   const handleFill = useCallback(() => {
