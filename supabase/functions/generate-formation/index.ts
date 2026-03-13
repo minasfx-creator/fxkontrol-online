@@ -1543,7 +1543,11 @@ function inferShapeType(name: string): string {
     [/heart|coração|❤|💕|💗|💓|amor|love/, 'heart'],
     [/star|estrela|⭐|✨|🌟|stella/, 'star'],
     [/circle|círculo|⭕|round|redondo/, 'circle'],
-    [/spiral|espiral|🌀|vórtex|vortex/, 'spiral'],
+    [/vortex|vórtex|🌪️|whirlpool|tornado|turbilhão/, 'spiral'],
+    [/spiral|espiral|🌀/, 'spiral'],
+    [/geodesic|geodésic|buckminster|icosahedr/, 'filled_circle'],
+    [/phoenix|fênix|🔥.*bird|firebird/, 'butterfly'],
+    [/cube|cubo|🧊|hexahedr/, 'grid'],
     [/grid|grade|quadr|matrix|matriz/, 'grid'],
     [/diamond|diamante|losango|💎|gem/, 'diamond'],
     [/cross|cruz|✝|✚|plus/, 'cross'],
@@ -1571,7 +1575,7 @@ function inferShapeType(name: string): string {
     [/crown|coroa|👑|king|queen|rei|rainha/, 'star'],
     [/anchor|âncora|⚓/, 'cross'],
     [/guitar|guitarra|🎸|violão/, 'music_note'],
-    [/bird|pássaro|🦅|eagle|águia|phoenix|fênix/, 'butterfly'],
+    [/bird|pássaro|🦅|eagle|águia/, 'butterfly'],
     [/dna|helix|🧬|genética/, 'spiral'],
     [/globe|globo|🌍|🌎|🌏|earth|terra|mundo/, 'filled_circle'],
     [/eye|olho|👁|vision|visão/, 'crescent'],
@@ -1597,11 +1601,12 @@ function inferShapeType(name: string): string {
     [/trident|tridente|🔱/, 'cross'],
     [/robot|robô|🤖/, 'grid'],
     [/alien|et|👽/, 'filled_circle'],
+    [/minas|belo.?horizonte|mg/, 'filled_circle'],
+    [/brazil|brasil|🇧🇷/, 'diamond'],
   ];
   for (const [regex, shape] of map) {
     if (regex.test(lower)) return shape;
   }
-  // Check if it contains text characters (likely a text request)
   if (/^[a-zA-Z0-9\s]{1,10}$/.test(name.trim())) return 'text';
   return 'filled_circle';
 }
