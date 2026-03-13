@@ -21,6 +21,8 @@ import SMPTEPanel from '@/components/editor/SMPTEPanel';
 import GoogleMapsPanel from '@/components/editor/GoogleMapsPanel';
 import DiagnosticPanel from '@/components/editor/DiagnosticPanel';
 import LogisticsPanel from '@/components/editor/LogisticsPanel';
+import SwarmGPTPanel from '@/components/editor/SwarmGPTPanel';
+import SynesthesiaPanel from '@/components/editor/SynesthesiaPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 
 const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));

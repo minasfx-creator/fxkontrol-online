@@ -1,11 +1,13 @@
-import { Route, Wind, FileText, Package, Cpu, DollarSign, Spline, Sliders, Settings2, Bug, Gauge, Lightbulb, Battery, Radio, Clock, Globe, ShieldCheck, Tag } from 'lucide-react';
+import { Route, Wind, FileText, Package, Cpu, DollarSign, Spline, Sliders, Settings2, Bug, Gauge, Lightbulb, Battery, Radio, Clock, Globe, ShieldCheck, Tag, Sparkles, Music } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | 'inventory' | 'waypoints' | 'effects' | 'properties' | 'boids' | 'pid' | 'dmx' | 'battery' | 'mavlink' | 'smpte' | 'maps' | 'diagnostic' | 'logistics';
+export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | 'inventory' | 'waypoints' | 'effects' | 'properties' | 'boids' | 'pid' | 'dmx' | 'battery' | 'mavlink' | 'smpte' | 'maps' | 'diagnostic' | 'logistics' | 'swarmgpt' | 'synesthesia';
 
 const PANEL_TABS: { id: PanelId; label: string; icon: typeof Route; shortcut?: string }[] = [
   { id: 'properties', label: 'Properties', icon: Settings2, shortcut: 'P' },
+  { id: 'swarmgpt', label: 'SwarmGPT · AI Choreography', icon: Sparkles, shortcut: 'A' },
+  { id: 'synesthesia', label: 'Audio Synesthesia', icon: Music, shortcut: 'Y' },
   { id: 'script', label: 'Script Editor', icon: Route, shortcut: 'S' },
   { id: 'waypoints', label: 'Waypoint Editor', icon: Spline, shortcut: 'W' },
   { id: 'effects', label: 'Effect Editor', icon: Sliders, shortcut: 'E' },
