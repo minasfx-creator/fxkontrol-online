@@ -429,7 +429,7 @@ export default function ScriptWindow() {
     
     document.addEventListener('mousemove', handleMove);
     document.addEventListener('mouseup', handleUp);
-  }, [timelineItems, addTimelineItem]);
+  }, [timelineItems, addTimelineItem, pushUndo]);
 
   // ─── Keyboard shortcuts ──────────────────────────────────────────
   useEffect(() => {
