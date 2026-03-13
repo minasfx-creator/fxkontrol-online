@@ -770,7 +770,7 @@ function StageGround() {
       
       {/* Reflective wet surface — catches drone LED reflections */}
       <mesh position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[60, 64]} />
+        <circleGeometry args={[100, 64]} />
         <MeshReflectorMaterial
           mirror={0.35}
           blur={[300, 100]}
