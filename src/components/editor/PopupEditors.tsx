@@ -237,7 +237,7 @@ export function PositionContextMenu({
       style={{ left: screenPos.x, top: screenPos.y }}
     >
       <div className="px-3 py-1.5 border-b border-border/40 flex items-center gap-2">
-        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: position.type === 'pyro' ? PYRO_COLOR : DRONE_COLOR }} />
+        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: position.type === 'pyro' ? '#FF6B35' : '#00B4D8' }} />
         <span className="text-[10px] font-bold text-foreground">{position.name}</span>
       </div>
       {items.map((item, i) => {
