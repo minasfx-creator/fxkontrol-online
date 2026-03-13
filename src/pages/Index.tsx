@@ -35,6 +35,7 @@ import ModelImportPanel from '@/components/editor/ModelImportPanel';
 import BackgroundPanel from '@/components/editor/BackgroundPanel';
 import SupplierCatalogPanel from '@/components/editor/SupplierCatalogPanel';
 import SafetyPanel from '@/components/editor/SafetyPanel';
+import ChainEditorPanel from '@/components/editor/ChainEditorPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
