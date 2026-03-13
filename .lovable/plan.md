@@ -110,7 +110,19 @@
 - ONSET_EFFECT_MAP — suggested effect categories per onset type (kick→morteiros, snare→peonias, etc.)
 - Synesthesia panel: 2-tab UI (Auto Cues + Formations) with full parameter controls
 
-## Phase 12: Next
-- AR/Hybrid show overlay mode
+## Phase 12: AR Overlay & Sharing (DONE ✅)
+- AR/Hybrid overlay engine (src/lib/arOverlayEngine.ts) — composite simulated effects over real venue photos
+- Perspective calibration: horizon line, vanishing point, FOV estimate, effect scale, rotation offset
+- Blend modes: Screen, Additive, Normal, Overlay with configurable opacity
+- Calibration grid and horizon line visual guides
+- worldToImagePosition() — maps 3D world coords to 2D image positions via single-point perspective
+- AROverlayPanel UI with venue photo upload, calibration sliders, blend controls
+- Show Preview Sharing (ShowSharePanel) — generate shareable read-only preview links
+- Access controls: public/private, password protection, expiry (1h/24h/7d/30d/never)
+- Content visibility toggles: timeline, positions, comments, watermark
+
+## Phase 13: Next
 - Multi-user collaboration (real-time sync)
-- Cloud rendering / show preview sharing
+- Cloud rendering / server-side video export
+- Custom effect particle editor
+- Show versioning and revision history
