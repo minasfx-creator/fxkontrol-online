@@ -844,46 +844,46 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
       {satelliteTexture && <SatelliteOverlay textureUrl={satelliteTexture} />}
       <GroundFog />
 
-      {/* Operational grid — configurable with snap */}
+      {/* Operational grid — subtle professional */}
       <Grid
         position={[0, 0.01, 0]}
-        args={[500, 500]}
+        args={[1000, 1000]}
         cellSize={2}
-        cellThickness={0.2}
-        cellColor="#2a4a2a"
+        cellThickness={0.15}
+        cellColor="#1a3a1a"
         sectionSize={10}
-        sectionThickness={0.6}
-        sectionColor="#3a5a3a"
-        fadeDistance={250}
+        sectionThickness={0.4}
+        sectionColor="#2a4a2a"
+        fadeDistance={350}
         infiniteGrid
       />
-      {/* 50m major grid marks */}
+      {/* 50m major grid */}
       <Grid
         position={[0, 0.015, 0]}
-        args={[500, 500]}
+        args={[1000, 1000]}
         cellSize={50}
-        cellThickness={1.0}
-        cellColor="#4a6a4a"
+        cellThickness={0.6}
+        cellColor="#2a4a2a"
         sectionSize={100}
-        sectionThickness={1.2}
-        sectionColor="#5a7a5a"
-        fadeDistance={400}
+        sectionThickness={0.8}
+        sectionColor="#3a5a3a"
+        fadeDistance={600}
         infiniteGrid
       />
 
-      {/* Central firing area marker — scaled */}
-      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[40, 40.4, 64]} />
-        <meshBasicMaterial color="#ff4444" transparent opacity={0.5} />
+      {/* Subtle center cross — origin marker (no red squares) */}
+      <mesh position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[0.15, 6]} />
+        <meshBasicMaterial color="#5a8a5a" transparent opacity={0.3} />
       </mesh>
-      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[80, 80.4, 64]} />
-        <meshBasicMaterial color="#ffaa00" transparent opacity={0.3} />
+      <mesh position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[6, 0.15]} />
+        <meshBasicMaterial color="#5a8a5a" transparent opacity={0.3} />
       </mesh>
 
       {/* Scale reference poles — wider spread */}
-      {[-40, -20, 0, 20, 40].map((x) => (
-        <group key={`pole-${x}`} position={[x, 0, -35]}>
+      {[-60, -30, 0, 30, 60].map((x) => (
+        <group key={`pole-${x}`} position={[x, 0, -45]}>
           <mesh position={[0, 5, 0]} castShadow>
             <cylinderGeometry args={[0.04, 0.05, 10, 8]} />
             <meshStandardMaterial color="#555555" metalness={0.7} roughness={0.25} />
@@ -891,12 +891,12 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
           {[2, 4, 6, 8, 10].map((h) => (
             <mesh key={h} position={[0, h, 0]}>
               <boxGeometry args={[0.15, 0.02, 0.15]} />
-              <meshBasicMaterial color="#888888" transparent opacity={0.5} />
+              <meshBasicMaterial color="#888888" transparent opacity={0.4} />
             </mesh>
           ))}
           <mesh position={[0, 10.15, 0]}>
-            <sphereGeometry args={[0.08, 8, 8]} />
-            <meshBasicMaterial color="#ff0000" />
+            <sphereGeometry args={[0.06, 8, 8]} />
+            <meshBasicMaterial color="#ffffff" />
           </mesh>
           <mesh position={[0, 0.05, 0]}>
             <cylinderGeometry args={[0.18, 0.22, 0.1, 8]} />
