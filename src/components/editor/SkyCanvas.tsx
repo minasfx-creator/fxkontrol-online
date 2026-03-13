@@ -14,6 +14,7 @@ import BoidsVisualizer from './BoidsVisualizer';
 import QuadcopterModel from './QuadcopterModel';
 import GeofenceVisual from './GeofenceVisual';
 import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Globe, Download } from 'lucide-react';
+import SelectionStatusBar from './SelectionStatusBar';
 import { cn } from '@/lib/utils';
 import { CometEffect, ShockwaveEffect, MultiBurstEffect, FanEffect, MineEffect, RomanCandleEffect, WaterfallEffect, GerbEffect, FlameEffect, CryoJetEffect, LaserEffect, CakeEffect, ConfettiEffect, MovingHeadEffect, PrefireShell } from './effects';
 import { getLiftTime, getBreakHeight } from '@/lib/pyroPhysics';
@@ -1263,6 +1264,7 @@ export default function SkyCanvas() {
       <PerformanceHUD statsRef={perfStatsRef} droneCount={droneCount} />
       <ViewportTerminal />
       <MiniMap />
+      <SelectionStatusBar />
 
       <div className="absolute bottom-3 right-3 text-xs font-mono-code text-muted-foreground bg-surface-1/80 px-2 py-1 rounded-sm border border-border/50 space-y-0.5">
         <div>Orbit: LMB · Pan: MMB · Zoom: Scroll</div>

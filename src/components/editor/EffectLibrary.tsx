@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { Search, ChevronDown, ChevronRight, Flame, Sparkles, Radio, Shapes, Wand2, Zap, Lightbulb, Droplets, Bomb, CandlestickChart as Candle, Waves, Box } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, Flame, Sparkles, Radio, Shapes, Wand2, Zap, Lightbulb, Droplets, Bomb, CandlestickChart as Candle, Waves, Box, AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { EFFECT_LIBRARY, useProjectStore, type Effect } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
@@ -27,44 +28,51 @@ function EffectCard({ effect }: { effect: Effect }) {
   const isSelected = selectedEffectId === effect.id;
 
   const handleDoubleClick = () => {
-    // Finale 3D logic: link effect to selected pyro position(s)
-    const pyroPositions = positions.filter(p => p.type === 'pyro');
+    // Finale 3D logic: effects MUST be linked to selected positions
+    const isPyroEffect = effect.type === 'firework' || effect.type === 'sfx';
+    const isDroneEffect = effect.type === 'drone';
+
+    // Determine valid target positions based on effect type
+    const validType = isPyroEffect ? 'pyro' : isDroneEffect ? 'drone-pad' : null;
+
     const targetIds = selectedPositionIds.length > 0
-      ? selectedPositionIds.filter(id => positions.find(p => p.id === id)?.type === 'pyro')
-      : selectedPositionId && positions.find(p => p.id === selectedPositionId)?.type === 'pyro'
+      ? selectedPositionIds.filter(id => {
+          const p = positions.find(pp => pp.id === id);
+          return validType ? p?.type === validType : true;
+        })
+      : selectedPositionId && positions.find(p => p.id === selectedPositionId)?.type === validType
         ? [selectedPositionId]
         : [];
 
-    if (targetIds.length > 0) {
-      // Fire from each selected position
-      targetIds.forEach((posId, i) => {
-        const pos = positions.find(p => p.id === posId);
-        if (!pos) return;
-        addTimelineItem({
-          id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${i}`,
-          effectId: effect.id,
-          startTime: currentTime,
-          trackIndex: effect.type === 'firework' ? 0 : effect.type === 'drone' ? 1 : 2,
-          position: { x: pos.x, y: pos.y, z: pos.z },
-          positionId: posId,
-          positionIds: targetIds.length > 1 ? targetIds : undefined,
-          positionName: pos.name,
-        });
+    if (targetIds.length === 0) {
+      // ENFORCE: No random placement — require position selection
+      const typeLabel = isPyroEffect ? 'Pyro Position' : isDroneEffect ? 'Drone Pad' : 'posição';
+      toast.warning(`Selecione pelo menos uma ${typeLabel} no viewport antes de adicionar este efeito`, {
+        description: 'Clique em posições no viewport ou use Shift+Click para multi-seleção',
+        icon: '📍',
       });
-    } else {
-      // No position selected — place at random (legacy behavior)
+      return;
+    }
+
+    // Fire from each selected position
+    targetIds.forEach((posId, i) => {
+      const pos = positions.find(p => p.id === posId);
+      if (!pos) return;
       addTimelineItem({
-        id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${i}`,
         effectId: effect.id,
         startTime: currentTime,
         trackIndex: effect.type === 'firework' ? 0 : effect.type === 'drone' ? 1 : 2,
-        position: {
-          x: (Math.random() - 0.5) * 16,
-          y: effect.type === 'firework' ? 0 : 5 + Math.random() * 10,
-          z: (Math.random() - 0.5) * 8,
-        },
+        position: { x: pos.x, y: pos.y, z: pos.z },
+        positionId: posId,
+        positionIds: targetIds.length > 1 ? targetIds : undefined,
+        positionName: pos.name,
       });
-    }
+    });
+
+    toast.success(`${effect.name} → ${targetIds.length} posição${targetIds.length > 1 ? 'ões' : ''}`, {
+      icon: '🎆',
+    });
   };
 
   const handleDragStart = useCallback((e: React.DragEvent) => {
