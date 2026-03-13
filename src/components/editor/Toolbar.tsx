@@ -11,6 +11,7 @@ import FormationBuilder from './FormationBuilder';
 import CSVImporter from './CSVImporter';
 import VVIZImporter from './VVIZImporter';
 import ProjectBrowser from './ProjectBrowser';
+import CatalogImportDialog from './CatalogImportDialog';
 import { exportVVIZ, exportFiringCSV, exportSkyc, downloadFile } from '@/lib/exportEngine';
 
 function TimecodeDisplay() {
@@ -51,6 +52,7 @@ export default function Toolbar() {
   const [csvOpen, setCsvOpen] = useState(false);
   const [vvizOpen, setVvizOpen] = useState(false);
   const [browserOpen, setBrowserOpen] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const handleSave = useCallback(async () => {
@@ -215,12 +217,16 @@ export default function Toolbar() {
         <Button variant="ghost" size="icon" className="h-7 w-7" title="Import VVIZ (Finale 3D)" onClick={() => setVvizOpen(true)}>
           <FileJson className="h-3.5 w-3.5" />
         </Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7" title="Import Catalog (CSV/FDB)" onClick={() => setCatalogOpen(true)}>
+          <Download className="h-3.5 w-3.5" />
+        </Button>
       </div>
 
       <FormationBuilder open={formationOpen} onOpenChange={setFormationOpen} />
       <CSVImporter open={csvOpen} onOpenChange={setCsvOpen} />
       <VVIZImporter open={vvizOpen} onOpenChange={setVvizOpen} />
       <ProjectBrowser open={browserOpen} onOpenChange={setBrowserOpen} />
+      <CatalogImportDialog open={catalogOpen} onOpenChange={setCatalogOpen} />
 
       <div className="flex-1" />
 
