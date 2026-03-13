@@ -921,6 +921,17 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
                 }}
               />
             )}
+            {activeTab === '3d-model' && (
+              <Model3DTab
+                droneCount={effectiveCount}
+                radius={radius}
+                loading={aiLoading}
+                onPoints={(points, name) => {
+                  setAiPoints(points);
+                  toast.success(`Modelo "${name}" convertido em formação`);
+                }}
+              />
+            )}
             {activeTab === 'generative' && (
               <GenerativeAITab
                 droneCount={effectiveCount}
