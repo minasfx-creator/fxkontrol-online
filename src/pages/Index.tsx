@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState, useCallback } from 'react';
+import { useProjectStore } from '@/store/useProjectStore';
 import Toolbar from '@/components/editor/Toolbar';
 import SplashScreen from '@/components/editor/SplashScreen';
 import GlobeSelector from '@/components/editor/GlobeSelector';
@@ -81,6 +82,12 @@ export default function Index() {
 
   const handleLocationSelected = useCallback((location: { name: string; lat: number; lng: number }) => {
     setShowLocation(location);
+    useProjectStore.getState().setGpsOrigin({
+      lat: location.lat,
+      lng: location.lng,
+      heading: 0,
+      altitude: 0,
+    });
     setAppPhase('editor');
   }, []);
 
