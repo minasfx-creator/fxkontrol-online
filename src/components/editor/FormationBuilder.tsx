@@ -785,6 +785,15 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
                 onGenerate={(base64) => aiGenerate('image', '', effectiveCount, base64)}
               />
             )}
+            {activeTab === 'svg' && (
+              <SVGImportTab
+                droneCount={effectiveCount}
+                onPoints={(points, name) => {
+                  setAiPoints(points);
+                  toast.success(`SVG "${name}" convertido`);
+                }}
+              />
+            )}
             {activeTab === 'generative' && (
               <GenerativeAITab
                 droneCount={effectiveCount}
