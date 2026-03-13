@@ -3,6 +3,7 @@ import { OrbitControls, Stars, Grid, PerspectiveCamera, MeshReflectorMaterial } 
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { useRef, useMemo, useEffect, useState, Component, ErrorInfo, ReactNode } from 'react';
 import { PerfCollector, PerformanceHUD, type PerfStats } from './PerformanceHUD';
+import ViewportTerminal from './ViewportTerminal';
 import * as THREE from 'three';
 import PositionPins from './PositionPins';
 import PostProcessing from './PostProcessing';
