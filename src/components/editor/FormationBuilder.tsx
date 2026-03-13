@@ -1086,6 +1086,9 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
                       { id: 'pulse', label: '💫 Pulsar' },
                       { id: 'rainbow', label: '🌈 Arco-íris' },
                       { id: 'wave', label: '🌊 Onda' },
+                      { id: 'rgb_cycle', label: '🔴🟢🔵 RGB Cycle' },
+                      { id: 'cascade', label: '🏞️ Cascata' },
+                      { id: 'sparkle', label: '✨ Brilho' },
                     ] as { id: ColorTransitionMode; label: string }[]).map(m => (
                       <button
                         key={m.id}

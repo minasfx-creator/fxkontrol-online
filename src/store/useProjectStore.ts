@@ -96,7 +96,7 @@ export interface DroneFormation {
   holdDuration: number;
   color: string;
   endColor?: string;
-  colorTransition?: 'instant' | 'linear' | 'pulse' | 'rainbow' | 'wave';
+  colorTransition?: 'instant' | 'linear' | 'pulse' | 'rainbow' | 'wave' | 'rgb_cycle' | 'cascade' | 'sparkle';
   points: { x: number; z: number }[];
 }
 
