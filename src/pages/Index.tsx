@@ -1,5 +1,7 @@
 import { lazy, Suspense, useState, useCallback, useEffect } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useUndoStore } from '@/store/useUndoStore';
+import { useUndoKeyboard } from '@/hooks/useUndoKeyboard';
 import { toast } from 'sonner';
 import Toolbar from '@/components/editor/Toolbar';
 import SplashScreen from '@/components/editor/SplashScreen';
