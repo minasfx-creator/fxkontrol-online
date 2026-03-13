@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useProjectStore, type DroneFormation } from '@/store/useProjectStore';
 import { interpolateColor, type ColorTransitionMode } from '@/lib/colorInterpolation';
 import InstancedDroneSwarm from './InstancedDroneSwarm';
+import TransitionParticles from './TransitionParticles';
 
 /**
  * Computes drone positions at a given time based on the formation sequence.
@@ -117,7 +118,10 @@ export default function DroneChoreography() {
   if (!showFormations || !positions) return null;
 
   return (
-    <InstancedDroneSwarm positions={positions} scale={0.6} />
+    <>
+      <InstancedDroneSwarm positions={positions} scale={0.6} />
+      <TransitionParticles />
+    </>
   );
 }
 
