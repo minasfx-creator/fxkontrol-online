@@ -696,6 +696,8 @@ export default function SkyCanvas() {
         </button>
       </div>
 
+      <PerformanceHUD statsRef={perfStatsRef} droneCount={droneCount} />
+
       <div className="absolute bottom-3 right-3 text-xs font-mono-code text-muted-foreground bg-surface-1/80 px-2 py-1 rounded-sm border border-border/50">
         Orbit: LMB · Pan: MMB · Zoom: Scroll
       </div>
