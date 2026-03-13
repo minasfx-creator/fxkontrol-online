@@ -209,20 +209,63 @@ function TimelineEffects() {
     return timelineItems.map((item) => {
       const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
       if (!effect) return null;
-      if (currentTime < item.startTime || currentTime > item.startTime + effect.duration) return null;
-      const progress = (currentTime - item.startTime) / effect.duration;
-      return { item, effect, progress };
-    }).filter(Boolean) as { item: typeof timelineItems[0]; effect: typeof EFFECT_LIBRARY[0]; progress: number }[];
+
+      // ── Prefire-aware timing for shells ──
+      // Shell effects have a prefire (lift) phase before the burst duration
+      const caliber = effect.caliber || 4;
+      const isShellType = effect.partType === 'shell' || effect.partType === 'single_shot' || effect.type === 'firework';
+      const prefireDuration = isShellType ? (effect.prefire || getLiftTime(caliber)) : 0;
+      const totalDuration = prefireDuration + effect.duration;
+
+      if (currentTime < item.startTime || currentTime > item.startTime + totalDuration) return null;
+      const elapsed = currentTime - item.startTime;
+
+      // Are we in prefire (lift) phase or burst phase?
+      const inPrefire = isShellType && elapsed < prefireDuration;
+      const prefireProgress = prefireDuration > 0 ? Math.min(1, elapsed / prefireDuration) : 0;
+      const burstProgress = prefireDuration > 0
+        ? Math.max(0, (elapsed - prefireDuration) / effect.duration)
+        : elapsed / effect.duration;
+
+      return { item, effect, progress: burstProgress, inPrefire, prefireProgress, caliber, prefireDuration };
+    }).filter(Boolean) as {
+      item: typeof timelineItems[0];
+      effect: typeof EFFECT_LIBRARY[0];
+      progress: number;
+      inPrefire: boolean;
+      prefireProgress: number;
+      caliber: number;
+      prefireDuration: number;
+    }[];
   }, [timelineItems, currentTime]);
 
   return (
     <>
-      {activeEffects.map(({ item, effect, progress }) => {
+      {activeEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber }) => {
         const pos: [number, number, number] = [item.position.x, item.position.y, item.position.z];
         const eid = effect.id;
         const pt = effect.partType;
 
+        // ── PREFIRE PHASE: show comet trail rising from mortar ──
+        if (inPrefire) {
+          return (
+            <PrefireShell
+              key={`prefire-${item.id}`}
+              position={pos}
+              color={effect.color}
+              progress={prefireProgress}
+              caliber={caliber}
+            />
+          );
+        }
+
         // ── Specialized renderers by partType (Finale 3D logic) ──
+        // For shells: position burst at break height
+        const isShell = pt === 'shell' || pt === 'single_shot';
+        const burstPos: [number, number, number] = isShell
+          ? [pos[0], pos[1] + getBreakHeight(caliber), pos[2]]
+          : pos;
+
         if (pt === 'mine') return <MineEffect key={item.id} position={pos} color={effect.color} progress={progress} />;
         if (pt === 'candle') return <RomanCandleEffect key={item.id} position={pos} color={effect.color} progress={progress} shotCount={effect.shotCount || 8} />;
         if (pt === 'waterfall') return <WaterfallEffect key={item.id} position={pos} color={effect.color} progress={progress} width={effect.heightMeters || 5} />;
@@ -239,12 +282,12 @@ function TimelineEffects() {
 
         // ── Legacy effect ID routing ──
         if (eid.startsWith('comet-')) return <CometEffect key={item.id} position={pos} color={effect.color} progress={progress} direction={eid === 'comet-02' ? 'down' : 'up'} />;
-        if (eid.startsWith('shock-')) return <ShockwaveEffect key={item.id} position={pos} color={effect.color} progress={progress} />;
-        if (eid.startsWith('mburst-')) return <MultiBurstEffect key={item.id} position={pos} color={effect.color} progress={progress} burstCount={eid === 'mburst-02' ? 5 : 3} />;
+        if (eid.startsWith('shock-')) return <ShockwaveEffect key={item.id} position={burstPos} color={effect.color} progress={progress} />;
+        if (eid.startsWith('mburst-')) return <MultiBurstEffect key={item.id} position={burstPos} color={effect.color} progress={progress} burstCount={eid === 'mburst-02' ? 5 : 3} />;
         if (eid.startsWith('fan-')) return <FanEffect key={item.id} position={pos} color={effect.color} progress={progress} spreadAngle={eid === 'fan-02' ? 180 : 90} />;
 
-        // ── Default: firework burst or drone point ──
-        if (effect.type === 'firework') return <FireworkBurst key={item.id} position={pos} color={effect.color} progress={progress} />;
+        // ── Default: firework burst at break height ──
+        if (effect.type === 'firework') return <FireworkBurst key={item.id} position={burstPos} color={effect.color} progress={progress} />;
         return <LightPoint key={item.id} position={pos} color={effect.color} />;
       })}
     </>
