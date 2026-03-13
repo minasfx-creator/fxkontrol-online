@@ -53,6 +53,22 @@ const TRAJECTORY_PRESETS = [
   { emoji: '🌌', label: 'Nebulosa', prompt: 'nebula shimmer with slow spiral and cascade color change' },
 ];
 
+/* ── Normalize point count to match droneCount ───────────── */
+
+function normalizeDroneCount(pts: { x: number; z: number }[], target: number): { x: number; z: number }[] {
+  if (pts.length === 0) return [];
+  if (pts.length === target) return pts;
+  if (pts.length > target) return pts.slice(0, target);
+  const result = [...pts];
+  let i = 0;
+  while (result.length < target) {
+    const src = pts[i % pts.length];
+    result.push({ x: src.x + (Math.random() - 0.5) * 0.5, z: src.z + (Math.random() - 0.5) * 0.5 });
+    i++;
+  }
+  return result;
+}
+
 /* ── Mini 2D Preview ──────────────────────────────────────── */
 
 function MiniPreview({ points }: { points: { x: number; z: number }[] }) {
@@ -129,7 +145,8 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      const pts = (data.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
+      const rawPts = (data.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
+      const pts = normalizeDroneCount(rawPts, droneCount);
       setLastGeneratedPoints(pts);
 
       const lastTime = droneFormations.length > 0
@@ -139,7 +156,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
       addDroneFormation({
         id: `swarm-${Date.now()}`,
         formationType: 'ai-generated',
-        droneCount: pts.length,
+        droneCount,
         height: data.suggestedHeight || 30,
         radius: 20,
         spacing: 2,
@@ -178,12 +195,13 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
       let time = 0;
       const allPts: { x: number; z: number }[] = [];
       (data.formations || []).forEach((f: any) => {
-        const pts = (f.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
+        const rawPts = (f.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
+        const pts = normalizeDroneCount(rawPts, droneCount);
         if (allPts.length === 0) allPts.push(...pts);
         addDroneFormation({
           id: `show-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
           formationType: 'ai-generated',
-          droneCount: pts.length,
+          droneCount,
           height: f.height || 30,
           radius: 20,
           spacing: 2,
@@ -228,14 +246,15 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
 
       let time = 0;
       (data.formations || []).forEach((f: any) => {
-        const pts = (f.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
+        const rawPts = (f.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
+        const pts = normalizeDroneCount(rawPts, droneCount);
         const quantizedTransition = Math.round((f.transitionDuration || 8) / beatDuration) * beatDuration;
         const quantizedHold = Math.round((f.holdDuration || 12) / beatDuration) * beatDuration;
         
         addDroneFormation({
           id: `music-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
           formationType: 'ai-generated',
-          droneCount: pts.length,
+          droneCount,
           height: f.height || 30,
           radius: 20,
           spacing: 2,
