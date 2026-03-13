@@ -247,8 +247,6 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
         ref={meshRef}
         position={[0, 0.4, 0]}
         onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
         onPointerOver={onPointerOver}
         onPointerOut={onPointerOut}
         onDoubleClick={onDoubleClick}
