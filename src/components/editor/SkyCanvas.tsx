@@ -419,6 +419,28 @@ function Moon() {
   );
 }
 
+// --- Satellite texture ground overlay (real Google Maps imagery) ---
+function SatelliteOverlay({ textureUrl }: { textureUrl: string | null }) {
+  const texture = useMemo(() => {
+    if (!textureUrl) return null;
+    const loader = new THREE.TextureLoader();
+    const tex = loader.load(textureUrl);
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }, [textureUrl]);
+
+  if (!texture) return null;
+
+  return (
+    <mesh position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={[300, 300]} />
+      <meshBasicMaterial map={texture} transparent={false} />
+    </mesh>
+  );
+}
+
 // --- Google Earth-style satellite terrain ground ---
 function GrassGround() {
   const uniforms = useMemo(() => ({
