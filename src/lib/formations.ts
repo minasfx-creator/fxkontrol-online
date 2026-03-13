@@ -1,7 +1,7 @@
 // Formation generation utilities
 // Generates 2D point arrays (x, z) for drone launch pad layouts
 
-export type FormationType = 'heart' | 'star' | 'circle' | 'grid' | 'wave' | 'spiral' | 'line' | 'v-shape' | 'diamond' | 'cross' | 'double-helix' | 'firework';
+export type FormationType = 'heart' | 'star' | 'circle' | 'grid' | 'wave' | 'spiral' | 'line' | 'v-shape' | 'diamond' | 'cross' | 'double-helix' | 'firework' | 'vortex' | 'geodesic-sphere' | 'cube' | 'phoenix';
 
 export interface FormationConfig {
   type: FormationType;
