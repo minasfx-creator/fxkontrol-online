@@ -27,6 +27,7 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
       { id: 'synesthesia', label: 'Audio Sync', icon: Music, shortcut: 'Y' },
       { id: 'scripting', label: 'Scripting', icon: Wand2, shortcut: 'T' },
       { id: 'safety', label: 'Safety NFPA', icon: Shield, shortcut: 'F' },
+      { id: 'summary', label: 'Show Summary', icon: FileBarChart },
       { id: 'audience', label: 'Audience', icon: Eye },
       { id: 'wind', label: 'Wind/Cam', icon: Wind },
     ],
