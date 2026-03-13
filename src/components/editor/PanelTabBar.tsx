@@ -32,6 +32,8 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
       { id: 'audience', label: 'Audience', icon: Eye },
       { id: 'soundlevel', label: 'Sound Level', icon: Volume2 },
       { id: 'wind', label: 'Wind/Cam', icon: Wind },
+      { id: 'particles', label: 'Particles', icon: Atom },
+      { id: 'versioning', label: 'Versioning', icon: History },
     ],
   },
   {
