@@ -902,6 +902,8 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
   return (
     <group>
       {renderGround()}
+      {satelliteTexture && <SatelliteOverlay textureUrl={satelliteTexture} />}
+      {sc.groundFogIntensity > 0 && <GroundFog />}
 
       {/* Operational grid */}
       {sc.showGrid && (
