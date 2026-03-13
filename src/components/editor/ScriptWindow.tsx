@@ -398,6 +398,7 @@ export default function ScriptWindow() {
       // Execute fill with drag count
       setFillDragCount(prev => {
         if (prev > 0) {
+          pushUndo();
           const item = timelineItems.find(i => i.id === id);
           if (item) {
             const newIds: string[] = [];
