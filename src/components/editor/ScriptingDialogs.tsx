@@ -232,18 +232,13 @@ export function DuplicateInFlightsDialog({ children }: { children: React.ReactNo
             <Slider min={5} max={90} step={5} value={[angleBetween]} onValueChange={([v]) => setAngleBetween(v)} />
           </div>
           <div className="bg-muted/50 rounded p-2 text-center text-xs text-muted-foreground font-mono">
-            {items.length} × {shotsPerFlight} = {items.length * shotsPerFlight} total effects
+            {selectedItems.length} × {shotsPerFlight} = {selectedItems.length * shotsPerFlight} total effects
           </div>
-          <Button onClick={handleApply} className="w-full" disabled={selectedTimelineItemIds.length === 0}>
+          <Button onClick={handleApply} className="w-full" disabled={selectedItems.length === 0}>
             Duplicate
           </Button>
         </div>
       </DialogContent>
     </Dialog>
   );
-
-  // Need items in scope for the display
-  var items = selectedTimelineItemIds
-    .map(id => timelineItems.find(i => i.id === id))
-    .filter(Boolean);
 }
