@@ -1,7 +1,7 @@
 /// <reference types="google.maps" />
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
-import { MapPin, Navigation, Crosshair, Layers, X, Globe, Locate, Copy, Ruler } from 'lucide-react';
+import { MapPin, Navigation, Crosshair, Layers, X, Globe, Locate, Copy, Ruler, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
