@@ -163,7 +163,6 @@ export default function RackVisualEditor({ rackId }: { rackId: string }) {
               opacity={0.05}
               stroke={rack.color}
               strokeWidth={0.5}
-              opacity={0.15}
             />
           )}
 

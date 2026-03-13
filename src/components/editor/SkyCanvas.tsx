@@ -1101,6 +1101,7 @@ export default function SkyCanvas() {
         <StageGround satelliteTexture={satelliteTexture} />
         {/* LaunchSites removed — user creates positions via toolbar */}
         <PositionPins />
+        <Rack3DView />
         <TrajectoryPaths />
         <DroneChoreography />
         <BoidsVisualizer />
