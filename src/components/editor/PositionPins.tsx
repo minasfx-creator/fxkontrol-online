@@ -77,6 +77,7 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
       return;
     }
 
+    // Shift+click adds/removes from selection (but only if not starting a box-select drag)
     if (e.nativeEvent?.shiftKey || e.shiftKey) {
       togglePositionSelection(position.id);
       return;
@@ -404,10 +405,12 @@ function GroundClickPlane() {
   );
 }
 
-/** Click ground to deselect */
+/** Click ground to deselect (unless Shift is held — that starts box-select) */
 function GroundDeselectPlane() {
   const { editorMode, selectPosition } = useProjectStore();
-  const handleClick = useCallback(() => {
+  const handleClick = useCallback((e: any) => {
+    // Don't deselect when Shift is held (Shift+Drag = box select)
+    if (e.nativeEvent?.shiftKey || e.shiftKey) return;
     if (editorMode === 'select') selectPosition(null);
   }, [editorMode, selectPosition]);
 
