@@ -89,12 +89,10 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
 
         map.addListener('click', (e: google.maps.MapMouseEvent) => {
           if (!e.latLng) return;
-          setLocation(prev => ({
-            ...prev,
-            lat: e.latLng!.lat(),
-            lng: e.latLng!.lng(),
-          }));
-          toast.success(`Origem: ${e.latLng!.lat().toFixed(6)}, ${e.latLng!.lng().toFixed(6)}`);
+          const lat = e.latLng.lat();
+          const lng = e.latLng.lng();
+          setGpsOrigin({ ...gpsOrigin, lat, lng });
+          toast.success(`Origem: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
         });
 
         setLoaded(true);
