@@ -397,7 +397,8 @@ function generateShapePoints(
   params: Record<string, number | string>,
   outlinePoints?: { x: number; z: number }[],
 ): { x: number; z: number }[] {
-  const R = Number(params.radius) || Math.max(12, Math.min(90, Math.sqrt(count) * 2.2));
+  const scaleFactor = count > 1000 ? 3.0 : count > 500 ? 2.5 : 2.2;
+  const R = Number(params.radius) || Math.max(12, Math.min(200, Math.sqrt(count) * scaleFactor));
   
   switch (shapeType) {
     case 'circle': return genCircle(count, R);
