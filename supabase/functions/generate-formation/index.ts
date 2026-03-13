@@ -1205,8 +1205,8 @@ function processFormationResult(
 
 function selectModels(mode: string, count: number, isFullShow: boolean): { primary: string; fallback: string } {
   if (isFullShow) {
-    // Full shows need maximum reasoning for narrative coherence
-    return { primary: "google/gemini-2.5-pro", fallback: "google/gemini-3-flash-preview" };
+    // Full shows: fast model since server computes all points (avoids timeout)
+    return { primary: "google/gemini-2.5-flash", fallback: "google/gemini-3-flash-preview" };
   }
   if (mode === "image") {
     // Image analysis needs strong vision model
