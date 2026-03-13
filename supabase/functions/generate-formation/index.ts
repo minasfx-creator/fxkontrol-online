@@ -1681,7 +1681,15 @@ INSTRUCTIONS:
         const sf = count > 1000 ? 3.0 : count > 500 ? 2.5 : 2.2;
         const radius = Math.max(12, Math.sqrt(count) * sf);
         
-        let points = generateShapePoints(shapeType, count, { radius });
+        // Build shape params — pass textContent if it's a text formation
+        const shapeParams: Record<string, number | string> = { radius };
+        if (shapeType === 'text') {
+          // Extract text from textContent field, or from formationName like 'Text "2027"'
+          const textMatch = shapeName.match(/[Tt]ext\s*"?([^"]+)"?/);
+          shapeParams.text = f.textContent || (textMatch ? textMatch[1].trim() : shapeName.replace(/text/i, '').trim()) || 'A';
+        }
+
+        let points = generateShapePoints(shapeType, count, shapeParams);
         
         // Center and round
         let cx = 0, cz = 0;
@@ -1702,14 +1710,15 @@ INSTRUCTIONS:
         
         f._serverPoints = points;
 
-        console.log(`  Formation ${idx + 1}: "${shapeName}" → ${shapeType}, ${points.length} pts, h=${f.height}m, color=${f.color}`);
+        console.log(`  Formation ${idx + 1}: "${shapeName}" → ${shapeType}${shapeType === 'text' ? ` "${shapeParams.text}"` : ''}, ${points.length} pts, h=${f.height}m, color=${f.color}`);
         
         return {
           formationName: f.formationName || `Formation ${idx + 1}`,
+          shapeDescription: f.shapeDescription || '',
           points,
           height: Math.max(20, Math.min(80, f.height || 30)),
-          transitionDuration: Math.max(8, Math.min(25, f.transitionDuration || 12)),
-          holdDuration: Math.max(10, Math.min(30, f.holdDuration || 15)),
+          transitionDuration: Math.max(6, Math.min(30, f.transitionDuration || 12)),
+          holdDuration: Math.max(8, Math.min(35, f.holdDuration || 15)),
           color: f.color || '#00B4D8',
           endColor: f.endColor || undefined,
           colorTransition: f.colorTransition || 'linear',
