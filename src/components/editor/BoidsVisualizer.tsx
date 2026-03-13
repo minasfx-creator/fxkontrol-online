@@ -7,12 +7,14 @@ import InstancedDroneSwarm from './InstancedDroneSwarm';
 
 /**
  * Renders Boids simulation agents in the 3D viewport.
- * Uses the shared BoidsStore to sync with the BoidsPanel UI.
+ * Records frames when recording is active.
  */
 export default function BoidsVisualizer() {
-  const { agents, running, config, seekTarget, setAgents } = useBoidsStore();
+  const { agents, running, config, seekTarget, recording, setAgents, addRecordedFrame } = useBoidsStore();
   const { droneFormations, currentTime } = useProjectStore();
   const lastTime = useRef(performance.now());
+  const simTime = useRef(0);
+  const lastRecordTime = useRef(0);
 
   useFrame(() => {
     if (!running || agents.length === 0) return;
@@ -20,6 +22,7 @@ export default function BoidsVisualizer() {
     const now = performance.now();
     const dt = Math.min((now - lastTime.current) / 1000, 0.05);
     lastTime.current = now;
+    simTime.current += dt;
 
     // Find targets from active formation
     let targets: { x: number; y: number; z: number }[] | undefined;
@@ -35,7 +38,17 @@ export default function BoidsVisualizer() {
       }
     }
 
-    setAgents(stepBoids(agents, dt, config, targets));
+    const newAgents = stepBoids(agents, dt, config, targets);
+    setAgents(newAgents);
+
+    // Record at ~10 FPS
+    if (recording && simTime.current - lastRecordTime.current >= 0.1) {
+      lastRecordTime.current = simTime.current;
+      addRecordedFrame({
+        time: simTime.current,
+        positions: newAgents.map(a => ({ x: a.x, y: a.y, z: a.z })),
+      });
+    }
   });
 
   if (agents.length === 0) return null;
