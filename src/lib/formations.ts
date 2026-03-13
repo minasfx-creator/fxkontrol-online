@@ -210,6 +210,67 @@ function generateFireworkShape(count: number, radius: number): FormationPoint[] 
   return points.slice(0, count);
 }
 
+function generateVortex(count: number, radius: number): FormationPoint[] {
+  const points: FormationPoint[] = [];
+  const arms = 4;
+  const perArm = Math.ceil(count / arms);
+  for (let arm = 0; arm < arms; arm++) {
+    const armOffset = (arm / arms) * Math.PI * 2;
+    for (let i = 0; i < perArm && points.length < count; i++) {
+      const t = i / perArm;
+      const angle = armOffset + t * Math.PI * 3;
+      const r = t * radius;
+      points.push({ x: Math.cos(angle) * r, z: Math.sin(angle) * r });
+    }
+  }
+  return points.slice(0, count);
+}
+
+function generateGeodesicSphere(count: number, radius: number): FormationPoint[] {
+  const points: FormationPoint[] = [];
+  // Project 3D geodesic sphere points onto 2D (top-down view)
+  for (let i = 0; i < count; i++) {
+    const phi = Math.acos(-1 + (2 * i) / count);
+    const theta = Math.sqrt(count * Math.PI) * phi;
+    const x = radius * Math.cos(theta) * Math.sin(phi);
+    const z = radius * Math.sin(theta) * Math.sin(phi);
+    points.push({ x, z });
+  }
+  return points;
+}
+
+function generateCube(count: number, radius: number): FormationPoint[] {
+  const points: FormationPoint[] = [];
+  const perFace = Math.ceil(count / 6);
+  const side = radius;
+  // Project 6 faces of cube onto 2D with slight offsets
+  for (let face = 0; face < 6 && points.length < count; face++) {
+    const perSide = Math.ceil(Math.sqrt(perFace));
+    for (let i = 0; i < perSide && points.length < count; i++) {
+      for (let j = 0; j < perSide && points.length < count; j++) {
+        const u = (i / (perSide - 1) - 0.5) * side;
+        const v = (j / (perSide - 1) - 0.5) * side;
+        const offset = face * 0.5;
+        points.push({ x: u + Math.cos(face) * offset, z: v + Math.sin(face) * offset });
+      }
+    }
+  }
+  return points.slice(0, count);
+}
+
+function generatePhoenix(count: number, radius: number): FormationPoint[] {
+  const points: FormationPoint[] = [];
+  const scale = radius / 20;
+  for (let i = 0; i < count; i++) {
+    const t = (i / count) * Math.PI * 2;
+    // Wing shape using parametric curve
+    const wingSpread = 18 * Math.sin(t) * (1 + 0.3 * Math.cos(3 * t));
+    const body = 8 * Math.cos(t) - 3 * Math.cos(2 * t);
+    points.push({ x: wingSpread * scale, z: body * scale });
+  }
+  return points;
+}
+
 export function generateFormation(config: FormationConfig): FormationPoint[] {
   let points: FormationPoint[];
 
@@ -226,6 +287,10 @@ export function generateFormation(config: FormationConfig): FormationPoint[] {
     case 'cross': points = generateCross(config.count, config.radius); break;
     case 'double-helix': points = generateDoubleHelix(config.count, config.radius); break;
     case 'firework': points = generateFireworkShape(config.count, config.radius); break;
+    case 'vortex': points = generateVortex(config.count, config.radius); break;
+    case 'geodesic-sphere': points = generateGeodesicSphere(config.count, config.radius); break;
+    case 'cube': points = generateCube(config.count, config.radius); break;
+    case 'phoenix': points = generatePhoenix(config.count, config.radius); break;
     default: points = generateCircle(config.count, config.radius);
   }
 
