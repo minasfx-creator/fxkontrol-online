@@ -494,6 +494,162 @@ export function exportBoidsVVIZ(
   return JSON.stringify(vviz, null, 2);
 }
 
+// ─── KML Export for Google Earth ──────────────────────────────────────
+// Converts formations and trajectories to KML with GPS coordinates.
+// Uses VVIZ coordinate system: X (right), Y (up), Z (into screen)
+// Mapping to GPS: X → lng offset, Y → altitude, Z → lat offset (negative = north)
+
+const METERS_TO_LAT = 1 / 111320; // 1 degree lat ≈ 111.32 km
+function metersToLng(lat: number) {
+  return 1 / (111320 * Math.cos((lat * Math.PI) / 180));
+}
+
+function localToGps(
+  x: number, y: number, z: number,
+  origin: { lat: number; lng: number; heading: number; altitude: number },
+): { lat: number; lng: number; alt: number } {
+  // Rotate by heading (degrees from north, clockwise)
+  const rad = (-origin.heading * Math.PI) / 180;
+  const rx = x * Math.cos(rad) - z * Math.sin(rad);
+  const rz = x * Math.sin(rad) + z * Math.cos(rad);
+
+  return {
+    lng: origin.lng + rx * metersToLng(origin.lat),
+    lat: origin.lat - rz * METERS_TO_LAT, // Z positive = into screen = south
+    alt: origin.altitude + y,
+  };
+}
+
+export function exportFormationsToKML(
+  formations: DroneFormation[],
+  trajectories: Trajectory[],
+  positions: Position[],
+  gpsOrigin: { lat: number; lng: number; heading: number; altitude: number },
+  projectName: string,
+): string {
+  const placemarks: string[] = [];
+
+  // --- Formation placemarks ---
+  formations.forEach((f, fIdx) => {
+    const coords = f.points.slice(0, f.droneCount).map((p) => {
+      const gps = localToGps(p.x, f.height, p.z, gpsOrigin);
+      return `${gps.lng},${gps.lat},${gps.alt}`;
+    });
+
+    // Individual drone points
+    placemarks.push(`
+    <Folder>
+      <name>Formation ${fIdx + 1}: ${f.formationName || 'Unnamed'}</name>
+      <description>Drones: ${f.droneCount} | Height: ${f.height}m | Color: ${f.color}</description>
+      <Style>
+        <IconStyle>
+          <color>ff${f.color.slice(5, 7)}${f.color.slice(3, 5)}${f.color.slice(1, 3)}</color>
+          <scale>0.5</scale>
+          <Icon><href>http://maps.google.com/mapfiles/kml/shapes/shaded_dot.png</href></Icon>
+        </IconStyle>
+      </Style>
+      ${coords.map((c, i) => `
+      <Placemark>
+        <name>Drone ${i + 1}</name>
+        <Point><altitudeMode>relativeToGround</altitudeMode><coordinates>${c}</coordinates></Point>
+      </Placemark>`).join('')}
+    </Folder>`);
+  });
+
+  // --- Trajectory paths ---
+  trajectories.forEach((traj) => {
+    const pos = positions.find((p) => p.id === traj.positionId);
+    if (!pos || traj.waypoints.length < 2) return;
+
+    const sorted = [...traj.waypoints].sort((a, b) => a.sortOrder - b.sortOrder);
+    const coordStr = [
+      localToGps(pos.x, pos.y, pos.z, gpsOrigin),
+      ...sorted.map((wp) => localToGps(wp.position.x, wp.position.y, wp.position.z, gpsOrigin)),
+    ]
+      .map((g) => `${g.lng},${g.lat},${g.alt}`)
+      .join(' ');
+
+    placemarks.push(`
+    <Placemark>
+      <name>Trajectory: ${traj.name}</name>
+      <Style>
+        <LineStyle><color>ff00ffff</color><width>2</width></LineStyle>
+      </Style>
+      <LineString>
+        <altitudeMode>relativeToGround</altitudeMode>
+        <tessellate>1</tessellate>
+        <coordinates>${coordStr}</coordinates>
+      </LineString>
+    </Placemark>`);
+  });
+
+  // --- Position markers ---
+  positions.forEach((pos) => {
+    const gps = localToGps(pos.x, pos.y, pos.z, gpsOrigin);
+    placemarks.push(`
+    <Placemark>
+      <name>${pos.name}</name>
+      <description>Type: ${pos.type} | Color: ${pos.color}</description>
+      <Style>
+        <IconStyle>
+          <color>ff${pos.color.slice(5, 7)}${pos.color.slice(3, 5)}${pos.color.slice(1, 3)}</color>
+          <scale>0.8</scale>
+          <Icon><href>http://maps.google.com/mapfiles/kml/paddle/${pos.type === 'pyro' ? 'red' : 'blu'}-circle.png</href></Icon>
+        </IconStyle>
+      </Style>
+      <Point>
+        <altitudeMode>relativeToGround</altitudeMode>
+        <coordinates>${gps.lng},${gps.lat},${gps.alt}</coordinates>
+      </Point>
+    </Placemark>`);
+  });
+
+  // --- Geofence circle (approximation as polygon) ---
+  const fenceCoords: string[] = [];
+  for (let i = 0; i <= 36; i++) {
+    const angle = (i / 36) * Math.PI * 2;
+    const gps = localToGps(Math.cos(angle) * 80, 0, Math.sin(angle) * 80, gpsOrigin);
+    fenceCoords.push(`${gps.lng},${gps.lat},0`);
+  }
+  placemarks.push(`
+  <Placemark>
+    <name>Geofence (80m)</name>
+    <Style>
+      <LineStyle><color>660000ff</color><width>2</width></LineStyle>
+      <PolyStyle><color>220000ff</color></PolyStyle>
+    </Style>
+    <Polygon>
+      <altitudeMode>clampToGround</altitudeMode>
+      <outerBoundaryIs><LinearRing><coordinates>${fenceCoords.join(' ')}</coordinates></LinearRing></outerBoundaryIs>
+    </Polygon>
+  </Placemark>`);
+
+  // --- Origin marker ---
+  placemarks.push(`
+  <Placemark>
+    <name>Launch Origin</name>
+    <description>GPS: ${gpsOrigin.lat.toFixed(6)}, ${gpsOrigin.lng.toFixed(6)} | Heading: ${gpsOrigin.heading}°</description>
+    <Style>
+      <IconStyle>
+        <color>ff00ff00</color>
+        <scale>1.2</scale>
+        <Icon><href>http://maps.google.com/mapfiles/kml/paddle/grn-stars.png</href></Icon>
+      </IconStyle>
+    </Style>
+    <Point><coordinates>${gpsOrigin.lng},${gpsOrigin.lat},0</coordinates></Point>
+  </Placemark>`);
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+  <name>${projectName} — Drone Show</name>
+  <description>Exported from AEROSWARM NEXUS</description>
+  <open>1</open>
+  ${placemarks.join('\n')}
+</Document>
+</kml>`;
+}
+
 // ─── Download Helper ─────────────────────────────────────────────────
 
 export function downloadFile(content: string, filename: string, mimeType: string) {
