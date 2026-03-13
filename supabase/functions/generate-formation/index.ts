@@ -1231,13 +1231,51 @@ serve(async (req) => {
     const { mode, prompt, droneCount, imageBase64, previousFormation, generateTrajectory, generateFullShow } = await req.json();
     const count = droneCount || 24;
 
-    // ── Full Show generation (two-phase: structure → per-formation points) ──
+    // ── Full Show generation (TWO-PHASE: AI designs structure → server computes all points) ──
     if (generateFullShow) {
       console.log(`Full show request: "${prompt}", ${count} drones`);
       
+      // Phase 1: AI designs the show structure (NO points — just names, colors, timing)
+      const structureTool = {
+        type: "function",
+        function: {
+          name: "design_show_structure",
+          description: `Design a drone show structure. Do NOT generate points — only describe each formation. The server will compute all ${count} drone positions.`,
+          parameters: {
+            type: "object",
+            properties: {
+              showName: { type: "string" },
+              formations: {
+                type: "array",
+                description: "5-8 formations describing the show narrative.",
+                items: {
+                  type: "object",
+                  properties: {
+                    formationName: { type: "string", description: "Descriptive name of the shape (e.g. 'Heart', 'Star', 'Christmas Tree', 'Snowflake')" },
+                    shapeDescription: { type: "string", description: "Brief description of the intended shape for server-side generation" },
+                    height: { type: "number", description: "Altitude in meters 20-80" },
+                    transitionDuration: { type: "number", description: "Seconds 8-25" },
+                    holdDuration: { type: "number", description: "Seconds 10-30" },
+                    color: { type: "string", description: "Hex color e.g. #FF2020" },
+                    endColor: { type: "string", description: "End color for hold transition" },
+                    colorTransition: { type: "string", description: "linear, wave, pulse, rainbow, cascade, sparkle, or instant" },
+                  },
+                  required: ["formationName", "shapeDescription", "height", "transitionDuration", "holdDuration", "color"],
+                  additionalProperties: false,
+                },
+              },
+              totalDuration: { type: "number" },
+              description: { type: "string" },
+            },
+            required: ["showName", "formations", "totalDuration", "description"],
+            additionalProperties: false,
+          },
+        },
+      };
+
       const messages = [
-        { role: "system", content: FULL_SHOW_PROMPT + "\n\n" + SYSTEM_PROMPT },
-        { role: "user", content: `Design a complete drone light show with EXACTLY ${count} drones per formation.\n\nTheme: "${prompt}"\n\nCreate 4-6 formations that tell a visual story. Each formation MUST have exactly ${count} points. Use the mathematical recipes. Include dramatic colors and timing. COUNTING IS CRITICAL: every points array = ${count} elements.` },
+        { role: "system", content: FULL_SHOW_PROMPT },
+        { role: "user", content: `Design a complete drone light show structure for ${count} drones.\n\nTheme: "${prompt}"\n\nIMPORTANT: Do NOT generate point coordinates. Only describe each formation's shape, colors, timing, and narrative purpose. The server will generate all ${count} drone positions for each formation using mathematical recipes.\n\nCreate 5-7 formations that tell a compelling visual story with dramatic color transitions.` },
       ];
 
       const { primary, fallback } = selectModels("full-show", count, true);
@@ -1245,33 +1283,46 @@ serve(async (req) => {
       let usedModel = primary;
 
       try {
-        raw = await callAI(LOVABLE_API_KEY, primary, messages, [buildFullShowTool(count)], { type: "function", function: { name: "create_full_show" } }, 0.2);
+        raw = await callAI(LOVABLE_API_KEY, primary, messages, [structureTool], { type: "function", function: { name: "design_show_structure" } }, 0.3, 1);
       } catch (e: any) {
         if (e.status === 429 || e.status === 402) throw e;
         console.warn(`Full show ${primary} failed, trying ${fallback}...`);
         usedModel = fallback;
-        raw = await callAI(LOVABLE_API_KEY, fallback, messages, [buildFullShowTool(count)], { type: "function", function: { name: "create_full_show" } }, 0.2);
+        raw = await callAI(LOVABLE_API_KEY, fallback, messages, [structureTool], { type: "function", function: { name: "design_show_structure" } }, 0.3, 1);
       }
 
-      // Post-process each formation
+      console.log(`AI designed show "${raw.showName}" with ${raw.formations?.length || 0} formations (model=${usedModel})`);
+
+      // Phase 2: Server generates ALL points using mathematical recipes
       const formations = (raw.formations || []).map((f: any, idx: number) => {
-        const rawPts = (f.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) })).filter((p: any) => !isNaN(p.x) && !isNaN(p.z));
-        const prev = idx > 0
-          ? (raw.formations[idx - 1]._processed || raw.formations[idx - 1].points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }))
-          : null;
+        const shapeName = f.formationName || f.shapeDescription || 'circle';
+        const shapeType = inferShapeType(shapeName);
+        const sf = count > 1000 ? 3.0 : count > 500 ? 2.5 : 2.2;
+        const radius = Math.max(12, Math.sqrt(count) * sf);
         
-        let points: { x: number; z: number }[];
-        if (rawPts.length < count * 0.3) {
-          // AI returned too few points — use server-side generation based on name
-          console.warn(`Formation "${f.formationName}": only ${rawPts.length}/${count} points, generating server-side`);
-          const shapeType = inferShapeType(f.formationName);
-          points = generateShapePoints(shapeType, count, { radius: Math.max(12, Math.sqrt(count) * 2.2) });
-          points = postProcess(points, count);
-        } else {
-          points = processFormationResult(rawPts, count, prev);
+        let points = generateShapePoints(shapeType, count, { radius });
+        
+        // Center and round
+        let cx = 0, cz = 0;
+        for (const p of points) { cx += p.x; cz += p.z; }
+        cx /= points.length; cz /= points.length;
+        points = points.map(p => ({
+          x: Math.round((p.x - cx) * 100) / 100,
+          z: Math.round((p.z - cz) * 100) / 100,
+        }));
+
+        // Optimize transition from previous formation
+        if (idx > 0) {
+          const prevPts = (raw.formations[idx - 1]._serverPoints || []);
+          if (prevPts.length === points.length && count <= 1000) {
+            points = optimizeTransitionOrder(prevPts, points);
+          }
         }
         
-        f._processed = points;
+        f._serverPoints = points;
+
+        console.log(`  Formation ${idx + 1}: "${shapeName}" → ${shapeType}, ${points.length} pts, h=${f.height}m, color=${f.color}`);
+        
         return {
           formationName: f.formationName || `Formation ${idx + 1}`,
           points,
@@ -1288,6 +1339,11 @@ serve(async (req) => {
 
       return new Response(JSON.stringify({
         showName: raw.showName || "AI Show",
+        formations,
+        totalDuration: raw.totalDuration || formations.reduce((sum: number, f: any) => sum + f.transitionDuration + f.holdDuration, 0),
+        description: raw.description || "",
+        model: usedModel,
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         formations,
         totalDuration: raw.totalDuration || formations.reduce((sum: number, f: any) => sum + f.transitionDuration + f.holdDuration, 0),
         description: raw.description || "",
