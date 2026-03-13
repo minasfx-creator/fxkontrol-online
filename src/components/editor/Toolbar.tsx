@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Rocket, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload } from 'lucide-react';
+import { Rocket, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useAuth } from '@/hooks/useAuth';
@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import FormationBuilder from './FormationBuilder';
 import CSVImporter from './CSVImporter';
+import VVIZImporter from './VVIZImporter';
 
 function TimecodeDisplay() {
   const { currentTime, isPlaying } = useProjectStore();
@@ -43,6 +44,7 @@ export default function Toolbar() {
   const { signOut, user } = useAuth();
   const [formationOpen, setFormationOpen] = useState(false);
   const [csvOpen, setCsvOpen] = useState(false);
+  const [vvizOpen, setVvizOpen] = useState(false);
 
   return (
     <div className="flex items-center h-10 px-2 bg-surface-1 border-b border-border">
@@ -123,10 +125,14 @@ export default function Toolbar() {
         <Button variant="ghost" size="icon" className="h-7 w-7" title="Import CSV" onClick={() => setCsvOpen(true)}>
           <Upload className="h-3.5 w-3.5" />
         </Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7" title="Import VVIZ (Finale 3D)" onClick={() => setVvizOpen(true)}>
+          <FileJson className="h-3.5 w-3.5" />
+        </Button>
       </div>
 
       <FormationBuilder open={formationOpen} onOpenChange={setFormationOpen} />
       <CSVImporter open={csvOpen} onOpenChange={setCsvOpen} />
+      <VVIZImporter open={vvizOpen} onOpenChange={setVvizOpen} />
 
       <div className="flex-1" />
 

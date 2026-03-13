@@ -12,6 +12,7 @@ import RackManager from '@/components/editor/RackManager';
 import AddressingPanel from '@/components/editor/AddressingPanel';
 import InventoryPanel from '@/components/editor/InventoryPanel';
 import WaypointEditor from '@/components/editor/WaypointEditor';
+import BoidsPanel from '@/components/editor/BoidsPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 
 const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
@@ -37,6 +38,7 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   waypoints: 'w-64',
   effects: 'w-56',
   properties: 'w-56',
+  boids: 'w-64',
 };
 
 export default function Index() {
@@ -73,6 +75,7 @@ export default function Index() {
         {activePanel === 'racks' && <RackManager onClose={() => setActivePanel(null)} />}
         {activePanel === 'addressing' && <AddressingPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'inventory' && <InventoryPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'boids' && <BoidsPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
