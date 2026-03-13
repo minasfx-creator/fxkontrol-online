@@ -75,6 +75,7 @@ export default function Index() {
         {activePanel === 'racks' && <RackManager onClose={() => setActivePanel(null)} />}
         {activePanel === 'addressing' && <AddressingPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'inventory' && <InventoryPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'boids' && <BoidsPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
