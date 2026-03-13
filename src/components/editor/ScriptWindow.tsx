@@ -371,7 +371,7 @@ export default function ScriptWindow() {
     setSelectedIds(new Set(newIds));
     setShowFillDialog(false);
     toast.success(`${newIds.length} cues gerados via Fill Handle`);
-  }, [selectedIds, timelineItems, fillConfig, addTimelineItem]);
+  }, [selectedIds, timelineItems, fillConfig, addTimelineItem, pushUndo]);
 
   // ─── Fill handle drag ────────────────────────────────────────────
   const handleFillDragStart = useCallback((id: string, e: React.MouseEvent) => {
