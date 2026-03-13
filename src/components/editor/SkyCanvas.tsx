@@ -1397,6 +1397,7 @@ export default function SkyCanvas() {
         <TrajectoryPaths />
         <DroneChoreography />
         <BoidsVisualizer />
+        <CollisionAvoidanceOverlay config={DEFAULT_AVOIDANCE} />
         <TimelineEffects />
         <GeofenceVisual />
         <PlaybackClock />

@@ -280,6 +280,8 @@ export default function Index() {
         {activePanel === 'weather' && <WeatherPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'collisions' && <CollisionPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'approval' && <ClientApprovalPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'trajectory' && <TrajectoryOptimizerPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'templates' && <ShowTemplatesPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
