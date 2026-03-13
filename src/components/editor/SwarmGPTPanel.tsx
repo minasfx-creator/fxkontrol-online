@@ -53,6 +53,22 @@ const TRAJECTORY_PRESETS = [
   { emoji: '🌌', label: 'Nebulosa', prompt: 'nebula shimmer with slow spiral and cascade color change' },
 ];
 
+/* ── Normalize point count to match droneCount ───────────── */
+
+function normalizeDroneCount(pts: { x: number; z: number }[], target: number): { x: number; z: number }[] {
+  if (pts.length === 0) return [];
+  if (pts.length === target) return pts;
+  if (pts.length > target) return pts.slice(0, target);
+  const result = [...pts];
+  let i = 0;
+  while (result.length < target) {
+    const src = pts[i % pts.length];
+    result.push({ x: src.x + (Math.random() - 0.5) * 0.5, z: src.z + (Math.random() - 0.5) * 0.5 });
+    i++;
+  }
+  return result;
+}
+
 /* ── Mini 2D Preview ──────────────────────────────────────── */
 
 function MiniPreview({ points }: { points: { x: number; z: number }[] }) {
