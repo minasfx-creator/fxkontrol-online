@@ -106,7 +106,15 @@ export default function Index() {
   // Undo/Redo keyboard shortcuts
   useUndoKeyboard();
 
-  // Open popup editor on double-click a position (via global keyboard shortcut)
+  // Open popup editor on double-click a position (via global keyboard shortcut or 3D double-click)
+  useEffect(() => {
+    const dblClickHandler = (e: Event) => {
+      setShowPositionEditor(true);
+    };
+    window.addEventListener('position-double-click', dblClickHandler);
+    return () => window.removeEventListener('position-double-click', dblClickHandler);
+  }, []);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'e' && !e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
