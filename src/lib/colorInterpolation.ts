@@ -113,15 +113,62 @@ export function interpolateColor(
 
   if (mode === 'wave') {
     // Sequential wave: each drone transitions with a stagger delay
-    const stagger = 0.4; // 40% of transition time for full wave spread
+    const stagger = 0.4;
     const dronePhase = (droneIndex / Math.max(totalDrones - 1, 1)) * stagger;
     const localT = Math.max(0, Math.min(1, (t - dronePhase) / (1 - stagger)));
-    // Smooth ease
     const eased = localT * localT * (3 - 2 * localT);
     return rgbToHex(
       r1 + (r2 - r1) * eased,
       g1 + (g2 - g1) * eased,
       b1 + (b2 - b1) * eased,
+    );
+  }
+
+  if (mode === 'rgb_cycle') {
+    // Rapid RGB cycling — each drone gets a phase offset for mesmerizing wave effect
+    const cycleSpeed = 6; // full cycles during transition
+    const offset = droneIndex / Math.max(totalDrones, 1);
+    const hue = (t * cycleSpeed + offset) % 1;
+    const saturation = 0.95;
+    const lightness = 0.55 + Math.sin(t * Math.PI) * 0.1; // slight brightness arc
+    const [r, g, b] = hslToRgb(hue, saturation, lightness);
+    // Blend toward target color in last 20%
+    if (t > 0.8) {
+      const blend = (t - 0.8) / 0.2;
+      const [rt, gt, bt] = hexToRgb(toColor);
+      return rgbToHex(
+        r * (1 - blend) + rt * blend,
+        g * (1 - blend) + gt * blend,
+        b * (1 - blend) + bt * blend,
+      );
+    }
+    return rgbToHex(r, g, b);
+  }
+
+  if (mode === 'cascade') {
+    // Top-to-bottom reveal: drones ordered by index transition sequentially
+    const stagger = 0.5;
+    const dronePhase = (droneIndex / Math.max(totalDrones - 1, 1)) * stagger;
+    const localT = Math.max(0, Math.min(1, (t - dronePhase) / (1 - stagger)));
+    return rgbToHex(
+      r1 + (r2 - r1) * localT,
+      g1 + (g2 - g1) * localT,
+      b1 + (b2 - b1) * localT,
+    );
+  }
+
+  if (mode === 'sparkle') {
+    // Random twinkling — each drone flickers independently
+    const seed = (droneIndex * 7919 + Math.floor(t * 20)) % 100;
+    const sparkle = seed < 30 ? 1.0 : 0.0; // 30% chance of full brightness
+    const baseR = r1 + (r2 - r1) * t;
+    const baseG = g1 + (g2 - g1) * t;
+    const baseB = b1 + (b2 - b1) * t;
+    const boost = sparkle * 0.4;
+    return rgbToHex(
+      Math.min(1, baseR + boost),
+      Math.min(1, baseG + boost),
+      Math.min(1, baseB + boost),
     );
   }
 
