@@ -28,7 +28,7 @@ function getBarColor(i: number, total: number): THREE.Color {
 export default function AudioSpectrumVisualizer() {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const dataRef = useRef<Uint8Array>(new Uint8Array(BAR_COUNT));
+  const dataRef = useRef<FreqData>(new Uint8Array(BAR_COUNT));
   const smoothRef = useRef<Float32Array>(new Float32Array(BAR_COUNT));
   const isPlaying = useProjectStore(s => s.isPlaying);
   const audioUrl = useProjectStore(s => s.audioUrl);
