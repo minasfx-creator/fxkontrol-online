@@ -29,6 +29,10 @@ export const FORMATION_PRESETS: { type: FormationType; label: string; icon: stri
   { type: 'firework', label: 'Fogos', icon: '🎆', description: 'Explosão radial com camadas' },
   { type: 'line', label: 'Linha', icon: '➖', description: 'Linha reta com espaçamento' },
   { type: 'v-shape', label: 'V-Shape', icon: '✌️', description: 'Formação em V' },
+  { type: 'vortex', label: 'Vórtex', icon: '🌪️', description: 'Vórtice cibernético rotacional' },
+  { type: 'geodesic-sphere', label: 'Esfera Geodésica', icon: '🛸', description: 'Esfera geodésica 3D projetada' },
+  { type: 'cube', label: 'Cubo', icon: '🧊', description: 'Formação cúbica 3D' },
+  { type: 'phoenix', label: 'Fênix', icon: '🦅', description: 'Silhueta de ave em voo' },
 ];
 
 function rotatePoint(x: number, z: number, angleDeg: number): FormationPoint {
