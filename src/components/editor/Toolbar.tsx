@@ -12,6 +12,8 @@ import CSVImporter from './CSVImporter';
 import VVIZImporter from './VVIZImporter';
 import ProjectBrowser from './ProjectBrowser';
 import CatalogImportDialog from './CatalogImportDialog';
+import ArrangePositionsDialog from './ArrangePositionsDialog';
+import { ConvertToFanDialog, ConvertToSequenceDialog } from './ScriptingDialogs';
 import { exportVVIZ, exportFiringCSV, exportSkyc, downloadFile } from '@/lib/exportEngine';
 
 function TimecodeDisplay() {
