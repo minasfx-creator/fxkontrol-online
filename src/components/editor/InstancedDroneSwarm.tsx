@@ -44,22 +44,22 @@ export default function InstancedDroneSwarm({
   const haloGeo = useMemo(() => new THREE.SphereGeometry(0.14, 8, 8), []);
   const navGeo = useMemo(() => new THREE.SphereGeometry(0.012, 6, 6), []);
 
-  // PBR body — carbon fiber
+  // PBR body — carbon fiber with enhanced metallic sheen
   const bodyMat = useMemo(() => new THREE.MeshStandardMaterial({
-    color: '#0a0a18',
-    metalness: 0.92,
-    roughness: 0.12,
-    envMapIntensity: 0.5,
+    color: '#080818',
+    metalness: 0.95,
+    roughness: 0.08,
+    envMapIntensity: 0.6,
   }), []);
 
-  // LED — HDR emissive
+  // LED — ultra-bright HDR emissive with bloom catch
   const ledMat = useMemo(() => new THREE.MeshStandardMaterial({
     color: '#ffffff',
     emissive: '#ffffff',
-    emissiveIntensity: 10,
+    emissiveIntensity: 14,
     toneMapped: false,
     metalness: 0.0,
-    roughness: 0.1,
+    roughness: 0.05,
   }), []);
 
   // Rotor disc
