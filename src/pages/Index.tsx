@@ -13,6 +13,9 @@ import AddressingPanel from '@/components/editor/AddressingPanel';
 import InventoryPanel from '@/components/editor/InventoryPanel';
 import WaypointEditor from '@/components/editor/WaypointEditor';
 import BoidsPanel from '@/components/editor/BoidsPanel';
+import PIDPanel from '@/components/editor/PIDPanel';
+import DMXPanel from '@/components/editor/DMXPanel';
+import BatteryPanel from '@/components/editor/BatteryPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 
 const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
