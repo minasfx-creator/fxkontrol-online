@@ -505,7 +505,7 @@ function buildShapeDescriptorTool() {
         properties: {
           shapeType: { 
             type: "string", 
-            description: "One of: circle, filled_circle, heart, star, spiral, grid, diamond, cross, wave, butterfly, arrow, crescent, ring, lemniscate, text, radial_burst, layered_triangles, house, music_note, peace_sign, rocket, cake, globe, trophy, snowflake, crown, flag_br, dragon, custom_outline" 
+            description: "One of: circle, filled_circle, heart, star, spiral, grid, diamond, cross, wave, butterfly, arrow, crescent, ring, lemniscate, text, radial_burst, layered_triangles, house, music_note, peace_sign, rocket, cake, globe, trophy, trophy_detailed, snowflake, crown, flag_br, dragon, anchor, laurel_wreath, runner, shield, compass, custom_outline" 
           },
           params: {
             type: "object",
