@@ -128,6 +128,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
   const [lastGeneratedPoints, setLastGeneratedPoints] = useState<{ x: number; z: number }[]>([]);
 
   const addDroneFormation = useProjectStore((s) => s.addDroneFormation);
+  const addTimelineItem = useProjectStore((s) => s.addTimelineItem);
   const droneFormations = useProjectStore((s) => s.droneFormations);
   const bpm = useProjectStore((s) => s.bpm);
   const setCurrentTime = useProjectStore((s) => s.setCurrentTime);
