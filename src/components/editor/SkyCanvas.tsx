@@ -1,9 +1,9 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars, Grid, PerspectiveCamera } from '@react-three/drei';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
-import { useRef, useMemo, useEffect, useState, Component, ErrorInfo, ReactNode } from 'react';
+import { useRef, useMemo, useEffect, useState, useCallback, Component, ErrorInfo, ReactNode } from 'react';
 import { PerfCollector, PerformanceHUD, type PerfStats } from './PerformanceHUD';
-import ViewportTerminal from './ViewportTerminal';
+import ViewportTerminal, { pushLog } from './ViewportTerminal';
 import * as THREE from 'three';
 import PositionPins from './PositionPins';
 import PostProcessing from './PostProcessing';
@@ -13,10 +13,12 @@ import DroneChoreography from './DroneChoreography';
 import BoidsVisualizer from './BoidsVisualizer';
 import QuadcopterModel from './QuadcopterModel';
 import GeofenceVisual from './GeofenceVisual';
-import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle } from 'lucide-react';
+import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Globe, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CometEffect, ShockwaveEffect, MultiBurstEffect, FanEffect } from './effects';
 import MiniMap from './MiniMap';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
