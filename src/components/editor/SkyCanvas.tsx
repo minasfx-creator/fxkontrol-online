@@ -2,6 +2,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars, Grid, PerspectiveCamera } from '@react-three/drei';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { useRef, useMemo, useEffect, useState, Component, ErrorInfo, ReactNode } from 'react';
+import { PerfCollector, PerformanceHUD, type PerfStats } from './PerformanceHUD';
 import * as THREE from 'three';
 import PositionPins from './PositionPins';
 import PostProcessing from './PostProcessing';
@@ -597,9 +598,12 @@ function CameraController({ targetPosition, targetLookAt }: { targetPosition: [n
 
 export default function SkyCanvas() {
   const editorMode = useProjectStore((s) => s.editorMode);
+  const droneFormations = useProjectStore((s) => s.droneFormations);
   const cursorStyle = editorMode !== 'select' ? 'crosshair' : 'default';
   const [activePreset, setActivePreset] = useState('free');
   const preset = CAMERA_PRESETS.find((p) => p.id === activePreset) || CAMERA_PRESETS[0];
+  const perfStatsRef = useRef<PerfStats>({ fps: 0, drawCalls: 0, triangles: 0, geometries: 0, textures: 0 });
+  const droneCount = droneFormations.length > 0 ? droneFormations[0].droneCount : 0;
 
   return (
     <div className="w-full h-full relative bg-[#050510]" data-sky-canvas style={{ cursor: cursorStyle }}>
@@ -659,6 +663,7 @@ export default function SkyCanvas() {
         <CameraAnimator />
         <CameraPathPreview />
         <PostProcessing />
+        <PerfCollector statsRef={perfStatsRef} />
       </Canvas>
       </WebGLErrorBoundary>
 
@@ -690,6 +695,8 @@ export default function SkyCanvas() {
           {document.fullscreenElement ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
         </button>
       </div>
+
+      <PerformanceHUD statsRef={perfStatsRef} droneCount={droneCount} />
 
       <div className="absolute bottom-3 right-3 text-xs font-mono-code text-muted-foreground bg-surface-1/80 px-2 py-1 rounded-sm border border-border/50">
         Orbit: LMB · Pan: MMB · Zoom: Scroll
