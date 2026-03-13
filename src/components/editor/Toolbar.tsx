@@ -52,6 +52,7 @@ export default function Toolbar() {
   const [csvOpen, setCsvOpen] = useState(false);
   const [vvizOpen, setVvizOpen] = useState(false);
   const [browserOpen, setBrowserOpen] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const handleSave = useCallback(async () => {
