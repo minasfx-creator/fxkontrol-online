@@ -1198,14 +1198,19 @@ function processFormationResult(
 // ── Model selection ─────────────────────────────────────────
 
 function selectModels(mode: string, count: number, isFullShow: boolean): { primary: string; fallback: string } {
-  if (isFullShow || mode === "image") {
+  if (isFullShow) {
+    // Full shows need maximum reasoning for narrative coherence
+    return { primary: "google/gemini-2.5-pro", fallback: "google/gemini-3-flash-preview" };
+  }
+  if (mode === "image") {
+    // Image analysis needs strong vision model
     return { primary: "google/gemini-2.5-pro", fallback: "google/gemini-2.5-flash" };
   }
-  // Use flash for most single formations (faster), pro for complex/large
-  if (count > 200 || mode === "generative") {
-    return { primary: "google/gemini-2.5-flash", fallback: "google/gemini-2.5-pro" };
+  // Single formations: fast model with pro fallback
+  if (count > 500) {
+    return { primary: "google/gemini-3-flash-preview", fallback: "google/gemini-2.5-pro" };
   }
-  return { primary: "google/gemini-2.5-flash", fallback: "google/gemini-2.5-pro" };
+  return { primary: "google/gemini-2.5-flash", fallback: "google/gemini-3-flash-preview" };
 }
 
 // ── Main handler ────────────────────────────────────────────
