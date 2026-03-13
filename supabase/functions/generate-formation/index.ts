@@ -1996,7 +1996,7 @@ serve(async (req) => {
                     holdDuration: { type: "number", description: "Seconds 10-30. Complex shapes need longer." },
                     color: { type: "string", description: "Primary hex color e.g. #FFD700" },
                     endColor: { type: "string", description: "End color for hold transition (creates color journey)" },
-                    colorTransition: { type: "string", description: "linear, wave, pulse, rainbow, cascade, sparkle, or instant" },
+                    colorTransition: { type: "string", description: "linear, wave, pulse, rainbow, rgb_cycle, cascade, sparkle, or instant" },
                     pyroCues: {
                       type: "array",
                       description: "Pyrotechnic effects synchronized to this formation. Fire during the hold phase. 0-6 cues per formation.",
