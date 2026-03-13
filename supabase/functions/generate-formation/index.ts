@@ -2120,6 +2120,20 @@ INSTRUCTIONS:
           color: f.color || '#00B4D8',
           endColor: f.endColor || undefined,
           colorTransition: f.colorTransition || 'linear',
+          pyroCues: (f.pyroCues || []).map((cue: any) => ({
+            type: cue.type || 'shell',
+            fireTime: cue.fireTime || 0,
+            color: cue.color || f.color || '#FFD700',
+            caliber: cue.caliber || 4,
+            count: cue.count || 1,
+            positionX: cue.positionX || 0,
+            positionZ: cue.positionZ || 0,
+            pattern: cue.pattern || 'peony',
+            shotCount: cue.shotCount,
+            duration: cue.duration,
+            height: cue.height,
+            width: cue.width,
+          })),
         };
       });
 
