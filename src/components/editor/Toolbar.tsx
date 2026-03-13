@@ -94,7 +94,7 @@ export default function Toolbar() {
       const ctrl = e.ctrlKey || e.metaKey;
       if (ctrl && e.key === 's') { e.preventDefault(); handleSave(); }
       if (ctrl && e.key === 'o') { e.preventDefault(); setBrowserOpen(true); }
-      if (ctrl && e.key === 'e') { e.preventDefault(); handleExport(); }
+      if (ctrl && e.key === 'e') { e.preventDefault(); handleExportVVIZ(); }
       if (e.key === 'v' && !ctrl && !e.shiftKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
         setEditorMode('select');
       }
