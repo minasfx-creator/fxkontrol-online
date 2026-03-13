@@ -39,8 +39,10 @@ EMOJI → SHAPE MAP:
 ♾️→Lemniscate  🏠→House(square+triangle roof)  🐬→DolphinArc  🎆→RadialBurst(concentric)
 🌍→Circle  🚀→Rocket(cylinder+cone+fins)  ⚽→Circle  💎→Diamond  🎂→CakeLayers
 
-SCALING: radius = clamp(sqrt(N)*2.2, 12, 90)
+SCALING: radius = clamp(sqrt(N)*2.2, 12, 150)
 For N>200: Use FILLED shapes (concentric/scanline), not just outlines.
+For N>500: Increase density, use multiple concentric layers. radius ~ sqrt(N)*2.5
+For N>1000: Large-scale show. radius ~ sqrt(N)*3.0, use dense fill patterns.
 
 CRITICAL: Your "points" array must have EXACTLY N elements. If you're unsure, use the mathematical formula and compute each point.`;
 
@@ -381,7 +383,7 @@ Available shape types and their key params:
 - cake: radius, layers (default 3)
 - custom_outline: provide outlinePoints (10-40 key vertices) for any shape not listed above
 
-SCALING: radius = clamp(sqrt(N)*2.2, 12, 90) where N is drone count.
+SCALING: radius = clamp(sqrt(N)*2.2, 12, 150) where N is drone count. For N>500: sqrt(N)*2.5. For N>1000: sqrt(N)*3.0
 
 For emojis: map to the closest shape type. 
 For complex/unknown shapes: use custom_outline with 15-30 key vertices tracing the recognizable outline.
@@ -395,7 +397,8 @@ function generateShapePoints(
   params: Record<string, number | string>,
   outlinePoints?: { x: number; z: number }[],
 ): { x: number; z: number }[] {
-  const R = Number(params.radius) || Math.max(12, Math.min(90, Math.sqrt(count) * 2.2));
+  const scaleFactor = count > 1000 ? 3.0 : count > 500 ? 2.5 : 2.2;
+  const R = Number(params.radius) || Math.max(12, Math.min(200, Math.sqrt(count) * scaleFactor));
   
   switch (shapeType) {
     case 'circle': return genCircle(count, R);
@@ -433,28 +436,15 @@ function genCircle(n: number, R: number): { x: number; z: number }[] {
 }
 
 function genFilledCircle(n: number, R: number): { x: number; z: number }[] {
+  // Use sunflower/Fibonacci spiral for optimal uniform distribution (no post-processing needed)
   const pts: { x: number; z: number }[] = [];
-  const rings = Math.max(2, Math.ceil(Math.sqrt(n / Math.PI)));
-  // Center point
-  pts.push({ x: 0, z: 0 });
-  let remaining = n - 1;
-  for (let k = 1; k <= rings && remaining > 0; k++) {
-    const r = (R * k) / rings;
-    const circumference = 2 * Math.PI * r;
-    const pointsInRing = Math.min(remaining, Math.max(6, Math.round(circumference / 2.2)));
-    for (let i = 0; i < pointsInRing; i++) {
-      const a = (2 * Math.PI * i) / pointsInRing;
-      pts.push({ x: r * Math.cos(a), z: r * Math.sin(a) });
-    }
-    remaining -= pointsInRing;
+  const goldenAngle = Math.PI * (3 - Math.sqrt(5)); // ~137.5°
+  for (let i = 0; i < n; i++) {
+    const r = R * Math.sqrt(i / n); // sqrt for uniform area distribution
+    const theta = i * goldenAngle;
+    pts.push({ x: r * Math.cos(theta), z: r * Math.sin(theta) });
   }
-  // Fill any remaining with extra ring
-  while (pts.length < n) {
-    const a = (2 * Math.PI * (pts.length - 1)) / Math.max(1, n - pts.length);
-    const r = R * (0.3 + Math.random() * 0.7);
-    pts.push({ x: r * Math.cos(a), z: r * Math.sin(a) });
-  }
-  return pts.slice(0, n);
+  return pts;
 }
 
 function genHeart(n: number, R: number): { x: number; z: number }[] {
@@ -960,7 +950,46 @@ function distributeAlongPath(n: number, vertices: { x: number; z: number }[], cl
   return pts;
 }
 
-// ── Post-processing ─────────────────────────────────────────
+// ── Spatial grid for O(n) neighbor lookups ──────────────────
+
+class SpatialGrid {
+  private cells = new Map<string, number[]>();
+  private cellSize: number;
+  constructor(cellSize: number) { this.cellSize = cellSize; }
+  
+  private key(x: number, z: number): string {
+    return `${Math.floor(x / this.cellSize)},${Math.floor(z / this.cellSize)}`;
+  }
+  
+  clear() { this.cells.clear(); }
+  
+  insert(idx: number, x: number, z: number) {
+    const k = this.key(x, z);
+    const arr = this.cells.get(k);
+    if (arr) arr.push(idx); else this.cells.set(k, [idx]);
+  }
+  
+  rebuild(pts: { x: number; z: number }[]) {
+    this.clear();
+    for (let i = 0; i < pts.length; i++) this.insert(i, pts[i].x, pts[i].z);
+  }
+  
+  neighbors(x: number, z: number, radius: number): number[] {
+    const result: number[] = [];
+    const r = Math.ceil(radius / this.cellSize);
+    const cx = Math.floor(x / this.cellSize);
+    const cz = Math.floor(z / this.cellSize);
+    for (let dx = -r; dx <= r; dx++) {
+      for (let dz = -r; dz <= r; dz++) {
+        const arr = this.cells.get(`${cx + dx},${cz + dz}`);
+        if (arr) result.push(...arr);
+      }
+    }
+    return result;
+  }
+}
+
+// ── Post-processing (optimized for N up to 5000+) ───────────
 
 function postProcess(
   points: { x: number; z: number }[],
@@ -977,58 +1006,55 @@ function postProcess(
 
   // Adjust count
   if (pts.length > targetCount) {
-    while (pts.length > targetCount) {
-      let minDist = Infinity, removeIdx = 0;
-      for (let i = 0; i < pts.length; i++) {
-        let closest = Infinity;
-        for (let j = 0; j < pts.length; j++) {
-          if (i === j) continue;
-          const d = Math.hypot(pts[i].x - pts[j].x, pts[i].z - pts[j].z);
-          if (d < closest) closest = d;
-        }
-        if (closest < minDist) { minDist = closest; removeIdx = i; }
-      }
-      pts.splice(removeIdx, 1);
+    const step = pts.length / targetCount;
+    const sampled: { x: number; z: number }[] = [];
+    for (let i = 0; i < targetCount; i++) {
+      sampled.push(pts[Math.floor(i * step)]);
     }
+    pts = sampled;
   } else if (pts.length < targetCount) {
+    const original = [...pts];
     while (pts.length < targetCount) {
-      let maxDist = 0, bestI = 0, bestJ = 1;
-      for (let i = 0; i < pts.length; i++) {
-        for (let j = i + 1; j < pts.length; j++) {
-          const d = Math.hypot(pts[i].x - pts[j].x, pts[i].z - pts[j].z);
-          if (d > maxDist) { maxDist = d; bestI = i; bestJ = j; }
-        }
-      }
-      const jitter = () => (Math.random() - 0.5) * 0.3;
+      const idx = pts.length % original.length;
+      const next = (idx + 1) % original.length;
+      const t = 0.3 + Math.random() * 0.4;
       pts.push({
-        x: (pts[bestI].x + pts[bestJ].x) / 2 + jitter(),
-        z: (pts[bestI].z + pts[bestJ].z) / 2 + jitter(),
+        x: original[idx].x + (original[next].x - original[idx].x) * t + (Math.random() - 0.5) * 0.5,
+        z: original[idx].z + (original[next].z - original[idx].z) * t + (Math.random() - 0.5) * 0.5,
       });
     }
   }
 
-  // Enforce minimum spacing (60 iterations)
-  for (let iter = 0; iter < 60; iter++) {
-    let moved = false;
-    for (let i = 0; i < pts.length; i++) {
-      for (let j = i + 1; j < pts.length; j++) {
-        const dx = pts[j].x - pts[i].x;
-        const dz = pts[j].z - pts[i].z;
-        const dist = Math.hypot(dx, dz);
-        if (dist < minSpacing && dist > 0.001) {
-          const push = (minSpacing - dist) / 2 + 0.05;
-          const nx = dx / dist, nz = dz / dist;
-          pts[i] = { x: pts[i].x - nx * push, z: pts[i].z - nz * push };
-          pts[j] = { x: pts[j].x + nx * push, z: pts[j].z + nz * push };
-          moved = true;
-        } else if (dist <= 0.001) {
-          const a = Math.random() * Math.PI * 2;
-          pts[j] = { x: pts[j].x + Math.cos(a) * minSpacing, z: pts[j].z + Math.sin(a) * minSpacing };
-          moved = true;
+  // Enforce minimum spacing - skip for very large N (server shapes are pre-spaced)
+  if (pts.length <= 800) {
+    const maxIter = pts.length > 500 ? 15 : 40;
+    const grid = new SpatialGrid(minSpacing * 1.5);
+    
+    for (let iter = 0; iter < maxIter; iter++) {
+      grid.rebuild(pts);
+      let moved = false;
+      for (let i = 0; i < pts.length; i++) {
+        const nearby = grid.neighbors(pts[i].x, pts[i].z, minSpacing * 1.5);
+        for (const j of nearby) {
+          if (j <= i) continue;
+          const dx = pts[j].x - pts[i].x;
+          const dz = pts[j].z - pts[i].z;
+          const dist = Math.hypot(dx, dz);
+          if (dist < minSpacing && dist > 0.001) {
+            const push = (minSpacing - dist) / 2 + 0.05;
+            const nx = dx / dist, nz = dz / dist;
+            pts[i] = { x: pts[i].x - nx * push, z: pts[i].z - nz * push };
+            pts[j] = { x: pts[j].x + nx * push, z: pts[j].z + nz * push };
+            moved = true;
+          } else if (dist <= 0.001) {
+            const a = Math.random() * Math.PI * 2;
+            pts[j] = { x: pts[j].x + Math.cos(a) * minSpacing, z: pts[j].z + Math.sin(a) * minSpacing };
+            moved = true;
+          }
         }
       }
+      if (!moved) break;
     }
-    if (!moved) break;
   }
 
   // Re-center and round
@@ -1053,7 +1079,7 @@ function generateFallbackGrid(count: number, spacing: number): { x: number; z: n
   return pts;
 }
 
-// ── Transition optimizer (nearest-neighbor) ─────────────────
+// ── Transition optimizer (spatial-grid accelerated) ─────────
 
 function optimizeTransitionOrder(
   from: { x: number; z: number }[],
@@ -1061,14 +1087,48 @@ function optimizeTransitionOrder(
 ): { x: number; z: number }[] {
   if (from.length === 0 || to.length === 0 || from.length !== to.length) return to;
   const n = from.length;
+  
+  // For small N, use exact nearest-neighbor
+  if (n <= 500) {
+    const result = new Array(n);
+    const used = new Set<number>();
+    for (let i = 0; i < n; i++) {
+      let bestJ = -1, bestDist = Infinity;
+      for (let j = 0; j < n; j++) {
+        if (used.has(j)) continue;
+        const d = Math.hypot(from[i].x - to[j].x, from[i].z - to[j].z);
+        if (d < bestDist) { bestDist = d; bestJ = j; }
+      }
+      result[i] = to[bestJ];
+      used.add(bestJ);
+    }
+    return result;
+  }
+  
+  // For large N: spatial grid accelerated matching
+  const grid = new SpatialGrid(10);
+  for (let j = 0; j < n; j++) grid.insert(j, to[j].x, to[j].z);
+  
   const result = new Array(n);
   const used = new Set<number>();
+  
   for (let i = 0; i < n; i++) {
     let bestJ = -1, bestDist = Infinity;
-    for (let j = 0; j < n; j++) {
-      if (used.has(j)) continue;
-      const d = Math.hypot(from[i].x - to[j].x, from[i].z - to[j].z);
-      if (d < bestDist) { bestDist = d; bestJ = j; }
+    // Search in expanding radius
+    for (let searchR = 10; searchR <= 400; searchR *= 2) {
+      const candidates = grid.neighbors(from[i].x, from[i].z, searchR);
+      for (const j of candidates) {
+        if (used.has(j)) continue;
+        const d = Math.hypot(from[i].x - to[j].x, from[i].z - to[j].z);
+        if (d < bestDist) { bestDist = d; bestJ = j; }
+      }
+      if (bestJ !== -1) break;
+    }
+    // Fallback: find any unused
+    if (bestJ === -1) {
+      for (let j = 0; j < n; j++) {
+        if (!used.has(j)) { bestJ = j; break; }
+      }
     }
     result[i] = to[bestJ];
     used.add(bestJ);
@@ -1197,18 +1257,56 @@ serve(async (req) => {
       return new Response(JSON.stringify(trajResult), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // ── Single Formation: HYBRID approach ───────────────────
-    // For large counts or complex shapes: AI describes shape → server computes points
-    // For small counts: AI can still generate points directly
+    // ── Single Formation generation ───────────────────────────
+    // For large N (>500): skip AI entirely, use server-side math (fast, reliable)
+    // For medium N (60-500): hybrid (AI describes shape → server computes)
+    // For small N (<60): direct AI generation
     
-    const useHybrid = count > 60 || mode === "generative";
+    const usePureServer = count > 500 && mode !== "image";
+    const useHybrid = !usePureServer && (count > 60 || mode === "generative");
+    
+    if (usePureServer) {
+      console.log(`Pure server generation: "${prompt}", ${count} drones`);
+      const sf = count > 1000 ? 3.0 : 2.5;
+      const inferred = inferShapeType(prompt || "circle");
+      const rawPoints = generateShapePoints(inferred, count, { radius: Math.max(15, Math.sqrt(count) * sf) });
+      
+      const prev = previousFormation?.map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
+      // For large N, skip relaxation — server shapes use Fibonacci/parametric spacing
+      let processed = rawPoints;
+      // Just center and round
+      let cx2 = 0, cz2 = 0;
+      for (const p of processed) { cx2 += p.x; cz2 += p.z; }
+      cx2 /= processed.length; cz2 /= processed.length;
+      processed = processed.map(p => ({
+        x: Math.round((p.x - cx2) * 100) / 100,
+        z: Math.round((p.z - cz2) * 100) / 100,
+      }));
+      
+      // Optimize transition order for previous formation (skip for very large)
+      if (prev && prev.length === processed.length && count <= 1000) {
+        processed = optimizeTransitionOrder(prev, processed);
+      }
+      
+      console.log(`Pure server: shape=${inferred}, ${processed.length} points`);
+      
+      return new Response(JSON.stringify({
+        points: processed,
+        formationName: prompt || inferred,
+        suggestedHeight: Math.max(25, Math.min(80, 20 + count * 0.02)),
+        suggestedTransitionTime: Math.max(10, Math.min(30, 8 + count * 0.005)),
+        rawPointCount: processed.length,
+        model: "server-computed (instant)",
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     
     if (useHybrid && mode !== "image") {
       console.log(`Hybrid generation: "${prompt}", ${count} drones`);
       
+      const sf = count > 200 ? 2.5 : 2.2;
       const shapeMessages = [
         { role: "system", content: SHAPE_DESCRIPTOR_PROMPT },
-        { role: "user", content: `Describe the best shape for ${count} drones matching: "${prompt || 'circle'}"\n\nChoose the shape type and parameters. For complex/unusual shapes, use custom_outline with 15-30 key vertices. Radius should be approximately ${Math.round(Math.sqrt(count) * 2.2)}m.` },
+        { role: "user", content: `Describe the best shape for ${count} drones matching: "${prompt || 'circle'}"\n\nChoose the shape type and parameters. For complex/unusual shapes, use custom_outline with 15-30 key vertices. Radius should be approximately ${Math.round(Math.sqrt(count) * sf)}m.` },
       ];
 
       let shapeDesc: any;
@@ -1216,12 +1314,11 @@ serve(async (req) => {
         shapeDesc = await callAI(LOVABLE_API_KEY, "google/gemini-2.5-flash", shapeMessages, [buildShapeDescriptorTool()], { type: "function", function: { name: "describe_shape" } }, 0.1);
       } catch (e: any) {
         if (e.status === 429 || e.status === 402) throw e;
-        // Fallback: infer shape from prompt
         console.warn("Shape descriptor failed, inferring from prompt");
         const inferred = inferShapeType(prompt || "circle");
         shapeDesc = { 
           shapeType: inferred, 
-          params: { radius: Math.max(12, Math.sqrt(count) * 2.2) },
+          params: { radius: Math.max(12, Math.sqrt(count) * sf) },
           formationName: prompt || "Formation",
           suggestedHeight: 30,
           suggestedTransitionTime: 12,
@@ -1253,7 +1350,8 @@ serve(async (req) => {
     // ── Direct AI generation (small counts or image mode) ───
     console.log(`Direct AI generation: mode=${mode}, "${prompt}", ${count} drones`);
     
-    const scaleHint = `Use a radius of approximately ${Math.round(Math.sqrt(count) * 2.2)}m.`;
+    const sf = count > 1000 ? 3.0 : count > 500 ? 2.5 : 2.2;
+    const scaleHint = `Use a radius of approximately ${Math.round(Math.sqrt(count) * sf)}m.`;
     let userMessage: string;
     
     if (mode === "image") {

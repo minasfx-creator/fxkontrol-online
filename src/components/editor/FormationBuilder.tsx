@@ -739,7 +739,7 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
 
             <div className="space-y-2">
               {isFirstFormation && activeTab === 'presets' && (
-                <SliderField label="Drones" value={count} onChange={setCount} min={4} max={500} step={1} />
+                <SliderField label="Drones" value={count} onChange={setCount} min={4} max={2000} step={1} />
               )}
 
               {activeTab === 'presets' && needsRadius && (
