@@ -980,13 +980,13 @@ export default function ScriptWindow() {
         </table>
 
         {rows.length === 0 && (
-          <div className="px-3 py-8 text-center">
-            <Table className="h-6 w-6 text-muted-foreground/20 mx-auto mb-2" />
-            <p className="text-[10px] text-muted-foreground/60">
-              Drag effects to the timeline to see script rows here
+          <div className="px-4 py-10 text-center">
+            <Table className="h-8 w-8 text-muted-foreground/15 mx-auto mb-3" />
+            <p className="text-[11px] text-muted-foreground/50 font-medium">
+              No cues in script
             </p>
-            <p className="text-[8px] text-muted-foreground/40 mt-1">
-              Ctrl+C/V para copiar/colar · Ctrl+D para duplicar · Fill Handle para distribuir
+            <p className="text-[9px] text-muted-foreground/30 mt-1.5 max-w-[200px] mx-auto leading-relaxed">
+              Drag effects from the Asset Palette to the timeline, then they'll appear here for editing
             </p>
           </div>
         )}
