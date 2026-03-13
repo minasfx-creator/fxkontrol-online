@@ -33,7 +33,10 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
       { id: 'soundlevel', label: 'Sound Level', icon: Volume2 },
       { id: 'wind', label: 'Wind/Cam', icon: Wind },
       { id: 'particles', label: 'Particles', icon: Atom },
+      { id: 'collisions', label: 'Collisions', icon: Zap },
+      { id: 'weather', label: 'Weather', icon: Cloud },
       { id: 'versioning', label: 'Versioning', icon: History },
+      { id: 'approval', label: 'Approval', icon: MessageSquare },
     ],
   },
   {
