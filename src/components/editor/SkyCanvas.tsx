@@ -1049,6 +1049,25 @@ export default function SkyCanvas() {
             <span className="hidden sm:inline">{label}</span>
           </button>
         ))}
+        {/* Download satellite scenery */}
+        <button
+          onClick={handleDownloadScenery}
+          disabled={downloadingScenery}
+          className={cn(
+            "flex items-center gap-1 px-2 py-1 rounded-sm text-[10px] font-mono-code transition-all border",
+            satelliteTexture
+              ? "bg-success/20 text-success border-success/40"
+              : "bg-surface-1/80 text-muted-foreground border-border/50 hover:text-foreground hover:bg-surface-2/80"
+          )}
+          title="Download real satellite scenery from Google Maps"
+        >
+          {downloadingScenery ? (
+            <div className="w-3 h-3 border border-primary border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Globe className="w-3 h-3" />
+          )}
+          <span className="hidden sm:inline">{satelliteTexture ? 'Satélite ✓' : 'Cenário Real'}</span>
+        </button>
         <button
           onClick={() => {
             const el = document.querySelector('[data-sky-canvas]') as HTMLElement;
