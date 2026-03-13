@@ -1,16 +1,25 @@
 import { useState, useCallback } from 'react';
-import { Search, ChevronDown, ChevronRight, Flame, Sparkles, Radio, Shapes, Wand2 } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, Flame, Sparkles, Radio, Shapes, Wand2, Zap, Lightbulb, Droplets, Bomb, CandlestickChart as Candle, Waves, Box } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { EFFECT_LIBRARY, useProjectStore, type Effect } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
 import { parseVDL } from '@/lib/vdlParser';
 
 const CATEGORIES = [
-  { key: 'drones' as const, label: 'Drone Formations', icon: Radio, emoji: '🛸' },
+  { key: 'morteiros' as const, label: 'Shells', icon: Flame, emoji: '🎆' },
+  { key: 'peonias' as const, label: 'Aerial Effects', icon: Sparkles, emoji: '✨' },
+  { key: 'mines' as const, label: 'Mines', icon: Bomb, emoji: '⛏️' },
+  { key: 'roman_candles' as const, label: 'Roman Candles', icon: Candle, emoji: '🕯️' },
+  { key: 'waterfalls' as const, label: 'Waterfalls', icon: Waves, emoji: '🌊' },
+  { key: 'cakes_batteries' as const, label: 'Cakes & Batteries', icon: Box, emoji: '🎂' },
+  { key: 'sfx' as const, label: 'Special FX', icon: Droplets, emoji: '💨' },
+  { key: 'lasers' as const, label: 'Lasers', icon: Zap, emoji: '🟢' },
+  { key: 'iluminacao' as const, label: 'Lighting', icon: Lightbulb, emoji: '💡' },
+  { key: 'drones' as const, label: 'Drone Units', icon: Radio, emoji: '🛸' },
   { key: 'formacoes' as const, label: 'Formations', icon: Shapes, emoji: '🔷' },
-  { key: 'morteiros' as const, label: 'Pyro VDL', icon: Flame, emoji: '🎆' },
-  { key: 'peonias' as const, label: 'Pyro Effects', icon: Sparkles, emoji: '✨' },
 ];
+
+type FilterType = 'all' | 'firework' | 'drone' | 'sfx' | 'laser' | 'light';
 
 function EffectCard({ effect }: { effect: Effect }) {
   const { selectedEffectId, selectEffect, addTimelineItem, currentTime } = useProjectStore();
@@ -22,7 +31,7 @@ function EffectCard({ effect }: { effect: Effect }) {
       id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       effectId: effect.id,
       startTime: currentTime,
-      trackIndex: effect.type === 'firework' ? 0 : 1,
+      trackIndex: effect.type === 'firework' ? 0 : effect.type === 'drone' ? 1 : 2,
       position: {
         x: (Math.random() - 0.5) * 16,
         y: effect.type === 'firework' ? 8 + Math.random() * 6 : 5 + Math.random() * 10,
@@ -42,6 +51,8 @@ function EffectCard({ effect }: { effect: Effect }) {
     setIsDragging(false);
   }, []);
 
+  const typeColor = effect.type === 'laser' ? 'text-green-400' : effect.type === 'sfx' ? 'text-cyan-400' : effect.type === 'light' ? 'text-yellow-400' : '';
+
   return (
     <button
       draggable="true"
@@ -59,7 +70,7 @@ function EffectCard({ effect }: { effect: Effect }) {
     >
       <span className="text-base flex-shrink-0">{effect.icon}</span>
       <div className="flex-1 min-w-0">
-        <p className="truncate text-xs font-medium">{effect.name}</p>
+        <p className={cn("truncate text-xs font-medium", typeColor)}>{effect.name}</p>
         <p className="text-[10px] text-muted-foreground">{effect.duration}s · ${effect.cost}</p>
       </div>
       <div
@@ -74,6 +85,7 @@ export default function EffectLibrary() {
   const [search, setSearch] = useState('');
   const [vdlInput, setVdlInput] = useState('');
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set(['morteiros', 'drones']));
+  const [typeFilter, setTypeFilter] = useState<FilterType>('all');
   const { addTimelineItem, currentTime } = useProjectStore();
 
   const toggleCategory = (key: string) => {
@@ -84,9 +96,11 @@ export default function EffectLibrary() {
     });
   };
 
-  const filteredEffects = EFFECT_LIBRARY.filter((e) =>
-    e.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredEffects = EFFECT_LIBRARY.filter((e) => {
+    if (typeFilter !== 'all' && e.type !== typeFilter) return false;
+    if (search && !e.name.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
 
   const handleVDLSubmit = (e: React.KeyboardEvent) => {
     if (e.key !== 'Enter' || !vdlInput.trim()) return;
@@ -109,12 +123,17 @@ export default function EffectLibrary() {
     setVdlInput('');
   };
 
+  const totalCount = filteredEffects.length;
+
   return (
     <div className="h-full flex flex-col bg-card border-r border-border">
       {/* Header */}
       <div className="px-3 py-2 border-b border-border">
-        <h2 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2">Asset Palette</h2>
-        <div className="relative">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xs font-semibold text-foreground uppercase tracking-wider">Asset Palette</h2>
+          <span className="text-[9px] font-mono-code text-muted-foreground">{totalCount} items</span>
+        </div>
+        <div className="relative mb-1.5">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <Input
             placeholder="Search effects..."
@@ -123,6 +142,30 @@ export default function EffectLibrary() {
             className="h-7 pl-7 text-xs bg-surface-2 border-border"
           />
         </div>
+        {/* Type filter chips */}
+        <div className="flex flex-wrap gap-0.5">
+          {([
+            { key: 'all' as FilterType, label: 'All', emoji: '📦' },
+            { key: 'firework' as FilterType, label: 'Pyro', emoji: '🎆' },
+            { key: 'sfx' as FilterType, label: 'SFX', emoji: '💨' },
+            { key: 'laser' as FilterType, label: 'Laser', emoji: '🟢' },
+            { key: 'light' as FilterType, label: 'Light', emoji: '💡' },
+            { key: 'drone' as FilterType, label: 'Drone', emoji: '🛸' },
+          ]).map(f => (
+            <button
+              key={f.key}
+              onClick={() => setTypeFilter(f.key)}
+              className={cn(
+                "px-1.5 py-0.5 rounded-sm text-[8px] font-semibold uppercase transition-colors border",
+                typeFilter === f.key
+                  ? "bg-primary/15 text-primary border-primary/30"
+                  : "bg-surface-2 text-muted-foreground border-transparent hover:text-foreground"
+              )}
+            >
+              {f.emoji} {f.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Categories */}
@@ -130,7 +173,7 @@ export default function EffectLibrary() {
         {CATEGORIES.map(({ key, label, icon: Icon, emoji }) => {
           const isOpen = openCategories.has(key);
           const effects = filteredEffects.filter((e) => e.category === key);
-          if (search && effects.length === 0) return null;
+          if (effects.length === 0) return null;
 
           return (
             <div key={key} className="mb-0.5">
