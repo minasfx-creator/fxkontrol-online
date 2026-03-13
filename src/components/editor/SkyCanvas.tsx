@@ -16,6 +16,7 @@ import GeofenceVisual from './GeofenceVisual';
 import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CometEffect, ShockwaveEffect, MultiBurstEffect, FanEffect } from './effects';
+import MiniMap from './MiniMap';
 
 class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
@@ -1011,6 +1012,7 @@ export default function SkyCanvas() {
 
       <PerformanceHUD statsRef={perfStatsRef} droneCount={droneCount} />
       <ViewportTerminal />
+      <MiniMap />
 
       <div className="absolute bottom-3 right-3 text-xs font-mono-code text-muted-foreground bg-surface-1/80 px-2 py-1 rounded-sm border border-border/50">
         Orbit: LMB · Pan: MMB · Zoom: Scroll
