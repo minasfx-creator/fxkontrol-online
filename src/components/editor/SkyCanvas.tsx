@@ -287,29 +287,174 @@ function Moon() {
   );
 }
 
-// --- Finale 3D style ground: green grass field ---
+// --- Procedural grass shader ground ---
+function GrassGround() {
+  const uniforms = useMemo(() => ({
+    time: { value: 0 },
+    moonDir: { value: new THREE.Vector3(0.5, 0.7, -0.5).normalize() },
+  }), []);
+
+  useFrame(({ clock }) => {
+    uniforms.time.value = clock.getElapsedTime();
+  });
+
+  const grassVertexShader = `
+    varying vec2 vUv;
+    varying vec3 vWorldPos;
+    varying vec3 vNormal;
+    void main() {
+      vUv = uv;
+      vNormal = normalize(normalMatrix * normal);
+      vec4 wp = modelMatrix * vec4(position, 1.0);
+      vWorldPos = wp.xyz;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `;
+
+  const grassFragmentShader = `
+    uniform float time;
+    uniform vec3 moonDir;
+    varying vec2 vUv;
+    varying vec3 vWorldPos;
+    varying vec3 vNormal;
+
+    float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+    float noise(vec2 p) {
+      vec2 i = floor(p); vec2 f = fract(p);
+      f = f * f * (3.0 - 2.0 * f);
+      return mix(mix(hash(i), hash(i + vec2(1,0)), f.x),
+                 mix(hash(i + vec2(0,1)), hash(i + vec2(1,1)), f.x), f.y);
+    }
+    float fbm(vec2 p) {
+      float v = 0.0; float a = 0.5;
+      for (int i = 0; i < 5; i++) { v += a * noise(p); p *= 2.1; a *= 0.5; }
+      return v;
+    }
+
+    void main() {
+      vec2 worldUV = vWorldPos.xz;
+
+      // Multi-scale grass color variation
+      float large = fbm(worldUV * 0.02);
+      float medium = fbm(worldUV * 0.08 + 50.0);
+      float fine = fbm(worldUV * 0.5 + 100.0);
+      float micro = noise(worldUV * 4.0);
+
+      // Base grass palette — dark greens with brown patches
+      vec3 grassDark  = vec3(0.06, 0.14, 0.04);
+      vec3 grassMid   = vec3(0.10, 0.22, 0.06);
+      vec3 grassLight = vec3(0.14, 0.30, 0.08);
+      vec3 grassDry   = vec3(0.16, 0.18, 0.06);
+      vec3 dirt        = vec3(0.10, 0.08, 0.04);
+
+      // Blend grass types
+      vec3 color = mix(grassDark, grassMid, smoothstep(0.3, 0.6, large));
+      color = mix(color, grassLight, smoothstep(0.5, 0.8, medium) * 0.5);
+      color = mix(color, grassDry, smoothstep(0.65, 0.85, large * medium) * 0.4);
+
+      // Dirt patches
+      float dirtMask = smoothstep(0.7, 0.82, fbm(worldUV * 0.15 + 200.0));
+      color = mix(color, dirt, dirtMask * 0.6);
+
+      // Fine grass blade texture
+      float blades = smoothstep(0.35, 0.65, micro) * 0.15;
+      color += vec3(0.02, 0.04, 0.01) * blades;
+
+      // Wind-driven color shift (subtle)
+      float wind = sin(worldUV.x * 0.3 + time * 0.4) * cos(worldUV.y * 0.2 + time * 0.3);
+      color += vec3(0.01, 0.02, 0.005) * wind * 0.3;
+
+      // Moonlight diffuse
+      float diffuse = max(dot(vNormal, moonDir), 0.0);
+      float ambient = 0.25;
+      color *= (diffuse * 0.6 + ambient);
+
+      // Distance fade to darker
+      float dist = length(worldUV) * 0.005;
+      color *= 1.0 - smoothstep(0.0, 1.0, dist) * 0.4;
+
+      // Subtle dew/moisture specular
+      float dew = pow(max(dot(reflect(-moonDir, vNormal), normalize(vec3(0,1,0))), 0.0), 16.0);
+      float dewMask = smoothstep(0.4, 0.7, fine);
+      color += vec3(0.05, 0.08, 0.12) * dew * dewMask * 0.3;
+
+      gl_FragColor = vec4(color, 1.0);
+    }
+  `;
+
+  return (
+    <>
+      <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[500, 500, 1, 1]} />
+        <shaderMaterial
+          uniforms={uniforms}
+          vertexShader={grassVertexShader}
+          fragmentShader={grassFragmentShader}
+        />
+      </mesh>
+      {/* Slightly brighter near-stage grass overlay */}
+      <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <circleGeometry args={[50, 64]} />
+        <shaderMaterial
+          uniforms={uniforms}
+          vertexShader={grassVertexShader}
+          fragmentShader={`
+            uniform float time;
+            uniform vec3 moonDir;
+            varying vec2 vUv;
+            varying vec3 vWorldPos;
+            varying vec3 vNormal;
+
+            float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+            float noise(vec2 p) {
+              vec2 i = floor(p); vec2 f = fract(p);
+              f = f * f * (3.0 - 2.0 * f);
+              return mix(mix(hash(i), hash(i + vec2(1,0)), f.x),
+                         mix(hash(i + vec2(0,1)), hash(i + vec2(1,1)), f.x), f.y);
+            }
+            float fbm(vec2 p) {
+              float v = 0.0; float a = 0.5;
+              for (int i = 0; i < 5; i++) { v += a * noise(p); p *= 2.1; a *= 0.5; }
+              return v;
+            }
+
+            void main() {
+              vec2 worldUV = vWorldPos.xz;
+              float large = fbm(worldUV * 0.03);
+              float fine = noise(worldUV * 5.0);
+
+              // Well-maintained grass near stage
+              vec3 grassA = vec3(0.08, 0.20, 0.05);
+              vec3 grassB = vec3(0.12, 0.28, 0.07);
+              vec3 color = mix(grassA, grassB, smoothstep(0.3, 0.7, large));
+              color += vec3(0.01, 0.03, 0.005) * fine * 0.2;
+
+              // Mowing pattern (stripes)
+              float stripes = sin(worldUV.x * 1.5) * 0.5 + 0.5;
+              color = mix(color, color * 1.08, stripes * 0.15);
+
+              float diffuse = max(dot(vNormal, moonDir), 0.0);
+              color *= (diffuse * 0.6 + 0.3);
+
+              // Edge fade
+              float edgeDist = length(vWorldPos.xz) / 50.0;
+              float edgeFade = smoothstep(0.85, 1.0, edgeDist);
+              color = mix(color, vec3(0.06, 0.14, 0.04), edgeFade);
+
+              gl_FragColor = vec4(color, 1.0);
+            }
+          `}
+          transparent={false}
+        />
+      </mesh>
+    </>
+  );
+}
+
 function StageGround() {
   return (
     <group>
-      {/* Main grass ground */}
-      <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[500, 500]} />
-        <meshStandardMaterial
-          color="#1a3a1a"
-          roughness={0.95}
-          metalness={0.0}
-        />
-      </mesh>
-
-      {/* Lighter grass near stage */}
-      <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[60, 64]} />
-        <meshStandardMaterial
-          color="#1e4020"
-          roughness={0.9}
-          metalness={0.0}
-        />
-      </mesh>
+      <GrassGround />
 
       {/* Operational grid */}
       <Grid
