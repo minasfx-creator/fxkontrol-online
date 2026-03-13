@@ -246,7 +246,7 @@ function TimelineEffects() {
         ? Math.max(0, (elapsed - prefireDuration) / weatherDuration)
         : elapsed / weatherDuration;
 
-      return { item, effect, progress: burstProgress, inPrefire, prefireProgress, caliber, prefireDuration, resolvedPos, effectScale };
+      return { item, effect, progress: burstProgress, inPrefire, prefireProgress, caliber, prefireDuration, resolvedPos, effectScale, effectBrightness: sceneSettings.effectBrightness };
     }).filter(Boolean) as {
       item: typeof timelineItems[0];
       effect: typeof EFFECT_LIBRARY[0];
@@ -257,8 +257,9 @@ function TimelineEffects() {
       prefireDuration: number;
       resolvedPos: { x: number; y: number; z: number };
       effectScale: number;
+      effectBrightness: number;
     }[];
-  }, [timelineItems, currentTime, positions, sceneSettings.effectScale, sceneSettings.weather, sceneSettings.humidity]);
+  }, [timelineItems, currentTime, positions, sceneSettings.effectScale, sceneSettings.weather, sceneSettings.humidity, sceneSettings.effectBrightness]);
 
   return (
     <>
