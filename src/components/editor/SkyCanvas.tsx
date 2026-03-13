@@ -12,6 +12,7 @@ import AlignmentTools from './AlignmentTools';
 import CameraAnimator, { CameraPathPreview } from './CameraAnimator';
 import TrajectoryPaths from './TrajectoryPaths';
 import DroneChoreography from './DroneChoreography';
+import Rack3DView from './Rack3DView';
 import BoidsVisualizer from './BoidsVisualizer';
 import QuadcopterModel from './QuadcopterModel';
 import GeofenceVisual from './GeofenceVisual';
