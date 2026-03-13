@@ -119,6 +119,7 @@ export default function Index() {
       if (e.key === 'i' && !e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
         const store = useProjectStore.getState();
         if (store.isPlaying || store.currentTime > 0) {
+          useUndoStore.getState().checkpoint();
           store.addTimelineItem({
             id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
             effectId: '',
