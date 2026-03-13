@@ -1,8 +1,8 @@
-import { Route, Wind, FileText, Package, Cpu, DollarSign, Spline, Sliders, Settings2, Bug, Gauge, Lightbulb, Battery, Radio, Clock } from 'lucide-react';
+import { Route, Wind, FileText, Package, Cpu, DollarSign, Spline, Sliders, Settings2, Bug, Gauge, Lightbulb, Battery, Radio, Clock, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | 'inventory' | 'waypoints' | 'effects' | 'properties' | 'boids' | 'pid' | 'dmx' | 'battery' | 'mavlink' | 'smpte';
+export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | 'inventory' | 'waypoints' | 'effects' | 'properties' | 'boids' | 'pid' | 'dmx' | 'battery' | 'mavlink' | 'smpte' | 'maps';
 
 const PANEL_TABS: { id: PanelId; label: string; icon: typeof Route; shortcut?: string }[] = [
   { id: 'properties', label: 'Properties', icon: Settings2, shortcut: 'P' },
@@ -20,6 +20,7 @@ const PANEL_TABS: { id: PanelId; label: string; icon: typeof Route; shortcut?: s
   { id: 'battery', label: 'Battery Model', icon: Battery },
   { id: 'mavlink', label: 'MAVLink Bridge', icon: Radio },
   { id: 'smpte', label: 'SMPTE / LTC Sync', icon: Clock },
+  { id: 'maps', label: 'Google Maps · Site Survey', icon: Globe, shortcut: 'G' },
 ];
 
 interface PanelTabBarProps {

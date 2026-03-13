@@ -2,3 +2,12 @@ project_id = "kyywqpyhsgdthcqqohyv"
 
 [functions.generate-formation]
 verify_jwt = false
+
+[functions.get-maps-key]
+verify_jwt = false
+
+[functions.artnet-bridge]
+verify_jwt = false
+
+[functions.mavlink-bridge]
+verify_jwt = false
