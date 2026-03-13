@@ -113,6 +113,8 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   weather: 'w-64',
   collisions: 'w-64',
   approval: 'w-72',
+  trajectory: 'w-64',
+  templates: 'w-72',
 };
 
 export default function Index() {
