@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState, useCallback } from 'react';
 import Toolbar from '@/components/editor/Toolbar';
 import SplashScreen from '@/components/editor/SplashScreen';
+import GlobeSelector from '@/components/editor/GlobeSelector';
 import EffectLibrary from '@/components/editor/EffectLibrary';
 import Timeline from '@/components/editor/Timeline';
 import PropertiesPanel from '@/components/editor/PropertiesPanel';
@@ -63,9 +64,10 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
 
 export default function Index() {
   const [activePanel, setActivePanel] = useState<PanelId | null>('properties');
-  const [showSplash, setShowSplash] = useState(true);
+  const [appPhase, setAppPhase] = useState<'splash' | 'globe' | 'editor'>('splash');
   const [fleetSize, setFleetSize] = useState(500);
   const [pyroPositions, setPyroPositions] = useState(24);
+  const [showLocation, setShowLocation] = useState<{ name: string; lat: number; lng: number } | null>(null);
 
   const handleTogglePanel = useCallback((id: PanelId) => {
     setActivePanel((prev) => (prev === id ? null : id));
@@ -74,11 +76,20 @@ export default function Index() {
   const handleSplashStart = (size: number, pyroPos: number) => {
     setFleetSize(size);
     setPyroPositions(pyroPos);
-    setShowSplash(false);
+    setAppPhase('globe');
   };
 
-  if (showSplash) {
+  const handleLocationSelected = useCallback((location: { name: string; lat: number; lng: number }) => {
+    setShowLocation(location);
+    setAppPhase('editor');
+  }, []);
+
+  if (appPhase === 'splash') {
     return <SplashScreen onStart={handleSplashStart} />;
+  }
+
+  if (appPhase === 'globe') {
+    return <GlobeSelector onLocationSelected={handleLocationSelected} />;
   }
 
   const renderPanel = () => {
