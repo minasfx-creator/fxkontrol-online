@@ -759,10 +759,11 @@ function GroundFog() {
   );
 }
 
-function StageGround() {
+function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) {
   return (
     <group>
       <GrassGround />
+      {satelliteTexture && <SatelliteOverlay textureUrl={satelliteTexture} />}
       <GroundFog />
 
       {/* Operational grid — expanded */}
