@@ -770,17 +770,30 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
       {satelliteTexture && <SatelliteOverlay textureUrl={satelliteTexture} />}
       <GroundFog />
 
-      {/* Operational grid — expanded */}
+      {/* Operational grid — configurable with snap */}
       <Grid
         position={[0, 0.01, 0]}
-        args={[400, 400]}
-        cellSize={5}
-        cellThickness={0.3}
+        args={[500, 500]}
+        cellSize={2}
+        cellThickness={0.2}
         cellColor="#2a4a2a"
-        sectionSize={25}
-        sectionThickness={0.8}
+        sectionSize={10}
+        sectionThickness={0.6}
         sectionColor="#3a5a3a"
-        fadeDistance={200}
+        fadeDistance={250}
+        infiniteGrid
+      />
+      {/* 50m major grid marks */}
+      <Grid
+        position={[0, 0.015, 0]}
+        args={[500, 500]}
+        cellSize={50}
+        cellThickness={1.0}
+        cellColor="#4a6a4a"
+        sectionSize={100}
+        sectionThickness={1.2}
+        sectionColor="#5a7a5a"
+        fadeDistance={400}
         infiniteGrid
       />
 
