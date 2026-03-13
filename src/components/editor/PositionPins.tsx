@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { useProjectStore, type Position, EFFECT_LIBRARY } from '@/store/useProjectStore';
@@ -6,10 +6,10 @@ import * as THREE from 'three';
 
 const PYRO_COLOR = '#FF6B35';
 const DRONE_COLOR = '#00B4D8';
-const SNAP_GRID = 0.5; // 0.5m snap grid
+const SNAP_GRID = 0.5;
 
 function Pin({ position, onRightClick }: { position: Position; onRightClick: (pos: Position, screenPos: { x: number; y: number }) => void }) {
-  const { selectedPositionIds, selectPosition, togglePositionSelection, editorMode, updatePosition, timelineItems, positions } = useProjectStore();
+  const { selectedPositionIds, selectPosition, togglePositionSelection, editorMode, updatePosition, timelineItems } = useProjectStore();
   const isSelected = selectedPositionIds.includes(position.id);
   const color = position.type === 'pyro' ? PYRO_COLOR : (position.color || DRONE_COLOR);
   const meshRef = useRef<THREE.Mesh>(null);
@@ -20,14 +20,12 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
   const dragPlane = useRef(new THREE.Plane());
   const intersection = useRef(new THREE.Vector3());
   const dragOffset = useRef(new THREE.Vector3());
-  const dragStartPos = useRef({ x: 0, z: 0 });
+  const otherStartPositions = useRef<Map<string, { x: number; z: number }>>(new Map());
 
-  // Count linked effects
   const linkedEffects = timelineItems.filter(
     t => t.positionId === position.id || t.positionIds?.includes(position.id)
   ).length;
 
-  // Animated glow pulse for selected pins
   useFrame(({ clock }) => {
     if (glowRef.current && isSelected) {
       const pulse = Math.sin(clock.getElapsedTime() * 3) * 0.12 + 0.88;
@@ -39,7 +37,6 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
     if (editorMode !== 'select') return;
     e.stopPropagation();
 
-    // Right-click → context menu
     if (e.nativeEvent?.button === 2 || e.button === 2) {
       onRightClick(position, { x: e.clientX || e.nativeEvent?.clientX || 0, y: e.clientY || e.nativeEvent?.clientY || 0 });
       return;
@@ -50,11 +47,12 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
       return;
     }
 
-    selectPosition(position.id);
+    if (!selectedPositionIds.includes(position.id)) {
+      selectPosition(position.id);
+    }
 
     setIsDragging(true);
     (gl.domElement as HTMLElement).style.cursor = 'grabbing';
-    dragStartPos.current = { x: position.x, z: position.z };
 
     dragPlane.current.setFromNormalAndCoplanarPoint(
       new THREE.Vector3(0, 1, 0),
@@ -73,7 +71,17 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
       0,
       position.z - intersection.current.z
     );
-  }, [editorMode, position, selectPosition, togglePositionSelection, gl, camera, raycaster, onRightClick]);
+
+    // Store initial positions for multi-drag
+    const store = useProjectStore.getState();
+    otherStartPositions.current.clear();
+    store.selectedPositionIds.forEach(id => {
+      if (id !== position.id) {
+        const p = store.positions.find(pp => pp.id === id);
+        if (p) otherStartPositions.current.set(id, { x: p.x, z: p.z });
+      }
+    });
+  }, [editorMode, position, selectPosition, togglePositionSelection, selectedPositionIds, gl, camera, raycaster, onRightClick]);
 
   const onPointerMove = useCallback((e: any) => {
     if (!isDragging) return;
@@ -90,7 +98,6 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
     let newX = intersection.current.x + dragOffset.current.x;
     let newZ = intersection.current.z + dragOffset.current.z;
 
-    // Snap to grid when Ctrl is held
     if (e.ctrlKey || e.metaKey) {
       newX = Math.round(newX / SNAP_GRID) * SNAP_GRID;
       newZ = Math.round(newZ / SNAP_GRID) * SNAP_GRID;
@@ -99,26 +106,19 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
       newZ = Math.round(newZ * 10) / 10;
     }
 
-    // Multi-drag: if dragging a selected pin and multiple are selected, move all
     const store = useProjectStore.getState();
+    updatePosition(position.id, { x: newX, z: newZ });
+
+    // Multi-drag with stored offsets (no drift)
     if (store.selectedPositionIds.length > 1 && store.selectedPositionIds.includes(position.id)) {
       const dx = newX - position.x;
       const dz = newZ - position.z;
-      store.selectedPositionIds.forEach(id => {
-        if (id === position.id) {
-          updatePosition(id, { x: newX, z: newZ });
-        } else {
-          const other = store.positions.find(p => p.id === id);
-          if (other) {
-            updatePosition(id, {
-              x: Math.round((other.x + dx) * 10) / 10,
-              z: Math.round((other.z + dz) * 10) / 10,
-            });
-          }
-        }
+      otherStartPositions.current.forEach((startPos, id) => {
+        updatePosition(id, {
+          x: Math.round((startPos.x + dx) * 10) / 10,
+          z: Math.round((startPos.z + dz) * 10) / 10,
+        });
       });
-    } else {
-      updatePosition(position.id, { x: newX, z: newZ });
     }
   }, [isDragging, position.id, position.x, position.z, updatePosition, camera, raycaster, gl]);
 
@@ -138,38 +138,35 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
 
   const onPointerOut = useCallback(() => {
     setIsHovered(false);
-    if (!isDragging) {
-      (gl.domElement as HTMLElement).style.cursor = '';
-    }
+    if (!isDragging) (gl.domElement as HTMLElement).style.cursor = '';
   }, [isDragging, gl]);
 
   const emissiveIntensity = isDragging ? 1.0 : isSelected ? 0.7 : isHovered ? 0.4 : 0.15;
+  const pinScale = isSelected ? 1.15 : isHovered ? 1.05 : 1;
 
   return (
-    <group position={[position.x, position.y, position.z]}>
+    <group position={[position.x, position.y, position.z]} scale={[pinScale, pinScale, pinScale]}>
       {/* Base disc */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
         <circleGeometry args={[isSelected ? 0.65 : 0.5, 32]} />
         <meshBasicMaterial color={color} transparent opacity={isSelected ? 0.5 : isHovered ? 0.3 : 0.2} />
       </mesh>
 
-      {/* Drag guide lines when dragging */}
+      {/* Drag guides */}
       {isDragging && (
         <>
-          {/* X axis guide */}
           <mesh position={[0, 0.015, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <planeGeometry args={[200, 0.03]} />
-            <meshBasicMaterial color="#ff4444" transparent opacity={0.3} />
+            <meshBasicMaterial color="#ff4444" transparent opacity={0.25} />
           </mesh>
-          {/* Z axis guide */}
           <mesh position={[0, 0.015, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]}>
             <planeGeometry args={[200, 0.03]} />
-            <meshBasicMaterial color="#4444ff" transparent opacity={0.3} />
+            <meshBasicMaterial color="#4444ff" transparent opacity={0.25} />
           </mesh>
         </>
       )}
 
-      {/* Pin body — draggable */}
+      {/* Pin body */}
       <mesh
         ref={meshRef}
         position={[0, 0.4, 0]}
@@ -189,7 +186,7 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
         />
       </mesh>
 
-      {/* Pin top marker */}
+      {/* Pin top */}
       <mesh position={[0, 0.85, 0]}>
         {position.type === 'pyro' ? (
           <coneGeometry args={[0.12, 0.2, 6]} />
@@ -203,7 +200,7 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
         />
       </mesh>
 
-      {/* Selection ring — animated */}
+      {/* Selection ring */}
       {isSelected && (
         <group ref={glowRef}>
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
@@ -225,7 +222,7 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
         </mesh>
       )}
 
-      {/* Glow light */}
+      {/* Glow */}
       <pointLight
         color={color}
         intensity={isSelected ? 4 : isHovered ? 2 : 0.8}
@@ -245,11 +242,11 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
       {/* Label */}
       <Html position={[0, 1.3, 0]} center style={{ pointerEvents: 'none' }}>
         <div
-          className="px-2 py-0.5 rounded text-[9px] font-mono whitespace-nowrap flex items-center gap-1.5 backdrop-blur-sm"
+          className="px-2 py-0.5 rounded text-[9px] font-mono whitespace-nowrap flex items-center gap-1.5 backdrop-blur-sm select-none"
           style={{
             backgroundColor: isSelected ? `${color}55` : `${color}22`,
             border: `1px solid ${isSelected ? `${color}99` : `${color}44`}`,
-            color: color,
+            color,
             boxShadow: isSelected ? `0 0 12px ${color}44` : 'none',
           }}
         >
@@ -265,11 +262,11 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
         </div>
       </Html>
 
-      {/* Safety distance circle for selected pyro positions */}
+      {/* Safety ring for pyro */}
       {isSelected && position.type === 'pyro' && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
           <ringGeometry args={[9.5, 10, 48]} />
-          <meshBasicMaterial color="#FF4500" transparent opacity={0.12} />
+          <meshBasicMaterial color="#FF4500" transparent opacity={0.1} />
         </mesh>
       )}
     </group>
