@@ -1257,18 +1257,56 @@ serve(async (req) => {
       return new Response(JSON.stringify(trajResult), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // ── Single Formation: HYBRID approach ───────────────────
-    // For large counts or complex shapes: AI describes shape → server computes points
-    // For small counts: AI can still generate points directly
+    // ── Single Formation generation ───────────────────────────
+    // For large N (>500): skip AI entirely, use server-side math (fast, reliable)
+    // For medium N (60-500): hybrid (AI describes shape → server computes)
+    // For small N (<60): direct AI generation
     
-    const useHybrid = count > 60 || mode === "generative";
+    const usePureServer = count > 500 && mode !== "image";
+    const useHybrid = !usePureServer && (count > 60 || mode === "generative");
+    
+    if (usePureServer) {
+      console.log(`Pure server generation: "${prompt}", ${count} drones`);
+      const sf = count > 1000 ? 3.0 : 2.5;
+      const inferred = inferShapeType(prompt || "circle");
+      const rawPoints = generateShapePoints(inferred, count, { radius: Math.max(15, Math.sqrt(count) * sf) });
+      
+      const prev = previousFormation?.map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
+      // For large N, skip relaxation — server shapes use Fibonacci/parametric spacing
+      let processed = rawPoints;
+      // Just center and round
+      let cx2 = 0, cz2 = 0;
+      for (const p of processed) { cx2 += p.x; cz2 += p.z; }
+      cx2 /= processed.length; cz2 /= processed.length;
+      processed = processed.map(p => ({
+        x: Math.round((p.x - cx2) * 100) / 100,
+        z: Math.round((p.z - cz2) * 100) / 100,
+      }));
+      
+      // Optimize transition order for previous formation (skip for very large)
+      if (prev && prev.length === processed.length && count <= 1000) {
+        processed = optimizeTransitionOrder(prev, processed);
+      }
+      
+      console.log(`Pure server: shape=${inferred}, ${processed.length} points`);
+      
+      return new Response(JSON.stringify({
+        points: processed,
+        formationName: prompt || inferred,
+        suggestedHeight: Math.max(25, Math.min(80, 20 + count * 0.02)),
+        suggestedTransitionTime: Math.max(10, Math.min(30, 8 + count * 0.005)),
+        rawPointCount: processed.length,
+        model: "server-computed (instant)",
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     
     if (useHybrid && mode !== "image") {
       console.log(`Hybrid generation: "${prompt}", ${count} drones`);
       
+      const sf = count > 200 ? 2.5 : 2.2;
       const shapeMessages = [
         { role: "system", content: SHAPE_DESCRIPTOR_PROMPT },
-        { role: "user", content: `Describe the best shape for ${count} drones matching: "${prompt || 'circle'}"\n\nChoose the shape type and parameters. For complex/unusual shapes, use custom_outline with 15-30 key vertices. Radius should be approximately ${Math.round(Math.sqrt(count) * 2.2)}m.` },
+        { role: "user", content: `Describe the best shape for ${count} drones matching: "${prompt || 'circle'}"\n\nChoose the shape type and parameters. For complex/unusual shapes, use custom_outline with 15-30 key vertices. Radius should be approximately ${Math.round(Math.sqrt(count) * sf)}m.` },
       ];
 
       let shapeDesc: any;
@@ -1276,12 +1314,11 @@ serve(async (req) => {
         shapeDesc = await callAI(LOVABLE_API_KEY, "google/gemini-2.5-flash", shapeMessages, [buildShapeDescriptorTool()], { type: "function", function: { name: "describe_shape" } }, 0.1);
       } catch (e: any) {
         if (e.status === 429 || e.status === 402) throw e;
-        // Fallback: infer shape from prompt
         console.warn("Shape descriptor failed, inferring from prompt");
         const inferred = inferShapeType(prompt || "circle");
         shapeDesc = { 
           shapeType: inferred, 
-          params: { radius: Math.max(12, Math.sqrt(count) * 2.2) },
+          params: { radius: Math.max(12, Math.sqrt(count) * sf) },
           formationName: prompt || "Formation",
           suggestedHeight: 30,
           suggestedTransitionTime: 12,
