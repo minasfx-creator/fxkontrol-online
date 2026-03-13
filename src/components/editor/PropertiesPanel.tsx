@@ -157,7 +157,7 @@ function PositionInspector() {
 }
 
 export default function PropertiesPanel({ onToggleEffectEditor, showEffectEditor }: { onToggleEffectEditor?: () => void; showEffectEditor?: boolean }) {
-  const { selectedTimelineItemId, timelineItems, selectedEffectId, selectedPositionId } = useProjectStore();
+  const { selectedTimelineItemId, timelineItems, selectedEffectId, selectedPositionId, positions, updateTimelineItem } = useProjectStore();
 
   const selectedItem = timelineItems.find((i) => i.id === selectedTimelineItemId);
   const selectedEffect = selectedItem
@@ -167,6 +167,36 @@ export default function PropertiesPanel({ onToggleEffectEditor, showEffectEditor
       : null;
 
   const showPosition = selectedPositionId && !selectedEffect;
+
+  // Position linking helpers
+  const linkedPosition = selectedItem?.positionId
+    ? positions.find(p => p.id === selectedItem.positionId)
+    : null;
+  const pyroPositions = positions.filter(p => p.type === 'pyro');
+
+  const handleLinkPosition = (posId: string) => {
+    if (!selectedItem) return;
+    const pos = positions.find(p => p.id === posId);
+    if (!pos) return;
+    updateTimelineItem(selectedItem.id, {
+      positionId: posId,
+      positionName: pos.name,
+      position: { x: pos.x, y: pos.y, z: pos.z },
+    });
+  };
+
+  const handleUnlinkPosition = () => {
+    if (!selectedItem) return;
+    updateTimelineItem(selectedItem.id, {
+      positionId: undefined,
+      positionIds: undefined,
+      positionName: undefined,
+    });
+  };
+
+  // Count effects assigned to each position
+  const getPositionEffectCount = (posId: string) =>
+    timelineItems.filter(i => i.positionId === posId).length;
 
   return (
     <div className="h-full flex flex-col bg-card border-l border-border">
@@ -178,7 +208,32 @@ export default function PropertiesPanel({ onToggleEffectEditor, showEffectEditor
 
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
         {showPosition ? (
-          <PositionInspector />
+          <>
+            <PositionInspector />
+            {/* Show effects linked to this position */}
+            {selectedPositionId && (
+              <div className="space-y-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Linked Effects</p>
+                {timelineItems.filter(i => i.positionId === selectedPositionId).length === 0 ? (
+                  <p className="text-[10px] text-muted-foreground italic">No effects linked. Double-click an effect in the Asset Palette to assign it here.</p>
+                ) : (
+                  <div className="space-y-0.5">
+                    {timelineItems.filter(i => i.positionId === selectedPositionId).map(item => {
+                      const eff = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+                      if (!eff) return null;
+                      return (
+                        <div key={item.id} className="flex items-center gap-1.5 bg-surface-2 rounded-sm px-2 py-1">
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: eff.color }} />
+                          <span className="text-[10px] flex-1 truncate">{eff.name}</span>
+                          <span className="text-[9px] text-muted-foreground font-mono-code">{item.startTime.toFixed(1)}s</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         ) : selectedEffect ? (
           <>
             <div className="space-y-2">
@@ -201,6 +256,22 @@ export default function PropertiesPanel({ onToggleEffectEditor, showEffectEditor
                 </div>
               </div>
 
+              {/* Finale 3D fields */}
+              {(selectedEffect.caliber || selectedEffect.prefire || selectedEffect.safetyDistance) && (
+                <div className="bg-surface-2 rounded-sm p-2 space-y-1">
+                  <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Pyro Specs</p>
+                  <div className="grid grid-cols-3 gap-1 text-[10px] font-mono-code">
+                    {selectedEffect.caliber && <div><span className="text-muted-foreground">Cal:</span> {selectedEffect.caliber}"</div>}
+                    {selectedEffect.heightMeters && <div><span className="text-muted-foreground">H:</span> {selectedEffect.heightMeters}m</div>}
+                    {selectedEffect.prefire && <div><span className="text-muted-foreground">PFT:</span> {selectedEffect.prefire}s</div>}
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 text-[10px] font-mono-code">
+                    {selectedEffect.safetyDistance && <div><span className="text-muted-foreground">Safety:</span> {selectedEffect.safetyDistance}m</div>}
+                    {selectedEffect.pattern && <div><span className="text-muted-foreground">Pattern:</span> {selectedEffect.pattern}</div>}
+                  </div>
+                </div>
+              )}
+
               <div className="bg-surface-2 rounded-sm p-2">
                 <p className="text-[10px] text-muted-foreground mb-1">Color</p>
                 <div className="flex items-center gap-2">
@@ -209,9 +280,59 @@ export default function PropertiesPanel({ onToggleEffectEditor, showEffectEditor
                 </div>
               </div>
 
+              {/* ── Position Linking (Finale 3D) ── */}
+              {selectedItem && (
+                <div className="bg-surface-2 rounded-sm p-2 space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="w-3 h-3 text-primary" />
+                    <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Firing Position</p>
+                  </div>
+                  
+                  {linkedPosition ? (
+                    <div className="flex items-center gap-2">
+                      <Link2 className="w-3 h-3 text-primary" />
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-foreground">{linkedPosition.name}</p>
+                        <p className="text-[9px] text-muted-foreground font-mono-code">
+                          X:{linkedPosition.x.toFixed(1)} Z:{linkedPosition.z.toFixed(1)}
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleUnlinkPosition}
+                        className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                        title="Unlink position"
+                      >
+                        <Unlink className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <p className="text-[9px] text-warning italic">⚠ No position linked</p>
+                      {pyroPositions.length > 0 ? (
+                        <div className="max-h-24 overflow-y-auto space-y-0.5">
+                          {pyroPositions.map(pos => (
+                            <button
+                              key={pos.id}
+                              onClick={() => handleLinkPosition(pos.id)}
+                              className="w-full flex items-center gap-1.5 px-1.5 py-1 rounded-sm text-left hover:bg-primary/10 transition-colors"
+                            >
+                              <MapPin className="w-2.5 h-2.5 text-primary flex-shrink-0" />
+                              <span className="text-[10px] flex-1 truncate">{pos.name}</span>
+                              <span className="text-[8px] text-muted-foreground">{getPositionEffectCount(pos.id)} fx</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[9px] text-muted-foreground">Add pyro positions first (P key)</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {selectedItem && (
                 <div className="bg-surface-2 rounded-sm p-2">
-                  <p className="text-[10px] text-muted-foreground mb-1">Position</p>
+                  <p className="text-[10px] text-muted-foreground mb-1">World Position</p>
                   <div className="grid grid-cols-3 gap-1 text-[10px] font-mono-code">
                     <div><span className="text-destructive">X</span> {selectedItem.position.x.toFixed(1)}</div>
                     <div><span className="text-success">Y</span> {selectedItem.position.y.toFixed(1)}</div>
@@ -225,6 +346,7 @@ export default function PropertiesPanel({ onToggleEffectEditor, showEffectEditor
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <Settings2 className="h-6 w-6 text-muted-foreground/30 mb-2" />
             <p className="text-xs text-muted-foreground">Select an effect, timeline item, or position pin</p>
+            <p className="text-[9px] text-muted-foreground mt-1">💡 Select a pyro position first, then double-click an effect to assign it</p>
           </div>
         )}
 
