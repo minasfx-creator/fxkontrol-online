@@ -44,12 +44,16 @@ class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
 
 const CAMERA_PRESETS = [
   { id: 'free', label: 'Free', icon: Eye, position: [0, 12, 40] as [number, number, number], target: [0, 8, 0] as [number, number, number] },
-  { id: 'satellite', label: 'Satélite', icon: Plane, position: [0, 250, 10] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
+  { id: 'satellite', label: 'Top', icon: Plane, position: [0, 250, 0.1] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
   { id: 'audience', label: 'Plateia', icon: Users, position: [0, 4, 60] as [number, number, number], target: [0, 12, 0] as [number, number, number] },
-  { id: 'aerial', label: 'Aéreo', icon: Plane, position: [0, 120, 30] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
-  { id: 'side', label: 'Lateral', icon: Video, position: [60, 12, 0] as [number, number, number], target: [0, 12, 0] as [number, number, number] },
+  { id: 'front', label: 'Front', icon: Users, position: [0, 15, 80] as [number, number, number], target: [0, 15, 0] as [number, number, number] },
+  { id: 'side', label: 'Side', icon: Video, position: [80, 15, 0] as [number, number, number], target: [0, 15, 0] as [number, number, number] },
+  { id: 'back', label: 'Back', icon: Video, position: [0, 15, -80] as [number, number, number], target: [0, 15, 0] as [number, number, number] },
+  { id: 'aerial', label: 'Aerial 45°', icon: Plane, position: [0, 120, 120] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
   { id: 'closeup', label: 'Close-up', icon: Camera, position: [8, 8, 14] as [number, number, number], target: [0, 10, 0] as [number, number, number] },
   { id: 'cinematic', label: 'Cinema', icon: Video, position: [-25, 6, 50] as [number, number, number], target: [0, 15, 0] as [number, number, number] },
+  { id: 'drone-follow', label: 'Drone POV', icon: Eye, position: [5, 25, 5] as [number, number, number], target: [0, 25, 0] as [number, number, number] },
+  { id: 'vip', label: 'VIP Box', icon: Users, position: [30, 8, 45] as [number, number, number], target: [0, 12, 0] as [number, number, number] },
 ] as const;
 
 // --- Playback clock ---
@@ -766,17 +770,30 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
       {satelliteTexture && <SatelliteOverlay textureUrl={satelliteTexture} />}
       <GroundFog />
 
-      {/* Operational grid — expanded */}
+      {/* Operational grid — configurable with snap */}
       <Grid
         position={[0, 0.01, 0]}
-        args={[400, 400]}
-        cellSize={5}
-        cellThickness={0.3}
+        args={[500, 500]}
+        cellSize={2}
+        cellThickness={0.2}
         cellColor="#2a4a2a"
-        sectionSize={25}
-        sectionThickness={0.8}
+        sectionSize={10}
+        sectionThickness={0.6}
         sectionColor="#3a5a3a"
-        fadeDistance={200}
+        fadeDistance={250}
+        infiniteGrid
+      />
+      {/* 50m major grid marks */}
+      <Grid
+        position={[0, 0.015, 0]}
+        args={[500, 500]}
+        cellSize={50}
+        cellThickness={1.0}
+        cellColor="#4a6a4a"
+        sectionSize={100}
+        sectionThickness={1.2}
+        sectionColor="#5a7a5a"
+        fadeDistance={400}
         infiniteGrid
       />
 
@@ -918,14 +935,26 @@ function CameraController({ targetPosition, targetLookAt }: { targetPosition: [n
 
   useFrame(() => {
     if (!animating.current || !controlsRef.current) return;
-    camera.position.lerp(targetPos.current, 0.06);
-    controlsRef.current.target.lerp(targetLook.current, 0.06);
+    // Smooth cinematic interpolation
+    camera.position.lerp(targetPos.current, 0.04);
+    controlsRef.current.target.lerp(targetLook.current, 0.04);
     controlsRef.current.update();
     if (camera.position.distanceTo(targetPos.current) < 0.05) animating.current = false;
   });
 
   return (
-    <OrbitControls ref={controlsRef} enableDamping dampingFactor={0.05} maxPolarAngle={Math.PI * 0.48} minDistance={3} maxDistance={800} />
+    <OrbitControls
+      ref={controlsRef}
+      enableDamping
+      dampingFactor={0.08}
+      rotateSpeed={0.6}
+      panSpeed={0.8}
+      zoomSpeed={1.2}
+      maxPolarAngle={Math.PI * 0.48}
+      minDistance={2}
+      maxDistance={1200}
+      enablePan
+    />
   );
 }
 
@@ -1096,8 +1125,9 @@ export default function SkyCanvas() {
       <ViewportTerminal />
       <MiniMap />
 
-      <div className="absolute bottom-3 right-3 text-xs font-mono-code text-muted-foreground bg-surface-1/80 px-2 py-1 rounded-sm border border-border/50">
-        Orbit: LMB · Pan: MMB · Zoom: Scroll
+      <div className="absolute bottom-3 right-3 text-xs font-mono-code text-muted-foreground bg-surface-1/80 px-2 py-1 rounded-sm border border-border/50 space-y-0.5">
+        <div>Orbit: LMB · Pan: MMB · Zoom: Scroll</div>
+        <div className="text-[9px]">Grid: 2m · Snap: 10m · Scale poles: 10m</div>
       </div>
     </div>
   );
