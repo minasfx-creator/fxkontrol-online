@@ -163,7 +163,6 @@ function FireworkBurst({ position, color, progress }: { position: [number, numbe
 
   return (
     <group position={position}>
-      {/* Glow handled by bloom — no pointLight to avoid uniform overflow */}
       <points ref={pointsRef}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[new Float32Array(PARTICLE_COUNT * 3), 3]} />
@@ -221,47 +220,99 @@ function TimelineEffects() {
 }
 
 // ========================================================================
-// FINALE 3D STYLE — Clean gradient night sky
+// UE5-STYLE — Atmospheric scattering sky with Rayleigh/Mie
 // ========================================================================
 function SkyGradient() {
   return (
     <mesh>
-      <sphereGeometry args={[200, 32, 32]} />
+      <sphereGeometry args={[200, 64, 64]} />
       <shaderMaterial
         side={THREE.BackSide}
         vertexShader={`
           varying vec3 vWorldPosition;
+          varying vec3 vViewDir;
           void main() {
             vec4 worldPosition = modelMatrix * vec4(position, 1.0);
             vWorldPosition = worldPosition.xyz;
+            vViewDir = normalize(worldPosition.xyz - cameraPosition);
             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
           }
         `}
         fragmentShader={`
           varying vec3 vWorldPosition;
+          varying vec3 vViewDir;
+          
+          // Procedural star field
+          float hash21(vec2 p) {
+            p = fract(p * vec2(123.34, 456.21));
+            p += dot(p, p + 45.32);
+            return fract(p.x * p.y);
+          }
+          
+          float starField(vec3 dir) {
+            // Project direction to 2D grid cells
+            vec2 uv = vec2(atan(dir.x, dir.z) * 3.183, asin(clamp(dir.y, -1.0, 1.0)) * 6.366);
+            vec2 id = floor(uv * 120.0);
+            float h = hash21(id);
+            if (h > 0.985) {
+              vec2 offset = fract(uv * 120.0) - 0.5;
+              float brightness = smoothstep(0.12, 0.0, length(offset)) * (0.4 + h * 3.0);
+              // Twinkling
+              float twinkle = sin(h * 6283.0 + h * 200.0) * 0.3 + 0.7;
+              return brightness * twinkle * smoothstep(0.05, 0.3, dir.y);
+            }
+            return 0.0;
+          }
           
           void main() {
             vec3 dir = normalize(vWorldPosition);
             float h = dir.y;
             
-            // Clean night sky gradient — Finale 3D style
-            vec3 zenith = vec3(0.02, 0.02, 0.06);       // dark blue-black top
-            vec3 mid = vec3(0.04, 0.06, 0.14);           // deep navy
-            vec3 horizon = vec3(0.08, 0.10, 0.18);       // lighter blue-grey horizon
-            vec3 ground = vec3(0.02, 0.03, 0.05);        // below horizon
+            // UE5-style atmospheric sky
+            // Deep space zenith → rich navy mid → warm horizon glow
+            vec3 zenith    = vec3(0.008, 0.012, 0.04);      // near-black deep space
+            vec3 upperSky  = vec3(0.015, 0.025, 0.08);      // deep indigo
+            vec3 midSky    = vec3(0.03, 0.05, 0.14);        // rich navy
+            vec3 lowSky    = vec3(0.06, 0.08, 0.18);        // steel blue
+            vec3 horizon   = vec3(0.10, 0.10, 0.16);        // warm grey-blue
+            vec3 ground    = vec3(0.015, 0.02, 0.035);      // very dark ground
             
             vec3 color;
-            if (h > 0.3) {
-              color = mix(mid, zenith, smoothstep(0.3, 0.9, h));
+            if (h > 0.6) {
+              color = mix(upperSky, zenith, smoothstep(0.6, 1.0, h));
+            } else if (h > 0.3) {
+              color = mix(midSky, upperSky, smoothstep(0.3, 0.6, h));
+            } else if (h > 0.1) {
+              color = mix(lowSky, midSky, smoothstep(0.1, 0.3, h));
             } else if (h > 0.0) {
-              color = mix(horizon, mid, smoothstep(0.0, 0.3, h));
+              color = mix(horizon, lowSky, smoothstep(0.0, 0.1, h));
             } else {
-              color = mix(ground, horizon, smoothstep(-0.15, 0.0, h));
+              color = mix(ground, horizon, smoothstep(-0.2, 0.0, h));
             }
             
-            // Subtle warm glow at horizon
-            float horizonBand = exp(-h * h * 80.0);
-            color += vec3(0.06, 0.04, 0.02) * horizonBand * 0.3;
+            // Warm horizon glow band — Rayleigh scattering simulation
+            float horizonBand = exp(-h * h * 120.0);
+            vec3 horizonGlow = vec3(0.12, 0.08, 0.04); // amber-orange
+            color += horizonGlow * horizonBand * 0.25;
+            
+            // Cool horizon anti-glow (opposite side) — subtle blue
+            float antiHorizon = exp(-(h - 0.05) * (h - 0.05) * 40.0);
+            color += vec3(0.02, 0.04, 0.08) * antiHorizon * 0.15;
+            
+            // Milky Way band — diagonal streak across sky
+            float milkyAngle = dir.x * 0.6 + dir.z * 0.8;
+            float milkyBand = exp(-pow(milkyAngle - dir.y * 0.5, 2.0) * 8.0);
+            float milkyDetail = hash21(dir.xz * 40.0) * 0.3 + 0.7;
+            color += vec3(0.02, 0.025, 0.04) * milkyBand * milkyDetail * smoothstep(0.1, 0.4, h) * 0.5;
+            
+            // Procedural stars (supplement drei Stars)
+            float stars = starField(dir);
+            vec3 starColor = mix(vec3(0.8, 0.85, 1.0), vec3(1.0, 0.9, 0.7), hash21(dir.xz * 50.0));
+            color += starColor * stars * 0.6;
+            
+            // Atmospheric scattering — slight color shift at low angles
+            float scatter = pow(max(1.0 - h, 0.0), 4.0);
+            color += vec3(0.015, 0.01, 0.025) * scatter;
             
             gl_FragColor = vec4(color, 1.0);
           }
@@ -271,44 +322,130 @@ function SkyGradient() {
   );
 }
 
-// --- Simple moon ---
+// --- Volumetric Moon with crater detail ---
 function Moon() {
   return (
     <group position={[60, 55, -80]}>
+      {/* Moon body with procedural surface */}
       <mesh>
-        <sphereGeometry args={[3, 32, 32]} />
-        <meshBasicMaterial color="#c8c0b0" />
+        <sphereGeometry args={[3.5, 64, 64]} />
+        <shaderMaterial
+          vertexShader={`
+            varying vec3 vNormal;
+            varying vec3 vPosition;
+            varying vec2 vUv;
+            void main() {
+              vNormal = normalize(normalMatrix * normal);
+              vPosition = position;
+              vUv = uv;
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+          `}
+          fragmentShader={`
+            varying vec3 vNormal;
+            varying vec3 vPosition;
+            varying vec2 vUv;
+            
+            float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+            float noise(vec2 p) {
+              vec2 i = floor(p); vec2 f = fract(p);
+              f = f * f * (3.0 - 2.0 * f);
+              return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
+                         mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+            }
+            
+            void main() {
+              vec3 n = normalize(vNormal);
+              vec3 lightDir = normalize(vec3(0.3, 0.2, -1.0));
+              
+              // Base moon color with warmth
+              vec3 moonBase = vec3(0.85, 0.82, 0.75);
+              
+              // Crater detail using procedural noise
+              float craters = noise(vPosition.xy * 3.0) * 0.3 + 
+                              noise(vPosition.xz * 5.0) * 0.2 +
+                              noise(vPosition.yz * 8.0) * 0.1;
+              
+              // Maria (dark patches)
+              float maria = smoothstep(0.4, 0.6, noise(vPosition.xz * 1.5 + 10.0));
+              moonBase = mix(moonBase, vec3(0.55, 0.52, 0.48), maria * 0.3);
+              
+              // Lighting
+              float diffuse = max(dot(n, lightDir), 0.0) * 0.6 + 0.4;
+              float rim = pow(1.0 - max(dot(n, vec3(0, 0, 1)), 0.0), 3.0);
+              
+              vec3 color = moonBase * (1.0 - craters * 0.2) * diffuse;
+              color += vec3(0.15, 0.18, 0.25) * rim * 0.3; // Blue rim light
+              
+              gl_FragColor = vec4(color, 1.0);
+            }
+          `}
+        />
       </mesh>
-      {/* Soft glow */}
+      {/* Inner glow — HDR for bloom catch */}
       <mesh>
-        <sphereGeometry args={[5, 16, 16]} />
-        <meshBasicMaterial color="#8090a0" transparent opacity={0.08} blending={THREE.AdditiveBlending} />
+        <sphereGeometry args={[3.7, 32, 32]} />
+        <meshBasicMaterial color="#c0b8a0" transparent opacity={0.12} blending={THREE.AdditiveBlending} />
+      </mesh>
+      {/* Outer volumetric halo */}
+      <mesh>
+        <sphereGeometry args={[6, 32, 32]} />
+        <shaderMaterial
+          transparent
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          vertexShader={`
+            varying vec3 vNormal;
+            void main() {
+              vNormal = normalize(normalMatrix * normal);
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+          `}
+          fragmentShader={`
+            varying vec3 vNormal;
+            void main() {
+              float intensity = pow(0.6 - dot(vNormal, vec3(0, 0, 1.0)), 3.0);
+              vec3 color = vec3(0.3, 0.35, 0.5) * intensity;
+              gl_FragColor = vec4(color, intensity * 0.15);
+            }
+          `}
+        />
+      </mesh>
+      {/* Wide atmospheric scatter */}
+      <mesh>
+        <sphereGeometry args={[12, 16, 16]} />
+        <meshBasicMaterial color="#506080" transparent opacity={0.025} blending={THREE.AdditiveBlending} />
       </mesh>
       <pointLight color="#8899bb" intensity={0.3} distance={300} decay={1} />
     </group>
   );
 }
 
-// --- Procedural grass shader ground ---
+// --- UE5-style procedural grass ground with PBR-like shading ---
 function GrassGround() {
   const uniforms = useMemo(() => ({
     time: { value: 0 },
     moonDir: { value: new THREE.Vector3(0.5, 0.7, -0.5).normalize() },
+    camPos: { value: new THREE.Vector3() },
   }), []);
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, camera }) => {
     uniforms.time.value = clock.getElapsedTime();
+    uniforms.camPos.value.copy(camera.position);
   });
 
   const grassVertexShader = `
     varying vec2 vUv;
     varying vec3 vWorldPos;
     varying vec3 vNormal;
+    varying vec3 vViewDir;
+    uniform vec3 camPos;
     void main() {
       vUv = uv;
       vNormal = normalize(normalMatrix * normal);
       vec4 wp = modelMatrix * vec4(position, 1.0);
       vWorldPos = wp.xyz;
+      vViewDir = normalize(camPos - wp.xyz);
       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     }
   `;
@@ -316,9 +453,11 @@ function GrassGround() {
   const grassFragmentShader = `
     uniform float time;
     uniform vec3 moonDir;
+    uniform vec3 camPos;
     varying vec2 vUv;
     varying vec3 vWorldPos;
     varying vec3 vNormal;
+    varying vec3 vViewDir;
 
     float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
     float noise(vec2 p) {
@@ -329,56 +468,105 @@ function GrassGround() {
     }
     float fbm(vec2 p) {
       float v = 0.0; float a = 0.5;
-      for (int i = 0; i < 5; i++) { v += a * noise(p); p *= 2.1; a *= 0.5; }
+      for (int i = 0; i < 6; i++) { v += a * noise(p); p *= 2.1; a *= 0.48; }
       return v;
+    }
+    
+    // Voronoi for clump patterns
+    float voronoi(vec2 p) {
+      vec2 n = floor(p);
+      vec2 f = fract(p);
+      float md = 8.0;
+      for (int j = -1; j <= 1; j++) {
+        for (int i = -1; i <= 1; i++) {
+          vec2 g = vec2(float(i), float(j));
+          vec2 o = vec2(hash(n + g), hash(n + g + 42.0));
+          vec2 r = g + o - f;
+          float d = dot(r, r);
+          md = min(md, d);
+        }
+      }
+      return sqrt(md);
     }
 
     void main() {
       vec2 worldUV = vWorldPos.xz;
 
-      // Multi-scale grass color variation
-      float large = fbm(worldUV * 0.02);
-      float medium = fbm(worldUV * 0.08 + 50.0);
-      float fine = fbm(worldUV * 0.5 + 100.0);
-      float micro = noise(worldUV * 4.0);
+      // Multi-scale grass variation with 6-octave fbm
+      float large = fbm(worldUV * 0.015);
+      float medium = fbm(worldUV * 0.06 + 50.0);
+      float fine = fbm(worldUV * 0.3 + 100.0);
+      float micro = noise(worldUV * 3.0);
+      float ultra = noise(worldUV * 12.0);
+      
+      // Voronoi clumps for grass species variety
+      float clumps = voronoi(worldUV * 0.08);
 
-      // Base grass palette — dark greens with brown patches
-      vec3 grassDark  = vec3(0.06, 0.14, 0.04);
-      vec3 grassMid   = vec3(0.10, 0.22, 0.06);
-      vec3 grassLight = vec3(0.14, 0.30, 0.08);
-      vec3 grassDry   = vec3(0.16, 0.18, 0.06);
-      vec3 dirt        = vec3(0.10, 0.08, 0.04);
+      // Rich grass palette — multiple species
+      vec3 grassDarkA  = vec3(0.04, 0.10, 0.03);   // deep forest
+      vec3 grassDarkB  = vec3(0.06, 0.13, 0.04);   // dark emerald
+      vec3 grassMid    = vec3(0.08, 0.19, 0.05);   // healthy green
+      vec3 grassLight  = vec3(0.12, 0.26, 0.07);   // bright green
+      vec3 grassYellow = vec3(0.16, 0.20, 0.06);   // dry grass
+      vec3 grassDry    = vec3(0.14, 0.15, 0.05);   // straw
+      vec3 dirt        = vec3(0.08, 0.06, 0.03);   // exposed soil
+      vec3 moss        = vec3(0.05, 0.10, 0.04);   // damp moss
 
-      // Blend grass types
-      vec3 color = mix(grassDark, grassMid, smoothstep(0.3, 0.6, large));
-      color = mix(color, grassLight, smoothstep(0.5, 0.8, medium) * 0.5);
-      color = mix(color, grassDry, smoothstep(0.65, 0.85, large * medium) * 0.4);
+      // Blend grass types using multi-scale noise
+      vec3 color = mix(grassDarkA, grassDarkB, smoothstep(0.3, 0.7, large));
+      color = mix(color, grassMid, smoothstep(0.4, 0.7, medium) * 0.6);
+      color = mix(color, grassLight, smoothstep(0.55, 0.8, fine) * 0.4);
+      
+      // Species variation via voronoi
+      color = mix(color, grassYellow, smoothstep(0.3, 0.5, clumps) * smoothstep(0.6, 0.8, large) * 0.35);
+      color = mix(color, moss, smoothstep(0.7, 0.9, clumps) * smoothstep(0.3, 0.5, medium) * 0.25);
+      
+      // Dry patches
+      float dryMask = smoothstep(0.68, 0.85, fbm(worldUV * 0.12 + 200.0));
+      color = mix(color, grassDry, dryMask * 0.45);
 
-      // Dirt patches
-      float dirtMask = smoothstep(0.7, 0.82, fbm(worldUV * 0.15 + 200.0));
-      color = mix(color, dirt, dirtMask * 0.6);
+      // Dirt patches (worn areas)
+      float dirtMask = smoothstep(0.78, 0.88, fbm(worldUV * 0.1 + 300.0));
+      color = mix(color, dirt, dirtMask * 0.5);
 
       // Fine grass blade texture
-      float blades = smoothstep(0.35, 0.65, micro) * 0.15;
-      color += vec3(0.02, 0.04, 0.01) * blades;
+      float bladeAngle = noise(worldUV * 8.0 + time * 0.05);
+      float blades = smoothstep(0.3, 0.7, micro) * 0.12;
+      color += vec3(0.015, 0.03, 0.008) * blades * (0.8 + bladeAngle * 0.4);
 
-      // Wind-driven color shift (subtle)
-      float wind = sin(worldUV.x * 0.3 + time * 0.4) * cos(worldUV.y * 0.2 + time * 0.3);
-      color += vec3(0.01, 0.02, 0.005) * wind * 0.3;
+      // Wind-driven color ripple (grass bending reveals lighter underside)
+      float windWave1 = sin(worldUV.x * 0.4 + time * 0.6) * cos(worldUV.y * 0.3 + time * 0.45);
+      float windWave2 = sin(worldUV.x * 1.2 + worldUV.y * 0.8 + time * 1.2) * 0.5;
+      float windEffect = (windWave1 * 0.6 + windWave2 * 0.4);
+      color += vec3(0.012, 0.025, 0.006) * windEffect * 0.4;
 
-      // Moonlight diffuse
-      float diffuse = max(dot(vNormal, moonDir), 0.0);
-      float ambient = 0.25;
-      color *= (diffuse * 0.6 + ambient);
+      // Moonlight diffuse — enhanced with subsurface approximation
+      float NdotL = max(dot(vNormal, moonDir), 0.0);
+      float subsurface = max(dot(-vNormal, moonDir), 0.0) * 0.08; // light through thin blades
+      float ambient = 0.2;
+      float lighting = NdotL * 0.55 + subsurface + ambient;
+      color *= lighting;
 
-      // Distance fade to darker
-      float dist = length(worldUV) * 0.005;
-      color *= 1.0 - smoothstep(0.0, 1.0, dist) * 0.4;
+      // Specular — wet grass sheen
+      vec3 halfDir = normalize(moonDir + vViewDir);
+      float spec = pow(max(dot(vNormal, halfDir), 0.0), 32.0);
+      float wetness = smoothstep(0.5, 0.75, fine) * (1.0 - dryMask);
+      color += vec3(0.04, 0.06, 0.10) * spec * wetness * 0.4;
 
-      // Subtle dew/moisture specular
-      float dew = pow(max(dot(reflect(-moonDir, vNormal), normalize(vec3(0,1,0))), 0.0), 16.0);
-      float dewMask = smoothstep(0.4, 0.7, fine);
-      color += vec3(0.05, 0.08, 0.12) * dew * dewMask * 0.3;
+      // Dew sparkles — individual bright points
+      float dewNoise = noise(worldUV * 25.0);
+      float dewSparkle = smoothstep(0.92, 0.95, dewNoise) * smoothstep(0.4, 0.7, fine);
+      float dewTwinkle = sin(time * 2.0 + dewNoise * 100.0) * 0.3 + 0.7;
+      color += vec3(0.08, 0.12, 0.18) * dewSparkle * dewTwinkle * NdotL;
+
+      // Distance fog — atmospheric perspective
+      float dist = length(worldUV) * 0.004;
+      float fogFactor = smoothstep(0.0, 1.0, dist);
+      vec3 fogColor = vec3(0.03, 0.04, 0.07);
+      color = mix(color, fogColor, fogFactor * 0.6);
+
+      // Distance darkening for vignette feel
+      color *= 1.0 - fogFactor * 0.3;
 
       gl_FragColor = vec4(color, 1.0);
     }
@@ -387,14 +575,14 @@ function GrassGround() {
   return (
     <>
       <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[500, 500, 1, 1]} />
+        <planeGeometry args={[500, 500, 2, 2]} />
         <shaderMaterial
           uniforms={uniforms}
           vertexShader={grassVertexShader}
           fragmentShader={grassFragmentShader}
         />
       </mesh>
-      {/* Slightly brighter near-stage grass overlay */}
+      {/* Near-stage premium grass with mowing pattern */}
       <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[50, 64]} />
         <shaderMaterial
@@ -403,9 +591,11 @@ function GrassGround() {
           fragmentShader={`
             uniform float time;
             uniform vec3 moonDir;
+            uniform vec3 camPos;
             varying vec2 vUv;
             varying vec3 vWorldPos;
             varying vec3 vNormal;
+            varying vec3 vViewDir;
 
             float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
             float noise(vec2 p) {
@@ -425,23 +615,32 @@ function GrassGround() {
               float large = fbm(worldUV * 0.03);
               float fine = noise(worldUV * 5.0);
 
-              // Well-maintained grass near stage
-              vec3 grassA = vec3(0.08, 0.20, 0.05);
-              vec3 grassB = vec3(0.12, 0.28, 0.07);
+              // Well-maintained turf
+              vec3 grassA = vec3(0.06, 0.17, 0.04);
+              vec3 grassB = vec3(0.10, 0.24, 0.06);
               vec3 color = mix(grassA, grassB, smoothstep(0.3, 0.7, large));
               color += vec3(0.01, 0.03, 0.005) * fine * 0.2;
 
-              // Mowing pattern (stripes)
+              // Professional diamond mowing pattern
               float stripes = sin(worldUV.x * 1.5) * 0.5 + 0.5;
-              color = mix(color, color * 1.08, stripes * 0.15);
+              float crossStripes = sin(worldUV.y * 1.5 + 0.785) * 0.5 + 0.5;
+              float diamond = stripes * crossStripes;
+              color = mix(color, color * 1.1, diamond * 0.12);
 
-              float diffuse = max(dot(vNormal, moonDir), 0.0);
-              color *= (diffuse * 0.6 + 0.3);
+              // Subsurface + diffuse
+              float NdotL = max(dot(vNormal, moonDir), 0.0);
+              float ambient = 0.25;
+              color *= (NdotL * 0.55 + ambient);
 
-              // Edge fade
+              // Subtle specular sheen
+              vec3 halfDir = normalize(moonDir + vViewDir);
+              float spec = pow(max(dot(vNormal, halfDir), 0.0), 24.0);
+              color += vec3(0.03, 0.05, 0.08) * spec * 0.3;
+
+              // Edge blend
               float edgeDist = length(vWorldPos.xz) / 50.0;
-              float edgeFade = smoothstep(0.85, 1.0, edgeDist);
-              color = mix(color, vec3(0.06, 0.14, 0.04), edgeFade);
+              float edgeFade = smoothstep(0.8, 1.0, edgeDist);
+              color = mix(color, vec3(0.05, 0.12, 0.03), edgeFade);
 
               gl_FragColor = vec4(color, 1.0);
             }
@@ -453,10 +652,120 @@ function GrassGround() {
   );
 }
 
+// --- Atmospheric dust particles floating in the air ---
+function AtmosphericParticles() {
+  const pointsRef = useRef<THREE.Points>(null);
+  const count = 300;
+  
+  const { positions, sizes } = useMemo(() => {
+    const pos = new Float32Array(count * 3);
+    const sz = new Float32Array(count);
+    for (let i = 0; i < count; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 120;
+      pos[i * 3 + 1] = Math.random() * 30 + 1;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 120;
+      sz[i] = 0.02 + Math.random() * 0.06;
+    }
+    return { positions: pos, sizes: sz };
+  }, []);
+
+  useFrame(({ clock }) => {
+    if (!pointsRef.current) return;
+    const t = clock.getElapsedTime();
+    const posAttr = pointsRef.current.geometry.getAttribute('position') as THREE.BufferAttribute;
+    const arr = posAttr.array as Float32Array;
+    for (let i = 0; i < count; i++) {
+      arr[i * 3] += Math.sin(t * 0.1 + i * 0.5) * 0.003;
+      arr[i * 3 + 1] += Math.sin(t * 0.15 + i * 0.3) * 0.002;
+      arr[i * 3 + 2] += Math.cos(t * 0.08 + i * 0.7) * 0.003;
+    }
+    posAttr.needsUpdate = true;
+  });
+
+  return (
+    <points ref={pointsRef}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial
+        size={0.06}
+        color="#8899bb"
+        transparent
+        opacity={0.15}
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        sizeAttenuation
+      />
+    </points>
+  );
+}
+
+// --- Ground fog layer ---
+function GroundFog() {
+  const fogRef = useRef<THREE.Mesh>(null);
+  const uniforms = useMemo(() => ({
+    time: { value: 0 },
+  }), []);
+
+  useFrame(({ clock }) => {
+    uniforms.time.value = clock.getElapsedTime();
+  });
+
+  return (
+    <mesh ref={fogRef} position={[0, 0.3, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={[200, 200, 1, 1]} />
+      <shaderMaterial
+        transparent
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        uniforms={uniforms}
+        vertexShader={`
+          varying vec2 vUv;
+          varying vec3 vWorldPos;
+          void main() {
+            vUv = uv;
+            vec4 wp = modelMatrix * vec4(position, 1.0);
+            vWorldPos = wp.xyz;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `}
+        fragmentShader={`
+          uniform float time;
+          varying vec2 vUv;
+          varying vec3 vWorldPos;
+          
+          float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+          float noise(vec2 p) {
+            vec2 i = floor(p); vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
+                       mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+          }
+          
+          void main() {
+            vec2 uv = vWorldPos.xz * 0.01;
+            float n1 = noise(uv * 3.0 + time * 0.02);
+            float n2 = noise(uv * 6.0 - time * 0.015);
+            float fog = n1 * 0.6 + n2 * 0.4;
+            
+            // Fade at edges
+            float dist = length(vWorldPos.xz) * 0.01;
+            float edgeFade = 1.0 - smoothstep(0.5, 1.0, dist);
+            
+            float alpha = fog * 0.04 * edgeFade;
+            gl_FragColor = vec4(0.15, 0.18, 0.25, alpha);
+          }
+        `}
+      />
+    </mesh>
+  );
+}
+
 function StageGround() {
   return (
     <group>
       <GrassGround />
+      <GroundFog />
 
       {/* Operational grid */}
       <Grid
@@ -482,12 +791,12 @@ function StageGround() {
         <meshBasicMaterial color="#ffaa00" transparent opacity={0.3} />
       </mesh>
 
-      {/* Scale reference poles */}
+      {/* Scale reference poles with enhanced detail */}
       {[-20, -10, 0, 10, 20].map((x) => (
         <group key={`pole-${x}`} position={[x, 0, -20]}>
           <mesh position={[0, 3, 0]} castShadow>
             <cylinderGeometry args={[0.03, 0.04, 6, 8]} />
-            <meshStandardMaterial color="#666666" metalness={0.5} roughness={0.4} />
+            <meshStandardMaterial color="#555555" metalness={0.7} roughness={0.25} />
           </mesh>
           {[2, 4, 6].map((h) => (
             <mesh key={h} position={[0, h, 0]}>
@@ -499,6 +808,11 @@ function StageGround() {
             <sphereGeometry args={[0.06, 8, 8]} />
             <meshBasicMaterial color="#ff0000" />
           </mesh>
+          {/* Pole base */}
+          <mesh position={[0, 0.05, 0]}>
+            <cylinderGeometry args={[0.15, 0.18, 0.1, 8]} />
+            <meshStandardMaterial color="#444444" metalness={0.6} roughness={0.3} />
+          </mesh>
         </group>
       ))}
 
@@ -508,32 +822,48 @@ function StageGround() {
   );
 }
 
-// --- Simple dark tree silhouettes at horizon ---
+// --- Layered tree silhouettes with depth ---
 function TreelineSilhouette() {
   const trees = useMemo(() => {
-    const result: { x: number; z: number; h: number; w: number }[] = [];
-    for (let i = 0; i < 80; i++) {
-      const angle = (i / 80) * Math.PI * 2;
-      const dist = 90 + Math.random() * 15;
-      result.push({
-        x: Math.cos(angle) * dist,
-        z: Math.sin(angle) * dist,
-        h: 4 + Math.random() * 8,
-        w: 2 + Math.random() * 3,
-      });
+    const result: { x: number; z: number; h: number; w: number; layer: number }[] = [];
+    // 3 depth layers
+    for (let layer = 0; layer < 3; layer++) {
+      const count = 60 - layer * 15;
+      const baseDist = 85 + layer * 20;
+      for (let i = 0; i < count; i++) {
+        const angle = (i / count) * Math.PI * 2 + layer * 0.05;
+        const dist = baseDist + Math.random() * 10;
+        result.push({
+          x: Math.cos(angle) * dist,
+          z: Math.sin(angle) * dist,
+          h: 3 + Math.random() * 10 + layer * 2,
+          w: 2 + Math.random() * 4,
+          layer,
+        });
+      }
     }
     return result;
   }, []);
 
   return (
     <group>
-      {trees.map((t, i) => (
-        <mesh key={i} position={[t.x, t.h * 0.5, t.z]}
-          rotation={[0, Math.atan2(t.x, t.z), 0]}>
-          <planeGeometry args={[t.w, t.h]} />
-          <meshBasicMaterial color="#0a1a0a" transparent opacity={0.85} side={THREE.DoubleSide} />
-        </mesh>
-      ))}
+      {trees.map((t, i) => {
+        // Darker and more transparent for distant layers
+        const brightness = 0.03 + t.layer * 0.015;
+        const opacity = 0.9 - t.layer * 0.15;
+        return (
+          <mesh key={i} position={[t.x, t.h * 0.5, t.z]}
+            rotation={[0, Math.atan2(t.x, t.z), 0]}>
+            <planeGeometry args={[t.w, t.h]} />
+            <meshBasicMaterial
+              color={new THREE.Color(brightness, brightness + 0.02, brightness)}
+              transparent
+              opacity={opacity}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+        );
+      })}
     </group>
   );
 }
@@ -559,9 +889,14 @@ function LaunchSites() {
             <ringGeometry args={[0.8, 0.85, 16]} />
             <meshBasicMaterial color="#cc3030" transparent opacity={0.25} />
           </mesh>
+          {/* Status LED with glow */}
           <mesh position={[0.3, 0.08, 0.3]}>
-            <sphereGeometry args={[0.02, 6, 6]} />
-            <meshBasicMaterial color="#00ff44" />
+            <sphereGeometry args={[0.025, 8, 8]} />
+            <meshBasicMaterial color="#00ff44" toneMapped={false} />
+          </mesh>
+          <mesh position={[0.3, 0.08, 0.3]}>
+            <sphereGeometry args={[0.06, 8, 8]} />
+            <meshBasicMaterial color="#00ff44" transparent opacity={0.1} blending={THREE.AdditiveBlending} />
           </mesh>
         </group>
       ))}
@@ -606,30 +941,30 @@ export default function SkyCanvas() {
   const droneCount = droneFormations.length > 0 ? droneFormations[0].droneCount : 0;
 
   return (
-    <div className="w-full h-full relative bg-[#050510]" data-sky-canvas style={{ cursor: cursorStyle }}>
+    <div className="w-full h-full relative bg-[#030308]" data-sky-canvas style={{ cursor: cursorStyle }}>
       <WebGLErrorBoundary>
       <Canvas
         shadows
         gl={{
-          antialias: true,
+          antialias: false, // SMAA handles this in post
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.2,
+          toneMappingExposure: 1.0,
           powerPreference: 'high-performance',
           alpha: false,
           stencil: false,
         }}
-        dpr={[1, 2]}
+        dpr={[1, 1.5]}
       >
         <PerspectiveCamera makeDefault position={preset.position} fov={55} near={0.2} far={500} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} />
 
-        {/* Clean functional lighting — Finale 3D style */}
-        <ambientLight intensity={0.15} color="#8090b0" />
+        {/* UE5-style cinematic lighting */}
+        <ambientLight intensity={0.08} color="#607090" />
         
-        {/* Moonlight */}
+        {/* Moonlight — key light */}
         <directionalLight
           position={[60, 55, -80]}
-          intensity={0.35}
+          intensity={0.4}
           color="#8899cc"
           castShadow
           shadow-mapSize={[2048, 2048]}
@@ -641,15 +976,21 @@ export default function SkyCanvas() {
           shadow-bias={-0.0001}
         />
         
-        {/* Sky fill */}
-        <hemisphereLight args={['#1a2040', '#0a1808', 0.12]} />
+        {/* Sky hemisphere — blue fill from above, warm from ground */}
+        <hemisphereLight args={['#152040', '#0a1808', 0.1]} />
         
-        {/* Ground fill removed — minimal contribution, saves uniform slots */}
+        {/* Rim backlight for atmospheric depth */}
+        <directionalLight
+          position={[-40, 20, 60]}
+          intensity={0.08}
+          color="#4466aa"
+        />
 
         <SkyGradient />
         <Moon />
-        <Stars radius={180} depth={80} count={6000} factor={4} saturation={0.1} fade speed={0.1} />
-        <fog attach="fog" args={['#0a0e18', 80, 250]} />
+        <Stars radius={180} depth={80} count={4000} factor={3.5} saturation={0.15} fade speed={0.05} />
+        <AtmosphericParticles />
+        <fog attach="fog" args={['#080c16', 60, 220]} />
 
         <StageGround />
         <LaunchSites />
