@@ -71,7 +71,7 @@ export default function BoxSelectOverlay() {
     if (!canvas) return;
 
     const onDown = (e: MouseEvent) => {
-      if (!e.altKey) return;
+      if (!e.shiftKey) return;
       e.preventDefault();
       e.stopPropagation();
       const r = canvas.getBoundingClientRect();
