@@ -210,7 +210,14 @@ function LightPoint({ position, color }: { position: [number, number, number]; c
 
 function TimelineEffects() {
   const { timelineItems, currentTime, positions } = useProjectStore();
+  const sceneSettings = useSceneStore(st => st.settings);
   const activeEffects = useMemo(() => {
+    const effectScale = sceneSettings.effectScale;
+    const weatherDampening = sceneSettings.weather === 'heavy-rain' ? 0.6 :
+      sceneSettings.weather === 'light-rain' ? 0.8 :
+      sceneSettings.weather === 'fog' ? 0.7 : 1.0;
+    const humidityFactor = 1 - sceneSettings.humidity * 0.3; // humidity shortens burn time
+
     return timelineItems.map((item) => {
       const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
       if (!effect) return null;
@@ -222,24 +229,24 @@ function TimelineEffects() {
         if (linkedPos) resolvedPos = { x: linkedPos.x, y: linkedPos.y, z: linkedPos.z };
       }
 
-      // ── Prefire-aware timing for shells ──
-      // Shell effects have a prefire (lift) phase before the burst duration
+      // ── Real physics: caliber-based heights ──
       const caliber = effect.caliber || 4;
       const isShellType = effect.partType === 'shell' || effect.partType === 'single_shot' || effect.type === 'firework';
       const prefireDuration = isShellType ? (effect.prefire || getLiftTime(caliber)) : 0;
-      const totalDuration = prefireDuration + effect.duration;
+      // Weather affects duration: rain shortens, humidity shortens
+      const weatherDuration = effect.duration * weatherDampening * humidityFactor;
+      const totalDuration = prefireDuration + weatherDuration;
 
       if (currentTime < item.startTime || currentTime > item.startTime + totalDuration) return null;
       const elapsed = currentTime - item.startTime;
 
-      // Are we in prefire (lift) phase or burst phase?
       const inPrefire = isShellType && elapsed < prefireDuration;
       const prefireProgress = prefireDuration > 0 ? Math.min(1, elapsed / prefireDuration) : 0;
       const burstProgress = prefireDuration > 0
-        ? Math.max(0, (elapsed - prefireDuration) / effect.duration)
-        : elapsed / effect.duration;
+        ? Math.max(0, (elapsed - prefireDuration) / weatherDuration)
+        : elapsed / weatherDuration;
 
-      return { item, effect, progress: burstProgress, inPrefire, prefireProgress, caliber, prefireDuration, resolvedPos };
+      return { item, effect, progress: burstProgress, inPrefire, prefireProgress, caliber, prefireDuration, resolvedPos, effectScale };
     }).filter(Boolean) as {
       item: typeof timelineItems[0];
       effect: typeof EFFECT_LIBRARY[0];
@@ -249,8 +256,9 @@ function TimelineEffects() {
       caliber: number;
       prefireDuration: number;
       resolvedPos: { x: number; y: number; z: number };
+      effectScale: number;
     }[];
-  }, [timelineItems, currentTime, positions]);
+  }, [timelineItems, currentTime, positions, sceneSettings.effectScale, sceneSettings.weather, sceneSettings.humidity]);
 
   return (
     <>
