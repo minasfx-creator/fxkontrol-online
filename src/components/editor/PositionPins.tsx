@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { useProjectStore, type Position, EFFECT_LIBRARY } from '@/store/useProjectStore';
@@ -6,9 +6,10 @@ import * as THREE from 'three';
 
 const PYRO_COLOR = '#FF6B35';
 const DRONE_COLOR = '#00B4D8';
+const SNAP_GRID = 0.5; // 0.5m snap grid
 
-function Pin({ position }: { position: Position }) {
-  const { selectedPositionIds, selectPosition, togglePositionSelection, editorMode, updatePosition, timelineItems } = useProjectStore();
+function Pin({ position, onRightClick }: { position: Position; onRightClick: (pos: Position, screenPos: { x: number; y: number }) => void }) {
+  const { selectedPositionIds, selectPosition, togglePositionSelection, editorMode, updatePosition, timelineItems, positions } = useProjectStore();
   const isSelected = selectedPositionIds.includes(position.id);
   const color = position.type === 'pyro' ? PYRO_COLOR : (position.color || DRONE_COLOR);
   const meshRef = useRef<THREE.Mesh>(null);
@@ -19,6 +20,7 @@ function Pin({ position }: { position: Position }) {
   const dragPlane = useRef(new THREE.Plane());
   const intersection = useRef(new THREE.Vector3());
   const dragOffset = useRef(new THREE.Vector3());
+  const dragStartPos = useRef({ x: 0, z: 0 });
 
   // Count linked effects
   const linkedEffects = timelineItems.filter(
@@ -28,7 +30,7 @@ function Pin({ position }: { position: Position }) {
   // Animated glow pulse for selected pins
   useFrame(({ clock }) => {
     if (glowRef.current && isSelected) {
-      const pulse = Math.sin(clock.getElapsedTime() * 3) * 0.15 + 0.85;
+      const pulse = Math.sin(clock.getElapsedTime() * 3) * 0.12 + 0.88;
       glowRef.current.scale.setScalar(pulse);
     }
   });
@@ -37,6 +39,12 @@ function Pin({ position }: { position: Position }) {
     if (editorMode !== 'select') return;
     e.stopPropagation();
 
+    // Right-click → context menu
+    if (e.nativeEvent?.button === 2 || e.button === 2) {
+      onRightClick(position, { x: e.clientX || e.nativeEvent?.clientX || 0, y: e.clientY || e.nativeEvent?.clientY || 0 });
+      return;
+    }
+
     if (e.nativeEvent?.shiftKey || e.shiftKey) {
       togglePositionSelection(position.id);
       return;
@@ -44,17 +52,15 @@ function Pin({ position }: { position: Position }) {
 
     selectPosition(position.id);
 
-    // Start dragging
     setIsDragging(true);
     (gl.domElement as HTMLElement).style.cursor = 'grabbing';
+    dragStartPos.current = { x: position.x, z: position.z };
 
-    // Create drag plane at the pin's Y level
     dragPlane.current.setFromNormalAndCoplanarPoint(
       new THREE.Vector3(0, 1, 0),
       new THREE.Vector3(position.x, 0, position.z)
     );
 
-    // Calculate offset so pin doesn't jump to cursor
     const rect = gl.domElement.getBoundingClientRect();
     const mouse = new THREE.Vector2(
       ((e.clientX - rect.left) / rect.width) * 2 - 1,
@@ -67,7 +73,7 @@ function Pin({ position }: { position: Position }) {
       0,
       position.z - intersection.current.z
     );
-  }, [editorMode, position, selectPosition, togglePositionSelection, gl, camera, raycaster]);
+  }, [editorMode, position, selectPosition, togglePositionSelection, gl, camera, raycaster, onRightClick]);
 
   const onPointerMove = useCallback((e: any) => {
     if (!isDragging) return;
@@ -81,11 +87,40 @@ function Pin({ position }: { position: Position }) {
     raycaster.setFromCamera(mouse, camera);
     raycaster.ray.intersectPlane(dragPlane.current, intersection.current);
 
-    const newX = Math.round((intersection.current.x + dragOffset.current.x) * 10) / 10;
-    const newZ = Math.round((intersection.current.z + dragOffset.current.z) * 10) / 10;
+    let newX = intersection.current.x + dragOffset.current.x;
+    let newZ = intersection.current.z + dragOffset.current.z;
 
-    updatePosition(position.id, { x: newX, z: newZ });
-  }, [isDragging, position.id, updatePosition, camera, raycaster, gl]);
+    // Snap to grid when Ctrl is held
+    if (e.ctrlKey || e.metaKey) {
+      newX = Math.round(newX / SNAP_GRID) * SNAP_GRID;
+      newZ = Math.round(newZ / SNAP_GRID) * SNAP_GRID;
+    } else {
+      newX = Math.round(newX * 10) / 10;
+      newZ = Math.round(newZ * 10) / 10;
+    }
+
+    // Multi-drag: if dragging a selected pin and multiple are selected, move all
+    const store = useProjectStore.getState();
+    if (store.selectedPositionIds.length > 1 && store.selectedPositionIds.includes(position.id)) {
+      const dx = newX - position.x;
+      const dz = newZ - position.z;
+      store.selectedPositionIds.forEach(id => {
+        if (id === position.id) {
+          updatePosition(id, { x: newX, z: newZ });
+        } else {
+          const other = store.positions.find(p => p.id === id);
+          if (other) {
+            updatePosition(id, {
+              x: Math.round((other.x + dx) * 10) / 10,
+              z: Math.round((other.z + dz) * 10) / 10,
+            });
+          }
+        }
+      });
+    } else {
+      updatePosition(position.id, { x: newX, z: newZ });
+    }
+  }, [isDragging, position.id, position.x, position.z, updatePosition, camera, raycaster, gl]);
 
   const onPointerUp = useCallback(() => {
     if (isDragging) {
@@ -94,18 +129,45 @@ function Pin({ position }: { position: Position }) {
     }
   }, [isDragging, gl]);
 
-  const onPointerOver = useCallback(() => setIsHovered(true), []);
-  const onPointerOut = useCallback(() => setIsHovered(false), []);
+  const onPointerOver = useCallback(() => {
+    if (editorMode === 'select') {
+      setIsHovered(true);
+      (gl.domElement as HTMLElement).style.cursor = 'grab';
+    }
+  }, [editorMode, gl]);
+
+  const onPointerOut = useCallback(() => {
+    setIsHovered(false);
+    if (!isDragging) {
+      (gl.domElement as HTMLElement).style.cursor = '';
+    }
+  }, [isDragging, gl]);
 
   const emissiveIntensity = isDragging ? 1.0 : isSelected ? 0.7 : isHovered ? 0.4 : 0.15;
 
   return (
     <group position={[position.x, position.y, position.z]}>
-      {/* Base disc with selection state */}
+      {/* Base disc */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
         <circleGeometry args={[isSelected ? 0.65 : 0.5, 32]} />
         <meshBasicMaterial color={color} transparent opacity={isSelected ? 0.5 : isHovered ? 0.3 : 0.2} />
       </mesh>
+
+      {/* Drag guide lines when dragging */}
+      {isDragging && (
+        <>
+          {/* X axis guide */}
+          <mesh position={[0, 0.015, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[200, 0.03]} />
+            <meshBasicMaterial color="#ff4444" transparent opacity={0.3} />
+          </mesh>
+          {/* Z axis guide */}
+          <mesh position={[0, 0.015, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]}>
+            <planeGeometry args={[200, 0.03]} />
+            <meshBasicMaterial color="#4444ff" transparent opacity={0.3} />
+          </mesh>
+        </>
+      )}
 
       {/* Pin body — draggable */}
       <mesh
@@ -148,7 +210,6 @@ function Pin({ position }: { position: Position }) {
             <ringGeometry args={[0.6, 0.75, 32]} />
             <meshBasicMaterial color={color} transparent opacity={0.7} />
           </mesh>
-          {/* Outer selection glow */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.025, 0]}>
             <ringGeometry args={[0.75, 1.0, 32]} />
             <meshBasicMaterial color={color} transparent opacity={0.15} blending={THREE.AdditiveBlending} />
@@ -184,21 +245,21 @@ function Pin({ position }: { position: Position }) {
       {/* Label */}
       <Html position={[0, 1.3, 0]} center style={{ pointerEvents: 'none' }}>
         <div
-          className="px-2 py-0.5 rounded-sm text-[9px] font-mono whitespace-nowrap flex items-center gap-1.5"
+          className="px-2 py-0.5 rounded text-[9px] font-mono whitespace-nowrap flex items-center gap-1.5 backdrop-blur-sm"
           style={{
-            backgroundColor: isSelected ? `${color}44` : `${color}22`,
-            border: `1px solid ${isSelected ? `${color}88` : `${color}44`}`,
+            backgroundColor: isSelected ? `${color}55` : `${color}22`,
+            border: `1px solid ${isSelected ? `${color}99` : `${color}44`}`,
             color: color,
-            boxShadow: isSelected ? `0 0 8px ${color}44` : 'none',
+            boxShadow: isSelected ? `0 0 12px ${color}44` : 'none',
           }}
         >
           <span className="font-bold">{position.name}</span>
           {linkedEffects > 0 && (
-            <span className="text-[8px] opacity-70">🎆{linkedEffects}</span>
+            <span className="text-[8px] opacity-80 bg-black/30 px-1 rounded">🎆{linkedEffects}</span>
           )}
           {isDragging && (
-            <span className="opacity-70">
-              ({position.x.toFixed(1)}, {position.z.toFixed(1)})
+            <span className="opacity-80 font-mono text-[8px] bg-black/30 px-1 rounded">
+              {position.x.toFixed(1)}, {position.z.toFixed(1)}
             </span>
           )}
         </div>
@@ -208,14 +269,14 @@ function Pin({ position }: { position: Position }) {
       {isSelected && position.type === 'pyro' && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
           <ringGeometry args={[9.5, 10, 48]} />
-          <meshBasicMaterial color="#FF4500" transparent opacity={0.15} />
+          <meshBasicMaterial color="#FF4500" transparent opacity={0.12} />
         </mesh>
       )}
     </group>
   );
 }
 
-/** Invisible ground plane for placing new pins */
+/** Ground plane for placing new pins */
 function GroundClickPlane() {
   const { editorMode, addPosition, setEditorMode, addWaypoint, selectedTrajectoryId, drawHeight } = useProjectStore();
 
@@ -234,9 +295,7 @@ function GroundClickPlane() {
         heading: 0, pitch: 0, roll: 0,
         color: type === 'drone-pad' ? '#00B4D8' : '#FF6B35',
       });
-      // Auto-select new position after placing
-      const store = useProjectStore.getState();
-      store.selectPosition(id);
+      useProjectStore.getState().selectPosition(id);
       setEditorMode('select');
       return;
     }
@@ -259,27 +318,23 @@ function GroundClickPlane() {
 
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} onClick={handleClick}>
-      <planeGeometry args={[200, 200]} />
+      <planeGeometry args={[500, 500]} />
       <meshBasicMaterial visible={false} />
     </mesh>
   );
 }
 
-/** Box/lasso selection support — click on empty ground to deselect */
+/** Click ground to deselect */
 function GroundDeselectPlane() {
   const { editorMode, selectPosition } = useProjectStore();
-
   const handleClick = useCallback(() => {
-    if (editorMode === 'select') {
-      selectPosition(null);
-    }
+    if (editorMode === 'select') selectPosition(null);
   }, [editorMode, selectPosition]);
 
   if (editorMode !== 'select') return null;
-
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} onClick={handleClick}>
-      <planeGeometry args={[2000, 2000]} />
+      <planeGeometry args={[4000, 4000]} />
       <meshBasicMaterial visible={false} />
     </mesh>
   );
@@ -287,13 +342,18 @@ function GroundDeselectPlane() {
 
 export default function PositionPins() {
   const { positions } = useProjectStore();
+  const [contextMenu, setContextMenu] = useState<{ pos: Position; screen: { x: number; y: number } } | null>(null);
+
+  const handleRightClick = useCallback((pos: Position, screenPos: { x: number; y: number }) => {
+    setContextMenu({ pos, screen: screenPos });
+  }, []);
 
   return (
     <>
       <GroundDeselectPlane />
       <GroundClickPlane />
       {positions.map((pos) => (
-        <Pin key={pos.id} position={pos} />
+        <Pin key={pos.id} position={pos} onRightClick={handleRightClick} />
       ))}
     </>
   );

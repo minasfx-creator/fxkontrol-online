@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useCallback } from 'react';
+import { lazy, Suspense, useState, useCallback, useEffect } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import Toolbar from '@/components/editor/Toolbar';
 import SplashScreen from '@/components/editor/SplashScreen';
@@ -36,6 +36,7 @@ import BackgroundPanel from '@/components/editor/BackgroundPanel';
 import SupplierCatalogPanel from '@/components/editor/SupplierCatalogPanel';
 import SafetyPanel from '@/components/editor/SafetyPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
+import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 
 const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
 
@@ -89,6 +90,43 @@ export default function Index() {
   const [fleetSize, setFleetSize] = useState(500);
   const [pyroPositions, setPyroPositions] = useState(24);
   const [showLocation, setShowLocation] = useState<{ name: string; lat: number; lng: number } | null>(null);
+  const [showPositionEditor, setShowPositionEditor] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const selectedPositionId = useProjectStore(s => s.selectedPositionId);
+
+  // Open popup editor on double-click a position (via global keyboard shortcut)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'e' && !e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        if (selectedPositionId) setShowPositionEditor(prev => !prev);
+      }
+      if (e.key === '?' && e.shiftKey) {
+        setShowShortcuts(prev => !prev);
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+        const store = useProjectStore.getState();
+        if (store.selectedPositionIds.length > 0) {
+          store.selectedPositionIds.forEach(id => store.removePosition(id));
+        }
+      }
+      if (e.key === 'd' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        const store = useProjectStore.getState();
+        if (store.selectedPositionIds.length > 0) {
+          store.selectedPositionIds.forEach(id => {
+            const pos = store.positions.find(p => p.id === id);
+            if (pos) {
+              const newId = `pos-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+              store.addPosition({ ...pos, id: newId, name: `${pos.name}-Copy`, x: pos.x + 2, z: pos.z + 2 });
+            }
+          });
+        }
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [selectedPositionId]);
 
   const handleTogglePanel = useCallback((id: PanelId) => {
     setActivePanel((prev) => (prev === id ? null : id));
@@ -171,7 +209,7 @@ export default function Index() {
         </div>
 
         {/* Center viewport */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 relative">
           <Suspense fallback={<CanvasLoader />}>
             <SkyCanvas />
           </Suspense>
@@ -188,6 +226,16 @@ export default function Index() {
       <div className="h-40 flex-shrink-0">
         <Timeline />
       </div>
+
+      {/* Floating pop-up editors */}
+      {showPositionEditor && selectedPositionId && (
+        <PositionPopupEditor onClose={() => setShowPositionEditor(false)} />
+      )}
+
+      {/* Shortcuts overlay */}
+      {showShortcuts && (
+        <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />
+      )}
     </div>
   );
 }
