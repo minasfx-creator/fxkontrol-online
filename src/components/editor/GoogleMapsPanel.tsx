@@ -19,7 +19,7 @@ const DEFAULT_LOCATION: GeoLocation = {
 };
 
 // Load Google Maps script dynamically
-function loadGoogleMapsScript(): Promise<void> {
+function loadGoogleMapsScript(apiKey: string): Promise<void> {
   return new Promise((resolve, reject) => {
     if ((window as any).google?.maps) { resolve(); return; }
     const existing = document.getElementById('google-maps-script');
@@ -29,7 +29,7 @@ function loadGoogleMapsScript(): Promise<void> {
     }
     const script = document.createElement('script');
     script.id = 'google-maps-script';
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_API_KEY}&libraries=places,geometry&v=weekly`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&v=weekly`;
     script.async = true;
     script.defer = true;
     script.onload = () => resolve();
