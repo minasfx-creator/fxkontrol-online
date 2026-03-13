@@ -53,6 +53,8 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   mavlink: 'w-72',
   smpte: 'w-64',
   maps: 'w-80',
+  diagnostic: 'w-64',
+  logistics: 'w-64',
 };
 
 export default function Index() {
