@@ -854,6 +854,7 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
     { id: 'text', label: 'Texto', icon: MessageSquare },
     { id: 'image', label: 'Imagem', icon: Image },
     { id: 'svg', label: 'SVG', icon: FileCode },
+    { id: '3d-model', label: '3D', icon: Box },
     { id: 'generative', label: 'IA', icon: Sparkles },
     { id: 'full-show', label: 'Show', icon: Film },
   ];
