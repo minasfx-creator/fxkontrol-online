@@ -15,7 +15,8 @@ import QuadcopterModel from './QuadcopterModel';
 import GeofenceVisual from './GeofenceVisual';
 import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Globe, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { CometEffect, ShockwaveEffect, MultiBurstEffect, FanEffect, MineEffect, RomanCandleEffect, WaterfallEffect, GerbEffect, FlameEffect, CryoJetEffect, LaserEffect, CakeEffect, ConfettiEffect, MovingHeadEffect } from './effects';
+import { CometEffect, ShockwaveEffect, MultiBurstEffect, FanEffect, MineEffect, RomanCandleEffect, WaterfallEffect, GerbEffect, FlameEffect, CryoJetEffect, LaserEffect, CakeEffect, ConfettiEffect, MovingHeadEffect, PrefireShell } from './effects';
+import { getLiftTime, getBreakHeight } from '@/lib/pyroPhysics';
 import MiniMap from './MiniMap';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -208,20 +209,63 @@ function TimelineEffects() {
     return timelineItems.map((item) => {
       const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
       if (!effect) return null;
-      if (currentTime < item.startTime || currentTime > item.startTime + effect.duration) return null;
-      const progress = (currentTime - item.startTime) / effect.duration;
-      return { item, effect, progress };
-    }).filter(Boolean) as { item: typeof timelineItems[0]; effect: typeof EFFECT_LIBRARY[0]; progress: number }[];
+
+      // ── Prefire-aware timing for shells ──
+      // Shell effects have a prefire (lift) phase before the burst duration
+      const caliber = effect.caliber || 4;
+      const isShellType = effect.partType === 'shell' || effect.partType === 'single_shot' || effect.type === 'firework';
+      const prefireDuration = isShellType ? (effect.prefire || getLiftTime(caliber)) : 0;
+      const totalDuration = prefireDuration + effect.duration;
+
+      if (currentTime < item.startTime || currentTime > item.startTime + totalDuration) return null;
+      const elapsed = currentTime - item.startTime;
+
+      // Are we in prefire (lift) phase or burst phase?
+      const inPrefire = isShellType && elapsed < prefireDuration;
+      const prefireProgress = prefireDuration > 0 ? Math.min(1, elapsed / prefireDuration) : 0;
+      const burstProgress = prefireDuration > 0
+        ? Math.max(0, (elapsed - prefireDuration) / effect.duration)
+        : elapsed / effect.duration;
+
+      return { item, effect, progress: burstProgress, inPrefire, prefireProgress, caliber, prefireDuration };
+    }).filter(Boolean) as {
+      item: typeof timelineItems[0];
+      effect: typeof EFFECT_LIBRARY[0];
+      progress: number;
+      inPrefire: boolean;
+      prefireProgress: number;
+      caliber: number;
+      prefireDuration: number;
+    }[];
   }, [timelineItems, currentTime]);
 
   return (
     <>
-      {activeEffects.map(({ item, effect, progress }) => {
+      {activeEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber }) => {
         const pos: [number, number, number] = [item.position.x, item.position.y, item.position.z];
         const eid = effect.id;
         const pt = effect.partType;
 
+        // ── PREFIRE PHASE: show comet trail rising from mortar ──
+        if (inPrefire) {
+          return (
+            <PrefireShell
+              key={`prefire-${item.id}`}
+              position={pos}
+              color={effect.color}
+              progress={prefireProgress}
+              caliber={caliber}
+            />
+          );
+        }
+
         // ── Specialized renderers by partType (Finale 3D logic) ──
+        // For shells: position burst at break height
+        const isShell = pt === 'shell' || pt === 'single_shot';
+        const burstPos: [number, number, number] = isShell
+          ? [pos[0], pos[1] + getBreakHeight(caliber), pos[2]]
+          : pos;
+
         if (pt === 'mine') return <MineEffect key={item.id} position={pos} color={effect.color} progress={progress} />;
         if (pt === 'candle') return <RomanCandleEffect key={item.id} position={pos} color={effect.color} progress={progress} shotCount={effect.shotCount || 8} />;
         if (pt === 'waterfall') return <WaterfallEffect key={item.id} position={pos} color={effect.color} progress={progress} width={effect.heightMeters || 5} />;
@@ -238,12 +282,12 @@ function TimelineEffects() {
 
         // ── Legacy effect ID routing ──
         if (eid.startsWith('comet-')) return <CometEffect key={item.id} position={pos} color={effect.color} progress={progress} direction={eid === 'comet-02' ? 'down' : 'up'} />;
-        if (eid.startsWith('shock-')) return <ShockwaveEffect key={item.id} position={pos} color={effect.color} progress={progress} />;
-        if (eid.startsWith('mburst-')) return <MultiBurstEffect key={item.id} position={pos} color={effect.color} progress={progress} burstCount={eid === 'mburst-02' ? 5 : 3} />;
+        if (eid.startsWith('shock-')) return <ShockwaveEffect key={item.id} position={burstPos} color={effect.color} progress={progress} />;
+        if (eid.startsWith('mburst-')) return <MultiBurstEffect key={item.id} position={burstPos} color={effect.color} progress={progress} burstCount={eid === 'mburst-02' ? 5 : 3} />;
         if (eid.startsWith('fan-')) return <FanEffect key={item.id} position={pos} color={effect.color} progress={progress} spreadAngle={eid === 'fan-02' ? 180 : 90} />;
 
-        // ── Default: firework burst or drone point ──
-        if (effect.type === 'firework') return <FireworkBurst key={item.id} position={pos} color={effect.color} progress={progress} />;
+        // ── Default: firework burst at break height ──
+        if (effect.type === 'firework') return <FireworkBurst key={item.id} position={burstPos} color={effect.color} progress={progress} />;
         return <LightPoint key={item.id} position={pos} color={effect.color} />;
       })}
     </>
@@ -906,36 +950,102 @@ function TreelineSilhouette() {
 
 // --- Launch sites ---
 function LaunchSites() {
-  const positions: [number, number, number][] = [
-    [-8, 0.05, 0], [-4, 0.05, 0], [0, 0.05, 0], [4, 0.05, 0], [8, 0.05, 0],
-  ];
+  // Realistic mortar rack layout — multiple calibers
+  const racks = useMemo(() => {
+    const r: { pos: [number, number, number]; caliber: number; tubes: number; label: string }[] = [];
+    // 3" rack — left section
+    for (let i = 0; i < 6; i++) r.push({ pos: [-18 + i * 1.2, 0, -2], caliber: 3, tubes: 6, label: `R${i + 1}` });
+    // 4" rack — center-left
+    for (let i = 0; i < 5; i++) r.push({ pos: [-6 + i * 1.5, 0, 0], caliber: 4, tubes: 4, label: `M${i + 1}` });
+    // 5" rack — center
+    for (let i = 0; i < 3; i++) r.push({ pos: [2 + i * 2, 0, 2], caliber: 5, tubes: 3, label: `L${i + 1}` });
+    // 6" singles — right
+    for (let i = 0; i < 3; i++) r.push({ pos: [10 + i * 2.5, 0, 0], caliber: 6, tubes: 1, label: `S${i + 1}` });
+    // 8" singles — far right
+    r.push({ pos: [18, 0, 1], caliber: 8, tubes: 1, label: 'H1' });
+    r.push({ pos: [21, 0, 1], caliber: 8, tubes: 1, label: 'H2' });
+    return r;
+  }, []);
+
   return (
     <>
-      {positions.map((pos, i) => (
-        <group key={i} position={pos}>
-          <mesh receiveShadow>
-            <boxGeometry args={[0.7, 0.12, 0.7]} />
-            <meshStandardMaterial color="#444444" metalness={0.5} roughness={0.4} />
-          </mesh>
-          <mesh position={[0, 0.2, 0]}>
-            <cylinderGeometry args={[0.06, 0.08, 0.35, 12]} />
-            <meshStandardMaterial color="#555555" metalness={0.6} roughness={0.3} />
-          </mesh>
-          <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[0.8, 0.85, 16]} />
-            <meshBasicMaterial color="#cc3030" transparent opacity={0.25} />
-          </mesh>
-          {/* Status LED with glow */}
-          <mesh position={[0.3, 0.08, 0.3]}>
-            <sphereGeometry args={[0.025, 8, 8]} />
-            <meshBasicMaterial color="#00ff44" toneMapped={false} />
-          </mesh>
-          <mesh position={[0.3, 0.08, 0.3]}>
-            <sphereGeometry args={[0.06, 8, 8]} />
-            <meshBasicMaterial color="#00ff44" transparent opacity={0.1} blending={THREE.AdditiveBlending} />
-          </mesh>
-        </group>
-      ))}
+      {racks.map((rack, ri) => {
+        const tubeRadius = rack.caliber * 0.0254 / 2; // inches to meters
+        const tubeHeight = rack.caliber * 0.08 + 0.3;
+        const rackWidth = (rack.tubes - 1) * (tubeRadius * 2.5 + 0.02);
+        return (
+          <group key={ri} position={rack.pos}>
+            {/* Rack base plate */}
+            <mesh position={[0, 0.02, 0]} receiveShadow>
+              <boxGeometry args={[rackWidth + 0.3, 0.04, tubeRadius * 4 + 0.2]} />
+              <meshStandardMaterial color="#3a3a3a" metalness={0.7} roughness={0.3} />
+            </mesh>
+            {/* Mortar tubes */}
+            {Array.from({ length: rack.tubes }).map((_, ti) => {
+              const tx = (ti - (rack.tubes - 1) / 2) * (tubeRadius * 2.5 + 0.02);
+              return (
+                <group key={ti} position={[tx, 0, 0]}>
+                  {/* Outer tube (HDPE) */}
+                  <mesh position={[0, tubeHeight / 2 + 0.04, 0]} castShadow>
+                    <cylinderGeometry args={[tubeRadius + 0.01, tubeRadius + 0.015, tubeHeight, 12]} />
+                    <meshStandardMaterial color="#2a2a2a" metalness={0.4} roughness={0.6} />
+                  </mesh>
+                  {/* Inner bore (darker) */}
+                  <mesh position={[0, tubeHeight + 0.04, 0]}>
+                    <cylinderGeometry args={[tubeRadius * 0.85, tubeRadius * 0.85, 0.02, 12]} />
+                    <meshBasicMaterial color="#111111" />
+                  </mesh>
+                  {/* Fuse wire */}
+                  <mesh position={[tubeRadius + 0.015, tubeHeight * 0.3, 0]} castShadow>
+                    <cylinderGeometry args={[0.003, 0.003, tubeHeight * 0.7, 4]} />
+                    <meshStandardMaterial color="#cc6600" roughness={0.8} />
+                  </mesh>
+                </group>
+              );
+            })}
+            {/* Safety perimeter ring */}
+            <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+              <ringGeometry args={[rackWidth * 0.8 + 0.5, rackWidth * 0.8 + 0.55, 24]} />
+              <meshBasicMaterial color="#cc3030" transparent opacity={0.2} />
+            </mesh>
+            {/* E-match connector box */}
+            <mesh position={[rackWidth / 2 + 0.2, 0.08, 0]} castShadow>
+              <boxGeometry args={[0.08, 0.06, 0.05]} />
+              <meshStandardMaterial color="#444444" metalness={0.6} roughness={0.4} />
+            </mesh>
+            {/* Status LED */}
+            <mesh position={[rackWidth / 2 + 0.2, 0.12, 0]}>
+              <sphereGeometry args={[0.015, 6, 6]} />
+              <meshBasicMaterial color="#00ff44" toneMapped={false} />
+            </mesh>
+            <mesh position={[rackWidth / 2 + 0.2, 0.12, 0]}>
+              <sphereGeometry args={[0.04, 6, 6]} />
+              <meshBasicMaterial color="#00ff44" transparent opacity={0.08} blending={THREE.AdditiveBlending} />
+            </mesh>
+          </group>
+        );
+      })}
+      {/* Firing control cable run */}
+      <mesh position={[0, 0.005, -4]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[45, 0.03]} />
+        <meshBasicMaterial color="#444444" />
+      </mesh>
+      {/* Control station */}
+      <group position={[0, 0, -8]}>
+        <mesh position={[0, 0.25, 0]} castShadow>
+          <boxGeometry args={[1.2, 0.5, 0.8]} />
+          <meshStandardMaterial color="#333333" metalness={0.5} roughness={0.4} />
+        </mesh>
+        <mesh position={[0, 0.52, -0.1]}>
+          <boxGeometry args={[0.6, 0.02, 0.4]} />
+          <meshBasicMaterial color="#112233" />
+        </mesh>
+        {/* Screen glow */}
+        <mesh position={[0, 0.55, -0.1]}>
+          <planeGeometry args={[0.5, 0.25]} />
+          <meshBasicMaterial color="#1a3a5a" transparent opacity={0.4} blending={THREE.AdditiveBlending} />
+        </mesh>
+      </group>
     </>
   );
 }
