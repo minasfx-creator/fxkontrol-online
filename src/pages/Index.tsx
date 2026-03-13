@@ -119,6 +119,8 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   approval: 'w-72',
   trajectory: 'w-64',
   templates: 'w-72',
+  telemetry: 'w-64',
+  flightlog: 'w-64',
 };
 
 export default function Index() {
