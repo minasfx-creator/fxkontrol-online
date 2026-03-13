@@ -1568,32 +1568,33 @@ serve(async (req) => {
         type: "function",
         function: {
           name: "design_show_structure",
-          description: `Design a drone show structure. Do NOT generate points — only describe each formation. The server will compute all ${count} drone positions.`,
+          description: `Design a drone show structure. Do NOT generate point coordinates — only describe each formation. The server will compute all ${count} drone positions. Use formationName values from the known vocabulary (Heart, Star, Crown, Text "...", Compass, Runner, etc.).`,
           parameters: {
             type: "object",
             properties: {
-              showName: { type: "string" },
+              showName: { type: "string", description: "Creative name for the show" },
               formations: {
                 type: "array",
-                description: "5-8 formations describing the show narrative.",
+                description: "4-10 formations describing the show narrative. Each maps to a server-generated shape.",
                 items: {
                   type: "object",
                   properties: {
-                    formationName: { type: "string", description: "Descriptive name of the shape (e.g. 'Heart', 'Star', 'Christmas Tree', 'Snowflake')" },
-                    shapeDescription: { type: "string", description: "Brief description of the intended shape for server-side generation" },
-                    height: { type: "number", description: "Altitude in meters 20-80" },
-                    transitionDuration: { type: "number", description: "Seconds 8-25" },
-                    holdDuration: { type: "number", description: "Seconds 10-30" },
-                    color: { type: "string", description: "Hex color e.g. #FF2020" },
-                    endColor: { type: "string", description: "End color for hold transition" },
+                    formationName: { type: "string", description: "Shape name the server can generate: Heart, Star, Circle, Spiral, Vortex, Diamond, Cross, Wave, Butterfly, Arrow, Crescent, Ring, Infinity, Radial Burst, Christmas Tree, Music Note, Rocket, Cake, Globe, Trophy, Snowflake, Crown, Flag BR, Dragon, Bird, Runner, Compass, Sun, Text \"...\", Grid, DNA, Mandala, Galaxy, Lightning, Flower, Anchor, Castle, Shield, Hexagon, Triangle" },
+                    shapeDescription: { type: "string", description: "Narrative purpose: what this formation represents in the story" },
+                    textContent: { type: "string", description: "For text formations only: the text to display (e.g. '2027', name, age)" },
+                    height: { type: "number", description: "Altitude in meters 20-80. Vary for drama." },
+                    transitionDuration: { type: "number", description: "Seconds 8-25. Fast=energy, slow=drama." },
+                    holdDuration: { type: "number", description: "Seconds 10-30. Complex shapes need longer." },
+                    color: { type: "string", description: "Primary hex color e.g. #FFD700" },
+                    endColor: { type: "string", description: "End color for hold transition (creates color journey)" },
                     colorTransition: { type: "string", description: "linear, wave, pulse, rainbow, cascade, sparkle, or instant" },
                   },
                   required: ["formationName", "shapeDescription", "height", "transitionDuration", "holdDuration", "color"],
                   additionalProperties: false,
                 },
               },
-              totalDuration: { type: "number" },
-              description: { type: "string" },
+              totalDuration: { type: "number", description: "Total show duration in seconds" },
+              description: { type: "string", description: "Narrative summary of the show's emotional arc" },
             },
             required: ["showName", "formations", "totalDuration", "description"],
             additionalProperties: false,
@@ -1601,9 +1602,42 @@ serve(async (req) => {
         },
       };
 
+      // ── Prompt pre-processing: extract structure hints ──
+      const promptLower = (prompt || "").toLowerCase();
+      const hasTimestamps = /\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}/.test(prompt);
+      const hasSections = /\|/.test(prompt) || /\n\n/.test(prompt);
+      const isDetailed = (prompt || "").length > 300;
+      const hasLyrics = /"[^"]{5,}"/.test(prompt);
+      const hasPyro = /fogo|mina|cometa|peonia|chrysanthemum|willow|salute|strobe|pirotecn/i.test(prompt);
+      const hasLocation = /ilha|angra|copacabana|ibirapuera|maracanã|praia|balsa|marina|lago|river|bay|beach/i.test(prompt);
+
+      let formationCountHint = "5-7";
+      if (hasTimestamps && hasSections) formationCountHint = "one formation per timestamp section";
+      else if (isDetailed) formationCountHint = "6-10 (the prompt is very detailed, capture all key moments)";
+
+      let contextHints = "";
+      if (hasTimestamps) contextHints += "\n- The prompt contains TIMESTAMPS. Calculate exact transitionDuration and holdDuration from the time ranges provided.";
+      if (hasLyrics) contextHints += "\n- The prompt references SONG LYRICS. Design formations that visually illustrate the lyrics.";
+      if (hasPyro) contextHints += "\n- The prompt describes PYROTECHNICS. Reflect firework types in color choices (gold for comets, silver for salutes, blue/turquoise for peonias) and use 'sparkle'/'pulse' colorTransitions.";
+      if (hasLocation) contextHints += "\n- The prompt mentions a WATER/OUTDOOR VENUE. Prefer reflective colors (Gold, Silver, Deep Blue, Turquoise) that look stunning reflected on water at night.";
+
+      const userMessage = `Design a complete drone light show structure for ${count} drones.
+
+Theme/Script:
+"${prompt}"
+
+INSTRUCTIONS:
+- Do NOT generate point coordinates. Only describe each formation's shape, colors, timing, and narrative purpose.
+- The server will generate all ${count} drone positions for each formation using mathematical recipes.
+- Create ${formationCountHint} formations that tell a compelling visual story.
+- Use formationName values from the known vocabulary so the server can generate accurate shapes.
+- For text/numbers use: formationName = "Text" and set textContent to the string.${contextHints}
+- Vary heights between formations (low=intimate, high=spectacular).
+- Create a dramatic color journey that evolves throughout the show.`;
+
       const messages = [
         { role: "system", content: FULL_SHOW_PROMPT },
-        { role: "user", content: `Design a complete drone light show structure for ${count} drones.\n\nTheme: "${prompt}"\n\nIMPORTANT: Do NOT generate point coordinates. Only describe each formation's shape, colors, timing, and narrative purpose. The server will generate all ${count} drone positions for each formation using mathematical recipes.\n\nCreate 5-7 formations that tell a compelling visual story with dramatic color transitions.` },
+        { role: "user", content: userMessage },
       ];
 
       const { primary, fallback } = selectModels("full-show", count, true);
