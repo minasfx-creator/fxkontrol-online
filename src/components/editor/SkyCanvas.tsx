@@ -932,11 +932,37 @@ function CameraController({ targetPosition, targetLookAt }: { targetPosition: [n
 export default function SkyCanvas() {
   const editorMode = useProjectStore((s) => s.editorMode);
   const droneFormations = useProjectStore((s) => s.droneFormations);
+  const gpsOrigin = useProjectStore((s) => s.gpsOrigin);
   const cursorStyle = editorMode !== 'select' ? 'crosshair' : 'default';
   const [activePreset, setActivePreset] = useState('free');
   const preset = CAMERA_PRESETS.find((p) => p.id === activePreset) || CAMERA_PRESETS[0];
   const perfStatsRef = useRef<PerfStats>({ fps: 0, drawCalls: 0, triangles: 0, geometries: 0, textures: 0 });
   const droneCount = droneFormations.length > 0 ? droneFormations[0].droneCount : 0;
+  const [satelliteTexture, setSatelliteTexture] = useState<string | null>(null);
+  const [downloadingScenery, setDownloadingScenery] = useState(false);
+
+  const handleDownloadScenery = useCallback(async () => {
+    setDownloadingScenery(true);
+    pushLog('Downloading satellite imagery...', 'info');
+    try {
+      const { data, error } = await supabase.functions.invoke('satellite-tile', {
+        body: { lat: gpsOrigin.lat, lng: gpsOrigin.lng, zoom: 18, size: '640x640' },
+      });
+      if (error || !data?.image) {
+        pushLog('Failed to download satellite tile', 'error');
+        toast.error('Falha ao baixar cenário satélite');
+        return;
+      }
+      setSatelliteTexture(data.image);
+      pushLog(`Satellite scenery loaded: ${gpsOrigin.lat.toFixed(4)}°, ${gpsOrigin.lng.toFixed(4)}°`, 'success');
+      toast.success('Cenário satélite carregado!');
+    } catch (err) {
+      pushLog('Satellite download error', 'error');
+      toast.error('Erro ao baixar cenário');
+    } finally {
+      setDownloadingScenery(false);
+    }
+  }, [gpsOrigin.lat, gpsOrigin.lng]);
 
   return (
     <div className="w-full h-full relative bg-[#030308]" data-sky-canvas style={{ cursor: cursorStyle }}>
