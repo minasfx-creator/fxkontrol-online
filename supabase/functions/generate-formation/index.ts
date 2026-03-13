@@ -1365,7 +1365,8 @@ serve(async (req) => {
     // ── Direct AI generation (small counts or image mode) ───
     console.log(`Direct AI generation: mode=${mode}, "${prompt}", ${count} drones`);
     
-    const scaleHint = `Use a radius of approximately ${Math.round(Math.sqrt(count) * 2.2)}m.`;
+    const sf = count > 1000 ? 3.0 : count > 500 ? 2.5 : 2.2;
+    const scaleHint = `Use a radius of approximately ${Math.round(Math.sqrt(count) * sf)}m.`;
     let userMessage: string;
     
     if (mode === "image") {
