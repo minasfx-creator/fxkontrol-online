@@ -12,6 +12,7 @@ import RackManager from '@/components/editor/RackManager';
 import AddressingPanel from '@/components/editor/AddressingPanel';
 import InventoryPanel from '@/components/editor/InventoryPanel';
 import WaypointEditor from '@/components/editor/WaypointEditor';
+import BoidsPanel from '@/components/editor/BoidsPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 
 const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
