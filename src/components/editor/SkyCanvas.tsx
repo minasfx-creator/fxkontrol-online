@@ -44,12 +44,16 @@ class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
 
 const CAMERA_PRESETS = [
   { id: 'free', label: 'Free', icon: Eye, position: [0, 12, 40] as [number, number, number], target: [0, 8, 0] as [number, number, number] },
-  { id: 'satellite', label: 'Satélite', icon: Plane, position: [0, 250, 10] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
+  { id: 'satellite', label: 'Top', icon: Plane, position: [0, 250, 0.1] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
   { id: 'audience', label: 'Plateia', icon: Users, position: [0, 4, 60] as [number, number, number], target: [0, 12, 0] as [number, number, number] },
-  { id: 'aerial', label: 'Aéreo', icon: Plane, position: [0, 120, 30] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
-  { id: 'side', label: 'Lateral', icon: Video, position: [60, 12, 0] as [number, number, number], target: [0, 12, 0] as [number, number, number] },
+  { id: 'front', label: 'Front', icon: Users, position: [0, 15, 80] as [number, number, number], target: [0, 15, 0] as [number, number, number] },
+  { id: 'side', label: 'Side', icon: Video, position: [80, 15, 0] as [number, number, number], target: [0, 15, 0] as [number, number, number] },
+  { id: 'back', label: 'Back', icon: Video, position: [0, 15, -80] as [number, number, number], target: [0, 15, 0] as [number, number, number] },
+  { id: 'aerial', label: 'Aerial 45°', icon: Plane, position: [0, 120, 120] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
   { id: 'closeup', label: 'Close-up', icon: Camera, position: [8, 8, 14] as [number, number, number], target: [0, 10, 0] as [number, number, number] },
   { id: 'cinematic', label: 'Cinema', icon: Video, position: [-25, 6, 50] as [number, number, number], target: [0, 15, 0] as [number, number, number] },
+  { id: 'drone-follow', label: 'Drone POV', icon: Eye, position: [5, 25, 5] as [number, number, number], target: [0, 25, 0] as [number, number, number] },
+  { id: 'vip', label: 'VIP Box', icon: Users, position: [30, 8, 45] as [number, number, number], target: [0, 12, 0] as [number, number, number] },
 ] as const;
 
 // --- Playback clock ---
