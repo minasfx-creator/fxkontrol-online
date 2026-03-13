@@ -437,6 +437,23 @@ export default function ScriptWindow() {
       // Only handle when not in an input
       if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
       
+      // Undo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+      // Redo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
         e.preventDefault();
         handleCopy();
@@ -456,6 +473,7 @@ export default function ScriptWindow() {
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (selectedIds.size > 0) {
           e.preventDefault();
+          pushUndo();
           Array.from(selectedIds).forEach(id => removeTimelineItem(id));
           setSelectedIds(new Set());
         }
@@ -469,7 +487,7 @@ export default function ScriptWindow() {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleCopy, handleCut, handlePaste, handleDuplicate, selectedIds, rows, removeTimelineItem]);
+  }, [handleCopy, handleCut, handlePaste, handleDuplicate, handleUndo, handleRedo, selectedIds, rows, removeTimelineItem, pushUndo]);
 
   const handleCombineChain = () => {
     if (selectedIds.size < 2) return;
