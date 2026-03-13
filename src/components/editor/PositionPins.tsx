@@ -97,9 +97,11 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
     );
 
     const rect = gl.domElement.getBoundingClientRect();
+    const clientX = e.clientX ?? e.nativeEvent?.clientX ?? 0;
+    const clientY = e.clientY ?? e.nativeEvent?.clientY ?? 0;
     const mouse = new THREE.Vector2(
-      ((e.clientX - rect.left) / rect.width) * 2 - 1,
-      -((e.clientY - rect.top) / rect.height) * 2 + 1,
+      ((clientX - rect.left) / rect.width) * 2 - 1,
+      -((clientY - rect.top) / rect.height) * 2 + 1,
     );
     raycaster.setFromCamera(mouse, camera);
     raycaster.ray.intersectPlane(dragPlane.current, intersection.current);
@@ -119,65 +121,69 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
     });
   }, [editorMode, position, selectPosition, togglePositionSelection, selectedPositionIds, gl, camera, raycaster, onRightClick]);
 
-  const onPointerMove = useCallback((e: any) => {
+  // Use window-level events for drag so pointer can leave the mesh
+  useEffect(() => {
     if (!isDragging) return;
-    e.stopPropagation();
 
-    // Save undo checkpoint on first move (not click)
-    if (!hasSavedCheckpoint.current) {
-      useUndoStore.getState().checkpoint();
-      hasSavedCheckpoint.current = true;
-    }
+    const handleMove = (e: PointerEvent) => {
+      if (!hasSavedCheckpoint.current) {
+        useUndoStore.getState().checkpoint();
+        hasSavedCheckpoint.current = true;
+      }
 
-    const rect = gl.domElement.getBoundingClientRect();
-    const mouse = new THREE.Vector2(
-      ((e.clientX - rect.left) / rect.width) * 2 - 1,
-      -((e.clientY - rect.top) / rect.height) * 2 + 1,
-    );
-    raycaster.setFromCamera(mouse, camera);
-    raycaster.ray.intersectPlane(dragPlane.current, intersection.current);
-
-    let newX = intersection.current.x + dragOffset.current.x;
-    let newZ = intersection.current.z + dragOffset.current.z;
-
-    if (e.ctrlKey || e.metaKey) {
-      newX = Math.round(newX / SNAP_GRID) * SNAP_GRID;
-      newZ = Math.round(newZ / SNAP_GRID) * SNAP_GRID;
-      setSnapGuides([]);
-    } else {
-      // Smart snap to other positions
-      const { guides, snappedX, snappedZ } = computeSnapGuides(
-        Math.round(newX * 10) / 10,
-        Math.round(newZ * 10) / 10
+      const rect = gl.domElement.getBoundingClientRect();
+      const mouse = new THREE.Vector2(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1,
       );
-      newX = snappedX;
-      newZ = snappedZ;
-      setSnapGuides(guides);
-    }
+      raycaster.setFromCamera(mouse, camera);
+      raycaster.ray.intersectPlane(dragPlane.current, intersection.current);
 
-    const store = useProjectStore.getState();
-    updatePosition(position.id, { x: newX, z: newZ });
+      let newX = intersection.current.x + dragOffset.current.x;
+      let newZ = intersection.current.z + dragOffset.current.z;
 
-    // Multi-drag
-    if (store.selectedPositionIds.length > 1 && store.selectedPositionIds.includes(position.id)) {
-      const dx = newX - dragStartPos.current.x;
-      const dz = newZ - dragStartPos.current.z;
-      otherStartPositions.current.forEach((startPos, id) => {
-        updatePosition(id, {
-          x: Math.round((startPos.x + dx) * 10) / 10,
-          z: Math.round((startPos.z + dz) * 10) / 10,
+      if (e.ctrlKey || e.metaKey) {
+        newX = Math.round(newX / SNAP_GRID) * SNAP_GRID;
+        newZ = Math.round(newZ / SNAP_GRID) * SNAP_GRID;
+        setSnapGuides([]);
+      } else {
+        const { guides, snappedX, snappedZ } = computeSnapGuides(
+          Math.round(newX * 10) / 10,
+          Math.round(newZ * 10) / 10
+        );
+        newX = snappedX;
+        newZ = snappedZ;
+        setSnapGuides(guides);
+      }
+
+      const store = useProjectStore.getState();
+      updatePosition(position.id, { x: newX, z: newZ });
+
+      if (store.selectedPositionIds.length > 1 && store.selectedPositionIds.includes(position.id)) {
+        const dx = newX - dragStartPos.current.x;
+        const dz = newZ - dragStartPos.current.z;
+        otherStartPositions.current.forEach((startPos, id) => {
+          updatePosition(id, {
+            x: Math.round((startPos.x + dx) * 10) / 10,
+            z: Math.round((startPos.z + dz) * 10) / 10,
+          });
         });
-      });
-    }
-  }, [isDragging, position.id, updatePosition, camera, raycaster, gl, computeSnapGuides]);
+      }
+    };
 
-  const onPointerUp = useCallback(() => {
-    if (isDragging) {
+    const handleUp = () => {
       setIsDragging(false);
       setSnapGuides([]);
       (gl.domElement as HTMLElement).style.cursor = '';
-    }
-  }, [isDragging, gl]);
+    };
+
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+    return () => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+    };
+  }, [isDragging, position.id, updatePosition, camera, raycaster, gl, computeSnapGuides]);
 
   const onPointerOver = useCallback(() => {
     if (editorMode === 'select') {
@@ -241,8 +247,6 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
         ref={meshRef}
         position={[0, 0.4, 0]}
         onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
         onPointerOver={onPointerOver}
         onPointerOut={onPointerOut}
         onDoubleClick={onDoubleClick}
