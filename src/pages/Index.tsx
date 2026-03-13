@@ -286,6 +286,8 @@ export default function Index() {
         {activePanel === 'approval' && <ClientApprovalPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'trajectory' && <TrajectoryOptimizerPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'templates' && <ShowTemplatesPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'telemetry' && <TelemetryDashboard onClose={() => setActivePanel(null)} />}
+        {activePanel === 'flightlog' && <FlightLogPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
