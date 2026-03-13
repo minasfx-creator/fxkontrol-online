@@ -146,7 +146,38 @@ SHOW DESIGN PRINCIPLES:
 4. AUDIENCE DIRECTION: Alternate high/low formations to guide eyes
 5. SILENCE MOMENTS: Brief holds between major formations
 6. REFLECTIONS: For water/ocean venues, prefer Silver, Gold, Blue, Turquoise
-7. SHAPE READABILITY: Name formations clearly so the server can generate them accurately`;
+7. SHAPE READABILITY: Name formations clearly so the server can generate them accurately
+
+PYROTECHNIC INTEGRATION — CRITICAL:
+Every formation can include synchronized pyrotechnics! Add a "pyroCues" array to each formation with effects that fire during the hold phase.
+
+Available pyro types and their real behavior:
+- shell (3"-12"): Aerial burst. caliber 3-12, height 60-200m, duration 2-4s. Patterns: peony, chrysanthemum, willow, palm, kamuro, crossette
+- mine: Ground burst upward. caliber 2-6, height 20-40m, duration 1-2s
+- comet: Rising trail star. caliber 1-4, height 40-80m, duration 2-3s
+- cake: Multi-shot battery. shotCount 9-100, caliber 1-3, duration 5-30s
+- roman_candle: Sequential star shots. shotCount 5-12, caliber 1-2, duration 5-15s
+- gerb: Ground fountain. height 3-8m, duration 5-20s
+- waterfall: Cascading sparks from height. width 5-30m, duration 10-30s
+- fan: Multiple shells at angles. shotCount 3-7, caliber 2-6, duration 2-4s
+- flame: LPG flame projector. height 3-10m, duration 1-5s
+- cryo: CO2 jet. height 3-8m, duration 1-5s
+- salute: Loud flash/bang. caliber 3-10, duration 0.5s
+
+PYRO TIMING RULES:
+- Fire pyro at KEY MOMENTS: formation reveal, climax, transitions
+- Use mines/comets during TRANSITIONS (they punctuate the moment)
+- Use gerbs/waterfalls as CONTINUOUS ACCENTS during holds
+- Use shells at CLIMAX formations — the bigger the moment, the bigger the caliber
+- Use cakes during DEVELOPMENT for sustained visual energy
+- Finale should have the densest pyro (multiple shells + mines + gerbs)
+- Position pyro at the EDGES of the drone formation (x/z offset from center)
+- Heights should complement drone altitude (pyro lower or at same level)
+
+PYRO COLOR MATCHING:
+- Match pyro colors to drone LED colors for visual coherence
+- Or use CONTRASTING pyro (gold pyro with blue drones = stunning)
+- Silver/white pyro works with any drone color`;
 
 
 // ── v4 Trajectory Prompt ────────────────────────────────────
