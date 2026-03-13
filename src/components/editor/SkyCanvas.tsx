@@ -39,11 +39,12 @@ class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
 }
 
 const CAMERA_PRESETS = [
-  { id: 'free', label: 'Free', icon: Eye, position: [0, 8, 25] as [number, number, number], target: [0, 5, 0] as [number, number, number] },
-  { id: 'audience', label: 'Plateia', icon: Users, position: [0, 3, 35] as [number, number, number], target: [0, 8, 0] as [number, number, number] },
-  { id: 'aerial', label: 'Aéreo', icon: Plane, position: [0, 40, 5] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
-  { id: 'side', label: 'Lateral', icon: Video, position: [35, 8, 0] as [number, number, number], target: [0, 8, 0] as [number, number, number] },
-  { id: 'closeup', label: 'Close-up', icon: Camera, position: [5, 6, 8] as [number, number, number], target: [0, 8, 0] as [number, number, number] },
+  { id: 'free', label: 'Free', icon: Eye, position: [0, 12, 40] as [number, number, number], target: [0, 8, 0] as [number, number, number] },
+  { id: 'audience', label: 'Plateia', icon: Users, position: [0, 4, 60] as [number, number, number], target: [0, 12, 0] as [number, number, number] },
+  { id: 'aerial', label: 'Aéreo', icon: Plane, position: [0, 80, 10] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
+  { id: 'side', label: 'Lateral', icon: Video, position: [60, 12, 0] as [number, number, number], target: [0, 12, 0] as [number, number, number] },
+  { id: 'closeup', label: 'Close-up', icon: Camera, position: [8, 8, 14] as [number, number, number], target: [0, 10, 0] as [number, number, number] },
+  { id: 'cinematic', label: 'Cinema', icon: Video, position: [-25, 6, 50] as [number, number, number], target: [0, 15, 0] as [number, number, number] },
 ] as const;
 
 // --- Playback clock ---
@@ -559,8 +560,8 @@ function GrassGround() {
       float dewTwinkle = sin(time * 2.0 + dewNoise * 100.0) * 0.3 + 0.7;
       color += vec3(0.08, 0.12, 0.18) * dewSparkle * dewTwinkle * NdotL;
 
-      // Distance fog — atmospheric perspective
-      float dist = length(worldUV) * 0.004;
+      // Distance fog — atmospheric perspective (expanded world)
+      float dist = length(worldUV) * 0.002;
       float fogFactor = smoothstep(0.0, 1.0, dist);
       vec3 fogColor = vec3(0.03, 0.04, 0.07);
       color = mix(color, fogColor, fogFactor * 0.6);
@@ -575,7 +576,7 @@ function GrassGround() {
   return (
     <>
       <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[500, 500, 2, 2]} />
+        <planeGeometry args={[1200, 1200, 4, 4]} />
         <shaderMaterial
           uniforms={uniforms}
           vertexShader={grassVertexShader}
@@ -584,7 +585,7 @@ function GrassGround() {
       </mesh>
       {/* Near-stage premium grass with mowing pattern */}
       <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[50, 64]} />
+        <circleGeometry args={[80, 64]} />
         <shaderMaterial
           uniforms={uniforms}
           vertexShader={grassVertexShader}
@@ -638,7 +639,7 @@ function GrassGround() {
               color += vec3(0.03, 0.05, 0.08) * spec * 0.3;
 
               // Edge blend
-              float edgeDist = length(vWorldPos.xz) / 50.0;
+              float edgeDist = length(vWorldPos.xz) / 80.0;
               float edgeFade = smoothstep(0.8, 1.0, edgeDist);
               color = mix(color, vec3(0.05, 0.12, 0.03), edgeFade);
 
@@ -661,9 +662,9 @@ function AtmosphericParticles() {
     const pos = new Float32Array(count * 3);
     const sz = new Float32Array(count);
     for (let i = 0; i < count; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 120;
-      pos[i * 3 + 1] = Math.random() * 30 + 1;
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 120;
+      pos[i * 3] = (Math.random() - 0.5) * 300;
+      pos[i * 3 + 1] = Math.random() * 50 + 1;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 300;
       sz[i] = 0.02 + Math.random() * 0.06;
     }
     return { positions: pos, sizes: sz };
@@ -713,7 +714,7 @@ function GroundFog() {
 
   return (
     <mesh ref={fogRef} position={[0, 0.3, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[200, 200, 1, 1]} />
+      <planeGeometry args={[500, 500, 1, 1]} />
       <shaderMaterial
         transparent
         depthWrite={false}
@@ -769,7 +770,7 @@ function StageGround() {
       
       {/* Reflective wet surface — catches drone LED reflections */}
       <mesh position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[60, 64]} />
+        <circleGeometry args={[100, 64]} />
         <MeshReflectorMaterial
           mirror={0.35}
           blur={[300, 100]}
@@ -785,50 +786,49 @@ function StageGround() {
         />
       </mesh>
 
-      {/* Operational grid */}
+      {/* Operational grid — expanded */}
       <Grid
         position={[0, 0.01, 0]}
-        args={[200, 200]}
-        cellSize={2}
+        args={[400, 400]}
+        cellSize={5}
         cellThickness={0.3}
         cellColor="#2a4a2a"
-        sectionSize={10}
+        sectionSize={25}
         sectionThickness={0.8}
         sectionColor="#3a5a3a"
-        fadeDistance={100}
+        fadeDistance={200}
         infiniteGrid
       />
 
-      {/* Central firing area marker */}
+      {/* Central firing area marker — scaled */}
       <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[24, 24.3, 64]} />
+        <ringGeometry args={[40, 40.4, 64]} />
         <meshBasicMaterial color="#ff4444" transparent opacity={0.5} />
       </mesh>
       <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[49, 49.3, 64]} />
+        <ringGeometry args={[80, 80.4, 64]} />
         <meshBasicMaterial color="#ffaa00" transparent opacity={0.3} />
       </mesh>
 
-      {/* Scale reference poles with enhanced detail */}
-      {[-20, -10, 0, 10, 20].map((x) => (
-        <group key={`pole-${x}`} position={[x, 0, -20]}>
-          <mesh position={[0, 3, 0]} castShadow>
-            <cylinderGeometry args={[0.03, 0.04, 6, 8]} />
+      {/* Scale reference poles — wider spread */}
+      {[-40, -20, 0, 20, 40].map((x) => (
+        <group key={`pole-${x}`} position={[x, 0, -35]}>
+          <mesh position={[0, 5, 0]} castShadow>
+            <cylinderGeometry args={[0.04, 0.05, 10, 8]} />
             <meshStandardMaterial color="#555555" metalness={0.7} roughness={0.25} />
           </mesh>
-          {[2, 4, 6].map((h) => (
+          {[2, 4, 6, 8, 10].map((h) => (
             <mesh key={h} position={[0, h, 0]}>
-              <boxGeometry args={[0.12, 0.02, 0.12]} />
+              <boxGeometry args={[0.15, 0.02, 0.15]} />
               <meshBasicMaterial color="#888888" transparent opacity={0.5} />
             </mesh>
           ))}
-          <mesh position={[0, 6.1, 0]}>
-            <sphereGeometry args={[0.06, 8, 8]} />
+          <mesh position={[0, 10.15, 0]}>
+            <sphereGeometry args={[0.08, 8, 8]} />
             <meshBasicMaterial color="#ff0000" />
           </mesh>
-          {/* Pole base */}
           <mesh position={[0, 0.05, 0]}>
-            <cylinderGeometry args={[0.15, 0.18, 0.1, 8]} />
+            <cylinderGeometry args={[0.18, 0.22, 0.1, 8]} />
             <meshStandardMaterial color="#444444" metalness={0.6} roughness={0.3} />
           </mesh>
         </group>
@@ -844,18 +844,18 @@ function StageGround() {
 function TreelineSilhouette() {
   const trees = useMemo(() => {
     const result: { x: number; z: number; h: number; w: number; layer: number }[] = [];
-    // 3 depth layers
-    for (let layer = 0; layer < 3; layer++) {
-      const count = 60 - layer * 15;
-      const baseDist = 85 + layer * 20;
+    // 4 depth layers — expanded world
+    for (let layer = 0; layer < 4; layer++) {
+      const count = 80 - layer * 15;
+      const baseDist = 150 + layer * 40;
       for (let i = 0; i < count; i++) {
         const angle = (i / count) * Math.PI * 2 + layer * 0.05;
-        const dist = baseDist + Math.random() * 10;
+        const dist = baseDist + Math.random() * 20;
         result.push({
           x: Math.cos(angle) * dist,
           z: Math.sin(angle) * dist,
-          h: 3 + Math.random() * 10 + layer * 2,
-          w: 2 + Math.random() * 4,
+          h: 5 + Math.random() * 15 + layer * 3,
+          w: 3 + Math.random() * 6,
           layer,
         });
       }
@@ -945,7 +945,7 @@ function CameraController({ targetPosition, targetLookAt }: { targetPosition: [n
   });
 
   return (
-    <OrbitControls ref={controlsRef} enableDamping dampingFactor={0.05} maxPolarAngle={Math.PI * 0.48} minDistance={3} maxDistance={150} />
+    <OrbitControls ref={controlsRef} enableDamping dampingFactor={0.05} maxPolarAngle={Math.PI * 0.48} minDistance={3} maxDistance={400} />
   );
 }
 
@@ -973,7 +973,7 @@ export default function SkyCanvas() {
         }}
         dpr={[1, 1.5]}
       >
-        <PerspectiveCamera makeDefault position={preset.position} fov={55} near={0.2} far={500} />
+        <PerspectiveCamera makeDefault position={preset.position} fov={55} near={0.2} far={1200} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} />
 
         {/* UE5-style cinematic lighting */}
@@ -986,11 +986,11 @@ export default function SkyCanvas() {
           color="#8899cc"
           castShadow
           shadow-mapSize={[2048, 2048]}
-          shadow-camera-far={200}
-          shadow-camera-left={-50}
-          shadow-camera-right={50}
-          shadow-camera-top={50}
-          shadow-camera-bottom={-50}
+          shadow-camera-far={400}
+          shadow-camera-left={-100}
+          shadow-camera-right={100}
+          shadow-camera-top={100}
+          shadow-camera-bottom={-100}
           shadow-bias={-0.0001}
         />
         
@@ -1006,9 +1006,9 @@ export default function SkyCanvas() {
 
         <SkyGradient />
         <Moon />
-        <Stars radius={180} depth={80} count={4000} factor={3.5} saturation={0.15} fade speed={0.05} />
+        <Stars radius={350} depth={150} count={6000} factor={4} saturation={0.15} fade speed={0.05} />
         <AtmosphericParticles />
-        <fog attach="fog" args={['#080c16', 60, 220]} />
+        <fog attach="fog" args={['#080c16', 120, 500]} />
 
         <StageGround />
         <LaunchSites />
