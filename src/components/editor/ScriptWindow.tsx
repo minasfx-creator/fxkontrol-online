@@ -343,6 +343,7 @@ export default function ScriptWindow() {
   const handleFill = useCallback(() => {
     const sourceIds = Array.from(selectedIds);
     if (sourceIds.length === 0) return;
+    pushUndo();
     
     const items = timelineItems.filter(i => selectedIds.has(i.id));
     const sorted = [...items].sort((a, b) => a.startTime - b.startTime);
