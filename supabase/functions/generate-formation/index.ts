@@ -474,6 +474,12 @@ function generateShapePoints(
     case 'rocket': return genRocket(count, R);
     case 'cake': return genCake(count, R, Number(params.layers) || 3);
     case 'text': return genText(count, R, String(params.text || 'A'));
+    case 'globe': return genGlobe(count, R);
+    case 'trophy': return genTrophy(count, R);
+    case 'snowflake': return genSnowflake(count, R);
+    case 'crown': return genCrown(count, R);
+    case 'flag_br': return genFlagBR(count, R);
+    case 'dragon': return genDragon(count, R);
     case 'custom_outline': return outlinePoints?.length ? genFromOutline(count, outlinePoints) : genFilledCircle(count, R);
     default: return genFilledCircle(count, R);
   }
