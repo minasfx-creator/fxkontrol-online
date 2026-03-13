@@ -98,8 +98,19 @@
 - Auto-stream: Boids simulation → MAVLink telemetry in real-time
 - Coordinate conversion: Y-up (sim) → NED (MAVLink) automatic
 
-## Phase 11: Next
+## Phase 11: Advanced Music Sync (DONE ✅)
+- Music-Reactive Engine (src/lib/musicReactiveEngine.ts) — real-time intensity modulation from audio analysis
+- Onset-driven cue placement: auto-place pyrotechnic cues on beats, onsets, or energy peaks
+- Cue placement modes: Beats, Onsets, Peaks, Combined with configurable beat divisor (1/2/4/8)
+- Onset type filtering: kick, snare, hi-hat, transient — selective cue triggers
+- Distribution options: cycle effects and positions across generated cues
+- Sensitivity & min-interval controls for fine-tuning cue density
+- Preview system: visualize generated cues on waveform before applying
+- getReactiveState() — per-frame intensity/bass/mid/high for real-time visual modulation
+- ONSET_EFFECT_MAP — suggested effect categories per onset type (kick→morteiros, snare→peonias, etc.)
+- Synesthesia panel: 2-tab UI (Auto Cues + Formations) with full parameter controls
+
+## Phase 12: Next
 - AR/Hybrid show overlay mode
 - Multi-user collaboration (real-time sync)
 - Cloud rendering / show preview sharing
-- Advanced music sync (beat-matching, onset-driven cue placement)
