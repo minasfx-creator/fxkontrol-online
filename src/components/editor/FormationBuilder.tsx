@@ -25,7 +25,7 @@ interface FormationBuilderProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type GenerationTab = 'presets' | 'text' | 'image' | 'svg' | 'generative' | 'full-show';
+type GenerationTab = 'presets' | 'text' | 'image' | 'svg' | '3d-model' | 'generative' | 'full-show';
 
 /* ── 2D Preview Canvas ─────────────────────────────────────── */
 
