@@ -1099,7 +1099,7 @@ export default function SkyCanvas() {
         <fog attach="fog" args={['#080e1a', 200, 1800]} />
 
         <StageGround satelliteTexture={satelliteTexture} />
-        <LaunchSites />
+        {/* LaunchSites removed — user creates positions via toolbar */}
         <PositionPins />
         <TrajectoryPaths />
         <DroneChoreography />
