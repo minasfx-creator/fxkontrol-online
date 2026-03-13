@@ -42,6 +42,9 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   effects: 'w-56',
   properties: 'w-56',
   boids: 'w-64',
+  pid: 'w-64',
+  dmx: 'w-64',
+  battery: 'w-64',
 };
 
 export default function Index() {
