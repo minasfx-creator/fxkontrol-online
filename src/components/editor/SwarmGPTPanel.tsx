@@ -202,6 +202,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
 
       let time = 0;
       const allPts: { x: number; z: number }[] = [];
+      let pyroCount = 0;
       (data.formations || []).forEach((f: any) => {
         const rawPts = (f.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
         const pts = normalizeDroneCount(rawPts, droneCount);
@@ -222,6 +223,31 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
           colorTransition: f.colorTransition || 'linear',
           points: pts,
         });
+
+        // Insert pyro cues as timeline items
+        const holdStart = time + (f.transitionDuration || 12);
+        if (f.pyroCues && Array.isArray(f.pyroCues)) {
+          f.pyroCues.forEach((cue: any) => {
+            const pyroType = mapPyroType(cue.type);
+            const effectId = pyroType; // matches effect library IDs
+            for (let d = 0; d < (cue.count || 1); d++) {
+              const spread = d * 3;
+              addTimelineItem({
+                id: `pyro-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                effectId,
+                startTime: holdStart + (cue.fireTime || 0) + d * 0.15,
+                trackIndex: 1 + (d % 3),
+                position: {
+                  x: (cue.positionX || 0) + (d % 2 === 0 ? spread : -spread),
+                  y: 0,
+                  z: (cue.positionZ || 0),
+                },
+              });
+              pyroCount++;
+            }
+          });
+        }
+
         time += (f.transitionDuration || 12) + (f.holdDuration || 15);
       });
 
