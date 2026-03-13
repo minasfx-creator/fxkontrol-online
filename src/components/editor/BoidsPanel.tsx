@@ -80,8 +80,8 @@ export default function BoidsPanel({ onClose }: { onClose: () => void }) {
       toast.error('Grave a simulação antes de exportar');
       return;
     }
-    const vviz = exportBoidsVVIZ(name || 'boids_sim', recordedFrames);
-    downloadFile(vviz, `${name || 'boids'}_swarm.vviz`, 'application/json');
+    const vviz = exportBoidsVVIZ(projectName || 'boids_sim', recordedFrames);
+    downloadFile(vviz, `${projectName || 'boids'}_swarm.vviz`, 'application/json');
     toast.success('Exportado como VVIZ!');
   };
 
