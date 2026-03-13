@@ -151,6 +151,9 @@ export default function Index() {
         {activePanel === 'background' && <BackgroundPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'suppliers' && <SupplierCatalogPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'safety' && <SafetyPanel />}
+        {activePanel === 'scripting' && <ScriptingToolsPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'audience' && <AudienceAnalyzerPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'indoor' && <IndoorSimPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
