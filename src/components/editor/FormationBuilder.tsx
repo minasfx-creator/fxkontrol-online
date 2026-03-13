@@ -812,7 +812,7 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
   const { droneFormations, addDroneFormation, materializeFormation } = useProjectStore();
   const [activeTab, setActiveTab] = useState<GenerationTab>('presets');
   const [selectedType, setSelectedType] = useState<FormationType>('circle');
-  const [count, setCount] = useState(24);
+  const [count, setCount] = useState(() => droneFormations.length > 0 ? droneFormations[0].droneCount : 24);
   const [radius, setRadius] = useState(10);
   const [spacing, setSpacing] = useState(2);
   const [rotation, setRotation] = useState(0);
@@ -832,7 +832,7 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
   }, [droneFormations]);
 
   const isFirstFormation = droneFormations.length === 0;
-  const effectiveCount = isFirstFormation ? count : droneFormations[0].droneCount;
+  const effectiveCount = count;
 
   // Apply AI meta when received
   useEffect(() => {
@@ -1020,8 +1020,10 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
             <FormationPreview points={displayPoints} />
 
             <div className="space-y-2">
-              {isFirstFormation && activeTab === 'presets' && (
-                <SliderField label="Drones" value={count} onChange={setCount} min={4} max={2000} step={1} />
+              {/* Drone count — always visible */}
+              <SliderField label="Drones" value={count} onChange={setCount} min={4} max={2000} step={1} />
+              {!isFirstFormation && droneFormations[0]?.droneCount !== count && (
+                <p className="text-[8px] text-yellow-400">⚠ Frota original: {droneFormations[0].droneCount} — será normalizado</p>
               )}
 
               {activeTab === 'presets' && needsRadius && (
