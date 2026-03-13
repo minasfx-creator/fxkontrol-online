@@ -45,10 +45,11 @@ export default function PathPlannerPanel({ onClose }: PathPlannerPanelProps) {
     setPlanning(true);
 
     setTimeout(() => {
-      const f1 = formations[formations.length - 2];
-      const f2 = formations[formations.length - 1];
-      const starts = f1.positions.map(p => [p.x, p.y, p.z] as [number, number, number]);
-      const goals = f2.positions.map(p => [p.x, p.y, p.z] as [number, number, number]);
+      // Use positions from project store as start/goal proxies
+      const positions = useProjectStore.getState().positions.filter(p => p.type === 'drone-pad');
+      const half = Math.floor(positions.length / 2);
+      const starts = positions.slice(0, half).map(p => [p.x, p.y, p.z] as [number, number, number]);
+      const goals = positions.slice(half, half * 2).map(p => [p.x, p.y, p.z] as [number, number, number]);
       const res = planFormationPaths(starts, goals, obstacles);
       setResult(res);
       setPlanning(false);

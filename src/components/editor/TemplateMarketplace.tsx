@@ -60,7 +60,7 @@ export default function TemplateMarketplace({ onClose }: TemplateMarketplaceProp
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<TemplateCategory | 'all'>('all');
   const [tab, setTab] = useState<'browse' | 'my' | 'publish'>('browse');
-  const localTemplates = getTemplates();
+  const localTemplates = loadTemplates();
 
   const filtered = SAMPLE_CLOUD_TEMPLATES.filter(t => {
     if (category !== 'all' && t.category !== category) return false;

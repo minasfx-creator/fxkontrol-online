@@ -59,7 +59,7 @@ export default function AudioSpectrumVisualizer() {
       source.connect(analyser);
       analyser.connect(ctx.destination);
       analyserRef.current = analyser;
-      dataRef.current = new Uint8Array(analyser.frequencyBinCount) as unknown as Uint8Array<ArrayBuffer>;
+      dataRef.current = new Uint8Array(analyser.frequencyBinCount);
     } catch {
       // Already connected or no audio context
     }
