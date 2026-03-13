@@ -212,7 +212,7 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
         };
-        setLocation(newLoc);
+        setGpsOrigin(newLoc);
         mapInstanceRef.current?.panTo({ lat: newLoc.lat, lng: newLoc.lng });
         toast.success('Localização atualizada');
       },
