@@ -44,6 +44,7 @@ export default function Toolbar() {
   const { signOut, user } = useAuth();
   const [formationOpen, setFormationOpen] = useState(false);
   const [csvOpen, setCsvOpen] = useState(false);
+  const [vvizOpen, setVvizOpen] = useState(false);
 
   return (
     <div className="flex items-center h-10 px-2 bg-surface-1 border-b border-border">
