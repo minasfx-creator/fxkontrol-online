@@ -11,6 +11,7 @@ import FormationBuilder from './FormationBuilder';
 import CSVImporter from './CSVImporter';
 import VVIZImporter from './VVIZImporter';
 import ProjectBrowser from './ProjectBrowser';
+import CatalogImportDialog from './CatalogImportDialog';
 import { exportVVIZ, exportFiringCSV, exportSkyc, downloadFile } from '@/lib/exportEngine';
 
 function TimecodeDisplay() {
