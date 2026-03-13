@@ -18,6 +18,7 @@ import CatalogImportDialog from './CatalogImportDialog';
 import ArrangePositionsDialog from './ArrangePositionsDialog';
 import { ConvertToFanDialog, ConvertToSequenceDialog } from './ScriptingDialogs';
 import { exportVVIZ, exportFiringCSV, exportSkyc, downloadFile } from '@/lib/exportEngine';
+import LanguageSwitcher from './LanguageSwitcher';
 
 function TimecodeDisplay() {
   const { currentTime, isPlaying } = useProjectStore();
@@ -493,6 +494,7 @@ export default function Toolbar() {
         <Button variant="ghost" size="icon" className="h-6 w-6" title="Sair" onClick={signOut}>
           <LogOut className="h-3 w-3" />
         </Button>
+        <LanguageSwitcher />
       </div>
     </div>
   );

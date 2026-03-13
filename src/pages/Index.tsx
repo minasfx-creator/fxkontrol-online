@@ -53,6 +53,8 @@ import CollisionPanel from '@/components/editor/CollisionPanel';
 import ClientApprovalPanel from '@/components/editor/ClientApprovalPanel';
 import TrajectoryOptimizerPanel from '@/components/editor/TrajectoryOptimizerPanel';
 import ShowTemplatesPanel from '@/components/editor/ShowTemplatesPanel';
+import TelemetryDashboard from '@/components/editor/TelemetryDashboard';
+import FlightLogPanel from '@/components/editor/FlightLogPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
@@ -117,6 +119,8 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   approval: 'w-72',
   trajectory: 'w-64',
   templates: 'w-72',
+  telemetry: 'w-64',
+  flightlog: 'w-64',
 };
 
 export default function Index() {
@@ -282,6 +286,8 @@ export default function Index() {
         {activePanel === 'approval' && <ClientApprovalPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'trajectory' && <TrajectoryOptimizerPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'templates' && <ShowTemplatesPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'telemetry' && <TelemetryDashboard onClose={() => setActivePanel(null)} />}
+        {activePanel === 'flightlog' && <FlightLogPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
