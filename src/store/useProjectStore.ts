@@ -252,6 +252,8 @@ export const useProjectStore = create<ProjectState>((set) => ({
   selectedFormationId: null,
   selectedTrajectoryIds: [],
   showFormations: true,
+  gpsOrigin: { lat: -23.5505, lng: -46.6333, heading: 0, altitude: 0 },
+  setGpsOrigin: (origin) => set({ gpsOrigin: origin }),
 
   setPlaying: (playing) => set({ isPlaying: playing }),
   setCurrentTime: (time) => set({ currentTime: time }),
