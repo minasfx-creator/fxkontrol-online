@@ -67,61 +67,83 @@ AUDIENCE PERSPECTIVE OPTIMIZATION:
 
 CRITICAL: Your "points" array must have EXACTLY N elements. If you're unsure, use the mathematical formula and compute each point.`;
 
-// ── v4 Full Show Prompt ─────────────────────────────────────
+// ── v5 Full Show Prompt — Deep Understanding Engine ─────────
 
 const FULL_SHOW_PROMPT = `You are a legendary drone show choreographer — the Spielberg of the sky. You design spectacular multi-formation shows that tell visual stories and evoke deep emotional responses.
 
-SHOW STRUCTURE (5-8 formations for maximum narrative impact):
-1. PRELUDE: Subtle, small formation rising from ground. Build curiosity. (hold: 8-12s)
+PROMPT INTERPRETATION — ADVANCED:
+Before designing, deeply ANALYZE the user's prompt:
+1. LANGUAGE: Respond to the artistic intent whether the prompt is in Portuguese, English, Spanish, or any language.
+2. TIMELINE EXTRACTION: If the prompt contains timestamps (e.g. "0:00 – 0:30", "1:01 – 1:30"), use them to set precise transitionDuration and holdDuration for each formation. Calculate durations from the time ranges.
+3. NARRATIVE SECTIONS: If the prompt describes acts/sections (e.g. "A Pulsação", "A Fuga", "O Triunfo"), map each section to one or more formations that visually represent the described scene.
+4. MUSIC REFERENCES: If lyrics or song references appear (e.g. "Run boy run"), design formations that illustrate the lyrics visually (e.g. a running figure, a sun for "the sun will be guiding you").
+5. SPECIFIC SHAPES MENTIONED: If the user says "drones formam uma bússola", "formam uma coroa de louros", "formam o nome", map these to specific formationName values the server can generate.
+6. PYROTECHNICS DESCRIBED: If the prompt mentions fireworks types (minas, cometas, peonias, chrysanthemums), reflect these as color choices and colorTransition modes.
+7. LOCATION CONTEXT: If the prompt mentions a location (e.g. "Ilha do Japão", "Angra"), adapt colors to the environment (water reflections → blues/golds/silvers).
+8. PRODUCTION NOTES: Extract safety constraints, distances, and visual notes to inform height and formation spread.
+9. EMOTIONAL ARC: Map the emotional journey described → formation complexity, color warmth, and timing.
+
+SHAPE NAME VOCABULARY — the server understands these names for formationName:
+Heart, Star, Circle, Spiral, Vortex, Diamond, Cross, Wave, Butterfly, Arrow, Crescent/Moon, Ring, Infinity/Lemniscate, Radial Burst/Firework, Christmas Tree, House, Music Note, Peace Sign, Rocket, Cake, Globe/Earth, Trophy, Snowflake, Crown, Flag BR, Dragon, Text "[any text]", Grid, DNA/Helix, Bird/Phoenix, Compass/Bússola, Runner/Corredor, Sun/Sol, Anchor, Castle, Flower, Mandala, Galaxy, Lightning/Raio, Silhouette, Shield, Leaf, Angel/Wing, Planet/Saturn, Hexagon, Triangle.
+For text or numbers, use: Text "2027", Text "NOME", etc.
+For a running figure, use: Runner
+For a compass, use: Compass
+
+SHOW STRUCTURE (adapt count based on prompt complexity — 4 to 10 formations):
+- If the prompt describes specific acts with timestamps → create ONE formation per act
+- If the prompt is a theme/keyword → create 5-7 formations following the narrative arc below
+- If the prompt is very detailed (>500 chars) → create 6-10 formations capturing all key moments
+
+NARRATIVE ARC (when no specific structure is given):
+1. PRELUDE: Subtle, rising formation. Build curiosity. (hold: 8-12s)
 2. OPENING: Recognizable theme symbol. Establish the story. (hold: 12-18s)
-3. DEVELOPMENT: 2-3 formations of increasing complexity. Explore theme variations. Use contrasting colors and scales. (hold: 15-22s each)
-4. CLIMAX: The most impressive, largest formation. Maximum visual impact. Fill the sky. (hold: 20-30s)
+3. DEVELOPMENT: 2-3 formations of increasing complexity. Explore theme variations. (hold: 15-22s each)
+4. CLIMAX: The most impressive formation. Maximum visual impact. (hold: 20-30s)
 5. RESOLUTION: Meaningful closing symbol. Emotional conclusion. (hold: 15-20s)
-6. FINALE: All drones converge, pulse, then scatter upward like released lanterns. (hold: 10-15s)
+6. FINALE: Convergence, pulse, scatter upward. (hold: 10-15s)
 
-EACH FORMATION MUST have EXACTLY N points (N = drone count).
-
-COLOR NARRATIVE (colors should evolve to tell a story):
-Red=#FF2020 passion/fire/danger  Blue=#2080FF calm/sky/trust  Green=#20CC40 nature/growth  
-Gold=#FFD700 celebration/achievement  White=#FFFFFF stars/purity/peace  Purple=#AA44FF magic/mystery  
+COLOR PALETTE (choose colors that match the narrative emotion):
+Red=#FF2020 passion/fire  Blue=#2080FF calm/sky/trust  Green=#20CC40 nature/growth
+Gold=#FFD700 celebration/achievement  White=#FFFFFF stars/purity  Purple=#AA44FF magic/mystery
 Orange=#FF8800 energy/warmth  Pink=#FF66AA love/youth  Cyan=#00E5FF technology/future
-Warm White=#FFE4B5 nostalgia/comfort  Crimson=#DC143C drama/intensity  Emerald=#50C878 hope/renewal
-Amber=#FFBF00 golden hour/luxury  Electric Blue=#7DF9FF excitement/innovation
+Warm White=#FFE4B5 nostalgia  Crimson=#DC143C drama  Emerald=#50C878 hope/renewal
+Amber=#FFBF00 golden luxury  Silver=#C0C0C0 elegance/reflection  Electric Blue=#7DF9FF excitement
+Deep Blue=#1E3A5F night sky/ocean  Turquoise=#40E0D0 tropical water  Royal Purple=#6A0DAD majesty
 
 COLOR TRANSITIONS (choose based on emotional intent):
-- "wave": for flow/water/organic themes — color ripples through formation
-- "pulse": for energy/heartbeat/music — color pulses outward from center
-- "rainbow": for celebration/pride/joy — full spectrum sweep
-- "cascade": for revelation/unveiling — top-to-bottom color change
-- "sparkle": for magic/stars — random twinkling color transitions
-- "linear": for clean/professional — smooth uniform transition
+- "wave": flow/water/organic — ripples through formation
+- "pulse": energy/heartbeat/music — pulses from center
+- "rainbow": celebration/joy — full spectrum sweep
+- "cascade": revelation/unveiling — top-to-bottom
+- "sparkle": magic/stars — random twinkling
+- "linear": clean/professional — smooth uniform
 
-TIMING MASTERY:
-- transitionDuration: 8-20s (faster = energy, slower = drama/awe)
-- holdDuration: 12-30s (complex shapes need longer for audience to recognize)
-- CONTRAST: Follow a fast transition with a long hold, and vice versa
-- Use 2-3s of hold AFTER transition for audience to "breathe" before next change
+TIMING INTELLIGENCE:
+- If user provides timestamps → calculate exact durations from time ranges
+- transitionDuration: 8-20s (faster = energy, slower = drama)
+- holdDuration: 12-30s (complex shapes need longer recognition time)
+- CONTRAST: Alternate fast transitions with long holds
+- For music-synced shows: align transitions to phrase boundaries
 
-THEME RECIPES (use as inspiration, not rigid templates):
-"Aniversário/Birthday" → Sparkles→🎂Cake→Numbers(age)→🎈Balloons→🎆Firework→⭐Star
-"Brasil" → 🇧🇷Flag→✝️ChristRedeemer→⚽Ball→🌺Mandala→⭐SouthernCross→🦜Parrot
-"Réveillon/NewYear" → 🕐Clock→🔟Countdown→🎆Firework→🌟StarBurst→ChampagneGlass→"2027"
-"Casamento/Wedding" → 💐Bouquet→❤️Heart→💍Rings→🕊️Dove→❤️DoubleHeart→👑Crown
-"Natal/Christmas" → ⭐StarOfBethlehem→🎄Tree→🔔Bell→❄️Snowflake→🎁Gift→☮️Peace
-"Espaço/Space" → 🚀Rocket→🪐Saturn→🌌Galaxy→⭐Constellation→🛸UFO→🌍Earth
-"Música/Music" → 🎵Note→🎸Guitar→🎹Piano→🎶DoubleNotes→🎤Mic→🎵BigNote
-"Natureza/Nature" → 🌱Sprout→🌿Fern→🦋Butterfly→🌸Flower→🌳Tree→🌍Globe
-"Tecnologia/Tech" → ⚡Bolt→💻Chip→🧬DNA→🤖Robot→🌐Globe→♾️Infinity
-"Amor/Love" → 💫Sparkle→🌹Rose→❤️Heart→💕DoubleHearts→💎Diamond→👑Crown
+THEME RECIPES (use as inspiration, adapt to the specific prompt):
+"Aniversário" → Sparkles→🎂Cake→Numbers(age)→🎈Balloons→🎆Firework→⭐Star
+"Brasil" → 🇧🇷Flag→✝️ChristRedeemer→⚽Ball→🌺Mandala→⭐SouthernCross
+"Réveillon" → 🕐Clock→Countdown→🎆Firework→🌟StarBurst→ChampagneGlass→"2027"
+"Casamento" → 💐Bouquet→❤️Heart→💍Rings→🕊️Dove→💕DoubleHeart→👑Crown
+"Natal" → ⭐Star→🎄Tree→🔔Bell→❄️Snowflake→🎁Gift→☮️Peace
+"Corredor/Run" → Line→Runner→Sun→Compass→Silhouette→Crown→RadialBurst
+"Isla/Island" → Wave→Compass→Globe→Crown→RadialBurst→StarBurst
+"Pirotecnia" → Crescent→Star→RadialBurst→Firework→Crown→Scatter
 
-CRITICAL SHOW DESIGN PRINCIPLES:
+SHOW DESIGN PRINCIPLES:
 1. SCALE PROGRESSION: Start small, grow to maximum, then resolve
 2. COMPLEXITY ARC: Simple→Complex→MaxComplex→SimpleFinal
-3. COLOR JOURNEY: Cool/subtle → Warm/vibrant → Peak color → Meaningful final color
-4. AUDIENCE DIRECTION: Alternate between high/low formations to guide eyes
-5. SILENCE MOMENTS: Brief holds between major formations for emotional processing
+3. COLOR JOURNEY: Cool/subtle → Warm/vibrant → Peak → Meaningful final
+4. AUDIENCE DIRECTION: Alternate high/low formations to guide eyes
+5. SILENCE MOMENTS: Brief holds between major formations
+6. REFLECTIONS: For water/ocean venues, prefer Silver, Gold, Blue, Turquoise
+7. SHAPE READABILITY: Name formations clearly so the server can generate them accurately`;
 
-IMPORTANT: Every formation's "points" array MUST have exactly N elements.`;
 
 // ── v4 Trajectory Prompt ────────────────────────────────────
 
@@ -220,38 +242,66 @@ function clamp(value: number, min: number, max: number) {
 function buildLocalFullShowFallback(prompt: string, count: number) {
   const normalizedPrompt = (prompt || "").toLowerCase();
 
-  const keywordToShape: Array<{ re: RegExp; shape: string; name: string }> = [
-    { re: /heart|coração|amor|love|❤️|💕/, shape: "heart", name: "Coração" },
-    { re: /star|estrela|⭐|✨/, shape: "star", name: "Estrela" },
-    { re: /wave|onda|mar|ocean|🌊/, shape: "wave", name: "Onda" },
-    { re: /spiral|espiral|vortex|vórtex|🌀/, shape: "spiral", name: "Espiral" },
-    { re: /crown|coroa|👑/, shape: "crown", name: "Coroa" },
-    { re: /globe|terra|mundo|🌍/, shape: "globe", name: "Globo" },
-    { re: /firework|fogos|fogo|🎆/, shape: "radial_burst", name: "Explosão" },
-    { re: /diamond|diamante|💎/, shape: "diamond", name: "Diamante" },
-    { re: /cross|cruz|✝️/, shape: "cross", name: "Cruz" },
-    { re: /butterfly|borboleta|🦋/, shape: "butterfly", name: "Borboleta" },
+  const keywordToShape: Array<{ re: RegExp; shape: string; name: string; color: string }> = [
+    { re: /heart|coração|amor|love|❤️|💕/, shape: "heart", name: "Coração", color: "#FF6B8A" },
+    { re: /star|estrela|⭐|✨/, shape: "star", name: "Estrela", color: "#FFD700" },
+    { re: /wave|onda|mar|ocean|🌊/, shape: "wave", name: "Onda", color: "#40E0D0" },
+    { re: /spiral|espiral|vortex|vórtex|🌀/, shape: "spiral", name: "Espiral", color: "#AA44FF" },
+    { re: /crown|coroa|👑|laurel|louros/, shape: "crown", name: "Coroa", color: "#FFD700" },
+    { re: /globe|terra|mundo|🌍/, shape: "globe", name: "Globo", color: "#2080FF" },
+    { re: /firework|fogos|fogo|🎆|explosão/, shape: "radial_burst", name: "Explosão", color: "#FF8800" },
+    { re: /diamond|diamante|💎/, shape: "diamond", name: "Diamante", color: "#7DF9FF" },
+    { re: /cross|cruz|✝️/, shape: "cross", name: "Cruz", color: "#FFFFFF" },
+    { re: /butterfly|borboleta|🦋/, shape: "butterfly", name: "Borboleta", color: "#FF66AA" },
+    { re: /runner|corredor|corrida|fuga/, shape: "butterfly", name: "Corredor", color: "#22D3EE" },
+    { re: /compass|bússola|bussola/, shape: "radial_burst", name: "Bússola", color: "#C0C0C0" },
+    { re: /sun|sol|☀/, shape: "radial_burst", name: "Sol", color: "#FFBF00" },
+    { re: /snow|neve|❄|floco/, shape: "snowflake", name: "Floco de Neve", color: "#FFFFFF" },
+    { re: /tree|árvore|natal|🎄/, shape: "layered_triangles", name: "Árvore", color: "#20CC40" },
+    { re: /trophy|troféu|🏆|taça/, shape: "trophy", name: "Troféu", color: "#FFD700" },
+    { re: /bird|pássaro|pomba|dove|🕊/, shape: "butterfly", name: "Pássaro", color: "#FFFFFF" },
+    { re: /music|nota|🎵/, shape: "music_note", name: "Nota Musical", color: "#AA44FF" },
+    { re: /rocket|foguete|🚀/, shape: "rocket", name: "Foguete", color: "#FF8800" },
+    { re: /dragon|dragão|🐉/, shape: "dragon", name: "Dragão", color: "#DC143C" },
+    { re: /flag.*br|bandeira.*brasil|🇧🇷/, shape: "flag_br", name: "Bandeira do Brasil", color: "#20CC40" },
+    { re: /cake|bolo|🎂|aniversário/, shape: "cake", name: "Bolo", color: "#FF66AA" },
+    { re: /ring|anel|💍/, shape: "ring", name: "Anel", color: "#FFD700" },
+    { re: /dna|helix|🧬/, shape: "spiral", name: "DNA", color: "#7DF9FF" },
+    { re: /line|linha|horizon|horizonte|pulsação/, shape: "wave", name: "Horizonte Pulsante", color: "#FFFFFF" },
   ];
 
-  const matched = keywordToShape.filter((item) => item.re.test(normalizedPrompt));
-  const defaults: Array<{ shape: string; name: string }> = [
-    { shape: "filled_circle", name: "Aurora" },
-    { shape: "wave", name: "Fluxo" },
-    { shape: "star", name: "Ascensão" },
-    { shape: "heart", name: "Clímax" },
-    { shape: "crown", name: "Honra" },
-    { shape: "radial_burst", name: "Finale" },
+  // Extract all matching shapes from the prompt, preserving order of appearance
+  const matched: Array<{ shape: string; name: string; color: string; index: number }> = [];
+  for (const item of keywordToShape) {
+    const match = item.re.exec(normalizedPrompt);
+    if (match) {
+      matched.push({ shape: item.shape, name: item.name, color: item.color, index: match.index });
+    }
+  }
+  matched.sort((a, b) => a.index - b.index);
+
+  // Deduplicate same shape
+  const seen = new Set<string>();
+  const unique = matched.filter(m => {
+    const key = m.shape + m.name;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const defaults: Array<{ shape: string; name: string; color: string }> = [
+    { shape: "filled_circle", name: "Aurora", color: "#60A5FA" },
+    { shape: "wave", name: "Fluxo", color: "#22D3EE" },
+    { shape: "star", name: "Ascensão", color: "#FFD700" },
+    { shape: "heart", name: "Clímax", color: "#FF6B8A" },
+    { shape: "crown", name: "Honra", color: "#FFBF00" },
+    { shape: "radial_burst", name: "Finale", color: "#FFFFFF" },
   ];
 
-  const sequence: Array<{ shape: string; name: string }> = [
-    ...matched.map((m) => ({ shape: m.shape, name: m.name })),
-    ...defaults,
-  ].slice(0, 6);
-
+  const sequence = [...unique, ...defaults].slice(0, Math.max(5, Math.min(8, unique.length + 2)));
   while (sequence.length < 5) sequence.push(defaults[sequence.length % defaults.length]);
 
-  const palette = ["#60A5FA", "#22D3EE", "#34D399", "#FBBF24", "#FB7185", "#FFFFFF"];
-  const climaxIndex = Math.floor(sequence.length * 0.6);
+  const climaxIndex = Math.floor(sequence.length * 0.7);
 
   let previousPoints: { x: number; z: number }[] | undefined;
   const formations = sequence.map((item, idx) => {
@@ -274,23 +324,32 @@ function buildLocalFullShowFallback(prompt: string, count: number) {
     }
     previousPoints = points;
 
+    // Determine color transition based on position in arc
+    let colorTransition = "linear";
+    if (idx === climaxIndex) colorTransition = "pulse";
+    else if (idx === 0) colorTransition = "cascade";
+    else if (idx === sequence.length - 1) colorTransition = "sparkle";
+    else if (idx % 2 === 0) colorTransition = "wave";
+
     return {
       formationName: item.name,
       points,
-      height: clamp(26 + idx * 7, 20, 80),
-      transitionDuration: clamp(9 + idx * 2, 8, 25),
-      holdDuration: clamp(12 + (idx % 3) * 4, 10, 30),
-      color: palette[idx % palette.length],
-      endColor: palette[(idx + 1) % palette.length],
-      colorTransition: idx === climaxIndex ? "pulse" : "linear",
+      height: clamp(24 + Math.round(intensity * 40), 20, 80),
+      transitionDuration: clamp(8 + idx * 2, 6, 25),
+      holdDuration: clamp(12 + (idx === climaxIndex ? 8 : (idx % 3) * 3), 10, 30),
+      color: item.color,
+      endColor: sequence[(idx + 1) % sequence.length].color,
+      colorTransition,
     };
   });
 
+  const showTitle = (prompt?.trim() ? prompt.slice(0, 50).replace(/\n.*/s, '') : "Show") + " (Modo Local)";
+
   return {
-    showName: (prompt?.trim() ? `${prompt.slice(0, 40)}...` : "Show") + " (Modo Local)",
+    showName: showTitle,
     formations,
     totalDuration: formations.reduce((sum, f) => sum + f.transitionDuration + f.holdDuration, 0),
-    description: "Show gerado localmente porque os créditos de IA do workspace estão esgotados.",
+    description: "Show gerado localmente (sem IA). Adicione créditos no workspace para shows com inteligência narrativa completa.",
     model: "server-fallback-no-credits",
   };
 }
@@ -1546,32 +1605,33 @@ serve(async (req) => {
         type: "function",
         function: {
           name: "design_show_structure",
-          description: `Design a drone show structure. Do NOT generate points — only describe each formation. The server will compute all ${count} drone positions.`,
+          description: `Design a drone show structure. Do NOT generate point coordinates — only describe each formation. The server will compute all ${count} drone positions. Use formationName values from the known vocabulary (Heart, Star, Crown, Text "...", Compass, Runner, etc.).`,
           parameters: {
             type: "object",
             properties: {
-              showName: { type: "string" },
+              showName: { type: "string", description: "Creative name for the show" },
               formations: {
                 type: "array",
-                description: "5-8 formations describing the show narrative.",
+                description: "4-10 formations describing the show narrative. Each maps to a server-generated shape.",
                 items: {
                   type: "object",
                   properties: {
-                    formationName: { type: "string", description: "Descriptive name of the shape (e.g. 'Heart', 'Star', 'Christmas Tree', 'Snowflake')" },
-                    shapeDescription: { type: "string", description: "Brief description of the intended shape for server-side generation" },
-                    height: { type: "number", description: "Altitude in meters 20-80" },
-                    transitionDuration: { type: "number", description: "Seconds 8-25" },
-                    holdDuration: { type: "number", description: "Seconds 10-30" },
-                    color: { type: "string", description: "Hex color e.g. #FF2020" },
-                    endColor: { type: "string", description: "End color for hold transition" },
+                    formationName: { type: "string", description: "Shape name the server can generate: Heart, Star, Circle, Spiral, Vortex, Diamond, Cross, Wave, Butterfly, Arrow, Crescent, Ring, Infinity, Radial Burst, Christmas Tree, Music Note, Rocket, Cake, Globe, Trophy, Snowflake, Crown, Flag BR, Dragon, Bird, Runner, Compass, Sun, Text \"...\", Grid, DNA, Mandala, Galaxy, Lightning, Flower, Anchor, Castle, Shield, Hexagon, Triangle" },
+                    shapeDescription: { type: "string", description: "Narrative purpose: what this formation represents in the story" },
+                    textContent: { type: "string", description: "For text formations only: the text to display (e.g. '2027', name, age)" },
+                    height: { type: "number", description: "Altitude in meters 20-80. Vary for drama." },
+                    transitionDuration: { type: "number", description: "Seconds 8-25. Fast=energy, slow=drama." },
+                    holdDuration: { type: "number", description: "Seconds 10-30. Complex shapes need longer." },
+                    color: { type: "string", description: "Primary hex color e.g. #FFD700" },
+                    endColor: { type: "string", description: "End color for hold transition (creates color journey)" },
                     colorTransition: { type: "string", description: "linear, wave, pulse, rainbow, cascade, sparkle, or instant" },
                   },
                   required: ["formationName", "shapeDescription", "height", "transitionDuration", "holdDuration", "color"],
                   additionalProperties: false,
                 },
               },
-              totalDuration: { type: "number" },
-              description: { type: "string" },
+              totalDuration: { type: "number", description: "Total show duration in seconds" },
+              description: { type: "string", description: "Narrative summary of the show's emotional arc" },
             },
             required: ["showName", "formations", "totalDuration", "description"],
             additionalProperties: false,
@@ -1579,9 +1639,42 @@ serve(async (req) => {
         },
       };
 
+      // ── Prompt pre-processing: extract structure hints ──
+      const promptLower = (prompt || "").toLowerCase();
+      const hasTimestamps = /\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}/.test(prompt);
+      const hasSections = /\|/.test(prompt) || /\n\n/.test(prompt);
+      const isDetailed = (prompt || "").length > 300;
+      const hasLyrics = /"[^"]{5,}"/.test(prompt);
+      const hasPyro = /fogo|mina|cometa|peonia|chrysanthemum|willow|salute|strobe|pirotecn/i.test(prompt);
+      const hasLocation = /ilha|angra|copacabana|ibirapuera|maracanã|praia|balsa|marina|lago|river|bay|beach/i.test(prompt);
+
+      let formationCountHint = "5-7";
+      if (hasTimestamps && hasSections) formationCountHint = "one formation per timestamp section";
+      else if (isDetailed) formationCountHint = "6-10 (the prompt is very detailed, capture all key moments)";
+
+      let contextHints = "";
+      if (hasTimestamps) contextHints += "\n- The prompt contains TIMESTAMPS. Calculate exact transitionDuration and holdDuration from the time ranges provided.";
+      if (hasLyrics) contextHints += "\n- The prompt references SONG LYRICS. Design formations that visually illustrate the lyrics.";
+      if (hasPyro) contextHints += "\n- The prompt describes PYROTECHNICS. Reflect firework types in color choices (gold for comets, silver for salutes, blue/turquoise for peonias) and use 'sparkle'/'pulse' colorTransitions.";
+      if (hasLocation) contextHints += "\n- The prompt mentions a WATER/OUTDOOR VENUE. Prefer reflective colors (Gold, Silver, Deep Blue, Turquoise) that look stunning reflected on water at night.";
+
+      const userMessage = `Design a complete drone light show structure for ${count} drones.
+
+Theme/Script:
+"${prompt}"
+
+INSTRUCTIONS:
+- Do NOT generate point coordinates. Only describe each formation's shape, colors, timing, and narrative purpose.
+- The server will generate all ${count} drone positions for each formation using mathematical recipes.
+- Create ${formationCountHint} formations that tell a compelling visual story.
+- Use formationName values from the known vocabulary so the server can generate accurate shapes.
+- For text/numbers use: formationName = "Text" and set textContent to the string.${contextHints}
+- Vary heights between formations (low=intimate, high=spectacular).
+- Create a dramatic color journey that evolves throughout the show.`;
+
       const messages = [
         { role: "system", content: FULL_SHOW_PROMPT },
-        { role: "user", content: `Design a complete drone light show structure for ${count} drones.\n\nTheme: "${prompt}"\n\nIMPORTANT: Do NOT generate point coordinates. Only describe each formation's shape, colors, timing, and narrative purpose. The server will generate all ${count} drone positions for each formation using mathematical recipes.\n\nCreate 5-7 formations that tell a compelling visual story with dramatic color transitions.` },
+        { role: "user", content: userMessage },
       ];
 
       const { primary, fallback } = selectModels("full-show", count, true);
@@ -1625,7 +1718,15 @@ serve(async (req) => {
         const sf = count > 1000 ? 3.0 : count > 500 ? 2.5 : 2.2;
         const radius = Math.max(12, Math.sqrt(count) * sf);
         
-        let points = generateShapePoints(shapeType, count, { radius });
+        // Build shape params — pass textContent if it's a text formation
+        const shapeParams: Record<string, number | string> = { radius };
+        if (shapeType === 'text') {
+          // Extract text from textContent field, or from formationName like 'Text "2027"'
+          const textMatch = shapeName.match(/[Tt]ext\s*"?([^"]+)"?/);
+          shapeParams.text = f.textContent || (textMatch ? textMatch[1].trim() : shapeName.replace(/text/i, '').trim()) || 'A';
+        }
+
+        let points = generateShapePoints(shapeType, count, shapeParams);
         
         // Center and round
         let cx = 0, cz = 0;
@@ -1646,14 +1747,15 @@ serve(async (req) => {
         
         f._serverPoints = points;
 
-        console.log(`  Formation ${idx + 1}: "${shapeName}" → ${shapeType}, ${points.length} pts, h=${f.height}m, color=${f.color}`);
+        console.log(`  Formation ${idx + 1}: "${shapeName}" → ${shapeType}${shapeType === 'text' ? ` "${shapeParams.text}"` : ''}, ${points.length} pts, h=${f.height}m, color=${f.color}`);
         
         return {
           formationName: f.formationName || `Formation ${idx + 1}`,
+          shapeDescription: f.shapeDescription || '',
           points,
           height: Math.max(20, Math.min(80, f.height || 30)),
-          transitionDuration: Math.max(8, Math.min(25, f.transitionDuration || 12)),
-          holdDuration: Math.max(10, Math.min(30, f.holdDuration || 15)),
+          transitionDuration: Math.max(6, Math.min(30, f.transitionDuration || 12)),
+          holdDuration: Math.max(8, Math.min(35, f.holdDuration || 15)),
           color: f.color || '#00B4D8',
           endColor: f.endColor || undefined,
           colorTransition: f.colorTransition || 'linear',
@@ -1868,6 +1970,19 @@ serve(async (req) => {
 function inferShapeType(name: string): string {
   const lower = name.toLowerCase();
   const map: [RegExp, string][] = [
+    // Text detection — "Text '2027'" or "Text NOME" patterns
+    [/^text\s/i, 'text'],
+    [/^"[^"]+"$/, 'text'],
+    [/\btext\b.*"[^"]+"/, 'text'],
+    // Specific new shapes
+    [/runner|corredor|corr[ie]da|running|silhouette.*corr/, 'butterfly'], // runner mapped to butterfly silhouette
+    [/compass|bússola|bussola|rosa.?dos.?ventos/, 'radial_burst'], // compass → radial with 4/8 arms
+    [/sun\b|sol\b|☀|🌞|sunrise|sunset|pôr.?do.?sol/, 'radial_burst'],
+    [/line|linha|horizon|horizonte/, 'wave'],
+    [/scatter|dispersão|lantern|lanterna|release/, 'radial_burst'],
+    [/pulse|pulsação|pulso|batimento/, 'ring'],
+    [/silhouette|silhueta|vulto|sombra|contorno/, 'butterfly'],
+    // Original shapes
     [/heart|coração|❤|💕|💗|💓|amor|love/, 'heart'],
     [/star|estrela|⭐|✨|🌟|stella/, 'star'],
     [/circle|círculo|⭕|round|redondo/, 'circle'],
@@ -1885,7 +2000,7 @@ function inferShapeType(name: string): string {
     [/crescent|lua|moon|🌙|meia.?lua/, 'crescent'],
     [/ring|anel|💍|donut|rosca/, 'ring'],
     [/infinity|infinit|♾|8.*deitado|lemniscate/, 'lemniscate'],
-    [/burst|explos|firework|fogo.*artif|🎆|boom/, 'radial_burst'],
+    [/radial.?burst|burst|explos|firework|fogo.*artif|🎆|boom/, 'radial_burst'],
     [/tree|árvore|natal|🎄|christmas.*tree|pinheiro/, 'layered_triangles'],
     [/house|casa|🏠|lar|home/, 'house'],
     [/music|nota|🎵|🎶|🎤|song|canção/, 'music_note'],
@@ -1898,17 +2013,16 @@ function inferShapeType(name: string): string {
     [/bell|sino|🔔|campanha/, 'filled_circle'],
     [/snow|neve|❄|floco|snowflake/, 'snowflake'],
     [/flower|flor|🌸|🌺|🌻|🌷|petal/, 'radial_burst'],
-    [/sun|sol|☀|🌞/, 'radial_burst'],
     [/trophy|troféu|🏆|cup|taça/, 'trophy'],
     [/dolphin|golfinho|🐬|whale|baleia/, 'crescent'],
-    [/crown|coroa|👑|king|queen|rei|rainha/, 'crown'],
+    [/crown|coroa|👑|king|queen|rei|rainha|laurel|louros/, 'crown'],
     [/anchor|âncora|⚓/, 'cross'],
     [/guitar|guitarra|🎸|violão/, 'music_note'],
     [/bird|pássaro|🦅|eagle|águia|dove|pomba|🕊/, 'butterfly'],
     [/dna|helix|🧬|genética/, 'spiral'],
     [/globe|globo|🌍|🌎|🌏|earth|terra|mundo/, 'globe'],
     [/eye|olho|👁|vision|visão/, 'crescent'],
-    [/shield|escudo|🛡/, 'diamond'],
+    [/shield|escudo|🛡|brasão/, 'diamond'],
     [/lightning|raio|⚡|bolt|relâmpago/, 'arrow'],
     [/skull|caveira|💀/, 'filled_circle'],
     [/cat|gato|🐱/, 'filled_circle'],
@@ -1922,7 +2036,7 @@ function inferShapeType(name: string): string {
     [/galaxy|galáxia|🌌/, 'spiral'],
     [/mandala|🌺|pattern|padrão/, 'radial_burst'],
     [/hexagon|hexágono|hex|🔷/, 'filled_circle'],
-    [/triangle|triângulo|🔺/, 'layered_triangles'],
+    [/triangle|triângulo|🔺|pyramid|pirâmide/, 'layered_triangles'],
     [/square|quadrado|⬛/, 'grid'],
     [/pentagon|pentágono/, 'star'],
     [/atom|átomo|⚛/, 'ring'],
@@ -1935,6 +2049,9 @@ function inferShapeType(name: string): string {
     [/countdown|contagem|3.*2.*1|regressiva/, 'text'],
     [/champagne|taça|brinde|cheers/, 'trophy'],
     [/firework|fogos|pirotecnia/, 'radial_burst'],
+    // Age/number detection
+    [/^\d{1,4}$/, 'text'],
+    [/\bage\b|\bidade\b|\banos\b/, 'text'],
   ];
   for (const [regex, shape] of map) {
     if (regex.test(lower)) return shape;
