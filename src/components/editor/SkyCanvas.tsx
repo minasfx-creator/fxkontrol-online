@@ -877,6 +877,57 @@ function GroundFog() {
   );
 }
 
+// --- Finale 3D dark professional ground ---
+function FinaleDarkGround({ brightness }: { brightness: number }) {
+  const b = brightness * 0.4; // darker base
+  return (
+    <>
+      <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[4000, 4000]} />
+        <meshStandardMaterial
+          color={new THREE.Color(0.02 * b, 0.035 * b, 0.02 * b)}
+          roughness={0.92}
+          metalness={0.05}
+        />
+      </mesh>
+      {/* Near-field slightly lighter for depth */}
+      <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <circleGeometry args={[120, 64]} />
+        <meshStandardMaterial
+          color={new THREE.Color(0.03 * b, 0.05 * b, 0.03 * b)}
+          roughness={0.88}
+          metalness={0.08}
+        />
+      </mesh>
+    </>
+  );
+}
+
+// --- Concrete / urban ground ---
+function ConcreteGround({ brightness }: { brightness: number }) {
+  const b = brightness * 0.5;
+  return (
+    <>
+      <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[4000, 4000]} />
+        <meshStandardMaterial
+          color={new THREE.Color(0.06 * b, 0.06 * b, 0.065 * b)}
+          roughness={0.95}
+          metalness={0.1}
+        />
+      </mesh>
+      <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <circleGeometry args={[150, 64]} />
+        <meshStandardMaterial
+          color={new THREE.Color(0.08 * b, 0.08 * b, 0.085 * b)}
+          roughness={0.9}
+          metalness={0.15}
+        />
+      </mesh>
+    </>
+  );
+}
+
 function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) {
   const sc = useSceneStore(st => st.settings);
 
