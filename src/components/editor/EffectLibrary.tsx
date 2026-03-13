@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { Search, ChevronDown, ChevronRight, Flame, Sparkles, Radio, Shapes, Wand2, Zap, Lightbulb, Droplets, Bomb, CandlestickChart as Candle, Waves, Box } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, Flame, Sparkles, Radio, Shapes, Wand2, Zap, Lightbulb, Droplets, Bomb, CandlestickChart as Candle, Waves, Box, AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { EFFECT_LIBRARY, useProjectStore, type Effect } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
