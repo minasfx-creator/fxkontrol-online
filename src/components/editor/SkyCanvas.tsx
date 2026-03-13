@@ -580,7 +580,12 @@ function Moon() {
       {/* Inner glow — HDR for bloom catch */}
       <mesh>
         <sphereGeometry args={[3.7, 32, 32]} />
-        <meshBasicMaterial color="#c0b8a0" transparent opacity={0.12} blending={THREE.AdditiveBlending} />
+        <meshBasicMaterial color="#d0c8a8" transparent opacity={0.15} blending={THREE.AdditiveBlending} />
+      </mesh>
+      {/* Inner core glow */}
+      <mesh>
+        <sphereGeometry args={[3.55, 24, 24]} />
+        <meshBasicMaterial color="#ffe8c0" transparent opacity={0.06} blending={THREE.AdditiveBlending} />
       </mesh>
       {/* Outer volumetric halo */}
       <mesh>
