@@ -5,8 +5,7 @@ import { MapPin, Navigation, Crosshair, Layers, X, Globe, Locate, Copy, Ruler } 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-
-const MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+import { supabase } from '@/integrations/supabase/client';
 
 interface GeoLocation {
   lat: number;
