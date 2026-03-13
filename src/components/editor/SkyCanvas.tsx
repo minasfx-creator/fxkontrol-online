@@ -1,9 +1,9 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars, Grid, PerspectiveCamera } from '@react-three/drei';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
-import { useRef, useMemo, useEffect, useState, Component, ErrorInfo, ReactNode } from 'react';
+import { useRef, useMemo, useEffect, useState, useCallback, Component, ErrorInfo, ReactNode } from 'react';
 import { PerfCollector, PerformanceHUD, type PerfStats } from './PerformanceHUD';
-import ViewportTerminal from './ViewportTerminal';
+import ViewportTerminal, { pushLog } from './ViewportTerminal';
 import * as THREE from 'three';
 import PositionPins from './PositionPins';
 import PostProcessing from './PostProcessing';
@@ -13,10 +13,12 @@ import DroneChoreography from './DroneChoreography';
 import BoidsVisualizer from './BoidsVisualizer';
 import QuadcopterModel from './QuadcopterModel';
 import GeofenceVisual from './GeofenceVisual';
-import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle } from 'lucide-react';
+import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Globe, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CometEffect, ShockwaveEffect, MultiBurstEffect, FanEffect } from './effects';
 import MiniMap from './MiniMap';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
@@ -417,6 +419,28 @@ function Moon() {
   );
 }
 
+// --- Satellite texture ground overlay (real Google Maps imagery) ---
+function SatelliteOverlay({ textureUrl }: { textureUrl: string | null }) {
+  const texture = useMemo(() => {
+    if (!textureUrl) return null;
+    const loader = new THREE.TextureLoader();
+    const tex = loader.load(textureUrl);
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }, [textureUrl]);
+
+  if (!texture) return null;
+
+  return (
+    <mesh position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={[300, 300]} />
+      <meshBasicMaterial map={texture} transparent={false} />
+    </mesh>
+  );
+}
+
 // --- Google Earth-style satellite terrain ground ---
 function GrassGround() {
   const uniforms = useMemo(() => ({
@@ -735,10 +759,11 @@ function GroundFog() {
   );
 }
 
-function StageGround() {
+function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) {
   return (
     <group>
       <GrassGround />
+      {satelliteTexture && <SatelliteOverlay textureUrl={satelliteTexture} />}
       <GroundFog />
 
       {/* Operational grid — expanded */}
@@ -907,11 +932,37 @@ function CameraController({ targetPosition, targetLookAt }: { targetPosition: [n
 export default function SkyCanvas() {
   const editorMode = useProjectStore((s) => s.editorMode);
   const droneFormations = useProjectStore((s) => s.droneFormations);
+  const gpsOrigin = useProjectStore((s) => s.gpsOrigin);
   const cursorStyle = editorMode !== 'select' ? 'crosshair' : 'default';
   const [activePreset, setActivePreset] = useState('free');
   const preset = CAMERA_PRESETS.find((p) => p.id === activePreset) || CAMERA_PRESETS[0];
   const perfStatsRef = useRef<PerfStats>({ fps: 0, drawCalls: 0, triangles: 0, geometries: 0, textures: 0 });
   const droneCount = droneFormations.length > 0 ? droneFormations[0].droneCount : 0;
+  const [satelliteTexture, setSatelliteTexture] = useState<string | null>(null);
+  const [downloadingScenery, setDownloadingScenery] = useState(false);
+
+  const handleDownloadScenery = useCallback(async () => {
+    setDownloadingScenery(true);
+    pushLog('Downloading satellite imagery...', 'info');
+    try {
+      const { data, error } = await supabase.functions.invoke('satellite-tile', {
+        body: { lat: gpsOrigin.lat, lng: gpsOrigin.lng, zoom: 18, size: '640x640' },
+      });
+      if (error || !data?.image) {
+        pushLog('Failed to download satellite tile', 'error');
+        toast.error('Falha ao baixar cenário satélite');
+        return;
+      }
+      setSatelliteTexture(data.image);
+      pushLog(`Satellite scenery loaded: ${gpsOrigin.lat.toFixed(4)}°, ${gpsOrigin.lng.toFixed(4)}°`, 'success');
+      toast.success('Cenário satélite carregado!');
+    } catch (err) {
+      pushLog('Satellite download error', 'error');
+      toast.error('Erro ao baixar cenário');
+    } finally {
+      setDownloadingScenery(false);
+    }
+  }, [gpsOrigin.lat, gpsOrigin.lng]);
 
   return (
     <div className="w-full h-full relative bg-[#030308]" data-sky-canvas style={{ cursor: cursorStyle }}>
@@ -965,7 +1016,7 @@ export default function SkyCanvas() {
         <AtmosphericParticles />
         <fog attach="fog" args={['#0a1020', 200, 900]} />
 
-        <StageGround />
+        <StageGround satelliteTexture={satelliteTexture} />
         <LaunchSites />
         <PositionPins />
         <TrajectoryPaths />
@@ -998,6 +1049,25 @@ export default function SkyCanvas() {
             <span className="hidden sm:inline">{label}</span>
           </button>
         ))}
+        {/* Download satellite scenery */}
+        <button
+          onClick={handleDownloadScenery}
+          disabled={downloadingScenery}
+          className={cn(
+            "flex items-center gap-1 px-2 py-1 rounded-sm text-[10px] font-mono-code transition-all border",
+            satelliteTexture
+              ? "bg-success/20 text-success border-success/40"
+              : "bg-surface-1/80 text-muted-foreground border-border/50 hover:text-foreground hover:bg-surface-2/80"
+          )}
+          title="Download real satellite scenery from Google Maps"
+        >
+          {downloadingScenery ? (
+            <div className="w-3 h-3 border border-primary border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Globe className="w-3 h-3" />
+          )}
+          <span className="hidden sm:inline">{satelliteTexture ? 'Satélite ✓' : 'Cenário Real'}</span>
+        </button>
         <button
           onClick={() => {
             const el = document.querySelector('[data-sky-canvas]') as HTMLElement;

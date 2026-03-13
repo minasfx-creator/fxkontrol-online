@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.mavlink-bridge]
 verify_jwt = false
+
+[functions.satellite-tile]
+verify_jwt = false
