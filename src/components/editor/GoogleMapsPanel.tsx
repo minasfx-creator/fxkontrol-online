@@ -55,13 +55,16 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
 
   // Initialize map
   useEffect(() => {
-    if (!MAPS_API_KEY) {
-      setError('Google Maps API Key não configurada');
-      return;
-    }
+    async function init() {
+      try {
+        // Fetch API key from edge function
+        const { data, error: fnError } = await supabase.functions.invoke('get-maps-key');
+        if (fnError || !data?.key) {
+          setError('Google Maps API Key não configurada');
+          return;
+        }
 
-    loadGoogleMapsScript()
-      .then(() => {
+        await loadGoogleMapsScript(data.key);
         if (!mapRef.current) return;
         const map = new google.maps.Map(mapRef.current, {
           center: { lat: location.lat, lng: location.lng },
