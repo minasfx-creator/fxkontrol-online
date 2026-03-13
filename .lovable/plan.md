@@ -147,8 +147,30 @@
   - Approval statuses: Draft → Pending Review → Changes Requested / Approved
   - Threaded comments with resolve/reject per comment, reply system, filtering
 
-## Phase 15: Next
+## Phase 15: Trajectory Optimization, Collision Avoidance & Templates (DONE ✅)
+- Trajectory Optimizer Engine (src/lib/trajectoryOptimizer.ts)
+  - Catmull-Rom spline path smoothing with configurable alpha
+  - Velocity clamping with time redistribution
+  - Acceleration and jerk constraint checking
+  - Separation checking between drone pairs with spatial grid acceleration
+  - Full optimization pipeline: smooth → clamp → validate → report
+- Real-time Collision Avoidance (src/lib/collisionAvoidance.ts)
+  - Potential field method with spatial grid for O(n) neighbor detection
+  - Configurable: min separation, detection radius, avoidance strength, vertical bias
+  - Damped deflections with max deflection clamping (smooth, no jitter)
+  - CollisionAvoidanceOverlay — real-time warning lines between close drones in viewport
+- Trajectory Optimizer Panel (TrajectoryOptimizerPanel.tsx)
+  - Constraint sliders: max velocity, acceleration, min separation, smoothing
+  - Analyze button with violation report: velocity, acceleration, separation
+  - Stats: total distance, peak velocity, computation time
+- Show Templates System (src/lib/showTemplates.ts + ShowTemplatesPanel.tsx)
+  - Save/load reusable show templates with formations and scene settings
+  - 8 categories: countdown, celebration, logo, abstract, patriotic, holiday, sports, custom
+  - Import/export as JSON files
+  - Browse with category filter, load into current show
+
+## Phase 16: Next
 - Multi-language localization (PT-BR, EN, ES)
-- Show template marketplace
-- Advanced trajectory optimization
-- Real-time 3D collision avoidance during playback
+- Show template marketplace (cloud sharing)
+- Advanced formation path planning with obstacle avoidance
+- Real-time telemetry dashboard with flight logs
