@@ -1,8 +1,8 @@
-import { Route, Wind, FileText, Package, Cpu, DollarSign, Spline, Sliders, Settings2, Bug, Gauge, Lightbulb, Battery, Radio, Clock, Globe, ShieldCheck, Tag, Sparkles, Music } from 'lucide-react';
+import { Route, Wind, FileText, Package, Cpu, DollarSign, Spline, Sliders, Settings2, Bug, Gauge, Lightbulb, Battery, Radio, Clock, Globe, ShieldCheck, Tag, Sparkles, Music, Download, StickyNote, Video, Box, Image, ShoppingBag, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | 'inventory' | 'waypoints' | 'effects' | 'properties' | 'boids' | 'pid' | 'dmx' | 'battery' | 'mavlink' | 'smpte' | 'maps' | 'diagnostic' | 'logistics' | 'swarmgpt' | 'synesthesia';
+export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | 'inventory' | 'waypoints' | 'effects' | 'properties' | 'boids' | 'pid' | 'dmx' | 'battery' | 'mavlink' | 'smpte' | 'maps' | 'diagnostic' | 'logistics' | 'swarmgpt' | 'synesthesia' | 'firing' | 'labels' | 'video' | 'models' | 'background' | 'suppliers' | 'safety';
 
 const PANEL_TABS: { id: PanelId; label: string; icon: typeof Route; shortcut?: string }[] = [
   { id: 'properties', label: 'Properties', icon: Settings2, shortcut: 'P' },
@@ -11,11 +11,18 @@ const PANEL_TABS: { id: PanelId; label: string; icon: typeof Route; shortcut?: s
   { id: 'script', label: 'Script Editor', icon: Route, shortcut: 'S' },
   { id: 'waypoints', label: 'Waypoint Editor', icon: Spline, shortcut: 'W' },
   { id: 'effects', label: 'Effect Editor', icon: Sliders, shortcut: 'E' },
+  { id: 'safety', label: 'Safety · NFPA 1123', icon: Shield, shortcut: 'F' },
   { id: 'wind', label: 'Wind & Camera', icon: Wind },
   { id: 'reports', label: 'Reports', icon: FileText },
   { id: 'racks', label: 'Racks', icon: Package },
   { id: 'addressing', label: 'Addressing', icon: Cpu },
   { id: 'inventory', label: 'Inventory', icon: DollarSign },
+  { id: 'firing', label: 'Firing System Export', icon: Download, shortcut: 'X' },
+  { id: 'labels', label: 'Labels · Stickers', icon: StickyNote },
+  { id: 'video', label: 'Video Recorder', icon: Video, shortcut: 'V' },
+  { id: 'models', label: '3D Model Import', icon: Box },
+  { id: 'background', label: 'Background Overlay', icon: Image },
+  { id: 'suppliers', label: 'Supplier Catalogs', icon: ShoppingBag },
   { id: 'boids', label: 'Boids Swarm', icon: Bug },
   { id: 'pid', label: 'PID Controller', icon: Gauge },
   { id: 'dmx', label: 'DMX512 / Art-Net', icon: Lightbulb },
