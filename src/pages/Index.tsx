@@ -246,6 +246,7 @@ export default function Index() {
         {activePanel === 'indoor' && <IndoorSimPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'chains' && <ChainEditorPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'groups' && <PositionGroupsPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'summary' && <ShowSummaryPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
