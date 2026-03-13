@@ -1,3 +1,4 @@
+/// <reference types="google.maps" />
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { MapPin, Navigation, Crosshair, Layers, X, Globe, Locate, Copy, Ruler } from 'lucide-react';
