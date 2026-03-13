@@ -550,16 +550,16 @@ export default function ScriptWindow() {
   const droneCount = rows.filter((r) => r.type === 'drone').length;
 
   return (
-    <div className="h-full flex flex-col bg-card border-l border-border">
-      {/* Header */}
-      <div className="px-3 py-2 border-b border-border flex items-center gap-2">
-        <Table className="h-3.5 w-3.5 text-muted-foreground" />
-        <h2 className="text-xs font-semibold text-foreground uppercase tracking-wider flex-1">Script</h2>
-        <div className="flex items-center gap-3 text-[9px] font-mono-code text-muted-foreground">
-          <span>🎆 {pyroCount}</span>
-          <span>🤖 {droneCount}</span>
-          <span>🔗 {chainCount}</span>
-          <span className="text-safety">${totalCost.toFixed(0)}</span>
+    <div className="h-full flex flex-col bg-surface-0 border-l border-border/50">
+      {/* Header with stats */}
+      <div className="px-3 py-1.5 border-b border-border/40 flex items-center gap-2">
+        <Table className="h-3.5 w-3.5 text-primary" />
+        <h2 className="text-[11px] font-bold text-foreground uppercase tracking-wider flex-1">Script</h2>
+        <div className="flex items-center gap-2 text-[9px] font-mono-code">
+          <span className="text-accent">🎆{pyroCount}</span>
+          <span className="text-primary">🤖{droneCount}</span>
+          <span className="text-muted-foreground">🔗{chainCount}</span>
+          <span className="px-1.5 py-0.5 rounded bg-success/10 text-success font-bold">${totalCost.toFixed(0)}</span>
         </div>
       </div>
 
