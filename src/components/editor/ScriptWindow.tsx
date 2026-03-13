@@ -3,6 +3,7 @@ import {
   Table, Link2, Unlink, ArrowUpDown, Filter,
   ChevronDown, ChevronRight, Trash2, Copy,
   Clipboard, ClipboardPaste, GripVertical, Plus, Minus,
+  Undo2, Redo2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -115,6 +116,49 @@ export default function ScriptWindow() {
   const [isDraggingFill, setIsDraggingFill] = useState(false);
   const [fillDragCount, setFillDragCount] = useState(0);
   const tableRef = useRef<HTMLDivElement>(null);
+
+  // ─── Undo/Redo system ───────────────────────────────────────────
+  const undoStack = useRef<TimelineItem[][]>([]);
+  const redoStack = useRef<TimelineItem[][]>([]);
+  const [undoCount, setUndoCount] = useState(0);
+  const [redoCount, setRedoCount] = useState(0);
+  const MAX_UNDO = 50;
+
+  const pushUndo = useCallback(() => {
+    const snapshot = JSON.parse(JSON.stringify(useProjectStore.getState().timelineItems));
+    undoStack.current.push(snapshot);
+    if (undoStack.current.length > MAX_UNDO) undoStack.current.shift();
+    redoStack.current = [];
+    setUndoCount(undoStack.current.length);
+    setRedoCount(0);
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    if (undoStack.current.length === 0) return;
+    const currentSnapshot = JSON.parse(JSON.stringify(useProjectStore.getState().timelineItems));
+    redoStack.current.push(currentSnapshot);
+    const prev = undoStack.current.pop()!;
+    // Restore: remove all, then add all from snapshot
+    const store = useProjectStore.getState();
+    store.timelineItems.forEach(i => store.removeTimelineItem(i.id));
+    prev.forEach(item => store.addTimelineItem(item));
+    setUndoCount(undoStack.current.length);
+    setRedoCount(redoStack.current.length);
+    toast.success('Desfazer');
+  }, []);
+
+  const handleRedo = useCallback(() => {
+    if (redoStack.current.length === 0) return;
+    const currentSnapshot = JSON.parse(JSON.stringify(useProjectStore.getState().timelineItems));
+    undoStack.current.push(currentSnapshot);
+    const next = redoStack.current.pop()!;
+    const store = useProjectStore.getState();
+    store.timelineItems.forEach(i => store.removeTimelineItem(i.id));
+    next.forEach(item => store.addTimelineItem(item));
+    setUndoCount(undoStack.current.length);
+    setRedoCount(redoStack.current.length);
+    toast.success('Refazer');
+  }, []);
 
   // Build script rows
   const rows = useMemo(() => {
@@ -234,16 +278,18 @@ export default function ScriptWindow() {
 
   // ─── Cut ─────────────────────────────────────────────────────────
   const handleCut = useCallback(() => {
+    pushUndo();
     handleCopy();
     const ids = Array.from(selectedIds);
     ids.forEach(id => removeTimelineItem(id));
     setSelectedIds(new Set());
     toast.success('Cues recortados');
-  }, [handleCopy, selectedIds, removeTimelineItem]);
+  }, [handleCopy, selectedIds, removeTimelineItem, pushUndo]);
 
   // ─── Paste ───────────────────────────────────────────────────────
   const handlePaste = useCallback(() => {
     if (clipboard.length === 0) return;
+    pushUndo();
     const { currentTime } = useProjectStore.getState();
     const newIds: string[] = [];
     
@@ -268,11 +314,12 @@ export default function ScriptWindow() {
     
     setSelectedIds(new Set(newIds));
     toast.success(`${clipboard.length} cue${clipboard.length > 1 ? 's' : ''} colado(s) em ${currentTime.toFixed(2)}s`);
-  }, [clipboard, addTimelineItem]);
+  }, [clipboard, addTimelineItem, pushUndo]);
 
   // ─── Duplicate selected ──────────────────────────────────────────
   const handleDuplicate = useCallback(() => {
     if (selectedIds.size === 0) return;
+    pushUndo();
     const items = timelineItems.filter(i => selectedIds.has(i.id));
     const newIds: string[] = [];
     
@@ -290,12 +337,13 @@ export default function ScriptWindow() {
     
     setSelectedIds(new Set(newIds));
     toast.success(`${items.length} duplicado(s)`);
-  }, [selectedIds, timelineItems, addTimelineItem]);
+  }, [selectedIds, timelineItems, addTimelineItem, pushUndo]);
 
   // ─── Fill Handle: create N copies with incremental offsets ───────
   const handleFill = useCallback(() => {
     const sourceIds = Array.from(selectedIds);
     if (sourceIds.length === 0) return;
+    pushUndo();
     
     const items = timelineItems.filter(i => selectedIds.has(i.id));
     const sorted = [...items].sort((a, b) => a.startTime - b.startTime);
@@ -323,7 +371,7 @@ export default function ScriptWindow() {
     setSelectedIds(new Set(newIds));
     setShowFillDialog(false);
     toast.success(`${newIds.length} cues gerados via Fill Handle`);
-  }, [selectedIds, timelineItems, fillConfig, addTimelineItem]);
+  }, [selectedIds, timelineItems, fillConfig, addTimelineItem, pushUndo]);
 
   // ─── Fill handle drag ────────────────────────────────────────────
   const handleFillDragStart = useCallback((id: string, e: React.MouseEvent) => {
@@ -350,6 +398,7 @@ export default function ScriptWindow() {
       // Execute fill with drag count
       setFillDragCount(prev => {
         if (prev > 0) {
+          pushUndo();
           const item = timelineItems.find(i => i.id === id);
           if (item) {
             const newIds: string[] = [];
@@ -380,7 +429,7 @@ export default function ScriptWindow() {
     
     document.addEventListener('mousemove', handleMove);
     document.addEventListener('mouseup', handleUp);
-  }, [timelineItems, addTimelineItem]);
+  }, [timelineItems, addTimelineItem, pushUndo]);
 
   // ─── Keyboard shortcuts ──────────────────────────────────────────
   useEffect(() => {
@@ -388,6 +437,23 @@ export default function ScriptWindow() {
       // Only handle when not in an input
       if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
       
+      // Undo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+      // Redo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
         e.preventDefault();
         handleCopy();
@@ -407,6 +473,7 @@ export default function ScriptWindow() {
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (selectedIds.size > 0) {
           e.preventDefault();
+          pushUndo();
           Array.from(selectedIds).forEach(id => removeTimelineItem(id));
           setSelectedIds(new Set());
         }
@@ -420,7 +487,7 @@ export default function ScriptWindow() {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleCopy, handleCut, handlePaste, handleDuplicate, selectedIds, rows, removeTimelineItem]);
+  }, [handleCopy, handleCut, handlePaste, handleDuplicate, handleUndo, handleRedo, selectedIds, rows, removeTimelineItem, pushUndo]);
 
   const handleCombineChain = () => {
     if (selectedIds.size < 2) return;
@@ -507,6 +574,26 @@ export default function ScriptWindow() {
             className="h-6 text-[10px] pl-6 bg-surface-2 border-border"
           />
         </div>
+        
+        {/* Undo/Redo buttons */}
+        <Button
+          variant="ghost" size="icon" className="h-6 w-6"
+          title={`Desfazer (Ctrl+Z) [${undoCount}]`}
+          onClick={handleUndo}
+          disabled={undoCount === 0}
+        >
+          <Undo2 className="h-3 w-3" />
+        </Button>
+        <Button
+          variant="ghost" size="icon" className="h-6 w-6"
+          title={`Refazer (Ctrl+Shift+Z) [${redoCount}]`}
+          onClick={handleRedo}
+          disabled={redoCount === 0}
+        >
+          <Redo2 className="h-3 w-3" />
+        </Button>
+
+        <div className="w-px h-4 bg-border mx-0.5" />
         
         {/* Copy/Paste buttons */}
         <Button
