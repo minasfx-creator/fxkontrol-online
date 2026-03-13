@@ -494,6 +494,148 @@ export function exportBoidsVVIZ(
   return JSON.stringify(vviz, null, 2);
 }
 
+// ─── SkyCreator .skyc Export ─────────────────────────────────────────
+// Generates a .skyc JSON file compatible with SkyCreator/Verge Aero format.
+// Contains drone positions, waypoints, LED colors, and show metadata.
+
+interface SkycDrone {
+  id: number;
+  homePosition: { x: number; y: number; z: number };
+  waypoints: { time: number; x: number; y: number; z: number; yaw: number }[];
+  ledTimeline: { time: number; r: number; g: number; b: number; w: number }[];
+}
+
+interface SkycFile {
+  version: string;
+  showName: string;
+  droneCount: number;
+  duration: number;
+  fps: number;
+  safetyDistance: number;
+  gpsOrigin: { latitude: number; longitude: number; altitude: number; heading: number };
+  drones: SkycDrone[];
+  metadata: {
+    generator: string;
+    created: string;
+    formations: string[];
+  };
+}
+
+export function exportSkyc(
+  projectName: string,
+  duration: number,
+  timelineItems: TimelineItem[],
+  positions: Position[],
+  trajectories: Trajectory[] = [],
+  droneFormations: DroneFormation[] = [],
+  gpsOrigin: { lat: number; lng: number; heading: number; altitude: number } = { lat: -23.5505, lng: -46.6333, heading: 0, altitude: 0 },
+): string {
+  const drones: SkycDrone[] = [];
+  let droneId = 0;
+
+  // Build from drone formations (choreography)
+  if (droneFormations.length > 0) {
+    const droneCount = droneFormations[0].droneCount;
+    const lastFormation = droneFormations[droneFormations.length - 1];
+    const showEnd = lastFormation.startTime + lastFormation.transitionDuration + lastFormation.holdDuration;
+
+    for (let d = 0; d < droneCount; d++) {
+      const homeX = droneFormations[0].points[d]?.x ?? (d % 20) * 2.5 - 25;
+      const homeZ = droneFormations[0].points[d]?.z ?? Math.floor(d / 20) * 2.5 - 25;
+
+      const waypoints: SkycDrone['waypoints'] = [
+        { time: 0, x: homeX, y: 0, z: homeZ, yaw: 0 },
+      ];
+      const ledTimeline: SkycDrone['ledTimeline'] = [
+        { time: 0, r: 0, g: 0, b: 0, w: 0 },
+      ];
+
+      for (const f of droneFormations) {
+        const pt = f.points[d] || { x: 0, z: 0 };
+        const transEnd = f.startTime + f.transitionDuration;
+        const holdEnd = transEnd + f.holdDuration;
+
+        waypoints.push({ time: f.startTime, x: waypoints[waypoints.length - 1].x, y: waypoints[waypoints.length - 1].y, z: waypoints[waypoints.length - 1].z, yaw: 0 });
+        waypoints.push({ time: transEnd, x: pt.x, y: f.height, z: pt.z, yaw: f.rotation || 0 });
+        waypoints.push({ time: holdEnd, x: pt.x, y: f.height, z: pt.z, yaw: f.rotation || 0 });
+
+        const rgb = hexToRgb(f.color);
+        ledTimeline.push({ time: f.startTime, r: 0, g: 0, b: 0, w: 0 });
+        ledTimeline.push({ time: f.startTime + 1, r: rgb.r, g: rgb.g, b: rgb.b, w: 0 });
+        
+        if (f.endColor) {
+          const endRgb = hexToRgb(f.endColor);
+          ledTimeline.push({ time: holdEnd - 1, r: endRgb.r, g: endRgb.g, b: endRgb.b, w: 0 });
+        } else {
+          ledTimeline.push({ time: holdEnd - 0.5, r: rgb.r, g: rgb.g, b: rgb.b, w: 0 });
+        }
+        ledTimeline.push({ time: holdEnd, r: 0, g: 0, b: 0, w: 0 });
+      }
+
+      // Landing
+      waypoints.push({ time: showEnd + 10, x: homeX, y: 0, z: homeZ, yaw: 0 });
+
+      drones.push({
+        id: droneId++,
+        homePosition: { x: homeX, y: 0, z: homeZ },
+        waypoints,
+        ledTimeline,
+      });
+    }
+  }
+
+  // Build from trajectories
+  for (const traj of trajectories) {
+    const pad = positions.find((p) => p.id === traj.positionId);
+    if (!pad) continue;
+    const rgb = hexToRgb(pad.color || '#00B4D8');
+    const sorted = [...traj.waypoints].sort((a, b) => a.time - b.time);
+
+    const waypoints: SkycDrone['waypoints'] = [
+      { time: 0, x: pad.x, y: pad.y || 0, z: pad.z, yaw: pad.heading || 0 },
+    ];
+    for (const wp of sorted) {
+      waypoints.push({ time: wp.time, x: wp.position.x, y: wp.position.y, z: wp.position.z, yaw: 0 });
+    }
+    const lastT = sorted.length > 0 ? sorted[sorted.length - 1].time + 5 : 10;
+    waypoints.push({ time: lastT, x: pad.x, y: pad.y || 0, z: pad.z, yaw: 0 });
+
+    drones.push({
+      id: droneId++,
+      homePosition: { x: pad.x, y: pad.y || 0, z: pad.z },
+      waypoints,
+      ledTimeline: [
+        { time: 0, r: rgb.r, g: rgb.g, b: rgb.b, w: 0 },
+        { time: lastT - 1, r: rgb.r, g: rgb.g, b: rgb.b, w: 0 },
+        { time: lastT, r: 0, g: 0, b: 0, w: 0 },
+      ],
+    });
+  }
+
+  const skyc: SkycFile = {
+    version: '2.0',
+    showName: projectName,
+    droneCount: drones.length,
+    duration: Math.ceil(duration),
+    fps: 30,
+    safetyDistance: 2.0,
+    gpsOrigin: {
+      latitude: gpsOrigin.lat,
+      longitude: gpsOrigin.lng,
+      altitude: gpsOrigin.altitude,
+      heading: gpsOrigin.heading,
+    },
+    drones,
+    metadata: {
+      generator: 'AEROSWARM NEXUS v2.0',
+      created: new Date().toISOString(),
+      formations: droneFormations.map((f) => f.formationType),
+    },
+  };
+
+  return JSON.stringify(skyc, null, 2);
+}
+
 // ─── KML Export for Google Earth ──────────────────────────────────────
 // Converts formations and trajectories to KML with GPS coordinates.
 // Uses VVIZ coordinate system: X (right), Y (up), Z (into screen)

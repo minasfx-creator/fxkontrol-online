@@ -11,7 +11,7 @@ import FormationBuilder from './FormationBuilder';
 import CSVImporter from './CSVImporter';
 import VVIZImporter from './VVIZImporter';
 import ProjectBrowser from './ProjectBrowser';
-import { exportVVIZ, exportFiringCSV, downloadFile } from '@/lib/exportEngine';
+import { exportVVIZ, exportFiringCSV, exportSkyc, downloadFile } from '@/lib/exportEngine';
 
 function TimecodeDisplay() {
   const { currentTime, isPlaying } = useProjectStore();
