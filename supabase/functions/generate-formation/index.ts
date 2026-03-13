@@ -1588,13 +1588,32 @@ serve(async (req) => {
       let raw: any;
       let usedModel = primary;
 
+      const returnLocalFallbackShow = (reason: string) => {
+        const local = buildLocalFullShowFallback(prompt, count);
+        console.warn("Credits exhausted - returning local full-show fallback");
+        return new Response(JSON.stringify({
+          ...local,
+          warning: reason,
+          fallback: true,
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      };
+
       try {
         raw = await callAI(LOVABLE_API_KEY, primary, messages, [structureTool], { type: "function", function: { name: "design_show_structure" } }, 0.3, 1);
       } catch (e: any) {
-        if (e.status === 429 || e.status === 402) throw e;
+        if (e.status === 402) return returnLocalFallbackShow(e.message || "Créditos esgotados.");
+        if (e.status === 429) throw e;
+
         console.warn(`Full show ${primary} failed, trying ${fallback}...`);
         usedModel = fallback;
-        raw = await callAI(LOVABLE_API_KEY, fallback, messages, [structureTool], { type: "function", function: { name: "design_show_structure" } }, 0.3, 1);
+
+        try {
+          raw = await callAI(LOVABLE_API_KEY, fallback, messages, [structureTool], { type: "function", function: { name: "design_show_structure" } }, 0.3, 1);
+        } catch (fallbackErr: any) {
+          if (fallbackErr.status === 402) return returnLocalFallbackShow(fallbackErr.message || "Créditos esgotados.");
+          if (fallbackErr.status === 429) throw fallbackErr;
+          throw fallbackErr;
+        }
       }
 
       console.log(`AI designed show "${raw.showName}" with ${raw.formations?.length || 0} formations (model=${usedModel})`);
