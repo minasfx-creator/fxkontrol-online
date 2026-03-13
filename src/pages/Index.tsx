@@ -248,6 +248,7 @@ export default function Index() {
         {activePanel === 'chains' && <ChainEditorPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'groups' && <PositionGroupsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'summary' && <ShowSummaryPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'scene' && <SceneEditorPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
