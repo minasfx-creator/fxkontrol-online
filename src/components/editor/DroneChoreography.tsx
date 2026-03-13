@@ -21,11 +21,16 @@ function computeDronePositions(
   const lastEnd = lastFormation.startTime + lastFormation.transitionDuration + lastFormation.holdDuration;
   const landingDuration = 10;
 
-  // Before any formation starts: on ground
+  // Before any formation starts: staggered ground positions with wave takeoff anticipation
   if (currentTime < firstStart) {
-    return formations[0].points.slice(0, droneCount).map((p) => ({
-      x: p.x, y: 0.1, z: p.z, color: formations[0].color,
-    }));
+    const preTime = firstStart - currentTime;
+    return formations[0].points.slice(0, droneCount).map((p, idx) => {
+      // Subtle breathing pulse on ground before launch
+      const breathe = preTime < 3 ? Math.sin((3 - preTime) * Math.PI * 2 + idx * 0.1) * 0.02 : 0;
+      return {
+        x: p.x, y: 0.1 + breathe, z: p.z, color: formations[0].color,
+      };
+    });
   }
 
   // After all formations + landing
