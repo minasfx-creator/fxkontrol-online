@@ -16,6 +16,7 @@ import GeofenceVisual from './GeofenceVisual';
 import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CometEffect, ShockwaveEffect, MultiBurstEffect, FanEffect } from './effects';
+import MiniMap from './MiniMap';
 
 class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
