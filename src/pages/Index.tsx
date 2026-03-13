@@ -1,5 +1,7 @@
 import { lazy, Suspense, useState, useCallback, useEffect } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useUndoStore } from '@/store/useUndoStore';
+import { useUndoKeyboard } from '@/hooks/useUndoKeyboard';
 import { toast } from 'sonner';
 import Toolbar from '@/components/editor/Toolbar';
 import SplashScreen from '@/components/editor/SplashScreen';
@@ -101,6 +103,9 @@ export default function Index() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const selectedPositionId = useProjectStore(s => s.selectedPositionId);
 
+  // Undo/Redo keyboard shortcuts
+  useUndoKeyboard();
+
   // Open popup editor on double-click a position (via global keyboard shortcut)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -114,6 +119,7 @@ export default function Index() {
       if (e.key === 'i' && !e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
         const store = useProjectStore.getState();
         if (store.isPlaying || store.currentTime > 0) {
+          useUndoStore.getState().checkpoint();
           store.addTimelineItem({
             id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
             effectId: '',
@@ -137,6 +143,7 @@ export default function Index() {
         if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
         const store = useProjectStore.getState();
         if (store.selectedPositionIds.length > 0) {
+          useUndoStore.getState().checkpoint();
           store.selectedPositionIds.forEach(id => store.removePosition(id));
         }
       }
@@ -144,6 +151,7 @@ export default function Index() {
         e.preventDefault();
         const store = useProjectStore.getState();
         if (store.selectedPositionIds.length > 0) {
+          useUndoStore.getState().checkpoint();
           const newIds: string[] = [];
           store.selectedPositionIds.forEach(id => {
             const pos = store.positions.find(p => p.id === id);
