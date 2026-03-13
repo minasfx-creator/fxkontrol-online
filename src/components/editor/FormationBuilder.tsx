@@ -547,6 +547,75 @@ function FullShowTab({ droneCount, onGenerateFullShow, loading, loadingPhase }: 
   );
 }
 
+/* ── Tab: SVG Import ────────────────────────────────────────── */
+
+function SVGImportTab({ droneCount, onPoints }: {
+  droneCount: number;
+  onPoints: (points: { x: number; z: number }[], name: string) => void;
+}) {
+  const [svgContent, setSvgContent] = useState('');
+  const [fileName, setFileName] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => setSvgContent(reader.result as string);
+    reader.readAsText(file);
+  }, []);
+
+  const handleParse = useCallback(() => {
+    const content = svgContent.trim();
+    if (!content) return;
+    
+    // If user pasted raw path data, wrap it in SVG
+    const isSVG = content.startsWith('<');
+    const svgStr = isSVG ? content : `<svg><path d="${content}"/></svg>`;
+    
+    const result = parseSVGToFormation(svgStr, droneCount);
+    if (result.points.length === 0) {
+      toast.error('Nenhum path encontrado no SVG');
+      return;
+    }
+    onPoints(result.points, fileName || 'SVG Import');
+    toast.success(`${result.points.length} pontos extraídos de ${result.pathCount} path(s)`);
+  }, [svgContent, droneCount, fileName, onPoints]);
+
+  return (
+    <div className="space-y-2 p-1">
+      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">SVG → Formação</p>
+      <input ref={fileRef} type="file" accept=".svg" className="hidden" onChange={handleFile} />
+      <button
+        onClick={() => fileRef.current?.click()}
+        className="w-full h-14 border-2 border-dashed border-border rounded-sm flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+      >
+        <FileCode className="h-4 w-4" />
+        <span className="text-[9px]">{fileName || 'Carregar .svg'}</span>
+      </button>
+      <Textarea
+        placeholder="Ou cole SVG / path data aqui...&#10;Ex: M50,0 L100,100 L0,100 Z"
+        value={svgContent.length > 500 ? `[SVG carregado: ${svgContent.length} chars]` : svgContent}
+        onChange={(e) => setSvgContent(e.target.value)}
+        className="h-14 text-[9px] bg-surface-2 border-border resize-none font-mono-code"
+      />
+      <Button
+        size="sm"
+        className="w-full h-7 text-xs"
+        disabled={!svgContent.trim()}
+        onClick={handleParse}
+      >
+        <FileCode className="h-3 w-3 mr-1" />
+        Converter ({droneCount} drones)
+      </Button>
+      <p className="text-[9px] text-muted-foreground">
+        Suporta: path, rect, circle. Importa logos, ícones e formas vetoriais.
+      </p>
+    </div>
+  );
+}
+
 /* ── Main FormationBuilder ─────────────────────────────────── */
 
 export default function FormationBuilder({ open, onOpenChange }: FormationBuilderProps) {
