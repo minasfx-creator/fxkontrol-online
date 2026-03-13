@@ -262,7 +262,7 @@ function TimelineEffects() {
 
   return (
     <>
-      {activeEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos }) => {
+      {activeEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale }) => {
         const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
         const eid = effect.id;
         const pt = effect.partType;
@@ -280,12 +280,15 @@ function TimelineEffects() {
           );
         }
 
-        // ── Specialized renderers by partType (Finale 3D logic) ──
-        // For shells: position burst at break height
+        // ── Real break height with scene scale ──
         const isShell = pt === 'shell' || pt === 'single_shot';
+        const realBreakHeight = getBreakHeight(caliber) * effectScale;
         const burstPos: [number, number, number] = isShell
-          ? [pos[0], pos[1] + getBreakHeight(caliber), pos[2]]
+          ? [pos[0], pos[1] + realBreakHeight, pos[2]]
           : pos;
+
+        // Heights from effect library, scaled by scene
+        const scaledHeight = (effect.heightMeters || 4) * effectScale;
 
         if (pt === 'mine') return <MineEffect key={item.id} position={pos} color={effect.color} progress={progress} />;
         if (pt === 'candle') return <RomanCandleEffect key={item.id} position={pos} color={effect.color} progress={progress} shotCount={effect.shotCount || 8} />;
