@@ -1210,6 +1210,7 @@ export default function SkyCanvas() {
         <CameraAnimator />
         <CameraPathPreview />
         <PostProcessing />
+        <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
       </Canvas>
       </WebGLErrorBoundary>
