@@ -832,7 +832,7 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
   }, [droneFormations]);
 
   const isFirstFormation = droneFormations.length === 0;
-  const effectiveCount = isFirstFormation ? count : droneFormations[0].droneCount;
+  const effectiveCount = count;
 
   // Apply AI meta when received
   useEffect(() => {
