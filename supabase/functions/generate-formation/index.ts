@@ -973,6 +973,227 @@ function genFromOutline(n: number, outline: { x: number; z: number }[]): { x: nu
   return pts.slice(0, n);
 }
 
+// ── Additional shape generators ──────────────────────────────
+
+function genGlobe(n: number, R: number): { x: number; z: number }[] {
+  const pts: { x: number; z: number }[] = [];
+  // Meridians
+  const meridians = 8;
+  const merN = Math.floor(n * 0.5 / meridians);
+  for (let m = 0; m < meridians; m++) {
+    const angle = (Math.PI * m) / meridians;
+    for (let i = 0; i < merN; i++) {
+      const t = (i / (merN - 1)) * Math.PI;
+      pts.push({ x: R * Math.sin(t) * Math.cos(angle), z: R * Math.cos(t) });
+    }
+  }
+  // Parallels (equator, tropics, arctic)
+  const parallels = [0, 0.41, -0.41, 0.73, -0.73]; // latitude as cos(lat)
+  const parN = Math.floor((n - pts.length) / parallels.length);
+  for (const lat of parallels) {
+    const r = R * Math.sqrt(1 - lat * lat);
+    for (let i = 0; i < parN && pts.length < n; i++) {
+      const a = (2 * Math.PI * i) / parN;
+      pts.push({ x: r * Math.cos(a), z: R * lat });
+    }
+  }
+  while (pts.length < n) {
+    const a = (2 * Math.PI * pts.length) / 20;
+    pts.push({ x: R * 0.5 * Math.cos(a), z: R * 0.5 * Math.sin(a) });
+  }
+  return pts.slice(0, n);
+}
+
+function genTrophy(n: number, R: number): { x: number; z: number }[] {
+  const pts: { x: number; z: number }[] = [];
+  // Cup bowl (parabola opening up)
+  const cupN = Math.floor(n * 0.45);
+  for (let i = 0; i < cupN; i++) {
+    const t = (i / (cupN - 1)) * 2 - 1; // -1 to 1
+    const x = t * R * 0.5;
+    const z = -R * 0.5 + t * t * R * 0.5; // parabola
+    pts.push({ x, z });
+  }
+  // Handles
+  const handleN = Math.floor(n * 0.2);
+  const halfH = Math.floor(handleN / 2);
+  for (let i = 0; i < halfH; i++) {
+    const a = -Math.PI * 0.3 + (Math.PI * 0.6 * i) / (halfH - 1 || 1);
+    pts.push({ x: R * 0.5 + Math.cos(a) * R * 0.2, z: -R * 0.3 + Math.sin(a) * R * 0.25 });
+  }
+  for (let i = 0; i < handleN - halfH; i++) {
+    const a = Math.PI * 0.3 + (Math.PI * 0.6 * i) / ((handleN - halfH) - 1 || 1);
+    pts.push({ x: -R * 0.5 + Math.cos(a) * R * 0.2, z: -R * 0.3 + Math.sin(a) * R * 0.25 });
+  }
+  // Stem
+  const stemN = Math.floor(n * 0.15);
+  for (let i = 0; i < stemN; i++) {
+    const t = i / (stemN - 1 || 1);
+    pts.push({ x: ((i % 2) - 0.5) * R * 0.06, z: R * 0.05 + t * R * 0.3 });
+  }
+  // Base
+  const baseN = n - pts.length;
+  for (let i = 0; i < baseN; i++) {
+    const t = i / (baseN - 1 || 1);
+    pts.push({ x: (t - 0.5) * R * 0.6, z: R * 0.4 });
+  }
+  return pts.slice(0, n);
+}
+
+function genSnowflake(n: number, R: number): { x: number; z: number }[] {
+  const pts: { x: number; z: number }[] = [];
+  const arms = 6;
+  const perArm = Math.floor(n / arms);
+  for (let a = 0; a < arms; a++) {
+    const baseAngle = (Math.PI * 2 * a) / arms;
+    // Main arm
+    const mainN = Math.floor(perArm * 0.5);
+    for (let i = 0; i < mainN; i++) {
+      const t = i / (mainN - 1 || 1);
+      const r = t * R;
+      pts.push({ x: r * Math.cos(baseAngle), z: r * Math.sin(baseAngle) });
+    }
+    // Branches
+    const branchN = perArm - mainN;
+    const halfB = Math.floor(branchN / 2);
+    for (let i = 0; i < halfB; i++) {
+      const t = i / (halfB - 1 || 1);
+      const branchStart = R * 0.45;
+      const branchLen = R * 0.3;
+      const bAngle = baseAngle + 0.5;
+      pts.push({
+        x: (branchStart + t * branchLen) * Math.cos(bAngle),
+        z: (branchStart + t * branchLen) * Math.sin(bAngle),
+      });
+    }
+    for (let i = 0; i < branchN - halfB; i++) {
+      const t = i / ((branchN - halfB) - 1 || 1);
+      const branchStart = R * 0.45;
+      const branchLen = R * 0.3;
+      const bAngle = baseAngle - 0.5;
+      pts.push({
+        x: (branchStart + t * branchLen) * Math.cos(bAngle),
+        z: (branchStart + t * branchLen) * Math.sin(bAngle),
+      });
+    }
+  }
+  while (pts.length < n) pts.push({ x: 0, z: 0 });
+  return pts.slice(0, n);
+}
+
+function genCrown(n: number, R: number): { x: number; z: number }[] {
+  const pts: { x: number; z: number }[] = [];
+  const peaks = 5;
+  // Base band
+  const baseN = Math.floor(n * 0.35);
+  for (let i = 0; i < baseN; i++) {
+    const t = i / (baseN - 1 || 1);
+    pts.push({ x: (t - 0.5) * R * 1.6, z: R * 0.3 });
+  }
+  // Zigzag top
+  const topN = Math.floor(n * 0.45);
+  const zigVerts: { x: number; z: number }[] = [];
+  for (let p = 0; p <= peaks; p++) {
+    const x = (p / peaks - 0.5) * R * 1.6;
+    const isPeak = p % 1 === 0;
+    zigVerts.push({ x, z: isPeak && p > 0 && p < peaks ? -R * 0.4 : R * 0.1 });
+    if (p < peaks) {
+      const midX = ((p + 0.5) / peaks - 0.5) * R * 1.6;
+      zigVerts.push({ x: midX, z: -R * 0.4 });
+    }
+  }
+  pts.push(...distributeAlongPath(topN, zigVerts, false));
+  // Side walls
+  const sideN = n - pts.length;
+  const halfS = Math.floor(sideN / 2);
+  for (let i = 0; i < halfS; i++) {
+    const t = i / (halfS - 1 || 1);
+    pts.push({ x: -R * 0.8, z: R * 0.3 - t * R * 0.5 });
+  }
+  for (let i = 0; i < sideN - halfS; i++) {
+    const t = i / ((sideN - halfS) - 1 || 1);
+    pts.push({ x: R * 0.8, z: R * 0.3 - t * R * 0.5 });
+  }
+  return pts.slice(0, n);
+}
+
+function genFlagBR(n: number, R: number): { x: number; z: number }[] {
+  const pts: { x: number; z: number }[] = [];
+  const w = R * 1.4, h = R * 1.0;
+  // Green rectangle outline
+  const rectN = Math.floor(n * 0.3);
+  const rectVerts = [
+    { x: -w, z: -h }, { x: w, z: -h }, { x: w, z: h }, { x: -w, z: h },
+  ];
+  pts.push(...distributeAlongPath(rectN, rectVerts, true));
+  // Yellow diamond
+  const diamN = Math.floor(n * 0.3);
+  const dw = w * 0.85, dh = h * 0.85;
+  const diamVerts = [
+    { x: 0, z: -dh }, { x: dw, z: 0 }, { x: 0, z: dh }, { x: -dw, z: 0 },
+  ];
+  pts.push(...distributeAlongPath(diamN, diamVerts, true));
+  // Blue circle (filled)
+  const circN = Math.floor(n * 0.3);
+  const cr = h * 0.45;
+  for (let i = 0; i < circN; i++) {
+    const r = cr * Math.sqrt(i / circN);
+    const a = i * Math.PI * (3 - Math.sqrt(5));
+    pts.push({ x: r * Math.cos(a), z: r * Math.sin(a) });
+  }
+  // White band across circle
+  const bandN = n - pts.length;
+  for (let i = 0; i < bandN; i++) {
+    const t = i / (bandN - 1 || 1);
+    pts.push({ x: (t - 0.5) * cr * 1.6, z: Math.sin((t - 0.5) * Math.PI * 0.3) * cr * 0.15 });
+  }
+  return pts.slice(0, n);
+}
+
+function genDragon(n: number, R: number): { x: number; z: number }[] {
+  // Serpentine Chinese dragon silhouette
+  const pts: { x: number; z: number }[] = [];
+  // Body: S-curve
+  const bodyN = Math.floor(n * 0.5);
+  for (let i = 0; i < bodyN; i++) {
+    const t = i / (bodyN - 1);
+    const x = (t - 0.5) * R * 2;
+    const z = Math.sin(t * Math.PI * 2.5) * R * 0.35;
+    const thickness = (1 - Math.abs(t - 0.3) * 1.5) * R * 0.1;
+    pts.push({ x, z: z + ((i % 2) - 0.5) * thickness });
+  }
+  // Head (large circle at left)
+  const headN = Math.floor(n * 0.2);
+  const headR = R * 0.2;
+  for (let i = 0; i < headN; i++) {
+    const r = headR * Math.sqrt(i / headN);
+    const a = i * Math.PI * (3 - Math.sqrt(5));
+    pts.push({ x: -R + r * Math.cos(a), z: r * Math.sin(a) });
+  }
+  // Wings (two arcs)
+  const wingN = Math.floor(n * 0.2);
+  const halfW = Math.floor(wingN / 2);
+  for (let i = 0; i < halfW; i++) {
+    const t = i / (halfW - 1 || 1);
+    const a = -Math.PI * 0.1 + t * Math.PI * 0.6;
+    pts.push({ x: -R * 0.2 + Math.cos(a) * R * 0.4, z: -R * 0.5 + Math.sin(a) * R * 0.35 });
+  }
+  for (let i = 0; i < wingN - halfW; i++) {
+    const t = i / ((wingN - halfW) - 1 || 1);
+    const a = Math.PI * 0.1 + t * Math.PI * 0.6;
+    pts.push({ x: R * 0.1 + Math.cos(a) * R * 0.35, z: -R * 0.4 + Math.sin(a) * R * 0.3 });
+  }
+  // Tail (spiral at right)
+  const tailN = n - pts.length;
+  for (let i = 0; i < tailN; i++) {
+    const t = i / (tailN - 1 || 1);
+    const a = t * Math.PI * 1.5;
+    const r = R * 0.15 * (1 - t);
+    pts.push({ x: R + r * Math.cos(a), z: r * Math.sin(a) });
+  }
+  return pts.slice(0, n);
+}
+
 // ── Path utilities ──────────────────────────────────────────
 
 function distributeAlongPath(n: number, vertices: { x: number; z: number }[], closed: boolean): { x: number; z: number }[] {
