@@ -727,6 +727,7 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
     { id: 'presets', label: 'Presets', icon: Plus },
     { id: 'text', label: 'Texto', icon: MessageSquare },
     { id: 'image', label: 'Imagem', icon: Image },
+    { id: 'svg', label: 'SVG', icon: FileCode },
     { id: 'generative', label: 'IA', icon: Sparkles },
     { id: 'full-show', label: 'Show', icon: Film },
   ];
