@@ -778,7 +778,8 @@ export default function ScriptWindow() {
       <div className="flex-1 overflow-auto" ref={tableRef}>
         <table className="w-full text-[9px] font-mono-code border-collapse min-w-[600px]">
           <thead className="sticky top-0 bg-surface-1 z-10">
-            <tr className="border-b border-border">
+            <tr className="border-b border-border/40">
+              <th className="px-0.5 py-1 w-6 text-center text-muted-foreground/50 font-medium">#</th>
               <th className="px-1 py-1 w-5"></th>
               <SortableHeader label="Event Time" field="eventTime" current={sortField} dir={sortDir} onSort={toggleSort} />
               <SortableHeader label="Effect Time" field="effectTime" current={sortField} dir={sortDir} onSort={toggleSort} />
@@ -787,12 +788,9 @@ export default function ScriptWindow() {
               <SortableHeader label="Position" field="position" current={sortField} dir={sortDir} onSort={toggleSort} />
               <th className="px-1 py-1 text-left text-muted-foreground font-medium">Pan°</th>
               <th className="px-1 py-1 text-left text-muted-foreground font-medium">Tilt°</th>
-              <SortableHeader label="Duration" field="duration" current={sortField} dir={sortDir} onSort={toggleSort} />
-              <SortableHeader label="Cost" field="cost" current={sortField} dir={sortDir} onSort={toggleSort} />
+              <SortableHeader label="Dur" field="duration" current={sortField} dir={sortDir} onSort={toggleSort} />
+              <SortableHeader label="$" field="cost" current={sortField} dir={sortDir} onSort={toggleSort} />
               <th className="px-1 py-1 text-left text-muted-foreground font-medium">Chain</th>
-              <th className="px-1 py-1 text-left text-muted-foreground font-medium">X</th>
-              <th className="px-1 py-1 text-left text-muted-foreground font-medium">Y</th>
-              <th className="px-1 py-1 text-left text-muted-foreground font-medium">Z</th>
               <th className="px-1 py-1 text-left text-muted-foreground font-medium">Notes</th>
               <th className="px-1 py-1 w-8"></th>
             </tr>
