@@ -87,6 +87,7 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   audience: 'w-64',
   indoor: 'w-72',
   chains: 'w-72',
+  groups: 'w-56',
 };
 
 export default function Index() {
