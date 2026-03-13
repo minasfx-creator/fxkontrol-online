@@ -51,6 +51,8 @@ import VersioningPanel from '@/components/editor/VersioningPanel';
 import WeatherPanel from '@/components/editor/WeatherPanel';
 import CollisionPanel from '@/components/editor/CollisionPanel';
 import ClientApprovalPanel from '@/components/editor/ClientApprovalPanel';
+import TrajectoryOptimizerPanel from '@/components/editor/TrajectoryOptimizerPanel';
+import ShowTemplatesPanel from '@/components/editor/ShowTemplatesPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
@@ -113,6 +115,8 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   weather: 'w-64',
   collisions: 'w-64',
   approval: 'w-72',
+  trajectory: 'w-64',
+  templates: 'w-72',
 };
 
 export default function Index() {
@@ -276,6 +280,8 @@ export default function Index() {
         {activePanel === 'weather' && <WeatherPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'collisions' && <CollisionPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'approval' && <ClientApprovalPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'trajectory' && <TrajectoryOptimizerPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'templates' && <ShowTemplatesPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };

@@ -15,6 +15,8 @@ import TrajectoryPaths from './TrajectoryPaths';
 import DroneChoreography from './DroneChoreography';
 import Rack3DView from './Rack3DView';
 import BoidsVisualizer from './BoidsVisualizer';
+import CollisionAvoidanceOverlay from './CollisionAvoidanceOverlay';
+import { DEFAULT_AVOIDANCE } from '@/lib/collisionAvoidance';
 import QuadcopterModel from './QuadcopterModel';
 import GeofenceVisual from './GeofenceVisual';
 import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Globe, Download } from 'lucide-react';
@@ -1395,6 +1397,7 @@ export default function SkyCanvas() {
         <TrajectoryPaths />
         <DroneChoreography />
         <BoidsVisualizer />
+        <CollisionAvoidanceOverlay config={DEFAULT_AVOIDANCE} />
         <TimelineEffects />
         <GeofenceVisual />
         <PlaybackClock />

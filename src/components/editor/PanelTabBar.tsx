@@ -1,10 +1,10 @@
-import { Route, Wind, FileText, Package, Cpu, DollarSign, Spline, Sliders, Settings2, Bug, Gauge, Lightbulb, Battery, Radio, Clock, Globe, ShieldCheck, Tag, Sparkles, Music, Download, StickyNote, Video, Box, Image, ShoppingBag, Shield, Wand2, Eye, Warehouse, Link2, Users, ChevronDown, ChevronRight, FileBarChart, Paintbrush, Volume2, Camera, Share2, Atom, History, Cloud, Zap, MessageSquare } from 'lucide-react';
+import { Route, Wind, FileText, Package, Cpu, DollarSign, Spline, Sliders, Settings2, Bug, Gauge, Lightbulb, Battery, Radio, Clock, Globe, ShieldCheck, Tag, Sparkles, Music, Download, StickyNote, Video, Box, Image, ShoppingBag, Shield, Wand2, Eye, Warehouse, Link2, Users, ChevronDown, ChevronRight, FileBarChart, Paintbrush, Volume2, Camera, Share2, Atom, History, Cloud, Zap, MessageSquare, Navigation, FolderOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useState } from 'react';
 
-export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | 'inventory' | 'waypoints' | 'effects' | 'properties' | 'boids' | 'pid' | 'dmx' | 'battery' | 'mavlink' | 'smpte' | 'maps' | 'diagnostic' | 'logistics' | 'swarmgpt' | 'synesthesia' | 'firing' | 'labels' | 'video' | 'models' | 'background' | 'suppliers' | 'safety' | 'scripting' | 'audience' | 'indoor' | 'chains' | 'groups' | 'summary' | 'scene' | 'soundlevel' | 'aroverlay' | 'share' | 'collab' | 'particles' | 'versioning' | 'weather' | 'collisions' | 'approval';
+export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | 'inventory' | 'waypoints' | 'effects' | 'properties' | 'boids' | 'pid' | 'dmx' | 'battery' | 'mavlink' | 'smpte' | 'maps' | 'diagnostic' | 'logistics' | 'swarmgpt' | 'synesthesia' | 'firing' | 'labels' | 'video' | 'models' | 'background' | 'suppliers' | 'safety' | 'scripting' | 'audience' | 'indoor' | 'chains' | 'groups' | 'summary' | 'scene' | 'soundlevel' | 'aroverlay' | 'share' | 'collab' | 'particles' | 'versioning' | 'weather' | 'collisions' | 'approval' | 'trajectory' | 'templates';
 
 const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId; label: string; icon: typeof Route; shortcut?: string }[] }[] = [
   {
@@ -34,6 +34,8 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
       { id: 'wind', label: 'Wind/Cam', icon: Wind },
       { id: 'particles', label: 'Particles', icon: Atom },
       { id: 'collisions', label: 'Collisions', icon: Zap },
+      { id: 'trajectory', label: 'Trajectory Opt', icon: Navigation },
+      { id: 'templates', label: 'Templates', icon: FolderOpen },
       { id: 'weather', label: 'Weather', icon: Cloud },
       { id: 'versioning', label: 'Versioning', icon: History },
       { id: 'approval', label: 'Approval', icon: MessageSquare },
