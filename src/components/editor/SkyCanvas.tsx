@@ -844,18 +844,18 @@ function StageGround() {
 function TreelineSilhouette() {
   const trees = useMemo(() => {
     const result: { x: number; z: number; h: number; w: number; layer: number }[] = [];
-    // 3 depth layers
-    for (let layer = 0; layer < 3; layer++) {
-      const count = 60 - layer * 15;
-      const baseDist = 85 + layer * 20;
+    // 4 depth layers — expanded world
+    for (let layer = 0; layer < 4; layer++) {
+      const count = 80 - layer * 15;
+      const baseDist = 150 + layer * 40;
       for (let i = 0; i < count; i++) {
         const angle = (i / count) * Math.PI * 2 + layer * 0.05;
-        const dist = baseDist + Math.random() * 10;
+        const dist = baseDist + Math.random() * 20;
         result.push({
           x: Math.cos(angle) * dist,
           z: Math.sin(angle) * dist,
-          h: 3 + Math.random() * 10 + layer * 2,
-          w: 2 + Math.random() * 4,
+          h: 5 + Math.random() * 15 + layer * 3,
+          w: 3 + Math.random() * 6,
           layer,
         });
       }
