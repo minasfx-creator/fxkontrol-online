@@ -20,7 +20,7 @@ import SelectionStatusBar from './SelectionStatusBar';
 import { cn } from '@/lib/utils';
 import { CometEffect, ShockwaveEffect, MultiBurstEffect, FanEffect, MineEffect, RomanCandleEffect, WaterfallEffect, GerbEffect, FlameEffect, CryoJetEffect, LaserEffect, CakeEffect, ConfettiEffect, MovingHeadEffect, PrefireShell } from './effects';
 import { getLiftTime, getBreakHeight } from '@/lib/pyroPhysics';
-import MiniMap from './MiniMap';
+// MiniMap removed per user request
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
