@@ -695,7 +695,7 @@ function GrassGround() {
       float spec = pow(max(dot(vNormal, halfDir), 0.0), 24.0);
       color += vec3(0.03, 0.05, 0.08) * spec * 0.3;
 
-      float edgeDist = length(vWorldPos.xz) / 80.0;
+      float edgeDist = length(vWorldPos.xz) / 120.0;
       float edgeFade = smoothstep(0.8, 1.0, edgeDist);
       color = mix(color, vec3(0.05, 0.12, 0.03), edgeFade);
 
@@ -707,7 +707,7 @@ function GrassGround() {
     <>
       {/* Far terrain — Google Earth satellite style */}
       <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[2000, 2000, 4, 4]} />
+        <planeGeometry args={[4000, 4000, 4, 4]} />
         <shaderMaterial
           uniforms={uniforms}
           vertexShader={terrainVertexShader}
@@ -716,7 +716,7 @@ function GrassGround() {
       </mesh>
       {/* Near-stage grass with mowing pattern */}
       <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[80, 64]} />
+        <circleGeometry args={[120, 64]} />
         <shaderMaterial
           uniforms={uniforms}
           vertexShader={terrainVertexShader}
@@ -844,46 +844,46 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
       {satelliteTexture && <SatelliteOverlay textureUrl={satelliteTexture} />}
       <GroundFog />
 
-      {/* Operational grid — configurable with snap */}
+      {/* Operational grid — subtle professional */}
       <Grid
         position={[0, 0.01, 0]}
-        args={[500, 500]}
+        args={[1000, 1000]}
         cellSize={2}
-        cellThickness={0.2}
-        cellColor="#2a4a2a"
+        cellThickness={0.15}
+        cellColor="#1a3a1a"
         sectionSize={10}
-        sectionThickness={0.6}
-        sectionColor="#3a5a3a"
-        fadeDistance={250}
+        sectionThickness={0.4}
+        sectionColor="#2a4a2a"
+        fadeDistance={350}
         infiniteGrid
       />
-      {/* 50m major grid marks */}
+      {/* 50m major grid */}
       <Grid
         position={[0, 0.015, 0]}
-        args={[500, 500]}
+        args={[1000, 1000]}
         cellSize={50}
-        cellThickness={1.0}
-        cellColor="#4a6a4a"
+        cellThickness={0.6}
+        cellColor="#2a4a2a"
         sectionSize={100}
-        sectionThickness={1.2}
-        sectionColor="#5a7a5a"
-        fadeDistance={400}
+        sectionThickness={0.8}
+        sectionColor="#3a5a3a"
+        fadeDistance={600}
         infiniteGrid
       />
 
-      {/* Central firing area marker — scaled */}
-      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[40, 40.4, 64]} />
-        <meshBasicMaterial color="#ff4444" transparent opacity={0.5} />
+      {/* Subtle center cross — origin marker (no red squares) */}
+      <mesh position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[0.15, 6]} />
+        <meshBasicMaterial color="#5a8a5a" transparent opacity={0.3} />
       </mesh>
-      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[80, 80.4, 64]} />
-        <meshBasicMaterial color="#ffaa00" transparent opacity={0.3} />
+      <mesh position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[6, 0.15]} />
+        <meshBasicMaterial color="#5a8a5a" transparent opacity={0.3} />
       </mesh>
 
       {/* Scale reference poles — wider spread */}
-      {[-40, -20, 0, 20, 40].map((x) => (
-        <group key={`pole-${x}`} position={[x, 0, -35]}>
+      {[-60, -30, 0, 30, 60].map((x) => (
+        <group key={`pole-${x}`} position={[x, 0, -45]}>
           <mesh position={[0, 5, 0]} castShadow>
             <cylinderGeometry args={[0.04, 0.05, 10, 8]} />
             <meshStandardMaterial color="#555555" metalness={0.7} roughness={0.25} />
@@ -891,12 +891,12 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
           {[2, 4, 6, 8, 10].map((h) => (
             <mesh key={h} position={[0, h, 0]}>
               <boxGeometry args={[0.15, 0.02, 0.15]} />
-              <meshBasicMaterial color="#888888" transparent opacity={0.5} />
+              <meshBasicMaterial color="#888888" transparent opacity={0.4} />
             </mesh>
           ))}
           <mesh position={[0, 10.15, 0]}>
-            <sphereGeometry args={[0.08, 8, 8]} />
-            <meshBasicMaterial color="#ff0000" />
+            <sphereGeometry args={[0.06, 8, 8]} />
+            <meshBasicMaterial color="#ffffff" />
           </mesh>
           <mesh position={[0, 0.05, 0]}>
             <cylinderGeometry args={[0.18, 0.22, 0.1, 8]} />
@@ -915,18 +915,18 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
 function TreelineSilhouette() {
   const trees = useMemo(() => {
     const result: { x: number; z: number; h: number; w: number; layer: number }[] = [];
-    // 5 depth layers — Google Earth-scale world
-    for (let layer = 0; layer < 5; layer++) {
-      const count = 100 - layer * 15;
-      const baseDist = 200 + layer * 80;
+    // 6 depth layers — expanded world
+    for (let layer = 0; layer < 6; layer++) {
+      const count = 120 - layer * 15;
+      const baseDist = 300 + layer * 120;
       for (let i = 0; i < count; i++) {
         const angle = (i / count) * Math.PI * 2 + layer * 0.05;
-        const dist = baseDist + Math.random() * 40;
+        const dist = baseDist + Math.random() * 60;
         result.push({
           x: Math.cos(angle) * dist,
           z: Math.sin(angle) * dist,
-          h: 5 + Math.random() * 18 + layer * 4,
-          w: 4 + Math.random() * 8,
+          h: 6 + Math.random() * 22 + layer * 5,
+          w: 5 + Math.random() * 10,
           layer,
         });
       }
@@ -1092,7 +1092,7 @@ function CameraController({ targetPosition, targetLookAt }: { targetPosition: [n
       zoomSpeed={1.2}
       maxPolarAngle={Math.PI * 0.48}
       minDistance={2}
-      maxDistance={1200}
+      maxDistance={2000}
       enablePan
     />
   );
@@ -1195,7 +1195,7 @@ export default function SkyCanvas() {
         <Moon />
         <Stars radius={450} depth={200} count={8000} factor={4.5} saturation={0.15} fade speed={0.04} />
         <AtmosphericParticles />
-        <fog attach="fog" args={['#0a1020', 200, 900]} />
+        <fog attach="fog" args={['#0a1020', 300, 1500]} />
 
         <StageGround satelliteTexture={satelliteTexture} />
         <LaunchSites />
