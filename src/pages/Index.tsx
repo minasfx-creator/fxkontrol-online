@@ -214,6 +214,7 @@ export default function Index() {
           <Suspense fallback={<CanvasLoader />}>
             <SkyCanvas />
           </Suspense>
+          <BoxSelectOverlay />
         </div>
 
         {/* Right: active panel + icon tab bar */}
