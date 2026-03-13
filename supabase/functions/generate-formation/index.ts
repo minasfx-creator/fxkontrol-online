@@ -9,72 +9,117 @@ const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 // ── v4 System Prompt: Formation Designer ────────────────────
 
-const SYSTEM_PROMPT = `You are a world-class drone light show formation designer. You output EXACT coordinates with mathematical precision.
+const SYSTEM_PROMPT = `You are a world-class drone light show formation designer with 15+ years of experience at companies like Intel, Dronisos, and CollMot. You output EXACT coordinates with mathematical precision.
 
 RULES (VIOLATION = SHOW FAILURE):
 1. Return EXACTLY N points (N specified per request). COUNT your array.
 2. Coordinates in meters, centered at (0,0).
-3. Minimum distance between ANY two points: 2.0m (safety regulation).
+3. Minimum distance between ANY two points: 2.0m (safety regulation — FAA Part 107 compliant).
 4. suggestedHeight: 20-80m. suggestedTransitionTime: 8-25s.
+5. For complex shapes: prioritize RECOGNIZABILITY from audience perspective (ground level, 200m away).
 
 MATHEMATICAL RECIPES (USE THESE — don't improvise formulas):
 
 Circle(N, R): x=R·cos(2πi/N), z=R·sin(2πi/N)
-Filled Circle(N, R): concentric rings, ring k radius rk=R·(k+1)/K, points per ring proportional to 2π·rk
+Filled Circle(N, R): Fibonacci/sunflower spiral — angle=i·137.508°, r=R·√(i/N)
 Heart(N, R): t=2πi/N → x=R·sin³(t)·0.8, z=R·(13cos(t)−5cos(2t)−2cos(3t)−cos(4t))/16
-Star5(N, R): outer=R, inner=R×0.38, alternate vertices, distribute N along perimeter
+Star(N, R, points=5): outer=R, inner=R×0.38, alternate vertices, distribute N along perimeter. For filled: concentric scaled stars.
 Spiral(N, R, turns=3): t=i/(N−1), angle=2π·turns·t, x=t·R·cos(angle), z=t·R·sin(angle)
 Grid(N, sp=2.5): cols=ceil(√N), center at origin
-Text: 5×7 dot matrix per char, spacing=8m, scale to fit N drones
+Text: 5×7 dot matrix per char, spacing=8m, scale to fit N drones. For large N, thicken strokes.
 Diamond: 4 sides of rotated square, N/4 per side
-Cross: horizontal + vertical bars, thickness=2 points
-Wave: x spread linearly, z=A·sin(2π·x/wavelength)
+Cross: horizontal + vertical bars, thickness=2-4 points
+Wave: x spread linearly, z=A·sin(2π·x/wavelength), for filled use multiple phase-shifted rows
 Butterfly: two heart-like wings mirrored, thin body center line
 Arrow: triangle tip + rectangular tail
+Snowflake: 6-fold symmetry, fractal arms with branches
+Hexagon: 6-sided polygon, filled with concentric hexagons
+Galaxy/Vortex: logarithmic spiral arms (2-4), core cluster
+Treble Clef: staff curves with characteristic S and loop
+Crown: zigzag top + rectangular base
+Anchor: vertical shaft + curved arms + cross bar
+Phoenix/Bird: spread wings (parabolic arcs) + body + tail
+DNA/Helix: two interleaved sine waves with connecting rungs
+Globe: meridians + parallels, sphere projected to 2D
 Flag BR: green rectangle, yellow diamond, blue circle, white band with stars
+Mandala: concentric rings with rotational symmetry patterns
 
 EMOJI → SHAPE MAP:
 ⭐→Star5  ❤️→Heart  🌙→Crescent(thick arc)  🦋→Butterfly  🔔→Bell(parabola+top)  
 🎄→LayeredTriangles  🎵→MusicNote(circle+stem+flag)  ✝️→Cross  ☮️→PeaceSign(circle+lines)  
 ♾️→Lemniscate  🏠→House(square+triangle roof)  🐬→DolphinArc  🎆→RadialBurst(concentric)
-🌍→Circle  🚀→Rocket(cylinder+cone+fins)  ⚽→Circle  💎→Diamond  🎂→CakeLayers
+🌍→Globe  🚀→Rocket(cylinder+cone+fins)  ⚽→Circle  💎→Diamond  🎂→CakeLayers
+👑→Crown  ⚓→Anchor  🌸→Flower(petal arcs)  🦅→Bird(spread wings)  🧬→DNA  
+🎭→Theater masks  🏰→Castle  🎪→Tent  🌺→Mandala  ❄️→Snowflake6  🔱→Trident
+🦁→Lion face  🐉→Dragon  🏛️→Columns  ⛵→Sailboat  🎸→Guitar  🏆→Trophy
 
 SCALING: radius = clamp(sqrt(N)*2.2, 12, 150)
-For N>200: Use FILLED shapes (concentric/scanline), not just outlines.
+For N>200: Use FILLED shapes (concentric/scanline), not just outlines. Ensure 60%+ are interior points.
 For N>500: Increase density, use multiple concentric layers. radius ~ sqrt(N)*2.5
 For N>1000: Large-scale show. radius ~ sqrt(N)*3.0, use dense fill patterns.
+For N>2000: Stadium-scale. radius ~ sqrt(N)*3.5, multiple density zones.
+
+AUDIENCE PERSPECTIVE OPTIMIZATION:
+- Shapes are viewed from GROUND LEVEL at ~200m distance
+- Vertical axis (z in your output) is MORE impactful than horizontal spread
+- Make shapes slightly taller than wide (1.2:1 ratio) for better visibility
+- Keep most points in the upper 2/3 of the shape — drones near ground are less visible
 
 CRITICAL: Your "points" array must have EXACTLY N elements. If you're unsure, use the mathematical formula and compute each point.`;
 
 // ── v4 Full Show Prompt ─────────────────────────────────────
 
-const FULL_SHOW_PROMPT = `You are a legendary drone show choreographer designing spectacular multi-formation shows.
+const FULL_SHOW_PROMPT = `You are a legendary drone show choreographer — the Spielberg of the sky. You design spectacular multi-formation shows that tell visual stories and evoke deep emotional responses.
 
-SHOW STRUCTURE (4-7 formations):
-1. OPENING: Simple, recognizable shape. Build anticipation. (hold: 12-18s)
-2. DEVELOPMENT: 2-3 formations increasing complexity. Explore theme. (hold: 15-20s each)
-3. CLIMAX: Most impressive formation. Maximum visual impact. (hold: 20-30s)
-4. FINALE: Memorable closing symbol. Conclusive feel. (hold: 15-20s)
+SHOW STRUCTURE (5-8 formations for maximum narrative impact):
+1. PRELUDE: Subtle, small formation rising from ground. Build curiosity. (hold: 8-12s)
+2. OPENING: Recognizable theme symbol. Establish the story. (hold: 12-18s)
+3. DEVELOPMENT: 2-3 formations of increasing complexity. Explore theme variations. Use contrasting colors and scales. (hold: 15-22s each)
+4. CLIMAX: The most impressive, largest formation. Maximum visual impact. Fill the sky. (hold: 20-30s)
+5. RESOLUTION: Meaningful closing symbol. Emotional conclusion. (hold: 15-20s)
+6. FINALE: All drones converge, pulse, then scatter upward like released lanterns. (hold: 10-15s)
 
 EACH FORMATION MUST have EXACTLY N points (N = drone count).
 
-COLOR NARRATIVE (use colors that enhance the story):
-Red=#FF2020 passion/fire  Blue=#2080FF calm/sky  Green=#20CC40 nature  
-Gold=#FFD700 celebration  White=#FFFFFF stars/purity  Purple=#AA44FF magic  
-Orange=#FF8800 energy  Pink=#FF66AA love/youth  Cyan=#00E5FF technology
+COLOR NARRATIVE (colors should evolve to tell a story):
+Red=#FF2020 passion/fire/danger  Blue=#2080FF calm/sky/trust  Green=#20CC40 nature/growth  
+Gold=#FFD700 celebration/achievement  White=#FFFFFF stars/purity/peace  Purple=#AA44FF magic/mystery  
+Orange=#FF8800 energy/warmth  Pink=#FF66AA love/youth  Cyan=#00E5FF technology/future
+Warm White=#FFE4B5 nostalgia/comfort  Crimson=#DC143C drama/intensity  Emerald=#50C878 hope/renewal
+Amber=#FFBF00 golden hour/luxury  Electric Blue=#7DF9FF excitement/innovation
 
-TIMING:
-- transitionDuration: 8-20s (longer = more dramatic)
-- holdDuration: 12-25s (longer for complex shapes)
-- Use colorTransition: "wave" for water/flow themes, "pulse" for energy, "rainbow" for celebration
+COLOR TRANSITIONS (choose based on emotional intent):
+- "wave": for flow/water/organic themes — color ripples through formation
+- "pulse": for energy/heartbeat/music — color pulses outward from center
+- "rainbow": for celebration/pride/joy — full spectrum sweep
+- "cascade": for revelation/unveiling — top-to-bottom color change
+- "sparkle": for magic/stars — random twinkling color transitions
+- "linear": for clean/professional — smooth uniform transition
 
-THEME RECIPES:
-"Aniversário/Birthday" → 🎂Cake → 🎈Balloons/Numbers → 🎆Firework → ⭐Star
-"Brasil" → 🇧🇷Flag → ✝️ChristRedeemer → ⚽Ball → ⭐SouthernCross
-"Réveillon/NewYear" → 🕐Clock → Numbers(year) → 🎆Firework → ⭐StarBurst
-"Casamento/Wedding" → ❤️Heart → 💍Rings → 🕊️Dove → ❤️DoubleHeart
-"Natal/Christmas" → 🎄Tree → ⭐Star → 🔔Bell → ❄️Snowflake
-"Espaço/Space" → 🚀Rocket → 🪐Planet → 🌌Galaxy → ⭐Constellation
+TIMING MASTERY:
+- transitionDuration: 8-20s (faster = energy, slower = drama/awe)
+- holdDuration: 12-30s (complex shapes need longer for audience to recognize)
+- CONTRAST: Follow a fast transition with a long hold, and vice versa
+- Use 2-3s of hold AFTER transition for audience to "breathe" before next change
+
+THEME RECIPES (use as inspiration, not rigid templates):
+"Aniversário/Birthday" → Sparkles→🎂Cake→Numbers(age)→🎈Balloons→🎆Firework→⭐Star
+"Brasil" → 🇧🇷Flag→✝️ChristRedeemer→⚽Ball→🌺Mandala→⭐SouthernCross→🦜Parrot
+"Réveillon/NewYear" → 🕐Clock→🔟Countdown→🎆Firework→🌟StarBurst→ChampagneGlass→"2027"
+"Casamento/Wedding" → 💐Bouquet→❤️Heart→💍Rings→🕊️Dove→❤️DoubleHeart→👑Crown
+"Natal/Christmas" → ⭐StarOfBethlehem→🎄Tree→🔔Bell→❄️Snowflake→🎁Gift→☮️Peace
+"Espaço/Space" → 🚀Rocket→🪐Saturn→🌌Galaxy→⭐Constellation→🛸UFO→🌍Earth
+"Música/Music" → 🎵Note→🎸Guitar→🎹Piano→🎶DoubleNotes→🎤Mic→🎵BigNote
+"Natureza/Nature" → 🌱Sprout→🌿Fern→🦋Butterfly→🌸Flower→🌳Tree→🌍Globe
+"Tecnologia/Tech" → ⚡Bolt→💻Chip→🧬DNA→🤖Robot→🌐Globe→♾️Infinity
+"Amor/Love" → 💫Sparkle→🌹Rose→❤️Heart→💕DoubleHearts→💎Diamond→👑Crown
+
+CRITICAL SHOW DESIGN PRINCIPLES:
+1. SCALE PROGRESSION: Start small, grow to maximum, then resolve
+2. COMPLEXITY ARC: Simple→Complex→MaxComplex→SimpleFinal
+3. COLOR JOURNEY: Cool/subtle → Warm/vibrant → Peak color → Meaningful final color
+4. AUDIENCE DIRECTION: Alternate between high/low formations to guide eyes
+5. SILENCE MOMENTS: Brief holds between major formations for emotional processing
 
 IMPORTANT: Every formation's "points" array MUST have exactly N elements.`;
 
@@ -356,38 +401,44 @@ function buildShapeDescriptorTool() {
   };
 }
 
-const SHAPE_DESCRIPTOR_PROMPT = `You are a drone formation shape interpreter. Given a description, identify the BEST matching shape type and parameters. The server will compute the exact drone positions.
+const SHAPE_DESCRIPTOR_PROMPT = `You are a drone formation shape interpreter with deep knowledge of geometry and visual design. Given a description, identify the BEST matching shape type and parameters. The server will compute the exact drone positions.
 
 Available shape types and their key params:
-- circle: radius
-- filled_circle: radius
-- heart: radius
-- star: radius, starPoints (default 5), innerRadius (default radius*0.38)
-- spiral: radius, turns (default 3)
-- grid: radius (used as total size)
-- diamond: radius
-- cross: radius, thickness (default 2)
-- wave: radius (width), amplitude, wavelength
-- butterfly: radius
-- arrow: radius
-- crescent: radius, innerRadius (default radius*0.7)
-- ring: radius, innerRadius
-- lemniscate: radius (infinity symbol)
-- text: radius, text (the text string)
-- radial_burst: radius, layers (default 3)
-- layered_triangles: radius, layers (default 3) — Christmas tree shape
-- house: radius
-- music_note: radius
-- peace_sign: radius
-- rocket: radius
-- cake: radius, layers (default 3)
+- circle: radius — simple outline circle
+- filled_circle: radius — uniformly filled disc (Fibonacci spiral distribution)
+- heart: radius — romantic heart shape, filled for large N
+- star: radius, starPoints (default 5), innerRadius (default radius*0.38) — classic star
+- spiral: radius, turns (default 3) — Archimedean spiral
+- grid: radius (used as total size) — rectangular grid
+- diamond: radius — rotated square / diamond shape
+- cross: radius, thickness (default 2) — plus/cross shape
+- wave: radius (width), amplitude, wavelength — sinusoidal wave
+- butterfly: radius — mirrored wings with body
+- arrow: radius — directional arrow (triangle tip + rectangular tail)
+- crescent: radius, innerRadius (default radius*0.7) — moon crescent
+- ring: radius, innerRadius — concentric ring/donut
+- lemniscate: radius — infinity symbol (figure-8)
+- text: radius, text (the text string) — dot-matrix rendered text
+- radial_burst: radius, layers (default 3) — radial explosion pattern
+- layered_triangles: radius, layers (default 3) — Christmas tree / pyramid
+- house: radius — house with triangular roof
+- music_note: radius — musical note symbol
+- peace_sign: radius — peace symbol (circle + lines)
+- rocket: radius — rocket with nose cone and fins
+- cake: radius, layers (default 3) — tiered cake with candles
 - custom_outline: provide outlinePoints (10-40 key vertices) for any shape not listed above
 
 SCALING: radius = clamp(sqrt(N)*2.2, 12, 150) where N is drone count. For N>500: sqrt(N)*2.5. For N>1000: sqrt(N)*3.0
 
-For emojis: map to the closest shape type. 
-For complex/unknown shapes: use custom_outline with 15-30 key vertices tracing the recognizable outline.
-For text strings: use type="text" with params.text set to the string.`;
+SHAPE SELECTION INTELLIGENCE:
+- For emojis: map to the closest shape type directly
+- For abstract concepts: choose the shape that best SYMBOLIZES the concept
+- For complex/unknown shapes: use custom_outline with 20-35 key vertices tracing the outline
+- For brand logos or letters: use type="text" or custom_outline
+- For animals: use custom_outline with characteristic silhouette vertices
+- When in doubt, prefer filled_circle over circle for N>100 (more visually impactful)
+
+AUDIENCE PERSPECTIVE: Shapes will be viewed from ground level. Make them slightly taller than wide.`;
 
 // ── Server-side shape generators ────────────────────────────
 
@@ -1153,14 +1204,19 @@ function processFormationResult(
 // ── Model selection ─────────────────────────────────────────
 
 function selectModels(mode: string, count: number, isFullShow: boolean): { primary: string; fallback: string } {
-  if (isFullShow || mode === "image") {
+  if (isFullShow) {
+    // Full shows need maximum reasoning for narrative coherence
+    return { primary: "google/gemini-2.5-pro", fallback: "google/gemini-3-flash-preview" };
+  }
+  if (mode === "image") {
+    // Image analysis needs strong vision model
     return { primary: "google/gemini-2.5-pro", fallback: "google/gemini-2.5-flash" };
   }
-  // Use flash for most single formations (faster), pro for complex/large
-  if (count > 200 || mode === "generative") {
-    return { primary: "google/gemini-2.5-flash", fallback: "google/gemini-2.5-pro" };
+  // Single formations: fast model with pro fallback
+  if (count > 500) {
+    return { primary: "google/gemini-3-flash-preview", fallback: "google/gemini-2.5-pro" };
   }
-  return { primary: "google/gemini-2.5-flash", fallback: "google/gemini-2.5-pro" };
+  return { primary: "google/gemini-2.5-flash", fallback: "google/gemini-3-flash-preview" };
 }
 
 // ── Main handler ────────────────────────────────────────────
@@ -1436,37 +1492,68 @@ serve(async (req) => {
 function inferShapeType(name: string): string {
   const lower = name.toLowerCase();
   const map: [RegExp, string][] = [
-    [/heart|coração|❤|💕|💗/, 'heart'],
-    [/star|estrela|⭐|✨/, 'star'],
-    [/circle|círculo|⭕/, 'circle'],
-    [/spiral|espiral|🌀/, 'spiral'],
-    [/grid|grade|quadr/, 'grid'],
-    [/diamond|diamante|losango|💎/, 'diamond'],
-    [/cross|cruz|✝|✚/, 'cross'],
-    [/wave|onda|🌊/, 'wave'],
-    [/butterfly|borboleta|🦋/, 'butterfly'],
-    [/arrow|flecha|seta|➡/, 'arrow'],
-    [/crescent|lua|moon|🌙/, 'crescent'],
-    [/ring|anel|💍/, 'ring'],
-    [/infinity|infinit|♾/, 'lemniscate'],
-    [/burst|explos|firework|fogo|🎆/, 'radial_burst'],
-    [/tree|árvore|natal|🎄/, 'layered_triangles'],
-    [/house|casa|🏠/, 'house'],
-    [/music|nota|🎵|🎶/, 'music_note'],
-    [/peace|paz|☮/, 'peace_sign'],
-    [/rocket|foguete|🚀/, 'rocket'],
-    [/cake|bolo|🎂/, 'cake'],
-    [/ball|bola|⚽/, 'filled_circle'],
-    [/flag|bandeira/, 'grid'],
-    [/bell|sino|🔔/, 'filled_circle'],
-    [/snow|neve|❄/, 'star'],
-    [/flower|flor|🌸/, 'radial_burst'],
-    [/sun|sol|☀/, 'radial_burst'],
-    [/trophy|troféu|🏆/, 'house'],
-    [/dolphin|golfinho|🐬/, 'crescent'],
+    [/heart|coração|❤|💕|💗|💓|amor|love/, 'heart'],
+    [/star|estrela|⭐|✨|🌟|stella/, 'star'],
+    [/circle|círculo|⭕|round|redondo/, 'circle'],
+    [/spiral|espiral|🌀|vórtex|vortex/, 'spiral'],
+    [/grid|grade|quadr|matrix|matriz/, 'grid'],
+    [/diamond|diamante|losango|💎|gem/, 'diamond'],
+    [/cross|cruz|✝|✚|plus/, 'cross'],
+    [/wave|onda|🌊|sea|mar|ocean/, 'wave'],
+    [/butterfly|borboleta|🦋|papillon/, 'butterfly'],
+    [/arrow|flecha|seta|➡|→/, 'arrow'],
+    [/crescent|lua|moon|🌙|meia.?lua/, 'crescent'],
+    [/ring|anel|💍|donut|rosca/, 'ring'],
+    [/infinity|infinit|♾|8.*deitado|lemniscate/, 'lemniscate'],
+    [/burst|explos|firework|fogo.*artif|🎆|boom/, 'radial_burst'],
+    [/tree|árvore|natal|🎄|christmas.*tree|pinheiro/, 'layered_triangles'],
+    [/house|casa|🏠|lar|home/, 'house'],
+    [/music|nota|🎵|🎶|🎤|song|canção/, 'music_note'],
+    [/peace|paz|☮|harmonia/, 'peace_sign'],
+    [/rocket|foguete|🚀|launch|lançamento/, 'rocket'],
+    [/cake|bolo|🎂|birthday.*cake/, 'cake'],
+    [/ball|bola|⚽|🏀|sphere|esfera/, 'filled_circle'],
+    [/flag|bandeira|🏳|🏴/, 'grid'],
+    [/bell|sino|🔔|campanha/, 'filled_circle'],
+    [/snow|neve|❄|floco|snowflake/, 'star'],
+    [/flower|flor|🌸|🌺|🌻|🌷|petal/, 'radial_burst'],
+    [/sun|sol|☀|🌞/, 'radial_burst'],
+    [/trophy|troféu|🏆|cup|taça/, 'house'],
+    [/dolphin|golfinho|🐬|whale|baleia/, 'crescent'],
+    [/crown|coroa|👑|king|queen|rei|rainha/, 'star'],
+    [/anchor|âncora|⚓/, 'cross'],
+    [/guitar|guitarra|🎸|violão/, 'music_note'],
+    [/bird|pássaro|🦅|eagle|águia|phoenix|fênix/, 'butterfly'],
+    [/dna|helix|🧬|genética/, 'spiral'],
+    [/globe|globo|🌍|🌎|🌏|earth|terra|mundo/, 'filled_circle'],
+    [/eye|olho|👁|vision|visão/, 'crescent'],
+    [/shield|escudo|🛡/, 'diamond'],
+    [/lightning|raio|⚡|bolt|relâmpago/, 'arrow'],
+    [/skull|caveira|💀/, 'filled_circle'],
+    [/cat|gato|🐱/, 'filled_circle'],
+    [/dog|cachorro|🐶/, 'filled_circle'],
+    [/dragon|dragão|🐉/, 'butterfly'],
+    [/castle|castelo|🏰/, 'layered_triangles'],
+    [/tent|tenda|🎪|circus|circo/, 'layered_triangles'],
+    [/leaf|folha|🍃|🍂/, 'heart'],
+    [/wing|asa|angel|anjo/, 'butterfly'],
+    [/planet|planeta|🪐|saturn|saturno/, 'ring'],
+    [/galaxy|galáxia|🌌/, 'spiral'],
+    [/mandala|🌺|pattern|padrão/, 'radial_burst'],
+    [/hexagon|hexágono|hex|🔷/, 'filled_circle'],
+    [/triangle|triângulo|🔺/, 'layered_triangles'],
+    [/square|quadrado|⬛/, 'grid'],
+    [/pentagon|pentágono/, 'star'],
+    [/atom|átomo|⚛/, 'ring'],
+    [/yin.*yang|☯/, 'filled_circle'],
+    [/trident|tridente|🔱/, 'cross'],
+    [/robot|robô|🤖/, 'grid'],
+    [/alien|et|👽/, 'filled_circle'],
   ];
   for (const [regex, shape] of map) {
     if (regex.test(lower)) return shape;
   }
+  // Check if it contains text characters (likely a text request)
+  if (/^[a-zA-Z0-9\s]{1,10}$/.test(name.trim())) return 'text';
   return 'filled_circle';
 }
