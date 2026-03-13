@@ -125,10 +125,14 @@ export default function Toolbar() {
         <Button variant="ghost" size="icon" className="h-7 w-7" title="Import CSV" onClick={() => setCsvOpen(true)}>
           <Upload className="h-3.5 w-3.5" />
         </Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7" title="Import VVIZ (Finale 3D)" onClick={() => setVvizOpen(true)}>
+          <FileJson className="h-3.5 w-3.5" />
+        </Button>
       </div>
 
       <FormationBuilder open={formationOpen} onOpenChange={setFormationOpen} />
       <CSVImporter open={csvOpen} onOpenChange={setCsvOpen} />
+      <VVIZImporter open={vvizOpen} onOpenChange={setVvizOpen} />
 
       <div className="flex-1" />
 
