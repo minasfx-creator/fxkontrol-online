@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Settings2, Download, FileJson, FileSpreadsheet, Box, Trash2, Zap, Shield, Sliders } from 'lucide-react';
+import { Settings2, Download, FileJson, FileSpreadsheet, Box, Trash2, Zap, Shield, Sliders, MapPin, Link2, Unlink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
