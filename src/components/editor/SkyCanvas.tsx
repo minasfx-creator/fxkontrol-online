@@ -7,6 +7,8 @@ import ViewportTerminal, { pushLog } from './ViewportTerminal';
 import * as THREE from 'three';
 import PositionPins from './PositionPins';
 import PostProcessing from './PostProcessing';
+import { BoxSelectR3F } from './BoxSelectOverlay';
+import AlignmentTools from './AlignmentTools';
 import CameraAnimator, { CameraPathPreview } from './CameraAnimator';
 import TrajectoryPaths from './TrajectoryPaths';
 import DroneChoreography from './DroneChoreography';
