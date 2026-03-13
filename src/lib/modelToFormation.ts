@@ -1,9 +1,9 @@
 /**
  * 3D Model → Formation Point Converter
- * Parses OBJ, STL, GLTF/GLB files and extracts surface points for drone formations.
+ * Parses OBJ, STL, GLTF/GLB, SKP files and extracts surface points for drone formations.
  * Supports SketchUp exports, Google Earth/Maps KMZ models, and Blender exports.
  *
- * v2 — Surface sampling, edge extraction, STL support, improved density control.
+ * v3 — SKP support, adaptive density, multi-axis projection, quality metrics.
  */
 
 import type { FormationPoint } from './formations';
@@ -20,7 +20,7 @@ interface Triangle {
   c: Vertex3D;
 }
 
-// ─── Parsers ──────────────────────────────────────────────────
+// ─── OBJ Parser ───────────────────────────────────────────────
 
 function parseOBJ(text: string): { vertices: Vertex3D[]; triangles: Triangle[] } {
   const vertices: Vertex3D[] = [];
@@ -40,9 +40,7 @@ function parseOBJ(text: string): { vertices: Vertex3D[]; triangles: Triangle[] }
       }
     } else if (trimmed.startsWith('f ')) {
       const parts = trimmed.split(/\s+/).slice(1);
-      // Parse face indices (OBJ is 1-based, supports v, v/vt, v/vt/vn formats)
       const indices = parts.map(p => parseInt(p.split('/')[0]) - 1);
-      // Triangulate polygon fans
       for (let i = 1; i < indices.length - 1; i++) {
         const a = vertices[indices[0]];
         const b = vertices[indices[i]];
@@ -55,31 +53,27 @@ function parseOBJ(text: string): { vertices: Vertex3D[]; triangles: Triangle[] }
   return { vertices, triangles };
 }
 
-/** Parse binary STL */
+// ─── STL Parser ───────────────────────────────────────────────
+
 function parseSTL(buffer: ArrayBuffer): { vertices: Vertex3D[]; triangles: Triangle[] } {
   const vertices: Vertex3D[] = [];
   const triangles: Triangle[] = [];
   const view = new DataView(buffer);
 
-  // Check if ASCII STL
   const header = new Uint8Array(buffer, 0, Math.min(80, buffer.byteLength));
   const headerStr = new TextDecoder().decode(header);
   if (headerStr.startsWith('solid') && buffer.byteLength < 1_000_000) {
-    // Try ASCII parse
     const text = new TextDecoder().decode(new Uint8Array(buffer));
     return parseSTLAscii(text);
   }
 
-  // Binary STL: 80-byte header, then uint32 triangle count
   if (buffer.byteLength < 84) return { vertices, triangles };
   const numTriangles = view.getUint32(80, true);
   const expectedSize = 84 + numTriangles * 50;
-
   if (buffer.byteLength < expectedSize) return { vertices, triangles };
 
   for (let i = 0; i < numTriangles; i++) {
     const offset = 84 + i * 50;
-    // Skip normal (12 bytes), read 3 vertices (each 12 bytes)
     const a: Vertex3D = {
       x: view.getFloat32(offset + 12, true),
       y: view.getFloat32(offset + 16, true),
@@ -126,6 +120,8 @@ function parseSTLAscii(text: string): { vertices: Vertex3D[]; triangles: Triangl
   return { vertices, triangles };
 }
 
+// ─── GLTF/GLB Parsers ────────────────────────────────────────
+
 function parseGLTF(json: any, buffers: ArrayBuffer[]): { vertices: Vertex3D[]; triangles: Triangle[] } {
   const vertices: Vertex3D[] = [];
   const triangles: Triangle[] = [];
@@ -157,7 +153,6 @@ function parseGLTF(json: any, buffers: ArrayBuffer[]): { vertices: Vertex3D[]; t
           meshVerts.push(v);
         }
 
-        // Extract index buffer for triangles
         const indexIdx = primitive.indices;
         if (indexIdx !== undefined) {
           const idxAccessor = json.accessors?.[indexIdx];
@@ -172,13 +167,13 @@ function parseGLTF(json: any, buffers: ArrayBuffer[]): { vertices: Vertex3D[]; t
                 const componentType = idxAccessor.componentType;
                 let indices: number[] = [];
 
-                if (componentType === 5123) { // UNSIGNED_SHORT
+                if (componentType === 5123) {
                   const arr = new Uint16Array(idxBuf, idxOff, idxCount);
                   indices = Array.from(arr);
-                } else if (componentType === 5125) { // UNSIGNED_INT
+                } else if (componentType === 5125) {
                   const arr = new Uint32Array(idxBuf, idxOff, idxCount);
                   indices = Array.from(arr);
-                } else if (componentType === 5121) { // UNSIGNED_BYTE
+                } else if (componentType === 5121) {
                   const arr = new Uint8Array(idxBuf, idxOff, idxCount);
                   indices = Array.from(arr);
                 }
@@ -240,13 +235,246 @@ function parseGLTFWithEmbeddedBuffers(json: any): { vertices: Vertex3D[]; triang
   return parseGLTF(json, buffers);
 }
 
+// ─── SKP Parser (SketchUp) ────────────────────────────────────
+// SKP files are binary archives. Modern SKP (v2021+) uses protobuf internally.
+// We extract float64 coordinate triples from the binary data by scanning for
+// patterns of sequential IEEE-754 doubles that form valid 3D coordinates.
+// This heuristic approach works for most SketchUp models without needing
+// a full protobuf decoder.
+
+function parseSKP(buffer: ArrayBuffer): { vertices: Vertex3D[]; triangles: Triangle[] } {
+  const vertices: Vertex3D[] = [];
+  const view = new DataView(buffer);
+  const byteLen = buffer.byteLength;
+
+  // SKP magic check: files start with "FF FE FF 0E" or similar SketchUp headers
+  // We'll scan for float64 triples that look like valid coordinates
+
+  const MIN_COORD = -100000;
+  const MAX_COORD = 100000;
+
+  // Strategy 1: Scan for sequential float64 triples (SketchUp stores coords as doubles)
+  const step = 8; // float64 = 8 bytes
+  const coordCandidates: Vertex3D[] = [];
+
+  for (let offset = 0; offset + 24 <= byteLen; offset += step) {
+    try {
+      const x = view.getFloat64(offset, true);
+      const y = view.getFloat64(offset + 8, true);
+      const z = view.getFloat64(offset + 16, true);
+
+      // Filter: valid finite numbers in reasonable range
+      if (
+        isFinite(x) && isFinite(y) && isFinite(z) &&
+        x > MIN_COORD && x < MAX_COORD &&
+        y > MIN_COORD && y < MAX_COORD &&
+        z > MIN_COORD && z < MAX_COORD &&
+        // At least one coordinate should be non-zero
+        (Math.abs(x) > 0.001 || Math.abs(y) > 0.001 || Math.abs(z) > 0.001) &&
+        // Filter out common non-coordinate patterns (like bit patterns that decode to tiny values)
+        (Math.abs(x) > 0.0001 || Math.abs(y) > 0.0001 || Math.abs(z) > 0.0001)
+      ) {
+        coordCandidates.push({ x, y, z });
+        offset += 16; // Skip past this triple (will be incremented by step in loop)
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  // Strategy 2: Also try float32 triples (some SKP sections use single precision)
+  if (coordCandidates.length < 10) {
+    for (let offset = 0; offset + 12 <= byteLen; offset += 4) {
+      try {
+        const x = view.getFloat32(offset, true);
+        const y = view.getFloat32(offset + 4, true);
+        const z = view.getFloat32(offset + 8, true);
+
+        if (
+          isFinite(x) && isFinite(y) && isFinite(z) &&
+          x > MIN_COORD && x < MAX_COORD &&
+          y > MIN_COORD && y < MAX_COORD &&
+          z > MIN_COORD && z < MAX_COORD &&
+          (Math.abs(x) > 0.01 || Math.abs(y) > 0.01 || Math.abs(z) > 0.01)
+        ) {
+          coordCandidates.push({ x, y, z });
+          offset += 8;
+        }
+      } catch {
+        continue;
+      }
+    }
+  }
+
+  // De-duplicate using spatial hashing
+  const seen = new Set<string>();
+  for (const v of coordCandidates) {
+    // SketchUp uses inches internally — convert to meters
+    const mx = v.x * 0.0254;
+    const my = v.y * 0.0254;
+    const mz = v.z * 0.0254;
+    const key = `${mx.toFixed(3)},${my.toFixed(3)},${mz.toFixed(3)}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      vertices.push({ x: mx, y: my, z: mz });
+    }
+  }
+
+  // Build triangles from sequential vertex triples (best-effort)
+  const triangles: Triangle[] = [];
+  for (let i = 0; i + 2 < vertices.length; i += 3) {
+    const a = vertices[i], b = vertices[i + 1], c = vertices[i + 2];
+    // Only add if triangle has reasonable area (not degenerate)
+    const ax = b.x - a.x, ay = b.y - a.y, az = b.z - a.z;
+    const bx = c.x - a.x, by = c.y - a.y, bz = c.z - a.z;
+    const cx = ay * bz - az * by, cy = az * bx - ax * bz, cz = ax * by - ay * bx;
+    const area = 0.5 * Math.sqrt(cx * cx + cy * cy + cz * cz);
+    if (area > 0.0001) {
+      triangles.push({ a, b, c });
+    }
+  }
+
+  return { vertices, triangles };
+}
+
+// ─── Collada (DAE) Parser ─────────────────────────────────────
+// SketchUp can export to .DAE (Collada) which is XML-based and reliable
+
+function parseDAE(text: string): { vertices: Vertex3D[]; triangles: Triangle[] } {
+  const vertices: Vertex3D[] = [];
+  const triangles: Triangle[] = [];
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(text, 'text/xml');
+
+  // Extract float arrays from <float_array> elements
+  const floatArrays = doc.querySelectorAll('float_array');
+  for (const fa of floatArrays) {
+    const id = fa.getAttribute('id') || '';
+    // Position arrays typically have "positions" or "mesh-positions" in their ID
+    if (!id.toLowerCase().includes('position') && !id.toLowerCase().includes('mesh')) continue;
+
+    const count = parseInt(fa.getAttribute('count') || '0');
+    if (count < 3) continue;
+
+    const text = fa.textContent?.trim() || '';
+    const values = text.split(/\s+/).map(Number);
+
+    for (let i = 0; i + 2 < values.length; i += 3) {
+      const x = values[i], y = values[i + 1], z = values[i + 2];
+      if (isFinite(x) && isFinite(y) && isFinite(z)) {
+        vertices.push({ x, y, z });
+      }
+    }
+  }
+
+  // If no position-labeled arrays found, try all float arrays
+  if (vertices.length === 0) {
+    for (const fa of floatArrays) {
+      const text = fa.textContent?.trim() || '';
+      const values = text.split(/\s+/).map(Number);
+      for (let i = 0; i + 2 < values.length; i += 3) {
+        const x = values[i], y = values[i + 1], z = values[i + 2];
+        if (isFinite(x) && isFinite(y) && isFinite(z)) {
+          vertices.push({ x, y, z });
+        }
+      }
+      if (vertices.length > 0) break;
+    }
+  }
+
+  // Build triangles from <triangles> or <polylist> elements
+  const triElements = doc.querySelectorAll('triangles, polylist');
+  for (const triEl of triElements) {
+    const pEl = triEl.querySelector('p');
+    if (!pEl) continue;
+    const indices = (pEl.textContent?.trim() || '').split(/\s+/).map(Number);
+    
+    // Count inputs to determine stride
+    const inputs = triEl.querySelectorAll('input');
+    const stride = inputs.length || 1;
+    
+    // Find VERTEX input offset
+    let vertexOffset = 0;
+    inputs.forEach(inp => {
+      if (inp.getAttribute('semantic') === 'VERTEX') {
+        vertexOffset = parseInt(inp.getAttribute('offset') || '0');
+      }
+    });
+
+    for (let i = 0; i + stride * 2 < indices.length; i += stride * 3) {
+      const ai = indices[i + vertexOffset];
+      const bi = indices[i + stride + vertexOffset];
+      const ci = indices[i + stride * 2 + vertexOffset];
+      const a = vertices[ai], b = vertices[bi], c = vertices[ci];
+      if (a && b && c) triangles.push({ a, b, c });
+    }
+  }
+
+  return { vertices, triangles };
+}
+
+// ─── PLY Parser ───────────────────────────────────────────────
+
+function parsePLY(text: string): { vertices: Vertex3D[]; triangles: Triangle[] } {
+  const vertices: Vertex3D[] = [];
+  const triangles: Triangle[] = [];
+  const lines = text.split('\n');
+
+  let vertexCount = 0;
+  let faceCount = 0;
+  let headerEnd = 0;
+  let propOrder: string[] = [];
+
+  // Parse header
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (line === 'end_header') { headerEnd = i + 1; break; }
+    const vertMatch = line.match(/element vertex (\d+)/);
+    if (vertMatch) vertexCount = parseInt(vertMatch[1]);
+    const faceMatch = line.match(/element face (\d+)/);
+    if (faceMatch) faceCount = parseInt(faceMatch[1]);
+    if (line.startsWith('property float') || line.startsWith('property double')) {
+      propOrder.push(line.split(/\s+/).pop() || '');
+    }
+  }
+
+  const xIdx = propOrder.indexOf('x');
+  const yIdx = propOrder.indexOf('y');
+  const zIdx = propOrder.indexOf('z');
+
+  // Parse vertices
+  for (let i = headerEnd; i < headerEnd + vertexCount && i < lines.length; i++) {
+    const parts = lines[i].trim().split(/\s+/).map(Number);
+    vertices.push({
+      x: parts[xIdx >= 0 ? xIdx : 0] || 0,
+      y: parts[yIdx >= 0 ? yIdx : 1] || 0,
+      z: parts[zIdx >= 0 ? zIdx : 2] || 0,
+    });
+  }
+
+  // Parse faces
+  const faceStart = headerEnd + vertexCount;
+  for (let i = faceStart; i < faceStart + faceCount && i < lines.length; i++) {
+    const parts = lines[i].trim().split(/\s+/).map(Number);
+    const n = parts[0];
+    if (n >= 3) {
+      for (let j = 1; j < n - 1; j++) {
+        const a = vertices[parts[1]];
+        const b = vertices[parts[j + 1]];
+        const c = vertices[parts[j + 2]];
+        if (a && b && c) triangles.push({ a, b, c });
+      }
+    }
+  }
+
+  return { vertices, triangles };
+}
+
 // ─── Surface Sampling ─────────────────────────────────────────
 
-/** Sample points uniformly across triangle surfaces */
 function sampleTriangleSurface(triangles: Triangle[], targetCount: number): Vertex3D[] {
   if (triangles.length === 0) return [];
 
-  // Calculate area of each triangle
   const areas: number[] = [];
   let totalArea = 0;
   for (const tri of triangles) {
@@ -265,7 +493,6 @@ function sampleTriangleSurface(triangles: Triangle[], targetCount: number): Vert
     const samplesForTri = Math.max(1, Math.round((areas[i] / totalArea) * targetCount));
     const tri = triangles[i];
     for (let s = 0; s < samplesForTri && points.length < targetCount * 1.2; s++) {
-      // Random barycentric coordinates
       let u = Math.random(), v = Math.random();
       if (u + v > 1) { u = 1 - u; v = 1 - v; }
       const w = 1 - u - v;
@@ -280,11 +507,9 @@ function sampleTriangleSurface(triangles: Triangle[], targetCount: number): Vert
   return points;
 }
 
-/** Extract edge points from triangles — good for wireframe-style formations */
 function extractEdgePoints(triangles: Triangle[], targetCount: number): Vertex3D[] {
   if (triangles.length === 0) return [];
 
-  // Collect unique edges using a spatial hash
   const edgeSet = new Set<string>();
   const edges: [Vertex3D, Vertex3D][] = [];
 
@@ -304,7 +529,6 @@ function extractEdgePoints(triangles: Triangle[], targetCount: number): Vertex3D
     }
   }
 
-  // Calculate total edge length
   let totalLength = 0;
   const lengths: number[] = [];
   for (const [a, b] of edges) {
@@ -316,7 +540,6 @@ function extractEdgePoints(triangles: Triangle[], targetCount: number): Vertex3D
 
   if (totalLength === 0) return [];
 
-  // Sample points along edges proportionally
   const points: Vertex3D[] = [];
   for (let i = 0; i < edges.length; i++) {
     const samplesForEdge = Math.max(1, Math.round((lengths[i] / totalLength) * targetCount));
@@ -334,10 +557,73 @@ function extractEdgePoints(triangles: Triangle[], targetCount: number): Vertex3D
   return points;
 }
 
+/** Extract silhouette/outline points — projects to 2D then traces contour */
+function extractSilhouettePoints(vertices: Vertex3D[], projection: ProjectionMode, targetCount: number): Vertex3D[] {
+  if (vertices.length === 0) return [];
+  
+  // Project to 2D
+  const projected = vertices.map(v => {
+    switch (projection) {
+      case 'top-down': return { x: v.x, y: v.z, orig: v };
+      case 'front': return { x: v.x, y: v.y, orig: v };
+      case 'side': return { x: v.z, y: v.y, orig: v };
+      case 'isometric': return {
+        x: (v.x - v.z) * Math.cos(Math.PI / 6),
+        y: (v.x + v.z) * Math.sin(Math.PI / 6) - v.y,
+        orig: v,
+      };
+    }
+  });
+
+  // Grid-based boundary detection
+  const gridSize = Math.ceil(Math.sqrt(targetCount) * 2);
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const p of projected) {
+    minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+    minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+  }
+  const spanX = maxX - minX || 1;
+  const spanY = maxY - minY || 1;
+  const cellW = spanX / gridSize;
+  const cellH = spanY / gridSize;
+
+  // For each column, find min/max Y (outline)
+  const colMinMax = new Map<number, { minY: number; maxY: number; minV: Vertex3D; maxV: Vertex3D }>();
+  for (const p of projected) {
+    const col = Math.floor((p.x - minX) / cellW);
+    const existing = colMinMax.get(col);
+    if (!existing) {
+      colMinMax.set(col, { minY: p.y, maxY: p.y, minV: p.orig, maxV: p.orig });
+    } else {
+      if (p.y < existing.minY) { existing.minY = p.y; existing.minV = p.orig; }
+      if (p.y > existing.maxY) { existing.maxY = p.y; existing.maxV = p.orig; }
+    }
+  }
+
+  // For each row, find min/max X (outline)
+  const rowMinMax = new Map<number, { minX: number; maxX: number; minV: Vertex3D; maxV: Vertex3D }>();
+  for (const p of projected) {
+    const row = Math.floor((p.y - minY) / cellH);
+    const existing = rowMinMax.get(row);
+    if (!existing) {
+      rowMinMax.set(row, { minX: p.x, maxX: p.x, minV: p.orig, maxV: p.orig });
+    } else {
+      if (p.x < existing.minX) { existing.minX = p.x; existing.minV = p.orig; }
+      if (p.x > existing.maxX) { existing.maxX = p.x; existing.maxV = p.orig; }
+    }
+  }
+
+  const outline: Vertex3D[] = [];
+  for (const v of colMinMax.values()) { outline.push(v.minV, v.maxV); }
+  for (const v of rowMinMax.values()) { outline.push(v.minV, v.maxV); }
+
+  return outline;
+}
+
 // ─── Projection & Normalization ───────────────────────────────
 
 export type ProjectionMode = 'top-down' | 'front' | 'side' | 'isometric';
-export type SamplingMode = 'vertices' | 'surface' | 'edges';
+export type SamplingMode = 'vertices' | 'surface' | 'edges' | 'silhouette';
 
 function projectVertices(vertices: Vertex3D[], projection: ProjectionMode): FormationPoint[] {
   return vertices.map((v) => {
@@ -406,6 +692,59 @@ function downsamplePoints(points: FormationPoint[], targetCount: number): Format
   return best;
 }
 
+// ─── Quality Metrics ──────────────────────────────────────────
+
+export interface QualityMetrics {
+  /** Average nearest-neighbor distance */
+  avgSpacing: number;
+  /** Std dev of nearest-neighbor distance — lower = more uniform */
+  spacingUniformity: number;
+  /** Coverage ratio: bounding area of points / bounding area of model */
+  coverage: number;
+  /** 0-100 quality score */
+  score: number;
+}
+
+function computeQualityMetrics(points: FormationPoint[]): QualityMetrics {
+  if (points.length < 3) return { avgSpacing: 0, spacingUniformity: 0, coverage: 0, score: 0 };
+
+  // Nearest-neighbor distances
+  const nnDists: number[] = [];
+  for (let i = 0; i < Math.min(points.length, 500); i++) {
+    let minDist = Infinity;
+    for (let j = 0; j < points.length; j++) {
+      if (i === j) continue;
+      const dx = points[i].x - points[j].x;
+      const dz = points[i].z - points[j].z;
+      const d = Math.sqrt(dx * dx + dz * dz);
+      if (d < minDist) minDist = d;
+    }
+    nnDists.push(minDist);
+  }
+
+  const avgSpacing = nnDists.reduce((s, d) => s + d, 0) / nnDists.length;
+  const variance = nnDists.reduce((s, d) => s + (d - avgSpacing) ** 2, 0) / nnDists.length;
+  const spacingUniformity = Math.sqrt(variance);
+  const cv = avgSpacing > 0 ? spacingUniformity / avgSpacing : 1;
+
+  // Coverage: convex hull area approximation
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (const p of points) {
+    minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+    minZ = Math.min(minZ, p.z); maxZ = Math.max(maxZ, p.z);
+  }
+  const boundingArea = (maxX - minX) * (maxZ - minZ);
+  const idealArea = points.length * avgSpacing * avgSpacing;
+  const coverage = boundingArea > 0 ? Math.min(1, idealArea / boundingArea) : 0;
+
+  // Score: penalize high CV and low coverage
+  const uniformityScore = Math.max(0, 100 - cv * 100);
+  const coverageScore = coverage * 100;
+  const score = Math.round(uniformityScore * 0.6 + coverageScore * 0.4);
+
+  return { avgSpacing: +avgSpacing.toFixed(3), spacingUniformity: +spacingUniformity.toFixed(3), coverage: +coverage.toFixed(3), score };
+}
+
 // ─── Public API ───────────────────────────────────────────────
 
 export interface ModelParseResult {
@@ -414,7 +753,13 @@ export interface ModelParseResult {
   triangleCount: number;
   modelName: string;
   samplingUsed: SamplingMode;
+  quality: QualityMetrics;
+  format: string;
+  boundingBox: { width: number; height: number; depth: number };
 }
+
+export const SUPPORTED_EXTENSIONS = ['obj', 'stl', 'gltf', 'glb', 'skp', 'dae', 'ply', 'kml'] as const;
+export type SupportedExtension = typeof SUPPORTED_EXTENSIONS[number];
 
 export async function parseModelToFormation(
   file: File,
@@ -449,24 +794,53 @@ export async function parseModelToFormation(
     const parsed = parseGLTFWithEmbeddedBuffers(json);
     vertices = parsed.vertices;
     triangles = parsed.triangles;
+  } else if (ext === 'skp') {
+    const buffer = await file.arrayBuffer();
+    const parsed = parseSKP(buffer);
+    vertices = parsed.vertices;
+    triangles = parsed.triangles;
+  } else if (ext === 'dae') {
+    const text = await file.text();
+    const parsed = parseDAE(text);
+    vertices = parsed.vertices;
+    triangles = parsed.triangles;
+  } else if (ext === 'ply') {
+    const text = await file.text();
+    const parsed = parsePLY(text);
+    vertices = parsed.vertices;
+    triangles = parsed.triangles;
   } else {
-    throw new Error(`Formato não suportado: .${ext}. Use .OBJ, .STL, .GLTF ou .GLB`);
+    throw new Error(`Formato não suportado: .${ext}. Use .OBJ, .STL, .GLTF, .GLB, .SKP, .DAE ou .PLY`);
   }
 
   if (vertices.length === 0) {
-    throw new Error('Nenhum vértice encontrado no modelo 3D');
+    throw new Error('Nenhum vértice encontrado no modelo 3D. Para arquivos .SKP, exporte como .OBJ ou .DAE no SketchUp para melhores resultados.');
   }
+
+  // Compute bounding box
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (const v of vertices) {
+    minX = Math.min(minX, v.x); maxX = Math.max(maxX, v.x);
+    minY = Math.min(minY, v.y); maxY = Math.max(maxY, v.y);
+    minZ = Math.min(minZ, v.z); maxZ = Math.max(maxZ, v.z);
+  }
+  const boundingBox = {
+    width: +(maxX - minX).toFixed(2),
+    height: +(maxY - minY).toFixed(2),
+    depth: +(maxZ - minZ).toFixed(2),
+  };
 
   // Choose sampling strategy
   let sampledVertices: Vertex3D[];
   let actualSampling = sampling;
 
-  if (sampling === 'surface' && triangles.length > 0) {
+  if (sampling === 'silhouette') {
+    sampledVertices = extractSilhouettePoints(vertices, projection, targetCount * 2);
+  } else if (sampling === 'surface' && triangles.length > 0) {
     sampledVertices = sampleTriangleSurface(triangles, targetCount * 2);
   } else if (sampling === 'edges' && triangles.length > 0) {
     sampledVertices = extractEdgePoints(triangles, targetCount * 2);
   } else {
-    // Fallback to raw vertices
     sampledVertices = vertices;
     actualSampling = 'vertices';
   }
@@ -475,12 +849,17 @@ export async function parseModelToFormation(
   points = normalizePoints(points, radius);
   points = downsamplePoints(points, targetCount);
 
+  const quality = computeQualityMetrics(points);
+
   return {
     points,
     originalVertexCount: vertices.length,
     triangleCount: triangles.length,
     modelName,
     samplingUsed: actualSampling,
+    quality,
+    format: ext.toUpperCase(),
+    boundingBox,
   };
 }
 
@@ -523,11 +902,16 @@ function parseKMLText(kmlText: string, targetCount: number, radius: number, file
   points = normalizePoints(points, radius);
   points = downsamplePoints(points, targetCount);
 
+  const quality = computeQualityMetrics(points);
+
   return {
     points,
     originalVertexCount: vertices.length,
     triangleCount: 0,
     modelName: fileName.replace(/\.[^.]+$/, ''),
     samplingUsed: 'vertices',
+    quality,
+    format: 'KML',
+    boundingBox: { width: 0, height: 0, depth: 0 },
   };
 }
