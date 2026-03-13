@@ -1933,6 +1933,19 @@ INSTRUCTIONS:
 function inferShapeType(name: string): string {
   const lower = name.toLowerCase();
   const map: [RegExp, string][] = [
+    // Text detection — "Text '2027'" or "Text NOME" patterns
+    [/^text\s/i, 'text'],
+    [/^"[^"]+"$/, 'text'],
+    [/\btext\b.*"[^"]+"/, 'text'],
+    // Specific new shapes
+    [/runner|corredor|corr[ie]da|running|silhouette.*corr/, 'butterfly'], // runner mapped to butterfly silhouette
+    [/compass|bússola|bussola|rosa.?dos.?ventos/, 'radial_burst'], // compass → radial with 4/8 arms
+    [/sun\b|sol\b|☀|🌞|sunrise|sunset|pôr.?do.?sol/, 'radial_burst'],
+    [/line|linha|horizon|horizonte/, 'wave'],
+    [/scatter|dispersão|lantern|lanterna|release/, 'radial_burst'],
+    [/pulse|pulsação|pulso|batimento/, 'ring'],
+    [/silhouette|silhueta|vulto|sombra|contorno/, 'butterfly'],
+    // Original shapes
     [/heart|coração|❤|💕|💗|💓|amor|love/, 'heart'],
     [/star|estrela|⭐|✨|🌟|stella/, 'star'],
     [/circle|círculo|⭕|round|redondo/, 'circle'],
@@ -1950,7 +1963,7 @@ function inferShapeType(name: string): string {
     [/crescent|lua|moon|🌙|meia.?lua/, 'crescent'],
     [/ring|anel|💍|donut|rosca/, 'ring'],
     [/infinity|infinit|♾|8.*deitado|lemniscate/, 'lemniscate'],
-    [/burst|explos|firework|fogo.*artif|🎆|boom/, 'radial_burst'],
+    [/radial.?burst|burst|explos|firework|fogo.*artif|🎆|boom/, 'radial_burst'],
     [/tree|árvore|natal|🎄|christmas.*tree|pinheiro/, 'layered_triangles'],
     [/house|casa|🏠|lar|home/, 'house'],
     [/music|nota|🎵|🎶|🎤|song|canção/, 'music_note'],
@@ -1963,17 +1976,16 @@ function inferShapeType(name: string): string {
     [/bell|sino|🔔|campanha/, 'filled_circle'],
     [/snow|neve|❄|floco|snowflake/, 'snowflake'],
     [/flower|flor|🌸|🌺|🌻|🌷|petal/, 'radial_burst'],
-    [/sun|sol|☀|🌞/, 'radial_burst'],
     [/trophy|troféu|🏆|cup|taça/, 'trophy'],
     [/dolphin|golfinho|🐬|whale|baleia/, 'crescent'],
-    [/crown|coroa|👑|king|queen|rei|rainha/, 'crown'],
+    [/crown|coroa|👑|king|queen|rei|rainha|laurel|louros/, 'crown'],
     [/anchor|âncora|⚓/, 'cross'],
     [/guitar|guitarra|🎸|violão/, 'music_note'],
     [/bird|pássaro|🦅|eagle|águia|dove|pomba|🕊/, 'butterfly'],
     [/dna|helix|🧬|genética/, 'spiral'],
     [/globe|globo|🌍|🌎|🌏|earth|terra|mundo/, 'globe'],
     [/eye|olho|👁|vision|visão/, 'crescent'],
-    [/shield|escudo|🛡/, 'diamond'],
+    [/shield|escudo|🛡|brasão/, 'diamond'],
     [/lightning|raio|⚡|bolt|relâmpago/, 'arrow'],
     [/skull|caveira|💀/, 'filled_circle'],
     [/cat|gato|🐱/, 'filled_circle'],
@@ -1987,7 +1999,7 @@ function inferShapeType(name: string): string {
     [/galaxy|galáxia|🌌/, 'spiral'],
     [/mandala|🌺|pattern|padrão/, 'radial_burst'],
     [/hexagon|hexágono|hex|🔷/, 'filled_circle'],
-    [/triangle|triângulo|🔺/, 'layered_triangles'],
+    [/triangle|triângulo|🔺|pyramid|pirâmide/, 'layered_triangles'],
     [/square|quadrado|⬛/, 'grid'],
     [/pentagon|pentágono/, 'star'],
     [/atom|átomo|⚛/, 'ring'],
@@ -2000,6 +2012,9 @@ function inferShapeType(name: string): string {
     [/countdown|contagem|3.*2.*1|regressiva/, 'text'],
     [/champagne|taça|brinde|cheers/, 'trophy'],
     [/firework|fogos|pirotecnia/, 'radial_burst'],
+    // Age/number detection
+    [/^\d{1,4}$/, 'text'],
+    [/\bage\b|\bidade\b|\banos\b/, 'text'],
   ];
   for (const [regex, shape] of map) {
     if (regex.test(lower)) return shape;
