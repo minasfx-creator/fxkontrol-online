@@ -383,7 +383,7 @@ Available shape types and their key params:
 - cake: radius, layers (default 3)
 - custom_outline: provide outlinePoints (10-40 key vertices) for any shape not listed above
 
-SCALING: radius = clamp(sqrt(N)*2.2, 12, 90) where N is drone count.
+SCALING: radius = clamp(sqrt(N)*2.2, 12, 150) where N is drone count. For N>500: sqrt(N)*2.5. For N>1000: sqrt(N)*3.0
 
 For emojis: map to the closest shape type. 
 For complex/unknown shapes: use custom_outline with 15-30 key vertices tracing the recognizable outline.
