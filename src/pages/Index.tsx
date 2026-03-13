@@ -78,6 +78,9 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   background: 'w-64',
   suppliers: 'w-72',
   safety: 'w-64',
+  scripting: 'w-64',
+  audience: 'w-64',
+  indoor: 'w-72',
 };
 
 export default function Index() {
