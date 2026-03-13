@@ -39,6 +39,9 @@ export interface TimelineItem {
   chainGap?: number;
   positionName?: string;
   notes?: string;
+  // ── Finale 3D position linking ──
+  positionId?: string;         // Linked pyro position ID (single)
+  positionIds?: string[];      // Linked to multiple positions (fires simultaneously)
 }
 
 export type PositionType = 'pyro' | 'drone-pad';
