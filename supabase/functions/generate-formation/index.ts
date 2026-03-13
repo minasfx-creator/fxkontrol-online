@@ -242,38 +242,66 @@ function clamp(value: number, min: number, max: number) {
 function buildLocalFullShowFallback(prompt: string, count: number) {
   const normalizedPrompt = (prompt || "").toLowerCase();
 
-  const keywordToShape: Array<{ re: RegExp; shape: string; name: string }> = [
-    { re: /heart|coração|amor|love|❤️|💕/, shape: "heart", name: "Coração" },
-    { re: /star|estrela|⭐|✨/, shape: "star", name: "Estrela" },
-    { re: /wave|onda|mar|ocean|🌊/, shape: "wave", name: "Onda" },
-    { re: /spiral|espiral|vortex|vórtex|🌀/, shape: "spiral", name: "Espiral" },
-    { re: /crown|coroa|👑/, shape: "crown", name: "Coroa" },
-    { re: /globe|terra|mundo|🌍/, shape: "globe", name: "Globo" },
-    { re: /firework|fogos|fogo|🎆/, shape: "radial_burst", name: "Explosão" },
-    { re: /diamond|diamante|💎/, shape: "diamond", name: "Diamante" },
-    { re: /cross|cruz|✝️/, shape: "cross", name: "Cruz" },
-    { re: /butterfly|borboleta|🦋/, shape: "butterfly", name: "Borboleta" },
+  const keywordToShape: Array<{ re: RegExp; shape: string; name: string; color: string }> = [
+    { re: /heart|coração|amor|love|❤️|💕/, shape: "heart", name: "Coração", color: "#FF6B8A" },
+    { re: /star|estrela|⭐|✨/, shape: "star", name: "Estrela", color: "#FFD700" },
+    { re: /wave|onda|mar|ocean|🌊/, shape: "wave", name: "Onda", color: "#40E0D0" },
+    { re: /spiral|espiral|vortex|vórtex|🌀/, shape: "spiral", name: "Espiral", color: "#AA44FF" },
+    { re: /crown|coroa|👑|laurel|louros/, shape: "crown", name: "Coroa", color: "#FFD700" },
+    { re: /globe|terra|mundo|🌍/, shape: "globe", name: "Globo", color: "#2080FF" },
+    { re: /firework|fogos|fogo|🎆|explosão/, shape: "radial_burst", name: "Explosão", color: "#FF8800" },
+    { re: /diamond|diamante|💎/, shape: "diamond", name: "Diamante", color: "#7DF9FF" },
+    { re: /cross|cruz|✝️/, shape: "cross", name: "Cruz", color: "#FFFFFF" },
+    { re: /butterfly|borboleta|🦋/, shape: "butterfly", name: "Borboleta", color: "#FF66AA" },
+    { re: /runner|corredor|corrida|fuga/, shape: "butterfly", name: "Corredor", color: "#22D3EE" },
+    { re: /compass|bússola|bussola/, shape: "radial_burst", name: "Bússola", color: "#C0C0C0" },
+    { re: /sun|sol|☀/, shape: "radial_burst", name: "Sol", color: "#FFBF00" },
+    { re: /snow|neve|❄|floco/, shape: "snowflake", name: "Floco de Neve", color: "#FFFFFF" },
+    { re: /tree|árvore|natal|🎄/, shape: "layered_triangles", name: "Árvore", color: "#20CC40" },
+    { re: /trophy|troféu|🏆|taça/, shape: "trophy", name: "Troféu", color: "#FFD700" },
+    { re: /bird|pássaro|pomba|dove|🕊/, shape: "butterfly", name: "Pássaro", color: "#FFFFFF" },
+    { re: /music|nota|🎵/, shape: "music_note", name: "Nota Musical", color: "#AA44FF" },
+    { re: /rocket|foguete|🚀/, shape: "rocket", name: "Foguete", color: "#FF8800" },
+    { re: /dragon|dragão|🐉/, shape: "dragon", name: "Dragão", color: "#DC143C" },
+    { re: /flag.*br|bandeira.*brasil|🇧🇷/, shape: "flag_br", name: "Bandeira do Brasil", color: "#20CC40" },
+    { re: /cake|bolo|🎂|aniversário/, shape: "cake", name: "Bolo", color: "#FF66AA" },
+    { re: /ring|anel|💍/, shape: "ring", name: "Anel", color: "#FFD700" },
+    { re: /dna|helix|🧬/, shape: "spiral", name: "DNA", color: "#7DF9FF" },
+    { re: /line|linha|horizon|horizonte|pulsação/, shape: "wave", name: "Horizonte Pulsante", color: "#FFFFFF" },
   ];
 
-  const matched = keywordToShape.filter((item) => item.re.test(normalizedPrompt));
-  const defaults: Array<{ shape: string; name: string }> = [
-    { shape: "filled_circle", name: "Aurora" },
-    { shape: "wave", name: "Fluxo" },
-    { shape: "star", name: "Ascensão" },
-    { shape: "heart", name: "Clímax" },
-    { shape: "crown", name: "Honra" },
-    { shape: "radial_burst", name: "Finale" },
+  // Extract all matching shapes from the prompt, preserving order of appearance
+  const matched: Array<{ shape: string; name: string; color: string; index: number }> = [];
+  for (const item of keywordToShape) {
+    const match = item.re.exec(normalizedPrompt);
+    if (match) {
+      matched.push({ shape: item.shape, name: item.name, color: item.color, index: match.index });
+    }
+  }
+  matched.sort((a, b) => a.index - b.index);
+
+  // Deduplicate same shape
+  const seen = new Set<string>();
+  const unique = matched.filter(m => {
+    const key = m.shape + m.name;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const defaults: Array<{ shape: string; name: string; color: string }> = [
+    { shape: "filled_circle", name: "Aurora", color: "#60A5FA" },
+    { shape: "wave", name: "Fluxo", color: "#22D3EE" },
+    { shape: "star", name: "Ascensão", color: "#FFD700" },
+    { shape: "heart", name: "Clímax", color: "#FF6B8A" },
+    { shape: "crown", name: "Honra", color: "#FFBF00" },
+    { shape: "radial_burst", name: "Finale", color: "#FFFFFF" },
   ];
 
-  const sequence: Array<{ shape: string; name: string }> = [
-    ...matched.map((m) => ({ shape: m.shape, name: m.name })),
-    ...defaults,
-  ].slice(0, 6);
-
+  const sequence = [...unique, ...defaults].slice(0, Math.max(5, Math.min(8, unique.length + 2)));
   while (sequence.length < 5) sequence.push(defaults[sequence.length % defaults.length]);
 
-  const palette = ["#60A5FA", "#22D3EE", "#34D399", "#FBBF24", "#FB7185", "#FFFFFF"];
-  const climaxIndex = Math.floor(sequence.length * 0.6);
+  const climaxIndex = Math.floor(sequence.length * 0.7);
 
   let previousPoints: { x: number; z: number }[] | undefined;
   const formations = sequence.map((item, idx) => {
@@ -296,23 +324,32 @@ function buildLocalFullShowFallback(prompt: string, count: number) {
     }
     previousPoints = points;
 
+    // Determine color transition based on position in arc
+    let colorTransition = "linear";
+    if (idx === climaxIndex) colorTransition = "pulse";
+    else if (idx === 0) colorTransition = "cascade";
+    else if (idx === sequence.length - 1) colorTransition = "sparkle";
+    else if (idx % 2 === 0) colorTransition = "wave";
+
     return {
       formationName: item.name,
       points,
-      height: clamp(26 + idx * 7, 20, 80),
-      transitionDuration: clamp(9 + idx * 2, 8, 25),
-      holdDuration: clamp(12 + (idx % 3) * 4, 10, 30),
-      color: palette[idx % palette.length],
-      endColor: palette[(idx + 1) % palette.length],
-      colorTransition: idx === climaxIndex ? "pulse" : "linear",
+      height: clamp(24 + Math.round(intensity * 40), 20, 80),
+      transitionDuration: clamp(8 + idx * 2, 6, 25),
+      holdDuration: clamp(12 + (idx === climaxIndex ? 8 : (idx % 3) * 3), 10, 30),
+      color: item.color,
+      endColor: sequence[(idx + 1) % sequence.length].color,
+      colorTransition,
     };
   });
 
+  const showTitle = (prompt?.trim() ? prompt.slice(0, 50).replace(/\n.*/s, '') : "Show") + " (Modo Local)";
+
   return {
-    showName: (prompt?.trim() ? `${prompt.slice(0, 40)}...` : "Show") + " (Modo Local)",
+    showName: showTitle,
     formations,
     totalDuration: formations.reduce((sum, f) => sum + f.transitionDuration + f.holdDuration, 0),
-    description: "Show gerado localmente porque os créditos de IA do workspace estão esgotados.",
+    description: "Show gerado localmente (sem IA). Adicione créditos no workspace para shows com inteligência narrativa completa.",
     model: "server-fallback-no-credits",
   };
 }
