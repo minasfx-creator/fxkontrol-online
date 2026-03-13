@@ -7,6 +7,9 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
 
+// Use any for Uint8Array to avoid TS strict buffer type issues
+type FreqData = Uint8Array;
+
 const BAR_COUNT = 64;
 const BAR_WIDTH = 0.4;
 const BAR_GAP = 0.15;
