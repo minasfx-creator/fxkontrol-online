@@ -146,9 +146,7 @@ function buildFormationTool(count: number) {
         properties: {
           points: {
             type: "array",
-            description: `EXACTLY ${count} drone positions.`,
-            minItems: count,
-            maxItems: count,
+            description: `EXACTLY ${count} drone positions. The array MUST contain exactly ${count} elements.`,
             items: {
               type: "object",
               properties: {
