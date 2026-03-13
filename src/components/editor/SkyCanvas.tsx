@@ -41,8 +41,9 @@ class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
 
 const CAMERA_PRESETS = [
   { id: 'free', label: 'Free', icon: Eye, position: [0, 12, 40] as [number, number, number], target: [0, 8, 0] as [number, number, number] },
+  { id: 'satellite', label: 'Satélite', icon: Plane, position: [0, 250, 10] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
   { id: 'audience', label: 'Plateia', icon: Users, position: [0, 4, 60] as [number, number, number], target: [0, 12, 0] as [number, number, number] },
-  { id: 'aerial', label: 'Aéreo', icon: Plane, position: [0, 80, 10] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
+  { id: 'aerial', label: 'Aéreo', icon: Plane, position: [0, 120, 30] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
   { id: 'side', label: 'Lateral', icon: Video, position: [60, 12, 0] as [number, number, number], target: [0, 12, 0] as [number, number, number] },
   { id: 'closeup', label: 'Close-up', icon: Camera, position: [8, 8, 14] as [number, number, number], target: [0, 10, 0] as [number, number, number] },
   { id: 'cinematic', label: 'Cinema', icon: Video, position: [-25, 6, 50] as [number, number, number], target: [0, 15, 0] as [number, number, number] },
