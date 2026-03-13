@@ -117,6 +117,49 @@ export default function ScriptWindow() {
   const [fillDragCount, setFillDragCount] = useState(0);
   const tableRef = useRef<HTMLDivElement>(null);
 
+  // ─── Undo/Redo system ───────────────────────────────────────────
+  const undoStack = useRef<TimelineItem[][]>([]);
+  const redoStack = useRef<TimelineItem[][]>([]);
+  const [undoCount, setUndoCount] = useState(0);
+  const [redoCount, setRedoCount] = useState(0);
+  const MAX_UNDO = 50;
+
+  const pushUndo = useCallback(() => {
+    const snapshot = JSON.parse(JSON.stringify(useProjectStore.getState().timelineItems));
+    undoStack.current.push(snapshot);
+    if (undoStack.current.length > MAX_UNDO) undoStack.current.shift();
+    redoStack.current = [];
+    setUndoCount(undoStack.current.length);
+    setRedoCount(0);
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    if (undoStack.current.length === 0) return;
+    const currentSnapshot = JSON.parse(JSON.stringify(useProjectStore.getState().timelineItems));
+    redoStack.current.push(currentSnapshot);
+    const prev = undoStack.current.pop()!;
+    // Restore: remove all, then add all from snapshot
+    const store = useProjectStore.getState();
+    store.timelineItems.forEach(i => store.removeTimelineItem(i.id));
+    prev.forEach(item => store.addTimelineItem(item));
+    setUndoCount(undoStack.current.length);
+    setRedoCount(redoStack.current.length);
+    toast.success('Desfazer');
+  }, []);
+
+  const handleRedo = useCallback(() => {
+    if (redoStack.current.length === 0) return;
+    const currentSnapshot = JSON.parse(JSON.stringify(useProjectStore.getState().timelineItems));
+    undoStack.current.push(currentSnapshot);
+    const next = redoStack.current.pop()!;
+    const store = useProjectStore.getState();
+    store.timelineItems.forEach(i => store.removeTimelineItem(i.id));
+    next.forEach(item => store.addTimelineItem(item));
+    setUndoCount(undoStack.current.length);
+    setRedoCount(redoStack.current.length);
+    toast.success('Refazer');
+  }, []);
+
   // Build script rows
   const rows = useMemo(() => {
     const computed = timelineItems
