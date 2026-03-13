@@ -20,7 +20,7 @@ export default function PathPlannerPanel({ onClose }: PathPlannerPanelProps) {
   const [obstacles, setObstacles] = useState<Obstacle[]>(createDefaultObstacles());
   const [result, setResult] = useState<PlanResult | null>(null);
   const [planning, setPlanning] = useState(false);
-  const formations = useProjectStore(s => s.formations);
+  const formations = useProjectStore(s => s.droneFormations);
 
   const addObstacle = () => {
     setObstacles(prev => [...prev, {

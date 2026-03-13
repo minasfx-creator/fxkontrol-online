@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useProjectStore } from '@/store/useProjectStore';
-import { type ShowTemplate, type TemplateCategory, TEMPLATE_CATEGORIES, getTemplates } from '@/lib/showTemplates';
+import { type ShowTemplate, type TemplateCategory, TEMPLATE_CATEGORIES, loadTemplates } from '@/lib/showTemplates';
 import { Cloud, Upload, Download, Search, Star, Users, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
