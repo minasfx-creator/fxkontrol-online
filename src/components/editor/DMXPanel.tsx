@@ -23,6 +23,9 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
   const [keyframes, setKeyframes] = useState<DMXKeyframe[]>([]);
   const [selectedFixture, setSelectedFixture] = useState<string | null>(null);
   const [channelsPerFixture, setChannelsPerFixture] = useState(4);
+  const [artNetIp, setArtNetIp] = useState('255.255.255.255');
+  const [artNetPort, setArtNetPort] = useState(6454);
+  const [sending, setSending] = useState(false);
 
   const totalDrones = useMemo(() => {
     if (droneFormations.length === 0) return 0;
