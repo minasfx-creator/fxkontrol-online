@@ -292,6 +292,8 @@ export default function Index() {
         {activePanel === 'templates' && <ShowTemplatesPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'telemetry' && <TelemetryDashboard onClose={() => setActivePanel(null)} />}
         {activePanel === 'flightlog' && <FlightLogPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'pathplanner' && <PathPlannerPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'marketplace' && <TemplateMarketplace onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
