@@ -25,6 +25,7 @@ const PANEL_TABS: { id: PanelId; label: string; icon: typeof Route; shortcut?: s
   { id: 'models', label: '3D Model Import', icon: Box },
   { id: 'background', label: 'Background Overlay', icon: Image },
   { id: 'suppliers', label: 'Supplier Catalogs', icon: ShoppingBag },
+  { id: 'indoor', label: 'Indoor GPS-Denied Sim', icon: Warehouse },
   { id: 'boids', label: 'Boids Swarm', icon: Bug },
   { id: 'pid', label: 'PID Controller', icon: Gauge },
   { id: 'dmx', label: 'DMX512 / Art-Net', icon: Lightbulb },
