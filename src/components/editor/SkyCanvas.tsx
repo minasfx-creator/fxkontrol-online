@@ -408,9 +408,9 @@ function SkyGradient() {
               color = mix(ground, haze, smoothstep(-0.15, -0.02, h));
             }
             
-            // Atmospheric glow band — Google Earth warm horizon
-            float horizonGlow = exp(-h * h * 80.0);
-            color += vec3(0.18, 0.14, 0.08) * horizonGlow * 0.35;
+            // Atmospheric glow band — driven by scene setting
+            float hGlow = exp(-h * h * 80.0);
+            color += vec3(0.18, 0.14, 0.08) * hGlow * uHorizonGlow;
             
             // Blue atmospheric scatter ring
             float blueRing = exp(-(h - 0.03) * (h - 0.03) * 60.0);
@@ -422,10 +422,13 @@ function SkyGradient() {
             float milkyDetail = hash21(dir.xz * 40.0) * 0.3 + 0.7;
             color += vec3(0.015, 0.02, 0.035) * milkyBand * milkyDetail * smoothstep(0.15, 0.5, h) * 0.5;
             
-            // Stars
+            // Stars — density driven by scene store
             float stars = starField(dir);
             vec3 starColor = mix(vec3(0.8, 0.85, 1.0), vec3(1.0, 0.9, 0.7), hash21(dir.xz * 50.0));
-            color += starColor * stars * 0.7;
+            color += starColor * stars * 0.7 * uStarDensity;
+            
+            // Apply overall sky brightness
+            color *= uSkyBrightness;
             
             gl_FragColor = vec4(color, 1.0);
           }
