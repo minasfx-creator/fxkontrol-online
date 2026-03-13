@@ -51,6 +51,8 @@ import VersioningPanel from '@/components/editor/VersioningPanel';
 import WeatherPanel from '@/components/editor/WeatherPanel';
 import CollisionPanel from '@/components/editor/CollisionPanel';
 import ClientApprovalPanel from '@/components/editor/ClientApprovalPanel';
+import TrajectoryOptimizerPanel from '@/components/editor/TrajectoryOptimizerPanel';
+import ShowTemplatesPanel from '@/components/editor/ShowTemplatesPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
