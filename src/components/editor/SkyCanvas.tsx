@@ -598,9 +598,12 @@ function CameraController({ targetPosition, targetLookAt }: { targetPosition: [n
 
 export default function SkyCanvas() {
   const editorMode = useProjectStore((s) => s.editorMode);
+  const droneFormations = useProjectStore((s) => s.droneFormations);
   const cursorStyle = editorMode !== 'select' ? 'crosshair' : 'default';
   const [activePreset, setActivePreset] = useState('free');
   const preset = CAMERA_PRESETS.find((p) => p.id === activePreset) || CAMERA_PRESETS[0];
+  const perfStatsRef = useRef<PerfStats>({ fps: 0, drawCalls: 0, triangles: 0, geometries: 0, textures: 0 });
+  const droneCount = droneFormations.length > 0 ? droneFormations[0].droneCount : 0;
 
   return (
     <div className="w-full h-full relative bg-[#050510]" data-sky-canvas style={{ cursor: cursorStyle }}>
