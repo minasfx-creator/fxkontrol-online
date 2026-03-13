@@ -194,7 +194,7 @@ export default function Toolbar() {
             "h-7 px-2 text-[10px] font-mono-code gap-1",
             editorMode === 'add-pyro' && "bg-accent/20 text-accent"
           )}
-          title="Add Pyro Position"
+          title="Add Pyro Position (click to place, continuous mode)"
           onClick={() => setEditorMode(editorMode === 'add-pyro' ? 'select' : 'add-pyro')}
         >
           <MapPin className="h-3 w-3" />
@@ -207,15 +207,17 @@ export default function Toolbar() {
             "h-7 px-2 text-[10px] font-mono-code gap-1",
             editorMode === 'add-drone' && "bg-primary/20 text-primary"
           )}
-          title="Add Drone Launch Pad"
+          title="Add Drone Launch Pad (click to place, continuous mode)"
           onClick={() => setEditorMode(editorMode === 'add-drone' ? 'select' : 'add-drone')}
         >
           <Target className="h-3 w-3" />
           <span className="hidden lg:inline">DRONE</span>
         </Button>
+        {/* Batch add positions */}
+        <BatchAddButton />
         {editorMode !== 'select' && (
-          <span className="text-[9px] font-mono-code text-muted-foreground ml-1">
-            Click to place
+          <span className="text-[9px] font-mono-code text-muted-foreground ml-1 flex items-center gap-1">
+            Click to place · <span className="text-primary">ESC</span> to stop
           </span>
         )}
       </div>
