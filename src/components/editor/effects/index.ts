@@ -12,3 +12,4 @@ export { default as LaserEffect } from './LaserEffect';
 export { default as CakeEffect } from './CakeEffect';
 export { default as ConfettiEffect } from './ConfettiEffect';
 export { default as MovingHeadEffect } from './MovingHeadEffect';
+export { default as PrefireShell } from './PrefireShell';
