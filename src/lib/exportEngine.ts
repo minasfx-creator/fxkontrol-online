@@ -561,7 +561,7 @@ export function exportFormationsToKML(
     const pos = positions.find((p) => p.id === traj.positionId);
     if (!pos || traj.waypoints.length < 2) return;
 
-    const sorted = [...traj.waypoints].sort((a, b) => a.sortOrder - b.sortOrder);
+    const sorted = [...traj.waypoints].sort((a, b) => a.time - b.time);
     const coordStr = [
       localToGps(pos.x, pos.y, pos.z, gpsOrigin),
       ...sorted.map((wp) => localToGps(wp.position.x, wp.position.y, wp.position.z, gpsOrigin)),
