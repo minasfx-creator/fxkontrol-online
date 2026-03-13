@@ -93,6 +93,7 @@ export default function Index() {
         {activePanel === 'battery' && <BatteryPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'mavlink' && <MAVLinkPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'smpte' && <SMPTEPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'maps' && <GoogleMapsPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
