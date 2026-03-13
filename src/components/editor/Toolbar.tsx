@@ -247,7 +247,7 @@ function BatchAddButton() {
   );
 }
 
-
+export default function Toolbar() {
   const { projectName, timelineItems, positions, editorMode, setEditorMode, duration, trajectories, droneFormations, gpsOrigin } = useProjectStore();
   const { canUndo, canRedo, undo, redo, checkpoint } = useUndoStore();
   const { signOut, user } = useAuth();
