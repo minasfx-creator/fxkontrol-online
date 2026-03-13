@@ -1344,11 +1344,6 @@ serve(async (req) => {
         description: raw.description || "",
         model: usedModel,
       }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        formations,
-        totalDuration: raw.totalDuration || formations.reduce((sum: number, f: any) => sum + f.transitionDuration + f.holdDuration, 0),
-        description: raw.description || "",
-        model: usedModel,
-      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // ── Trajectory generation ───────────────────────────────
