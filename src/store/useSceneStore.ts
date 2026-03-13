@@ -234,7 +234,18 @@ interface SceneSettingsState {
 
 export const useSceneStore = create<SceneSettingsState>((set) => ({
   settings: { ...DEFAULT_SETTINGS },
-  updateSettings: (updates) => set(s => ({ settings: { ...s.settings, ...updates } })),
+  updateSettings: (updates) => set(s => {
+    const next = { ...s.settings, ...updates };
+    // Auto-sync rain/humidity when weather condition changes
+    if (updates.weather && !updates.rainIntensity) {
+      if (updates.weather === 'light-rain') { next.rainIntensity = Math.max(next.rainIntensity, 0.5); next.humidity = Math.max(next.humidity, 0.7); }
+      else if (updates.weather === 'heavy-rain') { next.rainIntensity = Math.max(next.rainIntensity, 0.8); next.humidity = Math.max(next.humidity, 0.9); }
+      else if (updates.weather === 'snow') { next.rainIntensity = Math.max(next.rainIntensity, 0.4); next.humidity = Math.max(next.humidity, 0.6); }
+      else if (updates.weather === 'fog') { next.humidity = Math.max(next.humidity, 0.85); next.fogDensity = Math.max(next.fogDensity, 0.7); }
+      else if (updates.weather === 'clear') { next.rainIntensity = 0; }
+    }
+    return { settings: next };
+  }),
   applyPreset: (presetId) => {
     const preset = SCENE_PRESETS[presetId];
     if (preset) set(s => ({ settings: { ...DEFAULT_SETTINGS, ...preset.settings } }));
