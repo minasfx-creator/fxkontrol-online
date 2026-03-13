@@ -14,7 +14,8 @@ import {
   type FormationConfig,
   type FormationPoint,
 } from '@/lib/formations';
-import { Trash2, Plus, MessageSquare, Image, Sparkles, Loader2, Wand2, Film } from 'lucide-react';
+import { Trash2, Plus, MessageSquare, Image, Sparkles, Loader2, Wand2, Film, FileCode } from 'lucide-react';
+import { parseSVGToFormation } from '@/lib/svgParser';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
