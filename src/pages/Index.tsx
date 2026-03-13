@@ -19,6 +19,8 @@ import BatteryPanel from '@/components/editor/BatteryPanel';
 import MAVLinkPanel from '@/components/editor/MAVLinkPanel';
 import SMPTEPanel from '@/components/editor/SMPTEPanel';
 import GoogleMapsPanel from '@/components/editor/GoogleMapsPanel';
+import DiagnosticPanel from '@/components/editor/DiagnosticPanel';
+import LogisticsPanel from '@/components/editor/LogisticsPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 
 const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
@@ -51,6 +53,8 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   mavlink: 'w-72',
   smpte: 'w-64',
   maps: 'w-80',
+  diagnostic: 'w-64',
+  logistics: 'w-64',
 };
 
 export default function Index() {
@@ -94,6 +98,8 @@ export default function Index() {
         {activePanel === 'mavlink' && <MAVLinkPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'smpte' && <SMPTEPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'maps' && <GoogleMapsPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'diagnostic' && <DiagnosticPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'logistics' && <LogisticsPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
