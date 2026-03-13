@@ -18,6 +18,7 @@ const PANEL_TABS: { id: PanelId; label: string; icon: typeof Route; shortcut?: s
   { id: 'pid', label: 'PID Controller', icon: Gauge },
   { id: 'dmx', label: 'DMX512 / Art-Net', icon: Lightbulb },
   { id: 'battery', label: 'Battery Model', icon: Battery },
+  { id: 'mavlink', label: 'MAVLink Bridge', icon: Radio },
 ];
 
 interface PanelTabBarProps {
