@@ -401,38 +401,44 @@ function buildShapeDescriptorTool() {
   };
 }
 
-const SHAPE_DESCRIPTOR_PROMPT = `You are a drone formation shape interpreter. Given a description, identify the BEST matching shape type and parameters. The server will compute the exact drone positions.
+const SHAPE_DESCRIPTOR_PROMPT = `You are a drone formation shape interpreter with deep knowledge of geometry and visual design. Given a description, identify the BEST matching shape type and parameters. The server will compute the exact drone positions.
 
 Available shape types and their key params:
-- circle: radius
-- filled_circle: radius
-- heart: radius
-- star: radius, starPoints (default 5), innerRadius (default radius*0.38)
-- spiral: radius, turns (default 3)
-- grid: radius (used as total size)
-- diamond: radius
-- cross: radius, thickness (default 2)
-- wave: radius (width), amplitude, wavelength
-- butterfly: radius
-- arrow: radius
-- crescent: radius, innerRadius (default radius*0.7)
-- ring: radius, innerRadius
-- lemniscate: radius (infinity symbol)
-- text: radius, text (the text string)
-- radial_burst: radius, layers (default 3)
-- layered_triangles: radius, layers (default 3) — Christmas tree shape
-- house: radius
-- music_note: radius
-- peace_sign: radius
-- rocket: radius
-- cake: radius, layers (default 3)
+- circle: radius — simple outline circle
+- filled_circle: radius — uniformly filled disc (Fibonacci spiral distribution)
+- heart: radius — romantic heart shape, filled for large N
+- star: radius, starPoints (default 5), innerRadius (default radius*0.38) — classic star
+- spiral: radius, turns (default 3) — Archimedean spiral
+- grid: radius (used as total size) — rectangular grid
+- diamond: radius — rotated square / diamond shape
+- cross: radius, thickness (default 2) — plus/cross shape
+- wave: radius (width), amplitude, wavelength — sinusoidal wave
+- butterfly: radius — mirrored wings with body
+- arrow: radius — directional arrow (triangle tip + rectangular tail)
+- crescent: radius, innerRadius (default radius*0.7) — moon crescent
+- ring: radius, innerRadius — concentric ring/donut
+- lemniscate: radius — infinity symbol (figure-8)
+- text: radius, text (the text string) — dot-matrix rendered text
+- radial_burst: radius, layers (default 3) — radial explosion pattern
+- layered_triangles: radius, layers (default 3) — Christmas tree / pyramid
+- house: radius — house with triangular roof
+- music_note: radius — musical note symbol
+- peace_sign: radius — peace symbol (circle + lines)
+- rocket: radius — rocket with nose cone and fins
+- cake: radius, layers (default 3) — tiered cake with candles
 - custom_outline: provide outlinePoints (10-40 key vertices) for any shape not listed above
 
 SCALING: radius = clamp(sqrt(N)*2.2, 12, 150) where N is drone count. For N>500: sqrt(N)*2.5. For N>1000: sqrt(N)*3.0
 
-For emojis: map to the closest shape type. 
-For complex/unknown shapes: use custom_outline with 15-30 key vertices tracing the recognizable outline.
-For text strings: use type="text" with params.text set to the string.`;
+SHAPE SELECTION INTELLIGENCE:
+- For emojis: map to the closest shape type directly
+- For abstract concepts: choose the shape that best SYMBOLIZES the concept
+- For complex/unknown shapes: use custom_outline with 20-35 key vertices tracing the outline
+- For brand logos or letters: use type="text" or custom_outline
+- For animals: use custom_outline with characteristic silhouette vertices
+- When in doubt, prefer filled_circle over circle for N>100 (more visually impactful)
+
+AUDIENCE PERSPECTIVE: Shapes will be viewed from ground level. Make them slightly taller than wide.`;
 
 // ── Server-side shape generators ────────────────────────────
 
