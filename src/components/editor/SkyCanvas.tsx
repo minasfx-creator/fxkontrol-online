@@ -901,14 +901,7 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
 
   return (
     <group>
-      {showGrass ? <GrassGround /> : (
-        <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-          <planeGeometry args={[4000, 4000]} />
-          <meshStandardMaterial color="#050505" roughness={0.95} metalness={0} />
-        </mesh>
-      )}
-      {satelliteTexture && <SatelliteOverlay textureUrl={satelliteTexture} />}
-      {sc.groundFogIntensity > 0 && <GroundFog />}
+      {renderGround()}
 
       {/* Operational grid */}
       {sc.showGrid && (
