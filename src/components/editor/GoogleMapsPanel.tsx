@@ -336,7 +336,16 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
           </Button>
         </div>
 
-        {/* Quick location presets */}
+        {/* KML Export */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full h-6 text-[8px] gap-1"
+          onClick={handleExportKML}
+        >
+          <Download className="w-2.5 h-2.5" />
+          Exportar KML (Google Earth)
+        </Button>
         <div className="flex gap-1 flex-wrap">
           {[
             { label: 'São Paulo', lat: -23.5505, lng: -46.6333 },
