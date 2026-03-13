@@ -43,6 +43,8 @@ import PositionGroupsPanel from '@/components/editor/PositionGroupsPanel';
 import ShowSummaryPanel from '@/components/editor/ShowSummaryPanel';
 import SceneEditorPanel from '@/components/editor/SceneEditorPanel';
 import SoundLevelPanel from '@/components/editor/SoundLevelPanel';
+import AROverlayPanel from '@/components/editor/AROverlayPanel';
+import ShowSharePanel from '@/components/editor/ShowSharePanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
