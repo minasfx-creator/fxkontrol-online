@@ -186,8 +186,19 @@
   - CSV export with time, droneID, position, battery, speed
   - Entry table with last 50 data points
 
-## Phase 17: Next
-- Show template marketplace (cloud sharing)
-- Advanced formation path planning with obstacle avoidance
-- Multi-monitor support / detachable panels
-- Real-time audio spectrum visualizer in viewport
+## Phase 17: Marketplace, Path Planner, Detachable Panels, Spectrum (DONE ✅)
+- Template Marketplace — browse/download/publish cloud templates with ratings, categories, search
+- Formation Path Planner with Obstacle Avoidance (A* 3D grid + Catmull-Rom smoothing)
+  - Obstacle types: sphere, box, cylinder with configurable position/size
+  - PathPlannerPanel UI with obstacle editor, plan execution, and results display
+- Detachable Panel System — pop out any panel into a separate browser window via React portal
+  - Reattach button to bring panel back, auto-cleanup on window close
+- Real-time Audio Spectrum Visualizer — 64-bar InstancedMesh in 3D viewport
+  - Web Audio API AnalyserNode, frequency-to-color mapping (cyan→magenta→gold)
+  - Smoothed animation synced to playback state
+
+## Phase 18: Next
+- Laser show integration (ILDA format export)
+- Multi-show scheduling (show playlists with cross-fades)
+- Advanced geofencing with no-fly zone import (KML/GeoJSON)
+- Live drone telemetry dashboard with GPS map overlay
