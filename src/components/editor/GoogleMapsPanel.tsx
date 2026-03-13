@@ -1,13 +1,14 @@
 /// <reference types="google.maps" />
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
-import { MapPin, Navigation, Crosshair, Layers, X, Globe, Locate, Copy, Ruler, Download, Search, Play } from 'lucide-react';
+import { MapPin, Navigation, Crosshair, Layers, X, Globe, Locate, Copy, Ruler, Download, Search, Play, Pause, SkipForward, Eye, EyeOff, Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { exportFormationsToKML, downloadFile } from '@/lib/exportEngine';
 import { computeDronePositions } from './DroneChoreography';
+import { pushLog } from './ViewportTerminal';
 
 // Load Google Maps script dynamically
 function loadGoogleMapsScript(apiKey: string): Promise<void> {
@@ -20,7 +21,7 @@ function loadGoogleMapsScript(apiKey: string): Promise<void> {
     }
     const script = document.createElement('script');
     script.id = 'google-maps-script';
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&v=weekly`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry,drawing&v=weekly`;
     script.async = true;
     script.defer = true;
     script.onload = () => resolve();
@@ -48,6 +49,12 @@ function localToGps(
   };
 }
 
+// Formation color palette
+const FORMATION_COLORS = [
+  '#00B4D8', '#00ff88', '#FF6B6B', '#FFD93D', '#6BCB77',
+  '#4D96FF', '#FF6EC7', '#845EC2', '#FF9671', '#00C9A7',
+];
+
 export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
   const mapRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -55,6 +62,8 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
   const markersRef = useRef<google.maps.Marker[]>([]);
   const liveMarkersRef = useRef<google.maps.Marker[]>([]);
   const circlesRef = useRef<google.maps.Circle[]>([]);
+  const polylineRef = useRef<google.maps.Polyline | null>(null);
+  const originMarkerRef = useRef<google.maps.Marker | null>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +72,11 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
   const [showGeofence, setShowGeofence] = useState(true);
   const [liveSync, setLiveSync] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeFormationIdx, setActiveFormationIdx] = useState(0);
+  const [showAllFormations, setShowAllFormations] = useState(false);
+  const [measuring, setMeasuring] = useState(false);
+  const [measurePoints, setMeasurePoints] = useState<google.maps.LatLng[]>([]);
+  const [measureDist, setMeasureDist] = useState<number | null>(null);
   const liveSyncRef = useRef(false);
 
   const positions = useProjectStore((s) => s.positions);
@@ -109,9 +123,24 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
 
         map.addListener('click', (e: google.maps.MapMouseEvent) => {
           if (!e.latLng) return;
+
+          // Measuring mode
+          if (measuring) {
+            setMeasurePoints(prev => {
+              const next = [...prev, e.latLng!];
+              if (next.length >= 2) {
+                const dist = google.maps.geometry.spherical.computeDistanceBetween(next[0], next[next.length - 1]);
+                setMeasureDist(dist);
+              }
+              return next;
+            });
+            return;
+          }
+
           const lat = e.latLng.lat();
           const lng = e.latLng.lng();
           setGpsOrigin({ ...gpsOrigin, lat, lng });
+          pushLog(`GPS origin → ${lat.toFixed(6)}, ${lng.toFixed(6)}`, 'info');
           toast.success(`Origem: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
         });
 
@@ -133,12 +162,14 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
             map.setZoom(18);
             setGpsOrigin({ ...gpsOrigin, lat, lng });
             setSearchQuery(place.name || place.formatted_address || '');
+            pushLog(`📍 Navegou para ${place.name || 'local'}`, 'success');
             toast.success(`📍 ${place.name || 'Local selecionado'}`);
           });
           autocompleteRef.current = autocomplete;
         }
 
         setLoaded(true);
+        pushLog('Google Maps inicializado — clique para definir origem GPS', 'info');
       } catch (err: any) {
         setError(err.message || 'Erro ao carregar Google Maps');
       }
@@ -153,13 +184,36 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
     }
   }, [mapType]);
 
-  // Update static markers for positions & first formation
+  // Origin marker
+  useEffect(() => {
+    if (!mapInstanceRef.current || !loaded) return;
+    if (originMarkerRef.current) originMarkerRef.current.setMap(null);
+
+    originMarkerRef.current = new google.maps.Marker({
+      position: { lat: location.lat, lng: location.lng },
+      map: mapInstanceRef.current,
+      icon: {
+        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+        scale: 5,
+        rotation: location.heading,
+        fillColor: '#FFD700',
+        fillOpacity: 1,
+        strokeColor: '#000000',
+        strokeWeight: 1.5,
+      },
+      title: 'GPS Origin',
+      zIndex: 999,
+    });
+  }, [location.lat, location.lng, location.heading, loaded]);
+
+  // Update static markers for positions & formations
   useEffect(() => {
     if (!mapInstanceRef.current || !loaded || !showDrones || liveSync) return;
 
     markersRef.current.forEach(m => m.setMap(null));
     markersRef.current = [];
 
+    // Positions (pyro/drone pads)
     positions.forEach((pos) => {
       const gps = localToGps(pos.x, pos.y, pos.z, location);
       const marker = new google.maps.Marker({
@@ -167,40 +221,48 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
         map: mapInstanceRef.current!,
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
-          scale: 4,
+          scale: 5,
           fillColor: pos.color || '#00B4D8',
           fillOpacity: 0.9,
           strokeColor: '#ffffff',
-          strokeWeight: 1,
+          strokeWeight: 1.5,
         },
-        title: pos.name,
+        title: `${pos.name} (${pos.type})`,
       });
       markersRef.current.push(marker);
     });
 
-    if (droneFormations.length > 0 && !liveSync) {
-      const formation = droneFormations[0];
-      formation.points.slice(0, Math.min(formation.droneCount, 200)).forEach((pt, i) => {
+    // Formations
+    const formationsToShow = showAllFormations
+      ? droneFormations
+      : droneFormations.length > activeFormationIdx
+        ? [droneFormations[activeFormationIdx]]
+        : [];
+
+    formationsToShow.forEach((formation, fIdx) => {
+      const color = FORMATION_COLORS[fIdx % FORMATION_COLORS.length];
+      const maxPoints = Math.min(formation.droneCount, 300);
+      formation.points.slice(0, maxPoints).forEach((pt, i) => {
         const gps = localToGps(pt.x, formation.height, pt.z, location);
         const marker = new google.maps.Marker({
           position: { lat: gps.lat, lng: gps.lng },
           map: mapInstanceRef.current!,
           icon: {
             path: google.maps.SymbolPath.CIRCLE,
-            scale: 3,
-            fillColor: formation.color || '#00ff88',
-            fillOpacity: 0.7,
+            scale: showAllFormations ? 2 : 3,
+            fillColor: formation.color || color,
+            fillOpacity: showAllFormations ? 0.5 : 0.8,
             strokeColor: '#ffffff',
             strokeWeight: 0.5,
           },
-          title: `Drone ${i + 1}`,
+          title: `${formation.formationType} · Drone ${i + 1} · ${formation.height}m`,
         });
         markersRef.current.push(marker);
       });
-    }
-  }, [positions, droneFormations, location, loaded, showDrones, liveSync]);
+    });
+  }, [positions, droneFormations, location, loaded, showDrones, liveSync, activeFormationIdx, showAllFormations]);
 
-  // Live sync — update drone markers from current playback time
+  // Live sync
   useEffect(() => {
     liveSyncRef.current = liveSync;
   }, [liveSync]);
@@ -215,7 +277,6 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
       return;
     }
 
-    // Reuse or create markers
     while (liveMarkersRef.current.length > livePositions.length) {
       liveMarkersRef.current.pop()?.setMap(null);
     }
@@ -252,7 +313,7 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
     });
   }, [currentTime, droneFormations, location, loaded, showDrones]);
 
-  // Hide live markers when live sync is off
+  // Hide live markers when off
   useEffect(() => {
     if (!liveSync) {
       liveMarkersRef.current.forEach(m => m.setMap(null));
@@ -260,36 +321,49 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
     }
   }, [liveSync]);
 
-  // Update geofence circles
+  // Geofence circles
   useEffect(() => {
     if (!mapInstanceRef.current || !loaded) return;
     circlesRef.current.forEach(c => c.setMap(null));
     circlesRef.current = [];
 
     if (showGeofence) {
-      const outer = new google.maps.Circle({
-        map: mapInstanceRef.current,
-        center: { lat: location.lat, lng: location.lng },
-        radius: 80,
-        fillColor: '#ff4444',
-        fillOpacity: 0.08,
-        strokeColor: '#ff4444',
-        strokeWeight: 1.5,
-        strokeOpacity: 0.5,
+      [
+        { radius: 120, color: '#ff2222', opacity: 0.04, strokeOpacity: 0.3, label: 'No-Fly Zone' },
+        { radius: 80, color: '#ff8800', opacity: 0.06, strokeOpacity: 0.4, label: 'Safety Buffer' },
+        { radius: 40, color: '#00ff44', opacity: 0.05, strokeOpacity: 0.3, label: 'Performance Zone' },
+      ].forEach(({ radius, color, opacity, strokeOpacity }) => {
+        const circle = new google.maps.Circle({
+          map: mapInstanceRef.current!,
+          center: { lat: location.lat, lng: location.lng },
+          radius,
+          fillColor: color,
+          fillOpacity: opacity,
+          strokeColor: color,
+          strokeWeight: 1.5,
+          strokeOpacity,
+        });
+        circlesRef.current.push(circle);
       });
-      const inner = new google.maps.Circle({
-        map: mapInstanceRef.current,
-        center: { lat: location.lat, lng: location.lng },
-        radius: 40,
-        fillColor: '#00ff44',
-        fillOpacity: 0.05,
-        strokeColor: '#00ff44',
-        strokeWeight: 1,
-        strokeOpacity: 0.3,
-      });
-      circlesRef.current.push(outer, inner);
     }
   }, [location, loaded, showGeofence]);
+
+  // Measuring polyline
+  useEffect(() => {
+    if (!mapInstanceRef.current || !loaded) return;
+    if (polylineRef.current) polylineRef.current.setMap(null);
+
+    if (measurePoints.length >= 2) {
+      polylineRef.current = new google.maps.Polyline({
+        path: measurePoints,
+        map: mapInstanceRef.current,
+        strokeColor: '#FFD700',
+        strokeWeight: 2,
+        strokeOpacity: 0.9,
+        geodesic: true,
+      });
+    }
+  }, [measurePoints, loaded]);
 
   const handleLocateMe = useCallback(() => {
     if (!navigator.geolocation) {
@@ -301,6 +375,7 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
         const newLoc = { ...location, lat: pos.coords.latitude, lng: pos.coords.longitude };
         setGpsOrigin(newLoc);
         mapInstanceRef.current?.panTo({ lat: newLoc.lat, lng: newLoc.lng });
+        pushLog(`GPS atualizado: ${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`, 'success');
         toast.success('Localização atualizada');
       },
       () => toast.error('Permissão de localização negada'),
@@ -315,8 +390,35 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
   const handleExportKML = useCallback(() => {
     const kml = exportFormationsToKML(droneFormations, trajectories, positions, location, projectName);
     downloadFile(kml, `${projectName.replace(/\s+/g, '_')}_show.kml`, 'application/vnd.google-earth.kml+xml');
+    pushLog(`KML exportado: ${projectName}`, 'success');
     toast.success('KML exportado — abra no Google Earth Pro');
   }, [droneFormations, trajectories, positions, location, projectName]);
+
+  const toggleMeasure = useCallback(() => {
+    if (measuring) {
+      setMeasuring(false);
+      setMeasurePoints([]);
+      setMeasureDist(null);
+      if (polylineRef.current) polylineRef.current.setMap(null);
+    } else {
+      setMeasuring(true);
+      setMeasurePoints([]);
+      setMeasureDist(null);
+      toast.info('Clique em 2 pontos no mapa para medir distância');
+    }
+  }, [measuring]);
+
+  const nextFormation = useCallback(() => {
+    if (droneFormations.length > 0) {
+      setActiveFormationIdx(prev => (prev + 1) % droneFormations.length);
+    }
+  }, [droneFormations.length]);
+
+  const centerOnFormation = useCallback(() => {
+    if (!mapInstanceRef.current || droneFormations.length === 0) return;
+    mapInstanceRef.current.panTo({ lat: location.lat, lng: location.lng });
+    mapInstanceRef.current.setZoom(18);
+  }, [location, droneFormations]);
 
   return (
     <div className="h-full flex flex-col bg-surface-0 border-l border-border">
@@ -325,7 +427,7 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
         <div className="flex items-center gap-1.5">
           <Globe className="w-3.5 h-3.5 text-primary" />
           <span className="text-[10px] font-bold font-mono-code text-foreground tracking-wider uppercase">
-            Google Maps · Site Survey
+            Site Survey
           </span>
         </div>
         <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
@@ -378,17 +480,78 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
             >
               <Layers className="w-3.5 h-3.5 text-foreground" />
             </button>
+            <button
+              onClick={toggleMeasure}
+              className={cn(
+                "bg-surface-1/90 backdrop-blur p-1.5 rounded border border-border/50 hover:bg-surface-2 transition-all",
+                measuring && "ring-1 ring-primary bg-primary/20"
+              )}
+              title="Medir distância"
+            >
+              <Ruler className="w-3.5 h-3.5 text-foreground" />
+            </button>
+            <button
+              onClick={centerOnFormation}
+              className="bg-surface-1/90 backdrop-blur p-1.5 rounded border border-border/50 hover:bg-surface-2 transition-all"
+              title="Centralizar"
+            >
+              <Maximize2 className="w-3.5 h-3.5 text-foreground" />
+            </button>
           </div>
         )}
 
         {/* Live sync badge */}
         {liveSync && isPlaying && (
-          <div className="absolute top-2 right-2 flex items-center gap-1 bg-red-500/90 backdrop-blur px-2 py-0.5 rounded-full">
-            <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-            <span className="text-[8px] font-mono-code text-white font-bold">LIVE</span>
+          <div className="absolute top-2 right-2 flex items-center gap-1 bg-destructive/90 backdrop-blur px-2 py-0.5 rounded-full">
+            <div className="w-1.5 h-1.5 bg-destructive-foreground rounded-full animate-pulse" />
+            <span className="text-[8px] font-mono-code text-destructive-foreground font-bold">LIVE</span>
+          </div>
+        )}
+
+        {/* Measurement badge */}
+        {measuring && measureDist !== null && (
+          <div className="absolute bottom-2 left-2 bg-surface-0/90 backdrop-blur px-2 py-1 rounded border border-primary/30">
+            <span className="text-[9px] font-mono-code text-primary font-bold">
+              📏 {measureDist < 1000 ? `${measureDist.toFixed(1)}m` : `${(measureDist / 1000).toFixed(2)}km`}
+            </span>
           </div>
         )}
       </div>
+
+      {/* Formation navigator */}
+      {droneFormations.length > 0 && !liveSync && (
+        <div className="px-2 py-1 border-t border-border bg-surface-1/50">
+          <div className="flex items-center gap-1">
+            <span className="text-[8px] font-mono-code text-muted-foreground flex-shrink-0">FORMATION</span>
+            <button
+              onClick={() => setActiveFormationIdx(prev => Math.max(0, prev - 1))}
+              className="text-muted-foreground hover:text-foreground p-0.5"
+              disabled={activeFormationIdx === 0}
+            >
+              <Play className="w-2.5 h-2.5 rotate-180" />
+            </button>
+            <span className="text-[9px] font-mono-code text-foreground font-bold min-w-[40px] text-center">
+              {activeFormationIdx + 1}/{droneFormations.length}
+            </span>
+            <button
+              onClick={nextFormation}
+              className="text-muted-foreground hover:text-foreground p-0.5"
+            >
+              <SkipForward className="w-2.5 h-2.5" />
+            </button>
+            <span className="text-[8px] font-mono-code text-muted-foreground truncate flex-1">
+              {droneFormations[activeFormationIdx]?.formationType}
+            </span>
+            <button
+              onClick={() => setShowAllFormations(!showAllFormations)}
+              className={cn("p-0.5", showAllFormations ? "text-primary" : "text-muted-foreground hover:text-foreground")}
+              title={showAllFormations ? 'Mostrar uma' : 'Mostrar todas'}
+            >
+              {showAllFormations ? <Eye className="w-2.5 h-2.5" /> : <EyeOff className="w-2.5 h-2.5" />}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Controls */}
       <div className="p-2 border-t border-border bg-surface-1 space-y-1.5">
@@ -403,22 +566,31 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        {/* Heading */}
+        {/* Heading + Altitude */}
         <div className="flex items-center gap-1.5">
           <Navigation className="w-3 h-3 text-primary flex-shrink-0" />
-          <label className="text-[9px] font-mono-code text-muted-foreground">Heading</label>
+          <label className="text-[9px] font-mono-code text-muted-foreground">Hdg</label>
           <input
             type="number"
             value={location.heading}
             onChange={(e) => {
-              const h = Number(e.target.value) % 360;
+              const h = ((Number(e.target.value) % 360) + 360) % 360;
               setGpsOrigin({ ...location, heading: h });
               mapInstanceRef.current?.setHeading(h);
             }}
-            className="w-12 h-5 text-[9px] bg-surface-0 border border-border rounded px-1 text-foreground font-mono-code"
+            className="w-10 h-5 text-[9px] bg-surface-0 border border-border rounded px-1 text-foreground font-mono-code"
             min={0} max={359}
           />
           <span className="text-[8px] text-muted-foreground">°</span>
+          <label className="text-[9px] font-mono-code text-muted-foreground ml-1">Alt</label>
+          <input
+            type="number"
+            value={location.altitude}
+            onChange={(e) => setGpsOrigin({ ...location, altitude: Number(e.target.value) })}
+            className="w-10 h-5 text-[9px] bg-surface-0 border border-border rounded px-1 text-foreground font-mono-code"
+            min={0} max={5000}
+          />
+          <span className="text-[8px] text-muted-foreground">m</span>
         </div>
 
         {/* Toggle buttons */}
@@ -444,10 +616,10 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
           <Button
             variant={liveSync ? 'default' : 'ghost'}
             size="sm"
-            className={cn("flex-1 h-5 text-[8px] gap-0.5", liveSync && "bg-red-600 hover:bg-red-700 text-white")}
+            className={cn("flex-1 h-5 text-[8px] gap-0.5", liveSync && "bg-destructive hover:bg-destructive/90 text-destructive-foreground")}
             onClick={() => setLiveSync(!liveSync)}
           >
-            <Play className="w-2.5 h-2.5" />
+            {liveSync ? <Pause className="w-2.5 h-2.5" /> : <Play className="w-2.5 h-2.5" />}
             Live
           </Button>
         </div>
@@ -468,14 +640,17 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
           {[
             { label: 'São Paulo', lat: -23.5505, lng: -46.6333 },
             { label: 'Copacabana', lat: -22.9711, lng: -43.1822 },
+            { label: 'BH', lat: -19.9191, lng: -43.9386 },
             { label: 'Dubai', lat: 25.2048, lng: 55.2708 },
             { label: 'Las Vegas', lat: 36.1699, lng: -115.1398 },
+            { label: 'Sydney', lat: -33.8568, lng: 151.2153 },
           ].map((preset) => (
             <button
               key={preset.label}
               onClick={() => {
                 setGpsOrigin({ ...location, lat: preset.lat, lng: preset.lng });
                 mapInstanceRef.current?.panTo({ lat: preset.lat, lng: preset.lng });
+                pushLog(`📍 ${preset.label}`, 'info');
               }}
               className="text-[7px] font-mono-code px-1.5 py-0.5 rounded bg-surface-0 border border-border/50 text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-all"
             >
