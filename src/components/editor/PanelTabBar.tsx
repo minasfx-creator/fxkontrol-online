@@ -10,6 +10,7 @@ const PANEL_TABS: { id: PanelId; label: string; icon: typeof Route; shortcut?: s
   { id: 'synesthesia', label: 'Audio Synesthesia', icon: Music, shortcut: 'Y' },
   { id: 'script', label: 'Script Editor', icon: Route, shortcut: 'S' },
   { id: 'waypoints', label: 'Waypoint Editor', icon: Spline, shortcut: 'W' },
+  { id: 'scripting', label: 'Scripting Power Tools', icon: Wand2, shortcut: 'T' },
   { id: 'effects', label: 'Effect Editor', icon: Sliders, shortcut: 'E' },
   { id: 'safety', label: 'Safety · NFPA 1123', icon: Shield, shortcut: 'F' },
   { id: 'wind', label: 'Wind & Camera', icon: Wind },
