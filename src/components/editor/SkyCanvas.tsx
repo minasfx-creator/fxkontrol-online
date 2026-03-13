@@ -339,14 +339,18 @@ function SkyGradient() {
     uSkyBrightness: { value: skyBrightness },
     uHorizonGlow: { value: horizonGlow },
     uStarDensity: { value: starDensity },
+    uTime: { value: 0 },
   }), []);
 
-  // Update uniforms reactively
   useEffect(() => {
     uniforms.uSkyBrightness.value = skyBrightness;
     uniforms.uHorizonGlow.value = horizonGlow;
     uniforms.uStarDensity.value = starDensity;
   }, [skyBrightness, horizonGlow, starDensity]);
+
+  useFrame(({ clock }) => {
+    uniforms.uTime.value = clock.getElapsedTime();
+  });
 
   return (
     <mesh>
@@ -366,6 +370,7 @@ function SkyGradient() {
           uniform float uSkyBrightness;
           uniform float uHorizonGlow;
           uniform float uStarDensity;
+          uniform float uTime;
           varying vec3 vWorldPosition;
           
           float hash21(vec2 p) {
@@ -374,33 +379,71 @@ function SkyGradient() {
             return fract(p.x * p.y);
           }
           
+          float noise2d(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            return mix(
+              mix(hash21(i), hash21(i + vec2(1,0)), f.x),
+              mix(hash21(i + vec2(0,1)), hash21(i + vec2(1,1)), f.x), f.y
+            );
+          }
+          
+          float fbm3(vec2 p) {
+            float v = 0.0, a = 0.5;
+            for (int i = 0; i < 4; i++) { v += a * noise2d(p); p *= 2.1; a *= 0.45; }
+            return v;
+          }
+          
           float starField(vec3 dir) {
             vec2 uv = vec2(atan(dir.x, dir.z) * 3.183, asin(clamp(dir.y, -1.0, 1.0)) * 6.366);
             vec2 id = floor(uv * 140.0);
             float h = hash21(id);
-            float threshold = mix(0.998, 0.975, clamp(uStarDensity, 0.0, 2.0) / 2.0);
+            float threshold = mix(0.998, 0.972, clamp(uStarDensity, 0.0, 2.0) / 2.0);
             if (h > threshold) {
               vec2 offset = fract(uv * 140.0) - 0.5;
-              float brightness = smoothstep(0.1, 0.0, length(offset)) * (0.5 + h * 3.5);
-              float twinkle = sin(h * 6283.0 + h * 200.0) * 0.3 + 0.7;
+              float brightness = smoothstep(0.12, 0.0, length(offset)) * (0.5 + h * 4.0);
+              float twinkle = sin(h * 6283.0 + uTime * (0.5 + h * 2.0)) * 0.35 + 0.65;
               return brightness * twinkle * smoothstep(0.08, 0.35, dir.y);
             }
             return 0.0;
+          }
+          
+          // Shooting stars
+          float shootingStar(vec3 dir) {
+            float t = uTime * 0.15;
+            float star = 0.0;
+            for (int i = 0; i < 3; i++) {
+              float fi = float(i);
+              float phase = fract(t + fi * 0.37);
+              if (phase > 0.95) continue; // most of the time hidden
+              float startAngle = hash21(vec2(fi, floor(t + fi * 0.37))) * 6.28;
+              float startElev = 0.4 + hash21(vec2(fi + 10.0, floor(t + fi * 0.37))) * 0.4;
+              vec3 startDir = normalize(vec3(cos(startAngle), startElev, sin(startAngle)));
+              vec3 moveDir = normalize(vec3(-0.3, -0.15, 0.1));
+              vec3 pos = startDir + moveDir * phase * 0.5;
+              float dist = length(cross(dir - startDir, moveDir)) / length(moveDir);
+              float along = dot(dir - startDir, moveDir);
+              float trail = smoothstep(0.15, 0.0, along) * smoothstep(-0.01, 0.0, along);
+              float bright = smoothstep(0.003, 0.0, dist) * trail * (1.0 - phase) * 3.0;
+              star += bright;
+            }
+            return star * smoothstep(0.15, 0.4, dir.y);
           }
           
           void main() {
             vec3 dir = normalize(vWorldPosition);
             float h = dir.y;
             
-            // Google Earth-style atmosphere: rich blue sky fading to warm horizon
-            vec3 space     = vec3(0.005, 0.008, 0.025);
-            vec3 zenith    = vec3(0.01, 0.015, 0.055);
-            vec3 upperSky  = vec3(0.02, 0.035, 0.12);
-            vec3 midSky    = vec3(0.04, 0.06, 0.18);
-            vec3 lowSky    = vec3(0.06, 0.09, 0.22);
-            vec3 horizon   = vec3(0.14, 0.16, 0.24);
-            vec3 haze      = vec3(0.18, 0.17, 0.20);
-            vec3 ground    = vec3(0.01, 0.015, 0.025);
+            // Enhanced atmosphere with more depth layers
+            vec3 space     = vec3(0.003, 0.005, 0.02);
+            vec3 zenith    = vec3(0.008, 0.012, 0.05);
+            vec3 upperSky  = vec3(0.015, 0.028, 0.10);
+            vec3 midSky    = vec3(0.035, 0.055, 0.16);
+            vec3 lowSky    = vec3(0.055, 0.08, 0.20);
+            vec3 horizon   = vec3(0.12, 0.14, 0.22);
+            vec3 haze      = vec3(0.16, 0.15, 0.18);
+            vec3 ground    = vec3(0.008, 0.012, 0.02);
             
             vec3 color;
             if (h > 0.7) {
@@ -417,27 +460,54 @@ function SkyGradient() {
               color = mix(ground, haze, smoothstep(-0.15, -0.02, h));
             }
             
-            // Atmospheric glow band — driven by scene setting
+            // Atmospheric glow band
             float hGlow = exp(-h * h * 80.0);
             color += vec3(0.18, 0.14, 0.08) * hGlow * uHorizonGlow;
             
             // Blue atmospheric scatter ring
             float blueRing = exp(-(h - 0.03) * (h - 0.03) * 60.0);
-            color += vec3(0.04, 0.06, 0.12) * blueRing * 0.3;
+            color += vec3(0.04, 0.06, 0.12) * blueRing * 0.35;
             
-            // Milky Way
+            // Enhanced Milky Way with structure
             float milkyAngle = dir.x * 0.6 + dir.z * 0.8;
-            float milkyBand = exp(-pow(milkyAngle - dir.y * 0.5, 2.0) * 8.0);
-            float milkyDetail = hash21(dir.xz * 40.0) * 0.3 + 0.7;
-            color += vec3(0.015, 0.02, 0.035) * milkyBand * milkyDetail * smoothstep(0.15, 0.5, h) * 0.5;
+            float milkyBand = exp(-pow(milkyAngle - dir.y * 0.5, 2.0) * 6.0);
+            float milkyDetail = fbm3(dir.xz * 30.0) * 0.6 + 0.4;
+            float milkyDust = fbm3(dir.xz * 60.0 + 100.0);
+            vec3 milkyColor = mix(vec3(0.02, 0.025, 0.05), vec3(0.04, 0.03, 0.05), milkyDust);
+            color += milkyColor * milkyBand * milkyDetail * smoothstep(0.15, 0.5, h) * 0.8;
             
-            // Stars — density driven by scene store
+            // Dark dust lanes in Milky Way
+            float dustLane = smoothstep(0.45, 0.55, fbm3(dir.xz * 20.0 + 50.0));
+            color -= vec3(0.01) * milkyBand * dustLane * smoothstep(0.2, 0.5, h);
+            
+            // Subtle nebula color patches
+            float nebula1 = fbm3(dir.xz * 15.0 + vec2(200.0, 0.0));
+            float nebula2 = fbm3(dir.xz * 12.0 + vec2(0.0, 300.0));
+            color += vec3(0.015, 0.005, 0.02) * smoothstep(0.6, 0.8, nebula1) * milkyBand * 0.5;
+            color += vec3(0.005, 0.01, 0.025) * smoothstep(0.55, 0.75, nebula2) * smoothstep(0.3, 0.6, h) * 0.4;
+            
+            // Procedural cloud wisps near horizon
+            float cloudUV1 = fbm3(dir.xz * 4.0 + uTime * 0.01);
+            float cloudUV2 = fbm3(dir.xz * 8.0 - uTime * 0.008 + 50.0);
+            float cloudMask = smoothstep(0.0, 0.12, h) * smoothstep(0.25, 0.08, h);
+            float clouds = smoothstep(0.45, 0.7, cloudUV1 * 0.6 + cloudUV2 * 0.4) * cloudMask;
+            color += vec3(0.06, 0.07, 0.10) * clouds * 0.4;
+            
+            // Stars with color variation
             float stars = starField(dir);
-            vec3 starColor = mix(vec3(0.8, 0.85, 1.0), vec3(1.0, 0.9, 0.7), hash21(dir.xz * 50.0));
-            color += starColor * stars * 0.7 * uStarDensity;
+            float starHue = hash21(dir.xz * 50.0);
+            vec3 starColor = starHue < 0.3 ? vec3(0.7, 0.8, 1.0) :
+                             starHue < 0.6 ? vec3(1.0, 0.95, 0.85) :
+                             starHue < 0.85 ? vec3(1.0, 0.85, 0.7) :
+                             vec3(1.0, 0.6, 0.5);
+            color += starColor * stars * 0.8 * uStarDensity;
             
-            // Apply overall sky brightness
+            // Shooting stars
+            float shooting = shootingStar(dir);
+            color += vec3(0.9, 0.95, 1.0) * shooting * uStarDensity;
+            
             color *= uSkyBrightness;
+            color = max(color, vec3(0.0));
             
             gl_FragColor = vec4(color, 1.0);
           }
