@@ -82,6 +82,9 @@ export default function Index() {
         {activePanel === 'addressing' && <AddressingPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'inventory' && <InventoryPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'boids' && <BoidsPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'pid' && <PIDPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'dmx' && <DMXPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'battery' && <BatteryPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
