@@ -64,9 +64,7 @@ function MiniBurst({
 
   return (
     <group position={offset}>
-      {progress < 0.15 && (
-        <pointLight color={color} intensity={6 * (1 - progress / 0.15)} distance={10} decay={2} />
-      )}
+      {/* Glow handled by bloom — no pointLight to avoid uniform overflow */}
       <points>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[positions, 3]} />

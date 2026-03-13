@@ -640,8 +640,7 @@ export default function SkyCanvas() {
         {/* Sky fill */}
         <hemisphereLight args={['#1a2040', '#0a1808', 0.12]} />
         
-        {/* Subtle warm ground fill */}
-        <directionalLight position={[0, -3, 15]} intensity={0.03} color="#332211" />
+        {/* Ground fill removed — minimal contribution, saves uniform slots */}
 
         <SkyGradient />
         <Moon />
