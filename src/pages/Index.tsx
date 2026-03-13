@@ -256,6 +256,8 @@ export default function Index() {
         {activePanel === 'summary' && <ShowSummaryPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'scene' && <SceneEditorPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'soundlevel' && <SoundLevelPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'aroverlay' && <AROverlayPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'share' && <ShowSharePanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
