@@ -271,6 +271,9 @@ export default function Index() {
       {showShortcuts && (
         <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />
       )}
+
+      {/* Context menu */}
+      <PositionContextMenu />
     </div>
   );
 }
