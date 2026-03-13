@@ -118,7 +118,10 @@ export default function DroneChoreography() {
   if (!showFormations || !positions) return null;
 
   return (
-    <InstancedDroneSwarm positions={positions} scale={0.6} />
+    <>
+      <InstancedDroneSwarm positions={positions} scale={0.6} />
+      <TransitionParticles />
+    </>
   );
 }
 
