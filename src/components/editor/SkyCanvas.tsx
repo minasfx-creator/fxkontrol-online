@@ -1163,33 +1163,32 @@ export default function SkyCanvas() {
         <PerspectiveCamera makeDefault position={preset.position} fov={55} near={0.2} far={2500} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} />
 
-        {/* UE5-style cinematic lighting */}
-        <ambientLight intensity={0.08} color="#607090" />
+        {/* Cinematic lighting — richer, more dramatic */}
+        <ambientLight intensity={0.06} color="#506880" />
         
-        {/* Moonlight — key light */}
+        {/* Moonlight — key light with warmer fill */}
         <directionalLight
           position={[60, 55, -80]}
-          intensity={0.4}
+          intensity={0.45}
           color="#8899cc"
           castShadow
-          shadow-mapSize={[2048, 2048]}
-          shadow-camera-far={400}
-          shadow-camera-left={-100}
-          shadow-camera-right={100}
-          shadow-camera-top={100}
-          shadow-camera-bottom={-100}
-          shadow-bias={-0.0001}
+          shadow-mapSize={[4096, 4096]}
+          shadow-camera-far={500}
+          shadow-camera-left={-150}
+          shadow-camera-right={150}
+          shadow-camera-top={150}
+          shadow-camera-bottom={-150}
+          shadow-bias={-0.00005}
         />
         
-        {/* Sky hemisphere — blue fill from above, warm from ground */}
-        <hemisphereLight args={['#152040', '#0a1808', 0.1]} />
+        {/* Hemisphere — deep blue sky + warm ground bounce */}
+        <hemisphereLight args={['#152050', '#0c1a0a', 0.12]} />
         
-        {/* Rim backlight for atmospheric depth */}
-        <directionalLight
-          position={[-40, 20, 60]}
-          intensity={0.08}
-          color="#4466aa"
-        />
+        {/* Rim backlight — atmospheric depth */}
+        <directionalLight position={[-40, 20, 60]} intensity={0.1} color="#4466aa" />
+        
+        {/* Fill from below — ground bounce */}
+        <directionalLight position={[0, -10, 30]} intensity={0.03} color="#1a2a1a" />
 
         <SkyGradient />
         <Moon />
