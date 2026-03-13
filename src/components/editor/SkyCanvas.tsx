@@ -1193,9 +1193,9 @@ export default function SkyCanvas() {
 
         <SkyGradient />
         <Moon />
-        <Stars radius={450} depth={200} count={8000} factor={4.5} saturation={0.15} fade speed={0.04} />
+        <Stars radius={450} depth={200} count={10000} factor={5} saturation={0.2} fade speed={0.03} />
         <AtmosphericParticles />
-        <fog attach="fog" args={['#0a1020', 300, 1500]} />
+        <fog attach="fog" args={['#080e1a', 200, 1800]} />
 
         <StageGround satelliteTexture={satelliteTexture} />
         <LaunchSites />
