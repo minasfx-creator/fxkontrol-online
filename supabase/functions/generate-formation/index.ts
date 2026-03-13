@@ -84,9 +84,13 @@ Before designing, deeply ANALYZE the user's prompt:
 9. EMOTIONAL ARC: Map the emotional journey described → formation complexity, color warmth, and timing.
 
 SHAPE NAME VOCABULARY — the server understands these names for formationName:
-Heart, Star, Circle, Spiral, Vortex, Diamond, Cross, Wave, Butterfly, Arrow, Crescent/Moon, Ring, Infinity/Lemniscate, Radial Burst/Firework, Christmas Tree, House, Music Note, Peace Sign, Rocket, Cake, Globe/Earth, Trophy, Snowflake, Crown, Flag BR, Dragon, Text "[any text]", Grid, DNA/Helix, Bird/Phoenix, Compass/Bússola, Runner/Corredor, Sun/Sol, Anchor, Castle, Flower, Mandala, Galaxy, Lightning/Raio, Silhouette, Shield, Leaf, Angel/Wing, Planet/Saturn, Hexagon, Triangle.
+Heart, Star, Circle, Spiral, Vortex, Diamond, Cross, Wave, Butterfly, Arrow, Crescent/Moon, Ring, Infinity/Lemniscate, Radial Burst/Firework, Christmas Tree, House, Music Note, Peace Sign, Rocket, Cake, Globe/Earth, Trophy, Trophy Detailed (with handles), Snowflake, Crown, Flag BR, Dragon, Anchor, Laurel Wreath/Coroa de Louros, Runner/Corredor (running silhouette), Shield/Escudo, Compass/Bússola, Text "[any text]", Grid, DNA/Helix, Bird/Phoenix, Sun/Sol, Castle, Flower, Mandala, Galaxy, Lightning/Raio, Silhouette, Leaf, Angel/Wing, Planet/Saturn, Hexagon, Triangle.
 For text or numbers, use: Text "2027", Text "NOME", etc.
 For a running figure, use: Runner
+For a compass, use: Compass
+For an anchor, use: Anchor
+For a laurel wreath (open at top), use: Laurel Wreath
+For a trophy with detailed handles, use: Trophy Detailed
 For a compass, use: Compass
 
 SHOW STRUCTURE (adapt count based on prompt complexity — 4 to 10 formations):
@@ -253,8 +257,12 @@ function buildLocalFullShowFallback(prompt: string, count: number) {
     { re: /diamond|diamante|💎/, shape: "diamond", name: "Diamante", color: "#7DF9FF" },
     { re: /cross|cruz|✝️/, shape: "cross", name: "Cruz", color: "#FFFFFF" },
     { re: /butterfly|borboleta|🦋/, shape: "butterfly", name: "Borboleta", color: "#FF66AA" },
-    { re: /runner|corredor|corrida|fuga/, shape: "butterfly", name: "Corredor", color: "#22D3EE" },
-    { re: /compass|bússola|bussola/, shape: "radial_burst", name: "Bússola", color: "#C0C0C0" },
+    { re: /runner|corredor|corrida|fuga|silhueta/, shape: "runner", name: "Corredor", color: "#22D3EE" },
+    { re: /compass|bússola|bussola/, shape: "compass", name: "Bússola", color: "#C0C0C0" },
+    { re: /anchor|âncora|ancora|⚓/, shape: "anchor", name: "Âncora", color: "#C0C0C0" },
+    { re: /laurel|louros|louro/, shape: "laurel_wreath", name: "Coroa de Louros", color: "#FFD700" },
+    { re: /trophy.*alça|troféu.*alça|trophy.*handle|taça.*alça/, shape: "trophy_detailed", name: "Troféu Detalhado", color: "#FFD700" },
+    { re: /shield|escudo|🛡/, shape: "shield", name: "Escudo", color: "#C0C0C0" },
     { re: /sun|sol|☀/, shape: "radial_burst", name: "Sol", color: "#FFBF00" },
     { re: /snow|neve|❄|floco/, shape: "snowflake", name: "Floco de Neve", color: "#FFFFFF" },
     { re: /tree|árvore|natal|🎄/, shape: "layered_triangles", name: "Árvore", color: "#20CC40" },
@@ -501,7 +509,7 @@ function buildShapeDescriptorTool() {
         properties: {
           shapeType: { 
             type: "string", 
-            description: "One of: circle, filled_circle, heart, star, spiral, grid, diamond, cross, wave, butterfly, arrow, crescent, ring, lemniscate, text, radial_burst, layered_triangles, house, music_note, peace_sign, rocket, cake, globe, trophy, snowflake, crown, flag_br, dragon, custom_outline" 
+            description: "One of: circle, filled_circle, heart, star, spiral, grid, diamond, cross, wave, butterfly, arrow, crescent, ring, lemniscate, text, radial_burst, layered_triangles, house, music_note, peace_sign, rocket, cake, globe, trophy, trophy_detailed, snowflake, crown, flag_br, dragon, anchor, laurel_wreath, runner, shield, compass, custom_outline" 
           },
           params: {
             type: "object",
@@ -621,6 +629,12 @@ function generateShapePoints(
     case 'crown': return genCrown(count, R);
     case 'flag_br': return genFlagBR(count, R);
     case 'dragon': return genDragon(count, R);
+    case 'anchor': return genAnchor(count, R);
+    case 'trophy_detailed': return genTrophyDetailed(count, R);
+    case 'laurel_wreath': return genLaurelWreath(count, R);
+    case 'runner': return genRunner(count, R);
+    case 'shield': return genShield(count, R);
+    case 'compass': return genCompass(count, R);
     case 'custom_outline': return outlinePoints?.length ? genFromOutline(count, outlinePoints) : genFilledCircle(count, R);
     default: return genFilledCircle(count, R);
   }
@@ -1331,6 +1345,299 @@ function genDragon(n: number, R: number): { x: number; z: number }[] {
     const a = t * Math.PI * 1.5;
     const r = R * 0.15 * (1 - t);
     pts.push({ x: R + r * Math.cos(a), z: r * Math.sin(a) });
+  }
+  return pts.slice(0, n);
+}
+
+// ── New shape generators: Anchor, Trophy Detailed, Laurel Wreath, Runner, Shield, Compass ──
+
+function genAnchor(n: number, R: number): { x: number; z: number }[] {
+  const pts: { x: number; z: number }[] = [];
+  // Vertical shaft (30%)
+  const shaftN = Math.floor(n * 0.3);
+  for (let i = 0; i < shaftN; i++) {
+    const t = i / (shaftN - 1 || 1);
+    pts.push({ x: ((i % 2) - 0.5) * R * 0.04, z: -R * 0.7 + t * R * 1.5 });
+  }
+  // Cross bar at top (10%)
+  const barN = Math.floor(n * 0.1);
+  for (let i = 0; i < barN; i++) {
+    const t = i / (barN - 1 || 1);
+    pts.push({ x: (t - 0.5) * R * 0.5, z: -R * 0.55 });
+  }
+  // Ring at very top (10%)
+  const ringN = Math.floor(n * 0.1);
+  const ringR = R * 0.12;
+  for (let i = 0; i < ringN; i++) {
+    const a = (2 * Math.PI * i) / ringN;
+    pts.push({ x: ringR * Math.cos(a), z: -R * 0.75 + ringR * Math.sin(a) });
+  }
+  // Left curved arm (20%)
+  const armN = Math.floor(n * 0.2);
+  for (let i = 0; i < armN; i++) {
+    const t = i / (armN - 1 || 1);
+    const a = Math.PI * 0.15 + t * Math.PI * 0.7;
+    pts.push({ x: -R * 0.45 * Math.sin(a), z: R * 0.5 + R * 0.35 * Math.cos(a) });
+  }
+  // Right curved arm (20%)
+  const armN2 = n - pts.length;
+  for (let i = 0; i < armN2; i++) {
+    const t = i / (armN2 - 1 || 1);
+    const a = Math.PI * 0.15 + t * Math.PI * 0.7;
+    pts.push({ x: R * 0.45 * Math.sin(a), z: R * 0.5 + R * 0.35 * Math.cos(a) });
+  }
+  // Arrow tips at arm ends
+  return pts.slice(0, n);
+}
+
+function genTrophyDetailed(n: number, R: number): { x: number; z: number }[] {
+  const pts: { x: number; z: number }[] = [];
+  // Cup bowl — wide U shape (35%)
+  const cupN = Math.floor(n * 0.35);
+  for (let i = 0; i < cupN; i++) {
+    const t = (i / (cupN - 1)) * Math.PI; // 0 to PI
+    const x = R * 0.5 * Math.cos(t);
+    const z = -R * 0.5 + R * 0.4 * Math.sin(t);
+    pts.push({ x, z });
+  }
+  // Left handle — full ear shape (12%)
+  const handleN = Math.floor(n * 0.12);
+  for (let i = 0; i < handleN; i++) {
+    const t = i / (handleN - 1 || 1);
+    const a = -Math.PI * 0.4 + t * Math.PI * 0.8;
+    pts.push({
+      x: -R * 0.5 - R * 0.22 * Math.cos(a),
+      z: -R * 0.35 + R * 0.22 * Math.sin(a),
+    });
+  }
+  // Right handle — full ear shape (12%)
+  const handleN2 = Math.floor(n * 0.12);
+  for (let i = 0; i < handleN2; i++) {
+    const t = i / (handleN2 - 1 || 1);
+    const a = Math.PI * 0.4 + t * Math.PI * 0.8;
+    pts.push({
+      x: R * 0.5 + R * 0.22 * Math.cos(a),
+      z: -R * 0.35 + R * 0.22 * Math.sin(a),
+    });
+  }
+  // Narrow stem (12%)
+  const stemN = Math.floor(n * 0.12);
+  for (let i = 0; i < stemN; i++) {
+    const t = i / (stemN - 1 || 1);
+    pts.push({ x: ((i % 2) - 0.5) * R * 0.05, z: -R * 0.1 + t * R * 0.45 });
+  }
+  // Flared stem detail (9%)
+  const flareN = Math.floor(n * 0.09);
+  for (let i = 0; i < flareN; i++) {
+    const t = i / (flareN - 1 || 1);
+    const w = R * 0.05 + t * R * 0.15;
+    pts.push({ x: (i % 2 === 0 ? 1 : -1) * w, z: R * 0.2 + t * R * 0.15 });
+  }
+  // Wide base (remaining)
+  const baseN = n - pts.length;
+  for (let i = 0; i < baseN; i++) {
+    const t = i / (baseN - 1 || 1);
+    pts.push({ x: (t - 0.5) * R * 0.7, z: R * 0.45 });
+  }
+  return pts.slice(0, n);
+}
+
+function genLaurelWreath(n: number, R: number): { x: number; z: number }[] {
+  const pts: { x: number; z: number }[] = [];
+  const leavesPerSide = 8;
+  const leafN = Math.floor(n / (leavesPerSide * 2 + 2)); // points per leaf
+  
+  // Left branch arc (leaves along the arc)
+  for (let l = 0; l < leavesPerSide; l++) {
+    const t = l / (leavesPerSide - 1);
+    const arcAngle = Math.PI * 0.2 + t * Math.PI * 0.6; // from bottom-left to top
+    const cx = -R * 0.45 * Math.cos(arcAngle);
+    const cz = R * 0.6 * Math.sin(arcAngle) - R * 0.35;
+    // Leaf as small ellipse angled along the branch
+    const leafAngle = arcAngle + Math.PI * 0.25;
+    for (let i = 0; i < leafN && pts.length < n; i++) {
+      const lt = (i / leafN) * Math.PI * 2;
+      const lx = Math.cos(leafAngle) * Math.cos(lt) * R * 0.1 - Math.sin(leafAngle) * Math.sin(lt) * R * 0.04;
+      const lz = Math.sin(leafAngle) * Math.cos(lt) * R * 0.1 + Math.cos(leafAngle) * Math.sin(lt) * R * 0.04;
+      pts.push({ x: cx + lx, z: cz + lz });
+    }
+  }
+  
+  // Right branch arc (mirrored)
+  for (let l = 0; l < leavesPerSide; l++) {
+    const t = l / (leavesPerSide - 1);
+    const arcAngle = Math.PI * 0.2 + t * Math.PI * 0.6;
+    const cx = R * 0.45 * Math.cos(arcAngle);
+    const cz = R * 0.6 * Math.sin(arcAngle) - R * 0.35;
+    const leafAngle = -arcAngle - Math.PI * 0.25;
+    for (let i = 0; i < leafN && pts.length < n; i++) {
+      const lt = (i / leafN) * Math.PI * 2;
+      const lx = Math.cos(leafAngle) * Math.cos(lt) * R * 0.1 - Math.sin(leafAngle) * Math.sin(lt) * R * 0.04;
+      const lz = Math.sin(leafAngle) * Math.cos(lt) * R * 0.1 + Math.cos(leafAngle) * Math.sin(lt) * R * 0.04;
+      pts.push({ x: cx + lx, z: cz + lz });
+    }
+  }
+  
+  // Branch stems (two arcs)
+  const stemN = Math.floor((n - pts.length) / 2);
+  for (let i = 0; i < stemN && pts.length < n; i++) {
+    const t = i / (stemN - 1 || 1);
+    const a = Math.PI * 0.2 + t * Math.PI * 0.6;
+    pts.push({ x: -R * 0.4 * Math.cos(a), z: R * 0.55 * Math.sin(a) - R * 0.35 });
+  }
+  for (let i = 0; i < (n - pts.length) && pts.length < n; i++) {
+    const t = i / (Math.max(1, n - pts.length) - 1 || 1);
+    const a = Math.PI * 0.2 + t * Math.PI * 0.6;
+    pts.push({ x: R * 0.4 * Math.cos(a), z: R * 0.55 * Math.sin(a) - R * 0.35 });
+  }
+  
+  while (pts.length < n) pts.push({ x: 0, z: R * 0.3 });
+  return pts.slice(0, n);
+}
+
+function genRunner(n: number, R: number): { x: number; z: number }[] {
+  // Running human silhouette — stick figure in motion
+  const pts: { x: number; z: number }[] = [];
+  // Head (12%)
+  const headN = Math.floor(n * 0.12);
+  const headR = R * 0.1;
+  for (let i = 0; i < headN; i++) {
+    const a = (2 * Math.PI * i) / headN;
+    pts.push({ x: R * 0.05 + headR * Math.cos(a), z: -R * 0.75 + headR * Math.sin(a) });
+  }
+  // Torso — angled forward (15%)
+  const torsoN = Math.floor(n * 0.15);
+  for (let i = 0; i < torsoN; i++) {
+    const t = i / (torsoN - 1 || 1);
+    pts.push({ x: R * 0.05 - t * R * 0.12, z: -R * 0.63 + t * R * 0.45 });
+  }
+  // Leading arm — forward (10%)
+  const armFN = Math.floor(n * 0.1);
+  for (let i = 0; i < armFN; i++) {
+    const t = i / (armFN - 1 || 1);
+    pts.push({ x: R * 0.0 + t * R * 0.35, z: -R * 0.45 + t * R * 0.1 });
+  }
+  // Trailing arm — backward (10%)
+  const armBN = Math.floor(n * 0.1);
+  for (let i = 0; i < armBN; i++) {
+    const t = i / (armBN - 1 || 1);
+    pts.push({ x: -R * 0.05 - t * R * 0.3, z: -R * 0.5 + t * R * 0.15 });
+  }
+  // Front leg — extended forward (18%)
+  const legFN = Math.floor(n * 0.18);
+  for (let i = 0; i < legFN; i++) {
+    const t = i / (legFN - 1 || 1);
+    const knee = t < 0.5;
+    if (knee) {
+      const kt = t / 0.5;
+      pts.push({ x: -R * 0.07 + kt * R * 0.35, z: -R * 0.18 + kt * R * 0.25 });
+    } else {
+      const kt = (t - 0.5) / 0.5;
+      pts.push({ x: R * 0.28 + kt * R * 0.12, z: R * 0.07 + kt * R * 0.25 });
+    }
+  }
+  // Back leg — trailing behind (18%)
+  const legBN = Math.floor(n * 0.18);
+  for (let i = 0; i < legBN; i++) {
+    const t = i / (legBN - 1 || 1);
+    const knee = t < 0.5;
+    if (knee) {
+      const kt = t / 0.5;
+      pts.push({ x: -R * 0.07 - kt * R * 0.25, z: -R * 0.18 + kt * R * 0.3 });
+    } else {
+      const kt = (t - 0.5) / 0.5;
+      pts.push({ x: -R * 0.32 - kt * R * 0.05, z: R * 0.12 + kt * R * 0.35 });
+    }
+  }
+  // Remaining → fill torso width
+  while (pts.length < n) {
+    const t = pts.length / n;
+    pts.push({ x: -R * 0.05 + (Math.random() - 0.5) * R * 0.08, z: -R * 0.4 + t * R * 0.3 });
+  }
+  return pts.slice(0, n);
+}
+
+function genShield(n: number, R: number): { x: number; z: number }[] {
+  const pts: { x: number; z: number }[] = [];
+  // Shield outline: flat top, curved bottom (pointed)
+  const outlineVerts: { x: number; z: number }[] = [];
+  // Top flat
+  outlineVerts.push({ x: -R * 0.6, z: -R * 0.6 });
+  outlineVerts.push({ x: R * 0.6, z: -R * 0.6 });
+  // Right side curve
+  for (let i = 1; i <= 8; i++) {
+    const t = i / 8;
+    const x = R * 0.6 * (1 - t * 0.7);
+    const z = -R * 0.6 + t * R * 1.4;
+    outlineVerts.push({ x, z: Math.min(z, R * 0.8) });
+  }
+  // Bottom point
+  outlineVerts.push({ x: 0, z: R * 0.8 });
+  // Left side curve
+  for (let i = 1; i <= 8; i++) {
+    const t = i / 8;
+    const x = -R * 0.6 * (t * 0.7);
+    const z = R * 0.8 - t * R * 1.4;
+    outlineVerts.push({ x: -R * 0.6 * (1 - (1 - t) * 0.7), z: Math.max(z, -R * 0.6) });
+  }
+  
+  if (n <= 80) return distributeAlongPath(n, outlineVerts, true);
+  
+  // Filled shield
+  const outlineN = Math.floor(n * 0.4);
+  pts.push(...distributeAlongPath(outlineN, outlineVerts, true));
+  // Fill with concentric scaled versions
+  let remaining = n - pts.length;
+  for (let s = 0.7; s > 0.1 && remaining > 0; s -= 0.25) {
+    const inner = outlineVerts.map(p => ({ x: p.x * s, z: p.z * s }));
+    const cnt = Math.min(remaining, Math.floor(n * 0.2));
+    pts.push(...distributeAlongPath(cnt, inner, true));
+    remaining -= cnt;
+  }
+  while (pts.length < n) pts.push({ x: (Math.random() - 0.5) * R * 0.3, z: (Math.random() - 0.5) * R * 0.3 });
+  return pts.slice(0, n);
+}
+
+function genCompass(n: number, R: number): { x: number; z: number }[] {
+  const pts: { x: number; z: number }[] = [];
+  // Outer circle (30%)
+  const circN = Math.floor(n * 0.3);
+  for (let i = 0; i < circN; i++) {
+    const a = (2 * Math.PI * i) / circN;
+    pts.push({ x: R * Math.cos(a), z: R * Math.sin(a) });
+  }
+  // 4 cardinal points (arrows) — N, E, S, W (40%)
+  const arrowN = Math.floor(n * 0.1);
+  const dirs = [
+    { dx: 0, dz: -1 }, // N
+    { dx: 1, dz: 0 },  // E
+    { dx: 0, dz: 1 },  // S
+    { dx: -1, dz: 0 }, // W
+  ];
+  for (const dir of dirs) {
+    for (let i = 0; i < arrowN && pts.length < n; i++) {
+      const t = i / (arrowN - 1 || 1);
+      // Arrow from center to near edge
+      const len = R * 0.85;
+      pts.push({
+        x: dir.dx * len * t + dir.dz * (1 - t) * R * 0.06 * ((i % 2) * 2 - 1),
+        z: dir.dz * len * t + dir.dx * (1 - t) * R * 0.06 * ((i % 2) * 2 - 1),
+      });
+    }
+  }
+  // Inner decorative circle (15%)
+  const innerN = Math.floor(n * 0.15);
+  for (let i = 0; i < innerN && pts.length < n; i++) {
+    const a = (2 * Math.PI * i) / innerN;
+    pts.push({ x: R * 0.35 * Math.cos(a), z: R * 0.35 * Math.sin(a) });
+  }
+  // Remaining — tick marks at 45° diagonals
+  while (pts.length < n) {
+    const idx = pts.length - Math.floor(n * 0.85);
+    const da = Math.PI * 0.25 + Math.floor(idx / 3) * Math.PI * 0.5;
+    const t = (idx % 3) / 2;
+    const r = R * 0.5 + t * R * 0.3;
+    pts.push({ x: r * Math.cos(da), z: r * Math.sin(da) });
   }
   return pts.slice(0, n);
 }
