@@ -289,6 +289,7 @@ export default function ScriptWindow() {
   // ─── Paste ───────────────────────────────────────────────────────
   const handlePaste = useCallback(() => {
     if (clipboard.length === 0) return;
+    pushUndo();
     const { currentTime } = useProjectStore.getState();
     const newIds: string[] = [];
     
