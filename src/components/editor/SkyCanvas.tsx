@@ -944,7 +944,7 @@ export default function SkyCanvas() {
         }}
         dpr={[1, 1.5]}
       >
-        <PerspectiveCamera makeDefault position={preset.position} fov={55} near={0.2} far={1200} />
+        <PerspectiveCamera makeDefault position={preset.position} fov={55} near={0.2} far={2500} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} />
 
         {/* UE5-style cinematic lighting */}
