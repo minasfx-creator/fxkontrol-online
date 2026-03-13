@@ -796,7 +796,7 @@ export default function ScriptWindow() {
             </tr>
           </thead>
           <tbody>
-            {visibleRows.map(({ row, isChainHead, chainCount, collapsed }) => {
+            {visibleRows.map(({ row, isChainHead, chainCount, collapsed }, rowIdx) => {
               const isSelected = selectedTimelineItemId === row.id || selectedIds.has(row.id);
               const chainColor = row.chainRef
                 ? `hsl(${hashCode(row.chainRef) % 360}, 70%, 50%)`
@@ -806,15 +806,22 @@ export default function ScriptWindow() {
                 <tr
                   key={row.id}
                   className={cn(
-                    "border-b border-border/20 cursor-pointer transition-colors group relative",
-                    isSelected ? "bg-primary/10" : "hover:bg-surface-2/30",
-                    row.chainRef && "border-l-2",
+                    "border-b border-border/15 cursor-pointer transition-colors group relative",
+                    isSelected
+                      ? "bg-primary/15 border-l-2 border-l-primary"
+                      : "hover:bg-surface-2/40",
+                    row.chainRef && !isSelected && "border-l-2",
                     isDraggingFill && fillAnchorId === row.id && "bg-primary/20",
                   )}
-                  style={row.chainRef ? { borderLeftColor: chainColor } : undefined}
+                  style={row.chainRef && !isSelected ? { borderLeftColor: chainColor } : undefined}
                   onClick={(e) => toggleSelect(row.id, e)}
                 >
-                  {/* Chain collapse toggle */}
+                  {/* Row number */}
+                  <td className="px-0.5 py-0.5 text-center text-muted-foreground/40 text-[8px]">
+                    {rowIdx + 1}
+                  </td>
+
+                  {/* Chain collapse / icon */}
                   <td className="px-0.5 py-0.5 text-center">
                     {isChainHead && chainCount > 1 ? (
                       <button
@@ -835,7 +842,7 @@ export default function ScriptWindow() {
                   <td className="px-1 py-0.5">
                     <input
                       type="number" step="0.001" min="0"
-                      className="w-16 bg-transparent border-b border-border/30 text-foreground focus:border-primary outline-none"
+                      className="w-16 bg-transparent border-b border-transparent hover:border-border/40 focus:border-primary text-foreground outline-none transition-colors"
                       value={row.eventTime}
                       onChange={(e) => updateTimelineItem(row.id, { startTime: parseFloat(e.target.value) || 0 })}
                       onClick={(e) => e.stopPropagation()}
@@ -843,7 +850,7 @@ export default function ScriptWindow() {
                   </td>
 
                   {/* Effect Time */}
-                  <td className="px-1 py-0.5 text-electric">
+                  <td className="px-1 py-0.5 text-primary/80">
                     {formatTime(row.effectTime)}
                   </td>
 
@@ -852,31 +859,41 @@ export default function ScriptWindow() {
                     {row.prefire > 0 ? (
                       <span className="text-warning">{row.prefire.toFixed(1)}s</span>
                     ) : (
-                      <span className="text-muted-foreground/40">—</span>
+                      <span className="text-muted-foreground/30">—</span>
                     )}
                   </td>
 
                   {/* Description */}
                   <td className="px-1 py-0.5">
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: row.color }} />
-                      <span className="text-foreground truncate max-w-[100px]">
+                    <div className="flex items-center gap-1.5">
+                      <div
+                        className="w-2.5 h-2.5 rounded-full flex-shrink-0 ring-1 ring-white/10"
+                        style={{ backgroundColor: row.color }}
+                      />
+                      <span className="text-foreground truncate max-w-[120px] font-medium">
                         {row.description}
                         {collapsed && chainCount > 1 && (
-                          <span className="text-muted-foreground ml-1">×{chainCount}</span>
+                          <span className="text-muted-foreground ml-1 font-normal">×{chainCount}</span>
                         )}
                       </span>
                     </div>
                   </td>
 
                   {/* Position */}
-                  <td className="px-1 py-0.5 text-muted-foreground truncate max-w-[60px]">{row.position}</td>
+                  <td className="px-1 py-0.5">
+                    <span className={cn(
+                      "truncate max-w-[60px] block",
+                      row.position === 'UNASSIGNED' ? "text-destructive/60 italic" : "text-muted-foreground"
+                    )}>
+                      {row.position}
+                    </span>
+                  </td>
 
                   {/* Pan */}
                   <td className="px-1 py-0.5">
                     <input
                       type="number" step="1"
-                      className="w-8 bg-transparent border-b border-border/30 text-muted-foreground focus:border-primary outline-none"
+                      className="w-8 bg-transparent border-b border-transparent hover:border-border/40 focus:border-primary text-muted-foreground outline-none transition-colors"
                       value={row.pan}
                       onChange={(e) => updateTimelineItem(row.id, { pan: parseFloat(e.target.value) || 0 })}
                       onClick={(e) => e.stopPropagation()}
@@ -887,7 +904,7 @@ export default function ScriptWindow() {
                   <td className="px-1 py-0.5">
                     <input
                       type="number" step="1"
-                      className="w-8 bg-transparent border-b border-border/30 text-muted-foreground focus:border-primary outline-none"
+                      className="w-8 bg-transparent border-b border-transparent hover:border-border/40 focus:border-primary text-muted-foreground outline-none transition-colors"
                       value={row.tilt}
                       onChange={(e) => updateTimelineItem(row.id, { tilt: parseFloat(e.target.value) || 0 })}
                       onClick={(e) => e.stopPropagation()}
@@ -898,7 +915,7 @@ export default function ScriptWindow() {
                   <td className="px-1 py-0.5 text-muted-foreground">{row.duration}s</td>
 
                   {/* Cost */}
-                  <td className="px-1 py-0.5 text-safety">${row.cost}</td>
+                  <td className="px-1 py-0.5 text-success">${row.cost}</td>
 
                   {/* Chain */}
                   <td className="px-1 py-0.5">
@@ -910,36 +927,30 @@ export default function ScriptWindow() {
                         )}
                       </div>
                     ) : (
-                      <span className="text-muted-foreground/30">—</span>
+                      <span className="text-muted-foreground/20">—</span>
                     )}
                   </td>
-
-                  {/* X Y Z */}
-                  <td className="px-1 py-0.5 text-destructive">{row.x.toFixed(1)}</td>
-                  <td className="px-1 py-0.5 text-success">{row.y.toFixed(1)}</td>
-                  <td className="px-1 py-0.5 text-electric">{row.z.toFixed(1)}</td>
 
                   {/* Notes */}
                   <td className="px-1 py-0.5">
                     <input
-                      className="w-full bg-transparent border-b border-border/20 text-muted-foreground focus:border-primary outline-none text-[8px]"
-                      placeholder="..."
+                      className="w-full bg-transparent border-b border-transparent hover:border-border/30 focus:border-primary text-muted-foreground outline-none text-[8px] transition-colors"
+                      placeholder="…"
                       value={row.notes}
                       onChange={(e) => updateTimelineItem(row.id, { notes: e.target.value })}
                       onClick={(e) => e.stopPropagation()}
                     />
                   </td>
 
-                  {/* Actions: Delete + Fill Handle */}
+                  {/* Actions */}
                   <td className="px-0.5 py-0.5 text-center">
-                    <div className="flex items-center gap-0.5">
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
-                        className="text-destructive/30 hover:text-destructive"
+                        className="text-destructive/40 hover:text-destructive"
                         onClick={(e) => { e.stopPropagation(); removeTimelineItem(row.id); }}
                       >
                         <Trash2 className="h-2.5 w-2.5" />
                       </button>
-                      {/* Fill handle grip */}
                       {isSelected && (
                         <button
                           className="text-primary/40 hover:text-primary cursor-s-resize"
@@ -959,8 +970,8 @@ export default function ScriptWindow() {
             {isDraggingFill && fillDragCount > 0 && (
               Array.from({ length: fillDragCount }).map((_, i) => (
                 <tr key={`fill-preview-${i}`} className="border-b border-primary/20 bg-primary/5 pointer-events-none">
-                  <td colSpan={16} className="px-2 py-0.5 text-[9px] text-primary/60 font-mono-code">
-                    + Cópia {i + 1}
+                  <td colSpan={14} className="px-2 py-0.5 text-[9px] text-primary/60 font-mono-code">
+                    + Copy {i + 1}
                   </td>
                 </tr>
               ))
