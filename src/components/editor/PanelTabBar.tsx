@@ -21,6 +21,8 @@ const PANEL_TABS: { id: PanelId; label: string; icon: typeof Route; shortcut?: s
   { id: 'mavlink', label: 'MAVLink Bridge', icon: Radio },
   { id: 'smpte', label: 'SMPTE / LTC Sync', icon: Clock },
   { id: 'maps', label: 'Google Maps · Site Survey', icon: Globe, shortcut: 'G' },
+  { id: 'diagnostic', label: 'E2E Diagnostic', icon: ShieldCheck, shortcut: 'D' },
+  { id: 'logistics', label: 'Logistics · Labels', icon: Tag },
 ];
 
 interface PanelTabBarProps {

@@ -98,6 +98,8 @@ export default function Index() {
         {activePanel === 'mavlink' && <MAVLinkPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'smpte' && <SMPTEPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'maps' && <GoogleMapsPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'diagnostic' && <DiagnosticPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'logistics' && <LogisticsPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
