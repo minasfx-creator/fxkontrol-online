@@ -29,7 +29,7 @@ function SliderField({ label, value, onChange, min, max, step, unit }: {
 }
 
 export default function BoidsPanel({ onClose }: { onClose: () => void }) {
-  const { droneFormations, name } = useProjectStore();
+  const { droneFormations, projectName } = useProjectStore();
   const {
     agents, config, running, seekTarget, recording, recordedFrames,
     setAgents, setConfig, setRunning, setSeekTarget, setRecording, clearRecording,
