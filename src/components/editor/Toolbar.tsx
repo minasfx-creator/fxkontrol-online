@@ -213,6 +213,16 @@ export default function Toolbar() {
         <Button variant="ghost" size="icon" className="h-7 w-7" title="Formations" onClick={() => setFormationOpen(true)}>
           <Shapes className="h-3.5 w-3.5" />
         </Button>
+        <ArrangePositionsDialog>
+          <Button variant="ghost" size="icon" className="h-7 w-7" title="Arrange Positions (Circle/Line/Grid/Arc)">
+            <LayoutGrid className="h-3.5 w-3.5" />
+          </Button>
+        </ArrangePositionsDialog>
+        <ConvertToFanDialog>
+          <Button variant="ghost" size="icon" className="h-7 w-7" title="Convert to Fan">
+            <Wand2 className="h-3.5 w-3.5" />
+          </Button>
+        </ConvertToFanDialog>
         <Button variant="ghost" size="icon" className="h-7 w-7" title="Import CSV" onClick={() => setCsvOpen(true)}>
           <Upload className="h-3.5 w-3.5" />
         </Button>
