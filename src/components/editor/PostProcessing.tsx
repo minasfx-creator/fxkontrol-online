@@ -1,19 +1,21 @@
-import { EffectComposer, Bloom, ToneMapping, Vignette, ChromaticAberration, SMAA } from '@react-three/postprocessing';
+import { EffectComposer, Bloom, ToneMapping, Vignette, ChromaticAberration, SMAA, Noise } from '@react-three/postprocessing';
 import { KernelSize, ToneMappingMode, BlendFunction } from 'postprocessing';
 import { Vector2 } from 'three';
+import { useSceneStore } from '@/store/useSceneStore';
 
 /**
- * UE5-inspired cinematic post-processing pipeline.
- * Layered bloom (LED glow + atmospheric), vignette, subtle chromatic aberration,
- * AGX tone mapping for color fidelity.
+ * Scene-driven cinematic post-processing pipeline.
+ * All values driven by useSceneStore settings.
  */
 export default function PostProcessing() {
+  const s = useSceneStore(st => st.settings);
+
   return (
     <EffectComposer multisampling={0}>
       <SMAA />
       {/* Primary bloom — catches HDR emissive LEDs and pyro */}
       <Bloom
-        intensity={1.4}
+        intensity={s.bloomStrength * 1.0}
         luminanceThreshold={0.2}
         luminanceSmoothing={0.5}
         kernelSize={KernelSize.LARGE}
@@ -21,24 +23,35 @@ export default function PostProcessing() {
       />
       {/* Secondary wide bloom — atmospheric haze glow */}
       <Bloom
-        intensity={0.3}
+        intensity={s.bloomStrength * 0.2}
         luminanceThreshold={0.6}
         luminanceSmoothing={0.9}
         kernelSize={KernelSize.HUGE}
         mipmapBlur
       />
       {/* Cinematic vignette */}
-      <Vignette
-        offset={0.35}
-        darkness={0.55}
-        blendFunction={BlendFunction.NORMAL}
-      />
-      {/* Subtle chromatic aberration — lens realism */}
-      <ChromaticAberration
-        offset={new Vector2(0.0004, 0.0004)}
-        radialModulation
-        modulationOffset={0.4}
-      />
+      {s.vignetteEnabled && (
+        <Vignette
+          offset={0.35}
+          darkness={s.vignetteIntensity * 1.8}
+          blendFunction={BlendFunction.NORMAL}
+        />
+      )}
+      {/* Chromatic aberration — lens realism */}
+      {s.chromaticAberration && (
+        <ChromaticAberration
+          offset={new Vector2(0.0006, 0.0006)}
+          radialModulation
+          modulationOffset={0.4}
+        />
+      )}
+      {/* Film grain */}
+      {s.filmGrain > 0.01 && (
+        <Noise
+          blendFunction={BlendFunction.SOFT_LIGHT}
+          opacity={s.filmGrain * 0.5}
+        />
+      )}
       <ToneMapping mode={ToneMappingMode.AGX} />
     </EffectComposer>
   );

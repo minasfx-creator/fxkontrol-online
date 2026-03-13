@@ -246,7 +246,7 @@ function TimelineEffects() {
         ? Math.max(0, (elapsed - prefireDuration) / weatherDuration)
         : elapsed / weatherDuration;
 
-      return { item, effect, progress: burstProgress, inPrefire, prefireProgress, caliber, prefireDuration, resolvedPos, effectScale };
+      return { item, effect, progress: burstProgress, inPrefire, prefireProgress, caliber, prefireDuration, resolvedPos, effectScale, effectBrightness: sceneSettings.effectBrightness };
     }).filter(Boolean) as {
       item: typeof timelineItems[0];
       effect: typeof EFFECT_LIBRARY[0];
@@ -257,12 +257,13 @@ function TimelineEffects() {
       prefireDuration: number;
       resolvedPos: { x: number; y: number; z: number };
       effectScale: number;
+      effectBrightness: number;
     }[];
-  }, [timelineItems, currentTime, positions, sceneSettings.effectScale, sceneSettings.weather, sceneSettings.humidity]);
+  }, [timelineItems, currentTime, positions, sceneSettings.effectScale, sceneSettings.weather, sceneSettings.humidity, sceneSettings.effectBrightness]);
 
   return (
     <>
-      {activeEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale }) => {
+      {activeEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale, effectBrightness }) => {
         const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
         const eid = effect.id;
         const pt = effect.partType;
@@ -322,11 +323,29 @@ function TimelineEffects() {
 // GOOGLE EARTH-STYLE — Atmospheric sky with realistic horizon
 // ========================================================================
 function SkyGradient() {
+  const skyBrightness = useSceneStore(st => st.settings.skyBrightness);
+  const horizonGlow = useSceneStore(st => st.settings.horizonGlow);
+  const starDensity = useSceneStore(st => st.settings.starDensity);
+
+  const uniforms = useMemo(() => ({
+    uSkyBrightness: { value: skyBrightness },
+    uHorizonGlow: { value: horizonGlow },
+    uStarDensity: { value: starDensity },
+  }), []);
+
+  // Update uniforms reactively
+  useEffect(() => {
+    uniforms.uSkyBrightness.value = skyBrightness;
+    uniforms.uHorizonGlow.value = horizonGlow;
+    uniforms.uStarDensity.value = starDensity;
+  }, [skyBrightness, horizonGlow, starDensity]);
+
   return (
     <mesh>
       <sphereGeometry args={[500, 64, 64]} />
       <shaderMaterial
         side={THREE.BackSide}
+        uniforms={uniforms}
         vertexShader={`
           varying vec3 vWorldPosition;
           void main() {
@@ -336,6 +355,9 @@ function SkyGradient() {
           }
         `}
         fragmentShader={`
+          uniform float uSkyBrightness;
+          uniform float uHorizonGlow;
+          uniform float uStarDensity;
           varying vec3 vWorldPosition;
           
           float hash21(vec2 p) {
@@ -348,7 +370,8 @@ function SkyGradient() {
             vec2 uv = vec2(atan(dir.x, dir.z) * 3.183, asin(clamp(dir.y, -1.0, 1.0)) * 6.366);
             vec2 id = floor(uv * 140.0);
             float h = hash21(id);
-            if (h > 0.982) {
+            float threshold = mix(0.998, 0.975, clamp(uStarDensity, 0.0, 2.0) / 2.0);
+            if (h > threshold) {
               vec2 offset = fract(uv * 140.0) - 0.5;
               float brightness = smoothstep(0.1, 0.0, length(offset)) * (0.5 + h * 3.5);
               float twinkle = sin(h * 6283.0 + h * 200.0) * 0.3 + 0.7;
@@ -386,9 +409,9 @@ function SkyGradient() {
               color = mix(ground, haze, smoothstep(-0.15, -0.02, h));
             }
             
-            // Atmospheric glow band — Google Earth warm horizon
-            float horizonGlow = exp(-h * h * 80.0);
-            color += vec3(0.18, 0.14, 0.08) * horizonGlow * 0.35;
+            // Atmospheric glow band — driven by scene setting
+            float hGlow = exp(-h * h * 80.0);
+            color += vec3(0.18, 0.14, 0.08) * hGlow * uHorizonGlow;
             
             // Blue atmospheric scatter ring
             float blueRing = exp(-(h - 0.03) * (h - 0.03) * 60.0);
@@ -400,10 +423,13 @@ function SkyGradient() {
             float milkyDetail = hash21(dir.xz * 40.0) * 0.3 + 0.7;
             color += vec3(0.015, 0.02, 0.035) * milkyBand * milkyDetail * smoothstep(0.15, 0.5, h) * 0.5;
             
-            // Stars
+            // Stars — density driven by scene store
             float stars = starField(dir);
             vec3 starColor = mix(vec3(0.8, 0.85, 1.0), vec3(1.0, 0.9, 0.7), hash21(dir.xz * 50.0));
-            color += starColor * stars * 0.7;
+            color += starColor * stars * 0.7 * uStarDensity;
+            
+            // Apply overall sky brightness
+            color *= uSkyBrightness;
             
             gl_FragColor = vec4(color, 1.0);
           }
@@ -852,20 +878,82 @@ function GroundFog() {
   );
 }
 
+// --- Finale 3D dark professional ground ---
+function FinaleDarkGround({ brightness }: { brightness: number }) {
+  const b = brightness * 0.4; // darker base
+  return (
+    <>
+      <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[4000, 4000]} />
+        <meshStandardMaterial
+          color={new THREE.Color(0.02 * b, 0.035 * b, 0.02 * b)}
+          roughness={0.92}
+          metalness={0.05}
+        />
+      </mesh>
+      {/* Near-field slightly lighter for depth */}
+      <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <circleGeometry args={[120, 64]} />
+        <meshStandardMaterial
+          color={new THREE.Color(0.03 * b, 0.05 * b, 0.03 * b)}
+          roughness={0.88}
+          metalness={0.08}
+        />
+      </mesh>
+    </>
+  );
+}
+
+// --- Concrete / urban ground ---
+function ConcreteGround({ brightness }: { brightness: number }) {
+  const b = brightness * 0.5;
+  return (
+    <>
+      <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[4000, 4000]} />
+        <meshStandardMaterial
+          color={new THREE.Color(0.06 * b, 0.06 * b, 0.065 * b)}
+          roughness={0.95}
+          metalness={0.1}
+        />
+      </mesh>
+      <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <circleGeometry args={[150, 64]} />
+        <meshStandardMaterial
+          color={new THREE.Color(0.08 * b, 0.08 * b, 0.085 * b)}
+          roughness={0.9}
+          metalness={0.15}
+        />
+      </mesh>
+    </>
+  );
+}
+
 function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) {
   const sc = useSceneStore(st => st.settings);
 
-  // Ground style: finale-dark uses darker grass, flat-black uses a simple plane
-  const showGrass = sc.groundStyle !== 'flat-black';
-  
+  const renderGround = () => {
+    switch (sc.groundStyle) {
+      case 'flat-black':
+        return (
+          <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <planeGeometry args={[4000, 4000]} />
+            <meshStandardMaterial color="#050505" roughness={0.95} metalness={0} />
+          </mesh>
+        );
+      case 'concrete':
+        return <ConcreteGround brightness={sc.groundBrightness} />;
+      case 'finale-dark':
+        return <FinaleDarkGround brightness={sc.groundBrightness} />;
+      case 'google-earth':
+      default:
+        return <GrassGround />;
+    }
+  };
+
   return (
     <group>
-      {showGrass ? <GrassGround /> : (
-        <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-          <planeGeometry args={[4000, 4000]} />
-          <meshStandardMaterial color="#050505" roughness={0.95} metalness={0} />
-        </mesh>
-      )}
+      {renderGround()}
       {satelliteTexture && <SatelliteOverlay textureUrl={satelliteTexture} />}
       {sc.groundFogIntensity > 0 && <GroundFog />}
 
