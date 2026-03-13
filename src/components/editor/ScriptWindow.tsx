@@ -1,13 +1,15 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import {
   Table, Link2, Unlink, ArrowUpDown, Filter,
   ChevronDown, ChevronRight, Trash2, Copy,
+  Clipboard, ClipboardPaste, GripVertical, Plus, Minus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useProjectStore, EFFECT_LIBRARY, type TimelineItem } from '@/store/useProjectStore';
 import { getPreFireTime } from '@/lib/safetyEngine';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 // ─── Helper: compute Finale 3D script row data ────────────────────
 function computeScriptRow(item: TimelineItem, positions: ReturnType<typeof useProjectStore.getState>['positions']) {
@@ -17,7 +19,6 @@ function computeScriptRow(item: TimelineItem, positions: ReturnType<typeof usePr
   const pft = effect.type === 'firework' ? getPreFireTime(effect.name) : 0;
   const effectTime = item.startTime + pft;
 
-  // Find nearest position
   const typePositions = positions.filter((p) =>
     effect.type === 'firework' ? p.type === 'pyro' : p.type === 'drone-pad'
   );
@@ -65,11 +66,31 @@ function computeScriptRow(item: TimelineItem, positions: ReturnType<typeof usePr
 type SortField = 'eventTime' | 'effectTime' | 'position' | 'description' | 'cost' | 'duration';
 type SortDir = 'asc' | 'desc';
 
+// ─── Clipboard type for copy/paste ─────────────────────────────────
+interface ClipboardItem {
+  effectId: string;
+  position: { x: number; y: number; z: number };
+  pan?: number;
+  tilt?: number;
+  notes?: string;
+  timeDelta: number; // relative to first item
+  positionDelta: { x: number; z: number }; // relative to first item
+}
+
+// ─── Fill Handle config ────────────────────────────────────────────
+interface FillConfig {
+  count: number;
+  timeStep: number;    // seconds between each duplicate
+  xStep: number;       // position offset per duplicate
+  zStep: number;
+  mode: 'time' | 'position' | 'both';
+}
+
 export default function ScriptWindow() {
   const {
     timelineItems, positions, selectedTimelineItemId,
     selectTimelineItem, removeTimelineItem, updateTimelineItem,
-    combineAsChain, breakChain,
+    combineAsChain, breakChain, addTimelineItem,
   } = useProjectStore();
 
   const [sortField, setSortField] = useState<SortField>('eventTime');
@@ -77,6 +98,23 @@ export default function ScriptWindow() {
   const [filterText, setFilterText] = useState('');
   const [collapsedChains, setCollapsedChains] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  
+  // Copy/paste state
+  const [clipboard, setClipboard] = useState<ClipboardItem[]>([]);
+  
+  // Fill handle state
+  const [showFillDialog, setShowFillDialog] = useState(false);
+  const [fillConfig, setFillConfig] = useState<FillConfig>({
+    count: 5,
+    timeStep: 0.5,
+    xStep: 2,
+    zStep: 0,
+    mode: 'time',
+  });
+  const [fillAnchorId, setFillAnchorId] = useState<string | null>(null);
+  const [isDraggingFill, setIsDraggingFill] = useState(false);
+  const [fillDragCount, setFillDragCount] = useState(0);
+  const tableRef = useRef<HTMLDivElement>(null);
 
   // Build script rows
   const rows = useMemo(() => {
@@ -84,7 +122,6 @@ export default function ScriptWindow() {
       .map((item) => computeScriptRow(item, positions))
       .filter(Boolean) as NonNullable<ReturnType<typeof computeScriptRow>>[];
 
-    // Filter
     const filtered = filterText
       ? computed.filter((r) =>
           r.description.toLowerCase().includes(filterText.toLowerCase()) ||
@@ -93,7 +130,6 @@ export default function ScriptWindow() {
         )
       : computed;
 
-    // Sort
     const sorted = [...filtered].sort((a, b) => {
       const dir = sortDir === 'asc' ? 1 : -1;
       switch (sortField) {
@@ -142,7 +178,22 @@ export default function ScriptWindow() {
   };
 
   const toggleSelect = (id: string, e: React.MouseEvent) => {
-    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+    if (e.shiftKey) {
+      // Range select
+      const allIds = rows.map(r => r.id);
+      const lastSelected = Array.from(selectedIds).pop();
+      if (lastSelected) {
+        const startIdx = allIds.indexOf(lastSelected);
+        const endIdx = allIds.indexOf(id);
+        if (startIdx >= 0 && endIdx >= 0) {
+          const [from, to] = startIdx < endIdx ? [startIdx, endIdx] : [endIdx, startIdx];
+          const rangeIds = allIds.slice(from, to + 1);
+          setSelectedIds(new Set([...selectedIds, ...rangeIds]));
+          return;
+        }
+      }
+    }
+    if (e.ctrlKey || e.metaKey) {
       setSelectedIds((prev) => {
         const next = new Set(prev);
         if (next.has(id)) next.delete(id);
@@ -154,6 +205,222 @@ export default function ScriptWindow() {
       selectTimelineItem(id);
     }
   };
+
+  // ─── Copy ────────────────────────────────────────────────────────
+  const handleCopy = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    const items = timelineItems.filter(i => selectedIds.has(i.id));
+    if (items.length === 0) return;
+    
+    const sorted = [...items].sort((a, b) => a.startTime - b.startTime);
+    const first = sorted[0];
+    
+    const clipItems: ClipboardItem[] = sorted.map(item => ({
+      effectId: item.effectId,
+      position: { ...item.position },
+      pan: item.pan,
+      tilt: item.tilt,
+      notes: item.notes,
+      timeDelta: item.startTime - first.startTime,
+      positionDelta: {
+        x: item.position.x - first.position.x,
+        z: item.position.z - first.position.z,
+      },
+    }));
+    
+    setClipboard(clipItems);
+    toast.success(`${clipItems.length} cue${clipItems.length > 1 ? 's' : ''} copiado(s)`);
+  }, [selectedIds, timelineItems]);
+
+  // ─── Cut ─────────────────────────────────────────────────────────
+  const handleCut = useCallback(() => {
+    handleCopy();
+    const ids = Array.from(selectedIds);
+    ids.forEach(id => removeTimelineItem(id));
+    setSelectedIds(new Set());
+    toast.success('Cues recortados');
+  }, [handleCopy, selectedIds, removeTimelineItem]);
+
+  // ─── Paste ───────────────────────────────────────────────────────
+  const handlePaste = useCallback(() => {
+    if (clipboard.length === 0) return;
+    const { currentTime } = useProjectStore.getState();
+    const newIds: string[] = [];
+    
+    clipboard.forEach(clip => {
+      const id = `script-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      addTimelineItem({
+        id,
+        effectId: clip.effectId,
+        startTime: currentTime + clip.timeDelta,
+        trackIndex: 0,
+        position: {
+          x: clip.position.x,
+          y: clip.position.y,
+          z: clip.position.z,
+        },
+        pan: clip.pan,
+        tilt: clip.tilt,
+        notes: clip.notes,
+      });
+      newIds.push(id);
+    });
+    
+    setSelectedIds(new Set(newIds));
+    toast.success(`${clipboard.length} cue${clipboard.length > 1 ? 's' : ''} colado(s) em ${currentTime.toFixed(2)}s`);
+  }, [clipboard, addTimelineItem]);
+
+  // ─── Duplicate selected ──────────────────────────────────────────
+  const handleDuplicate = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    const items = timelineItems.filter(i => selectedIds.has(i.id));
+    const newIds: string[] = [];
+    
+    items.forEach(item => {
+      const id = `dup-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      addTimelineItem({
+        ...item,
+        id,
+        startTime: item.startTime + 0.5,
+        chainRef: undefined,
+        chainGap: undefined,
+      });
+      newIds.push(id);
+    });
+    
+    setSelectedIds(new Set(newIds));
+    toast.success(`${items.length} duplicado(s)`);
+  }, [selectedIds, timelineItems, addTimelineItem]);
+
+  // ─── Fill Handle: create N copies with incremental offsets ───────
+  const handleFill = useCallback(() => {
+    const sourceIds = Array.from(selectedIds);
+    if (sourceIds.length === 0) return;
+    
+    const items = timelineItems.filter(i => selectedIds.has(i.id));
+    const sorted = [...items].sort((a, b) => a.startTime - b.startTime);
+    const newIds: string[] = [];
+    
+    for (let n = 1; n <= fillConfig.count; n++) {
+      sorted.forEach(item => {
+        const id = `fill-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${n}`;
+        addTimelineItem({
+          ...item,
+          id,
+          startTime: item.startTime + n * fillConfig.timeStep,
+          position: {
+            x: item.position.x + n * fillConfig.xStep,
+            y: item.position.y,
+            z: item.position.z + n * fillConfig.zStep,
+          },
+          chainRef: undefined,
+          chainGap: undefined,
+        });
+        newIds.push(id);
+      });
+    }
+    
+    setSelectedIds(new Set(newIds));
+    setShowFillDialog(false);
+    toast.success(`${newIds.length} cues gerados via Fill Handle`);
+  }, [selectedIds, timelineItems, fillConfig, addTimelineItem]);
+
+  // ─── Fill handle drag ────────────────────────────────────────────
+  const handleFillDragStart = useCallback((id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setFillAnchorId(id);
+    setIsDraggingFill(true);
+    setFillDragCount(0);
+    
+    const startY = e.clientY;
+    const rowHeight = 22; // approx row height
+    
+    const handleMove = (me: MouseEvent) => {
+      const deltaY = me.clientY - startY;
+      const count = Math.max(0, Math.round(deltaY / rowHeight));
+      setFillDragCount(count);
+    };
+    
+    const handleUp = () => {
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleUp);
+      setIsDraggingFill(false);
+      
+      // Execute fill with drag count
+      setFillDragCount(prev => {
+        if (prev > 0) {
+          const item = timelineItems.find(i => i.id === id);
+          if (item) {
+            const newIds: string[] = [];
+            // Auto-detect time step from surrounding items
+            const sorted = [...timelineItems].sort((a, b) => a.startTime - b.startTime);
+            const idx = sorted.findIndex(i => i.id === id);
+            const timeStep = idx > 0 ? sorted[idx].startTime - sorted[idx - 1].startTime : 0.5;
+            
+            for (let n = 1; n <= prev; n++) {
+              const newId = `drag-fill-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${n}`;
+              addTimelineItem({
+                ...item,
+                id: newId,
+                startTime: item.startTime + n * Math.max(timeStep, 0.1),
+                chainRef: undefined,
+                chainGap: undefined,
+              });
+              newIds.push(newId);
+            }
+            setSelectedIds(new Set(newIds));
+            toast.success(`${prev} cues preenchidos via drag`);
+          }
+        }
+        return 0;
+      });
+      setFillAnchorId(null);
+    };
+    
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleUp);
+  }, [timelineItems, addTimelineItem]);
+
+  // ─── Keyboard shortcuts ──────────────────────────────────────────
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle when not in an input
+      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
+      
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        e.preventDefault();
+        handleCopy();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'x') {
+        e.preventDefault();
+        handleCut();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+        e.preventDefault();
+        handlePaste();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+        e.preventDefault();
+        handleDuplicate();
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedIds.size > 0) {
+          e.preventDefault();
+          Array.from(selectedIds).forEach(id => removeTimelineItem(id));
+          setSelectedIds(new Set());
+        }
+      }
+      // Select all
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+        e.preventDefault();
+        setSelectedIds(new Set(rows.map(r => r.id)));
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleCopy, handleCut, handlePaste, handleDuplicate, selectedIds, rows, removeTimelineItem]);
 
   const handleCombineChain = () => {
     if (selectedIds.size < 2) return;
@@ -230,8 +497,8 @@ export default function ScriptWindow() {
       </div>
 
       {/* Toolbar */}
-      <div className="px-2 py-1.5 border-b border-border flex items-center gap-1">
-        <div className="relative flex-1">
+      <div className="px-2 py-1.5 border-b border-border flex items-center gap-0.5 flex-wrap">
+        <div className="relative flex-1 min-w-[80px]">
           <Filter className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
           <Input
             placeholder="Filter..."
@@ -240,9 +507,49 @@ export default function ScriptWindow() {
             className="h-6 text-[10px] pl-6 bg-surface-2 border-border"
           />
         </div>
+        
+        {/* Copy/Paste buttons */}
         <Button
           variant="ghost" size="icon" className="h-6 w-6"
-          title="Combine as Chain (Ctrl+click to multi-select)"
+          title="Copy (Ctrl+C)"
+          onClick={handleCopy}
+          disabled={selectedIds.size === 0}
+        >
+          <Copy className="h-3 w-3" />
+        </Button>
+        <Button
+          variant="ghost" size="icon" className="h-6 w-6"
+          title="Paste (Ctrl+V)"
+          onClick={handlePaste}
+          disabled={clipboard.length === 0}
+        >
+          <ClipboardPaste className="h-3 w-3" />
+        </Button>
+        <Button
+          variant="ghost" size="icon" className="h-6 w-6"
+          title="Duplicate (Ctrl+D)"
+          onClick={handleDuplicate}
+          disabled={selectedIds.size === 0}
+        >
+          <Clipboard className="h-3 w-3" />
+        </Button>
+        
+        {/* Fill Handle button */}
+        <Button
+          variant={showFillDialog ? "default" : "ghost"}
+          size="icon" className="h-6 w-6"
+          title="Fill Handle — distribute copies"
+          onClick={() => setShowFillDialog(!showFillDialog)}
+          disabled={selectedIds.size === 0}
+        >
+          <GripVertical className="h-3 w-3" />
+        </Button>
+
+        <div className="w-px h-4 bg-border mx-0.5" />
+        
+        <Button
+          variant="ghost" size="icon" className="h-6 w-6"
+          title="Combine as Chain"
           onClick={handleCombineChain}
           disabled={selectedIds.size < 2}
         >
@@ -256,10 +563,132 @@ export default function ScriptWindow() {
         >
           <Unlink className="h-3 w-3" />
         </Button>
+        
+        {/* Selection info */}
+        {selectedIds.size > 0 && (
+          <span className="text-[9px] font-mono-code text-primary ml-1">
+            {selectedIds.size} sel
+          </span>
+        )}
+        {clipboard.length > 0 && (
+          <span className="text-[9px] font-mono-code text-muted-foreground ml-1">
+            📋{clipboard.length}
+          </span>
+        )}
       </div>
 
+      {/* Fill Handle Dialog */}
+      {showFillDialog && selectedIds.size > 0 && (
+        <div className="px-2 py-2 border-b border-primary/30 bg-primary/5 space-y-1.5">
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold text-primary uppercase tracking-wider">
+            <GripVertical className="h-3 w-3" />
+            Fill Handle — Distribuir Cópias
+          </div>
+          
+          {/* Mode selector */}
+          <div className="flex gap-1">
+            {(['time', 'position', 'both'] as const).map(mode => (
+              <button
+                key={mode}
+                onClick={() => setFillConfig(c => ({ ...c, mode }))}
+                className={cn(
+                  "text-[9px] px-2 py-0.5 rounded-sm font-mono-code transition-colors",
+                  fillConfig.mode === mode
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-surface-2 text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {mode === 'time' ? '⏱ Tempo' : mode === 'position' ? '📍 Posição' : '⏱+📍 Ambos'}
+              </button>
+            ))}
+          </div>
+          
+          <div className="grid grid-cols-2 gap-1.5">
+            {/* Count */}
+            <div>
+              <label className="text-[8px] text-muted-foreground uppercase">Cópias</label>
+              <div className="flex items-center gap-0.5">
+                <button
+                  onClick={() => setFillConfig(c => ({ ...c, count: Math.max(1, c.count - 1) }))}
+                  className="w-5 h-5 flex items-center justify-center bg-surface-2 rounded-sm text-muted-foreground hover:text-foreground"
+                >
+                  <Minus className="h-2.5 w-2.5" />
+                </button>
+                <Input
+                  type="number" min={1} max={200}
+                  value={fillConfig.count}
+                  onChange={(e) => setFillConfig(c => ({ ...c, count: Math.max(1, parseInt(e.target.value) || 1) }))}
+                  className="h-5 text-[10px] font-mono-code bg-surface-0 border-border text-center px-1 flex-1"
+                />
+                <button
+                  onClick={() => setFillConfig(c => ({ ...c, count: Math.min(200, c.count + 1) }))}
+                  className="w-5 h-5 flex items-center justify-center bg-surface-2 rounded-sm text-muted-foreground hover:text-foreground"
+                >
+                  <Plus className="h-2.5 w-2.5" />
+                </button>
+              </div>
+            </div>
+            
+            {/* Time Step */}
+            {(fillConfig.mode === 'time' || fillConfig.mode === 'both') && (
+              <div>
+                <label className="text-[8px] text-muted-foreground uppercase">Δ Tempo (s)</label>
+                <Input
+                  type="number" step="0.01" min={0.01}
+                  value={fillConfig.timeStep}
+                  onChange={(e) => setFillConfig(c => ({ ...c, timeStep: parseFloat(e.target.value) || 0.1 }))}
+                  className="h-5 text-[10px] font-mono-code bg-surface-0 border-border px-1"
+                />
+              </div>
+            )}
+            
+            {/* X Step */}
+            {(fillConfig.mode === 'position' || fillConfig.mode === 'both') && (
+              <div>
+                <label className="text-[8px] text-muted-foreground uppercase">Δ X (m)</label>
+                <Input
+                  type="number" step="0.5"
+                  value={fillConfig.xStep}
+                  onChange={(e) => setFillConfig(c => ({ ...c, xStep: parseFloat(e.target.value) || 0 }))}
+                  className="h-5 text-[10px] font-mono-code bg-surface-0 border-border px-1"
+                />
+              </div>
+            )}
+            
+            {/* Z Step */}
+            {(fillConfig.mode === 'position' || fillConfig.mode === 'both') && (
+              <div>
+                <label className="text-[8px] text-muted-foreground uppercase">Δ Z (m)</label>
+                <Input
+                  type="number" step="0.5"
+                  value={fillConfig.zStep}
+                  onChange={(e) => setFillConfig(c => ({ ...c, zStep: parseFloat(e.target.value) || 0 }))}
+                  className="h-5 text-[10px] font-mono-code bg-surface-0 border-border px-1"
+                />
+              </div>
+            )}
+          </div>
+          
+          {/* Preview info */}
+          <div className="text-[8px] text-muted-foreground font-mono-code">
+            {selectedIds.size} × {fillConfig.count} = {selectedIds.size * fillConfig.count} novos cues
+            {fillConfig.mode !== 'position' && ` · span ${(fillConfig.count * fillConfig.timeStep).toFixed(2)}s`}
+            {fillConfig.mode !== 'time' && ` · Δpos (${(fillConfig.count * fillConfig.xStep).toFixed(1)}, ${(fillConfig.count * fillConfig.zStep).toFixed(1)})m`}
+          </div>
+          
+          <Button
+            size="sm"
+            className="w-full h-6 text-[10px] uppercase tracking-wider"
+            onClick={handleFill}
+          >
+            <GripVertical className="h-3 w-3 mr-1" />
+            Preencher {selectedIds.size * fillConfig.count} Cues
+          </Button>
+        </div>
+      )}
+
       {/* Table */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto" ref={tableRef}>
         <table className="w-full text-[9px] font-mono-code border-collapse min-w-[600px]">
           <thead className="sticky top-0 bg-surface-1 z-10">
             <tr className="border-b border-border">
@@ -278,7 +707,7 @@ export default function ScriptWindow() {
               <th className="px-1 py-1 text-left text-muted-foreground font-medium">Y</th>
               <th className="px-1 py-1 text-left text-muted-foreground font-medium">Z</th>
               <th className="px-1 py-1 text-left text-muted-foreground font-medium">Notes</th>
-              <th className="px-1 py-1 w-6"></th>
+              <th className="px-1 py-1 w-8"></th>
             </tr>
           </thead>
           <tbody>
@@ -292,9 +721,10 @@ export default function ScriptWindow() {
                 <tr
                   key={row.id}
                   className={cn(
-                    "border-b border-border/20 cursor-pointer transition-colors",
+                    "border-b border-border/20 cursor-pointer transition-colors group relative",
                     isSelected ? "bg-primary/10" : "hover:bg-surface-2/30",
                     row.chainRef && "border-l-2",
+                    isDraggingFill && fillAnchorId === row.id && "bg-primary/20",
                   )}
                   style={row.chainRef ? { borderLeftColor: chainColor } : undefined}
                   onClick={(e) => toggleSelect(row.id, e)}
@@ -415,18 +845,41 @@ export default function ScriptWindow() {
                     />
                   </td>
 
-                  {/* Delete */}
+                  {/* Actions: Delete + Fill Handle */}
                   <td className="px-0.5 py-0.5 text-center">
-                    <button
-                      className="text-destructive/30 hover:text-destructive"
-                      onClick={(e) => { e.stopPropagation(); removeTimelineItem(row.id); }}
-                    >
-                      <Trash2 className="h-2.5 w-2.5" />
-                    </button>
+                    <div className="flex items-center gap-0.5">
+                      <button
+                        className="text-destructive/30 hover:text-destructive"
+                        onClick={(e) => { e.stopPropagation(); removeTimelineItem(row.id); }}
+                      >
+                        <Trash2 className="h-2.5 w-2.5" />
+                      </button>
+                      {/* Fill handle grip */}
+                      {isSelected && (
+                        <button
+                          className="text-primary/40 hover:text-primary cursor-s-resize"
+                          title="Drag down to fill"
+                          onMouseDown={(e) => handleFillDragStart(row.id, e)}
+                        >
+                          <GripVertical className="h-2.5 w-2.5" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
             })}
+            
+            {/* Fill drag preview rows */}
+            {isDraggingFill && fillDragCount > 0 && (
+              Array.from({ length: fillDragCount }).map((_, i) => (
+                <tr key={`fill-preview-${i}`} className="border-b border-primary/20 bg-primary/5 pointer-events-none">
+                  <td colSpan={16} className="px-2 py-0.5 text-[9px] text-primary/60 font-mono-code">
+                    + Cópia {i + 1}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
 
@@ -435,6 +888,9 @@ export default function ScriptWindow() {
             <Table className="h-6 w-6 text-muted-foreground/20 mx-auto mb-2" />
             <p className="text-[10px] text-muted-foreground/60">
               Drag effects to the timeline to see script rows here
+            </p>
+            <p className="text-[8px] text-muted-foreground/40 mt-1">
+              Ctrl+C/V para copiar/colar · Ctrl+D para duplicar · Fill Handle para distribuir
             </p>
           </div>
         )}
