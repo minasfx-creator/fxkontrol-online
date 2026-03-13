@@ -193,8 +193,11 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
       const { data, error } = await supabase.functions.invoke('generate-formation', {
         body: { generateFullShow: true, prompt, droneCount },
       });
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      if (error) {
+        const errMsg = (data as any)?.error || error.message || String(error);
+        throw new Error(errMsg);
+      }
+      if (data?.error) throw new Error(data.error);
 
       let time = 0;
       const allPts: { x: number; z: number }[] = [];
