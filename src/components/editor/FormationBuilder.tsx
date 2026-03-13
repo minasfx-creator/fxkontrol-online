@@ -617,6 +617,131 @@ function SVGImportTab({ droneCount, onPoints }: {
   );
 }
 
+/* ── Tab: 3D Model Import ──────────────────────────────────── */
+
+function Model3DTab({ droneCount, radius, onPoints, loading: externalLoading }: {
+  droneCount: number;
+  radius: number;
+  onPoints: (points: { x: number; z: number }[], name: string) => void;
+  loading: boolean;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [fileName, setFileName] = useState('');
+  const [projection, setProjection] = useState<ProjectionMode>('top-down');
+  const [parsing, setParsing] = useState(false);
+  const [vertexInfo, setVertexInfo] = useState<string | null>(null);
+
+  const handleFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    const supported = ['obj', 'gltf', 'glb', 'kml'];
+    if (!supported.includes(ext)) {
+      toast.error(`Formato .${ext} não suportado. Use: .OBJ, .GLTF, .GLB, .KML`);
+      return;
+    }
+
+    setFileName(file.name);
+    setParsing(true);
+    setVertexInfo(null);
+
+    try {
+      let result;
+      if (ext === 'kml') {
+        result = await parseKMZToFormation(file, droneCount, radius);
+      } else {
+        result = await parseModelToFormation(file, droneCount, radius, projection);
+      }
+
+      setVertexInfo(`${result.originalVertexCount.toLocaleString()} vértices → ${result.points.length} drones`);
+      onPoints(result.points, result.modelName);
+      toast.success(`"${result.modelName}" convertido: ${result.points.length} pontos de ${result.originalVertexCount.toLocaleString()} vértices`);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao processar modelo 3D');
+      setVertexInfo(null);
+    } finally {
+      setParsing(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  }, [droneCount, radius, projection, onPoints]);
+
+  const projections: { id: ProjectionMode; label: string; icon: string }[] = [
+    { id: 'top-down', label: 'Topo (Y↓)', icon: '⬇️' },
+    { id: 'front', label: 'Frente (Z→)', icon: '➡️' },
+    { id: 'side', label: 'Lateral (X→)', icon: '↗️' },
+    { id: 'isometric', label: 'Isométrico', icon: '🔷' },
+  ];
+
+  return (
+    <div className="space-y-2 p-1">
+      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">3D Model → Formação</p>
+
+      {/* Projection mode */}
+      <div className="space-y-1">
+        <span className="text-[9px] text-muted-foreground font-semibold uppercase">Projeção</span>
+        <div className="grid grid-cols-2 gap-1">
+          {projections.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setProjection(p.id)}
+              className={cn(
+                "px-1.5 py-1 rounded-sm text-[9px] border transition-colors flex items-center gap-1",
+                projection === p.id
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border/50 bg-surface-2 text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <span>{p.icon}</span>
+              <span>{p.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* File input */}
+      <input ref={fileRef} type="file" accept=".obj,.gltf,.glb,.kml" className="hidden" onChange={handleFile} />
+      <button
+        onClick={() => fileRef.current?.click()}
+        disabled={parsing}
+        className="w-full h-16 border-2 border-dashed border-border rounded-sm flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors disabled:opacity-50"
+      >
+        {parsing ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-[9px]">Processando...</span>
+          </>
+        ) : (
+          <>
+            <Box className="h-5 w-5" />
+            <span className="text-[9px]">{fileName || 'Importar modelo 3D'}</span>
+          </>
+        )}
+      </button>
+
+      {vertexInfo && (
+        <div className="bg-surface-2 rounded-sm px-2 py-1.5 text-[9px] font-mono-code text-primary">
+          {vertexInfo}
+        </div>
+      )}
+
+      <div className="text-[8px] text-muted-foreground space-y-0.5">
+        <p className="font-semibold">Formatos suportados:</p>
+        <p>• <span className="text-foreground">.OBJ</span> — SketchUp, Blender, 3ds Max</p>
+        <p>• <span className="text-foreground">.GLTF / .GLB</span> — Google Maps 3D, SketchUp</p>
+        <p>• <span className="text-foreground">.KML</span> — Google Earth coordenadas</p>
+      </div>
+
+      <div className="border-t border-border pt-1.5 text-[8px] text-muted-foreground space-y-1">
+        <p className="font-semibold">💡 Dicas:</p>
+        <p>• No <span className="text-foreground">SketchUp</span>: File → Export 3D → .OBJ</p>
+        <p>• No <span className="text-foreground">Google Earth</span>: Salve → .KML</p>
+        <p>• Use <span className="text-foreground">Topo</span> para buildings, <span className="text-foreground">Frente</span> para silhuetas</p>
+      </div>
+    </div>
+  );
+}
+
 /* ── Main FormationBuilder ─────────────────────────────────── */
 
 export default function FormationBuilder({ open, onOpenChange }: FormationBuilderProps) {
