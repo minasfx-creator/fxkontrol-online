@@ -104,6 +104,8 @@ export default function Index() {
         {activePanel === 'maps' && <GoogleMapsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'diagnostic' && <DiagnosticPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'logistics' && <LogisticsPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'swarmgpt' && <SwarmGPTPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'synesthesia' && <SynesthesiaPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
