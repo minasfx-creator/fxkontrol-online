@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState, useCallback } from 'react';
+import { useProjectStore } from '@/store/useProjectStore';
 import Toolbar from '@/components/editor/Toolbar';
 import SplashScreen from '@/components/editor/SplashScreen';
 import GlobeSelector from '@/components/editor/GlobeSelector';
