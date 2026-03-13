@@ -20,6 +20,7 @@ const PANEL_TABS: { id: PanelId; label: string; icon: typeof Route; shortcut?: s
   { id: 'battery', label: 'Battery Model', icon: Battery },
   { id: 'mavlink', label: 'MAVLink Bridge', icon: Radio },
   { id: 'smpte', label: 'SMPTE / LTC Sync', icon: Clock },
+  { id: 'maps', label: 'Google Maps · Site Survey', icon: Globe, shortcut: 'G' },
 ];
 
 interface PanelTabBarProps {
