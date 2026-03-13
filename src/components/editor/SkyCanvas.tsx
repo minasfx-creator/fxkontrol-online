@@ -1267,6 +1267,7 @@ export default function SkyCanvas() {
       <ViewportTerminal />
       <MiniMap />
       <SelectionStatusBar />
+      <AlignmentTools />
 
       <div className="absolute bottom-3 right-3 text-xs font-mono-code text-muted-foreground bg-surface-1/80 px-2 py-1 rounded-sm border border-border/50 space-y-0.5">
         <div>Orbit: LMB · Pan: MMB · Zoom: Scroll</div>
