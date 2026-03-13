@@ -42,6 +42,7 @@ const SHOW_THEMES = [
   { emoji: '⚽', label: 'Esporte', prompt: 'Sports celebration: soccer ball, trophy cup, torch flame, olympic rings, podium, firework' },
   { emoji: '🎭', label: 'Arte & Cultura', prompt: 'Arts: theater masks, ballet dancer, paintbrush, musical note, mandala, star burst finale' },
   { emoji: '🌅', label: 'Sustentabilidade', prompt: 'Sustainability: water drop, tree, wind turbine, solar panel, recycle symbol, earth' },
+  { emoji: '🌀', label: 'Grand Finale', prompt: 'Grand Finale (Ritmo Frenético): Caos controlado e volume máximo. Todos os 300 drones sobem à altitude máxima e iniciam descida em espiral (Vórtex), mudando de cor rapidamente (RGB Cycle). Pirotecnia densa: cakes, shells calibre 10-12, mines, gerbs e waterfall simultâneos. Finale com explosão radiante e chuva de fogos.' },
 ];
 
 const TRAJECTORY_PRESETS = [

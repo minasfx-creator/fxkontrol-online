@@ -120,6 +120,7 @@ COLOR TRANSITIONS (choose based on emotional intent):
 - "rainbow": celebration/joy — full spectrum sweep
 - "cascade": revelation/unveiling — top-to-bottom
 - "sparkle": magic/stars — random twinkling
+- "rgb_cycle": frenetic/techno/finale — rapid RGB cycling across all drones, mesmerizing rave effect
 - "linear": clean/professional — smooth uniform
 
 TIMING INTELLIGENCE:
@@ -138,6 +139,8 @@ THEME RECIPES (use as inspiration, adapt to the specific prompt):
 "Corredor/Run" → Line→Runner→Sun→Compass→Silhouette→Crown→RadialBurst
 "Isla/Island" → Wave→Compass→Globe→Crown→RadialBurst→StarBurst
 "Pirotecnia" → Crescent→Star→RadialBurst→Firework→Crown→Scatter
+"Grand Finale" → Vortex→RadialBurst→Scatter(explosive)→Crown→Vortex(max altitude, descent spiral, rgb_cycle)→Finale(dense pyro)
+"Finale Frenético" → Vortex(altitude máxima, espiral descendente, rgb_cycle)→RadialBurst(explosão)→Scatter(chuva de drones)→Crown(triunfo)→Vortex(caos controlado)
 
 SHOW DESIGN PRINCIPLES:
 1. SCALE PROGRESSION: Start small, grow to maximum, then resolve
@@ -277,6 +280,9 @@ function clamp(value: number, min: number, max: number) {
 function buildLocalFullShowFallback(prompt: string, count: number) {
   const normalizedPrompt = (prompt || "").toLowerCase();
 
+  // Detect Grand Finale / Frenetic pattern
+  const isGrandFinale = /grand.?finale|finale.?fren[eé]|caos.?control|ritmo.?fren[eé]|vórtex.*descida|vortex.*desc|máxima.*altitude|altitude.*máxima|todos.*sobem|rgb.?cycle/i.test(normalizedPrompt);
+
   const keywordToShape: Array<{ re: RegExp; shape: string; name: string; color: string }> = [
     { re: /heart|coração|amor|love|❤️|💕/, shape: "heart", name: "Coração", color: "#FF6B8A" },
     { re: /star|estrela|⭐|✨/, shape: "star", name: "Estrela", color: "#FFD700" },
@@ -309,6 +315,87 @@ function buildLocalFullShowFallback(prompt: string, count: number) {
     { re: /line|linha|horizon|horizonte|pulsação/, shape: "wave", name: "Horizonte Pulsante", color: "#FFFFFF" },
   ];
 
+  // Grand Finale dedicated sequence
+  if (isGrandFinale) {
+    const grandFinaleSequence: Array<{ shape: string; name: string; color: string; colorTransition: string; height: number; transitionDuration: number; holdDuration: number }> = [
+      { shape: "radial_burst", name: "Ignição Total", color: "#FF2020", colorTransition: "pulse", height: 40, transitionDuration: 6, holdDuration: 8 },
+      { shape: "spiral", name: "Vórtex Ascendente", color: "#AA44FF", colorTransition: "rainbow", height: 70, transitionDuration: 8, holdDuration: 12 },
+      { shape: "spiral", name: "Vórtex — RGB Cycle", color: "#00E5FF", colorTransition: "rgb_cycle", height: 80, transitionDuration: 10, holdDuration: 18 },
+      { shape: "radial_burst", name: "Explosão Caótica", color: "#FFD700", colorTransition: "sparkle", height: 60, transitionDuration: 5, holdDuration: 10 },
+      { shape: "crown", name: "Coroação Final", color: "#FFBF00", colorTransition: "cascade", height: 50, transitionDuration: 8, holdDuration: 12 },
+      { shape: "spiral", name: "Descida Espiral — Caos Controlado", color: "#FF2020", colorTransition: "rgb_cycle", height: 75, transitionDuration: 12, holdDuration: 20 },
+    ];
+
+    let previousPoints: { x: number; z: number }[] | undefined;
+    const formations = grandFinaleSequence.map((item, idx) => {
+      const sf = count > 1000 ? 3.0 : 2.5;
+      const radius = Math.max(15, Math.sqrt(count) * sf);
+      const rawPoints = generateShapePoints(item.shape, count, { radius, turns: 4, layers: 5, amplitude: radius * 0.4, wavelength: radius * 1.0 });
+      let points = processFormationResult(rawPoints, count, previousPoints);
+      if (previousPoints && previousPoints.length === points.length && count <= 1000) {
+        points = optimizeTransitionOrder(previousPoints, points);
+      }
+      previousPoints = points;
+
+      // Dense pyro for Grand Finale
+      const pyroCues: any[] = [];
+      const rh = radius * 0.5;
+
+      if (idx === 0) {
+        // Opening blast
+        pyroCues.push({ type: 'mine', fireTime: 0, color: '#FF2020', caliber: 4, count: 6, positionX: 0, positionZ: 0 });
+        pyroCues.push({ type: 'salute', fireTime: 0.5, color: '#FFFFFF', caliber: 6, count: 3, positionX: -rh, positionZ: 0 });
+        pyroCues.push({ type: 'salute', fireTime: 0.5, color: '#FFFFFF', caliber: 6, count: 3, positionX: rh, positionZ: 0 });
+      } else if (idx === 2) {
+        // RGB Cycle peak: shells + cakes
+        pyroCues.push({ type: 'cake', fireTime: 0, color: '#FF2020', caliber: 2, count: 2, positionX: -rh, positionZ: -rh * 0.5, shotCount: 36, duration: 15 });
+        pyroCues.push({ type: 'cake', fireTime: 0, color: '#2080FF', caliber: 2, count: 2, positionX: rh, positionZ: -rh * 0.5, shotCount: 36, duration: 15 });
+        pyroCues.push({ type: 'shell', fireTime: 5, color: '#FFD700', caliber: 8, count: 4, positionX: 0, positionZ: 0, pattern: 'chrysanthemum' });
+        pyroCues.push({ type: 'shell', fireTime: 10, color: '#AA44FF', caliber: 10, count: 3, positionX: 0, positionZ: 0, pattern: 'kamuro' });
+      } else if (idx === 3) {
+        // Explosion: fans + shells
+        pyroCues.push({ type: 'fan', fireTime: 0, color: '#FFD700', caliber: 4, count: 2, positionX: -rh, positionZ: 0, shotCount: 7 });
+        pyroCues.push({ type: 'fan', fireTime: 0, color: '#FFD700', caliber: 4, count: 2, positionX: rh, positionZ: 0, shotCount: 7 });
+        pyroCues.push({ type: 'shell', fireTime: 2, color: '#FF2020', caliber: 6, count: 5, positionX: 0, positionZ: -rh * 0.3, pattern: 'peony' });
+      } else if (idx === grandFinaleSequence.length - 1) {
+        // Final descent: maximum pyro density
+        pyroCues.push({ type: 'cake', fireTime: 0, color: '#FF2020', caliber: 3, count: 3, positionX: -rh, positionZ: -rh * 0.6, shotCount: 50, duration: 18 });
+        pyroCues.push({ type: 'cake', fireTime: 0, color: '#FFD700', caliber: 3, count: 3, positionX: rh, positionZ: -rh * 0.6, shotCount: 50, duration: 18 });
+        pyroCues.push({ type: 'cake', fireTime: 0, color: '#2080FF', caliber: 3, count: 3, positionX: 0, positionZ: rh * 0.4, shotCount: 50, duration: 18 });
+        pyroCues.push({ type: 'shell', fireTime: 3, color: '#FFFFFF', caliber: 10, count: 6, positionX: 0, positionZ: 0, pattern: 'willow' });
+        pyroCues.push({ type: 'shell', fireTime: 8, color: '#FFD700', caliber: 12, count: 4, positionX: 0, positionZ: 0, pattern: 'kamuro' });
+        pyroCues.push({ type: 'mine', fireTime: 12, color: '#FF2020', caliber: 4, count: 8, positionX: 0, positionZ: 0 });
+        pyroCues.push({ type: 'gerb', fireTime: 0, color: '#C0C0C0', caliber: 4, count: 6, positionX: -rh * 0.8, positionZ: rh * 0.3, height: 8, duration: 16 });
+        pyroCues.push({ type: 'gerb', fireTime: 0, color: '#C0C0C0', caliber: 4, count: 6, positionX: rh * 0.8, positionZ: rh * 0.3, height: 8, duration: 16 });
+        pyroCues.push({ type: 'waterfall', fireTime: 2, color: '#FFD700', caliber: 2, count: 1, positionX: 0, positionZ: -rh, height: 15, width: 25, duration: 14 });
+      } else {
+        // Intermediate: comets + roman candles
+        pyroCues.push({ type: 'comet', fireTime: 1, color: item.color, caliber: 3, count: 4, positionX: -rh * 0.5, positionZ: -rh * 0.3 });
+        pyroCues.push({ type: 'roman_candle', fireTime: 2, color: '#FFD700', caliber: 2, count: 3, positionX: rh * 0.5, positionZ: -rh * 0.3, shotCount: 10, duration: 10 });
+      }
+
+      return {
+        formationName: item.name,
+        points,
+        height: item.height,
+        transitionDuration: item.transitionDuration,
+        holdDuration: item.holdDuration,
+        color: item.color,
+        endColor: grandFinaleSequence[(idx + 1) % grandFinaleSequence.length].color,
+        colorTransition: item.colorTransition,
+        pyroCues,
+      };
+    });
+
+    return {
+      showName: "Grand Finale — Caos Controlado (Modo Local)",
+      formations,
+      totalDuration: formations.reduce((sum, f) => sum + f.transitionDuration + f.holdDuration, 0),
+      description: "Grand Finale frenético: 300 drones em Vórtex com RGB Cycle, descida espiral e pirotecnia máxima.",
+      model: "server-fallback-grand-finale",
+    };
+  }
+
   // Extract all matching shapes from the prompt, preserving order of appearance
   const matched: Array<{ shape: string; name: string; color: string; index: number }> = [];
   for (const item of keywordToShape) {
@@ -319,7 +406,6 @@ function buildLocalFullShowFallback(prompt: string, count: number) {
   }
   matched.sort((a, b) => a.index - b.index);
 
-  // Deduplicate same shape
   const seen = new Set<string>();
   const unique = matched.filter(m => {
     const key = m.shape + m.name;
@@ -1993,7 +2079,7 @@ serve(async (req) => {
                     holdDuration: { type: "number", description: "Seconds 10-30. Complex shapes need longer." },
                     color: { type: "string", description: "Primary hex color e.g. #FFD700" },
                     endColor: { type: "string", description: "End color for hold transition (creates color journey)" },
-                    colorTransition: { type: "string", description: "linear, wave, pulse, rainbow, cascade, sparkle, or instant" },
+                    colorTransition: { type: "string", description: "linear, wave, pulse, rainbow, rgb_cycle, cascade, sparkle, or instant" },
                     pyroCues: {
                       type: "array",
                       description: "Pyrotechnic effects synchronized to this formation. Fire during the hold phase. 0-6 cues per formation.",
