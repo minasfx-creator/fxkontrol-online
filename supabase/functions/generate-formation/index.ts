@@ -146,9 +146,7 @@ function buildFormationTool(count: number) {
         properties: {
           points: {
             type: "array",
-            description: `EXACTLY ${count} drone positions.`,
-            minItems: count,
-            maxItems: count,
+            description: `EXACTLY ${count} drone positions. The array MUST contain exactly ${count} elements.`,
             items: {
               type: "object",
               properties: {
@@ -189,8 +187,7 @@ function buildFullShowTool(count: number) {
                 formationName: { type: "string" },
                 points: {
                   type: "array",
-                  minItems: count,
-                  maxItems: count,
+                  description: `EXACTLY ${count} points per formation.`,
                   items: {
                     type: "object",
                     properties: {
