@@ -143,6 +143,7 @@ export default function Index() {
         if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
         const store = useProjectStore.getState();
         if (store.selectedPositionIds.length > 0) {
+          useUndoStore.getState().checkpoint();
           store.selectedPositionIds.forEach(id => store.removePosition(id));
         }
       }
