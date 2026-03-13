@@ -352,9 +352,20 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
   );
 }
 
-/** Ground plane for placing new pins */
+/** Ground plane for placing new pins — continuous mode (stays in add mode) */
 function GroundClickPlane() {
   const { editorMode, addPosition, setEditorMode, addWaypoint, selectedTrajectoryId, drawHeight } = useProjectStore();
+
+  // ESC exits placement mode
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && (editorMode === 'add-pyro' || editorMode === 'add-drone' || editorMode === 'add-waypoint')) {
+        setEditorMode('select');
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [editorMode, setEditorMode]);
 
   const handleClick = useCallback((e: THREE.Event & { point: THREE.Vector3 }) => {
     if (editorMode === 'add-pyro' || editorMode === 'add-drone') {
@@ -374,10 +385,8 @@ function GroundClickPlane() {
         color: type === 'drone-pad' ? '#00B4D8' : '#FF6B35',
       });
       useProjectStore.getState().selectPosition(id);
-      // Stay in placement mode if Shift is held
-      if (!(e as any).nativeEvent?.shiftKey) {
-        setEditorMode('select');
-      }
+      // CONTINUOUS MODE: stay in placement mode always
+      // User presses ESC or clicks SELECT to exit
       return;
     }
 
