@@ -3,6 +3,7 @@ import {
   Table, Link2, Unlink, ArrowUpDown, Filter,
   ChevronDown, ChevronRight, Trash2, Copy,
   Clipboard, ClipboardPaste, GripVertical, Plus, Minus,
+  Undo2, Redo2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
