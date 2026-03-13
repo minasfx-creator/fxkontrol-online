@@ -103,6 +103,9 @@ export default function Index() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const selectedPositionId = useProjectStore(s => s.selectedPositionId);
 
+  // Undo/Redo keyboard shortcuts
+  useUndoKeyboard();
+
   // Open popup editor on double-click a position (via global keyboard shortcut)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
