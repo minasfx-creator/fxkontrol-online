@@ -575,6 +575,26 @@ export default function ScriptWindow() {
           />
         </div>
         
+        {/* Undo/Redo buttons */}
+        <Button
+          variant="ghost" size="icon" className="h-6 w-6"
+          title={`Desfazer (Ctrl+Z) [${undoCount}]`}
+          onClick={handleUndo}
+          disabled={undoCount === 0}
+        >
+          <Undo2 className="h-3 w-3" />
+        </Button>
+        <Button
+          variant="ghost" size="icon" className="h-6 w-6"
+          title={`Refazer (Ctrl+Shift+Z) [${redoCount}]`}
+          onClick={handleRedo}
+          disabled={redoCount === 0}
+        >
+          <Redo2 className="h-3 w-3" />
+        </Button>
+
+        <div className="w-px h-4 bg-border mx-0.5" />
+        
         {/* Copy/Paste buttons */}
         <Button
           variant="ghost" size="icon" className="h-6 w-6"
