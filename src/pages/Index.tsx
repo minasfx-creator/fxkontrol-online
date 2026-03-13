@@ -93,6 +93,7 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   indoor: 'w-72',
   chains: 'w-72',
   groups: 'w-56',
+  summary: 'w-64',
 };
 
 export default function Index() {
