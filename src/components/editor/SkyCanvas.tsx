@@ -986,11 +986,11 @@ export default function SkyCanvas() {
           color="#8899cc"
           castShadow
           shadow-mapSize={[2048, 2048]}
-          shadow-camera-far={200}
-          shadow-camera-left={-50}
-          shadow-camera-right={50}
-          shadow-camera-top={50}
-          shadow-camera-bottom={-50}
+          shadow-camera-far={400}
+          shadow-camera-left={-100}
+          shadow-camera-right={100}
+          shadow-camera-top={100}
+          shadow-camera-bottom={-100}
           shadow-bias={-0.0001}
         />
         
