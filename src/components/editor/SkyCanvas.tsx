@@ -15,7 +15,7 @@ import QuadcopterModel from './QuadcopterModel';
 import GeofenceVisual from './GeofenceVisual';
 import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Globe, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { CometEffect, ShockwaveEffect, MultiBurstEffect, FanEffect } from './effects';
+import { CometEffect, ShockwaveEffect, MultiBurstEffect, FanEffect, MineEffect, RomanCandleEffect, WaterfallEffect, GerbEffect, FlameEffect, CryoJetEffect, LaserEffect, CakeEffect, ConfettiEffect, MovingHeadEffect } from './effects';
 import MiniMap from './MiniMap';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
