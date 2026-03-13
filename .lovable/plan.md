@@ -169,8 +169,25 @@
   - Import/export as JSON files
   - Browse with category filter, load into current show
 
-## Phase 16: Next
-- Multi-language localization (PT-BR, EN, ES)
+## Phase 16: i18n, Telemetry & Flight Logs (DONE ✅)
+- Multi-language i18n system (src/lib/i18n.ts)
+  - 3 languages: PT-BR, EN, ES with 100+ translation keys
+  - Zustand store with localStorage persistence
+  - useT() hook for reactive translations
+  - LanguageSwitcher component in toolbar with flag dropdown
+- Telemetry Dashboard (TelemetryDashboard.tsx)
+  - Fleet grid view with color-coded drone status (battery, alerts)
+  - Detail view per drone: battery bar, navigation stats, signal strength, alerts
+  - Simulated telemetry from MAVLink store + formation data
+  - Live fleet overview: drone count, avg battery, alert count
+- Flight Log Recorder (FlightLogPanel.tsx)
+  - Real-time recording at 5Hz during playback
+  - Session management: start/stop, multiple sessions, deletion
+  - CSV export with time, droneID, position, battery, speed
+  - Entry table with last 50 data points
+
+## Phase 17: Next
 - Show template marketplace (cloud sharing)
 - Advanced formation path planning with obstacle avoidance
-- Real-time telemetry dashboard with flight logs
+- Multi-monitor support / detachable panels
+- Real-time audio spectrum visualizer in viewport
