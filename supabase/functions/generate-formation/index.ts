@@ -1131,7 +1131,7 @@ function generateFallbackGrid(count: number, spacing: number): { x: number; z: n
   return pts;
 }
 
-// ── Transition optimizer (nearest-neighbor) ─────────────────
+// ── Transition optimizer (spatial-grid accelerated) ─────────
 
 function optimizeTransitionOrder(
   from: { x: number; z: number }[],
@@ -1139,14 +1139,48 @@ function optimizeTransitionOrder(
 ): { x: number; z: number }[] {
   if (from.length === 0 || to.length === 0 || from.length !== to.length) return to;
   const n = from.length;
+  
+  // For small N, use exact nearest-neighbor
+  if (n <= 500) {
+    const result = new Array(n);
+    const used = new Set<number>();
+    for (let i = 0; i < n; i++) {
+      let bestJ = -1, bestDist = Infinity;
+      for (let j = 0; j < n; j++) {
+        if (used.has(j)) continue;
+        const d = Math.hypot(from[i].x - to[j].x, from[i].z - to[j].z);
+        if (d < bestDist) { bestDist = d; bestJ = j; }
+      }
+      result[i] = to[bestJ];
+      used.add(bestJ);
+    }
+    return result;
+  }
+  
+  // For large N: spatial grid accelerated matching
+  const grid = new SpatialGrid(10);
+  for (let j = 0; j < n; j++) grid.insert(j, to[j].x, to[j].z);
+  
   const result = new Array(n);
   const used = new Set<number>();
+  
   for (let i = 0; i < n; i++) {
     let bestJ = -1, bestDist = Infinity;
-    for (let j = 0; j < n; j++) {
-      if (used.has(j)) continue;
-      const d = Math.hypot(from[i].x - to[j].x, from[i].z - to[j].z);
-      if (d < bestDist) { bestDist = d; bestJ = j; }
+    // Search in expanding radius
+    for (let searchR = 10; searchR <= 400; searchR *= 2) {
+      const candidates = grid.neighbors(from[i].x, from[i].z, searchR);
+      for (const j of candidates) {
+        if (used.has(j)) continue;
+        const d = Math.hypot(from[i].x - to[j].x, from[i].z - to[j].z);
+        if (d < bestDist) { bestDist = d; bestJ = j; }
+      }
+      if (bestJ !== -1) break;
+    }
+    // Fallback: find any unused
+    if (bestJ === -1) {
+      for (let j = 0; j < n; j++) {
+        if (!used.has(j)) { bestJ = j; break; }
+      }
     }
     result[i] = to[bestJ];
     used.add(bestJ);
