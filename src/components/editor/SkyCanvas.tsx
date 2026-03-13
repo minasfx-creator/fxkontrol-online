@@ -1400,6 +1400,7 @@ export default function SkyCanvas() {
         <BoidsVisualizer />
         <CollisionAvoidanceOverlay config={DEFAULT_AVOIDANCE} />
         <TimelineEffects />
+        <AudioSpectrumVisualizer />
         <GeofenceVisual />
         <PlaybackClock />
         <CameraAnimator />
