@@ -786,17 +786,17 @@ function StageGround() {
         />
       </mesh>
 
-      {/* Operational grid */}
+      {/* Operational grid — expanded */}
       <Grid
         position={[0, 0.01, 0]}
-        args={[200, 200]}
-        cellSize={2}
+        args={[400, 400]}
+        cellSize={5}
         cellThickness={0.3}
         cellColor="#2a4a2a"
-        sectionSize={10}
+        sectionSize={25}
         sectionThickness={0.8}
         sectionColor="#3a5a3a"
-        fadeDistance={100}
+        fadeDistance={200}
         infiniteGrid
       />
 
