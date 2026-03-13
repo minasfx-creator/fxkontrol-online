@@ -1025,37 +1025,36 @@ function postProcess(
     }
   }
 
-  // Enforce minimum spacing - scale iterations based on N
-  // For very large N (>1000), do fewer iterations and only fix worst violations
-  const maxIter = pts.length > 2000 ? 5 : pts.length > 1000 ? 10 : pts.length > 500 ? 20 : 40;
-  const grid = new SpatialGrid(minSpacing * 1.5);
-  
-  for (let iter = 0; iter < maxIter; iter++) {
-    grid.rebuild(pts);
-    let moved = false;
-    let violations = 0;
-    for (let i = 0; i < pts.length; i++) {
-      const nearby = grid.neighbors(pts[i].x, pts[i].z, minSpacing * 1.5);
-      for (const j of nearby) {
-        if (j <= i) continue;
-        const dx = pts[j].x - pts[i].x;
-        const dz = pts[j].z - pts[i].z;
-        const dist = Math.hypot(dx, dz);
-        if (dist < minSpacing && dist > 0.001) {
-          const push = (minSpacing - dist) / 2 + 0.05;
-          const nx = dx / dist, nz = dz / dist;
-          pts[i] = { x: pts[i].x - nx * push, z: pts[i].z - nz * push };
-          pts[j] = { x: pts[j].x + nx * push, z: pts[j].z + nz * push };
-          moved = true;
-          violations++;
-        } else if (dist <= 0.001) {
-          const a = Math.random() * Math.PI * 2;
-          pts[j] = { x: pts[j].x + Math.cos(a) * minSpacing, z: pts[j].z + Math.sin(a) * minSpacing };
-          moved = true;
+  // Enforce minimum spacing - skip for very large N (server shapes are pre-spaced)
+  if (pts.length <= 800) {
+    const maxIter = pts.length > 500 ? 15 : 40;
+    const grid = new SpatialGrid(minSpacing * 1.5);
+    
+    for (let iter = 0; iter < maxIter; iter++) {
+      grid.rebuild(pts);
+      let moved = false;
+      for (let i = 0; i < pts.length; i++) {
+        const nearby = grid.neighbors(pts[i].x, pts[i].z, minSpacing * 1.5);
+        for (const j of nearby) {
+          if (j <= i) continue;
+          const dx = pts[j].x - pts[i].x;
+          const dz = pts[j].z - pts[i].z;
+          const dist = Math.hypot(dx, dz);
+          if (dist < minSpacing && dist > 0.001) {
+            const push = (minSpacing - dist) / 2 + 0.05;
+            const nx = dx / dist, nz = dz / dist;
+            pts[i] = { x: pts[i].x - nx * push, z: pts[i].z - nz * push };
+            pts[j] = { x: pts[j].x + nx * push, z: pts[j].z + nz * push };
+            moved = true;
+          } else if (dist <= 0.001) {
+            const a = Math.random() * Math.PI * 2;
+            pts[j] = { x: pts[j].x + Math.cos(a) * minSpacing, z: pts[j].z + Math.sin(a) * minSpacing };
+            moved = true;
+          }
         }
       }
+      if (!moved) break;
     }
-    if (!moved || violations < pts.length * 0.01) break; // Stop if <1% violations
   }
 
   // Re-center and round
