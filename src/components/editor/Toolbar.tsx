@@ -158,7 +158,19 @@ export default function Toolbar() {
         </div>
       </div>
 
-      <Separator orientation="vertical" className="h-4 mx-2" />
+      <Separator orientation="vertical" className="h-4 mx-1" />
+
+      {/* Undo / Redo */}
+      <div className="flex items-center gap-0.5">
+        <Button variant="ghost" size="icon" className="h-7 w-7" title="Undo (Ctrl+Z)" onClick={undo} disabled={!canUndo}>
+          <Undo className="h-3.5 w-3.5" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7" title="Redo (Ctrl+Shift+Z)" onClick={redo} disabled={!canRedo}>
+          <Redo className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+
+      <Separator orientation="vertical" className="h-4 mx-1" />
 
       {/* Mode tools */}
       <div className="flex items-center gap-0.5">
