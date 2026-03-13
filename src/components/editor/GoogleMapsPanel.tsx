@@ -228,6 +228,12 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
     toast.success('Coordenadas copiadas');
   }, [location]);
 
+  const handleExportKML = useCallback(() => {
+    const kml = exportFormationsToKML(droneFormations, trajectories, positions, location, projectName);
+    downloadFile(kml, `${projectName.replace(/\s+/g, '_')}_show.kml`, 'application/vnd.google-earth.kml+xml');
+    toast.success('KML exportado — abra no Google Earth Pro');
+  }, [droneFormations, trajectories, positions, location, projectName]);
+
   return (
     <div className="h-full flex flex-col bg-surface-0 border-l border-border">
       {/* Header */}
