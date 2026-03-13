@@ -129,7 +129,8 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      const pts = (data.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
+      const rawPts = (data.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
+      const pts = normalizeDroneCount(rawPts, droneCount);
       setLastGeneratedPoints(pts);
 
       const lastTime = droneFormations.length > 0
@@ -139,7 +140,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
       addDroneFormation({
         id: `swarm-${Date.now()}`,
         formationType: 'ai-generated',
-        droneCount: pts.length,
+        droneCount,
         height: data.suggestedHeight || 30,
         radius: 20,
         spacing: 2,
