@@ -278,12 +278,13 @@ export default function ScriptWindow() {
 
   // ─── Cut ─────────────────────────────────────────────────────────
   const handleCut = useCallback(() => {
+    pushUndo();
     handleCopy();
     const ids = Array.from(selectedIds);
     ids.forEach(id => removeTimelineItem(id));
     setSelectedIds(new Set());
     toast.success('Cues recortados');
-  }, [handleCopy, selectedIds, removeTimelineItem]);
+  }, [handleCopy, selectedIds, removeTimelineItem, pushUndo]);
 
   // ─── Paste ───────────────────────────────────────────────────────
   const handlePaste = useCallback(() => {
