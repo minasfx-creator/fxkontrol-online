@@ -322,11 +322,29 @@ function TimelineEffects() {
 // GOOGLE EARTH-STYLE — Atmospheric sky with realistic horizon
 // ========================================================================
 function SkyGradient() {
+  const skyBrightness = useSceneStore(st => st.settings.skyBrightness);
+  const horizonGlow = useSceneStore(st => st.settings.horizonGlow);
+  const starDensity = useSceneStore(st => st.settings.starDensity);
+
+  const uniforms = useMemo(() => ({
+    uSkyBrightness: { value: skyBrightness },
+    uHorizonGlow: { value: horizonGlow },
+    uStarDensity: { value: starDensity },
+  }), []);
+
+  // Update uniforms reactively
+  useEffect(() => {
+    uniforms.uSkyBrightness.value = skyBrightness;
+    uniforms.uHorizonGlow.value = horizonGlow;
+    uniforms.uStarDensity.value = starDensity;
+  }, [skyBrightness, horizonGlow, starDensity]);
+
   return (
     <mesh>
       <sphereGeometry args={[500, 64, 64]} />
       <shaderMaterial
         side={THREE.BackSide}
+        uniforms={uniforms}
         vertexShader={`
           varying vec3 vWorldPosition;
           void main() {
@@ -336,6 +354,9 @@ function SkyGradient() {
           }
         `}
         fragmentShader={`
+          uniform float uSkyBrightness;
+          uniform float uHorizonGlow;
+          uniform float uStarDensity;
           varying vec3 vWorldPosition;
           
           float hash21(vec2 p) {
@@ -348,7 +369,8 @@ function SkyGradient() {
             vec2 uv = vec2(atan(dir.x, dir.z) * 3.183, asin(clamp(dir.y, -1.0, 1.0)) * 6.366);
             vec2 id = floor(uv * 140.0);
             float h = hash21(id);
-            if (h > 0.982) {
+            float threshold = mix(0.998, 0.975, clamp(uStarDensity, 0.0, 2.0) / 2.0);
+            if (h > threshold) {
               vec2 offset = fract(uv * 140.0) - 0.5;
               float brightness = smoothstep(0.1, 0.0, length(offset)) * (0.5 + h * 3.5);
               float twinkle = sin(h * 6283.0 + h * 200.0) * 0.3 + 0.7;
