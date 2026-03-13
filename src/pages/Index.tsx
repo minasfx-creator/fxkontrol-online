@@ -25,6 +25,13 @@ import DiagnosticPanel from '@/components/editor/DiagnosticPanel';
 import LogisticsPanel from '@/components/editor/LogisticsPanel';
 import SwarmGPTPanel from '@/components/editor/SwarmGPTPanel';
 import SynesthesiaPanel from '@/components/editor/SynesthesiaPanel';
+import FiringExportPanel from '@/components/editor/FiringExportPanel';
+import LabelsPanel from '@/components/editor/LabelsPanel';
+import VideoRecorderPanel from '@/components/editor/VideoRecorderPanel';
+import ModelImportPanel from '@/components/editor/ModelImportPanel';
+import BackgroundPanel from '@/components/editor/BackgroundPanel';
+import SupplierCatalogPanel from '@/components/editor/SupplierCatalogPanel';
+import SafetyPanel from '@/components/editor/SafetyPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 
 const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
