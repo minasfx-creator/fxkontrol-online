@@ -162,7 +162,7 @@ function FireworkBurst({ position, color, progress }: { position: [number, numbe
 
   return (
     <group position={position}>
-      {progress < 0.15 && <pointLight color={color} intensity={8 * (1 - progress / 0.15)} distance={15} decay={2} />}
+      {/* Glow handled by bloom — no pointLight to avoid uniform overflow */}
       <points ref={pointsRef}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[new Float32Array(PARTICLE_COUNT * 3), 3]} />
