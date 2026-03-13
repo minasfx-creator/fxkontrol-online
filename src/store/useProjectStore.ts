@@ -4,8 +4,8 @@ import { materializeFormation as materialize } from '@/lib/formationMaterializer
 export interface Effect {
   id: string;
   name: string;
-  category: 'morteiros' | 'peonias' | 'drones' | 'formacoes';
-  type: 'firework' | 'drone';
+  category: 'morteiros' | 'peonias' | 'drones' | 'formacoes' | 'sfx' | 'lasers' | 'iluminacao' | 'mines' | 'roman_candles' | 'waterfalls' | 'cakes_batteries';
+  type: 'firework' | 'drone' | 'sfx' | 'laser' | 'light';
   color: string;
   duration: number;
   cost: number;
