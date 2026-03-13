@@ -1071,9 +1071,10 @@ export default function SkyCanvas() {
 
         <SkyGradient />
         <Moon />
-        <Stars radius={450} depth={200} count={10000} factor={5} saturation={0.2} fade speed={0.03} />
+        <SceneStars />
         <AtmosphericParticles />
-        <fog attach="fog" args={['#080e1a', 200, 1800]} />
+        <SceneFog />
+        <WeatherEffects />
 
         <StageGround satelliteTexture={satelliteTexture} />
         {/* LaunchSites removed — user creates positions via toolbar */}
