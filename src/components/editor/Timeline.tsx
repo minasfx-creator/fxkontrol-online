@@ -115,7 +115,12 @@ function DraggableTimelineItem({
       >
         <GripVertical className="w-2 h-2 text-muted-foreground/40 group-hover:text-muted-foreground mr-0.5 flex-shrink-0" />
         <div className="w-1 h-full rounded-full mr-1 flex-shrink-0" style={{ backgroundColor: effect.color }} />
-        <span className="truncate text-secondary-foreground">{effect.name}</span>
+        <div className="flex flex-col items-start min-w-0 overflow-hidden">
+          <span className="truncate text-secondary-foreground leading-tight">{effect.name}</span>
+          {item.positionName && (
+            <span className="truncate text-[7px] text-muted-foreground leading-tight">📍 {item.positionName}</span>
+          )}
+        </div>
       </button>
     </div>
   );
@@ -138,7 +143,8 @@ function TimelineTrackRow({
 }) {
   const { 
     timelineItems, selectedTimelineItemId, selectTimelineItem, addTimelineItem, 
-    bpm, snapToBeat, updateTimelineItem, selectedTimelineItemIds, toggleTimelineItemSelection 
+    bpm, snapToBeat, updateTimelineItem, selectedTimelineItemIds, toggleTimelineItemSelection,
+    positions, selectedPositionId, selectedPositionIds,
   } = useProjectStore();
   const [isDragOver, setIsDragOver] = useState(false);
   const items = timelineItems.filter((i) => i.trackIndex === trackIndex);
@@ -176,18 +182,42 @@ function TimelineTrackRow({
     let time = Math.max(0, Math.min(x / pixelsPerSecond, duration));
     time = snapTimeToBeat(time, bpm, snapToBeat, pixelsPerSecond);
 
-    addTimelineItem({
-      id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      effectId: effect.id,
-      startTime: time,
-      trackIndex,
-      position: {
-        x: (Math.random() - 0.5) * 16,
-        y: effect.type === 'firework' ? 8 + Math.random() * 6 : 5 + Math.random() * 10,
-        z: (Math.random() - 0.5) * 8,
-      },
-    });
-  }, [pixelsPerSecond, duration, trackIndex, addTimelineItem, bpm, snapToBeat]);
+    // Finale logic: link to selected pyro positions
+    const targetIds = selectedPositionIds.length > 0
+      ? selectedPositionIds.filter(id => positions.find(p => p.id === id)?.type === 'pyro')
+      : selectedPositionId && positions.find(p => p.id === selectedPositionId)?.type === 'pyro'
+        ? [selectedPositionId]
+        : [];
+
+    if (targetIds.length > 0) {
+      targetIds.forEach((posId, i) => {
+        const pos = positions.find(p => p.id === posId);
+        if (!pos) return;
+        addTimelineItem({
+          id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${i}`,
+          effectId: effect.id,
+          startTime: time,
+          trackIndex,
+          position: { x: pos.x, y: pos.y, z: pos.z },
+          positionId: posId,
+          positionIds: targetIds.length > 1 ? targetIds : undefined,
+          positionName: pos.name,
+        });
+      });
+    } else {
+      addTimelineItem({
+        id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        effectId: effect.id,
+        startTime: time,
+        trackIndex,
+        position: {
+          x: (Math.random() - 0.5) * 16,
+          y: effect.type === 'firework' ? 0 : 5 + Math.random() * 10,
+          z: (Math.random() - 0.5) * 8,
+        },
+      });
+    }
+  }, [pixelsPerSecond, duration, trackIndex, addTimelineItem, bpm, snapToBeat, positions, selectedPositionId, selectedPositionIds]);
 
   // --- Item drag to reposition ---
   const handleItemDragStart = useCallback((e: React.MouseEvent, itemId: string) => {

@@ -204,11 +204,18 @@ function LightPoint({ position, color }: { position: [number, number, number]; c
 }
 
 function TimelineEffects() {
-  const { timelineItems, currentTime } = useProjectStore();
+  const { timelineItems, currentTime, positions } = useProjectStore();
   const activeEffects = useMemo(() => {
     return timelineItems.map((item) => {
       const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
       if (!effect) return null;
+
+      // ── Resolve position from linked pyropoint ──
+      let resolvedPos = item.position;
+      if (item.positionId) {
+        const linkedPos = positions.find(p => p.id === item.positionId);
+        if (linkedPos) resolvedPos = { x: linkedPos.x, y: linkedPos.y, z: linkedPos.z };
+      }
 
       // ── Prefire-aware timing for shells ──
       // Shell effects have a prefire (lift) phase before the burst duration
@@ -227,7 +234,7 @@ function TimelineEffects() {
         ? Math.max(0, (elapsed - prefireDuration) / effect.duration)
         : elapsed / effect.duration;
 
-      return { item, effect, progress: burstProgress, inPrefire, prefireProgress, caliber, prefireDuration };
+      return { item, effect, progress: burstProgress, inPrefire, prefireProgress, caliber, prefireDuration, resolvedPos };
     }).filter(Boolean) as {
       item: typeof timelineItems[0];
       effect: typeof EFFECT_LIBRARY[0];
@@ -236,13 +243,14 @@ function TimelineEffects() {
       prefireProgress: number;
       caliber: number;
       prefireDuration: number;
+      resolvedPos: { x: number; y: number; z: number };
     }[];
-  }, [timelineItems, currentTime]);
+  }, [timelineItems, currentTime, positions]);
 
   return (
     <>
-      {activeEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber }) => {
-        const pos: [number, number, number] = [item.position.x, item.position.y, item.position.z];
+      {activeEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos }) => {
+        const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
         const eid = effect.id;
         const pt = effect.partType;
 
