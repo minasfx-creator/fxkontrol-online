@@ -963,6 +963,102 @@ function TreelineSilhouette() {
 
 // LaunchSites removed — positions are now user-created via toolbar
 
+// ─── Scene-Settings-Driven Components ────────────────────────────────
+
+const SHADOW_MAP_SIZES: Record<string, number> = { low: 1024, medium: 2048, high: 4096, ultra: 8192 };
+
+function SceneLighting() {
+  const s = useSceneStore(st => st.settings);
+  const shadowSize = SHADOW_MAP_SIZES[s.shadowQuality] || 4096;
+
+  return (
+    <>
+      <ambientLight intensity={s.ambientIntensity} color="#506880" />
+      <directionalLight
+        position={[60, 55, -80]}
+        intensity={s.moonIntensity}
+        color={s.moonColor}
+        castShadow={s.shadowsEnabled}
+        shadow-mapSize={[shadowSize, shadowSize]}
+        shadow-camera-far={500}
+        shadow-camera-left={-150}
+        shadow-camera-right={150}
+        shadow-camera-top={150}
+        shadow-camera-bottom={-150}
+        shadow-bias={-0.00005}
+      />
+      <hemisphereLight args={['#152050', '#0c1a0a', 0.12]} />
+      <directionalLight position={[-40, 20, 60]} intensity={s.rimLightIntensity * 0.2} color="#4466aa" />
+      <directionalLight position={[0, -10, 30]} intensity={s.fillLightIntensity * 0.1} color="#1a2a1a" />
+    </>
+  );
+}
+
+function SceneFog() {
+  const s = useSceneStore(st => st.settings);
+  if (s.fogDensity <= 0) return null;
+  return <fog attach="fog" args={[s.fogColor, s.fogNear, s.fogFar / Math.max(s.fogDensity, 0.1)]} />;
+}
+
+function SceneStars() {
+  const density = useSceneStore(st => st.settings.starDensity);
+  if (density <= 0.05) return null;
+  return <Stars radius={450} depth={200} count={Math.round(10000 * density)} factor={5} saturation={0.2} fade speed={0.03} />;
+}
+
+function WeatherEffects() {
+  const weather = useSceneStore(st => st.settings.weather);
+  const rainIntensity = useSceneStore(st => st.settings.rainIntensity);
+  const pointsRef = useRef<THREE.Points>(null);
+
+  const rainData = useMemo(() => {
+    if (weather !== 'light-rain' && weather !== 'heavy-rain' && weather !== 'snow') return null;
+    const count = weather === 'heavy-rain' ? 3000 : weather === 'snow' ? 1500 : 1000;
+    const positions = new Float32Array(count * 3);
+    const velocities = new Float32Array(count);
+    for (let i = 0; i < count; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * 300;
+      positions[i * 3 + 1] = Math.random() * 100;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 300;
+      velocities[i] = weather === 'snow' ? 1 + Math.random() * 2 : 15 + Math.random() * 25;
+    }
+    return { count, positions, velocities };
+  }, [weather]);
+
+  useFrame(() => {
+    if (!pointsRef.current || !rainData) return;
+    const posAttr = pointsRef.current.geometry.getAttribute('position') as THREE.BufferAttribute;
+    const arr = posAttr.array as Float32Array;
+    for (let i = 0; i < rainData.count; i++) {
+      arr[i * 3 + 1] -= rainData.velocities[i] * 0.016 * rainIntensity;
+      if (arr[i * 3 + 1] < 0) {
+        arr[i * 3 + 1] = 80 + Math.random() * 20;
+        arr[i * 3] = (Math.random() - 0.5) * 300;
+        arr[i * 3 + 2] = (Math.random() - 0.5) * 300;
+      }
+    }
+    posAttr.needsUpdate = true;
+  });
+
+  if (!rainData) return null;
+
+  return (
+    <points ref={pointsRef}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[rainData.positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial
+        size={weather === 'snow' ? 0.15 : 0.04}
+        color={weather === 'snow' ? '#e8e8ff' : '#aabbcc'}
+        transparent
+        opacity={rainIntensity * 0.6}
+        depthWrite={false}
+        sizeAttenuation
+      />
+    </points>
+  );
+}
+
 // --- Camera controller ---
 function CameraController({ targetPosition, targetLookAt }: { targetPosition: [number, number, number]; targetLookAt: [number, number, number] }) {
   const { camera } = useThree();
