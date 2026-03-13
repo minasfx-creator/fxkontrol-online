@@ -560,8 +560,8 @@ function GrassGround() {
       float dewTwinkle = sin(time * 2.0 + dewNoise * 100.0) * 0.3 + 0.7;
       color += vec3(0.08, 0.12, 0.18) * dewSparkle * dewTwinkle * NdotL;
 
-      // Distance fog — atmospheric perspective
-      float dist = length(worldUV) * 0.004;
+      // Distance fog — atmospheric perspective (expanded world)
+      float dist = length(worldUV) * 0.002;
       float fogFactor = smoothstep(0.0, 1.0, dist);
       vec3 fogColor = vec3(0.03, 0.04, 0.07);
       color = mix(color, fogColor, fogFactor * 0.6);
