@@ -68,6 +68,35 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     toast.success('DMX CSV exportado!');
   };
 
+  const sendArtNet = async () => {
+    if (universes.length === 0) {
+      toast.error('Faça o Auto-Patch primeiro');
+      return;
+    }
+    setSending(true);
+    try {
+      const artNetUniverses = universes.map((u, i) => ({
+        universe: u.id % 16,
+        subnet: Math.floor(u.id / 16) % 16,
+        net: Math.floor(u.id / 256),
+        channels: Array.from(u.channels),
+        sequence: i,
+      }));
+
+      const { data, error } = await supabase.functions.invoke('artnet-bridge', {
+        body: { action: 'send', universes: artNetUniverses, targetIp: artNetIp, targetPort: artNetPort },
+      });
+      if (error) throw error;
+      toast.success(`${data.packetCount} pacote(s) Art-Net preparados`, {
+        description: `Target: ${artNetIp}:${artNetPort} · ${data.totalBytes} bytes`,
+      });
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao enviar Art-Net');
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <div className="h-full bg-surface-1 border-l border-border flex flex-col">
       <div className="flex items-center justify-between px-2 py-1.5 border-b border-border">
