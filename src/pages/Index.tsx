@@ -42,7 +42,6 @@ import ChainEditorPanel from '@/components/editor/ChainEditorPanel';
 import PositionGroupsPanel from '@/components/editor/PositionGroupsPanel';
 import ShowSummaryPanel from '@/components/editor/ShowSummaryPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
-import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
 import PositionContextMenu from '@/components/editor/PositionContextMenu';
