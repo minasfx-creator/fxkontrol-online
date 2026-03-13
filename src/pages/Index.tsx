@@ -17,6 +17,7 @@ import PIDPanel from '@/components/editor/PIDPanel';
 import DMXPanel from '@/components/editor/DMXPanel';
 import BatteryPanel from '@/components/editor/BatteryPanel';
 import MAVLinkPanel from '@/components/editor/MAVLinkPanel';
+import SMPTEPanel from '@/components/editor/SMPTEPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 
 const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
@@ -47,6 +48,7 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   dmx: 'w-64',
   battery: 'w-64',
   mavlink: 'w-72',
+  smpte: 'w-64',
 };
 
 export default function Index() {
@@ -88,6 +90,7 @@ export default function Index() {
         {activePanel === 'dmx' && <DMXPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'battery' && <BatteryPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'mavlink' && <MAVLinkPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'smpte' && <SMPTEPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
