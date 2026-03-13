@@ -49,6 +49,7 @@ function MenuButton({ label, onClick }: { label: string; onClick?: () => void })
 
 export default function Toolbar() {
   const { projectName, timelineItems, positions, editorMode, setEditorMode, duration, trajectories, droneFormations, gpsOrigin } = useProjectStore();
+  const { canUndo, canRedo, undo, redo, checkpoint } = useUndoStore();
   const { signOut, user } = useAuth();
   const { saveProject } = useProjectPersistence();
   const [formationOpen, setFormationOpen] = useState(false);
