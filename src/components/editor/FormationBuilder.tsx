@@ -812,7 +812,7 @@ export default function FormationBuilder({ open, onOpenChange }: FormationBuilde
   const { droneFormations, addDroneFormation, materializeFormation } = useProjectStore();
   const [activeTab, setActiveTab] = useState<GenerationTab>('presets');
   const [selectedType, setSelectedType] = useState<FormationType>('circle');
-  const [count, setCount] = useState(24);
+  const [count, setCount] = useState(() => droneFormations.length > 0 ? droneFormations[0].droneCount : 24);
   const [radius, setRadius] = useState(10);
   const [spacing, setSpacing] = useState(2);
   const [rotation, setRotation] = useState(0);
