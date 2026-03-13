@@ -436,28 +436,15 @@ function genCircle(n: number, R: number): { x: number; z: number }[] {
 }
 
 function genFilledCircle(n: number, R: number): { x: number; z: number }[] {
+  // Use sunflower/Fibonacci spiral for optimal uniform distribution (no post-processing needed)
   const pts: { x: number; z: number }[] = [];
-  const rings = Math.max(2, Math.ceil(Math.sqrt(n / Math.PI)));
-  // Center point
-  pts.push({ x: 0, z: 0 });
-  let remaining = n - 1;
-  for (let k = 1; k <= rings && remaining > 0; k++) {
-    const r = (R * k) / rings;
-    const circumference = 2 * Math.PI * r;
-    const pointsInRing = Math.min(remaining, Math.max(6, Math.round(circumference / 2.2)));
-    for (let i = 0; i < pointsInRing; i++) {
-      const a = (2 * Math.PI * i) / pointsInRing;
-      pts.push({ x: r * Math.cos(a), z: r * Math.sin(a) });
-    }
-    remaining -= pointsInRing;
+  const goldenAngle = Math.PI * (3 - Math.sqrt(5)); // ~137.5°
+  for (let i = 0; i < n; i++) {
+    const r = R * Math.sqrt(i / n); // sqrt for uniform area distribution
+    const theta = i * goldenAngle;
+    pts.push({ x: r * Math.cos(theta), z: r * Math.sin(theta) });
   }
-  // Fill any remaining with extra ring
-  while (pts.length < n) {
-    const a = (2 * Math.PI * (pts.length - 1)) / Math.max(1, n - pts.length);
-    const r = R * (0.3 + Math.random() * 0.7);
-    pts.push({ x: r * Math.cos(a), z: r * Math.sin(a) });
-  }
-  return pts.slice(0, n);
+  return pts;
 }
 
 function genHeart(n: number, R: number): { x: number; z: number }[] {
