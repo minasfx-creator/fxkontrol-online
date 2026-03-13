@@ -61,11 +61,25 @@ export default function Toolbar() {
     else toast.error('Erro ao salvar');
   }, [saveProject]);
 
-  const handleExport = useCallback(() => {
+  const handleExportVVIZ = useCallback(() => {
     const content = exportVVIZ(projectName, duration, timelineItems, positions, trajectories, droneFormations);
     downloadFile(content, `${projectName.replace(/\s+/g, '_')}.vviz`, 'application/json');
     toast.success('VVIZ exportado!');
   }, [projectName, duration, timelineItems, positions, trajectories, droneFormations]);
+
+  const handleExportSkyc = useCallback(() => {
+    const content = exportSkyc(projectName, duration, timelineItems, positions, trajectories, droneFormations, gpsOrigin);
+    downloadFile(content, `${projectName.replace(/\s+/g, '_')}.skyc`, 'application/json');
+    toast.success('SkyCreator .skyc exportado!');
+  }, [projectName, duration, timelineItems, positions, trajectories, droneFormations, gpsOrigin]);
+
+  const handleExportFiringCSV = useCallback(() => {
+    const content = exportFiringCSV(timelineItems, positions);
+    downloadFile(content, `${projectName.replace(/\s+/g, '_')}_firing.csv`, 'text/csv');
+    toast.success('Firing CSV exportado!');
+  }, [projectName, timelineItems, positions]);
+
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
   const handleNewProject = useCallback(() => {
     if (timelineItems.length > 0 || positions.length > 0) {
