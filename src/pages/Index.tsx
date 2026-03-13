@@ -273,6 +273,9 @@ export default function Index() {
         {activePanel === 'collab' && <CollaborationPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'particles' && <ParticleEditorPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'versioning' && <VersioningPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'weather' && <WeatherPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'collisions' && <CollisionPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'approval' && <ClientApprovalPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
