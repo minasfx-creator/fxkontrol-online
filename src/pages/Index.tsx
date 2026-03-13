@@ -264,6 +264,9 @@ export default function Index() {
         {activePanel === 'soundlevel' && <SoundLevelPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'aroverlay' && <AROverlayPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'share' && <ShowSharePanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'collab' && <CollaborationPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'particles' && <ParticleEditorPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'versioning' && <VersioningPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };

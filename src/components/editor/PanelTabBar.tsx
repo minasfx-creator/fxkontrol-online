@@ -80,6 +80,7 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
       { id: 'maps', label: 'Google Maps', icon: Globe },
       { id: 'diagnostic', label: 'Diagnostic', icon: ShieldCheck, shortcut: 'D' },
       { id: 'logistics', label: 'Logistics', icon: Tag },
+      { id: 'collab', label: 'Collaborate', icon: Users },
     ],
   },
 ];
