@@ -1205,18 +1205,15 @@ function processFormationResult(
 
 function selectModels(mode: string, count: number, isFullShow: boolean): { primary: string; fallback: string } {
   if (isFullShow) {
-    // Full shows: fast model since server computes all points (avoids timeout)
-    return { primary: "google/gemini-2.5-flash", fallback: "google/gemini-3-flash-preview" };
+    return { primary: "google/gemini-3-flash-preview", fallback: "google/gemini-2.5-flash" };
   }
   if (mode === "image") {
-    // Image analysis needs strong vision model
-    return { primary: "google/gemini-2.5-pro", fallback: "google/gemini-2.5-flash" };
+    return { primary: "google/gemini-2.5-pro", fallback: "google/gemini-3-flash-preview" };
   }
-  // Single formations: fast model with pro fallback
   if (count > 500) {
     return { primary: "google/gemini-3-flash-preview", fallback: "google/gemini-2.5-pro" };
   }
-  return { primary: "google/gemini-2.5-flash", fallback: "google/gemini-3-flash-preview" };
+  return { primary: "google/gemini-3-flash-preview", fallback: "google/gemini-2.5-flash" };
 }
 
 // ── Main handler ────────────────────────────────────────────
