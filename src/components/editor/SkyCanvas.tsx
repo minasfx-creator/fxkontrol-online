@@ -945,7 +945,7 @@ function CameraController({ targetPosition, targetLookAt }: { targetPosition: [n
   });
 
   return (
-    <OrbitControls ref={controlsRef} enableDamping dampingFactor={0.05} maxPolarAngle={Math.PI * 0.48} minDistance={3} maxDistance={150} />
+    <OrbitControls ref={controlsRef} enableDamping dampingFactor={0.05} maxPolarAngle={Math.PI * 0.48} minDistance={3} maxDistance={400} />
   );
 }
 
