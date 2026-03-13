@@ -842,51 +842,68 @@ function GroundFog() {
 }
 
 function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) {
+  const sc = useSceneStore(st => st.settings);
+
+  // Ground style: finale-dark uses darker grass, flat-black uses a simple plane
+  const showGrass = sc.groundStyle !== 'flat-black';
+  
   return (
     <group>
-      <GrassGround />
+      {showGrass ? <GrassGround /> : (
+        <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+          <planeGeometry args={[4000, 4000]} />
+          <meshStandardMaterial color="#050505" roughness={0.95} metalness={0} />
+        </mesh>
+      )}
       {satelliteTexture && <SatelliteOverlay textureUrl={satelliteTexture} />}
-      <GroundFog />
+      {sc.groundFogIntensity > 0 && <GroundFog />}
 
-      {/* Operational grid — subtle professional */}
-      <Grid
-        position={[0, 0.01, 0]}
-        args={[1000, 1000]}
-        cellSize={2}
-        cellThickness={0.15}
-        cellColor="#1a3a1a"
-        sectionSize={10}
-        sectionThickness={0.4}
-        sectionColor="#2a4a2a"
-        fadeDistance={350}
-        infiniteGrid
-      />
-      {/* 50m major grid */}
-      <Grid
-        position={[0, 0.015, 0]}
-        args={[1000, 1000]}
-        cellSize={50}
-        cellThickness={0.6}
-        cellColor="#2a4a2a"
-        sectionSize={100}
-        sectionThickness={0.8}
-        sectionColor="#3a5a3a"
-        fadeDistance={600}
-        infiniteGrid
-      />
+      {/* Operational grid */}
+      {sc.showGrid && (
+        <>
+          <Grid
+            position={[0, 0.01, 0]}
+            args={[1000, 1000]}
+            cellSize={2}
+            cellThickness={0.15}
+            cellColor={sc.gridColor}
+            sectionSize={10}
+            sectionThickness={0.4}
+            sectionColor="#2a4a2a"
+            fadeDistance={350}
+            infiniteGrid
+          />
+          <Grid
+            position={[0, 0.015, 0]}
+            args={[1000, 1000]}
+            cellSize={50}
+            cellThickness={0.6}
+            cellColor="#2a4a2a"
+            sectionSize={100}
+            sectionThickness={0.8}
+            sectionColor="#3a5a3a"
+            fadeDistance={600}
+            infiniteGrid
+          />
+        </>
+      )}
 
-      {/* Subtle center cross — origin marker (no red squares) */}
-      <mesh position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[0.15, 6]} />
-        <meshBasicMaterial color="#5a8a5a" transparent opacity={0.3} />
-      </mesh>
-      <mesh position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[6, 0.15]} />
-        <meshBasicMaterial color="#5a8a5a" transparent opacity={0.3} />
-      </mesh>
+      {/* Origin marker */}
+      {sc.showOriginMarker && (
+        <>
+          <mesh position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[0.15, 6]} />
+            <meshBasicMaterial color="#5a8a5a" transparent opacity={0.3} />
+          </mesh>
+          <mesh position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[6, 0.15]} />
+            <meshBasicMaterial color="#5a8a5a" transparent opacity={0.3} />
+          </mesh>
+        </>
+      )}
 
-      {/* Scale reference poles — wider spread */}
-      {[-60, -30, 0, 30, 60].map((x) => (
+      {/* Scale reference poles */}
+      {sc.showScalePoles && [-60, -30, 0, 30, 60].map((x) => (
         <group key={`pole-${x}`} position={[x, 0, -45]}>
           <mesh position={[0, 5, 0]} castShadow>
             <cylinderGeometry args={[0.04, 0.05, 10, 8]} />
@@ -910,7 +927,7 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
       ))}
 
       {/* Horizon treeline */}
-      <TreelineSilhouette />
+      {sc.showTreeline && <TreelineSilhouette />}
     </group>
   );
 }
