@@ -68,6 +68,13 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   logistics: 'w-64',
   swarmgpt: 'w-72',
   synesthesia: 'w-64',
+  firing: 'w-72',
+  labels: 'w-64',
+  video: 'w-64',
+  models: 'w-64',
+  background: 'w-64',
+  suppliers: 'w-72',
+  safety: 'w-64',
 };
 
 export default function Index() {
