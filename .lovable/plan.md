@@ -132,8 +132,23 @@
 - Show Versioning (VersioningPanel) — named snapshots with diff comparison and restore
 - Snapshot save/restore with position and cue count tracking
 
-## Phase 14: Next
+## Phase 14: Collision, Weather & Approval (DONE ✅)
+- Advanced drone formation collision detection (src/lib/collisionDetector.ts)
+  - Spatial grid acceleration for O(n) average collision checks
+  - Checks hold phases and transition phases (interpolated smoothstep)
+  - Min distance over time chart, severity classification (warning/critical)
+  - CollisionPanel UI with detail list, seekable collisions, sample rate control
+- Weather API integration (src/lib/weatherService.ts) — Open-Meteo (free, no API key)
+  - Current conditions + 24h hourly forecast
+  - Flight risk analyzer: wind, gusts, precipitation, visibility, temperature, thunderstorm
+  - Risk levels: Safe/Caution/Warning/Grounded with score 0-100
+  - Auto-apply wind to simulation, WeatherPanel UI with live data
+- Client approval workflow (ClientApprovalPanel)
+  - Approval statuses: Draft → Pending Review → Changes Requested / Approved
+  - Threaded comments with resolve/reject per comment, reply system, filtering
+
+## Phase 15: Next
 - Multi-language localization (PT-BR, EN, ES)
-- Advanced collision detection between drones
-- Weather API integration for real venue conditions
-- Client approval workflow (comments + sign-off on shared previews)
+- Show template marketplace
+- Advanced trajectory optimization
+- Real-time 3D collision avoidance during playback
