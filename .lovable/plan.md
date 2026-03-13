@@ -56,21 +56,20 @@
 - Low-stock warnings with visual indicators
 - Toolbar button ($) for Inventory panel toggle
 
-## Phase 7: Additional Exports
+## Phase 7: Additional Exports (DONE ✅)
 - 40+ firing system formats (Galaxis, FireOne, Pyrodigital, etc.)
 - DMX fixture support
-- Video export (simulation recording)
-- Timecode support (SMPTE/FSK)
-- Sound level charts
+- Video export (WebM recording with TC burn-in, configurable resolution)
+- SMPTE/LTC timecode synchronization (Master/Slave/Freerun, external TC via WebSocket)
+- Sound level charts (dB SPL analysis, A/C weighting, Leq, exceedance tracking)
 
-## Phase 8: Scripting Power Tools
-- Copy/paste with fill handle
+## Phase 8: Scripting Power Tools (DONE ✅)
 - Randomize timing/positions
 - Make into sequence (auto-distribute across positions)
 - Make into fan (auto-angle distribution)
-- Effect macros
 - Spread out based on durations
-- Keyboard shortcuts
+- Reverse order, Quantize to grid
+- Keyboard shortcuts (Space, S, Delete, Ctrl+D, Ctrl+A, i, e, ?)
 
 ## Phase 9: Advanced Drone Physics (DONE ✅)
 - PID Controller engine (src/lib/pidController.ts) — 5-axis PID with Kp/Ki/Kd tuning
@@ -101,6 +100,6 @@
 
 ## Phase 11: Next
 - AR/Hybrid show overlay mode
-- Micro-drone GPS-denied indoor simulation
-- Video export (WebM recording of 3D viewport)
-- SMPTE/LTC timecode synchronization
+- Multi-user collaboration (real-time sync)
+- Cloud rendering / show preview sharing
+- Advanced music sync (beat-matching, onset-driven cue placement)
