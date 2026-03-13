@@ -106,7 +106,7 @@ export default function Toolbar() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [handleSave, handleExport, setEditorMode]);
+  }, [handleSave, handleExportVVIZ, setEditorMode]);
 
   return (
     <div className="flex items-center h-10 px-2 bg-surface-1 border-b border-border">
