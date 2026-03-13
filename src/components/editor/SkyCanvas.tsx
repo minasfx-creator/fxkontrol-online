@@ -2,6 +2,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars, Grid, PerspectiveCamera } from '@react-three/drei';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { useRef, useMemo, useEffect, useState, Component, ErrorInfo, ReactNode } from 'react';
+import { PerfCollector, PerformanceHUD, type PerfStats } from './PerformanceHUD';
 import * as THREE from 'three';
 import PositionPins from './PositionPins';
 import PostProcessing from './PostProcessing';
