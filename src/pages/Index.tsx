@@ -50,6 +50,7 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   battery: 'w-64',
   mavlink: 'w-72',
   smpte: 'w-64',
+  maps: 'w-80',
 };
 
 export default function Index() {
