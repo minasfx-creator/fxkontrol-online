@@ -74,6 +74,8 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
       { id: 'battery', label: 'Battery', icon: Battery },
       { id: 'mavlink', label: 'MAVLink', icon: Radio },
       { id: 'indoor', label: 'Indoor Sim', icon: Warehouse },
+      { id: 'telemetry', label: 'Telemetry', icon: Activity },
+      { id: 'flightlog', label: 'Flight Log', icon: FileText },
     ],
   },
   {
