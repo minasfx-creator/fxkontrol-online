@@ -55,6 +55,8 @@ import TrajectoryOptimizerPanel from '@/components/editor/TrajectoryOptimizerPan
 import ShowTemplatesPanel from '@/components/editor/ShowTemplatesPanel';
 import TelemetryDashboard from '@/components/editor/TelemetryDashboard';
 import FlightLogPanel from '@/components/editor/FlightLogPanel';
+import PathPlannerPanel from '@/components/editor/PathPlannerPanel';
+import TemplateMarketplace from '@/components/editor/TemplateMarketplace';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
@@ -121,6 +123,8 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   templates: 'w-72',
   telemetry: 'w-64',
   flightlog: 'w-64',
+  pathplanner: 'w-64',
+  marketplace: 'w-72',
 };
 
 export default function Index() {
@@ -288,6 +292,8 @@ export default function Index() {
         {activePanel === 'templates' && <ShowTemplatesPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'telemetry' && <TelemetryDashboard onClose={() => setActivePanel(null)} />}
         {activePanel === 'flightlog' && <FlightLogPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'pathplanner' && <PathPlannerPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'marketplace' && <TemplateMarketplace onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
