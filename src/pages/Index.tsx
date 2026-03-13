@@ -87,6 +87,7 @@ export default function Index() {
         {activePanel === 'pid' && <PIDPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'dmx' && <DMXPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'battery' && <BatteryPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'mavlink' && <MAVLinkPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
