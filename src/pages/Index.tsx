@@ -121,6 +121,8 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   templates: 'w-72',
   telemetry: 'w-64',
   flightlog: 'w-64',
+  pathplanner: 'w-64',
+  marketplace: 'w-72',
 };
 
 export default function Index() {
