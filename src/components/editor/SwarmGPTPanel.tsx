@@ -230,14 +230,15 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
 
       let time = 0;
       (data.formations || []).forEach((f: any) => {
-        const pts = (f.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
+        const rawPts = (f.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
+        const pts = normalizeDroneCount(rawPts, droneCount);
         const quantizedTransition = Math.round((f.transitionDuration || 8) / beatDuration) * beatDuration;
         const quantizedHold = Math.round((f.holdDuration || 12) / beatDuration) * beatDuration;
         
         addDroneFormation({
           id: `music-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
           formationType: 'ai-generated',
-          droneCount: pts.length,
+          droneCount,
           height: f.height || 30,
           radius: 20,
           spacing: 2,
