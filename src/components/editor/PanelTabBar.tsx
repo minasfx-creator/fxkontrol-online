@@ -1,8 +1,8 @@
-import { Route, Wind, FileText, Package, Cpu, DollarSign, Spline, Sliders, Settings2, Bug, Gauge, Lightbulb, Battery } from 'lucide-react';
+import { Route, Wind, FileText, Package, Cpu, DollarSign, Spline, Sliders, Settings2, Bug, Gauge, Lightbulb, Battery, Radio } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | 'inventory' | 'waypoints' | 'effects' | 'properties' | 'boids' | 'pid' | 'dmx' | 'battery';
+export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | 'inventory' | 'waypoints' | 'effects' | 'properties' | 'boids' | 'pid' | 'dmx' | 'battery' | 'mavlink';
 
 const PANEL_TABS: { id: PanelId; label: string; icon: typeof Route; shortcut?: string }[] = [
   { id: 'properties', label: 'Properties', icon: Settings2, shortcut: 'P' },
@@ -18,6 +18,7 @@ const PANEL_TABS: { id: PanelId; label: string; icon: typeof Route; shortcut?: s
   { id: 'pid', label: 'PID Controller', icon: Gauge },
   { id: 'dmx', label: 'DMX512 / Art-Net', icon: Lightbulb },
   { id: 'battery', label: 'Battery Model', icon: Battery },
+  { id: 'mavlink', label: 'MAVLink Bridge', icon: Radio },
 ];
 
 interface PanelTabBarProps {
