@@ -3,11 +3,13 @@ import { Rocket, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Sha
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useUndoStore } from '@/store/useUndoStore';
+import { useSMPTEStore } from '@/store/useSMPTEStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useProjectPersistence } from '@/hooks/useProjectPersistence';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { secondsToTimecode, formatTimecode } from '@/lib/smpteEngine';
 import FormationBuilder from './FormationBuilder';
 import CSVImporter from './CSVImporter';
 import VVIZImporter from './VVIZImporter';
