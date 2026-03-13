@@ -639,7 +639,7 @@ function GrassGround() {
               color += vec3(0.03, 0.05, 0.08) * spec * 0.3;
 
               // Edge blend
-              float edgeDist = length(vWorldPos.xz) / 50.0;
+              float edgeDist = length(vWorldPos.xz) / 80.0;
               float edgeFade = smoothstep(0.8, 1.0, edgeDist);
               color = mix(color, vec3(0.05, 0.12, 0.03), edgeFade);
 
