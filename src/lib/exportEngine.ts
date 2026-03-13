@@ -430,6 +430,70 @@ export function exportFiringCSV(
   return header + '\n' + rows.join('\n');
 }
 
+// ─── Boids Simulation → VVIZ Export ──────────────────────────────────
+
+export interface BoidsRecordingFrame {
+  time: number;
+  positions: { x: number; y: number; z: number }[];
+}
+
+/**
+ * Export a recorded Boids simulation as a VVIZ file.
+ * Each agent becomes a performance with traversal samples from recorded frames.
+ */
+export function exportBoidsVVIZ(
+  projectName: string,
+  frames: BoidsRecordingFrame[],
+  color: string = '#00FFAA',
+): string {
+  if (frames.length === 0) return '{}';
+
+  const agentCount = frames[0].positions.length;
+  const rgb = hexToRgb(color);
+  const performances: VVIZPerformance[] = [];
+
+  for (let a = 0; a < agentCount; a++) {
+    const homeX = frames[0].positions[a]?.x ?? 0;
+    const homeY = frames[0].positions[a]?.y ?? 0;
+    const homeZ = frames[0].positions[a]?.z ?? 0;
+
+    const keyframes = frames.map(f => ({
+      t: f.time,
+      x: f.positions[a]?.x ?? homeX,
+      y: f.positions[a]?.y ?? homeY,
+      z: f.positions[a]?.z ?? homeZ,
+      h: 0,
+    }));
+
+    const lastT = keyframes[keyframes.length - 1]?.t ?? 0;
+    const colorKeyframes = [
+      { t: 0, ...rgb },
+      { t: lastT, ...rgb },
+    ];
+
+    performances.push({
+      id: a,
+      agentDescription: {
+        homeX, homeY, homeZ, homeH: 0,
+        agentTraversal: buildTraversal(keyframes),
+      },
+      payloadDescription: [buildLightPayload(colorKeyframes)],
+    });
+  }
+
+  const vviz: VVIZFile = {
+    version: '1.0',
+    performanceName: `${projectName}_boids`,
+    coordinateFrame: 'ogl',
+    defaultPositionRate: POSITION_RATE,
+    defaultColorRate: COLOR_RATE,
+    timeOffsetSecs: 0,
+    performances,
+  };
+
+  return JSON.stringify(vviz, null, 2);
+}
+
 // ─── Download Helper ─────────────────────────────────────────────────
 
 export function downloadFile(content: string, filename: string, mimeType: string) {
