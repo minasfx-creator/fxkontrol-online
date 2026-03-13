@@ -28,6 +28,7 @@ const PANEL_SECTIONS: { title: string; items: { id: PanelId; label: string; icon
     items: [
       { id: 'safety', label: 'Safety NFPA', icon: Shield, shortcut: 'F' },
       { id: 'chains', label: 'Chain Editor', icon: Link2, shortcut: 'C' },
+      { id: 'groups', label: 'Position Groups', icon: Users, shortcut: 'G' },
       { id: 'audience', label: 'Audience View', icon: Eye },
       { id: 'wind', label: 'Wind & Camera', icon: Wind },
       { id: 'firing', label: 'Firing Export', icon: Download, shortcut: 'X' },
