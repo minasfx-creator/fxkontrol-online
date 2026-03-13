@@ -93,12 +93,12 @@ const DEFAULT_SETTINGS: SceneSettings = {
   trailLength: 1.0,
   particleDensity: 1.0,
   smokeOpacity: 0.5,
-  bloomStrength: 1.0,
+  bloomStrength: 1.1,
 
   shadowsEnabled: true,
   shadowQuality: 'high',
-  rimLightIntensity: 0.5,
-  fillLightIntensity: 0.3,
+  rimLightIntensity: 0.55,
+  fillLightIntensity: 0.35,
 
   vignetteEnabled: false,
   vignetteIntensity: 0.3,
