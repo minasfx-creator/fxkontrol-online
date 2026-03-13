@@ -628,50 +628,59 @@ function Model3DTab({ droneCount, radius, onPoints, loading: externalLoading }: 
   const fileRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState('');
   const [projection, setProjection] = useState<ProjectionMode>('top-down');
+  const [sampling, setSampling] = useState<SamplingMode>('surface');
   const [parsing, setParsing] = useState(false);
-  const [vertexInfo, setVertexInfo] = useState<string | null>(null);
+  const [result, setResult] = useState<ModelParseResult | null>(null);
 
   const handleFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
-    const supported = ['obj', 'gltf', 'glb', 'kml'];
-    if (!supported.includes(ext)) {
-      toast.error(`Formato .${ext} não suportado. Use: .OBJ, .GLTF, .GLB, .KML`);
+    if (!SUPPORTED_EXTENSIONS.includes(ext as any) && ext !== 'kml') {
+      toast.error(`Formato .${ext} não suportado. Use: .OBJ, .STL, .GLB, .GLTF, .SKP, .DAE, .PLY, .KML`);
       return;
     }
 
     setFileName(file.name);
     setParsing(true);
-    setVertexInfo(null);
+    setResult(null);
 
     try {
-      let result;
+      let res;
       if (ext === 'kml') {
-        result = await parseKMZToFormation(file, droneCount, radius);
+        res = await parseKMZToFormation(file, droneCount, radius);
       } else {
-        result = await parseModelToFormation(file, droneCount, radius, projection);
+        res = await parseModelToFormation(file, droneCount, radius, projection, sampling);
       }
 
-      setVertexInfo(`${result.originalVertexCount.toLocaleString()} vértices → ${result.points.length} drones`);
-      onPoints(result.points, result.modelName);
-      toast.success(`"${result.modelName}" convertido: ${result.points.length} pontos de ${result.originalVertexCount.toLocaleString()} vértices`);
+      setResult(res);
+      onPoints(res.points, res.modelName);
+      toast.success(`"${res.modelName}" → ${res.points.length} drones (${res.format}, qualidade: ${res.quality.score}/100)`);
     } catch (err: any) {
       toast.error(err.message || 'Erro ao processar modelo 3D');
-      setVertexInfo(null);
+      setResult(null);
     } finally {
       setParsing(false);
       if (fileRef.current) fileRef.current.value = '';
     }
-  }, [droneCount, radius, projection, onPoints]);
+  }, [droneCount, radius, projection, sampling, onPoints]);
 
   const projections: { id: ProjectionMode; label: string; icon: string }[] = [
-    { id: 'top-down', label: 'Topo (Y↓)', icon: '⬇️' },
-    { id: 'front', label: 'Frente (Z→)', icon: '➡️' },
-    { id: 'side', label: 'Lateral (X→)', icon: '↗️' },
-    { id: 'isometric', label: 'Isométrico', icon: '🔷' },
+    { id: 'top-down', label: 'Topo', icon: '⬇️' },
+    { id: 'front', label: 'Frente', icon: '➡️' },
+    { id: 'side', label: 'Lateral', icon: '↗️' },
+    { id: 'isometric', label: 'Iso', icon: '🔷' },
   ];
+
+  const samplingModes: { id: SamplingMode; label: string; desc: string }[] = [
+    { id: 'surface', label: '◼ Superfície', desc: 'Preenchido' },
+    { id: 'edges', label: '△ Arestas', desc: 'Wireframe' },
+    { id: 'silhouette', label: '◯ Silhueta', desc: 'Contorno' },
+    { id: 'vertices', label: '• Vértices', desc: 'Raw' },
+  ];
+
+  const acceptStr = SUPPORTED_EXTENSIONS.map(e => `.${e}`).join(',') + ',.kml';
 
   return (
     <div className="space-y-2 p-1">
@@ -680,27 +689,49 @@ function Model3DTab({ droneCount, radius, onPoints, loading: externalLoading }: 
       {/* Projection mode */}
       <div className="space-y-1">
         <span className="text-[9px] text-muted-foreground font-semibold uppercase">Projeção</span>
-        <div className="grid grid-cols-2 gap-1">
+        <div className="grid grid-cols-4 gap-0.5">
           {projections.map((p) => (
             <button
               key={p.id}
               onClick={() => setProjection(p.id)}
               className={cn(
-                "px-1.5 py-1 rounded-sm text-[9px] border transition-colors flex items-center gap-1",
+                "px-1 py-1 rounded-sm text-[8px] border transition-colors text-center",
                 projection === p.id
                   ? "border-primary/40 bg-primary/10 text-primary"
                   : "border-border/50 bg-surface-2 text-muted-foreground hover:text-foreground"
               )}
             >
-              <span>{p.icon}</span>
-              <span>{p.label}</span>
+              <div>{p.icon}</div>
+              <div>{p.label}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Sampling mode */}
+      <div className="space-y-1">
+        <span className="text-[9px] text-muted-foreground font-semibold uppercase">Amostragem</span>
+        <div className="grid grid-cols-2 gap-0.5">
+          {samplingModes.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => setSampling(s.id)}
+              className={cn(
+                "px-1.5 py-1 rounded-sm text-[8px] border transition-colors text-left",
+                sampling === s.id
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border/50 bg-surface-2 text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <div className="font-semibold">{s.label}</div>
+              <div className="text-[7px] opacity-70">{s.desc}</div>
             </button>
           ))}
         </div>
       </div>
 
       {/* File input */}
-      <input ref={fileRef} type="file" accept=".obj,.gltf,.glb,.kml" className="hidden" onChange={handleFile} />
+      <input ref={fileRef} type="file" accept={acceptStr} className="hidden" onChange={handleFile} />
       <button
         onClick={() => fileRef.current?.click()}
         disabled={parsing}
@@ -709,7 +740,7 @@ function Model3DTab({ droneCount, radius, onPoints, loading: externalLoading }: 
         {parsing ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-[9px]">Processando...</span>
+            <span className="text-[9px]">Processando geometria...</span>
           </>
         ) : (
           <>
@@ -719,24 +750,57 @@ function Model3DTab({ droneCount, radius, onPoints, loading: externalLoading }: 
         )}
       </button>
 
-      {vertexInfo && (
-        <div className="bg-surface-2 rounded-sm px-2 py-1.5 text-[9px] font-mono-code text-primary">
-          {vertexInfo}
+      {/* Results */}
+      {result && (
+        <div className="bg-surface-2 rounded-sm p-2 space-y-1 text-[9px] font-mono-code">
+          <div className="flex justify-between text-primary font-semibold">
+            <span>{result.format}</span>
+            <span>Score: {result.quality.score}/100</span>
+          </div>
+          <div className="flex justify-between text-muted-foreground">
+            <span>Vértices</span>
+            <span className="text-foreground">{result.originalVertexCount.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between text-muted-foreground">
+            <span>Triângulos</span>
+            <span className="text-foreground">{result.triangleCount.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between text-muted-foreground">
+            <span>→ Drones</span>
+            <span className="text-foreground">{result.points.length}</span>
+          </div>
+          <div className="flex justify-between text-muted-foreground">
+            <span>Bbox</span>
+            <span className="text-foreground">{result.boundingBox.width}×{result.boundingBox.height}×{result.boundingBox.depth}m</span>
+          </div>
+          <div className="flex justify-between text-muted-foreground">
+            <span>Espaçamento médio</span>
+            <span className="text-foreground">{result.quality.avgSpacing}m</span>
+          </div>
+          <div className="flex justify-between text-muted-foreground">
+            <span>Modo</span>
+            <span className="text-foreground">{result.samplingUsed}</span>
+          </div>
         </div>
       )}
 
       <div className="text-[8px] text-muted-foreground space-y-0.5">
         <p className="font-semibold">Formatos suportados:</p>
+        <p>• <span className="text-foreground">.SKP</span> — SketchUp nativo</p>
         <p>• <span className="text-foreground">.OBJ</span> — SketchUp, Blender, 3ds Max</p>
-        <p>• <span className="text-foreground">.GLTF / .GLB</span> — Google Maps 3D, SketchUp</p>
-        <p>• <span className="text-foreground">.KML</span> — Google Earth coordenadas</p>
+        <p>• <span className="text-foreground">.STL</span> — CAD, impressão 3D</p>
+        <p>• <span className="text-foreground">.DAE</span> — Collada (SketchUp export)</p>
+        <p>• <span className="text-foreground">.GLTF / .GLB</span> — Google Maps 3D</p>
+        <p>• <span className="text-foreground">.PLY</span> — Point clouds, scans</p>
+        <p>• <span className="text-foreground">.KML</span> — Google Earth</p>
       </div>
 
       <div className="border-t border-border pt-1.5 text-[8px] text-muted-foreground space-y-1">
         <p className="font-semibold">💡 Dicas:</p>
-        <p>• No <span className="text-foreground">SketchUp</span>: File → Export 3D → .OBJ</p>
-        <p>• No <span className="text-foreground">Google Earth</span>: Salve → .KML</p>
-        <p>• Use <span className="text-foreground">Topo</span> para buildings, <span className="text-foreground">Frente</span> para silhuetas</p>
+        <p>• <span className="text-foreground">SketchUp</span>: File → Export → .OBJ ou .DAE (melhor resultado)</p>
+        <p>• <span className="text-foreground">.SKP direto</span>: funciona, mas .OBJ/.DAE tem mais precisão</p>
+        <p>• <span className="text-foreground">Silhueta</span>: ideal para logos e contornos</p>
+        <p>• <span className="text-foreground">Arestas</span>: wireframe — ótimo para prédios</p>
       </div>
     </div>
   );
