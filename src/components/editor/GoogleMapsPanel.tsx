@@ -337,8 +337,8 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
           ].map((preset) => (
             <button
               key={preset.label}
-              onClick={() => {
-                setLocation(prev => ({ ...prev, lat: preset.lat, lng: preset.lng }));
+            onClick={() => {
+                setGpsOrigin({ ...location, lat: preset.lat, lng: preset.lng });
                 mapInstanceRef.current?.panTo({ lat: preset.lat, lng: preset.lng });
               }}
               className="text-[7px] font-mono-code px-1.5 py-0.5 rounded bg-surface-0 border border-border/50 text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-all"
