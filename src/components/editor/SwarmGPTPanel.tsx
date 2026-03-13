@@ -69,6 +69,18 @@ function normalizeDroneCount(pts: { x: number; z: number }[], target: number): {
   return result;
 }
 
+/* ── Map AI pyro type names to effect library IDs ──────── */
+
+function mapPyroType(type: string): string {
+  const map: Record<string, string> = {
+    shell: 'shell', mine: 'mine', comet: 'comet', cake: 'cake',
+    roman_candle: 'roman_candle', gerb: 'gerb', waterfall: 'waterfall',
+    fan: 'fan', flame: 'flame', cryo: 'cryo', salute: 'salute',
+    confetti: 'confetti', laser: 'laser', strobe: 'strobe',
+  };
+  return map[type] || 'shell';
+}
+
 /* ── Mini 2D Preview ──────────────────────────────────────── */
 
 function MiniPreview({ points }: { points: { x: number; z: number }[] }) {
