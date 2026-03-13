@@ -46,6 +46,7 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   pid: 'w-64',
   dmx: 'w-64',
   battery: 'w-64',
+  mavlink: 'w-72',
 };
 
 export default function Index() {
