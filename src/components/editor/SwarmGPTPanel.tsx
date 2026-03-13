@@ -277,7 +277,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
       setLoading(false);
       setLoadingPhase('');
     }
-  }, [prompt, droneCount, addDroneFormation, setCurrentTime]);
+  }, [prompt, droneCount, addDroneFormation, addTimelineItem, setCurrentTime]);
 
   const generateMusicSync = useCallback(async () => {
     if (!prompt.trim()) return;
