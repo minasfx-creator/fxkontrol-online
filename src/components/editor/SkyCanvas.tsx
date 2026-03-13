@@ -1067,32 +1067,7 @@ export default function SkyCanvas() {
         <PerspectiveCamera makeDefault position={preset.position} fov={55} near={0.2} far={2500} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} />
 
-        {/* Cinematic lighting — richer, more dramatic */}
-        <ambientLight intensity={0.06} color="#506880" />
-        
-        {/* Moonlight — key light with warmer fill */}
-        <directionalLight
-          position={[60, 55, -80]}
-          intensity={0.45}
-          color="#8899cc"
-          castShadow
-          shadow-mapSize={[4096, 4096]}
-          shadow-camera-far={500}
-          shadow-camera-left={-150}
-          shadow-camera-right={150}
-          shadow-camera-top={150}
-          shadow-camera-bottom={-150}
-          shadow-bias={-0.00005}
-        />
-        
-        {/* Hemisphere — deep blue sky + warm ground bounce */}
-        <hemisphereLight args={['#152050', '#0c1a0a', 0.12]} />
-        
-        {/* Rim backlight — atmospheric depth */}
-        <directionalLight position={[-40, 20, 60]} intensity={0.1} color="#4466aa" />
-        
-        {/* Fill from below — ground bounce */}
-        <directionalLight position={[0, -10, 30]} intensity={0.03} color="#1a2a1a" />
+        <SceneLighting />
 
         <SkyGradient />
         <Moon />
