@@ -138,6 +138,13 @@ export default function Index() {
         {activePanel === 'logistics' && <LogisticsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'swarmgpt' && <SwarmGPTPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'synesthesia' && <SynesthesiaPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'firing' && <FiringExportPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'labels' && <LabelsPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'video' && <VideoRecorderPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'models' && <ModelImportPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'background' && <BackgroundPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'suppliers' && <SupplierCatalogPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'safety' && <SafetyPanel />}
       </div>
     );
   };
