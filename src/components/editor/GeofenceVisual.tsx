@@ -1,10 +1,8 @@
 import * as THREE from 'three';
-import { useMemo } from 'react';
-import { DEFAULT_GEOFENCE } from '@/lib/safetyEngine';
 
-/** Renders a wireframe box in the 3D viewport showing the geofence boundaries */
-export default function GeofenceVisual({ geofence = DEFAULT_GEOFENCE }: { geofence?: typeof DEFAULT_GEOFENCE }) {
-  if (!geofence.enabled) return null;
+/** Renders a subtle wireframe box showing geofence boundaries — non-intrusive */
+export default function GeofenceVisual({ geofence }: { geofence?: { enabled: boolean; minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number } }) {
+  if (!geofence?.enabled) return null;
 
   const { minX, maxX, minY, maxY, minZ, maxZ } = geofence;
   const cx = (minX + maxX) / 2;
@@ -16,19 +14,19 @@ export default function GeofenceVisual({ geofence = DEFAULT_GEOFENCE }: { geofen
 
   return (
     <group position={[cx, cy, cz]}>
-      {/* Wireframe boundary */}
+      {/* Wireframe boundary — subtle green instead of aggressive red */}
       <lineSegments>
         <edgesGeometry args={[new THREE.BoxGeometry(sx, sy, sz)]} />
-        <lineBasicMaterial color="#FF4500" transparent opacity={0.25} linewidth={1} />
+        <lineBasicMaterial color="#44aa66" transparent opacity={0.2} linewidth={1} />
       </lineSegments>
 
-      {/* Subtle transparent faces */}
+      {/* Very subtle transparent faces */}
       <mesh>
         <boxGeometry args={[sx, sy, sz]} />
         <meshBasicMaterial
-          color="#FF4500"
+          color="#44aa66"
           transparent
-          opacity={0.02}
+          opacity={0.01}
           side={THREE.DoubleSide}
           depthWrite={false}
         />
