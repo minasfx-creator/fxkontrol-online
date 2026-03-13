@@ -185,7 +185,7 @@ function FireworkBurst({ position, color, progress }: { position: [number, numbe
           <bufferAttribute attach="attributes-position" args={[new Float32Array(PARTICLE_COUNT * 3), 3]} />
           <bufferAttribute attach="attributes-color" args={[new Float32Array(PARTICLE_COUNT * 3), 3]} />
         </bufferGeometry>
-        <pointsMaterial size={0.18} vertexColors transparent opacity={0.95} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        <pointsMaterial size={0.22} vertexColors transparent opacity={0.95} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
       <lineSegments ref={trailRef}>
         <bufferGeometry>
@@ -194,10 +194,18 @@ function FireworkBurst({ position, color, progress }: { position: [number, numbe
         </bufferGeometry>
         <lineBasicMaterial vertexColors transparent opacity={0.7} depthWrite={false} blending={THREE.AdditiveBlending} />
       </lineSegments>
-      {progress < 0.4 && (
+      {/* Initial flash sphere */}
+      {progress < 0.3 && (
         <mesh>
-          <sphereGeometry args={[0.6 + progress * 3, 16, 16]} />
-          <meshBasicMaterial color={color} transparent opacity={0.08 * (1 - progress / 0.4)} blending={THREE.AdditiveBlending} />
+          <sphereGeometry args={[0.8 + progress * 4, 16, 16]} />
+          <meshBasicMaterial color={color} transparent opacity={0.12 * (1 - progress / 0.3)} blending={THREE.AdditiveBlending} />
+        </mesh>
+      )}
+      {/* Secondary flash ring */}
+      {progress < 0.15 && (
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[progress * 8, progress * 8 + 0.3, 32]} />
+          <meshBasicMaterial color={color} transparent opacity={0.06 * (1 - progress / 0.15)} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
     </group>
@@ -331,14 +339,18 @@ function SkyGradient() {
     uSkyBrightness: { value: skyBrightness },
     uHorizonGlow: { value: horizonGlow },
     uStarDensity: { value: starDensity },
+    uTime: { value: 0 },
   }), []);
 
-  // Update uniforms reactively
   useEffect(() => {
     uniforms.uSkyBrightness.value = skyBrightness;
     uniforms.uHorizonGlow.value = horizonGlow;
     uniforms.uStarDensity.value = starDensity;
   }, [skyBrightness, horizonGlow, starDensity]);
+
+  useFrame(({ clock }) => {
+    uniforms.uTime.value = clock.getElapsedTime();
+  });
 
   return (
     <mesh>
@@ -358,6 +370,7 @@ function SkyGradient() {
           uniform float uSkyBrightness;
           uniform float uHorizonGlow;
           uniform float uStarDensity;
+          uniform float uTime;
           varying vec3 vWorldPosition;
           
           float hash21(vec2 p) {
@@ -366,33 +379,71 @@ function SkyGradient() {
             return fract(p.x * p.y);
           }
           
+          float noise2d(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            return mix(
+              mix(hash21(i), hash21(i + vec2(1,0)), f.x),
+              mix(hash21(i + vec2(0,1)), hash21(i + vec2(1,1)), f.x), f.y
+            );
+          }
+          
+          float fbm3(vec2 p) {
+            float v = 0.0, a = 0.5;
+            for (int i = 0; i < 4; i++) { v += a * noise2d(p); p *= 2.1; a *= 0.45; }
+            return v;
+          }
+          
           float starField(vec3 dir) {
             vec2 uv = vec2(atan(dir.x, dir.z) * 3.183, asin(clamp(dir.y, -1.0, 1.0)) * 6.366);
             vec2 id = floor(uv * 140.0);
             float h = hash21(id);
-            float threshold = mix(0.998, 0.975, clamp(uStarDensity, 0.0, 2.0) / 2.0);
+            float threshold = mix(0.998, 0.972, clamp(uStarDensity, 0.0, 2.0) / 2.0);
             if (h > threshold) {
               vec2 offset = fract(uv * 140.0) - 0.5;
-              float brightness = smoothstep(0.1, 0.0, length(offset)) * (0.5 + h * 3.5);
-              float twinkle = sin(h * 6283.0 + h * 200.0) * 0.3 + 0.7;
+              float brightness = smoothstep(0.12, 0.0, length(offset)) * (0.5 + h * 4.0);
+              float twinkle = sin(h * 6283.0 + uTime * (0.5 + h * 2.0)) * 0.35 + 0.65;
               return brightness * twinkle * smoothstep(0.08, 0.35, dir.y);
             }
             return 0.0;
+          }
+          
+          // Shooting stars
+          float shootingStar(vec3 dir) {
+            float t = uTime * 0.15;
+            float star = 0.0;
+            for (int i = 0; i < 3; i++) {
+              float fi = float(i);
+              float phase = fract(t + fi * 0.37);
+              if (phase > 0.95) continue; // most of the time hidden
+              float startAngle = hash21(vec2(fi, floor(t + fi * 0.37))) * 6.28;
+              float startElev = 0.4 + hash21(vec2(fi + 10.0, floor(t + fi * 0.37))) * 0.4;
+              vec3 startDir = normalize(vec3(cos(startAngle), startElev, sin(startAngle)));
+              vec3 moveDir = normalize(vec3(-0.3, -0.15, 0.1));
+              vec3 pos = startDir + moveDir * phase * 0.5;
+              float dist = length(cross(dir - startDir, moveDir)) / length(moveDir);
+              float along = dot(dir - startDir, moveDir);
+              float trail = smoothstep(0.15, 0.0, along) * smoothstep(-0.01, 0.0, along);
+              float bright = smoothstep(0.003, 0.0, dist) * trail * (1.0 - phase) * 3.0;
+              star += bright;
+            }
+            return star * smoothstep(0.15, 0.4, dir.y);
           }
           
           void main() {
             vec3 dir = normalize(vWorldPosition);
             float h = dir.y;
             
-            // Google Earth-style atmosphere: rich blue sky fading to warm horizon
-            vec3 space     = vec3(0.005, 0.008, 0.025);
-            vec3 zenith    = vec3(0.01, 0.015, 0.055);
-            vec3 upperSky  = vec3(0.02, 0.035, 0.12);
-            vec3 midSky    = vec3(0.04, 0.06, 0.18);
-            vec3 lowSky    = vec3(0.06, 0.09, 0.22);
-            vec3 horizon   = vec3(0.14, 0.16, 0.24);
-            vec3 haze      = vec3(0.18, 0.17, 0.20);
-            vec3 ground    = vec3(0.01, 0.015, 0.025);
+            // Enhanced atmosphere with more depth layers
+            vec3 space     = vec3(0.003, 0.005, 0.02);
+            vec3 zenith    = vec3(0.008, 0.012, 0.05);
+            vec3 upperSky  = vec3(0.015, 0.028, 0.10);
+            vec3 midSky    = vec3(0.035, 0.055, 0.16);
+            vec3 lowSky    = vec3(0.055, 0.08, 0.20);
+            vec3 horizon   = vec3(0.12, 0.14, 0.22);
+            vec3 haze      = vec3(0.16, 0.15, 0.18);
+            vec3 ground    = vec3(0.008, 0.012, 0.02);
             
             vec3 color;
             if (h > 0.7) {
@@ -409,27 +460,54 @@ function SkyGradient() {
               color = mix(ground, haze, smoothstep(-0.15, -0.02, h));
             }
             
-            // Atmospheric glow band — driven by scene setting
+            // Atmospheric glow band
             float hGlow = exp(-h * h * 80.0);
             color += vec3(0.18, 0.14, 0.08) * hGlow * uHorizonGlow;
             
             // Blue atmospheric scatter ring
             float blueRing = exp(-(h - 0.03) * (h - 0.03) * 60.0);
-            color += vec3(0.04, 0.06, 0.12) * blueRing * 0.3;
+            color += vec3(0.04, 0.06, 0.12) * blueRing * 0.35;
             
-            // Milky Way
+            // Enhanced Milky Way with structure
             float milkyAngle = dir.x * 0.6 + dir.z * 0.8;
-            float milkyBand = exp(-pow(milkyAngle - dir.y * 0.5, 2.0) * 8.0);
-            float milkyDetail = hash21(dir.xz * 40.0) * 0.3 + 0.7;
-            color += vec3(0.015, 0.02, 0.035) * milkyBand * milkyDetail * smoothstep(0.15, 0.5, h) * 0.5;
+            float milkyBand = exp(-pow(milkyAngle - dir.y * 0.5, 2.0) * 6.0);
+            float milkyDetail = fbm3(dir.xz * 30.0) * 0.6 + 0.4;
+            float milkyDust = fbm3(dir.xz * 60.0 + 100.0);
+            vec3 milkyColor = mix(vec3(0.02, 0.025, 0.05), vec3(0.04, 0.03, 0.05), milkyDust);
+            color += milkyColor * milkyBand * milkyDetail * smoothstep(0.15, 0.5, h) * 0.8;
             
-            // Stars — density driven by scene store
+            // Dark dust lanes in Milky Way
+            float dustLane = smoothstep(0.45, 0.55, fbm3(dir.xz * 20.0 + 50.0));
+            color -= vec3(0.01) * milkyBand * dustLane * smoothstep(0.2, 0.5, h);
+            
+            // Subtle nebula color patches
+            float nebula1 = fbm3(dir.xz * 15.0 + vec2(200.0, 0.0));
+            float nebula2 = fbm3(dir.xz * 12.0 + vec2(0.0, 300.0));
+            color += vec3(0.015, 0.005, 0.02) * smoothstep(0.6, 0.8, nebula1) * milkyBand * 0.5;
+            color += vec3(0.005, 0.01, 0.025) * smoothstep(0.55, 0.75, nebula2) * smoothstep(0.3, 0.6, h) * 0.4;
+            
+            // Procedural cloud wisps near horizon
+            float cloudUV1 = fbm3(dir.xz * 4.0 + uTime * 0.01);
+            float cloudUV2 = fbm3(dir.xz * 8.0 - uTime * 0.008 + 50.0);
+            float cloudMask = smoothstep(0.0, 0.12, h) * smoothstep(0.25, 0.08, h);
+            float clouds = smoothstep(0.45, 0.7, cloudUV1 * 0.6 + cloudUV2 * 0.4) * cloudMask;
+            color += vec3(0.06, 0.07, 0.10) * clouds * 0.4;
+            
+            // Stars with color variation
             float stars = starField(dir);
-            vec3 starColor = mix(vec3(0.8, 0.85, 1.0), vec3(1.0, 0.9, 0.7), hash21(dir.xz * 50.0));
-            color += starColor * stars * 0.7 * uStarDensity;
+            float starHue = hash21(dir.xz * 50.0);
+            vec3 starColor = starHue < 0.3 ? vec3(0.7, 0.8, 1.0) :
+                             starHue < 0.6 ? vec3(1.0, 0.95, 0.85) :
+                             starHue < 0.85 ? vec3(1.0, 0.85, 0.7) :
+                             vec3(1.0, 0.6, 0.5);
+            color += starColor * stars * 0.8 * uStarDensity;
             
-            // Apply overall sky brightness
+            // Shooting stars
+            float shooting = shootingStar(dir);
+            color += vec3(0.9, 0.95, 1.0) * shooting * uStarDensity;
+            
             color *= uSkyBrightness;
+            color = max(color, vec3(0.0));
             
             gl_FragColor = vec4(color, 1.0);
           }
@@ -502,7 +580,12 @@ function Moon() {
       {/* Inner glow — HDR for bloom catch */}
       <mesh>
         <sphereGeometry args={[3.7, 32, 32]} />
-        <meshBasicMaterial color="#c0b8a0" transparent opacity={0.12} blending={THREE.AdditiveBlending} />
+        <meshBasicMaterial color="#d0c8a8" transparent opacity={0.15} blending={THREE.AdditiveBlending} />
+      </mesh>
+      {/* Inner core glow */}
+      <mesh>
+        <sphereGeometry args={[3.55, 24, 24]} />
+        <meshBasicMaterial color="#ffe8c0" transparent opacity={0.06} blending={THREE.AdditiveBlending} />
       </mesh>
       {/* Outer volumetric halo */}
       <mesh>
@@ -530,10 +613,15 @@ function Moon() {
       </mesh>
       {/* Wide atmospheric scatter */}
       <mesh>
-        <sphereGeometry args={[12, 16, 16]} />
-        <meshBasicMaterial color="#506080" transparent opacity={0.025} blending={THREE.AdditiveBlending} />
+        <sphereGeometry args={[14, 16, 16]} />
+        <meshBasicMaterial color="#506080" transparent opacity={0.02} blending={THREE.AdditiveBlending} />
       </mesh>
-      <pointLight color="#8899bb" intensity={0.3} distance={300} decay={1} />
+      {/* Ultra-wide corona */}
+      <mesh>
+        <sphereGeometry args={[22, 12, 12]} />
+        <meshBasicMaterial color="#405070" transparent opacity={0.008} blending={THREE.AdditiveBlending} />
+      </mesh>
+      <pointLight color="#8899bb" intensity={0.35} distance={350} decay={1} />
     </group>
   );
 }
@@ -772,29 +860,40 @@ function GrassGround() {
 // --- Atmospheric dust particles floating in the air ---
 function AtmosphericParticles() {
   const pointsRef = useRef<THREE.Points>(null);
-  const count = 300;
+  const count = 500;
   
-  const { positions, sizes } = useMemo(() => {
+  const { positions: posData, sizes, velocities: velData } = useMemo(() => {
     const pos = new Float32Array(count * 3);
     const sz = new Float32Array(count);
+    const vel = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 300;
-      pos[i * 3 + 1] = Math.random() * 50 + 1;
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 300;
-      sz[i] = 0.02 + Math.random() * 0.06;
+      pos[i * 3] = (Math.random() - 0.5) * 400;
+      pos[i * 3 + 1] = Math.random() * 60 + 0.5;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 400;
+      sz[i] = 0.02 + Math.random() * 0.08;
+      vel[i * 3] = (Math.random() - 0.5) * 0.01;
+      vel[i * 3 + 1] = (Math.random() - 0.5) * 0.005;
+      vel[i * 3 + 2] = (Math.random() - 0.5) * 0.01;
     }
-    return { positions: pos, sizes: sz };
+    return { positions: pos, sizes: sz, velocities: vel };
   }, []);
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, camera }) => {
     if (!pointsRef.current) return;
     const t = clock.getElapsedTime();
     const posAttr = pointsRef.current.geometry.getAttribute('position') as THREE.BufferAttribute;
     const arr = posAttr.array as Float32Array;
+    const camX = camera.position.x, camZ = camera.position.z;
     for (let i = 0; i < count; i++) {
-      arr[i * 3] += Math.sin(t * 0.1 + i * 0.5) * 0.003;
-      arr[i * 3 + 1] += Math.sin(t * 0.15 + i * 0.3) * 0.002;
-      arr[i * 3 + 2] += Math.cos(t * 0.08 + i * 0.7) * 0.003;
+      arr[i * 3] += Math.sin(t * 0.08 + i * 0.5) * 0.004 + velData[i * 3];
+      arr[i * 3 + 1] += Math.sin(t * 0.12 + i * 0.3) * 0.003 + velData[i * 3 + 1];
+      arr[i * 3 + 2] += Math.cos(t * 0.07 + i * 0.7) * 0.004 + velData[i * 3 + 2];
+      // Recycle particles that drift too far from camera
+      const dx = arr[i * 3] - camX, dz = arr[i * 3 + 2] - camZ;
+      if (dx * dx + dz * dz > 40000) {
+        arr[i * 3] = camX + (Math.random() - 0.5) * 200;
+        arr[i * 3 + 2] = camZ + (Math.random() - 0.5) * 200;
+      }
     }
     posAttr.needsUpdate = true;
   });
@@ -802,13 +901,13 @@ function AtmosphericParticles() {
   return (
     <points ref={pointsRef}>
       <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+        <bufferAttribute attach="attributes-position" args={[posData, 3]} />
       </bufferGeometry>
       <pointsMaterial
-        size={0.06}
-        color="#8899bb"
+        size={0.07}
+        color="#8899cc"
         transparent
-        opacity={0.15}
+        opacity={0.18}
         depthWrite={false}
         blending={THREE.AdditiveBlending}
         sizeAttenuation
@@ -1267,14 +1366,15 @@ export default function SkyCanvas() {
       <Canvas
         shadows
         gl={{
-          antialias: false, // SMAA handles this in post
+          antialias: false,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.0,
+          toneMappingExposure: 1.1,
           powerPreference: 'high-performance',
           alpha: false,
           stencil: false,
+          logarithmicDepthBuffer: true,
         }}
-        dpr={[1, 1.5]}
+        dpr={[1, 2]}
       >
         <PerspectiveCamera makeDefault position={preset.position} fov={55} near={0.2} far={2500} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} />

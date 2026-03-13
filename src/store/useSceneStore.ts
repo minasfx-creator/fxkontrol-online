@@ -60,16 +60,16 @@ export interface SceneSettings {
 
 const DEFAULT_SETTINGS: SceneSettings = {
   skyPreset: 'night-clear',
-  ambientIntensity: 0.06,
-  moonIntensity: 0.45,
+  ambientIntensity: 0.07,
+  moonIntensity: 0.5,
   moonColor: '#8899cc',
-  skyBrightness: 1.0,
-  starDensity: 1.0,
+  skyBrightness: 1.1,
+  starDensity: 1.2,
   fogDensity: 0.5,
   fogColor: '#080e1a',
   fogNear: 200,
   fogFar: 1800,
-  horizonGlow: 0.35,
+  horizonGlow: 0.4,
 
   groundStyle: 'finale-dark',
   groundBrightness: 1.0,
@@ -93,17 +93,17 @@ const DEFAULT_SETTINGS: SceneSettings = {
   trailLength: 1.0,
   particleDensity: 1.0,
   smokeOpacity: 0.5,
-  bloomStrength: 1.0,
+  bloomStrength: 1.1,
 
   shadowsEnabled: true,
   shadowQuality: 'high',
-  rimLightIntensity: 0.5,
-  fillLightIntensity: 0.3,
+  rimLightIntensity: 0.55,
+  fillLightIntensity: 0.35,
 
-  vignetteEnabled: false,
-  vignetteIntensity: 0.3,
-  chromaticAberration: false,
-  filmGrain: 0,
+  vignetteEnabled: true,
+  vignetteIntensity: 0.2,
+  chromaticAberration: true,
+  filmGrain: 0.02,
 };
 
 export const SCENE_PRESETS: Record<string, { name: string; description: string; settings: Partial<SceneSettings> }> = {
