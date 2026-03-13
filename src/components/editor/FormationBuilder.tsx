@@ -190,8 +190,11 @@ function useAIFormation() {
       const { data, error } = await supabase.functions.invoke('generate-formation', {
         body: { generateTrajectory: true, prompt, droneCount },
       });
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      if (error) {
+        const errMsg = (data as any)?.error || error.message || String(error);
+        throw new Error(errMsg);
+      }
+      if (data?.error) throw new Error(data.error);
       toast.success(`Coreografia gerada: ${data.phases?.length || 0} fases · ${data.totalDuration}s`);
       return data;
     } catch (e: any) {
