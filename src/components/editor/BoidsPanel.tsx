@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { Bug, Play, Pause, RotateCcw, Settings2 } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { Bug, Play, Pause, RotateCcw, Settings2, Circle, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
@@ -10,6 +10,8 @@ import {
   minPairDistance,
   type BoidsConfig,
 } from '@/lib/boidsEngine';
+import { exportBoidsVVIZ, downloadFile } from '@/lib/exportEngine';
+import { toast } from 'sonner';
 
 function SliderField({ label, value, onChange, min, max, step, unit }: {
   label: string; value: number; onChange: (v: number) => void;
@@ -27,8 +29,11 @@ function SliderField({ label, value, onChange, min, max, step, unit }: {
 }
 
 export default function BoidsPanel({ onClose }: { onClose: () => void }) {
-  const { droneFormations } = useProjectStore();
-  const { agents, config, running, seekTarget, setAgents, setConfig, setRunning, setSeekTarget } = useBoidsStore();
+  const { droneFormations, projectName } = useProjectStore();
+  const {
+    agents, config, running, seekTarget, recording, recordedFrames,
+    setAgents, setConfig, setRunning, setSeekTarget, setRecording, clearRecording,
+  } = useBoidsStore();
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [minDist, setMinDist] = useState(0);
 
@@ -46,7 +51,6 @@ export default function BoidsPanel({ onClose }: { onClose: () => void }) {
     if (agents.length === 0) initFromFormations();
   }, [initFromFormations, agents.length]);
 
-  // Update min dist periodically
   useEffect(() => {
     if (agents.length < 2) return;
     const interval = setInterval(() => {
@@ -57,6 +61,28 @@ export default function BoidsPanel({ onClose }: { onClose: () => void }) {
 
   const updateConfig = (key: keyof BoidsConfig, value: number) => {
     setConfig({ [key]: value });
+  };
+
+  const toggleRecording = () => {
+    if (recording) {
+      setRecording(false);
+      toast.success(`Gravação finalizada: ${recordedFrames.length} frames`);
+    } else {
+      clearRecording();
+      setRecording(true);
+      if (!running) setRunning(true);
+      toast.info('Gravando simulação Boids...');
+    }
+  };
+
+  const handleExportVVIZ = () => {
+    if (recordedFrames.length === 0) {
+      toast.error('Grave a simulação antes de exportar');
+      return;
+    }
+    const vviz = exportBoidsVVIZ(projectName || 'boids_sim', recordedFrames);
+    downloadFile(vviz, `${projectName || 'boids'}_swarm.vviz`, 'application/json');
+    toast.success('Exportado como VVIZ!');
   };
 
   return (
@@ -104,9 +130,33 @@ export default function BoidsPanel({ onClose }: { onClose: () => void }) {
             size="sm"
             variant="outline"
             className="h-6 text-[10px] gap-1"
-            onClick={() => { setRunning(false); initFromFormations(); }}
+            onClick={() => { setRunning(false); initFromFormations(); clearRecording(); }}
           >
             <RotateCcw className="h-3 w-3" />
+          </Button>
+        </div>
+
+        {/* Record & Export */}
+        <div className="flex items-center gap-1">
+          <Button
+            size="sm"
+            variant={recording ? 'destructive' : 'outline'}
+            className="h-6 text-[10px] flex-1 gap-1"
+            onClick={toggleRecording}
+            disabled={agents.length === 0}
+          >
+            <Circle className={`h-3 w-3 ${recording ? 'fill-current animate-pulse' : ''}`} />
+            {recording ? `REC (${recordedFrames.length})` : 'Gravar'}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-6 text-[10px] flex-1 gap-1"
+            onClick={handleExportVVIZ}
+            disabled={recordedFrames.length === 0}
+          >
+            <Download className="h-3 w-3" />
+            VVIZ ({recordedFrames.length})
           </Button>
         </div>
 
@@ -145,7 +195,7 @@ export default function BoidsPanel({ onClose }: { onClose: () => void }) {
           <p><strong>Separação:</strong> Evita colisão entre drones vizinhos</p>
           <p><strong>Alinhamento:</strong> Iguala velocidade com vizinhos</p>
           <p><strong>Coesão:</strong> Move em direção ao centro do grupo</p>
-          <p className="text-primary/70">Os agentes aparecem em verde no viewport 3D</p>
+          <p className="text-primary/70">🔴 Grave a simulação e exporte como .vviz</p>
         </div>
       </div>
     </div>
