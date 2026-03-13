@@ -191,6 +191,36 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
+        {/* Art-Net Output */}
+        <div className="space-y-1.5 border-t border-border/50 pt-2">
+          <div className="flex items-center gap-1.5">
+            <Wifi className="h-3 w-3 text-primary" />
+            <span className="text-[9px] text-muted-foreground font-semibold uppercase">Art-Net Output</span>
+          </div>
+          <div className="flex gap-1">
+            <Input
+              value={artNetIp}
+              onChange={e => setArtNetIp(e.target.value)}
+              className="h-6 text-[9px] font-mono-code bg-surface-0 border-border flex-1"
+              placeholder="IP"
+            />
+            <Input
+              type="number"
+              value={artNetPort}
+              onChange={e => setArtNetPort(Number(e.target.value))}
+              className="h-6 text-[9px] font-mono-code bg-surface-0 border-border w-16"
+            />
+          </div>
+          <Button
+            size="sm" className="h-6 text-[10px] w-full gap-1"
+            onClick={sendArtNet}
+            disabled={universes.length === 0 || sending}
+          >
+            <Send className="h-3 w-3" />
+            {sending ? 'Enviando...' : `Send Art-Net (${universes.length} uni)`}
+          </Button>
+        </div>
+
         {/* Export */}
         <div className="flex items-center gap-1">
           <Button
@@ -205,7 +235,7 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
 
         <div className="bg-surface-2 rounded-sm p-2 text-[9px] text-muted-foreground space-y-1">
           <p><strong>DMX512:</strong> 512 canais por universo, 128 fixtures RGBW</p>
-          <p><strong>Art-Net:</strong> Protocolo de rede para distribuir universos DMX</p>
+          <p><strong>Art-Net:</strong> Protocolo UDP porta 6454 para fixtures reais</p>
           <p className="text-primary/70">Use Auto-Patch para mapear drones como fixtures</p>
         </div>
       </div>
