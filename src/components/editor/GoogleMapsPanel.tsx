@@ -296,7 +296,7 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
             value={location.heading}
             onChange={(e) => {
               const h = Number(e.target.value) % 360;
-              setLocation(prev => ({ ...prev, heading: h }));
+              setGpsOrigin({ ...location, heading: h });
               mapInstanceRef.current?.setHeading(h);
             }}
             className="w-12 h-5 text-[9px] bg-surface-0 border border-border rounded px-1 text-foreground font-mono-code"
