@@ -45,13 +45,16 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
   const circleRef = useRef<google.maps.Circle | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [location, setLocation] = useState<GeoLocation>(DEFAULT_LOCATION);
   const [mapType, setMapType] = useState<'satellite' | 'hybrid' | 'terrain'>('hybrid');
   const [showDrones, setShowDrones] = useState(true);
   const [showGeofence, setShowGeofence] = useState(true);
 
   const positions = useProjectStore((s) => s.positions);
   const droneFormations = useProjectStore((s) => s.droneFormations);
+  const gpsOrigin = useProjectStore((s) => s.gpsOrigin);
+  const setGpsOrigin = useProjectStore((s) => s.setGpsOrigin);
+
+  const location = gpsOrigin;
 
   // Initialize map
   useEffect(() => {
