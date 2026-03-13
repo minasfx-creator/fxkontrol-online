@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { exportFormationsToKML, downloadFile } from '@/lib/exportEngine';
 
 interface GeoLocation {
   lat: number;
