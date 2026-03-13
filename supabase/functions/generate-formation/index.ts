@@ -120,6 +120,7 @@ COLOR TRANSITIONS (choose based on emotional intent):
 - "rainbow": celebration/joy — full spectrum sweep
 - "cascade": revelation/unveiling — top-to-bottom
 - "sparkle": magic/stars — random twinkling
+- "rgb_cycle": frenetic/techno/finale — rapid RGB cycling across all drones, mesmerizing rave effect
 - "linear": clean/professional — smooth uniform
 
 TIMING INTELLIGENCE:
