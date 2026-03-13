@@ -57,7 +57,6 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     async function init() {
       try {
-        // Fetch API key from edge function
         const { data, error: fnError } = await supabase.functions.invoke('get-maps-key');
         if (fnError || !data?.key) {
           setError('Google Maps API Key não configurada');
@@ -66,6 +65,7 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
 
         await loadGoogleMapsScript(data.key);
         if (!mapRef.current) return;
+
         const map = new google.maps.Map(mapRef.current, {
           center: { lat: location.lat, lng: location.lng },
           zoom: 18,
@@ -84,7 +84,6 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
 
         mapInstanceRef.current = map;
 
-        // Click to set launch origin
         map.addListener('click', (e: google.maps.MapMouseEvent) => {
           if (!e.latLng) return;
           setLocation(prev => ({
@@ -96,10 +95,11 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
         });
 
         setLoaded(true);
-      })
-      .catch((err) => {
-        setError(err.message);
-      });
+      } catch (err: any) {
+        setError(err.message || 'Erro ao carregar Google Maps');
+      }
+    }
+    init();
   }, []);
 
   // Update map type
