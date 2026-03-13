@@ -539,7 +539,7 @@ export function exportFormationsToKML(
     // Individual drone points
     placemarks.push(`
     <Folder>
-      <name>Formation ${fIdx + 1}: ${f.formationName || 'Unnamed'}</name>
+      <name>Formation ${fIdx + 1}: ${f.formationType || 'Unnamed'}</name>
       <description>Drones: ${f.droneCount} | Height: ${f.height}m | Color: ${f.color}</description>
       <Style>
         <IconStyle>
