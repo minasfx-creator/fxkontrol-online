@@ -550,28 +550,28 @@ export default function ScriptWindow() {
   const droneCount = rows.filter((r) => r.type === 'drone').length;
 
   return (
-    <div className="h-full flex flex-col bg-card border-l border-border">
-      {/* Header */}
-      <div className="px-3 py-2 border-b border-border flex items-center gap-2">
-        <Table className="h-3.5 w-3.5 text-muted-foreground" />
-        <h2 className="text-xs font-semibold text-foreground uppercase tracking-wider flex-1">Script</h2>
-        <div className="flex items-center gap-3 text-[9px] font-mono-code text-muted-foreground">
-          <span>🎆 {pyroCount}</span>
-          <span>🤖 {droneCount}</span>
-          <span>🔗 {chainCount}</span>
-          <span className="text-safety">${totalCost.toFixed(0)}</span>
+    <div className="h-full flex flex-col bg-surface-0 border-l border-border/50">
+      {/* Header with stats */}
+      <div className="px-3 py-1.5 border-b border-border/40 flex items-center gap-2">
+        <Table className="h-3.5 w-3.5 text-primary" />
+        <h2 className="text-[11px] font-bold text-foreground uppercase tracking-wider flex-1">Script</h2>
+        <div className="flex items-center gap-2 text-[9px] font-mono-code">
+          <span className="text-accent">🎆{pyroCount}</span>
+          <span className="text-primary">🤖{droneCount}</span>
+          <span className="text-muted-foreground">🔗{chainCount}</span>
+          <span className="px-1.5 py-0.5 rounded bg-success/10 text-success font-bold">${totalCost.toFixed(0)}</span>
         </div>
       </div>
 
       {/* Toolbar */}
-      <div className="px-2 py-1.5 border-b border-border flex items-center gap-0.5 flex-wrap">
+      <div className="px-2 py-1 border-b border-border/30 flex items-center gap-0.5 flex-wrap bg-surface-1/50">
         <div className="relative flex-1 min-w-[80px]">
-          <Filter className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+          <Filter className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/60" />
           <Input
-            placeholder="Filter..."
+            placeholder="Search cues..."
             value={filterText}
             onChange={(e) => setFilterText(e.target.value)}
-            className="h-6 text-[10px] pl-6 bg-surface-2 border-border"
+            className="h-6 text-[10px] pl-6 bg-surface-0 border-border/30 focus:border-primary/50"
           />
         </div>
         
@@ -778,7 +778,8 @@ export default function ScriptWindow() {
       <div className="flex-1 overflow-auto" ref={tableRef}>
         <table className="w-full text-[9px] font-mono-code border-collapse min-w-[600px]">
           <thead className="sticky top-0 bg-surface-1 z-10">
-            <tr className="border-b border-border">
+            <tr className="border-b border-border/40">
+              <th className="px-0.5 py-1 w-6 text-center text-muted-foreground/50 font-medium">#</th>
               <th className="px-1 py-1 w-5"></th>
               <SortableHeader label="Event Time" field="eventTime" current={sortField} dir={sortDir} onSort={toggleSort} />
               <SortableHeader label="Effect Time" field="effectTime" current={sortField} dir={sortDir} onSort={toggleSort} />
@@ -787,18 +788,15 @@ export default function ScriptWindow() {
               <SortableHeader label="Position" field="position" current={sortField} dir={sortDir} onSort={toggleSort} />
               <th className="px-1 py-1 text-left text-muted-foreground font-medium">Pan°</th>
               <th className="px-1 py-1 text-left text-muted-foreground font-medium">Tilt°</th>
-              <SortableHeader label="Duration" field="duration" current={sortField} dir={sortDir} onSort={toggleSort} />
-              <SortableHeader label="Cost" field="cost" current={sortField} dir={sortDir} onSort={toggleSort} />
+              <SortableHeader label="Dur" field="duration" current={sortField} dir={sortDir} onSort={toggleSort} />
+              <SortableHeader label="$" field="cost" current={sortField} dir={sortDir} onSort={toggleSort} />
               <th className="px-1 py-1 text-left text-muted-foreground font-medium">Chain</th>
-              <th className="px-1 py-1 text-left text-muted-foreground font-medium">X</th>
-              <th className="px-1 py-1 text-left text-muted-foreground font-medium">Y</th>
-              <th className="px-1 py-1 text-left text-muted-foreground font-medium">Z</th>
               <th className="px-1 py-1 text-left text-muted-foreground font-medium">Notes</th>
               <th className="px-1 py-1 w-8"></th>
             </tr>
           </thead>
           <tbody>
-            {visibleRows.map(({ row, isChainHead, chainCount, collapsed }) => {
+            {visibleRows.map(({ row, isChainHead, chainCount, collapsed }, rowIdx) => {
               const isSelected = selectedTimelineItemId === row.id || selectedIds.has(row.id);
               const chainColor = row.chainRef
                 ? `hsl(${hashCode(row.chainRef) % 360}, 70%, 50%)`
@@ -808,15 +806,22 @@ export default function ScriptWindow() {
                 <tr
                   key={row.id}
                   className={cn(
-                    "border-b border-border/20 cursor-pointer transition-colors group relative",
-                    isSelected ? "bg-primary/10" : "hover:bg-surface-2/30",
-                    row.chainRef && "border-l-2",
+                    "border-b border-border/15 cursor-pointer transition-colors group relative",
+                    isSelected
+                      ? "bg-primary/15 border-l-2 border-l-primary"
+                      : "hover:bg-surface-2/40",
+                    row.chainRef && !isSelected && "border-l-2",
                     isDraggingFill && fillAnchorId === row.id && "bg-primary/20",
                   )}
-                  style={row.chainRef ? { borderLeftColor: chainColor } : undefined}
+                  style={row.chainRef && !isSelected ? { borderLeftColor: chainColor } : undefined}
                   onClick={(e) => toggleSelect(row.id, e)}
                 >
-                  {/* Chain collapse toggle */}
+                  {/* Row number */}
+                  <td className="px-0.5 py-0.5 text-center text-muted-foreground/40 text-[8px]">
+                    {rowIdx + 1}
+                  </td>
+
+                  {/* Chain collapse / icon */}
                   <td className="px-0.5 py-0.5 text-center">
                     {isChainHead && chainCount > 1 ? (
                       <button
@@ -837,7 +842,7 @@ export default function ScriptWindow() {
                   <td className="px-1 py-0.5">
                     <input
                       type="number" step="0.001" min="0"
-                      className="w-16 bg-transparent border-b border-border/30 text-foreground focus:border-primary outline-none"
+                      className="w-16 bg-transparent border-b border-transparent hover:border-border/40 focus:border-primary text-foreground outline-none transition-colors"
                       value={row.eventTime}
                       onChange={(e) => updateTimelineItem(row.id, { startTime: parseFloat(e.target.value) || 0 })}
                       onClick={(e) => e.stopPropagation()}
@@ -845,7 +850,7 @@ export default function ScriptWindow() {
                   </td>
 
                   {/* Effect Time */}
-                  <td className="px-1 py-0.5 text-electric">
+                  <td className="px-1 py-0.5 text-primary/80">
                     {formatTime(row.effectTime)}
                   </td>
 
@@ -854,31 +859,41 @@ export default function ScriptWindow() {
                     {row.prefire > 0 ? (
                       <span className="text-warning">{row.prefire.toFixed(1)}s</span>
                     ) : (
-                      <span className="text-muted-foreground/40">—</span>
+                      <span className="text-muted-foreground/30">—</span>
                     )}
                   </td>
 
                   {/* Description */}
                   <td className="px-1 py-0.5">
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: row.color }} />
-                      <span className="text-foreground truncate max-w-[100px]">
+                    <div className="flex items-center gap-1.5">
+                      <div
+                        className="w-2.5 h-2.5 rounded-full flex-shrink-0 ring-1 ring-white/10"
+                        style={{ backgroundColor: row.color }}
+                      />
+                      <span className="text-foreground truncate max-w-[120px] font-medium">
                         {row.description}
                         {collapsed && chainCount > 1 && (
-                          <span className="text-muted-foreground ml-1">×{chainCount}</span>
+                          <span className="text-muted-foreground ml-1 font-normal">×{chainCount}</span>
                         )}
                       </span>
                     </div>
                   </td>
 
                   {/* Position */}
-                  <td className="px-1 py-0.5 text-muted-foreground truncate max-w-[60px]">{row.position}</td>
+                  <td className="px-1 py-0.5">
+                    <span className={cn(
+                      "truncate max-w-[60px] block",
+                      row.position === 'UNASSIGNED' ? "text-destructive/60 italic" : "text-muted-foreground"
+                    )}>
+                      {row.position}
+                    </span>
+                  </td>
 
                   {/* Pan */}
                   <td className="px-1 py-0.5">
                     <input
                       type="number" step="1"
-                      className="w-8 bg-transparent border-b border-border/30 text-muted-foreground focus:border-primary outline-none"
+                      className="w-8 bg-transparent border-b border-transparent hover:border-border/40 focus:border-primary text-muted-foreground outline-none transition-colors"
                       value={row.pan}
                       onChange={(e) => updateTimelineItem(row.id, { pan: parseFloat(e.target.value) || 0 })}
                       onClick={(e) => e.stopPropagation()}
@@ -889,7 +904,7 @@ export default function ScriptWindow() {
                   <td className="px-1 py-0.5">
                     <input
                       type="number" step="1"
-                      className="w-8 bg-transparent border-b border-border/30 text-muted-foreground focus:border-primary outline-none"
+                      className="w-8 bg-transparent border-b border-transparent hover:border-border/40 focus:border-primary text-muted-foreground outline-none transition-colors"
                       value={row.tilt}
                       onChange={(e) => updateTimelineItem(row.id, { tilt: parseFloat(e.target.value) || 0 })}
                       onClick={(e) => e.stopPropagation()}
@@ -900,7 +915,7 @@ export default function ScriptWindow() {
                   <td className="px-1 py-0.5 text-muted-foreground">{row.duration}s</td>
 
                   {/* Cost */}
-                  <td className="px-1 py-0.5 text-safety">${row.cost}</td>
+                  <td className="px-1 py-0.5 text-success">${row.cost}</td>
 
                   {/* Chain */}
                   <td className="px-1 py-0.5">
@@ -912,36 +927,30 @@ export default function ScriptWindow() {
                         )}
                       </div>
                     ) : (
-                      <span className="text-muted-foreground/30">—</span>
+                      <span className="text-muted-foreground/20">—</span>
                     )}
                   </td>
-
-                  {/* X Y Z */}
-                  <td className="px-1 py-0.5 text-destructive">{row.x.toFixed(1)}</td>
-                  <td className="px-1 py-0.5 text-success">{row.y.toFixed(1)}</td>
-                  <td className="px-1 py-0.5 text-electric">{row.z.toFixed(1)}</td>
 
                   {/* Notes */}
                   <td className="px-1 py-0.5">
                     <input
-                      className="w-full bg-transparent border-b border-border/20 text-muted-foreground focus:border-primary outline-none text-[8px]"
-                      placeholder="..."
+                      className="w-full bg-transparent border-b border-transparent hover:border-border/30 focus:border-primary text-muted-foreground outline-none text-[8px] transition-colors"
+                      placeholder="…"
                       value={row.notes}
                       onChange={(e) => updateTimelineItem(row.id, { notes: e.target.value })}
                       onClick={(e) => e.stopPropagation()}
                     />
                   </td>
 
-                  {/* Actions: Delete + Fill Handle */}
+                  {/* Actions */}
                   <td className="px-0.5 py-0.5 text-center">
-                    <div className="flex items-center gap-0.5">
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
-                        className="text-destructive/30 hover:text-destructive"
+                        className="text-destructive/40 hover:text-destructive"
                         onClick={(e) => { e.stopPropagation(); removeTimelineItem(row.id); }}
                       >
                         <Trash2 className="h-2.5 w-2.5" />
                       </button>
-                      {/* Fill handle grip */}
                       {isSelected && (
                         <button
                           className="text-primary/40 hover:text-primary cursor-s-resize"
@@ -961,8 +970,8 @@ export default function ScriptWindow() {
             {isDraggingFill && fillDragCount > 0 && (
               Array.from({ length: fillDragCount }).map((_, i) => (
                 <tr key={`fill-preview-${i}`} className="border-b border-primary/20 bg-primary/5 pointer-events-none">
-                  <td colSpan={16} className="px-2 py-0.5 text-[9px] text-primary/60 font-mono-code">
-                    + Cópia {i + 1}
+                  <td colSpan={14} className="px-2 py-0.5 text-[9px] text-primary/60 font-mono-code">
+                    + Copy {i + 1}
                   </td>
                 </tr>
               ))
@@ -971,13 +980,13 @@ export default function ScriptWindow() {
         </table>
 
         {rows.length === 0 && (
-          <div className="px-3 py-8 text-center">
-            <Table className="h-6 w-6 text-muted-foreground/20 mx-auto mb-2" />
-            <p className="text-[10px] text-muted-foreground/60">
-              Drag effects to the timeline to see script rows here
+          <div className="px-4 py-10 text-center">
+            <Table className="h-8 w-8 text-muted-foreground/15 mx-auto mb-3" />
+            <p className="text-[11px] text-muted-foreground/50 font-medium">
+              No cues in script
             </p>
-            <p className="text-[8px] text-muted-foreground/40 mt-1">
-              Ctrl+C/V para copiar/colar · Ctrl+D para duplicar · Fill Handle para distribuir
+            <p className="text-[9px] text-muted-foreground/30 mt-1.5 max-w-[200px] mx-auto leading-relaxed">
+              Drag effects from the Asset Palette to the timeline, then they'll appear here for editing
             </p>
           </div>
         )}
