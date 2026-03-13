@@ -251,6 +251,7 @@ export default function Index() {
         {activePanel === 'groups' && <PositionGroupsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'summary' && <ShowSummaryPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'scene' && <SceneEditorPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'soundlevel' && <SoundLevelPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
