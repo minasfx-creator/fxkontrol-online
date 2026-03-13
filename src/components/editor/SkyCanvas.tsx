@@ -945,15 +945,27 @@ export default function SkyCanvas() {
     setDownloadingScenery(true);
     pushLog('Downloading satellite imagery...', 'info');
     try {
-      const { data, error } = await supabase.functions.invoke('satellite-tile', {
-        body: { lat: gpsOrigin.lat, lng: gpsOrigin.lng, zoom: 18, size: '640x640' },
-      });
-      if (error || !data?.image) {
-        pushLog('Failed to download satellite tile', 'error');
-        toast.error('Falha ao baixar cenário satélite');
+      // Get the API key from the edge function
+      const { data: keyData, error: keyError } = await supabase.functions.invoke('get-maps-key');
+      const apiKey = keyData?.key;
+      if (keyError || !apiKey) {
+        pushLog('Failed to get Google Maps API key', 'error');
+        toast.error('Falha ao obter chave do Google Maps');
         return;
       }
-      setSatelliteTexture(data.image);
+
+      // Fetch satellite tile directly from client (avoids server-side 403 restrictions)
+      const url = `https://maps.googleapis.com/maps/api/staticmap?center=${gpsOrigin.lat},${gpsOrigin.lng}&zoom=18&size=640x640&maptype=satellite&key=${apiKey}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        pushLog(`Google Static Maps error: ${res.status}`, 'error');
+        toast.error(`Erro Google Maps: ${res.status}. Verifique se a Maps Static API está habilitada.`);
+        return;
+      }
+
+      const blob = await res.blob();
+      const imageUrl = URL.createObjectURL(blob);
+      setSatelliteTexture(imageUrl);
       pushLog(`Satellite scenery loaded: ${gpsOrigin.lat.toFixed(4)}°, ${gpsOrigin.lng.toFixed(4)}°`, 'success');
       toast.success('Cenário satélite carregado!');
     } catch (err) {
