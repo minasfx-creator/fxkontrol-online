@@ -2,11 +2,19 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { useProjectStore, type Position, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useUndoStore } from '@/store/useUndoStore';
 import * as THREE from 'three';
 
 const PYRO_COLOR = '#FF6B35';
 const DRONE_COLOR = '#00B4D8';
 const SNAP_GRID = 0.5;
+const SNAP_GUIDE_THRESHOLD = 0.4; // meters — show guide when within this distance
+
+interface SnapGuide {
+  axis: 'x' | 'z';
+  value: number;
+  sourceName: string;
+}
 
 function Pin({ position, onRightClick }: { position: Position; onRightClick: (pos: Position, screenPos: { x: number; y: number }) => void }) {
   const { selectedPositionIds, selectPosition, togglePositionSelection, editorMode, updatePosition, timelineItems } = useProjectStore();
@@ -16,11 +24,14 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
   const glowRef = useRef<THREE.Group>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [snapGuides, setSnapGuides] = useState<SnapGuide[]>([]);
   const { camera, raycaster, gl } = useThree();
   const dragPlane = useRef(new THREE.Plane());
   const intersection = useRef(new THREE.Vector3());
   const dragOffset = useRef(new THREE.Vector3());
   const otherStartPositions = useRef<Map<string, { x: number; z: number }>>(new Map());
+  const dragStartPos = useRef<{ x: number; z: number }>({ x: 0, z: 0 });
+  const hasSavedCheckpoint = useRef(false);
 
   const linkedEffects = timelineItems.filter(
     t => t.positionId === position.id || t.positionIds?.includes(position.id)
@@ -33,13 +44,33 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
     }
   });
 
+  // Compute snap guides against other non-selected positions
+  const computeSnapGuides = useCallback((x: number, z: number): { guides: SnapGuide[]; snappedX: number; snappedZ: number } => {
+    const store = useProjectStore.getState();
+    const others = store.positions.filter(p => !store.selectedPositionIds.includes(p.id));
+    const guides: SnapGuide[] = [];
+    let snappedX = x;
+    let snappedZ = z;
+
+    for (const other of others) {
+      if (Math.abs(other.x - x) < SNAP_GUIDE_THRESHOLD) {
+        guides.push({ axis: 'x', value: other.x, sourceName: other.name });
+        snappedX = other.x;
+      }
+      if (Math.abs(other.z - z) < SNAP_GUIDE_THRESHOLD) {
+        guides.push({ axis: 'z', value: other.z, sourceName: other.name });
+        snappedZ = other.z;
+      }
+    }
+    return { guides, snappedX, snappedZ };
+  }, []);
+
   const onPointerDown = useCallback((e: any) => {
     if (editorMode !== 'select') return;
     e.stopPropagation();
 
     if (e.nativeEvent?.button === 2 || e.button === 2) {
       onRightClick(position, { x: e.clientX || e.nativeEvent?.clientX || 0, y: e.clientY || e.nativeEvent?.clientY || 0 });
-      // Also dispatch global event for context menu component
       window.dispatchEvent(new CustomEvent('position-context-menu', {
         detail: { posId: position.id, x: e.clientX || e.nativeEvent?.clientX || 0, y: e.clientY || e.nativeEvent?.clientY || 0 }
       }));
@@ -56,6 +87,8 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
     }
 
     setIsDragging(true);
+    hasSavedCheckpoint.current = false;
+    dragStartPos.current = { x: position.x, z: position.z };
     (gl.domElement as HTMLElement).style.cursor = 'grabbing';
 
     dragPlane.current.setFromNormalAndCoplanarPoint(
@@ -76,7 +109,6 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
       position.z - intersection.current.z
     );
 
-    // Store initial positions for multi-drag
     const store = useProjectStore.getState();
     otherStartPositions.current.clear();
     store.selectedPositionIds.forEach(id => {
@@ -90,6 +122,12 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
   const onPointerMove = useCallback((e: any) => {
     if (!isDragging) return;
     e.stopPropagation();
+
+    // Save undo checkpoint on first move (not click)
+    if (!hasSavedCheckpoint.current) {
+      useUndoStore.getState().checkpoint();
+      hasSavedCheckpoint.current = true;
+    }
 
     const rect = gl.domElement.getBoundingClientRect();
     const mouse = new THREE.Vector2(
@@ -105,18 +143,25 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
     if (e.ctrlKey || e.metaKey) {
       newX = Math.round(newX / SNAP_GRID) * SNAP_GRID;
       newZ = Math.round(newZ / SNAP_GRID) * SNAP_GRID;
+      setSnapGuides([]);
     } else {
-      newX = Math.round(newX * 10) / 10;
-      newZ = Math.round(newZ * 10) / 10;
+      // Smart snap to other positions
+      const { guides, snappedX, snappedZ } = computeSnapGuides(
+        Math.round(newX * 10) / 10,
+        Math.round(newZ * 10) / 10
+      );
+      newX = snappedX;
+      newZ = snappedZ;
+      setSnapGuides(guides);
     }
 
     const store = useProjectStore.getState();
     updatePosition(position.id, { x: newX, z: newZ });
 
-    // Multi-drag with stored offsets (no drift)
+    // Multi-drag
     if (store.selectedPositionIds.length > 1 && store.selectedPositionIds.includes(position.id)) {
-      const dx = newX - position.x;
-      const dz = newZ - position.z;
+      const dx = newX - dragStartPos.current.x;
+      const dz = newZ - dragStartPos.current.z;
       otherStartPositions.current.forEach((startPos, id) => {
         updatePosition(id, {
           x: Math.round((startPos.x + dx) * 10) / 10,
@@ -124,11 +169,12 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
         });
       });
     }
-  }, [isDragging, position.id, position.x, position.z, updatePosition, camera, raycaster, gl]);
+  }, [isDragging, position.id, updatePosition, camera, raycaster, gl, computeSnapGuides]);
 
   const onPointerUp = useCallback(() => {
     if (isDragging) {
       setIsDragging(false);
+      setSnapGuides([]);
       (gl.domElement as HTMLElement).style.cursor = '';
     }
   }, [isDragging, gl]);
@@ -145,6 +191,14 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
     if (!isDragging) (gl.domElement as HTMLElement).style.cursor = '';
   }, [isDragging, gl]);
 
+  // Double-click to open popup editor
+  const onDoubleClick = useCallback((e: any) => {
+    e.stopPropagation();
+    selectPosition(position.id);
+    // Dispatch event for popup editor
+    window.dispatchEvent(new CustomEvent('position-double-click', { detail: { posId: position.id } }));
+  }, [position.id, selectPosition]);
+
   const emissiveIntensity = isDragging ? 1.0 : isSelected ? 0.7 : isHovered ? 0.4 : 0.15;
   const pinScale = isSelected ? 1.15 : isHovered ? 1.05 : 1;
 
@@ -156,7 +210,7 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
         <meshBasicMaterial color={color} transparent opacity={isSelected ? 0.5 : isHovered ? 0.3 : 0.2} />
       </mesh>
 
-      {/* Drag guides */}
+      {/* Drag crosshair guides */}
       {isDragging && (
         <>
           <mesh position={[0, 0.015, 0]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -170,6 +224,18 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
         </>
       )}
 
+      {/* Snap alignment guides */}
+      {snapGuides.map((guide, i) => (
+        <mesh key={i} position={[
+          guide.axis === 'x' ? 0 : 0,
+          0.02,
+          guide.axis === 'z' ? 0 : 0,
+        ]} rotation={[-Math.PI / 2, 0, guide.axis === 'x' ? Math.PI / 2 : 0]}>
+          <planeGeometry args={[300, 0.04]} />
+          <meshBasicMaterial color="#00ff88" transparent opacity={0.4} />
+        </mesh>
+      ))}
+
       {/* Pin body */}
       <mesh
         ref={meshRef}
@@ -179,6 +245,7 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
         onPointerUp={onPointerUp}
         onPointerOver={onPointerOver}
         onPointerOut={onPointerOut}
+        onDoubleClick={onDoubleClick}
       >
         <cylinderGeometry args={[0.08, 0.15, 0.8, 12]} />
         <meshStandardMaterial
@@ -263,6 +330,9 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
               {position.x.toFixed(1)}, {position.z.toFixed(1)}
             </span>
           )}
+          {snapGuides.length > 0 && (
+            <span className="text-[7px] text-green-400 bg-black/40 px-1 rounded">SNAP</span>
+          )}
         </div>
       </Html>
 
@@ -283,12 +353,14 @@ function GroundClickPlane() {
 
   const handleClick = useCallback((e: THREE.Event & { point: THREE.Vector3 }) => {
     if (editorMode === 'add-pyro' || editorMode === 'add-drone') {
+      useUndoStore.getState().checkpoint();
       const type = editorMode === 'add-pyro' ? 'pyro' as const : 'drone-pad' as const;
       const prefix = type === 'pyro' ? 'POS' : 'PAD';
+      const count = useProjectStore.getState().positions.filter(p => p.type === type).length + 1;
       const id = `pos-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
       addPosition({
         id,
-        name: `${prefix}-${Math.floor(Math.random() * 900 + 100)}`,
+        name: `${prefix}-${count.toString().padStart(3, '0')}`,
         type,
         x: Math.round(e.point.x * 10) / 10,
         y: 0,
@@ -297,7 +369,10 @@ function GroundClickPlane() {
         color: type === 'drone-pad' ? '#00B4D8' : '#FF6B35',
       });
       useProjectStore.getState().selectPosition(id);
-      setEditorMode('select');
+      // Stay in placement mode if Shift is held
+      if (!(e as any).nativeEvent?.shiftKey) {
+        setEditorMode('select');
+      }
       return;
     }
 

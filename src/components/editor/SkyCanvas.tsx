@@ -1265,7 +1265,7 @@ export default function SkyCanvas() {
 
       <PerformanceHUD statsRef={perfStatsRef} droneCount={droneCount} />
       <ViewportTerminal />
-      <MiniMap />
+      {/* MiniMap removed */}
       <SelectionStatusBar />
       <AlignmentTools />
 
