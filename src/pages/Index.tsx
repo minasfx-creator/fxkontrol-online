@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState, useCallback, useEffect } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
+import { toast } from 'sonner';
 import Toolbar from '@/components/editor/Toolbar';
 import SplashScreen from '@/components/editor/SplashScreen';
 import GlobeSelector from '@/components/editor/GlobeSelector';
