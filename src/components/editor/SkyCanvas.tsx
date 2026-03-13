@@ -800,13 +800,13 @@ function StageGround() {
         infiniteGrid
       />
 
-      {/* Central firing area marker */}
+      {/* Central firing area marker — scaled */}
       <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[24, 24.3, 64]} />
+        <ringGeometry args={[40, 40.4, 64]} />
         <meshBasicMaterial color="#ff4444" transparent opacity={0.5} />
       </mesh>
       <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[49, 49.3, 64]} />
+        <ringGeometry args={[80, 80.4, 64]} />
         <meshBasicMaterial color="#ffaa00" transparent opacity={0.3} />
       </mesh>
 
