@@ -815,18 +815,18 @@ function StageGround() {
 function TreelineSilhouette() {
   const trees = useMemo(() => {
     const result: { x: number; z: number; h: number; w: number; layer: number }[] = [];
-    // 4 depth layers — expanded world
-    for (let layer = 0; layer < 4; layer++) {
-      const count = 80 - layer * 15;
-      const baseDist = 150 + layer * 40;
+    // 5 depth layers — Google Earth-scale world
+    for (let layer = 0; layer < 5; layer++) {
+      const count = 100 - layer * 15;
+      const baseDist = 200 + layer * 80;
       for (let i = 0; i < count; i++) {
         const angle = (i / count) * Math.PI * 2 + layer * 0.05;
-        const dist = baseDist + Math.random() * 20;
+        const dist = baseDist + Math.random() * 40;
         result.push({
           x: Math.cos(angle) * dist,
           z: Math.sin(angle) * dist,
-          h: 5 + Math.random() * 15 + layer * 3,
-          w: 3 + Math.random() * 6,
+          h: 5 + Math.random() * 18 + layer * 4,
+          w: 4 + Math.random() * 8,
           layer,
         });
       }
