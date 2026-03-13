@@ -653,6 +653,7 @@ export default function SkyCanvas() {
         <PositionPins />
         <TrajectoryPaths />
         <DroneChoreography />
+        <BoidsVisualizer />
         <TimelineEffects />
         <GeofenceVisual />
         <PlaybackClock />
