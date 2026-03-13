@@ -2,13 +2,12 @@ import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
-const DRONE_COLOR = '#00B4D8';
 const ARM_LENGTH = 0.3;
 
-/** Simplified quadcopter mesh: body + 4 arms + spinning rotors + LED */
+/** Detailed quadcopter with PBR carbon fiber, spinning rotors, navigation LEDs, and RGB top LED */
 export default function QuadcopterModel({
   position,
-  color = DRONE_COLOR,
+  color = '#00B4D8',
   selected = false,
   scale = 1,
 }: {
@@ -21,10 +20,13 @@ export default function QuadcopterModel({
   const rotorsRef = useRef<THREE.Group[]>([]);
 
   useFrame((_, delta) => {
-    // Spin rotors
     rotorsRef.current.forEach((r) => {
-      if (r) r.rotation.y += delta * 25;
+      if (r) r.rotation.y += delta * 35;
     });
+    // Subtle hover wobble
+    if (groupRef.current) {
+      groupRef.current.position.y = position[1] + Math.sin(Date.now() * 0.003 + position[0]) * 0.015;
+    }
   });
 
   const armPositions: [number, number, number][] = [
@@ -34,73 +36,146 @@ export default function QuadcopterModel({
     [ARM_LENGTH, 0, -ARM_LENGTH],
   ];
 
+  // Nav light colors: front=green, rear=red
+  const navColors = ['#00ff44', '#00ff44', '#ff2200', '#ff2200'];
+
   return (
     <group ref={groupRef} position={position} scale={scale}>
-      {/* Central body */}
-      <mesh>
-        <boxGeometry args={[0.2, 0.08, 0.2]} />
+      {/* Central body — carbon fiber PBR */}
+      <mesh castShadow>
+        <boxGeometry args={[0.22, 0.07, 0.22]} />
         <meshStandardMaterial
-          color="#1a1a2e"
-          metalness={0.8}
-          roughness={0.3}
+          color="#0a0a18"
+          metalness={0.92}
+          roughness={0.12}
+          envMapIntensity={0.6}
         />
       </mesh>
 
-      {/* LED on top */}
+      {/* Battery pack underneath */}
+      <mesh position={[0, -0.05, 0]}>
+        <boxGeometry args={[0.14, 0.04, 0.08]} />
+        <meshStandardMaterial color="#1a1a2e" metalness={0.5} roughness={0.6} />
+      </mesh>
+
+      {/* Main RGB LED on top — HDR emissive */}
       <mesh position={[0, 0.06, 0]}>
-        <sphereGeometry args={[0.04, 8, 8]} />
-        <meshBasicMaterial color={color} />
+        <sphereGeometry args={[0.04, 12, 12]} />
+        <meshStandardMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={10}
+          toneMapped={false}
+          metalness={0}
+          roughness={0.1}
+        />
+      </mesh>
+      {/* LED volumetric halo */}
+      <mesh position={[0, 0.06, 0]}>
+        <sphereGeometry args={[0.12, 8, 8]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={0.12}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
       </mesh>
       <pointLight
         color={color}
-        intensity={selected ? 4 : 1.5}
-        distance={selected ? 6 : 3}
+        intensity={selected ? 5 : 2}
+        distance={selected ? 8 : 4}
         decay={2}
         position={[0, 0.06, 0]}
       />
 
-      {/* Arms + rotors */}
+      {/* Arms + motors + rotors + nav lights */}
       {armPositions.map((armPos, i) => (
         <group key={i}>
-          {/* Arm */}
-          <mesh position={[armPos[0] / 2, 0, armPos[2] / 2]}>
+          {/* Arm — carbon tube */}
+          <mesh position={[armPos[0] / 2, 0, armPos[2] / 2]} castShadow>
             <boxGeometry args={[
-              Math.abs(armPos[0]) > 0 ? ARM_LENGTH : 0.03,
-              0.03,
-              Math.abs(armPos[2]) > 0 ? ARM_LENGTH : 0.03,
+              Math.abs(armPos[0]) > 0 ? ARM_LENGTH + 0.02 : 0.025,
+              0.025,
+              Math.abs(armPos[2]) > 0 ? ARM_LENGTH + 0.02 : 0.025,
             ]} />
-            <meshStandardMaterial color="#333" metalness={0.6} roughness={0.4} />
+            <meshStandardMaterial color="#1a1a28" metalness={0.8} roughness={0.2} />
           </mesh>
 
           {/* Motor mount */}
-          <mesh position={armPos}>
-            <cylinderGeometry args={[0.04, 0.04, 0.04, 8]} />
-            <meshStandardMaterial color="#444" metalness={0.7} roughness={0.3} />
+          <mesh position={armPos} castShadow>
+            <cylinderGeometry args={[0.035, 0.04, 0.05, 12]} />
+            <meshStandardMaterial color="#2a2a3a" metalness={0.85} roughness={0.15} />
           </mesh>
 
-          {/* Rotor (spinning disc) */}
+          {/* Motor bell */}
+          <mesh position={[armPos[0], 0.035, armPos[2]]}>
+            <cylinderGeometry args={[0.032, 0.025, 0.02, 12]} />
+            <meshStandardMaterial color="#444" metalness={0.9} roughness={0.1} />
+          </mesh>
+
+          {/* Rotor disc (spinning) */}
           <group
-            position={[armPos[0], 0.04, armPos[2]]}
+            position={[armPos[0], 0.05, armPos[2]]}
             ref={(el) => { if (el) rotorsRef.current[i] = el; }}
           >
-            <mesh rotation={[Math.PI / 2, 0, 0]}>
-              <torusGeometry args={[0.08, 0.005, 4, 16]} />
-              <meshBasicMaterial color={color} transparent opacity={0.4} />
-            </mesh>
-            {/* Blade disc effect */}
+            {/* Blade disc effect — motion blur */}
             <mesh rotation={[-Math.PI / 2, 0, 0]}>
-              <circleGeometry args={[0.08, 16]} />
-              <meshBasicMaterial color={color} transparent opacity={0.08} side={THREE.DoubleSide} />
+              <circleGeometry args={[0.09, 24]} />
+              <meshBasicMaterial
+                color={color}
+                transparent
+                opacity={0.06}
+                side={THREE.DoubleSide}
+                depthWrite={false}
+                blending={THREE.AdditiveBlending}
+              />
+            </mesh>
+            {/* Blade tips ring */}
+            <mesh rotation={[Math.PI / 2, 0, 0]}>
+              <torusGeometry args={[0.085, 0.003, 4, 24]} />
+              <meshBasicMaterial color={color} transparent opacity={0.25} />
             </mesh>
           </group>
+
+          {/* Navigation light — small LED at arm tip */}
+          <mesh position={[armPos[0], -0.01, armPos[2]]}>
+            <sphereGeometry args={[0.012, 6, 6]} />
+            <meshBasicMaterial color={navColors[i]} toneMapped={false} />
+          </mesh>
+          {/* Nav light glow */}
+          <mesh position={[armPos[0], -0.01, armPos[2]]}>
+            <sphereGeometry args={[0.03, 6, 6]} />
+            <meshBasicMaterial
+              color={navColors[i]}
+              transparent
+              opacity={0.08}
+              depthWrite={false}
+              blending={THREE.AdditiveBlending}
+            />
+          </mesh>
         </group>
+      ))}
+
+      {/* Landing gear — small feet */}
+      {[[-0.1, -0.08, 0.1], [0.1, -0.08, 0.1], [-0.1, -0.08, -0.1], [0.1, -0.08, -0.1]].map((p, i) => (
+        <mesh key={`leg-${i}`} position={p as [number, number, number]}>
+          <cylinderGeometry args={[0.006, 0.008, 0.06, 6]} />
+          <meshStandardMaterial color="#333" metalness={0.6} roughness={0.4} />
+        </mesh>
       ))}
 
       {/* Selection glow ring */}
       {selected && (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
-          <ringGeometry args={[0.35, 0.45, 24]} />
-          <meshBasicMaterial color={color} transparent opacity={0.5} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.06, 0]}>
+          <ringGeometry args={[0.35, 0.5, 32]} />
+          <meshBasicMaterial
+            color={color}
+            transparent
+            opacity={0.5}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+          />
         </mesh>
       )}
     </group>
