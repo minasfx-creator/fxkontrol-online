@@ -1,13 +1,14 @@
-import { useEffect, useRef } from 'react';
-import { X, Clock, Radio, Play, Square, RotateCcw, Zap } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { X, Clock, Radio, Play, Square, RotateCcw, Zap, Volume2, VolumeX, Link2, Unlink2, Timer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useSMPTEStore } from '@/store/useSMPTEStore';
 import { useProjectStore } from '@/store/useProjectStore';
-import { formatTimecode, encodeTimecodeToLTC, generateMTCQuarterFrames, type SMPTEFrameRate } from '@/lib/smpteEngine';
+import { formatTimecode, encodeTimecodeToLTC, generateMTCQuarterFrames, secondsToTimecode, type SMPTEFrameRate } from '@/lib/smpteEngine';
 
 interface SMPTEPanelProps {
   onClose: () => void;
@@ -16,23 +17,24 @@ interface SMPTEPanelProps {
 export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
   const store = useSMPTEStore();
   const { currentTime, isPlaying } = useProjectStore();
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [startTcInput, setStartTcInput] = useState('01:00:00:00');
 
-  // Tick sync engine
-  useEffect(() => {
-    if (!store.running) return;
-    intervalRef.current = setInterval(() => {
-      const t = useProjectStore.getState().currentTime;
-      const external = store.mode === 'slave' ? t + (Math.random() - 0.5) * 0.002 : undefined;
-      store.tick(t, external);
-    }, 33); // ~30Hz
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [store.running, store.mode]);
-
-  const tc = store.timecode;
+  // Derive display TC from current time + offset
+  const offsetTime = currentTime + store.startTimecodeSeconds;
+  const tc = secondsToTimecode(offsetTime, store.frameRate, store.frameRate === 29.97);
   const tcStr = formatTimecode(tc);
   const ltcSignal = store.running ? encodeTimecodeToLTC(tc) : null;
   const mtcFrames = store.running ? generateMTCQuarterFrames(tc) : [];
+
+  // Initialize start TC input
+  useEffect(() => {
+    const stc = secondsToTimecode(store.startTimecodeSeconds, store.frameRate, false);
+    setStartTcInput(formatTimecode(stc));
+  }, [store.startTimecodeSeconds, store.frameRate]);
+
+  const handleStartTcBlur = () => {
+    store.setStartTimecode(startTcInput);
+  };
 
   return (
     <div className="h-full bg-surface-1 border-l border-border flex flex-col">
@@ -40,7 +42,7 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-primary" />
-          <span className="text-xs font-mono-code font-bold text-foreground">SMPTE / LTC</span>
+          <span className="text-xs font-mono-code font-bold text-foreground">SMPTE / LTC / MTC</span>
         </div>
         <Button variant="ghost" size="icon" className="h-5 w-5" onClick={onClose}>
           <X className="w-3 h-3" />
@@ -56,14 +58,18 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
           <div className="flex items-center justify-center gap-2 mt-2">
             <div className={cn(
               "w-2 h-2 rounded-full",
-              store.locked ? "bg-success animate-pulse" : "bg-destructive"
+              store.locked ? "bg-success animate-pulse" : store.running ? "bg-warning animate-pulse" : "bg-destructive"
             )} />
             <span className="text-[10px] font-mono-code text-muted-foreground">
-              {store.locked ? 'LOCKED' : 'UNLOCKED'}
+              {store.locked ? 'LOCKED' : store.running ? 'SYNCING' : 'IDLE'}
             </span>
             <span className="text-[10px] font-mono-code text-muted-foreground">
               {store.frameRate}fps{tc.dropFrame ? ' DF' : ' NDF'}
             </span>
+          </div>
+          {/* Secondary: project time */}
+          <div className="text-[9px] font-mono-code text-muted-foreground mt-1">
+            Project: {currentTime.toFixed(2)}s | Offset: +{store.startTimecodeSeconds.toFixed(1)}s
           </div>
         </div>
 
@@ -83,6 +89,46 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
           </Button>
         </div>
 
+        {/* Auto-follow toggle */}
+        <div className="bg-surface-0 rounded p-2 border border-border space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              {store.autoFollow ? <Link2 className="w-3 h-3 text-primary" /> : <Unlink2 className="w-3 h-3 text-muted-foreground" />}
+              <Label className="text-[10px] font-mono-code text-foreground">Auto-Follow Playback</Label>
+            </div>
+            <Switch checked={store.autoFollow} onCheckedChange={store.setAutoFollow} className="scale-75" />
+          </div>
+          <div className="text-[8px] text-muted-foreground leading-tight">
+            {store.autoFollow ? 'SMPTE starts/stops with project playback' : 'Manual control only'}
+          </div>
+        </div>
+
+        {/* Start timecode */}
+        <div className="space-y-1">
+          <Label className="text-[10px] font-mono-code text-muted-foreground flex items-center gap-1">
+            <Timer className="w-3 h-3" /> START TIMECODE
+          </Label>
+          <Input
+            value={startTcInput}
+            onChange={e => setStartTcInput(e.target.value)}
+            onBlur={handleStartTcBlur}
+            onKeyDown={e => e.key === 'Enter' && handleStartTcBlur()}
+            className="h-7 text-xs font-mono-code tracking-wider"
+            placeholder="01:00:00:00"
+          />
+          <div className="flex gap-1">
+            {['00:00:00:00', '01:00:00:00', '10:00:00:00', '23:00:00:00'].map(preset => (
+              <button
+                key={preset}
+                onClick={() => { setStartTcInput(preset); store.setStartTimecode(preset); }}
+                className="text-[8px] font-mono-code text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded border border-border/30 hover:border-primary/40 transition-colors"
+              >
+                {preset.slice(0, 5)}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Configuration */}
         <div className="space-y-3">
           <div className="space-y-1">
@@ -92,8 +138,8 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="master">Master (generate)</SelectItem>
-                <SelectItem value="slave">Slave (receive)</SelectItem>
+                <SelectItem value="master">Master (generate TC)</SelectItem>
+                <SelectItem value="slave">Slave (receive TC)</SelectItem>
                 <SelectItem value="freerun">Free Run</SelectItem>
               </SelectContent>
             </Select>
@@ -110,12 +156,32 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="24">24 fps (Film)</SelectItem>
-                <SelectItem value="25">25 fps (PAL)</SelectItem>
+                <SelectItem value="25">25 fps (PAL / EBU)</SelectItem>
                 <SelectItem value="29.97">29.97 fps (NTSC DF)</SelectItem>
-                <SelectItem value="30">30 fps (NDF)</SelectItem>
+                <SelectItem value="30">30 fps (SMPTE NDF)</SelectItem>
               </SelectContent>
             </Select>
           </div>
+        </div>
+
+        {/* LTC Audio Output */}
+        <div className="bg-surface-0 rounded p-2 border border-border space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              {store.ltcAudioEnabled ? <Volume2 className="w-3 h-3 text-primary" /> : <VolumeX className="w-3 h-3 text-muted-foreground" />}
+              <Label className="text-[10px] font-mono-code text-foreground">LTC Audio Output</Label>
+            </div>
+            <Switch checked={store.ltcAudioEnabled} onCheckedChange={store.setLtcAudioEnabled} className="scale-75" />
+          </div>
+          <div className="text-[8px] text-muted-foreground leading-tight">
+            Generates SMPTE 12M LTC audio signal on default output at 48kHz
+          </div>
+          {store.ltcAudioEnabled && store.running && (
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
+              <span className="text-[9px] font-mono-code text-success">LTC TRANSMITTING</span>
+            </div>
+          )}
         </div>
 
         {/* Sync metrics */}
@@ -125,13 +191,14 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
           <MetricRow label="Jitter" value={`±${Math.abs(store.jitter).toFixed(2)} ms`} warn={Math.abs(store.jitter) > 0.4} />
           <MetricRow label="Drift" value={`${store.drift.toFixed(1)} ppm`} warn={Math.abs(store.drift) > 5} />
           <MetricRow label="Mode" value={store.mode.toUpperCase()} />
+          <MetricRow label="Auto-Follow" value={store.autoFollow ? 'ON' : 'OFF'} />
         </div>
 
         {/* LTC Signal visualization */}
         {ltcSignal && (
           <div className="space-y-1">
             <div className="text-[10px] font-mono-code text-muted-foreground font-bold flex items-center gap-1">
-              <Radio className="w-3 h-3" /> LTC SIGNAL
+              <Radio className="w-3 h-3" /> LTC SIGNAL (80-bit SMPTE 12M)
             </div>
             <div className="bg-surface-0 rounded p-2 border border-border h-12 flex items-end gap-px overflow-hidden">
               {ltcSignal.biphase.slice(0, 80).map((v, i) => (
@@ -142,7 +209,7 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
               ))}
             </div>
             <div className="text-[9px] font-mono-code text-muted-foreground">
-              {ltcSignal.bits.length} bits • {ltcSignal.audioSamples.length} samples @ 48kHz
+              {ltcSignal.bits.length} bits • {ltcSignal.audioSamples.length} samples @ 48kHz • Biphase-Mark
             </div>
           </div>
         )}
@@ -151,7 +218,7 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
         {mtcFrames.length > 0 && (
           <div className="space-y-1">
             <div className="text-[10px] font-mono-code text-muted-foreground font-bold flex items-center gap-1">
-              <Zap className="w-3 h-3" /> MTC QUARTER FRAMES
+              <Zap className="w-3 h-3" /> MTC QUARTER FRAMES (MIDI F1)
             </div>
             <div className="grid grid-cols-4 gap-1">
               {mtcFrames.map((qf, i) => (
@@ -163,6 +230,18 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
             </div>
           </div>
         )}
+
+        {/* Protocol info */}
+        <div className="bg-surface-0 rounded p-2 border border-border space-y-1">
+          <div className="text-[10px] font-mono-code text-muted-foreground font-bold">PROTOCOL INFO</div>
+          <div className="text-[8px] font-mono-code text-muted-foreground space-y-0.5">
+            <div>• SMPTE 12M-2 (2008) Linear Timecode</div>
+            <div>• Manchester / Biphase-Mark encoding</div>
+            <div>• MTC: MIDI 1.0 Specification (F1 xx)</div>
+            <div>• Drop-Frame: SMPTE 12M Annex A (29.97fps)</div>
+            <div>• Supported: 24/25/29.97df/30 fps</div>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -19,19 +19,30 @@ import { exportVVIZ, exportFiringCSV, exportSkyc, downloadFile } from '@/lib/exp
 
 function TimecodeDisplay() {
   const { currentTime, isPlaying } = useProjectStore();
-  const h = Math.floor(currentTime / 3600);
-  const m = Math.floor((currentTime % 3600) / 60);
-  const s = Math.floor(currentTime % 60);
-  const f = Math.floor((currentTime % 1) * 30);
-  const tc = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}:${f.toString().padStart(2,'0')}`;
+  const { frameRate, startTimecodeSeconds, locked, running, mode } = useSMPTEStore();
+  
+  const offsetTime = currentTime + startTimecodeSeconds;
+  const tc = secondsToTimecode(offsetTime, frameRate, frameRate === 29.97);
+  const tcStr = formatTimecode(tc);
 
   return (
     <div className="flex items-center gap-2 px-3 py-0.5 bg-surface-0 rounded border border-border">
-      <span className="font-mono-code text-sm tracking-[0.12em] text-electric font-bold">{tc}</span>
-      <div className={cn(
-        "w-1.5 h-1.5 rounded-full",
-        isPlaying ? "bg-success animate-pulse-glow" : "bg-muted-foreground"
-      )} />
+      <span className="font-mono-code text-sm tracking-[0.12em] text-electric font-bold">{tcStr}</span>
+      <div className="flex items-center gap-1">
+        <div className={cn(
+          "w-1.5 h-1.5 rounded-full",
+          isPlaying ? "bg-success animate-pulse-glow" : "bg-muted-foreground"
+        )} />
+        {running && (
+          <div className={cn(
+            "w-1.5 h-1.5 rounded-full",
+            locked ? "bg-primary" : "bg-warning animate-pulse"
+          )} />
+        )}
+      </div>
+      <span className="text-[8px] font-mono-code text-muted-foreground">
+        {frameRate}{tc.dropFrame ? 'DF' : ''}
+      </span>
     </div>
   );
 }
