@@ -21,11 +21,16 @@ function computeDronePositions(
   const lastEnd = lastFormation.startTime + lastFormation.transitionDuration + lastFormation.holdDuration;
   const landingDuration = 10;
 
-  // Before any formation starts: on ground
+  // Before any formation starts: staggered ground positions with wave takeoff anticipation
   if (currentTime < firstStart) {
-    return formations[0].points.slice(0, droneCount).map((p) => ({
-      x: p.x, y: 0.1, z: p.z, color: formations[0].color,
-    }));
+    const preTime = firstStart - currentTime;
+    return formations[0].points.slice(0, droneCount).map((p, idx) => {
+      // Subtle breathing pulse on ground before launch
+      const breathe = preTime < 3 ? Math.sin((3 - preTime) * Math.PI * 2 + idx * 0.1) * 0.02 : 0;
+      return {
+        x: p.x, y: 0.1 + breathe, z: p.z, color: formations[0].color,
+      };
+    });
   }
 
   // After all formations + landing
@@ -76,13 +81,20 @@ function computeDronePositions(
 
         return f.points.slice(0, droneCount).map((p, idx) => {
           const prev = prevPositions[idx] || { x: 0, y: 0, z: 0 };
-          const arcHeight = i === 0 ? 0 : Math.sin(smoothT * Math.PI) * 3;
+          // Staggered launch: drones near center launch first (ripple effect)
+          const distFromCenter = Math.sqrt(p.x * p.x + p.z * p.z);
+          const maxDist = Math.sqrt(f.radius * f.radius * 2) || 30;
+          const staggerDelay = i === 0 ? (distFromCenter / maxDist) * 0.15 : 0;
+          const staggeredT = Math.max(0, Math.min(1, (t - staggerDelay) / (1 - staggerDelay)));
+          const effT = i === 0 ? (staggeredT < 0.5 ? 16 * staggeredT ** 5 : 1 - Math.pow(-2 * staggeredT + 2, 5) / 2) : smoothT;
+
+          const arcHeight = i === 0 ? Math.sin(effT * Math.PI) * 5 : Math.sin(smoothT * Math.PI) * 3;
           // Color interpolation: from previous formation color → this formation color
-          const droneColor = interpolateColor(prevColor, targetColor, smoothT, colorMode, idx, droneCount);
+          const droneColor = interpolateColor(prevColor, targetColor, effT, colorMode, idx, droneCount);
           return {
-            x: prev.x + (p.x - prev.x) * smoothT,
-            y: prev.y + (f.height - prev.y) * smoothT + arcHeight,
-            z: prev.z + (p.z - prev.z) * smoothT,
+            x: prev.x + (p.x - prev.x) * effT,
+            y: prev.y + (f.height - prev.y) * effT + arcHeight,
+            z: prev.z + (p.z - prev.z) * effT,
             color: droneColor,
           };
         });
