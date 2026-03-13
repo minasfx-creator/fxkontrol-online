@@ -187,18 +187,18 @@ export function DuplicateInFlightsDialog({ children }: { children: React.ReactNo
   const [angleBetween, setAngleBetween] = useState(15);
   const { selectedTimelineItemIds, timelineItems, addTimelineItem } = useProjectStore();
 
-  const handleApply = useCallback(() => {
-    const items = selectedTimelineItemIds
-      .map(id => timelineItems.find(i => i.id === id))
-      .filter(Boolean) as typeof timelineItems;
+  const selectedItems = selectedTimelineItemIds
+    .map(id => timelineItems.find(i => i.id === id))
+    .filter(Boolean) as typeof timelineItems;
 
-    if (items.length === 0) {
+  const handleApply = useCallback(() => {
+    if (selectedItems.length === 0) {
       toast.error('Select effects to duplicate');
       return;
     }
 
     let created = 0;
-    items.forEach(item => {
+    selectedItems.forEach(item => {
       for (let s = 1; s < shotsPerFlight; s++) {
         const angle = s * angleBetween;
         const newId = `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${s}`;
