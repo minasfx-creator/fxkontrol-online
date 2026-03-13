@@ -766,6 +766,24 @@ function StageGround() {
     <group>
       <GrassGround />
       <GroundFog />
+      
+      {/* Reflective wet surface — catches drone LED reflections */}
+      <mesh position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[60, 64]} />
+        <MeshReflectorMaterial
+          mirror={0.35}
+          blur={[300, 100]}
+          resolution={512}
+          mixBlur={0.8}
+          mixStrength={0.6}
+          roughness={0.85}
+          depthScale={0.8}
+          minDepthThreshold={0.4}
+          maxDepthThreshold={1.2}
+          color="#0a120a"
+          metalness={0.15}
+        />
+      </mesh>
 
       {/* Operational grid */}
       <Grid
