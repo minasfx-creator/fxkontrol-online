@@ -2281,14 +2281,18 @@ function inferShapeType(name: string): string {
     [/^text\s/i, 'text'],
     [/^"[^"]+"$/, 'text'],
     [/\btext\b.*"[^"]+"/, 'text'],
-    // Specific new shapes
-    [/runner|corredor|corr[ie]da|running|silhouette.*corr/, 'butterfly'], // runner mapped to butterfly silhouette
-    [/compass|bússola|bussola|rosa.?dos.?ventos/, 'radial_burst'], // compass → radial with 4/8 arms
+    // New dedicated shapes
+    [/runner|corredor|corr[ie]da|running|silhouette.*corr/, 'runner'],
+    [/compass|bússola|bussola|rosa.?dos.?ventos/, 'compass'],
+    [/anchor|âncora|ancora|⚓/, 'anchor'],
+    [/shield|escudo|🛡|brasão/, 'shield'],
+    [/laurel|louros|louro|wreath/, 'laurel_wreath'],
+    [/trophy.*detail|troféu.*alça|trophy.*handle|taça.*alça/, 'trophy_detailed'],
     [/sun\b|sol\b|☀|🌞|sunrise|sunset|pôr.?do.?sol/, 'radial_burst'],
     [/line|linha|horizon|horizonte/, 'wave'],
     [/scatter|dispersão|lantern|lanterna|release/, 'radial_burst'],
     [/pulse|pulsação|pulso|batimento/, 'ring'],
-    [/silhouette|silhueta|vulto|sombra|contorno/, 'butterfly'],
+    [/silhouette|silhueta|vulto|sombra|contorno/, 'runner'],
     // Original shapes
     [/heart|coração|❤|💕|💗|💓|amor|love/, 'heart'],
     [/star|estrela|⭐|✨|🌟|stella/, 'star'],
