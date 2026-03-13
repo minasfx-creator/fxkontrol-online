@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { materializeFormation as materialize } from '@/lib/formationMaterializer';
 
+export type PartType = 'shell' | 'comet' | 'mine' | 'cake' | 'candle' | 'fan' | 'gerb' | 'flame' | 'sfx' | 'light' | 'laser' | 'drone' | 'formation' | 'single_shot' | 'ground' | 'rocket' | 'waterfall' | 'strobe' | 'set_piece';
+
 export interface Effect {
   id: string;
   name: string;
@@ -10,6 +12,19 @@ export interface Effect {
   duration: number;
   cost: number;
   icon: string;
+  // ── Finale 3D compatible fields ──────────────────────────────
+  partType?: PartType;          // Physical device type (from Finale manual)
+  caliber?: number;             // Size in inches (e.g., 3, 4, 5, 6, 8)
+  heightMeters?: number;        // Break/effect height in meters
+  prefire?: number;             // Lift time in seconds (shell rise time)
+  fuseDelay?: number;           // Fuse delay before ignition
+  numDevices?: number;          // Chain device count (1 for single)
+  safetyDistance?: number;      // NFPA 1123 safety distance (meters)
+  vdl?: string;                 // Visual Description Language string
+  pattern?: string;             // Burst pattern: peony, willow, palm, kamuro, crossette
+  shotCount?: number;           // For cakes/roman candles: number of shots
+  laserPattern?: 'fan' | 'harp' | 'tunnel' | 'cone' | 'single'; // For lasers
+  beamType?: 'spot' | 'wash' | 'beam'; // For moving heads
 }
 
 export interface TimelineItem {
@@ -188,125 +203,125 @@ export interface ProjectState {
 }
 
 export const EFFECT_LIBRARY: Effect[] = [
-  // ── Morteiros (Shells) ────────────────────────────────────
-  { id: 'mort-01', name: 'Chrysanthemum 3"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 2.5, cost: 12, icon: '💥' },
-  { id: 'mort-02', name: 'Willow 4"', category: 'morteiros', type: 'firework', color: '#FFA500', duration: 3.5, cost: 18, icon: '🎆' },
-  { id: 'mort-03', name: 'Brocade Crown 5"', category: 'morteiros', type: 'firework', color: '#FFE4B5', duration: 4, cost: 25, icon: '👑' },
-  { id: 'mort-04', name: 'Coconut Palm 6"', category: 'morteiros', type: 'firework', color: '#FF6347', duration: 5, cost: 35, icon: '🌴' },
-  { id: 'shell-01', name: 'Titanium Shell 4"', category: 'morteiros', type: 'firework', color: '#E8E8E8', duration: 3, cost: 20, icon: '💫' },
-  { id: 'shell-02', name: 'Color Shell 6"', category: 'morteiros', type: 'firework', color: '#FF1493', duration: 4.5, cost: 30, icon: '🎇' },
-  { id: 'shell-03', name: 'Kamuro 5"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 5, cost: 28, icon: '🌟' },
-  { id: 'shell-04', name: 'Crossette 4"', category: 'morteiros', type: 'firework', color: '#FF4500', duration: 3, cost: 22, icon: '✖️' },
-  { id: 'shell-05', name: 'Horsetail 6"', category: 'morteiros', type: 'firework', color: '#FFB347', duration: 6, cost: 38, icon: '🐴' },
-  { id: 'shell-06', name: 'Spider 5"', category: 'morteiros', type: 'firework', color: '#00FF7F', duration: 3.5, cost: 26, icon: '🕸️' },
-  { id: 'shell-07', name: 'Ring Shell 4"', category: 'morteiros', type: 'firework', color: '#00BFFF', duration: 3, cost: 24, icon: '💍' },
-  { id: 'shell-08', name: 'Nishiki Kamuro 8"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 7, cost: 65, icon: '🏆' },
-  { id: 'mburst-01', name: 'Triple Burst 3"', category: 'morteiros', type: 'firework', color: '#FF6347', duration: 3.5, cost: 22, icon: '🎆' },
-  { id: 'mburst-02', name: 'Penta Burst 5"', category: 'morteiros', type: 'firework', color: '#9400D3', duration: 5, cost: 40, icon: '💥' },
-  { id: 'shock-01', name: 'Ground Shockwave', category: 'morteiros', type: 'firework', color: '#FF4500', duration: 1.5, cost: 18, icon: '💢' },
-  { id: 'shock-02', name: 'Aerial Shockwave', category: 'morteiros', type: 'firework', color: '#FFFFFF', duration: 2, cost: 25, icon: '🔆' },
-  { id: 'fan-01', name: 'Fan Spread 90°', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 2, cost: 15, icon: '🪭' },
-  { id: 'fan-02', name: 'Wide Fan 180°', category: 'morteiros', type: 'firework', color: '#00FF7F', duration: 2.5, cost: 20, icon: '🌈' },
+  // ── Morteiros (Shells) — with Finale 3D physics ──────────────
+  { id: 'mort-01', name: 'Chrysanthemum 3"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 2.5, cost: 12, icon: '💥', partType: 'shell', caliber: 3, heightMeters: 60, prefire: 1.5, pattern: 'chrysanthemum', safetyDistance: 70 },
+  { id: 'mort-02', name: 'Willow 4"', category: 'morteiros', type: 'firework', color: '#FFA500', duration: 3.5, cost: 18, icon: '🎆', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'willow', safetyDistance: 100 },
+  { id: 'mort-03', name: 'Brocade Crown 5"', category: 'morteiros', type: 'firework', color: '#FFE4B5', duration: 4, cost: 25, icon: '👑', partType: 'shell', caliber: 5, heightMeters: 100, prefire: 2.5, pattern: 'kamuro', safetyDistance: 140 },
+  { id: 'mort-04', name: 'Coconut Palm 6"', category: 'morteiros', type: 'firework', color: '#FF6347', duration: 5, cost: 35, icon: '🌴', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'palm', safetyDistance: 175 },
+  { id: 'shell-01', name: 'Titanium Shell 4"', category: 'morteiros', type: 'firework', color: '#E8E8E8', duration: 3, cost: 20, icon: '💫', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'peony', safetyDistance: 100 },
+  { id: 'shell-02', name: 'Color Shell 6"', category: 'morteiros', type: 'firework', color: '#FF1493', duration: 4.5, cost: 30, icon: '🎇', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'peony', safetyDistance: 175 },
+  { id: 'shell-03', name: 'Kamuro 5"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 5, cost: 28, icon: '🌟', partType: 'shell', caliber: 5, heightMeters: 100, prefire: 2.5, pattern: 'kamuro', safetyDistance: 140 },
+  { id: 'shell-04', name: 'Crossette 4"', category: 'morteiros', type: 'firework', color: '#FF4500', duration: 3, cost: 22, icon: '✖️', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'crossette', safetyDistance: 100 },
+  { id: 'shell-05', name: 'Horsetail 6"', category: 'morteiros', type: 'firework', color: '#FFB347', duration: 6, cost: 38, icon: '🐴', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'willow', safetyDistance: 175 },
+  { id: 'shell-06', name: 'Spider 5"', category: 'morteiros', type: 'firework', color: '#00FF7F', duration: 3.5, cost: 26, icon: '🕸️', partType: 'shell', caliber: 5, heightMeters: 100, prefire: 2.5, pattern: 'crossette', safetyDistance: 140 },
+  { id: 'shell-07', name: 'Ring Shell 4"', category: 'morteiros', type: 'firework', color: '#00BFFF', duration: 3, cost: 24, icon: '💍', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'peony', safetyDistance: 100 },
+  { id: 'shell-08', name: 'Nishiki Kamuro 8"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 7, cost: 65, icon: '🏆', partType: 'shell', caliber: 8, heightMeters: 160, prefire: 4.0, pattern: 'kamuro', safetyDistance: 210 },
+  { id: 'mburst-01', name: 'Triple Burst 3"', category: 'morteiros', type: 'firework', color: '#FF6347', duration: 3.5, cost: 22, icon: '🎆', partType: 'shell', caliber: 3, heightMeters: 60, prefire: 1.5 },
+  { id: 'mburst-02', name: 'Penta Burst 5"', category: 'morteiros', type: 'firework', color: '#9400D3', duration: 5, cost: 40, icon: '💥', partType: 'shell', caliber: 5, heightMeters: 100, prefire: 2.5 },
+  { id: 'shock-01', name: 'Ground Shockwave', category: 'morteiros', type: 'firework', color: '#FF4500', duration: 1.5, cost: 18, icon: '💢', partType: 'ground' },
+  { id: 'shock-02', name: 'Aerial Shockwave', category: 'morteiros', type: 'firework', color: '#FFFFFF', duration: 2, cost: 25, icon: '🔆', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0 },
+  { id: 'fan-01', name: 'Fan Spread 90°', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 2, cost: 15, icon: '🪭', partType: 'fan', caliber: 3, heightMeters: 60, prefire: 1.5 },
+  { id: 'fan-02', name: 'Wide Fan 180°', category: 'morteiros', type: 'firework', color: '#00FF7F', duration: 2.5, cost: 20, icon: '🌈', partType: 'fan', caliber: 3, heightMeters: 60, prefire: 1.5 },
 
   // ── Peônias & Efeitos Aéreos ──────────────────────────────
-  { id: 'peon-01', name: 'Red Peony', category: 'peonias', type: 'firework', color: '#FF0000', duration: 2, cost: 10, icon: '🔴' },
-  { id: 'peon-02', name: 'Blue Peony', category: 'peonias', type: 'firework', color: '#0088FF', duration: 2, cost: 10, icon: '🔵' },
-  { id: 'peon-03', name: 'Green Peony', category: 'peonias', type: 'firework', color: '#00FF88', duration: 2, cost: 10, icon: '🟢' },
-  { id: 'peon-04', name: 'Purple Dahlia', category: 'peonias', type: 'firework', color: '#9B30FF', duration: 2.5, cost: 14, icon: '🟣' },
-  { id: 'peon-05', name: 'Silver Glitter', category: 'peonias', type: 'firework', color: '#C0C0C0', duration: 3, cost: 12, icon: '🪩' },
-  { id: 'peon-06', name: 'Gold Strobing', category: 'peonias', type: 'firework', color: '#FFD700', duration: 2.5, cost: 14, icon: '⚡' },
-  { id: 'peon-07', name: 'Crackling Stars', category: 'peonias', type: 'firework', color: '#FFA07A', duration: 3, cost: 11, icon: '✨' },
-  { id: 'peon-08', name: 'Falling Leaves', category: 'peonias', type: 'firework', color: '#FF8C00', duration: 4, cost: 16, icon: '🍂' },
-  { id: 'comet-01', name: 'Rising Comet', category: 'peonias', type: 'firework', color: '#00FFFF', duration: 1.5, cost: 6, icon: '☄️' },
-  { id: 'comet-02', name: 'Falling Comet Trail', category: 'peonias', type: 'firework', color: '#FFA07A', duration: 2, cost: 8, icon: '🌠' },
-  { id: 'flare-01', name: 'Red Signal Flare', category: 'peonias', type: 'firework', color: '#FF0000', duration: 5, cost: 4, icon: '🔥' },
-  { id: 'flare-02', name: 'White Magnesium Flare', category: 'peonias', type: 'firework', color: '#FFFAFA', duration: 6, cost: 5, icon: '💡' },
+  { id: 'peon-01', name: 'Red Peony', category: 'peonias', type: 'firework', color: '#FF0000', duration: 2, cost: 10, icon: '🔴', partType: 'shell', caliber: 3, heightMeters: 60, prefire: 1.5, pattern: 'peony' },
+  { id: 'peon-02', name: 'Blue Peony', category: 'peonias', type: 'firework', color: '#0088FF', duration: 2, cost: 10, icon: '🔵', partType: 'shell', caliber: 3, heightMeters: 60, prefire: 1.5, pattern: 'peony' },
+  { id: 'peon-03', name: 'Green Peony', category: 'peonias', type: 'firework', color: '#00FF88', duration: 2, cost: 10, icon: '🟢', partType: 'shell', caliber: 3, heightMeters: 60, prefire: 1.5, pattern: 'peony' },
+  { id: 'peon-04', name: 'Purple Dahlia', category: 'peonias', type: 'firework', color: '#9B30FF', duration: 2.5, cost: 14, icon: '🟣', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'chrysanthemum' },
+  { id: 'peon-05', name: 'Silver Glitter', category: 'peonias', type: 'firework', color: '#C0C0C0', duration: 3, cost: 12, icon: '🪩', partType: 'shell', caliber: 3, heightMeters: 60, prefire: 1.5, pattern: 'kamuro' },
+  { id: 'peon-06', name: 'Gold Strobing', category: 'peonias', type: 'firework', color: '#FFD700', duration: 2.5, cost: 14, icon: '⚡', partType: 'shell', caliber: 3, heightMeters: 60, prefire: 1.5, pattern: 'peony' },
+  { id: 'peon-07', name: 'Crackling Stars', category: 'peonias', type: 'firework', color: '#FFA07A', duration: 3, cost: 11, icon: '✨', partType: 'shell', caliber: 3, heightMeters: 60, prefire: 1.5, pattern: 'crossette' },
+  { id: 'peon-08', name: 'Falling Leaves', category: 'peonias', type: 'firework', color: '#FF8C00', duration: 4, cost: 16, icon: '🍂', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'willow' },
+  { id: 'comet-01', name: 'Rising Comet', category: 'peonias', type: 'firework', color: '#00FFFF', duration: 1.5, cost: 6, icon: '☄️', partType: 'comet', caliber: 2, heightMeters: 50, prefire: 0.8 },
+  { id: 'comet-02', name: 'Falling Comet Trail', category: 'peonias', type: 'firework', color: '#FFA07A', duration: 2, cost: 8, icon: '🌠', partType: 'comet', caliber: 2, heightMeters: 50, prefire: 0.8 },
+  { id: 'flare-01', name: 'Red Signal Flare', category: 'peonias', type: 'firework', color: '#FF0000', duration: 5, cost: 4, icon: '🔥', partType: 'single_shot', caliber: 1, heightMeters: 30 },
+  { id: 'flare-02', name: 'White Magnesium Flare', category: 'peonias', type: 'firework', color: '#FFFAFA', duration: 6, cost: 5, icon: '💡', partType: 'single_shot', caliber: 1, heightMeters: 30 },
 
   // ── Mines ──────────────────────────────────────────────────
-  { id: 'mine-01', name: 'Silver Mine', category: 'mines', type: 'firework', color: '#C0C0C0', duration: 1.5, cost: 8, icon: '⛏️' },
-  { id: 'mine-02', name: 'Gold Mine', category: 'mines', type: 'firework', color: '#FFD700', duration: 1.5, cost: 10, icon: '💛' },
-  { id: 'mine-03', name: 'Crackling Mine', category: 'mines', type: 'firework', color: '#FFA500', duration: 2, cost: 12, icon: '💫' },
-  { id: 'mine-04', name: 'Color Star Mine', category: 'mines', type: 'firework', color: '#FF69B4', duration: 1.8, cost: 14, icon: '🌸' },
-  { id: 'mine-05', name: 'Titanium Mine', category: 'mines', type: 'firework', color: '#E8E8E8', duration: 1.2, cost: 16, icon: '⚪' },
-  { id: 'mine-06', name: 'Whistling Mine', category: 'mines', type: 'firework', color: '#FF4500', duration: 2, cost: 11, icon: '📢' },
+  { id: 'mine-01', name: 'Silver Mine', category: 'mines', type: 'firework', color: '#C0C0C0', duration: 1.5, cost: 8, icon: '⛏️', partType: 'mine', caliber: 3, heightMeters: 30, safetyDistance: 25 },
+  { id: 'mine-02', name: 'Gold Mine', category: 'mines', type: 'firework', color: '#FFD700', duration: 1.5, cost: 10, icon: '💛', partType: 'mine', caliber: 3, heightMeters: 30, safetyDistance: 25 },
+  { id: 'mine-03', name: 'Crackling Mine', category: 'mines', type: 'firework', color: '#FFA500', duration: 2, cost: 12, icon: '💫', partType: 'mine', caliber: 4, heightMeters: 35, safetyDistance: 30 },
+  { id: 'mine-04', name: 'Color Star Mine', category: 'mines', type: 'firework', color: '#FF69B4', duration: 1.8, cost: 14, icon: '🌸', partType: 'mine', caliber: 3, heightMeters: 30, safetyDistance: 25 },
+  { id: 'mine-05', name: 'Titanium Mine', category: 'mines', type: 'firework', color: '#E8E8E8', duration: 1.2, cost: 16, icon: '⚪', partType: 'mine', caliber: 4, heightMeters: 35, safetyDistance: 30 },
+  { id: 'mine-06', name: 'Whistling Mine', category: 'mines', type: 'firework', color: '#FF4500', duration: 2, cost: 11, icon: '📢', partType: 'mine', caliber: 3, heightMeters: 30, safetyDistance: 25 },
 
   // ── Roman Candles ─────────────────────────────────────────
-  { id: 'rc-01', name: 'Roman Candle 5-shot', category: 'roman_candles', type: 'firework', color: '#FF4444', duration: 5, cost: 6, icon: '🕯️' },
-  { id: 'rc-02', name: 'Roman Candle 10-shot', category: 'roman_candles', type: 'firework', color: '#4488FF', duration: 10, cost: 10, icon: '🕯️' },
-  { id: 'rc-03', name: 'Roman Candle Multi-Color', category: 'roman_candles', type: 'firework', color: '#FF69B4', duration: 8, cost: 12, icon: '🌈' },
-  { id: 'rc-04', name: 'Giant Roman 25mm', category: 'roman_candles', type: 'firework', color: '#FFD700', duration: 12, cost: 18, icon: '🔥' },
-  { id: 'rc-05', name: 'Comet Roman Candle', category: 'roman_candles', type: 'firework', color: '#00FFFF', duration: 6, cost: 8, icon: '☄️' },
+  { id: 'rc-01', name: 'Roman Candle 5-shot', category: 'roman_candles', type: 'firework', color: '#FF4444', duration: 5, cost: 6, icon: '🕯️', partType: 'candle', caliber: 1, heightMeters: 40, shotCount: 5 },
+  { id: 'rc-02', name: 'Roman Candle 10-shot', category: 'roman_candles', type: 'firework', color: '#4488FF', duration: 10, cost: 10, icon: '🕯️', partType: 'candle', caliber: 1, heightMeters: 40, shotCount: 10 },
+  { id: 'rc-03', name: 'Roman Candle Multi-Color', category: 'roman_candles', type: 'firework', color: '#FF69B4', duration: 8, cost: 12, icon: '🌈', partType: 'candle', caliber: 1, heightMeters: 40, shotCount: 8 },
+  { id: 'rc-04', name: 'Giant Roman 25mm', category: 'roman_candles', type: 'firework', color: '#FFD700', duration: 12, cost: 18, icon: '🔥', partType: 'candle', caliber: 1, heightMeters: 50, shotCount: 6 },
+  { id: 'rc-05', name: 'Comet Roman Candle', category: 'roman_candles', type: 'firework', color: '#00FFFF', duration: 6, cost: 8, icon: '☄️', partType: 'candle', caliber: 1, heightMeters: 45, shotCount: 5 },
 
   // ── Waterfalls / Cascatas ─────────────────────────────────
-  { id: 'wf-01', name: 'Silver Waterfall 3m', category: 'waterfalls', type: 'firework', color: '#C0C0C0', duration: 15, cost: 20, icon: '🌊' },
-  { id: 'wf-02', name: 'Gold Waterfall 5m', category: 'waterfalls', type: 'firework', color: '#FFD700', duration: 20, cost: 35, icon: '🏞️' },
-  { id: 'wf-03', name: 'Waterfall Curtain 10m', category: 'waterfalls', type: 'firework', color: '#E8E8E8', duration: 25, cost: 80, icon: '🪟' },
-  { id: 'wf-04', name: 'Color-Changing Waterfall', category: 'waterfalls', type: 'firework', color: '#FF69B4', duration: 18, cost: 45, icon: '🌈' },
+  { id: 'wf-01', name: 'Silver Waterfall 3m', category: 'waterfalls', type: 'firework', color: '#C0C0C0', duration: 15, cost: 20, icon: '🌊', partType: 'waterfall', heightMeters: 3 },
+  { id: 'wf-02', name: 'Gold Waterfall 5m', category: 'waterfalls', type: 'firework', color: '#FFD700', duration: 20, cost: 35, icon: '🏞️', partType: 'waterfall', heightMeters: 5 },
+  { id: 'wf-03', name: 'Waterfall Curtain 10m', category: 'waterfalls', type: 'firework', color: '#E8E8E8', duration: 25, cost: 80, icon: '🪟', partType: 'waterfall', heightMeters: 10 },
+  { id: 'wf-04', name: 'Color-Changing Waterfall', category: 'waterfalls', type: 'firework', color: '#FF69B4', duration: 18, cost: 45, icon: '🌈', partType: 'waterfall', heightMeters: 5 },
 
   // ── Cakes & Batteries ─────────────────────────────────────
-  { id: 'cake-01', name: 'Cake 25-Shot Z Pattern', category: 'cakes_batteries', type: 'firework', color: '#FF4500', duration: 15, cost: 25, icon: '🎂' },
-  { id: 'cake-02', name: 'Cake 49-Shot Fan', category: 'cakes_batteries', type: 'firework', color: '#FFD700', duration: 20, cost: 40, icon: '🎇' },
-  { id: 'cake-03', name: 'Cake 100-Shot Finale', category: 'cakes_batteries', type: 'firework', color: '#FF1493', duration: 30, cost: 65, icon: '🏆' },
-  { id: 'cake-04', name: 'Cake 16-Shot Brocade', category: 'cakes_batteries', type: 'firework', color: '#FFE4B5', duration: 12, cost: 22, icon: '🧁' },
-  { id: 'cake-05', name: 'Multi-Break Battery', category: 'cakes_batteries', type: 'firework', color: '#9400D3', duration: 25, cost: 55, icon: '🔋' },
+  { id: 'cake-01', name: 'Cake 25-Shot Z Pattern', category: 'cakes_batteries', type: 'firework', color: '#FF4500', duration: 15, cost: 25, icon: '🎂', partType: 'cake', caliber: 2, heightMeters: 45, shotCount: 25 },
+  { id: 'cake-02', name: 'Cake 49-Shot Fan', category: 'cakes_batteries', type: 'firework', color: '#FFD700', duration: 20, cost: 40, icon: '🎇', partType: 'cake', caliber: 2, heightMeters: 50, shotCount: 49 },
+  { id: 'cake-03', name: 'Cake 100-Shot Finale', category: 'cakes_batteries', type: 'firework', color: '#FF1493', duration: 30, cost: 65, icon: '🏆', partType: 'cake', caliber: 1.5, heightMeters: 40, shotCount: 100 },
+  { id: 'cake-04', name: 'Cake 16-Shot Brocade', category: 'cakes_batteries', type: 'firework', color: '#FFE4B5', duration: 12, cost: 22, icon: '🧁', partType: 'cake', caliber: 2, heightMeters: 45, shotCount: 16 },
+  { id: 'cake-05', name: 'Multi-Break Battery', category: 'cakes_batteries', type: 'firework', color: '#9400D3', duration: 25, cost: 55, icon: '🔋', partType: 'cake', caliber: 3, heightMeters: 60, shotCount: 36 },
 
   // ── SFX (Efeitos Especiais) ───────────────────────────────
-  { id: 'sfx-01', name: 'CO2 Jet Vertical', category: 'sfx', type: 'sfx', color: '#FFFFFF', duration: 3, cost: 15, icon: '💨' },
-  { id: 'sfx-02', name: 'CO2 Cannon Horizontal', category: 'sfx', type: 'sfx', color: '#E0E0E0', duration: 2, cost: 20, icon: '🌬️' },
-  { id: 'sfx-03', name: 'Cold Sparks Fountain', category: 'sfx', type: 'sfx', color: '#FFD700', duration: 10, cost: 12, icon: '✳️' },
-  { id: 'sfx-04', name: 'Flame Projector Red', category: 'sfx', type: 'sfx', color: '#FF4500', duration: 3, cost: 25, icon: '🔥' },
-  { id: 'sfx-05', name: 'Flame Projector Blue', category: 'sfx', type: 'sfx', color: '#0088FF', duration: 3, cost: 28, icon: '🔵' },
-  { id: 'sfx-06', name: 'Confetti Cannon', category: 'sfx', type: 'sfx', color: '#FF69B4', duration: 2, cost: 8, icon: '🎊' },
-  { id: 'sfx-07', name: 'Streamer Launcher', category: 'sfx', type: 'sfx', color: '#00FF88', duration: 3, cost: 10, icon: '🎉' },
-  { id: 'sfx-08', name: 'Fog Machine Low', category: 'sfx', type: 'sfx', color: '#808080', duration: 30, cost: 5, icon: '🌫️' },
-  { id: 'sfx-09', name: 'Haze Machine', category: 'sfx', type: 'sfx', color: '#A0A0A0', duration: 60, cost: 3, icon: '☁️' },
-  { id: 'sfx-10', name: 'Snow Machine', category: 'sfx', type: 'sfx', color: '#F0F0FF', duration: 30, cost: 8, icon: '❄️' },
-  { id: 'sfx-11', name: 'Bubble Machine', category: 'sfx', type: 'sfx', color: '#87CEEB', duration: 30, cost: 4, icon: '🫧' },
-  { id: 'sfx-12', name: 'Spark Waterfall', category: 'sfx', type: 'sfx', color: '#FFD700', duration: 15, cost: 18, icon: '⚜️' },
-  { id: 'spark-01', name: 'Silver Spark Fountain', category: 'sfx', type: 'sfx', color: '#C0C0C0', duration: 3, cost: 8, icon: '✳️' },
-  { id: 'spark-02', name: 'Gold Spark Jet', category: 'sfx', type: 'sfx', color: '#FFD700', duration: 4, cost: 10, icon: '⚜️' },
+  { id: 'sfx-01', name: 'CO2 Jet Vertical', category: 'sfx', type: 'sfx', color: '#FFFFFF', duration: 3, cost: 15, icon: '💨', partType: 'sfx', heightMeters: 6 },
+  { id: 'sfx-02', name: 'CO2 Cannon Horizontal', category: 'sfx', type: 'sfx', color: '#E0E0E0', duration: 2, cost: 20, icon: '🌬️', partType: 'sfx', heightMeters: 8 },
+  { id: 'sfx-03', name: 'Cold Sparks Fountain', category: 'sfx', type: 'sfx', color: '#FFD700', duration: 10, cost: 12, icon: '✳️', partType: 'gerb', heightMeters: 4 },
+  { id: 'sfx-04', name: 'Flame Projector Red', category: 'sfx', type: 'sfx', color: '#FF4500', duration: 3, cost: 25, icon: '🔥', partType: 'flame', heightMeters: 8 },
+  { id: 'sfx-05', name: 'Flame Projector Blue', category: 'sfx', type: 'sfx', color: '#0088FF', duration: 3, cost: 28, icon: '🔵', partType: 'flame', heightMeters: 8 },
+  { id: 'sfx-06', name: 'Confetti Cannon', category: 'sfx', type: 'sfx', color: '#FF69B4', duration: 2, cost: 8, icon: '🎊', partType: 'sfx', heightMeters: 8 },
+  { id: 'sfx-07', name: 'Streamer Launcher', category: 'sfx', type: 'sfx', color: '#00FF88', duration: 3, cost: 10, icon: '🎉', partType: 'sfx', heightMeters: 10 },
+  { id: 'sfx-08', name: 'Fog Machine Low', category: 'sfx', type: 'sfx', color: '#808080', duration: 30, cost: 5, icon: '🌫️', partType: 'sfx' },
+  { id: 'sfx-09', name: 'Haze Machine', category: 'sfx', type: 'sfx', color: '#A0A0A0', duration: 60, cost: 3, icon: '☁️', partType: 'sfx' },
+  { id: 'sfx-10', name: 'Snow Machine', category: 'sfx', type: 'sfx', color: '#F0F0FF', duration: 30, cost: 8, icon: '❄️', partType: 'sfx' },
+  { id: 'sfx-11', name: 'Bubble Machine', category: 'sfx', type: 'sfx', color: '#87CEEB', duration: 30, cost: 4, icon: '🫧', partType: 'sfx' },
+  { id: 'sfx-12', name: 'Spark Waterfall', category: 'sfx', type: 'sfx', color: '#FFD700', duration: 15, cost: 18, icon: '⚜️', partType: 'waterfall', heightMeters: 5 },
+  { id: 'spark-01', name: 'Silver Spark Fountain', category: 'sfx', type: 'sfx', color: '#C0C0C0', duration: 3, cost: 8, icon: '✳️', partType: 'gerb', heightMeters: 3 },
+  { id: 'spark-02', name: 'Gold Spark Jet', category: 'sfx', type: 'sfx', color: '#FFD700', duration: 4, cost: 10, icon: '⚜️', partType: 'gerb', heightMeters: 4 },
 
   // ── Lasers ────────────────────────────────────────────────
-  { id: 'laser-01', name: 'Green Laser 5W', category: 'lasers', type: 'laser', color: '#00FF00', duration: 30, cost: 50, icon: '🟢' },
-  { id: 'laser-02', name: 'Red Laser 3W', category: 'lasers', type: 'laser', color: '#FF0000', duration: 30, cost: 40, icon: '🔴' },
-  { id: 'laser-03', name: 'Blue Laser 8W', category: 'lasers', type: 'laser', color: '#0044FF', duration: 30, cost: 60, icon: '🔵' },
-  { id: 'laser-04', name: 'RGB Laser ILDA 20W', category: 'lasers', type: 'laser', color: '#FFFFFF', duration: 60, cost: 120, icon: '🌈' },
-  { id: 'laser-05', name: 'Laser Fan Array x8', category: 'lasers', type: 'laser', color: '#00FF88', duration: 30, cost: 80, icon: '🪭' },
-  { id: 'laser-06', name: 'Sky Laser 40W', category: 'lasers', type: 'laser', color: '#00FFFF', duration: 60, cost: 200, icon: '🏔️' },
-  { id: 'laser-07', name: 'Laser Harp', category: 'lasers', type: 'laser', color: '#00FF00', duration: 30, cost: 90, icon: '🎵' },
-  { id: 'laser-08', name: 'Laser Tunnel', category: 'lasers', type: 'laser', color: '#FF00FF', duration: 20, cost: 70, icon: '🕳️' },
+  { id: 'laser-01', name: 'Green Laser 5W', category: 'lasers', type: 'laser', color: '#00FF00', duration: 30, cost: 50, icon: '🟢', partType: 'laser', laserPattern: 'single' },
+  { id: 'laser-02', name: 'Red Laser 3W', category: 'lasers', type: 'laser', color: '#FF0000', duration: 30, cost: 40, icon: '🔴', partType: 'laser', laserPattern: 'single' },
+  { id: 'laser-03', name: 'Blue Laser 8W', category: 'lasers', type: 'laser', color: '#0044FF', duration: 30, cost: 60, icon: '🔵', partType: 'laser', laserPattern: 'single' },
+  { id: 'laser-04', name: 'RGB Laser ILDA 20W', category: 'lasers', type: 'laser', color: '#FFFFFF', duration: 60, cost: 120, icon: '🌈', partType: 'laser', laserPattern: 'cone' },
+  { id: 'laser-05', name: 'Laser Fan Array x8', category: 'lasers', type: 'laser', color: '#00FF88', duration: 30, cost: 80, icon: '🪭', partType: 'laser', laserPattern: 'fan' },
+  { id: 'laser-06', name: 'Sky Laser 40W', category: 'lasers', type: 'laser', color: '#00FFFF', duration: 60, cost: 200, icon: '🏔️', partType: 'laser', laserPattern: 'single' },
+  { id: 'laser-07', name: 'Laser Harp', category: 'lasers', type: 'laser', color: '#00FF00', duration: 30, cost: 90, icon: '🎵', partType: 'laser', laserPattern: 'harp' },
+  { id: 'laser-08', name: 'Laser Tunnel', category: 'lasers', type: 'laser', color: '#FF00FF', duration: 20, cost: 70, icon: '🕳️', partType: 'laser', laserPattern: 'tunnel' },
 
   // ── Iluminação ────────────────────────────────────────────
-  { id: 'light-01', name: 'Moving Head Spot 300W', category: 'iluminacao', type: 'light', color: '#FFFFFF', duration: 60, cost: 30, icon: '🔦' },
-  { id: 'light-02', name: 'Moving Head Wash 600W', category: 'iluminacao', type: 'light', color: '#FF8800', duration: 60, cost: 45, icon: '💡' },
-  { id: 'light-03', name: 'Beam 230W Sharpy', category: 'iluminacao', type: 'light', color: '#FFFFFF', duration: 60, cost: 35, icon: '🌟' },
-  { id: 'light-04', name: 'LED Par 18x10W RGBW', category: 'iluminacao', type: 'light', color: '#FF4488', duration: 60, cost: 8, icon: '🎨' },
-  { id: 'light-05', name: 'Strobe 1500W DMX', category: 'iluminacao', type: 'light', color: '#FFFFFF', duration: 30, cost: 12, icon: '⚡' },
-  { id: 'light-06', name: 'LED Strip 5m RGBW', category: 'iluminacao', type: 'light', color: '#00FFFF', duration: 60, cost: 6, icon: '🌊' },
-  { id: 'light-07', name: 'Sky Searchlight 4kW', category: 'iluminacao', type: 'light', color: '#FFFFFF', duration: 60, cost: 80, icon: '🔭' },
-  { id: 'light-08', name: 'Blinder 2x650W', category: 'iluminacao', type: 'light', color: '#FFF8DC', duration: 30, cost: 15, icon: '😎' },
-  { id: 'light-09', name: 'LED Matrix Panel', category: 'iluminacao', type: 'light', color: '#FFFFFF', duration: 60, cost: 25, icon: '📺' },
-  { id: 'light-10', name: 'Follow Spot 1200W', category: 'iluminacao', type: 'light', color: '#FFFAF0', duration: 60, cost: 40, icon: '🎯' },
+  { id: 'light-01', name: 'Moving Head Spot 300W', category: 'iluminacao', type: 'light', color: '#FFFFFF', duration: 60, cost: 30, icon: '🔦', partType: 'light', beamType: 'spot' },
+  { id: 'light-02', name: 'Moving Head Wash 600W', category: 'iluminacao', type: 'light', color: '#FF8800', duration: 60, cost: 45, icon: '💡', partType: 'light', beamType: 'wash' },
+  { id: 'light-03', name: 'Beam 230W Sharpy', category: 'iluminacao', type: 'light', color: '#FFFFFF', duration: 60, cost: 35, icon: '🌟', partType: 'light', beamType: 'beam' },
+  { id: 'light-04', name: 'LED Par 18x10W RGBW', category: 'iluminacao', type: 'light', color: '#FF4488', duration: 60, cost: 8, icon: '🎨', partType: 'light', beamType: 'wash' },
+  { id: 'light-05', name: 'Strobe 1500W DMX', category: 'iluminacao', type: 'light', color: '#FFFFFF', duration: 30, cost: 12, icon: '⚡', partType: 'strobe' },
+  { id: 'light-06', name: 'LED Strip 5m RGBW', category: 'iluminacao', type: 'light', color: '#00FFFF', duration: 60, cost: 6, icon: '🌊', partType: 'light' },
+  { id: 'light-07', name: 'Sky Searchlight 4kW', category: 'iluminacao', type: 'light', color: '#FFFFFF', duration: 60, cost: 80, icon: '🔭', partType: 'light', beamType: 'beam' },
+  { id: 'light-08', name: 'Blinder 2x650W', category: 'iluminacao', type: 'light', color: '#FFF8DC', duration: 30, cost: 15, icon: '😎', partType: 'light', beamType: 'wash' },
+  { id: 'light-09', name: 'LED Matrix Panel', category: 'iluminacao', type: 'light', color: '#FFFFFF', duration: 60, cost: 25, icon: '📺', partType: 'light' },
+  { id: 'light-10', name: 'Follow Spot 1200W', category: 'iluminacao', type: 'light', color: '#FFFAF0', duration: 60, cost: 40, icon: '🎯', partType: 'light', beamType: 'spot' },
 
   // ── Drones ────────────────────────────────────────────────
-  { id: 'drone-01', name: 'Single LED Point', category: 'drones', type: 'drone', color: '#00FFFF', duration: 10, cost: 0.5, icon: '💡' },
-  { id: 'drone-02', name: 'RGB Cluster x4', category: 'drones', type: 'drone', color: '#FFFFFF', duration: 10, cost: 2, icon: '✨' },
-  { id: 'drone-03', name: 'Strobe Unit', category: 'drones', type: 'drone', color: '#FFFFFF', duration: 5, cost: 1, icon: '⚡' },
-  { id: 'drone-04', name: 'Pyro Drone (Spark)', category: 'drones', type: 'drone', color: '#FFD700', duration: 8, cost: 5, icon: '🎆' },
-  { id: 'drone-05', name: 'Smoke Trail Drone', category: 'drones', type: 'drone', color: '#808080', duration: 15, cost: 4, icon: '💨' },
-  { id: 'drone-06', name: 'Banner Drone', category: 'drones', type: 'drone', color: '#FF4500', duration: 30, cost: 8, icon: '🏳️' },
+  { id: 'drone-01', name: 'Single LED Point', category: 'drones', type: 'drone', color: '#00FFFF', duration: 10, cost: 0.5, icon: '💡', partType: 'drone' },
+  { id: 'drone-02', name: 'RGB Cluster x4', category: 'drones', type: 'drone', color: '#FFFFFF', duration: 10, cost: 2, icon: '✨', partType: 'drone' },
+  { id: 'drone-03', name: 'Strobe Unit', category: 'drones', type: 'drone', color: '#FFFFFF', duration: 5, cost: 1, icon: '⚡', partType: 'drone' },
+  { id: 'drone-04', name: 'Pyro Drone (Spark)', category: 'drones', type: 'drone', color: '#FFD700', duration: 8, cost: 5, icon: '🎆', partType: 'drone' },
+  { id: 'drone-05', name: 'Smoke Trail Drone', category: 'drones', type: 'drone', color: '#808080', duration: 15, cost: 4, icon: '💨', partType: 'drone' },
+  { id: 'drone-06', name: 'Banner Drone', category: 'drones', type: 'drone', color: '#FF4500', duration: 30, cost: 8, icon: '🏳️', partType: 'drone' },
 
   // ── Formações de Drones ───────────────────────────────────
-  { id: 'form-01', name: 'Heart Formation', category: 'formacoes', type: 'drone', color: '#FF69B4', duration: 15, cost: 50, icon: '❤️' },
-  { id: 'form-02', name: 'Star Formation', category: 'formacoes', type: 'drone', color: '#FFD700', duration: 15, cost: 50, icon: '⭐' },
-  { id: 'form-03', name: 'Wave Pattern', category: 'formacoes', type: 'drone', color: '#00BFFF', duration: 12, cost: 40, icon: '🌊' },
-  { id: 'form-04', name: 'Spiral Ascent', category: 'formacoes', type: 'drone', color: '#FF4500', duration: 20, cost: 60, icon: '🌀' },
-  { id: 'aring-01', name: 'Saturn Ring', category: 'formacoes', type: 'drone', color: '#FFD700', duration: 12, cost: 45, icon: '💍' },
-  { id: 'aring-02', name: 'Neon Halo', category: 'formacoes', type: 'drone', color: '#00FFFF', duration: 10, cost: 35, icon: '⭕' },
-  { id: 'form-05', name: 'DNA Helix', category: 'formacoes', type: 'drone', color: '#00FF88', duration: 18, cost: 55, icon: '🧬' },
-  { id: 'form-06', name: 'Galaxy Spiral', category: 'formacoes', type: 'drone', color: '#9B30FF', duration: 20, cost: 65, icon: '🌌' },
-  { id: 'form-07', name: 'Phoenix Wings', category: 'formacoes', type: 'drone', color: '#FF4500', duration: 20, cost: 70, icon: '🦅' },
-  { id: 'form-08', name: 'Countdown 3-2-1', category: 'formacoes', type: 'drone', color: '#FFFFFF', duration: 12, cost: 40, icon: '🔟' },
+  { id: 'form-01', name: 'Heart Formation', category: 'formacoes', type: 'drone', color: '#FF69B4', duration: 15, cost: 50, icon: '❤️', partType: 'formation' },
+  { id: 'form-02', name: 'Star Formation', category: 'formacoes', type: 'drone', color: '#FFD700', duration: 15, cost: 50, icon: '⭐', partType: 'formation' },
+  { id: 'form-03', name: 'Wave Pattern', category: 'formacoes', type: 'drone', color: '#00BFFF', duration: 12, cost: 40, icon: '🌊', partType: 'formation' },
+  { id: 'form-04', name: 'Spiral Ascent', category: 'formacoes', type: 'drone', color: '#FF4500', duration: 20, cost: 60, icon: '🌀', partType: 'formation' },
+  { id: 'aring-01', name: 'Saturn Ring', category: 'formacoes', type: 'drone', color: '#FFD700', duration: 12, cost: 45, icon: '💍', partType: 'formation' },
+  { id: 'aring-02', name: 'Neon Halo', category: 'formacoes', type: 'drone', color: '#00FFFF', duration: 10, cost: 35, icon: '⭕', partType: 'formation' },
+  { id: 'form-05', name: 'DNA Helix', category: 'formacoes', type: 'drone', color: '#00FF88', duration: 18, cost: 55, icon: '🧬', partType: 'formation' },
+  { id: 'form-06', name: 'Galaxy Spiral', category: 'formacoes', type: 'drone', color: '#9B30FF', duration: 20, cost: 65, icon: '🌌', partType: 'formation' },
+  { id: 'form-07', name: 'Phoenix Wings', category: 'formacoes', type: 'drone', color: '#FF4500', duration: 20, cost: 70, icon: '🦅', partType: 'formation' },
+  { id: 'form-08', name: 'Countdown 3-2-1', category: 'formacoes', type: 'drone', color: '#FFFFFF', duration: 12, cost: 40, icon: '🔟', partType: 'formation' },
 ];
 
 export const useProjectStore = create<ProjectState>((set) => ({

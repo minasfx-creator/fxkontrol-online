@@ -15,7 +15,7 @@ import QuadcopterModel from './QuadcopterModel';
 import GeofenceVisual from './GeofenceVisual';
 import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Globe, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { CometEffect, ShockwaveEffect, MultiBurstEffect, FanEffect } from './effects';
+import { CometEffect, ShockwaveEffect, MultiBurstEffect, FanEffect, MineEffect, RomanCandleEffect, WaterfallEffect, GerbEffect, FlameEffect, CryoJetEffect, LaserEffect, CakeEffect, ConfettiEffect, MovingHeadEffect } from './effects';
 import MiniMap from './MiniMap';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -219,10 +219,30 @@ function TimelineEffects() {
       {activeEffects.map(({ item, effect, progress }) => {
         const pos: [number, number, number] = [item.position.x, item.position.y, item.position.z];
         const eid = effect.id;
+        const pt = effect.partType;
+
+        // ── Specialized renderers by partType (Finale 3D logic) ──
+        if (pt === 'mine') return <MineEffect key={item.id} position={pos} color={effect.color} progress={progress} />;
+        if (pt === 'candle') return <RomanCandleEffect key={item.id} position={pos} color={effect.color} progress={progress} shotCount={effect.shotCount || 8} />;
+        if (pt === 'waterfall') return <WaterfallEffect key={item.id} position={pos} color={effect.color} progress={progress} width={effect.heightMeters || 5} />;
+        if (pt === 'gerb') return <GerbEffect key={item.id} position={pos} color={effect.color} progress={progress} height={effect.heightMeters || 4} />;
+        if (pt === 'flame') return <FlameEffect key={item.id} position={pos} color={effect.color} progress={progress} height={effect.heightMeters || 8} />;
+        if (pt === 'cake') return <CakeEffect key={item.id} position={pos} color={effect.color} progress={progress} shotCount={effect.shotCount || 25} />;
+        if (pt === 'laser') return <LaserEffect key={item.id} position={pos} color={effect.color} progress={progress} pattern={effect.laserPattern || 'fan'} />;
+        if (pt === 'light' && effect.beamType) return <MovingHeadEffect key={item.id} position={pos} color={effect.color} progress={progress} beamType={effect.beamType} />;
+
+        // ── SFX special routing ──
+        if (eid === 'sfx-01') return <CryoJetEffect key={item.id} position={pos} progress={progress} height={6} />;
+        if (eid === 'sfx-02') return <CryoJetEffect key={item.id} position={pos} progress={progress} height={8} horizontal />;
+        if (eid === 'sfx-06' || eid === 'sfx-07') return <ConfettiEffect key={item.id} position={pos} color={effect.color} progress={progress} />;
+
+        // ── Legacy effect ID routing ──
         if (eid.startsWith('comet-')) return <CometEffect key={item.id} position={pos} color={effect.color} progress={progress} direction={eid === 'comet-02' ? 'down' : 'up'} />;
         if (eid.startsWith('shock-')) return <ShockwaveEffect key={item.id} position={pos} color={effect.color} progress={progress} />;
         if (eid.startsWith('mburst-')) return <MultiBurstEffect key={item.id} position={pos} color={effect.color} progress={progress} burstCount={eid === 'mburst-02' ? 5 : 3} />;
         if (eid.startsWith('fan-')) return <FanEffect key={item.id} position={pos} color={effect.color} progress={progress} spreadAngle={eid === 'fan-02' ? 180 : 90} />;
+
+        // ── Default: firework burst or drone point ──
         if (effect.type === 'firework') return <FireworkBurst key={item.id} position={pos} color={effect.color} progress={progress} />;
         return <LightPoint key={item.id} position={pos} color={effect.color} />;
       })}
