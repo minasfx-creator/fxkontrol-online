@@ -4,6 +4,9 @@ import Toolbar from '@/components/editor/Toolbar';
 import SplashScreen from '@/components/editor/SplashScreen';
 import GlobeSelector from '@/components/editor/GlobeSelector';
 import EffectLibrary from '@/components/editor/EffectLibrary';
+import AudienceAnalyzerPanel from '@/components/editor/AudienceAnalyzerPanel';
+import IndoorSimPanel from '@/components/editor/IndoorSimPanel';
+import ScriptingToolsPanel from '@/components/editor/ScriptingToolsPanel';
 import Timeline from '@/components/editor/Timeline';
 import PropertiesPanel from '@/components/editor/PropertiesPanel';
 import ScriptWindow from '@/components/editor/ScriptWindow';
@@ -75,6 +78,9 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   background: 'w-64',
   suppliers: 'w-72',
   safety: 'w-64',
+  scripting: 'w-64',
+  audience: 'w-64',
+  indoor: 'w-72',
 };
 
 export default function Index() {
@@ -145,6 +151,9 @@ export default function Index() {
         {activePanel === 'background' && <BackgroundPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'suppliers' && <SupplierCatalogPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'safety' && <SafetyPanel />}
+        {activePanel === 'scripting' && <ScriptingToolsPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'audience' && <AudienceAnalyzerPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'indoor' && <IndoorSimPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
