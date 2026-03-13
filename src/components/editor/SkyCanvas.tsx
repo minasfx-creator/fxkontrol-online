@@ -204,11 +204,18 @@ function LightPoint({ position, color }: { position: [number, number, number]; c
 }
 
 function TimelineEffects() {
-  const { timelineItems, currentTime } = useProjectStore();
+  const { timelineItems, currentTime, positions } = useProjectStore();
   const activeEffects = useMemo(() => {
     return timelineItems.map((item) => {
       const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
       if (!effect) return null;
+
+      // ── Resolve position from linked pyropoint ──
+      let resolvedPos = item.position;
+      if (item.positionId) {
+        const linkedPos = positions.find(p => p.id === item.positionId);
+        if (linkedPos) resolvedPos = { x: linkedPos.x, y: linkedPos.y, z: linkedPos.z };
+      }
 
       // ── Prefire-aware timing for shells ──
       // Shell effects have a prefire (lift) phase before the burst duration
