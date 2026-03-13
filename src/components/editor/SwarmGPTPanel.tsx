@@ -298,6 +298,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
       if (data?.error) throw new Error(data.error);
 
       let time = 0;
+      let pyroCount = 0;
       (data.formations || []).forEach((f: any) => {
         const rawPts = (f.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
         const pts = normalizeDroneCount(rawPts, droneCount);
@@ -320,11 +321,35 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
           colorTransition: f.colorTransition || 'pulse',
           points: pts,
         });
+
+        // Insert pyro cues quantized to beats
+        const holdStart = time + quantizedTransition;
+        if (f.pyroCues && Array.isArray(f.pyroCues)) {
+          f.pyroCues.forEach((cue: any) => {
+            const quantizedFire = Math.round((cue.fireTime || 0) / beatDuration) * beatDuration;
+            const pyroType = mapPyroType(cue.type);
+            for (let d = 0; d < (cue.count || 1); d++) {
+              addTimelineItem({
+                id: `pyro-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                effectId: pyroType,
+                startTime: holdStart + quantizedFire + d * 0.15,
+                trackIndex: 1 + (d % 3),
+                position: {
+                  x: (cue.positionX || 0) + (d % 2 === 0 ? d * 3 : -d * 3),
+                  y: 0,
+                  z: (cue.positionZ || 0),
+                },
+              });
+              pyroCount++;
+            }
+          });
+        }
+
         time += quantizedTransition + quantizedHold;
       });
 
       setCurrentTime(0);
-      toast.success(`Show musical gerado!`, { description: `${effectiveBPM} BPM · ${data.formations?.length || 0} formações` });
+      toast.success(`Show musical gerado!`, { description: `${effectiveBPM} BPM · ${data.formations?.length || 0} formações · ${pyroCount} fogos` });
     } catch (e: any) {
       handleError(e);
     } finally {
