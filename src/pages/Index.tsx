@@ -104,6 +104,9 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   soundlevel: 'w-64',
   aroverlay: 'w-64',
   share: 'w-64',
+  collab: 'w-64',
+  particles: 'w-64',
+  versioning: 'w-64',
 };
 
 export default function Index() {
