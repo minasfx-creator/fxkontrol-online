@@ -564,14 +564,14 @@ export default function ScriptWindow() {
       </div>
 
       {/* Toolbar */}
-      <div className="px-2 py-1.5 border-b border-border flex items-center gap-0.5 flex-wrap">
+      <div className="px-2 py-1 border-b border-border/30 flex items-center gap-0.5 flex-wrap bg-surface-1/50">
         <div className="relative flex-1 min-w-[80px]">
-          <Filter className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+          <Filter className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/60" />
           <Input
-            placeholder="Filter..."
+            placeholder="Search cues..."
             value={filterText}
             onChange={(e) => setFilterText(e.target.value)}
-            className="h-6 text-[10px] pl-6 bg-surface-2 border-border"
+            className="h-6 text-[10px] pl-6 bg-surface-0 border-border/30 focus:border-primary/50"
           />
         </div>
         
