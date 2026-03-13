@@ -39,8 +39,10 @@ EMOJI → SHAPE MAP:
 ♾️→Lemniscate  🏠→House(square+triangle roof)  🐬→DolphinArc  🎆→RadialBurst(concentric)
 🌍→Circle  🚀→Rocket(cylinder+cone+fins)  ⚽→Circle  💎→Diamond  🎂→CakeLayers
 
-SCALING: radius = clamp(sqrt(N)*2.2, 12, 90)
+SCALING: radius = clamp(sqrt(N)*2.2, 12, 150)
 For N>200: Use FILLED shapes (concentric/scanline), not just outlines.
+For N>500: Increase density, use multiple concentric layers. radius ~ sqrt(N)*2.5
+For N>1000: Large-scale show. radius ~ sqrt(N)*3.0, use dense fill patterns.
 
 CRITICAL: Your "points" array must have EXACTLY N elements. If you're unsure, use the mathematical formula and compute each point.`;
 
