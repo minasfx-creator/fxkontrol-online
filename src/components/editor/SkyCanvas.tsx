@@ -880,9 +880,25 @@ function GroundFog() {
 function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) {
   const sc = useSceneStore(st => st.settings);
 
-  // Ground style: finale-dark uses darker grass, flat-black uses a simple plane
-  const showGrass = sc.groundStyle !== 'flat-black';
-  
+  const renderGround = () => {
+    switch (sc.groundStyle) {
+      case 'flat-black':
+        return (
+          <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <planeGeometry args={[4000, 4000]} />
+            <meshStandardMaterial color="#050505" roughness={0.95} metalness={0} />
+          </mesh>
+        );
+      case 'concrete':
+        return <ConcreteGround brightness={sc.groundBrightness} />;
+      case 'finale-dark':
+        return <FinaleDarkGround brightness={sc.groundBrightness} />;
+      case 'google-earth':
+      default:
+        return <GrassGround />;
+    }
+  };
+
   return (
     <group>
       {showGrass ? <GrassGround /> : (
