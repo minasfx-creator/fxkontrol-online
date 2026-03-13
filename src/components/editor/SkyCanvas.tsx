@@ -850,29 +850,40 @@ function GrassGround() {
 // --- Atmospheric dust particles floating in the air ---
 function AtmosphericParticles() {
   const pointsRef = useRef<THREE.Points>(null);
-  const count = 300;
+  const count = 500;
   
-  const { positions, sizes } = useMemo(() => {
+  const { positions: posData, sizes, velocities: velData } = useMemo(() => {
     const pos = new Float32Array(count * 3);
     const sz = new Float32Array(count);
+    const vel = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 300;
-      pos[i * 3 + 1] = Math.random() * 50 + 1;
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 300;
-      sz[i] = 0.02 + Math.random() * 0.06;
+      pos[i * 3] = (Math.random() - 0.5) * 400;
+      pos[i * 3 + 1] = Math.random() * 60 + 0.5;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 400;
+      sz[i] = 0.02 + Math.random() * 0.08;
+      vel[i * 3] = (Math.random() - 0.5) * 0.01;
+      vel[i * 3 + 1] = (Math.random() - 0.5) * 0.005;
+      vel[i * 3 + 2] = (Math.random() - 0.5) * 0.01;
     }
-    return { positions: pos, sizes: sz };
+    return { positions: pos, sizes: sz, velocities: vel };
   }, []);
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, camera }) => {
     if (!pointsRef.current) return;
     const t = clock.getElapsedTime();
     const posAttr = pointsRef.current.geometry.getAttribute('position') as THREE.BufferAttribute;
     const arr = posAttr.array as Float32Array;
+    const camX = camera.position.x, camZ = camera.position.z;
     for (let i = 0; i < count; i++) {
-      arr[i * 3] += Math.sin(t * 0.1 + i * 0.5) * 0.003;
-      arr[i * 3 + 1] += Math.sin(t * 0.15 + i * 0.3) * 0.002;
-      arr[i * 3 + 2] += Math.cos(t * 0.08 + i * 0.7) * 0.003;
+      arr[i * 3] += Math.sin(t * 0.08 + i * 0.5) * 0.004 + velData[i * 3];
+      arr[i * 3 + 1] += Math.sin(t * 0.12 + i * 0.3) * 0.003 + velData[i * 3 + 1];
+      arr[i * 3 + 2] += Math.cos(t * 0.07 + i * 0.7) * 0.004 + velData[i * 3 + 2];
+      // Recycle particles that drift too far from camera
+      const dx = arr[i * 3] - camX, dz = arr[i * 3 + 2] - camZ;
+      if (dx * dx + dz * dz > 40000) {
+        arr[i * 3] = camX + (Math.random() - 0.5) * 200;
+        arr[i * 3 + 2] = camZ + (Math.random() - 0.5) * 200;
+      }
     }
     posAttr.needsUpdate = true;
   });
@@ -880,13 +891,13 @@ function AtmosphericParticles() {
   return (
     <points ref={pointsRef}>
       <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+        <bufferAttribute attach="attributes-position" args={[posData, 3]} />
       </bufferGeometry>
       <pointsMaterial
-        size={0.06}
-        color="#8899bb"
+        size={0.07}
+        color="#8899cc"
         transparent
-        opacity={0.15}
+        opacity={0.18}
         depthWrite={false}
         blending={THREE.AdditiveBlending}
         sizeAttenuation
