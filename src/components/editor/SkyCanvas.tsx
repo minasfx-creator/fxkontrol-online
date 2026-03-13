@@ -162,7 +162,7 @@ function FireworkBurst({ position, color, progress }: { position: [number, numbe
 
   return (
     <group position={position}>
-      {progress < 0.15 && <pointLight color={color} intensity={8 * (1 - progress / 0.15)} distance={15} decay={2} />}
+      {/* Glow handled by bloom — no pointLight to avoid uniform overflow */}
       <points ref={pointsRef}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[new Float32Array(PARTICLE_COUNT * 3), 3]} />
@@ -640,8 +640,7 @@ export default function SkyCanvas() {
         {/* Sky fill */}
         <hemisphereLight args={['#1a2040', '#0a1808', 0.12]} />
         
-        {/* Subtle warm ground fill */}
-        <directionalLight position={[0, -3, 15]} intensity={0.03} color="#332211" />
+        {/* Ground fill removed — minimal contribution, saves uniform slots */}
 
         <SkyGradient />
         <Moon />

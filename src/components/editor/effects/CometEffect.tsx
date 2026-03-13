@@ -98,15 +98,7 @@ export default function CometEffect({
         />
       </mesh>
 
-      {/* Head light */}
-      {progress < 0.8 && (
-        <pointLight
-          color={color}
-          intensity={5 * headFade}
-          distance={12}
-          decay={2}
-        />
-      )}
+      {/* Glow handled by bloom — no pointLight to avoid uniform overflow */}
     </group>
   );
 }

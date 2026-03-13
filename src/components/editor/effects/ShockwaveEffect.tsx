@@ -60,25 +60,17 @@ export default function ShockwaveEffect({
 
   return (
     <group position={position}>
-      {/* Central flash */}
+      {/* Central flash — mesh only, no pointLight to avoid uniform overflow */}
       {progress < 0.2 && (
-        <>
-          <pointLight
+        <mesh>
+          <sphereGeometry args={[0.5 + progress * 4, 16, 16]} />
+          <meshBasicMaterial
             color={color}
-            intensity={15 * (1 - progress / 0.2)}
-            distance={25}
-            decay={2}
+            transparent
+            opacity={0.4 * (1 - progress / 0.2)}
+            blending={THREE.AdditiveBlending}
           />
-          <mesh>
-            <sphereGeometry args={[0.5 + progress * 4, 16, 16]} />
-            <meshBasicMaterial
-              color={color}
-              transparent
-              opacity={0.3 * (1 - progress / 0.2)}
-              blending={THREE.AdditiveBlending}
-            />
-          </mesh>
-        </>
+        </mesh>
       )}
 
       {/* Expanding rings */}
