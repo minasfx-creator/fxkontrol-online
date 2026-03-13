@@ -42,6 +42,7 @@ import ChainEditorPanel from '@/components/editor/ChainEditorPanel';
 import PositionGroupsPanel from '@/components/editor/PositionGroupsPanel';
 import ShowSummaryPanel from '@/components/editor/ShowSummaryPanel';
 import SceneEditorPanel from '@/components/editor/SceneEditorPanel';
+import SoundLevelPanel from '@/components/editor/SoundLevelPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
@@ -95,6 +96,7 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   groups: 'w-56',
   summary: 'w-64',
   scene: 'w-64',
+  soundlevel: 'w-64',
 };
 
 export default function Index() {
@@ -249,6 +251,7 @@ export default function Index() {
         {activePanel === 'groups' && <PositionGroupsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'summary' && <ShowSummaryPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'scene' && <SceneEditorPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'soundlevel' && <SoundLevelPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
