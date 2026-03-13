@@ -810,26 +810,25 @@ function StageGround() {
         <meshBasicMaterial color="#ffaa00" transparent opacity={0.3} />
       </mesh>
 
-      {/* Scale reference poles with enhanced detail */}
-      {[-20, -10, 0, 10, 20].map((x) => (
-        <group key={`pole-${x}`} position={[x, 0, -20]}>
-          <mesh position={[0, 3, 0]} castShadow>
-            <cylinderGeometry args={[0.03, 0.04, 6, 8]} />
+      {/* Scale reference poles — wider spread */}
+      {[-40, -20, 0, 20, 40].map((x) => (
+        <group key={`pole-${x}`} position={[x, 0, -35]}>
+          <mesh position={[0, 5, 0]} castShadow>
+            <cylinderGeometry args={[0.04, 0.05, 10, 8]} />
             <meshStandardMaterial color="#555555" metalness={0.7} roughness={0.25} />
           </mesh>
-          {[2, 4, 6].map((h) => (
+          {[2, 4, 6, 8, 10].map((h) => (
             <mesh key={h} position={[0, h, 0]}>
-              <boxGeometry args={[0.12, 0.02, 0.12]} />
+              <boxGeometry args={[0.15, 0.02, 0.15]} />
               <meshBasicMaterial color="#888888" transparent opacity={0.5} />
             </mesh>
           ))}
-          <mesh position={[0, 6.1, 0]}>
-            <sphereGeometry args={[0.06, 8, 8]} />
+          <mesh position={[0, 10.15, 0]}>
+            <sphereGeometry args={[0.08, 8, 8]} />
             <meshBasicMaterial color="#ff0000" />
           </mesh>
-          {/* Pole base */}
           <mesh position={[0, 0.05, 0]}>
-            <cylinderGeometry args={[0.15, 0.18, 0.1, 8]} />
+            <cylinderGeometry args={[0.18, 0.22, 0.1, 8]} />
             <meshStandardMaterial color="#444444" metalness={0.6} roughness={0.3} />
           </mesh>
         </group>
