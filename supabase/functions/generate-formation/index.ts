@@ -84,9 +84,13 @@ Before designing, deeply ANALYZE the user's prompt:
 9. EMOTIONAL ARC: Map the emotional journey described → formation complexity, color warmth, and timing.
 
 SHAPE NAME VOCABULARY — the server understands these names for formationName:
-Heart, Star, Circle, Spiral, Vortex, Diamond, Cross, Wave, Butterfly, Arrow, Crescent/Moon, Ring, Infinity/Lemniscate, Radial Burst/Firework, Christmas Tree, House, Music Note, Peace Sign, Rocket, Cake, Globe/Earth, Trophy, Snowflake, Crown, Flag BR, Dragon, Text "[any text]", Grid, DNA/Helix, Bird/Phoenix, Compass/Bússola, Runner/Corredor, Sun/Sol, Anchor, Castle, Flower, Mandala, Galaxy, Lightning/Raio, Silhouette, Shield, Leaf, Angel/Wing, Planet/Saturn, Hexagon, Triangle.
+Heart, Star, Circle, Spiral, Vortex, Diamond, Cross, Wave, Butterfly, Arrow, Crescent/Moon, Ring, Infinity/Lemniscate, Radial Burst/Firework, Christmas Tree, House, Music Note, Peace Sign, Rocket, Cake, Globe/Earth, Trophy, Trophy Detailed (with handles), Snowflake, Crown, Flag BR, Dragon, Anchor, Laurel Wreath/Coroa de Louros, Runner/Corredor (running silhouette), Shield/Escudo, Compass/Bússola, Text "[any text]", Grid, DNA/Helix, Bird/Phoenix, Sun/Sol, Castle, Flower, Mandala, Galaxy, Lightning/Raio, Silhouette, Leaf, Angel/Wing, Planet/Saturn, Hexagon, Triangle.
 For text or numbers, use: Text "2027", Text "NOME", etc.
 For a running figure, use: Runner
+For a compass, use: Compass
+For an anchor, use: Anchor
+For a laurel wreath (open at top), use: Laurel Wreath
+For a trophy with detailed handles, use: Trophy Detailed
 For a compass, use: Compass
 
 SHOW STRUCTURE (adapt count based on prompt complexity — 4 to 10 formations):
