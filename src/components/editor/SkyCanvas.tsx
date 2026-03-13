@@ -222,29 +222,25 @@ function TimelineEffects() {
 }
 
 // ========================================================================
-// UE5-STYLE — Atmospheric scattering sky with Rayleigh/Mie
+// GOOGLE EARTH-STYLE — Atmospheric sky with realistic horizon
 // ========================================================================
 function SkyGradient() {
   return (
     <mesh>
-      <sphereGeometry args={[200, 64, 64]} />
+      <sphereGeometry args={[500, 64, 64]} />
       <shaderMaterial
         side={THREE.BackSide}
         vertexShader={`
           varying vec3 vWorldPosition;
-          varying vec3 vViewDir;
           void main() {
             vec4 worldPosition = modelMatrix * vec4(position, 1.0);
             vWorldPosition = worldPosition.xyz;
-            vViewDir = normalize(worldPosition.xyz - cameraPosition);
             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
           }
         `}
         fragmentShader={`
           varying vec3 vWorldPosition;
-          varying vec3 vViewDir;
           
-          // Procedural star field
           float hash21(vec2 p) {
             p = fract(p * vec2(123.34, 456.21));
             p += dot(p, p + 45.32);
@@ -252,16 +248,14 @@ function SkyGradient() {
           }
           
           float starField(vec3 dir) {
-            // Project direction to 2D grid cells
             vec2 uv = vec2(atan(dir.x, dir.z) * 3.183, asin(clamp(dir.y, -1.0, 1.0)) * 6.366);
-            vec2 id = floor(uv * 120.0);
+            vec2 id = floor(uv * 140.0);
             float h = hash21(id);
-            if (h > 0.985) {
-              vec2 offset = fract(uv * 120.0) - 0.5;
-              float brightness = smoothstep(0.12, 0.0, length(offset)) * (0.4 + h * 3.0);
-              // Twinkling
+            if (h > 0.982) {
+              vec2 offset = fract(uv * 140.0) - 0.5;
+              float brightness = smoothstep(0.1, 0.0, length(offset)) * (0.5 + h * 3.5);
               float twinkle = sin(h * 6283.0 + h * 200.0) * 0.3 + 0.7;
-              return brightness * twinkle * smoothstep(0.05, 0.3, dir.y);
+              return brightness * twinkle * smoothstep(0.08, 0.35, dir.y);
             }
             return 0.0;
           }
@@ -270,51 +264,49 @@ function SkyGradient() {
             vec3 dir = normalize(vWorldPosition);
             float h = dir.y;
             
-            // UE5-style atmospheric sky
-            // Deep space zenith → rich navy mid → warm horizon glow
-            vec3 zenith    = vec3(0.008, 0.012, 0.04);      // near-black deep space
-            vec3 upperSky  = vec3(0.015, 0.025, 0.08);      // deep indigo
-            vec3 midSky    = vec3(0.03, 0.05, 0.14);        // rich navy
-            vec3 lowSky    = vec3(0.06, 0.08, 0.18);        // steel blue
-            vec3 horizon   = vec3(0.10, 0.10, 0.16);        // warm grey-blue
-            vec3 ground    = vec3(0.015, 0.02, 0.035);      // very dark ground
+            // Google Earth-style atmosphere: rich blue sky fading to warm horizon
+            vec3 space     = vec3(0.005, 0.008, 0.025);
+            vec3 zenith    = vec3(0.01, 0.015, 0.055);
+            vec3 upperSky  = vec3(0.02, 0.035, 0.12);
+            vec3 midSky    = vec3(0.04, 0.06, 0.18);
+            vec3 lowSky    = vec3(0.06, 0.09, 0.22);
+            vec3 horizon   = vec3(0.14, 0.16, 0.24);
+            vec3 haze      = vec3(0.18, 0.17, 0.20);
+            vec3 ground    = vec3(0.01, 0.015, 0.025);
             
             vec3 color;
-            if (h > 0.6) {
-              color = mix(upperSky, zenith, smoothstep(0.6, 1.0, h));
-            } else if (h > 0.3) {
-              color = mix(midSky, upperSky, smoothstep(0.3, 0.6, h));
-            } else if (h > 0.1) {
-              color = mix(lowSky, midSky, smoothstep(0.1, 0.3, h));
-            } else if (h > 0.0) {
-              color = mix(horizon, lowSky, smoothstep(0.0, 0.1, h));
+            if (h > 0.7) {
+              color = mix(upperSky, space, smoothstep(0.7, 1.0, h));
+            } else if (h > 0.4) {
+              color = mix(midSky, upperSky, smoothstep(0.4, 0.7, h));
+            } else if (h > 0.15) {
+              color = mix(lowSky, midSky, smoothstep(0.15, 0.4, h));
+            } else if (h > 0.02) {
+              color = mix(horizon, lowSky, smoothstep(0.02, 0.15, h));
+            } else if (h > -0.02) {
+              color = mix(haze, horizon, smoothstep(-0.02, 0.02, h));
             } else {
-              color = mix(ground, horizon, smoothstep(-0.2, 0.0, h));
+              color = mix(ground, haze, smoothstep(-0.15, -0.02, h));
             }
             
-            // Warm horizon glow band — Rayleigh scattering simulation
-            float horizonBand = exp(-h * h * 120.0);
-            vec3 horizonGlow = vec3(0.12, 0.08, 0.04); // amber-orange
-            color += horizonGlow * horizonBand * 0.25;
+            // Atmospheric glow band — Google Earth warm horizon
+            float horizonGlow = exp(-h * h * 80.0);
+            color += vec3(0.18, 0.14, 0.08) * horizonGlow * 0.35;
             
-            // Cool horizon anti-glow (opposite side) — subtle blue
-            float antiHorizon = exp(-(h - 0.05) * (h - 0.05) * 40.0);
-            color += vec3(0.02, 0.04, 0.08) * antiHorizon * 0.15;
+            // Blue atmospheric scatter ring
+            float blueRing = exp(-(h - 0.03) * (h - 0.03) * 60.0);
+            color += vec3(0.04, 0.06, 0.12) * blueRing * 0.3;
             
-            // Milky Way band — diagonal streak across sky
+            // Milky Way
             float milkyAngle = dir.x * 0.6 + dir.z * 0.8;
             float milkyBand = exp(-pow(milkyAngle - dir.y * 0.5, 2.0) * 8.0);
             float milkyDetail = hash21(dir.xz * 40.0) * 0.3 + 0.7;
-            color += vec3(0.02, 0.025, 0.04) * milkyBand * milkyDetail * smoothstep(0.1, 0.4, h) * 0.5;
+            color += vec3(0.015, 0.02, 0.035) * milkyBand * milkyDetail * smoothstep(0.15, 0.5, h) * 0.5;
             
-            // Procedural stars (supplement drei Stars)
+            // Stars
             float stars = starField(dir);
             vec3 starColor = mix(vec3(0.8, 0.85, 1.0), vec3(1.0, 0.9, 0.7), hash21(dir.xz * 50.0));
-            color += starColor * stars * 0.6;
-            
-            // Atmospheric scattering — slight color shift at low angles
-            float scatter = pow(max(1.0 - h, 0.0), 4.0);
-            color += vec3(0.015, 0.01, 0.025) * scatter;
+            color += starColor * stars * 0.7;
             
             gl_FragColor = vec4(color, 1.0);
           }
