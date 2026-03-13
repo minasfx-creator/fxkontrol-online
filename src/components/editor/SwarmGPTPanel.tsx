@@ -227,7 +227,11 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
       setLastGeneratedPoints(allPts);
       setCurrentTime(0);
       setHistory(prev => [{ prompt, result: `Show "${data.showName}" · ${data.formations?.length || 0} formações`, time: new Date().toLocaleTimeString(), points: allPts }, ...prev.slice(0, 9)]);
-      toast.success(`Show "${data.showName}" gerado!`, { description: `${data.formations?.length || 0} formações · ${data.totalDuration}s` });
+      if (data.fallback) {
+        toast.warning(`Show gerado em modo local (sem IA)`, { description: data.warning || 'Adicione créditos para shows com narrativa inteligente.', duration: 8000 });
+      } else {
+        toast.success(`Show "${data.showName}" gerado!`, { description: `${data.formations?.length || 0} formações · ${data.totalDuration}s` });
+      }
     } catch (e: any) {
       handleError(e);
     } finally {
