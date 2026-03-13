@@ -45,6 +45,9 @@ import SceneEditorPanel from '@/components/editor/SceneEditorPanel';
 import SoundLevelPanel from '@/components/editor/SoundLevelPanel';
 import AROverlayPanel from '@/components/editor/AROverlayPanel';
 import ShowSharePanel from '@/components/editor/ShowSharePanel';
+import CollaborationPanel from '@/components/editor/CollaborationPanel';
+import ParticleEditorPanel from '@/components/editor/ParticleEditorPanel';
+import VersioningPanel from '@/components/editor/VersioningPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
@@ -101,6 +104,9 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   soundlevel: 'w-64',
   aroverlay: 'w-64',
   share: 'w-64',
+  collab: 'w-64',
+  particles: 'w-64',
+  versioning: 'w-64',
 };
 
 export default function Index() {
@@ -258,6 +264,9 @@ export default function Index() {
         {activePanel === 'soundlevel' && <SoundLevelPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'aroverlay' && <AROverlayPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'share' && <ShowSharePanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'collab' && <CollaborationPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'particles' && <ParticleEditorPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'versioning' && <VersioningPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
