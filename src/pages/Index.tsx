@@ -151,6 +151,7 @@ export default function Index() {
         e.preventDefault();
         const store = useProjectStore.getState();
         if (store.selectedPositionIds.length > 0) {
+          useUndoStore.getState().checkpoint();
           const newIds: string[] = [];
           store.selectedPositionIds.forEach(id => {
             const pos = store.positions.find(p => p.id === id);
