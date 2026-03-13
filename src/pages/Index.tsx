@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState, useCallback } from 'react';
 import Toolbar from '@/components/editor/Toolbar';
 import SplashScreen from '@/components/editor/SplashScreen';
+import GlobeSelector from '@/components/editor/GlobeSelector';
 import EffectLibrary from '@/components/editor/EffectLibrary';
 import Timeline from '@/components/editor/Timeline';
 import PropertiesPanel from '@/components/editor/PropertiesPanel';
