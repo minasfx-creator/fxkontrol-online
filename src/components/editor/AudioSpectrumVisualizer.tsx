@@ -71,7 +71,7 @@ export default function AudioSpectrumVisualizer() {
 
     const analyser = analyserRef.current;
     if (analyser && isPlaying) {
-      analyser.getByteFrequencyData(dataRef.current);
+      analyser.getByteFrequencyData(dataRef.current as any);
     }
 
     const totalWidth = BAR_COUNT * (BAR_WIDTH + BAR_GAP);
