@@ -142,8 +142,12 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
       const { data, error } = await supabase.functions.invoke('generate-formation', {
         body: { mode: 'text', prompt, droneCount, previousFormation: lastFormation?.points?.slice(0, droneCount) },
       });
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      if (error) {
+        // Check if data contains a message from the edge function
+        const errMsg = (data as any)?.error || error.message || String(error);
+        throw new Error(errMsg.includes('402') || errMsg.includes('Créditos') ? '402' : errMsg.includes('429') ? '429' : errMsg);
+      }
+      if (data?.error) throw new Error(data.error);
 
       const rawPts = (data.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
       const pts = normalizeDroneCount(rawPts, droneCount);
@@ -189,8 +193,11 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
       const { data, error } = await supabase.functions.invoke('generate-formation', {
         body: { generateFullShow: true, prompt, droneCount },
       });
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      if (error) {
+        const errMsg = (data as any)?.error || error.message || String(error);
+        throw new Error(errMsg);
+      }
+      if (data?.error) throw new Error(data.error);
 
       let time = 0;
       const allPts: { x: number; z: number }[] = [];
@@ -241,8 +248,11 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
       const { data, error } = await supabase.functions.invoke('generate-formation', {
         body: { generateFullShow: true, prompt: enhancedPrompt, droneCount },
       });
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      if (error) {
+        const errMsg = (data as any)?.error || error.message || String(error);
+        throw new Error(errMsg);
+      }
+      if (data?.error) throw new Error(data.error);
 
       let time = 0;
       (data.formations || []).forEach((f: any) => {
