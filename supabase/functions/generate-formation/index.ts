@@ -1017,75 +1017,36 @@ function postProcess(
   cx /= points.length; cz /= points.length;
   let pts = points.map(p => ({ x: p.x - cx, z: p.z - cz }));
 
-  // Adjust count - use efficient methods for large N
+  // Adjust count
   if (pts.length > targetCount) {
-    // For large arrays, use random sampling + keep shape integrity
-    if (pts.length - targetCount > 100) {
-      // Subsample keeping every nth point
-      const step = pts.length / targetCount;
-      const sampled: { x: number; z: number }[] = [];
-      for (let i = 0; i < targetCount; i++) {
-        sampled.push(pts[Math.floor(i * step)]);
-      }
-      pts = sampled;
-    } else {
-      // Small difference: remove closest pairs using spatial grid
-      const grid = new SpatialGrid(minSpacing * 2);
-      while (pts.length > targetCount) {
-        grid.rebuild(pts);
-        let minDist = Infinity, removeIdx = 0;
-        for (let i = 0; i < pts.length; i++) {
-          const nearby = grid.neighbors(pts[i].x, pts[i].z, minSpacing * 3);
-          for (const j of nearby) {
-            if (i === j) continue;
-            const d = Math.hypot(pts[i].x - pts[j].x, pts[i].z - pts[j].z);
-            if (d < minDist) { minDist = d; removeIdx = i; }
-          }
-        }
-        pts.splice(removeIdx, 1);
-      }
+    const step = pts.length / targetCount;
+    const sampled: { x: number; z: number }[] = [];
+    for (let i = 0; i < targetCount; i++) {
+      sampled.push(pts[Math.floor(i * step)]);
     }
+    pts = sampled;
   } else if (pts.length < targetCount) {
-    // Add points by subdividing - for large gaps use batch approach
-    if (targetCount - pts.length > pts.length) {
-      // Need to more than double: use parametric interpolation along shape
-      const original = [...pts];
-      while (pts.length < targetCount) {
-        const idx = pts.length % original.length;
-        const next = (idx + 1) % original.length;
-        const t = 0.3 + Math.random() * 0.4;
-        pts.push({
-          x: original[idx].x + (original[next].x - original[idx].x) * t + (Math.random() - 0.5) * 0.5,
-          z: original[idx].z + (original[next].z - original[idx].z) * t + (Math.random() - 0.5) * 0.5,
-        });
-      }
-    } else {
-      // Small gap: add midpoints between farthest pairs
-      while (pts.length < targetCount) {
-        // Sample random pairs to find far ones (avoid O(n²))
-        let maxDist = 0, bestI = 0, bestJ = 1;
-        const samples = Math.min(pts.length, 200);
-        for (let s = 0; s < samples; s++) {
-          const i = Math.floor(Math.random() * pts.length);
-          const j = Math.floor(Math.random() * pts.length);
-          if (i === j) continue;
-          const d = Math.hypot(pts[i].x - pts[j].x, pts[i].z - pts[j].z);
-          if (d > maxDist) { maxDist = d; bestI = i; bestJ = j; }
-        }
-        pts.push({
-          x: (pts[bestI].x + pts[bestJ].x) / 2 + (Math.random() - 0.5) * 0.3,
-          z: (pts[bestI].z + pts[bestJ].z) / 2 + (Math.random() - 0.5) * 0.3,
-        });
-      }
+    const original = [...pts];
+    while (pts.length < targetCount) {
+      const idx = pts.length % original.length;
+      const next = (idx + 1) % original.length;
+      const t = 0.3 + Math.random() * 0.4;
+      pts.push({
+        x: original[idx].x + (original[next].x - original[idx].x) * t + (Math.random() - 0.5) * 0.5,
+        z: original[idx].z + (original[next].z - original[idx].z) * t + (Math.random() - 0.5) * 0.5,
+      });
     }
   }
 
-  // Enforce minimum spacing using spatial grid (O(n*k) instead of O(n²))
+  // Enforce minimum spacing - scale iterations based on N
+  // For very large N (>1000), do fewer iterations and only fix worst violations
+  const maxIter = pts.length > 2000 ? 5 : pts.length > 1000 ? 10 : pts.length > 500 ? 20 : 40;
   const grid = new SpatialGrid(minSpacing * 1.5);
-  const maxIter = pts.length > 1000 ? 30 : 60;
+  
   for (let iter = 0; iter < maxIter; iter++) {
     grid.rebuild(pts);
     let moved = false;
+    let violations = 0;
     for (let i = 0; i < pts.length; i++) {
       const nearby = grid.neighbors(pts[i].x, pts[i].z, minSpacing * 1.5);
       for (const j of nearby) {
@@ -1099,6 +1060,7 @@ function postProcess(
           pts[i] = { x: pts[i].x - nx * push, z: pts[i].z - nz * push };
           pts[j] = { x: pts[j].x + nx * push, z: pts[j].z + nz * push };
           moved = true;
+          violations++;
         } else if (dist <= 0.001) {
           const a = Math.random() * Math.PI * 2;
           pts[j] = { x: pts[j].x + Math.cos(a) * minSpacing, z: pts[j].z + Math.sin(a) * minSpacing };
@@ -1106,7 +1068,7 @@ function postProcess(
         }
       }
     }
-    if (!moved) break;
+    if (!moved || violations < pts.length * 0.01) break; // Stop if <1% violations
   }
 
   // Re-center and round
