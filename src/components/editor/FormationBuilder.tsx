@@ -16,7 +16,7 @@ import {
 } from '@/lib/formations';
 import { Trash2, Plus, MessageSquare, Image, Sparkles, Loader2, Wand2, Film, FileCode, Box, Upload } from 'lucide-react';
 import { parseSVGToFormation } from '@/lib/svgParser';
-import { parseModelToFormation, parseKMZToFormation, type ProjectionMode } from '@/lib/modelToFormation';
+import { parseModelToFormation, parseKMZToFormation, type ProjectionMode, type SamplingMode } from '@/lib/modelToFormation';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
