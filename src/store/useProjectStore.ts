@@ -128,6 +128,8 @@ export interface ProjectState {
   selectedFormationId: string | null;
   selectedTrajectoryIds: string[];
   showFormations: boolean;
+  gpsOrigin: { lat: number; lng: number; heading: number; altitude: number };
+  setGpsOrigin: (origin: { lat: number; lng: number; heading: number; altitude: number }) => void;
 
   setPlaying: (playing: boolean) => void;
   setCurrentTime: (time: number) => void;
