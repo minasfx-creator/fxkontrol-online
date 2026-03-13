@@ -139,6 +139,8 @@ THEME RECIPES (use as inspiration, adapt to the specific prompt):
 "Corredor/Run" → Line→Runner→Sun→Compass→Silhouette→Crown→RadialBurst
 "Isla/Island" → Wave→Compass→Globe→Crown→RadialBurst→StarBurst
 "Pirotecnia" → Crescent→Star→RadialBurst→Firework→Crown→Scatter
+"Grand Finale" → Vortex→RadialBurst→Scatter(explosive)→Crown→Vortex(max altitude, descent spiral, rgb_cycle)→Finale(dense pyro)
+"Finale Frenético" → Vortex(altitude máxima, espiral descendente, rgb_cycle)→RadialBurst(explosão)→Scatter(chuva de drones)→Crown(triunfo)→Vortex(caos controlado)
 
 SHOW DESIGN PRINCIPLES:
 1. SCALE PROGRESSION: Start small, grow to maximum, then resolve
