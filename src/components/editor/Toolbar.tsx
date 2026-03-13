@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Rocket, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus } from 'lucide-react';
+import { Rocket, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus, Download, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useAuth } from '@/hooks/useAuth';
@@ -11,7 +11,7 @@ import FormationBuilder from './FormationBuilder';
 import CSVImporter from './CSVImporter';
 import VVIZImporter from './VVIZImporter';
 import ProjectBrowser from './ProjectBrowser';
-import { exportVVIZ, exportFiringCSV, downloadFile } from '@/lib/exportEngine';
+import { exportVVIZ, exportFiringCSV, exportSkyc, downloadFile } from '@/lib/exportEngine';
 
 function TimecodeDisplay() {
   const { currentTime, isPlaying } = useProjectStore();
@@ -44,7 +44,7 @@ function MenuButton({ label, onClick }: { label: string; onClick?: () => void })
 }
 
 export default function Toolbar() {
-  const { projectName, timelineItems, positions, editorMode, setEditorMode, duration, trajectories, droneFormations } = useProjectStore();
+  const { projectName, timelineItems, positions, editorMode, setEditorMode, duration, trajectories, droneFormations, gpsOrigin } = useProjectStore();
   const { signOut, user } = useAuth();
   const { saveProject } = useProjectPersistence();
   const [formationOpen, setFormationOpen] = useState(false);
@@ -61,11 +61,25 @@ export default function Toolbar() {
     else toast.error('Erro ao salvar');
   }, [saveProject]);
 
-  const handleExport = useCallback(() => {
+  const handleExportVVIZ = useCallback(() => {
     const content = exportVVIZ(projectName, duration, timelineItems, positions, trajectories, droneFormations);
     downloadFile(content, `${projectName.replace(/\s+/g, '_')}.vviz`, 'application/json');
     toast.success('VVIZ exportado!');
   }, [projectName, duration, timelineItems, positions, trajectories, droneFormations]);
+
+  const handleExportSkyc = useCallback(() => {
+    const content = exportSkyc(projectName, duration, timelineItems, positions, trajectories, droneFormations, gpsOrigin);
+    downloadFile(content, `${projectName.replace(/\s+/g, '_')}.skyc`, 'application/json');
+    toast.success('SkyCreator .skyc exportado!');
+  }, [projectName, duration, timelineItems, positions, trajectories, droneFormations, gpsOrigin]);
+
+  const handleExportFiringCSV = useCallback(() => {
+    const content = exportFiringCSV(timelineItems, positions);
+    downloadFile(content, `${projectName.replace(/\s+/g, '_')}_firing.csv`, 'text/csv');
+    toast.success('Firing CSV exportado!');
+  }, [projectName, timelineItems, positions]);
+
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
   const handleNewProject = useCallback(() => {
     if (timelineItems.length > 0 || positions.length > 0) {
@@ -80,7 +94,7 @@ export default function Toolbar() {
       const ctrl = e.ctrlKey || e.metaKey;
       if (ctrl && e.key === 's') { e.preventDefault(); handleSave(); }
       if (ctrl && e.key === 'o') { e.preventDefault(); setBrowserOpen(true); }
-      if (ctrl && e.key === 'e') { e.preventDefault(); handleExport(); }
+      if (ctrl && e.key === 'e') { e.preventDefault(); handleExportVVIZ(); }
       if (e.key === 'v' && !ctrl && !e.shiftKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
         setEditorMode('select');
       }
@@ -92,7 +106,7 @@ export default function Toolbar() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [handleSave, handleExport, setEditorMode]);
+  }, [handleSave, handleExportVVIZ, setEditorMode]);
 
   return (
     <div className="flex items-center h-10 px-2 bg-surface-1 border-b border-border">
@@ -111,7 +125,31 @@ export default function Toolbar() {
         <MenuButton label="New" onClick={handleNewProject} />
         <MenuButton label="Open" onClick={() => setBrowserOpen(true)} />
         <MenuButton label="Save" onClick={handleSave} />
-        <MenuButton label="Export" onClick={handleExport} />
+        <div className="relative">
+          <button
+            onClick={() => setExportMenuOpen(!exportMenuOpen)}
+            className="text-[10px] font-mono-code text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-surface-3 transition-colors uppercase tracking-wider flex items-center gap-0.5"
+          >
+            Export <ChevronDown className="w-2.5 h-2.5" />
+          </button>
+          {exportMenuOpen && (
+            <div className="absolute top-full left-0 mt-0.5 z-50 bg-surface-1 border border-border rounded-md shadow-lg py-1 min-w-[160px]"
+              onMouseLeave={() => setExportMenuOpen(false)}>
+              <button onClick={() => { handleExportVVIZ(); setExportMenuOpen(false); }}
+                className="w-full text-left px-3 py-1.5 text-[10px] font-mono-code text-muted-foreground hover:text-foreground hover:bg-surface-3 flex items-center gap-2">
+                <FileJson className="w-3 h-3" /> .vviz (Finale 3D)
+              </button>
+              <button onClick={() => { handleExportSkyc(); setExportMenuOpen(false); }}
+                className="w-full text-left px-3 py-1.5 text-[10px] font-mono-code text-muted-foreground hover:text-foreground hover:bg-surface-3 flex items-center gap-2">
+                <Download className="w-3 h-3" /> .skyc (SkyCreator)
+              </button>
+              <button onClick={() => { handleExportFiringCSV(); setExportMenuOpen(false); }}
+                className="w-full text-left px-3 py-1.5 text-[10px] font-mono-code text-muted-foreground hover:text-foreground hover:bg-surface-3 flex items-center gap-2">
+                <Download className="w-3 h-3" /> Firing CSV (Cobra/FireTEK)
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <Separator orientation="vertical" className="h-4 mx-2" />
