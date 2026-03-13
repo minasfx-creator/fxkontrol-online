@@ -52,6 +52,8 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
 
   const positions = useProjectStore((s) => s.positions);
   const droneFormations = useProjectStore((s) => s.droneFormations);
+  const trajectories = useProjectStore((s) => s.trajectories);
+  const projectName = useProjectStore((s) => s.projectName);
   const gpsOrigin = useProjectStore((s) => s.gpsOrigin);
   const setGpsOrigin = useProjectStore((s) => s.setGpsOrigin);
 
