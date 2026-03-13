@@ -370,6 +370,36 @@ function buildLocalFullShowFallback(prompt: string, count: number) {
     else if (idx === sequence.length - 1) colorTransition = "sparkle";
     else if (idx % 2 === 0) colorTransition = "wave";
 
+    // Generate pyro cues based on position in show arc
+    const pyroCues: any[] = [];
+    const radius_half = radius * 0.5;
+    
+    if (idx === 0) {
+      // Opening: subtle gerbs
+      pyroCues.push({ type: 'gerb', fireTime: 2, color: '#FFD700', caliber: 2, count: 2, positionX: -radius_half, positionZ: 0, height: 4, duration: 8 });
+      pyroCues.push({ type: 'gerb', fireTime: 2, color: '#FFD700', caliber: 2, count: 2, positionX: radius_half, positionZ: 0, height: 4, duration: 8 });
+    } else if (idx === climaxIndex) {
+      // Climax: shells + mines
+      pyroCues.push({ type: 'shell', fireTime: 0, color: item.color, caliber: 6, count: 3, positionX: 0, positionZ: -radius_half, pattern: 'chrysanthemum' });
+      pyroCues.push({ type: 'mine', fireTime: 0.5, color: '#FFFFFF', caliber: 4, count: 4, positionX: -radius_half, positionZ: 0 });
+      pyroCues.push({ type: 'mine', fireTime: 0.5, color: '#FFFFFF', caliber: 4, count: 4, positionX: radius_half, positionZ: 0 });
+      pyroCues.push({ type: 'shell', fireTime: 3, color: '#FFD700', caliber: 8, count: 2, positionX: 0, positionZ: 0, pattern: 'willow' });
+    } else if (idx === sequence.length - 1) {
+      // Finale: dense pyro
+      pyroCues.push({ type: 'cake', fireTime: 0, color: item.color, caliber: 2, count: 2, positionX: -radius_half * 0.8, positionZ: -radius_half * 0.5, shotCount: 25, duration: 12 });
+      pyroCues.push({ type: 'cake', fireTime: 0, color: '#FFD700', caliber: 2, count: 2, positionX: radius_half * 0.8, positionZ: -radius_half * 0.5, shotCount: 25, duration: 12 });
+      pyroCues.push({ type: 'shell', fireTime: 4, color: '#FFFFFF', caliber: 5, count: 5, positionX: 0, positionZ: 0, pattern: 'peony' });
+      pyroCues.push({ type: 'mine', fireTime: 8, color: item.color, caliber: 3, count: 6, positionX: 0, positionZ: 0 });
+      pyroCues.push({ type: 'gerb', fireTime: 0, color: '#C0C0C0', caliber: 3, count: 4, positionX: 0, positionZ: radius_half, height: 6, duration: 10 });
+    } else if (idx % 2 === 1) {
+      // Development: comets or roman candles
+      pyroCues.push({ type: 'comet', fireTime: 1, color: item.color, caliber: 3, count: 3, positionX: -radius_half * 0.6, positionZ: -radius_half * 0.3 });
+      pyroCues.push({ type: 'roman_candle', fireTime: 3, color: '#FFD700', caliber: 1, count: 2, positionX: radius_half * 0.6, positionZ: -radius_half * 0.3, shotCount: 8, duration: 8 });
+    } else {
+      // Even formations: fan or waterfall accent
+      pyroCues.push({ type: 'fan', fireTime: 0, color: item.color, caliber: 3, count: 1, positionX: 0, positionZ: -radius_half * 0.5, shotCount: 5 });
+    }
+
     return {
       formationName: item.name,
       points,
@@ -379,6 +409,7 @@ function buildLocalFullShowFallback(prompt: string, count: number) {
       color: item.color,
       endColor: sequence[(idx + 1) % sequence.length].color,
       colorTransition,
+      pyroCues,
     };
   });
 
