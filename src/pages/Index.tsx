@@ -36,6 +36,7 @@ import BackgroundPanel from '@/components/editor/BackgroundPanel';
 import SupplierCatalogPanel from '@/components/editor/SupplierCatalogPanel';
 import SafetyPanel from '@/components/editor/SafetyPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
+import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 
 const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
 
