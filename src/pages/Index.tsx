@@ -57,6 +57,8 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   maps: 'w-80',
   diagnostic: 'w-64',
   logistics: 'w-64',
+  swarmgpt: 'w-72',
+  synesthesia: 'w-64',
 };
 
 export default function Index() {
