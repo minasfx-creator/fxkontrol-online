@@ -209,7 +209,7 @@ export default function Index() {
         </div>
 
         {/* Center viewport */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 relative">
           <Suspense fallback={<CanvasLoader />}>
             <SkyCanvas />
           </Suspense>
@@ -226,6 +226,16 @@ export default function Index() {
       <div className="h-40 flex-shrink-0">
         <Timeline />
       </div>
+
+      {/* Floating pop-up editors */}
+      {showPositionEditor && selectedPositionId && (
+        <PositionPopupEditor onClose={() => setShowPositionEditor(false)} />
+      )}
+
+      {/* Shortcuts overlay */}
+      {showShortcuts && (
+        <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />
+      )}
     </div>
   );
 }
