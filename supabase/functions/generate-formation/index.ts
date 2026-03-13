@@ -213,6 +213,88 @@ async function callAI(
   throw lastError;
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function buildLocalFullShowFallback(prompt: string, count: number) {
+  const normalizedPrompt = (prompt || "").toLowerCase();
+
+  const keywordToShape: Array<{ re: RegExp; shape: string; name: string }> = [
+    { re: /heart|coração|amor|love|❤️|💕/, shape: "heart", name: "Coração" },
+    { re: /star|estrela|⭐|✨/, shape: "star", name: "Estrela" },
+    { re: /wave|onda|mar|ocean|🌊/, shape: "wave", name: "Onda" },
+    { re: /spiral|espiral|vortex|vórtex|🌀/, shape: "spiral", name: "Espiral" },
+    { re: /crown|coroa|👑/, shape: "crown", name: "Coroa" },
+    { re: /globe|terra|mundo|🌍/, shape: "globe", name: "Globo" },
+    { re: /firework|fogos|fogo|🎆/, shape: "radial_burst", name: "Explosão" },
+    { re: /diamond|diamante|💎/, shape: "diamond", name: "Diamante" },
+    { re: /cross|cruz|✝️/, shape: "cross", name: "Cruz" },
+    { re: /butterfly|borboleta|🦋/, shape: "butterfly", name: "Borboleta" },
+  ];
+
+  const matched = keywordToShape.filter((item) => item.re.test(normalizedPrompt));
+  const defaults: Array<{ shape: string; name: string }> = [
+    { shape: "filled_circle", name: "Aurora" },
+    { shape: "wave", name: "Fluxo" },
+    { shape: "star", name: "Ascensão" },
+    { shape: "heart", name: "Clímax" },
+    { shape: "crown", name: "Honra" },
+    { shape: "radial_burst", name: "Finale" },
+  ];
+
+  const sequence: Array<{ shape: string; name: string }> = [
+    ...matched.map((m) => ({ shape: m.shape, name: m.name })),
+    ...defaults,
+  ].slice(0, 6);
+
+  while (sequence.length < 5) sequence.push(defaults[sequence.length % defaults.length]);
+
+  const palette = ["#60A5FA", "#22D3EE", "#34D399", "#FBBF24", "#FB7185", "#FFFFFF"];
+  const climaxIndex = Math.floor(sequence.length * 0.6);
+
+  let previousPoints: { x: number; z: number }[] | undefined;
+  const formations = sequence.map((item, idx) => {
+    const intensity = idx / Math.max(1, sequence.length - 1);
+    const radiusFactor = idx === climaxIndex ? 2.9 : 2.1 + intensity * 0.9;
+    const radius = Math.max(12, Math.sqrt(count) * radiusFactor);
+
+    const rawPoints = generateShapePoints(item.shape, count, {
+      radius,
+      turns: 3,
+      layers: 4,
+      amplitude: radius * 0.35,
+      wavelength: radius * 1.2,
+      starPoints: 5,
+    });
+
+    let points = processFormationResult(rawPoints, count, previousPoints);
+    if (previousPoints && previousPoints.length === points.length && count <= 1000) {
+      points = optimizeTransitionOrder(previousPoints, points);
+    }
+    previousPoints = points;
+
+    return {
+      formationName: item.name,
+      points,
+      height: clamp(26 + idx * 7, 20, 80),
+      transitionDuration: clamp(9 + idx * 2, 8, 25),
+      holdDuration: clamp(12 + (idx % 3) * 4, 10, 30),
+      color: palette[idx % palette.length],
+      endColor: palette[(idx + 1) % palette.length],
+      colorTransition: idx === climaxIndex ? "pulse" : "linear",
+    };
+  });
+
+  return {
+    showName: (prompt?.trim() ? `${prompt.slice(0, 40)}...` : "Show") + " (Modo Local)",
+    formations,
+    totalDuration: formations.reduce((sum, f) => sum + f.transitionDuration + f.holdDuration, 0),
+    description: "Show gerado localmente porque os créditos de IA do workspace estão esgotados.",
+    model: "server-fallback-no-credits",
+  };
+}
+
 // ── Tool schemas (lightweight - no minItems/maxItems) ────────
 
 function buildFormationTool(count: number) {
@@ -1506,13 +1588,32 @@ serve(async (req) => {
       let raw: any;
       let usedModel = primary;
 
+      const returnLocalFallbackShow = (reason: string) => {
+        const local = buildLocalFullShowFallback(prompt, count);
+        console.warn("Credits exhausted - returning local full-show fallback");
+        return new Response(JSON.stringify({
+          ...local,
+          warning: reason,
+          fallback: true,
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      };
+
       try {
         raw = await callAI(LOVABLE_API_KEY, primary, messages, [structureTool], { type: "function", function: { name: "design_show_structure" } }, 0.3, 1);
       } catch (e: any) {
-        if (e.status === 429 || e.status === 402) throw e;
+        if (e.status === 402) return returnLocalFallbackShow(e.message || "Créditos esgotados.");
+        if (e.status === 429) throw e;
+
         console.warn(`Full show ${primary} failed, trying ${fallback}...`);
         usedModel = fallback;
-        raw = await callAI(LOVABLE_API_KEY, fallback, messages, [structureTool], { type: "function", function: { name: "design_show_structure" } }, 0.3, 1);
+
+        try {
+          raw = await callAI(LOVABLE_API_KEY, fallback, messages, [structureTool], { type: "function", function: { name: "design_show_structure" } }, 0.3, 1);
+        } catch (fallbackErr: any) {
+          if (fallbackErr.status === 402) return returnLocalFallbackShow(fallbackErr.message || "Créditos esgotados.");
+          if (fallbackErr.status === 429) throw fallbackErr;
+          throw fallbackErr;
+        }
       }
 
       console.log(`AI designed show "${raw.showName}" with ${raw.formations?.length || 0} formations (model=${usedModel})`);
