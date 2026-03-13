@@ -146,7 +146,38 @@ SHOW DESIGN PRINCIPLES:
 4. AUDIENCE DIRECTION: Alternate high/low formations to guide eyes
 5. SILENCE MOMENTS: Brief holds between major formations
 6. REFLECTIONS: For water/ocean venues, prefer Silver, Gold, Blue, Turquoise
-7. SHAPE READABILITY: Name formations clearly so the server can generate them accurately`;
+7. SHAPE READABILITY: Name formations clearly so the server can generate them accurately
+
+PYROTECHNIC INTEGRATION — CRITICAL:
+Every formation can include synchronized pyrotechnics! Add a "pyroCues" array to each formation with effects that fire during the hold phase.
+
+Available pyro types and their real behavior:
+- shell (3"-12"): Aerial burst. caliber 3-12, height 60-200m, duration 2-4s. Patterns: peony, chrysanthemum, willow, palm, kamuro, crossette
+- mine: Ground burst upward. caliber 2-6, height 20-40m, duration 1-2s
+- comet: Rising trail star. caliber 1-4, height 40-80m, duration 2-3s
+- cake: Multi-shot battery. shotCount 9-100, caliber 1-3, duration 5-30s
+- roman_candle: Sequential star shots. shotCount 5-12, caliber 1-2, duration 5-15s
+- gerb: Ground fountain. height 3-8m, duration 5-20s
+- waterfall: Cascading sparks from height. width 5-30m, duration 10-30s
+- fan: Multiple shells at angles. shotCount 3-7, caliber 2-6, duration 2-4s
+- flame: LPG flame projector. height 3-10m, duration 1-5s
+- cryo: CO2 jet. height 3-8m, duration 1-5s
+- salute: Loud flash/bang. caliber 3-10, duration 0.5s
+
+PYRO TIMING RULES:
+- Fire pyro at KEY MOMENTS: formation reveal, climax, transitions
+- Use mines/comets during TRANSITIONS (they punctuate the moment)
+- Use gerbs/waterfalls as CONTINUOUS ACCENTS during holds
+- Use shells at CLIMAX formations — the bigger the moment, the bigger the caliber
+- Use cakes during DEVELOPMENT for sustained visual energy
+- Finale should have the densest pyro (multiple shells + mines + gerbs)
+- Position pyro at the EDGES of the drone formation (x/z offset from center)
+- Heights should complement drone altitude (pyro lower or at same level)
+
+PYRO COLOR MATCHING:
+- Match pyro colors to drone LED colors for visual coherence
+- Or use CONTRASTING pyro (gold pyro with blue drones = stunning)
+- Silver/white pyro works with any drone color`;
 
 
 // ── v4 Trajectory Prompt ────────────────────────────────────
@@ -339,6 +370,36 @@ function buildLocalFullShowFallback(prompt: string, count: number) {
     else if (idx === sequence.length - 1) colorTransition = "sparkle";
     else if (idx % 2 === 0) colorTransition = "wave";
 
+    // Generate pyro cues based on position in show arc
+    const pyroCues: any[] = [];
+    const radius_half = radius * 0.5;
+    
+    if (idx === 0) {
+      // Opening: subtle gerbs
+      pyroCues.push({ type: 'gerb', fireTime: 2, color: '#FFD700', caliber: 2, count: 2, positionX: -radius_half, positionZ: 0, height: 4, duration: 8 });
+      pyroCues.push({ type: 'gerb', fireTime: 2, color: '#FFD700', caliber: 2, count: 2, positionX: radius_half, positionZ: 0, height: 4, duration: 8 });
+    } else if (idx === climaxIndex) {
+      // Climax: shells + mines
+      pyroCues.push({ type: 'shell', fireTime: 0, color: item.color, caliber: 6, count: 3, positionX: 0, positionZ: -radius_half, pattern: 'chrysanthemum' });
+      pyroCues.push({ type: 'mine', fireTime: 0.5, color: '#FFFFFF', caliber: 4, count: 4, positionX: -radius_half, positionZ: 0 });
+      pyroCues.push({ type: 'mine', fireTime: 0.5, color: '#FFFFFF', caliber: 4, count: 4, positionX: radius_half, positionZ: 0 });
+      pyroCues.push({ type: 'shell', fireTime: 3, color: '#FFD700', caliber: 8, count: 2, positionX: 0, positionZ: 0, pattern: 'willow' });
+    } else if (idx === sequence.length - 1) {
+      // Finale: dense pyro
+      pyroCues.push({ type: 'cake', fireTime: 0, color: item.color, caliber: 2, count: 2, positionX: -radius_half * 0.8, positionZ: -radius_half * 0.5, shotCount: 25, duration: 12 });
+      pyroCues.push({ type: 'cake', fireTime: 0, color: '#FFD700', caliber: 2, count: 2, positionX: radius_half * 0.8, positionZ: -radius_half * 0.5, shotCount: 25, duration: 12 });
+      pyroCues.push({ type: 'shell', fireTime: 4, color: '#FFFFFF', caliber: 5, count: 5, positionX: 0, positionZ: 0, pattern: 'peony' });
+      pyroCues.push({ type: 'mine', fireTime: 8, color: item.color, caliber: 3, count: 6, positionX: 0, positionZ: 0 });
+      pyroCues.push({ type: 'gerb', fireTime: 0, color: '#C0C0C0', caliber: 3, count: 4, positionX: 0, positionZ: radius_half, height: 6, duration: 10 });
+    } else if (idx % 2 === 1) {
+      // Development: comets or roman candles
+      pyroCues.push({ type: 'comet', fireTime: 1, color: item.color, caliber: 3, count: 3, positionX: -radius_half * 0.6, positionZ: -radius_half * 0.3 });
+      pyroCues.push({ type: 'roman_candle', fireTime: 3, color: '#FFD700', caliber: 1, count: 2, positionX: radius_half * 0.6, positionZ: -radius_half * 0.3, shotCount: 8, duration: 8 });
+    } else {
+      // Even formations: fan or waterfall accent
+      pyroCues.push({ type: 'fan', fireTime: 0, color: item.color, caliber: 3, count: 1, positionX: 0, positionZ: -radius_half * 0.5, shotCount: 5 });
+    }
+
     return {
       formationName: item.name,
       points,
@@ -348,6 +409,7 @@ function buildLocalFullShowFallback(prompt: string, count: number) {
       color: item.color,
       endColor: sequence[(idx + 1) % sequence.length].color,
       colorTransition,
+      pyroCues,
     };
   });
 
@@ -1932,6 +1994,29 @@ serve(async (req) => {
                     color: { type: "string", description: "Primary hex color e.g. #FFD700" },
                     endColor: { type: "string", description: "End color for hold transition (creates color journey)" },
                     colorTransition: { type: "string", description: "linear, wave, pulse, rainbow, cascade, sparkle, or instant" },
+                    pyroCues: {
+                      type: "array",
+                      description: "Pyrotechnic effects synchronized to this formation. Fire during the hold phase. 0-6 cues per formation.",
+                      items: {
+                        type: "object",
+                        properties: {
+                          type: { type: "string", description: "shell, mine, comet, cake, roman_candle, gerb, waterfall, fan, flame, cryo, salute" },
+                          fireTime: { type: "number", description: "Seconds after hold starts (0 = instant at formation reveal)" },
+                          color: { type: "string", description: "Hex color e.g. #FFD700" },
+                          caliber: { type: "number", description: "Size in inches (for shells/mines 2-12, for gerbs 1-4)" },
+                          count: { type: "number", description: "Number of devices firing (1-8)" },
+                          positionX: { type: "number", description: "X offset in meters from center (-50 to 50)" },
+                          positionZ: { type: "number", description: "Z offset in meters from center (-50 to 50)" },
+                          pattern: { type: "string", description: "For shells: peony, chrysanthemum, willow, palm, kamuro, crossette" },
+                          shotCount: { type: "number", description: "For cakes/roman candles: number of shots" },
+                          duration: { type: "number", description: "Duration in seconds for continuous effects (gerbs, waterfalls, cakes)" },
+                          height: { type: "number", description: "Height in meters for gerbs/flames/waterfalls" },
+                          width: { type: "number", description: "Width in meters for waterfalls" },
+                        },
+                        required: ["type", "fireTime", "color"],
+                        additionalProperties: false,
+                      },
+                    },
                   },
                   required: ["formationName", "shapeDescription", "height", "transitionDuration", "holdDuration", "color"],
                   additionalProperties: false,
@@ -2066,6 +2151,20 @@ INSTRUCTIONS:
           color: f.color || '#00B4D8',
           endColor: f.endColor || undefined,
           colorTransition: f.colorTransition || 'linear',
+          pyroCues: (f.pyroCues || []).map((cue: any) => ({
+            type: cue.type || 'shell',
+            fireTime: cue.fireTime || 0,
+            color: cue.color || f.color || '#FFD700',
+            caliber: cue.caliber || 4,
+            count: cue.count || 1,
+            positionX: cue.positionX || 0,
+            positionZ: cue.positionZ || 0,
+            pattern: cue.pattern || 'peony',
+            shotCount: cue.shotCount,
+            duration: cue.duration,
+            height: cue.height,
+            width: cue.width,
+          })),
         };
       });
 
@@ -2281,14 +2380,18 @@ function inferShapeType(name: string): string {
     [/^text\s/i, 'text'],
     [/^"[^"]+"$/, 'text'],
     [/\btext\b.*"[^"]+"/, 'text'],
-    // Specific new shapes
-    [/runner|corredor|corr[ie]da|running|silhouette.*corr/, 'butterfly'], // runner mapped to butterfly silhouette
-    [/compass|bússola|bussola|rosa.?dos.?ventos/, 'radial_burst'], // compass → radial with 4/8 arms
+    // New dedicated shapes
+    [/runner|corredor|corr[ie]da|running|silhouette.*corr/, 'runner'],
+    [/compass|bússola|bussola|rosa.?dos.?ventos/, 'compass'],
+    [/anchor|âncora|ancora|⚓/, 'anchor'],
+    [/shield|escudo|🛡|brasão/, 'shield'],
+    [/laurel|louros|louro|wreath/, 'laurel_wreath'],
+    [/trophy.*detail|troféu.*alça|trophy.*handle|taça.*alça/, 'trophy_detailed'],
     [/sun\b|sol\b|☀|🌞|sunrise|sunset|pôr.?do.?sol/, 'radial_burst'],
     [/line|linha|horizon|horizonte/, 'wave'],
     [/scatter|dispersão|lantern|lanterna|release/, 'radial_burst'],
     [/pulse|pulsação|pulso|batimento/, 'ring'],
-    [/silhouette|silhueta|vulto|sombra|contorno/, 'butterfly'],
+    [/silhouette|silhueta|vulto|sombra|contorno/, 'runner'],
     // Original shapes
     [/heart|coração|❤|💕|💗|💓|amor|love/, 'heart'],
     [/star|estrela|⭐|✨|🌟|stella/, 'star'],
@@ -2322,14 +2425,12 @@ function inferShapeType(name: string): string {
     [/flower|flor|🌸|🌺|🌻|🌷|petal/, 'radial_burst'],
     [/trophy|troféu|🏆|cup|taça/, 'trophy'],
     [/dolphin|golfinho|🐬|whale|baleia/, 'crescent'],
-    [/crown|coroa|👑|king|queen|rei|rainha|laurel|louros/, 'crown'],
-    [/anchor|âncora|⚓/, 'cross'],
+    [/crown|coroa|👑|king|queen|rei|rainha/, 'crown'],
     [/guitar|guitarra|🎸|violão/, 'music_note'],
     [/bird|pássaro|🦅|eagle|águia|dove|pomba|🕊/, 'butterfly'],
     [/dna|helix|🧬|genética/, 'spiral'],
     [/globe|globo|🌍|🌎|🌏|earth|terra|mundo/, 'globe'],
     [/eye|olho|👁|vision|visão/, 'crescent'],
-    [/shield|escudo|🛡|brasão/, 'diamond'],
     [/lightning|raio|⚡|bolt|relâmpago/, 'arrow'],
     [/skull|caveira|💀/, 'filled_circle'],
     [/cat|gato|🐱/, 'filled_circle'],

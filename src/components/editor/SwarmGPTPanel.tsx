@@ -69,6 +69,18 @@ function normalizeDroneCount(pts: { x: number; z: number }[], target: number): {
   return result;
 }
 
+/* ── Map AI pyro type names to effect library IDs ──────── */
+
+function mapPyroType(type: string): string {
+  const map: Record<string, string> = {
+    shell: 'shell', mine: 'mine', comet: 'comet', cake: 'cake',
+    roman_candle: 'roman_candle', gerb: 'gerb', waterfall: 'waterfall',
+    fan: 'fan', flame: 'flame', cryo: 'cryo', salute: 'salute',
+    confetti: 'confetti', laser: 'laser', strobe: 'strobe',
+  };
+  return map[type] || 'shell';
+}
+
 /* ── Mini 2D Preview ──────────────────────────────────────── */
 
 function MiniPreview({ points }: { points: { x: number; z: number }[] }) {
@@ -128,6 +140,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
   const [lastGeneratedPoints, setLastGeneratedPoints] = useState<{ x: number; z: number }[]>([]);
 
   const addDroneFormation = useProjectStore((s) => s.addDroneFormation);
+  const addTimelineItem = useProjectStore((s) => s.addTimelineItem);
   const droneFormations = useProjectStore((s) => s.droneFormations);
   const bpm = useProjectStore((s) => s.bpm);
   const setCurrentTime = useProjectStore((s) => s.setCurrentTime);
@@ -201,6 +214,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
 
       let time = 0;
       const allPts: { x: number; z: number }[] = [];
+      let pyroCount = 0;
       (data.formations || []).forEach((f: any) => {
         const rawPts = (f.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
         const pts = normalizeDroneCount(rawPts, droneCount);
@@ -221,16 +235,41 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
           colorTransition: f.colorTransition || 'linear',
           points: pts,
         });
+
+        // Insert pyro cues as timeline items
+        const holdStart = time + (f.transitionDuration || 12);
+        if (f.pyroCues && Array.isArray(f.pyroCues)) {
+          f.pyroCues.forEach((cue: any) => {
+            const pyroType = mapPyroType(cue.type);
+            const effectId = pyroType; // matches effect library IDs
+            for (let d = 0; d < (cue.count || 1); d++) {
+              const spread = d * 3;
+              addTimelineItem({
+                id: `pyro-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                effectId,
+                startTime: holdStart + (cue.fireTime || 0) + d * 0.15,
+                trackIndex: 1 + (d % 3),
+                position: {
+                  x: (cue.positionX || 0) + (d % 2 === 0 ? spread : -spread),
+                  y: 0,
+                  z: (cue.positionZ || 0),
+                },
+              });
+              pyroCount++;
+            }
+          });
+        }
+
         time += (f.transitionDuration || 12) + (f.holdDuration || 15);
       });
 
       setLastGeneratedPoints(allPts);
       setCurrentTime(0);
-      setHistory(prev => [{ prompt, result: `Show "${data.showName}" · ${data.formations?.length || 0} formações`, time: new Date().toLocaleTimeString(), points: allPts }, ...prev.slice(0, 9)]);
+      setHistory(prev => [{ prompt, result: `Show "${data.showName}" · ${data.formations?.length || 0} formações · ${pyroCount} fogos`, time: new Date().toLocaleTimeString(), points: allPts }, ...prev.slice(0, 9)]);
       if (data.fallback) {
-        toast.warning(`Show gerado em modo local (sem IA)`, { description: data.warning || 'Adicione créditos para shows com narrativa inteligente.', duration: 8000 });
+        toast.warning(`Show gerado em modo local (sem IA)`, { description: `${data.formations?.length || 0} formações · ${pyroCount} fogos pirotécnicos`, duration: 8000 });
       } else {
-        toast.success(`Show "${data.showName}" gerado!`, { description: `${data.formations?.length || 0} formações · ${data.totalDuration}s` });
+        toast.success(`Show "${data.showName}" gerado!`, { description: `${data.formations?.length || 0} formações · ${pyroCount} fogos · ${data.totalDuration}s` });
       }
     } catch (e: any) {
       handleError(e);
@@ -238,7 +277,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
       setLoading(false);
       setLoadingPhase('');
     }
-  }, [prompt, droneCount, addDroneFormation, setCurrentTime]);
+  }, [prompt, droneCount, addDroneFormation, addTimelineItem, setCurrentTime]);
 
   const generateMusicSync = useCallback(async () => {
     if (!prompt.trim()) return;
@@ -259,6 +298,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
       if (data?.error) throw new Error(data.error);
 
       let time = 0;
+      let pyroCount = 0;
       (data.formations || []).forEach((f: any) => {
         const rawPts = (f.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
         const pts = normalizeDroneCount(rawPts, droneCount);
@@ -281,18 +321,42 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
           colorTransition: f.colorTransition || 'pulse',
           points: pts,
         });
+
+        // Insert pyro cues quantized to beats
+        const holdStart = time + quantizedTransition;
+        if (f.pyroCues && Array.isArray(f.pyroCues)) {
+          f.pyroCues.forEach((cue: any) => {
+            const quantizedFire = Math.round((cue.fireTime || 0) / beatDuration) * beatDuration;
+            const pyroType = mapPyroType(cue.type);
+            for (let d = 0; d < (cue.count || 1); d++) {
+              addTimelineItem({
+                id: `pyro-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                effectId: pyroType,
+                startTime: holdStart + quantizedFire + d * 0.15,
+                trackIndex: 1 + (d % 3),
+                position: {
+                  x: (cue.positionX || 0) + (d % 2 === 0 ? d * 3 : -d * 3),
+                  y: 0,
+                  z: (cue.positionZ || 0),
+                },
+              });
+              pyroCount++;
+            }
+          });
+        }
+
         time += quantizedTransition + quantizedHold;
       });
 
       setCurrentTime(0);
-      toast.success(`Show musical gerado!`, { description: `${effectiveBPM} BPM · ${data.formations?.length || 0} formações` });
+      toast.success(`Show musical gerado!`, { description: `${effectiveBPM} BPM · ${data.formations?.length || 0} formações · ${pyroCount} fogos` });
     } catch (e: any) {
       handleError(e);
     } finally {
       setLoading(false);
       setLoadingPhase('');
     }
-  }, [prompt, droneCount, bpm, musicSyncBPM, musicSyncBeats, addDroneFormation, setCurrentTime]);
+  }, [prompt, droneCount, bpm, musicSyncBPM, musicSyncBeats, addDroneFormation, addTimelineItem, setCurrentTime]);
 
   const handleError = (e: any) => {
     const msg = e.message || 'Erro';
