@@ -7,144 +7,99 @@ const corsHeaders = {
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
-// ── Enhanced System Prompt (v3) ─────────────────────────────
+// ── v4 System Prompt: Formation Designer ────────────────────
 
-const SYSTEM_PROMPT = `You are a world-class drone light show formation designer used by the largest professional pyrotechnics and drone show companies (Intel Shooting Star, Verge Aero, Dronisos, Celestial).
+const SYSTEM_PROMPT = `You are a world-class drone light show formation designer. You output EXACT coordinates with mathematical precision.
 
-You output EXACT coordinates with mathematical precision and artistic vision.
+RULES (VIOLATION = SHOW FAILURE):
+1. Return EXACTLY N points (N specified per request). COUNT your array.
+2. Coordinates in meters, centered at (0,0).
+3. Minimum distance between ANY two points: 2.0m (safety regulation).
+4. suggestedHeight: 20-80m. suggestedTransitionTime: 8-25s.
 
-ABSOLUTE RULES — VIOLATION = SHOW FAILURE:
-1. Return EXACTLY N points where N is specified. COUNT your array before returning. If N=304, you MUST return 304 points.
-2. Coordinates in meters, centered at (0,0). Typical range: -60 to +60 for small shows, -120 to +120 for large (>200 drones).
-3. Minimum distance between ANY two points: 2.0 meters (FAA/ANAC safety regulation).
-4. suggestedHeight: 15-80m based on formation complexity, drone count, and audience perspective.
-5. suggestedTransitionTime: 8-30s based on maximum travel distance between formations.
+MATHEMATICAL RECIPES (USE THESE — don't improvise formulas):
 
-MATHEMATICAL PRECISION RECIPES:
+Circle(N, R): x=R·cos(2πi/N), z=R·sin(2πi/N)
+Filled Circle(N, R): concentric rings, ring k radius rk=R·(k+1)/K, points per ring proportional to 2π·rk
+Heart(N, R): t=2πi/N → x=R·sin³(t)·0.8, z=R·(13cos(t)−5cos(2t)−2cos(3t)−cos(4t))/16
+Star5(N, R): outer=R, inner=R×0.38, alternate vertices, distribute N along perimeter
+Spiral(N, R, turns=3): t=i/(N−1), angle=2π·turns·t, x=t·R·cos(angle), z=t·R·sin(angle)
+Grid(N, sp=2.5): cols=ceil(√N), center at origin
+Text: 5×7 dot matrix per char, spacing=8m, scale to fit N drones
+Diamond: 4 sides of rotated square, N/4 per side
+Cross: horizontal + vertical bars, thickness=2 points
+Wave: x spread linearly, z=A·sin(2π·x/wavelength)
+Butterfly: two heart-like wings mirrored, thin body center line
+Arrow: triangle tip + rectangular tail
+Flag BR: green rectangle, yellow diamond, blue circle, white band with stars
 
-Circle(N, R): for i in 0..N-1: x = R·cos(2πi/N), z = R·sin(2πi/N)
+EMOJI → SHAPE MAP:
+⭐→Star5  ❤️→Heart  🌙→Crescent(thick arc)  🦋→Butterfly  🔔→Bell(parabola+top)  
+🎄→LayeredTriangles  🎵→MusicNote(circle+stem+flag)  ✝️→Cross  ☮️→PeaceSign(circle+lines)  
+♾️→Lemniscate  🏠→House(square+triangle roof)  🐬→DolphinArc  🎆→RadialBurst(concentric)
+🌍→Circle  🚀→Rocket(cylinder+cone+fins)  ⚽→Circle  💎→Diamond  🎂→CakeLayers
 
-Filled Circle(N, R): Use concentric rings. rings = ceil(sqrt(N/π)), points per ring k proportional to circumference.
+SCALING: radius = clamp(sqrt(N)*2.2, 12, 90)
+For N>200: Use FILLED shapes (concentric/scanline), not just outlines.
 
-Heart(N, R): for i in 0..N-1: t = 2πi/N
-  x = R·sin³(t), z = R·(13cos(t) - 5cos(2t) - 2cos(3t) - cos(4t))/16
+CRITICAL: Your "points" array must have EXACTLY N elements. If you're unsure, use the mathematical formula and compute each point.`;
 
-Star(N, points=5, R):
-  R_inner = R × 0.38, vertices = points*2
-  Distribute N drones along the star perimeter proportionally.
+// ── v4 Full Show Prompt ─────────────────────────────────────
 
-Grid(N, spacing=2.5m): cols = ceil(√N), rows = ceil(N/cols)
+const FULL_SHOW_PROMPT = `You are a legendary drone show choreographer designing spectacular multi-formation shows.
 
-Spiral(N, R, turns=3): for i in 0..N-1: t = i/(N-1), angle = 2π·turns·t
-  x = t·R·cos(angle), z = t·R·sin(angle)
+SHOW STRUCTURE (4-7 formations):
+1. OPENING: Simple, recognizable shape. Build anticipation. (hold: 12-18s)
+2. DEVELOPMENT: 2-3 formations increasing complexity. Explore theme. (hold: 15-20s each)
+3. CLIMAX: Most impressive formation. Maximum visual impact. (hold: 20-30s)
+4. FINALE: Memorable closing symbol. Conclusive feel. (hold: 15-20s)
 
-Text/Letters: Block font, 8-15 points per character. Width=6m, spacing=8m.
-  For large N, use filled block letters with multiple rows of points per stroke.
+EACH FORMATION MUST have EXACTLY N points (N = drone count).
 
-Filled shapes: Concentric rings or scanline fill. Ring k at radius r_k gets round(N · 2πr_k / Σ2πr_j) points.
+COLOR NARRATIVE (use colors that enhance the story):
+Red=#FF2020 passion/fire  Blue=#2080FF calm/sky  Green=#20CC40 nature  
+Gold=#FFD700 celebration  White=#FFFFFF stars/purity  Purple=#AA44FF magic  
+Orange=#FF8800 energy  Pink=#FF66AA love/youth  Cyan=#00E5FF technology
 
-Complex shapes (animals, logos, national symbols): Decompose into line segments defining the outline. Sample N points along total perimeter, with higher density at important features (eyes, edges, corners).
+TIMING:
+- transitionDuration: 8-20s (longer = more dramatic)
+- holdDuration: 12-25s (longer for complex shapes)
+- Use colorTransition: "wave" for water/flow themes, "pulse" for energy, "rainbow" for celebration
 
-Country flags: Use geometric decomposition. Stars = star formula. Stripes = horizontal lines. Diamonds = rotated squares. Colors should be specified.
+THEME RECIPES:
+"Aniversário/Birthday" → 🎂Cake → 🎈Balloons/Numbers → 🎆Firework → ⭐Star
+"Brasil" → 🇧🇷Flag → ✝️ChristRedeemer → ⚽Ball → ⭐SouthernCross
+"Réveillon/NewYear" → 🕐Clock → Numbers(year) → 🎆Firework → ⭐StarBurst
+"Casamento/Wedding" → ❤️Heart → 💍Rings → 🕊️Dove → ❤️DoubleHeart
+"Natal/Christmas" → 🎄Tree → ⭐Star → 🔔Bell → ❄️Snowflake
+"Espaço/Space" → 🚀Rocket → 🪐Planet → 🌌Galaxy → ⭐Constellation
 
-Emoji: Map to most recognizable 2D outline. 🦋 = butterfly wings with body, 🏠 = house with roof, 🐬 = dolphin arc, 🎄 = layered triangle tree.
+IMPORTANT: Every formation's "points" array MUST have exactly N elements.`;
 
-SVG path: Parse d="" path commands, sample N equidistant points along total arc length.
+// ── v4 Trajectory Prompt ────────────────────────────────────
 
-SCALING FORMULA: radius = max(10, min(70, sqrt(N) × 2.0))
-For N > 200: radius = max(20, min(100, sqrt(N) × 2.5))
+const TRAJECTORY_SYSTEM_PROMPT = `You design drone movement choreography as a sequence of phases.
 
-AUDIENCE PERSPECTIVE: Formations viewed from ground level looking UP. Design for maximum visual impact from below. Spread horizontally for readability. Use asymmetry thoughtfully. Consider that vertical details compress at viewing angle.
+MOVEMENT TYPES:
+expand/contract: scale outward/inward from center
+rotate: spin around Y axis
+wave: sinusoidal vertical oscillation with phase offset
+spiral: helical motion (rotation + altitude)
+pulse: rhythmic scale oscillation (breathing)
+cascade: sequential ripple through formation
+bloom: flower opening from center
+shimmer: subtle random jitter for sparkle
+firework: explosive outward burst
+converge/scatter: gather to or spread from center
+orbit: circular path around center
 
-LARGE FORMATIONS (N > 100):
-- Use filled shapes rather than outlines for visual density
-- Increase spacing proportionally  
-- Add internal detail/texture to large shapes
-- Consider using multiple concentric layers
+PRINCIPLES:
+1. Start subtle, build to climax, resolve
+2. Alternate fast/slow for drama
+3. Use contrasting movements (expand→contract, rise→fall)
+4. 4-8 phases, total 30-90 seconds`;
 
-CRITICAL: The "points" array length MUST EQUAL N. Count every element. If you have 303 and need 304, add one more point.`;
-
-// ── Full Show System Prompt (v3) ────────────────────────────
-
-const FULL_SHOW_PROMPT = `You are a legendary drone show choreographer who has designed shows for Olympics ceremonies, World Cup openings, and national celebrations.
-
-Given a theme and drone count, create a SPECTACULAR multi-formation show that tells a visual story.
-
-SHOW STRUCTURE:
-1. OPENING (1-2 formations): Start with something recognizable related to the theme. Build anticipation. Simple shapes that establish the visual language.
-2. DEVELOPMENT (2-3 formations): Increase complexity. Explore different aspects of the theme. Show variety in shape types (outline, filled, text, symbols).
-3. CLIMAX (1-2 formations): The most impressive, complex formation. Maximum visual impact. This is the "money shot."
-4. FINALE (1 formation): Memorable closing. Often a symbol of unity, celebration, or the main theme icon. Should feel conclusive.
-
-EACH FORMATION MUST:
-1. Have EXACTLY N points (the drone count)
-2. Have a distinct, recognizable shape related to the theme
-3. Flow naturally from the previous formation (consider drone travel distances)
-4. Include a meaningful color that enhances the narrative
-5. Have appropriate timing: quick transitions for energy, slow for drama
-
-COLOR PSYCHOLOGY:
-- Red: passion, love, celebration, fire
-- Blue: calm, sky, water, trust
-- Green: nature, growth, hope
-- Gold/Yellow: celebration, sun, wealth, achievement
-- White: purity, stars, snow, peace
-- Purple: royalty, mystery, magic
-- Orange: warmth, sunset, autumn, energy
-- Pink: love, youth, spring
-
-TIMING GUIDELINES:
-- Simple transition (same general area): 8-12s
-- Complex transition (complete reshape): 12-20s  
-- Dramatic reveal (slow build): 18-30s
-- Hold duration: 10-25s (longer for complex shapes, shorter for simple)
-- Total show: typically 2-5 minutes
-
-THEME INTERPRETATION:
-- "Aniversário" → cake, balloons, numbers, confetti, gifts, fireworks
-- "Brasil" → flag, Christ Redeemer, Sugarloaf, toucan, soccer ball, Southern Cross
-- "Réveillon" → fireworks, champagne, clock, numbers (year), stars
-- "Casamento" → hearts, rings, doves, flowers, initials
-- "Natal" → tree, star, snowflake, bell, gifts, Santa
-- "Espaço" → rocket, planets, stars, constellation, astronaut
-- "Natureza" → butterfly, flower, tree, wave, mountain
-
-Always include the country/region's cultural symbols when relevant to the theme.`;
-
-// ── Trajectory System Prompt (v3) ───────────────────────────
-
-const TRAJECTORY_SYSTEM_PROMPT = `You are a drone choreography trajectory designer creating smooth, cinematic movement sequences for professional shows.
-
-Given a description, generate phases of movement. Each phase has a name, duration, movement type, and intensity.
-
-MOVEMENT VOCABULARY:
-- "expand" / "contract": scale formation outward/inward from center
-- "rotate": spin around Y axis (vertical)
-- "wave": sinusoidal vertical oscillation with phase offset per drone
-- "spiral": helical motion combining rotation and altitude change  
-- "scatter": controlled random spread from formation
-- "converge": gather to center point
-- "pulse": rhythmic scale oscillation (breathing effect)
-- "cascade": sequential movement rippling through drones (wave-like)
-- "morph": interpolate between two shape definitions
-- "orbit": circular path around a center point
-- "bloom": flower-like opening pattern from center
-- "rain": drones fall like raindrops with staggered timing
-- "shimmer": subtle random position jitter for sparkle effect
-- "firework": explosive outward burst then fade
-- "helix": DNA-like double spiral motion
-
-CHOREOGRAPHY PRINCIPLES:
-1. Start subtle, build intensity
-2. Vary pace: fast bursts + slow moments create drama
-3. Sync to imagined music beats
-4. Use contrasting movements (expand→contract, rise→fall)
-5. End with a memorable flourish
-6. Total duration typically 30-120 seconds
-
-Design for audience viewing from ground level. Create 4-8 phases with smooth transitions.`;
-
-// ── AI call with retry logic ────────────────────────────────
+// ── AI call with retry + model fallback ─────────────────────
 
 async function callAI(
   apiKey: string,
@@ -170,7 +125,7 @@ async function callAI(
           messages, 
           tools, 
           tool_choice: toolChoice, 
-          temperature: temperature + (attempt * 0.05), // slightly increase randomness on retry
+          temperature: temperature + (attempt * 0.03),
         }),
       });
 
@@ -180,23 +135,13 @@ async function callAI(
         if (response.status === 402) throw { status: 402, message: "Créditos esgotados. Adicione créditos no workspace." };
         console.error(`AI error (${model}, attempt ${attempt}):`, response.status, t);
         lastError = new Error(`Erro do modelo AI: ${response.status}`);
-        
-        // Don't retry on 4xx errors (except 429)
-        if (response.status >= 400 && response.status < 500) {
-          // Try with simplified schema on schema errors
-          if (t.includes("too many states") || t.includes("schema")) {
-            console.warn("Schema too complex, will try simplified version");
-            throw { status: response.status, message: "Schema complexo demais", schemaError: true };
-          }
-          throw lastError;
-        }
+        if (response.status >= 400 && response.status < 500) throw lastError;
         continue;
       }
 
       const data = await response.json();
       const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
       if (!toolCall) {
-        // Try to extract from content if tool_calls missing
         const content = data.choices?.[0]?.message?.content;
         if (content) {
           try {
@@ -209,11 +154,11 @@ async function callAI(
       }
       return JSON.parse(toolCall.function.arguments);
     } catch (e: any) {
-      if (e.status === 429 || e.status === 402 || e.schemaError) throw e;
+      if (e.status === 429 || e.status === 402) throw e;
       lastError = e;
       if (attempt < maxRetries) {
         console.warn(`Attempt ${attempt + 1} failed, retrying...`);
-        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+        await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
       }
     }
   }
@@ -221,33 +166,33 @@ async function callAI(
   throw lastError;
 }
 
-// ── Tool schemas (no minItems/maxItems to avoid schema explosion) ──
+// ── Tool schemas (lightweight - no minItems/maxItems) ────────
 
 function buildFormationTool(count: number) {
   return {
     type: "function",
     function: {
       name: "create_formation",
-      description: `Create a drone formation with EXACTLY ${count} points. The points array MUST contain exactly ${count} elements.`,
+      description: `Create a drone formation with EXACTLY ${count} points.`,
       parameters: {
         type: "object",
         properties: {
           points: {
             type: "array",
-            description: `EXACTLY ${count} drone positions. You MUST return exactly ${count} points, no more, no less.`,
+            description: `EXACTLY ${count} drone positions (x,z in meters).`,
             items: {
               type: "object",
               properties: {
-                x: { type: "number", description: "X coordinate in meters" },
-                z: { type: "number", description: "Z coordinate in meters" },
+                x: { type: "number" },
+                z: { type: "number" },
               },
               required: ["x", "z"],
               additionalProperties: false,
             },
           },
-          formationName: { type: "string", description: "Short descriptive name for this formation" },
-          suggestedHeight: { type: "number", description: "Suggested altitude in meters (15-80)" },
-          suggestedTransitionTime: { type: "number", description: "Transition time in seconds (8-30)" },
+          formationName: { type: "string" },
+          suggestedHeight: { type: "number", description: "Altitude 20-80m" },
+          suggestedTransitionTime: { type: "number", description: "Seconds 8-25" },
         },
         required: ["points", "formationName", "suggestedHeight", "suggestedTransitionTime"],
         additionalProperties: false,
@@ -261,44 +206,41 @@ function buildFullShowTool(count: number) {
     type: "function",
     function: {
       name: "create_full_show",
-      description: `Design a complete drone light show. Each formation MUST have EXACTLY ${count} points.`,
+      description: `Design a complete drone show. Each formation MUST have EXACTLY ${count} points.`,
       parameters: {
         type: "object",
         properties: {
-          showName: { type: "string", description: "Show title" },
+          showName: { type: "string" },
           formations: {
             type: "array",
-            description: `Sequence of 3-8 formations. Each MUST have exactly ${count} points.`,
+            description: `4-7 formations, each with exactly ${count} points.`,
             items: {
               type: "object",
               properties: {
-                formationName: { type: "string", description: "Descriptive formation name" },
+                formationName: { type: "string" },
                 points: {
                   type: "array",
-                  description: `EXACTLY ${count} drone positions.`,
+                  description: `EXACTLY ${count} points.`,
                   items: {
                     type: "object",
-                    properties: {
-                      x: { type: "number" },
-                      z: { type: "number" },
-                    },
+                    properties: { x: { type: "number" }, z: { type: "number" } },
                     required: ["x", "z"],
                     additionalProperties: false,
                   },
                 },
-                height: { type: "number", description: "Altitude 15-80m" },
-                transitionDuration: { type: "number", description: "Transition time in seconds" },
-                holdDuration: { type: "number", description: "Hold time in seconds" },
-                color: { type: "string", description: "Hex color for drones e.g. #FF0000" },
-                endColor: { type: "string", description: "End hex color for color transition effect" },
-                colorTransition: { type: "string", description: "Color transition mode: linear, wave, pulse, rainbow, or instant" },
+                height: { type: "number" },
+                transitionDuration: { type: "number" },
+                holdDuration: { type: "number" },
+                color: { type: "string" },
+                endColor: { type: "string" },
+                colorTransition: { type: "string", description: "linear, wave, pulse, rainbow, or instant" },
               },
               required: ["formationName", "points", "height", "transitionDuration", "holdDuration", "color"],
               additionalProperties: false,
             },
           },
-          totalDuration: { type: "number", description: "Total show duration in seconds" },
-          description: { type: "string", description: "Brief show description" },
+          totalDuration: { type: "number" },
+          description: { type: "string" },
         },
         required: ["showName", "formations", "totalDuration", "description"],
         additionalProperties: false,
@@ -321,18 +263,17 @@ function buildTrajectoryTool() {
             items: {
               type: "object",
               properties: {
-                name: { type: "string", description: "Phase name" },
-                duration: { type: "number", description: "Duration in seconds" },
-                movement: { type: "string", description: "Movement type: expand, contract, rotate, wave, spiral, scatter, converge, pulse, cascade, morph, orbit, bloom, rain, shimmer, firework, helix, or hold" },
-                intensity: { type: "number", description: "Intensity 0.0 to 1.0" },
+                name: { type: "string" },
+                duration: { type: "number" },
+                movement: { type: "string", description: "expand, contract, rotate, wave, spiral, scatter, converge, pulse, cascade, bloom, shimmer, firework, helix, orbit, rain, or hold" },
+                intensity: { type: "number", description: "0.0 to 1.0" },
                 parameters: {
                   type: "object",
                   properties: {
-                    axis: { type: "string", description: "Axis: x, y, z, or xz" },
+                    axis: { type: "string" },
                     speed: { type: "number" },
                     scale: { type: "number" },
                     offset: { type: "number" },
-                    targetFormation: { type: "string" },
                   },
                   additionalProperties: false,
                 },
@@ -351,18 +292,682 @@ function buildTrajectoryTool() {
   };
 }
 
-// ── Post-processing (improved) ──────────────────────────────
+// ── Hybrid generation: AI describes shape, server computes points ──
+
+interface ShapeDescription {
+  shapeType: string;
+  params: Record<string, number>;
+  formationName: string;
+  suggestedHeight: number;
+  suggestedTransitionTime: number;
+}
+
+function buildShapeDescriptorTool() {
+  return {
+    type: "function",
+    function: {
+      name: "describe_shape",
+      description: "Describe the shape mathematically. The server will compute exact coordinates.",
+      parameters: {
+        type: "object",
+        properties: {
+          shapeType: { 
+            type: "string", 
+            description: "One of: circle, filled_circle, heart, star, spiral, grid, diamond, cross, wave, butterfly, arrow, crescent, ring, lemniscate, text, radial_burst, layered_triangles, house, music_note, peace_sign, rocket, cake, custom_outline" 
+          },
+          params: {
+            type: "object",
+            description: "Shape parameters: radius, innerRadius, turns, thickness, text, armLength, layers, points (for star), wavelength, amplitude, angle, rows, cols, spacing",
+            properties: {
+              radius: { type: "number" },
+              innerRadius: { type: "number" },
+              turns: { type: "number" },
+              thickness: { type: "number" },
+              text: { type: "string" },
+              armLength: { type: "number" },
+              layers: { type: "number" },
+              starPoints: { type: "number" },
+              wavelength: { type: "number" },
+              amplitude: { type: "number" },
+              angle: { type: "number" },
+            },
+            additionalProperties: false,
+          },
+          outlinePoints: {
+            type: "array",
+            description: "For custom_outline: 10-40 key vertices defining the shape outline. Server will interpolate N points along this path.",
+            items: {
+              type: "object",
+              properties: { x: { type: "number" }, z: { type: "number" } },
+              required: ["x", "z"],
+              additionalProperties: false,
+            },
+          },
+          formationName: { type: "string" },
+          suggestedHeight: { type: "number" },
+          suggestedTransitionTime: { type: "number" },
+        },
+        required: ["shapeType", "params", "formationName", "suggestedHeight", "suggestedTransitionTime"],
+        additionalProperties: false,
+      },
+    },
+  };
+}
+
+const SHAPE_DESCRIPTOR_PROMPT = `You are a drone formation shape interpreter. Given a description, identify the BEST matching shape type and parameters. The server will compute the exact drone positions.
+
+Available shape types and their key params:
+- circle: radius
+- filled_circle: radius
+- heart: radius
+- star: radius, starPoints (default 5), innerRadius (default radius*0.38)
+- spiral: radius, turns (default 3)
+- grid: radius (used as total size)
+- diamond: radius
+- cross: radius, thickness (default 2)
+- wave: radius (width), amplitude, wavelength
+- butterfly: radius
+- arrow: radius
+- crescent: radius, innerRadius (default radius*0.7)
+- ring: radius, innerRadius
+- lemniscate: radius (infinity symbol)
+- text: radius, text (the text string)
+- radial_burst: radius, layers (default 3)
+- layered_triangles: radius, layers (default 3) — Christmas tree shape
+- house: radius
+- music_note: radius
+- peace_sign: radius
+- rocket: radius
+- cake: radius, layers (default 3)
+- custom_outline: provide outlinePoints (10-40 key vertices) for any shape not listed above
+
+SCALING: radius = clamp(sqrt(N)*2.2, 12, 90) where N is drone count.
+
+For emojis: map to the closest shape type. 
+For complex/unknown shapes: use custom_outline with 15-30 key vertices tracing the recognizable outline.
+For text strings: use type="text" with params.text set to the string.`;
+
+// ── Server-side shape generators ────────────────────────────
+
+function generateShapePoints(
+  shapeType: string, 
+  count: number, 
+  params: Record<string, number | string>,
+  outlinePoints?: { x: number; z: number }[],
+): { x: number; z: number }[] {
+  const R = Number(params.radius) || Math.max(12, Math.min(90, Math.sqrt(count) * 2.2));
+  
+  switch (shapeType) {
+    case 'circle': return genCircle(count, R);
+    case 'filled_circle': return genFilledCircle(count, R);
+    case 'heart': return genHeart(count, R);
+    case 'star': return genStar(count, R, Number(params.starPoints) || 5, Number(params.innerRadius) || R * 0.38);
+    case 'spiral': return genSpiral(count, R, Number(params.turns) || 3);
+    case 'grid': return genGrid(count, R);
+    case 'diamond': return genDiamond(count, R);
+    case 'cross': return genCross(count, R, Number(params.thickness) || 2);
+    case 'wave': return genWave(count, R, Number(params.amplitude) || R * 0.3, Number(params.wavelength) || R);
+    case 'butterfly': return genButterfly(count, R);
+    case 'arrow': return genArrow(count, R);
+    case 'crescent': return genCrescent(count, R, Number(params.innerRadius) || R * 0.7);
+    case 'ring': return genRing(count, R, Number(params.innerRadius) || R * 0.6);
+    case 'lemniscate': return genLemniscate(count, R);
+    case 'radial_burst': return genRadialBurst(count, R, Number(params.layers) || 3);
+    case 'layered_triangles': return genLayeredTriangles(count, R, Number(params.layers) || 3);
+    case 'house': return genHouse(count, R);
+    case 'music_note': return genMusicNote(count, R);
+    case 'peace_sign': return genPeaceSign(count, R);
+    case 'rocket': return genRocket(count, R);
+    case 'cake': return genCake(count, R, Number(params.layers) || 3);
+    case 'text': return genText(count, R, String(params.text || 'A'));
+    case 'custom_outline': return outlinePoints?.length ? genFromOutline(count, outlinePoints) : genFilledCircle(count, R);
+    default: return genFilledCircle(count, R);
+  }
+}
+
+function genCircle(n: number, R: number): { x: number; z: number }[] {
+  return Array.from({ length: n }, (_, i) => {
+    const a = (2 * Math.PI * i) / n;
+    return { x: R * Math.cos(a), z: R * Math.sin(a) };
+  });
+}
+
+function genFilledCircle(n: number, R: number): { x: number; z: number }[] {
+  const pts: { x: number; z: number }[] = [];
+  const rings = Math.max(2, Math.ceil(Math.sqrt(n / Math.PI)));
+  // Center point
+  pts.push({ x: 0, z: 0 });
+  let remaining = n - 1;
+  for (let k = 1; k <= rings && remaining > 0; k++) {
+    const r = (R * k) / rings;
+    const circumference = 2 * Math.PI * r;
+    const pointsInRing = Math.min(remaining, Math.max(6, Math.round(circumference / 2.2)));
+    for (let i = 0; i < pointsInRing; i++) {
+      const a = (2 * Math.PI * i) / pointsInRing;
+      pts.push({ x: r * Math.cos(a), z: r * Math.sin(a) });
+    }
+    remaining -= pointsInRing;
+  }
+  // Fill any remaining with extra ring
+  while (pts.length < n) {
+    const a = (2 * Math.PI * (pts.length - 1)) / Math.max(1, n - pts.length);
+    const r = R * (0.3 + Math.random() * 0.7);
+    pts.push({ x: r * Math.cos(a), z: r * Math.sin(a) });
+  }
+  return pts.slice(0, n);
+}
+
+function genHeart(n: number, R: number): { x: number; z: number }[] {
+  if (n <= 80) {
+    // Outline only
+    return Array.from({ length: n }, (_, i) => {
+      const t = (2 * Math.PI * i) / n;
+      return {
+        x: R * 0.8 * Math.pow(Math.sin(t), 3),
+        z: -R * (13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t)) / 16,
+      };
+    });
+  }
+  // Filled heart for large counts
+  const pts: { x: number; z: number }[] = [];
+  const layers = Math.ceil(n / 40);
+  for (let layer = layers; layer >= 1; layer--) {
+    const scale = layer / layers;
+    const r = R * scale;
+    const perLayer = Math.round(n * scale / layers);
+    for (let i = 0; i < perLayer && pts.length < n; i++) {
+      const t = (2 * Math.PI * i) / perLayer;
+      pts.push({
+        x: r * 0.8 * Math.pow(Math.sin(t), 3),
+        z: -r * (13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t)) / 16,
+      });
+    }
+  }
+  while (pts.length < n) {
+    const t = (2 * Math.PI * pts.length) / n;
+    const r = R * 0.3;
+    pts.push({ x: r * 0.8 * Math.pow(Math.sin(t), 3), z: -r * (13 * Math.cos(t)) / 16 });
+  }
+  return pts.slice(0, n);
+}
+
+function genStar(n: number, R: number, points: number, innerR: number): { x: number; z: number }[] {
+  const vertices = points * 2;
+  // Generate star outline vertices
+  const starVerts: { x: number; z: number }[] = [];
+  for (let i = 0; i < vertices; i++) {
+    const angle = (Math.PI * 2 * i) / vertices - Math.PI / 2;
+    const r = i % 2 === 0 ? R : innerR;
+    starVerts.push({ x: r * Math.cos(angle), z: r * Math.sin(angle) });
+  }
+  // Distribute n points along star perimeter
+  return distributeAlongPath(n, starVerts, true);
+}
+
+function genSpiral(n: number, R: number, turns: number): { x: number; z: number }[] {
+  return Array.from({ length: n }, (_, i) => {
+    const t = i / (n - 1);
+    const angle = 2 * Math.PI * turns * t;
+    const r = t * R;
+    return { x: r * Math.cos(angle), z: r * Math.sin(angle) };
+  });
+}
+
+function genGrid(n: number, R: number): { x: number; z: number }[] {
+  const cols = Math.ceil(Math.sqrt(n));
+  const rows = Math.ceil(n / cols);
+  const sp = (R * 2) / Math.max(cols - 1, 1);
+  const pts: { x: number; z: number }[] = [];
+  for (let r = 0; r < rows && pts.length < n; r++) {
+    for (let c = 0; c < cols && pts.length < n; c++) {
+      pts.push({ x: (c - (cols - 1) / 2) * sp, z: (r - (rows - 1) / 2) * sp });
+    }
+  }
+  return pts;
+}
+
+function genDiamond(n: number, R: number): { x: number; z: number }[] {
+  const corners = [{ x: 0, z: -R }, { x: R, z: 0 }, { x: 0, z: R }, { x: -R, z: 0 }];
+  return distributeAlongPath(n, corners, true);
+}
+
+function genCross(n: number, R: number, thickness: number): { x: number; z: number }[] {
+  const pts: { x: number; z: number }[] = [];
+  const halfH = Math.floor(n * 0.5);
+  const halfV = n - halfH;
+  // Horizontal bar
+  for (let i = 0; i < halfH; i++) {
+    const t = i / halfH;
+    const x = (t - 0.5) * R * 2;
+    const z = ((i % 2) * 2 - 1) * thickness * 0.3;
+    pts.push({ x, z });
+  }
+  // Vertical bar
+  for (let i = 0; i < halfV; i++) {
+    const t = i / halfV;
+    const z = (t - 0.5) * R * 2;
+    const x = ((i % 2) * 2 - 1) * thickness * 0.3;
+    if (Math.abs(z) > thickness * 0.5 || Math.abs(x) > thickness * 0.5) {
+      pts.push({ x, z });
+    } else {
+      pts.push({ x: ((i % 3) - 1) * thickness * 0.5, z });
+    }
+  }
+  while (pts.length < n) pts.push({ x: (Math.random() - 0.5) * 2, z: (Math.random() - 0.5) * 2 });
+  return pts.slice(0, n);
+}
+
+function genWave(n: number, R: number, amp: number, wl: number): { x: number; z: number }[] {
+  return Array.from({ length: n }, (_, i) => {
+    const t = i / (n - 1);
+    const x = (t - 0.5) * R * 2;
+    return { x, z: amp * Math.sin(2 * Math.PI * x / wl) };
+  });
+}
+
+function genButterfly(n: number, R: number): { x: number; z: number }[] {
+  const pts: { x: number; z: number }[] = [];
+  const wingN = Math.floor(n * 0.45);
+  const bodyN = n - wingN * 2;
+  // Right wing (heart-like)
+  for (let i = 0; i < wingN; i++) {
+    const t = (Math.PI * i) / wingN;
+    const r = R * 0.7;
+    pts.push({ x: Math.abs(r * 0.8 * Math.pow(Math.sin(t), 3)) + R * 0.1, z: -r * (Math.cos(t) * 0.8) });
+  }
+  // Left wing (mirrored)
+  for (let i = 0; i < wingN; i++) {
+    const t = (Math.PI * i) / wingN;
+    const r = R * 0.7;
+    pts.push({ x: -(Math.abs(r * 0.8 * Math.pow(Math.sin(t), 3)) + R * 0.1), z: -r * (Math.cos(t) * 0.8) });
+  }
+  // Body
+  for (let i = 0; i < bodyN; i++) {
+    const t = i / (bodyN - 1);
+    pts.push({ x: 0, z: (t - 0.5) * R * 1.2 });
+  }
+  return pts.slice(0, n);
+}
+
+function genArrow(n: number, R: number): { x: number; z: number }[] {
+  const pts: { x: number; z: number }[] = [];
+  const tipN = Math.floor(n * 0.4);
+  const tailN = n - tipN;
+  // Arrow tip (triangle)
+  const tipVerts = [{ x: 0, z: -R }, { x: R * 0.5, z: 0 }, { x: -R * 0.5, z: 0 }];
+  pts.push(...distributeAlongPath(tipN, tipVerts, true));
+  // Tail (rectangle)
+  const tw = R * 0.15;
+  for (let i = 0; i < tailN; i++) {
+    const t = i / (tailN - 1);
+    const z = t * R * 0.8;
+    const x = ((i % 2) * 2 - 1) * tw;
+    pts.push({ x, z });
+  }
+  return pts.slice(0, n);
+}
+
+function genCrescent(n: number, R: number, innerR: number): { x: number; z: number }[] {
+  const pts: { x: number; z: number }[] = [];
+  for (let i = 0; i < n; i++) {
+    const a = (Math.PI * 1.5 * i) / n + Math.PI * 0.25;
+    // Check if point is inside inner circle offset
+    const outerX = R * Math.cos(a), outerZ = R * Math.sin(a);
+    const shift = R * 0.3;
+    const distToInner = Math.hypot(outerX - shift, outerZ);
+    if (distToInner > innerR) {
+      pts.push({ x: outerX, z: outerZ });
+    } else {
+      // Push point to edge of crescent
+      const t = i / n;
+      const angle = Math.PI * 0.25 + t * Math.PI * 1.5;
+      pts.push({ x: R * Math.cos(angle), z: R * Math.sin(angle) });
+    }
+  }
+  if (pts.length < n) {
+    // Fill with outer arc
+    while (pts.length < n) {
+      const a = (2 * Math.PI * pts.length) / n;
+      pts.push({ x: R * Math.cos(a), z: R * Math.sin(a) });
+    }
+  }
+  return pts.slice(0, n);
+}
+
+function genRing(n: number, R: number, innerR: number): { x: number; z: number }[] {
+  const pts: { x: number; z: number }[] = [];
+  const rings = 3;
+  for (let k = 0; k < rings && pts.length < n; k++) {
+    const r = innerR + (R - innerR) * k / (rings - 1);
+    const perRing = Math.round(n / rings);
+    for (let i = 0; i < perRing && pts.length < n; i++) {
+      const a = (2 * Math.PI * i) / perRing + k * 0.2;
+      pts.push({ x: r * Math.cos(a), z: r * Math.sin(a) });
+    }
+  }
+  while (pts.length < n) {
+    const a = (2 * Math.PI * pts.length) / 20;
+    pts.push({ x: R * Math.cos(a), z: R * Math.sin(a) });
+  }
+  return pts.slice(0, n);
+}
+
+function genLemniscate(n: number, R: number): { x: number; z: number }[] {
+  return Array.from({ length: n }, (_, i) => {
+    const t = (2 * Math.PI * i) / n;
+    const denom = 1 + Math.sin(t) * Math.sin(t);
+    return { x: R * Math.cos(t) / denom, z: R * Math.sin(t) * Math.cos(t) / denom };
+  });
+}
+
+function genRadialBurst(n: number, R: number, layers: number): { x: number; z: number }[] {
+  const pts: { x: number; z: number }[] = [];
+  pts.push({ x: 0, z: 0 });
+  let remaining = n - 1;
+  for (let layer = 1; layer <= layers && remaining > 0; layer++) {
+    const r = (R * layer) / layers;
+    const perLayer = layer === layers ? remaining : Math.round(remaining * 0.4);
+    for (let i = 0; i < perLayer; i++) {
+      const a = (2 * Math.PI * i) / perLayer + layer * 0.15;
+      pts.push({ x: r * Math.cos(a), z: r * Math.sin(a) });
+    }
+    remaining -= perLayer;
+  }
+  return pts.slice(0, n);
+}
+
+function genLayeredTriangles(n: number, R: number, layers: number): { x: number; z: number }[] {
+  const pts: { x: number; z: number }[] = [];
+  const perLayer = Math.ceil(n / layers);
+  for (let layer = 0; layer < layers && pts.length < n; layer++) {
+    const y = -R + (2 * R * layer) / (layers - 1 || 1);
+    const width = R * (1 - layer / layers) * 0.8;
+    const count = Math.min(perLayer, n - pts.length);
+    for (let i = 0; i < count; i++) {
+      const t = count > 1 ? i / (count - 1) : 0.5;
+      pts.push({ x: (t - 0.5) * width * 2, z: y });
+    }
+  }
+  // Tree trunk
+  if (pts.length < n) {
+    const trunkN = Math.min(4, n - pts.length);
+    for (let i = 0; i < trunkN; i++) {
+      pts.push({ x: ((i % 2) - 0.5) * R * 0.1, z: R * 1.05 + i * 2 });
+    }
+  }
+  return pts.slice(0, n);
+}
+
+function genHouse(n: number, R: number): { x: number; z: number }[] {
+  const houseVerts = [
+    { x: -R * 0.6, z: R * 0.5 },  // bottom-left
+    { x: R * 0.6, z: R * 0.5 },   // bottom-right
+    { x: R * 0.6, z: -R * 0.2 },  // top-right wall
+    { x: R * 0.8, z: -R * 0.2 },  // roof overhang right
+    { x: 0, z: -R * 0.8 },        // roof peak
+    { x: -R * 0.8, z: -R * 0.2 }, // roof overhang left
+    { x: -R * 0.6, z: -R * 0.2 }, // top-left wall
+  ];
+  return distributeAlongPath(n, houseVerts, true);
+}
+
+function genMusicNote(n: number, R: number): { x: number; z: number }[] {
+  const pts: { x: number; z: number }[] = [];
+  // Note head (circle)
+  const headN = Math.floor(n * 0.4);
+  const headR = R * 0.25;
+  for (let i = 0; i < headN; i++) {
+    const a = (2 * Math.PI * i) / headN;
+    pts.push({ x: headR * Math.cos(a) - R * 0.15, z: R * 0.4 + headR * Math.sin(a) });
+  }
+  // Stem
+  const stemN = Math.floor(n * 0.35);
+  for (let i = 0; i < stemN; i++) {
+    const t = i / (stemN - 1);
+    pts.push({ x: R * 0.1, z: R * 0.4 - t * R * 1.0 });
+  }
+  // Flag
+  const flagN = n - pts.length;
+  for (let i = 0; i < flagN; i++) {
+    const t = i / (flagN - 1);
+    pts.push({ x: R * 0.1 + Math.sin(t * Math.PI) * R * 0.3, z: -R * 0.6 + t * R * 0.4 });
+  }
+  return pts.slice(0, n);
+}
+
+function genPeaceSign(n: number, R: number): { x: number; z: number }[] {
+  const pts: { x: number; z: number }[] = [];
+  const circleN = Math.floor(n * 0.6);
+  const linesN = n - circleN;
+  // Circle
+  for (let i = 0; i < circleN; i++) {
+    const a = (2 * Math.PI * i) / circleN;
+    pts.push({ x: R * Math.cos(a), z: R * Math.sin(a) });
+  }
+  // Vertical line
+  const vn = Math.floor(linesN * 0.4);
+  for (let i = 0; i < vn; i++) {
+    const t = i / (vn - 1);
+    pts.push({ x: 0, z: (t - 0.5) * R * 2 });
+  }
+  // Diagonal lines
+  const dn = linesN - vn;
+  const half = Math.floor(dn / 2);
+  for (let i = 0; i < half; i++) {
+    const t = i / (half - 1 || 1);
+    pts.push({ x: t * R * 0.7, z: t * R * 0.7 });
+  }
+  for (let i = 0; i < dn - half; i++) {
+    const t = i / ((dn - half) - 1 || 1);
+    pts.push({ x: -t * R * 0.7, z: t * R * 0.7 });
+  }
+  return pts.slice(0, n);
+}
+
+function genRocket(n: number, R: number): { x: number; z: number }[] {
+  const pts: { x: number; z: number }[] = [];
+  // Body (ellipse)
+  const bodyN = Math.floor(n * 0.5);
+  for (let i = 0; i < bodyN; i++) {
+    const t = i / (bodyN - 1);
+    const z = (t - 0.5) * R * 1.4;
+    const x = Math.sin(t * Math.PI) * R * 0.25;
+    pts.push({ x, z });
+    if (pts.length < n) pts.push({ x: -x, z });
+  }
+  // Nose cone
+  const noseN = Math.floor(n * 0.15);
+  for (let i = 0; i < noseN && pts.length < n; i++) {
+    const t = i / (noseN - 1 || 1);
+    pts.push({ x: (1 - t) * R * 0.25 * ((i % 2) * 2 - 1), z: -R * 0.7 - t * R * 0.3 });
+  }
+  // Fins
+  const finN = n - pts.length;
+  const halfFin = Math.floor(finN / 2);
+  for (let i = 0; i < halfFin; i++) {
+    const t = i / (halfFin - 1 || 1);
+    pts.push({ x: R * 0.25 + t * R * 0.3, z: R * 0.5 + t * R * 0.2 });
+  }
+  for (let i = 0; i < finN - halfFin; i++) {
+    const t = i / ((finN - halfFin) - 1 || 1);
+    pts.push({ x: -(R * 0.25 + t * R * 0.3), z: R * 0.5 + t * R * 0.2 });
+  }
+  return pts.slice(0, n);
+}
+
+function genCake(n: number, R: number, layers: number): { x: number; z: number }[] {
+  const pts: { x: number; z: number }[] = [];
+  const perLayer = Math.floor(n * 0.8 / layers);
+  const candleN = n - perLayer * layers;
+  for (let layer = 0; layer < layers; layer++) {
+    const w = R * (1 - layer * 0.2);
+    const z = R * 0.5 - (layer * R * 0.35);
+    // Top and bottom lines of each layer
+    const halfL = Math.floor(perLayer / 2);
+    for (let i = 0; i < halfL; i++) {
+      const t = i / (halfL - 1 || 1);
+      pts.push({ x: (t - 0.5) * w * 2, z });
+    }
+    for (let i = 0; i < perLayer - halfL; i++) {
+      const t = i / ((perLayer - halfL) - 1 || 1);
+      pts.push({ x: (t - 0.5) * w * 2, z: z + R * 0.2 });
+    }
+  }
+  // Candles on top
+  for (let i = 0; i < candleN && pts.length < n; i++) {
+    const x = (i / (candleN - 1 || 1) - 0.5) * R * 0.8;
+    pts.push({ x, z: -R * 0.5 - R * 0.15 });
+  }
+  return pts.slice(0, n);
+}
+
+function genText(n: number, R: number, text: string): { x: number; z: number }[] {
+  // Simple 5x7 dot matrix font for basic characters
+  const charWidth = 5, charHeight = 7, charSpacing = 2;
+  const chars = text.toUpperCase().slice(0, 10); // Max 10 chars
+  const totalWidth = chars.length * (charWidth + charSpacing) - charSpacing;
+  const scale = (R * 2) / Math.max(totalWidth, charHeight);
+  
+  // Generate all character dots
+  const allDots: { x: number; z: number }[] = [];
+  for (let ci = 0; ci < chars.length; ci++) {
+    const charDots = getCharDots(chars[ci]);
+    const offsetX = ci * (charWidth + charSpacing) - totalWidth / 2;
+    for (const dot of charDots) {
+      allDots.push({ x: (offsetX + dot.x) * scale, z: (dot.z - charHeight / 2) * scale });
+    }
+  }
+  
+  if (allDots.length === 0) return genGrid(n, R);
+  
+  // Distribute n points along the dot positions
+  if (allDots.length >= n) {
+    // Subsample
+    const step = allDots.length / n;
+    return Array.from({ length: n }, (_, i) => allDots[Math.floor(i * step)]);
+  }
+  // Need to add more points - duplicate with jitter
+  const pts = [...allDots];
+  while (pts.length < n) {
+    const base = allDots[pts.length % allDots.length];
+    pts.push({ x: base.x + (Math.random() - 0.5) * scale * 0.5, z: base.z + (Math.random() - 0.5) * scale * 0.5 });
+  }
+  return pts.slice(0, n);
+}
+
+function getCharDots(ch: string): { x: number; z: number }[] {
+  // Minimal 5x7 bitmap font for common characters
+  const fonts: Record<string, string[]> = {
+    'A': ['01110','10001','10001','11111','10001','10001','10001'],
+    'B': ['11110','10001','10001','11110','10001','10001','11110'],
+    'C': ['01110','10001','10000','10000','10000','10001','01110'],
+    'D': ['11110','10001','10001','10001','10001','10001','11110'],
+    'E': ['11111','10000','10000','11110','10000','10000','11111'],
+    'F': ['11111','10000','10000','11110','10000','10000','10000'],
+    'G': ['01110','10001','10000','10111','10001','10001','01110'],
+    'H': ['10001','10001','10001','11111','10001','10001','10001'],
+    'I': ['01110','00100','00100','00100','00100','00100','01110'],
+    'L': ['10000','10000','10000','10000','10000','10000','11111'],
+    'M': ['10001','11011','10101','10101','10001','10001','10001'],
+    'N': ['10001','11001','10101','10011','10001','10001','10001'],
+    'O': ['01110','10001','10001','10001','10001','10001','01110'],
+    'P': ['11110','10001','10001','11110','10000','10000','10000'],
+    'R': ['11110','10001','10001','11110','10100','10010','10001'],
+    'S': ['01110','10001','10000','01110','00001','10001','01110'],
+    'T': ['11111','00100','00100','00100','00100','00100','00100'],
+    'U': ['10001','10001','10001','10001','10001','10001','01110'],
+    'V': ['10001','10001','10001','10001','01010','01010','00100'],
+    'W': ['10001','10001','10001','10101','10101','11011','10001'],
+    'X': ['10001','10001','01010','00100','01010','10001','10001'],
+    'Y': ['10001','10001','01010','00100','00100','00100','00100'],
+    'Z': ['11111','00001','00010','00100','01000','10000','11111'],
+    '0': ['01110','10011','10101','10101','10101','11001','01110'],
+    '1': ['00100','01100','00100','00100','00100','00100','01110'],
+    '2': ['01110','10001','00001','00110','01000','10000','11111'],
+    '3': ['01110','10001','00001','00110','00001','10001','01110'],
+    '4': ['00010','00110','01010','10010','11111','00010','00010'],
+    '5': ['11111','10000','11110','00001','00001','10001','01110'],
+    '6': ['01110','10000','10000','11110','10001','10001','01110'],
+    '7': ['11111','00001','00010','00100','01000','01000','01000'],
+    '8': ['01110','10001','10001','01110','10001','10001','01110'],
+    '9': ['01110','10001','10001','01111','00001','00001','01110'],
+    ' ': ['00000','00000','00000','00000','00000','00000','00000'],
+    '!': ['00100','00100','00100','00100','00100','00000','00100'],
+    '?': ['01110','10001','00001','00110','00100','00000','00100'],
+    '❤': ['01010','11111','11111','11111','01110','00100','00000'],
+    '⭐': ['00100','00100','11111','01110','01010','10001','00000'],
+  };
+  const rows = fonts[ch] || fonts['?'] || [];
+  const dots: { x: number; z: number }[] = [];
+  for (let r = 0; r < rows.length; r++) {
+    for (let c = 0; c < rows[r].length; c++) {
+      if (rows[r][c] === '1') dots.push({ x: c, z: r });
+    }
+  }
+  return dots;
+}
+
+function genFromOutline(n: number, outline: { x: number; z: number }[]): { x: number; z: number }[] {
+  if (n <= outline.length * 3) {
+    return distributeAlongPath(n, outline, true);
+  }
+  // For large N: fill the outline with concentric scaled versions
+  const pts = distributeAlongPath(Math.floor(n * 0.6), outline, true);
+  let remaining = n - pts.length;
+  let scale = 0.7;
+  while (remaining > 0 && scale > 0.1) {
+    const innerOutline = outline.map(p => ({ x: p.x * scale, z: p.z * scale }));
+    const inner = distributeAlongPath(Math.min(remaining, Math.floor(n * 0.3)), innerOutline, true);
+    pts.push(...inner);
+    remaining -= inner.length;
+    scale -= 0.25;
+  }
+  while (pts.length < n) pts.push({ x: (Math.random() - 0.5) * 2, z: (Math.random() - 0.5) * 2 });
+  return pts.slice(0, n);
+}
+
+// ── Path utilities ──────────────────────────────────────────
+
+function distributeAlongPath(n: number, vertices: { x: number; z: number }[], closed: boolean): { x: number; z: number }[] {
+  if (vertices.length < 2) return vertices;
+  // Compute total path length
+  let totalLen = 0;
+  const segLens: number[] = [];
+  const vCount = closed ? vertices.length : vertices.length - 1;
+  for (let i = 0; i < vCount; i++) {
+    const a = vertices[i];
+    const b = vertices[(i + 1) % vertices.length];
+    const len = Math.hypot(b.x - a.x, b.z - a.z);
+    segLens.push(len);
+    totalLen += len;
+  }
+  
+  const pts: { x: number; z: number }[] = [];
+  for (let i = 0; i < n; i++) {
+    const targetDist = (i / n) * totalLen;
+    let accumulated = 0;
+    for (let s = 0; s < segLens.length; s++) {
+      if (accumulated + segLens[s] >= targetDist || s === segLens.length - 1) {
+        const t = segLens[s] > 0 ? (targetDist - accumulated) / segLens[s] : 0;
+        const a = vertices[s];
+        const b = vertices[(s + 1) % vertices.length];
+        pts.push({ x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t });
+        break;
+      }
+      accumulated += segLens[s];
+    }
+  }
+  return pts;
+}
+
+// ── Post-processing ─────────────────────────────────────────
 
 function postProcess(
   points: { x: number; z: number }[],
   targetCount: number,
   minSpacing: number = 2.0,
 ): { x: number; z: number }[] {
-  if (points.length === 0) {
-    // Generate fallback grid if AI returned nothing
-    console.warn("No points from AI, generating fallback grid");
-    return generateFallbackGrid(targetCount, minSpacing);
-  }
+  if (points.length === 0) return generateFallbackGrid(targetCount, minSpacing);
 
   // Center at origin
   let cx = 0, cz = 0;
@@ -370,9 +975,8 @@ function postProcess(
   cx /= points.length; cz /= points.length;
   let pts = points.map(p => ({ x: p.x - cx, z: p.z - cz }));
 
-  // Adjust count: remove closest pairs or add midpoints
+  // Adjust count
   if (pts.length > targetCount) {
-    // Remove points that are closest to another point (least important)
     while (pts.length > targetCount) {
       let minDist = Infinity, removeIdx = 0;
       for (let i = 0; i < pts.length; i++) {
@@ -387,7 +991,6 @@ function postProcess(
       pts.splice(removeIdx, 1);
     }
   } else if (pts.length < targetCount) {
-    // Add points by subdividing longest edges
     while (pts.length < targetCount) {
       let maxDist = 0, bestI = 0, bestJ = 1;
       for (let i = 0; i < pts.length; i++) {
@@ -404,8 +1007,8 @@ function postProcess(
     }
   }
 
-  // Enforce minimum spacing with improved relaxation
-  for (let iter = 0; iter < 50; iter++) {
+  // Enforce minimum spacing (60 iterations)
+  for (let iter = 0; iter < 60; iter++) {
     let moved = false;
     for (let i = 0; i < pts.length; i++) {
       for (let j = i + 1; j < pts.length; j++) {
@@ -444,16 +1047,13 @@ function generateFallbackGrid(count: number, spacing: number): { x: number; z: n
   const pts: { x: number; z: number }[] = [];
   for (let r = 0; r < rows && pts.length < count; r++) {
     for (let c = 0; c < cols && pts.length < count; c++) {
-      pts.push({
-        x: (c - (cols - 1) / 2) * spacing,
-        z: (r - (rows - 1) / 2) * spacing,
-      });
+      pts.push({ x: (c - (cols - 1) / 2) * spacing, z: (r - (rows - 1) / 2) * spacing });
     }
   }
   return pts;
 }
 
-// ── Transition optimizer (nearest-neighbor assignment) ───────
+// ── Transition optimizer (nearest-neighbor) ─────────────────
 
 function optimizeTransitionOrder(
   from: { x: number; z: number }[],
@@ -476,73 +1076,29 @@ function optimizeTransitionOrder(
   return result;
 }
 
-// ── Build user message ──────────────────────────────────────
-
-function buildUserMessage(mode: string, prompt: string, droneCount: number): string {
-  const N = droneCount;
-  const scaleHint = N > 200 ? `Use a radius of approximately ${Math.round(Math.sqrt(N) * 2.5)}m for good visibility.` : `Use a radius of approximately ${Math.round(Math.sqrt(N) * 2.0)}m.`;
-
-  if (mode === "text") {
-    return `Generate a drone formation with EXACTLY ${N} points. The "points" array MUST have exactly ${N} elements. ${scaleHint}
-
-Shape: "${prompt}"
-
-Use the mathematical recipes from your instructions. If the shape is an emoji, interpret its visual form and create a recognizable outline with ${N > 50 ? 'filled interior' : 'clear outline'} using ${N} drones. If it contains SVG path data, sample along the path. EXACTLY ${N} points. COUNT THEM.`;
-  }
-  if (mode === "image") {
-    return `Generate a drone formation with EXACTLY ${N} points. ${scaleHint}
-
-Analyze the uploaded image. Extract the main subject's outline/silhouette. Place EXACTLY ${N} drone points along the most recognizable contour edges at equal intervals. For filled areas, use scanline or concentric approaches. Focus on the primary shape, ignore background. EXACTLY ${N} points.`;
-  }
-  if (mode === "generative") {
-    return `Generate a drone formation with EXACTLY ${N} points. ${scaleHint}
-
-Create a visually stunning ${N > 100 ? 'filled' : ''} pattern for theme: "${prompt || 'abstract geometric'}"
-
-Use mathematical beauty: golden ratio spirals, Fibonacci patterns, Lissajous curves, sacred geometry, fractals, or organic forms. Make it MEMORABLE, VISUALLY DENSE, and BEAUTIFUL from ground level. EXACTLY ${N} points.`;
-  }
-  if (mode === "full-show") {
-    return `Design a complete drone light show with EXACTLY ${N} drones per formation. ${scaleHint}
-
-Theme: "${prompt}"
-
-Create 4-6 formations that tell a visual story related to the theme. Each formation MUST have exactly ${N} points in its points array. Include culturally appropriate colors and dramatic timing. Consider the narrative arc: opening → development → climax → finale. Every single formation must have exactly ${N} points. COUNT THEM.`;
-  }
-  throw new Error(`Invalid mode: ${mode}`);
-}
-
-// ── Process single formation result ─────────────────────────
+// ── Process formation result ────────────────────────────────
 
 function processFormationResult(
-  raw: any,
+  rawPoints: { x: number; z: number }[],
   count: number,
   previousFormation?: { x: number; z: number }[],
-): { points: { x: number; z: number }[]; rawCount: number } {
-  const rawPoints = (raw.points || [])
-    .map((p: any) => ({ x: Number(p.x), z: Number(p.z) }))
-    .filter((p: any) => !isNaN(p.x) && !isNaN(p.z));
-
-  let processedPoints = postProcess(rawPoints, count);
-
-  if (previousFormation && previousFormation.length === processedPoints.length) {
-    processedPoints = optimizeTransitionOrder(previousFormation, processedPoints);
+): { x: number; z: number }[] {
+  let processed = postProcess(rawPoints, count);
+  if (previousFormation && previousFormation.length === processed.length) {
+    processed = optimizeTransitionOrder(previousFormation, processed);
   }
-
-  return { points: processedPoints, rawCount: rawPoints.length };
+  return processed;
 }
 
-// ── Model selection logic ───────────────────────────────────
+// ── Model selection ─────────────────────────────────────────
 
-function selectModel(mode: string, count: number, isFullShow: boolean): { primary: string; fallback: string } {
-  // Use Flash for most things (faster, cheaper), Pro for complex/large
-  if (isFullShow) {
+function selectModels(mode: string, count: number, isFullShow: boolean): { primary: string; fallback: string } {
+  if (isFullShow || mode === "image") {
     return { primary: "google/gemini-2.5-pro", fallback: "google/gemini-2.5-flash" };
   }
-  if (mode === "image") {
-    return { primary: "google/gemini-2.5-pro", fallback: "google/gemini-2.5-flash" };
-  }
-  if (mode === "generative" || count > 150) {
-    return { primary: "google/gemini-2.5-pro", fallback: "google/gemini-2.5-flash" };
+  // Use flash for most single formations (faster), pro for complex/large
+  if (count > 200 || mode === "generative") {
+    return { primary: "google/gemini-2.5-flash", fallback: "google/gemini-2.5-pro" };
   }
   return { primary: "google/gemini-2.5-flash", fallback: "google/gemini-2.5-pro" };
 }
@@ -559,39 +1115,53 @@ serve(async (req) => {
     const { mode, prompt, droneCount, imageBase64, previousFormation, generateTrajectory, generateFullShow } = await req.json();
     const count = droneCount || 24;
 
-    // ── Full Show generation ────────────────────────────────
+    // ── Full Show generation (two-phase: structure → per-formation points) ──
     if (generateFullShow) {
-      const userMsg = buildUserMessage("full-show", prompt, count);
+      console.log(`Full show request: "${prompt}", ${count} drones`);
+      
       const messages = [
         { role: "system", content: FULL_SHOW_PROMPT + "\n\n" + SYSTEM_PROMPT },
-        { role: "user", content: userMsg },
+        { role: "user", content: `Design a complete drone light show with EXACTLY ${count} drones per formation.\n\nTheme: "${prompt}"\n\nCreate 4-6 formations that tell a visual story. Each formation MUST have exactly ${count} points. Use the mathematical recipes. Include dramatic colors and timing. COUNTING IS CRITICAL: every points array = ${count} elements.` },
       ];
 
-      const { primary, fallback } = selectModel("full-show", count, true);
+      const { primary, fallback } = selectModels("full-show", count, true);
       let raw: any;
       let usedModel = primary;
 
       try {
-        raw = await callAI(LOVABLE_API_KEY, primary, messages, [buildFullShowTool(count)], { type: "function", function: { name: "create_full_show" } }, 0.25);
+        raw = await callAI(LOVABLE_API_KEY, primary, messages, [buildFullShowTool(count)], { type: "function", function: { name: "create_full_show" } }, 0.2);
       } catch (e: any) {
         if (e.status === 429 || e.status === 402) throw e;
-        console.warn(`Full show primary model ${primary} failed, trying ${fallback}...`);
+        console.warn(`Full show ${primary} failed, trying ${fallback}...`);
         usedModel = fallback;
-        raw = await callAI(LOVABLE_API_KEY, fallback, messages, [buildFullShowTool(count)], { type: "function", function: { name: "create_full_show" } }, 0.25);
+        raw = await callAI(LOVABLE_API_KEY, fallback, messages, [buildFullShowTool(count)], { type: "function", function: { name: "create_full_show" } }, 0.2);
       }
 
-      // Post-process each formation with transition optimization
+      // Post-process each formation
       const formations = (raw.formations || []).map((f: any, idx: number) => {
+        const rawPts = (f.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) })).filter((p: any) => !isNaN(p.x) && !isNaN(p.z));
         const prev = idx > 0
-          ? (raw.formations[idx - 1].points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }))
+          ? (raw.formations[idx - 1]._processed || raw.formations[idx - 1].points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }))
           : null;
-        const { points } = processFormationResult(f, count, prev);
+        
+        let points: { x: number; z: number }[];
+        if (rawPts.length < count * 0.3) {
+          // AI returned too few points — use server-side generation based on name
+          console.warn(`Formation "${f.formationName}": only ${rawPts.length}/${count} points, generating server-side`);
+          const shapeType = inferShapeType(f.formationName);
+          points = generateShapePoints(shapeType, count, { radius: Math.max(12, Math.sqrt(count) * 2.2) });
+          points = postProcess(points, count);
+        } else {
+          points = processFormationResult(rawPts, count, prev);
+        }
+        
+        f._processed = points;
         return {
           formationName: f.formationName || `Formation ${idx + 1}`,
           points,
-          height: Math.max(15, Math.min(80, f.height || 25)),
-          transitionDuration: Math.max(5, Math.min(30, f.transitionDuration || 12)),
-          holdDuration: Math.max(5, Math.min(60, f.holdDuration || 15)),
+          height: Math.max(20, Math.min(80, f.height || 30)),
+          transitionDuration: Math.max(8, Math.min(25, f.transitionDuration || 12)),
+          holdDuration: Math.max(10, Math.min(30, f.holdDuration || 15)),
           color: f.color || '#00B4D8',
           endColor: f.endColor || undefined,
           colorTransition: f.colorTransition || 'linear',
@@ -606,17 +1176,14 @@ serve(async (req) => {
         totalDuration: raw.totalDuration || formations.reduce((sum: number, f: any) => sum + f.transitionDuration + f.holdDuration, 0),
         description: raw.description || "",
         model: usedModel,
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // ── Trajectory generation ───────────────────────────────
     if (generateTrajectory) {
       const trajMessages = [
         { role: "system", content: TRAJECTORY_SYSTEM_PROMPT },
-        { role: "user", content: `Create an epic drone choreography for ${count} drones: "${prompt}"\n\nDesign for maximum visual impact from ground level. Use contrasting movements. Build intensity toward a climax.` },
+        { role: "user", content: `Create an epic drone choreography for ${count} drones: "${prompt}"\n\nDesign for maximum visual impact from ground level. 4-8 phases, 30-90 seconds total.` },
       ];
 
       let trajResult: any;
@@ -627,17 +1194,76 @@ serve(async (req) => {
         trajResult = await callAI(LOVABLE_API_KEY, "google/gemini-2.5-pro", trajMessages, [buildTrajectoryTool()], { type: "function", function: { name: "create_trajectory_sequence" } }, 0.3);
       }
 
-      return new Response(JSON.stringify(trajResult), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify(trajResult), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // ── Single Formation generation ─────────────────────────
-    const userMessage = buildUserMessage(mode, prompt, count);
+    // ── Single Formation: HYBRID approach ───────────────────
+    // For large counts or complex shapes: AI describes shape → server computes points
+    // For small counts: AI can still generate points directly
+    
+    const useHybrid = count > 60 || mode === "generative";
+    
+    if (useHybrid && mode !== "image") {
+      console.log(`Hybrid generation: "${prompt}", ${count} drones`);
+      
+      const shapeMessages = [
+        { role: "system", content: SHAPE_DESCRIPTOR_PROMPT },
+        { role: "user", content: `Describe the best shape for ${count} drones matching: "${prompt || 'circle'}"\n\nChoose the shape type and parameters. For complex/unusual shapes, use custom_outline with 15-30 key vertices. Radius should be approximately ${Math.round(Math.sqrt(count) * 2.2)}m.` },
+      ];
+
+      let shapeDesc: any;
+      try {
+        shapeDesc = await callAI(LOVABLE_API_KEY, "google/gemini-2.5-flash", shapeMessages, [buildShapeDescriptorTool()], { type: "function", function: { name: "describe_shape" } }, 0.1);
+      } catch (e: any) {
+        if (e.status === 429 || e.status === 402) throw e;
+        // Fallback: infer shape from prompt
+        console.warn("Shape descriptor failed, inferring from prompt");
+        const inferred = inferShapeType(prompt || "circle");
+        shapeDesc = { 
+          shapeType: inferred, 
+          params: { radius: Math.max(12, Math.sqrt(count) * 2.2) },
+          formationName: prompt || "Formation",
+          suggestedHeight: 30,
+          suggestedTransitionTime: 12,
+        };
+      }
+
+      const rawPoints = generateShapePoints(
+        shapeDesc.shapeType || 'filled_circle',
+        count,
+        shapeDesc.params || {},
+        shapeDesc.outlinePoints,
+      );
+
+      const prev = previousFormation?.map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
+      const processed = processFormationResult(rawPoints, count, prev);
+
+      console.log(`Hybrid: shape=${shapeDesc.shapeType}, name="${shapeDesc.formationName}", ${processed.length} points`);
+
+      return new Response(JSON.stringify({
+        points: processed,
+        formationName: shapeDesc.formationName || "AI Formation",
+        suggestedHeight: Math.max(20, Math.min(80, shapeDesc.suggestedHeight || 30)),
+        suggestedTransitionTime: Math.max(8, Math.min(25, shapeDesc.suggestedTransitionTime || 12)),
+        rawPointCount: rawPoints.length,
+        model: "hybrid (server-computed)",
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── Direct AI generation (small counts or image mode) ───
+    console.log(`Direct AI generation: mode=${mode}, "${prompt}", ${count} drones`);
+    
+    const scaleHint = `Use a radius of approximately ${Math.round(Math.sqrt(count) * 2.2)}m.`;
+    let userMessage: string;
+    
+    if (mode === "image") {
+      userMessage = `Generate a drone formation with EXACTLY ${count} points. ${scaleHint}\n\nAnalyze the uploaded image. Extract the main subject's outline/silhouette. Place EXACTLY ${count} drone points along the recognizable contour. For filled areas use scanline. EXACTLY ${count} points.`;
+    } else {
+      userMessage = `Generate a drone formation with EXACTLY ${count} points. ${scaleHint}\n\nShape: "${prompt}"\n\nUse the mathematical recipes. EXACTLY ${count} points. COUNT THEM.`;
+    }
+
     const tool = buildFormationTool(count);
     const toolChoice = { type: "function", function: { name: "create_formation" } };
-
     const messages: any[] = [{ role: "system", content: SYSTEM_PROMPT }];
 
     if (mode === "image" && imageBase64) {
@@ -652,57 +1278,51 @@ serve(async (req) => {
       messages.push({ role: "user", content: userMessage });
     }
 
-    const { primary: primaryModel, fallback: fallbackModel } = selectModel(mode, count, false);
+    const { primary, fallback } = selectModels(mode, count, false);
     let raw: any;
-    let usedModel = primaryModel;
+    let usedModel = primary;
 
     try {
-      raw = await callAI(LOVABLE_API_KEY, primaryModel, messages, [tool], toolChoice, 0.1);
+      raw = await callAI(LOVABLE_API_KEY, primary, messages, [tool], toolChoice, 0.1);
     } catch (e: any) {
       if (e.status === 429 || e.status === 402) throw e;
-      console.warn(`Primary model ${primaryModel} failed, trying ${fallbackModel}...`);
-      raw = await callAI(LOVABLE_API_KEY, fallbackModel, messages, [tool], toolChoice, 0.1);
-      usedModel = fallbackModel;
+      console.warn(`${primary} failed, trying ${fallback}...`);
+      raw = await callAI(LOVABLE_API_KEY, fallback, messages, [tool], toolChoice, 0.1);
+      usedModel = fallback;
     }
 
-    const { points: processedPoints, rawCount } = processFormationResult(raw, count, previousFormation);
+    const rawPoints = (raw.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) })).filter((p: any) => !isNaN(p.x) && !isNaN(p.z));
+    const prev = previousFormation?.map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
+    const processed = processFormationResult(rawPoints, count, prev);
 
-    // Auto-retry with Pro if Flash result was very inaccurate
-    if (rawCount !== count && Math.abs(rawCount - count) > count * 0.3 && usedModel !== "google/gemini-2.5-pro") {
-      console.warn(`${usedModel} returned ${rawCount}/${count}, retrying with Pro...`);
-      try {
-        const retryRaw = await callAI(LOVABLE_API_KEY, "google/gemini-2.5-pro", messages, [tool], toolChoice, 0.05);
-        const retryResult = processFormationResult(retryRaw, count, previousFormation);
-        if (Math.abs(retryResult.rawCount - count) < Math.abs(rawCount - count)) {
-          console.log(`Pro retry succeeded: ${retryResult.rawCount}/${count} points`);
-          return new Response(JSON.stringify({
-            points: retryResult.points,
-            formationName: retryRaw.formationName || "AI Formation",
-            suggestedHeight: Math.max(15, Math.min(80, retryRaw.suggestedHeight || 25)),
-            suggestedTransitionTime: Math.max(8, Math.min(30, retryRaw.suggestedTransitionTime || 12)),
-            rawPointCount: retryResult.rawCount,
-            model: "google/gemini-2.5-pro (retry)",
-          }), {
-            status: 200,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-      } catch { /* keep original result */ }
+    // If AI result was very poor, retry with hybrid approach
+    if (rawPoints.length < count * 0.3 && mode !== "image") {
+      console.warn(`Direct AI returned only ${rawPoints.length}/${count}, falling back to hybrid`);
+      const inferred = inferShapeType(prompt || raw.formationName || "circle");
+      const hybridPts = generateShapePoints(inferred, count, { radius: Math.max(12, Math.sqrt(count) * 2.2) });
+      const hybridProcessed = processFormationResult(hybridPts, count, prev);
+      
+      return new Response(JSON.stringify({
+        points: hybridProcessed,
+        formationName: raw.formationName || prompt || "AI Formation",
+        suggestedHeight: Math.max(20, Math.min(80, raw.suggestedHeight || 30)),
+        suggestedTransitionTime: Math.max(8, Math.min(25, raw.suggestedTransitionTime || 12)),
+        rawPointCount: rawPoints.length,
+        model: `${usedModel} → hybrid fallback`,
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    console.log(`Formation "${raw.formationName}": requested=${count}, raw=${rawCount}, final=${processedPoints.length}, model=${usedModel}`);
+    console.log(`Direct: "${raw.formationName}", raw=${rawPoints.length}, final=${processed.length}, model=${usedModel}`);
 
     return new Response(JSON.stringify({
-      points: processedPoints,
+      points: processed,
       formationName: raw.formationName || "AI Formation",
-      suggestedHeight: Math.max(15, Math.min(80, raw.suggestedHeight || 25)),
-      suggestedTransitionTime: Math.max(8, Math.min(30, raw.suggestedTransitionTime || 12)),
-      rawPointCount: rawCount,
+      suggestedHeight: Math.max(20, Math.min(80, raw.suggestedHeight || 30)),
+      suggestedTransitionTime: Math.max(8, Math.min(25, raw.suggestedTransitionTime || 12)),
+      rawPointCount: rawPoints.length,
       model: usedModel,
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
   } catch (e: any) {
     const status = e.status || 500;
     console.error("generate-formation error:", e);
@@ -712,3 +1332,43 @@ serve(async (req) => {
     });
   }
 });
+
+// ── Shape type inference from name/prompt ───────────────────
+
+function inferShapeType(name: string): string {
+  const lower = name.toLowerCase();
+  const map: [RegExp, string][] = [
+    [/heart|coração|❤|💕|💗/, 'heart'],
+    [/star|estrela|⭐|✨/, 'star'],
+    [/circle|círculo|⭕/, 'circle'],
+    [/spiral|espiral|🌀/, 'spiral'],
+    [/grid|grade|quadr/, 'grid'],
+    [/diamond|diamante|losango|💎/, 'diamond'],
+    [/cross|cruz|✝|✚/, 'cross'],
+    [/wave|onda|🌊/, 'wave'],
+    [/butterfly|borboleta|🦋/, 'butterfly'],
+    [/arrow|flecha|seta|➡/, 'arrow'],
+    [/crescent|lua|moon|🌙/, 'crescent'],
+    [/ring|anel|💍/, 'ring'],
+    [/infinity|infinit|♾/, 'lemniscate'],
+    [/burst|explos|firework|fogo|🎆/, 'radial_burst'],
+    [/tree|árvore|natal|🎄/, 'layered_triangles'],
+    [/house|casa|🏠/, 'house'],
+    [/music|nota|🎵|🎶/, 'music_note'],
+    [/peace|paz|☮/, 'peace_sign'],
+    [/rocket|foguete|🚀/, 'rocket'],
+    [/cake|bolo|🎂/, 'cake'],
+    [/ball|bola|⚽/, 'filled_circle'],
+    [/flag|bandeira/, 'grid'],
+    [/bell|sino|🔔/, 'filled_circle'],
+    [/snow|neve|❄/, 'star'],
+    [/flower|flor|🌸/, 'radial_burst'],
+    [/sun|sol|☀/, 'radial_burst'],
+    [/trophy|troféu|🏆/, 'house'],
+    [/dolphin|golfinho|🐬/, 'crescent'],
+  ];
+  for (const [regex, shape] of map) {
+    if (regex.test(lower)) return shape;
+  }
+  return 'filled_circle';
+}
