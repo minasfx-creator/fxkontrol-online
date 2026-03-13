@@ -100,10 +100,10 @@ const DEFAULT_SETTINGS: SceneSettings = {
   rimLightIntensity: 0.55,
   fillLightIntensity: 0.35,
 
-  vignetteEnabled: false,
-  vignetteIntensity: 0.3,
-  chromaticAberration: false,
-  filmGrain: 0,
+  vignetteEnabled: true,
+  vignetteIntensity: 0.2,
+  chromaticAberration: true,
+  filmGrain: 0.02,
 };
 
 export const SCENE_PRESETS: Record<string, { name: string; description: string; settings: Partial<SceneSettings> }> = {
