@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { materializeFormation as materialize } from '@/lib/formationMaterializer';
 
+export type PartType = 'shell' | 'comet' | 'mine' | 'cake' | 'candle' | 'fan' | 'gerb' | 'flame' | 'sfx' | 'light' | 'laser' | 'drone' | 'formation' | 'single_shot' | 'ground' | 'rocket' | 'waterfall' | 'strobe' | 'set_piece';
+
 export interface Effect {
   id: string;
   name: string;
@@ -10,6 +12,19 @@ export interface Effect {
   duration: number;
   cost: number;
   icon: string;
+  // ── Finale 3D compatible fields ──────────────────────────────
+  partType?: PartType;          // Physical device type (from Finale manual)
+  caliber?: number;             // Size in inches (e.g., 3, 4, 5, 6, 8)
+  heightMeters?: number;        // Break/effect height in meters
+  prefire?: number;             // Lift time in seconds (shell rise time)
+  fuseDelay?: number;           // Fuse delay before ignition
+  numDevices?: number;          // Chain device count (1 for single)
+  safetyDistance?: number;      // NFPA 1123 safety distance (meters)
+  vdl?: string;                 // Visual Description Language string
+  pattern?: string;             // Burst pattern: peony, willow, palm, kamuro, crossette
+  shotCount?: number;           // For cakes/roman candles: number of shots
+  laserPattern?: 'fan' | 'harp' | 'tunnel' | 'cone' | 'single'; // For lasers
+  beamType?: 'spot' | 'wash' | 'beam'; // For moving heads
 }
 
 export interface TimelineItem {
