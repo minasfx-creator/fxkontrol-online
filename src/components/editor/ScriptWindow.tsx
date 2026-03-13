@@ -314,7 +314,7 @@ export default function ScriptWindow() {
     
     setSelectedIds(new Set(newIds));
     toast.success(`${clipboard.length} cue${clipboard.length > 1 ? 's' : ''} colado(s) em ${currentTime.toFixed(2)}s`);
-  }, [clipboard, addTimelineItem]);
+  }, [clipboard, addTimelineItem, pushUndo]);
 
   // ─── Duplicate selected ──────────────────────────────────────────
   const handleDuplicate = useCallback(() => {
