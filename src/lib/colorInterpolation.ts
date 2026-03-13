@@ -48,7 +48,7 @@ function hslToRgb(h: number, s: number, l: number): [number, number, number] {
   return [hue2rgb(p, q, h + 1/3), hue2rgb(p, q, h), hue2rgb(p, q, h - 1/3)];
 }
 
-export type ColorTransitionMode = 'instant' | 'linear' | 'pulse' | 'rainbow' | 'wave';
+export type ColorTransitionMode = 'instant' | 'linear' | 'pulse' | 'rainbow' | 'wave' | 'rgb_cycle' | 'cascade' | 'sparkle';
 
 /**
  * Interpolate color for a specific drone during a formation transition.
