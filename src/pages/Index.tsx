@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState, useCallback, useEffect } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
+import { toast } from 'sonner';
 import Toolbar from '@/components/editor/Toolbar';
 import SplashScreen from '@/components/editor/SplashScreen';
 import GlobeSelector from '@/components/editor/GlobeSelector';
@@ -36,9 +37,11 @@ import BackgroundPanel from '@/components/editor/BackgroundPanel';
 import SupplierCatalogPanel from '@/components/editor/SupplierCatalogPanel';
 import SafetyPanel from '@/components/editor/SafetyPanel';
 import ChainEditorPanel from '@/components/editor/ChainEditorPanel';
+import PositionGroupsPanel from '@/components/editor/PositionGroupsPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
+import PositionContextMenu from '@/components/editor/PositionContextMenu';
 
 const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
 
@@ -85,6 +88,7 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   audience: 'w-64',
   indoor: 'w-72',
   chains: 'w-72',
+  groups: 'w-56',
 };
 
 export default function Index() {
@@ -106,6 +110,29 @@ export default function Index() {
       if (e.key === '?' && e.shiftKey) {
         setShowShortcuts(prev => !prev);
       }
+      // Insert empty cue at current time (Finale 3D "i" key)
+      if (e.key === 'i' && !e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        const store = useProjectStore.getState();
+        if (store.isPlaying || store.currentTime > 0) {
+          store.addTimelineItem({
+            id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            effectId: '',
+            startTime: store.currentTime,
+            trackIndex: 0,
+            position: { x: 0, y: 0, z: 0 },
+            notes: 'Empty cue',
+          });
+          toast.success(`Cue inserted at ${store.currentTime.toFixed(2)}s`);
+        }
+      }
+      // Select all positions (Ctrl+A)
+      if (e.key === 'a' && (e.ctrlKey || e.metaKey) && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        const store = useProjectStore.getState();
+        if (store.editorMode === 'select') {
+          store.selectMultiplePositions(store.positions.map(p => p.id));
+        }
+      }
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
         const store = useProjectStore.getState();
@@ -117,13 +144,16 @@ export default function Index() {
         e.preventDefault();
         const store = useProjectStore.getState();
         if (store.selectedPositionIds.length > 0) {
+          const newIds: string[] = [];
           store.selectedPositionIds.forEach(id => {
             const pos = store.positions.find(p => p.id === id);
             if (pos) {
               const newId = `pos-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+              newIds.push(newId);
               store.addPosition({ ...pos, id: newId, name: `${pos.name}-Copy`, x: pos.x + 2, z: pos.z + 2 });
             }
           });
+          store.selectMultiplePositions(newIds);
         }
       }
     };
@@ -196,6 +226,7 @@ export default function Index() {
         {activePanel === 'audience' && <AudienceAnalyzerPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'indoor' && <IndoorSimPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'chains' && <ChainEditorPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'groups' && <PositionGroupsPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
@@ -241,6 +272,9 @@ export default function Index() {
       {showShortcuts && (
         <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />
       )}
+
+      {/* Context menu */}
+      <PositionContextMenu />
     </div>
   );
 }

@@ -39,6 +39,10 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
 
     if (e.nativeEvent?.button === 2 || e.button === 2) {
       onRightClick(position, { x: e.clientX || e.nativeEvent?.clientX || 0, y: e.clientY || e.nativeEvent?.clientY || 0 });
+      // Also dispatch global event for context menu component
+      window.dispatchEvent(new CustomEvent('position-context-menu', {
+        detail: { posId: position.id, x: e.clientX || e.nativeEvent?.clientX || 0, y: e.clientY || e.nativeEvent?.clientY || 0 }
+      }));
       return;
     }
 

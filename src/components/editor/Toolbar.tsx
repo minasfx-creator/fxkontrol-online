@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Rocket, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus, Download, ChevronDown } from 'lucide-react';
+import { Rocket, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus, Download, ChevronDown, LayoutGrid, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,6 +12,8 @@ import CSVImporter from './CSVImporter';
 import VVIZImporter from './VVIZImporter';
 import ProjectBrowser from './ProjectBrowser';
 import CatalogImportDialog from './CatalogImportDialog';
+import ArrangePositionsDialog from './ArrangePositionsDialog';
+import { ConvertToFanDialog, ConvertToSequenceDialog } from './ScriptingDialogs';
 import { exportVVIZ, exportFiringCSV, exportSkyc, downloadFile } from '@/lib/exportEngine';
 
 function TimecodeDisplay() {
@@ -211,6 +213,16 @@ export default function Toolbar() {
         <Button variant="ghost" size="icon" className="h-7 w-7" title="Formations" onClick={() => setFormationOpen(true)}>
           <Shapes className="h-3.5 w-3.5" />
         </Button>
+        <ArrangePositionsDialog>
+          <Button variant="ghost" size="icon" className="h-7 w-7" title="Arrange Positions (Circle/Line/Grid/Arc)">
+            <LayoutGrid className="h-3.5 w-3.5" />
+          </Button>
+        </ArrangePositionsDialog>
+        <ConvertToFanDialog>
+          <Button variant="ghost" size="icon" className="h-7 w-7" title="Convert to Fan">
+            <Wand2 className="h-3.5 w-3.5" />
+          </Button>
+        </ConvertToFanDialog>
         <Button variant="ghost" size="icon" className="h-7 w-7" title="Import CSV" onClick={() => setCsvOpen(true)}>
           <Upload className="h-3.5 w-3.5" />
         </Button>
