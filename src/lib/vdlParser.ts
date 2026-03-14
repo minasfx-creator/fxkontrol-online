@@ -194,50 +194,6 @@ function getFinalePrefire(caliberInches: number): number {
 function getFinaleSafetyDistance(caliberInches: number): number {
   return interpolateCaliberData(_activeProfile, caliberInches).safetyM;
 }
-  const heights: Record<number, number> = {
-    1: 20, 1.5: 28, 2: 35, 2.5: 45, 3: 55, 4: 80, 5: 110,
-    6: 140, 8: 190, 10: 240, 12: 280, 16: 320,
-  };
-  const keys = Object.keys(heights).map(Number).sort((a, b) => a - b);
-  if (caliberInches <= keys[0]) return heights[keys[0]];
-  if (caliberInches >= keys[keys.length - 1]) return heights[keys[keys.length - 1]];
-  for (let i = 0; i < keys.length - 1; i++) {
-    if (caliberInches >= keys[i] && caliberInches <= keys[i + 1]) {
-      const t = (caliberInches - keys[i]) / (keys[i + 1] - keys[i]);
-      return heights[keys[i]] * (1 - t) + heights[keys[i + 1]] * t;
-    }
-  }
-  return 80;
-}
-
-// Finale prefire (lift time) by caliber
-function getFinalePrefire(caliberInches: number): number {
-  const prefires: Record<number, number> = {
-    1: 0.5, 2: 0.9, 3: 1.3, 4: 1.8, 5: 2.3, 6: 2.8, 8: 3.5, 10: 4.2, 12: 5.0,
-  };
-  const keys = Object.keys(prefires).map(Number).sort((a, b) => a - b);
-  if (caliberInches <= keys[0]) return prefires[keys[0]];
-  if (caliberInches >= keys[keys.length - 1]) return prefires[keys[keys.length - 1]];
-  for (let i = 0; i < keys.length - 1; i++) {
-    if (caliberInches >= keys[i] && caliberInches <= keys[i + 1]) {
-      const t = (caliberInches - keys[i]) / (keys[i + 1] - keys[i]);
-      return prefires[keys[i]] * (1 - t) + prefires[keys[i + 1]] * t;
-    }
-  }
-  return 1.8;
-}
-
-// NFPA 1123 safety distances
-function getFinaleSafetyDistance(caliberInches: number): number {
-  if (caliberInches <= 2) return 40;
-  if (caliberInches <= 3) return 70;
-  if (caliberInches <= 4) return 100;
-  if (caliberInches <= 5) return 140;
-  if (caliberInches <= 6) return 175;
-  if (caliberInches <= 8) return 210;
-  if (caliberInches <= 10) return 280;
-  return 300;
-}
 
 // ═══════════════════════════════════════════════════════════════════════
 // Main VDL Parser
