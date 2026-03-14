@@ -31,6 +31,7 @@ export default function CryoJetEffect({
   const posRef = useRef(new Float32Array(PARTICLE_COUNT * 3));
   const colRef = useRef(new Float32Array(PARTICLE_COUNT * 3));
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
+  const coolTint = useMemo(() => new THREE.Color('#e8f0ff'), []);
 
   const seeds = useMemo(() => {
     const s: { angle: number; speed: number; spread: number; lt: number; phase: number }[] = [];
