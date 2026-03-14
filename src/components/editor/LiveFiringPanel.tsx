@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 
 // ─── Types ───
 interface SFXChannel {
@@ -201,7 +202,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
     }
   }, []);
 
-  // Fire a channel — send DMX packet with intensity ON
+  // Fire a channel — send DMX packet with intensity ON + 3D visualization
   const handleFire = useCallback((id: string) => {
     setChannels(prev => {
       const updated = prev.map(ch => ch.id === id ? { ...ch, firing: true } : ch);
@@ -213,6 +214,21 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
     const ch = channels.find(c => c.id === id);
     if (ch) {
       toast(`🔥 FIRED: ${ch.name}`, { description: `DMX U${ch.dmxUniverse}.${ch.dmxAddress} @ ${ch.intensity}/255 → Art-Net` });
+
+      // Push 3D visualization into the live SFX store
+      // Position based on channel index to spread effects across stage
+      const idx = channels.indexOf(ch);
+      const spread = 8; // meters between positions
+      const xPos = (idx - (channels.length - 1) / 2) * spread;
+      useLiveSfxStore.getState().fireEffect({
+        id: ch.id,
+        type: ch.type,
+        position: [xPos, 0, 0],
+        color: ch.color,
+        intensity: ch.intensity,
+        startedAt: performance.now(),
+        duration: ch.duration,
+      });
     }
 
     // Auto-stop after duration

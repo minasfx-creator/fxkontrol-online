@@ -54,6 +54,7 @@ import { temporalFlicker } from '@/lib/pyroNoise';
 // MiniMap removed per user request
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 
 // SkyCanvas v2 — force chunk rebuild
 class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
@@ -750,6 +751,58 @@ function TimelineEffects() {
           </group>
         );
         return <LightPoint key={item.id} position={pos} color={effect.color} />;
+      })}
+    </>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Live SFX 3D — renders effects fired from the Live SFX Console
+// ═══════════════════════════════════════════════════════════════════════
+function LiveSFXEffects() {
+  const activeEffects = useLiveSfxStore((s) => s.activeEffects);
+  const stopEffect = useLiveSfxStore((s) => s.stopEffect);
+  const [tick, setTick] = useState(0);
+
+  useFrame(() => {
+    if (activeEffects.length === 0) return;
+    // Force re-render each frame to update progress
+    setTick(t => t + 1);
+    // Clean up expired effects
+    const now = performance.now();
+    for (const fx of activeEffects) {
+      if (now - fx.startedAt > fx.duration) {
+        stopEffect(fx.id);
+      }
+    }
+  });
+
+  return (
+    <>
+      {activeEffects.map((fx) => {
+        const elapsed = (performance.now() - fx.startedAt) / fx.duration;
+        const progress = Math.min(1, Math.max(0, elapsed));
+        if (progress >= 1) return null;
+
+        const pos = fx.position;
+        const intensityScale = fx.intensity / 255;
+
+        switch (fx.type) {
+          case 'co2':
+          case 'cryo':
+            return <CryoJetEffect key={fx.id} position={pos} color={fx.color} progress={progress} height={6 * intensityScale + 2} />;
+          case 'flame':
+            return <FlameEffect key={fx.id} position={pos} color={fx.color} progress={progress} height={8 * intensityScale + 2} />;
+          case 'confetti':
+          case 'streamer':
+            return <ConfettiEffect key={fx.id} position={pos} color={fx.color} progress={progress} />;
+          case 'haze':
+            return <HazeMachineEffect key={fx.id} position={pos} color={fx.color} progress={progress} radius={12} />;
+          case 'spark':
+            return <SparkShower key={fx.id} position={pos} color={fx.color} progress={progress} height={6 * intensityScale + 2} spread={3} />;
+          default:
+            return <GerbEffect key={fx.id} position={pos} color={fx.color} progress={progress} height={4 * intensityScale + 1} />;
+        }
       })}
     </>
   );
@@ -1892,6 +1945,7 @@ export default function SkyCanvas() {
         <BoidsVisualizer />
         <CollisionAvoidanceOverlay config={DEFAULT_AVOIDANCE} />
         <TimelineEffects />
+        <LiveSFXEffects />
         <AudioSpectrumVisualizer />
         <GeofenceVisual />
         <PlaybackClock />
