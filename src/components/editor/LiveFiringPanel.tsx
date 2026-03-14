@@ -132,6 +132,7 @@ function FireButton({ channel, onFire, onStop }: { channel: SFXChannel; onFire: 
 
 // ─── Main Panel ───
 export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
+  const { isPlaying, currentTime, setPlaying } = useProjectStore();
   const [channels, setChannels] = useState<SFXChannel[]>(DEFAULT_CHANNELS);
   const [scenes, setScenes] = useState<DMXScene[]>([]);
   const [cues, setCues] = useState<DMXCue[]>([]);
@@ -143,8 +144,12 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const [artNetConnected, setArtNetConnected] = useState(false);
   const [artNetIp, setArtNetIp] = useState('255.255.255.255');
   const [artNetPort, setArtNetPort] = useState(6454);
+  const [syncEnabled, setSyncEnabled] = useState(true);
+  const [cueRunning, setCueRunning] = useState(false);
+  const [activeCueId, setActiveCueId] = useState<string | null>(null);
   const sequenceRef = useRef(0);
   const fireTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const firedCuesRef = useRef<Set<string>>(new Set());
 
   // Build DMX universe buffer from channels and send via Art-Net edge function
   const sendArtNetPacket = useCallback(async (currentChannels: SFXChannel[]) => {
