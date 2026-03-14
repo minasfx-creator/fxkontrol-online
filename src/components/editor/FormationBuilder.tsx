@@ -466,9 +466,9 @@ function FormationQueue() {
                 )}
               </div>
               </div>
-              </div>
             </div>
           );
+        })}
       </div>
     </div>
   );
