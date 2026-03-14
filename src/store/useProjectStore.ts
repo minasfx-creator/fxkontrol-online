@@ -582,4 +582,45 @@ export const useProjectStore = create<ProjectState>((set) => ({
     ),
   })),
   setShowFormations: (show) => set({ showFormations: show }),
+
+  reorderDroneFormation: (fromIndex, toIndex) => set((s) => {
+    const arr = [...s.droneFormations];
+    const [moved] = arr.splice(fromIndex, 1);
+    arr.splice(toIndex, 0, moved);
+    // Recalculate start times sequentially
+    let time = 0;
+    const updated = arr.map(f => {
+      const newF = { ...f, startTime: time };
+      time += f.transitionDuration + f.holdDuration;
+      return newF;
+    });
+    return { droneFormations: updated };
+  }),
+
+  duplicateDroneFormation: (id) => set((s) => {
+    const src = s.droneFormations.find(f => f.id === id);
+    if (!src) return s;
+    const lastEnd = s.droneFormations.reduce((t, f) => Math.max(t, f.startTime + f.transitionDuration + f.holdDuration), 0);
+    const dup: DroneFormation = {
+      ...src,
+      id: `form-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+      startTime: lastEnd,
+    };
+    return { droneFormations: [...s.droneFormations, dup] };
+  }),
+
+  clearAllFormations: () => set({
+    droneFormations: [],
+    selectedFormationId: null,
+  }),
+
+  recalculateFormationTimings: () => set((s) => {
+    let time = 0;
+    const updated = s.droneFormations.map(f => {
+      const newF = { ...f, startTime: time };
+      time += f.transitionDuration + f.holdDuration;
+      return newF;
+    });
+    return { droneFormations: updated };
+  }),
 }));
