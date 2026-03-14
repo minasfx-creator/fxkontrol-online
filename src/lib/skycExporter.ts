@@ -53,8 +53,21 @@ interface SkycDrone {
   trajectory: SkycTrajectorySegment[];
   lightProgram: SkycLightSegment[];
   yawControl: SkycYawSegment[];
+  pyroProgram: SkycPyroEvent[];
   startDelay: number;
   landPosition?: { x: number; y: number; z: number };
+}
+
+interface SkycPyroEvent {
+  t: number;
+  channel: number;
+  duration: number;
+  type: 'ignite' | 'burst' | 'continuous';
+}
+
+interface SkycCamera {
+  id: string;
+  keyframes: { t: number; position: { x: number; y: number; z: number }; lookAt: { x: number; y: number; z: number }; fov: number }[];
 }
 
 interface SkycTrajectorySegment {
