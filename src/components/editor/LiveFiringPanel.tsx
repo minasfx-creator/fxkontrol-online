@@ -34,6 +34,7 @@ interface SFXChannel {
   intensity: number; // 0-255
   color: string;
   locked: boolean;
+  positionId?: string; // linked pyro position for 3D visualization
 }
 
 interface DMXScene {
