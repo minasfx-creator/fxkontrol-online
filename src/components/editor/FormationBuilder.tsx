@@ -319,21 +319,34 @@ function FormationQueue() {
           const isEditing = editId === f.id;
 
           return (
-            <div
-              key={f.id}
-              draggable
-              onDragStart={() => handleDragStart(idx)}
-              onDragOver={(e) => handleDragOver(e, idx)}
-              onDragEnd={handleDragEnd}
-              onClick={() => { selectFormation(f.id); setCurrentTime(f.startTime); }}
-              className={cn(
-                "group rounded-sm border cursor-pointer transition-all text-[10px] relative",
-                isSelected
-                  ? "border-primary/50 bg-primary/10 shadow-[0_0_8px_hsl(var(--electric)/0.15)]"
-                  : "border-border/30 hover:border-border hover:bg-surface-2/50",
-                dragIdx === idx && "opacity-50"
+            <div key={f.id} className="relative">
+              {/* Drop indicator line */}
+              {dropTargetIdx === idx && dragIdx !== null && dragIdx !== idx && (
+                <div className="absolute -top-1 left-2 right-2 z-10 flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_6px_hsl(var(--primary))]" />
+                  <div className="flex-1 h-0.5 bg-primary rounded-full shadow-[0_0_4px_hsl(var(--primary))]" />
+                  <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_6px_hsl(var(--primary))]" />
+                </div>
               )}
-            >
+              <div
+                draggable
+                onDragStart={(e) => handleDragStart(e, idx)}
+                onDragOver={(e) => handleDragOver(e, idx)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, idx)}
+                onDragEnd={handleDragEnd}
+                onClick={() => { selectFormation(f.id); setCurrentTime(f.startTime); }}
+                className={cn(
+                  "group rounded-sm border cursor-pointer text-[10px] relative",
+                  "transition-all duration-200 ease-out",
+                  isSelected
+                    ? "border-primary/50 bg-primary/10 shadow-[0_0_8px_hsl(var(--electric)/0.15)]"
+                    : "border-border/30 hover:border-border hover:bg-surface-2/50",
+                  dragIdx === idx && "opacity-30 scale-95",
+                  dragIdx !== null && dragIdx !== idx && "hover:border-primary/40",
+                  recentlyMoved === f.id && "animate-scale-in ring-1 ring-primary/50"
+                )}
+              >
               {/* Formation number badge */}
               <div
                 className="absolute -left-0.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full flex items-center justify-center text-[7px] font-bold"
