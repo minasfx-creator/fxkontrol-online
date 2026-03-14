@@ -285,16 +285,18 @@ export const SCENE_PRESETS: Record<string, { name: string; description: string; 
 
 interface SceneSettingsState {
   settings: SceneSettings;
+  qualityPreset: QualityPreset;
   updateSettings: (updates: Partial<SceneSettings>) => void;
   applyPreset: (presetId: string) => void;
+  applyQualityPreset: (preset: QualityPreset) => void;
   resetToDefault: () => void;
 }
 
 export const useSceneStore = create<SceneSettingsState>((set) => ({
   settings: { ...DEFAULT_SETTINGS },
+  qualityPreset: 'show',
   updateSettings: (updates) => set(s => {
     const next = { ...s.settings, ...updates };
-    // Auto-sync rain/humidity when weather condition changes
     if (updates.weather && !updates.rainIntensity) {
       if (updates.weather === 'light-rain') { next.rainIntensity = Math.max(next.rainIntensity, 0.5); next.humidity = Math.max(next.humidity, 0.7); }
       else if (updates.weather === 'heavy-rain') { next.rainIntensity = Math.max(next.rainIntensity, 0.8); next.humidity = Math.max(next.humidity, 0.9); }
@@ -308,5 +310,9 @@ export const useSceneStore = create<SceneSettingsState>((set) => ({
     const preset = SCENE_PRESETS[presetId];
     if (preset) set(s => ({ settings: { ...DEFAULT_SETTINGS, ...preset.settings } }));
   },
-  resetToDefault: () => set({ settings: { ...DEFAULT_SETTINGS } }),
+  applyQualityPreset: (preset) => {
+    const qp = QUALITY_PRESETS[preset];
+    if (qp) set(s => ({ qualityPreset: preset, settings: { ...s.settings, ...qp.settings } }));
+  },
+  resetToDefault: () => set({ settings: { ...DEFAULT_SETTINGS }, qualityPreset: 'show' }),
 }));
