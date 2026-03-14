@@ -85,8 +85,6 @@ function PlaybackClock() {
 }
 
 // --- Particle system ---
-const PARTICLE_COUNT = 120;
-const TRAIL_LENGTH = 6;
 const GRAVITY = -4;
 
 function getWindForce(): [number, number, number] {
@@ -98,39 +96,110 @@ function getWindForce(): [number, number, number] {
   return [Math.sin(rad) * s, 0, Math.cos(rad) * s];
 }
 
-function createParticleGeometry() {
-  const velocities = new Float32Array(PARTICLE_COUNT * 3);
-  const lifetimes = new Float32Array(PARTICLE_COUNT);
-  for (let i = 0; i < PARTICLE_COUNT; i++) {
-    const theta = Math.random() * Math.PI * 2;
-    const phi = Math.acos(2 * Math.random() - 1);
-    const speed = 2 + Math.random() * 5;
-    velocities[i * 3] = Math.sin(phi) * Math.cos(theta) * speed;
-    velocities[i * 3 + 1] = Math.sin(phi) * Math.sin(theta) * speed * 0.8 + 1;
-    velocities[i * 3 + 2] = Math.cos(phi) * speed;
-    lifetimes[i] = 0.5 + Math.random() * 0.5;
-  }
-  return { velocities, lifetimes };
-}
-
-function particlePos(vx: number, vy: number, vz: number, t: number, wind: [number, number, number]): [number, number, number] {
-  return [
-    vx * t * 0.5 + wind[0] * t * t * 0.5,
-    vy * t * 0.5 + 0.5 * GRAVITY * t * t * 0.25,
-    vz * t * 0.5 + wind[2] * t * t * 0.5,
-  ];
-}
-
-function FireworkBurst({ position, color, progress }: { position: [number, number, number]; color: string; progress: number }) {
+/**
+ * FireworkBurst — Ultra-realistic shell burst renderer
+ * Caliber-aware with pattern support, proper star counts, trails, and physics
+ */
+function FireworkBurst({ 
+  position, color, progress, caliber = 4, pattern = 'peony' 
+}: { 
+  position: [number, number, number]; color: string; progress: number; 
+  caliber?: number; pattern?: string;
+}) {
   const pointsRef = useRef<THREE.Points>(null);
   const trailRef = useRef<THREE.LineSegments>(null);
-  const { velocities, lifetimes } = useMemo(() => createParticleGeometry(), []);
-  const positionsRef = useRef(new Float32Array(PARTICLE_COUNT * 3));
-  const colorsRef = useRef(new Float32Array(PARTICLE_COUNT * 3));
-  const trailVertCount = PARTICLE_COUNT * TRAIL_LENGTH * 2;
+  
+  // Scale particle count by caliber — bigger shells = more stars
+  const STAR_COUNT = useMemo(() => Math.min(600, Math.round(80 + caliber * caliber * 12)), [caliber]);
+  const TRAIL_LENGTH = 8;
+  const breakSpeed = useMemo(() => 8 + caliber * 4, [caliber]);
+  const starLife = useMemo(() => {
+    const base = 1.0 + caliber * 0.4;
+    if (pattern === 'willow' || pattern === 'kamuro') return base * 2.5;
+    if (pattern === 'palm' || pattern === 'brocade') return base * 1.6;
+    return base;
+  }, [caliber, pattern]);
+  
+  const baseColor = useMemo(() => new THREE.Color(color), [color]);
+  
+  const { velocities, lifetimes } = useMemo(() => {
+    const v = new Float32Array(STAR_COUNT * 3);
+    const l = new Float32Array(STAR_COUNT);
+    
+    for (let i = 0; i < STAR_COUNT; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      let vx: number, vy: number, vz: number;
+      let life = starLife * (0.7 + Math.random() * 0.3);
+      const speedVar = 0.65 + Math.random() * 0.35;
+      
+      switch (pattern) {
+        case 'willow':
+          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.5 * speedVar;
+          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.5 * speedVar;
+          vz = Math.cos(phi) * breakSpeed * 0.5 * speedVar;
+          life = starLife * (1.5 + Math.random() * 1.0);
+          break;
+        case 'palm':
+          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.6 * speedVar;
+          vy = Math.abs(Math.sin(phi) * Math.sin(theta)) * breakSpeed + breakSpeed * 0.35;
+          vz = Math.cos(phi) * breakSpeed * 0.6 * speedVar;
+          life = starLife * (1.3 + Math.random() * 0.5);
+          break;
+        case 'chrysanthemum':
+          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * speedVar;
+          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.9 * speedVar;
+          vz = Math.cos(phi) * breakSpeed * speedVar;
+          life = starLife * (1.0 + Math.random() * 0.2);
+          break;
+        case 'kamuro':
+          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.4 * speedVar;
+          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.4 * speedVar + 2;
+          vz = Math.cos(phi) * breakSpeed * 0.4 * speedVar;
+          life = starLife * (2.0 + Math.random() * 1.0);
+          break;
+        case 'ring':
+          vx = Math.cos(theta) * breakSpeed * speedVar;
+          vy = (Math.random() - 0.5) * breakSpeed * 0.12;
+          vz = Math.sin(theta) * breakSpeed * speedVar;
+          break;
+        case 'dahlia':
+          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 1.15 * speedVar;
+          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 1.1 * speedVar;
+          vz = Math.cos(phi) * breakSpeed * 1.15 * speedVar;
+          life = starLife * (0.5 + Math.random() * 0.3);
+          break;
+        case 'brocade':
+          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.65 * speedVar;
+          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.65 * speedVar;
+          vz = Math.cos(phi) * breakSpeed * 0.65 * speedVar;
+          life = starLife * (1.5 + Math.random() * 0.8);
+          break;
+        case 'crossette':
+          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.8 * speedVar;
+          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.8 * speedVar;
+          vz = Math.cos(phi) * breakSpeed * 0.8 * speedVar;
+          break;
+        default: // peony — classic spherical
+          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * speedVar;
+          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * speedVar * 0.85 + 1;
+          vz = Math.cos(phi) * breakSpeed * speedVar;
+          break;
+      }
+      
+      v[i * 3] = vx;
+      v[i * 3 + 1] = vy;
+      v[i * 3 + 2] = vz;
+      l[i] = life;
+    }
+    return { velocities: v, lifetimes: l };
+  }, [STAR_COUNT, breakSpeed, starLife, pattern]);
+
+  const positionsRef = useRef(new Float32Array(STAR_COUNT * 3));
+  const colorsRef = useRef(new Float32Array(STAR_COUNT * 3));
+  const trailVertCount = STAR_COUNT * TRAIL_LENGTH * 2;
   const trailPosRef = useRef(new Float32Array(trailVertCount * 3));
   const trailColRef = useRef(new Float32Array(trailVertCount * 3));
-  const baseColor = useMemo(() => new THREE.Color(color), [color]);
 
   useFrame(() => {
     if (!pointsRef.current || !trailRef.current) return;
@@ -138,34 +207,64 @@ function FireworkBurst({ position, color, progress }: { position: [number, numbe
     const cols = colorsRef.current;
     const tPos = trailPosRef.current;
     const tCol = trailColRef.current;
-    const t = progress * 2.5;
-    const trailDt = 0.06;
+    const t = progress * (starLife * 0.8);
+    const trailDt = 0.05;
     const w = getWindForce();
+    const drag = 0.04 + caliber * 0.003;
+    const isWillow = pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade';
 
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
+    for (let i = 0; i < STAR_COUNT; i++) {
       const vx = velocities[i * 3], vy = velocities[i * 3 + 1], vz = velocities[i * 3 + 2];
       const lt = lifetimes[i];
-      const fade = Math.max(0, 1 - progress / lt);
-      const [hx, hy, hz] = particlePos(vx, vy, vz, t, w);
-      pos[i * 3] = hx; pos[i * 3 + 1] = hy; pos[i * 3 + 2] = hz;
+      const age = progress / (lt / starLife);
+      const fade = Math.max(0, 1 - age);
+      const dragF = Math.exp(-drag * t);
 
-      const r = THREE.MathUtils.lerp(baseColor.r, 0.8, progress * 0.6) * fade;
-      const g = THREE.MathUtils.lerp(baseColor.g, 0.2, progress * 0.8) * fade;
-      const b = THREE.MathUtils.lerp(baseColor.b, 0.05, progress * 0.9) * fade;
-      cols[i * 3] = r; cols[i * 3 + 1] = g; cols[i * 3 + 2] = b;
+      const px = vx * t * dragF + w[0] * t * t * 0.3;
+      const py = vy * t * dragF + 0.5 * GRAVITY * t * t * 0.35;
+      const pz = vz * t * dragF + w[2] * t * t * 0.3;
+      pos[i * 3] = px; pos[i * 3 + 1] = py; pos[i * 3 + 2] = pz;
 
+      // Color: white-hot flash → base color → ember → dark
+      const flashPhase = Math.max(0, 1 - progress * 10); // quick white flash at burst
+      const emberPhase = Math.max(0, (progress - 0.6) / 0.4); // last 40% goes to ember
+      const sparkle = isWillow 
+        ? 0.85 + Math.sin(i * 13 + progress * 20) * 0.15 
+        : 0.7 + Math.sin(i * 19 + progress * 30) * 0.15 + Math.sin(i * 7 + progress * 50) * 0.15;
+      
+      let r = THREE.MathUtils.lerp(baseColor.r, 1.0, flashPhase);
+      let g = THREE.MathUtils.lerp(baseColor.g, 0.95, flashPhase);
+      let b = THREE.MathUtils.lerp(baseColor.b, 0.8, flashPhase);
+      
+      // Ember phase: shift toward orange/red
+      if (emberPhase > 0) {
+        r = THREE.MathUtils.lerp(r, 0.9, emberPhase * 0.4);
+        g = THREE.MathUtils.lerp(g, 0.3, emberPhase * 0.5);
+        b = THREE.MathUtils.lerp(b, 0.05, emberPhase * 0.6);
+      }
+      
+      cols[i * 3] = r * fade * sparkle;
+      cols[i * 3 + 1] = g * fade * sparkle;
+      cols[i * 3 + 2] = b * fade * sparkle;
+
+      // Star trails
       for (let s = 0; s < TRAIL_LENGTH; s++) {
         const t0 = Math.max(0, t - s * trailDt);
         const t1 = Math.max(0, t - (s + 1) * trailDt);
-        const [x0, y0, z0] = particlePos(vx, vy, vz, t0, w);
-        const [x1, y1, z1] = particlePos(vx, vy, vz, t1, w);
+        const d0 = Math.exp(-drag * t0);
+        const d1 = Math.exp(-drag * t1);
         const base = (i * TRAIL_LENGTH + s) * 6;
-        tPos[base] = x0; tPos[base + 1] = y0; tPos[base + 2] = z0;
-        tPos[base + 3] = x1; tPos[base + 4] = y1; tPos[base + 5] = z1;
-        const segFade = fade * (1 - s / TRAIL_LENGTH) * 0.6;
-        tCol[base] = r * segFade; tCol[base + 1] = g * segFade; tCol[base + 2] = b * segFade;
-        const endFade = fade * (1 - (s + 1) / TRAIL_LENGTH) * 0.6;
-        tCol[base + 3] = r * endFade; tCol[base + 4] = g * endFade; tCol[base + 5] = b * endFade;
+        tPos[base] = vx * t0 * d0 + w[0] * t0 * t0 * 0.3;
+        tPos[base + 1] = vy * t0 * d0 + 0.5 * GRAVITY * t0 * t0 * 0.35;
+        tPos[base + 2] = vz * t0 * d0 + w[2] * t0 * t0 * 0.3;
+        tPos[base + 3] = vx * t1 * d1 + w[0] * t1 * t1 * 0.3;
+        tPos[base + 4] = vy * t1 * d1 + 0.5 * GRAVITY * t1 * t1 * 0.35;
+        tPos[base + 5] = vz * t1 * d1 + w[2] * t1 * t1 * 0.3;
+        const segFade = fade * Math.pow(1 - s / TRAIL_LENGTH, 1.5) * 0.5;
+        const endFade = fade * Math.pow(1 - (s + 1) / TRAIL_LENGTH, 1.5) * 0.5;
+        // Trails are slightly warmer
+        tCol[base] = r * segFade * 1.1; tCol[base + 1] = g * segFade * 0.8; tCol[base + 2] = b * segFade * 0.4;
+        tCol[base + 3] = r * endFade * 1.1; tCol[base + 4] = g * endFade * 0.8; tCol[base + 5] = b * endFade * 0.4;
       }
     }
 
@@ -182,34 +281,47 @@ function FireworkBurst({ position, color, progress }: { position: [number, numbe
     lGeo.attributes.color.needsUpdate = true;
   });
 
+  // Particle size scales with caliber
+  const particleSize = 0.15 + caliber * 0.06;
+  // Break flash size scales with caliber
+  const flashSize = 1.5 + caliber * 1.2;
+
   return (
     <group position={position}>
       <points ref={pointsRef}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(PARTICLE_COUNT * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(PARTICLE_COUNT * 3), 3]} />
+          <bufferAttribute attach="attributes-position" args={[new Float32Array(STAR_COUNT * 3), 3]} />
+          <bufferAttribute attach="attributes-color" args={[new Float32Array(STAR_COUNT * 3), 3]} />
         </bufferGeometry>
-        <pointsMaterial size={0.22} vertexColors transparent opacity={0.95} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        <pointsMaterial size={particleSize} vertexColors transparent opacity={0.95} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
       <lineSegments ref={trailRef}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[new Float32Array(trailVertCount * 3), 3]} />
           <bufferAttribute attach="attributes-color" args={[new Float32Array(trailVertCount * 3), 3]} />
         </bufferGeometry>
-        <lineBasicMaterial vertexColors transparent opacity={0.7} depthWrite={false} blending={THREE.AdditiveBlending} />
+        <lineBasicMaterial vertexColors transparent opacity={0.75} depthWrite={false} blending={THREE.AdditiveBlending} />
       </lineSegments>
-      {/* Initial flash sphere */}
-      {progress < 0.3 && (
+      
+      {/* Break flash — massive initial burst of light */}
+      {progress < 0.12 && (
         <mesh>
-          <sphereGeometry args={[0.8 + progress * 4, 16, 16]} />
-          <meshBasicMaterial color={color} transparent opacity={0.12 * (1 - progress / 0.3)} blending={THREE.AdditiveBlending} />
+          <sphereGeometry args={[flashSize + progress * flashSize * 6, 20, 20]} />
+          <meshBasicMaterial color={color} transparent opacity={0.25 * (1 - progress / 0.12)} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
-      {/* Secondary flash ring */}
+      {/* Inner core flash — white hot */}
+      {progress < 0.06 && (
+        <mesh>
+          <sphereGeometry args={[flashSize * 0.4 + progress * flashSize * 2, 16, 16]} />
+          <meshBasicMaterial color="#FFFFEE" transparent opacity={0.45 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} />
+        </mesh>
+      )}
+      {/* Expanding shockwave ring */}
       {progress < 0.15 && (
         <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[progress * 8, progress * 8 + 0.3, 32]} />
-          <meshBasicMaterial color={color} transparent opacity={0.06 * (1 - progress / 0.15)} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
+          <ringGeometry args={[progress * flashSize * 5, progress * flashSize * 5 + 0.6, 32]} />
+          <meshBasicMaterial color={color} transparent opacity={0.08 * (1 - progress / 0.15)} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
     </group>

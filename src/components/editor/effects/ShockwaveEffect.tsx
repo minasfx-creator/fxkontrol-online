@@ -2,14 +2,13 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
-const RING_SEGMENTS = 64;
-const RING_LAYERS = 3;
+const RING_SEGMENTS = 96;
+const RING_LAYERS = 4;
 
 /**
- * Shockwave effect: an expanding ring of particles/light with a central flash.
- * Multiple concentric rings expand at different speeds.
+ * Shockwave effect: expanding concentric rings of particles with a central flash.
  */
-export default function ShockwaveEffect({
+function ShockwaveEffectInner({
   position,
   color,
   progress,
@@ -26,12 +25,12 @@ export default function ShockwaveEffect({
       const pts = ringsRef.current[layer];
       if (!pts) continue;
 
-      const speed = 1 + layer * 0.3;
-      const delay = layer * 0.08;
+      const speed = 1 + layer * 0.25;
+      const delay = layer * 0.06;
       const p = Math.max(0, progress - delay) * speed;
-      const radius = p * 12;
-      const fade = Math.max(0, 1 - (progress - delay) / (1 - delay)) * (1 - layer * 0.2);
-      const yOffset = layer * 0.3 - 0.3;
+      const radius = p * 15;
+      const fade = Math.max(0, 1 - (progress - delay) / (1 - delay)) * (1 - layer * 0.15);
+      const yOffset = layer * 0.4 - 0.4;
 
       const posAttr = pts.geometry.getAttribute('position') as THREE.BufferAttribute;
       const colAttr = pts.geometry.getAttribute('color') as THREE.BufferAttribute;
@@ -43,11 +42,10 @@ export default function ShockwaveEffect({
         const wobble = 1 + Math.sin(angle * 6 + progress * 20) * 0.08 * p;
 
         posArr[i * 3] = Math.cos(angle) * radius * wobble;
-        posArr[i * 3 + 1] = yOffset + Math.sin(angle * 3 + progress * 15) * 0.2 * p;
+        posArr[i * 3 + 1] = yOffset + Math.sin(angle * 3 + progress * 15) * 0.3 * p;
         posArr[i * 3 + 2] = Math.sin(angle) * radius * wobble;
 
-        // Inner ring is brighter, outer dimmer
-        const brightness = fade * (1 - (i % 3) * 0.1);
+        const brightness = fade * (1 - (i % 3) * 0.08);
         colArr[i * 3] = baseColor.r * brightness;
         colArr[i * 3 + 1] = baseColor.g * brightness;
         colArr[i * 3 + 2] = baseColor.b * brightness;
@@ -60,37 +58,29 @@ export default function ShockwaveEffect({
 
   return (
     <group position={position}>
-      {/* Central flash — mesh only, no pointLight to avoid uniform overflow */}
-      {progress < 0.2 && (
+      {progress < 0.15 && (
         <mesh>
-          <sphereGeometry args={[0.5 + progress * 4, 16, 16]} />
+          <sphereGeometry args={[0.8 + progress * 6, 16, 16]} />
           <meshBasicMaterial
             color={color}
             transparent
-            opacity={0.4 * (1 - progress / 0.2)}
+            opacity={0.5 * (1 - progress / 0.15)}
             blending={THREE.AdditiveBlending}
           />
         </mesh>
       )}
 
-      {/* Expanding rings */}
       {Array.from({ length: RING_LAYERS }).map((_, layer) => (
         <points
           key={layer}
           ref={(el) => { ringsRef.current[layer] = el; }}
         >
           <bufferGeometry>
-            <bufferAttribute
-              attach="attributes-position"
-              args={[new Float32Array(RING_SEGMENTS * 3), 3]}
-            />
-            <bufferAttribute
-              attach="attributes-color"
-              args={[new Float32Array(RING_SEGMENTS * 3), 3]}
-            />
+            <bufferAttribute attach="attributes-position" args={[new Float32Array(RING_SEGMENTS * 3), 3]} />
+            <bufferAttribute attach="attributes-color" args={[new Float32Array(RING_SEGMENTS * 3), 3]} />
           </bufferGeometry>
           <pointsMaterial
-            size={0.25 - layer * 0.05}
+            size={0.3 - layer * 0.04}
             vertexColors
             transparent
             opacity={0.9}
@@ -101,13 +91,12 @@ export default function ShockwaveEffect({
         </points>
       ))}
 
-      {/* Flat disc shockwave */}
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[progress * 10, progress * 12 + 0.5, 32]} />
+        <ringGeometry args={[progress * 12, progress * 15 + 0.8, 32]} />
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={0.12 * Math.max(0, 1 - progress)}
+          opacity={0.1 * Math.max(0, 1 - progress)}
           blending={THREE.AdditiveBlending}
           side={THREE.DoubleSide}
         />
@@ -115,3 +104,5 @@ export default function ShockwaveEffect({
     </group>
   );
 }
+
+export default ShockwaveEffectInner;
