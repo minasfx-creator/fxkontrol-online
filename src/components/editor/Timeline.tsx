@@ -5,6 +5,7 @@ import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { getPreFireTime } from '@/lib/safetyEngine';
 import { cn } from '@/lib/utils';
 import AudioWaveform from './AudioWaveform';
+import PyroTimelineTrack from './PyroTimelineTrack';
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -602,6 +603,7 @@ export default function Timeline() {
             </div>
           </div>
           <FormationTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
+          <PyroTimelineTrack pixelsPerSecond={pixelsPerSecond} duration={duration} />
           <TimelineTrackRow label="DRONE FX" trackIndex={1} pixelsPerSecond={pixelsPerSecond} color="#00B4D8" duration={duration} scrollRef={scrollRef} />
           <TimelineTrackRow label="PYRO SYS" trackIndex={0} pixelsPerSecond={pixelsPerSecond} color="#FF6B35" duration={duration} scrollRef={scrollRef} />
           <WaypointTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
