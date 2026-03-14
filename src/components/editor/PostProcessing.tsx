@@ -4,75 +4,96 @@ import { Vector2 } from 'three';
 import { useSceneStore } from '@/store/useSceneStore';
 
 /**
- * Cinematic post-processing pipeline optimized for pyrotechnic rendering.
- * 4-layer bloom architecture:
- *   1. Primary — catches HDR star points and emissive surfaces
- *   2. Medium — glow halos around bright clusters  
- *   3. Wide atmospheric — soft sky-filling scatter from large bursts
- *   4. Ultra-wide — subtle ambient light pollution effect
+ * Cinematic post-processing pipeline v3 — FWsim/Finale-grade rendering.
+ * 
+ * Key changes from v2:
+ * - Much lower luminance thresholds to catch more star light
+ * - Higher bloom intensities with wider kernels
+ * - AGX tone mapping replaced with ACES for punchier HDR
+ * - 5-layer bloom architecture for ultra-realistic light scatter
+ * - Stronger vignette for cinematic framing
  */
 export default function PostProcessing() {
   const s = useSceneStore(st => st.settings);
+  const str = s.bloomStrength;
 
   return (
     <EffectComposer multisampling={0}>
       <SMAA />
-      {/* Layer 1: Primary bloom — tight, bright star points */}
+
+      {/* Layer 1: Ultra-tight core — catches individual star HDR points */}
       <Bloom
-        intensity={s.bloomStrength * 1.4}
-        luminanceThreshold={0.12}
-        luminanceSmoothing={0.3}
+        intensity={str * 2.2}
+        luminanceThreshold={0.05}
+        luminanceSmoothing={0.15}
+        kernelSize={KernelSize.MEDIUM}
+        mipmapBlur
+      />
+
+      {/* Layer 2: Primary glow — star halos and burst flash */}
+      <Bloom
+        intensity={str * 1.1}
+        luminanceThreshold={0.15}
+        luminanceSmoothing={0.4}
         kernelSize={KernelSize.LARGE}
         mipmapBlur
       />
-      {/* Layer 2: Medium glow — halos around star clusters */}
+
+      {/* Layer 3: Medium scatter — cluster glow, sky coloring */}
       <Bloom
-        intensity={s.bloomStrength * 0.4}
-        luminanceThreshold={0.4}
-        luminanceSmoothing={0.7}
+        intensity={str * 0.5}
+        luminanceThreshold={0.3}
+        luminanceSmoothing={0.65}
         kernelSize={KernelSize.HUGE}
         mipmapBlur
       />
-      {/* Layer 3: Atmospheric scatter — wide soft glow from bursts */}
+
+      {/* Layer 4: Wide atmospheric — fills sky around large bursts */}
       <Bloom
-        intensity={s.bloomStrength * 0.12}
+        intensity={str * 0.2}
+        luminanceThreshold={0.5}
+        luminanceSmoothing={0.85}
+        kernelSize={KernelSize.HUGE}
+        mipmapBlur
+      />
+
+      {/* Layer 5: Ultra-wide ambient — subtle light pollution / sky wash */}
+      <Bloom
+        intensity={str * 0.08}
         luminanceThreshold={0.7}
-        luminanceSmoothing={0.9}
+        luminanceSmoothing={0.95}
         kernelSize={KernelSize.HUGE}
         mipmapBlur
       />
-      {/* Layer 4: Ultra-wide ambient — subtle sky illumination */}
-      <Bloom
-        intensity={s.bloomStrength * 0.04}
-        luminanceThreshold={0.9}
-        luminanceSmoothing={0.98}
-        kernelSize={KernelSize.HUGE}
-        mipmapBlur
-      />
-      {/* Cinematic vignette */}
+
+      {/* Cinematic vignette — tighter for drama */}
       {s.vignetteEnabled && (
         <Vignette
-          offset={0.25}
-          darkness={s.vignetteIntensity * 2.2}
+          offset={0.2}
+          darkness={s.vignetteIntensity * 2.8}
           blendFunction={BlendFunction.NORMAL}
         />
       )}
+
       {/* Chromatic aberration — lens realism */}
       {s.chromaticAberration && (
         <ChromaticAberration
-          offset={new Vector2(0.0006, 0.0006)}
+          offset={new Vector2(0.0008, 0.0008)}
           radialModulation
-          modulationOffset={0.3}
+          modulationOffset={0.25}
         />
       )}
+
       {/* Film grain */}
       {s.filmGrain > 0.01 && (
         <Noise
           blendFunction={BlendFunction.SOFT_LIGHT}
-          opacity={s.filmGrain * 0.5}
+          opacity={s.filmGrain * 0.6}
         />
       )}
-      <ToneMapping mode={ToneMappingMode.AGX} />
+
+      {/* ACES Filmic — punchier HDR with rich highlight rolloff */}
+      <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
     </EffectComposer>
   );
 }
