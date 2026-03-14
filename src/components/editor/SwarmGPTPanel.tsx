@@ -142,6 +142,9 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
   const [musicSyncBeats, setMusicSyncBeats] = useState(4);
   const [lastGeneratedPoints, setLastGeneratedPoints] = useState<{ x: number; z: number }[]>([]);
   const [showFormationList, setShowFormationList] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const addDroneFormation = useProjectStore((s) => s.addDroneFormation);
   const addTimelineItem = useProjectStore((s) => s.addTimelineItem);
