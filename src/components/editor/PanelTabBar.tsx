@@ -62,6 +62,7 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
     title: 'Drone',
     icon: Bug,
     items: [
+      { id: 'fleet', label: 'Fleet Manager', icon: Radio },
       { id: 'boids', label: 'Boids', icon: Bug },
       { id: 'pid', label: 'PID', icon: Gauge },
       { id: 'battery', label: 'Battery', icon: Battery },
@@ -69,6 +70,9 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
       { id: 'indoor', label: 'Indoor Sim', icon: Warehouse },
       { id: 'telemetry', label: 'Telemetry', icon: Activity },
       { id: 'flightlog', label: 'Flight Log', icon: FileText },
+      { id: 'geofence', label: 'Geofence', icon: Shield },
+      { id: 'storyboard', label: 'Storyboard', icon: Film },
+      { id: 'showcontrol', label: 'Show Control', icon: Clock },
     ],
   },
   {
