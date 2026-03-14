@@ -161,6 +161,68 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
   const recalculateFormationTimings = useProjectStore((s) => s.recalculateFormationTimings);
   const updateDroneFormation = useProjectStore((s) => s.updateDroneFormation);
 
+  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { toast.error('Selecione uma imagem'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setImagePreview(dataUrl);
+      setImageBase64(dataUrl.split(',')[1]);
+      setMode('image');
+    };
+    reader.readAsDataURL(file);
+    if (imageInputRef.current) imageInputRef.current.value = '';
+  }, []);
+
+  const generateFromImage = useCallback(async () => {
+    if (!imageBase64) return;
+    setLoading(true);
+    setLoadingPhase('Analisando imagem com IA...');
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-formation', {
+        body: { mode: 'image', prompt: prompt || 'Extract the main subject silhouette', droneCount, imageBase64 },
+      });
+      if (error) {
+        const errMsg = (data as any)?.error || error.message || String(error);
+        throw new Error(errMsg.includes('402') ? '402' : errMsg.includes('429') ? '429' : errMsg);
+      }
+      if (data?.error) throw new Error(data.error);
+
+      const rawPts = (data.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
+      const pts = normalizeDroneCount(rawPts, droneCount);
+      setLastGeneratedPoints(pts);
+
+      const lastTime = droneFormations.length > 0
+        ? droneFormations[droneFormations.length - 1].startTime + droneFormations[droneFormations.length - 1].transitionDuration + droneFormations[droneFormations.length - 1].holdDuration
+        : 0;
+
+      addDroneFormation({
+        id: `img-${Date.now()}`,
+        formationType: 'image-traced',
+        droneCount,
+        height: data.suggestedHeight || 30,
+        radius: 20,
+        spacing: 2,
+        rotation: 0,
+        startTime: lastTime,
+        transitionDuration: data.suggestedTransitionTime || 15,
+        holdDuration: 20,
+        color: '#00E5FF',
+        points: pts,
+      });
+      setCurrentTime(lastTime);
+      setHistory(prev => [{ prompt: '📷 Image', result: `${data.formationName} · ${pts.length} drones`, time: new Date().toLocaleTimeString(), points: pts }, ...prev.slice(0, 9)]);
+      toast.success(`"${data.formationName}" gerada da imagem`, { description: `${pts.length} drones` });
+    } catch (e: any) {
+      handleError(e);
+    } finally {
+      setLoading(false);
+      setLoadingPhase('');
+    }
+  }, [imageBase64, prompt, droneCount, droneFormations, addDroneFormation, setCurrentTime]);
+
   const generateSingle = useCallback(async () => {
     if (!prompt.trim()) return;
     setLoading(true);
@@ -171,7 +233,6 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
         body: { mode: 'text', prompt, droneCount, previousFormation: lastFormation?.points?.slice(0, droneCount) },
       });
       if (error) {
-        // Check if data contains a message from the edge function
         const errMsg = (data as any)?.error || error.message || String(error);
         throw new Error(errMsg.includes('402') || errMsg.includes('Créditos') ? '402' : errMsg.includes('429') ? '429' : errMsg);
       }
@@ -200,7 +261,6 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
         points: pts,
       });
 
-      // Auto-seek to formation start
       setCurrentTime(lastTime);
 
       setHistory(prev => [{ prompt, result: `${data.formationName} · ${pts.length} drones`, time: new Date().toLocaleTimeString(), points: pts }, ...prev.slice(0, 9)]);
