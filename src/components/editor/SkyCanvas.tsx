@@ -395,12 +395,14 @@ function TimelineEffects() {
       resolvedPos: { x: number; y: number; z: number };
       effectScale: number;
       effectBrightness: number;
+      launchHeading: number;
+      launchPitch: number;
     }[];
   }, [timelineItems, currentTime, positions, sceneSettings.effectScale, sceneSettings.weather, sceneSettings.humidity, sceneSettings.effectBrightness]);
 
   return (
     <>
-      {activeEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale, effectBrightness }) => {
+      {activeEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale, effectBrightness, launchHeading, launchPitch }) => {
         const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
         const eid = effect.id;
         const pt = effect.partType;
@@ -414,15 +416,24 @@ function TimelineEffects() {
               color={effect.color}
               progress={prefireProgress}
               caliber={caliber}
+              heading={launchHeading}
+              pitch={launchPitch}
             />
           );
         }
 
-        // ── Real break height with scene scale ──
+        // ── Real break height with angle offset (Finale 3D standard) ──
         const isShell = pt === 'shell' || pt === 'single_shot';
         const realBreakHeight = getBreakHeight(caliber) * effectScale;
+        const pitchRad = (launchPitch || 85) * (Math.PI / 180);
+        const headingRad = (launchHeading || 0) * (Math.PI / 180);
+        // Angled burst position: shell travels along launch angle
         const burstPos: [number, number, number] = isShell
-          ? [pos[0], pos[1] + realBreakHeight, pos[2]]
+          ? [
+              pos[0] + Math.sin(headingRad) * Math.cos(pitchRad) * realBreakHeight,
+              pos[1] + Math.sin(pitchRad) * realBreakHeight,
+              pos[2] - Math.cos(headingRad) * Math.cos(pitchRad) * realBreakHeight,
+            ]
           : pos;
 
         // Heights from effect library, scaled by scene
