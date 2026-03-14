@@ -2,6 +2,7 @@ import { lazy, Suspense, useState, useCallback, useEffect } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useUndoStore } from '@/store/useUndoStore';
 import { useUndoKeyboard } from '@/hooks/useUndoKeyboard';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import Toolbar from '@/components/editor/Toolbar';
 import SplashScreen from '@/components/editor/SplashScreen';
@@ -64,6 +65,9 @@ import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
 import PositionContextMenu from '@/components/editor/PositionContextMenu';
+import MobileTabBar, { type MobileTab } from '@/components/editor/MobileTabBar';
+import MobileFloatingPanel from '@/components/editor/MobileFloatingPanel';
+import MobileMoreMenu from '@/components/editor/MobileMoreMenu';
 
 const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
 
@@ -134,6 +138,7 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
 };
 
 export default function Index() {
+  const isMobile = useIsMobile();
   const [activePanel, setActivePanel] = useState<PanelId | null>('properties');
   const [appPhase, setAppPhase] = useState<'splash' | 'globe' | 'editor'>('splash');
   const [fleetSize, setFleetSize] = useState(500);
@@ -141,6 +146,8 @@ export default function Index() {
   const [showLocation, setShowLocation] = useState<{ name: string; lat: number; lng: number } | null>(null);
   const [showPositionEditor, setShowPositionEditor] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [mobileTab, setMobileTab] = useState<MobileTab | null>(null);
+  const [mobilePanelHeight, setMobilePanelHeight] = useState<'collapsed' | 'half' | 'full'>('collapsed');
   const selectedPositionId = useProjectStore(s => s.selectedPositionId);
 
   // Undo/Redo keyboard shortcuts
@@ -221,11 +228,11 @@ export default function Index() {
     setActivePanel((prev) => (prev === id ? null : id));
   }, []);
 
-  const handleSplashStart = (size: number, pyroPos: number) => {
+  const handleSplashStart = useCallback((size: number, pyroPos: number) => {
     setFleetSize(size);
     setPyroPositions(pyroPos);
     setAppPhase('globe');
-  };
+  }, []);
 
   const handleLocationSelected = useCallback((location: { name: string; lat: number; lng: number }) => {
     setShowLocation(location);
@@ -236,6 +243,12 @@ export default function Index() {
       altitude: 0,
     });
     setAppPhase('editor');
+  }, []);
+
+  const handleMobileOpenPanel = useCallback((id: PanelId) => {
+    setActivePanel(id);
+    setMobileTab(null);
+    setMobilePanelHeight('half');
   }, []);
 
   if (appPhase === 'splash') {
@@ -307,6 +320,56 @@ export default function Index() {
     );
   };
 
+
+  // Mobile layout
+  if (isMobile) {
+    return (
+      <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
+        {/* Compact toolbar for mobile */}
+        <Toolbar onOpenPanel={(id) => handleTogglePanel(id as PanelId)} />
+
+        {/* Full viewport */}
+        <div className="flex-1 min-w-0 relative">
+          <Suspense fallback={<CanvasLoader />}>
+            <SkyCanvas />
+          </Suspense>
+          <BoxSelectOverlay />
+        </div>
+
+        {/* Mobile floating panel */}
+        <MobileFloatingPanel activeTab={mobileTab} height={mobilePanelHeight}>
+          {mobileTab === 'timeline' && <Timeline />}
+          {mobileTab === 'assets' && <EffectLibrary />}
+          {mobileTab === 'properties' && <PropertiesPanel />}
+          {mobileTab === 'more' && <MobileMoreMenu onSelectPanel={handleMobileOpenPanel} />}
+        </MobileFloatingPanel>
+
+        {/* Floating panel for "more" panels opened from grid */}
+        {activePanel && mobileTab === null && mobilePanelHeight !== 'collapsed' && (
+          <MobileFloatingPanel activeTab={'more' as MobileTab} height={mobilePanelHeight}>
+            {renderPanel()}
+          </MobileFloatingPanel>
+        )}
+
+        {/* Mobile tab bar */}
+        <MobileTabBar
+          activeTab={mobileTab}
+          onTabChange={setMobileTab}
+          onOpenPanel={(id) => handleTogglePanel(id as PanelId)}
+          panelHeight={mobilePanelHeight}
+          onPanelHeightChange={setMobilePanelHeight}
+        />
+
+        {/* Floating pop-up editors */}
+        {showPositionEditor && selectedPositionId && (
+          <PositionPopupEditor onClose={() => setShowPositionEditor(false)} />
+        )}
+        <PositionContextMenu />
+      </div>
+    );
+  }
+
+  // Desktop layout
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
       {/* Top toolbar */}
