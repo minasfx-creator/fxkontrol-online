@@ -61,6 +61,39 @@ function MenuButton({ label, onClick }: { label: string; onClick?: () => void })
   );
 }
 
+function DropdownMenu({ label, items }: { label: string; items: { label: string; icon: React.ElementType; onClick: () => void }[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="text-[10px] font-mono-code text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-surface-3 transition-colors uppercase tracking-wider flex items-center gap-0.5"
+      >
+        {label} <ChevronDown className="w-2.5 h-2.5" />
+      </button>
+      {open && (
+        <div
+          className="absolute top-full left-0 mt-0.5 z-50 bg-surface-1 border border-border rounded-md shadow-lg py-1 min-w-[180px]"
+          onMouseLeave={() => setOpen(false)}
+        >
+          {items.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.label}
+                onClick={() => { item.onClick(); setOpen(false); }}
+                className="w-full text-left px-3 py-1.5 text-[10px] font-mono-code text-muted-foreground hover:text-foreground hover:bg-surface-3 flex items-center gap-2"
+              >
+                <Icon className="w-3 h-3" /> {item.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Batch Add Positions ────────────────────────────────────── */
 function BatchAddButton() {
   const { addPosition, selectMultiplePositions } = useProjectStore();
