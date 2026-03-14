@@ -429,7 +429,7 @@ function FireworkBurst({
       
       // Dynamic star size: larger when young, shrinks as it dies — with HDR size boost
       sizes[i] = baseSize * (0.6 + fadeSquared * 0.4) * (1 + flashIntensity * 2.5);
-      lives[i] = age;
+      lives[i] = starAge;
 
       // Star trails — Finale's thermal gradient: white-hot → colored → dim
       for (let s = 0; s < TRAIL_LENGTH; s++) {
