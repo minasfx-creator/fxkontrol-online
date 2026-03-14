@@ -5,7 +5,7 @@
  * and proximity analysis.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Inspect, BarChart3, List, Search, Target, ChevronDown, ChevronUp, Activity, ArrowUp, Gauge, Users, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
