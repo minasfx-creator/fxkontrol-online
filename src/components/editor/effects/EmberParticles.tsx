@@ -1,17 +1,17 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { useProjectStore } from '@/store/useProjectStore';
+import { temporalFlicker } from '@/lib/pyroNoise';
 
 const EMBER_COUNT = 240;
 
 /**
- * Finale-grade Ember / Falling Spark Particles:
- * Glowing embers that drift down after burst with:
- * - Gravity + air resistance (light particles)
- * - Multi-frequency flicker with random bright pops
- * - Thermal color shift: shell color → orange → deep red → charcoal
- * - Wind drift accumulation
- * - Occasional re-ignition flashes (Finale's signature)
+ * Embers refinados:
+ * - buffers reutilizados
+ * - flicker determinístico
+ * - drift por vento global
+ * - gradiente térmico mais estável
  */
 function EmberParticlesInner({
   position,
@@ -27,10 +27,12 @@ function EmberParticlesInner({
   startHeight?: number;
 }) {
   const pointsRef = useRef<THREE.Points>(null);
+  const posRef = useRef(new Float32Array(EMBER_COUNT * 3));
+  const colRef = useRef(new Float32Array(EMBER_COUNT * 3));
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
 
   const seeds = useMemo(() => {
-    const s: { x: number; z: number; vy: number; driftX: number; driftZ: number; lt: number; flicker: number; size: number; reignite: number }[] = [];
+    const s: { x: number; z: number; vy: number; driftX: number; driftZ: number; lt: number; size: number; reignite: number; noiseSeed: number }[] = [];
     for (let i = 0; i < EMBER_COUNT; i++) {
       const angle = Math.random() * Math.PI * 2;
       const r = Math.random() * spreadRadius;
@@ -41,9 +43,9 @@ function EmberParticlesInner({
         driftX: (Math.random() - 0.5) * 1.0,
         driftZ: (Math.random() - 0.5) * 1.0,
         lt: 2.0 + Math.random() * 5.0,
-        flicker: 15 + Math.random() * 70,
         size: 0.4 + Math.random() * 0.8,
-        reignite: Math.random(), // chance of re-ignition flash
+        reignite: Math.random(),
+        noiseSeed: Math.random() * 1000 + i,
       });
     }
     return s;
@@ -51,52 +53,57 @@ function EmberParticlesInner({
 
   useFrame(({ clock }) => {
     if (!pointsRef.current || progress < 0.1) return;
-    const posArr = new Float32Array(EMBER_COUNT * 3);
-    const colArr = new Float32Array(EMBER_COUNT * 3);
+
+    const posArr = posRef.current;
+    const colArr = colRef.current;
     const time = clock.getElapsedTime();
     const emberProgress = (progress - 0.1) / 0.9;
+    const { wind } = useProjectStore.getState();
+    const wr = (wind.direction * Math.PI) / 180;
+    const windX = wind.enabled ? Math.sin(wr) * wind.speed * 0.05 : 0;
+    const windZ = wind.enabled ? Math.cos(wr) * wind.speed * 0.05 : 0;
 
     for (let i = 0; i < EMBER_COUNT; i++) {
       const seed = seeds[i];
       const age = emberProgress * seed.lt;
       if (age <= 0 || age > seed.lt) {
-        posArr[i * 3] = 0; posArr[i * 3 + 1] = -100; posArr[i * 3 + 2] = 0;
+        posArr[i * 3] = 0;
+        posArr[i * 3 + 1] = -100;
+        posArr[i * 3 + 2] = 0;
+        colArr[i * 3] = 0;
+        colArr[i * 3 + 1] = 0;
+        colArr[i * 3 + 2] = 0;
         continue;
       }
 
-      // Gravity with air resistance (light ember particles fall slowly)
       const gravityEffect = 4.9 * age * age * 0.08;
       const y = startHeight + seed.vy * age - gravityEffect;
       if (y < 0) {
-        posArr[i * 3] = 0; posArr[i * 3 + 1] = -100; posArr[i * 3 + 2] = 0;
+        posArr[i * 3] = 0;
+        posArr[i * 3 + 1] = -100;
+        posArr[i * 3 + 2] = 0;
+        colArr[i * 3] = 0;
+        colArr[i * 3 + 1] = 0;
+        colArr[i * 3 + 2] = 0;
         continue;
       }
 
-      // Wind drift accumulates
-      posArr[i * 3] = seed.x + seed.driftX * age + Math.sin(time * 0.25 + i * 0.7) * 0.5;
+      posArr[i * 3] = seed.x + seed.driftX * age + Math.sin(time * 0.25 + i * 0.7) * 0.5 + windX * age * 12;
       posArr[i * 3 + 1] = y;
-      posArr[i * 3 + 2] = seed.z + seed.driftZ * age + Math.cos(time * 0.2 + i * 1.1) * 0.4;
+      posArr[i * 3 + 2] = seed.z + seed.driftZ * age + Math.cos(time * 0.2 + i * 1.1) * 0.4 + windZ * age * 12;
 
       const lifeFrac = age / seed.lt;
       const fade = Math.max(0, 1 - lifeFrac);
-      const fadeCurve = Math.pow(fade, 0.35); // Finale: stays bright longer
-      
-      // Multi-frequency flicker — Finale's organic shimmer
-      const flicker = 0.25 
-        + Math.sin(time * seed.flicker + i * 7) * 0.2
-        + Math.sin(time * seed.flicker * 0.55 + i * 3) * 0.18
-        + Math.sin(time * seed.flicker * 1.8 + i * 13) * 0.12
-        + (Math.random() > 0.97 ? 0.5 : 0); // random bright pop
-      
-      // Finale re-ignition: occasional bright flash as ember catches air
+      const fadeCurve = Math.pow(fade, 0.35);
+
+      const flicker = temporalFlicker(seed.noiseSeed, time, 0.58, 0.35, 0.4);
       const reignition = (seed.reignite > 0.85 && Math.sin(time * 5 + i * 11) > 0.95) ? 1.5 : 0;
-      
-      // Thermal gradient: shell color → orange → deep red → charcoal
+
       const thermalShift = Math.pow(lifeFrac, 0.6);
       const r = THREE.MathUtils.lerp(baseColor.r, 0.8, thermalShift * 0.55) + reignition * 0.3;
       const g = THREE.MathUtils.lerp(baseColor.g, 0.2, thermalShift * 0.75) + reignition * 0.15;
       const b = THREE.MathUtils.lerp(baseColor.b, 0.02, thermalShift * 0.92);
-      
+
       colArr[i * 3] = r * fadeCurve * flicker;
       colArr[i * 3 + 1] = g * fadeCurve * flicker * 0.65;
       colArr[i * 3 + 2] = b * fadeCurve * flicker * 0.25;
