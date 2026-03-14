@@ -57,8 +57,9 @@ export default function ManufacturerCalibrationPanel({ onClose }: Props) {
   const handleApply = useCallback(() => {
     activeProfileId = selectedProfileId;
     customProfiles = customs;
+    setVDLManufacturerProfile(profile);
     toast.success(`Perfil "${profile.name}" aplicado ao VDL parser`);
-  }, [selectedProfileId, customs, profile.name]);
+  }, [selectedProfileId, customs, profile]);
 
   const handleStartEdit = useCallback((cal: number) => {
     if (!isCustom) {
