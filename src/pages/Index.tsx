@@ -61,6 +61,7 @@ import TemplateMarketplace from '@/components/editor/TemplateMarketplace';
 import SiteLayoutPanel from '@/components/editor/SiteLayoutPanel';
 import ShowSettingsPanel from '@/components/editor/ShowSettingsPanel';
 import ManufacturerCalibrationPanel from '@/components/editor/ManufacturerCalibrationPanel';
+import LiveFiringPanel from '@/components/editor/LiveFiringPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
@@ -135,6 +136,7 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   sitelayout: 'w-72',
   showsettings: 'w-64',
   calibration: 'w-72',
+  livefiring: 'w-72',
 };
 
 export default function Index() {
@@ -316,6 +318,7 @@ export default function Index() {
         {activePanel === 'sitelayout' && <SiteLayoutPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'showsettings' && <ShowSettingsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'calibration' && <ManufacturerCalibrationPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'livefiring' && <LiveFiringPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
