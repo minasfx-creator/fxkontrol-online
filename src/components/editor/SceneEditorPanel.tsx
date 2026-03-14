@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import { Sun, Moon, Cloud, CloudRain, Wind, Eye, Thermometer, Droplets, Sparkles, Monitor, Paintbrush, TreePine, Grid3x3, RotateCw } from 'lucide-react';
+import { Sun, Moon, Cloud, CloudRain, Wind, Eye, Thermometer, Droplets, Sparkles, Monitor, Paintbrush, TreePine, Grid3x3, RotateCw, Layers, Zap } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSceneStore, SCENE_PRESETS, type GroundStyle, type WeatherCondition } from '@/store/useSceneStore';
+import { useProjectStore } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
 
-type SectionId = 'presets' | 'sky' | 'ground' | 'weather' | 'effects' | 'lighting' | 'post';
+type SectionId = 'quick' | 'presets' | 'sky' | 'ground' | 'weather' | 'effects' | 'lighting' | 'post';
 
 function Section({ title, icon: Icon, children, id, open, onToggle }: { title: string; icon: any; children: React.ReactNode; id: SectionId; open: boolean; onToggle: () => void }) {
   return (
