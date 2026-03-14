@@ -536,36 +536,43 @@ function FireworkBurst({
       )}
       
       {/* ═══ BREAK FLASH — Finale 4-layer system ═══ */}
-      {/* Layer 1: Inner white-hot core — triggers maximum bloom */}
-      {progress < 0.04 && (
+      {/* Layer 1: Inner white-hot core — ultra HDR for maximum bloom */}
+      {progress < 0.06 && (
         <mesh>
-          <sphereGeometry args={[flashSize * 0.35 * (1 + progress * 8), 16, 16]} />
-          <meshBasicMaterial color="#FFFFF8" transparent opacity={0.9 * (1 - progress / 0.04)} blending={THREE.AdditiveBlending} />
+          <sphereGeometry args={[flashSize * 0.4 * (1 + progress * 10), 16, 16]} />
+          <meshBasicMaterial color="#FFFFF0" transparent opacity={1.0 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
       {/* Layer 2: Hot colored flash — primary bloom source */}
-      {progress < 0.1 && (
+      {progress < 0.15 && (
         <mesh>
-          <sphereGeometry args={[flashSize * (1 + progress * 12), 24, 24]} />
-          <meshBasicMaterial color={color} transparent opacity={0.5 * Math.pow(1 - progress / 0.1, 2)} blending={THREE.AdditiveBlending} />
+          <sphereGeometry args={[flashSize * (1 + progress * 15), 24, 24]} />
+          <meshBasicMaterial color={color} transparent opacity={0.7 * Math.pow(1 - progress / 0.15, 2)} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
       {/* Layer 3: Expanding shockwave ring */}
-      {progress > 0.005 && progress < 0.12 && (
+      {progress > 0.003 && progress < 0.15 && (
         <mesh rotation={[Math.PI / 2, 0, 0]}>
           <ringGeometry args={[
-            progress * flashSize * 10,
-            progress * flashSize * 10 + 0.5 + caliber * 0.12,
+            progress * flashSize * 12,
+            progress * flashSize * 12 + 0.8 + caliber * 0.18,
             64
           ]} />
-          <meshBasicMaterial color={color} transparent opacity={0.1 * Math.pow(1 - progress / 0.12, 1.5)} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
+          <meshBasicMaterial color={color} transparent opacity={0.15 * Math.pow(1 - progress / 0.15, 1.5)} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
-      {/* Layer 4: Wide atmospheric halo — Finale's signature sky illumination */}
-      {progress < 0.6 && progress > 0.005 && (
+      {/* Layer 4: Wide atmospheric halo — sky illumination */}
+      {progress < 0.7 && progress > 0.003 && (
         <mesh>
-          <sphereGeometry args={[caliber * 2.5 + progress * caliber * 10, 16, 16]} />
-          <meshBasicMaterial color={color} transparent opacity={0.02 * (1 - progress / 0.6)} blending={THREE.AdditiveBlending} />
+          <sphereGeometry args={[caliber * 3.5 + progress * caliber * 14, 16, 16]} />
+          <meshBasicMaterial color={color} transparent opacity={0.04 * (1 - progress / 0.7)} blending={THREE.AdditiveBlending} />
+        </mesh>
+      )}
+      {/* Layer 5: Ground illumination sphere — lights up terrain */}
+      {progress < 0.4 && (
+        <mesh position={[0, -position[1] * 0.5, 0]}>
+          <sphereGeometry args={[caliber * 8 + progress * caliber * 20, 12, 12]} />
+          <meshBasicMaterial color={color} transparent opacity={0.012 * (1 - progress / 0.4)} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
     </group>
