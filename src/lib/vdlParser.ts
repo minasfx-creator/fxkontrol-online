@@ -168,52 +168,31 @@ const CALIBER_MM_REGEX = /(\d+)\s*mm/i;
 const COLOR_TRANSITION_REGEX = /(\w+)\s+(?:to|a)\s+(\w+)/i;
 
 // ═══════════════════════════════════════════════════════════════════════
-// Finale caliber → break height lookup (real-world data)
+// Calibration-aware lookups — uses active manufacturer profile
 // ═══════════════════════════════════════════════════════════════════════
+import { interpolateCaliberData, MANUFACTURER_PROFILES, type ManufacturerProfile } from './manufacturerCalibration';
+
+let _activeProfile: ManufacturerProfile = MANUFACTURER_PROFILES[0];
+
+/** Set the active manufacturer profile for VDL parsing */
+export function setVDLManufacturerProfile(profile: ManufacturerProfile) {
+  _activeProfile = profile;
+}
+
+export function getVDLManufacturerProfile(): ManufacturerProfile {
+  return _activeProfile;
+}
+
 function getFinaleBreakHeight(caliberInches: number): number {
-  const heights: Record<number, number> = {
-    1: 20, 1.5: 28, 2: 35, 2.5: 45, 3: 55, 4: 80, 5: 110,
-    6: 140, 8: 190, 10: 240, 12: 280, 16: 320,
-  };
-  const keys = Object.keys(heights).map(Number).sort((a, b) => a - b);
-  if (caliberInches <= keys[0]) return heights[keys[0]];
-  if (caliberInches >= keys[keys.length - 1]) return heights[keys[keys.length - 1]];
-  for (let i = 0; i < keys.length - 1; i++) {
-    if (caliberInches >= keys[i] && caliberInches <= keys[i + 1]) {
-      const t = (caliberInches - keys[i]) / (keys[i + 1] - keys[i]);
-      return heights[keys[i]] * (1 - t) + heights[keys[i + 1]] * t;
-    }
-  }
-  return 80;
+  return interpolateCaliberData(_activeProfile, caliberInches).heightM;
 }
 
-// Finale prefire (lift time) by caliber
 function getFinalePrefire(caliberInches: number): number {
-  const prefires: Record<number, number> = {
-    1: 0.5, 2: 0.9, 3: 1.3, 4: 1.8, 5: 2.3, 6: 2.8, 8: 3.5, 10: 4.2, 12: 5.0,
-  };
-  const keys = Object.keys(prefires).map(Number).sort((a, b) => a - b);
-  if (caliberInches <= keys[0]) return prefires[keys[0]];
-  if (caliberInches >= keys[keys.length - 1]) return prefires[keys[keys.length - 1]];
-  for (let i = 0; i < keys.length - 1; i++) {
-    if (caliberInches >= keys[i] && caliberInches <= keys[i + 1]) {
-      const t = (caliberInches - keys[i]) / (keys[i + 1] - keys[i]);
-      return prefires[keys[i]] * (1 - t) + prefires[keys[i + 1]] * t;
-    }
-  }
-  return 1.8;
+  return interpolateCaliberData(_activeProfile, caliberInches).prefireSec;
 }
 
-// NFPA 1123 safety distances
 function getFinaleSafetyDistance(caliberInches: number): number {
-  if (caliberInches <= 2) return 40;
-  if (caliberInches <= 3) return 70;
-  if (caliberInches <= 4) return 100;
-  if (caliberInches <= 5) return 140;
-  if (caliberInches <= 6) return 175;
-  if (caliberInches <= 8) return 210;
-  if (caliberInches <= 10) return 280;
-  return 300;
+  return interpolateCaliberData(_activeProfile, caliberInches).safetyM;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -332,18 +311,24 @@ export function parseVDL(input: string): VDLResult {
     }
   }
 
-  // ── Apply caliber-based Finale physics ──
-  const calScale = result.caliber / 3;
-  result.height = getFinaleBreakHeight(result.caliber);
-  result.prefire = getFinalePrefire(result.caliber);
-  result.safetyDistance = getFinaleSafetyDistance(result.caliber);
+  // ── Apply caliber-based manufacturer-calibrated physics ──
+  const calData = interpolateCaliberData(_activeProfile, result.caliber);
+  result.height = calData.heightM;
+  result.prefire = calData.prefireSec;
+  result.safetyDistance = calData.safetyM;
   
-  // Scale rendering parameters by caliber
-  result.spread = Math.round(result.spread * (0.8 + calScale * 0.35));
-  result.duration = Math.round(result.duration * (0.85 + calScale * 0.25) * 10) / 10;
-  result.starCount = Math.round(result.starCount * (0.6 + calScale * 0.6));
-  result.breakSpeed = Math.round(result.breakSpeed * (0.85 + calScale * 0.2) * 10) / 10;
-  result.cost = Math.round(5 * Math.pow(calScale, 1.8) * 10) / 10;
+  // Use type-specific base values scaled by manufacturer caliber data ratios
+  const refData = interpolateCaliberData(_activeProfile, 3); // 3" reference
+  const calRatio = {
+    spread: calData.spreadDeg / refData.spreadDeg,
+    stars: calData.starCount / refData.starCount,
+    speed: calData.breakSpeed / refData.breakSpeed,
+  };
+  result.spread = Math.round(result.spread * calRatio.spread);
+  result.duration = Math.round(result.duration * (0.85 + (result.caliber / 3) * 0.25) * 10) / 10;
+  result.starCount = Math.round(result.starCount * calRatio.stars);
+  result.breakSpeed = Math.round(result.breakSpeed * calRatio.speed * 10) / 10;
+  result.cost = Math.round(calData.costFactor * 10) / 10;
 
   // ── Apply adjustment scaling ──
   for (const adj of VDL_ADJUSTMENTS) {

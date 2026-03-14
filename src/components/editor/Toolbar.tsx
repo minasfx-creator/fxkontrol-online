@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Rocket, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus, Download, ChevronDown, LayoutGrid, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Info, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect } from 'lucide-react';
+import { Rocket, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus, Download, ChevronDown, LayoutGrid, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Info, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useUndoStore } from '@/store/useUndoStore';
@@ -403,6 +403,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
           items={[
             { label: 'Show Settings', icon: Cog, onClick: () => onOpenPanel?.('showsettings') },
             { label: 'Show Summary', icon: FileBarChart, onClick: () => onOpenPanel?.('summary') },
+            { label: 'VDL Calibration', icon: Gauge, onClick: () => onOpenPanel?.('calibration') },
             { label: 'Approval', icon: MessageSquare, onClick: () => onOpenPanel?.('approval') },
             { label: 'Versioning', icon: History, onClick: () => onOpenPanel?.('versioning') },
             { label: 'Share', icon: Share2, onClick: () => onOpenPanel?.('share') },
