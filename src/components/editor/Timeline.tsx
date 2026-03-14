@@ -5,6 +5,7 @@ import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { getPreFireTime } from '@/lib/safetyEngine';
 import { cn } from '@/lib/utils';
 import AudioWaveform from './AudioWaveform';
+import PyroTimelineTrack from './PyroTimelineTrack';
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
