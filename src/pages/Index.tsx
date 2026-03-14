@@ -2,6 +2,7 @@ import { lazy, Suspense, useState, useCallback, useEffect } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useUndoStore } from '@/store/useUndoStore';
 import { useUndoKeyboard } from '@/hooks/useUndoKeyboard';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import Toolbar from '@/components/editor/Toolbar';
 import SplashScreen from '@/components/editor/SplashScreen';
@@ -64,6 +65,9 @@ import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
 import PositionContextMenu from '@/components/editor/PositionContextMenu';
+import MobileTabBar, { type MobileTab } from '@/components/editor/MobileTabBar';
+import MobileFloatingPanel from '@/components/editor/MobileFloatingPanel';
+import MobileMoreMenu from '@/components/editor/MobileMoreMenu';
 
 const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
 
