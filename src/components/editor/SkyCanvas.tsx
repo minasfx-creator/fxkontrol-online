@@ -303,7 +303,12 @@ function TimelineEffects() {
         // Heights from effect library, scaled by scene
         const scaledHeight = (effect.heightMeters || 4) * effectScale;
 
-        if (pt === 'mine') return <MineEffect key={item.id} position={pos} color={effect.color} progress={progress} />;
+        if (pt === 'mine') return (
+          <group key={item.id}>
+            <MineEffect position={pos} color={effect.color} progress={progress} />
+            <SmokeTrail position={pos} progress={progress} intensity={0.5} />
+          </group>
+        );
         if (pt === 'candle') return <RomanCandleEffect key={item.id} position={pos} color={effect.color} progress={progress} shotCount={effect.shotCount || 8} />;
         if (pt === 'waterfall') return <WaterfallEffect key={item.id} position={pos} color={effect.color} progress={progress} width={scaledHeight} />;
         if (pt === 'gerb') return <GerbEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight} />;
