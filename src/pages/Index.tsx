@@ -299,6 +299,7 @@ export default function Index() {
         {activePanel === 'pathplanner' && <PathPlannerPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'marketplace' && <TemplateMarketplace onClose={() => setActivePanel(null)} />}
         {activePanel === 'sitelayout' && <SiteLayoutPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'showsettings' && <ShowSettingsPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
