@@ -423,6 +423,20 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           {firingCount > 0 && (
             <span className="text-[9px] font-mono text-destructive animate-pulse">🔥 {firingCount} firing</span>
           )}
+          {syncEnabled && (
+            <span className={cn("text-[9px] font-mono", isPlaying ? "text-primary animate-pulse" : "text-muted-foreground")}>
+              🔗 {isPlaying ? 'SYNCED' : 'SYNC ON'}
+            </span>
+          )}
+        </div>
+
+        {/* Timeline Sync Toggle */}
+        <div className="flex items-center justify-between mt-1.5 px-1 py-1 rounded bg-muted/20 border border-border/30">
+          <div className="flex items-center gap-1.5">
+            <Radio className={cn("w-3 h-3", syncEnabled ? "text-primary" : "text-muted-foreground")} />
+            <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Timeline Sync</span>
+          </div>
+          <Switch checked={syncEnabled} onCheckedChange={setSyncEnabled} />
         </div>
 
         {/* Section tabs */}
