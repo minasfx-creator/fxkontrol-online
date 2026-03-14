@@ -355,9 +355,15 @@ function TimelineEffects() {
 
       // ── Resolve position from linked pyropoint ──
       let resolvedPos = item.position;
+      let launchHeading = 0;
+      let launchPitch = 85; // default vertical
       if (item.positionId) {
         const linkedPos = positions.find(p => p.id === item.positionId);
-        if (linkedPos) resolvedPos = { x: linkedPos.x, y: linkedPos.y, z: linkedPos.z };
+        if (linkedPos) {
+          resolvedPos = { x: linkedPos.x, y: linkedPos.y, z: linkedPos.z };
+          launchHeading = linkedPos.heading || 0;
+          launchPitch = linkedPos.pitch || 85;
+        }
       }
 
       // ── Real physics: caliber-based heights ──
@@ -377,7 +383,7 @@ function TimelineEffects() {
         ? Math.max(0, (elapsed - prefireDuration) / weatherDuration)
         : elapsed / weatherDuration;
 
-      return { item, effect, progress: burstProgress, inPrefire, prefireProgress, caliber, prefireDuration, resolvedPos, effectScale, effectBrightness: sceneSettings.effectBrightness };
+      return { item, effect, progress: burstProgress, inPrefire, prefireProgress, caliber, prefireDuration, resolvedPos, effectScale, effectBrightness: sceneSettings.effectBrightness, launchHeading, launchPitch };
     }).filter(Boolean) as {
       item: typeof timelineItems[0];
       effect: typeof EFFECT_LIBRARY[0];
