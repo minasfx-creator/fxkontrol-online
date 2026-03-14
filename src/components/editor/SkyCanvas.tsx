@@ -485,11 +485,11 @@ function FireworkBurst({
         const dvy = debrisVelocities[i * 3 + 1];
         const dvz = debrisVelocities[i * 3 + 2];
         const dt = debrisAge * starLife * 0.7;
-        const dDrag = Math.exp(-0.02 * dt);
+        const dK = 0.02;
         
-        dPos[i * 3] = dvx * dt * dDrag + w[0] * dt * dt * 0.4;
-        dPos[i * 3 + 1] = dvy * dt * dDrag + 0.5 * GRAVITY * dt * dt * 0.55;
-        dPos[i * 3 + 2] = dvz * dt * dDrag + w[2] * dt * dt * 0.4;
+        dPos[i * 3] = dragPos(dvx, dt, dK) + w[0] * dt * dt * 0.4;
+        dPos[i * 3 + 1] = dragPos(dvy, dt, dK) + 0.5 * GRAVITY * dt * dt;
+        dPos[i * 3 + 2] = dragPos(dvz, dt, dK) + w[2] * dt * dt * 0.4;
         
         // Dark charcoal com cintilação determinística
         const debrisFade = Math.max(0, 1 - debrisAge * 1.3);
