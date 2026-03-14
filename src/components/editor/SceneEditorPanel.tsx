@@ -5,7 +5,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useSceneStore, SCENE_PRESETS, type GroundStyle, type WeatherCondition } from '@/store/useSceneStore';
+import { useSceneStore, SCENE_PRESETS, QUALITY_PRESETS, type GroundStyle, type WeatherCondition, type QualityPreset } from '@/store/useSceneStore';
 import { useProjectStore } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -50,7 +50,7 @@ interface BgImage {
 }
 
 export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
-  const { settings, updateSettings, applyPreset, resetToDefault } = useSceneStore();
+  const { settings, updateSettings, applyPreset, applyQualityPreset, qualityPreset, resetToDefault } = useSceneStore();
   const { droneFormations, positions, showTrajectories, setShowTrajectories, showFormations, setShowFormations } = useProjectStore();
   const [openSections, setOpenSections] = useState<Set<SectionId>>(new Set(['quick', 'presets']));
   const [bgImages, setBgImages] = useState<BgImage[]>([]);
@@ -222,6 +222,28 @@ export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
 
         {/* ═══ EFFECTS RENDERING ═══ */}
         <Section title="Effects Rendering" icon={Sparkles} id="effects" open={openSections.has('effects')} onToggle={() => toggleSection('effects')}>
+          {/* Quality Presets */}
+          <div className="space-y-1.5">
+            <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-wider">Quality Preset</span>
+            <div className="grid grid-cols-3 gap-1">
+              {(Object.entries(QUALITY_PRESETS) as [QualityPreset, typeof QUALITY_PRESETS[QualityPreset]][]).map(([key, qp]) => (
+                <button
+                  key={key}
+                  onClick={() => applyQualityPreset(key)}
+                  className={cn(
+                    "flex flex-col items-center p-2 rounded-md border transition-all text-center",
+                    qualityPreset === key
+                      ? "bg-primary/15 border-primary/40 text-primary"
+                      : "bg-muted/20 border-border/20 text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                  )}
+                >
+                  <span className="text-[9px] font-bold">{qp.name}</span>
+                  <span className="text-[7px] leading-tight mt-0.5 opacity-70">{qp.description.split('—')[0].trim()}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <SliderRow label="Effect Height Scale" value={settings.effectScale} onChange={v => updateSettings({ effectScale: v })} max={2} />
           <SliderRow label="Effect Brightness" value={settings.effectBrightness} onChange={v => updateSettings({ effectBrightness: v })} max={2} />
           <SliderRow label="Trail Length" value={settings.trailLength} onChange={v => updateSettings({ trailLength: v })} max={2} />

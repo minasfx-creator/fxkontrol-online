@@ -3,6 +3,64 @@ import { create } from 'zustand';
 export type GroundStyle = 'finale-dark' | 'google-earth' | 'flat-black' | 'concrete' | 'custom';
 export type SkyPreset = 'night-clear' | 'night-cloudy' | 'dusk' | 'overcast' | 'foggy' | 'custom';
 export type WeatherCondition = 'clear' | 'light-rain' | 'heavy-rain' | 'snow' | 'fog' | 'haze' | 'wind-only';
+export type QualityPreset = 'realistic' | 'show' | 'performance';
+
+export const QUALITY_PRESETS: Record<QualityPreset, { name: string; description: string; settings: Partial<SceneSettings> }> = {
+  realistic: {
+    name: 'Realista',
+    description: 'Máxima fidelidade — partículas densas, fumaça volumétrica espessa, bloom HDR multicamada',
+    settings: {
+      particleDensity: 2.0,
+      smokeOpacity: 0.85,
+      bloomStrength: 1.6,
+      trailLength: 1.8,
+      effectBrightness: 1.1,
+      shadowsEnabled: true,
+      shadowQuality: 'ultra',
+      vignetteEnabled: true,
+      vignetteIntensity: 0.3,
+      chromaticAberration: true,
+      filmGrain: 0.035,
+      groundFogIntensity: 0.7,
+    },
+  },
+  show: {
+    name: 'Show',
+    description: 'Balanceado para apresentação — visual impactante com boa performance',
+    settings: {
+      particleDensity: 1.0,
+      smokeOpacity: 0.5,
+      bloomStrength: 1.1,
+      trailLength: 1.0,
+      effectBrightness: 1.0,
+      shadowsEnabled: true,
+      shadowQuality: 'high',
+      vignetteEnabled: true,
+      vignetteIntensity: 0.2,
+      chromaticAberration: true,
+      filmGrain: 0.02,
+      groundFogIntensity: 0.5,
+    },
+  },
+  performance: {
+    name: 'Performance',
+    description: 'Máximo FPS — partículas reduzidas, sem fumaça, bloom leve, sem pós-processamento',
+    settings: {
+      particleDensity: 0.5,
+      smokeOpacity: 0.1,
+      bloomStrength: 0.5,
+      trailLength: 0.5,
+      effectBrightness: 1.2,
+      shadowsEnabled: false,
+      shadowQuality: 'low',
+      vignetteEnabled: false,
+      vignetteIntensity: 0,
+      chromaticAberration: false,
+      filmGrain: 0,
+      groundFogIntensity: 0.1,
+    },
+  },
+};
 
 export interface SceneSettings {
   // Sky & Atmosphere
@@ -227,16 +285,18 @@ export const SCENE_PRESETS: Record<string, { name: string; description: string; 
 
 interface SceneSettingsState {
   settings: SceneSettings;
+  qualityPreset: QualityPreset;
   updateSettings: (updates: Partial<SceneSettings>) => void;
   applyPreset: (presetId: string) => void;
+  applyQualityPreset: (preset: QualityPreset) => void;
   resetToDefault: () => void;
 }
 
 export const useSceneStore = create<SceneSettingsState>((set) => ({
   settings: { ...DEFAULT_SETTINGS },
+  qualityPreset: 'show',
   updateSettings: (updates) => set(s => {
     const next = { ...s.settings, ...updates };
-    // Auto-sync rain/humidity when weather condition changes
     if (updates.weather && !updates.rainIntensity) {
       if (updates.weather === 'light-rain') { next.rainIntensity = Math.max(next.rainIntensity, 0.5); next.humidity = Math.max(next.humidity, 0.7); }
       else if (updates.weather === 'heavy-rain') { next.rainIntensity = Math.max(next.rainIntensity, 0.8); next.humidity = Math.max(next.humidity, 0.9); }
@@ -250,5 +310,9 @@ export const useSceneStore = create<SceneSettingsState>((set) => ({
     const preset = SCENE_PRESETS[presetId];
     if (preset) set(s => ({ settings: { ...DEFAULT_SETTINGS, ...preset.settings } }));
   },
-  resetToDefault: () => set({ settings: { ...DEFAULT_SETTINGS } }),
+  applyQualityPreset: (preset) => {
+    const qp = QUALITY_PRESETS[preset];
+    if (qp) set(s => ({ qualityPreset: preset, settings: { ...s.settings, ...qp.settings } }));
+  },
+  resetToDefault: () => set({ settings: { ...DEFAULT_SETTINGS }, qualityPreset: 'show' }),
 }));
