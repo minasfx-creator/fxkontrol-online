@@ -407,6 +407,8 @@ export function exportSkyc(options: SkycExportOptions): SkycFile {
       showDuration: options.duration,
       indoor: options.indoor ?? false,
       yawControl: true,
+      pyroControl: false,
+      cameraExport: false,
     },
     environment: {
       origin: {
