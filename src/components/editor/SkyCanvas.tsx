@@ -200,7 +200,7 @@ function FireworkBurst({
   const DEBRIS_COUNT = useMemo(() => Math.min(500, Math.round(STAR_COUNT * 0.4)), [STAR_COUNT]);
   
   // Finale break speed: derived from shell internal pressure (caliber-proportional)
-  const breakSpeed = useMemo(() => 5 + caliber * 3.8, [caliber]);
+  const breakSpeed = useMemo(() => 6 + caliber * 4.5, [caliber]);
   
   // Star lifetime per Finale — depends on pattern and caliber
   const starLife = useMemo(() => {
