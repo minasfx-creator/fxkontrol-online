@@ -16,6 +16,7 @@ import {
   type CaliberData,
   type CustomProfile,
 } from '@/lib/manufacturerCalibration';
+import { setVDLManufacturerProfile } from '@/lib/vdlParser';
 
 interface Props {
   onClose: () => void;
