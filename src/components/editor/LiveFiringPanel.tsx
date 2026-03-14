@@ -633,10 +633,38 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
                 </div>
 
                 {cues.length > 0 && (
-                  <Button size="sm" className="w-full h-8 text-[10px] mt-2" variant="outline">
-                    <Play className="w-3 h-3 mr-1.5" />
-                    Run Cue Sequence ({cues.length} cues)
-                  </Button>
+                  <div className="space-y-1 mt-2">
+                    {activeCueId && (
+                      <div className="flex items-center gap-1.5 p-1.5 rounded bg-primary/10 border border-primary/30 animate-pulse">
+                        <Radio className="w-3 h-3 text-primary" />
+                        <span className="text-[9px] font-bold text-primary">
+                          ACTIVE: {scenes.find(s => s.id === cues.find(c => c.id === activeCueId)?.sceneId)?.name}
+                        </span>
+                      </div>
+                    )}
+                    <Button
+                      size="sm"
+                      className="w-full h-8 text-[10px]"
+                      variant={isPlaying ? "destructive" : "outline"}
+                      onClick={() => {
+                        if (isPlaying) {
+                          setPlaying(false);
+                        } else {
+                          if (!masterArm) handleMasterArm(true);
+                          setSyncEnabled(true);
+                          firedCuesRef.current.clear();
+                          setPlaying(true);
+                          toast.info('▶ Playback started — SFX cues synced to timeline');
+                        }
+                      }}
+                    >
+                      {isPlaying ? (
+                        <><Square className="w-3 h-3 mr-1.5" /> Stop Sequence</>
+                      ) : (
+                        <><Play className="w-3 h-3 mr-1.5" /> Run Cue Sequence ({cues.length} cues)</>
+                      )}
+                    </Button>
+                  </div>
                 )}
               </>
             )}
