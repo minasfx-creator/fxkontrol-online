@@ -307,7 +307,7 @@ export default function Index() {
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
       {/* Top toolbar */}
-      <Toolbar />
+      <Toolbar onOpenPanel={(id) => handleTogglePanel(id as PanelId)} />
 
       {/* Main editor area */}
       <div className="flex-1 flex overflow-hidden">
