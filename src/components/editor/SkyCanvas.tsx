@@ -378,9 +378,9 @@ function FireworkBurst({
       const fadeCubed = fadeSquared * fade; // even smoother tail-off
       const dragF = Math.exp(-dragCoeff * t);
 
-      // Euler integration with drag + gravity + wind drift
+      // Euler integration with drag + real gravity + wind drift
       const px = vx * t * dragF + w[0] * t * t * 0.3;
-      const py = vy * t * dragF + 0.5 * GRAVITY * t * t * 0.28;
+      const py = vy * t * dragF + 0.5 * GRAVITY * t * t * 0.5;
       const pz = vz * t * dragF + w[2] * t * t * 0.3;
       pos[i * 3] = px; pos[i * 3 + 1] = py; pos[i * 3 + 2] = pz;
 
