@@ -16,47 +16,39 @@ interface SnapGuide {
   sourceName: string;
 }
 
-/** Mortar tube 3D icon for pyro positions */
+/** Simple rack icon — a minimal mortar rack (3 tubes on a base plate) */
 function MortarTubeIcon({ color, emissiveIntensity, isSelected }: { color: string; emissiveIntensity: number; isSelected: boolean }) {
   return (
     <group>
-      {/* Base plate */}
-      <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.22, 0.22, 0.04, 12]} />
-        <meshStandardMaterial color="#333" metalness={0.9} roughness={0.2} />
+      {/* Base plate — flat rectangle */}
+      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <boxGeometry args={[0.5, 0.35, 0.03]} />
+        <meshStandardMaterial color="#2a2a2a" metalness={0.85} roughness={0.2} />
       </mesh>
-      {/* Mortar tube body */}
-      <mesh position={[0, 0.4, 0]}>
-        <cylinderGeometry args={[0.1, 0.14, 0.7, 12, 1, true]} />
-        <meshStandardMaterial
-          color="#444"
-          metalness={0.85}
-          roughness={0.15}
-          emissive={color}
-          emissiveIntensity={emissiveIntensity * 0.3}
-          side={THREE.DoubleSide}
-        />
+      {/* Tube left */}
+      <mesh position={[-0.14, 0.3, 0]}>
+        <cylinderGeometry args={[0.06, 0.07, 0.5, 8, 1, true]} />
+        <meshStandardMaterial color="#3a3a3a" metalness={0.8} roughness={0.2} emissive={color} emissiveIntensity={emissiveIntensity * 0.15} side={THREE.DoubleSide} />
       </mesh>
-      {/* Inner tube highlight */}
-      <mesh position={[0, 0.76, 0]}>
-        <cylinderGeometry args={[0.09, 0.09, 0.02, 12]} />
-        <meshBasicMaterial color={color} transparent opacity={isSelected ? 0.7 : 0.3} blending={THREE.AdditiveBlending} />
+      {/* Tube center */}
+      <mesh position={[0, 0.35, 0]}>
+        <cylinderGeometry args={[0.07, 0.08, 0.6, 8, 1, true]} />
+        <meshStandardMaterial color="#3a3a3a" metalness={0.8} roughness={0.2} emissive={color} emissiveIntensity={emissiveIntensity * 0.2} side={THREE.DoubleSide} />
       </mesh>
-      {/* Color ring at top */}
-      <mesh position={[0, 0.75, 0]}>
-        <torusGeometry args={[0.12, 0.015, 8, 16]} />
-        <meshStandardMaterial
-          color={color}
-          emissive={color}
-          emissiveIntensity={emissiveIntensity}
-          metalness={0.5}
-          roughness={0.3}
-        />
+      {/* Tube right */}
+      <mesh position={[0.14, 0.3, 0]}>
+        <cylinderGeometry args={[0.06, 0.07, 0.5, 8, 1, true]} />
+        <meshStandardMaterial color="#3a3a3a" metalness={0.8} roughness={0.2} emissive={color} emissiveIntensity={emissiveIntensity * 0.15} side={THREE.DoubleSide} />
       </mesh>
-      {/* Fuse spark when selected */}
+      {/* Color band at top of center tube */}
+      <mesh position={[0, 0.65, 0]}>
+        <torusGeometry args={[0.08, 0.012, 6, 12]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={emissiveIntensity} metalness={0.5} roughness={0.3} />
+      </mesh>
+      {/* Glow indicator when selected */}
       {isSelected && (
-        <mesh position={[0, 0.78, 0]}>
-          <sphereGeometry args={[0.04, 6, 6]} />
+        <mesh position={[0, 0.68, 0]}>
+          <sphereGeometry args={[0.035, 6, 6]} />
           <meshBasicMaterial color="#FFDD44" transparent opacity={0.8} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
