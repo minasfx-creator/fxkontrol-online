@@ -381,10 +381,11 @@ function FireworkBurst({
     for (let i = 0; i < STAR_COUNT; i++) {
       const vx = velocities[i * 3], vy = velocities[i * 3 + 1], vz = velocities[i * 3 + 2];
       const lt = lifetimes[i];
-      const age = progress / (lt / starLife);
-      const fade = Math.max(0, 1 - age);
+      // Age each star individually: star dies when t >= lt
+      const starAge = Math.min(1, t / lt);
+      const fade = Math.max(0, 1 - starAge);
       const fadeSquared = fade * fade;
-      const fadeCubed = fadeSquared * fade; // even smoother tail-off
+      const fadeCubed = fadeSquared * fade;
       // Proper analytical integration with exponential drag + real gravity + wind
       const px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
       const py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * t * t;
@@ -428,7 +429,7 @@ function FireworkBurst({
       
       // Dynamic star size: larger when young, shrinks as it dies — with HDR size boost
       sizes[i] = baseSize * (0.6 + fadeSquared * 0.4) * (1 + flashIntensity * 2.5);
-      lives[i] = age;
+      lives[i] = starAge;
 
       // Star trails — Finale's thermal gradient: white-hot → colored → dim
       for (let s = 0; s < TRAIL_LENGTH; s++) {
@@ -457,22 +458,22 @@ function FireworkBurst({
       }
     }
 
-    // === Update star geometry with custom attributes ===
+    // === Update star geometry — reuse existing buffer attributes ===
     const pGeo = pointsRef.current.geometry;
-    pGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    pGeo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
-    pGeo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
-    pGeo.setAttribute('aLife', new THREE.BufferAttribute(lives, 1));
-    pGeo.attributes.position.needsUpdate = true;
-    pGeo.attributes.color.needsUpdate = true;
-    (pGeo.attributes as any).aSize.needsUpdate = true;
-    (pGeo.attributes as any).aLife.needsUpdate = true;
+    const posAttr = pGeo.getAttribute('position') as THREE.BufferAttribute;
+    const colAttr = pGeo.getAttribute('color') as THREE.BufferAttribute;
+    const sizeAttr = pGeo.getAttribute('aSize') as THREE.BufferAttribute;
+    const lifeAttr = pGeo.getAttribute('aLife') as THREE.BufferAttribute;
+    if (posAttr) { posAttr.array = pos; posAttr.needsUpdate = true; }
+    if (colAttr) { colAttr.array = cols; colAttr.needsUpdate = true; }
+    if (sizeAttr) { sizeAttr.array = sizes; sizeAttr.needsUpdate = true; }
+    if (lifeAttr) { lifeAttr.array = lives; lifeAttr.needsUpdate = true; }
 
     const lGeo = trailRef.current.geometry;
-    lGeo.setAttribute('position', new THREE.BufferAttribute(tPos, 3));
-    lGeo.setAttribute('color', new THREE.BufferAttribute(tCol, 3));
-    lGeo.attributes.position.needsUpdate = true;
-    lGeo.attributes.color.needsUpdate = true;
+    const tPosAttr = lGeo.getAttribute('position') as THREE.BufferAttribute;
+    const tColAttr = lGeo.getAttribute('color') as THREE.BufferAttribute;
+    if (tPosAttr) { tPosAttr.array = tPos; tPosAttr.needsUpdate = true; }
+    if (tColAttr) { tColAttr.array = tCol; tColAttr.needsUpdate = true; }
     
     // === Falling charcoal debris — Finale's signature burnt-out embers ===
     if (debrisRef.current && progress > 0.25) {
@@ -500,10 +501,10 @@ function FireworkBurst({
       }
       
       const dGeo = debrisRef.current.geometry;
-      dGeo.setAttribute('position', new THREE.BufferAttribute(dPos, 3));
-      dGeo.setAttribute('color', new THREE.BufferAttribute(dCol, 3));
-      dGeo.attributes.position.needsUpdate = true;
-      dGeo.attributes.color.needsUpdate = true;
+      const dPosAttr = dGeo.getAttribute('position') as THREE.BufferAttribute;
+      const dColAttr = dGeo.getAttribute('color') as THREE.BufferAttribute;
+      if (dPosAttr) { dPosAttr.array = dPos; dPosAttr.needsUpdate = true; }
+      if (dColAttr) { dColAttr.array = dCol; dColAttr.needsUpdate = true; }
     }
   });
 
@@ -795,18 +796,18 @@ function LiveSFXEffects() {
         switch (fx.type) {
           case 'co2':
           case 'cryo':
-            return <CryoJetEffect key={fx.id} position={pos} color={fx.color} progress={progress} height={6 * intensityScale + 2} />;
+            return <group key={fx.id}><CryoJetEffect position={pos} color={fx.color} progress={progress} height={6 * intensityScale + 2} /></group>;
           case 'flame':
-            return <FlameEffect key={fx.id} position={pos} color={fx.color} progress={progress} height={8 * intensityScale + 2} />;
+            return <group key={fx.id}><FlameEffect position={pos} color={fx.color} progress={progress} height={8 * intensityScale + 2} /></group>;
           case 'confetti':
           case 'streamer':
-            return <ConfettiEffect key={fx.id} position={pos} color={fx.color} progress={progress} />;
+            return <group key={fx.id}><ConfettiEffect position={pos} color={fx.color} progress={progress} /></group>;
           case 'haze':
-            return <HazeMachineEffect key={fx.id} position={pos} color={fx.color} progress={progress} radius={12} />;
+            return <group key={fx.id}><HazeMachineEffect position={pos} color={fx.color} progress={progress} radius={12} /></group>;
           case 'spark':
-            return <SparkShower key={fx.id} position={pos} color={fx.color} progress={progress} height={6 * intensityScale + 2} spread={3} />;
+            return <group key={fx.id}><SparkShower position={pos} color={fx.color} progress={progress} height={6 * intensityScale + 2} spread={3} /></group>;
           default:
-            return <GerbEffect key={fx.id} position={pos} color={fx.color} progress={progress} height={4 * intensityScale + 1} />;
+            return <group key={fx.id}><GerbEffect position={pos} color={fx.color} progress={progress} height={4 * intensityScale + 1} /></group>;
         }
       })}
     </>
