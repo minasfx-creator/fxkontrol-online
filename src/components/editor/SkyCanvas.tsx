@@ -795,18 +795,18 @@ function LiveSFXEffects() {
         switch (fx.type) {
           case 'co2':
           case 'cryo':
-            return <CryoJetEffect key={fx.id} position={pos} color={fx.color} progress={progress} height={6 * intensityScale + 2} />;
+            return <group key={fx.id}><CryoJetEffect position={pos} color={fx.color} progress={progress} height={6 * intensityScale + 2} /></group>;
           case 'flame':
-            return <FlameEffect key={fx.id} position={pos} color={fx.color} progress={progress} height={8 * intensityScale + 2} />;
+            return <group key={fx.id}><FlameEffect position={pos} color={fx.color} progress={progress} height={8 * intensityScale + 2} /></group>;
           case 'confetti':
           case 'streamer':
-            return <ConfettiEffect key={fx.id} position={pos} color={fx.color} progress={progress} />;
+            return <group key={fx.id}><ConfettiEffect position={pos} color={fx.color} progress={progress} /></group>;
           case 'haze':
-            return <HazeMachineEffect key={fx.id} position={pos} color={fx.color} progress={progress} radius={12} />;
+            return <group key={fx.id}><HazeMachineEffect position={pos} color={fx.color} progress={progress} radius={12} /></group>;
           case 'spark':
-            return <SparkShower key={fx.id} position={pos} color={fx.color} progress={progress} height={6 * intensityScale + 2} spread={3} />;
+            return <group key={fx.id}><SparkShower position={pos} color={fx.color} progress={progress} height={6 * intensityScale + 2} spread={3} /></group>;
           default:
-            return <GerbEffect key={fx.id} position={pos} color={fx.color} progress={progress} height={4 * intensityScale + 1} />;
+            return <group key={fx.id}><GerbEffect position={pos} color={fx.color} progress={progress} height={4 * intensityScale + 1} /></group>;
         }
       })}
     </>
