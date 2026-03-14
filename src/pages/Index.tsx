@@ -66,6 +66,7 @@ import FleetManagementPanel from '@/components/editor/FleetManagementPanel';
 import GeofencePanel from '@/components/editor/GeofencePanel';
 import StoryboardPanel from '@/components/editor/StoryboardPanel';
 import ShowControlPanel from '@/components/editor/ShowControlPanel';
+import ShowInspectorPanel from '@/components/editor/ShowInspectorPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
