@@ -33,11 +33,6 @@ const AuthRoute = forwardRef<HTMLDivElement, { children: React.ReactNode }>(
   }
 );
 
-function AuthRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  if (loading) return null;
-  return user ? <Navigate to="/" replace /> : <>{children}</>;
-}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
