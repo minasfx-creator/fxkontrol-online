@@ -1,7 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { X, Sparkles, Loader2, Wand2, Film, Send, Music, RotateCw, Layers, RefreshCw, Eye } from 'lucide-react';
+import { X, Sparkles, Loader2, Wand2, Film, Send, Music, RotateCw, Layers, RefreshCw, Eye, Trash2, Copy, ChevronDown, ChevronRight, GripVertical, ArrowUp, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { useProjectStore, type DroneFormation } from '@/store/useProjectStore';
 import { supabase } from '@/integrations/supabase/client';
