@@ -170,7 +170,7 @@ export default function TemplateMarketplace({ onClose }: TemplateMarketplaceProp
 
                     <div className="flex items-center gap-3 text-[8px] text-muted-foreground font-mono">
                       <span className="flex items-center gap-0.5">
-                        <Star className="w-2.5 h-2.5 text-amber-400 fill-amber-400" />
+                        <Star className="w-2.5 h-2.5 text-primary fill-primary" />
                         {t.rating}
                       </span>
                       <span className="flex items-center gap-0.5">
