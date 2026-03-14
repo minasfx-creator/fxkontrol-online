@@ -64,7 +64,7 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
       { id: 'video', label: 'Recorder', icon: Video, shortcut: 'V' },
       { id: 'reports', label: 'Reports', icon: FileText },
       { id: 'models', label: '3D Models', icon: Box },
-      { id: 'background', label: 'Background', icon: Image },
+      
       { id: 'aroverlay', label: 'AR Overlay', icon: Camera },
       { id: 'share', label: 'Share', icon: Share2 },
     ],
