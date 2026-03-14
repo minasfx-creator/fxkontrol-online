@@ -364,8 +364,8 @@ function FireworkBurst({
     const dragCoeff = 0.04 + caliber * 0.005;
     const isTrailingPattern = pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade' || pattern === 'palm';
     
-    // Finale particle size: proportional to caliber with HDR boost
-    const baseSize = 0.12 + caliber * 0.07;
+    // Particle size: proportional to caliber — larger for more visible bloom
+    const baseSize = 0.18 + caliber * 0.12;
 
     for (let i = 0; i < STAR_COUNT; i++) {
       const vx = velocities[i * 3], vy = velocities[i * 3 + 1], vz = velocities[i * 3 + 2];
