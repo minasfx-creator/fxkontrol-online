@@ -147,6 +147,8 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   storyboard: 'w-64',
   showcontrol: 'w-64',
   inspector: 'w-72',
+  lightprogram: 'w-72',
+  safetycheck: 'w-72',
 };
 
 export default function Index() {
