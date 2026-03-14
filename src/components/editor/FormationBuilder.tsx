@@ -238,43 +238,200 @@ function useAIFormation() {
   return { loading, loadingPhase, aiPoints, aiMeta, generate, generateTrajectory, generateFullShow, setAiPoints };
 }
 
-/* ── Formation Queue ───────────────────────────────────────── */
+/* ── Formation Queue (Enhanced) ─────────────────────────────── */
 
 function FormationQueue() {
-  const { droneFormations, removeDroneFormation, selectFormation, selectedFormationId } = useProjectStore();
+  const {
+    droneFormations, removeDroneFormation, selectFormation, selectedFormationId,
+    updateDroneFormation, reorderDroneFormation, duplicateDroneFormation, clearAllFormations,
+    recalculateFormationTimings, setCurrentTime,
+  } = useProjectStore();
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+
+  const handleDragStart = (idx: number) => setDragIdx(idx);
+  const handleDragOver = (e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    if (dragIdx !== null && dragIdx !== idx) {
+      reorderDroneFormation(dragIdx, idx);
+      setDragIdx(idx);
+    }
+  };
+  const handleDragEnd = () => setDragIdx(null);
+
+  const totalDuration = droneFormations.reduce((s, f) => s + f.transitionDuration + f.holdDuration, 0);
 
   return (
-    <div className="space-y-1 max-h-[350px] overflow-y-auto">
-      {droneFormations.map((f) => {
-        const preset = FORMATION_PRESETS.find(p => p.type === f.formationType);
-        const endTime = f.startTime + f.transitionDuration + f.holdDuration;
-        return (
-          <div
-            key={f.id}
-            onClick={() => selectFormation(f.id)}
-            className={cn(
-              "p-1.5 rounded-sm border cursor-pointer transition-colors text-[10px]",
-              selectedFormationId === f.id
-                ? "border-primary/40 bg-primary/10"
-                : "border-transparent hover:bg-surface-3"
-            )}
+    <div className="space-y-1.5">
+      {/* Header with actions */}
+      <div className="flex items-center justify-between px-1">
+        <span className="text-[9px] text-muted-foreground font-mono">
+          {totalDuration.toFixed(0)}s total
+        </span>
+        <div className="flex gap-0.5">
+          <button
+            onClick={recalculateFormationTimings}
+            className="text-[8px] text-muted-foreground hover:text-primary px-1 py-0.5 rounded hover:bg-primary/10 transition-colors"
+            title="Recalcular tempos"
           >
-            <div className="flex items-center gap-1.5">
-              <span>{preset?.icon || '🤖'}</span>
-              <span className="font-medium text-foreground">{preset?.label || f.formationType}</span>
-              <button
-                className="ml-auto text-muted-foreground hover:text-destructive"
-                onClick={(e) => { e.stopPropagation(); removeDroneFormation(f.id); }}
+            ⏱ Re-sync
+          </button>
+          <button
+            onClick={clearAllFormations}
+            className="text-[8px] text-muted-foreground hover:text-destructive px-1 py-0.5 rounded hover:bg-destructive/10 transition-colors"
+            title="Limpar tudo"
+          >
+            🗑 Clear
+          </button>
+        </div>
+      </div>
+
+      {/* Formation cards */}
+      <div className="max-h-[340px] overflow-y-auto space-y-0.5">
+        {droneFormations.map((f, idx) => {
+          const preset = FORMATION_PRESETS.find(p => p.type === f.formationType);
+          const endTime = f.startTime + f.transitionDuration + f.holdDuration;
+          const isSelected = selectedFormationId === f.id;
+          const isEditing = editId === f.id;
+
+          return (
+            <div
+              key={f.id}
+              draggable
+              onDragStart={() => handleDragStart(idx)}
+              onDragOver={(e) => handleDragOver(e, idx)}
+              onDragEnd={handleDragEnd}
+              onClick={() => { selectFormation(f.id); setCurrentTime(f.startTime); }}
+              className={cn(
+                "group rounded-sm border cursor-pointer transition-all text-[10px] relative",
+                isSelected
+                  ? "border-primary/50 bg-primary/10 shadow-[0_0_8px_hsl(var(--electric)/0.15)]"
+                  : "border-border/30 hover:border-border hover:bg-surface-2/50",
+                dragIdx === idx && "opacity-50"
+              )}
+            >
+              {/* Formation number badge */}
+              <div
+                className="absolute -left-0.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full flex items-center justify-center text-[7px] font-bold"
+                style={{ backgroundColor: f.color + '33', color: f.color, border: `1px solid ${f.color}66` }}
               >
-                <Trash2 className="h-3 w-3" />
-              </button>
+                {idx + 1}
+              </div>
+
+              <div className="pl-4 pr-1 py-1.5">
+                <div className="flex items-center gap-1">
+                  {/* Drag handle */}
+                  <span className="text-muted-foreground/40 cursor-grab text-[8px]">⠿</span>
+                  {/* Color dot */}
+                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: f.color }} />
+                  {/* Name */}
+                  <span className="font-medium text-foreground truncate flex-1">
+                    {preset?.icon || '🤖'} {preset?.label || f.formationType}
+                  </span>
+                  {/* Actions on hover */}
+                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setEditId(isEditing ? null : f.id); }}
+                      className="text-muted-foreground hover:text-primary"
+                      title="Editar"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); duplicateDroneFormation(f.id); }}
+                      className="text-muted-foreground hover:text-primary"
+                      title="Duplicar"
+                    >
+                      📋
+                    </button>
+                    <button
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={(e) => { e.stopPropagation(); removeDroneFormation(f.id); }}
+                      title="Remover"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Timing bar */}
+                <div className="flex items-center gap-1 mt-0.5">
+                  <span className="font-mono-code text-muted-foreground">
+                    {f.startTime.toFixed(0)}s
+                  </span>
+                  <div className="flex-1 h-1.5 rounded-full bg-surface-3 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${(f.transitionDuration / (f.transitionDuration + f.holdDuration)) * 100}%`,
+                        background: `linear-gradient(90deg, ${f.color}66, ${f.color})`,
+                      }}
+                    />
+                  </div>
+                  <span className="font-mono-code text-muted-foreground">
+                    {endTime.toFixed(0)}s
+                  </span>
+                </div>
+
+                {/* Inline info */}
+                <div className="flex gap-2 mt-0.5 text-[8px] font-mono-code text-muted-foreground">
+                  <span>{f.droneCount}🤖</span>
+                  <span>{f.height}m ↑</span>
+                  <span>{f.transitionDuration}s→</span>
+                  <span>{f.holdDuration}s⏸</span>
+                  {f.colorTransition && f.colorTransition !== 'instant' && (
+                    <span className="text-primary">{f.colorTransition}</span>
+                  )}
+                </div>
+
+                {/* Inline editor */}
+                {isEditing && (
+                  <div className="mt-1.5 pt-1.5 border-t border-border/30 space-y-1" onClick={(e) => e.stopPropagation()}>
+                    <div className="grid grid-cols-2 gap-1">
+                      <div>
+                        <span className="text-[7px] text-muted-foreground uppercase">Altura</span>
+                        <Input
+                          type="number"
+                          value={f.height}
+                          onChange={(e) => updateDroneFormation(f.id, { height: Number(e.target.value) })}
+                          className="h-5 text-[9px] bg-surface-3 border-border/50"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[7px] text-muted-foreground uppercase">Transição</span>
+                        <Input
+                          type="number"
+                          value={f.transitionDuration}
+                          onChange={(e) => updateDroneFormation(f.id, { transitionDuration: Number(e.target.value) })}
+                          className="h-5 text-[9px] bg-surface-3 border-border/50"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[7px] text-muted-foreground uppercase">Hold</span>
+                        <Input
+                          type="number"
+                          value={f.holdDuration}
+                          onChange={(e) => updateDroneFormation(f.id, { holdDuration: Number(e.target.value) })}
+                          className="h-5 text-[9px] bg-surface-3 border-border/50"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[7px] text-muted-foreground uppercase">Cor</span>
+                        <input
+                          type="color"
+                          value={f.color}
+                          onChange={(e) => updateDroneFormation(f.id, { color: e.target.value })}
+                          className="w-full h-5 rounded border border-border/50 cursor-pointer"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="font-mono-code text-muted-foreground mt-0.5">
-              {f.startTime.toFixed(0)}s → {endTime.toFixed(0)}s · {f.height}m · {f.droneCount}
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
