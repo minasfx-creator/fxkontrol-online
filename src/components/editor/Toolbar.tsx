@@ -403,6 +403,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
           items={[
             { label: 'Show Settings', icon: Cog, onClick: () => onOpenPanel?.('showsettings') },
             { label: 'Show Summary', icon: FileBarChart, onClick: () => onOpenPanel?.('summary') },
+            { label: 'VDL Calibration', icon: Gauge, onClick: () => onOpenPanel?.('calibration') },
             { label: 'Approval', icon: MessageSquare, onClick: () => onOpenPanel?.('approval') },
             { label: 'Versioning', icon: History, onClick: () => onOpenPanel?.('versioning') },
             { label: 'Share', icon: Share2, onClick: () => onOpenPanel?.('share') },
