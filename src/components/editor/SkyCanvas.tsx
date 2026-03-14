@@ -281,10 +281,10 @@ function FireworkBurst({
     lGeo.attributes.color.needsUpdate = true;
   });
 
-  // Particle size scales with caliber
-  const particleSize = 0.15 + caliber * 0.06;
+  // Particle size scales with caliber — Finale 3D style: bigger stars for bigger shells
+  const particleSize = 0.2 + caliber * 0.08;
   // Break flash size scales with caliber
-  const flashSize = 1.5 + caliber * 1.2;
+  const flashSize = 2.0 + caliber * 1.5;
 
   return (
     <group position={position}>
@@ -300,28 +300,35 @@ function FireworkBurst({
           <bufferAttribute attach="attributes-position" args={[new Float32Array(trailVertCount * 3), 3]} />
           <bufferAttribute attach="attributes-color" args={[new Float32Array(trailVertCount * 3), 3]} />
         </bufferGeometry>
-        <lineBasicMaterial vertexColors transparent opacity={0.75} depthWrite={false} blending={THREE.AdditiveBlending} />
+        <lineBasicMaterial vertexColors transparent opacity={0.8} depthWrite={false} blending={THREE.AdditiveBlending} />
       </lineSegments>
       
       {/* Break flash — massive initial burst of light */}
-      {progress < 0.12 && (
+      {progress < 0.15 && (
         <mesh>
-          <sphereGeometry args={[flashSize + progress * flashSize * 6, 20, 20]} />
-          <meshBasicMaterial color={color} transparent opacity={0.25 * (1 - progress / 0.12)} blending={THREE.AdditiveBlending} />
+          <sphereGeometry args={[flashSize + progress * flashSize * 8, 24, 24]} />
+          <meshBasicMaterial color={color} transparent opacity={0.3 * (1 - progress / 0.15)} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
       {/* Inner core flash — white hot */}
-      {progress < 0.06 && (
+      {progress < 0.08 && (
         <mesh>
-          <sphereGeometry args={[flashSize * 0.4 + progress * flashSize * 2, 16, 16]} />
-          <meshBasicMaterial color="#FFFFEE" transparent opacity={0.45 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} />
+          <sphereGeometry args={[flashSize * 0.5 + progress * flashSize * 3, 16, 16]} />
+          <meshBasicMaterial color="#FFFFEE" transparent opacity={0.5 * (1 - progress / 0.08)} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
       {/* Expanding shockwave ring */}
-      {progress < 0.15 && (
+      {progress < 0.18 && (
         <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[progress * flashSize * 5, progress * flashSize * 5 + 0.6, 32]} />
-          <meshBasicMaterial color={color} transparent opacity={0.08 * (1 - progress / 0.15)} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
+          <ringGeometry args={[progress * flashSize * 6, progress * flashSize * 6 + 0.8, 48]} />
+          <meshBasicMaterial color={color} transparent opacity={0.1 * (1 - progress / 0.18)} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
+        </mesh>
+      )}
+      {/* Secondary glow halo — Finale 3D style warm ambient glow */}
+      {progress < 0.4 && progress > 0.02 && (
+        <mesh>
+          <sphereGeometry args={[flashSize * 0.3 + progress * caliber * 5, 16, 16]} />
+          <meshBasicMaterial color={color} transparent opacity={0.04 * (1 - progress / 0.4)} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
     </group>

@@ -487,6 +487,32 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
         </Button>
         {/* Batch add positions */}
         <BatchAddButton />
+
+        <Separator orientation="vertical" className="h-4 mx-1" />
+
+        {/* Multi-select toggle */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className={cn(
+            "h-7 px-2 text-[10px] font-mono-code gap-1",
+            editorMode === 'select' && "border border-primary/30"
+          )}
+          title="Multi-Select (hold Shift to add, or box-select)"
+          onClick={() => {
+            // Select all positions as a quick multi-select action
+            const store = useProjectStore.getState();
+            if (store.selectedPositionIds.length === store.positions.length) {
+              store.selectMultiplePositions([]);
+            } else {
+              store.selectMultiplePositions(store.positions.map(p => p.id));
+            }
+          }}
+        >
+          <BoxSelect className="h-3 w-3" />
+          <span className="hidden lg:inline">MULTI</span>
+        </Button>
+
         {editorMode !== 'select' && (
           <span className="text-[9px] font-mono-code text-muted-foreground ml-1 flex items-center gap-1">
             Click to place · <span className="text-primary">ESC</span> to stop
