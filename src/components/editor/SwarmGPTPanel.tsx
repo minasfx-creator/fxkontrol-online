@@ -135,10 +135,12 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
   const [droneCount, setDroneCount] = useState(300);
   const [loading, setLoading] = useState(false);
   const [loadingPhase, setLoadingPhase] = useState('');
+  const [progress, setProgress] = useState(0);
   const [history, setHistory] = useState<{ prompt: string; result: string; time: string; points?: { x: number; z: number }[] }[]>([]);
   const [musicSyncBPM, setMusicSyncBPM] = useState(120);
   const [musicSyncBeats, setMusicSyncBeats] = useState(4);
   const [lastGeneratedPoints, setLastGeneratedPoints] = useState<{ x: number; z: number }[]>([]);
+  const [showFormationList, setShowFormationList] = useState(false);
 
   const addDroneFormation = useProjectStore((s) => s.addDroneFormation);
   const addTimelineItem = useProjectStore((s) => s.addTimelineItem);
@@ -146,6 +148,14 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
   const bpm = useProjectStore((s) => s.bpm);
   const setCurrentTime = useProjectStore((s) => s.setCurrentTime);
   const setPlaying = useProjectStore((s) => s.setPlaying);
+  const clearAllFormations = useProjectStore((s) => s.clearAllFormations);
+  const selectFormation = useProjectStore((s) => s.selectFormation);
+  const selectedFormationId = useProjectStore((s) => s.selectedFormationId);
+  const removeDroneFormation = useProjectStore((s) => s.removeDroneFormation);
+  const duplicateDroneFormation = useProjectStore((s) => s.duplicateDroneFormation);
+  const reorderDroneFormation = useProjectStore((s) => s.reorderDroneFormation);
+  const recalculateFormationTimings = useProjectStore((s) => s.recalculateFormationTimings);
+  const updateDroneFormation = useProjectStore((s) => s.updateDroneFormation);
 
   const generateSingle = useCallback(async () => {
     if (!prompt.trim()) return;
