@@ -380,11 +380,7 @@ function FireworkBurst({
       if (isTrailingPattern) {
         twinkle = 0.75 + Math.sin(twinklePhases[i] + progress * 12) * 0.25;
       } else {
-        twinkle = 0.5
-          + Math.sin(twinklePhases[i] + time * 28 + i * 4.1) * 0.2
-          + Math.sin(twinklePhases[i] * 2.7 + time * 45) * 0.15
-          + Math.sin(twinklePhases[i] * 0.3 + time * 8) * 0.1
-          + (Math.random() > 0.965 ? 0.6 : 0); // Finale random sparkle pop
+        twinkle = temporalFlicker(sparkleSeeds[i], time, 0.62, 0.34, 0.38);
       }
       
       // White-hot → saturated color
