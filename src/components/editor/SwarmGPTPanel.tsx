@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { X, Sparkles, Loader2, Wand2, Film, Send, Music, RotateCw, Layers, RefreshCw, Eye, Trash2, Copy, ChevronDown, ChevronRight, GripVertical, ArrowUp, ArrowDown } from 'lucide-react';
+import { X, Sparkles, Loader2, Wand2, Film, Send, Music, RotateCw, Layers, RefreshCw, Eye, Trash2, Copy, ChevronDown, ChevronRight, GripVertical, ArrowUp, ArrowDown, Image, Upload, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-type Mode = 'single' | 'full-show' | 'trajectory' | 'music-sync';
+type Mode = 'single' | 'full-show' | 'trajectory' | 'music-sync' | 'image';
 
 const QUICK_PROMPTS = [
   { emoji: '🌀', label: 'Vórtex Cibernético', prompt: 'vortex cibernético com espirais logarítmicas' },
@@ -142,6 +142,9 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
   const [musicSyncBeats, setMusicSyncBeats] = useState(4);
   const [lastGeneratedPoints, setLastGeneratedPoints] = useState<{ x: number; z: number }[]>([]);
   const [showFormationList, setShowFormationList] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const addDroneFormation = useProjectStore((s) => s.addDroneFormation);
   const addTimelineItem = useProjectStore((s) => s.addTimelineItem);
@@ -158,6 +161,68 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
   const recalculateFormationTimings = useProjectStore((s) => s.recalculateFormationTimings);
   const updateDroneFormation = useProjectStore((s) => s.updateDroneFormation);
 
+  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { toast.error('Selecione uma imagem'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setImagePreview(dataUrl);
+      setImageBase64(dataUrl.split(',')[1]);
+      setMode('image');
+    };
+    reader.readAsDataURL(file);
+    if (imageInputRef.current) imageInputRef.current.value = '';
+  }, []);
+
+  const generateFromImage = useCallback(async () => {
+    if (!imageBase64) return;
+    setLoading(true);
+    setLoadingPhase('Analisando imagem com IA...');
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-formation', {
+        body: { mode: 'image', prompt: prompt || 'Extract the main subject silhouette', droneCount, imageBase64 },
+      });
+      if (error) {
+        const errMsg = (data as any)?.error || error.message || String(error);
+        throw new Error(errMsg.includes('402') ? '402' : errMsg.includes('429') ? '429' : errMsg);
+      }
+      if (data?.error) throw new Error(data.error);
+
+      const rawPts = (data.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
+      const pts = normalizeDroneCount(rawPts, droneCount);
+      setLastGeneratedPoints(pts);
+
+      const lastTime = droneFormations.length > 0
+        ? droneFormations[droneFormations.length - 1].startTime + droneFormations[droneFormations.length - 1].transitionDuration + droneFormations[droneFormations.length - 1].holdDuration
+        : 0;
+
+      addDroneFormation({
+        id: `img-${Date.now()}`,
+        formationType: 'image-traced',
+        droneCount,
+        height: data.suggestedHeight || 30,
+        radius: 20,
+        spacing: 2,
+        rotation: 0,
+        startTime: lastTime,
+        transitionDuration: data.suggestedTransitionTime || 15,
+        holdDuration: 20,
+        color: '#00E5FF',
+        points: pts,
+      });
+      setCurrentTime(lastTime);
+      setHistory(prev => [{ prompt: '📷 Image', result: `${data.formationName} · ${pts.length} drones`, time: new Date().toLocaleTimeString(), points: pts }, ...prev.slice(0, 9)]);
+      toast.success(`"${data.formationName}" gerada da imagem`, { description: `${pts.length} drones` });
+    } catch (e: any) {
+      handleError(e);
+    } finally {
+      setLoading(false);
+      setLoadingPhase('');
+    }
+  }, [imageBase64, prompt, droneCount, droneFormations, addDroneFormation, setCurrentTime]);
+
   const generateSingle = useCallback(async () => {
     if (!prompt.trim()) return;
     setLoading(true);
@@ -168,7 +233,6 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
         body: { mode: 'text', prompt, droneCount, previousFormation: lastFormation?.points?.slice(0, droneCount) },
       });
       if (error) {
-        // Check if data contains a message from the edge function
         const errMsg = (data as any)?.error || error.message || String(error);
         throw new Error(errMsg.includes('402') || errMsg.includes('Créditos') ? '402' : errMsg.includes('429') ? '429' : errMsg);
       }
@@ -197,7 +261,6 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
         points: pts,
       });
 
-      // Auto-seek to formation start
       setCurrentTime(lastTime);
 
       setHistory(prev => [{ prompt, result: `${data.formationName} · ${pts.length} drones`, time: new Date().toLocaleTimeString(), points: pts }, ...prev.slice(0, 9)]);
@@ -380,6 +443,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
   const handleGenerate = () => {
     if (mode === 'full-show') generateFullShow();
     else if (mode === 'music-sync') generateMusicSync();
+    else if (mode === 'image') generateFromImage();
     else generateSingle();
   };
 
@@ -413,6 +477,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
         {([
           { id: 'single' as Mode, label: 'Formação', icon: Wand2 },
           { id: 'full-show' as Mode, label: 'Show', icon: Film },
+          { id: 'image' as Mode, label: 'Imagem', icon: Image },
           { id: 'music-sync' as Mode, label: 'Music', icon: Music },
           { id: 'trajectory' as Mode, label: 'Motion', icon: RotateCw },
         ]).map(({ id, label, icon: Icon }) => (
@@ -467,6 +532,38 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
+        {/* Image upload section */}
+        {mode === 'image' && (
+          <div className="space-y-1.5 p-2 rounded-sm border border-primary/20 bg-primary/5">
+            <div className="flex items-center gap-1">
+              <Image className="w-3 h-3 text-primary" />
+              <span className="text-[9px] font-semibold text-primary uppercase">Imagem → Formação</span>
+            </div>
+            <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+            {imagePreview ? (
+              <div className="relative">
+                <img src={imagePreview} alt="Preview" className="w-full h-28 object-contain rounded border border-border/30 bg-black/50" />
+                <button
+                  onClick={() => { setImagePreview(null); setImageBase64(null); }}
+                  className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/60 flex items-center justify-center text-white/80 hover:text-white"
+                >
+                  <X className="w-2.5 h-2.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => imageInputRef.current?.click()}
+                className="w-full h-24 rounded border-2 border-dashed border-primary/30 flex flex-col items-center justify-center gap-1 hover:border-primary/50 transition-colors"
+              >
+                <Upload className="w-5 h-5 text-primary/50" />
+                <span className="text-[8px] text-primary/70">Arraste ou clique para enviar</span>
+                <span className="text-[7px] text-muted-foreground">PNG, JPG, SVG — logos, silhuetas, formas</span>
+              </button>
+            )}
+            <p className="text-[7px] text-muted-foreground">A IA extrairá a silhueta principal e posicionará os drones</p>
+          </div>
+        )}
+
         {/* Quick prompts */}
         <div className="space-y-1">
           <span className="text-[9px] text-muted-foreground font-semibold uppercase">
@@ -498,12 +595,13 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
             mode === 'full-show' ? "Descreva o tema do show completo..."
             : mode === 'music-sync' ? "Descreva o estilo visual sincronizado com a música..."
             : mode === 'trajectory' ? "Descreva o padrão de movimento..."
+            : mode === 'image' ? "(Opcional) Descreva o que extrair da imagem..."
             : "Descreva a formação..."
           }
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !loading && prompt.trim()) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !loading) {
               e.preventDefault();
               handleGenerate();
             }
@@ -515,7 +613,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
         <div className="flex gap-1">
           <Button
             onClick={handleGenerate}
-            disabled={loading || !prompt.trim()}
+            disabled={loading || (mode !== 'image' && !prompt.trim()) || (mode === 'image' && !imageBase64)}
             className="flex-1 h-8 text-[10px] gap-1"
             size="sm"
           >
@@ -527,7 +625,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
             ) : (
               <>
                 <Send className="w-3 h-3" />
-                {mode === 'full-show' ? 'Gerar Show' : mode === 'music-sync' ? 'Music Sync' : mode === 'trajectory' ? 'Gerar Motion' : 'Gerar'} ({droneCount})
+                {mode === 'full-show' ? 'Gerar Show' : mode === 'music-sync' ? 'Music Sync' : mode === 'trajectory' ? 'Gerar Motion' : mode === 'image' ? '📷 Gerar da Imagem' : 'Gerar'} ({droneCount})
               </>
             )}
           </Button>
