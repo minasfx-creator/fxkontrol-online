@@ -165,6 +165,11 @@ export function createShellBurst(
     const theta = Math.random() * Math.PI * 2;
     const phi = Math.acos(2 * Math.random() - 1);
     
+    // Correct spherical: x=sin(phi)*cos(theta), y=cos(phi) [UP], z=sin(phi)*sin(theta)
+    const sx = Math.sin(phi) * Math.cos(theta);
+    const sy = Math.cos(phi);
+    const sz = Math.sin(phi) * Math.sin(theta);
+    
     let vx: number, vy: number, vz: number;
     let life = starLifetime * (0.7 + Math.random() * 0.3);
     
@@ -175,55 +180,52 @@ export function createShellBurst(
         vz = Math.sin(theta) * breakSpeed;
         break;
       case 'willow':
-        vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.5;
-        vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.5;
-        vz = Math.cos(phi) * breakSpeed * 0.5;
-        life = starLifetime * (1.8 + Math.random() * 1.2); // very long burn
+        vx = sx * breakSpeed * 0.5;
+        vy = sy * breakSpeed * 0.5;
+        vz = sz * breakSpeed * 0.5;
+        life = starLifetime * (1.8 + Math.random() * 1.2);
         break;
       case 'palm':
-        vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.6;
-        vy = Math.abs(Math.sin(phi) * Math.sin(theta)) * breakSpeed + breakSpeed * 0.4;
-        vz = Math.cos(phi) * breakSpeed * 0.6;
+        vx = sx * breakSpeed * 0.6;
+        vy = Math.abs(sy) * breakSpeed + breakSpeed * 0.4;
+        vz = sz * breakSpeed * 0.6;
         life = starLifetime * (1.5 + Math.random() * 0.5);
         break;
       case 'chrysanthemum':
-        vx = Math.sin(phi) * Math.cos(theta) * breakSpeed;
-        vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.9;
-        vz = Math.cos(phi) * breakSpeed;
+        vx = sx * breakSpeed;
+        vy = sy * breakSpeed * 0.9;
+        vz = sz * breakSpeed;
         life = starLifetime * (1.1 + Math.random() * 0.3);
         break;
       case 'kamuro':
-        vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.45;
-        vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.45 + 2;
-        vz = Math.cos(phi) * breakSpeed * 0.45;
-        life = starLifetime * (2.5 + Math.random() * 1.5); // extremely long
+        vx = sx * breakSpeed * 0.45;
+        vy = sy * breakSpeed * 0.45 + 2;
+        vz = sz * breakSpeed * 0.45;
+        life = starLifetime * (2.5 + Math.random() * 1.5);
         break;
       case 'dahlia':
-        // Fewer, larger stars with high speed
-        vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 1.2;
-        vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 1.1;
-        vz = Math.cos(phi) * breakSpeed * 1.2;
+        vx = sx * breakSpeed * 1.2;
+        vy = sy * breakSpeed * 1.1;
+        vz = sz * breakSpeed * 1.2;
         life = starLifetime * (0.6 + Math.random() * 0.3);
         break;
       case 'brocade':
-        // Dense golden trailing stars
-        vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.7;
-        vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.7;
-        vz = Math.cos(phi) * breakSpeed * 0.7;
+        vx = sx * breakSpeed * 0.7;
+        vy = sy * breakSpeed * 0.7;
+        vz = sz * breakSpeed * 0.7;
         life = starLifetime * (1.6 + Math.random() * 0.8);
         break;
       case 'crossette':
-        vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.8;
-        vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.8;
-        vz = Math.cos(phi) * breakSpeed * 0.8;
+        vx = sx * breakSpeed * 0.8;
+        vy = sy * breakSpeed * 0.8;
+        vz = sz * breakSpeed * 0.8;
         break;
       case 'peony':
       default:
-        // Classic spherical — the most common
         const speedVariation = 0.7 + Math.random() * 0.3;
-        vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * speedVariation;
-        vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * speedVariation * 0.85 + 1;
-        vz = Math.cos(phi) * breakSpeed * speedVariation;
+        vx = sx * breakSpeed * speedVariation;
+        vy = sy * breakSpeed * speedVariation * 0.85 + 1;
+        vz = sz * breakSpeed * speedVariation;
         break;
     }
     
