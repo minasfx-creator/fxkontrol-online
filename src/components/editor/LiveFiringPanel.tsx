@@ -549,12 +549,28 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
         )}
       </div>
 
-      {/* Footer */}
-      <div className="px-3 py-1.5 border-t border-border/50 flex items-center justify-between">
-        <span className="text-[8px] text-muted-foreground font-mono">DMX OUT via Art-Net</span>
-        <div className="flex items-center gap-1">
-          <div className={cn("w-1.5 h-1.5 rounded-full", masterArm ? "bg-destructive animate-pulse" : "bg-muted-foreground")} />
-          <span className="text-[8px] font-mono text-muted-foreground">{masterArm ? 'LIVE' : 'SAFE'}</span>
+      {/* Footer — Art-Net config */}
+      <div className="px-3 py-1.5 border-t border-border/50 space-y-1">
+        <div className="flex items-center gap-1.5">
+          <Input
+            value={artNetIp}
+            onChange={e => setArtNetIp(e.target.value)}
+            className="h-5 text-[8px] font-mono bg-muted/30 border-border/50 flex-1"
+            placeholder="Art-Net IP"
+          />
+          <Input
+            type="number"
+            value={artNetPort}
+            onChange={e => setArtNetPort(Number(e.target.value))}
+            className="h-5 text-[8px] font-mono bg-muted/30 border-border/50 w-14"
+          />
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-[8px] text-muted-foreground font-mono">DMX OUT → Art-Net Edge Function</span>
+          <div className="flex items-center gap-1">
+            <div className={cn("w-1.5 h-1.5 rounded-full", artNetConnected ? "bg-green-500" : masterArm ? "bg-destructive animate-pulse" : "bg-muted-foreground")} />
+            <span className="text-[8px] font-mono text-muted-foreground">{artNetConnected ? 'CONNECTED' : masterArm ? 'LIVE' : 'SAFE'}</span>
+          </div>
         </div>
       </div>
     </div>
