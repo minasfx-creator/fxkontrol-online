@@ -57,6 +57,7 @@ import TelemetryDashboard from '@/components/editor/TelemetryDashboard';
 import FlightLogPanel from '@/components/editor/FlightLogPanel';
 import PathPlannerPanel from '@/components/editor/PathPlannerPanel';
 import TemplateMarketplace from '@/components/editor/TemplateMarketplace';
+import SiteLayoutPanel from '@/components/editor/SiteLayoutPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
