@@ -242,29 +242,34 @@ function FireworkBurst({
       tp[i] = Math.random() * Math.PI * 2;
       sparkle[i] = Math.random() * 999 + i;
 
+      // Spherical coords: x = sin(phi)*cos(theta), y = cos(phi) [UP], z = sin(phi)*sin(theta)
+      const sx = Math.sin(phi) * Math.cos(theta);
+      const sy = Math.cos(phi);
+      const sz = Math.sin(phi) * Math.sin(theta);
+
       switch (pattern) {
         case 'willow':
-          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.42 * speedVar;
-          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.42 * speedVar;
-          vz = Math.cos(phi) * breakSpeed * 0.42 * speedVar;
+          vx = sx * breakSpeed * 0.42 * speedVar;
+          vy = sy * breakSpeed * 0.42 * speedVar;
+          vz = sz * breakSpeed * 0.42 * speedVar;
           life = starLife * (1.3 + Math.random() * 1.4);
           break;
         case 'palm':
-          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.52 * speedVar;
-          vy = Math.abs(Math.sin(phi) * Math.sin(theta)) * breakSpeed * 0.85 + breakSpeed * 0.45;
-          vz = Math.cos(phi) * breakSpeed * 0.52 * speedVar;
+          vx = sx * breakSpeed * 0.52 * speedVar;
+          vy = Math.abs(sy) * breakSpeed * 0.85 + breakSpeed * 0.45;
+          vz = sz * breakSpeed * 0.52 * speedVar;
           life = starLife * (1.1 + Math.random() * 0.6);
           break;
         case 'chrysanthemum':
-          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * speedVar;
-          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.93 * speedVar;
-          vz = Math.cos(phi) * breakSpeed * speedVar;
+          vx = sx * breakSpeed * speedVar;
+          vy = sy * breakSpeed * 0.93 * speedVar;
+          vz = sz * breakSpeed * speedVar;
           life = starLife * (0.85 + Math.random() * 0.3);
           break;
         case 'kamuro':
-          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.35 * speedVar;
-          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.35 * speedVar + 1.2;
-          vz = Math.cos(phi) * breakSpeed * 0.35 * speedVar;
+          vx = sx * breakSpeed * 0.35 * speedVar;
+          vy = sy * breakSpeed * 0.35 * speedVar + 1.2;
+          vz = sz * breakSpeed * 0.35 * speedVar;
           life = starLife * (1.8 + Math.random() * 1.8);
           break;
         case 'ring':
@@ -273,15 +278,15 @@ function FireworkBurst({
           vz = Math.sin(theta) * breakSpeed * speedVar;
           break;
         case 'dahlia':
-          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 1.25 * speedVar;
-          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 1.18 * speedVar;
-          vz = Math.cos(phi) * breakSpeed * 1.25 * speedVar;
+          vx = sx * breakSpeed * 1.25 * speedVar;
+          vy = sy * breakSpeed * 1.18 * speedVar;
+          vz = sz * breakSpeed * 1.25 * speedVar;
           life = starLife * (0.35 + Math.random() * 0.25);
           break;
         case 'brocade':
-          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.58 * speedVar;
-          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.58 * speedVar;
-          vz = Math.cos(phi) * breakSpeed * 0.58 * speedVar;
+          vx = sx * breakSpeed * 0.58 * speedVar;
+          vy = sy * breakSpeed * 0.58 * speedVar;
+          vz = sz * breakSpeed * 0.58 * speedVar;
           life = starLife * (1.3 + Math.random() * 1.0);
           break;
         case 'crossette': {
@@ -290,14 +295,14 @@ function FireworkBurst({
           const armPhi = Math.PI * 0.45;
           const jitter = 0.12;
           vx = Math.sin(armPhi) * Math.cos(armTheta + (Math.random() - 0.5) * jitter) * breakSpeed * 0.82;
-          vy = Math.sin(armPhi) * Math.sin(armTheta + (Math.random() - 0.5) * jitter) * breakSpeed * 0.82;
-          vz = Math.cos(armPhi + (Math.random() - 0.5) * jitter) * breakSpeed * 0.82;
+          vy = Math.cos(armPhi + (Math.random() - 0.5) * jitter) * breakSpeed * 0.82;
+          vz = Math.sin(armPhi) * Math.sin(armTheta + (Math.random() - 0.5) * jitter) * breakSpeed * 0.82;
           break;
         }
-        default:
-          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * speedVar;
-          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * speedVar * 0.9 + 0.6;
-          vz = Math.cos(phi) * breakSpeed * speedVar;
+        default: // peony
+          vx = sx * breakSpeed * speedVar;
+          vy = sy * breakSpeed * speedVar * 0.9 + 0.6;
+          vz = sz * breakSpeed * speedVar;
           break;
       }
 
