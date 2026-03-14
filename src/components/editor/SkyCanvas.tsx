@@ -1474,6 +1474,51 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
   );
 }
 
+/** Floating menu for fullscreen mode — gives access to key actions */
+function FullscreenEditMenu() {
+  const { isPlaying, setPlaying, currentTime, setCurrentTime, duration } = useProjectStore();
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="absolute top-3 right-3 z-50 flex flex-col items-end gap-1">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="bg-surface-1/90 backdrop-blur-md text-foreground border border-border/60 px-3 py-1.5 rounded text-[10px] font-mono-code flex items-center gap-1.5 hover:bg-surface-2/90 transition-all shadow-lg"
+      >
+        <Cog className="w-3.5 h-3.5" />
+        Menu
+      </button>
+      {expanded && (
+        <div className="bg-surface-1/95 backdrop-blur-md border border-border/60 rounded-lg shadow-xl p-2 min-w-[160px] space-y-0.5">
+          <button
+            onClick={() => setPlaying(!isPlaying)}
+            className="w-full text-left px-3 py-1.5 text-[10px] font-mono-code text-muted-foreground hover:text-foreground hover:bg-surface-3 rounded flex items-center gap-2"
+          >
+            {isPlaying ? '⏸ Pause' : '▶ Play'}
+          </button>
+          <button
+            onClick={() => { setCurrentTime(0); setPlaying(false); }}
+            className="w-full text-left px-3 py-1.5 text-[10px] font-mono-code text-muted-foreground hover:text-foreground hover:bg-surface-3 rounded flex items-center gap-2"
+          >
+            ⏮ Rewind
+          </button>
+          <div className="border-t border-border/30 my-1" />
+          <div className="px-3 py-1 text-[9px] font-mono-code text-muted-foreground">
+            Time: {currentTime.toFixed(1)}s / {duration.toFixed(1)}s
+          </div>
+          <div className="border-t border-border/30 my-1" />
+          <button
+            onClick={() => document.exitFullscreen()}
+            className="w-full text-left px-3 py-1.5 text-[10px] font-mono-code text-muted-foreground hover:text-foreground hover:bg-surface-3 rounded flex items-center gap-2"
+          >
+            <Minimize className="w-3 h-3" /> Sair Fullscreen
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SkyCanvas() {
   const editorMode = useProjectStore((s) => s.editorMode);
   const droneFormations = useProjectStore((s) => s.droneFormations);
