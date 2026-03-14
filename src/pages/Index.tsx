@@ -58,6 +58,7 @@ import FlightLogPanel from '@/components/editor/FlightLogPanel';
 import PathPlannerPanel from '@/components/editor/PathPlannerPanel';
 import TemplateMarketplace from '@/components/editor/TemplateMarketplace';
 import SiteLayoutPanel from '@/components/editor/SiteLayoutPanel';
+import ShowSettingsPanel from '@/components/editor/ShowSettingsPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
@@ -127,6 +128,7 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   pathplanner: 'w-64',
   marketplace: 'w-72',
   sitelayout: 'w-72',
+  showsettings: 'w-64',
 };
 
 export default function Index() {
@@ -297,6 +299,7 @@ export default function Index() {
         {activePanel === 'pathplanner' && <PathPlannerPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'marketplace' && <TemplateMarketplace onClose={() => setActivePanel(null)} />}
         {activePanel === 'sitelayout' && <SiteLayoutPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'showsettings' && <ShowSettingsPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
