@@ -140,7 +140,49 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
   const [newSceneName, setNewSceneName] = useState('');
   const [section, setSection] = useState<'triggers' | 'programmer' | 'cues'>('triggers');
+  const [artNetConnected, setArtNetConnected] = useState(false);
+  const [artNetIp, setArtNetIp] = useState('255.255.255.255');
+  const [artNetPort, setArtNetPort] = useState(6454);
+  const sequenceRef = useRef(0);
   const fireTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+  // Build DMX universe buffer from channels and send via Art-Net edge function
+  const sendArtNetPacket = useCallback(async (currentChannels: SFXChannel[]) => {
+    // Group channels by universe
+    const universeMap = new Map<number, number[]>();
+    for (const ch of currentChannels) {
+      if (!universeMap.has(ch.dmxUniverse)) {
+        universeMap.set(ch.dmxUniverse, new Array(512).fill(0));
+      }
+      const buf = universeMap.get(ch.dmxUniverse)!;
+      const baseAddr = ch.dmxAddress - 1; // 0-indexed
+      // Set intensity on all DMX channels for this fixture
+      const val = ch.firing ? ch.intensity : 0;
+      for (let i = 0; i < ch.dmxChannels; i++) {
+        if (baseAddr + i < 512) buf[baseAddr + i] = val;
+      }
+    }
+
+    const universes = Array.from(universeMap.entries()).map(([uniId, buf]) => ({
+      universe: uniId % 16,
+      subnet: Math.floor(uniId / 16) % 16,
+      net: Math.floor(uniId / 256),
+      channels: buf,
+      sequence: (sequenceRef.current++) & 0xFF,
+    }));
+
+    try {
+      const { data, error } = await supabase.functions.invoke('artnet-bridge', {
+        body: { action: 'send', universes, targetIp: artNetIp, targetPort: artNetPort },
+      });
+      if (error) throw error;
+      setArtNetConnected(true);
+      return data;
+    } catch (e: any) {
+      setArtNetConnected(false);
+      console.error('Art-Net send failed:', e);
+    }
+  }, [artNetIp, artNetPort]);
 
   // Master arm toggles all channels
   const handleMasterArm = useCallback((armed: boolean) => {
@@ -153,36 +195,48 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
     }
   }, []);
 
-  // Fire a channel
+  // Fire a channel — send DMX packet with intensity ON
   const handleFire = useCallback((id: string) => {
-    setChannels(prev => prev.map(ch => ch.id === id ? { ...ch, firing: true } : ch));
+    setChannels(prev => {
+      const updated = prev.map(ch => ch.id === id ? { ...ch, firing: true } : ch);
+      // Send Art-Net packet with updated state
+      sendArtNetPacket(updated);
+      return updated;
+    });
 
-    // Log the fire event
     const ch = channels.find(c => c.id === id);
     if (ch) {
-      toast(`🔥 FIRED: ${ch.name}`, { description: `DMX U${ch.dmxUniverse}.${ch.dmxAddress} @ ${ch.intensity}/255 for ${ch.duration}ms` });
+      toast(`🔥 FIRED: ${ch.name}`, { description: `DMX U${ch.dmxUniverse}.${ch.dmxAddress} @ ${ch.intensity}/255 → Art-Net` });
     }
 
     // Auto-stop after duration
     const channel = channels.find(c => c.id === id);
     if (channel) {
       const timer = setTimeout(() => {
-        setChannels(prev => prev.map(ch => ch.id === id ? { ...ch, firing: false } : ch));
+        setChannels(prev => {
+          const updated = prev.map(ch => ch.id === id ? { ...ch, firing: false } : ch);
+          sendArtNetPacket(updated);
+          return updated;
+        });
         fireTimers.current.delete(id);
       }, channel.duration);
       fireTimers.current.set(id, timer);
     }
-  }, [channels]);
+  }, [channels, sendArtNetPacket]);
 
-  // Stop firing
+  // Stop firing — send DMX packet with intensity OFF
   const handleStop = useCallback((id: string) => {
     const timer = fireTimers.current.get(id);
     if (timer) {
       clearTimeout(timer);
       fireTimers.current.delete(id);
     }
-    setChannels(prev => prev.map(ch => ch.id === id ? { ...ch, firing: false } : ch));
-  }, []);
+    setChannels(prev => {
+      const updated = prev.map(ch => ch.id === id ? { ...ch, firing: false } : ch);
+      sendArtNetPacket(updated);
+      return updated;
+    });
+  }, [sendArtNetPacket]);
 
   // Add new channel
   const addChannel = useCallback((type: SFXChannel['type']) => {
