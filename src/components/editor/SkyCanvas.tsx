@@ -434,15 +434,13 @@ function FireworkBurst({
       for (let s = 0; s < TRAIL_LENGTH; s++) {
         const t0 = Math.max(0, t - s * trailDt);
         const t1 = Math.max(0, t - (s + 1) * trailDt);
-        const d0 = Math.exp(-dragCoeff * t0);
-        const d1 = Math.exp(-dragCoeff * t1);
         const base2 = (i * TRAIL_LENGTH + s) * 6;
-        tPos[base2] = vx * t0 * d0 + w[0] * t0 * t0 * 0.3;
-        tPos[base2 + 1] = vy * t0 * d0 + 0.5 * GRAVITY * t0 * t0 * 0.5;
-        tPos[base2 + 2] = vz * t0 * d0 + w[2] * t0 * t0 * 0.3;
-        tPos[base2 + 3] = vx * t1 * d1 + w[0] * t1 * t1 * 0.3;
-        tPos[base2 + 4] = vy * t1 * d1 + 0.5 * GRAVITY * t1 * t1 * 0.5;
-        tPos[base2 + 5] = vz * t1 * d1 + w[2] * t1 * t1 * 0.3;
+        tPos[base2] = dragPos(vx, t0, dragCoeff) + w[0] * t0 * t0 * 0.3;
+        tPos[base2 + 1] = dragPos(vy, t0, dragCoeff) + 0.5 * GRAVITY * t0 * t0;
+        tPos[base2 + 2] = dragPos(vz, t0, dragCoeff) + w[2] * t0 * t0 * 0.3;
+        tPos[base2 + 3] = dragPos(vx, t1, dragCoeff) + w[0] * t1 * t1 * 0.3;
+        tPos[base2 + 4] = dragPos(vy, t1, dragCoeff) + 0.5 * GRAVITY * t1 * t1;
+        tPos[base2 + 5] = dragPos(vz, t1, dragCoeff) + w[2] * t1 * t1 * 0.3;
         
         const segFrac = s / TRAIL_LENGTH;
         const segFade = fadeCubed * Math.pow(1 - segFrac, 2.5) * 0.7;
