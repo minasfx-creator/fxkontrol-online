@@ -85,7 +85,7 @@ function PlaybackClock() {
 }
 
 // --- Particle system ---
-const GRAVITY = -4;
+const GRAVITY = -5.5; // Slightly stronger gravity for more realistic arcs
 
 function getWindForce(): [number, number, number] {
   const { wind } = useProjectStore.getState();
@@ -281,10 +281,10 @@ function FireworkBurst({
     lGeo.attributes.color.needsUpdate = true;
   });
 
-  // Particle size scales with caliber
-  const particleSize = 0.15 + caliber * 0.06;
+  // Particle size scales with caliber — Finale 3D style: bigger stars for bigger shells
+  const particleSize = 0.2 + caliber * 0.08;
   // Break flash size scales with caliber
-  const flashSize = 1.5 + caliber * 1.2;
+  const flashSize = 2.0 + caliber * 1.5;
 
   return (
     <group position={position}>
@@ -300,28 +300,35 @@ function FireworkBurst({
           <bufferAttribute attach="attributes-position" args={[new Float32Array(trailVertCount * 3), 3]} />
           <bufferAttribute attach="attributes-color" args={[new Float32Array(trailVertCount * 3), 3]} />
         </bufferGeometry>
-        <lineBasicMaterial vertexColors transparent opacity={0.75} depthWrite={false} blending={THREE.AdditiveBlending} />
+        <lineBasicMaterial vertexColors transparent opacity={0.8} depthWrite={false} blending={THREE.AdditiveBlending} />
       </lineSegments>
       
       {/* Break flash — massive initial burst of light */}
-      {progress < 0.12 && (
+      {progress < 0.15 && (
         <mesh>
-          <sphereGeometry args={[flashSize + progress * flashSize * 6, 20, 20]} />
-          <meshBasicMaterial color={color} transparent opacity={0.25 * (1 - progress / 0.12)} blending={THREE.AdditiveBlending} />
+          <sphereGeometry args={[flashSize + progress * flashSize * 8, 24, 24]} />
+          <meshBasicMaterial color={color} transparent opacity={0.3 * (1 - progress / 0.15)} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
       {/* Inner core flash — white hot */}
-      {progress < 0.06 && (
+      {progress < 0.08 && (
         <mesh>
-          <sphereGeometry args={[flashSize * 0.4 + progress * flashSize * 2, 16, 16]} />
-          <meshBasicMaterial color="#FFFFEE" transparent opacity={0.45 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} />
+          <sphereGeometry args={[flashSize * 0.5 + progress * flashSize * 3, 16, 16]} />
+          <meshBasicMaterial color="#FFFFEE" transparent opacity={0.5 * (1 - progress / 0.08)} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
       {/* Expanding shockwave ring */}
-      {progress < 0.15 && (
+      {progress < 0.18 && (
         <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[progress * flashSize * 5, progress * flashSize * 5 + 0.6, 32]} />
-          <meshBasicMaterial color={color} transparent opacity={0.08 * (1 - progress / 0.15)} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
+          <ringGeometry args={[progress * flashSize * 6, progress * flashSize * 6 + 0.8, 48]} />
+          <meshBasicMaterial color={color} transparent opacity={0.1 * (1 - progress / 0.18)} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
+        </mesh>
+      )}
+      {/* Secondary glow halo — Finale 3D style warm ambient glow */}
+      {progress < 0.4 && progress > 0.02 && (
+        <mesh>
+          <sphereGeometry args={[flashSize * 0.3 + progress * caliber * 5, 16, 16]} />
+          <meshBasicMaterial color={color} transparent opacity={0.04 * (1 - progress / 0.4)} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
     </group>
@@ -348,9 +355,15 @@ function TimelineEffects() {
 
       // ── Resolve position from linked pyropoint ──
       let resolvedPos = item.position;
+      let launchHeading = 0;
+      let launchPitch = 85; // default vertical
       if (item.positionId) {
         const linkedPos = positions.find(p => p.id === item.positionId);
-        if (linkedPos) resolvedPos = { x: linkedPos.x, y: linkedPos.y, z: linkedPos.z };
+        if (linkedPos) {
+          resolvedPos = { x: linkedPos.x, y: linkedPos.y, z: linkedPos.z };
+          launchHeading = linkedPos.heading || 0;
+          launchPitch = linkedPos.pitch || 85;
+        }
       }
 
       // ── Real physics: caliber-based heights ──
@@ -370,7 +383,7 @@ function TimelineEffects() {
         ? Math.max(0, (elapsed - prefireDuration) / weatherDuration)
         : elapsed / weatherDuration;
 
-      return { item, effect, progress: burstProgress, inPrefire, prefireProgress, caliber, prefireDuration, resolvedPos, effectScale, effectBrightness: sceneSettings.effectBrightness };
+      return { item, effect, progress: burstProgress, inPrefire, prefireProgress, caliber, prefireDuration, resolvedPos, effectScale, effectBrightness: sceneSettings.effectBrightness, launchHeading, launchPitch };
     }).filter(Boolean) as {
       item: typeof timelineItems[0];
       effect: typeof EFFECT_LIBRARY[0];
@@ -382,12 +395,14 @@ function TimelineEffects() {
       resolvedPos: { x: number; y: number; z: number };
       effectScale: number;
       effectBrightness: number;
+      launchHeading: number;
+      launchPitch: number;
     }[];
   }, [timelineItems, currentTime, positions, sceneSettings.effectScale, sceneSettings.weather, sceneSettings.humidity, sceneSettings.effectBrightness]);
 
   return (
     <>
-      {activeEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale, effectBrightness }) => {
+      {activeEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale, effectBrightness, launchHeading, launchPitch }) => {
         const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
         const eid = effect.id;
         const pt = effect.partType;
@@ -401,15 +416,24 @@ function TimelineEffects() {
               color={effect.color}
               progress={prefireProgress}
               caliber={caliber}
+              heading={launchHeading}
+              pitch={launchPitch}
             />
           );
         }
 
-        // ── Real break height with scene scale ──
+        // ── Real break height with angle offset (Finale 3D standard) ──
         const isShell = pt === 'shell' || pt === 'single_shot';
         const realBreakHeight = getBreakHeight(caliber) * effectScale;
+        const pitchRad = (launchPitch || 85) * (Math.PI / 180);
+        const headingRad = (launchHeading || 0) * (Math.PI / 180);
+        // Angled burst position: shell travels along launch angle
         const burstPos: [number, number, number] = isShell
-          ? [pos[0], pos[1] + realBreakHeight, pos[2]]
+          ? [
+              pos[0] + Math.sin(headingRad) * Math.cos(pitchRad) * realBreakHeight,
+              pos[1] + Math.sin(pitchRad) * realBreakHeight,
+              pos[2] - Math.cos(headingRad) * Math.cos(pitchRad) * realBreakHeight,
+            ]
           : pos;
 
         // Heights from effect library, scaled by scene

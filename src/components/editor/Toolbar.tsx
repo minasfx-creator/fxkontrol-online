@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Rocket, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus, Download, ChevronDown, LayoutGrid, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Info } from 'lucide-react';
+import { Rocket, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus, Download, ChevronDown, LayoutGrid, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Info, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useUndoStore } from '@/store/useUndoStore';
@@ -61,14 +61,15 @@ function MenuButton({ label, onClick }: { label: string; onClick?: () => void })
   );
 }
 
-function DropdownMenu({ label, items }: { label: string; items: { label: string; icon: React.ElementType; onClick: () => void }[] }) {
+function DropdownMenu({ label, icon: LabelIcon, items }: { label: string; icon?: React.ElementType; items: { label: string; icon: React.ElementType; onClick: () => void }[] }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="text-[10px] font-mono-code text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-surface-3 transition-colors uppercase tracking-wider flex items-center gap-0.5"
+        className="text-[10px] font-mono-code text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-surface-3 transition-colors uppercase tracking-wider flex items-center gap-1"
       >
+        {LabelIcon && <LabelIcon className="w-3 h-3 text-primary/70" />}
         {label} <ChevronDown className="w-2.5 h-2.5" />
       </button>
       {open && (
@@ -394,31 +395,34 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
 
       <Separator orientation="vertical" className="h-4 mx-1" />
 
-      {/* Category menus: Show, Scene, Location, Settings */}
+      {/* Category menus: Show, Scene, Location */}
       <div className="flex items-center gap-0.5">
         <DropdownMenu
           label="Show"
+          icon={Film}
           items={[
             { label: 'Show Settings', icon: Cog, onClick: () => onOpenPanel?.('showsettings') },
             { label: 'Show Summary', icon: FileBarChart, onClick: () => onOpenPanel?.('summary') },
-            { label: 'Approval', icon: Eye, onClick: () => onOpenPanel?.('approval') },
-            { label: 'Versioning', icon: Info, onClick: () => onOpenPanel?.('versioning') },
-            { label: 'Share', icon: Download, onClick: () => onOpenPanel?.('share') },
-            { label: 'Collaborate', icon: Info, onClick: () => onOpenPanel?.('collab') },
+            { label: 'Approval', icon: MessageSquare, onClick: () => onOpenPanel?.('approval') },
+            { label: 'Versioning', icon: History, onClick: () => onOpenPanel?.('versioning') },
+            { label: 'Share', icon: Share2, onClick: () => onOpenPanel?.('share') },
+            { label: 'Collaborate', icon: Users, onClick: () => onOpenPanel?.('collab') },
           ]}
         />
         <DropdownMenu
           label="Scene"
+          icon={Paintbrush}
           items={[
             { label: 'Scene Editor', icon: Paintbrush, onClick: () => onOpenPanel?.('scene') },
             { label: 'Weather', icon: Cloud, onClick: () => onOpenPanel?.('weather') },
             { label: 'Audience View', icon: Eye, onClick: () => onOpenPanel?.('audience') },
             { label: 'Sound Level', icon: Volume2, onClick: () => onOpenPanel?.('soundlevel') },
-            { label: 'Particles', icon: Info, onClick: () => onOpenPanel?.('particles') },
+            { label: 'Particles', icon: Atom, onClick: () => onOpenPanel?.('particles') },
           ]}
         />
         <DropdownMenu
           label="Location"
+          icon={MapPinned}
           items={[
             { label: 'Google Maps', icon: Globe, onClick: () => onOpenPanel?.('maps') },
             { label: 'Site Layout', icon: Map, onClick: () => onOpenPanel?.('sitelayout') },
@@ -483,6 +487,32 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
         </Button>
         {/* Batch add positions */}
         <BatchAddButton />
+
+        <Separator orientation="vertical" className="h-4 mx-1" />
+
+        {/* Multi-select toggle */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className={cn(
+            "h-7 px-2 text-[10px] font-mono-code gap-1",
+            editorMode === 'select' && "border border-primary/30"
+          )}
+          title="Multi-Select (hold Shift to add, or box-select)"
+          onClick={() => {
+            // Select all positions as a quick multi-select action
+            const store = useProjectStore.getState();
+            if (store.selectedPositionIds.length === store.positions.length) {
+              store.selectMultiplePositions([]);
+            } else {
+              store.selectMultiplePositions(store.positions.map(p => p.id));
+            }
+          }}
+        >
+          <BoxSelect className="h-3 w-3" />
+          <span className="hidden lg:inline">MULTI</span>
+        </Button>
+
         {editorMode !== 'select' && (
           <span className="text-[9px] font-mono-code text-muted-foreground ml-1 flex items-center gap-1">
             Click to place · <span className="text-primary">ESC</span> to stop
