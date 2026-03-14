@@ -595,12 +595,13 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
             mode === 'full-show' ? "Descreva o tema do show completo..."
             : mode === 'music-sync' ? "Descreva o estilo visual sincronizado com a música..."
             : mode === 'trajectory' ? "Descreva o padrão de movimento..."
+            : mode === 'image' ? "(Opcional) Descreva o que extrair da imagem..."
             : "Descreva a formação..."
           }
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !loading && prompt.trim()) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !loading) {
               e.preventDefault();
               handleGenerate();
             }
@@ -612,7 +613,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
         <div className="flex gap-1">
           <Button
             onClick={handleGenerate}
-            disabled={loading || !prompt.trim()}
+            disabled={loading || (mode !== 'image' && !prompt.trim()) || (mode === 'image' && !imageBase64)}
             className="flex-1 h-8 text-[10px] gap-1"
             size="sm"
           >
