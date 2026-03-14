@@ -247,17 +247,41 @@ function FormationQueue() {
     recalculateFormationTimings, setCurrentTime,
   } = useProjectStore();
   const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [dropTargetIdx, setDropTargetIdx] = useState<number | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
+  const [recentlyMoved, setRecentlyMoved] = useState<string | null>(null);
 
-  const handleDragStart = (idx: number) => setDragIdx(idx);
+  const handleDragStart = (e: React.DragEvent, idx: number) => {
+    setDragIdx(idx);
+    e.dataTransfer.effectAllowed = 'move';
+    // Make the drag image semi-transparent
+    if (e.currentTarget instanceof HTMLElement) {
+      e.dataTransfer.setDragImage(e.currentTarget, 0, 0);
+    }
+  };
   const handleDragOver = (e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDropTargetIdx(idx);
+  };
+  const handleDragLeave = () => setDropTargetIdx(null);
+  const handleDrop = (e: React.DragEvent, idx: number) => {
     e.preventDefault();
     if (dragIdx !== null && dragIdx !== idx) {
       reorderDroneFormation(dragIdx, idx);
-      setDragIdx(idx);
+      const movedId = droneFormations[dragIdx]?.id;
+      if (movedId) {
+        setRecentlyMoved(movedId);
+        setTimeout(() => setRecentlyMoved(null), 600);
+      }
     }
+    setDragIdx(null);
+    setDropTargetIdx(null);
   };
-  const handleDragEnd = () => setDragIdx(null);
+  const handleDragEnd = () => {
+    setDragIdx(null);
+    setDropTargetIdx(null);
+  };
 
   const totalDuration = droneFormations.reduce((s, f) => s + f.transitionDuration + f.holdDuration, 0);
 
