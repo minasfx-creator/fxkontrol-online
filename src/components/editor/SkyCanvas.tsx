@@ -139,9 +139,9 @@ const STAR_VERTEX_SHADER = `
     vLife = aLife;
     vSize = aSize;
     vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-    // Larger point size multiplier for more visible stars
-    gl_PointSize = aSize * (500.0 / -mvPos.z);
-    gl_PointSize = clamp(gl_PointSize, 1.0, 128.0);
+    // Increased multiplier for real-world scale (stars at 50-300m distance from camera)
+    gl_PointSize = aSize * (1800.0 / -mvPos.z);
+    gl_PointSize = clamp(gl_PointSize, 1.5, 200.0);
     gl_Position = projectionMatrix * mvPos;
   }
 `;
