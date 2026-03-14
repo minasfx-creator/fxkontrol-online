@@ -16,3 +16,7 @@ export { default as PrefireShell } from './PrefireShell';
 export { default as SmokeTrail } from './SmokeTrail';
 export { default as EmberParticles } from './EmberParticles';
 export { default as SparkShower } from './SparkShower';
+export { default as FogMachineEffect } from './FogMachineEffect';
+export { default as HazeMachineEffect } from './HazeMachineEffect';
+export { default as SnowMachineEffect } from './SnowMachineEffect';
+export { default as BubbleMachineEffect } from './BubbleMachineEffect';
