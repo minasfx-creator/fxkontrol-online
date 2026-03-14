@@ -178,7 +178,7 @@ export default function PrefireShell({
       })}
 
       {/* Shell head — bright comet */}
-      <mesh position={[wobbleX, shellY, wobbleZ]}>
+      <mesh position={[shellX + wobbleX, shellY, shellZ + wobbleZ]}>
         <sphereGeometry args={[headRadius, 8, 8]} />
         <meshBasicMaterial
           color="#FFFFDD"
@@ -189,7 +189,7 @@ export default function PrefireShell({
       </mesh>
 
       {/* Head glow halo */}
-      <mesh position={[wobbleX, shellY, wobbleZ]}>
+      <mesh position={[shellX + wobbleX, shellY, shellZ + wobbleZ]}>
         <sphereGeometry args={[headGlow, 12, 12]} />
         <meshBasicMaterial
           color={color}
