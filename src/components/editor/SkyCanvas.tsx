@@ -431,10 +431,10 @@ function FireworkBurst({
         const d1 = Math.exp(-dragCoeff * t1);
         const base2 = (i * TRAIL_LENGTH + s) * 6;
         tPos[base2] = vx * t0 * d0 + w[0] * t0 * t0 * 0.3;
-        tPos[base2 + 1] = vy * t0 * d0 + 0.5 * GRAVITY * t0 * t0 * 0.28;
+        tPos[base2 + 1] = vy * t0 * d0 + 0.5 * GRAVITY * t0 * t0 * 0.5;
         tPos[base2 + 2] = vz * t0 * d0 + w[2] * t0 * t0 * 0.3;
         tPos[base2 + 3] = vx * t1 * d1 + w[0] * t1 * t1 * 0.3;
-        tPos[base2 + 4] = vy * t1 * d1 + 0.5 * GRAVITY * t1 * t1 * 0.28;
+        tPos[base2 + 4] = vy * t1 * d1 + 0.5 * GRAVITY * t1 * t1 * 0.5;
         tPos[base2 + 5] = vz * t1 * d1 + w[2] * t1 * t1 * 0.3;
         
         const segFrac = s / TRAIL_LENGTH;
