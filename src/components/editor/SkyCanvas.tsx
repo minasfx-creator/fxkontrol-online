@@ -443,10 +443,16 @@ function TimelineEffects() {
         // ── Default: firework burst at break height with smoke + embers ──
         if (effect.type === 'firework') return (
           <group key={item.id}>
-            <FireworkBurst position={burstPos} color={effect.color} progress={progress} />
-            <SmokeTrail position={burstPos} progress={progress} intensity={caliber * 0.3} />
-            <EmberParticles position={pos} color={effect.color} progress={progress} spreadRadius={caliber * 2} startHeight={realBreakHeight * 0.8} />
-            {caliber >= 4 && <SparkShower position={pos} color={effect.color} progress={progress} height={realBreakHeight * 0.7} spread={caliber * 1.5} />}
+            <FireworkBurst 
+              position={burstPos} 
+              color={effect.color} 
+              progress={progress} 
+              caliber={caliber}
+              pattern={effect.pattern || 'peony'}
+            />
+            <SmokeTrail position={burstPos} progress={progress} intensity={caliber * 0.4} />
+            <EmberParticles position={pos} color={effect.color} progress={progress} spreadRadius={caliber * 3} startHeight={realBreakHeight * 0.8} />
+            {caliber >= 4 && <SparkShower position={pos} color={effect.color} progress={progress} height={realBreakHeight * 0.7} spread={caliber * 2} />}
           </group>
         );
         return <LightPoint key={item.id} position={pos} color={effect.color} />;
