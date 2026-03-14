@@ -87,8 +87,21 @@ export function getStarCount(caliberInches: number): number {
 }
 
 // Break speed by caliber (m/s) — initial velocity of stars at break
+// Based on Finale 3D real-world data: larger shells have higher internal pressure
 export function getBreakSpeed(caliberInches: number): number {
-  return 12 + caliberInches * 5;
+  const speeds: Record<number, number> = {
+    2: 18, 3: 28, 4: 38, 5: 48, 6: 58, 8: 72, 10: 85, 12: 95, 16: 110,
+  };
+  const keys = Object.keys(speeds).map(Number).sort((a, b) => a - b);
+  if (caliberInches <= keys[0]) return speeds[keys[0]];
+  if (caliberInches >= keys[keys.length - 1]) return speeds[keys[keys.length - 1]];
+  for (let i = 0; i < keys.length - 1; i++) {
+    if (caliberInches >= keys[i] && caliberInches <= keys[i + 1]) {
+      const t = (caliberInches - keys[i]) / (keys[i + 1] - keys[i]);
+      return speeds[keys[i]] * (1 - t) + speeds[keys[i + 1]] * t;
+    }
+  }
+  return 38;
 }
 
 // Safety distance (NFPA 1123)
