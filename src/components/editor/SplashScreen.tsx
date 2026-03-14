@@ -124,4 +124,6 @@ const SplashScreen = forwardRef<HTMLDivElement, SplashScreenProps>(function Spla
       </div>
     </div>
   );
-}
+});
+
+export default SplashScreen;
