@@ -203,6 +203,10 @@ export interface ProjectState {
   batchOffsetWaypoints: (trajectoryIds: string[], offset: { x: number; y: number; z: number }) => void;
   batchScaleWaypoints: (trajectoryIds: string[], scale: number) => void;
   setShowFormations: (show: boolean) => void;
+  reorderDroneFormation: (fromIndex: number, toIndex: number) => void;
+  duplicateDroneFormation: (id: string) => void;
+  clearAllFormations: () => void;
+  recalculateFormationTimings: () => void;
 }
 
 export const EFFECT_LIBRARY: Effect[] = [
