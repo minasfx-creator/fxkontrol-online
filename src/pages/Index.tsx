@@ -333,6 +333,7 @@ export default function Index() {
         {activePanel === 'geofence' && <GeofencePanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'storyboard' && <StoryboardPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'showcontrol' && <ShowControlPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'inspector' && <ShowInspectorPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
