@@ -48,7 +48,7 @@ import {
   SnowMachineEffect,
   BubbleMachineEffect,
 } from './effects';
-import { getLiftTime, getBreakHeight } from '@/lib/pyroPhysics';
+import { getLiftTime, getBreakHeight, getBreakSpeed } from '@/lib/pyroPhysics';
 import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
 import { temporalFlicker } from '@/lib/pyroNoise';
 // MiniMap removed per user request
