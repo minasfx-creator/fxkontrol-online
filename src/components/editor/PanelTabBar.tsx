@@ -236,7 +236,7 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
                             <TooltipTrigger asChild>
                               <button
                                 ref={el => {
-                                  if (el) buttonRefs.current.set(capturedIdx, el);
+                                  buttonRefs.current[capturedIdx] = el;
                                 }}
                                 onClick={() => onTogglePanel(id)}
                                 style={{
