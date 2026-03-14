@@ -119,7 +119,7 @@ export default function SplashScreen({ onStart }: SplashScreenProps) {
         </Button>
 
         <p className="text-[9px] text-muted-foreground/50 font-mono-code tracking-wider">
-          v3.0.0 · ZENITH ENGINE
+          v1.1.0 · ZENITH PRIME ENGINE
         </p>
       </div>
     </div>
