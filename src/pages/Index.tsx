@@ -61,6 +61,7 @@ import TemplateMarketplace from '@/components/editor/TemplateMarketplace';
 import SiteLayoutPanel from '@/components/editor/SiteLayoutPanel';
 import ShowSettingsPanel from '@/components/editor/ShowSettingsPanel';
 import ManufacturerCalibrationPanel from '@/components/editor/ManufacturerCalibrationPanel';
+import LiveFiringPanel from '@/components/editor/LiveFiringPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
