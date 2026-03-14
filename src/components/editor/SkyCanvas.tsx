@@ -524,7 +524,7 @@ function FireworkBurst({
           <bufferAttribute attach="attributes-position" args={[new Float32Array(trailVertCount * 3), 3]} />
           <bufferAttribute attach="attributes-color" args={[new Float32Array(trailVertCount * 3), 3]} />
         </bufferGeometry>
-        <lineBasicMaterial vertexColors transparent opacity={0.95} depthWrite={false} blending={THREE.AdditiveBlending} linewidth={2} />
+        <lineBasicMaterial vertexColors transparent opacity={0.9} depthWrite={false} blending={THREE.AdditiveBlending} linewidth={3} />
       </lineSegments>
       
       {/* ═══ Falling charcoal debris — Finale post-burnout embers ═══ */}
