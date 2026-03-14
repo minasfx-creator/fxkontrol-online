@@ -61,14 +61,15 @@ function MenuButton({ label, onClick }: { label: string; onClick?: () => void })
   );
 }
 
-function DropdownMenu({ label, items }: { label: string; items: { label: string; icon: React.ElementType; onClick: () => void }[] }) {
+function DropdownMenu({ label, icon: LabelIcon, items }: { label: string; icon?: React.ElementType; items: { label: string; icon: React.ElementType; onClick: () => void }[] }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="text-[10px] font-mono-code text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-surface-3 transition-colors uppercase tracking-wider flex items-center gap-0.5"
+        className="text-[10px] font-mono-code text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-surface-3 transition-colors uppercase tracking-wider flex items-center gap-1"
       >
+        {LabelIcon && <LabelIcon className="w-3 h-3 text-primary/70" />}
         {label} <ChevronDown className="w-2.5 h-2.5" />
       </button>
       {open && (
