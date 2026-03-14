@@ -1395,6 +1395,7 @@ export default function SkyCanvas() {
         <StageGround satelliteTexture={satelliteTexture} />
         {/* LaunchSites removed — user creates positions via toolbar */}
         <PositionPins />
+        <PyroLaunchAngles />
         <Rack3DView />
         <TrajectoryPaths />
         <DroneChoreography />
