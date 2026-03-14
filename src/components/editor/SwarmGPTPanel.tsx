@@ -532,6 +532,38 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
+        {/* Image upload section */}
+        {mode === 'image' && (
+          <div className="space-y-1.5 p-2 rounded-sm border border-primary/20 bg-primary/5">
+            <div className="flex items-center gap-1">
+              <Image className="w-3 h-3 text-primary" />
+              <span className="text-[9px] font-semibold text-primary uppercase">Imagem → Formação</span>
+            </div>
+            <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+            {imagePreview ? (
+              <div className="relative">
+                <img src={imagePreview} alt="Preview" className="w-full h-28 object-contain rounded border border-border/30 bg-black/50" />
+                <button
+                  onClick={() => { setImagePreview(null); setImageBase64(null); }}
+                  className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/60 flex items-center justify-center text-white/80 hover:text-white"
+                >
+                  <X className="w-2.5 h-2.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => imageInputRef.current?.click()}
+                className="w-full h-24 rounded border-2 border-dashed border-primary/30 flex flex-col items-center justify-center gap-1 hover:border-primary/50 transition-colors"
+              >
+                <Upload className="w-5 h-5 text-primary/50" />
+                <span className="text-[8px] text-primary/70">Arraste ou clique para enviar</span>
+                <span className="text-[7px] text-muted-foreground">PNG, JPG, SVG — logos, silhuetas, formas</span>
+              </button>
+            )}
+            <p className="text-[7px] text-muted-foreground">A IA extrairá a silhueta principal e posicionará os drones</p>
+          </div>
+        )}
+
         {/* Quick prompts */}
         <div className="space-y-1">
           <span className="text-[9px] text-muted-foreground font-semibold uppercase">
