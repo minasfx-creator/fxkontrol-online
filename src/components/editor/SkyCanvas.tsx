@@ -24,8 +24,33 @@ import GeofenceVisual from './GeofenceVisual';
 import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Globe, Download, ScanEye, Cog, Paintbrush, MapPinned, Film } from 'lucide-react';
 import SelectionStatusBar from './SelectionStatusBar';
 import { cn } from '@/lib/utils';
-import { CometEffect, ShockwaveEffect, MultiBurstEffect, FanEffect, MineEffect, RomanCandleEffect, WaterfallEffect, GerbEffect, FlameEffect, CryoJetEffect, LaserEffect, CakeEffect, ConfettiEffect, MovingHeadEffect, PrefireShell, SmokeTrail, EmberParticles, SparkShower } from './effects';
+import {
+  CometEffect,
+  ShockwaveEffect,
+  MultiBurstEffect,
+  FanEffect,
+  MineEffect,
+  RomanCandleEffect,
+  WaterfallEffect,
+  GerbEffect,
+  FlameEffect,
+  CryoJetEffect,
+  LaserEffect,
+  CakeEffect,
+  ConfettiEffect,
+  MovingHeadEffect,
+  PrefireShell,
+  SmokeTrail,
+  EmberParticles,
+  SparkShower,
+  FogMachineEffect,
+  HazeMachineEffect,
+  SnowMachineEffect,
+  BubbleMachineEffect,
+} from './effects';
 import { getLiftTime, getBreakHeight } from '@/lib/pyroPhysics';
+import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
+import { temporalFlicker } from '@/lib/pyroNoise';
 // MiniMap removed per user request
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
