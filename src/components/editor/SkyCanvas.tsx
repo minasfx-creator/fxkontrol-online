@@ -195,9 +195,9 @@ function FireworkBurst({
   const debrisRef = useRef<THREE.Points>(null);
   
   // Finale caliber scaling: star count proportional to shell volume
-  const STAR_COUNT = useMemo(() => Math.min(1200, Math.round(50 + caliber * caliber * 16)), [caliber]);
-  const TRAIL_LENGTH = useMemo(() => Math.min(16, 8 + Math.floor(caliber * 1.0)), [caliber]);
-  const DEBRIS_COUNT = useMemo(() => Math.min(300, Math.round(STAR_COUNT * 0.35)), [STAR_COUNT]);
+  const STAR_COUNT = useMemo(() => Math.min(2000, Math.round(80 + caliber * caliber * 24)), [caliber]);
+  const TRAIL_LENGTH = useMemo(() => Math.min(24, 12 + Math.floor(caliber * 1.5)), [caliber]);
+  const DEBRIS_COUNT = useMemo(() => Math.min(500, Math.round(STAR_COUNT * 0.4)), [STAR_COUNT]);
   
   // Finale break speed: derived from shell internal pressure (caliber-proportional)
   const breakSpeed = useMemo(() => 5 + caliber * 3.8, [caliber]);
