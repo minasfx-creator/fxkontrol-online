@@ -314,6 +314,61 @@ export default function Index() {
     );
   };
 
+  const handleMobileOpenPanel = useCallback((id: PanelId) => {
+    setActivePanel(id);
+    setMobileTab(null);
+    setMobilePanelHeight('half');
+  }, []);
+
+  // Mobile layout
+  if (isMobile) {
+    return (
+      <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
+        {/* Compact toolbar for mobile */}
+        <Toolbar onOpenPanel={(id) => handleTogglePanel(id as PanelId)} />
+
+        {/* Full viewport */}
+        <div className="flex-1 min-w-0 relative">
+          <Suspense fallback={<CanvasLoader />}>
+            <SkyCanvas />
+          </Suspense>
+          <BoxSelectOverlay />
+        </div>
+
+        {/* Mobile floating panel */}
+        <MobileFloatingPanel activeTab={mobileTab} height={mobilePanelHeight}>
+          {mobileTab === 'timeline' && <Timeline />}
+          {mobileTab === 'assets' && <EffectLibrary />}
+          {mobileTab === 'properties' && <PropertiesPanel />}
+          {mobileTab === 'more' && <MobileMoreMenu onSelectPanel={handleMobileOpenPanel} />}
+        </MobileFloatingPanel>
+
+        {/* Floating panel for "more" panels opened from grid */}
+        {activePanel && mobileTab === null && mobilePanelHeight !== 'collapsed' && (
+          <MobileFloatingPanel activeTab={'more' as MobileTab} height={mobilePanelHeight}>
+            {renderPanel()}
+          </MobileFloatingPanel>
+        )}
+
+        {/* Mobile tab bar */}
+        <MobileTabBar
+          activeTab={mobileTab}
+          onTabChange={setMobileTab}
+          onOpenPanel={(id) => handleTogglePanel(id as PanelId)}
+          panelHeight={mobilePanelHeight}
+          onPanelHeightChange={setMobilePanelHeight}
+        />
+
+        {/* Floating pop-up editors */}
+        {showPositionEditor && selectedPositionId && (
+          <PositionPopupEditor onClose={() => setShowPositionEditor(false)} />
+        )}
+        <PositionContextMenu />
+      </div>
+    );
+  }
+
+  // Desktop layout
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
       {/* Top toolbar */}
