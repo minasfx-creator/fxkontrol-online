@@ -135,7 +135,7 @@ function FireButton({ channel, onFire, onStop }: { channel: SFXChannel; onFire: 
 
 // ─── Main Panel ───
 export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
-  const { isPlaying, currentTime, setPlaying } = useProjectStore();
+  const { isPlaying, currentTime, setPlaying, positions } = useProjectStore();
   const [channels, setChannels] = useState<SFXChannel[]>(DEFAULT_CHANNELS);
   const [scenes, setScenes] = useState<DMXScene[]>([]);
   const [cues, setCues] = useState<DMXCue[]>([]);
