@@ -34,7 +34,9 @@ interface SkycSettings {
   showDuration: number;
   indoor: boolean;
   yawControl: boolean;
+  pyroControl: boolean;
   proposedMapping?: boolean;
+  cameraExport: boolean;
 }
 
 interface SkycEnvironment {
@@ -51,8 +53,21 @@ interface SkycDrone {
   trajectory: SkycTrajectorySegment[];
   lightProgram: SkycLightSegment[];
   yawControl: SkycYawSegment[];
+  pyroProgram: SkycPyroEvent[];
   startDelay: number;
   landPosition?: { x: number; y: number; z: number };
+}
+
+interface SkycPyroEvent {
+  t: number;
+  channel: number;
+  duration: number;
+  type: 'ignite' | 'burst' | 'continuous';
+}
+
+interface SkycCamera {
+  id: string;
+  keyframes: { t: number; position: { x: number; y: number; z: number }; lookAt: { x: number; y: number; z: number }; fov: number }[];
 }
 
 interface SkycTrajectorySegment {
@@ -374,6 +389,7 @@ export function exportSkyc(options: SkycExportOptions): SkycFile {
         : [{ t: 0, ...home, type: 'hold' as const, duration: options.duration }],
       lightProgram: buildLightProgram(options.formations, i),
       yawControl: [{ t: 0, yaw: pos.heading }],
+      pyroProgram: [],
       startDelay: i * (options.takeoffStaggerDelay ?? 0.3),
       landPosition: home,
     };
@@ -391,6 +407,8 @@ export function exportSkyc(options: SkycExportOptions): SkycFile {
       showDuration: options.duration,
       indoor: options.indoor ?? false,
       yawControl: true,
+      pyroControl: false,
+      cameraExport: false,
     },
     environment: {
       origin: {

@@ -67,6 +67,8 @@ import GeofencePanel from '@/components/editor/GeofencePanel';
 import StoryboardPanel from '@/components/editor/StoryboardPanel';
 import ShowControlPanel from '@/components/editor/ShowControlPanel';
 import ShowInspectorPanel from '@/components/editor/ShowInspectorPanel';
+import LightProgramPanel from '@/components/editor/LightProgramPanel';
+import SafetyCheckPanel from '@/components/editor/SafetyCheckPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
@@ -147,6 +149,8 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   storyboard: 'w-64',
   showcontrol: 'w-64',
   inspector: 'w-72',
+  lightprogram: 'w-72',
+  safetycheck: 'w-72',
 };
 
 export default function Index() {
@@ -334,6 +338,8 @@ export default function Index() {
         {activePanel === 'storyboard' && <StoryboardPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'showcontrol' && <ShowControlPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'inspector' && <ShowInspectorPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'lightprogram' && <LightProgramPanel />}
+        {activePanel === 'safetycheck' && <SafetyCheckPanel />}
       </div>
     );
   };
