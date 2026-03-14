@@ -385,12 +385,10 @@ function FireworkBurst({
       const fade = Math.max(0, 1 - age);
       const fadeSquared = fade * fade;
       const fadeCubed = fadeSquared * fade; // even smoother tail-off
-      const dragF = Math.exp(-dragCoeff * t);
-
-      // Euler integration with drag + real gravity + wind drift
-      const px = vx * t * dragF + w[0] * t * t * 0.3;
-      const py = vy * t * dragF + 0.5 * GRAVITY * t * t * 0.5;
-      const pz = vz * t * dragF + w[2] * t * t * 0.3;
+      // Proper analytical integration with exponential drag + real gravity + wind
+      const px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
+      const py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * t * t;
+      const pz = dragPos(vz, t, dragCoeff) + w[2] * t * t * 0.3;
       pos[i * 3] = px; pos[i * 3 + 1] = py; pos[i * 3 + 2] = pz;
 
       // === Finale HDR Color Pipeline ===
