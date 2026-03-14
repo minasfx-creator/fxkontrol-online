@@ -513,6 +513,3 @@ export default function ShowInspectorPanel({ onClose }: ShowInspectorPanelProps)
   );
 }
 
-function useCallback(fn: () => void, deps: unknown[]) {
-  return useMemo(() => fn, deps);
-}
