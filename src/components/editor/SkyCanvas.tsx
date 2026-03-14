@@ -756,6 +756,60 @@ function TimelineEffects() {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// Live SFX 3D — renders effects fired from the Live SFX Console
+// ═══════════════════════════════════════════════════════════════════════
+function LiveSFXEffects() {
+  const activeEffects = useLiveSfxStore((s) => s.activeEffects);
+
+  return (
+    <>
+      {activeEffects.map((fx) => {
+        const elapsed = (performance.now() - fx.startedAt) / fx.duration;
+        const progress = Math.min(1, Math.max(0, elapsed));
+        if (progress >= 1) return null;
+
+        const pos = fx.position;
+        const intensityScale = fx.intensity / 255;
+
+        switch (fx.type) {
+          case 'co2':
+          case 'cryo':
+            return <CryoJetEffect key={fx.id} position={pos} color={fx.color} progress={progress} height={6 * intensityScale + 2} />;
+          case 'flame':
+            return <FlameEffect key={fx.id} position={pos} color={fx.color} progress={progress} height={8 * intensityScale + 2} />;
+          case 'confetti':
+          case 'streamer':
+            return <ConfettiEffect key={fx.id} position={pos} color={fx.color} progress={progress} />;
+          case 'haze':
+            return <HazeMachineEffect key={fx.id} position={pos} color={fx.color} progress={progress} radius={12} />;
+          case 'spark':
+            return <SparkShower key={fx.id} position={pos} color={fx.color} progress={progress} height={6 * intensityScale + 2} spread={3} />;
+          default:
+            return <GerbEffect key={fx.id} position={pos} color={fx.color} progress={progress} height={4 * intensityScale + 1} />;
+        }
+      })}
+    </>
+  );
+}
+
+// We need to continuously re-render while live effects are active
+function LiveSFXUpdater() {
+  const activeEffects = useLiveSfxStore((s) => s.activeEffects);
+  const stopEffect = useLiveSfxStore((s) => s.stopEffect);
+
+  useFrame(() => {
+    const now = performance.now();
+    for (const fx of activeEffects) {
+      if (now - fx.startedAt > fx.duration) {
+        stopEffect(fx.id);
+      }
+    }
+  });
+
+  return null;
+}
+
 // ========================================================================
 // GOOGLE EARTH-STYLE — Atmospheric sky with realistic horizon
 // ========================================================================
