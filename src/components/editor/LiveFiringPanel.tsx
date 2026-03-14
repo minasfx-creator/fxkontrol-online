@@ -311,6 +311,81 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
     };
   }, []);
 
+  // Reset fired cues when playback restarts or time rewinds
+  useEffect(() => {
+    if (!isPlaying) {
+      firedCuesRef.current.clear();
+      setCueRunning(false);
+      setActiveCueId(null);
+    }
+  }, [isPlaying]);
+
+  // ── Timeline sync: fire cues automatically during playback ──
+  useEffect(() => {
+    if (!syncEnabled || !isPlaying || !masterArm || cues.length === 0) return;
+
+    setCueRunning(true);
+
+    for (const cue of cues) {
+      if (firedCuesRef.current.has(cue.id)) continue;
+
+      const scene = scenes.find(s => s.id === cue.sceneId);
+      if (!scene) continue;
+
+      // Check if current time has crossed the cue trigger point
+      const cueTotalDuration = (cue.fadeIn + cue.hold + cue.fadeOut) / 1000;
+      if (currentTime >= cue.time && currentTime < cue.time + cueTotalDuration) {
+        firedCuesRef.current.add(cue.id);
+        setActiveCueId(cue.id);
+
+        // Apply scene intensities to channels and fire
+        setChannels(prev => {
+          const updated = prev.map(ch => {
+            const sceneCh = scene.channels.find(sc => sc.channelId === ch.id);
+            if (!sceneCh || ch.locked) return ch;
+
+            // Calculate fade envelope
+            const elapsed = (currentTime - cue.time) * 1000; // ms
+            let envelope = 1;
+            if (elapsed < cue.fadeIn) {
+              envelope = elapsed / cue.fadeIn;
+            } else if (elapsed > cue.fadeIn + cue.hold) {
+              const fadeElapsed = elapsed - cue.fadeIn - cue.hold;
+              envelope = Math.max(0, 1 - fadeElapsed / cue.fadeOut);
+            }
+
+            return {
+              ...ch,
+              intensity: Math.round(sceneCh.intensity * envelope),
+              firing: true,
+            };
+          });
+          sendArtNetPacket(updated);
+          return updated;
+        });
+
+        // Schedule stop after full cue duration
+        const remaining = (cue.time + cueTotalDuration - currentTime) * 1000;
+        setTimeout(() => {
+          setChannels(prev => {
+            const updated = prev.map(ch => {
+              const sceneCh = scene.channels.find(sc => sc.channelId === ch.id);
+              if (!sceneCh) return ch;
+              return { ...ch, firing: false };
+            });
+            sendArtNetPacket(updated);
+            return updated;
+          });
+          setActiveCueId(null);
+        }, Math.max(50, remaining));
+
+        toast(`📋 CUE: ${scene.name}`, {
+          description: `T=${cue.time.toFixed(1)}s · Fade ${cue.fadeIn}ms → Hold ${cue.hold}ms → Out ${cue.fadeOut}ms`,
+        });
+      }
+    }
+  }, [currentTime, isPlaying, syncEnabled, masterArm, cues, scenes, sendArtNetPacket]);
+
   const armedCount = channels.filter(c => c.armed).length;
   const firingCount = channels.filter(c => c.firing).length;
   const selected = selectedChannel ? channels.find(c => c.id === selectedChannel) : null;
