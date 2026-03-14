@@ -138,6 +138,7 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
 };
 
 export default function Index() {
+  const isMobile = useIsMobile();
   const [activePanel, setActivePanel] = useState<PanelId | null>('properties');
   const [appPhase, setAppPhase] = useState<'splash' | 'globe' | 'editor'>('splash');
   const [fleetSize, setFleetSize] = useState(500);
@@ -145,6 +146,8 @@ export default function Index() {
   const [showLocation, setShowLocation] = useState<{ name: string; lat: number; lng: number } | null>(null);
   const [showPositionEditor, setShowPositionEditor] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [mobileTab, setMobileTab] = useState<MobileTab | null>(null);
+  const [mobilePanelHeight, setMobilePanelHeight] = useState<'collapsed' | 'half' | 'full'>('collapsed');
   const selectedPositionId = useProjectStore(s => s.selectedPositionId);
 
   // Undo/Redo keyboard shortcuts
