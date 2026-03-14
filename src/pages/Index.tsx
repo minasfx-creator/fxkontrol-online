@@ -66,6 +66,7 @@ import FleetManagementPanel from '@/components/editor/FleetManagementPanel';
 import GeofencePanel from '@/components/editor/GeofencePanel';
 import StoryboardPanel from '@/components/editor/StoryboardPanel';
 import ShowControlPanel from '@/components/editor/ShowControlPanel';
+import ShowInspectorPanel from '@/components/editor/ShowInspectorPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
@@ -145,6 +146,7 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   geofence: 'w-64',
   storyboard: 'w-64',
   showcontrol: 'w-64',
+  inspector: 'w-72',
 };
 
 export default function Index() {
@@ -331,6 +333,7 @@ export default function Index() {
         {activePanel === 'geofence' && <GeofencePanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'storyboard' && <StoryboardPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'showcontrol' && <ShowControlPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'inspector' && <ShowInspectorPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
