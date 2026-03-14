@@ -128,6 +128,7 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   pathplanner: 'w-64',
   marketplace: 'w-72',
   sitelayout: 'w-72',
+  showsettings: 'w-64',
 };
 
 export default function Index() {
