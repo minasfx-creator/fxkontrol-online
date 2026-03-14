@@ -338,6 +338,8 @@ export default function Index() {
         {activePanel === 'storyboard' && <StoryboardPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'showcontrol' && <ShowControlPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'inspector' && <ShowInspectorPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'lightprogram' && <LightProgramPanel />}
+        {activePanel === 'safetycheck' && <SafetyCheckPanel />}
       </div>
     );
   };
