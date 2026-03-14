@@ -1527,25 +1527,34 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
         </>
       )}
 
-      {/* Scale reference poles */}
-      {sc.showScalePoles && [-60, -30, 0, 30, 60].map((x) => (
-        <group key={`pole-${x}`} position={[x, 0, -45]}>
-          <mesh position={[0, 5, 0]} castShadow>
-            <cylinderGeometry args={[0.04, 0.05, 10, 8]} />
+      {/* Scale reference poles — real height markers matching firework break heights */}
+      {sc.showScalePoles && [-80, -40, 0, 40, 80].map((x) => (
+        <group key={`pole-${x}`} position={[x, 0, -60]}>
+          {/* Tall reference pole (100m) */}
+          <mesh position={[0, 50, 0]} castShadow>
+            <cylinderGeometry args={[0.08, 0.1, 100, 8]} />
             <meshStandardMaterial color="#555555" metalness={0.7} roughness={0.25} />
           </mesh>
-          {[2, 4, 6, 8, 10].map((h) => (
-            <mesh key={h} position={[0, h, 0]}>
-              <boxGeometry args={[0.15, 0.02, 0.15]} />
-              <meshBasicMaterial color="#888888" transparent opacity={0.4} />
-            </mesh>
+          {/* Height markers every 25m */}
+          {[25, 50, 75, 100].map((h) => (
+            <group key={h}>
+              <mesh position={[0, h, 0]}>
+                <boxGeometry args={[0.5, 0.05, 0.5]} />
+                <meshBasicMaterial color={h === 50 ? '#ffaa00' : h === 100 ? '#ff4444' : '#888888'} transparent opacity={0.5} />
+              </mesh>
+              {/* Height label billboard */}
+              <mesh position={[1.2, h, 0]}>
+                <planeGeometry args={[2, 0.6]} />
+                <meshBasicMaterial color={h === 100 ? '#ff4444' : '#666666'} transparent opacity={0.25} />
+              </mesh>
+            </group>
           ))}
-          <mesh position={[0, 10.15, 0]}>
-            <sphereGeometry args={[0.06, 8, 8]} />
-            <meshBasicMaterial color="#ffffff" />
+          <mesh position={[0, 100.3, 0]}>
+            <sphereGeometry args={[0.15, 8, 8]} />
+            <meshBasicMaterial color="#ff4444" />
           </mesh>
-          <mesh position={[0, 0.05, 0]}>
-            <cylinderGeometry args={[0.18, 0.22, 0.1, 8]} />
+          <mesh position={[0, 0.1, 0]}>
+            <cylinderGeometry args={[0.35, 0.45, 0.2, 8]} />
             <meshStandardMaterial color="#444444" metalness={0.6} roughness={0.3} />
           </mesh>
         </group>
