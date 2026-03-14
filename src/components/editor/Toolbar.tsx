@@ -349,31 +349,48 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
         <MenuButton label="New" onClick={handleNewProject} />
         <MenuButton label="Open" onClick={() => setBrowserOpen(true)} />
         <MenuButton label="Save" onClick={handleSave} />
-        <div className="relative">
-          <button
-            onClick={() => setExportMenuOpen(!exportMenuOpen)}
-            className="text-[10px] font-mono-code text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-surface-3 transition-colors uppercase tracking-wider flex items-center gap-0.5"
-          >
-            Export <ChevronDown className="w-2.5 h-2.5" />
-          </button>
-          {exportMenuOpen && (
-            <div className="absolute top-full left-0 mt-0.5 z-50 bg-surface-1 border border-border rounded-md shadow-lg py-1 min-w-[160px]"
-              onMouseLeave={() => setExportMenuOpen(false)}>
-              <button onClick={() => { handleExportVVIZ(); setExportMenuOpen(false); }}
-                className="w-full text-left px-3 py-1.5 text-[10px] font-mono-code text-muted-foreground hover:text-foreground hover:bg-surface-3 flex items-center gap-2">
-                <FileJson className="w-3 h-3" /> .vviz (Finale 3D)
-              </button>
-              <button onClick={() => { handleExportSkyc(); setExportMenuOpen(false); }}
-                className="w-full text-left px-3 py-1.5 text-[10px] font-mono-code text-muted-foreground hover:text-foreground hover:bg-surface-3 flex items-center gap-2">
-                <Download className="w-3 h-3" /> .skyc (SkyCreator)
-              </button>
-              <button onClick={() => { handleExportFiringCSV(); setExportMenuOpen(false); }}
-                className="w-full text-left px-3 py-1.5 text-[10px] font-mono-code text-muted-foreground hover:text-foreground hover:bg-surface-3 flex items-center gap-2">
-                <Download className="w-3 h-3" /> Firing CSV (Cobra/FireTEK)
-              </button>
-            </div>
-          )}
-        </div>
+        <DropdownMenu
+          label="Export"
+          items={[
+            { label: '.vviz (Finale 3D)', icon: FileJson, onClick: handleExportVVIZ },
+            { label: '.skyc (SkyCreator)', icon: Download, onClick: handleExportSkyc },
+            { label: 'Firing CSV (Cobra/FireTEK)', icon: Download, onClick: handleExportFiringCSV },
+          ]}
+        />
+      </div>
+
+      <Separator orientation="vertical" className="h-4 mx-1" />
+
+      {/* Category menus: Show, Scene, Location, Settings */}
+      <div className="flex items-center gap-0.5">
+        <DropdownMenu
+          label="Show"
+          items={[
+            { label: 'Show Settings', icon: Cog, onClick: () => onOpenPanel?.('showsettings') },
+            { label: 'Show Summary', icon: FileBarChart, onClick: () => onOpenPanel?.('summary') },
+            { label: 'Approval', icon: Eye, onClick: () => onOpenPanel?.('approval') },
+            { label: 'Versioning', icon: Info, onClick: () => onOpenPanel?.('versioning') },
+            { label: 'Share', icon: Download, onClick: () => onOpenPanel?.('share') },
+            { label: 'Collaborate', icon: Info, onClick: () => onOpenPanel?.('collab') },
+          ]}
+        />
+        <DropdownMenu
+          label="Scene"
+          items={[
+            { label: 'Scene Editor', icon: Paintbrush, onClick: () => onOpenPanel?.('scene') },
+            { label: 'Weather', icon: Cloud, onClick: () => onOpenPanel?.('weather') },
+            { label: 'Audience View', icon: Eye, onClick: () => onOpenPanel?.('audience') },
+            { label: 'Sound Level', icon: Volume2, onClick: () => onOpenPanel?.('soundlevel') },
+            { label: 'Particles', icon: Info, onClick: () => onOpenPanel?.('particles') },
+          ]}
+        />
+        <DropdownMenu
+          label="Location"
+          items={[
+            { label: 'Google Maps', icon: Globe, onClick: () => onOpenPanel?.('maps') },
+            { label: 'Site Layout', icon: Map, onClick: () => onOpenPanel?.('sitelayout') },
+          ]}
+        />
       </div>
 
       <Separator orientation="vertical" className="h-4 mx-1" />
