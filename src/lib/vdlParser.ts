@@ -311,18 +311,24 @@ export function parseVDL(input: string): VDLResult {
     }
   }
 
-  // ── Apply caliber-based Finale physics ──
-  const calScale = result.caliber / 3;
-  result.height = getFinaleBreakHeight(result.caliber);
-  result.prefire = getFinalePrefire(result.caliber);
-  result.safetyDistance = getFinaleSafetyDistance(result.caliber);
+  // ── Apply caliber-based manufacturer-calibrated physics ──
+  const calData = interpolateCaliberData(_activeProfile, result.caliber);
+  result.height = calData.heightM;
+  result.prefire = calData.prefireSec;
+  result.safetyDistance = calData.safetyM;
   
-  // Scale rendering parameters by caliber
-  result.spread = Math.round(result.spread * (0.8 + calScale * 0.35));
-  result.duration = Math.round(result.duration * (0.85 + calScale * 0.25) * 10) / 10;
-  result.starCount = Math.round(result.starCount * (0.6 + calScale * 0.6));
-  result.breakSpeed = Math.round(result.breakSpeed * (0.85 + calScale * 0.2) * 10) / 10;
-  result.cost = Math.round(5 * Math.pow(calScale, 1.8) * 10) / 10;
+  // Use type-specific base values scaled by manufacturer caliber data ratios
+  const refData = interpolateCaliberData(_activeProfile, 3); // 3" reference
+  const calRatio = {
+    spread: calData.spreadDeg / refData.spreadDeg,
+    stars: calData.starCount / refData.starCount,
+    speed: calData.breakSpeed / refData.breakSpeed,
+  };
+  result.spread = Math.round(result.spread * calRatio.spread);
+  result.duration = Math.round(result.duration * (0.85 + (result.caliber / 3) * 0.25) * 10) / 10;
+  result.starCount = Math.round(result.starCount * calRatio.stars);
+  result.breakSpeed = Math.round(result.breakSpeed * calRatio.speed * 10) / 10;
+  result.cost = Math.round(calData.costFactor * 10) / 10;
 
   // ── Apply adjustment scaling ──
   for (const adj of VDL_ADJUSTMENTS) {
