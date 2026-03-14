@@ -7,6 +7,7 @@ import { PerfCollector, PerformanceHUD, type PerfStats } from './PerformanceHUD'
 import ViewportTerminal, { pushLog } from './ViewportTerminal';
 import * as THREE from 'three';
 import PositionPins from './PositionPins';
+import PyroLaunchAngles from './PyroLaunchAngle';
 import PostProcessing from './PostProcessing';
 import { BoxSelectR3F } from './BoxSelectOverlay';
 import AlignmentTools from './AlignmentTools';
