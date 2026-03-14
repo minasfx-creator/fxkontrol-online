@@ -477,6 +477,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
         {([
           { id: 'single' as Mode, label: 'Formação', icon: Wand2 },
           { id: 'full-show' as Mode, label: 'Show', icon: Film },
+          { id: 'image' as Mode, label: 'Imagem', icon: Image },
           { id: 'music-sync' as Mode, label: 'Music', icon: Music },
           { id: 'trajectory' as Mode, label: 'Motion', icon: RotateCw },
         ]).map(({ id, label, icon: Icon }) => (
