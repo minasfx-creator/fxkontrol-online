@@ -7,7 +7,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   Flame, Wind, Sparkles, Zap, Play, Square, Plus, Trash2,
   AlertTriangle, Check, Radio, Lightbulb, ChevronDown, ChevronRight,
-  RotateCcw, Save, Upload, Lock, Unlock, Timer
+  RotateCcw, Save, Upload, Lock, Unlock, Timer, MapPinned
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +34,7 @@ interface SFXChannel {
   intensity: number; // 0-255
   color: string;
   locked: boolean;
+  positionId?: string; // linked pyro position for 3D visualization
 }
 
 interface DMXScene {
@@ -134,7 +135,7 @@ function FireButton({ channel, onFire, onStop }: { channel: SFXChannel; onFire: 
 
 // ─── Main Panel ───
 export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
-  const { isPlaying, currentTime, setPlaying } = useProjectStore();
+  const { isPlaying, currentTime, setPlaying, positions } = useProjectStore();
   const [channels, setChannels] = useState<SFXChannel[]>(DEFAULT_CHANNELS);
   const [scenes, setScenes] = useState<DMXScene[]>([]);
   const [cues, setCues] = useState<DMXCue[]>([]);
@@ -215,15 +216,25 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
     if (ch) {
       toast(`🔥 FIRED: ${ch.name}`, { description: `DMX U${ch.dmxUniverse}.${ch.dmxAddress} @ ${ch.intensity}/255 → Art-Net` });
 
-      // Push 3D visualization into the live SFX store
-      // Position based on channel index to spread effects across stage
-      const idx = channels.indexOf(ch);
-      const spread = 8; // meters between positions
-      const xPos = (idx - (channels.length - 1) / 2) * spread;
+      // Resolve 3D position from linked pyro position, or fallback to spread layout
+      let pos3d: [number, number, number];
+      if (ch.positionId) {
+        const linkedPos = positions.find(p => p.id === ch.positionId);
+        if (linkedPos) {
+          pos3d = [linkedPos.x, linkedPos.y, linkedPos.z];
+        } else {
+          const idx = channels.indexOf(ch);
+          pos3d = [(idx - (channels.length - 1) / 2) * 8, 0, 0];
+        }
+      } else {
+        const idx = channels.indexOf(ch);
+        pos3d = [(idx - (channels.length - 1) / 2) * 8, 0, 0];
+      }
+
       useLiveSfxStore.getState().fireEffect({
         id: ch.id,
         type: ch.type,
-        position: [xPos, 0, 0],
+        position: pos3d,
         color: ch.color,
         intensity: ch.intensity,
         startedAt: performance.now(),
@@ -526,24 +537,51 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
             {channels.map(ch => {
               const sfxType = SFX_TYPES.find(t => t.key === ch.type);
               return (
-                <div key={ch.id} className="flex items-center gap-2 p-1.5 rounded-md bg-muted/20 border border-border/30">
-                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: sfxType?.color }} />
-                  <span className="text-[10px] font-medium flex-1 truncate">{ch.name}</span>
-                  <Slider
-                    value={[ch.intensity]}
-                    min={0}
-                    max={255}
-                    step={1}
-                    onValueChange={([v]) => updateChannel(ch.id, { intensity: v })}
-                    className="w-24"
-                  />
-                  <span className="text-[9px] font-mono text-muted-foreground w-8 text-right">{ch.intensity}</span>
-                  <button
-                    onClick={() => updateChannel(ch.id, { locked: !ch.locked })}
-                    className="p-0.5 text-muted-foreground hover:text-foreground"
-                  >
-                    {ch.locked ? <Lock className="w-3 h-3 text-destructive" /> : <Unlock className="w-3 h-3" />}
-                  </button>
+                <div key={ch.id} className="space-y-1 p-1.5 rounded-md bg-muted/20 border border-border/30">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: sfxType?.color }} />
+                    <span className="text-[10px] font-medium flex-1 truncate">{ch.name}</span>
+                    <Slider
+                      value={[ch.intensity]}
+                      min={0}
+                      max={255}
+                      step={1}
+                      onValueChange={([v]) => updateChannel(ch.id, { intensity: v })}
+                      className="w-24"
+                    />
+                    <span className="text-[9px] font-mono text-muted-foreground w-8 text-right">{ch.intensity}</span>
+                    <button
+                      onClick={() => updateChannel(ch.id, { locked: !ch.locked })}
+                      className="p-0.5 text-muted-foreground hover:text-foreground"
+                    >
+                      {ch.locked ? <Lock className="w-3 h-3 text-destructive" /> : <Unlock className="w-3 h-3" />}
+                    </button>
+                  </div>
+                  {/* Position link */}
+                  <div className="flex items-center gap-1.5 pl-4">
+                    <MapPinned className="w-3 h-3 text-muted-foreground" />
+                    <Select
+                      value={ch.positionId || '__none__'}
+                      onValueChange={(v) => updateChannel(ch.id, { positionId: v === '__none__' ? undefined : v })}
+                    >
+                      <SelectTrigger className="h-5 text-[9px] flex-1 border-border/30 bg-transparent">
+                        <SelectValue placeholder="No position" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">
+                          <span className="text-muted-foreground">Auto (spread)</span>
+                        </SelectItem>
+                        {positions.map(p => (
+                          <SelectItem key={p.id} value={p.id}>
+                            <span className="flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: p.color }} />
+                              {p.name} <span className="text-muted-foreground ml-1">({p.x.toFixed(1)}, {p.z.toFixed(1)})</span>
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               );
             })}
