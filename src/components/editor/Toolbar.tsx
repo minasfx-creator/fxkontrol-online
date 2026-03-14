@@ -408,6 +408,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
             { label: 'Versioning', icon: History, onClick: () => onOpenPanel?.('versioning') },
             { label: 'Share', icon: Share2, onClick: () => onOpenPanel?.('share') },
             { label: 'Collaborate', icon: Users, onClick: () => onOpenPanel?.('collab') },
+            { label: 'Live SFX Console', icon: Zap, onClick: () => onOpenPanel?.('livefiring') },
           ]}
         />
         <DropdownMenu
