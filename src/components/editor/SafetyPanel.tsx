@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Shield, AlertTriangle, AlertOctagon, CheckCircle, Settings2, Fence, Zap, Activity, CircleDot } from 'lucide-react';
+import { Shield, AlertTriangle, AlertOctagon, CheckCircle, Settings2, Fence, Zap, Activity, CircleDot, ChevronDown, ChevronRight, Eye, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { useProjectStore } from '@/store/useProjectStore';
+import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import {
   runDeconfliction,
   runGeofenceCheck,
@@ -40,6 +40,15 @@ export default function SafetyPanel() {
   const [geofence, setGeofence] = useState<Geofence>(DEFAULT_GEOFENCE);
   const [showGeofenceSettings, setShowGeofenceSettings] = useState(false);
   const [showHCA, setShowHCA] = useState(true);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['hca', 'warnings']));
+
+  const toggleSection = (s: string) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(s)) next.delete(s); else next.add(s);
+      return next;
+    });
+  };
 
   // Classic deconfliction warnings
   const warnings = useMemo(() => {
@@ -58,9 +67,14 @@ export default function SafetyPanel() {
   const warningCount = warnings.filter((w) => w.severity === 'warning').length;
   const failsafeAction = hcaResult ? FAILSAFE_ACTIONS.find(a => a.level === hcaResult.escalation) : null;
 
+  // Safety stats
+  const pyroCount = timelineItems.filter(i => EFFECT_LIBRARY.find(e => e.id === i.effectId)?.type === 'firework').length;
+  const droneCount = droneFormations.reduce((s, f) => s + f.droneCount, 0);
+  const overlapZones = hcaResult?.riskVolumes.filter(v => v.type === 'overlap-zone').length || 0;
+
   return (
-    <div className="space-y-3">
-      {/* Header badge */}
+    <div className="space-y-2">
+      {/* Header with status indicator */}
       <div className="flex items-center gap-2">
         <Shield className="h-3.5 w-3.5 text-primary" />
         <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">Safety</h3>
@@ -84,22 +98,45 @@ export default function SafetyPanel() {
         )}
       </div>
 
-      {/* HCA Status Panel */}
-      <div className="bg-surface-2 rounded-sm p-2 space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <Zap className="h-3 w-3 text-muted-foreground" />
-            <span className="text-[10px] font-medium text-muted-foreground">HCA Cross-Validator</span>
+      {/* Quick safety stats */}
+      <div className="grid grid-cols-4 gap-1">
+        {[
+          { label: 'Pyro', value: pyroCount, color: pyroCount > 0 ? 'text-accent' : 'text-muted-foreground' },
+          { label: 'Drones', value: droneCount, color: droneCount > 0 ? 'text-primary' : 'text-muted-foreground' },
+          { label: 'Warnings', value: warningCount, color: warningCount > 0 ? 'text-yellow-400' : 'text-green-400' },
+          { label: 'Critical', value: criticalCount + overlapZones, color: (criticalCount + overlapZones) > 0 ? 'text-destructive' : 'text-green-400' },
+        ].map(s => (
+          <div key={s.label} className="bg-surface-2 rounded px-1.5 py-1 text-center">
+            <div className={cn("text-[11px] font-bold font-mono", s.color)}>{s.value}</div>
+            <div className="text-[7px] text-muted-foreground">{s.label}</div>
           </div>
+        ))}
+      </div>
+
+      {/* HCA Status Panel */}
+      <div className="bg-surface-2 rounded-sm overflow-hidden">
+        <button
+          className="w-full flex items-center gap-1.5 p-2 hover:bg-surface-3/50 transition-colors"
+          onClick={() => toggleSection('hca')}
+        >
+          {expandedSections.has('hca') ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
+          <Zap className="h-3 w-3 text-muted-foreground" />
+          <span className="text-[10px] font-medium text-muted-foreground flex-1 text-left">HCA Cross-Validator</span>
+          {hcaResult && (
+            <span className={cn("text-[8px] font-bold uppercase", ESCALATION_COLORS[hcaResult.escalation])}>
+              {failsafeAction?.label}
+            </span>
+          )}
           <Switch
             checked={showHCA}
             onCheckedChange={setShowHCA}
             className="h-4 w-7"
+            onClick={e => e.stopPropagation()}
           />
-        </div>
+        </button>
 
-        {showHCA && hcaResult && (
-          <div className="space-y-1.5">
+        {expandedSections.has('hca') && showHCA && hcaResult && (
+          <div className="px-2 pb-2 space-y-1.5">
             {/* Escalation level indicator */}
             <div className={cn(
               "rounded-sm p-1.5 border text-[10px]",
@@ -110,18 +147,30 @@ export default function SafetyPanel() {
                 <span className={cn("font-semibold uppercase", ESCALATION_COLORS[hcaResult.escalation])}>
                   {failsafeAction?.label}
                 </span>
+                {!failsafeAction?.automatic && (
+                  <span className="ml-auto text-[8px] text-destructive font-semibold">⚠ OPERATOR CONFIRM</span>
+                )}
               </div>
               <p className="text-[9px] text-muted-foreground mt-0.5">{failsafeAction?.description}</p>
-              {!failsafeAction?.automatic && (
-                <span className="text-[8px] text-destructive font-semibold mt-1 block">⚠ Requer confirmação do operador</span>
-              )}
+            </div>
+
+            {/* Failsafe escalation ladder */}
+            <div className="flex items-center gap-0.5">
+              {FAILSAFE_ACTIONS.map(fa => (
+                <div key={fa.level} className={cn(
+                  "flex-1 h-1.5 rounded-sm transition-colors",
+                  hcaResult.escalation === fa.level
+                    ? ESCALATION_BG[fa.level].replace('bg-', 'bg-').replace('/10', '/60')
+                    : "bg-surface-0"
+                )} title={fa.label} />
+              ))}
             </div>
 
             {/* Risk volumes summary */}
             {hcaResult.riskVolumes.length > 0 && (
               <div className="space-y-0.5">
-                <span className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Risk Volumes</span>
-                {hcaResult.riskVolumes.slice(0, 8).map(rv => (
+                <span className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Risk Volumes ({hcaResult.riskVolumes.length})</span>
+                {hcaResult.riskVolumes.slice(0, 6).map(rv => (
                   <div key={rv.id} className={cn(
                     "flex items-center gap-1 text-[9px] px-1 py-0.5 rounded-sm",
                     rv.type === 'overlap-zone' ? "bg-red-500/10 text-red-400" :
@@ -129,10 +178,13 @@ export default function SafetyPanel() {
                     "bg-blue-500/10 text-blue-400"
                   )}>
                     <CircleDot className="h-2.5 w-2.5 flex-shrink-0" />
-                    <span className="truncate">{rv.label}</span>
-                    <span className="ml-auto text-muted-foreground">{rv.radius.toFixed(0)}m</span>
+                    <span className="truncate flex-1">{rv.label}</span>
+                    <span className="text-muted-foreground font-mono text-[8px]">{rv.radius.toFixed(0)}m</span>
                   </div>
                 ))}
+                {hcaResult.riskVolumes.length > 6 && (
+                  <p className="text-[8px] text-muted-foreground text-center">+{hcaResult.riskVolumes.length - 6} more</p>
+                )}
               </div>
             )}
 
@@ -142,15 +194,15 @@ export default function SafetyPanel() {
                 <span className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">
                   Violations ({hcaResult.violations.length})
                 </span>
-                {hcaResult.violations.slice(0, 6).map((v, i) => (
+                {hcaResult.violations.slice(0, 5).map((v, i) => (
                   <div key={i} className="text-[9px] bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded-sm">
-                    <span className="font-mono-code">{v.subsystem.toUpperCase()}</span>
-                    <span className="text-muted-foreground"> · </span>
-                    {v.message}
+                    <span className="font-mono-code font-bold">{v.subsystem.toUpperCase()}</span>
+                    <span className="text-muted-foreground"> t={v.timestamp.toFixed(1)}s </span>
+                    <span className="text-foreground/70">{v.message.slice(0, 80)}</span>
                   </div>
                 ))}
-                {hcaResult.violations.length > 6 && (
-                  <p className="text-[8px] text-muted-foreground text-center">+{hcaResult.violations.length - 6} more</p>
+                {hcaResult.violations.length > 5 && (
+                  <p className="text-[8px] text-muted-foreground text-center">+{hcaResult.violations.length - 5} more</p>
                 )}
               </div>
             )}
@@ -158,9 +210,9 @@ export default function SafetyPanel() {
         )}
       </div>
 
-      {/* Geofence toggle + settings */}
-      <div className="bg-surface-2 rounded-sm p-2 space-y-2">
-        <div className="flex items-center justify-between">
+      {/* Geofence */}
+      <div className="bg-surface-2 rounded-sm overflow-hidden">
+        <div className="flex items-center justify-between p-2">
           <div className="flex items-center gap-1.5">
             <Fence className="h-3 w-3 text-muted-foreground" />
             <span className="text-[10px] font-medium text-muted-foreground">Geofence</span>
@@ -183,61 +235,91 @@ export default function SafetyPanel() {
         </div>
 
         {showGeofenceSettings && geofence.enabled && (
-          <div className="grid grid-cols-2 gap-1.5 text-[10px]">
-            {(['X', 'Y', 'Z'] as const).map((axis) => {
-              const minKey = `min${axis}` as keyof Geofence;
-              const maxKey = `max${axis}` as keyof Geofence;
-              return (
-                <div key={axis} className="col-span-2 grid grid-cols-5 gap-1 items-center">
-                  <span className="font-mono-code text-muted-foreground">{axis}</span>
-                  <Input
-                    type="number"
-                    value={geofence[minKey] as number}
-                    onChange={(e) => setGeofence({ ...geofence, [minKey]: parseFloat(e.target.value) || 0 })}
-                    className="h-5 text-[10px] font-mono-code px-1 bg-surface-0 border-border col-span-2"
-                    placeholder="min"
-                  />
-                  <Input
-                    type="number"
-                    value={geofence[maxKey] as number}
-                    onChange={(e) => setGeofence({ ...geofence, [maxKey]: parseFloat(e.target.value) || 0 })}
-                    className="h-5 text-[10px] font-mono-code px-1 bg-surface-0 border-border col-span-2"
-                    placeholder="max"
-                  />
-                </div>
-              );
-            })}
+          <div className="px-2 pb-2">
+            <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+              {(['X', 'Y', 'Z'] as const).map((axis) => {
+                const minKey = `min${axis}` as keyof Geofence;
+                const maxKey = `max${axis}` as keyof Geofence;
+                return (
+                  <div key={axis} className="col-span-2 grid grid-cols-5 gap-1 items-center">
+                    <span className="font-mono-code text-muted-foreground font-bold">{axis}</span>
+                    <Input
+                      type="number"
+                      value={geofence[minKey] as number}
+                      onChange={(e) => setGeofence({ ...geofence, [minKey]: parseFloat(e.target.value) || 0 })}
+                      className="h-5 text-[10px] font-mono-code px-1 bg-surface-0 border-border col-span-2"
+                      placeholder="min"
+                    />
+                    <Input
+                      type="number"
+                      value={geofence[maxKey] as number}
+                      onChange={(e) => setGeofence({ ...geofence, [maxKey]: parseFloat(e.target.value) || 0 })}
+                      className="h-5 text-[10px] font-mono-code px-1 bg-surface-0 border-border col-span-2"
+                      placeholder="max"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            {/* Visual geofence box dimensions */}
+            <div className="mt-1.5 text-[8px] text-muted-foreground font-mono text-center">
+              {(geofence.maxX - geofence.minX).toFixed(0)} × {(geofence.maxY - geofence.minY).toFixed(0)} × {(geofence.maxZ - geofence.minZ).toFixed(0)}m
+            </div>
           </div>
         )}
       </div>
 
       {/* Warning list */}
       {warnings.length > 0 && (
-        <div className="space-y-1 max-h-40 overflow-y-auto">
-          {warnings.slice(0, 20).map((w, i) => (
-            <div
-              key={i}
-              className={cn(
-                "px-2 py-1 rounded-sm text-[9px] font-mono-code border-l-2",
-                w.severity === 'critical'
-                  ? "bg-destructive/10 text-destructive border-destructive"
-                  : "bg-yellow-500/10 text-yellow-400 border-yellow-500"
+        <div className="bg-surface-2 rounded-sm overflow-hidden">
+          <button
+            className="w-full flex items-center gap-1.5 p-2 hover:bg-surface-3/50 transition-colors"
+            onClick={() => toggleSection('warnings')}
+          >
+            {expandedSections.has('warnings') ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
+            <AlertTriangle className="h-3 w-3 text-yellow-400" />
+            <span className="text-[10px] font-medium text-muted-foreground flex-1 text-left">
+              Deconfliction ({warnings.length})
+            </span>
+          </button>
+          {expandedSections.has('warnings') && (
+            <div className="px-2 pb-2 space-y-1 max-h-40 overflow-y-auto">
+              {warnings.slice(0, 20).map((w, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "px-2 py-1 rounded-sm text-[9px] font-mono-code border-l-2",
+                    w.severity === 'critical'
+                      ? "bg-destructive/10 text-destructive border-destructive"
+                      : "bg-yellow-500/10 text-yellow-400 border-yellow-500"
+                  )}
+                >
+                  <div className="flex items-center gap-1">
+                    {w.severity === 'critical' ? (
+                      <AlertOctagon className="h-2.5 w-2.5 flex-shrink-0" />
+                    ) : (
+                      <AlertTriangle className="h-2.5 w-2.5 flex-shrink-0" />
+                    )}
+                    <span className="font-bold">{w.type === 'geofence' ? 'GEOFENCE' : 'DECONFLICT'}</span>
+                    <span className="text-muted-foreground ml-auto text-[8px]">t={w.time.toFixed(1)}s</span>
+                  </div>
+                  <p className="mt-0.5 text-foreground/80">{w.message}</p>
+                </div>
+              ))}
+              {warnings.length > 20 && (
+                <p className="text-[9px] text-muted-foreground text-center">+{warnings.length - 20} more</p>
               )}
-            >
-              <div className="flex items-center gap-1">
-                {w.severity === 'critical' ? (
-                  <AlertOctagon className="h-2.5 w-2.5 flex-shrink-0" />
-                ) : (
-                  <AlertTriangle className="h-2.5 w-2.5 flex-shrink-0" />
-                )}
-                <span>{w.type === 'geofence' ? 'GEOFENCE' : 'DECONFLICT'}</span>
-              </div>
-              <p className="mt-0.5 text-foreground/80">{w.message}</p>
             </div>
-          ))}
-          {warnings.length > 20 && (
-            <p className="text-[9px] text-muted-foreground text-center">+{warnings.length - 20} more</p>
           )}
+        </div>
+      )}
+
+      {/* No issues */}
+      {warnings.length === 0 && (!hcaResult || hcaResult.valid) && (
+        <div className="text-center py-3">
+          <CheckCircle className="h-5 w-5 text-green-400 mx-auto mb-1" />
+          <p className="text-[10px] text-green-400 font-semibold">All Safety Checks Passed</p>
+          <p className="text-[8px] text-muted-foreground mt-0.5">No conflicts detected in current show design</p>
         </div>
       )}
     </div>
