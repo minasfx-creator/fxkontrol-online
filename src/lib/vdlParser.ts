@@ -168,9 +168,32 @@ const CALIBER_MM_REGEX = /(\d+)\s*mm/i;
 const COLOR_TRANSITION_REGEX = /(\w+)\s+(?:to|a)\s+(\w+)/i;
 
 // ═══════════════════════════════════════════════════════════════════════
-// Finale caliber → break height lookup (real-world data)
+// Calibration-aware lookups — uses active manufacturer profile
 // ═══════════════════════════════════════════════════════════════════════
+import { interpolateCaliberData, MANUFACTURER_PROFILES, type ManufacturerProfile } from './manufacturerCalibration';
+
+let _activeProfile: ManufacturerProfile = MANUFACTURER_PROFILES[0];
+
+/** Set the active manufacturer profile for VDL parsing */
+export function setVDLManufacturerProfile(profile: ManufacturerProfile) {
+  _activeProfile = profile;
+}
+
+export function getVDLManufacturerProfile(): ManufacturerProfile {
+  return _activeProfile;
+}
+
 function getFinaleBreakHeight(caliberInches: number): number {
+  return interpolateCaliberData(_activeProfile, caliberInches).heightM;
+}
+
+function getFinalePrefire(caliberInches: number): number {
+  return interpolateCaliberData(_activeProfile, caliberInches).prefireSec;
+}
+
+function getFinaleSafetyDistance(caliberInches: number): number {
+  return interpolateCaliberData(_activeProfile, caliberInches).safetyM;
+}
   const heights: Record<number, number> = {
     1: 20, 1.5: 28, 2: 35, 2.5: 45, 3: 55, 4: 80, 5: 110,
     6: 140, 8: 190, 10: 240, 12: 280, 16: 320,
