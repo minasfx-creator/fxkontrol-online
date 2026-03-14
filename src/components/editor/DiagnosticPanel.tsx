@@ -1,15 +1,17 @@
 import { useState, useCallback } from 'react';
-import { X, ShieldCheck, AlertTriangle, CheckCircle2, Play, Loader2 } from 'lucide-react';
+import { X, ShieldCheck, AlertTriangle, CheckCircle2, Play, Loader2, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useProjectStore } from '@/store/useProjectStore';
+import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { pushLog } from './ViewportTerminal';
 import { cn } from '@/lib/utils';
+import { getSafetyDistance } from '@/lib/pyroPhysics';
 
 interface DiagResult {
   id: string;
   label: string;
   status: 'pass' | 'warn' | 'fail' | 'pending';
   detail: string;
+  suggestion?: string;
 }
 
 export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
@@ -34,9 +36,10 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
       label: 'Fleet Population',
       status: totalDrones > 0 ? 'pass' : 'warn',
       detail: totalDrones > 0 ? `${totalDrones} drones ativos` : 'Nenhum drone configurado',
+      suggestion: totalDrones === 0 ? 'Adicione formações de drones no painel lateral' : undefined,
     });
 
-    // 2. Proximity check (simplified)
+    // 2. Proximity check
     let proximityConflicts = 0;
     droneFormations.forEach((f) => {
       for (let i = 0; i < f.points.length; i++) {
@@ -52,6 +55,7 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
       label: 'Proximity Conflicts',
       status: proximityConflicts === 0 ? 'pass' : proximityConflicts < 5 ? 'warn' : 'fail',
       detail: proximityConflicts === 0 ? '0 conflitos' : `${proximityConflicts} pares < 1.5m`,
+      suggestion: proximityConflicts > 0 ? 'Aumente o espaçamento entre drones ou reduza a contagem' : undefined,
     });
 
     // 3. Geofence check
@@ -61,6 +65,7 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
       label: 'Geofence Validation',
       status: maxRadius <= 80 ? 'pass' : 'fail',
       detail: maxRadius <= 80 ? `Raio máx: ${maxRadius.toFixed(0)}m (≤80m)` : `Raio ${maxRadius.toFixed(0)}m excede geofence`,
+      suggestion: maxRadius > 80 ? 'Reduza o raio das formações para ≤80m' : undefined,
     });
 
     // 4. Battery estimation
@@ -70,6 +75,7 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
       label: 'Battery Estimate',
       status: estimatedFlightTime <= 15 ? 'pass' : estimatedFlightTime <= 25 ? 'warn' : 'fail',
       detail: `Show: ${estimatedFlightTime.toFixed(1)}min — ${estimatedFlightTime <= 15 ? 'Confortável' : estimatedFlightTime <= 25 ? 'Margem reduzida' : 'Excede autonomia'}`,
+      suggestion: estimatedFlightTime > 25 ? 'Reduza a duração total do show ou divida em segmentos' : undefined,
     });
 
     // 5. Timeline coverage
@@ -79,14 +85,18 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
       label: 'Timeline Coverage',
       status: hasTimelineItems ? 'pass' : 'warn',
       detail: hasTimelineItems ? `${timelineItems.length} eventos na timeline` : 'Timeline vazia',
+      suggestion: !hasTimelineItems ? 'Arraste efeitos da biblioteca para a timeline' : undefined,
     });
 
     // 6. Position count
+    const pyroPositions = positions.filter(p => p.type === 'pyro');
+    const dronePositions = positions.filter(p => p.type === 'drone-pad');
     checks.push({
       id: 'positions',
       label: 'Launch Positions',
       status: positions.length > 0 ? 'pass' : 'warn',
-      detail: `${positions.length} posições definidas`,
+      detail: `${pyroPositions.length} pyro, ${dronePositions.length} drone pads`,
+      suggestion: positions.length === 0 ? 'Crie posições no viewport usando a toolbar' : undefined,
     });
 
     // 7. Trajectory validation
@@ -96,9 +106,52 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
       label: 'Trajectory Integrity',
       status: orphanTrajectories.length === 0 ? 'pass' : 'warn',
       detail: orphanTrajectories.length === 0 ? `${trajectories.length} trajetórias válidas` : `${orphanTrajectories.length} trajetórias com <2 waypoints`,
+      suggestion: orphanTrajectories.length > 0 ? 'Adicione waypoints às trajetórias incompletas' : undefined,
     });
 
-    // 8. SMPTE sync
+    // 8. Unlinked timeline items — effects not bound to any position
+    const unlinkedItems = timelineItems.filter(item => {
+      const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      if (!effect || effect.type === 'drone') return false;
+      return !item.positionId && (!item.positionIds || item.positionIds.length === 0);
+    });
+    checks.push({
+      id: 'unlinked',
+      label: 'Position Linking',
+      status: unlinkedItems.length === 0 ? 'pass' : 'warn',
+      detail: unlinkedItems.length === 0
+        ? 'Todos os efeitos vinculados a posições'
+        : `${unlinkedItems.length} efeitos sem posição vinculada`,
+      suggestion: unlinkedItems.length > 0 ? 'Vincule efeitos a posições pyro para disparo preciso' : undefined,
+    });
+
+    // 9. Safety distance validation
+    let safetyViolations = 0;
+    pyroPositions.forEach(pos => {
+      const linkedItems = timelineItems.filter(
+        t => t.positionId === pos.id || t.positionIds?.includes(pos.id)
+      );
+      linkedItems.forEach(item => {
+        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+        if (effect?.caliber) {
+          const safeDist = getSafetyDistance(effect.caliber);
+          // Check distance to audience area (z > 0 = front)
+          const distToAudience = Math.abs(pos.z);
+          if (distToAudience < safeDist * 0.5) safetyViolations++;
+        }
+      });
+    });
+    checks.push({
+      id: 'safety',
+      label: 'NFPA Safety Distance',
+      status: safetyViolations === 0 ? 'pass' : 'fail',
+      detail: safetyViolations === 0
+        ? 'Todas as distâncias de segurança OK'
+        : `${safetyViolations} violações de distância NFPA 1123`,
+      suggestion: safetyViolations > 0 ? 'Mova posições pyro para longe da área do público' : undefined,
+    });
+
+    // 10. SMPTE sync
     checks.push({
       id: 'smpte',
       label: 'SMPTE / Sync Lock',
@@ -106,18 +159,48 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
       detail: 'Timecode sync disponível',
     });
 
+    // 11. Duration sanity
+    checks.push({
+      id: 'duration',
+      label: 'Show Duration',
+      status: duration > 0 && duration <= 3600 ? 'pass' : duration === 0 ? 'warn' : 'fail',
+      detail: duration === 0 ? 'Duração não definida' : `${(duration / 60).toFixed(1)} minutos`,
+      suggestion: duration === 0 ? 'Defina a duração do show nas configurações' : undefined,
+    });
+
     // Simulate processing delay
-    await new Promise((r) => setTimeout(r, 800));
+    await new Promise((r) => setTimeout(r, 600));
     setResults(checks);
     setRunning(false);
 
     const failures = checks.filter((c) => c.status === 'fail').length;
     const warnings = checks.filter((c) => c.status === 'warn').length;
+    const passes = checks.length - failures - warnings;
     pushLog(
-      `E2E SCAN COMPLETE: ${failures} falhas, ${warnings} avisos, ${checks.length - failures - warnings} OK`,
+      `E2E SCAN COMPLETE: ${failures} falhas, ${warnings} avisos, ${passes} OK`,
       failures > 0 ? 'error' : warnings > 0 ? 'warn' : 'success'
     );
   }, [droneFormations, positions, trajectories, timelineItems, duration]);
+
+  const exportReport = useCallback(() => {
+    if (results.length === 0) return;
+    const lines = [
+      '═══ E2E DIAGNOSTIC REPORT ═══',
+      `Date: ${new Date().toISOString()}`,
+      `Positions: ${positions.length} | Timeline: ${timelineItems.length} | Formations: ${droneFormations.length}`,
+      '',
+      ...results.map(r => `[${r.status.toUpperCase()}] ${r.label}: ${r.detail}${r.suggestion ? ` → ${r.suggestion}` : ''}`),
+      '',
+      `Summary: ${results.filter(r => r.status === 'fail').length} FAIL, ${results.filter(r => r.status === 'warn').length} WARN, ${results.filter(r => r.status === 'pass').length} PASS`,
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `diagnostic-report-${Date.now()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [results, positions, timelineItems, droneFormations]);
 
   const statusIcon = (s: DiagResult['status']) => {
     switch (s) {
@@ -127,6 +210,10 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
       default: return <div className="w-3 h-3 rounded-full bg-muted-foreground/30" />;
     }
   };
+
+  const failCount = results.filter(r => r.status === 'fail').length;
+  const warnCount = results.filter(r => r.status === 'warn').length;
+  const passCount = results.filter(r => r.status === 'pass').length;
 
   return (
     <div className="h-full flex flex-col bg-surface-0 border-l border-border">
@@ -142,18 +229,32 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
-      <div className="p-2">
+      <div className="p-2 flex gap-1">
         <Button
           onClick={runDiagnostic}
           disabled={running}
           variant="outline"
           size="sm"
-          className="w-full h-7 text-[9px] gap-1"
+          className="flex-1 h-7 text-[9px] gap-1"
         >
           {running ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
           {running ? 'Scanning...' : 'Run Full Diagnostic'}
         </Button>
+        {results.length > 0 && (
+          <Button onClick={exportReport} variant="ghost" size="sm" className="h-7 px-2" title="Export report">
+            <Download className="w-3 h-3" />
+          </Button>
+        )}
       </div>
+
+      {/* Summary bar */}
+      {results.length > 0 && (
+        <div className="px-2 pb-1 flex gap-2 text-[9px] font-mono-code">
+          <span className="text-green-400">✓ {passCount}</span>
+          <span className="text-yellow-400">⚠ {warnCount}</span>
+          <span className="text-red-400">✗ {failCount}</span>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
         {results.length === 0 && !running && (
@@ -173,6 +274,9 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
               <span className="font-bold text-foreground">{r.label}</span>
             </div>
             <p className="text-muted-foreground mt-0.5 pl-[18px]">{r.detail}</p>
+            {r.suggestion && (
+              <p className="text-primary/70 mt-0.5 pl-[18px] italic">💡 {r.suggestion}</p>
+            )}
           </div>
         ))}
       </div>
