@@ -85,7 +85,7 @@ function PlaybackClock() {
 }
 
 // --- Particle system ---
-const GRAVITY = -5.5; // Slightly stronger gravity for more realistic arcs
+const GRAVITY = -9.81; // Real-world gravity for accurate ballistics
 
 function getWindForce(): [number, number, number] {
   const { wind } = useProjectStore.getState();
@@ -97,8 +97,12 @@ function getWindForce(): [number, number, number] {
 }
 
 /**
- * FireworkBurst — Ultra-realistic shell burst renderer
- * Caliber-aware with pattern support, proper star counts, trails, and physics
+ * FireworkBurst — Finale 3D-grade shell burst renderer
+ * - Real 9.81 gravity with proper quadratic drag
+ * - HDR color pipeline: white-hot → saturated → ember → charcoal
+ * - Caliber-proportional star count, size, trail length, break flash
+ * - Stochastic twinkle with per-star phase offsets
+ * - Multi-layer trails with thermal gradient
  */
 function FireworkBurst({ 
   position, color, progress, caliber = 4, pattern = 'peony' 
@@ -109,80 +113,104 @@ function FireworkBurst({
   const pointsRef = useRef<THREE.Points>(null);
   const trailRef = useRef<THREE.LineSegments>(null);
   
-  // Scale particle count by caliber — bigger shells = more stars
-  const STAR_COUNT = useMemo(() => Math.min(600, Math.round(80 + caliber * caliber * 12)), [caliber]);
-  const TRAIL_LENGTH = 8;
-  const breakSpeed = useMemo(() => 8 + caliber * 4, [caliber]);
+  // Caliber-proportional star count: 2"=100, 4"=280, 6"=530, 8"=850, 12"=1800
+  const STAR_COUNT = useMemo(() => Math.min(900, Math.round(60 + caliber * caliber * 14)), [caliber]);
+  const TRAIL_LENGTH = useMemo(() => Math.min(12, 6 + Math.floor(caliber * 0.8)), [caliber]);
+  
+  // Break speed: bigger shells burst more energetically
+  const breakSpeed = useMemo(() => 6 + caliber * 3.5, [caliber]);
+  
+  // Star lifetime depends on pattern and caliber
   const starLife = useMemo(() => {
-    const base = 1.0 + caliber * 0.4;
-    if (pattern === 'willow' || pattern === 'kamuro') return base * 2.5;
-    if (pattern === 'palm' || pattern === 'brocade') return base * 1.6;
+    const base = 1.2 + caliber * 0.35;
+    if (pattern === 'willow' || pattern === 'kamuro') return base * 2.8;
+    if (pattern === 'palm' || pattern === 'brocade') return base * 1.8;
+    if (pattern === 'chrysanthemum') return base * 1.3;
+    if (pattern === 'dahlia') return base * 0.6;
     return base;
   }, [caliber, pattern]);
   
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
+  // Pre-compute a warm ember color for fade-out
+  const emberColor = useMemo(() => {
+    const c = new THREE.Color(color);
+    // Shift toward deep orange/red for dying stars
+    return new THREE.Color().setHSL(
+      Math.min(c.getHSL({ h: 0, s: 0, l: 0 }).h, 0.08),
+      0.9,
+      0.15
+    );
+  }, [color]);
   
-  const { velocities, lifetimes } = useMemo(() => {
+  const { velocities, lifetimes, twinklePhases } = useMemo(() => {
     const v = new Float32Array(STAR_COUNT * 3);
     const l = new Float32Array(STAR_COUNT);
+    const tp = new Float32Array(STAR_COUNT);
     
     for (let i = 0; i < STAR_COUNT; i++) {
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
       let vx: number, vy: number, vz: number;
-      let life = starLife * (0.7 + Math.random() * 0.3);
-      const speedVar = 0.65 + Math.random() * 0.35;
+      let life = starLife * (0.65 + Math.random() * 0.35);
+      const speedVar = 0.6 + Math.random() * 0.4;
+      tp[i] = Math.random() * Math.PI * 2; // twinkle phase
       
       switch (pattern) {
         case 'willow':
-          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.5 * speedVar;
-          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.5 * speedVar;
-          vz = Math.cos(phi) * breakSpeed * 0.5 * speedVar;
-          life = starLife * (1.5 + Math.random() * 1.0);
+          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.45 * speedVar;
+          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.45 * speedVar;
+          vz = Math.cos(phi) * breakSpeed * 0.45 * speedVar;
+          life = starLife * (1.4 + Math.random() * 1.2);
           break;
         case 'palm':
-          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.6 * speedVar;
-          vy = Math.abs(Math.sin(phi) * Math.sin(theta)) * breakSpeed + breakSpeed * 0.35;
-          vz = Math.cos(phi) * breakSpeed * 0.6 * speedVar;
-          life = starLife * (1.3 + Math.random() * 0.5);
+          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.55 * speedVar;
+          vy = Math.abs(Math.sin(phi) * Math.sin(theta)) * breakSpeed * 0.9 + breakSpeed * 0.4;
+          vz = Math.cos(phi) * breakSpeed * 0.55 * speedVar;
+          life = starLife * (1.2 + Math.random() * 0.5);
           break;
         case 'chrysanthemum':
           vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * speedVar;
-          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.9 * speedVar;
+          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.92 * speedVar;
           vz = Math.cos(phi) * breakSpeed * speedVar;
-          life = starLife * (1.0 + Math.random() * 0.2);
+          life = starLife * (0.9 + Math.random() * 0.25);
           break;
         case 'kamuro':
-          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.4 * speedVar;
-          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.4 * speedVar + 2;
-          vz = Math.cos(phi) * breakSpeed * 0.4 * speedVar;
-          life = starLife * (2.0 + Math.random() * 1.0);
+          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.38 * speedVar;
+          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.38 * speedVar + 1.5;
+          vz = Math.cos(phi) * breakSpeed * 0.38 * speedVar;
+          life = starLife * (2.0 + Math.random() * 1.5);
           break;
         case 'ring':
           vx = Math.cos(theta) * breakSpeed * speedVar;
-          vy = (Math.random() - 0.5) * breakSpeed * 0.12;
+          vy = (Math.random() - 0.5) * breakSpeed * 0.1;
           vz = Math.sin(theta) * breakSpeed * speedVar;
           break;
         case 'dahlia':
-          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 1.15 * speedVar;
-          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 1.1 * speedVar;
-          vz = Math.cos(phi) * breakSpeed * 1.15 * speedVar;
-          life = starLife * (0.5 + Math.random() * 0.3);
+          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 1.2 * speedVar;
+          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 1.15 * speedVar;
+          vz = Math.cos(phi) * breakSpeed * 1.2 * speedVar;
+          life = starLife * (0.4 + Math.random() * 0.25);
           break;
         case 'brocade':
-          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.65 * speedVar;
-          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.65 * speedVar;
-          vz = Math.cos(phi) * breakSpeed * 0.65 * speedVar;
-          life = starLife * (1.5 + Math.random() * 0.8);
+          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.6 * speedVar;
+          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.6 * speedVar;
+          vz = Math.cos(phi) * breakSpeed * 0.6 * speedVar;
+          life = starLife * (1.4 + Math.random() * 0.9);
           break;
-        case 'crossette':
-          vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.8 * speedVar;
-          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.8 * speedVar;
-          vz = Math.cos(phi) * breakSpeed * 0.8 * speedVar;
+        case 'crossette': {
+          // 6 arms that split — each star assigned to an arm
+          const arm = i % 6;
+          const armTheta = (arm / 6) * Math.PI * 2;
+          const armPhi = Math.PI * 0.45;
+          const jitter = 0.15;
+          vx = Math.sin(armPhi) * Math.cos(armTheta + (Math.random() - 0.5) * jitter) * breakSpeed * 0.85;
+          vy = Math.sin(armPhi) * Math.sin(armTheta + (Math.random() - 0.5) * jitter) * breakSpeed * 0.85;
+          vz = Math.cos(armPhi + (Math.random() - 0.5) * jitter) * breakSpeed * 0.85;
           break;
+        }
         default: // peony — classic spherical
           vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * speedVar;
-          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * speedVar * 0.85 + 1;
+          vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * speedVar * 0.88 + 0.8;
           vz = Math.cos(phi) * breakSpeed * speedVar;
           break;
       }
@@ -192,7 +220,7 @@ function FireworkBurst({
       v[i * 3 + 2] = vz;
       l[i] = life;
     }
-    return { velocities: v, lifetimes: l };
+    return { velocities: v, lifetimes: l, twinklePhases: tp };
   }, [STAR_COUNT, breakSpeed, starLife, pattern]);
 
   const positionsRef = useRef(new Float32Array(STAR_COUNT * 3));
@@ -201,70 +229,95 @@ function FireworkBurst({
   const trailPosRef = useRef(new Float32Array(trailVertCount * 3));
   const trailColRef = useRef(new Float32Array(trailVertCount * 3));
 
-  useFrame(() => {
+  useFrame(({ clock }) => {
     if (!pointsRef.current || !trailRef.current) return;
     const pos = positionsRef.current;
     const cols = colorsRef.current;
     const tPos = trailPosRef.current;
     const tCol = trailColRef.current;
-    const t = progress * (starLife * 0.8);
-    const trailDt = 0.05;
+    const t = progress * (starLife * 0.85);
+    const trailDt = 0.04;
     const w = getWindForce();
-    const drag = 0.04 + caliber * 0.003;
-    const isWillow = pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade';
+    const time = clock.getElapsedTime();
+    
+    // Quadratic drag coefficient — heavier for denser patterns
+    const dragCoeff = 0.035 + caliber * 0.004;
+    const isTrailingPattern = pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade' || pattern === 'palm';
 
     for (let i = 0; i < STAR_COUNT; i++) {
       const vx = velocities[i * 3], vy = velocities[i * 3 + 1], vz = velocities[i * 3 + 2];
       const lt = lifetimes[i];
       const age = progress / (lt / starLife);
       const fade = Math.max(0, 1 - age);
-      const dragF = Math.exp(-drag * t);
+      const fadeSquared = fade * fade; // smoother tail-off
+      const dragF = Math.exp(-dragCoeff * t);
 
-      const px = vx * t * dragF + w[0] * t * t * 0.3;
-      const py = vy * t * dragF + 0.5 * GRAVITY * t * t * 0.35;
-      const pz = vz * t * dragF + w[2] * t * t * 0.3;
+      // Position with drag + gravity + wind
+      const px = vx * t * dragF + w[0] * t * t * 0.25;
+      const py = vy * t * dragF + 0.5 * GRAVITY * t * t * 0.25;
+      const pz = vz * t * dragF + w[2] * t * t * 0.25;
       pos[i * 3] = px; pos[i * 3 + 1] = py; pos[i * 3 + 2] = pz;
 
-      // Color: white-hot flash → base color → ember → dark
-      const flashPhase = Math.max(0, 1 - progress * 10); // quick white flash at burst
-      const emberPhase = Math.max(0, (progress - 0.6) / 0.4); // last 40% goes to ember
-      const sparkle = isWillow 
-        ? 0.85 + Math.sin(i * 13 + progress * 20) * 0.15 
-        : 0.7 + Math.sin(i * 19 + progress * 30) * 0.15 + Math.sin(i * 7 + progress * 50) * 0.15;
+      // === HDR Color Pipeline ===
+      // Phase 1: White-hot flash (0-5% progress)
+      const flashIntensity = Math.max(0, 1 - progress * 20);
+      // Phase 2: Full saturated color (5-50%)
+      // Phase 3: Ember fade (50-100%)
+      const emberPhase = Math.max(0, (progress - 0.45) / 0.55);
       
-      let r = THREE.MathUtils.lerp(baseColor.r, 1.0, flashPhase);
-      let g = THREE.MathUtils.lerp(baseColor.g, 0.95, flashPhase);
-      let b = THREE.MathUtils.lerp(baseColor.b, 0.8, flashPhase);
+      // Per-star twinkle — stochastic with unique phase
+      const twinkle = isTrailingPattern
+        ? 0.8 + Math.sin(twinklePhases[i] + progress * 15) * 0.2
+        : 0.6 + Math.sin(twinklePhases[i] + time * 25 + i * 3.7) * 0.2
+            + Math.sin(twinklePhases[i] * 2.3 + time * 40) * 0.15
+            + (Math.random() > 0.97 ? 0.5 : 0); // random bright sparkle
       
-      // Ember phase: shift toward orange/red
+      // Base → flash white
+      let r = THREE.MathUtils.lerp(baseColor.r, 1.2, flashIntensity);
+      let g = THREE.MathUtils.lerp(baseColor.g, 1.1, flashIntensity);
+      let b = THREE.MathUtils.lerp(baseColor.b, 0.95, flashIntensity);
+      
+      // Ember phase: gradual shift to deep orange → charcoal
       if (emberPhase > 0) {
-        r = THREE.MathUtils.lerp(r, 0.9, emberPhase * 0.4);
-        g = THREE.MathUtils.lerp(g, 0.3, emberPhase * 0.5);
-        b = THREE.MathUtils.lerp(b, 0.05, emberPhase * 0.6);
+        const ep = emberPhase * emberPhase; // accelerate toward end
+        r = THREE.MathUtils.lerp(r, emberColor.r, ep * 0.7);
+        g = THREE.MathUtils.lerp(g, emberColor.g, ep * 0.8);
+        b = THREE.MathUtils.lerp(b, emberColor.b, ep * 0.9);
       }
       
-      cols[i * 3] = r * fade * sparkle;
-      cols[i * 3 + 1] = g * fade * sparkle;
-      cols[i * 3 + 2] = b * fade * sparkle;
+      // HDR multiplier: stars are BRIGHTER than 1.0 for bloom to catch
+      const hdrBoost = 1.0 + flashIntensity * 2.0 + (1 - emberPhase) * 0.3;
+      
+      cols[i * 3] = r * fadeSquared * twinkle * hdrBoost;
+      cols[i * 3 + 1] = g * fadeSquared * twinkle * hdrBoost;
+      cols[i * 3 + 2] = b * fadeSquared * twinkle * hdrBoost;
 
-      // Star trails
+      // Star trails — thermal gradient from hot-white to colored to dim
       for (let s = 0; s < TRAIL_LENGTH; s++) {
         const t0 = Math.max(0, t - s * trailDt);
         const t1 = Math.max(0, t - (s + 1) * trailDt);
-        const d0 = Math.exp(-drag * t0);
-        const d1 = Math.exp(-drag * t1);
+        const d0 = Math.exp(-dragCoeff * t0);
+        const d1 = Math.exp(-dragCoeff * t1);
         const base = (i * TRAIL_LENGTH + s) * 6;
-        tPos[base] = vx * t0 * d0 + w[0] * t0 * t0 * 0.3;
-        tPos[base + 1] = vy * t0 * d0 + 0.5 * GRAVITY * t0 * t0 * 0.35;
-        tPos[base + 2] = vz * t0 * d0 + w[2] * t0 * t0 * 0.3;
-        tPos[base + 3] = vx * t1 * d1 + w[0] * t1 * t1 * 0.3;
-        tPos[base + 4] = vy * t1 * d1 + 0.5 * GRAVITY * t1 * t1 * 0.35;
-        tPos[base + 5] = vz * t1 * d1 + w[2] * t1 * t1 * 0.3;
-        const segFade = fade * Math.pow(1 - s / TRAIL_LENGTH, 1.5) * 0.5;
-        const endFade = fade * Math.pow(1 - (s + 1) / TRAIL_LENGTH, 1.5) * 0.5;
-        // Trails are slightly warmer
-        tCol[base] = r * segFade * 1.1; tCol[base + 1] = g * segFade * 0.8; tCol[base + 2] = b * segFade * 0.4;
-        tCol[base + 3] = r * endFade * 1.1; tCol[base + 4] = g * endFade * 0.8; tCol[base + 5] = b * endFade * 0.4;
+        tPos[base] = vx * t0 * d0 + w[0] * t0 * t0 * 0.25;
+        tPos[base + 1] = vy * t0 * d0 + 0.5 * GRAVITY * t0 * t0 * 0.25;
+        tPos[base + 2] = vz * t0 * d0 + w[2] * t0 * t0 * 0.25;
+        tPos[base + 3] = vx * t1 * d1 + w[0] * t1 * t1 * 0.25;
+        tPos[base + 4] = vy * t1 * d1 + 0.5 * GRAVITY * t1 * t1 * 0.25;
+        tPos[base + 5] = vz * t1 * d1 + w[2] * t1 * t1 * 0.25;
+        
+        const segFrac = s / TRAIL_LENGTH;
+        const segFade = fadeSquared * Math.pow(1 - segFrac, 2.0) * 0.6;
+        const endFade = fadeSquared * Math.pow(1 - (s + 1) / TRAIL_LENGTH, 2.0) * 0.6;
+        
+        // Trail thermal gradient: white-hot → warm gold → colored → dim
+        const trailWarmth = Math.pow(segFrac, 0.5);
+        tCol[base] = THREE.MathUtils.lerp(1.0, r * 0.8, trailWarmth) * segFade;
+        tCol[base + 1] = THREE.MathUtils.lerp(0.7, g * 0.5, trailWarmth) * segFade;
+        tCol[base + 2] = THREE.MathUtils.lerp(0.3, b * 0.2, trailWarmth) * segFade;
+        tCol[base + 3] = THREE.MathUtils.lerp(1.0, r * 0.8, trailWarmth) * endFade;
+        tCol[base + 4] = THREE.MathUtils.lerp(0.7, g * 0.5, trailWarmth) * endFade;
+        tCol[base + 5] = THREE.MathUtils.lerp(0.3, b * 0.2, trailWarmth) * endFade;
       }
     }
 
@@ -281,13 +334,14 @@ function FireworkBurst({
     lGeo.attributes.color.needsUpdate = true;
   });
 
-  // Particle size scales with caliber — Finale 3D style: bigger stars for bigger shells
-  const particleSize = 0.2 + caliber * 0.08;
-  // Break flash size scales with caliber
-  const flashSize = 2.0 + caliber * 1.5;
+  // Particle size: bigger caliber = bigger stars with more glow surface
+  const particleSize = 0.15 + caliber * 0.06;
+  // Break flash radius scales with caliber
+  const flashSize = 1.5 + caliber * 1.2;
 
   return (
     <group position={position}>
+      {/* Stars */}
       <points ref={pointsRef}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[new Float32Array(STAR_COUNT * 3), 3]} />
@@ -295,40 +349,47 @@ function FireworkBurst({
         </bufferGeometry>
         <pointsMaterial size={particleSize} vertexColors transparent opacity={0.95} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
+      
+      {/* Star trails */}
       <lineSegments ref={trailRef}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[new Float32Array(trailVertCount * 3), 3]} />
           <bufferAttribute attach="attributes-color" args={[new Float32Array(trailVertCount * 3), 3]} />
         </bufferGeometry>
-        <lineBasicMaterial vertexColors transparent opacity={0.8} depthWrite={false} blending={THREE.AdditiveBlending} />
+        <lineBasicMaterial vertexColors transparent opacity={0.85} depthWrite={false} blending={THREE.AdditiveBlending} />
       </lineSegments>
       
-      {/* Break flash — massive initial burst of light */}
-      {progress < 0.15 && (
+      {/* === BREAK FLASH === */}
+      {/* Outer flash sphere — saturated color bloom */}
+      {progress < 0.12 && (
         <mesh>
-          <sphereGeometry args={[flashSize + progress * flashSize * 8, 24, 24]} />
-          <meshBasicMaterial color={color} transparent opacity={0.3 * (1 - progress / 0.15)} blending={THREE.AdditiveBlending} />
+          <sphereGeometry args={[flashSize * (1 + progress * 10), 24, 24]} />
+          <meshBasicMaterial color={color} transparent opacity={0.4 * Math.pow(1 - progress / 0.12, 2)} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
-      {/* Inner core flash — white hot */}
-      {progress < 0.08 && (
+      {/* Inner white-hot core — intense bloom trigger */}
+      {progress < 0.06 && (
         <mesh>
-          <sphereGeometry args={[flashSize * 0.5 + progress * flashSize * 3, 16, 16]} />
-          <meshBasicMaterial color="#FFFFEE" transparent opacity={0.5 * (1 - progress / 0.08)} blending={THREE.AdditiveBlending} />
+          <sphereGeometry args={[flashSize * 0.4 * (1 + progress * 6), 16, 16]} />
+          <meshBasicMaterial color="#FFFFF0" transparent opacity={0.7 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
-      {/* Expanding shockwave ring */}
-      {progress < 0.18 && (
+      {/* Shockwave ring — expands fast then fades */}
+      {progress > 0.01 && progress < 0.15 && (
         <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[progress * flashSize * 6, progress * flashSize * 6 + 0.8, 48]} />
-          <meshBasicMaterial color={color} transparent opacity={0.1 * (1 - progress / 0.18)} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
+          <ringGeometry args={[
+            progress * flashSize * 8,
+            progress * flashSize * 8 + 0.6 + caliber * 0.15,
+            64
+          ]} />
+          <meshBasicMaterial color={color} transparent opacity={0.12 * Math.pow(1 - progress / 0.15, 1.5)} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
-      {/* Secondary glow halo — Finale 3D style warm ambient glow */}
-      {progress < 0.4 && progress > 0.02 && (
+      {/* Atmospheric glow — large soft halo that lingers */}
+      {progress < 0.5 && progress > 0.01 && (
         <mesh>
-          <sphereGeometry args={[flashSize * 0.3 + progress * caliber * 5, 16, 16]} />
-          <meshBasicMaterial color={color} transparent opacity={0.04 * (1 - progress / 0.4)} blending={THREE.AdditiveBlending} />
+          <sphereGeometry args={[caliber * 2 + progress * caliber * 8, 16, 16]} />
+          <meshBasicMaterial color={color} transparent opacity={0.025 * (1 - progress / 0.5)} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
     </group>

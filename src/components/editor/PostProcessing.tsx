@@ -4,8 +4,12 @@ import { Vector2 } from 'three';
 import { useSceneStore } from '@/store/useSceneStore';
 
 /**
- * Scene-driven cinematic post-processing pipeline.
- * Triple-bloom architecture for pyrotechnic realism.
+ * Cinematic post-processing pipeline optimized for pyrotechnic rendering.
+ * 4-layer bloom architecture:
+ *   1. Primary — catches HDR star points and emissive surfaces
+ *   2. Medium — glow halos around bright clusters  
+ *   3. Wide atmospheric — soft sky-filling scatter from large bursts
+ *   4. Ultra-wide — subtle ambient light pollution effect
  */
 export default function PostProcessing() {
   const s = useSceneStore(st => st.settings);
@@ -13,51 +17,59 @@ export default function PostProcessing() {
   return (
     <EffectComposer multisampling={0}>
       <SMAA />
-      {/* Primary bloom — catches HDR emissive LEDs, pyro flashes */}
+      {/* Layer 1: Primary bloom — tight, bright star points */}
       <Bloom
-        intensity={s.bloomStrength * 1.2}
-        luminanceThreshold={0.15}
-        luminanceSmoothing={0.4}
+        intensity={s.bloomStrength * 1.4}
+        luminanceThreshold={0.12}
+        luminanceSmoothing={0.3}
         kernelSize={KernelSize.LARGE}
         mipmapBlur
       />
-      {/* Secondary bloom — medium glow halos around bright sources */}
+      {/* Layer 2: Medium glow — halos around star clusters */}
       <Bloom
-        intensity={s.bloomStrength * 0.35}
-        luminanceThreshold={0.5}
-        luminanceSmoothing={0.8}
+        intensity={s.bloomStrength * 0.4}
+        luminanceThreshold={0.4}
+        luminanceSmoothing={0.7}
         kernelSize={KernelSize.HUGE}
         mipmapBlur
       />
-      {/* Tertiary bloom — ultra-wide atmospheric scatter from firework bursts */}
+      {/* Layer 3: Atmospheric scatter — wide soft glow from bursts */}
       <Bloom
-        intensity={s.bloomStrength * 0.08}
-        luminanceThreshold={0.8}
-        luminanceSmoothing={0.95}
+        intensity={s.bloomStrength * 0.12}
+        luminanceThreshold={0.7}
+        luminanceSmoothing={0.9}
         kernelSize={KernelSize.HUGE}
         mipmapBlur
       />
-      {/* Cinematic vignette — enhanced */}
+      {/* Layer 4: Ultra-wide ambient — subtle sky illumination */}
+      <Bloom
+        intensity={s.bloomStrength * 0.04}
+        luminanceThreshold={0.9}
+        luminanceSmoothing={0.98}
+        kernelSize={KernelSize.HUGE}
+        mipmapBlur
+      />
+      {/* Cinematic vignette */}
       {s.vignetteEnabled && (
         <Vignette
-          offset={0.3}
-          darkness={s.vignetteIntensity * 2.0}
+          offset={0.25}
+          darkness={s.vignetteIntensity * 2.2}
           blendFunction={BlendFunction.NORMAL}
         />
       )}
       {/* Chromatic aberration — lens realism */}
       {s.chromaticAberration && (
         <ChromaticAberration
-          offset={new Vector2(0.0008, 0.0008)}
+          offset={new Vector2(0.0006, 0.0006)}
           radialModulation
-          modulationOffset={0.35}
+          modulationOffset={0.3}
         />
       )}
-      {/* Film grain — cinematic texture */}
+      {/* Film grain */}
       {s.filmGrain > 0.01 && (
         <Noise
           blendFunction={BlendFunction.SOFT_LIGHT}
-          opacity={s.filmGrain * 0.6}
+          opacity={s.filmGrain * 0.5}
         />
       )}
       <ToneMapping mode={ToneMappingMode.AGX} />

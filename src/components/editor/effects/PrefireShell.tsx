@@ -3,17 +3,13 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { getMortarVelocity, getBreakHeight, getLiftTime, GRAVITY, AIR_DRAG } from '@/lib/pyroPhysics';
 
-const TRAIL_PARTICLES = 30;
-const SPARK_COUNT = 12;
+const TRAIL_PARTICLES = 50;
+const SPARK_COUNT = 20;
 
 /**
  * PrefireShell: Renders a shell rising from the mortar to its break height
- * with a glowing comet head and a sparking trail behind it.
+ * with a glowing comet head, dense sparking trail, and muzzle flash.
  * Based on Finale 3D lift physics: velocity = f(caliber), breakHeight = f(caliber).
- *
- * @param progress 0→1 across the PREFIRE duration (lift time)
- * @param caliber Shell caliber in inches
- * @param color The shell's effect color (trail tint)
  */
 export default function PrefireShell({
   position,
@@ -30,24 +26,29 @@ export default function PrefireShell({
   heading?: number;
   pitch?: number;
 }) {
-  const groupRef = useRef<THREE.Group>(null);
-  const trailRef = useRef<THREE.Points>(null);
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
   const breakH = useMemo(() => getBreakHeight(caliber), [caliber]);
   const v0 = useMemo(() => getMortarVelocity(caliber), [caliber]);
+  const liftTime = useMemo(() => getLiftTime(caliber), [caliber]);
 
   // Launch angle in radians
   const pitchRad = (pitch || 85) * (Math.PI / 180);
   const headingRad = (heading || 0) * (Math.PI / 180);
 
+  // Direction unit vector for launch
+  const dirX = Math.sin(headingRad) * Math.cos(pitchRad);
+  const dirY = Math.sin(pitchRad);
+  const dirZ = -Math.cos(headingRad) * Math.cos(pitchRad);
+
   // Deterministic spark offsets
   const sparkSeeds = useMemo(() => {
-    const s: { angle: number; speed: number; phase: number }[] = [];
+    const s: { angle: number; speed: number; phase: number; life: number }[] = [];
     for (let i = 0; i < SPARK_COUNT; i++) {
       s.push({
-        angle: (i / SPARK_COUNT) * Math.PI * 2,
-        speed: 0.3 + Math.random() * 0.6,
+        angle: (i / SPARK_COUNT) * Math.PI * 2 + Math.random() * 0.3,
+        speed: 0.2 + Math.random() * 0.8,
         phase: Math.random() * Math.PI * 2,
+        life: 0.15 + Math.random() * 0.25,
       });
     }
     return s;
@@ -55,129 +56,136 @@ export default function PrefireShell({
 
   if (progress <= 0 || progress > 1) return null;
 
-  // Shell position along launch angle
-  const liftTime = getLiftTime(caliber);
+  // Shell position along launch angle with real gravity
   const t = progress * liftTime;
   const dist = Math.min(breakH, v0 * t + 0.5 * GRAVITY * t * t);
-  // Apply launch angle: shell travels along heading/pitch direction
-  const shellX = Math.sin(headingRad) * Math.cos(pitchRad) * dist;
-  const shellY = Math.sin(pitchRad) * dist;
-  const shellZ = -Math.cos(headingRad) * Math.cos(pitchRad) * dist;
-  const shellVy = v0 + GRAVITY * t;
+  const shellX = dirX * dist;
+  const shellY = dirY * dist;
+  const shellZ = dirZ * dist;
 
-  // Slight wobble
-  const wobbleX = Math.sin(progress * 12) * 0.15 * caliber * 0.2;
-  const wobbleZ = Math.cos(progress * 17) * 0.1 * caliber * 0.15;
+  // Slight wobble for realism
+  const wobbleX = Math.sin(progress * 14) * 0.12 * caliber * 0.15;
+  const wobbleZ = Math.cos(progress * 19) * 0.08 * caliber * 0.12;
 
   // Head size scales with caliber
-  const headRadius = 0.04 + caliber * 0.015;
-  const headGlow = 0.15 + caliber * 0.04;
-  const headBrightness = Math.max(0.3, 1 - progress * 0.3);
+  const headRadius = 0.035 + caliber * 0.012;
+  const headGlow = 0.12 + caliber * 0.035;
+  const headBrightness = Math.max(0.4, 1 - progress * 0.25);
 
-  // Trail positions — particles behind the head
+  // Trail positions — dense particles behind the head
   const trailPositions = new Float32Array(TRAIL_PARTICLES * 3);
   const trailColors = new Float32Array(TRAIL_PARTICLES * 3);
 
   for (let i = 0; i < TRAIL_PARTICLES; i++) {
-    const trailT = Math.max(0, progress - (i / TRAIL_PARTICLES) * 0.35);
+    const trailT = Math.max(0, progress - (i / TRAIL_PARTICLES) * 0.4);
     const tt = trailT * liftTime;
     const tDist = Math.max(0, v0 * tt + 0.5 * GRAVITY * tt * tt);
-    const fade = Math.pow(1 - i / TRAIL_PARTICLES, 1.8) * headBrightness;
+    const fade = Math.pow(1 - i / TRAIL_PARTICLES, 2.0) * headBrightness;
 
-    const tWobbleX = Math.sin(trailT * 12) * 0.15 * caliber * 0.2;
-    const tWobbleZ = Math.cos(trailT * 17) * 0.1 * caliber * 0.15;
+    const tWobbleX = Math.sin(trailT * 14) * 0.12 * caliber * 0.15;
+    const tWobbleZ = Math.cos(trailT * 19) * 0.08 * caliber * 0.12;
 
-    // Trail follows launch angle
-    const tx = Math.sin(headingRad) * Math.cos(pitchRad) * tDist + tWobbleX + (Math.random() - 0.5) * 0.08;
-    const ty = Math.sin(pitchRad) * tDist;
-    const tz = -Math.cos(headingRad) * Math.cos(pitchRad) * tDist + tWobbleZ + (Math.random() - 0.5) * 0.08;
+    // Trail follows launch angle with slight spread
+    const spread = (i / TRAIL_PARTICLES) * 0.12;
+    const tx = dirX * tDist + tWobbleX + (Math.random() - 0.5) * spread;
+    const ty = dirY * tDist;
+    const tz = dirZ * tDist + tWobbleZ + (Math.random() - 0.5) * spread;
 
     trailPositions[i * 3] = tx;
     trailPositions[i * 3 + 1] = ty;
     trailPositions[i * 3 + 2] = tz;
 
-    // Comet trail: white-hot near head → golden → colored → dim
+    // Thermal gradient: white-hot near head → golden → amber → dim
     const tFrac = i / TRAIL_PARTICLES;
-    trailColors[i * 3] = THREE.MathUtils.lerp(1.0, baseColor.r * 0.6, tFrac) * fade;
-    trailColors[i * 3 + 1] = THREE.MathUtils.lerp(0.85, baseColor.g * 0.4, tFrac) * fade;
-    trailColors[i * 3 + 2] = THREE.MathUtils.lerp(0.5, baseColor.b * 0.3, tFrac) * fade;
+    const warmth = Math.pow(tFrac, 0.6);
+    trailColors[i * 3] = THREE.MathUtils.lerp(1.2, baseColor.r * 0.5 + 0.3, warmth) * fade;
+    trailColors[i * 3 + 1] = THREE.MathUtils.lerp(0.95, baseColor.g * 0.3 + 0.15, warmth) * fade;
+    trailColors[i * 3 + 2] = THREE.MathUtils.lerp(0.6, baseColor.b * 0.2, warmth) * fade;
   }
 
   return (
     <group position={position}>
-      {/* Muzzle flash at mortar — only at start */}
-      {progress < 0.08 && (
-        <mesh position={[0, 0.2, 0]}>
-          <sphereGeometry args={[0.4 + caliber * 0.1 + progress * 3, 12, 12]} />
+      {/* Muzzle flash at mortar — quick bright burst */}
+      {progress < 0.1 && (
+        <mesh position={[0, 0.15, 0]}>
+          <sphereGeometry args={[0.3 + caliber * 0.12 + progress * 4, 12, 12]} />
           <meshBasicMaterial
             color="#FFEECC"
             transparent
-            opacity={0.5 * (1 - progress / 0.08)}
+            opacity={0.6 * Math.pow(1 - progress / 0.1, 2)}
             blending={THREE.AdditiveBlending}
           />
         </mesh>
       )}
 
-      {/* Smoke puff at mortar */}
-      {progress < 0.25 && (
-        <mesh position={[0, progress * 3, 0]}>
-          <sphereGeometry args={[0.3 + progress * 2, 8, 8]} />
+      {/* Mortar smoke puff */}
+      {progress < 0.3 && (
+        <mesh position={[0, progress * 2.5, 0]}>
+          <sphereGeometry args={[0.25 + progress * 2.5, 8, 8]} />
           <meshBasicMaterial
-            color="#887766"
+            color="#776655"
             transparent
-            opacity={0.08 * (1 - progress / 0.25)}
+            opacity={0.06 * (1 - progress / 0.3)}
           />
         </mesh>
       )}
 
-      {/* Comet trail particles */}
+      {/* Comet trail particles — dense and bright */}
       <points>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[trailPositions, 3]} />
           <bufferAttribute attach="attributes-color" args={[trailColors, 3]} />
         </bufferGeometry>
         <pointsMaterial
-          size={0.08 + caliber * 0.02}
+          size={0.07 + caliber * 0.018}
           vertexColors
           transparent
-          opacity={0.9}
+          opacity={0.95}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
           sizeAttenuation
         />
       </points>
 
-      {/* Falling sparks from trail */}
+      {/* Falling sparks from trail — shedding hot particles */}
       {sparkSeeds.map((spark, i) => {
-        const sparkProgress = Math.max(0, progress - i * 0.03);
-        if (sparkProgress <= 0) return null;
-        const sparkT = sparkProgress * liftTime;
-        const sparkBaseY = Math.max(0, v0 * sparkT + 0.5 * GRAVITY * sparkT * sparkT);
-        const fallTime = (progress - sparkProgress + 0.05) * 2;
-        const sparkY = sparkBaseY - 4.9 * fallTime * fallTime; // fast gravity fall
-        if (sparkY < 0) return null;
-        const sparkFade = Math.max(0, 1 - fallTime * 2);
+        const sparkStart = i * 0.025;
+        if (progress < sparkStart) return null;
+        const sparkAge = progress - sparkStart;
+        if (sparkAge > spark.life) return null;
+        
+        const sparkNorm = sparkAge / spark.life;
+        // Spark detaches from trail and falls
+        const detachT = sparkStart * liftTime;
+        const detachDist = Math.max(0, v0 * detachT + 0.5 * GRAVITY * detachT * detachT);
+        const detachX = dirX * detachDist;
+        const detachY = dirY * detachDist;
+        const detachZ = dirZ * detachDist;
+        
+        const fallTime = sparkAge * 2;
+        const sparkFade = Math.max(0, 1 - sparkNorm);
+        
         return (
           <mesh
             key={i}
             position={[
-              Math.cos(spark.angle + progress * 5) * spark.speed * 0.5,
-              sparkY,
-              Math.sin(spark.angle + progress * 5) * spark.speed * 0.5,
+              detachX + Math.cos(spark.angle) * spark.speed * 0.4,
+              detachY - 4.9 * fallTime * fallTime,
+              detachZ + Math.sin(spark.angle) * spark.speed * 0.4,
             ]}
           >
-            <sphereGeometry args={[0.025, 4, 4]} />
+            <sphereGeometry args={[0.02, 4, 4]} />
             <meshBasicMaterial
               color={color}
               transparent
-              opacity={0.4 * sparkFade}
+              opacity={0.5 * sparkFade}
               blending={THREE.AdditiveBlending}
             />
           </mesh>
         );
       })}
 
-      {/* Shell head — bright comet */}
+      {/* Shell head — bright comet point */}
       <mesh position={[shellX + wobbleX, shellY, shellZ + wobbleZ]}>
         <sphereGeometry args={[headRadius, 8, 8]} />
         <meshBasicMaterial
@@ -194,7 +202,7 @@ export default function PrefireShell({
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={0.15 * headBrightness}
+          opacity={0.18 * headBrightness}
           blending={THREE.AdditiveBlending}
         />
       </mesh>
