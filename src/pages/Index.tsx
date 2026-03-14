@@ -136,6 +136,7 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   showsettings: 'w-64',
   calibration: 'w-72',
   livefiring: 'w-72',
+};
 
 export default function Index() {
   const isMobile = useIsMobile();
