@@ -54,6 +54,7 @@ import { temporalFlicker } from '@/lib/pyroNoise';
 // MiniMap removed per user request
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 
 // SkyCanvas v2 — force chunk rebuild
 class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
