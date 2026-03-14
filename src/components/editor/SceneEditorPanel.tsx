@@ -50,7 +50,7 @@ interface BgImage {
 }
 
 export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
-  const { settings, updateSettings, applyPreset, resetToDefault } = useSceneStore();
+  const { settings, updateSettings, applyPreset, applyQualityPreset, qualityPreset, resetToDefault } = useSceneStore();
   const { droneFormations, positions, showTrajectories, setShowTrajectories, showFormations, setShowFormations } = useProjectStore();
   const [openSections, setOpenSections] = useState<Set<SectionId>>(new Set(['quick', 'presets']));
   const [bgImages, setBgImages] = useState<BgImage[]>([]);
