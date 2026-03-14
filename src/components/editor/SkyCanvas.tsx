@@ -761,6 +761,21 @@ function TimelineEffects() {
 // ═══════════════════════════════════════════════════════════════════════
 function LiveSFXEffects() {
   const activeEffects = useLiveSfxStore((s) => s.activeEffects);
+  const stopEffect = useLiveSfxStore((s) => s.stopEffect);
+  const [tick, setTick] = useState(0);
+
+  useFrame(() => {
+    if (activeEffects.length === 0) return;
+    // Force re-render each frame to update progress
+    setTick(t => t + 1);
+    // Clean up expired effects
+    const now = performance.now();
+    for (const fx of activeEffects) {
+      if (now - fx.startedAt > fx.duration) {
+        stopEffect(fx.id);
+      }
+    }
+  });
 
   return (
     <>
@@ -791,23 +806,6 @@ function LiveSFXEffects() {
       })}
     </>
   );
-}
-
-// We need to continuously re-render while live effects are active
-function LiveSFXUpdater() {
-  const activeEffects = useLiveSfxStore((s) => s.activeEffects);
-  const stopEffect = useLiveSfxStore((s) => s.stopEffect);
-
-  useFrame(() => {
-    const now = performance.now();
-    for (const fx of activeEffects) {
-      if (now - fx.startedAt > fx.duration) {
-        stopEffect(fx.id);
-      }
-    }
-  });
-
-  return null;
 }
 
 // ========================================================================
