@@ -2,11 +2,16 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
-const EMBER_COUNT = 180;
+const EMBER_COUNT = 240;
 
 /**
- * Ember / Falling Spark Particles: Glowing embers that drift down after a burst.
- * Enhanced with wind drift, flicker variation, and proper thermal color shift.
+ * Finale-grade Ember / Falling Spark Particles:
+ * Glowing embers that drift down after burst with:
+ * - Gravity + air resistance (light particles)
+ * - Multi-frequency flicker with random bright pops
+ * - Thermal color shift: shell color → orange → deep red → charcoal
+ * - Wind drift accumulation
+ * - Occasional re-ignition flashes (Finale's signature)
  */
 function EmberParticlesInner({
   position,
@@ -25,30 +30,31 @@ function EmberParticlesInner({
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
 
   const seeds = useMemo(() => {
-    const s: { x: number; z: number; vy: number; driftX: number; driftZ: number; lt: number; flicker: number; size: number }[] = [];
+    const s: { x: number; z: number; vy: number; driftX: number; driftZ: number; lt: number; flicker: number; size: number; reignite: number }[] = [];
     for (let i = 0; i < EMBER_COUNT; i++) {
       const angle = Math.random() * Math.PI * 2;
       const r = Math.random() * spreadRadius;
       s.push({
         x: Math.cos(angle) * r,
         z: Math.sin(angle) * r,
-        vy: -1.0 - Math.random() * 3.5,
-        driftX: (Math.random() - 0.5) * 0.8,
-        driftZ: (Math.random() - 0.5) * 0.8,
-        lt: 1.5 + Math.random() * 4.0,
-        flicker: 12 + Math.random() * 60,
-        size: 0.5 + Math.random() * 1.0,
+        vy: -0.8 - Math.random() * 3.0,
+        driftX: (Math.random() - 0.5) * 1.0,
+        driftZ: (Math.random() - 0.5) * 1.0,
+        lt: 2.0 + Math.random() * 5.0,
+        flicker: 15 + Math.random() * 70,
+        size: 0.4 + Math.random() * 0.8,
+        reignite: Math.random(), // chance of re-ignition flash
       });
     }
     return s;
   }, [spreadRadius]);
 
   useFrame(({ clock }) => {
-    if (!pointsRef.current || progress < 0.12) return;
+    if (!pointsRef.current || progress < 0.1) return;
     const posArr = new Float32Array(EMBER_COUNT * 3);
     const colArr = new Float32Array(EMBER_COUNT * 3);
     const time = clock.getElapsedTime();
-    const emberProgress = (progress - 0.12) / 0.88;
+    const emberProgress = (progress - 0.1) / 0.9;
 
     for (let i = 0; i < EMBER_COUNT; i++) {
       const seed = seeds[i];
@@ -58,39 +64,42 @@ function EmberParticlesInner({
         continue;
       }
 
-      // Gravity + air resistance for embers (light particles fall slower)
-      const gravityEffect = 4.9 * age * age * 0.1;
+      // Gravity with air resistance (light ember particles fall slowly)
+      const gravityEffect = 4.9 * age * age * 0.08;
       const y = startHeight + seed.vy * age - gravityEffect;
       if (y < 0) {
         posArr[i * 3] = 0; posArr[i * 3 + 1] = -100; posArr[i * 3 + 2] = 0;
         continue;
       }
 
-      // Wind drift accumulates over time
-      posArr[i * 3] = seed.x + seed.driftX * age + Math.sin(time * 0.3 + i * 0.7) * 0.4;
+      // Wind drift accumulates
+      posArr[i * 3] = seed.x + seed.driftX * age + Math.sin(time * 0.25 + i * 0.7) * 0.5;
       posArr[i * 3 + 1] = y;
-      posArr[i * 3 + 2] = seed.z + seed.driftZ * age + Math.cos(time * 0.25 + i * 1.1) * 0.3;
+      posArr[i * 3 + 2] = seed.z + seed.driftZ * age + Math.cos(time * 0.2 + i * 1.1) * 0.4;
 
       const lifeFrac = age / seed.lt;
       const fade = Math.max(0, 1 - lifeFrac);
-      const fadeCurve = Math.pow(fade, 0.4); // stays bright longer, then drops
+      const fadeCurve = Math.pow(fade, 0.35); // Finale: stays bright longer
       
-      // Multi-frequency flicker for realism
-      const flicker = 0.3 
-        + Math.sin(time * seed.flicker + i * 7) * 0.25
-        + Math.sin(time * seed.flicker * 0.6 + i * 3) * 0.2
-        + Math.sin(time * seed.flicker * 1.7 + i * 13) * 0.15
-        + (Math.random() > 0.96 ? 0.4 : 0); // occasional bright pop
+      // Multi-frequency flicker — Finale's organic shimmer
+      const flicker = 0.25 
+        + Math.sin(time * seed.flicker + i * 7) * 0.2
+        + Math.sin(time * seed.flicker * 0.55 + i * 3) * 0.18
+        + Math.sin(time * seed.flicker * 1.8 + i * 13) * 0.12
+        + (Math.random() > 0.97 ? 0.5 : 0); // random bright pop
       
-      // Thermal color: starts as shell color → shifts to orange → deep red → charcoal
-      const thermalShift = Math.pow(lifeFrac, 0.7);
-      const r = THREE.MathUtils.lerp(baseColor.r, 0.85, thermalShift * 0.5);
-      const g = THREE.MathUtils.lerp(baseColor.g, 0.25, thermalShift * 0.7);
-      const b = THREE.MathUtils.lerp(baseColor.b, 0.03, thermalShift * 0.9);
+      // Finale re-ignition: occasional bright flash as ember catches air
+      const reignition = (seed.reignite > 0.85 && Math.sin(time * 5 + i * 11) > 0.95) ? 1.5 : 0;
+      
+      // Thermal gradient: shell color → orange → deep red → charcoal
+      const thermalShift = Math.pow(lifeFrac, 0.6);
+      const r = THREE.MathUtils.lerp(baseColor.r, 0.8, thermalShift * 0.55) + reignition * 0.3;
+      const g = THREE.MathUtils.lerp(baseColor.g, 0.2, thermalShift * 0.75) + reignition * 0.15;
+      const b = THREE.MathUtils.lerp(baseColor.b, 0.02, thermalShift * 0.92);
       
       colArr[i * 3] = r * fadeCurve * flicker;
-      colArr[i * 3 + 1] = g * fadeCurve * flicker * 0.7;
-      colArr[i * 3 + 2] = b * fadeCurve * flicker * 0.3;
+      colArr[i * 3 + 1] = g * fadeCurve * flicker * 0.65;
+      colArr[i * 3 + 2] = b * fadeCurve * flicker * 0.25;
     }
 
     const geo = pointsRef.current.geometry;
@@ -100,7 +109,7 @@ function EmberParticlesInner({
     geo.attributes.color.needsUpdate = true;
   });
 
-  if (progress < 0.12) return null;
+  if (progress < 0.1) return null;
 
   return (
     <group position={position}>
@@ -110,10 +119,10 @@ function EmberParticlesInner({
           <bufferAttribute attach="attributes-color" args={[new Float32Array(EMBER_COUNT * 3), 3]} />
         </bufferGeometry>
         <pointsMaterial
-          size={0.06}
+          size={0.055}
           vertexColors
           transparent
-          opacity={0.9}
+          opacity={0.92}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
           sizeAttenuation
