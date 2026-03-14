@@ -501,7 +501,7 @@ function FireworkBurst({
   });
 
   // Break flash: Finale multi-layer flash system
-  const flashSize = 1.2 + caliber * 1.4;
+  const flashSize = 1.8 + caliber * 2.0;
 
   return (
     <group position={position}>
