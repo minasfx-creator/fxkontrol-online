@@ -229,7 +229,7 @@ export default function ShowInspectorPanel({ onClose }: ShowInspectorPanelProps)
       let maxAlt = 0;
       droneFormations.forEach(f => {
         if (t >= f.startTime && t <= f.startTime + f.holdDuration) {
-          maxAlt = Math.max(maxAlt, f.altitude ?? 50);
+          maxAlt = Math.max(maxAlt, f.height ?? 50);
         }
       });
       data.push({ t, v: maxAlt });
