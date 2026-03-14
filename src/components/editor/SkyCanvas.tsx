@@ -317,8 +317,8 @@ function FireworkBurst({
       const phi = Math.acos(2 * Math.random() - 1);
       const spd = breakSpeed * (0.15 + Math.random() * 0.35);
       dv[i * 3] = Math.sin(phi) * Math.cos(theta) * spd;
-      dv[i * 3 + 1] = Math.sin(phi) * Math.sin(theta) * spd * 0.5 - 1;
-      dv[i * 3 + 2] = Math.cos(phi) * spd;
+      dv[i * 3 + 1] = Math.cos(phi) * spd * 0.5 - 1;
+      dv[i * 3 + 2] = Math.sin(phi) * Math.sin(theta) * spd;
       debrisSparkle[i] = Math.random() * 999 + i * 7;
     }
 
