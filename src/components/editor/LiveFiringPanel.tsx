@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 
 // ─── Types ───
 interface SFXChannel {
