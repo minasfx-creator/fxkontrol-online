@@ -61,6 +61,58 @@ export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
       </div>
 
       <ScrollArea className="flex-1">
+        {/* ═══ QUICK ACCESS ═══ */}
+        <Section title="Quick Controls" icon={Zap} id="quick" open={openSections.has('quick')} onToggle={() => toggleSection('quick')}>
+          <div className="space-y-2">
+            {/* Visibility toggles */}
+            <div className="space-y-1">
+              <span className="text-[8px] text-muted-foreground font-semibold uppercase">Visibilidade</span>
+              <div className="grid grid-cols-2 gap-1">
+                <div className="flex items-center justify-between px-1.5 py-1 bg-surface-2 rounded-sm">
+                  <span className="text-[8px] text-muted-foreground">Trajetórias</span>
+                  <Switch checked={showTrajectories} onCheckedChange={setShowTrajectories} className="scale-[0.6]" />
+                </div>
+                <div className="flex items-center justify-between px-1.5 py-1 bg-surface-2 rounded-sm">
+                  <span className="text-[8px] text-muted-foreground">Formações</span>
+                  <Switch checked={showFormations} onCheckedChange={setShowFormations} className="scale-[0.6]" />
+                </div>
+                <div className="flex items-center justify-between px-1.5 py-1 bg-surface-2 rounded-sm">
+                  <span className="text-[8px] text-muted-foreground">Grid</span>
+                  <Switch checked={settings.showGrid} onCheckedChange={v => updateSettings({ showGrid: v })} className="scale-[0.6]" />
+                </div>
+                <div className="flex items-center justify-between px-1.5 py-1 bg-surface-2 rounded-sm">
+                  <span className="text-[8px] text-muted-foreground">Árvores</span>
+                  <Switch checked={settings.showTreeline} onCheckedChange={v => updateSettings({ showTreeline: v })} className="scale-[0.6]" />
+                </div>
+              </div>
+            </div>
+
+            {/* Scene stats */}
+            <div className="bg-surface-2 rounded-sm p-1.5 text-[8px] font-mono text-muted-foreground space-y-0.5">
+              <div className="flex justify-between">
+                <span>Posições</span>
+                <span className="text-foreground">{positions.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Drones</span>
+                <span className="text-primary">{positions.filter(p => p.type === 'drone-pad').length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Formações</span>
+                <span className="text-foreground">{droneFormations.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Duração</span>
+                <span className="text-foreground">{droneFormations.reduce((s, f) => s + f.transitionDuration + f.holdDuration, 0).toFixed(0)}s</span>
+              </div>
+            </div>
+
+            {/* Quick ambient controls */}
+            <SliderRow label="Brightness" value={settings.ambientIntensity} onChange={v => updateSettings({ ambientIntensity: v })} max={0.5} />
+            <SliderRow label="Fog" value={settings.fogDensity} onChange={v => updateSettings({ fogDensity: v })} />
+          </div>
+        </Section>
+
         {/* ═══ PRESETS ═══ */}
         <Section title="Scene Presets" icon={Monitor} id="presets" open={openSections.has('presets')} onToggle={() => toggleSection('presets')}>
           <div className="grid grid-cols-2 gap-1">
