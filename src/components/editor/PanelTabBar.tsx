@@ -63,6 +63,8 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
     icon: Bug,
     items: [
       { id: 'fleet', label: 'Fleet Manager', icon: Radio },
+      { id: 'lightprogram', label: 'Light Program', icon: Lightbulb },
+      { id: 'safetycheck', label: 'Safety Check', icon: ShieldCheck },
       { id: 'boids', label: 'Boids', icon: Bug },
       { id: 'pid', label: 'PID', icon: Gauge },
       { id: 'battery', label: 'Battery', icon: Battery },
