@@ -130,7 +130,7 @@ export default function CryoJetEffect({
       mesh.scale.setScalar(expand);
       const mat = mesh.material as THREE.MeshBasicMaterial;
       mat.opacity = Math.max(0, 0.08 * intensity * (1 - age * 2));
-      mat.color.copy(baseColor).lerp(new THREE.Color('#e8f0ff'), 0.45);
+      mat.color.copy(baseColor).lerp(coolTint, 0.45);
     });
   });
 
