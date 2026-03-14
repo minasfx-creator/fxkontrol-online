@@ -20,17 +20,25 @@ export default function PrefireShell({
   color,
   progress,
   caliber = 4,
+  heading = 0,
+  pitch = 85,
 }: {
   position: [number, number, number];
   color: string;
   progress: number;
   caliber?: number;
+  heading?: number;
+  pitch?: number;
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const trailRef = useRef<THREE.Points>(null);
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
   const breakH = useMemo(() => getBreakHeight(caliber), [caliber]);
   const v0 = useMemo(() => getMortarVelocity(caliber), [caliber]);
+
+  // Launch angle in radians
+  const pitchRad = (pitch || 85) * (Math.PI / 180);
+  const headingRad = (heading || 0) * (Math.PI / 180);
 
   // Deterministic spark offsets
   const sparkSeeds = useMemo(() => {
@@ -47,12 +55,15 @@ export default function PrefireShell({
 
   if (progress <= 0 || progress > 1) return null;
 
-  // Shell Y: quadratic lift with deceleration (gravity fights upward velocity)
-  // Using simplified lift: y = v0*t - 0.5*g*t^2, where t maps to progress
+  // Shell position along launch angle
   const liftTime = getLiftTime(caliber);
   const t = progress * liftTime;
-  const shellY = Math.min(breakH, v0 * t + 0.5 * GRAVITY * t * t);
-  const shellVy = v0 + GRAVITY * t; // current velocity (for trail direction)
+  const dist = Math.min(breakH, v0 * t + 0.5 * GRAVITY * t * t);
+  // Apply launch angle: shell travels along heading/pitch direction
+  const shellX = Math.sin(headingRad) * Math.cos(pitchRad) * dist;
+  const shellY = Math.sin(pitchRad) * dist;
+  const shellZ = -Math.cos(headingRad) * Math.cos(pitchRad) * dist;
+  const shellVy = v0 + GRAVITY * t;
 
   // Slight wobble
   const wobbleX = Math.sin(progress * 12) * 0.15 * caliber * 0.2;
