@@ -48,7 +48,7 @@ import {
   SnowMachineEffect,
   BubbleMachineEffect,
 } from './effects';
-import { getLiftTime, getBreakHeight } from '@/lib/pyroPhysics';
+import { getLiftTime, getBreakHeight, getBreakSpeed } from '@/lib/pyroPhysics';
 import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
 import { temporalFlicker } from '@/lib/pyroNoise';
 // MiniMap removed per user request
@@ -78,18 +78,20 @@ class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
   }
 }
 
+// Camera presets calibrated for real-world firework heights (55m-300m break heights)
+// Audience distance: typically 100-300m from launch site (NFPA 1123)
 const CAMERA_PRESETS = [
-  { id: 'free', label: 'Free', icon: Eye, position: [0, 12, 40] as [number, number, number], target: [0, 8, 0] as [number, number, number] },
-  { id: 'satellite', label: 'Top', icon: Plane, position: [0, 250, 0.1] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
-  { id: 'audience', label: 'Plateia', icon: Users, position: [0, 4, 60] as [number, number, number], target: [0, 12, 0] as [number, number, number] },
-  { id: 'front', label: 'Front', icon: Users, position: [0, 15, 80] as [number, number, number], target: [0, 15, 0] as [number, number, number] },
-  { id: 'side', label: 'Side', icon: Video, position: [80, 15, 0] as [number, number, number], target: [0, 15, 0] as [number, number, number] },
-  { id: 'back', label: 'Back', icon: Video, position: [0, 15, -80] as [number, number, number], target: [0, 15, 0] as [number, number, number] },
-  { id: 'aerial', label: 'Aerial 45°', icon: Plane, position: [0, 120, 120] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
-  { id: 'closeup', label: 'Close-up', icon: Camera, position: [8, 8, 14] as [number, number, number], target: [0, 10, 0] as [number, number, number] },
-  { id: 'cinematic', label: 'Cinema', icon: Video, position: [-25, 6, 50] as [number, number, number], target: [0, 15, 0] as [number, number, number] },
-  { id: 'drone-follow', label: 'Drone POV', icon: Eye, position: [5, 25, 5] as [number, number, number], target: [0, 25, 0] as [number, number, number] },
-  { id: 'vip', label: 'VIP Box', icon: Users, position: [30, 8, 45] as [number, number, number], target: [0, 12, 0] as [number, number, number] },
+  { id: 'free', label: 'Free', icon: Eye, position: [0, 15, 200] as [number, number, number], target: [0, 80, 0] as [number, number, number] },
+  { id: 'satellite', label: 'Top', icon: Plane, position: [0, 500, 0.1] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
+  { id: 'audience', label: 'Plateia', icon: Users, position: [0, 2, 250] as [number, number, number], target: [0, 80, 0] as [number, number, number] },
+  { id: 'front', label: 'Front', icon: Users, position: [0, 5, 300] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
+  { id: 'side', label: 'Side', icon: Video, position: [300, 30, 0] as [number, number, number], target: [0, 80, 0] as [number, number, number] },
+  { id: 'back', label: 'Back', icon: Video, position: [0, 30, -200] as [number, number, number], target: [0, 80, 0] as [number, number, number] },
+  { id: 'aerial', label: 'Aerial 45°', icon: Plane, position: [0, 300, 300] as [number, number, number], target: [0, 50, 0] as [number, number, number] },
+  { id: 'closeup', label: 'Close-up', icon: Camera, position: [20, 30, 80] as [number, number, number], target: [0, 80, 0] as [number, number, number] },
+  { id: 'cinematic', label: 'Cinema', icon: Video, position: [-80, 8, 220] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
+  { id: 'drone-follow', label: 'Drone POV', icon: Eye, position: [15, 120, 40] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
+  { id: 'vip', label: 'VIP Box', icon: Users, position: [60, 5, 200] as [number, number, number], target: [0, 80, 0] as [number, number, number] },
 ] as const;
 
 // --- Playback clock ---
@@ -137,9 +139,9 @@ const STAR_VERTEX_SHADER = `
     vLife = aLife;
     vSize = aSize;
     vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-    // Larger point size multiplier for more visible stars
-    gl_PointSize = aSize * (500.0 / -mvPos.z);
-    gl_PointSize = clamp(gl_PointSize, 1.0, 128.0);
+    // Increased multiplier for real-world scale (stars at 50-300m distance from camera)
+    gl_PointSize = aSize * (1800.0 / -mvPos.z);
+    gl_PointSize = clamp(gl_PointSize, 1.5, 200.0);
     gl_Position = projectionMatrix * mvPos;
   }
 `;
@@ -195,12 +197,12 @@ function FireworkBurst({
   const debrisRef = useRef<THREE.Points>(null);
   
   // Finale caliber scaling: star count proportional to shell volume
-  const STAR_COUNT = useMemo(() => Math.min(2000, Math.round(80 + caliber * caliber * 24)), [caliber]);
-  const TRAIL_LENGTH = useMemo(() => Math.min(24, 12 + Math.floor(caliber * 1.5)), [caliber]);
-  const DEBRIS_COUNT = useMemo(() => Math.min(500, Math.round(STAR_COUNT * 0.4)), [STAR_COUNT]);
+  const STAR_COUNT = useMemo(() => Math.min(2500, Math.round(120 + caliber * caliber * 28)), [caliber]);
+  const TRAIL_LENGTH = useMemo(() => Math.min(28, 14 + Math.floor(caliber * 1.8)), [caliber]);
+  const DEBRIS_COUNT = useMemo(() => Math.min(600, Math.round(STAR_COUNT * 0.4)), [STAR_COUNT]);
   
-  // Finale break speed: derived from shell internal pressure (caliber-proportional)
-  const breakSpeed = useMemo(() => 6 + caliber * 4.5, [caliber]);
+  // Real break speed from pyroPhysics — caliber proportional (m/s)
+  const breakSpeed = useMemo(() => getBreakSpeed(caliber), [caliber]);
   
   // Star lifetime per Finale — depends on pattern and caliber
   const starLife = useMemo(() => {
@@ -364,8 +366,8 @@ function FireworkBurst({
     const dragCoeff = 0.04 + caliber * 0.005;
     const isTrailingPattern = pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade' || pattern === 'palm';
     
-    // Particle size: proportional to caliber — larger for more visible bloom
-    const baseSize = 0.18 + caliber * 0.12;
+    // Particle size: proportional to caliber — much larger for real-world scale visibility
+    const baseSize = 0.5 + caliber * 0.35;
 
     for (let i = 0; i < STAR_COUNT; i++) {
       const vx = velocities[i * 3], vy = velocities[i * 3 + 1], vz = velocities[i * 3 + 2];
@@ -376,9 +378,9 @@ function FireworkBurst({
       const fadeCubed = fadeSquared * fade; // even smoother tail-off
       const dragF = Math.exp(-dragCoeff * t);
 
-      // Euler integration with drag + gravity + wind drift
+      // Euler integration with drag + real gravity + wind drift
       const px = vx * t * dragF + w[0] * t * t * 0.3;
-      const py = vy * t * dragF + 0.5 * GRAVITY * t * t * 0.28;
+      const py = vy * t * dragF + 0.5 * GRAVITY * t * t * 0.5;
       const pz = vz * t * dragF + w[2] * t * t * 0.3;
       pos[i * 3] = px; pos[i * 3 + 1] = py; pos[i * 3 + 2] = pz;
 
@@ -429,10 +431,10 @@ function FireworkBurst({
         const d1 = Math.exp(-dragCoeff * t1);
         const base2 = (i * TRAIL_LENGTH + s) * 6;
         tPos[base2] = vx * t0 * d0 + w[0] * t0 * t0 * 0.3;
-        tPos[base2 + 1] = vy * t0 * d0 + 0.5 * GRAVITY * t0 * t0 * 0.28;
+        tPos[base2 + 1] = vy * t0 * d0 + 0.5 * GRAVITY * t0 * t0 * 0.5;
         tPos[base2 + 2] = vz * t0 * d0 + w[2] * t0 * t0 * 0.3;
         tPos[base2 + 3] = vx * t1 * d1 + w[0] * t1 * t1 * 0.3;
-        tPos[base2 + 4] = vy * t1 * d1 + 0.5 * GRAVITY * t1 * t1 * 0.28;
+        tPos[base2 + 4] = vy * t1 * d1 + 0.5 * GRAVITY * t1 * t1 * 0.5;
         tPos[base2 + 5] = vz * t1 * d1 + w[2] * t1 * t1 * 0.3;
         
         const segFrac = s / TRAIL_LENGTH;
@@ -481,7 +483,7 @@ function FireworkBurst({
         const dDrag = Math.exp(-0.02 * dt);
         
         dPos[i * 3] = dvx * dt * dDrag + w[0] * dt * dt * 0.4;
-        dPos[i * 3 + 1] = dvy * dt * dDrag + 0.5 * GRAVITY * dt * dt * 0.35;
+        dPos[i * 3 + 1] = dvy * dt * dDrag + 0.5 * GRAVITY * dt * dt * 0.55;
         dPos[i * 3 + 2] = dvz * dt * dDrag + w[2] * dt * dt * 0.4;
         
         // Dark charcoal com cintilação determinística
@@ -501,7 +503,8 @@ function FireworkBurst({
   });
 
   // Break flash: Finale multi-layer flash system
-  const flashSize = 1.8 + caliber * 2.0;
+  // Flash size proportional to caliber — real-world scale
+  const flashSize = 3 + caliber * 4.0;
 
   return (
     <group position={position}>
@@ -521,7 +524,7 @@ function FireworkBurst({
           <bufferAttribute attach="attributes-position" args={[new Float32Array(trailVertCount * 3), 3]} />
           <bufferAttribute attach="attributes-color" args={[new Float32Array(trailVertCount * 3), 3]} />
         </bufferGeometry>
-        <lineBasicMaterial vertexColors transparent opacity={0.95} depthWrite={false} blending={THREE.AdditiveBlending} linewidth={2} />
+        <lineBasicMaterial vertexColors transparent opacity={0.9} depthWrite={false} blending={THREE.AdditiveBlending} linewidth={3} />
       </lineSegments>
       
       {/* ═══ Falling charcoal debris — Finale post-burnout embers ═══ */}
@@ -531,7 +534,7 @@ function FireworkBurst({
             <bufferAttribute attach="attributes-position" args={[new Float32Array(DEBRIS_COUNT * 3), 3]} />
             <bufferAttribute attach="attributes-color" args={[new Float32Array(DEBRIS_COUNT * 3), 3]} />
           </bufferGeometry>
-          <pointsMaterial size={0.04} vertexColors transparent opacity={0.7} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+          <pointsMaterial size={0.15} vertexColors transparent opacity={0.7} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
         </points>
       )}
       
@@ -564,15 +567,15 @@ function FireworkBurst({
       {/* Layer 4: Wide atmospheric halo — sky illumination */}
       {progress < 0.7 && progress > 0.003 && (
         <mesh>
-          <sphereGeometry args={[caliber * 3.5 + progress * caliber * 14, 16, 16]} />
-          <meshBasicMaterial color={color} transparent opacity={0.04 * (1 - progress / 0.7)} blending={THREE.AdditiveBlending} />
+          <sphereGeometry args={[caliber * 6 + progress * caliber * 20, 16, 16]} />
+          <meshBasicMaterial color={color} transparent opacity={0.05 * (1 - progress / 0.7)} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
       {/* Layer 5: Ground illumination sphere — lights up terrain */}
       {progress < 0.4 && (
-        <mesh position={[0, -position[1] * 0.5, 0]}>
-          <sphereGeometry args={[caliber * 8 + progress * caliber * 20, 12, 12]} />
-          <meshBasicMaterial color={color} transparent opacity={0.012 * (1 - progress / 0.4)} blending={THREE.AdditiveBlending} />
+        <mesh position={[0, -position[1] * 0.3, 0]}>
+          <sphereGeometry args={[caliber * 12 + progress * caliber * 30, 12, 12]} />
+          <meshBasicMaterial color={color} transparent opacity={0.015 * (1 - progress / 0.4)} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
     </group>
@@ -1525,25 +1528,34 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
         </>
       )}
 
-      {/* Scale reference poles */}
-      {sc.showScalePoles && [-60, -30, 0, 30, 60].map((x) => (
-        <group key={`pole-${x}`} position={[x, 0, -45]}>
-          <mesh position={[0, 5, 0]} castShadow>
-            <cylinderGeometry args={[0.04, 0.05, 10, 8]} />
+      {/* Scale reference poles — real height markers matching firework break heights */}
+      {sc.showScalePoles && [-80, -40, 0, 40, 80].map((x) => (
+        <group key={`pole-${x}`} position={[x, 0, -60]}>
+          {/* Tall reference pole (100m) */}
+          <mesh position={[0, 50, 0]} castShadow>
+            <cylinderGeometry args={[0.08, 0.1, 100, 8]} />
             <meshStandardMaterial color="#555555" metalness={0.7} roughness={0.25} />
           </mesh>
-          {[2, 4, 6, 8, 10].map((h) => (
-            <mesh key={h} position={[0, h, 0]}>
-              <boxGeometry args={[0.15, 0.02, 0.15]} />
-              <meshBasicMaterial color="#888888" transparent opacity={0.4} />
-            </mesh>
+          {/* Height markers every 25m */}
+          {[25, 50, 75, 100].map((h) => (
+            <group key={h}>
+              <mesh position={[0, h, 0]}>
+                <boxGeometry args={[0.5, 0.05, 0.5]} />
+                <meshBasicMaterial color={h === 50 ? '#ffaa00' : h === 100 ? '#ff4444' : '#888888'} transparent opacity={0.5} />
+              </mesh>
+              {/* Height label billboard */}
+              <mesh position={[1.2, h, 0]}>
+                <planeGeometry args={[2, 0.6]} />
+                <meshBasicMaterial color={h === 100 ? '#ff4444' : '#666666'} transparent opacity={0.25} />
+              </mesh>
+            </group>
           ))}
-          <mesh position={[0, 10.15, 0]}>
-            <sphereGeometry args={[0.06, 8, 8]} />
-            <meshBasicMaterial color="#ffffff" />
+          <mesh position={[0, 100.3, 0]}>
+            <sphereGeometry args={[0.15, 8, 8]} />
+            <meshBasicMaterial color="#ff4444" />
           </mesh>
-          <mesh position={[0, 0.05, 0]}>
-            <cylinderGeometry args={[0.18, 0.22, 0.1, 8]} />
+          <mesh position={[0, 0.1, 0]}>
+            <cylinderGeometry args={[0.35, 0.45, 0.2, 8]} />
             <meshStandardMaterial color="#444444" metalness={0.6} roughness={0.3} />
           </mesh>
         </group>
@@ -1858,7 +1870,7 @@ export default function SkyCanvas() {
         }}
         dpr={[1, 2]}
       >
-        <PerspectiveCamera makeDefault position={preset.position} fov={55} near={0.2} far={2500} />
+        <PerspectiveCamera makeDefault position={preset.position} fov={55} near={0.5} far={5000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook} />
 
         <SceneLighting />
