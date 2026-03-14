@@ -567,15 +567,15 @@ function FireworkBurst({
       {/* Layer 4: Wide atmospheric halo — sky illumination */}
       {progress < 0.7 && progress > 0.003 && (
         <mesh>
-          <sphereGeometry args={[caliber * 3.5 + progress * caliber * 14, 16, 16]} />
-          <meshBasicMaterial color={color} transparent opacity={0.04 * (1 - progress / 0.7)} blending={THREE.AdditiveBlending} />
+          <sphereGeometry args={[caliber * 6 + progress * caliber * 20, 16, 16]} />
+          <meshBasicMaterial color={color} transparent opacity={0.05 * (1 - progress / 0.7)} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
       {/* Layer 5: Ground illumination sphere — lights up terrain */}
       {progress < 0.4 && (
-        <mesh position={[0, -position[1] * 0.5, 0]}>
-          <sphereGeometry args={[caliber * 8 + progress * caliber * 20, 12, 12]} />
-          <meshBasicMaterial color={color} transparent opacity={0.012 * (1 - progress / 0.4)} blending={THREE.AdditiveBlending} />
+        <mesh position={[0, -position[1] * 0.3, 0]}>
+          <sphereGeometry args={[caliber * 12 + progress * caliber * 30, 12, 12]} />
+          <meshBasicMaterial color={color} transparent opacity={0.015 * (1 - progress / 0.4)} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
     </group>
