@@ -7,7 +7,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   Flame, Wind, Sparkles, Zap, Play, Square, Plus, Trash2,
   AlertTriangle, Check, Radio, Lightbulb, ChevronDown, ChevronRight,
-  RotateCcw, Save, Upload, Lock, Unlock, Timer
+  RotateCcw, Save, Upload, Lock, Unlock, Timer, MapPinned
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
