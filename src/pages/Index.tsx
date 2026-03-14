@@ -320,11 +320,6 @@ export default function Index() {
     );
   };
 
-  const handleMobileOpenPanel = useCallback((id: PanelId) => {
-    setActivePanel(id);
-    setMobileTab(null);
-    setMobilePanelHeight('half');
-  }, []);
 
   // Mobile layout
   if (isMobile) {
