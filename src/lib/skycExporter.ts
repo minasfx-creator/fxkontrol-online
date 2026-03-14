@@ -34,7 +34,9 @@ interface SkycSettings {
   showDuration: number;
   indoor: boolean;
   yawControl: boolean;
+  pyroControl: boolean;
   proposedMapping?: boolean;
+  cameraExport: boolean;
 }
 
 interface SkycEnvironment {
