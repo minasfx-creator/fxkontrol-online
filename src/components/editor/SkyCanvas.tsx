@@ -457,22 +457,22 @@ function FireworkBurst({
       }
     }
 
-    // === Update star geometry with custom attributes ===
+    // === Update star geometry — reuse existing buffer attributes ===
     const pGeo = pointsRef.current.geometry;
-    pGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    pGeo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
-    pGeo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
-    pGeo.setAttribute('aLife', new THREE.BufferAttribute(lives, 1));
-    pGeo.attributes.position.needsUpdate = true;
-    pGeo.attributes.color.needsUpdate = true;
-    (pGeo.attributes as any).aSize.needsUpdate = true;
-    (pGeo.attributes as any).aLife.needsUpdate = true;
+    const posAttr = pGeo.getAttribute('position') as THREE.BufferAttribute;
+    const colAttr = pGeo.getAttribute('color') as THREE.BufferAttribute;
+    const sizeAttr = pGeo.getAttribute('aSize') as THREE.BufferAttribute;
+    const lifeAttr = pGeo.getAttribute('aLife') as THREE.BufferAttribute;
+    if (posAttr) { posAttr.array = pos; posAttr.needsUpdate = true; }
+    if (colAttr) { colAttr.array = cols; colAttr.needsUpdate = true; }
+    if (sizeAttr) { sizeAttr.array = sizes; sizeAttr.needsUpdate = true; }
+    if (lifeAttr) { lifeAttr.array = lives; lifeAttr.needsUpdate = true; }
 
     const lGeo = trailRef.current.geometry;
-    lGeo.setAttribute('position', new THREE.BufferAttribute(tPos, 3));
-    lGeo.setAttribute('color', new THREE.BufferAttribute(tCol, 3));
-    lGeo.attributes.position.needsUpdate = true;
-    lGeo.attributes.color.needsUpdate = true;
+    const tPosAttr = lGeo.getAttribute('position') as THREE.BufferAttribute;
+    const tColAttr = lGeo.getAttribute('color') as THREE.BufferAttribute;
+    if (tPosAttr) { tPosAttr.array = tPos; tPosAttr.needsUpdate = true; }
+    if (tColAttr) { tColAttr.array = tCol; tColAttr.needsUpdate = true; }
     
     // === Falling charcoal debris — Finale's signature burnt-out embers ===
     if (debrisRef.current && progress > 0.25) {
