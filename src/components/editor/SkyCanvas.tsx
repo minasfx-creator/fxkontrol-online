@@ -1433,7 +1433,7 @@ function WeatherEffects() {
 }
 
 // --- Camera controller ---
-function CameraController({ targetPosition, targetLookAt }: { targetPosition: [number, number, number]; targetLookAt: [number, number, number] }) {
+function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPosition: [number, number, number]; targetLookAt: [number, number, number]; freeLook: boolean }) {
   const { camera } = useThree();
   const controlsRef = useRef<any>(null);
   const targetPos = useRef(new THREE.Vector3(...targetPosition));
@@ -1441,14 +1441,17 @@ function CameraController({ targetPosition, targetLookAt }: { targetPosition: [n
   const animating = useRef(false);
 
   useEffect(() => {
+    if (freeLook) {
+      animating.current = false;
+      return;
+    }
     targetPos.current.set(...targetPosition);
     targetLook.current.set(...targetLookAt);
     animating.current = true;
-  }, [targetPosition, targetLookAt]);
+  }, [targetPosition, targetLookAt, freeLook]);
 
   useFrame(() => {
-    if (!animating.current || !controlsRef.current) return;
-    // Smooth cinematic interpolation
+    if (!animating.current || !controlsRef.current || freeLook) return;
     camera.position.lerp(targetPos.current, 0.04);
     controlsRef.current.target.lerp(targetLook.current, 0.04);
     controlsRef.current.update();
