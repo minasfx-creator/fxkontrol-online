@@ -285,7 +285,8 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
   }, [position.id, selectPosition]);
 
   const emissiveIntensity = isDragging ? 1.0 : isSelected ? 0.7 : isHovered ? 0.4 : 0.15;
-  const pinScale = isSelected ? 1.15 : isHovered ? 1.05 : 1;
+  const pinScale = isSelected ? 0.75 : isHovered ? 0.68 : 0.6;
+  const showLabel = isHovered || isSelected || isDragging;
 
   return (
     <group position={[position.x, position.y, position.z]} scale={[pinScale, pinScale, pinScale]}>
@@ -363,55 +364,57 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
         </mesh>
       </group>
 
-      {/* Clickable Label Plate — PRIMARY click target */}
-      <Html position={[0, position.type === 'pyro' ? 1.1 : 0.75, 0]} center>
-        <div
-          className="px-2.5 py-1 rounded-md text-[10px] font-mono whitespace-nowrap flex items-center gap-1.5 backdrop-blur-md select-none cursor-pointer transition-all duration-150 hover:scale-105"
-          style={{
-            backgroundColor: isSelected ? `${color}66` : `${color}22`,
-            border: `1.5px solid ${isSelected ? `${color}bb` : `${color}55`}`,
-            color,
-            boxShadow: isSelected ? `0 0 16px ${color}55, 0 2px 8px rgba(0,0,0,0.4)` : '0 2px 6px rgba(0,0,0,0.3)',
-            pointerEvents: 'auto',
-          }}
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            if (e.button === 2) {
-              onRightClick(position, { x: e.clientX, y: e.clientY });
-              return;
-            }
-            if (e.shiftKey) {
-              togglePositionSelection(position.id);
-            } else {
+      {/* Clickable Label Plate — visible on hover/select only */}
+      {showLabel && (
+        <Html position={[0, position.type === 'pyro' ? 1.1 : 0.75, 0]} center>
+          <div
+            className="px-2.5 py-1 rounded-md text-[10px] font-mono whitespace-nowrap flex items-center gap-1.5 backdrop-blur-md select-none cursor-pointer transition-all duration-150 hover:scale-105"
+            style={{
+              backgroundColor: isSelected ? `${color}66` : `${color}22`,
+              border: `1.5px solid ${isSelected ? `${color}bb` : `${color}55`}`,
+              color,
+              boxShadow: isSelected ? `0 0 16px ${color}55, 0 2px 8px rgba(0,0,0,0.4)` : '0 2px 6px rgba(0,0,0,0.3)',
+              pointerEvents: 'auto',
+            }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              if (e.button === 2) {
+                onRightClick(position, { x: e.clientX, y: e.clientY });
+                return;
+              }
+              if (e.shiftKey) {
+                togglePositionSelection(position.id);
+              } else {
+                selectPosition(position.id);
+              }
+            }}
+            onDoubleClick={(e) => {
+              e.stopPropagation();
               selectPosition(position.id);
-            }
-          }}
-          onDoubleClick={(e) => {
-            e.stopPropagation();
-            selectPosition(position.id);
-            window.dispatchEvent(new CustomEvent('position-double-click', { detail: { posId: position.id } }));
-          }}
-        >
-          <span style={{ fontSize: '11px' }}>{position.type === 'pyro' ? '🎯' : '🛸'}</span>
-          <span className="font-bold">{position.name}</span>
-          {linkedEffects > 0 && (
-            <span className="text-[8px] opacity-80 bg-black/30 px-1 rounded">🎆{linkedEffects}</span>
-          )}
-          {position.type === 'pyro' && (position.pitch || 0) < 85 && (
-            <span className="text-[8px] opacity-70 bg-black/30 px-1 rounded">
-              {Math.round(position.pitch || 85)}°
-            </span>
-          )}
-          {isDragging && (
-            <span className="opacity-80 font-mono text-[8px] bg-black/30 px-1 rounded">
-              {position.x.toFixed(1)}, {position.z.toFixed(1)}
-            </span>
-          )}
-          {snapGuides.length > 0 && (
-            <span className="text-[7px] text-green-400 bg-black/40 px-1 rounded">SNAP</span>
-          )}
-        </div>
-      </Html>
+              window.dispatchEvent(new CustomEvent('position-double-click', { detail: { posId: position.id } }));
+            }}
+          >
+            <span style={{ fontSize: '11px' }}>{position.type === 'pyro' ? '🎯' : '🛸'}</span>
+            <span className="font-bold">{position.name}</span>
+            {linkedEffects > 0 && (
+              <span className="text-[8px] opacity-80 bg-black/30 px-1 rounded">🎆{linkedEffects}</span>
+            )}
+            {position.type === 'pyro' && (position.pitch || 0) < 85 && (
+              <span className="text-[8px] opacity-70 bg-black/30 px-1 rounded">
+                {Math.round(position.pitch || 85)}°
+              </span>
+            )}
+            {isDragging && (
+              <span className="opacity-80 font-mono text-[8px] bg-black/30 px-1 rounded">
+                {position.x.toFixed(1)}, {position.z.toFixed(1)}
+              </span>
+            )}
+            {snapGuides.length > 0 && (
+              <span className="text-[7px] text-green-400 bg-black/40 px-1 rounded">SNAP</span>
+            )}
+          </div>
+        </Html>
+      )}
 
       {/* Safety ring for pyro */}
       {isSelected && position.type === 'pyro' && (
