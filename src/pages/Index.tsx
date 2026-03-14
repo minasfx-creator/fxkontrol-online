@@ -141,6 +141,10 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   showsettings: 'w-64',
   calibration: 'w-72',
   livefiring: 'w-72',
+  fleet: 'w-72',
+  geofence: 'w-64',
+  storyboard: 'w-64',
+  showcontrol: 'w-64',
 };
 
 export default function Index() {
