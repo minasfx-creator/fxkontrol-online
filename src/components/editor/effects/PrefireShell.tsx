@@ -81,15 +81,20 @@ export default function PrefireShell({
   for (let i = 0; i < TRAIL_PARTICLES; i++) {
     const trailT = Math.max(0, progress - (i / TRAIL_PARTICLES) * 0.35);
     const tt = trailT * liftTime;
-    const ty = Math.max(0, v0 * tt + 0.5 * GRAVITY * tt * tt);
+    const tDist = Math.max(0, v0 * tt + 0.5 * GRAVITY * tt * tt);
     const fade = Math.pow(1 - i / TRAIL_PARTICLES, 1.8) * headBrightness;
 
     const tWobbleX = Math.sin(trailT * 12) * 0.15 * caliber * 0.2;
     const tWobbleZ = Math.cos(trailT * 17) * 0.1 * caliber * 0.15;
 
-    trailPositions[i * 3] = tWobbleX + (Math.random() - 0.5) * 0.08;
+    // Trail follows launch angle
+    const tx = Math.sin(headingRad) * Math.cos(pitchRad) * tDist + tWobbleX + (Math.random() - 0.5) * 0.08;
+    const ty = Math.sin(pitchRad) * tDist;
+    const tz = -Math.cos(headingRad) * Math.cos(pitchRad) * tDist + tWobbleZ + (Math.random() - 0.5) * 0.08;
+
+    trailPositions[i * 3] = tx;
     trailPositions[i * 3 + 1] = ty;
-    trailPositions[i * 3 + 2] = tWobbleZ + (Math.random() - 0.5) * 0.08;
+    trailPositions[i * 3 + 2] = tz;
 
     // Comet trail: white-hot near head → golden → colored → dim
     const tFrac = i / TRAIL_PARTICLES;
