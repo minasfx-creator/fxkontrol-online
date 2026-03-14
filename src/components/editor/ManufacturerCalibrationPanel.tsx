@@ -146,7 +146,7 @@ export default function ManufacturerCalibrationPanel({ onClose }: Props) {
                       {'isCustom' in p && <Badge className="text-[8px] px-1 py-0 bg-accent/20 text-accent">Custom</Badge>}
                     </div>
                     {selectedProfileId === p.id && activeProfileId === p.id && (
-                      <Badge className="text-[8px] px-1 py-0 bg-emerald-500/20 text-emerald-400">Ativo</Badge>
+                      <Badge className="text-[8px] px-1 py-0 bg-primary/20 text-primary">Ativo</Badge>
                     )}
                   </div>
                   <p className="text-[9px] text-muted-foreground mt-0.5 leading-tight">{p.description}</p>
