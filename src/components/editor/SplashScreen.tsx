@@ -61,10 +61,10 @@ export default function SplashScreen({ onStart }: SplashScreenProps) {
             <Rocket className="h-8 w-8 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-bold tracking-[0.25em] uppercase text-foreground font-mono-code">
-            NEXUS GENESIS
+            AEROSWARM NEXUS
           </h1>
           <p className="text-xs text-muted-foreground tracking-[0.2em] uppercase">
-            Zenith Absolute Workstation
+            Zenith Prime Workstation
           </p>
         </div>
 
