@@ -766,17 +766,18 @@ function TimelineEffects() {
 function LiveSFXEffects() {
   const activeEffects = useLiveSfxStore((s) => s.activeEffects);
   const stopEffect = useLiveSfxStore((s) => s.stopEffect);
-  const [tick, setTick] = useState(0);
+  const frameRef = useRef(0);
 
   useFrame(() => {
     if (activeEffects.length === 0) return;
-    // Force re-render each frame to update progress
-    setTick(t => t + 1);
-    // Clean up expired effects
-    const now = performance.now();
-    for (const fx of activeEffects) {
-      if (now - fx.startedAt > fx.duration) {
-        stopEffect(fx.id);
+    frameRef.current++;
+    // Clean up expired effects (only check every 10 frames to avoid store churn)
+    if (frameRef.current % 10 === 0) {
+      const now = performance.now();
+      for (const fx of activeEffects) {
+        if (now - fx.startedAt > fx.duration) {
+          stopEffect(fx.id);
+        }
       }
     }
   });
