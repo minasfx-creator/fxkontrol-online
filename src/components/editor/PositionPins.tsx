@@ -285,7 +285,8 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
   }, [position.id, selectPosition]);
 
   const emissiveIntensity = isDragging ? 1.0 : isSelected ? 0.7 : isHovered ? 0.4 : 0.15;
-  const pinScale = isSelected ? 1.15 : isHovered ? 1.05 : 1;
+  const pinScale = isSelected ? 0.75 : isHovered ? 0.68 : 0.6;
+  const showLabel = isHovered || isSelected || isDragging;
 
   return (
     <group position={[position.x, position.y, position.z]} scale={[pinScale, pinScale, pinScale]}>
