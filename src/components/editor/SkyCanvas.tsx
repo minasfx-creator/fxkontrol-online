@@ -208,12 +208,14 @@ function FireworkBurst({
     );
   }, [color]);
   
-  const { velocities, lifetimes, twinklePhases, debrisVelocities } = useMemo(() => {
+  const { velocities, lifetimes, twinklePhases, debrisVelocities, sparkleSeeds, debrisSparkleSeeds } = useMemo(() => {
     const v = new Float32Array(STAR_COUNT * 3);
     const l = new Float32Array(STAR_COUNT);
     const tp = new Float32Array(STAR_COUNT);
+    const sparkle = new Float32Array(STAR_COUNT);
     const dv = new Float32Array(DEBRIS_COUNT * 3);
-    
+    const debrisSparkle = new Float32Array(DEBRIS_COUNT);
+
     for (let i = 0; i < STAR_COUNT; i++) {
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
@@ -221,7 +223,8 @@ function FireworkBurst({
       let life = starLife * (0.6 + Math.random() * 0.4);
       const speedVar = 0.55 + Math.random() * 0.45;
       tp[i] = Math.random() * Math.PI * 2;
-      
+      sparkle[i] = Math.random() * 999 + i;
+
       switch (pattern) {
         case 'willow':
           vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.42 * speedVar;
@@ -274,18 +277,19 @@ function FireworkBurst({
           vz = Math.cos(armPhi + (Math.random() - 0.5) * jitter) * breakSpeed * 0.82;
           break;
         }
-        default: // peony — Finale's classic spherical
+        default:
           vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * speedVar;
           vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * speedVar * 0.9 + 0.6;
           vz = Math.cos(phi) * breakSpeed * speedVar;
           break;
       }
-      
-      v[i * 3] = vx; v[i * 3 + 1] = vy; v[i * 3 + 2] = vz;
+
+      v[i * 3] = vx;
+      v[i * 3 + 1] = vy;
+      v[i * 3 + 2] = vz;
       l[i] = life;
     }
-    
-    // Debris: random positions within burst sphere, slow initial velocity
+
     for (let i = 0; i < DEBRIS_COUNT; i++) {
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
@@ -293,9 +297,17 @@ function FireworkBurst({
       dv[i * 3] = Math.sin(phi) * Math.cos(theta) * spd;
       dv[i * 3 + 1] = Math.sin(phi) * Math.sin(theta) * spd * 0.5 - 1;
       dv[i * 3 + 2] = Math.cos(phi) * spd;
+      debrisSparkle[i] = Math.random() * 999 + i * 7;
     }
-    
-    return { velocities: v, lifetimes: l, twinklePhases: tp, debrisVelocities: dv };
+
+    return {
+      velocities: v,
+      lifetimes: l,
+      twinklePhases: tp,
+      debrisVelocities: dv,
+      sparkleSeeds: sparkle,
+      debrisSparkleSeeds: debrisSparkle,
+    };
   }, [STAR_COUNT, DEBRIS_COUNT, breakSpeed, starLife, pattern]);
 
   // Pre-allocate typed arrays for per-frame updates
