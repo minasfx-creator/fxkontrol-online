@@ -1579,15 +1579,30 @@ export default function SkyCanvas() {
       </Canvas>
       </WebGLErrorBoundary>
 
-      {/* Camera presets */}
-      <div className="absolute top-3 left-3 flex items-center gap-1">
+      {/* Camera presets & controls */}
+      <div className="absolute top-3 left-3 flex items-center gap-1 flex-wrap">
+        {/* Free look toggle */}
+        <button
+          onClick={() => setFreeLook(!freeLook)}
+          className={cn(
+            "flex items-center gap-1 px-2 py-1 rounded-sm text-[10px] font-mono-code transition-all border",
+            freeLook
+              ? "bg-warning/20 text-warning border-warning/40"
+              : "bg-surface-1/80 text-muted-foreground border-border/50 hover:text-foreground hover:bg-surface-2/80"
+          )}
+          title="Free Look — camera stays where you leave it"
+        >
+          <ScanEye className="w-3 h-3" />
+          <span className="hidden sm:inline">Look</span>
+        </button>
+
         {CAMERA_PRESETS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
-            onClick={() => setActivePreset(id)}
+            onClick={() => { setActivePreset(id); setFreeLook(false); }}
             className={cn(
               "flex items-center gap-1 px-2 py-1 rounded-sm text-[10px] font-mono-code transition-all border",
-              activePreset === id
+              activePreset === id && !freeLook
                 ? "bg-primary/20 text-primary border-primary/40 glow-electric"
                 : "bg-surface-1/80 text-muted-foreground border-border/50 hover:text-foreground hover:bg-surface-2/80"
             )}
@@ -1596,6 +1611,7 @@ export default function SkyCanvas() {
             <span className="hidden sm:inline">{label}</span>
           </button>
         ))}
+
         {/* Download satellite scenery */}
         <button
           onClick={handleDownloadScenery}
@@ -1615,6 +1631,8 @@ export default function SkyCanvas() {
           )}
           <span className="hidden sm:inline">{satelliteTexture ? 'Satélite ✓' : 'Cenário Real'}</span>
         </button>
+
+        {/* Fullscreen toggle */}
         <button
           onClick={() => {
             const el = document.querySelector('[data-sky-canvas]') as HTMLElement;
@@ -1623,19 +1641,22 @@ export default function SkyCanvas() {
           }}
           className="bg-surface-1/80 text-muted-foreground border border-border/50 hover:text-foreground hover:bg-surface-2/80 px-2 py-1 rounded-sm transition-all"
         >
-          {document.fullscreenElement ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
+          {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
         </button>
       </div>
 
+      {/* Fullscreen floating edit menu */}
+      {isFullscreen && <FullscreenEditMenu />}
+
       <PerformanceHUD statsRef={perfStatsRef} droneCount={droneCount} />
       <ViewportTerminal />
-      {/* MiniMap removed */}
       <SelectionStatusBar />
       <AlignmentTools />
 
       <div className="absolute bottom-3 right-3 text-[9px] font-mono-code text-muted-foreground/60 bg-surface-1/60 backdrop-blur-sm px-2 py-1 rounded border border-border/30 space-y-0.5">
         <div>Orbit: LMB · Pan: MMB · Zoom: Scroll</div>
         <div>Box: Alt+Drag · Multi: Shift+Click · Edit: Dbl-Click</div>
+        <div>{freeLook ? '🔓 Free Look ON' : '🔒 Preset Lock'}</div>
       </div>
     </div>
   );
