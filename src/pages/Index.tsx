@@ -327,6 +327,10 @@ export default function Index() {
         {activePanel === 'showsettings' && <ShowSettingsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'calibration' && <ManufacturerCalibrationPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'livefiring' && <LiveFiringPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'fleet' && <FleetManagementPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'geofence' && <GeofencePanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'storyboard' && <StoryboardPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'showcontrol' && <ShowControlPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
