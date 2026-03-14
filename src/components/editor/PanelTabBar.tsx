@@ -217,7 +217,7 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
                         const capturedIdx = currentIdx;
 
                         // Calculate scale from mouse position
-                        const btn = buttonRefs.current.get(capturedIdx);
+                        const btn = buttonRefs.current[capturedIdx];
                         let scale = 1;
                         if (mouseY !== null && btn && containerRef.current) {
                           const containerRect = containerRef.current.getBoundingClientRect();
