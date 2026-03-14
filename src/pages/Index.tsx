@@ -130,6 +130,7 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   marketplace: 'w-72',
   sitelayout: 'w-72',
   showsettings: 'w-64',
+  calibration: 'w-72',
 };
 
 export default function Index() {
