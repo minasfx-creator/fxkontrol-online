@@ -62,6 +62,10 @@ import SiteLayoutPanel from '@/components/editor/SiteLayoutPanel';
 import ShowSettingsPanel from '@/components/editor/ShowSettingsPanel';
 import ManufacturerCalibrationPanel from '@/components/editor/ManufacturerCalibrationPanel';
 import LiveFiringPanel from '@/components/editor/LiveFiringPanel';
+import FleetManagementPanel from '@/components/editor/FleetManagementPanel';
+import GeofencePanel from '@/components/editor/GeofencePanel';
+import StoryboardPanel from '@/components/editor/StoryboardPanel';
+import ShowControlPanel from '@/components/editor/ShowControlPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
@@ -137,6 +141,10 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   showsettings: 'w-64',
   calibration: 'w-72',
   livefiring: 'w-72',
+  fleet: 'w-72',
+  geofence: 'w-64',
+  storyboard: 'w-64',
+  showcontrol: 'w-64',
 };
 
 export default function Index() {
@@ -319,6 +327,10 @@ export default function Index() {
         {activePanel === 'showsettings' && <ShowSettingsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'calibration' && <ManufacturerCalibrationPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'livefiring' && <LiveFiringPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'fleet' && <FleetManagementPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'geofence' && <GeofencePanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'storyboard' && <StoryboardPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'showcontrol' && <ShowControlPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
