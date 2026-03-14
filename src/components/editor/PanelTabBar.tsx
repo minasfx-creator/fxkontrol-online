@@ -73,6 +73,7 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
       { id: 'geofence', label: 'Geofence', icon: Shield },
       { id: 'storyboard', label: 'Storyboard', icon: Film },
       { id: 'showcontrol', label: 'Show Control', icon: Clock },
+      { id: 'inspector', label: 'Inspector', icon: Eye },
     ],
   },
   {
