@@ -21,7 +21,7 @@ import AudioSpectrumVisualizer from './AudioSpectrumVisualizer';
 import { DEFAULT_AVOIDANCE } from '@/lib/collisionAvoidance';
 import QuadcopterModel from './QuadcopterModel';
 import GeofenceVisual from './GeofenceVisual';
-import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Globe, Download } from 'lucide-react';
+import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Globe, Download, ScanEye, Cog, Paintbrush, MapPinned, Film } from 'lucide-react';
 import SelectionStatusBar from './SelectionStatusBar';
 import { cn } from '@/lib/utils';
 import { CometEffect, ShockwaveEffect, MultiBurstEffect, FanEffect, MineEffect, RomanCandleEffect, WaterfallEffect, GerbEffect, FlameEffect, CryoJetEffect, LaserEffect, CakeEffect, ConfettiEffect, MovingHeadEffect, PrefireShell, SmokeTrail, EmberParticles, SparkShower } from './effects';
@@ -1433,7 +1433,7 @@ function WeatherEffects() {
 }
 
 // --- Camera controller ---
-function CameraController({ targetPosition, targetLookAt }: { targetPosition: [number, number, number]; targetLookAt: [number, number, number] }) {
+function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPosition: [number, number, number]; targetLookAt: [number, number, number]; freeLook: boolean }) {
   const { camera } = useThree();
   const controlsRef = useRef<any>(null);
   const targetPos = useRef(new THREE.Vector3(...targetPosition));
@@ -1441,14 +1441,17 @@ function CameraController({ targetPosition, targetLookAt }: { targetPosition: [n
   const animating = useRef(false);
 
   useEffect(() => {
+    if (freeLook) {
+      animating.current = false;
+      return;
+    }
     targetPos.current.set(...targetPosition);
     targetLook.current.set(...targetLookAt);
     animating.current = true;
-  }, [targetPosition, targetLookAt]);
+  }, [targetPosition, targetLookAt, freeLook]);
 
   useFrame(() => {
-    if (!animating.current || !controlsRef.current) return;
-    // Smooth cinematic interpolation
+    if (!animating.current || !controlsRef.current || freeLook) return;
     camera.position.lerp(targetPos.current, 0.04);
     controlsRef.current.target.lerp(targetLook.current, 0.04);
     controlsRef.current.update();
@@ -1471,17 +1474,71 @@ function CameraController({ targetPosition, targetLookAt }: { targetPosition: [n
   );
 }
 
+/** Floating menu for fullscreen mode — gives access to key actions */
+function FullscreenEditMenu() {
+  const { isPlaying, setPlaying, currentTime, setCurrentTime, duration } = useProjectStore();
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="absolute top-3 right-3 z-50 flex flex-col items-end gap-1">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="bg-surface-1/90 backdrop-blur-md text-foreground border border-border/60 px-3 py-1.5 rounded text-[10px] font-mono-code flex items-center gap-1.5 hover:bg-surface-2/90 transition-all shadow-lg"
+      >
+        <Cog className="w-3.5 h-3.5" />
+        Menu
+      </button>
+      {expanded && (
+        <div className="bg-surface-1/95 backdrop-blur-md border border-border/60 rounded-lg shadow-xl p-2 min-w-[160px] space-y-0.5">
+          <button
+            onClick={() => setPlaying(!isPlaying)}
+            className="w-full text-left px-3 py-1.5 text-[10px] font-mono-code text-muted-foreground hover:text-foreground hover:bg-surface-3 rounded flex items-center gap-2"
+          >
+            {isPlaying ? '⏸ Pause' : '▶ Play'}
+          </button>
+          <button
+            onClick={() => { setCurrentTime(0); setPlaying(false); }}
+            className="w-full text-left px-3 py-1.5 text-[10px] font-mono-code text-muted-foreground hover:text-foreground hover:bg-surface-3 rounded flex items-center gap-2"
+          >
+            ⏮ Rewind
+          </button>
+          <div className="border-t border-border/30 my-1" />
+          <div className="px-3 py-1 text-[9px] font-mono-code text-muted-foreground">
+            Time: {currentTime.toFixed(1)}s / {duration.toFixed(1)}s
+          </div>
+          <div className="border-t border-border/30 my-1" />
+          <button
+            onClick={() => document.exitFullscreen()}
+            className="w-full text-left px-3 py-1.5 text-[10px] font-mono-code text-muted-foreground hover:text-foreground hover:bg-surface-3 rounded flex items-center gap-2"
+          >
+            <Minimize className="w-3 h-3" /> Sair Fullscreen
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SkyCanvas() {
   const editorMode = useProjectStore((s) => s.editorMode);
   const droneFormations = useProjectStore((s) => s.droneFormations);
   const gpsOrigin = useProjectStore((s) => s.gpsOrigin);
   const cursorStyle = editorMode !== 'select' ? 'crosshair' : 'default';
   const [activePreset, setActivePreset] = useState('free');
+  const [freeLook, setFreeLook] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const preset = CAMERA_PRESETS.find((p) => p.id === activePreset) || CAMERA_PRESETS[0];
   const perfStatsRef = useRef<PerfStats>({ fps: 0, drawCalls: 0, triangles: 0, geometries: 0, textures: 0 });
   const droneCount = droneFormations.length > 0 ? droneFormations[0].droneCount : 0;
   const [satelliteTexture, setSatelliteTexture] = useState<string | null>(null);
   const [downloadingScenery, setDownloadingScenery] = useState(false);
+
+  // Track fullscreen state
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
 
   const handleDownloadScenery = useCallback(async () => {
     setDownloadingScenery(true);
@@ -1535,7 +1592,7 @@ export default function SkyCanvas() {
         dpr={[1, 2]}
       >
         <PerspectiveCamera makeDefault position={preset.position} fov={55} near={0.2} far={2500} />
-        <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} />
+        <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook} />
 
         <SceneLighting />
 
@@ -1567,15 +1624,30 @@ export default function SkyCanvas() {
       </Canvas>
       </WebGLErrorBoundary>
 
-      {/* Camera presets */}
-      <div className="absolute top-3 left-3 flex items-center gap-1">
+      {/* Camera presets & controls */}
+      <div className="absolute top-3 left-3 flex items-center gap-1 flex-wrap">
+        {/* Free look toggle */}
+        <button
+          onClick={() => setFreeLook(!freeLook)}
+          className={cn(
+            "flex items-center gap-1 px-2 py-1 rounded-sm text-[10px] font-mono-code transition-all border",
+            freeLook
+              ? "bg-warning/20 text-warning border-warning/40"
+              : "bg-surface-1/80 text-muted-foreground border-border/50 hover:text-foreground hover:bg-surface-2/80"
+          )}
+          title="Free Look — camera stays where you leave it"
+        >
+          <ScanEye className="w-3 h-3" />
+          <span className="hidden sm:inline">Look</span>
+        </button>
+
         {CAMERA_PRESETS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
-            onClick={() => setActivePreset(id)}
+            onClick={() => { setActivePreset(id); setFreeLook(false); }}
             className={cn(
               "flex items-center gap-1 px-2 py-1 rounded-sm text-[10px] font-mono-code transition-all border",
-              activePreset === id
+              activePreset === id && !freeLook
                 ? "bg-primary/20 text-primary border-primary/40 glow-electric"
                 : "bg-surface-1/80 text-muted-foreground border-border/50 hover:text-foreground hover:bg-surface-2/80"
             )}
@@ -1584,6 +1656,7 @@ export default function SkyCanvas() {
             <span className="hidden sm:inline">{label}</span>
           </button>
         ))}
+
         {/* Download satellite scenery */}
         <button
           onClick={handleDownloadScenery}
@@ -1603,6 +1676,8 @@ export default function SkyCanvas() {
           )}
           <span className="hidden sm:inline">{satelliteTexture ? 'Satélite ✓' : 'Cenário Real'}</span>
         </button>
+
+        {/* Fullscreen toggle */}
         <button
           onClick={() => {
             const el = document.querySelector('[data-sky-canvas]') as HTMLElement;
@@ -1611,19 +1686,22 @@ export default function SkyCanvas() {
           }}
           className="bg-surface-1/80 text-muted-foreground border border-border/50 hover:text-foreground hover:bg-surface-2/80 px-2 py-1 rounded-sm transition-all"
         >
-          {document.fullscreenElement ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
+          {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
         </button>
       </div>
 
+      {/* Fullscreen floating edit menu */}
+      {isFullscreen && <FullscreenEditMenu />}
+
       <PerformanceHUD statsRef={perfStatsRef} droneCount={droneCount} />
       <ViewportTerminal />
-      {/* MiniMap removed */}
       <SelectionStatusBar />
       <AlignmentTools />
 
       <div className="absolute bottom-3 right-3 text-[9px] font-mono-code text-muted-foreground/60 bg-surface-1/60 backdrop-blur-sm px-2 py-1 rounded border border-border/30 space-y-0.5">
         <div>Orbit: LMB · Pan: MMB · Zoom: Scroll</div>
         <div>Box: Alt+Drag · Multi: Shift+Click · Edit: Dbl-Click</div>
+        <div>{freeLook ? '🔓 Free Look ON' : '🔒 Preset Lock'}</div>
       </div>
     </div>
   );
