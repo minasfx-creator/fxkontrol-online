@@ -369,6 +369,14 @@ function FireworkBurst({
     
     // Particle size: proportional to caliber — much larger for real-world scale visibility
     const baseSize = 0.5 + caliber * 0.35;
+    
+    // Helper: proper analytical position for exponential drag
+    // With drag a = -k*v, velocity v(t) = v0 * e^(-k*t)
+    // Position x(t) = v0 * (1 - e^(-k*t)) / k
+    const dragPos = (v0: number, t: number, k: number) => {
+      if (k < 0.001) return v0 * t;
+      return v0 * (1 - Math.exp(-k * t)) / k;
+    };
 
     for (let i = 0; i < STAR_COUNT; i++) {
       const vx = velocities[i * 3], vy = velocities[i * 3 + 1], vz = velocities[i * 3 + 2];
