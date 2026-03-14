@@ -1,6 +1,6 @@
-import { useRef, useState, useCallback, useMemo } from 'react';
+import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
-import { Html } from '@react-three/drei';
+import { Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { useProjectStore, type Position } from '@/store/useProjectStore';
 
@@ -10,7 +10,6 @@ const TRAJECTORY_POINTS = 30;
 /**
  * PyroLaunchAngle: Editable launch angle visualizer for pyro positions.
  * Shows a draggable arc handle to set heading and pitch (tilt angle).
- * Renders a predicted trajectory arc based on the angle.
  */
 function LaunchAngleGizmo({ position }: { position: Position }) {
   const { updatePosition, selectedPositionIds } = useProjectStore();
@@ -23,7 +22,6 @@ function LaunchAngleGizmo({ position }: { position: Position }) {
   const heading = position.heading * (Math.PI / 180);
   const pitch = Math.max(5, Math.min(85, position.pitch || 85)) * (Math.PI / 180);
 
-  // Calculate handle position on the arc
   const handlePos = useMemo((): [number, number, number] => {
     const r = ARROW_LENGTH;
     return [
@@ -33,9 +31,8 @@ function LaunchAngleGizmo({ position }: { position: Position }) {
     ];
   }, [heading, pitch]);
 
-  // Trajectory prediction arc
   const trajectoryPoints = useMemo(() => {
-    const pts: THREE.Vector3[] = [];
+    const pts: [number, number, number][] = [];
     const v0 = 40 + (position.pitch || 85) * 0.5;
     const hRad = heading;
     const pRad = pitch;
@@ -48,11 +45,15 @@ function LaunchAngleGizmo({ position }: { position: Position }) {
       const x = vx * t * 0.04;
       const y = Math.max(0, vy * t * 0.04 + 0.5 * -9.81 * t * t * 0.0016);
       const z = vz * t * 0.04;
-      pts.push(new THREE.Vector3(x, y, z));
+      pts.push([x, y, z]);
       if (y <= 0 && i > 2) break;
     }
     return pts;
   }, [heading, pitch, position.pitch]);
+
+  const dirLinePoints = useMemo((): [number, number, number][] => {
+    return [[0, 0, 0], handlePos];
+  }, [handlePos]);
 
   const onPointerDown = useCallback((e: any) => {
     e.stopPropagation();
@@ -60,10 +61,7 @@ function LaunchAngleGizmo({ position }: { position: Position }) {
     (gl.domElement as HTMLElement).style.cursor = 'grabbing';
   }, [gl]);
 
-  // Drag to change angle
-  const dragPlane = useRef(new THREE.Plane(new THREE.Vector3(0, 0, 1), 0));
-
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isDragging) return;
 
     const handleMove = (e: PointerEvent) => {
@@ -74,7 +72,6 @@ function LaunchAngleGizmo({ position }: { position: Position }) {
       );
       raycaster.setFromCamera(mouse, camera);
 
-      // Project onto a sphere around the position
       const origin = new THREE.Vector3(position.x, position.y, position.z);
       const ray = raycaster.ray;
       const closest = new THREE.Vector3();
@@ -102,35 +99,15 @@ function LaunchAngleGizmo({ position }: { position: Position }) {
 
   if (!isSelected) return null;
 
-  const lineGeometry = useMemo(() => {
-    const geo = new THREE.BufferGeometry();
-    const positions = new Float32Array(trajectoryPoints.length * 3);
-    trajectoryPoints.forEach((pt, i) => {
-      positions[i * 3] = pt.x;
-      positions[i * 3 + 1] = pt.y;
-      positions[i * 3 + 2] = pt.z;
-    });
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    return geo;
-  }, [trajectoryPoints]);
-
   return (
     <group position={[position.x, position.y, position.z]}>
       {/* Launch direction line */}
-      <line>
-        <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            args={[new Float32Array([0, 0, 0, ...handlePos]), 3]}
-          />
-        </bufferGeometry>
-        <lineBasicMaterial color="#FF6B35" opacity={0.7} transparent linewidth={2} />
-      </line>
+      <Line points={dirLinePoints} color="#FF6B35" lineWidth={2} transparent opacity={0.7} />
 
-      {/* Trajectory arc (dashed) */}
-      <line geometry={lineGeometry}>
-        <lineDashedMaterial color="#FF9955" dashSize={0.3} gapSize={0.15} opacity={0.5} transparent />
-      </line>
+      {/* Trajectory arc */}
+      {trajectoryPoints.length > 1 && (
+        <Line points={trajectoryPoints} color="#FF9955" lineWidth={1} dashed dashSize={0.3} gapSize={0.15} transparent opacity={0.5} />
+      )}
 
       {/* Draggable handle sphere */}
       <mesh
@@ -151,8 +128,13 @@ function LaunchAngleGizmo({ position }: { position: Position }) {
 
       {/* Angle label */}
       <Html position={[handlePos[0] + 0.3, handlePos[1] + 0.3, handlePos[2]]} center>
-        <div className="px-1.5 py-0.5 rounded text-[8px] font-mono bg-black/70 text-orange-400 border border-orange-500/40 whitespace-nowrap select-none"
-          style={{ pointerEvents: 'none' }}
+        <div className="px-1.5 py-0.5 rounded text-[8px] font-mono whitespace-nowrap select-none"
+          style={{
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            color: '#FF9955',
+            border: '1px solid rgba(255,153,85,0.4)',
+            pointerEvents: 'none',
+          }}
         >
           {Math.round(position.pitch || 85)}° / {Math.round(position.heading)}°
         </div>
@@ -160,8 +142,6 @@ function LaunchAngleGizmo({ position }: { position: Position }) {
     </group>
   );
 }
-
-import React from 'react';
 
 export default function PyroLaunchAngles() {
   const positions = useProjectStore(s => s.positions);
