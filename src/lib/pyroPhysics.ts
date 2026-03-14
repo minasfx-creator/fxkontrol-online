@@ -1,107 +1,70 @@
 /**
  * ─── Pyrotechnic Physics Engine ─────────────────────────────────────
- * Real-world ballistics based on Finale 3D manual:
- * - Shell lift time = f(caliber) with realistic mortar velocity
- * - Break height = f(caliber, charge)  
- * - Star spread = f(caliber, star count, duration)
- * - Gravity, drag, wind drift on every particle
- * - Prefire delay (fuse + lift)
- * - VDL-aware simulation parameters
+ * Real-world ballistics based on Finale 3D manual.
+ * Refactored: uses interpolateTable to eliminate code duplication.
  * 
  * Caliber reference (real-world):
  *   2" = 30-45m, 3" = 50-70m, 4" = 75-100m, 5" = 100-130m
  *   6" = 130-170m, 8" = 170-220m, 10" = 220-270m, 12" = 270-300m
  */
 
+import { interpolateTable, interpolateTableRound, type LookupTable } from './interpolateTable';
+
+// ── Constants ───────────────────────────────────────────────────────
+
 export const GRAVITY = -9.81; // m/s²
 export const AIR_DRAG = 0.03;
 export const STAR_DRAG = 0.08;
 
-// Real mortar velocities by caliber (m/s) — from industry data
-const MORTAR_VELOCITY: Record<number, number> = {
+// ── Lookup Tables ───────────────────────────────────────────────────
+
+const MORTAR_VELOCITY: LookupTable = {
   2: 42, 3: 56, 4: 68, 5: 78, 6: 88, 8: 105, 10: 118, 12: 130, 16: 145,
 };
 
+const BREAK_HEIGHT: LookupTable = {
+  2: 35, 3: 55, 4: 80, 5: 110, 6: 140, 8: 190, 10: 240, 12: 280, 16: 320,
+};
+
+const BREAK_SPEED: LookupTable = {
+  2: 18, 3: 28, 4: 38, 5: 48, 6: 58, 8: 72, 10: 85, 12: 95, 16: 110,
+};
+
+const STAR_COUNT: LookupTable = {
+  2: 80, 3: 150, 4: 250, 5: 350, 6: 500, 8: 700, 10: 900, 12: 1100,
+};
+
+// ── Caliber-Based Functions ─────────────────────────────────────────
+
 export function getMortarVelocity(caliberInches: number): number {
-  const keys = Object.keys(MORTAR_VELOCITY).map(Number).sort((a, b) => a - b);
-  if (caliberInches <= keys[0]) return MORTAR_VELOCITY[keys[0]];
-  if (caliberInches >= keys[keys.length - 1]) return MORTAR_VELOCITY[keys[keys.length - 1]];
-  for (let i = 0; i < keys.length - 1; i++) {
-    if (caliberInches >= keys[i] && caliberInches <= keys[i + 1]) {
-      const t = (caliberInches - keys[i]) / (keys[i + 1] - keys[i]);
-      return MORTAR_VELOCITY[keys[i]] * (1 - t) + MORTAR_VELOCITY[keys[i + 1]] * t;
-    }
-  }
-  return 68;
+  return interpolateTable(MORTAR_VELOCITY, caliberInches, 68);
+}
+
+export function getBreakHeight(caliberInches: number): number {
+  return interpolateTable(BREAK_HEIGHT, caliberInches, 80);
+}
+
+export function getBreakSpeed(caliberInches: number): number {
+  return interpolateTable(BREAK_SPEED, caliberInches, 38);
+}
+
+export function getStarCount(caliberInches: number): number {
+  return interpolateTableRound(STAR_COUNT, caliberInches, 250);
 }
 
 export function getLiftTime(caliberInches: number): number {
   const breakH = getBreakHeight(caliberInches);
   const v0 = getMortarVelocity(caliberInches);
-  return v0 / Math.abs(GRAVITY) * (1 - Math.sqrt(Math.max(0, 1 - 2 * Math.abs(GRAVITY) * breakH / (v0 * v0))));
+  const discriminant = 1 - 2 * Math.abs(GRAVITY) * breakH / (v0 * v0);
+  return v0 / Math.abs(GRAVITY) * (1 - Math.sqrt(Math.max(0, discriminant)));
 }
 
-// Break height by caliber (meters) — realistic values
-// 3" = 55m, 4" = 80m, 5" = 110m, 6" = 140m, 8" = 190m
-export function getBreakHeight(caliberInches: number): number {
-  const heights: Record<number, number> = {
-    2: 35, 3: 55, 4: 80, 5: 110, 6: 140, 8: 190, 10: 240, 12: 280, 16: 320,
-  };
-  const keys = Object.keys(heights).map(Number).sort((a, b) => a - b);
-  if (caliberInches <= keys[0]) return heights[keys[0]];
-  if (caliberInches >= keys[keys.length - 1]) return heights[keys[keys.length - 1]];
-  for (let i = 0; i < keys.length - 1; i++) {
-    if (caliberInches >= keys[i] && caliberInches <= keys[i + 1]) {
-      const t = (caliberInches - keys[i]) / (keys[i + 1] - keys[i]);
-      return heights[keys[i]] * (1 - t) + heights[keys[i + 1]] * t;
-    }
-  }
-  return 80;
-}
-
-// Star lifetime by caliber (seconds)
 export function getStarLifetime(caliberInches: number): number {
   return 1.2 + caliberInches * 0.45;
 }
 
-// Star spread radius at peak (meters) — real-world spread
 export function getStarSpread(caliberInches: number): number {
   return 8 + caliberInches * 8;
-}
-
-// Star count by caliber — bigger shells have more stars
-export function getStarCount(caliberInches: number): number {
-  const counts: Record<number, number> = {
-    2: 80, 3: 150, 4: 250, 5: 350, 6: 500, 8: 700, 10: 900, 12: 1100,
-  };
-  const keys = Object.keys(counts).map(Number).sort((a, b) => a - b);
-  if (caliberInches <= keys[0]) return counts[keys[0]];
-  if (caliberInches >= keys[keys.length - 1]) return counts[keys[keys.length - 1]];
-  for (let i = 0; i < keys.length - 1; i++) {
-    if (caliberInches >= keys[i] && caliberInches <= keys[i + 1]) {
-      const t = (caliberInches - keys[i]) / (keys[i + 1] - keys[i]);
-      return Math.round(counts[keys[i]] * (1 - t) + counts[keys[i + 1]] * t);
-    }
-  }
-  return 250;
-}
-
-// Break speed by caliber (m/s) — initial velocity of stars at break
-// Based on Finale 3D real-world data: larger shells have higher internal pressure
-export function getBreakSpeed(caliberInches: number): number {
-  const speeds: Record<number, number> = {
-    2: 18, 3: 28, 4: 38, 5: 48, 6: 58, 8: 72, 10: 85, 12: 95, 16: 110,
-  };
-  const keys = Object.keys(speeds).map(Number).sort((a, b) => a - b);
-  if (caliberInches <= keys[0]) return speeds[keys[0]];
-  if (caliberInches >= keys[keys.length - 1]) return speeds[keys[keys.length - 1]];
-  for (let i = 0; i < keys.length - 1; i++) {
-    if (caliberInches >= keys[i] && caliberInches <= keys[i + 1]) {
-      const t = (caliberInches - keys[i]) / (keys[i + 1] - keys[i]);
-      return speeds[keys[i]] * (1 - t) + speeds[keys[i + 1]] * t;
-    }
-  }
-  return 38;
 }
 
 // Safety distance (NFPA 1123)
@@ -115,7 +78,7 @@ export function getSafetyDistance(caliberInches: number): number {
   return 300;
 }
 
-// ── Particle physics ────────────────────────────────────────────────
+// ── Particle Physics ────────────────────────────────────────────────
 
 export interface ParticleState {
   x: number; y: number; z: number;
@@ -125,54 +88,78 @@ export interface ParticleState {
 }
 
 export function stepParticle(
-  p: ParticleState, 
-  dt: number, 
-  wind: [number, number, number], 
+  p: ParticleState,
+  dt: number,
+  wind: [number, number, number],
   drag: number = AIR_DRAG
 ): void {
+  // Apply gravity
   p.vy += GRAVITY * dt;
+  
+  // Apply wind forces
   p.vx += wind[0] * dt * 0.5;
   p.vy += wind[1] * dt * 0.5;
   p.vz += wind[2] * dt * 0.5;
+  
+  // Apply aerodynamic drag
   const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy + p.vz * p.vz);
   if (speed > 0.01) {
     const dragForce = drag * speed;
-    p.vx -= (p.vx / speed) * dragForce * dt;
-    p.vy -= (p.vy / speed) * dragForce * dt;
-    p.vz -= (p.vz / speed) * dragForce * dt;
+    const invSpeed = 1 / speed;
+    p.vx -= p.vx * invSpeed * dragForce * dt;
+    p.vy -= p.vy * invSpeed * dragForce * dt;
+    p.vz -= p.vz * invSpeed * dragForce * dt;
   }
+  
+  // Integrate position
   p.x += p.vx * dt;
   p.y += p.vy * dt;
   p.z += p.vz * dt;
-  if (p.y < 0) { p.y = 0; p.vy = 0; p.vx *= 0.5; p.vz *= 0.5; }
+  
+  // Ground collision
+  if (p.y < 0) {
+    p.y = 0;
+    p.vy = 0;
+    p.vx *= 0.5;
+    p.vz *= 0.5;
+  }
+  
+  // Update lifecycle
   p.life += dt;
   p.brightness = Math.max(0, 1 - p.life / p.maxLife);
 }
 
-// ── Shell burst star distribution ───────────────────────────────────
+// ── Shell Burst Patterns ────────────────────────────────────────────
 
-export type BurstPattern = 'sphere' | 'ring' | 'willow' | 'palm' | 'peony' | 'chrysanthemum' | 'kamuro' | 'crossette' | 'dahlia' | 'brocade';
+export type BurstPattern = 
+  | 'sphere' | 'ring' | 'willow' | 'palm' | 'peony' 
+  | 'chrysanthemum' | 'kamuro' | 'crossette' | 'dahlia' | 'brocade';
+
+/** Generate spherical direction vector */
+function randomSphericalDir(): { sx: number; sy: number; sz: number; theta: number } {
+  const theta = Math.random() * Math.PI * 2;
+  const phi = Math.acos(2 * Math.random() - 1);
+  return {
+    sx: Math.sin(phi) * Math.cos(theta),
+    sy: Math.cos(phi),          // Y = UP
+    sz: Math.sin(phi) * Math.sin(theta),
+    theta,
+  };
+}
 
 export function createShellBurst(
-  count: number, 
-  breakSpeed: number, 
+  count: number,
+  breakSpeed: number,
   pattern: BurstPattern = 'peony',
   starLifetime: number = 2
 ): ParticleState[] {
   const particles: ParticleState[] = [];
-  
+
   for (let i = 0; i < count; i++) {
-    const theta = Math.random() * Math.PI * 2;
-    const phi = Math.acos(2 * Math.random() - 1);
-    
-    // Correct spherical: x=sin(phi)*cos(theta), y=cos(phi) [UP], z=sin(phi)*sin(theta)
-    const sx = Math.sin(phi) * Math.cos(theta);
-    const sy = Math.cos(phi);
-    const sz = Math.sin(phi) * Math.sin(theta);
-    
+    const { sx, sy, sz, theta } = randomSphericalDir();
     let vx: number, vy: number, vz: number;
     let life = starLifetime * (0.7 + Math.random() * 0.3);
-    
+
     switch (pattern) {
       case 'ring':
         vx = Math.cos(theta) * breakSpeed;
@@ -221,21 +208,22 @@ export function createShellBurst(
         vz = sz * breakSpeed * 0.8;
         break;
       case 'peony':
-      default:
+      default: {
         const speedVariation = 0.7 + Math.random() * 0.3;
         vx = sx * breakSpeed * speedVariation;
         vy = sy * breakSpeed * speedVariation * 0.85 + 1;
         vz = sz * breakSpeed * speedVariation;
         break;
+      }
     }
-    
+
     particles.push({ x: 0, y: 0, z: 0, vx, vy, vz, life: 0, maxLife: life, brightness: 1 });
   }
-  
+
   return particles;
 }
 
-// ── Mine burst ──────────────────────────────────────────────────────
+// ── Mine Burst ──────────────────────────────────────────────────────
 
 export function createMineBurst(count: number, speed: number, lifetime: number): ParticleState[] {
   const particles: ParticleState[] = [];
@@ -280,11 +268,11 @@ export function createWaterfallParticle(width: number, dropHeight: number): Part
   };
 }
 
-// ── Cake timing ─────────────────────────────────────────────────────
+// ── Cake Timing ─────────────────────────────────────────────────────
 
 export function getCakeShotTimes(
-  totalDuration: number, 
-  shotCount: number, 
+  totalDuration: number,
+  shotCount: number,
   pattern: 'regular' | 'accelerating' | 'z-pattern' | 'fan' = 'regular'
 ): number[] {
   const times: number[] = [];
@@ -293,12 +281,10 @@ export function getCakeShotTimes(
       case 'accelerating':
         times.push(totalDuration * Math.pow(i / shotCount, 1.5));
         break;
-      case 'z-pattern':
-        times.push((i / shotCount) * totalDuration);
-        break;
       case 'fan':
         times.push(i * 0.08);
         break;
+      case 'z-pattern':
       default:
         times.push((i / shotCount) * totalDuration);
     }
@@ -306,9 +292,9 @@ export function getCakeShotTimes(
   return times;
 }
 
-// ── Roman Candle shot angles ────────────────────────────────────────
+// ── Roman Candle Shot Angles ────────────────────────────────────────
 
-export function getRomanCandleShotAngle(shotIndex: number, totalShots: number): number {
+export function getRomanCandleShotAngle(_shotIndex: number, _totalShots: number): number {
   return (Math.random() - 0.5) * 0.1;
 }
 
@@ -334,7 +320,7 @@ export function createCO2Particle(jetHeight: number, isHorizontal: boolean): Par
   };
 }
 
-// ── Flame projector ─────────────────────────────────────────────────
+// ── Flame Projector ─────────────────────────────────────────────────
 
 export function createFlameParticle(height: number): ParticleState {
   const spread = 0.3;
@@ -361,7 +347,7 @@ export function createColdSparkParticle(height: number): ParticleState {
   };
 }
 
-// ── Laser beam calculation ──────────────────────────────────────────
+// ── Laser Beam Calculation ──────────────────────────────────────────
 
 export interface LaserBeam {
   origin: [number, number, number];
@@ -378,7 +364,7 @@ export function createLaserPattern(
   time: number
 ): LaserBeam[] {
   const beams: LaserBeam[] = [];
-  
+
   switch (pattern) {
     case 'fan':
       for (let i = 0; i < beamCount; i++) {
@@ -408,6 +394,6 @@ export function createLaserPattern(
     default:
       beams.push({ origin: [0, 0, 0], direction: [Math.sin(time * 0.5) * 0.2, 0.9, Math.cos(time * 0.3) * 0.2], color, width: 0.03, length: 100 });
   }
-  
+
   return beams;
 }

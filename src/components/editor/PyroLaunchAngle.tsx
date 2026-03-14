@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
+import { useRef, useState, useCallback, useMemo, useEffect, forwardRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
@@ -11,7 +11,7 @@ const TRAJECTORY_POINTS = 30;
  * PyroLaunchAngle: Editable launch angle visualizer for pyro positions.
  * Shows a draggable arc handle to set heading and pitch (tilt angle).
  */
-function LaunchAngleGizmo({ position }: { position: Position }) {
+const LaunchAngleGizmo = forwardRef<THREE.Group, { position: Position }>(({ position }, ref) => {
   const { updatePosition, selectedPositionIds } = useProjectStore();
   const isSelected = selectedPositionIds.includes(position.id);
   const [isDragging, setIsDragging] = useState(false);
@@ -100,7 +100,7 @@ function LaunchAngleGizmo({ position }: { position: Position }) {
   if (!isSelected) return null;
 
   return (
-    <group position={[position.x, position.y, position.z]}>
+    <group ref={ref} position={[position.x, position.y, position.z]}>
       {/* Launch direction line */}
       <Line points={dirLinePoints} color="#FF6B35" lineWidth={2} transparent opacity={0.7} />
 
@@ -141,7 +141,8 @@ function LaunchAngleGizmo({ position }: { position: Position }) {
       </Html>
     </group>
   );
-}
+});
+LaunchAngleGizmo.displayName = 'LaunchAngleGizmo';
 
 export default function PyroLaunchAngles() {
   const positions = useProjectStore(s => s.positions);

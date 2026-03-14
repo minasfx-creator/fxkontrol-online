@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, forwardRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { useProjectStore, type Position, EFFECT_LIBRARY } from '@/store/useProjectStore';
@@ -16,10 +16,16 @@ interface SnapGuide {
   sourceName: string;
 }
 
+interface IconProps {
+  color: string;
+  emissiveIntensity: number;
+  isSelected: boolean;
+}
+
 /** Simple rack icon — a minimal mortar rack (3 tubes on a base plate) */
-function MortarTubeIcon({ color, emissiveIntensity, isSelected }: { color: string; emissiveIntensity: number; isSelected: boolean }) {
+const MortarTubeIcon = forwardRef<THREE.Group, IconProps>(({ color, emissiveIntensity, isSelected }, ref) => {
   return (
-    <group>
+    <group ref={ref}>
       {/* Base plate — flat rectangle */}
       <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <boxGeometry args={[0.5, 0.35, 0.03]} />
@@ -54,12 +60,13 @@ function MortarTubeIcon({ color, emissiveIntensity, isSelected }: { color: strin
       )}
     </group>
   );
-}
+});
+MortarTubeIcon.displayName = 'MortarTubeIcon';
 
 /** Drone pad icon */
-function DronePadIcon({ color, emissiveIntensity, isSelected }: { color: string; emissiveIntensity: number; isSelected: boolean }) {
+const DronePadIcon = forwardRef<THREE.Group, IconProps>(({ color, emissiveIntensity, isSelected }, ref) => {
   return (
-    <group>
+    <group ref={ref}>
       {/* Landing pad disc */}
       <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.3, 0.3, 0.03, 16]} />
@@ -98,7 +105,8 @@ function DronePadIcon({ color, emissiveIntensity, isSelected }: { color: string;
       </mesh>
     </group>
   );
-}
+});
+DronePadIcon.displayName = 'DronePadIcon';
 
 function Pin({ position, onRightClick }: { position: Position; onRightClick: (pos: Position, screenPos: { x: number; y: number }) => void }) {
   const { selectedPositionIds, selectPosition, togglePositionSelection, editorMode, updatePosition, timelineItems } = useProjectStore();
