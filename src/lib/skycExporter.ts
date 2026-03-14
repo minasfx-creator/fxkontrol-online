@@ -389,6 +389,7 @@ export function exportSkyc(options: SkycExportOptions): SkycFile {
         : [{ t: 0, ...home, type: 'hold' as const, duration: options.duration }],
       lightProgram: buildLightProgram(options.formations, i),
       yawControl: [{ t: 0, yaw: pos.heading }],
+      pyroProgram: [],
       startDelay: i * (options.takeoffStaggerDelay ?? 0.3),
       landPosition: home,
     };
