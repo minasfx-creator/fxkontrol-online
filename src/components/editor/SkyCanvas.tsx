@@ -369,6 +369,14 @@ function FireworkBurst({
     
     // Particle size: proportional to caliber — much larger for real-world scale visibility
     const baseSize = 0.5 + caliber * 0.35;
+    
+    // Helper: proper analytical position for exponential drag
+    // With drag a = -k*v, velocity v(t) = v0 * e^(-k*t)
+    // Position x(t) = v0 * (1 - e^(-k*t)) / k
+    const dragPos = (v0: number, t: number, k: number) => {
+      if (k < 0.001) return v0 * t;
+      return v0 * (1 - Math.exp(-k * t)) / k;
+    };
 
     for (let i = 0; i < STAR_COUNT; i++) {
       const vx = velocities[i * 3], vy = velocities[i * 3 + 1], vz = velocities[i * 3 + 2];
@@ -377,12 +385,10 @@ function FireworkBurst({
       const fade = Math.max(0, 1 - age);
       const fadeSquared = fade * fade;
       const fadeCubed = fadeSquared * fade; // even smoother tail-off
-      const dragF = Math.exp(-dragCoeff * t);
-
-      // Euler integration with drag + real gravity + wind drift
-      const px = vx * t * dragF + w[0] * t * t * 0.3;
-      const py = vy * t * dragF + 0.5 * GRAVITY * t * t * 0.5;
-      const pz = vz * t * dragF + w[2] * t * t * 0.3;
+      // Proper analytical integration with exponential drag + real gravity + wind
+      const px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
+      const py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * t * t;
+      const pz = dragPos(vz, t, dragCoeff) + w[2] * t * t * 0.3;
       pos[i * 3] = px; pos[i * 3 + 1] = py; pos[i * 3 + 2] = pz;
 
       // === Finale HDR Color Pipeline ===
@@ -428,15 +434,13 @@ function FireworkBurst({
       for (let s = 0; s < TRAIL_LENGTH; s++) {
         const t0 = Math.max(0, t - s * trailDt);
         const t1 = Math.max(0, t - (s + 1) * trailDt);
-        const d0 = Math.exp(-dragCoeff * t0);
-        const d1 = Math.exp(-dragCoeff * t1);
         const base2 = (i * TRAIL_LENGTH + s) * 6;
-        tPos[base2] = vx * t0 * d0 + w[0] * t0 * t0 * 0.3;
-        tPos[base2 + 1] = vy * t0 * d0 + 0.5 * GRAVITY * t0 * t0 * 0.5;
-        tPos[base2 + 2] = vz * t0 * d0 + w[2] * t0 * t0 * 0.3;
-        tPos[base2 + 3] = vx * t1 * d1 + w[0] * t1 * t1 * 0.3;
-        tPos[base2 + 4] = vy * t1 * d1 + 0.5 * GRAVITY * t1 * t1 * 0.5;
-        tPos[base2 + 5] = vz * t1 * d1 + w[2] * t1 * t1 * 0.3;
+        tPos[base2] = dragPos(vx, t0, dragCoeff) + w[0] * t0 * t0 * 0.3;
+        tPos[base2 + 1] = dragPos(vy, t0, dragCoeff) + 0.5 * GRAVITY * t0 * t0;
+        tPos[base2 + 2] = dragPos(vz, t0, dragCoeff) + w[2] * t0 * t0 * 0.3;
+        tPos[base2 + 3] = dragPos(vx, t1, dragCoeff) + w[0] * t1 * t1 * 0.3;
+        tPos[base2 + 4] = dragPos(vy, t1, dragCoeff) + 0.5 * GRAVITY * t1 * t1;
+        tPos[base2 + 5] = dragPos(vz, t1, dragCoeff) + w[2] * t1 * t1 * 0.3;
         
         const segFrac = s / TRAIL_LENGTH;
         const segFade = fadeCubed * Math.pow(1 - segFrac, 2.5) * 0.7;
@@ -481,11 +485,11 @@ function FireworkBurst({
         const dvy = debrisVelocities[i * 3 + 1];
         const dvz = debrisVelocities[i * 3 + 2];
         const dt = debrisAge * starLife * 0.7;
-        const dDrag = Math.exp(-0.02 * dt);
+        const dK = 0.02;
         
-        dPos[i * 3] = dvx * dt * dDrag + w[0] * dt * dt * 0.4;
-        dPos[i * 3 + 1] = dvy * dt * dDrag + 0.5 * GRAVITY * dt * dt * 0.55;
-        dPos[i * 3 + 2] = dvz * dt * dDrag + w[2] * dt * dt * 0.4;
+        dPos[i * 3] = dragPos(dvx, dt, dK) + w[0] * dt * dt * 0.4;
+        dPos[i * 3 + 1] = dragPos(dvy, dt, dK) + 0.5 * GRAVITY * dt * dt;
+        dPos[i * 3 + 2] = dragPos(dvz, dt, dK) + w[2] * dt * dt * 0.4;
         
         // Dark charcoal com cintilação determinística
         const debrisFade = Math.max(0, 1 - debrisAge * 1.3);
@@ -762,17 +766,18 @@ function TimelineEffects() {
 function LiveSFXEffects() {
   const activeEffects = useLiveSfxStore((s) => s.activeEffects);
   const stopEffect = useLiveSfxStore((s) => s.stopEffect);
-  const [tick, setTick] = useState(0);
+  const frameRef = useRef(0);
 
   useFrame(() => {
     if (activeEffects.length === 0) return;
-    // Force re-render each frame to update progress
-    setTick(t => t + 1);
-    // Clean up expired effects
-    const now = performance.now();
-    for (const fx of activeEffects) {
-      if (now - fx.startedAt > fx.duration) {
-        stopEffect(fx.id);
+    frameRef.current++;
+    // Clean up expired effects (only check every 10 frames to avoid store churn)
+    if (frameRef.current % 10 === 0) {
+      const now = performance.now();
+      for (const fx of activeEffects) {
+        if (now - fx.startedAt > fx.duration) {
+          stopEffect(fx.id);
+        }
       }
     }
   });
