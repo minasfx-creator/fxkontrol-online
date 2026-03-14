@@ -3,6 +3,64 @@ import { create } from 'zustand';
 export type GroundStyle = 'finale-dark' | 'google-earth' | 'flat-black' | 'concrete' | 'custom';
 export type SkyPreset = 'night-clear' | 'night-cloudy' | 'dusk' | 'overcast' | 'foggy' | 'custom';
 export type WeatherCondition = 'clear' | 'light-rain' | 'heavy-rain' | 'snow' | 'fog' | 'haze' | 'wind-only';
+export type QualityPreset = 'realistic' | 'show' | 'performance';
+
+export const QUALITY_PRESETS: Record<QualityPreset, { name: string; description: string; settings: Partial<SceneSettings> }> = {
+  realistic: {
+    name: 'Realista',
+    description: 'Máxima fidelidade — partículas densas, fumaça volumétrica espessa, bloom HDR multicamada',
+    settings: {
+      particleDensity: 2.0,
+      smokeOpacity: 0.85,
+      bloomStrength: 1.6,
+      trailLength: 1.8,
+      effectBrightness: 1.1,
+      shadowsEnabled: true,
+      shadowQuality: 'ultra',
+      vignetteEnabled: true,
+      vignetteIntensity: 0.3,
+      chromaticAberration: true,
+      filmGrain: 0.035,
+      groundFogIntensity: 0.7,
+    },
+  },
+  show: {
+    name: 'Show',
+    description: 'Balanceado para apresentação — visual impactante com boa performance',
+    settings: {
+      particleDensity: 1.0,
+      smokeOpacity: 0.5,
+      bloomStrength: 1.1,
+      trailLength: 1.0,
+      effectBrightness: 1.0,
+      shadowsEnabled: true,
+      shadowQuality: 'high',
+      vignetteEnabled: true,
+      vignetteIntensity: 0.2,
+      chromaticAberration: true,
+      filmGrain: 0.02,
+      groundFogIntensity: 0.5,
+    },
+  },
+  performance: {
+    name: 'Performance',
+    description: 'Máximo FPS — partículas reduzidas, sem fumaça, bloom leve, sem pós-processamento',
+    settings: {
+      particleDensity: 0.5,
+      smokeOpacity: 0.1,
+      bloomStrength: 0.5,
+      trailLength: 0.5,
+      effectBrightness: 1.2,
+      shadowsEnabled: false,
+      shadowQuality: 'low',
+      vignetteEnabled: false,
+      vignetteIntensity: 0,
+      chromaticAberration: false,
+      filmGrain: 0,
+      groundFogIntensity: 0.1,
+    },
+  },
+};
 
 export interface SceneSettings {
   // Sky & Atmosphere
