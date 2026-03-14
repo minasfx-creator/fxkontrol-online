@@ -336,7 +336,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
     toast.success('Firing CSV exportado!');
   }, [projectName, timelineItems, positions]);
 
-  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  // exportMenuOpen removed - using DropdownMenu component now
 
   const handleNewProject = useCallback(() => {
     if (timelineItems.length > 0 || positions.length > 0) {
