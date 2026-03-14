@@ -470,11 +470,11 @@ function FireworkBurst({
         dPos[i * 3 + 1] = dvy * dt * dDrag + 0.5 * GRAVITY * dt * dt * 0.35;
         dPos[i * 3 + 2] = dvz * dt * dDrag + w[2] * dt * dt * 0.4;
         
-        // Dark charcoal with occasional orange flicker
+        // Dark charcoal com cintilação determinística
         const debrisFade = Math.max(0, 1 - debrisAge * 1.3);
-        const flicker = Math.random() > 0.92 ? 0.5 : 0.08;
-        dCol[i * 3] = (0.15 + flicker) * debrisFade;
-        dCol[i * 3 + 1] = (0.06 + flicker * 0.3) * debrisFade;
+        const flicker = temporalFlicker(debrisSparkleSeeds[i], time, 0.12, 0.18, 0.22);
+        dCol[i * 3] = (0.15 + flicker * 0.8) * debrisFade;
+        dCol[i * 3 + 1] = (0.06 + flicker * 0.25) * debrisFade;
         dCol[i * 3 + 2] = 0.02 * debrisFade;
       }
       
