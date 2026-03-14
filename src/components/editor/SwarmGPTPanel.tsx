@@ -553,15 +553,126 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
-        {/* Stats */}
+        {/* ═══ Formation Manager ═══ */}
         {droneFormations.length > 0 && (
-          <div className="flex items-center gap-2 text-[8px] font-mono-code text-muted-foreground bg-surface-2 rounded-sm px-2 py-1">
-            <Layers className="w-3 h-3" />
-            <span>{droneFormations.length} formações</span>
-            <span>·</span>
-            <span>{droneFormations.reduce((s, f) => s + f.transitionDuration + f.holdDuration, 0).toFixed(0)}s total</span>
-            <span>·</span>
-            <span>{droneFormations[0]?.droneCount || 0} drones</span>
+          <div className="border border-border/50 rounded-sm bg-surface-1/50">
+            {/* Header */}
+            <button
+              onClick={() => setShowFormationList(!showFormationList)}
+              className="w-full flex items-center gap-1.5 px-2 py-1.5 hover:bg-surface-2/50 transition-colors"
+            >
+              {showFormationList ? <ChevronDown className="w-3 h-3 text-muted-foreground" /> : <ChevronRight className="w-3 h-3 text-muted-foreground" />}
+              <Layers className="w-3 h-3 text-primary" />
+              <span className="text-[9px] font-bold text-foreground uppercase tracking-wider flex-1 text-left">
+                Coreografia ({droneFormations.length})
+              </span>
+              <span className="text-[8px] font-mono text-muted-foreground">
+                {droneFormations.reduce((s, f) => s + f.transitionDuration + f.holdDuration, 0).toFixed(0)}s
+              </span>
+            </button>
+
+            {showFormationList && (
+              <div className="border-t border-border/30">
+                {/* Actions bar */}
+                <div className="flex items-center gap-1 px-2 py-1 border-b border-border/20">
+                  <button
+                    onClick={() => { recalculateFormationTimings(); toast.success('Tempos recalculados'); }}
+                    className="text-[7px] text-muted-foreground hover:text-primary px-1.5 py-0.5 rounded hover:bg-primary/10 transition-colors"
+                  >
+                    ⏱ Re-sync
+                  </button>
+                  <button
+                    onClick={handlePreview}
+                    className="text-[7px] text-muted-foreground hover:text-primary px-1.5 py-0.5 rounded hover:bg-primary/10 transition-colors"
+                  >
+                    ▶ Preview
+                  </button>
+                  <div className="flex-1" />
+                  <button
+                    onClick={() => { clearAllFormations(); toast.success('Formações limpas'); }}
+                    className="text-[7px] text-muted-foreground hover:text-destructive px-1.5 py-0.5 rounded hover:bg-destructive/10 transition-colors"
+                  >
+                    🗑 Clear All
+                  </button>
+                </div>
+
+                {/* Formation list */}
+                <div className="max-h-[250px] overflow-y-auto">
+                  {droneFormations.map((f, idx) => {
+                    const endTime = f.startTime + f.transitionDuration + f.holdDuration;
+                    const isSelected = selectedFormationId === f.id;
+
+                    return (
+                      <div
+                        key={f.id}
+                        onClick={() => { selectFormation(f.id); setCurrentTime(f.startTime); }}
+                        className={cn(
+                          "group flex items-center gap-1 px-2 py-1 border-b border-border/10 cursor-pointer transition-colors",
+                          isSelected ? "bg-primary/10" : "hover:bg-surface-2/50"
+                        )}
+                      >
+                        {/* Index badge */}
+                        <div
+                          className="w-4 h-4 rounded-full flex items-center justify-center text-[7px] font-bold flex-shrink-0"
+                          style={{ backgroundColor: f.color + '33', color: f.color }}
+                        >
+                          {idx + 1}
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[8px] font-medium text-foreground truncate">
+                            {f.formationType === 'ai-generated' ? '🤖 AI' : f.formationType}
+                          </div>
+                          <div className="text-[7px] font-mono text-muted-foreground">
+                            {f.startTime.toFixed(0)}→{endTime.toFixed(0)}s · {f.height}m · {f.droneCount}🤖
+                          </div>
+                        </div>
+
+                        {/* Timing bar */}
+                        <div className="w-12 h-1.5 rounded-full bg-surface-3 overflow-hidden flex-shrink-0">
+                          <div
+                            className="h-full rounded-full"
+                            style={{
+                              width: `${(f.transitionDuration / (f.transitionDuration + f.holdDuration)) * 100}%`,
+                              backgroundColor: f.color,
+                            }}
+                          />
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                          {idx > 0 && (
+                            <button onClick={(e) => { e.stopPropagation(); reorderDroneFormation(idx, idx - 1); }} className="text-muted-foreground hover:text-primary">
+                              <ArrowUp className="w-2.5 h-2.5" />
+                            </button>
+                          )}
+                          {idx < droneFormations.length - 1 && (
+                            <button onClick={(e) => { e.stopPropagation(); reorderDroneFormation(idx, idx + 1); }} className="text-muted-foreground hover:text-primary">
+                              <ArrowDown className="w-2.5 h-2.5" />
+                            </button>
+                          )}
+                          <button onClick={(e) => { e.stopPropagation(); duplicateDroneFormation(f.id); }} className="text-muted-foreground hover:text-primary">
+                            <Copy className="w-2.5 h-2.5" />
+                          </button>
+                          <button onClick={(e) => { e.stopPropagation(); removeDroneFormation(f.id); }} className="text-muted-foreground hover:text-destructive">
+                            <Trash2 className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 2D Preview of last generation */}
+        {lastGeneratedPoints.length > 0 && (
+          <div className="space-y-1">
+            <span className="text-[9px] text-muted-foreground font-semibold uppercase">Última Geração</span>
+            <MiniPreview points={lastGeneratedPoints} />
           </div>
         )}
 
@@ -569,7 +680,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
         {history.length > 0 && (
           <div className="space-y-1">
             <span className="text-[9px] text-muted-foreground font-semibold uppercase">Histórico</span>
-            {history.map((h, i) => (
+            {history.slice(0, 5).map((h, i) => (
               <div
                 key={i}
                 className="p-1.5 rounded-sm border border-border/50 bg-surface-1/50 text-[8px] font-mono-code cursor-pointer hover:bg-surface-2 group"
