@@ -32,6 +32,7 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
       { id: 'pathplanner', label: 'Path Planner', icon: Route },
       { id: 'templates', label: 'Templates', icon: FolderOpen },
       { id: 'marketplace', label: 'Marketplace', icon: Globe },
+      { id: 'calibration', label: 'VDL Calibration', icon: Factory },
     ],
   },
   {
