@@ -483,7 +483,7 @@ function FireworkBurst({
         const dDrag = Math.exp(-0.02 * dt);
         
         dPos[i * 3] = dvx * dt * dDrag + w[0] * dt * dt * 0.4;
-        dPos[i * 3 + 1] = dvy * dt * dDrag + 0.5 * GRAVITY * dt * dt * 0.35;
+        dPos[i * 3 + 1] = dvy * dt * dDrag + 0.5 * GRAVITY * dt * dt * 0.55;
         dPos[i * 3 + 2] = dvz * dt * dDrag + w[2] * dt * dt * 0.4;
         
         // Dark charcoal com cintilação determinística
