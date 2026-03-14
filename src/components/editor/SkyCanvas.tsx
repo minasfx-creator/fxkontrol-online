@@ -500,10 +500,10 @@ function FireworkBurst({
       }
       
       const dGeo = debrisRef.current.geometry;
-      dGeo.setAttribute('position', new THREE.BufferAttribute(dPos, 3));
-      dGeo.setAttribute('color', new THREE.BufferAttribute(dCol, 3));
-      dGeo.attributes.position.needsUpdate = true;
-      dGeo.attributes.color.needsUpdate = true;
+      const dPosAttr = dGeo.getAttribute('position') as THREE.BufferAttribute;
+      const dColAttr = dGeo.getAttribute('color') as THREE.BufferAttribute;
+      if (dPosAttr) { dPosAttr.array = dPos; dPosAttr.needsUpdate = true; }
+      if (dColAttr) { dColAttr.array = dCol; dColAttr.needsUpdate = true; }
     }
   });
 
