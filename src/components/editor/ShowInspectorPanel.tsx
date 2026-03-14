@@ -247,7 +247,7 @@ export default function ShowInspectorPanel({ onClose }: ShowInspectorPanelProps)
         const transEnd = transStart + f.transitionDuration;
         if (t >= transStart && t <= transEnd && f.transitionDuration > 0) {
           // Rough estimate: distance / time
-          vel = Math.max(vel, (f.altitude ?? 50) * 0.3 / f.transitionDuration);
+          vel = Math.max(vel, (f.height ?? 50) * 0.3 / f.transitionDuration);
         }
       });
       data.push({ t, v: vel * 10 }); // scale for visibility
