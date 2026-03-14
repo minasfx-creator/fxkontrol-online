@@ -573,7 +573,25 @@ function TimelineEffects() {
     const humidityFactor = 1 - sceneSettings.humidity * 0.3; // humidity shortens burn time
 
     return timelineItems.map((item) => {
-      const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+      let effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+
+      // Fallback para itens VDL dinâmicos criados no editor/quick add
+      if (!effect && item.effectId.startsWith('vdl-')) {
+        const vdlText = item.notes?.match(/VDL:\s*([^|]+)/i)?.[1]?.trim();
+        if (vdlText) {
+          const parsed = parseVDL(vdlText);
+          if (parsed.valid) {
+            effect = {
+              ...vdlToEffect(parsed),
+              id: item.effectId,
+              icon: '🎆',
+              type: 'firework',
+              duration: Math.max(0.8, parsed.duration),
+            };
+          }
+        }
+      }
+
       if (!effect) return null;
 
       // ── Resolve position from linked pyropoint ──
