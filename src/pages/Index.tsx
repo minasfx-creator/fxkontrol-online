@@ -228,11 +228,11 @@ export default function Index() {
     setActivePanel((prev) => (prev === id ? null : id));
   }, []);
 
-  const handleSplashStart = (size: number, pyroPos: number) => {
+  const handleSplashStart = useCallback((size: number, pyroPos: number) => {
     setFleetSize(size);
     setPyroPositions(pyroPos);
     setAppPhase('globe');
-  };
+  }, []);
 
   const handleLocationSelected = useCallback((location: { name: string; lat: number; lng: number }) => {
     setShowLocation(location);
@@ -243,6 +243,12 @@ export default function Index() {
       altitude: 0,
     });
     setAppPhase('editor');
+  }, []);
+
+  const handleMobileOpenPanel = useCallback((id: PanelId) => {
+    setActivePanel(id);
+    setMobileTab(null);
+    setMobilePanelHeight('half');
   }, []);
 
   if (appPhase === 'splash') {
