@@ -24,8 +24,33 @@ import GeofenceVisual from './GeofenceVisual';
 import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Globe, Download, ScanEye, Cog, Paintbrush, MapPinned, Film } from 'lucide-react';
 import SelectionStatusBar from './SelectionStatusBar';
 import { cn } from '@/lib/utils';
-import { CometEffect, ShockwaveEffect, MultiBurstEffect, FanEffect, MineEffect, RomanCandleEffect, WaterfallEffect, GerbEffect, FlameEffect, CryoJetEffect, LaserEffect, CakeEffect, ConfettiEffect, MovingHeadEffect, PrefireShell, SmokeTrail, EmberParticles, SparkShower } from './effects';
+import {
+  CometEffect,
+  ShockwaveEffect,
+  MultiBurstEffect,
+  FanEffect,
+  MineEffect,
+  RomanCandleEffect,
+  WaterfallEffect,
+  GerbEffect,
+  FlameEffect,
+  CryoJetEffect,
+  LaserEffect,
+  CakeEffect,
+  ConfettiEffect,
+  MovingHeadEffect,
+  PrefireShell,
+  SmokeTrail,
+  EmberParticles,
+  SparkShower,
+  FogMachineEffect,
+  HazeMachineEffect,
+  SnowMachineEffect,
+  BubbleMachineEffect,
+} from './effects';
 import { getLiftTime, getBreakHeight } from '@/lib/pyroPhysics';
+import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
+import { temporalFlicker } from '@/lib/pyroNoise';
 // MiniMap removed per user request
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -183,12 +208,14 @@ function FireworkBurst({
     );
   }, [color]);
   
-  const { velocities, lifetimes, twinklePhases, debrisVelocities } = useMemo(() => {
+  const { velocities, lifetimes, twinklePhases, debrisVelocities, sparkleSeeds, debrisSparkleSeeds } = useMemo(() => {
     const v = new Float32Array(STAR_COUNT * 3);
     const l = new Float32Array(STAR_COUNT);
     const tp = new Float32Array(STAR_COUNT);
+    const sparkle = new Float32Array(STAR_COUNT);
     const dv = new Float32Array(DEBRIS_COUNT * 3);
-    
+    const debrisSparkle = new Float32Array(DEBRIS_COUNT);
+
     for (let i = 0; i < STAR_COUNT; i++) {
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
@@ -196,7 +223,8 @@ function FireworkBurst({
       let life = starLife * (0.6 + Math.random() * 0.4);
       const speedVar = 0.55 + Math.random() * 0.45;
       tp[i] = Math.random() * Math.PI * 2;
-      
+      sparkle[i] = Math.random() * 999 + i;
+
       switch (pattern) {
         case 'willow':
           vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.42 * speedVar;
@@ -249,18 +277,19 @@ function FireworkBurst({
           vz = Math.cos(armPhi + (Math.random() - 0.5) * jitter) * breakSpeed * 0.82;
           break;
         }
-        default: // peony — Finale's classic spherical
+        default:
           vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * speedVar;
           vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * speedVar * 0.9 + 0.6;
           vz = Math.cos(phi) * breakSpeed * speedVar;
           break;
       }
-      
-      v[i * 3] = vx; v[i * 3 + 1] = vy; v[i * 3 + 2] = vz;
+
+      v[i * 3] = vx;
+      v[i * 3 + 1] = vy;
+      v[i * 3 + 2] = vz;
       l[i] = life;
     }
-    
-    // Debris: random positions within burst sphere, slow initial velocity
+
     for (let i = 0; i < DEBRIS_COUNT; i++) {
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
@@ -268,9 +297,17 @@ function FireworkBurst({
       dv[i * 3] = Math.sin(phi) * Math.cos(theta) * spd;
       dv[i * 3 + 1] = Math.sin(phi) * Math.sin(theta) * spd * 0.5 - 1;
       dv[i * 3 + 2] = Math.cos(phi) * spd;
+      debrisSparkle[i] = Math.random() * 999 + i * 7;
     }
-    
-    return { velocities: v, lifetimes: l, twinklePhases: tp, debrisVelocities: dv };
+
+    return {
+      velocities: v,
+      lifetimes: l,
+      twinklePhases: tp,
+      debrisVelocities: dv,
+      sparkleSeeds: sparkle,
+      debrisSparkleSeeds: debrisSparkle,
+    };
   }, [STAR_COUNT, DEBRIS_COUNT, breakSpeed, starLife, pattern]);
 
   // Pre-allocate typed arrays for per-frame updates
@@ -343,11 +380,7 @@ function FireworkBurst({
       if (isTrailingPattern) {
         twinkle = 0.75 + Math.sin(twinklePhases[i] + progress * 12) * 0.25;
       } else {
-        twinkle = 0.5
-          + Math.sin(twinklePhases[i] + time * 28 + i * 4.1) * 0.2
-          + Math.sin(twinklePhases[i] * 2.7 + time * 45) * 0.15
-          + Math.sin(twinklePhases[i] * 0.3 + time * 8) * 0.1
-          + (Math.random() > 0.965 ? 0.6 : 0); // Finale random sparkle pop
+        twinkle = temporalFlicker(sparkleSeeds[i], time, 0.62, 0.34, 0.38);
       }
       
       // White-hot → saturated color
@@ -437,11 +470,11 @@ function FireworkBurst({
         dPos[i * 3 + 1] = dvy * dt * dDrag + 0.5 * GRAVITY * dt * dt * 0.35;
         dPos[i * 3 + 2] = dvz * dt * dDrag + w[2] * dt * dt * 0.4;
         
-        // Dark charcoal with occasional orange flicker
+        // Dark charcoal com cintilação determinística
         const debrisFade = Math.max(0, 1 - debrisAge * 1.3);
-        const flicker = Math.random() > 0.92 ? 0.5 : 0.08;
-        dCol[i * 3] = (0.15 + flicker) * debrisFade;
-        dCol[i * 3 + 1] = (0.06 + flicker * 0.3) * debrisFade;
+        const flicker = temporalFlicker(debrisSparkleSeeds[i], time, 0.12, 0.18, 0.22);
+        dCol[i * 3] = (0.15 + flicker * 0.8) * debrisFade;
+        dCol[i * 3 + 1] = (0.06 + flicker * 0.25) * debrisFade;
         dCol[i * 3 + 2] = 0.02 * debrisFade;
       }
       
@@ -540,7 +573,26 @@ function TimelineEffects() {
     const humidityFactor = 1 - sceneSettings.humidity * 0.3; // humidity shortens burn time
 
     return timelineItems.map((item) => {
-      const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+      let effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+
+      // Fallback para itens VDL dinâmicos criados no editor/quick add
+      if (!effect && item.effectId.startsWith('vdl-')) {
+        const vdlText = item.notes?.match(/VDL:\s*([^|]+)/i)?.[1]?.trim();
+        if (vdlText) {
+          const parsed = parseVDL(vdlText);
+          if (parsed.valid) {
+            effect = {
+              ...vdlToEffect(parsed),
+              id: item.effectId,
+              icon: '🎆',
+              type: 'firework',
+              partType: parsed.partType as (typeof EFFECT_LIBRARY)[number]['partType'],
+              duration: Math.max(0.8, parsed.duration),
+            } as (typeof EFFECT_LIBRARY)[number];
+          }
+        }
+      }
+
       if (!effect) return null;
 
       // ── Resolve position from linked pyropoint ──
@@ -644,9 +696,13 @@ function TimelineEffects() {
         if (pt === 'light' && effect.beamType) return <MovingHeadEffect key={item.id} position={pos} color={effect.color} progress={progress} beamType={effect.beamType} />;
 
         // ── SFX special routing ──
-        if (eid === 'sfx-01') return <CryoJetEffect key={item.id} position={pos} progress={progress} height={6} />;
-        if (eid === 'sfx-02') return <CryoJetEffect key={item.id} position={pos} progress={progress} height={8} horizontal />;
+        if (eid === 'sfx-01') return <CryoJetEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight || 6} />;
+        if (eid === 'sfx-02') return <CryoJetEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight || 8} horizontal />;
         if (eid === 'sfx-06' || eid === 'sfx-07') return <ConfettiEffect key={item.id} position={pos} color={effect.color} progress={progress} />;
+        if (eid === 'sfx-08') return <FogMachineEffect key={item.id} position={pos} color={effect.color} progress={progress} spread={8 + (scaledHeight || 4)} />;
+        if (eid === 'sfx-09') return <HazeMachineEffect key={item.id} position={pos} color={effect.color} progress={progress} radius={16 + (scaledHeight || 4)} />;
+        if (eid === 'sfx-10') return <SnowMachineEffect key={item.id} position={pos} progress={progress} width={6 + (scaledHeight || 4)} height={Math.max(6, (scaledHeight || 8) * 1.2)} />;
+        if (eid === 'sfx-11') return <BubbleMachineEffect key={item.id} position={pos} color={effect.color} progress={progress} spread={6 + (scaledHeight || 3)} />;
 
         // ── Legacy effect ID routing ──
         if (eid.startsWith('comet-')) return <CometEffect key={item.id} position={pos} color={effect.color} progress={progress} direction={eid === 'comet-02' ? 'down' : 'up'} />;
