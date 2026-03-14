@@ -8,7 +8,7 @@ import * as THREE from 'three';
 const PYRO_COLOR = '#FF6B35';
 const DRONE_COLOR = '#00B4D8';
 const SNAP_GRID = 0.5;
-const SNAP_GUIDE_THRESHOLD = 0.4; // meters — show guide when within this distance
+const SNAP_GUIDE_THRESHOLD = 0.4;
 
 interface SnapGuide {
   axis: 'x' | 'z';
@@ -16,11 +16,102 @@ interface SnapGuide {
   sourceName: string;
 }
 
+/** Mortar tube 3D icon for pyro positions */
+function MortarTubeIcon({ color, emissiveIntensity, isSelected }: { color: string; emissiveIntensity: number; isSelected: boolean }) {
+  return (
+    <group>
+      {/* Base plate */}
+      <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.22, 0.22, 0.04, 12]} />
+        <meshStandardMaterial color="#333" metalness={0.9} roughness={0.2} />
+      </mesh>
+      {/* Mortar tube body */}
+      <mesh position={[0, 0.4, 0]}>
+        <cylinderGeometry args={[0.1, 0.14, 0.7, 12, 1, true]} />
+        <meshStandardMaterial
+          color="#444"
+          metalness={0.85}
+          roughness={0.15}
+          emissive={color}
+          emissiveIntensity={emissiveIntensity * 0.3}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      {/* Inner tube highlight */}
+      <mesh position={[0, 0.76, 0]}>
+        <cylinderGeometry args={[0.09, 0.09, 0.02, 12]} />
+        <meshBasicMaterial color={color} transparent opacity={isSelected ? 0.7 : 0.3} blending={THREE.AdditiveBlending} />
+      </mesh>
+      {/* Color ring at top */}
+      <mesh position={[0, 0.75, 0]}>
+        <torusGeometry args={[0.12, 0.015, 8, 16]} />
+        <meshStandardMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={emissiveIntensity}
+          metalness={0.5}
+          roughness={0.3}
+        />
+      </mesh>
+      {/* Fuse spark when selected */}
+      {isSelected && (
+        <mesh position={[0, 0.78, 0]}>
+          <sphereGeometry args={[0.04, 6, 6]} />
+          <meshBasicMaterial color="#FFDD44" transparent opacity={0.8} blending={THREE.AdditiveBlending} />
+        </mesh>
+      )}
+    </group>
+  );
+}
+
+/** Drone pad icon */
+function DronePadIcon({ color, emissiveIntensity, isSelected }: { color: string; emissiveIntensity: number; isSelected: boolean }) {
+  return (
+    <group>
+      {/* Landing pad disc */}
+      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.3, 0.3, 0.03, 16]} />
+        <meshStandardMaterial color="#222" metalness={0.7} roughness={0.3} />
+      </mesh>
+      {/* H marking */}
+      <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.18, 0.22, 16]} />
+        <meshStandardMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={emissiveIntensity}
+          transparent
+          opacity={0.6}
+        />
+      </mesh>
+      {/* Vertical beacon */}
+      <mesh position={[0, 0.25, 0]}>
+        <cylinderGeometry args={[0.03, 0.03, 0.4, 8]} />
+        <meshStandardMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={emissiveIntensity * 0.5}
+          metalness={0.6}
+          roughness={0.4}
+        />
+      </mesh>
+      {/* Top sphere */}
+      <mesh position={[0, 0.48, 0]}>
+        <sphereGeometry args={[0.06, 12, 12]} />
+        <meshStandardMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={isSelected ? 0.9 : 0.3}
+        />
+      </mesh>
+    </group>
+  );
+}
+
 function Pin({ position, onRightClick }: { position: Position; onRightClick: (pos: Position, screenPos: { x: number; y: number }) => void }) {
   const { selectedPositionIds, selectPosition, togglePositionSelection, editorMode, updatePosition, timelineItems } = useProjectStore();
   const isSelected = selectedPositionIds.includes(position.id);
   const color = position.type === 'pyro' ? PYRO_COLOR : (position.color || DRONE_COLOR);
-  const meshRef = useRef<THREE.Mesh>(null);
   const glowRef = useRef<THREE.Group>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -44,7 +135,6 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
     }
   });
 
-  // Compute snap guides against other non-selected positions
   const computeSnapGuides = useCallback((x: number, z: number): { guides: SnapGuide[]; snappedX: number; snappedZ: number } => {
     const store = useProjectStore.getState();
     const others = store.positions.filter(p => !store.selectedPositionIds.includes(p.id));
@@ -77,7 +167,6 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
       return;
     }
 
-    // Shift+click adds/removes from selection (but only if not starting a box-select drag)
     if (e.nativeEvent?.shiftKey || e.shiftKey) {
       togglePositionSelection(position.id);
       return;
@@ -122,7 +211,6 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
     });
   }, [editorMode, position, selectPosition, togglePositionSelection, selectedPositionIds, gl, camera, raycaster, onRightClick]);
 
-  // Use window-level events for drag so pointer can leave the mesh
   useEffect(() => {
     if (!isDragging) return;
 
@@ -198,11 +286,9 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
     if (!isDragging) (gl.domElement as HTMLElement).style.cursor = '';
   }, [isDragging, gl]);
 
-  // Double-click to open popup editor
   const onDoubleClick = useCallback((e: any) => {
     e.stopPropagation();
     selectPosition(position.id);
-    // Dispatch event for popup editor
     window.dispatchEvent(new CustomEvent('position-double-click', { detail: { posId: position.id } }));
   }, [position.id, selectPosition]);
 
@@ -233,48 +319,27 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
 
       {/* Snap alignment guides */}
       {snapGuides.map((guide, i) => (
-        <mesh key={i} position={[
-          guide.axis === 'x' ? 0 : 0,
-          0.02,
-          guide.axis === 'z' ? 0 : 0,
-        ]} rotation={[-Math.PI / 2, 0, guide.axis === 'x' ? Math.PI / 2 : 0]}>
+        <mesh key={i} position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, guide.axis === 'x' ? Math.PI / 2 : 0]}>
           <planeGeometry args={[300, 0.04]} />
           <meshBasicMaterial color="#00ff88" transparent opacity={0.4} />
         </mesh>
       ))}
 
-      {/* Pin body */}
-      <mesh
-        ref={meshRef}
-        position={[0, 0.4, 0]}
+      {/* 3D Icon - Mortar or Drone Pad */}
+      <group
         onPointerDown={onPointerDown}
         onPointerOver={onPointerOver}
         onPointerOut={onPointerOut}
         onDoubleClick={onDoubleClick}
       >
-        <cylinderGeometry args={[0.08, 0.15, 0.8, 12]} />
-        <meshStandardMaterial
-          color={color}
-          emissive={color}
-          emissiveIntensity={emissiveIntensity}
-          metalness={0.7}
-          roughness={0.3}
-        />
-      </mesh>
-
-      {/* Pin top */}
-      <mesh position={[0, 0.85, 0]}>
         {position.type === 'pyro' ? (
-          <coneGeometry args={[0.12, 0.2, 6]} />
+          <group rotation={[0, -position.heading * (Math.PI / 180), 0]}>
+            <MortarTubeIcon color={color} emissiveIntensity={emissiveIntensity} isSelected={isSelected} />
+          </group>
         ) : (
-          <sphereGeometry args={[0.12, 12, 12]} />
+          <DronePadIcon color={color} emissiveIntensity={emissiveIntensity} isSelected={isSelected} />
         )}
-        <meshStandardMaterial
-          color={color}
-          emissive={color}
-          emissiveIntensity={isSelected ? 0.9 : isHovered ? 0.5 : 0.3}
-        />
-      </mesh>
+      </group>
 
       {/* Selection ring */}
       {isSelected && (
@@ -298,15 +363,6 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
         </mesh>
       )}
 
-      {/* Glow */}
-      <pointLight
-        color={color}
-        intensity={isSelected ? 4 : isHovered ? 2 : 0.8}
-        distance={isSelected ? 6 : 4}
-        decay={2}
-        position={[0, 0.85, 0]}
-      />
-
       {/* Direction arrow */}
       <group rotation={[0, -position.heading * (Math.PI / 180), 0]}>
         <mesh position={[0, 0.1, -0.7]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -315,20 +371,44 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
         </mesh>
       </group>
 
-      {/* Label */}
-      <Html position={[0, 1.3, 0]} center style={{ pointerEvents: 'none' }}>
+      {/* Clickable Label Plate — PRIMARY click target */}
+      <Html position={[0, position.type === 'pyro' ? 1.1 : 0.75, 0]} center>
         <div
-          className="px-2 py-0.5 rounded text-[9px] font-mono whitespace-nowrap flex items-center gap-1.5 backdrop-blur-sm select-none"
+          className="px-2.5 py-1 rounded-md text-[10px] font-mono whitespace-nowrap flex items-center gap-1.5 backdrop-blur-md select-none cursor-pointer transition-all duration-150 hover:scale-105"
           style={{
-            backgroundColor: isSelected ? `${color}55` : `${color}22`,
-            border: `1px solid ${isSelected ? `${color}99` : `${color}44`}`,
+            backgroundColor: isSelected ? `${color}66` : `${color}22`,
+            border: `1.5px solid ${isSelected ? `${color}bb` : `${color}55`}`,
             color,
-            boxShadow: isSelected ? `0 0 12px ${color}44` : 'none',
+            boxShadow: isSelected ? `0 0 16px ${color}55, 0 2px 8px rgba(0,0,0,0.4)` : '0 2px 6px rgba(0,0,0,0.3)',
+            pointerEvents: 'auto',
+          }}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            if (e.button === 2) {
+              onRightClick(position, { x: e.clientX, y: e.clientY });
+              return;
+            }
+            if (e.shiftKey) {
+              togglePositionSelection(position.id);
+            } else {
+              selectPosition(position.id);
+            }
+          }}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            selectPosition(position.id);
+            window.dispatchEvent(new CustomEvent('position-double-click', { detail: { posId: position.id } }));
           }}
         >
+          <span style={{ fontSize: '11px' }}>{position.type === 'pyro' ? '🎯' : '🛸'}</span>
           <span className="font-bold">{position.name}</span>
           {linkedEffects > 0 && (
             <span className="text-[8px] opacity-80 bg-black/30 px-1 rounded">🎆{linkedEffects}</span>
+          )}
+          {position.type === 'pyro' && (position.pitch || 0) < 85 && (
+            <span className="text-[8px] opacity-70 bg-black/30 px-1 rounded">
+              {Math.round(position.pitch || 85)}°
+            </span>
           )}
           {isDragging && (
             <span className="opacity-80 font-mono text-[8px] bg-black/30 px-1 rounded">
@@ -352,11 +432,10 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
   );
 }
 
-/** Ground plane for placing new pins — continuous mode (stays in add mode) */
+/** Ground plane for placing new pins — continuous mode */
 function GroundClickPlane() {
   const { editorMode, addPosition, setEditorMode, addWaypoint, selectedTrajectoryId, drawHeight } = useProjectStore();
 
-  // ESC exits placement mode
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && (editorMode === 'add-pyro' || editorMode === 'add-drone' || editorMode === 'add-waypoint')) {
@@ -381,12 +460,10 @@ function GroundClickPlane() {
         x: Math.round(e.point.x * 10) / 10,
         y: 0,
         z: Math.round(e.point.z * 10) / 10,
-        heading: 0, pitch: 0, roll: 0,
+        heading: 0, pitch: 85, roll: 0,
         color: type === 'drone-pad' ? '#00B4D8' : '#FF6B35',
       });
       useProjectStore.getState().selectPosition(id);
-      // CONTINUOUS MODE: stay in placement mode always
-      // User presses ESC or clicks SELECT to exit
       return;
     }
 
@@ -414,11 +491,10 @@ function GroundClickPlane() {
   );
 }
 
-/** Click ground to deselect (unless Shift is held — that starts box-select) */
+/** Click ground to deselect */
 function GroundDeselectPlane() {
   const { editorMode, selectPosition } = useProjectStore();
   const handleClick = useCallback((e: any) => {
-    // Don't deselect when Shift is held (Shift+Drag = box select)
     if (e.nativeEvent?.shiftKey || e.shiftKey) return;
     if (editorMode === 'select') selectPosition(null);
   }, [editorMode, selectPosition]);

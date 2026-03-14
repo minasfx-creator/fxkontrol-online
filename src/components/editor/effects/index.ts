@@ -13,3 +13,6 @@ export { default as CakeEffect } from './CakeEffect';
 export { default as ConfettiEffect } from './ConfettiEffect';
 export { default as MovingHeadEffect } from './MovingHeadEffect';
 export { default as PrefireShell } from './PrefireShell';
+export { default as SmokeTrail } from './SmokeTrail';
+export { default as EmberParticles } from './EmberParticles';
+export { default as SparkShower } from './SparkShower';
