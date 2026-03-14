@@ -318,6 +318,7 @@ export default function Index() {
         {activePanel === 'sitelayout' && <SiteLayoutPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'showsettings' && <ShowSettingsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'calibration' && <ManufacturerCalibrationPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'livefiring' && <LiveFiringPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
