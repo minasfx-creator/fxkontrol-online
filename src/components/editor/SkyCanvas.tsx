@@ -1869,7 +1869,7 @@ export default function SkyCanvas() {
         }}
         dpr={[1, 2]}
       >
-        <PerspectiveCamera makeDefault position={preset.position} fov={55} near={0.2} far={2500} />
+        <PerspectiveCamera makeDefault position={preset.position} fov={55} near={0.5} far={5000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook} />
 
         <SceneLighting />
