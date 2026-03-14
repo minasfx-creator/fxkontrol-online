@@ -323,8 +323,15 @@ function TimelineEffects() {
         if (eid.startsWith('mburst-')) return <MultiBurstEffect key={item.id} position={burstPos} color={effect.color} progress={progress} burstCount={eid === 'mburst-02' ? 5 : 3} />;
         if (eid.startsWith('fan-')) return <FanEffect key={item.id} position={pos} color={effect.color} progress={progress} spreadAngle={eid === 'fan-02' ? 180 : 90} />;
 
-        // ── Default: firework burst at break height ──
-        if (effect.type === 'firework') return <FireworkBurst key={item.id} position={burstPos} color={effect.color} progress={progress} />;
+        // ── Default: firework burst at break height with smoke + embers ──
+        if (effect.type === 'firework') return (
+          <group key={item.id}>
+            <FireworkBurst position={burstPos} color={effect.color} progress={progress} />
+            <SmokeTrail position={burstPos} progress={progress} intensity={caliber * 0.3} />
+            <EmberParticles position={pos} color={effect.color} progress={progress} spreadRadius={caliber * 2} startHeight={realBreakHeight * 0.8} />
+            {caliber >= 4 && <SparkShower position={pos} color={effect.color} progress={progress} height={realBreakHeight * 0.7} spread={caliber * 1.5} />}
+          </group>
+        );
         return <LightPoint key={item.id} position={pos} color={effect.color} />;
       })}
     </>
