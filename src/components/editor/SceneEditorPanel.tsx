@@ -40,7 +40,8 @@ function SliderRow({ label, value, onChange, min = 0, max = 1, step = 0.01, unit
 
 export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
   const { settings, updateSettings, applyPreset, resetToDefault } = useSceneStore();
-  const [openSections, setOpenSections] = useState<Set<SectionId>>(new Set(['presets', 'sky', 'ground']));
+  const { droneFormations, positions, showTrajectories, setShowTrajectories, showFormations, setShowFormations } = useProjectStore();
+  const [openSections, setOpenSections] = useState<Set<SectionId>>(new Set(['quick', 'presets', 'sky']));
 
   const toggleSection = (id: SectionId) => {
     setOpenSections(prev => {
