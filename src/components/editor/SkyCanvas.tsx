@@ -137,7 +137,9 @@ const STAR_VERTEX_SHADER = `
     vLife = aLife;
     vSize = aSize;
     vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-    gl_PointSize = aSize * (300.0 / -mvPos.z);
+    // Larger point size multiplier for more visible stars
+    gl_PointSize = aSize * (500.0 / -mvPos.z);
+    gl_PointSize = clamp(gl_PointSize, 1.0, 128.0);
     gl_Position = projectionMatrix * mvPos;
   }
 `;
@@ -149,15 +151,27 @@ const STAR_FRAGMENT_SHADER = `
   void main() {
     vec2 uv = gl_PointCoord - 0.5;
     float dist = length(uv);
-    // Finale-style multi-layer glow: hard core + soft halo + ultra-soft bloom
-    float core = smoothstep(0.08, 0.0, dist); // bright white-hot center
-    float glow = exp(-dist * dist * 18.0);     // gaussian halo
-    float bloom = exp(-dist * dist * 4.0);     // wide soft bloom for post-process catch
-    float alpha = core * 1.5 + glow * 0.8 + bloom * 0.15;
-    // HDR: core is super-bright to trigger bloom
-    vec3 col = vColor * (glow * 1.2 + core * 2.5) + vec3(1.0, 0.97, 0.85) * core * 1.8;
-    col += vColor * bloom * 0.3;
-    gl_FragColor = vec4(col, alpha * (1.0 - smoothstep(0.45, 0.5, dist)));
+    
+    // Multi-layer glow architecture for maximum HDR bloom catch
+    float core = smoothstep(0.06, 0.0, dist);   // ultra-bright white-hot center
+    float inner = exp(-dist * dist * 28.0);       // tight inner glow
+    float glow = exp(-dist * dist * 10.0);        // medium gaussian halo
+    float bloom = exp(-dist * dist * 3.0);        // wide soft bloom trigger
+    float scatter = exp(-dist * dist * 1.2);      // ultra-wide atmospheric scatter
+    
+    float alpha = core * 2.0 + inner * 1.0 + glow * 0.6 + bloom * 0.2 + scatter * 0.05;
+    
+    // HDR color pipeline — core pushes well above 1.0 for bloom
+    vec3 whiteHot = vec3(1.6, 1.5, 1.2);
+    vec3 col = vColor * (inner * 1.8 + glow * 1.2) + whiteHot * core * 3.5;
+    col += vColor * bloom * 0.5;
+    col += vColor * scatter * 0.15;
+    
+    // Extra HDR boost for young stars (low life = just born)
+    float youth = max(0.0, 1.0 - vLife * 3.0);
+    col += whiteHot * youth * 2.0;
+    
+    gl_FragColor = vec4(col, alpha * (1.0 - smoothstep(0.46, 0.5, dist)));
   }
 `;
 
