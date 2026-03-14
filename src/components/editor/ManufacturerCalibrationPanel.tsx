@@ -101,7 +101,7 @@ export default function ManufacturerCalibrationPanel({ onClose }: Props) {
     if (Math.abs(diff) < 0.01) return null;
     const pct = Math.round((diff / refVal) * 100);
     return (
-      <span className={`text-[9px] ml-1 ${diff > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+      <span className={`text-[9px] ml-1 ${diff > 0 ? 'text-primary' : 'text-destructive'}`}>
         {diff > 0 ? '+' : ''}{pct}%
       </span>
     );
