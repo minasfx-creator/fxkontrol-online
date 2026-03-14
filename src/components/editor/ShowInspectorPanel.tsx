@@ -188,16 +188,13 @@ export default function ShowInspectorPanel({ onClose }: ShowInspectorPanelProps)
       });
     });
 
-    // Timeline effects
+    // Timeline effects as cues
     timelineItems.forEach(item => {
-      const effect = effects.find(e => e.id === item.effectId);
-      if (effect) {
-        cues.push({
-          time: item.startTime,
-          label: effect.name,
-          type: 'effect',
-        });
-      }
+      cues.push({
+        time: item.startTime,
+        label: item.effectId || 'Cue',
+        type: 'effect',
+      });
     });
 
     // Landing
