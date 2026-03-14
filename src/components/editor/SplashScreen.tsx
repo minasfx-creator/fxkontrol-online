@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, forwardRef } from 'react';
 import { Rocket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ interface SplashScreenProps {
   onStart: (fleetSize: number, pyroPositions: number) => void;
 }
 
-export default function SplashScreen({ onStart }: SplashScreenProps) {
+const SplashScreen = forwardRef<HTMLDivElement, SplashScreenProps>(function SplashScreen({ onStart }, ref) {
   const [fleetSize, setFleetSize] = useState(500);
   const [pyroPositions, setPyroPositions] = useState(24);
   const [phase, setPhase] = useState<'intro' | 'ready' | 'exit'>('intro');
