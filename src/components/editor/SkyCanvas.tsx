@@ -381,10 +381,11 @@ function FireworkBurst({
     for (let i = 0; i < STAR_COUNT; i++) {
       const vx = velocities[i * 3], vy = velocities[i * 3 + 1], vz = velocities[i * 3 + 2];
       const lt = lifetimes[i];
-      const age = progress / (lt / starLife);
-      const fade = Math.max(0, 1 - age);
+      // Age each star individually: star dies when t >= lt
+      const starAge = Math.min(1, t / lt);
+      const fade = Math.max(0, 1 - starAge);
       const fadeSquared = fade * fade;
-      const fadeCubed = fadeSquared * fade; // even smoother tail-off
+      const fadeCubed = fadeSquared * fade;
       // Proper analytical integration with exponential drag + real gravity + wind
       const px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
       const py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * t * t;
