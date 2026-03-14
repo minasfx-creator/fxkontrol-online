@@ -1,10 +1,10 @@
-import { Route, Wind, FileText, Package, Cpu, DollarSign, Spline, Sliders, Settings2, Bug, Gauge, Lightbulb, Battery, Radio, Clock, Globe, ShieldCheck, Tag, Sparkles, Music, Download, StickyNote, Video, Box, Image, ShoppingBag, Shield, Wand2, Eye, Warehouse, Link2, Users, ChevronDown, ChevronRight, FileBarChart, Paintbrush, Volume2, Camera, Share2, Atom, History, Cloud, Zap, MessageSquare, Navigation, FolderOpen, Activity, Map } from 'lucide-react';
+import { Route, Wind, FileText, Package, Cpu, DollarSign, Spline, Sliders, Settings2, Bug, Gauge, Lightbulb, Battery, Radio, Clock, Globe, ShieldCheck, Tag, Sparkles, Music, Download, StickyNote, Video, Box, Image, ShoppingBag, Shield, Wand2, Eye, Warehouse, Link2, Users, ChevronDown, ChevronRight, FileBarChart, Paintbrush, Volume2, Camera, Share2, Atom, History, Cloud, Zap, MessageSquare, Navigation, FolderOpen, Activity, Map, Cog } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useState } from 'react';
 
-export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | 'inventory' | 'waypoints' | 'effects' | 'properties' | 'boids' | 'pid' | 'dmx' | 'battery' | 'mavlink' | 'smpte' | 'maps' | 'diagnostic' | 'logistics' | 'swarmgpt' | 'synesthesia' | 'firing' | 'labels' | 'video' | 'models' | 'background' | 'suppliers' | 'safety' | 'scripting' | 'audience' | 'indoor' | 'chains' | 'groups' | 'summary' | 'scene' | 'soundlevel' | 'aroverlay' | 'share' | 'collab' | 'particles' | 'versioning' | 'weather' | 'collisions' | 'approval' | 'trajectory' | 'templates' | 'telemetry' | 'flightlog' | 'pathplanner' | 'marketplace' | 'sitelayout';
+export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | 'inventory' | 'waypoints' | 'effects' | 'properties' | 'boids' | 'pid' | 'dmx' | 'battery' | 'mavlink' | 'smpte' | 'maps' | 'diagnostic' | 'logistics' | 'swarmgpt' | 'synesthesia' | 'firing' | 'labels' | 'video' | 'models' | 'background' | 'suppliers' | 'safety' | 'scripting' | 'audience' | 'indoor' | 'chains' | 'groups' | 'summary' | 'scene' | 'soundlevel' | 'aroverlay' | 'share' | 'collab' | 'particles' | 'versioning' | 'weather' | 'collisions' | 'approval' | 'trajectory' | 'templates' | 'telemetry' | 'flightlog' | 'pathplanner' | 'marketplace' | 'sitelayout' | 'showsettings';
 
 const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId; label: string; icon: typeof Route; shortcut?: string }[] }[] = [
   {
@@ -23,6 +23,7 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
     title: 'Show Design',
     icon: Sparkles,
     items: [
+      { id: 'showsettings', label: 'Show Settings', icon: Cog },
       { id: 'swarmgpt', label: 'SwarmGPT AI', icon: Sparkles, shortcut: 'A' },
       { id: 'synesthesia', label: 'Audio Sync', icon: Music, shortcut: 'Y' },
       { id: 'scripting', label: 'Scripting', icon: Wand2, shortcut: 'T' },
@@ -112,12 +113,9 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
     });
   };
 
-  // Check if active panel is in a section
-  const activeSectionTitle = PANEL_SECTIONS.find(s => s.items.some(i => i.id === activePanel))?.title;
-
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="w-11 flex-shrink-0 bg-surface-1 border-l border-border/60 flex flex-col">
+      <div className="w-14 flex-shrink-0 bg-surface-1 border-l border-border/60 flex flex-col">
         <ScrollArea className="flex-1">
           <div className="flex flex-col items-center py-1 gap-0">
             {PANEL_SECTIONS.map((section, si) => {
@@ -133,18 +131,18 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
                       <button
                         onClick={() => toggleSection(section.title)}
                         className={cn(
-                          "w-full flex items-center justify-center py-1.5 transition-colors relative",
+                          "w-full flex items-center justify-center py-2 transition-colors relative",
                           hasActive
                             ? "text-primary"
                             : "text-muted-foreground/60 hover:text-muted-foreground"
                         )}
                       >
                         {hasActive && (
-                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-primary rounded-r" />
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r" />
                         )}
-                        <div className="flex flex-col items-center gap-0">
-                          <SectionIcon className="w-3 h-3" />
-                          <span className="text-[7px] font-medium tracking-wider uppercase mt-0.5 leading-none">{section.title.split(' ')[0]}</span>
+                        <div className="flex flex-col items-center gap-0.5">
+                          <SectionIcon className="w-4 h-4" />
+                          <span className="text-[7px] font-semibold tracking-wider uppercase leading-none">{section.title.split(' ')[0]}</span>
                         </div>
                       </button>
                     </TooltipTrigger>
@@ -155,7 +153,7 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
 
                   {/* Section items */}
                   {!isCollapsed && (
-                    <div className="flex flex-col items-center gap-0 pb-1">
+                    <div className="flex flex-col items-center gap-0.5 pb-1">
                       {section.items.map(({ id, label, icon: Icon, shortcut }) => {
                         const isActive = activePanel === id;
                         return (
@@ -164,16 +162,16 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
                               <button
                                 onClick={() => onTogglePanel(id)}
                                 className={cn(
-                                  "w-8 h-6 flex items-center justify-center rounded transition-all relative",
+                                  "w-10 h-8 flex items-center justify-center rounded transition-all relative",
                                   isActive
                                     ? "bg-primary/20 text-primary"
                                     : "text-muted-foreground/70 hover:text-foreground hover:bg-surface-3/60"
                                 )}
                               >
                                 {isActive && (
-                                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[2px] h-3 bg-primary rounded-l" />
+                                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[2px] h-4 bg-primary rounded-l" />
                                 )}
-                                <Icon className="w-3 h-3" />
+                                <Icon className="w-4 h-4" />
                               </button>
                             </TooltipTrigger>
                             <TooltipContent side="left" className="text-xs">
