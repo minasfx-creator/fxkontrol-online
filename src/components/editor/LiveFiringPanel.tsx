@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useProjectStore } from '@/store/useProjectStore';
 
 // ─── Types ───
 interface SFXChannel {
@@ -132,6 +133,7 @@ function FireButton({ channel, onFire, onStop }: { channel: SFXChannel; onFire: 
 
 // ─── Main Panel ───
 export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
+  const { isPlaying, currentTime, setPlaying } = useProjectStore();
   const [channels, setChannels] = useState<SFXChannel[]>(DEFAULT_CHANNELS);
   const [scenes, setScenes] = useState<DMXScene[]>([]);
   const [cues, setCues] = useState<DMXCue[]>([]);
@@ -143,8 +145,12 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const [artNetConnected, setArtNetConnected] = useState(false);
   const [artNetIp, setArtNetIp] = useState('255.255.255.255');
   const [artNetPort, setArtNetPort] = useState(6454);
+  const [syncEnabled, setSyncEnabled] = useState(true);
+  const [cueRunning, setCueRunning] = useState(false);
+  const [activeCueId, setActiveCueId] = useState<string | null>(null);
   const sequenceRef = useRef(0);
   const fireTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const firedCuesRef = useRef<Set<string>>(new Set());
 
   // Build DMX universe buffer from channels and send via Art-Net edge function
   const sendArtNetPacket = useCallback(async (currentChannels: SFXChannel[]) => {
@@ -305,6 +311,81 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
     };
   }, []);
 
+  // Reset fired cues when playback restarts or time rewinds
+  useEffect(() => {
+    if (!isPlaying) {
+      firedCuesRef.current.clear();
+      setCueRunning(false);
+      setActiveCueId(null);
+    }
+  }, [isPlaying]);
+
+  // ── Timeline sync: fire cues automatically during playback ──
+  useEffect(() => {
+    if (!syncEnabled || !isPlaying || !masterArm || cues.length === 0) return;
+
+    setCueRunning(true);
+
+    for (const cue of cues) {
+      if (firedCuesRef.current.has(cue.id)) continue;
+
+      const scene = scenes.find(s => s.id === cue.sceneId);
+      if (!scene) continue;
+
+      // Check if current time has crossed the cue trigger point
+      const cueTotalDuration = (cue.fadeIn + cue.hold + cue.fadeOut) / 1000;
+      if (currentTime >= cue.time && currentTime < cue.time + cueTotalDuration) {
+        firedCuesRef.current.add(cue.id);
+        setActiveCueId(cue.id);
+
+        // Apply scene intensities to channels and fire
+        setChannels(prev => {
+          const updated = prev.map(ch => {
+            const sceneCh = scene.channels.find(sc => sc.channelId === ch.id);
+            if (!sceneCh || ch.locked) return ch;
+
+            // Calculate fade envelope
+            const elapsed = (currentTime - cue.time) * 1000; // ms
+            let envelope = 1;
+            if (elapsed < cue.fadeIn) {
+              envelope = elapsed / cue.fadeIn;
+            } else if (elapsed > cue.fadeIn + cue.hold) {
+              const fadeElapsed = elapsed - cue.fadeIn - cue.hold;
+              envelope = Math.max(0, 1 - fadeElapsed / cue.fadeOut);
+            }
+
+            return {
+              ...ch,
+              intensity: Math.round(sceneCh.intensity * envelope),
+              firing: true,
+            };
+          });
+          sendArtNetPacket(updated);
+          return updated;
+        });
+
+        // Schedule stop after full cue duration
+        const remaining = (cue.time + cueTotalDuration - currentTime) * 1000;
+        setTimeout(() => {
+          setChannels(prev => {
+            const updated = prev.map(ch => {
+              const sceneCh = scene.channels.find(sc => sc.channelId === ch.id);
+              if (!sceneCh) return ch;
+              return { ...ch, firing: false };
+            });
+            sendArtNetPacket(updated);
+            return updated;
+          });
+          setActiveCueId(null);
+        }, Math.max(50, remaining));
+
+        toast(`📋 CUE: ${scene.name}`, {
+          description: `T=${cue.time.toFixed(1)}s · Fade ${cue.fadeIn}ms → Hold ${cue.hold}ms → Out ${cue.fadeOut}ms`,
+        });
+      }
+    }
+  }, [currentTime, isPlaying, syncEnabled, masterArm, cues, scenes, sendArtNetPacket]);
+
   const armedCount = channels.filter(c => c.armed).length;
   const firingCount = channels.filter(c => c.firing).length;
   const selected = selectedChannel ? channels.find(c => c.id === selectedChannel) : null;
@@ -342,6 +423,20 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           {firingCount > 0 && (
             <span className="text-[9px] font-mono text-destructive animate-pulse">🔥 {firingCount} firing</span>
           )}
+          {syncEnabled && (
+            <span className={cn("text-[9px] font-mono", isPlaying ? "text-primary animate-pulse" : "text-muted-foreground")}>
+              🔗 {isPlaying ? 'SYNCED' : 'SYNC ON'}
+            </span>
+          )}
+        </div>
+
+        {/* Timeline Sync Toggle */}
+        <div className="flex items-center justify-between mt-1.5 px-1 py-1 rounded bg-muted/20 border border-border/30">
+          <div className="flex items-center gap-1.5">
+            <Radio className={cn("w-3 h-3", syncEnabled ? "text-primary" : "text-muted-foreground")} />
+            <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Timeline Sync</span>
+          </div>
+          <Switch checked={syncEnabled} onCheckedChange={setSyncEnabled} />
         </div>
 
         {/* Section tabs */}
@@ -538,10 +633,38 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
                 </div>
 
                 {cues.length > 0 && (
-                  <Button size="sm" className="w-full h-8 text-[10px] mt-2" variant="outline">
-                    <Play className="w-3 h-3 mr-1.5" />
-                    Run Cue Sequence ({cues.length} cues)
-                  </Button>
+                  <div className="space-y-1 mt-2">
+                    {activeCueId && (
+                      <div className="flex items-center gap-1.5 p-1.5 rounded bg-primary/10 border border-primary/30 animate-pulse">
+                        <Radio className="w-3 h-3 text-primary" />
+                        <span className="text-[9px] font-bold text-primary">
+                          ACTIVE: {scenes.find(s => s.id === cues.find(c => c.id === activeCueId)?.sceneId)?.name}
+                        </span>
+                      </div>
+                    )}
+                    <Button
+                      size="sm"
+                      className="w-full h-8 text-[10px]"
+                      variant={isPlaying ? "destructive" : "outline"}
+                      onClick={() => {
+                        if (isPlaying) {
+                          setPlaying(false);
+                        } else {
+                          if (!masterArm) handleMasterArm(true);
+                          setSyncEnabled(true);
+                          firedCuesRef.current.clear();
+                          setPlaying(true);
+                          toast.info('▶ Playback started — SFX cues synced to timeline');
+                        }
+                      }}
+                    >
+                      {isPlaying ? (
+                        <><Square className="w-3 h-3 mr-1.5" /> Stop Sequence</>
+                      ) : (
+                        <><Play className="w-3 h-3 mr-1.5" /> Run Cue Sequence ({cues.length} cues)</>
+                      )}
+                    </Button>
+                  </div>
                 )}
               </>
             )}
