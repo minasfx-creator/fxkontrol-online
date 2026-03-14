@@ -197,12 +197,12 @@ function FireworkBurst({
   const debrisRef = useRef<THREE.Points>(null);
   
   // Finale caliber scaling: star count proportional to shell volume
-  const STAR_COUNT = useMemo(() => Math.min(2000, Math.round(80 + caliber * caliber * 24)), [caliber]);
-  const TRAIL_LENGTH = useMemo(() => Math.min(24, 12 + Math.floor(caliber * 1.5)), [caliber]);
-  const DEBRIS_COUNT = useMemo(() => Math.min(500, Math.round(STAR_COUNT * 0.4)), [STAR_COUNT]);
+  const STAR_COUNT = useMemo(() => Math.min(2500, Math.round(120 + caliber * caliber * 28)), [caliber]);
+  const TRAIL_LENGTH = useMemo(() => Math.min(28, 14 + Math.floor(caliber * 1.8)), [caliber]);
+  const DEBRIS_COUNT = useMemo(() => Math.min(600, Math.round(STAR_COUNT * 0.4)), [STAR_COUNT]);
   
-  // Finale break speed: derived from shell internal pressure (caliber-proportional)
-  const breakSpeed = useMemo(() => 6 + caliber * 4.5, [caliber]);
+  // Real break speed from pyroPhysics — caliber proportional (m/s)
+  const breakSpeed = useMemo(() => getBreakSpeed(caliber), [caliber]);
   
   // Star lifetime per Finale — depends on pattern and caliber
   const starLife = useMemo(() => {
