@@ -1480,11 +1480,20 @@ export default function SkyCanvas() {
   const gpsOrigin = useProjectStore((s) => s.gpsOrigin);
   const cursorStyle = editorMode !== 'select' ? 'crosshair' : 'default';
   const [activePreset, setActivePreset] = useState('free');
+  const [freeLook, setFreeLook] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const preset = CAMERA_PRESETS.find((p) => p.id === activePreset) || CAMERA_PRESETS[0];
   const perfStatsRef = useRef<PerfStats>({ fps: 0, drawCalls: 0, triangles: 0, geometries: 0, textures: 0 });
   const droneCount = droneFormations.length > 0 ? droneFormations[0].droneCount : 0;
   const [satelliteTexture, setSatelliteTexture] = useState<string | null>(null);
   const [downloadingScenery, setDownloadingScenery] = useState(false);
+
+  // Track fullscreen state
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
 
   const handleDownloadScenery = useCallback(async () => {
     setDownloadingScenery(true);
