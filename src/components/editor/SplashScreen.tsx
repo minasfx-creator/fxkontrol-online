@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, forwardRef } from 'react';
 import { Rocket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ interface SplashScreenProps {
   onStart: (fleetSize: number, pyroPositions: number) => void;
 }
 
-export default function SplashScreen({ onStart }: SplashScreenProps) {
+const SplashScreen = forwardRef<HTMLDivElement, SplashScreenProps>(function SplashScreen({ onStart }, ref) {
   const [fleetSize, setFleetSize] = useState(500);
   const [pyroPositions, setPyroPositions] = useState(24);
   const [phase, setPhase] = useState<'intro' | 'ready' | 'exit'>('intro');
@@ -61,10 +61,10 @@ export default function SplashScreen({ onStart }: SplashScreenProps) {
             <Rocket className="h-8 w-8 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-bold tracking-[0.25em] uppercase text-foreground font-mono-code">
-            NEXUS GENESIS
+            AEROSWARM NEXUS
           </h1>
           <p className="text-xs text-muted-foreground tracking-[0.2em] uppercase">
-            Zenith Absolute Workstation
+            Zenith Prime Workstation
           </p>
         </div>
 
@@ -119,9 +119,11 @@ export default function SplashScreen({ onStart }: SplashScreenProps) {
         </Button>
 
         <p className="text-[9px] text-muted-foreground/50 font-mono-code tracking-wider">
-          v3.0.0 · ZENITH ENGINE
+          v1.1.0 · ZENITH PRIME ENGINE
         </p>
       </div>
     </div>
   );
-}
+});
+
+export default SplashScreen;

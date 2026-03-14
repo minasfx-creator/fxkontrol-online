@@ -89,7 +89,7 @@ export function PerformanceHUD({
       {visible && (
         <div className="absolute top-10 right-3 bg-surface-0/90 backdrop-blur-sm border border-border/60 rounded-sm p-2 font-mono text-[10px] leading-relaxed min-w-[140px] select-none pointer-events-none">
           <div className="flex items-center gap-1.5 mb-1 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-            <Activity className="w-3 h-3" /> Performance
+            <Activity className="w-3 h-3" /> Zenith Prime
           </div>
           <div className="space-y-0.5">
             <Row label="FPS" value={stats.fps} className={fpsColor} />
