@@ -261,7 +261,11 @@ function BatchAddButton() {
   );
 }
 
-export default function Toolbar() {
+interface ToolbarProps {
+  onOpenPanel?: (id: string) => void;
+}
+
+export default function Toolbar({ onOpenPanel }: ToolbarProps) {
   const { projectName, timelineItems, positions, editorMode, setEditorMode, duration, trajectories, droneFormations, gpsOrigin } = useProjectStore();
   const { canUndo, canRedo, undo, redo, checkpoint } = useUndoStore();
   const { signOut, user } = useAuth();
