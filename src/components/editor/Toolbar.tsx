@@ -395,31 +395,34 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
 
       <Separator orientation="vertical" className="h-4 mx-1" />
 
-      {/* Category menus: Show, Scene, Location, Settings */}
+      {/* Category menus: Show, Scene, Location */}
       <div className="flex items-center gap-0.5">
         <DropdownMenu
           label="Show"
+          icon={Film}
           items={[
             { label: 'Show Settings', icon: Cog, onClick: () => onOpenPanel?.('showsettings') },
             { label: 'Show Summary', icon: FileBarChart, onClick: () => onOpenPanel?.('summary') },
-            { label: 'Approval', icon: Eye, onClick: () => onOpenPanel?.('approval') },
-            { label: 'Versioning', icon: Info, onClick: () => onOpenPanel?.('versioning') },
-            { label: 'Share', icon: Download, onClick: () => onOpenPanel?.('share') },
-            { label: 'Collaborate', icon: Info, onClick: () => onOpenPanel?.('collab') },
+            { label: 'Approval', icon: MessageSquare, onClick: () => onOpenPanel?.('approval') },
+            { label: 'Versioning', icon: History, onClick: () => onOpenPanel?.('versioning') },
+            { label: 'Share', icon: Share2, onClick: () => onOpenPanel?.('share') },
+            { label: 'Collaborate', icon: Users, onClick: () => onOpenPanel?.('collab') },
           ]}
         />
         <DropdownMenu
           label="Scene"
+          icon={Paintbrush}
           items={[
             { label: 'Scene Editor', icon: Paintbrush, onClick: () => onOpenPanel?.('scene') },
             { label: 'Weather', icon: Cloud, onClick: () => onOpenPanel?.('weather') },
             { label: 'Audience View', icon: Eye, onClick: () => onOpenPanel?.('audience') },
             { label: 'Sound Level', icon: Volume2, onClick: () => onOpenPanel?.('soundlevel') },
-            { label: 'Particles', icon: Info, onClick: () => onOpenPanel?.('particles') },
+            { label: 'Particles', icon: Atom, onClick: () => onOpenPanel?.('particles') },
           ]}
         />
         <DropdownMenu
           label="Location"
+          icon={MapPinned}
           items={[
             { label: 'Google Maps', icon: Globe, onClick: () => onOpenPanel?.('maps') },
             { label: 'Site Layout', icon: Map, onClick: () => onOpenPanel?.('sitelayout') },
