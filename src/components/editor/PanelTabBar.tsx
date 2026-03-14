@@ -161,7 +161,7 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
   };
 
   // We track button refs for position calculation
-  const buttonRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
+  const buttonRefs = useRef(new Map<number, HTMLButtonElement>());
   let globalIdx = 0;
 
   return (
