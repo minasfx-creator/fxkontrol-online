@@ -1,4 +1,4 @@
-import { Route, Wind, FileText, Package, Cpu, DollarSign, Spline, Sliders, Settings2, Bug, Gauge, Lightbulb, Battery, Radio, Clock, Globe, ShieldCheck, Tag, Sparkles, Music, Download, StickyNote, Video, Box, Image, ShoppingBag, Shield, Wand2, Eye, Warehouse, Link2, Users, ChevronDown, ChevronRight, FileBarChart, Paintbrush, Volume2, Camera, Share2, Atom, History, Cloud, Zap, MessageSquare, Navigation, FolderOpen, Activity, Map, Cog } from 'lucide-react';
+import { Route, Wind, FileText, Package, Cpu, DollarSign, Spline, Sliders, Settings2, Bug, Gauge, Lightbulb, Battery, Radio, Clock, Globe, ShieldCheck, Tag, Sparkles, Music, Download, StickyNote, Video, Box, Image, ShoppingBag, Shield, Wand2, Eye, Warehouse, Link2, Users, ChevronDown, ChevronRight, FileBarChart, Volume2, Camera, Share2, Atom, History, Cloud, Zap, Navigation, FolderOpen, Activity, Map, Cog, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -23,26 +23,15 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
     title: 'Show Design',
     icon: Sparkles,
     items: [
-      { id: 'showsettings', label: 'Show Settings', icon: Cog },
       { id: 'swarmgpt', label: 'SwarmGPT AI', icon: Sparkles, shortcut: 'A' },
       { id: 'synesthesia', label: 'Audio Sync', icon: Music, shortcut: 'Y' },
       { id: 'scripting', label: 'Scripting', icon: Wand2, shortcut: 'T' },
       { id: 'safety', label: 'Safety NFPA', icon: Shield, shortcut: 'F' },
-      { id: 'sitelayout', label: 'Site Layout', icon: Map },
-      { id: 'summary', label: 'Show Summary', icon: FileBarChart },
-      { id: 'scene', label: 'Scene Editor', icon: Paintbrush, shortcut: 'N' },
-      { id: 'audience', label: 'Audience', icon: Eye },
-      { id: 'soundlevel', label: 'Sound Level', icon: Volume2 },
-      { id: 'wind', label: 'Wind/Cam', icon: Wind },
-      { id: 'particles', label: 'Particles', icon: Atom },
       { id: 'collisions', label: 'Collisions', icon: Zap },
       { id: 'trajectory', label: 'Trajectory Opt', icon: Navigation },
       { id: 'pathplanner', label: 'Path Planner', icon: Route },
       { id: 'templates', label: 'Templates', icon: FolderOpen },
       { id: 'marketplace', label: 'Marketplace', icon: Globe },
-      { id: 'weather', label: 'Weather', icon: Cloud },
-      { id: 'versioning', label: 'Versioning', icon: History },
-      { id: 'approval', label: 'Approval', icon: MessageSquare },
     ],
   },
   {
@@ -87,10 +76,9 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
     items: [
       { id: 'dmx', label: 'DMX512', icon: Lightbulb },
       { id: 'smpte', label: 'SMPTE/LTC', icon: Clock },
-      { id: 'maps', label: 'Google Maps', icon: Globe },
       { id: 'diagnostic', label: 'Diagnostic', icon: ShieldCheck, shortcut: 'D' },
       { id: 'logistics', label: 'Logistics', icon: Tag },
-      { id: 'collab', label: 'Collaborate', icon: Users },
+      { id: 'wind', label: 'Wind/Cam', icon: Wind },
     ],
   },
 ];
