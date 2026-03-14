@@ -7,16 +7,19 @@
  * - Gravity, drag, wind drift on every particle
  * - Prefire delay (fuse + lift)
  * - VDL-aware simulation parameters
+ * 
+ * Caliber reference (real-world):
+ *   2" = 30-45m, 3" = 50-70m, 4" = 75-100m, 5" = 100-130m
+ *   6" = 130-170m, 8" = 170-220m, 10" = 220-270m, 12" = 270-300m
  */
 
 export const GRAVITY = -9.81; // m/s²
-export const AIR_DRAG = 0.03; // drag coefficient for particles
-export const STAR_DRAG = 0.08; // heavier drag for stars falling
+export const AIR_DRAG = 0.03;
+export const STAR_DRAG = 0.08;
 
-// ── Lift physics (from Finale manual: liftTimePerInch) ──────────────
-// Real mortar velocities by caliber (m/s)
+// Real mortar velocities by caliber (m/s) — from industry data
 const MORTAR_VELOCITY: Record<number, number> = {
-  2: 40, 3: 55, 4: 65, 5: 75, 6: 85, 8: 100, 10: 115, 12: 125, 16: 140,
+  2: 42, 3: 56, 4: 68, 5: 78, 6: 88, 8: 105, 10: 118, 12: 130, 16: 145,
 };
 
 export function getMortarVelocity(caliberInches: number): number {
@@ -29,32 +32,63 @@ export function getMortarVelocity(caliberInches: number): number {
       return MORTAR_VELOCITY[keys[i]] * (1 - t) + MORTAR_VELOCITY[keys[i + 1]] * t;
     }
   }
-  return 65;
+  return 68;
 }
 
-// Lift time = height / velocity (simplified, real formula includes drag)
 export function getLiftTime(caliberInches: number): number {
   const breakH = getBreakHeight(caliberInches);
   const v0 = getMortarVelocity(caliberInches);
-  // t = (v0 - sqrt(v0² + 2g*h)) / g — solving for time to reach breakH
-  // Simplified: t ≈ v0/|g| - sqrt(v0²/g² - 2h/|g|) — but easier:
   return v0 / Math.abs(GRAVITY) * (1 - Math.sqrt(Math.max(0, 1 - 2 * Math.abs(GRAVITY) * breakH / (v0 * v0))));
 }
 
-// Break height by caliber (meters) — from Finale manual defaults
+// Break height by caliber (meters) — realistic values
+// 3" = 55m, 4" = 80m, 5" = 110m, 6" = 140m, 8" = 190m
 export function getBreakHeight(caliberInches: number): number {
-  // Approximate: 3" = 60m, 4" = 80m, 5" = 100m, 6" = 120m, 8" = 160m
-  return 15 + caliberInches * 18;
+  const heights: Record<number, number> = {
+    2: 35, 3: 55, 4: 80, 5: 110, 6: 140, 8: 190, 10: 240, 12: 280, 16: 320,
+  };
+  const keys = Object.keys(heights).map(Number).sort((a, b) => a - b);
+  if (caliberInches <= keys[0]) return heights[keys[0]];
+  if (caliberInches >= keys[keys.length - 1]) return heights[keys[keys.length - 1]];
+  for (let i = 0; i < keys.length - 1; i++) {
+    if (caliberInches >= keys[i] && caliberInches <= keys[i + 1]) {
+      const t = (caliberInches - keys[i]) / (keys[i + 1] - keys[i]);
+      return heights[keys[i]] * (1 - t) + heights[keys[i + 1]] * t;
+    }
+  }
+  return 80;
 }
 
-// Star lifetime by caliber
+// Star lifetime by caliber (seconds)
 export function getStarLifetime(caliberInches: number): number {
-  return 1.0 + caliberInches * 0.5;
+  return 1.2 + caliberInches * 0.45;
 }
 
-// Star spread radius at peak (meters)
+// Star spread radius at peak (meters) — real-world spread
 export function getStarSpread(caliberInches: number): number {
-  return 5 + caliberInches * 6;
+  return 8 + caliberInches * 8;
+}
+
+// Star count by caliber — bigger shells have more stars
+export function getStarCount(caliberInches: number): number {
+  const counts: Record<number, number> = {
+    2: 80, 3: 150, 4: 250, 5: 350, 6: 500, 8: 700, 10: 900, 12: 1100,
+  };
+  const keys = Object.keys(counts).map(Number).sort((a, b) => a - b);
+  if (caliberInches <= keys[0]) return counts[keys[0]];
+  if (caliberInches >= keys[keys.length - 1]) return counts[keys[keys.length - 1]];
+  for (let i = 0; i < keys.length - 1; i++) {
+    if (caliberInches >= keys[i] && caliberInches <= keys[i + 1]) {
+      const t = (caliberInches - keys[i]) / (keys[i + 1] - keys[i]);
+      return Math.round(counts[keys[i]] * (1 - t) + counts[keys[i + 1]] * t);
+    }
+  }
+  return 250;
+}
+
+// Break speed by caliber (m/s) — initial velocity of stars at break
+export function getBreakSpeed(caliberInches: number): number {
+  return 12 + caliberInches * 5;
 }
 
 // Safety distance (NFPA 1123)
@@ -83,15 +117,10 @@ export function stepParticle(
   wind: [number, number, number], 
   drag: number = AIR_DRAG
 ): void {
-  // Apply gravity
   p.vy += GRAVITY * dt;
-  
-  // Apply wind force
   p.vx += wind[0] * dt * 0.5;
   p.vy += wind[1] * dt * 0.5;
   p.vz += wind[2] * dt * 0.5;
-  
-  // Apply drag: F_drag = -drag * v²
   const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy + p.vz * p.vz);
   if (speed > 0.01) {
     const dragForce = drag * speed;
@@ -99,26 +128,22 @@ export function stepParticle(
     p.vy -= (p.vy / speed) * dragForce * dt;
     p.vz -= (p.vz / speed) * dragForce * dt;
   }
-  
-  // Integrate position
   p.x += p.vx * dt;
   p.y += p.vy * dt;
   p.z += p.vz * dt;
-  
-  // Clamp to ground
   if (p.y < 0) { p.y = 0; p.vy = 0; p.vx *= 0.5; p.vz *= 0.5; }
-  
-  // Age
   p.life += dt;
   p.brightness = Math.max(0, 1 - p.life / p.maxLife);
 }
 
 // ── Shell burst star distribution ───────────────────────────────────
 
+export type BurstPattern = 'sphere' | 'ring' | 'willow' | 'palm' | 'peony' | 'chrysanthemum' | 'kamuro' | 'crossette' | 'dahlia' | 'brocade';
+
 export function createShellBurst(
   count: number, 
   breakSpeed: number, 
-  pattern: 'sphere' | 'ring' | 'willow' | 'palm' | 'peony' | 'chrysanthemum' | 'kamuro' | 'crossette' = 'sphere',
+  pattern: BurstPattern = 'peony',
   starLifetime: number = 2
 ): ParticleState[] {
   const particles: ParticleState[] = [];
@@ -132,51 +157,60 @@ export function createShellBurst(
     
     switch (pattern) {
       case 'ring':
-        // Flat ring distribution
         vx = Math.cos(theta) * breakSpeed;
         vy = (Math.random() - 0.5) * breakSpeed * 0.1;
         vz = Math.sin(theta) * breakSpeed;
         break;
       case 'willow':
-        // Long-burning stars with less initial velocity
-        vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.6;
-        vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.6;
-        vz = Math.cos(phi) * breakSpeed * 0.6;
-        life = starLifetime * (1.2 + Math.random() * 0.8);
+        vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.5;
+        vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.5;
+        vz = Math.cos(phi) * breakSpeed * 0.5;
+        life = starLifetime * (1.8 + Math.random() * 1.2); // very long burn
         break;
       case 'palm':
-        // Upward bias with heavy falloff
-        vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.7;
-        vy = Math.abs(Math.sin(phi) * Math.sin(theta)) * breakSpeed + breakSpeed * 0.3;
-        vz = Math.cos(phi) * breakSpeed * 0.7;
+        vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.6;
+        vy = Math.abs(Math.sin(phi) * Math.sin(theta)) * breakSpeed + breakSpeed * 0.4;
+        vz = Math.cos(phi) * breakSpeed * 0.6;
         life = starLifetime * (1.5 + Math.random() * 0.5);
         break;
       case 'chrysanthemum':
-        // Dense, uniform sphere with long trails
         vx = Math.sin(phi) * Math.cos(theta) * breakSpeed;
         vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.9;
         vz = Math.cos(phi) * breakSpeed;
-        life = starLifetime * (1.0 + Math.random() * 0.2);
+        life = starLifetime * (1.1 + Math.random() * 0.3);
         break;
       case 'kamuro':
-        // Very long-burning golden stars that fall slowly
-        vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.5;
-        vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.5 + 2;
-        vz = Math.cos(phi) * breakSpeed * 0.5;
-        life = starLifetime * (2.0 + Math.random() * 1.0);
+        vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.45;
+        vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.45 + 2;
+        vz = Math.cos(phi) * breakSpeed * 0.45;
+        life = starLifetime * (2.5 + Math.random() * 1.5); // extremely long
+        break;
+      case 'dahlia':
+        // Fewer, larger stars with high speed
+        vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 1.2;
+        vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 1.1;
+        vz = Math.cos(phi) * breakSpeed * 1.2;
+        life = starLifetime * (0.6 + Math.random() * 0.3);
+        break;
+      case 'brocade':
+        // Dense golden trailing stars
+        vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.7;
+        vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.7;
+        vz = Math.cos(phi) * breakSpeed * 0.7;
+        life = starLifetime * (1.6 + Math.random() * 0.8);
         break;
       case 'crossette':
-        // Stars that split into 4 directions
         vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * 0.8;
         vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.8;
         vz = Math.cos(phi) * breakSpeed * 0.8;
         break;
       case 'peony':
       default:
-        // Classic spherical distribution
-        vx = Math.sin(phi) * Math.cos(theta) * breakSpeed;
-        vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * 0.85 + 0.5;
-        vz = Math.cos(phi) * breakSpeed;
+        // Classic spherical — the most common
+        const speedVariation = 0.7 + Math.random() * 0.3;
+        vx = Math.sin(phi) * Math.cos(theta) * breakSpeed * speedVariation;
+        vy = Math.sin(phi) * Math.sin(theta) * breakSpeed * speedVariation * 0.85 + 1;
+        vz = Math.cos(phi) * breakSpeed * speedVariation;
         break;
     }
     
@@ -192,7 +226,7 @@ export function createMineBurst(count: number, speed: number, lifetime: number):
   const particles: ParticleState[] = [];
   for (let i = 0; i < count; i++) {
     const theta = Math.random() * Math.PI * 2;
-    const upAngle = Math.random() * Math.PI * 0.4; // mostly upward
+    const upAngle = Math.random() * Math.PI * 0.4;
     const s = speed * (0.5 + Math.random() * 0.5);
     particles.push({
       x: 0, y: 0.1, z: 0,
@@ -242,15 +276,12 @@ export function getCakeShotTimes(
   for (let i = 0; i < shotCount; i++) {
     switch (pattern) {
       case 'accelerating':
-        // Shots get faster towards the end
         times.push(totalDuration * Math.pow(i / shotCount, 1.5));
         break;
       case 'z-pattern':
-        // Alternating left-right with regular timing
         times.push((i / shotCount) * totalDuration);
         break;
       case 'fan':
-        // All shots nearly simultaneous in a spread
         times.push(i * 0.08);
         break;
       default:
@@ -263,8 +294,7 @@ export function getCakeShotTimes(
 // ── Roman Candle shot angles ────────────────────────────────────────
 
 export function getRomanCandleShotAngle(shotIndex: number, totalShots: number): number {
-  // Slight random variation around vertical
-  return (Math.random() - 0.5) * 0.1; // radians from vertical
+  return (Math.random() - 0.5) * 0.1;
 }
 
 // ── CO2 Jet ─────────────────────────────────────────────────────────
@@ -338,50 +368,30 @@ export function createLaserPattern(
     case 'fan':
       for (let i = 0; i < beamCount; i++) {
         const angle = ((i / beamCount) - 0.5) * Math.PI * 0.8;
-        beams.push({
-          origin: [0, 0, 0],
-          direction: [Math.sin(angle), Math.cos(angle) * 0.3 + 0.7, 0],
-          color, width: 0.02, length: 100,
-        });
+        beams.push({ origin: [0, 0, 0], direction: [Math.sin(angle), Math.cos(angle) * 0.3 + 0.7, 0], color, width: 0.02, length: 100 });
       }
       break;
     case 'harp':
       for (let i = 0; i < beamCount; i++) {
         const x = ((i / beamCount) - 0.5) * 4;
-        beams.push({
-          origin: [x, 0, 0],
-          direction: [0, 1, 0],
-          color, width: 0.015, length: 80,
-        });
+        beams.push({ origin: [x, 0, 0], direction: [0, 1, 0], color, width: 0.015, length: 80 });
       }
       break;
     case 'tunnel':
       for (let i = 0; i < beamCount; i++) {
         const angle = (i / beamCount) * Math.PI * 2 + time;
-        beams.push({
-          origin: [0, 0, 0],
-          direction: [Math.cos(angle) * 0.3, 0.3, Math.sin(angle) * 0.3 + 0.7],
-          color, width: 0.02, length: 60,
-        });
+        beams.push({ origin: [0, 0, 0], direction: [Math.cos(angle) * 0.3, 0.3, Math.sin(angle) * 0.3 + 0.7], color, width: 0.02, length: 60 });
       }
       break;
     case 'cone':
       for (let i = 0; i < beamCount; i++) {
         const angle = (i / beamCount) * Math.PI * 2 + time * 0.5;
         const tilt = 0.3 + Math.sin(time * 2 + i) * 0.1;
-        beams.push({
-          origin: [0, 0, 0],
-          direction: [Math.cos(angle) * tilt, 1 - tilt, Math.sin(angle) * tilt],
-          color, width: 0.02, length: 100,
-        });
+        beams.push({ origin: [0, 0, 0], direction: [Math.cos(angle) * tilt, 1 - tilt, Math.sin(angle) * tilt], color, width: 0.02, length: 100 });
       }
       break;
     default:
-      beams.push({
-        origin: [0, 0, 0],
-        direction: [Math.sin(time * 0.5) * 0.2, 0.9, Math.cos(time * 0.3) * 0.2],
-        color, width: 0.03, length: 100,
-      });
+      beams.push({ origin: [0, 0, 0], direction: [Math.sin(time * 0.5) * 0.2, 0.9, Math.cos(time * 0.3) * 0.2], color, width: 0.03, length: 100 });
   }
   
   return beams;
