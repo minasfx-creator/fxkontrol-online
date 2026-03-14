@@ -586,8 +586,9 @@ function TimelineEffects() {
               id: item.effectId,
               icon: '🎆',
               type: 'firework',
+              partType: parsed.partType as (typeof EFFECT_LIBRARY)[number]['partType'],
               duration: Math.max(0.8, parsed.duration),
-            };
+            } as (typeof EFFECT_LIBRARY)[number];
           }
         }
       }
