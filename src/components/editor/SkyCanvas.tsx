@@ -85,7 +85,7 @@ function PlaybackClock() {
 }
 
 // --- Particle system ---
-const GRAVITY = -4;
+const GRAVITY = -5.5; // Slightly stronger gravity for more realistic arcs
 
 function getWindForce(): [number, number, number] {
   const { wind } = useProjectStore.getState();
