@@ -1,10 +1,12 @@
 import { useState, useCallback } from 'react';
-import { Download, FileDown, Search, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Download, FileDown, Search, X, ChevronDown, ChevronUp, Globe, MapPin, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useProjectStore } from '@/store/useProjectStore';
 import { FIRING_SYSTEMS, type FiringSystem } from '@/lib/firingSystemExports';
-import { downloadFile } from '@/lib/exportEngine';
+import { downloadFile, exportFormationsToKML } from '@/lib/exportEngine';
+import { downloadKMZ, downloadAnimatedKML } from '@/lib/kmzExporter';
+import { exportSkyc, downloadSkycFile, exportShowCSV } from '@/lib/skycExporter';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -115,6 +117,136 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
             </div>
           );
         })}
+      </div>
+
+      {/* Google Earth & Drone Show Exports */}
+      <div className="px-2 pb-2">
+        <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider px-1 py-1">🌍 Google Earth / Drone Show</div>
+        
+        <div className="space-y-1">
+          <Button
+            variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
+            onClick={async () => {
+              try {
+                const store = useProjectStore.getState();
+                await downloadKMZ({
+                  projectName: store.projectName,
+                  positions: store.positions,
+                  trajectories: store.trajectories,
+                  formations: store.droneFormations,
+                  duration: store.duration,
+                  gpsOrigin: store.gpsOrigin,
+                  cameraKeyframes: store.cameraKeyframes,
+                  fps: 4,
+                  includeTour: true,
+                  includeTrails: true,
+                });
+                toast.success('KMZ exported with animated tracks!');
+              } catch (err) {
+                toast.error(`KMZ export failed: ${(err as Error).message}`);
+              }
+            }}
+          >
+            <Globe className="w-3 h-3 mr-1.5 text-emerald-500" />
+            Export .kmz (Google Earth Animated)
+          </Button>
+
+          <Button
+            variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
+            onClick={() => {
+              try {
+                const store = useProjectStore.getState();
+                downloadAnimatedKML({
+                  projectName: store.projectName,
+                  positions: store.positions,
+                  trajectories: store.trajectories,
+                  formations: store.droneFormations,
+                  duration: store.duration,
+                  gpsOrigin: store.gpsOrigin,
+                  cameraKeyframes: store.cameraKeyframes,
+                  fps: 4,
+                  includeTour: true,
+                  includeTrails: true,
+                });
+                toast.success('Animated KML exported!');
+              } catch (err) {
+                toast.error(`KML export failed: ${(err as Error).message}`);
+              }
+            }}
+          >
+            <MapPin className="w-3 h-3 mr-1.5 text-blue-500" />
+            Export .kml (Animated Tracks)
+          </Button>
+
+          <Button
+            variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
+            onClick={() => {
+              try {
+                const store = useProjectStore.getState();
+                const kml = exportFormationsToKML(
+                  store.droneFormations, store.trajectories,
+                  store.positions, store.gpsOrigin, store.projectName,
+                );
+                downloadFile(kml, `${store.projectName.replace(/\s+/g, '_')}_static.kml`, 'application/vnd.google-earth.kml+xml');
+                toast.success('Static KML exported!');
+              } catch (err) {
+                toast.error(`KML export failed: ${(err as Error).message}`);
+              }
+            }}
+          >
+            <MapPin className="w-3 h-3 mr-1.5 text-muted-foreground" />
+            Export .kml (Static Placemarks)
+          </Button>
+
+          <Button
+            variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
+            onClick={() => {
+              try {
+                const store = useProjectStore.getState();
+                const skyc = exportSkyc({
+                  projectName: store.projectName,
+                  positions: store.positions,
+                  trajectories: store.trajectories,
+                  formations: store.droneFormations,
+                  duration: store.duration,
+                  gpsOrigin: store.gpsOrigin,
+                });
+                downloadSkycFile(skyc);
+                toast.success('SKYC exported!');
+              } catch (err) {
+                toast.error(`SKYC export failed: ${(err as Error).message}`);
+              }
+            }}
+          >
+            <FileText className="w-3 h-3 mr-1.5 text-orange-500" />
+            Export .skyc (Skybrush)
+          </Button>
+
+          <Button
+            variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
+            onClick={() => {
+              try {
+                const store = useProjectStore.getState();
+                const skyc = exportSkyc({
+                  projectName: store.projectName,
+                  positions: store.positions,
+                  trajectories: store.trajectories,
+                  formations: store.droneFormations,
+                  duration: store.duration,
+                  gpsOrigin: store.gpsOrigin,
+                });
+                const csv = exportShowCSV(skyc);
+                downloadFile(csv, `${store.projectName.replace(/\s+/g, '_')}_show.csv`, 'text/csv');
+                toast.success('Show CSV exported!');
+              } catch (err) {
+                toast.error(`CSV export failed: ${(err as Error).message}`);
+              }
+            }}
+          >
+            <FileDown className="w-3 h-3 mr-1.5 text-cyan-500" />
+            Export .csv (Skybrush Studio)
+          </Button>
+        </div>
       </div>
 
       <div className="p-2 border-t border-border/30">
