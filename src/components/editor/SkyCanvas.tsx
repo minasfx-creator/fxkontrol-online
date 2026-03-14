@@ -1948,6 +1948,7 @@ export default function SkyCanvas() {
         <CollisionAvoidanceOverlay config={DEFAULT_AVOIDANCE} />
         <TimelineEffects />
         <LiveSFXEffects />
+        <LiveSFXUpdater />
         <AudioSpectrumVisualizer />
         <GeofenceVisual />
         <PlaybackClock />
