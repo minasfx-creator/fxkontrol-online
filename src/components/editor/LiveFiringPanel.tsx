@@ -216,15 +216,25 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
     if (ch) {
       toast(`🔥 FIRED: ${ch.name}`, { description: `DMX U${ch.dmxUniverse}.${ch.dmxAddress} @ ${ch.intensity}/255 → Art-Net` });
 
-      // Push 3D visualization into the live SFX store
-      // Position based on channel index to spread effects across stage
-      const idx = channels.indexOf(ch);
-      const spread = 8; // meters between positions
-      const xPos = (idx - (channels.length - 1) / 2) * spread;
+      // Resolve 3D position from linked pyro position, or fallback to spread layout
+      let pos3d: [number, number, number];
+      if (ch.positionId) {
+        const linkedPos = positions.find(p => p.id === ch.positionId);
+        if (linkedPos) {
+          pos3d = [linkedPos.x, linkedPos.y, linkedPos.z];
+        } else {
+          const idx = channels.indexOf(ch);
+          pos3d = [(idx - (channels.length - 1) / 2) * 8, 0, 0];
+        }
+      } else {
+        const idx = channels.indexOf(ch);
+        pos3d = [(idx - (channels.length - 1) / 2) * 8, 0, 0];
+      }
+
       useLiveSfxStore.getState().fireEffect({
         id: ch.id,
         type: ch.type,
-        position: [xPos, 0, 0],
+        position: pos3d,
         color: ch.color,
         intensity: ch.intensity,
         startedAt: performance.now(),
