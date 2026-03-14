@@ -443,6 +443,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
   const handleGenerate = () => {
     if (mode === 'full-show') generateFullShow();
     else if (mode === 'music-sync') generateMusicSync();
+    else if (mode === 'image') generateFromImage();
     else generateSingle();
   };
 
