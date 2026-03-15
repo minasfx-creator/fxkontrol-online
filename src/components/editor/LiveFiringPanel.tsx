@@ -72,62 +72,77 @@ const DEFAULT_CHANNELS: SFXChannel[] = [
   { id: 'sfx-6', name: 'Streamer Blast', type: 'streamer', dmxUniverse: 1, dmxAddress: 10, dmxChannels: 1, armed: false, firing: false, duration: 1500, intensity: 255, color: '#AA55FF', locked: false },
 ];
 
-// ─── Fire Button Component ───
+// ─── Fire Button Component (Show Commander style) ───
 function FireButton({ channel, onFire, onStop }: { channel: SFXChannel; onFire: (id: string) => void; onStop: (id: string) => void }) {
   const sfxType = SFX_TYPES.find(t => t.key === channel.type);
   const Icon = sfxType?.icon || Zap;
 
   return (
     <div className={cn(
-      "relative rounded-lg border p-2 transition-all",
-      channel.armed ? "border-destructive/50 bg-destructive/5" : "border-border/50 bg-card/50",
-      channel.firing && "ring-2 ring-destructive animate-pulse",
-      channel.locked && "opacity-50 pointer-events-none"
+      "relative rounded-lg border overflow-hidden transition-all",
+      channel.armed ? "border-destructive/60 bg-destructive/8" : "border-border/40 bg-surface-1/60",
+      channel.firing && "ring-2 ring-destructive shadow-[0_0_24px_hsl(0,80%,50%,0.3)]",
+      channel.locked && "opacity-40 pointer-events-none"
     )}>
-      {/* Channel name + type */}
-      <div className="flex items-center gap-1.5 mb-1.5">
-        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: sfxType?.color }} />
-        <span className="text-[10px] font-bold truncate flex-1">{channel.name}</span>
-        <span className="text-[8px] font-mono text-muted-foreground">U{channel.dmxUniverse}.{channel.dmxAddress}</span>
+      {/* Top bar with color accent */}
+      <div className="h-1 w-full" style={{ backgroundColor: channel.armed ? sfxType?.color : 'hsl(var(--muted))' }} />
+      
+      {/* Channel info */}
+      <div className="px-2 pt-1.5 pb-1">
+        <div className="flex items-center gap-1.5 mb-1">
+          <Icon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: sfxType?.color }} />
+          <span className="text-[10px] font-bold truncate flex-1">{channel.name}</span>
+        </div>
+        <div className="flex items-center gap-2 text-[8px] font-mono-code text-muted-foreground/60">
+          <span>U{channel.dmxUniverse}.{channel.dmxAddress}</span>
+          <span>{channel.duration}ms</span>
+          <span>{Math.round(channel.intensity / 2.55)}%</span>
+        </div>
       </div>
 
-      {/* Fire button */}
-      <button
-        onMouseDown={() => channel.armed && onFire(channel.id)}
-        onMouseUp={() => onStop(channel.id)}
-        onMouseLeave={() => channel.firing && onStop(channel.id)}
-        onTouchStart={() => channel.armed && onFire(channel.id)}
-        onTouchEnd={() => onStop(channel.id)}
-        disabled={!channel.armed || channel.locked}
-        className={cn(
-          "w-full h-10 rounded-md flex items-center justify-center gap-1.5 font-bold text-[11px] uppercase tracking-wider transition-all select-none",
-          channel.armed
-            ? channel.firing
-              ? "bg-destructive text-destructive-foreground shadow-[0_0_20px_hsl(0,80%,50%,0.4)] scale-95"
-              : "bg-destructive/80 text-destructive-foreground hover:bg-destructive active:scale-95"
-            : "bg-muted text-muted-foreground cursor-not-allowed"
-        )}
-      >
-        <Icon className="w-4 h-4" />
-        {channel.firing ? 'FIRING!' : channel.armed ? 'FIRE' : 'DISARMED'}
-      </button>
+      {/* Fire button — large touch target */}
+      <div className="px-2 pb-2">
+        <button
+          onMouseDown={() => channel.armed && onFire(channel.id)}
+          onMouseUp={() => onStop(channel.id)}
+          onMouseLeave={() => channel.firing && onStop(channel.id)}
+          onTouchStart={() => channel.armed && onFire(channel.id)}
+          onTouchEnd={() => onStop(channel.id)}
+          disabled={!channel.armed || channel.locked}
+          className={cn(
+            "w-full h-11 rounded-md flex items-center justify-center gap-2 font-bold text-[12px] uppercase tracking-[0.2em] transition-all select-none",
+            channel.armed
+              ? channel.firing
+                ? "bg-destructive text-destructive-foreground shadow-[0_0_30px_hsl(0,80%,50%,0.5)] scale-[0.97]"
+                : "bg-gradient-to-b from-destructive/90 to-destructive text-destructive-foreground hover:from-destructive hover:to-destructive active:scale-[0.97] shadow-lg"
+              : "bg-surface-2 text-muted-foreground/50 cursor-not-allowed"
+          )}
+        >
+          {channel.firing ? (
+            <>
+              <Flame className="w-4 h-4 animate-pulse" />
+              FIRING
+            </>
+          ) : channel.armed ? (
+            <>
+              <Zap className="w-4 h-4" />
+              FIRE
+            </>
+          ) : (
+            'SAFE'
+          )}
+        </button>
+      </div>
 
       {/* Intensity bar */}
-      <div className="mt-1.5 h-1 rounded-full bg-muted overflow-hidden">
+      <div className="h-1 w-full bg-surface-0">
         <div
-          className="h-full rounded-full transition-all"
+          className="h-full transition-all duration-100"
           style={{
             width: `${(channel.intensity / 255) * 100}%`,
-            backgroundColor: sfxType?.color,
-            opacity: channel.firing ? 1 : 0.5,
+            backgroundColor: channel.firing ? sfxType?.color : `${sfxType?.color}66`,
           }}
         />
-      </div>
-
-      {/* Duration label */}
-      <div className="flex items-center justify-between mt-1">
-        <span className="text-[8px] text-muted-foreground font-mono">{channel.duration}ms</span>
-        <span className="text-[8px] text-muted-foreground font-mono">{Math.round(channel.intensity / 2.55)}%</span>
       </div>
     </div>
   );
@@ -418,66 +433,68 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const selected = selectedChannel ? channels.find(c => c.id === selectedChannel) : null;
 
   return (
-    <div className="h-full flex flex-col bg-card border-r border-border overflow-hidden">
-      {/* Header */}
-      <div className="px-3 py-2 border-b border-border">
-        <div className="flex items-center justify-between mb-2">
+    <div className="h-full flex flex-col bg-card/95 backdrop-blur-sm border-r border-border/60 overflow-hidden">
+      {/* Header — Show Commander style */}
+      <div className="px-3 pt-3 pb-2 border-b border-border/40">
+        <div className="flex items-center justify-between mb-2.5">
           <div className="flex items-center gap-2">
-            <Zap className="w-4 h-4 text-destructive" />
-            <h2 className="text-[10px] font-bold uppercase tracking-[0.15em]">Live SFX Console</h2>
+            <div className={cn(
+              "w-6 h-6 rounded-md flex items-center justify-center transition-all",
+              masterArm ? "bg-destructive/20 shadow-[0_0_12px_hsl(0,80%,50%,0.3)]" : "bg-surface-2"
+            )}>
+              <Zap className={cn("w-3.5 h-3.5", masterArm ? "text-destructive" : "text-muted-foreground")} />
+            </div>
+            <div>
+              <h2 className="text-[11px] font-bold uppercase tracking-[0.12em] font-display">SFX Console</h2>
+              <p className="text-[8px] text-muted-foreground font-mono-code">Show Commander</p>
+            </div>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xs">✕</button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-surface-3 transition-colors">✕</button>
         </div>
 
-        {/* Master arm */}
-        <div className={cn(
-          "flex items-center justify-between p-2 rounded-lg border transition-all",
-          masterArm ? "border-destructive/50 bg-destructive/10" : "border-border/50 bg-muted/30"
-        )}>
-          <div className="flex items-center gap-2">
-            <AlertTriangle className={cn("w-4 h-4", masterArm ? "text-destructive" : "text-muted-foreground")} />
-            <span className={cn("text-[11px] font-bold uppercase tracking-wider", masterArm ? "text-destructive" : "text-muted-foreground")}>
-              {masterArm ? 'SYSTEM ARMED' : 'SYSTEM SAFE'}
-            </span>
+        {/* Master ARM — prominent toggle */}
+        <button
+          onClick={() => handleMasterArm(!masterArm)}
+          className={cn(
+            "w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border-2 font-bold text-[12px] uppercase tracking-[0.2em] transition-all",
+            masterArm
+              ? "border-destructive bg-destructive/15 text-destructive shadow-[0_0_20px_hsl(0,80%,50%,0.2)] animate-pulse"
+              : "border-border/60 bg-surface-1 text-muted-foreground hover:border-destructive/40 hover:text-destructive/80"
+          )}
+        >
+          <AlertTriangle className="w-4 h-4" />
+          {masterArm ? '⚠ SYSTEM ARMED' : 'ARM SYSTEM'}
+        </button>
+
+        {/* Status bar */}
+        <div className="flex items-center gap-2 mt-2 px-2 py-1.5 rounded-md bg-surface-1/60 border border-border/30">
+          <div className="flex items-center gap-1.5 flex-1">
+            <span className="text-[9px] font-mono-code text-muted-foreground">{channels.length} CH</span>
+            <span className="text-[9px] font-mono-code text-accent font-bold">{armedCount} RDY</span>
+            {firingCount > 0 && (
+              <span className="text-[9px] font-mono-code text-destructive font-bold animate-pulse">🔥 {firingCount}</span>
+            )}
           </div>
-          <Switch checked={masterArm} onCheckedChange={handleMasterArm} />
-        </div>
-
-        {/* Status */}
-        <div className="flex items-center gap-3 mt-1.5">
-          <span className="text-[9px] font-mono text-muted-foreground">{channels.length} devices</span>
-          <span className="text-[9px] font-mono text-accent">{armedCount} armed</span>
-          {firingCount > 0 && (
-            <span className="text-[9px] font-mono text-destructive animate-pulse">🔥 {firingCount} firing</span>
-          )}
-          {syncEnabled && (
-            <span className={cn("text-[9px] font-mono", isPlaying ? "text-primary animate-pulse" : "text-muted-foreground")}>
-              🔗 {isPlaying ? 'SYNCED' : 'SYNC ON'}
-            </span>
-          )}
-        </div>
-
-        {/* Timeline Sync Toggle */}
-        <div className="flex items-center justify-between mt-1.5 px-1 py-1 rounded bg-muted/20 border border-border/30">
           <div className="flex items-center gap-1.5">
-            <Radio className={cn("w-3 h-3", syncEnabled ? "text-primary" : "text-muted-foreground")} />
-            <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Timeline Sync</span>
+            <Radio className={cn("w-3 h-3", syncEnabled ? "text-primary" : "text-muted-foreground/40")} />
+            <Switch checked={syncEnabled} onCheckedChange={setSyncEnabled} />
           </div>
-          <Switch checked={syncEnabled} onCheckedChange={setSyncEnabled} />
         </div>
 
-        {/* Section tabs */}
-        <div className="flex gap-1 mt-2">
+        {/* Section tabs — cleaner */}
+        <div className="flex gap-0.5 mt-2 bg-surface-1/60 rounded-md p-0.5">
           {(['triggers', 'programmer', 'cues'] as const).map(s => (
             <button
               key={s}
               onClick={() => setSection(s)}
               className={cn(
-                "flex-1 py-1 text-[9px] font-bold uppercase tracking-wider rounded transition-all",
-                section === s ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
+                "flex-1 py-1.5 text-[9px] font-bold uppercase tracking-[0.1em] rounded transition-all",
+                section === s 
+                  ? "bg-surface-3 text-foreground shadow-sm" 
+                  : "text-muted-foreground/60 hover:text-foreground"
               )}
             >
-              {s === 'triggers' ? '🎯 Triggers' : s === 'programmer' ? '🎛️ DMX Prog' : '📋 Cues'}
+              {s === 'triggers' ? 'Triggers' : s === 'programmer' ? 'DMX Prog' : 'Cue Stack'}
             </button>
           ))}
         </div>
@@ -488,13 +505,13 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
         {/* ── TRIGGERS ── */}
         {section === 'triggers' && (
           <>
-            {/* Fire All button */}
+            {/* Fire All button — Show Commander style */}
             {masterArm && (
               <button
                 onClick={fireAll}
-                className="w-full py-2.5 rounded-lg bg-destructive text-destructive-foreground font-bold text-xs uppercase tracking-widest hover:shadow-[0_0_30px_hsl(0,80%,50%,0.4)] active:scale-95 transition-all"
+                className="w-full py-3 rounded-lg bg-gradient-to-b from-destructive to-red-700 text-destructive-foreground font-bold text-[13px] uppercase tracking-[0.25em] hover:shadow-[0_0_40px_hsl(0,80%,50%,0.5)] active:scale-[0.97] transition-all border-2 border-destructive/60"
               >
-                ⚡ FIRE ALL ARMED ({armedCount})
+                ⚡ FIRE ALL ({armedCount})
               </button>
             )}
 
