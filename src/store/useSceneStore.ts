@@ -213,7 +213,7 @@ export const SCENE_PRESETS: Record<string, { name: string; description: string; 
       skyBrightness: 1.0,
       groundBrightness: 1.0,
       fogDensity: 0.5,
-      showTreeline: true,
+      showTreeline: false,
       effectBrightness: 1.0,
       bloomStrength: 1.0,
     },
