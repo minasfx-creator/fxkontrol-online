@@ -46,7 +46,7 @@ import SceneEditorPanel from '@/components/editor/SceneEditorPanel';
 import SoundLevelPanel from '@/components/editor/SoundLevelPanel';
 import AROverlayPanel from '@/components/editor/AROverlayPanel';
 import ShowSharePanel from '@/components/editor/ShowSharePanel';
-import CollaborationPanel from '@/components/editor/CollaborationPanel';
+
 import ParticleEditorPanel from '@/components/editor/ParticleEditorPanel';
 import VersioningPanel from '@/components/editor/VersioningPanel';
 import WeatherPanel from '@/components/editor/WeatherPanel';
