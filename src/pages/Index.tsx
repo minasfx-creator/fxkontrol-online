@@ -71,6 +71,7 @@ import LightProgramPanel from '@/components/editor/LightProgramPanel';
 import SafetyCheckPanel from '@/components/editor/SafetyCheckPanel';
 import TakeoffGridPanel from '@/components/editor/TakeoffGridPanel';
 import TransitionPlannerPanel from '@/components/editor/TransitionPlannerPanel';
+import CinematicIntro from '@/components/editor/CinematicIntro';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
@@ -160,7 +161,7 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
 export default function Index() {
   const isMobile = useIsMobile();
   const [activePanel, setActivePanel] = useState<PanelId | null>('properties');
-  const [appPhase, setAppPhase] = useState<'splash' | 'globe' | 'editor'>('splash');
+  const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'globe' | 'editor'>('cinematic');
   const [fleetSize, setFleetSize] = useState(500);
   const [pyroPositions, setPyroPositions] = useState(24);
   const [showLocation, setShowLocation] = useState<{ name: string; lat: number; lng: number } | null>(null);
@@ -270,6 +271,10 @@ export default function Index() {
     setMobileTab(null);
     setMobilePanelHeight('half');
   }, []);
+
+  if (appPhase === 'cinematic') {
+    return <CinematicIntro onComplete={() => setAppPhase('splash')} />;
+  }
 
   if (appPhase === 'splash') {
     return <SplashScreen onStart={handleSplashStart} />;
