@@ -219,7 +219,7 @@ function buildAnimatedKML(options: KMZExportOptions): string {
     projectName, positions, trajectories, formations,
     duration, gpsOrigin, fps = 4, cameraKeyframes = [],
     geofenceRadius = 80, geofenceAltitude = 120,
-    author = 'AEROSWARM NEXUS', includeTour = true,
+    author = 'FX KONTROL', includeTour = true,
     includeTrails = true, trailOpacity = 180,
   } = options;
 
