@@ -1416,42 +1416,38 @@ function AtmosphericParticles() {
   );
 }
 
-// --- MINAS FX floor logo with transparency ---
+// --- MINAS FX floor logo — large, transparent, cinematic ---
 function FloorLogo() {
   const texture = useMemo(() => {
     const canvas = document.createElement('canvas');
-    canvas.width = 2048;
-    canvas.height = 512;
+    canvas.width = 4096;
+    canvas.height = 1024;
     const ctx = canvas.getContext('2d')!;
+    ctx.clearRect(0, 0, 4096, 1024);
 
-    // Transparent background
-    ctx.clearRect(0, 0, 2048, 512);
-
-    // Main text: MINAS FX
+    // Large "MINAS" in very faint silver
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    ctx.font = 'bold 360px "Outfit", Arial, sans-serif';
+    ctx.fillStyle = 'rgba(180, 195, 210, 0.12)';
+    ctx.fillText('MINAS', 1600, 380);
 
-    // "MINAS" in silver/white
-    ctx.font = 'bold 180px "Outfit", Arial, sans-serif';
-    ctx.fillStyle = 'rgba(200, 210, 220, 0.35)';
-    ctx.fillText('MINAS', 820, 200);
-
-    // "FX" in cyan-orange
-    ctx.font = 'bold 180px "Outfit", Arial, sans-serif';
-    ctx.fillStyle = 'rgba(0, 229, 255, 0.4)';
-    ctx.fillText('FX', 1420, 200);
+    // "FX" in faint cyan
+    ctx.font = 'bold 360px "Outfit", Arial, sans-serif';
+    ctx.fillStyle = 'rgba(0, 229, 255, 0.15)';
+    ctx.fillText('FX', 3100, 380);
 
     // Subtitle
-    ctx.font = '500 60px "Outfit", Arial, sans-serif';
-    ctx.fillStyle = 'rgba(0, 229, 255, 0.2)';
-    ctx.fillText('SPECIAL FX SOLUTIONS', 1024, 360);
+    ctx.font = '500 90px "Outfit", Arial, sans-serif';
+    ctx.fillStyle = 'rgba(0, 229, 255, 0.08)';
+    ctx.fillText('SPECIAL FX SOLUTIONS', 2048, 680);
 
-    // Decorative line
-    ctx.strokeStyle = 'rgba(255, 107, 0, 0.25)';
-    ctx.lineWidth = 3;
+    // Decorative line — very subtle
+    ctx.strokeStyle = 'rgba(255, 107, 0, 0.10)';
+    ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(300, 420);
-    ctx.quadraticCurveTo(1024, 380, 1748, 420);
+    ctx.moveTo(400, 800);
+    ctx.quadraticCurveTo(2048, 740, 3696, 800);
     ctx.stroke();
 
     const tex = new THREE.CanvasTexture(canvas);
@@ -1460,12 +1456,12 @@ function FloorLogo() {
   }, []);
 
   return (
-    <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[60, 15]} />
+    <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={[200, 50]} />
       <meshBasicMaterial
         map={texture}
         transparent
-        opacity={0.6}
+        opacity={0.35}
         depthWrite={false}
         blending={THREE.AdditiveBlending}
       />
