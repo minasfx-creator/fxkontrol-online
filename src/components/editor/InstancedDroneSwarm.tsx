@@ -80,10 +80,10 @@ export default function InstancedDroneSwarm({
     blending: THREE.AdditiveBlending,
   }), []);
 
-  // LED volumetric halo — enhanced glow radius
+  // LED volumetric halo — Blender-calibrated subtle glow
   const haloMat = useMemo(() => new THREE.MeshBasicMaterial({
     transparent: true,
-    opacity: 0.16,
+    opacity: 0.05,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
   }), []);
