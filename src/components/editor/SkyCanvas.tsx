@@ -2150,14 +2150,14 @@ export default function SkyCanvas() {
         <button
           onClick={() => setFreeLook(!freeLook)}
           className={cn(
-            "flex items-center gap-1 px-2 py-1 rounded-sm text-[10px] font-mono-code transition-all border",
+            "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
             freeLook
-              ? "bg-warning/20 text-warning border-warning/40"
-              : "bg-surface-1/80 text-muted-foreground border-border/50 hover:text-foreground hover:bg-surface-2/80"
+              ? "bg-warning/20 text-warning border-warning/30 shadow-lg shadow-warning/10"
+              : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
           )}
           title="Free Look — camera stays where you leave it"
         >
-          <ScanEye className="w-3 h-3" />
+          <ScanEye className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Look</span>
         </button>
 
@@ -2166,13 +2166,13 @@ export default function SkyCanvas() {
             key={id}
             onClick={() => { setActivePreset(id); setFreeLook(false); }}
             className={cn(
-              "flex items-center gap-1 px-2 py-1 rounded-sm text-[10px] font-mono-code transition-all border",
+              "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
               activePreset === id && !freeLook
-                ? "bg-primary/20 text-primary border-primary/40 glow-electric"
-                : "bg-surface-1/80 text-muted-foreground border-border/50 hover:text-foreground hover:bg-surface-2/80"
+                ? "bg-primary/15 text-primary border-primary/25 shadow-lg shadow-primary/10"
+                : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
             )}
           >
-            <Icon className="w-3 h-3" />
+            <Icon className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">{label}</span>
           </button>
         ))}
@@ -2182,17 +2182,17 @@ export default function SkyCanvas() {
           onClick={handleDownloadScenery}
           disabled={downloadingScenery}
           className={cn(
-            "flex items-center gap-1 px-2 py-1 rounded-sm text-[10px] font-mono-code transition-all border",
+            "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
             satelliteTexture
-              ? "bg-success/20 text-success border-success/40"
-              : "bg-surface-1/80 text-muted-foreground border-border/50 hover:text-foreground hover:bg-surface-2/80"
+              ? "bg-success/15 text-success border-success/25"
+              : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
           )}
           title="Download real satellite scenery from Google Maps"
         >
           {downloadingScenery ? (
-            <div className="w-3 h-3 border border-primary border-t-transparent rounded-full animate-spin" />
+            <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           ) : (
-            <Globe className="w-3 h-3" />
+            <Globe className="w-3.5 h-3.5" />
           )}
           <span className="hidden sm:inline">{satelliteTexture ? 'Satélite ✓' : 'Cenário Real'}</span>
         </button>
@@ -2204,7 +2204,7 @@ export default function SkyCanvas() {
             if (!el) return;
             document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen();
           }}
-          className="bg-surface-1/80 text-muted-foreground border border-border/50 hover:text-foreground hover:bg-surface-2/80 px-2 py-1 rounded-sm transition-all"
+          className="bg-card/80 text-muted-foreground border border-border/20 hover:text-foreground hover:bg-card/90 px-2.5 py-1.5 rounded-xl transition-all backdrop-blur-md"
         >
           {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
         </button>
