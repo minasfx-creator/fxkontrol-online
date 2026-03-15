@@ -2288,6 +2288,7 @@ export default function SkyCanvas() {
 
         <SceneLighting />
         <AdaptiveExposureController />
+        <GlobalIlluminationController />
         <GroundReflections />
 
         <SkyGradient />
