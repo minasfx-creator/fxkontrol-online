@@ -2198,28 +2198,47 @@ function TreelineSilhouette() {
 const SHADOW_MAP_SIZES: Record<string, number> = { low: 1024, medium: 2048, high: 4096, ultra: 8192 };
 
 function SceneLighting() {
+  const { scene } = useThree();
   const s = useSceneStore(st => st.settings);
   const shadowSize = SHADOW_MAP_SIZES[s.shadowQuality] || 4096;
+  const rigRef = useRef<ReturnType<typeof createHDRLightingRig> | null>(null);
+
+  useEffect(() => {
+    const rig = createHDRLightingRig({
+      moonIntensity: s.moonIntensity,
+      moonColor: new THREE.Color(s.moonColor),
+      ambientIntensity: s.ambientIntensity,
+      ambientColor: new THREE.Color(0.29, 0.38, 0.5),
+      fillIntensity: 0.35,
+      rimIntensity: 0.55,
+    });
+    rigRef.current = rig;
+
+    // Configure shadow map from store settings
+    rig.moon.shadow.mapSize.set(shadowSize, shadowSize);
+    rig.moon.castShadow = s.shadowsEnabled;
+    rig.moon.shadow.bias = -0.00003;
+    rig.moon.shadow.normalBias = 0.02;
+    rig.moon.shadow.camera.far = 600;
+
+    scene.add(rig.group);
+    return () => { scene.remove(rig.group); };
+  }, [scene]);
+
+  // Reactively sync store settings to rig
+  useEffect(() => {
+    const rig = rigRef.current;
+    if (!rig) return;
+    rig.updateMoonIntensity(s.moonIntensity);
+    rig.updateAmbient(s.ambientIntensity);
+    rig.moon.color.set(s.moonColor);
+    rig.moon.castShadow = s.shadowsEnabled;
+    rig.moon.shadow.mapSize.set(shadowSize, shadowSize);
+  }, [s.moonIntensity, s.ambientIntensity, s.moonColor, s.shadowsEnabled, shadowSize]);
 
   return (
     <>
-      <ambientLight intensity={s.ambientIntensity} color="#4a6080" />
-      <directionalLight
-        position={[200, 350, -300]}
-        intensity={s.moonIntensity}
-        color={s.moonColor}
-        castShadow={s.shadowsEnabled}
-        shadow-mapSize={[shadowSize, shadowSize]}
-        shadow-camera-far={600}
-        shadow-camera-left={-200}
-        shadow-camera-right={200}
-        shadow-camera-top={200}
-        shadow-camera-bottom={-200}
-        shadow-bias={-0.00003}
-        shadow-normalBias={0.02}
-      />
-      <hemisphereLight args={['#1a2850', '#0a1208', 0.15]} />
-      {/* Subtle backfill for depth separation */}
+      {/* Subtle backfill for depth separation — complements HDR rig */}
       <directionalLight position={[-60, 25, 70]} intensity={s.rimLightIntensity * 0.15} color="#3355aa" />
       <directionalLight position={[0, -8, 40]} intensity={s.fillLightIntensity * 0.08} color="#182218" />
     </>
