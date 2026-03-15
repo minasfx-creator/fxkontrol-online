@@ -112,20 +112,23 @@ function EffectCard({ effect }: { effect: Effect }) {
       onClick={() => selectEffect(effect.id)}
       onDoubleClick={handleDoubleClick}
       className={cn(
-        "w-full flex items-center gap-2 px-2 py-1.5 rounded text-left transition-all text-sm group",
+        "w-full flex items-center gap-2 px-2 py-1.5 rounded text-left transition-all text-sm group effect-card-hover",
         isSelected
-          ? "bg-primary/10 text-primary border border-primary/30"
+          ? "bg-primary/10 text-primary border border-primary/30 dock-active-glow"
           : "hover:bg-surface-3/80 text-secondary-foreground border border-transparent",
         isDragging && "opacity-50"
       )}
     >
       <div
-        className="w-2 h-2 rounded-full flex-shrink-0 ring-1 ring-border/50"
-        style={{ backgroundColor: effect.color }}
+        className="w-2.5 h-2.5 rounded-full flex-shrink-0 ring-1 ring-border/50 transition-transform group-hover:scale-125"
+        style={{ backgroundColor: effect.color, boxShadow: `0 0 6px ${effect.color}44` }}
       />
       <div className="flex-1 min-w-0">
         <p className={cn("truncate text-[11px] font-medium", typeColor)}>{effect.name}</p>
-        <p className="text-[9px] text-muted-foreground font-mono">{effect.duration}s · ${effect.cost}</p>
+        <p className="text-[9px] text-muted-foreground font-mono-code">{effect.duration}s · ${effect.cost}</p>
+      </div>
+      <div className="opacity-0 group-hover:opacity-100 transition-opacity text-[7px] text-muted-foreground/50 font-mono-code">
+        DBL
       </div>
     </button>
   );

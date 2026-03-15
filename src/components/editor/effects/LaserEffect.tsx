@@ -208,12 +208,23 @@ export default function LaserEffect({
         </group>
       ))}
 
-      {/* Source halo — bright emitter */}
+      {/* Source halo — HDR emitter for bloom */}
       <mesh>
-        <sphereGeometry args={[0.18, 16, 16]} />
+        <sphereGeometry args={[0.25, 16, 16]} />
         <meshBasicMaterial
           color={color}
-          transparent opacity={0.7}
+          transparent opacity={0.85}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+      {/* Secondary outer halo for volumetric glow */}
+      <mesh>
+        <sphereGeometry args={[0.6, 12, 12]} />
+        <meshBasicMaterial
+          color={color}
+          transparent opacity={0.12}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           toneMapped={false}

@@ -490,7 +490,7 @@ export default function Timeline() {
   return (
     <div className="flex flex-col bg-card border-t border-border h-full">
       {/* Transport controls */}
-      <div className="flex items-center gap-1 px-3 py-1.5 border-b border-border bg-surface-1">
+      <div className="flex items-center gap-1 px-3 py-1.5 border-b border-border/60 bg-gradient-to-r from-surface-1 via-surface-1 to-surface-0">
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCurrentTime(0)}>
           <SkipBack className="h-3 w-3" />
         </Button>

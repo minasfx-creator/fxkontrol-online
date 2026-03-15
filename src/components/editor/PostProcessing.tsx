@@ -21,47 +21,47 @@ export default function PostProcessing() {
     <EffectComposer multisampling={0}>
       <SMAA />
 
-      {/* Layer 1: Ultra-tight core — catches individual star HDR points */}
+      {/* Layer 1: Ultra-tight core — catches individual star HDR points + laser cores */}
       <Bloom
-        intensity={str * 2.2}
-        luminanceThreshold={0.05}
-        luminanceSmoothing={0.15}
+        intensity={str * 2.8}
+        luminanceThreshold={0.03}
+        luminanceSmoothing={0.1}
         kernelSize={KernelSize.MEDIUM}
         mipmapBlur
       />
 
-      {/* Layer 2: Primary glow — star halos and burst flash */}
+      {/* Layer 2: Primary glow — star halos, burst flash, laser beam glow */}
       <Bloom
-        intensity={str * 1.1}
-        luminanceThreshold={0.15}
-        luminanceSmoothing={0.4}
+        intensity={str * 1.4}
+        luminanceThreshold={0.1}
+        luminanceSmoothing={0.35}
         kernelSize={KernelSize.LARGE}
         mipmapBlur
       />
 
-      {/* Layer 3: Medium scatter — cluster glow, sky coloring */}
+      {/* Layer 3: Medium scatter — cluster glow, sky coloring, laser scatter */}
       <Bloom
-        intensity={str * 0.5}
-        luminanceThreshold={0.3}
-        luminanceSmoothing={0.65}
+        intensity={str * 0.65}
+        luminanceThreshold={0.25}
+        luminanceSmoothing={0.6}
         kernelSize={KernelSize.HUGE}
         mipmapBlur
       />
 
       {/* Layer 4: Wide atmospheric — fills sky around large bursts */}
       <Bloom
-        intensity={str * 0.2}
-        luminanceThreshold={0.5}
-        luminanceSmoothing={0.85}
+        intensity={str * 0.25}
+        luminanceThreshold={0.45}
+        luminanceSmoothing={0.8}
         kernelSize={KernelSize.HUGE}
         mipmapBlur
       />
 
-      {/* Layer 5: Ultra-wide ambient — subtle light pollution / sky wash */}
+      {/* Layer 5: Ultra-wide ambient — sky wash, volumetric laser atmosphere */}
       <Bloom
-        intensity={str * 0.08}
-        luminanceThreshold={0.7}
-        luminanceSmoothing={0.95}
+        intensity={str * 0.1}
+        luminanceThreshold={0.65}
+        luminanceSmoothing={0.92}
         kernelSize={KernelSize.HUGE}
         mipmapBlur
       />

@@ -255,10 +255,10 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
                                   zIndex: scale > 1.1 ? 10 : 1,
                                 }}
                                 className={cn(
-                                  "w-9 h-9 flex items-center justify-center rounded-lg relative",
+                                  "w-9 h-9 flex items-center justify-center rounded-lg relative transition-all duration-150",
                                   isActive
-                                    ? "bg-primary/20 text-primary shadow-sm shadow-primary/20"
-                                    : "text-muted-foreground/60 hover:text-foreground hover:bg-muted/30"
+                                    ? "bg-primary/20 text-primary dock-active-glow"
+                                    : "text-muted-foreground/60 hover:text-foreground hover:bg-surface-3/50"
                                 )}
                               >
                                 {isActive && (
