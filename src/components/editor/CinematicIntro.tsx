@@ -134,6 +134,7 @@ export default function CinematicIntro({ onComplete }: CinematicIntroProps) {
           transition: 'opacity 1s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
         playsInline
+        muted
         preload="auto"
         onEnded={handleVideo2End}
       />
