@@ -55,6 +55,9 @@ import { temporalFlicker } from '@/lib/pyroNoise';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
+// ═══ render_ultra integrations — Blender/Cycles-grade tech ═══
+import { createExposureController, updateExposure, flashEvent } from '@/render_ultra/postprocessing/exposure';
+import { getCompound, thermalColor, type ChemicalCompound } from '@/render_ultra/fireworks/particleChemistry';
 
 // FX KONTROL — Show Design Platform Renderer
 class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
