@@ -153,6 +153,8 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   inspector: 'w-72',
   lightprogram: 'w-72',
   safetycheck: 'w-72',
+  takeoffgrid: 'w-64',
+  transitions: 'w-72',
 };
 
 export default function Index() {
