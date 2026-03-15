@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { useProjectStore } from '@/store/useProjectStore';
 import {
   getBreakHeight,
   getLiftTime,
@@ -8,6 +7,7 @@ import {
   GRAVITY,
   type BurstPattern,
 } from '@/lib/pyroPhysics';
+import { useSceneStore } from '@/store/useSceneStore';
 import PrefireShell from './PrefireShell';
 import ShellBurstRenderer from './ShellBurstRenderer';
 import SmokeTrailInner from './SmokeTrail';
@@ -19,7 +19,8 @@ import SmokeTrailInner from './SmokeTrail';
  *   3. Smoke phase (SmokeTrail: persistent volumetric smoke)
  *
  * Equivalent to UE5's AFireworkActor::Launch() + Tick() + Destroy()
- * but with GPU-accelerated rendering and physically accurate ballistics.
+ * Wind/drag/HDR parameters are read from useSceneStore in real-time,
+ * consistent with Skybrush Flockwave environment data.
  */
 
 interface ShellConfig {
@@ -46,6 +47,9 @@ function SingleShellLifecycle({
   shell: ShellConfig;
   currentTime: number;
 }) {
+  // Read afterglow duration from store for accurate lifecycle timing
+  const afterglowDuration = useSceneStore(st => st.settings.afterglowDuration);
+
   const liftTime = useMemo(() => getLiftTime(shell.caliber), [shell.caliber]);
   const starLife = useMemo(() => getStarLifetime(shell.caliber), [shell.caliber]);
   const breakH = useMemo(() => getBreakHeight(shell.caliber), [shell.caliber]);
@@ -53,10 +57,10 @@ function SingleShellLifecycle({
 
   const elapsed = currentTime - shell.fireTime;
 
-  // Phase timing
+  // Phase timing — smoke lingers based on store afterglowDuration
   const liftEnd = liftTime;
   const burstEnd = liftEnd + starLife;
-  const smokeEnd = burstEnd + 4; // smoke lingers 4s after stars fade
+  const smokeEnd = burstEnd + Math.max(4, afterglowDuration);
 
   // Not yet fired or fully done
   if (elapsed < 0 || elapsed > smokeEnd) return null;
@@ -91,7 +95,7 @@ function SingleShellLifecycle({
         />
       )}
 
-      {/* Phase 2: Burst — GPU particle explosion */}
+      {/* Phase 2: Burst — GPU particle explosion (reads store for HDR/wind/drag) */}
       {elapsed > liftEnd && elapsed <= burstEnd && (
         <ShellBurstRenderer
           position={burstPos}
@@ -118,19 +122,21 @@ function SingleShellLifecycle({
 /**
  * Renders all active shells in the show.
  * Optimized: only renders shells within a time window.
+ * afterglowDuration from store extends the lifecycle window.
  */
 export default function ShellExplosionManager({
   shells,
   currentTime,
 }: ShellExplosionManagerProps) {
-  // Filter to shells that could be visible (within lifecycle window)
+  const afterglowDuration = useSceneStore(st => st.settings.afterglowDuration);
+
   const activeShells = useMemo(() => {
     return shells.filter(s => {
       const elapsed = currentTime - s.fireTime;
-      const maxDuration = getLiftTime(s.caliber) + getStarLifetime(s.caliber) + 4;
+      const maxDuration = getLiftTime(s.caliber) + getStarLifetime(s.caliber) + Math.max(4, afterglowDuration);
       return elapsed >= -0.1 && elapsed <= maxDuration;
     });
-  }, [shells, currentTime]);
+  }, [shells, currentTime, afterglowDuration]);
 
   if (activeShells.length === 0) return null;
 
