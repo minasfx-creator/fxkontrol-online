@@ -980,13 +980,13 @@ function SkyGradient() {
   );
 }
 
-// --- Volumetric Moon with crater detail ---
+// --- Volumetric Moon — Blender-calibrated celestial position ---
 function Moon() {
   return (
-    <group position={[60, 55, -80]}>
-      {/* Moon body with procedural surface */}
+    <group position={[200, 350, -300]}>
+      {/* Moon body with procedural surface — radius 12 for proper angular size */}
       <mesh>
-        <sphereGeometry args={[3.5, 64, 64]} />
+        <sphereGeometry args={[12, 64, 64]} />
         <shaderMaterial
           vertexShader={`
             varying vec3 vNormal;
@@ -1016,43 +1016,34 @@ function Moon() {
               vec3 n = normalize(vNormal);
               vec3 lightDir = normalize(vec3(0.3, 0.2, -1.0));
               
-              // Base moon color with warmth
               vec3 moonBase = vec3(0.85, 0.82, 0.75);
               
-              // Crater detail using procedural noise
-              float craters = noise(vPosition.xy * 3.0) * 0.3 + 
-                              noise(vPosition.xz * 5.0) * 0.2 +
-                              noise(vPosition.yz * 8.0) * 0.1;
+              float craters = noise(vPosition.xy * 0.9) * 0.3 + 
+                              noise(vPosition.xz * 1.5) * 0.2 +
+                              noise(vPosition.yz * 2.4) * 0.1;
               
-              // Maria (dark patches)
-              float maria = smoothstep(0.4, 0.6, noise(vPosition.xz * 1.5 + 10.0));
+              float maria = smoothstep(0.4, 0.6, noise(vPosition.xz * 0.45 + 10.0));
               moonBase = mix(moonBase, vec3(0.55, 0.52, 0.48), maria * 0.3);
               
-              // Lighting
               float diffuse = max(dot(n, lightDir), 0.0) * 0.6 + 0.4;
               float rim = pow(1.0 - max(dot(n, vec3(0, 0, 1)), 0.0), 3.0);
               
               vec3 color = moonBase * (1.0 - craters * 0.2) * diffuse;
-              color += vec3(0.15, 0.18, 0.25) * rim * 0.3; // Blue rim light
+              color += vec3(0.15, 0.18, 0.25) * rim * 0.3;
               
               gl_FragColor = vec4(color, 1.0);
             }
           `}
         />
       </mesh>
-      {/* Inner glow — HDR for bloom catch */}
+      {/* Inner glow — proportional to new radius */}
       <mesh>
-        <sphereGeometry args={[3.7, 32, 32]} />
-        <meshBasicMaterial color="#d0c8a8" transparent opacity={0.15} blending={THREE.AdditiveBlending} />
-      </mesh>
-      {/* Inner core glow */}
-      <mesh>
-        <sphereGeometry args={[3.55, 24, 24]} />
-        <meshBasicMaterial color="#ffe8c0" transparent opacity={0.06} blending={THREE.AdditiveBlending} />
+        <sphereGeometry args={[12.5, 32, 32]} />
+        <meshBasicMaterial color="#d0c8a8" transparent opacity={0.12} blending={THREE.AdditiveBlending} />
       </mesh>
       {/* Outer volumetric halo */}
       <mesh>
-        <sphereGeometry args={[6, 32, 32]} />
+        <sphereGeometry args={[20, 32, 32]} />
         <shaderMaterial
           transparent
           depthWrite={false}
@@ -1069,22 +1060,17 @@ function Moon() {
             void main() {
               float intensity = pow(0.6 - dot(vNormal, vec3(0, 0, 1.0)), 3.0);
               vec3 color = vec3(0.3, 0.35, 0.5) * intensity;
-              gl_FragColor = vec4(color, intensity * 0.15);
+              gl_FragColor = vec4(color, intensity * 0.12);
             }
           `}
         />
       </mesh>
       {/* Wide atmospheric scatter */}
       <mesh>
-        <sphereGeometry args={[14, 16, 16]} />
-        <meshBasicMaterial color="#506080" transparent opacity={0.02} blending={THREE.AdditiveBlending} />
+        <sphereGeometry args={[40, 16, 16]} />
+        <meshBasicMaterial color="#506080" transparent opacity={0.012} blending={THREE.AdditiveBlending} />
       </mesh>
-      {/* Ultra-wide corona */}
-      <mesh>
-        <sphereGeometry args={[22, 12, 12]} />
-        <meshBasicMaterial color="#405070" transparent opacity={0.008} blending={THREE.AdditiveBlending} />
-      </mesh>
-      <pointLight color="#8899bb" intensity={0.35} distance={350} decay={1} />
+      <pointLight color="#8899bb" intensity={0.15} distance={800} decay={1} />
     </group>
   );
 }
