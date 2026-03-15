@@ -52,12 +52,12 @@ export default function InstancedDroneSwarm({
     envMapIntensity: 0.6,
   }), []);
 
-  // LED — ultra-bright HDR emissive with bloom catch
+  // LED — Blender Emission Shader calibrated (2.5 = realistic small LED)
   const ledMat = useMemo(() => new THREE.MeshStandardMaterial({
     color: '#ffffff',
     emissive: '#ffffff',
-    emissiveIntensity: 14,
-    toneMapped: false,
+    emissiveIntensity: 2.5,
+    toneMapped: true,
     metalness: 0.0,
     roughness: 0.05,
   }), []);
