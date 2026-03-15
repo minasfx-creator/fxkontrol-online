@@ -36,7 +36,7 @@ import FiringExportPanel from '@/components/editor/FiringExportPanel';
 import LabelsPanel from '@/components/editor/LabelsPanel';
 import VideoRecorderPanel from '@/components/editor/VideoRecorderPanel';
 import ModelImportPanel from '@/components/editor/ModelImportPanel';
-import BackgroundPanel from '@/components/editor/BackgroundPanel';
+
 import SupplierCatalogPanel from '@/components/editor/SupplierCatalogPanel';
 import SafetyPanel from '@/components/editor/SafetyPanel';
 import ChainEditorPanel from '@/components/editor/ChainEditorPanel';
