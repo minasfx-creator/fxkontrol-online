@@ -62,10 +62,10 @@ export default function InstancedDroneSwarm({
     roughness: 0.05,
   }), []);
 
-  // Rotor disc
+  // Rotor disc — subtle
   const rotorMat = useMemo(() => new THREE.MeshBasicMaterial({
     transparent: true,
-    opacity: 0.06,
+    opacity: 0.03,
     side: THREE.DoubleSide,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
