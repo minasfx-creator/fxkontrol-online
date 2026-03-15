@@ -156,11 +156,11 @@ function OuterGlow() {
   );
 }
 
-// ─── Inner atmosphere glow ───
+// ─── Inner atmosphere (Fresnel rim on globe surface) ───
 function InnerGlow() {
   return (
-    <mesh scale={[1.02, 1.02, 1.02]}>
-      <sphereGeometry args={[GLOBE_RADIUS, 64, 64]} />
+    <mesh scale={[1.005, 1.005, 1.005]}>
+      <sphereGeometry args={[GLOBE_RADIUS, 128, 128]} />
       <shaderMaterial
         transparent
         depthWrite={false}
@@ -170,7 +170,7 @@ function InnerGlow() {
           varying vec3 vViewDir;
           void main() {
             vNormal = normalize(normalMatrix * normal);
-            vViewDir = normalize(-( modelViewMatrix * vec4(position, 1.0)).xyz);
+            vViewDir = normalize(-(modelViewMatrix * vec4(position, 1.0)).xyz);
             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
           }
         `}
@@ -179,9 +179,9 @@ function InnerGlow() {
           varying vec3 vViewDir;
           void main() {
             float rim = 1.0 - max(dot(vNormal, vViewDir), 0.0);
-            rim = pow(rim, 3.0);
-            vec3 color = vec3(0.4, 0.7, 1.0);
-            gl_FragColor = vec4(color, rim * 0.25);
+            rim = pow(rim, 4.0);
+            vec3 color = vec3(0.3, 0.6, 1.0);
+            gl_FragColor = vec4(color, rim * 0.2);
           }
         `}
       />
