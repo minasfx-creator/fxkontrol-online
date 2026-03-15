@@ -39,23 +39,39 @@ function EffectCard({ effect }: { effect: Effect }) {
   const handleDoubleClick = () => {
     const isPyroEffect = effect.type === 'firework' || effect.type === 'sfx';
     const isDroneEffect = effect.type === 'drone';
+    const isLaserOrLight = effect.type === 'laser' || effect.type === 'light';
     const validType = isPyroEffect ? 'pyro' : isDroneEffect ? 'drone-pad' : null;
 
-    const targetIds = selectedPositionIds.length > 0
+    let targetIds = selectedPositionIds.length > 0
       ? selectedPositionIds.filter(id => {
           const p = positions.find(pp => pp.id === id);
           return validType ? p?.type === validType : true;
         })
-      : selectedPositionId && positions.find(p => p.id === selectedPositionId)?.type === validType
+      : selectedPositionId && positions.find(p => p.id === selectedPositionId)?.type === (validType || positions.find(pp => pp.id === selectedPositionId)?.type)
         ? [selectedPositionId]
         : [];
 
+    // Auto-create a position if none is selected (drones, lasers, lights, SFX)
     if (targetIds.length === 0) {
-      const typeLabel = isPyroEffect ? 'Pyro Position' : isDroneEffect ? 'Drone Pad' : 'position';
-      toast.warning(`Select at least one ${typeLabel} in the viewport before adding this effect`, {
-        description: 'Click positions in the viewport or use Shift+Click for multi-select',
+      const store = useProjectStore.getState();
+      const posType = isDroneEffect ? 'drone-pad' as const : 'pyro' as const;
+      const prefix = isDroneEffect ? 'PAD' : isLaserOrLight ? 'FIX' : 'POS';
+      const count = store.positions.filter(p => p.type === posType).length + 1;
+      const id = `pos-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+      const spawnX = (Math.random() - 0.5) * 16;
+      const spawnZ = (Math.random() - 0.5) * 8;
+      store.addPosition({
+        id,
+        name: `${prefix}-${count.toString().padStart(3, '0')}`,
+        type: posType,
+        x: Math.round(spawnX * 10) / 10,
+        y: 0,
+        z: Math.round(spawnZ * 10) / 10,
+        heading: 0, pitch: 85, roll: 0,
+        color: isDroneEffect ? '#00B4D8' : isLaserOrLight ? '#FFDD44' : '#FF6B35',
       });
-      return;
+      store.selectPosition(id);
+      targetIds = [id];
     }
 
     targetIds.forEach((posId, i) => {
