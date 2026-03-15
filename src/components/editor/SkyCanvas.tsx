@@ -439,7 +439,7 @@ function FireworkBurst({
       
       // Analytical position with drag + gravity + wind
       const px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
-      const py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * t * t;
+      const py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
       const pz = dragPos(vz, t, dragCoeff) + w[2] * t * t * 0.3;
       pos[i * 3] = px; pos[i * 3 + 1] = py; pos[i * 3 + 2] = pz;
 
