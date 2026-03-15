@@ -255,16 +255,17 @@ function TimelineTrackRow({
   }, [selectTimelineItem, toggleTimelineItemSelection]);
 
   return (
-    <div className="flex border-b border-border/50">
-      <div className="w-28 flex-shrink-0 flex items-center px-3 border-r border-border/50 bg-surface-1">
-        <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: color }} />
-        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{label}</span>
+    <div className="flex border-b border-border/8">
+      <div className="w-28 flex-shrink-0 flex items-center px-3 border-r border-border/10" style={{ background: 'hsl(var(--surface-1))' }}>
+        <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}44` }} />
+        <span className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wider font-display">{label}</span>
       </div>
       <div
         className={cn(
-          "flex-1 relative h-10 bg-surface-0/50 transition-colors",
-          isDragOver && "ring-1 ring-primary/50 bg-primary/5"
+          "flex-1 relative h-10 transition-colors",
+          isDragOver && "ring-1 ring-primary/40 bg-primary/5"
         )}
+        style={{ background: 'hsl(var(--surface-0) / 0.3)' }}
         onDragOver={handleDragOver}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
