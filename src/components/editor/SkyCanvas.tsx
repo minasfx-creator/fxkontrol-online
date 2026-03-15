@@ -1625,7 +1625,7 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
       </mesh>
       {/* Near-field circle — wet-asphalt PBR with clearcoat reflections */}
       <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[120, 64]} />
+        <circleGeometry args={[250, 64]} />
         <meshPhysicalMaterial
           color={new THREE.Color(0.05 * b, 0.05 * b, 0.06 * b)}
           roughness={0.2}
