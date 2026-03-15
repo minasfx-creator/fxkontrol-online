@@ -1769,7 +1769,7 @@ function SceneLighting() {
     <>
       <ambientLight intensity={s.ambientIntensity} color="#4a6080" />
       <directionalLight
-        position={[60, 55, -80]}
+        position={[200, 350, -300]}
         intensity={s.moonIntensity}
         color={s.moonColor}
         castShadow={s.shadowsEnabled}
