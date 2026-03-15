@@ -412,7 +412,7 @@ export default function Index() {
       {/* Main editor area */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left sidebar - Effect Library */}
-        <div className="w-52 flex-shrink-0">
+        <div className="w-56 flex-shrink-0">
           <EffectLibrary />
         </div>
 
@@ -432,7 +432,7 @@ export default function Index() {
       </div>
 
       {/* Bottom timeline */}
-      <div className="h-40 flex-shrink-0">
+      <div className="h-44 flex-shrink-0">
         <Timeline />
       </div>
 

@@ -7,7 +7,6 @@ import { useUndoStore } from '@/store/useUndoStore';
 import { useSMPTEStore } from '@/store/useSMPTEStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useProjectPersistence } from '@/hooks/useProjectPersistence';
-import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { secondsToTimecode, formatTimecode } from '@/lib/smpteEngine';
@@ -30,35 +29,24 @@ function TimecodeDisplay() {
   const tcStr = formatTimecode(tc);
 
   return (
-    <div className="flex items-center gap-2 px-3 py-0.5 bg-surface-0 rounded border border-border">
-      <span className="font-mono-code text-sm tracking-[0.12em] text-electric font-bold">{tcStr}</span>
-      <div className="flex items-center gap-1">
+    <div className="flex items-center gap-2.5 px-3 py-1 glass rounded-lg border border-border/20">
+      <span className="font-mono-code text-sm tracking-[0.14em] text-primary font-bold tabular-nums">{tcStr}</span>
+      <div className="flex items-center gap-1.5">
         <div className={cn(
-          "w-1.5 h-1.5 rounded-full",
-          isPlaying ? "bg-success animate-pulse-glow" : "bg-muted-foreground"
+          "w-2 h-2 rounded-full transition-colors",
+          isPlaying ? "bg-success animate-pulse-glow" : "bg-muted-foreground/40"
         )} />
         {running && (
           <div className={cn(
-            "w-1.5 h-1.5 rounded-full",
+            "w-2 h-2 rounded-full",
             locked ? "bg-primary" : "bg-warning animate-pulse"
           )} />
         )}
       </div>
-      <span className="text-[8px] font-mono-code text-muted-foreground">
+      <span className="text-[9px] font-mono-code text-muted-foreground/60">
         {frameRate}{tc.dropFrame ? 'DF' : ''}
       </span>
     </div>
-  );
-}
-
-function MenuButton({ label, onClick }: { label: string; onClick?: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="text-[10px] font-mono-code text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-surface-3 transition-colors uppercase tracking-wider"
-    >
-      {label}
-    </button>
   );
 }
 
@@ -68,29 +56,36 @@ function DropdownMenu({ label, icon: LabelIcon, items }: { label: string; icon?:
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="text-[10px] font-mono-code text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-surface-3 transition-colors uppercase tracking-wider flex items-center gap-1"
+        className={cn(
+          "text-[10px] font-medium text-muted-foreground hover:text-foreground px-2.5 py-1.5 rounded-md transition-all flex items-center gap-1.5",
+          open ? "bg-surface-3/80 text-foreground" : "hover:bg-surface-2/60"
+        )}
       >
-        {LabelIcon && <LabelIcon className="w-3 h-3 text-primary/70" />}
-        {label} <ChevronDown className="w-2.5 h-2.5" />
+        {LabelIcon && <LabelIcon className="w-3.5 h-3.5 text-primary/60" />}
+        <span className="tracking-wide uppercase font-mono-code">{label}</span>
+        <ChevronDown className={cn("w-2.5 h-2.5 transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <div
-          className="absolute top-full left-0 mt-0.5 z-50 bg-surface-1 border border-border rounded-md shadow-lg py-1 min-w-[180px]"
-          onMouseLeave={() => setOpen(false)}
-        >
-          {items.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.label}
-                onClick={() => { item.onClick(); setOpen(false); }}
-                className="w-full text-left px-3 py-1.5 text-[10px] font-mono-code text-muted-foreground hover:text-foreground hover:bg-surface-3 flex items-center gap-2"
-              >
-                <Icon className="w-3 h-3" /> {item.label}
-              </button>
-            );
-          })}
-        </div>
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div
+            className="absolute top-full left-0 mt-1 z-50 glass border border-border/20 rounded-xl shadow-2xl shadow-black/40 py-1.5 min-w-[200px] animate-fxk-slide-down"
+          >
+            {items.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.label}
+                  onClick={() => { item.onClick(); setOpen(false); }}
+                  className="w-full text-left px-3.5 py-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-surface-3/50 flex items-center gap-2.5 transition-colors rounded-lg mx-0.5"
+                  style={{ width: 'calc(100% - 4px)' }}
+                >
+                  <Icon className="w-3.5 h-3.5 text-primary/50" /> {item.label}
+                </button>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );
@@ -174,26 +169,26 @@ function BatchAddButton() {
       <Button
         variant="ghost"
         size="sm"
-        className="h-7 px-2 text-[10px] font-mono-code gap-1"
+        className="btn-tool gap-1"
         title="Add Multiple Positions"
         onClick={() => setOpen(true)}
       >
-        <PlusCircle className="h-3 w-3" />
+        <PlusCircle className="h-3.5 w-3.5" />
         <span className="hidden lg:inline">ADD+</span>
       </Button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setOpen(false)}>
-          <div className="bg-card border border-border rounded-lg shadow-xl w-[340px] p-4 space-y-3" onClick={e => e.stopPropagation()}>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">Adicionar Múltiplas Posições</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)}>
+          <div className="glass border border-border/20 rounded-2xl shadow-2xl shadow-black/50 w-[360px] p-5 space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-sm font-bold text-foreground font-display tracking-wide">Adicionar Posições</h3>
 
             {/* Type */}
-            <div className="flex gap-1">
+            <div className="flex gap-2">
               <button
                 onClick={() => setPosType('pyro')}
                 className={cn(
-                  "flex-1 py-1.5 rounded text-[10px] font-semibold border transition-colors",
-                  posType === 'pyro' ? "border-accent bg-accent/10 text-accent" : "border-border bg-surface-2 text-muted-foreground"
+                  "flex-1 py-2.5 rounded-xl text-xs font-semibold border-2 transition-all",
+                  posType === 'pyro' ? "border-accent bg-accent/10 text-accent shadow-[0_0_12px_hsl(var(--safety)/0.2)]" : "border-border/30 bg-surface-1 text-muted-foreground hover:border-border/60"
                 )}
               >
                 🎆 PYRO
@@ -201,8 +196,8 @@ function BatchAddButton() {
               <button
                 onClick={() => setPosType('drone-pad')}
                 className={cn(
-                  "flex-1 py-1.5 rounded text-[10px] font-semibold border transition-colors",
-                  posType === 'drone-pad' ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface-2 text-muted-foreground"
+                  "flex-1 py-2.5 rounded-xl text-xs font-semibold border-2 transition-all",
+                  posType === 'drone-pad' ? "border-primary bg-primary/10 text-primary shadow-[0_0_12px_hsl(var(--primary)/0.2)]" : "border-border/30 bg-surface-1 text-muted-foreground hover:border-border/60"
                 )}
               >
                 🛸 DRONE
@@ -210,82 +205,82 @@ function BatchAddButton() {
             </div>
 
             {/* Pattern */}
-            <div className="space-y-1">
-              <span className="text-[9px] text-muted-foreground font-semibold uppercase">Padrão</span>
-              <div className="flex gap-1">
+            <div className="space-y-1.5">
+              <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Padrão</span>
+              <div className="flex gap-1.5">
                 {patterns.map(p => (
                   <button
                     key={p.id}
                     onClick={() => setPattern(p.id)}
                     className={cn(
-                      "flex-1 py-1.5 rounded text-[10px] border transition-colors text-center",
-                      pattern === p.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface-2 text-muted-foreground"
+                      "flex-1 py-2 rounded-lg text-[10px] border-2 transition-all text-center",
+                      pattern === p.id ? "border-primary bg-primary/10 text-primary" : "border-border/20 bg-surface-1 text-muted-foreground hover:border-border/50"
                     )}
                   >
-                    <div className="text-sm">{p.icon}</div>
-                    <div className="text-[8px]">{p.label}</div>
+                    <div className="text-base">{p.icon}</div>
+                    <div className="text-[8px] mt-0.5">{p.label}</div>
                   </button>
                 ))}
               </div>
             </div>
 
             {/* Count & Spacing */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-[9px] text-muted-foreground font-semibold uppercase">Quantidade</label>
+                <label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Quantidade</label>
                 <input
                   type="number"
                   value={count}
                   onChange={e => setCount(Math.max(1, Math.min(500, parseInt(e.target.value) || 1)))}
-                  className="w-full h-7 px-2 text-xs bg-surface-2 border border-border rounded text-foreground"
+                  className="w-full input-modern px-3"
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[9px] text-muted-foreground font-semibold uppercase">Espaçamento (m)</label>
+                <label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Espaçamento (m)</label>
                 <input
                   type="number"
                   value={spacing}
                   step={0.5}
                   onChange={e => setSpacing(Math.max(0.5, parseFloat(e.target.value) || 1))}
-                  className="w-full h-7 px-2 text-xs bg-surface-2 border border-border rounded text-foreground"
+                  className="w-full input-modern px-3"
                 />
               </div>
             </div>
 
             {/* Origin */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-[9px] text-muted-foreground font-semibold uppercase">Origem X (m)</label>
+                <label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Origem X</label>
                 <input
                   type="number"
                   value={startX}
                   onChange={e => setStartX(parseFloat(e.target.value) || 0)}
-                  className="w-full h-7 px-2 text-xs bg-surface-2 border border-border rounded text-foreground"
+                  className="w-full input-modern px-3"
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[9px] text-muted-foreground font-semibold uppercase">Origem Z (m)</label>
+                <label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Origem Z</label>
                 <input
                   type="number"
                   value={startZ}
                   onChange={e => setStartZ(parseFloat(e.target.value) || 0)}
-                  className="w-full h-7 px-2 text-xs bg-surface-2 border border-border rounded text-foreground"
+                  className="w-full input-modern px-3"
                 />
               </div>
             </div>
 
             {/* Preview info */}
-            <div className="bg-surface-2 rounded px-2 py-1.5 text-[9px] font-mono-code text-muted-foreground">
+            <div className="bg-surface-0/80 rounded-lg px-3 py-2 text-[10px] font-mono-code text-muted-foreground border border-border/10">
               {count} × {posType === 'pyro' ? 'PYRO' : 'DRONE'} em {pattern} · espaçamento {spacing}m
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1 text-xs h-8" onClick={() => setOpen(false)}>
+            <div className="flex gap-2.5">
+              <Button variant="outline" size="sm" className="flex-1 text-xs h-9 rounded-lg" onClick={() => setOpen(false)}>
                 Cancelar
               </Button>
-              <Button size="sm" className="flex-1 text-xs h-8" onClick={handleCreate}>
-                <PlusCircle className="h-3 w-3 mr-1" />
+              <Button size="sm" className="flex-1 text-xs h-9 rounded-lg" onClick={handleCreate}>
+                <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
                 Criar {count} posições
               </Button>
             </div>
@@ -338,8 +333,6 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
     toast.success('Firing CSV exportado!');
   }, [projectName, timelineItems, positions]);
 
-  // exportMenuOpen removed - using DropdownMenu component now
-
   const handleNewProject = useCallback(() => {
     if (timelineItems.length > 0 || positions.length > 0) {
       if (!confirm('Criar novo projeto? Dados não salvos serão perdidos.')) return;
@@ -368,36 +361,34 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
   }, [handleSave, handleExportVVIZ, setEditorMode]);
 
   return (
-    <div className="flex items-center h-10 px-2 bg-surface-1 border-b border-border">
+    <div className="flex items-center h-11 px-3 glass border-b border-border/20 gap-1">
       {/* Logo */}
-      <div className="flex items-center gap-2 mr-3">
-        <img src={fxkLogo} alt="FX Kontrol" className="w-6 h-6 object-contain" />
+      <div className="flex items-center gap-2.5 mr-2">
+        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center p-0.5">
+          <img src={fxkLogo} alt="FX Kontrol" className="w-full h-full object-contain" />
+        </div>
         <div className="flex flex-col leading-none">
-          <span className="text-xs font-bold text-foreground tracking-[0.15em] uppercase font-display">FX KONTROL</span>
-          <span className="text-[7px] text-muted-foreground tracking-[0.12em] uppercase font-display">by Minas FX</span>
+          <span className="text-[11px] font-bold text-foreground tracking-[0.15em] uppercase font-display">FX KONTROL</span>
+          <span className="text-[7px] text-muted-foreground/60 tracking-[0.12em] uppercase font-display">by Minas FX</span>
         </div>
       </div>
 
-      <Separator orientation="vertical" className="h-5 mr-2" />
+      <div className="w-px h-6 bg-border/20 mx-1" />
 
-      {/* File menu */}
-      <div className="flex items-center gap-0.5">
-        <MenuButton label="New" onClick={handleNewProject} />
-        <MenuButton label="Open" onClick={() => setBrowserOpen(true)} />
-        <MenuButton label="Save" onClick={handleSave} />
-        <DropdownMenu
-          label="Export"
-          items={[
-            { label: '.vviz (Finale 3D)', icon: FileJson, onClick: handleExportVVIZ },
-            { label: '.skyc (SkyCreator)', icon: Download, onClick: handleExportSkyc },
-            { label: 'Firing CSV (Cobra/FireTEK)', icon: Download, onClick: handleExportFiringCSV },
-          ]}
-        />
+      {/* File menu group */}
+      <div className="btn-group">
+        <Button variant="ghost" size="sm" className="btn-tool" title="Novo (Ctrl+N)" onClick={handleNewProject}>
+          <FilePlus className="h-3.5 w-3.5" />
+        </Button>
+        <Button variant="ghost" size="sm" className="btn-tool" title="Abrir (Ctrl+O)" onClick={() => setBrowserOpen(true)}>
+          <FolderOpen className="h-3.5 w-3.5" />
+        </Button>
+        <Button variant="ghost" size="sm" className="btn-tool" title="Salvar (Ctrl+S)" onClick={handleSave} disabled={saving}>
+          <Save className={cn("h-3.5 w-3.5", saving && "animate-spin")} />
+        </Button>
       </div>
 
-      <Separator orientation="vertical" className="h-4 mx-1" />
-
-      {/* Category menus: Show, Scene, Location */}
+      {/* Category menus */}
       <div className="flex items-center gap-0.5">
         <DropdownMenu
           label="Show"
@@ -432,79 +423,72 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
             { label: 'Site Layout', icon: Map, onClick: () => onOpenPanel?.('sitelayout') },
           ]}
         />
+        <DropdownMenu
+          label="Export"
+          icon={Download}
+          items={[
+            { label: '.vviz (Finale 3D)', icon: FileJson, onClick: handleExportVVIZ },
+            { label: '.skyc (SkyCreator)', icon: Download, onClick: handleExportSkyc },
+            { label: 'Firing CSV (Cobra/FireTEK)', icon: Download, onClick: handleExportFiringCSV },
+          ]}
+        />
       </div>
 
-      <Separator orientation="vertical" className="h-4 mx-1" />
+      <div className="w-px h-6 bg-border/20 mx-1" />
 
       {/* Undo / Redo */}
-      <div className="flex items-center gap-0.5">
-        <Button variant="ghost" size="icon" className="h-7 w-7" title="Undo (Ctrl+Z)" onClick={undo} disabled={!canUndo}>
+      <div className="btn-group">
+        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" title="Undo (Ctrl+Z)" onClick={undo} disabled={!canUndo}>
           <Undo className="h-3.5 w-3.5" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-7 w-7" title="Redo (Ctrl+Shift+Z)" onClick={redo} disabled={!canRedo}>
+        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" title="Redo (Ctrl+Shift+Z)" onClick={redo} disabled={!canRedo}>
           <Redo className="h-3.5 w-3.5" />
         </Button>
       </div>
 
-      <Separator orientation="vertical" className="h-4 mx-1" />
+      <div className="w-px h-6 bg-border/20 mx-1" />
 
       {/* Mode tools */}
-      <div className="flex items-center gap-0.5">
+      <div className="btn-group">
         <Button
           variant="ghost"
           size="sm"
-          className={cn(
-            "h-7 px-2 text-[10px] font-mono-code gap-1",
-            editorMode === 'select' && "bg-surface-3 text-primary"
-          )}
+          className={cn("btn-tool", editorMode === 'select' && "btn-tool-active")}
           title="Select (V)"
           onClick={() => setEditorMode('select')}
         >
-          <MousePointer className="h-3 w-3" />
+          <MousePointer className="h-3.5 w-3.5" />
           <span className="hidden lg:inline">SELECT</span>
         </Button>
         <Button
           variant="ghost"
           size="sm"
-          className={cn(
-            "h-7 px-2 text-[10px] font-mono-code gap-1",
-            editorMode === 'add-pyro' && "bg-accent/20 text-accent"
-          )}
-          title="Add Pyro Position (click to place, continuous mode)"
+          className={cn("btn-tool", editorMode === 'add-pyro' && "bg-accent/15 text-accent shadow-[0_0_8px_hsl(var(--safety)/0.2)]")}
+          title="Add Pyro Position"
           onClick={() => setEditorMode(editorMode === 'add-pyro' ? 'select' : 'add-pyro')}
         >
-          <MapPin className="h-3 w-3" />
+          <MapPin className="h-3.5 w-3.5" />
           <span className="hidden lg:inline">PYRO</span>
         </Button>
         <Button
           variant="ghost"
           size="sm"
-          className={cn(
-            "h-7 px-2 text-[10px] font-mono-code gap-1",
-            editorMode === 'add-drone' && "bg-primary/20 text-primary"
-          )}
-          title="Add Drone Launch Pad (click to place, continuous mode)"
+          className={cn("btn-tool", editorMode === 'add-drone' && "btn-tool-active")}
+          title="Add Drone Pad"
           onClick={() => setEditorMode(editorMode === 'add-drone' ? 'select' : 'add-drone')}
         >
-          <Target className="h-3 w-3" />
+          <Target className="h-3.5 w-3.5" />
           <span className="hidden lg:inline">DRONE</span>
         </Button>
-        {/* Batch add positions */}
         <BatchAddButton />
+      </div>
 
-        <Separator orientation="vertical" className="h-4 mx-1" />
+      <div className="w-px h-6 bg-border/20 mx-1" />
 
-        {/* Multi-select toggle */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className={cn(
-            "h-7 px-2 text-[10px] font-mono-code gap-1",
-            editorMode === 'select' && "border border-primary/30"
-          )}
-          title="Multi-Select (hold Shift to add, or box-select)"
+      {/* Quick tools */}
+      <div className="btn-group">
+        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" title="Multi-Select"
           onClick={() => {
-            // Select all positions as a quick multi-select action
             const store = useProjectStore.getState();
             if (store.selectedPositionIds.length === store.positions.length) {
               store.selectMultiplePositions([]);
@@ -513,44 +497,26 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
             }
           }}
         >
-          <BoxSelect className="h-3 w-3" />
-          <span className="hidden lg:inline">MULTI</span>
+          <BoxSelect className="h-3.5 w-3.5" />
         </Button>
-
-        {editorMode !== 'select' && (
-          <span className="text-[9px] font-mono-code text-muted-foreground ml-1 flex items-center gap-1">
-            Click to place · <span className="text-primary">ESC</span> to stop
-          </span>
-        )}
-      </div>
-
-      <Separator orientation="vertical" className="h-4 mx-1" />
-
-      {/* Tools */}
-      <div className="flex items-center gap-0.5">
-        <Button variant="ghost" size="icon" className="h-7 w-7" title="Formations" onClick={() => setFormationOpen(true)}>
+        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" title="Formations" onClick={() => setFormationOpen(true)}>
           <Shapes className="h-3.5 w-3.5" />
         </Button>
         <ArrangePositionsDialog>
-          <Button variant="ghost" size="icon" className="h-7 w-7" title="Arrange Positions (Circle/Line/Grid/Arc)">
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" title="Arrange">
             <LayoutGrid className="h-3.5 w-3.5" />
           </Button>
         </ArrangePositionsDialog>
-        <ConvertToFanDialog>
-          <Button variant="ghost" size="icon" className="h-7 w-7" title="Convert to Fan">
-            <Wand2 className="h-3.5 w-3.5" />
-          </Button>
-        </ConvertToFanDialog>
-        <Button variant="ghost" size="icon" className="h-7 w-7" title="Import CSV" onClick={() => setCsvOpen(true)}>
+        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" title="Import CSV" onClick={() => setCsvOpen(true)}>
           <Upload className="h-3.5 w-3.5" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-7 w-7" title="Import VVIZ (Finale 3D)" onClick={() => setVvizOpen(true)}>
-          <FileJson className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-7 w-7" title="Import Catalog (CSV/FDB)" onClick={() => setCatalogOpen(true)}>
-          <Download className="h-3.5 w-3.5" />
-        </Button>
       </div>
+
+      {editorMode !== 'select' && (
+        <span className="text-[9px] font-mono-code text-muted-foreground/60 ml-2 flex items-center gap-1">
+          Click to place · <span className="text-primary">ESC</span> to stop
+        </span>
+      )}
 
       <FormationBuilder open={formationOpen} onOpenChange={setFormationOpen} />
       <CSVImporter open={csvOpen} onOpenChange={setCsvOpen} />
@@ -564,23 +530,18 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       <TimecodeDisplay />
 
       {/* Status */}
-      <div className="flex items-center gap-3 text-[10px] font-mono-code text-muted-foreground ml-3">
-        <span>{timelineItems.length} items</span>
-        <span>{positions.length} pins</span>
-        <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse-glow" />
-        <span className="text-success">Sync: Locked</span>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 ml-1"
-          title="Salvar (Ctrl+S)"
-          onClick={handleSave}
-          disabled={saving}
-        >
-          <Save className={cn("h-3 w-3", saving && "animate-spin")} />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-6 w-6" title="Sair" onClick={signOut}>
-          <LogOut className="h-3 w-3" />
+      <div className="flex items-center gap-3 text-[10px] font-mono-code text-muted-foreground/60 ml-3">
+        <div className="flex items-center gap-2 glass-subtle px-2.5 py-1 rounded-lg border border-border/10">
+          <span>{timelineItems.length} cues</span>
+          <span className="text-border">·</span>
+          <span>{positions.length} pos</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse-glow" />
+          <span className="text-success/80">SYNC</span>
+        </div>
+        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-destructive/10 hover:text-destructive" title="Sair" onClick={signOut}>
+          <LogOut className="h-3.5 w-3.5" />
         </Button>
         <LanguageSwitcher />
       </div>
