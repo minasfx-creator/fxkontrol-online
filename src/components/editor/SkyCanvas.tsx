@@ -337,8 +337,6 @@ function FireworkBurst({
   const trailVertCount = STAR_COUNT * TRAIL_LENGTH * 2;
   const trailPosRef = useRef(new Float32Array(trailVertCount * 3));
   const trailColRef = useRef(new Float32Array(trailVertCount * 3));
-  const debrisPosRef = useRef(new Float32Array(DEBRIS_COUNT * 3));
-  const debrisColRef = useRef(new Float32Array(DEBRIS_COUNT * 3));
 
   // Custom shader material for star sprites
   const starMaterial = useMemo(() => {
