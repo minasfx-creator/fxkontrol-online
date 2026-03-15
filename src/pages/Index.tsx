@@ -353,6 +353,7 @@ export default function Index() {
         {activePanel === 'safetycheck' && <SafetyCheckPanel />}
         {activePanel === 'takeoffgrid' && <TakeoffGridPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'transitions' && <TransitionPlannerPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'lasercontrol' && <LaserControlPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
