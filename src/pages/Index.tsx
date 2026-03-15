@@ -311,7 +311,7 @@ export default function Index() {
         {activePanel === 'labels' && <LabelsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'video' && <VideoRecorderPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'models' && <ModelImportPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'background' && <BackgroundPanel onClose={() => setActivePanel(null)} />}
+        
         {activePanel === 'suppliers' && <SupplierCatalogPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'safety' && <SafetyPanel />}
         {activePanel === 'scripting' && <ScriptingToolsPanel onClose={() => setActivePanel(null)} />}
