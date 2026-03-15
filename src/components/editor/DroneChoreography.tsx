@@ -32,23 +32,9 @@ function computeDronePositions(
     z: 0,
   });
 
-  // Before any formation starts: staggered ground grid
+  // Before any formation starts: hide drones (no ground grid clutter)
   if (currentTime < firstStart) {
-    const preTime = firstStart - currentTime;
-    return formations[0].points.slice(0, droneCount).map((p, idx) => {
-      const breathe = preTime < 3 ? Math.sin((3 - preTime) * Math.PI * 2 + idx * 0.1) * 0.02 : 0;
-      // Ground positions: spread in X-Z grid
-      const cols = Math.ceil(Math.sqrt(droneCount));
-      const row = Math.floor(idx / cols);
-      const col = idx % cols;
-      const spacing = 2.5;
-      return {
-        x: (col - (cols - 1) / 2) * spacing,
-        y: 0.1 + breathe,
-        z: (row - (Math.ceil(droneCount / cols) - 1) / 2) * spacing,
-        color: formations[0].color,
-      };
-    });
+    return null;
   }
 
   // After all formations + landing

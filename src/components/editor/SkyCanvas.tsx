@@ -1642,7 +1642,7 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
             args={[1000, 1000]}
             cellSize={2}
             cellThickness={0.15}
-            cellColor={sc.gridColor}
+            cellColor="#15152a"
             sectionSize={10}
             sectionThickness={0.4}
             sectionColor="#1a1a2e"
