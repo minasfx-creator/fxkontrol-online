@@ -71,6 +71,7 @@ import LightProgramPanel from '@/components/editor/LightProgramPanel';
 import SafetyCheckPanel from '@/components/editor/SafetyCheckPanel';
 import TakeoffGridPanel from '@/components/editor/TakeoffGridPanel';
 import TransitionPlannerPanel from '@/components/editor/TransitionPlannerPanel';
+import LaserControlPanel from '@/components/editor/LaserControlPanel';
 import CinematicIntro from '@/components/editor/CinematicIntro';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
