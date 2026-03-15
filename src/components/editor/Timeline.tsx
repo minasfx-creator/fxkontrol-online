@@ -604,6 +604,7 @@ export default function Timeline() {
             </div>
           </div>
           <FormationTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
+          <DroneFXTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
           <PyroTimelineTrack pixelsPerSecond={pixelsPerSecond} duration={duration} />
           
           <TimelineTrackRow label="PYRO SYS" trackIndex={0} pixelsPerSecond={pixelsPerSecond} color="#FF6B35" duration={duration} scrollRef={scrollRef} />
