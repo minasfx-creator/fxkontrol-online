@@ -562,21 +562,21 @@ function FireworkBurst({
       {/* ═══ BREAK FLASH — 3-layer system ═══ */}
       {/* Layer 1: Inner white-hot core — ultra HDR for maximum bloom */}
       {progress < 0.04 && (
-        <mesh>
+        <mesh renderOrder={100}>
           <sphereGeometry args={[flashSize * 0.3 * (1 + progress * 8), 12, 12]} />
           <meshBasicMaterial color="#FFFFF0" transparent opacity={0.8 * (1 - progress / 0.04)} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
       {/* Layer 2: Hot colored flash — primary bloom source */}
       {progress < 0.1 && (
-        <mesh>
+        <mesh renderOrder={99}>
           <sphereGeometry args={[flashSize * (1 + progress * 8), 16, 16]} />
           <meshBasicMaterial color={color} transparent opacity={0.4 * Math.pow(1 - progress / 0.1, 2)} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
       {/* Layer 3: Expanding shockwave ring */}
       {progress > 0.003 && progress < 0.1 && (
-        <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <mesh rotation={[Math.PI / 2, 0, 0]} renderOrder={98}>
           <ringGeometry args={[
             progress * flashSize * 8,
             progress * flashSize * 8 + 0.4 + caliber * 0.1,
@@ -585,10 +585,10 @@ function FireworkBurst({
           <meshBasicMaterial color={color} transparent opacity={0.04 * Math.pow(1 - progress / 0.1, 1.5)} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
-      {/* Layer 4: Subtle sky illumination */}
+      {/* Layer 4: Subtle sky illumination — capped size to prevent sky clipping */}
       {progress < 0.3 && progress > 0.003 && (
-        <mesh>
-          <sphereGeometry args={[caliber * 4 + progress * caliber * 10, 12, 12]} />
+        <mesh renderOrder={97}>
+          <sphereGeometry args={[Math.min(caliber * 4 + progress * caliber * 10, 80), 12, 12]} />
           <meshBasicMaterial color={color} transparent opacity={0.008 * (1 - progress / 0.3)} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
