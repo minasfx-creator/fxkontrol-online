@@ -220,7 +220,7 @@ export default function StoryboardPanel({ onClose }: StoryboardPanelProps) {
 
   const handleExportStoryboard = useCallback(() => {
     const lines = [
-      'AEROSWARM NEXUS | Storyboard Export',
+      'FX KONTROL | Storyboard Export',
       `Generated: ${new Date().toISOString()}`,
       '',
       'Index,Formation,Purpose,Start Frame,Duration,Transition Type,Transition Duration,Schedule',
