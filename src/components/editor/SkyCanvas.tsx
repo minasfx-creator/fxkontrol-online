@@ -2268,9 +2268,9 @@ function WeatherEffects() {
     const positions = new Float32Array(count * 3);
     const velocities = new Float32Array(count);
     for (let i = 0; i < count; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 300;
-      positions[i * 3 + 1] = Math.random() * 100;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 300;
+      positions[i * 3] = (Math.random() - 0.5) * 800;
+      positions[i * 3 + 1] = Math.random() * 200;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 800;
       velocities[i] = weather === 'snow' ? 1 + Math.random() * 2 : 15 + Math.random() * 25;
     }
     return { count, positions, velocities };
