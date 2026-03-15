@@ -2388,7 +2388,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
         const defaultLook = new THREE.Vector3(...targetLookAt);
         
         // Interpolate position with easing — uniform speed curve
-        const sweepStartPos = new THREE.Vector3(0, 230, 3);
+        const sweepStartPos = new THREE.Vector3(0, 460, 3);
         camera.position.lerpVectors(sweepStartPos, defaultPos, eased);
         
         // Interpolate look target
