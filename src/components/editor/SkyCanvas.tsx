@@ -64,6 +64,8 @@ import { createLensFlareSprite, flashLensFlare, decayLensFlare } from '@/render_
 import { getBurstConfig, type BurstPattern } from '@/render_ultra/fireworks/burstSimulation';
 import { createSparkTrailSystem, updateSparkTrail, writeSparkTrailsToBuffers, type SparkState } from '@/render_ultra/fireworks/sparkTrailsGPU';
 import { createHDRLightingRig } from '@/render_ultra/lighting/hdrLighting';
+// ═══ LOD System — distance-based quality scaling ═══
+import { useLOD, calculateLOD, useSceneLOD, type LODFactors } from '@/hooks/useLOD';
 
 // ═══ PyroChem: map hex colors → real chemical compounds ═══
 function hexToCompound(hexColor: string): ChemicalCompound {
