@@ -1,6 +1,7 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { createDroneMaterials } from '@/render_ultra/drones/droneMaterials';
 
 const _dummy = new THREE.Object3D();
 const _color = new THREE.Color();
@@ -44,13 +45,11 @@ export default function InstancedDroneSwarm({
   const haloGeo = useMemo(() => new THREE.SphereGeometry(0.14, 8, 8), []);
   const navGeo = useMemo(() => new THREE.SphereGeometry(0.012, 6, 6), []);
 
-  // PBR body — carbon fiber with enhanced metallic sheen
-  const bodyMat = useMemo(() => new THREE.MeshStandardMaterial({
-    color: '#080818',
-    metalness: 0.95,
-    roughness: 0.08,
-    envMapIntensity: 0.6,
-  }), []);
+  // ═══ PBR Materials from render_ultra — carbon fiber calibrated ═══
+  const pbrMaterials = useMemo(() => createDroneMaterials(), []);
+
+  // Body — carbon fiber (metalness 0.3, roughness 0.6, envMapIntensity 0.8)
+  const bodyMat = useMemo(() => pbrMaterials.body, [pbrMaterials]);
 
   // LED — Blender Emission Shader calibrated (2.5 = realistic small LED)
   const ledMat = useMemo(() => new THREE.MeshStandardMaterial({
@@ -62,14 +61,16 @@ export default function InstancedDroneSwarm({
     roughness: 0.05,
   }), []);
 
-  // Rotor disc — subtle
-  const rotorMat = useMemo(() => new THREE.MeshBasicMaterial({
-    transparent: true,
-    opacity: 0.03,
-    side: THREE.DoubleSide,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-  }), []);
+  // Rotor disc — render_ultra motor material + transparency for disc effect
+  const rotorMat = useMemo(() => {
+    const m = pbrMaterials.motors.clone();
+    m.transparent = true;
+    m.opacity = 0.03;
+    m.side = THREE.DoubleSide;
+    m.depthWrite = false;
+    m.blending = THREE.AdditiveBlending;
+    return m;
+  }, [pbrMaterials]);
 
   // Selection glow
   const glowMat = useMemo(() => new THREE.MeshBasicMaterial({

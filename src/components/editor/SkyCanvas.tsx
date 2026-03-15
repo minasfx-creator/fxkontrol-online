@@ -62,6 +62,8 @@ import { GlobalIlluminationSystem } from '@/render_ultra/lighting/globalIllumina
 import { SmokeSystem } from '@/render_ultra/fireworks/smokeSimulation';
 import { createLensFlareSprite, flashLensFlare, decayLensFlare } from '@/render_ultra/postprocessing/lensFlare';
 import { getBurstConfig, type BurstPattern } from '@/render_ultra/fireworks/burstSimulation';
+import { createSparkTrailSystem, updateSparkTrail, writeSparkTrailsToBuffers, type SparkState } from '@/render_ultra/fireworks/sparkTrailsGPU';
+import { createHDRLightingRig } from '@/render_ultra/lighting/hdrLighting';
 
 // ═══ PyroChem: map hex colors → real chemical compounds ═══
 function hexToCompound(hexColor: string): ChemicalCompound {
@@ -1849,41 +1851,87 @@ function LensFlareController() {
   return null;
 }
 
-// ═══ SKY SCATTER CONTROLLER — atmosphere reflects explosion colors ═══
-function SkyScatterController() {
-  const scatterColor = useRef(new THREE.Color(0, 0, 0));
-  const scatterIntensity = useRef(0);
+// ═══ GPU SPARK TRAIL CONTROLLER — incandescent trails with 32-point history ═══
+function SparkTrailController() {
+  const { scene } = useThree();
+  const sparksRef = useRef<SparkState[]>([]);
+  const systemRef = useRef<ReturnType<typeof createSparkTrailSystem> | null>(null);
+
+  useEffect(() => {
+    const sys = createSparkTrailSystem();
+    systemRef.current = sys;
+    scene.add(sys.points);
+    return () => {
+      scene.remove(sys.points);
+      sys.geometry.dispose();
+    };
+  }, [scene]);
 
   useFrame((_, delta) => {
-    // Find active explosions and accumulate scatter
-    const { timelineItems, currentTime } = useProjectStore.getState();
-    let maxIntensity = 0;
-    const accumColor = new THREE.Color(0, 0, 0);
+    const sys = systemRef.current;
+    if (!sys) return;
+    const sparks = sparksRef.current;
+    const dt = Math.min(delta, 0.05); // cap dt
 
+    // Spawn sparks from fresh bursts
+    const { timelineItems, currentTime } = useProjectStore.getState();
     for (const item of timelineItems) {
       const elapsed = currentTime - item.startTime;
-      if (elapsed >= 0 && elapsed < 0.3) {
+      if (elapsed >= 0 && elapsed < 0.04 && sparks.length < 1600) {
         const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
         if (effect && effect.type === 'firework') {
-          const c = new THREE.Color(effect.color);
-          const intensity = 0.4 * (1 - elapsed / 0.3);
-          accumColor.add(c.multiplyScalar(intensity * 0.3));
-          maxIntensity = Math.max(maxIntensity, intensity);
+          const caliber = effect.caliber || 4;
+          const breakH = getBreakHeight(caliber);
+          const breakSpd = getBreakSpeed(caliber);
+          const compound = hexToCompound(effect.color);
+          const baseColor = thermalColor(compound, 1.0, 2.5);
+          const sparkCount = Math.min(24, Math.round(caliber * 3));
+          
+          for (let s = 0; s < sparkCount; s++) {
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+            const speed = breakSpd * (0.4 + Math.random() * 0.6);
+            sparks.push({
+              position: new THREE.Vector3(
+                item.position.x,
+                item.position.y + breakH,
+                item.position.z
+              ),
+              velocity: new THREE.Vector3(
+                Math.sin(phi) * Math.cos(theta) * speed,
+                Math.sin(phi) * Math.sin(theta) * speed * 0.8 + breakSpd * 0.2,
+                Math.cos(phi) * speed
+              ),
+              color: baseColor.clone(),
+              life: 0.8 + Math.random() * 1.5 * (caliber / 6),
+              maxLife: 0.8 + 1.5 * (caliber / 6),
+              size: 0.5 + Math.random() * 0.5,
+              trailHistory: [],
+            });
+          }
         }
       }
     }
 
-    if (maxIntensity > 0.05) {
-      scatterColor.current.copy(accumColor);
-      scatterIntensity.current = maxIntensity;
-    } else {
-      // Decay
-      scatterIntensity.current *= Math.max(0, 1 - delta * 3);
+    // Update physics & trails
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      updateSparkTrail(sparks[i], dt, 0.04, -9.81);
+      // Thermal color cooling
+      const lifeRatio = Math.max(0, sparks[i].life / sparks[i].maxLife);
+      const compound = hexToCompound('#' + sparks[i].color.getHexString());
+      sparks[i].color.copy(thermalColor(compound, lifeRatio, 2.5));
+      
+      if (sparks[i].life <= 0) {
+        sparks.splice(i, 1);
+      }
     }
 
-    // Update the SkyGradient uniforms via scene traversal
-    // The SkyGradient sphere is the BackSide sphere at radius ~500
-    // We access it through the store-driven uniforms approach
+    // Write to GPU buffers
+    const vertCount = writeSparkTrailsToBuffers(sparks, sys.positions, sys.colors, sys.opacities);
+    sys.geometry.attributes.position.needsUpdate = true;
+    sys.geometry.attributes.color.needsUpdate = true;
+    (sys.geometry.attributes as any).opacity.needsUpdate = true;
+    sys.geometry.setDrawRange(0, vertCount);
   });
 
   return null;
@@ -2150,28 +2198,47 @@ function TreelineSilhouette() {
 const SHADOW_MAP_SIZES: Record<string, number> = { low: 1024, medium: 2048, high: 4096, ultra: 8192 };
 
 function SceneLighting() {
+  const { scene } = useThree();
   const s = useSceneStore(st => st.settings);
   const shadowSize = SHADOW_MAP_SIZES[s.shadowQuality] || 4096;
+  const rigRef = useRef<ReturnType<typeof createHDRLightingRig> | null>(null);
+
+  useEffect(() => {
+    const rig = createHDRLightingRig({
+      moonIntensity: s.moonIntensity,
+      moonColor: new THREE.Color(s.moonColor),
+      ambientIntensity: s.ambientIntensity,
+      ambientColor: new THREE.Color(0.29, 0.38, 0.5),
+      fillIntensity: 0.35,
+      rimIntensity: 0.55,
+    });
+    rigRef.current = rig;
+
+    // Configure shadow map from store settings
+    rig.moon.shadow.mapSize.set(shadowSize, shadowSize);
+    rig.moon.castShadow = s.shadowsEnabled;
+    rig.moon.shadow.bias = -0.00003;
+    rig.moon.shadow.normalBias = 0.02;
+    rig.moon.shadow.camera.far = 600;
+
+    scene.add(rig.group);
+    return () => { scene.remove(rig.group); };
+  }, [scene]);
+
+  // Reactively sync store settings to rig
+  useEffect(() => {
+    const rig = rigRef.current;
+    if (!rig) return;
+    rig.updateMoonIntensity(s.moonIntensity);
+    rig.updateAmbient(s.ambientIntensity);
+    rig.moon.color.set(s.moonColor);
+    rig.moon.castShadow = s.shadowsEnabled;
+    rig.moon.shadow.mapSize.set(shadowSize, shadowSize);
+  }, [s.moonIntensity, s.ambientIntensity, s.moonColor, s.shadowsEnabled, shadowSize]);
 
   return (
     <>
-      <ambientLight intensity={s.ambientIntensity} color="#4a6080" />
-      <directionalLight
-        position={[200, 350, -300]}
-        intensity={s.moonIntensity}
-        color={s.moonColor}
-        castShadow={s.shadowsEnabled}
-        shadow-mapSize={[shadowSize, shadowSize]}
-        shadow-camera-far={600}
-        shadow-camera-left={-200}
-        shadow-camera-right={200}
-        shadow-camera-top={200}
-        shadow-camera-bottom={-200}
-        shadow-bias={-0.00003}
-        shadow-normalBias={0.02}
-      />
-      <hemisphereLight args={['#1a2850', '#0a1208', 0.15]} />
-      {/* Subtle backfill for depth separation */}
+      {/* Subtle backfill for depth separation — complements HDR rig */}
       <directionalLight position={[-60, 25, 70]} intensity={s.rimLightIntensity * 0.15} color="#3355aa" />
       <directionalLight position={[0, -8, 40]} intensity={s.fillLightIntensity * 0.08} color="#182218" />
     </>
@@ -2496,6 +2563,7 @@ export default function SkyCanvas() {
         <GroundReflections />
         <SmokeController />
         <LensFlareController />
+        <SparkTrailController />
 
         <SkyGradient />
         <Moon />
