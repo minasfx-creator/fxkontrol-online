@@ -1,101 +1,204 @@
+# Finale 3D Feature Replication — Incremental Plan
 
+## Phase 1: Script Window + Chains (CURRENT)
+- Full Script Window with Finale 3D columns (Event Time, Effect Time, Prefire, Position, Address, Pan/Tilt, Duration, Description, Cost, Chain Ref, Chain Gap, etc.)
+- Chain effects system (combine shells into chains, chain gaps, chain duration calculations)
+- Script row grouping and collapsing
+- Sort/filter expressions
 
-# Plano: Integrar Tecnologias render_ultra Disponíveis no Motor 3D
+## Phase 2: VDL + Effect Editor (DONE ✅)
+- VDL parser (src/lib/vdlParser.ts) — parses "3in Red Peony w/ tail" into structured params
+- VDL colors: 20 named colors (red, gold, silver, titanium, brocade, etc.)
+- VDL types: 25 effect types (peony, chrysanthemum, willow, kamuro, comet, mine, fan, etc.)
+- VDL modifiers: tail, glitter, strobe, crackle, pistol, twinkle, whistle, report
+- VDL caliber scaling: height, spread, duration, star count, cost auto-calculated
+- Effect Editor panel with sliders: caliber, height, spread angle, star count, duration
+- Color picker grid with 20 VDL colors
+- Modifier toggle badges
+- VDL Quick Add input in Effect Library sidebar (Enter to add)
+- toVDL() reverse generator from params
 
-## Diagnóstico
+## Phase 3: Camera Animation + Wind (DONE ✅)
+- Camera keyframe system with Catmull-Rom spline interpolation (position, lookAt, FOV)
+- Camera path 3D preview (cyan spline + octahedron markers at keyframes)
+- CameraAnimator component driving camera during playback
+- Wind simulation: direction (0-360°), speed (0-15 m/s), gust strength (0-100%)
+- Wind affects all particle physics (firework bursts drift with wind)
+- WindCameraPanel UI with sliders + keyframe list
+- Toolbar toggle button for Wind & Camera panel
 
-O projeto possui um módulo completo `src/render_ultra/` com **7 sistemas avançados já construídos** que **NÃO estão integrados** na cena 3D real (`SkyCanvas.tsx`):
+## Phase 4: Reports + Rack Management (DONE ✅)
+- PDF report generation via printable HTML: Safety Distance (NFPA 1123), Wiring Script, Chain Specs, Pinboard Cue Sheet
+- Report engine (src/lib/reportEngine.ts) with open-in-window + download
+- Rack store (src/store/useRackStore.ts) with types: circle, tiltable, fan, variable-tube
+- Rack Manager panel with SVG visual layout diagrams
+- Tube generation per rack type with angle/heading distribution
+- Labels generation (printable HTML labels per tube)
+- Toolbar buttons for Reports (📄) and Racks (📦)
 
-1. **Adaptive Exposure** — auto-exposição de câmera que escurece durante explosões brilhantes
-2. **Ground Reflections** — reflexos especulares "wet surface" que reagem às explosões
-3. **Lens Flare** — flares de lente sprite-based para explosões
-4. **Global Illumination** — iluminação indireta dinâmica de explosões (hemisphere light probes)
-5. **Particle Chemistry** — cores químicas reais (Strontium, Barium, Copper, Sodium, etc.)
-6. **GPU Spark Trails** — sistema de trilhas incandescentes com history buffer
-7. **Drone Materials PBR** — materiais avançados com env map
+## Phase 5: Advanced Addressing (DONE ✅)
+- Addressing store (src/store/useAddressingStore.ts) with Module/Slat/Pin assignment
+- 6 pre-configured module specs (Cobra 18R2/R3, FireOne 32, PyroDigital 32, Galaxis G2, Custom)
+- Auto-assign algorithm respecting locked addresses and occupied slots
+- Virtual slats via splitter boxes (expandable pin count per physical pin)
+- Multiple firing systems / universes with independent module specs
+- Rack-based addressing (assigns by rack tube order)
+- Lock/unlock individual addresses to preserve during re-assignment
+- Sort by time, module, position, or rack
+- AddressingPanel UI with 4 tabs: Addresses, Modules, Splitters, Systems
+- Toolbar button (⚡ Cpu icon) for Addressing panel toggle
 
-Além disso, os problemas persistentes:
-- **Lua** ainda em `[60, 55, -80]` com raio 3.5 (dentro da cena, não no céu)
-- **Drone LED** `emissiveIntensity: 14` (cegante)
-- **Bloom thresholds** muito baixos (0.4) capturando tudo
-- **Linha fantasma** de drones/trails
+## Phase 6: Inventory Management (DONE ✅)
+- Inventory store (src/store/useInventoryStore.ts) with on-hand, allocated, remaining tracking
+- Cost summaries with markup multiplier per show
+- CSV import with VDL auto-detection for effect matching
+- InventoryPanel UI with 3 tabs: Stock, Costs, Import
+- Low-stock warnings with visual indicators
+- Toolbar button ($) for Inventory panel toggle
 
-## Alterações Planejadas
+## Phase 7: Additional Exports (DONE ✅)
+- 40+ firing system formats (Galaxis, FireOne, Pyrodigital, etc.)
+- DMX fixture support
+- Video export (WebM recording with TC burn-in, configurable resolution)
+- SMPTE/LTC timecode synchronization (Master/Slave/Freerun, external TC via WebSocket)
+- Sound level charts (dB SPL analysis, A/C weighting, Leq, exceedance tracking)
 
-### 1. Integrar Adaptive Exposure no Render Loop
-**Arquivo:** `src/components/editor/SkyCanvas.tsx`
+## Phase 8: Scripting Power Tools (DONE ✅)
+- Randomize timing/positions
+- Make into sequence (auto-distribute across positions)
+- Make into fan (auto-angle distribution)
+- Spread out based on durations
+- Reverse order, Quantize to grid
+- Keyboard shortcuts (Space, S, Delete, Ctrl+D, Ctrl+A, i, e, ?)
 
-- Criar componente `<AdaptiveExposureController>` dentro do Canvas
-- Usa `useFrame` para contar explosões ativas e ajustar `gl.toneMappingExposure` em tempo real
-- Import: `createExposureController`, `updateExposure`, `flashEvent` de `render_ultra/postprocessing/exposure`
-- Quando um burst tem `progress < 0.05`, chama `flashEvent` → exposição abaixa automaticamente como câmera real
+## Phase 9: Advanced Drone Physics (DONE ✅)
+- PID Controller engine (src/lib/pidController.ts) — 5-axis PID with Kp/Ki/Kd tuning
+- PID presets: DJI Matrice 600, Show Drone 250g, Custom
+- Realistic tilt/roll/pitch from acceleration, drag model, wind forces
+- PIDPanel UI with per-axis gain sliders, test flight simulator, visual stats
+- DMX512/Art-Net engine (src/lib/dmxEngine.ts) — virtual fixture patching, universes, keyframes
+- Auto-patch drones as RGBW fixtures across DMX universes
+- DMX keyframe interpolation and Art-Net CSV export
+- DMXPanel UI with universe grid, fixture selector, keyframe controls
+- Battery discharge model (src/lib/batteryModel.ts) — LiPo simulation with temp derating
+- RTL safety margin alerts (30% reserve), voltage sag under load
+- Battery presets: 2S/4S/6S configurations
+- BatteryPanel UI with visual battery bar, real-time simulation, flight condition sliders
 
-### 2. Integrar Ground Reflections Reativas
-**Arquivo:** `src/components/editor/SkyCanvas.tsx` (StageGround)
+## Phase 10: MAVLink Protocol Bridge (DONE ✅)
+- MAVLink 2.0 virtual protocol engine (src/lib/mavlinkProtocol.ts)
+- Message types: HEARTBEAT, ATTITUDE, GPS_RAW_INT, VFR_HUD, SYS_STATUS, LOCAL_POSITION_NED
+- Telemetry state per drone with full flight data (position, velocity, attitude, battery, GPS)
+- Base64 encoding for WebSocket/SSE transport as described in research paper
+- MAVLink store (src/store/useMAVLinkStore.ts) for multi-drone telemetry management
+- Edge function bridge (supabase/functions/mavlink-bridge) — validates telemetry, processes commands
+- Bridge validates: battery levels, excessive tilt, GPS fix, speed limits
+- Command relay: ARM, DISARM, TAKEOFF, LAND, RTL, GUIDED, SET_MODE, REBOOT
+- MAVLinkPanel UI with connection status, telemetry HUD, command buttons, message log
+- Auto-stream: Boids simulation → MAVLink telemetry in real-time
+- Coordinate conversion: Y-up (sim) → NED (MAVLink) automatic
 
-- Criar componente `<ExplosionReflections>` que renderiza um plano translúcido sobre o chão
-- Usa shader de `render_ultra/environment/reflections` com uniforms dinâmicos
-- `uReflectionColor` e `uReflectionIntensity` atualizam em tempo real baseado nas explosões ativas
-- Blending additivo sobre o ground existente
+## Phase 11: Advanced Music Sync (DONE ✅)
+- Music-Reactive Engine (src/lib/musicReactiveEngine.ts) — real-time intensity modulation from audio analysis
+- Onset-driven cue placement: auto-place pyrotechnic cues on beats, onsets, or energy peaks
+- Cue placement modes: Beats, Onsets, Peaks, Combined with configurable beat divisor (1/2/4/8)
+- Onset type filtering: kick, snare, hi-hat, transient — selective cue triggers
+- Distribution options: cycle effects and positions across generated cues
+- Sensitivity & min-interval controls for fine-tuning cue density
+- Preview system: visualize generated cues on waveform before applying
+- getReactiveState() — per-frame intensity/bass/mid/high for real-time visual modulation
+- ONSET_EFFECT_MAP — suggested effect categories per onset type (kick→morteiros, snare→peonias, etc.)
+- Synesthesia panel: 2-tab UI (Auto Cues + Formations) with full parameter controls
 
-### 3. Integrar Lens Flares em Explosões
-**Arquivo:** `src/components/editor/SkyCanvas.tsx` (FireworkBurst)
+## Phase 12: AR Overlay & Sharing (DONE ✅)
+- AR/Hybrid overlay engine (src/lib/arOverlayEngine.ts) — composite simulated effects over real venue photos
+- Perspective calibration: horizon line, vanishing point, FOV estimate, effect scale, rotation offset
+- Blend modes: Screen, Additive, Normal, Overlay with configurable opacity
+- Calibration grid and horizon line visual guides
+- worldToImagePosition() — maps 3D world coords to 2D image positions via single-point perspective
+- AROverlayPanel UI with venue photo upload, calibration sliders, blend controls
+- Show Preview Sharing (ShowSharePanel) — generate shareable read-only preview links
+- Access controls: public/private, password protection, expiry (1h/24h/7d/30d/never)
+- Content visibility toggles: timeline, positions, comments, watermark
 
-- Adicionar sprite de lens flare durante break flash (`progress < 0.1`)
-- Usa `createLensFlareSprite` de `render_ultra/postprocessing/lensFlare`
-- Flare acompanha posição do burst, fade com progress
-- Starburst rays + core glow como lente de câmera real
+## Phase 13: Collaboration, Particles & Versioning (DONE ✅)
+- Multi-user collaboration engine (src/lib/collaborationEngine.ts) — Supabase Realtime presence + broadcast
+- Real-time cursor sharing, presence tracking, edit broadcasting with last-writer-wins conflict resolution
+- CollaborationPanel UI with room codes, online user list, activity log
+- Custom Particle Editor (ParticleEditorPanel) — granular particle system designer
+- 6 built-in presets (Peony, Willow, Crackle, Waterfall, Smoke, Comet)
+- Full parameter control: emission, physics (speed/gravity/drag/turbulence), appearance (colors/shape/blend/trail)
+- Live 2D canvas preview with real-time particle simulation
+- Show Versioning (VersioningPanel) — named snapshots with diff comparison and restore
+- Snapshot save/restore with position and cue count tracking
 
-### 4. Integrar Particle Chemistry no Color System
-**Arquivo:** `src/components/editor/SkyCanvas.tsx` (FireworkBurst)
+## Phase 14: Collision, Weather & Approval (DONE ✅)
+- Advanced drone formation collision detection (src/lib/collisionDetector.ts)
+  - Spatial grid acceleration for O(n) average collision checks
+  - Checks hold phases and transition phases (interpolated smoothstep)
+  - Min distance over time chart, severity classification (warning/critical)
+  - CollisionPanel UI with detail list, seekable collisions, sample rate control
+- Weather API integration (src/lib/weatherService.ts) — Open-Meteo (free, no API key)
+  - Current conditions + 24h hourly forecast
+  - Flight risk analyzer: wind, gusts, precipitation, visibility, temperature, thunderstorm
+  - Risk levels: Safe/Caution/Warning/Grounded with score 0-100
+  - Auto-apply wind to simulation, WeatherPanel UI with live data
+- Client approval workflow (ClientApprovalPanel)
+  - Approval statuses: Draft → Pending Review → Changes Requested / Approved
+  - Threaded comments with resolve/reject per comment, reply system, filtering
 
-- Quando cor do efeito corresponde a um composto químico, usar `thermalColor` de `render_ultra/fireworks/particleChemistry`
-- Mapear cores hex → compostos (vermelho → Strontium, verde → Barium, azul → Copper, amarelo → Sodium)
-- Usar `temperature` e `emissionIntensity` do composto para ajustar HDR multiplier e tamanho das partículas
-- Resultado: cores mais ricas e fisicamente corretas
+## Phase 15: Trajectory Optimization, Collision Avoidance & Templates (DONE ✅)
+- Trajectory Optimizer Engine (src/lib/trajectoryOptimizer.ts)
+  - Catmull-Rom spline path smoothing with configurable alpha
+  - Velocity clamping with time redistribution
+  - Acceleration and jerk constraint checking
+  - Separation checking between drone pairs with spatial grid acceleration
+  - Full optimization pipeline: smooth → clamp → validate → report
+- Real-time Collision Avoidance (src/lib/collisionAvoidance.ts)
+  - Potential field method with spatial grid for O(n) neighbor detection
+  - Configurable: min separation, detection radius, avoidance strength, vertical bias
+  - Damped deflections with max deflection clamping (smooth, no jitter)
+  - CollisionAvoidanceOverlay — real-time warning lines between close drones in viewport
+- Trajectory Optimizer Panel (TrajectoryOptimizerPanel.tsx)
+  - Constraint sliders: max velocity, acceleration, min separation, smoothing
+  - Analyze button with violation report: velocity, acceleration, separation
+  - Stats: total distance, peak velocity, computation time
+- Show Templates System (src/lib/showTemplates.ts + ShowTemplatesPanel.tsx)
+  - Save/load reusable show templates with formations and scene settings
+  - 8 categories: countdown, celebration, logo, abstract, patriotic, holiday, sports, custom
+  - Import/export as JSON files
+  - Browse with category filter, load into current show
 
-### 5. Corrigir Lua — Posição Celeste Realista
-**Arquivo:** `src/components/editor/SkyCanvas.tsx` (Moon, ~linha 981-1087)
+## Phase 16: i18n, Telemetry & Flight Logs (DONE ✅)
+- Multi-language i18n system (src/lib/i18n.ts)
+  - 3 languages: PT-BR, EN, ES with 100+ translation keys
+  - Zustand store with localStorage persistence
+  - useT() hook for reactive translations
+  - LanguageSwitcher component in toolbar with flag dropdown
+- Telemetry Dashboard (TelemetryDashboard.tsx)
+  - Fleet grid view with color-coded drone status (battery, alerts)
+  - Detail view per drone: battery bar, navigation stats, signal strength, alerts
+  - Simulated telemetry from MAVLink store + formation data
+  - Live fleet overview: drone count, avg battery, alert count
+- Flight Log Recorder (FlightLogPanel.tsx)
+  - Real-time recording at 5Hz during playback
+  - Session management: start/stop, multiple sessions, deletion
+  - CSV export with time, droneID, position, battery, speed
+  - Entry table with last 50 data points
 
-- Posição: `[60, 55, -80]` → `[200, 350, -300]`
-- Raio body: 3.5 → 12
-- Halos/corona: escalar proporcionalmente
-- PointLight: intensity 0.35 → 0.15, distance 350 → 800
+## Phase 17: Marketplace, Path Planner, Detachable Panels, Spectrum (DONE ✅)
+- Template Marketplace — browse/download/publish cloud templates with ratings, categories, search
+- Formation Path Planner with Obstacle Avoidance (A* 3D grid + Catmull-Rom smoothing)
+  - Obstacle types: sphere, box, cylinder with configurable position/size
+  - PathPlannerPanel UI with obstacle editor, plan execution, and results display
+- Detachable Panel System — pop out any panel into a separate browser window via React portal
+  - Reattach button to bring panel back, auto-cleanup on window close
+- Real-time Audio Spectrum Visualizer — 64-bar InstancedMesh in 3D viewport
+  - Web Audio API AnalyserNode, frequency-to-color mapping (cyan→magenta→gold)
+  - Smoothed animation synced to playback state
 
-### 6. Corrigir Drones — LED Balanceado
-**Arquivo:** `src/components/editor/InstancedDroneSwarm.tsx`
-
-- `emissiveIntensity`: 14 → **2.5**
-- `toneMapped`: false → **true**
-- Halo opacity: 0.16 → **0.05**
-- Halo scale: `s * 1.8` → `s * 1.0`
-
-### 7. Bloom Seletivo (Blender Glare Node)
-**Arquivo:** `src/components/editor/PostProcessing.tsx`
-
-- Layer 1 threshold: 0.4 → **0.75**, intensity: `str * 0.8` → `str * 0.5`
-- Layer 2 threshold: 0.6 → **0.9**, intensity: `str * 0.4` → `str * 0.25`
-- Layer 3 threshold: 0.8 → **1.1**
-- Resultado: bloom exclusivamente em HDR pyro, não em drones
-
-### 8. Remover Fantasmas de Drone
-**Arquivo:** `src/components/editor/LightTrails.tsx`
-
-- Guard: se posições são estáticas (sem delta entre frames) ou count = 0, retornar null
-
-### 9. Pyro Flash e Star Shader — Escala Natural
-**Arquivo:** `src/components/editor/SkyCanvas.tsx`
-
-- `flashSize`: `1.5 + caliber * 1.8` → `0.6 + caliber * 0.8`
-- Star `gl_PointSize` factor: `2200.0` → `1600.0`
-- `toneMappingExposure`: `1.5` → `1.2`
-
-## Arquivos Editados
-1. `src/components/editor/SkyCanvas.tsx` — Moon, exposure controller, reflections, lens flares, chemistry, pyro scaling
-2. `src/components/editor/InstancedDroneSwarm.tsx` — LED intensity fix
-3. `src/components/editor/PostProcessing.tsx` — Bloom thresholds
-4. `src/components/editor/LightTrails.tsx` — Ghost guard
-
-## Resultado
-Motor 3D com **adaptive exposure**, **ground reflections**, **lens flares**, **particle chemistry** integrados — tecnologias que já existiam no código mas nunca foram ativadas. Lua no céu, drones sem ofuscar, bloom seletivo.
-
+## Phase 18: Next
+- Laser show integration (ILDA format export)
+- Multi-show scheduling (show playlists with cross-fades)
+- Advanced geofencing with no-fly zone import (KML/GeoJSON)
+- Live drone telemetry dashboard with GPS map overlay

@@ -52,20 +52,20 @@ export default function InstancedDroneSwarm({
     envMapIntensity: 0.6,
   }), []);
 
-  // LED — ultra-bright HDR emissive with bloom catch
+  // LED — Blender Emission Shader calibrated (2.5 = realistic small LED)
   const ledMat = useMemo(() => new THREE.MeshStandardMaterial({
     color: '#ffffff',
     emissive: '#ffffff',
-    emissiveIntensity: 14,
-    toneMapped: false,
+    emissiveIntensity: 2.5,
+    toneMapped: true,
     metalness: 0.0,
     roughness: 0.05,
   }), []);
 
-  // Rotor disc
+  // Rotor disc — subtle
   const rotorMat = useMemo(() => new THREE.MeshBasicMaterial({
     transparent: true,
-    opacity: 0.06,
+    opacity: 0.03,
     side: THREE.DoubleSide,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
@@ -80,10 +80,10 @@ export default function InstancedDroneSwarm({
     blending: THREE.AdditiveBlending,
   }), []);
 
-  // LED volumetric halo — enhanced glow radius
+  // LED volumetric halo — Blender-calibrated subtle glow
   const haloMat = useMemo(() => new THREE.MeshBasicMaterial({
     transparent: true,
-    opacity: 0.16,
+    opacity: 0.05,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
   }), []);
@@ -143,7 +143,7 @@ export default function InstancedDroneSwarm({
       // LED halo
       if (halo) {
         _dummy.position.set(p.x, p.y + 0.06 * s + hover, p.z);
-        _dummy.scale.setScalar(s * 1.8);
+        _dummy.scale.setScalar(s * 1.0);
         _dummy.updateMatrix();
         halo.setMatrixAt(i, _dummy.matrix);
         _color.set(p.color);

@@ -4,14 +4,13 @@ import { Vector2 } from 'three';
 import { useSceneStore } from '@/store/useSceneStore';
 
 /**
- * Cinematic post-processing pipeline v3 — FWsim/Finale-grade rendering.
+ * Cinematic post-processing pipeline v4 — Blender Glare Node inspired.
  * 
- * Key changes from v2:
- * - Much lower luminance thresholds to catch more star light
- * - Higher bloom intensities with wider kernels
- * - AGX tone mapping replaced with ACES for punchier HDR
- * - 5-layer bloom architecture for ultra-realistic light scatter
- * - Stronger vignette for cinematic framing
+ * Key changes from v3:
+ * - High luminance thresholds (0.75+) so bloom ONLY catches HDR pyro
+ * - Drone LEDs (emissiveIntensity 2.5, toneMapped) stay crisp without bloom wash
+ * - 3-layer architecture: core catch, star halos, atmospheric
+ * - Blender Glare reference: threshold 0.8-1.0, quality medium-high
  */
 export default function PostProcessing() {
   const s = useSceneStore(st => st.settings);
@@ -21,28 +20,28 @@ export default function PostProcessing() {
     <EffectComposer multisampling={0}>
       <SMAA />
 
-      {/* Layer 1: Core catch — only the brightest star centers */}
+      {/* Layer 1: Core catch — only HDR pyro sources (threshold 0.75) */}
       <Bloom
-        intensity={str * 0.8}
-        luminanceThreshold={0.4}
+        intensity={str * 0.5}
+        luminanceThreshold={0.75}
         luminanceSmoothing={0.3}
         kernelSize={KernelSize.MEDIUM}
         mipmapBlur
       />
 
-      {/* Layer 2: Star halos — natural glow around bright particles */}
+      {/* Layer 2: Star halos — wider glow on very bright sources only */}
       <Bloom
-        intensity={str * 0.4}
-        luminanceThreshold={0.6}
+        intensity={str * 0.25}
+        luminanceThreshold={0.9}
         luminanceSmoothing={0.5}
         kernelSize={KernelSize.LARGE}
         mipmapBlur
       />
 
-      {/* Layer 3: Atmospheric — subtle sky coloring from large bursts */}
+      {/* Layer 3: Atmospheric — ultra-bright HDR sky coloring */}
       <Bloom
-        intensity={str * 0.15}
-        luminanceThreshold={0.8}
+        intensity={str * 0.1}
+        luminanceThreshold={1.1}
         luminanceSmoothing={0.75}
         kernelSize={KernelSize.HUGE}
         mipmapBlur
