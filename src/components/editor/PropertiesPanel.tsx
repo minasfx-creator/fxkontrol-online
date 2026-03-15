@@ -111,23 +111,23 @@ function PositionInspector() {
   const color = pos.type === 'pyro' ? '#FF6B35' : '#00B4D8';
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       <div className="flex items-center gap-2">
-        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
+        <div className="w-4 h-4 rounded-lg" style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}33` }} />
         <div className="flex-1">
           <Input
             value={pos.name}
             onChange={(e) => updatePosition(pos.id, { name: e.target.value })}
-            className="h-6 text-xs font-medium bg-surface-2 border-border px-1.5"
+            className="h-7 text-xs font-semibold rounded-lg bg-surface-0/50 border-border/15 px-2 focus:border-primary/30"
           />
         </div>
       </div>
-      <p className="text-[10px] text-muted-foreground capitalize">{pos.type === 'pyro' ? 'Pyro Position' : 'Drone Launch Pad'}</p>
+      <p className="text-[10px] text-muted-foreground/60 capitalize font-display">{pos.type === 'pyro' ? '🎆 Pyro Position' : '🛸 Drone Launch Pad'}</p>
 
       {/* Coordinates */}
-      <div className="bg-surface-2 rounded-sm p-2 space-y-1.5">
-        <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Position (VVIZ)</p>
-        <div className="grid grid-cols-3 gap-1">
+      <div className="rounded-xl p-2.5 space-y-2" style={{ background: 'hsl(var(--surface-0) / 0.5)' }}>
+        <p className="text-[10px] text-muted-foreground/50 font-semibold uppercase tracking-wider font-display">Position (m)</p>
+        <div className="grid grid-cols-3 gap-1.5">
           <NumberField label="X" value={pos.x} onChange={(v) => updatePosition(pos.id, { x: v })} color="hsl(0 72% 51%)" />
           <NumberField label="Y" value={pos.y} onChange={(v) => updatePosition(pos.id, { y: v })} color="hsl(142 70% 45%)" />
           <NumberField label="Z" value={pos.z} onChange={(v) => updatePosition(pos.id, { z: v })} color="hsl(207 90% 54%)" />
@@ -135,9 +135,9 @@ function PositionInspector() {
       </div>
 
       {/* Orientation */}
-      <div className="bg-surface-2 rounded-sm p-2 space-y-1.5">
-        <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Orientation (°)</p>
-        <div className="grid grid-cols-3 gap-1">
+      <div className="rounded-xl p-2.5 space-y-2" style={{ background: 'hsl(var(--surface-0) / 0.5)' }}>
+        <p className="text-[10px] text-muted-foreground/50 font-semibold uppercase tracking-wider font-display">Orientation (°)</p>
+        <div className="grid grid-cols-3 gap-1.5">
           <NumberField label="H" value={pos.heading} onChange={(v) => updatePosition(pos.id, { heading: v })} step={1} color="hsl(24 95% 53%)" />
           <NumberField label="P" value={pos.pitch} onChange={(v) => updatePosition(pos.id, { pitch: v })} step={1} color="hsl(24 95% 53%)" />
           <NumberField label="R" value={pos.roll} onChange={(v) => updatePosition(pos.id, { roll: v })} step={1} color="hsl(24 95% 53%)" />
@@ -147,7 +147,7 @@ function PositionInspector() {
       <Button
         variant="ghost"
         size="sm"
-        className="w-full justify-start gap-2 h-7 text-xs text-destructive hover:text-destructive"
+        className="w-full justify-start gap-2 h-8 text-xs text-destructive/60 hover:text-destructive hover:bg-destructive/8 rounded-lg"
         onClick={() => removePosition(pos.id)}
       >
         <Trash2 className="h-3 w-3" /> Remove Position
