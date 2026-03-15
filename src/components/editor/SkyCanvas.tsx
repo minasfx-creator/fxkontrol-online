@@ -1088,7 +1088,7 @@ function Moon() {
       </mesh>
       {/* Outer volumetric halo */}
       <mesh>
-        <sphereGeometry args={[20, 32, 32]} />
+        <sphereGeometry args={[160, 32, 32]} />
         <shaderMaterial
           transparent
           depthWrite={false}
