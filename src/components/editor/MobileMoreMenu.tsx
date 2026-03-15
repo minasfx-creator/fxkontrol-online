@@ -28,9 +28,9 @@ const MORE_ITEMS: { id: PanelId; label: string; icon: typeof Wind }[] = [
   { id: 'maps', label: 'Maps', icon: Map },
   { id: 'labels', label: 'Labels', icon: Tag },
   { id: 'calibration', label: 'Calibration', icon: Factory },
-  { id: 'collab', label: 'Collab', icon: Users },
+  { id: 'share', label: 'Share', icon: Users },
   { id: 'livefiring', label: 'Live SFX', icon: Sparkles },
-  { id: 'summary', label: 'Summary', icon: FileText },
+  { id: 'inspector', label: 'Inspector', icon: FileText },
 ];
 
 interface MobileMoreMenuProps {

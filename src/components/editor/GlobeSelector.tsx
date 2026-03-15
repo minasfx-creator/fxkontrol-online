@@ -72,6 +72,8 @@ const CITIES = [
 ];
 
 const GLOBE_RADIUS = 2.5;
+const MIN_ZOOM = 1.8; // Google Earth-style close zoom
+const MAX_ZOOM = 22;  // Far enough to see full globe
 
 function latLngToSphere(lat: number, lng: number, radius: number): THREE.Vector3 {
   const phi = (90 - lat) * (Math.PI / 180);
@@ -90,10 +92,46 @@ function sphereToLatLng(point: THREE.Vector3): { lat: number; lng: number } {
   return { lat, lng: lng < -180 ? lng + 360 : lng > 180 ? lng - 360 : lng };
 }
 
-// ─── Atmosphere shader ───
+// ─── Atmosphere shader (Google Earth style - thin blue line) ───
 function Atmosphere() {
   return (
-    <mesh scale={[1.15, 1.15, 1.15]}>
+    <mesh scale={[1.08, 1.08, 1.08]}>
+      <sphereGeometry args={[GLOBE_RADIUS, 128, 128]} />
+      <shaderMaterial
+        transparent
+        depthWrite={false}
+        side={THREE.BackSide}
+        vertexShader={`
+          varying vec3 vNormal;
+          varying vec3 vWorldPos;
+          void main() {
+            vNormal = normalize(normalMatrix * normal);
+            vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `}
+        fragmentShader={`
+          varying vec3 vNormal;
+          varying vec3 vWorldPos;
+          void main() {
+            float rim = pow(0.65 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 3.0);
+            // Google Earth: thin bright blue at edge, fading to transparent
+            vec3 innerColor = vec3(0.35, 0.65, 1.0);
+            vec3 outerColor = vec3(0.15, 0.35, 0.85);
+            vec3 color = mix(innerColor, outerColor, rim);
+            float alpha = smoothstep(0.0, 1.0, rim) * 0.6;
+            gl_FragColor = vec4(color, alpha);
+          }
+        `}
+      />
+    </mesh>
+  );
+}
+
+// ─── Secondary outer glow (subtle space glow) ───
+function OuterGlow() {
+  return (
+    <mesh scale={[1.18, 1.18, 1.18]}>
       <sphereGeometry args={[GLOBE_RADIUS, 64, 64]} />
       <shaderMaterial
         transparent
@@ -109,9 +147,8 @@ function Atmosphere() {
         fragmentShader={`
           varying vec3 vNormal;
           void main() {
-            float intensity = pow(0.72 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);
-            vec3 color = mix(vec3(0.3, 0.6, 1.0), vec3(0.1, 0.4, 0.9), intensity);
-            gl_FragColor = vec4(color, intensity * 0.7);
+            float intensity = pow(0.5 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 4.0);
+            gl_FragColor = vec4(0.2, 0.5, 1.0, intensity * 0.15);
           }
         `}
       />
@@ -119,11 +156,11 @@ function Atmosphere() {
   );
 }
 
-// ─── Inner atmosphere glow ───
+// ─── Inner atmosphere (Fresnel rim on globe surface) ───
 function InnerGlow() {
   return (
-    <mesh scale={[1.02, 1.02, 1.02]}>
-      <sphereGeometry args={[GLOBE_RADIUS, 64, 64]} />
+    <mesh scale={[1.005, 1.005, 1.005]}>
+      <sphereGeometry args={[GLOBE_RADIUS, 128, 128]} />
       <shaderMaterial
         transparent
         depthWrite={false}
@@ -133,7 +170,7 @@ function InnerGlow() {
           varying vec3 vViewDir;
           void main() {
             vNormal = normalize(normalMatrix * normal);
-            vViewDir = normalize(-( modelViewMatrix * vec4(position, 1.0)).xyz);
+            vViewDir = normalize(-(modelViewMatrix * vec4(position, 1.0)).xyz);
             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
           }
         `}
@@ -142,9 +179,9 @@ function InnerGlow() {
           varying vec3 vViewDir;
           void main() {
             float rim = 1.0 - max(dot(vNormal, vViewDir), 0.0);
-            rim = pow(rim, 3.0);
-            vec3 color = vec3(0.4, 0.7, 1.0);
-            gl_FragColor = vec4(color, rim * 0.25);
+            rim = pow(rim, 4.0);
+            vec3 color = vec3(0.3, 0.6, 1.0);
+            gl_FragColor = vec4(color, rim * 0.2);
           }
         `}
       />
@@ -214,7 +251,7 @@ function FreePin({ lat, lng }: { lat: number; lng: number }) {
   );
 }
 
-// ─── Camera zoom controller ───
+// ─── Camera zoom controller (Google Earth smooth zoom) ───
 function CameraZoomTo({ target, zooming }: { target: THREE.Vector3 | null; zooming: boolean }) {
   const { camera } = useThree();
   const targetPos = useRef(new THREE.Vector3(0, 0, 8));
@@ -222,13 +259,13 @@ function CameraZoomTo({ target, zooming }: { target: THREE.Vector3 | null; zoomi
   useEffect(() => {
     if (target && zooming) {
       const dir = target.clone().normalize();
-      targetPos.current = dir.multiplyScalar(4.2);
+      targetPos.current = dir.multiplyScalar(3.2); // Zoom closer on confirm
     }
   }, [target, zooming]);
 
   useFrame(() => {
     if (zooming && target) {
-      camera.position.lerp(targetPos.current, 0.025);
+      camera.position.lerp(targetPos.current, 0.035);
       camera.lookAt(0, 0, 0);
     }
   });
@@ -263,8 +300,8 @@ function EarthGlobe({ onClickGlobe }: { onClickGlobe: (lat: number, lng: number)
 
   return (
     <mesh ref={meshRef} onClick={handleClick}>
-      <sphereGeometry args={[GLOBE_RADIUS, 128, 128]} />
-      <meshStandardMaterial map={texture} roughness={0.82} metalness={0.08} />
+      <sphereGeometry args={[GLOBE_RADIUS, 256, 256]} />
+      <meshStandardMaterial map={texture} roughness={0.7} metalness={0.05} envMapIntensity={0.3} />
     </mesh>
   );
 }
@@ -515,13 +552,15 @@ export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps
 
       {/* 3D Globe */}
       <div className="flex-1 relative">
-        <Canvas camera={{ position: [0, 0, 8], fov: 45 }}>
-          <ambientLight intensity={0.35} />
-          <directionalLight position={[5, 3, 5]} intensity={1.3} />
-          <pointLight position={[-5, -3, -5]} intensity={0.25} color="#4488ff" />
+        <Canvas camera={{ position: [0, 0, 7], fov: 50 }}>
+          <ambientLight intensity={0.4} />
+          <directionalLight position={[5, 3, 5]} intensity={1.5} color="#ffffff" />
+          <directionalLight position={[-3, 1, -3]} intensity={0.3} color="#6688cc" />
+          <pointLight position={[-5, -3, -5]} intensity={0.15} color="#4488ff" />
 
           <EarthGlobe onClickGlobe={handleClickGlobe} />
           <Atmosphere />
+          <OuterGlow />
           <InnerGlow />
           <CoordinateGrid />
           <CityPins
@@ -531,16 +570,17 @@ export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps
           />
           {freePin && <FreePin lat={freePin.lat} lng={freePin.lng} />}
           <CameraZoomTo target={zoomTarget} zooming={zooming} />
-          <Stars radius={100} depth={50} count={4000} factor={3} saturation={0} fade speed={0.4} />
+          <Stars radius={200} depth={80} count={6000} factor={4} saturation={0.1} fade speed={0.3} />
           <OrbitControls
             enableZoom
             enablePan={false}
-            minDistance={3.2}
-            maxDistance={18}
+            minDistance={MIN_ZOOM}
+            maxDistance={MAX_ZOOM}
+            zoomSpeed={1.2}
             autoRotate={!selectedCity && !freePin}
-            autoRotateSpeed={0.25}
+            autoRotateSpeed={0.2}
             enableDamping
-            dampingFactor={0.05}
+            dampingFactor={0.08}
           />
         </Canvas>
 

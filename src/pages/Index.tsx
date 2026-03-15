@@ -36,17 +36,17 @@ import FiringExportPanel from '@/components/editor/FiringExportPanel';
 import LabelsPanel from '@/components/editor/LabelsPanel';
 import VideoRecorderPanel from '@/components/editor/VideoRecorderPanel';
 import ModelImportPanel from '@/components/editor/ModelImportPanel';
-import BackgroundPanel from '@/components/editor/BackgroundPanel';
+
 import SupplierCatalogPanel from '@/components/editor/SupplierCatalogPanel';
 import SafetyPanel from '@/components/editor/SafetyPanel';
 import ChainEditorPanel from '@/components/editor/ChainEditorPanel';
 import PositionGroupsPanel from '@/components/editor/PositionGroupsPanel';
-import ShowSummaryPanel from '@/components/editor/ShowSummaryPanel';
+
 import SceneEditorPanel from '@/components/editor/SceneEditorPanel';
 import SoundLevelPanel from '@/components/editor/SoundLevelPanel';
 import AROverlayPanel from '@/components/editor/AROverlayPanel';
 import ShowSharePanel from '@/components/editor/ShowSharePanel';
-import CollaborationPanel from '@/components/editor/CollaborationPanel';
+
 import ParticleEditorPanel from '@/components/editor/ParticleEditorPanel';
 import VersioningPanel from '@/components/editor/VersioningPanel';
 import WeatherPanel from '@/components/editor/WeatherPanel';
@@ -56,7 +56,7 @@ import TrajectoryOptimizerPanel from '@/components/editor/TrajectoryOptimizerPan
 import ShowTemplatesPanel from '@/components/editor/ShowTemplatesPanel';
 import TelemetryDashboard from '@/components/editor/TelemetryDashboard';
 import FlightLogPanel from '@/components/editor/FlightLogPanel';
-import PathPlannerPanel from '@/components/editor/PathPlannerPanel';
+
 import TemplateMarketplace from '@/components/editor/TemplateMarketplace';
 import SiteLayoutPanel from '@/components/editor/SiteLayoutPanel';
 import ShowSettingsPanel from '@/components/editor/ShowSettingsPanel';
@@ -119,7 +119,6 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   labels: 'w-64',
   video: 'w-64',
   models: 'w-64',
-  background: 'w-64',
   suppliers: 'w-72',
   safety: 'w-64',
   scripting: 'w-64',
@@ -127,12 +126,10 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   indoor: 'w-72',
   chains: 'w-72',
   groups: 'w-56',
-  summary: 'w-64',
   scene: 'w-64',
   soundlevel: 'w-64',
   aroverlay: 'w-64',
   share: 'w-64',
-  collab: 'w-64',
   particles: 'w-64',
   versioning: 'w-64',
   weather: 'w-64',
@@ -142,7 +139,6 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   templates: 'w-72',
   telemetry: 'w-64',
   flightlog: 'w-64',
-  pathplanner: 'w-64',
   marketplace: 'w-72',
   sitelayout: 'w-72',
   showsettings: 'w-64',
@@ -315,7 +311,7 @@ export default function Index() {
         {activePanel === 'labels' && <LabelsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'video' && <VideoRecorderPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'models' && <ModelImportPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'background' && <BackgroundPanel onClose={() => setActivePanel(null)} />}
+        
         {activePanel === 'suppliers' && <SupplierCatalogPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'safety' && <SafetyPanel />}
         {activePanel === 'scripting' && <ScriptingToolsPanel onClose={() => setActivePanel(null)} />}
@@ -323,12 +319,12 @@ export default function Index() {
         {activePanel === 'indoor' && <IndoorSimPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'chains' && <ChainEditorPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'groups' && <PositionGroupsPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'summary' && <ShowSummaryPanel onClose={() => setActivePanel(null)} />}
+        
         {activePanel === 'scene' && <SceneEditorPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'soundlevel' && <SoundLevelPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'aroverlay' && <AROverlayPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'share' && <ShowSharePanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'collab' && <CollaborationPanel onClose={() => setActivePanel(null)} />}
+        
         {activePanel === 'particles' && <ParticleEditorPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'versioning' && <VersioningPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'weather' && <WeatherPanel onClose={() => setActivePanel(null)} />}
@@ -338,7 +334,7 @@ export default function Index() {
         {activePanel === 'templates' && <ShowTemplatesPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'telemetry' && <TelemetryDashboard onClose={() => setActivePanel(null)} />}
         {activePanel === 'flightlog' && <FlightLogPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'pathplanner' && <PathPlannerPanel onClose={() => setActivePanel(null)} />}
+        
         {activePanel === 'marketplace' && <TemplateMarketplace onClose={() => setActivePanel(null)} />}
         {activePanel === 'sitelayout' && <SiteLayoutPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'showsettings' && <ShowSettingsPanel onClose={() => setActivePanel(null)} />}
