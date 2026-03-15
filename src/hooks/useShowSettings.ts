@@ -151,11 +151,12 @@ export function useShowSettings() {
 
   // Auto-load when project changes
   useEffect(() => {
-    const unsub = useProjectStore.subscribe(
-      (state) => state.projectId,
-      () => loadSettings()
-    );
     loadSettings();
+  }, [loadSettings]);
+
+  // Also reload when projectId changes
+  useEffect(() => {
+    const unsub = useProjectStore.subscribe(loadSettings);
     return unsub;
   }, [loadSettings]);
 
