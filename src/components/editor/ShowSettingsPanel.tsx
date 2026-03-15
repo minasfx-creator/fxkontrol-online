@@ -179,7 +179,7 @@ export default function ShowSettingsPanel({ onClose }: ShowSettingsProps) {
                 <InfoRow label="Latitude" value={gpsOrigin.lat.toFixed(6) + '°'} accent />
                 <InfoRow label="Longitude" value={gpsOrigin.lng.toFixed(6) + '°'} accent />
               </div>
-              <InfoRow label="Altitude" value={`${gpsOrigin.alt?.toFixed(1) || '0.0'} m`} />
+              <InfoRow label="Altitude" value={`${(gpsOrigin.altitude || 0).toFixed(1)} m`} />
             </div>
           </SettingsSection>
 
