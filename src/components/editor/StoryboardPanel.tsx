@@ -116,6 +116,96 @@ export default function StoryboardPanel({ onClose }: StoryboardPanelProps) {
     toast.success(`Added ${formations.length} formations`);
   }, [formations, handleAddFromFormation, recalculateStoryboardTimings]);
 
+  const handleQuickDemoShow = useCallback(() => {
+    const store = useProjectStore.getState();
+    const droneCount = 50;
+
+    const demoFormations: { type: 'circle' | 'star' | 'heart' | 'grid' | 'spiral'; height: number; color: string; holdDuration: number; transitionDuration: number }[] = [
+      { type: 'circle', height: 30, color: '#00B4D8', holdDuration: 8, transitionDuration: 5 },
+      { type: 'star', height: 50, color: '#FFD700', holdDuration: 10, transitionDuration: 6 },
+      { type: 'heart', height: 40, color: '#FF1493', holdDuration: 12, transitionDuration: 5 },
+      { type: 'grid', height: 35, color: '#00FF88', holdDuration: 8, transitionDuration: 4 },
+      { type: 'spiral', height: 45, color: '#9B30FF', holdDuration: 10, transitionDuration: 5 },
+    ];
+
+    let currentTime = 0;
+    const newFormations: import('@/store/useProjectStore').DroneFormation[] = [];
+
+    for (const demo of demoFormations) {
+      const points = generateFormation({ type: demo.type, count: droneCount, radius: 20, spacing: 3, rotation: 0 });
+      const formation: import('@/store/useProjectStore').DroneFormation = {
+        id: `demo-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        formationType: demo.type.charAt(0).toUpperCase() + demo.type.slice(1),
+        droneCount,
+        height: demo.height,
+        radius: 20,
+        spacing: 3,
+        rotation: 0,
+        startTime: currentTime,
+        transitionDuration: demo.transitionDuration,
+        holdDuration: demo.holdDuration,
+        color: demo.color,
+        colorTransition: 'linear',
+        points,
+      };
+      store.addDroneFormation(formation);
+      newFormations.push(formation);
+      currentTime += demo.transitionDuration + demo.holdDuration;
+    }
+
+    // Update project duration
+    store.setDuration(Math.max(store.duration, currentTime + 15));
+
+    // Add all to storyboard
+    setTimeout(() => {
+      const updatedFormations = useProjectStore.getState().droneFormations;
+      newFormations.forEach((f, i) => {
+        const id = `sb-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 5)}`;
+        addStoryboardEntry({
+          id,
+          formationId: f.id,
+          formationName: f.formationType,
+          startFrame: Math.round(f.startTime * 30),
+          duration: Math.round(f.holdDuration * 30),
+          transitionType: 'linear',
+          transitionDuration: Math.round(f.transitionDuration * 30),
+          locked: false,
+        });
+        if (i === 0) setPurpose(id, 'takeoff');
+        else if (i === newFormations.length - 1) setPurpose(id, 'land');
+        else setPurpose(id, 'show');
+      });
+      recalculateStoryboardTimings();
+    }, 50);
+
+    toast.success(`Demo show created: ${demoFormations.length} formations, ${droneCount} drones`);
+  }, [addStoryboardEntry, recalculateStoryboardTimings]);
+
+  const handleExportKMZ = useCallback(async () => {
+    const store = useProjectStore.getState();
+    if (store.droneFormations.length === 0) {
+      toast.error('No formations to export. Add formations first.');
+      return;
+    }
+    try {
+      await downloadKMZ({
+        projectName: store.projectName,
+        positions: store.positions,
+        trajectories: store.trajectories,
+        formations: store.droneFormations,
+        duration: store.duration,
+        gpsOrigin: store.gpsOrigin,
+        cameraKeyframes: store.cameraKeyframes,
+        fps: 4,
+        includeTour: true,
+        includeTrails: true,
+      });
+      toast.success('KMZ exported! Open in Google Earth Pro for 3D animated playback.');
+    } catch (err) {
+      toast.error(`KMZ export failed: ${(err as Error).message}`);
+    }
+  }, []);
+
   const handleDuplicateEntry = useCallback((entry: StoryboardEntry) => {
     const id = `sb-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
     addStoryboardEntry({
