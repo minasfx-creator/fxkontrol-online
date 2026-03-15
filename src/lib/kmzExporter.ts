@@ -423,7 +423,7 @@ function buildAnimatedKML(options: KMZExportOptions): string {
      xmlns:atom="http://www.w3.org/2005/Atom">
 <Document>
   <name>${projectName} — Drone Show</name>
-  <description>Animated drone show exported from AEROSWARM NEXUS by ${author}</description>
+  <description>Animated drone show exported from FX KONTROL by ${author}</description>
   <open>1</open>
 
   <Style id="droneStyle">
