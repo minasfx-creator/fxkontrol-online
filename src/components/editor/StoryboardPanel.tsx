@@ -305,6 +305,25 @@ export default function StoryboardPanel({ onClose }: StoryboardPanelProps) {
             <Plus className="w-3 h-3" />All
           </Button>
         </div>
+
+        {/* Quick Demo + KMZ Export */}
+        <div className="flex gap-1">
+          <Button
+            size="sm" variant="outline"
+            className="h-6 text-[8px] flex-1 border-primary/30 text-primary hover:bg-primary/10"
+            onClick={handleQuickDemoShow}
+          >
+            <Sparkles className="w-2.5 h-2.5 mr-0.5" />Quick Demo Show
+          </Button>
+          <Button
+            size="sm" variant="outline"
+            className="h-6 text-[8px] flex-1 border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10"
+            onClick={handleExportKMZ}
+          >
+            <Globe className="w-2.5 h-2.5 mr-0.5" />Export KMZ
+          </Button>
+        </div>
+
         <div className="flex gap-1">
           <Button size="sm" variant="outline" className="h-5 text-[8px] flex-1" onClick={recalculateStoryboardTimings}>
             <RefreshCw className="w-2.5 h-2.5 mr-0.5" />Re-sync
