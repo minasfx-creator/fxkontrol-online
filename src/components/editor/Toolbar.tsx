@@ -29,21 +29,21 @@ function TimecodeDisplay() {
   const tcStr = formatTimecode(tc);
 
   return (
-    <div className="flex items-center gap-2.5 px-3 py-1 glass rounded-lg border border-border/20">
+    <div className="flex items-center gap-2.5 px-3 py-1 rounded-xl border border-border/10" style={{ background: 'hsl(var(--surface-0) / 0.5)' }}>
       <span className="font-mono-code text-sm tracking-[0.14em] text-primary font-bold tabular-nums">{tcStr}</span>
       <div className="flex items-center gap-1.5">
         <div className={cn(
           "w-2 h-2 rounded-full transition-colors",
-          isPlaying ? "bg-success animate-pulse-glow" : "bg-muted-foreground/40"
+          isPlaying ? "bg-success/80 animate-pulse-glow" : "bg-muted-foreground/20"
         )} />
         {running && (
           <div className={cn(
             "w-2 h-2 rounded-full",
-            locked ? "bg-primary" : "bg-warning animate-pulse"
+            locked ? "bg-primary/60" : "bg-warning/60 animate-pulse"
           )} />
         )}
       </div>
-      <span className="text-[9px] font-mono-code text-muted-foreground/60">
+      <span className="text-[9px] font-mono-code text-muted-foreground/30 tabular-nums">
         {frameRate}{tc.dropFrame ? 'DF' : ''}
       </span>
     </div>
