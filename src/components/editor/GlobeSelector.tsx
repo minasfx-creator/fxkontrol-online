@@ -92,10 +92,46 @@ function sphereToLatLng(point: THREE.Vector3): { lat: number; lng: number } {
   return { lat, lng: lng < -180 ? lng + 360 : lng > 180 ? lng - 360 : lng };
 }
 
-// ─── Atmosphere shader ───
+// ─── Atmosphere shader (Google Earth style - thin blue line) ───
 function Atmosphere() {
   return (
-    <mesh scale={[1.15, 1.15, 1.15]}>
+    <mesh scale={[1.08, 1.08, 1.08]}>
+      <sphereGeometry args={[GLOBE_RADIUS, 128, 128]} />
+      <shaderMaterial
+        transparent
+        depthWrite={false}
+        side={THREE.BackSide}
+        vertexShader={`
+          varying vec3 vNormal;
+          varying vec3 vWorldPos;
+          void main() {
+            vNormal = normalize(normalMatrix * normal);
+            vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `}
+        fragmentShader={`
+          varying vec3 vNormal;
+          varying vec3 vWorldPos;
+          void main() {
+            float rim = pow(0.65 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 3.0);
+            // Google Earth: thin bright blue at edge, fading to transparent
+            vec3 innerColor = vec3(0.35, 0.65, 1.0);
+            vec3 outerColor = vec3(0.15, 0.35, 0.85);
+            vec3 color = mix(innerColor, outerColor, rim);
+            float alpha = smoothstep(0.0, 1.0, rim) * 0.6;
+            gl_FragColor = vec4(color, alpha);
+          }
+        `}
+      />
+    </mesh>
+  );
+}
+
+// ─── Secondary outer glow (subtle space glow) ───
+function OuterGlow() {
+  return (
+    <mesh scale={[1.18, 1.18, 1.18]}>
       <sphereGeometry args={[GLOBE_RADIUS, 64, 64]} />
       <shaderMaterial
         transparent
@@ -111,9 +147,8 @@ function Atmosphere() {
         fragmentShader={`
           varying vec3 vNormal;
           void main() {
-            float intensity = pow(0.72 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);
-            vec3 color = mix(vec3(0.3, 0.6, 1.0), vec3(0.1, 0.4, 0.9), intensity);
-            gl_FragColor = vec4(color, intensity * 0.7);
+            float intensity = pow(0.5 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 4.0);
+            gl_FragColor = vec4(0.2, 0.5, 1.0, intensity * 0.15);
           }
         `}
       />
