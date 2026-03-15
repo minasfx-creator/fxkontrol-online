@@ -1,0 +1,79 @@
+# FX KONTROL · Swarm Compute Node
+# Distributed drone swarm simulation worker
+# by Minas FX
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fxk-swarm-node
+  namespace: fxkontrol
+  labels:
+    app: fxk-swarm
+    component: compute-node
+    version: "2.0"
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: fxk-swarm
+      component: compute-node
+  template:
+    metadata:
+      labels:
+        app: fxk-swarm
+        component: compute-node
+    spec:
+      containers:
+      - name: swarm-engine
+        image: ghcr.io/minasfx/fxkontrol-swarm:2.0
+        ports:
+        - containerPort: 8082
+          name: grpc
+        - containerPort: 9090
+          name: metrics
+        env:
+        - name: SWARM_MAX_DRONES
+          value: "20000"
+        - name: SWARM_PARTITION
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: COORDINATOR_URL
+          value: "http://fxk-coordinator:8080"
+        - name: RUST_LOG
+          value: "info"
+        resources:
+          requests:
+            cpu: "1"
+            memory: "1Gi"
+          limits:
+            cpu: "2"
+            memory: "2Gi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8082
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8082
+          initialDelaySeconds: 3
+          periodSeconds: 5
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fxk-swarm-nodes
+  namespace: fxkontrol
+spec:
+  selector:
+    app: fxk-swarm
+    component: compute-node
+  ports:
+  - port: 8082
+    targetPort: 8082
+    name: grpc
+  clusterIP: None  # Headless for direct pod addressing

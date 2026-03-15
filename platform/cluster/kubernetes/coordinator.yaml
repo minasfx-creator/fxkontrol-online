@@ -1,0 +1,68 @@
+# FX KONTROL · Swarm Coordinator
+# Distributes drone swarm partitions across compute nodes
+# by Minas FX
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fxk-coordinator
+  namespace: fxkontrol
+  labels:
+    app: fxk-swarm
+    component: coordinator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fxk-swarm
+      component: coordinator
+  template:
+    metadata:
+      labels:
+        app: fxk-swarm
+        component: coordinator
+    spec:
+      containers:
+      - name: coordinator
+        image: ghcr.io/minasfx/fxkontrol-coordinator:2.0
+        ports:
+        - containerPort: 8080
+          name: http
+        - containerPort: 9090
+          name: metrics
+        env:
+        - name: MAX_TOTAL_DRONES
+          value: "100000"
+        - name: PARTITION_SIZE
+          value: "20000"
+        - name: REDIS_URL
+          value: "redis://redis:6379"
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fxk-coordinator
+  namespace: fxkontrol
+spec:
+  selector:
+    app: fxk-swarm
+    component: coordinator
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: http
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fxkontrol
+  labels:
+    project: fxkontrol
+    owner: minasfx

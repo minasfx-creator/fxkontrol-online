@@ -1,0 +1,30 @@
+[package]
+name = "fxkontrol-swarm-core"
+version = "2.0.0"
+edition = "2021"
+authors = ["Minas FX <dev@minasfx.com>"]
+description = "High-performance swarm intelligence core for FX KONTROL drone show platform"
+
+[dependencies]
+nalgebra = "0.33"
+rayon = "1.10"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+wasm-bindgen = { version = "0.2", optional = true }
+log = "0.4"
+
+[features]
+wasm = ["wasm-bindgen"]
+
+[lib]
+name = "swarm_core"
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "swarm-server"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
