@@ -148,9 +148,9 @@ const STAR_VERTEX_SHADER = `
     vSize = aSize;
     vSeed = aSeed;
     vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-    // Distance-based size: closer = larger, farther = smaller (realistic scale)
-    gl_PointSize = aSize * (2200.0 / -mvPos.z);
-    gl_PointSize = clamp(gl_PointSize, 1.0, 180.0);
+    // Blender-calibrated: tighter point size for realistic star scale
+    gl_PointSize = aSize * (1600.0 / -mvPos.z);
+    gl_PointSize = clamp(gl_PointSize, 1.0, 140.0);
     gl_Position = projectionMatrix * mvPos;
   }
 `;
