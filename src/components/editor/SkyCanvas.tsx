@@ -1918,7 +1918,7 @@ function WeatherEffects() {
   );
 }
 
-// --- Camera controller with persistent state ---
+// --- Camera controller with persistent state + intro top-down animation ---
 function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPosition: [number, number, number]; targetLookAt: [number, number, number]; freeLook: boolean }) {
   const { camera } = useThree();
   const controlsRef = useRef<any>(null);
@@ -1927,6 +1927,16 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
   const animating = useRef(false);
   const initialized = useRef(false);
   const lastPresetKey = useRef('');
+  const introPhase = useRef<'topdown' | 'sweeping' | 'done'>('topdown');
+  const introTimer = useRef(0);
+
+  // Set intro start position: top-down bird's eye centered on logo/stage
+  useEffect(() => {
+    camera.position.set(0, 180, 0.01); // straight down
+    camera.lookAt(0, 0, 0);
+    introPhase.current = 'topdown';
+    introTimer.current = 0;
+  }, []);
 
   // Only animate camera when preset explicitly changes (not on every re-render)
   const presetKey = `${targetPosition.join(',')}_${targetLookAt.join(',')}`;
@@ -1951,7 +1961,44 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
     animating.current = true;
   }, [presetKey, freeLook]);
 
-  useFrame(() => {
+  useFrame((_, delta) => {
+    // ── Intro animation: Top-down → sweep to normal view ──
+    if (introPhase.current !== 'done') {
+      introTimer.current += delta;
+      
+      if (introPhase.current === 'topdown') {
+        // Hold top-down for 1.5s, slowly rotating
+        camera.position.set(
+          Math.sin(introTimer.current * 0.3) * 2,
+          180 - introTimer.current * 10, // slowly descend
+          Math.cos(introTimer.current * 0.3) * 2 + 0.01
+        );
+        camera.lookAt(0, 0, 0);
+        if (controlsRef.current) {
+          controlsRef.current.target.set(0, 0, 0);
+          controlsRef.current.update();
+        }
+        if (introTimer.current > 1.5) {
+          introPhase.current = 'sweeping';
+        }
+      } else if (introPhase.current === 'sweeping') {
+        // Smooth sweep from current position to the default camera preset
+        const defaultPos = new THREE.Vector3(...targetPosition);
+        const defaultLook = new THREE.Vector3(...targetLookAt);
+        camera.position.lerp(defaultPos, 0.035);
+        if (controlsRef.current) {
+          controlsRef.current.target.lerp(defaultLook, 0.035);
+          controlsRef.current.update();
+        }
+        if (camera.position.distanceTo(defaultPos) < 0.5) {
+          introPhase.current = 'done';
+          animating.current = false;
+        }
+      }
+      return;
+    }
+
+    // ── Normal preset animation ──
     if (!animating.current || !controlsRef.current || freeLook) return;
     camera.position.lerp(targetPos.current, 0.06);
     controlsRef.current.target.lerp(targetLook.current, 0.06);

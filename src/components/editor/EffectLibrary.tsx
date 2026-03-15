@@ -1,23 +1,25 @@
-import { useState, useCallback } from 'react';
-import { Search, ChevronDown, ChevronRight, Flame, Sparkles, Radio, Shapes, Wand2, Zap, Lightbulb, Droplets, Bomb, CandlestickChart as Candle, Waves, Box, AlertTriangle } from 'lucide-react';
+import { useState, useCallback, useMemo } from 'react';
+import { Search, ChevronDown, ChevronRight, Flame, Sparkles, Radio, Shapes, Wand2, Zap, Lightbulb, Droplets, Bomb, CandlestickChart as Candle, Waves, Box, AlertTriangle, GripVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { EFFECT_LIBRARY, useProjectStore, type Effect } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
 import { parseVDL } from '@/lib/vdlParser';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 
 const CATEGORIES = [
-  { key: 'morteiros' as const, label: 'Shells', icon: Flame },
-  { key: 'peonias' as const, label: 'Aerial Effects', icon: Sparkles },
-  { key: 'mines' as const, label: 'Mines', icon: Bomb },
-  { key: 'roman_candles' as const, label: 'Roman Candles', icon: Candle },
-  { key: 'waterfalls' as const, label: 'Waterfalls', icon: Waves },
-  { key: 'cakes_batteries' as const, label: 'Cakes & Batteries', icon: Box },
-  { key: 'sfx' as const, label: 'Special FX', icon: Droplets },
-  { key: 'lasers' as const, label: 'Lasers', icon: Zap },
-  { key: 'iluminacao' as const, label: 'Lighting', icon: Lightbulb },
-  { key: 'drones' as const, label: 'Drone Units', icon: Radio },
-  { key: 'formacoes' as const, label: 'Formations', icon: Shapes },
+  { key: 'morteiros' as const, label: 'Shells', icon: Flame, accent: 'hsl(15, 95%, 55%)' },
+  { key: 'peonias' as const, label: 'Aerial Effects', icon: Sparkles, accent: 'hsl(45, 90%, 55%)' },
+  { key: 'mines' as const, label: 'Mines', icon: Bomb, accent: 'hsl(0, 80%, 50%)' },
+  { key: 'roman_candles' as const, label: 'Roman Candles', icon: Candle, accent: 'hsl(30, 85%, 55%)' },
+  { key: 'waterfalls' as const, label: 'Waterfalls', icon: Waves, accent: 'hsl(195, 90%, 55%)' },
+  { key: 'cakes_batteries' as const, label: 'Cakes & Batteries', icon: Box, accent: 'hsl(280, 70%, 55%)' },
+  { key: 'sfx' as const, label: 'Special FX', icon: Droplets, accent: 'hsl(190, 90%, 55%)' },
+  { key: 'lasers' as const, label: 'Lasers', icon: Zap, accent: 'hsl(120, 80%, 50%)' },
+  { key: 'iluminacao' as const, label: 'Lighting', icon: Lightbulb, accent: 'hsl(50, 95%, 55%)' },
+  { key: 'drones' as const, label: 'Drone Units', icon: Radio, accent: 'hsl(200, 80%, 55%)' },
+  { key: 'formacoes' as const, label: 'Formations', icon: Shapes, accent: 'hsl(270, 70%, 60%)' },
 ];
 
 type FilterType = 'all' | 'firework' | 'drone' | 'sfx' | 'laser' | 'light';
@@ -51,7 +53,6 @@ function EffectCard({ effect }: { effect: Effect }) {
         ? [selectedPositionId]
         : [];
 
-    // Auto-create a position if none is selected (drones, lasers, lights, SFX)
     if (targetIds.length === 0) {
       const store = useProjectStore.getState();
       const posType = isDroneEffect ? 'drone-pad' as const : 'pyro' as const;
@@ -102,7 +103,13 @@ function EffectCard({ effect }: { effect: Effect }) {
     setIsDragging(false);
   }, []);
 
-  const typeColor = effect.type === 'laser' ? 'text-green-400' : effect.type === 'sfx' ? 'text-cyan-400' : effect.type === 'light' ? 'text-yellow-400' : '';
+  const typeColors: Record<string, string> = {
+    laser: 'border-l-green-500',
+    sfx: 'border-l-cyan-400',
+    light: 'border-l-yellow-400',
+    firework: 'border-l-orange-500',
+    drone: 'border-l-blue-400',
+  };
 
   return (
     <button
@@ -112,23 +119,38 @@ function EffectCard({ effect }: { effect: Effect }) {
       onClick={() => selectEffect(effect.id)}
       onDoubleClick={handleDoubleClick}
       className={cn(
-        "w-full flex items-center gap-2 px-2 py-1.5 rounded text-left transition-all text-sm group effect-card-hover",
+        "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-left transition-all group border-l-2",
+        typeColors[effect.type] || 'border-l-muted',
         isSelected
-          ? "bg-primary/10 text-primary border border-primary/30 dock-active-glow"
-          : "hover:bg-surface-3/80 text-secondary-foreground border border-transparent",
-        isDragging && "opacity-50"
+          ? "bg-primary/12 text-primary ring-1 ring-primary/25"
+          : "hover:bg-surface-3/60 text-secondary-foreground",
+        isDragging && "opacity-40 scale-95"
       )}
     >
+      {/* Drag handle */}
+      <GripVertical className="w-3 h-3 text-muted-foreground/30 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+      
+      {/* Color swatch */}
       <div
-        className="w-2.5 h-2.5 rounded-full flex-shrink-0 ring-1 ring-border/50 transition-transform group-hover:scale-125"
-        style={{ backgroundColor: effect.color, boxShadow: `0 0 6px ${effect.color}44` }}
+        className="w-3 h-3 rounded-sm flex-shrink-0 ring-1 ring-white/10"
+        style={{ backgroundColor: effect.color, boxShadow: `0 0 8px ${effect.color}33` }}
       />
+      
+      {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className={cn("truncate text-[11px] font-medium", typeColor)}>{effect.name}</p>
-        <p className="text-[9px] text-muted-foreground font-mono-code">{effect.duration}s · ${effect.cost}</p>
+        <p className="truncate text-[11px] font-semibold leading-tight">{effect.name}</p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className="text-[9px] text-muted-foreground font-mono-code">{effect.duration}s</span>
+          <span className="text-[9px] text-muted-foreground/50">·</span>
+          <span className="text-[9px] text-muted-foreground font-mono-code">${effect.cost}</span>
+        </div>
       </div>
-      <div className="opacity-0 group-hover:opacity-100 transition-opacity text-[7px] text-muted-foreground/50 font-mono-code">
-        DBL
+      
+      {/* Quick-add hint */}
+      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+        <span className="text-[7px] font-bold text-muted-foreground/60 bg-surface-3 px-1 py-0.5 rounded font-mono-code">
+          2×CLICK
+        </span>
       </div>
     </button>
   );
@@ -149,11 +171,20 @@ export default function EffectLibrary() {
     });
   };
 
-  const filteredEffects = EFFECT_LIBRARY.filter((e) => {
-    if (typeFilter !== 'all' && e.type !== typeFilter) return false;
-    if (search && !e.name.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+  const filteredEffects = useMemo(() => 
+    EFFECT_LIBRARY.filter((e) => {
+      if (typeFilter !== 'all' && e.type !== typeFilter) return false;
+      if (search && !e.name.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    }), [typeFilter, search]);
+
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    filteredEffects.forEach(e => {
+      counts[e.category] = (counts[e.category] || 0) + 1;
+    });
+    return counts;
+  }, [filteredEffects]);
 
   const handleVDLSubmit = (e: React.KeyboardEvent) => {
     if (e.key !== 'Enter' || !vdlInput.trim()) return;
@@ -176,41 +207,50 @@ export default function EffectLibrary() {
     setVdlInput('');
   };
 
-  const totalCount = filteredEffects.length;
-
   return (
-    <div className="h-full flex flex-col bg-card border-r border-border">
+    <div className="h-full flex flex-col bg-card/95 backdrop-blur-sm border-r border-border/60">
       {/* Header */}
-      <div className="px-3 py-2 border-b border-border">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-[10px] font-bold text-foreground uppercase tracking-[0.15em]">Asset Palette</h2>
-          <span className="text-[9px] font-mono text-muted-foreground">{totalCount}</span>
+      <div className="px-3 pt-3 pb-2 border-b border-border/40">
+        <div className="flex items-center justify-between mb-2.5">
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+              <Sparkles className="w-3 h-3 text-primary" />
+            </div>
+            <h2 className="text-[11px] font-bold text-foreground uppercase tracking-[0.12em] font-display">Effect Library</h2>
+          </div>
+          <Badge variant="secondary" className="text-[9px] font-mono-code h-5 px-1.5">
+            {filteredEffects.length}
+          </Badge>
         </div>
-        <div className="relative mb-1.5">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+
+        {/* Search */}
+        <div className="relative mb-2">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60" />
           <Input
             placeholder="Search effects..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-7 pl-7 text-xs bg-surface-2 border-border"
+            className="h-8 pl-8 text-xs bg-surface-1 border-border/40 focus:border-primary/50 rounded-md"
           />
         </div>
-        {/* Type filter chips — no emojis, icon-only */}
-        <div className="flex flex-wrap gap-0.5">
+
+        {/* Type filter chips */}
+        <div className="flex flex-wrap gap-1">
           {FILTER_CHIPS.map(f => {
             const FIcon = f.icon;
+            const isActive = typeFilter === f.key;
             return (
               <button
                 key={f.key}
                 onClick={() => setTypeFilter(f.key)}
                 className={cn(
-                  "px-1.5 py-0.5 rounded text-[8px] font-bold uppercase transition-all border flex items-center gap-1",
-                  typeFilter === f.key
-                    ? "bg-primary/15 text-primary border-primary/30"
-                    : "bg-surface-2 text-muted-foreground border-transparent hover:text-foreground"
+                  "px-2 py-1 rounded-md text-[9px] font-bold uppercase transition-all border flex items-center gap-1",
+                  isActive
+                    ? "bg-primary/15 text-primary border-primary/30 shadow-[0_0_8px_hsl(var(--primary)/0.15)]"
+                    : "bg-surface-1 text-muted-foreground/70 border-border/30 hover:text-foreground hover:border-border/60"
                 )}
               >
-                <FIcon className="w-2.5 h-2.5" />
+                <FIcon className="w-3 h-3" />
                 {f.label}
               </button>
             );
@@ -218,57 +258,67 @@ export default function EffectLibrary() {
         </div>
       </div>
 
-      {/* Categories */}
-      <div className="flex-1 overflow-y-auto px-1 py-1">
-        {CATEGORIES.map(({ key, label, icon: Icon }) => {
-          const isOpen = openCategories.has(key);
-          const effects = filteredEffects.filter((e) => e.category === key);
-          if (effects.length === 0) return null;
+      {/* Categories with effects */}
+      <ScrollArea className="flex-1">
+        <div className="py-1">
+          {CATEGORIES.map(({ key, label, icon: Icon, accent }) => {
+            const isOpen = openCategories.has(key);
+            const count = categoryCounts[key] || 0;
+            if (count === 0) return null;
+            const effects = filteredEffects.filter((e) => e.category === key);
 
-          return (
-            <div key={key} className="mb-0.5">
-              <button
-                onClick={() => toggleCategory(key)}
-                className="w-full flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {isOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                <Icon className="w-3.5 h-3.5 text-primary/60" />
-                <span className="uppercase tracking-wider text-[10px]">{label}</span>
-                <span className="ml-auto text-[9px] text-muted-foreground font-mono">{effects.length}</span>
-              </button>
-              {isOpen && (
-                <div className="pl-2 pr-1 space-y-0.5">
-                  {effects.map((effect) => (
-                    <EffectCard key={effect.id} effect={effect} />
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+            return (
+              <div key={key} className="mb-0.5">
+                <button
+                  onClick={() => toggleCategory(key)}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold transition-all group",
+                    isOpen ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {isOpen ? <ChevronDown className="w-3 h-3 text-muted-foreground/60" /> : <ChevronRight className="w-3 h-3 text-muted-foreground/40" />}
+                  <div className="w-4 h-4 rounded flex items-center justify-center" style={{ backgroundColor: `${accent}15` }}>
+                    <Icon className="w-2.5 h-2.5" style={{ color: accent }} />
+                  </div>
+                  <span className="uppercase tracking-wider text-[10px] flex-1 text-left">{label}</span>
+                  <span className="text-[9px] font-mono-code text-muted-foreground/50 bg-surface-2 px-1.5 py-0.5 rounded">
+                    {count}
+                  </span>
+                </button>
+                {isOpen && (
+                  <div className="px-1.5 pb-1 space-y-0.5">
+                    {effects.map((effect) => (
+                      <EffectCard key={effect.id} effect={effect} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </ScrollArea>
 
       {/* VDL Quick Add */}
-      <div className="px-3 py-2 border-t border-border space-y-1.5">
-        <div className="flex items-center gap-1.5">
+      <div className="px-3 py-2.5 border-t border-border/40 bg-surface-1/50">
+        <div className="flex items-center gap-1.5 mb-1.5">
           <Wand2 className="h-3 w-3 text-primary" />
-          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-[0.15em]">VDL Quick Add</span>
+          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-[0.12em]">VDL Quick Add</span>
         </div>
         <Input
           placeholder='e.g. 4in Red Peony'
           value={vdlInput}
           onChange={(e) => setVdlInput(e.target.value)}
           onKeyDown={handleVDLSubmit}
-          className="h-7 text-xs bg-surface-2 border-border font-mono"
+          className="h-7 text-xs bg-surface-2 border-border/40 font-mono-code"
         />
         {vdlInput && (
-          <p className={cn("text-[10px]", parseVDL(vdlInput).valid ? "text-primary" : "text-muted-foreground")}>
+          <p className={cn("text-[9px] mt-1", parseVDL(vdlInput).valid ? "text-primary" : "text-muted-foreground/50")}>
             {parseVDL(vdlInput).valid
-              ? `${parseVDL(vdlInput).typeName} · ${parseVDL(vdlInput).caliber}" · ${parseVDL(vdlInput).duration}s — Enter to add`
+              ? `${parseVDL(vdlInput).typeName} · ${parseVDL(vdlInput).caliber}" · ${parseVDL(vdlInput).duration}s — ⏎ Enter`
               : 'Keep typing...'}
           </p>
         )}
-        <p className="text-[9px] text-muted-foreground">Drag, double-click, or type VDL</p>
+        <p className="text-[8px] text-muted-foreground/40 mt-1 font-mono-code">Drag · Double-click · VDL code</p>
       </div>
     </div>
   );
