@@ -1,15 +1,16 @@
 /**
- * ─── PS5-Style Cinematic Intro ─────────────────────────────────────
- * Plays two videos sequentially with PlayStation 5-inspired transitions:
- *   1. Minas FX logo vinheta
- *   2. FX Kontrol Unreal Engine cinematic
- * Then fades to the main splash/app.
+ * ─── FX KONTROL Cinematic Intro ────────────────────────────────────
+ * PS5-inspired intro sequence with refined fades and transitions:
+ *   1. Fade from black → Minas FX vinheta
+ *   2. Smooth cross-dissolve with cyan light sweep
+ *   3. FX KONTROL Unreal Engine cinematic
+ *   4. Elegant fade to platform
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 
-type IntroPhase = 'black-in' | 'video1' | 'transition' | 'video2' | 'fade-out' | 'done';
+type IntroPhase = 'black-in' | 'video1' | 'cross-fade' | 'video2' | 'fade-out' | 'done';
 
 interface CinematicIntroProps {
   onComplete: () => void;
@@ -18,76 +19,83 @@ interface CinematicIntroProps {
 export default function CinematicIntro({ onComplete }: CinematicIntroProps) {
   const [phase, setPhase] = useState<IntroPhase>('black-in');
   const [canSkip, setCanSkip] = useState(false);
+  const [blackOpacity, setBlackOpacity] = useState(1);
+  const [v1Opacity, setV1Opacity] = useState(0);
+  const [v2Opacity, setV2Opacity] = useState(0);
+  const [sweepActive, setSweepActive] = useState(false);
   const video1Ref = useRef<HTMLVideoElement>(null);
   const video2Ref = useRef<HTMLVideoElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Allow skip after 2s
+  // Allow skip after 1.5s
   useEffect(() => {
-    const t = setTimeout(() => setCanSkip(true), 2000);
+    const t = setTimeout(() => setCanSkip(true), 1500);
     return () => clearTimeout(t);
   }, []);
 
-  // Phase: black-in → video1
+  // ── Phase: black-in → fade reveal video1 ─────────────────────
   useEffect(() => {
-    if (phase === 'black-in') {
-      const t = setTimeout(() => setPhase('video1'), 800);
-      return () => clearTimeout(t);
-    }
+    if (phase !== 'black-in') return;
+    // Start fading black out after a brief pause
+    const t1 = setTimeout(() => {
+      setBlackOpacity(0);
+      setV1Opacity(1);
+    }, 400);
+    const t2 = setTimeout(() => setPhase('video1'), 1200);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [phase]);
 
-  // Phase: video1 play
+  // ── Phase: video1 — play Minas FX ────────────────────────────
   useEffect(() => {
-    if (phase === 'video1' && video1Ref.current) {
-      video1Ref.current.currentTime = 0;
-      video1Ref.current.play().catch(() => {
-        // Autoplay blocked — skip to video2
-        setPhase('transition');
-      });
-    }
+    if (phase !== 'video1' || !video1Ref.current) return;
+    video1Ref.current.currentTime = 0;
+    video1Ref.current.play().catch(() => setPhase('cross-fade'));
   }, [phase]);
 
-  // Phase: transition → video2
+  // ── Phase: cross-fade — cinematic dissolve ───────────────────
   useEffect(() => {
-    if (phase === 'transition') {
-      const t = setTimeout(() => setPhase('video2'), 900);
-      return () => clearTimeout(t);
-    }
+    if (phase !== 'cross-fade') return;
+    setSweepActive(true);
+
+    // Dissolve: fade v1 out + v2 in simultaneously
+    const t1 = setTimeout(() => {
+      setV1Opacity(0);
+      setV2Opacity(1);
+    }, 200);
+
+    const t2 = setTimeout(() => {
+      setSweepActive(false);
+      setPhase('video2');
+    }, 1200);
+
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [phase]);
 
-  // Phase: video2 play
+  // ── Phase: video2 — play FX Kontrol ──────────────────────────
   useEffect(() => {
-    if (phase === 'video2' && video2Ref.current) {
-      video2Ref.current.currentTime = 0;
-      video2Ref.current.play().catch(() => {
-        setPhase('fade-out');
-      });
-    }
+    if (phase !== 'video2' || !video2Ref.current) return;
+    video2Ref.current.currentTime = 0;
+    video2Ref.current.play().catch(() => setPhase('fade-out'));
   }, [phase]);
 
-  // Phase: fade-out → done
+  // ── Phase: fade-out → done ───────────────────────────────────
   useEffect(() => {
-    if (phase === 'fade-out') {
-      const t = setTimeout(() => {
-        setPhase('done');
-        onComplete();
-      }, 1200);
-      return () => clearTimeout(t);
-    }
+    if (phase !== 'fade-out') return;
+    setBlackOpacity(1);
+    setV2Opacity(0);
+    const t = setTimeout(() => {
+      setPhase('done');
+      onComplete();
+    }, 1400);
+    return () => clearTimeout(t);
   }, [phase, onComplete]);
 
-  const handleVideo1End = useCallback(() => {
-    setPhase('transition');
-  }, []);
-
-  const handleVideo2End = useCallback(() => {
-    setPhase('fade-out');
-  }, []);
+  const handleVideo1End = useCallback(() => setPhase('cross-fade'), []);
+  const handleVideo2End = useCallback(() => setPhase('fade-out'), []);
 
   const handleSkip = useCallback(() => {
     if (!canSkip) return;
-    if (video1Ref.current) { video1Ref.current.pause(); }
-    if (video2Ref.current) { video2Ref.current.pause(); }
+    video1Ref.current?.pause();
+    video2Ref.current?.pause();
     setPhase('fade-out');
   }, [canSkip]);
 
@@ -95,142 +103,100 @@ export default function CinematicIntro({ onComplete }: CinematicIntroProps) {
 
   return (
     <div
-      ref={containerRef}
-      className="fixed inset-0 z-[100] bg-black cursor-pointer select-none"
+      className="fixed inset-0 z-[100] select-none cursor-pointer overflow-hidden"
+      style={{ background: 'hsl(225 14% 3%)' }}
       onClick={handleSkip}
       onKeyDown={(e) => { if (e.key === 'Escape' || e.key === ' ') handleSkip(); }}
       tabIndex={0}
     >
-      {/* PS5-style ambient particles */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-10">
-        {Array.from({ length: 30 }).map((_, i) => (
-          <div
-            key={i}
-            className="absolute rounded-full"
-            style={{
-              width: `${2 + Math.random() * 3}px`,
-              height: `${2 + Math.random() * 3}px`,
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              background: `hsl(${210 + Math.random() * 30}, 80%, ${60 + Math.random() * 30}%)`,
-              opacity: 0.15 + Math.random() * 0.25,
-              animation: `cinematic-float ${6 + Math.random() * 8}s ease-in-out infinite`,
-              animationDelay: `${Math.random() * 5}s`,
-            }}
-          />
-        ))}
-      </div>
-
       {/* Video 1 — Minas FX */}
-      <div
-        className={cn(
-          "absolute inset-0 flex items-center justify-center transition-all duration-700 z-20",
-          phase === 'video1' ? 'opacity-100 scale-100' : 'opacity-0 scale-[1.02]',
-        )}
-      >
-        <video
-          ref={video1Ref}
-          src="/videos/minas-fx-intro.mp4"
-          className="w-full h-full object-contain"
-          muted={false}
-          playsInline
-          preload="auto"
-          onEnded={handleVideo1End}
-        />
-      </div>
+      <video
+        ref={video1Ref}
+        src="/videos/minas-fx-intro.mp4"
+        className="absolute inset-0 w-full h-full object-contain"
+        style={{
+          opacity: v1Opacity,
+          transition: 'opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+        playsInline
+        preload="auto"
+        onEnded={handleVideo1End}
+      />
 
-      {/* PS5 transition flash */}
-      <div
-        className={cn(
-          "absolute inset-0 z-30 pointer-events-none transition-opacity duration-500",
-          phase === 'transition' ? 'opacity-100' : 'opacity-0',
-        )}
-      >
-        {/* Horizontal light wipe */}
-        <div
-          className={cn(
-            "absolute top-0 h-full w-[3px] bg-gradient-to-b from-transparent via-white to-transparent transition-all duration-700 ease-out",
-            phase === 'transition' ? 'left-full' : 'left-0',
-          )}
-          style={{
-            boxShadow: '0 0 60px 20px rgba(255,255,255,0.3), 0 0 120px 40px rgba(100,150,255,0.15)',
-          }}
-        />
-        {/* Center flash */}
-        <div className="absolute inset-0 flex items-center justify-center">
+      {/* Video 2 — FX Kontrol */}
+      <video
+        ref={video2Ref}
+        src="/videos/fx-kontrol-intro.mp4"
+        className="absolute inset-0 w-full h-full object-contain"
+        style={{
+          opacity: v2Opacity,
+          transition: 'opacity 1s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+        playsInline
+        preload="auto"
+        onEnded={handleVideo2End}
+      />
+
+      {/* Cross-fade light sweep — PS5 style cyan wipe */}
+      {sweepActive && (
+        <div className="absolute inset-0 z-30 pointer-events-none overflow-hidden">
           <div
-            className={cn(
-              "w-1 h-1 rounded-full bg-white transition-all duration-500",
-              phase === 'transition' ? 'w-[200vw] h-[200vh] opacity-30' : 'opacity-0',
-            )}
+            className="absolute top-0 bottom-0 w-[2px]"
             style={{
-              boxShadow: '0 0 100px 50px rgba(255,255,255,0.2)',
+              background: 'linear-gradient(to bottom, transparent 5%, hsl(195 100% 60% / 0.9) 50%, transparent 95%)',
+              boxShadow: '0 0 80px 30px hsl(195 100% 55% / 0.25), 0 0 160px 60px hsl(195 100% 50% / 0.08)',
+              animation: 'fxk-sweep 1s cubic-bezier(0.25, 0.1, 0.25, 1) forwards',
             }}
           />
         </div>
-      </div>
+      )}
 
-      {/* Video 2 — FX Kontrol */}
+      {/* Vignette — cinematic depth */}
       <div
-        className={cn(
-          "absolute inset-0 flex items-center justify-center transition-all duration-700 z-20",
-          phase === 'video2' ? 'opacity-100 scale-100' : phase === 'fade-out' ? 'opacity-0 scale-[1.05]' : 'opacity-0 scale-95',
-        )}
-      >
-        <video
-          ref={video2Ref}
-          src="/videos/fx-kontrol-intro.mp4"
-          className="w-full h-full object-contain"
-          muted={false}
-          playsInline
-          preload="auto"
-          onEnded={handleVideo2End}
-        />
-      </div>
-
-      {/* Vignette overlay — PS5 style */}
-      <div
-        className="absolute inset-0 pointer-events-none z-40"
+        className="absolute inset-0 pointer-events-none z-20"
         style={{
-          background: 'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.6) 100%)',
+          background: `
+            radial-gradient(ellipse 80% 70% at 50% 50%, transparent 40%, hsl(225 14% 3% / 0.5) 100%),
+            linear-gradient(to bottom, hsl(225 14% 3% / 0.4) 0%, transparent 12%, transparent 88%, hsl(225 14% 3% / 0.4) 100%)
+          `,
         }}
       />
 
-      {/* Top/bottom cinematic bars */}
-      <div className={cn(
-        "absolute top-0 left-0 right-0 h-[8%] bg-gradient-to-b from-black to-transparent z-40 pointer-events-none transition-opacity duration-500",
-        phase === 'black-in' ? 'opacity-100' : 'opacity-60',
-      )} />
-      <div className={cn(
-        "absolute bottom-0 left-0 right-0 h-[8%] bg-gradient-to-t from-black to-transparent z-40 pointer-events-none transition-opacity duration-500",
-        phase === 'black-in' ? 'opacity-100' : 'opacity-60',
-      )} />
-
-      {/* Fade-out overlay */}
-      <div className={cn(
-        "absolute inset-0 bg-black z-50 pointer-events-none transition-opacity duration-1000",
-        phase === 'fade-out' ? 'opacity-100' : phase === 'black-in' ? 'opacity-100' : 'opacity-0',
-      )} />
+      {/* Black overlay — fade in/out */}
+      <div
+        className="absolute inset-0 z-40 pointer-events-none"
+        style={{
+          backgroundColor: 'hsl(225 14% 3%)',
+          opacity: blackOpacity,
+          transition: 'opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      />
 
       {/* Skip hint */}
       {canSkip && phase !== 'fade-out' && (
-        <div className="absolute bottom-6 right-6 z-50 flex items-center gap-2 animate-pulse">
-          <span className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-medium">
-            Press to skip
+        <div
+          className="absolute bottom-6 right-6 z-50 flex items-center gap-2"
+          style={{ animation: 'fxk-fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}
+        >
+          <span className="text-[10px] text-white/30 uppercase tracking-[0.25em] font-display font-medium">
+            Pular
           </span>
-          <div className="w-6 h-6 rounded border border-white/20 flex items-center justify-center">
-            <span className="text-[9px] text-white/40 font-bold">ESC</span>
+          <div className="w-7 h-7 rounded-md border border-white/15 flex items-center justify-center backdrop-blur-sm bg-white/5">
+            <span className="text-[9px] text-white/30 font-bold font-mono">ESC</span>
           </div>
         </div>
       )}
 
-      {/* CSS animation */}
       <style>{`
-        @keyframes cinematic-float {
-          0%, 100% { transform: translateY(0) translateX(0); opacity: 0.15; }
-          25% { transform: translateY(-20px) translateX(10px); opacity: 0.3; }
-          50% { transform: translateY(-10px) translateX(-15px); opacity: 0.1; }
-          75% { transform: translateY(-30px) translateX(5px); opacity: 0.25; }
+        @keyframes fxk-sweep {
+          0% { left: -2px; opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { left: 100%; opacity: 0; }
+        }
+        @keyframes fxk-fade-up {
+          0% { opacity: 0; transform: translateY(12px); }
+          100% { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </div>
