@@ -58,7 +58,7 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
   },
   {
     title: 'Drone',
-    icon: Bug,
+    icon: Radio,
     items: [
       { id: 'fleet', label: 'Fleet Manager', icon: Radio },
       { id: 'showcontrol', label: 'Show Control', icon: Clock },
@@ -68,7 +68,7 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
       { id: 'safetycheck', label: 'Safety Check', icon: ShieldCheck },
       { id: 'storyboard', label: 'Storyboard', icon: Film },
       { id: 'boids', label: 'Boids', icon: Bug },
-      { id: 'pid', label: 'PID', icon: Gauge },
+      { id: 'pid', label: 'PID Tuning', icon: Gauge },
       { id: 'battery', label: 'Battery', icon: Battery },
       { id: 'mavlink', label: 'MAVLink', icon: Radio },
       { id: 'indoor', label: 'Indoor Sim', icon: Warehouse },
@@ -98,6 +98,13 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
       { id: 'wind', label: 'Wind/Camera', icon: Wind },
       { id: 'maps', label: 'Google Maps', icon: Globe },
       { id: 'sitelayout', label: 'Site Layout', icon: Map },
+      { id: 'weather', label: 'Weather', icon: Cloud },
+      { id: 'soundlevel', label: 'Sound Level', icon: Volume2 },
+      { id: 'particles', label: 'Particles', icon: Atom },
+      { id: 'audience', label: 'Audience', icon: Eye },
+      { id: 'showsettings', label: 'Show Settings', icon: Cog },
+      { id: 'approval', label: 'Approval', icon: MessageSquare },
+      { id: 'versioning', label: 'Versioning', icon: History },
     ],
   },
 ];
@@ -136,7 +143,7 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="w-[48px] flex-shrink-0 border-l border-border/10 flex flex-col" style={{ background: 'hsl(var(--card))' }}>
+      <div className="w-[52px] flex-shrink-0 border-l border-border/10 flex flex-col" style={{ background: 'hsl(var(--card))' }}>
         <ScrollArea className="flex-1">
           <div
             ref={containerRef}
@@ -157,7 +164,7 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
                       <button
                         onClick={() => toggleSection(section.title)}
                         className={cn(
-                          "w-full flex items-center justify-center py-2 transition-all relative group",
+                          "w-full flex items-center justify-center py-2.5 transition-all relative group",
                           hasActive
                             ? "text-primary"
                             : "text-muted-foreground/40 hover:text-muted-foreground/70"
@@ -168,18 +175,18 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
                         )}
                         <div className="flex flex-col items-center gap-0.5">
                           <SectionIcon className="w-3.5 h-3.5 transition-transform group-hover:scale-110" />
-                          <span className="text-[6px] font-bold tracking-[0.15em] uppercase leading-none opacity-50 font-display">{section.title}</span>
+                          <span className="text-[7px] font-bold tracking-[0.12em] uppercase leading-none opacity-60 font-display">{section.title}</span>
                         </div>
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent side="left" className="text-[10px] font-medium bg-surface-2 border-border/20">
+                    <TooltipContent side="left" className="text-[11px] font-semibold bg-popover border-border/20 rounded-xl px-3 py-1.5">
                       {section.title}
                     </TooltipContent>
                   </Tooltip>
 
                   {/* Section items with dock magnification */}
                   {!isCollapsed && (
-                    <div className="flex flex-col items-center gap-[1px] pb-1">
+                    <div className="flex flex-col items-center gap-[2px] pb-1.5">
                       {section.items.map(({ id, label, icon: Icon, shortcut }) => {
                         const isActive = activePanel === id;
                         const currentIdx = globalIdx++;
@@ -193,10 +200,10 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
                           const btnRect = btn.getBoundingClientRect();
                           const btnCenter = btnRect.top + btnRect.height / 2 - containerRect.top;
                           const distance = Math.abs(mouseY - btnCenter);
-                          const maxDist = 60;
+                          const maxDist = 55;
                           if (distance < maxDist) {
                             const t = 1 - distance / maxDist;
-                            scale = 1 + 0.4 * (Math.cos((1 - t) * Math.PI) + 1) / 2;
+                            scale = 1 + 0.35 * (Math.cos((1 - t) * Math.PI) + 1) / 2;
                           }
                         }
 
@@ -214,19 +221,19 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
                                   zIndex: scale > 1.1 ? 10 : 1,
                                 }}
                                 className={cn(
-                                  "w-8 h-8 flex items-center justify-center rounded-lg relative transition-colors duration-150",
+                                  "w-9 h-9 flex items-center justify-center rounded-xl relative transition-colors duration-150",
                                   isActive
-                                    ? "bg-primary/15 text-primary shadow-[0_0_10px_hsl(var(--primary)/0.2)]"
-                                    : "text-muted-foreground/50 hover:text-foreground hover:bg-surface-2/40"
+                                    ? "bg-primary/12 text-primary shadow-[0_0_12px_hsl(var(--primary)/0.15)]"
+                                    : "text-muted-foreground/45 hover:text-foreground hover:bg-surface-1/40"
                                 )}
                               >
                                 {isActive && (
-                                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-3.5 bg-primary rounded-r" />
+                                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 bg-primary rounded-r" />
                                 )}
                                 <Icon className="w-4 h-4" />
                               </button>
                             </TooltipTrigger>
-                            <TooltipContent side="left" className="text-[10px] font-medium bg-surface-2 border-border/20" sideOffset={scale > 1.1 ? 10 : 6}>
+                            <TooltipContent side="left" className="text-[11px] font-semibold bg-popover border-border/15 rounded-xl px-3 py-1.5" sideOffset={scale > 1.1 ? 10 : 6}>
                               {label}{shortcut ? ` (${shortcut})` : ''}
                             </TooltipContent>
                           </Tooltip>
@@ -237,7 +244,7 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
 
                   {/* Divider */}
                   {si < PANEL_SECTIONS.length - 1 && (
-                    <div className="mx-3 border-t border-border/10 my-1" />
+                    <div className="mx-3 border-t border-border/8 my-1.5" />
                   )}
                 </div>
               );
