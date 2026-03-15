@@ -85,6 +85,7 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
     icon: Globe,
     items: [
       { id: 'dmx', label: 'DMX512', icon: Lightbulb },
+      { id: 'lasercontrol', label: 'Laser Control', icon: Zap },
       { id: 'smpte', label: 'SMPTE/LTC', icon: Clock },
       { id: 'livefiring', label: 'Live SFX', icon: Zap },
       { id: 'diagnostic', label: 'Diagnostic', icon: ShieldCheck, shortcut: 'D' },
