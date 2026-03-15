@@ -145,7 +145,7 @@ const DEFAULT_SETTINGS: SceneSettings = {
   gridColor: '#1a1a2e',
   showGrid: true,
   showOriginMarker: true,
-  showScalePoles: true,
+  showScalePoles: false,
   showTreeline: false,
   groundFogIntensity: 0.6,
 
