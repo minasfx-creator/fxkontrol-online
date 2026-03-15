@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FX KONTROL · Web Studio</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0d0f14; color: #e0e0e0; font-family: 'Outfit', sans-serif; overflow: hidden; }
+    #app { width: 100vw; height: 100vh; }
+    .hud { position: fixed; top: 16px; left: 16px; z-index: 100; }
+    .hud h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #00e5ff; }
+    .hud p { font-size: 10px; color: #666; margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <div class="hud">
+    <h1>FX KONTROL</h1>
+    <p>by Minas FX</p>
+  </div>
+  <div id="app"></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

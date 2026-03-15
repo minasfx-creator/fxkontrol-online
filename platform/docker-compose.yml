@@ -1,0 +1,104 @@
+# ============================================================
+# FX KONTROL · Minas FX — Drone + Fireworks Platform
+# docker-compose.yml — Orchestrates all services
+# ============================================================
+
+version: "3.9"
+
+services:
+  # ─── Web Studio (React/Three.js) ──────────────────────────
+  web-studio:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_WS_BRIDGE=ws://mavlink-bridge:9090
+      - VITE_GPU_SIM=http://gpu-sim:8080
+    depends_on:
+      - mavlink-bridge
+      - gpu-sim
+
+  # ─── GPU Simulation Server (WebGPU compute) ───────────────
+  gpu-sim:
+    build: ./simulation/gpu-simulation
+    ports:
+      - "8080:8080"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # ─── Digital Twin Environment ─────────────────────────────
+  digital-twin:
+    build: ./simulation/digitalTwin
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./data/terrain:/app/terrain
+
+  # ─── Swarm Core (Rust/WASM) ──────────────────────────────
+  swarm-core:
+    build: ./swarm-core-rust
+    ports:
+      - "8082:8082"
+    environment:
+      - SWARM_MAX_DRONES=100000
+      - RUST_LOG=info
+
+  # ─── Physics Engine (C++/WASM) ────────────────────────────
+  physics-engine:
+    build: ./physics-engine-cpp
+    ports:
+      - "8083:8083"
+
+  # ─── MAVLink Bridge (Python) ──────────────────────────────
+  mavlink-bridge:
+    build: ./drone-control/mavlink
+    ports:
+      - "9090:9090"
+      - "14550:14550/udp"
+    environment:
+      - MAVLINK_CONNECTION=udp:0.0.0.0:14550
+      - WS_PORT=9090
+
+  # ─── AI Show Generator ───────────────────────────────────
+  ai-generator:
+    build: ./ai/show-generator
+    ports:
+      - "8084:8084"
+    environment:
+      - MODEL_PATH=/models/choreography
+    volumes:
+      - ./data/models:/models
+
+  # ─── Autonomy Engine ─────────────────────────────────────
+  autonomy:
+    build: ./ai/autonomy
+    ports:
+      - "8085:8085"
+    depends_on:
+      - swarm-core
+      - physics-engine
+
+  # ─── SMPTE/LTC Timecode Server ──────────────────────────
+  timecode-server:
+    image: node:20-alpine
+    working_dir: /app
+    command: node timecodeServer.js
+    ports:
+      - "9091:9091"
+    volumes:
+      - ./tools/timecodeServer:/app
+
+  # ─── Redis (inter-service messaging) ─────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+networks:
+  default:
+    name: fxkontrol-network
