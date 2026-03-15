@@ -3,13 +3,10 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
 /**
- * LaserFX Pro — Volumetric ILDA-style laser beams.
- * Patterns: fan, harp, tunnel, cone, wave, grid, single.
- * Features: galvo scanning, atmospheric scattering, volumetric glow,
- * RGB color modulation, beam divergence simulation.
+ * LaserFX Pro — Ultra-volumetric ILDA-style laser beams.
+ * Enhanced with wider glow planes, brighter cores, atmospheric cone,
+ * and source halo for concert-grade volumetric look.
  */
-
-const BEAM_SEGMENTS = 2;
 
 export default function LaserEffect({
   position,
@@ -26,15 +23,7 @@ export default function LaserEffect({
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
-  const beamLength = pattern === 'single' ? 120 : pattern === 'tunnel' || pattern === 'cone' ? 60 : 80;
-
-  // Create volumetric beam geometry (tapered cylinder for divergence)
-  const beamGeo = useMemo(() => {
-    return new THREE.CylinderGeometry(0.006, 0.025, beamLength, 4, 1);
-  }, [beamLength]);
-
-  // Glow plane for each beam (billboard sprite for volumetric look)
-  const glowGeo = useMemo(() => new THREE.PlaneGeometry(0.15, beamLength), [beamLength]);
+  const beamLength = pattern === 'single' ? 140 : pattern === 'tunnel' || pattern === 'cone' ? 70 : 90;
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
@@ -45,76 +34,69 @@ export default function LaserEffect({
     const totalBeams = pattern === 'grid' ? beamCount * beamCount : beamCount;
 
     for (let idx = 0; idx < totalBeams; idx++) {
-      // Each beam has 3 children: core cylinder, glow plane, glow plane rotated
       const beamGroup = children[idx] as THREE.Group;
-      if (!beamGroup) continue;
+      if (!beamGroup || beamGroup.children.length < 3) continue;
 
-      const core = beamGroup.children[0] as THREE.Mesh;
-      const glow1 = beamGroup.children[1] as THREE.Mesh;
-      const glow2 = beamGroup.children[2] as THREE.Mesh;
-      if (!core) continue;
-
-      let angle: number, tilt: number, ox = 0, oz = 0;
       let beamIntensity = 1;
 
       switch (pattern) {
         case 'fan': {
           const t = beamCount === 1 ? 0 : (idx / (beamCount - 1)) - 0.5;
-          angle = t * Math.PI * 0.7 + Math.sin(time * 0.3) * 0.08;
+          const angle = t * Math.PI * 0.75 + Math.sin(time * 0.4) * 0.06;
           beamGroup.position.set(0, 0, 0);
           beamGroup.rotation.set(0, 0, angle);
-          beamIntensity = 1 - Math.abs(t) * 0.25;
+          beamIntensity = 1 - Math.abs(t) * 0.2;
           break;
         }
         case 'harp': {
-          ox = ((idx / beamCount) - 0.5) * 8;
+          const ox = ((idx / beamCount) - 0.5) * 10;
           beamGroup.position.set(ox, 0, 0);
-          beamGroup.rotation.set(0, 0, Math.sin(time * 0.5 + idx * 0.3) * 0.03);
+          beamGroup.rotation.set(0, 0, Math.sin(time * 0.6 + idx * 0.4) * 0.02);
           break;
         }
         case 'tunnel': {
-          angle = (idx / beamCount) * Math.PI * 2 + time * 1.5;
-          tilt = 0.22 + Math.sin(time * 0.8) * 0.05;
+          const angle = (idx / beamCount) * Math.PI * 2 + time * 1.2;
+          const tilt = 0.25 + Math.sin(time * 0.6) * 0.06;
           beamGroup.position.set(0, 0, 0);
           beamGroup.rotation.set(Math.cos(angle) * tilt, 0, Math.sin(angle) * tilt);
-          beamIntensity = 0.8 + Math.sin(angle * 3 + time) * 0.2;
+          beamIntensity = 0.75 + Math.sin(angle * 2 + time * 1.5) * 0.25;
           break;
         }
         case 'cone': {
-          angle = (idx / beamCount) * Math.PI * 2 + time * 0.5;
-          tilt = 0.3 + Math.sin(time * 2 + idx) * 0.08;
+          const angle = (idx / beamCount) * Math.PI * 2 + time * 0.7;
+          const tilt = 0.35 + Math.sin(time * 1.5 + idx) * 0.1;
           beamGroup.position.set(0, 0, 0);
           beamGroup.rotation.set(Math.cos(angle) * tilt, 0, Math.sin(angle) * tilt);
           break;
         }
         case 'wave': {
           const phase = (idx / beamCount) * Math.PI * 2;
-          const waveAngle = Math.sin(time * 1.5 + phase) * 0.35;
-          ox = ((idx / beamCount) - 0.5) * 8;
+          const waveAngle = Math.sin(time * 1.2 + phase) * 0.4;
+          const ox = ((idx / beamCount) - 0.5) * 10;
           beamGroup.position.set(ox, 0, 0);
           beamGroup.rotation.set(0, 0, waveAngle);
-          beamIntensity = 0.7 + Math.sin(phase + time * 2) * 0.3;
+          beamIntensity = 0.6 + Math.sin(phase + time * 2.5) * 0.4;
           break;
         }
         case 'grid': {
           const cols = beamCount;
           const row = Math.floor(idx / cols);
           const col = idx % cols;
-          const spacing = 1.5;
-          ox = (col - (cols - 1) / 2) * spacing;
-          oz = (row - (cols - 1) / 2) * spacing;
-          const pulse = Math.sin(time * 3 + col * 0.5 + row * 0.7) * 0.5 + 0.5;
+          const spacing = 1.8;
+          const ox = (col - (cols - 1) / 2) * spacing;
+          const oz = (row - (cols - 1) / 2) * spacing;
+          const pulse = Math.sin(time * 2.5 + col * 0.6 + row * 0.8) * 0.5 + 0.5;
           beamGroup.position.set(ox, 0, oz);
           beamGroup.rotation.set(0, 0, 0);
           beamIntensity = pulse;
           break;
         }
-        default: { // single
+        default: {
           beamGroup.position.set(0, 0, 0);
           beamGroup.rotation.set(
-            Math.sin(time * 0.8) * 0.15,
+            Math.sin(time * 0.6) * 0.18,
             0,
-            Math.cos(time * 0.5) * 0.12,
+            Math.cos(time * 0.4) * 0.15,
           );
           break;
         }
@@ -122,35 +104,44 @@ export default function LaserEffect({
 
       const finalOpacity = intensity * beamIntensity;
 
-      // Core beam — thin bright line
-      const coreMat = core.material as THREE.MeshBasicMaterial;
-      coreMat.opacity = 0.35 * finalOpacity;
+      // Core — bright thin beam
+      const core = beamGroup.children[0] as THREE.Mesh;
+      if (core) (core.material as THREE.MeshBasicMaterial).opacity = 0.55 * finalOpacity;
 
-      // Volumetric glow planes
-      if (glow1) {
-        const g1Mat = glow1.material as THREE.MeshBasicMaterial;
-        g1Mat.opacity = 0.08 * finalOpacity;
-      }
-      if (glow2) {
-        const g2Mat = glow2.material as THREE.MeshBasicMaterial;
-        g2Mat.opacity = 0.08 * finalOpacity;
-      }
+      // Inner glow
+      const glow1 = beamGroup.children[1] as THREE.Mesh;
+      if (glow1) (glow1.material as THREE.MeshBasicMaterial).opacity = 0.15 * finalOpacity;
+
+      // Outer glow
+      const glow2 = beamGroup.children[2] as THREE.Mesh;
+      if (glow2) (glow2.material as THREE.MeshBasicMaterial).opacity = 0.06 * finalOpacity;
+
+      // Wide atmospheric glow
+      const atmo = beamGroup.children[3] as THREE.Mesh;
+      if (atmo) (atmo.material as THREE.MeshBasicMaterial).opacity = 0.025 * finalOpacity;
     }
 
-    // Source glow
-    const sourceGlow = children[totalBeams] as THREE.Mesh;
-    if (sourceGlow) {
-      const mat = sourceGlow.material as THREE.MeshBasicMaterial;
-      mat.opacity = 0.6 * intensity;
-      const sc = 1 + Math.sin(time * 4) * 0.1;
-      sourceGlow.scale.setScalar(sc);
+    // Source halo
+    const haloIdx = totalBeams;
+    const halo = children[haloIdx] as THREE.Mesh;
+    if (halo) {
+      const mat = halo.material as THREE.MeshBasicMaterial;
+      mat.opacity = 0.7 * intensity;
+      const sc = 1.2 + Math.sin(time * 5) * 0.15;
+      halo.scale.setScalar(sc);
     }
 
-    // Ground scatter disc
-    const scatter = children[totalBeams + 1] as THREE.Mesh;
+    // Ground scatter
+    const scatter = children[haloIdx + 1] as THREE.Mesh;
     if (scatter) {
-      const mat = scatter.material as THREE.MeshBasicMaterial;
-      mat.opacity = 0.04 * intensity;
+      (scatter.material as THREE.MeshBasicMaterial).opacity = 0.06 * intensity;
+    }
+
+    // Atmospheric cone
+    const cone = children[haloIdx + 2] as THREE.Mesh;
+    if (cone) {
+      (cone.material as THREE.MeshBasicMaterial).opacity = 0.018 * intensity;
+      cone.rotation.y = time * 0.1;
     }
   });
 
@@ -161,52 +152,63 @@ export default function LaserEffect({
       {/* Beam array */}
       {Array.from({ length: totalBeams }).map((_, i) => (
         <group key={i}>
-          {/* Core beam — thin bright cylinder */}
+          {/* Core beam — bright thin cylinder */}
           <mesh position={[0, beamLength / 2, 0]}>
-            <cylinderGeometry args={[0.006, 0.02, beamLength, 4]} />
+            <cylinderGeometry args={[0.004, 0.018, beamLength, 4]} />
             <meshBasicMaterial
               color={color}
-              transparent
-              opacity={0.35}
+              transparent opacity={0.55}
               blending={THREE.AdditiveBlending}
               side={THREE.DoubleSide}
               depthWrite={false}
+              toneMapped={false}
             />
           </mesh>
-          {/* Volumetric glow plane 1 */}
+          {/* Inner glow plane */}
           <mesh position={[0, beamLength / 2, 0]}>
-            <planeGeometry args={[0.12, beamLength]} />
+            <planeGeometry args={[0.2, beamLength]} />
             <meshBasicMaterial
               color={color}
-              transparent
-              opacity={0.08}
+              transparent opacity={0.15}
               blending={THREE.AdditiveBlending}
               side={THREE.DoubleSide}
               depthWrite={false}
+              toneMapped={false}
             />
           </mesh>
-          {/* Volumetric glow plane 2 (perpendicular) */}
+          {/* Outer glow plane (perpendicular) */}
           <mesh position={[0, beamLength / 2, 0]} rotation={[0, Math.PI / 2, 0]}>
-            <planeGeometry args={[0.12, beamLength]} />
+            <planeGeometry args={[0.2, beamLength]} />
             <meshBasicMaterial
               color={color}
-              transparent
-              opacity={0.08}
+              transparent opacity={0.06}
               blending={THREE.AdditiveBlending}
               side={THREE.DoubleSide}
               depthWrite={false}
+              toneMapped={false}
+            />
+          </mesh>
+          {/* Wide atmospheric scatter plane */}
+          <mesh position={[0, beamLength / 2, 0]} rotation={[0, Math.PI / 4, 0]}>
+            <planeGeometry args={[0.6, beamLength]} />
+            <meshBasicMaterial
+              color={color}
+              transparent opacity={0.025}
+              blending={THREE.AdditiveBlending}
+              side={THREE.DoubleSide}
+              depthWrite={false}
+              toneMapped={false}
             />
           </mesh>
         </group>
       ))}
 
-      {/* Source glow — bright emitter point */}
+      {/* Source halo — bright emitter */}
       <mesh>
-        <sphereGeometry args={[0.12, 12, 12]} />
+        <sphereGeometry args={[0.18, 16, 16]} />
         <meshBasicMaterial
           color={color}
-          transparent
-          opacity={0.6}
+          transparent opacity={0.7}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           toneMapped={false}
@@ -215,12 +217,23 @@ export default function LaserEffect({
 
       {/* Ground scatter disc */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -position[1] + 0.05, 0]}>
-        <circleGeometry args={[3, 24]} />
+        <circleGeometry args={[4, 32]} />
         <meshBasicMaterial
           color={color}
-          transparent
-          opacity={0.04}
+          transparent opacity={0.06}
           blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* Atmospheric cone — wide volumetric fill */}
+      <mesh position={[0, beamLength * 0.4, 0]}>
+        <coneGeometry args={[beamLength * 0.12, beamLength * 0.8, 16, 1, true]} />
+        <meshBasicMaterial
+          color={color}
+          transparent opacity={0.018}
+          blending={THREE.AdditiveBlending}
+          side={THREE.DoubleSide}
           depthWrite={false}
         />
       </mesh>
