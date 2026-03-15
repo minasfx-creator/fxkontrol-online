@@ -11,7 +11,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { Film, Plus, Trash2, GripVertical, Lock, Unlock, ArrowRight, Clock, RefreshCw, ChevronDown, ChevronUp, Download, Copy, RotateCcw, Target } from 'lucide-react';
+import { Film, Plus, Trash2, GripVertical, Lock, Unlock, ArrowRight, Clock, RefreshCw, ChevronDown, ChevronUp, Download, Copy, RotateCcw, Target, Globe, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,6 +22,8 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { useFleetStore, type StoryboardEntry } from '@/store/useFleetStore';
 import { useProjectStore } from '@/store/useProjectStore';
+import { generateFormation } from '@/lib/formations';
+import { downloadKMZ } from '@/lib/kmzExporter';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
