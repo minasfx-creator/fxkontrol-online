@@ -106,6 +106,113 @@ export type Database = {
         }
         Relationships: []
       }
+      show_settings: {
+        Row: {
+          channel_count: number | null
+          client_name: string | null
+          created_at: string
+          fallout_radius: number | null
+          firing_system: string | null
+          fleet_size: number | null
+          geofence_radius: number | null
+          gps_alt: number | null
+          gps_lat: number | null
+          gps_lng: number | null
+          humidity: number | null
+          id: string
+          led_fps: number | null
+          license_number: string | null
+          max_altitude: number | null
+          max_velocity: number | null
+          module_count: number | null
+          nfpa_category: string | null
+          notes: string | null
+          project_id: string
+          protocol: string | null
+          safety_radius: number | null
+          show_date: string | null
+          start_method: string | null
+          temperature: number | null
+          timezone: string | null
+          updated_at: string
+          venue_name: string | null
+          wind_direction: number | null
+          wind_speed: number | null
+        }
+        Insert: {
+          channel_count?: number | null
+          client_name?: string | null
+          created_at?: string
+          fallout_radius?: number | null
+          firing_system?: string | null
+          fleet_size?: number | null
+          geofence_radius?: number | null
+          gps_alt?: number | null
+          gps_lat?: number | null
+          gps_lng?: number | null
+          humidity?: number | null
+          id?: string
+          led_fps?: number | null
+          license_number?: string | null
+          max_altitude?: number | null
+          max_velocity?: number | null
+          module_count?: number | null
+          nfpa_category?: string | null
+          notes?: string | null
+          project_id: string
+          protocol?: string | null
+          safety_radius?: number | null
+          show_date?: string | null
+          start_method?: string | null
+          temperature?: number | null
+          timezone?: string | null
+          updated_at?: string
+          venue_name?: string | null
+          wind_direction?: number | null
+          wind_speed?: number | null
+        }
+        Update: {
+          channel_count?: number | null
+          client_name?: string | null
+          created_at?: string
+          fallout_radius?: number | null
+          firing_system?: string | null
+          fleet_size?: number | null
+          geofence_radius?: number | null
+          gps_alt?: number | null
+          gps_lat?: number | null
+          gps_lng?: number | null
+          humidity?: number | null
+          id?: string
+          led_fps?: number | null
+          license_number?: string | null
+          max_altitude?: number | null
+          max_velocity?: number | null
+          module_count?: number | null
+          nfpa_category?: string | null
+          notes?: string | null
+          project_id?: string
+          protocol?: string | null
+          safety_radius?: number | null
+          show_date?: string | null
+          start_method?: string | null
+          temperature?: number | null
+          timezone?: string | null
+          updated_at?: string
+          venue_name?: string | null
+          wind_direction?: number | null
+          wind_speed?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "show_settings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       timeline_items: {
         Row: {
           created_at: string
