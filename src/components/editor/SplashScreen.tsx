@@ -85,17 +85,17 @@ const SplashScreen = forwardRef<HTMLDivElement, SplashScreenProps>(function Spla
           <div
             className="w-20 h-20 flex items-center justify-center rounded-2xl"
             style={{
-              background: 'linear-gradient(135deg, hsl(195 100% 50% / 0.08), hsl(18 100% 55% / 0.06))',
-              boxShadow: '0 0 50px hsl(195 100% 50% / 0.12), inset 0 1px 0 hsl(195 100% 80% / 0.08)',
-              border: '1px solid hsl(195 100% 50% / 0.1)',
+              background: 'linear-gradient(135deg, hsl(195 100% 50% / 0.1), hsl(18 100% 55% / 0.08))',
+              boxShadow: '0 0 60px hsl(195 100% 50% / 0.15), inset 0 1px 0 hsl(195 100% 80% / 0.1)',
+              border: '1px solid hsl(195 100% 50% / 0.12)',
             }}
           >
-            <img src={fxkLogo} alt="FX Kontrol" className="w-14 h-14 object-contain drop-shadow-[0_0_20px_hsl(195_100%_50%/0.3)]" />
+            <img src={fxkLogo} alt="FX Kontrol" className="w-14 h-14 object-contain drop-shadow-[0_0_24px_hsl(195_100%_50%/0.35)]" />
           </div>
           <h1 className="text-3xl font-extrabold tracking-[0.35em] uppercase font-display text-fxk-gradient">
             FX KONTROL
           </h1>
-          <p className="text-[10px] text-muted-foreground tracking-[0.25em] uppercase font-display">
+          <p className="text-[10px] text-muted-foreground/60 tracking-[0.25em] uppercase font-display">
             Show Design Platform · Minas FX
           </p>
         </div>

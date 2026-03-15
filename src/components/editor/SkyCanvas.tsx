@@ -1866,7 +1866,12 @@ function WeatherEffects() {
   );
 }
 
-// --- Camera controller with persistent state + intro top-down animation ---
+// --- Camera controller with persistent state + cinematic intro ---
+// Apple-smooth easing: cubic bezier for uniform camera movement
+function easeInOutCubic(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
 function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPosition: [number, number, number]; targetLookAt: [number, number, number]; freeLook: boolean }) {
   const { camera } = useThree();
   const controlsRef = useRef<any>(null);
@@ -1875,78 +1880,94 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
   const animating = useRef(false);
   const initialized = useRef(false);
   const lastPresetKey = useRef('');
-  const introPhase = useRef<'topdown' | 'sweeping' | 'done'>('topdown');
+  const introPhase = useRef<'hold' | 'sweep' | 'done'>('hold');
   const introTimer = useRef(0);
 
-  // Set intro start position: top-down bird's eye centered on logo/stage
+  // Intro: cinematic positions
+  const introStartPos = useRef(new THREE.Vector3(0, 250, 0.01));
+  const introStartLook = useRef(new THREE.Vector3(0, 0, 0));
+  const introDuration = useRef({ hold: 2.5, sweep: 4.0 }); // generous timing for smooth feel
+
   useEffect(() => {
-    camera.position.set(0, 180, 0.01); // straight down
-    camera.lookAt(0, 0, 0);
-    introPhase.current = 'topdown';
+    camera.position.copy(introStartPos.current);
+    camera.lookAt(introStartLook.current);
+    introPhase.current = 'hold';
     introTimer.current = 0;
   }, []);
 
-  // Only animate camera when preset explicitly changes (not on every re-render)
   const presetKey = `${targetPosition.join(',')}_${targetLookAt.join(',')}`;
   
   useEffect(() => {
-    if (freeLook) {
-      animating.current = false;
-      return;
-    }
-    // Skip the initial mount — don't reset camera on component re-render
+    if (freeLook) { animating.current = false; return; }
     if (!initialized.current) {
       initialized.current = true;
       lastPresetKey.current = presetKey;
       return;
     }
-    // Only animate if the preset actually changed
     if (presetKey === lastPresetKey.current) return;
     lastPresetKey.current = presetKey;
-    
     targetPos.current.set(...targetPosition);
     targetLook.current.set(...targetLookAt);
     animating.current = true;
   }, [presetKey, freeLook]);
 
   useFrame((_, delta) => {
-    // ── Intro animation: Top-down → sweep to normal view ──
     if (introPhase.current !== 'done') {
       introTimer.current += delta;
       
-      if (introPhase.current === 'topdown') {
-        // Hold top-down for 1.5s, slowly rotating
+      if (introPhase.current === 'hold') {
+        // Gentle top-down hold with very subtle orbital drift
+        const holdT = Math.min(1, introTimer.current / introDuration.current.hold);
+        const eased = easeInOutCubic(holdT);
+        const orbitRadius = 3;
+        const orbitSpeed = 0.15;
         camera.position.set(
-          Math.sin(introTimer.current * 0.3) * 2,
-          180 - introTimer.current * 10, // slowly descend
-          Math.cos(introTimer.current * 0.3) * 2 + 0.01
+          Math.sin(introTimer.current * orbitSpeed) * orbitRadius,
+          250 - eased * 20, // very gentle descent during hold
+          Math.cos(introTimer.current * orbitSpeed) * orbitRadius + 0.01
         );
         camera.lookAt(0, 0, 0);
         if (controlsRef.current) {
           controlsRef.current.target.set(0, 0, 0);
           controlsRef.current.update();
         }
-        if (introTimer.current > 1.5) {
-          introPhase.current = 'sweeping';
+        if (introTimer.current >= introDuration.current.hold) {
+          introPhase.current = 'sweep';
+          introTimer.current = 0; // reset timer for sweep phase
         }
-      } else if (introPhase.current === 'sweeping') {
-        // Smooth sweep from current position to the default camera preset
+      } else if (introPhase.current === 'sweep') {
+        // Smooth cinematic sweep to default position — uniform eased motion
+        const sweepT = Math.min(1, introTimer.current / introDuration.current.sweep);
+        const eased = easeInOutCubic(sweepT);
+        
         const defaultPos = new THREE.Vector3(...targetPosition);
         const defaultLook = new THREE.Vector3(...targetLookAt);
-        camera.position.lerp(defaultPos, 0.035);
+        
+        // Interpolate position with easing — uniform speed curve
+        const sweepStartPos = new THREE.Vector3(0, 230, 3);
+        camera.position.lerpVectors(sweepStartPos, defaultPos, eased);
+        
+        // Interpolate look target
         if (controlsRef.current) {
-          controlsRef.current.target.lerp(defaultLook, 0.035);
+          const currentTarget = new THREE.Vector3().lerpVectors(introStartLook.current, defaultLook, eased);
+          controlsRef.current.target.copy(currentTarget);
           controlsRef.current.update();
         }
-        if (camera.position.distanceTo(defaultPos) < 0.5) {
+        
+        if (sweepT >= 1) {
           introPhase.current = 'done';
+          camera.position.copy(defaultPos);
+          if (controlsRef.current) {
+            controlsRef.current.target.copy(defaultLook);
+            controlsRef.current.update();
+          }
           animating.current = false;
         }
       }
       return;
     }
 
-    // ── Normal preset animation ──
+    // Normal preset animation — smooth Apple-style easing
     if (!animating.current || !controlsRef.current || freeLook) return;
     camera.position.lerp(targetPos.current, 0.06);
     controlsRef.current.target.lerp(targetLook.current, 0.06);
@@ -2113,7 +2134,7 @@ export default function SkyCanvas() {
         <TimelineEffects />
         <LiveSFXEffects />
         <AudioSpectrumVisualizer />
-        <GeofenceVisual />
+        {/* GeofenceVisual removed — only shown when geofence explicitly configured */}
         <PlaybackClock />
         <CameraAnimator />
         <CameraPathPreview />
