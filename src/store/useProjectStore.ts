@@ -23,8 +23,9 @@ export interface Effect {
   vdl?: string;                 // Visual Description Language string
   pattern?: string;             // Burst pattern: peony, willow, palm, kamuro, crossette
   shotCount?: number;           // For cakes/roman candles: number of shots
-  laserPattern?: 'fan' | 'harp' | 'tunnel' | 'cone' | 'single'; // For lasers
+  laserPattern?: 'fan' | 'harp' | 'tunnel' | 'cone' | 'single' | 'wave' | 'grid'; // For lasers
   beamType?: 'spot' | 'wash' | 'beam'; // For moving heads
+  beamCount?: number;                  // Number of beams (lasers)
 }
 
 export interface TimelineItem {
@@ -297,6 +298,12 @@ export const EFFECT_LIBRARY: Effect[] = [
   { id: 'laser-06', name: 'Sky Laser 40W', category: 'lasers', type: 'laser', color: '#00FFFF', duration: 60, cost: 200, icon: '🏔️', partType: 'laser', laserPattern: 'single' },
   { id: 'laser-07', name: 'Laser Harp', category: 'lasers', type: 'laser', color: '#00FF00', duration: 30, cost: 90, icon: '🎵', partType: 'laser', laserPattern: 'harp' },
   { id: 'laser-08', name: 'Laser Tunnel', category: 'lasers', type: 'laser', color: '#FF00FF', duration: 20, cost: 70, icon: '🕳️', partType: 'laser', laserPattern: 'tunnel' },
+  { id: 'laser-09', name: 'Laser Wave x12', category: 'lasers', type: 'laser', color: '#00FFFF', duration: 30, cost: 95, icon: '🌊', partType: 'laser', laserPattern: 'wave' },
+  { id: 'laser-10', name: 'Laser Grid 4×4', category: 'lasers', type: 'laser', color: '#FF8800', duration: 30, cost: 110, icon: '📐', partType: 'laser', laserPattern: 'grid' },
+  { id: 'laser-11', name: 'RGB Laser Wall 20W', category: 'lasers', type: 'laser', color: '#FFFFFF', duration: 60, cost: 150, icon: '🧱', partType: 'laser', laserPattern: 'harp', beamCount: 16 },
+  { id: 'laser-12', name: 'Laser Vortex Cone', category: 'lasers', type: 'laser', color: '#00FF88', duration: 30, cost: 85, icon: '🌀', partType: 'laser', laserPattern: 'cone' },
+  { id: 'laser-13', name: 'UV Laser 405nm', category: 'lasers', type: 'laser', color: '#8800FF', duration: 30, cost: 65, icon: '🟣', partType: 'laser', laserPattern: 'single' },
+  { id: 'laser-14', name: 'Yellow Laser 577nm', category: 'lasers', type: 'laser', color: '#FFDD00', duration: 30, cost: 75, icon: '🟡', partType: 'laser', laserPattern: 'single' },
 
   // ── Iluminação ────────────────────────────────────────────
   { id: 'light-01', name: 'Moving Head Spot 300W', category: 'iluminacao', type: 'light', color: '#FFFFFF', duration: 60, cost: 30, icon: '🔦', partType: 'light', beamType: 'spot' },
