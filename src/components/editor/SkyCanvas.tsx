@@ -1672,11 +1672,11 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
         <>
           <mesh position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <planeGeometry args={[0.15, 6]} />
-            <meshBasicMaterial color="#5a8a5a" transparent opacity={0.3} />
+            <meshBasicMaterial color="#4a5a8a" transparent opacity={0.25} />
           </mesh>
           <mesh position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <planeGeometry args={[6, 0.15]} />
-            <meshBasicMaterial color="#5a8a5a" transparent opacity={0.3} />
+            <meshBasicMaterial color="#8a4a5a" transparent opacity={0.25} />
           </mesh>
         </>
       )}
