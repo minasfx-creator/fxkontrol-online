@@ -47,28 +47,28 @@ function ExportSection() {
   return (
     <div className="space-y-1.5">
       {/* Drone export */}
-      <div className="bg-surface-2 rounded-sm p-1.5 space-y-1">
-        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground px-1">Drone Show</p>
-        <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-7 text-xs" onClick={handleExportVVIZ}>
-          <Box className="h-3.5 w-3.5 text-electric" />
+      <div className="rounded-xl p-2 space-y-1" style={{ background: 'hsl(var(--surface-0) / 0.5)' }}>
+        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 px-1 font-display">Drone Show</p>
+        <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-8 text-xs rounded-lg" onClick={handleExportVVIZ}>
+          <Box className="h-3.5 w-3.5 text-primary" />
           <span className="flex-1 text-left">Export .VVIZ</span>
-          <span className="text-[9px] text-muted-foreground">{droneCount} drones</span>
+          <span className="text-[9px] text-muted-foreground/40 font-mono-code">{droneCount}</span>
         </Button>
       </div>
 
       {/* Pyro export */}
-      <div className="bg-surface-2 rounded-sm p-1.5 space-y-1">
-        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground px-1">Firing System</p>
-        <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-7 text-xs" onClick={handleExportFiringCSV}>
-          <Zap className="h-3.5 w-3.5 text-safety" />
+      <div className="rounded-xl p-2 space-y-1" style={{ background: 'hsl(var(--surface-0) / 0.5)' }}>
+        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 px-1 font-display">Firing System</p>
+        <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-8 text-xs rounded-lg" onClick={handleExportFiringCSV}>
+          <Zap className="h-3.5 w-3.5 text-accent" />
           <span className="flex-1 text-left">Cobra / FireTEK CSV</span>
-          <span className="text-[9px] text-muted-foreground">{pyroCount} cues</span>
+          <span className="text-[9px] text-muted-foreground/40 font-mono-code">{pyroCount}</span>
         </Button>
       </div>
 
       {/* Generic */}
-      <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-7 text-xs" onClick={handleExportJSON}>
-        <FileJson className="h-3.5 w-3.5 text-muted-foreground" />
+      <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-8 text-xs rounded-lg" onClick={handleExportJSON}>
+        <FileJson className="h-3.5 w-3.5 text-muted-foreground/40" />
         <span className="flex-1 text-left">Export Project JSON</span>
       </Button>
     </div>
