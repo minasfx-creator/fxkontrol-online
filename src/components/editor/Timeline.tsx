@@ -89,11 +89,11 @@ function DraggableTimelineItem({
     <div className="absolute top-1" style={{ left: `${item.startTime * pixelsPerSecond}px` }}>
       {pft > 0 && (
         <div
-          className="absolute h-8 rounded-l-sm bg-warning/10 border-l-2 border-warning/40"
+          className="absolute h-8 rounded-l-lg bg-warning/8 border-l-2 border-warning/30"
           style={{ left: `-${pftPx}px`, width: `${pftPx}px` }}
           title={`Pre-Fire: ${pft.toFixed(1)}s`}
         >
-          <span className="text-[7px] font-mono-code text-warning/60 absolute bottom-0 left-0.5">PFT</span>
+          <span className="text-[7px] font-mono-code text-warning/50 absolute bottom-0.5 left-1">PFT</span>
         </div>
       )}
       <button
@@ -102,24 +102,24 @@ function DraggableTimelineItem({
           if (e.button === 0) onDragStart(e, item.id);
         }}
         className={cn(
-          "h-8 rounded-sm flex items-center px-1.5 text-[10px] font-medium transition-all cursor-grab active:cursor-grabbing border group",
+          "h-8 rounded-lg flex items-center px-1.5 text-[10px] font-medium transition-all cursor-grab active:cursor-grabbing border group backdrop-blur-sm",
           isSelected
-            ? "border-primary shadow-[0_0_8px_hsl(var(--electric)/0.3)] z-10"
+            ? "border-primary/50 shadow-[0_0_12px_hsl(var(--electric)/0.25)] z-10 ring-1 ring-primary/20"
             : isMultiSelected
-              ? "border-primary/40 bg-primary/5 z-10"
-              : "border-transparent hover:border-border"
+              ? "border-primary/30 bg-primary/5 z-10"
+              : "border-transparent hover:border-border/40 hover:shadow-sm"
         )}
         style={{
-          width: `${Math.max(effect.duration * pixelsPerSecond, 20)}px`,
-          backgroundColor: `${effect.color}22`,
+          width: `${Math.max(effect.duration * pixelsPerSecond, 24)}px`,
+          backgroundColor: `${effect.color}18`,
         }}
       >
-        <GripVertical className="w-2 h-2 text-muted-foreground/40 group-hover:text-muted-foreground mr-0.5 flex-shrink-0" />
-        <div className="w-1 h-full rounded-full mr-1 flex-shrink-0" style={{ backgroundColor: effect.color }} />
+        <GripVertical className="w-2 h-2 text-muted-foreground/20 group-hover:text-muted-foreground/40 mr-0.5 flex-shrink-0 transition-colors" />
+        <div className="w-1 h-5 rounded-full mr-1 flex-shrink-0" style={{ backgroundColor: effect.color, boxShadow: `0 0 6px ${effect.color}44` }} />
         <div className="flex flex-col items-start min-w-0 overflow-hidden">
-          <span className="truncate text-secondary-foreground leading-tight">{effect.name}</span>
+          <span className="truncate text-foreground/80 leading-tight text-[10px]">{effect.name}</span>
           {item.positionName && (
-            <span className="truncate text-[7px] text-muted-foreground leading-tight">📍 {item.positionName}</span>
+            <span className="truncate text-[7px] text-muted-foreground/50 leading-tight">📍 {item.positionName}</span>
           )}
         </div>
       </button>
