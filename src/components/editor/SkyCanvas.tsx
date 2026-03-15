@@ -396,54 +396,61 @@ function FireworkBurst({
     for (let i = 0; i < STAR_COUNT; i++) {
       const vx = velocities[i * 3], vy = velocities[i * 3 + 1], vz = velocities[i * 3 + 2];
       const lt = lifetimes[i];
-      // Age each star individually: star dies when t >= lt
       const starAge = Math.min(1, t / lt);
+      
+      // Niagara-style fade curve: fast burn at start, slow ember fade at end
       const fade = Math.max(0, 1 - starAge);
-      const fadeSquared = fade * fade;
-      const fadeCubed = fadeSquared * fade;
-      // Proper analytical integration with exponential drag + real gravity + wind
+      const fadeSmooth = fade * fade * (3 - 2 * fade); // smoothstep curve
+      const fadeCubed = fade * fade * fade;
+      
+      // Analytical position with drag + gravity + wind
       const px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
       const py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * t * t;
       const pz = dragPos(vz, t, dragCoeff) + w[2] * t * t * 0.3;
       pos[i * 3] = px; pos[i * 3 + 1] = py; pos[i * 3 + 2] = pz;
 
-      // === Finale HDR Color Pipeline ===
-      // Phase 1: White-hot flash (0-3% progress) — Finale's "Contrast 1.5" effect
-      const flashIntensity = Math.max(0, 1 - progress * 33);
-      // Phase 2: Full saturated color (3-45%)
-      // Phase 3: Ember→charcoal (45-100%)
-      const emberPhase = Math.max(0, (progress - 0.4) / 0.6);
+      // === Niagara Thermal Color Pipeline ===
+      // Phase 1: White-hot flash (0-5% life)
+      const flashIntensity = Math.max(0, 1 - starAge * 20);
+      // Phase 2: Full saturated color (5-50% life)
+      // Phase 3: Thermal decay to ember (50-100% life)
+      const emberPhase = Math.max(0, (starAge - 0.45) / 0.55);
       
-      // Per-star stochastic twinkle — Finale's signature shimmer
+      // Per-star twinkle — organic shimmer
       let twinkle: number;
       if (isTrailingPattern) {
-        twinkle = 0.75 + Math.sin(twinklePhases[i] + progress * 12) * 0.25;
+        twinkle = 0.8 + Math.sin(twinklePhases[i] + starAge * 15) * 0.2;
       } else {
-        twinkle = temporalFlicker(sparkleSeeds[i], time, 0.62, 0.34, 0.38);
+        twinkle = temporalFlicker(sparkleSeeds[i], time, 0.65, 0.30, 0.35);
       }
       
-      // White-hot → saturated color
-      let r = THREE.MathUtils.lerp(baseColor.r, 1.4, flashIntensity);
-      let g = THREE.MathUtils.lerp(baseColor.g, 1.2, flashIntensity);
+      // Color over lifetime: white-hot → saturated → warm ember
+      let r = THREE.MathUtils.lerp(baseColor.r, 1.3, flashIntensity);
+      let g = THREE.MathUtils.lerp(baseColor.g, 1.15, flashIntensity);
       let b = THREE.MathUtils.lerp(baseColor.b, 0.9, flashIntensity);
       
-      // Ember phase: gradual thermal decay
+      // Ember thermal decay — more gradual, realistic cooling
       if (emberPhase > 0) {
         const ep = emberPhase * emberPhase;
-        r = THREE.MathUtils.lerp(r, emberColor.r, ep * 0.75);
-        g = THREE.MathUtils.lerp(g, emberColor.g, ep * 0.85);
-        b = THREE.MathUtils.lerp(b, emberColor.b, ep * 0.92);
+        r = THREE.MathUtils.lerp(r, emberColor.r, ep * 0.7);
+        g = THREE.MathUtils.lerp(g, emberColor.g, ep * 0.8);
+        b = THREE.MathUtils.lerp(b, emberColor.b, ep * 0.9);
       }
       
-      // Natural HDR: subtle boost, no excessive glow
-      const hdrBoost = 1.0 + flashIntensity * 1.5;
+      // Subtle HDR boost only during flash
+      const hdrBoost = 1.0 + flashIntensity * 1.2;
       
-      cols[i * 3] = r * fadeCubed * twinkle * hdrBoost;
-      cols[i * 3 + 1] = g * fadeCubed * twinkle * hdrBoost;
-      cols[i * 3 + 2] = b * fadeCubed * twinkle * hdrBoost;
+      cols[i * 3] = r * fadeSmooth * twinkle * hdrBoost;
+      cols[i * 3 + 1] = g * fadeSmooth * twinkle * hdrBoost;
+      cols[i * 3 + 2] = b * fadeSmooth * twinkle * hdrBoost;
       
-      // Dynamic star size: larger when young, shrinks as it dies — with HDR size boost
-      sizes[i] = baseSize * (0.5 + fadeSquared * 0.5) * (1 + flashIntensity * 1.0);
+      // Size over lifetime: Niagara curve — burst large, steady, then shrink
+      const sizeOverLife = starAge < 0.05 
+        ? 0.6 + starAge * 8  // rapid expansion
+        : starAge < 0.4 
+          ? 1.0  // steady plateau
+          : 1.0 - (starAge - 0.4) / 0.6 * 0.7; // gradual shrink
+      sizes[i] = baseSize * Math.max(0.1, sizeOverLife) * (1 + flashIntensity * 0.8);
       lives[i] = starAge;
 
       // Star trails — Finale's thermal gradient: white-hot → colored → dim
