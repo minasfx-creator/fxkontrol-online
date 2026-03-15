@@ -89,14 +89,14 @@ function NumberField({
   step?: number;
 }) {
   return (
-    <div className="flex items-center gap-1">
-      <span className="text-[10px] font-mono-code w-3" style={{ color }}>{label}</span>
+    <div className="flex items-center gap-1.5">
+      <span className="text-[10px] font-mono-code w-3 font-semibold" style={{ color }}>{label}</span>
       <Input
         type="number"
         value={value}
         step={step}
         onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-        className="h-6 text-[10px] font-mono-code px-1.5 bg-surface-2 border-border w-full"
+        className="h-7 text-[10px] font-mono-code px-2 rounded-lg bg-surface-0/50 border-border/15 w-full focus:border-primary/30"
       />
     </div>
   );
