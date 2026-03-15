@@ -552,13 +552,15 @@ export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps
 
       {/* 3D Globe */}
       <div className="flex-1 relative">
-        <Canvas camera={{ position: [0, 0, 8], fov: 45 }}>
-          <ambientLight intensity={0.35} />
-          <directionalLight position={[5, 3, 5]} intensity={1.3} />
-          <pointLight position={[-5, -3, -5]} intensity={0.25} color="#4488ff" />
+        <Canvas camera={{ position: [0, 0, 7], fov: 50 }}>
+          <ambientLight intensity={0.4} />
+          <directionalLight position={[5, 3, 5]} intensity={1.5} color="#ffffff" />
+          <directionalLight position={[-3, 1, -3]} intensity={0.3} color="#6688cc" />
+          <pointLight position={[-5, -3, -5]} intensity={0.15} color="#4488ff" />
 
           <EarthGlobe onClickGlobe={handleClickGlobe} />
           <Atmosphere />
+          <OuterGlow />
           <InnerGlow />
           <CoordinateGrid />
           <CityPins
@@ -568,16 +570,17 @@ export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps
           />
           {freePin && <FreePin lat={freePin.lat} lng={freePin.lng} />}
           <CameraZoomTo target={zoomTarget} zooming={zooming} />
-          <Stars radius={100} depth={50} count={4000} factor={3} saturation={0} fade speed={0.4} />
+          <Stars radius={200} depth={80} count={6000} factor={4} saturation={0.1} fade speed={0.3} />
           <OrbitControls
             enableZoom
             enablePan={false}
-            minDistance={3.2}
-            maxDistance={18}
+            minDistance={MIN_ZOOM}
+            maxDistance={MAX_ZOOM}
+            zoomSpeed={1.2}
             autoRotate={!selectedCity && !freePin}
-            autoRotateSpeed={0.25}
+            autoRotateSpeed={0.2}
             enableDamping
-            dampingFactor={0.05}
+            dampingFactor={0.08}
           />
         </Canvas>
 
