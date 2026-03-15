@@ -1762,23 +1762,25 @@ function SceneLighting() {
 
   return (
     <>
-      <ambientLight intensity={s.ambientIntensity} color="#506880" />
+      <ambientLight intensity={s.ambientIntensity} color="#4a6080" />
       <directionalLight
         position={[60, 55, -80]}
         intensity={s.moonIntensity}
         color={s.moonColor}
         castShadow={s.shadowsEnabled}
         shadow-mapSize={[shadowSize, shadowSize]}
-        shadow-camera-far={500}
-        shadow-camera-left={-150}
-        shadow-camera-right={150}
-        shadow-camera-top={150}
-        shadow-camera-bottom={-150}
-        shadow-bias={-0.00005}
+        shadow-camera-far={600}
+        shadow-camera-left={-200}
+        shadow-camera-right={200}
+        shadow-camera-top={200}
+        shadow-camera-bottom={-200}
+        shadow-bias={-0.00003}
+        shadow-normalBias={0.02}
       />
-      <hemisphereLight args={['#152050', '#0c1a0a', 0.12]} />
-      <directionalLight position={[-40, 20, 60]} intensity={s.rimLightIntensity * 0.2} color="#4466aa" />
-      <directionalLight position={[0, -10, 30]} intensity={s.fillLightIntensity * 0.1} color="#1a2a1a" />
+      <hemisphereLight args={['#1a2850', '#0a1208', 0.15]} />
+      {/* Subtle backfill for depth separation */}
+      <directionalLight position={[-60, 25, 70]} intensity={s.rimLightIntensity * 0.15} color="#3355aa" />
+      <directionalLight position={[0, -8, 40]} intensity={s.fillLightIntensity * 0.08} color="#182218" />
     </>
   );
 }
