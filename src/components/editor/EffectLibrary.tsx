@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Search, ChevronDown, ChevronRight, Flame, Sparkles, Radio, Shapes, Wand2, Zap, Lightbulb, Droplets, Bomb, CandlestickChart as Candle, Waves, Box, AlertTriangle, GripVertical } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, Flame, Sparkles, Radio, Shapes, Wand2, Zap, Lightbulb, Droplets, Bomb, CandlestickChart as Candle, Waves, Box, GripVertical, Clock, MapPin, Ruler } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { EFFECT_LIBRARY, useProjectStore, type Effect } from '@/store/useProjectStore';
@@ -32,12 +32,17 @@ const FILTER_CHIPS: { key: FilterType; label: string; icon: typeof Flame }[] = [
   { key: 'drone', label: 'DRONE', icon: Radio },
 ];
 
+const CALIBER_OPTIONS = [2, 3, 4, 5, 6, 8, 10, 12];
+
 function EffectCard({ effect }: { effect: Effect }) {
   const { selectedEffectId, selectEffect, addTimelineItem, currentTime, positions, selectedPositionId, selectedPositionIds } = useProjectStore();
   const [isDragging, setIsDragging] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [selectedCaliber, setSelectedCaliber] = useState(effect.caliber || 4);
+  const [fireTime, setFireTime] = useState<number | ''>('');
   const isSelected = selectedEffectId === effect.id;
 
-  const handleDoubleClick = () => {
+  const handleAdd = useCallback((overrideTime?: number) => {
     const isPyroEffect = effect.type === 'firework' || effect.type === 'sfx';
     const isDroneEffect = effect.type === 'drone';
     const isLaserOrLight = effect.type === 'laser' || effect.type === 'light';
@@ -74,23 +79,28 @@ function EffectCard({ effect }: { effect: Effect }) {
       targetIds = [id];
     }
 
+    const actualTime = overrideTime ?? currentTime;
+
     targetIds.forEach((posId, i) => {
       const pos = positions.find(p => p.id === posId);
       if (!pos) return;
       addTimelineItem({
         id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${i}`,
         effectId: effect.id,
-        startTime: currentTime,
+        startTime: actualTime,
         trackIndex: effect.type === 'firework' ? 0 : effect.type === 'drone' ? 1 : 2,
         position: { x: pos.x, y: pos.y, z: pos.z },
         positionId: posId,
         positionIds: targetIds.length > 1 ? targetIds : undefined,
         positionName: pos.name,
+        notes: `VDL: ${selectedCaliber}" ${effect.name}`,
       });
     });
 
-    toast.success(`${effect.name} → ${targetIds.length} position${targetIds.length > 1 ? 's' : ''}`);
-  };
+    toast.success(`${effect.name} ${selectedCaliber}" → ${targetIds.length} pos @ ${actualTime.toFixed(1)}s`);
+  }, [effect, selectedCaliber, currentTime, positions, selectedPositionId, selectedPositionIds, addTimelineItem]);
+
+  const handleDoubleClick = () => handleAdd();
 
   const handleDragStart = useCallback((e: React.DragEvent) => {
     e.dataTransfer.setData('application/effect-id', effect.id);
@@ -98,9 +108,7 @@ function EffectCard({ effect }: { effect: Effect }) {
     setIsDragging(true);
   }, [effect.id]);
 
-  const handleDragEnd = useCallback(() => {
-    setIsDragging(false);
-  }, []);
+  const handleDragEnd = useCallback(() => setIsDragging(false), []);
 
   const typeAccent: Record<string, string> = {
     laser: 'hsl(120, 80%, 50%)',
@@ -109,56 +117,114 @@ function EffectCard({ effect }: { effect: Effect }) {
     firework: 'hsl(18, 100%, 55%)',
     drone: 'hsl(195, 100%, 50%)',
   };
-
   const accentColor = typeAccent[effect.type] || 'hsl(var(--muted))';
+  const isPyro = effect.type === 'firework';
 
   return (
-    <button
-      draggable="true"
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      onClick={() => selectEffect(effect.id)}
-      onDoubleClick={handleDoubleClick}
-      className={cn(
-        "w-full flex items-center gap-2 px-2 py-[7px] rounded-lg text-left transition-all group relative overflow-hidden",
-        isSelected
-          ? "bg-primary/10 text-primary ring-1 ring-primary/20"
-          : "hover:bg-surface-2/80 text-secondary-foreground",
-        isDragging && "opacity-40 scale-95"
-      )}
-    >
-      {/* Left accent bar */}
-      <div className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full" style={{ backgroundColor: accentColor, opacity: isSelected ? 1 : 0.4 }} />
-      
-      {/* Drag handle */}
-      <GripVertical className="w-3 h-3 text-muted-foreground/20 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
-      
-      {/* Color swatch */}
-      <div
-        className="w-3.5 h-3.5 rounded flex-shrink-0"
-        style={{ 
-          backgroundColor: effect.color, 
-          boxShadow: `0 0 10px ${effect.color}44, inset 0 0 4px rgba(255,255,255,0.2)` 
-        }}
-      />
-      
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <p className="truncate text-[11px] font-medium leading-tight">{effect.name}</p>
-        <div className="flex items-center gap-1.5 mt-0.5">
-          <span className="text-[9px] text-muted-foreground/60 font-mono-code">{effect.duration}s</span>
-          <span className="text-[9px] text-muted-foreground/30">·</span>
-          <span className="text-[9px] text-muted-foreground/60 font-mono-code">${effect.cost}</span>
+    <div className="group">
+      <button
+        draggable="true"
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onClick={() => { selectEffect(effect.id); setExpanded(!expanded); }}
+        onDoubleClick={handleDoubleClick}
+        className={cn(
+          "w-full flex items-center gap-2 px-2 py-[7px] rounded-xl text-left transition-all relative overflow-hidden",
+          isSelected
+            ? "bg-primary/8 ring-1 ring-primary/15"
+            : "hover:bg-surface-2/60",
+          isDragging && "opacity-40 scale-95"
+        )}
+      >
+        <div className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full transition-opacity" style={{ backgroundColor: accentColor, opacity: isSelected ? 1 : 0.3 }} />
+        <GripVertical className="w-3 h-3 text-muted-foreground/15 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
+        <div className="w-3.5 h-3.5 rounded-md flex-shrink-0" style={{ backgroundColor: effect.color, boxShadow: `0 0 8px ${effect.color}33` }} />
+        <div className="flex-1 min-w-0">
+          <p className="truncate text-[11px] font-medium leading-tight text-foreground">{effect.name}</p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            {isPyro && <span className="text-[9px] text-accent/60 font-mono-code font-semibold">{effect.caliber || 4}"</span>}
+            <span className="text-[9px] text-muted-foreground/50 font-mono-code">{effect.duration}s</span>
+          </div>
         </div>
-      </div>
-      
-      {/* Quick-add hint */}
-      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-        <span className="text-[7px] font-semibold text-primary/60 bg-primary/8 px-1.5 py-0.5 rounded-md font-mono-code">
-          2×CLK
-        </span>
-      </div>
-    </button>
+        <ChevronRight className={cn("w-3 h-3 text-muted-foreground/30 transition-transform", expanded && isSelected && "rotate-90")} />
+      </button>
+
+      {/* Expanded VDL Controls — caliber, time, position, add button */}
+      {expanded && isSelected && (
+        <div className="mx-2 mb-1 mt-0.5 p-2.5 rounded-xl bg-surface-0/80 border border-border/15 space-y-2 animate-fxk-slide-down">
+          {/* Caliber selector */}
+          {isPyro && (
+            <div className="space-y-1">
+              <div className="flex items-center gap-1 text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">
+                <Ruler className="w-3 h-3" />
+                Calibre
+              </div>
+              <div className="flex gap-1">
+                {CALIBER_OPTIONS.map(cal => (
+                  <button
+                    key={cal}
+                    onClick={(e) => { e.stopPropagation(); setSelectedCaliber(cal); }}
+                    className={cn(
+                      "flex-1 py-1.5 rounded-lg text-[10px] font-semibold transition-all",
+                      selectedCaliber === cal
+                        ? "bg-accent/15 text-accent border border-accent/30"
+                        : "bg-surface-1 text-muted-foreground/60 border border-transparent hover:bg-surface-2"
+                    )}
+                  >
+                    {cal}"
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Fire time */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-1 text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">
+              <Clock className="w-3 h-3" />
+              Tempo (s)
+            </div>
+            <div className="flex gap-1.5">
+              <input
+                type="number"
+                step={0.1}
+                min={0}
+                placeholder={`${currentTime.toFixed(1)}`}
+                value={fireTime}
+                onClick={e => e.stopPropagation()}
+                onChange={e => setFireTime(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                className="flex-1 h-7 px-2 rounded-lg text-[11px] bg-surface-1 border border-border/20 text-foreground font-mono-code outline-none focus:border-primary/40"
+              />
+              <button
+                onClick={(e) => { e.stopPropagation(); setFireTime(currentTime); }}
+                className="px-2 h-7 rounded-lg text-[9px] bg-surface-1 text-muted-foreground hover:text-primary border border-border/20 font-mono-code transition-colors"
+              >
+                NOW
+              </button>
+            </div>
+          </div>
+
+          {/* Target position info */}
+          <div className="flex items-center gap-1 text-[9px] text-muted-foreground/50 font-mono-code">
+            <MapPin className="w-3 h-3" />
+            {selectedPositionIds.length > 0
+              ? `${selectedPositionIds.length} posições selecionadas`
+              : selectedPositionId
+                ? `Posição: ${positions.find(p => p.id === selectedPositionId)?.name || selectedPositionId}`
+                : 'Auto-criar posição'}
+          </div>
+
+          {/* Add button */}
+          <button
+            onClick={(e) => { e.stopPropagation(); handleAdd(typeof fireTime === 'number' ? fireTime : undefined); }}
+            className="w-full h-8 rounded-xl bg-primary/15 text-primary text-[11px] font-semibold hover:bg-primary/25 transition-all flex items-center justify-center gap-1.5 border border-primary/20"
+          >
+            <Flame className="w-3.5 h-3.5" />
+            Adicionar {isPyro ? `${selectedCaliber}" ` : ''}{effect.name}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -167,7 +233,7 @@ export default function EffectLibrary() {
   const [vdlInput, setVdlInput] = useState('');
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set(['morteiros', 'drones']));
   const [typeFilter, setTypeFilter] = useState<FilterType>('all');
-  const { addTimelineItem, currentTime } = useProjectStore();
+  const { addTimelineItem, currentTime, positions } = useProjectStore();
 
   const toggleCategory = (key: string) => {
     setOpenCategories((prev) => {
@@ -211,37 +277,38 @@ export default function EffectLibrary() {
     };
     addTimelineItem(newItem);
     setVdlInput('');
+    toast.success(`VDL: ${vdl.caliber}" ${colorStr} ${vdl.typeName}`);
   };
 
   return (
-    <div className="h-full flex flex-col glass border-r border-border/15">
+    <div className="h-full flex flex-col border-r border-border/10" style={{ background: 'hsl(var(--card))' }}>
       {/* Header */}
-      <div className="px-3.5 pt-3.5 pb-2.5 border-b border-border/15">
+      <div className="px-3.5 pt-3.5 pb-2.5 border-b border-border/10">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-primary/20 to-accent/15 flex items-center justify-center">
+            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-primary/15 to-accent/10 flex items-center justify-center">
               <Sparkles className="w-3.5 h-3.5 text-primary" />
             </div>
             <div>
               <h2 className="text-[11px] font-bold text-foreground uppercase tracking-[0.12em] font-display leading-none">Effects</h2>
-              <p className="text-[8px] text-muted-foreground/50 mt-0.5 font-mono-code">{filteredEffects.length} items</p>
+              <p className="text-[8px] text-muted-foreground/40 mt-0.5 font-mono-code">{filteredEffects.length} items</p>
             </div>
           </div>
         </div>
 
         {/* Search */}
         <div className="relative mb-2.5">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/40" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/30" />
           <Input
             placeholder="Search effects..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-8 pl-8 text-xs bg-surface-0/60 border-border/20 focus:border-primary/40 rounded-lg"
+            className="h-8 pl-8 text-xs bg-surface-0/50 border-border/15 focus:border-primary/30 rounded-xl"
           />
         </div>
 
-        {/* Type filter chips */}
-        <div className="flex flex-wrap gap-1">
+        {/* Type filter chips — Apple segmented control style */}
+        <div className="flex gap-0.5 p-0.5 rounded-xl bg-surface-0/50">
           {FILTER_CHIPS.map(f => {
             const FIcon = f.icon;
             const isActive = typeFilter === f.key;
@@ -250,14 +317,14 @@ export default function EffectLibrary() {
                 key={f.key}
                 onClick={() => setTypeFilter(f.key)}
                 className={cn(
-                  "px-2 py-[5px] rounded-lg text-[9px] font-semibold uppercase transition-all flex items-center gap-1",
+                  "flex-1 py-1.5 rounded-lg text-[9px] font-semibold uppercase transition-all flex items-center justify-center gap-0.5",
                   isActive
-                    ? "bg-primary/15 text-primary shadow-[0_0_10px_hsl(var(--primary)/0.12)]"
-                    : "bg-surface-0/40 text-muted-foreground/50 hover:text-muted-foreground hover:bg-surface-2/60"
+                    ? "bg-surface-2 text-foreground shadow-sm"
+                    : "text-muted-foreground/40 hover:text-muted-foreground/70"
                 )}
               >
                 <FIcon className="w-3 h-3" />
-                {f.label}
+                <span className="hidden xl:inline">{f.label}</span>
               </button>
             );
           })}
@@ -274,23 +341,21 @@ export default function EffectLibrary() {
             const effects = filteredEffects.filter((e) => e.category === key);
 
             return (
-              <div key={key} className="mb-1">
+              <div key={key} className="mb-0.5">
                 <button
                   onClick={() => toggleCategory(key)}
                   className={cn(
-                    "w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium transition-all group",
-                    isOpen ? "text-foreground bg-surface-1/40" : "text-muted-foreground hover:text-foreground hover:bg-surface-1/30"
+                    "w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-medium transition-all",
+                    isOpen ? "text-foreground bg-surface-1/30" : "text-muted-foreground hover:text-foreground hover:bg-surface-1/20"
                   )}
                 >
                   <div className="w-1.5 h-1.5 rounded-full transition-transform" style={{ backgroundColor: accent, transform: isOpen ? 'scale(1.3)' : 'scale(1)' }} />
-                  {isOpen ? <ChevronDown className="w-3 h-3 text-muted-foreground/40" /> : <ChevronRight className="w-3 h-3 text-muted-foreground/30" />}
+                  {isOpen ? <ChevronDown className="w-3 h-3 text-muted-foreground/30" /> : <ChevronRight className="w-3 h-3 text-muted-foreground/20" />}
                   <span className="uppercase tracking-wider text-[10px] flex-1 text-left font-display">{label}</span>
-                  <span className="text-[9px] font-mono-code text-muted-foreground/40 tabular-nums">
-                    {count}
-                  </span>
+                  <span className="text-[9px] font-mono-code text-muted-foreground/30 tabular-nums">{count}</span>
                 </button>
                 {isOpen && (
-                  <div className="pl-1 pr-0.5 pb-1 space-y-[2px] mt-0.5">
+                  <div className="pl-1 pr-0.5 pb-1 space-y-[1px] mt-0.5">
                     {effects.map((effect) => (
                       <EffectCard key={effect.id} effect={effect} />
                     ))}
@@ -303,20 +368,20 @@ export default function EffectLibrary() {
       </ScrollArea>
 
       {/* VDL Quick Add */}
-      <div className="px-3 py-2.5 border-t border-border/15">
+      <div className="px-3 py-2.5 border-t border-border/10">
         <div className="flex items-center gap-1.5 mb-2">
-          <Wand2 className="h-3 w-3 text-primary/70" />
-          <span className="text-[9px] font-semibold text-muted-foreground/60 uppercase tracking-[0.12em] font-display">VDL Quick Add</span>
+          <Wand2 className="h-3 w-3 text-primary/50" />
+          <span className="text-[9px] font-semibold text-muted-foreground/50 uppercase tracking-[0.12em] font-display">VDL Quick Add</span>
         </div>
         <Input
           placeholder='e.g. 4in Red Peony'
           value={vdlInput}
           onChange={(e) => setVdlInput(e.target.value)}
           onKeyDown={handleVDLSubmit}
-          className="h-7 text-xs bg-surface-0/60 border-border/20 font-mono-code rounded-lg"
+          className="h-7 text-xs bg-surface-0/50 border-border/15 font-mono-code rounded-xl"
         />
         {vdlInput && (
-          <p className={cn("text-[9px] mt-1.5", parseVDL(vdlInput).valid ? "text-primary" : "text-muted-foreground/40")}>
+          <p className={cn("text-[9px] mt-1.5", parseVDL(vdlInput).valid ? "text-primary" : "text-muted-foreground/30")}>
             {parseVDL(vdlInput).valid
               ? `${parseVDL(vdlInput).typeName} · ${parseVDL(vdlInput).caliber}" · ${parseVDL(vdlInput).duration}s — ⏎`
               : 'Keep typing...'}
