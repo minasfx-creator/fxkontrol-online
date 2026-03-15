@@ -136,7 +136,7 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="w-[48px] flex-shrink-0 glass border-l border-border/15 flex flex-col">
+      <div className="w-[48px] flex-shrink-0 border-l border-border/10 flex flex-col" style={{ background: 'hsl(var(--card))' }}>
         <ScrollArea className="flex-1">
           <div
             ref={containerRef}
