@@ -1783,37 +1783,54 @@ function WeatherEffects() {
   );
 }
 
-// --- Camera controller ---
+// --- Camera controller with persistent state ---
 function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPosition: [number, number, number]; targetLookAt: [number, number, number]; freeLook: boolean }) {
   const { camera } = useThree();
   const controlsRef = useRef<any>(null);
   const targetPos = useRef(new THREE.Vector3(...targetPosition));
   const targetLook = useRef(new THREE.Vector3(...targetLookAt));
   const animating = useRef(false);
+  const initialized = useRef(false);
+  const lastPresetKey = useRef('');
 
+  // Only animate camera when preset explicitly changes (not on every re-render)
+  const presetKey = `${targetPosition.join(',')}_${targetLookAt.join(',')}`;
+  
   useEffect(() => {
     if (freeLook) {
       animating.current = false;
       return;
     }
+    // Skip the initial mount — don't reset camera on component re-render
+    if (!initialized.current) {
+      initialized.current = true;
+      lastPresetKey.current = presetKey;
+      return;
+    }
+    // Only animate if the preset actually changed
+    if (presetKey === lastPresetKey.current) return;
+    lastPresetKey.current = presetKey;
+    
     targetPos.current.set(...targetPosition);
     targetLook.current.set(...targetLookAt);
     animating.current = true;
-  }, [targetPosition, targetLookAt, freeLook]);
+  }, [presetKey, freeLook]);
 
   useFrame(() => {
     if (!animating.current || !controlsRef.current || freeLook) return;
-    camera.position.lerp(targetPos.current, 0.04);
-    controlsRef.current.target.lerp(targetLook.current, 0.04);
+    camera.position.lerp(targetPos.current, 0.06);
+    controlsRef.current.target.lerp(targetLook.current, 0.06);
     controlsRef.current.update();
-    if (camera.position.distanceTo(targetPos.current) < 0.05) animating.current = false;
+    if (camera.position.distanceTo(targetPos.current) < 0.1) {
+      animating.current = false;
+    }
   });
 
   return (
     <OrbitControls
       ref={controlsRef}
       enableDamping
-      dampingFactor={0.08}
+      dampingFactor={0.06}
       rotateSpeed={0.6}
       panSpeed={0.8}
       zoomSpeed={1.2}
