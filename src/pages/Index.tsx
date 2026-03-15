@@ -143,7 +143,7 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   sitelayout: 'w-72',
   showsettings: 'w-64',
   calibration: 'w-72',
-  livefiring: 'w-72',
+  livefiring: 'w-64',
   fleet: 'w-72',
   geofence: 'w-64',
   storyboard: 'w-64',
