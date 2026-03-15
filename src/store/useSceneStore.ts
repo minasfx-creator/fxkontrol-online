@@ -146,7 +146,7 @@ const DEFAULT_SETTINGS: SceneSettings = {
   showGrid: true,
   showOriginMarker: true,
   showScalePoles: true,
-  showTreeline: true,
+  showTreeline: false,
   groundFogIntensity: 0.6,
 
   weather: 'clear',
