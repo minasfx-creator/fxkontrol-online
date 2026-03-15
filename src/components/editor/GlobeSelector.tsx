@@ -300,8 +300,8 @@ function EarthGlobe({ onClickGlobe }: { onClickGlobe: (lat: number, lng: number)
 
   return (
     <mesh ref={meshRef} onClick={handleClick}>
-      <sphereGeometry args={[GLOBE_RADIUS, 128, 128]} />
-      <meshStandardMaterial map={texture} roughness={0.82} metalness={0.08} />
+      <sphereGeometry args={[GLOBE_RADIUS, 256, 256]} />
+      <meshStandardMaterial map={texture} roughness={0.7} metalness={0.05} envMapIntensity={0.3} />
     </mesh>
   );
 }
