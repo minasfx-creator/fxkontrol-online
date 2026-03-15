@@ -378,15 +378,22 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
   }, [handleSave, handleExportVVIZ, setEditorMode]);
 
   return (
-    <div className="flex items-center h-11 px-3 glass border-b border-border/20 gap-1">
-      {/* Logo */}
+    <div className="flex items-center h-11 px-3 border-b border-border/10 gap-1" style={{ background: 'hsl(var(--card))' }}>
+      {/* Logo — consistent with splash screen */}
       <div className="flex items-center gap-2.5 mr-2">
-        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center p-0.5">
-          <img src={fxkLogo} alt="FX Kontrol" className="w-full h-full object-contain" />
+        <div
+          className="w-7 h-7 rounded-xl flex items-center justify-center p-0.5"
+          style={{
+            background: 'linear-gradient(135deg, hsl(195 100% 50% / 0.1), hsl(18 100% 55% / 0.08))',
+            boxShadow: '0 0 20px hsl(195 100% 50% / 0.08), inset 0 1px 0 hsl(195 100% 80% / 0.06)',
+            border: '1px solid hsl(195 100% 50% / 0.12)',
+          }}
+        >
+          <img src={fxkLogo} alt="FX Kontrol" className="w-full h-full object-contain drop-shadow-[0_0_8px_hsl(195_100%_50%/0.2)]" />
         </div>
         <div className="flex flex-col leading-none">
           <span className="text-[11px] font-bold text-foreground tracking-[0.15em] uppercase font-display">FX KONTROL</span>
-          <span className="text-[7px] text-muted-foreground/60 tracking-[0.12em] uppercase font-display">by Minas FX</span>
+          <span className="text-[7px] text-muted-foreground/40 tracking-[0.12em] uppercase font-display">by Minas FX</span>
         </div>
       </div>
 
