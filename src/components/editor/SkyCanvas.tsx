@@ -678,10 +678,7 @@ function TimelineEffects() {
         const scaledHeight = (effect.heightMeters || 4) * effectScale;
 
         if (pt === 'mine') return (
-          <group key={item.id}>
-            <MineEffect position={pos} color={effect.color} progress={progress} />
-            <SmokeTrail position={pos} progress={progress} intensity={0.5} />
-          </group>
+          <MineEffect key={item.id} position={pos} color={effect.color} progress={progress} />
         );
         if (pt === 'candle') return <RomanCandleEffect key={item.id} position={pos} color={effect.color} progress={progress} shotCount={effect.shotCount || 8} />;
         if (pt === 'waterfall') return <WaterfallEffect key={item.id} position={pos} color={effect.color} progress={progress} width={scaledHeight} />;
@@ -702,24 +699,19 @@ function TimelineEffects() {
 
         // ── Legacy effect ID routing ──
         if (eid.startsWith('comet-')) return <CometEffect key={item.id} position={pos} color={effect.color} progress={progress} direction={eid === 'comet-02' ? 'down' : 'up'} />;
-        if (eid.startsWith('shock-')) return <ShockwaveEffect key={item.id} position={burstPos} color={effect.color} progress={progress} />;
         if (eid.startsWith('mburst-')) return <MultiBurstEffect key={item.id} position={burstPos} color={effect.color} progress={progress} burstCount={eid === 'mburst-02' ? 5 : 3} />;
         if (eid.startsWith('fan-')) return <FanEffect key={item.id} position={pos} color={effect.color} progress={progress} spreadAngle={eid === 'fan-02' ? 180 : 90} />;
 
-        // ── Default: firework burst at break height with smoke + embers ──
+        // ── Default: clean firework burst at break height (no smoke, Niagara-style) ──
         if (effect.type === 'firework') return (
-          <group key={item.id}>
-            <FireworkBurst 
-              position={burstPos} 
-              color={effect.color} 
-              progress={progress} 
-              caliber={caliber}
-              pattern={effect.pattern || 'peony'}
-            />
-            <SmokeTrail position={burstPos} progress={progress} intensity={caliber * 0.4} />
-            <EmberParticles position={pos} color={effect.color} progress={progress} spreadRadius={caliber * 3} startHeight={realBreakHeight * 0.8} />
-            {caliber >= 4 && <SparkShower position={pos} color={effect.color} progress={progress} height={realBreakHeight * 0.7} spread={caliber * 2} />}
-          </group>
+          <FireworkBurst 
+            key={item.id}
+            position={burstPos} 
+            color={effect.color} 
+            progress={progress} 
+            caliber={caliber}
+            pattern={effect.pattern || 'peony'}
+          />
         );
         return <LightPoint key={item.id} position={pos} color={effect.color} />;
       })}
