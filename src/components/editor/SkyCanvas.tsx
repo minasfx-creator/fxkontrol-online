@@ -1979,7 +1979,7 @@ function GroundReflections() {
 
   return (
     <mesh ref={meshRef} position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[400, 400]} />
+      <planeGeometry args={[1200, 1200]} />
       <shaderMaterial
         transparent
         depthWrite={false}
