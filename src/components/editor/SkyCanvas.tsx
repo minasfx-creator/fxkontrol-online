@@ -366,12 +366,27 @@ function FireworkBurst({
     const w = getWindForce();
     const time = clock.getElapsedTime();
     
-    // Finale drag model: exponential decay, heavier for denser patterns
-    const dragCoeff = 0.04 + caliber * 0.005;
+    // ── Caliber-specific drag (real pyro data) ──
+    // Small shells (3"): lighter stars, more air resistance → higher drag
+    // Large shells (10-12"): heavier stars, less relative drag
+    // Reference: 3"=0.065, 4"=0.055, 6"=0.042, 8"=0.035, 10"=0.028, 12"=0.024
+    const dragCoeff = caliber <= 3 ? 0.065
+      : caliber <= 4 ? 0.055
+      : caliber <= 5 ? 0.048
+      : caliber <= 6 ? 0.042
+      : caliber <= 8 ? 0.035
+      : caliber <= 10 ? 0.028
+      : 0.024;
     const isTrailingPattern = pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade' || pattern === 'palm';
     
-    // Particle size: proportional to caliber — much larger for real-world scale visibility
-    const baseSize = 0.5 + caliber * 0.35;
+    // Particle size: caliber-proportional — real world visibility at distance
+    // 3" stars are small & fast-fading, 12" stars are large & bright
+    const baseSize = caliber <= 3 ? 0.4
+      : caliber <= 4 ? 0.6
+      : caliber <= 6 ? 0.9
+      : caliber <= 8 ? 1.2
+      : caliber <= 10 ? 1.5
+      : 1.8;
     
     // Helper: proper analytical position for exponential drag
     // With drag a = -k*v, velocity v(t) = v0 * e^(-k*t)
