@@ -59,6 +59,9 @@ import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { createExposureController, updateExposure, flashEvent } from '@/render_ultra/postprocessing/exposure';
 import { getCompound, thermalColor, type ChemicalCompound } from '@/render_ultra/fireworks/particleChemistry';
 import { GlobalIlluminationSystem } from '@/render_ultra/lighting/globalIllumination';
+import { SmokeSystem } from '@/render_ultra/fireworks/smokeSimulation';
+import { createLensFlareSprite, flashLensFlare, decayLensFlare } from '@/render_ultra/postprocessing/lensFlare';
+import { getBurstConfig, type BurstPattern } from '@/render_ultra/fireworks/burstSimulation';
 
 // ═══ PyroChem: map hex colors → real chemical compounds ═══
 function hexToCompound(hexColor: string): ChemicalCompound {
@@ -139,6 +142,9 @@ function PlaybackClock() {
 // --- Particle system ---
 const GRAVITY = -9.81; // Real-world gravity for accurate ballistics
 
+// Module-level ref for sky scatter uniforms (shared between SkyGradient and AdaptiveExposureController)
+let _skyScatterUniforms: { uExplosionScatter: { value: THREE.Color }; uScatterIntensity: { value: number } } | null = null;
+
 function getWindForce(): [number, number, number] {
   const { wind } = useProjectStore.getState();
   if (!wind.enabled) return [0, 0, 0];
@@ -191,7 +197,7 @@ const STAR_FRAGMENT_SHADER = `
     float outer = exp(-dist * dist * 8.0);  // Soft outer bloom
     
     // Combined alpha with natural falloff
-    float alpha = core * 1.0 + inner * 0.6 + outer * 0.15;
+    float alpha = core * 1.0 + inner * 0.7 + outer * 0.15;
     
     // Thermal color model: white-hot center fading to star color
     vec3 whiteHot = vec3(1.3, 1.15, 0.95);
@@ -232,6 +238,11 @@ function FireworkBurst({
   
   // Real break speed from pyroPhysics — caliber proportional (m/s)
   const breakSpeed = useMemo(() => getBreakSpeed(caliber), [caliber]);
+  
+  // ═══ Burst Simulation Config — calibrated per pattern ═══
+  const burstCfg = useMemo(() => getBurstConfig((pattern || 'peony') as BurstPattern), [pattern]);
+  const gravityMult = burstCfg?.gravityMult ?? 1.0;
+  const tailFactor = burstCfg?.tailFactor ?? 1.0;
   
   // ── Star lifetime calibrated to real pyro data ──
   // 3" = 1.5-2s, 4" = 2-2.5s, 6" = 3-4s, 8" = 4-5s, 10" = 5-7s, 12" = 6-8s
@@ -402,6 +413,8 @@ function FireworkBurst({
       : 0.024;
     const isTrailingPattern = pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade' || pattern === 'palm';
     
+    
+    
     // Particle size: caliber-proportional — real world visibility at distance
     // 3" stars are small & fast-fading, 12" stars are large & bright
     const baseSize = caliber <= 3 ? 0.4
@@ -431,7 +444,7 @@ function FireworkBurst({
       
       // Analytical position with drag + gravity + wind
       const px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
-      const py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * t * t;
+      const py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
       const pz = dragPos(vz, t, dragCoeff) + w[2] * t * t * 0.3;
       pos[i * 3] = px; pos[i * 3 + 1] = py; pos[i * 3 + 2] = pz;
 
@@ -479,10 +492,10 @@ function FireworkBurst({
         const t1 = Math.max(0, t - (s + 1) * trailDt);
         const base2 = (i * TRAIL_LENGTH + s) * 6;
         tPos[base2] = dragPos(vx, t0, dragCoeff) + w[0] * t0 * t0 * 0.3;
-        tPos[base2 + 1] = dragPos(vy, t0, dragCoeff) + 0.5 * GRAVITY * t0 * t0;
+        tPos[base2 + 1] = dragPos(vy, t0, dragCoeff) + 0.5 * GRAVITY * gravityMult * t0 * t0;
         tPos[base2 + 2] = dragPos(vz, t0, dragCoeff) + w[2] * t0 * t0 * 0.3;
         tPos[base2 + 3] = dragPos(vx, t1, dragCoeff) + w[0] * t1 * t1 * 0.3;
-        tPos[base2 + 4] = dragPos(vy, t1, dragCoeff) + 0.5 * GRAVITY * t1 * t1;
+        tPos[base2 + 4] = dragPos(vy, t1, dragCoeff) + 0.5 * GRAVITY * gravityMult * t1 * t1;
         tPos[base2 + 5] = dragPos(vz, t1, dragCoeff) + w[2] * t1 * t1 * 0.3;
         
         const segFrac = s / TRAIL_LENGTH;
@@ -540,7 +553,7 @@ function FireworkBurst({
           <bufferAttribute attach="attributes-position" args={[new Float32Array(trailVertCount * 3), 3]} />
           <bufferAttribute attach="attributes-color" args={[new Float32Array(trailVertCount * 3), 3]} />
         </bufferGeometry>
-        <lineBasicMaterial vertexColors transparent opacity={0.6} depthWrite={false} blending={THREE.AdditiveBlending} linewidth={3} />
+        <lineBasicMaterial vertexColors transparent opacity={Math.min(1, 0.8 * tailFactor)} depthWrite={false} blending={THREE.AdditiveBlending} linewidth={3} />
       </lineSegments>
       
       
@@ -812,6 +825,8 @@ function SkyGradient() {
     uHorizonGlow: { value: horizonGlow },
     uStarDensity: { value: starDensity },
     uTime: { value: 0 },
+    uExplosionScatter: { value: new THREE.Color(0, 0, 0) },
+    uScatterIntensity: { value: 0 },
   }), []);
 
   useEffect(() => {
@@ -819,6 +834,12 @@ function SkyGradient() {
     uniforms.uHorizonGlow.value = horizonGlow;
     uniforms.uStarDensity.value = starDensity;
   }, [skyBrightness, horizonGlow, starDensity]);
+
+  // Expose scatter uniforms for AdaptiveExposureController
+  useEffect(() => {
+    _skyScatterUniforms = { uExplosionScatter: uniforms.uExplosionScatter, uScatterIntensity: uniforms.uScatterIntensity };
+    return () => { _skyScatterUniforms = null; };
+  }, []);
 
   useFrame(({ clock }) => {
     uniforms.uTime.value = clock.getElapsedTime();
@@ -843,6 +864,8 @@ function SkyGradient() {
           uniform float uHorizonGlow;
           uniform float uStarDensity;
           uniform float uTime;
+          uniform vec3 uExplosionScatter;
+          uniform float uScatterIntensity;
           varying vec3 vWorldPosition;
           
           float hash21(vec2 p) {
@@ -985,6 +1008,9 @@ function SkyGradient() {
             // Shooting stars
             float shooting = shootingStar(dir);
             color += vec3(0.85, 0.92, 1.0) * shooting * uStarDensity;
+            
+            // ═══ Explosion sky scatter — atmosphere reflects burst colors ═══
+            color += uExplosionScatter * uScatterIntensity * exp(-abs(h) * 3.0);
             
             color *= uSkyBrightness;
             color = max(color, vec3(0.0));
@@ -1326,7 +1352,7 @@ function GrassGround() {
 // --- Atmospheric dust particles floating in the air ---
 function AtmosphericParticles() {
   const pointsRef = useRef<THREE.Points>(null);
-  const count = 500;
+  const count = 200;
   
   const { positions: posData, sizes, velocities: velData } = useMemo(() => {
     const pos = new Float32Array(count * 3);
@@ -1373,7 +1399,7 @@ function AtmosphericParticles() {
         size={0.07}
         color="#8899cc"
         transparent
-        opacity={0.18}
+        opacity={0.08}
         depthWrite={false}
         blending={THREE.AdditiveBlending}
         sizeAttenuation
@@ -1427,7 +1453,7 @@ function FloorLogo() {
       <meshBasicMaterial
         map={texture}
         transparent
-        opacity={0.35}
+        opacity={0.15}
         depthWrite={false}
         blending={THREE.AdditiveBlending}
       />
@@ -1436,59 +1462,80 @@ function FloorLogo() {
 }
 
 
+// ═══ VOLUMETRIC GROUND FOG — render_ultra FBM 4-octave noise ═══
 function GroundFog() {
   const fogRef = useRef<THREE.Mesh>(null);
+  const fogIntensity = useSceneStore(st => st.settings.groundFogIntensity);
   const uniforms = useMemo(() => ({
-    time: { value: 0 },
+    uTime: { value: 0 },
+    uIntensity: { value: fogIntensity },
+    uHeight: { value: 15.0 },
+    uFogColor: { value: new THREE.Color(0.03, 0.04, 0.08) },
   }), []);
 
+  useEffect(() => {
+    uniforms.uIntensity.value = fogIntensity;
+  }, [fogIntensity]);
+
   useFrame(({ clock }) => {
-    uniforms.time.value = clock.getElapsedTime();
+    uniforms.uTime.value = clock.getElapsedTime();
   });
 
   return (
-    <mesh ref={fogRef} position={[0, 0.3, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+    <mesh ref={fogRef} position={[0, 0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
       <planeGeometry args={[500, 500, 1, 1]} />
       <shaderMaterial
         transparent
         depthWrite={false}
-        blending={THREE.AdditiveBlending}
+        side={THREE.DoubleSide}
         uniforms={uniforms}
         vertexShader={`
           varying vec2 vUv;
-          varying vec3 vWorldPos;
+          varying float vWorldY;
           void main() {
             vUv = uv;
-            vec4 wp = modelMatrix * vec4(position, 1.0);
-            vWorldPos = wp.xyz;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            vec4 worldPos = modelMatrix * vec4(position, 1.0);
+            vWorldY = worldPos.y;
+            gl_Position = projectionMatrix * viewMatrix * worldPos;
           }
         `}
         fragmentShader={`
-          uniform float time;
+          uniform float uTime;
+          uniform float uIntensity;
+          uniform float uHeight;
+          uniform vec3 uFogColor;
           varying vec2 vUv;
-          varying vec3 vWorldPos;
-          
-          float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-          float noise(vec2 p) {
-            vec2 i = floor(p); vec2 f = fract(p);
-            f = f * f * (3.0 - 2.0 * f);
-            return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
-                       mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+          varying float vWorldY;
+
+          float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
           }
-          
+          float noise(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            float a = hash(i);
+            float b = hash(i + vec2(1.0, 0.0));
+            float c = hash(i + vec2(0.0, 1.0));
+            float d = hash(i + vec2(1.0, 1.0));
+            return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+          }
+          float fbm(vec2 p) {
+            float v = 0.0;
+            v += 0.5 * noise(p); p *= 2.01;
+            v += 0.25 * noise(p); p *= 2.02;
+            v += 0.125 * noise(p); p *= 2.03;
+            v += 0.0625 * noise(p);
+            return v;
+          }
+
           void main() {
-            vec2 uv = vWorldPos.xz * 0.01;
-            float n1 = noise(uv * 3.0 + time * 0.02);
-            float n2 = noise(uv * 6.0 - time * 0.015);
-            float fog = n1 * 0.6 + n2 * 0.4;
-            
-            // Fade at edges
-            float dist = length(vWorldPos.xz) * 0.01;
-            float edgeFade = 1.0 - smoothstep(0.5, 1.0, dist);
-            
-            float alpha = fog * 0.04 * edgeFade;
-            gl_FragColor = vec4(0.15, 0.18, 0.25, alpha);
+            vec2 uv = vUv * 4.0 + vec2(uTime * 0.02, uTime * 0.01);
+            float n = fbm(uv);
+            float heightFade = smoothstep(uHeight, 0.0, vWorldY);
+            float edgeFade = smoothstep(0.0, 0.3, min(vUv.x, min(vUv.y, min(1.0 - vUv.x, 1.0 - vUv.y))));
+            float alpha = n * heightFade * edgeFade * uIntensity;
+            gl_FragColor = vec4(uFogColor, alpha * 0.4);
           }
         `}
       />
@@ -1569,13 +1616,16 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
           `}
         />
       </mesh>
-      {/* Near-field circle with better detail */}
+      {/* Near-field circle — wet-asphalt PBR with clearcoat reflections */}
       <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[120, 64]} />
-        <meshStandardMaterial
-          color={new THREE.Color(0.04 * b, 0.065 * b, 0.035 * b)}
-          roughness={0.85}
-          metalness={0.1}
+        <meshPhysicalMaterial
+          color={new THREE.Color(0.05 * b, 0.05 * b, 0.06 * b)}
+          roughness={0.2}
+          metalness={0.15}
+          clearcoat={1.0}
+          clearcoatRoughness={0.1}
+          envMapIntensity={1.8}
         />
       </mesh>
       {/* Contact shadow circle under launch area */}
@@ -1620,15 +1670,26 @@ function AdaptiveExposureController() {
 
   useFrame((_, delta) => {
     const state = exposureRef.current;
-    // Count active bright effects as luminance proxy
     const { timelineItems, currentTime } = useProjectStore.getState();
     let luminance = 0;
+    const scatterAccum = new THREE.Color(0, 0, 0);
+    let scatterMax = 0;
+
     for (const item of timelineItems) {
       const elapsed = currentTime - item.startTime;
       if (elapsed >= 0 && elapsed < 0.5) {
-        luminance += 3.0; // Each fresh burst adds luminance
+        luminance += 3.0;
       } else if (elapsed >= 0.5 && elapsed < 2.0) {
         luminance += 0.5;
+      }
+      // Sky scatter accumulation
+      if (elapsed >= 0 && elapsed < 0.3) {
+        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+        if (effect && effect.type === 'firework') {
+          const intensity = 0.4 * (1 - elapsed / 0.3);
+          scatterAccum.add(new THREE.Color(effect.color).multiplyScalar(intensity * 0.3));
+          scatterMax = Math.max(scatterMax, intensity);
+        }
       }
     }
 
@@ -1638,6 +1699,16 @@ function AdaptiveExposureController() {
 
     const exposure = updateExposure(state, luminance, delta);
     gl.toneMappingExposure = exposure;
+
+    // Update sky scatter uniforms
+    if (_skyScatterUniforms) {
+      if (scatterMax > 0.05) {
+        _skyScatterUniforms.uExplosionScatter.value.copy(scatterAccum);
+        _skyScatterUniforms.uScatterIntensity.value = scatterMax;
+      } else {
+        _skyScatterUniforms.uScatterIntensity.value *= Math.max(0, 1 - delta * 3);
+      }
+    }
   });
 
   return null;
@@ -1684,8 +1755,141 @@ function GlobalIlluminationController() {
   return null;
 }
 
+// ═══ VOLUMETRIC SMOKE CONTROLLER — post-burst smoke with wind drift ═══
+function SmokeController() {
+  const smokeRef = useRef<SmokeSystem | null>(null);
+  const { scene } = useThree();
 
-// Renders reactive reflection plane that flashes with explosions
+  useEffect(() => {
+    const smoke = new SmokeSystem(4096);
+    smokeRef.current = smoke;
+    scene.add(smoke.mesh);
+    return () => {
+      scene.remove(smoke.mesh);
+      smokeRef.current = null;
+    };
+  }, [scene]);
+
+  useFrame((_, delta) => {
+    if (!smokeRef.current) return;
+    const smoke = smokeRef.current;
+
+    // Emit smoke for fresh bursts
+    const { timelineItems, currentTime } = useProjectStore.getState();
+    for (const item of timelineItems) {
+      const elapsed = currentTime - item.startTime;
+      if (elapsed >= 0 && elapsed < 0.05) {
+        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+        if (effect && effect.type === 'firework') {
+          const caliber = effect.caliber || 4;
+          const breakH = getBreakHeight(caliber);
+          const origin = new THREE.Vector3(item.position.x, item.position.y + breakH, item.position.z);
+          const smokeColor = new THREE.Color(0.15, 0.14, 0.12); // warm grey smoke
+          smoke.emit(origin, Math.round(15 + caliber * 3), smokeColor, caliber * 2);
+        }
+      }
+    }
+
+    // Update with wind
+    const w = getWindForce();
+    smoke.update(delta, w[0] * 3, w[2] * 3);
+  });
+
+  return null;
+}
+
+// ═══ LENS FLARE CONTROLLER — cinematic optics on bright bursts ═══
+function LensFlareController() {
+  const spritesRef = useRef<THREE.Sprite[]>([]);
+  const poolIdx = useRef(0);
+  const { scene } = useThree();
+
+  useEffect(() => {
+    const pool: THREE.Sprite[] = [];
+    for (let i = 0; i < 10; i++) {
+      const sprite = createLensFlareSprite(new THREE.Color(1, 0.9, 0.7), 25);
+      scene.add(sprite);
+      pool.push(sprite);
+    }
+    spritesRef.current = pool;
+    return () => {
+      pool.forEach(s => scene.remove(s));
+      spritesRef.current = [];
+    };
+  }, [scene]);
+
+  useFrame((_, delta) => {
+    const sprites = spritesRef.current;
+    if (sprites.length === 0) return;
+
+    // Decay all active flares
+    for (const sprite of sprites) {
+      decayLensFlare(sprite, delta, 3);
+    }
+
+    // Flash flares for fresh bursts
+    const { timelineItems, currentTime } = useProjectStore.getState();
+    for (const item of timelineItems) {
+      const elapsed = currentTime - item.startTime;
+      if (elapsed >= 0 && elapsed < 0.03) {
+        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+        if (effect && effect.type === 'firework') {
+          const caliber = effect.caliber || 4;
+          const breakH = getBreakHeight(caliber);
+          const pos = new THREE.Vector3(item.position.x, item.position.y + breakH, item.position.z);
+          const caliberScale = caliber / 6; // 6" as reference
+          const sprite = sprites[poolIdx.current % sprites.length];
+          flashLensFlare(sprite, pos, Math.min(1, 0.5 * caliberScale), new THREE.Color(effect.color));
+          poolIdx.current++;
+        }
+      }
+    }
+  });
+
+  return null;
+}
+
+// ═══ SKY SCATTER CONTROLLER — atmosphere reflects explosion colors ═══
+function SkyScatterController() {
+  const scatterColor = useRef(new THREE.Color(0, 0, 0));
+  const scatterIntensity = useRef(0);
+
+  useFrame((_, delta) => {
+    // Find active explosions and accumulate scatter
+    const { timelineItems, currentTime } = useProjectStore.getState();
+    let maxIntensity = 0;
+    const accumColor = new THREE.Color(0, 0, 0);
+
+    for (const item of timelineItems) {
+      const elapsed = currentTime - item.startTime;
+      if (elapsed >= 0 && elapsed < 0.3) {
+        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+        if (effect && effect.type === 'firework') {
+          const c = new THREE.Color(effect.color);
+          const intensity = 0.4 * (1 - elapsed / 0.3);
+          accumColor.add(c.multiplyScalar(intensity * 0.3));
+          maxIntensity = Math.max(maxIntensity, intensity);
+        }
+      }
+    }
+
+    if (maxIntensity > 0.05) {
+      scatterColor.current.copy(accumColor);
+      scatterIntensity.current = maxIntensity;
+    } else {
+      // Decay
+      scatterIntensity.current *= Math.max(0, 1 - delta * 3);
+    }
+
+    // Update the SkyGradient uniforms via scene traversal
+    // The SkyGradient sphere is the BackSide sphere at radius ~500
+    // We access it through the store-driven uniforms approach
+  });
+
+  return null;
+}
+
+
 function GroundReflections() {
   const meshRef = useRef<THREE.Mesh>(null);
   const uniformsRef = useRef({
@@ -2290,6 +2494,8 @@ export default function SkyCanvas() {
         <AdaptiveExposureController />
         <GlobalIlluminationController />
         <GroundReflections />
+        <SmokeController />
+        <LensFlareController />
 
         <SkyGradient />
         <Moon />
