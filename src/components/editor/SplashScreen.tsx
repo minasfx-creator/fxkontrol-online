@@ -62,8 +62,8 @@ const SplashScreen = forwardRef<HTMLDivElement, SplashScreenProps>(function Spla
       >
         {/* Logo */}
         <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-fxk-cyan to-fxk-orange flex items-center justify-center shadow-[0_0_50px_hsl(var(--fxk-cyan)/0.35)] animate-fxk-glow">
-            <Zap className="h-8 w-8 text-primary-foreground" />
+          <div className="w-20 h-20 flex items-center justify-center animate-fxk-glow rounded-xl">
+            <img src={fxkLogo} alt="FX Kontrol" className="w-16 h-16 object-contain drop-shadow-[0_0_30px_hsl(var(--fxk-cyan)/0.4)]" />
           </div>
           <h1 className="text-3xl font-extrabold tracking-[0.3em] uppercase font-display text-fxk-gradient">
             FX KONTROL
