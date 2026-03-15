@@ -60,7 +60,14 @@ export function getLiftTime(caliberInches: number): number {
 }
 
 export function getStarLifetime(caliberInches: number): number {
-  return 1.2 + caliberInches * 0.45;
+  // Calibrated to real pyro: 3"=1.6s, 4"=2.2s, 6"=3.5s, 8"=4.5s, 10"=6s, 12"=7.5s
+  if (caliberInches <= 3) return 1.6;
+  if (caliberInches <= 4) return 2.2;
+  if (caliberInches <= 5) return 2.8;
+  if (caliberInches <= 6) return 3.5;
+  if (caliberInches <= 8) return 4.5;
+  if (caliberInches <= 10) return 6.0;
+  return 7.5;
 }
 
 export function getStarSpread(caliberInches: number): number {
