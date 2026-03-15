@@ -1416,7 +1416,64 @@ function AtmosphericParticles() {
   );
 }
 
-// --- Ground fog layer ---
+// --- MINAS FX floor logo with transparency ---
+function FloorLogo() {
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 2048;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+
+    // Transparent background
+    ctx.clearRect(0, 0, 2048, 512);
+
+    // Main text: MINAS FX
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // "MINAS" in silver/white
+    ctx.font = 'bold 180px "Outfit", Arial, sans-serif';
+    ctx.fillStyle = 'rgba(200, 210, 220, 0.35)';
+    ctx.fillText('MINAS', 820, 200);
+
+    // "FX" in cyan-orange
+    ctx.font = 'bold 180px "Outfit", Arial, sans-serif';
+    ctx.fillStyle = 'rgba(0, 229, 255, 0.4)';
+    ctx.fillText('FX', 1420, 200);
+
+    // Subtitle
+    ctx.font = '500 60px "Outfit", Arial, sans-serif';
+    ctx.fillStyle = 'rgba(0, 229, 255, 0.2)';
+    ctx.fillText('SPECIAL FX SOLUTIONS', 1024, 360);
+
+    // Decorative line
+    ctx.strokeStyle = 'rgba(255, 107, 0, 0.25)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(300, 420);
+    ctx.quadraticCurveTo(1024, 380, 1748, 420);
+    ctx.stroke();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.anisotropy = 16;
+    return tex;
+  }, []);
+
+  return (
+    <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={[60, 15]} />
+      <meshBasicMaterial
+        map={texture}
+        transparent
+        opacity={0.6}
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+      />
+    </mesh>
+  );
+}
+
+
 function GroundFog() {
   const fogRef = useRef<THREE.Mesh>(null);
   const uniforms = useMemo(() => ({
@@ -1650,6 +1707,9 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
           />
         </>
       )}
+
+      {/* MINAS FX floor logo */}
+      <FloorLogo />
 
       {/* Origin marker */}
       {sc.showOriginMarker && (
