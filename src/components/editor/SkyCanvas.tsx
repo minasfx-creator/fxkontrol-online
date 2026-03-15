@@ -557,7 +557,7 @@ function FireworkBurst({
       {progress < 0.3 && progress > 0.003 && (
         <mesh>
           <sphereGeometry args={[caliber * 4 + progress * caliber * 10, 12, 12]} />
-          <meshBasicMaterial color={color} transparent opacity={0.02 * (1 - progress / 0.3)} blending={THREE.AdditiveBlending} depthWrite={false} />
+          <meshBasicMaterial color={color} transparent opacity={0.008 * (1 - progress / 0.3)} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
     </group>
