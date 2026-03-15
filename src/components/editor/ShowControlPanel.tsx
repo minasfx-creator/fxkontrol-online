@@ -142,8 +142,9 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
     const ok = await showOrchestrator.uploadShow({
       trajectories,
       lightProgram,
-      cues: [],
-      geofence: null,
+      startMethod,
+      coordinateSystem: 'neu',
+      origin: { lat: 0, lon: 0, altMSL: 0 },
     });
     setBusy(false);
 
