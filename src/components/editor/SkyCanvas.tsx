@@ -998,6 +998,9 @@ function SkyGradient() {
             float shooting = shootingStar(dir);
             color += vec3(0.85, 0.92, 1.0) * shooting * uStarDensity;
             
+            // ═══ Explosion sky scatter — atmosphere reflects burst colors ═══
+            color += uExplosionScatter * uScatterIntensity * exp(-abs(h) * 3.0);
+            
             color *= uSkyBrightness;
             color = max(color, vec3(0.0));
             
