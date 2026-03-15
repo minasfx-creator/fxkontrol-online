@@ -69,6 +69,8 @@ import ShowControlPanel from '@/components/editor/ShowControlPanel';
 import ShowInspectorPanel from '@/components/editor/ShowInspectorPanel';
 import LightProgramPanel from '@/components/editor/LightProgramPanel';
 import SafetyCheckPanel from '@/components/editor/SafetyCheckPanel';
+import TakeoffGridPanel from '@/components/editor/TakeoffGridPanel';
+import TransitionPlannerPanel from '@/components/editor/TransitionPlannerPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
@@ -151,6 +153,8 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   inspector: 'w-72',
   lightprogram: 'w-72',
   safetycheck: 'w-72',
+  takeoffgrid: 'w-64',
+  transitions: 'w-72',
 };
 
 export default function Index() {
@@ -340,6 +344,8 @@ export default function Index() {
         {activePanel === 'inspector' && <ShowInspectorPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'lightprogram' && <LightProgramPanel />}
         {activePanel === 'safetycheck' && <SafetyCheckPanel />}
+        {activePanel === 'takeoffgrid' && <TakeoffGridPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'transitions' && <TransitionPlannerPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
