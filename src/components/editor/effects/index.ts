@@ -20,3 +20,5 @@ export { default as FogMachineEffect } from './FogMachineEffect';
 export { default as HazeMachineEffect } from './HazeMachineEffect';
 export { default as SnowMachineEffect } from './SnowMachineEffect';
 export { default as BubbleMachineEffect } from './BubbleMachineEffect';
+export { default as ShellBurstRenderer } from './ShellBurstRenderer';
+export { default as ShellExplosionManager } from './ShellExplosionManager';

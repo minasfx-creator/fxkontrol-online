@@ -164,20 +164,24 @@ export default function PrefireShell({
         </mesh>
       )}
 
-      {/* Comet trail particles — dense and bright */}
+      {/* GPU Comet trail — custom shader with gaussian sprites */}
       <points>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[trailPositions, 3]} />
-          <bufferAttribute attach="attributes-color" args={[trailColors, 3]} />
+          <bufferAttribute attach="attributes-aTrailColor" args={[trailColors, 3]} />
+          <bufferAttribute attach="attributes-aTrailIndex" args={[(() => {
+            const idx = new Float32Array(TRAIL_PARTICLES);
+            for (let i = 0; i < TRAIL_PARTICLES; i++) idx[i] = i / TRAIL_PARTICLES;
+            return idx;
+          })(), 1]} />
         </bufferGeometry>
-        <pointsMaterial
-          size={0.07 + caliber * 0.018}
-          vertexColors
+        <shaderMaterial
+          vertexShader={COMET_VERTEX}
+          fragmentShader={COMET_FRAGMENT}
+          uniforms={{ uSize: { value: 1.2 + caliber * 0.3 } }}
           transparent
-          opacity={0.95}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
-          sizeAttenuation
         />
       </points>
 
