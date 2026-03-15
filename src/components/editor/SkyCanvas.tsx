@@ -58,6 +58,27 @@ import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 // ═══ render_ultra integrations — Blender/Cycles-grade tech ═══
 import { createExposureController, updateExposure, flashEvent } from '@/render_ultra/postprocessing/exposure';
 import { getCompound, thermalColor, type ChemicalCompound } from '@/render_ultra/fireworks/particleChemistry';
+import { GlobalIlluminationSystem } from '@/render_ultra/lighting/globalIllumination';
+
+// ═══ PyroChem: map hex colors → real chemical compounds ═══
+function hexToCompound(hexColor: string): ChemicalCompound {
+  const c = new THREE.Color(hexColor);
+  const hsl = { h: 0, s: 0, l: 0 };
+  c.getHSL(hsl);
+  const h = hsl.h * 360;
+  
+  // Map hue ranges to real pyrotechnic compounds
+  if (hsl.l > 0.85) return getCompound('magnesium');     // White/silver → Magnalium
+  if (hsl.l > 0.7 && hsl.s < 0.2) return getCompound('titanium'); // Bright white → Titanium
+  if (h >= 0 && h < 30) return getCompound('strontium');   // Red → Strontium Carbonate
+  if (h >= 30 && h < 55) return getCompound('iron');        // Orange → Iron filings
+  if (h >= 55 && h < 75) return getCompound('sodium');      // Yellow → Sodium Oxalate
+  if (h >= 75 && h < 170) return getCompound('barium');     // Green → Barium Chlorate
+  if (h >= 170 && h < 260) return getCompound('copper');    // Blue → Copper Acetoarsenite
+  if (h >= 260 && h < 310) return getCompound('strontium'); // Purple → Strontium + Copper mix
+  if (h >= 310 && h < 345) return getCompound('strontium'); // Magenta/Pink → Strontium
+  return getCompound('charcoal');                            // Fallback → Charcoal streamer
+}
 
 // FX KONTROL — Show Design Platform Renderer
 class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
@@ -230,6 +251,8 @@ function FireworkBurst({
   }, [caliber, pattern]);
   
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
+  // ═══ PyroChem: resolve chemical compound from color ═══
+  const compound = useMemo(() => hexToCompound(color), [color]);
   const emberColor = useMemo(() => {
     const c = new THREE.Color(color);
     return new THREE.Color().setHSL(
@@ -419,6 +442,11 @@ function FireworkBurst({
       // Phase 3: Thermal decay to ember (50-100% life)
       const emberPhase = Math.max(0, (starAge - 0.45) / 0.55);
       
+      // ═══ PyroChem Thermal Color Pipeline ═══
+      // Uses real chemical compound emission spectra + thermal transitions
+      const lifeRatio = 1 - starAge; // thermalColor expects 1=birth, 0=dead
+      const chemColor = thermalColor(compound, lifeRatio, 1.0);
+      
       // Per-star twinkle — organic shimmer
       let twinkle: number;
       if (isTrailingPattern) {
@@ -427,25 +455,14 @@ function FireworkBurst({
         twinkle = temporalFlicker(sparkleSeeds[i], time, 0.65, 0.30, 0.35);
       }
       
-      // Color over lifetime: white-hot → saturated → warm ember
-      let r = THREE.MathUtils.lerp(baseColor.r, 1.3, flashIntensity);
-      let g = THREE.MathUtils.lerp(baseColor.g, 1.15, flashIntensity);
-      let b = THREE.MathUtils.lerp(baseColor.b, 0.9, flashIntensity);
+      // Blend chemical color with original for artistic control (70% chem, 30% user)
+      const r = THREE.MathUtils.lerp(baseColor.r * (1 - starAge), chemColor.r, 0.7);
+      const g = THREE.MathUtils.lerp(baseColor.g * (1 - starAge), chemColor.g, 0.7);
+      const b = THREE.MathUtils.lerp(baseColor.b * (1 - starAge), chemColor.b, 0.7);
       
-      // Ember thermal decay — more gradual, realistic cooling
-      if (emberPhase > 0) {
-        const ep = emberPhase * emberPhase;
-        r = THREE.MathUtils.lerp(r, emberColor.r, ep * 0.7);
-        g = THREE.MathUtils.lerp(g, emberColor.g, ep * 0.8);
-        b = THREE.MathUtils.lerp(b, emberColor.b, ep * 0.9);
-      }
-      
-      // Subtle HDR boost only during flash
-      const hdrBoost = 1.0 + flashIntensity * 1.2;
-      
-      cols[i * 3] = r * fadeSmooth * twinkle * hdrBoost;
-      cols[i * 3 + 1] = g * fadeSmooth * twinkle * hdrBoost;
-      cols[i * 3 + 2] = b * fadeSmooth * twinkle * hdrBoost;
+      cols[i * 3] = r * twinkle;
+      cols[i * 3 + 1] = g * twinkle;
+      cols[i * 3 + 2] = b * twinkle;
       
       // Size over lifetime: Niagara curve — burst large, steady, then shrink
       const sizeOverLife = starAge < 0.05 
@@ -1626,7 +1643,48 @@ function AdaptiveExposureController() {
   return null;
 }
 
-// ═══ GROUND REFLECTIONS — Blender wet-surface specular ═══
+// ═══ GLOBAL ILLUMINATION — Hemisphere light probes from explosions ═══
+// Fake GI: each explosion registers a color probe that bounces light onto the scene
+function GlobalIlluminationController() {
+  const giRef = useRef<GlobalIlluminationSystem | null>(null);
+  const { scene } = useThree();
+
+  useEffect(() => {
+    giRef.current = new GlobalIlluminationSystem(scene);
+    return () => { giRef.current = null; };
+  }, [scene]);
+
+  useFrame((_, delta) => {
+    if (!giRef.current) return;
+    const gi = giRef.current;
+
+    // Check for fresh explosions to register as light probes
+    const { timelineItems, currentTime } = useProjectStore.getState();
+    for (const item of timelineItems) {
+      const elapsed = currentTime - item.startTime;
+      // Register probe only on the frame the burst begins (within 0.05s window)
+      if (elapsed >= 0 && elapsed < 0.05) {
+        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+        if (effect && effect.type === 'firework') {
+          const compound = hexToCompound(effect.color);
+          const pos = new THREE.Vector3(item.position.x, item.position.y, item.position.z);
+          // Use chemical compound color for physically accurate GI bounce
+          gi.addExplosionProbe(
+            pos,
+            compound.color.clone(),
+            compound.emissionIntensity * 0.6
+          );
+        }
+      }
+    }
+
+    gi.update(delta);
+  });
+
+  return null;
+}
+
+
 // Renders reactive reflection plane that flashes with explosions
 function GroundReflections() {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -2230,6 +2288,7 @@ export default function SkyCanvas() {
 
         <SceneLighting />
         <AdaptiveExposureController />
+        <GlobalIlluminationController />
         <GroundReflections />
 
         <SkyGradient />
