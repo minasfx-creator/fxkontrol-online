@@ -835,6 +835,12 @@ function SkyGradient() {
     uniforms.uStarDensity.value = starDensity;
   }, [skyBrightness, horizonGlow, starDensity]);
 
+  // Expose scatter uniforms for AdaptiveExposureController
+  useEffect(() => {
+    _skyScatterUniforms = { uExplosionScatter: uniforms.uExplosionScatter, uScatterIntensity: uniforms.uScatterIntensity };
+    return () => { _skyScatterUniforms = null; };
+  }, []);
+
   useFrame(({ clock }) => {
     uniforms.uTime.value = clock.getElapsedTime();
   });
