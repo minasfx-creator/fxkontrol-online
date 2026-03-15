@@ -2218,7 +2218,7 @@ export default function SkyCanvas() {
       <SelectionStatusBar />
       <AlignmentTools />
 
-      <div className="absolute bottom-3 right-3 text-[9px] font-mono-code text-muted-foreground/60 bg-surface-1/60 backdrop-blur-sm px-2 py-1 rounded border border-border/30 space-y-0.5">
+      <div className="absolute bottom-3 right-3 text-[9px] font-mono-code text-muted-foreground/60 bg-card/70 backdrop-blur-md px-3 py-2 rounded-xl border border-border/15 space-y-0.5">
         <div className="text-[8px] text-muted-foreground/40 tracking-wider font-display">FX KONTROL v2.0 · Minas FX</div>
         <div>Orbit: LMB · Pan: MMB · Zoom: Scroll</div>
         <div>Box: Alt+Drag · Multi: Shift+Click · Edit: Dbl-Click</div>
