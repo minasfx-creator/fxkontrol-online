@@ -6,9 +6,10 @@ import { cn } from '@/lib/utils';
 
 interface SplashScreenProps {
   onStart: (fleetSize: number, pyroPositions: number) => void;
+  showVideoBackground?: boolean;
 }
 
-const SplashScreen = forwardRef<HTMLDivElement, SplashScreenProps>(function SplashScreen({ onStart }, ref) {
+const SplashScreen = forwardRef<HTMLDivElement, SplashScreenProps>(function SplashScreen({ onStart, showVideoBackground = false }, ref) {
   const [fleetSize, setFleetSize] = useState(500);
   const [pyroPositions, setPyroPositions] = useState(24);
   const [phase, setPhase] = useState<'intro' | 'ready' | 'exit'>('intro');
@@ -31,6 +32,17 @@ const SplashScreen = forwardRef<HTMLDivElement, SplashScreenProps>(function Spla
       )}
       style={{ background: 'radial-gradient(ellipse at 50% 40%, hsl(225 12% 10%), hsl(225 14% 4%))' }}
     >
+      {/* Video background from intro */}
+      {showVideoBackground && (
+        <video
+          src="/videos/fx-kontrol-intro.mp4"
+          className="absolute inset-0 w-full h-full object-contain opacity-20 blur-[1px]"
+          playsInline
+          muted
+          loop
+          autoPlay
+        />
+      )}
       {/* Subtle grid */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div
