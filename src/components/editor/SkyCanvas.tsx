@@ -490,37 +490,6 @@ function FireworkBurst({
     if (tPosAttr) { tPosAttr.array = tPos; tPosAttr.needsUpdate = true; }
     if (tColAttr) { tColAttr.array = tCol; tColAttr.needsUpdate = true; }
     
-    // === Falling charcoal debris — Finale's signature burnt-out embers ===
-    if (debrisRef.current && progress > 0.25) {
-      const dPos = debrisPosRef.current;
-      const dCol = debrisColRef.current;
-      const debrisAge = (progress - 0.25) / 0.75;
-      
-      for (let i = 0; i < DEBRIS_COUNT; i++) {
-        const dvx = debrisVelocities[i * 3];
-        const dvy = debrisVelocities[i * 3 + 1];
-        const dvz = debrisVelocities[i * 3 + 2];
-        const dt = debrisAge * starLife * 0.7;
-        const dK = 0.02;
-        
-        dPos[i * 3] = dragPos(dvx, dt, dK) + w[0] * dt * dt * 0.4;
-        dPos[i * 3 + 1] = dragPos(dvy, dt, dK) + 0.5 * GRAVITY * dt * dt;
-        dPos[i * 3 + 2] = dragPos(dvz, dt, dK) + w[2] * dt * dt * 0.4;
-        
-        // Dark charcoal com cintilação determinística
-        const debrisFade = Math.max(0, 1 - debrisAge * 1.3);
-        const flicker = temporalFlicker(debrisSparkleSeeds[i], time, 0.12, 0.18, 0.22);
-        dCol[i * 3] = (0.15 + flicker * 0.8) * debrisFade;
-        dCol[i * 3 + 1] = (0.06 + flicker * 0.25) * debrisFade;
-        dCol[i * 3 + 2] = 0.02 * debrisFade;
-      }
-      
-      const dGeo = debrisRef.current.geometry;
-      const dPosAttr = dGeo.getAttribute('position') as THREE.BufferAttribute;
-      const dColAttr = dGeo.getAttribute('color') as THREE.BufferAttribute;
-      if (dPosAttr) { dPosAttr.array = dPos; dPosAttr.needsUpdate = true; }
-      if (dColAttr) { dColAttr.array = dCol; dColAttr.needsUpdate = true; }
-    }
   });
 
   // Break flash: natural scale — not oversized
