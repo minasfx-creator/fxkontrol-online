@@ -80,6 +80,11 @@ import PositionContextMenu from '@/components/editor/PositionContextMenu';
 import MobileTabBar, { type MobileTab } from '@/components/editor/MobileTabBar';
 import MobileFloatingPanel from '@/components/editor/MobileFloatingPanel';
 import MobileMoreMenu from '@/components/editor/MobileMoreMenu';
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from '@/components/ui/resizable';
 
 const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
 
@@ -94,74 +99,10 @@ function CanvasLoader() {
   );
 }
 
-const PANEL_WIDTHS: Record<PanelId, string> = {
-  script: 'w-[400px]',
-  wind: 'w-56',
-  reports: 'w-60',
-  racks: 'w-56',
-  addressing: 'w-60',
-  inventory: 'w-64',
-  waypoints: 'w-64',
-  effects: 'w-56',
-  properties: 'w-56',
-  boids: 'w-64',
-  pid: 'w-64',
-  dmx: 'w-64',
-  battery: 'w-64',
-  mavlink: 'w-72',
-  smpte: 'w-64',
-  maps: 'w-80',
-  diagnostic: 'w-64',
-  logistics: 'w-64',
-  swarmgpt: 'w-72',
-  synesthesia: 'w-64',
-  firing: 'w-72',
-  labels: 'w-64',
-  video: 'w-64',
-  models: 'w-64',
-  suppliers: 'w-72',
-  safety: 'w-64',
-  scripting: 'w-64',
-  audience: 'w-64',
-  indoor: 'w-72',
-  chains: 'w-72',
-  groups: 'w-56',
-  scene: 'w-64',
-  soundlevel: 'w-64',
-  aroverlay: 'w-64',
-  share: 'w-64',
-  particles: 'w-64',
-  versioning: 'w-64',
-  weather: 'w-64',
-  collisions: 'w-64',
-  approval: 'w-72',
-  trajectory: 'w-64',
-  templates: 'w-72',
-  telemetry: 'w-64',
-  flightlog: 'w-64',
-  marketplace: 'w-72',
-  sitelayout: 'w-72',
-  showsettings: 'w-64',
-  calibration: 'w-72',
-  livefiring: 'w-64',
-  fleet: 'w-72',
-  geofence: 'w-64',
-  storyboard: 'w-64',
-  showcontrol: 'w-72',
-  inspector: 'w-72',
-  lightprogram: 'w-72',
-  safetycheck: 'w-72',
-  takeoffgrid: 'w-64',
-  transitions: 'w-72',
-  lasercontrol: 'w-72',
-};
-
 export default function Index() {
   const isMobile = useIsMobile();
   const [activePanel, setActivePanel] = useState<PanelId | null>('properties');
   const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'globe' | 'editor'>('cinematic');
-  const [fleetSize, setFleetSize] = useState(500);
-  const [pyroPositions, setPyroPositions] = useState(24);
   const [showLocation, setShowLocation] = useState<{ name: string; lat: number; lng: number } | null>(null);
   const [showPositionEditor, setShowPositionEditor] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -169,12 +110,10 @@ export default function Index() {
   const [mobilePanelHeight, setMobilePanelHeight] = useState<'collapsed' | 'half' | 'full'>('collapsed');
   const selectedPositionId = useProjectStore(s => s.selectedPositionId);
 
-  // Undo/Redo keyboard shortcuts
   useUndoKeyboard();
 
-  // Open popup editor on double-click a position (via global keyboard shortcut or 3D double-click)
   useEffect(() => {
-    const dblClickHandler = (e: Event) => {
+    const dblClickHandler = () => {
       setShowPositionEditor(true);
     };
     window.addEventListener('position-double-click', dblClickHandler);
@@ -189,7 +128,6 @@ export default function Index() {
       if (e.key === '?' && e.shiftKey) {
         setShowShortcuts(prev => !prev);
       }
-      // Insert empty cue at current time (Finale 3D "i" key)
       if (e.key === 'i' && !e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
         const store = useProjectStore.getState();
         if (store.isPlaying || store.currentTime > 0) {
@@ -205,7 +143,6 @@ export default function Index() {
           toast.success(`Cue inserted at ${store.currentTime.toFixed(2)}s`);
         }
       }
-      // Select all positions (Ctrl+A)
       if (e.key === 'a' && (e.ctrlKey || e.metaKey) && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
         e.preventDefault();
         const store = useProjectStore.getState();
@@ -247,9 +184,7 @@ export default function Index() {
     setActivePanel((prev) => (prev === id ? null : id));
   }, []);
 
-  const handleSplashStart = useCallback((size: number, pyroPos: number) => {
-    setFleetSize(size);
-    setPyroPositions(pyroPos);
+  const handleSplashStart = useCallback(() => {
     setAppPhase('globe');
   }, []);
 
@@ -282,11 +217,10 @@ export default function Index() {
     return <GlobeSelector onLocationSelected={handleLocationSelected} />;
   }
 
-  const renderPanel = () => {
+  const renderPanelContent = () => {
     if (!activePanel) return null;
-    const width = PANEL_WIDTHS[activePanel];
     return (
-      <div className={width}>
+      <>
         {activePanel === 'properties' && <PropertiesPanel />}
         {activePanel === 'script' && <ScriptWindow />}
         {activePanel === 'waypoints' && <WaypointEditor onClose={() => setActivePanel(null)} />}
@@ -311,7 +245,6 @@ export default function Index() {
         {activePanel === 'labels' && <LabelsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'video' && <VideoRecorderPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'models' && <ModelImportPanel onClose={() => setActivePanel(null)} />}
-        
         {activePanel === 'suppliers' && <SupplierCatalogPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'safety' && <SafetyPanel />}
         {activePanel === 'scripting' && <ScriptingToolsPanel onClose={() => setActivePanel(null)} />}
@@ -319,12 +252,10 @@ export default function Index() {
         {activePanel === 'indoor' && <IndoorSimPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'chains' && <ChainEditorPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'groups' && <PositionGroupsPanel onClose={() => setActivePanel(null)} />}
-        
         {activePanel === 'scene' && <SceneEditorPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'soundlevel' && <SoundLevelPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'aroverlay' && <AROverlayPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'share' && <ShowSharePanel onClose={() => setActivePanel(null)} />}
-        
         {activePanel === 'particles' && <ParticleEditorPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'versioning' && <VersioningPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'weather' && <WeatherPanel onClose={() => setActivePanel(null)} />}
@@ -334,7 +265,6 @@ export default function Index() {
         {activePanel === 'templates' && <ShowTemplatesPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'telemetry' && <TelemetryDashboard onClose={() => setActivePanel(null)} />}
         {activePanel === 'flightlog' && <FlightLogPanel onClose={() => setActivePanel(null)} />}
-        
         {activePanel === 'marketplace' && <TemplateMarketplace onClose={() => setActivePanel(null)} />}
         {activePanel === 'sitelayout' && <SiteLayoutPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'showsettings' && <ShowSettingsPanel onClose={() => setActivePanel(null)} />}
@@ -350,19 +280,16 @@ export default function Index() {
         {activePanel === 'takeoffgrid' && <TakeoffGridPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'transitions' && <TransitionPlannerPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'lasercontrol' && <LaserControlPanel onClose={() => setActivePanel(null)} />}
-      </div>
+      </>
     );
   };
-
 
   // Mobile layout
   if (isMobile) {
     return (
       <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
-        {/* Compact toolbar for mobile */}
         <Toolbar onOpenPanel={(id) => handleTogglePanel(id as PanelId)} />
 
-        {/* Full viewport */}
         <div className="flex-1 min-w-0 relative">
           <Suspense fallback={<CanvasLoader />}>
             <SkyCanvas />
@@ -370,7 +297,6 @@ export default function Index() {
           <BoxSelectOverlay />
         </div>
 
-        {/* Mobile floating panel */}
         <MobileFloatingPanel activeTab={mobileTab} height={mobilePanelHeight}>
           {mobileTab === 'timeline' && <Timeline />}
           {mobileTab === 'assets' && <EffectLibrary />}
@@ -378,14 +304,12 @@ export default function Index() {
           {mobileTab === 'more' && <MobileMoreMenu onSelectPanel={handleMobileOpenPanel} />}
         </MobileFloatingPanel>
 
-        {/* Floating panel for "more" panels opened from grid */}
         {activePanel && mobileTab === null && mobilePanelHeight !== 'collapsed' && (
           <MobileFloatingPanel activeTab={'more' as MobileTab} height={mobilePanelHeight}>
-            {renderPanel()}
+            <div className="h-full overflow-y-auto">{renderPanelContent()}</div>
           </MobileFloatingPanel>
         )}
 
-        {/* Mobile tab bar */}
         <MobileTabBar
           activeTab={mobileTab}
           onTabChange={setMobileTab}
@@ -394,7 +318,6 @@ export default function Index() {
           onPanelHeightChange={setMobilePanelHeight}
         />
 
-        {/* Floating pop-up editors */}
         {showPositionEditor && selectedPositionId && (
           <PositionPopupEditor onClose={() => setShowPositionEditor(false)} />
         )}
@@ -403,50 +326,62 @@ export default function Index() {
     );
   }
 
-  // Desktop layout
+  // Desktop layout — fully resizable with react-resizable-panels
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
-      {/* Top toolbar */}
       <Toolbar onOpenPanel={(id) => handleTogglePanel(id as PanelId)} />
 
-      {/* Main editor area */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left sidebar - Effect Library */}
-        <div className="w-56 flex-shrink-0">
-          <EffectLibrary />
-        </div>
+      <ResizablePanelGroup direction="vertical" className="flex-1">
+        {/* Top section: sidebar + viewport + panel */}
+        <ResizablePanel defaultSize={75} minSize={40}>
+          <ResizablePanelGroup direction="horizontal">
+            {/* Left sidebar - Effect Library */}
+            <ResizablePanel defaultSize={14} minSize={8} maxSize={30} collapsible collapsedSize={0}>
+              <EffectLibrary />
+            </ResizablePanel>
+            <ResizableHandle withHandle />
 
-        {/* Center viewport */}
-        <div className="flex-1 min-w-0 relative">
-          <Suspense fallback={<CanvasLoader />}>
-            <SkyCanvas />
-          </Suspense>
-          <BoxSelectOverlay />
-        </div>
+            {/* Center viewport */}
+            <ResizablePanel defaultSize={activePanel ? 60 : 80} minSize={30}>
+              <div className="h-full w-full relative">
+                <Suspense fallback={<CanvasLoader />}>
+                  <SkyCanvas />
+                </Suspense>
+                <BoxSelectOverlay />
+              </div>
+            </ResizablePanel>
 
-        {/* Right: active panel + icon tab bar */}
-        <div className="flex flex-shrink-0">
-          {renderPanel()}
-          <PanelTabBar activePanel={activePanel} onTogglePanel={handleTogglePanel} />
-        </div>
-      </div>
+            {/* Right panel (if active) */}
+            {activePanel && (
+              <>
+                <ResizableHandle withHandle />
+                <ResizablePanel defaultSize={20} minSize={12} maxSize={40} collapsible collapsedSize={0}>
+                  <div className="h-full overflow-y-auto" style={{ background: 'hsl(var(--card))' }}>
+                    {renderPanelContent()}
+                  </div>
+                </ResizablePanel>
+              </>
+            )}
 
-      {/* Bottom timeline */}
-      <div className="h-44 flex-shrink-0">
-        <Timeline />
-      </div>
+            {/* Icon tab bar (fixed) */}
+            <PanelTabBar activePanel={activePanel} onTogglePanel={handleTogglePanel} />
+          </ResizablePanelGroup>
+        </ResizablePanel>
 
-      {/* Floating pop-up editors */}
+        <ResizableHandle withHandle />
+
+        {/* Bottom timeline */}
+        <ResizablePanel defaultSize={25} minSize={8} maxSize={50} collapsible collapsedSize={0}>
+          <Timeline />
+        </ResizablePanel>
+      </ResizablePanelGroup>
+
       {showPositionEditor && selectedPositionId && (
         <PositionPopupEditor onClose={() => setShowPositionEditor(false)} />
       )}
-
-      {/* Shortcuts overlay */}
       {showShortcuts && (
         <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />
       )}
-
-      {/* Context menu */}
       <PositionContextMenu />
     </div>
   );
