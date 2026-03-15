@@ -236,6 +236,11 @@ function FireworkBurst({
   // Real break speed from pyroPhysics — caliber proportional (m/s)
   const breakSpeed = useMemo(() => getBreakSpeed(caliber), [caliber]);
   
+  // ═══ Burst Simulation Config — calibrated per pattern ═══
+  const burstCfg = useMemo(() => getBurstConfig((pattern || 'peony') as BurstPattern), [pattern]);
+  const gravityMult = burstCfg?.gravityMult ?? 1.0;
+  const tailFactor = burstCfg?.tailFactor ?? 1.0;
+  
   // ── Star lifetime calibrated to real pyro data ──
   // 3" = 1.5-2s, 4" = 2-2.5s, 6" = 3-4s, 8" = 4-5s, 10" = 5-7s, 12" = 6-8s
   const starLife = useMemo(() => {
