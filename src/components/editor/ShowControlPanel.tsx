@@ -132,19 +132,16 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
         { t: duration, x: pos.x, y: 0, z: pos.z },
       ],
     }));
-    const lights = positions.map((pos, i) => ({
-      droneId: `drone-${i + 1}`,
-      keyframes: [
-        { t: 0, r: 0, g: 0, b: 0 },
-        { t: duration * 0.1, r: 255, g: 255, b: 255 },
-        { t: duration * 0.9, r: 255, g: 255, b: 255 },
-        { t: duration, r: 0, g: 0, b: 0 },
-      ],
-    }));
+    const lightProgram = positions.map(() => [
+      { t: 0, r: 0, g: 0, b: 0, w: 0 },
+      { t: duration * 0.1, r: 255, g: 255, b: 255, w: 0 },
+      { t: duration * 0.9, r: 255, g: 255, b: 255, w: 0 },
+      { t: duration, r: 0, g: 0, b: 0, w: 0 },
+    ]);
 
     const ok = await showOrchestrator.uploadShow({
       trajectories,
-      lights,
+      lightProgram,
       cues: [],
       geofence: null,
     });
