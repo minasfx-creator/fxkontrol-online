@@ -1442,7 +1442,7 @@ function FloorLogo() {
       <meshBasicMaterial
         map={texture}
         transparent
-        opacity={0.35}
+        opacity={0.15}
         depthWrite={false}
         blending={THREE.AdditiveBlending}
       />
