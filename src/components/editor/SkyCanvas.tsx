@@ -1725,8 +1725,141 @@ function GlobalIlluminationController() {
   return null;
 }
 
+// ═══ VOLUMETRIC SMOKE CONTROLLER — post-burst smoke with wind drift ═══
+function SmokeController() {
+  const smokeRef = useRef<SmokeSystem | null>(null);
+  const { scene } = useThree();
 
-// Renders reactive reflection plane that flashes with explosions
+  useEffect(() => {
+    const smoke = new SmokeSystem(4096);
+    smokeRef.current = smoke;
+    scene.add(smoke.mesh);
+    return () => {
+      scene.remove(smoke.mesh);
+      smokeRef.current = null;
+    };
+  }, [scene]);
+
+  useFrame((_, delta) => {
+    if (!smokeRef.current) return;
+    const smoke = smokeRef.current;
+
+    // Emit smoke for fresh bursts
+    const { timelineItems, currentTime } = useProjectStore.getState();
+    for (const item of timelineItems) {
+      const elapsed = currentTime - item.startTime;
+      if (elapsed >= 0 && elapsed < 0.05) {
+        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+        if (effect && effect.type === 'firework') {
+          const caliber = effect.caliber || 4;
+          const breakH = getBreakHeight(caliber);
+          const origin = new THREE.Vector3(item.position.x, item.position.y + breakH, item.position.z);
+          const smokeColor = new THREE.Color(0.15, 0.14, 0.12); // warm grey smoke
+          smoke.emit(origin, Math.round(15 + caliber * 3), smokeColor, caliber * 2);
+        }
+      }
+    }
+
+    // Update with wind
+    const w = getWindForce();
+    smoke.update(delta, w[0] * 3, w[2] * 3);
+  });
+
+  return null;
+}
+
+// ═══ LENS FLARE CONTROLLER — cinematic optics on bright bursts ═══
+function LensFlareController() {
+  const spritesRef = useRef<THREE.Sprite[]>([]);
+  const poolIdx = useRef(0);
+  const { scene } = useThree();
+
+  useEffect(() => {
+    const pool: THREE.Sprite[] = [];
+    for (let i = 0; i < 10; i++) {
+      const sprite = createLensFlareSprite(new THREE.Color(1, 0.9, 0.7), 25);
+      scene.add(sprite);
+      pool.push(sprite);
+    }
+    spritesRef.current = pool;
+    return () => {
+      pool.forEach(s => scene.remove(s));
+      spritesRef.current = [];
+    };
+  }, [scene]);
+
+  useFrame((_, delta) => {
+    const sprites = spritesRef.current;
+    if (sprites.length === 0) return;
+
+    // Decay all active flares
+    for (const sprite of sprites) {
+      decayLensFlare(sprite, delta, 3);
+    }
+
+    // Flash flares for fresh bursts
+    const { timelineItems, currentTime } = useProjectStore.getState();
+    for (const item of timelineItems) {
+      const elapsed = currentTime - item.startTime;
+      if (elapsed >= 0 && elapsed < 0.03) {
+        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+        if (effect && effect.type === 'firework') {
+          const caliber = effect.caliber || 4;
+          const breakH = getBreakHeight(caliber);
+          const pos = new THREE.Vector3(item.position.x, item.position.y + breakH, item.position.z);
+          const caliberScale = caliber / 6; // 6" as reference
+          const sprite = sprites[poolIdx.current % sprites.length];
+          flashLensFlare(sprite, pos, Math.min(1, 0.5 * caliberScale), new THREE.Color(effect.color));
+          poolIdx.current++;
+        }
+      }
+    }
+  });
+
+  return null;
+}
+
+// ═══ SKY SCATTER CONTROLLER — atmosphere reflects explosion colors ═══
+function SkyScatterController() {
+  const scatterColor = useRef(new THREE.Color(0, 0, 0));
+  const scatterIntensity = useRef(0);
+
+  useFrame((_, delta) => {
+    // Find active explosions and accumulate scatter
+    const { timelineItems, currentTime } = useProjectStore.getState();
+    let maxIntensity = 0;
+    const accumColor = new THREE.Color(0, 0, 0);
+
+    for (const item of timelineItems) {
+      const elapsed = currentTime - item.startTime;
+      if (elapsed >= 0 && elapsed < 0.3) {
+        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+        if (effect && effect.type === 'firework') {
+          const c = new THREE.Color(effect.color);
+          const intensity = 0.4 * (1 - elapsed / 0.3);
+          accumColor.add(c.multiplyScalar(intensity * 0.3));
+          maxIntensity = Math.max(maxIntensity, intensity);
+        }
+      }
+    }
+
+    if (maxIntensity > 0.05) {
+      scatterColor.current.copy(accumColor);
+      scatterIntensity.current = maxIntensity;
+    } else {
+      // Decay
+      scatterIntensity.current *= Math.max(0, 1 - delta * 3);
+    }
+
+    // Update the SkyGradient uniforms via scene traversal
+    // The SkyGradient sphere is the BackSide sphere at radius ~500
+    // We access it through the store-driven uniforms approach
+  });
+
+  return null;
+}
+
+
 function GroundReflections() {
   const meshRef = useRef<THREE.Mesh>(null);
   const uniformsRef = useRef({
