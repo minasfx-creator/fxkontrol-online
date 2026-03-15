@@ -91,7 +91,7 @@ function DropdownMenu({ label, icon: LabelIcon, items }: { label: string; icon?:
   );
 }
 
-/* ── Batch Add Positions ────────────────────────────────────── */
+/* ── Batch Add Positions — Apple-style popover ────────────────────── */
 function BatchAddButton() {
   const { addPosition, selectMultiplePositions } = useProjectStore();
   const [open, setOpen] = useState(false);
@@ -157,11 +157,11 @@ function BatchAddButton() {
   }, [count, spacing, posType, pattern, startX, startZ, addPosition, selectMultiplePositions]);
 
   const patterns: { id: typeof pattern; label: string; icon: string }[] = [
-    { id: 'line', label: 'Linha', icon: '━' },
+    { id: 'line', label: 'Line', icon: '━' },
     { id: 'grid', label: 'Grid', icon: '⊞' },
-    { id: 'circle', label: 'Círculo', icon: '◯' },
-    { id: 'v-shape', label: 'V-Shape', icon: '⋁' },
-    { id: 'arc', label: 'Arco', icon: '⌒' },
+    { id: 'circle', label: 'Circle', icon: '◯' },
+    { id: 'v-shape', label: 'V', icon: '⋁' },
+    { id: 'arc', label: 'Arc', icon: '⌒' },
   ];
 
   return (
@@ -169,120 +169,137 @@ function BatchAddButton() {
       <Button
         variant="ghost"
         size="sm"
-        className="btn-tool gap-1"
-        title="Add Multiple Positions"
+        className="h-7 px-2.5 text-[10px] font-semibold gap-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-all"
+        title="Gerar Posições em Lote"
         onClick={() => setOpen(true)}
       >
         <PlusCircle className="h-3.5 w-3.5" />
-        <span className="hidden lg:inline">ADD+</span>
+        <span>ADD+</span>
       </Button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)}>
-          <div className="glass border border-border/20 rounded-2xl shadow-2xl shadow-black/50 w-[360px] p-5 space-y-4" onClick={e => e.stopPropagation()}>
-            <h3 className="text-sm font-bold text-foreground font-display tracking-wide">Adicionar Posições</h3>
-
-            {/* Type */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPosType('pyro')}
-                className={cn(
-                  "flex-1 py-2.5 rounded-xl text-xs font-semibold border-2 transition-all",
-                  posType === 'pyro' ? "border-accent bg-accent/10 text-accent shadow-[0_0_12px_hsl(var(--safety)/0.2)]" : "border-border/30 bg-surface-1 text-muted-foreground hover:border-border/60"
-                )}
-              >
-                🎆 PYRO
-              </button>
-              <button
-                onClick={() => setPosType('drone-pad')}
-                className={cn(
-                  "flex-1 py-2.5 rounded-xl text-xs font-semibold border-2 transition-all",
-                  posType === 'drone-pad' ? "border-primary bg-primary/10 text-primary shadow-[0_0_12px_hsl(var(--primary)/0.2)]" : "border-border/30 bg-surface-1 text-muted-foreground hover:border-border/60"
-                )}
-              >
-                🛸 DRONE
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md" onClick={() => setOpen(false)}>
+          <div
+            className="w-[380px] rounded-2xl overflow-hidden border border-border/30 shadow-2xl shadow-black/60"
+            style={{ background: 'hsl(var(--card))' }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="px-5 pt-5 pb-3">
+              <h3 className="text-sm font-bold text-foreground font-display tracking-wide">Gerar Posições</h3>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Crie múltiplas posições de disparo em padrão geométrico</p>
             </div>
 
-            {/* Pattern */}
-            <div className="space-y-1.5">
-              <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Padrão</span>
-              <div className="flex gap-1.5">
-                {patterns.map(p => (
-                  <button
-                    key={p.id}
-                    onClick={() => setPattern(p.id)}
-                    className={cn(
-                      "flex-1 py-2 rounded-lg text-[10px] border-2 transition-all text-center",
-                      pattern === p.id ? "border-primary bg-primary/10 text-primary" : "border-border/20 bg-surface-1 text-muted-foreground hover:border-border/50"
-                    )}
-                  >
-                    <div className="text-base">{p.icon}</div>
-                    <div className="text-[8px] mt-0.5">{p.label}</div>
-                  </button>
-                ))}
+            <div className="px-5 pb-5 space-y-4">
+              {/* Type selector — segmented control */}
+              <div className="flex rounded-xl overflow-hidden border border-border/30 bg-surface-0">
+                <button
+                  onClick={() => setPosType('pyro')}
+                  className={cn(
+                    "flex-1 py-2.5 text-xs font-semibold transition-all",
+                    posType === 'pyro'
+                      ? "bg-accent/15 text-accent"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  🎆 PYRO
+                </button>
+                <div className="w-px bg-border/30" />
+                <button
+                  onClick={() => setPosType('drone-pad')}
+                  className={cn(
+                    "flex-1 py-2.5 text-xs font-semibold transition-all",
+                    posType === 'drone-pad'
+                      ? "bg-primary/15 text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  🛸 DRONE
+                </button>
               </div>
-            </div>
 
-            {/* Count & Spacing */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Quantidade</label>
-                <input
-                  type="number"
-                  value={count}
-                  onChange={e => setCount(Math.max(1, Math.min(500, parseInt(e.target.value) || 1)))}
-                  className="w-full input-modern px-3"
-                />
+              {/* Pattern — pill selectors */}
+              <div className="space-y-1.5">
+                <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider font-display">Padrão</span>
+                <div className="flex gap-1.5">
+                  {patterns.map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => setPattern(p.id)}
+                      className={cn(
+                        "flex-1 py-2 rounded-xl text-[10px] border transition-all text-center",
+                        pattern === p.id
+                          ? "border-primary bg-primary/10 text-primary font-semibold"
+                          : "border-border/20 bg-surface-0 text-muted-foreground hover:border-border/50"
+                      )}
+                    >
+                      <div className="text-base leading-none">{p.icon}</div>
+                      <div className="text-[8px] mt-0.5 font-medium">{p.label}</div>
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Espaçamento (m)</label>
-                <input
-                  type="number"
-                  value={spacing}
-                  step={0.5}
-                  onChange={e => setSpacing(Math.max(0.5, parseFloat(e.target.value) || 1))}
-                  className="w-full input-modern px-3"
-                />
-              </div>
-            </div>
 
-            {/* Origin */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Origem X</label>
-                <input
-                  type="number"
-                  value={startX}
-                  onChange={e => setStartX(parseFloat(e.target.value) || 0)}
-                  className="w-full input-modern px-3"
-                />
+              {/* Count & Spacing */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider font-display">Quantidade</label>
+                  <input
+                    type="number"
+                    value={count}
+                    onChange={e => setCount(Math.max(1, Math.min(500, parseInt(e.target.value) || 1)))}
+                    className="w-full h-9 px-3 rounded-xl text-sm bg-surface-0 border border-border/30 text-foreground focus:border-primary/50 focus:ring-1 focus:ring-primary/20 outline-none transition-all"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider font-display">Espaçamento (m)</label>
+                  <input
+                    type="number"
+                    value={spacing}
+                    step={0.5}
+                    onChange={e => setSpacing(Math.max(0.5, parseFloat(e.target.value) || 1))}
+                    className="w-full h-9 px-3 rounded-xl text-sm bg-surface-0 border border-border/30 text-foreground focus:border-primary/50 focus:ring-1 focus:ring-primary/20 outline-none transition-all"
+                  />
+                </div>
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Origem Z</label>
-                <input
-                  type="number"
-                  value={startZ}
-                  onChange={e => setStartZ(parseFloat(e.target.value) || 0)}
-                  className="w-full input-modern px-3"
-                />
+
+              {/* Origin */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider font-display">Origem X</label>
+                  <input
+                    type="number"
+                    value={startX}
+                    onChange={e => setStartX(parseFloat(e.target.value) || 0)}
+                    className="w-full h-9 px-3 rounded-xl text-sm bg-surface-0 border border-border/30 text-foreground focus:border-primary/50 focus:ring-1 focus:ring-primary/20 outline-none transition-all"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider font-display">Origem Z</label>
+                  <input
+                    type="number"
+                    value={startZ}
+                    onChange={e => setStartZ(parseFloat(e.target.value) || 0)}
+                    className="w-full h-9 px-3 rounded-xl text-sm bg-surface-0 border border-border/30 text-foreground focus:border-primary/50 focus:ring-1 focus:ring-primary/20 outline-none transition-all"
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* Preview info */}
-            <div className="bg-surface-0/80 rounded-lg px-3 py-2 text-[10px] font-mono-code text-muted-foreground border border-border/10">
-              {count} × {posType === 'pyro' ? 'PYRO' : 'DRONE'} em {pattern} · espaçamento {spacing}m
-            </div>
+              {/* Preview chip */}
+              <div className="bg-surface-0 rounded-xl px-3.5 py-2.5 text-[11px] font-mono-code text-muted-foreground border border-border/10 text-center">
+                {count} × {posType === 'pyro' ? 'PYRO' : 'DRONE'} · {pattern} · {spacing}m spacing
+              </div>
 
-            {/* Actions */}
-            <div className="flex gap-2.5">
-              <Button variant="outline" size="sm" className="flex-1 text-xs h-9 rounded-lg" onClick={() => setOpen(false)}>
-                Cancelar
-              </Button>
-              <Button size="sm" className="flex-1 text-xs h-9 rounded-lg" onClick={handleCreate}>
-                <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
-                Criar {count} posições
-              </Button>
+              {/* Actions */}
+              <div className="flex gap-2.5 pt-1">
+                <Button variant="outline" size="sm" className="flex-1 h-10 rounded-xl text-xs" onClick={() => setOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button size="sm" className="flex-1 h-10 rounded-xl text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleCreate}>
+                  <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
+                  Criar {count} posições
+                </Button>
+              </div>
             </div>
           </div>
         </div>
