@@ -77,11 +77,22 @@ export default function LightTrails({
     };
   }, [totalPoints]);
 
+  // Track previous positions to detect static drones (ghost trail prevention)
+  const prevPositionsRef = useRef<string>('');
+
   useFrame(() => {
     if (!pointsRef.current || !dronePositions || droneCount === 0 || !enabled) {
       if (pointsRef.current) pointsRef.current.visible = false;
       return;
     }
+
+    // Ghost trail guard: skip rendering if all positions are identical to last frame
+    const posKey = dronePositions.slice(0, Math.min(5, droneCount)).map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)},${p.z.toFixed(2)}`).join('|');
+    if (posKey === prevPositionsRef.current) {
+      // Positions haven't moved — don't advance trail head (prevents phantom lines)
+      return;
+    }
+    prevPositionsRef.current = posKey;
 
     // Reset history if drone count changed
     if (droneCount !== prevCountRef.current) {

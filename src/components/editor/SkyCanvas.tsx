@@ -2091,7 +2091,7 @@ export default function SkyCanvas() {
         gl={{
           antialias: false,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.5,
+          toneMappingExposure: 1.2,
           powerPreference: 'high-performance',
           alpha: false,
           stencil: false,
@@ -2103,6 +2103,8 @@ export default function SkyCanvas() {
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook} />
 
         <SceneLighting />
+        <AdaptiveExposureController />
+        <GroundReflections />
 
         <SkyGradient />
         <Moon />
