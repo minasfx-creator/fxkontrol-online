@@ -56,7 +56,7 @@ import TrajectoryOptimizerPanel from '@/components/editor/TrajectoryOptimizerPan
 import ShowTemplatesPanel from '@/components/editor/ShowTemplatesPanel';
 import TelemetryDashboard from '@/components/editor/TelemetryDashboard';
 import FlightLogPanel from '@/components/editor/FlightLogPanel';
-import PathPlannerPanel from '@/components/editor/PathPlannerPanel';
+
 import TemplateMarketplace from '@/components/editor/TemplateMarketplace';
 import SiteLayoutPanel from '@/components/editor/SiteLayoutPanel';
 import ShowSettingsPanel from '@/components/editor/ShowSettingsPanel';
