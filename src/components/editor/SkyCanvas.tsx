@@ -853,6 +853,8 @@ function SkyGradient() {
           uniform float uHorizonGlow;
           uniform float uStarDensity;
           uniform float uTime;
+          uniform vec3 uExplosionScatter;
+          uniform float uScatterIntensity;
           varying vec3 vWorldPosition;
           
           float hash21(vec2 p) {
