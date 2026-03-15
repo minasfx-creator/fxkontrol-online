@@ -394,7 +394,7 @@ export function exportPreflightReport(
 ): string {
   const lines: string[] = [
     '═══════════════════════════════════════════════════════════════',
-    '  AEROSWARM NEXUS | PREFLIGHT CHECK REPORT',
+    '  FX KONTROL | PREFLIGHT CHECK REPORT',
     `  Generated: ${new Date().toISOString()}`,
     '═══════════════════════════════════════════════════════════════',
     '',

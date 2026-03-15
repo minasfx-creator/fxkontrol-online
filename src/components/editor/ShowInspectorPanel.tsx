@@ -254,7 +254,7 @@ export default function ShowInspectorPanel({ onClose }: ShowInspectorPanelProps)
 
   const handleExportValidation = useCallback(() => {
     const lines = [
-      'AEROSWARM NEXUS | Show Validation Report',
+      'FX KONTROL | Show Validation Report',
       `Show: ${useProjectStore.getState().projectName}`,
       `Generated: ${new Date().toISOString()}`,
       `Duration: ${duration}s`,

@@ -93,7 +93,7 @@ export default function ViewportTerminal() {
         )}
       >
         {entries.length === 0 ? (
-          <div className="text-muted-foreground/50 text-center py-2">&gt; Zenith Core Ready.</div>
+          <div className="text-muted-foreground/50 text-center py-2">&gt; FX Kontrol Engine Ready.</div>
         ) : (
           entries.map((entry) => (
             <div key={entry.id} className={cn("leading-tight", LEVEL_COLORS[entry.level])}>
