@@ -21,47 +21,29 @@ export default function PostProcessing() {
     <EffectComposer multisampling={0}>
       <SMAA />
 
-      {/* Layer 1: Ultra-tight core — catches individual star HDR points + laser cores */}
+      {/* Layer 1: Core catch — only the brightest star centers */}
       <Bloom
-        intensity={str * 2.8}
-        luminanceThreshold={0.03}
-        luminanceSmoothing={0.1}
+        intensity={str * 0.8}
+        luminanceThreshold={0.4}
+        luminanceSmoothing={0.3}
         kernelSize={KernelSize.MEDIUM}
         mipmapBlur
       />
 
-      {/* Layer 2: Primary glow — star halos, burst flash, laser beam glow */}
+      {/* Layer 2: Star halos — natural glow around bright particles */}
       <Bloom
-        intensity={str * 1.4}
-        luminanceThreshold={0.1}
-        luminanceSmoothing={0.35}
+        intensity={str * 0.4}
+        luminanceThreshold={0.6}
+        luminanceSmoothing={0.5}
         kernelSize={KernelSize.LARGE}
         mipmapBlur
       />
 
-      {/* Layer 3: Medium scatter — cluster glow, sky coloring, laser scatter */}
+      {/* Layer 3: Atmospheric — subtle sky coloring from large bursts */}
       <Bloom
-        intensity={str * 0.65}
-        luminanceThreshold={0.25}
-        luminanceSmoothing={0.6}
-        kernelSize={KernelSize.HUGE}
-        mipmapBlur
-      />
-
-      {/* Layer 4: Wide atmospheric — fills sky around large bursts */}
-      <Bloom
-        intensity={str * 0.25}
-        luminanceThreshold={0.45}
-        luminanceSmoothing={0.8}
-        kernelSize={KernelSize.HUGE}
-        mipmapBlur
-      />
-
-      {/* Layer 5: Ultra-wide ambient — sky wash, volumetric laser atmosphere */}
-      <Bloom
-        intensity={str * 0.1}
-        luminanceThreshold={0.65}
-        luminanceSmoothing={0.92}
+        intensity={str * 0.15}
+        luminanceThreshold={0.8}
+        luminanceSmoothing={0.75}
         kernelSize={KernelSize.HUGE}
         mipmapBlur
       />

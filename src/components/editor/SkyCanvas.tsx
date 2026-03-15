@@ -155,24 +155,22 @@ const STAR_FRAGMENT_SHADER = `
     vec2 uv = gl_PointCoord - 0.5;
     float dist = length(uv);
     
-    // Multi-layer glow architecture for maximum HDR bloom catch
-    float core = smoothstep(0.06, 0.0, dist);   // ultra-bright white-hot center
-    float inner = exp(-dist * dist * 28.0);       // tight inner glow
-    float glow = exp(-dist * dist * 10.0);        // medium gaussian halo
-    float bloom = exp(-dist * dist * 3.0);        // wide soft bloom trigger
-    float scatter = exp(-dist * dist * 1.2);      // ultra-wide atmospheric scatter
+    // Natural glow: tight core with soft falloff — like real firework stars
+    float core = smoothstep(0.08, 0.0, dist);
+    float inner = exp(-dist * dist * 35.0);
+    float glow = exp(-dist * dist * 12.0);
+    float bloom = exp(-dist * dist * 5.0);
     
-    float alpha = core * 2.0 + inner * 1.0 + glow * 0.6 + bloom * 0.2 + scatter * 0.05;
+    float alpha = core * 1.2 + inner * 0.8 + glow * 0.4 + bloom * 0.1;
     
-    // HDR color pipeline — core pushes well above 1.0 for bloom
-    vec3 whiteHot = vec3(1.6, 1.5, 1.2);
-    vec3 col = vColor * (inner * 1.8 + glow * 1.2) + whiteHot * core * 3.5;
-    col += vColor * bloom * 0.5;
-    col += vColor * scatter * 0.15;
+    // Natural color — subtle white-hot center, no excessive HDR push
+    vec3 whiteHot = vec3(1.2, 1.1, 0.95);
+    vec3 col = vColor * (inner * 1.2 + glow * 0.8) + whiteHot * core * 1.5;
+    col += vColor * bloom * 0.2;
     
-    // Extra HDR boost for young stars (low life = just born)
-    float youth = max(0.0, 1.0 - vLife * 3.0);
-    col += whiteHot * youth * 2.0;
+    // Brief youth flash
+    float youth = max(0.0, 1.0 - vLife * 4.0);
+    col += whiteHot * youth * 0.8;
     
     gl_FragColor = vec4(col, alpha * (1.0 - smoothstep(0.46, 0.5, dist)));
   }
@@ -425,15 +423,15 @@ function FireworkBurst({
         b = THREE.MathUtils.lerp(b, emberColor.b, ep * 0.92);
       }
       
-      // HDR boost: push well above 1.0 for aggressive bloom catch
-      const hdrBoost = 1.8 + flashIntensity * 5.0 + (1 - emberPhase) * 0.8;
+      // Natural HDR: subtle boost, no excessive glow
+      const hdrBoost = 1.0 + flashIntensity * 1.5;
       
       cols[i * 3] = r * fadeCubed * twinkle * hdrBoost;
       cols[i * 3 + 1] = g * fadeCubed * twinkle * hdrBoost;
       cols[i * 3 + 2] = b * fadeCubed * twinkle * hdrBoost;
       
       // Dynamic star size: larger when young, shrinks as it dies — with HDR size boost
-      sizes[i] = baseSize * (0.6 + fadeSquared * 0.4) * (1 + flashIntensity * 2.5);
+      sizes[i] = baseSize * (0.5 + fadeSquared * 0.5) * (1 + flashIntensity * 1.0);
       lives[i] = starAge;
 
       // Star trails — Finale's thermal gradient: white-hot → colored → dim
@@ -513,9 +511,8 @@ function FireworkBurst({
     }
   });
 
-  // Break flash: Finale multi-layer flash system
-  // Flash size proportional to caliber — real-world scale
-  const flashSize = 3 + caliber * 4.0;
+  // Break flash: natural scale — not oversized
+  const flashSize = 1.5 + caliber * 1.8;
 
   return (
     <group position={position}>
@@ -551,42 +548,35 @@ function FireworkBurst({
       
       {/* ═══ BREAK FLASH — Finale 4-layer system ═══ */}
       {/* Layer 1: Inner white-hot core — ultra HDR for maximum bloom */}
-      {progress < 0.06 && (
+      {progress < 0.04 && (
         <mesh>
-          <sphereGeometry args={[flashSize * 0.4 * (1 + progress * 10), 16, 16]} />
-          <meshBasicMaterial color="#FFFFF0" transparent opacity={1.0 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} />
+          <sphereGeometry args={[flashSize * 0.3 * (1 + progress * 8), 12, 12]} />
+          <meshBasicMaterial color="#FFFFF0" transparent opacity={0.8 * (1 - progress / 0.04)} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
       {/* Layer 2: Hot colored flash — primary bloom source */}
-      {progress < 0.15 && (
+      {progress < 0.1 && (
         <mesh>
-          <sphereGeometry args={[flashSize * (1 + progress * 15), 24, 24]} />
-          <meshBasicMaterial color={color} transparent opacity={0.7 * Math.pow(1 - progress / 0.15, 2)} blending={THREE.AdditiveBlending} />
+          <sphereGeometry args={[flashSize * (1 + progress * 8), 16, 16]} />
+          <meshBasicMaterial color={color} transparent opacity={0.4 * Math.pow(1 - progress / 0.1, 2)} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
       {/* Layer 3: Expanding shockwave ring */}
-      {progress > 0.003 && progress < 0.15 && (
+      {progress > 0.003 && progress < 0.1 && (
         <mesh rotation={[Math.PI / 2, 0, 0]}>
           <ringGeometry args={[
-            progress * flashSize * 12,
-            progress * flashSize * 12 + 0.8 + caliber * 0.18,
-            64
+            progress * flashSize * 8,
+            progress * flashSize * 8 + 0.4 + caliber * 0.1,
+            48
           ]} />
-          <meshBasicMaterial color={color} transparent opacity={0.15 * Math.pow(1 - progress / 0.15, 1.5)} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
+          <meshBasicMaterial color={color} transparent opacity={0.08 * Math.pow(1 - progress / 0.1, 1.5)} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
-      {/* Layer 4: Wide atmospheric halo — sky illumination */}
-      {progress < 0.7 && progress > 0.003 && (
+      {/* Layer 4: Subtle sky illumination */}
+      {progress < 0.3 && progress > 0.003 && (
         <mesh>
-          <sphereGeometry args={[caliber * 6 + progress * caliber * 20, 16, 16]} />
-          <meshBasicMaterial color={color} transparent opacity={0.05 * (1 - progress / 0.7)} blending={THREE.AdditiveBlending} />
-        </mesh>
-      )}
-      {/* Layer 5: Ground illumination sphere — lights up terrain */}
-      {progress < 0.4 && (
-        <mesh position={[0, -position[1] * 0.3, 0]}>
-          <sphereGeometry args={[caliber * 12 + progress * caliber * 30, 12, 12]} />
-          <meshBasicMaterial color={color} transparent opacity={0.015 * (1 - progress / 0.4)} blending={THREE.AdditiveBlending} />
+          <sphereGeometry args={[caliber * 4 + progress * caliber * 10, 12, 12]} />
+          <meshBasicMaterial color={color} transparent opacity={0.02 * (1 - progress / 0.3)} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
     </group>
