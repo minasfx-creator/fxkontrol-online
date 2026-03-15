@@ -194,7 +194,7 @@ const STAR_FRAGMENT_SHADER = `
     float outer = exp(-dist * dist * 8.0);  // Soft outer bloom
     
     // Combined alpha with natural falloff
-    float alpha = core * 1.0 + inner * 0.6 + outer * 0.15;
+    float alpha = core * 1.0 + inner * 0.7 + outer * 0.15;
     
     // Thermal color model: white-hot center fading to star color
     vec3 whiteHot = vec3(1.3, 1.15, 0.95);
