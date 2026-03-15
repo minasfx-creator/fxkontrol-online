@@ -161,7 +161,7 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
 export default function Index() {
   const isMobile = useIsMobile();
   const [activePanel, setActivePanel] = useState<PanelId | null>('properties');
-  const [appPhase, setAppPhase] = useState<'splash' | 'globe' | 'editor'>('splash');
+  const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'globe' | 'editor'>('cinematic');
   const [fleetSize, setFleetSize] = useState(500);
   const [pyroPositions, setPyroPositions] = useState(24);
   const [showLocation, setShowLocation] = useState<{ name: string; lat: number; lng: number } | null>(null);
