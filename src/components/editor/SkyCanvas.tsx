@@ -516,18 +516,8 @@ function FireworkBurst({
         <lineBasicMaterial vertexColors transparent opacity={0.9} depthWrite={false} blending={THREE.AdditiveBlending} linewidth={3} />
       </lineSegments>
       
-      {/* ═══ Falling charcoal debris — Finale post-burnout embers ═══ */}
-      {progress > 0.25 && (
-        <points ref={debrisRef}>
-          <bufferGeometry>
-            <bufferAttribute attach="attributes-position" args={[new Float32Array(DEBRIS_COUNT * 3), 3]} />
-            <bufferAttribute attach="attributes-color" args={[new Float32Array(DEBRIS_COUNT * 3), 3]} />
-          </bufferGeometry>
-          <pointsMaterial size={0.15} vertexColors transparent opacity={0.7} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
-        </points>
-      )}
       
-      {/* ═══ BREAK FLASH — Finale 4-layer system ═══ */}
+      {/* ═══ BREAK FLASH — 3-layer system ═══ */}
       {/* Layer 1: Inner white-hot core — ultra HDR for maximum bloom */}
       {progress < 0.04 && (
         <mesh>
