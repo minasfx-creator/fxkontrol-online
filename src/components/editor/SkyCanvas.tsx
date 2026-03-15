@@ -1451,59 +1451,80 @@ function FloorLogo() {
 }
 
 
+// ═══ VOLUMETRIC GROUND FOG — render_ultra FBM 4-octave noise ═══
 function GroundFog() {
   const fogRef = useRef<THREE.Mesh>(null);
+  const fogIntensity = useSceneStore(st => st.settings.groundFogIntensity);
   const uniforms = useMemo(() => ({
-    time: { value: 0 },
+    uTime: { value: 0 },
+    uIntensity: { value: fogIntensity },
+    uHeight: { value: 15.0 },
+    uFogColor: { value: new THREE.Color(0.03, 0.04, 0.08) },
   }), []);
 
+  useEffect(() => {
+    uniforms.uIntensity.value = fogIntensity;
+  }, [fogIntensity]);
+
   useFrame(({ clock }) => {
-    uniforms.time.value = clock.getElapsedTime();
+    uniforms.uTime.value = clock.getElapsedTime();
   });
 
   return (
-    <mesh ref={fogRef} position={[0, 0.3, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+    <mesh ref={fogRef} position={[0, 0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
       <planeGeometry args={[500, 500, 1, 1]} />
       <shaderMaterial
         transparent
         depthWrite={false}
-        blending={THREE.AdditiveBlending}
+        side={THREE.DoubleSide}
         uniforms={uniforms}
         vertexShader={`
           varying vec2 vUv;
-          varying vec3 vWorldPos;
+          varying float vWorldY;
           void main() {
             vUv = uv;
-            vec4 wp = modelMatrix * vec4(position, 1.0);
-            vWorldPos = wp.xyz;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            vec4 worldPos = modelMatrix * vec4(position, 1.0);
+            vWorldY = worldPos.y;
+            gl_Position = projectionMatrix * viewMatrix * worldPos;
           }
         `}
         fragmentShader={`
-          uniform float time;
+          uniform float uTime;
+          uniform float uIntensity;
+          uniform float uHeight;
+          uniform vec3 uFogColor;
           varying vec2 vUv;
-          varying vec3 vWorldPos;
-          
-          float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-          float noise(vec2 p) {
-            vec2 i = floor(p); vec2 f = fract(p);
-            f = f * f * (3.0 - 2.0 * f);
-            return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
-                       mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+          varying float vWorldY;
+
+          float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
           }
-          
+          float noise(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            float a = hash(i);
+            float b = hash(i + vec2(1.0, 0.0));
+            float c = hash(i + vec2(0.0, 1.0));
+            float d = hash(i + vec2(1.0, 1.0));
+            return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+          }
+          float fbm(vec2 p) {
+            float v = 0.0;
+            v += 0.5 * noise(p); p *= 2.01;
+            v += 0.25 * noise(p); p *= 2.02;
+            v += 0.125 * noise(p); p *= 2.03;
+            v += 0.0625 * noise(p);
+            return v;
+          }
+
           void main() {
-            vec2 uv = vWorldPos.xz * 0.01;
-            float n1 = noise(uv * 3.0 + time * 0.02);
-            float n2 = noise(uv * 6.0 - time * 0.015);
-            float fog = n1 * 0.6 + n2 * 0.4;
-            
-            // Fade at edges
-            float dist = length(vWorldPos.xz) * 0.01;
-            float edgeFade = 1.0 - smoothstep(0.5, 1.0, dist);
-            
-            float alpha = fog * 0.04 * edgeFade;
-            gl_FragColor = vec4(0.15, 0.18, 0.25, alpha);
+            vec2 uv = vUv * 4.0 + vec2(uTime * 0.02, uTime * 0.01);
+            float n = fbm(uv);
+            float heightFade = smoothstep(uHeight, 0.0, vWorldY);
+            float edgeFade = smoothstep(0.0, 0.3, min(vUv.x, min(vUv.y, min(1.0 - vUv.x, 1.0 - vUv.y))));
+            float alpha = n * heightFade * edgeFade * uIntensity;
+            gl_FragColor = vec4(uFogColor, alpha * 0.4);
           }
         `}
       />
