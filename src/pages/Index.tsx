@@ -156,6 +156,7 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   safetycheck: 'w-72',
   takeoffgrid: 'w-64',
   transitions: 'w-72',
+  lasercontrol: 'w-72',
 };
 
 export default function Index() {
