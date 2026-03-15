@@ -41,7 +41,7 @@ import SupplierCatalogPanel from '@/components/editor/SupplierCatalogPanel';
 import SafetyPanel from '@/components/editor/SafetyPanel';
 import ChainEditorPanel from '@/components/editor/ChainEditorPanel';
 import PositionGroupsPanel from '@/components/editor/PositionGroupsPanel';
-import ShowSummaryPanel from '@/components/editor/ShowSummaryPanel';
+
 import SceneEditorPanel from '@/components/editor/SceneEditorPanel';
 import SoundLevelPanel from '@/components/editor/SoundLevelPanel';
 import AROverlayPanel from '@/components/editor/AROverlayPanel';
