@@ -380,6 +380,99 @@ const FORMATION_PRESETS_MAP: Record<string, string> = {
   wave: '🌊', spiral: '🌀', line: '➖', 'v-shape': '✌️',
 };
 
+// ── DRONE FX Track — only visible when formations exist ──
+function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number; duration: number }) {
+  const { droneFormations, timelineItems, selectedTimelineItemId, selectTimelineItem, addTimelineItem, bpm, snapToBeat } = useProjectStore();
+  
+  const droneFxItems = useMemo(() => timelineItems.filter((i) => i.trackIndex === 3), [timelineItems]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    const hasEffect = e.dataTransfer.types.includes('application/effect-id');
+    if (!hasEffect) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const effectId = e.dataTransfer.getData('application/effect-id');
+    if (!effectId) return;
+    const effect = EFFECT_LIBRARY.find((ef) => ef.id === effectId);
+    if (!effect || effect.type !== 'drone') return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    let time = Math.max(0, Math.min(x / pixelsPerSecond, duration));
+    time = snapTimeToBeat(time, bpm, snapToBeat, pixelsPerSecond);
+
+    addTimelineItem({
+      id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      effectId: effect.id,
+      startTime: time,
+      trackIndex: 3,
+      position: { x: 0, y: 20, z: 0 },
+    });
+  }, [pixelsPerSecond, duration, addTimelineItem, bpm, snapToBeat]);
+
+  // Only render when drone formations are configured
+  if (droneFormations.length === 0) return null;
+
+  return (
+    <div className="flex border-b border-border/50">
+      <div className="w-28 flex-shrink-0 flex items-center px-3 border-r border-border/50 bg-surface-1">
+        <div className="w-2 h-2 rounded-full mr-2 bg-[#00E5FF]" />
+        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Drone FX</span>
+      </div>
+      <div
+        className="flex-1 relative h-10 bg-surface-0/50"
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
+        {/* Show formation blocks as background context */}
+        {droneFormations.map((f, i) => {
+          const totalDuration = f.transitionDuration + f.holdDuration;
+          const widthPx = Math.max(totalDuration * pixelsPerSecond, 20);
+          return (
+            <div
+              key={`bg-${f.id}`}
+              className="absolute top-0 h-full opacity-10 pointer-events-none"
+              style={{
+                left: `${f.startTime * pixelsPerSecond}px`,
+                width: `${widthPx}px`,
+                backgroundColor: f.color,
+              }}
+            />
+          );
+        })}
+        {/* Drone FX items */}
+        {droneFxItems.map((item) => {
+          const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+          if (!effect) return null;
+          const isSelected = selectedTimelineItemId === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={(e) => { e.stopPropagation(); selectTimelineItem(item.id); }}
+              className={cn(
+                "absolute top-1 h-8 rounded-sm flex items-center px-1.5 text-[9px] font-mono-code transition-all cursor-pointer border",
+                isSelected ? "border-primary/60 shadow-[0_0_6px_hsl(var(--electric)/0.2)] z-10" : "border-transparent hover:border-border"
+              )}
+              style={{
+                left: `${item.startTime * pixelsPerSecond}px`,
+                width: `${Math.max(effect.duration * pixelsPerSecond, 20)}px`,
+                backgroundColor: `${effect.color}22`,
+              }}
+            >
+              <div className="w-1 h-full rounded-full mr-1 flex-shrink-0" style={{ backgroundColor: effect.color }} />
+              <span className="truncate text-secondary-foreground">{effect.name}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 const MIN_PPS = 4;
 const MAX_PPS = 80;
 
@@ -604,6 +697,7 @@ export default function Timeline() {
             </div>
           </div>
           <FormationTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
+          <DroneFXTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
           <PyroTimelineTrack pixelsPerSecond={pixelsPerSecond} duration={duration} />
           
           <TimelineTrackRow label="PYRO SYS" trackIndex={0} pixelsPerSecond={pixelsPerSecond} color="#FF6B35" duration={duration} scrollRef={scrollRef} />
