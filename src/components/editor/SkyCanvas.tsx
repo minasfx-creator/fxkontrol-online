@@ -58,6 +58,27 @@ import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 // ═══ render_ultra integrations — Blender/Cycles-grade tech ═══
 import { createExposureController, updateExposure, flashEvent } from '@/render_ultra/postprocessing/exposure';
 import { getCompound, thermalColor, type ChemicalCompound } from '@/render_ultra/fireworks/particleChemistry';
+import { GlobalIlluminationSystem } from '@/render_ultra/lighting/globalIllumination';
+
+// ═══ PyroChem: map hex colors → real chemical compounds ═══
+function hexToCompound(hexColor: string): ChemicalCompound {
+  const c = new THREE.Color(hexColor);
+  const hsl = { h: 0, s: 0, l: 0 };
+  c.getHSL(hsl);
+  const h = hsl.h * 360;
+  
+  // Map hue ranges to real pyrotechnic compounds
+  if (hsl.l > 0.85) return getCompound('magnesium');     // White/silver → Magnalium
+  if (hsl.l > 0.7 && hsl.s < 0.2) return getCompound('titanium'); // Bright white → Titanium
+  if (h >= 0 && h < 30) return getCompound('strontium');   // Red → Strontium Carbonate
+  if (h >= 30 && h < 55) return getCompound('iron');        // Orange → Iron filings
+  if (h >= 55 && h < 75) return getCompound('sodium');      // Yellow → Sodium Oxalate
+  if (h >= 75 && h < 170) return getCompound('barium');     // Green → Barium Chlorate
+  if (h >= 170 && h < 260) return getCompound('copper');    // Blue → Copper Acetoarsenite
+  if (h >= 260 && h < 310) return getCompound('strontium'); // Purple → Strontium + Copper mix
+  if (h >= 310 && h < 345) return getCompound('strontium'); // Magenta/Pink → Strontium
+  return getCompound('charcoal');                            // Fallback → Charcoal streamer
+}
 
 // FX KONTROL — Show Design Platform Renderer
 class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
