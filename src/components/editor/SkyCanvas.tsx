@@ -2219,7 +2219,7 @@ function SceneLighting() {
     rig.moon.castShadow = s.shadowsEnabled;
     rig.moon.shadow.bias = -0.00003;
     rig.moon.shadow.normalBias = 0.02;
-    rig.moon.shadow.camera.far = 600;
+    rig.moon.shadow.camera.far = 2000;
 
     scene.add(rig.group);
     return () => { scene.remove(rig.group); };
