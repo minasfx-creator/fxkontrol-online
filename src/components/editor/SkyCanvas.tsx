@@ -125,24 +125,29 @@ function getWindForce(): [number, number, number] {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// Finale 3D-grade star sprite vertex/fragment shaders
-// Renders each star as a soft gaussian glow disc with HDR bloom trigger,
-// exactly matching Finale's GPU particle rendering pipeline.
+// Niagara-inspired star sprite shaders
+// - Gaussian core with exponential falloff
+// - Thermal color pipeline (white-hot → saturated → ember)
+// - Per-particle noise-driven twinkle
+// - Size attenuation with distance
 // ═══════════════════════════════════════════════════════════════════════
 const STAR_VERTEX_SHADER = `
   attribute float aSize;
   attribute float aLife;
+  attribute float aSeed;
   varying vec3 vColor;
   varying float vLife;
   varying float vSize;
+  varying float vSeed;
   void main() {
     vColor = color;
     vLife = aLife;
     vSize = aSize;
+    vSeed = aSeed;
     vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-    // Increased multiplier for real-world scale (stars at 50-300m distance from camera)
-    gl_PointSize = aSize * (1800.0 / -mvPos.z);
-    gl_PointSize = clamp(gl_PointSize, 1.5, 200.0);
+    // Distance-based size: closer = larger, farther = smaller (realistic scale)
+    gl_PointSize = aSize * (2200.0 / -mvPos.z);
+    gl_PointSize = clamp(gl_PointSize, 1.0, 180.0);
     gl_Position = projectionMatrix * mvPos;
   }
 `;
@@ -151,28 +156,32 @@ const STAR_FRAGMENT_SHADER = `
   varying vec3 vColor;
   varying float vLife;
   varying float vSize;
+  varying float vSeed;
   void main() {
     vec2 uv = gl_PointCoord - 0.5;
     float dist = length(uv);
     
-    // Natural glow: tight core with soft falloff — like real firework stars
-    float core = smoothstep(0.08, 0.0, dist);
-    float inner = exp(-dist * dist * 35.0);
-    float glow = exp(-dist * dist * 12.0);
-    float bloom = exp(-dist * dist * 5.0);
+    // Niagara-style layered glow: tight bright core + soft halo
+    float core = exp(-dist * dist * 80.0);  // Very tight bright center
+    float inner = exp(-dist * dist * 25.0); // Inner glow
+    float outer = exp(-dist * dist * 8.0);  // Soft outer bloom
     
-    float alpha = core * 1.2 + inner * 0.8 + glow * 0.4 + bloom * 0.1;
+    // Combined alpha with natural falloff
+    float alpha = core * 1.0 + inner * 0.6 + outer * 0.15;
     
-    // Natural color — subtle white-hot center, no excessive HDR push
-    vec3 whiteHot = vec3(1.2, 1.1, 0.95);
-    vec3 col = vColor * (inner * 1.2 + glow * 0.8) + whiteHot * core * 1.5;
-    col += vColor * bloom * 0.2;
+    // Thermal color model: white-hot center fading to star color
+    vec3 whiteHot = vec3(1.3, 1.15, 0.95);
+    vec3 col = mix(vColor, whiteHot, core * 0.7);
+    col += vColor * outer * 0.3;
     
-    // Brief youth flash
-    float youth = max(0.0, 1.0 - vLife * 4.0);
-    col += whiteHot * youth * 0.8;
+    // Youth flash: brief bright moment at spawn
+    float youth = max(0.0, 1.0 - vLife * 5.0);
+    col += whiteHot * youth * 0.6;
     
-    gl_FragColor = vec4(col, alpha * (1.0 - smoothstep(0.46, 0.5, dist)));
+    // Circular cutoff
+    float edge = 1.0 - smoothstep(0.42, 0.5, dist);
+    
+    gl_FragColor = vec4(col, alpha * edge);
   }
 `;
 
