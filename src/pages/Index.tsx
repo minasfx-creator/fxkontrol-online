@@ -69,6 +69,8 @@ import ShowControlPanel from '@/components/editor/ShowControlPanel';
 import ShowInspectorPanel from '@/components/editor/ShowInspectorPanel';
 import LightProgramPanel from '@/components/editor/LightProgramPanel';
 import SafetyCheckPanel from '@/components/editor/SafetyCheckPanel';
+import TakeoffGridPanel from '@/components/editor/TakeoffGridPanel';
+import TransitionPlannerPanel from '@/components/editor/TransitionPlannerPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
