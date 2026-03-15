@@ -272,6 +272,10 @@ export default function Index() {
     setMobilePanelHeight('half');
   }, []);
 
+  if (appPhase === 'cinematic') {
+    return <CinematicIntro onComplete={() => setAppPhase('splash')} />;
+  }
+
   if (appPhase === 'splash') {
     return <SplashScreen onStart={handleSplashStart} />;
   }
