@@ -1667,7 +1667,7 @@ function GlobalIlluminationController() {
         const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
         if (effect && effect.type === 'firework') {
           const compound = hexToCompound(effect.color);
-          const pos = new THREE.Vector3(item.x ?? 0, item.y ?? 0, item.z ?? 0);
+          const pos = new THREE.Vector3(item.position.x, item.position.y, item.position.z);
           // Use chemical compound color for physically accurate GI bounce
           gi.addExplosionProbe(
             pos,
