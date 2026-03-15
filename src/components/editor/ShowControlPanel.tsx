@@ -1,11 +1,15 @@
 /**
- * ─── Show Control Panel v2 ─────────────────────────────────────────
- * Full Skybrush Live show execution workflow.
- * SHOW-CFG, authorization scope, drone mapping, start conditions.
+ * ─── Show Control Panel v3 ─────────────────────────────────────────
+ * Integrated with ShowOrchestrator state machine for real
+ * preflight → upload → authorize → countdown → running → landing flow.
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Clock, Play, Pause, Square, Upload, Shield, AlertTriangle, CheckCircle2, Timer, Settings, Users, Map, Eye, EyeOff, RotateCcw, Zap } from 'lucide-react';
+import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
+import {
+  Clock, Play, Pause, Square, Upload, Shield, AlertTriangle,
+  CheckCircle2, Timer, Zap, RotateCcw, Loader2, XCircle,
+  Plane, ChevronRight, AlertCircle,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,9 +21,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useFleetStore } from '@/store/useFleetStore';
 import { useProjectStore } from '@/store/useProjectStore';
+import { showOrchestrator, type ShowPhase, type ShowWarning } from '@/lib/showOrchestrator';
 import type { AuthorizationScope, StartMethod } from '@/lib/flockwaveProtocol';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+
+// ── Helpers ─────────────────────────────────────────────────────────
 
 function formatCountdown(seconds: number): string {
   if (seconds <= 0) return 'T-00:00';
@@ -33,156 +40,206 @@ function formatTime(ms: number): string {
   return date.toLocaleTimeString('en-GB', { hour12: false }) + '.' + String(date.getMilliseconds()).padStart(3, '0');
 }
 
+function formatElapsed(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  const ms = Math.floor((sec % 1) * 10);
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${ms}`;
+}
+
+function phaseLabel(phase: ShowPhase): string {
+  const map: Record<ShowPhase, string> = {
+    idle: 'IDLE', preflight: 'PREFLIGHT', uploading: 'UPLOADING',
+    uploaded: 'UPLOADED', authorized: 'AUTHORIZED', countdown: 'COUNTDOWN',
+    running: 'RUNNING', paused: 'PAUSED', landing: 'LANDING',
+    complete: 'COMPLETE', error: 'ERROR', aborted: 'ABORTED',
+  };
+  return map[phase];
+}
+
+// ── Hook: subscribe to ShowOrchestrator ─────────────────────────────
+
+function useOrchestratorState() {
+  return useSyncExternalStore(
+    (cb) => showOrchestrator.subscribe(cb),
+    () => showOrchestrator.getState(),
+  );
+}
+
+// ── Component ───────────────────────────────────────────────────────
+
 interface ShowControlPanelProps {
   onClose?: () => void;
 }
 
 export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
-  const {
-    showState, setShowState, showProgress, setShowProgress,
-    countdownSeconds, setCountdownSeconds,
-    clockSync, connectionState, uavs, preflightSummary,
-  } = useFleetStore();
+  const orc = useOrchestratorState();
+  const { clockSync, connectionState, uavs } = useFleetStore();
+  const { duration, projectName, positions, timelineItems } = useProjectStore();
 
-  const { duration, projectName } = useProjectStore();
-
-  const [startMethod, setStartMethod] = useState<StartMethod>('auto');
   const [authScope, setAuthScope] = useState<AuthorizationScope>('live');
-  const [scheduledTime, setScheduledTime] = useState('');
+  const [startMethod, setStartMethod] = useState<StartMethod>('auto');
   const [countdownTarget, setCountdownTarget] = useState(30);
-  const [localTime, setLocalTime] = useState(Date.now());
-  const [showMapping, setShowMapping] = useState(false);
-  const [droneMapping, setDroneMapping] = useState<(string | null)[]>([]);
+  const [scheduledTime, setScheduledTime] = useState('');
   const [autoMapping, setAutoMapping] = useState(true);
-  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [localTime, setLocalTime] = useState(Date.now());
+  const [busy, setBusy] = useState(false);
 
-  // Update clock
+  // Clock tick
   useEffect(() => {
-    const timer = setInterval(() => setLocalTime(Date.now()), 100);
-    return () => clearInterval(timer);
+    const t = setInterval(() => setLocalTime(Date.now()), 100);
+    return () => clearInterval(t);
   }, []);
 
-  // Auto-generate mapping from UAVs
+  // Sync duration to orchestrator
   useEffect(() => {
-    if (autoMapping && uavs.size > 0) {
-      setDroneMapping(Array.from(uavs.keys()));
-    }
-  }, [uavs.size, autoMapping]);
+    showOrchestrator.setShowDuration(duration);
+  }, [duration]);
 
-  // Countdown logic
+  // Sync start method
   useEffect(() => {
-    if (showState === 'countdown' && countdownSeconds > 0) {
-      countdownRef.current = setInterval(() => {
-        setCountdownSeconds(Math.max(0, countdownSeconds - 1));
-      }, 1000);
-      return () => { if (countdownRef.current) clearInterval(countdownRef.current); };
-    }
-    if (showState === 'countdown' && countdownSeconds <= 0) {
-      setShowState('running');
-      toast.success('🚀 SHOW STARTED!');
-    }
-  }, [showState, countdownSeconds, setCountdownSeconds, setShowState]);
+    showOrchestrator.setStartMethod(startMethod);
+  }, [startMethod]);
 
-  // Progress simulation
-  useEffect(() => {
-    if (showState === 'running') {
-      const timer = setInterval(() => {
-        setShowProgress(Math.min(1, showProgress + 1 / (duration * 10)));
-      }, 100);
-      return () => clearInterval(timer);
+  // ── Actions using real orchestrator ───────────────────────────
+
+  const handlePreflight = useCallback(async () => {
+    setBusy(true);
+    const ok = await showOrchestrator.startPreflight();
+    setBusy(false);
+    if (ok) {
+      const st = showOrchestrator.getState();
+      const failures = st.preflightResults.filter(r => !r.passed);
+      if (failures.length > 0) {
+        toast.warning(`Preflight: ${failures.length} drone(s) with issues`);
+      } else {
+        toast.success(`Preflight passed — ${st.totalDrones} drones ready`);
+      }
+    } else {
+      toast.error('Preflight failed');
     }
-  }, [showState, showProgress, duration, setShowProgress]);
+  }, []);
 
-  const handleUploadShow = useCallback(() => {
-    if (uavs.size === 0) {
-      toast.error('No UAVs in fleet');
-      return;
+  const handleUpload = useCallback(async () => {
+    setBusy(true);
+    // Build upload data from project store
+    const trajectories = positions.map((pos, i) => ({
+      droneId: `drone-${i + 1}`,
+      points: [
+        { t: 0, x: pos.x, y: 0, z: pos.z },
+        { t: duration * 0.1, x: pos.x, y: pos.y + 30, z: pos.z },
+        { t: duration * 0.9, x: pos.x, y: pos.y + 30, z: pos.z },
+        { t: duration, x: pos.x, y: 0, z: pos.z },
+      ],
+    }));
+    const lightProgram = positions.map(() => [
+      { t: 0, r: 0, g: 0, b: 0, w: 0 },
+      { t: duration * 0.1, r: 255, g: 255, b: 255, w: 0 },
+      { t: duration * 0.9, r: 255, g: 255, b: 255, w: 0 },
+      { t: duration, r: 0, g: 0, b: 0, w: 0 },
+    ]);
+
+    const ok = await showOrchestrator.uploadShow({
+      trajectories,
+      lightProgram,
+      startMethod,
+      coordinateSystem: 'neu',
+      origin: { lat: 0, lon: 0, altMSL: 0 },
+    });
+    setBusy(false);
+
+    if (ok) {
+      toast.success(`Show uploaded — ${trajectories.length} drones`);
+    } else {
+      toast.error('Upload failed');
     }
-    setShowState('uploaded');
-    toast.success(`Show uploaded to ${uavs.size} drones`);
-  }, [setShowState, uavs.size]);
+  }, [positions, duration]);
 
-  const handleAuthorize = useCallback(() => {
-    setShowState('authorized');
-    toast.success(`Show authorized (scope: ${authScope})`);
-  }, [authScope, setShowState]);
+  const handleAuthorize = useCallback(async () => {
+    setBusy(true);
+    const ok = await showOrchestrator.authorize(authScope);
+    setBusy(false);
+    if (ok) toast.success(`Authorized (${authScope})`);
+    else toast.error('Authorization failed');
+  }, [authScope]);
 
-  const handleDeauthorize = useCallback(() => {
-    setShowState('uploaded');
+  const handleDeauthorize = useCallback(async () => {
+    await showOrchestrator.deauthorize();
     toast.warning('Show deauthorized');
-  }, [setShowState]);
+  }, []);
 
-  const handleStartCountdown = useCallback(() => {
-    setCountdownSeconds(countdownTarget);
-    setShowState('countdown');
+  const handleCountdown = useCallback(() => {
+    showOrchestrator.startCountdown(countdownTarget);
     toast.info(`Countdown: T-${countdownTarget}s`);
-  }, [countdownTarget, setCountdownSeconds, setShowState]);
+  }, [countdownTarget]);
 
-  const handleStartNow = useCallback(() => {
-    setShowState('running');
-    setShowProgress(0);
-    toast.success('🚀 SHOW STARTED!');
-  }, [setShowState, setShowProgress]);
-
-  const handlePause = useCallback(() => {
-    setShowState('paused');
+  const handlePause = useCallback(async () => {
+    await showOrchestrator.pause();
     toast.warning('Show paused');
-  }, [setShowState]);
+  }, []);
 
-  const handleResume = useCallback(() => {
-    setShowState('running');
+  const handleResume = useCallback(async () => {
+    await showOrchestrator.resume();
     toast.info('Show resumed');
-  }, [setShowState]);
+  }, []);
 
-  const handleStop = useCallback(() => {
-    setShowState('idle');
-    setShowProgress(0);
-    setCountdownSeconds(0);
-    if (countdownRef.current) clearInterval(countdownRef.current);
-    toast.warning('Show stopped');
-  }, [setShowState, setShowProgress, setCountdownSeconds]);
+  const handleLand = useCallback(async () => {
+    await showOrchestrator.startLanding();
+    toast.info('Landing sequence initiated');
+  }, []);
 
-  const handleAbort = useCallback(() => {
-    setShowState('aborted');
-    setShowProgress(0);
-    setCountdownSeconds(0);
-    if (countdownRef.current) clearInterval(countdownRef.current);
+  const handleAbort = useCallback(async () => {
+    await showOrchestrator.abort('User emergency abort');
     toast.error('🚨 EMERGENCY ABORT — ALL DRONES RTH');
-  }, [setShowState, setShowProgress, setCountdownSeconds]);
+  }, []);
 
   const handleReset = useCallback(() => {
-    setShowState('idle');
-    setShowProgress(0);
-    setCountdownSeconds(0);
+    showOrchestrator.reset();
     toast.info('Show control reset');
-  }, [setShowState, setShowProgress, setCountdownSeconds]);
+  }, []);
+
+  // ── Derived state ─────────────────────────────────────────────
 
   const serverTime = clockSync.synced ? localTime + clockSync.offset : null;
-  const isReady = showState === 'authorized';
-  const isRunning = showState === 'running' || showState === 'countdown';
+  const progress = showOrchestrator.getProgress();
+  const phase = orc.phase;
 
-  const getStateColor = () => {
-    switch (showState) {
+  const isLive = phase === 'running' || phase === 'countdown' || phase === 'paused' || phase === 'landing';
+  const canReset = phase === 'complete' || phase === 'aborted' || phase === 'error';
+  const activeWarnings = orc.warnings.filter(w => !w.dismissed);
+
+  const getPhaseColor = (): string => {
+    switch (phase) {
       case 'idle': return 'text-muted-foreground';
+      case 'preflight': return 'text-primary';
+      case 'uploading': return 'text-primary animate-pulse';
       case 'uploaded': return 'text-primary';
       case 'authorized': return 'text-success';
       case 'countdown': return 'text-warning animate-pulse';
       case 'running': return 'text-success animate-pulse';
       case 'paused': return 'text-warning';
-      case 'completed': return 'text-success';
+      case 'landing': return 'text-primary animate-pulse';
+      case 'complete': return 'text-success';
+      case 'error': return 'text-destructive';
       case 'aborted': return 'text-destructive';
       default: return 'text-muted-foreground';
     }
   };
 
-  const getStateBg = () => {
-    switch (showState) {
+  const getPhaseBg = (): string => {
+    switch (phase) {
       case 'countdown': return 'bg-warning/5 border-warning/30';
       case 'running': return 'bg-success/5 border-success/30';
-      case 'aborted': return 'bg-destructive/5 border-destructive/30';
+      case 'landing': return 'bg-primary/5 border-primary/30';
+      case 'aborted': case 'error': return 'bg-destructive/5 border-destructive/30';
       default: return 'bg-background border-border';
     }
   };
+
+  // Step completion helpers
+  const preflightDone = phase !== 'idle' && phase !== 'preflight';
+  const uploadDone = ['uploaded', 'authorized', 'countdown', 'running', 'paused', 'landing', 'complete'].includes(phase);
+  const authDone = ['authorized', 'countdown', 'running', 'paused', 'landing', 'complete'].includes(phase);
 
   return (
     <div className="h-full flex flex-col bg-surface-0 border-l border-border">
@@ -194,10 +251,10 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
             <span className="text-xs font-bold text-foreground tracking-wide">SHOW CONTROL</span>
           </div>
           <div className="flex items-center gap-1">
-            <Badge variant="outline" className={cn("text-[8px]", getStateColor())}>
-              {showState.toUpperCase()}
+            <Badge variant="outline" className={cn("text-[8px]", getPhaseColor())}>
+              {phaseLabel(phase)}
             </Badge>
-            {(showState === 'completed' || showState === 'aborted') && (
+            {canReset && (
               <Button size="sm" variant="ghost" className="h-4 w-4 p-0" onClick={handleReset}>
                 <RotateCcw className="w-3 h-3" />
               </Button>
@@ -206,15 +263,19 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
         </div>
       </div>
 
-      {/* Clock Display */}
-      <div className={cn("p-2 border-b transition-colors", getStateBg())}>
+      {/* Clock / Status Display */}
+      <div className={cn("p-2 border-b transition-colors", getPhaseBg())}>
         <div className="text-center">
-          {showState === 'countdown' ? (
-            <div className="text-3xl font-mono-code font-bold text-warning animate-pulse tracking-wider">
-              {formatCountdown(countdownSeconds)}
+          {phase === 'countdown' ? (
+            <div className="text-3xl font-mono font-bold text-warning animate-pulse tracking-wider">
+              {formatCountdown(orc.countdown)}
+            </div>
+          ) : phase === 'running' || phase === 'paused' ? (
+            <div className="text-2xl font-mono font-bold text-foreground">
+              {formatElapsed(orc.showElapsed)}
             </div>
           ) : (
-            <div className="text-xl font-mono-code font-bold text-foreground">
+            <div className="text-xl font-mono font-bold text-foreground">
               {formatTime(localTime)}
             </div>
           )}
@@ -227,7 +288,7 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
                   Server: {serverTime ? formatTime(serverTime) : '---'}
                 </span>
                 <span className="text-[7px] text-muted-foreground">
-                  (Δ{clockSync.offset.toFixed(0)}ms RTT {clockSync.roundTrip.toFixed(0)}ms)
+                  (Δ{clockSync.offset.toFixed(0)}ms)
                 </span>
               </>
             ) : (
@@ -239,17 +300,67 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
           </div>
         </div>
 
-        {(showState === 'running' || showState === 'paused') && (
+        {/* Progress bar for running/paused/uploading */}
+        {phase === 'uploading' && (
           <div className="mt-2">
-            <Progress value={showProgress * 100} className="h-2" />
-            <div className="flex justify-between text-[8px] text-muted-foreground mt-0.5">
-              <span>{(showProgress * duration).toFixed(1)}s</span>
-              <span className="font-bold">{(showProgress * 100).toFixed(0)}%</span>
-              <span>{duration}s</span>
+            <Progress value={orc.uploadProgress * 100} className="h-2" />
+            <div className="text-center text-[8px] text-muted-foreground mt-0.5">
+              Uploading… {(orc.uploadProgress * 100).toFixed(0)}%
             </div>
           </div>
         )}
+
+        {(phase === 'running' || phase === 'paused') && (
+          <div className="mt-2">
+            <Progress value={progress * 100} className="h-2" />
+            <div className="flex justify-between text-[8px] text-muted-foreground mt-0.5">
+              <span>{orc.showElapsed.toFixed(1)}s</span>
+              <span className="font-bold">{(progress * 100).toFixed(0)}%</span>
+              <span>{orc.showDuration.toFixed(0)}s</span>
+            </div>
+          </div>
+        )}
+
+        {phase === 'landing' && (
+          <div className="mt-2 flex items-center justify-center gap-1">
+            <Plane className="w-3.5 h-3.5 text-primary animate-bounce" />
+            <span className="text-[9px] text-primary font-bold">Landing in progress…</span>
+          </div>
+        )}
       </div>
+
+      {/* Warnings */}
+      {activeWarnings.length > 0 && (
+        <div className="p-1.5 border-b border-border bg-warning/5 max-h-24 overflow-y-auto">
+          {activeWarnings.slice(0, 5).map(w => (
+            <div key={w.id} className="flex items-start gap-1 text-[8px] mb-0.5">
+              {w.severity === 'critical' ? (
+                <XCircle className="w-3 h-3 text-destructive shrink-0 mt-0.5" />
+              ) : w.severity === 'warning' ? (
+                <AlertCircle className="w-3 h-3 text-warning shrink-0 mt-0.5" />
+              ) : (
+                <AlertCircle className="w-3 h-3 text-muted-foreground shrink-0 mt-0.5" />
+              )}
+              <span className="text-foreground">{w.message}</span>
+              <button
+                className="ml-auto text-muted-foreground hover:text-foreground shrink-0"
+                onClick={() => showOrchestrator.dismissWarning(w.id)}
+              >✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Error display */}
+      {orc.error && (
+        <div className="p-2 border-b border-destructive/30 bg-destructive/5">
+          <div className="flex items-center gap-1 text-[9px] text-destructive">
+            <XCircle className="w-3.5 h-3.5" />
+            <span className="font-bold">Error:</span>
+            <span>{orc.error}</span>
+          </div>
+        </div>
+      )}
 
       <Tabs defaultValue="workflow" className="flex-1 flex flex-col">
         <TabsList className="h-7 mx-2 mt-1">
@@ -258,7 +369,7 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
           <TabsTrigger value="config" className="text-[9px] h-5">Config</TabsTrigger>
         </TabsList>
 
-        {/* Workflow Tab */}
+        {/* ── Workflow Tab ─────────────────────────────────────── */}
         <TabsContent value="workflow" className="flex-1 flex flex-col p-2 mt-0 overflow-y-auto">
           <div className="space-y-2">
             {/* Show Info */}
@@ -273,37 +384,81 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
               </div>
               <div className="bg-background rounded px-1.5 py-1">
                 <div className="text-muted-foreground">Fleet</div>
-                <div className="text-foreground font-bold">{uavs.size} UAVs</div>
+                <div className="text-foreground font-bold">{orc.totalDrones > 0 ? orc.totalDrones : uavs.size} UAVs</div>
               </div>
               <div className="bg-background rounded px-1.5 py-1">
-                <div className="text-muted-foreground">Preflight</div>
-                <div className={cn("font-bold", preflightSummary?.ready ? 'text-success' : 'text-muted-foreground')}>
-                  {preflightSummary ? (preflightSummary.ready ? 'PASS' : 'FAIL') : '---'}
-                </div>
+                <div className="text-muted-foreground">Positions</div>
+                <div className="text-foreground font-bold">{positions.length}</div>
               </div>
             </div>
 
-            {/* Step 1: Upload */}
-            <div className={cn("rounded border p-2", showState === 'idle' ? 'border-primary' : 'border-border opacity-60')}>
+            {/* Step 1: Preflight */}
+            <div className={cn("rounded border p-2",
+              phase === 'idle' ? 'border-primary' : preflightDone ? 'border-success/30' : 'border-border opacity-60'
+            )}>
               <div className="flex items-center gap-1 mb-1">
-                <Upload className="w-3 h-3 text-primary" />
-                <span className="text-[9px] font-bold">1. Upload Show Data</span>
-                {showState !== 'idle' && <CheckCircle2 className="w-3 h-3 text-success ml-auto" />}
+                <CheckCircle2 className={cn("w-3 h-3", preflightDone ? 'text-success' : 'text-primary')} />
+                <span className="text-[9px] font-bold">1. Preflight Checks</span>
+                {preflightDone && <CheckCircle2 className="w-3 h-3 text-success ml-auto" />}
+                {phase === 'preflight' && <Loader2 className="w-3 h-3 text-primary ml-auto animate-spin" />}
               </div>
               <p className="text-[7px] text-muted-foreground mb-1">
-                Uploads trajectories, light programs and cue markers to all drones.
+                Battery, GPS, calibration, geofence validation for all drones.
               </p>
-              <Button size="sm" className="w-full h-6 text-[9px]" disabled={showState !== 'idle'} onClick={handleUploadShow}>
-                <Upload className="w-3 h-3 mr-1" />Upload to Fleet ({uavs.size})
+              {orc.preflightResults.length > 0 && (
+                <div className="mb-1 text-[8px]">
+                  <span className="text-success">{orc.preflightResults.filter(r => r.passed).length} passed</span>
+                  {orc.preflightResults.some(r => !r.passed) && (
+                    <span className="text-destructive ml-2">
+                      {orc.preflightResults.filter(r => !r.passed).length} failed
+                    </span>
+                  )}
+                </div>
+              )}
+              <Button
+                size="sm" className="w-full h-6 text-[9px]"
+                disabled={phase !== 'idle' || busy}
+                onClick={handlePreflight}
+              >
+                {busy && phase === 'idle' ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <CheckCircle2 className="w-3 h-3 mr-1" />}
+                Run Preflight
               </Button>
             </div>
 
-            {/* Step 2: Authorize */}
-            <div className={cn("rounded border p-2", showState === 'uploaded' ? 'border-primary' : 'border-border opacity-60')}>
+            {/* Step 2: Upload */}
+            <div className={cn("rounded border p-2",
+              phase === 'preflight' ? 'border-primary' : uploadDone ? 'border-success/30' : 'border-border opacity-60'
+            )}>
               <div className="flex items-center gap-1 mb-1">
-                <Shield className="w-3 h-3 text-success" />
-                <span className="text-[9px] font-bold">2. Authorize</span>
-                {(showState === 'authorized' || isRunning) && <CheckCircle2 className="w-3 h-3 text-success ml-auto" />}
+                <Upload className={cn("w-3 h-3", uploadDone ? 'text-success' : 'text-primary')} />
+                <span className="text-[9px] font-bold">2. Upload Show Data</span>
+                {uploadDone && <CheckCircle2 className="w-3 h-3 text-success ml-auto" />}
+                {phase === 'uploading' && <Loader2 className="w-3 h-3 text-primary ml-auto animate-spin" />}
+              </div>
+              <p className="text-[7px] text-muted-foreground mb-1">
+                Trajectories, light programs, cue markers → fleet.
+              </p>
+              {phase === 'uploading' && (
+                <Progress value={orc.uploadProgress * 100} className="h-1.5 mb-1" />
+              )}
+              <Button
+                size="sm" className="w-full h-6 text-[9px]"
+                disabled={phase !== 'preflight' || busy}
+                onClick={handleUpload}
+              >
+                {phase === 'uploading' ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Upload className="w-3 h-3 mr-1" />}
+                Upload to Fleet ({positions.length} slots)
+              </Button>
+            </div>
+
+            {/* Step 3: Authorize */}
+            <div className={cn("rounded border p-2",
+              phase === 'uploaded' ? 'border-primary' : authDone ? 'border-success/30' : 'border-border opacity-60'
+            )}>
+              <div className="flex items-center gap-1 mb-1">
+                <Shield className={cn("w-3 h-3", authDone ? 'text-success' : 'text-primary')} />
+                <span className="text-[9px] font-bold">3. Authorize</span>
+                {authDone && <CheckCircle2 className="w-3 h-3 text-success ml-auto" />}
               </div>
               <div className="space-y-1">
                 <Select value={authScope} onValueChange={(v) => setAuthScope(v as AuthorizationScope)}>
@@ -312,14 +467,18 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="live" className="text-[9px]">🟢 Live (full safety)</SelectItem>
-                    <SelectItem value="rehearsal" className="text-[9px]">🟡 Rehearsal (reduced safety)</SelectItem>
+                    <SelectItem value="rehearsal" className="text-[9px]">🟡 Rehearsal (reduced)</SelectItem>
                   </SelectContent>
                 </Select>
                 <div className="flex gap-1">
-                  <Button size="sm" className="flex-1 h-6 text-[9px]" disabled={showState !== 'uploaded'} onClick={handleAuthorize}>
+                  <Button
+                    size="sm" className="flex-1 h-6 text-[9px]"
+                    disabled={phase !== 'uploaded' || busy}
+                    onClick={handleAuthorize}
+                  >
                     Authorize ({authScope})
                   </Button>
-                  {showState === 'authorized' && (
+                  {phase === 'authorized' && (
                     <Button size="sm" variant="outline" className="h-6 text-[9px] px-2" onClick={handleDeauthorize}>
                       Revoke
                     </Button>
@@ -328,11 +487,13 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
               </div>
             </div>
 
-            {/* Step 3: Start */}
-            <div className={cn("rounded border p-2", isReady ? 'border-success' : 'border-border opacity-60')}>
+            {/* Step 4: Start */}
+            <div className={cn("rounded border p-2",
+              phase === 'authorized' ? 'border-success' : 'border-border opacity-60'
+            )}>
               <div className="flex items-center gap-1 mb-1">
                 <Play className="w-3 h-3 text-success" />
-                <span className="text-[9px] font-bold">3. Start Show</span>
+                <span className="text-[9px] font-bold">4. Start Show</span>
               </div>
 
               <Select value={startMethod} onValueChange={(v) => setStartMethod(v as StartMethod)}>
@@ -352,40 +513,47 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
               )}
 
               <div className="flex gap-1 mb-1">
-                <Input type="number" value={countdownTarget} onChange={(e) => setCountdownTarget(parseInt(e.target.value) || 10)}
-                  className="h-7 text-[9px] w-16 bg-background" />
-                <Button size="sm" className="flex-1 h-7 text-[10px] bg-success hover:bg-success/90 text-success-foreground"
-                  disabled={!isReady} onClick={handleStartCountdown}>
+                <Input
+                  type="number" value={countdownTarget}
+                  onChange={(e) => setCountdownTarget(parseInt(e.target.value) || 10)}
+                  className="h-7 text-[9px] w-16 bg-background"
+                />
+                <Button
+                  size="sm"
+                  className="flex-1 h-7 text-[10px] bg-success hover:bg-success/90 text-success-foreground"
+                  disabled={phase !== 'authorized'}
+                  onClick={handleCountdown}
+                >
                   <Clock className="w-3 h-3 mr-1" />Countdown
                 </Button>
               </div>
-
-              <Button size="sm" variant="outline"
-                className="w-full h-6 text-[9px] border-success/50 text-success"
-                disabled={!isReady} onClick={handleStartNow}>
-                <Zap className="w-3 h-3 mr-1" />START NOW (skip countdown)
-              </Button>
             </div>
 
             {/* Live Controls */}
-            {(isRunning || showState === 'paused') && (
+            {isLive && (
               <div className="rounded border border-warning p-2">
                 <div className="text-[9px] font-bold mb-1 text-warning">⚡ Live Controls</div>
                 <div className="grid grid-cols-2 gap-1">
-                  {showState === 'running' && (
+                  {phase === 'running' && (
                     <Button size="sm" variant="outline" className="h-6 text-[9px]" onClick={handlePause}>
                       <Pause className="w-3 h-3 mr-1" />Pause
                     </Button>
                   )}
-                  {showState === 'paused' && (
+                  {phase === 'paused' && (
                     <Button size="sm" variant="outline" className="h-6 text-[9px]" onClick={handleResume}>
                       <Play className="w-3 h-3 mr-1" />Resume
                     </Button>
                   )}
-                  <Button size="sm" variant="outline" className="h-6 text-[9px]" onClick={handleStop}>
-                    <Square className="w-3 h-3 mr-1" />Stop
-                  </Button>
-                  <Button size="sm" variant="destructive" className="h-7 text-[10px] col-span-2 font-bold" onClick={handleAbort}>
+                  {(phase === 'running' || phase === 'paused') && (
+                    <Button size="sm" variant="outline" className="h-6 text-[9px]" onClick={handleLand}>
+                      <Plane className="w-3 h-3 mr-1" />Land
+                    </Button>
+                  )}
+                  <Button
+                    size="sm" variant="destructive"
+                    className="h-7 text-[10px] col-span-2 font-bold"
+                    onClick={handleAbort}
+                  >
                     <AlertTriangle className="w-3.5 h-3.5 mr-1" />🚨 EMERGENCY ABORT
                   </Button>
                 </div>
@@ -394,7 +562,7 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
           </div>
         </TabsContent>
 
-        {/* Mapping Tab */}
+        {/* ── Mapping Tab ─────────────────────────────────────── */}
         <TabsContent value="mapping" className="flex-1 flex flex-col p-2 mt-0">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[9px] font-bold text-foreground">Drone ↔ Slot Mapping</span>
@@ -404,40 +572,22 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
             </div>
           </div>
           <p className="text-[7px] text-muted-foreground mb-2">
-            Maps physical drones to show slots. Auto mode assigns by UAV ID order.
+            {orc.droneMapping.length > 0
+              ? `${orc.droneMapping.filter(Boolean).length} drones mapped to ${orc.droneMapping.length} slots.`
+              : 'Upload show data to populate mapping.'}
           </p>
           <ScrollArea className="flex-1">
             <div className="space-y-0.5">
-              {droneMapping.length === 0 ? (
+              {orc.droneMapping.length === 0 ? (
                 <div className="text-center py-4 text-[9px] text-muted-foreground">
-                  No drones in fleet
+                  {phase === 'idle' ? 'Run preflight & upload first' : 'No mapping data'}
                 </div>
               ) : (
-                droneMapping.map((droneId, slot) => (
+                orc.droneMapping.map((droneId, slot) => (
                   <div key={slot} className="flex items-center gap-1.5 bg-background rounded px-1.5 py-1">
-                    <span className="text-[8px] font-mono-code text-muted-foreground w-8">#{slot + 1}</span>
-                    <span className="text-[8px] text-foreground">→</span>
-                    {autoMapping ? (
-                      <span className="text-[9px] font-mono-code text-electric">{droneId ?? '---'}</span>
-                    ) : (
-                      <Select
-                        value={droneId ?? ''}
-                        onValueChange={(v) => {
-                          const next = [...droneMapping];
-                          next[slot] = v || null;
-                          setDroneMapping(next);
-                        }}
-                      >
-                        <SelectTrigger className="h-5 text-[8px] flex-1">
-                          <SelectValue placeholder="Unassigned" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Array.from(uavs.keys()).map(id => (
-                            <SelectItem key={id} value={id} className="text-[8px]">{id}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
+                    <span className="text-[8px] font-mono text-muted-foreground w-8">#{slot + 1}</span>
+                    <ChevronRight className="w-2.5 h-2.5 text-muted-foreground" />
+                    <span className="text-[9px] font-mono text-electric">{droneId ?? '---'}</span>
                   </div>
                 ))
               )}
@@ -445,7 +595,7 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
           </ScrollArea>
         </TabsContent>
 
-        {/* Config Tab */}
+        {/* ── Config Tab ──────────────────────────────────────── */}
         <TabsContent value="config" className="flex-1 p-2 mt-0 overflow-y-auto">
           <div className="space-y-3">
             <div>
@@ -457,9 +607,11 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
               <Input value={`${duration}s`} readOnly className="h-6 text-[9px] bg-background mt-0.5" />
             </div>
             <div>
-              <Label className="text-[8px] text-muted-foreground">Authorization Scope</Label>
+              <Label className="text-[8px] text-muted-foreground">Authorization</Label>
               <div className="text-[8px] text-foreground mt-0.5 bg-background rounded px-1.5 py-1">
-                {authScope === 'live' ? '🟢 Live — all safety features enabled' : '🟡 Rehearsal — reduced safety for testing'}
+                {orc.authorization.authorized
+                  ? `✅ ${orc.authorization.scope.toUpperCase()} — authorized at ${orc.authorization.authorizedAt ? new Date(orc.authorization.authorizedAt).toLocaleTimeString() : '---'}`
+                  : '❌ Not authorized'}
               </div>
             </div>
             <div>
@@ -469,16 +621,16 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
               </div>
             </div>
             <div>
-              <Label className="text-[8px] text-muted-foreground">Fleet Size</Label>
+              <Label className="text-[8px] text-muted-foreground">Fleet</Label>
               <div className="text-[8px] text-foreground mt-0.5 bg-background rounded px-1.5 py-1">
-                {uavs.size} drones ({droneMapping.filter(Boolean).length} mapped)
+                {orc.totalDrones} drones ({orc.activeDrones} active) — {orc.droneMapping.filter(Boolean).length} mapped
               </div>
             </div>
             <div>
-              <Label className="text-[8px] text-muted-foreground">Clock Sync Status</Label>
+              <Label className="text-[8px] text-muted-foreground">Clock Sync</Label>
               <div className="text-[8px] mt-0.5 bg-background rounded px-1.5 py-1">
                 {clockSync.synced ? (
-                  <span className="text-success">✅ Synced (offset: {clockSync.offset.toFixed(0)}ms)</span>
+                  <span className="text-success">✅ Synced (Δ{clockSync.offset.toFixed(0)}ms, RTT {clockSync.roundTrip.toFixed(0)}ms)</span>
                 ) : (
                   <span className="text-muted-foreground">❌ Not synced</span>
                 )}
