@@ -87,7 +87,17 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
       { id: 'livefiring', label: 'Live SFX', icon: Zap },
       { id: 'diagnostic', label: 'Diagnostic', icon: ShieldCheck, shortcut: 'D' },
       { id: 'logistics', label: 'Logistics', icon: Tag },
-      { id: 'wind', label: 'Wind/Cam', icon: Wind },
+    ],
+  },
+  {
+    title: 'Scene',
+    icon: Cog,
+    items: [
+      { id: 'scene', label: 'Scene Editor', icon: Cog, shortcut: 'N' },
+      { id: 'wind', label: 'Wind/Camera', icon: Wind },
+      { id: 'background', label: 'Backgrounds', icon: Image },
+      { id: 'maps', label: 'Google Maps', icon: Globe },
+      { id: 'sitelayout', label: 'Site Layout', icon: Map },
     ],
   },
 ];

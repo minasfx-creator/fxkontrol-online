@@ -1477,27 +1477,92 @@ function GroundFog() {
   );
 }
 
-// --- Finale 3D dark professional ground ---
+// --- Finale 3D dark professional ground with PBR ---
 function FinaleDarkGround({ brightness }: { brightness: number }) {
-  const b = brightness * 0.4; // darker base
+  const b = brightness * 0.4;
+  const uniforms = useMemo(() => ({
+    time: { value: 0 },
+    camPos: { value: new THREE.Vector3() },
+  }), []);
+
+  useFrame(({ clock, camera }) => {
+    uniforms.time.value = clock.getElapsedTime();
+    uniforms.camPos.value.copy(camera.position);
+  });
+
   return (
     <>
+      {/* Main ground with procedural PBR detail */}
       <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[4000, 4000]} />
-        <meshStandardMaterial
-          color={new THREE.Color(0.02 * b, 0.035 * b, 0.02 * b)}
-          roughness={0.92}
-          metalness={0.05}
+        <planeGeometry args={[4000, 4000, 8, 8]} />
+        <shaderMaterial
+          uniforms={uniforms}
+          vertexShader={`
+            varying vec2 vUv;
+            varying vec3 vWorldPos;
+            varying vec3 vViewDir;
+            uniform vec3 camPos;
+            void main() {
+              vUv = uv;
+              vec4 wp = modelMatrix * vec4(position, 1.0);
+              vWorldPos = wp.xyz;
+              vViewDir = normalize(camPos - wp.xyz);
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+          `}
+          fragmentShader={`
+            uniform float time;
+            varying vec2 vUv;
+            varying vec3 vWorldPos;
+            varying vec3 vViewDir;
+            
+            float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+            float noise(vec2 p) {
+              vec2 i = floor(p); vec2 f = fract(p);
+              f = f * f * (3.0 - 2.0 * f);
+              return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
+                         mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+            }
+            
+            void main() {
+              vec2 wuv = vWorldPos.xz;
+              // Multi-scale surface detail
+              float n1 = noise(wuv * 0.02) * 0.5 + noise(wuv * 0.08) * 0.3 + noise(wuv * 0.4) * 0.2;
+              float micro = noise(wuv * 2.0) * 0.1;
+              
+              // Dark earth base with subtle variation
+              float b = ${b.toFixed(3)};
+              vec3 darkBase = vec3(0.015 * b, 0.025 * b, 0.015 * b);
+              vec3 lighter = vec3(0.035 * b, 0.055 * b, 0.03 * b);
+              vec3 color = mix(darkBase, lighter, n1);
+              color += micro * vec3(0.01, 0.015, 0.008);
+              
+              // Wet specular reflection from moonlight
+              float fresnel = pow(1.0 - max(vViewDir.y, 0.0), 4.0);
+              color += vec3(0.008, 0.012, 0.02) * fresnel * 0.5;
+              
+              // Distance fade to darker
+              float dist = length(wuv) * 0.001;
+              color *= 1.0 - smoothstep(0.3, 1.0, dist) * 0.6;
+              
+              gl_FragColor = vec4(color, 1.0);
+            }
+          `}
         />
       </mesh>
-      {/* Near-field slightly lighter for depth */}
+      {/* Near-field circle with better detail */}
       <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[120, 64]} />
         <meshStandardMaterial
-          color={new THREE.Color(0.03 * b, 0.05 * b, 0.03 * b)}
-          roughness={0.88}
-          metalness={0.08}
+          color={new THREE.Color(0.04 * b, 0.065 * b, 0.035 * b)}
+          roughness={0.85}
+          metalness={0.1}
         />
+      </mesh>
+      {/* Contact shadow circle under launch area */}
+      <mesh position={[0, 0.003, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[40, 32]} />
+        <meshBasicMaterial color="#000000" transparent opacity={0.15} />
       </mesh>
     </>
   );
@@ -1697,23 +1762,25 @@ function SceneLighting() {
 
   return (
     <>
-      <ambientLight intensity={s.ambientIntensity} color="#506880" />
+      <ambientLight intensity={s.ambientIntensity} color="#4a6080" />
       <directionalLight
         position={[60, 55, -80]}
         intensity={s.moonIntensity}
         color={s.moonColor}
         castShadow={s.shadowsEnabled}
         shadow-mapSize={[shadowSize, shadowSize]}
-        shadow-camera-far={500}
-        shadow-camera-left={-150}
-        shadow-camera-right={150}
-        shadow-camera-top={150}
-        shadow-camera-bottom={-150}
-        shadow-bias={-0.00005}
+        shadow-camera-far={600}
+        shadow-camera-left={-200}
+        shadow-camera-right={200}
+        shadow-camera-top={200}
+        shadow-camera-bottom={-200}
+        shadow-bias={-0.00003}
+        shadow-normalBias={0.02}
       />
-      <hemisphereLight args={['#152050', '#0c1a0a', 0.12]} />
-      <directionalLight position={[-40, 20, 60]} intensity={s.rimLightIntensity * 0.2} color="#4466aa" />
-      <directionalLight position={[0, -10, 30]} intensity={s.fillLightIntensity * 0.1} color="#1a2a1a" />
+      <hemisphereLight args={['#1a2850', '#0a1208', 0.15]} />
+      {/* Subtle backfill for depth separation */}
+      <directionalLight position={[-60, 25, 70]} intensity={s.rimLightIntensity * 0.15} color="#3355aa" />
+      <directionalLight position={[0, -8, 40]} intensity={s.fillLightIntensity * 0.08} color="#182218" />
     </>
   );
 }
@@ -1783,37 +1850,54 @@ function WeatherEffects() {
   );
 }
 
-// --- Camera controller ---
+// --- Camera controller with persistent state ---
 function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPosition: [number, number, number]; targetLookAt: [number, number, number]; freeLook: boolean }) {
   const { camera } = useThree();
   const controlsRef = useRef<any>(null);
   const targetPos = useRef(new THREE.Vector3(...targetPosition));
   const targetLook = useRef(new THREE.Vector3(...targetLookAt));
   const animating = useRef(false);
+  const initialized = useRef(false);
+  const lastPresetKey = useRef('');
 
+  // Only animate camera when preset explicitly changes (not on every re-render)
+  const presetKey = `${targetPosition.join(',')}_${targetLookAt.join(',')}`;
+  
   useEffect(() => {
     if (freeLook) {
       animating.current = false;
       return;
     }
+    // Skip the initial mount — don't reset camera on component re-render
+    if (!initialized.current) {
+      initialized.current = true;
+      lastPresetKey.current = presetKey;
+      return;
+    }
+    // Only animate if the preset actually changed
+    if (presetKey === lastPresetKey.current) return;
+    lastPresetKey.current = presetKey;
+    
     targetPos.current.set(...targetPosition);
     targetLook.current.set(...targetLookAt);
     animating.current = true;
-  }, [targetPosition, targetLookAt, freeLook]);
+  }, [presetKey, freeLook]);
 
   useFrame(() => {
     if (!animating.current || !controlsRef.current || freeLook) return;
-    camera.position.lerp(targetPos.current, 0.04);
-    controlsRef.current.target.lerp(targetLook.current, 0.04);
+    camera.position.lerp(targetPos.current, 0.06);
+    controlsRef.current.target.lerp(targetLook.current, 0.06);
     controlsRef.current.update();
-    if (camera.position.distanceTo(targetPos.current) < 0.05) animating.current = false;
+    if (camera.position.distanceTo(targetPos.current) < 0.1) {
+      animating.current = false;
+    }
   });
 
   return (
     <OrbitControls
       ref={controlsRef}
       enableDamping
-      dampingFactor={0.08}
+      dampingFactor={0.06}
       rotateSpeed={0.6}
       panSpeed={0.8}
       zoomSpeed={1.2}
@@ -1934,15 +2018,15 @@ export default function SkyCanvas() {
         gl={{
           antialias: false,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.4,
+          toneMappingExposure: 1.5,
           powerPreference: 'high-performance',
           alpha: false,
           stencil: false,
           logarithmicDepthBuffer: true,
+          outputColorSpace: THREE.SRGBColorSpace,
         }}
-        dpr={[1, 2]}
-      >
-        <PerspectiveCamera makeDefault position={preset.position} fov={55} near={0.5} far={5000} />
+        dpr={[1, 1.5]}>
+        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.3} far={6000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook} />
 
         <SceneLighting />
