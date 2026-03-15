@@ -550,7 +550,7 @@ function FireworkBurst({
             progress * flashSize * 8 + 0.4 + caliber * 0.1,
             48
           ]} />
-          <meshBasicMaterial color={color} transparent opacity={0.08 * Math.pow(1 - progress / 0.1, 1.5)} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} depthWrite={false} />
+          <meshBasicMaterial color={color} transparent opacity={0.04 * Math.pow(1 - progress / 0.1, 1.5)} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
       {/* Layer 4: Subtle sky illumination */}
