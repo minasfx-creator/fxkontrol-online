@@ -111,17 +111,17 @@ class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
 // Camera presets calibrated for real-world firework heights (55m-300m break heights)
 // Audience distance: typically 100-300m from launch site (NFPA 1123)
 const CAMERA_PRESETS = [
-  { id: 'free', label: 'Free', icon: Eye, position: [0, 15, 200] as [number, number, number], target: [0, 80, 0] as [number, number, number] },
-  { id: 'satellite', label: 'Top', icon: Plane, position: [0, 500, 0.1] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
-  { id: 'audience', label: 'Plateia', icon: Users, position: [0, 2, 250] as [number, number, number], target: [0, 80, 0] as [number, number, number] },
-  { id: 'front', label: 'Front', icon: Users, position: [0, 5, 300] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
-  { id: 'side', label: 'Side', icon: Video, position: [300, 30, 0] as [number, number, number], target: [0, 80, 0] as [number, number, number] },
-  { id: 'back', label: 'Back', icon: Video, position: [0, 30, -200] as [number, number, number], target: [0, 80, 0] as [number, number, number] },
-  { id: 'aerial', label: 'Aerial 45°', icon: Plane, position: [0, 300, 300] as [number, number, number], target: [0, 50, 0] as [number, number, number] },
-  { id: 'closeup', label: 'Close-up', icon: Camera, position: [20, 30, 80] as [number, number, number], target: [0, 80, 0] as [number, number, number] },
-  { id: 'cinematic', label: 'Cinema', icon: Video, position: [-80, 8, 220] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
-  { id: 'drone-follow', label: 'Drone POV', icon: Eye, position: [15, 120, 40] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
-  { id: 'vip', label: 'VIP Box', icon: Users, position: [60, 5, 200] as [number, number, number], target: [0, 80, 0] as [number, number, number] },
+  { id: 'free', label: 'Free', icon: Eye, position: [0, 25, 400] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
+  { id: 'satellite', label: 'Top', icon: Plane, position: [0, 1200, 0.1] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
+  { id: 'audience', label: 'Plateia', icon: Users, position: [0, 3, 500] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
+  { id: 'front', label: 'Front', icon: Users, position: [0, 8, 600] as [number, number, number], target: [0, 120, 0] as [number, number, number] },
+  { id: 'side', label: 'Side', icon: Video, position: [600, 50, 0] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
+  { id: 'back', label: 'Back', icon: Video, position: [0, 50, -400] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
+  { id: 'aerial', label: 'Aerial 45°', icon: Plane, position: [0, 600, 600] as [number, number, number], target: [0, 60, 0] as [number, number, number] },
+  { id: 'closeup', label: 'Close-up', icon: Camera, position: [30, 40, 150] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
+  { id: 'cinematic', label: 'Cinema', icon: Video, position: [-150, 12, 450] as [number, number, number], target: [0, 120, 0] as [number, number, number] },
+  { id: 'drone-follow', label: 'Drone POV', icon: Eye, position: [25, 180, 60] as [number, number, number], target: [0, 120, 0] as [number, number, number] },
+  { id: 'vip', label: 'VIP Box', icon: Users, position: [100, 8, 400] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
 ] as const;
 
 // --- Playback clock ---
@@ -1330,7 +1330,7 @@ function GrassGround() {
     <>
       {/* Far terrain — Google Earth satellite style */}
       <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[4000, 4000, 4, 4]} />
+        <planeGeometry args={[12000, 12000, 4, 4]} />
         <shaderMaterial
           uniforms={uniforms}
           vertexShader={terrainVertexShader}
@@ -1562,7 +1562,7 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
     <>
       {/* Main ground with procedural PBR detail */}
       <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[4000, 4000, 8, 8]} />
+        <planeGeometry args={[12000, 12000, 8, 8]} />
         <shaderMaterial
           uniforms={uniforms}
           vertexShader={`
@@ -1645,7 +1645,7 @@ function ConcreteGround({ brightness }: { brightness: number }) {
   return (
     <>
       <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[4000, 4000]} />
+        <planeGeometry args={[12000, 12000]} />
         <meshStandardMaterial
           color={new THREE.Color(0.06 * b, 0.06 * b, 0.065 * b)}
           roughness={0.95}
@@ -1979,7 +1979,7 @@ function GroundReflections() {
 
   return (
     <mesh ref={meshRef} position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[400, 400]} />
+      <planeGeometry args={[1200, 1200]} />
       <shaderMaterial
         transparent
         depthWrite={false}
@@ -2018,7 +2018,7 @@ function GroundReflections() {
           }
 
           void main() {
-            float dist = length(vWorldPos.xz) / 200.0;
+            float dist = length(vWorldPos.xz) / 600.0;
             float distFade = 1.0 - smoothstep(0.0, 1.0, dist);
             float puddle = noise(vUv * 8.0 + uTime * 0.01);
             puddle = smoothstep(0.3, 0.7, puddle) * uWetness;
@@ -2038,8 +2038,8 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
     switch (sc.groundStyle) {
       case 'flat-black':
         return (
-          <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-            <planeGeometry args={[4000, 4000]} />
+      <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <planeGeometry args={[12000, 12000]} />
             <meshStandardMaterial color="#050505" roughness={0.95} metalness={0} />
           </mesh>
         );
@@ -2071,19 +2071,19 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
             sectionSize={10}
             sectionThickness={0.4}
             sectionColor="#1a1a2e"
-            fadeDistance={350}
+            fadeDistance={800}
             infiniteGrid
           />
           <Grid
             position={[0, 0.015, 0]}
-            args={[1000, 1000]}
+            args={[2000, 2000]}
             cellSize={50}
             cellThickness={0.6}
             cellColor="#1a1a2e"
             sectionSize={100}
             sectionThickness={0.8}
             sectionColor="#22223a"
-            fadeDistance={600}
+            fadeDistance={1500}
             infiniteGrid
           />
         </>
@@ -2152,7 +2152,7 @@ function TreelineSilhouette() {
     // 6 depth layers — expanded world
     for (let layer = 0; layer < 6; layer++) {
       const count = 120 - layer * 15;
-      const baseDist = 300 + layer * 120;
+      const baseDist = 800 + layer * 300;
       for (let i = 0; i < count; i++) {
         const angle = (i / count) * Math.PI * 2 + layer * 0.05;
         const dist = baseDist + Math.random() * 60;
@@ -2219,7 +2219,7 @@ function SceneLighting() {
     rig.moon.castShadow = s.shadowsEnabled;
     rig.moon.shadow.bias = -0.00003;
     rig.moon.shadow.normalBias = 0.02;
-    rig.moon.shadow.camera.far = 600;
+    rig.moon.shadow.camera.far = 2000;
 
     scene.add(rig.group);
     return () => { scene.remove(rig.group); };
@@ -2254,7 +2254,7 @@ function SceneFog() {
 function SceneStars() {
   const density = useSceneStore(st => st.settings.starDensity);
   if (density <= 0.05) return null;
-  return <Stars radius={450} depth={200} count={Math.round(10000 * density)} factor={5} saturation={0.2} fade speed={0.03} />;
+  return <Stars radius={2000} depth={800} count={Math.round(15000 * density)} factor={6} saturation={0.2} fade speed={0.03} />;
 }
 
 function WeatherEffects() {
@@ -2268,9 +2268,9 @@ function WeatherEffects() {
     const positions = new Float32Array(count * 3);
     const velocities = new Float32Array(count);
     for (let i = 0; i < count; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 300;
-      positions[i * 3 + 1] = Math.random() * 100;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 300;
+      positions[i * 3] = (Math.random() - 0.5) * 800;
+      positions[i * 3 + 1] = Math.random() * 200;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 800;
       velocities[i] = weather === 'snow' ? 1 + Math.random() * 2 : 15 + Math.random() * 25;
     }
     return { count, positions, velocities };
@@ -2283,9 +2283,9 @@ function WeatherEffects() {
     for (let i = 0; i < rainData.count; i++) {
       arr[i * 3 + 1] -= rainData.velocities[i] * 0.016 * rainIntensity;
       if (arr[i * 3 + 1] < 0) {
-        arr[i * 3 + 1] = 80 + Math.random() * 20;
-        arr[i * 3] = (Math.random() - 0.5) * 300;
-        arr[i * 3 + 2] = (Math.random() - 0.5) * 300;
+        arr[i * 3 + 1] = 160 + Math.random() * 40;
+        arr[i * 3] = (Math.random() - 0.5) * 800;
+        arr[i * 3 + 2] = (Math.random() - 0.5) * 800;
       }
     }
     posAttr.needsUpdate = true;
@@ -2328,7 +2328,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
   const introTimer = useRef(0);
 
   // Intro: cinematic positions
-  const introStartPos = useRef(new THREE.Vector3(0, 250, 0.01));
+  const introStartPos = useRef(new THREE.Vector3(0, 500, 0.01));
   const introStartLook = useRef(new THREE.Vector3(0, 0, 0));
   const introDuration = useRef({ hold: 2.5, sweep: 4.0 }); // generous timing for smooth feel
 
@@ -2367,7 +2367,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
         const orbitSpeed = 0.15;
         camera.position.set(
           Math.sin(introTimer.current * orbitSpeed) * orbitRadius,
-          250 - eased * 20, // very gentle descent during hold
+          500 - eased * 40, // very gentle descent during hold
           Math.cos(introTimer.current * orbitSpeed) * orbitRadius + 0.01
         );
         camera.lookAt(0, 0, 0);
@@ -2388,7 +2388,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
         const defaultLook = new THREE.Vector3(...targetLookAt);
         
         // Interpolate position with easing — uniform speed curve
-        const sweepStartPos = new THREE.Vector3(0, 230, 3);
+        const sweepStartPos = new THREE.Vector3(0, 460, 3);
         camera.position.lerpVectors(sweepStartPos, defaultPos, eased);
         
         // Interpolate look target
@@ -2431,7 +2431,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
       zoomSpeed={1.2}
       maxPolarAngle={Math.PI * 0.495}
       minDistance={1}
-      maxDistance={2000}
+      maxDistance={8000}
       enablePan
     />
   );
@@ -2554,7 +2554,7 @@ export default function SkyCanvas() {
           outputColorSpace: THREE.SRGBColorSpace,
         }}
         dpr={[1, 1.5]}>
-        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.3} far={6000} />
+        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.3} far={20000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook} />
 
         <SceneLighting />
