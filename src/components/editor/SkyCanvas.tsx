@@ -548,10 +548,10 @@ function FireworkBurst({
       
       {/* ═══ BREAK FLASH — Finale 4-layer system ═══ */}
       {/* Layer 1: Inner white-hot core — ultra HDR for maximum bloom */}
-      {progress < 0.06 && (
+      {progress < 0.04 && (
         <mesh>
-          <sphereGeometry args={[flashSize * 0.4 * (1 + progress * 10), 16, 16]} />
-          <meshBasicMaterial color="#FFFFF0" transparent opacity={1.0 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} />
+          <sphereGeometry args={[flashSize * 0.3 * (1 + progress * 8), 12, 12]} />
+          <meshBasicMaterial color="#FFFFF0" transparent opacity={0.8 * (1 - progress / 0.04)} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
       {/* Layer 2: Hot colored flash — primary bloom source */}
