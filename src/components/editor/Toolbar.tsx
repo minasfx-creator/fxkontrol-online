@@ -371,9 +371,9 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
     <div className="flex items-center h-10 px-2 bg-surface-1 border-b border-border">
       {/* Logo */}
       <div className="flex items-center gap-2 mr-3">
-        <div className="w-6 h-6 rounded bg-gradient-to-br from-fxk-cyan to-fxk-orange flex items-center justify-center animate-fxk-glow">
-          <Zap className="h-3.5 w-3.5 text-primary-foreground" />
-        </div>
+        <img src={fxkLogo} alt="FX Kontrol" className="w-6 h-6 object-contain" />
+        <span className="text-xs font-bold text-foreground tracking-[0.15em] uppercase font-display">FX KONTROL</span>
+      </div>
         <span className="text-xs font-bold text-foreground tracking-[0.15em] uppercase font-display">FX KONTROL</span>
       </div>
 
