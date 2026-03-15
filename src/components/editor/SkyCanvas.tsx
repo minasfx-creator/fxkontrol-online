@@ -562,14 +562,14 @@ function FireworkBurst({
         </mesh>
       )}
       {/* Layer 3: Expanding shockwave ring */}
-      {progress > 0.003 && progress < 0.15 && (
+      {progress > 0.003 && progress < 0.1 && (
         <mesh rotation={[Math.PI / 2, 0, 0]}>
           <ringGeometry args={[
-            progress * flashSize * 12,
-            progress * flashSize * 12 + 0.8 + caliber * 0.18,
-            64
+            progress * flashSize * 8,
+            progress * flashSize * 8 + 0.4 + caliber * 0.1,
+            48
           ]} />
-          <meshBasicMaterial color={color} transparent opacity={0.15 * Math.pow(1 - progress / 0.15, 1.5)} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
+          <meshBasicMaterial color={color} transparent opacity={0.08 * Math.pow(1 - progress / 0.1, 1.5)} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
       {/* Layer 4: Wide atmospheric halo — sky illumination */}
