@@ -56,12 +56,12 @@ function TimeRuler({ duration, pixelsPerSecond }: { duration: number; pixelsPerS
     const isMajor = i % labelStep === 0;
     marks.push(
       <div key={i} className="absolute top-0 flex flex-col items-center" style={{ left: `${i * pixelsPerSecond}px` }}>
-        <div className={cn("w-px", isMajor ? "h-3 bg-muted-foreground/60" : "h-2 bg-border/60")} />
-        {isMajor && <span className="text-[9px] font-mono-code text-muted-foreground mt-0.5">{formatTime(i)}</span>}
+        <div className={cn("w-px", isMajor ? "h-4 bg-muted-foreground/40" : "h-2.5 bg-border/40")} />
+        {isMajor && <span className="text-[9px] font-mono-code text-muted-foreground/60 mt-0.5 tabular-nums">{formatTime(i)}</span>}
       </div>
     );
   }
-  return <div className="relative h-5 border-b border-border">{marks}</div>;
+  return <div className="relative h-6 border-b border-border/10">{marks}</div>;
 }
 
 // --- Draggable Timeline Item ---
