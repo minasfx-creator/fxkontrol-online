@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Sun, Moon, Cloud, CloudRain, Wind, Eye, Thermometer, Droplets, Sparkles, Monitor, Paintbrush, TreePine, Grid3x3, RotateCw, Layers, Zap, Image, Upload, Trash2, X, Mountain, Cloudy, Snowflake, CloudFog } from 'lucide-react';
+import { Sun, Moon, Cloud, CloudRain, Wind, Eye, Thermometer, Droplets, Sparkles, Monitor, Paintbrush, TreePine, Grid3x3, RotateCw, Layers, Zap, Image, Upload, Trash2, X, Mountain, Cloudy, Snowflake, CloudFog, Flame, Compass } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
