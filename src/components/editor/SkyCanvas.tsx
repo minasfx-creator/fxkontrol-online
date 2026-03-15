@@ -62,6 +62,8 @@ import { GlobalIlluminationSystem } from '@/render_ultra/lighting/globalIllumina
 import { SmokeSystem } from '@/render_ultra/fireworks/smokeSimulation';
 import { createLensFlareSprite, flashLensFlare, decayLensFlare } from '@/render_ultra/postprocessing/lensFlare';
 import { getBurstConfig, type BurstPattern } from '@/render_ultra/fireworks/burstSimulation';
+import { createSparkTrailSystem, updateSparkTrail, writeSparkTrailsToBuffers, type SparkState } from '@/render_ultra/fireworks/sparkTrailsGPU';
+import { createHDRLightingRig } from '@/render_ultra/lighting/hdrLighting';
 
 // ═══ PyroChem: map hex colors → real chemical compounds ═══
 function hexToCompound(hexColor: string): ChemicalCompound {
