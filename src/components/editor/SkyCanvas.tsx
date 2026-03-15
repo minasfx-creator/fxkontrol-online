@@ -555,10 +555,10 @@ function FireworkBurst({
         </mesh>
       )}
       {/* Layer 2: Hot colored flash — primary bloom source */}
-      {progress < 0.15 && (
+      {progress < 0.1 && (
         <mesh>
-          <sphereGeometry args={[flashSize * (1 + progress * 15), 24, 24]} />
-          <meshBasicMaterial color={color} transparent opacity={0.7 * Math.pow(1 - progress / 0.15, 2)} blending={THREE.AdditiveBlending} />
+          <sphereGeometry args={[flashSize * (1 + progress * 8), 16, 16]} />
+          <meshBasicMaterial color={color} transparent opacity={0.4 * Math.pow(1 - progress / 0.1, 2)} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
       {/* Layer 3: Expanding shockwave ring */}
