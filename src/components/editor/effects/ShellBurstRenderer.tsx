@@ -10,10 +10,10 @@ import {
   getStarSpread,
   type BurstPattern,
   type ParticleState,
-  STAR_DRAG,
 } from '@/lib/pyroPhysics';
+import { useSceneStore } from '@/store/useSceneStore';
 
-// ── Custom GPU Shaders ──────────────────────────────────────────────
+// ── Custom GPU Shaders (Skybrush-grade thermal rendering) ───────────
 
 const BURST_VERTEX = `
   attribute float aLife;
@@ -60,15 +60,19 @@ const BURST_FRAGMENT = `
   uniform vec3 uColor;
   uniform float uHDRMultiplier;
   uniform float uTime;
+  uniform float uThermalSpeed;
   
   void main() {
     // Gaussian sprite: soft circle with hot core
     float dist = length(gl_PointCoord - vec2(0.5));
     if (dist > 0.5) discard;
     
-    float lifeRatio = clamp(vLife / vMaxLife, 0.0, 1.0);
+    // Thermal speed controls how fast the color cools down
+    float rawRatio = clamp(vLife / vMaxLife, 0.0, 1.0);
+    float lifeRatio = clamp(rawRatio * uThermalSpeed, 0.0, 1.0);
     
     // Thermal color transition: white-hot → saturated → ember → charcoal
+    // Modeled after Skybrush pyrotechnic color temperature curves
     vec3 whiteHot = vec3(1.0, 0.98, 0.85) * uHDRMultiplier;
     vec3 saturated = uColor * 1.4;
     vec3 ember = vec3(uColor.r * 0.6 + 0.2, uColor.g * 0.2, uColor.b * 0.05);
@@ -76,7 +80,7 @@ const BURST_FRAGMENT = `
     
     vec3 thermalColor;
     if (lifeRatio < 0.08) {
-      // Birth flash: white-hot core
+      // Birth flash: white-hot core (Skybrush ignition phase)
       thermalColor = mix(whiteHot, saturated, lifeRatio / 0.08);
     } else if (lifeRatio < 0.45) {
       // Peak: full saturated color
@@ -90,16 +94,16 @@ const BURST_FRAGMENT = `
     }
     
     // Gaussian glow: bright core, soft edges
-    float coreGlow = exp(-dist * dist * 18.0);   // tight hot core
-    float outerGlow = exp(-dist * dist * 6.0);    // soft halo
+    float coreGlow = exp(-dist * dist * 18.0);
+    float outerGlow = exp(-dist * dist * 6.0);
     float glow = coreGlow * 0.7 + outerGlow * 0.3;
     
     // Flicker: subtle random twinkle
     float flicker = 0.85 + 0.15 * sin(vLife * 47.0 + gl_PointCoord.x * 13.0);
     
     // Opacity fade: quick fade-in, gradual burnout
-    float fadeIn = smoothstep(0.0, 0.03, lifeRatio);
-    float fadeOut = 1.0 - pow(lifeRatio, 1.8);
+    float fadeIn = smoothstep(0.0, 0.03, rawRatio);
+    float fadeOut = 1.0 - pow(rawRatio, 1.8);
     float alpha = fadeIn * fadeOut * vBrightness * glow * flicker;
     
     gl_FragColor = vec4(thermalColor * glow, alpha);
@@ -121,20 +125,20 @@ const AFTERGLOW_FRAGMENT = `
   uniform vec3 uColor;
   uniform float uOpacity;
   uniform float uTime;
+  uniform float uAfterglowIntensity;
   
   void main() {
     float dist = length(vUv - vec2(0.5)) * 2.0;
     float glow = exp(-dist * dist * 2.5);
     // Subtle color shift over time
     vec3 warmShift = uColor + vec3(0.1, -0.05, -0.1) * sin(uTime * 0.5);
-    gl_FragColor = vec4(warmShift * glow * 1.2, uOpacity * glow * 0.6);
+    gl_FragColor = vec4(warmShift * glow * 1.2, uOpacity * glow * uAfterglowIntensity);
   }
 `;
 
 // ── Constants ───────────────────────────────────────────────────────
 
 const MAX_PARTICLES = 1500;
-const WIND: [number, number, number] = [0.3, 0, 0.1]; // light breeze
 
 interface ShellBurstRendererProps {
   position: [number, number, number];
@@ -146,12 +150,15 @@ interface ShellBurstRendererProps {
 }
 
 /**
- * GPU-accelerated shell burst with:
- * - Thermal color transition (white-hot → saturated → ember → charcoal)
- * - Per-particle physics (gravity + drag + wind)
- * - Gaussian sprite glow with HDR core
- * - Persistent afterglow cloud
- * - Crossette sub-bursts
+ * GPU-accelerated shell burst renderer with real-time store controls.
+ * 
+ * Connected Skybrush/Scene store parameters:
+ * - hdrMultiplier: Controls peak brightness of white-hot core (1-8x)
+ * - starDrag: Aerodynamic drag coefficient on star particles
+ * - windSpeed/windDirection: Environmental wind from Flockwave protocol
+ * - afterglowDuration/afterglowIntensity: Post-burst glow cloud
+ * - burstFlashIntensity: Detonation flash sphere brightness
+ * - thermalTransitionSpeed: Rate of thermal color cooling
  */
 export default function ShellBurstRenderer({
   position,
@@ -166,6 +173,29 @@ export default function ShellBurstRenderer({
   const particlesRef = useRef<ParticleState[] | null>(null);
   const initTimeRef = useRef<number>(0);
 
+  // ── Read real-time store values (Skybrush environment + pyro controls) ──
+  const sceneSettings = useSceneStore(st => st.settings);
+  const {
+    hdrMultiplier,
+    starDrag,
+    windSpeed,
+    windDirection,
+    afterglowDuration,
+    afterglowIntensity,
+    burstFlashIntensity,
+    thermalTransitionSpeed,
+  } = sceneSettings;
+
+  // Compute wind vector from speed + direction (Skybrush Flockwave convention: 0°=North, CW)
+  const windVec = useMemo<[number, number, number]>(() => {
+    const dirRad = (windDirection * Math.PI) / 180;
+    return [
+      Math.sin(dirRad) * windSpeed,
+      0,
+      -Math.cos(dirRad) * windSpeed,
+    ];
+  }, [windSpeed, windDirection]);
+
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
   const starCount = useMemo(() => Math.min(MAX_PARTICLES, getStarCount(caliber)), [caliber]);
   const breakSpeed = useMemo(() => getBreakSpeed(caliber), [caliber]);
@@ -179,7 +209,7 @@ export default function ShellBurstRenderer({
     initTimeRef.current = 0;
   }, [starCount, breakSpeed, pattern, starLifetime]);
 
-  // Buffer attributes
+  // Buffer attributes (reused — no GC pressure)
   const { posBuffer, lifeBuffer, maxLifeBuffer, brightnessBuffer, velocityBuffer } = useMemo(() => ({
     posBuffer: new Float32Array(MAX_PARTICLES * 3),
     lifeBuffer: new Float32Array(MAX_PARTICLES),
@@ -188,18 +218,20 @@ export default function ShellBurstRenderer({
     velocityBuffer: new Float32Array(MAX_PARTICLES * 3),
   }), []);
 
-  // Shader uniforms
+  // Shader uniforms — updated every frame from store
   const uniforms = useMemo(() => ({
     uColor: { value: new THREE.Color(color) },
     uBaseSize: { value: baseSize },
-    uHDRMultiplier: { value: 3.5 },
+    uHDRMultiplier: { value: hdrMultiplier },
     uTime: { value: 0 },
+    uThermalSpeed: { value: thermalTransitionSpeed },
   }), []);
 
   const afterglowUniforms = useMemo(() => ({
     uColor: { value: new THREE.Color(color) },
     uOpacity: { value: 0 },
     uTime: { value: 0 },
+    uAfterglowIntensity: { value: afterglowIntensity },
   }), []);
 
   // Crossette sub-bursts
@@ -210,15 +242,15 @@ export default function ShellBurstRenderer({
     if (!pointsRef.current || !particlesRef.current || progress <= 0) return;
     const particles = particlesRef.current;
 
-    const dt = Math.min(delta, 0.05); // cap for stability
+    const dt = Math.min(delta, 0.05);
     initTimeRef.current += dt;
     const time = initTimeRef.current;
 
-    // Step physics for all particles
+    // Step physics using store-driven drag and wind
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
       if (p.life < p.maxLife) {
-        stepParticle(p, dt, WIND, STAR_DRAG);
+        stepParticle(p, dt, windVec, starDrag);
       }
 
       // Crossette: sub-burst when star reaches ~40% life
@@ -252,10 +284,10 @@ export default function ShellBurstRenderer({
       velocityBuffer[i * 3 + 2] = p.vz;
     }
 
-    // Step crossette sub-particles
+    // Step crossette sub-particles with store wind/drag
     for (const subGroup of crossetteRef.current) {
       for (const sp of subGroup) {
-        if (sp.life < sp.maxLife) stepParticle(sp, dt, WIND, STAR_DRAG * 1.5);
+        if (sp.life < sp.maxLife) stepParticle(sp, dt, windVec, starDrag * 1.5);
       }
     }
 
@@ -272,19 +304,25 @@ export default function ShellBurstRenderer({
     (geo.attributes.aBrightness as THREE.BufferAttribute).needsUpdate = true;
     (geo.attributes.aVelocity as THREE.BufferAttribute).needsUpdate = true;
 
-    // Update uniforms
+    // ── Live-update uniforms from store ──
     const mat = pointsRef.current.material as THREE.ShaderMaterial;
     mat.uniforms.uTime.value = time;
     mat.uniforms.uColor.value.copy(baseColor);
+    mat.uniforms.uHDRMultiplier.value = hdrMultiplier;
+    mat.uniforms.uBaseSize.value = baseSize;
+    mat.uniforms.uThermalSpeed.value = thermalTransitionSpeed;
 
-    // Afterglow sphere
+    // ── Afterglow cloud (duration + intensity from store) ──
     if (afterglowRef.current) {
+      const afterglowMaxProgress = afterglowDuration / (starLifetime + afterglowDuration);
       const afterglowProgress = Math.max(0, progress - 0.1);
       const spread = burstSpread * 0.4 * Math.min(1, afterglowProgress * 3);
       afterglowRef.current.scale.setScalar(spread);
       const amat = afterglowRef.current.material as THREE.ShaderMaterial;
-      amat.uniforms.uOpacity.value = Math.max(0, 0.15 * (1 - progress * 1.2));
+      const afterglowFade = Math.max(0, 1 - progress / Math.max(0.1, afterglowMaxProgress));
+      amat.uniforms.uOpacity.value = 0.15 * afterglowFade;
       amat.uniforms.uTime.value = time;
+      amat.uniforms.uAfterglowIntensity.value = afterglowIntensity;
     }
   });
 
@@ -313,17 +351,17 @@ export default function ShellBurstRenderer({
 
       {/* Crossette sub-bursts */}
       {crossetteRef.current.map((subGroup, gi) => (
-        <CrossetteSubBurst key={gi} particles={subGroup} color={color} caliber={caliber} />
+        <CrossetteSubBurst key={gi} particles={subGroup} color={color} caliber={caliber} windVec={windVec} drag={starDrag} />
       ))}
 
-      {/* Burst flash — instant bright sphere at detonation */}
+      {/* Burst flash — instant bright sphere at detonation (intensity from store) */}
       {progress < 0.08 && (
         <mesh>
           <sphereGeometry args={[1.5 + caliber * 0.8, 16, 16]} />
           <meshBasicMaterial
             color="#FFFFEE"
             transparent
-            opacity={0.8 * (1 - progress / 0.08)}
+            opacity={burstFlashIntensity * 0.8 * (1 - progress / 0.08)}
             blending={THREE.AdditiveBlending}
           />
         </mesh>
@@ -336,7 +374,7 @@ export default function ShellBurstRenderer({
           <meshBasicMaterial
             color={secondaryColor || color}
             transparent
-            opacity={0.3 * (1 - progress / 0.12)}
+            opacity={burstFlashIntensity * 0.3 * (1 - progress / 0.12)}
             blending={THREE.AdditiveBlending}
             side={THREE.DoubleSide}
           />
@@ -360,7 +398,7 @@ export default function ShellBurstRenderer({
       {progress < 0.5 && (
         <pointLight
           color={color}
-          intensity={Math.max(0, (1 - progress * 2)) * caliber * 2}
+          intensity={Math.max(0, (1 - progress * 2)) * caliber * 2 * burstFlashIntensity}
           distance={burstSpread * 3}
           decay={2}
         />
@@ -369,16 +407,20 @@ export default function ShellBurstRenderer({
   );
 }
 
-// ── Crossette Sub-Burst ─────────────────────────────────────────────
+// ── Crossette Sub-Burst (now uses store wind/drag) ──────────────────
 
 function CrossetteSubBurst({
   particles,
   color,
   caliber,
+  windVec,
+  drag,
 }: {
   particles: ParticleState[];
   color: string;
   caliber: number;
+  windVec: [number, number, number];
+  drag: number;
 }) {
   const pointsRef = useRef<THREE.Points>(null);
 
