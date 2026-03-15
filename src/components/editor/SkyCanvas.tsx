@@ -1388,7 +1388,7 @@ function AtmosphericParticles() {
         size={0.07}
         color="#8899cc"
         transparent
-        opacity={0.18}
+        opacity={0.08}
         depthWrite={false}
         blending={THREE.AdditiveBlending}
         sizeAttenuation
