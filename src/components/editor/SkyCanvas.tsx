@@ -1083,8 +1083,8 @@ function Moon() {
       </mesh>
       {/* Inner glow — proportional to new radius */}
       <mesh>
-        <sphereGeometry args={[12.5, 32, 32]} />
-        <meshBasicMaterial color="#d0c8a8" transparent opacity={0.12} blending={THREE.AdditiveBlending} />
+        <sphereGeometry args={[95, 32, 32]} />
+        <meshBasicMaterial color="#d0c8a8" transparent opacity={0.10} blending={THREE.AdditiveBlending} />
       </mesh>
       {/* Outer volumetric halo */}
       <mesh>
