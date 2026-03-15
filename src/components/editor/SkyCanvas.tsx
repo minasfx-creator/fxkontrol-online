@@ -1112,10 +1112,10 @@ function Moon() {
       </mesh>
       {/* Wide atmospheric scatter */}
       <mesh>
-        <sphereGeometry args={[40, 16, 16]} />
-        <meshBasicMaterial color="#506080" transparent opacity={0.012} blending={THREE.AdditiveBlending} />
+        <sphereGeometry args={[320, 16, 16]} />
+        <meshBasicMaterial color="#506080" transparent opacity={0.008} blending={THREE.AdditiveBlending} />
       </mesh>
-      <pointLight color="#8899bb" intensity={0.15} distance={800} decay={1} />
+      <pointLight color="#8899bb" intensity={0.15} distance={6000} decay={1} />
     </group>
   );
 }
