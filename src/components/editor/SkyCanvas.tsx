@@ -239,24 +239,22 @@ function FireworkBurst({
     );
   }, [color]);
   
-  const { velocities, lifetimes, twinklePhases, debrisVelocities, sparkleSeeds, debrisSparkleSeeds } = useMemo(() => {
+  const { velocities, lifetimes, twinklePhases, sparkleSeeds } = useMemo(() => {
     const v = new Float32Array(STAR_COUNT * 3);
     const l = new Float32Array(STAR_COUNT);
     const tp = new Float32Array(STAR_COUNT);
     const sparkle = new Float32Array(STAR_COUNT);
-    const dv = new Float32Array(DEBRIS_COUNT * 3);
-    const debrisSparkle = new Float32Array(DEBRIS_COUNT);
 
     for (let i = 0; i < STAR_COUNT; i++) {
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
       let vx: number, vy: number, vz: number;
       let life = starLife * (0.6 + Math.random() * 0.4);
-      const speedVar = 0.55 + Math.random() * 0.45;
+      // Niagara-style: velocity varies with cubic curve for natural spread
+      const speedVar = Math.pow(0.4 + Math.random() * 0.6, 0.7);
       tp[i] = Math.random() * Math.PI * 2;
       sparkle[i] = Math.random() * 999 + i;
 
-      // Spherical coords: x = sin(phi)*cos(theta), y = cos(phi) [UP], z = sin(phi)*sin(theta)
       const sx = Math.sin(phi) * Math.cos(theta);
       const sy = Math.cos(phi);
       const sz = Math.sin(phi) * Math.sin(theta);
@@ -326,25 +324,13 @@ function FireworkBurst({
       l[i] = life;
     }
 
-    for (let i = 0; i < DEBRIS_COUNT; i++) {
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
-      const spd = breakSpeed * (0.15 + Math.random() * 0.35);
-      dv[i * 3] = Math.sin(phi) * Math.cos(theta) * spd;
-      dv[i * 3 + 1] = Math.cos(phi) * spd * 0.5 - 1;
-      dv[i * 3 + 2] = Math.sin(phi) * Math.sin(theta) * spd;
-      debrisSparkle[i] = Math.random() * 999 + i * 7;
-    }
-
     return {
       velocities: v,
       lifetimes: l,
       twinklePhases: tp,
-      debrisVelocities: dv,
       sparkleSeeds: sparkle,
-      debrisSparkleSeeds: debrisSparkle,
     };
-  }, [STAR_COUNT, DEBRIS_COUNT, breakSpeed, starLife, pattern]);
+  }, [STAR_COUNT, breakSpeed, starLife, pattern]);
 
   // Pre-allocate typed arrays for per-frame updates
   const positionsRef = useRef(new Float32Array(STAR_COUNT * 3));
