@@ -582,46 +582,53 @@ export default function Timeline() {
   const zoomPercent = Math.round((pixelsPerSecond / 12) * 100);
 
   return (
-    <div className="flex flex-col bg-card border-t border-border h-full">
-      {/* Transport controls */}
-      <div className="flex items-center gap-1 px-3 py-1.5 border-b border-border/60 bg-gradient-to-r from-surface-1 via-surface-1 to-surface-0">
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCurrentTime(0)}>
-          <SkipBack className="h-3 w-3" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-7 w-7 text-primary hover:text-primary" onClick={() => setPlaying(!isPlaying)}>
-          {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-        </Button>
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPlaying(false)}>
-          <Square className="h-3 w-3" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCurrentTime(Math.min(currentTime + 10, duration))}>
-          <SkipForward className="h-3 w-3" />
-        </Button>
-
-        {/* Timecode */}
-        <div className="ml-3 px-2 py-0.5 bg-surface-0 rounded-sm border border-border">
-          <span className="font-mono-code text-xs text-electric">{formatTime(currentTime)}</span>
-          <span className="text-muted-foreground text-[10px] mx-1">/</span>
-          <span className="font-mono-code text-xs text-muted-foreground">{formatTime(duration)}</span>
+    <div className="flex flex-col h-full border-t border-border/10" style={{ background: 'hsl(var(--card))' }}>
+      {/* Transport controls — Apple-style unified bar */}
+      <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-border/10">
+        {/* Play controls — centered group */}
+        <div className="flex items-center gap-0.5 p-0.5 rounded-xl bg-surface-0/50">
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-surface-2" onClick={() => setCurrentTime(0)} title="Início">
+            <SkipBack className="h-3 w-3" />
+          </Button>
+          <Button
+            variant="ghost" size="icon"
+            className={cn("h-8 w-8 rounded-lg transition-all", isPlaying && "bg-primary/15 text-primary")}
+            onClick={() => setPlaying(!isPlaying)}
+          >
+            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-surface-2" onClick={() => setPlaying(false)} title="Stop">
+            <Square className="h-3 w-3" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-surface-2" onClick={() => setCurrentTime(Math.min(currentTime + 10, duration))} title="+10s">
+            <SkipForward className="h-3 w-3" />
+          </Button>
         </div>
 
-        {/* Playback speed */}
-        <div className="flex items-center gap-1.5 mr-2">
-          <span className="text-[9px] font-mono-code text-muted-foreground w-7 text-right">{playbackSpeed.toFixed(playbackSpeed < 1 ? 2 : 1)}x</span>
+        {/* Timecode display — prominent */}
+        <div className="px-3 py-1 rounded-xl bg-surface-0/60 border border-border/10">
+          <span className="font-mono-code text-sm text-primary font-bold tabular-nums">{formatTime(currentTime)}</span>
+          <span className="text-muted-foreground/30 text-[10px] mx-1.5">/</span>
+          <span className="font-mono-code text-sm text-muted-foreground/50 tabular-nums">{formatTime(duration)}</span>
+        </div>
+
+        {/* Speed control — compact pill */}
+        <div className="flex items-center gap-1 px-2 py-1 rounded-xl bg-surface-0/40">
+          <span className="text-[9px] font-mono-code text-muted-foreground/60 w-7 text-right tabular-nums">{playbackSpeed.toFixed(playbackSpeed < 1 ? 2 : 1)}x</span>
           <input
             type="range" min={0.1} max={2} step={0.05} value={playbackSpeed}
             onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))}
-            className="w-20 h-1 accent-primary bg-surface-3 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-[0_0_6px_hsl(207_90%_54%/0.4)]"
+            className="w-16 h-1 accent-primary bg-surface-3 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-[0_0_4px_hsl(var(--primary)/0.3)]"
           />
           <div className="flex gap-0.5">
-            {[0.25, 0.5, 1].map((s) => (
+            {[0.5, 1].map((s) => (
               <button
                 key={s}
                 className={cn(
-                  "text-[9px] font-mono-code px-1 py-0.5 rounded-sm border",
+                  "text-[8px] font-mono-code px-1 py-0.5 rounded-md transition-all",
                   Math.abs(playbackSpeed - s) < 0.01
-                    ? "bg-primary/20 text-primary border-primary/40"
-                    : "bg-surface-2 text-muted-foreground border-border hover:text-foreground"
+                    ? "bg-primary/15 text-primary"
+                    : "text-muted-foreground/40 hover:text-muted-foreground"
                 )}
                 onClick={() => setPlaybackSpeed(s)}
               >
@@ -631,35 +638,33 @@ export default function Timeline() {
           </div>
         </div>
 
-        <div className="w-px h-4 bg-border mx-1" />
+        <div className="w-px h-5 bg-border/10 mx-0.5" />
 
-        {/* Zoom */}
-        <div className="flex items-center gap-0.5">
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={zoomOut}><ZoomOut className="h-3 w-3" /></Button>
-          <span className="text-[9px] font-mono-code text-muted-foreground w-8 text-center">{zoomPercent}%</span>
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={zoomIn}><ZoomIn className="h-3 w-3" /></Button>
+        {/* Zoom — clean */}
+        <div className="flex items-center gap-0 p-0.5 rounded-xl bg-surface-0/40">
+          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg" onClick={zoomOut}><ZoomOut className="h-3 w-3" /></Button>
+          <span className="text-[9px] font-mono-code text-muted-foreground/50 w-8 text-center tabular-nums">{zoomPercent}%</span>
+          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg" onClick={zoomIn}><ZoomIn className="h-3 w-3" /></Button>
         </div>
 
         {/* Beat snap */}
         <button
           className={cn(
-            "flex items-center gap-1 text-[9px] font-mono-code px-1.5 py-0.5 rounded-sm border ml-1 transition-colors",
-            snapToBeat ? "bg-safety/20 text-safety border-safety/40" : "bg-surface-2 text-muted-foreground border-border hover:text-foreground"
+            "flex items-center gap-1 text-[9px] font-mono-code px-2 py-1 rounded-xl transition-all",
+            snapToBeat ? "bg-accent/12 text-accent" : "bg-surface-0/40 text-muted-foreground/40 hover:text-muted-foreground"
           )}
           onClick={() => setSnapToBeat(!snapToBeat)}
           title={`Beat snap ${snapToBeat ? 'ON' : 'OFF'}${bpm ? ` (${bpm} BPM)` : ''}`}
         >
           <Magnet className="h-3 w-3" />
-          {bpm && <span>{bpm}</span>}
+          {bpm && <span className="tabular-nums">{bpm}</span>}
         </button>
-
-        <div className="w-px h-4 bg-border mx-1" />
 
         {/* Multi-select actions */}
         {selectionCount > 1 && (
-          <div className="flex items-center gap-1">
-            <span className="text-[9px] font-mono-code text-primary">{selectionCount} sel</span>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleDuplicate} title="Duplicar (Ctrl+D)">
+          <div className="flex items-center gap-1 px-2 py-1 rounded-xl bg-primary/8">
+            <span className="text-[9px] font-mono-code text-primary font-semibold">{selectionCount} sel</span>
+            <Button variant="ghost" size="icon" className="h-5 w-5 rounded-md" onClick={handleDuplicate} title="Duplicar">
               <Copy className="h-3 w-3" />
             </Button>
           </div>
@@ -667,15 +672,15 @@ export default function Timeline() {
 
         <div className="flex-1" />
 
-        {/* Stats */}
-        <div className="flex items-center gap-3 text-[10px] font-mono-code text-muted-foreground mr-2">
-          <span>Units: <span className="text-foreground">{timelineItems.length}</span></span>
-          <span>Cost: <span className="text-safety">${totalCost.toFixed(2)}</span></span>
+        {/* Stats — minimal */}
+        <div className="flex items-center gap-3 text-[10px] font-mono-code text-muted-foreground/40 mr-1">
+          <span><span className="text-foreground/60">{timelineItems.length}</span> cues</span>
+          <span className="text-accent/60">${totalCost.toFixed(0)}</span>
         </div>
 
         <Button
           variant="ghost" size="icon"
-          className="h-6 w-6 text-destructive hover:text-destructive"
+          className="h-6 w-6 rounded-lg text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10"
           onClick={handleDeleteSelected}
           disabled={!selectedTimelineItemId && selectedTimelineItemIds.length === 0}
         >
@@ -691,9 +696,10 @@ export default function Timeline() {
             <div className="flex-1 relative">
               <TimeRuler duration={duration} pixelsPerSecond={pixelsPerSecond} />
               <BeatGrid duration={duration} pixelsPerSecond={pixelsPerSecond} bpm={bpm} />
-              <div className="absolute top-0 bottom-0 w-px bg-primary z-20 pointer-events-none playhead-glow" style={{ left: `${currentTime * pixelsPerSecond}px` }}>
-                <div className="w-2.5 h-2.5 bg-primary rounded-full -translate-x-[4px] -translate-y-[1px] shadow-[0_0_8px_hsl(var(--electric)/0.6)]" />
-                <div className="absolute top-0 w-px h-full bg-gradient-to-b from-primary via-primary/60 to-transparent" />
+              {/* Playhead — refined with gradient trail */}
+              <div className="absolute top-0 bottom-0 w-px z-20 pointer-events-none" style={{ left: `${currentTime * pixelsPerSecond}px` }}>
+                <div className="w-3 h-3 bg-primary rounded-full -translate-x-[5px] -translate-y-[1px] shadow-[0_0_10px_hsl(var(--electric)/0.5)]" />
+                <div className="absolute top-0 w-px h-full bg-gradient-to-b from-primary via-primary/40 to-transparent" />
               </div>
             </div>
           </div>
