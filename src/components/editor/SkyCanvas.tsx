@@ -1028,7 +1028,7 @@ function SkyGradient() {
 // --- Volumetric Moon — Blender-calibrated celestial position ---
 function Moon() {
   return (
-    <group position={[200, 350, -300]}>
+    <group position={[1500, 2800, -2500]}>
       {/* Moon body with procedural surface — radius 12 for proper angular size */}
       <mesh>
         <sphereGeometry args={[12, 64, 64]} />
