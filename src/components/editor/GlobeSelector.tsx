@@ -403,7 +403,7 @@ export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps
           </div>
           <div>
             <h1 className="text-sm font-bold tracking-[0.2em] uppercase text-foreground font-display">
-              FX KONTROL
+              FX KONTROL <span className="text-[8px] text-muted-foreground font-normal">by Minas FX</span>
             </h1>
             <p className="text-[9px] text-muted-foreground tracking-[0.15em] uppercase font-display">
               Site Survey · Selecione o Local do Show
