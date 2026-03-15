@@ -505,13 +505,13 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
         {/* ── TRIGGERS ── */}
         {section === 'triggers' && (
           <>
-            {/* Fire All button */}
+            {/* Fire All button — Show Commander style */}
             {masterArm && (
               <button
                 onClick={fireAll}
-                className="w-full py-2.5 rounded-lg bg-destructive text-destructive-foreground font-bold text-xs uppercase tracking-widest hover:shadow-[0_0_30px_hsl(0,80%,50%,0.4)] active:scale-95 transition-all"
+                className="w-full py-3 rounded-lg bg-gradient-to-b from-destructive to-red-700 text-destructive-foreground font-bold text-[13px] uppercase tracking-[0.25em] hover:shadow-[0_0_40px_hsl(0,80%,50%,0.5)] active:scale-[0.97] transition-all border-2 border-destructive/60"
               >
-                ⚡ FIRE ALL ARMED ({armedCount})
+                ⚡ FIRE ALL ({armedCount})
               </button>
             )}
 
