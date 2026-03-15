@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Sun, Moon, Cloud, CloudRain, Wind, Eye, Thermometer, Droplets, Sparkles, Monitor, Paintbrush, TreePine, Grid3x3, RotateCw, Layers, Zap, Image, Upload, Trash2, X, Mountain, Cloudy, Snowflake, CloudFog } from 'lucide-react';
+import { Sun, Moon, Cloud, CloudRain, Wind, Eye, Thermometer, Droplets, Sparkles, Monitor, Paintbrush, TreePine, Grid3x3, RotateCw, Layers, Zap, Image, Upload, Trash2, X, Mountain, Cloudy, Snowflake, CloudFog, Flame, Compass } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-type SectionId = 'quick' | 'presets' | 'sky' | 'ground' | 'weather' | 'effects' | 'lighting' | 'post' | 'background';
+type SectionId = 'quick' | 'presets' | 'sky' | 'ground' | 'weather' | 'effects' | 'pyro' | 'lighting' | 'post' | 'background';
 
 function Section({ title, icon: Icon, children, id, open, onToggle }: { title: string; icon: any; children: React.ReactNode; id: SectionId; open: boolean; onToggle: () => void }) {
   return (
@@ -250,6 +250,47 @@ export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
           <SliderRow label="Particle Density" value={settings.particleDensity} onChange={v => updateSettings({ particleDensity: v })} min={0.5} max={2} />
           <SliderRow label="Smoke Opacity" value={settings.smokeOpacity} onChange={v => updateSettings({ smokeOpacity: v })} />
           <SliderRow label="Bloom Strength" value={settings.bloomStrength} onChange={v => updateSettings({ bloomStrength: v })} max={2} />
+        </Section>
+
+        {/* ═══ PYRO RENDERING (GPU) ═══ */}
+        <Section title="Pyro Rendering" icon={Flame} id="pyro" open={openSections.has('pyro')} onToggle={() => toggleSection('pyro')}>
+          <div className="space-y-2.5">
+            <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-wider">Shell Burst GPU</span>
+            <SliderRow label="HDR Multiplier" value={settings.hdrMultiplier} onChange={v => updateSettings({ hdrMultiplier: v })} min={1} max={8} step={0.1} unit="×" />
+            <SliderRow label="Star Drag" value={settings.starDrag} onChange={v => updateSettings({ starDrag: v })} min={0.01} max={0.3} step={0.005} />
+            <SliderRow label="Thermal Speed" value={settings.thermalTransitionSpeed} onChange={v => updateSettings({ thermalTransitionSpeed: v })} min={0.5} max={3} step={0.1} unit="×" />
+            <SliderRow label="Burst Flash" value={settings.burstFlashIntensity} onChange={v => updateSettings({ burstFlashIntensity: v })} max={2} step={0.05} />
+            
+            <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-wider">Afterglow</span>
+            <SliderRow label="Duration" value={settings.afterglowDuration} onChange={v => updateSettings({ afterglowDuration: v })} min={0.5} max={8} step={0.25} unit="s" />
+            <SliderRow label="Intensity" value={settings.afterglowIntensity} onChange={v => updateSettings({ afterglowIntensity: v })} max={1} step={0.01} />
+
+            <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-wider">Wind (Particles)</span>
+            <SliderRow label="Speed" value={settings.windSpeed} onChange={v => updateSettings({ windSpeed: v })} max={5} step={0.1} unit=" m/s" />
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className="text-[9px] text-muted-foreground font-medium">Direction</span>
+                <span className="text-[9px] text-primary font-mono tabular-nums">{settings.windDirection.toFixed(0)}°</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Slider value={[settings.windDirection]} onValueChange={([v]) => updateSettings({ windDirection: v })} min={0} max={360} step={5} className="flex-1 py-0.5" />
+                <div className="w-6 h-6 rounded-full border border-border/30 flex items-center justify-center relative">
+                  <Compass className="w-3.5 h-3.5 text-muted-foreground" style={{ transform: `rotate(${settings.windDirection}deg)` }} />
+                </div>
+              </div>
+              <div className="flex justify-between mt-0.5">
+                {['N', 'E', 'S', 'W'].map((dir, i) => (
+                  <button
+                    key={dir}
+                    onClick={() => updateSettings({ windDirection: i * 90 })}
+                    className="text-[7px] text-muted-foreground hover:text-primary px-1 rounded hover:bg-primary/10 transition-colors"
+                  >
+                    {dir}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         </Section>
 
         {/* ═══ LIGHTING ═══ */}

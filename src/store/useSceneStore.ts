@@ -103,6 +103,16 @@ export interface SceneSettings {
   smokeOpacity: number;          // 0-1
   bloomStrength: number;         // 0-2
 
+  // Pyro rendering (GPU shell burst)
+  hdrMultiplier: number;         // 1-8 HDR core brightness
+  starDrag: number;              // 0.01-0.3 aerodynamic drag on stars
+  windSpeed: number;             // 0-5 m/s wind force on particles
+  windDirection: number;         // 0-360 degrees
+  afterglowDuration: number;     // 0.5-8 seconds afterglow persists
+  afterglowIntensity: number;    // 0-1 afterglow opacity
+  burstFlashIntensity: number;   // 0-2 detonation flash brightness
+  thermalTransitionSpeed: number; // 0.5-3 how fast color cools
+
   // Lighting
   shadowsEnabled: boolean;
   shadowQuality: 'low' | 'medium' | 'high' | 'ultra';
@@ -152,6 +162,15 @@ const DEFAULT_SETTINGS: SceneSettings = {
   particleDensity: 1.2,
   smokeOpacity: 0.6,
   bloomStrength: 1.4,
+
+  hdrMultiplier: 3.5,
+  starDrag: 0.08,
+  windSpeed: 0.3,
+  windDirection: 90,
+  afterglowDuration: 3.0,
+  afterglowIntensity: 0.15,
+  burstFlashIntensity: 1.0,
+  thermalTransitionSpeed: 1.0,
 
   shadowsEnabled: true,
   shadowQuality: 'high',
