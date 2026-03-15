@@ -405,6 +405,11 @@ function FireworkBurst({
       : 0.024;
     const isTrailingPattern = pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade' || pattern === 'palm';
     
+    // ═══ Burst Simulation Config — calibrated per pattern ═══
+    const burstCfg = getBurstConfig((pattern || 'peony') as BurstPattern);
+    const gravityMult = burstCfg?.gravityMult ?? 1.0;
+    const tailFactor = burstCfg?.tailFactor ?? 1.0;
+    
     // Particle size: caliber-proportional — real world visibility at distance
     // 3" stars are small & fast-fading, 12" stars are large & bright
     const baseSize = caliber <= 3 ? 0.4
