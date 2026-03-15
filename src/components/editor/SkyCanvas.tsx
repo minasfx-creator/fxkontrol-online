@@ -1651,6 +1651,9 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
         </>
       )}
 
+      {/* MINAS FX floor logo */}
+      <FloorLogo />
+
       {/* Origin marker */}
       {sc.showOriginMarker && (
         <>
