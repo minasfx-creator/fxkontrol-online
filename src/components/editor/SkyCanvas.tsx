@@ -1477,27 +1477,92 @@ function GroundFog() {
   );
 }
 
-// --- Finale 3D dark professional ground ---
+// --- Finale 3D dark professional ground with PBR ---
 function FinaleDarkGround({ brightness }: { brightness: number }) {
-  const b = brightness * 0.4; // darker base
+  const b = brightness * 0.4;
+  const uniforms = useMemo(() => ({
+    time: { value: 0 },
+    camPos: { value: new THREE.Vector3() },
+  }), []);
+
+  useFrame(({ clock, camera }) => {
+    uniforms.time.value = clock.getElapsedTime();
+    uniforms.camPos.value.copy(camera.position);
+  });
+
   return (
     <>
+      {/* Main ground with procedural PBR detail */}
       <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[4000, 4000]} />
-        <meshStandardMaterial
-          color={new THREE.Color(0.02 * b, 0.035 * b, 0.02 * b)}
-          roughness={0.92}
-          metalness={0.05}
+        <planeGeometry args={[4000, 4000, 8, 8]} />
+        <shaderMaterial
+          uniforms={uniforms}
+          vertexShader={`
+            varying vec2 vUv;
+            varying vec3 vWorldPos;
+            varying vec3 vViewDir;
+            uniform vec3 camPos;
+            void main() {
+              vUv = uv;
+              vec4 wp = modelMatrix * vec4(position, 1.0);
+              vWorldPos = wp.xyz;
+              vViewDir = normalize(camPos - wp.xyz);
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+          `}
+          fragmentShader={`
+            uniform float time;
+            varying vec2 vUv;
+            varying vec3 vWorldPos;
+            varying vec3 vViewDir;
+            
+            float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+            float noise(vec2 p) {
+              vec2 i = floor(p); vec2 f = fract(p);
+              f = f * f * (3.0 - 2.0 * f);
+              return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
+                         mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+            }
+            
+            void main() {
+              vec2 wuv = vWorldPos.xz;
+              // Multi-scale surface detail
+              float n1 = noise(wuv * 0.02) * 0.5 + noise(wuv * 0.08) * 0.3 + noise(wuv * 0.4) * 0.2;
+              float micro = noise(wuv * 2.0) * 0.1;
+              
+              // Dark earth base with subtle variation
+              float b = ${b.toFixed(3)};
+              vec3 darkBase = vec3(0.015 * b, 0.025 * b, 0.015 * b);
+              vec3 lighter = vec3(0.035 * b, 0.055 * b, 0.03 * b);
+              vec3 color = mix(darkBase, lighter, n1);
+              color += micro * vec3(0.01, 0.015, 0.008);
+              
+              // Wet specular reflection from moonlight
+              float fresnel = pow(1.0 - max(vViewDir.y, 0.0), 4.0);
+              color += vec3(0.008, 0.012, 0.02) * fresnel * 0.5;
+              
+              // Distance fade to darker
+              float dist = length(wuv) * 0.001;
+              color *= 1.0 - smoothstep(0.3, 1.0, dist) * 0.6;
+              
+              gl_FragColor = vec4(color, 1.0);
+            }
+          `}
         />
       </mesh>
-      {/* Near-field slightly lighter for depth */}
+      {/* Near-field circle with better detail */}
       <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[120, 64]} />
         <meshStandardMaterial
-          color={new THREE.Color(0.03 * b, 0.05 * b, 0.03 * b)}
-          roughness={0.88}
-          metalness={0.08}
+          color={new THREE.Color(0.04 * b, 0.065 * b, 0.035 * b)}
+          roughness={0.85}
+          metalness={0.1}
         />
+      </mesh>
+      {/* Contact shadow circle under launch area */}
+      <mesh position={[0, 0.003, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[40, 32]} />
+        <meshBasicMaterial color="#000000" transparent opacity={0.15} />
       </mesh>
     </>
   );
