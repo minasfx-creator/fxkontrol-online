@@ -1643,7 +1643,48 @@ function AdaptiveExposureController() {
   return null;
 }
 
-// ═══ GROUND REFLECTIONS — Blender wet-surface specular ═══
+// ═══ GLOBAL ILLUMINATION — Hemisphere light probes from explosions ═══
+// Fake GI: each explosion registers a color probe that bounces light onto the scene
+function GlobalIlluminationController() {
+  const giRef = useRef<GlobalIlluminationSystem | null>(null);
+  const { scene } = useThree();
+
+  useEffect(() => {
+    giRef.current = new GlobalIlluminationSystem(scene);
+    return () => { giRef.current = null; };
+  }, [scene]);
+
+  useFrame((_, delta) => {
+    if (!giRef.current) return;
+    const gi = giRef.current;
+
+    // Check for fresh explosions to register as light probes
+    const { timelineItems, currentTime } = useProjectStore.getState();
+    for (const item of timelineItems) {
+      const elapsed = currentTime - item.startTime;
+      // Register probe only on the frame the burst begins (within 0.05s window)
+      if (elapsed >= 0 && elapsed < 0.05) {
+        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+        if (effect && effect.type === 'firework') {
+          const compound = hexToCompound(effect.color);
+          const pos = new THREE.Vector3(item.x ?? 0, item.y ?? 0, item.z ?? 0);
+          // Use chemical compound color for physically accurate GI bounce
+          gi.addExplosionProbe(
+            pos,
+            compound.color.clone(),
+            compound.emissionIntensity * 0.6
+          );
+        }
+      }
+    }
+
+    gi.update(delta);
+  });
+
+  return null;
+}
+
+
 // Renders reactive reflection plane that flashes with explosions
 function GroundReflections() {
   const meshRef = useRef<THREE.Mesh>(null);
