@@ -125,13 +125,14 @@ export default function LaserEffect({
       if (atmo) (atmo.material as THREE.MeshBasicMaterial).opacity = 0.04 * finalOpacity;
     }
 
-    // Source halo
+    // Source halo — intensified HDR emitter
     const haloIdx = totalBeams;
     const halo = children[haloIdx] as THREE.Mesh;
     if (halo) {
       const mat = halo.material as THREE.MeshBasicMaterial;
-      mat.opacity = 0.7 * intensity;
-      const sc = 1.2 + Math.sin(time * 5) * 0.15;
+      mat.opacity = 0.85 * intensity;
+      mat.color.copy(baseColor).multiplyScalar(3.0); // Strong HDR for bloom
+      const sc = 1.5 + Math.sin(time * 5) * 0.2;
       halo.scale.setScalar(sc);
     }
 
