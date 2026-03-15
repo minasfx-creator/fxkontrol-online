@@ -1645,7 +1645,7 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
             cellColor={sc.gridColor}
             sectionSize={10}
             sectionThickness={0.4}
-            sectionColor="#2a4a2a"
+            sectionColor="#1a1a2e"
             fadeDistance={350}
             infiniteGrid
           />
@@ -1654,10 +1654,10 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
             args={[1000, 1000]}
             cellSize={50}
             cellThickness={0.6}
-            cellColor="#2a4a2a"
+            cellColor="#1a1a2e"
             sectionSize={100}
             sectionThickness={0.8}
-            sectionColor="#3a5a3a"
+            sectionColor="#22223a"
             fadeDistance={600}
             infiniteGrid
           />
