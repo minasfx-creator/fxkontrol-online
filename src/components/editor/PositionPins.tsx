@@ -326,13 +326,18 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
         </mesh>
       ))}
 
-      {/* 3D Icon - Mortar or Drone Pad */}
+      {/* 3D Icon - Mortar or Drone Pad + invisible hitbox for easier clicking */}
       <group
         onPointerDown={onPointerDown}
         onPointerOver={onPointerOver}
         onPointerOut={onPointerOut}
         onDoubleClick={onDoubleClick}
       >
+        {/* Invisible hitbox sphere — makes clicking much easier */}
+        <mesh position={[0, 0.3, 0]}>
+          <sphereGeometry args={[0.6, 8, 8]} />
+          <meshBasicMaterial visible={false} />
+        </mesh>
         {position.type === 'pyro' ? (
           <group rotation={[0, -position.heading * (Math.PI / 180), 0]}>
             <MortarTubeIcon color={color} emissiveIntensity={emissiveIntensity} isSelected={isSelected} />
