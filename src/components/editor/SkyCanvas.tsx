@@ -1595,6 +1595,132 @@ function ConcreteGround({ brightness }: { brightness: number }) {
   );
 }
 
+// ═══ ADAPTIVE EXPOSURE CONTROLLER — Blender Cycles auto-exposure ═══
+// Adjusts gl.toneMappingExposure in real-time based on active explosions
+function AdaptiveExposureController() {
+  const exposureRef = useRef(createExposureController());
+  const { gl } = useThree();
+
+  useFrame((_, delta) => {
+    const state = exposureRef.current;
+    // Count active bright effects as luminance proxy
+    const { timelineItems, currentTime } = useProjectStore.getState();
+    let luminance = 0;
+    for (const item of timelineItems) {
+      const elapsed = currentTime - item.startTime;
+      if (elapsed >= 0 && elapsed < 0.5) {
+        luminance += 3.0; // Each fresh burst adds luminance
+      } else if (elapsed >= 0.5 && elapsed < 2.0) {
+        luminance += 0.5;
+      }
+    }
+
+    if (luminance > 2 && delta < 0.1) {
+      flashEvent(state, Math.min(luminance * 0.15, 0.8));
+    }
+
+    const exposure = updateExposure(state, luminance, delta);
+    gl.toneMappingExposure = exposure;
+  });
+
+  return null;
+}
+
+// ═══ GROUND REFLECTIONS — Blender wet-surface specular ═══
+// Renders reactive reflection plane that flashes with explosions
+function GroundReflections() {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const uniformsRef = useRef({
+    uWetness: { value: 0.3 },
+    uTime: { value: 0 },
+    uReflectionColor: { value: new THREE.Color(0.1, 0.15, 0.2) },
+    uReflectionIntensity: { value: 0.5 },
+  });
+
+  useFrame(({ clock }) => {
+    if (!meshRef.current) return;
+    const u = uniformsRef.current;
+    u.uTime.value = clock.getElapsedTime();
+
+    // Check for active explosions to flash reflections
+    const { timelineItems, currentTime } = useProjectStore.getState();
+    let flashColor: THREE.Color | null = null;
+    let flashIntensity = 0;
+
+    for (const item of timelineItems) {
+      const elapsed = currentTime - item.startTime;
+      if (elapsed >= 0 && elapsed < 0.3) {
+        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+        if (effect && effect.type === 'firework') {
+          flashColor = new THREE.Color(effect.color);
+          flashIntensity = Math.max(flashIntensity, 2.0 * (1 - elapsed / 0.3));
+        }
+      }
+    }
+
+    if (flashColor && flashIntensity > 0.1) {
+      u.uReflectionColor.value.copy(flashColor);
+      u.uReflectionIntensity.value = flashIntensity;
+    } else {
+      // Decay reflection
+      u.uReflectionIntensity.value = Math.max(0.5, u.uReflectionIntensity.value * 0.95);
+    }
+  });
+
+  return (
+    <mesh ref={meshRef} position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={[400, 400]} />
+      <shaderMaterial
+        transparent
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        uniforms={uniformsRef.current}
+        vertexShader={`
+          varying vec2 vUv;
+          varying vec3 vWorldPos;
+          void main() {
+            vUv = uv;
+            vec4 wp = modelMatrix * vec4(position, 1.0);
+            vWorldPos = wp.xyz;
+            gl_Position = projectionMatrix * viewMatrix * wp;
+          }
+        `}
+        fragmentShader={`
+          uniform float uWetness;
+          uniform float uTime;
+          uniform vec3 uReflectionColor;
+          uniform float uReflectionIntensity;
+          varying vec2 vUv;
+          varying vec3 vWorldPos;
+
+          float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+          }
+          float noise(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            return mix(
+              mix(hash(i), hash(i + vec2(1,0)), f.x),
+              mix(hash(i + vec2(0,1)), hash(i + vec2(1,1)), f.x),
+              f.y
+            );
+          }
+
+          void main() {
+            float dist = length(vWorldPos.xz) / 200.0;
+            float distFade = 1.0 - smoothstep(0.0, 1.0, dist);
+            float puddle = noise(vUv * 8.0 + uTime * 0.01);
+            puddle = smoothstep(0.3, 0.7, puddle) * uWetness;
+            float refl = puddle * distFade * uReflectionIntensity;
+            gl_FragColor = vec4(uReflectionColor * refl, refl * 0.3);
+          }
+        `}
+      />
+    </mesh>
+  );
+}
+
 function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) {
   const sc = useSceneStore(st => st.settings);
 
