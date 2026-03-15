@@ -490,7 +490,7 @@ export default function Timeline() {
   return (
     <div className="flex flex-col bg-card border-t border-border h-full">
       {/* Transport controls */}
-      <div className="flex items-center gap-1 px-3 py-1.5 border-b border-border bg-surface-1">
+      <div className="flex items-center gap-1 px-3 py-1.5 border-b border-border/60 bg-gradient-to-r from-surface-1 via-surface-1 to-surface-0">
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCurrentTime(0)}>
           <SkipBack className="h-3 w-3" />
         </Button>
@@ -597,8 +597,9 @@ export default function Timeline() {
             <div className="flex-1 relative">
               <TimeRuler duration={duration} pixelsPerSecond={pixelsPerSecond} />
               <BeatGrid duration={duration} pixelsPerSecond={pixelsPerSecond} bpm={bpm} />
-              <div className="absolute top-0 bottom-0 w-px bg-primary z-20 pointer-events-none" style={{ left: `${currentTime * pixelsPerSecond}px` }}>
-                <div className="w-2 h-2 bg-primary rounded-full -translate-x-[3px] -translate-y-[1px]" />
+              <div className="absolute top-0 bottom-0 w-px bg-primary z-20 pointer-events-none playhead-glow" style={{ left: `${currentTime * pixelsPerSecond}px` }}>
+                <div className="w-2.5 h-2.5 bg-primary rounded-full -translate-x-[4px] -translate-y-[1px] shadow-[0_0_8px_hsl(var(--electric)/0.6)]" />
+                <div className="absolute top-0 w-px h-full bg-gradient-to-b from-primary via-primary/60 to-transparent" />
               </div>
             </div>
           </div>

@@ -104,43 +104,54 @@ export default function LaserEffect({
 
       const finalOpacity = intensity * beamIntensity;
 
-      // Core — bright thin beam
+      // Core — ultra-bright thin beam (pushes above 1.0 for HDR bloom catch)
       const core = beamGroup.children[0] as THREE.Mesh;
-      if (core) (core.material as THREE.MeshBasicMaterial).opacity = 0.55 * finalOpacity;
+      if (core) {
+        const mat = core.material as THREE.MeshBasicMaterial;
+        mat.opacity = 0.7 * finalOpacity;
+        mat.color.copy(baseColor).multiplyScalar(2.5); // HDR push
+      }
 
       // Inner glow
       const glow1 = beamGroup.children[1] as THREE.Mesh;
-      if (glow1) (glow1.material as THREE.MeshBasicMaterial).opacity = 0.15 * finalOpacity;
+      if (glow1) (glow1.material as THREE.MeshBasicMaterial).opacity = 0.2 * finalOpacity;
 
       // Outer glow
       const glow2 = beamGroup.children[2] as THREE.Mesh;
-      if (glow2) (glow2.material as THREE.MeshBasicMaterial).opacity = 0.06 * finalOpacity;
+      if (glow2) (glow2.material as THREE.MeshBasicMaterial).opacity = 0.09 * finalOpacity;
 
       // Wide atmospheric glow
       const atmo = beamGroup.children[3] as THREE.Mesh;
-      if (atmo) (atmo.material as THREE.MeshBasicMaterial).opacity = 0.025 * finalOpacity;
+      if (atmo) (atmo.material as THREE.MeshBasicMaterial).opacity = 0.04 * finalOpacity;
     }
 
-    // Source halo
+    // Source halo — intensified HDR emitter
     const haloIdx = totalBeams;
     const halo = children[haloIdx] as THREE.Mesh;
     if (halo) {
       const mat = halo.material as THREE.MeshBasicMaterial;
-      mat.opacity = 0.7 * intensity;
-      const sc = 1.2 + Math.sin(time * 5) * 0.15;
+      mat.opacity = 0.85 * intensity;
+      mat.color.copy(baseColor).multiplyScalar(3.0); // Strong HDR for bloom
+      const sc = 1.5 + Math.sin(time * 5) * 0.2;
       halo.scale.setScalar(sc);
     }
 
+    // Outer halo
+    const outerHalo = children[haloIdx + 1] as THREE.Mesh;
+    if (outerHalo) {
+      (outerHalo.material as THREE.MeshBasicMaterial).opacity = 0.12 * intensity;
+    }
+
     // Ground scatter
-    const scatter = children[haloIdx + 1] as THREE.Mesh;
+    const scatter = children[haloIdx + 2] as THREE.Mesh;
     if (scatter) {
-      (scatter.material as THREE.MeshBasicMaterial).opacity = 0.06 * intensity;
+      (scatter.material as THREE.MeshBasicMaterial).opacity = 0.08 * intensity;
     }
 
     // Atmospheric cone
-    const cone = children[haloIdx + 2] as THREE.Mesh;
+    const cone = children[haloIdx + 3] as THREE.Mesh;
     if (cone) {
-      (cone.material as THREE.MeshBasicMaterial).opacity = 0.018 * intensity;
+      (cone.material as THREE.MeshBasicMaterial).opacity = 0.025 * intensity;
       cone.rotation.y = time * 0.1;
     }
   });
@@ -203,12 +214,23 @@ export default function LaserEffect({
         </group>
       ))}
 
-      {/* Source halo — bright emitter */}
+      {/* Source halo — HDR emitter for bloom */}
       <mesh>
-        <sphereGeometry args={[0.18, 16, 16]} />
+        <sphereGeometry args={[0.25, 16, 16]} />
         <meshBasicMaterial
           color={color}
-          transparent opacity={0.7}
+          transparent opacity={0.85}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+      {/* Secondary outer halo for volumetric glow */}
+      <mesh>
+        <sphereGeometry args={[0.6, 12, 12]} />
+        <meshBasicMaterial
+          color={color}
+          transparent opacity={0.12}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           toneMapped={false}
