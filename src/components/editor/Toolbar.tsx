@@ -553,18 +553,18 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       {/* Timecode Display */}
       <TimecodeDisplay />
 
-      {/* Status */}
-      <div className="flex items-center gap-3 text-[10px] font-mono-code text-muted-foreground/60 ml-3">
-        <div className="flex items-center gap-2 glass-subtle px-2.5 py-1 rounded-lg border border-border/10">
-          <span>{timelineItems.length} cues</span>
-          <span className="text-border">·</span>
-          <span>{positions.length} pos</span>
+      {/* Status — refined */}
+      <div className="flex items-center gap-2.5 text-[10px] font-mono-code text-muted-foreground/40 ml-3">
+        <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-surface-0/40 border border-border/8">
+          <span className="tabular-nums"><span className="text-foreground/60">{timelineItems.length}</span> cues</span>
+          <span className="text-border/30">·</span>
+          <span className="tabular-nums"><span className="text-foreground/60">{positions.length}</span> pos</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse-glow" />
-          <span className="text-success/80">SYNC</span>
+        <div className="flex items-center gap-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-success/60 animate-pulse-glow" />
+          <span className="text-success/50 text-[9px]">SYNC</span>
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-destructive/10 hover:text-destructive" title="Sair" onClick={signOut}>
+        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-destructive/8 hover:text-destructive text-muted-foreground/30" title="Sair" onClick={signOut}>
           <LogOut className="h-3.5 w-3.5" />
         </Button>
         <LanguageSwitcher />
