@@ -1884,7 +1884,7 @@ function SparkTrailController() {
           const breakH = getBreakHeight(caliber);
           const breakSpd = getBreakSpeed(caliber);
           const compound = hexToCompound(effect.color);
-          const baseColor = thermalColor(compound, 1.0);
+          const baseColor = thermalColor(compound, 1.0, 2.5);
           const sparkCount = Math.min(24, Math.round(caliber * 3));
           
           for (let s = 0; s < sparkCount; s++) {
