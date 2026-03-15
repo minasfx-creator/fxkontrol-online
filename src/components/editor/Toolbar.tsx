@@ -57,30 +57,30 @@ function DropdownMenu({ label, icon: LabelIcon, items }: { label: string; icon?:
       <button
         onClick={() => setOpen(!open)}
         className={cn(
-          "text-[10px] font-medium text-muted-foreground hover:text-foreground px-2.5 py-1.5 rounded-md transition-all flex items-center gap-1.5",
-          open ? "bg-surface-3/80 text-foreground" : "hover:bg-surface-2/60"
+          "text-[10px] font-medium px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5",
+          open ? "bg-surface-2/60 text-foreground" : "text-muted-foreground/60 hover:text-muted-foreground hover:bg-surface-0/40"
         )}
       >
-        {LabelIcon && <LabelIcon className="w-3.5 h-3.5 text-primary/60" />}
+        {LabelIcon && <LabelIcon className="w-3.5 h-3.5 text-primary/40" />}
         <span className="tracking-wide uppercase font-mono-code">{label}</span>
-        <ChevronDown className={cn("w-2.5 h-2.5 transition-transform", open && "rotate-180")} />
+        <ChevronDown className={cn("w-2.5 h-2.5 transition-transform text-muted-foreground/30", open && "rotate-180")} />
       </button>
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div
-            className="absolute top-full left-0 mt-1 z-50 glass border border-border/20 rounded-xl shadow-2xl shadow-black/40 py-1.5 min-w-[200px] animate-fxk-slide-down"
+            className="absolute top-full left-0 mt-1.5 z-50 border border-border/15 rounded-2xl shadow-2xl shadow-black/50 py-2 min-w-[220px] animate-fxk-slide-down backdrop-blur-xl"
+            style={{ background: 'hsl(var(--popover))' }}
           >
-            {items.map((item) => {
+            {items.map((item, i) => {
               const Icon = item.icon;
               return (
                 <button
                   key={item.label}
                   onClick={() => { item.onClick(); setOpen(false); }}
-                  className="w-full text-left px-3.5 py-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-surface-3/50 flex items-center gap-2.5 transition-colors rounded-lg mx-0.5"
-                  style={{ width: 'calc(100% - 4px)' }}
+                  className="w-full text-left px-4 py-2 text-[11px] text-muted-foreground/70 hover:text-foreground hover:bg-surface-2/40 flex items-center gap-2.5 transition-colors"
                 >
-                  <Icon className="w-3.5 h-3.5 text-primary/50" /> {item.label}
+                  <Icon className="w-3.5 h-3.5 text-primary/40" /> {item.label}
                 </button>
               );
             })}
