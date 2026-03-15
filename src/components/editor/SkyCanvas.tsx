@@ -927,15 +927,15 @@ function SkyGradient() {
             vec3 dir = normalize(vWorldPosition);
             float h = dir.y;
             
-            // Enhanced atmosphere with more depth layers
-            vec3 space     = vec3(0.003, 0.005, 0.02);
-            vec3 zenith    = vec3(0.008, 0.012, 0.05);
-            vec3 upperSky  = vec3(0.015, 0.028, 0.10);
-            vec3 midSky    = vec3(0.035, 0.055, 0.16);
-            vec3 lowSky    = vec3(0.055, 0.08, 0.20);
-            vec3 horizon   = vec3(0.12, 0.14, 0.22);
-            vec3 haze      = vec3(0.16, 0.15, 0.18);
-            vec3 ground    = vec3(0.008, 0.012, 0.02);
+            // Deep cinematic space — rich midnight blues to warm horizon
+            vec3 space     = vec3(0.001, 0.002, 0.012);
+            vec3 zenith    = vec3(0.004, 0.008, 0.04);
+            vec3 upperSky  = vec3(0.008, 0.018, 0.07);
+            vec3 midSky    = vec3(0.02, 0.035, 0.12);
+            vec3 lowSky    = vec3(0.04, 0.05, 0.14);
+            vec3 horizon   = vec3(0.08, 0.06, 0.12);
+            vec3 haze      = vec3(0.12, 0.08, 0.10);
+            vec3 ground    = vec3(0.005, 0.005, 0.015);
             
             vec3 color;
             if (h > 0.7) {
@@ -952,51 +952,59 @@ function SkyGradient() {
               color = mix(ground, haze, smoothstep(-0.15, -0.02, h));
             }
             
-            // Atmospheric glow band
-            float hGlow = exp(-h * h * 80.0);
-            color += vec3(0.18, 0.14, 0.08) * hGlow * uHorizonGlow;
+            // Warm amber horizon glow — cinematic sunset afterglow
+            float hGlow = exp(-h * h * 50.0);
+            color += vec3(0.22, 0.10, 0.04) * hGlow * uHorizonGlow;
             
-            // Blue atmospheric scatter ring
-            float blueRing = exp(-(h - 0.03) * (h - 0.03) * 60.0);
-            color += vec3(0.04, 0.06, 0.12) * blueRing * 0.35;
+            // Cool cyan counter-glow opposite side
+            float cyanGlow = exp(-(h - 0.05) * (h - 0.05) * 80.0);
+            color += vec3(0.02, 0.06, 0.10) * cyanGlow * 0.4;
             
-            // Enhanced Milky Way with structure
+            // Aurora borealis band
+            float auroraAngle = dir.x * 0.3 + dir.z * 0.95;
+            float auroraBand = exp(-pow(auroraAngle - 0.2, 2.0) * 12.0) * smoothstep(0.2, 0.6, h);
+            float auroraWave = sin(dir.x * 8.0 + uTime * 0.3) * 0.5 + 0.5;
+            float auroraDetail = fbm3(dir.xz * 20.0 + uTime * 0.05);
+            vec3 auroraColor = mix(vec3(0.01, 0.08, 0.04), vec3(0.03, 0.04, 0.10), auroraWave);
+            color += auroraColor * auroraBand * auroraDetail * 0.35;
+            
+            // Enhanced Milky Way with deep structure
             float milkyAngle = dir.x * 0.6 + dir.z * 0.8;
             float milkyBand = exp(-pow(milkyAngle - dir.y * 0.5, 2.0) * 6.0);
             float milkyDetail = fbm3(dir.xz * 30.0) * 0.6 + 0.4;
             float milkyDust = fbm3(dir.xz * 60.0 + 100.0);
-            vec3 milkyColor = mix(vec3(0.02, 0.025, 0.05), vec3(0.04, 0.03, 0.05), milkyDust);
-            color += milkyColor * milkyBand * milkyDetail * smoothstep(0.15, 0.5, h) * 0.8;
+            vec3 milkyColor = mix(vec3(0.015, 0.02, 0.045), vec3(0.035, 0.025, 0.045), milkyDust);
+            color += milkyColor * milkyBand * milkyDetail * smoothstep(0.15, 0.5, h) * 1.0;
             
-            // Dark dust lanes in Milky Way
+            // Dark dust lanes
             float dustLane = smoothstep(0.45, 0.55, fbm3(dir.xz * 20.0 + 50.0));
             color -= vec3(0.01) * milkyBand * dustLane * smoothstep(0.2, 0.5, h);
             
-            // Subtle nebula color patches
+            // Nebula patches — purple and teal
             float nebula1 = fbm3(dir.xz * 15.0 + vec2(200.0, 0.0));
             float nebula2 = fbm3(dir.xz * 12.0 + vec2(0.0, 300.0));
-            color += vec3(0.015, 0.005, 0.02) * smoothstep(0.6, 0.8, nebula1) * milkyBand * 0.5;
-            color += vec3(0.005, 0.01, 0.025) * smoothstep(0.55, 0.75, nebula2) * smoothstep(0.3, 0.6, h) * 0.4;
+            color += vec3(0.025, 0.008, 0.035) * smoothstep(0.6, 0.8, nebula1) * milkyBand * 0.6;
+            color += vec3(0.008, 0.018, 0.035) * smoothstep(0.55, 0.75, nebula2) * smoothstep(0.3, 0.6, h) * 0.5;
             
-            // Procedural cloud wisps near horizon
-            float cloudUV1 = fbm3(dir.xz * 4.0 + uTime * 0.01);
-            float cloudUV2 = fbm3(dir.xz * 8.0 - uTime * 0.008 + 50.0);
+            // Wispy clouds near horizon
+            float cloudUV1 = fbm3(dir.xz * 4.0 + uTime * 0.008);
+            float cloudUV2 = fbm3(dir.xz * 8.0 - uTime * 0.006 + 50.0);
             float cloudMask = smoothstep(0.0, 0.12, h) * smoothstep(0.25, 0.08, h);
             float clouds = smoothstep(0.45, 0.7, cloudUV1 * 0.6 + cloudUV2 * 0.4) * cloudMask;
-            color += vec3(0.06, 0.07, 0.10) * clouds * 0.4;
+            color += vec3(0.04, 0.04, 0.06) * clouds * 0.3;
             
-            // Stars with color variation
+            // Stars with color temperature variation
             float stars = starField(dir);
             float starHue = hash21(dir.xz * 50.0);
-            vec3 starColor = starHue < 0.3 ? vec3(0.7, 0.8, 1.0) :
-                             starHue < 0.6 ? vec3(1.0, 0.95, 0.85) :
-                             starHue < 0.85 ? vec3(1.0, 0.85, 0.7) :
-                             vec3(1.0, 0.6, 0.5);
-            color += starColor * stars * 0.8 * uStarDensity;
+            vec3 starColor = starHue < 0.25 ? vec3(0.6, 0.75, 1.0) :
+                             starHue < 0.5 ? vec3(1.0, 0.95, 0.85) :
+                             starHue < 0.75 ? vec3(1.0, 0.80, 0.65) :
+                             vec3(1.0, 0.55, 0.45);
+            color += starColor * stars * 0.9 * uStarDensity;
             
             // Shooting stars
             float shooting = shootingStar(dir);
-            color += vec3(0.9, 0.95, 1.0) * shooting * uStarDensity;
+            color += vec3(0.85, 0.92, 1.0) * shooting * uStarDensity;
             
             color *= uSkyBrightness;
             color = max(color, vec3(0.0));
