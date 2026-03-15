@@ -3,8 +3,42 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { getMortarVelocity, getBreakHeight, getLiftTime, GRAVITY, AIR_DRAG } from '@/lib/pyroPhysics';
 
-const TRAIL_PARTICLES = 50;
-const SPARK_COUNT = 20;
+const TRAIL_PARTICLES = 80;
+const SPARK_COUNT = 30;
+
+// GPU comet trail shader
+const COMET_VERTEX = `
+  attribute float aTrailIndex;
+  attribute vec3 aTrailColor;
+  varying vec3 vColor;
+  varying float vIndex;
+  uniform float uSize;
+  
+  void main() {
+    vColor = aTrailColor;
+    vIndex = aTrailIndex;
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    float sizeFade = mix(1.0, 0.1, aTrailIndex);
+    gl_PointSize = uSize * sizeFade * (250.0 / -mvPosition.z);
+    gl_PointSize = clamp(gl_PointSize, 0.5, 48.0);
+    gl_Position = projectionMatrix * mvPosition;
+  }
+`;
+
+const COMET_FRAGMENT = `
+  varying vec3 vColor;
+  varying float vIndex;
+  
+  void main() {
+    float dist = length(gl_PointCoord - vec2(0.5));
+    if (dist > 0.5) discard;
+    float glow = exp(-dist * dist * 12.0);
+    float core = exp(-dist * dist * 30.0);
+    vec3 finalColor = vColor * (glow * 0.6 + core * 0.4);
+    float alpha = (glow * 0.8 + core * 0.2) * (1.0 - vIndex * 0.7);
+    gl_FragColor = vec4(finalColor, alpha);
+  }
+`;
 
 /**
  * PrefireShell: Renders a shell rising from the mortar to its break height
