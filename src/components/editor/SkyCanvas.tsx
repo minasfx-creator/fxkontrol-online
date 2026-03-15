@@ -2135,7 +2135,7 @@ export default function SkyCanvas() {
       <AlignmentTools />
 
       <div className="absolute bottom-3 right-3 text-[9px] font-mono-code text-muted-foreground/60 bg-surface-1/60 backdrop-blur-sm px-2 py-1 rounded border border-border/30 space-y-0.5">
-        <div className="text-[8px] text-muted-foreground/40 tracking-wider font-display">FX KONTROL v2.0</div>
+        <div className="text-[8px] text-muted-foreground/40 tracking-wider font-display">FX KONTROL v2.0 · Minas FX</div>
         <div>Orbit: LMB · Pan: MMB · Zoom: Scroll</div>
         <div>Box: Alt+Drag · Multi: Shift+Click · Edit: Dbl-Click</div>
         <div>{freeLook ? '🔓 Free Look ON' : '🔒 Preset Lock'}</div>

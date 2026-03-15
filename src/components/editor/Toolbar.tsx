@@ -372,7 +372,10 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       {/* Logo */}
       <div className="flex items-center gap-2 mr-3">
         <img src={fxkLogo} alt="FX Kontrol" className="w-6 h-6 object-contain" />
-        <span className="text-xs font-bold text-foreground tracking-[0.15em] uppercase font-display">FX KONTROL</span>
+        <div className="flex flex-col leading-none">
+          <span className="text-xs font-bold text-foreground tracking-[0.15em] uppercase font-display">FX KONTROL</span>
+          <span className="text-[7px] text-muted-foreground tracking-[0.12em] uppercase font-display">by Minas FX</span>
+        </div>
       </div>
 
       <Separator orientation="vertical" className="h-5 mr-2" />
