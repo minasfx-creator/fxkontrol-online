@@ -186,13 +186,12 @@ const STAR_FRAGMENT_SHADER = `
 `;
 
 // ═══════════════════════════════════════════════════════════════════════
-// Finale-grade FireworkBurst with:
+// Niagara-inspired FireworkBurst:
 // - Custom star sprite shader (gaussian glow discs)
-// - Euler integration with quadratic drag (not simplified formula)
-// - HDR color pipeline: white-hot → saturated → ember → charcoal
-// - Falling charcoal debris after star burnout
-// - Persistent smoke volume at burst location
-// - Caliber-proportional everything
+// - Analytical exponential drag integration
+// - Thermal color pipeline: white-hot → saturated → ember
+// - No smoke — clean particle rendering like Niagara
+// - Caliber-proportional star count, size, and lifetime
 // ═══════════════════════════════════════════════════════════════════════
 function FireworkBurst({ 
   position, color, progress, caliber = 4, pattern = 'peony' 
@@ -202,12 +201,10 @@ function FireworkBurst({
 }) {
   const pointsRef = useRef<THREE.Points>(null);
   const trailRef = useRef<THREE.LineSegments>(null);
-  const debrisRef = useRef<THREE.Points>(null);
   
-  // Finale caliber scaling: star count proportional to shell volume
-  const STAR_COUNT = useMemo(() => Math.min(2500, Math.round(120 + caliber * caliber * 28)), [caliber]);
-  const TRAIL_LENGTH = useMemo(() => Math.min(28, 14 + Math.floor(caliber * 1.8)), [caliber]);
-  const DEBRIS_COUNT = useMemo(() => Math.min(600, Math.round(STAR_COUNT * 0.4)), [STAR_COUNT]);
+  // Niagara-style: particle count scales with shell volume (4/3 π r³)
+  const STAR_COUNT = useMemo(() => Math.min(3000, Math.round(150 + caliber * caliber * 32)), [caliber]);
+  const TRAIL_LENGTH = useMemo(() => Math.min(24, 10 + Math.floor(caliber * 1.5)), [caliber]);
   
   // Real break speed from pyroPhysics — caliber proportional (m/s)
   const breakSpeed = useMemo(() => getBreakSpeed(caliber), [caliber]);
