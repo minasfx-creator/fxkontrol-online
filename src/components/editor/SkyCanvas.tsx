@@ -2283,9 +2283,9 @@ function WeatherEffects() {
     for (let i = 0; i < rainData.count; i++) {
       arr[i * 3 + 1] -= rainData.velocities[i] * 0.016 * rainIntensity;
       if (arr[i * 3 + 1] < 0) {
-        arr[i * 3 + 1] = 80 + Math.random() * 20;
-        arr[i * 3] = (Math.random() - 0.5) * 300;
-        arr[i * 3 + 2] = (Math.random() - 0.5) * 300;
+        arr[i * 3 + 1] = 160 + Math.random() * 40;
+        arr[i * 3] = (Math.random() - 0.5) * 800;
+        arr[i * 3 + 2] = (Math.random() - 0.5) * 800;
       }
     }
     posAttr.needsUpdate = true;
