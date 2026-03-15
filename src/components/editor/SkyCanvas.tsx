@@ -440,6 +440,11 @@ function FireworkBurst({
       // Phase 3: Thermal decay to ember (50-100% life)
       const emberPhase = Math.max(0, (starAge - 0.45) / 0.55);
       
+      // ═══ PyroChem Thermal Color Pipeline ═══
+      // Uses real chemical compound emission spectra + thermal transitions
+      const lifeRatio = 1 - starAge; // thermalColor expects 1=birth, 0=dead
+      const chemColor = thermalColor(compound, lifeRatio, 1.0);
+      
       // Per-star twinkle — organic shimmer
       let twinkle: number;
       if (isTrailingPattern) {
@@ -448,25 +453,14 @@ function FireworkBurst({
         twinkle = temporalFlicker(sparkleSeeds[i], time, 0.65, 0.30, 0.35);
       }
       
-      // Color over lifetime: white-hot → saturated → warm ember
-      let r = THREE.MathUtils.lerp(baseColor.r, 1.3, flashIntensity);
-      let g = THREE.MathUtils.lerp(baseColor.g, 1.15, flashIntensity);
-      let b = THREE.MathUtils.lerp(baseColor.b, 0.9, flashIntensity);
+      // Blend chemical color with original for artistic control (70% chem, 30% user)
+      const r = THREE.MathUtils.lerp(baseColor.r * (1 - starAge), chemColor.r, 0.7);
+      const g = THREE.MathUtils.lerp(baseColor.g * (1 - starAge), chemColor.g, 0.7);
+      const b = THREE.MathUtils.lerp(baseColor.b * (1 - starAge), chemColor.b, 0.7);
       
-      // Ember thermal decay — more gradual, realistic cooling
-      if (emberPhase > 0) {
-        const ep = emberPhase * emberPhase;
-        r = THREE.MathUtils.lerp(r, emberColor.r, ep * 0.7);
-        g = THREE.MathUtils.lerp(g, emberColor.g, ep * 0.8);
-        b = THREE.MathUtils.lerp(b, emberColor.b, ep * 0.9);
-      }
-      
-      // Subtle HDR boost only during flash
-      const hdrBoost = 1.0 + flashIntensity * 1.2;
-      
-      cols[i * 3] = r * fadeSmooth * twinkle * hdrBoost;
-      cols[i * 3 + 1] = g * fadeSmooth * twinkle * hdrBoost;
-      cols[i * 3 + 2] = b * fadeSmooth * twinkle * hdrBoost;
+      cols[i * 3] = r * twinkle;
+      cols[i * 3 + 1] = g * twinkle;
+      cols[i * 3 + 2] = b * twinkle;
       
       // Size over lifetime: Niagara curve — burst large, steady, then shrink
       const sizeOverLife = starAge < 0.05 
