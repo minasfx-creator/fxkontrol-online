@@ -1605,13 +1605,16 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
           `}
         />
       </mesh>
-      {/* Near-field circle with better detail */}
+      {/* Near-field circle — wet-asphalt PBR with clearcoat reflections */}
       <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[120, 64]} />
-        <meshStandardMaterial
-          color={new THREE.Color(0.04 * b, 0.065 * b, 0.035 * b)}
-          roughness={0.85}
-          metalness={0.1}
+        <meshPhysicalMaterial
+          color={new THREE.Color(0.05 * b, 0.05 * b, 0.06 * b)}
+          roughness={0.2}
+          metalness={0.15}
+          clearcoat={1.0}
+          clearcoatRoughness={0.1}
+          envMapIntensity={1.8}
         />
       </mesh>
       {/* Contact shadow circle under launch area */}
