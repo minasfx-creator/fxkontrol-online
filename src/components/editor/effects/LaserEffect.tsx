@@ -136,16 +136,22 @@ export default function LaserEffect({
       halo.scale.setScalar(sc);
     }
 
+    // Outer halo
+    const outerHalo = children[haloIdx + 1] as THREE.Mesh;
+    if (outerHalo) {
+      (outerHalo.material as THREE.MeshBasicMaterial).opacity = 0.12 * intensity;
+    }
+
     // Ground scatter
-    const scatter = children[haloIdx + 1] as THREE.Mesh;
+    const scatter = children[haloIdx + 2] as THREE.Mesh;
     if (scatter) {
-      (scatter.material as THREE.MeshBasicMaterial).opacity = 0.06 * intensity;
+      (scatter.material as THREE.MeshBasicMaterial).opacity = 0.08 * intensity;
     }
 
     // Atmospheric cone
-    const cone = children[haloIdx + 2] as THREE.Mesh;
+    const cone = children[haloIdx + 3] as THREE.Mesh;
     if (cone) {
-      (cone.material as THREE.MeshBasicMaterial).opacity = 0.018 * intensity;
+      (cone.material as THREE.MeshBasicMaterial).opacity = 0.025 * intensity;
       cone.rotation.y = time * 0.1;
     }
   });
