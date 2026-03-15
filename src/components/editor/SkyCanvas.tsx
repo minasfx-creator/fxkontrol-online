@@ -142,6 +142,9 @@ function PlaybackClock() {
 // --- Particle system ---
 const GRAVITY = -9.81; // Real-world gravity for accurate ballistics
 
+// Module-level ref for sky scatter uniforms (shared between SkyGradient and AdaptiveExposureController)
+let _skyScatterUniforms: { uExplosionScatter: { value: THREE.Color }; uScatterIntensity: { value: number } } | null = null;
+
 function getWindForce(): [number, number, number] {
   const { wind } = useProjectStore.getState();
   if (!wind.enabled) return [0, 0, 0];
