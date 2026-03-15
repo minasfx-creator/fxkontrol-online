@@ -1,5 +1,5 @@
 import { useState, useEffect, forwardRef } from 'react';
-import { Zap } from 'lucide-react';
+import fxkLogo from '@/assets/fxk-logo.png';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
