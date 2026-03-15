@@ -72,62 +72,77 @@ const DEFAULT_CHANNELS: SFXChannel[] = [
   { id: 'sfx-6', name: 'Streamer Blast', type: 'streamer', dmxUniverse: 1, dmxAddress: 10, dmxChannels: 1, armed: false, firing: false, duration: 1500, intensity: 255, color: '#AA55FF', locked: false },
 ];
 
-// ─── Fire Button Component ───
+// ─── Fire Button Component (Show Commander style) ───
 function FireButton({ channel, onFire, onStop }: { channel: SFXChannel; onFire: (id: string) => void; onStop: (id: string) => void }) {
   const sfxType = SFX_TYPES.find(t => t.key === channel.type);
   const Icon = sfxType?.icon || Zap;
 
   return (
     <div className={cn(
-      "relative rounded-lg border p-2 transition-all",
-      channel.armed ? "border-destructive/50 bg-destructive/5" : "border-border/50 bg-card/50",
-      channel.firing && "ring-2 ring-destructive animate-pulse",
-      channel.locked && "opacity-50 pointer-events-none"
+      "relative rounded-lg border overflow-hidden transition-all",
+      channel.armed ? "border-destructive/60 bg-destructive/8" : "border-border/40 bg-surface-1/60",
+      channel.firing && "ring-2 ring-destructive shadow-[0_0_24px_hsl(0,80%,50%,0.3)]",
+      channel.locked && "opacity-40 pointer-events-none"
     )}>
-      {/* Channel name + type */}
-      <div className="flex items-center gap-1.5 mb-1.5">
-        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: sfxType?.color }} />
-        <span className="text-[10px] font-bold truncate flex-1">{channel.name}</span>
-        <span className="text-[8px] font-mono text-muted-foreground">U{channel.dmxUniverse}.{channel.dmxAddress}</span>
+      {/* Top bar with color accent */}
+      <div className="h-1 w-full" style={{ backgroundColor: channel.armed ? sfxType?.color : 'hsl(var(--muted))' }} />
+      
+      {/* Channel info */}
+      <div className="px-2 pt-1.5 pb-1">
+        <div className="flex items-center gap-1.5 mb-1">
+          <Icon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: sfxType?.color }} />
+          <span className="text-[10px] font-bold truncate flex-1">{channel.name}</span>
+        </div>
+        <div className="flex items-center gap-2 text-[8px] font-mono-code text-muted-foreground/60">
+          <span>U{channel.dmxUniverse}.{channel.dmxAddress}</span>
+          <span>{channel.duration}ms</span>
+          <span>{Math.round(channel.intensity / 2.55)}%</span>
+        </div>
       </div>
 
-      {/* Fire button */}
-      <button
-        onMouseDown={() => channel.armed && onFire(channel.id)}
-        onMouseUp={() => onStop(channel.id)}
-        onMouseLeave={() => channel.firing && onStop(channel.id)}
-        onTouchStart={() => channel.armed && onFire(channel.id)}
-        onTouchEnd={() => onStop(channel.id)}
-        disabled={!channel.armed || channel.locked}
-        className={cn(
-          "w-full h-10 rounded-md flex items-center justify-center gap-1.5 font-bold text-[11px] uppercase tracking-wider transition-all select-none",
-          channel.armed
-            ? channel.firing
-              ? "bg-destructive text-destructive-foreground shadow-[0_0_20px_hsl(0,80%,50%,0.4)] scale-95"
-              : "bg-destructive/80 text-destructive-foreground hover:bg-destructive active:scale-95"
-            : "bg-muted text-muted-foreground cursor-not-allowed"
-        )}
-      >
-        <Icon className="w-4 h-4" />
-        {channel.firing ? 'FIRING!' : channel.armed ? 'FIRE' : 'DISARMED'}
-      </button>
+      {/* Fire button — large touch target */}
+      <div className="px-2 pb-2">
+        <button
+          onMouseDown={() => channel.armed && onFire(channel.id)}
+          onMouseUp={() => onStop(channel.id)}
+          onMouseLeave={() => channel.firing && onStop(channel.id)}
+          onTouchStart={() => channel.armed && onFire(channel.id)}
+          onTouchEnd={() => onStop(channel.id)}
+          disabled={!channel.armed || channel.locked}
+          className={cn(
+            "w-full h-11 rounded-md flex items-center justify-center gap-2 font-bold text-[12px] uppercase tracking-[0.2em] transition-all select-none",
+            channel.armed
+              ? channel.firing
+                ? "bg-destructive text-destructive-foreground shadow-[0_0_30px_hsl(0,80%,50%,0.5)] scale-[0.97]"
+                : "bg-gradient-to-b from-destructive/90 to-destructive text-destructive-foreground hover:from-destructive hover:to-destructive active:scale-[0.97] shadow-lg"
+              : "bg-surface-2 text-muted-foreground/50 cursor-not-allowed"
+          )}
+        >
+          {channel.firing ? (
+            <>
+              <Flame className="w-4 h-4 animate-pulse" />
+              FIRING
+            </>
+          ) : channel.armed ? (
+            <>
+              <Zap className="w-4 h-4" />
+              FIRE
+            </>
+          ) : (
+            'SAFE'
+          )}
+        </button>
+      </div>
 
       {/* Intensity bar */}
-      <div className="mt-1.5 h-1 rounded-full bg-muted overflow-hidden">
+      <div className="h-1 w-full bg-surface-0">
         <div
-          className="h-full rounded-full transition-all"
+          className="h-full transition-all duration-100"
           style={{
             width: `${(channel.intensity / 255) * 100}%`,
-            backgroundColor: sfxType?.color,
-            opacity: channel.firing ? 1 : 0.5,
+            backgroundColor: channel.firing ? sfxType?.color : `${sfxType?.color}66`,
           }}
         />
-      </div>
-
-      {/* Duration label */}
-      <div className="flex items-center justify-between mt-1">
-        <span className="text-[8px] text-muted-foreground font-mono">{channel.duration}ms</span>
-        <span className="text-[8px] text-muted-foreground font-mono">{Math.round(channel.intensity / 2.55)}%</span>
       </div>
     </div>
   );
