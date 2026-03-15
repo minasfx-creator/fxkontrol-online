@@ -1344,7 +1344,7 @@ function GrassGround() {
       </mesh>
       {/* Near-stage grass with mowing pattern */}
       <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[120, 64]} />
+        <circleGeometry args={[250, 64]} />
         <shaderMaterial
           uniforms={uniforms}
           vertexShader={terrainVertexShader}
