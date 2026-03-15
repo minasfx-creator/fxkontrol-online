@@ -2563,6 +2563,7 @@ export default function SkyCanvas() {
         <GroundReflections />
         <SmokeController />
         <LensFlareController />
+        <SparkTrailController />
 
         <SkyGradient />
         <Moon />
