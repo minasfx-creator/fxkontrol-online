@@ -166,6 +166,7 @@ export default function DroneChoreography() {
   return (
     <>
       <InstancedDroneSwarm positions={positions} scale={0.6} />
+      <LightTrails dronePositions={positions} intensity={1.2} />
       <TransitionParticles />
     </>
   );
