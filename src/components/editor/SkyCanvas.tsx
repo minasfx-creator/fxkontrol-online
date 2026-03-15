@@ -820,6 +820,8 @@ function SkyGradient() {
     uHorizonGlow: { value: horizonGlow },
     uStarDensity: { value: starDensity },
     uTime: { value: 0 },
+    uExplosionScatter: { value: new THREE.Color(0, 0, 0) },
+    uScatterIntensity: { value: 0 },
   }), []);
 
   useEffect(() => {
