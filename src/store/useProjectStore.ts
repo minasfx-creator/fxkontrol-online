@@ -23,7 +23,7 @@ export interface Effect {
   vdl?: string;                 // Visual Description Language string
   pattern?: string;             // Burst pattern: peony, willow, palm, kamuro, crossette
   shotCount?: number;           // For cakes/roman candles: number of shots
-  laserPattern?: 'fan' | 'harp' | 'tunnel' | 'cone' | 'single'; // For lasers
+  laserPattern?: 'fan' | 'harp' | 'tunnel' | 'cone' | 'single' | 'wave' | 'grid'; // For lasers
   beamType?: 'spot' | 'wash' | 'beam'; // For moving heads
 }
 
