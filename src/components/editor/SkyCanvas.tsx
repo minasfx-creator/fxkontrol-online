@@ -203,14 +203,21 @@ function FireworkBurst({
   // Real break speed from pyroPhysics — caliber proportional (m/s)
   const breakSpeed = useMemo(() => getBreakSpeed(caliber), [caliber]);
   
-  // Star lifetime per Finale — depends on pattern and caliber
+  // ── Star lifetime calibrated to real pyro data ──
+  // 3" = 1.5-2s, 4" = 2-2.5s, 6" = 3-4s, 8" = 4-5s, 10" = 5-7s, 12" = 6-8s
   const starLife = useMemo(() => {
-    const base = 1.0 + caliber * 0.38;
-    if (pattern === 'willow' || pattern === 'kamuro') return base * 3.0;
-    if (pattern === 'palm' || pattern === 'brocade') return base * 2.0;
-    if (pattern === 'chrysanthemum') return base * 1.4;
-    if (pattern === 'dahlia') return base * 0.55;
-    return base;
+    const baseLife = caliber <= 3 ? 1.6
+      : caliber <= 4 ? 2.2
+      : caliber <= 5 ? 2.8
+      : caliber <= 6 ? 3.5
+      : caliber <= 8 ? 4.5
+      : caliber <= 10 ? 6.0
+      : 7.5;
+    if (pattern === 'willow' || pattern === 'kamuro') return baseLife * 2.2;
+    if (pattern === 'palm' || pattern === 'brocade') return baseLife * 1.6;
+    if (pattern === 'chrysanthemum') return baseLife * 1.2;
+    if (pattern === 'dahlia') return baseLife * 0.5;
+    return baseLife;
   }, [caliber, pattern]);
   
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
