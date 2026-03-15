@@ -277,7 +277,7 @@ export default function Index() {
   }
 
   if (appPhase === 'splash') {
-    return <SplashScreen onStart={handleSplashStart} />;
+    return <SplashScreen onStart={handleSplashStart} showVideoBackground />;
   }
 
   if (appPhase === 'globe') {
