@@ -2367,7 +2367,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
         const orbitSpeed = 0.15;
         camera.position.set(
           Math.sin(introTimer.current * orbitSpeed) * orbitRadius,
-          250 - eased * 20, // very gentle descent during hold
+          500 - eased * 40, // very gentle descent during hold
           Math.cos(introTimer.current * orbitSpeed) * orbitRadius + 0.01
         );
         camera.lookAt(0, 0, 0);
