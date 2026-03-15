@@ -291,6 +291,7 @@ export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
               </div>
             </div>
           </div>
+        </Section>
 
         {/* ═══ LIGHTING ═══ */}
         <Section title="Lighting" icon={Sun} id="lighting" open={openSections.has('lighting')} onToggle={() => toggleSection('lighting')}>
