@@ -142,7 +142,7 @@ const DEFAULT_SETTINGS: SceneSettings = {
   groundStyle: 'finale-dark',
   groundBrightness: 1.0,
   gridOpacity: 0.6,
-  gridColor: '#1a3a1a',
+  gridColor: '#1a1a2e',
   showGrid: true,
   showOriginMarker: true,
   showScalePoles: true,
