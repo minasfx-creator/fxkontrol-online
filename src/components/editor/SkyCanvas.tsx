@@ -56,7 +56,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 
-// AEROSWARM NEXUS — Zenith Prime v1.1 Renderer
+// FX KONTROL — Show Design Platform Renderer
 class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
   static getDerivedStateFromError() { return { hasError: true }; }
