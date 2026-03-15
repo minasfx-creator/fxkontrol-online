@@ -147,7 +147,7 @@ const PANEL_WIDTHS: Record<PanelId, string> = {
   fleet: 'w-72',
   geofence: 'w-64',
   storyboard: 'w-64',
-  showcontrol: 'w-64',
+  showcontrol: 'w-72',
   inspector: 'w-72',
   lightprogram: 'w-72',
   safetycheck: 'w-72',
