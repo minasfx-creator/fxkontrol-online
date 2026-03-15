@@ -2152,7 +2152,7 @@ function TreelineSilhouette() {
     // 6 depth layers — expanded world
     for (let layer = 0; layer < 6; layer++) {
       const count = 120 - layer * 15;
-      const baseDist = 300 + layer * 120;
+      const baseDist = 800 + layer * 300;
       for (let i = 0; i < count; i++) {
         const angle = (i / count) * Math.PI * 2 + layer * 0.05;
         const dist = baseDist + Math.random() * 60;
