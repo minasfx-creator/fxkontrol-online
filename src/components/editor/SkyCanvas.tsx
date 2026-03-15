@@ -251,6 +251,8 @@ function FireworkBurst({
   }, [caliber, pattern]);
   
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
+  // ═══ PyroChem: resolve chemical compound from color ═══
+  const compound = useMemo(() => hexToCompound(color), [color]);
   const emberColor = useMemo(() => {
     const c = new THREE.Color(color);
     return new THREE.Color().setHSL(
