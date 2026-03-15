@@ -64,6 +64,8 @@ import { createLensFlareSprite, flashLensFlare, decayLensFlare } from '@/render_
 import { getBurstConfig, type BurstPattern } from '@/render_ultra/fireworks/burstSimulation';
 import { createSparkTrailSystem, updateSparkTrail, writeSparkTrailsToBuffers, type SparkState } from '@/render_ultra/fireworks/sparkTrailsGPU';
 import { createHDRLightingRig } from '@/render_ultra/lighting/hdrLighting';
+// ═══ LOD System — distance-based quality scaling ═══
+import { useLOD, calculateLOD, useSceneLOD, type LODFactors } from '@/hooks/useLOD';
 
 // ═══ PyroChem: map hex colors → real chemical compounds ═══
 function hexToCompound(hexColor: string): ChemicalCompound {
@@ -234,9 +236,12 @@ function FireworkBurst({
   const pointsRef = useRef<THREE.Points>(null);
   const trailRef = useRef<THREE.LineSegments>(null);
   
-  // Niagara-style: particle count scales with shell volume (4/3 π r³)
-  const STAR_COUNT = useMemo(() => Math.min(3000, Math.round(150 + caliber * caliber * 32)), [caliber]);
-  const TRAIL_LENGTH = useMemo(() => Math.min(24, 10 + Math.floor(caliber * 1.5)), [caliber]);
+  // ═══ LOD — reduce particles & trails at distance ═══
+  const lod = useLOD(position);
+  
+  // Niagara-style: particle count scales with shell volume, reduced by LOD
+  const STAR_COUNT = useMemo(() => Math.min(3000, Math.round((150 + caliber * caliber * 32) * lod.particleMultiplier)), [caliber, lod.particleMultiplier]);
+  const TRAIL_LENGTH = useMemo(() => Math.max(2, Math.min(24, Math.floor((10 + caliber * 1.5) * lod.trailLength))), [caliber, lod.trailLength]);
   
   // Real break speed from pyroPhysics — caliber proportional (m/s)
   const breakSpeed = useMemo(() => getBreakSpeed(caliber), [caliber]);
@@ -562,21 +567,21 @@ function FireworkBurst({
       {/* ═══ BREAK FLASH — 3-layer system ═══ */}
       {/* Layer 1: Inner white-hot core — ultra HDR for maximum bloom */}
       {progress < 0.04 && (
-        <mesh>
+        <mesh renderOrder={100}>
           <sphereGeometry args={[flashSize * 0.3 * (1 + progress * 8), 12, 12]} />
           <meshBasicMaterial color="#FFFFF0" transparent opacity={0.8 * (1 - progress / 0.04)} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
       {/* Layer 2: Hot colored flash — primary bloom source */}
       {progress < 0.1 && (
-        <mesh>
+        <mesh renderOrder={99}>
           <sphereGeometry args={[flashSize * (1 + progress * 8), 16, 16]} />
           <meshBasicMaterial color={color} transparent opacity={0.4 * Math.pow(1 - progress / 0.1, 2)} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
       {/* Layer 3: Expanding shockwave ring */}
       {progress > 0.003 && progress < 0.1 && (
-        <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <mesh rotation={[Math.PI / 2, 0, 0]} renderOrder={98}>
           <ringGeometry args={[
             progress * flashSize * 8,
             progress * flashSize * 8 + 0.4 + caliber * 0.1,
@@ -585,10 +590,10 @@ function FireworkBurst({
           <meshBasicMaterial color={color} transparent opacity={0.04 * Math.pow(1 - progress / 0.1, 1.5)} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
-      {/* Layer 4: Subtle sky illumination */}
+      {/* Layer 4: Subtle sky illumination — capped size to prevent sky clipping */}
       {progress < 0.3 && progress > 0.003 && (
-        <mesh>
-          <sphereGeometry args={[caliber * 4 + progress * caliber * 10, 12, 12]} />
+        <mesh renderOrder={97}>
+          <sphereGeometry args={[Math.min(caliber * 4 + progress * caliber * 10, 80), 12, 12]} />
           <meshBasicMaterial color={color} transparent opacity={0.008 * (1 - progress / 0.3)} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
@@ -848,8 +853,8 @@ function SkyGradient() {
   });
 
   return (
-    <mesh>
-      <sphereGeometry args={[500, 64, 64]} />
+    <mesh renderOrder={-1000}>
+      <sphereGeometry args={[9000, 64, 64]} />
       <shaderMaterial
         side={THREE.BackSide}
         uniforms={uniforms}
@@ -1028,10 +1033,10 @@ function SkyGradient() {
 // --- Volumetric Moon — Blender-calibrated celestial position ---
 function Moon() {
   return (
-    <group position={[200, 350, -300]}>
+    <group position={[1500, 2800, -2500]}>
       {/* Moon body with procedural surface — radius 12 for proper angular size */}
       <mesh>
-        <sphereGeometry args={[12, 64, 64]} />
+        <sphereGeometry args={[90, 64, 64]} />
         <shaderMaterial
           vertexShader={`
             varying vec3 vNormal;
@@ -1083,12 +1088,12 @@ function Moon() {
       </mesh>
       {/* Inner glow — proportional to new radius */}
       <mesh>
-        <sphereGeometry args={[12.5, 32, 32]} />
-        <meshBasicMaterial color="#d0c8a8" transparent opacity={0.12} blending={THREE.AdditiveBlending} />
+        <sphereGeometry args={[95, 32, 32]} />
+        <meshBasicMaterial color="#d0c8a8" transparent opacity={0.10} blending={THREE.AdditiveBlending} />
       </mesh>
       {/* Outer volumetric halo */}
       <mesh>
-        <sphereGeometry args={[20, 32, 32]} />
+        <sphereGeometry args={[160, 32, 32]} />
         <shaderMaterial
           transparent
           depthWrite={false}
@@ -1112,10 +1117,10 @@ function Moon() {
       </mesh>
       {/* Wide atmospheric scatter */}
       <mesh>
-        <sphereGeometry args={[40, 16, 16]} />
-        <meshBasicMaterial color="#506080" transparent opacity={0.012} blending={THREE.AdditiveBlending} />
+        <sphereGeometry args={[320, 16, 16]} />
+        <meshBasicMaterial color="#506080" transparent opacity={0.008} blending={THREE.AdditiveBlending} />
       </mesh>
-      <pointLight color="#8899bb" intensity={0.15} distance={800} decay={1} />
+      <pointLight color="#8899bb" intensity={0.15} distance={6000} decay={1} />
     </group>
   );
 }
@@ -1339,7 +1344,7 @@ function GrassGround() {
       </mesh>
       {/* Near-stage grass with mowing pattern */}
       <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[120, 64]} />
+        <circleGeometry args={[250, 64]} />
         <shaderMaterial
           uniforms={uniforms}
           vertexShader={terrainVertexShader}
@@ -1485,7 +1490,7 @@ function GroundFog() {
 
   return (
     <mesh ref={fogRef} position={[0, 0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[500, 500, 1, 1]} />
+      <planeGeometry args={[1500, 1500, 1, 1]} />
       <shaderMaterial
         transparent
         depthWrite={false}
@@ -1620,7 +1625,7 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
       </mesh>
       {/* Near-field circle — wet-asphalt PBR with clearcoat reflections */}
       <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[120, 64]} />
+        <circleGeometry args={[250, 64]} />
         <meshPhysicalMaterial
           color={new THREE.Color(0.05 * b, 0.05 * b, 0.06 * b)}
           roughness={0.2}
@@ -1653,7 +1658,7 @@ function ConcreteGround({ brightness }: { brightness: number }) {
         />
       </mesh>
       <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[150, 64]} />
+        <circleGeometry args={[300, 64]} />
         <meshStandardMaterial
           color={new THREE.Color(0.08 * b, 0.08 * b, 0.085 * b)}
           roughness={0.9}
