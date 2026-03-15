@@ -2554,7 +2554,7 @@ export default function SkyCanvas() {
           outputColorSpace: THREE.SRGBColorSpace,
         }}
         dpr={[1, 1.5]}>
-        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.3} far={6000} />
+        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.3} far={20000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook} />
 
         <SceneLighting />
