@@ -240,8 +240,7 @@ export const EFFECT_LIBRARY: Effect[] = [
   { id: 'shell-20', name: 'Tourbillion 3"', category: 'morteiros', type: 'firework', color: '#00FFFF', duration: 4, cost: 18, icon: '🌀', partType: 'shell', caliber: 3, heightMeters: 60, prefire: 1.5, pattern: 'crossette', safetyDistance: 70 },
   { id: 'mburst-01', name: 'Triple Burst 3"', category: 'morteiros', type: 'firework', color: '#FF6347', duration: 3.5, cost: 22, icon: '🎆', partType: 'shell', caliber: 3, heightMeters: 60, prefire: 1.5 },
   { id: 'mburst-02', name: 'Penta Burst 5"', category: 'morteiros', type: 'firework', color: '#9400D3', duration: 5, cost: 40, icon: '💥', partType: 'shell', caliber: 5, heightMeters: 100, prefire: 2.5 },
-  { id: 'shock-01', name: 'Ground Shockwave', category: 'morteiros', type: 'firework', color: '#FF4500', duration: 1.5, cost: 18, icon: '💢', partType: 'ground' },
-  { id: 'shock-02', name: 'Aerial Shockwave', category: 'morteiros', type: 'firework', color: '#FFFFFF', duration: 2, cost: 25, icon: '🔆', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0 },
+  // Removed non-real effects: Ground/Aerial Shockwave, Signal Flares (not standard pyro show devices)
   { id: 'fan-01', name: 'Fan Spread 90°', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 2, cost: 15, icon: '🪭', partType: 'fan', caliber: 3, heightMeters: 60, prefire: 1.5 },
   { id: 'fan-02', name: 'Wide Fan 180°', category: 'morteiros', type: 'firework', color: '#00FF7F', duration: 2.5, cost: 20, icon: '🌈', partType: 'fan', caliber: 3, heightMeters: 60, prefire: 1.5 },
 
@@ -256,8 +255,6 @@ export const EFFECT_LIBRARY: Effect[] = [
   { id: 'peon-08', name: 'Falling Leaves', category: 'peonias', type: 'firework', color: '#FF8C00', duration: 4, cost: 16, icon: '🍂', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'willow' },
   { id: 'comet-01', name: 'Rising Comet', category: 'peonias', type: 'firework', color: '#00FFFF', duration: 1.5, cost: 6, icon: '☄️', partType: 'comet', caliber: 2, heightMeters: 50, prefire: 0.8 },
   { id: 'comet-02', name: 'Falling Comet Trail', category: 'peonias', type: 'firework', color: '#FFA07A', duration: 2, cost: 8, icon: '🌠', partType: 'comet', caliber: 2, heightMeters: 50, prefire: 0.8 },
-  { id: 'flare-01', name: 'Red Signal Flare', category: 'peonias', type: 'firework', color: '#FF0000', duration: 5, cost: 4, icon: '🔥', partType: 'single_shot', caliber: 1, heightMeters: 30 },
-  { id: 'flare-02', name: 'White Magnesium Flare', category: 'peonias', type: 'firework', color: '#FFFAFA', duration: 6, cost: 5, icon: '💡', partType: 'single_shot', caliber: 1, heightMeters: 30 },
 
   // ── Mines ──────────────────────────────────────────────────
   { id: 'mine-01', name: 'Silver Mine', category: 'mines', type: 'firework', color: '#C0C0C0', duration: 1.5, cost: 8, icon: '⛏️', partType: 'mine', caliber: 3, heightMeters: 30, safetyDistance: 25 },
