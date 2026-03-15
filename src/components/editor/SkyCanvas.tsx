@@ -1670,15 +1670,26 @@ function AdaptiveExposureController() {
 
   useFrame((_, delta) => {
     const state = exposureRef.current;
-    // Count active bright effects as luminance proxy
     const { timelineItems, currentTime } = useProjectStore.getState();
     let luminance = 0;
+    const scatterAccum = new THREE.Color(0, 0, 0);
+    let scatterMax = 0;
+
     for (const item of timelineItems) {
       const elapsed = currentTime - item.startTime;
       if (elapsed >= 0 && elapsed < 0.5) {
-        luminance += 3.0; // Each fresh burst adds luminance
+        luminance += 3.0;
       } else if (elapsed >= 0.5 && elapsed < 2.0) {
         luminance += 0.5;
+      }
+      // Sky scatter accumulation
+      if (elapsed >= 0 && elapsed < 0.3) {
+        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+        if (effect && effect.type === 'firework') {
+          const intensity = 0.4 * (1 - elapsed / 0.3);
+          scatterAccum.add(new THREE.Color(effect.color).multiplyScalar(intensity * 0.3));
+          scatterMax = Math.max(scatterMax, intensity);
+        }
       }
     }
 
@@ -1688,6 +1699,16 @@ function AdaptiveExposureController() {
 
     const exposure = updateExposure(state, luminance, delta);
     gl.toneMappingExposure = exposure;
+
+    // Update sky scatter uniforms
+    if (_skyScatterUniforms) {
+      if (scatterMax > 0.05) {
+        _skyScatterUniforms.uExplosionScatter.value.copy(scatterAccum);
+        _skyScatterUniforms.uScatterIntensity.value = scatterMax;
+      } else {
+        _skyScatterUniforms.uScatterIntensity.value *= Math.max(0, 1 - delta * 3);
+      }
+    }
   });
 
   return null;
