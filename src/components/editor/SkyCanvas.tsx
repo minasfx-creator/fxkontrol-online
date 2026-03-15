@@ -502,8 +502,8 @@ function FireworkBurst({
     
   });
 
-  // Break flash: natural scale — not oversized
-  const flashSize = 1.5 + caliber * 1.8;
+  // Break flash: Blender-calibrated — realistic scale, not oversized
+  const flashSize = 0.6 + caliber * 0.8;
 
   return (
     <group position={position}>
