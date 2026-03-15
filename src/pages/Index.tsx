@@ -344,6 +344,8 @@ export default function Index() {
         {activePanel === 'inspector' && <ShowInspectorPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'lightprogram' && <LightProgramPanel />}
         {activePanel === 'safetycheck' && <SafetyCheckPanel />}
+        {activePanel === 'takeoffgrid' && <TakeoffGridPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'transitions' && <TransitionPlannerPanel onClose={() => setActivePanel(null)} />}
       </div>
     );
   };
