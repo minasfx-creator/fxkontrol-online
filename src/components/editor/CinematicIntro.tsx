@@ -4,8 +4,8 @@
  *   1. Fade from black → Minas FX vinheta
  *   2. Smooth cross-dissolve with cyan light sweep
  *   3. FX KONTROL cinematic
- *   4. Freeze on logo → START button
- *   5. On START → callback (splash screen shows with video bg)
+ *   4. Elegant fade to START overlay with particle ambience
+ *   5. On START → callback (splash screen)
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -25,10 +25,10 @@ export default function CinematicIntro({ onComplete }: CinematicIntroProps) {
   const [v2Opacity, setV2Opacity] = useState(0);
   const [sweepActive, setSweepActive] = useState(false);
   const [startVisible, setStartVisible] = useState(false);
+  const [startGlowPulse, setStartGlowPulse] = useState(false);
   const video1Ref = useRef<HTMLVideoElement>(null);
   const video2Ref = useRef<HTMLVideoElement>(null);
 
-  // Allow skip after 1.5s
   useEffect(() => {
     const t = setTimeout(() => setCanSkip(true), 1500);
     return () => clearTimeout(t);
@@ -52,7 +52,7 @@ export default function CinematicIntro({ onComplete }: CinematicIntroProps) {
     video1Ref.current.play().catch(() => setPhase('cross-fade'));
   }, [phase]);
 
-  // ── Phase: cross-fade — cinematic dissolve
+  // ── Phase: cross-fade
   useEffect(() => {
     if (phase !== 'cross-fade') return;
     setSweepActive(true);
@@ -74,40 +74,37 @@ export default function CinematicIntro({ onComplete }: CinematicIntroProps) {
     video2Ref.current.play().catch(() => setPhase('start-wait'));
   }, [phase]);
 
-  // ── Phase: start-wait — freeze on logo, show START button
+  // ── Phase: start-wait — dim video, show START
   useEffect(() => {
     if (phase !== 'start-wait') return;
-    // Keep v2 visible (frozen on last frame)
-    setV2Opacity(1);
+    // Dim the frozen video frame
+    setV2Opacity(0.3);
     setBlackOpacity(0);
-    // Animate in the START button
-    const t = setTimeout(() => setStartVisible(true), 300);
-    return () => clearTimeout(t);
+    const t1 = setTimeout(() => setStartVisible(true), 500);
+    const t2 = setTimeout(() => setStartGlowPulse(true), 1200);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [phase]);
 
   // ── Phase: fade-out → done
   useEffect(() => {
     if (phase !== 'fade-out') return;
-    // Don't fade to black — just signal done so splash shows with video bg
+    setBlackOpacity(1);
     const t = setTimeout(() => {
       setPhase('done');
       onComplete();
-    }, 600);
+    }, 800);
     return () => clearTimeout(t);
   }, [phase, onComplete]);
 
   const handleVideo1End = useCallback(() => setPhase('cross-fade'), []);
-  // Video2 ends → go to start-wait (freeze on logo)
   const handleVideo2End = useCallback(() => setPhase('start-wait'), []);
 
   const handleSkip = useCallback(() => {
-    if (!canSkip) return;
-    if (phase === 'start-wait') return; // Don't skip the START screen
+    if (!canSkip || phase === 'start-wait') return;
     video1Ref.current?.pause();
     video2Ref.current?.pause();
-    // Skip directly to start-wait
     setV1Opacity(0);
-    setV2Opacity(1);
+    setV2Opacity(0.3);
     setBlackOpacity(0);
     setPhase('start-wait');
   }, [canSkip, phase]);
@@ -139,9 +136,7 @@ export default function CinematicIntro({ onComplete }: CinematicIntroProps) {
           opacity: v1Opacity,
           transition: 'opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
-        playsInline
-        muted
-        preload="auto"
+        playsInline muted preload="auto"
         onEnded={handleVideo1End}
       />
 
@@ -152,11 +147,10 @@ export default function CinematicIntro({ onComplete }: CinematicIntroProps) {
         className="absolute inset-0 w-full h-full object-contain"
         style={{
           opacity: v2Opacity,
-          transition: 'opacity 1s cubic-bezier(0.4, 0, 0.2, 1)',
+          transition: 'opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1)',
+          filter: phase === 'start-wait' ? 'blur(6px) brightness(0.4)' : 'none',
         }}
-        playsInline
-        muted
-        preload="auto"
+        playsInline muted preload="auto"
         onEnded={handleVideo2End}
       />
 
@@ -179,13 +173,13 @@ export default function CinematicIntro({ onComplete }: CinematicIntroProps) {
         className="absolute inset-0 pointer-events-none z-20"
         style={{
           background: `
-            radial-gradient(ellipse 80% 70% at 50% 50%, transparent 40%, hsl(225 14% 3% / 0.5) 100%),
+            radial-gradient(ellipse 80% 70% at 50% 50%, transparent 40%, hsl(225 14% 3% / 0.6) 100%),
             linear-gradient(to bottom, hsl(225 14% 3% / 0.4) 0%, transparent 12%, transparent 88%, hsl(225 14% 3% / 0.4) 100%)
           `,
         }}
       />
 
-      {/* Black overlay — fade in/out */}
+      {/* Black overlay */}
       <div
         className="absolute inset-0 z-40 pointer-events-none"
         style={{
@@ -195,47 +189,94 @@ export default function CinematicIntro({ onComplete }: CinematicIntroProps) {
         }}
       />
 
-      {/* ═══ START BUTTON — shown after video2 ends ═══ */}
+      {/* ═══ START SCREEN — full centered layout ═══ */}
       {phase === 'start-wait' && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-end pb-[15vh]">
-          {/* Subtle overlay gradient for readability */}
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center">
+          {/* Top-to-bottom gradient overlay */}
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
-              background: 'linear-gradient(to top, hsl(225 14% 3% / 0.7) 0%, transparent 50%)',
+              background: `
+                radial-gradient(ellipse 60% 50% at 50% 45%, hsl(195 100% 50% / 0.04) 0%, transparent 70%),
+                linear-gradient(to bottom, hsl(225 14% 3% / 0.6) 0%, hsl(225 14% 3% / 0.3) 40%, hsl(225 14% 3% / 0.6) 100%)
+              `,
             }}
           />
 
           <div
             className={cn(
-              "relative flex flex-col items-center gap-6 transition-all duration-700 ease-out",
-              startVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+              "relative flex flex-col items-center gap-10 transition-all duration-1000 ease-out",
+              startVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-95'
             )}
           >
+            {/* Brand logo */}
+            <div className="flex flex-col items-center gap-3">
+              <div
+                className="w-16 h-16 rounded-xl flex items-center justify-center"
+                style={{
+                  background: 'linear-gradient(135deg, hsl(195 100% 50% / 0.1), hsl(18 100% 55% / 0.1))',
+                  boxShadow: '0 0 40px hsl(195 100% 50% / 0.15)',
+                }}
+              >
+                <img
+                  src="/favicon.png"
+                  alt="FX Kontrol"
+                  className="w-10 h-10 object-contain"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              </div>
+              <h1 className="text-2xl font-extrabold tracking-[0.35em] uppercase text-white/90 font-display">
+                FX KONTROL
+              </h1>
+              <p className="text-[10px] text-white/30 tracking-[0.3em] uppercase font-display">
+                Show Design Platform
+              </p>
+            </div>
+
+            {/* Divider line */}
+            <div
+              className="w-24 h-px"
+              style={{
+                background: 'linear-gradient(90deg, transparent, hsl(195 100% 50% / 0.4), transparent)',
+              }}
+            />
+
+            {/* START button */}
             <button
               onClick={handleStart}
-              className="group relative px-12 py-4 rounded-lg border border-white/10 bg-white/5 backdrop-blur-md hover:bg-white/10 hover:border-white/20 transition-all duration-300 cursor-pointer"
+              className={cn(
+                "group relative px-16 py-5 rounded-lg border transition-all duration-500 cursor-pointer",
+                "border-white/10 bg-white/[0.03] backdrop-blur-md",
+                "hover:bg-white/[0.08] hover:border-white/20",
+                startGlowPulse && "animate-[fxk-btn-glow_3s_ease-in-out_infinite]"
+              )}
             >
-              {/* Glow behind button */}
+              {/* Glow ring */}
+              <div
+                className="absolute -inset-px rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+                style={{
+                  background: 'linear-gradient(135deg, hsl(195 100% 50% / 0.15), hsl(18 100% 55% / 0.1))',
+                }}
+              />
               <div
                 className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"
                 style={{
-                  boxShadow: '0 0 40px 10px hsl(195 100% 55% / 0.15), inset 0 0 20px hsl(195 100% 55% / 0.05)',
+                  boxShadow: '0 0 60px 15px hsl(195 100% 55% / 0.12), inset 0 0 30px hsl(195 100% 55% / 0.04)',
                 }}
               />
-              <span className="relative text-lg font-bold tracking-[0.4em] uppercase text-white/90 group-hover:text-white transition-colors font-display">
+              <span className="relative text-xl font-bold tracking-[0.5em] uppercase text-white/80 group-hover:text-white transition-colors duration-300 font-display">
                 START
               </span>
             </button>
 
-            <span className="text-[10px] text-white/25 tracking-[0.3em] uppercase font-display animate-pulse">
+            <span className="text-[9px] text-white/20 tracking-[0.3em] uppercase font-display">
               Press Enter or Click
             </span>
           </div>
         </div>
       )}
 
-      {/* Skip hint — not shown during start-wait */}
+      {/* Skip hint */}
       {canSkip && phase !== 'fade-out' && phase !== 'start-wait' && (
         <div
           className="absolute bottom-6 right-6 z-50 flex items-center gap-2"
@@ -260,6 +301,10 @@ export default function CinematicIntro({ onComplete }: CinematicIntroProps) {
         @keyframes fxk-fade-up {
           0% { opacity: 0; transform: translateY(12px); }
           100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fxk-btn-glow {
+          0%, 100% { box-shadow: 0 0 20px 5px hsl(195 100% 55% / 0.05); }
+          50% { box-shadow: 0 0 40px 10px hsl(195 100% 55% / 0.12); }
         }
       `}</style>
     </div>
