@@ -1,5 +1,5 @@
 import { useState, useEffect, forwardRef } from 'react';
-import { Rocket } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -14,65 +14,69 @@ const SplashScreen = forwardRef<HTMLDivElement, SplashScreenProps>(function Spla
   const [phase, setPhase] = useState<'intro' | 'ready' | 'exit'>('intro');
 
   useEffect(() => {
-    const timer = setTimeout(() => setPhase('ready'), 800);
+    const timer = setTimeout(() => setPhase('ready'), 600);
     return () => clearTimeout(timer);
   }, []);
 
   const handleStart = () => {
     setPhase('exit');
-    setTimeout(() => onStart(fleetSize, pyroPositions), 600);
+    setTimeout(() => onStart(fleetSize, pyroPositions), 700);
   };
 
   return (
     <div
       className={cn(
-        "fixed inset-0 z-50 flex items-center justify-center transition-opacity duration-500",
-        phase === 'exit' ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        "fixed inset-0 z-50 flex items-center justify-center transition-all duration-700 ease-out",
+        phase === 'exit' ? 'opacity-0 scale-[1.02] pointer-events-none' : 'opacity-100 scale-100'
       )}
-      style={{ background: 'radial-gradient(ellipse at center, hsl(var(--surface-2)), hsl(var(--surface-0)))' }}
+      style={{ background: 'radial-gradient(ellipse at 50% 40%, hsl(225 12% 10%), hsl(225 14% 4%))' }}
     >
-      {/* Animated grid background */}
+      {/* Subtle grid */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div
-          className="absolute inset-0 opacity-[0.04]"
+          className="absolute inset-0 opacity-[0.03]"
           style={{
             backgroundImage: `
-              linear-gradient(hsl(var(--electric) / 0.3) 1px, transparent 1px),
-              linear-gradient(90deg, hsl(var(--electric) / 0.3) 1px, transparent 1px)
+              linear-gradient(hsl(var(--fxk-cyan) / 0.4) 1px, transparent 1px),
+              linear-gradient(90deg, hsl(var(--fxk-cyan) / 0.4) 1px, transparent 1px)
             `,
-            backgroundSize: '60px 60px',
+            backgroundSize: '80px 80px',
           }}
         />
+        {/* Glow orb */}
         <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full"
-          style={{ background: 'radial-gradient(circle, hsl(var(--electric) / 0.08), transparent 70%)' }}
+          className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full blur-3xl"
+          style={{ background: 'radial-gradient(circle, hsl(var(--fxk-cyan) / 0.06), transparent 70%)' }}
+        />
+        <div
+          className="absolute bottom-1/4 left-1/3 w-[300px] h-[300px] rounded-full blur-3xl"
+          style={{ background: 'radial-gradient(circle, hsl(var(--fxk-orange) / 0.04), transparent 70%)' }}
         />
       </div>
 
       <div
         className={cn(
-          "relative flex flex-col items-center gap-8 transition-all duration-700",
-          phase === 'intro' ? 'opacity-0 translate-y-6 scale-95' : 'opacity-100 translate-y-0 scale-100'
+          "relative flex flex-col items-center gap-8 transition-all duration-700 ease-out",
+          phase === 'intro' ? 'opacity-0 translate-y-8 scale-95' : 'opacity-100 translate-y-0 scale-100'
         )}
       >
         {/* Logo */}
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-electric to-safety flex items-center justify-center shadow-[0_0_40px_hsl(var(--electric)/0.3)]">
-            <Rocket className="h-8 w-8 text-primary-foreground" />
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-fxk-cyan to-fxk-orange flex items-center justify-center shadow-[0_0_50px_hsl(var(--fxk-cyan)/0.35)] animate-fxk-glow">
+            <Zap className="h-8 w-8 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold tracking-[0.25em] uppercase text-foreground font-mono-code">
-            AEROSWARM NEXUS
+          <h1 className="text-3xl font-extrabold tracking-[0.3em] uppercase font-display text-fxk-gradient">
+            FX KONTROL
           </h1>
-          <p className="text-xs text-muted-foreground tracking-[0.2em] uppercase">
-            Zenith Prime Workstation
+          <p className="text-xs text-muted-foreground tracking-[0.25em] uppercase font-display">
+            Show Design Platform · by Minas FX
           </p>
         </div>
 
         {/* Config inputs */}
         <div className="flex flex-col items-center gap-5 w-80">
-          {/* Fleet size */}
           <div className="w-full space-y-2">
-            <label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground font-semibold">
+            <label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground font-semibold font-display">
               Fleet Size (Max 10k Agents)
             </label>
             <Input
@@ -81,7 +85,7 @@ const SplashScreen = forwardRef<HTMLDivElement, SplashScreenProps>(function Spla
               max={10000}
               value={fleetSize}
               onChange={(e) => setFleetSize(Math.min(10000, Math.max(1, parseInt(e.target.value) || 1)))}
-              className="h-10 text-center text-lg font-mono-code bg-surface-1 border-border focus:border-electric text-foreground"
+              className="h-10 text-center text-lg font-mono bg-surface-1 border-border focus:border-primary text-foreground"
             />
             <input
               type="range"
@@ -90,13 +94,12 @@ const SplashScreen = forwardRef<HTMLDivElement, SplashScreenProps>(function Spla
               step={10}
               value={fleetSize}
               onChange={(e) => setFleetSize(parseInt(e.target.value))}
-              className="w-full h-1.5 accent-primary bg-surface-3 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-[0_0_10px_hsl(207_90%_54%/0.5)]"
+              className="w-full h-1.5 accent-primary bg-surface-3 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-[0_0_12px_hsl(var(--fxk-cyan)/0.5)]"
             />
           </div>
 
-          {/* Pyro positions */}
           <div className="w-full space-y-2">
-            <label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground font-semibold">
+            <label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground font-semibold font-display">
               Ground Pyro Positions
             </label>
             <Input
@@ -105,7 +108,7 @@ const SplashScreen = forwardRef<HTMLDivElement, SplashScreenProps>(function Spla
               max={500}
               value={pyroPositions}
               onChange={(e) => setPyroPositions(Math.min(500, Math.max(0, parseInt(e.target.value) || 0)))}
-              className="h-10 text-center text-lg font-mono-code bg-surface-1 border-border focus:border-electric text-foreground"
+              className="h-10 text-center text-lg font-mono bg-surface-1 border-border focus:border-primary text-foreground"
             />
           </div>
         </div>
@@ -113,13 +116,13 @@ const SplashScreen = forwardRef<HTMLDivElement, SplashScreenProps>(function Spla
         {/* Start button */}
         <Button
           onClick={handleStart}
-          className="px-10 py-3 h-auto text-sm font-bold tracking-[0.18em] uppercase bg-gradient-to-r from-electric to-electric-glow hover:shadow-[0_0_24px_hsl(var(--electric)/0.4)] transition-all duration-300"
+          className="px-10 py-3 h-auto text-sm font-bold tracking-[0.2em] uppercase font-display bg-gradient-to-r from-fxk-cyan to-fxk-orange hover:shadow-[0_0_30px_hsl(var(--fxk-cyan)/0.4)] transition-all duration-500"
         >
           Start Engineering
         </Button>
 
-        <p className="text-[9px] text-muted-foreground/50 font-mono-code tracking-wider">
-          v1.1.0 · ZENITH PRIME ENGINE
+        <p className="text-[9px] text-muted-foreground/40 font-mono tracking-wider">
+          v2.0 · FX KONTROL ENGINE
         </p>
       </div>
     </div>

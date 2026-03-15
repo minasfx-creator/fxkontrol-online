@@ -398,14 +398,14 @@ export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps
       {/* Header */}
       <div className="relative z-10 flex items-center justify-between px-6 py-3 border-b border-border/20">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-electric to-safety flex items-center justify-center shadow-[0_0_20px_hsl(var(--electric)/0.3)]">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-fxk-cyan to-fxk-orange flex items-center justify-center shadow-[0_0_20px_hsl(var(--fxk-cyan)/0.3)] animate-fxk-glow">
             <Globe className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-sm font-bold tracking-[0.2em] uppercase text-foreground font-mono-code">
-              NEXUS GENESIS
+            <h1 className="text-sm font-bold tracking-[0.2em] uppercase text-foreground font-display">
+              FX KONTROL
             </h1>
-            <p className="text-[9px] text-muted-foreground tracking-[0.15em] uppercase">
+            <p className="text-[9px] text-muted-foreground tracking-[0.15em] uppercase font-display">
               Site Survey · Selecione o Local do Show
             </p>
           </div>
