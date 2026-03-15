@@ -511,9 +511,8 @@ function FireworkBurst({
     }
   });
 
-  // Break flash: Finale multi-layer flash system
-  // Flash size proportional to caliber — real-world scale
-  const flashSize = 3 + caliber * 4.0;
+  // Break flash: natural scale — not oversized
+  const flashSize = 1.5 + caliber * 1.8;
 
   return (
     <group position={position}>
