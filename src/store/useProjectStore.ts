@@ -25,6 +25,7 @@ export interface Effect {
   shotCount?: number;           // For cakes/roman candles: number of shots
   laserPattern?: 'fan' | 'harp' | 'tunnel' | 'cone' | 'single' | 'wave' | 'grid'; // For lasers
   beamType?: 'spot' | 'wash' | 'beam'; // For moving heads
+  beamCount?: number;                  // Number of beams (lasers)
 }
 
 export interface TimelineItem {
