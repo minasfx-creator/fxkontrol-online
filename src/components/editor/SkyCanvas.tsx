@@ -2018,15 +2018,15 @@ export default function SkyCanvas() {
         gl={{
           antialias: false,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.4,
+          toneMappingExposure: 1.5,
           powerPreference: 'high-performance',
           alpha: false,
           stencil: false,
           logarithmicDepthBuffer: true,
+          outputColorSpace: THREE.SRGBColorSpace,
         }}
-        dpr={[1, 2]}
-      >
-        <PerspectiveCamera makeDefault position={preset.position} fov={55} near={0.5} far={5000} />
+        dpr={[1, 1.5]}>
+        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.3} far={6000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook} />
 
         <SceneLighting />
