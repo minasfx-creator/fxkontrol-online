@@ -251,7 +251,7 @@ function FreePin({ lat, lng }: { lat: number; lng: number }) {
   );
 }
 
-// ─── Camera zoom controller ───
+// ─── Camera zoom controller (Google Earth smooth zoom) ───
 function CameraZoomTo({ target, zooming }: { target: THREE.Vector3 | null; zooming: boolean }) {
   const { camera } = useThree();
   const targetPos = useRef(new THREE.Vector3(0, 0, 8));
@@ -259,13 +259,13 @@ function CameraZoomTo({ target, zooming }: { target: THREE.Vector3 | null; zoomi
   useEffect(() => {
     if (target && zooming) {
       const dir = target.clone().normalize();
-      targetPos.current = dir.multiplyScalar(4.2);
+      targetPos.current = dir.multiplyScalar(3.2); // Zoom closer on confirm
     }
   }, [target, zooming]);
 
   useFrame(() => {
     if (zooming && target) {
-      camera.position.lerp(targetPos.current, 0.025);
+      camera.position.lerp(targetPos.current, 0.035);
       camera.lookAt(0, 0, 0);
     }
   });
