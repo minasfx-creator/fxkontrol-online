@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Rocket, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus, Download, ChevronDown, LayoutGrid, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Info, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge } from 'lucide-react';
-import { Zap } from 'lucide-react';
+import { Zap, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus, Download, ChevronDown, LayoutGrid, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Info, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge } from 'lucide-react';
+import fxkLogo from '@/assets/fxk-logo.png';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useUndoStore } from '@/store/useUndoStore';
@@ -371,9 +371,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
     <div className="flex items-center h-10 px-2 bg-surface-1 border-b border-border">
       {/* Logo */}
       <div className="flex items-center gap-2 mr-3">
-        <div className="w-6 h-6 rounded bg-gradient-to-br from-fxk-cyan to-fxk-orange flex items-center justify-center animate-fxk-glow">
-          <Zap className="h-3.5 w-3.5 text-primary-foreground" />
-        </div>
+        <img src={fxkLogo} alt="FX Kontrol" className="w-6 h-6 object-contain" />
         <span className="text-xs font-bold text-foreground tracking-[0.15em] uppercase font-display">FX KONTROL</span>
       </div>
 
