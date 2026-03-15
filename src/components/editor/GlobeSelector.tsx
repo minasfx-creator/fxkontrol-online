@@ -72,6 +72,8 @@ const CITIES = [
 ];
 
 const GLOBE_RADIUS = 2.5;
+const MIN_ZOOM = 1.8; // Google Earth-style close zoom
+const MAX_ZOOM = 22;  // Far enough to see full globe
 
 function latLngToSphere(lat: number, lng: number, radius: number): THREE.Vector3 {
   const phi = (90 - lat) * (Math.PI / 180);
