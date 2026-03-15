@@ -425,8 +425,8 @@ function FireworkBurst({
         b = THREE.MathUtils.lerp(b, emberColor.b, ep * 0.92);
       }
       
-      // HDR boost: push well above 1.0 for aggressive bloom catch
-      const hdrBoost = 1.8 + flashIntensity * 5.0 + (1 - emberPhase) * 0.8;
+      // Natural HDR: subtle boost, no excessive glow
+      const hdrBoost = 1.0 + flashIntensity * 1.5;
       
       cols[i * 3] = r * fadeCubed * twinkle * hdrBoost;
       cols[i * 3 + 1] = g * fadeCubed * twinkle * hdrBoost;
