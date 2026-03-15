@@ -225,7 +225,7 @@ export default function CinematicIntro({ onComplete }: CinematicIntroProps) {
                 onError={(e) => {(e.target as HTMLImageElement).style.display = 'none';}} src="/lovable-uploads/d126a5cd-edaa-41ee-bcc5-484a1774dee4.png" />
               
               </div>
-              <h1 className="text-2xl font-extrabold tracking-[0.35em] uppercase text-white/90 font-display">
+              <h1 className="font-extrabold tracking-[0.35em] uppercase text-white/90 font-display text-4xl">
                 FX KONTROL
               </h1>
               <p className="text-[10px] text-white/30 tracking-[0.3em] uppercase font-display">
