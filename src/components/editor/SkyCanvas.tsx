@@ -125,24 +125,29 @@ function getWindForce(): [number, number, number] {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// Finale 3D-grade star sprite vertex/fragment shaders
-// Renders each star as a soft gaussian glow disc with HDR bloom trigger,
-// exactly matching Finale's GPU particle rendering pipeline.
+// Niagara-inspired star sprite shaders
+// - Gaussian core with exponential falloff
+// - Thermal color pipeline (white-hot → saturated → ember)
+// - Per-particle noise-driven twinkle
+// - Size attenuation with distance
 // ═══════════════════════════════════════════════════════════════════════
 const STAR_VERTEX_SHADER = `
   attribute float aSize;
   attribute float aLife;
+  attribute float aSeed;
   varying vec3 vColor;
   varying float vLife;
   varying float vSize;
+  varying float vSeed;
   void main() {
     vColor = color;
     vLife = aLife;
     vSize = aSize;
+    vSeed = aSeed;
     vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-    // Increased multiplier for real-world scale (stars at 50-300m distance from camera)
-    gl_PointSize = aSize * (1800.0 / -mvPos.z);
-    gl_PointSize = clamp(gl_PointSize, 1.5, 200.0);
+    // Distance-based size: closer = larger, farther = smaller (realistic scale)
+    gl_PointSize = aSize * (2200.0 / -mvPos.z);
+    gl_PointSize = clamp(gl_PointSize, 1.0, 180.0);
     gl_Position = projectionMatrix * mvPos;
   }
 `;
@@ -151,39 +156,42 @@ const STAR_FRAGMENT_SHADER = `
   varying vec3 vColor;
   varying float vLife;
   varying float vSize;
+  varying float vSeed;
   void main() {
     vec2 uv = gl_PointCoord - 0.5;
     float dist = length(uv);
     
-    // Natural glow: tight core with soft falloff — like real firework stars
-    float core = smoothstep(0.08, 0.0, dist);
-    float inner = exp(-dist * dist * 35.0);
-    float glow = exp(-dist * dist * 12.0);
-    float bloom = exp(-dist * dist * 5.0);
+    // Niagara-style layered glow: tight bright core + soft halo
+    float core = exp(-dist * dist * 80.0);  // Very tight bright center
+    float inner = exp(-dist * dist * 25.0); // Inner glow
+    float outer = exp(-dist * dist * 8.0);  // Soft outer bloom
     
-    float alpha = core * 1.2 + inner * 0.8 + glow * 0.4 + bloom * 0.1;
+    // Combined alpha with natural falloff
+    float alpha = core * 1.0 + inner * 0.6 + outer * 0.15;
     
-    // Natural color — subtle white-hot center, no excessive HDR push
-    vec3 whiteHot = vec3(1.2, 1.1, 0.95);
-    vec3 col = vColor * (inner * 1.2 + glow * 0.8) + whiteHot * core * 1.5;
-    col += vColor * bloom * 0.2;
+    // Thermal color model: white-hot center fading to star color
+    vec3 whiteHot = vec3(1.3, 1.15, 0.95);
+    vec3 col = mix(vColor, whiteHot, core * 0.7);
+    col += vColor * outer * 0.3;
     
-    // Brief youth flash
-    float youth = max(0.0, 1.0 - vLife * 4.0);
-    col += whiteHot * youth * 0.8;
+    // Youth flash: brief bright moment at spawn
+    float youth = max(0.0, 1.0 - vLife * 5.0);
+    col += whiteHot * youth * 0.6;
     
-    gl_FragColor = vec4(col, alpha * (1.0 - smoothstep(0.46, 0.5, dist)));
+    // Circular cutoff
+    float edge = 1.0 - smoothstep(0.42, 0.5, dist);
+    
+    gl_FragColor = vec4(col, alpha * edge);
   }
 `;
 
 // ═══════════════════════════════════════════════════════════════════════
-// Finale-grade FireworkBurst with:
+// Niagara-inspired FireworkBurst:
 // - Custom star sprite shader (gaussian glow discs)
-// - Euler integration with quadratic drag (not simplified formula)
-// - HDR color pipeline: white-hot → saturated → ember → charcoal
-// - Falling charcoal debris after star burnout
-// - Persistent smoke volume at burst location
-// - Caliber-proportional everything
+// - Analytical exponential drag integration
+// - Thermal color pipeline: white-hot → saturated → ember
+// - No smoke — clean particle rendering like Niagara
+// - Caliber-proportional star count, size, and lifetime
 // ═══════════════════════════════════════════════════════════════════════
 function FireworkBurst({ 
   position, color, progress, caliber = 4, pattern = 'peony' 
@@ -193,12 +201,10 @@ function FireworkBurst({
 }) {
   const pointsRef = useRef<THREE.Points>(null);
   const trailRef = useRef<THREE.LineSegments>(null);
-  const debrisRef = useRef<THREE.Points>(null);
   
-  // Finale caliber scaling: star count proportional to shell volume
-  const STAR_COUNT = useMemo(() => Math.min(2500, Math.round(120 + caliber * caliber * 28)), [caliber]);
-  const TRAIL_LENGTH = useMemo(() => Math.min(28, 14 + Math.floor(caliber * 1.8)), [caliber]);
-  const DEBRIS_COUNT = useMemo(() => Math.min(600, Math.round(STAR_COUNT * 0.4)), [STAR_COUNT]);
+  // Niagara-style: particle count scales with shell volume (4/3 π r³)
+  const STAR_COUNT = useMemo(() => Math.min(3000, Math.round(150 + caliber * caliber * 32)), [caliber]);
+  const TRAIL_LENGTH = useMemo(() => Math.min(24, 10 + Math.floor(caliber * 1.5)), [caliber]);
   
   // Real break speed from pyroPhysics — caliber proportional (m/s)
   const breakSpeed = useMemo(() => getBreakSpeed(caliber), [caliber]);
@@ -230,24 +236,22 @@ function FireworkBurst({
     );
   }, [color]);
   
-  const { velocities, lifetimes, twinklePhases, debrisVelocities, sparkleSeeds, debrisSparkleSeeds } = useMemo(() => {
+  const { velocities, lifetimes, twinklePhases, sparkleSeeds } = useMemo(() => {
     const v = new Float32Array(STAR_COUNT * 3);
     const l = new Float32Array(STAR_COUNT);
     const tp = new Float32Array(STAR_COUNT);
     const sparkle = new Float32Array(STAR_COUNT);
-    const dv = new Float32Array(DEBRIS_COUNT * 3);
-    const debrisSparkle = new Float32Array(DEBRIS_COUNT);
 
     for (let i = 0; i < STAR_COUNT; i++) {
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
       let vx: number, vy: number, vz: number;
       let life = starLife * (0.6 + Math.random() * 0.4);
-      const speedVar = 0.55 + Math.random() * 0.45;
+      // Niagara-style: velocity varies with cubic curve for natural spread
+      const speedVar = Math.pow(0.4 + Math.random() * 0.6, 0.7);
       tp[i] = Math.random() * Math.PI * 2;
       sparkle[i] = Math.random() * 999 + i;
 
-      // Spherical coords: x = sin(phi)*cos(theta), y = cos(phi) [UP], z = sin(phi)*sin(theta)
       const sx = Math.sin(phi) * Math.cos(theta);
       const sy = Math.cos(phi);
       const sz = Math.sin(phi) * Math.sin(theta);
@@ -317,25 +321,13 @@ function FireworkBurst({
       l[i] = life;
     }
 
-    for (let i = 0; i < DEBRIS_COUNT; i++) {
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
-      const spd = breakSpeed * (0.15 + Math.random() * 0.35);
-      dv[i * 3] = Math.sin(phi) * Math.cos(theta) * spd;
-      dv[i * 3 + 1] = Math.cos(phi) * spd * 0.5 - 1;
-      dv[i * 3 + 2] = Math.sin(phi) * Math.sin(theta) * spd;
-      debrisSparkle[i] = Math.random() * 999 + i * 7;
-    }
-
     return {
       velocities: v,
       lifetimes: l,
       twinklePhases: tp,
-      debrisVelocities: dv,
       sparkleSeeds: sparkle,
-      debrisSparkleSeeds: debrisSparkle,
     };
-  }, [STAR_COUNT, DEBRIS_COUNT, breakSpeed, starLife, pattern]);
+  }, [STAR_COUNT, breakSpeed, starLife, pattern]);
 
   // Pre-allocate typed arrays for per-frame updates
   const positionsRef = useRef(new Float32Array(STAR_COUNT * 3));
@@ -345,8 +337,6 @@ function FireworkBurst({
   const trailVertCount = STAR_COUNT * TRAIL_LENGTH * 2;
   const trailPosRef = useRef(new Float32Array(trailVertCount * 3));
   const trailColRef = useRef(new Float32Array(trailVertCount * 3));
-  const debrisPosRef = useRef(new Float32Array(DEBRIS_COUNT * 3));
-  const debrisColRef = useRef(new Float32Array(DEBRIS_COUNT * 3));
 
   // Custom shader material for star sprites
   const starMaterial = useMemo(() => {
@@ -406,54 +396,61 @@ function FireworkBurst({
     for (let i = 0; i < STAR_COUNT; i++) {
       const vx = velocities[i * 3], vy = velocities[i * 3 + 1], vz = velocities[i * 3 + 2];
       const lt = lifetimes[i];
-      // Age each star individually: star dies when t >= lt
       const starAge = Math.min(1, t / lt);
+      
+      // Niagara-style fade curve: fast burn at start, slow ember fade at end
       const fade = Math.max(0, 1 - starAge);
-      const fadeSquared = fade * fade;
-      const fadeCubed = fadeSquared * fade;
-      // Proper analytical integration with exponential drag + real gravity + wind
+      const fadeSmooth = fade * fade * (3 - 2 * fade); // smoothstep curve
+      const fadeCubed = fade * fade * fade;
+      
+      // Analytical position with drag + gravity + wind
       const px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
       const py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * t * t;
       const pz = dragPos(vz, t, dragCoeff) + w[2] * t * t * 0.3;
       pos[i * 3] = px; pos[i * 3 + 1] = py; pos[i * 3 + 2] = pz;
 
-      // === Finale HDR Color Pipeline ===
-      // Phase 1: White-hot flash (0-3% progress) — Finale's "Contrast 1.5" effect
-      const flashIntensity = Math.max(0, 1 - progress * 33);
-      // Phase 2: Full saturated color (3-45%)
-      // Phase 3: Ember→charcoal (45-100%)
-      const emberPhase = Math.max(0, (progress - 0.4) / 0.6);
+      // === Niagara Thermal Color Pipeline ===
+      // Phase 1: White-hot flash (0-5% life)
+      const flashIntensity = Math.max(0, 1 - starAge * 20);
+      // Phase 2: Full saturated color (5-50% life)
+      // Phase 3: Thermal decay to ember (50-100% life)
+      const emberPhase = Math.max(0, (starAge - 0.45) / 0.55);
       
-      // Per-star stochastic twinkle — Finale's signature shimmer
+      // Per-star twinkle — organic shimmer
       let twinkle: number;
       if (isTrailingPattern) {
-        twinkle = 0.75 + Math.sin(twinklePhases[i] + progress * 12) * 0.25;
+        twinkle = 0.8 + Math.sin(twinklePhases[i] + starAge * 15) * 0.2;
       } else {
-        twinkle = temporalFlicker(sparkleSeeds[i], time, 0.62, 0.34, 0.38);
+        twinkle = temporalFlicker(sparkleSeeds[i], time, 0.65, 0.30, 0.35);
       }
       
-      // White-hot → saturated color
-      let r = THREE.MathUtils.lerp(baseColor.r, 1.4, flashIntensity);
-      let g = THREE.MathUtils.lerp(baseColor.g, 1.2, flashIntensity);
+      // Color over lifetime: white-hot → saturated → warm ember
+      let r = THREE.MathUtils.lerp(baseColor.r, 1.3, flashIntensity);
+      let g = THREE.MathUtils.lerp(baseColor.g, 1.15, flashIntensity);
       let b = THREE.MathUtils.lerp(baseColor.b, 0.9, flashIntensity);
       
-      // Ember phase: gradual thermal decay
+      // Ember thermal decay — more gradual, realistic cooling
       if (emberPhase > 0) {
         const ep = emberPhase * emberPhase;
-        r = THREE.MathUtils.lerp(r, emberColor.r, ep * 0.75);
-        g = THREE.MathUtils.lerp(g, emberColor.g, ep * 0.85);
-        b = THREE.MathUtils.lerp(b, emberColor.b, ep * 0.92);
+        r = THREE.MathUtils.lerp(r, emberColor.r, ep * 0.7);
+        g = THREE.MathUtils.lerp(g, emberColor.g, ep * 0.8);
+        b = THREE.MathUtils.lerp(b, emberColor.b, ep * 0.9);
       }
       
-      // Natural HDR: subtle boost, no excessive glow
-      const hdrBoost = 1.0 + flashIntensity * 1.5;
+      // Subtle HDR boost only during flash
+      const hdrBoost = 1.0 + flashIntensity * 1.2;
       
-      cols[i * 3] = r * fadeCubed * twinkle * hdrBoost;
-      cols[i * 3 + 1] = g * fadeCubed * twinkle * hdrBoost;
-      cols[i * 3 + 2] = b * fadeCubed * twinkle * hdrBoost;
+      cols[i * 3] = r * fadeSmooth * twinkle * hdrBoost;
+      cols[i * 3 + 1] = g * fadeSmooth * twinkle * hdrBoost;
+      cols[i * 3 + 2] = b * fadeSmooth * twinkle * hdrBoost;
       
-      // Dynamic star size: larger when young, shrinks as it dies — with HDR size boost
-      sizes[i] = baseSize * (0.5 + fadeSquared * 0.5) * (1 + flashIntensity * 1.0);
+      // Size over lifetime: Niagara curve — burst large, steady, then shrink
+      const sizeOverLife = starAge < 0.05 
+        ? 0.6 + starAge * 8  // rapid expansion
+        : starAge < 0.4 
+          ? 1.0  // steady plateau
+          : 1.0 - (starAge - 0.4) / 0.6 * 0.7; // gradual shrink
+      sizes[i] = baseSize * Math.max(0.1, sizeOverLife) * (1 + flashIntensity * 0.8);
       lives[i] = starAge;
 
       // Star trails — Finale's thermal gradient: white-hot → colored → dim
@@ -500,37 +497,6 @@ function FireworkBurst({
     if (tPosAttr) { tPosAttr.array = tPos; tPosAttr.needsUpdate = true; }
     if (tColAttr) { tColAttr.array = tCol; tColAttr.needsUpdate = true; }
     
-    // === Falling charcoal debris — Finale's signature burnt-out embers ===
-    if (debrisRef.current && progress > 0.25) {
-      const dPos = debrisPosRef.current;
-      const dCol = debrisColRef.current;
-      const debrisAge = (progress - 0.25) / 0.75;
-      
-      for (let i = 0; i < DEBRIS_COUNT; i++) {
-        const dvx = debrisVelocities[i * 3];
-        const dvy = debrisVelocities[i * 3 + 1];
-        const dvz = debrisVelocities[i * 3 + 2];
-        const dt = debrisAge * starLife * 0.7;
-        const dK = 0.02;
-        
-        dPos[i * 3] = dragPos(dvx, dt, dK) + w[0] * dt * dt * 0.4;
-        dPos[i * 3 + 1] = dragPos(dvy, dt, dK) + 0.5 * GRAVITY * dt * dt;
-        dPos[i * 3 + 2] = dragPos(dvz, dt, dK) + w[2] * dt * dt * 0.4;
-        
-        // Dark charcoal com cintilação determinística
-        const debrisFade = Math.max(0, 1 - debrisAge * 1.3);
-        const flicker = temporalFlicker(debrisSparkleSeeds[i], time, 0.12, 0.18, 0.22);
-        dCol[i * 3] = (0.15 + flicker * 0.8) * debrisFade;
-        dCol[i * 3 + 1] = (0.06 + flicker * 0.25) * debrisFade;
-        dCol[i * 3 + 2] = 0.02 * debrisFade;
-      }
-      
-      const dGeo = debrisRef.current.geometry;
-      const dPosAttr = dGeo.getAttribute('position') as THREE.BufferAttribute;
-      const dColAttr = dGeo.getAttribute('color') as THREE.BufferAttribute;
-      if (dPosAttr) { dPosAttr.array = dPos; dPosAttr.needsUpdate = true; }
-      if (dColAttr) { dColAttr.array = dCol; dColAttr.needsUpdate = true; }
-    }
   });
 
   // Break flash: natural scale — not oversized
@@ -557,18 +523,8 @@ function FireworkBurst({
         <lineBasicMaterial vertexColors transparent opacity={0.9} depthWrite={false} blending={THREE.AdditiveBlending} linewidth={3} />
       </lineSegments>
       
-      {/* ═══ Falling charcoal debris — Finale post-burnout embers ═══ */}
-      {progress > 0.25 && (
-        <points ref={debrisRef}>
-          <bufferGeometry>
-            <bufferAttribute attach="attributes-position" args={[new Float32Array(DEBRIS_COUNT * 3), 3]} />
-            <bufferAttribute attach="attributes-color" args={[new Float32Array(DEBRIS_COUNT * 3), 3]} />
-          </bufferGeometry>
-          <pointsMaterial size={0.15} vertexColors transparent opacity={0.7} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
-        </points>
-      )}
       
-      {/* ═══ BREAK FLASH — Finale 4-layer system ═══ */}
+      {/* ═══ BREAK FLASH — 3-layer system ═══ */}
       {/* Layer 1: Inner white-hot core — ultra HDR for maximum bloom */}
       {progress < 0.04 && (
         <mesh>
@@ -729,10 +685,7 @@ function TimelineEffects() {
         const scaledHeight = (effect.heightMeters || 4) * effectScale;
 
         if (pt === 'mine') return (
-          <group key={item.id}>
-            <MineEffect position={pos} color={effect.color} progress={progress} />
-            <SmokeTrail position={pos} progress={progress} intensity={0.5} />
-          </group>
+          <MineEffect key={item.id} position={pos} color={effect.color} progress={progress} />
         );
         if (pt === 'candle') return <RomanCandleEffect key={item.id} position={pos} color={effect.color} progress={progress} shotCount={effect.shotCount || 8} />;
         if (pt === 'waterfall') return <WaterfallEffect key={item.id} position={pos} color={effect.color} progress={progress} width={scaledHeight} />;
@@ -753,24 +706,19 @@ function TimelineEffects() {
 
         // ── Legacy effect ID routing ──
         if (eid.startsWith('comet-')) return <CometEffect key={item.id} position={pos} color={effect.color} progress={progress} direction={eid === 'comet-02' ? 'down' : 'up'} />;
-        if (eid.startsWith('shock-')) return <ShockwaveEffect key={item.id} position={burstPos} color={effect.color} progress={progress} />;
         if (eid.startsWith('mburst-')) return <MultiBurstEffect key={item.id} position={burstPos} color={effect.color} progress={progress} burstCount={eid === 'mburst-02' ? 5 : 3} />;
         if (eid.startsWith('fan-')) return <FanEffect key={item.id} position={pos} color={effect.color} progress={progress} spreadAngle={eid === 'fan-02' ? 180 : 90} />;
 
-        // ── Default: firework burst at break height with smoke + embers ──
+        // ── Default: clean firework burst at break height (no smoke, Niagara-style) ──
         if (effect.type === 'firework') return (
-          <group key={item.id}>
-            <FireworkBurst 
-              position={burstPos} 
-              color={effect.color} 
-              progress={progress} 
-              caliber={caliber}
-              pattern={effect.pattern || 'peony'}
-            />
-            <SmokeTrail position={burstPos} progress={progress} intensity={caliber * 0.4} />
-            <EmberParticles position={pos} color={effect.color} progress={progress} spreadRadius={caliber * 3} startHeight={realBreakHeight * 0.8} />
-            {caliber >= 4 && <SparkShower position={pos} color={effect.color} progress={progress} height={realBreakHeight * 0.7} spread={caliber * 2} />}
-          </group>
+          <FireworkBurst 
+            key={item.id}
+            position={burstPos} 
+            color={effect.color} 
+            progress={progress} 
+            caliber={caliber}
+            pattern={effect.pattern || 'peony'}
+          />
         );
         return <LightPoint key={item.id} position={pos} color={effect.color} />;
       })}
