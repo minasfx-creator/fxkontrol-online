@@ -47,28 +47,28 @@ function ExportSection() {
   return (
     <div className="space-y-1.5">
       {/* Drone export */}
-      <div className="bg-surface-2 rounded-sm p-1.5 space-y-1">
-        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground px-1">Drone Show</p>
-        <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-7 text-xs" onClick={handleExportVVIZ}>
-          <Box className="h-3.5 w-3.5 text-electric" />
+      <div className="rounded-xl p-2 space-y-1" style={{ background: 'hsl(var(--surface-0) / 0.5)' }}>
+        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 px-1 font-display">Drone Show</p>
+        <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-8 text-xs rounded-lg" onClick={handleExportVVIZ}>
+          <Box className="h-3.5 w-3.5 text-primary" />
           <span className="flex-1 text-left">Export .VVIZ</span>
-          <span className="text-[9px] text-muted-foreground">{droneCount} drones</span>
+          <span className="text-[9px] text-muted-foreground/40 font-mono-code">{droneCount}</span>
         </Button>
       </div>
 
       {/* Pyro export */}
-      <div className="bg-surface-2 rounded-sm p-1.5 space-y-1">
-        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground px-1">Firing System</p>
-        <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-7 text-xs" onClick={handleExportFiringCSV}>
-          <Zap className="h-3.5 w-3.5 text-safety" />
+      <div className="rounded-xl p-2 space-y-1" style={{ background: 'hsl(var(--surface-0) / 0.5)' }}>
+        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 px-1 font-display">Firing System</p>
+        <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-8 text-xs rounded-lg" onClick={handleExportFiringCSV}>
+          <Zap className="h-3.5 w-3.5 text-accent" />
           <span className="flex-1 text-left">Cobra / FireTEK CSV</span>
-          <span className="text-[9px] text-muted-foreground">{pyroCount} cues</span>
+          <span className="text-[9px] text-muted-foreground/40 font-mono-code">{pyroCount}</span>
         </Button>
       </div>
 
       {/* Generic */}
-      <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-7 text-xs" onClick={handleExportJSON}>
-        <FileJson className="h-3.5 w-3.5 text-muted-foreground" />
+      <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-8 text-xs rounded-lg" onClick={handleExportJSON}>
+        <FileJson className="h-3.5 w-3.5 text-muted-foreground/40" />
         <span className="flex-1 text-left">Export Project JSON</span>
       </Button>
     </div>
@@ -89,14 +89,14 @@ function NumberField({
   step?: number;
 }) {
   return (
-    <div className="flex items-center gap-1">
-      <span className="text-[10px] font-mono-code w-3" style={{ color }}>{label}</span>
+    <div className="flex items-center gap-1.5">
+      <span className="text-[10px] font-mono-code w-3 font-semibold" style={{ color }}>{label}</span>
       <Input
         type="number"
         value={value}
         step={step}
         onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-        className="h-6 text-[10px] font-mono-code px-1.5 bg-surface-2 border-border w-full"
+        className="h-7 text-[10px] font-mono-code px-2 rounded-lg bg-surface-0/50 border-border/15 w-full focus:border-primary/30"
       />
     </div>
   );
@@ -111,23 +111,23 @@ function PositionInspector() {
   const color = pos.type === 'pyro' ? '#FF6B35' : '#00B4D8';
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       <div className="flex items-center gap-2">
-        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
+        <div className="w-4 h-4 rounded-lg" style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}33` }} />
         <div className="flex-1">
           <Input
             value={pos.name}
             onChange={(e) => updatePosition(pos.id, { name: e.target.value })}
-            className="h-6 text-xs font-medium bg-surface-2 border-border px-1.5"
+            className="h-7 text-xs font-semibold rounded-lg bg-surface-0/50 border-border/15 px-2 focus:border-primary/30"
           />
         </div>
       </div>
-      <p className="text-[10px] text-muted-foreground capitalize">{pos.type === 'pyro' ? 'Pyro Position' : 'Drone Launch Pad'}</p>
+      <p className="text-[10px] text-muted-foreground/60 capitalize font-display">{pos.type === 'pyro' ? '🎆 Pyro Position' : '🛸 Drone Launch Pad'}</p>
 
       {/* Coordinates */}
-      <div className="bg-surface-2 rounded-sm p-2 space-y-1.5">
-        <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Position (VVIZ)</p>
-        <div className="grid grid-cols-3 gap-1">
+      <div className="rounded-xl p-2.5 space-y-2" style={{ background: 'hsl(var(--surface-0) / 0.5)' }}>
+        <p className="text-[10px] text-muted-foreground/50 font-semibold uppercase tracking-wider font-display">Position (m)</p>
+        <div className="grid grid-cols-3 gap-1.5">
           <NumberField label="X" value={pos.x} onChange={(v) => updatePosition(pos.id, { x: v })} color="hsl(0 72% 51%)" />
           <NumberField label="Y" value={pos.y} onChange={(v) => updatePosition(pos.id, { y: v })} color="hsl(142 70% 45%)" />
           <NumberField label="Z" value={pos.z} onChange={(v) => updatePosition(pos.id, { z: v })} color="hsl(207 90% 54%)" />
@@ -135,9 +135,9 @@ function PositionInspector() {
       </div>
 
       {/* Orientation */}
-      <div className="bg-surface-2 rounded-sm p-2 space-y-1.5">
-        <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Orientation (°)</p>
-        <div className="grid grid-cols-3 gap-1">
+      <div className="rounded-xl p-2.5 space-y-2" style={{ background: 'hsl(var(--surface-0) / 0.5)' }}>
+        <p className="text-[10px] text-muted-foreground/50 font-semibold uppercase tracking-wider font-display">Orientation (°)</p>
+        <div className="grid grid-cols-3 gap-1.5">
           <NumberField label="H" value={pos.heading} onChange={(v) => updatePosition(pos.id, { heading: v })} step={1} color="hsl(24 95% 53%)" />
           <NumberField label="P" value={pos.pitch} onChange={(v) => updatePosition(pos.id, { pitch: v })} step={1} color="hsl(24 95% 53%)" />
           <NumberField label="R" value={pos.roll} onChange={(v) => updatePosition(pos.id, { roll: v })} step={1} color="hsl(24 95% 53%)" />
@@ -147,7 +147,7 @@ function PositionInspector() {
       <Button
         variant="ghost"
         size="sm"
-        className="w-full justify-start gap-2 h-7 text-xs text-destructive hover:text-destructive"
+        className="w-full justify-start gap-2 h-8 text-xs text-destructive/60 hover:text-destructive hover:bg-destructive/8 rounded-lg"
         onClick={() => removePosition(pos.id)}
       >
         <Trash2 className="h-3 w-3" /> Remove Position
@@ -199,14 +199,16 @@ export default function PropertiesPanel({ onToggleEffectEditor, showEffectEditor
     timelineItems.filter(i => i.positionId === posId).length;
 
   return (
-    <div className="h-full flex flex-col bg-card border-l border-border">
+    <div className="h-full flex flex-col border-l border-border/10" style={{ background: 'hsl(var(--card))' }}>
       {/* Header */}
-      <div className="px-3 py-2 border-b border-border flex items-center gap-2">
-        <Settings2 className="h-3.5 w-3.5 text-muted-foreground" />
-        <h2 className="text-xs font-semibold text-foreground uppercase tracking-wider">Properties</h2>
+      <div className="px-3.5 py-2.5 border-b border-border/10 flex items-center gap-2">
+        <div className="w-5 h-5 rounded-lg bg-gradient-to-br from-primary/10 to-accent/8 flex items-center justify-center">
+          <Settings2 className="h-3 w-3 text-primary/70" />
+        </div>
+        <h2 className="text-[11px] font-bold text-foreground uppercase tracking-[0.1em] font-display">Properties</h2>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
+      <div className="flex-1 overflow-y-auto px-3.5 py-3 space-y-3">
         {showPosition ? (
           <>
             <PositionInspector />
@@ -246,37 +248,37 @@ export default function PropertiesPanel({ onToggleEffectEditor, showEffectEditor
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <div className="bg-surface-2 rounded-sm p-2">
-                  <p className="text-[10px] text-muted-foreground mb-0.5">Duration</p>
-                  <p className="text-xs font-mono-code text-foreground">{selectedEffect.duration}s</p>
+                <div className="rounded-xl p-2.5" style={{ background: 'hsl(var(--surface-0) / 0.5)' }}>
+                  <p className="text-[10px] text-muted-foreground/40 mb-0.5 font-display">Duration</p>
+                  <p className="text-xs font-mono-code text-foreground font-semibold">{selectedEffect.duration}s</p>
                 </div>
-                <div className="bg-surface-2 rounded-sm p-2">
-                  <p className="text-[10px] text-muted-foreground mb-0.5">Cost</p>
-                  <p className="text-xs font-mono-code text-safety">${selectedEffect.cost}</p>
+                <div className="rounded-xl p-2.5" style={{ background: 'hsl(var(--surface-0) / 0.5)' }}>
+                  <p className="text-[10px] text-muted-foreground/40 mb-0.5 font-display">Cost</p>
+                  <p className="text-xs font-mono-code text-accent font-semibold">${selectedEffect.cost}</p>
                 </div>
               </div>
 
               {/* Finale 3D fields */}
               {(selectedEffect.caliber || selectedEffect.prefire || selectedEffect.safetyDistance) && (
-                <div className="bg-surface-2 rounded-sm p-2 space-y-1">
-                  <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Pyro Specs</p>
+                <div className="rounded-xl p-2.5 space-y-1.5" style={{ background: 'hsl(var(--surface-0) / 0.5)' }}>
+                  <p className="text-[10px] text-muted-foreground/40 font-semibold uppercase tracking-wider font-display">Pyro Specs</p>
                   <div className="grid grid-cols-3 gap-1 text-[10px] font-mono-code">
-                    {selectedEffect.caliber && <div><span className="text-muted-foreground">Cal:</span> {selectedEffect.caliber}"</div>}
-                    {selectedEffect.heightMeters && <div><span className="text-muted-foreground">H:</span> {selectedEffect.heightMeters}m</div>}
-                    {selectedEffect.prefire && <div><span className="text-muted-foreground">PFT:</span> {selectedEffect.prefire}s</div>}
+                    {selectedEffect.caliber && <div><span className="text-muted-foreground/40">Cal:</span> <span className="text-foreground">{selectedEffect.caliber}"</span></div>}
+                    {selectedEffect.heightMeters && <div><span className="text-muted-foreground/40">H:</span> <span className="text-foreground">{selectedEffect.heightMeters}m</span></div>}
+                    {selectedEffect.prefire && <div><span className="text-muted-foreground/40">PFT:</span> <span className="text-foreground">{selectedEffect.prefire}s</span></div>}
                   </div>
                   <div className="grid grid-cols-2 gap-1 text-[10px] font-mono-code">
-                    {selectedEffect.safetyDistance && <div><span className="text-muted-foreground">Safety:</span> {selectedEffect.safetyDistance}m</div>}
-                    {selectedEffect.pattern && <div><span className="text-muted-foreground">Pattern:</span> {selectedEffect.pattern}</div>}
+                    {selectedEffect.safetyDistance && <div><span className="text-muted-foreground/40">Safety:</span> <span className="text-foreground">{selectedEffect.safetyDistance}m</span></div>}
+                    {selectedEffect.pattern && <div><span className="text-muted-foreground/40">Pattern:</span> <span className="text-foreground">{selectedEffect.pattern}</span></div>}
                   </div>
                 </div>
               )}
 
-              <div className="bg-surface-2 rounded-sm p-2">
-                <p className="text-[10px] text-muted-foreground mb-1">Color</p>
+              <div className="rounded-xl p-2.5" style={{ background: 'hsl(var(--surface-0) / 0.5)' }}>
+                <p className="text-[10px] text-muted-foreground/40 mb-1 font-display">Color</p>
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: selectedEffect.color }} />
-                  <span className="text-xs font-mono-code text-muted-foreground">{selectedEffect.color}</span>
+                  <div className="w-5 h-5 rounded-lg border border-border/20" style={{ backgroundColor: selectedEffect.color, boxShadow: `0 0 8px ${selectedEffect.color}33` }} />
+                  <span className="text-xs font-mono-code text-muted-foreground/50">{selectedEffect.color}</span>
                 </div>
               </div>
 

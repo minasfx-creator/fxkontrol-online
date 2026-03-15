@@ -29,21 +29,21 @@ function TimecodeDisplay() {
   const tcStr = formatTimecode(tc);
 
   return (
-    <div className="flex items-center gap-2.5 px-3 py-1 glass rounded-lg border border-border/20">
+    <div className="flex items-center gap-2.5 px-3 py-1 rounded-xl border border-border/10" style={{ background: 'hsl(var(--surface-0) / 0.5)' }}>
       <span className="font-mono-code text-sm tracking-[0.14em] text-primary font-bold tabular-nums">{tcStr}</span>
       <div className="flex items-center gap-1.5">
         <div className={cn(
           "w-2 h-2 rounded-full transition-colors",
-          isPlaying ? "bg-success animate-pulse-glow" : "bg-muted-foreground/40"
+          isPlaying ? "bg-success/80 animate-pulse-glow" : "bg-muted-foreground/20"
         )} />
         {running && (
           <div className={cn(
             "w-2 h-2 rounded-full",
-            locked ? "bg-primary" : "bg-warning animate-pulse"
+            locked ? "bg-primary/60" : "bg-warning/60 animate-pulse"
           )} />
         )}
       </div>
-      <span className="text-[9px] font-mono-code text-muted-foreground/60">
+      <span className="text-[9px] font-mono-code text-muted-foreground/30 tabular-nums">
         {frameRate}{tc.dropFrame ? 'DF' : ''}
       </span>
     </div>
@@ -57,30 +57,30 @@ function DropdownMenu({ label, icon: LabelIcon, items }: { label: string; icon?:
       <button
         onClick={() => setOpen(!open)}
         className={cn(
-          "text-[10px] font-medium text-muted-foreground hover:text-foreground px-2.5 py-1.5 rounded-md transition-all flex items-center gap-1.5",
-          open ? "bg-surface-3/80 text-foreground" : "hover:bg-surface-2/60"
+          "text-[10px] font-medium px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5",
+          open ? "bg-surface-2/60 text-foreground" : "text-muted-foreground/60 hover:text-muted-foreground hover:bg-surface-0/40"
         )}
       >
-        {LabelIcon && <LabelIcon className="w-3.5 h-3.5 text-primary/60" />}
+        {LabelIcon && <LabelIcon className="w-3.5 h-3.5 text-primary/40" />}
         <span className="tracking-wide uppercase font-mono-code">{label}</span>
-        <ChevronDown className={cn("w-2.5 h-2.5 transition-transform", open && "rotate-180")} />
+        <ChevronDown className={cn("w-2.5 h-2.5 transition-transform text-muted-foreground/30", open && "rotate-180")} />
       </button>
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div
-            className="absolute top-full left-0 mt-1 z-50 glass border border-border/20 rounded-xl shadow-2xl shadow-black/40 py-1.5 min-w-[200px] animate-fxk-slide-down"
+            className="absolute top-full left-0 mt-1.5 z-50 border border-border/15 rounded-2xl shadow-2xl shadow-black/50 py-2 min-w-[220px] animate-fxk-slide-down backdrop-blur-xl"
+            style={{ background: 'hsl(var(--popover))' }}
           >
-            {items.map((item) => {
+            {items.map((item, i) => {
               const Icon = item.icon;
               return (
                 <button
                   key={item.label}
                   onClick={() => { item.onClick(); setOpen(false); }}
-                  className="w-full text-left px-3.5 py-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-surface-3/50 flex items-center gap-2.5 transition-colors rounded-lg mx-0.5"
-                  style={{ width: 'calc(100% - 4px)' }}
+                  className="w-full text-left px-4 py-2 text-[11px] text-muted-foreground/70 hover:text-foreground hover:bg-surface-2/40 flex items-center gap-2.5 transition-colors"
                 >
-                  <Icon className="w-3.5 h-3.5 text-primary/50" /> {item.label}
+                  <Icon className="w-3.5 h-3.5 text-primary/40" /> {item.label}
                 </button>
               );
             })}
@@ -553,18 +553,18 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       {/* Timecode Display */}
       <TimecodeDisplay />
 
-      {/* Status */}
-      <div className="flex items-center gap-3 text-[10px] font-mono-code text-muted-foreground/60 ml-3">
-        <div className="flex items-center gap-2 glass-subtle px-2.5 py-1 rounded-lg border border-border/10">
-          <span>{timelineItems.length} cues</span>
-          <span className="text-border">·</span>
-          <span>{positions.length} pos</span>
+      {/* Status — refined */}
+      <div className="flex items-center gap-2.5 text-[10px] font-mono-code text-muted-foreground/40 ml-3">
+        <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-surface-0/40 border border-border/8">
+          <span className="tabular-nums"><span className="text-foreground/60">{timelineItems.length}</span> cues</span>
+          <span className="text-border/30">·</span>
+          <span className="tabular-nums"><span className="text-foreground/60">{positions.length}</span> pos</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse-glow" />
-          <span className="text-success/80">SYNC</span>
+        <div className="flex items-center gap-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-success/60 animate-pulse-glow" />
+          <span className="text-success/50 text-[9px]">SYNC</span>
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-destructive/10 hover:text-destructive" title="Sair" onClick={signOut}>
+        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-destructive/8 hover:text-destructive text-muted-foreground/30" title="Sair" onClick={signOut}>
           <LogOut className="h-3.5 w-3.5" />
         </Button>
         <LanguageSwitcher />
