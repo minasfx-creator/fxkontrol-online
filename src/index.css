@@ -31,18 +31,18 @@
     --destructive: 0 80% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 225 8% 16%;
+    --border: 225 10% 14%;
     --input: 225 8% 16%;
     --ring: 195 100% 50%;
 
-    --radius: 0.375rem;
+    --radius: 0.5rem;
 
-    /* FX KONTROL surface hierarchy */
-    --surface-0: 225 12% 6%;
-    --surface-1: 225 10% 8%;
-    --surface-2: 225 9% 11%;
-    --surface-3: 225 8% 14%;
-    --surface-4: 225 7% 18%;
+    /* FX KONTROL surface hierarchy — refined gradient */
+    --surface-0: 225 14% 5%;
+    --surface-1: 225 12% 8%;
+    --surface-2: 225 10% 11%;
+    --surface-3: 225 9% 15%;
+    --surface-4: 225 8% 19%;
 
     /* FX KONTROL accent palette */
     --electric: 195 100% 50%;
@@ -52,8 +52,8 @@
     --success: 155 80% 42%;
     --success-foreground: 0 0% 100%;
     --warning: 42 95% 52%;
-    --timeline-bg: 225 12% 5%;
-    --timeline-track: 225 10% 10%;
+    --timeline-bg: 225 14% 4%;
+    --timeline-track: 225 10% 9%;
 
     /* FX KONTROL brand */
     --fxk-cyan: 195 100% 50%;
@@ -62,14 +62,19 @@
     --fxk-violet: 270 70% 55%;
     --fxk-magenta: 330 85% 55%;
 
-    --sidebar-background: 225 11% 7%;
+    --sidebar-background: 225 13% 6%;
     --sidebar-foreground: 210 15% 78%;
     --sidebar-primary: 195 100% 50%;
     --sidebar-primary-foreground: 225 20% 5%;
     --sidebar-accent: 225 8% 14%;
     --sidebar-accent-foreground: 210 20% 90%;
-    --sidebar-border: 225 8% 14%;
+    --sidebar-border: 225 10% 12%;
     --sidebar-ring: 195 100% 50%;
+
+    /* Glass effect tokens */
+    --glass-bg: 225 12% 8% / 0.75;
+    --glass-border: 225 10% 20% / 0.4;
+    --glass-shine: 195 100% 50% / 0.05;
   }
 }
 
@@ -85,15 +90,15 @@
 
   /* Scrollbar — ultra-thin dark */
   ::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
+    width: 4px;
+    height: 4px;
   }
   ::-webkit-scrollbar-track {
-    background: hsl(var(--surface-0));
+    background: transparent;
   }
   ::-webkit-scrollbar-thumb {
     background: hsl(var(--surface-4));
-    border-radius: 3px;
+    border-radius: 4px;
   }
   ::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--muted-foreground));
@@ -101,6 +106,21 @@
 }
 
 @layer utilities {
+  /* Glass effects */
+  .glass {
+    background: hsl(var(--glass-bg));
+    backdrop-filter: blur(16px) saturate(1.4);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  }
+  .glass-subtle {
+    background: hsl(var(--glass-bg));
+    backdrop-filter: blur(8px) saturate(1.2);
+    -webkit-backdrop-filter: blur(8px) saturate(1.2);
+  }
+  .glass-border {
+    border-color: hsl(var(--glass-border));
+  }
+
   .glow-electric {
     box-shadow: 0 0 16px hsl(var(--electric) / 0.35), 0 0 4px hsl(var(--electric) / 0.2);
   }
@@ -147,10 +167,15 @@
     0% { background-position: -200% center; }
     100% { background-position: 200% center; }
   }
+  @keyframes fxk-slide-down {
+    0% { opacity: 0; transform: translateY(-4px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
 
   .animate-fxk-fade-up { animation: fxk-fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   .animate-fxk-fade-scale { animation: fxk-fade-scale 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   .animate-fxk-glow { animation: fxk-glow-pulse 3s ease-in-out infinite; }
+  .animate-fxk-slide-down { animation: fxk-slide-down 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
   /* Panel hover micro-interaction */
   @keyframes fxk-panel-slide {
@@ -183,5 +208,30 @@
   /* Dock button glow on active */
   .dock-active-glow {
     box-shadow: 0 0 12px hsl(var(--electric) / 0.3), inset 0 0 8px hsl(var(--electric) / 0.1);
+  }
+
+  /* Modern toolbar button group */
+  .btn-group {
+    @apply flex items-center gap-0.5 bg-surface-0/60 rounded-lg p-0.5;
+  }
+  .btn-tool {
+    @apply h-7 px-2 text-[10px] font-mono-code gap-1 rounded-md transition-all duration-150;
+  }
+  .btn-tool:hover {
+    @apply bg-surface-3/80;
+  }
+  .btn-tool-active {
+    @apply bg-primary/15 text-primary shadow-[0_0_8px_hsl(var(--primary)/0.2)];
+  }
+
+  /* Refined input fields */
+  .input-modern {
+    @apply h-8 text-xs bg-surface-0/80 border-border/30 rounded-lg transition-all duration-200;
+    @apply focus:border-primary/40 focus:ring-1 focus:ring-primary/10 focus:bg-surface-1;
+  }
+
+  /* Subtle inner shadow for depth */
+  .depth-inset {
+    box-shadow: inset 0 1px 3px hsl(var(--surface-0) / 0.5);
   }
 }

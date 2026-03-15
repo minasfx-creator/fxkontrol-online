@@ -20,7 +20,7 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
     ],
   },
   {
-    title: 'Show Design',
+    title: 'Design',
     icon: Sparkles,
     items: [
       { id: 'swarmgpt', label: 'SwarmGPT AI', icon: Sparkles, shortcut: 'A' },
@@ -45,7 +45,7 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
     ],
   },
   {
-    title: 'Export & Media',
+    title: 'Export',
     icon: Download,
     items: [
       { id: 'firing', label: 'Firing Export', icon: Download, shortcut: 'X' },
@@ -79,7 +79,7 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
     ],
   },
   {
-    title: 'Integration',
+    title: 'Integ.',
     icon: Globe,
     items: [
       { id: 'dmx', label: 'DMX512', icon: Lightbulb },
@@ -102,31 +102,16 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
   },
 ];
 
-// Flatten all items with section index for dock effect
-function flattenItems(sections: typeof PANEL_SECTIONS) {
-  const items: { id: PanelId; label: string; icon: typeof Route; shortcut?: string; sectionIdx: number; type: 'item' }[] = [];
-  sections.forEach((section, si) => {
-    section.items.forEach(item => {
-      items.push({ ...item, sectionIdx: si, type: 'item' });
-    });
-  });
-  return items;
-}
-
 interface PanelTabBarProps {
   activePanel: PanelId | null;
   onTogglePanel: (id: PanelId) => void;
 }
 
-/**
- * macOS Dock-style magnification effect for the sidebar icons.
- * When the mouse hovers over an icon, it scales up and neighbors scale proportionally.
- */
 export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarProps) {
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [mouseY, setMouseY] = useState<number | null>(null);
+  const buttonRefs = useRef<Record<number, HTMLButtonElement | null>>({});
 
   const toggleSection = (title: string) => {
     setCollapsedSections(prev => {
@@ -145,39 +130,17 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
 
   const handleMouseLeave = useCallback(() => {
     setMouseY(null);
-    setHoveredIndex(null);
   }, []);
 
-  // Calculate scale for each button based on distance from mouse
-  const getScale = (buttonIndex: number, buttonRefs: Map<number, HTMLButtonElement>) => {
-    if (mouseY === null) return 1;
-    const btn = buttonRefs.get(buttonIndex);
-    if (!btn || !containerRef.current) return 1;
-    const containerRect = containerRef.current.getBoundingClientRect();
-    const btnRect = btn.getBoundingClientRect();
-    const btnCenter = btnRect.top + btnRect.height / 2 - containerRect.top;
-    const distance = Math.abs(mouseY - btnCenter);
-    const maxDist = 80; // pixels of influence
-    const maxScale = 1.5;
-    const minScale = 1;
-    if (distance > maxDist) return minScale;
-    const t = 1 - distance / maxDist;
-    // Smooth cosine curve like macOS dock
-    const scale = minScale + (maxScale - minScale) * (Math.cos((1 - t) * Math.PI) + 1) / 2;
-    return scale;
-  };
-
-  // We track button refs for position calculation
-  const buttonRefs = useRef<Record<number, HTMLButtonElement | null>>({});
   let globalIdx = 0;
 
   return (
-    <TooltipProvider delayDuration={300}>
-      <div className="w-[52px] flex-shrink-0 bg-card/80 backdrop-blur-md border-l border-border/40 flex flex-col">
+    <TooltipProvider delayDuration={200}>
+      <div className="w-[48px] flex-shrink-0 glass border-l border-border/15 flex flex-col">
         <ScrollArea className="flex-1">
           <div
             ref={containerRef}
-            className="flex flex-col items-center py-1.5 gap-0"
+            className="flex flex-col items-center py-2 gap-0"
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
           >
@@ -194,30 +157,29 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
                       <button
                         onClick={() => toggleSection(section.title)}
                         className={cn(
-                          "w-full flex items-center justify-center py-1.5 transition-colors relative group",
+                          "w-full flex items-center justify-center py-2 transition-all relative group",
                           hasActive
                             ? "text-primary"
-                            : "text-muted-foreground/50 hover:text-muted-foreground"
+                            : "text-muted-foreground/40 hover:text-muted-foreground/70"
                         )}
                       >
                         {hasActive && (
-                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r" />
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-5 bg-primary rounded-r shadow-[0_0_6px_hsl(var(--primary)/0.4)]" />
                         )}
                         <div className="flex flex-col items-center gap-0.5">
                           <SectionIcon className="w-3.5 h-3.5 transition-transform group-hover:scale-110" />
-                          <span className="text-[6px] font-bold tracking-widest uppercase leading-none opacity-60">{section.title.split(' ')[0]}</span>
-                          <span className="text-[6px] text-muted-foreground/40">{isCollapsed ? '▸' : '▾'}</span>
+                          <span className="text-[6px] font-bold tracking-[0.15em] uppercase leading-none opacity-50 font-display">{section.title}</span>
                         </div>
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent side="left" className="text-[10px] font-medium">
+                    <TooltipContent side="left" className="text-[10px] font-medium bg-surface-2 border-border/20">
                       {section.title}
                     </TooltipContent>
                   </Tooltip>
 
                   {/* Section items with dock magnification */}
                   {!isCollapsed && (
-                    <div className="flex flex-col items-center gap-[2px] pb-1">
+                    <div className="flex flex-col items-center gap-[1px] pb-1">
                       {section.items.map(({ id, label, icon: Icon, shortcut }) => {
                         const isActive = activePanel === id;
                         const currentIdx = globalIdx++;
@@ -231,10 +193,10 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
                           const btnRect = btn.getBoundingClientRect();
                           const btnCenter = btnRect.top + btnRect.height / 2 - containerRect.top;
                           const distance = Math.abs(mouseY - btnCenter);
-                          const maxDist = 70;
+                          const maxDist = 60;
                           if (distance < maxDist) {
                             const t = 1 - distance / maxDist;
-                            scale = 1 + 0.45 * (Math.cos((1 - t) * Math.PI) + 1) / 2;
+                            scale = 1 + 0.4 * (Math.cos((1 - t) * Math.PI) + 1) / 2;
                           }
                         }
 
@@ -248,23 +210,23 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
                                 onClick={() => onTogglePanel(id)}
                                 style={{
                                   transform: `scale(${scale})`,
-                                  transition: 'transform 0.15s cubic-bezier(0.25, 0.1, 0.25, 1)',
+                                  transition: 'transform 0.12s cubic-bezier(0.25, 0.1, 0.25, 1)',
                                   zIndex: scale > 1.1 ? 10 : 1,
                                 }}
                                 className={cn(
-                                  "w-9 h-9 flex items-center justify-center rounded-lg relative transition-all duration-150",
+                                  "w-8 h-8 flex items-center justify-center rounded-lg relative transition-colors duration-150",
                                   isActive
-                                    ? "bg-primary/20 text-primary dock-active-glow"
-                                    : "text-muted-foreground/60 hover:text-foreground hover:bg-surface-3/50"
+                                    ? "bg-primary/15 text-primary shadow-[0_0_10px_hsl(var(--primary)/0.2)]"
+                                    : "text-muted-foreground/50 hover:text-foreground hover:bg-surface-2/40"
                                 )}
                               >
                                 {isActive && (
-                                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 bg-primary rounded-r" />
+                                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-3.5 bg-primary rounded-r" />
                                 )}
-                                <Icon className="w-[18px] h-[18px]" />
+                                <Icon className="w-4 h-4" />
                               </button>
                             </TooltipTrigger>
-                            <TooltipContent side="left" className="text-[10px] font-medium" sideOffset={scale > 1.1 ? 12 : 6}>
+                            <TooltipContent side="left" className="text-[10px] font-medium bg-surface-2 border-border/20" sideOffset={scale > 1.1 ? 10 : 6}>
                               {label}{shortcut ? ` (${shortcut})` : ''}
                             </TooltipContent>
                           </Tooltip>
@@ -275,7 +237,7 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
 
                   {/* Divider */}
                   {si < PANEL_SECTIONS.length - 1 && (
-                    <div className="mx-3 border-t border-border/20 my-1" />
+                    <div className="mx-3 border-t border-border/10 my-1" />
                   )}
                 </div>
               );
