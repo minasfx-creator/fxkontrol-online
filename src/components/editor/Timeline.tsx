@@ -393,9 +393,6 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
     e.dataTransfer.dropEffect = 'copy';
   }, []);
 
-  // Only render when drone formations are configured
-  if (droneFormations.length === 0) return null;
-
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     const effectId = e.dataTransfer.getData('application/effect-id');
@@ -416,6 +413,9 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
       position: { x: 0, y: 20, z: 0 },
     });
   }, [pixelsPerSecond, duration, addTimelineItem, bpm, snapToBeat]);
+
+  // Only render when drone formations are configured
+  if (droneFormations.length === 0) return null;
 
   return (
     <div className="flex border-b border-border/50">
