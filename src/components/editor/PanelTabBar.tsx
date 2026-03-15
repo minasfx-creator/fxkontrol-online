@@ -96,7 +96,6 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
     items: [
       { id: 'scene', label: 'Scene Editor', icon: Cog, shortcut: 'N' },
       { id: 'wind', label: 'Wind/Camera', icon: Wind },
-      { id: 'background', label: 'Backgrounds', icon: Image },
       { id: 'maps', label: 'Google Maps', icon: Globe },
       { id: 'sitelayout', label: 'Site Layout', icon: Map },
     ],
