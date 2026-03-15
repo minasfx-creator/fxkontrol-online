@@ -384,10 +384,7 @@ const FORMATION_PRESETS_MAP: Record<string, string> = {
 function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number; duration: number }) {
   const { droneFormations, timelineItems, selectedTimelineItemId, selectTimelineItem, addTimelineItem, bpm, snapToBeat } = useProjectStore();
   
-  // Only render when drone formations are configured
-  if (droneFormations.length === 0) return null;
-
-  const droneFxItems = timelineItems.filter((i) => i.trackIndex === 3);
+  const droneFxItems = useMemo(() => timelineItems.filter((i) => i.trackIndex === 3), [timelineItems]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     const hasEffect = e.dataTransfer.types.includes('application/effect-id');
@@ -395,6 +392,9 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
   }, []);
+
+  // Only render when drone formations are configured
+  if (droneFormations.length === 0) return null;
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
