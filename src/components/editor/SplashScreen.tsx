@@ -6,9 +6,10 @@ import { cn } from '@/lib/utils';
 
 interface SplashScreenProps {
   onStart: (fleetSize: number, pyroPositions: number) => void;
+  showVideoBackground?: boolean;
 }
 
-const SplashScreen = forwardRef<HTMLDivElement, SplashScreenProps>(function SplashScreen({ onStart }, ref) {
+const SplashScreen = forwardRef<HTMLDivElement, SplashScreenProps>(function SplashScreen({ onStart, showVideoBackground = false }, ref) {
   const [fleetSize, setFleetSize] = useState(500);
   const [pyroPositions, setPyroPositions] = useState(24);
   const [phase, setPhase] = useState<'intro' | 'ready' | 'exit'>('intro');
