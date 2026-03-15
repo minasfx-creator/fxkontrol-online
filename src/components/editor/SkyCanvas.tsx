@@ -236,9 +236,12 @@ function FireworkBurst({
   const pointsRef = useRef<THREE.Points>(null);
   const trailRef = useRef<THREE.LineSegments>(null);
   
-  // Niagara-style: particle count scales with shell volume (4/3 π r³)
-  const STAR_COUNT = useMemo(() => Math.min(3000, Math.round(150 + caliber * caliber * 32)), [caliber]);
-  const TRAIL_LENGTH = useMemo(() => Math.min(24, 10 + Math.floor(caliber * 1.5)), [caliber]);
+  // ═══ LOD — reduce particles & trails at distance ═══
+  const lod = useLOD(position);
+  
+  // Niagara-style: particle count scales with shell volume, reduced by LOD
+  const STAR_COUNT = useMemo(() => Math.min(3000, Math.round((150 + caliber * caliber * 32) * lod.particleMultiplier)), [caliber, lod.particleMultiplier]);
+  const TRAIL_LENGTH = useMemo(() => Math.max(2, Math.min(24, Math.floor((10 + caliber * 1.5) * lod.trailLength))), [caliber, lod.trailLength]);
   
   // Real break speed from pyroPhysics — caliber proportional (m/s)
   const breakSpeed = useMemo(() => getBreakSpeed(caliber), [caliber]);
