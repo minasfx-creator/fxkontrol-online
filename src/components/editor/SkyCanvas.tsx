@@ -2134,7 +2134,7 @@ export default function SkyCanvas() {
         <TimelineEffects />
         <LiveSFXEffects />
         <AudioSpectrumVisualizer />
-        <GeofenceVisual />
+        {/* GeofenceVisual removed — only shown when geofence explicitly configured */}
         <PlaybackClock />
         <CameraAnimator />
         <CameraPathPreview />
