@@ -1851,41 +1851,87 @@ function LensFlareController() {
   return null;
 }
 
-// ═══ SKY SCATTER CONTROLLER — atmosphere reflects explosion colors ═══
-function SkyScatterController() {
-  const scatterColor = useRef(new THREE.Color(0, 0, 0));
-  const scatterIntensity = useRef(0);
+// ═══ GPU SPARK TRAIL CONTROLLER — incandescent trails with 32-point history ═══
+function SparkTrailController() {
+  const { scene } = useThree();
+  const sparksRef = useRef<SparkState[]>([]);
+  const systemRef = useRef<ReturnType<typeof createSparkTrailSystem> | null>(null);
+
+  useEffect(() => {
+    const sys = createSparkTrailSystem();
+    systemRef.current = sys;
+    scene.add(sys.points);
+    return () => {
+      scene.remove(sys.points);
+      sys.geometry.dispose();
+    };
+  }, [scene]);
 
   useFrame((_, delta) => {
-    // Find active explosions and accumulate scatter
-    const { timelineItems, currentTime } = useProjectStore.getState();
-    let maxIntensity = 0;
-    const accumColor = new THREE.Color(0, 0, 0);
+    const sys = systemRef.current;
+    if (!sys) return;
+    const sparks = sparksRef.current;
+    const dt = Math.min(delta, 0.05); // cap dt
 
+    // Spawn sparks from fresh bursts
+    const { timelineItems, currentTime } = useProjectStore.getState();
     for (const item of timelineItems) {
       const elapsed = currentTime - item.startTime;
-      if (elapsed >= 0 && elapsed < 0.3) {
+      if (elapsed >= 0 && elapsed < 0.04 && sparks.length < 1600) {
         const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
         if (effect && effect.type === 'firework') {
-          const c = new THREE.Color(effect.color);
-          const intensity = 0.4 * (1 - elapsed / 0.3);
-          accumColor.add(c.multiplyScalar(intensity * 0.3));
-          maxIntensity = Math.max(maxIntensity, intensity);
+          const caliber = effect.caliber || 4;
+          const breakH = getBreakHeight(caliber);
+          const breakSpd = getBreakSpeed(caliber);
+          const compound = hexToCompound(effect.color);
+          const baseColor = thermalColor(compound, 1.0);
+          const sparkCount = Math.min(24, Math.round(caliber * 3));
+          
+          for (let s = 0; s < sparkCount; s++) {
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+            const speed = breakSpd * (0.4 + Math.random() * 0.6);
+            sparks.push({
+              position: new THREE.Vector3(
+                item.position.x,
+                item.position.y + breakH,
+                item.position.z
+              ),
+              velocity: new THREE.Vector3(
+                Math.sin(phi) * Math.cos(theta) * speed,
+                Math.sin(phi) * Math.sin(theta) * speed * 0.8 + breakSpd * 0.2,
+                Math.cos(phi) * speed
+              ),
+              color: baseColor.clone(),
+              life: 0.8 + Math.random() * 1.5 * (caliber / 6),
+              maxLife: 0.8 + 1.5 * (caliber / 6),
+              size: 0.5 + Math.random() * 0.5,
+              trailHistory: [],
+            });
+          }
         }
       }
     }
 
-    if (maxIntensity > 0.05) {
-      scatterColor.current.copy(accumColor);
-      scatterIntensity.current = maxIntensity;
-    } else {
-      // Decay
-      scatterIntensity.current *= Math.max(0, 1 - delta * 3);
+    // Update physics & trails
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      updateSparkTrail(sparks[i], dt, 0.04, -9.81);
+      // Thermal color cooling
+      const lifeRatio = Math.max(0, sparks[i].life / sparks[i].maxLife);
+      const compound = hexToCompound('#' + sparks[i].color.getHexString());
+      sparks[i].color.copy(thermalColor(compound, lifeRatio));
+      
+      if (sparks[i].life <= 0) {
+        sparks.splice(i, 1);
+      }
     }
 
-    // Update the SkyGradient uniforms via scene traversal
-    // The SkyGradient sphere is the BackSide sphere at radius ~500
-    // We access it through the store-driven uniforms approach
+    // Write to GPU buffers
+    const vertCount = writeSparkTrailsToBuffers(sparks, sys.positions, sys.colors, sys.opacities);
+    sys.geometry.attributes.position.needsUpdate = true;
+    sys.geometry.attributes.color.needsUpdate = true;
+    (sys.geometry.attributes as any).opacity.needsUpdate = true;
+    sys.geometry.setDrawRange(0, vertCount);
   });
 
   return null;
