@@ -104,21 +104,25 @@ export default function LaserEffect({
 
       const finalOpacity = intensity * beamIntensity;
 
-      // Core — bright thin beam
+      // Core — ultra-bright thin beam (pushes above 1.0 for HDR bloom catch)
       const core = beamGroup.children[0] as THREE.Mesh;
-      if (core) (core.material as THREE.MeshBasicMaterial).opacity = 0.55 * finalOpacity;
+      if (core) {
+        const mat = core.material as THREE.MeshBasicMaterial;
+        mat.opacity = 0.7 * finalOpacity;
+        mat.color.copy(baseColor).multiplyScalar(2.5); // HDR push
+      }
 
       // Inner glow
       const glow1 = beamGroup.children[1] as THREE.Mesh;
-      if (glow1) (glow1.material as THREE.MeshBasicMaterial).opacity = 0.15 * finalOpacity;
+      if (glow1) (glow1.material as THREE.MeshBasicMaterial).opacity = 0.2 * finalOpacity;
 
       // Outer glow
       const glow2 = beamGroup.children[2] as THREE.Mesh;
-      if (glow2) (glow2.material as THREE.MeshBasicMaterial).opacity = 0.06 * finalOpacity;
+      if (glow2) (glow2.material as THREE.MeshBasicMaterial).opacity = 0.09 * finalOpacity;
 
       // Wide atmospheric glow
       const atmo = beamGroup.children[3] as THREE.Mesh;
-      if (atmo) (atmo.material as THREE.MeshBasicMaterial).opacity = 0.025 * finalOpacity;
+      if (atmo) (atmo.material as THREE.MeshBasicMaterial).opacity = 0.04 * finalOpacity;
     }
 
     // Source halo
