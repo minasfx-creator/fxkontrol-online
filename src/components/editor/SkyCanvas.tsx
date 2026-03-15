@@ -1341,7 +1341,7 @@ function GrassGround() {
 // --- Atmospheric dust particles floating in the air ---
 function AtmosphericParticles() {
   const pointsRef = useRef<THREE.Points>(null);
-  const count = 500;
+  const count = 200;
   
   const { positions: posData, sizes, velocities: velData } = useMemo(() => {
     const pos = new Float32Array(count * 3);
