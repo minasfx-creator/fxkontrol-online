@@ -2442,6 +2442,84 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
   );
 }
 
+/** Viewport playback controls — always visible at bottom center of 3D viewport */
+function ViewportPlaybackControls() {
+  const { isPlaying, setPlaying, currentTime, setCurrentTime, duration, playbackSpeed } = useProjectStore();
+
+  const formatTime = (t: number) => {
+    const m = Math.floor(t / 60);
+    const s = Math.floor(t % 60);
+    const f = Math.floor((t % 1) * 30);
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}:${String(f).padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="absolute bottom-14 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5">
+      {/* Rewind */}
+      <button
+        onClick={() => { setCurrentTime(0); setPlaying(false); }}
+        className="bg-card/85 backdrop-blur-xl border border-border/25 text-muted-foreground hover:text-foreground hover:bg-card/95 w-8 h-8 rounded-lg flex items-center justify-center transition-all shadow-lg"
+        title="Rewind (Home)"
+      >
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M1 1h2v10H1V1zm3 5l6 5V1L4 6z"/></svg>
+      </button>
+
+      {/* Play/Pause */}
+      <button
+        onClick={() => setPlaying(!isPlaying)}
+        className={cn(
+          "backdrop-blur-xl border w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-lg",
+          isPlaying
+            ? "bg-primary/20 text-primary border-primary/30 shadow-primary/15"
+            : "bg-card/85 text-foreground border-border/25 hover:bg-card/95"
+        )}
+        title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
+      >
+        {isPlaying ? (
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="2" y="1" width="3.5" height="12" rx="0.5"/><rect x="8.5" y="1" width="3.5" height="12" rx="0.5"/></svg>
+        ) : (
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3 1.5v11l9.5-5.5L3 1.5z"/></svg>
+        )}
+      </button>
+
+      {/* Stop */}
+      <button
+        onClick={() => { setCurrentTime(0); setPlaying(false); }}
+        className="bg-card/85 backdrop-blur-xl border border-border/25 text-muted-foreground hover:text-destructive hover:bg-card/95 w-8 h-8 rounded-lg flex items-center justify-center transition-all shadow-lg"
+        title="Stop"
+      >
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect x="1.5" y="1.5" width="9" height="9" rx="1"/></svg>
+      </button>
+
+      {/* Time display */}
+      <div className="bg-card/85 backdrop-blur-xl border border-border/25 px-3 h-8 rounded-lg flex items-center gap-2 shadow-lg">
+        <span className="text-[10px] font-mono-code text-foreground tracking-wider">{formatTime(currentTime)}</span>
+        <span className="text-[9px] text-muted-foreground/60">/</span>
+        <span className="text-[10px] font-mono-code text-muted-foreground">{formatTime(duration)}</span>
+        {playbackSpeed !== 1 && (
+          <span className="text-[8px] font-mono-code text-primary ml-1">{playbackSpeed}×</span>
+        )}
+      </div>
+
+      {/* Progress mini-bar */}
+      <div className="bg-card/85 backdrop-blur-xl border border-border/25 w-24 h-8 rounded-lg flex items-center px-2 shadow-lg cursor-pointer"
+        onClick={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const pct = Math.max(0, Math.min(1, (e.clientX - rect.left - 8) / (rect.width - 16)));
+          setCurrentTime(pct * duration);
+        }}
+      >
+        <div className="relative w-full h-1 bg-border/30 rounded-full overflow-hidden">
+          <div
+            className="absolute top-0 left-0 h-full bg-primary rounded-full transition-all"
+            style={{ width: `${(currentTime / duration) * 100}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Floating menu for fullscreen mode — gives access to key actions */
 function FullscreenEditMenu() {
   const { isPlaying, setPlaying, currentTime, setCurrentTime, duration } = useProjectStore();
