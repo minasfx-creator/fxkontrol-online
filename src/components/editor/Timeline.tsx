@@ -22,7 +22,7 @@ function snapTimeToBeat(time: number, bpm: number | null, snapEnabled: boolean, 
   return Math.abs(time - nearestBeat) < threshold ? nearestBeat : time;
 }
 
-function BeatGrid({ duration, pixelsPerSecond, bpm }: { duration: number; pixelsPerSecond: number; bpm: number | null }) {
+const BeatGrid = React.forwardRef<HTMLDivElement, { duration: number; pixelsPerSecond: number; bpm: number | null }>(function BeatGrid({ duration, pixelsPerSecond, bpm }, _ref) {
   if (!bpm) return null;
   const beatInterval = 60 / bpm;
   const lines = [];
@@ -41,9 +41,9 @@ function BeatGrid({ duration, pixelsPerSecond, bpm }: { duration: number; pixels
     );
   }
   return <>{lines}</>;
-}
+});
 
-function TimeRuler({ duration, pixelsPerSecond }: { duration: number; pixelsPerSecond: number }) {
+const TimeRuler = React.forwardRef<HTMLDivElement, { duration: number; pixelsPerSecond: number }>(function TimeRuler({ duration, pixelsPerSecond }, _ref) {
   const marks = [];
   let step: number;
   if (pixelsPerSecond >= 40) step = 1;
@@ -62,7 +62,7 @@ function TimeRuler({ duration, pixelsPerSecond }: { duration: number; pixelsPerS
     );
   }
   return <div className="relative h-5 border-b border-border/5">{marks}</div>;
-}
+});
 
 // --- Draggable Timeline Item ---
 const DraggableTimelineItem = React.forwardRef<HTMLButtonElement, {
@@ -290,7 +290,7 @@ const WaypointTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: num
   );
 });
 
-function FormationTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number; duration: number }) {
+const FormationTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: number; duration: number }>(function FormationTrackRow({ pixelsPerSecond, duration }, _ref) {
   const { droneFormations, selectFormation, selectedFormationId } = useProjectStore();
   if (droneFormations.length === 0) return null;
 
@@ -328,7 +328,7 @@ function FormationTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: num
       </div>
     </div>
   );
-}
+});
 
 const FORMATION_PRESETS_MAP: Record<string, string> = {
   heart: '❤️', star: '⭐', circle: '⭕', grid: '⊞',
@@ -415,7 +415,7 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
 const MIN_PPS = 4;
 const MAX_PPS = 80;
 
-export default function Timeline() {
+const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, _ref) {
   const {
     isPlaying, setPlaying, currentTime, setCurrentTime, duration,
     selectedTimelineItemId, removeTimelineItem, timelineItems,
@@ -640,4 +640,6 @@ export default function Timeline() {
       </div>
     </div>
   );
-}
+});
+
+export default Timeline;
