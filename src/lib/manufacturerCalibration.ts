@@ -28,48 +28,51 @@ export interface ManufacturerProfile {
 }
 
 // ── Finale 3D defaults (reference baseline) ─────────────────────────
+// Aligned with pyroPhysics.ts real-world ballistic tables:
+//   breakSpeed = BREAK_SPEED table, starCount = STAR_COUNT table,
+//   heightM = BREAK_HEIGHT table, prefireSec = getLiftTime()
 const FINALE_CALIBERS: Record<number, CaliberData> = {
-  1:    { heightM: 20,  spreadDeg: 22, prefireSec: 0.5, starCount: 20,  breakSpeed: 10, safetyM: 40,  costFactor: 0.3 },
-  1.5:  { heightM: 28,  spreadDeg: 28, prefireSec: 0.7, starCount: 35,  breakSpeed: 12, safetyM: 40,  costFactor: 0.5 },
-  2:    { heightM: 35,  spreadDeg: 32, prefireSec: 0.9, starCount: 50,  breakSpeed: 13, safetyM: 40,  costFactor: 1.0 },
-  2.5:  { heightM: 45,  spreadDeg: 38, prefireSec: 1.1, starCount: 70,  breakSpeed: 14, safetyM: 70,  costFactor: 2.0 },
-  3:    { heightM: 55,  spreadDeg: 45, prefireSec: 1.3, starCount: 100, breakSpeed: 16, safetyM: 70,  costFactor: 3.5 },
-  4:    { heightM: 80,  spreadDeg: 55, prefireSec: 1.8, starCount: 160, breakSpeed: 18, safetyM: 100, costFactor: 8.0 },
-  5:    { heightM: 110, spreadDeg: 65, prefireSec: 2.3, starCount: 240, breakSpeed: 20, safetyM: 140, costFactor: 15.0 },
-  6:    { heightM: 140, spreadDeg: 75, prefireSec: 2.8, starCount: 340, breakSpeed: 22, safetyM: 175, costFactor: 25.0 },
-  8:    { heightM: 190, spreadDeg: 90, prefireSec: 3.5, starCount: 500, breakSpeed: 24, safetyM: 210, costFactor: 50.0 },
-  10:   { heightM: 240, spreadDeg: 105, prefireSec: 4.2, starCount: 700, breakSpeed: 26, safetyM: 280, costFactor: 90.0 },
-  12:   { heightM: 280, spreadDeg: 120, prefireSec: 5.0, starCount: 900, breakSpeed: 28, safetyM: 300, costFactor: 150.0 },
+  1:    { heightM: 15,  spreadDeg: 16, prefireSec: 0.35, starCount: 30,  breakSpeed: 10, safetyM: 40,  costFactor: 0.3 },
+  1.5:  { heightM: 25,  spreadDeg: 24, prefireSec: 0.55, starCount: 55,  breakSpeed: 14, safetyM: 40,  costFactor: 0.5 },
+  2:    { heightM: 35,  spreadDeg: 32, prefireSec: 0.75, starCount: 80,  breakSpeed: 18, safetyM: 40,  costFactor: 1.0 },
+  2.5:  { heightM: 45,  spreadDeg: 38, prefireSec: 0.95, starCount: 115, breakSpeed: 23, safetyM: 70,  costFactor: 2.0 },
+  3:    { heightM: 55,  spreadDeg: 45, prefireSec: 1.15, starCount: 150, breakSpeed: 28, safetyM: 70,  costFactor: 3.5 },
+  4:    { heightM: 80,  spreadDeg: 55, prefireSec: 1.55, starCount: 250, breakSpeed: 38, safetyM: 100, costFactor: 8.0 },
+  5:    { heightM: 110, spreadDeg: 65, prefireSec: 1.95, starCount: 350, breakSpeed: 48, safetyM: 140, costFactor: 15.0 },
+  6:    { heightM: 140, spreadDeg: 75, prefireSec: 2.40, starCount: 500, breakSpeed: 58, safetyM: 175, costFactor: 25.0 },
+  8:    { heightM: 190, spreadDeg: 90, prefireSec: 3.10, starCount: 700, breakSpeed: 72, safetyM: 210, costFactor: 50.0 },
+  10:   { heightM: 240, spreadDeg: 105, prefireSec: 3.80, starCount: 900, breakSpeed: 85, safetyM: 280, costFactor: 90.0 },
+  12:   { heightM: 280, spreadDeg: 120, prefireSec: 4.50, starCount: 1100, breakSpeed: 95, safetyM: 300, costFactor: 150.0 },
 };
 
-// ── Cobra Firing Systems — US market, slightly higher performance ──
+// ── Cobra Firing Systems — US market, +5-8% height/speed over Finale ──
 const COBRA_CALIBERS: Record<number, CaliberData> = {
-  1:    { heightM: 22,  spreadDeg: 24, prefireSec: 0.45, starCount: 22,  breakSpeed: 11, safetyM: 40,  costFactor: 0.4 },
-  1.5:  { heightM: 30,  spreadDeg: 30, prefireSec: 0.65, starCount: 38,  breakSpeed: 13, safetyM: 40,  costFactor: 0.6 },
-  2:    { heightM: 38,  spreadDeg: 35, prefireSec: 0.85, starCount: 55,  breakSpeed: 14, safetyM: 40,  costFactor: 1.2 },
-  2.5:  { heightM: 48,  spreadDeg: 40, prefireSec: 1.05, starCount: 75,  breakSpeed: 15, safetyM: 70,  costFactor: 2.5 },
-  3:    { heightM: 60,  spreadDeg: 48, prefireSec: 1.25, starCount: 110, breakSpeed: 17, safetyM: 70,  costFactor: 4.0 },
-  4:    { heightM: 85,  spreadDeg: 58, prefireSec: 1.7,  starCount: 180, breakSpeed: 19, safetyM: 100, costFactor: 9.0 },
-  5:    { heightM: 115, spreadDeg: 68, prefireSec: 2.2,  starCount: 260, breakSpeed: 21, safetyM: 140, costFactor: 17.0 },
-  6:    { heightM: 148, spreadDeg: 80, prefireSec: 2.7,  starCount: 370, breakSpeed: 23, safetyM: 175, costFactor: 28.0 },
-  8:    { heightM: 200, spreadDeg: 95, prefireSec: 3.4,  starCount: 550, breakSpeed: 25, safetyM: 210, costFactor: 55.0 },
-  10:   { heightM: 250, spreadDeg: 110, prefireSec: 4.0, starCount: 750, breakSpeed: 27, safetyM: 280, costFactor: 100.0 },
-  12:   { heightM: 290, spreadDeg: 125, prefireSec: 4.8, starCount: 950, breakSpeed: 29, safetyM: 300, costFactor: 165.0 },
+  1:    { heightM: 16,  spreadDeg: 18, prefireSec: 0.32, starCount: 34,  breakSpeed: 11, safetyM: 40,  costFactor: 0.4 },
+  1.5:  { heightM: 27,  spreadDeg: 26, prefireSec: 0.50, starCount: 60,  breakSpeed: 15, safetyM: 40,  costFactor: 0.6 },
+  2:    { heightM: 38,  spreadDeg: 35, prefireSec: 0.70, starCount: 90,  breakSpeed: 20, safetyM: 40,  costFactor: 1.2 },
+  2.5:  { heightM: 48,  spreadDeg: 40, prefireSec: 0.90, starCount: 125, breakSpeed: 25, safetyM: 70,  costFactor: 2.5 },
+  3:    { heightM: 60,  spreadDeg: 48, prefireSec: 1.10, starCount: 165, breakSpeed: 30, safetyM: 70,  costFactor: 4.0 },
+  4:    { heightM: 85,  spreadDeg: 58, prefireSec: 1.50, starCount: 270, breakSpeed: 41, safetyM: 100, costFactor: 9.0 },
+  5:    { heightM: 118, spreadDeg: 68, prefireSec: 1.90, starCount: 380, breakSpeed: 52, safetyM: 140, costFactor: 17.0 },
+  6:    { heightM: 150, spreadDeg: 80, prefireSec: 2.35, starCount: 540, breakSpeed: 62, safetyM: 175, costFactor: 28.0 },
+  8:    { heightM: 205, spreadDeg: 95, prefireSec: 3.05, starCount: 760, breakSpeed: 78, safetyM: 210, costFactor: 55.0 },
+  10:   { heightM: 255, spreadDeg: 110, prefireSec: 3.70, starCount: 970, breakSpeed: 90, safetyM: 280, costFactor: 100.0 },
+  12:   { heightM: 300, spreadDeg: 125, prefireSec: 4.40, starCount: 1200, breakSpeed: 102, safetyM: 300, costFactor: 165.0 },
 };
 
-// ── Pyrodigital — European precision, tighter prefire, consistent spread ──
+// ── Pyrodigital — European precision, -5% height, tighter prefire ──
 const PYRODIGITAL_CALIBERS: Record<number, CaliberData> = {
-  1:    { heightM: 18,  spreadDeg: 20, prefireSec: 0.55, starCount: 18,  breakSpeed: 9,  safetyM: 40,  costFactor: 0.35 },
-  1.5:  { heightM: 26,  spreadDeg: 26, prefireSec: 0.75, starCount: 32,  breakSpeed: 11, safetyM: 40,  costFactor: 0.55 },
-  2:    { heightM: 33,  spreadDeg: 30, prefireSec: 0.95, starCount: 48,  breakSpeed: 12, safetyM: 40,  costFactor: 1.0 },
-  2.5:  { heightM: 43,  spreadDeg: 36, prefireSec: 1.15, starCount: 65,  breakSpeed: 13, safetyM: 70,  costFactor: 1.8 },
-  3:    { heightM: 52,  spreadDeg: 42, prefireSec: 1.35, starCount: 95,  breakSpeed: 15, safetyM: 70,  costFactor: 3.2 },
-  4:    { heightM: 76,  spreadDeg: 52, prefireSec: 1.85, starCount: 150, breakSpeed: 17, safetyM: 100, costFactor: 7.5 },
-  5:    { heightM: 105, spreadDeg: 62, prefireSec: 2.35, starCount: 220, breakSpeed: 19, safetyM: 140, costFactor: 14.0 },
-  6:    { heightM: 135, spreadDeg: 72, prefireSec: 2.85, starCount: 320, breakSpeed: 21, safetyM: 175, costFactor: 23.0 },
-  8:    { heightM: 185, spreadDeg: 88, prefireSec: 3.6,  starCount: 480, breakSpeed: 23, safetyM: 210, costFactor: 48.0 },
-  10:   { heightM: 235, spreadDeg: 100, prefireSec: 4.3, starCount: 680, breakSpeed: 25, safetyM: 280, costFactor: 85.0 },
-  12:   { heightM: 275, spreadDeg: 115, prefireSec: 5.1, starCount: 880, breakSpeed: 27, safetyM: 300, costFactor: 140.0 },
+  1:    { heightM: 14,  spreadDeg: 15, prefireSec: 0.40, starCount: 28,  breakSpeed: 9,  safetyM: 40,  costFactor: 0.35 },
+  1.5:  { heightM: 23,  spreadDeg: 22, prefireSec: 0.60, starCount: 50,  breakSpeed: 13, safetyM: 40,  costFactor: 0.55 },
+  2:    { heightM: 33,  spreadDeg: 30, prefireSec: 0.80, starCount: 75,  breakSpeed: 17, safetyM: 40,  costFactor: 1.0 },
+  2.5:  { heightM: 42,  spreadDeg: 36, prefireSec: 1.00, starCount: 108, breakSpeed: 22, safetyM: 70,  costFactor: 1.8 },
+  3:    { heightM: 52,  spreadDeg: 42, prefireSec: 1.20, starCount: 140, breakSpeed: 26, safetyM: 70,  costFactor: 3.2 },
+  4:    { heightM: 76,  spreadDeg: 52, prefireSec: 1.60, starCount: 235, breakSpeed: 36, safetyM: 100, costFactor: 7.5 },
+  5:    { heightM: 105, spreadDeg: 62, prefireSec: 2.00, starCount: 330, breakSpeed: 45, safetyM: 140, costFactor: 14.0 },
+  6:    { heightM: 132, spreadDeg: 72, prefireSec: 2.45, starCount: 470, breakSpeed: 55, safetyM: 175, costFactor: 23.0 },
+  8:    { heightM: 180, spreadDeg: 85, prefireSec: 3.15, starCount: 660, breakSpeed: 68, safetyM: 210, costFactor: 48.0 },
+  10:   { heightM: 228, spreadDeg: 100, prefireSec: 3.90, starCount: 850, breakSpeed: 80, safetyM: 280, costFactor: 85.0 },
+  12:   { heightM: 265, spreadDeg: 115, prefireSec: 4.60, starCount: 1050, breakSpeed: 90, safetyM: 300, costFactor: 140.0 },
 };
 
 // ── All built-in profiles ──
