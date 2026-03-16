@@ -66,7 +66,7 @@ export default function InstancedDroneSwarm({
     const m = new THREE.MeshBasicMaterial({
       color: '#888888',
       transparent: true,
-      opacity: 0.01,
+      opacity: 0.008,
       side: THREE.DoubleSide,
       depthWrite: false,
     });
