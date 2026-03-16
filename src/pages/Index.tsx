@@ -321,9 +321,11 @@ export default function Index() {
         <Toolbar onOpenPanel={(id) => handleTogglePanel(id as PanelId)} />
 
         <div className="flex-1 min-w-0 relative">
-          <Suspense fallback={<CanvasLoader />}>
-            <SkyCanvas />
-          </Suspense>
+          <CanvasErrorBoundary>
+            <Suspense fallback={<CanvasLoader />}>
+              <SkyCanvas />
+            </Suspense>
+          </CanvasErrorBoundary>
           <BoxSelectOverlay />
         </div>
 
