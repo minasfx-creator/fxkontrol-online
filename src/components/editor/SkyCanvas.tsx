@@ -569,7 +569,7 @@ function FireworkBurst({
   return (
     <group position={position}>
       {/* ═══ Finale Star Sprites — custom shader gaussian glow ═══ */}
-      <points ref={pointsRef} material={starMaterial}>
+      <points ref={pointsRef} material={starMaterial} frustumCulled={false}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[new Float32Array(STAR_COUNT * 3), 3]} />
           <bufferAttribute attach="attributes-color" args={[new Float32Array(STAR_COUNT * 3), 3]} />
@@ -579,7 +579,7 @@ function FireworkBurst({
       </points>
       
       {/* ═══ Star trails — dense thermal gradient lines ═══ */}
-      <lineSegments ref={trailRef}>
+      <lineSegments ref={trailRef} frustumCulled={false}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[new Float32Array(trailVertCount * 3), 3]} />
           <bufferAttribute attach="attributes-color" args={[new Float32Array(trailVertCount * 3), 3]} />
