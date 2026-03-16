@@ -508,13 +508,11 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
       // thermalColor returns HDR values (emissionIntensity up to 10x).
       // We must tonemap before using as vertex colors to prevent white-out.
       const lifeRatio = 1 - starAge; // thermalColor expects 1=birth, 0=dead
-      const chemColor = thermalColor(compound, lifeRatio, 1.0);
-      
-      // Reinhard tonemap: maps HDR → [0,1] while preserving hue
-      const tonemapScale = lumaTonemapScale(chemColor.r, chemColor.g, chemColor.b);
-      const chemR = chemColor.r * tonemapScale;
-      const chemG = chemColor.g * tonemapScale;
-      const chemB = chemColor.b * tonemapScale;
+      // HDR mult reduced: ACES Filmic PostProcessing is the single tonemap
+      const chemColor = thermalColor(compound, lifeRatio, 0.35);
+      const chemR = chemColor.r;
+      const chemG = chemColor.g;
+      const chemB = chemColor.b;
       
       // Per-star twinkle — organic shimmer
       let twinkle: number;
