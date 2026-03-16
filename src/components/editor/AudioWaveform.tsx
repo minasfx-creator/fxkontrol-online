@@ -337,6 +337,48 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     }
   };
 
+  // Click on waveform to add cue marker (double-click)
+  const handleWaveformDoubleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const x = e.clientX - rect.left + container.scrollLeft;
+    let time = x / pixelsPerSecond;
+
+    // Snap to beat if enabled
+    if (snapToBeat && bpm) {
+      const beatInterval = 60 / bpm;
+      time = Math.round(time / beatInterval) * beatInterval;
+    }
+
+    time = Math.max(0, Math.min(duration, time));
+
+    const id = `cue-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+    const label = `C${cueMarkers.length + 1}`;
+    const color = CUE_COLORS[cueMarkers.length % CUE_COLORS.length];
+
+    addCueMarker({ id, time, label, color });
+    toast.success(`Cue "${label}" @ ${time.toFixed(2)}s`);
+  }, [pixelsPerSecond, snapToBeat, bpm, duration, cueMarkers.length, addCueMarker]);
+
+  // Right-click on cue marker to remove
+  const handleWaveformContextMenu = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const x = e.clientX - rect.left + container.scrollLeft;
+    const clickTime = x / pixelsPerSecond;
+
+    // Find nearest cue within 5px threshold
+    const threshold = 5 / pixelsPerSecond;
+    const nearest = cueMarkers.find(c => Math.abs(c.time - clickTime) < threshold);
+    if (nearest) {
+      e.preventDefault();
+      removeCueMarker(nearest.id);
+      toast(`Cue "${nearest.label}" removido`);
+    }
+  }, [pixelsPerSecond, cueMarkers, removeCueMarker]);
+
   const isExpanded = trackHeight > MIN_HEIGHT;
 
   return (
