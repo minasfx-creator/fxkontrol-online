@@ -899,6 +899,7 @@ function SkyGradient() {
   const skyBrightness = useSceneStore(st => st.settings.skyBrightness);
   const horizonGlow = useSceneStore(st => st.settings.horizonGlow);
   const starDensity = useSceneStore(st => st.settings.starDensity);
+  const skyRef = useRef<THREE.Mesh>(null);
 
   const uniforms = useMemo(() => ({
     uSkyBrightness: { value: skyBrightness },
@@ -921,12 +922,13 @@ function SkyGradient() {
     return () => { _skyScatterUniforms = null; };
   }, []);
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, camera }) => {
     uniforms.uTime.value = clock.getElapsedTime();
+    if (skyRef.current) skyRef.current.position.copy(camera.position);
   });
 
   return (
-    <mesh renderOrder={-1000}>
+    <mesh ref={skyRef} renderOrder={-1000}>
       <sphereGeometry args={[9000, 64, 64]} />
       <shaderMaterial
         side={THREE.BackSide}
@@ -1007,7 +1009,7 @@ function SkyGradient() {
           }
           
           void main() {
-            vec3 dir = normalize(vWorldPosition);
+            vec3 dir = normalize(vWorldPosition - cameraPosition);
             float h = dir.y;
             
             // Deep cinematic space — rich midnight blues to warm horizon
@@ -2529,6 +2531,30 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
   const introPhase = useRef<'hold' | 'sweep' | 'done'>('hold');
   const introTimer = useRef(0);
 
+  const WORLD_HALF_EXTENT = 9800;
+  const CAMERA_MIN_Y = 1;
+  const CAMERA_MAX_Y = 6000;
+
+  const clampToWorldBounds = useCallback(() => {
+    const controls = controlsRef.current;
+    if (!controls) return;
+
+    const tx = THREE.MathUtils.clamp(controls.target.x, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
+    const ty = THREE.MathUtils.clamp(controls.target.y, 0, 3000);
+    const tz = THREE.MathUtils.clamp(controls.target.z, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
+
+    const cx = THREE.MathUtils.clamp(camera.position.x, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
+    const cy = THREE.MathUtils.clamp(camera.position.y, CAMERA_MIN_Y, CAMERA_MAX_Y);
+    const cz = THREE.MathUtils.clamp(camera.position.z, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
+
+    const targetChanged = tx !== controls.target.x || ty !== controls.target.y || tz !== controls.target.z;
+    const cameraChanged = cx !== camera.position.x || cy !== camera.position.y || cz !== camera.position.z;
+
+    if (targetChanged) controls.target.set(tx, ty, tz);
+    if (cameraChanged) camera.position.set(cx, cy, cz);
+    if (targetChanged || cameraChanged) controls.update();
+  }, [camera]);
+
   // Intro: cinematic positions
   const introStartPos = useRef(new THREE.Vector3(0, 500, 0.01));
   const introStartLook = useRef(new THREE.Vector3(0, 0, 0));
@@ -2610,17 +2636,22 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
           animating.current = false;
         }
       }
+      clampToWorldBounds();
       return;
     }
 
     // Normal preset animation — smooth Apple-style easing
-    if (!animating.current || !controlsRef.current || freeLook) return;
+    if (!animating.current || !controlsRef.current || freeLook) {
+      clampToWorldBounds();
+      return;
+    }
     camera.position.lerp(targetPos.current, 0.06);
     controlsRef.current.target.lerp(targetLook.current, 0.06);
     controlsRef.current.update();
     if (camera.position.distanceTo(targetPos.current) < 0.1) {
       animating.current = false;
     }
+    clampToWorldBounds();
   });
 
   return (
