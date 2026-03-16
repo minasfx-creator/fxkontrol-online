@@ -781,7 +781,20 @@ function TimelineEffects() {
           />
         );
         return <LightPoint key={item.id} position={pos} color={effect.color} />;
-      })}
+      });
+
+      // Cap simultaneous firework bursts to prevent GPU memory exhaustion
+      let burstCount = 0;
+      const cappedElements = elements.map(el => {
+        if (el && typeof el === 'object' && 'type' in el && (el as any).type === FireworkBurst) {
+          burstCount++;
+          if (burstCount > MAX_CONCURRENT_BURSTS) return null;
+        }
+        return el;
+      });
+
+      return cappedElements;
+    })()}
     </>
   );
 }
