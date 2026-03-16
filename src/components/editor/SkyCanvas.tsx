@@ -2028,6 +2028,7 @@ const SparkTrailController = React.forwardRef<THREE.Group, {}>(function SparkTra
   const { scene } = useThree();
   const sparksRef = useRef<SparkState[]>([]);
   const systemRef = useRef<ReturnType<typeof createSparkTrailSystem> | null>(null);
+  const { hdrMultiplier, effectBrightness } = useSceneStore(st => st.settings);
 
   useEffect(() => {
     const sys = createSparkTrailSystem();
