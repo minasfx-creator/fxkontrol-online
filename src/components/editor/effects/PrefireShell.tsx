@@ -60,6 +60,7 @@ const PrefireShell = React.forwardRef<THREE.Group, {
   heading = 0,
   pitch = 85,
 }, _ref) {
+  const pointsRef = useRef<THREE.Points>(null);
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
   const breakH = useMemo(() => getBreakHeight(caliber), [caliber]);
   const v0 = useMemo(() => getMortarVelocity(caliber), [caliber]);
@@ -74,6 +75,17 @@ const PrefireShell = React.forwardRef<THREE.Group, {
   const dirY = Math.sin(pitchRad);
   const dirZ = -Math.cos(headingRad) * Math.cos(pitchRad);
 
+  // Pre-allocate trail buffers ONCE
+  const trailBuffers = useMemo(() => ({
+    positions: new Float32Array(TRAIL_PARTICLES * 3),
+    colors: new Float32Array(TRAIL_PARTICLES * 3),
+    indices: (() => {
+      const idx = new Float32Array(TRAIL_PARTICLES);
+      for (let i = 0; i < TRAIL_PARTICLES; i++) idx[i] = i / TRAIL_PARTICLES;
+      return idx;
+    })(),
+  }), []);
+
   // Deterministic spark offsets
   const sparkSeeds = useMemo(() => {
     const s: { angle: number; speed: number; phase: number; life: number }[] = [];
@@ -87,6 +99,40 @@ const PrefireShell = React.forwardRef<THREE.Group, {
     }
     return s;
   }, []);
+
+  // Update trail buffers every frame
+  useFrame(() => {
+    if (!pointsRef.current || progress <= 0 || progress > 1) return;
+    const { positions: trailPositions, colors: trailColors } = trailBuffers;
+    const headBrightness = Math.max(0.4, 1 - progress * 0.25);
+
+    for (let i = 0; i < TRAIL_PARTICLES; i++) {
+      const trailT = Math.max(0, progress - (i / TRAIL_PARTICLES) * 0.4);
+      const tt = trailT * liftTime;
+      const tDist = Math.max(0, v0 * tt + 0.5 * GRAVITY * tt * tt);
+      const fade = Math.pow(1 - i / TRAIL_PARTICLES, 2.0) * headBrightness;
+
+      const tWobbleX = Math.sin(trailT * 14) * 0.12 * caliber * 0.15;
+      const tWobbleZ = Math.cos(trailT * 19) * 0.08 * caliber * 0.12;
+
+      const spread = (i / TRAIL_PARTICLES) * 0.12;
+      trailPositions[i * 3] = dirX * tDist + tWobbleX + (Math.random() - 0.5) * spread;
+      trailPositions[i * 3 + 1] = dirY * tDist;
+      trailPositions[i * 3 + 2] = dirZ * tDist + tWobbleZ + (Math.random() - 0.5) * spread;
+
+      const tFrac = i / TRAIL_PARTICLES;
+      const warmth = Math.pow(tFrac, 0.6);
+      trailColors[i * 3] = THREE.MathUtils.lerp(1.2, baseColor.r * 0.5 + 0.3, warmth) * fade;
+      trailColors[i * 3 + 1] = THREE.MathUtils.lerp(0.95, baseColor.g * 0.3 + 0.15, warmth) * fade;
+      trailColors[i * 3 + 2] = THREE.MathUtils.lerp(0.6, baseColor.b * 0.2, warmth) * fade;
+    }
+
+    const geo = pointsRef.current.geometry;
+    const posAttr = geo.getAttribute('position') as THREE.BufferAttribute;
+    const colAttr = geo.getAttribute('aTrailColor') as THREE.BufferAttribute;
+    if (posAttr) posAttr.needsUpdate = true;
+    if (colAttr) colAttr.needsUpdate = true;
+  });
 
   if (progress <= 0 || progress > 1) return null;
 
@@ -105,37 +151,6 @@ const PrefireShell = React.forwardRef<THREE.Group, {
   const headRadius = 0.035 + caliber * 0.012;
   const headGlow = 0.12 + caliber * 0.035;
   const headBrightness = Math.max(0.4, 1 - progress * 0.25);
-
-  // Trail positions — dense particles behind the head
-  const trailPositions = new Float32Array(TRAIL_PARTICLES * 3);
-  const trailColors = new Float32Array(TRAIL_PARTICLES * 3);
-
-  for (let i = 0; i < TRAIL_PARTICLES; i++) {
-    const trailT = Math.max(0, progress - (i / TRAIL_PARTICLES) * 0.4);
-    const tt = trailT * liftTime;
-    const tDist = Math.max(0, v0 * tt + 0.5 * GRAVITY * tt * tt);
-    const fade = Math.pow(1 - i / TRAIL_PARTICLES, 2.0) * headBrightness;
-
-    const tWobbleX = Math.sin(trailT * 14) * 0.12 * caliber * 0.15;
-    const tWobbleZ = Math.cos(trailT * 19) * 0.08 * caliber * 0.12;
-
-    // Trail follows launch angle with slight spread
-    const spread = (i / TRAIL_PARTICLES) * 0.12;
-    const tx = dirX * tDist + tWobbleX + (Math.random() - 0.5) * spread;
-    const ty = dirY * tDist;
-    const tz = dirZ * tDist + tWobbleZ + (Math.random() - 0.5) * spread;
-
-    trailPositions[i * 3] = tx;
-    trailPositions[i * 3 + 1] = ty;
-    trailPositions[i * 3 + 2] = tz;
-
-    // Thermal gradient: white-hot near head → golden → amber → dim
-    const tFrac = i / TRAIL_PARTICLES;
-    const warmth = Math.pow(tFrac, 0.6);
-    trailColors[i * 3] = THREE.MathUtils.lerp(1.2, baseColor.r * 0.5 + 0.3, warmth) * fade;
-    trailColors[i * 3 + 1] = THREE.MathUtils.lerp(0.95, baseColor.g * 0.3 + 0.15, warmth) * fade;
-    trailColors[i * 3 + 2] = THREE.MathUtils.lerp(0.6, baseColor.b * 0.2, warmth) * fade;
-  }
 
   return (
     <group position={position}>
@@ -165,15 +180,11 @@ const PrefireShell = React.forwardRef<THREE.Group, {
       )}
 
       {/* GPU Comet trail — custom shader with gaussian sprites */}
-      <points>
+      <points ref={pointsRef}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[trailPositions, 3]} />
-          <bufferAttribute attach="attributes-aTrailColor" args={[trailColors, 3]} />
-          <bufferAttribute attach="attributes-aTrailIndex" args={[(() => {
-            const idx = new Float32Array(TRAIL_PARTICLES);
-            for (let i = 0; i < TRAIL_PARTICLES; i++) idx[i] = i / TRAIL_PARTICLES;
-            return idx;
-          })(), 1]} />
+          <bufferAttribute attach="attributes-position" args={[trailBuffers.positions, 3]} />
+          <bufferAttribute attach="attributes-aTrailColor" args={[trailBuffers.colors, 3]} />
+          <bufferAttribute attach="attributes-aTrailIndex" args={[trailBuffers.indices, 1]} />
         </bufferGeometry>
         <shaderMaterial
           vertexShader={COMET_VERTEX}
@@ -193,7 +204,6 @@ const PrefireShell = React.forwardRef<THREE.Group, {
         if (sparkAge > spark.life) return null;
         
         const sparkNorm = sparkAge / spark.life;
-        // Spark detaches from trail and falls
         const detachT = sparkStart * liftTime;
         const detachDist = Math.max(0, v0 * detachT + 0.5 * GRAVITY * detachT * detachT);
         const detachX = dirX * detachDist;
