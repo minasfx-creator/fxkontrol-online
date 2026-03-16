@@ -237,6 +237,36 @@ export default function ViewportGeoTools({
               </div>
             )}
           </div>
+
+          {/* Export buttons */}
+          {totalItems > 0 && (
+            <div className="p-2 border-t border-border/15 flex gap-1">
+              <button
+                onClick={() => {
+                  const gpsOrigin = useProjectStore.getState().gpsOrigin;
+                  downloadGeoToolsKML({ markers, rulers, paths, gpsOrigin, projectName: 'FX Kontrol Geo Tools' });
+                  toast.success('KML exportado com sucesso!');
+                }}
+                className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[9px] font-semibold bg-surface-1/60 text-muted-foreground hover:text-foreground hover:bg-surface-1 transition-all"
+                title="Exportar como KML (texto)"
+              >
+                <Download className="w-3 h-3" />
+                KML
+              </button>
+              <button
+                onClick={async () => {
+                  const gpsOrigin = useProjectStore.getState().gpsOrigin;
+                  await downloadGeoToolsKMZ({ markers, rulers, paths, gpsOrigin, projectName: 'FX Kontrol Geo Tools' });
+                  toast.success('KMZ exportado com sucesso!');
+                }}
+                className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[9px] font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-all"
+                title="Exportar como KMZ (compactado, Google Earth)"
+              >
+                <Globe className="w-3 h-3" />
+                KMZ
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
