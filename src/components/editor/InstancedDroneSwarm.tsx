@@ -51,14 +51,14 @@ export default function InstancedDroneSwarm({
   // Body — carbon fiber (metalness 0.3, roughness 0.6, envMapIntensity 0.8)
   const bodyMat = useMemo(() => pbrMaterials.body, [pbrMaterials]);
 
-  // LED — Blender Emission Shader calibrated (2.5 = realistic small LED)
+  // LED — contained emissive, no bloom spill
   const ledMat = useMemo(() => new THREE.MeshStandardMaterial({
     color: '#ffffff',
     emissive: '#ffffff',
-    emissiveIntensity: 2.5,
+    emissiveIntensity: 1.2,
     toneMapped: true,
     metalness: 0.0,
-    roughness: 0.05,
+    roughness: 0.15,
   }), []);
 
   // Rotor disc — render_ultra motor material + transparency for disc effect
