@@ -2005,7 +2005,7 @@ const LensFlareController = React.forwardRef<THREE.Group, {}>(function LensFlare
   });
 
   return null;
-}
+});
 
 // ═══ GPU SPARK TRAIL CONTROLLER — incandescent trails with 32-point history ═══
 const SparkTrailController = React.forwardRef<THREE.Group, {}>(function SparkTrailController(_props, _ref) {
