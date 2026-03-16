@@ -254,12 +254,18 @@ function FireworkBurst({
   
   // ═══ LOD — reduce particles & trails at distance ═══
   const lod = useLOD(position);
+  const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
   
   // Niagara-style: particle count scales with shell volume, reduced by LOD
-  // CAPPED to prevent GPU memory exhaustion with many simultaneous bursts
-  // CAPPED aggressively to prevent GPU context loss with many simultaneous bursts
-  const STAR_COUNT = useMemo(() => Math.min(500, Math.round((60 + caliber * caliber * 10) * lod.particleMultiplier)), [caliber, lod.particleMultiplier]);
-  const TRAIL_LENGTH = useMemo(() => Math.max(2, Math.min(8, Math.floor((4 + caliber * 0.8) * lod.trailLength))), [caliber, lod.trailLength]);
+  // Extra mobile caps prevent WebGL context loss on dense timelines
+  const STAR_COUNT = useMemo(() => {
+    const cap = isMobileViewport ? 220 : 500;
+    return Math.min(cap, Math.round((60 + caliber * caliber * 10) * lod.particleMultiplier));
+  }, [caliber, lod.particleMultiplier, isMobileViewport]);
+  const TRAIL_LENGTH = useMemo(() => {
+    const trailCap = isMobileViewport ? 4 : 8;
+    return Math.max(2, Math.min(trailCap, Math.floor((4 + caliber * 0.8) * lod.trailLength)));
+  }, [caliber, lod.trailLength, isMobileViewport]);
   
   // Real break speed from pyroPhysics — caliber proportional (m/s)
   const breakSpeed = useMemo(() => getBreakSpeed(caliber), [caliber]);
@@ -610,8 +616,8 @@ function LightPoint({ position, color }: { position: [number, number, number]; c
 }
 
 // Max simultaneous GPU-heavy firework bursts to prevent context loss
-// Each burst uses ~600 star particles + trails = significant VRAM
-const MAX_CONCURRENT_BURSTS = 12;
+const MAX_CONCURRENT_BURSTS_DESKTOP = 12;
+const MAX_CONCURRENT_BURSTS_MOBILE = 6;
 
 function TimelineEffects() {
   const { timelineItems, currentTime, positions } = useProjectStore();
@@ -695,11 +701,14 @@ function TimelineEffects() {
 
   // Cap simultaneous firework bursts to prevent GPU context loss
   const cappedEffects = useMemo(() => {
+    const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
+    const maxConcurrentBursts = isMobileViewport ? MAX_CONCURRENT_BURSTS_MOBILE : MAX_CONCURRENT_BURSTS_DESKTOP;
+
     let burstCount = 0;
     return activeEffects.filter(({ effect }) => {
       if (effect.type === 'firework') {
         burstCount++;
-        if (burstCount > MAX_CONCURRENT_BURSTS) return false;
+        if (burstCount > maxConcurrentBursts) return false;
       }
       return true;
     });
@@ -2684,6 +2693,8 @@ export default function SkyCanvas() {
   const droneCount = droneFormations.length > 0 ? droneFormations[0].droneCount : 0;
   const [satelliteTexture, setSatelliteTexture] = useState<string | null>(null);
   const [downloadingScenery, setDownloadingScenery] = useState(false);
+  const [canvasInstanceKey, setCanvasInstanceKey] = useState(0);
+  const recoveringContextRef = useRef(false);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
   // Track fullscreen state
@@ -2732,32 +2743,42 @@ export default function SkyCanvas() {
     <div className="w-full h-full relative bg-[#030308]" data-sky-canvas style={{ cursor: cursorStyle }}>
       <WebGLErrorBoundary>
       <Canvas
+        key={canvasInstanceKey}
         shadows
         gl={{
           antialias: false,
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.2,
-          powerPreference: 'high-performance',
+          powerPreference: isMobile ? 'default' : 'high-performance',
           alpha: false,
           stencil: false,
-          logarithmicDepthBuffer: true,
+          logarithmicDepthBuffer: !isMobile,
           outputColorSpace: THREE.SRGBColorSpace,
         }}
         dpr={isMobile ? [1, 1] : [1, 1.5]}
         performance={{ min: 0.5 }}
         onCreated={({ gl }) => {
-          // WebGL context loss recovery
           const canvas = gl.domElement;
-          canvas.addEventListener('webglcontextlost', (e) => {
+
+          const handleContextLost = (e: Event) => {
             e.preventDefault();
-            console.warn('[FXK] WebGL context lost — will attempt recovery');
-            // Reset shared material so it gets recreated
+            if (recoveringContextRef.current) return;
+            recoveringContextRef.current = true;
+            console.warn('[FXK] WebGL context lost — remounting renderer');
+            _starMaterialInstance?.dispose();
             _starMaterialInstance = null;
-          });
-          canvas.addEventListener('webglcontextrestored', () => {
+            setCanvasInstanceKey((prev) => prev + 1);
+          };
+
+          const handleContextRestored = () => {
             console.log('[FXK] WebGL context restored');
+            recoveringContextRef.current = false;
+            _starMaterialInstance?.dispose();
             _starMaterialInstance = null;
-          });
+          };
+
+          canvas.addEventListener('webglcontextlost', handleContextLost as EventListener);
+          canvas.addEventListener('webglcontextrestored', handleContextRestored as EventListener);
         }}>
         <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.3} far={20000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook} />
