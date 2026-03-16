@@ -297,7 +297,7 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
   const showLabel = isHovered || isSelected || isDragging;
 
   return (
-    <group position={[position.x, position.y, position.z]} scale={[pinScale, pinScale, pinScale]}>
+    <group ref={ref} position={[position.x, position.y, position.z]} scale={[pinScale, pinScale, pinScale]}>
       {/* Base disc */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
         <circleGeometry args={[isSelected ? 0.65 : 0.5, 32]} />
