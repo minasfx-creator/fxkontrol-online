@@ -2722,7 +2722,7 @@ export default function SkyCanvas() {
   const editorMode = useProjectStore((s) => s.editorMode);
   const droneFormations = useProjectStore((s) => s.droneFormations);
   const gpsOrigin = useProjectStore((s) => s.gpsOrigin);
-  const cursorStyle = editorMode !== 'select' ? 'crosshair' : 'default';
+  const cursorStyle = geoTool !== 'none' ? 'crosshair' : editorMode !== 'select' ? 'crosshair' : 'default';
   const [activePreset, setActivePreset] = useState('free');
   const [freeLook, setFreeLook] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
