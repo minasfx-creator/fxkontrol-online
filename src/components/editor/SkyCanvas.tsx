@@ -1954,7 +1954,7 @@ const SmokeController = React.forwardRef<THREE.Group, {}>(function SmokeControll
   });
 
   return null;
-}
+});
 
 // ═══ LENS FLARE CONTROLLER — cinematic optics on bright bursts ═══
 function LensFlareController() {
