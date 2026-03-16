@@ -106,8 +106,8 @@ const BURST_FRAGMENT = `
     float fadeOut = 1.0 - pow(rawRatio, 1.8);
     float alpha = fadeIn * fadeOut * vBrightness * glow * flicker;
 
-    vec3 mapped = tonemapLuma(thermalColor * glow);
-    gl_FragColor = vec4(mapped, alpha);
+    // No manual tonemap — ACES Filmic in PostProcessing is the single pass
+    gl_FragColor = vec4(thermalColor * glow, alpha);
   }
 `;
 
