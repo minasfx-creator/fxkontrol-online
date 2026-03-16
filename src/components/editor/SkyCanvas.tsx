@@ -89,10 +89,7 @@ function hexToCompound(hexColor: string): ChemicalCompound {
   return getCompound('charcoal');                            // Fallback → Charcoal streamer
 }
 
-function lumaTonemapScale(r: number, g: number, b: number): number {
-  const lum = r * 0.2126 + g * 0.7152 + b * 0.0722;
-  return lum > 0.001 ? (1 / (1 + lum)) : 1;
-}
+// lumaTonemapScale REMOVED — PostProcessing ACES Filmic is the single tonemap pass
 
 // FX KONTROL — Show Design Platform Renderer
 class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
@@ -194,24 +191,15 @@ const STAR_FRAGMENT_SHADER = `
   varying float vLife;
   varying float vSize;
 
-  // Luma-based Reinhard tonemap prevents additive white clipping.
-  vec3 tonemapLuma(vec3 c) {
-    vec3 safe = max(c, vec3(0.0));
-    float lum = dot(safe, vec3(0.2126, 0.7152, 0.0722));
-    float scale = lum > 0.001 ? (1.0 / (1.0 + lum)) : 1.0;
-    return safe * scale;
-  }
-
   void main() {
     vec2 uv = gl_PointCoord - 0.5;
     float dist = length(uv);
     
     // Niagara-style layered glow: tight bright core + soft halo
-    float core = exp(-dist * dist * 80.0);  // Very tight bright center
-    float inner = exp(-dist * dist * 25.0); // Inner glow
-    float outer = exp(-dist * dist * 8.0);  // Soft outer bloom
+    float core = exp(-dist * dist * 80.0);
+    float inner = exp(-dist * dist * 25.0);
+    float outer = exp(-dist * dist * 8.0);
     
-    // Combined alpha with natural falloff
     float alpha = core * 1.0 + inner * 0.7 + outer * 0.15;
     
     // Thermal color model: white-hot center fading to star color
@@ -219,15 +207,14 @@ const STAR_FRAGMENT_SHADER = `
     vec3 col = mix(vColor, whiteHot, core * 0.45);
     col += vColor * outer * 0.35;
     
-    // Youth flash: brief bright moment at spawn
+    // Youth flash
     float youth = max(0.0, 1.0 - vLife * 4.0);
     col += mix(vColor, whiteHot, 0.4) * youth * 0.35;
     
-    // Circular cutoff
     float edge = 1.0 - smoothstep(0.42, 0.5, dist);
 
-    vec3 mapped = tonemapLuma(col);
-    gl_FragColor = vec4(mapped, alpha * edge);
+    // No manual tonemap — ACES Filmic in PostProcessing handles HDR→SDR
+    gl_FragColor = vec4(col, alpha * edge);
   }
 `;
 
@@ -521,13 +508,11 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
       // thermalColor returns HDR values (emissionIntensity up to 10x).
       // We must tonemap before using as vertex colors to prevent white-out.
       const lifeRatio = 1 - starAge; // thermalColor expects 1=birth, 0=dead
-      const chemColor = thermalColor(compound, lifeRatio, 1.0);
-      
-      // Reinhard tonemap: maps HDR → [0,1] while preserving hue
-      const tonemapScale = lumaTonemapScale(chemColor.r, chemColor.g, chemColor.b);
-      const chemR = chemColor.r * tonemapScale;
-      const chemG = chemColor.g * tonemapScale;
-      const chemB = chemColor.b * tonemapScale;
+      // HDR mult reduced: ACES Filmic PostProcessing is the single tonemap
+      const chemColor = thermalColor(compound, lifeRatio, 0.35);
+      const chemR = chemColor.r;
+      const chemG = chemColor.g;
+      const chemB = chemColor.b;
       
       // Per-star twinkle — organic shimmer
       let twinkle: number;
@@ -631,13 +616,13 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
       {progress < 0.06 && (
         <mesh renderOrder={100}>
           <sphereGeometry args={[flashSize * 0.4 * (1 + progress * 6), 8, 8]} />
-          <meshBasicMaterial color="#FFFFF0" transparent opacity={0.7 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} depthWrite={false} />
+          <meshBasicMaterial color="#FFFFF0" transparent opacity={0.4 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
       {progress < 0.12 && (
         <mesh renderOrder={99}>
           <sphereGeometry args={[flashSize * (1 + progress * 6), 8, 8]} />
-          <meshBasicMaterial color={color} transparent opacity={0.3 * Math.pow(1 - progress / 0.12, 2)} blending={THREE.AdditiveBlending} depthWrite={false} />
+          <meshBasicMaterial color={color} transparent opacity={0.15 * Math.pow(1 - progress / 0.12, 2)} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
     </group>
@@ -2065,9 +2050,7 @@ const SparkTrailController = React.forwardRef<THREE.Group, {}>(function SparkTra
           const breakH = getBreakHeight(caliber);
           const breakSpd = getBreakSpeed(caliber);
           const compound = hexToCompound(effect.color);
-          const baseColor = thermalColor(compound, 1.0, 2.5);
-          const baseScale = lumaTonemapScale(baseColor.r, baseColor.g, baseColor.b);
-          baseColor.multiplyScalar(baseScale);
+          const baseColor = thermalColor(compound, 1.0, 0.5);
           const sparkCount = Math.min(24, Math.round(caliber * 3));
           
           for (let s = 0; s < sparkCount; s++) {
@@ -2102,9 +2085,8 @@ const SparkTrailController = React.forwardRef<THREE.Group, {}>(function SparkTra
       // Thermal color cooling
       const lifeRatio = Math.max(0, sparks[i].life / sparks[i].maxLife);
       const compound = hexToCompound('#' + sparks[i].color.getHexString());
-      const cooled = thermalColor(compound, lifeRatio, 2.5);
-      const cooledScale = lumaTonemapScale(cooled.r, cooled.g, cooled.b);
-      sparks[i].color.copy(cooled.multiplyScalar(cooledScale));
+      const cooled = thermalColor(compound, lifeRatio, 0.5);
+      sparks[i].color.copy(cooled);
       
       if (sparks[i].life <= 0) {
         sparks.splice(i, 1);
