@@ -132,7 +132,7 @@ const CAMERA_PRESETS = [
 ] as const;
 
 // --- Playback clock ---
-function PlaybackClock() {
+const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref) {
   const { isPlaying, currentTime, duration, setCurrentTime, setPlaying, playbackSpeed } = useProjectStore();
   const prevTime = useRef(performance.now());
 
@@ -146,7 +146,7 @@ function PlaybackClock() {
     prevTime.current = now;
   });
   return null;
-}
+});
 
 // --- Particle system ---
 const GRAVITY = -9.81; // Real-world gravity for accurate ballistics
