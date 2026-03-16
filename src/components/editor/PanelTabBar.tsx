@@ -1,4 +1,4 @@
-import { Route, Wind, FileText, Package, Cpu, DollarSign, Spline, Sliders, Settings2, Bug, Gauge, Lightbulb, Battery, Radio, Clock, Globe, ShieldCheck, Tag, Sparkles, Music, Download, StickyNote, Video, Box, Image, ShoppingBag, Shield, Wand2, Eye, Warehouse, Link2, Users, ChevronDown, ChevronRight, FileBarChart, Volume2, Camera, Share2, Atom, History, Cloud, Zap, Navigation, FolderOpen, Activity, Map, Cog, MessageSquare, Factory, Film, Grid3x3, ArrowRightLeft } from 'lucide-react';
+import { Route, Wind, FileText, Package, Cpu, DollarSign, Spline, Sliders, Settings2, Bug, Gauge, Lightbulb, Battery, Radio, Clock, Globe, ShieldCheck, Tag, Sparkles, Music, Download, StickyNote, Video, Box, ShoppingBag, Shield, Wand2, Eye, Warehouse, Link2, Users, FileBarChart, Volume2, Camera, Share2, Atom, History, Cloud, Zap, Navigation, FolderOpen, Activity, Map, Cog, MessageSquare, Factory, Film, Grid3x3, ArrowRightLeft, Radar, Timer, Crosshair, BookOpen, FlaskConical, BarChart3, Layers, CircuitBoard, Plane, Wrench, ScanLine, Orbit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -27,10 +27,10 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
       { id: 'synesthesia', label: 'Audio Sync', icon: Music, shortcut: 'Y' },
       { id: 'scripting', label: 'Scripting', icon: Wand2, shortcut: 'T' },
       { id: 'safety', label: 'Safety NFPA', icon: Shield, shortcut: 'F' },
-      { id: 'collisions', label: 'Collisions', icon: Zap },
+      { id: 'collisions', label: 'Collisions', icon: Crosshair },
       { id: 'trajectory', label: 'Trajectory Opt', icon: Navigation },
       { id: 'templates', label: 'Templates', icon: FolderOpen },
-      { id: 'calibration', label: 'VDL Calibration', icon: Factory },
+      { id: 'calibration', label: 'VDL Calibration', icon: FlaskConical },
     ],
   },
   {
@@ -50,7 +50,7 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
     items: [
       { id: 'firing', label: 'Firing Export', icon: Download, shortcut: 'X' },
       { id: 'video', label: 'Recorder', icon: Video, shortcut: 'V' },
-      { id: 'reports', label: 'Reports', icon: FileText },
+      { id: 'reports', label: 'Reports', icon: BarChart3 },
       { id: 'models', label: '3D Models', icon: Box },
       { id: 'aroverlay', label: 'AR Overlay', icon: Camera },
       { id: 'share', label: 'Share', icon: Share2 },
@@ -58,41 +58,41 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
   },
   {
     title: 'Drone',
-    icon: Radio,
+    icon: Plane,
     items: [
-      { id: 'fleet', label: 'Fleet Manager', icon: Radio },
-      { id: 'showcontrol', label: 'Show Control', icon: Clock },
+      { id: 'fleet', label: 'Fleet Manager', icon: Radar },
+      { id: 'showcontrol', label: 'Show Control', icon: CircuitBoard },
       { id: 'takeoffgrid', label: 'Takeoff Grid', icon: Grid3x3 },
       { id: 'transitions', label: 'Transitions', icon: ArrowRightLeft },
       { id: 'lightprogram', label: 'Light Program', icon: Lightbulb },
       { id: 'safetycheck', label: 'Safety Check', icon: ShieldCheck },
       { id: 'storyboard', label: 'Storyboard', icon: Film },
-      { id: 'boids', label: 'Boids', icon: Bug },
+      { id: 'boids', label: 'Boids', icon: Orbit },
       { id: 'pid', label: 'PID Tuning', icon: Gauge },
       { id: 'battery', label: 'Battery', icon: Battery },
       { id: 'mavlink', label: 'MAVLink', icon: Radio },
       { id: 'indoor', label: 'Indoor Sim', icon: Warehouse },
       { id: 'telemetry', label: 'Telemetry', icon: Activity },
-      { id: 'flightlog', label: 'Flight Log', icon: FileText },
-      { id: 'geofence', label: 'Geofence', icon: Shield },
+      { id: 'flightlog', label: 'Flight Log', icon: BookOpen },
+      { id: 'geofence', label: 'Geofence', icon: Layers },
       { id: 'inspector', label: 'Inspector', icon: Eye },
     ],
   },
   {
     title: 'Integ.',
-    icon: Globe,
+    icon: Wrench,
     items: [
-      { id: 'dmx', label: 'DMX512', icon: Lightbulb },
+      { id: 'dmx', label: 'DMX512', icon: ScanLine },
       { id: 'lasercontrol', label: 'Laser Control', icon: Zap },
-      { id: 'smpte', label: 'SMPTE/LTC', icon: Clock },
-      { id: 'livefiring', label: 'Live SFX', icon: Zap },
-      { id: 'diagnostic', label: 'Diagnostic', icon: ShieldCheck, shortcut: 'D' },
+      { id: 'smpte', label: 'SMPTE/LTC', icon: Timer },
+      { id: 'livefiring', label: 'Live SFX', icon: Sparkles },
+      { id: 'diagnostic', label: 'Diagnostic', icon: Bug, shortcut: 'D' },
       { id: 'logistics', label: 'Logistics', icon: Tag },
     ],
   },
   {
     title: 'Scene',
-    icon: Cog,
+    icon: Globe,
     items: [
       { id: 'scene', label: 'Scene Editor', icon: Cog, shortcut: 'N' },
       { id: 'wind', label: 'Wind/Camera', icon: Wind },
@@ -101,8 +101,8 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
       { id: 'weather', label: 'Weather', icon: Cloud },
       { id: 'soundlevel', label: 'Sound Level', icon: Volume2 },
       { id: 'particles', label: 'Particles', icon: Atom },
-      { id: 'audience', label: 'Audience', icon: Eye },
-      { id: 'showsettings', label: 'Show Settings', icon: Cog },
+      { id: 'audience', label: 'Audience', icon: FileBarChart },
+      { id: 'showsettings', label: 'Show Settings', icon: Settings2 },
       { id: 'approval', label: 'Approval', icon: MessageSquare },
       { id: 'versioning', label: 'Versioning', icon: History },
     ],
