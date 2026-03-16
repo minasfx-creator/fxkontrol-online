@@ -214,8 +214,9 @@ const STAR_FRAGMENT_SHADER = `
   }
 `;
 
-// ═══ Shared star material singleton — prevents per-burst GPU allocation ═══
+// ═══ Star material factory — creates fresh material per Canvas lifecycle ═══
 let _starMaterialInstance: THREE.ShaderMaterial | null = null;
+let _starMaterialVersion = 0;
 function _sharedStarMaterial(): THREE.ShaderMaterial {
   if (!_starMaterialInstance) {
     _starMaterialInstance = new THREE.ShaderMaterial({
@@ -226,6 +227,7 @@ function _sharedStarMaterial(): THREE.ShaderMaterial {
       depthWrite: false,
       blending: THREE.AdditiveBlending,
     });
+    _starMaterialVersion++;
   }
   return _starMaterialInstance;
 }
