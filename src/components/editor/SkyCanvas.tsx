@@ -617,21 +617,27 @@ function LightPoint({ position, color }: { position: [number, number, number]; c
 }
 
 // Max simultaneous GPU-heavy firework bursts to prevent context loss
-const MAX_CONCURRENT_BURSTS_DESKTOP = 8;
-const MAX_CONCURRENT_BURSTS_MOBILE = 3;
-const MAX_STAR_BUDGET_DESKTOP = 1800;
-const MAX_STAR_BUDGET_MOBILE = 550;
+const MAX_CONCURRENT_BURSTS_DESKTOP = 6;
+const MAX_CONCURRENT_BURSTS_MOBILE = 2;
+const MAX_STAR_BUDGET_DESKTOP = 1400;
+const MAX_STAR_BUDGET_MOBILE = 420;
 
 function estimateFireworkStarCost(effect: (typeof EFFECT_LIBRARY)[number], particleDensity: number) {
-  const caliber = Math.max(3, effect.caliber || 4);
+  const caliber = Math.max(1, effect.caliber || 4);
   const densityScale = THREE.MathUtils.clamp(particleDensity, 0.5, 2.0);
-  let stars = (60 + caliber * caliber * 10) * densityScale;
 
-  if (effect.partType === 'cake') stars *= 0.7;
-  if (effect.partType === 'candle') stars *= 0.55;
-  if (effect.id.startsWith('mburst-')) stars *= effect.id === 'mburst-02' ? 2.8 : 2.0;
+  // Keep estimation aligned with FireworkBurst STAR_COUNT formula and caps.
+  const shellStars = Math.max(24, Math.min(320, Math.round((60 + caliber * caliber * 10) * densityScale)));
+  let stars = shellStars;
 
-  return Math.max(40, Math.round(stars));
+  if (effect.partType === 'cake') stars *= 1.2;
+  else if (effect.partType === 'candle') stars *= 0.8;
+  else if (effect.partType === 'mine') stars *= 0.9;
+  else if (effect.partType === 'waterfall') stars *= 0.6;
+
+  if (effect.id.startsWith('mburst-')) stars *= effect.id === 'mburst-02' ? 3.2 : 2.4;
+
+  return Math.max(32, Math.round(stars));
 }
 
 function TimelineEffects() {
