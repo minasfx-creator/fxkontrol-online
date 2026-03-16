@@ -843,7 +843,7 @@ function TimelineEffects() {
 // ═══════════════════════════════════════════════════════════════════════
 // Live SFX 3D — renders effects fired from the Live SFX Console
 // ═══════════════════════════════════════════════════════════════════════
-function LiveSFXEffects() {
+const LiveSFXEffects = React.forwardRef<any>(function LiveSFXEffects(_props, _ref) {
   const activeEffects = useLiveSfxStore((s) => s.activeEffects);
   const stopEffect = useLiveSfxStore((s) => s.stopEffect);
   const frameRef = useRef(0);
@@ -851,7 +851,6 @@ function LiveSFXEffects() {
   useFrame(() => {
     if (activeEffects.length === 0) return;
     frameRef.current++;
-    // Clean up expired effects (only check every 10 frames to avoid store churn)
     if (frameRef.current % 10 === 0) {
       const now = performance.now();
       for (const fx of activeEffects) {
@@ -891,7 +890,7 @@ function LiveSFXEffects() {
       })}
     </>
   );
-}
+});
 
 // ========================================================================
 // GOOGLE EARTH-STYLE — Atmospheric sky with realistic horizon

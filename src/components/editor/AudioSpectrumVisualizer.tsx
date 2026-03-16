@@ -122,4 +122,6 @@ const AudioSpectrumVisualizer = React.forwardRef<any>(function AudioSpectrumVisu
       />
     </instancedMesh>
   );
-}
+});
+
+export default AudioSpectrumVisualizer;
