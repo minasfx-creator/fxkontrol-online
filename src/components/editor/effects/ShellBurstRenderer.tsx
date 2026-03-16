@@ -291,18 +291,18 @@ export default function ShellBurstRenderer({
       }
     }
 
-    // Update GPU buffers
+    // Update GPU buffers — reuse existing attributes, never create new ones
     const geo = pointsRef.current.geometry;
-    geo.setAttribute('position', new THREE.BufferAttribute(posBuffer, 3));
-    geo.setAttribute('aLife', new THREE.BufferAttribute(lifeBuffer, 1));
-    geo.setAttribute('aMaxLife', new THREE.BufferAttribute(maxLifeBuffer, 1));
-    geo.setAttribute('aBrightness', new THREE.BufferAttribute(brightnessBuffer, 1));
-    geo.setAttribute('aVelocity', new THREE.BufferAttribute(velocityBuffer, 3));
-    
-    geo.attributes.position.needsUpdate = true;
-    (geo.attributes.aLife as THREE.BufferAttribute).needsUpdate = true;
-    (geo.attributes.aBrightness as THREE.BufferAttribute).needsUpdate = true;
-    (geo.attributes.aVelocity as THREE.BufferAttribute).needsUpdate = true;
+    const posAttr = geo.getAttribute('position') as THREE.BufferAttribute;
+    const lifeAttr = geo.getAttribute('aLife') as THREE.BufferAttribute;
+    const maxLifeAttr = geo.getAttribute('aMaxLife') as THREE.BufferAttribute;
+    const brightAttr = geo.getAttribute('aBrightness') as THREE.BufferAttribute;
+    const velAttr = geo.getAttribute('aVelocity') as THREE.BufferAttribute;
+    if (posAttr) { posAttr.needsUpdate = true; }
+    if (lifeAttr) { lifeAttr.needsUpdate = true; }
+    if (maxLifeAttr) { maxLifeAttr.needsUpdate = true; }
+    if (brightAttr) { brightAttr.needsUpdate = true; }
+    if (velAttr) { velAttr.needsUpdate = true; }
 
     // ── Live-update uniforms from store ──
     const mat = pointsRef.current.material as THREE.ShaderMaterial;
@@ -423,36 +423,40 @@ function CrossetteSubBurst({
   drag: number;
 }) {
   const pointsRef = useRef<THREE.Points>(null);
+  // Pre-allocate buffers once based on particle count
+  const buffers = useMemo(() => ({
+    pos: new Float32Array(particles.length * 3),
+    col: new Float32Array(particles.length * 3),
+  }), [particles.length]);
+  const baseColor = useMemo(() => new THREE.Color(color), [color]);
 
   useFrame(() => {
     if (!pointsRef.current) return;
-    const posArr = new Float32Array(particles.length * 3);
-    const colArr = new Float32Array(particles.length * 3);
-    const baseColor = new THREE.Color(color);
+    const { pos, col } = buffers;
 
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
-      posArr[i * 3] = p.x;
-      posArr[i * 3 + 1] = p.y;
-      posArr[i * 3 + 2] = p.z;
+      pos[i * 3] = p.x;
+      pos[i * 3 + 1] = p.y;
+      pos[i * 3 + 2] = p.z;
       const fade = p.brightness;
-      colArr[i * 3] = baseColor.r * fade * 1.5;
-      colArr[i * 3 + 1] = baseColor.g * fade * 1.2;
-      colArr[i * 3 + 2] = baseColor.b * fade;
+      col[i * 3] = baseColor.r * fade * 1.5;
+      col[i * 3 + 1] = baseColor.g * fade * 1.2;
+      col[i * 3 + 2] = baseColor.b * fade;
     }
 
     const geo = pointsRef.current.geometry;
-    geo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
-    geo.attributes.position.needsUpdate = true;
-    geo.attributes.color.needsUpdate = true;
+    const posAttr = geo.getAttribute('position') as THREE.BufferAttribute;
+    const colAttr = geo.getAttribute('color') as THREE.BufferAttribute;
+    if (posAttr) posAttr.needsUpdate = true;
+    if (colAttr) colAttr.needsUpdate = true;
   });
 
   return (
     <points ref={pointsRef} frustumCulled={false}>
       <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[new Float32Array(particles.length * 3), 3]} />
-        <bufferAttribute attach="attributes-color" args={[new Float32Array(particles.length * 3), 3]} />
+        <bufferAttribute attach="attributes-position" args={[buffers.pos, 3]} />
+        <bufferAttribute attach="attributes-color" args={[buffers.col, 3]} />
       </bufferGeometry>
       <pointsMaterial
         size={0.15 + caliber * 0.04}
