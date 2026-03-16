@@ -1838,7 +1838,7 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
   const _scatterAccum = useMemo(() => new THREE.Color(), []);
   const _tmpColor = useMemo(() => new THREE.Color(), []);
 
-  useFrame((_, delta) => {
+  useFrame(({ gl }, delta) => {
     const state = exposureRef.current;
     const { timelineItems, currentTime } = useProjectStore.getState();
     let luminance = 0;
@@ -1876,7 +1876,8 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
     const exposure = updateExposure(state, luminance, delta);
     _adaptiveExposure = exposure;
     setDebugExposure(exposure);
-    // ACES in PostProcessing remains the single HDR→SDR tone-mapping pass
+    // Blender-style: apply adaptive exposure to renderer before ACES tone mapping
+    gl.toneMappingExposure = THREE.MathUtils.clamp(exposure, 0.3, 1.8);
 
     // Update sky scatter uniforms
     if (_skyScatterUniforms) {
@@ -2975,7 +2976,7 @@ export default function SkyCanvas() {
         shadows
         gl={{
           antialias: false,
-          toneMapping: THREE.NoToneMapping,
+          toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.2,
           powerPreference: isMobile ? 'default' : 'high-performance',
           alpha: false,
