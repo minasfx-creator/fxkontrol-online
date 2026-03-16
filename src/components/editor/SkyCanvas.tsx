@@ -1009,7 +1009,7 @@ function SkyGradient() {
           }
           
           void main() {
-            vec3 dir = normalize(vWorldPosition);
+            vec3 dir = normalize(vWorldPosition - cameraPosition);
             float h = dir.y;
             
             // Deep cinematic space — rich midnight blues to warm horizon
