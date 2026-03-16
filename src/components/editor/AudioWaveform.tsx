@@ -58,12 +58,23 @@ const MIN_HEIGHT = 36;
 const MAX_HEIGHT = 200;
 const HEIGHT_STEP = 24;
 
+const CUE_COLORS = [
+  'hsl(0, 85%, 60%)',    // red
+  'hsl(45, 95%, 55%)',   // amber
+  'hsl(120, 70%, 50%)',  // green
+  'hsl(200, 90%, 55%)',  // blue
+  'hsl(280, 80%, 60%)',  // purple
+  'hsl(330, 85%, 58%)',  // pink
+];
+
 export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const {
     currentTime, duration, audioUrl, bpm, isPlaying, playbackSpeed,
     setAudioUrl, setBpm, snapToBeat, setSnapToBeat,
+    cueMarkers, addCueMarker, removeCueMarker,
   } = useProjectStore();
 
   const [waveformData, setWaveformData] = useState<Float32Array | null>(null);
