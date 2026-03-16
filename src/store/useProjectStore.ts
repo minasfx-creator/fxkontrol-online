@@ -654,4 +654,11 @@ export const useProjectStore = create<ProjectState>((set) => ({
     });
     return { droneFormations: updated };
   }),
+
+  addCueMarker: (marker) => set((s) => ({ cueMarkers: [...s.cueMarkers, marker].sort((a, b) => a.time - b.time) })),
+  removeCueMarker: (id) => set((s) => ({ cueMarkers: s.cueMarkers.filter((c) => c.id !== id) })),
+  updateCueMarker: (id, updates) => set((s) => ({
+    cueMarkers: s.cueMarkers.map((c) => c.id === id ? { ...c, ...updates } : c),
+  })),
+  clearCueMarkers: () => set({ cueMarkers: [] }),
 }));
