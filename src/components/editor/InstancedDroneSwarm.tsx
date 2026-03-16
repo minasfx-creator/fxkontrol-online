@@ -81,12 +81,11 @@ export default function InstancedDroneSwarm({
     depthWrite: false,
   }), []);
 
-  // LED halo — barely visible, just a hint
+  // LED halo — disabled (opacity near zero, no additive)
   const haloMat = useMemo(() => new THREE.MeshBasicMaterial({
     transparent: true,
-    opacity: 0.01,
+    opacity: 0.005,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
   }), []);
 
   // Nav lights

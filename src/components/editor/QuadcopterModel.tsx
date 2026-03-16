@@ -162,16 +162,15 @@ export default function QuadcopterModel({
         </mesh>
       ))}
 
-      {/* Selection glow ring */}
+      {/* Selection ring — no additive */}
       {selected && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.06, 0]}>
           <ringGeometry args={[0.35, 0.5, 32]} />
           <meshBasicMaterial
             color={color}
             transparent
-            opacity={0.5}
+            opacity={0.25}
             depthWrite={false}
-            blending={THREE.AdditiveBlending}
           />
         </mesh>
       )}
