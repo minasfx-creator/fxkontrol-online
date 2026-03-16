@@ -1815,7 +1815,7 @@ function ConcreteGround({ brightness }: { brightness: number }) {
 
 // ═══ ADAPTIVE EXPOSURE CONTROLLER — Blender Cycles auto-exposure ═══
 // Adjusts gl.toneMappingExposure in real-time based on active explosions
-function AdaptiveExposureController() {
+const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function AdaptiveExposureController(_props, _ref) {
   const exposureRef = useRef(createExposureController());
   const { gl } = useThree();
 
@@ -1870,11 +1870,11 @@ function AdaptiveExposureController() {
   });
 
   return null;
-}
+});
 
 // ═══ GLOBAL ILLUMINATION — Hemisphere light probes from explosions ═══
 // Fake GI: each explosion registers a color probe that bounces light onto the scene
-function GlobalIlluminationController() {
+const GlobalIlluminationController = React.forwardRef<THREE.Group, {}>(function GlobalIlluminationController(_props, _ref) {
   const giRef = useRef<GlobalIlluminationSystem | null>(null);
   const { scene } = useThree();
 
@@ -1911,10 +1911,10 @@ function GlobalIlluminationController() {
   });
 
   return null;
-}
+});
 
 // ═══ VOLUMETRIC SMOKE CONTROLLER — post-burst smoke with wind drift ═══
-function SmokeController() {
+const SmokeController = React.forwardRef<THREE.Group, {}>(function SmokeController(_props, _ref) {
   const smokeRef = useRef<SmokeSystem | null>(null);
   const { scene } = useThree();
 
@@ -1954,10 +1954,10 @@ function SmokeController() {
   });
 
   return null;
-}
+});
 
 // ═══ LENS FLARE CONTROLLER — cinematic optics on bright bursts ═══
-function LensFlareController() {
+const LensFlareController = React.forwardRef<THREE.Group, {}>(function LensFlareController(_props, _ref) {
   const spritesRef = useRef<THREE.Sprite[]>([]);
   const poolIdx = useRef(0);
   const { scene } = useThree();
@@ -2005,10 +2005,10 @@ function LensFlareController() {
   });
 
   return null;
-}
+});
 
 // ═══ GPU SPARK TRAIL CONTROLLER — incandescent trails with 32-point history ═══
-function SparkTrailController() {
+const SparkTrailController = React.forwardRef<THREE.Group, {}>(function SparkTrailController(_props, _ref) {
   const { scene } = useThree();
   const sparksRef = useRef<SparkState[]>([]);
   const systemRef = useRef<ReturnType<typeof createSparkTrailSystem> | null>(null);
@@ -2091,10 +2091,10 @@ function SparkTrailController() {
   });
 
   return null;
-}
+});
 
 
-function GroundReflections() {
+const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflections(_props, _ref) {
   const meshRef = useRef<THREE.Mesh>(null);
   const uniformsRef = useRef({
     uWetness: { value: 0.3 },
@@ -2185,7 +2185,7 @@ function GroundReflections() {
       />
     </mesh>
   );
-}
+});
 
 function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) {
   const sc = useSceneStore(st => st.settings);
