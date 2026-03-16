@@ -623,7 +623,8 @@ function LightPoint({ position, color }: { position: [number, number, number]; c
 }
 
 // Max simultaneous GPU-heavy firework bursts to prevent context loss
-const MAX_CONCURRENT_BURSTS = 20;
+// Each burst uses ~600 star particles + trails = significant VRAM
+const MAX_CONCURRENT_BURSTS = 12;
 
 function TimelineEffects() {
   const { timelineItems, currentTime, positions } = useProjectStore();
