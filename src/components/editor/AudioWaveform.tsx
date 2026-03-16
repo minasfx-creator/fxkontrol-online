@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { Upload, Music, Zap, Volume2, VolumeX, GripHorizontal, Minus, Plus } from 'lucide-react';
+import { Upload, Music, Zap, Volume2, VolumeX, GripHorizontal, Minus, Plus, Flag, Trash2 } from 'lucide-react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
