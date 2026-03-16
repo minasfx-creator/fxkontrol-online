@@ -288,7 +288,7 @@ const WaypointTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: num
       </div>
     </div>
   );
-}
+});
 
 function FormationTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number; duration: number }) {
   const { droneFormations, selectFormation, selectedFormationId } = useProjectStore();
