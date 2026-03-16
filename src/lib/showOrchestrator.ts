@@ -122,18 +122,20 @@ export type OrchestratorListener = (state: ShowOrchestratorState) => void;
 
 export class ShowOrchestrator {
   private state: ShowOrchestratorState;
+  private snapshot: ShowOrchestratorState;
   private listeners = new Set<OrchestratorListener>();
   private countdownTimer: ReturnType<typeof setInterval> | null = null;
   private elapsedTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     this.state = createDefaultState();
+    this.snapshot = this.createSnapshot();
   }
 
   // ── State Access ──────────────────────────────────────────────
 
   getState(): ShowOrchestratorState {
-    return { ...this.state };
+    return this.snapshot;
   }
 
   subscribe(listener: OrchestratorListener): () => void {
@@ -141,9 +143,19 @@ export class ShowOrchestrator {
     return () => this.listeners.delete(listener);
   }
 
+  private createSnapshot(): ShowOrchestratorState {
+    return {
+      ...this.state,
+      preflightResults: [...this.state.preflightResults],
+      authorization: { ...this.state.authorization },
+      droneMapping: [...this.state.droneMapping],
+      warnings: this.state.warnings.map((w) => ({ ...w })),
+    };
+  }
+
   private notify() {
-    const snapshot = this.getState();
-    this.listeners.forEach(l => l(snapshot));
+    this.snapshot = this.createSnapshot();
+    this.listeners.forEach((listener) => listener(this.snapshot));
   }
 
   private transition(to: ShowPhase) {
