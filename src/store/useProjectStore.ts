@@ -101,6 +101,13 @@ export interface DroneFormation {
   points: { x: number; z: number }[];
 }
 
+export interface CueMarker {
+  id: string;
+  time: number;       // seconds
+  label: string;
+  color: string;      // HSL string
+}
+
 export interface CameraKeyframe {
   id: string;
   time: number;
@@ -147,6 +154,7 @@ export interface ProjectState {
   selectedFormationId: string | null;
   selectedTrajectoryIds: string[];
   showFormations: boolean;
+  cueMarkers: CueMarker[];
   gpsOrigin: { lat: number; lng: number; heading: number; altitude: number };
   setGpsOrigin: (origin: { lat: number; lng: number; heading: number; altitude: number }) => void;
 
@@ -208,6 +216,10 @@ export interface ProjectState {
   duplicateDroneFormation: (id: string) => void;
   clearAllFormations: () => void;
   recalculateFormationTimings: () => void;
+  addCueMarker: (marker: CueMarker) => void;
+  removeCueMarker: (id: string) => void;
+  updateCueMarker: (id: string, updates: Partial<Omit<CueMarker, 'id'>>) => void;
+  clearCueMarkers: () => void;
 }
 
 export const EFFECT_LIBRARY: Effect[] = [
@@ -380,6 +392,7 @@ export const useProjectStore = create<ProjectState>((set) => ({
   selectedFormationId: null,
   selectedTrajectoryIds: [],
   showFormations: true,
+  cueMarkers: [],
   gpsOrigin: { lat: -23.5505, lng: -46.6333, heading: 0, altitude: 0 },
   setGpsOrigin: (origin) => set({ gpsOrigin: origin }),
 
@@ -641,4 +654,11 @@ export const useProjectStore = create<ProjectState>((set) => ({
     });
     return { droneFormations: updated };
   }),
+
+  addCueMarker: (marker) => set((s) => ({ cueMarkers: [...s.cueMarkers, marker].sort((a, b) => a.time - b.time) })),
+  removeCueMarker: (id) => set((s) => ({ cueMarkers: s.cueMarkers.filter((c) => c.id !== id) })),
+  updateCueMarker: (id, updates) => set((s) => ({
+    cueMarkers: s.cueMarkers.map((c) => c.id === id ? { ...c, ...updates } : c),
+  })),
+  clearCueMarkers: () => set({ cueMarkers: [] }),
 }));

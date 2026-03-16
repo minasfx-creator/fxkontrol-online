@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { Upload, Music, Zap, Volume2, VolumeX, GripHorizontal, Minus, Plus } from 'lucide-react';
+import { Upload, Music, Zap, Volume2, VolumeX, GripHorizontal, Minus, Plus, Flag, Trash2 } from 'lucide-react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -58,12 +58,23 @@ const MIN_HEIGHT = 36;
 const MAX_HEIGHT = 200;
 const HEIGHT_STEP = 24;
 
+const CUE_COLORS = [
+  'hsl(0, 85%, 60%)',    // red
+  'hsl(45, 95%, 55%)',   // amber
+  'hsl(120, 70%, 50%)',  // green
+  'hsl(200, 90%, 55%)',  // blue
+  'hsl(280, 80%, 60%)',  // purple
+  'hsl(330, 85%, 58%)',  // pink
+];
+
 export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const {
     currentTime, duration, audioUrl, bpm, isPlaying, playbackSpeed,
     setAudioUrl, setBpm, snapToBeat, setSnapToBeat,
+    cueMarkers, addCueMarker, removeCueMarker,
   } = useProjectStore();
 
   const [waveformData, setWaveformData] = useState<Float32Array | null>(null);
@@ -259,6 +270,38 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
       ctx.fillRect(0, 0, playX, height);
     }
 
+    // Cue markers
+    cueMarkers.forEach((cue) => {
+      const cx = cue.time * pixelsPerSecond;
+      // Vertical line
+      ctx.strokeStyle = cue.color;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(cx, 0);
+      ctx.lineTo(cx, height);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Flag triangle at top
+      ctx.fillStyle = cue.color;
+      ctx.beginPath();
+      ctx.moveTo(cx, 0);
+      ctx.lineTo(cx + 8, 0);
+      ctx.lineTo(cx + 8, 6);
+      ctx.lineTo(cx + 2, 10);
+      ctx.lineTo(cx, 10);
+      ctx.closePath();
+      ctx.fill();
+
+      // Label
+      if (trackHeight > 50) {
+        ctx.fillStyle = cue.color;
+        ctx.font = 'bold 8px monospace';
+        ctx.fillText(cue.label, cx + 10, 8);
+      }
+    });
+
     // Playhead
     ctx.strokeStyle = 'hsl(207, 90%, 54%)';
     ctx.lineWidth = 2;
@@ -267,7 +310,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     ctx.moveTo(playX, 0);
     ctx.lineTo(playX, height);
     ctx.stroke();
-  }, [waveformData, beats, currentTime, duration, pixelsPerSecond, trackHeight]);
+  }, [waveformData, beats, currentTime, duration, pixelsPerSecond, trackHeight, cueMarkers]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -293,6 +336,48 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
       setUploading(false);
     }
   };
+
+  // Click on waveform to add cue marker (double-click)
+  const handleWaveformDoubleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const x = e.clientX - rect.left + container.scrollLeft;
+    let time = x / pixelsPerSecond;
+
+    // Snap to beat if enabled
+    if (snapToBeat && bpm) {
+      const beatInterval = 60 / bpm;
+      time = Math.round(time / beatInterval) * beatInterval;
+    }
+
+    time = Math.max(0, Math.min(duration, time));
+
+    const id = `cue-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+    const label = `C${cueMarkers.length + 1}`;
+    const color = CUE_COLORS[cueMarkers.length % CUE_COLORS.length];
+
+    addCueMarker({ id, time, label, color });
+    toast.success(`Cue "${label}" @ ${time.toFixed(2)}s`);
+  }, [pixelsPerSecond, snapToBeat, bpm, duration, cueMarkers.length, addCueMarker]);
+
+  // Right-click on cue marker to remove
+  const handleWaveformContextMenu = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const x = e.clientX - rect.left + container.scrollLeft;
+    const clickTime = x / pixelsPerSecond;
+
+    // Find nearest cue within 5px threshold
+    const threshold = 5 / pixelsPerSecond;
+    const nearest = cueMarkers.find(c => Math.abs(c.time - clickTime) < threshold);
+    if (nearest) {
+      e.preventDefault();
+      removeCueMarker(nearest.id);
+      toast(`Cue "${nearest.label}" removido`);
+    }
+  }, [pixelsPerSecond, cueMarkers, removeCueMarker]);
 
   const isExpanded = trackHeight > MIN_HEIGHT;
 
@@ -381,14 +466,31 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
       </div>
 
       <div
-        className="flex-1 relative bg-surface-0/50 overflow-hidden"
+        ref={containerRef}
+        className="flex-1 relative bg-surface-0/50 overflow-hidden cursor-crosshair"
         style={{ height: `${trackHeight}px` }}
+        onDoubleClick={handleWaveformDoubleClick}
+        onContextMenu={handleWaveformContextMenu}
       >
         <canvas
           ref={canvasRef}
           className="w-full h-full"
           style={{ width: `${duration * pixelsPerSecond}px`, height: `${trackHeight}px` }}
         />
+
+        {/* Cue marker tooltips (DOM overlay for hover) */}
+        {cueMarkers.map((cue) => (
+          <div
+            key={cue.id}
+            className="absolute top-0 group"
+            style={{ left: `${cue.time * pixelsPerSecond}px`, width: '2px', height: '100%' }}
+            title={`${cue.label} — ${cue.time.toFixed(2)}s (right-click to remove)`}
+          >
+            {/* Hover hitbox */}
+            <div className="absolute -left-2 top-0 w-5 h-full cursor-pointer" />
+          </div>
+        ))}
+
         {!audioUrl && (
           <div className="absolute inset-0 flex items-center justify-center">
             <label className="cursor-pointer flex items-center gap-1 text-[10px] text-muted-foreground/50 hover:text-muted-foreground">
@@ -399,10 +501,17 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
           </div>
         )}
 
-        {/* Height indicator when expanded */}
+        {/* Cue count + Height indicator */}
         {isExpanded && (
-          <div className="absolute right-1 top-1 text-[7px] font-mono-code text-muted-foreground/30">
-            {trackHeight}px
+          <div className="absolute right-1 top-1 flex items-center gap-2">
+            {cueMarkers.length > 0 && (
+              <span className="text-[7px] font-mono-code text-safety/60">
+                <Flag className="h-2 w-2 inline mr-0.5" />{cueMarkers.length} cues
+              </span>
+            )}
+            <span className="text-[7px] font-mono-code text-muted-foreground/30">
+              {trackHeight}px
+            </span>
           </div>
         )}
       </div>
