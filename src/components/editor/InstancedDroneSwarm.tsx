@@ -55,7 +55,7 @@ export default function InstancedDroneSwarm({
   const ledMat = useMemo(() => new THREE.MeshStandardMaterial({
     color: '#ffffff',
     emissive: '#ffffff',
-    emissiveIntensity: 0.048,
+    emissiveIntensity: 0.02,
     toneMapped: true,
     metalness: 0.0,
     roughness: 0.5,
@@ -90,9 +90,9 @@ export default function InstancedDroneSwarm({
 
   // Nav lights
   const navMat = useMemo(() => new THREE.MeshBasicMaterial({
-    toneMapped: false,
+    toneMapped: true,
     transparent: true,
-    opacity: 0.32,
+    opacity: 0.12,
   }), []);
 
   const armOffsets: [number, number, number][] = useMemo(() => [
