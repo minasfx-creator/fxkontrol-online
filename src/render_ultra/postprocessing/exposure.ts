@@ -29,7 +29,7 @@ export function updateExposure(state: ExposureState, luminance: number, dt: numb
   // Inverse relationship: brighter scene → lower exposure
   state.targetExposure = Math.max(
     state.minExposure,
-    Math.min(state.maxExposure, 1.2 / (1 + luminance * 0.3))
+    Math.min(state.maxExposure, 1.2 / (1 + luminance * 0.5))
   );
 
   // Smooth interpolation — fast darken, slow brighten (like real cameras)
@@ -46,6 +46,6 @@ export function updateExposure(state: ExposureState, luminance: number, dt: numb
 export function flashEvent(state: ExposureState, intensity: number) {
   state.targetExposure = Math.max(
     state.minExposure,
-    state.currentExposure - intensity * 0.3
+    state.currentExposure - intensity * 0.5
   );
 }

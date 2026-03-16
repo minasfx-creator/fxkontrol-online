@@ -621,13 +621,13 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
       {progress < 0.06 && (
         <mesh renderOrder={100}>
           <sphereGeometry args={[flashSize * 0.4 * (1 + progress * 6), 8, 8]} />
-          <meshBasicMaterial color="#FFFFF0" transparent opacity={0.4 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} depthWrite={false} />
+          <meshBasicMaterial color="#FFFFF0" transparent opacity={0.2 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
       {progress < 0.12 && (
         <mesh renderOrder={99}>
           <sphereGeometry args={[flashSize * (1 + progress * 6), 8, 8]} />
-          <meshBasicMaterial color={color} transparent opacity={0.15 * Math.pow(1 - progress / 0.12, 2)} blending={THREE.AdditiveBlending} depthWrite={false} />
+          <meshBasicMaterial color={color} transparent opacity={0.08 * Math.pow(1 - progress / 0.12, 2)} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
     </group>
@@ -1860,11 +1860,14 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
         const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
         if (effect && effect.type === 'firework') {
           const intensity = 0.4 * (1 - elapsed / 0.3);
-          _scatterAccum.add(_tmpColor.set(effect.color).multiplyScalar(intensity * 0.3));
+          _scatterAccum.add(_tmpColor.set(effect.color).multiplyScalar(Math.min(intensity * 0.3, 0.15)));
           scatterMax = Math.max(scatterMax, intensity);
         }
       }
     }
+
+    // Cap accumulated luminance to prevent ACES white-out with many simultaneous bursts
+    luminance = Math.min(luminance, 15);
 
     if (luminance > 2 && delta < 0.1) {
       flashEvent(state, Math.min(luminance * 0.15, 0.8));
@@ -1873,7 +1876,6 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
     const exposure = updateExposure(state, luminance, delta);
     _adaptiveExposure = exposure;
     setDebugExposure(exposure);
-    // NoToneMapping no renderer — exposure is consumed by particle HDR scaling
     // ACES in PostProcessing remains the single HDR→SDR tone-mapping pass
 
     // Update sky scatter uniforms
@@ -2084,7 +2086,7 @@ const SparkTrailController = React.forwardRef<THREE.Group, {}>(function SparkTra
           const breakSpd = getBreakSpeed(caliber);
           const compound = hexToCompound(effect.color);
           const adaptiveScale = THREE.MathUtils.clamp(_adaptiveExposure / 1.2, 0.45, 1.35);
-          const hdrScale = THREE.MathUtils.clamp((hdrMultiplier / 3.5) * adaptiveScale, 0.8, 2.6);
+          const hdrScale = THREE.MathUtils.clamp((hdrMultiplier / 3.5) * adaptiveScale, 0.8, 1.8);
           const baseColor = thermalColor(compound, 1.0, hdrScale);
           const sparkCount = Math.min(24, Math.round(caliber * 3));
           
@@ -2121,7 +2123,7 @@ const SparkTrailController = React.forwardRef<THREE.Group, {}>(function SparkTra
       const lifeRatio = Math.max(0, sparks[i].life / sparks[i].maxLife);
       const compound = hexToCompound('#' + sparks[i].color.getHexString());
       const adaptiveScale = THREE.MathUtils.clamp(_adaptiveExposure / 1.2, 0.45, 1.35);
-      const hdrScale = THREE.MathUtils.clamp((hdrMultiplier / 3.5) * adaptiveScale, 0.8, 2.6);
+      const hdrScale = THREE.MathUtils.clamp((hdrMultiplier / 3.5) * adaptiveScale, 0.8, 1.8);
       const cooled = thermalColor(compound, lifeRatio, hdrScale).multiplyScalar(THREE.MathUtils.clamp(effectBrightness, 0.6, 1.8));
       sparks[i].color.copy(cooled);
       
