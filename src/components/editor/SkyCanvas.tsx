@@ -509,7 +509,7 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
       // We must tonemap before using as vertex colors to prevent white-out.
       const lifeRatio = 1 - starAge; // thermalColor expects 1=birth, 0=dead
       // HDR mult reduced: ACES Filmic PostProcessing is the single tonemap
-      const chemColor = thermalColor(compound, lifeRatio, 0.35);
+      const chemColor = thermalColor(compound, lifeRatio, 1.0);
       const chemR = chemColor.r;
       const chemG = chemColor.g;
       const chemB = chemColor.b;
@@ -1866,7 +1866,8 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
     }
 
     const exposure = updateExposure(state, luminance, delta);
-    gl.toneMappingExposure = exposure;
+    // NoToneMapping on renderer — exposure stored for sky scatter only
+    // ACES in PostProcessing handles HDR rolloff automatically
 
     // Update sky scatter uniforms
     if (_skyScatterUniforms) {
@@ -2050,7 +2051,7 @@ const SparkTrailController = React.forwardRef<THREE.Group, {}>(function SparkTra
           const breakH = getBreakHeight(caliber);
           const breakSpd = getBreakSpeed(caliber);
           const compound = hexToCompound(effect.color);
-          const baseColor = thermalColor(compound, 1.0, 0.5);
+          const baseColor = thermalColor(compound, 1.0, 1.5);
           const sparkCount = Math.min(24, Math.round(caliber * 3));
           
           for (let s = 0; s < sparkCount; s++) {
@@ -2085,7 +2086,7 @@ const SparkTrailController = React.forwardRef<THREE.Group, {}>(function SparkTra
       // Thermal color cooling
       const lifeRatio = Math.max(0, sparks[i].life / sparks[i].maxLife);
       const compound = hexToCompound('#' + sparks[i].color.getHexString());
-      const cooled = thermalColor(compound, lifeRatio, 0.5);
+      const cooled = thermalColor(compound, lifeRatio, 1.5);
       sparks[i].color.copy(cooled);
       
       if (sparks[i].life <= 0) {
@@ -2906,7 +2907,7 @@ export default function SkyCanvas() {
         shadows
         gl={{
           antialias: false,
-          toneMapping: THREE.ACESFilmicToneMapping,
+          toneMapping: THREE.NoToneMapping,
           toneMappingExposure: 1.2,
           powerPreference: isMobile ? 'default' : 'high-performance',
           alpha: false,
