@@ -168,18 +168,14 @@ function getWindForce(): [number, number, number] {
 const STAR_VERTEX_SHADER = `
   attribute float aSize;
   attribute float aLife;
-  attribute float aSeed;
   varying vec3 vColor;
   varying float vLife;
   varying float vSize;
-  varying float vSeed;
   void main() {
     vColor = color;
     vLife = aLife;
     vSize = aSize;
-    vSeed = aSeed;
     vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-    // Blender-calibrated: tighter point size for realistic star scale
     gl_PointSize = aSize * (1600.0 / -mvPos.z);
     gl_PointSize = clamp(gl_PointSize, 1.0, 140.0);
     gl_Position = projectionMatrix * mvPos;
