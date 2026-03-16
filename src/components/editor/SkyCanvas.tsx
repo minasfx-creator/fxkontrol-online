@@ -2658,11 +2658,13 @@ export default function SkyCanvas() {
   const [activePreset, setActivePreset] = useState('free');
   const [freeLook, setFreeLook] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [cameraMenuOpen, setCameraMenuOpen] = useState(false);
   const preset = CAMERA_PRESETS.find((p) => p.id === activePreset) || CAMERA_PRESETS[0];
   const perfStatsRef = useRef<PerfStats>({ fps: 0, drawCalls: 0, triangles: 0, geometries: 0, textures: 0 });
   const droneCount = droneFormations.length > 0 ? droneFormations[0].droneCount : 0;
   const [satelliteTexture, setSatelliteTexture] = useState<string | null>(null);
   const [downloadingScenery, setDownloadingScenery] = useState(false);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
   // Track fullscreen state
   useEffect(() => {
