@@ -1793,26 +1793,33 @@ function AdaptiveExposureController() {
   const exposureRef = useRef(createExposureController());
   const { gl } = useThree();
 
+  // Pre-allocated color to avoid per-frame GC pressure
+  const _scatterAccum = useMemo(() => new THREE.Color(), []);
+  const _tmpColor = useMemo(() => new THREE.Color(), []);
+
   useFrame((_, delta) => {
     const state = exposureRef.current;
     const { timelineItems, currentTime } = useProjectStore.getState();
     let luminance = 0;
-    const scatterAccum = new THREE.Color(0, 0, 0);
+    _scatterAccum.setRGB(0, 0, 0);
     let scatterMax = 0;
 
-    for (const item of timelineItems) {
+    // Only check items in a reasonable time window to avoid O(n) every frame
+    for (let i = 0; i < timelineItems.length; i++) {
+      const item = timelineItems[i];
       const elapsed = currentTime - item.startTime;
-      if (elapsed >= 0 && elapsed < 0.5) {
+      if (elapsed < 0 || elapsed > 2.0) continue;
+      if (elapsed < 0.5) {
         luminance += 3.0;
-      } else if (elapsed >= 0.5 && elapsed < 2.0) {
+      } else {
         luminance += 0.5;
       }
-      // Sky scatter accumulation
-      if (elapsed >= 0 && elapsed < 0.3) {
+      // Sky scatter accumulation — reuse color objects
+      if (elapsed < 0.3) {
         const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
         if (effect && effect.type === 'firework') {
           const intensity = 0.4 * (1 - elapsed / 0.3);
-          scatterAccum.add(new THREE.Color(effect.color).multiplyScalar(intensity * 0.3));
+          _scatterAccum.add(_tmpColor.set(effect.color).multiplyScalar(intensity * 0.3));
           scatterMax = Math.max(scatterMax, intensity);
         }
       }
