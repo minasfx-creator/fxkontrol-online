@@ -617,7 +617,7 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
       )}
     </group>
   );
-}
+});
 
 function LightPoint({ position, color }: { position: [number, number, number]; color: string }) {
   return <QuadcopterModel position={position} color={color} />;
