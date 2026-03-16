@@ -252,17 +252,21 @@ function FireworkBurst({
   // ═══ LOD — reduce particles & trails at distance ═══
   const lod = useLOD(position);
   const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
-  
-  // Niagara-style: particle count scales with shell volume, reduced by LOD
-  // Extra mobile caps prevent WebGL context loss on dense timelines
+  const particleDensity = useSceneStore(st => st.settings.particleDensity);
+
+  // Niagara-style: particle count scales with shell volume, LOD and quality preset
+  // Conservative caps prevent WebGL context loss on dense timelines
   const STAR_COUNT = useMemo(() => {
-    const cap = isMobileViewport ? 220 : 500;
-    return Math.min(cap, Math.round((60 + caliber * caliber * 10) * lod.particleMultiplier));
-  }, [caliber, lod.particleMultiplier, isMobileViewport]);
+    const densityScale = THREE.MathUtils.clamp(particleDensity, 0.5, 2.0);
+    const baseCount = (60 + caliber * caliber * 10) * lod.particleMultiplier * densityScale;
+    const cap = isMobileViewport ? 120 : 320;
+    return Math.max(24, Math.min(cap, Math.round(baseCount)));
+  }, [caliber, lod.particleMultiplier, isMobileViewport, particleDensity]);
   const TRAIL_LENGTH = useMemo(() => {
-    const trailCap = isMobileViewport ? 4 : 8;
-    return Math.max(2, Math.min(trailCap, Math.floor((4 + caliber * 0.8) * lod.trailLength)));
-  }, [caliber, lod.trailLength, isMobileViewport]);
+    const trailCap = isMobileViewport ? 3 : 6;
+    const densityTrail = particleDensity >= 1 ? 1 : 0.8;
+    return Math.max(2, Math.min(trailCap, Math.floor((4 + caliber * 0.8) * lod.trailLength * densityTrail)));
+  }, [caliber, lod.trailLength, isMobileViewport, particleDensity]);
   
   // Real break speed from pyroPhysics — caliber proportional (m/s)
   const breakSpeed = useMemo(() => getBreakSpeed(caliber), [caliber]);
