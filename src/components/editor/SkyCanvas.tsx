@@ -1743,24 +1743,14 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
 function ConcreteGround({ brightness }: { brightness: number }) {
   const b = brightness * 0.5;
   return (
-    <>
-      <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[20000, 20000]} />
-        <meshStandardMaterial
-          color={new THREE.Color(0.06 * b, 0.06 * b, 0.065 * b)}
-          roughness={0.95}
-          metalness={0.1}
-        />
-      </mesh>
-      <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[300, 64]} />
-        <meshStandardMaterial
-          color={new THREE.Color(0.08 * b, 0.08 * b, 0.085 * b)}
-          roughness={0.9}
-          metalness={0.15}
-        />
-      </mesh>
-    </>
+    <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <planeGeometry args={[20000, 20000]} />
+      <meshStandardMaterial
+        color={new THREE.Color(0.07 * b, 0.07 * b, 0.075 * b)}
+        roughness={0.92}
+        metalness={0.12}
+      />
+    </mesh>
   );
 }
 

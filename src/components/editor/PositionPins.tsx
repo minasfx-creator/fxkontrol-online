@@ -493,7 +493,7 @@ function GroundClickPlane() {
 
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} onClick={handleClick}>
-      <planeGeometry args={[500, 500]} />
+      <planeGeometry args={[20000, 20000]} />
       <meshBasicMaterial visible={false} />
     </mesh>
   );
