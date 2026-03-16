@@ -246,4 +246,6 @@ const PrefireShell = React.forwardRef<THREE.Group, {
       </mesh>
     </group>
   );
-}
+});
+
+export default PrefireShell;
