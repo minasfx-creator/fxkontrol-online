@@ -108,7 +108,7 @@ const DronePadIcon = forwardRef<THREE.Group, IconProps>(({ color, emissiveIntens
 });
 DronePadIcon.displayName = 'DronePadIcon';
 
-function Pin({ position, onRightClick }: { position: Position; onRightClick: (pos: Position, screenPos: { x: number; y: number }) => void }) {
+const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Position, screenPos: { x: number; y: number }) => void }>(function Pin({ position, onRightClick }, ref) {
   const { selectedPositionIds, selectPosition, togglePositionSelection, editorMode, updatePosition, timelineItems } = useProjectStore();
   const isSelected = selectedPositionIds.includes(position.id);
   const color = position.type === 'pyro' ? PYRO_COLOR : (position.color || DRONE_COLOR);
