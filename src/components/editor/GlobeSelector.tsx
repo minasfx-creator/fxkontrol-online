@@ -72,8 +72,8 @@ const CITIES = [
 ];
 
 const GLOBE_RADIUS = 2.5;
-const MIN_ZOOM = 1.8; // Google Earth-style close zoom
-const MAX_ZOOM = 22;  // Far enough to see full globe
+const MIN_ZOOM = 1.8;
+const MAX_ZOOM = 22;
 
 function latLngToSphere(lat: number, lng: number, radius: number): THREE.Vector3 {
   const phi = (90 - lat) * (Math.PI / 180);
@@ -92,7 +92,12 @@ function sphereToLatLng(point: THREE.Vector3): { lat: number; lng: number } {
   return { lat, lng: lng < -180 ? lng + 360 : lng > 180 ? lng - 360 : lng };
 }
 
-// ─── Atmosphere shader (Google Earth style - thin blue line) ───
+// Smooth ease-in-out (quintic)
+function easeInOutQuint(t: number): number {
+  return t < 0.5 ? 16 * t * t * t * t * t : 1 - Math.pow(-2 * t + 2, 5) / 2;
+}
+
+// ─── Atmosphere shader (Google Earth style) ───
 function Atmosphere() {
   return (
     <mesh scale={[1.08, 1.08, 1.08]}>
@@ -103,19 +108,15 @@ function Atmosphere() {
         side={THREE.BackSide}
         vertexShader={`
           varying vec3 vNormal;
-          varying vec3 vWorldPos;
           void main() {
             vNormal = normalize(normalMatrix * normal);
-            vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
           }
         `}
         fragmentShader={`
           varying vec3 vNormal;
-          varying vec3 vWorldPos;
           void main() {
             float rim = pow(0.65 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 3.0);
-            // Google Earth: thin bright blue at edge, fading to transparent
             vec3 innerColor = vec3(0.35, 0.65, 1.0);
             vec3 outerColor = vec3(0.15, 0.35, 0.85);
             vec3 color = mix(innerColor, outerColor, rim);
@@ -128,15 +129,12 @@ function Atmosphere() {
   );
 }
 
-// ─── Secondary outer glow (subtle space glow) ───
 function OuterGlow() {
   return (
     <mesh scale={[1.18, 1.18, 1.18]}>
       <sphereGeometry args={[GLOBE_RADIUS, 64, 64]} />
       <shaderMaterial
-        transparent
-        depthWrite={false}
-        side={THREE.BackSide}
+        transparent depthWrite={false} side={THREE.BackSide}
         vertexShader={`
           varying vec3 vNormal;
           void main() {
@@ -156,15 +154,12 @@ function OuterGlow() {
   );
 }
 
-// ─── Inner atmosphere (Fresnel rim on globe surface) ───
 function InnerGlow() {
   return (
     <mesh scale={[1.005, 1.005, 1.005]}>
       <sphereGeometry args={[GLOBE_RADIUS, 128, 128]} />
       <shaderMaterial
-        transparent
-        depthWrite={false}
-        side={THREE.FrontSide}
+        transparent depthWrite={false} side={THREE.FrontSide}
         vertexShader={`
           varying vec3 vNormal;
           varying vec3 vViewDir;
@@ -180,8 +175,7 @@ function InnerGlow() {
           void main() {
             float rim = 1.0 - max(dot(vNormal, vViewDir), 0.0);
             rim = pow(rim, 4.0);
-            vec3 color = vec3(0.3, 0.6, 1.0);
-            gl_FragColor = vec4(color, rim * 0.2);
+            gl_FragColor = vec4(0.3, 0.6, 1.0, rim * 0.2);
           }
         `}
       />
@@ -189,32 +183,119 @@ function InnerGlow() {
   );
 }
 
-// ─── City pins (only visible near cities) ───
+// ─── Clouds layer (semi-transparent, slightly larger) ───
+function CloudsLayer() {
+  const cloudRef = useRef<THREE.Mesh>(null);
+  
+  useFrame(({ clock }) => {
+    if (cloudRef.current) {
+      // Clouds rotate slightly faster than earth for parallax
+      cloudRef.current.rotation.y = clock.elapsedTime * 0.008;
+    }
+  });
+
+  return (
+    <mesh ref={cloudRef} scale={[1.003, 1.003, 1.003]}>
+      <sphereGeometry args={[GLOBE_RADIUS, 64, 64]} />
+      <shaderMaterial
+        transparent
+        depthWrite={false}
+        side={THREE.FrontSide}
+        vertexShader={`
+          varying vec2 vUv;
+          varying vec3 vNormal;
+          varying vec3 vViewDir;
+          void main() {
+            vUv = uv;
+            vNormal = normalize(normalMatrix * normal);
+            vViewDir = normalize(-(modelViewMatrix * vec4(position, 1.0)).xyz);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `}
+        fragmentShader={`
+          varying vec2 vUv;
+          varying vec3 vNormal;
+          varying vec3 vViewDir;
+          
+          // Procedural cloud noise
+          float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+          }
+          float noise(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            float a = hash(i);
+            float b = hash(i + vec2(1.0, 0.0));
+            float c = hash(i + vec2(0.0, 1.0));
+            float d = hash(i + vec2(1.0, 1.0));
+            return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+          }
+          float fbm(vec2 p) {
+            float v = 0.0;
+            float a = 0.5;
+            for (int i = 0; i < 4; i++) {
+              v += a * noise(p);
+              p *= 2.0;
+              a *= 0.5;
+            }
+            return v;
+          }
+          
+          void main() {
+            float n = fbm(vUv * 8.0);
+            float cloud = smoothstep(0.45, 0.7, n);
+            float fresnel = pow(1.0 - max(dot(vNormal, vViewDir), 0.0), 2.0);
+            float alpha = cloud * 0.12 * (1.0 - fresnel * 0.5);
+            gl_FragColor = vec4(1.0, 1.0, 1.0, alpha);
+          }
+        `}
+      />
+    </mesh>
+  );
+}
+
+// ─── City pins with animated selection ───
 function CityPins({ cities, selectedName, onSelect }: {
   cities: typeof CITIES;
   selectedName: string | null;
   onSelect: (city: typeof CITIES[0]) => void;
 }) {
+  const pulseRef = useRef(0);
+  useFrame(({ clock }) => { pulseRef.current = clock.elapsedTime; });
+
   return (
     <group>
       {cities.map((city) => {
         const pos = latLngToSphere(city.lat, city.lng, GLOBE_RADIUS + 0.02);
         const isSelected = selectedName === city.name;
+        const pulse = Math.sin(pulseRef.current * 3) * 0.5 + 0.5;
         return (
           <group key={city.name} position={pos}>
+            {/* Click hitbox — larger invisible sphere */}
             <mesh onClick={(e) => { e.stopPropagation(); onSelect(city); }}>
-              <sphereGeometry args={[isSelected ? 0.05 : 0.022, 12, 12]} />
+              <sphereGeometry args={[0.08, 8, 8]} />
+              <meshBasicMaterial visible={false} />
+            </mesh>
+            {/* Visible pin */}
+            <mesh>
+              <sphereGeometry args={[isSelected ? 0.045 + pulse * 0.01 : 0.02, 12, 12]} />
               <meshBasicMaterial color={isSelected ? '#f97316' : '#3b82f6'} />
             </mesh>
-            {/* Pulse ring for selected */}
+            {/* Outer glow ring for selected */}
             {isSelected && (
               <>
                 <mesh rotation={[Math.PI / 2, 0, 0]}>
-                  <ringGeometry args={[0.06, 0.08, 24]} />
-                  <meshBasicMaterial color="#f97316" transparent opacity={0.5} side={THREE.DoubleSide} />
+                  <ringGeometry args={[0.06 + pulse * 0.02, 0.08 + pulse * 0.02, 24]} />
+                  <meshBasicMaterial color="#f97316" transparent opacity={0.3 + pulse * 0.2} side={THREE.DoubleSide} />
+                </mesh>
+                {/* Second pulse ring */}
+                <mesh rotation={[Math.PI / 2, 0, 0]}>
+                  <ringGeometry args={[0.1 + pulse * 0.03, 0.12 + pulse * 0.03, 24]} />
+                  <meshBasicMaterial color="#f97316" transparent opacity={0.15 * (1 - pulse)} side={THREE.DoubleSide} />
                 </mesh>
                 <Html distanceFactor={8} center style={{ pointerEvents: 'none' }}>
-                  <div className="bg-surface-1/95 backdrop-blur-sm border border-electric/30 rounded-lg px-3 py-1.5 whitespace-nowrap shadow-xl">
+                  <div className="bg-surface-1/95 backdrop-blur-sm border border-electric/30 rounded-lg px-3 py-1.5 whitespace-nowrap shadow-xl animate-in fade-in zoom-in-95 duration-300">
                     <p className="text-[11px] font-mono-code text-electric font-semibold">{city.icon} {city.name}</p>
                     <p className="text-[9px] text-muted-foreground">{city.lat.toFixed(4)}°, {city.lng.toFixed(4)}°</p>
                   </div>
@@ -251,22 +332,135 @@ function FreePin({ lat, lng }: { lat: number; lng: number }) {
   );
 }
 
-// ─── Camera zoom controller (Google Earth smooth zoom) ───
-function CameraZoomTo({ target, zooming }: { target: THREE.Vector3 | null; zooming: boolean }) {
+/**
+ * Google Earth-style cinematic camera controller.
+ * 
+ * Phase 1 — "Fly-to": Camera smoothly orbits to face the target city
+ * Phase 2 — "Zoom-in": Camera zooms in close to the surface
+ * Phase 3 — "Dive": Final zoom burst into the atmosphere (on confirm)
+ */
+function CinematicCamera({ 
+  target, 
+  phase,
+  controlsRef,
+}: { 
+  target: THREE.Vector3 | null; 
+  phase: 'browse' | 'confirming' | 'zooming';
+  controlsRef: React.RefObject<any>;
+}) {
   const { camera } = useThree();
-  const targetPos = useRef(new THREE.Vector3(0, 0, 8));
+  
+  // Animation state
+  const animState = useRef<{
+    active: boolean;
+    startPos: THREE.Vector3;
+    endPos: THREE.Vector3;
+    startLookAt: THREE.Vector3;
+    endLookAt: THREE.Vector3;
+    progress: number;
+    duration: number;
+    phase: 'flyto' | 'zoomclose' | 'dive';
+  } | null>(null);
 
+  // Phase 1+2: When a city is selected, fly to it and zoom to medium distance
   useEffect(() => {
-    if (target && zooming) {
-      const dir = target.clone().normalize();
-      targetPos.current = dir.multiplyScalar(3.2); // Zoom closer on confirm
+    if (!target || phase === 'browse') {
+      animState.current = null;
+      return;
     }
-  }, [target, zooming]);
 
-  useFrame(() => {
-    if (zooming && target) {
-      camera.position.lerp(targetPos.current, 0.035);
-      camera.lookAt(0, 0, 0);
+    if (phase === 'confirming') {
+      const dir = target.clone().normalize();
+      // Position camera 4.2 units from center, looking at the target on globe surface
+      const endPos = dir.clone().multiplyScalar(4.2);
+      // Slight offset up for a nicer viewing angle
+      endPos.y += 0.3;
+      
+      animState.current = {
+        active: true,
+        startPos: camera.position.clone(),
+        endPos,
+        startLookAt: new THREE.Vector3(0, 0, 0),
+        endLookAt: target.clone(),
+        progress: 0,
+        duration: 1.8, // seconds
+        phase: 'flyto',
+      };
+      
+      // Disable orbit controls during animation
+      if (controlsRef.current) {
+        controlsRef.current.enabled = false;
+      }
+    }
+
+    if (phase === 'zooming') {
+      const dir = target.clone().normalize();
+      // Very close zoom — 2.7 units from center (just above surface)
+      const endPos = dir.clone().multiplyScalar(2.7);
+      endPos.y += 0.05;
+      
+      animState.current = {
+        active: true,
+        startPos: camera.position.clone(),
+        endPos,
+        startLookAt: target.clone(),
+        endLookAt: target.clone(),
+        progress: 0,
+        duration: 2.5,
+        phase: 'dive',
+      };
+    }
+  }, [target, phase]);
+
+  useFrame((_, delta) => {
+    const anim = animState.current;
+    if (!anim || !anim.active) {
+      // Re-enable controls when no animation
+      if (controlsRef.current && phase === 'browse') {
+        controlsRef.current.enabled = true;
+      }
+      return;
+    }
+
+    anim.progress += delta / anim.duration;
+    const t = Math.min(anim.progress, 1);
+    const eased = easeInOutQuint(t);
+
+    // Interpolate camera position with arc (fly over the globe)
+    const pos = new THREE.Vector3().lerpVectors(anim.startPos, anim.endPos, eased);
+    
+    // Add arc height during fly-to for a Google Earth "swoop"
+    if (anim.phase === 'flyto') {
+      const arcHeight = Math.sin(eased * Math.PI) * 2.5;
+      pos.y += arcHeight;
+    }
+    if (anim.phase === 'dive') {
+      // Subtle shake near the end for "atmosphere entry" feel
+      if (t > 0.7) {
+        const shake = (1 - t) * 0.02;
+        pos.x += Math.sin(t * 80) * shake;
+        pos.y += Math.cos(t * 60) * shake;
+      }
+    }
+
+    camera.position.copy(pos);
+    
+    // Interpolate look-at
+    const lookAt = new THREE.Vector3().lerpVectors(anim.startLookAt, anim.endLookAt, eased);
+    camera.lookAt(lookAt);
+    
+    // Update orbit controls target
+    if (controlsRef.current) {
+      controlsRef.current.target.copy(lookAt);
+      controlsRef.current.update();
+    }
+
+    if (t >= 1) {
+      anim.active = false;
+      // Re-enable controls after fly-to (but not after dive)
+      if (anim.phase === 'flyto' && controlsRef.current) {
+        controlsRef.current.enabled = true;
+      }
     }
   });
 
@@ -274,34 +468,30 @@ function CameraZoomTo({ target, zooming }: { target: THREE.Vector3 | null; zoomi
 }
 
 // ─── Clickable Earth Globe ───
-function EarthGlobe({ onClickGlobe }: { onClickGlobe: (lat: number, lng: number) => void }) {
+function EarthGlobe({ onClickGlobe, autoRotateEnabled }: { onClickGlobe: (lat: number, lng: number) => void; autoRotateEnabled: boolean }) {
   const meshRef = useRef<THREE.Mesh>(null);
   const texture = useLoader(THREE.TextureLoader, earthTexture);
-  const autoRotate = useRef(true);
-  const rotationOffset = useRef(0);
 
   useFrame(({ clock }) => {
-    if (meshRef.current && autoRotate.current) {
-      meshRef.current.rotation.y = clock.elapsedTime * 0.025 + rotationOffset.current;
+    if (meshRef.current && autoRotateEnabled) {
+      meshRef.current.rotation.y = clock.elapsedTime * 0.025;
     }
   });
 
   const handleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
     if (!meshRef.current) return;
-    // Get click point in local space, undo rotation
     const localPoint = e.point.clone();
     const inverseMatrix = new THREE.Matrix4().copy(meshRef.current.matrixWorld).invert();
     localPoint.applyMatrix4(inverseMatrix);
     const { lat, lng } = sphereToLatLng(localPoint);
-    autoRotate.current = false;
     onClickGlobe(lat, lng);
   }, [onClickGlobe]);
 
   return (
     <mesh ref={meshRef} onClick={handleClick}>
       <sphereGeometry args={[GLOBE_RADIUS, 256, 256]} />
-      <meshStandardMaterial map={texture} roughness={0.7} metalness={0.05} envMapIntensity={0.3} />
+      <meshStandardMaterial map={texture} roughness={0.65} metalness={0.05} envMapIntensity={0.4} />
     </mesh>
   );
 }
@@ -310,7 +500,6 @@ function EarthGlobe({ onClickGlobe }: { onClickGlobe: (lat: number, lng: number)
 function CoordinateGrid() {
   const lines = useMemo(() => {
     const pts: THREE.Vector3[][] = [];
-    // Latitude lines every 30°
     for (let lat = -60; lat <= 60; lat += 30) {
       const line: THREE.Vector3[] = [];
       for (let lng = -180; lng <= 180; lng += 3) {
@@ -318,7 +507,6 @@ function CoordinateGrid() {
       }
       pts.push(line);
     }
-    // Longitude lines every 30°
     for (let lng = -180; lng < 180; lng += 30) {
       const line: THREE.Vector3[] = [];
       for (let lat = -90; lat <= 90; lat += 3) {
@@ -346,6 +534,21 @@ function CoordinateGrid() {
   );
 }
 
+// ─── Zoom progress indicator ───
+function ZoomProgress({ phase }: { phase: string }) {
+  if (phase !== 'zooming') return null;
+  return (
+    <div className="absolute inset-0 z-30 pointer-events-none flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4 animate-in fade-in duration-500">
+        <div className="w-16 h-16 rounded-full border-2 border-electric/40 border-t-electric animate-spin" />
+        <div className="bg-surface-0/80 backdrop-blur-xl px-5 py-2.5 rounded-lg border border-electric/20">
+          <p className="text-xs font-mono-code text-electric tracking-widest uppercase">Approaching target...</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main component ───
 interface GlobeSelectorProps {
   onLocationSelected: (location: { name: string; lat: number; lng: number }) => void;
@@ -356,11 +559,12 @@ export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps
   const [selectedCity, setSelectedCity] = useState<typeof CITIES[0] | null>(null);
   const [freePin, setFreePin] = useState<{ lat: number; lng: number } | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [zooming, setZooming] = useState(false);
   const [phase, setPhase] = useState<'browse' | 'confirming' | 'zooming'>('browse');
   const [showManualInput, setShowManualInput] = useState(false);
   const [manualLat, setManualLat] = useState('');
   const [manualLng, setManualLng] = useState('');
+  const [fadeOut, setFadeOut] = useState(false);
+  const controlsRef = useRef<any>(null);
 
   const filteredCities = useMemo(() => {
     if (!search.trim()) return CITIES.slice(0, 10);
@@ -403,8 +607,9 @@ export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps
         : null;
     if (!loc) return;
     setPhase('zooming');
-    setZooming(true);
-    setTimeout(() => onLocationSelected(loc), 2000);
+    // Start fade-out partway through the dive
+    setTimeout(() => setFadeOut(true), 1600);
+    setTimeout(() => onLocationSelected(loc), 2800);
   }, [selectedCity, freePin, onLocationSelected]);
 
   const handleReset = useCallback(() => {
@@ -412,6 +617,7 @@ export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps
     setFreePin(null);
     setSearch('');
     setPhase('browse');
+    setFadeOut(false);
   }, []);
 
   const zoomTarget = useMemo(() => {
@@ -426,14 +632,19 @@ export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps
       ? { name: 'Custom Location', lat: freePin.lat, lng: freePin.lng, icon: '📍' }
       : null;
 
+  const autoRotate = !selectedCity && !freePin && phase === 'browse';
+
   return (
     <div className={cn(
-      "fixed inset-0 z-50 flex flex-col transition-opacity duration-700",
-      phase === 'zooming' ? 'opacity-0' : 'opacity-100'
+      "fixed inset-0 z-50 flex flex-col transition-all duration-1000",
+      fadeOut ? 'opacity-0 scale-110' : 'opacity-100 scale-100'
     )} style={{ background: 'radial-gradient(ellipse at 40% 50%, hsl(220 18% 7%), hsl(240 12% 3%))' }}>
 
       {/* Header */}
-      <div className="relative z-10 flex items-center justify-between px-6 py-3 border-b border-border/20">
+      <div className={cn(
+        "relative z-10 flex items-center justify-between px-6 py-3 border-b border-border/20 transition-all duration-500",
+        phase === 'zooming' && 'opacity-0 -translate-y-4'
+      )}>
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-fxk-cyan to-fxk-orange flex items-center justify-center shadow-[0_0_20px_hsl(var(--fxk-cyan)/0.3)] animate-fxk-glow">
             <Globe className="w-5 h-5 text-primary-foreground" />
@@ -449,7 +660,6 @@ export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Manual coordinate input */}
           <Button
             variant="outline"
             size="sm"
@@ -460,7 +670,6 @@ export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps
             GPS Manual
           </Button>
 
-          {/* Search bar */}
           <div className="relative w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
             <Input
@@ -495,14 +704,8 @@ export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps
             )}
           </div>
 
-          {/* Reset */}
           {activeLocation && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleReset}
-              className="h-8 w-8 p-0 text-muted-foreground"
-            >
+            <Button variant="ghost" size="sm" onClick={handleReset} className="h-8 w-8 p-0 text-muted-foreground">
               <RotateCcw className="w-3.5 h-3.5" />
             </Button>
           )}
@@ -519,12 +722,8 @@ export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps
             <div>
               <label className="text-[9px] text-muted-foreground uppercase tracking-wider">Latitude (-90 a 90)</label>
               <Input
-                type="number"
-                step="0.0001"
-                min={-90}
-                max={90}
-                value={manualLat}
-                onChange={(e) => setManualLat(e.target.value)}
+                type="number" step="0.0001" min={-90} max={90}
+                value={manualLat} onChange={(e) => setManualLat(e.target.value)}
                 placeholder="-23.5505"
                 className="h-7 text-xs font-mono-code bg-surface-2 border-border/50 mt-1"
               />
@@ -532,12 +731,8 @@ export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps
             <div>
               <label className="text-[9px] text-muted-foreground uppercase tracking-wider">Longitude (-180 a 180)</label>
               <Input
-                type="number"
-                step="0.0001"
-                min={-180}
-                max={180}
-                value={manualLng}
-                onChange={(e) => setManualLng(e.target.value)}
+                type="number" step="0.0001" min={-180} max={180}
+                value={manualLng} onChange={(e) => setManualLng(e.target.value)}
                 placeholder="-46.6333"
                 className="h-7 text-xs font-mono-code bg-surface-2 border-border/50 mt-1"
               />
@@ -558,7 +753,8 @@ export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps
           <directionalLight position={[-3, 1, -3]} intensity={0.3} color="#6688cc" />
           <pointLight position={[-5, -3, -5]} intensity={0.15} color="#4488ff" />
 
-          <EarthGlobe onClickGlobe={handleClickGlobe} />
+          <EarthGlobe onClickGlobe={handleClickGlobe} autoRotateEnabled={autoRotate} />
+          <CloudsLayer />
           <Atmosphere />
           <OuterGlow />
           <InnerGlow />
@@ -569,24 +765,37 @@ export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps
             onSelect={handleSelectCity}
           />
           {freePin && <FreePin lat={freePin.lat} lng={freePin.lng} />}
-          <CameraZoomTo target={zoomTarget} zooming={zooming} />
+          <CinematicCamera target={zoomTarget} phase={phase} controlsRef={controlsRef} />
           <Stars radius={200} depth={80} count={6000} factor={4} saturation={0.1} fade speed={0.3} />
           <OrbitControls
+            ref={controlsRef}
             enableZoom
             enablePan={false}
             minDistance={MIN_ZOOM}
             maxDistance={MAX_ZOOM}
             zoomSpeed={1.2}
-            autoRotate={!selectedCity && !freePin}
+            autoRotate={autoRotate}
             autoRotateSpeed={0.2}
             enableDamping
             dampingFactor={0.08}
           />
         </Canvas>
 
+        {/* Zoom progress overlay */}
+        <ZoomProgress phase={phase} />
+
+        {/* Vignette during zoom */}
+        {phase === 'zooming' && (
+          <div className="absolute inset-0 pointer-events-none z-20 transition-opacity duration-1000"
+            style={{
+              background: 'radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.7) 100%)',
+            }}
+          />
+        )}
+
         {/* Bottom confirmation card */}
         {activeLocation && phase === 'confirming' && (
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-surface-1/90 backdrop-blur-xl border border-electric/20 rounded-xl px-6 py-4 flex items-center gap-5 shadow-[0_8px_40px_rgba(0,0,0,0.6)] animate-in slide-in-from-bottom-4 duration-300">
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-surface-1/90 backdrop-blur-xl border border-electric/20 rounded-xl px-6 py-4 flex items-center gap-5 shadow-[0_8px_40px_rgba(0,0,0,0.6)] animate-in slide-in-from-bottom-4 duration-300 z-20">
             <div className="w-11 h-11 rounded-full bg-gradient-to-br from-electric/20 to-electric/5 flex items-center justify-center border border-electric/30">
               <span className="text-xl">{activeLocation.icon}</span>
             </div>
@@ -608,7 +817,7 @@ export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps
         )}
 
         {/* Corner coordinates */}
-        <div className="absolute bottom-4 right-4 text-[9px] font-mono-code text-muted-foreground/50 bg-surface-0/50 px-2 py-1 rounded">
+        <div className="absolute bottom-4 right-4 text-[9px] font-mono-code text-muted-foreground/50 bg-surface-0/50 px-2 py-1 rounded z-10">
           {activeLocation
             ? `${activeLocation.lat.toFixed(4)}°, ${activeLocation.lng.toFixed(4)}°`
             : 'Clique no globo ou busque uma cidade'
@@ -617,7 +826,7 @@ export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps
 
         {/* Instructions */}
         {!activeLocation && (
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 text-muted-foreground/60 bg-surface-0/30 backdrop-blur-sm px-4 py-2 rounded-lg border border-border/20">
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 text-muted-foreground/60 bg-surface-0/30 backdrop-blur-sm px-4 py-2 rounded-lg border border-border/20 z-10">
             <MapPin className="w-4 h-4 text-electric/50" />
             <div>
               <p className="text-[10px] font-mono-code tracking-wider uppercase font-medium">
@@ -631,9 +840,9 @@ export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps
         )}
 
         {/* Stats */}
-        <div className="absolute top-3 left-3 text-[9px] font-mono-code text-muted-foreground/40 space-y-0.5">
+        <div className="absolute top-3 left-3 text-[9px] font-mono-code text-muted-foreground/40 space-y-0.5 z-10">
           <p>{CITIES.length} venues cadastrados</p>
-          <p>Click-to-select enabled</p>
+          <p>Click-to-select enabled {phase !== 'browse' && `· ${phase}`}</p>
         </div>
       </div>
     </div>
