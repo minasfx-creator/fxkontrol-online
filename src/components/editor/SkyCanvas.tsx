@@ -89,6 +89,11 @@ function hexToCompound(hexColor: string): ChemicalCompound {
   return getCompound('charcoal');                            // Fallback → Charcoal streamer
 }
 
+function lumaTonemapScale(r: number, g: number, b: number): number {
+  const lum = r * 0.2126 + g * 0.7152 + b * 0.0722;
+  return lum > 0.001 ? (1 / (1 + lum)) : 1;
+}
+
 // FX KONTROL — Show Design Platform Renderer
 class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
@@ -188,6 +193,15 @@ const STAR_FRAGMENT_SHADER = `
   varying vec3 vColor;
   varying float vLife;
   varying float vSize;
+
+  // Luma-based Reinhard tonemap prevents additive white clipping.
+  vec3 tonemapLuma(vec3 c) {
+    vec3 safe = max(c, vec3(0.0));
+    float lum = dot(safe, vec3(0.2126, 0.7152, 0.0722));
+    float scale = lum > 0.001 ? (1.0 / (1.0 + lum)) : 1.0;
+    return safe * scale;
+  }
+
   void main() {
     vec2 uv = gl_PointCoord - 0.5;
     float dist = length(uv);
@@ -201,18 +215,19 @@ const STAR_FRAGMENT_SHADER = `
     float alpha = core * 1.0 + inner * 0.7 + outer * 0.15;
     
     // Thermal color model: white-hot center fading to star color
-    vec3 whiteHot = vec3(1.3, 1.15, 0.95);
-    vec3 col = mix(vColor, whiteHot, core * 0.7);
-    col += vColor * outer * 0.3;
+    vec3 whiteHot = vec3(1.18, 1.08, 0.90);
+    vec3 col = mix(vColor, whiteHot, core * 0.45);
+    col += vColor * outer * 0.35;
     
     // Youth flash: brief bright moment at spawn
-    float youth = max(0.0, 1.0 - vLife * 5.0);
-    col += whiteHot * youth * 0.6;
+    float youth = max(0.0, 1.0 - vLife * 4.0);
+    col += mix(vColor, whiteHot, 0.4) * youth * 0.35;
     
     // Circular cutoff
     float edge = 1.0 - smoothstep(0.42, 0.5, dist);
-    
-    gl_FragColor = vec4(col, alpha * edge);
+
+    vec3 mapped = tonemapLuma(col);
+    gl_FragColor = vec4(mapped, alpha * edge);
   }
 `;
 
@@ -509,8 +524,7 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
       const chemColor = thermalColor(compound, lifeRatio, 1.0);
       
       // Reinhard tonemap: maps HDR → [0,1] while preserving hue
-      const chemLum = chemColor.r * 0.2126 + chemColor.g * 0.7152 + chemColor.b * 0.0722;
-      const tonemapScale = chemLum > 0.001 ? (1 / (1 + chemLum)) : 1;
+      const tonemapScale = lumaTonemapScale(chemColor.r, chemColor.g, chemColor.b);
       const chemR = chemColor.r * tonemapScale;
       const chemG = chemColor.g * tonemapScale;
       const chemB = chemColor.b * tonemapScale;
@@ -560,12 +574,12 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
         
         // Finale trail thermal: white center → warm gold → colored → faint
         const trailWarmth = Math.pow(segFrac, 0.4);
-        tCol[base2] = THREE.MathUtils.lerp(1.2, r * 0.7, trailWarmth) * segFade;
-        tCol[base2 + 1] = THREE.MathUtils.lerp(0.8, g * 0.4, trailWarmth) * segFade;
-        tCol[base2 + 2] = THREE.MathUtils.lerp(0.35, b * 0.15, trailWarmth) * segFade;
-        tCol[base2 + 3] = THREE.MathUtils.lerp(1.2, r * 0.7, trailWarmth) * endFade;
-        tCol[base2 + 4] = THREE.MathUtils.lerp(0.8, g * 0.4, trailWarmth) * endFade;
-        tCol[base2 + 5] = THREE.MathUtils.lerp(0.35, b * 0.15, trailWarmth) * endFade;
+        tCol[base2] = THREE.MathUtils.lerp(0.9, r * 0.75, trailWarmth) * segFade;
+        tCol[base2 + 1] = THREE.MathUtils.lerp(0.55, g * 0.5, trailWarmth) * segFade;
+        tCol[base2 + 2] = THREE.MathUtils.lerp(0.25, b * 0.2, trailWarmth) * segFade;
+        tCol[base2 + 3] = THREE.MathUtils.lerp(0.9, r * 0.75, trailWarmth) * endFade;
+        tCol[base2 + 4] = THREE.MathUtils.lerp(0.55, g * 0.5, trailWarmth) * endFade;
+        tCol[base2 + 5] = THREE.MathUtils.lerp(0.25, b * 0.2, trailWarmth) * endFade;
       }
     }
 
@@ -2052,6 +2066,8 @@ const SparkTrailController = React.forwardRef<THREE.Group, {}>(function SparkTra
           const breakSpd = getBreakSpeed(caliber);
           const compound = hexToCompound(effect.color);
           const baseColor = thermalColor(compound, 1.0, 2.5);
+          const baseScale = lumaTonemapScale(baseColor.r, baseColor.g, baseColor.b);
+          baseColor.multiplyScalar(baseScale);
           const sparkCount = Math.min(24, Math.round(caliber * 3));
           
           for (let s = 0; s < sparkCount; s++) {
@@ -2086,7 +2102,9 @@ const SparkTrailController = React.forwardRef<THREE.Group, {}>(function SparkTra
       // Thermal color cooling
       const lifeRatio = Math.max(0, sparks[i].life / sparks[i].maxLife);
       const compound = hexToCompound('#' + sparks[i].color.getHexString());
-      sparks[i].color.copy(thermalColor(compound, lifeRatio, 2.5));
+      const cooled = thermalColor(compound, lifeRatio, 2.5);
+      const cooledScale = lumaTonemapScale(cooled.r, cooled.g, cooled.b);
+      sparks[i].color.copy(cooled.multiplyScalar(cooledScale));
       
       if (sparks[i].life <= 0) {
         sparks.splice(i, 1);

@@ -61,6 +61,14 @@ const BURST_FRAGMENT = `
   uniform float uHDRMultiplier;
   uniform float uTime;
   uniform float uThermalSpeed;
+
+  // Luma-based Reinhard tonemap to preserve hue and avoid white clipping.
+  vec3 tonemapLuma(vec3 c) {
+    vec3 safe = max(c, vec3(0.0));
+    float lum = dot(safe, vec3(0.2126, 0.7152, 0.0722));
+    float scale = lum > 0.001 ? (1.0 / (1.0 + lum)) : 1.0;
+    return safe * scale;
+  }
   
   void main() {
     // Gaussian sprite: soft circle with hot core
@@ -72,9 +80,9 @@ const BURST_FRAGMENT = `
     float lifeRatio = clamp(rawRatio * uThermalSpeed, 0.0, 1.0);
     
     // Thermal color transition: white-hot → saturated → ember → charcoal
-    // Modeled after Skybrush pyrotechnic color temperature curves
-    vec3 whiteHot = vec3(1.0, 0.98, 0.85) * uHDRMultiplier;
-    vec3 saturated = uColor * 1.4;
+    // The ignition keeps some hue from shell color to avoid full white lock.
+    vec3 whiteHot = mix(vec3(1.0, 0.98, 0.85), uColor + vec3(0.15), 0.35) * (0.55 + uHDRMultiplier * 0.4);
+    vec3 saturated = uColor * 1.25;
     vec3 ember = vec3(uColor.r * 0.6 + 0.2, uColor.g * 0.2, uColor.b * 0.05);
     vec3 charcoal = vec3(0.15, 0.08, 0.02);
     
@@ -105,8 +113,9 @@ const BURST_FRAGMENT = `
     float fadeIn = smoothstep(0.0, 0.03, rawRatio);
     float fadeOut = 1.0 - pow(rawRatio, 1.8);
     float alpha = fadeIn * fadeOut * vBrightness * glow * flicker;
-    
-    gl_FragColor = vec4(thermalColor * glow, alpha);
+
+    vec3 mapped = tonemapLuma(thermalColor * glow);
+    gl_FragColor = vec4(mapped, alpha);
   }
 `;
 
@@ -359,9 +368,9 @@ export default function ShellBurstRenderer({
         <mesh>
           <sphereGeometry args={[1.5 + caliber * 0.8, 16, 16]} />
           <meshBasicMaterial
-            color="#FFFFEE"
+            color={secondaryColor || color}
             transparent
-            opacity={burstFlashIntensity * 0.8 * (1 - progress / 0.08)}
+            opacity={burstFlashIntensity * 0.45 * (1 - progress / 0.08)}
             blending={THREE.AdditiveBlending}
           />
         </mesh>
@@ -440,9 +449,14 @@ function CrossetteSubBurst({
       pos[i * 3 + 1] = p.y;
       pos[i * 3 + 2] = p.z;
       const fade = p.brightness;
-      col[i * 3] = baseColor.r * fade * 1.5;
-      col[i * 3 + 1] = baseColor.g * fade * 1.2;
-      col[i * 3 + 2] = baseColor.b * fade;
+      const cR = baseColor.r * fade * 1.1;
+      const cG = baseColor.g * fade * 0.95;
+      const cB = baseColor.b * fade * 0.85;
+      const lum = cR * 0.2126 + cG * 0.7152 + cB * 0.0722;
+      const scale = lum > 0.001 ? (1 / (1 + lum)) : 1;
+      col[i * 3] = cR * scale;
+      col[i * 3 + 1] = cG * scale;
+      col[i * 3 + 2] = cB * scale;
     }
 
     const geo = pointsRef.current.geometry;
