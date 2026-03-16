@@ -899,6 +899,7 @@ function SkyGradient() {
   const skyBrightness = useSceneStore(st => st.settings.skyBrightness);
   const horizonGlow = useSceneStore(st => st.settings.horizonGlow);
   const starDensity = useSceneStore(st => st.settings.starDensity);
+  const skyRef = useRef<THREE.Mesh>(null);
 
   const uniforms = useMemo(() => ({
     uSkyBrightness: { value: skyBrightness },
@@ -921,12 +922,13 @@ function SkyGradient() {
     return () => { _skyScatterUniforms = null; };
   }, []);
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, camera }) => {
     uniforms.uTime.value = clock.getElapsedTime();
+    if (skyRef.current) skyRef.current.position.copy(camera.position);
   });
 
   return (
-    <mesh renderOrder={-1000}>
+    <mesh ref={skyRef} renderOrder={-1000}>
       <sphereGeometry args={[9000, 64, 64]} />
       <shaderMaterial
         side={THREE.BackSide}
