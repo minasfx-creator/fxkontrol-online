@@ -219,6 +219,22 @@ const STAR_FRAGMENT_SHADER = `
   }
 `;
 
+// ═══ Shared star material singleton — prevents per-burst GPU allocation ═══
+let _starMaterialInstance: THREE.ShaderMaterial | null = null;
+function _sharedStarMaterial(): THREE.ShaderMaterial {
+  if (!_starMaterialInstance) {
+    _starMaterialInstance = new THREE.ShaderMaterial({
+      vertexShader: STAR_VERTEX_SHADER,
+      fragmentShader: STAR_FRAGMENT_SHADER,
+      vertexColors: true,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+  }
+  return _starMaterialInstance;
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // Niagara-inspired FireworkBurst:
 // - Custom star sprite shader (gaussian glow discs)
@@ -241,8 +257,9 @@ function FireworkBurst({
   
   // Niagara-style: particle count scales with shell volume, reduced by LOD
   // CAPPED to prevent GPU memory exhaustion with many simultaneous bursts
-  const STAR_COUNT = useMemo(() => Math.min(1200, Math.round((100 + caliber * caliber * 18) * lod.particleMultiplier)), [caliber, lod.particleMultiplier]);
-  const TRAIL_LENGTH = useMemo(() => Math.max(2, Math.min(16, Math.floor((8 + caliber * 1.2) * lod.trailLength))), [caliber, lod.trailLength]);
+  // CAPPED aggressively to prevent GPU context loss with many simultaneous bursts
+  const STAR_COUNT = useMemo(() => Math.min(500, Math.round((60 + caliber * caliber * 10) * lod.particleMultiplier)), [caliber, lod.particleMultiplier]);
+  const TRAIL_LENGTH = useMemo(() => Math.max(2, Math.min(8, Math.floor((4 + caliber * 0.8) * lod.trailLength))), [caliber, lod.trailLength]);
   
   // Real break speed from pyroPhysics — caliber proportional (m/s)
   const breakSpeed = useMemo(() => getBreakSpeed(caliber), [caliber]);
@@ -383,22 +400,12 @@ function FireworkBurst({
   const trailPosRef = useRef(new Float32Array(trailVertCount * 3));
   const trailColRef = useRef(new Float32Array(trailVertCount * 3));
 
-  // Custom shader material for star sprites
-  const starMaterial = useMemo(() => {
-    return new THREE.ShaderMaterial({
-      vertexShader: STAR_VERTEX_SHADER,
-      fragmentShader: STAR_FRAGMENT_SHADER,
-      vertexColors: true,
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-    });
-  }, []);
+  // Shared shader material — singleton to reduce GPU state changes
+  const starMaterial = useMemo(() => _sharedStarMaterial(), []);
 
   // ═══ CLEANUP: dispose GPU resources on unmount to prevent context loss ═══
   useEffect(() => {
     return () => {
-      starMaterial.dispose();
       if (pointsRef.current) {
         pointsRef.current.geometry.dispose();
       }
@@ -409,7 +416,7 @@ function FireworkBurst({
         }
       }
     };
-  }, [starMaterial]);
+  }, []);
 
   useFrame(({ clock }) => {
     if (!pointsRef.current || !trailRef.current) return;
@@ -581,37 +588,17 @@ function FireworkBurst({
       </lineSegments>
       
       
-      {/* ═══ BREAK FLASH — 3-layer system ═══ */}
-      {/* Layer 1: Inner white-hot core — ultra HDR for maximum bloom */}
-      {progress < 0.04 && (
+      {/* ═══ BREAK FLASH — 2-layer system (reduced from 4 for VRAM savings) ═══ */}
+      {progress < 0.06 && (
         <mesh renderOrder={100}>
-          <sphereGeometry args={[flashSize * 0.3 * (1 + progress * 8), 12, 12]} />
-          <meshBasicMaterial color="#FFFFF0" transparent opacity={0.8 * (1 - progress / 0.04)} blending={THREE.AdditiveBlending} depthWrite={false} />
+          <sphereGeometry args={[flashSize * 0.4 * (1 + progress * 6), 8, 8]} />
+          <meshBasicMaterial color="#FFFFF0" transparent opacity={0.7 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
-      {/* Layer 2: Hot colored flash — primary bloom source */}
-      {progress < 0.1 && (
+      {progress < 0.12 && (
         <mesh renderOrder={99}>
-          <sphereGeometry args={[flashSize * (1 + progress * 8), 16, 16]} />
-          <meshBasicMaterial color={color} transparent opacity={0.4 * Math.pow(1 - progress / 0.1, 2)} blending={THREE.AdditiveBlending} depthWrite={false} />
-        </mesh>
-      )}
-      {/* Layer 3: Expanding shockwave ring */}
-      {progress > 0.003 && progress < 0.1 && (
-        <mesh rotation={[Math.PI / 2, 0, 0]} renderOrder={98}>
-          <ringGeometry args={[
-            progress * flashSize * 8,
-            progress * flashSize * 8 + 0.4 + caliber * 0.1,
-            48
-          ]} />
-          <meshBasicMaterial color={color} transparent opacity={0.04 * Math.pow(1 - progress / 0.1, 1.5)} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} depthWrite={false} />
-        </mesh>
-      )}
-      {/* Layer 4: Subtle sky illumination — capped size to prevent sky clipping */}
-      {progress < 0.3 && progress > 0.003 && (
-        <mesh renderOrder={97}>
-          <sphereGeometry args={[Math.min(caliber * 4 + progress * caliber * 10, 80), 12, 12]} />
-          <meshBasicMaterial color={color} transparent opacity={0.008 * (1 - progress / 0.3)} blending={THREE.AdditiveBlending} depthWrite={false} />
+          <sphereGeometry args={[flashSize * (1 + progress * 6), 8, 8]} />
+          <meshBasicMaterial color={color} transparent opacity={0.3 * Math.pow(1 - progress / 0.12, 2)} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
     </group>
@@ -623,7 +610,8 @@ function LightPoint({ position, color }: { position: [number, number, number]; c
 }
 
 // Max simultaneous GPU-heavy firework bursts to prevent context loss
-const MAX_CONCURRENT_BURSTS = 20;
+// Each burst uses ~600 star particles + trails = significant VRAM
+const MAX_CONCURRENT_BURSTS = 12;
 
 function TimelineEffects() {
   const { timelineItems, currentTime, positions } = useProjectStore();
@@ -2756,7 +2744,21 @@ export default function SkyCanvas() {
           outputColorSpace: THREE.SRGBColorSpace,
         }}
         dpr={isMobile ? [1, 1] : [1, 1.5]}
-        performance={{ min: 0.5 }}>
+        performance={{ min: 0.5 }}
+        onCreated={({ gl }) => {
+          // WebGL context loss recovery
+          const canvas = gl.domElement;
+          canvas.addEventListener('webglcontextlost', (e) => {
+            e.preventDefault();
+            console.warn('[FXK] WebGL context lost — will attempt recovery');
+            // Reset shared material so it gets recreated
+            _starMaterialInstance = null;
+          });
+          canvas.addEventListener('webglcontextrestored', () => {
+            console.log('[FXK] WebGL context restored');
+            _starMaterialInstance = null;
+          });
+        }}>
         <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.3} far={20000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook} />
 
