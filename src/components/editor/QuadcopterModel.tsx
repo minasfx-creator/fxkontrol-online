@@ -70,15 +70,14 @@ export default function QuadcopterModel({
           roughness={0.3}
         />
       </mesh>
-      {/* Minimal halo */}
+      {/* Minimal halo — no additive */}
       <mesh position={[0, 0.06, 0]}>
-        <sphereGeometry args={[0.055, 8, 8]} />
+        <sphereGeometry args={[0.05, 8, 8]} />
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={0.02}
+          opacity={0.01}
           depthWrite={false}
-          blending={THREE.AdditiveBlending}
         />
       </mesh>
       <pointLight
