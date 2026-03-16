@@ -2693,6 +2693,8 @@ export default function SkyCanvas() {
   const droneCount = droneFormations.length > 0 ? droneFormations[0].droneCount : 0;
   const [satelliteTexture, setSatelliteTexture] = useState<string | null>(null);
   const [downloadingScenery, setDownloadingScenery] = useState(false);
+  const [canvasInstanceKey, setCanvasInstanceKey] = useState(0);
+  const recoveringContextRef = useRef(false);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
   // Track fullscreen state
