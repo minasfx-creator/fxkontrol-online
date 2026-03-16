@@ -66,6 +66,8 @@ import { createSparkTrailSystem, updateSparkTrail, writeSparkTrailsToBuffers, ty
 import { createHDRLightingRig } from '@/render_ultra/lighting/hdrLighting';
 // ═══ LOD System — distance-based quality scaling ═══
 import { useLOD, calculateLOD, useSceneLOD, type LODFactors } from '@/hooks/useLOD';
+import ViewportGeoTools, { type GeoToolMode, type GeoMarker, type GeoRulerPoint, type GeoPath } from './ViewportGeoTools';
+import { GeoToolsScene, GeoToolClickHandler } from './GeoToolsR3F';
 
 // ═══ PyroChem: map hex colors → real chemical compounds ═══
 function hexToCompound(hexColor: string): ChemicalCompound {
