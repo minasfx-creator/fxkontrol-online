@@ -63,7 +63,6 @@ const TimeRuler = React.forwardRef<HTMLDivElement, { duration: number; pixelsPer
   }
   return <div className="relative h-5 border-b border-border/5">{marks}</div>;
 });
-});
 
 // --- Draggable Timeline Item ---
 const DraggableTimelineItem = React.forwardRef<HTMLButtonElement, {
