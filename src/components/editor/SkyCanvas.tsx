@@ -2123,7 +2123,7 @@ const SparkTrailController = React.forwardRef<THREE.Group, {}>(function SparkTra
       const lifeRatio = Math.max(0, sparks[i].life / sparks[i].maxLife);
       const compound = hexToCompound('#' + sparks[i].color.getHexString());
       const adaptiveScale = THREE.MathUtils.clamp(_adaptiveExposure / 1.2, 0.45, 1.35);
-      const hdrScale = THREE.MathUtils.clamp((hdrMultiplier / 3.5) * adaptiveScale, 0.8, 2.6);
+      const hdrScale = THREE.MathUtils.clamp((hdrMultiplier / 3.5) * adaptiveScale, 0.8, 1.8);
       const cooled = thermalColor(compound, lifeRatio, hdrScale).multiplyScalar(THREE.MathUtils.clamp(effectBrightness, 0.6, 1.8));
       sparks[i].color.copy(cooled);
       

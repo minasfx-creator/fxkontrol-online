@@ -41,7 +41,7 @@ export default function PostProcessing() {
       {/* Layer 3: Atmospheric — ultra-bright only */}
       <Bloom
         intensity={str * 0.016}
-        luminanceThreshold={4.0}
+        luminanceThreshold={6.0}
         luminanceSmoothing={0.4}
         kernelSize={KernelSize.HUGE}
         mipmapBlur

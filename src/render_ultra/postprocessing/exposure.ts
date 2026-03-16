@@ -46,6 +46,6 @@ export function updateExposure(state: ExposureState, luminance: number, dt: numb
 export function flashEvent(state: ExposureState, intensity: number) {
   state.targetExposure = Math.max(
     state.minExposure,
-    state.currentExposure - intensity * 0.3
+    state.currentExposure - intensity * 0.5
   );
 }
