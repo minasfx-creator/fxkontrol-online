@@ -3154,6 +3154,11 @@ export default function SkyCanvas() {
           </button>
         )}
 
+        {/* Debug overlay toggle */}
+        {!isMobile && (
+          <RenderDebugToggle show={showDebugOverlay} onToggle={() => setShowDebugOverlay(v => !v)} />
+        )}
+
         {/* Fullscreen toggle */}
         {!isMobile && (
           <button
