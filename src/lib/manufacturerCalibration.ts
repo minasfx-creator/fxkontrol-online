@@ -28,18 +28,21 @@ export interface ManufacturerProfile {
 }
 
 // ── Finale 3D defaults (reference baseline) ─────────────────────────
+// Aligned with pyroPhysics.ts real-world ballistic tables:
+//   breakSpeed = BREAK_SPEED table, starCount = STAR_COUNT table,
+//   heightM = BREAK_HEIGHT table, prefireSec = getLiftTime()
 const FINALE_CALIBERS: Record<number, CaliberData> = {
-  1:    { heightM: 20,  spreadDeg: 22, prefireSec: 0.5, starCount: 20,  breakSpeed: 10, safetyM: 40,  costFactor: 0.3 },
-  1.5:  { heightM: 28,  spreadDeg: 28, prefireSec: 0.7, starCount: 35,  breakSpeed: 12, safetyM: 40,  costFactor: 0.5 },
-  2:    { heightM: 35,  spreadDeg: 32, prefireSec: 0.9, starCount: 50,  breakSpeed: 13, safetyM: 40,  costFactor: 1.0 },
-  2.5:  { heightM: 45,  spreadDeg: 38, prefireSec: 1.1, starCount: 70,  breakSpeed: 14, safetyM: 70,  costFactor: 2.0 },
-  3:    { heightM: 55,  spreadDeg: 45, prefireSec: 1.3, starCount: 100, breakSpeed: 16, safetyM: 70,  costFactor: 3.5 },
-  4:    { heightM: 80,  spreadDeg: 55, prefireSec: 1.8, starCount: 160, breakSpeed: 18, safetyM: 100, costFactor: 8.0 },
-  5:    { heightM: 110, spreadDeg: 65, prefireSec: 2.3, starCount: 240, breakSpeed: 20, safetyM: 140, costFactor: 15.0 },
-  6:    { heightM: 140, spreadDeg: 75, prefireSec: 2.8, starCount: 340, breakSpeed: 22, safetyM: 175, costFactor: 25.0 },
-  8:    { heightM: 190, spreadDeg: 90, prefireSec: 3.5, starCount: 500, breakSpeed: 24, safetyM: 210, costFactor: 50.0 },
-  10:   { heightM: 240, spreadDeg: 105, prefireSec: 4.2, starCount: 700, breakSpeed: 26, safetyM: 280, costFactor: 90.0 },
-  12:   { heightM: 280, spreadDeg: 120, prefireSec: 5.0, starCount: 900, breakSpeed: 28, safetyM: 300, costFactor: 150.0 },
+  1:    { heightM: 15,  spreadDeg: 16, prefireSec: 0.35, starCount: 30,  breakSpeed: 10, safetyM: 40,  costFactor: 0.3 },
+  1.5:  { heightM: 25,  spreadDeg: 24, prefireSec: 0.55, starCount: 55,  breakSpeed: 14, safetyM: 40,  costFactor: 0.5 },
+  2:    { heightM: 35,  spreadDeg: 32, prefireSec: 0.75, starCount: 80,  breakSpeed: 18, safetyM: 40,  costFactor: 1.0 },
+  2.5:  { heightM: 45,  spreadDeg: 38, prefireSec: 0.95, starCount: 115, breakSpeed: 23, safetyM: 70,  costFactor: 2.0 },
+  3:    { heightM: 55,  spreadDeg: 45, prefireSec: 1.15, starCount: 150, breakSpeed: 28, safetyM: 70,  costFactor: 3.5 },
+  4:    { heightM: 80,  spreadDeg: 55, prefireSec: 1.55, starCount: 250, breakSpeed: 38, safetyM: 100, costFactor: 8.0 },
+  5:    { heightM: 110, spreadDeg: 65, prefireSec: 1.95, starCount: 350, breakSpeed: 48, safetyM: 140, costFactor: 15.0 },
+  6:    { heightM: 140, spreadDeg: 75, prefireSec: 2.40, starCount: 500, breakSpeed: 58, safetyM: 175, costFactor: 25.0 },
+  8:    { heightM: 190, spreadDeg: 90, prefireSec: 3.10, starCount: 700, breakSpeed: 72, safetyM: 210, costFactor: 50.0 },
+  10:   { heightM: 240, spreadDeg: 105, prefireSec: 3.80, starCount: 900, breakSpeed: 85, safetyM: 280, costFactor: 90.0 },
+  12:   { heightM: 280, spreadDeg: 120, prefireSec: 4.50, starCount: 1100, breakSpeed: 95, safetyM: 300, costFactor: 150.0 },
 };
 
 // ── Cobra Firing Systems — US market, slightly higher performance ──
