@@ -1567,7 +1567,7 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
     <>
       {/* Main ground with procedural PBR detail */}
       <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[12000, 12000, 8, 8]} />
+        <planeGeometry args={[20000, 20000, 8, 8]} />
         <shaderMaterial
           uniforms={uniforms}
           vertexShader={`
