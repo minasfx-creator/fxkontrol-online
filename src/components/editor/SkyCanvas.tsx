@@ -1874,7 +1874,7 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
 
 // ═══ GLOBAL ILLUMINATION — Hemisphere light probes from explosions ═══
 // Fake GI: each explosion registers a color probe that bounces light onto the scene
-function GlobalIlluminationController() {
+const GlobalIlluminationController = React.forwardRef<THREE.Group, {}>(function GlobalIlluminationController(_props, _ref) {
   const giRef = useRef<GlobalIlluminationSystem | null>(null);
   const { scene } = useThree();
 
