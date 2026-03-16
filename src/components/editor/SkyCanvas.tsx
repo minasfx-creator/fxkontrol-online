@@ -1871,6 +1871,7 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
 
     const exposure = updateExposure(state, luminance, delta);
     _adaptiveExposure = exposure;
+    setDebugExposure(exposure);
     // NoToneMapping no renderer — exposure is consumed by particle HDR scaling
     // ACES in PostProcessing remains the single HDR→SDR tone-mapping pass
 
