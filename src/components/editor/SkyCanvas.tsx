@@ -434,12 +434,12 @@ function FireworkBurst({
 
   useFrame(({ clock }) => {
     if (!pointsRef.current || !trailRef.current) return;
-    const pos = positionsRef.current;
-    const cols = colorsRef.current;
-    const sizes = sizesRef.current;
-    const lives = livesRef.current;
-    const tPos = trailPosRef.current;
-    const tCol = trailColRef.current;
+    const pos = particleBuffers.positions;
+    const cols = particleBuffers.colors;
+    const sizes = particleBuffers.sizes;
+    const lives = particleBuffers.lives;
+    const tPos = particleBuffers.trailPos;
+    const tCol = particleBuffers.trailCol;
     const t = progress * (starLife * 0.88);
     const trailDt = 0.035;
     const w = getWindForce();
