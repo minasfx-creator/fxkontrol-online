@@ -1870,7 +1870,7 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
   });
 
   return null;
-}
+});
 
 // ═══ GLOBAL ILLUMINATION — Hemisphere light probes from explosions ═══
 // Fake GI: each explosion registers a color probe that bounces light onto the scene
