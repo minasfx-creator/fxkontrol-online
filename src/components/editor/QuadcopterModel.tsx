@@ -141,15 +141,14 @@ export default function QuadcopterModel({
             <sphereGeometry args={[0.012, 6, 6]} />
             <meshBasicMaterial color={navColors[i]} toneMapped={false} />
           </mesh>
-          {/* Nav light glow */}
+          {/* Nav light glow — no additive */}
           <mesh position={[armPos[0], -0.01, armPos[2]]}>
-            <sphereGeometry args={[0.03, 6, 6]} />
+            <sphereGeometry args={[0.025, 6, 6]} />
             <meshBasicMaterial
               color={navColors[i]}
               transparent
-              opacity={0.08}
+              opacity={0.04}
               depthWrite={false}
-              blending={THREE.AdditiveBlending}
             />
           </mesh>
         </group>
