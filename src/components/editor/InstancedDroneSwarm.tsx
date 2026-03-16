@@ -84,7 +84,7 @@ export default function InstancedDroneSwarm({
   // LED halo — disabled (opacity near zero, no additive)
   const haloMat = useMemo(() => new THREE.MeshBasicMaterial({
     transparent: true,
-    opacity: 0.002,
+    opacity: 0.0016,
     depthWrite: false,
   }), []);
 
