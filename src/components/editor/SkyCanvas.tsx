@@ -2723,7 +2723,8 @@ export default function SkyCanvas() {
           logarithmicDepthBuffer: true,
           outputColorSpace: THREE.SRGBColorSpace,
         }}
-        dpr={[1, 1.5]}>
+        dpr={isMobile ? [1, 1] : [1, 1.5]}
+        performance={{ min: 0.5 }}>
         <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.3} far={20000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook} />
 
