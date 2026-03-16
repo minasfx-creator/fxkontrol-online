@@ -270,6 +270,38 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
       ctx.fillRect(0, 0, playX, height);
     }
 
+    // Cue markers
+    cueMarkers.forEach((cue) => {
+      const cx = cue.time * pixelsPerSecond;
+      // Vertical line
+      ctx.strokeStyle = cue.color;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(cx, 0);
+      ctx.lineTo(cx, height);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Flag triangle at top
+      ctx.fillStyle = cue.color;
+      ctx.beginPath();
+      ctx.moveTo(cx, 0);
+      ctx.lineTo(cx + 8, 0);
+      ctx.lineTo(cx + 8, 6);
+      ctx.lineTo(cx + 2, 10);
+      ctx.lineTo(cx, 10);
+      ctx.closePath();
+      ctx.fill();
+
+      // Label
+      if (trackHeight > 50) {
+        ctx.fillStyle = cue.color;
+        ctx.font = 'bold 8px monospace';
+        ctx.fillText(cue.label, cx + 10, 8);
+      }
+    });
+
     // Playhead
     ctx.strokeStyle = 'hsl(207, 90%, 54%)';
     ctx.lineWidth = 2;
@@ -278,7 +310,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     ctx.moveTo(playX, 0);
     ctx.lineTo(playX, height);
     ctx.stroke();
-  }, [waveformData, beats, currentTime, duration, pixelsPerSecond, trackHeight]);
+  }, [waveformData, beats, currentTime, duration, pixelsPerSecond, trackHeight, cueMarkers]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
