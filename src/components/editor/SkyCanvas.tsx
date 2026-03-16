@@ -257,7 +257,7 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
   // ═══ LOD — reduce particles & trails at distance ═══
   const lod = useLOD(position);
   const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
-  const particleDensity = useSceneStore(st => st.settings.particleDensity);
+  const { particleDensity, hdrMultiplier, effectBrightness } = useSceneStore(st => st.settings);
 
   // Niagara-style: particle count scales with shell volume, LOD and quality preset
   // Conservative caps prevent WebGL context loss on dense timelines
