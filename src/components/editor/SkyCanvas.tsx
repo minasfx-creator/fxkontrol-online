@@ -1650,7 +1650,7 @@ function ConcreteGround({ brightness }: { brightness: number }) {
   return (
     <>
       <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[12000, 12000]} />
+        <planeGeometry args={[20000, 20000]} />
         <meshStandardMaterial
           color={new THREE.Color(0.06 * b, 0.06 * b, 0.065 * b)}
           roughness={0.95}
