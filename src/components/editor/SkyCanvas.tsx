@@ -398,14 +398,21 @@ function FireworkBurst({
     };
   }, [STAR_COUNT, breakSpeed, starLife, pattern]);
 
-  // Pre-allocate typed arrays for per-frame updates
-  const positionsRef = useRef(new Float32Array(STAR_COUNT * 3));
-  const colorsRef = useRef(new Float32Array(STAR_COUNT * 3));
-  const sizesRef = useRef(new Float32Array(STAR_COUNT));
-  const livesRef = useRef(new Float32Array(STAR_COUNT));
-  const trailVertCount = STAR_COUNT * TRAIL_LENGTH * 2;
-  const trailPosRef = useRef(new Float32Array(trailVertCount * 3));
-  const trailColRef = useRef(new Float32Array(trailVertCount * 3));
+  // Pre-allocate typed arrays for per-frame updates (recreated only when STAR_COUNT/TRAIL_LENGTH changes)
+  const particleBuffers = useMemo(() => {
+    const trailVertCount = STAR_COUNT * TRAIL_LENGTH * 2;
+    return {
+      positions: new Float32Array(STAR_COUNT * 3),
+      colors: new Float32Array(STAR_COUNT * 3),
+      sizes: new Float32Array(STAR_COUNT),
+      lives: new Float32Array(STAR_COUNT),
+      trailPos: new Float32Array(trailVertCount * 3),
+      trailCol: new Float32Array(trailVertCount * 3),
+      trailVertCount,
+    };
+  }, [STAR_COUNT, TRAIL_LENGTH]);
+
+  const trailVertCount = particleBuffers.trailVertCount;
 
   // Star material — recreates after WebGL context recovery
   const starMaterial = useMemo(() => _sharedStarMaterial(), [_starMaterialVersion]);
@@ -427,12 +434,12 @@ function FireworkBurst({
 
   useFrame(({ clock }) => {
     if (!pointsRef.current || !trailRef.current) return;
-    const pos = positionsRef.current;
-    const cols = colorsRef.current;
-    const sizes = sizesRef.current;
-    const lives = livesRef.current;
-    const tPos = trailPosRef.current;
-    const tCol = trailColRef.current;
+    const pos = particleBuffers.positions;
+    const cols = particleBuffers.colors;
+    const sizes = particleBuffers.sizes;
+    const lives = particleBuffers.lives;
+    const tPos = particleBuffers.trailPos;
+    const tCol = particleBuffers.trailCol;
     const t = progress * (starLife * 0.88);
     const trailDt = 0.035;
     const w = getWindForce();
@@ -578,18 +585,18 @@ function FireworkBurst({
       {/* ═══ Finale Star Sprites — custom shader gaussian glow ═══ */}
       <points ref={pointsRef} material={starMaterial} frustumCulled={false}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(STAR_COUNT * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(STAR_COUNT * 3), 3]} />
-          <bufferAttribute attach="attributes-aSize" args={[new Float32Array(STAR_COUNT), 1]} />
-          <bufferAttribute attach="attributes-aLife" args={[new Float32Array(STAR_COUNT), 1]} />
+          <bufferAttribute attach="attributes-position" args={[particleBuffers.positions, 3]} />
+          <bufferAttribute attach="attributes-color" args={[particleBuffers.colors, 3]} />
+          <bufferAttribute attach="attributes-aSize" args={[particleBuffers.sizes, 1]} />
+          <bufferAttribute attach="attributes-aLife" args={[particleBuffers.lives, 1]} />
         </bufferGeometry>
       </points>
       
       {/* ═══ Star trails — dense thermal gradient lines ═══ */}
       <lineSegments ref={trailRef} frustumCulled={false}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(trailVertCount * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(trailVertCount * 3), 3]} />
+          <bufferAttribute attach="attributes-position" args={[particleBuffers.trailPos, 3]} />
+          <bufferAttribute attach="attributes-color" args={[particleBuffers.trailCol, 3]} />
         </bufferGeometry>
         <lineBasicMaterial vertexColors transparent opacity={Math.min(1, 0.8 * tailFactor)} depthWrite={false} blending={THREE.AdditiveBlending} linewidth={3} />
       </lineSegments>
@@ -617,21 +624,27 @@ function LightPoint({ position, color }: { position: [number, number, number]; c
 }
 
 // Max simultaneous GPU-heavy firework bursts to prevent context loss
-const MAX_CONCURRENT_BURSTS_DESKTOP = 8;
-const MAX_CONCURRENT_BURSTS_MOBILE = 3;
-const MAX_STAR_BUDGET_DESKTOP = 1800;
-const MAX_STAR_BUDGET_MOBILE = 550;
+const MAX_CONCURRENT_BURSTS_DESKTOP = 6;
+const MAX_CONCURRENT_BURSTS_MOBILE = 2;
+const MAX_STAR_BUDGET_DESKTOP = 1400;
+const MAX_STAR_BUDGET_MOBILE = 420;
 
 function estimateFireworkStarCost(effect: (typeof EFFECT_LIBRARY)[number], particleDensity: number) {
-  const caliber = Math.max(3, effect.caliber || 4);
+  const caliber = Math.max(1, effect.caliber || 4);
   const densityScale = THREE.MathUtils.clamp(particleDensity, 0.5, 2.0);
-  let stars = (60 + caliber * caliber * 10) * densityScale;
 
-  if (effect.partType === 'cake') stars *= 0.7;
-  if (effect.partType === 'candle') stars *= 0.55;
-  if (effect.id.startsWith('mburst-')) stars *= effect.id === 'mburst-02' ? 2.8 : 2.0;
+  // Keep estimation aligned with FireworkBurst STAR_COUNT formula and caps.
+  const shellStars = Math.max(24, Math.min(320, Math.round((60 + caliber * caliber * 10) * densityScale)));
+  let stars = shellStars;
 
-  return Math.max(40, Math.round(stars));
+  if (effect.partType === 'cake') stars *= 1.2;
+  else if (effect.partType === 'candle') stars *= 0.8;
+  else if (effect.partType === 'mine') stars *= 0.9;
+  else if (effect.partType === 'waterfall') stars *= 0.6;
+
+  if (effect.id.startsWith('mburst-')) stars *= effect.id === 'mburst-02' ? 3.2 : 2.4;
+
+  return Math.max(32, Math.round(stars));
 }
 
 function TimelineEffects() {

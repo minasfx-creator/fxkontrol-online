@@ -41,23 +41,33 @@ export default function FlameEffect({
     return s;
   }, [height]);
 
+  const posBuffer = useMemo(() => new Float32Array(PARTICLE_COUNT * 3), []);
+  const colBuffer = useMemo(() => new Float32Array(PARTICLE_COUNT * 3), []);
+
   useFrame(({ clock }) => {
     if (!pointsRef.current) return;
-    const posArr = new Float32Array(PARTICLE_COUNT * 3);
-    const colArr = new Float32Array(PARTICLE_COUNT * 3);
+
     const time = clock.getElapsedTime();
 
     // Realistic ignition: fast ramp-up, fast ramp-down
-    const intensity = progress < 0.08 ? Math.pow(progress / 0.08, 0.3) :
-                      progress > 0.88 ? Math.pow((1 - progress) / 0.12, 0.5) : 1;
+    const intensity = progress < 0.08
+      ? Math.pow(progress / 0.08, 0.3)
+      : progress > 0.88
+        ? Math.pow((1 - progress) / 0.12, 0.5)
+        : 1;
 
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       const seed = seeds[i];
       const cycleTime = ((time * 4 + seed.phase) % seed.lt) / seed.lt;
+      const i3 = i * 3;
 
       if (cycleTime > intensity) {
-        posArr[i * 3] = 0; posArr[i * 3 + 1] = -100; posArr[i * 3 + 2] = 0;
-        colArr[i * 3] = 0; colArr[i * 3 + 1] = 0; colArr[i * 3 + 2] = 0;
+        posBuffer[i3] = 0;
+        posBuffer[i3 + 1] = -100;
+        posBuffer[i3 + 2] = 0;
+        colBuffer[i3] = 0;
+        colBuffer[i3 + 1] = 0;
+        colBuffer[i3 + 2] = 0;
         continue;
       }
 
@@ -66,16 +76,19 @@ export default function FlameEffect({
       const turbX = Math.sin(time * 6 + i * 0.7) * seed.turbulence * 0.15 * t;
       const turbZ = Math.cos(time * 5 + i * 1.1) * seed.turbulence * 0.12 * t;
       const turbY = Math.sin(time * 8 + i * 2.3) * 0.2 * t;
-      
-      posArr[i * 3] = Math.cos(seed.angle) * seed.spread * t * height * 0.4 + turbX;
-      posArr[i * 3 + 1] = seed.speed * t + turbY;
-      posArr[i * 3 + 2] = Math.sin(seed.angle) * seed.spread * t * height * 0.4 + turbZ;
+
+      posBuffer[i3] = Math.cos(seed.angle) * seed.spread * t * height * 0.4 + turbX;
+      posBuffer[i3 + 1] = seed.speed * t + turbY;
+      posBuffer[i3 + 2] = Math.sin(seed.angle) * seed.spread * t * height * 0.4 + turbZ;
 
       const fade = Math.max(0, 1 - cycleTime) * intensity;
       const h = cycleTime; // normalized height in flame
-      
+
       // Realistic combustion gradient
-      let r: number, g: number, b: number;
+      let r: number;
+      let g: number;
+      let b: number;
+
       if (h < 0.1) {
         // Blue base (gas combustion zone)
         r = 0.15; g = 0.3; b = 1.0;
@@ -104,20 +117,24 @@ export default function FlameEffect({
         g = THREE.MathUtils.lerp(0.3, 0.08, t2);
         b = THREE.MathUtils.lerp(0.02, 0.01, t2);
       }
-      
-      // Flame flicker — makes it look alive
-      const flicker = 0.7 + Math.sin(time * 15 + i * 3) * 0.15 + Math.sin(time * 25 + i * 7) * 0.1 + Math.random() * 0.05;
-      
-      colArr[i * 3] = r * fade * flicker;
-      colArr[i * 3 + 1] = g * fade * flicker;
-      colArr[i * 3 + 2] = b * fade * flicker;
+
+      // Flame flicker — deterministic (avoids extra random calls each frame)
+      const flicker = 0.72
+        + Math.sin(time * 15 + i * 3) * 0.15
+        + Math.sin(time * 25 + i * 7) * 0.1
+        + Math.sin(time * 40 + i * 11) * 0.03;
+
+      colBuffer[i3] = r * fade * flicker;
+      colBuffer[i3 + 1] = g * fade * flicker;
+      colBuffer[i3 + 2] = b * fade * flicker;
     }
 
     const geo = pointsRef.current.geometry;
-    geo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
-    geo.attributes.position.needsUpdate = true;
-    geo.attributes.color.needsUpdate = true;
+    const posAttr = geo.getAttribute('position') as THREE.BufferAttribute;
+    const colAttr = geo.getAttribute('color') as THREE.BufferAttribute;
+    if (!posAttr || !colAttr) return;
+    posAttr.needsUpdate = true;
+    colAttr.needsUpdate = true;
   });
 
   const isActive = progress > 0.03 && progress < 0.92;
@@ -126,8 +143,8 @@ export default function FlameEffect({
     <group position={position}>
       <points ref={pointsRef}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(PARTICLE_COUNT * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(PARTICLE_COUNT * 3), 3]} />
+          <bufferAttribute attach="attributes-position" args={[posBuffer, 3]} />
+          <bufferAttribute attach="attributes-color" args={[colBuffer, 3]} />
         </bufferGeometry>
         <pointsMaterial size={0.22} vertexColors transparent opacity={0.88} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
