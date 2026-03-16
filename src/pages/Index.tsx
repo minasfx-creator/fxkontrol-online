@@ -376,9 +376,11 @@ export default function Index() {
             {/* Center viewport */}
             <ResizablePanel defaultSize={activePanel ? 60 : 80} minSize={30}>
               <div className="h-full w-full relative">
-                <Suspense fallback={<CanvasLoader />}>
-                  <SkyCanvas />
-                </Suspense>
+                <CanvasErrorBoundary>
+                  <Suspense fallback={<CanvasLoader />}>
+                    <SkyCanvas />
+                  </Suspense>
+                </CanvasErrorBoundary>
                 <BoxSelectOverlay />
               </div>
             </ResizablePanel>
