@@ -1893,7 +1893,7 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
 });
 
 // ═══ DEBUG FEED — pushes renderer stats to DOM overlay at ~4Hz ═══
-function DebugFeed() {
+const DebugFeed = React.forwardRef<THREE.Group, {}>(function DebugFeed(_props, _ref) {
   const { gl, camera } = useThree();
   const frameCount = useRef(0);
   const lastTime = useRef(performance.now());
@@ -1914,7 +1914,7 @@ function DebugFeed() {
     }
   });
   return null;
-}
+});
 
 // ═══ GLOBAL ILLUMINATION — Hemisphere light probes from explosions ═══
 // Fake GI: each explosion registers a color probe that bounces light onto the scene

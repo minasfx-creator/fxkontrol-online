@@ -2,7 +2,7 @@
  * GeoToolsR3F — 3D scene objects for Google Earth-like tools
  * Renders markers, ruler lines with distance labels, and path lines inside the R3F Canvas.
  */
-import React, { useRef, useMemo } from 'react';
+import React, { useMemo, forwardRef } from 'react';
 import { useThree, extend } from '@react-three/fiber';
 import { Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
@@ -153,21 +153,21 @@ function createShapeFromPoints(pts: [number, number, number][]): THREE.Shape {
 }
 
 // ═══ Click handler for placing geo items ═══
-export function GeoToolClickHandler({
-  activeTool,
-  onPlaceMarker,
-  onPlaceRulerPoint,
-  onPlacePathPoint,
-  onFinishRuler,
-  onFinishPath,
-}: {
+export const GeoToolClickHandler = forwardRef<any, {
   activeTool: GeoToolMode;
   onPlaceMarker: (pos: [number, number, number]) => void;
   onPlaceRulerPoint: (pos: [number, number, number]) => void;
   onPlacePathPoint: (pos: [number, number, number]) => void;
   onFinishRuler: () => void;
   onFinishPath: () => void;
-}) {
+}>(function GeoToolClickHandler({
+  activeTool,
+  onPlaceMarker,
+  onPlaceRulerPoint,
+  onPlacePathPoint,
+  onFinishRuler,
+  onFinishPath,
+}, _ref) {
   if (activeTool === 'none') return null;
 
   return (
@@ -193,18 +193,18 @@ export function GeoToolClickHandler({
       <meshBasicMaterial visible={false} />
     </mesh>
   );
-}
+});
 
 // ═══ Main group for all geo objects ═══
-export function GeoToolsScene({
-  markers,
-  rulers,
-  paths,
-}: {
+export const GeoToolsScene = forwardRef<any, {
   markers: GeoMarker[];
   rulers: GeoRulerPoint[];
   paths: GeoPath[];
-}) {
+}>(function GeoToolsScene({
+  markers,
+  rulers,
+  paths,
+}, _ref) {
   return (
     <group>
       {markers.map(m => <MarkerPin key={m.id} marker={m} />)}
@@ -212,4 +212,4 @@ export function GeoToolsScene({
       {paths.map(p => <PathLine key={p.id} path={p} />)}
     </group>
   );
-}
+});
