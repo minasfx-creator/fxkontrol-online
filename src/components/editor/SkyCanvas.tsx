@@ -2008,7 +2008,7 @@ const LensFlareController = React.forwardRef<THREE.Group, {}>(function LensFlare
 }
 
 // ═══ GPU SPARK TRAIL CONTROLLER — incandescent trails with 32-point history ═══
-function SparkTrailController() {
+const SparkTrailController = React.forwardRef<THREE.Group, {}>(function SparkTrailController(_props, _ref) {
   const { scene } = useThree();
   const sparksRef = useRef<SparkState[]>([]);
   const systemRef = useRef<ReturnType<typeof createSparkTrailSystem> | null>(null);
