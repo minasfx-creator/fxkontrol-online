@@ -585,18 +585,18 @@ function FireworkBurst({
       {/* ═══ Finale Star Sprites — custom shader gaussian glow ═══ */}
       <points ref={pointsRef} material={starMaterial} frustumCulled={false}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(STAR_COUNT * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(STAR_COUNT * 3), 3]} />
-          <bufferAttribute attach="attributes-aSize" args={[new Float32Array(STAR_COUNT), 1]} />
-          <bufferAttribute attach="attributes-aLife" args={[new Float32Array(STAR_COUNT), 1]} />
+          <bufferAttribute attach="attributes-position" args={[particleBuffers.positions, 3]} />
+          <bufferAttribute attach="attributes-color" args={[particleBuffers.colors, 3]} />
+          <bufferAttribute attach="attributes-aSize" args={[particleBuffers.sizes, 1]} />
+          <bufferAttribute attach="attributes-aLife" args={[particleBuffers.lives, 1]} />
         </bufferGeometry>
       </points>
       
       {/* ═══ Star trails — dense thermal gradient lines ═══ */}
       <lineSegments ref={trailRef} frustumCulled={false}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(trailVertCount * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(trailVertCount * 3), 3]} />
+          <bufferAttribute attach="attributes-position" args={[particleBuffers.trailPos, 3]} />
+          <bufferAttribute attach="attributes-color" args={[particleBuffers.trailCol, 3]} />
         </bufferGeometry>
         <lineBasicMaterial vertexColors transparent opacity={Math.min(1, 0.8 * tailFactor)} depthWrite={false} blending={THREE.AdditiveBlending} linewidth={3} />
       </lineSegments>
