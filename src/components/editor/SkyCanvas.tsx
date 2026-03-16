@@ -509,7 +509,7 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
       // We must tonemap before using as vertex colors to prevent white-out.
       const lifeRatio = 1 - starAge; // thermalColor expects 1=birth, 0=dead
       // HDR mult reduced: ACES Filmic PostProcessing is the single tonemap
-      const chemColor = thermalColor(compound, lifeRatio, 0.35);
+      const chemColor = thermalColor(compound, lifeRatio, 1.0);
       const chemR = chemColor.r;
       const chemG = chemColor.g;
       const chemB = chemColor.b;
