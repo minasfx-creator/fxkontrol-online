@@ -622,6 +622,9 @@ function LightPoint({ position, color }: { position: [number, number, number]; c
   return <QuadcopterModel position={position} color={color} />;
 }
 
+// Max simultaneous GPU-heavy firework bursts to prevent context loss
+const MAX_CONCURRENT_BURSTS = 20;
+
 function TimelineEffects() {
   const { timelineItems, currentTime, positions } = useProjectStore();
   const sceneSettings = useSceneStore(st => st.settings);
