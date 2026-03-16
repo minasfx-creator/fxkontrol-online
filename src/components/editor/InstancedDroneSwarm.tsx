@@ -51,42 +51,41 @@ export default function InstancedDroneSwarm({
   // Body — carbon fiber (metalness 0.3, roughness 0.6, envMapIntensity 0.8)
   const bodyMat = useMemo(() => pbrMaterials.body, [pbrMaterials]);
 
-  // LED — subtle, no bloom spill
+  // LED — solid color dot, no glow spill
   const ledMat = useMemo(() => new THREE.MeshStandardMaterial({
     color: '#ffffff',
     emissive: '#ffffff',
-    emissiveIntensity: 0.4,
+    emissiveIntensity: 0.15,
     toneMapped: true,
     metalness: 0.0,
-    roughness: 0.3,
+    roughness: 0.5,
   }), []);
 
-  // Rotor disc — render_ultra motor material + transparency for disc effect
+  // Rotor disc — NO additive blending, just subtle transparent
   const rotorMat = useMemo(() => {
-    const m = pbrMaterials.motors.clone();
-    m.transparent = true;
-    m.opacity = 0.03;
-    m.side = THREE.DoubleSide;
-    m.depthWrite = false;
-    m.blending = THREE.AdditiveBlending;
+    const m = new THREE.MeshBasicMaterial({
+      color: '#888888',
+      transparent: true,
+      opacity: 0.02,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
     return m;
-  }, [pbrMaterials]);
+  }, []);
 
-  // Selection glow
+  // Selection glow — NO additive
   const glowMat = useMemo(() => new THREE.MeshBasicMaterial({
     transparent: true,
-    opacity: 0.5,
+    opacity: 0.3,
     side: THREE.DoubleSide,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
   }), []);
 
-  // LED halo — barely visible, just a hint
+  // LED halo — disabled (opacity near zero, no additive)
   const haloMat = useMemo(() => new THREE.MeshBasicMaterial({
     transparent: true,
-    opacity: 0.01,
+    opacity: 0.005,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
   }), []);
 
   // Nav lights
