@@ -18,7 +18,6 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useFleetStore } from '@/store/useFleetStore';
 import { useProjectStore } from '@/store/useProjectStore';
 import { showOrchestrator, type ShowPhase, type ShowWarning } from '@/lib/showOrchestrator';
