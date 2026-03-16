@@ -20,29 +20,29 @@ export default function PostProcessing() {
     <EffectComposer multisampling={0}>
       <SMAA />
 
-      {/* Layer 1: Core catch — only HDR pyro sources (threshold 0.75) */}
+      {/* Layer 1: Core catch — only extreme HDR pyro (threshold 1.5) */}
       <Bloom
-        intensity={str * 0.5}
-        luminanceThreshold={0.75}
-        luminanceSmoothing={0.3}
+        intensity={str * 0.3}
+        luminanceThreshold={1.5}
+        luminanceSmoothing={0.1}
         kernelSize={KernelSize.MEDIUM}
         mipmapBlur
       />
 
-      {/* Layer 2: Star halos — wider glow on very bright sources only */}
+      {/* Layer 2: Star halos — only pyro flashes */}
       <Bloom
-        intensity={str * 0.25}
-        luminanceThreshold={0.9}
-        luminanceSmoothing={0.5}
+        intensity={str * 0.15}
+        luminanceThreshold={2.0}
+        luminanceSmoothing={0.3}
         kernelSize={KernelSize.LARGE}
         mipmapBlur
       />
 
-      {/* Layer 3: Atmospheric — ultra-bright HDR sky coloring */}
+      {/* Layer 3: Atmospheric — ultra-bright only */}
       <Bloom
-        intensity={str * 0.1}
-        luminanceThreshold={1.1}
-        luminanceSmoothing={0.75}
+        intensity={str * 0.05}
+        luminanceThreshold={3.0}
+        luminanceSmoothing={0.5}
         kernelSize={KernelSize.HUGE}
         mipmapBlur
       />
