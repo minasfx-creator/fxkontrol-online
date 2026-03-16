@@ -172,7 +172,10 @@ interface ShowControlPanelProps {
 export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
   const orc = useOrchestratorState();
   const { clockSync, connectionState, uavs } = useFleetStore();
-  const { duration, projectName, positions, timelineItems } = useProjectStore();
+  const duration = useProjectStore((s) => s.duration);
+  const projectName = useProjectStore((s) => s.projectName);
+  const positions = useProjectStore((s) => s.positions);
+  const timelineItems = useProjectStore((s) => s.timelineItems);
 
   const [authScope, setAuthScope] = useState<AuthorizationScope>('live');
   const [startMethod, setStartMethod] = useState<StartMethod>('auto');
