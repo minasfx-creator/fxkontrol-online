@@ -416,51 +416,53 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
         </Button>
       </div>
 
-      {/* Category menus */}
-      <div className="flex items-center gap-0.5">
-        <DropdownMenu
-          label="Show"
-          icon={Film}
-          items={[
-            { label: 'Show Settings', icon: Cog, onClick: () => onOpenPanel?.('showsettings') },
-            { label: 'Show Summary', icon: FileBarChart, onClick: () => onOpenPanel?.('summary') },
-            { label: 'VDL Calibration', icon: Gauge, onClick: () => onOpenPanel?.('calibration') },
-            { label: 'Approval', icon: MessageSquare, onClick: () => onOpenPanel?.('approval') },
-            { label: 'Versioning', icon: History, onClick: () => onOpenPanel?.('versioning') },
-            { label: 'Share', icon: Share2, onClick: () => onOpenPanel?.('share') },
-            { label: 'Collaborate', icon: Users, onClick: () => onOpenPanel?.('collab') },
-            { label: 'Live SFX Console', icon: Zap, onClick: () => onOpenPanel?.('livefiring') },
-          ]}
-        />
-        <DropdownMenu
-          label="Scene"
-          icon={Paintbrush}
-          items={[
-            { label: 'Scene Editor', icon: Paintbrush, onClick: () => onOpenPanel?.('scene') },
-            { label: 'Weather', icon: Cloud, onClick: () => onOpenPanel?.('weather') },
-            { label: 'Audience View', icon: Eye, onClick: () => onOpenPanel?.('audience') },
-            { label: 'Sound Level', icon: Volume2, onClick: () => onOpenPanel?.('soundlevel') },
-            { label: 'Particles', icon: Atom, onClick: () => onOpenPanel?.('particles') },
-          ]}
-        />
-        <DropdownMenu
-          label="Location"
-          icon={MapPinned}
-          items={[
-            { label: 'Google Maps', icon: Globe, onClick: () => onOpenPanel?.('maps') },
-            { label: 'Site Layout', icon: Map, onClick: () => onOpenPanel?.('sitelayout') },
-          ]}
-        />
-        <DropdownMenu
-          label="Export"
-          icon={Download}
-          items={[
-            { label: '.vviz (Finale 3D)', icon: FileJson, onClick: handleExportVVIZ },
-            { label: '.skyc (SkyCreator)', icon: Download, onClick: handleExportSkyc },
-            { label: 'Firing CSV (Cobra/FireTEK)', icon: Download, onClick: handleExportFiringCSV },
-          ]}
-        />
-      </div>
+      {/* Category menus — hidden on mobile */}
+      {!isMobile && (
+        <div className="flex items-center gap-0.5">
+          <DropdownMenu
+            label="Show"
+            icon={Film}
+            items={[
+              { label: 'Show Settings', icon: Cog, onClick: () => onOpenPanel?.('showsettings') },
+              { label: 'Show Summary', icon: FileBarChart, onClick: () => onOpenPanel?.('summary') },
+              { label: 'VDL Calibration', icon: Gauge, onClick: () => onOpenPanel?.('calibration') },
+              { label: 'Approval', icon: MessageSquare, onClick: () => onOpenPanel?.('approval') },
+              { label: 'Versioning', icon: History, onClick: () => onOpenPanel?.('versioning') },
+              { label: 'Share', icon: Share2, onClick: () => onOpenPanel?.('share') },
+              { label: 'Collaborate', icon: Users, onClick: () => onOpenPanel?.('collab') },
+              { label: 'Live SFX Console', icon: Zap, onClick: () => onOpenPanel?.('livefiring') },
+            ]}
+          />
+          <DropdownMenu
+            label="Scene"
+            icon={Paintbrush}
+            items={[
+              { label: 'Scene Editor', icon: Paintbrush, onClick: () => onOpenPanel?.('scene') },
+              { label: 'Weather', icon: Cloud, onClick: () => onOpenPanel?.('weather') },
+              { label: 'Audience View', icon: Eye, onClick: () => onOpenPanel?.('audience') },
+              { label: 'Sound Level', icon: Volume2, onClick: () => onOpenPanel?.('soundlevel') },
+              { label: 'Particles', icon: Atom, onClick: () => onOpenPanel?.('particles') },
+            ]}
+          />
+          <DropdownMenu
+            label="Location"
+            icon={MapPinned}
+            items={[
+              { label: 'Google Maps', icon: Globe, onClick: () => onOpenPanel?.('maps') },
+              { label: 'Site Layout', icon: Map, onClick: () => onOpenPanel?.('sitelayout') },
+            ]}
+          />
+          <DropdownMenu
+            label="Export"
+            icon={Download}
+            items={[
+              { label: '.vviz (Finale 3D)', icon: FileJson, onClick: handleExportVVIZ },
+              { label: '.skyc (SkyCreator)', icon: Download, onClick: handleExportSkyc },
+              { label: 'Firing CSV (Cobra/FireTEK)', icon: Download, onClick: handleExportFiringCSV },
+            ]}
+          />
+        </div>
+      )}
 
       <div className="w-px h-6 bg-border/20 mx-1" />
 
