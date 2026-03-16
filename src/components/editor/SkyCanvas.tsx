@@ -68,6 +68,7 @@ import { createHDRLightingRig } from '@/render_ultra/lighting/hdrLighting';
 import { useLOD, calculateLOD, useSceneLOD, type LODFactors } from '@/hooks/useLOD';
 import ViewportGeoTools, { type GeoToolMode, type GeoMarker, type GeoRulerPoint, type GeoPath } from './ViewportGeoTools';
 import { GeoToolsScene, GeoToolClickHandler } from './GeoToolsR3F';
+import { RenderDebugToggle, RenderDebugPanel, setDebugExposure, setDebugLOD, setDebugRendererInfo } from './RenderDebugOverlay';
 
 // ═══ PyroChem: map hex colors → real chemical compounds ═══
 function hexToCompound(hexColor: string): ChemicalCompound {
@@ -1870,6 +1871,7 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
 
     const exposure = updateExposure(state, luminance, delta);
     _adaptiveExposure = exposure;
+    setDebugExposure(exposure);
     // NoToneMapping no renderer — exposure is consumed by particle HDR scaling
     // ACES in PostProcessing remains the single HDR→SDR tone-mapping pass
 
@@ -1886,6 +1888,30 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
 
   return null;
 });
+
+// ═══ DEBUG FEED — pushes renderer stats to DOM overlay at ~4Hz ═══
+function DebugFeed() {
+  const { gl, camera } = useThree();
+  const frameCount = useRef(0);
+  const lastTime = useRef(performance.now());
+
+  useFrame(() => {
+    frameCount.current++;
+    const now = performance.now();
+    if (now - lastTime.current >= 250) {
+      const fps = Math.round((frameCount.current * 1000) / (now - lastTime.current));
+      frameCount.current = 0;
+      lastTime.current = now;
+      const info = gl.info.render;
+      setDebugRendererInfo(fps, info.calls, info.triangles);
+      const origin = new THREE.Vector3(0, 100, 0);
+      const dist = Math.round(camera.position.distanceTo(origin));
+      const lod = calculateLOD(camera.position, origin);
+      setDebugLOD(lod.tier, dist);
+    }
+  });
+  return null;
+}
 
 // ═══ GLOBAL ILLUMINATION — Hemisphere light probes from explosions ═══
 // Fake GI: each explosion registers a color probe that bounces light onto the scene
@@ -2754,6 +2780,7 @@ export default function SkyCanvas() {
   const [canvasInstanceKey, setCanvasInstanceKey] = useState(0);
   const recoveringContextRef = useRef(false);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const [showDebugOverlay, setShowDebugOverlay] = useState(false);
 
   // ═══ Google Earth-style Geo Tools state ═══
   const [geoTool, setGeoTool] = useState<GeoToolMode>('none');
@@ -2984,6 +3011,7 @@ export default function SkyCanvas() {
         <PostProcessing />
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
+        <DebugFeed />
 
         {/* ═══ Google Earth Geo Tools ═══ */}
         <GeoToolsScene
@@ -3126,6 +3154,11 @@ export default function SkyCanvas() {
           </button>
         )}
 
+        {/* Debug overlay toggle */}
+        {!isMobile && (
+          <RenderDebugToggle show={showDebugOverlay} onToggle={() => setShowDebugOverlay(v => !v)} />
+        )}
+
         {/* Fullscreen toggle */}
         {!isMobile && (
           <button
@@ -3140,6 +3173,9 @@ export default function SkyCanvas() {
           </button>
         )}
       </div>
+
+      {/* Debug overlay toggle + panel */}
+      {!isMobile && showDebugOverlay && <RenderDebugPanel />}
 
       {/* Fullscreen floating edit menu */}
       {isFullscreen && <FullscreenEditMenu />}
