@@ -7,7 +7,7 @@ import { useMemo, useState } from 'react';
 import { useProjectStore, EFFECT_LIBRARY, type TimelineItem, type Effect } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
 import { Flame, ChevronDown, ChevronRight } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+
 
 /** Color map for pyro part types */
 const PYRO_TYPE_COLORS: Record<string, string> = {
