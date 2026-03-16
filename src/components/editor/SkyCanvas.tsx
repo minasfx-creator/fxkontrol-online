@@ -254,12 +254,18 @@ function FireworkBurst({
   
   // ═══ LOD — reduce particles & trails at distance ═══
   const lod = useLOD(position);
+  const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
   
   // Niagara-style: particle count scales with shell volume, reduced by LOD
-  // CAPPED to prevent GPU memory exhaustion with many simultaneous bursts
-  // CAPPED aggressively to prevent GPU context loss with many simultaneous bursts
-  const STAR_COUNT = useMemo(() => Math.min(500, Math.round((60 + caliber * caliber * 10) * lod.particleMultiplier)), [caliber, lod.particleMultiplier]);
-  const TRAIL_LENGTH = useMemo(() => Math.max(2, Math.min(8, Math.floor((4 + caliber * 0.8) * lod.trailLength))), [caliber, lod.trailLength]);
+  // Extra mobile caps prevent WebGL context loss on dense timelines
+  const STAR_COUNT = useMemo(() => {
+    const cap = isMobileViewport ? 220 : 500;
+    return Math.min(cap, Math.round((60 + caliber * caliber * 10) * lod.particleMultiplier));
+  }, [caliber, lod.particleMultiplier, isMobileViewport]);
+  const TRAIL_LENGTH = useMemo(() => {
+    const trailCap = isMobileViewport ? 4 : 8;
+    return Math.max(2, Math.min(trailCap, Math.floor((4 + caliber * 0.8) * lod.trailLength)));
+  }, [caliber, lod.trailLength, isMobileViewport]);
   
   // Real break speed from pyroPhysics — caliber proportional (m/s)
   const breakSpeed = useMemo(() => getBreakSpeed(caliber), [caliber]);
