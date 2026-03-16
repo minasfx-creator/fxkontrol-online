@@ -1914,7 +1914,7 @@ function GlobalIlluminationController() {
 }
 
 // ═══ VOLUMETRIC SMOKE CONTROLLER — post-burst smoke with wind drift ═══
-function SmokeController() {
+const SmokeController = React.forwardRef<THREE.Group, {}>(function SmokeController(_props, _ref) {
   const smokeRef = useRef<SmokeSystem | null>(null);
   const { scene } = useThree();
 
