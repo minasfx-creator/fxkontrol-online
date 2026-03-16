@@ -398,14 +398,21 @@ function FireworkBurst({
     };
   }, [STAR_COUNT, breakSpeed, starLife, pattern]);
 
-  // Pre-allocate typed arrays for per-frame updates
-  const positionsRef = useRef(new Float32Array(STAR_COUNT * 3));
-  const colorsRef = useRef(new Float32Array(STAR_COUNT * 3));
-  const sizesRef = useRef(new Float32Array(STAR_COUNT));
-  const livesRef = useRef(new Float32Array(STAR_COUNT));
-  const trailVertCount = STAR_COUNT * TRAIL_LENGTH * 2;
-  const trailPosRef = useRef(new Float32Array(trailVertCount * 3));
-  const trailColRef = useRef(new Float32Array(trailVertCount * 3));
+  // Pre-allocate typed arrays for per-frame updates (recreated only when STAR_COUNT/TRAIL_LENGTH changes)
+  const particleBuffers = useMemo(() => {
+    const trailVertCount = STAR_COUNT * TRAIL_LENGTH * 2;
+    return {
+      positions: new Float32Array(STAR_COUNT * 3),
+      colors: new Float32Array(STAR_COUNT * 3),
+      sizes: new Float32Array(STAR_COUNT),
+      lives: new Float32Array(STAR_COUNT),
+      trailPos: new Float32Array(trailVertCount * 3),
+      trailCol: new Float32Array(trailVertCount * 3),
+      trailVertCount,
+    };
+  }, [STAR_COUNT, TRAIL_LENGTH]);
+
+  const trailVertCount = particleBuffers.trailVertCount;
 
   // Star material — recreates after WebGL context recovery
   const starMaterial = useMemo(() => _sharedStarMaterial(), [_starMaterialVersion]);
