@@ -55,7 +55,7 @@ export default function InstancedDroneSwarm({
   const ledMat = useMemo(() => new THREE.MeshStandardMaterial({
     color: '#ffffff',
     emissive: '#ffffff',
-    emissiveIntensity: 0.075,
+    emissiveIntensity: 0.06,
     toneMapped: true,
     metalness: 0.0,
     roughness: 0.5,
