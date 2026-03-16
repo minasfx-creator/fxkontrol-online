@@ -42,7 +42,7 @@ export default function InstancedDroneSwarm({
   const ledGeo = useMemo(() => new THREE.SphereGeometry(0.04, 12, 12), []);
   const rotorGeo = useMemo(() => new THREE.CircleGeometry(0.09, 20), []);
   const glowGeo = useMemo(() => new THREE.RingGeometry(0.35, 0.5, 24), []);
-  const haloGeo = useMemo(() => new THREE.SphereGeometry(0.14, 8, 8), []);
+  const haloGeo = useMemo(() => new THREE.SphereGeometry(0.07, 8, 8), []);
   const navGeo = useMemo(() => new THREE.SphereGeometry(0.012, 6, 6), []);
 
   // ═══ PBR Materials from render_ultra — carbon fiber calibrated ═══
