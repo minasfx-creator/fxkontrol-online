@@ -86,7 +86,37 @@ import {
   ResizableHandle,
 } from '@/components/ui/resizable';
 
-const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
+const SkyCanvas = lazy(() =>
+  import('@/components/editor/SkyCanvas').catch(() => ({
+    default: () => (
+      <div className="w-full h-full flex flex-col items-center justify-center bg-surface-0 gap-3 p-8 text-center">
+        <p className="text-sm font-semibold text-foreground">3D Engine Unavailable</p>
+        <p className="text-xs text-muted-foreground">Could not load the renderer. Try reloading the page.</p>
+        <button className="text-xs text-primary underline" onClick={() => window.location.reload()}>Reload</button>
+      </div>
+    ),
+  }))
+);
+
+class CanvasErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.warn('[FXK] Canvas failed to load:', error.message);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center bg-surface-0 gap-3 p-8 text-center">
+          <p className="text-sm font-semibold text-foreground">3D Engine Error</p>
+          <p className="text-xs text-muted-foreground">WebGL context could not be initialized.</p>
+          <button className="text-xs text-primary underline" onClick={() => { this.setState({ hasError: false }); window.location.reload(); }}>Reload</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function CanvasLoader() {
   return (
