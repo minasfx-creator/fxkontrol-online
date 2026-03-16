@@ -240,12 +240,12 @@ function _sharedStarMaterial(): THREE.ShaderMaterial {
 // - No smoke — clean particle rendering like Niagara
 // - Caliber-proportional star count, size, and lifetime
 // ═══════════════════════════════════════════════════════════════════════
-function FireworkBurst({ 
-  position, color, progress, caliber = 4, pattern = 'peony' 
-}: { 
+const FireworkBurst = React.forwardRef<THREE.Group, { 
   position: [number, number, number]; color: string; progress: number; 
   caliber?: number; pattern?: string;
-}) {
+}>(function FireworkBurst({ 
+  position, color, progress, caliber = 4, pattern = 'peony' 
+}, _ref) {
   const pointsRef = useRef<THREE.Points>(null);
   const trailRef = useRef<THREE.LineSegments>(null);
   
