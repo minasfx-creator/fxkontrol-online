@@ -62,14 +62,6 @@ const BURST_FRAGMENT = `
   uniform float uTime;
   uniform float uThermalSpeed;
 
-  // Luma-based Reinhard tonemap to preserve hue and avoid white clipping.
-  vec3 tonemapLuma(vec3 c) {
-    vec3 safe = max(c, vec3(0.0));
-    float lum = dot(safe, vec3(0.2126, 0.7152, 0.0722));
-    float scale = lum > 0.001 ? (1.0 / (1.0 + lum)) : 1.0;
-    return safe * scale;
-  }
-  
   void main() {
     // Gaussian sprite: soft circle with hot core
     float dist = length(gl_PointCoord - vec2(0.5));
