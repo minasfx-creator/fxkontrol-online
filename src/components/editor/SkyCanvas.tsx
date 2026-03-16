@@ -2780,7 +2780,7 @@ export default function SkyCanvas() {
   const [canvasInstanceKey, setCanvasInstanceKey] = useState(0);
   const recoveringContextRef = useRef(false);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-  const [showDebugOverlay, setShowDebugOverlay] = useState(false);
+  const [showDebugOverlay, setShowDebugOverlay] = useState(true);
 
   // ═══ Google Earth-style Geo Tools state ═══
   const [geoTool, setGeoTool] = useState<GeoToolMode>('none');
