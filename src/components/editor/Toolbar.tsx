@@ -464,7 +464,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
         </div>
       )}
 
-      <div className="w-px h-6 bg-border/20 mx-1" />
+      {!isMobile && <div className="w-px h-6 bg-border/20 mx-1" />}
 
       {/* Undo / Redo */}
       <div className="btn-group">
