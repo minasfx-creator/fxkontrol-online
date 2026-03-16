@@ -21,7 +21,7 @@ import AudioSpectrumVisualizer from './AudioSpectrumVisualizer';
 import { DEFAULT_AVOIDANCE } from '@/lib/collisionAvoidance';
 import QuadcopterModel from './QuadcopterModel';
 // GeofenceVisual removed — green squares issue
-import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Globe, Download, ScanEye, Cog, Paintbrush, MapPinned, Film } from 'lucide-react';
+import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Globe, Download, ScanEye, Cog, Paintbrush, MapPinned, Film, ChevronDown } from 'lucide-react';
 import SelectionStatusBar from './SelectionStatusBar';
 import { cn } from '@/lib/utils';
 import {
@@ -2658,11 +2658,13 @@ export default function SkyCanvas() {
   const [activePreset, setActivePreset] = useState('free');
   const [freeLook, setFreeLook] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [cameraMenuOpen, setCameraMenuOpen] = useState(false);
   const preset = CAMERA_PRESETS.find((p) => p.id === activePreset) || CAMERA_PRESETS[0];
   const perfStatsRef = useRef<PerfStats>({ fps: 0, drawCalls: 0, triangles: 0, geometries: 0, textures: 0 });
   const droneCount = droneFormations.length > 0 ? droneFormations[0].droneCount : 0;
   const [satelliteTexture, setSatelliteTexture] = useState<string | null>(null);
   const [downloadingScenery, setDownloadingScenery] = useState(false);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
   // Track fullscreen state
   useEffect(() => {
@@ -2721,7 +2723,8 @@ export default function SkyCanvas() {
           logarithmicDepthBuffer: true,
           outputColorSpace: THREE.SRGBColorSpace,
         }}
-        dpr={[1, 1.5]}>
+        dpr={isMobile ? [1, 1] : [1, 1.5]}
+        performance={{ min: 0.5 }}>
         <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.3} far={20000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook} />
 
@@ -2736,26 +2739,24 @@ export default function SkyCanvas() {
         <SkyGradient />
         <Moon />
         <SceneStars />
-        <AtmosphericParticles />
+        {!isMobile && <AtmosphericParticles />}
         <SceneFog />
-        <WeatherEffects />
+        {!isMobile && <WeatherEffects />}
 
         <StageGround satelliteTexture={satelliteTexture} />
-        {/* LaunchSites removed — user creates positions via toolbar */}
         <PositionPins />
         <PyroLaunchAngles />
-        <Rack3DView />
+        {!isMobile && <Rack3DView />}
         <TrajectoryPaths />
         <DroneChoreography />
-        <BoidsVisualizer />
-        <CollisionAvoidanceOverlay config={DEFAULT_AVOIDANCE} />
+        {!isMobile && <BoidsVisualizer />}
+        {!isMobile && <CollisionAvoidanceOverlay config={DEFAULT_AVOIDANCE} />}
         <TimelineEffects />
         <LiveSFXEffects />
-        <AudioSpectrumVisualizer />
-        {/* GeofenceVisual removed — only shown when geofence explicitly configured */}
+        {!isMobile && <AudioSpectrumVisualizer />}
         <PlaybackClock />
-        <CameraAnimator />
-        <CameraPathPreview />
+        {!isMobile && <CameraAnimator />}
+        {!isMobile && <CameraPathPreview />}
         <PostProcessing />
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
@@ -2763,7 +2764,7 @@ export default function SkyCanvas() {
       </WebGLErrorBoundary>
 
       {/* Camera presets & controls */}
-      <div className="absolute top-3 left-3 flex items-center gap-1 flex-wrap">
+      <div className="absolute top-3 left-3 flex items-center gap-1 flex-wrap max-w-[calc(100%-24px)]">
         {/* Free look toggle */}
         <button
           onClick={() => setFreeLook(!freeLook)}
@@ -2773,78 +2774,122 @@ export default function SkyCanvas() {
               ? "bg-warning/20 text-warning border-warning/30 shadow-lg shadow-warning/10"
               : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
           )}
-          title="Free Look — camera stays where you leave it"
+          title="Free Look"
         >
           <ScanEye className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Look</span>
         </button>
 
-        {CAMERA_PRESETS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => { setActivePreset(id); setFreeLook(false); }}
-            className={cn(
-              "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
-              activePreset === id && !freeLook
-                ? "bg-primary/15 text-primary border-primary/25 shadow-lg shadow-primary/10"
-                : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+        {/* Mobile: camera dropdown; Desktop: inline buttons */}
+        {isMobile ? (
+          <div className="relative">
+            <button
+              onClick={() => setCameraMenuOpen(!cameraMenuOpen)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md bg-card/80 text-muted-foreground border-border/20"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>{preset.label}</span>
+              <ChevronDown className={cn("w-3 h-3 transition-transform", cameraMenuOpen && "rotate-180")} />
+            </button>
+            {cameraMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setCameraMenuOpen(false)} />
+                <div className="absolute top-full left-0 mt-1 z-40 bg-card/95 backdrop-blur-xl border border-border/20 rounded-xl shadow-2xl shadow-black/60 py-1 min-w-[140px]">
+                  {CAMERA_PRESETS.map(({ id, label, icon: Icon }) => (
+                    <button
+                      key={id}
+                      onClick={() => { setActivePreset(id); setFreeLook(false); setCameraMenuOpen(false); }}
+                      className={cn(
+                        "w-full text-left px-3 py-2 text-[11px] font-medium flex items-center gap-2 rounded-lg mx-0.5 transition-all",
+                        activePreset === id && !freeLook
+                          ? "text-primary bg-primary/10"
+                          : "text-muted-foreground hover:text-foreground hover:bg-surface-1/60"
+                      )}
+                      style={{ width: 'calc(100% - 4px)' }}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
-          >
-            <Icon className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{label}</span>
-          </button>
-        ))}
+          </div>
+        ) : (
+          CAMERA_PRESETS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => { setActivePreset(id); setFreeLook(false); }}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
+                activePreset === id && !freeLook
+                  ? "bg-primary/15 text-primary border-primary/25 shadow-lg shadow-primary/10"
+                  : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+              )}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{label}</span>
+            </button>
+          ))
+        )}
 
         {/* Download satellite scenery */}
-        <button
-          onClick={handleDownloadScenery}
-          disabled={downloadingScenery}
-          className={cn(
-            "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
-            satelliteTexture
-              ? "bg-success/15 text-success border-success/25"
-              : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
-          )}
-          title="Download real satellite scenery from Google Maps"
-        >
-          {downloadingScenery ? (
-            <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <Globe className="w-3.5 h-3.5" />
-          )}
-          <span className="hidden sm:inline">{satelliteTexture ? 'Satélite ✓' : 'Cenário Real'}</span>
-        </button>
+        {!isMobile && (
+          <button
+            onClick={handleDownloadScenery}
+            disabled={downloadingScenery}
+            className={cn(
+              "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
+              satelliteTexture
+                ? "bg-success/15 text-success border-success/25"
+                : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+            )}
+            title="Download real satellite scenery from Google Maps"
+          >
+            {downloadingScenery ? (
+              <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Globe className="w-3.5 h-3.5" />
+            )}
+            <span className="hidden sm:inline">{satelliteTexture ? 'Satélite ✓' : 'Cenário Real'}</span>
+          </button>
+        )}
 
         {/* Fullscreen toggle */}
-        <button
-          onClick={() => {
-            const el = document.querySelector('[data-sky-canvas]') as HTMLElement;
-            if (!el) return;
-            document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen();
-          }}
-          className="bg-card/80 text-muted-foreground border border-border/20 hover:text-foreground hover:bg-card/90 px-2.5 py-1.5 rounded-xl transition-all backdrop-blur-md"
-        >
-          {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
-        </button>
+        {!isMobile && (
+          <button
+            onClick={() => {
+              const el = document.querySelector('[data-sky-canvas]') as HTMLElement;
+              if (!el) return;
+              document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen();
+            }}
+            className="bg-card/80 text-muted-foreground border border-border/20 hover:text-foreground hover:bg-card/90 px-2.5 py-1.5 rounded-xl transition-all backdrop-blur-md"
+          >
+            {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
+          </button>
+        )}
       </div>
 
       {/* Fullscreen floating edit menu */}
       {isFullscreen && <FullscreenEditMenu />}
 
-      <PerformanceHUD statsRef={perfStatsRef} droneCount={droneCount} />
-      <ViewportTerminal />
+      {!isMobile && <PerformanceHUD statsRef={perfStatsRef} droneCount={droneCount} />}
+      {!isMobile && <ViewportTerminal />}
       <SelectionStatusBar />
-      <AlignmentTools />
+      {!isMobile && <AlignmentTools />}
 
       {/* ═══ Viewport Playback Controls ═══ */}
       <ViewportPlaybackControls />
 
-      <div className="absolute bottom-3 right-3 text-[9px] font-mono-code text-muted-foreground/60 bg-card/70 backdrop-blur-md px-3 py-2 rounded-xl border border-border/15 space-y-0.5">
-        <div className="text-[8px] text-muted-foreground/40 tracking-wider font-display">FX KONTROL v2.0 · Minas FX</div>
-        <div>Orbit: LMB · Pan: MMB · Zoom: Scroll</div>
-        <div>Box: Alt+Drag · Multi: Shift+Click · Edit: Dbl-Click</div>
-        <div>{freeLook ? '🔓 Free Look ON' : '🔒 Preset Lock'}</div>
-      </div>
+      {/* Bottom info — hidden on mobile to avoid tab bar overlap */}
+      {!isMobile && (
+        <div className="absolute bottom-3 right-3 text-[9px] font-mono-code text-muted-foreground/60 bg-card/70 backdrop-blur-md px-3 py-2 rounded-xl border border-border/15 space-y-0.5">
+          <div className="text-[8px] text-muted-foreground/40 tracking-wider font-display">FX KONTROL v2.0 · Minas FX</div>
+          <div>Orbit: LMB · Pan: MMB · Zoom: Scroll</div>
+          <div>Box: Alt+Drag · Multi: Shift+Click · Edit: Dbl-Click</div>
+          <div>{freeLook ? '🔓 Free Look ON' : '🔒 Preset Lock'}</div>
+        </div>
+      )}
     </div>
   );
 }

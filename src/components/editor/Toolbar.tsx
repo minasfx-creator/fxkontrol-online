@@ -379,8 +379,10 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
     return () => window.removeEventListener('keydown', handler);
   }, [handleSave, handleExportVVIZ, setEditorMode]);
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
   return (
-    <div className="flex items-center h-11 px-3 border-b border-border/10 gap-1" style={{ background: 'hsl(var(--card))' }}>
+    <div className={cn("flex items-center border-b border-border/10 gap-1", isMobile ? "h-10 px-2" : "h-11 px-3")} style={{ background: 'hsl(var(--card))' }}>
       {/* Logo — consistent with splash screen */}
       <div className="flex items-center gap-2.5 mr-2">
         <div
@@ -414,53 +416,55 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
         </Button>
       </div>
 
-      {/* Category menus */}
-      <div className="flex items-center gap-0.5">
-        <DropdownMenu
-          label="Show"
-          icon={Film}
-          items={[
-            { label: 'Show Settings', icon: Cog, onClick: () => onOpenPanel?.('showsettings') },
-            { label: 'Show Summary', icon: FileBarChart, onClick: () => onOpenPanel?.('summary') },
-            { label: 'VDL Calibration', icon: Gauge, onClick: () => onOpenPanel?.('calibration') },
-            { label: 'Approval', icon: MessageSquare, onClick: () => onOpenPanel?.('approval') },
-            { label: 'Versioning', icon: History, onClick: () => onOpenPanel?.('versioning') },
-            { label: 'Share', icon: Share2, onClick: () => onOpenPanel?.('share') },
-            { label: 'Collaborate', icon: Users, onClick: () => onOpenPanel?.('collab') },
-            { label: 'Live SFX Console', icon: Zap, onClick: () => onOpenPanel?.('livefiring') },
-          ]}
-        />
-        <DropdownMenu
-          label="Scene"
-          icon={Paintbrush}
-          items={[
-            { label: 'Scene Editor', icon: Paintbrush, onClick: () => onOpenPanel?.('scene') },
-            { label: 'Weather', icon: Cloud, onClick: () => onOpenPanel?.('weather') },
-            { label: 'Audience View', icon: Eye, onClick: () => onOpenPanel?.('audience') },
-            { label: 'Sound Level', icon: Volume2, onClick: () => onOpenPanel?.('soundlevel') },
-            { label: 'Particles', icon: Atom, onClick: () => onOpenPanel?.('particles') },
-          ]}
-        />
-        <DropdownMenu
-          label="Location"
-          icon={MapPinned}
-          items={[
-            { label: 'Google Maps', icon: Globe, onClick: () => onOpenPanel?.('maps') },
-            { label: 'Site Layout', icon: Map, onClick: () => onOpenPanel?.('sitelayout') },
-          ]}
-        />
-        <DropdownMenu
-          label="Export"
-          icon={Download}
-          items={[
-            { label: '.vviz (Finale 3D)', icon: FileJson, onClick: handleExportVVIZ },
-            { label: '.skyc (SkyCreator)', icon: Download, onClick: handleExportSkyc },
-            { label: 'Firing CSV (Cobra/FireTEK)', icon: Download, onClick: handleExportFiringCSV },
-          ]}
-        />
-      </div>
+      {/* Category menus — hidden on mobile */}
+      {!isMobile && (
+        <div className="flex items-center gap-0.5">
+          <DropdownMenu
+            label="Show"
+            icon={Film}
+            items={[
+              { label: 'Show Settings', icon: Cog, onClick: () => onOpenPanel?.('showsettings') },
+              { label: 'Show Summary', icon: FileBarChart, onClick: () => onOpenPanel?.('summary') },
+              { label: 'VDL Calibration', icon: Gauge, onClick: () => onOpenPanel?.('calibration') },
+              { label: 'Approval', icon: MessageSquare, onClick: () => onOpenPanel?.('approval') },
+              { label: 'Versioning', icon: History, onClick: () => onOpenPanel?.('versioning') },
+              { label: 'Share', icon: Share2, onClick: () => onOpenPanel?.('share') },
+              { label: 'Collaborate', icon: Users, onClick: () => onOpenPanel?.('collab') },
+              { label: 'Live SFX Console', icon: Zap, onClick: () => onOpenPanel?.('livefiring') },
+            ]}
+          />
+          <DropdownMenu
+            label="Scene"
+            icon={Paintbrush}
+            items={[
+              { label: 'Scene Editor', icon: Paintbrush, onClick: () => onOpenPanel?.('scene') },
+              { label: 'Weather', icon: Cloud, onClick: () => onOpenPanel?.('weather') },
+              { label: 'Audience View', icon: Eye, onClick: () => onOpenPanel?.('audience') },
+              { label: 'Sound Level', icon: Volume2, onClick: () => onOpenPanel?.('soundlevel') },
+              { label: 'Particles', icon: Atom, onClick: () => onOpenPanel?.('particles') },
+            ]}
+          />
+          <DropdownMenu
+            label="Location"
+            icon={MapPinned}
+            items={[
+              { label: 'Google Maps', icon: Globe, onClick: () => onOpenPanel?.('maps') },
+              { label: 'Site Layout', icon: Map, onClick: () => onOpenPanel?.('sitelayout') },
+            ]}
+          />
+          <DropdownMenu
+            label="Export"
+            icon={Download}
+            items={[
+              { label: '.vviz (Finale 3D)', icon: FileJson, onClick: handleExportVVIZ },
+              { label: '.skyc (SkyCreator)', icon: Download, onClick: handleExportSkyc },
+              { label: 'Firing CSV (Cobra/FireTEK)', icon: Download, onClick: handleExportFiringCSV },
+            ]}
+          />
+        </div>
+      )}
 
-      <div className="w-px h-6 bg-border/20 mx-1" />
+      {!isMobile && <div className="w-px h-6 bg-border/20 mx-1" />}
 
       {/* Undo / Redo */}
       <div className="btn-group">
@@ -472,7 +476,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
         </Button>
       </div>
 
-      <div className="w-px h-6 bg-border/20 mx-1" />
+      {!isMobile && <div className="w-px h-6 bg-border/20 mx-1" />}
 
       {/* Mode tools */}
       <div className="btn-group">
@@ -509,36 +513,38 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
         <BatchAddButton />
       </div>
 
-      <div className="w-px h-6 bg-border/20 mx-1" />
+      {!isMobile && <div className="w-px h-6 bg-border/20 mx-1" />}
 
-      {/* Quick tools */}
-      <div className="btn-group">
-        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" title="Multi-Select"
-          onClick={() => {
-            const store = useProjectStore.getState();
-            if (store.selectedPositionIds.length === store.positions.length) {
-              store.selectMultiplePositions([]);
-            } else {
-              store.selectMultiplePositions(store.positions.map(p => p.id));
-            }
-          }}
-        >
-          <BoxSelect className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" title="Formations" onClick={() => setFormationOpen(true)}>
-          <Shapes className="h-3.5 w-3.5" />
-        </Button>
-        <ArrangePositionsDialog>
-          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" title="Arrange">
-            <LayoutGrid className="h-3.5 w-3.5" />
+      {/* Quick tools — hidden on mobile */}
+      {!isMobile && (
+        <div className="btn-group">
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" title="Multi-Select"
+            onClick={() => {
+              const store = useProjectStore.getState();
+              if (store.selectedPositionIds.length === store.positions.length) {
+                store.selectMultiplePositions([]);
+              } else {
+                store.selectMultiplePositions(store.positions.map(p => p.id));
+              }
+            }}
+          >
+            <BoxSelect className="h-3.5 w-3.5" />
           </Button>
-        </ArrangePositionsDialog>
-        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" title="Import CSV" onClick={() => setCsvOpen(true)}>
-          <Upload className="h-3.5 w-3.5" />
-        </Button>
-      </div>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" title="Formations" onClick={() => setFormationOpen(true)}>
+            <Shapes className="h-3.5 w-3.5" />
+          </Button>
+          <ArrangePositionsDialog>
+            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" title="Arrange">
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </Button>
+          </ArrangePositionsDialog>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" title="Import CSV" onClick={() => setCsvOpen(true)}>
+            <Upload className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
 
-      {editorMode !== 'select' && (
+      {!isMobile && editorMode !== 'select' && (
         <span className="text-[9px] font-mono-code text-muted-foreground/60 ml-2 flex items-center gap-1">
           Click to place · <span className="text-primary">ESC</span> to stop
         </span>
@@ -555,22 +561,29 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       {/* Timecode Display */}
       <TimecodeDisplay />
 
-      {/* Status — refined */}
-      <div className="flex items-center gap-2.5 text-[10px] font-mono-code text-muted-foreground/40 ml-3">
-        <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-surface-0/40 border border-border/8">
-          <span className="tabular-nums"><span className="text-foreground/60">{timelineItems.length}</span> cues</span>
-          <span className="text-border/30">·</span>
-          <span className="tabular-nums"><span className="text-foreground/60">{positions.length}</span> pos</span>
+      {/* Status — hidden on mobile */}
+      {!isMobile && (
+        <div className="flex items-center gap-2.5 text-[10px] font-mono-code text-muted-foreground/40 ml-3">
+          <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-surface-0/40 border border-border/8">
+            <span className="tabular-nums"><span className="text-foreground/60">{timelineItems.length}</span> cues</span>
+            <span className="text-border/30">·</span>
+            <span className="tabular-nums"><span className="text-foreground/60">{positions.length}</span> pos</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-success/60 animate-pulse-glow" />
+            <span className="text-success/50 text-[9px]">SYNC</span>
+          </div>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-destructive/8 hover:text-destructive text-muted-foreground/30" title="Sair" onClick={signOut}>
+            <LogOut className="h-3.5 w-3.5" />
+          </Button>
+          <LanguageSwitcher />
         </div>
-        <div className="flex items-center gap-1">
-          <div className="w-1.5 h-1.5 rounded-full bg-success/60 animate-pulse-glow" />
-          <span className="text-success/50 text-[9px]">SYNC</span>
-        </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-destructive/8 hover:text-destructive text-muted-foreground/30" title="Sair" onClick={signOut}>
+      )}
+      {isMobile && (
+        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-destructive/8 hover:text-destructive text-muted-foreground/30 ml-1" title="Sair" onClick={signOut}>
           <LogOut className="h-3.5 w-3.5" />
         </Button>
-        <LanguageSwitcher />
-      </div>
+      )}
     </div>
   );
 }
