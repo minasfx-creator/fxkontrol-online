@@ -58,34 +58,34 @@ export default function QuadcopterModel({
         <meshStandardMaterial color="#1a1a2e" metalness={0.5} roughness={0.6} />
       </mesh>
 
-      {/* Main RGB LED on top — contained emissive */}
+      {/* Main RGB LED on top */}
       <mesh position={[0, 0.06, 0]}>
         <sphereGeometry args={[0.04, 12, 12]} />
         <meshStandardMaterial
           color={color}
           emissive={color}
-          emissiveIntensity={1.5}
+          emissiveIntensity={0.5}
           toneMapped={true}
           metalness={0}
-          roughness={0.15}
+          roughness={0.3}
         />
       </mesh>
-      {/* LED volumetric halo — tight */}
+      {/* Minimal halo */}
       <mesh position={[0, 0.06, 0]}>
-        <sphereGeometry args={[0.07, 8, 8]} />
+        <sphereGeometry args={[0.055, 8, 8]} />
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={0.06}
+          opacity={0.02}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
         />
       </mesh>
       <pointLight
         color={color}
-        intensity={selected ? 2 : 0.8}
-        distance={selected ? 3 : 1.5}
-        decay={2.5}
+        intensity={selected ? 0.6 : 0.2}
+        distance={selected ? 1.5 : 0.8}
+        decay={3}
         position={[0, 0.06, 0]}
       />
 

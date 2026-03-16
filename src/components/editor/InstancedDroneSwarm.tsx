@@ -81,10 +81,10 @@ export default function InstancedDroneSwarm({
     blending: THREE.AdditiveBlending,
   }), []);
 
-  // LED volumetric halo — tight, contained glow
+  // LED halo — barely visible, just a hint
   const haloMat = useMemo(() => new THREE.MeshBasicMaterial({
     transparent: true,
-    opacity: 0.03,
+    opacity: 0.01,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
   }), []);
