@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { MapPin, Ruler, Route, Trash2, Eye, EyeOff, ChevronDown, Plus, SquareDot, Download, Globe } from 'lucide-react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { MapPin, Ruler, Route, Trash2, Eye, EyeOff, ChevronDown, Plus, SquareDot, Download, Globe, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { downloadGeoToolsKML, downloadGeoToolsKMZ } from '@/lib/geoToolsKmlExporter';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -29,7 +29,7 @@ export interface GeoPath {
   points: [number, number, number][];
   color: string;
   visible: boolean;
-  closed: boolean; // polygon mode
+  closed: boolean;
 }
 
 interface ViewportGeoToolsProps {
@@ -47,6 +47,9 @@ interface ViewportGeoToolsProps {
   onDeleteMarker: (id: string) => void;
   onDeleteRuler: (id: string) => void;
   onDeletePath: (id: string) => void;
+  onUpdateMarker?: (id: string, updates: Partial<GeoMarker>) => void;
+  onUpdateRuler?: (id: string, updates: Partial<GeoRulerPoint>) => void;
+  onUpdatePath?: (id: string, updates: Partial<GeoPath>) => void;
 }
 
 const TOOL_BUTTONS: { id: GeoToolMode; icon: React.ElementType; label: string; tip: string }[] = [
@@ -56,7 +59,82 @@ const TOOL_BUTTONS: { id: GeoToolMode; icon: React.ElementType; label: string; t
   { id: 'polygon', icon: SquareDot, label: 'Polígono', tip: 'Clique para desenhar uma área fechada' },
 ];
 
-const MARKER_COLORS = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ec4899'];
+const EDIT_COLORS = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ec4899', '#06b6d4', '#ffffff'];
+
+// ═══ Inline name editor ═══
+function InlineName({ value, onCommit }: { value: string; onCommit: (v: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) {
+      setDraft(value);
+      setTimeout(() => inputRef.current?.select(), 0);
+    }
+  }, [editing, value]);
+
+  if (!editing) {
+    return (
+      <span
+        className="text-[10px] text-foreground flex-1 truncate cursor-pointer hover:text-primary transition-colors"
+        onDoubleClick={() => setEditing(true)}
+        title="Duplo-clique para editar"
+      >
+        {value}
+      </span>
+    );
+  }
+
+  return (
+    <input
+      ref={inputRef}
+      value={draft}
+      onChange={e => setDraft(e.target.value)}
+      onBlur={() => { onCommit(draft || value); setEditing(false); }}
+      onKeyDown={e => {
+        if (e.key === 'Enter') { onCommit(draft || value); setEditing(false); }
+        if (e.key === 'Escape') setEditing(false);
+      }}
+      className="text-[10px] text-foreground flex-1 min-w-0 bg-surface-1/60 border border-primary/30 rounded px-1 py-0 outline-none focus:border-primary"
+      autoFocus
+    />
+  );
+}
+
+// ═══ Color picker dot ═══
+function ColorDot({ color, onChange }: { color: string; onChange: (c: string) => void }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        className="w-2.5 h-2.5 rounded-full flex-shrink-0 ring-1 ring-border/20 hover:ring-primary/50 transition-all cursor-pointer"
+        style={{ background: color }}
+        onDoubleClick={() => setOpen(!open)}
+        title="Duplo-clique para mudar a cor"
+      />
+      {open && (
+        <>
+          <div className="fixed inset-0 z-50" onClick={() => setOpen(false)} />
+          <div className="absolute top-full left-0 mt-1 z-50 bg-card/95 backdrop-blur-xl border border-border/20 rounded-xl shadow-2xl p-1.5 flex gap-1 flex-wrap w-[100px]">
+            {EDIT_COLORS.map(c => (
+              <button
+                key={c}
+                onClick={() => { onChange(c); setOpen(false); }}
+                className={cn(
+                  "w-4 h-4 rounded-full ring-1 transition-all hover:scale-125",
+                  c === color ? "ring-primary ring-2" : "ring-border/20"
+                )}
+                style={{ background: c }}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export default function ViewportGeoTools({
   activeTool,
@@ -73,6 +151,9 @@ export default function ViewportGeoTools({
   onDeleteMarker,
   onDeleteRuler,
   onDeletePath,
+  onUpdateMarker,
+  onUpdateRuler,
+  onUpdatePath,
 }: ViewportGeoToolsProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -102,7 +183,7 @@ export default function ViewportGeoTools({
       {/* Expanded panel */}
       {expanded && (
         <div
-          className="border border-border/20 rounded-2xl shadow-2xl shadow-black/60 backdrop-blur-2xl min-w-[220px] overflow-hidden"
+          className="border border-border/20 rounded-2xl shadow-2xl shadow-black/60 backdrop-blur-2xl min-w-[240px] overflow-hidden"
           style={{ background: 'hsl(var(--card) / 0.95)' }}
         >
           {/* Tool buttons */}
@@ -160,8 +241,8 @@ export default function ViewportGeoTools({
                 </div>
                 {markers.map(m => (
                   <div key={m.id} className="flex items-center gap-1.5 px-1.5 py-1 rounded-lg hover:bg-surface-1/40 group">
-                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: m.color }} />
-                    <span className="text-[10px] text-foreground flex-1 truncate">{m.name}</span>
+                    <ColorDot color={m.color} onChange={c => onUpdateMarker?.(m.id, { color: c })} />
+                    <InlineName value={m.name} onCommit={name => onUpdateMarker?.(m.id, { name })} />
                     <span className="text-[8px] text-muted-foreground/50 font-mono-code">
                       {m.position[0].toFixed(1)}, {m.position[2].toFixed(1)}
                     </span>
@@ -190,7 +271,7 @@ export default function ViewportGeoTools({
                 {rulers.map(r => (
                   <div key={r.id} className="flex items-center gap-1.5 px-1.5 py-1 rounded-lg hover:bg-surface-1/40 group">
                     <Ruler className="w-3 h-3 text-warning flex-shrink-0" />
-                    <span className="text-[10px] text-foreground flex-1 truncate">{r.label}</span>
+                    <InlineName value={r.label} onCommit={label => onUpdateRuler?.(r.id, { label })} />
                     <span className="text-[9px] text-warning font-mono-code font-bold">{r.totalDistance.toFixed(1)}m</span>
                     <button onClick={() => onToggleRulerVisibility(r.id)} className="opacity-0 group-hover:opacity-100 transition-opacity">
                       {r.visible ? <Eye className="w-3 h-3 text-muted-foreground" /> : <EyeOff className="w-3 h-3 text-muted-foreground/40" />}
@@ -216,8 +297,8 @@ export default function ViewportGeoTools({
                 </div>
                 {paths.map(p => (
                   <div key={p.id} className="flex items-center gap-1.5 px-1.5 py-1 rounded-lg hover:bg-surface-1/40 group">
-                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: p.color }} />
-                    <span className="text-[10px] text-foreground flex-1 truncate">{p.name}</span>
+                    <ColorDot color={p.color} onChange={c => onUpdatePath?.(p.id, { color: c })} />
+                    <InlineName value={p.name} onCommit={name => onUpdatePath?.(p.id, { name })} />
                     <span className="text-[8px] text-muted-foreground/50 font-mono-code">{p.points.length} pts</span>
                     <button onClick={() => onTogglePathVisibility(p.id)} className="opacity-0 group-hover:opacity-100 transition-opacity">
                       {p.visible ? <Eye className="w-3 h-3 text-muted-foreground" /> : <EyeOff className="w-3 h-3 text-muted-foreground/40" />}

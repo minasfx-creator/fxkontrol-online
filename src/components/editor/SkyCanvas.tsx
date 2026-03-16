@@ -3009,6 +3009,9 @@ export default function SkyCanvas() {
           onDeleteMarker={(id) => setGeoMarkers(prev => prev.filter(m => m.id !== id))}
           onDeleteRuler={(id) => setGeoRulers(prev => prev.filter(r => r.id !== id))}
           onDeletePath={(id) => setGeoPaths(prev => prev.filter(p => p.id !== id))}
+          onUpdateMarker={(id, updates) => setGeoMarkers(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m))}
+          onUpdateRuler={(id, updates) => setGeoRulers(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r))}
+          onUpdatePath={(id, updates) => setGeoPaths(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p))}
         />
       )}
 
