@@ -2969,6 +2969,35 @@ export default function SkyCanvas() {
       </Canvas>
       </WebGLErrorBoundary>
 
+      {/* ═══ Google Earth Geo Tools UI ═══ */}
+      {!isMobile && (
+        <ViewportGeoTools
+          activeTool={geoTool}
+          onToolChange={(tool) => {
+            setGeoTool(tool);
+            if (tool === 'none') {
+              // finalize any in-progress drawing
+              if (activeRulerPoints.length >= 2) handleFinishRuler();
+              if (activePathPoints.length >= 2) handleFinishPath();
+              setActiveRulerPoints([]);
+              setActivePathPoints([]);
+            }
+          }}
+          markers={geoMarkers}
+          rulers={geoRulers}
+          paths={geoPaths}
+          onClearMarkers={() => setGeoMarkers([])}
+          onClearRulers={() => setGeoRulers([])}
+          onClearPaths={() => setGeoPaths([])}
+          onToggleMarkerVisibility={(id) => setGeoMarkers(prev => prev.map(m => m.id === id ? { ...m, visible: !m.visible } : m))}
+          onToggleRulerVisibility={(id) => setGeoRulers(prev => prev.map(r => r.id === id ? { ...r, visible: !r.visible } : r))}
+          onTogglePathVisibility={(id) => setGeoPaths(prev => prev.map(p => p.id === id ? { ...p, visible: !p.visible } : p))}
+          onDeleteMarker={(id) => setGeoMarkers(prev => prev.filter(m => m.id !== id))}
+          onDeleteRuler={(id) => setGeoRulers(prev => prev.filter(r => r.id !== id))}
+          onDeletePath={(id) => setGeoPaths(prev => prev.filter(p => p.id !== id))}
+        />
+      )}
+
       {/* Camera presets & controls */}
       <div className="absolute top-3 left-3 flex items-center gap-1 flex-wrap max-w-[calc(100%-24px)]">
         {/* Free look toggle */}
