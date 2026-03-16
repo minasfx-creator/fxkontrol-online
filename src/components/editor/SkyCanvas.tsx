@@ -1838,7 +1838,7 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
   const _scatterAccum = useMemo(() => new THREE.Color(), []);
   const _tmpColor = useMemo(() => new THREE.Color(), []);
 
-  useFrame((_, delta) => {
+  useFrame(({ gl }, delta) => {
     const state = exposureRef.current;
     const { timelineItems, currentTime } = useProjectStore.getState();
     let luminance = 0;
