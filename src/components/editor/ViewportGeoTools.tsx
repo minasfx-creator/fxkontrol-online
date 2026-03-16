@@ -1,6 +1,9 @@
 import React, { useState, useCallback } from 'react';
-import { MapPin, Ruler, Route, Trash2, Eye, EyeOff, ChevronDown, Plus, SquareDot } from 'lucide-react';
+import { MapPin, Ruler, Route, Trash2, Eye, EyeOff, ChevronDown, Plus, SquareDot, Download, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { downloadGeoToolsKML, downloadGeoToolsKMZ } from '@/lib/geoToolsKmlExporter';
+import { useProjectStore } from '@/store/useProjectStore';
+import { toast } from 'sonner';
 
 export type GeoToolMode = 'none' | 'marker' | 'ruler' | 'path' | 'polygon';
 
