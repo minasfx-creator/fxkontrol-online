@@ -1911,7 +1911,7 @@ const GlobalIlluminationController = React.forwardRef<THREE.Group, {}>(function 
   });
 
   return null;
-}
+});
 
 // ═══ VOLUMETRIC SMOKE CONTROLLER — post-burst smoke with wind drift ═══
 const SmokeController = React.forwardRef<THREE.Group, {}>(function SmokeController(_props, _ref) {
