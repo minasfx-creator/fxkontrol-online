@@ -2746,6 +2746,7 @@ export default function SkyCanvas() {
   const geoMarkerColorIdx = useRef(0);
   const geoPathColorIdx = useRef(0);
   const MARKER_COLORS = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ec4899'];
+  const cursorStyle = geoTool !== 'none' ? 'crosshair' : editorMode !== 'select' ? 'crosshair' : 'default';
 
   const handlePlaceMarker = useCallback((pos: [number, number, number]) => {
     const color = MARKER_COLORS[geoMarkerColorIdx.current % MARKER_COLORS.length];
