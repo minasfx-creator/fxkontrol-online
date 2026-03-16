@@ -22,7 +22,7 @@ export default function PostProcessing() {
 
       {/* Layer 1: Core catch — only extreme HDR pyro (threshold 1.5) */}
       <Bloom
-        intensity={str * 0.12}
+        intensity={str * 0.096}
         luminanceThreshold={2.0}
         luminanceSmoothing={0.05}
         kernelSize={KernelSize.MEDIUM}
@@ -31,7 +31,7 @@ export default function PostProcessing() {
 
       {/* Layer 2: Star halos — only pyro flashes */}
       <Bloom
-        intensity={str * 0.06}
+        intensity={str * 0.048}
         luminanceThreshold={2.5}
         luminanceSmoothing={0.2}
         kernelSize={KernelSize.LARGE}
@@ -40,7 +40,7 @@ export default function PostProcessing() {
 
       {/* Layer 3: Atmospheric — ultra-bright only */}
       <Bloom
-        intensity={str * 0.02}
+        intensity={str * 0.016}
         luminanceThreshold={4.0}
         luminanceSmoothing={0.4}
         kernelSize={KernelSize.HUGE}

@@ -64,7 +64,7 @@ export default function QuadcopterModel({
         <meshStandardMaterial
           color={color}
           emissive={color}
-          emissiveIntensity={0.2}
+          emissiveIntensity={0.16}
           toneMapped={true}
           metalness={0}
           roughness={0.3}
@@ -76,14 +76,14 @@ export default function QuadcopterModel({
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={0.004}
+          opacity={0.003}
           depthWrite={false}
         />
       </mesh>
       <pointLight
         color={color}
-          intensity={selected ? 0.24 : 0.08}
-          distance={selected ? 0.6 : 0.3}
+          intensity={selected ? 0.19 : 0.064}
+          distance={selected ? 0.48 : 0.24}
           decay={3}
         position={[0, 0.06, 0]}
       />
