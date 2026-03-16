@@ -2,7 +2,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars, Grid, PerspectiveCamera } from '@react-three/drei';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
-import { useRef, useMemo, useEffect, useState, useCallback, Component, ErrorInfo, ReactNode } from 'react';
+import React, { useRef, useMemo, useEffect, useState, useCallback, Component, ErrorInfo, ReactNode } from 'react';
 import { PerfCollector, PerformanceHUD, type PerfStats } from './PerformanceHUD';
 import ViewportTerminal, { pushLog } from './ViewportTerminal';
 import * as THREE from 'three';
@@ -240,12 +240,12 @@ function _sharedStarMaterial(): THREE.ShaderMaterial {
 // - No smoke — clean particle rendering like Niagara
 // - Caliber-proportional star count, size, and lifetime
 // ═══════════════════════════════════════════════════════════════════════
-function FireworkBurst({ 
-  position, color, progress, caliber = 4, pattern = 'peony' 
-}: { 
+const FireworkBurst = React.forwardRef<THREE.Group, { 
   position: [number, number, number]; color: string; progress: number; 
   caliber?: number; pattern?: string;
-}) {
+}>(function FireworkBurst({ 
+  position, color, progress, caliber = 4, pattern = 'peony' 
+}, _ref) {
   const pointsRef = useRef<THREE.Points>(null);
   const trailRef = useRef<THREE.LineSegments>(null);
   
@@ -617,7 +617,7 @@ function FireworkBurst({
       )}
     </group>
   );
-}
+});
 
 function LightPoint({ position, color }: { position: [number, number, number]; color: string }) {
   return <QuadcopterModel position={position} color={color} />;
