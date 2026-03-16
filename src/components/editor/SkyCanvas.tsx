@@ -384,22 +384,12 @@ function FireworkBurst({
   const trailPosRef = useRef(new Float32Array(trailVertCount * 3));
   const trailColRef = useRef(new Float32Array(trailVertCount * 3));
 
-  // Custom shader material for star sprites
-  const starMaterial = useMemo(() => {
-    return new THREE.ShaderMaterial({
-      vertexShader: STAR_VERTEX_SHADER,
-      fragmentShader: STAR_FRAGMENT_SHADER,
-      vertexColors: true,
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-    });
-  }, []);
+  // Shared shader material — singleton to reduce GPU state changes
+  const starMaterial = useMemo(() => _sharedStarMaterial(), []);
 
   // ═══ CLEANUP: dispose GPU resources on unmount to prevent context loss ═══
   useEffect(() => {
     return () => {
-      starMaterial.dispose();
       if (pointsRef.current) {
         pointsRef.current.geometry.dispose();
       }
@@ -410,7 +400,7 @@ function FireworkBurst({
         }
       }
     };
-  }, [starMaterial]);
+  }, []);
 
   useFrame(({ clock }) => {
     if (!pointsRef.current || !trailRef.current) return;
