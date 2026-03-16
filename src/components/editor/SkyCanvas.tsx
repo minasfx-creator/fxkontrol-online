@@ -2951,6 +2951,21 @@ export default function SkyCanvas() {
         <PostProcessing />
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
+
+        {/* ═══ Google Earth Geo Tools ═══ */}
+        <GeoToolsScene
+          markers={geoMarkers}
+          rulers={[...geoRulers, ...(activeRuler ? [activeRuler] : [])]}
+          paths={[...geoPaths, ...(activePath ? [activePath] : [])]}
+        />
+        <GeoToolClickHandler
+          activeTool={geoTool}
+          onPlaceMarker={handlePlaceMarker}
+          onPlaceRulerPoint={handlePlaceRulerPoint}
+          onPlacePathPoint={handlePlacePathPoint}
+          onFinishRuler={handleFinishRuler}
+          onFinishPath={handleFinishPath}
+        />
       </Canvas>
       </WebGLErrorBoundary>
 
