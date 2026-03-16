@@ -86,31 +86,19 @@ import {
   ResizableHandle,
 } from '@/components/ui/resizable';
 
-const lazyWithRetry = <T extends React.ComponentType<any>>(
-  importer: () => Promise<{ default: T }>,
-  retries = 2,
-) => lazy(async () => {
-  let attempt = 0;
-
-  while (attempt <= retries) {
-    try {
-      return await importer();
-    } catch (error) {
-      attempt += 1;
-      console.error('[FXK] Failed to load SkyCanvas chunk', { attempt, error });
-
-      if (attempt > retries) {
-        throw error;
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 300 * attempt));
-    }
-  }
-
-  throw new Error('SkyCanvas load failed after retries');
-});
-
-const SkyCanvas = lazyWithRetry(() => import('@/components/editor/SkyCanvas'));
+const SkyCanvas = lazy(() =>
+  import('@/components/editor/SkyCanvas').catch((err) => {
+    console.error('[FXK] SkyCanvas chunk failed:', err);
+    const Fallback = () => (
+      <div className="w-full h-full flex flex-col items-center justify-center bg-surface-0 gap-3 p-8 text-center">
+        <p className="text-sm font-semibold text-foreground">3D Engine Unavailable</p>
+        <p className="text-xs text-muted-foreground">Could not load the renderer module.</p>
+        <button className="text-xs text-primary underline" onClick={() => window.location.reload()}>Reload</button>
+      </div>
+    );
+    return { default: Fallback };
+  })
+);
 
 class CanvasErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
