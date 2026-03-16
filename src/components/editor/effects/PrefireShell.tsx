@@ -45,21 +45,21 @@ const COMET_FRAGMENT = `
  * with a glowing comet head, dense sparking trail, and muzzle flash.
  * Based on Finale 3D lift physics: velocity = f(caliber), breakHeight = f(caliber).
  */
-export default function PrefireShell({
-  position,
-  color,
-  progress,
-  caliber = 4,
-  heading = 0,
-  pitch = 85,
-}: {
+const PrefireShell = React.forwardRef<THREE.Group, {
   position: [number, number, number];
   color: string;
   progress: number;
   caliber?: number;
   heading?: number;
   pitch?: number;
-}) {
+}>(function PrefireShell({
+  position,
+  color,
+  progress,
+  caliber = 4,
+  heading = 0,
+  pitch = 85,
+}, _ref) {
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
   const breakH = useMemo(() => getBreakHeight(caliber), [caliber]);
   const v0 = useMemo(() => getMortarVelocity(caliber), [caliber]);
