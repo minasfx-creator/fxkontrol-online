@@ -366,40 +366,43 @@ const Index = React.forwardRef<HTMLDivElement>(function Index(_props, _ref) {
       <ResizablePanelGroup direction="vertical" className="flex-1">
         {/* Top section: sidebar + viewport + panel */}
         <ResizablePanel defaultSize={75} minSize={40}>
-          <ResizablePanelGroup direction="horizontal">
-            {/* Left sidebar - Effect Library */}
-            <ResizablePanel defaultSize={14} minSize={8} maxSize={30} collapsible collapsedSize={0}>
-              <EffectLibrary />
-            </ResizablePanel>
-            <ResizableHandle withHandle />
+          <div className="relative h-full">
+            <ResizablePanelGroup direction="horizontal" className="pr-[52px]">
+              {/* Left sidebar - Effect Library */}
+              <ResizablePanel defaultSize={14} minSize={8} maxSize={30} collapsible collapsedSize={0}>
+                <EffectLibrary />
+              </ResizablePanel>
+              <ResizableHandle withHandle />
 
-            {/* Center viewport */}
-            <ResizablePanel defaultSize={activePanel ? 60 : 80} minSize={30}>
-              <div className="h-full w-full relative">
-                <CanvasErrorBoundary>
-                  <Suspense fallback={<CanvasLoader />}>
-                    <SkyCanvas />
-                  </Suspense>
-                </CanvasErrorBoundary>
-                <BoxSelectOverlay />
-              </div>
-            </ResizablePanel>
+              {/* Center viewport */}
+              <ResizablePanel defaultSize={activePanel ? 60 : 80} minSize={30}>
+                <div className="h-full w-full relative">
+                  <CanvasErrorBoundary>
+                    <Suspense fallback={<CanvasLoader />}>
+                      <SkyCanvas />
+                    </Suspense>
+                  </CanvasErrorBoundary>
+                  <BoxSelectOverlay />
+                </div>
+              </ResizablePanel>
 
-            {/* Right panel (if active) */}
-            {activePanel && (
-              <>
-                <ResizableHandle withHandle />
-                <ResizablePanel defaultSize={20} minSize={12} maxSize={40} collapsible collapsedSize={0}>
-                  <div className="h-full overflow-y-auto" style={{ background: 'hsl(var(--card))' }}>
-                    {renderPanelContent()}
-                  </div>
-                </ResizablePanel>
-              </>
-            )}
+              {/* Right panel (if active) */}
+              {activePanel && (
+                <>
+                  <ResizableHandle withHandle />
+                  <ResizablePanel defaultSize={20} minSize={12} maxSize={40} collapsible collapsedSize={0}>
+                    <div className="h-full overflow-y-auto" style={{ background: 'hsl(var(--card))' }}>
+                      {renderPanelContent()}
+                    </div>
+                  </ResizablePanel>
+                </>
+              )}
+            </ResizablePanelGroup>
 
-            {/* Icon tab bar (fixed) */}
-            <PanelTabBar activePanel={activePanel} onTogglePanel={handleTogglePanel} />
-          </ResizablePanelGroup>
+            <div className="absolute inset-y-0 right-0">
+              <PanelTabBar activePanel={activePanel} onTogglePanel={handleTogglePanel} />
+            </div>
+          </div>
         </ResizablePanel>
 
         <ResizableHandle withHandle />
