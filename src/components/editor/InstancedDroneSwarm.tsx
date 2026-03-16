@@ -42,7 +42,7 @@ export default function InstancedDroneSwarm({
   const ledGeo = useMemo(() => new THREE.SphereGeometry(0.04, 12, 12), []);
   const rotorGeo = useMemo(() => new THREE.CircleGeometry(0.09, 20), []);
   const glowGeo = useMemo(() => new THREE.RingGeometry(0.35, 0.5, 24), []);
-  const haloGeo = useMemo(() => new THREE.SphereGeometry(0.14, 8, 8), []);
+  const haloGeo = useMemo(() => new THREE.SphereGeometry(0.07, 8, 8), []);
   const navGeo = useMemo(() => new THREE.SphereGeometry(0.012, 6, 6), []);
 
   // ═══ PBR Materials from render_ultra — carbon fiber calibrated ═══
@@ -51,14 +51,14 @@ export default function InstancedDroneSwarm({
   // Body — carbon fiber (metalness 0.3, roughness 0.6, envMapIntensity 0.8)
   const bodyMat = useMemo(() => pbrMaterials.body, [pbrMaterials]);
 
-  // LED — Blender Emission Shader calibrated (2.5 = realistic small LED)
+  // LED — contained emissive, no bloom spill
   const ledMat = useMemo(() => new THREE.MeshStandardMaterial({
     color: '#ffffff',
     emissive: '#ffffff',
-    emissiveIntensity: 2.5,
+    emissiveIntensity: 1.2,
     toneMapped: true,
     metalness: 0.0,
-    roughness: 0.05,
+    roughness: 0.15,
   }), []);
 
   // Rotor disc — render_ultra motor material + transparency for disc effect
@@ -81,10 +81,10 @@ export default function InstancedDroneSwarm({
     blending: THREE.AdditiveBlending,
   }), []);
 
-  // LED volumetric halo — Blender-calibrated subtle glow
+  // LED volumetric halo — tight, contained glow
   const haloMat = useMemo(() => new THREE.MeshBasicMaterial({
     transparent: true,
-    opacity: 0.05,
+    opacity: 0.03,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
   }), []);
