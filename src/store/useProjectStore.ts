@@ -216,6 +216,10 @@ export interface ProjectState {
   duplicateDroneFormation: (id: string) => void;
   clearAllFormations: () => void;
   recalculateFormationTimings: () => void;
+  addCueMarker: (marker: CueMarker) => void;
+  removeCueMarker: (id: string) => void;
+  updateCueMarker: (id: string, updates: Partial<Omit<CueMarker, 'id'>>) => void;
+  clearCueMarkers: () => void;
 }
 
 export const EFFECT_LIBRARY: Effect[] = [
