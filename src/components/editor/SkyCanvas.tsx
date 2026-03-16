@@ -188,6 +188,15 @@ const STAR_FRAGMENT_SHADER = `
   varying vec3 vColor;
   varying float vLife;
   varying float vSize;
+
+  // Luma-based Reinhard tonemap prevents additive white clipping.
+  vec3 tonemapLuma(vec3 c) {
+    vec3 safe = max(c, vec3(0.0));
+    float lum = dot(safe, vec3(0.2126, 0.7152, 0.0722));
+    float scale = lum > 0.001 ? (1.0 / (1.0 + lum)) : 1.0;
+    return safe * scale;
+  }
+
   void main() {
     vec2 uv = gl_PointCoord - 0.5;
     float dist = length(uv);
@@ -201,18 +210,19 @@ const STAR_FRAGMENT_SHADER = `
     float alpha = core * 1.0 + inner * 0.7 + outer * 0.15;
     
     // Thermal color model: white-hot center fading to star color
-    vec3 whiteHot = vec3(1.3, 1.15, 0.95);
-    vec3 col = mix(vColor, whiteHot, core * 0.7);
-    col += vColor * outer * 0.3;
+    vec3 whiteHot = vec3(1.18, 1.08, 0.90);
+    vec3 col = mix(vColor, whiteHot, core * 0.45);
+    col += vColor * outer * 0.35;
     
     // Youth flash: brief bright moment at spawn
-    float youth = max(0.0, 1.0 - vLife * 5.0);
-    col += whiteHot * youth * 0.6;
+    float youth = max(0.0, 1.0 - vLife * 4.0);
+    col += mix(vColor, whiteHot, 0.4) * youth * 0.35;
     
     // Circular cutoff
     float edge = 1.0 - smoothstep(0.42, 0.5, dist);
-    
-    gl_FragColor = vec4(col, alpha * edge);
+
+    vec3 mapped = tonemapLuma(col);
+    gl_FragColor = vec4(mapped, alpha * edge);
   }
 `;
 
