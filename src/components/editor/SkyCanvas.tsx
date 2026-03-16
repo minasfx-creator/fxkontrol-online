@@ -621,7 +621,7 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
       {progress < 0.06 && (
         <mesh renderOrder={100}>
           <sphereGeometry args={[flashSize * 0.4 * (1 + progress * 6), 8, 8]} />
-          <meshBasicMaterial color="#FFFFF0" transparent opacity={0.4 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} depthWrite={false} />
+          <meshBasicMaterial color="#FFFFF0" transparent opacity={0.2 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
       {progress < 0.12 && (
