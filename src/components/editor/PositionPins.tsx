@@ -438,7 +438,8 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
       )}
     </group>
   );
-}
+});
+Pin.displayName = 'Pin';
 
 /** Ground plane for placing new pins — continuous mode */
 function GroundClickPlane() {
