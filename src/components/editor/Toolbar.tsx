@@ -513,34 +513,36 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
         <BatchAddButton />
       </div>
 
-      <div className="w-px h-6 bg-border/20 mx-1" />
+      {!isMobile && <div className="w-px h-6 bg-border/20 mx-1" />}
 
-      {/* Quick tools */}
-      <div className="btn-group">
-        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" title="Multi-Select"
-          onClick={() => {
-            const store = useProjectStore.getState();
-            if (store.selectedPositionIds.length === store.positions.length) {
-              store.selectMultiplePositions([]);
-            } else {
-              store.selectMultiplePositions(store.positions.map(p => p.id));
-            }
-          }}
-        >
-          <BoxSelect className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" title="Formations" onClick={() => setFormationOpen(true)}>
-          <Shapes className="h-3.5 w-3.5" />
-        </Button>
-        <ArrangePositionsDialog>
-          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" title="Arrange">
-            <LayoutGrid className="h-3.5 w-3.5" />
+      {/* Quick tools — hidden on mobile */}
+      {!isMobile && (
+        <div className="btn-group">
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" title="Multi-Select"
+            onClick={() => {
+              const store = useProjectStore.getState();
+              if (store.selectedPositionIds.length === store.positions.length) {
+                store.selectMultiplePositions([]);
+              } else {
+                store.selectMultiplePositions(store.positions.map(p => p.id));
+              }
+            }}
+          >
+            <BoxSelect className="h-3.5 w-3.5" />
           </Button>
-        </ArrangePositionsDialog>
-        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" title="Import CSV" onClick={() => setCsvOpen(true)}>
-          <Upload className="h-3.5 w-3.5" />
-        </Button>
-      </div>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" title="Formations" onClick={() => setFormationOpen(true)}>
+            <Shapes className="h-3.5 w-3.5" />
+          </Button>
+          <ArrangePositionsDialog>
+            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" title="Arrange">
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </Button>
+          </ArrangePositionsDialog>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" title="Import CSV" onClick={() => setCsvOpen(true)}>
+            <Upload className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
 
       {editorMode !== 'select' && (
         <span className="text-[9px] font-mono-code text-muted-foreground/60 ml-2 flex items-center gap-1">
