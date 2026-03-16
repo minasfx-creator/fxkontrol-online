@@ -524,8 +524,7 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
       const chemColor = thermalColor(compound, lifeRatio, 1.0);
       
       // Reinhard tonemap: maps HDR → [0,1] while preserving hue
-      const chemLum = chemColor.r * 0.2126 + chemColor.g * 0.7152 + chemColor.b * 0.0722;
-      const tonemapScale = chemLum > 0.001 ? (1 / (1 + chemLum)) : 1;
+      const tonemapScale = lumaTonemapScale(chemColor.r, chemColor.g, chemColor.b);
       const chemR = chemColor.r * tonemapScale;
       const chemG = chemColor.g * tonemapScale;
       const chemB = chemColor.b * tonemapScale;
