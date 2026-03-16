@@ -129,7 +129,7 @@ function CanvasLoader() {
   );
 }
 
-export default function Index() {
+const Index = React.forwardRef<HTMLDivElement>(function Index(_props, _ref) {
   const isMobile = useIsMobile();
   const [activePanel, setActivePanel] = useState<PanelId | null>('properties');
   const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'globe' | 'editor'>('cinematic');
