@@ -195,7 +195,7 @@ export default function LightTrails({
         transparent
         depthWrite={false}
         blending={THREE.AdditiveBlending}
-        toneMapped={false}
+        toneMapped={true}
       />
     </points>
   );
