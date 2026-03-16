@@ -68,6 +68,7 @@ import { createHDRLightingRig } from '@/render_ultra/lighting/hdrLighting';
 import { useLOD, calculateLOD, useSceneLOD, type LODFactors } from '@/hooks/useLOD';
 import ViewportGeoTools, { type GeoToolMode, type GeoMarker, type GeoRulerPoint, type GeoPath } from './ViewportGeoTools';
 import { GeoToolsScene, GeoToolClickHandler } from './GeoToolsR3F';
+import { RenderDebugToggle, RenderDebugPanel, setDebugExposure, setDebugLOD, setDebugRendererInfo } from './RenderDebugOverlay';
 
 // ═══ PyroChem: map hex colors → real chemical compounds ═══
 function hexToCompound(hexColor: string): ChemicalCompound {
