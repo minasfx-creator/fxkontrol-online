@@ -2906,7 +2906,7 @@ export default function SkyCanvas() {
         shadows
         gl={{
           antialias: false,
-          toneMapping: THREE.ACESFilmicToneMapping,
+          toneMapping: THREE.NoToneMapping,
           toneMappingExposure: 1.2,
           powerPreference: isMobile ? 'default' : 'high-performance',
           alpha: false,
