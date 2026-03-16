@@ -1957,7 +1957,7 @@ const SmokeController = React.forwardRef<THREE.Group, {}>(function SmokeControll
 });
 
 // ═══ LENS FLARE CONTROLLER — cinematic optics on bright bursts ═══
-function LensFlareController() {
+const LensFlareController = React.forwardRef<THREE.Group, {}>(function LensFlareController(_props, _ref) {
   const spritesRef = useRef<THREE.Sprite[]>([]);
   const poolIdx = useRef(0);
   const { scene } = useThree();
