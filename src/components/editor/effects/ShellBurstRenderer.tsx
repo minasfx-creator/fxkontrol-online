@@ -291,18 +291,18 @@ export default function ShellBurstRenderer({
       }
     }
 
-    // Update GPU buffers
+    // Update GPU buffers — reuse existing attributes, never create new ones
     const geo = pointsRef.current.geometry;
-    geo.setAttribute('position', new THREE.BufferAttribute(posBuffer, 3));
-    geo.setAttribute('aLife', new THREE.BufferAttribute(lifeBuffer, 1));
-    geo.setAttribute('aMaxLife', new THREE.BufferAttribute(maxLifeBuffer, 1));
-    geo.setAttribute('aBrightness', new THREE.BufferAttribute(brightnessBuffer, 1));
-    geo.setAttribute('aVelocity', new THREE.BufferAttribute(velocityBuffer, 3));
-    
-    geo.attributes.position.needsUpdate = true;
-    (geo.attributes.aLife as THREE.BufferAttribute).needsUpdate = true;
-    (geo.attributes.aBrightness as THREE.BufferAttribute).needsUpdate = true;
-    (geo.attributes.aVelocity as THREE.BufferAttribute).needsUpdate = true;
+    const posAttr = geo.getAttribute('position') as THREE.BufferAttribute;
+    const lifeAttr = geo.getAttribute('aLife') as THREE.BufferAttribute;
+    const maxLifeAttr = geo.getAttribute('aMaxLife') as THREE.BufferAttribute;
+    const brightAttr = geo.getAttribute('aBrightness') as THREE.BufferAttribute;
+    const velAttr = geo.getAttribute('aVelocity') as THREE.BufferAttribute;
+    if (posAttr) { posAttr.needsUpdate = true; }
+    if (lifeAttr) { lifeAttr.needsUpdate = true; }
+    if (maxLifeAttr) { maxLifeAttr.needsUpdate = true; }
+    if (brightAttr) { brightAttr.needsUpdate = true; }
+    if (velAttr) { velAttr.needsUpdate = true; }
 
     // ── Live-update uniforms from store ──
     const mat = pointsRef.current.material as THREE.ShaderMaterial;
