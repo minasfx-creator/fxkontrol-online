@@ -1815,7 +1815,7 @@ function ConcreteGround({ brightness }: { brightness: number }) {
 
 // ═══ ADAPTIVE EXPOSURE CONTROLLER — Blender Cycles auto-exposure ═══
 // Adjusts gl.toneMappingExposure in real-time based on active explosions
-function AdaptiveExposureController() {
+const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function AdaptiveExposureController(_props, _ref) {
   const exposureRef = useRef(createExposureController());
   const { gl } = useThree();
 
