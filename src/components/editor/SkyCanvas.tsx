@@ -2739,26 +2739,24 @@ export default function SkyCanvas() {
         <SkyGradient />
         <Moon />
         <SceneStars />
-        <AtmosphericParticles />
+        {!isMobile && <AtmosphericParticles />}
         <SceneFog />
-        <WeatherEffects />
+        {!isMobile && <WeatherEffects />}
 
         <StageGround satelliteTexture={satelliteTexture} />
-        {/* LaunchSites removed — user creates positions via toolbar */}
         <PositionPins />
         <PyroLaunchAngles />
-        <Rack3DView />
+        {!isMobile && <Rack3DView />}
         <TrajectoryPaths />
         <DroneChoreography />
-        <BoidsVisualizer />
-        <CollisionAvoidanceOverlay config={DEFAULT_AVOIDANCE} />
+        {!isMobile && <BoidsVisualizer />}
+        {!isMobile && <CollisionAvoidanceOverlay config={DEFAULT_AVOIDANCE} />}
         <TimelineEffects />
         <LiveSFXEffects />
-        <AudioSpectrumVisualizer />
-        {/* GeofenceVisual removed — only shown when geofence explicitly configured */}
+        {!isMobile && <AudioSpectrumVisualizer />}
         <PlaybackClock />
-        <CameraAnimator />
-        <CameraPathPreview />
+        {!isMobile && <CameraAnimator />}
+        {!isMobile && <CameraPathPreview />}
         <PostProcessing />
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
