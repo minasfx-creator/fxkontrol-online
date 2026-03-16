@@ -2094,7 +2094,7 @@ function SparkTrailController() {
 }
 
 
-function GroundReflections() {
+const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflections(_props, _ref) {
   const meshRef = useRef<THREE.Mesh>(null);
   const uniformsRef = useRef({
     uWetness: { value: 0.3 },
