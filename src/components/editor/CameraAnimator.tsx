@@ -1,6 +1,6 @@
+import React, { useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useProjectStore, CameraKeyframe } from '@/store/useProjectStore';
-import { useRef } from 'react';
 import * as THREE from 'three';
 
 /**
