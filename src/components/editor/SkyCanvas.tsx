@@ -1335,7 +1335,7 @@ function GrassGround() {
     <>
       {/* Far terrain — Google Earth satellite style */}
       <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[12000, 12000, 4, 4]} />
+        <planeGeometry args={[20000, 20000, 4, 4]} />
         <shaderMaterial
           uniforms={uniforms}
           vertexShader={terrainVertexShader}
