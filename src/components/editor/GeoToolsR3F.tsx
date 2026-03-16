@@ -2,7 +2,7 @@
  * GeoToolsR3F — 3D scene objects for Google Earth-like tools
  * Renders markers, ruler lines with distance labels, and path lines inside the R3F Canvas.
  */
-import React, { useRef, useMemo } from 'react';
+import React, { useMemo, forwardRef } from 'react';
 import { useThree, extend } from '@react-three/fiber';
 import { Html, Line } from '@react-three/drei';
 import * as THREE from 'three';

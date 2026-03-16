@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, forwardRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Activity } from 'lucide-react';
 
