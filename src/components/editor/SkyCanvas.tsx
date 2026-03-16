@@ -718,16 +718,25 @@ function TimelineEffects() {
   const cappedEffects = useMemo(() => {
     const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
     const maxConcurrentBursts = isMobileViewport ? MAX_CONCURRENT_BURSTS_MOBILE : MAX_CONCURRENT_BURSTS_DESKTOP;
+    const maxStarBudget = isMobileViewport ? MAX_STAR_BUDGET_MOBILE : MAX_STAR_BUDGET_DESKTOP;
 
     let burstCount = 0;
+    let usedStarBudget = 0;
+
     return activeEffects.filter(({ effect }) => {
-      if (effect.type === 'firework') {
-        burstCount++;
-        if (burstCount > maxConcurrentBursts) return false;
-      }
+      if (effect.type !== 'firework') return true;
+
+      const estimatedStars = estimateFireworkStarCost(effect, sceneSettings.particleDensity);
+      const exceedsCount = burstCount >= maxConcurrentBursts;
+      const exceedsBudget = usedStarBudget + estimatedStars > maxStarBudget;
+
+      if (exceedsCount || exceedsBudget) return false;
+
+      burstCount++;
+      usedStarBudget += estimatedStars;
       return true;
     });
-  }, [activeEffects]);
+  }, [activeEffects, sceneSettings.particleDensity]);
 
   return (
     <>
