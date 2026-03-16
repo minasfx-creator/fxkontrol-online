@@ -64,7 +64,7 @@ export default function QuadcopterModel({
         <meshStandardMaterial
           color={color}
           emissive={color}
-          emissiveIntensity={0.2}
+          emissiveIntensity={0.16}
           toneMapped={true}
           metalness={0}
           roughness={0.3}
