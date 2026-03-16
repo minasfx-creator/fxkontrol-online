@@ -240,8 +240,9 @@ function FireworkBurst({
   const lod = useLOD(position);
   
   // Niagara-style: particle count scales with shell volume, reduced by LOD
-  const STAR_COUNT = useMemo(() => Math.min(3000, Math.round((150 + caliber * caliber * 32) * lod.particleMultiplier)), [caliber, lod.particleMultiplier]);
-  const TRAIL_LENGTH = useMemo(() => Math.max(2, Math.min(24, Math.floor((10 + caliber * 1.5) * lod.trailLength))), [caliber, lod.trailLength]);
+  // CAPPED to prevent GPU memory exhaustion with many simultaneous bursts
+  const STAR_COUNT = useMemo(() => Math.min(1200, Math.round((100 + caliber * caliber * 18) * lod.particleMultiplier)), [caliber, lod.particleMultiplier]);
+  const TRAIL_LENGTH = useMemo(() => Math.max(2, Math.min(16, Math.floor((8 + caliber * 1.2) * lod.trailLength))), [caliber, lod.trailLength]);
   
   // Real break speed from pyroPhysics — caliber proportional (m/s)
   const breakSpeed = useMemo(() => getBreakSpeed(caliber), [caliber]);
@@ -393,6 +394,22 @@ function FireworkBurst({
       blending: THREE.AdditiveBlending,
     });
   }, []);
+
+  // ═══ CLEANUP: dispose GPU resources on unmount to prevent context loss ═══
+  useEffect(() => {
+    return () => {
+      starMaterial.dispose();
+      if (pointsRef.current) {
+        pointsRef.current.geometry.dispose();
+      }
+      if (trailRef.current) {
+        trailRef.current.geometry.dispose();
+        if (trailRef.current.material instanceof THREE.Material) {
+          trailRef.current.material.dispose();
+        }
+      }
+    };
+  }, [starMaterial]);
 
   useFrame(({ clock }) => {
     if (!pointsRef.current || !trailRef.current) return;
@@ -605,6 +622,9 @@ function LightPoint({ position, color }: { position: [number, number, number]; c
   return <QuadcopterModel position={position} color={color} />;
 }
 
+// Max simultaneous GPU-heavy firework bursts to prevent context loss
+const MAX_CONCURRENT_BURSTS = 20;
+
 function TimelineEffects() {
   const { timelineItems, currentTime, positions } = useProjectStore();
   const sceneSettings = useSceneStore(st => st.settings);
@@ -685,9 +705,21 @@ function TimelineEffects() {
     }[];
   }, [timelineItems, currentTime, positions, sceneSettings.effectScale, sceneSettings.weather, sceneSettings.humidity, sceneSettings.effectBrightness]);
 
+  // Cap simultaneous firework bursts to prevent GPU context loss
+  const cappedEffects = useMemo(() => {
+    let burstCount = 0;
+    return activeEffects.filter(({ effect }) => {
+      if (effect.type === 'firework') {
+        burstCount++;
+        if (burstCount > MAX_CONCURRENT_BURSTS) return false;
+      }
+      return true;
+    });
+  }, [activeEffects]);
+
   return (
     <>
-      {activeEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale, effectBrightness, launchHeading, launchPitch }) => {
+      {cappedEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale, effectBrightness, launchHeading, launchPitch }) => {
         const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
         const eid = effect.id;
         const pt = effect.partType;
@@ -712,7 +744,6 @@ function TimelineEffects() {
         const realBreakHeight = getBreakHeight(caliber) * effectScale;
         const pitchRad = (launchPitch || 85) * (Math.PI / 180);
         const headingRad = (launchHeading || 0) * (Math.PI / 180);
-        // Angled burst position: shell travels along launch angle
         const burstPos: [number, number, number] = isShell
           ? [
               pos[0] + Math.sin(headingRad) * Math.cos(pitchRad) * realBreakHeight,
@@ -721,12 +752,9 @@ function TimelineEffects() {
             ]
           : pos;
 
-        // Heights from effect library, scaled by scene
         const scaledHeight = (effect.heightMeters || 4) * effectScale;
 
-        if (pt === 'mine') return (
-          <MineEffect key={item.id} position={pos} color={effect.color} progress={progress} />
-        );
+        if (pt === 'mine') return <MineEffect key={item.id} position={pos} color={effect.color} progress={progress} />;
         if (pt === 'candle') return <RomanCandleEffect key={item.id} position={pos} color={effect.color} progress={progress} shotCount={effect.shotCount || 8} />;
         if (pt === 'waterfall') return <WaterfallEffect key={item.id} position={pos} color={effect.color} progress={progress} width={scaledHeight} />;
         if (pt === 'gerb') return <GerbEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight} />;
@@ -735,7 +763,6 @@ function TimelineEffects() {
         if (pt === 'laser') return <LaserEffect key={item.id} position={pos} color={effect.color} progress={progress} pattern={effect.laserPattern || 'fan'} beamCount={effect.beamCount || 8} />;
         if (pt === 'light' && effect.beamType) return <MovingHeadEffect key={item.id} position={pos} color={effect.color} progress={progress} beamType={effect.beamType} />;
 
-        // ── SFX special routing ──
         if (eid === 'sfx-01') return <CryoJetEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight || 6} />;
         if (eid === 'sfx-02') return <CryoJetEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight || 8} horizontal />;
         if (eid === 'sfx-06' || eid === 'sfx-07') return <ConfettiEffect key={item.id} position={pos} color={effect.color} progress={progress} />;
@@ -744,12 +771,10 @@ function TimelineEffects() {
         if (eid === 'sfx-10') return <SnowMachineEffect key={item.id} position={pos} progress={progress} width={6 + (scaledHeight || 4)} height={Math.max(6, (scaledHeight || 8) * 1.2)} />;
         if (eid === 'sfx-11') return <BubbleMachineEffect key={item.id} position={pos} color={effect.color} progress={progress} spread={6 + (scaledHeight || 3)} />;
 
-        // ── Legacy effect ID routing ──
         if (eid.startsWith('comet-')) return <CometEffect key={item.id} position={pos} color={effect.color} progress={progress} direction={eid === 'comet-02' ? 'down' : 'up'} />;
         if (eid.startsWith('mburst-')) return <MultiBurstEffect key={item.id} position={burstPos} color={effect.color} progress={progress} burstCount={eid === 'mburst-02' ? 5 : 3} />;
         if (eid.startsWith('fan-')) return <FanEffect key={item.id} position={pos} color={effect.color} progress={progress} spreadAngle={eid === 'fan-02' ? 180 : 90} />;
 
-        // ── Default: clean firework burst at break height (no smoke, Niagara-style) ──
         if (effect.type === 'firework') return (
           <FireworkBurst 
             key={item.id}
@@ -1760,26 +1785,33 @@ function AdaptiveExposureController() {
   const exposureRef = useRef(createExposureController());
   const { gl } = useThree();
 
+  // Pre-allocated color to avoid per-frame GC pressure
+  const _scatterAccum = useMemo(() => new THREE.Color(), []);
+  const _tmpColor = useMemo(() => new THREE.Color(), []);
+
   useFrame((_, delta) => {
     const state = exposureRef.current;
     const { timelineItems, currentTime } = useProjectStore.getState();
     let luminance = 0;
-    const scatterAccum = new THREE.Color(0, 0, 0);
+    _scatterAccum.setRGB(0, 0, 0);
     let scatterMax = 0;
 
-    for (const item of timelineItems) {
+    // Only check items in a reasonable time window to avoid O(n) every frame
+    for (let i = 0; i < timelineItems.length; i++) {
+      const item = timelineItems[i];
       const elapsed = currentTime - item.startTime;
-      if (elapsed >= 0 && elapsed < 0.5) {
+      if (elapsed < 0 || elapsed > 2.0) continue;
+      if (elapsed < 0.5) {
         luminance += 3.0;
-      } else if (elapsed >= 0.5 && elapsed < 2.0) {
+      } else {
         luminance += 0.5;
       }
-      // Sky scatter accumulation
-      if (elapsed >= 0 && elapsed < 0.3) {
+      // Sky scatter accumulation — reuse color objects
+      if (elapsed < 0.3) {
         const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
         if (effect && effect.type === 'firework') {
           const intensity = 0.4 * (1 - elapsed / 0.3);
-          scatterAccum.add(new THREE.Color(effect.color).multiplyScalar(intensity * 0.3));
+          _scatterAccum.add(_tmpColor.set(effect.color).multiplyScalar(intensity * 0.3));
           scatterMax = Math.max(scatterMax, intensity);
         }
       }
@@ -1795,7 +1827,7 @@ function AdaptiveExposureController() {
     // Update sky scatter uniforms
     if (_skyScatterUniforms) {
       if (scatterMax > 0.05) {
-        _skyScatterUniforms.uExplosionScatter.value.copy(scatterAccum);
+        _skyScatterUniforms.uExplosionScatter.value.copy(_scatterAccum);
         _skyScatterUniforms.uScatterIntensity.value = scatterMax;
       } else {
         _skyScatterUniforms.uScatterIntensity.value *= Math.max(0, 1 - delta * 3);
