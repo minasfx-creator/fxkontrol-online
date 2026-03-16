@@ -89,6 +89,11 @@ function hexToCompound(hexColor: string): ChemicalCompound {
   return getCompound('charcoal');                            // Fallback → Charcoal streamer
 }
 
+function lumaTonemapScale(r: number, g: number, b: number): number {
+  const lum = r * 0.2126 + g * 0.7152 + b * 0.0722;
+  return lum > 0.001 ? (1 / (1 + lum)) : 1;
+}
+
 // FX KONTROL — Show Design Platform Renderer
 class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
