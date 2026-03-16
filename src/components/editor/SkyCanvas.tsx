@@ -1831,7 +1831,6 @@ function ConcreteGround({ brightness }: { brightness: number }) {
 // Adjusts gl.toneMappingExposure in real-time based on active explosions
 const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function AdaptiveExposureController(_props, _ref) {
   const exposureRef = useRef(createExposureController());
-  const { gl } = useThree();
 
   // Pre-allocated color to avoid per-frame GC pressure
   const _scatterAccum = useMemo(() => new THREE.Color(), []);
