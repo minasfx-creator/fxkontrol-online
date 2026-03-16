@@ -154,6 +154,7 @@ export interface ProjectState {
   selectedFormationId: string | null;
   selectedTrajectoryIds: string[];
   showFormations: boolean;
+  cueMarkers: CueMarker[];
   gpsOrigin: { lat: number; lng: number; heading: number; altitude: number };
   setGpsOrigin: (origin: { lat: number; lng: number; heading: number; altitude: number }) => void;
 
