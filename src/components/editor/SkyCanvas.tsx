@@ -252,17 +252,21 @@ function FireworkBurst({
   // ═══ LOD — reduce particles & trails at distance ═══
   const lod = useLOD(position);
   const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
-  
-  // Niagara-style: particle count scales with shell volume, reduced by LOD
-  // Extra mobile caps prevent WebGL context loss on dense timelines
+  const particleDensity = useSceneStore(st => st.settings.particleDensity);
+
+  // Niagara-style: particle count scales with shell volume, LOD and quality preset
+  // Conservative caps prevent WebGL context loss on dense timelines
   const STAR_COUNT = useMemo(() => {
-    const cap = isMobileViewport ? 220 : 500;
-    return Math.min(cap, Math.round((60 + caliber * caliber * 10) * lod.particleMultiplier));
-  }, [caliber, lod.particleMultiplier, isMobileViewport]);
+    const densityScale = THREE.MathUtils.clamp(particleDensity, 0.5, 2.0);
+    const baseCount = (60 + caliber * caliber * 10) * lod.particleMultiplier * densityScale;
+    const cap = isMobileViewport ? 120 : 320;
+    return Math.max(24, Math.min(cap, Math.round(baseCount)));
+  }, [caliber, lod.particleMultiplier, isMobileViewport, particleDensity]);
   const TRAIL_LENGTH = useMemo(() => {
-    const trailCap = isMobileViewport ? 4 : 8;
-    return Math.max(2, Math.min(trailCap, Math.floor((4 + caliber * 0.8) * lod.trailLength)));
-  }, [caliber, lod.trailLength, isMobileViewport]);
+    const trailCap = isMobileViewport ? 3 : 6;
+    const densityTrail = particleDensity >= 1 ? 1 : 0.8;
+    return Math.max(2, Math.min(trailCap, Math.floor((4 + caliber * 0.8) * lod.trailLength * densityTrail)));
+  }, [caliber, lod.trailLength, isMobileViewport, particleDensity]);
   
   // Real break speed from pyroPhysics — caliber proportional (m/s)
   const breakSpeed = useMemo(() => getBreakSpeed(caliber), [caliber]);
@@ -613,8 +617,22 @@ function LightPoint({ position, color }: { position: [number, number, number]; c
 }
 
 // Max simultaneous GPU-heavy firework bursts to prevent context loss
-const MAX_CONCURRENT_BURSTS_DESKTOP = 12;
-const MAX_CONCURRENT_BURSTS_MOBILE = 6;
+const MAX_CONCURRENT_BURSTS_DESKTOP = 8;
+const MAX_CONCURRENT_BURSTS_MOBILE = 3;
+const MAX_STAR_BUDGET_DESKTOP = 1800;
+const MAX_STAR_BUDGET_MOBILE = 550;
+
+function estimateFireworkStarCost(effect: (typeof EFFECT_LIBRARY)[number], particleDensity: number) {
+  const caliber = Math.max(3, effect.caliber || 4);
+  const densityScale = THREE.MathUtils.clamp(particleDensity, 0.5, 2.0);
+  let stars = (60 + caliber * caliber * 10) * densityScale;
+
+  if (effect.partType === 'cake') stars *= 0.7;
+  if (effect.partType === 'candle') stars *= 0.55;
+  if (effect.id.startsWith('mburst-')) stars *= effect.id === 'mburst-02' ? 2.8 : 2.0;
+
+  return Math.max(40, Math.round(stars));
+}
 
 function TimelineEffects() {
   const { timelineItems, currentTime, positions } = useProjectStore();
@@ -700,16 +718,25 @@ function TimelineEffects() {
   const cappedEffects = useMemo(() => {
     const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
     const maxConcurrentBursts = isMobileViewport ? MAX_CONCURRENT_BURSTS_MOBILE : MAX_CONCURRENT_BURSTS_DESKTOP;
+    const maxStarBudget = isMobileViewport ? MAX_STAR_BUDGET_MOBILE : MAX_STAR_BUDGET_DESKTOP;
 
     let burstCount = 0;
+    let usedStarBudget = 0;
+
     return activeEffects.filter(({ effect }) => {
-      if (effect.type === 'firework') {
-        burstCount++;
-        if (burstCount > maxConcurrentBursts) return false;
-      }
+      if (effect.type !== 'firework') return true;
+
+      const estimatedStars = estimateFireworkStarCost(effect, sceneSettings.particleDensity);
+      const exceedsCount = burstCount >= maxConcurrentBursts;
+      const exceedsBudget = usedStarBudget + estimatedStars > maxStarBudget;
+
+      if (exceedsCount || exceedsBudget) return false;
+
+      burstCount++;
+      usedStarBudget += estimatedStars;
       return true;
     });
-  }, [activeEffects]);
+  }, [activeEffects, sceneSettings.particleDensity]);
 
   return (
     <>
