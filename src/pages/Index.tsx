@@ -419,4 +419,6 @@ const Index = React.forwardRef<HTMLDivElement>(function Index(_props, _ref) {
       <PositionContextMenu />
     </div>
   );
-}
+});
+
+export default Index;
