@@ -82,9 +82,9 @@ export default function QuadcopterModel({
       </mesh>
       <pointLight
         color={color}
-        intensity={selected ? 0.3 : 0.1}
-        distance={selected ? 0.75 : 0.4}
-        decay={3}
+          intensity={selected ? 0.24 : 0.08}
+          distance={selected ? 0.6 : 0.3}
+          decay={3}
         position={[0, 0.06, 0]}
       />
 
