@@ -544,7 +544,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
         </div>
       )}
 
-      {editorMode !== 'select' && (
+      {!isMobile && editorMode !== 'select' && (
         <span className="text-[9px] font-mono-code text-muted-foreground/60 ml-2 flex items-center gap-1">
           Click to place · <span className="text-primary">ESC</span> to stop
         </span>
