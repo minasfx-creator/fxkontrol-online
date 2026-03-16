@@ -329,7 +329,7 @@ const FormationTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: nu
       </div>
     </div>
   );
-}
+});
 
 const FORMATION_PRESETS_MAP: Record<string, string> = {
   heart: '❤️', star: '⭐', circle: '⭕', grid: '⊞',
