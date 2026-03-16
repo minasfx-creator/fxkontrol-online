@@ -640,4 +640,6 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
       </div>
     </div>
   );
-}
+});
+
+export default Timeline;
