@@ -2987,6 +2987,7 @@ export default function SkyCanvas() {
         <PostProcessing />
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
+        <DebugFeed />
 
         {/* ═══ Google Earth Geo Tools ═══ */}
         <GeoToolsScene
