@@ -26,11 +26,10 @@ const TRAIL_FRAGMENT = `
   void main() {
     vec2 uv = gl_PointCoord - 0.5;
     float dist = length(uv);
-    float core = exp(-dist * dist * 18.0);
-    float glow = exp(-dist * dist * 5.0);
-    float outer = exp(-dist * dist * 1.8);
-    float alpha = (core * 1.5 + glow * 0.6 + outer * 0.15) * vOpacity;
-    vec3 col = vColor * (core * 2.5 + glow * 1.2) + vec3(1.4, 1.3, 1.1) * core * 1.5;
+    float core = exp(-dist * dist * 22.0);
+    float glow = exp(-dist * dist * 8.0);
+    float alpha = (core * 0.6 + glow * 0.2) * vOpacity;
+    vec3 col = vColor * (core * 0.8 + glow * 0.3);
     gl_FragColor = vec4(col, alpha * smoothstep(0.5, 0.0, dist));
   }
 `;

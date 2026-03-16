@@ -53,12 +53,12 @@ export default function InstancedDroneSwarm({
 
   // LED — solid color dot, no glow spill
   const ledMat = useMemo(() => new THREE.MeshStandardMaterial({
-    color: '#ffffff',
+    color: '#222222',
     emissive: '#ffffff',
-    emissiveIntensity: 0.02,
+    emissiveIntensity: 0.008,
     toneMapped: true,
     metalness: 0.0,
-    roughness: 0.5,
+    roughness: 0.7,
   }), []);
 
   // Rotor disc — NO additive blending, just subtle transparent
