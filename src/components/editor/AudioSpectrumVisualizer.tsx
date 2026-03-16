@@ -2,7 +2,7 @@
  * Audio Spectrum Visualizer — 3D frequency bars rendered in the viewport
  * Reacts to audio playback in real-time using Web Audio API AnalyserNode.
  */
-import { useRef, useMemo, useEffect } from 'react';
+import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
