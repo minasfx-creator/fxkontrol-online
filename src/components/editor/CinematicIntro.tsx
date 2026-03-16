@@ -8,7 +8,7 @@
  *   5. On START → callback (splash screen)
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 
 type IntroPhase = 'black-in' | 'video1' | 'cross-fade' | 'video2' | 'start-wait' | 'fade-out' | 'done';
@@ -17,7 +17,7 @@ interface CinematicIntroProps {
   onComplete: () => void;
 }
 
-export default function CinematicIntro({ onComplete }: CinematicIntroProps) {
+const CinematicIntro = React.forwardRef<HTMLDivElement, CinematicIntroProps>(function CinematicIntro({ onComplete }, _ref) {
   const [phase, setPhase] = useState<IntroPhase>('black-in');
   const [canSkip, setCanSkip] = useState(false);
   const [blackOpacity, setBlackOpacity] = useState(1);
@@ -309,4 +309,6 @@ export default function CinematicIntro({ onComplete }: CinematicIntroProps) {
       `}</style>
     </div>);
 
-}
+});
+
+export default CinematicIntro;

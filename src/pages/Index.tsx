@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useCallback, useEffect, Component, type ReactNode, type ErrorInfo } from 'react';
+import React, { lazy, Suspense, useState, useCallback, useEffect, Component, type ReactNode, type ErrorInfo } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useUndoStore } from '@/store/useUndoStore';
 import { useUndoKeyboard } from '@/hooks/useUndoKeyboard';
@@ -129,7 +129,7 @@ function CanvasLoader() {
   );
 }
 
-export default function Index() {
+const Index = React.forwardRef<HTMLDivElement>(function Index(_props, _ref) {
   const isMobile = useIsMobile();
   const [activePanel, setActivePanel] = useState<PanelId | null>('properties');
   const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'globe' | 'editor'>('cinematic');
@@ -419,4 +419,6 @@ export default function Index() {
       <PositionContextMenu />
     </div>
   );
-}
+});
+
+export default Index;

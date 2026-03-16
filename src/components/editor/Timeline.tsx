@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Square, Trash2, ZoomIn, ZoomOut, Magnet, Copy, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
@@ -65,12 +65,17 @@ function TimeRuler({ duration, pixelsPerSecond }: { duration: number; pixelsPerS
 }
 
 // --- Draggable Timeline Item ---
-function DraggableTimelineItem({
+const DraggableTimelineItem = React.forwardRef<HTMLButtonElement, {
+  item: any;
+  effect: any;
+  pixelsPerSecond: number;
+  isSelected: boolean;
+  isMultiSelected: boolean;
+  onSelect: (e: React.MouseEvent) => void;
+  onDragStart: (e: React.MouseEvent, itemId: string) => void;
+}>(function DraggableTimelineItem({
   item, effect, pixelsPerSecond, isSelected, isMultiSelected, onSelect, onDragStart,
-}: {
-  item: any; effect: any; pixelsPerSecond: number; isSelected: boolean; isMultiSelected: boolean;
-  onSelect: (e: React.MouseEvent) => void; onDragStart: (e: React.MouseEvent, itemId: string) => void;
-}) {
+}, ref) {
   const pft = effect.type === 'firework' ? getPreFireTime(effect.name) : 0;
   const pftPx = pft * pixelsPerSecond;
   const widthPx = Math.max(effect.duration * pixelsPerSecond, 28);
@@ -85,6 +90,7 @@ function DraggableTimelineItem({
         />
       )}
       <button
+        ref={ref}
         onClick={onSelect}
         onMouseDown={(e) => { if (e.button === 0) onDragStart(e, item.id); }}
         className={cn(
@@ -114,7 +120,9 @@ function DraggableTimelineItem({
       </button>
     </div>
   );
-}
+});
+
+DraggableTimelineItem.displayName = 'DraggableTimelineItem';
 
 function TimelineTrackRow({
   label, trackIndex, pixelsPerSecond, color, duration, scrollRef,
