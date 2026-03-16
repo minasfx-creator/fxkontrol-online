@@ -118,16 +118,15 @@ export default function QuadcopterModel({
             position={[armPos[0], 0.05, armPos[2]]}
             ref={(el) => { if (el) rotorsRef.current[i] = el; }}
           >
-            {/* Blade disc effect — motion blur */}
+            {/* Blade disc — no additive */}
             <mesh rotation={[-Math.PI / 2, 0, 0]}>
               <circleGeometry args={[0.09, 24]} />
               <meshBasicMaterial
-                color={color}
+                color="#666666"
                 transparent
-                opacity={0.06}
+                opacity={0.03}
                 side={THREE.DoubleSide}
                 depthWrite={false}
-                blending={THREE.AdditiveBlending}
               />
             </mesh>
             {/* Blade tips ring */}
