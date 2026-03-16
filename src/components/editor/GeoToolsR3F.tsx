@@ -3,21 +3,19 @@
  * Renders markers, ruler lines with distance labels, and path lines inside the R3F Canvas.
  */
 import React, { useRef, useMemo } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
-import { Html } from '@react-three/drei';
+import { useThree, extend } from '@react-three/fiber';
+import { Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import type { GeoMarker, GeoRulerPoint, GeoPath, GeoToolMode } from './ViewportGeoTools';
 
 // ═══ Marker Pin ═══
 function MarkerPin({ marker }: { marker: GeoMarker }) {
-  const meshRef = useRef<THREE.Group>(null);
   const color = new THREE.Color(marker.color);
 
   if (!marker.visible) return null;
 
   return (
-    <group ref={meshRef} position={marker.position}>
-      {/* Pin body — cone + sphere */}
+    <group position={marker.position}>
       <mesh position={[0, 1.8, 0]}>
         <sphereGeometry args={[0.6, 16, 16]} />
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.4} />
@@ -26,12 +24,10 @@ function MarkerPin({ marker }: { marker: GeoMarker }) {
         <coneGeometry args={[0.35, 1.5, 8]} />
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.3} />
       </mesh>
-      {/* Glow ring at base */}
       <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.4, 0.8, 24]} />
         <meshBasicMaterial color={color} transparent opacity={0.3} side={THREE.DoubleSide} />
       </mesh>
-      {/* Label */}
       <Html position={[0, 2.8, 0]} center style={{ pointerEvents: 'none' }}>
         <div className="bg-card/90 backdrop-blur-md text-foreground text-[9px] font-mono-code px-2 py-0.5 rounded-md border border-border/20 whitespace-nowrap shadow-lg">
           {marker.name}
@@ -43,34 +39,26 @@ function MarkerPin({ marker }: { marker: GeoMarker }) {
 
 // ═══ Ruler Line ═══
 function RulerLine({ ruler }: { ruler: GeoRulerPoint }) {
+  const points = useMemo(
+    () => ruler.points.map(p => new THREE.Vector3(...p)),
+    [ruler.points]
+  );
+
+  const segments = useMemo(() => {
+    const segs: { midpoint: THREE.Vector3; distance: number }[] = [];
+    for (let i = 0; i < points.length - 1; i++) {
+      const mid = new THREE.Vector3().lerpVectors(points[i], points[i + 1], 0.5);
+      segs.push({ midpoint: mid, distance: points[i].distanceTo(points[i + 1]) });
+    }
+    return segs;
+  }, [points]);
+
   if (!ruler.visible || ruler.points.length < 2) return null;
-
-  const points = ruler.points.map(p => new THREE.Vector3(...p));
-  const geometry = useMemo(() => new THREE.BufferGeometry().setFromPoints(points), [ruler.points]);
-
-  // Segment distances
-  const segments: { midpoint: THREE.Vector3; distance: number }[] = [];
-  for (let i = 0; i < points.length - 1; i++) {
-    const mid = new THREE.Vector3().lerpVectors(points[i], points[i + 1], 0.5);
-    segments.push({
-      midpoint: mid,
-      distance: points[i].distanceTo(points[i + 1]),
-    });
-  }
 
   return (
     <group>
-      {/* Main line */}
-      <line geometry={geometry}>
-        <lineBasicMaterial color="#f59e0b" linewidth={2} />
-      </line>
+      <Line points={points} color="#f59e0b" lineWidth={2} />
 
-      {/* Dashed shadow */}
-      <line geometry={geometry}>
-        <lineDashedMaterial color="#000000" dashSize={0.5} gapSize={0.3} linewidth={1} transparent opacity={0.3} />
-      </line>
-
-      {/* Point spheres */}
       {ruler.points.map((p, i) => (
         <mesh key={i} position={p}>
           <sphereGeometry args={[0.2, 12, 12]} />
@@ -78,7 +66,6 @@ function RulerLine({ ruler }: { ruler: GeoRulerPoint }) {
         </mesh>
       ))}
 
-      {/* Segment distance labels */}
       {segments.map((seg, i) => (
         <Html key={i} position={[seg.midpoint.x, seg.midpoint.y + 0.5, seg.midpoint.z]} center style={{ pointerEvents: 'none' }}>
           <div className="bg-warning/90 text-warning-foreground text-[9px] font-mono-code font-bold px-1.5 py-0.5 rounded shadow-lg whitespace-nowrap">
@@ -87,7 +74,6 @@ function RulerLine({ ruler }: { ruler: GeoRulerPoint }) {
         </Html>
       ))}
 
-      {/* Total label */}
       {ruler.points.length > 2 && (
         <Html
           position={[points[points.length - 1].x, points[points.length - 1].y + 1.5, points[points.length - 1].z]}
@@ -105,30 +91,28 @@ function RulerLine({ ruler }: { ruler: GeoRulerPoint }) {
 
 // ═══ Path Line ═══
 function PathLine({ path }: { path: GeoPath }) {
-  if (!path.visible || path.points.length < 2) return null;
+  const allPts = useMemo(() => {
+    const pts = path.points.map(p => new THREE.Vector3(...p));
+    if (path.closed && pts.length > 0) pts.push(pts[0].clone());
+    return pts;
+  }, [path.points, path.closed]);
 
-  const allPts = path.closed
-    ? [...path.points, path.points[0]]
-    : path.points;
+  const totalLen = useMemo(() => {
+    let len = 0;
+    for (let i = 0; i < allPts.length - 1; i++) {
+      len += allPts[i].distanceTo(allPts[i + 1]);
+    }
+    return len;
+  }, [allPts]);
 
-  const points = allPts.map(p => new THREE.Vector3(...p));
-  const geometry = useMemo(() => new THREE.BufferGeometry().setFromPoints(points), [path.points, path.closed]);
   const color = new THREE.Color(path.color);
 
-  // Calculate total length
-  let totalLen = 0;
-  for (let i = 0; i < points.length - 1; i++) {
-    totalLen += points[i].distanceTo(points[i + 1]);
-  }
+  if (!path.visible || path.points.length < 2) return null;
 
   return (
     <group>
-      {/* Main path */}
-      <line geometry={geometry}>
-        <lineBasicMaterial color={color} linewidth={2} />
-      </line>
+      <Line points={allPts} color={color} lineWidth={2} />
 
-      {/* Point markers */}
       {path.points.map((p, i) => (
         <mesh key={i} position={p}>
           <sphereGeometry args={[0.15, 8, 8]} />
@@ -136,27 +120,20 @@ function PathLine({ path }: { path: GeoPath }) {
         </mesh>
       ))}
 
-      {/* Start pin */}
       <mesh position={[path.points[0][0], path.points[0][1] + 0.5, path.points[0][2]]}>
         <sphereGeometry args={[0.25, 12, 12]} />
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} />
       </mesh>
 
-      {/* Name + length label */}
-      <Html
-        position={[path.points[0][0], path.points[0][1] + 1.5, path.points[0][2]]}
-        center
-        style={{ pointerEvents: 'none' }}
-      >
+      <Html position={[path.points[0][0], path.points[0][1] + 1.5, path.points[0][2]]} center style={{ pointerEvents: 'none' }}>
         <div className="bg-card/90 backdrop-blur-md text-[9px] font-mono-code px-2 py-0.5 rounded-md border border-border/20 shadow-lg whitespace-nowrap">
           <span style={{ color: path.color }} className="font-bold">{path.name}</span>
           <span className="text-muted-foreground ml-1.5">{totalLen.toFixed(1)}m</span>
         </div>
       </Html>
 
-      {/* Polygon area fill (for closed paths with 3+ pts) */}
       {path.closed && path.points.length >= 3 && (
-        <mesh position={[0, 0.05, 0]}>
+        <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <shapeGeometry args={[createShapeFromPoints(path.points)]} />
           <meshBasicMaterial color={color} transparent opacity={0.1} side={THREE.DoubleSide} />
         </mesh>
@@ -167,7 +144,7 @@ function PathLine({ path }: { path: GeoPath }) {
 
 function createShapeFromPoints(pts: [number, number, number][]): THREE.Shape {
   const shape = new THREE.Shape();
-  shape.moveTo(pts[0][0], pts[0][2]); // use X,Z as 2D plane
+  shape.moveTo(pts[0][0], pts[0][2]);
   for (let i = 1; i < pts.length; i++) {
     shape.lineTo(pts[i][0], pts[i][2]);
   }
@@ -191,8 +168,6 @@ export function GeoToolClickHandler({
   onFinishRuler: () => void;
   onFinishPath: () => void;
 }) {
-  const { raycaster, camera, scene } = useThree();
-
   if (activeTool === 'none') return null;
 
   return (
@@ -201,17 +176,12 @@ export function GeoToolClickHandler({
       rotation={[-Math.PI / 2, 0, 0]}
       visible={false}
       onPointerDown={(e) => {
-        if (e.button !== 0) return; // left click only
+        if (e.button !== 0) return;
         e.stopPropagation();
         const point: [number, number, number] = [e.point.x, e.point.y, e.point.z];
-
-        if (activeTool === 'marker') {
-          onPlaceMarker(point);
-        } else if (activeTool === 'ruler') {
-          onPlaceRulerPoint(point);
-        } else if (activeTool === 'path' || activeTool === 'polygon') {
-          onPlacePathPoint(point);
-        }
+        if (activeTool === 'marker') onPlaceMarker(point);
+        else if (activeTool === 'ruler') onPlaceRulerPoint(point);
+        else if (activeTool === 'path' || activeTool === 'polygon') onPlacePathPoint(point);
       }}
       onDoubleClick={(e) => {
         e.stopPropagation();
