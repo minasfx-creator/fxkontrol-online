@@ -1827,7 +1827,7 @@ function AdaptiveExposureController() {
     // Update sky scatter uniforms
     if (_skyScatterUniforms) {
       if (scatterMax > 0.05) {
-        _skyScatterUniforms.uExplosionScatter.value.copy(scatterAccum);
+        _skyScatterUniforms.uExplosionScatter.value.copy(_scatterAccum);
         _skyScatterUniforms.uScatterIntensity.value = scatterMax;
       } else {
         _skyScatterUniforms.uScatterIntensity.value *= Math.max(0, 1 - delta * 3);
