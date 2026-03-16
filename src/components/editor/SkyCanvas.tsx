@@ -503,9 +503,17 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
       const emberPhase = Math.max(0, (starAge - 0.45) / 0.55);
       
       // ═══ PyroChem Thermal Color Pipeline ═══
-      // Uses real chemical compound emission spectra + thermal transitions
+      // thermalColor returns HDR values (emissionIntensity up to 10x).
+      // We must tonemap before using as vertex colors to prevent white-out.
       const lifeRatio = 1 - starAge; // thermalColor expects 1=birth, 0=dead
       const chemColor = thermalColor(compound, lifeRatio, 1.0);
+      
+      // Reinhard tonemap: maps HDR → [0,1] while preserving hue
+      const chemLum = chemColor.r * 0.2126 + chemColor.g * 0.7152 + chemColor.b * 0.0722;
+      const tonemapScale = chemLum > 0.001 ? (1 / (1 + chemLum)) : 1;
+      const chemR = chemColor.r * tonemapScale;
+      const chemG = chemColor.g * tonemapScale;
+      const chemB = chemColor.b * tonemapScale;
       
       // Per-star twinkle — organic shimmer
       let twinkle: number;
@@ -515,10 +523,11 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
         twinkle = temporalFlicker(sparkleSeeds[i], time, 0.65, 0.30, 0.35);
       }
       
-      // Blend chemical color with original for artistic control (70% chem, 30% user)
-      const r = THREE.MathUtils.lerp(baseColor.r * (1 - starAge), chemColor.r, 0.7);
-      const g = THREE.MathUtils.lerp(baseColor.g * (1 - starAge), chemColor.g, 0.7);
-      const b = THREE.MathUtils.lerp(baseColor.b * (1 - starAge), chemColor.b, 0.7);
+      // Blend tonemapped chemical color with user color (70% chem, 30% user)
+      const userFade = 1 - starAge;
+      const r = THREE.MathUtils.lerp(baseColor.r * userFade, chemR, 0.7);
+      const g = THREE.MathUtils.lerp(baseColor.g * userFade, chemG, 0.7);
+      const b = THREE.MathUtils.lerp(baseColor.b * userFade, chemB, 0.7);
       
       cols[i * 3] = r * twinkle;
       cols[i * 3 + 1] = g * twinkle;
