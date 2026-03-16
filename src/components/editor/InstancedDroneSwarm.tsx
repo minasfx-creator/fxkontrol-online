@@ -61,16 +61,17 @@ export default function InstancedDroneSwarm({
     roughness: 0.5,
   }), []);
 
-  // Rotor disc — render_ultra motor material + transparency for disc effect
+  // Rotor disc — NO additive blending, just subtle transparent
   const rotorMat = useMemo(() => {
-    const m = pbrMaterials.motors.clone();
-    m.transparent = true;
-    m.opacity = 0.03;
-    m.side = THREE.DoubleSide;
-    m.depthWrite = false;
-    m.blending = THREE.AdditiveBlending;
+    const m = new THREE.MeshBasicMaterial({
+      color: '#888888',
+      transparent: true,
+      opacity: 0.02,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
     return m;
-  }, [pbrMaterials]);
+  }, []);
 
   // Selection glow
   const glowMat = useMemo(() => new THREE.MeshBasicMaterial({
