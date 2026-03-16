@@ -150,8 +150,9 @@ function PlaybackClock() {
 // --- Particle system ---
 const GRAVITY = -9.81; // Real-world gravity for accurate ballistics
 
-// Module-level ref for sky scatter uniforms (shared between SkyGradient and AdaptiveExposureController)
+// Module-level refs shared between SkyGradient / AdaptiveExposure / fireworks
 let _skyScatterUniforms: { uExplosionScatter: { value: THREE.Color }; uScatterIntensity: { value: number } } | null = null;
+let _adaptiveExposure = 1.2;
 
 function getWindForce(): [number, number, number] {
   const { wind } = useProjectStore.getState();
@@ -256,7 +257,7 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
   // ═══ LOD — reduce particles & trails at distance ═══
   const lod = useLOD(position);
   const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
-  const particleDensity = useSceneStore(st => st.settings.particleDensity);
+  const { particleDensity, hdrMultiplier, effectBrightness } = useSceneStore(st => st.settings);
 
   // Niagara-style: particle count scales with shell volume, LOD and quality preset
   // Conservative caps prevent WebGL context loss on dense timelines
@@ -508,8 +509,10 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
       // thermalColor returns HDR values (emissionIntensity up to 10x).
       // We must tonemap before using as vertex colors to prevent white-out.
       const lifeRatio = 1 - starAge; // thermalColor expects 1=birth, 0=dead
-      // HDR mult reduced: ACES Filmic PostProcessing is the single tonemap
-      const chemColor = thermalColor(compound, lifeRatio, 1.0);
+      // Finale/Skybrush alignment: scene HDR slider + adaptive exposure both drive pyro intensity
+      const adaptiveScale = THREE.MathUtils.clamp(_adaptiveExposure / 1.2, 0.45, 1.35);
+      const hdrScale = THREE.MathUtils.clamp((hdrMultiplier / 3.5) * adaptiveScale, 0.6, 2.4);
+      const chemColor = thermalColor(compound, lifeRatio, hdrScale);
       const chemR = chemColor.r;
       const chemG = chemColor.g;
       const chemB = chemColor.b;
@@ -522,15 +525,16 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
         twinkle = temporalFlicker(sparkleSeeds[i], time, 0.65, 0.30, 0.35);
       }
       
-      // Blend tonemapped chemical color with user color (70% chem, 30% user)
+      // Blend thermal color with user color
       const userFade = 1 - starAge;
       const r = THREE.MathUtils.lerp(baseColor.r * userFade, chemR, 0.7);
       const g = THREE.MathUtils.lerp(baseColor.g * userFade, chemG, 0.7);
       const b = THREE.MathUtils.lerp(baseColor.b * userFade, chemB, 0.7);
+      const brightnessScale = THREE.MathUtils.clamp(effectBrightness, 0.6, 1.8);
       
-      cols[i * 3] = r * twinkle;
-      cols[i * 3 + 1] = g * twinkle;
-      cols[i * 3 + 2] = b * twinkle;
+      cols[i * 3] = r * twinkle * brightnessScale;
+      cols[i * 3 + 1] = g * twinkle * brightnessScale;
+      cols[i * 3 + 2] = b * twinkle * brightnessScale;
       
       // Size over lifetime: Niagara curve — burst large, steady, then shrink
       const sizeOverLife = starAge < 0.05 
@@ -1827,7 +1831,6 @@ function ConcreteGround({ brightness }: { brightness: number }) {
 // Adjusts gl.toneMappingExposure in real-time based on active explosions
 const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function AdaptiveExposureController(_props, _ref) {
   const exposureRef = useRef(createExposureController());
-  const { gl } = useThree();
 
   // Pre-allocated color to avoid per-frame GC pressure
   const _scatterAccum = useMemo(() => new THREE.Color(), []);
@@ -1866,8 +1869,9 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
     }
 
     const exposure = updateExposure(state, luminance, delta);
-    // NoToneMapping on renderer — exposure stored for sky scatter only
-    // ACES in PostProcessing handles HDR rolloff automatically
+    _adaptiveExposure = exposure;
+    // NoToneMapping no renderer — exposure is consumed by particle HDR scaling
+    // ACES in PostProcessing remains the single HDR→SDR tone-mapping pass
 
     // Update sky scatter uniforms
     if (_skyScatterUniforms) {
@@ -2023,6 +2027,7 @@ const SparkTrailController = React.forwardRef<THREE.Group, {}>(function SparkTra
   const { scene } = useThree();
   const sparksRef = useRef<SparkState[]>([]);
   const systemRef = useRef<ReturnType<typeof createSparkTrailSystem> | null>(null);
+  const { hdrMultiplier, effectBrightness } = useSceneStore(st => st.settings);
 
   useEffect(() => {
     const sys = createSparkTrailSystem();
@@ -2051,7 +2056,9 @@ const SparkTrailController = React.forwardRef<THREE.Group, {}>(function SparkTra
           const breakH = getBreakHeight(caliber);
           const breakSpd = getBreakSpeed(caliber);
           const compound = hexToCompound(effect.color);
-          const baseColor = thermalColor(compound, 1.0, 1.5);
+          const adaptiveScale = THREE.MathUtils.clamp(_adaptiveExposure / 1.2, 0.45, 1.35);
+          const hdrScale = THREE.MathUtils.clamp((hdrMultiplier / 3.5) * adaptiveScale, 0.8, 2.6);
+          const baseColor = thermalColor(compound, 1.0, hdrScale);
           const sparkCount = Math.min(24, Math.round(caliber * 3));
           
           for (let s = 0; s < sparkCount; s++) {
@@ -2086,7 +2093,9 @@ const SparkTrailController = React.forwardRef<THREE.Group, {}>(function SparkTra
       // Thermal color cooling
       const lifeRatio = Math.max(0, sparks[i].life / sparks[i].maxLife);
       const compound = hexToCompound('#' + sparks[i].color.getHexString());
-      const cooled = thermalColor(compound, lifeRatio, 1.5);
+      const adaptiveScale = THREE.MathUtils.clamp(_adaptiveExposure / 1.2, 0.45, 1.35);
+      const hdrScale = THREE.MathUtils.clamp((hdrMultiplier / 3.5) * adaptiveScale, 0.8, 2.6);
+      const cooled = thermalColor(compound, lifeRatio, hdrScale).multiplyScalar(THREE.MathUtils.clamp(effectBrightness, 0.6, 1.8));
       sparks[i].color.copy(cooled);
       
       if (sparks[i].life <= 0) {
