@@ -196,15 +196,15 @@ export const GeoToolClickHandler = forwardRef<any, {
 });
 
 // ═══ Main group for all geo objects ═══
-export function GeoToolsScene({
-  markers,
-  rulers,
-  paths,
-}: {
+export const GeoToolsScene = forwardRef<any, {
   markers: GeoMarker[];
   rulers: GeoRulerPoint[];
   paths: GeoPath[];
-}) {
+}>(function GeoToolsScene({
+  markers,
+  rulers,
+  paths,
+}, _ref) {
   return (
     <group>
       {markers.map(m => <MarkerPin key={m.id} marker={m} />)}
@@ -212,4 +212,4 @@ export function GeoToolsScene({
       {paths.map(p => <PathLine key={p.id} path={p} />)}
     </group>
   );
-}
+});

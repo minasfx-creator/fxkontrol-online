@@ -6,7 +6,7 @@ import { Activity } from 'lucide-react';
  * In-scene stats collector — runs inside <Canvas>.
  * Pushes stats to a shared ref that the HTML overlay reads.
  */
-export function PerfCollector({ statsRef }: { statsRef: React.MutableRefObject<PerfStats> }) {
+export const PerfCollector = forwardRef<any, { statsRef: React.MutableRefObject<PerfStats> }>(function PerfCollector({ statsRef }, _ref) {
   const { gl } = useThree();
   const frames = useRef(0);
   const lastTime = useRef(performance.now());
@@ -32,7 +32,7 @@ export function PerfCollector({ statsRef }: { statsRef: React.MutableRefObject<P
   });
 
   return null;
-}
+});
 
 export interface PerfStats {
   fps: number;
