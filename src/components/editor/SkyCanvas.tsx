@@ -191,24 +191,15 @@ const STAR_FRAGMENT_SHADER = `
   varying float vLife;
   varying float vSize;
 
-  // Luma-based Reinhard tonemap prevents additive white clipping.
-  vec3 tonemapLuma(vec3 c) {
-    vec3 safe = max(c, vec3(0.0));
-    float lum = dot(safe, vec3(0.2126, 0.7152, 0.0722));
-    float scale = lum > 0.001 ? (1.0 / (1.0 + lum)) : 1.0;
-    return safe * scale;
-  }
-
   void main() {
     vec2 uv = gl_PointCoord - 0.5;
     float dist = length(uv);
     
     // Niagara-style layered glow: tight bright core + soft halo
-    float core = exp(-dist * dist * 80.0);  // Very tight bright center
-    float inner = exp(-dist * dist * 25.0); // Inner glow
-    float outer = exp(-dist * dist * 8.0);  // Soft outer bloom
+    float core = exp(-dist * dist * 80.0);
+    float inner = exp(-dist * dist * 25.0);
+    float outer = exp(-dist * dist * 8.0);
     
-    // Combined alpha with natural falloff
     float alpha = core * 1.0 + inner * 0.7 + outer * 0.15;
     
     // Thermal color model: white-hot center fading to star color
@@ -216,15 +207,14 @@ const STAR_FRAGMENT_SHADER = `
     vec3 col = mix(vColor, whiteHot, core * 0.45);
     col += vColor * outer * 0.35;
     
-    // Youth flash: brief bright moment at spawn
+    // Youth flash
     float youth = max(0.0, 1.0 - vLife * 4.0);
     col += mix(vColor, whiteHot, 0.4) * youth * 0.35;
     
-    // Circular cutoff
     float edge = 1.0 - smoothstep(0.42, 0.5, dist);
 
-    vec3 mapped = tonemapLuma(col);
-    gl_FragColor = vec4(mapped, alpha * edge);
+    // No manual tonemap — ACES Filmic in PostProcessing handles HDR→SDR
+    gl_FragColor = vec4(col, alpha * edge);
   }
 `;
 
