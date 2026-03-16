@@ -422,6 +422,6 @@ function Index() {
       <PositionContextMenu />
     </div>
   );
-});
+}
 
 export default Index;
