@@ -2744,7 +2744,21 @@ export default function SkyCanvas() {
           outputColorSpace: THREE.SRGBColorSpace,
         }}
         dpr={isMobile ? [1, 1] : [1, 1.5]}
-        performance={{ min: 0.5 }}>
+        performance={{ min: 0.5 }}
+        onCreated={({ gl }) => {
+          // WebGL context loss recovery
+          const canvas = gl.domElement;
+          canvas.addEventListener('webglcontextlost', (e) => {
+            e.preventDefault();
+            console.warn('[FXK] WebGL context lost — will attempt recovery');
+            // Reset shared material so it gets recreated
+            _starMaterialInstance = null;
+          });
+          canvas.addEventListener('webglcontextrestored', () => {
+            console.log('[FXK] WebGL context restored');
+            _starMaterialInstance = null;
+          });
+        }}>
         <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.3} far={20000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook} />
 
