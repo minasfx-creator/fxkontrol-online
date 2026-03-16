@@ -1660,83 +1660,82 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
   });
 
   return (
-    <>
-      {/* Main ground with procedural PBR detail */}
-      <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[20000, 20000, 8, 8]} />
-        <shaderMaterial
-          uniforms={uniforms}
-          vertexShader={`
-            varying vec2 vUv;
-            varying vec3 vWorldPos;
-            varying vec3 vViewDir;
-            uniform vec3 camPos;
-            void main() {
-              vUv = uv;
-              vec4 wp = modelMatrix * vec4(position, 1.0);
-              vWorldPos = wp.xyz;
-              vViewDir = normalize(camPos - wp.xyz);
-              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-            }
-          `}
-          fragmentShader={`
-            uniform float time;
-            varying vec2 vUv;
-            varying vec3 vWorldPos;
-            varying vec3 vViewDir;
+    <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <planeGeometry args={[20000, 20000, 16, 16]} />
+      <shaderMaterial
+        uniforms={uniforms}
+        vertexShader={`
+          varying vec2 vUv;
+          varying vec3 vWorldPos;
+          varying vec3 vViewDir;
+          uniform vec3 camPos;
+          void main() {
+            vUv = uv;
+            vec4 wp = modelMatrix * vec4(position, 1.0);
+            vWorldPos = wp.xyz;
+            vViewDir = normalize(camPos - wp.xyz);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `}
+        fragmentShader={`
+          uniform float time;
+          varying vec2 vUv;
+          varying vec3 vWorldPos;
+          varying vec3 vViewDir;
+          
+          float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+          float noise(vec2 p) {
+            vec2 i = floor(p); vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
+                       mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+          }
+          float fbm(vec2 p) {
+            float v = 0.0; float a = 0.5;
+            for (int i = 0; i < 4; i++) { v += a * noise(p); p *= 2.1; a *= 0.5; }
+            return v;
+          }
+          
+          void main() {
+            vec2 wuv = vWorldPos.xz;
+            float distFromCenter = length(wuv);
             
-            float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-            float noise(vec2 p) {
-              vec2 i = floor(p); vec2 f = fract(p);
-              f = f * f * (3.0 - 2.0 * f);
-              return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
-                         mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
-            }
+            // Multi-scale surface detail — consistent everywhere
+            float n1 = noise(wuv * 0.02) * 0.5 + noise(wuv * 0.08) * 0.3 + noise(wuv * 0.4) * 0.2;
+            float micro = noise(wuv * 2.0) * 0.1;
+            float largeFbm = fbm(wuv * 0.003);
             
-            void main() {
-              vec2 wuv = vWorldPos.xz;
-              // Multi-scale surface detail
-              float n1 = noise(wuv * 0.02) * 0.5 + noise(wuv * 0.08) * 0.3 + noise(wuv * 0.4) * 0.2;
-              float micro = noise(wuv * 2.0) * 0.1;
-              
-              // Dark earth base with subtle variation
-              float b = ${b.toFixed(3)};
-              vec3 darkBase = vec3(0.015 * b, 0.025 * b, 0.015 * b);
-              vec3 lighter = vec3(0.035 * b, 0.055 * b, 0.03 * b);
-              vec3 color = mix(darkBase, lighter, n1);
-              color += micro * vec3(0.01, 0.015, 0.008);
-              
-              // Wet specular reflection from moonlight
-              float fresnel = pow(1.0 - max(vViewDir.y, 0.0), 4.0);
-              color += vec3(0.008, 0.012, 0.02) * fresnel * 0.5;
-              
-              // Distance fade to darker
-              float dist = length(wuv) * 0.001;
-              color *= 1.0 - smoothstep(0.3, 1.0, dist) * 0.6;
-              
-              gl_FragColor = vec4(color, 1.0);
-            }
-          `}
-        />
-      </mesh>
-      {/* Near-field circle — wet-asphalt PBR with clearcoat reflections */}
-      <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[250, 64]} />
-        <meshPhysicalMaterial
-          color={new THREE.Color(0.05 * b, 0.05 * b, 0.06 * b)}
-          roughness={0.2}
-          metalness={0.15}
-          clearcoat={1.0}
-          clearcoatRoughness={0.1}
-          envMapIntensity={1.8}
-        />
-      </mesh>
-      {/* Contact shadow circle under launch area */}
-      <mesh position={[0, 0.003, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[40, 32]} />
-        <meshBasicMaterial color="#000000" transparent opacity={0.15} />
-      </mesh>
-    </>
+            // Dark earth base with subtle variation
+            float b = ${b.toFixed(3)};
+            vec3 darkBase = vec3(0.015 * b, 0.025 * b, 0.015 * b);
+            vec3 lighter = vec3(0.035 * b, 0.055 * b, 0.03 * b);
+            vec3 color = mix(darkBase, lighter, n1);
+            color += micro * vec3(0.01, 0.015, 0.008);
+            
+            // Subtle terrain variation at large scale
+            vec3 darkPatch = vec3(0.008 * b, 0.012 * b, 0.008 * b);
+            color = mix(color, darkPatch, smoothstep(0.3, 0.7, largeFbm) * 0.4);
+            
+            // Wet specular reflection from moonlight — uniform everywhere
+            float fresnel = pow(1.0 - max(vViewDir.y, 0.0), 4.0);
+            color += vec3(0.008, 0.012, 0.02) * fresnel * 0.5;
+            
+            // Clearcoat-like specular near center (launch area wetness)
+            float nearBlend = 1.0 - smoothstep(0.0, 400.0, distFromCenter);
+            float viewAngle = pow(1.0 - max(vViewDir.y, 0.0), 6.0);
+            color += vec3(0.015, 0.02, 0.035) * viewAngle * nearBlend * 0.8;
+            
+            // Atmospheric fade at extreme distance
+            float dist = distFromCenter * 0.001;
+            float fogFactor = smoothstep(0.5, 1.5, dist);
+            vec3 atmosphereColor = vec3(0.02 * b, 0.025 * b, 0.04 * b);
+            color = mix(color, atmosphereColor, fogFactor * 0.5);
+            
+            gl_FragColor = vec4(color, 1.0);
+          }
+        `}
+      />
+    </mesh>
   );
 }
 
