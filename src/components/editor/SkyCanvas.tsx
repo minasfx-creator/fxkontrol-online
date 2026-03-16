@@ -2736,6 +2736,103 @@ export default function SkyCanvas() {
   const recoveringContextRef = useRef(false);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
+  // ═══ Google Earth-style Geo Tools state ═══
+  const [geoTool, setGeoTool] = useState<GeoToolMode>('none');
+  const [geoMarkers, setGeoMarkers] = useState<GeoMarker[]>([]);
+  const [geoRulers, setGeoRulers] = useState<GeoRulerPoint[]>([]);
+  const [geoPaths, setGeoPaths] = useState<GeoPath[]>([]);
+  const [activeRulerPoints, setActiveRulerPoints] = useState<[number, number, number][]>([]);
+  const [activePathPoints, setActivePathPoints] = useState<[number, number, number][]>([]);
+  const geoMarkerColorIdx = useRef(0);
+  const geoPathColorIdx = useRef(0);
+  const MARKER_COLORS = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ec4899'];
+
+  const handlePlaceMarker = useCallback((pos: [number, number, number]) => {
+    const color = MARKER_COLORS[geoMarkerColorIdx.current % MARKER_COLORS.length];
+    geoMarkerColorIdx.current++;
+    const marker: GeoMarker = {
+      id: `gm-${Date.now()}`,
+      name: `Marcador ${geoMarkers.length + 1}`,
+      position: pos,
+      color,
+      visible: true,
+    };
+    setGeoMarkers(prev => [...prev, marker]);
+    setGeoTool('none');
+    toast.success(`Marcador adicionado`);
+  }, [geoMarkers.length]);
+
+  const handlePlaceRulerPoint = useCallback((pos: [number, number, number]) => {
+    setActiveRulerPoints(prev => [...prev, pos]);
+  }, []);
+
+  const handleFinishRuler = useCallback(() => {
+    if (activeRulerPoints.length < 2) return;
+    let total = 0;
+    for (let i = 0; i < activeRulerPoints.length - 1; i++) {
+      const [x1, y1, z1] = activeRulerPoints[i];
+      const [x2, y2, z2] = activeRulerPoints[i + 1];
+      total += Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2);
+    }
+    const ruler: GeoRulerPoint = {
+      id: `gr-${Date.now()}`,
+      points: [...activeRulerPoints],
+      totalDistance: total,
+      visible: true,
+      label: `Medição ${geoRulers.length + 1}`,
+    };
+    setGeoRulers(prev => [...prev, ruler]);
+    setActiveRulerPoints([]);
+    setGeoTool('none');
+    toast.success(`Medição: ${total.toFixed(1)}m`);
+  }, [activeRulerPoints, geoRulers.length]);
+
+  const handlePlacePathPoint = useCallback((pos: [number, number, number]) => {
+    setActivePathPoints(prev => [...prev, pos]);
+  }, []);
+
+  const handleFinishPath = useCallback(() => {
+    if (activePathPoints.length < 2) return;
+    const colors = ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ec4899', '#06b6d4'];
+    const color = colors[geoPathColorIdx.current % colors.length];
+    geoPathColorIdx.current++;
+    const path: GeoPath = {
+      id: `gp-${Date.now()}`,
+      name: geoTool === 'polygon' ? `Polígono ${geoPaths.length + 1}` : `Caminho ${geoPaths.length + 1}`,
+      points: [...activePathPoints],
+      color,
+      visible: true,
+      closed: geoTool === 'polygon',
+    };
+    setGeoPaths(prev => [...prev, path]);
+    setActivePathPoints([]);
+    setGeoTool('none');
+    toast.success(`${path.closed ? 'Polígono' : 'Caminho'} criado com ${path.points.length} pontos`);
+  }, [activePathPoints, geoPaths.length, geoTool]);
+
+  // Build active (in-progress) ruler/path for live preview
+  const activeRuler: GeoRulerPoint | null = activeRulerPoints.length >= 2 ? {
+    id: 'active-ruler',
+    points: activeRulerPoints,
+    totalDistance: activeRulerPoints.reduce((sum, p, i, arr) => {
+      if (i === 0) return 0;
+      const [x1, y1, z1] = arr[i - 1];
+      const [x2, y2, z2] = p;
+      return sum + Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2);
+    }, 0),
+    visible: true,
+    label: 'Medindo...',
+  } : null;
+
+  const activePath: GeoPath | null = activePathPoints.length >= 2 ? {
+    id: 'active-path',
+    name: 'Traçando...',
+    points: activePathPoints,
+    color: '#ffffff',
+    visible: true,
+    closed: false,
+  } : null;
+
   // Track fullscreen state
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
