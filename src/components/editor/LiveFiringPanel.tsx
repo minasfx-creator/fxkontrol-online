@@ -259,6 +259,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const [cueTriggerDelay, setCueTriggerDelay] = useState(0);
   const [cueRepeatCount, setCueRepeatCount] = useState(1);
   const [cueKeyLabel, setCueKeyLabel] = useState('');
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const sequenceRef = useRef(0);
   const fireTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
