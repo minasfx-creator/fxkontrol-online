@@ -437,8 +437,9 @@ export class ShowOrchestrator {
   }
 
   dismissWarning(id: string) {
-    const w = this.state.warnings.find(w => w.id === id);
-    if (w) w.dismissed = true;
+    const warning = this.state.warnings.find((w) => w.id === id);
+    if (!warning || warning.dismissed) return;
+    warning.dismissed = true;
     this.notify();
   }
 
@@ -446,6 +447,7 @@ export class ShowOrchestrator {
    * Set start method for the show.
    */
   setStartMethod(method: StartMethod) {
+    if (this.state.startMethod === method) return;
     this.state.startMethod = method;
     this.notify();
   }
@@ -454,6 +456,7 @@ export class ShowOrchestrator {
    * Set show duration (from project data).
    */
   setShowDuration(duration: number) {
+    if (this.state.showDuration === duration) return;
     this.state.showDuration = duration;
     this.notify();
   }
