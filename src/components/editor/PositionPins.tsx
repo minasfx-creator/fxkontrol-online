@@ -108,7 +108,7 @@ const DronePadIcon = forwardRef<THREE.Group, IconProps>(({ color, emissiveIntens
 });
 DronePadIcon.displayName = 'DronePadIcon';
 
-function Pin({ position, onRightClick }: { position: Position; onRightClick: (pos: Position, screenPos: { x: number; y: number }) => void }) {
+const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Position, screenPos: { x: number; y: number }) => void }>(function Pin({ position, onRightClick }, ref) {
   const { selectedPositionIds, selectPosition, togglePositionSelection, editorMode, updatePosition, timelineItems } = useProjectStore();
   const isSelected = selectedPositionIds.includes(position.id);
   const color = position.type === 'pyro' ? PYRO_COLOR : (position.color || DRONE_COLOR);
@@ -297,7 +297,7 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
   const showLabel = isHovered || isSelected || isDragging;
 
   return (
-    <group position={[position.x, position.y, position.z]} scale={[pinScale, pinScale, pinScale]}>
+    <group ref={ref} position={[position.x, position.y, position.z]} scale={[pinScale, pinScale, pinScale]}>
       {/* Base disc */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
         <circleGeometry args={[isSelected ? 0.65 : 0.5, 32]} />
@@ -438,7 +438,8 @@ function Pin({ position, onRightClick }: { position: Position; onRightClick: (po
       )}
     </group>
   );
-}
+});
+Pin.displayName = 'Pin';
 
 /** Ground plane for placing new pins — continuous mode */
 function GroundClickPlane() {
