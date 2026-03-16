@@ -466,14 +466,31 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
       </div>
 
       <div
-        className="flex-1 relative bg-surface-0/50 overflow-hidden"
+        ref={containerRef}
+        className="flex-1 relative bg-surface-0/50 overflow-hidden cursor-crosshair"
         style={{ height: `${trackHeight}px` }}
+        onDoubleClick={handleWaveformDoubleClick}
+        onContextMenu={handleWaveformContextMenu}
       >
         <canvas
           ref={canvasRef}
           className="w-full h-full"
           style={{ width: `${duration * pixelsPerSecond}px`, height: `${trackHeight}px` }}
         />
+
+        {/* Cue marker tooltips (DOM overlay for hover) */}
+        {cueMarkers.map((cue) => (
+          <div
+            key={cue.id}
+            className="absolute top-0 group"
+            style={{ left: `${cue.time * pixelsPerSecond}px`, width: '2px', height: '100%' }}
+            title={`${cue.label} — ${cue.time.toFixed(2)}s (right-click to remove)`}
+          >
+            {/* Hover hitbox */}
+            <div className="absolute -left-2 top-0 w-5 h-full cursor-pointer" />
+          </div>
+        ))}
+
         {!audioUrl && (
           <div className="absolute inset-0 flex items-center justify-center">
             <label className="cursor-pointer flex items-center gap-1 text-[10px] text-muted-foreground/50 hover:text-muted-foreground">
@@ -484,10 +501,17 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
           </div>
         )}
 
-        {/* Height indicator when expanded */}
+        {/* Cue count + Height indicator */}
         {isExpanded && (
-          <div className="absolute right-1 top-1 text-[7px] font-mono-code text-muted-foreground/30">
-            {trackHeight}px
+          <div className="absolute right-1 top-1 flex items-center gap-2">
+            {cueMarkers.length > 0 && (
+              <span className="text-[7px] font-mono-code text-safety/60">
+                <Flag className="h-2 w-2 inline mr-0.5" />{cueMarkers.length} cues
+              </span>
+            )}
+            <span className="text-[7px] font-mono-code text-muted-foreground/30">
+              {trackHeight}px
+            </span>
           </div>
         )}
       </div>
