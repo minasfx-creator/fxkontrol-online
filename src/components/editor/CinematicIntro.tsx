@@ -17,7 +17,7 @@ interface CinematicIntroProps {
   onComplete: () => void;
 }
 
-export default function CinematicIntro({ onComplete }: CinematicIntroProps) {
+const CinematicIntro = React.forwardRef<HTMLDivElement, CinematicIntroProps>(function CinematicIntro({ onComplete }, _ref) {
   const [phase, setPhase] = useState<IntroPhase>('black-in');
   const [canSkip, setCanSkip] = useState(false);
   const [blackOpacity, setBlackOpacity] = useState(1);
