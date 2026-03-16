@@ -2185,7 +2185,7 @@ const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflec
       />
     </mesh>
   );
-}
+});
 
 function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) {
   const sc = useSceneStore(st => st.settings);
