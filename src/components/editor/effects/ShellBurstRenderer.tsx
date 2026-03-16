@@ -368,9 +368,9 @@ export default function ShellBurstRenderer({
         <mesh>
           <sphereGeometry args={[1.5 + caliber * 0.8, 16, 16]} />
           <meshBasicMaterial
-            color="#FFFFEE"
+            color={secondaryColor || color}
             transparent
-            opacity={burstFlashIntensity * 0.8 * (1 - progress / 0.08)}
+            opacity={burstFlashIntensity * 0.45 * (1 - progress / 0.08)}
             blending={THREE.AdditiveBlending}
           />
         </mesh>
