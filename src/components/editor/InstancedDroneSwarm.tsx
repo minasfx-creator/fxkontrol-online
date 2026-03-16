@@ -51,14 +51,14 @@ export default function InstancedDroneSwarm({
   // Body — carbon fiber (metalness 0.3, roughness 0.6, envMapIntensity 0.8)
   const bodyMat = useMemo(() => pbrMaterials.body, [pbrMaterials]);
 
-  // LED — contained emissive, no bloom spill
+  // LED — subtle, no bloom spill
   const ledMat = useMemo(() => new THREE.MeshStandardMaterial({
     color: '#ffffff',
     emissive: '#ffffff',
-    emissiveIntensity: 1.2,
+    emissiveIntensity: 0.4,
     toneMapped: true,
     metalness: 0.0,
-    roughness: 0.15,
+    roughness: 0.3,
   }), []);
 
   // Rotor disc — render_ultra motor material + transparency for disc effect
@@ -81,10 +81,10 @@ export default function InstancedDroneSwarm({
     blending: THREE.AdditiveBlending,
   }), []);
 
-  // LED volumetric halo — tight, contained glow
+  // LED halo — barely visible, just a hint
   const haloMat = useMemo(() => new THREE.MeshBasicMaterial({
     transparent: true,
-    opacity: 0.03,
+    opacity: 0.01,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
   }), []);
