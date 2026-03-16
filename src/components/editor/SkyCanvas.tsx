@@ -705,9 +705,21 @@ function TimelineEffects() {
     }[];
   }, [timelineItems, currentTime, positions, sceneSettings.effectScale, sceneSettings.weather, sceneSettings.humidity, sceneSettings.effectBrightness]);
 
+  // Cap simultaneous firework bursts to prevent GPU context loss
+  const cappedEffects = useMemo(() => {
+    let burstCount = 0;
+    return activeEffects.filter(({ effect }) => {
+      if (effect.type === 'firework') {
+        burstCount++;
+        if (burstCount > MAX_CONCURRENT_BURSTS) return false;
+      }
+      return true;
+    });
+  }, [activeEffects]);
+
   return (
     <>
-      {activeEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale, effectBrightness, launchHeading, launchPitch }) => {
+      {cappedEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale, effectBrightness, launchHeading, launchPitch }) => {
         const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
         const eid = effect.id;
         const pt = effect.partType;
@@ -732,7 +744,6 @@ function TimelineEffects() {
         const realBreakHeight = getBreakHeight(caliber) * effectScale;
         const pitchRad = (launchPitch || 85) * (Math.PI / 180);
         const headingRad = (launchHeading || 0) * (Math.PI / 180);
-        // Angled burst position: shell travels along launch angle
         const burstPos: [number, number, number] = isShell
           ? [
               pos[0] + Math.sin(headingRad) * Math.cos(pitchRad) * realBreakHeight,
@@ -741,12 +752,9 @@ function TimelineEffects() {
             ]
           : pos;
 
-        // Heights from effect library, scaled by scene
         const scaledHeight = (effect.heightMeters || 4) * effectScale;
 
-        if (pt === 'mine') return (
-          <MineEffect key={item.id} position={pos} color={effect.color} progress={progress} />
-        );
+        if (pt === 'mine') return <MineEffect key={item.id} position={pos} color={effect.color} progress={progress} />;
         if (pt === 'candle') return <RomanCandleEffect key={item.id} position={pos} color={effect.color} progress={progress} shotCount={effect.shotCount || 8} />;
         if (pt === 'waterfall') return <WaterfallEffect key={item.id} position={pos} color={effect.color} progress={progress} width={scaledHeight} />;
         if (pt === 'gerb') return <GerbEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight} />;
@@ -755,7 +763,6 @@ function TimelineEffects() {
         if (pt === 'laser') return <LaserEffect key={item.id} position={pos} color={effect.color} progress={progress} pattern={effect.laserPattern || 'fan'} beamCount={effect.beamCount || 8} />;
         if (pt === 'light' && effect.beamType) return <MovingHeadEffect key={item.id} position={pos} color={effect.color} progress={progress} beamType={effect.beamType} />;
 
-        // ── SFX special routing ──
         if (eid === 'sfx-01') return <CryoJetEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight || 6} />;
         if (eid === 'sfx-02') return <CryoJetEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight || 8} horizontal />;
         if (eid === 'sfx-06' || eid === 'sfx-07') return <ConfettiEffect key={item.id} position={pos} color={effect.color} progress={progress} />;
@@ -764,12 +771,10 @@ function TimelineEffects() {
         if (eid === 'sfx-10') return <SnowMachineEffect key={item.id} position={pos} progress={progress} width={6 + (scaledHeight || 4)} height={Math.max(6, (scaledHeight || 8) * 1.2)} />;
         if (eid === 'sfx-11') return <BubbleMachineEffect key={item.id} position={pos} color={effect.color} progress={progress} spread={6 + (scaledHeight || 3)} />;
 
-        // ── Legacy effect ID routing ──
         if (eid.startsWith('comet-')) return <CometEffect key={item.id} position={pos} color={effect.color} progress={progress} direction={eid === 'comet-02' ? 'down' : 'up'} />;
         if (eid.startsWith('mburst-')) return <MultiBurstEffect key={item.id} position={burstPos} color={effect.color} progress={progress} burstCount={eid === 'mburst-02' ? 5 : 3} />;
         if (eid.startsWith('fan-')) return <FanEffect key={item.id} position={pos} color={effect.color} progress={progress} spreadAngle={eid === 'fan-02' ? 180 : 90} />;
 
-        // ── Default: clean firework burst at break height (no smoke, Niagara-style) ──
         if (effect.type === 'firework') return (
           <FireworkBurst 
             key={item.id}
@@ -781,20 +786,7 @@ function TimelineEffects() {
           />
         );
         return <LightPoint key={item.id} position={pos} color={effect.color} />;
-      });
-
-      // Cap simultaneous firework bursts to prevent GPU memory exhaustion
-      let burstCount = 0;
-      const cappedElements = elements.map(el => {
-        if (el && typeof el === 'object' && 'type' in el && (el as any).type === FireworkBurst) {
-          burstCount++;
-          if (burstCount > MAX_CONCURRENT_BURSTS) return null;
-        }
-        return el;
-      });
-
-      return cappedElements;
-    })()}
+      })}
     </>
   );
 }
