@@ -22,7 +22,7 @@ function snapTimeToBeat(time: number, bpm: number | null, snapEnabled: boolean, 
   return Math.abs(time - nearestBeat) < threshold ? nearestBeat : time;
 }
 
-function BeatGrid({ duration, pixelsPerSecond, bpm }: { duration: number; pixelsPerSecond: number; bpm: number | null }) {
+const BeatGrid = React.forwardRef<HTMLDivElement, { duration: number; pixelsPerSecond: number; bpm: number | null }>(function BeatGrid({ duration, pixelsPerSecond, bpm }, _ref) {
   if (!bpm) return null;
   const beatInterval = 60 / bpm;
   const lines = [];
