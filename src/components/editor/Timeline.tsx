@@ -248,7 +248,7 @@ function TimelineTrackRow({
   );
 }
 
-function WaypointTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number; duration: number }) {
+const WaypointTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: number; duration: number }>(function WaypointTrackRow({ pixelsPerSecond, duration }, ref) {
   const { trajectories, positions, selectedTrajectoryId, selectTrajectory } = useProjectStore();
   const wpEvents = useMemo(() => {
     return trajectories.flatMap((traj) => {
