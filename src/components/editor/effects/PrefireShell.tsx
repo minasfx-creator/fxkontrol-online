@@ -1,14 +1,10 @@
-import { forwardRef, useMemo } from 'react';
+import { useRef, useMemo } from 'react';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { getMortarVelocity, getBreakHeight, getLiftTime, GRAVITY } from '@/lib/pyroPhysics';
+import { getMortarVelocity, getBreakHeight, getLiftTime, GRAVITY, AIR_DRAG } from '@/lib/pyroPhysics';
 
 const TRAIL_PARTICLES = 80;
 const SPARK_COUNT = 30;
-
-const pseudoRandom = (n: number) => {
-  const x = Math.sin(n * 12.9898) * 43758.5453;
-  return x - Math.floor(x);
-};
 
 // GPU comet trail shader
 const COMET_VERTEX = `
@@ -44,31 +40,26 @@ const COMET_FRAGMENT = `
   }
 `;
 
-interface PrefireShellProps {
+/**
+ * PrefireShell: Renders a shell rising from the mortar to its break height
+ * with a glowing comet head, dense sparking trail, and muzzle flash.
+ * Based on Finale 3D lift physics: velocity = f(caliber), breakHeight = f(caliber).
+ */
+export default function PrefireShell({
+  position,
+  color,
+  progress,
+  caliber = 4,
+  heading = 0,
+  pitch = 85,
+}: {
   position: [number, number, number];
   color: string;
   progress: number;
   caliber?: number;
   heading?: number;
   pitch?: number;
-}
-
-/**
- * PrefireShell: Renders a shell rising from the mortar to its break height
- * with a glowing comet head, dense sparking trail, and muzzle flash.
- * Based on Finale 3D lift physics: velocity = f(caliber), breakHeight = f(caliber).
- */
-const PrefireShell = forwardRef<THREE.Group, PrefireShellProps>(function PrefireShell(
-  {
-    position,
-    color,
-    progress,
-    caliber = 4,
-    heading = 0,
-    pitch = 85,
-  },
-  ref,
-) {
+}) {
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
   const breakH = useMemo(() => getBreakHeight(caliber), [caliber]);
   const v0 = useMemo(() => getMortarVelocity(caliber), [caliber]);
@@ -88,28 +79,13 @@ const PrefireShell = forwardRef<THREE.Group, PrefireShellProps>(function Prefire
     const s: { angle: number; speed: number; phase: number; life: number }[] = [];
     for (let i = 0; i < SPARK_COUNT; i++) {
       s.push({
-        angle: (i / SPARK_COUNT) * Math.PI * 2 + pseudoRandom(i + 1) * 0.3,
-        speed: 0.2 + pseudoRandom(i + 2) * 0.8,
-        phase: pseudoRandom(i + 3) * Math.PI * 2,
-        life: 0.15 + pseudoRandom(i + 4) * 0.25,
+        angle: (i / SPARK_COUNT) * Math.PI * 2 + Math.random() * 0.3,
+        speed: 0.2 + Math.random() * 0.8,
+        phase: Math.random() * Math.PI * 2,
+        life: 0.15 + Math.random() * 0.25,
       });
     }
     return s;
-  }, []);
-
-  const trailIndices = useMemo(() => {
-    const idx = new Float32Array(TRAIL_PARTICLES);
-    for (let i = 0; i < TRAIL_PARTICLES; i++) idx[i] = i / TRAIL_PARTICLES;
-    return idx;
-  }, []);
-
-  const trailJitter = useMemo(() => {
-    const jitter = new Float32Array(TRAIL_PARTICLES * 2);
-    for (let i = 0; i < TRAIL_PARTICLES; i++) {
-      jitter[i * 2] = pseudoRandom(i * 2 + 10) - 0.5;
-      jitter[i * 2 + 1] = pseudoRandom(i * 2 + 11) - 0.5;
-    }
-    return jitter;
   }, []);
 
   if (progress <= 0 || progress > 1) return null;
@@ -143,11 +119,11 @@ const PrefireShell = forwardRef<THREE.Group, PrefireShellProps>(function Prefire
     const tWobbleX = Math.sin(trailT * 14) * 0.12 * caliber * 0.15;
     const tWobbleZ = Math.cos(trailT * 19) * 0.08 * caliber * 0.12;
 
-    // Trail follows launch angle with slight spread (deterministic jitter)
+    // Trail follows launch angle with slight spread
     const spread = (i / TRAIL_PARTICLES) * 0.12;
-    const tx = dirX * tDist + tWobbleX + trailJitter[i * 2] * spread;
+    const tx = dirX * tDist + tWobbleX + (Math.random() - 0.5) * spread;
     const ty = dirY * tDist;
-    const tz = dirZ * tDist + tWobbleZ + trailJitter[i * 2 + 1] * spread;
+    const tz = dirZ * tDist + tWobbleZ + (Math.random() - 0.5) * spread;
 
     trailPositions[i * 3] = tx;
     trailPositions[i * 3 + 1] = ty;
@@ -162,7 +138,7 @@ const PrefireShell = forwardRef<THREE.Group, PrefireShellProps>(function Prefire
   }
 
   return (
-    <group ref={ref} position={position}>
+    <group position={position}>
       {/* Muzzle flash at mortar — quick bright burst */}
       {progress < 0.1 && (
         <mesh position={[0, 0.15, 0]}>
@@ -193,7 +169,11 @@ const PrefireShell = forwardRef<THREE.Group, PrefireShellProps>(function Prefire
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[trailPositions, 3]} />
           <bufferAttribute attach="attributes-aTrailColor" args={[trailColors, 3]} />
-          <bufferAttribute attach="attributes-aTrailIndex" args={[trailIndices, 1]} />
+          <bufferAttribute attach="attributes-aTrailIndex" args={[(() => {
+            const idx = new Float32Array(TRAIL_PARTICLES);
+            for (let i = 0; i < TRAIL_PARTICLES; i++) idx[i] = i / TRAIL_PARTICLES;
+            return idx;
+          })(), 1]} />
         </bufferGeometry>
         <shaderMaterial
           vertexShader={COMET_VERTEX}
@@ -211,7 +191,7 @@ const PrefireShell = forwardRef<THREE.Group, PrefireShellProps>(function Prefire
         if (progress < sparkStart) return null;
         const sparkAge = progress - sparkStart;
         if (sparkAge > spark.life) return null;
-
+        
         const sparkNorm = sparkAge / spark.life;
         // Spark detaches from trail and falls
         const detachT = sparkStart * liftTime;
@@ -219,10 +199,10 @@ const PrefireShell = forwardRef<THREE.Group, PrefireShellProps>(function Prefire
         const detachX = dirX * detachDist;
         const detachY = dirY * detachDist;
         const detachZ = dirZ * detachDist;
-
+        
         const fallTime = sparkAge * 2;
         const sparkFade = Math.max(0, 1 - sparkNorm);
-
+        
         return (
           <mesh
             key={i}
@@ -266,8 +246,4 @@ const PrefireShell = forwardRef<THREE.Group, PrefireShellProps>(function Prefire
       </mesh>
     </group>
   );
-});
-
-PrefireShell.displayName = 'PrefireShell';
-
-export default PrefireShell;
+}
