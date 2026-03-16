@@ -23,7 +23,7 @@ export default function PostProcessing() {
       {/* Layer 1: Core catch — only extreme HDR pyro (threshold 1.5) */}
       <Bloom
         intensity={str * 0.096}
-        luminanceThreshold={2.0}
+        luminanceThreshold={2.5}
         luminanceSmoothing={0.05}
         kernelSize={KernelSize.MEDIUM}
         mipmapBlur
