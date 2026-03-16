@@ -379,8 +379,10 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
     return () => window.removeEventListener('keydown', handler);
   }, [handleSave, handleExportVVIZ, setEditorMode]);
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
   return (
-    <div className="flex items-center h-11 px-3 border-b border-border/10 gap-1" style={{ background: 'hsl(var(--card))' }}>
+    <div className={cn("flex items-center border-b border-border/10 gap-1", isMobile ? "h-10 px-2" : "h-11 px-3")} style={{ background: 'hsl(var(--card))' }}>
       {/* Logo — consistent with splash screen */}
       <div className="flex items-center gap-2.5 mr-2">
         <div
