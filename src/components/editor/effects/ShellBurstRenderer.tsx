@@ -441,14 +441,9 @@ function CrossetteSubBurst({
       pos[i * 3 + 1] = p.y;
       pos[i * 3 + 2] = p.z;
       const fade = p.brightness;
-      const cR = baseColor.r * fade * 1.1;
-      const cG = baseColor.g * fade * 0.95;
-      const cB = baseColor.b * fade * 0.85;
-      const lum = cR * 0.2126 + cG * 0.7152 + cB * 0.0722;
-      const scale = lum > 0.001 ? (1 / (1 + lum)) : 1;
-      col[i * 3] = cR * scale;
-      col[i * 3 + 1] = cG * scale;
-      col[i * 3 + 2] = cB * scale;
+      col[i * 3] = baseColor.r * fade * 1.1;
+      col[i * 3 + 1] = baseColor.g * fade * 0.95;
+      col[i * 3 + 2] = baseColor.b * fade * 0.85;
     }
 
     const geo = pointsRef.current.geometry;

@@ -2085,9 +2085,8 @@ const SparkTrailController = React.forwardRef<THREE.Group, {}>(function SparkTra
       // Thermal color cooling
       const lifeRatio = Math.max(0, sparks[i].life / sparks[i].maxLife);
       const compound = hexToCompound('#' + sparks[i].color.getHexString());
-      const cooled = thermalColor(compound, lifeRatio, 2.5);
-      const cooledScale = lumaTonemapScale(cooled.r, cooled.g, cooled.b);
-      sparks[i].color.copy(cooled.multiplyScalar(cooledScale));
+      const cooled = thermalColor(compound, lifeRatio, 0.5);
+      sparks[i].color.copy(cooled);
       
       if (sparks[i].life <= 0) {
         sparks.splice(i, 1);
