@@ -2841,6 +2841,19 @@ export default function SkyCanvas() {
     return () => document.removeEventListener('fullscreenchange', handler);
   }, []);
 
+  // ESC cancels geo tool
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && geoTool !== 'none') {
+        setGeoTool('none');
+        setActiveRulerPoints([]);
+        setActivePathPoints([]);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [geoTool]);
+
   const handleDownloadScenery = useCallback(async () => {
     setDownloadingScenery(true);
     pushLog('Downloading satellite imagery...', 'info');
