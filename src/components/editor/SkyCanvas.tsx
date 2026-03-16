@@ -1860,7 +1860,7 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
         const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
         if (effect && effect.type === 'firework') {
           const intensity = 0.4 * (1 - elapsed / 0.3);
-          _scatterAccum.add(_tmpColor.set(effect.color).multiplyScalar(intensity * 0.3));
+          _scatterAccum.add(_tmpColor.set(effect.color).multiplyScalar(Math.min(intensity * 0.3, 0.15)));
           scatterMax = Math.max(scatterMax, intensity);
         }
       }
