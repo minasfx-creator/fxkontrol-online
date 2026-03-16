@@ -395,6 +395,22 @@ function FireworkBurst({
     });
   }, []);
 
+  // ═══ CLEANUP: dispose GPU resources on unmount to prevent context loss ═══
+  useEffect(() => {
+    return () => {
+      starMaterial.dispose();
+      if (pointsRef.current) {
+        pointsRef.current.geometry.dispose();
+      }
+      if (trailRef.current) {
+        trailRef.current.geometry.dispose();
+        if (trailRef.current.material instanceof THREE.Material) {
+          trailRef.current.material.dispose();
+        }
+      }
+    };
+  }, [starMaterial]);
+
   useFrame(({ clock }) => {
     if (!pointsRef.current || !trailRef.current) return;
     const pos = positionsRef.current;
