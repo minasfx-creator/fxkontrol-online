@@ -1,6 +1,6 @@
+import React, { useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useProjectStore, CameraKeyframe } from '@/store/useProjectStore';
-import { useRef } from 'react';
 import * as THREE from 'three';
 
 /**
@@ -70,7 +70,7 @@ function interpolateFov(kfs: CameraKeyframe[], time: number): number {
   return catmullRom(p0, p1, p2, p3, t);
 }
 
-export default function CameraAnimator() {
+const CameraAnimator = React.forwardRef<any>(function CameraAnimator(_props, _ref) {
   const { camera } = useThree();
   const lookAtTarget = useRef(new THREE.Vector3());
 
@@ -93,7 +93,9 @@ export default function CameraAnimator() {
   });
 
   return null;
-}
+});
+
+export default CameraAnimator;
 
 /** Visualize the camera path as a 3D spline in the scene */
 export function CameraPathPreview() {

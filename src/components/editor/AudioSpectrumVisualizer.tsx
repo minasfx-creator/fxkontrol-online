@@ -2,7 +2,7 @@
  * Audio Spectrum Visualizer — 3D frequency bars rendered in the viewport
  * Reacts to audio playback in real-time using Web Audio API AnalyserNode.
  */
-import { useRef, useMemo, useEffect } from 'react';
+import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -25,7 +25,7 @@ function getBarColor(i: number, total: number): THREE.Color {
   return new THREE.Color().setHSL(0.12, 0.95, 0.55); // gold
 }
 
-export default function AudioSpectrumVisualizer() {
+const AudioSpectrumVisualizer = React.forwardRef<any>(function AudioSpectrumVisualizer(_props, _ref) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const dataRef = useRef<FreqData>(new Uint8Array(BAR_COUNT));
@@ -122,4 +122,6 @@ export default function AudioSpectrumVisualizer() {
       />
     </instancedMesh>
   );
-}
+});
+
+export default AudioSpectrumVisualizer;
