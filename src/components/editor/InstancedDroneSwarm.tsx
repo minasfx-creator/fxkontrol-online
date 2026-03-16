@@ -92,7 +92,7 @@ export default function InstancedDroneSwarm({
   const navMat = useMemo(() => new THREE.MeshBasicMaterial({
     toneMapped: false,
     transparent: true,
-    opacity: 0.4,
+    opacity: 0.32,
   }), []);
 
   const armOffsets: [number, number, number][] = useMemo(() => [
