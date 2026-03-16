@@ -45,19 +45,19 @@ const FINALE_CALIBERS: Record<number, CaliberData> = {
   12:   { heightM: 280, spreadDeg: 120, prefireSec: 4.50, starCount: 1100, breakSpeed: 95, safetyM: 300, costFactor: 150.0 },
 };
 
-// ── Cobra Firing Systems — US market, slightly higher performance ──
+// ── Cobra Firing Systems — US market, +5-8% height/speed over Finale ──
 const COBRA_CALIBERS: Record<number, CaliberData> = {
-  1:    { heightM: 22,  spreadDeg: 24, prefireSec: 0.45, starCount: 22,  breakSpeed: 11, safetyM: 40,  costFactor: 0.4 },
-  1.5:  { heightM: 30,  spreadDeg: 30, prefireSec: 0.65, starCount: 38,  breakSpeed: 13, safetyM: 40,  costFactor: 0.6 },
-  2:    { heightM: 38,  spreadDeg: 35, prefireSec: 0.85, starCount: 55,  breakSpeed: 14, safetyM: 40,  costFactor: 1.2 },
-  2.5:  { heightM: 48,  spreadDeg: 40, prefireSec: 1.05, starCount: 75,  breakSpeed: 15, safetyM: 70,  costFactor: 2.5 },
-  3:    { heightM: 60,  spreadDeg: 48, prefireSec: 1.25, starCount: 110, breakSpeed: 17, safetyM: 70,  costFactor: 4.0 },
-  4:    { heightM: 85,  spreadDeg: 58, prefireSec: 1.7,  starCount: 180, breakSpeed: 19, safetyM: 100, costFactor: 9.0 },
-  5:    { heightM: 115, spreadDeg: 68, prefireSec: 2.2,  starCount: 260, breakSpeed: 21, safetyM: 140, costFactor: 17.0 },
-  6:    { heightM: 148, spreadDeg: 80, prefireSec: 2.7,  starCount: 370, breakSpeed: 23, safetyM: 175, costFactor: 28.0 },
-  8:    { heightM: 200, spreadDeg: 95, prefireSec: 3.4,  starCount: 550, breakSpeed: 25, safetyM: 210, costFactor: 55.0 },
-  10:   { heightM: 250, spreadDeg: 110, prefireSec: 4.0, starCount: 750, breakSpeed: 27, safetyM: 280, costFactor: 100.0 },
-  12:   { heightM: 290, spreadDeg: 125, prefireSec: 4.8, starCount: 950, breakSpeed: 29, safetyM: 300, costFactor: 165.0 },
+  1:    { heightM: 16,  spreadDeg: 18, prefireSec: 0.32, starCount: 34,  breakSpeed: 11, safetyM: 40,  costFactor: 0.4 },
+  1.5:  { heightM: 27,  spreadDeg: 26, prefireSec: 0.50, starCount: 60,  breakSpeed: 15, safetyM: 40,  costFactor: 0.6 },
+  2:    { heightM: 38,  spreadDeg: 35, prefireSec: 0.70, starCount: 90,  breakSpeed: 20, safetyM: 40,  costFactor: 1.2 },
+  2.5:  { heightM: 48,  spreadDeg: 40, prefireSec: 0.90, starCount: 125, breakSpeed: 25, safetyM: 70,  costFactor: 2.5 },
+  3:    { heightM: 60,  spreadDeg: 48, prefireSec: 1.10, starCount: 165, breakSpeed: 30, safetyM: 70,  costFactor: 4.0 },
+  4:    { heightM: 85,  spreadDeg: 58, prefireSec: 1.50, starCount: 270, breakSpeed: 41, safetyM: 100, costFactor: 9.0 },
+  5:    { heightM: 118, spreadDeg: 68, prefireSec: 1.90, starCount: 380, breakSpeed: 52, safetyM: 140, costFactor: 17.0 },
+  6:    { heightM: 150, spreadDeg: 80, prefireSec: 2.35, starCount: 540, breakSpeed: 62, safetyM: 175, costFactor: 28.0 },
+  8:    { heightM: 205, spreadDeg: 95, prefireSec: 3.05, starCount: 760, breakSpeed: 78, safetyM: 210, costFactor: 55.0 },
+  10:   { heightM: 255, spreadDeg: 110, prefireSec: 3.70, starCount: 970, breakSpeed: 90, safetyM: 280, costFactor: 100.0 },
+  12:   { heightM: 300, spreadDeg: 125, prefireSec: 4.40, starCount: 1200, breakSpeed: 102, safetyM: 300, costFactor: 165.0 },
 };
 
 // ── Pyrodigital — European precision, tighter prefire, consistent spread ──
