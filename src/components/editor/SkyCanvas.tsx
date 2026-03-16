@@ -2743,32 +2743,42 @@ export default function SkyCanvas() {
     <div className="w-full h-full relative bg-[#030308]" data-sky-canvas style={{ cursor: cursorStyle }}>
       <WebGLErrorBoundary>
       <Canvas
+        key={canvasInstanceKey}
         shadows
         gl={{
           antialias: false,
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.2,
-          powerPreference: 'high-performance',
+          powerPreference: isMobile ? 'default' : 'high-performance',
           alpha: false,
           stencil: false,
-          logarithmicDepthBuffer: true,
+          logarithmicDepthBuffer: !isMobile,
           outputColorSpace: THREE.SRGBColorSpace,
         }}
         dpr={isMobile ? [1, 1] : [1, 1.5]}
         performance={{ min: 0.5 }}
         onCreated={({ gl }) => {
-          // WebGL context loss recovery
           const canvas = gl.domElement;
-          canvas.addEventListener('webglcontextlost', (e) => {
+
+          const handleContextLost = (e: Event) => {
             e.preventDefault();
-            console.warn('[FXK] WebGL context lost — will attempt recovery');
-            // Reset shared material so it gets recreated
+            if (recoveringContextRef.current) return;
+            recoveringContextRef.current = true;
+            console.warn('[FXK] WebGL context lost — remounting renderer');
+            _starMaterialInstance?.dispose();
             _starMaterialInstance = null;
-          });
-          canvas.addEventListener('webglcontextrestored', () => {
+            setCanvasInstanceKey((prev) => prev + 1);
+          };
+
+          const handleContextRestored = () => {
             console.log('[FXK] WebGL context restored');
+            recoveringContextRef.current = false;
+            _starMaterialInstance?.dispose();
             _starMaterialInstance = null;
-          });
+          };
+
+          canvas.addEventListener('webglcontextlost', handleContextLost as EventListener);
+          canvas.addEventListener('webglcontextrestored', handleContextRestored as EventListener);
         }}>
         <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.3} far={20000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook} />
