@@ -76,7 +76,7 @@ export default function QuadcopterModel({
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={0.004}
+          opacity={0.003}
           depthWrite={false}
         />
       </mesh>
