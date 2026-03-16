@@ -701,11 +701,14 @@ function TimelineEffects() {
 
   // Cap simultaneous firework bursts to prevent GPU context loss
   const cappedEffects = useMemo(() => {
+    const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
+    const maxConcurrentBursts = isMobileViewport ? MAX_CONCURRENT_BURSTS_MOBILE : MAX_CONCURRENT_BURSTS_DESKTOP;
+
     let burstCount = 0;
     return activeEffects.filter(({ effect }) => {
       if (effect.type === 'firework') {
         burstCount++;
-        if (burstCount > MAX_CONCURRENT_BURSTS) return false;
+        if (burstCount > maxConcurrentBursts) return false;
       }
       return true;
     });
