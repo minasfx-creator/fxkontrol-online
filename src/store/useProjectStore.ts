@@ -101,6 +101,13 @@ export interface DroneFormation {
   points: { x: number; z: number }[];
 }
 
+export interface CueMarker {
+  id: string;
+  time: number;       // seconds
+  label: string;
+  color: string;      // HSL string
+}
+
 export interface CameraKeyframe {
   id: string;
   time: number;
