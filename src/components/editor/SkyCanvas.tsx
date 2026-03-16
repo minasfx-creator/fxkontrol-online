@@ -3145,6 +3145,9 @@ export default function SkyCanvas() {
         )}
       </div>
 
+      {/* Debug overlay toggle + panel */}
+      {!isMobile && showDebugOverlay && <RenderDebugPanel />}
+
       {/* Fullscreen floating edit menu */}
       {isFullscreen && <FullscreenEditMenu />}
 
