@@ -1866,6 +1866,9 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
       }
     }
 
+    // Cap accumulated luminance to prevent ACES white-out with many simultaneous bursts
+    luminance = Math.min(luminance, 15);
+
     if (luminance > 2 && delta < 0.1) {
       flashEvent(state, Math.min(luminance * 0.15, 0.8));
     }
@@ -1873,7 +1876,6 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
     const exposure = updateExposure(state, luminance, delta);
     _adaptiveExposure = exposure;
     setDebugExposure(exposure);
-    // NoToneMapping no renderer — exposure is consumed by particle HDR scaling
     // ACES in PostProcessing remains the single HDR→SDR tone-mapping pass
 
     // Update sky scatter uniforms
