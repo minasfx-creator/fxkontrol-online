@@ -73,8 +73,7 @@ export default function PostProcessing() {
         />
       )}
 
-      {/* ACES Filmic — punchier HDR with rich highlight rolloff */}
-      <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+      {/* ACES Filmic now handled at renderer level — no duplicate tone mapping */}
     </EffectComposer>
   );
 }
