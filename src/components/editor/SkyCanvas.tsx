@@ -574,12 +574,12 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
         
         // Finale trail thermal: white center → warm gold → colored → faint
         const trailWarmth = Math.pow(segFrac, 0.4);
-        tCol[base2] = THREE.MathUtils.lerp(1.2, r * 0.7, trailWarmth) * segFade;
-        tCol[base2 + 1] = THREE.MathUtils.lerp(0.8, g * 0.4, trailWarmth) * segFade;
-        tCol[base2 + 2] = THREE.MathUtils.lerp(0.35, b * 0.15, trailWarmth) * segFade;
-        tCol[base2 + 3] = THREE.MathUtils.lerp(1.2, r * 0.7, trailWarmth) * endFade;
-        tCol[base2 + 4] = THREE.MathUtils.lerp(0.8, g * 0.4, trailWarmth) * endFade;
-        tCol[base2 + 5] = THREE.MathUtils.lerp(0.35, b * 0.15, trailWarmth) * endFade;
+        tCol[base2] = THREE.MathUtils.lerp(0.9, r * 0.75, trailWarmth) * segFade;
+        tCol[base2 + 1] = THREE.MathUtils.lerp(0.55, g * 0.5, trailWarmth) * segFade;
+        tCol[base2 + 2] = THREE.MathUtils.lerp(0.25, b * 0.2, trailWarmth) * segFade;
+        tCol[base2 + 3] = THREE.MathUtils.lerp(0.9, r * 0.75, trailWarmth) * endFade;
+        tCol[base2 + 4] = THREE.MathUtils.lerp(0.55, g * 0.5, trailWarmth) * endFade;
+        tCol[base2 + 5] = THREE.MathUtils.lerp(0.25, b * 0.2, trailWarmth) * endFade;
       }
     }
 
