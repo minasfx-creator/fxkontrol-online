@@ -2091,7 +2091,7 @@ const SparkTrailController = React.forwardRef<THREE.Group, {}>(function SparkTra
   });
 
   return null;
-}
+});
 
 
 const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflections(_props, _ref) {
