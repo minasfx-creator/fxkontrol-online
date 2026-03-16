@@ -186,7 +186,6 @@ const STAR_FRAGMENT_SHADER = `
   varying vec3 vColor;
   varying float vLife;
   varying float vSize;
-  varying float vSeed;
   void main() {
     vec2 uv = gl_PointCoord - 0.5;
     float dist = length(uv);
