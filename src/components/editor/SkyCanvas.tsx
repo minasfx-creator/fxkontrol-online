@@ -240,8 +240,9 @@ function FireworkBurst({
   const lod = useLOD(position);
   
   // Niagara-style: particle count scales with shell volume, reduced by LOD
-  const STAR_COUNT = useMemo(() => Math.min(3000, Math.round((150 + caliber * caliber * 32) * lod.particleMultiplier)), [caliber, lod.particleMultiplier]);
-  const TRAIL_LENGTH = useMemo(() => Math.max(2, Math.min(24, Math.floor((10 + caliber * 1.5) * lod.trailLength))), [caliber, lod.trailLength]);
+  // CAPPED to prevent GPU memory exhaustion with many simultaneous bursts
+  const STAR_COUNT = useMemo(() => Math.min(1200, Math.round((100 + caliber * caliber * 18) * lod.particleMultiplier)), [caliber, lod.particleMultiplier]);
+  const TRAIL_LENGTH = useMemo(() => Math.max(2, Math.min(16, Math.floor((8 + caliber * 1.2) * lod.trailLength))), [caliber, lod.trailLength]);
   
   // Real break speed from pyroPhysics — caliber proportional (m/s)
   const breakSpeed = useMemo(() => getBreakSpeed(caliber), [caliber]);
