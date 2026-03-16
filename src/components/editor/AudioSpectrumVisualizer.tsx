@@ -25,7 +25,7 @@ function getBarColor(i: number, total: number): THREE.Color {
   return new THREE.Color().setHSL(0.12, 0.95, 0.55); // gold
 }
 
-export default function AudioSpectrumVisualizer() {
+const AudioSpectrumVisualizer = React.forwardRef<any>(function AudioSpectrumVisualizer(_props, _ref) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const dataRef = useRef<FreqData>(new Uint8Array(BAR_COUNT));
