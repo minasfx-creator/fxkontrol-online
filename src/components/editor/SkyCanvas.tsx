@@ -1889,6 +1889,30 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
   return null;
 });
 
+// ═══ DEBUG FEED — pushes renderer stats to DOM overlay at ~4Hz ═══
+function DebugFeed() {
+  const { gl, camera } = useThree();
+  const frameCount = useRef(0);
+  const lastTime = useRef(performance.now());
+
+  useFrame(() => {
+    frameCount.current++;
+    const now = performance.now();
+    if (now - lastTime.current >= 250) {
+      const fps = Math.round((frameCount.current * 1000) / (now - lastTime.current));
+      frameCount.current = 0;
+      lastTime.current = now;
+      const info = gl.info.render;
+      setDebugRendererInfo(fps, info.calls, info.triangles);
+      const origin = new THREE.Vector3(0, 100, 0);
+      const dist = Math.round(camera.position.distanceTo(origin));
+      const lod = calculateLOD(camera.position, origin);
+      setDebugLOD(lod.tier, dist);
+    }
+  });
+  return null;
+}
+
 // ═══ GLOBAL ILLUMINATION — Hemisphere light probes from explosions ═══
 // Fake GI: each explosion registers a color probe that bounces light onto the scene
 const GlobalIlluminationController = React.forwardRef<THREE.Group, {}>(function GlobalIlluminationController(_props, _ref) {
