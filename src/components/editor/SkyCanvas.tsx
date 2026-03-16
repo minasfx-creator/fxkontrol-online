@@ -1877,7 +1877,7 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
     _adaptiveExposure = exposure;
     setDebugExposure(exposure);
     // Blender-style: apply adaptive exposure to renderer before ACES tone mapping
-    state_r3f.gl.toneMappingExposure = THREE.MathUtils.clamp(exposure, 0.3, 1.8);
+    gl.toneMappingExposure = THREE.MathUtils.clamp(exposure, 0.3, 1.8);
 
     // Update sky scatter uniforms
     if (_skyScatterUniforms) {
