@@ -168,18 +168,14 @@ function getWindForce(): [number, number, number] {
 const STAR_VERTEX_SHADER = `
   attribute float aSize;
   attribute float aLife;
-  attribute float aSeed;
   varying vec3 vColor;
   varying float vLife;
   varying float vSize;
-  varying float vSeed;
   void main() {
     vColor = color;
     vLife = aLife;
     vSize = aSize;
-    vSeed = aSeed;
     vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-    // Blender-calibrated: tighter point size for realistic star scale
     gl_PointSize = aSize * (1600.0 / -mvPos.z);
     gl_PointSize = clamp(gl_PointSize, 1.0, 140.0);
     gl_Position = projectionMatrix * mvPos;
@@ -190,7 +186,6 @@ const STAR_FRAGMENT_SHADER = `
   varying vec3 vColor;
   varying float vLife;
   varying float vSize;
-  varying float vSeed;
   void main() {
     vec2 uv = gl_PointCoord - 0.5;
     float dist = length(uv);
@@ -219,8 +214,9 @@ const STAR_FRAGMENT_SHADER = `
   }
 `;
 
-// ═══ Shared star material singleton — prevents per-burst GPU allocation ═══
+// ═══ Star material factory — creates fresh material per Canvas lifecycle ═══
 let _starMaterialInstance: THREE.ShaderMaterial | null = null;
+let _starMaterialVersion = 0;
 function _sharedStarMaterial(): THREE.ShaderMaterial {
   if (!_starMaterialInstance) {
     _starMaterialInstance = new THREE.ShaderMaterial({
@@ -231,6 +227,7 @@ function _sharedStarMaterial(): THREE.ShaderMaterial {
       depthWrite: false,
       blending: THREE.AdditiveBlending,
     });
+    _starMaterialVersion++;
   }
   return _starMaterialInstance;
 }
@@ -406,8 +403,8 @@ function FireworkBurst({
   const trailPosRef = useRef(new Float32Array(trailVertCount * 3));
   const trailColRef = useRef(new Float32Array(trailVertCount * 3));
 
-  // Shared shader material — singleton to reduce GPU state changes
-  const starMaterial = useMemo(() => _sharedStarMaterial(), []);
+  // Star material — recreates after WebGL context recovery
+  const starMaterial = useMemo(() => _sharedStarMaterial(), [_starMaterialVersion]);
 
   // ═══ CLEANUP: dispose GPU resources on unmount to prevent context loss ═══
   useEffect(() => {
