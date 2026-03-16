@@ -472,25 +472,23 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
               )}
             </div>
             <div className="space-y-1.5">
-              <Select value={authScope} onValueChange={(v) => setAuthScope(v as AuthorizationScope)}>
-                <SelectTrigger className="h-7 text-[9px] bg-surface-1/40 border-border/30 rounded-lg">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-card/97 backdrop-blur-2xl">
-                  <SelectItem value="live" className="text-[10px]">🟢 Live Mode</SelectItem>
-                  <SelectItem value="rehearsal" className="text-[10px]">🟡 Rehearsal</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={startMethod} onValueChange={(v) => setStartMethod(v as StartMethod)}>
-                <SelectTrigger className="h-7 text-[9px] bg-surface-1/40 border-border/30 rounded-lg">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-card/97 backdrop-blur-2xl">
-                  <SelectItem value="auto" className="text-[10px]">Manual Start</SelectItem>
-                  <SelectItem value="rc" className="text-[10px]">RC Trigger</SelectItem>
-                  <SelectItem value="gps_time" className="text-[10px]">GPS Time Sync</SelectItem>
-                </SelectContent>
-              </Select>
+              <select
+                value={authScope}
+                onChange={(e) => setAuthScope(e.target.value as AuthorizationScope)}
+                className="h-7 w-full text-[9px] bg-surface-1/40 border border-border/30 rounded-lg px-2 text-foreground"
+              >
+                <option value="live">🟢 Live Mode</option>
+                <option value="rehearsal">🟡 Rehearsal</option>
+              </select>
+              <select
+                value={startMethod}
+                onChange={(e) => setStartMethod(e.target.value as StartMethod)}
+                className="h-7 w-full text-[9px] bg-surface-1/40 border border-border/30 rounded-lg px-2 text-foreground"
+              >
+                <option value="auto">Manual Start</option>
+                <option value="rc">RC Trigger</option>
+                <option value="gps_time">GPS Time Sync</option>
+              </select>
               {startMethod === 'gps_time' && (
                 <Input type="time" step="1" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)}
                   className="h-7 text-[9px] bg-surface-1/40 border-border/30 rounded-lg" />
