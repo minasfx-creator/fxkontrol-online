@@ -219,6 +219,22 @@ const STAR_FRAGMENT_SHADER = `
   }
 `;
 
+// ═══ Shared star material singleton — prevents per-burst GPU allocation ═══
+let _starMaterialInstance: THREE.ShaderMaterial | null = null;
+function _sharedStarMaterial(): THREE.ShaderMaterial {
+  if (!_starMaterialInstance) {
+    _starMaterialInstance = new THREE.ShaderMaterial({
+      vertexShader: STAR_VERTEX_SHADER,
+      fragmentShader: STAR_FRAGMENT_SHADER,
+      vertexColors: true,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+  }
+  return _starMaterialInstance;
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // Niagara-inspired FireworkBurst:
 // - Custom star sprite shader (gaussian glow discs)
