@@ -1870,8 +1870,9 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
     }
 
     const exposure = updateExposure(state, luminance, delta);
-    // NoToneMapping on renderer — exposure stored for sky scatter only
-    // ACES in PostProcessing handles HDR rolloff automatically
+    _adaptiveExposure = exposure;
+    // NoToneMapping no renderer — exposure is consumed by particle HDR scaling
+    // ACES in PostProcessing remains the single HDR→SDR tone-mapping pass
 
     // Update sky scatter uniforms
     if (_skyScatterUniforms) {
