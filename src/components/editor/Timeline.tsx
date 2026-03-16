@@ -415,7 +415,7 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
 const MIN_PPS = 4;
 const MAX_PPS = 80;
 
-export default function Timeline() {
+const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, _ref) {
   const {
     isPlaying, setPlaying, currentTime, setCurrentTime, duration,
     selectedTimelineItemId, removeTimelineItem, timelineItems,
