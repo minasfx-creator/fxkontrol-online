@@ -476,7 +476,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
         </Button>
       </div>
 
-      <div className="w-px h-6 bg-border/20 mx-1" />
+      {!isMobile && <div className="w-px h-6 bg-border/20 mx-1" />}
 
       {/* Mode tools */}
       <div className="btn-group">
