@@ -153,21 +153,21 @@ function createShapeFromPoints(pts: [number, number, number][]): THREE.Shape {
 }
 
 // ═══ Click handler for placing geo items ═══
-export function GeoToolClickHandler({
-  activeTool,
-  onPlaceMarker,
-  onPlaceRulerPoint,
-  onPlacePathPoint,
-  onFinishRuler,
-  onFinishPath,
-}: {
+export const GeoToolClickHandler = forwardRef<any, {
   activeTool: GeoToolMode;
   onPlaceMarker: (pos: [number, number, number]) => void;
   onPlaceRulerPoint: (pos: [number, number, number]) => void;
   onPlacePathPoint: (pos: [number, number, number]) => void;
   onFinishRuler: () => void;
   onFinishPath: () => void;
-}) {
+}>(function GeoToolClickHandler({
+  activeTool,
+  onPlaceMarker,
+  onPlaceRulerPoint,
+  onPlacePathPoint,
+  onFinishRuler,
+  onFinishPath,
+}, _ref) {
   if (activeTool === 'none') return null;
 
   return (
@@ -193,7 +193,7 @@ export function GeoToolClickHandler({
       <meshBasicMaterial visible={false} />
     </mesh>
   );
-}
+});
 
 // ═══ Main group for all geo objects ═══
 export function GeoToolsScene({
