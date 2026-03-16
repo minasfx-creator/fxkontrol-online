@@ -1331,28 +1331,124 @@ function GrassGround() {
     }
   `;
 
+  // Unified terrain shader — blends near-field detail into far terrain seamlessly
+  const unifiedFragment = `
+    uniform float time;
+    uniform vec3 moonDir;
+    uniform vec3 camPos;
+    varying vec2 vUv;
+    varying vec3 vWorldPos;
+    varying vec3 vNormal;
+    varying vec3 vViewDir;
+
+    float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+    float noise(vec2 p) {
+      vec2 i = floor(p); vec2 f = fract(p);
+      f = f * f * (3.0 - 2.0 * f);
+      return mix(mix(hash(i), hash(i + vec2(1,0)), f.x),
+                 mix(hash(i + vec2(0,1)), hash(i + vec2(1,1)), f.x), f.y);
+    }
+    float fbm(vec2 p) {
+      float v = 0.0; float a = 0.5;
+      for (int i = 0; i < 5; i++) { v += a * noise(p); p *= 2.1; a *= 0.5; }
+      return v;
+    }
+    float voronoi(vec2 p) {
+      vec2 n = floor(p); vec2 f = fract(p);
+      float md = 1.0;
+      for (int j = -1; j <= 1; j++)
+        for (int i = -1; i <= 1; i++) {
+          vec2 g = vec2(float(i), float(j));
+          vec2 o = vec2(hash(n + g), hash(n + g + 37.0));
+          vec2 r = g + o - f;
+          md = min(md, dot(r, r));
+        }
+      return sqrt(md);
+    }
+
+    void main() {
+      vec2 worldUV = vWorldPos.xz;
+      float distFromCenter = length(worldUV);
+      
+      // LOD blend factor: 0 = near (detailed), 1 = far (satellite)
+      float lodBlend = smoothstep(200.0, 600.0, distFromCenter);
+      
+      // === NEAR FIELD: detailed grass with mowing pattern ===
+      float largN = fbm(worldUV * 0.03);
+      float fineN = noise(worldUV * 5.0);
+      vec3 grassA = vec3(0.06, 0.16, 0.04);
+      vec3 grassB = vec3(0.10, 0.22, 0.06);
+      vec3 nearColor = mix(grassA, grassB, smoothstep(0.3, 0.7, largN));
+      nearColor += vec3(0.01, 0.025, 0.005) * fineN * 0.2;
+      // Diamond mowing pattern
+      float stripes = sin(worldUV.x * 1.5) * 0.5 + 0.5;
+      float crossStripes = sin(worldUV.y * 1.5 + 0.785) * 0.5 + 0.5;
+      nearColor = mix(nearColor, nearColor * 1.1, stripes * crossStripes * 0.12);
+      
+      // === FAR FIELD: satellite-style terrain ===
+      float large = fbm(worldUV * 0.005);
+      float medium = fbm(worldUV * 0.015 + 100.0);
+      float fine = noise(worldUV * 0.08);
+      float parcels = voronoi(worldUV * 0.008);
+      float roads = voronoi(worldUV * 0.003);
+      
+      vec3 darkForest  = vec3(0.04, 0.07, 0.02);
+      vec3 forest      = vec3(0.06, 0.11, 0.04);
+      vec3 farmGreen   = vec3(0.08, 0.14, 0.05);
+      vec3 fieldGreen  = vec3(0.12, 0.18, 0.06);
+      vec3 dryField    = vec3(0.18, 0.17, 0.08);
+      vec3 brownEarth  = vec3(0.14, 0.10, 0.05);
+      vec3 roadGrey    = vec3(0.12, 0.11, 0.10);
+      vec3 urbanGrey   = vec3(0.10, 0.09, 0.08);
+      
+      vec3 farColor = mix(darkForest, forest, smoothstep(0.3, 0.6, large));
+      farColor = mix(farColor, farmGreen, smoothstep(0.4, 0.65, medium) * 0.7);
+      farColor = mix(farColor, fieldGreen, smoothstep(0.5, 0.75, fine) * 0.5);
+      float parcelEdge = smoothstep(0.05, 0.08, parcels);
+      vec3 parcelColor = mix(dryField, farmGreen, step(0.5, hash(floor(worldUV * 0.04))));
+      parcelColor = mix(parcelColor, fieldGreen, step(0.7, hash(floor(worldUV * 0.04) + 10.0)));
+      farColor = mix(brownEarth * 0.8, mix(farColor, parcelColor, 0.4), parcelEdge);
+      float roadMask = smoothstep(0.02, 0.04, roads);
+      farColor = mix(roadGrey, farColor, roadMask);
+      float urbanMask = smoothstep(0.7, 0.85, fbm(worldUV * 0.02 + 300.0));
+      farColor = mix(farColor, urbanGrey, urbanMask * 0.3);
+      float windWave = sin(worldUV.x * 0.3 + time * 0.4) * cos(worldUV.y * 0.2 + time * 0.3);
+      farColor += vec3(0.008, 0.015, 0.004) * windWave * 0.3 * (1.0 - urbanMask);
+      
+      // === BLEND near ↔ far ===
+      vec3 color = mix(nearColor, farColor, lodBlend);
+      
+      // Moonlight
+      float NdotL = max(dot(vNormal, moonDir), 0.0);
+      float subsurface = max(dot(-vNormal, moonDir), 0.0) * 0.04;
+      color *= (NdotL * 0.55 + subsurface + 0.22);
+      
+      // Specular
+      vec3 halfDir = normalize(moonDir + vViewDir);
+      float spec = pow(max(dot(vNormal, halfDir), 0.0), 26.0);
+      float wetness = smoothstep(0.6, 0.8, fineN) * (1.0 - lodBlend);
+      color += vec3(0.03, 0.05, 0.08) * spec * (0.3 + wetness * 0.2);
+      
+      // Distance atmosphere
+      float dist = distFromCenter * 0.0015;
+      float fogFactor = smoothstep(0.0, 1.0, dist);
+      vec3 atmosphereColor = vec3(0.08, 0.10, 0.18);
+      color = mix(color, atmosphereColor, fogFactor * 0.7);
+      color *= 1.0 - fogFactor * 0.25;
+      
+      gl_FragColor = vec4(color, 1.0);
+    }
+  `;
+
   return (
-    <>
-      {/* Far terrain — Google Earth satellite style */}
-      <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[20000, 20000, 4, 4]} />
-        <shaderMaterial
-          uniforms={uniforms}
-          vertexShader={terrainVertexShader}
-          fragmentShader={terrainFragmentShader}
-        />
-      </mesh>
-      {/* Near-stage grass with mowing pattern */}
-      <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[250, 64]} />
-        <shaderMaterial
-          uniforms={uniforms}
-          vertexShader={terrainVertexShader}
-          fragmentShader={nearFieldFragment}
-          transparent={false}
-        />
-      </mesh>
-    </>
+    <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <planeGeometry args={[20000, 20000, 16, 16]} />
+      <shaderMaterial
+        uniforms={uniforms}
+        vertexShader={terrainVertexShader}
+        fragmentShader={unifiedFragment}
+      />
+    </mesh>
   );
 }
 
@@ -1564,83 +1660,82 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
   });
 
   return (
-    <>
-      {/* Main ground with procedural PBR detail */}
-      <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[20000, 20000, 8, 8]} />
-        <shaderMaterial
-          uniforms={uniforms}
-          vertexShader={`
-            varying vec2 vUv;
-            varying vec3 vWorldPos;
-            varying vec3 vViewDir;
-            uniform vec3 camPos;
-            void main() {
-              vUv = uv;
-              vec4 wp = modelMatrix * vec4(position, 1.0);
-              vWorldPos = wp.xyz;
-              vViewDir = normalize(camPos - wp.xyz);
-              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-            }
-          `}
-          fragmentShader={`
-            uniform float time;
-            varying vec2 vUv;
-            varying vec3 vWorldPos;
-            varying vec3 vViewDir;
+    <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <planeGeometry args={[20000, 20000, 16, 16]} />
+      <shaderMaterial
+        uniforms={uniforms}
+        vertexShader={`
+          varying vec2 vUv;
+          varying vec3 vWorldPos;
+          varying vec3 vViewDir;
+          uniform vec3 camPos;
+          void main() {
+            vUv = uv;
+            vec4 wp = modelMatrix * vec4(position, 1.0);
+            vWorldPos = wp.xyz;
+            vViewDir = normalize(camPos - wp.xyz);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `}
+        fragmentShader={`
+          uniform float time;
+          varying vec2 vUv;
+          varying vec3 vWorldPos;
+          varying vec3 vViewDir;
+          
+          float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+          float noise(vec2 p) {
+            vec2 i = floor(p); vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
+                       mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+          }
+          float fbm(vec2 p) {
+            float v = 0.0; float a = 0.5;
+            for (int i = 0; i < 4; i++) { v += a * noise(p); p *= 2.1; a *= 0.5; }
+            return v;
+          }
+          
+          void main() {
+            vec2 wuv = vWorldPos.xz;
+            float distFromCenter = length(wuv);
             
-            float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-            float noise(vec2 p) {
-              vec2 i = floor(p); vec2 f = fract(p);
-              f = f * f * (3.0 - 2.0 * f);
-              return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
-                         mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
-            }
+            // Multi-scale surface detail — consistent everywhere
+            float n1 = noise(wuv * 0.02) * 0.5 + noise(wuv * 0.08) * 0.3 + noise(wuv * 0.4) * 0.2;
+            float micro = noise(wuv * 2.0) * 0.1;
+            float largeFbm = fbm(wuv * 0.003);
             
-            void main() {
-              vec2 wuv = vWorldPos.xz;
-              // Multi-scale surface detail
-              float n1 = noise(wuv * 0.02) * 0.5 + noise(wuv * 0.08) * 0.3 + noise(wuv * 0.4) * 0.2;
-              float micro = noise(wuv * 2.0) * 0.1;
-              
-              // Dark earth base with subtle variation
-              float b = ${b.toFixed(3)};
-              vec3 darkBase = vec3(0.015 * b, 0.025 * b, 0.015 * b);
-              vec3 lighter = vec3(0.035 * b, 0.055 * b, 0.03 * b);
-              vec3 color = mix(darkBase, lighter, n1);
-              color += micro * vec3(0.01, 0.015, 0.008);
-              
-              // Wet specular reflection from moonlight
-              float fresnel = pow(1.0 - max(vViewDir.y, 0.0), 4.0);
-              color += vec3(0.008, 0.012, 0.02) * fresnel * 0.5;
-              
-              // Distance fade to darker
-              float dist = length(wuv) * 0.001;
-              color *= 1.0 - smoothstep(0.3, 1.0, dist) * 0.6;
-              
-              gl_FragColor = vec4(color, 1.0);
-            }
-          `}
-        />
-      </mesh>
-      {/* Near-field circle — wet-asphalt PBR with clearcoat reflections */}
-      <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[250, 64]} />
-        <meshPhysicalMaterial
-          color={new THREE.Color(0.05 * b, 0.05 * b, 0.06 * b)}
-          roughness={0.2}
-          metalness={0.15}
-          clearcoat={1.0}
-          clearcoatRoughness={0.1}
-          envMapIntensity={1.8}
-        />
-      </mesh>
-      {/* Contact shadow circle under launch area */}
-      <mesh position={[0, 0.003, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[40, 32]} />
-        <meshBasicMaterial color="#000000" transparent opacity={0.15} />
-      </mesh>
-    </>
+            // Dark earth base with subtle variation
+            float b = ${b.toFixed(3)};
+            vec3 darkBase = vec3(0.015 * b, 0.025 * b, 0.015 * b);
+            vec3 lighter = vec3(0.035 * b, 0.055 * b, 0.03 * b);
+            vec3 color = mix(darkBase, lighter, n1);
+            color += micro * vec3(0.01, 0.015, 0.008);
+            
+            // Subtle terrain variation at large scale
+            vec3 darkPatch = vec3(0.008 * b, 0.012 * b, 0.008 * b);
+            color = mix(color, darkPatch, smoothstep(0.3, 0.7, largeFbm) * 0.4);
+            
+            // Wet specular reflection from moonlight — uniform everywhere
+            float fresnel = pow(1.0 - max(vViewDir.y, 0.0), 4.0);
+            color += vec3(0.008, 0.012, 0.02) * fresnel * 0.5;
+            
+            // Clearcoat-like specular near center (launch area wetness)
+            float nearBlend = 1.0 - smoothstep(0.0, 400.0, distFromCenter);
+            float viewAngle = pow(1.0 - max(vViewDir.y, 0.0), 6.0);
+            color += vec3(0.015, 0.02, 0.035) * viewAngle * nearBlend * 0.8;
+            
+            // Atmospheric fade at extreme distance
+            float dist = distFromCenter * 0.001;
+            float fogFactor = smoothstep(0.5, 1.5, dist);
+            vec3 atmosphereColor = vec3(0.02 * b, 0.025 * b, 0.04 * b);
+            color = mix(color, atmosphereColor, fogFactor * 0.5);
+            
+            gl_FragColor = vec4(color, 1.0);
+          }
+        `}
+      />
+    </mesh>
   );
 }
 
@@ -1648,24 +1743,14 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
 function ConcreteGround({ brightness }: { brightness: number }) {
   const b = brightness * 0.5;
   return (
-    <>
-      <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[20000, 20000]} />
-        <meshStandardMaterial
-          color={new THREE.Color(0.06 * b, 0.06 * b, 0.065 * b)}
-          roughness={0.95}
-          metalness={0.1}
-        />
-      </mesh>
-      <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[300, 64]} />
-        <meshStandardMaterial
-          color={new THREE.Color(0.08 * b, 0.08 * b, 0.085 * b)}
-          roughness={0.9}
-          metalness={0.15}
-        />
-      </mesh>
-    </>
+    <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <planeGeometry args={[20000, 20000]} />
+      <meshStandardMaterial
+        color={new THREE.Color(0.07 * b, 0.07 * b, 0.075 * b)}
+        roughness={0.92}
+        metalness={0.12}
+      />
+    </mesh>
   );
 }
 
