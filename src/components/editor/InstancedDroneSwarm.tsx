@@ -76,7 +76,7 @@ export default function InstancedDroneSwarm({
   // Selection glow — NO additive
   const glowMat = useMemo(() => new THREE.MeshBasicMaterial({
     transparent: true,
-    opacity: 0.12,
+    opacity: 0.096,
     side: THREE.DoubleSide,
     depthWrite: false,
   }), []);
