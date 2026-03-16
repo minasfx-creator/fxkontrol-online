@@ -73,13 +73,12 @@ export default function InstancedDroneSwarm({
     return m;
   }, []);
 
-  // Selection glow
+  // Selection glow — NO additive
   const glowMat = useMemo(() => new THREE.MeshBasicMaterial({
     transparent: true,
-    opacity: 0.5,
+    opacity: 0.3,
     side: THREE.DoubleSide,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
   }), []);
 
   // LED halo — barely visible, just a hint
