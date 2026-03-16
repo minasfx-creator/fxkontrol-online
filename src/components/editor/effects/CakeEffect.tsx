@@ -1,24 +1,29 @@
-import { useMemo } from 'react';
+import { forwardRef, useMemo } from 'react';
 import * as THREE from 'three';
 import { getBreakHeight, getMortarVelocity, GRAVITY, getStarLifetime } from '@/lib/pyroPhysics';
 
 const PARTICLES_PER_SHOT = 55;
 
-function CakeShot({
-  offset,
-  color,
-  progress,
-  seed,
-  angle,
-  caliber,
-}: {
+interface CakeShotProps {
   offset: [number, number, number];
   color: string;
   progress: number;
   seed: number;
   angle: number;
   caliber: number;
-}) {
+}
+
+const CakeShot = forwardRef<THREE.Group, CakeShotProps>(function CakeShot(
+  {
+    offset,
+    color,
+    progress,
+    seed,
+    angle,
+    caliber,
+  },
+  ref,
+) {
   const breakH = useMemo(() => getBreakHeight(caliber), [caliber]);
   const v0 = useMemo(() => getMortarVelocity(caliber), [caliber]);
   const starLife = useMemo(() => getStarLifetime(caliber), [caliber]);
@@ -50,11 +55,11 @@ function CakeShot({
 
   if (isLifting) {
     const liftProgress = progress / liftFraction;
-    const t = liftProgress * (v0 / Math.abs(GRAVITY)); 
+    const t = liftProgress * (v0 / Math.abs(GRAVITY));
     const shellY = Math.min(breakH, v0 * t * 0.3 + 0.5 * GRAVITY * t * t * 0.09);
     const realY = Math.max(0, liftProgress * breakH * 0.7);
     return (
-      <group position={offset}>
+      <group ref={ref} position={offset}>
         {/* Rising shell */}
         <mesh position={[Math.sin(angle) * liftProgress * 1.5, realY, Math.cos(angle) * liftProgress * 0.3]}>
           <sphereGeometry args={[0.06 + caliber * 0.01, 6, 6]} />
@@ -109,7 +114,7 @@ function CakeShot({
   }
 
   return (
-    <group position={offset}>
+    <group ref={ref} position={offset}>
       {/* Break flash */}
       {burstProgress < 0.08 && (
         <mesh position={[0, breakH * 0.7, 0]}>
@@ -126,37 +131,45 @@ function CakeShot({
       </points>
     </group>
   );
-}
+});
 
-/**
- * Cake / Battery Effect: Multi-shot device firing shells sequentially.
- * Realistic physics: caliber-based break height, star spread, and gravity.
- */
-export default function CakeEffect({
-  position,
-  color,
-  progress,
-  shotCount = 16,
-  pattern = 'regular',
-  caliber = 2,
-}: {
+CakeShot.displayName = 'CakeShot';
+
+interface CakeEffectProps {
   position: [number, number, number];
   color: string;
   progress: number;
   shotCount?: number;
   pattern?: 'regular' | 'z-pattern' | 'fan';
   caliber?: number;
-}) {
+}
+
+/**
+ * Cake / Battery Effect: Multi-shot device firing shells sequentially.
+ * Realistic physics: caliber-based break height, star spread, and gravity.
+ */
+const CakeEffect = forwardRef<THREE.Group, CakeEffectProps>(function CakeEffect(
+  {
+    position,
+    color,
+    progress,
+    shotCount = 16,
+    pattern = 'regular',
+    caliber = 2,
+  },
+  ref,
+) {
   const shots = useMemo(() => {
     const s: { delay: number; angle: number; seed: number; offset: [number, number, number] }[] = [];
     for (let i = 0; i < shotCount; i++) {
       let angle = 0;
-      let ox = 0, oz = 0;
+      let ox = 0;
+      const oz = 0;
       if (pattern === 'z-pattern') {
         angle = ((i % 2 === 0 ? 1 : -1) * (i / shotCount)) * 0.35;
-        ox = ((i % 2 === 0 ? 1 : -1)) * 0.3;
+        ox = (i % 2 === 0 ? 1 : -1) * 0.3;
       } else if (pattern === 'fan') {
-        angle = ((i / shotCount) - 0.5) * 1.0;
+        angle = (i / shotCount - 0.5) * 1.0;
         ox = Math.sin(angle) * 0.2;
       }
       s.push({
@@ -170,9 +183,9 @@ export default function CakeEffect({
   }, [shotCount, pattern]);
 
   return (
-    <group position={position}>
+    <group ref={ref} position={position}>
       {shots.map((shot, i) => {
-        const shotDuration = 1 / shotCount * 2.5;
+        const shotDuration = (1 / shotCount) * 2.5;
         const shotProgress = (progress - shot.delay) / shotDuration;
         return (
           <CakeShot
@@ -188,4 +201,8 @@ export default function CakeEffect({
       })}
     </group>
   );
-}
+});
+
+CakeEffect.displayName = 'CakeEffect';
+
+export default CakeEffect;
