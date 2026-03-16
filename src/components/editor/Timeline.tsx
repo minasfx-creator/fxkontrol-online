@@ -41,9 +41,9 @@ const BeatGrid = React.forwardRef<HTMLDivElement, { duration: number; pixelsPerS
     );
   }
   return <>{lines}</>;
-}
+});
 
-function TimeRuler({ duration, pixelsPerSecond }: { duration: number; pixelsPerSecond: number }) {
+const TimeRuler = React.forwardRef<HTMLDivElement, { duration: number; pixelsPerSecond: number }>(function TimeRuler({ duration, pixelsPerSecond }, _ref) {
   const marks = [];
   let step: number;
   if (pixelsPerSecond >= 40) step = 1;
