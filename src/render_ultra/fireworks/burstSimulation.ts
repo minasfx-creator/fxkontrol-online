@@ -16,16 +16,17 @@ interface BurstConfig {
   symmetry: number;       // radial symmetry count
 }
 
+// Star counts calibrated to Finale 3D reference at 3" (75mm) baseline
 const BURST_CONFIGS: Record<BurstPattern, BurstConfig> = {
-  peony: { starCount: 300, velocity: 45, spread: 1.0, tailFactor: 0.3, gravityMult: 1.0, symmetry: 0 },
-  chrysanthemum: { starCount: 500, velocity: 55, spread: 1.0, tailFactor: 0.9, gravityMult: 0.8, symmetry: 0 },
-  willow: { starCount: 400, velocity: 35, spread: 0.8, tailFactor: 1.5, gravityMult: 1.4, symmetry: 0 },
-  palm: { starCount: 200, velocity: 50, spread: 0.6, tailFactor: 1.2, gravityMult: 1.2, symmetry: 6 },
-  ring: { starCount: 150, velocity: 40, spread: 0.1, tailFactor: 0.5, gravityMult: 0.6, symmetry: 0 },
-  heart: { starCount: 200, velocity: 38, spread: 0.0, tailFactor: 0.4, gravityMult: 0.7, symmetry: 0 },
-  crossette: { starCount: 120, velocity: 50, spread: 0.9, tailFactor: 0.6, gravityMult: 1.0, symmetry: 4 },
-  kamuro: { starCount: 600, velocity: 30, spread: 1.0, tailFactor: 2.0, gravityMult: 1.5, symmetry: 0 },
-  brocade: { starCount: 500, velocity: 40, spread: 1.0, tailFactor: 1.8, gravityMult: 1.3, symmetry: 0 },
+  peony:         { starCount: 150, velocity: 28, spread: 1.0, tailFactor: 0.3, gravityMult: 1.0, symmetry: 0 },
+  chrysanthemum: { starCount: 200, velocity: 30, spread: 1.0, tailFactor: 0.9, gravityMult: 0.8, symmetry: 0 },
+  willow:        { starCount: 180, velocity: 20, spread: 0.8, tailFactor: 1.5, gravityMult: 1.4, symmetry: 0 },
+  palm:          { starCount: 60,  velocity: 24, spread: 0.6, tailFactor: 1.2, gravityMult: 1.2, symmetry: 6 },
+  ring:          { starCount: 80,  velocity: 28, spread: 0.1, tailFactor: 0.5, gravityMult: 0.6, symmetry: 0 },
+  heart:         { starCount: 100, velocity: 26, spread: 0.0, tailFactor: 0.4, gravityMult: 0.7, symmetry: 0 },
+  crossette:     { starCount: 36,  velocity: 32, spread: 0.9, tailFactor: 0.6, gravityMult: 1.0, symmetry: 4 },
+  kamuro:        { starCount: 300, velocity: 18, spread: 1.0, tailFactor: 2.0, gravityMult: 1.5, symmetry: 0 },
+  brocade:       { starCount: 250, velocity: 25, spread: 1.0, tailFactor: 1.8, gravityMult: 1.3, symmetry: 0 },
 };
 
 /**
