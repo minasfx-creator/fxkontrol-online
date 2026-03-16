@@ -559,22 +559,29 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       {/* Timecode Display */}
       <TimecodeDisplay />
 
-      {/* Status — refined */}
-      <div className="flex items-center gap-2.5 text-[10px] font-mono-code text-muted-foreground/40 ml-3">
-        <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-surface-0/40 border border-border/8">
-          <span className="tabular-nums"><span className="text-foreground/60">{timelineItems.length}</span> cues</span>
-          <span className="text-border/30">·</span>
-          <span className="tabular-nums"><span className="text-foreground/60">{positions.length}</span> pos</span>
+      {/* Status — hidden on mobile */}
+      {!isMobile && (
+        <div className="flex items-center gap-2.5 text-[10px] font-mono-code text-muted-foreground/40 ml-3">
+          <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-surface-0/40 border border-border/8">
+            <span className="tabular-nums"><span className="text-foreground/60">{timelineItems.length}</span> cues</span>
+            <span className="text-border/30">·</span>
+            <span className="tabular-nums"><span className="text-foreground/60">{positions.length}</span> pos</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-success/60 animate-pulse-glow" />
+            <span className="text-success/50 text-[9px]">SYNC</span>
+          </div>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-destructive/8 hover:text-destructive text-muted-foreground/30" title="Sair" onClick={signOut}>
+            <LogOut className="h-3.5 w-3.5" />
+          </Button>
+          <LanguageSwitcher />
         </div>
-        <div className="flex items-center gap-1">
-          <div className="w-1.5 h-1.5 rounded-full bg-success/60 animate-pulse-glow" />
-          <span className="text-success/50 text-[9px]">SYNC</span>
-        </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-destructive/8 hover:text-destructive text-muted-foreground/30" title="Sair" onClick={signOut}>
+      )}
+      {isMobile && (
+        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-destructive/8 hover:text-destructive text-muted-foreground/30 ml-1" title="Sair" onClick={signOut}>
           <LogOut className="h-3.5 w-3.5" />
         </Button>
-        <LanguageSwitcher />
-      </div>
+      )}
     </div>
   );
 }
