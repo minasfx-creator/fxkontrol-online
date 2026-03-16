@@ -12,12 +12,11 @@ const ResizablePanelGroup = ({ className, ...props }: React.ComponentProps<typeo
 
 const ResizablePanel = ResizablePrimitive.Panel;
 
-import React from "react";
-
-const ResizableHandle = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentProps<typeof ResizablePrimitive.PanelResizeHandle> & { withHandle?: boolean }
->(({ withHandle, className, ...props }, _ref) => (
+const ResizableHandle = ({
+  withHandle,
+  className,
+  ...props
+}: React.ComponentProps<typeof ResizablePrimitive.PanelResizeHandle> & { withHandle?: boolean }) => (
   <ResizablePrimitive.PanelResizeHandle
     className={cn(
       "relative flex w-px items-center justify-center bg-border after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 data-[panel-group-direction=vertical]:h-px data-[panel-group-direction=vertical]:w-full data-[panel-group-direction=vertical]:after:left-0 data-[panel-group-direction=vertical]:after:h-1 data-[panel-group-direction=vertical]:after:w-full data-[panel-group-direction=vertical]:after:-translate-y-1/2 data-[panel-group-direction=vertical]:after:translate-x-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 [&[data-panel-group-direction=vertical]>div]:rotate-90",
@@ -31,7 +30,6 @@ const ResizableHandle = React.forwardRef<
       </div>
     )}
   </ResizablePrimitive.PanelResizeHandle>
-));
-ResizableHandle.displayName = "ResizableHandle";
+);
 
 export { ResizablePanelGroup, ResizablePanel, ResizableHandle };
