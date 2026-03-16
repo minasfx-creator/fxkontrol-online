@@ -309,4 +309,6 @@ const CinematicIntro = React.forwardRef<HTMLDivElement, CinematicIntroProps>(fun
       `}</style>
     </div>);
 
-}
+});
+
+export default CinematicIntro;
