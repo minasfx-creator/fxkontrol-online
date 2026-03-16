@@ -2057,7 +2057,9 @@ const SparkTrailController = React.forwardRef<THREE.Group, {}>(function SparkTra
           const breakH = getBreakHeight(caliber);
           const breakSpd = getBreakSpeed(caliber);
           const compound = hexToCompound(effect.color);
-          const baseColor = thermalColor(compound, 1.0, 1.5);
+          const adaptiveScale = THREE.MathUtils.clamp(_adaptiveExposure / 1.2, 0.45, 1.35);
+          const hdrScale = THREE.MathUtils.clamp((hdrMultiplier / 3.5) * adaptiveScale, 0.8, 2.6);
+          const baseColor = thermalColor(compound, 1.0, hdrScale);
           const sparkCount = Math.min(24, Math.round(caliber * 3));
           
           for (let s = 0; s < sparkCount; s++) {
