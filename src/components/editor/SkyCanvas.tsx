@@ -509,8 +509,10 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
       // thermalColor returns HDR values (emissionIntensity up to 10x).
       // We must tonemap before using as vertex colors to prevent white-out.
       const lifeRatio = 1 - starAge; // thermalColor expects 1=birth, 0=dead
-      // HDR mult reduced: ACES Filmic PostProcessing is the single tonemap
-      const chemColor = thermalColor(compound, lifeRatio, 1.0);
+      // Finale/Skybrush alignment: scene HDR slider + adaptive exposure both drive pyro intensity
+      const adaptiveScale = THREE.MathUtils.clamp(_adaptiveExposure / 1.2, 0.45, 1.35);
+      const hdrScale = THREE.MathUtils.clamp((hdrMultiplier / 3.5) * adaptiveScale, 0.6, 2.4);
+      const chemColor = thermalColor(compound, lifeRatio, hdrScale);
       const chemR = chemColor.r;
       const chemG = chemColor.g;
       const chemB = chemColor.b;
@@ -523,15 +525,16 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
         twinkle = temporalFlicker(sparkleSeeds[i], time, 0.65, 0.30, 0.35);
       }
       
-      // Blend tonemapped chemical color with user color (70% chem, 30% user)
+      // Blend thermal color with user color
       const userFade = 1 - starAge;
       const r = THREE.MathUtils.lerp(baseColor.r * userFade, chemR, 0.7);
       const g = THREE.MathUtils.lerp(baseColor.g * userFade, chemG, 0.7);
       const b = THREE.MathUtils.lerp(baseColor.b * userFade, chemB, 0.7);
+      const brightnessScale = THREE.MathUtils.clamp(effectBrightness, 0.6, 1.8);
       
-      cols[i * 3] = r * twinkle;
-      cols[i * 3 + 1] = g * twinkle;
-      cols[i * 3 + 2] = b * twinkle;
+      cols[i * 3] = r * twinkle * brightnessScale;
+      cols[i * 3 + 1] = g * twinkle * brightnessScale;
+      cols[i * 3 + 2] = b * twinkle * brightnessScale;
       
       // Size over lifetime: Niagara curve — burst large, steady, then shrink
       const sizeOverLife = starAge < 0.05 
