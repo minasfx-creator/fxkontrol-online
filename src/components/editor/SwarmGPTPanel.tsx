@@ -638,6 +638,54 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
           <Slider value={[droneCount]} onValueChange={([v]) => setDroneCount(v)} min={50} max={2000} step={10} />
         </div>
 
+        {/* ── Presets mode: geometric shapes ────────────────── */}
+        {mode === 'presets' && (
+          <div className="space-y-2">
+            <span className="text-[9px] text-muted-foreground font-semibold uppercase">Formas Geométricas</span>
+            <div className="grid grid-cols-2 gap-1">
+              {FORMATION_PRESETS.map((preset) => (
+                <button
+                  key={preset.type}
+                  onClick={() => {
+                    const config: FormationConfig = { type: preset.type, count: droneCount, radius: Math.max(10, Math.sqrt(droneCount) * 1.5), spacing: 2, rotation: 0 };
+                    const pts = generateFormation(config);
+                    const lastTime = droneFormations.length > 0
+                      ? droneFormations[droneFormations.length - 1].startTime + droneFormations[droneFormations.length - 1].transitionDuration + droneFormations[droneFormations.length - 1].holdDuration
+                      : 0;
+                    addDroneFormation({
+                      id: `preset-${Date.now()}`,
+                      formationType: preset.type,
+                      droneCount,
+                      height: 30,
+                      radius: config.radius,
+                      spacing: 2,
+                      rotation: 0,
+                      startTime: lastTime,
+                      transitionDuration: 12,
+                      holdDuration: 15,
+                      color: '#00E5FF',
+                      points: pts.map(p => ({ x: p.x, z: p.z })),
+                    });
+                    setCurrentTime(lastTime);
+                    setLastGeneratedPoints(pts);
+                    toast.success(`${preset.label} adicionada`, { description: `${pts.length} drones` });
+                  }}
+                  className={cn(
+                    "flex items-center gap-1.5 px-2 py-1.5 rounded-sm text-[9px] text-left transition-colors border",
+                    "border-border/50 bg-surface-2 hover:bg-surface-3 text-foreground hover:border-primary/30"
+                  )}
+                >
+                  <span className="text-sm">{preset.icon}</span>
+                  <span className="truncate">{preset.label}</span>
+                </button>
+              ))}
+            </div>
+            <p className="text-[8px] text-muted-foreground">
+              💡 Para parâmetros detalhados (raio, rotação, cor), use o Formation Builder (botão + na toolbar).
+            </p>
+          </div>
+        )}
+
         {/* Music sync options */}
         {mode === 'music-sync' && (
           <div className="space-y-1.5 p-2 rounded-sm border border-primary/20 bg-primary/5">
