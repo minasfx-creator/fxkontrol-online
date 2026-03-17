@@ -1378,7 +1378,7 @@ function GrassGround() {
       color += vec3(0.03, 0.05, 0.08) * spec * wetness * 0.3;
 
       // Distance atmosphere — Google Earth blue haze
-      float dist = length(worldUV) * 0.0015;
+      float dist = length(worldUV) * 0.00015;
       float fogFactor = smoothstep(0.0, 1.0, dist);
       vec3 atmosphereColor = vec3(0.08, 0.10, 0.18);
       color = mix(color, atmosphereColor, fogFactor * 0.7);
