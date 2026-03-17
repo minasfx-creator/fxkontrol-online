@@ -185,6 +185,7 @@ const DEFAULT_SETTINGS: SceneSettings = {
   chromaticAberration: true,
   filmGrain: 0.025,
   viewTransform: 'aces-filmic' as ViewTransform,
+  exposureCompensation: 0,
 };
 
 export const SCENE_PRESETS: Record<string, { name: string; description: string; settings: Partial<SceneSettings> }> = {

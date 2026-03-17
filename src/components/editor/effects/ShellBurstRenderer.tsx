@@ -422,7 +422,7 @@ export default function ShellBurstRenderer({
       {progress < 0.5 && (
         <pointLight
           color={color}
-          intensity={Math.max(0, (1 - progress * 2)) * caliber * 2 * burstFlashIntensity * GROUND_LIGHT_SCALE}
+          intensity={Math.max(0, (1 - progress * 2)) * caliber * 1.0 * burstFlashIntensity * GROUND_LIGHT_SCALE}
           distance={burstSpread * 3}
           decay={2}
         />
