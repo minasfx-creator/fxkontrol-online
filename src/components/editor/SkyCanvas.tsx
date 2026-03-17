@@ -1852,19 +1852,19 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
     const state = exposureRef.current;
     const { timelineItems, currentTime } = useProjectStore.getState();
     let luminance = 0;
+    let activeBursts = 0;
     _scatterAccum.setRGB(0, 0, 0);
     let scatterMax = 0;
 
-    // Only check items in a reasonable time window to avoid O(n) every frame
+    // Niagara rule: evaluate only near-active bursts to keep adaptation stable and cheap.
     for (let i = 0; i < timelineItems.length; i++) {
       const item = timelineItems[i];
       const elapsed = currentTime - item.startTime;
       if (elapsed < 0 || elapsed > 2.0) continue;
-      if (elapsed < 0.5) {
-        luminance += 3.0;
-      } else {
-        luminance += 0.5;
-      }
+
+      activeBursts++;
+      luminance += elapsed < 0.5 ? 3.0 : 0.5;
+
       // Sky scatter accumulation — reuse color objects
       if (elapsed < 0.3) {
         const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
@@ -1876,18 +1876,23 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
       }
     }
 
-    // Cap accumulated luminance to prevent ACES white-out with many simultaneous bursts
-    luminance = Math.min(luminance, 15);
+    const burstLoad = THREE.MathUtils.clamp(activeBursts / 6, 0, 1);
+
+    // Blender rule: compress luminance under heavy burst load to avoid yellow/white wash.
+    luminance = Math.min(luminance * (1 + burstLoad * 0.2), 15);
 
     if (luminance > 2 && delta < 0.1) {
       flashEvent(state, Math.min(luminance * 0.15, 0.8));
     }
 
-    const exposure = updateExposure(state, luminance, delta);
+    const exposure = THREE.MathUtils.clamp(updateExposure(state, luminance, delta), 0.35, 1.8);
     _adaptiveExposure = exposure;
+    setAdaptivePipelineState(exposure, burstLoad);
     setDebugExposure(exposure);
-    // Blender-style: apply adaptive exposure to renderer before ACES tone mapping
-    gl.toneMappingExposure = THREE.MathUtils.clamp(exposure, 0.3, 1.8);
+    setDebugBurstLoad(burstLoad);
+
+    // Keep renderer exposure in sync with adaptive state.
+    gl.toneMappingExposure = exposure;
 
     // Update sky scatter uniforms
     if (_skyScatterUniforms) {
