@@ -645,15 +645,14 @@ function LightPoint({ position, color }: { position: [number, number, number]; c
   return <QuadcopterModel position={position} color={color} />;
 }
 
-// Max simultaneous GPU-heavy firework bursts to prevent context loss
-const MAX_CONCURRENT_BURSTS_DESKTOP = 6;
-const MAX_CONCURRENT_BURSTS_MOBILE = 2;
-const MAX_STAR_BUDGET_DESKTOP = 1400;
-const MAX_STAR_BUDGET_MOBILE = 420;
-
-function estimateFireworkStarCost(effect: (typeof EFFECT_LIBRARY)[number], particleDensity: number) {
+function estimateFireworkStarCost(
+  effect: (typeof EFFECT_LIBRARY)[number],
+  particleDensity: number,
+  isMobileViewport: boolean
+) {
   const caliber = Math.max(1, effect.caliber || 4);
   const densityScale = THREE.MathUtils.clamp(particleDensity, 0.5, 2.0);
+  const budgets = getNiagaraBudgets(isMobileViewport);
 
   // Keep estimation aligned with FireworkBurst STAR_COUNT formula and caps.
   const shellStars = Math.max(24, Math.min(320, Math.round((60 + caliber * caliber * 10) * densityScale)));
