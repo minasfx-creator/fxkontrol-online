@@ -3129,6 +3129,7 @@ export default function SkyCanvas() {
         {!isMobile && <CameraAnimator />}
         {!isMobile && <CameraPathPreview />}
         <ViewportRulers />
+        <CameraBookmarkSaver />
         <PostProcessing />
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
