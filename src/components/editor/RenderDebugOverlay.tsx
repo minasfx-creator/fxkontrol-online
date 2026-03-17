@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 
 // Module-level state updated from SkyCanvas's AdaptiveExposureController
 let _debugExposure = 1.2;
+let _debugBurstLoad = 0;
 let _debugLodTier = 'high';
 let _debugLodDist = 0;
 let _debugFps = 0;
@@ -18,6 +19,7 @@ let _debugDrawCalls = 0;
 let _debugTriangles = 0;
 
 export function setDebugExposure(v: number) { _debugExposure = v; }
+export function setDebugBurstLoad(v: number) { _debugBurstLoad = v; }
 export function setDebugLOD(tier: string, dist: number) { _debugLodTier = tier; _debugLodDist = dist; }
 export function setDebugRendererInfo(fps: number, draws: number, tris: number) {
   _debugFps = fps; _debugDrawCalls = draws; _debugTriangles = tris;
