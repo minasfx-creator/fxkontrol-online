@@ -494,9 +494,22 @@ interface SceneSettingsState {
   removeCameraBookmark: (id: string) => void;
 }
 
+const DEFAULT_ENVIRONMENT: EnvironmentState = {
+  skyRotation: 0,
+  lockPositions: false,
+  lowQualityMode: false,
+  disableSmoke: false,
+  disableLighting: false,
+  smokeIntensity: 0.7,
+  groundColorOverride: null,
+  showRulers: false,
+  cameraBookmarks: [],
+};
+
 export const useSceneStore = create<SceneSettingsState>((set) => ({
   settings: { ...DEFAULT_SETTINGS },
   qualityPreset: 'show',
+  environment: { ...DEFAULT_ENVIRONMENT },
   updateSettings: (updates) => set(s => {
     const next = { ...s.settings, ...updates };
     if (updates.weather && !updates.rainIntensity) {
@@ -516,5 +529,8 @@ export const useSceneStore = create<SceneSettingsState>((set) => ({
     const qp = QUALITY_PRESETS[preset];
     if (qp) set(s => ({ qualityPreset: preset, settings: { ...s.settings, ...qp.settings } }));
   },
-  resetToDefault: () => set({ settings: { ...DEFAULT_SETTINGS }, qualityPreset: 'show' }),
+  resetToDefault: () => set({ settings: { ...DEFAULT_SETTINGS }, qualityPreset: 'show', environment: { ...DEFAULT_ENVIRONMENT } }),
+  updateEnvironment: (updates) => set(s => ({ environment: { ...s.environment, ...updates } })),
+  addCameraBookmark: (bookmark) => set(s => ({ environment: { ...s.environment, cameraBookmarks: [...s.environment.cameraBookmarks, bookmark] } })),
+  removeCameraBookmark: (id) => set(s => ({ environment: { ...s.environment, cameraBookmarks: s.environment.cameraBookmarks.filter(b => b.id !== id) } })),
 }));
