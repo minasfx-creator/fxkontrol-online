@@ -532,27 +532,28 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   );
 
   const renderCueKeys = (fs: boolean) => (
-    <div className={cn("border-b border-border/15", fs ? "px-6 py-4" : "px-1.5 py-1.5")} style={{ background: 'hsl(220 12% 6%)' }}>
+    <div className={cn("border-b border-border/15", fs && mob ? "px-2 py-2" : fs ? "px-6 py-4" : "px-1.5 py-1.5")} style={{ background: 'hsl(220 12% 6%)' }}>
       {/* Pagination */}
-      <div className={cn("flex items-center justify-between mb-1", fs ? "mb-2" : "mb-0.5")}>
+      <div className={cn("flex items-center justify-between", fs && mob ? "mb-1.5" : fs ? "mb-2" : "mb-0.5")}>
         <div className="flex items-center gap-1">
           <button onClick={() => setCuePage(Math.max(0, cuePage - 1))} disabled={cuePage === 0}
-            className={cn("rounded text-muted-foreground/30 hover:text-foreground/60 disabled:opacity-20 transition-colors", fs ? "p-1" : "p-0.5")}>
+            className={cn("rounded text-muted-foreground/30 hover:text-foreground/60 disabled:opacity-20 transition-colors", fs && mob ? "p-1.5" : fs ? "p-1" : "p-0.5")}>
             <ChevronLeft className={cn(fs ? "w-4 h-4" : "w-3 h-3")} />
           </button>
-          <span className={cn("font-mono text-muted-foreground/40", fs ? "text-[9px]" : "text-[6px]")}>
+          <span className={cn("font-mono text-muted-foreground/40", fs && mob ? "text-[8px]" : fs ? "text-[9px]" : "text-[6px]")}>
             {cuePage * CUES_PER_PAGE + 1}-{Math.min((cuePage + 1) * CUES_PER_PAGE, 128)}
           </span>
           <button onClick={() => setCuePage(Math.min(15, cuePage + 1))}
-            className={cn("rounded text-muted-foreground/30 hover:text-foreground/60 transition-colors", fs ? "p-1" : "p-0.5")}>
+            className={cn("rounded text-muted-foreground/30 hover:text-foreground/60 transition-colors", fs && mob ? "p-1.5" : fs ? "p-1" : "p-0.5")}>
             <ChevronRight className={cn(fs ? "w-4 h-4" : "w-3 h-3")} />
           </button>
         </div>
-        <span className={cn("font-mono text-muted-foreground/20", fs ? "text-[8px]" : "text-[5px]")}>
+        <span className={cn("font-mono text-muted-foreground/20", fs && mob ? "text-[7px]" : fs ? "text-[8px]" : "text-[5px]")}>
           Page {cuePage + 1}/16
         </span>
       </div>
-      <div className={cn("grid grid-cols-8", fs ? "gap-2" : "gap-0.5")}>
+      {/* 4 cols on mobile fullscreen, 8 cols on desktop */}
+      <div className={cn("grid", fs && mob ? "grid-cols-4 gap-1.5" : fs ? "grid-cols-8 gap-2" : "grid-cols-8 gap-0.5")}>
         {Array.from({ length: CUES_PER_PAGE }).map((_, i) => {
           const globalIndex = i + pageStart;
           const cue = pageCues.find(c => c.keyIndex === globalIndex);
@@ -560,7 +561,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
             <CueKey key={i} index={i} cue={cue} firing={firingKeys.has(i)}
               onPress={() => fireCueKey(i)} onRelease={() => stopCueKey(i)}
               onLongPress={() => toggleKeyMode(i)}
-              pyroArmed={pyroArm} dmxArmed={dmxArm} fs={fs} />
+              pyroArmed={pyroArm} dmxArmed={dmxArm} fs={fs} mobile={mob} />
           );
         })}
       </div>
