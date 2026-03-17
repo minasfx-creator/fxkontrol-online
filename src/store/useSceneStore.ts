@@ -371,6 +371,7 @@ export const SCENE_PRESETS: Record<string, { name: string; description: string; 
       vignetteIntensity: 0.0,
       chromaticAberration: false,
       filmGrain: 0.0,
+      viewTransform: 'agx' as ViewTransform,
     },
   },
   'finale-cinema': {
