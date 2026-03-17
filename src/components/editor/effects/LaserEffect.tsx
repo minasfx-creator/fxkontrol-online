@@ -158,55 +158,69 @@ export default function LaserEffect({
   });
 
   const totalBeams = pattern === 'grid' ? beamCount * beamCount : beamCount;
+  const hardLightBlend = useMemo(() => getThreeBlending('hard-light'), []);
+  const screenBlend = useMemo(() => getThreeBlending('screen'), []);
 
   return (
     <group position={position} ref={groupRef}>
       {/* Beam array */}
       {Array.from({ length: totalBeams }).map((_, i) => (
         <group key={i}>
-          {/* Core beam — bright thin cylinder */}
+          {/* Core beam — Hard Light (laser-grade) */}
           <mesh position={[0, beamLength / 2, 0]}>
             <cylinderGeometry args={[0.004, 0.018, beamLength, 4]} />
             <meshBasicMaterial
               color={color}
               transparent opacity={0.55}
-              blending={THREE.AdditiveBlending}
+              blending={hardLightBlend.blending}
+              blendEquation={hardLightBlend.blendEquation}
+              blendSrc={hardLightBlend.blendSrc as any}
+              blendDst={hardLightBlend.blendDst as any}
               side={THREE.DoubleSide}
               depthWrite={false}
               toneMapped={false}
             />
           </mesh>
-          {/* Inner glow plane */}
+          {/* Inner glow plane — Screen (haze) */}
           <mesh position={[0, beamLength / 2, 0]}>
             <planeGeometry args={[0.2, beamLength]} />
             <meshBasicMaterial
               color={color}
               transparent opacity={0.15}
-              blending={THREE.AdditiveBlending}
+              blending={screenBlend.blending}
+              blendEquation={screenBlend.blendEquation}
+              blendSrc={screenBlend.blendSrc as any}
+              blendDst={screenBlend.blendDst as any}
               side={THREE.DoubleSide}
               depthWrite={false}
               toneMapped={false}
             />
           </mesh>
-          {/* Outer glow plane (perpendicular) */}
+          {/* Outer glow plane — Screen */}
           <mesh position={[0, beamLength / 2, 0]} rotation={[0, Math.PI / 2, 0]}>
             <planeGeometry args={[0.2, beamLength]} />
             <meshBasicMaterial
               color={color}
               transparent opacity={0.06}
-              blending={THREE.AdditiveBlending}
+              blending={screenBlend.blending}
+              blendEquation={screenBlend.blendEquation}
+              blendSrc={screenBlend.blendSrc as any}
+              blendDst={screenBlend.blendDst as any}
               side={THREE.DoubleSide}
               depthWrite={false}
               toneMapped={false}
             />
           </mesh>
-          {/* Wide atmospheric scatter plane */}
+          {/* Wide atmospheric scatter — Screen */}
           <mesh position={[0, beamLength / 2, 0]} rotation={[0, Math.PI / 4, 0]}>
             <planeGeometry args={[0.6, beamLength]} />
             <meshBasicMaterial
               color={color}
               transparent opacity={0.025}
-              blending={THREE.AdditiveBlending}
+              blending={screenBlend.blending}
+              blendEquation={screenBlend.blendEquation}
+              blendSrc={screenBlend.blendSrc as any}
+              blendDst={screenBlend.blendDst as any}
               side={THREE.DoubleSide}
               depthWrite={false}
               toneMapped={false}
@@ -215,47 +229,59 @@ export default function LaserEffect({
         </group>
       ))}
 
-      {/* Source halo — HDR emitter for bloom */}
+      {/* Source halo — Screen */}
       <mesh>
         <sphereGeometry args={[0.25, 16, 16]} />
         <meshBasicMaterial
           color={color}
           transparent opacity={0.85}
-          blending={THREE.AdditiveBlending}
+          blending={screenBlend.blending}
+          blendEquation={screenBlend.blendEquation}
+          blendSrc={screenBlend.blendSrc as any}
+          blendDst={screenBlend.blendDst as any}
           depthWrite={false}
           toneMapped={false}
         />
       </mesh>
-      {/* Secondary outer halo for volumetric glow */}
+      {/* Secondary outer halo — Screen */}
       <mesh>
         <sphereGeometry args={[0.6, 12, 12]} />
         <meshBasicMaterial
           color={color}
           transparent opacity={0.12}
-          blending={THREE.AdditiveBlending}
+          blending={screenBlend.blending}
+          blendEquation={screenBlend.blendEquation}
+          blendSrc={screenBlend.blendSrc as any}
+          blendDst={screenBlend.blendDst as any}
           depthWrite={false}
           toneMapped={false}
         />
       </mesh>
 
-      {/* Ground scatter disc */}
+      {/* Ground scatter disc — Screen */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -position[1] + 0.05, 0]}>
         <circleGeometry args={[4, 32]} />
         <meshBasicMaterial
           color={color}
           transparent opacity={0.06}
-          blending={THREE.AdditiveBlending}
+          blending={screenBlend.blending}
+          blendEquation={screenBlend.blendEquation}
+          blendSrc={screenBlend.blendSrc as any}
+          blendDst={screenBlend.blendDst as any}
           depthWrite={false}
         />
       </mesh>
 
-      {/* Atmospheric cone — wide volumetric fill */}
+      {/* Atmospheric cone — Screen */}
       <mesh position={[0, beamLength * 0.4, 0]}>
         <coneGeometry args={[beamLength * 0.12, beamLength * 0.8, 16, 1, true]} />
         <meshBasicMaterial
           color={color}
           transparent opacity={0.018}
-          blending={THREE.AdditiveBlending}
+          blending={screenBlend.blending}
+          blendEquation={screenBlend.blendEquation}
+          blendSrc={screenBlend.blendSrc as any}
+          blendDst={screenBlend.blendDst as any}
           side={THREE.DoubleSide}
           depthWrite={false}
         />

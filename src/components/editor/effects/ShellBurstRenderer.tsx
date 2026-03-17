@@ -418,11 +418,11 @@ export default function ShellBurstRenderer({
         />
       </mesh>
 
-      {/* Ground illumination */}
+      {/* Ground illumination — reduced intensity per V-Ray/Blender rules */}
       {progress < 0.5 && (
         <pointLight
           color={color}
-          intensity={Math.max(0, (1 - progress * 2)) * caliber * 2 * burstFlashIntensity}
+          intensity={Math.max(0, (1 - progress * 2)) * caliber * 2 * burstFlashIntensity * GROUND_LIGHT_SCALE}
           distance={burstSpread * 3}
           decay={2}
         />

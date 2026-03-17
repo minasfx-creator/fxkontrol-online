@@ -112,13 +112,17 @@ function CakeShot({
 
   return (
     <group position={offset}>
-      {/* Break flash */}
-      {burstProgress < 0.08 && (
-        <mesh position={[0, breakH * 0.7, 0]}>
-          <sphereGeometry args={[0.8 + caliber * 0.3, 12, 12]} />
-          <meshBasicMaterial color="#FFFFEE" transparent opacity={0.4 * (1 - burstProgress / 0.08)} blending={THREE.AdditiveBlending} />
-        </mesh>
-      )}
+      {/* Break flash — Screen */}
+      {burstProgress < 0.08 && (() => {
+        const sb = getThreeBlending('screen');
+        return (
+          <mesh position={[0, breakH * 0.7, 0]}>
+            <sphereGeometry args={[0.8 + caliber * 0.3, 12, 12]} />
+            <meshBasicMaterial color="#FFFFEE" transparent opacity={0.4 * (1 - burstProgress / 0.08)} blending={sb.blending} blendEquation={sb.blendEquation} blendSrc={sb.blendSrc as any} blendDst={sb.blendDst as any} depthWrite={false} />
+          </mesh>
+        );
+      })()}
+      {/* Star particles — Additive (core) */}
       <points>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[positions, 3]} />

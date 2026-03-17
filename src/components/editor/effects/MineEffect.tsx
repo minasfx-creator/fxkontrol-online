@@ -103,33 +103,39 @@ export default function MineEffect({
   });
 
   const flashSize = 1.0 + caliber * 0.4;
+  const screenBlend = useMemo(() => getThreeBlending('screen'), []);
 
   return (
     <group position={position}>
+      {/* Flash sphere — Screen blending */}
       {progress < 0.06 && (
         <mesh position={[0, 0.2, 0]}>
           <sphereGeometry args={[flashSize + progress * 15, 16, 16]} />
-          <meshBasicMaterial color="#FFFFF0" transparent opacity={0.8 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} />
+          <meshBasicMaterial color="#FFFFF0" transparent opacity={0.8 * (1 - progress / 0.06)} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} />
         </mesh>
       )}
+      {/* Halo — Screen blending */}
       {progress < 0.1 && (
         <mesh position={[0, 0.3, 0]}>
           <sphereGeometry args={[flashSize * 1.5 + progress * 10, 12, 12]} />
-          <meshBasicMaterial color={color} transparent opacity={0.4 * (1 - progress / 0.1)} blending={THREE.AdditiveBlending} />
+          <meshBasicMaterial color={color} transparent opacity={0.4 * (1 - progress / 0.1)} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} />
         </mesh>
       )}
+      {/* Ground ring — Screen blending */}
       {progress < 0.15 && (
         <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <circleGeometry args={[2 + progress * 20, 24]} />
-          <meshBasicMaterial color={color} transparent opacity={0.08 * (1 - progress / 0.15)} blending={THREE.AdditiveBlending} side={THREE.DoubleSide} />
+          <meshBasicMaterial color={color} transparent opacity={0.08 * (1 - progress / 0.15)} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} side={THREE.DoubleSide} />
         </mesh>
       )}
+      {/* Smoke — Normal blending */}
       {progress > 0.02 && progress < 0.5 && (
         <mesh position={[0, progress * 6, 0]}>
           <sphereGeometry args={[0.4 + progress * 5, 8, 8]} />
           <meshBasicMaterial color="#776655" transparent opacity={0.05 * (1 - progress / 0.5)} />
         </mesh>
       )}
+      {/* Star particles — Additive (core incandescent) */}
       <points ref={pointsRef}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[new Float32Array(count * 3), 3]} />

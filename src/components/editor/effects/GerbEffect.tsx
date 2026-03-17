@@ -108,28 +108,30 @@ export default function GerbEffect({
   });
 
   const isActive = progress > 0.02 && progress < 0.95;
+  const screenBlend = useMemo(() => getThreeBlending('screen'), []);
 
   return (
     <group position={position}>
-      {/* Hot emission point glow */}
+      {/* Hot emission point glow — Screen */}
       {isActive && (
         <>
           <mesh position={[0, 0.06, 0]}>
             <sphereGeometry args={[0.12, 8, 8]} />
-            <meshBasicMaterial color="#FFDD55" transparent opacity={0.45} blending={THREE.AdditiveBlending} />
+            <meshBasicMaterial color="#FFDD55" transparent opacity={0.45} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} />
           </mesh>
-          {/* Inner white core */}
+          {/* Inner white core — Additive (incandescent source) */}
           <mesh position={[0, 0.08, 0]}>
             <sphereGeometry args={[0.06, 6, 6]} />
-            <meshBasicMaterial color="#FFFFF0" transparent opacity={0.6} blending={THREE.AdditiveBlending} />
+            <meshBasicMaterial color="#FFFFF0" transparent opacity={0.6} blending={THREE.AdditiveBlending} depthWrite={false} />
           </mesh>
-          {/* Ground scatter light */}
+          {/* Ground scatter light — Screen */}
           <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <circleGeometry args={[0.8 + height * 0.12, 16]} />
-            <meshBasicMaterial color={color} transparent opacity={0.04} blending={THREE.AdditiveBlending} />
+            <meshBasicMaterial color={color} transparent opacity={0.04} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} />
           </mesh>
         </>
       )}
+      {/* Spark particles — Additive (core) */}
       <points ref={pointsRef}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[new Float32Array(PARTICLE_COUNT * 3), 3]} />
