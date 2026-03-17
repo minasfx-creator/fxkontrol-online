@@ -3105,21 +3105,21 @@ export default function SkyCanvas() {
           canvas.addEventListener('webglcontextlost', handleContextLost as EventListener);
           canvas.addEventListener('webglcontextrestored', handleContextRestored as EventListener);
         }}>
-        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.5} far={50000} />
+        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.5} far={250000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook} />
 
         <SceneLighting />
         <AdaptiveExposureController />
-        <GlobalIlluminationController />
+        {!environment.disableLighting && <GlobalIlluminationController />}
         <GroundReflections />
-        <SmokeController />
-        <LensFlareController />
+        {!environment.disableSmoke && <SmokeController />}
+        {!environment.disableLighting && <LensFlareController />}
         <SparkTrailController />
 
         <SkyGradient />
         <Moon />
-        <SceneStars />
-        {!isMobile && <AtmosphericParticles />}
+        <SceneStarsWired />
+        {!isMobile && !environment.lowQualityMode && <AtmosphericParticles />}
         <SceneFog />
         {!isMobile && <WeatherEffects />}
 
