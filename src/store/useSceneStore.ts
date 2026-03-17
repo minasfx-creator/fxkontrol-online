@@ -253,7 +253,7 @@ export const SCENE_PRESETS: Record<string, { name: string; description: string; 
       skyBrightness: 0.5,
       starDensity: 0.1,
       fogDensity: 0.7,
-      fogFar: 800,
+      fogFar: 4000,
       visibility: 0.6,
       horizonGlow: 0.5,
       humidity: 0.8,
