@@ -471,10 +471,22 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   }, [channels, dmxArm]);
 
   useEffect(() => { return () => { fireTimers.current.forEach(timer => clearTimeout(timer)); }; }, []);
+
+  // Auto-fullscreen on mobile
+  useEffect(() => {
+    if (isMobile) {
+      setIsFullscreen(true);
+    }
+  }, [isMobile]);
+
   // Sync browser Fullscreen API with isFullscreen state
   useEffect(() => {
     if (isFullscreen) {
-      document.documentElement.requestFullscreen?.().catch(() => {});
+      // Small delay to ensure DOM is ready for fullscreen request
+      const timer = setTimeout(() => {
+        document.documentElement.requestFullscreen?.().catch(() => {});
+      }, 100);
+      return () => clearTimeout(timer);
     } else {
       if (document.fullscreenElement) {
         document.exitFullscreen?.().catch(() => {});
