@@ -1,10 +1,7 @@
 /**
  * USB Connection Engine
- * Supports WebUSB + Web Serial APIs for connecting to show equipment:
- * - DMX USB interfaces (ENTTEC Open DMX, ENTTEC Pro)
- * - Firing system controllers
- * - Timecode readers (SMPTE/LTC)
- * - Generic serial devices (RS-232, RS-485, Arduino)
+ * Supports WebUSB + Web Serial APIs for connecting to show equipment.
+ * Uses `any` casts for Web Serial/USB APIs since they're not in standard TS lib.
  */
 
 export type USBDeviceType = 'dmx' | 'firing' | 'timecode' | 'serial';
@@ -18,7 +15,7 @@ export interface USBDeviceProfile {
   baudRate: number;
   dataBits?: number;
   stopBits?: number;
-  parity?: ParityType;
+  parity?: string;
   description: string;
 }
 
@@ -26,8 +23,8 @@ export interface ConnectedDevice {
   id: string;
   profile: USBDeviceProfile;
   state: ConnectionState;
-  port?: SerialPort;
-  usbDevice?: USBDevice;
+  port?: any; // SerialPort
+  usbDevice?: any; // USBDevice
   reader?: ReadableStreamDefaultReader<Uint8Array>;
   writer?: WritableStreamDefaultWriter<Uint8Array>;
   lastData?: Uint8Array;
@@ -98,73 +95,48 @@ export const DEVICE_PROFILES: USBDeviceProfile[] = [
   },
 ];
 
-/**
- * Check if Web Serial API is available
- */
+const nav = navigator as any;
+
 export function isWebSerialSupported(): boolean {
   return 'serial' in navigator;
 }
 
-/**
- * Check if WebUSB API is available
- */
 export function isWebUSBSupported(): boolean {
   return 'usb' in navigator;
 }
 
-/**
- * Request a serial port from the user
- */
-export async function requestSerialPort(
-  profile?: USBDeviceProfile
-): Promise<SerialPort> {
+export async function requestSerialPort(profile?: USBDeviceProfile): Promise<any> {
   if (!isWebSerialSupported()) {
     throw new Error('Web Serial API não suportada neste navegador');
   }
-
-  const filters: SerialPortFilter[] = [];
+  const filters: any[] = [];
   if (profile?.vendorId) {
     filters.push({
       usbVendorId: profile.vendorId,
       ...(profile.productId ? { usbProductId: profile.productId } : {}),
     });
   }
-
-  const port = await navigator.serial.requestPort(
-    filters.length > 0 ? { filters } : undefined
-  );
-  return port;
+  return nav.serial.requestPort(filters.length > 0 ? { filters } : undefined);
 }
 
-/**
- * Request a USB device from the user
- */
-export async function requestUSBDevice(
-  profile?: USBDeviceProfile
-): Promise<USBDevice> {
+export async function requestUSBDevice(profile?: USBDeviceProfile): Promise<any> {
   if (!isWebUSBSupported()) {
     throw new Error('WebUSB API não suportada neste navegador');
   }
-
-  const filters: USBDeviceFilter[] = [];
+  const filters: any[] = [];
   if (profile?.vendorId) {
     filters.push({
       vendorId: profile.vendorId,
       ...(profile.productId ? { productId: profile.productId } : {}),
     });
   }
-
-  const device = await navigator.usb.requestDevice({
-    filters: filters.length > 0 ? filters : [{ vendorId: 0x0403 }], // FTDI default
+  return nav.usb.requestDevice({
+    filters: filters.length > 0 ? filters : [{ vendorId: 0x0403 }],
   });
-  return device;
 }
 
-/**
- * Open a serial connection
- */
 export async function openSerialConnection(
-  port: SerialPort,
+  port: any,
   profile: USBDeviceProfile
 ): Promise<{ reader: ReadableStreamDefaultReader<Uint8Array>; writer: WritableStreamDefaultWriter<Uint8Array> }> {
   await port.open({
@@ -174,16 +146,11 @@ export async function openSerialConnection(
     parity: profile.parity ?? 'none',
     bufferSize: 4096,
   });
-
-  const reader = port.readable!.getReader();
-  const writer = port.writable!.getWriter();
-
+  const reader = port.readable.getReader();
+  const writer = port.writable.getWriter();
   return { reader, writer };
 }
 
-/**
- * Close a serial connection
- */
 export async function closeSerialConnection(device: ConnectedDevice): Promise<void> {
   try {
     if (device.reader) {
@@ -202,13 +169,7 @@ export async function closeSerialConnection(device: ConnectedDevice): Promise<vo
   }
 }
 
-/**
- * Send data to a serial device
- */
-export async function sendSerialData(
-  device: ConnectedDevice,
-  data: Uint8Array
-): Promise<void> {
+export async function sendSerialData(device: ConnectedDevice, data: Uint8Array): Promise<void> {
   if (!device.writer || device.state !== 'connected') {
     throw new Error('Dispositivo não conectado');
   }
@@ -216,47 +177,30 @@ export async function sendSerialData(
   device.bytesSent += data.length;
 }
 
-/**
- * Build ENTTEC DMX USB Pro packet
- * Format: 0x7E [label] [length_lo] [length_hi] [data...] 0xE7
- */
-export function buildENTTECProPacket(
-  label: number,
-  data: Uint8Array
-): Uint8Array {
+export function buildENTTECProPacket(label: number, data: Uint8Array): Uint8Array {
   const packet = new Uint8Array(data.length + 5);
-  packet[0] = 0x7e; // Start
+  packet[0] = 0x7e;
   packet[1] = label;
   packet[2] = data.length & 0xff;
   packet[3] = (data.length >> 8) & 0xff;
   packet.set(data, 4);
-  packet[packet.length - 1] = 0xe7; // End
+  packet[packet.length - 1] = 0xe7;
   return packet;
 }
 
-/**
- * Build DMX512 frame for Open DMX USB
- * 513 bytes: start code (0x00) + 512 channels
- */
 export function buildDMX512Frame(channels: Uint8Array): Uint8Array {
   const frame = new Uint8Array(513);
-  frame[0] = 0x00; // Start code
+  frame[0] = 0x00;
   frame.set(channels.subarray(0, 512), 1);
   return frame;
 }
 
-/**
- * Format bytes as hex string for display
- */
 export function bytesToHex(data: Uint8Array, maxBytes = 32): string {
   const slice = data.slice(0, maxBytes);
   const hex = Array.from(slice).map(b => b.toString(16).padStart(2, '0')).join(' ');
   return data.length > maxBytes ? `${hex} ... (+${data.length - maxBytes})` : hex;
 }
 
-/**
- * Generate a unique device ID
- */
 export function generateDeviceId(): string {
   return `usb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 }
