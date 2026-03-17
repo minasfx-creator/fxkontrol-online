@@ -910,9 +910,21 @@ function SkyGradient() {
   const skyBrightness = useSceneStore(st => st.settings.skyBrightness);
   const horizonGlow = useSceneStore(st => st.settings.horizonGlow);
   const starDensity = useSceneStore(st => st.settings.starDensity);
+  const groundStyle = useSceneStore(st => st.settings.groundStyle);
   const skyRef = useRef<THREE.Mesh>(null);
 
   const skyRotation = useSceneStore(st => st.environment.skyRotation);
+
+  // Dynamic ground tint based on groundStyle — eliminates sky/ground seam
+  const groundTint = useMemo(() => {
+    switch (groundStyle) {
+      case 'finale-dark': return new THREE.Vector3(0.003, 0.004, 0.008);
+      case 'flat-black':  return new THREE.Vector3(0.001, 0.001, 0.001);
+      case 'google-earth': return new THREE.Vector3(0.005, 0.008, 0.004);
+      case 'concrete':    return new THREE.Vector3(0.006, 0.006, 0.007);
+      default:            return new THREE.Vector3(0.005, 0.005, 0.015);
+    }
+  }, [groundStyle]);
 
   const uniforms = useMemo(() => ({
     uSkyBrightness: { value: skyBrightness },
@@ -922,6 +934,7 @@ function SkyGradient() {
     uExplosionScatter: { value: new THREE.Color(0, 0, 0) },
     uScatterIntensity: { value: 0 },
     uSkyRotation: { value: 0 },
+    uGroundTint: { value: groundTint },
   }), []);
 
   useEffect(() => {
@@ -929,7 +942,8 @@ function SkyGradient() {
     uniforms.uHorizonGlow.value = horizonGlow;
     uniforms.uStarDensity.value = starDensity;
     uniforms.uSkyRotation.value = skyRotation * Math.PI / 180;
-  }, [skyBrightness, horizonGlow, starDensity, skyRotation]);
+    uniforms.uGroundTint.value = groundTint;
+  }, [skyBrightness, horizonGlow, starDensity, skyRotation, groundTint]);
 
   // Expose scatter uniforms for AdaptiveExposureController
   useEffect(() => {
