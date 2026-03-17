@@ -76,8 +76,113 @@ function InfoRow({ label, value, accent = false }: { label: string; value: strin
     </div>
   );
 }
+/* ── Environment Settings — ShowSim / Finale 3D style ────── */
+function EnvironmentSettingsSection() {
+  const { environment, updateEnvironment } = useSceneStore();
 
-export default function ShowSettingsPanel({ onClose }: ShowSettingsProps) {
+  return (
+    <SettingsSection title="Environment" icon={Eye} defaultOpen={false}>
+      {/* Sky Rotation */}
+      <div>
+        <label className="text-[10px] text-muted-foreground/70 font-semibold uppercase tracking-wider mb-1.5 block font-display flex items-center gap-1.5">
+          <RotateCcw className="w-3 h-3" /> Sky Rotation
+        </label>
+        <div className="flex items-center gap-3">
+          <Slider
+            value={[environment.skyRotation]}
+            onValueChange={([v]) => updateEnvironment({ skyRotation: v })}
+            min={0} max={360} step={1}
+            className="flex-1"
+          />
+          <span className="text-[10px] font-mono-code text-muted-foreground w-10 text-right">{environment.skyRotation}°</span>
+        </div>
+      </div>
+
+      {/* Smoke Intensity */}
+      <div>
+        <label className="text-[10px] text-muted-foreground/70 font-semibold uppercase tracking-wider mb-1.5 block font-display">Smoke Intensity</label>
+        <div className="flex items-center gap-3">
+          <Slider
+            value={[environment.smokeIntensity * 100]}
+            onValueChange={([v]) => updateEnvironment({ smokeIntensity: v / 100 })}
+            min={0} max={100} step={1}
+            className="flex-1"
+          />
+          <span className="text-[10px] font-mono-code text-muted-foreground w-10 text-right">{Math.round(environment.smokeIntensity * 100)}%</span>
+        </div>
+      </div>
+
+      {/* Ground Color Override */}
+      <div>
+        <label className="text-[10px] text-muted-foreground/70 font-semibold uppercase tracking-wider mb-1.5 block font-display flex items-center gap-1.5">
+          <Palette className="w-3 h-3" /> Ground Color Override
+        </label>
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={environment.groundColorOverride !== null}
+            onCheckedChange={(on) => updateEnvironment({ groundColorOverride: on ? '#1a1a2e' : null })}
+          />
+          {environment.groundColorOverride !== null && (
+            <input
+              type="color"
+              value={environment.groundColorOverride}
+              onChange={e => updateEnvironment({ groundColorOverride: e.target.value })}
+              className="w-8 h-8 rounded-lg border border-border/20 cursor-pointer bg-transparent"
+            />
+          )}
+          <span className="text-[10px] text-muted-foreground font-mono-code">{environment.groundColorOverride || 'Auto'}</span>
+        </div>
+      </div>
+
+      {/* Toggle switches */}
+      <div className="space-y-2.5 pt-1 border-t border-border/10">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Lock className="w-3 h-3 text-warning/60" />
+            <span className="text-[11px] font-semibold text-foreground">Lock Positions</span>
+          </div>
+          <Switch checked={environment.lockPositions} onCheckedChange={(v) => updateEnvironment({ lockPositions: v })} />
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Ruler className="w-3 h-3 text-primary/60" />
+            <span className="text-[11px] font-semibold text-foreground">Show Rulers</span>
+          </div>
+          <Switch checked={environment.showRulers} onCheckedChange={(v) => updateEnvironment({ showRulers: v })} />
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <EyeOff className="w-3 h-3 text-muted-foreground/60" />
+            <span className="text-[11px] font-semibold text-foreground">Disable Smoke</span>
+          </div>
+          <Switch checked={environment.disableSmoke} onCheckedChange={(v) => updateEnvironment({ disableSmoke: v })} />
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <EyeOff className="w-3 h-3 text-muted-foreground/60" />
+            <span className="text-[11px] font-semibold text-foreground">Disable Lighting</span>
+          </div>
+          <Switch checked={environment.disableLighting} onCheckedChange={(v) => updateEnvironment({ disableLighting: v })} />
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Zap className="w-3 h-3 text-accent/60" />
+            <span className="text-[11px] font-semibold text-foreground">Low Quality Mode</span>
+          </div>
+          <Switch checked={environment.lowQualityMode} onCheckedChange={(v) => updateEnvironment({ lowQualityMode: v })} />
+        </div>
+      </div>
+
+      {environment.lowQualityMode && (
+        <div className="bg-warning/10 border border-warning/20 rounded-xl px-3 py-2 text-[10px] text-warning font-medium">
+          ⚡ Low quality: particles -50%, smoke off, trails shorter
+        </div>
+      )}
+    </SettingsSection>
+  );
+}
+
+
   const { duration, gpsOrigin, projectName } = useProjectStore();
 
   // ── Show metadata ──
