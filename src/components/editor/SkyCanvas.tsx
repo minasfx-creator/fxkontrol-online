@@ -2716,17 +2716,19 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
     clampToWorldBounds();
   });
 
+  const sensitivityScale = 0.7; // 30% less sensitivity
+
   return (
     <OrbitControls
       ref={controlsRef}
       enableDamping
       dampingFactor={0.06}
-      rotateSpeed={0.6}
-      panSpeed={0.8}
-      zoomSpeed={1.2}
+      rotateSpeed={0.6 * sensitivityScale}
+      panSpeed={0.8 * sensitivityScale}
+      zoomSpeed={1.2 * sensitivityScale}
       minPolarAngle={Math.PI * 0.05}
       maxPolarAngle={Math.PI * 0.85}
-      minDistance={1}
+      minDistance={5}
       maxDistance={90000}
       enablePan
     />
