@@ -1,5 +1,5 @@
-import { EffectComposer, Bloom, Vignette, ChromaticAberration, SMAA, Noise } from '@react-three/postprocessing';
-import { KernelSize, BlendFunction } from 'postprocessing';
+import { EffectComposer, Bloom, Vignette, ChromaticAberration, SMAA, Noise, ToneMapping } from '@react-three/postprocessing';
+import { KernelSize, BlendFunction, ToneMappingMode } from 'postprocessing';
 import { Vector2 } from 'three';
 import { useSceneStore } from '@/store/useSceneStore';
 
