@@ -1,8 +1,6 @@
-import { useEffect } from 'react';
 import { EffectComposer, Bloom, Vignette, ChromaticAberration, SMAA, Noise, ToneMapping } from '@react-three/postprocessing';
 import { KernelSize, BlendFunction, ToneMappingMode } from 'postprocessing';
 import { Vector2 } from 'three';
-import { useThree } from '@react-three/fiber';
 import { useSceneStore } from '@/store/useSceneStore';
 import type { ViewTransform } from '@/lib/niagaraBlenderRules';
 
@@ -20,24 +18,16 @@ const BLOOM_SCALE: Record<ViewTransform, number> = {
 };
 
 /**
- * Cinematic post-processing pipeline v5 — V-Ray/Blender View Transform aware.
+ * Cinematic post-processing pipeline v6 — V-Ray/Blender View Transform aware.
  * 
- * Key changes from v4:
- * - Dynamic ToneMapping mode from store (ACES Filmic / AgX / Standard)
- * - Bloom intensity adapts per view transform
- * - High luminance thresholds (2.5+) so bloom ONLY catches HDR pyro
+ * Exposure compensation is handled by AdaptiveExposureController which combines
+ * adaptive exposure with user EV offset from store.
  */
 export default function PostProcessing() {
   const s = useSceneStore(st => st.settings);
   const str = s.bloomStrength;
   const vt = s.viewTransform || 'aces-filmic';
   const bloomMul = BLOOM_SCALE[vt];
-  const gl = useThree(state => state.gl);
-  
-  // Apply exposure compensation via renderer toneMappingExposure
-  useEffect(() => {
-    gl.toneMappingExposure = Math.pow(2, s.exposureCompensation || 0);
-  }, [gl, s.exposureCompensation]);
 
   return (
     <EffectComposer multisampling={0}>
