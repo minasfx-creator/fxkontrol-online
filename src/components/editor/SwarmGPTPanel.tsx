@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { X, Sparkles, Loader2, Wand2, Film, Send, Music, RotateCw, Layers, RefreshCw, Eye, Trash2, Copy, ChevronDown, ChevronRight, GripVertical, ArrowUp, ArrowDown, Image, Upload, Zap } from 'lucide-react';
+import { X, Sparkles, Loader2, Wand2, Film, Send, Music, RotateCw, Layers, RefreshCw, Eye, Trash2, Copy, ChevronDown, ChevronRight, GripVertical, ArrowUp, ArrowDown, Image, Upload, Zap, Video, Play, Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -8,8 +8,12 @@ import { useProjectStore, type DroneFormation } from '@/store/useProjectStore';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import {
+  extractVideoFrames, extractGifFrames, framesToChoreography,
+  isGifFile, isVideoFile, type ExtractedFrame, type FrameFormation,
+} from '@/lib/videoToFormation';
 
-type Mode = 'single' | 'full-show' | 'trajectory' | 'music-sync' | 'image';
+type Mode = 'single' | 'full-show' | 'trajectory' | 'music-sync' | 'image' | 'video';
 
 const QUICK_PROMPTS = [
   { emoji: '🌀', label: 'Vórtex Cibernético', prompt: 'vortex cibernético com espirais logarítmicas' },
@@ -146,6 +150,17 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
+  // Video/GIF state
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  const [videoFrames, setVideoFrames] = useState<ExtractedFrame[]>([]);
+  const [videoFps, setVideoFps] = useState(4);
+  const [videoThreshold, setVideoThreshold] = useState(128);
+  const [videoInvert, setVideoInvert] = useState(false);
+  const [videoTransitionDur, setVideoTransitionDur] = useState(5);
+  const [videoHoldDur, setVideoHoldDur] = useState(3);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+
   const addDroneFormation = useProjectStore((s) => s.addDroneFormation);
   const addTimelineItem = useProjectStore((s) => s.addTimelineItem);
   const droneFormations = useProjectStore((s) => s.droneFormations);
@@ -222,6 +237,108 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
       setLoadingPhase('');
     }
   }, [imageBase64, prompt, droneCount, droneFormations, addDroneFormation, setCurrentTime]);
+
+  // ── Video/GIF Handlers ──────────────────────────────────────
+
+  const handleVideoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!isVideoFile(file) && !isGifFile(file)) {
+      toast.error('Formato não suportado', { description: 'Use MP4, WebM, MOV ou GIF' });
+      return;
+    }
+    setVideoFile(file);
+    setVideoPreviewUrl(URL.createObjectURL(file));
+    setMode('video');
+    setVideoFrames([]);
+
+    setLoading(true);
+    try {
+      const extractor = isGifFile(file) ? extractGifFrames : extractVideoFrames;
+      const frames = await extractor(file, {
+        fps: videoFps,
+        maxFrames: 60,
+        resolution: 128,
+        onProgress: (p, phase) => {
+          setProgress(Math.round(p * 100));
+          setLoadingPhase(phase);
+        },
+      });
+      setVideoFrames(frames);
+      toast.success(`${frames.length} frames extraídos`, { description: `${isGifFile(file) ? 'GIF' : 'Vídeo'} processado` });
+    } catch (err: any) {
+      toast.error('Erro ao extrair frames', { description: err.message });
+    } finally {
+      setLoading(false);
+      setLoadingPhase('');
+      setProgress(0);
+    }
+    if (videoInputRef.current) videoInputRef.current.value = '';
+  }, [videoFps]);
+
+  const generateFromVideo = useCallback(async () => {
+    if (videoFrames.length === 0) return;
+    setLoading(true);
+    setLoadingPhase('Convertendo frames em formações...');
+
+    try {
+      const choreography = await framesToChoreography(videoFrames, {
+        droneCount,
+        radius: Math.max(15, Math.sqrt(droneCount) * 2.2),
+        threshold: videoThreshold,
+        invertDetection: videoInvert,
+        holdDuration: videoHoldDur,
+        transitionDuration: videoTransitionDur,
+        height: 30,
+        color: '#00E5FF',
+        onProgress: (p) => {
+          setProgress(Math.round(p * 100));
+          setLoadingPhase(`Gerando formação ${Math.round(p * videoFrames.length)}/${videoFrames.length}`);
+        },
+      });
+
+      let time = droneFormations.length > 0
+        ? droneFormations[droneFormations.length - 1].startTime + droneFormations[droneFormations.length - 1].transitionDuration + droneFormations[droneFormations.length - 1].holdDuration
+        : 0;
+
+      for (const ff of choreography) {
+        addDroneFormation({
+          id: `vid-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+          formationType: 'video-traced',
+          droneCount,
+          height: 30,
+          radius: 20,
+          spacing: 2,
+          rotation: 0,
+          startTime: time,
+          transitionDuration: videoTransitionDur,
+          holdDuration: videoHoldDur,
+          color: '#00E5FF',
+          points: ff.points,
+        });
+        time += videoTransitionDur + videoHoldDur;
+      }
+
+      setCurrentTime(0);
+      setLastGeneratedPoints(choreography[0]?.points || []);
+      const totalDur = choreography.length * (videoTransitionDur + videoHoldDur);
+      setHistory(prev => [{
+        prompt: `🎬 ${videoFile?.name || 'Video'}`,
+        result: `${choreography.length} formações · ${droneCount} drones · ${totalDur.toFixed(0)}s`,
+        time: new Date().toLocaleTimeString(),
+        points: choreography[0]?.points || [],
+      }, ...prev.slice(0, 9)]);
+      toast.success(`Coreografia gerada do vídeo!`, {
+        description: `${choreography.length} formações · ${totalDur.toFixed(0)}s de show`,
+      });
+    } catch (err: any) {
+      toast.error('Erro ao gerar coreografia', { description: err.message });
+    } finally {
+      setLoading(false);
+      setLoadingPhase('');
+      setProgress(0);
+    }
+  }, [videoFrames, droneCount, videoThreshold, videoInvert, videoHoldDur, videoTransitionDur, droneFormations, addDroneFormation, setCurrentTime, videoFile]);
 
   const generateSingle = useCallback(async () => {
     if (!prompt.trim()) return;
@@ -444,6 +561,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
     if (mode === 'full-show') generateFullShow();
     else if (mode === 'music-sync') generateMusicSync();
     else if (mode === 'image') generateFromImage();
+    else if (mode === 'video') generateFromVideo();
     else generateSingle();
   };
 
@@ -478,6 +596,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
           { id: 'single' as Mode, label: 'Formação', icon: Wand2 },
           { id: 'full-show' as Mode, label: 'Show', icon: Film },
           { id: 'image' as Mode, label: 'Imagem', icon: Image },
+          { id: 'video' as Mode, label: 'Vídeo', icon: Video },
           { id: 'music-sync' as Mode, label: 'Music', icon: Music },
           { id: 'trajectory' as Mode, label: 'Motion', icon: RotateCw },
         ]).map(({ id, label, icon: Icon }) => (
@@ -564,8 +683,105 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
+        {/* Video/GIF upload section */}
+        {mode === 'video' && (
+          <div className="space-y-2 p-2 rounded-sm border border-primary/20 bg-primary/5">
+            <div className="flex items-center gap-1">
+              <Video className="w-3 h-3 text-primary" />
+              <span className="text-[9px] font-semibold text-primary uppercase">Vídeo/GIF → Coreografia</span>
+            </div>
+            <input ref={videoInputRef} type="file" accept="video/*,image/gif" onChange={handleVideoUpload} className="hidden" />
+            
+            {videoPreviewUrl && videoFile ? (
+              <div className="relative">
+                {isGifFile(videoFile) ? (
+                  <img src={videoPreviewUrl} alt="GIF Preview" className="w-full h-28 object-contain rounded border border-border/30 bg-black/50" />
+                ) : (
+                  <video src={videoPreviewUrl} className="w-full h-28 object-contain rounded border border-border/30 bg-black/50" muted loop autoPlay playsInline />
+                )}
+                <button
+                  onClick={() => { setVideoFile(null); setVideoPreviewUrl(null); setVideoFrames([]); }}
+                  className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/60 flex items-center justify-center text-white/80 hover:text-white"
+                >
+                  <X className="w-2.5 h-2.5" />
+                </button>
+                <div className="absolute bottom-1 left-1 bg-black/70 px-1.5 py-0.5 rounded text-[7px] text-white/80 font-mono">
+                  {videoFrames.length} frames
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => videoInputRef.current?.click()}
+                className="w-full h-24 rounded border-2 border-dashed border-primary/30 flex flex-col items-center justify-center gap-1 hover:border-primary/50 transition-colors"
+              >
+                <Video className="w-5 h-5 text-primary/50" />
+                <span className="text-[8px] text-primary/70">Envie um vídeo ou GIF</span>
+                <span className="text-[7px] text-muted-foreground">MP4, WebM, MOV, GIF — cada frame vira uma formação</span>
+              </button>
+            )}
+
+            {/* Frame thumbnails */}
+            {videoFrames.length > 0 && (
+              <div className="space-y-1">
+                <span className="text-[8px] text-muted-foreground font-semibold">Frames Extraídos ({videoFrames.length})</span>
+                <div className="flex gap-0.5 overflow-x-auto pb-1">
+                  {videoFrames.slice(0, 20).map((f, i) => (
+                    <img key={i} src={f.thumbnail} alt={`Frame ${i}`} className="w-8 h-8 rounded-sm border border-border/30 flex-shrink-0 object-cover" />
+                  ))}
+                  {videoFrames.length > 20 && (
+                    <div className="w-8 h-8 rounded-sm border border-border/30 flex-shrink-0 flex items-center justify-center bg-surface-2 text-[7px] text-muted-foreground">
+                      +{videoFrames.length - 20}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Settings */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] text-muted-foreground">FPS extração</span>
+                <span className="text-[9px] font-mono-code text-foreground">{videoFps}</span>
+              </div>
+              <Slider value={[videoFps]} onValueChange={([v]) => setVideoFps(v)} min={1} max={15} step={1} />
+
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] text-muted-foreground">Threshold (brilho)</span>
+                <span className="text-[9px] font-mono-code text-foreground">{videoThreshold}</span>
+              </div>
+              <Slider value={[videoThreshold]} onValueChange={([v]) => setVideoThreshold(v)} min={30} max={230} step={5} />
+
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] text-muted-foreground">Transição (s)</span>
+                <span className="text-[9px] font-mono-code text-foreground">{videoTransitionDur}s</span>
+              </div>
+              <Slider value={[videoTransitionDur]} onValueChange={([v]) => setVideoTransitionDur(v)} min={1} max={20} step={0.5} />
+
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] text-muted-foreground">Hold (s)</span>
+                <span className="text-[9px] font-mono-code text-foreground">{videoHoldDur}s</span>
+              </div>
+              <Slider value={[videoHoldDur]} onValueChange={([v]) => setVideoHoldDur(v)} min={1} max={15} step={0.5} />
+
+              <button
+                onClick={() => setVideoInvert(!videoInvert)}
+                className={cn(
+                  "w-full text-[8px] py-1 rounded border transition-colors",
+                  videoInvert ? "border-primary/40 bg-primary/10 text-primary" : "border-border/50 bg-surface-2 text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {videoInvert ? '✓ Detectar pixels claros' : 'Detectar pixels escuros'}
+              </button>
+            </div>
+
+            <p className="text-[7px] text-muted-foreground">
+              Cada frame é convertido em silhueta e mapeado para posições de drones. Ajuste o threshold para capturar melhor a forma.
+            </p>
+          </div>
+        )}
+
         {/* Quick prompts */}
-        <div className="space-y-1">
+        {mode !== 'video' && <div className="space-y-1">
           <span className="text-[9px] text-muted-foreground font-semibold uppercase">
             {mode === 'full-show' ? 'Temas de Show' : mode === 'trajectory' ? 'Movimentos' : mode === 'music-sync' ? 'Estilos Musicais' : 'Prompts Rápidos'}
           </span>
@@ -587,10 +803,10 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
               </button>
             ))}
           </div>
-        </div>
+        </div>}
 
         {/* Prompt input */}
-        <Textarea
+        {mode !== 'video' && <Textarea
           placeholder={
             mode === 'full-show' ? "Descreva o tema do show completo..."
             : mode === 'music-sync' ? "Descreva o estilo visual sincronizado com a música..."
@@ -607,13 +823,13 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
             }
           }}
           className="h-16 text-[10px] bg-surface-2 border-border resize-none"
-        />
+        />}
 
         {/* Generate + Preview buttons */}
         <div className="flex gap-1">
           <Button
             onClick={handleGenerate}
-            disabled={loading || (mode !== 'image' && !prompt.trim()) || (mode === 'image' && !imageBase64)}
+            disabled={loading || (mode === 'video' ? videoFrames.length === 0 : mode === 'image' ? !imageBase64 : !prompt.trim())}
             className="flex-1 h-8 text-[10px] gap-1"
             size="sm"
           >
@@ -625,7 +841,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
             ) : (
               <>
                 <Send className="w-3 h-3" />
-                {mode === 'full-show' ? 'Gerar Show' : mode === 'music-sync' ? 'Music Sync' : mode === 'trajectory' ? 'Gerar Motion' : mode === 'image' ? '📷 Gerar da Imagem' : 'Gerar'} ({droneCount})
+                {mode === 'full-show' ? 'Gerar Show' : mode === 'music-sync' ? 'Music Sync' : mode === 'trajectory' ? 'Gerar Motion' : mode === 'image' ? '📷 Gerar da Imagem' : mode === 'video' ? '🎬 Gerar do Vídeo' : 'Gerar'} ({droneCount})
               </>
             )}
           </Button>
