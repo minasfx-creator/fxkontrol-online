@@ -3024,7 +3024,7 @@ export default function SkyCanvas() {
           canvas.addEventListener('webglcontextlost', handleContextLost as EventListener);
           canvas.addEventListener('webglcontextrestored', handleContextRestored as EventListener);
         }}>
-        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.3} far={20000} />
+        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.5} far={50000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook} />
 
         <SceneLighting />
