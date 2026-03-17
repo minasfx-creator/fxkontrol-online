@@ -939,7 +939,7 @@ function SkyGradient() {
 
   return (
     <mesh ref={skyRef} renderOrder={-1000}>
-      <sphereGeometry args={[9000, 64, 64]} />
+      <sphereGeometry args={[18000, 64, 64]} />
       <shaderMaterial
         side={THREE.BackSide}
         uniforms={uniforms}
@@ -2441,7 +2441,7 @@ function SceneLighting() {
     rig.moon.castShadow = s.shadowsEnabled;
     rig.moon.shadow.bias = -0.00003;
     rig.moon.shadow.normalBias = 0.02;
-    rig.moon.shadow.camera.far = 2000;
+    rig.moon.shadow.camera.far = 5000;
 
     scene.add(rig.group);
     return () => { scene.remove(rig.group); };
@@ -2549,16 +2549,16 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
   const introPhase = useRef<'hold' | 'sweep' | 'done'>('hold');
   const introTimer = useRef(0);
 
-  const WORLD_HALF_EXTENT = 9800;
+  const WORLD_HALF_EXTENT = 16000;
   const CAMERA_MIN_Y = 1;
-  const CAMERA_MAX_Y = 6000;
+  const CAMERA_MAX_Y = 15000;
 
   const clampToWorldBounds = useCallback(() => {
     const controls = controlsRef.current;
     if (!controls) return;
 
     const tx = THREE.MathUtils.clamp(controls.target.x, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
-    const ty = THREE.MathUtils.clamp(controls.target.y, 0, 3000);
+    const ty = THREE.MathUtils.clamp(controls.target.y, 0, 10000);
     const tz = THREE.MathUtils.clamp(controls.target.z, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
 
     const cx = THREE.MathUtils.clamp(camera.position.x, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
@@ -2680,9 +2680,10 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
       rotateSpeed={0.6}
       panSpeed={0.8}
       zoomSpeed={1.2}
-      maxPolarAngle={Math.PI * 0.495}
+      minPolarAngle={Math.PI * 0.05}
+      maxPolarAngle={Math.PI * 0.85}
       minDistance={1}
-      maxDistance={8000}
+      maxDistance={18000}
       enablePan
     />
   );
@@ -3024,7 +3025,7 @@ export default function SkyCanvas() {
           canvas.addEventListener('webglcontextlost', handleContextLost as EventListener);
           canvas.addEventListener('webglcontextrestored', handleContextRestored as EventListener);
         }}>
-        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.3} far={20000} />
+        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.5} far={50000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook} />
 
         <SceneLighting />
