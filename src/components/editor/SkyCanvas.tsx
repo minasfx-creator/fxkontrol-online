@@ -654,8 +654,11 @@ function estimateFireworkStarCost(
   const densityScale = THREE.MathUtils.clamp(particleDensity, 0.5, 2.0);
   const budgets = getNiagaraBudgets(isMobileViewport);
 
-  // Keep estimation aligned with FireworkBurst STAR_COUNT formula and caps.
-  const shellStars = Math.max(24, Math.min(320, Math.round((60 + caliber * caliber * 10) * densityScale)));
+  // Keep estimation aligned with FireworkBurst STAR_COUNT formula and Niagara caps.
+  const shellStars = Math.max(
+    24,
+    Math.min(budgets.maxStarsPerBurst, Math.round((60 + caliber * caliber * 10) * densityScale))
+  );
   let stars = shellStars;
 
   if (effect.partType === 'cake') stars *= 1.2;
@@ -665,7 +668,7 @@ function estimateFireworkStarCost(
 
   if (effect.id.startsWith('mburst-')) stars *= effect.id === 'mburst-02' ? 3.2 : 2.4;
 
-  return Math.max(32, Math.round(stars));
+  return Math.max(32, Math.min(budgets.maxStarBudget, Math.round(stars)));
 }
 
 function TimelineEffects() {
