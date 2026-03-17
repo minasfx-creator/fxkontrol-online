@@ -402,7 +402,7 @@ export default function ShellBurstRenderer({
         </mesh>
       )}
 
-      {/* Afterglow cloud */}
+      {/* Afterglow cloud — Screen blending for energy conservation */}
       <mesh ref={afterglowRef}>
         <sphereGeometry args={[1, 16, 16]} />
         <shaderMaterial
@@ -411,7 +411,10 @@ export default function ShellBurstRenderer({
           uniforms={afterglowUniforms}
           transparent
           depthWrite={false}
-          blending={THREE.AdditiveBlending}
+          blending={screenBlend.blending}
+          blendEquation={screenBlend.blendEquation}
+          blendSrc={screenBlend.blendSrc as any}
+          blendDst={screenBlend.blendDst as any}
         />
       </mesh>
 
