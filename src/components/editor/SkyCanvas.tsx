@@ -1916,8 +1916,9 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
     setDebugExposure(exposure);
     setDebugBurstLoad(burstLoad);
 
-    // Keep renderer exposure in sync with adaptive state.
-    gl.toneMappingExposure = exposure;
+    // Combine adaptive exposure with user's exposure compensation (EV)
+    const userEV = useSceneStore.getState().settings.exposureCompensation || 0;
+    gl.toneMappingExposure = exposure * Math.pow(2, userEV);
 
     // Update sky scatter uniforms
     if (_skyScatterUniforms) {
@@ -2210,7 +2211,7 @@ const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflec
         const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
         if (effect && effect.type === 'firework') {
           flashColor = new THREE.Color(effect.color);
-          flashIntensity = Math.max(flashIntensity, 2.0 * (1 - elapsed / 0.3));
+          flashIntensity = Math.max(flashIntensity, 1.0 * (1 - elapsed / 0.3));
         }
       }
     }
@@ -2226,11 +2227,11 @@ const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflec
 
   return (
     <mesh ref={meshRef} position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[10000, 10000]} />
+      <planeGeometry args={[100000, 100000]} />
       <shaderMaterial
         transparent
         depthWrite={false}
-        blending={THREE.AdditiveBlending}
+        blending={THREE.NormalBlending}
         uniforms={uniformsRef.current}
         vertexShader={`
           varying vec2 vUv;
@@ -2265,12 +2266,12 @@ const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflec
           }
 
           void main() {
-            float dist = length(vWorldPos.xz) / 3000.0;
+            float dist = length(vWorldPos.xz) / 15000.0;
             float distFade = 1.0 - smoothstep(0.0, 1.0, dist);
             float puddle = noise(vUv * 8.0 + uTime * 0.01);
             puddle = smoothstep(0.3, 0.7, puddle) * uWetness;
             float refl = puddle * distFade * uReflectionIntensity;
-            gl_FragColor = vec4(uReflectionColor * refl, refl * 0.3);
+            gl_FragColor = vec4(uReflectionColor * refl, refl * 0.2);
           }
         `}
       />
