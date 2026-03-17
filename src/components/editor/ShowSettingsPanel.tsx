@@ -1,11 +1,13 @@
 import { useState, useCallback } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useSceneStore } from '@/store/useSceneStore';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { X, Cog, MapPin, Clock, Users, Radio, Shield, Save, Globe, Thermometer, Wind, ChevronDown, ChevronRight, Zap, Cpu, Navigation, FileText, Hash, Calendar, Building } from 'lucide-react';
+import { X, Cog, MapPin, Clock, Users, Radio, Shield, Save, Globe, Thermometer, Wind, ChevronDown, ChevronRight, Zap, Cpu, Navigation, FileText, Hash, Calendar, Building, Eye, EyeOff, Lock, Ruler, RotateCcw, Palette } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
