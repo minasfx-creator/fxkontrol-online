@@ -172,7 +172,7 @@ const DEFAULT_SETTINGS: SceneSettings = {
   windDirection: 90,
   afterglowDuration: 3.0,
   afterglowIntensity: 0.15,
-  burstFlashIntensity: 0.6,
+  burstFlashIntensity: 0.25,
   thermalTransitionSpeed: 1.0,
 
   shadowsEnabled: true,
