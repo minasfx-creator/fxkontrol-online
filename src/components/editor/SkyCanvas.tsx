@@ -928,7 +928,8 @@ function SkyGradient() {
     uniforms.uSkyBrightness.value = skyBrightness;
     uniforms.uHorizonGlow.value = horizonGlow;
     uniforms.uStarDensity.value = starDensity;
-  }, [skyBrightness, horizonGlow, starDensity]);
+    uniforms.uSkyRotation.value = skyRotation * Math.PI / 180;
+  }, [skyBrightness, horizonGlow, starDensity, skyRotation]);
 
   // Expose scatter uniforms for AdaptiveExposureController
   useEffect(() => {
