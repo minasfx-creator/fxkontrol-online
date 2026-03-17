@@ -229,7 +229,12 @@ export default function ShellBurstRenderer({
     uHDRMultiplier: { value: hdrMultiplier },
     uTime: { value: 0 },
     uThermalSpeed: { value: thermalTransitionSpeed },
+    uMaxEnergy: { value: getMaxEnergy(0) },
   }), []);
+
+  // Pre-compute blend configs (Screen for secondary elements)
+  const screenBlend = useMemo(() => getThreeBlending('screen'), []);
+  const additiveBlend = useMemo(() => getThreeBlending('additive'), []);
 
   const afterglowUniforms = useMemo(() => ({
     uColor: { value: new THREE.Color(color) },
