@@ -313,6 +313,7 @@ function Index() {
         {activePanel === 'takeoffgrid' && <TakeoffGridPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'transitions' && <TransitionPlannerPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'lasercontrol' && <LaserControlPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'usb' && <USBConnectionPanel onClose={() => setActivePanel(null)} />}
       </>
     );
   };

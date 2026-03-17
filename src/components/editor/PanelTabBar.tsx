@@ -83,6 +83,7 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
     icon: Wrench,
     items: [
       { id: 'dmx', label: 'DMX512', icon: ScanLine },
+      { id: 'usb', label: 'USB Connect', icon: Cpu },
       { id: 'lasercontrol', label: 'Laser Control', icon: Zap },
       { id: 'smpte', label: 'SMPTE/LTC', icon: Timer },
       { id: 'livefiring', label: 'Live SFX', icon: Sparkles },
