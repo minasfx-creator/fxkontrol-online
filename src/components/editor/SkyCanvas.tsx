@@ -939,7 +939,7 @@ function SkyGradient() {
 
   return (
     <mesh ref={skyRef} renderOrder={-1000}>
-      <sphereGeometry args={[9000, 64, 64]} />
+      <sphereGeometry args={[18000, 64, 64]} />
       <shaderMaterial
         side={THREE.BackSide}
         uniforms={uniforms}
