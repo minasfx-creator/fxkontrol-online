@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { X, Sparkles, Loader2, Wand2, Film, Send, Music, RotateCw, Layers, RefreshCw, Eye, Trash2, Copy, ChevronDown, ChevronRight, GripVertical, ArrowUp, ArrowDown, Image, Upload, Zap, Video, Play, Pause } from 'lucide-react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { X, Sparkles, Loader2, Wand2, Film, Send, Music, Layers, RefreshCw, Eye, Trash2, ChevronDown, ChevronRight, Image, Upload, Video, Grid3X3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -12,8 +12,14 @@ import {
   extractVideoFrames, extractGifFrames, framesToChoreography,
   isGifFile, isVideoFile, type ExtractedFrame, type FrameFormation,
 } from '@/lib/videoToFormation';
+import {
+  generateFormation,
+  FORMATION_PRESETS,
+  type FormationType,
+  type FormationConfig,
+} from '@/lib/formations';
 
-type Mode = 'single' | 'full-show' | 'trajectory' | 'music-sync' | 'image' | 'video';
+type Mode = 'presets' | 'single' | 'full-show' | 'music-sync' | 'image' | 'video';
 
 const QUICK_PROMPTS = [
   { emoji: '🌀', label: 'Vórtex Cibernético', prompt: 'vortex cibernético com espirais logarítmicas' },
@@ -580,7 +586,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const quickList = mode === 'full-show' ? SHOW_THEMES : mode === 'trajectory' ? TRAJECTORY_PRESETS : QUICK_PROMPTS;
+  const quickList = mode === 'full-show' ? SHOW_THEMES : QUICK_PROMPTS;
 
   return (
     <div className="h-full flex flex-col bg-surface-0 border-l border-border">
@@ -601,12 +607,12 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
       {/* Mode tabs */}
       <div className="flex border-b border-border">
         {([
-          { id: 'single' as Mode, label: 'Formação', icon: Wand2 },
+          { id: 'presets' as Mode, label: 'Presets', icon: Grid3X3 },
+          { id: 'single' as Mode, label: 'IA', icon: Wand2 },
           { id: 'full-show' as Mode, label: 'Show', icon: Film },
           { id: 'image' as Mode, label: 'Imagem', icon: Image },
           { id: 'video' as Mode, label: 'Vídeo', icon: Video },
           { id: 'music-sync' as Mode, label: 'Music', icon: Music },
-          { id: 'trajectory' as Mode, label: 'Motion', icon: RotateCw },
         ]).map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -631,6 +637,54 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
           </div>
           <Slider value={[droneCount]} onValueChange={([v]) => setDroneCount(v)} min={50} max={2000} step={10} />
         </div>
+
+        {/* ── Presets mode: geometric shapes ────────────────── */}
+        {mode === 'presets' && (
+          <div className="space-y-2">
+            <span className="text-[9px] text-muted-foreground font-semibold uppercase">Formas Geométricas</span>
+            <div className="grid grid-cols-2 gap-1">
+              {FORMATION_PRESETS.map((preset) => (
+                <button
+                  key={preset.type}
+                  onClick={() => {
+                    const config: FormationConfig = { type: preset.type, count: droneCount, radius: Math.max(10, Math.sqrt(droneCount) * 1.5), spacing: 2, rotation: 0 };
+                    const pts = generateFormation(config);
+                    const lastTime = droneFormations.length > 0
+                      ? droneFormations[droneFormations.length - 1].startTime + droneFormations[droneFormations.length - 1].transitionDuration + droneFormations[droneFormations.length - 1].holdDuration
+                      : 0;
+                    addDroneFormation({
+                      id: `preset-${Date.now()}`,
+                      formationType: preset.type,
+                      droneCount,
+                      height: 30,
+                      radius: config.radius,
+                      spacing: 2,
+                      rotation: 0,
+                      startTime: lastTime,
+                      transitionDuration: 12,
+                      holdDuration: 15,
+                      color: '#00E5FF',
+                      points: pts.map(p => ({ x: p.x, z: p.z })),
+                    });
+                    setCurrentTime(lastTime);
+                    setLastGeneratedPoints(pts);
+                    toast.success(`${preset.label} adicionada`, { description: `${pts.length} drones` });
+                  }}
+                  className={cn(
+                    "flex items-center gap-1.5 px-2 py-1.5 rounded-sm text-[9px] text-left transition-colors border",
+                    "border-border/50 bg-surface-2 hover:bg-surface-3 text-foreground hover:border-primary/30"
+                  )}
+                >
+                  <span className="text-sm">{preset.icon}</span>
+                  <span className="truncate">{preset.label}</span>
+                </button>
+              ))}
+            </div>
+            <p className="text-[8px] text-muted-foreground">
+              💡 Para parâmetros detalhados (raio, rotação, cor), use o Formation Builder (botão + na toolbar).
+            </p>
+          </div>
+        )}
 
         {/* Music sync options */}
         {mode === 'music-sync' && (
@@ -845,9 +899,9 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
         )}
 
         {/* Quick prompts */}
-        {mode !== 'video' && <div className="space-y-1">
+        {mode !== 'video' && mode !== 'presets' && <div className="space-y-1">
           <span className="text-[9px] text-muted-foreground font-semibold uppercase">
-            {mode === 'full-show' ? 'Temas de Show' : mode === 'trajectory' ? 'Movimentos' : mode === 'music-sync' ? 'Estilos Musicais' : 'Prompts Rápidos'}
+            {mode === 'full-show' ? 'Temas de Show' : mode === 'music-sync' ? 'Estilos Musicais' : 'Prompts Rápidos'}
           </span>
           <div className="grid grid-cols-2 gap-1">
             {quickList.map((q) => (
@@ -870,11 +924,10 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
         </div>}
 
         {/* Prompt input */}
-        {mode !== 'video' && <Textarea
+        {mode !== 'video' && mode !== 'presets' && <Textarea
           placeholder={
             mode === 'full-show' ? "Descreva o tema do show completo..."
             : mode === 'music-sync' ? "Descreva o estilo visual sincronizado com a música..."
-            : mode === 'trajectory' ? "Descreva o padrão de movimento..."
             : mode === 'image' ? "(Opcional) Descreva o que extrair da imagem..."
             : "Descreva a formação..."
           }
@@ -890,7 +943,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
         />}
 
         {/* Generate + Preview buttons */}
-        <div className="flex gap-1">
+        {mode !== 'presets' && <div className="flex gap-1">
           <Button
             onClick={handleGenerate}
             disabled={loading || (mode === 'video' ? videoFrames.length === 0 : mode === 'image' ? !imageBase64 : !prompt.trim())}
@@ -905,7 +958,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
             ) : (
               <>
                 <Send className="w-3 h-3" />
-                {mode === 'full-show' ? 'Gerar Show' : mode === 'music-sync' ? 'Music Sync' : mode === 'trajectory' ? 'Gerar Motion' : mode === 'image' ? '📷 Gerar da Imagem' : mode === 'video' ? '🎬 Gerar do Vídeo' : 'Gerar'} ({droneCount})
+                {mode === 'full-show' ? 'Gerar Show' : mode === 'music-sync' ? 'Music Sync' : mode === 'image' ? '📷 Imagem' : mode === 'video' ? '🎬 Vídeo' : 'Gerar'} ({droneCount})
               </>
             )}
           </Button>
@@ -920,8 +973,8 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
               <Eye className="w-3 h-3" />
             </Button>
           )}
-        </div>
-        <p className="text-[8px] text-muted-foreground">Ctrl+Enter para gerar</p>
+        </div>}
+        {mode !== 'presets' && <p className="text-[8px] text-muted-foreground">Ctrl+Enter para gerar</p>}
 
         {/* 2D Preview of last generation */}
         {lastGeneratedPoints.length > 0 && (
@@ -1021,18 +1074,12 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
                         {/* Actions */}
                         <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                           {idx > 0 && (
-                            <button onClick={(e) => { e.stopPropagation(); reorderDroneFormation(idx, idx - 1); }} className="text-muted-foreground hover:text-primary">
-                              <ArrowUp className="w-2.5 h-2.5" />
-                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); reorderDroneFormation(idx, idx - 1); }} className="text-muted-foreground hover:text-primary text-[8px]">↑</button>
                           )}
                           {idx < droneFormations.length - 1 && (
-                            <button onClick={(e) => { e.stopPropagation(); reorderDroneFormation(idx, idx + 1); }} className="text-muted-foreground hover:text-primary">
-                              <ArrowDown className="w-2.5 h-2.5" />
-                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); reorderDroneFormation(idx, idx + 1); }} className="text-muted-foreground hover:text-primary text-[8px]">↓</button>
                           )}
-                          <button onClick={(e) => { e.stopPropagation(); duplicateDroneFormation(f.id); }} className="text-muted-foreground hover:text-primary">
-                            <Copy className="w-2.5 h-2.5" />
-                          </button>
+                          <button onClick={(e) => { e.stopPropagation(); duplicateDroneFormation(f.id); }} className="text-muted-foreground hover:text-primary text-[8px]">📋</button>
                           <button onClick={(e) => { e.stopPropagation(); removeDroneFormation(f.id); }} className="text-muted-foreground hover:text-destructive">
                             <Trash2 className="w-2.5 h-2.5" />
                           </button>
