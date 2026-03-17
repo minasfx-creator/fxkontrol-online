@@ -2516,8 +2516,8 @@ function WeatherEffects() {
       arr[i * 3 + 1] -= rainData.velocities[i] * 0.016 * rainIntensity;
       if (arr[i * 3 + 1] < 0) {
         arr[i * 3 + 1] = 160 + Math.random() * 40;
-        arr[i * 3] = (Math.random() - 0.5) * 800;
-        arr[i * 3 + 2] = (Math.random() - 0.5) * 800;
+        arr[i * 3] = (Math.random() - 0.5) * 4000;
+        arr[i * 3 + 2] = (Math.random() - 0.5) * 4000;
       }
     }
     posAttr.needsUpdate = true;
