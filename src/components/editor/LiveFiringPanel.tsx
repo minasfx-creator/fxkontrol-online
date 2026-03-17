@@ -306,6 +306,8 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   }, []);
 
   const handlePanic = useCallback(() => {
+    // Strong haptic burst for PANIC
+    if (isMobile && navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
     setChannels(prev => { const updated = prev.map(ch => ({ ...ch, firing: false })); sendArtNetPacket(updated); return updated; });
     fireTimers.current.forEach(t => clearTimeout(t));
     fireTimers.current.clear();
