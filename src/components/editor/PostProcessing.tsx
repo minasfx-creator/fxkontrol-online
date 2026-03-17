@@ -97,7 +97,7 @@ export default function PostProcessing() {
       )}
 
       {/* Dynamic tone mapping with exposure compensation */}
-      <ToneMapping mode={TONE_MAP[vt]} exposure={exposureMul} />
+      <ToneMapping mode={TONE_MAP[vt]} />
     </EffectComposer>
   );
 }
