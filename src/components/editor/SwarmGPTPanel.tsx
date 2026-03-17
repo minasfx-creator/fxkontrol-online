@@ -803,10 +803,10 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
               </button>
             ))}
           </div>
-        </div>
+        </div>}
 
         {/* Prompt input */}
-        <Textarea
+        {mode !== 'video' && <Textarea
           placeholder={
             mode === 'full-show' ? "Descreva o tema do show completo..."
             : mode === 'music-sync' ? "Descreva o estilo visual sincronizado com a música..."
