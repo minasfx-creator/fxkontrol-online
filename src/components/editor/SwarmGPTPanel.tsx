@@ -150,6 +150,17 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
+  // Video/GIF state
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  const [videoFrames, setVideoFrames] = useState<ExtractedFrame[]>([]);
+  const [videoFps, setVideoFps] = useState(4);
+  const [videoThreshold, setVideoThreshold] = useState(128);
+  const [videoInvert, setVideoInvert] = useState(false);
+  const [videoTransitionDur, setVideoTransitionDur] = useState(5);
+  const [videoHoldDur, setVideoHoldDur] = useState(3);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+
   const addDroneFormation = useProjectStore((s) => s.addDroneFormation);
   const addTimelineItem = useProjectStore((s) => s.addTimelineItem);
   const droneFormations = useProjectStore((s) => s.droneFormations);
