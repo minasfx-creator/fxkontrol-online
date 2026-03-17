@@ -973,8 +973,8 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
               <Eye className="w-3 h-3" />
             </Button>
           )}
-        </div>
-        <p className="text-[8px] text-muted-foreground">Ctrl+Enter para gerar</p>
+        </div>}
+        {mode !== 'presets' && <p className="text-[8px] text-muted-foreground">Ctrl+Enter para gerar</p>}
 
         {/* 2D Preview of last generation */}
         {lastGeneratedPoints.length > 0 && (
