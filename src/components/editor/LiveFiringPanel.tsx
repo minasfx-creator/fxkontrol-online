@@ -6,6 +6,7 @@
  *           RDMX monitoring, Safety channels, Art-Net bridge, CUE grouping
  */
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Flame, Wind, Sparkles, Zap, Play, Square, Plus, Trash2,
   AlertTriangle, Check, Radio, Lightbulb, ChevronDown,
@@ -36,16 +37,17 @@ import DeviceLibraryPanel from './live-firing/DeviceLibraryPanel';
 // CUE KEY — hardware key replica with Lock/Tap mode
 // ═══════════════════════════════════════════════════════════
 function CueKey({
-  index, cue, firing, onPress, onRelease, onLongPress, pyroArmed, dmxArmed, fs,
+  index, cue, firing, onPress, onRelease, onLongPress, pyroArmed, dmxArmed, fs, mobile,
 }: {
   index: number; cue?: CueEntry; firing: boolean;
   onPress: () => void; onRelease: () => void; onLongPress: () => void;
-  pyroArmed: boolean; dmxArmed: boolean; fs: boolean;
+  pyroArmed: boolean; dmxArmed: boolean; fs: boolean; mobile?: boolean;
 }) {
   const isArmed = pyroArmed || dmxArmed;
   const hasAssignment = !!cue;
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLocked = cue?.keyMode === 'lock';
+  const isBig = fs && mobile;
 
   const handleDown = () => {
     onPress();
@@ -66,7 +68,7 @@ function CueKey({
       disabled={!isArmed || !hasAssignment}
       className={cn(
         "relative flex flex-col items-center justify-center rounded-md transition-all select-none border-2",
-        fs ? "min-h-[100px] rounded-lg" : "min-h-[52px]",
+        isBig ? "min-h-[72px] rounded-xl" : fs ? "min-h-[100px] rounded-lg" : "min-h-[52px]",
         firing
           ? "bg-red-600 border-red-400 scale-[0.96]"
           : isArmed && hasAssignment
@@ -77,23 +79,22 @@ function CueKey({
       )}
       style={firing ? { boxShadow: '0 0 20px rgba(255,60,30,0.5)' } : undefined}
     >
-      {/* LED + Lock icon */}
       <div className={cn(
-        "absolute top-0.5 left-0.5 rounded-full",
-        fs ? "w-3 h-3 top-1.5 left-1.5" : "w-1.5 h-1.5",
+        "absolute rounded-full",
+        isBig ? "w-2.5 h-2.5 top-1.5 left-1.5" : fs ? "w-3 h-3 top-1.5 left-1.5" : "w-1.5 h-1.5 top-0.5 left-0.5",
         firing ? "bg-red-400" : isArmed && hasAssignment ? "bg-green-500" : "bg-muted-foreground/20"
       )} style={firing ? { boxShadow: '0 0 6px #ff4444' } : isArmed && hasAssignment ? { boxShadow: '0 0 4px #22cc44' } : undefined} />
 
       {isLocked && (
         <Lock className={cn(
-          "absolute top-0.5 right-0.5 text-amber-400/50",
-          fs ? "w-3 h-3 top-1.5 right-1.5" : "w-2 h-2"
+          "absolute text-amber-400/50",
+          isBig ? "w-3 h-3 top-1.5 right-1.5" : fs ? "w-3 h-3 top-1.5 right-1.5" : "w-2 h-2 top-0.5 right-0.5"
         )} />
       )}
 
       <span className={cn(
         "font-mono font-bold",
-        fs ? "text-xs mb-1" : "text-[7px]",
+        isBig ? "text-[9px] mb-0.5" : fs ? "text-xs mb-1" : "text-[7px]",
         firing ? "text-white" : "text-muted-foreground/50"
       )}>KEY{index + 1}</span>
 
@@ -101,21 +102,21 @@ function CueKey({
         <>
           <span className={cn(
             "font-black uppercase tracking-wide leading-tight text-center px-0.5 truncate w-full",
-            fs ? "text-sm" : "text-[8px]",
+            isBig ? "text-[10px]" : fs ? "text-sm" : "text-[8px]",
             firing ? "text-white" : "text-foreground/80"
           )} style={{ color: firing ? undefined : cue.keyColor }}>
             {cue.keyLabel || cue.effect}
           </span>
           <span className={cn(
             "font-mono",
-            fs ? "text-[10px] mt-0.5" : "text-[6px]",
+            isBig ? "text-[7px] mt-0.5" : fs ? "text-[10px] mt-0.5" : "text-[6px]",
             firing ? "text-red-200" : "text-muted-foreground/40"
           )}>
             {cue.deviceIds.length}dev · {FIRING_RULES.find(r => r.key === cue.firingRule)?.label}
           </span>
         </>
       ) : (
-        <span className={cn(fs ? "text-sm" : "text-[7px]", "text-muted-foreground/20")}>—</span>
+        <span className={cn(isBig ? "text-xs" : fs ? "text-sm" : "text-[7px]", "text-muted-foreground/20")}>—</span>
       )}
     </button>
   );
@@ -174,6 +175,7 @@ function DeviceRow({
 // MAIN PANEL
 // ═══════════════════════════════════════════════════════════
 export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
+  const isMobile = useIsMobile();
   const { isPlaying, currentTime, setPlaying, positions } = useProjectStore();
   const [channels, setChannels] = useState<SFXChannel[]>(DEFAULT_CHANNELS);
   const [cues, setCues] = useState<CueEntry[]>([]);
@@ -431,38 +433,41 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   // RENDER FUNCTIONS
   // ═══════════════════════════════════════════════════════════
 
+  const mob = isMobile; // shorthand
+
   const renderStatusBar = (fs: boolean) => (
-    <div className={cn("flex items-center justify-between border-b-2", fs ? "px-6 py-3" : "px-2 py-1.5")} style={{ borderColor: 'hsl(220 10% 15%)', background: 'hsl(220 15% 8%)' }}>
+    <div className={cn("flex items-center justify-between border-b-2", fs && mob ? "px-3 py-2" : fs ? "px-6 py-3" : "px-2 py-1.5")} style={{ borderColor: 'hsl(220 10% 15%)', background: 'hsl(220 15% 8%)' }}>
       <div className="flex items-center gap-2">
-        <div className={cn("rounded bg-gradient-to-b from-amber-500 to-amber-700 flex items-center justify-center", fs ? "w-8 h-8" : "w-5 h-5")}>
-          <Zap className={cn(fs ? "w-5 h-5" : "w-3 h-3", "text-black")} />
+        <div className={cn("rounded bg-gradient-to-b from-amber-500 to-amber-700 flex items-center justify-center", fs && mob ? "w-6 h-6" : fs ? "w-8 h-8" : "w-5 h-5")}>
+          <Zap className={cn(fs && mob ? "w-3.5 h-3.5" : fs ? "w-5 h-5" : "w-3 h-3", "text-black")} />
         </div>
         <div>
-          <div className={cn("font-black text-foreground tracking-[0.12em]", fs ? "text-base" : "text-[10px]")}>FXcommander™</div>
-          <div className={cn("font-mono text-muted-foreground/40 tracking-wider", fs ? "text-[9px]" : "text-[6px]")}>SHOWVEN® · V2.0</div>
+          <div className={cn("font-black text-foreground tracking-[0.12em]", fs && mob ? "text-xs" : fs ? "text-base" : "text-[10px]")}>FXcommander™</div>
+          <div className={cn("font-mono text-muted-foreground/40 tracking-wider", fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[6px]")}>SHOWVEN® · V2.0</div>
         </div>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         {/* Elapsed timer */}
-        <span className={cn("font-mono text-foreground/40", fs ? "text-sm" : "text-[8px]")}>
+        <span className={cn("font-mono text-foreground/40", fs && mob ? "text-[10px]" : fs ? "text-sm" : "text-[8px]")}>
           {formatTimecode(elapsedMs)}
         </span>
-        {/* Battery */}
-        <div className="flex items-center gap-1">
-          <Battery className={cn(batteryVoltage > 11 ? "text-green-400/60" : "text-amber-400", fs ? "w-4 h-4" : "w-2.5 h-2.5")} />
-          <span className={cn("font-mono text-muted-foreground/40", fs ? "text-[9px]" : "text-[6px]")}>{batteryVoltage.toFixed(2)}V</span>
-        </div>
+        {/* Battery — hide on mobile fs for space */}
+        {!(fs && mob) && (
+          <div className="flex items-center gap-1">
+            <Battery className={cn(batteryVoltage > 11 ? "text-green-400/60" : "text-amber-400", fs ? "w-4 h-4" : "w-2.5 h-2.5")} />
+            <span className={cn("font-mono text-muted-foreground/40", fs ? "text-[9px]" : "text-[6px]")}>{batteryVoltage.toFixed(2)}V</span>
+          </div>
+        )}
         {/* Connection indicators */}
         <div className="flex items-center gap-1">
           <div className={cn("rounded-full", artNetConnected ? "bg-green-500" : "bg-muted-foreground/20", fs ? "w-2.5 h-2.5" : "w-1.5 h-1.5")} />
-          <span className={cn("font-mono text-muted-foreground/40", fs ? "text-[9px]" : "text-[6px]")}>DMX</span>
+          <span className={cn("font-mono text-muted-foreground/40", fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[6px]")}>DMX</span>
         </div>
         <div className="flex items-center gap-1">
-          <Signal className={cn(pyroArm ? "text-red-500" : "text-muted-foreground/20", fs ? "w-4 h-4" : "w-2.5 h-2.5")} />
-          <span className={cn("font-mono text-muted-foreground/40", fs ? "text-[9px]" : "text-[6px]")}>RF</span>
+          <Signal className={cn(pyroArm ? "text-red-500" : "text-muted-foreground/20", fs && mob ? "w-3.5 h-3.5" : fs ? "w-4 h-4" : "w-2.5 h-2.5")} />
         </div>
-        <button onClick={() => setIsFullscreen(!isFullscreen)} className="text-muted-foreground/40 hover:text-foreground transition-colors rounded p-0.5">
-          {isFullscreen ? <Minimize2 className={cn(fs ? "w-4 h-4" : "w-3 h-3")} /> : <Maximize2 className={cn(fs ? "w-4 h-4" : "w-3 h-3")} />}
+        <button onClick={() => setIsFullscreen(!isFullscreen)} className="text-muted-foreground/40 hover:text-foreground transition-colors rounded p-1">
+          {isFullscreen ? <Minimize2 className={cn(fs && mob ? "w-5 h-5" : fs ? "w-4 h-4" : "w-3 h-3")} /> : <Maximize2 className={cn(fs ? "w-4 h-4" : "w-3 h-3")} />}
         </button>
         {!isFullscreen && <button onClick={onClose} className="text-muted-foreground/30 hover:text-foreground p-0.5 rounded transition-colors text-xs ml-1">✕</button>}
       </div>
@@ -472,29 +477,33 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const renderArmBar = (fs: boolean) => (
     <>
       <div className={cn(
-        "flex items-center gap-3 border-b transition-colors",
-        fs ? "px-6 py-2.5" : "px-2 py-1",
+        "border-b transition-colors",
+        fs && mob ? "px-3 py-2 flex flex-col gap-2" : "flex items-center gap-3",
+        !fs || !mob ? (fs ? "px-6 py-2.5" : "px-2 py-1") : "",
         (pyroArm || dmxArm) ? "border-red-800/30" : "border-border/15"
       )} style={{ background: (pyroArm || dmxArm) ? 'hsl(0 40% 8%)' : 'hsl(220 12% 7%)' }}>
-        <button onClick={() => handlePyroArm(!pyroArm)}
-          className={cn(
-            "flex-1 flex items-center justify-center gap-2 rounded border-2 font-black uppercase transition-all",
-            fs ? "py-3 text-sm tracking-[0.2em]" : "py-1.5 text-[9px] tracking-[0.15em]",
-            pyroArm ? "bg-red-600/20 border-red-500/60 text-red-400" : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/40 hover:border-border/40"
-          )} style={pyroArm ? { boxShadow: 'inset 0 0 12px rgba(255,50,30,0.1)' } : undefined}>
-          <Shield className={cn(fs ? "w-5 h-5" : "w-3 h-3")} />
-          PYRO {pyroArm ? 'ARMED' : 'SAFE'}
-        </button>
-        <button onClick={() => handleDmxArm(!dmxArm)}
-          className={cn(
-            "flex-1 flex items-center justify-center gap-2 rounded border-2 font-black uppercase transition-all",
-            fs ? "py-3 text-sm tracking-[0.2em]" : "py-1.5 text-[9px] tracking-[0.15em]",
-            dmxArm ? "bg-amber-600/20 border-amber-500/60 text-amber-400" : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/40 hover:border-border/40"
-          )} style={dmxArm ? { boxShadow: 'inset 0 0 12px rgba(255,180,30,0.1)' } : undefined}>
-          <Radio className={cn(fs ? "w-5 h-5" : "w-3 h-3")} />
-          DMX {dmxArm ? 'ARMED' : 'SAFE'}
-        </button>
-        {/* DEADMAN */}
+        {/* On mobile fullscreen, stack PYRO + DMX horizontally but bigger, DEADMAN below */}
+        <div className={cn(fs && mob ? "flex gap-2" : "contents")}>
+          <button onClick={() => handlePyroArm(!pyroArm)}
+            className={cn(
+              "flex items-center justify-center gap-2 rounded border-2 font-black uppercase transition-all",
+              fs && mob ? "flex-1 py-3.5 text-[11px] tracking-[0.15em]" : fs ? "flex-1 py-3 text-sm tracking-[0.2em]" : "flex-1 py-1.5 text-[9px] tracking-[0.15em]",
+              pyroArm ? "bg-red-600/20 border-red-500/60 text-red-400" : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/40 hover:border-border/40"
+            )} style={pyroArm ? { boxShadow: 'inset 0 0 12px rgba(255,50,30,0.1)' } : undefined}>
+            <Shield className={cn(fs && mob ? "w-4 h-4" : fs ? "w-5 h-5" : "w-3 h-3")} />
+            {pyroArm ? 'PYRO ●' : 'PYRO'}
+          </button>
+          <button onClick={() => handleDmxArm(!dmxArm)}
+            className={cn(
+              "flex items-center justify-center gap-2 rounded border-2 font-black uppercase transition-all",
+              fs && mob ? "flex-1 py-3.5 text-[11px] tracking-[0.15em]" : fs ? "flex-1 py-3 text-sm tracking-[0.2em]" : "flex-1 py-1.5 text-[9px] tracking-[0.15em]",
+              dmxArm ? "bg-amber-600/20 border-amber-500/60 text-amber-400" : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/40 hover:border-border/40"
+            )} style={dmxArm ? { boxShadow: 'inset 0 0 12px rgba(255,180,30,0.1)' } : undefined}>
+            <Radio className={cn(fs && mob ? "w-4 h-4" : fs ? "w-5 h-5" : "w-3 h-3")} />
+            {dmxArm ? 'DMX ●' : 'DMX'}
+          </button>
+        </div>
+        {/* DEADMAN — full width on mobile */}
         <button
           onMouseDown={() => setDeadmanHeld(true)}
           onMouseUp={() => setDeadmanHeld(false)}
@@ -502,17 +511,18 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           onTouchStart={(e) => { e.preventDefault(); setDeadmanHeld(true); }}
           onTouchEnd={(e) => { e.preventDefault(); setDeadmanHeld(false); }}
           className={cn(
-            "flex items-center justify-center rounded border-2 font-black uppercase transition-all shrink-0",
-            fs ? "w-16 py-3 text-[10px]" : "w-10 py-1.5 text-[7px]",
+            "flex items-center justify-center rounded border-2 font-black uppercase transition-all gap-2",
+            fs && mob ? "w-full py-3 text-[10px]" : fs ? "w-16 py-3 text-[10px] shrink-0" : "w-10 py-1.5 text-[7px] shrink-0",
             deadmanHeld ? "bg-green-600/30 border-green-500/60 text-green-400" : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/30"
           )}>
-          <Hand className={cn(fs ? "w-4 h-4" : "w-3 h-3")} />
+          <Hand className={cn(fs && mob ? "w-5 h-5" : fs ? "w-4 h-4" : "w-3 h-3")} />
+          {fs && mob && <span>DEADMAN</span>}
         </button>
       </div>
       {(pyroArm || dmxArm) && (
         <div className={cn(
           "text-center font-black uppercase animate-pulse",
-          fs ? "px-4 py-1.5 text-xs tracking-[0.3em]" : "px-2 py-0.5 text-[8px] tracking-[0.25em]",
+          fs && mob ? "px-3 py-1 text-[10px] tracking-[0.25em]" : fs ? "px-4 py-1.5 text-xs tracking-[0.3em]" : "px-2 py-0.5 text-[8px] tracking-[0.25em]",
           pyroArm && dmxArm ? "text-red-400" : pyroArm ? "text-red-400" : "text-amber-400"
         )} style={{ background: pyroArm ? 'hsl(0 50% 8%)' : 'hsl(40 40% 8%)' }}>
           {pyroArm && dmxArm ? '⚠ DMX + PYRO ARMED ⚠' : pyroArm ? '⚠ PYRO ARMED ⚠' : 'DMX ARMED'}
@@ -522,27 +532,28 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   );
 
   const renderCueKeys = (fs: boolean) => (
-    <div className={cn("border-b border-border/15", fs ? "px-6 py-4" : "px-1.5 py-1.5")} style={{ background: 'hsl(220 12% 6%)' }}>
+    <div className={cn("border-b border-border/15", fs && mob ? "px-2 py-2" : fs ? "px-6 py-4" : "px-1.5 py-1.5")} style={{ background: 'hsl(220 12% 6%)' }}>
       {/* Pagination */}
-      <div className={cn("flex items-center justify-between mb-1", fs ? "mb-2" : "mb-0.5")}>
+      <div className={cn("flex items-center justify-between", fs && mob ? "mb-1.5" : fs ? "mb-2" : "mb-0.5")}>
         <div className="flex items-center gap-1">
           <button onClick={() => setCuePage(Math.max(0, cuePage - 1))} disabled={cuePage === 0}
-            className={cn("rounded text-muted-foreground/30 hover:text-foreground/60 disabled:opacity-20 transition-colors", fs ? "p-1" : "p-0.5")}>
+            className={cn("rounded text-muted-foreground/30 hover:text-foreground/60 disabled:opacity-20 transition-colors", fs && mob ? "p-1.5" : fs ? "p-1" : "p-0.5")}>
             <ChevronLeft className={cn(fs ? "w-4 h-4" : "w-3 h-3")} />
           </button>
-          <span className={cn("font-mono text-muted-foreground/40", fs ? "text-[9px]" : "text-[6px]")}>
+          <span className={cn("font-mono text-muted-foreground/40", fs && mob ? "text-[8px]" : fs ? "text-[9px]" : "text-[6px]")}>
             {cuePage * CUES_PER_PAGE + 1}-{Math.min((cuePage + 1) * CUES_PER_PAGE, 128)}
           </span>
           <button onClick={() => setCuePage(Math.min(15, cuePage + 1))}
-            className={cn("rounded text-muted-foreground/30 hover:text-foreground/60 transition-colors", fs ? "p-1" : "p-0.5")}>
+            className={cn("rounded text-muted-foreground/30 hover:text-foreground/60 transition-colors", fs && mob ? "p-1.5" : fs ? "p-1" : "p-0.5")}>
             <ChevronRight className={cn(fs ? "w-4 h-4" : "w-3 h-3")} />
           </button>
         </div>
-        <span className={cn("font-mono text-muted-foreground/20", fs ? "text-[8px]" : "text-[5px]")}>
+        <span className={cn("font-mono text-muted-foreground/20", fs && mob ? "text-[7px]" : fs ? "text-[8px]" : "text-[5px]")}>
           Page {cuePage + 1}/16
         </span>
       </div>
-      <div className={cn("grid grid-cols-8", fs ? "gap-2" : "gap-0.5")}>
+      {/* 4 cols on mobile fullscreen, 8 cols on desktop */}
+      <div className={cn("grid", fs && mob ? "grid-cols-4 gap-1.5" : fs ? "grid-cols-8 gap-2" : "grid-cols-8 gap-0.5")}>
         {Array.from({ length: CUES_PER_PAGE }).map((_, i) => {
           const globalIndex = i + pageStart;
           const cue = pageCues.find(c => c.keyIndex === globalIndex);
@@ -550,7 +561,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
             <CueKey key={i} index={i} cue={cue} firing={firingKeys.has(i)}
               onPress={() => fireCueKey(i)} onRelease={() => stopCueKey(i)}
               onLongPress={() => toggleKeyMode(i)}
-              pyroArmed={pyroArm} dmxArmed={dmxArm} fs={fs} />
+              pyroArmed={pyroArm} dmxArmed={dmxArm} fs={fs} mobile={mob} />
           );
         })}
       </div>
@@ -558,31 +569,33 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   );
 
   const renderSceneModeBar = (fs: boolean) => (
-    <div className="flex items-center border-b border-border/15" style={{ background: 'hsl(220 10% 7%)' }}>
-      <div className="flex">
+    <div className={cn("flex items-center border-b border-border/15", fs && mob ? "flex-col" : "")} style={{ background: 'hsl(220 10% 7%)' }}>
+      {/* Scenes */}
+      <div className={cn("flex", fs && mob ? "w-full border-b border-border/10" : "")}>
         {[0, 1, 2, 3].map(s => (
           <button key={s} onClick={() => setActiveScene(s)} disabled={pyroArm}
             className={cn(
               "font-bold uppercase tracking-wider transition-all border-b-2",
-              fs ? "px-5 py-2.5 text-xs" : "px-2.5 py-1.5 text-[7px]",
+              fs && mob ? "flex-1 px-3 py-2.5 text-[10px]" : fs ? "px-5 py-2.5 text-xs" : "px-2.5 py-1.5 text-[7px]",
               activeScene === s ? "text-primary border-primary bg-primary/5" : "text-muted-foreground/30 border-transparent hover:text-muted-foreground/60"
-            )}>SCENE{s}</button>
+            )}>S{s}</button>
         ))}
       </div>
-      <div className="flex-1" />
-      <div className={cn("flex flex-wrap", fs ? "pr-3 gap-0.5" : "pr-1")}>
+      {!mob && <div className="flex-1" />}
+      {/* Mode tabs — horizontally scrollable on mobile */}
+      <div className={cn("flex overflow-x-auto no-scrollbar", fs && mob ? "w-full" : fs ? "pr-3 gap-0.5" : "pr-1")}>
         {([
           { key: 'super_dmx' as FXCMode, label: 'Super' },
           { key: 'simple_dmx' as FXCMode, label: 'Simple' },
           { key: 'manual_fire' as FXCMode, label: 'Manual' },
           { key: 'auto_fire' as FXCMode, label: 'Auto' },
           { key: 'check_slave' as FXCMode, label: 'Check' },
-          { key: 'settings' as FXCMode, label: 'Settings' },
+          { key: 'settings' as FXCMode, label: '⚙' },
         ]).map(m => (
           <button key={m.key} onClick={() => { setMode(m.key); setShowDeviceLib(false); }}
             className={cn(
-              "font-bold uppercase tracking-wider transition-all",
-              fs ? "px-3 py-2.5 text-[9px]" : "px-1.5 py-1.5 text-[6px]",
+              "font-bold uppercase tracking-wider transition-all whitespace-nowrap shrink-0",
+              fs && mob ? "px-3 py-2.5 text-[10px]" : fs ? "px-3 py-2.5 text-[9px]" : "px-1.5 py-1.5 text-[6px]",
               mode === m.key ? "text-foreground/80" : "text-muted-foreground/25 hover:text-muted-foreground/50"
             )}>{m.label}</button>
         ))}
@@ -592,7 +605,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
 
   const renderPanic = (fs: boolean) => (
     <div className="border-t-2 border-border/20" style={{ background: 'hsl(220 12% 6%)' }}>
-      <div className={cn(fs ? "px-6 py-3" : "px-2 py-1.5")}>
+      <div className={cn(fs && mob ? "px-3 py-2" : fs ? "px-6 py-3" : "px-2 py-1.5")}>
         <button onClick={handlePanic}
           className={cn(
             "w-full rounded-lg font-black uppercase transition-all",
@@ -600,22 +613,19 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
             "hover:from-red-600 hover:to-red-800 active:scale-[0.97]",
             "border-2 border-red-600/50",
             "flex items-center justify-center gap-2",
-            fs ? "h-16 text-lg tracking-[0.3em]" : "h-10 text-[11px] tracking-[0.25em]"
+            fs && mob ? "h-14 text-base tracking-[0.25em]" : fs ? "h-16 text-lg tracking-[0.3em]" : "h-10 text-[11px] tracking-[0.25em]"
           )} style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)' }}>
-          <AlertTriangle className={cn(fs ? "w-6 h-6" : "w-4 h-4")} />
+          <AlertTriangle className={cn(fs && mob ? "w-5 h-5" : fs ? "w-6 h-6" : "w-4 h-4")} />
           PANIC
         </button>
       </div>
-      <div className={cn("flex items-center justify-between border-t border-border/10", fs ? "px-6 py-2" : "px-2 py-1")}>
+      <div className={cn("flex items-center justify-between border-t border-border/10", fs && mob ? "px-3 py-1.5" : fs ? "px-6 py-2" : "px-2 py-1")}>
         <div className="flex items-center gap-2">
-          <span className={cn("font-mono text-muted-foreground/30", fs ? "text-[9px]" : "text-[6px]")}>{channels.length}CH · {armedCount}RDY</span>
+          <span className={cn("font-mono text-muted-foreground/30", fs && mob ? "text-[8px]" : fs ? "text-[9px]" : "text-[6px]")}>{channels.length}CH · {armedCount}RDY</span>
           {firingCount > 0 && <span className={cn("font-mono text-red-400 font-bold animate-pulse", fs ? "text-[9px]" : "text-[6px]")}>🔥 {firingCount}</span>}
-          <span className={cn("font-mono", fs ? "text-[9px]" : "text-[6px]", artNetConnected ? "text-green-500/60" : "text-muted-foreground/20")}>
-            {artNetConnected ? '● Art-Net' : '○ Art-Net'}
-          </span>
         </div>
-        <span className={cn("font-mono text-muted-foreground/20", fs ? "text-[9px]" : "text-[6px]")}>
-          {settings.artNetIp}:{settings.artNetPort}
+        <span className={cn("font-mono", fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[6px]", artNetConnected ? "text-green-500/60" : "text-muted-foreground/20")}>
+          {artNetConnected ? '● Art-Net' : '○ Off'}
         </span>
       </div>
     </div>
@@ -869,7 +879,10 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   // ═══════════════════════════════════════════════════════════
   if (isFullscreen) {
     return (
-      <div className="fixed inset-0 z-[9999] flex flex-col select-none" style={{ background: 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 4%) 100%)' }}>
+      <div className={cn(
+        "fixed inset-0 z-[9999] flex flex-col select-none",
+        mob && "pb-[env(safe-area-inset-bottom)]"
+      )} style={{ background: 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 4%) 100%)' }}>
         {renderStatusBar(true)}
         {renderArmBar(true)}
         {renderCueKeys(true)}
@@ -881,8 +894,23 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   }
 
   // ═══════════════════════════════════════════════════════════
-  // PANEL LAYOUT
+  // PANEL LAYOUT — auto-fullscreen on mobile
   // ═══════════════════════════════════════════════════════════
+  if (mob) {
+    // On mobile, the panel always renders fullscreen
+    return (
+      <div className="fixed inset-0 z-[9999] flex flex-col select-none pb-[env(safe-area-inset-bottom)]"
+        style={{ background: 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 4%) 100%)' }}>
+        {renderStatusBar(true)}
+        {renderArmBar(true)}
+        {renderCueKeys(true)}
+        {renderSceneModeBar(true)}
+        <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
+        {renderPanic(true)}
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col overflow-hidden select-none" style={{ minWidth: 300, maxWidth: 380, background: 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 5%) 100%)' }}>
       {renderStatusBar(false)}
