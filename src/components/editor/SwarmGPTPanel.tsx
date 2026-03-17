@@ -159,6 +159,10 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
   const [videoInvert, setVideoInvert] = useState(false);
   const [videoTransitionDur, setVideoTransitionDur] = useState(5);
   const [videoHoldDur, setVideoHoldDur] = useState(3);
+  const [videoDetectionMode, setVideoDetectionMode] = useState<'threshold' | 'edge' | 'adaptive'>('threshold');
+  const [videoBlurRadius, setVideoBlurRadius] = useState(0);
+  const [videoContrast, setVideoContrast] = useState(1);
+  const [videoEdgeSensitivity, setVideoEdgeSensitivity] = useState(50);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
   const addDroneFormation = useProjectStore((s) => s.addDroneFormation);
