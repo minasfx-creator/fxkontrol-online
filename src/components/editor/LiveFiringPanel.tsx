@@ -967,7 +967,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   // ═══════════════════════════════════════════════════════════
   if (isFullscreen) {
     return (
-      <div className={cn(
+      <div {...swipeProps} className={cn(
         "fixed inset-0 z-[9999] flex flex-col select-none",
         mob && "pb-[env(safe-area-inset-bottom)]"
       )} style={{ background: 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 4%) 100%)' }}>
