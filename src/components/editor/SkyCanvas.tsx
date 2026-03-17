@@ -1378,7 +1378,7 @@ function GrassGround() {
       color += vec3(0.03, 0.05, 0.08) * spec * wetness * 0.3;
 
       // Distance atmosphere — Google Earth blue haze
-      float dist = length(worldUV) * 0.0015;
+      float dist = length(worldUV) * 0.00015;
       float fogFactor = smoothstep(0.0, 1.0, dist);
       vec3 atmosphereColor = vec3(0.08, 0.10, 0.18);
       color = mix(color, atmosphereColor, fogFactor * 0.7);
@@ -1481,7 +1481,7 @@ function GrassGround() {
       float distFromCenter = length(worldUV);
       
       // LOD blend factor: 0 = near (detailed), 1 = far (satellite)
-      float lodBlend = smoothstep(1000.0, 3000.0, distFromCenter);
+      float lodBlend = smoothstep(10000.0, 30000.0, distFromCenter);
       
       // === NEAR FIELD: detailed grass with mowing pattern ===
       float largN = fbm(worldUV * 0.03);
@@ -1540,7 +1540,7 @@ function GrassGround() {
       color += vec3(0.03, 0.05, 0.08) * spec * (0.3 + wetness * 0.2);
       
       // Distance atmosphere
-      float dist = distFromCenter * 0.0003;
+      float dist = distFromCenter * 0.00003;
       float fogFactor = smoothstep(0.0, 1.0, dist);
       vec3 atmosphereColor = vec3(0.08, 0.10, 0.18);
       color = mix(color, atmosphereColor, fogFactor * 0.7);
@@ -1572,9 +1572,9 @@ function AtmosphericParticles() {
     const sz = new Float32Array(count);
     const vel = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 2000;
+      pos[i * 3] = (Math.random() - 0.5) * 20000;
       pos[i * 3 + 1] = Math.random() * 60 + 0.5;
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 2000;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 20000;
       sz[i] = 0.02 + Math.random() * 0.08;
       vel[i * 3] = (Math.random() - 0.5) * 0.01;
       vel[i * 3 + 1] = (Math.random() - 0.5) * 0.005;
@@ -1595,9 +1595,9 @@ function AtmosphericParticles() {
       arr[i * 3 + 2] += Math.cos(t * 0.07 + i * 0.7) * 0.004 + velData[i * 3 + 2];
       // Recycle particles that drift too far from camera
       const dx = arr[i * 3] - camX, dz = arr[i * 3 + 2] - camZ;
-      if (dx * dx + dz * dz > 1000000) {
-        arr[i * 3] = camX + (Math.random() - 0.5) * 2000;
-        arr[i * 3 + 2] = camZ + (Math.random() - 0.5) * 2000;
+      if (dx * dx + dz * dz > 100000000) {
+        arr[i * 3] = camX + (Math.random() - 0.5) * 20000;
+        arr[i * 3 + 2] = camZ + (Math.random() - 0.5) * 20000;
       }
     }
     posAttr.needsUpdate = true;
@@ -1696,7 +1696,7 @@ function GroundFog() {
 
   return (
     <mesh ref={fogRef} position={[0, 0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[10000, 10000, 1, 1]} />
+      <planeGeometry args={[100000, 100000, 1, 1]} />
       <shaderMaterial
         transparent
         depthWrite={false}
@@ -1836,7 +1836,7 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
             color += vec3(0.015, 0.02, 0.035) * viewAngle * nearBlend * 0.8;
             
             // Atmospheric fade at extreme distance
-            float dist = distFromCenter * 0.0002;
+            float dist = distFromCenter * 0.00002;
             float fogFactor = smoothstep(0.5, 1.5, dist);
             vec3 atmosphereColor = vec3(0.02 * b, 0.025 * b, 0.04 * b);
             color = mix(color, atmosphereColor, fogFactor * 0.5);
@@ -2266,7 +2266,7 @@ const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflec
           }
 
           void main() {
-            float dist = length(vWorldPos.xz) / 15000.0;
+            float dist = length(vWorldPos.xz) / 150000.0;
             float distFade = 1.0 - smoothstep(0.0, 1.0, dist);
             float puddle = noise(vUv * 8.0 + uTime * 0.01);
             puddle = smoothstep(0.3, 0.7, puddle) * uWetness;
@@ -2502,7 +2502,7 @@ function SceneFog() {
 function SceneStars() {
   const density = useSceneStore(st => st.settings.starDensity);
   if (density <= 0.05) return null;
-  return <Stars radius={10000} depth={4000} count={Math.round(15000 * density)} factor={6} saturation={0.2} fade speed={0.03} />;
+  return <Stars radius={100000} depth={40000} count={Math.round(15000 * density)} factor={6} saturation={0.2} fade speed={0.03} />;
 }
 
 /** SceneStars with lowQualityMode support — reduces count & factor by 50% */
@@ -2511,7 +2511,7 @@ function SceneStarsWired() {
   const lowQ = useSceneStore(st => st.environment.lowQualityMode);
   if (density <= 0.05) return null;
   const mult = lowQ ? 0.5 : 1.0;
-  return <Stars radius={10000} depth={4000} count={Math.round(15000 * density * mult)} factor={6 * mult} saturation={0.2} fade speed={0.03} />;
+  return <Stars radius={100000} depth={40000} count={Math.round(15000 * density * mult)} factor={6 * mult} saturation={0.2} fade speed={0.03} />;
 }
 
 function WeatherEffects() {

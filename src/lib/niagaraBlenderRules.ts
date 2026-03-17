@@ -19,7 +19,7 @@ const MAX_HDR_LUMA = 1.15;
 
 // ── V-Ray / Blender View Transform System ──────────────────────────
 
-export type ViewTransform = 'aces-filmic' | 'agx' | 'standard';
+export type ViewTransform = 'aces-filmic' | 'agx' | 'standard' | 'pbr-neutral';
 
 export interface ViewTransformConfig {
   maxHDRChannel: number;
@@ -46,6 +46,12 @@ const VIEW_TRANSFORM_CONFIGS: Record<ViewTransform, ViewTransformConfig> = {
     maxHDRLuma: 8.0,
     energyCap: 8.0,
     label: 'Standard (Linear)',
+  },
+  'pbr-neutral': {
+    maxHDRChannel: 1.5,
+    maxHDRLuma: 1.3,
+    energyCap: 1.5,
+    label: 'Khronos PBR Neutral',
   },
 };
 
