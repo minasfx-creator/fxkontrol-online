@@ -180,6 +180,9 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
       selectPosition(position.id);
     }
 
+    // If positions are locked, only allow selection, not dragging
+    if (lockPositions) return;
+
     setIsDragging(true);
     hasSavedCheckpoint.current = false;
     dragStartPos.current = { x: position.x, z: position.z };
