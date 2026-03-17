@@ -2,6 +2,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { attackReleaseEnvelope, temporalFlicker } from '@/lib/pyroNoise';
+import { getThreeBlending, GROUND_LIGHT_SCALE } from '@/lib/niagaraBlenderRules';
 
 /**
  * Mine Effect refinado:
