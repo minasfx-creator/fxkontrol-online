@@ -1557,9 +1557,9 @@ function AtmosphericParticles() {
     const sz = new Float32Array(count);
     const vel = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 400;
+      pos[i * 3] = (Math.random() - 0.5) * 2000;
       pos[i * 3 + 1] = Math.random() * 60 + 0.5;
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 400;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 2000;
       sz[i] = 0.02 + Math.random() * 0.08;
       vel[i * 3] = (Math.random() - 0.5) * 0.01;
       vel[i * 3 + 1] = (Math.random() - 0.5) * 0.005;
