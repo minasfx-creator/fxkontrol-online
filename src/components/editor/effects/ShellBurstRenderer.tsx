@@ -320,6 +320,7 @@ export default function ShellBurstRenderer({
     mat.uniforms.uHDRMultiplier.value = hdrMultiplier;
     mat.uniforms.uBaseSize.value = baseSize;
     mat.uniforms.uThermalSpeed.value = thermalTransitionSpeed;
+    mat.uniforms.uMaxEnergy.value = getMaxEnergy(0);
 
     // ── Afterglow cloud (duration + intensity from store) ──
     if (afterglowRef.current) {
