@@ -293,6 +293,98 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
           </Button>
         </div>
 
+        {/* Diagnostics */}
+        <div className="border-t border-border/50 pt-2 space-y-1.5">
+          <button
+            onClick={() => setShowDiag(v => !v)}
+            className="flex items-center gap-1.5 w-full text-left"
+          >
+            <Activity className="h-3 w-3 text-primary" />
+            <span className="text-[9px] text-muted-foreground font-semibold uppercase flex-1">Diagnóstico Art-Net</span>
+            <span className="text-[8px] text-muted-foreground">{showDiag ? '▼' : '▶'}</span>
+          </button>
+
+          {showDiag && (
+            <div className="space-y-1.5">
+              {/* Connection status indicator */}
+              <div className="flex items-center gap-1.5 bg-surface-2 rounded-sm p-1.5">
+                {connectionStatus === 'idle' && <div className="w-2 h-2 rounded-full bg-muted-foreground/40" />}
+                {connectionStatus === 'testing' && <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />}
+                {connectionStatus === 'ok' && <CheckCircle2 className="w-3 h-3 text-green-500" />}
+                {connectionStatus === 'error' && <XCircle className="w-3 h-3 text-destructive" />}
+                <span className="text-[9px] text-foreground flex-1">
+                  {connectionStatus === 'idle' && 'Não testado'}
+                  {connectionStatus === 'testing' && 'Testando...'}
+                  {connectionStatus === 'ok' && 'Edge Function OK'}
+                  {connectionStatus === 'error' && 'Falha na conexão'}
+                </span>
+                <Button
+                  size="sm" variant="outline"
+                  className="h-5 text-[8px] px-2 gap-0.5"
+                  onClick={testConnection}
+                  disabled={connectionStatus === 'testing'}
+                >
+                  <Zap className="h-2.5 w-2.5" />
+                  Test
+                </Button>
+              </div>
+
+              {/* Log entries */}
+              <div className="max-h-48 overflow-y-auto scrollbar-thin space-y-1">
+                {diagLogs.length === 0 && (
+                  <p className="text-[8px] text-muted-foreground text-center py-2">
+                    Clique "Test" ou "Send Art-Net" para gerar logs
+                  </p>
+                )}
+                {diagLogs.map((log, i) => (
+                  <div key={i} className="bg-surface-2 rounded-sm p-1.5 space-y-0.5">
+                    <div className="flex items-center gap-1">
+                      {log.type === 'send' && <Send className="w-2.5 h-2.5 text-primary" />}
+                      {log.type === 'validate' && <CheckCircle2 className="w-2.5 h-2.5 text-green-500" />}
+                      {log.type === 'error' && <XCircle className="w-2.5 h-2.5 text-destructive" />}
+                      {log.type === 'info' && <Activity className="w-2.5 h-2.5 text-muted-foreground" />}
+                      <span className="text-[8px] text-foreground flex-1 truncate">{log.message}</span>
+                      {log.latency != null && (
+                        <span className="text-[7px] text-muted-foreground flex items-center gap-0.5">
+                          <Clock className="w-2 h-2" />{log.latency}ms
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[7px] text-muted-foreground">
+                      {log.timestamp.toLocaleTimeString()}
+                    </p>
+                    {/* Hex dump */}
+                    {log.packets && log.packets.length > 0 && (
+                      <div className="mt-1 space-y-0.5">
+                        {log.packets.map((pkt, j) => (
+                          <div key={j} className="bg-surface-0 rounded-sm p-1">
+                            <p className="text-[7px] text-muted-foreground mb-0.5">
+                              Uni {pkt.universe} · {pkt.channels}ch · {pkt.packetSize}B
+                            </p>
+                            <p className="text-[7px] font-mono-code text-primary/80 break-all leading-relaxed">
+                              {pkt.hex}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {diagLogs.length > 0 && (
+                <Button
+                  size="sm" variant="ghost"
+                  className="h-5 text-[8px] w-full text-muted-foreground"
+                  onClick={() => setDiagLogs([])}
+                >
+                  Limpar logs
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="bg-surface-2 rounded-sm p-2 text-[9px] text-muted-foreground space-y-1">
           <p><strong>DMX512:</strong> 512 canais por universo, 128 fixtures RGBW</p>
           <p><strong>Art-Net:</strong> Protocolo UDP porta 6454 para fixtures reais</p>
