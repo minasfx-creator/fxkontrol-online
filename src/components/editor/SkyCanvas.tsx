@@ -1377,12 +1377,12 @@ function GrassGround() {
       float wetness = smoothstep(0.6, 0.8, fine) * (1.0 - urbanMask);
       color += vec3(0.03, 0.05, 0.08) * spec * wetness * 0.3;
 
-      // Distance atmosphere — Google Earth blue haze
-      float dist = length(worldUV) * 0.00015;
+      // Distance atmosphere — blend to near-black to match sky sub-horizon
+      float dist = length(worldUV) * 0.00006;
       float fogFactor = smoothstep(0.0, 1.0, dist);
-      vec3 atmosphereColor = vec3(0.08, 0.10, 0.18);
-      color = mix(color, atmosphereColor, fogFactor * 0.7);
-      color *= 1.0 - fogFactor * 0.25;
+      vec3 atmosphereColor = vec3(0.003, 0.004, 0.008);
+      color = mix(color, atmosphereColor, fogFactor);
+      color *= 1.0 - fogFactor * 0.5;
 
       gl_FragColor = vec4(color, 1.0);
     }
@@ -1539,12 +1539,12 @@ function GrassGround() {
       float wetness = smoothstep(0.6, 0.8, fineN) * (1.0 - lodBlend);
       color += vec3(0.03, 0.05, 0.08) * spec * (0.3 + wetness * 0.2);
       
-      // Distance atmosphere
-      float dist = distFromCenter * 0.00003;
+      // Distance atmosphere — blend to near-black to match sky sub-horizon
+      float dist = distFromCenter * 0.00006;
       float fogFactor = smoothstep(0.0, 1.0, dist);
-      vec3 atmosphereColor = vec3(0.08, 0.10, 0.18);
-      color = mix(color, atmosphereColor, fogFactor * 0.7);
-      color *= 1.0 - fogFactor * 0.25;
+      vec3 atmosphereColor = vec3(0.003, 0.004, 0.008);
+      color = mix(color, atmosphereColor, fogFactor);
+      color *= 1.0 - fogFactor * 0.5;
       
       gl_FragColor = vec4(color, 1.0);
     }
@@ -1705,10 +1705,12 @@ function GroundFog() {
         vertexShader={`
           varying vec2 vUv;
           varying float vWorldY;
+          varying vec3 vWorldPos;
           void main() {
             vUv = uv;
             vec4 worldPos = modelMatrix * vec4(position, 1.0);
             vWorldY = worldPos.y;
+            vWorldPos = worldPos.xyz;
             gl_Position = projectionMatrix * viewMatrix * worldPos;
           }
         `}
@@ -1719,6 +1721,7 @@ function GroundFog() {
           uniform vec3 uFogColor;
           varying vec2 vUv;
           varying float vWorldY;
+          varying vec3 vWorldPos;
 
           float hash(vec2 p) {
             return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -1743,10 +1746,14 @@ function GroundFog() {
           }
 
           void main() {
-            vec2 uv = vUv * 4.0 + vec2(uTime * 0.02, uTime * 0.01);
+            // Use world-space coordinates for noise so it tiles seamlessly
+            vec2 worldUV = vWorldPos.xz * 0.0001;
+            vec2 uv = worldUV * 4.0 + vec2(uTime * 0.02, uTime * 0.01);
             float n = fbm(uv);
             float heightFade = smoothstep(uHeight, 0.0, vWorldY);
-            float edgeFade = smoothstep(0.0, 0.12, min(vUv.x, min(vUv.y, min(1.0 - vUv.x, 1.0 - vUv.y))));
+            // Distance-based circular fade — no square edges
+            float dist = length(vWorldPos.xz) / 45000.0;
+            float edgeFade = 1.0 - smoothstep(0.7, 1.0, dist);
             float alpha = n * heightFade * edgeFade * uIntensity;
             gl_FragColor = vec4(uFogColor, alpha * 0.4);
           }
@@ -1835,11 +1842,12 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
             float viewAngle = pow(1.0 - max(vViewDir.y, 0.0), 6.0);
             color += vec3(0.015, 0.02, 0.035) * viewAngle * nearBlend * 0.8;
             
-            // Atmospheric fade at extreme distance
-            float dist = distFromCenter * 0.00002;
+            // Atmospheric fade at extreme distance — match sky sub-horizon
+            float dist = distFromCenter * 0.00006;
             float fogFactor = smoothstep(0.5, 1.5, dist);
-            vec3 atmosphereColor = vec3(0.02 * b, 0.025 * b, 0.04 * b);
-            color = mix(color, atmosphereColor, fogFactor * 0.5);
+            vec3 atmosphereColor = vec3(0.003 * b, 0.004 * b, 0.008 * b);
+            color = mix(color, atmosphereColor, fogFactor);
+            color *= 1.0 - fogFactor * 0.5;
             
             gl_FragColor = vec4(color, 1.0);
           }
@@ -2266,12 +2274,13 @@ const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflec
           }
 
           void main() {
-            float dist = length(vWorldPos.xz) / 150000.0;
+            float dist = length(vWorldPos.xz) / 50000.0;
             float distFade = 1.0 - smoothstep(0.0, 1.0, dist);
-            float puddle = noise(vUv * 8.0 + uTime * 0.01);
+            // Use world-space coordinates for puddle noise instead of UV
+            float puddle = noise(vWorldPos.xz * 0.01 + uTime * 0.01);
             puddle = smoothstep(0.3, 0.7, puddle) * uWetness;
             float refl = puddle * distFade * uReflectionIntensity;
-            gl_FragColor = vec4(uReflectionColor * refl, refl * 0.2);
+            gl_FragColor = vec4(uReflectionColor * refl, refl * 0.15);
           }
         `}
       />
