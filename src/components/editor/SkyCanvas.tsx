@@ -1539,12 +1539,12 @@ function GrassGround() {
       float wetness = smoothstep(0.6, 0.8, fineN) * (1.0 - lodBlend);
       color += vec3(0.03, 0.05, 0.08) * spec * (0.3 + wetness * 0.2);
       
-      // Distance atmosphere
-      float dist = distFromCenter * 0.00003;
+      // Distance atmosphere — blend to near-black to match sky sub-horizon
+      float dist = distFromCenter * 0.00006;
       float fogFactor = smoothstep(0.0, 1.0, dist);
-      vec3 atmosphereColor = vec3(0.08, 0.10, 0.18);
-      color = mix(color, atmosphereColor, fogFactor * 0.7);
-      color *= 1.0 - fogFactor * 0.25;
+      vec3 atmosphereColor = vec3(0.003, 0.004, 0.008);
+      color = mix(color, atmosphereColor, fogFactor);
+      color *= 1.0 - fogFactor * 0.5;
       
       gl_FragColor = vec4(color, 1.0);
     }
