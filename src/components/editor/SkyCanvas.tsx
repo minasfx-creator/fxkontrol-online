@@ -2266,7 +2266,7 @@ const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflec
           }
 
           void main() {
-            float dist = length(vWorldPos.xz) / 15000.0;
+            float dist = length(vWorldPos.xz) / 150000.0;
             float distFade = 1.0 - smoothstep(0.0, 1.0, dist);
             float puddle = noise(vUv * 8.0 + uTime * 0.01);
             puddle = smoothstep(0.3, 0.7, puddle) * uWetness;
