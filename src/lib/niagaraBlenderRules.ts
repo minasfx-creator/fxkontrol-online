@@ -56,6 +56,7 @@ export function getViewTransformConfig(mode: ViewTransform): ViewTransformConfig
 export function getAllViewTransforms(): { id: ViewTransform; label: string }[] {
   return Object.entries(VIEW_TRANSFORM_CONFIGS).map(([id, cfg]) => ({ id: id as ViewTransform, label: cfg.label }));
 }
+let _adaptiveExposure = 1.2;
 let _adaptiveBurstLoad = 0;
 
 export function getNiagaraBudgets(isMobile: boolean) {
