@@ -374,7 +374,7 @@ export default function ShellBurstRenderer({
           <meshBasicMaterial
             color={secondaryColor || color}
             transparent
-            opacity={burstFlashIntensity * 0.45 * (1 - progress / 0.08)}
+            opacity={burstFlashIntensity * 0.2 * (1 - progress / 0.08)}
             blending={screenBlend.blending}
             blendEquation={screenBlend.blendEquation}
             blendSrc={screenBlend.blendSrc as any}
