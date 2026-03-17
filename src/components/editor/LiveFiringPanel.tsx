@@ -680,7 +680,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
       </div>
       {!mob && <div className="flex-1" />}
       {/* Mode tabs — horizontally scrollable on mobile */}
-      <div className={cn("flex overflow-x-auto no-scrollbar", fs && mob ? "w-full" : fs ? "pr-3 gap-0.5" : "pr-1")}>
+      <div className={cn("flex overflow-x-auto scrollbar-thin scrollbar-thumb-border/30 scrollbar-track-transparent", fs && mob ? "w-full pb-1" : fs ? "pr-3 gap-0.5" : "pr-1")}>
         {([
           { key: 'super_dmx' as FXCMode, label: 'Super' },
           { key: 'simple_dmx' as FXCMode, label: 'Simple' },
