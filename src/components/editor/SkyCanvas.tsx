@@ -2559,9 +2559,9 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
   const introPhase = useRef<'hold' | 'sweep' | 'done'>('hold');
   const introTimer = useRef(0);
 
-  const WORLD_HALF_EXTENT = 16000;
+  const WORLD_HALF_EXTENT = 80000;
   const CAMERA_MIN_Y = 1;
-  const CAMERA_MAX_Y = 15000;
+  const CAMERA_MAX_Y = 75000;
 
   const clampToWorldBounds = useCallback(() => {
     const controls = controlsRef.current;
