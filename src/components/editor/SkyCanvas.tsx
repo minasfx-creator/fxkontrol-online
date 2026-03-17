@@ -2680,9 +2680,10 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
       rotateSpeed={0.6}
       panSpeed={0.8}
       zoomSpeed={1.2}
-      maxPolarAngle={Math.PI * 0.495}
+      minPolarAngle={Math.PI * 0.05}
+      maxPolarAngle={Math.PI * 0.85}
       minDistance={1}
-      maxDistance={8000}
+      maxDistance={18000}
       enablePan
     />
   );
