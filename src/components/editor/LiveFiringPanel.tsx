@@ -306,6 +306,8 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   }, []);
 
   const handlePanic = useCallback(() => {
+    // Strong haptic burst for PANIC
+    if (isMobile && navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
     setChannels(prev => { const updated = prev.map(ch => ({ ...ch, firing: false })); sendArtNetPacket(updated); return updated; });
     fireTimers.current.forEach(t => clearTimeout(t));
     fireTimers.current.clear();
@@ -320,6 +322,8 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
 
   // ─── Fire logic ───
   const fireChannel = useCallback((id: string) => {
+    // Haptic feedback on mobile
+    if (isMobile && navigator.vibrate) navigator.vibrate(30);
     setChannels(prev => { const updated = prev.map(ch => ch.id === id ? { ...ch, firing: true } : ch); sendArtNetPacket(updated); return updated; });
     const ch = channels.find(c => c.id === id);
     if (ch) {
@@ -351,6 +355,8 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
     const cue = pageCues.find(c => c.keyIndex === keyIndex + pageStart);
     if (!cue) return;
     if (!dmxArm && !pyroArm) return;
+    // Haptic feedback for CUE fire
+    if (isMobile && navigator.vibrate) navigator.vibrate(20);
 
     // Lock mode toggle
     if (cue.keyMode === 'lock') {
