@@ -1006,7 +1006,10 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   // PANEL LAYOUT — auto-fullscreen on mobile
   // ═══════════════════════════════════════════════════════════
   if (mob) {
-    // On mobile, the panel always renders fullscreen
+    // On mobile, auto-enter browser fullscreen
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    }
     return (
       <div {...swipeProps} className="fixed inset-0 z-[9999] flex flex-col select-none pb-[env(safe-area-inset-bottom)]"
         style={{ background: 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 4%) 100%)' }}>
