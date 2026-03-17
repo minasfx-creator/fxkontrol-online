@@ -318,7 +318,7 @@ export const SCENE_PRESETS: Record<string, { name: string; description: string; 
       humidity: 0.9,
       visibility: 0.5,
       fogDensity: 0.6,
-      fogFar: 600,
+      fogFar: 3000,
       moonIntensity: 0.1,
       starDensity: 0.0,
       smokeOpacity: 0.3,
