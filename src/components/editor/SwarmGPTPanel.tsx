@@ -561,6 +561,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
     if (mode === 'full-show') generateFullShow();
     else if (mode === 'music-sync') generateMusicSync();
     else if (mode === 'image') generateFromImage();
+    else if (mode === 'video') generateFromVideo();
     else generateSingle();
   };
 
