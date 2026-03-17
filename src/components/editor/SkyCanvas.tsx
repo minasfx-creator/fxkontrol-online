@@ -1054,7 +1054,7 @@ function SkyGradient() {
             vec3 lowSky    = vec3(0.04, 0.05, 0.14);
             vec3 horizon   = vec3(0.08, 0.06, 0.12);
             vec3 haze      = vec3(0.12, 0.08, 0.10);
-            vec3 ground    = vec3(0.005, 0.005, 0.015);
+            vec3 ground    = uGroundTint;
             
             vec3 color;
             if (h > 0.7) {
@@ -1065,10 +1065,10 @@ function SkyGradient() {
               color = mix(lowSky, midSky, smoothstep(0.15, 0.4, h));
             } else if (h > 0.02) {
               color = mix(horizon, lowSky, smoothstep(0.02, 0.15, h));
-            } else if (h > -0.02) {
-              color = mix(haze, horizon, smoothstep(-0.02, 0.02, h));
+            } else if (h > -0.05) {
+              color = mix(haze, horizon, smoothstep(-0.05, 0.02, h));
             } else {
-              color = mix(ground, haze, smoothstep(-0.15, -0.02, h));
+              color = mix(ground, haze, smoothstep(-0.35, -0.05, h));
             }
             
             // Warm amber horizon glow — cinematic sunset afterglow
