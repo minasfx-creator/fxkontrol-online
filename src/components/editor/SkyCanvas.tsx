@@ -1916,8 +1916,9 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
     setDebugExposure(exposure);
     setDebugBurstLoad(burstLoad);
 
-    // Keep renderer exposure in sync with adaptive state.
-    gl.toneMappingExposure = exposure;
+    // Combine adaptive exposure with user's exposure compensation (EV)
+    const userEV = useSceneStore.getState().settings.exposureCompensation || 0;
+    gl.toneMappingExposure = exposure * Math.pow(2, userEV);
 
     // Update sky scatter uniforms
     if (_skyScatterUniforms) {
