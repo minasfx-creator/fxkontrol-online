@@ -160,6 +160,9 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
     if (editorMode !== 'select') return;
     e.stopPropagation();
 
+    // Finale 3D: lock positions prevents dragging
+    const lockPositions = useSceneStore.getState().environment.lockPositions;
+
     if (e.nativeEvent?.button === 2 || e.button === 2) {
       onRightClick(position, { x: e.clientX || e.nativeEvent?.clientX || 0, y: e.clientY || e.nativeEvent?.clientY || 0 });
       window.dispatchEvent(new CustomEvent('position-context-menu', {
