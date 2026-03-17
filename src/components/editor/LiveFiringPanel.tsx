@@ -208,6 +208,53 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const sequenceRef = useRef(0);
   const fireTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
+  // ─── Swipe gesture for mobile mode switching / close ───
+  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'auto_fire', 'check_slave', 'settings'];
+  const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  const swipeHandled = useRef(false);
+
+  const handleSwipeStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchRef.current = { x: touch.clientX, y: touch.clientY, t: Date.now() };
+    swipeHandled.current = false;
+  }, []);
+
+  const handleSwipeEnd = useCallback((e: React.TouchEvent) => {
+    if (!touchRef.current || swipeHandled.current) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - touchRef.current.x;
+    const dy = touch.clientY - touchRef.current.y;
+    const dt = Date.now() - touchRef.current.t;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+
+    // Swipe down to close — threshold 80px, mostly vertical
+    if (dy > 80 && absDy > absDx * 1.5 && dt < 500) {
+      swipeHandled.current = true;
+      onClose();
+      return;
+    }
+
+    // Swipe left/right to change mode — threshold 60px, mostly horizontal
+    if (absDx > 60 && absDx > absDy * 1.5 && dt < 400) {
+      swipeHandled.current = true;
+      const currentIdx = SWIPE_MODES.indexOf(mode);
+      if (dx < 0 && currentIdx < SWIPE_MODES.length - 1) {
+        setMode(SWIPE_MODES[currentIdx + 1]);
+        setShowDeviceLib(false);
+      } else if (dx > 0 && currentIdx > 0) {
+        setMode(SWIPE_MODES[currentIdx - 1]);
+        setShowDeviceLib(false);
+      }
+    }
+    touchRef.current = null;
+  }, [mode, onClose]);
+
+  const swipeProps = mob ? {
+    onTouchStart: handleSwipeStart,
+    onTouchEnd: handleSwipeEnd,
+  } : {};
+
   const sceneCues = useMemo(() => cues.filter(() => true), [cues]);
   const pageStart = cuePage * CUES_PER_PAGE;
   const pageEnd = pageStart + CUES_PER_PAGE;
