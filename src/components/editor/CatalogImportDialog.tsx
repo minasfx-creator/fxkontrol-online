@@ -12,7 +12,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { useProjectStore, type Effect, EFFECT_LIBRARY } from '@/store/useProjectStore';
-import { parseCatalogFile, catalogToEffects, type CatalogColumnMapping, type ParsedCatalogEffect } from '@/lib/catalogImporter';
+import { parseCatalogFile, catalogToEffects, parseAnyFormat, type CatalogColumnMapping, type ParsedCatalogEffect } from '@/lib/catalogImporter';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -54,12 +54,25 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
     reader.onload = () => {
       const text = reader.result as string;
       setRawText(text);
-      const result = parseCatalogFile(text);
-      setColumns(result.columns);
+
+      // Auto-detect format: FSL, DPX, CSV, FDB, TSV
+      const result = parseAnyFormat(text, file.name);
+      if (result.columns) {
+        setColumns(result.columns);
+      } else {
+        // XML formats don't have column mappings
+        setColumns([]);
+      }
       setParsedEffects(result.effects);
-      setDelimiter(result.delimiter);
+      setDelimiter(',');
       setSelectedEffects(new Set(result.effects.map((_, i) => i)));
-      setStep('mapping');
+      
+      if (result.effects.length > 0) {
+        toast.success(`${result.format} detectado`, { description: `${result.effects.length} efeitos encontrados` });
+      }
+      
+      // Skip mapping step for XML formats (no columns to map)
+      setStep(result.columns ? 'mapping' : 'preview');
     };
     reader.readAsText(file);
   }, []);
@@ -177,9 +190,9 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
                 {fileName || 'Click to select catalog file'}
               </p>
               <p className="text-[10px] text-muted-foreground mt-1">
-                Supports: .csv, .fdb, .tsv, .txt
+                Supports: .csv, .fdb, .tsv, .fsl, .dpx, .xml, .txt
               </p>
-              <input ref={fileRef} type="file" accept=".csv,.fdb,.tsv,.txt,.dat" onChange={handleFile} className="hidden" />
+              <input ref={fileRef} type="file" accept=".csv,.fdb,.tsv,.txt,.dat,.fsl,.dpx,.xml,.xlsx" onChange={handleFile} className="hidden" />
             </div>
 
             <div className="bg-muted/50 rounded-md p-3 space-y-2">

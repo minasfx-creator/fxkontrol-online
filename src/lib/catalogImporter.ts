@@ -1,10 +1,11 @@
 /**
- * ─── Finale 3D Catalog Importer ──────────────────────────────────────
- * Parses CSV/FDB catalog files from Finale 3D and maps columns
- * to our internal Effect format. Supports auto-detection of:
- * - Finale 3D .fdb (tab/comma separated)
- * - Generic CSV with Finale-compatible headers
- * - VDL-style description parsing
+ * ─── Professional Catalog Importer ──────────────────────────────────
+ * Parses catalog files from multiple professional software:
+ * - Finale 3D: CSV, FDB (tab/comma), FSL (XML show library)
+ * - Depence R3: DPX (XML fixture library)
+ * - Generic: CSV/TSV with any headers
+ * 
+ * Supports auto-detection of format and column mapping.
  */
 
 import type { Effect, PartType } from '@/store/useProjectStore';
@@ -268,4 +269,145 @@ export function catalogToEffects(parsed: ParsedCatalogEffect[], idPrefix: string
       vdl: p.vdl || undefined,
     };
   });
+}
+
+// ─── Finale FSL Parser (XML Show Library) ────────────────────────────
+
+export function parseFinaleFSL(xmlText: string): ParsedCatalogEffect[] {
+  const effects: ParsedCatalogEffect[] = [];
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlText, 'text/xml');
+
+  // Finale FSL uses <Effect>, <Device>, or <Part> elements
+  const effectNodes = doc.querySelectorAll('Effect, Device, Part, effect, device, part');
+
+  for (const node of effectNodes) {
+    const getAttr = (names: string[]) => {
+      for (const n of names) {
+        const v = node.getAttribute(n) || node.querySelector(n)?.textContent;
+        if (v) return v.trim();
+      }
+      return '';
+    };
+
+    const name = getAttr(['Name', 'name', 'Description', 'description', 'Label', 'label']) || 'Unknown Effect';
+    const caliberStr = getAttr(['Caliber', 'caliber', 'Size', 'size', 'Bore', 'bore']);
+    const durationStr = getAttr(['Duration', 'duration', 'Time', 'time', 'BurnTime', 'burntime']);
+    const colorText = getAttr(['Color', 'color', 'StarColor', 'starcolor', 'Colors', 'colors']);
+    const typeText = getAttr(['Type', 'type', 'PartType', 'parttype', 'DeviceType', 'devicetype', 'Class', 'class']);
+    const heightStr = getAttr(['Height', 'height', 'BreakHeight', 'breakheight', 'Altitude', 'altitude']);
+    const costStr = getAttr(['Cost', 'cost', 'Price', 'price']);
+    const prefireStr = getAttr(['Prefire', 'prefire', 'LiftTime', 'lifttime', 'PFT', 'pft']);
+    const patternStr = getAttr(['Pattern', 'pattern', 'BurstPattern', 'burstpattern']);
+    const shotStr = getAttr(['Shots', 'shots', 'ShotCount', 'shotcount', 'Tubes', 'tubes']);
+    const vdlStr = getAttr(['VDL', 'vdl', 'VisualDescription', 'visualdescription']);
+    const skuStr = getAttr(['SKU', 'sku', 'PartNumber', 'partnumber', 'ArticleNumber', 'articlenumber']);
+    const mfgStr = getAttr(['Manufacturer', 'manufacturer', 'Supplier', 'supplier', 'Brand', 'brand']);
+
+    const partType = parsePartType(typeText || name);
+
+    effects.push({
+      name,
+      caliber: parseFloat(caliberStr) || (partType === 'shell' ? 3 : 0),
+      duration: parseFloat(durationStr) || (partType === 'shell' ? 3 : 5),
+      color: colorText || 'Gold',
+      colorHex: parseColor(colorText || name),
+      partType,
+      height: parseFloat(heightStr) || 0,
+      cost: parseFloat(costStr) || 0,
+      prefire: parseFloat(prefireStr) || 0,
+      pattern: patternStr,
+      shotCount: parseInt(shotStr) || 0,
+      safetyDistance: 0,
+      vdl: vdlStr,
+      sku: skuStr,
+      manufacturer: mfgStr,
+      raw: {},
+    });
+  }
+
+  return effects;
+}
+
+// ─── Depence DPX Parser (XML Fixture Library) ────────────────────────
+
+export function parseDepenceDPX(xmlText: string): ParsedCatalogEffect[] {
+  const effects: ParsedCatalogEffect[] = [];
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlText, 'text/xml');
+
+  // Depence uses <Fixture>, <PyroEffect>, <Effect>, or <Device> elements
+  const nodes = doc.querySelectorAll('Fixture, PyroEffect, Effect, Device, fixture, pyroeffect, effect, device');
+
+  for (const node of nodes) {
+    const getAttr = (names: string[]) => {
+      for (const n of names) {
+        const v = node.getAttribute(n) || node.querySelector(n)?.textContent;
+        if (v) return v.trim();
+      }
+      return '';
+    };
+
+    const name = getAttr(['Name', 'name', 'Label', 'label', 'Title', 'title']) || 'Unknown';
+    const typeText = getAttr(['Type', 'type', 'Category', 'category', 'Kind', 'kind']);
+    const caliberStr = getAttr(['Caliber', 'caliber', 'Size', 'size']);
+    const durationStr = getAttr(['Duration', 'duration', 'Time', 'time']);
+    const colorText = getAttr(['Color', 'color', 'Colour', 'colour']);
+    const heightStr = getAttr(['Height', 'height', 'Altitude', 'altitude']);
+    const mfgStr = getAttr(['Manufacturer', 'manufacturer', 'Brand', 'brand']);
+
+    const partType = parsePartType(typeText || name);
+
+    effects.push({
+      name,
+      caliber: parseFloat(caliberStr) || 0,
+      duration: parseFloat(durationStr) || 5,
+      color: colorText || 'Gold',
+      colorHex: parseColor(colorText || name),
+      partType,
+      height: parseFloat(heightStr) || 0,
+      cost: 0,
+      prefire: 0,
+      pattern: '',
+      shotCount: 0,
+      safetyDistance: 0,
+      vdl: '',
+      sku: '',
+      manufacturer: mfgStr,
+      raw: {},
+    });
+  }
+
+  return effects;
+}
+
+/** Detect file format and parse accordingly */
+export function parseAnyFormat(text: string, fileName: string): {
+  effects: ParsedCatalogEffect[];
+  format: string;
+  columns?: CatalogColumnMapping[];
+} {
+  const ext = fileName.toLowerCase().split('.').pop() || '';
+  const trimmed = text.trim();
+
+  // XML-based formats
+  if (trimmed.startsWith('<?xml') || trimmed.startsWith('<')) {
+    if (ext === 'fsl' || trimmed.includes('<Effect') || trimmed.includes('<Part') || trimmed.includes('<Device')) {
+      const effects = parseFinaleFSL(text);
+      if (effects.length > 0) return { effects, format: 'Finale FSL' };
+    }
+    if (ext === 'dpx' || trimmed.includes('<Fixture') || trimmed.includes('<PyroEffect')) {
+      const effects = parseDepenceDPX(text);
+      if (effects.length > 0) return { effects, format: 'Depence DPX' };
+    }
+    // Try both
+    const fsl = parseFinaleFSL(text);
+    if (fsl.length > 0) return { effects: fsl, format: 'XML Library' };
+    const dpx = parseDepenceDPX(text);
+    if (dpx.length > 0) return { effects: dpx, format: 'XML Library' };
+  }
+
+  // CSV/FDB/TSV
+  const result = parseCatalogFile(text);
+  return { effects: result.effects, format: ext.toUpperCase() || 'CSV', columns: result.columns };
 }
