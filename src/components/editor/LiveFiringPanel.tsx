@@ -498,7 +498,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
 
   // Lock body scroll while mobile commander is fullscreen (prevents cropped controls)
   useEffect(() => {
-    if (!(mob && isFullscreen)) return;
+    if (!(isMobile && isFullscreen)) return;
 
     const prevOverflow = document.body.style.overflow;
     const prevOverscroll = document.body.style.overscrollBehavior;
@@ -509,7 +509,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
       document.body.style.overflow = prevOverflow;
       document.body.style.overscrollBehavior = prevOverscroll;
     };
-  }, [mob, isFullscreen]);
+  }, [isMobile, isFullscreen]);
 
   // Listen for native fullscreen exit (e.g. system gesture) to sync state
   useEffect(() => {
