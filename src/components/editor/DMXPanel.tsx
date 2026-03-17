@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { Lightbulb, Plus, Trash2, Send, Wifi } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { Lightbulb, Plus, Trash2, Send, Wifi, Activity, CheckCircle2, XCircle, Clock, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,15 @@ import { downloadFile } from '@/lib/exportEngine';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+interface DiagnosticLog {
+  timestamp: Date;
+  type: 'send' | 'validate' | 'error' | 'info';
+  message: string;
+  latency?: number;
+  packets?: Array<{ universe: number; hex: string; channels: number; packetSize: number }>;
+  raw?: any;
+}
+
 export default function DMXPanel({ onClose }: { onClose: () => void }) {
   const { droneFormations, currentTime } = useProjectStore();
   const [universes, setUniverses] = useState<DMXUniverse[]>([]);
@@ -26,6 +35,13 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
   const [artNetIp, setArtNetIp] = useState('255.255.255.255');
   const [artNetPort, setArtNetPort] = useState(6454);
   const [sending, setSending] = useState(false);
+  const [diagLogs, setDiagLogs] = useState<DiagnosticLog[]>([]);
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
+  const [showDiag, setShowDiag] = useState(true);
+
+  const addDiagLog = useCallback((log: DiagnosticLog) => {
+    setDiagLogs(prev => [log, ...prev].slice(0, 50));
+  }, []);
 
   const totalDrones = useMemo(() => {
     if (droneFormations.length === 0) return 0;
@@ -41,6 +57,7 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     }
     const newUniverses = autoPatchDrones(totalDrones, channelsPerFixture);
     setUniverses(newUniverses);
+    addDiagLog({ timestamp: new Date(), type: 'info', message: `Auto-Patch: ${totalDrones} fixtures → ${newUniverses.length} universo(s)` });
     toast.success(`Patch automático: ${totalDrones} fixtures em ${newUniverses.length} universo(s)`);
   };
 
@@ -68,12 +85,42 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     toast.success('DMX CSV exportado!');
   };
 
+  const testConnection = async () => {
+    setConnectionStatus('testing');
+    const t0 = performance.now();
+    try {
+      const testUniverse = {
+        universe: 0, subnet: 0, net: 0,
+        channels: Array.from({ length: 512 }, () => 0),
+        sequence: 0,
+      };
+      const { data, error } = await supabase.functions.invoke('artnet-bridge', {
+        body: { action: 'validate', universes: [testUniverse] },
+      });
+      const latency = Math.round(performance.now() - t0);
+      if (error) throw error;
+      setConnectionStatus(data.valid ? 'ok' : 'error');
+      addDiagLog({
+        timestamp: new Date(), type: data.valid ? 'validate' : 'error',
+        message: data.valid
+          ? `Conexão OK — ${data.universeCount} uni, ${data.totalChannels} ch`
+          : `Validação falhou: ${data.errors?.join(', ')}`,
+        latency, raw: data,
+      });
+    } catch (e: any) {
+      setConnectionStatus('error');
+      const latency = Math.round(performance.now() - t0);
+      addDiagLog({ timestamp: new Date(), type: 'error', message: e.message || 'Falha na conexão', latency });
+    }
+  };
+
   const sendArtNet = async () => {
     if (universes.length === 0) {
       toast.error('Faça o Auto-Patch primeiro');
       return;
     }
     setSending(true);
+    const t0 = performance.now();
     try {
       const artNetUniverses = universes.map((u, i) => ({
         universe: u.id % 16,
@@ -86,11 +133,24 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
       const { data, error } = await supabase.functions.invoke('artnet-bridge', {
         body: { action: 'send', universes: artNetUniverses, targetIp: artNetIp, targetPort: artNetPort },
       });
+      const latency = Math.round(performance.now() - t0);
       if (error) throw error;
+
+      setConnectionStatus('ok');
+      addDiagLog({
+        timestamp: new Date(), type: 'send',
+        message: `${data.packetCount} pacote(s) → ${artNetIp}:${artNetPort} · ${data.totalBytes} bytes`,
+        latency,
+        packets: data.packets,
+        raw: data,
+      });
       toast.success(`${data.packetCount} pacote(s) Art-Net preparados`, {
         description: `Target: ${artNetIp}:${artNetPort} · ${data.totalBytes} bytes`,
       });
     } catch (e: any) {
+      const latency = Math.round(performance.now() - t0);
+      setConnectionStatus('error');
+      addDiagLog({ timestamp: new Date(), type: 'error', message: e.message || 'Erro ao enviar Art-Net', latency });
       toast.error(e.message || 'Erro ao enviar Art-Net');
     } finally {
       setSending(false);
@@ -231,6 +291,98 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
           >
             Export CSV ({keyframes.length})
           </Button>
+        </div>
+
+        {/* Diagnostics */}
+        <div className="border-t border-border/50 pt-2 space-y-1.5">
+          <button
+            onClick={() => setShowDiag(v => !v)}
+            className="flex items-center gap-1.5 w-full text-left"
+          >
+            <Activity className="h-3 w-3 text-primary" />
+            <span className="text-[9px] text-muted-foreground font-semibold uppercase flex-1">Diagnóstico Art-Net</span>
+            <span className="text-[8px] text-muted-foreground">{showDiag ? '▼' : '▶'}</span>
+          </button>
+
+          {showDiag && (
+            <div className="space-y-1.5">
+              {/* Connection status indicator */}
+              <div className="flex items-center gap-1.5 bg-surface-2 rounded-sm p-1.5">
+                {connectionStatus === 'idle' && <div className="w-2 h-2 rounded-full bg-muted-foreground/40" />}
+                {connectionStatus === 'testing' && <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />}
+                {connectionStatus === 'ok' && <CheckCircle2 className="w-3 h-3 text-green-500" />}
+                {connectionStatus === 'error' && <XCircle className="w-3 h-3 text-destructive" />}
+                <span className="text-[9px] text-foreground flex-1">
+                  {connectionStatus === 'idle' && 'Não testado'}
+                  {connectionStatus === 'testing' && 'Testando...'}
+                  {connectionStatus === 'ok' && 'Edge Function OK'}
+                  {connectionStatus === 'error' && 'Falha na conexão'}
+                </span>
+                <Button
+                  size="sm" variant="outline"
+                  className="h-5 text-[8px] px-2 gap-0.5"
+                  onClick={testConnection}
+                  disabled={connectionStatus === 'testing'}
+                >
+                  <Zap className="h-2.5 w-2.5" />
+                  Test
+                </Button>
+              </div>
+
+              {/* Log entries */}
+              <div className="max-h-48 overflow-y-auto scrollbar-thin space-y-1">
+                {diagLogs.length === 0 && (
+                  <p className="text-[8px] text-muted-foreground text-center py-2">
+                    Clique "Test" ou "Send Art-Net" para gerar logs
+                  </p>
+                )}
+                {diagLogs.map((log, i) => (
+                  <div key={i} className="bg-surface-2 rounded-sm p-1.5 space-y-0.5">
+                    <div className="flex items-center gap-1">
+                      {log.type === 'send' && <Send className="w-2.5 h-2.5 text-primary" />}
+                      {log.type === 'validate' && <CheckCircle2 className="w-2.5 h-2.5 text-green-500" />}
+                      {log.type === 'error' && <XCircle className="w-2.5 h-2.5 text-destructive" />}
+                      {log.type === 'info' && <Activity className="w-2.5 h-2.5 text-muted-foreground" />}
+                      <span className="text-[8px] text-foreground flex-1 truncate">{log.message}</span>
+                      {log.latency != null && (
+                        <span className="text-[7px] text-muted-foreground flex items-center gap-0.5">
+                          <Clock className="w-2 h-2" />{log.latency}ms
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[7px] text-muted-foreground">
+                      {log.timestamp.toLocaleTimeString()}
+                    </p>
+                    {/* Hex dump */}
+                    {log.packets && log.packets.length > 0 && (
+                      <div className="mt-1 space-y-0.5">
+                        {log.packets.map((pkt, j) => (
+                          <div key={j} className="bg-surface-0 rounded-sm p-1">
+                            <p className="text-[7px] text-muted-foreground mb-0.5">
+                              Uni {pkt.universe} · {pkt.channels}ch · {pkt.packetSize}B
+                            </p>
+                            <p className="text-[7px] font-mono-code text-primary/80 break-all leading-relaxed">
+                              {pkt.hex}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {diagLogs.length > 0 && (
+                <Button
+                  size="sm" variant="ghost"
+                  className="h-5 text-[8px] w-full text-muted-foreground"
+                  onClick={() => setDiagLogs([])}
+                >
+                  Limpar logs
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="bg-surface-2 rounded-sm p-2 text-[9px] text-muted-foreground space-y-1">
