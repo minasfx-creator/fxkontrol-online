@@ -1705,10 +1705,12 @@ function GroundFog() {
         vertexShader={`
           varying vec2 vUv;
           varying float vWorldY;
+          varying vec3 vWorldPos;
           void main() {
             vUv = uv;
             vec4 worldPos = modelMatrix * vec4(position, 1.0);
             vWorldY = worldPos.y;
+            vWorldPos = worldPos.xyz;
             gl_Position = projectionMatrix * viewMatrix * worldPos;
           }
         `}
@@ -1719,6 +1721,7 @@ function GroundFog() {
           uniform vec3 uFogColor;
           varying vec2 vUv;
           varying float vWorldY;
+          varying vec3 vWorldPos;
 
           float hash(vec2 p) {
             return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -1743,10 +1746,14 @@ function GroundFog() {
           }
 
           void main() {
-            vec2 uv = vUv * 4.0 + vec2(uTime * 0.02, uTime * 0.01);
+            // Use world-space coordinates for noise so it tiles seamlessly
+            vec2 worldUV = vWorldPos.xz * 0.0001;
+            vec2 uv = worldUV * 4.0 + vec2(uTime * 0.02, uTime * 0.01);
             float n = fbm(uv);
             float heightFade = smoothstep(uHeight, 0.0, vWorldY);
-            float edgeFade = smoothstep(0.0, 0.12, min(vUv.x, min(vUv.y, min(1.0 - vUv.x, 1.0 - vUv.y))));
+            // Distance-based circular fade — no square edges
+            float dist = length(vWorldPos.xz) / 45000.0;
+            float edgeFade = 1.0 - smoothstep(0.7, 1.0, dist);
             float alpha = n * heightFade * edgeFade * uIntensity;
             gl_FragColor = vec4(uFogColor, alpha * 0.4);
           }

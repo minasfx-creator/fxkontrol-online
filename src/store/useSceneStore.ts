@@ -166,7 +166,7 @@ const DEFAULT_SETTINGS: SceneSettings = {
   smokeOpacity: 0.6,
   bloomStrength: 1.4,
 
-  hdrMultiplier: 0.5,
+  hdrMultiplier: 1.5,
   starDrag: 0.08,
   windSpeed: 0.3,
   windDirection: 90,
