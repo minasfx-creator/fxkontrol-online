@@ -96,9 +96,9 @@ const BURST_FRAGMENT = `
     }
     
     // Gaussian glow: bright core, soft edges
-    float coreGlow = exp(-dist * dist * 18.0);
-    float outerGlow = exp(-dist * dist * 6.0);
-    float glow = coreGlow * 0.7 + outerGlow * 0.3;
+     float coreGlow = exp(-dist * dist * 28.0);
+     float outerGlow = exp(-dist * dist * 10.0);
+     float glow = coreGlow * 0.6 + outerGlow * 0.4;
     
     // Flicker: subtle random twinkle
     float flicker = 0.85 + 0.15 * sin(vLife * 47.0 + gl_PointCoord.x * 13.0);
