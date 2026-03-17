@@ -190,9 +190,9 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
                 {fileName || 'Click to select catalog file'}
               </p>
               <p className="text-[10px] text-muted-foreground mt-1">
-                Supports: .csv, .fdb, .tsv, .txt
+                Supports: .csv, .fdb, .tsv, .fsl, .dpx, .xml, .txt
               </p>
-              <input ref={fileRef} type="file" accept=".csv,.fdb,.tsv,.txt,.dat" onChange={handleFile} className="hidden" />
+              <input ref={fileRef} type="file" accept=".csv,.fdb,.tsv,.txt,.dat,.fsl,.dpx,.xml,.xlsx" onChange={handleFile} className="hidden" />
             </div>
 
             <div className="bg-muted/50 rounded-md p-3 space-y-2">
