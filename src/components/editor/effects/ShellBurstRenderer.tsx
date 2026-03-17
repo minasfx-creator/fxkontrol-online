@@ -355,7 +355,10 @@ export default function ShellBurstRenderer({
           uniforms={uniforms}
           transparent
           depthWrite={false}
-          blending={THREE.AdditiveBlending}
+          blending={additiveBlend.blending}
+          blendEquation={additiveBlend.blendEquation}
+          blendSrc={additiveBlend.blendSrc as any}
+          blendDst={additiveBlend.blendDst as any}
         />
       </points>
 
