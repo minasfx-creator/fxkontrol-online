@@ -54,12 +54,25 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
     reader.onload = () => {
       const text = reader.result as string;
       setRawText(text);
-      const result = parseCatalogFile(text);
-      setColumns(result.columns);
+
+      // Auto-detect format: FSL, DPX, CSV, FDB, TSV
+      const result = parseAnyFormat(text, file.name);
+      if (result.columns) {
+        setColumns(result.columns);
+      } else {
+        // XML formats don't have column mappings
+        setColumns([]);
+      }
       setParsedEffects(result.effects);
-      setDelimiter(result.delimiter);
+      setDelimiter(',');
       setSelectedEffects(new Set(result.effects.map((_, i) => i)));
-      setStep('mapping');
+      
+      if (result.effects.length > 0) {
+        toast.success(`${result.format} detectado`, { description: `${result.effects.length} efeitos encontrados` });
+      }
+      
+      // Skip mapping step for XML formats (no columns to map)
+      setStep(result.columns ? 'mapping' : 'preview');
     };
     reader.readAsText(file);
   }, []);
