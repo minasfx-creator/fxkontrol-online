@@ -75,7 +75,7 @@ const BURST_FRAGMENT = `
     
     // Thermal color transition: white-hot → saturated → ember → charcoal
     // The ignition keeps some hue from shell color to avoid full white lock.
-    vec3 whiteHot = mix(vec3(1.0, 0.98, 0.85), uColor + vec3(0.15), 0.35) * (0.4 + uHDRMultiplier * 0.15);
+    vec3 whiteHot = mix(vec3(1.0, 0.98, 0.85), uColor + vec3(0.15), 0.35) * (0.3 + uHDRMultiplier * 0.08);
     vec3 saturated = uColor * 1.0;
     vec3 ember = vec3(uColor.r * 0.6 + 0.2, uColor.g * 0.2, uColor.b * 0.05);
     vec3 charcoal = vec3(0.15, 0.08, 0.02);
