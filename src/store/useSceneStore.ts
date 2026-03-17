@@ -166,13 +166,13 @@ const DEFAULT_SETTINGS: SceneSettings = {
   smokeOpacity: 0.6,
   bloomStrength: 1.4,
 
-  hdrMultiplier: 3.5,
+  hdrMultiplier: 2.0,
   starDrag: 0.08,
   windSpeed: 0.3,
   windDirection: 90,
   afterglowDuration: 3.0,
   afterglowIntensity: 0.15,
-  burstFlashIntensity: 0.25,
+  burstFlashIntensity: 0.15,
   thermalTransitionSpeed: 1.0,
 
   shadowsEnabled: true,
