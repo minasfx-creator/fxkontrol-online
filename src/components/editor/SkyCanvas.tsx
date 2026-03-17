@@ -120,17 +120,17 @@ class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
 // Camera presets calibrated for real-world firework heights (55m-300m break heights)
 // Audience distance: typically 100-300m from launch site (NFPA 1123)
 const CAMERA_PRESETS = [
-  { id: 'free', label: 'Free', icon: Eye, position: [0, 25, 400] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
-  { id: 'satellite', label: 'Top', icon: Plane, position: [0, 1200, 0.1] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
-  { id: 'audience', label: 'Plateia', icon: Users, position: [0, 3, 500] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
-  { id: 'front', label: 'Front', icon: Users, position: [0, 8, 600] as [number, number, number], target: [0, 120, 0] as [number, number, number] },
-  { id: 'side', label: 'Side', icon: Video, position: [600, 50, 0] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
-  { id: 'back', label: 'Back', icon: Video, position: [0, 50, -400] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
-  { id: 'aerial', label: 'Aerial 45°', icon: Plane, position: [0, 600, 600] as [number, number, number], target: [0, 60, 0] as [number, number, number] },
-  { id: 'closeup', label: 'Close-up', icon: Camera, position: [30, 40, 150] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
-  { id: 'cinematic', label: 'Cinema', icon: Video, position: [-150, 12, 450] as [number, number, number], target: [0, 120, 0] as [number, number, number] },
-  { id: 'drone-follow', label: 'Drone POV', icon: Eye, position: [25, 180, 60] as [number, number, number], target: [0, 120, 0] as [number, number, number] },
-  { id: 'vip', label: 'VIP Box', icon: Users, position: [100, 8, 400] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
+  { id: 'free', label: 'Free', icon: Eye, position: [0, 125, 2000] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
+  { id: 'satellite', label: 'Top', icon: Plane, position: [0, 6000, 0.1] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
+  { id: 'audience', label: 'Plateia', icon: Users, position: [0, 15, 2500] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
+  { id: 'front', label: 'Front', icon: Users, position: [0, 40, 3000] as [number, number, number], target: [0, 600, 0] as [number, number, number] },
+  { id: 'side', label: 'Side', icon: Video, position: [3000, 250, 0] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
+  { id: 'back', label: 'Back', icon: Video, position: [0, 250, -2000] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
+  { id: 'aerial', label: 'Aerial 45°', icon: Plane, position: [0, 3000, 3000] as [number, number, number], target: [0, 300, 0] as [number, number, number] },
+  { id: 'closeup', label: 'Close-up', icon: Camera, position: [150, 200, 750] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
+  { id: 'cinematic', label: 'Cinema', icon: Video, position: [-750, 60, 2250] as [number, number, number], target: [0, 600, 0] as [number, number, number] },
+  { id: 'drone-follow', label: 'Drone POV', icon: Eye, position: [125, 900, 300] as [number, number, number], target: [0, 600, 0] as [number, number, number] },
+  { id: 'vip', label: 'VIP Box', icon: Users, position: [500, 40, 2000] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
 ] as const;
 
 // --- Playback clock ---
