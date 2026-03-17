@@ -62,6 +62,7 @@ const BURST_FRAGMENT = `
   uniform float uHDRMultiplier;
   uniform float uTime;
   uniform float uThermalSpeed;
+  uniform float uMaxEnergy;
 
   void main() {
     // Gaussian sprite: soft circle with hot core
