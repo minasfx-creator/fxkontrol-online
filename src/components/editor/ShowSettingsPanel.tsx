@@ -332,6 +332,9 @@ export default function ShowSettingsPanel({ onClose }: ShowSettingsProps) {
             <Field label="Insurance Policy" value={insurancePolicy} onChange={setInsurancePolicy} placeholder="INS-PYRO-2026-001" mono />
           </SettingsSection>
 
+          {/* ── Environment Settings (ShowSim + Finale 3D) ───── */}
+          <EnvironmentSettingsSection />
+
           {/* ── Notes ────────────────────────────────────────── */}
           <SettingsSection title="Notes" icon={FileText} defaultOpen={false}>
             <textarea
