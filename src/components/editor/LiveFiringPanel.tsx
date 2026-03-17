@@ -198,7 +198,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const [cueGroupRepeat, setCueGroupRepeat] = useState(1);
   const [cueKeyLabel, setCueKeyLabel] = useState('');
   const [cueKeyMode, setCueKeyMode] = useState<'tap' | 'lock'>('tap');
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(isMobile);
   const [cuePage, setCuePage] = useState(0);
   const [showDeviceLib, setShowDeviceLib] = useState(false);
   const [settings, setSettings] = useState<FXCSettings>(DEFAULT_SETTINGS);
@@ -471,10 +471,22 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   }, [channels, dmxArm]);
 
   useEffect(() => { return () => { fireTimers.current.forEach(timer => clearTimeout(timer)); }; }, []);
+
+  // Auto-fullscreen on mobile
+  useEffect(() => {
+    if (isMobile) {
+      setIsFullscreen(true);
+    }
+  }, [isMobile]);
+
   // Sync browser Fullscreen API with isFullscreen state
   useEffect(() => {
     if (isFullscreen) {
-      document.documentElement.requestFullscreen?.().catch(() => {});
+      // Small delay to ensure DOM is ready for fullscreen request
+      const timer = setTimeout(() => {
+        document.documentElement.requestFullscreen?.().catch(() => {});
+      }, 100);
+      return () => clearTimeout(timer);
     } else {
       if (document.fullscreenElement) {
         document.exitFullscreen?.().catch(() => {});
@@ -1006,10 +1018,6 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   // PANEL LAYOUT — auto-fullscreen on mobile
   // ═══════════════════════════════════════════════════════════
   if (mob) {
-    // On mobile, auto-enter browser fullscreen
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen?.().catch(() => {});
-    }
     return (
       <div {...swipeProps} className="fixed inset-0 z-[9999] flex flex-col select-none pb-[env(safe-area-inset-bottom)]"
         style={{ background: 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 4%) 100%)' }}>
