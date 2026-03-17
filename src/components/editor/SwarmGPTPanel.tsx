@@ -8,8 +8,12 @@ import { useProjectStore, type DroneFormation } from '@/store/useProjectStore';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import {
+  extractVideoFrames, extractGifFrames, framesToChoreography,
+  isGifFile, isVideoFile, type ExtractedFrame, type FrameFormation,
+} from '@/lib/videoToFormation';
 
-type Mode = 'single' | 'full-show' | 'trajectory' | 'music-sync' | 'image';
+type Mode = 'single' | 'full-show' | 'trajectory' | 'music-sync' | 'image' | 'video';
 
 const QUICK_PROMPTS = [
   { emoji: '🌀', label: 'Vórtex Cibernético', prompt: 'vortex cibernético com espirais logarítmicas' },
