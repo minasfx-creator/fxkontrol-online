@@ -367,7 +367,7 @@ export default function ShellBurstRenderer({
         <CrossetteSubBurst key={gi} particles={subGroup} color={color} caliber={caliber} windVec={windVec} drag={starDrag} />
       ))}
 
-      {/* Burst flash — instant bright sphere at detonation (intensity from store) */}
+      {/* Burst flash — Screen blending to prevent white-out accumulation */}
       {progress < 0.08 && (
         <mesh>
           <sphereGeometry args={[1.5 + caliber * 0.8, 16, 16]} />
@@ -375,12 +375,16 @@ export default function ShellBurstRenderer({
             color={secondaryColor || color}
             transparent
             opacity={burstFlashIntensity * 0.45 * (1 - progress / 0.08)}
-            blending={THREE.AdditiveBlending}
+            blending={screenBlend.blending}
+            blendEquation={screenBlend.blendEquation}
+            blendSrc={screenBlend.blendSrc as any}
+            blendDst={screenBlend.blendDst as any}
+            depthWrite={false}
           />
         </mesh>
       )}
 
-      {/* Secondary flash ring */}
+      {/* Secondary flash ring — Screen blending */}
       {progress < 0.12 && (
         <mesh rotation={[Math.PI / 2, 0, 0]}>
           <ringGeometry args={[caliber * 0.5 + progress * 40, caliber * 0.8 + progress * 45, 32]} />
@@ -388,7 +392,11 @@ export default function ShellBurstRenderer({
             color={secondaryColor || color}
             transparent
             opacity={burstFlashIntensity * 0.3 * (1 - progress / 0.12)}
-            blending={THREE.AdditiveBlending}
+            blending={screenBlend.blending}
+            blendEquation={screenBlend.blendEquation}
+            blendSrc={screenBlend.blendSrc as any}
+            blendDst={screenBlend.blendDst as any}
+            depthWrite={false}
             side={THREE.DoubleSide}
           />
         </mesh>
