@@ -2303,19 +2303,19 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
             sectionSize={10}
             sectionThickness={0.4}
             sectionColor="#1a1a2e"
-            fadeDistance={800}
+            fadeDistance={4000}
             infiniteGrid
           />
           <Grid
             position={[0, 0.015, 0]}
-            args={[2000, 2000]}
+            args={[10000, 10000]}
             cellSize={50}
             cellThickness={0.6}
             cellColor="#1a1a2e"
             sectionSize={100}
             sectionThickness={0.8}
             sectionColor="#22223a"
-            fadeDistance={1500}
+            fadeDistance={7500}
             infiniteGrid
           />
         </>
