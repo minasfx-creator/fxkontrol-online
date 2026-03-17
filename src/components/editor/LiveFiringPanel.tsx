@@ -175,6 +175,7 @@ function DeviceRow({
 // MAIN PANEL
 // ═══════════════════════════════════════════════════════════
 export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
+  const isMobile = useIsMobile();
   const { isPlaying, currentTime, setPlaying, positions } = useProjectStore();
   const [channels, setChannels] = useState<SFXChannel[]>(DEFAULT_CHANNELS);
   const [cues, setCues] = useState<CueEntry[]>([]);
