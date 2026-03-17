@@ -879,7 +879,10 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   // ═══════════════════════════════════════════════════════════
   if (isFullscreen) {
     return (
-      <div className="fixed inset-0 z-[9999] flex flex-col select-none" style={{ background: 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 4%) 100%)' }}>
+      <div className={cn(
+        "fixed inset-0 z-[9999] flex flex-col select-none",
+        mob && "pb-[env(safe-area-inset-bottom)]"
+      )} style={{ background: 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 4%) 100%)' }}>
         {renderStatusBar(true)}
         {renderArmBar(true)}
         {renderCueKeys(true)}
@@ -891,8 +894,23 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   }
 
   // ═══════════════════════════════════════════════════════════
-  // PANEL LAYOUT
+  // PANEL LAYOUT — auto-fullscreen on mobile
   // ═══════════════════════════════════════════════════════════
+  if (mob) {
+    // On mobile, the panel always renders fullscreen
+    return (
+      <div className="fixed inset-0 z-[9999] flex flex-col select-none pb-[env(safe-area-inset-bottom)]"
+        style={{ background: 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 4%) 100%)' }}>
+        {renderStatusBar(true)}
+        {renderArmBar(true)}
+        {renderCueKeys(true)}
+        {renderSceneModeBar(true)}
+        <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
+        {renderPanic(true)}
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col overflow-hidden select-none" style={{ minWidth: 300, maxWidth: 380, background: 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 5%) 100%)' }}>
       {renderStatusBar(false)}
