@@ -153,7 +153,16 @@ export default function ParticleEditorPanel({ onClose }: { onClose: () => void }
           t > (1 - params.fadeOut) ? (1 - t) / params.fadeOut : 1;
         const sz = params.size + (params.sizeEnd - params.size) * t;
 
-        ctx.globalCompositeOperation = params.blendMode === 'additive' ? 'lighter' : 'source-over';
+        const blendMap: Record<string, GlobalCompositeOperation> = {
+          'additive': 'lighter',
+          'normal': 'source-over',
+          'multiply': 'multiply',
+          'screen': 'screen',
+          'overlay': 'overlay',
+          'soft-light': 'soft-light',
+          'hard-light': 'hard-light',
+        };
+        ctx.globalCompositeOperation = blendMap[params.blendMode] || 'source-over';
         ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
         ctx.fillStyle = params.colorStart;
         ctx.beginPath();
