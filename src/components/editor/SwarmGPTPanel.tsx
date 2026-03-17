@@ -346,7 +346,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
       setLoadingPhase('');
       setProgress(0);
     }
-  }, [videoFrames, droneCount, videoThreshold, videoInvert, videoHoldDur, videoTransitionDur, droneFormations, addDroneFormation, setCurrentTime, videoFile]);
+  }, [videoFrames, droneCount, videoThreshold, videoInvert, videoHoldDur, videoTransitionDur, videoDetectionMode, videoBlurRadius, videoContrast, videoEdgeSensitivity, droneFormations, addDroneFormation, setCurrentTime, videoFile]);
 
   const generateSingle = useCallback(async () => {
     if (!prompt.trim()) return;
