@@ -1537,7 +1537,7 @@ function GrassGround() {
 
   return (
     <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <planeGeometry args={[20000, 20000, 16, 16]} />
+      <planeGeometry args={[100000, 100000, 16, 16]} />
       <shaderMaterial
         uniforms={uniforms}
         vertexShader={terrainVertexShader}
