@@ -823,13 +823,13 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
             }
           }}
           className="h-16 text-[10px] bg-surface-2 border-border resize-none"
-        />
+        />}
 
         {/* Generate + Preview buttons */}
         <div className="flex gap-1">
           <Button
             onClick={handleGenerate}
-            disabled={loading || (mode !== 'image' && !prompt.trim()) || (mode === 'image' && !imageBase64)}
+            disabled={loading || (mode === 'video' ? videoFrames.length === 0 : mode === 'image' ? !imageBase64 : !prompt.trim())}
             className="flex-1 h-8 text-[10px] gap-1"
             size="sm"
           >
