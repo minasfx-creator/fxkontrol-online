@@ -1525,7 +1525,7 @@ function GrassGround() {
       color += vec3(0.03, 0.05, 0.08) * spec * (0.3 + wetness * 0.2);
       
       // Distance atmosphere
-      float dist = distFromCenter * 0.0015;
+      float dist = distFromCenter * 0.0003;
       float fogFactor = smoothstep(0.0, 1.0, dist);
       vec3 atmosphereColor = vec3(0.08, 0.10, 0.18);
       color = mix(color, atmosphereColor, fogFactor * 0.7);
