@@ -37,16 +37,17 @@ import DeviceLibraryPanel from './live-firing/DeviceLibraryPanel';
 // CUE KEY — hardware key replica with Lock/Tap mode
 // ═══════════════════════════════════════════════════════════
 function CueKey({
-  index, cue, firing, onPress, onRelease, onLongPress, pyroArmed, dmxArmed, fs,
+  index, cue, firing, onPress, onRelease, onLongPress, pyroArmed, dmxArmed, fs, mobile,
 }: {
   index: number; cue?: CueEntry; firing: boolean;
   onPress: () => void; onRelease: () => void; onLongPress: () => void;
-  pyroArmed: boolean; dmxArmed: boolean; fs: boolean;
+  pyroArmed: boolean; dmxArmed: boolean; fs: boolean; mobile?: boolean;
 }) {
   const isArmed = pyroArmed || dmxArmed;
   const hasAssignment = !!cue;
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLocked = cue?.keyMode === 'lock';
+  const isBig = fs && mobile;
 
   const handleDown = () => {
     onPress();
@@ -67,7 +68,7 @@ function CueKey({
       disabled={!isArmed || !hasAssignment}
       className={cn(
         "relative flex flex-col items-center justify-center rounded-md transition-all select-none border-2",
-        fs ? "min-h-[100px] rounded-lg" : "min-h-[52px]",
+        isBig ? "min-h-[72px] rounded-xl" : fs ? "min-h-[100px] rounded-lg" : "min-h-[52px]",
         firing
           ? "bg-red-600 border-red-400 scale-[0.96]"
           : isArmed && hasAssignment
@@ -78,23 +79,22 @@ function CueKey({
       )}
       style={firing ? { boxShadow: '0 0 20px rgba(255,60,30,0.5)' } : undefined}
     >
-      {/* LED + Lock icon */}
       <div className={cn(
-        "absolute top-0.5 left-0.5 rounded-full",
-        fs ? "w-3 h-3 top-1.5 left-1.5" : "w-1.5 h-1.5",
+        "absolute rounded-full",
+        isBig ? "w-2.5 h-2.5 top-1.5 left-1.5" : fs ? "w-3 h-3 top-1.5 left-1.5" : "w-1.5 h-1.5 top-0.5 left-0.5",
         firing ? "bg-red-400" : isArmed && hasAssignment ? "bg-green-500" : "bg-muted-foreground/20"
       )} style={firing ? { boxShadow: '0 0 6px #ff4444' } : isArmed && hasAssignment ? { boxShadow: '0 0 4px #22cc44' } : undefined} />
 
       {isLocked && (
         <Lock className={cn(
-          "absolute top-0.5 right-0.5 text-amber-400/50",
-          fs ? "w-3 h-3 top-1.5 right-1.5" : "w-2 h-2"
+          "absolute text-amber-400/50",
+          isBig ? "w-3 h-3 top-1.5 right-1.5" : fs ? "w-3 h-3 top-1.5 right-1.5" : "w-2 h-2 top-0.5 right-0.5"
         )} />
       )}
 
       <span className={cn(
         "font-mono font-bold",
-        fs ? "text-xs mb-1" : "text-[7px]",
+        isBig ? "text-[9px] mb-0.5" : fs ? "text-xs mb-1" : "text-[7px]",
         firing ? "text-white" : "text-muted-foreground/50"
       )}>KEY{index + 1}</span>
 
@@ -102,21 +102,21 @@ function CueKey({
         <>
           <span className={cn(
             "font-black uppercase tracking-wide leading-tight text-center px-0.5 truncate w-full",
-            fs ? "text-sm" : "text-[8px]",
+            isBig ? "text-[10px]" : fs ? "text-sm" : "text-[8px]",
             firing ? "text-white" : "text-foreground/80"
           )} style={{ color: firing ? undefined : cue.keyColor }}>
             {cue.keyLabel || cue.effect}
           </span>
           <span className={cn(
             "font-mono",
-            fs ? "text-[10px] mt-0.5" : "text-[6px]",
+            isBig ? "text-[7px] mt-0.5" : fs ? "text-[10px] mt-0.5" : "text-[6px]",
             firing ? "text-red-200" : "text-muted-foreground/40"
           )}>
             {cue.deviceIds.length}dev · {FIRING_RULES.find(r => r.key === cue.firingRule)?.label}
           </span>
         </>
       ) : (
-        <span className={cn(fs ? "text-sm" : "text-[7px]", "text-muted-foreground/20")}>—</span>
+        <span className={cn(isBig ? "text-xs" : fs ? "text-sm" : "text-[7px]", "text-muted-foreground/20")}>—</span>
       )}
     </button>
   );
