@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
 import { getBreakHeight, getMortarVelocity, GRAVITY, getStarLifetime } from '@/lib/pyroPhysics';
+import { getThreeBlending } from '@/lib/niagaraBlenderRules';
 
 const PARTICLES_PER_SHOT = 55;
 
@@ -53,29 +54,30 @@ function CakeShot({
     const t = liftProgress * (v0 / Math.abs(GRAVITY)); 
     const shellY = Math.min(breakH, v0 * t * 0.3 + 0.5 * GRAVITY * t * t * 0.09);
     const realY = Math.max(0, liftProgress * breakH * 0.7);
+    const screenBlend = getThreeBlending('screen');
     return (
       <group position={offset}>
-        {/* Rising shell */}
+        {/* Rising shell — Additive (small incandescent) */}
         <mesh position={[Math.sin(angle) * liftProgress * 1.5, realY, Math.cos(angle) * liftProgress * 0.3]}>
           <sphereGeometry args={[0.06 + caliber * 0.01, 6, 6]} />
-          <meshBasicMaterial color="#FFFFCC" transparent opacity={0.9} blending={THREE.AdditiveBlending} />
+          <meshBasicMaterial color="#FFFFCC" transparent opacity={0.9} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
-        {/* Comet trail during lift — longer and brighter */}
+        {/* Comet trail — Screen */}
         {Array.from({ length: 8 }).map((_, j) => {
           const trailY = realY * (1 - j * 0.1);
           const fade = Math.pow(1 - j / 8, 1.8);
           return (
             <mesh key={j} position={[Math.sin(angle) * liftProgress * 1.5 * (1 - j * 0.05), trailY, 0]}>
               <sphereGeometry args={[0.03 + caliber * 0.005, 4, 4]} />
-              <meshBasicMaterial color="#FFCC66" transparent opacity={0.4 * fade} blending={THREE.AdditiveBlending} />
+              <meshBasicMaterial color="#FFCC66" transparent opacity={0.4 * fade} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} />
             </mesh>
           );
         })}
-        {/* Muzzle flash */}
+        {/* Muzzle flash — Screen */}
         {progress < 0.04 && (
           <mesh position={[0, 0.15, 0]}>
             <sphereGeometry args={[0.3 + caliber * 0.08, 8, 8]} />
-            <meshBasicMaterial color="#FFEEAA" transparent opacity={0.5 * (1 - progress / 0.04)} blending={THREE.AdditiveBlending} />
+            <meshBasicMaterial color="#FFEEAA" transparent opacity={0.5 * (1 - progress / 0.04)} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} />
           </mesh>
         )}
       </group>
@@ -110,13 +112,17 @@ function CakeShot({
 
   return (
     <group position={offset}>
-      {/* Break flash */}
-      {burstProgress < 0.08 && (
-        <mesh position={[0, breakH * 0.7, 0]}>
-          <sphereGeometry args={[0.8 + caliber * 0.3, 12, 12]} />
-          <meshBasicMaterial color="#FFFFEE" transparent opacity={0.4 * (1 - burstProgress / 0.08)} blending={THREE.AdditiveBlending} />
-        </mesh>
-      )}
+      {/* Break flash — Screen */}
+      {burstProgress < 0.08 && (() => {
+        const sb = getThreeBlending('screen');
+        return (
+          <mesh position={[0, breakH * 0.7, 0]}>
+            <sphereGeometry args={[0.8 + caliber * 0.3, 12, 12]} />
+            <meshBasicMaterial color="#FFFFEE" transparent opacity={0.4 * (1 - burstProgress / 0.08)} blending={sb.blending} blendEquation={sb.blendEquation} blendSrc={sb.blendSrc as any} blendDst={sb.blendDst as any} depthWrite={false} />
+          </mesh>
+        );
+      })()}
+      {/* Star particles — Additive (core) */}
       <points>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[positions, 3]} />

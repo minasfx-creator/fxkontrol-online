@@ -1,6 +1,7 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { getThreeBlending } from '@/lib/niagaraBlenderRules';
 
 const PARTICLE_COUNT = 200;
 
@@ -138,32 +139,34 @@ export default function FlameEffect({
   });
 
   const isActive = progress > 0.03 && progress < 0.92;
+  const screenBlend = useMemo(() => getThreeBlending('screen'), []);
 
   return (
     <group position={position}>
+      {/* Flame particles — Screen blending (V-Ray fire preset) */}
       <points ref={pointsRef}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[posBuffer, 3]} />
           <bufferAttribute attach="attributes-color" args={[colBuffer, 3]} />
         </bufferGeometry>
-        <pointsMaterial size={0.22} vertexColors transparent opacity={0.88} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        <pointsMaterial size={0.22} vertexColors transparent opacity={0.88} depthWrite={false} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} sizeAttenuation />
       </points>
-      {/* Volumetric inner glow column */}
+      {/* Volumetric inner glow column — Screen */}
       {isActive && (
         <>
           <mesh position={[0, height * 0.25, 0]}>
             <cylinderGeometry args={[0.08, 0.25, height * 0.5, 8]} />
-            <meshBasicMaterial color="#FF8800" transparent opacity={0.1} blending={THREE.AdditiveBlending} />
+            <meshBasicMaterial color="#FF8800" transparent opacity={0.1} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} />
           </mesh>
-          {/* Blue base glow */}
+          {/* Blue base glow — Screen */}
           <mesh position={[0, 0.15, 0]}>
             <sphereGeometry args={[0.2, 8, 8]} />
-            <meshBasicMaterial color="#4488FF" transparent opacity={0.3} blending={THREE.AdditiveBlending} />
+            <meshBasicMaterial color="#4488FF" transparent opacity={0.3} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} />
           </mesh>
-          {/* Ground illumination */}
+          {/* Ground illumination — Screen */}
           <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <circleGeometry args={[1.5 + height * 0.2, 16]} />
-            <meshBasicMaterial color="#FF6600" transparent opacity={0.06} blending={THREE.AdditiveBlending} side={THREE.DoubleSide} />
+            <meshBasicMaterial color="#FF6600" transparent opacity={0.06} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} side={THREE.DoubleSide} />
           </mesh>
         </>
       )}

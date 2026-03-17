@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
+import { getThreeBlending } from '@/lib/niagaraBlenderRules';
 
 // Reuse the FireworkBurst from SkyCanvas but with staggered timing
 // Import it as a lazy inline to avoid circular deps - we'll define a mini burst here

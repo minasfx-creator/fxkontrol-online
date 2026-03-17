@@ -2,6 +2,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { getMortarVelocity, GRAVITY } from '@/lib/pyroPhysics';
+import { getThreeBlending } from '@/lib/niagaraBlenderRules';
 
 const TRAIL_POINTS = 100;
 const SPARK_COUNT = 20;
@@ -95,26 +96,28 @@ export default function CometEffect({
   const t = progress * maxT * 0.5;
   const headY = dir * Math.max(0, v0 * t * 0.25 + 0.5 * GRAVITY * t * t * 0.06);
 
+  const screenBlend = useMemo(() => getThreeBlending('screen'), []);
+
   return (
     <group position={position}>
-      {/* Muzzle flash */}
+      {/* Muzzle flash — Screen */}
       {progress < 0.06 && (
         <mesh position={[0, 0.15, 0]}>
           <sphereGeometry args={[0.3 + progress * 5, 8, 8]} />
-          <meshBasicMaterial color="#FFEEAA" transparent opacity={0.5 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} />
+          <meshBasicMaterial color="#FFEEAA" transparent opacity={0.5 * (1 - progress / 0.06)} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} />
         </mesh>
       )}
 
-      {/* Trail line */}
+      {/* Trail line — Screen (trail glow, not core) */}
       <line ref={lineRef as any}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[new Float32Array(TRAIL_POINTS * 3), 3]} />
           <bufferAttribute attach="attributes-color" args={[new Float32Array(TRAIL_POINTS * 3), 3]} />
         </bufferGeometry>
-        <lineBasicMaterial vertexColors transparent opacity={0.9} depthWrite={false} blending={THREE.AdditiveBlending} />
+        <lineBasicMaterial vertexColors transparent opacity={0.9} depthWrite={false} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} />
       </line>
 
-      {/* Falling sparks */}
+      {/* Falling sparks — Additive (small, incandescent) */}
       {sparkSeeds.map((spark, i) => {
         if (progress < spark.detachT) return null;
         const fallTime = (progress - spark.detachT) * 2;
@@ -130,15 +133,15 @@ export default function CometEffect({
             Math.sin(spark.angle) * spark.speed * 0.4,
           ]}>
             <sphereGeometry args={[0.02, 4, 4]} />
-            <meshBasicMaterial color="#FFCC44" transparent opacity={0.5 * sparkFade} blending={THREE.AdditiveBlending} />
+            <meshBasicMaterial color="#FFCC44" transparent opacity={0.5 * sparkFade} blending={THREE.AdditiveBlending} depthWrite={false} />
           </mesh>
         );
       })}
 
-      {/* Head glow */}
+      {/* Head glow — Screen */}
       <mesh ref={glowRef}>
         <sphereGeometry args={[0.3, 12, 12]} />
-        <meshBasicMaterial color="#FFFFDD" transparent opacity={0.7 * headFade} blending={THREE.AdditiveBlending} />
+        <meshBasicMaterial color="#FFFFDD" transparent opacity={0.7 * headFade} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} />
       </mesh>
     </group>
   );

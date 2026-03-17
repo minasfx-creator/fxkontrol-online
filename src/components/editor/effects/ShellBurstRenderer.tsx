@@ -12,6 +12,7 @@ import {
   type ParticleState,
 } from '@/lib/pyroPhysics';
 import { useSceneStore } from '@/store/useSceneStore';
+import { getThreeBlending, getMaxEnergy, GROUND_LIGHT_SCALE } from '@/lib/niagaraBlenderRules';
 
 // ── Custom GPU Shaders (Skybrush-grade thermal rendering) ───────────
 
@@ -61,6 +62,7 @@ const BURST_FRAGMENT = `
   uniform float uHDRMultiplier;
   uniform float uTime;
   uniform float uThermalSpeed;
+  uniform float uMaxEnergy;
 
   void main() {
     // Gaussian sprite: soft circle with hot core
@@ -106,8 +108,9 @@ const BURST_FRAGMENT = `
     float fadeOut = 1.0 - pow(rawRatio, 1.8);
     float alpha = fadeIn * fadeOut * vBrightness * glow * flicker;
 
-    // No manual tonemap — ACES Filmic in PostProcessing is the single pass
-    gl_FragColor = vec4(thermalColor * glow, alpha);
+    // Energy conservation: cap luminance to prevent additive white-out
+    vec3 finalColor = min(thermalColor * glow, vec3(uMaxEnergy));
+    gl_FragColor = vec4(finalColor, alpha);
   }
 `;
 
@@ -226,7 +229,12 @@ export default function ShellBurstRenderer({
     uHDRMultiplier: { value: hdrMultiplier },
     uTime: { value: 0 },
     uThermalSpeed: { value: thermalTransitionSpeed },
+    uMaxEnergy: { value: getMaxEnergy(0) },
   }), []);
+
+  // Pre-compute blend configs (Screen for secondary elements)
+  const screenBlend = useMemo(() => getThreeBlending('screen'), []);
+  const additiveBlend = useMemo(() => getThreeBlending('additive'), []);
 
   const afterglowUniforms = useMemo(() => ({
     uColor: { value: new THREE.Color(color) },
@@ -312,6 +320,7 @@ export default function ShellBurstRenderer({
     mat.uniforms.uHDRMultiplier.value = hdrMultiplier;
     mat.uniforms.uBaseSize.value = baseSize;
     mat.uniforms.uThermalSpeed.value = thermalTransitionSpeed;
+    mat.uniforms.uMaxEnergy.value = getMaxEnergy(0);
 
     // ── Afterglow cloud (duration + intensity from store) ──
     if (afterglowRef.current) {
@@ -346,7 +355,10 @@ export default function ShellBurstRenderer({
           uniforms={uniforms}
           transparent
           depthWrite={false}
-          blending={THREE.AdditiveBlending}
+          blending={additiveBlend.blending}
+          blendEquation={additiveBlend.blendEquation}
+          blendSrc={additiveBlend.blendSrc as any}
+          blendDst={additiveBlend.blendDst as any}
         />
       </points>
 
@@ -355,7 +367,7 @@ export default function ShellBurstRenderer({
         <CrossetteSubBurst key={gi} particles={subGroup} color={color} caliber={caliber} windVec={windVec} drag={starDrag} />
       ))}
 
-      {/* Burst flash — instant bright sphere at detonation (intensity from store) */}
+      {/* Burst flash — Screen blending to prevent white-out accumulation */}
       {progress < 0.08 && (
         <mesh>
           <sphereGeometry args={[1.5 + caliber * 0.8, 16, 16]} />
@@ -363,12 +375,16 @@ export default function ShellBurstRenderer({
             color={secondaryColor || color}
             transparent
             opacity={burstFlashIntensity * 0.45 * (1 - progress / 0.08)}
-            blending={THREE.AdditiveBlending}
+            blending={screenBlend.blending}
+            blendEquation={screenBlend.blendEquation}
+            blendSrc={screenBlend.blendSrc as any}
+            blendDst={screenBlend.blendDst as any}
+            depthWrite={false}
           />
         </mesh>
       )}
 
-      {/* Secondary flash ring */}
+      {/* Secondary flash ring — Screen blending */}
       {progress < 0.12 && (
         <mesh rotation={[Math.PI / 2, 0, 0]}>
           <ringGeometry args={[caliber * 0.5 + progress * 40, caliber * 0.8 + progress * 45, 32]} />
@@ -376,13 +392,17 @@ export default function ShellBurstRenderer({
             color={secondaryColor || color}
             transparent
             opacity={burstFlashIntensity * 0.3 * (1 - progress / 0.12)}
-            blending={THREE.AdditiveBlending}
+            blending={screenBlend.blending}
+            blendEquation={screenBlend.blendEquation}
+            blendSrc={screenBlend.blendSrc as any}
+            blendDst={screenBlend.blendDst as any}
+            depthWrite={false}
             side={THREE.DoubleSide}
           />
         </mesh>
       )}
 
-      {/* Afterglow cloud */}
+      {/* Afterglow cloud — Screen blending for energy conservation */}
       <mesh ref={afterglowRef}>
         <sphereGeometry args={[1, 16, 16]} />
         <shaderMaterial
@@ -391,15 +411,18 @@ export default function ShellBurstRenderer({
           uniforms={afterglowUniforms}
           transparent
           depthWrite={false}
-          blending={THREE.AdditiveBlending}
+          blending={screenBlend.blending}
+          blendEquation={screenBlend.blendEquation}
+          blendSrc={screenBlend.blendSrc as any}
+          blendDst={screenBlend.blendDst as any}
         />
       </mesh>
 
-      {/* Ground illumination */}
+      {/* Ground illumination — reduced intensity per V-Ray/Blender rules */}
       {progress < 0.5 && (
         <pointLight
           color={color}
-          intensity={Math.max(0, (1 - progress * 2)) * caliber * 2 * burstFlashIntensity}
+          intensity={Math.max(0, (1 - progress * 2)) * caliber * 2 * burstFlashIntensity * GROUND_LIGHT_SCALE}
           distance={burstSpread * 3}
           decay={2}
         />

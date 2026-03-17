@@ -2,6 +2,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { attackReleaseEnvelope } from '@/lib/pyroNoise';
+import { getThreeBlending } from '@/lib/niagaraBlenderRules';
 
 const PARTICLE_COUNT = 180;
 
@@ -134,25 +135,31 @@ export default function CryoJetEffect({
     });
   });
 
+  const normalBlend = useMemo(() => getThreeBlending('normal'), []);
+  const screenBlend = useMemo(() => getThreeBlending('screen'), []);
+
   return (
     <group position={position}>
+      {/* CO2 fog particles — Normal blending (opaque fog, not emissive) */}
       <points ref={pointsRef}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[new Float32Array(PARTICLE_COUNT * 3), 3]} />
           <bufferAttribute attach="attributes-color" args={[new Float32Array(PARTICLE_COUNT * 3), 3]} />
         </bufferGeometry>
-        <pointsMaterial size={0.3} vertexColors transparent opacity={0.55} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        <pointsMaterial size={0.3} vertexColors transparent opacity={0.55} depthWrite={false} blending={normalBlend.blending} blendEquation={normalBlend.blendEquation} blendSrc={normalBlend.blendSrc as any} blendDst={normalBlend.blendDst as any} sizeAttenuation />
       </points>
+      {/* Cloud puffs — Normal blending */}
       {cloudSeeds.map((_, i) => (
         <mesh key={i} ref={(el) => { cloudRefs.current[i] = el; }} visible={false}>
           <sphereGeometry args={[1, 8, 8]} />
           <meshBasicMaterial color={color} transparent opacity={0} depthWrite={false} />
         </mesh>
       ))}
+      {/* Nozzle glow — Screen */}
       {progress > 0.02 && progress < 0.8 && (
         <mesh position={horizontal ? [0.2, 0, 0] : [0, 0.2, 0]}>
           <sphereGeometry args={[0.15, 8, 8]} />
-          <meshBasicMaterial color={color} transparent opacity={0.3} blending={THREE.AdditiveBlending} />
+          <meshBasicMaterial color={color} transparent opacity={0.3} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} />
         </mesh>
       )}
     </group>

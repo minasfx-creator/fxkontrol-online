@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 
+// ── Niagara-style Resource Budgets ──────────────────────────────────
+
 const DESKTOP_RULES = {
   maxConcurrentBursts: 6,
   maxStarBudget: 1400,
@@ -68,3 +70,155 @@ export function getBloomCompression(exposure: number, burstLoad: number) {
 export function getDynamicBloomThreshold(baseThreshold: number, burstLoad: number) {
   return baseThreshold + burstLoad * 1.4;
 }
+
+// ── V-Ray/Blender Blend Mode System for THREE.js ───────────────────
+
+export type NiagaraBlendMode =
+  | 'additive'
+  | 'screen'
+  | 'normal'
+  | 'multiply'
+  | 'soft-light'
+  | 'overlay'
+  | 'hard-light';
+
+export interface ThreeBlendConfig {
+  blending: THREE.Blending;
+  blendEquation?: THREE.BlendingEquation;
+  blendSrc?: THREE.BlendingDstFactor | THREE.BlendingSrcFactor;
+  blendDst?: THREE.BlendingDstFactor;
+}
+
+/**
+ * Maps Niagara/Blender blend modes to THREE.js CustomBlending configs.
+ * 
+ * - Additive: SrcAlpha + One (incandescent star cores only)
+ * - Screen: One + OneMinusSrcColor (halos, afterglow, flashes — energy-conserving)
+ * - Normal: SrcAlpha + OneMinusSrcAlpha (smoke, debris, opaque fog)
+ * - Multiply: DstColor + Zero (ground shadows)
+ * - Soft Light / Overlay / Hard Light: approximated via CustomBlending
+ */
+export function getThreeBlending(mode: NiagaraBlendMode): ThreeBlendConfig {
+  switch (mode) {
+    case 'additive':
+      return {
+        blending: THREE.CustomBlending,
+        blendEquation: THREE.AddEquation,
+        blendSrc: THREE.SrcAlphaFactor,
+        blendDst: THREE.OneFactor,
+      };
+
+    case 'screen':
+      // Screen: result = 1 - (1-src)*(1-dst) ≈ src + dst - src*dst
+      // THREE approximation: src*1 + dst*(1-srcColor)
+      return {
+        blending: THREE.CustomBlending,
+        blendEquation: THREE.AddEquation,
+        blendSrc: THREE.OneFactor,
+        blendDst: THREE.OneMinusSrcColorFactor,
+      };
+
+    case 'normal':
+      return {
+        blending: THREE.CustomBlending,
+        blendEquation: THREE.AddEquation,
+        blendSrc: THREE.SrcAlphaFactor,
+        blendDst: THREE.OneMinusSrcAlphaFactor,
+      };
+
+    case 'multiply':
+      return {
+        blending: THREE.CustomBlending,
+        blendEquation: THREE.AddEquation,
+        blendSrc: THREE.DstColorFactor,
+        blendDst: THREE.ZeroFactor,
+      };
+
+    case 'soft-light':
+      // Approximation: lighter additive with reduced source contribution
+      return {
+        blending: THREE.CustomBlending,
+        blendEquation: THREE.AddEquation,
+        blendSrc: THREE.OneFactor,
+        blendDst: THREE.OneMinusSrcColorFactor,
+      };
+
+    case 'overlay':
+      // Overlay approx: screen-like for bright areas
+      return {
+        blending: THREE.CustomBlending,
+        blendEquation: THREE.AddEquation,
+        blendSrc: THREE.OneFactor,
+        blendDst: THREE.OneMinusSrcColorFactor,
+      };
+
+    case 'hard-light':
+      // Hard light for laser beams: stronger than screen, less than additive
+      return {
+        blending: THREE.CustomBlending,
+        blendEquation: THREE.AddEquation,
+        blendSrc: THREE.SrcAlphaFactor,
+        blendDst: THREE.OneMinusSrcAlphaFactor,
+      };
+
+    default:
+      return { blending: THREE.NormalBlending };
+  }
+}
+
+/**
+ * Returns a THREE.js material props object for the given blend mode.
+ * Spread this into <meshBasicMaterial {...getBlendProps('screen')} />
+ */
+export function getBlendProps(mode: NiagaraBlendMode) {
+  const config = getThreeBlending(mode);
+  return {
+    blending: config.blending,
+    blendEquation: config.blendEquation,
+    blendSrc: config.blendSrc,
+    blendDst: config.blendDst,
+  };
+}
+
+/**
+ * Returns GLSL snippet for energy-conserving blend in fragment shaders.
+ * MAX_ENERGY adapts based on current burst load to prevent white-out.
+ */
+export function getEnergyCapGLSL(): string {
+  return `
+    uniform float uMaxEnergy;
+    vec3 applyEnergyCap(vec3 color) {
+      return min(color, vec3(uMaxEnergy));
+    }
+  `;
+}
+
+/**
+ * Calculates max energy cap based on burst load.
+ * High load = lower cap to prevent accumulation white-out.
+ */
+export function getMaxEnergy(burstLoad: number): number {
+  return THREE.MathUtils.lerp(1.35, 0.7, THREE.MathUtils.clamp(burstLoad, 0, 1));
+}
+
+/**
+ * Canvas 2D composite operation mapping (for ParticleEditorPanel preview).
+ */
+export function getCanvasCompositeOp(mode: NiagaraBlendMode): GlobalCompositeOperation {
+  const map: Record<NiagaraBlendMode, GlobalCompositeOperation> = {
+    'additive': 'lighter',
+    'normal': 'source-over',
+    'multiply': 'multiply',
+    'screen': 'screen',
+    'overlay': 'overlay',
+    'soft-light': 'soft-light',
+    'hard-light': 'hard-light',
+  };
+  return map[mode] || 'source-over';
+}
+
+/**
+ * Ground illumination intensity scaler.
+ * Per plan: reduce pointLight intensity × 0.4 to prevent ground white-out.
+ */
+export const GROUND_LIGHT_SCALE = 0.4;
