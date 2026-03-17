@@ -6,6 +6,7 @@
  *           RDMX monitoring, Safety channels, Art-Net bridge, CUE grouping
  */
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Flame, Wind, Sparkles, Zap, Play, Square, Plus, Trash2,
   AlertTriangle, Check, Radio, Lightbulb, ChevronDown,
