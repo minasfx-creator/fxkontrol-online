@@ -1195,14 +1195,14 @@ function Moon() {
           `}
         />
       </mesh>
-      {/* Inner glow — proportional to new radius */}
+      {/* Inner glow — proportional to 450-unit body ×5 */}
       <mesh>
-        <sphereGeometry args={[95, 32, 32]} />
+        <sphereGeometry args={[500, 32, 32]} />
         <meshBasicMaterial color="#d0c8a8" transparent opacity={0.10} blending={THREE.AdditiveBlending} />
       </mesh>
       {/* Outer volumetric halo */}
       <mesh>
-        <sphereGeometry args={[160, 32, 32]} />
+        <sphereGeometry args={[800, 32, 32]} />
         <shaderMaterial
           transparent
           depthWrite={false}
