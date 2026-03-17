@@ -183,6 +183,7 @@ const DEFAULT_SETTINGS: SceneSettings = {
   vignetteIntensity: 0.25,
   chromaticAberration: true,
   filmGrain: 0.025,
+  viewTransform: 'aces-filmic' as ViewTransform,
 };
 
 export const SCENE_PRESETS: Record<string, { name: string; description: string; settings: Partial<SceneSettings> }> = {
