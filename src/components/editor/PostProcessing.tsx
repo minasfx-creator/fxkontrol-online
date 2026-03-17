@@ -32,7 +32,12 @@ export default function PostProcessing() {
   const str = s.bloomStrength;
   const vt = s.viewTransform || 'aces-filmic';
   const bloomMul = BLOOM_SCALE[vt];
-  const exposureMul = Math.pow(2, s.exposureCompensation || 0);
+  const gl = useThree(state => state.gl);
+  
+  // Apply exposure compensation via renderer toneMappingExposure
+  useEffect(() => {
+    gl.toneMappingExposure = Math.pow(2, s.exposureCompensation || 0);
+  }, [gl, s.exposureCompensation]);
 
   return (
     <EffectComposer multisampling={0}>
