@@ -2,6 +2,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { getMortarVelocity, GRAVITY } from '@/lib/pyroPhysics';
+import { getThreeBlending } from '@/lib/niagaraBlenderRules';
 
 const TRAIL_POINTS = 100;
 const SPARK_COUNT = 20;
