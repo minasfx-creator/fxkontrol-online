@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { X, Sparkles, Loader2, Wand2, Film, Send, Music, RotateCw, Layers, RefreshCw, Eye, Trash2, Copy, ChevronDown, ChevronRight, GripVertical, ArrowUp, ArrowDown, Image, Upload, Zap, Video, Play, Pause } from 'lucide-react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { X, Sparkles, Loader2, Wand2, Film, Send, Music, Layers, RefreshCw, Eye, Trash2, ChevronDown, ChevronRight, Image, Upload, Video, Grid3X3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -12,8 +12,14 @@ import {
   extractVideoFrames, extractGifFrames, framesToChoreography,
   isGifFile, isVideoFile, type ExtractedFrame, type FrameFormation,
 } from '@/lib/videoToFormation';
+import {
+  generateFormation,
+  FORMATION_PRESETS,
+  type FormationType,
+  type FormationConfig,
+} from '@/lib/formations';
 
-type Mode = 'single' | 'full-show' | 'trajectory' | 'music-sync' | 'image' | 'video';
+type Mode = 'presets' | 'single' | 'full-show' | 'music-sync' | 'image' | 'video';
 
 const QUICK_PROMPTS = [
   { emoji: '🌀', label: 'Vórtex Cibernético', prompt: 'vortex cibernético com espirais logarítmicas' },
