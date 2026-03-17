@@ -34,7 +34,7 @@ interface ParticleParams {
   fadeOut: number;           // 0-1
   rotationSpeed: number;    // deg/s
   shape: 'point' | 'circle' | 'star' | 'spark' | 'smoke';
-  blendMode: 'additive' | 'normal' | 'screen';
+  blendMode: 'additive' | 'normal' | 'multiply' | 'screen' | 'overlay' | 'soft-light' | 'hard-light';
   trail: boolean;
   trailLength: number;
   bounce: boolean;
