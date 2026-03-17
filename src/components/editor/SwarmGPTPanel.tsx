@@ -238,6 +238,108 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
     }
   }, [imageBase64, prompt, droneCount, droneFormations, addDroneFormation, setCurrentTime]);
 
+  // ── Video/GIF Handlers ──────────────────────────────────────
+
+  const handleVideoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!isVideoFile(file) && !isGifFile(file)) {
+      toast.error('Formato não suportado', { description: 'Use MP4, WebM, MOV ou GIF' });
+      return;
+    }
+    setVideoFile(file);
+    setVideoPreviewUrl(URL.createObjectURL(file));
+    setMode('video');
+    setVideoFrames([]);
+
+    setLoading(true);
+    try {
+      const extractor = isGifFile(file) ? extractGifFrames : extractVideoFrames;
+      const frames = await extractor(file, {
+        fps: videoFps,
+        maxFrames: 60,
+        resolution: 128,
+        onProgress: (p, phase) => {
+          setProgress(Math.round(p * 100));
+          setLoadingPhase(phase);
+        },
+      });
+      setVideoFrames(frames);
+      toast.success(`${frames.length} frames extraídos`, { description: `${isGifFile(file) ? 'GIF' : 'Vídeo'} processado` });
+    } catch (err: any) {
+      toast.error('Erro ao extrair frames', { description: err.message });
+    } finally {
+      setLoading(false);
+      setLoadingPhase('');
+      setProgress(0);
+    }
+    if (videoInputRef.current) videoInputRef.current.value = '';
+  }, [videoFps]);
+
+  const generateFromVideo = useCallback(async () => {
+    if (videoFrames.length === 0) return;
+    setLoading(true);
+    setLoadingPhase('Convertendo frames em formações...');
+
+    try {
+      const choreography = await framesToChoreography(videoFrames, {
+        droneCount,
+        radius: Math.max(15, Math.sqrt(droneCount) * 2.2),
+        threshold: videoThreshold,
+        invertDetection: videoInvert,
+        holdDuration: videoHoldDur,
+        transitionDuration: videoTransitionDur,
+        height: 30,
+        color: '#00E5FF',
+        onProgress: (p) => {
+          setProgress(Math.round(p * 100));
+          setLoadingPhase(`Gerando formação ${Math.round(p * videoFrames.length)}/${videoFrames.length}`);
+        },
+      });
+
+      let time = droneFormations.length > 0
+        ? droneFormations[droneFormations.length - 1].startTime + droneFormations[droneFormations.length - 1].transitionDuration + droneFormations[droneFormations.length - 1].holdDuration
+        : 0;
+
+      for (const ff of choreography) {
+        addDroneFormation({
+          id: `vid-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+          formationType: 'video-traced',
+          droneCount,
+          height: 30,
+          radius: 20,
+          spacing: 2,
+          rotation: 0,
+          startTime: time,
+          transitionDuration: videoTransitionDur,
+          holdDuration: videoHoldDur,
+          color: '#00E5FF',
+          points: ff.points,
+        });
+        time += videoTransitionDur + videoHoldDur;
+      }
+
+      setCurrentTime(0);
+      setLastGeneratedPoints(choreography[0]?.points || []);
+      const totalDur = choreography.length * (videoTransitionDur + videoHoldDur);
+      setHistory(prev => [{
+        prompt: `🎬 ${videoFile?.name || 'Video'}`,
+        result: `${choreography.length} formações · ${droneCount} drones · ${totalDur.toFixed(0)}s`,
+        time: new Date().toLocaleTimeString(),
+        points: choreography[0]?.points || [],
+      }, ...prev.slice(0, 9)]);
+      toast.success(`Coreografia gerada do vídeo!`, {
+        description: `${choreography.length} formações · ${totalDur.toFixed(0)}s de show`,
+      });
+    } catch (err: any) {
+      toast.error('Erro ao gerar coreografia', { description: err.message });
+    } finally {
+      setLoading(false);
+      setLoadingPhase('');
+      setProgress(0);
+    }
+  }, [videoFrames, droneCount, videoThreshold, videoInvert, videoHoldDur, videoTransitionDur, droneFormations, addDroneFormation, setCurrentTime, videoFile]);
+
   const generateSingle = useCallback(async () => {
     if (!prompt.trim()) return;
     setLoading(true);
