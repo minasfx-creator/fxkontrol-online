@@ -7,25 +7,23 @@ import { useSceneStore } from '@/store/useSceneStore';
 /**
  * ShowSim-style vertical and horizontal rulers in 3D viewport.
  * Shows altitude markers (meters) and horizontal distance scale.
+ * Scaled for expanded 300km² world.
  */
 
-const VERTICAL_MARKS = [10, 25, 50, 75, 100, 150, 200, 300, 400, 500, 600, 800, 1000];
-const HORIZONTAL_MARKS = [25, 50, 100, 200, 300, 500];
+const VERTICAL_MARKS = [10, 25, 50, 75, 100, 150, 200, 300, 400, 500, 600, 800, 1000, 1500, 2000, 3000, 5000];
+const HORIZONTAL_MARKS = [25, 50, 100, 200, 300, 500, 1000, 2000, 5000];
 
 function VerticalRuler() {
   const groupRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
 
-  // Position ruler on the left side of view, near the camera
   useFrame(() => {
     if (!groupRef.current) return;
-    // Place ruler 30 units to the left of where camera is looking
     const dir = new THREE.Vector3();
     camera.getWorldDirection(dir);
     const right = new THREE.Vector3().crossVectors(dir, camera.up).normalize();
     
-    // Fixed X position relative to camera target
-    const targetDist = 80;
+    const targetDist = 400;
     const basePos = camera.position.clone().add(dir.multiplyScalar(targetDist));
     basePos.add(right.multiplyScalar(-40));
     basePos.y = 0;
@@ -40,7 +38,7 @@ function VerticalRuler() {
         <bufferGeometry>
           <bufferAttribute
             attach="attributes-position"
-            args={[new Float32Array([0, 0, 0, 0, 1000, 0]), 3]}
+            args={[new Float32Array([0, 0, 0, 0, 5000, 0]), 3]}
           />
         </bufferGeometry>
         <lineBasicMaterial color="#00e5ff" transparent opacity={0.3} />
@@ -54,13 +52,13 @@ function VerticalRuler() {
             <bufferGeometry>
               <bufferAttribute
                 attach="attributes-position"
-                args={[new Float32Array([-2, 0, 0, 2, 0, 0]), 3]}
+                args={[new Float32Array([-10, 0, 0, 10, 0, 0]), 3]}
               />
             </bufferGeometry>
             <lineBasicMaterial color="#00e5ff" transparent opacity={0.5} />
           </line>
           {/* Label */}
-          <Html center position={[-6, 0, 0]} style={{ pointerEvents: 'none' }}>
+          <Html center position={[-30, 0, 0]} style={{ pointerEvents: 'none' }}>
             <div className="text-[9px] font-mono-code text-primary/70 whitespace-nowrap select-none">
               {h}m
             </div>
@@ -79,7 +77,7 @@ function HorizontalRuler() {
     if (!groupRef.current) return;
     const dir = new THREE.Vector3();
     camera.getWorldDirection(dir);
-    const targetDist = 80;
+    const targetDist = 400;
     const basePos = camera.position.clone().add(dir.clone().multiplyScalar(targetDist));
     basePos.y = 0.1;
     groupRef.current.position.set(basePos.x, 0.1, basePos.z);
@@ -92,7 +90,7 @@ function HorizontalRuler() {
         <bufferGeometry>
           <bufferAttribute
             attach="attributes-position"
-            args={[new Float32Array([-500, 0, 0, 500, 0, 0]), 3]}
+            args={[new Float32Array([-2500, 0, 0, 2500, 0, 0]), 3]}
           />
         </bufferGeometry>
         <lineBasicMaterial color="#ff6b35" transparent opacity={0.25} />
@@ -107,12 +105,12 @@ function HorizontalRuler() {
               <bufferGeometry>
                 <bufferAttribute
                   attach="attributes-position"
-                  args={[new Float32Array([0, 0, -1.5, 0, 0, 1.5]), 3]}
+                  args={[new Float32Array([0, 0, -7.5, 0, 0, 7.5]), 3]}
                 />
               </bufferGeometry>
               <lineBasicMaterial color="#ff6b35" transparent opacity={0.4} />
             </line>
-            <Html center position={[0, 0.5, 3]} style={{ pointerEvents: 'none' }}>
+            <Html center position={[0, 0.5, 15]} style={{ pointerEvents: 'none' }}>
               <div className="text-[8px] font-mono-code text-accent/60 whitespace-nowrap select-none">
                 {d}m
               </div>
@@ -124,12 +122,12 @@ function HorizontalRuler() {
               <bufferGeometry>
                 <bufferAttribute
                   attach="attributes-position"
-                  args={[new Float32Array([0, 0, -1.5, 0, 0, 1.5]), 3]}
+                  args={[new Float32Array([0, 0, -7.5, 0, 0, 7.5]), 3]}
                 />
               </bufferGeometry>
               <lineBasicMaterial color="#ff6b35" transparent opacity={0.4} />
             </line>
-            <Html center position={[0, 0.5, 3]} style={{ pointerEvents: 'none' }}>
+            <Html center position={[0, 0.5, 15]} style={{ pointerEvents: 'none' }}>
               <div className="text-[8px] font-mono-code text-accent/60 whitespace-nowrap select-none">
                 -{d}m
               </div>

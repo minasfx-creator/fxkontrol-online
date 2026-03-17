@@ -120,17 +120,17 @@ class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
 // Camera presets calibrated for real-world firework heights (55m-300m break heights)
 // Audience distance: typically 100-300m from launch site (NFPA 1123)
 const CAMERA_PRESETS = [
-  { id: 'free', label: 'Free', icon: Eye, position: [0, 25, 400] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
-  { id: 'satellite', label: 'Top', icon: Plane, position: [0, 1200, 0.1] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
-  { id: 'audience', label: 'Plateia', icon: Users, position: [0, 3, 500] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
-  { id: 'front', label: 'Front', icon: Users, position: [0, 8, 600] as [number, number, number], target: [0, 120, 0] as [number, number, number] },
-  { id: 'side', label: 'Side', icon: Video, position: [600, 50, 0] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
-  { id: 'back', label: 'Back', icon: Video, position: [0, 50, -400] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
-  { id: 'aerial', label: 'Aerial 45°', icon: Plane, position: [0, 600, 600] as [number, number, number], target: [0, 60, 0] as [number, number, number] },
-  { id: 'closeup', label: 'Close-up', icon: Camera, position: [30, 40, 150] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
-  { id: 'cinematic', label: 'Cinema', icon: Video, position: [-150, 12, 450] as [number, number, number], target: [0, 120, 0] as [number, number, number] },
-  { id: 'drone-follow', label: 'Drone POV', icon: Eye, position: [25, 180, 60] as [number, number, number], target: [0, 120, 0] as [number, number, number] },
-  { id: 'vip', label: 'VIP Box', icon: Users, position: [100, 8, 400] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
+  { id: 'free', label: 'Free', icon: Eye, position: [0, 125, 2000] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
+  { id: 'satellite', label: 'Top', icon: Plane, position: [0, 6000, 0.1] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
+  { id: 'audience', label: 'Plateia', icon: Users, position: [0, 15, 2500] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
+  { id: 'front', label: 'Front', icon: Users, position: [0, 40, 3000] as [number, number, number], target: [0, 600, 0] as [number, number, number] },
+  { id: 'side', label: 'Side', icon: Video, position: [3000, 250, 0] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
+  { id: 'back', label: 'Back', icon: Video, position: [0, 250, -2000] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
+  { id: 'aerial', label: 'Aerial 45°', icon: Plane, position: [0, 3000, 3000] as [number, number, number], target: [0, 300, 0] as [number, number, number] },
+  { id: 'closeup', label: 'Close-up', icon: Camera, position: [150, 200, 750] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
+  { id: 'cinematic', label: 'Cinema', icon: Video, position: [-750, 60, 2250] as [number, number, number], target: [0, 600, 0] as [number, number, number] },
+  { id: 'drone-follow', label: 'Drone POV', icon: Eye, position: [125, 900, 300] as [number, number, number], target: [0, 600, 0] as [number, number, number] },
+  { id: 'vip', label: 'VIP Box', icon: Users, position: [500, 40, 2000] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
 ] as const;
 
 // --- Playback clock ---
@@ -184,7 +184,7 @@ const STAR_VERTEX_SHADER = `
     vLife = aLife;
     vSize = aSize;
     vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-    gl_PointSize = aSize * (1600.0 / -mvPos.z);
+    gl_PointSize = aSize * (8000.0 / -mvPos.z);
     gl_PointSize = clamp(gl_PointSize, 1.0, 140.0);
     gl_Position = projectionMatrix * mvPos;
   }
@@ -912,6 +912,8 @@ function SkyGradient() {
   const starDensity = useSceneStore(st => st.settings.starDensity);
   const skyRef = useRef<THREE.Mesh>(null);
 
+  const skyRotation = useSceneStore(st => st.environment.skyRotation);
+
   const uniforms = useMemo(() => ({
     uSkyBrightness: { value: skyBrightness },
     uHorizonGlow: { value: horizonGlow },
@@ -919,13 +921,15 @@ function SkyGradient() {
     uTime: { value: 0 },
     uExplosionScatter: { value: new THREE.Color(0, 0, 0) },
     uScatterIntensity: { value: 0 },
+    uSkyRotation: { value: 0 },
   }), []);
 
   useEffect(() => {
     uniforms.uSkyBrightness.value = skyBrightness;
     uniforms.uHorizonGlow.value = horizonGlow;
     uniforms.uStarDensity.value = starDensity;
-  }, [skyBrightness, horizonGlow, starDensity]);
+    uniforms.uSkyRotation.value = skyRotation * Math.PI / 180;
+  }, [skyBrightness, horizonGlow, starDensity, skyRotation]);
 
   // Expose scatter uniforms for AdaptiveExposureController
   useEffect(() => {
@@ -940,7 +944,7 @@ function SkyGradient() {
 
   return (
     <mesh ref={skyRef} renderOrder={-1000}>
-      <sphereGeometry args={[18000, 64, 64]} />
+      <sphereGeometry args={[90000, 64, 64]} />
       <shaderMaterial
         side={THREE.BackSide}
         uniforms={uniforms}
@@ -959,6 +963,7 @@ function SkyGradient() {
           uniform float uTime;
           uniform vec3 uExplosionScatter;
           uniform float uScatterIntensity;
+          uniform float uSkyRotation;
           varying vec3 vWorldPosition;
           
           float hash21(vec2 p) {
@@ -1021,6 +1026,10 @@ function SkyGradient() {
           
           void main() {
             vec3 dir = normalize(vWorldPosition - cameraPosition);
+            // Apply sky rotation around Y axis
+            float cosR = cos(uSkyRotation);
+            float sinR = sin(uSkyRotation);
+            dir = vec3(dir.x * cosR - dir.z * sinR, dir.y, dir.x * sinR + dir.z * cosR);
             float h = dir.y;
             
             // Deep cinematic space — rich midnight blues to warm horizon
@@ -1119,10 +1128,10 @@ function SkyGradient() {
 // --- Volumetric Moon — Blender-calibrated celestial position ---
 function Moon() {
   return (
-    <group position={[1500, 2800, -2500]}>
-      {/* Moon body with procedural surface — radius 12 for proper angular size */}
+    <group position={[7500, 14000, -12500]}>
+      {/* Moon body with procedural surface — radius scaled for 5× world */}
       <mesh>
-        <sphereGeometry args={[90, 64, 64]} />
+        <sphereGeometry args={[450, 64, 64]} />
         <shaderMaterial
           vertexShader={`
             varying vec3 vNormal;
@@ -1457,7 +1466,7 @@ function GrassGround() {
       float distFromCenter = length(worldUV);
       
       // LOD blend factor: 0 = near (detailed), 1 = far (satellite)
-      float lodBlend = smoothstep(200.0, 600.0, distFromCenter);
+      float lodBlend = smoothstep(1000.0, 3000.0, distFromCenter);
       
       // === NEAR FIELD: detailed grass with mowing pattern ===
       float largN = fbm(worldUV * 0.03);
@@ -1516,7 +1525,7 @@ function GrassGround() {
       color += vec3(0.03, 0.05, 0.08) * spec * (0.3 + wetness * 0.2);
       
       // Distance atmosphere
-      float dist = distFromCenter * 0.0015;
+      float dist = distFromCenter * 0.0003;
       float fogFactor = smoothstep(0.0, 1.0, dist);
       vec3 atmosphereColor = vec3(0.08, 0.10, 0.18);
       color = mix(color, atmosphereColor, fogFactor * 0.7);
@@ -1528,7 +1537,7 @@ function GrassGround() {
 
   return (
     <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <planeGeometry args={[20000, 20000, 16, 16]} />
+      <planeGeometry args={[100000, 100000, 16, 16]} />
       <shaderMaterial
         uniforms={uniforms}
         vertexShader={terrainVertexShader}
@@ -1548,9 +1557,9 @@ function AtmosphericParticles() {
     const sz = new Float32Array(count);
     const vel = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 400;
+      pos[i * 3] = (Math.random() - 0.5) * 2000;
       pos[i * 3 + 1] = Math.random() * 60 + 0.5;
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 400;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 2000;
       sz[i] = 0.02 + Math.random() * 0.08;
       vel[i * 3] = (Math.random() - 0.5) * 0.01;
       vel[i * 3 + 1] = (Math.random() - 0.5) * 0.005;
@@ -1571,7 +1580,7 @@ function AtmosphericParticles() {
       arr[i * 3 + 2] += Math.cos(t * 0.07 + i * 0.7) * 0.004 + velData[i * 3 + 2];
       // Recycle particles that drift too far from camera
       const dx = arr[i * 3] - camX, dz = arr[i * 3 + 2] - camZ;
-      if (dx * dx + dz * dz > 40000) {
+      if (dx * dx + dz * dz > 1000000) {
         arr[i * 3] = camX + (Math.random() - 0.5) * 200;
         arr[i * 3 + 2] = camZ + (Math.random() - 0.5) * 200;
       }
@@ -1638,7 +1647,7 @@ function FloorLogo() {
 
   return (
     <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[200, 50]} />
+      <planeGeometry args={[1000, 250]} />
       <meshBasicMaterial
         map={texture}
         transparent
@@ -1672,7 +1681,7 @@ function GroundFog() {
 
   return (
     <mesh ref={fogRef} position={[0, 0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[2000, 2000, 1, 1]} />
+      <planeGeometry args={[10000, 10000, 1, 1]} />
       <shaderMaterial
         transparent
         depthWrite={false}
@@ -1747,7 +1756,7 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
 
   return (
     <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <planeGeometry args={[20000, 20000, 16, 16]} />
+      <planeGeometry args={[100000, 100000, 16, 16]} />
       <shaderMaterial
         uniforms={uniforms}
         vertexShader={`
@@ -1812,7 +1821,7 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
             color += vec3(0.015, 0.02, 0.035) * viewAngle * nearBlend * 0.8;
             
             // Atmospheric fade at extreme distance
-            float dist = distFromCenter * 0.001;
+            float dist = distFromCenter * 0.0002;
             float fogFactor = smoothstep(0.5, 1.5, dist);
             vec3 atmosphereColor = vec3(0.02 * b, 0.025 * b, 0.04 * b);
             color = mix(color, atmosphereColor, fogFactor * 0.5);
@@ -1830,7 +1839,7 @@ function ConcreteGround({ brightness }: { brightness: number }) {
   const b = brightness * 0.5;
   return (
     <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <planeGeometry args={[20000, 20000]} />
+      <planeGeometry args={[100000, 100000]} />
       <meshStandardMaterial
         color={new THREE.Color(0.07 * b, 0.07 * b, 0.075 * b)}
         roughness={0.92}
@@ -2202,7 +2211,7 @@ const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflec
 
   return (
     <mesh ref={meshRef} position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[2000, 2000]} />
+      <planeGeometry args={[10000, 10000]} />
       <shaderMaterial
         transparent
         depthWrite={false}
@@ -2262,7 +2271,7 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
       case 'flat-black':
         return (
       <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-            <planeGeometry args={[20000, 20000]} />
+            <planeGeometry args={[100000, 100000]} />
             <meshStandardMaterial color="#050505" roughness={0.95} metalness={0} />
           </mesh>
         );
@@ -2294,19 +2303,19 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
             sectionSize={10}
             sectionThickness={0.4}
             sectionColor="#1a1a2e"
-            fadeDistance={800}
+            fadeDistance={4000}
             infiniteGrid
           />
           <Grid
             position={[0, 0.015, 0]}
-            args={[2000, 2000]}
+            args={[10000, 10000]}
             cellSize={50}
             cellThickness={0.6}
             cellColor="#1a1a2e"
             sectionSize={100}
             sectionThickness={0.8}
             sectionColor="#22223a"
-            fadeDistance={1500}
+            fadeDistance={7500}
             infiniteGrid
           />
         </>
@@ -2442,7 +2451,7 @@ function SceneLighting() {
     rig.moon.castShadow = s.shadowsEnabled;
     rig.moon.shadow.bias = -0.00003;
     rig.moon.shadow.normalBias = 0.02;
-    rig.moon.shadow.camera.far = 5000;
+    rig.moon.shadow.camera.far = 25000;
 
     scene.add(rig.group);
     return () => { scene.remove(rig.group); };
@@ -2477,7 +2486,16 @@ function SceneFog() {
 function SceneStars() {
   const density = useSceneStore(st => st.settings.starDensity);
   if (density <= 0.05) return null;
-  return <Stars radius={2000} depth={800} count={Math.round(15000 * density)} factor={6} saturation={0.2} fade speed={0.03} />;
+  return <Stars radius={10000} depth={4000} count={Math.round(15000 * density)} factor={6} saturation={0.2} fade speed={0.03} />;
+}
+
+/** SceneStars with lowQualityMode support — reduces count & factor by 50% */
+function SceneStarsWired() {
+  const density = useSceneStore(st => st.settings.starDensity);
+  const lowQ = useSceneStore(st => st.environment.lowQualityMode);
+  if (density <= 0.05) return null;
+  const mult = lowQ ? 0.5 : 1.0;
+  return <Stars radius={10000} depth={4000} count={Math.round(15000 * density * mult)} factor={6 * mult} saturation={0.2} fade speed={0.03} />;
 }
 
 function WeatherEffects() {
@@ -2491,9 +2509,9 @@ function WeatherEffects() {
     const positions = new Float32Array(count * 3);
     const velocities = new Float32Array(count);
     for (let i = 0; i < count; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 800;
+      positions[i * 3] = (Math.random() - 0.5) * 4000;
       positions[i * 3 + 1] = Math.random() * 200;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 800;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 4000;
       velocities[i] = weather === 'snow' ? 1 + Math.random() * 2 : 15 + Math.random() * 25;
     }
     return { count, positions, velocities };
@@ -2507,8 +2525,8 @@ function WeatherEffects() {
       arr[i * 3 + 1] -= rainData.velocities[i] * 0.016 * rainIntensity;
       if (arr[i * 3 + 1] < 0) {
         arr[i * 3 + 1] = 160 + Math.random() * 40;
-        arr[i * 3] = (Math.random() - 0.5) * 800;
-        arr[i * 3 + 2] = (Math.random() - 0.5) * 800;
+        arr[i * 3] = (Math.random() - 0.5) * 4000;
+        arr[i * 3 + 2] = (Math.random() - 0.5) * 4000;
       }
     }
     posAttr.needsUpdate = true;
@@ -2550,16 +2568,16 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
   const introPhase = useRef<'hold' | 'sweep' | 'done'>('hold');
   const introTimer = useRef(0);
 
-  const WORLD_HALF_EXTENT = 16000;
+  const WORLD_HALF_EXTENT = 80000;
   const CAMERA_MIN_Y = 1;
-  const CAMERA_MAX_Y = 15000;
+  const CAMERA_MAX_Y = 75000;
 
   const clampToWorldBounds = useCallback(() => {
     const controls = controlsRef.current;
     if (!controls) return;
 
     const tx = THREE.MathUtils.clamp(controls.target.x, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
-    const ty = THREE.MathUtils.clamp(controls.target.y, 0, 10000);
+    const ty = THREE.MathUtils.clamp(controls.target.y, 0, 50000);
     const tz = THREE.MathUtils.clamp(controls.target.z, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
 
     const cx = THREE.MathUtils.clamp(camera.position.x, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
@@ -2575,7 +2593,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
   }, [camera]);
 
   // Intro: cinematic positions
-  const introStartPos = useRef(new THREE.Vector3(0, 500, 0.01));
+  const introStartPos = useRef(new THREE.Vector3(0, 2500, 0.01));
   const introStartLook = useRef(new THREE.Vector3(0, 0, 0));
   const introDuration = useRef({ hold: 2.5, sweep: 4.0 }); // generous timing for smooth feel
 
@@ -2614,7 +2632,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
         const orbitSpeed = 0.15;
         camera.position.set(
           Math.sin(introTimer.current * orbitSpeed) * orbitRadius,
-          500 - eased * 40, // very gentle descent during hold
+          2500 - eased * 200, // very gentle descent during hold
           Math.cos(introTimer.current * orbitSpeed) * orbitRadius + 0.01
         );
         camera.lookAt(0, 0, 0);
@@ -2635,7 +2653,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
         const defaultLook = new THREE.Vector3(...targetLookAt);
         
         // Interpolate position with easing — uniform speed curve
-        const sweepStartPos = new THREE.Vector3(0, 460, 3);
+        const sweepStartPos = new THREE.Vector3(0, 2300, 3);
         camera.position.lerpVectors(sweepStartPos, defaultPos, eased);
         
         // Interpolate look target
@@ -2684,7 +2702,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
       minPolarAngle={Math.PI * 0.05}
       maxPolarAngle={Math.PI * 0.85}
       minDistance={1}
-      maxDistance={18000}
+      maxDistance={90000}
       enablePan
     />
   );
@@ -2900,6 +2918,7 @@ export default function SkyCanvas() {
   const [canvasInstanceKey, setCanvasInstanceKey] = useState(0);
   const recoveringContextRef = useRef(false);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const environment = useSceneStore(st => st.environment);
   const [showDebugOverlay, setShowDebugOverlay] = useState(true);
 
   // ═══ Google Earth-style Geo Tools state ═══
@@ -3096,21 +3115,21 @@ export default function SkyCanvas() {
           canvas.addEventListener('webglcontextlost', handleContextLost as EventListener);
           canvas.addEventListener('webglcontextrestored', handleContextRestored as EventListener);
         }}>
-        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.5} far={50000} />
+        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.5} far={250000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook} />
 
         <SceneLighting />
         <AdaptiveExposureController />
-        <GlobalIlluminationController />
+        {!environment.disableLighting && <GlobalIlluminationController />}
         <GroundReflections />
-        <SmokeController />
-        <LensFlareController />
+        {!environment.disableSmoke && <SmokeController />}
+        {!environment.disableLighting && <LensFlareController />}
         <SparkTrailController />
 
         <SkyGradient />
         <Moon />
-        <SceneStars />
-        {!isMobile && <AtmosphericParticles />}
+        <SceneStarsWired />
+        {!isMobile && !environment.lowQualityMode && <AtmosphericParticles />}
         <SceneFog />
         {!isMobile && <WeatherEffects />}
 

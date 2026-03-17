@@ -17,6 +17,45 @@ const MOBILE_RULES = {
 const MAX_HDR_CHANNEL = 1.35;
 const MAX_HDR_LUMA = 1.15;
 
+// ── V-Ray / Blender View Transform System ──────────────────────────
+
+export type ViewTransform = 'aces-filmic' | 'agx' | 'standard';
+
+export interface ViewTransformConfig {
+  maxHDRChannel: number;
+  maxHDRLuma: number;
+  energyCap: number;
+  label: string;
+}
+
+const VIEW_TRANSFORM_CONFIGS: Record<ViewTransform, ViewTransformConfig> = {
+  'aces-filmic': {
+    maxHDRChannel: 1.35,
+    maxHDRLuma: 1.15,
+    energyCap: 1.35,
+    label: 'ACES Filmic',
+  },
+  'agx': {
+    maxHDRChannel: 1.1,
+    maxHDRLuma: 0.95,
+    energyCap: 1.0,
+    label: 'AgX (Blender 4.0)',
+  },
+  'standard': {
+    maxHDRChannel: 8.0,
+    maxHDRLuma: 8.0,
+    energyCap: 8.0,
+    label: 'Standard (Linear)',
+  },
+};
+
+export function getViewTransformConfig(mode: ViewTransform): ViewTransformConfig {
+  return VIEW_TRANSFORM_CONFIGS[mode];
+}
+
+export function getAllViewTransforms(): { id: ViewTransform; label: string }[] {
+  return Object.entries(VIEW_TRANSFORM_CONFIGS).map(([id, cfg]) => ({ id: id as ViewTransform, label: cfg.label }));
+}
 let _adaptiveExposure = 1.2;
 let _adaptiveBurstLoad = 0;
 
