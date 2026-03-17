@@ -47,6 +47,12 @@ const VIEW_TRANSFORM_CONFIGS: Record<ViewTransform, ViewTransformConfig> = {
     energyCap: 8.0,
     label: 'Standard (Linear)',
   },
+  'pbr-neutral': {
+    maxHDRChannel: 1.5,
+    maxHDRLuma: 1.3,
+    energyCap: 1.5,
+    label: 'Khronos PBR Neutral',
+  },
 };
 
 export function getViewTransformConfig(mode: ViewTransform): ViewTransformConfig {

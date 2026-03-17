@@ -8,6 +8,7 @@ const TONE_MAP: Record<ViewTransform, ToneMappingMode> = {
   'aces-filmic': ToneMappingMode.ACES_FILMIC,
   'agx': ToneMappingMode.AGX,
   'standard': ToneMappingMode.LINEAR,
+  'pbr-neutral': ToneMappingMode.AGX,  // AGX closest approximation to PBR Neutral
 };
 
 // AgX is softer highlights → reduce bloom; Standard is linear → no compression
@@ -15,6 +16,7 @@ const BLOOM_SCALE: Record<ViewTransform, number> = {
   'aces-filmic': 1.0,
   'agx': 0.7,
   'standard': 1.3,
+  'pbr-neutral': 0.85,
 };
 
 /**
