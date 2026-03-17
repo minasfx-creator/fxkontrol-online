@@ -17,6 +17,15 @@ import { downloadFile } from '@/lib/exportEngine';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+interface DiagnosticLog {
+  timestamp: Date;
+  type: 'send' | 'validate' | 'error' | 'info';
+  message: string;
+  latency?: number;
+  packets?: Array<{ universe: number; hex: string; channels: number; packetSize: number }>;
+  raw?: any;
+}
+
 export default function DMXPanel({ onClose }: { onClose: () => void }) {
   const { droneFormations, currentTime } = useProjectStore();
   const [universes, setUniverses] = useState<DMXUniverse[]>([]);
@@ -26,6 +35,13 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
   const [artNetIp, setArtNetIp] = useState('255.255.255.255');
   const [artNetPort, setArtNetPort] = useState(6454);
   const [sending, setSending] = useState(false);
+  const [diagLogs, setDiagLogs] = useState<DiagnosticLog[]>([]);
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
+  const [showDiag, setShowDiag] = useState(true);
+
+  const addDiagLog = useCallback((log: DiagnosticLog) => {
+    setDiagLogs(prev => [log, ...prev].slice(0, 50));
+  }, []);
 
   const totalDrones = useMemo(() => {
     if (droneFormations.length === 0) return 0;
@@ -41,6 +57,7 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     }
     const newUniverses = autoPatchDrones(totalDrones, channelsPerFixture);
     setUniverses(newUniverses);
+    addDiagLog({ timestamp: new Date(), type: 'info', message: `Auto-Patch: ${totalDrones} fixtures → ${newUniverses.length} universo(s)` });
     toast.success(`Patch automático: ${totalDrones} fixtures em ${newUniverses.length} universo(s)`);
   };
 
@@ -68,12 +85,42 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     toast.success('DMX CSV exportado!');
   };
 
+  const testConnection = async () => {
+    setConnectionStatus('testing');
+    const t0 = performance.now();
+    try {
+      const testUniverse = {
+        universe: 0, subnet: 0, net: 0,
+        channels: Array.from({ length: 512 }, () => 0),
+        sequence: 0,
+      };
+      const { data, error } = await supabase.functions.invoke('artnet-bridge', {
+        body: { action: 'validate', universes: [testUniverse] },
+      });
+      const latency = Math.round(performance.now() - t0);
+      if (error) throw error;
+      setConnectionStatus(data.valid ? 'ok' : 'error');
+      addDiagLog({
+        timestamp: new Date(), type: data.valid ? 'validate' : 'error',
+        message: data.valid
+          ? `Conexão OK — ${data.universeCount} uni, ${data.totalChannels} ch`
+          : `Validação falhou: ${data.errors?.join(', ')}`,
+        latency, raw: data,
+      });
+    } catch (e: any) {
+      setConnectionStatus('error');
+      const latency = Math.round(performance.now() - t0);
+      addDiagLog({ timestamp: new Date(), type: 'error', message: e.message || 'Falha na conexão', latency });
+    }
+  };
+
   const sendArtNet = async () => {
     if (universes.length === 0) {
       toast.error('Faça o Auto-Patch primeiro');
       return;
     }
     setSending(true);
+    const t0 = performance.now();
     try {
       const artNetUniverses = universes.map((u, i) => ({
         universe: u.id % 16,
@@ -86,11 +133,24 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
       const { data, error } = await supabase.functions.invoke('artnet-bridge', {
         body: { action: 'send', universes: artNetUniverses, targetIp: artNetIp, targetPort: artNetPort },
       });
+      const latency = Math.round(performance.now() - t0);
       if (error) throw error;
+
+      setConnectionStatus('ok');
+      addDiagLog({
+        timestamp: new Date(), type: 'send',
+        message: `${data.packetCount} pacote(s) → ${artNetIp}:${artNetPort} · ${data.totalBytes} bytes`,
+        latency,
+        packets: data.packets,
+        raw: data,
+      });
       toast.success(`${data.packetCount} pacote(s) Art-Net preparados`, {
         description: `Target: ${artNetIp}:${artNetPort} · ${data.totalBytes} bytes`,
       });
     } catch (e: any) {
+      const latency = Math.round(performance.now() - t0);
+      setConnectionStatus('error');
+      addDiagLog({ timestamp: new Date(), type: 'error', message: e.message || 'Erro ao enviar Art-Net', latency });
       toast.error(e.message || 'Erro ao enviar Art-Net');
     } finally {
       setSending(false);
