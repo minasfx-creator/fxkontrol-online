@@ -3058,6 +3058,7 @@ export default function SkyCanvas() {
         <PlaybackClock />
         {!isMobile && <CameraAnimator />}
         {!isMobile && <CameraPathPreview />}
+        <ViewportRulers />
         <PostProcessing />
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
