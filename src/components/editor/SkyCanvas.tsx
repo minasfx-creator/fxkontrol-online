@@ -2271,7 +2271,7 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
       case 'flat-black':
         return (
       <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-            <planeGeometry args={[20000, 20000]} />
+            <planeGeometry args={[100000, 100000]} />
             <meshStandardMaterial color="#050505" roughness={0.95} metalness={0} />
           </mesh>
         );
