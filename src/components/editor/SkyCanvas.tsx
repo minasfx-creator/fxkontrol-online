@@ -1595,8 +1595,8 @@ function AtmosphericParticles() {
       // Recycle particles that drift too far from camera
       const dx = arr[i * 3] - camX, dz = arr[i * 3 + 2] - camZ;
       if (dx * dx + dz * dz > 1000000) {
-        arr[i * 3] = camX + (Math.random() - 0.5) * 200;
-        arr[i * 3 + 2] = camZ + (Math.random() - 0.5) * 200;
+        arr[i * 3] = camX + (Math.random() - 0.5) * 2000;
+        arr[i * 3 + 2] = camZ + (Math.random() - 0.5) * 2000;
       }
     }
     posAttr.needsUpdate = true;
