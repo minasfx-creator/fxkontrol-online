@@ -880,7 +880,6 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
           placeholder={
             mode === 'full-show' ? "Descreva o tema do show completo..."
             : mode === 'music-sync' ? "Descreva o estilo visual sincronizado com a música..."
-            : mode === 'trajectory' ? "Descreva o padrão de movimento..."
             : mode === 'image' ? "(Opcional) Descreva o que extrair da imagem..."
             : "Descreva a formação..."
           }
