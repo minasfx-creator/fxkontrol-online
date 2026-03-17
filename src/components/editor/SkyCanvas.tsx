@@ -12,6 +12,7 @@ import PostProcessing from './PostProcessing';
 import { BoxSelectR3F } from './BoxSelectOverlay';
 import AlignmentTools from './AlignmentTools';
 import CameraAnimator, { CameraPathPreview } from './CameraAnimator';
+import ViewportRulers from './ViewportRulers';
 import TrajectoryPaths from './TrajectoryPaths';
 import DroneChoreography from './DroneChoreography';
 import Rack3DView from './Rack3DView';
