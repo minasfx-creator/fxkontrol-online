@@ -6,6 +6,7 @@
  *           RDMX monitoring, Safety channels, Art-Net bridge, CUE grouping
  */
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Flame, Wind, Sparkles, Zap, Play, Square, Plus, Trash2,
@@ -482,19 +483,35 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   // Sync browser Fullscreen API with isFullscreen state
   useEffect(() => {
     if (isFullscreen) {
-      // Small delay to ensure DOM is ready for fullscreen request
       const timer = setTimeout(() => {
-        document.documentElement.requestFullscreen?.().catch(() => {});
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen?.().catch(() => {});
+        }
       }, 100);
       return () => clearTimeout(timer);
-    } else {
-      if (document.fullscreenElement) {
-        document.exitFullscreen?.().catch(() => {});
-      }
+    }
+
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.().catch(() => {});
     }
   }, [isFullscreen]);
 
-  // Listen for native fullscreen exit (e.g. Escape key) to sync state
+  // Lock body scroll while mobile commander is fullscreen (prevents cropped controls)
+  useEffect(() => {
+    if (!(isMobile && isFullscreen)) return;
+
+    const prevOverflow = document.body.style.overflow;
+    const prevOverscroll = document.body.style.overscrollBehavior;
+    document.body.style.overflow = 'hidden';
+    document.body.style.overscrollBehavior = 'none';
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.overscrollBehavior = prevOverscroll;
+    };
+  }, [isMobile, isFullscreen]);
+
+  // Listen for native fullscreen exit (e.g. system gesture) to sync state
   useEffect(() => {
     const onFsChange = () => {
       if (!document.fullscreenElement && isFullscreen) {
@@ -999,11 +1016,15 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   // FULLSCREEN LAYOUT
   // ═══════════════════════════════════════════════════════════
   if (isFullscreen) {
-    return (
-      <div {...swipeProps} className={cn(
-        "fixed inset-0 z-[9999] flex flex-col select-none",
-        mob && "pb-[env(safe-area-inset-bottom)]"
-      )} style={{ background: 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 4%) 100%)' }}>
+    const fullscreenContent = (
+      <div
+        {...swipeProps}
+        className="fixed inset-x-0 top-0 z-[9999] flex h-[100dvh] w-screen flex-col select-none"
+        style={{
+          background: 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 4%) 100%)',
+          paddingBottom: mob ? 'max(env(safe-area-inset-bottom), 8px)' : undefined,
+        }}
+      >
         {renderStatusBar(true)}
         {renderArmBar(true)}
         {renderCueKeys(true)}
@@ -1012,6 +1033,8 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
         {renderPanic(true)}
       </div>
     );
+
+    return mob ? createPortal(fullscreenContent, document.body) : fullscreenContent;
   }
 
   // ═══════════════════════════════════════════════════════════
