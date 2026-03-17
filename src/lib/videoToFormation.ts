@@ -41,6 +41,14 @@ interface SamplingOptions {
   invertDetection?: boolean;
   /** Minimum spacing between points in meters */
   minSpacing?: number;
+  /** Detection mode */
+  detectionMode?: 'threshold' | 'edge' | 'adaptive';
+  /** Gaussian blur radius (0 = none) */
+  blurRadius?: number;
+  /** Contrast boost factor (1 = none, 2 = double) */
+  contrastBoost?: number;
+  /** Edge detection sensitivity (lower = more edges) */
+  edgeSensitivity?: number;
 }
 
 // ─── Video Frame Extraction ───────────────────────────────────
@@ -438,39 +446,208 @@ function lzwDecode(data: number[], minCodeSize: number, pixelCount: number): num
   return output;
 }
 
+// ─── Image Processing Kernels ─────────────────────────────────
+
+function applyGaussianBlur(img: ImageData, radius: number): ImageData {
+  const { width, height, data } = img;
+  const out = new ImageData(new Uint8ClampedArray(data), width, height);
+  const r = Math.max(1, Math.round(radius));
+  const kernel = buildGaussianKernel(r);
+  const kSize = r * 2 + 1;
+
+  // Separable blur: horizontal pass
+  const temp = new Uint8ClampedArray(data.length);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let rr = 0, gg = 0, bb = 0, wSum = 0;
+      for (let k = -r; k <= r; k++) {
+        const sx = Math.min(Math.max(x + k, 0), width - 1);
+        const pi = (y * width + sx) * 4;
+        const w = kernel[k + r];
+        rr += data[pi] * w;
+        gg += data[pi + 1] * w;
+        bb += data[pi + 2] * w;
+        wSum += w;
+      }
+      const pi = (y * width + x) * 4;
+      temp[pi] = rr / wSum;
+      temp[pi + 1] = gg / wSum;
+      temp[pi + 2] = bb / wSum;
+      temp[pi + 3] = data[pi + 3];
+    }
+  }
+
+  // Vertical pass
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let rr = 0, gg = 0, bb = 0, wSum = 0;
+      for (let k = -r; k <= r; k++) {
+        const sy = Math.min(Math.max(y + k, 0), height - 1);
+        const pi = (sy * width + x) * 4;
+        const w = kernel[k + r];
+        rr += temp[pi] * w;
+        gg += temp[pi + 1] * w;
+        bb += temp[pi + 2] * w;
+        wSum += w;
+      }
+      const pi = (y * width + x) * 4;
+      out.data[pi] = rr / wSum;
+      out.data[pi + 1] = gg / wSum;
+      out.data[pi + 2] = bb / wSum;
+    }
+  }
+  return out;
+}
+
+function buildGaussianKernel(radius: number): number[] {
+  const sigma = radius / 2.5;
+  const kernel: number[] = [];
+  for (let i = -radius; i <= radius; i++) {
+    kernel.push(Math.exp(-(i * i) / (2 * sigma * sigma)));
+  }
+  return kernel;
+}
+
+function applyContrast(img: ImageData, factor: number): ImageData {
+  const out = new ImageData(new Uint8ClampedArray(img.data), img.width, img.height);
+  for (let i = 0; i < out.data.length; i += 4) {
+    out.data[i] = Math.min(255, Math.max(0, ((out.data[i] - 128) * factor) + 128));
+    out.data[i + 1] = Math.min(255, Math.max(0, ((out.data[i + 1] - 128) * factor) + 128));
+    out.data[i + 2] = Math.min(255, Math.max(0, ((out.data[i + 2] - 128) * factor) + 128));
+  }
+  return out;
+}
+
+function sobelEdgeDetection(gray: Float32Array, width: number, height: number): Float32Array {
+  const edges = new Float32Array(width * height);
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const tl = gray[(y - 1) * width + (x - 1)];
+      const tc = gray[(y - 1) * width + x];
+      const tr = gray[(y - 1) * width + (x + 1)];
+      const ml = gray[y * width + (x - 1)];
+      const mr = gray[y * width + (x + 1)];
+      const bl = gray[(y + 1) * width + (x - 1)];
+      const bc = gray[(y + 1) * width + x];
+      const br = gray[(y + 1) * width + (x + 1)];
+
+      const gx = -tl - 2 * ml - bl + tr + 2 * mr + br;
+      const gy = -tl - 2 * tc - tr + bl + 2 * bc + br;
+      edges[y * width + x] = Math.min(255, Math.sqrt(gx * gx + gy * gy));
+    }
+  }
+  return edges;
+}
+
+function adaptiveThreshold(
+  gray: Float32Array, width: number, height: number, blockSize: number,
+): boolean[] {
+  const result: boolean[] = new Array(width * height);
+  const half = Math.floor(blockSize / 2);
+  const C = 8; // offset constant
+
+  // Integral image for fast local mean
+  const integral = new Float64Array((width + 1) * (height + 1));
+  for (let y = 0; y < height; y++) {
+    let rowSum = 0;
+    for (let x = 0; x < width; x++) {
+      rowSum += gray[y * width + x];
+      integral[(y + 1) * (width + 1) + (x + 1)] =
+        rowSum + integral[y * (width + 1) + (x + 1)];
+    }
+  }
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const y1 = Math.max(0, y - half);
+      const y2 = Math.min(height - 1, y + half);
+      const x1 = Math.max(0, x - half);
+      const x2 = Math.min(width - 1, x + half);
+      const count = (y2 - y1 + 1) * (x2 - x1 + 1);
+
+      const sum =
+        integral[(y2 + 1) * (width + 1) + (x2 + 1)] -
+        integral[y1 * (width + 1) + (x2 + 1)] -
+        integral[(y2 + 1) * (width + 1) + x1] +
+        integral[y1 * (width + 1) + x1];
+
+      const localMean = sum / count;
+      result[y * width + x] = gray[y * width + x] < localMean - C;
+    }
+  }
+  return result;
+}
+
 // ─── Frame → Formation Points ─────────────────────────────────
 
 export function frameToFormationPoints(
   imageData: ImageData,
   options: SamplingOptions,
 ): { x: number; z: number }[] {
-  const { droneCount, radius = 25, threshold = 128, invertDetection = false, minSpacing = 2.0 } = options;
-  const { width, height, data } = imageData;
+  const {
+    droneCount, radius = 25, threshold = 128, invertDetection = false,
+    minSpacing = 2.0, detectionMode = 'threshold', blurRadius = 0,
+    contrastBoost = 1, edgeSensitivity = 50,
+  } = options;
+  const { width, height } = imageData;
 
-  // Step 1: Convert to grayscale and threshold
+  // Step 0: Pre-process — blur + contrast
+  let processed = imageData;
+  if (blurRadius > 0) processed = applyGaussianBlur(processed, blurRadius);
+  if (contrastBoost > 1) processed = applyContrast(processed, contrastBoost);
+
+  const { data } = processed;
+
+  // Step 1: Convert to grayscale
+  const gray = new Float32Array(width * height);
+  for (let i = 0; i < width * height; i++) {
+    const pi = i * 4;
+    const alpha = data[pi + 3];
+    gray[i] = alpha < 128 ? 255 : data[pi] * 0.299 + data[pi + 1] * 0.587 + data[pi + 2] * 0.114;
+  }
+
+  // Step 2: Detect shape based on mode
   const isShape: boolean[] = new Array(width * height);
   const shapePixels: { px: number; py: number }[] = [];
 
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const i = (y * width + x) * 4;
-      const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-      const alpha = data[i + 3];
-      let shape: boolean;
-      
-      if (alpha < 128) {
-        shape = false; // transparent = not shape
-      } else {
-        shape = invertDetection ? gray >= threshold : gray < threshold;
+  if (detectionMode === 'edge') {
+    // Sobel edge detection
+    const edges = sobelEdgeDetection(gray, width, height);
+    const edgeThreshold = 255 - edgeSensitivity * 2.55; // map 0-100 → 255-0
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = y * width + x;
+        const shape = edges[idx] > edgeThreshold;
+        isShape[idx] = shape;
+        if (shape) shapePixels.push({ px: x, py: y });
       }
-      
-      isShape[y * width + x] = shape;
-      if (shape) shapePixels.push({ px: x, py: y });
+    }
+  } else if (detectionMode === 'adaptive') {
+    // Adaptive threshold (local mean)
+    const blockSize = Math.max(3, Math.floor(Math.min(width, height) / 8) | 1);
+    const adaptiveMap = adaptiveThreshold(gray, width, height, blockSize);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = y * width + x;
+        const shape = invertDetection ? !adaptiveMap[idx] : adaptiveMap[idx];
+        isShape[idx] = shape;
+        if (shape) shapePixels.push({ px: x, py: y });
+      }
+    }
+  } else {
+    // Simple threshold
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = y * width + x;
+        const g = gray[idx];
+        const shape = invertDetection ? g >= threshold : g < threshold;
+        isShape[idx] = shape;
+        if (shape) shapePixels.push({ px: x, py: y });
+      }
     }
   }
 
   if (shapePixels.length === 0) {
-    // No shape detected, return grid
     return generateGrid(droneCount, radius);
   }
 

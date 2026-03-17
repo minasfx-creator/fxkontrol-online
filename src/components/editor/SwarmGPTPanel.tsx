@@ -159,6 +159,10 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
   const [videoInvert, setVideoInvert] = useState(false);
   const [videoTransitionDur, setVideoTransitionDur] = useState(5);
   const [videoHoldDur, setVideoHoldDur] = useState(3);
+  const [videoDetectionMode, setVideoDetectionMode] = useState<'threshold' | 'edge' | 'adaptive'>('threshold');
+  const [videoBlurRadius, setVideoBlurRadius] = useState(0);
+  const [videoContrast, setVideoContrast] = useState(1);
+  const [videoEdgeSensitivity, setVideoEdgeSensitivity] = useState(50);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
   const addDroneFormation = useProjectStore((s) => s.addDroneFormation);
@@ -287,6 +291,10 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
         radius: Math.max(15, Math.sqrt(droneCount) * 2.2),
         threshold: videoThreshold,
         invertDetection: videoInvert,
+        detectionMode: videoDetectionMode,
+        blurRadius: videoBlurRadius,
+        contrastBoost: videoContrast,
+        edgeSensitivity: videoEdgeSensitivity,
         holdDuration: videoHoldDur,
         transitionDuration: videoTransitionDur,
         height: 30,
@@ -338,7 +346,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
       setLoadingPhase('');
       setProgress(0);
     }
-  }, [videoFrames, droneCount, videoThreshold, videoInvert, videoHoldDur, videoTransitionDur, droneFormations, addDroneFormation, setCurrentTime, videoFile]);
+  }, [videoFrames, droneCount, videoThreshold, videoInvert, videoHoldDur, videoTransitionDur, videoDetectionMode, videoBlurRadius, videoContrast, videoEdgeSensitivity, droneFormations, addDroneFormation, setCurrentTime, videoFile]);
 
   const generateSingle = useCallback(async () => {
     if (!prompt.trim()) return;
@@ -739,17 +747,71 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
 
             {/* Settings */}
             <div className="space-y-1.5">
+              {/* Detection mode selector */}
+              <div className="space-y-1">
+                <span className="text-[8px] text-muted-foreground font-semibold">Modo de Detecção</span>
+                <div className="grid grid-cols-3 gap-0.5">
+                  {([
+                    { id: 'threshold' as const, label: 'Threshold', emoji: '◐' },
+                    { id: 'edge' as const, label: 'Bordas', emoji: '▢' },
+                    { id: 'adaptive' as const, label: 'Adaptativo', emoji: '◑' },
+                  ]).map(m => (
+                    <button
+                      key={m.id}
+                      onClick={() => setVideoDetectionMode(m.id)}
+                      className={cn(
+                        "text-[7px] py-1 rounded border transition-colors",
+                        videoDetectionMode === m.id
+                          ? "border-primary/40 bg-primary/10 text-primary"
+                          : "border-border/50 bg-surface-2 text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {m.emoji} {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="flex items-center justify-between">
                 <span className="text-[8px] text-muted-foreground">FPS extração</span>
                 <span className="text-[9px] font-mono-code text-foreground">{videoFps}</span>
               </div>
               <Slider value={[videoFps]} onValueChange={([v]) => setVideoFps(v)} min={1} max={15} step={1} />
 
+              {/* Blur */}
               <div className="flex items-center justify-between">
-                <span className="text-[8px] text-muted-foreground">Threshold (brilho)</span>
-                <span className="text-[9px] font-mono-code text-foreground">{videoThreshold}</span>
+                <span className="text-[8px] text-muted-foreground">Blur (suavização)</span>
+                <span className="text-[9px] font-mono-code text-foreground">{videoBlurRadius}px</span>
               </div>
-              <Slider value={[videoThreshold]} onValueChange={([v]) => setVideoThreshold(v)} min={30} max={230} step={5} />
+              <Slider value={[videoBlurRadius]} onValueChange={([v]) => setVideoBlurRadius(v)} min={0} max={8} step={1} />
+
+              {/* Contrast */}
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] text-muted-foreground">Contraste</span>
+                <span className="text-[9px] font-mono-code text-foreground">{videoContrast.toFixed(1)}x</span>
+              </div>
+              <Slider value={[videoContrast]} onValueChange={([v]) => setVideoContrast(v)} min={0.5} max={4} step={0.1} />
+
+              {/* Mode-specific controls */}
+              {videoDetectionMode === 'threshold' && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[8px] text-muted-foreground">Threshold (brilho)</span>
+                    <span className="text-[9px] font-mono-code text-foreground">{videoThreshold}</span>
+                  </div>
+                  <Slider value={[videoThreshold]} onValueChange={([v]) => setVideoThreshold(v)} min={30} max={230} step={5} />
+                </>
+              )}
+
+              {videoDetectionMode === 'edge' && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[8px] text-muted-foreground">Sensibilidade bordas</span>
+                    <span className="text-[9px] font-mono-code text-foreground">{videoEdgeSensitivity}%</span>
+                  </div>
+                  <Slider value={[videoEdgeSensitivity]} onValueChange={([v]) => setVideoEdgeSensitivity(v)} min={5} max={100} step={5} />
+                </>
+              )}
 
               <div className="flex items-center justify-between">
                 <span className="text-[8px] text-muted-foreground">Transição (s)</span>
@@ -763,19 +825,21 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
               </div>
               <Slider value={[videoHoldDur]} onValueChange={([v]) => setVideoHoldDur(v)} min={1} max={15} step={0.5} />
 
-              <button
-                onClick={() => setVideoInvert(!videoInvert)}
-                className={cn(
-                  "w-full text-[8px] py-1 rounded border transition-colors",
-                  videoInvert ? "border-primary/40 bg-primary/10 text-primary" : "border-border/50 bg-surface-2 text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {videoInvert ? '✓ Detectar pixels claros' : 'Detectar pixels escuros'}
-              </button>
+              {videoDetectionMode !== 'adaptive' && (
+                <button
+                  onClick={() => setVideoInvert(!videoInvert)}
+                  className={cn(
+                    "w-full text-[8px] py-1 rounded border transition-colors",
+                    videoInvert ? "border-primary/40 bg-primary/10 text-primary" : "border-border/50 bg-surface-2 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {videoInvert ? '✓ Detectar pixels claros' : 'Detectar pixels escuros'}
+                </button>
+              )}
             </div>
 
             <p className="text-[7px] text-muted-foreground">
-              Cada frame é convertido em silhueta e mapeado para posições de drones. Ajuste o threshold para capturar melhor a forma.
+              <strong>Threshold:</strong> corte por brilho · <strong>Bordas:</strong> detecta contornos (Sobel) · <strong>Adaptativo:</strong> auto-ajuste local
             </p>
           </div>
         )}
