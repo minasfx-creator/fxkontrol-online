@@ -136,7 +136,7 @@ const AFTERGLOW_FRAGMENT = `
     float glow = exp(-dist * dist * 2.5);
     // Subtle color shift over time
     vec3 warmShift = uColor + vec3(0.1, -0.05, -0.1) * sin(uTime * 0.5);
-    gl_FragColor = vec4(warmShift * glow * 1.2, uOpacity * glow * uAfterglowIntensity);
+    gl_FragColor = vec4(warmShift * glow * 0.6, uOpacity * glow * uAfterglowIntensity * 0.5);
   }
 `;
 
@@ -324,13 +324,13 @@ export default function ShellBurstRenderer({
 
     // ── Afterglow cloud (duration + intensity from store) ──
     if (afterglowRef.current) {
-      const afterglowMaxProgress = afterglowDuration / (starLifetime + afterglowDuration);
-      const afterglowProgress = Math.max(0, progress - 0.1);
-      const spread = burstSpread * 0.4 * Math.min(1, afterglowProgress * 3);
-      afterglowRef.current.scale.setScalar(spread);
-      const amat = afterglowRef.current.material as THREE.ShaderMaterial;
-      const afterglowFade = Math.max(0, 1 - progress / Math.max(0.1, afterglowMaxProgress));
-      amat.uniforms.uOpacity.value = 0.15 * afterglowFade;
+       const afterglowMaxProgress = afterglowDuration * 0.5 / (starLifetime + afterglowDuration);
+       const afterglowProgress = Math.max(0, progress - 0.05);
+       const spread = burstSpread * 0.3 * Math.min(1, afterglowProgress * 4);
+       afterglowRef.current.scale.setScalar(spread);
+       const amat = afterglowRef.current.material as THREE.ShaderMaterial;
+       const afterglowFade = Math.max(0, 1 - progress / Math.max(0.1, afterglowMaxProgress));
+       amat.uniforms.uOpacity.value = 0.08 * afterglowFade * afterglowFade;
       amat.uniforms.uTime.value = time;
       amat.uniforms.uAfterglowIntensity.value = afterglowIntensity;
     }
