@@ -1681,7 +1681,7 @@ function GroundFog() {
 
   return (
     <mesh ref={fogRef} position={[0, 0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[2000, 2000, 1, 1]} />
+      <planeGeometry args={[10000, 10000, 1, 1]} />
       <shaderMaterial
         transparent
         depthWrite={false}
