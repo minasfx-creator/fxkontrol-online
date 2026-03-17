@@ -586,7 +586,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const quickList = mode === 'full-show' ? SHOW_THEMES : mode === 'trajectory' ? TRAJECTORY_PRESETS : QUICK_PROMPTS;
+  const quickList = mode === 'full-show' ? SHOW_THEMES : QUICK_PROMPTS;
 
   return (
     <div className="h-full flex flex-col bg-surface-0 border-l border-border">
