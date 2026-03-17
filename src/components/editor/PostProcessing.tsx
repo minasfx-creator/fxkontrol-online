@@ -2,27 +2,42 @@ import { EffectComposer, Bloom, Vignette, ChromaticAberration, SMAA, Noise, Tone
 import { KernelSize, BlendFunction, ToneMappingMode } from 'postprocessing';
 import { Vector2 } from 'three';
 import { useSceneStore } from '@/store/useSceneStore';
+import type { ViewTransform } from '@/lib/niagaraBlenderRules';
+
+const TONE_MAP: Record<ViewTransform, ToneMappingMode> = {
+  'aces-filmic': ToneMappingMode.ACES_FILMIC,
+  'agx': ToneMappingMode.AGX,
+  'standard': ToneMappingMode.LINEAR,
+};
+
+// AgX is softer highlights → reduce bloom; Standard is linear → no compression
+const BLOOM_SCALE: Record<ViewTransform, number> = {
+  'aces-filmic': 1.0,
+  'agx': 0.7,
+  'standard': 1.3,
+};
 
 /**
- * Cinematic post-processing pipeline v4 — Blender Glare Node inspired.
+ * Cinematic post-processing pipeline v5 — V-Ray/Blender View Transform aware.
  * 
- * Key changes from v3:
- * - High luminance thresholds (0.75+) so bloom ONLY catches HDR pyro
- * - Drone LEDs (emissiveIntensity 2.5, toneMapped) stay crisp without bloom wash
- * - 3-layer architecture: core catch, star halos, atmospheric
- * - Blender Glare reference: threshold 0.8-1.0, quality medium-high
+ * Key changes from v4:
+ * - Dynamic ToneMapping mode from store (ACES Filmic / AgX / Standard)
+ * - Bloom intensity adapts per view transform
+ * - High luminance thresholds (2.5+) so bloom ONLY catches HDR pyro
  */
 export default function PostProcessing() {
   const s = useSceneStore(st => st.settings);
   const str = s.bloomStrength;
+  const vt = s.viewTransform || 'aces-filmic';
+  const bloomMul = BLOOM_SCALE[vt];
 
   return (
     <EffectComposer multisampling={0}>
       <SMAA />
 
-      {/* Layer 1: Core catch — only extreme HDR pyro (threshold 1.5) */}
+      {/* Layer 1: Core catch — only extreme HDR pyro (threshold 2.5) */}
       <Bloom
-        intensity={str * 0.096}
+        intensity={str * 0.096 * bloomMul}
         luminanceThreshold={2.5}
         luminanceSmoothing={0.05}
         kernelSize={KernelSize.MEDIUM}
@@ -31,7 +46,7 @@ export default function PostProcessing() {
 
       {/* Layer 2: Star halos — only pyro flashes */}
       <Bloom
-        intensity={str * 0.048}
+        intensity={str * 0.048 * bloomMul}
         luminanceThreshold={2.5}
         luminanceSmoothing={0.2}
         kernelSize={KernelSize.LARGE}
@@ -40,7 +55,7 @@ export default function PostProcessing() {
 
       {/* Layer 3: Atmospheric — ultra-bright only */}
       <Bloom
-        intensity={str * 0.016}
+        intensity={str * 0.016 * bloomMul}
         luminanceThreshold={6.0}
         luminanceSmoothing={0.4}
         kernelSize={KernelSize.HUGE}
@@ -73,9 +88,8 @@ export default function PostProcessing() {
         />
       )}
 
-      {/* ACES Filmic tone mapping — EffectComposer overrides renderer's toneMapping,
-          so this effect is the ONLY tone mapping. gl.toneMappingExposure is used as multiplier. */}
-      <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+      {/* Dynamic tone mapping — V-Ray/Blender View Transform */}
+      <ToneMapping mode={TONE_MAP[vt]} />
     </EffectComposer>
   );
 }

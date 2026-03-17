@@ -318,6 +318,18 @@ export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
 
         {/* ═══ POST-PROCESSING ═══ */}
         <Section title="Post-Processing" icon={Eye} id="post" open={openSections.has('post')} onToggle={() => toggleSection('post')}>
+          {/* V-Ray / Blender View Transform */}
+          <div>
+            <span className="text-[9px] text-muted-foreground font-medium">View Transform</span>
+            <Select value={settings.viewTransform || 'aces-filmic'} onValueChange={v => updateSettings({ viewTransform: v as ViewTransform })}>
+              <SelectTrigger className="h-7 text-[10px] mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {getAllViewTransforms().map(vt => (
+                  <SelectItem key={vt.id} value={vt.id} className="text-[10px]">{vt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="flex items-center justify-between">
             <span className="text-[9px] text-muted-foreground font-medium">Vignette</span>
             <Switch checked={settings.vignetteEnabled} onCheckedChange={v => updateSettings({ vignetteEnabled: v })} className="scale-[0.65]" />
