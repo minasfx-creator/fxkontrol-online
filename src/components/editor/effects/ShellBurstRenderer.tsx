@@ -12,6 +12,7 @@ import {
   type ParticleState,
 } from '@/lib/pyroPhysics';
 import { useSceneStore } from '@/store/useSceneStore';
+import { getThreeBlending, getMaxEnergy, GROUND_LIGHT_SCALE } from '@/lib/niagaraBlenderRules';
 
 // ── Custom GPU Shaders (Skybrush-grade thermal rendering) ───────────
 
