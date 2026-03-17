@@ -1016,11 +1016,15 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   // FULLSCREEN LAYOUT
   // ═══════════════════════════════════════════════════════════
   if (isFullscreen) {
-    return (
-      <div {...swipeProps} className={cn(
-        "fixed inset-0 z-[9999] flex flex-col select-none",
-        mob && "pb-[env(safe-area-inset-bottom)]"
-      )} style={{ background: 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 4%) 100%)' }}>
+    const fullscreenContent = (
+      <div
+        {...swipeProps}
+        className="fixed inset-x-0 top-0 z-[9999] flex h-[100dvh] w-screen flex-col select-none"
+        style={{
+          background: 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 4%) 100%)',
+          paddingBottom: mob ? 'max(env(safe-area-inset-bottom), 8px)' : undefined,
+        }}
+      >
         {renderStatusBar(true)}
         {renderArmBar(true)}
         {renderCueKeys(true)}
@@ -1029,6 +1033,8 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
         {renderPanic(true)}
       </div>
     );
+
+    return mob ? createPortal(fullscreenContent, document.body) : fullscreenContent;
   }
 
   // ═══════════════════════════════════════════════════════════
