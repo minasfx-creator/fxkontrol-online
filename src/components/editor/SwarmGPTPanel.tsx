@@ -924,7 +924,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
         </div>}
 
         {/* Prompt input */}
-        {mode !== 'video' && <Textarea
+        {mode !== 'video' && mode !== 'presets' && <Textarea
           placeholder={
             mode === 'full-show' ? "Descreva o tema do show completo..."
             : mode === 'music-sync' ? "Descreva o estilo visual sincronizado com a música..."
@@ -943,7 +943,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
         />}
 
         {/* Generate + Preview buttons */}
-        <div className="flex gap-1">
+        {mode !== 'presets' && <div className="flex gap-1">
           <Button
             onClick={handleGenerate}
             disabled={loading || (mode === 'video' ? videoFrames.length === 0 : mode === 'image' ? !imageBase64 : !prompt.trim())}
