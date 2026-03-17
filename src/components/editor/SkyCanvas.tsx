@@ -2274,12 +2274,13 @@ const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflec
           }
 
           void main() {
-            float dist = length(vWorldPos.xz) / 150000.0;
+            float dist = length(vWorldPos.xz) / 50000.0;
             float distFade = 1.0 - smoothstep(0.0, 1.0, dist);
-            float puddle = noise(vUv * 8.0 + uTime * 0.01);
+            // Use world-space coordinates for puddle noise instead of UV
+            float puddle = noise(vWorldPos.xz * 0.01 + uTime * 0.01);
             puddle = smoothstep(0.3, 0.7, puddle) * uWetness;
             float refl = puddle * distFade * uReflectionIntensity;
-            gl_FragColor = vec4(uReflectionColor * refl, refl * 0.2);
+            gl_FragColor = vec4(uReflectionColor * refl, refl * 0.15);
           }
         `}
       />
