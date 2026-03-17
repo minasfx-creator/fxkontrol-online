@@ -250,7 +250,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
     touchRef.current = null;
   }, [mode, onClose]);
 
-  const swipeProps = mob ? {
+  const swipeProps = isMobile ? {
     onTouchStart: handleSwipeStart,
     onTouchEnd: handleSwipeEnd,
   } : {};
