@@ -683,8 +683,105 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
+        {/* Video/GIF upload section */}
+        {mode === 'video' && (
+          <div className="space-y-2 p-2 rounded-sm border border-primary/20 bg-primary/5">
+            <div className="flex items-center gap-1">
+              <Video className="w-3 h-3 text-primary" />
+              <span className="text-[9px] font-semibold text-primary uppercase">Vídeo/GIF → Coreografia</span>
+            </div>
+            <input ref={videoInputRef} type="file" accept="video/*,image/gif" onChange={handleVideoUpload} className="hidden" />
+            
+            {videoPreviewUrl && videoFile ? (
+              <div className="relative">
+                {isGifFile(videoFile) ? (
+                  <img src={videoPreviewUrl} alt="GIF Preview" className="w-full h-28 object-contain rounded border border-border/30 bg-black/50" />
+                ) : (
+                  <video src={videoPreviewUrl} className="w-full h-28 object-contain rounded border border-border/30 bg-black/50" muted loop autoPlay playsInline />
+                )}
+                <button
+                  onClick={() => { setVideoFile(null); setVideoPreviewUrl(null); setVideoFrames([]); }}
+                  className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/60 flex items-center justify-center text-white/80 hover:text-white"
+                >
+                  <X className="w-2.5 h-2.5" />
+                </button>
+                <div className="absolute bottom-1 left-1 bg-black/70 px-1.5 py-0.5 rounded text-[7px] text-white/80 font-mono">
+                  {videoFrames.length} frames
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => videoInputRef.current?.click()}
+                className="w-full h-24 rounded border-2 border-dashed border-primary/30 flex flex-col items-center justify-center gap-1 hover:border-primary/50 transition-colors"
+              >
+                <Video className="w-5 h-5 text-primary/50" />
+                <span className="text-[8px] text-primary/70">Envie um vídeo ou GIF</span>
+                <span className="text-[7px] text-muted-foreground">MP4, WebM, MOV, GIF — cada frame vira uma formação</span>
+              </button>
+            )}
+
+            {/* Frame thumbnails */}
+            {videoFrames.length > 0 && (
+              <div className="space-y-1">
+                <span className="text-[8px] text-muted-foreground font-semibold">Frames Extraídos ({videoFrames.length})</span>
+                <div className="flex gap-0.5 overflow-x-auto pb-1">
+                  {videoFrames.slice(0, 20).map((f, i) => (
+                    <img key={i} src={f.thumbnail} alt={`Frame ${i}`} className="w-8 h-8 rounded-sm border border-border/30 flex-shrink-0 object-cover" />
+                  ))}
+                  {videoFrames.length > 20 && (
+                    <div className="w-8 h-8 rounded-sm border border-border/30 flex-shrink-0 flex items-center justify-center bg-surface-2 text-[7px] text-muted-foreground">
+                      +{videoFrames.length - 20}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Settings */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] text-muted-foreground">FPS extração</span>
+                <span className="text-[9px] font-mono-code text-foreground">{videoFps}</span>
+              </div>
+              <Slider value={[videoFps]} onValueChange={([v]) => setVideoFps(v)} min={1} max={15} step={1} />
+
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] text-muted-foreground">Threshold (brilho)</span>
+                <span className="text-[9px] font-mono-code text-foreground">{videoThreshold}</span>
+              </div>
+              <Slider value={[videoThreshold]} onValueChange={([v]) => setVideoThreshold(v)} min={30} max={230} step={5} />
+
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] text-muted-foreground">Transição (s)</span>
+                <span className="text-[9px] font-mono-code text-foreground">{videoTransitionDur}s</span>
+              </div>
+              <Slider value={[videoTransitionDur]} onValueChange={([v]) => setVideoTransitionDur(v)} min={1} max={20} step={0.5} />
+
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] text-muted-foreground">Hold (s)</span>
+                <span className="text-[9px] font-mono-code text-foreground">{videoHoldDur}s</span>
+              </div>
+              <Slider value={[videoHoldDur]} onValueChange={([v]) => setVideoHoldDur(v)} min={1} max={15} step={0.5} />
+
+              <button
+                onClick={() => setVideoInvert(!videoInvert)}
+                className={cn(
+                  "w-full text-[8px] py-1 rounded border transition-colors",
+                  videoInvert ? "border-primary/40 bg-primary/10 text-primary" : "border-border/50 bg-surface-2 text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {videoInvert ? '✓ Detectar pixels claros' : 'Detectar pixels escuros'}
+              </button>
+            </div>
+
+            <p className="text-[7px] text-muted-foreground">
+              Cada frame é convertido em silhueta e mapeado para posições de drones. Ajuste o threshold para capturar melhor a forma.
+            </p>
+          </div>
+        )}
+
         {/* Quick prompts */}
-        <div className="space-y-1">
+        {mode !== 'video' && <div className="space-y-1">
           <span className="text-[9px] text-muted-foreground font-semibold uppercase">
             {mode === 'full-show' ? 'Temas de Show' : mode === 'trajectory' ? 'Movimentos' : mode === 'music-sync' ? 'Estilos Musicais' : 'Prompts Rápidos'}
           </span>
