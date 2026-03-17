@@ -68,7 +68,8 @@ import { createHDRLightingRig } from '@/render_ultra/lighting/hdrLighting';
 import { useLOD, calculateLOD, useSceneLOD, type LODFactors } from '@/hooks/useLOD';
 import ViewportGeoTools, { type GeoToolMode, type GeoMarker, type GeoRulerPoint, type GeoPath } from './ViewportGeoTools';
 import { GeoToolsScene, GeoToolClickHandler } from './GeoToolsR3F';
-import { RenderDebugToggle, RenderDebugPanel, setDebugExposure, setDebugLOD, setDebugRendererInfo } from './RenderDebugOverlay';
+import { RenderDebugToggle, RenderDebugPanel, setDebugExposure, setDebugBurstLoad, setDebugLOD, setDebugRendererInfo } from './RenderDebugOverlay';
+import { clampNiagaraHDR, getNiagaraBudgets, setAdaptivePipelineState } from '@/lib/niagaraBlenderRules';
 
 // ═══ PyroChem: map hex colors → real chemical compounds ═══
 function hexToCompound(hexColor: string): ChemicalCompound {
@@ -533,9 +534,15 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
       const b = THREE.MathUtils.lerp(baseColor.b * userFade, chemB, 0.7);
       const brightnessScale = THREE.MathUtils.clamp(effectBrightness, 0.6, 1.8);
       
-      cols[i * 3] = r * twinkle * brightnessScale;
-      cols[i * 3 + 1] = g * twinkle * brightnessScale;
-      cols[i * 3 + 2] = b * twinkle * brightnessScale;
+      const [safeR, safeG, safeB] = clampNiagaraHDR(
+        r * twinkle * brightnessScale,
+        g * twinkle * brightnessScale,
+        b * twinkle * brightnessScale
+      );
+
+      cols[i * 3] = safeR;
+      cols[i * 3 + 1] = safeG;
+      cols[i * 3 + 2] = safeB;
       
       // Size over lifetime: Niagara curve — burst large, steady, then shrink
       const sizeOverLife = starAge < 0.05 
@@ -638,18 +645,20 @@ function LightPoint({ position, color }: { position: [number, number, number]; c
   return <QuadcopterModel position={position} color={color} />;
 }
 
-// Max simultaneous GPU-heavy firework bursts to prevent context loss
-const MAX_CONCURRENT_BURSTS_DESKTOP = 6;
-const MAX_CONCURRENT_BURSTS_MOBILE = 2;
-const MAX_STAR_BUDGET_DESKTOP = 1400;
-const MAX_STAR_BUDGET_MOBILE = 420;
-
-function estimateFireworkStarCost(effect: (typeof EFFECT_LIBRARY)[number], particleDensity: number) {
+function estimateFireworkStarCost(
+  effect: (typeof EFFECT_LIBRARY)[number],
+  particleDensity: number,
+  isMobileViewport: boolean
+) {
   const caliber = Math.max(1, effect.caliber || 4);
   const densityScale = THREE.MathUtils.clamp(particleDensity, 0.5, 2.0);
+  const budgets = getNiagaraBudgets(isMobileViewport);
 
-  // Keep estimation aligned with FireworkBurst STAR_COUNT formula and caps.
-  const shellStars = Math.max(24, Math.min(320, Math.round((60 + caliber * caliber * 10) * densityScale)));
+  // Keep estimation aligned with FireworkBurst STAR_COUNT formula and Niagara caps.
+  const shellStars = Math.max(
+    24,
+    Math.min(budgets.maxStarsPerBurst, Math.round((60 + caliber * caliber * 10) * densityScale))
+  );
   let stars = shellStars;
 
   if (effect.partType === 'cake') stars *= 1.2;
@@ -659,7 +668,7 @@ function estimateFireworkStarCost(effect: (typeof EFFECT_LIBRARY)[number], parti
 
   if (effect.id.startsWith('mburst-')) stars *= effect.id === 'mburst-02' ? 3.2 : 2.4;
 
-  return Math.max(32, Math.round(stars));
+  return Math.max(32, Math.min(budgets.maxStarBudget, Math.round(stars)));
 }
 
 function TimelineEffects() {
@@ -745,8 +754,9 @@ function TimelineEffects() {
   // Cap simultaneous firework bursts to prevent GPU context loss
   const cappedEffects = useMemo(() => {
     const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
-    const maxConcurrentBursts = isMobileViewport ? MAX_CONCURRENT_BURSTS_MOBILE : MAX_CONCURRENT_BURSTS_DESKTOP;
-    const maxStarBudget = isMobileViewport ? MAX_STAR_BUDGET_MOBILE : MAX_STAR_BUDGET_DESKTOP;
+    const budgets = getNiagaraBudgets(isMobileViewport);
+    const maxConcurrentBursts = budgets.maxConcurrentBursts;
+    const maxStarBudget = budgets.maxStarBudget;
 
     let burstCount = 0;
     let usedStarBudget = 0;
@@ -754,7 +764,7 @@ function TimelineEffects() {
     return activeEffects.filter(({ effect }) => {
       if (effect.type !== 'firework') return true;
 
-      const estimatedStars = estimateFireworkStarCost(effect, sceneSettings.particleDensity);
+      const estimatedStars = estimateFireworkStarCost(effect, sceneSettings.particleDensity, isMobileViewport);
       const exceedsCount = burstCount >= maxConcurrentBursts;
       const exceedsBudget = usedStarBudget + estimatedStars > maxStarBudget;
 
@@ -1842,19 +1852,19 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
     const state = exposureRef.current;
     const { timelineItems, currentTime } = useProjectStore.getState();
     let luminance = 0;
+    let activeBursts = 0;
     _scatterAccum.setRGB(0, 0, 0);
     let scatterMax = 0;
 
-    // Only check items in a reasonable time window to avoid O(n) every frame
+    // Niagara rule: evaluate only near-active bursts to keep adaptation stable and cheap.
     for (let i = 0; i < timelineItems.length; i++) {
       const item = timelineItems[i];
       const elapsed = currentTime - item.startTime;
       if (elapsed < 0 || elapsed > 2.0) continue;
-      if (elapsed < 0.5) {
-        luminance += 3.0;
-      } else {
-        luminance += 0.5;
-      }
+
+      activeBursts++;
+      luminance += elapsed < 0.5 ? 3.0 : 0.5;
+
       // Sky scatter accumulation — reuse color objects
       if (elapsed < 0.3) {
         const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
@@ -1866,18 +1876,23 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
       }
     }
 
-    // Cap accumulated luminance to prevent ACES white-out with many simultaneous bursts
-    luminance = Math.min(luminance, 15);
+    const burstLoad = THREE.MathUtils.clamp(activeBursts / 6, 0, 1);
+
+    // Blender rule: compress luminance under heavy burst load to avoid yellow/white wash.
+    luminance = Math.min(luminance * (1 + burstLoad * 0.2), 15);
 
     if (luminance > 2 && delta < 0.1) {
       flashEvent(state, Math.min(luminance * 0.15, 0.8));
     }
 
-    const exposure = updateExposure(state, luminance, delta);
+    const exposure = THREE.MathUtils.clamp(updateExposure(state, luminance, delta), 0.35, 1.8);
     _adaptiveExposure = exposure;
+    setAdaptivePipelineState(exposure, burstLoad);
     setDebugExposure(exposure);
-    // Blender-style: apply adaptive exposure to renderer before ACES tone mapping
-    gl.toneMappingExposure = THREE.MathUtils.clamp(exposure, 0.3, 1.8);
+    setDebugBurstLoad(burstLoad);
+
+    // Keep renderer exposure in sync with adaptive state.
+    gl.toneMappingExposure = exposure;
 
     // Update sky scatter uniforms
     if (_skyScatterUniforms) {
