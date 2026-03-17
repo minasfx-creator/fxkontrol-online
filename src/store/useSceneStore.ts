@@ -415,6 +415,7 @@ export const SCENE_PRESETS: Record<string, { name: string; description: string; 
       vignetteIntensity: 0.35,
       chromaticAberration: true,
       filmGrain: 0.035,
+      viewTransform: 'aces-filmic' as ViewTransform,
     },
   },
   'depence-stage': {
