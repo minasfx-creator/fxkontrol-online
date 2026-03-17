@@ -458,18 +458,58 @@ export const SCENE_PRESETS: Record<string, { name: string; description: string; 
   },
 };
 
+// ═══ Environment & Quality toggles (ShowSim + Finale 3D) ═══
+export interface EnvironmentState {
+  skyRotation: number;           // 0-360 degrees — rotate skybox panorama
+  lockPositions: boolean;        // Finale 3D: lock/unlock positions from accidental movement
+  lowQualityMode: boolean;       // ShowSim: reduce particles, disable smoke/trails
+  disableSmoke: boolean;         // ShowSim: completely remove smoke trails
+  disableLighting: boolean;      // ShowSim: disable dynamic lights from explosions
+  smokeIntensity: number;        // 0-1 ShowSim smoke intensity slider
+  groundColorOverride: string | null; // ShowSim custom ground color (null = use preset)
+  showRulers: boolean;           // ShowSim: vertical/horizontal rulers toggle
+  cameraBookmarks: CameraBookmark[];
+}
+
+export interface CameraBookmark {
+  id: string;
+  name: string;
+  position: [number, number, number];
+  target: [number, number, number];
+  fov: number;
+}
+
+export type CameraInterpMode = 'linear' | 'accelerated' | 'decelerated' | 'acc-dec';
+
 interface SceneSettingsState {
   settings: SceneSettings;
   qualityPreset: QualityPreset;
+  environment: EnvironmentState;
   updateSettings: (updates: Partial<SceneSettings>) => void;
   applyPreset: (presetId: string) => void;
   applyQualityPreset: (preset: QualityPreset) => void;
   resetToDefault: () => void;
+  updateEnvironment: (updates: Partial<EnvironmentState>) => void;
+  addCameraBookmark: (bookmark: CameraBookmark) => void;
+  removeCameraBookmark: (id: string) => void;
 }
+
+const DEFAULT_ENVIRONMENT: EnvironmentState = {
+  skyRotation: 0,
+  lockPositions: false,
+  lowQualityMode: false,
+  disableSmoke: false,
+  disableLighting: false,
+  smokeIntensity: 0.7,
+  groundColorOverride: null,
+  showRulers: false,
+  cameraBookmarks: [],
+};
 
 export const useSceneStore = create<SceneSettingsState>((set) => ({
   settings: { ...DEFAULT_SETTINGS },
   qualityPreset: 'show',
+  environment: { ...DEFAULT_ENVIRONMENT },
   updateSettings: (updates) => set(s => {
     const next = { ...s.settings, ...updates };
     if (updates.weather && !updates.rainIntensity) {
@@ -489,5 +529,8 @@ export const useSceneStore = create<SceneSettingsState>((set) => ({
     const qp = QUALITY_PRESETS[preset];
     if (qp) set(s => ({ qualityPreset: preset, settings: { ...s.settings, ...qp.settings } }));
   },
-  resetToDefault: () => set({ settings: { ...DEFAULT_SETTINGS }, qualityPreset: 'show' }),
+  resetToDefault: () => set({ settings: { ...DEFAULT_SETTINGS }, qualityPreset: 'show', environment: { ...DEFAULT_ENVIRONMENT } }),
+  updateEnvironment: (updates) => set(s => ({ environment: { ...s.environment, ...updates } })),
+  addCameraBookmark: (bookmark) => set(s => ({ environment: { ...s.environment, cameraBookmarks: [...s.environment.cameraBookmarks, bookmark] } })),
+  removeCameraBookmark: (id) => set(s => ({ environment: { ...s.environment, cameraBookmarks: s.environment.cameraBookmarks.filter(b => b.id !== id) } })),
 }));

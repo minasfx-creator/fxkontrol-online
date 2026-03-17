@@ -2,6 +2,7 @@ import { useRef, useState, useCallback, useEffect, forwardRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { useProjectStore, type Position, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useSceneStore } from '@/store/useSceneStore';
 import { useUndoStore } from '@/store/useUndoStore';
 import * as THREE from 'three';
 
@@ -159,6 +160,9 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
     if (editorMode !== 'select') return;
     e.stopPropagation();
 
+    // Finale 3D: lock positions prevents dragging
+    const lockPositions = useSceneStore.getState().environment.lockPositions;
+
     if (e.nativeEvent?.button === 2 || e.button === 2) {
       onRightClick(position, { x: e.clientX || e.nativeEvent?.clientX || 0, y: e.clientY || e.nativeEvent?.clientY || 0 });
       window.dispatchEvent(new CustomEvent('position-context-menu', {
@@ -175,6 +179,9 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
     if (!selectedPositionIds.includes(position.id)) {
       selectPosition(position.id);
     }
+
+    // If positions are locked, only allow selection, not dragging
+    if (lockPositions) return;
 
     setIsDragging(true);
     hasSavedCheckpoint.current = false;

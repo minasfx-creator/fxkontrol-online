@@ -12,6 +12,7 @@ import PostProcessing from './PostProcessing';
 import { BoxSelectR3F } from './BoxSelectOverlay';
 import AlignmentTools from './AlignmentTools';
 import CameraAnimator, { CameraPathPreview } from './CameraAnimator';
+import ViewportRulers from './ViewportRulers';
 import TrajectoryPaths from './TrajectoryPaths';
 import DroneChoreography from './DroneChoreography';
 import Rack3DView from './Rack3DView';
@@ -21,7 +22,7 @@ import AudioSpectrumVisualizer from './AudioSpectrumVisualizer';
 import { DEFAULT_AVOIDANCE } from '@/lib/collisionAvoidance';
 import QuadcopterModel from './QuadcopterModel';
 // GeofenceVisual removed — green squares issue
-import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Globe, Download, ScanEye, Cog, Paintbrush, MapPinned, Film, ChevronDown } from 'lucide-react';
+import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Globe, Download, ScanEye, Cog, Paintbrush, MapPinned, Film, ChevronDown, Plus, Lock, Ruler, Bookmark, Trash2 } from 'lucide-react';
 import SelectionStatusBar from './SelectionStatusBar';
 import { cn } from '@/lib/utils';
 import {
@@ -2811,6 +2812,76 @@ function FullscreenEditMenu() {
     </div>
   );
 }
+/** Camera Bookmarks bar — Finale 3D custom camera shortcuts */
+function CameraBookmarksBar({ setActivePreset, setFreeLook }: { setActivePreset: (id: string) => void; setFreeLook: (v: boolean) => void }) {
+  const bookmarks = useSceneStore(st => st.environment.cameraBookmarks);
+  const removeCameraBookmark = useSceneStore(st => st.removeCameraBookmark);
+
+  if (bookmarks.length === 0) return null;
+
+  return (
+    <div className="absolute top-14 left-3 flex items-center gap-1 flex-wrap max-w-[calc(100%-24px)]">
+      {bookmarks.map(bm => (
+        <div key={bm.id} className="group relative">
+          <button
+            onClick={() => {
+              // Apply bookmark by dispatching a preset change event
+              window.dispatchEvent(new CustomEvent('apply-camera-bookmark', { detail: bm }));
+              setFreeLook(true);
+            }}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-semibold transition-all border backdrop-blur-md bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+          >
+            <Bookmark className="w-3 h-3 text-primary/60" />
+            {bm.name}
+          </button>
+          <button
+            onClick={() => removeCameraBookmark(bm.id)}
+            className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <Trash2 className="w-2.5 h-2.5" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Bookmark save handler — listens for save events and grabs camera state */
+function CameraBookmarkSaver() {
+  const { camera } = useThree();
+  const addCameraBookmark = useSceneStore(st => st.addCameraBookmark);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      addCameraBookmark({
+        id: detail.id,
+        name: detail.name,
+        position: [camera.position.x, camera.position.y, camera.position.z],
+        target: [0, 0, 0], // Will be captured from OrbitControls target
+        fov: (camera as THREE.PerspectiveCamera).fov,
+      });
+    };
+    window.addEventListener('save-camera-bookmark', handler);
+    return () => window.removeEventListener('save-camera-bookmark', handler);
+  }, [camera, addCameraBookmark]);
+
+  // Apply bookmark handler
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const bm = (e as CustomEvent).detail;
+      camera.position.set(bm.position[0], bm.position[1], bm.position[2]);
+      if ((camera as THREE.PerspectiveCamera).fov !== bm.fov) {
+        (camera as THREE.PerspectiveCamera).fov = bm.fov;
+        (camera as THREE.PerspectiveCamera).updateProjectionMatrix();
+      }
+    };
+    window.addEventListener('apply-camera-bookmark', handler);
+    return () => window.removeEventListener('apply-camera-bookmark', handler);
+  }, [camera]);
+
+  return null;
+}
 
 export default function SkyCanvas() {
   const editorMode = useProjectStore((s) => s.editorMode);
@@ -3057,6 +3128,8 @@ export default function SkyCanvas() {
         <PlaybackClock />
         {!isMobile && <CameraAnimator />}
         {!isMobile && <CameraPathPreview />}
+        <ViewportRulers />
+        <CameraBookmarkSaver />
         <PostProcessing />
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
@@ -3208,6 +3281,63 @@ export default function SkyCanvas() {
           <RenderDebugToggle show={showDebugOverlay} onToggle={() => setShowDebugOverlay(v => !v)} />
         )}
 
+        {/* Lock Positions toggle */}
+        {!isMobile && (
+          <button
+            onClick={() => {
+              const env = useSceneStore.getState().environment;
+              useSceneStore.getState().updateEnvironment({ lockPositions: !env.lockPositions });
+            }}
+            className={cn(
+              "flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
+              useSceneStore.getState().environment.lockPositions
+                ? "bg-warning/20 text-warning border-warning/30"
+                : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+            )}
+            title="Lock/Unlock Positions (Finale 3D)"
+          >
+            <Lock className="w-3.5 h-3.5" />
+          </button>
+        )}
+
+        {/* Rulers toggle */}
+        {!isMobile && (
+          <button
+            onClick={() => {
+              const env = useSceneStore.getState().environment;
+              useSceneStore.getState().updateEnvironment({ showRulers: !env.showRulers });
+            }}
+            className={cn(
+              "flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
+              useSceneStore.getState().environment.showRulers
+                ? "bg-primary/15 text-primary border-primary/25"
+                : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+            )}
+            title="Show Rulers (ShowSim)"
+          >
+            <Ruler className="w-3.5 h-3.5" />
+          </button>
+        )}
+
+        {/* Save Camera Bookmark */}
+        {!isMobile && (
+          <button
+            onClick={() => {
+              const cam = document.querySelector('canvas')?.closest('[data-sky-canvas]');
+              // Get camera state from Three.js
+              const id = `bm-${Date.now()}`;
+              const name = `View ${useSceneStore.getState().environment.cameraBookmarks.length + 1}`;
+              // We'll use a custom event to get camera position
+              window.dispatchEvent(new CustomEvent('save-camera-bookmark', { detail: { id, name } }));
+            }}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+            title="Save Camera Bookmark"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <Bookmark className="w-3.5 h-3.5" />
+          </button>
+        )}
+
         {/* Fullscreen toggle */}
         {!isMobile && (
           <button
@@ -3222,6 +3352,9 @@ export default function SkyCanvas() {
           </button>
         )}
       </div>
+
+      {/* Camera Bookmarks bar */}
+      <CameraBookmarksBar setActivePreset={setActivePreset} setFreeLook={setFreeLook} />
 
       {/* Debug overlay toggle + panel */}
       {!isMobile && showDebugOverlay && <RenderDebugPanel />}
