@@ -910,7 +910,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
             ) : (
               <>
                 <Send className="w-3 h-3" />
-                {mode === 'full-show' ? 'Gerar Show' : mode === 'music-sync' ? 'Music Sync' : mode === 'trajectory' ? 'Gerar Motion' : mode === 'image' ? '📷 Gerar da Imagem' : mode === 'video' ? '🎬 Gerar do Vídeo' : 'Gerar'} ({droneCount})
+                {mode === 'full-show' ? 'Gerar Show' : mode === 'music-sync' ? 'Music Sync' : mode === 'image' ? '📷 Imagem' : mode === 'video' ? '🎬 Vídeo' : 'Gerar'} ({droneCount})
               </>
             )}
           </Button>
