@@ -1481,7 +1481,7 @@ function GrassGround() {
       float distFromCenter = length(worldUV);
       
       // LOD blend factor: 0 = near (detailed), 1 = far (satellite)
-      float lodBlend = smoothstep(1000.0, 3000.0, distFromCenter);
+      float lodBlend = smoothstep(10000.0, 30000.0, distFromCenter);
       
       // === NEAR FIELD: detailed grass with mowing pattern ===
       float largN = fbm(worldUV * 0.03);
