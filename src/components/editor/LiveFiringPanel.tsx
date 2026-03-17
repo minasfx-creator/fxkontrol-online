@@ -477,29 +477,33 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const renderArmBar = (fs: boolean) => (
     <>
       <div className={cn(
-        "flex items-center gap-3 border-b transition-colors",
-        fs ? "px-6 py-2.5" : "px-2 py-1",
+        "border-b transition-colors",
+        fs && mob ? "px-3 py-2 flex flex-col gap-2" : "flex items-center gap-3",
+        !fs || !mob ? (fs ? "px-6 py-2.5" : "px-2 py-1") : "",
         (pyroArm || dmxArm) ? "border-red-800/30" : "border-border/15"
       )} style={{ background: (pyroArm || dmxArm) ? 'hsl(0 40% 8%)' : 'hsl(220 12% 7%)' }}>
-        <button onClick={() => handlePyroArm(!pyroArm)}
-          className={cn(
-            "flex-1 flex items-center justify-center gap-2 rounded border-2 font-black uppercase transition-all",
-            fs ? "py-3 text-sm tracking-[0.2em]" : "py-1.5 text-[9px] tracking-[0.15em]",
-            pyroArm ? "bg-red-600/20 border-red-500/60 text-red-400" : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/40 hover:border-border/40"
-          )} style={pyroArm ? { boxShadow: 'inset 0 0 12px rgba(255,50,30,0.1)' } : undefined}>
-          <Shield className={cn(fs ? "w-5 h-5" : "w-3 h-3")} />
-          PYRO {pyroArm ? 'ARMED' : 'SAFE'}
-        </button>
-        <button onClick={() => handleDmxArm(!dmxArm)}
-          className={cn(
-            "flex-1 flex items-center justify-center gap-2 rounded border-2 font-black uppercase transition-all",
-            fs ? "py-3 text-sm tracking-[0.2em]" : "py-1.5 text-[9px] tracking-[0.15em]",
-            dmxArm ? "bg-amber-600/20 border-amber-500/60 text-amber-400" : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/40 hover:border-border/40"
-          )} style={dmxArm ? { boxShadow: 'inset 0 0 12px rgba(255,180,30,0.1)' } : undefined}>
-          <Radio className={cn(fs ? "w-5 h-5" : "w-3 h-3")} />
-          DMX {dmxArm ? 'ARMED' : 'SAFE'}
-        </button>
-        {/* DEADMAN */}
+        {/* On mobile fullscreen, stack PYRO + DMX horizontally but bigger, DEADMAN below */}
+        <div className={cn(fs && mob ? "flex gap-2" : "contents")}>
+          <button onClick={() => handlePyroArm(!pyroArm)}
+            className={cn(
+              "flex items-center justify-center gap-2 rounded border-2 font-black uppercase transition-all",
+              fs && mob ? "flex-1 py-3.5 text-[11px] tracking-[0.15em]" : fs ? "flex-1 py-3 text-sm tracking-[0.2em]" : "flex-1 py-1.5 text-[9px] tracking-[0.15em]",
+              pyroArm ? "bg-red-600/20 border-red-500/60 text-red-400" : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/40 hover:border-border/40"
+            )} style={pyroArm ? { boxShadow: 'inset 0 0 12px rgba(255,50,30,0.1)' } : undefined}>
+            <Shield className={cn(fs && mob ? "w-4 h-4" : fs ? "w-5 h-5" : "w-3 h-3")} />
+            {pyroArm ? 'PYRO ●' : 'PYRO'}
+          </button>
+          <button onClick={() => handleDmxArm(!dmxArm)}
+            className={cn(
+              "flex items-center justify-center gap-2 rounded border-2 font-black uppercase transition-all",
+              fs && mob ? "flex-1 py-3.5 text-[11px] tracking-[0.15em]" : fs ? "flex-1 py-3 text-sm tracking-[0.2em]" : "flex-1 py-1.5 text-[9px] tracking-[0.15em]",
+              dmxArm ? "bg-amber-600/20 border-amber-500/60 text-amber-400" : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/40 hover:border-border/40"
+            )} style={dmxArm ? { boxShadow: 'inset 0 0 12px rgba(255,180,30,0.1)' } : undefined}>
+            <Radio className={cn(fs && mob ? "w-4 h-4" : fs ? "w-5 h-5" : "w-3 h-3")} />
+            {dmxArm ? 'DMX ●' : 'DMX'}
+          </button>
+        </div>
+        {/* DEADMAN — full width on mobile */}
         <button
           onMouseDown={() => setDeadmanHeld(true)}
           onMouseUp={() => setDeadmanHeld(false)}
@@ -507,17 +511,18 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           onTouchStart={(e) => { e.preventDefault(); setDeadmanHeld(true); }}
           onTouchEnd={(e) => { e.preventDefault(); setDeadmanHeld(false); }}
           className={cn(
-            "flex items-center justify-center rounded border-2 font-black uppercase transition-all shrink-0",
-            fs ? "w-16 py-3 text-[10px]" : "w-10 py-1.5 text-[7px]",
+            "flex items-center justify-center rounded border-2 font-black uppercase transition-all gap-2",
+            fs && mob ? "w-full py-3 text-[10px]" : fs ? "w-16 py-3 text-[10px] shrink-0" : "w-10 py-1.5 text-[7px] shrink-0",
             deadmanHeld ? "bg-green-600/30 border-green-500/60 text-green-400" : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/30"
           )}>
-          <Hand className={cn(fs ? "w-4 h-4" : "w-3 h-3")} />
+          <Hand className={cn(fs && mob ? "w-5 h-5" : fs ? "w-4 h-4" : "w-3 h-3")} />
+          {fs && mob && <span>DEADMAN</span>}
         </button>
       </div>
       {(pyroArm || dmxArm) && (
         <div className={cn(
           "text-center font-black uppercase animate-pulse",
-          fs ? "px-4 py-1.5 text-xs tracking-[0.3em]" : "px-2 py-0.5 text-[8px] tracking-[0.25em]",
+          fs && mob ? "px-3 py-1 text-[10px] tracking-[0.25em]" : fs ? "px-4 py-1.5 text-xs tracking-[0.3em]" : "px-2 py-0.5 text-[8px] tracking-[0.25em]",
           pyroArm && dmxArm ? "text-red-400" : pyroArm ? "text-red-400" : "text-amber-400"
         )} style={{ background: pyroArm ? 'hsl(0 50% 8%)' : 'hsl(40 40% 8%)' }}>
           {pyroArm && dmxArm ? '⚠ DMX + PYRO ARMED ⚠' : pyroArm ? '⚠ PYRO ARMED ⚠' : 'DMX ARMED'}
