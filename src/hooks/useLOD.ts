@@ -1,12 +1,12 @@
 /**
  * FX KONTROL · LOD (Level of Detail) System
- * Distance-based quality scaling for the expanded 12km² world.
+ * Distance-based quality scaling for the expanded 300km² world.
  * 
  * LOD Tiers:
- *   ULTRA  (0-200m)  — full particles, full trails, max geometry
- *   HIGH   (200-600m) — 75% particles, shorter trails
- *   MEDIUM (600-1500m) — 50% particles, minimal trails
- *   LOW    (1500m+)   — 25% particles, no trails, simplified geometry
+ *   ULTRA  (0-1000m)   — full particles, full trails, max geometry
+ *   HIGH   (1000-3000m) — 75% particles, shorter trails
+ *   MEDIUM (3000-7500m) — 50% particles, minimal trails
+ *   LOW    (7500m+)     — 25% particles, no trails, simplified geometry
  */
 
 import { useThree } from '@react-three/fiber';
