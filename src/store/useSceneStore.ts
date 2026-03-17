@@ -135,8 +135,8 @@ const DEFAULT_SETTINGS: SceneSettings = {
   starDensity: 1.3,
   fogDensity: 0.4,
   fogColor: '#080e1a',
-  fogNear: 500,
-  fogFar: 6000,
+  fogNear: 2500,
+  fogFar: 30000,
   horizonGlow: 0.5,
 
   groundStyle: 'finale-dark',
