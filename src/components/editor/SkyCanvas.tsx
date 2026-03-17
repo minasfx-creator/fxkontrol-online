@@ -1580,7 +1580,7 @@ function AtmosphericParticles() {
       arr[i * 3 + 2] += Math.cos(t * 0.07 + i * 0.7) * 0.004 + velData[i * 3 + 2];
       // Recycle particles that drift too far from camera
       const dx = arr[i * 3] - camX, dz = arr[i * 3 + 2] - camZ;
-      if (dx * dx + dz * dz > 40000) {
+      if (dx * dx + dz * dz > 1000000) {
         arr[i * 3] = camX + (Math.random() - 0.5) * 200;
         arr[i * 3 + 2] = camZ + (Math.random() - 0.5) * 200;
       }
