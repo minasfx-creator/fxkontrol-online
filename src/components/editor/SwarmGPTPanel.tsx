@@ -1026,18 +1026,12 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
                         {/* Actions */}
                         <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                           {idx > 0 && (
-                            <button onClick={(e) => { e.stopPropagation(); reorderDroneFormation(idx, idx - 1); }} className="text-muted-foreground hover:text-primary">
-                              <ArrowUp className="w-2.5 h-2.5" />
-                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); reorderDroneFormation(idx, idx - 1); }} className="text-muted-foreground hover:text-primary text-[8px]">↑</button>
                           )}
                           {idx < droneFormations.length - 1 && (
-                            <button onClick={(e) => { e.stopPropagation(); reorderDroneFormation(idx, idx + 1); }} className="text-muted-foreground hover:text-primary">
-                              <ArrowDown className="w-2.5 h-2.5" />
-                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); reorderDroneFormation(idx, idx + 1); }} className="text-muted-foreground hover:text-primary text-[8px]">↓</button>
                           )}
-                          <button onClick={(e) => { e.stopPropagation(); duplicateDroneFormation(f.id); }} className="text-muted-foreground hover:text-primary">
-                            <Copy className="w-2.5 h-2.5" />
-                          </button>
+                          <button onClick={(e) => { e.stopPropagation(); duplicateDroneFormation(f.id); }} className="text-muted-foreground hover:text-primary text-[8px]">📋</button>
                           <button onClick={(e) => { e.stopPropagation(); removeDroneFormation(f.id); }} className="text-muted-foreground hover:text-destructive">
                             <Trash2 className="w-2.5 h-2.5" />
                           </button>
