@@ -98,8 +98,8 @@ export function RenderDebugPanel() {
 
         <Sep />
 
-        <Row label="Tone Map" value="ACES (Post)" color="hsl(280, 60%, 65%)" />
-        <Row label="Renderer" value="NoToneMap" color="hsl(280, 60%, 65%)" />
+        <Row label="Tone Map" value="ACES Filmic" color="hsl(120, 60%, 65%)" />
+        <Row label="Renderer" value="ACES+Exposure" color="hsl(120, 60%, 65%)" />
       </div>
     </div>
   );
