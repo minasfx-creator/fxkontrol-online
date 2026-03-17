@@ -136,7 +136,7 @@ const AFTERGLOW_FRAGMENT = `
     float glow = exp(-dist * dist * 2.5);
     // Subtle color shift over time
     vec3 warmShift = uColor + vec3(0.1, -0.05, -0.1) * sin(uTime * 0.5);
-    gl_FragColor = vec4(warmShift * glow * 1.2, uOpacity * glow * uAfterglowIntensity);
+    gl_FragColor = vec4(warmShift * glow * 0.6, uOpacity * glow * uAfterglowIntensity * 0.5);
   }
 `;
 
