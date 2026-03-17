@@ -605,7 +605,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
 
   const renderPanic = (fs: boolean) => (
     <div className="border-t-2 border-border/20" style={{ background: 'hsl(220 12% 6%)' }}>
-      <div className={cn(fs ? "px-6 py-3" : "px-2 py-1.5")}>
+      <div className={cn(fs && mob ? "px-3 py-2" : fs ? "px-6 py-3" : "px-2 py-1.5")}>
         <button onClick={handlePanic}
           className={cn(
             "w-full rounded-lg font-black uppercase transition-all",
@@ -613,22 +613,19 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
             "hover:from-red-600 hover:to-red-800 active:scale-[0.97]",
             "border-2 border-red-600/50",
             "flex items-center justify-center gap-2",
-            fs ? "h-16 text-lg tracking-[0.3em]" : "h-10 text-[11px] tracking-[0.25em]"
+            fs && mob ? "h-14 text-base tracking-[0.25em]" : fs ? "h-16 text-lg tracking-[0.3em]" : "h-10 text-[11px] tracking-[0.25em]"
           )} style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)' }}>
-          <AlertTriangle className={cn(fs ? "w-6 h-6" : "w-4 h-4")} />
+          <AlertTriangle className={cn(fs && mob ? "w-5 h-5" : fs ? "w-6 h-6" : "w-4 h-4")} />
           PANIC
         </button>
       </div>
-      <div className={cn("flex items-center justify-between border-t border-border/10", fs ? "px-6 py-2" : "px-2 py-1")}>
+      <div className={cn("flex items-center justify-between border-t border-border/10", fs && mob ? "px-3 py-1.5" : fs ? "px-6 py-2" : "px-2 py-1")}>
         <div className="flex items-center gap-2">
-          <span className={cn("font-mono text-muted-foreground/30", fs ? "text-[9px]" : "text-[6px]")}>{channels.length}CH · {armedCount}RDY</span>
+          <span className={cn("font-mono text-muted-foreground/30", fs && mob ? "text-[8px]" : fs ? "text-[9px]" : "text-[6px]")}>{channels.length}CH · {armedCount}RDY</span>
           {firingCount > 0 && <span className={cn("font-mono text-red-400 font-bold animate-pulse", fs ? "text-[9px]" : "text-[6px]")}>🔥 {firingCount}</span>}
-          <span className={cn("font-mono", fs ? "text-[9px]" : "text-[6px]", artNetConnected ? "text-green-500/60" : "text-muted-foreground/20")}>
-            {artNetConnected ? '● Art-Net' : '○ Art-Net'}
-          </span>
         </div>
-        <span className={cn("font-mono text-muted-foreground/20", fs ? "text-[9px]" : "text-[6px]")}>
-          {settings.artNetIp}:{settings.artNetPort}
+        <span className={cn("font-mono", fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[6px]", artNetConnected ? "text-green-500/60" : "text-muted-foreground/20")}>
+          {artNetConnected ? '● Art-Net' : '○ Off'}
         </span>
       </div>
     </div>
