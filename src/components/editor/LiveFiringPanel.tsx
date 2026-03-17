@@ -569,31 +569,33 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   );
 
   const renderSceneModeBar = (fs: boolean) => (
-    <div className="flex items-center border-b border-border/15" style={{ background: 'hsl(220 10% 7%)' }}>
-      <div className="flex">
+    <div className={cn("flex items-center border-b border-border/15", fs && mob ? "flex-col" : "")} style={{ background: 'hsl(220 10% 7%)' }}>
+      {/* Scenes */}
+      <div className={cn("flex", fs && mob ? "w-full border-b border-border/10" : "")}>
         {[0, 1, 2, 3].map(s => (
           <button key={s} onClick={() => setActiveScene(s)} disabled={pyroArm}
             className={cn(
               "font-bold uppercase tracking-wider transition-all border-b-2",
-              fs ? "px-5 py-2.5 text-xs" : "px-2.5 py-1.5 text-[7px]",
+              fs && mob ? "flex-1 px-3 py-2.5 text-[10px]" : fs ? "px-5 py-2.5 text-xs" : "px-2.5 py-1.5 text-[7px]",
               activeScene === s ? "text-primary border-primary bg-primary/5" : "text-muted-foreground/30 border-transparent hover:text-muted-foreground/60"
-            )}>SCENE{s}</button>
+            )}>S{s}</button>
         ))}
       </div>
-      <div className="flex-1" />
-      <div className={cn("flex flex-wrap", fs ? "pr-3 gap-0.5" : "pr-1")}>
+      {!mob && <div className="flex-1" />}
+      {/* Mode tabs — horizontally scrollable on mobile */}
+      <div className={cn("flex overflow-x-auto no-scrollbar", fs && mob ? "w-full" : fs ? "pr-3 gap-0.5" : "pr-1")}>
         {([
           { key: 'super_dmx' as FXCMode, label: 'Super' },
           { key: 'simple_dmx' as FXCMode, label: 'Simple' },
           { key: 'manual_fire' as FXCMode, label: 'Manual' },
           { key: 'auto_fire' as FXCMode, label: 'Auto' },
           { key: 'check_slave' as FXCMode, label: 'Check' },
-          { key: 'settings' as FXCMode, label: 'Settings' },
+          { key: 'settings' as FXCMode, label: '⚙' },
         ]).map(m => (
           <button key={m.key} onClick={() => { setMode(m.key); setShowDeviceLib(false); }}
             className={cn(
-              "font-bold uppercase tracking-wider transition-all",
-              fs ? "px-3 py-2.5 text-[9px]" : "px-1.5 py-1.5 text-[6px]",
+              "font-bold uppercase tracking-wider transition-all whitespace-nowrap shrink-0",
+              fs && mob ? "px-3 py-2.5 text-[10px]" : fs ? "px-3 py-2.5 text-[9px]" : "px-1.5 py-1.5 text-[6px]",
               mode === m.key ? "text-foreground/80" : "text-muted-foreground/25 hover:text-muted-foreground/50"
             )}>{m.label}</button>
         ))}
