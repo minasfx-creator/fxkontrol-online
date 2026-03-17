@@ -1377,12 +1377,12 @@ function GrassGround() {
       float wetness = smoothstep(0.6, 0.8, fine) * (1.0 - urbanMask);
       color += vec3(0.03, 0.05, 0.08) * spec * wetness * 0.3;
 
-      // Distance atmosphere — Google Earth blue haze
-      float dist = length(worldUV) * 0.00015;
+      // Distance atmosphere — blend to near-black to match sky sub-horizon
+      float dist = length(worldUV) * 0.00006;
       float fogFactor = smoothstep(0.0, 1.0, dist);
-      vec3 atmosphereColor = vec3(0.08, 0.10, 0.18);
-      color = mix(color, atmosphereColor, fogFactor * 0.7);
-      color *= 1.0 - fogFactor * 0.25;
+      vec3 atmosphereColor = vec3(0.003, 0.004, 0.008);
+      color = mix(color, atmosphereColor, fogFactor);
+      color *= 1.0 - fogFactor * 0.5;
 
       gl_FragColor = vec4(color, 1.0);
     }
