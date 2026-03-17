@@ -14,7 +14,7 @@ interface MobileFloatingPanelProps {
 const HEIGHT_CLASSES: Record<string, string> = {
   collapsed: 'h-0 opacity-0 pointer-events-none',
   half: 'h-[40vh]',
-  full: 'h-[75vh]',
+  full: 'h-[calc(100dvh-56px-env(safe-area-inset-bottom))]',
 };
 
 export default function MobileFloatingPanel({ activeTab, height, children }: MobileFloatingPanelProps) {

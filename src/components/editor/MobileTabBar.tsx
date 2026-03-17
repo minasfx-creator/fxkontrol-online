@@ -46,7 +46,7 @@ export default function MobileTabBar({
       }
     } else {
       onTabChange(tab);
-      onPanelHeightChange('half');
+      onPanelHeightChange(tab === 'assets' ? 'full' : 'half');
     }
   }, [activeTab, panelHeight, onTabChange, onPanelHeightChange]);
 

@@ -234,7 +234,7 @@ function Index() {
   const handleMobileOpenPanel = useCallback((id: PanelId) => {
     setActivePanel(id);
     setMobileTab(null);
-    setMobilePanelHeight('half');
+    setMobilePanelHeight(id === 'effects' ? 'full' : 'half');
   }, []);
 
   if (appPhase === 'cinematic') {
