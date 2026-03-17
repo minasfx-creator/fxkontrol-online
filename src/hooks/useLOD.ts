@@ -25,9 +25,9 @@ export interface LODFactors {
 }
 
 const LOD_THRESHOLDS = {
-  ultra: 200,
-  high: 600,
-  medium: 1500,
+  ultra: 1000,
+  high: 3000,
+  medium: 7500,
 };
 
 function getTier(distance: number): LODTier {

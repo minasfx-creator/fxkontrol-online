@@ -2489,6 +2489,15 @@ function SceneStars() {
   return <Stars radius={10000} depth={4000} count={Math.round(15000 * density)} factor={6} saturation={0.2} fade speed={0.03} />;
 }
 
+/** SceneStars with lowQualityMode support — reduces count & factor by 50% */
+function SceneStarsWired() {
+  const density = useSceneStore(st => st.settings.starDensity);
+  const lowQ = useSceneStore(st => st.environment.lowQualityMode);
+  if (density <= 0.05) return null;
+  const mult = lowQ ? 0.5 : 1.0;
+  return <Stars radius={10000} depth={4000} count={Math.round(15000 * density * mult)} factor={6 * mult} saturation={0.2} fade speed={0.03} />;
+}
+
 function WeatherEffects() {
   const weather = useSceneStore(st => st.settings.weather);
   const rainIntensity = useSceneStore(st => st.settings.rainIntensity);
