@@ -751,8 +751,9 @@ function TimelineEffects() {
   // Cap simultaneous firework bursts to prevent GPU context loss
   const cappedEffects = useMemo(() => {
     const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
-    const maxConcurrentBursts = isMobileViewport ? MAX_CONCURRENT_BURSTS_MOBILE : MAX_CONCURRENT_BURSTS_DESKTOP;
-    const maxStarBudget = isMobileViewport ? MAX_STAR_BUDGET_MOBILE : MAX_STAR_BUDGET_DESKTOP;
+    const budgets = getNiagaraBudgets(isMobileViewport);
+    const maxConcurrentBursts = budgets.maxConcurrentBursts;
+    const maxStarBudget = budgets.maxStarBudget;
 
     let burstCount = 0;
     let usedStarBudget = 0;
