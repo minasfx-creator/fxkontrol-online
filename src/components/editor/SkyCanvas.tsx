@@ -2511,7 +2511,7 @@ function SceneStarsWired() {
   const lowQ = useSceneStore(st => st.environment.lowQualityMode);
   if (density <= 0.05) return null;
   const mult = lowQ ? 0.5 : 1.0;
-  return <Stars radius={10000} depth={4000} count={Math.round(15000 * density * mult)} factor={6 * mult} saturation={0.2} fade speed={0.03} />;
+  return <Stars radius={100000} depth={40000} count={Math.round(15000 * density * mult)} factor={6 * mult} saturation={0.2} fade speed={0.03} />;
 }
 
 function WeatherEffects() {
