@@ -3210,6 +3210,63 @@ export default function SkyCanvas() {
           <RenderDebugToggle show={showDebugOverlay} onToggle={() => setShowDebugOverlay(v => !v)} />
         )}
 
+        {/* Lock Positions toggle */}
+        {!isMobile && (
+          <button
+            onClick={() => {
+              const env = useSceneStore.getState().environment;
+              useSceneStore.getState().updateEnvironment({ lockPositions: !env.lockPositions });
+            }}
+            className={cn(
+              "flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
+              useSceneStore.getState().environment.lockPositions
+                ? "bg-warning/20 text-warning border-warning/30"
+                : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+            )}
+            title="Lock/Unlock Positions (Finale 3D)"
+          >
+            <Lock className="w-3.5 h-3.5" />
+          </button>
+        )}
+
+        {/* Rulers toggle */}
+        {!isMobile && (
+          <button
+            onClick={() => {
+              const env = useSceneStore.getState().environment;
+              useSceneStore.getState().updateEnvironment({ showRulers: !env.showRulers });
+            }}
+            className={cn(
+              "flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
+              useSceneStore.getState().environment.showRulers
+                ? "bg-primary/15 text-primary border-primary/25"
+                : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+            )}
+            title="Show Rulers (ShowSim)"
+          >
+            <Ruler className="w-3.5 h-3.5" />
+          </button>
+        )}
+
+        {/* Save Camera Bookmark */}
+        {!isMobile && (
+          <button
+            onClick={() => {
+              const cam = document.querySelector('canvas')?.closest('[data-sky-canvas]');
+              // Get camera state from Three.js
+              const id = `bm-${Date.now()}`;
+              const name = `View ${useSceneStore.getState().environment.cameraBookmarks.length + 1}`;
+              // We'll use a custom event to get camera position
+              window.dispatchEvent(new CustomEvent('save-camera-bookmark', { detail: { id, name } }));
+            }}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+            title="Save Camera Bookmark"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <Bookmark className="w-3.5 h-3.5" />
+          </button>
+        )}
+
         {/* Fullscreen toggle */}
         {!isMobile && (
           <button
@@ -3224,6 +3281,9 @@ export default function SkyCanvas() {
           </button>
         )}
       </div>
+
+      {/* Camera Bookmarks bar */}
+      <CameraBookmarksBar setActivePreset={setActivePreset} setFreeLook={setFreeLook} />
 
       {/* Debug overlay toggle + panel */}
       {!isMobile && showDebugOverlay && <RenderDebugPanel />}
