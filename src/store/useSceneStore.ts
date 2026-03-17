@@ -460,6 +460,7 @@ export const SCENE_PRESETS: Record<string, { name: string; description: string; 
       vignetteIntensity: 0.2,
       chromaticAberration: true,
       filmGrain: 0.015,
+      viewTransform: 'standard' as ViewTransform,
     },
   },
 };
