@@ -1745,7 +1745,7 @@ function GroundFog() {
             vec2 uv = vUv * 4.0 + vec2(uTime * 0.02, uTime * 0.01);
             float n = fbm(uv);
             float heightFade = smoothstep(uHeight, 0.0, vWorldY);
-            float edgeFade = smoothstep(0.0, 0.3, min(vUv.x, min(vUv.y, min(1.0 - vUv.x, 1.0 - vUv.y))));
+            float edgeFade = smoothstep(0.0, 0.12, min(vUv.x, min(vUv.y, min(1.0 - vUv.x, 1.0 - vUv.y))));
             float alpha = n * heightFade * edgeFade * uIntensity;
             gl_FragColor = vec4(uFogColor, alpha * 0.4);
           }
