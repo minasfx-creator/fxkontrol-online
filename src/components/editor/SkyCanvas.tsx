@@ -1026,6 +1026,10 @@ function SkyGradient() {
           
           void main() {
             vec3 dir = normalize(vWorldPosition - cameraPosition);
+            // Apply sky rotation around Y axis
+            float cosR = cos(uSkyRotation);
+            float sinR = sin(uSkyRotation);
+            dir = vec3(dir.x * cosR - dir.z * sinR, dir.y, dir.x * sinR + dir.z * cosR);
             float h = dir.y;
             
             // Deep cinematic space — rich midnight blues to warm horizon
