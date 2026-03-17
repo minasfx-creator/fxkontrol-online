@@ -366,7 +366,11 @@ export default function ParticleEditorPanel({ onClose }: { onClose: () => void }
               <SelectContent>
                 <SelectItem value="additive">Additive (Glow)</SelectItem>
                 <SelectItem value="normal">Normal</SelectItem>
+                <SelectItem value="multiply">Multiply</SelectItem>
                 <SelectItem value="screen">Screen</SelectItem>
+                <SelectItem value="overlay">Overlay</SelectItem>
+                <SelectItem value="soft-light">Soft Light</SelectItem>
+                <SelectItem value="hard-light">Hard Light</SelectItem>
               </SelectContent>
             </Select>
           </div>
