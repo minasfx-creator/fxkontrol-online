@@ -912,6 +912,8 @@ function SkyGradient() {
   const starDensity = useSceneStore(st => st.settings.starDensity);
   const skyRef = useRef<THREE.Mesh>(null);
 
+  const skyRotation = useSceneStore(st => st.environment.skyRotation);
+
   const uniforms = useMemo(() => ({
     uSkyBrightness: { value: skyBrightness },
     uHorizonGlow: { value: horizonGlow },
@@ -919,6 +921,7 @@ function SkyGradient() {
     uTime: { value: 0 },
     uExplosionScatter: { value: new THREE.Color(0, 0, 0) },
     uScatterIntensity: { value: 0 },
+    uSkyRotation: { value: 0 },
   }), []);
 
   useEffect(() => {
