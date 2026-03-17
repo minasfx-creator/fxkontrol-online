@@ -2486,7 +2486,7 @@ function SceneFog() {
 function SceneStars() {
   const density = useSceneStore(st => st.settings.starDensity);
   if (density <= 0.05) return null;
-  return <Stars radius={2000} depth={800} count={Math.round(15000 * density)} factor={6} saturation={0.2} fade speed={0.03} />;
+  return <Stars radius={10000} depth={4000} count={Math.round(15000 * density)} factor={6} saturation={0.2} fade speed={0.03} />;
 }
 
 function WeatherEffects() {
