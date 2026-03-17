@@ -2451,7 +2451,7 @@ function SceneLighting() {
     rig.moon.castShadow = s.shadowsEnabled;
     rig.moon.shadow.bias = -0.00003;
     rig.moon.shadow.normalBias = 0.02;
-    rig.moon.shadow.camera.far = 5000;
+    rig.moon.shadow.camera.far = 25000;
 
     scene.add(rig.group);
     return () => { scene.remove(rig.group); };
