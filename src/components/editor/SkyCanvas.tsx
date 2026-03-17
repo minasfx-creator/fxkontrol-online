@@ -2211,7 +2211,7 @@ const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflec
         const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
         if (effect && effect.type === 'firework') {
           flashColor = new THREE.Color(effect.color);
-          flashIntensity = Math.max(flashIntensity, 2.0 * (1 - elapsed / 0.3));
+          flashIntensity = Math.max(flashIntensity, 1.0 * (1 - elapsed / 0.3));
         }
       }
     }
