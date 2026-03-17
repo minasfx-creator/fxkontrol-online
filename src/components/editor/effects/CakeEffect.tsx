@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
 import { getBreakHeight, getMortarVelocity, GRAVITY, getStarLifetime } from '@/lib/pyroPhysics';
+import { getThreeBlending } from '@/lib/niagaraBlenderRules';
 
 const PARTICLES_PER_SHOT = 55;
 
