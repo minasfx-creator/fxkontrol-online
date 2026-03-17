@@ -125,6 +125,7 @@ export interface SceneSettings {
   vignetteIntensity: number;
   chromaticAberration: boolean;
   filmGrain: number;
+  viewTransform: ViewTransform;
 }
 
 const DEFAULT_SETTINGS: SceneSettings = {
