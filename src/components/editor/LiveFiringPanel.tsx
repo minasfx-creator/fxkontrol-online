@@ -471,11 +471,26 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   }, [channels, dmxArm]);
 
   useEffect(() => { return () => { fireTimers.current.forEach(timer => clearTimeout(timer)); }; }, []);
+  // Sync browser Fullscreen API with isFullscreen state
   useEffect(() => {
-    if (!isFullscreen) return;
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsFullscreen(false); };
-    window.addEventListener('keydown', h);
-    return () => window.removeEventListener('keydown', h);
+    if (isFullscreen) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    } else {
+      if (document.fullscreenElement) {
+        document.exitFullscreen?.().catch(() => {});
+      }
+    }
+  }, [isFullscreen]);
+
+  // Listen for native fullscreen exit (e.g. Escape key) to sync state
+  useEffect(() => {
+    const onFsChange = () => {
+      if (!document.fullscreenElement && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    document.addEventListener('fullscreenchange', onFsChange);
+    return () => document.removeEventListener('fullscreenchange', onFsChange);
   }, [isFullscreen]);
 
   const armedCount = channels.filter(c => c.armed).length;
