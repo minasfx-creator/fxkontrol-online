@@ -433,38 +433,41 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   // RENDER FUNCTIONS
   // ═══════════════════════════════════════════════════════════
 
+  const mob = isMobile; // shorthand
+
   const renderStatusBar = (fs: boolean) => (
-    <div className={cn("flex items-center justify-between border-b-2", fs ? "px-6 py-3" : "px-2 py-1.5")} style={{ borderColor: 'hsl(220 10% 15%)', background: 'hsl(220 15% 8%)' }}>
+    <div className={cn("flex items-center justify-between border-b-2", fs && mob ? "px-3 py-2" : fs ? "px-6 py-3" : "px-2 py-1.5")} style={{ borderColor: 'hsl(220 10% 15%)', background: 'hsl(220 15% 8%)' }}>
       <div className="flex items-center gap-2">
-        <div className={cn("rounded bg-gradient-to-b from-amber-500 to-amber-700 flex items-center justify-center", fs ? "w-8 h-8" : "w-5 h-5")}>
-          <Zap className={cn(fs ? "w-5 h-5" : "w-3 h-3", "text-black")} />
+        <div className={cn("rounded bg-gradient-to-b from-amber-500 to-amber-700 flex items-center justify-center", fs && mob ? "w-6 h-6" : fs ? "w-8 h-8" : "w-5 h-5")}>
+          <Zap className={cn(fs && mob ? "w-3.5 h-3.5" : fs ? "w-5 h-5" : "w-3 h-3", "text-black")} />
         </div>
         <div>
-          <div className={cn("font-black text-foreground tracking-[0.12em]", fs ? "text-base" : "text-[10px]")}>FXcommander™</div>
-          <div className={cn("font-mono text-muted-foreground/40 tracking-wider", fs ? "text-[9px]" : "text-[6px]")}>SHOWVEN® · V2.0</div>
+          <div className={cn("font-black text-foreground tracking-[0.12em]", fs && mob ? "text-xs" : fs ? "text-base" : "text-[10px]")}>FXcommander™</div>
+          <div className={cn("font-mono text-muted-foreground/40 tracking-wider", fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[6px]")}>SHOWVEN® · V2.0</div>
         </div>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         {/* Elapsed timer */}
-        <span className={cn("font-mono text-foreground/40", fs ? "text-sm" : "text-[8px]")}>
+        <span className={cn("font-mono text-foreground/40", fs && mob ? "text-[10px]" : fs ? "text-sm" : "text-[8px]")}>
           {formatTimecode(elapsedMs)}
         </span>
-        {/* Battery */}
-        <div className="flex items-center gap-1">
-          <Battery className={cn(batteryVoltage > 11 ? "text-green-400/60" : "text-amber-400", fs ? "w-4 h-4" : "w-2.5 h-2.5")} />
-          <span className={cn("font-mono text-muted-foreground/40", fs ? "text-[9px]" : "text-[6px]")}>{batteryVoltage.toFixed(2)}V</span>
-        </div>
+        {/* Battery — hide on mobile fs for space */}
+        {!(fs && mob) && (
+          <div className="flex items-center gap-1">
+            <Battery className={cn(batteryVoltage > 11 ? "text-green-400/60" : "text-amber-400", fs ? "w-4 h-4" : "w-2.5 h-2.5")} />
+            <span className={cn("font-mono text-muted-foreground/40", fs ? "text-[9px]" : "text-[6px]")}>{batteryVoltage.toFixed(2)}V</span>
+          </div>
+        )}
         {/* Connection indicators */}
         <div className="flex items-center gap-1">
           <div className={cn("rounded-full", artNetConnected ? "bg-green-500" : "bg-muted-foreground/20", fs ? "w-2.5 h-2.5" : "w-1.5 h-1.5")} />
-          <span className={cn("font-mono text-muted-foreground/40", fs ? "text-[9px]" : "text-[6px]")}>DMX</span>
+          <span className={cn("font-mono text-muted-foreground/40", fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[6px]")}>DMX</span>
         </div>
         <div className="flex items-center gap-1">
-          <Signal className={cn(pyroArm ? "text-red-500" : "text-muted-foreground/20", fs ? "w-4 h-4" : "w-2.5 h-2.5")} />
-          <span className={cn("font-mono text-muted-foreground/40", fs ? "text-[9px]" : "text-[6px]")}>RF</span>
+          <Signal className={cn(pyroArm ? "text-red-500" : "text-muted-foreground/20", fs && mob ? "w-3.5 h-3.5" : fs ? "w-4 h-4" : "w-2.5 h-2.5")} />
         </div>
-        <button onClick={() => setIsFullscreen(!isFullscreen)} className="text-muted-foreground/40 hover:text-foreground transition-colors rounded p-0.5">
-          {isFullscreen ? <Minimize2 className={cn(fs ? "w-4 h-4" : "w-3 h-3")} /> : <Maximize2 className={cn(fs ? "w-4 h-4" : "w-3 h-3")} />}
+        <button onClick={() => setIsFullscreen(!isFullscreen)} className="text-muted-foreground/40 hover:text-foreground transition-colors rounded p-1">
+          {isFullscreen ? <Minimize2 className={cn(fs && mob ? "w-5 h-5" : fs ? "w-4 h-4" : "w-3 h-3")} /> : <Maximize2 className={cn(fs ? "w-4 h-4" : "w-3 h-3")} />}
         </button>
         {!isFullscreen && <button onClick={onClose} className="text-muted-foreground/30 hover:text-foreground p-0.5 rounded transition-colors text-xs ml-1">✕</button>}
       </div>
