@@ -228,6 +228,7 @@ export const SCENE_PRESETS: Record<string, { name: string; description: string; 
       vignetteIntensity: 0.2,
       chromaticAberration: false,
       filmGrain: 0.01,
+      viewTransform: 'aces-filmic' as ViewTransform,
     },
   },
   'realistic-night': {
@@ -370,6 +371,7 @@ export const SCENE_PRESETS: Record<string, { name: string; description: string; 
       vignetteIntensity: 0.0,
       chromaticAberration: false,
       filmGrain: 0.0,
+      viewTransform: 'agx' as ViewTransform,
     },
   },
   'finale-cinema': {
@@ -413,6 +415,7 @@ export const SCENE_PRESETS: Record<string, { name: string; description: string; 
       vignetteIntensity: 0.35,
       chromaticAberration: true,
       filmGrain: 0.035,
+      viewTransform: 'aces-filmic' as ViewTransform,
     },
   },
   'depence-stage': {
@@ -457,6 +460,7 @@ export const SCENE_PRESETS: Record<string, { name: string; description: string; 
       vignetteIntensity: 0.2,
       chromaticAberration: true,
       filmGrain: 0.015,
+      viewTransform: 'standard' as ViewTransform,
     },
   },
 };
