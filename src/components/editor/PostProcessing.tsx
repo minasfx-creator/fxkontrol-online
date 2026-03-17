@@ -73,7 +73,9 @@ export default function PostProcessing() {
         />
       )}
 
-      {/* ACES Filmic now handled at renderer level — no duplicate tone mapping */}
+      {/* ACES Filmic tone mapping — EffectComposer overrides renderer's toneMapping,
+          so this effect is the ONLY tone mapping. gl.toneMappingExposure is used as multiplier. */}
+      <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
     </EffectComposer>
   );
 }
