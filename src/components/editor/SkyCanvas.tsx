@@ -761,7 +761,7 @@ function TimelineEffects() {
     return activeEffects.filter(({ effect }) => {
       if (effect.type !== 'firework') return true;
 
-      const estimatedStars = estimateFireworkStarCost(effect, sceneSettings.particleDensity);
+      const estimatedStars = estimateFireworkStarCost(effect, sceneSettings.particleDensity, isMobileViewport);
       const exceedsCount = burstCount >= maxConcurrentBursts;
       const exceedsBudget = usedStarBudget + estimatedStars > maxStarBudget;
 
