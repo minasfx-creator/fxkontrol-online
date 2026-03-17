@@ -534,9 +534,15 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
       const b = THREE.MathUtils.lerp(baseColor.b * userFade, chemB, 0.7);
       const brightnessScale = THREE.MathUtils.clamp(effectBrightness, 0.6, 1.8);
       
-      cols[i * 3] = r * twinkle * brightnessScale;
-      cols[i * 3 + 1] = g * twinkle * brightnessScale;
-      cols[i * 3 + 2] = b * twinkle * brightnessScale;
+      const [safeR, safeG, safeB] = clampNiagaraHDR(
+        r * twinkle * brightnessScale,
+        g * twinkle * brightnessScale,
+        b * twinkle * brightnessScale
+      );
+
+      cols[i * 3] = safeR;
+      cols[i * 3 + 1] = safeG;
+      cols[i * 3 + 2] = safeB;
       
       // Size over lifetime: Niagara curve — burst large, steady, then shrink
       const sizeOverLife = starAge < 0.05 
