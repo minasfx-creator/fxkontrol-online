@@ -355,6 +355,8 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
     const cue = pageCues.find(c => c.keyIndex === keyIndex + pageStart);
     if (!cue) return;
     if (!dmxArm && !pyroArm) return;
+    // Haptic feedback for CUE fire
+    if (isMobile && navigator.vibrate) navigator.vibrate(20);
 
     // Lock mode toggle
     if (cue.keyMode === 'lock') {
