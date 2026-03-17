@@ -330,6 +330,8 @@ export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
               </SelectContent>
             </Select>
           </div>
+          <SliderRow label="Exposure Compensation" value={(settings.exposureCompensation ?? 0) / 4 + 0.5} onChange={v => updateSettings({ exposureCompensation: (v - 0.5) * 4 })} />
+          <div className="text-[8px] text-muted-foreground text-right">{((settings.exposureCompensation ?? 0) >= 0 ? '+' : '') + (settings.exposureCompensation ?? 0).toFixed(1)} EV</div>
           <div className="flex items-center justify-between">
             <span className="text-[9px] text-muted-foreground font-medium">Vignette</span>
             <Switch checked={settings.vignetteEnabled} onCheckedChange={v => updateSettings({ vignetteEnabled: v })} className="scale-[0.65]" />

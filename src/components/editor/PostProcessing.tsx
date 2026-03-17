@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { EffectComposer, Bloom, Vignette, ChromaticAberration, SMAA, Noise, ToneMapping } from '@react-three/postprocessing';
 import { KernelSize, BlendFunction, ToneMappingMode } from 'postprocessing';
 import { Vector2 } from 'three';
+import { useThree } from '@react-three/fiber';
 import { useSceneStore } from '@/store/useSceneStore';
 import type { ViewTransform } from '@/lib/niagaraBlenderRules';
 
@@ -30,15 +32,21 @@ export default function PostProcessing() {
   const str = s.bloomStrength;
   const vt = s.viewTransform || 'aces-filmic';
   const bloomMul = BLOOM_SCALE[vt];
+  const gl = useThree(state => state.gl);
+  
+  // Apply exposure compensation via renderer toneMappingExposure
+  useEffect(() => {
+    gl.toneMappingExposure = Math.pow(2, s.exposureCompensation || 0);
+  }, [gl, s.exposureCompensation]);
 
   return (
     <EffectComposer multisampling={0}>
       <SMAA />
 
-      {/* Layer 1: Core catch — only extreme HDR pyro (threshold 2.5) */}
+      {/* Layer 1: Core catch — only extreme HDR pyro (threshold 3.5) */}
       <Bloom
-        intensity={str * 0.096 * bloomMul}
-        luminanceThreshold={2.5}
+        intensity={str * 0.048 * bloomMul}
+        luminanceThreshold={3.5}
         luminanceSmoothing={0.05}
         kernelSize={KernelSize.MEDIUM}
         mipmapBlur
@@ -46,8 +54,8 @@ export default function PostProcessing() {
 
       {/* Layer 2: Star halos — only pyro flashes */}
       <Bloom
-        intensity={str * 0.048 * bloomMul}
-        luminanceThreshold={2.5}
+        intensity={str * 0.024 * bloomMul}
+        luminanceThreshold={4.0}
         luminanceSmoothing={0.2}
         kernelSize={KernelSize.LARGE}
         mipmapBlur
@@ -55,8 +63,8 @@ export default function PostProcessing() {
 
       {/* Layer 3: Atmospheric — ultra-bright only */}
       <Bloom
-        intensity={str * 0.016 * bloomMul}
-        luminanceThreshold={6.0}
+        intensity={str * 0.008 * bloomMul}
+        luminanceThreshold={8.0}
         luminanceSmoothing={0.4}
         kernelSize={KernelSize.HUGE}
         mipmapBlur
@@ -88,7 +96,7 @@ export default function PostProcessing() {
         />
       )}
 
-      {/* Dynamic tone mapping — V-Ray/Blender View Transform */}
+      {/* Dynamic tone mapping with exposure compensation */}
       <ToneMapping mode={TONE_MAP[vt]} />
     </EffectComposer>
   );

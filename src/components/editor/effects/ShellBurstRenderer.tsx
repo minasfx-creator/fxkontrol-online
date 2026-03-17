@@ -75,7 +75,7 @@ const BURST_FRAGMENT = `
     
     // Thermal color transition: white-hot → saturated → ember → charcoal
     // The ignition keeps some hue from shell color to avoid full white lock.
-    vec3 whiteHot = mix(vec3(1.0, 0.98, 0.85), uColor + vec3(0.15), 0.35) * (0.4 + uHDRMultiplier * 0.15);
+    vec3 whiteHot = mix(vec3(1.0, 0.98, 0.85), uColor + vec3(0.15), 0.35) * (0.3 + uHDRMultiplier * 0.08);
     vec3 saturated = uColor * 1.0;
     vec3 ember = vec3(uColor.r * 0.6 + 0.2, uColor.g * 0.2, uColor.b * 0.05);
     vec3 charcoal = vec3(0.15, 0.08, 0.02);
@@ -96,9 +96,9 @@ const BURST_FRAGMENT = `
     }
     
     // Gaussian glow: bright core, soft edges
-    float coreGlow = exp(-dist * dist * 18.0);
-    float outerGlow = exp(-dist * dist * 6.0);
-    float glow = coreGlow * 0.7 + outerGlow * 0.3;
+     float coreGlow = exp(-dist * dist * 28.0);
+     float outerGlow = exp(-dist * dist * 10.0);
+     float glow = coreGlow * 0.6 + outerGlow * 0.4;
     
     // Flicker: subtle random twinkle
     float flicker = 0.85 + 0.15 * sin(vLife * 47.0 + gl_PointCoord.x * 13.0);
@@ -374,7 +374,7 @@ export default function ShellBurstRenderer({
           <meshBasicMaterial
             color={secondaryColor || color}
             transparent
-            opacity={burstFlashIntensity * 0.45 * (1 - progress / 0.08)}
+            opacity={burstFlashIntensity * 0.2 * (1 - progress / 0.08)}
             blending={screenBlend.blending}
             blendEquation={screenBlend.blendEquation}
             blendSrc={screenBlend.blendSrc as any}
@@ -391,7 +391,7 @@ export default function ShellBurstRenderer({
           <meshBasicMaterial
             color={secondaryColor || color}
             transparent
-            opacity={burstFlashIntensity * 0.3 * (1 - progress / 0.12)}
+            opacity={burstFlashIntensity * 0.12 * (1 - progress / 0.12)}
             blending={screenBlend.blending}
             blendEquation={screenBlend.blendEquation}
             blendSrc={screenBlend.blendSrc as any}
@@ -422,7 +422,7 @@ export default function ShellBurstRenderer({
       {progress < 0.5 && (
         <pointLight
           color={color}
-          intensity={Math.max(0, (1 - progress * 2)) * caliber * 2 * burstFlashIntensity * GROUND_LIGHT_SCALE}
+          intensity={Math.max(0, (1 - progress * 2)) * caliber * 1.0 * burstFlashIntensity * GROUND_LIGHT_SCALE}
           distance={burstSpread * 3}
           decay={2}
         />

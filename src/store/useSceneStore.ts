@@ -126,6 +126,7 @@ export interface SceneSettings {
   chromaticAberration: boolean;
   filmGrain: number;
   viewTransform: ViewTransform;
+  exposureCompensation: number;   // -2 to +2 EV (default 0)
 }
 
 const DEFAULT_SETTINGS: SceneSettings = {
@@ -171,7 +172,7 @@ const DEFAULT_SETTINGS: SceneSettings = {
   windDirection: 90,
   afterglowDuration: 3.0,
   afterglowIntensity: 0.15,
-  burstFlashIntensity: 0.6,
+  burstFlashIntensity: 0.25,
   thermalTransitionSpeed: 1.0,
 
   shadowsEnabled: true,
@@ -184,6 +185,7 @@ const DEFAULT_SETTINGS: SceneSettings = {
   chromaticAberration: true,
   filmGrain: 0.025,
   viewTransform: 'aces-filmic' as ViewTransform,
+  exposureCompensation: 0,
 };
 
 export const SCENE_PRESETS: Record<string, { name: string; description: string; settings: Partial<SceneSettings> }> = {
