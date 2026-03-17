@@ -483,19 +483,35 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   // Sync browser Fullscreen API with isFullscreen state
   useEffect(() => {
     if (isFullscreen) {
-      // Small delay to ensure DOM is ready for fullscreen request
       const timer = setTimeout(() => {
-        document.documentElement.requestFullscreen?.().catch(() => {});
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen?.().catch(() => {});
+        }
       }, 100);
       return () => clearTimeout(timer);
-    } else {
-      if (document.fullscreenElement) {
-        document.exitFullscreen?.().catch(() => {});
-      }
+    }
+
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.().catch(() => {});
     }
   }, [isFullscreen]);
 
-  // Listen for native fullscreen exit (e.g. Escape key) to sync state
+  // Lock body scroll while mobile commander is fullscreen (prevents cropped controls)
+  useEffect(() => {
+    if (!(mob && isFullscreen)) return;
+
+    const prevOverflow = document.body.style.overflow;
+    const prevOverscroll = document.body.style.overscrollBehavior;
+    document.body.style.overflow = 'hidden';
+    document.body.style.overscrollBehavior = 'none';
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.overscrollBehavior = prevOverscroll;
+    };
+  }, [mob, isFullscreen]);
+
+  // Listen for native fullscreen exit (e.g. system gesture) to sync state
   useEffect(() => {
     const onFsChange = () => {
       if (!document.fullscreenElement && isFullscreen) {
