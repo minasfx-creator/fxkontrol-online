@@ -126,6 +126,7 @@ export interface SceneSettings {
   chromaticAberration: boolean;
   filmGrain: number;
   viewTransform: ViewTransform;
+  exposureCompensation: number;   // -2 to +2 EV (default 0)
 }
 
 const DEFAULT_SETTINGS: SceneSettings = {
