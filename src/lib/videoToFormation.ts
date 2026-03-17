@@ -452,33 +452,70 @@ export function frameToFormationPoints(
   imageData: ImageData,
   options: SamplingOptions,
 ): { x: number; z: number }[] {
-  const { droneCount, radius = 25, threshold = 128, invertDetection = false, minSpacing = 2.0 } = options;
-  const { width, height, data } = imageData;
+  const {
+    droneCount, radius = 25, threshold = 128, invertDetection = false,
+    minSpacing = 2.0, detectionMode = 'threshold', blurRadius = 0,
+    contrastBoost = 1, edgeSensitivity = 50,
+  } = options;
+  const { width, height } = imageData;
 
-  // Step 1: Convert to grayscale and threshold
+  // Step 0: Pre-process — blur + contrast
+  let processed = imageData;
+  if (blurRadius > 0) processed = applyGaussianBlur(processed, blurRadius);
+  if (contrastBoost > 1) processed = applyContrast(processed, contrastBoost);
+
+  const { data } = processed;
+
+  // Step 1: Convert to grayscale
+  const gray = new Float32Array(width * height);
+  for (let i = 0; i < width * height; i++) {
+    const pi = i * 4;
+    const alpha = data[pi + 3];
+    gray[i] = alpha < 128 ? 255 : data[pi] * 0.299 + data[pi + 1] * 0.587 + data[pi + 2] * 0.114;
+  }
+
+  // Step 2: Detect shape based on mode
   const isShape: boolean[] = new Array(width * height);
   const shapePixels: { px: number; py: number }[] = [];
 
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const i = (y * width + x) * 4;
-      const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-      const alpha = data[i + 3];
-      let shape: boolean;
-      
-      if (alpha < 128) {
-        shape = false; // transparent = not shape
-      } else {
-        shape = invertDetection ? gray >= threshold : gray < threshold;
+  if (detectionMode === 'edge') {
+    // Sobel edge detection
+    const edges = sobelEdgeDetection(gray, width, height);
+    const edgeThreshold = 255 - edgeSensitivity * 2.55; // map 0-100 → 255-0
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = y * width + x;
+        const shape = edges[idx] > edgeThreshold;
+        isShape[idx] = shape;
+        if (shape) shapePixels.push({ px: x, py: y });
       }
-      
-      isShape[y * width + x] = shape;
-      if (shape) shapePixels.push({ px: x, py: y });
+    }
+  } else if (detectionMode === 'adaptive') {
+    // Adaptive threshold (local mean)
+    const blockSize = Math.max(3, Math.floor(Math.min(width, height) / 8) | 1);
+    const adaptiveMap = adaptiveThreshold(gray, width, height, blockSize);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = y * width + x;
+        const shape = invertDetection ? !adaptiveMap[idx] : adaptiveMap[idx];
+        isShape[idx] = shape;
+        if (shape) shapePixels.push({ px: x, py: y });
+      }
+    }
+  } else {
+    // Simple threshold
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = y * width + x;
+        const g = gray[idx];
+        const shape = invertDetection ? g >= threshold : g < threshold;
+        isShape[idx] = shape;
+        if (shape) shapePixels.push({ px: x, py: y });
+      }
     }
   }
 
   if (shapePixels.length === 0) {
-    // No shape detected, return grid
     return generateGrid(droneCount, radius);
   }
 
