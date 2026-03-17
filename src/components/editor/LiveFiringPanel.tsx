@@ -792,63 +792,104 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
     </div>
   );
 
-  const renderManualFire = (fs: boolean) => (
-    <div className={cn("space-y-2", fs ? "p-4" : "p-2")}>
-      <div className="flex items-center justify-between px-1">
-        <span className={cn("font-bold text-muted-foreground/40 uppercase tracking-wider", fs ? "text-[9px]" : "text-[7px]")}>
-          Pyro Manual Fire
-        </span>
-        <span className={cn("font-mono text-foreground/40", fs ? "text-xs" : "text-[8px]")}>{formatTimecode(elapsedMs)}</span>
-      </div>
-      {(dmxArm || pyroArm) && (
-        <button
-          onMouseDown={() => { if (deadmanHeld || !settings.pyroArmRequired) channels.filter(ch => ch.enabled).forEach(ch => fireChannel(ch.id)); }}
-          onMouseUp={() => channels.forEach(ch => stopChannel(ch.id))}
-          disabled={settings.pyroArmRequired && !deadmanHeld}
-          className={cn(
-            "w-full rounded font-black uppercase transition-all border",
-            fs ? "py-5 text-base tracking-[0.3em]" : "py-3 text-[12px] tracking-[0.3em]",
-            deadmanHeld || !settings.pyroArmRequired
-              ? "bg-gradient-to-b from-red-600 via-red-700 to-red-800 text-white border-red-500/40 hover:from-red-500"
-              : "bg-[hsl(220_10%_10%)] text-muted-foreground/20 border-border/10"
-          )} style={deadmanHeld ? { boxShadow: '0 0 24px rgba(239,68,68,0.3)' } : undefined}>
-          ⚡ FIRE ALL ({enabledCount})
-        </button>
-      )}
-      {settings.pyroArmRequired && !deadmanHeld && (pyroArm || dmxArm) && (
-        <div className={cn("text-center text-amber-400/50 font-bold uppercase", fs ? "text-[10px]" : "text-[7px]")}>
-          Hold DEADMAN to enable firing
+  const renderManualFire = (fs: boolean) => {
+    const isMobileFire = fs && mob;
+    return (
+      <div className={cn("space-y-2", isMobileFire ? "p-3" : fs ? "p-4" : "p-2")}>
+        <div className="flex items-center justify-between px-1">
+          <span className={cn("font-bold text-muted-foreground/40 uppercase tracking-wider", isMobileFire ? "text-[10px]" : fs ? "text-[9px]" : "text-[7px]")}>
+            Pyro Manual Fire
+          </span>
+          <span className={cn("font-mono text-foreground/40", isMobileFire ? "text-sm" : fs ? "text-xs" : "text-[8px]")}>{formatTimecode(elapsedMs)}</span>
         </div>
-      )}
-      <div className={cn("grid gap-1.5", fs ? "grid-cols-4" : "grid-cols-2")}>
-        {channels.map((ch, i) => {
-          const sfxType = SFX_TYPES.find(t => t.key === ch.type);
-          return (
-            <button key={ch.id}
-              onMouseDown={() => (dmxArm || pyroArm) && ch.enabled && (deadmanHeld || !settings.pyroArmRequired) && fireChannel(ch.id)}
-              onMouseUp={() => stopChannel(ch.id)}
-              onMouseLeave={() => ch.firing && stopChannel(ch.id)}
-              disabled={(!dmxArm && !pyroArm) || !ch.enabled || (settings.pyroArmRequired && !deadmanHeld)}
-              className={cn(
-                "relative flex flex-col items-center justify-center rounded border-2 transition-all",
-                fs ? "py-5" : "py-3",
-                ch.firing ? "bg-red-600/30 border-red-400 scale-[0.97]"
-                  : (dmxArm || pyroArm) && ch.enabled && (deadmanHeld || !settings.pyroArmRequired)
-                    ? "bg-[hsl(220_10%_12%)] border-border/30 hover:bg-[hsl(220_10%_16%)] active:scale-[0.97] active:bg-red-700/40"
-                    : "bg-[hsl(220_10%_8%)] border-border/10 opacity-40"
-              )} style={ch.firing ? { boxShadow: '0 0 12px rgba(255,60,30,0.3)' } : undefined}>
-              <span className={cn("absolute top-0.5 left-1 font-mono text-muted-foreground/30", fs ? "text-[8px]" : "text-[6px]")}>{String(i + 1).padStart(2, '0')}</span>
-              {sfxType && <sfxType.icon className={cn(fs ? "w-6 h-6" : "w-4 h-4", "mb-0.5")} style={{ color: ch.firing ? '#ff4444' : sfxType.color }} />}
-              <span className={cn("font-bold uppercase truncate w-full text-center", fs ? "text-xs" : "text-[8px]", ch.firing ? "text-red-300" : "text-foreground/70")}>
-                {ch.name}
-              </span>
-              <span className={cn("font-mono text-muted-foreground/30", fs ? "text-[8px]" : "text-[6px]")}>{ch.duration}ms</span>
-            </button>
-          );
-        })}
+        {(dmxArm || pyroArm) && (
+          <button
+            onMouseDown={() => { if (deadmanHeld || !settings.pyroArmRequired) channels.filter(ch => ch.enabled).forEach(ch => fireChannel(ch.id)); }}
+            onMouseUp={() => channels.forEach(ch => stopChannel(ch.id))}
+            onTouchStart={(e) => { e.preventDefault(); if (deadmanHeld || !settings.pyroArmRequired) channels.filter(ch => ch.enabled).forEach(ch => fireChannel(ch.id)); }}
+            onTouchEnd={(e) => { e.preventDefault(); channels.forEach(ch => stopChannel(ch.id)); }}
+            disabled={settings.pyroArmRequired && !deadmanHeld}
+            className={cn(
+              "w-full rounded-xl font-black uppercase transition-all border-2",
+              isMobileFire ? "py-5 text-lg tracking-[0.3em]" : fs ? "py-5 text-base tracking-[0.3em]" : "py-3 text-[12px] tracking-[0.3em]",
+              deadmanHeld || !settings.pyroArmRequired
+                ? "bg-gradient-to-b from-red-600 via-red-700 to-red-800 text-white border-red-500/40 hover:from-red-500"
+                : "bg-[hsl(220_10%_10%)] text-muted-foreground/20 border-border/10"
+            )} style={deadmanHeld ? { boxShadow: '0 0 24px rgba(239,68,68,0.3)' } : undefined}>
+            ⚡ FIRE ALL ({enabledCount})
+          </button>
+        )}
+        {settings.pyroArmRequired && !deadmanHeld && (pyroArm || dmxArm) && (
+          <div className={cn("text-center text-amber-400/50 font-bold uppercase", isMobileFire ? "text-xs" : fs ? "text-[10px]" : "text-[7px]")}>
+            Hold DEADMAN to enable firing
+          </div>
+        )}
+        {/* 2 cols on mobile, 4 on desktop — bigger touch targets on mobile */}
+        <div className={cn("grid gap-2", isMobileFire ? "grid-cols-2 gap-3" : fs ? "grid-cols-4 gap-1.5" : "grid-cols-2 gap-1.5")}>
+          {channels.map((ch, i) => {
+            const sfxType = SFX_TYPES.find(t => t.key === ch.type);
+            const canFire = (dmxArm || pyroArm) && ch.enabled && (deadmanHeld || !settings.pyroArmRequired);
+            return (
+              <button key={ch.id}
+                onMouseDown={() => canFire && fireChannel(ch.id)}
+                onMouseUp={() => stopChannel(ch.id)}
+                onMouseLeave={() => ch.firing && stopChannel(ch.id)}
+                onTouchStart={(e) => { e.preventDefault(); if (canFire) fireChannel(ch.id); }}
+                onTouchEnd={(e) => { e.preventDefault(); stopChannel(ch.id); }}
+                disabled={!canFire && !ch.firing}
+                className={cn(
+                  "relative flex flex-col items-center justify-center rounded-xl border-2 transition-all select-none",
+                  isMobileFire ? "min-h-[96px] py-4 rounded-2xl" : fs ? "py-5" : "py-3",
+                  ch.firing
+                    ? "bg-red-600/30 border-red-400 scale-[0.95] manual-fire-haptic"
+                    : canFire
+                      ? "bg-[hsl(220_10%_12%)] border-border/30 hover:bg-[hsl(220_10%_16%)] active:scale-[0.93] active:bg-red-700/40"
+                      : "bg-[hsl(220_10%_8%)] border-border/10 opacity-40"
+                )}
+                style={ch.firing ? {
+                  boxShadow: '0 0 20px rgba(255,60,30,0.4), inset 0 0 16px rgba(255,60,30,0.15)',
+                } : undefined}
+              >
+                {/* Haptic ripple overlay when firing */}
+                {ch.firing && (
+                  <div className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none">
+                    <div className="absolute inset-0 animate-manual-fire-pulse bg-gradient-radial from-red-500/20 to-transparent" />
+                    <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-red-400 to-transparent animate-pulse" />
+                  </div>
+                )}
+                <span className={cn(
+                  "absolute font-mono text-muted-foreground/30",
+                  isMobileFire ? "text-[10px] top-1.5 left-2.5" : fs ? "text-[8px] top-0.5 left-1" : "text-[6px] top-0.5 left-1"
+                )}>{String(i + 1).padStart(2, '0')}</span>
+                {sfxType && <sfxType.icon className={cn(
+                  isMobileFire ? "w-8 h-8 mb-1" : fs ? "w-6 h-6 mb-0.5" : "w-4 h-4 mb-0.5",
+                  ch.firing && "animate-pulse"
+                )} style={{ color: ch.firing ? '#ff4444' : sfxType.color }} />}
+                <span className={cn(
+                  "font-bold uppercase truncate w-full text-center px-1",
+                  isMobileFire ? "text-sm" : fs ? "text-xs" : "text-[8px]",
+                  ch.firing ? "text-red-300" : "text-foreground/70"
+                )}>
+                  {ch.name}
+                </span>
+                <span className={cn(
+                  "font-mono text-muted-foreground/30",
+                  isMobileFire ? "text-[10px] mt-0.5" : fs ? "text-[8px]" : "text-[6px]"
+                )}>{ch.duration}ms</span>
+                {/* Firing indicator bar */}
+                {ch.firing && (
+                  <div className={cn(
+                    "absolute bottom-0 left-0 right-0 bg-gradient-to-r from-red-600 via-orange-500 to-red-600 animate-pulse",
+                    isMobileFire ? "h-1 rounded-b-2xl" : "h-0.5 rounded-b-xl"
+                  )} />
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // ─── Mode content router ───
   const renderModeContent = (fs: boolean) => {
