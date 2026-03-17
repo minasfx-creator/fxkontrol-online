@@ -853,7 +853,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
         {/* Quick prompts */}
         {mode !== 'video' && <div className="space-y-1">
           <span className="text-[9px] text-muted-foreground font-semibold uppercase">
-            {mode === 'full-show' ? 'Temas de Show' : mode === 'trajectory' ? 'Movimentos' : mode === 'music-sync' ? 'Estilos Musicais' : 'Prompts Rápidos'}
+            {mode === 'full-show' ? 'Temas de Show' : mode === 'music-sync' ? 'Estilos Musicais' : 'Prompts Rápidos'}
           </span>
           <div className="grid grid-cols-2 gap-1">
             {quickList.map((q) => (
