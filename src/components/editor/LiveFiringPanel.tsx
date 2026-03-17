@@ -471,11 +471,26 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   }, [channels, dmxArm]);
 
   useEffect(() => { return () => { fireTimers.current.forEach(timer => clearTimeout(timer)); }; }, []);
+  // Sync browser Fullscreen API with isFullscreen state
   useEffect(() => {
-    if (!isFullscreen) return;
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsFullscreen(false); };
-    window.addEventListener('keydown', h);
-    return () => window.removeEventListener('keydown', h);
+    if (isFullscreen) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    } else {
+      if (document.fullscreenElement) {
+        document.exitFullscreen?.().catch(() => {});
+      }
+    }
+  }, [isFullscreen]);
+
+  // Listen for native fullscreen exit (e.g. Escape key) to sync state
+  useEffect(() => {
+    const onFsChange = () => {
+      if (!document.fullscreenElement && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    document.addEventListener('fullscreenchange', onFsChange);
+    return () => document.removeEventListener('fullscreenchange', onFsChange);
   }, [isFullscreen]);
 
   const armedCount = channels.filter(c => c.armed).length;
@@ -991,7 +1006,10 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   // PANEL LAYOUT — auto-fullscreen on mobile
   // ═══════════════════════════════════════════════════════════
   if (mob) {
-    // On mobile, the panel always renders fullscreen
+    // On mobile, auto-enter browser fullscreen
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    }
     return (
       <div {...swipeProps} className="fixed inset-0 z-[9999] flex flex-col select-none pb-[env(safe-area-inset-bottom)]"
         style={{ background: 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 4%) 100%)' }}>
