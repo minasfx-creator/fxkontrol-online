@@ -2558,7 +2558,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
     if (!controls) return;
 
     const tx = THREE.MathUtils.clamp(controls.target.x, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
-    const ty = THREE.MathUtils.clamp(controls.target.y, 0, 3000);
+    const ty = THREE.MathUtils.clamp(controls.target.y, 0, 10000);
     const tz = THREE.MathUtils.clamp(controls.target.z, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
 
     const cx = THREE.MathUtils.clamp(camera.position.x, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
