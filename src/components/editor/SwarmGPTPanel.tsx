@@ -607,12 +607,12 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
       {/* Mode tabs */}
       <div className="flex border-b border-border">
         {([
-          { id: 'single' as Mode, label: 'Formação', icon: Wand2 },
+          { id: 'presets' as Mode, label: 'Presets', icon: Grid3X3 },
+          { id: 'single' as Mode, label: 'IA', icon: Wand2 },
           { id: 'full-show' as Mode, label: 'Show', icon: Film },
           { id: 'image' as Mode, label: 'Imagem', icon: Image },
           { id: 'video' as Mode, label: 'Vídeo', icon: Video },
           { id: 'music-sync' as Mode, label: 'Music', icon: Music },
-          { id: 'trajectory' as Mode, label: 'Motion', icon: RotateCw },
         ]).map(({ id, label, icon: Icon }) => (
           <button
             key={id}
