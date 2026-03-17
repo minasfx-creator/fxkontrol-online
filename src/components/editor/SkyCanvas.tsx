@@ -1836,7 +1836,7 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
             color += vec3(0.015, 0.02, 0.035) * viewAngle * nearBlend * 0.8;
             
             // Atmospheric fade at extreme distance
-            float dist = distFromCenter * 0.0002;
+            float dist = distFromCenter * 0.00002;
             float fogFactor = smoothstep(0.5, 1.5, dist);
             vec3 atmosphereColor = vec3(0.02 * b, 0.025 * b, 0.04 * b);
             color = mix(color, atmosphereColor, fogFactor * 0.5);
