@@ -1647,7 +1647,7 @@ function FloorLogo() {
 
   return (
     <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[200, 50]} />
+      <planeGeometry args={[1000, 250]} />
       <meshBasicMaterial
         map={texture}
         transparent
