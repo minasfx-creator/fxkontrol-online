@@ -1,10 +1,11 @@
 /**
- * ─── Finale 3D Catalog Importer ──────────────────────────────────────
- * Parses CSV/FDB catalog files from Finale 3D and maps columns
- * to our internal Effect format. Supports auto-detection of:
- * - Finale 3D .fdb (tab/comma separated)
- * - Generic CSV with Finale-compatible headers
- * - VDL-style description parsing
+ * ─── Professional Catalog Importer ──────────────────────────────────
+ * Parses catalog files from multiple professional software:
+ * - Finale 3D: CSV, FDB (tab/comma), FSL (XML show library)
+ * - Depence R3: DPX (XML fixture library)
+ * - Generic: CSV/TSV with any headers
+ * 
+ * Supports auto-detection of format and column mapping.
  */
 
 import type { Effect, PartType } from '@/store/useProjectStore';

@@ -74,25 +74,25 @@ const BURST_FRAGMENT = `
     float lifeRatio = clamp(rawRatio * uThermalSpeed, 0.0, 1.0);
     
     // Thermal color transition: white-hot → saturated → ember → charcoal
-    // The ignition keeps some hue from shell color to avoid full white lock.
-    vec3 whiteHot = mix(vec3(1.0, 0.98, 0.85), uColor + vec3(0.15), 0.35) * (0.3 + uHDRMultiplier * 0.08);
-    vec3 saturated = uColor * 1.0;
-    vec3 ember = vec3(uColor.r * 0.6 + 0.2, uColor.g * 0.2, uColor.b * 0.05);
-    vec3 charcoal = vec3(0.15, 0.08, 0.02);
+    // Reduced white phase, longer saturated phase for vivid colors
+    vec3 whiteHot = mix(vec3(1.0, 0.95, 0.8), uColor * 1.4 + vec3(0.1), 0.5) * (0.25 + uHDRMultiplier * 0.06);
+    vec3 saturated = uColor * 1.5; // Boosted saturation for vivid colors
+    vec3 ember = vec3(uColor.r * 0.5 + 0.25, uColor.g * 0.15 + 0.05, uColor.b * 0.05);
+    vec3 charcoal = vec3(0.12, 0.06, 0.02);
     
     vec3 thermalColor;
-    if (lifeRatio < 0.08) {
-      // Birth flash: white-hot core (Skybrush ignition phase)
-      thermalColor = mix(whiteHot, saturated, lifeRatio / 0.08);
-    } else if (lifeRatio < 0.45) {
-      // Peak: full saturated color
-      thermalColor = mix(saturated, uColor, (lifeRatio - 0.08) / 0.37);
-    } else if (lifeRatio < 0.75) {
+    if (lifeRatio < 0.04) {
+      // Very brief white-hot flash — shorter to preserve color
+      thermalColor = mix(whiteHot, saturated, lifeRatio / 0.04);
+    } else if (lifeRatio < 0.55) {
+      // Extended peak: full vivid saturated color (longer visible phase)
+      thermalColor = mix(saturated, uColor * 1.2, (lifeRatio - 0.04) / 0.51);
+    } else if (lifeRatio < 0.80) {
       // Cooling: desaturating to ember
-      thermalColor = mix(uColor, ember, (lifeRatio - 0.45) / 0.30);
+      thermalColor = mix(uColor, ember, (lifeRatio - 0.55) / 0.25);
     } else {
       // Dying: ember to charcoal
-      thermalColor = mix(ember, charcoal, (lifeRatio - 0.75) / 0.25);
+      thermalColor = mix(ember, charcoal, (lifeRatio - 0.80) / 0.20);
     }
     
     // Gaussian glow: bright core, soft edges
