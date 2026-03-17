@@ -910,9 +910,21 @@ function SkyGradient() {
   const skyBrightness = useSceneStore(st => st.settings.skyBrightness);
   const horizonGlow = useSceneStore(st => st.settings.horizonGlow);
   const starDensity = useSceneStore(st => st.settings.starDensity);
+  const groundStyle = useSceneStore(st => st.settings.groundStyle);
   const skyRef = useRef<THREE.Mesh>(null);
 
   const skyRotation = useSceneStore(st => st.environment.skyRotation);
+
+  // Dynamic ground tint based on groundStyle — eliminates sky/ground seam
+  const groundTint = useMemo(() => {
+    switch (groundStyle) {
+      case 'finale-dark': return new THREE.Vector3(0.003, 0.004, 0.008);
+      case 'flat-black':  return new THREE.Vector3(0.001, 0.001, 0.001);
+      case 'google-earth': return new THREE.Vector3(0.005, 0.008, 0.004);
+      case 'concrete':    return new THREE.Vector3(0.006, 0.006, 0.007);
+      default:            return new THREE.Vector3(0.005, 0.005, 0.015);
+    }
+  }, [groundStyle]);
 
   const uniforms = useMemo(() => ({
     uSkyBrightness: { value: skyBrightness },
@@ -922,6 +934,7 @@ function SkyGradient() {
     uExplosionScatter: { value: new THREE.Color(0, 0, 0) },
     uScatterIntensity: { value: 0 },
     uSkyRotation: { value: 0 },
+    uGroundTint: { value: groundTint },
   }), []);
 
   useEffect(() => {
@@ -929,7 +942,8 @@ function SkyGradient() {
     uniforms.uHorizonGlow.value = horizonGlow;
     uniforms.uStarDensity.value = starDensity;
     uniforms.uSkyRotation.value = skyRotation * Math.PI / 180;
-  }, [skyBrightness, horizonGlow, starDensity, skyRotation]);
+    uniforms.uGroundTint.value = groundTint;
+  }, [skyBrightness, horizonGlow, starDensity, skyRotation, groundTint]);
 
   // Expose scatter uniforms for AdaptiveExposureController
   useEffect(() => {
@@ -964,6 +978,7 @@ function SkyGradient() {
           uniform vec3 uExplosionScatter;
           uniform float uScatterIntensity;
           uniform float uSkyRotation;
+          uniform vec3 uGroundTint;
           varying vec3 vWorldPosition;
           
           float hash21(vec2 p) {
@@ -1040,7 +1055,7 @@ function SkyGradient() {
             vec3 lowSky    = vec3(0.04, 0.05, 0.14);
             vec3 horizon   = vec3(0.08, 0.06, 0.12);
             vec3 haze      = vec3(0.12, 0.08, 0.10);
-            vec3 ground    = vec3(0.005, 0.005, 0.015);
+            vec3 ground    = uGroundTint;
             
             vec3 color;
             if (h > 0.7) {
@@ -1051,10 +1066,10 @@ function SkyGradient() {
               color = mix(lowSky, midSky, smoothstep(0.15, 0.4, h));
             } else if (h > 0.02) {
               color = mix(horizon, lowSky, smoothstep(0.02, 0.15, h));
-            } else if (h > -0.02) {
-              color = mix(haze, horizon, smoothstep(-0.02, 0.02, h));
+            } else if (h > -0.05) {
+              color = mix(haze, horizon, smoothstep(-0.05, 0.02, h));
             } else {
-              color = mix(ground, haze, smoothstep(-0.15, -0.02, h));
+              color = mix(ground, haze, smoothstep(-0.35, -0.05, h));
             }
             
             // Warm amber horizon glow — cinematic sunset afterglow
@@ -1181,14 +1196,14 @@ function Moon() {
           `}
         />
       </mesh>
-      {/* Inner glow — proportional to new radius */}
+      {/* Inner glow — proportional to 450-unit body ×5 */}
       <mesh>
-        <sphereGeometry args={[95, 32, 32]} />
+        <sphereGeometry args={[500, 32, 32]} />
         <meshBasicMaterial color="#d0c8a8" transparent opacity={0.10} blending={THREE.AdditiveBlending} />
       </mesh>
       {/* Outer volumetric halo */}
       <mesh>
-        <sphereGeometry args={[160, 32, 32]} />
+        <sphereGeometry args={[800, 32, 32]} />
         <shaderMaterial
           transparent
           depthWrite={false}
@@ -1212,10 +1227,10 @@ function Moon() {
       </mesh>
       {/* Wide atmospheric scatter */}
       <mesh>
-        <sphereGeometry args={[320, 16, 16]} />
+        <sphereGeometry args={[1600, 16, 16]} />
         <meshBasicMaterial color="#506080" transparent opacity={0.008} blending={THREE.AdditiveBlending} />
       </mesh>
-      <pointLight color="#8899bb" intensity={0.15} distance={6000} decay={1} />
+      <pointLight color="#8899bb" intensity={0.15} distance={30000} decay={1} />
     </group>
   );
 }
@@ -1581,8 +1596,8 @@ function AtmosphericParticles() {
       // Recycle particles that drift too far from camera
       const dx = arr[i * 3] - camX, dz = arr[i * 3 + 2] - camZ;
       if (dx * dx + dz * dz > 1000000) {
-        arr[i * 3] = camX + (Math.random() - 0.5) * 200;
-        arr[i * 3 + 2] = camZ + (Math.random() - 0.5) * 200;
+        arr[i * 3] = camX + (Math.random() - 0.5) * 2000;
+        arr[i * 3 + 2] = camZ + (Math.random() - 0.5) * 2000;
       }
     }
     posAttr.needsUpdate = true;
@@ -1731,7 +1746,7 @@ function GroundFog() {
             vec2 uv = vUv * 4.0 + vec2(uTime * 0.02, uTime * 0.01);
             float n = fbm(uv);
             float heightFade = smoothstep(uHeight, 0.0, vWorldY);
-            float edgeFade = smoothstep(0.0, 0.3, min(vUv.x, min(vUv.y, min(1.0 - vUv.x, 1.0 - vUv.y))));
+            float edgeFade = smoothstep(0.0, 0.12, min(vUv.x, min(vUv.y, min(1.0 - vUv.x, 1.0 - vUv.y))));
             float alpha = n * heightFade * edgeFade * uIntensity;
             gl_FragColor = vec4(uFogColor, alpha * 0.4);
           }
@@ -2250,7 +2265,7 @@ const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflec
           }
 
           void main() {
-            float dist = length(vWorldPos.xz) / 600.0;
+            float dist = length(vWorldPos.xz) / 3000.0;
             float distFade = 1.0 - smoothstep(0.0, 1.0, dist);
             float puddle = noise(vUv * 8.0 + uTime * 0.01);
             puddle = smoothstep(0.3, 0.7, puddle) * uWetness;
@@ -2384,15 +2399,15 @@ function TreelineSilhouette() {
     // 6 depth layers — expanded world
     for (let layer = 0; layer < 6; layer++) {
       const count = 120 - layer * 15;
-      const baseDist = 800 + layer * 300;
+      const baseDist = 4000 + layer * 1500;
       for (let i = 0; i < count; i++) {
         const angle = (i / count) * Math.PI * 2 + layer * 0.05;
-        const dist = baseDist + Math.random() * 60;
+        const dist = baseDist + Math.random() * 300;
         result.push({
           x: Math.cos(angle) * dist,
           z: Math.sin(angle) * dist,
-          h: 6 + Math.random() * 22 + layer * 5,
-          w: 5 + Math.random() * 10,
+          h: 30 + Math.random() * 110 + layer * 25,
+          w: 25 + Math.random() * 50,
           layer,
         });
       }

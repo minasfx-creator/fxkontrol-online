@@ -1,10 +1,11 @@
 import { create } from 'zustand';
+import type { ViewTransform } from '@/lib/niagaraBlenderRules';
 
 export type GroundStyle = 'finale-dark' | 'google-earth' | 'flat-black' | 'concrete' | 'custom';
 export type SkyPreset = 'night-clear' | 'night-cloudy' | 'dusk' | 'overcast' | 'foggy' | 'custom';
 export type WeatherCondition = 'clear' | 'light-rain' | 'heavy-rain' | 'snow' | 'fog' | 'haze' | 'wind-only';
 export type QualityPreset = 'realistic' | 'show' | 'performance';
-
+export type { ViewTransform };
 export const QUALITY_PRESETS: Record<QualityPreset, { name: string; description: string; settings: Partial<SceneSettings> }> = {
   realistic: {
     name: 'Realista',
@@ -124,6 +125,7 @@ export interface SceneSettings {
   vignetteIntensity: number;
   chromaticAberration: boolean;
   filmGrain: number;
+  viewTransform: ViewTransform;
 }
 
 const DEFAULT_SETTINGS: SceneSettings = {
@@ -181,6 +183,7 @@ const DEFAULT_SETTINGS: SceneSettings = {
   vignetteIntensity: 0.25,
   chromaticAberration: true,
   filmGrain: 0.025,
+  viewTransform: 'aces-filmic' as ViewTransform,
 };
 
 export const SCENE_PRESETS: Record<string, { name: string; description: string; settings: Partial<SceneSettings> }> = {

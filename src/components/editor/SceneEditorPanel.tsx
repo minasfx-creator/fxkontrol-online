@@ -5,7 +5,8 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useSceneStore, SCENE_PRESETS, QUALITY_PRESETS, type GroundStyle, type WeatherCondition, type QualityPreset } from '@/store/useSceneStore';
+import { useSceneStore, SCENE_PRESETS, QUALITY_PRESETS, type GroundStyle, type WeatherCondition, type QualityPreset, type ViewTransform } from '@/store/useSceneStore';
+import { getAllViewTransforms } from '@/lib/niagaraBlenderRules';
 import { useProjectStore } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -317,6 +318,18 @@ export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
 
         {/* ═══ POST-PROCESSING ═══ */}
         <Section title="Post-Processing" icon={Eye} id="post" open={openSections.has('post')} onToggle={() => toggleSection('post')}>
+          {/* V-Ray / Blender View Transform */}
+          <div>
+            <span className="text-[9px] text-muted-foreground font-medium">View Transform</span>
+            <Select value={settings.viewTransform || 'aces-filmic'} onValueChange={v => updateSettings({ viewTransform: v as ViewTransform })}>
+              <SelectTrigger className="h-7 text-[10px] mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {getAllViewTransforms().map(vt => (
+                  <SelectItem key={vt.id} value={vt.id} className="text-[10px]">{vt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="flex items-center justify-between">
             <span className="text-[9px] text-muted-foreground font-medium">Vignette</span>
             <Switch checked={settings.vignetteEnabled} onCheckedChange={v => updateSettings({ vignetteEnabled: v })} className="scale-[0.65]" />

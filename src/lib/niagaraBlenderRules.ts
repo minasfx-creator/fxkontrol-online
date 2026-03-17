@@ -63,22 +63,26 @@ export function getNiagaraBudgets(isMobile: boolean) {
   return isMobile ? MOBILE_RULES : DESKTOP_RULES;
 }
 
-export function clampNiagaraHDR(r: number, g: number, b: number): [number, number, number] {
+export function clampNiagaraHDR(r: number, g: number, b: number, mode?: ViewTransform): [number, number, number] {
+  const cfg = mode ? VIEW_TRANSFORM_CONFIGS[mode] : VIEW_TRANSFORM_CONFIGS['aces-filmic'];
+  const maxCh = cfg.maxHDRChannel;
+  const maxLm = cfg.maxHDRLuma;
+
   const maxChannel = Math.max(r, g, b, 0.0001);
   let sr = r;
   let sg = g;
   let sb = b;
 
-  if (maxChannel > MAX_HDR_CHANNEL) {
-    const s = MAX_HDR_CHANNEL / maxChannel;
+  if (maxChannel > maxCh) {
+    const s = maxCh / maxChannel;
     sr *= s;
     sg *= s;
     sb *= s;
   }
 
   const luma = sr * 0.2126 + sg * 0.7152 + sb * 0.0722;
-  if (luma > MAX_HDR_LUMA) {
-    const s = MAX_HDR_LUMA / luma;
+  if (luma > maxLm) {
+    const s = maxLm / luma;
     sr *= s;
     sg *= s;
     sb *= s;
