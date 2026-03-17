@@ -2,6 +2,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { attackReleaseEnvelope } from '@/lib/pyroNoise';
+import { getThreeBlending } from '@/lib/niagaraBlenderRules';
 
 const PARTICLE_COUNT = 180;
 
