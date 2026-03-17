@@ -41,6 +41,14 @@ interface SamplingOptions {
   invertDetection?: boolean;
   /** Minimum spacing between points in meters */
   minSpacing?: number;
+  /** Detection mode */
+  detectionMode?: 'threshold' | 'edge' | 'adaptive';
+  /** Gaussian blur radius (0 = none) */
+  blurRadius?: number;
+  /** Contrast boost factor (1 = none, 2 = double) */
+  contrastBoost?: number;
+  /** Edge detection sensitivity (lower = more edges) */
+  edgeSensitivity?: number;
 }
 
 // ─── Video Frame Extraction ───────────────────────────────────
