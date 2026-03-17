@@ -2211,7 +2211,7 @@ const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflec
 
   return (
     <mesh ref={meshRef} position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[2000, 2000]} />
+      <planeGeometry args={[10000, 10000]} />
       <shaderMaterial
         transparent
         depthWrite={false}
