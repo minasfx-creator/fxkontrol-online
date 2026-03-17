@@ -182,7 +182,7 @@ function EnvironmentSettingsSection() {
   );
 }
 
-
+export default function ShowSettingsPanel({ onClose }: ShowSettingsProps) {
   const { duration, gpsOrigin, projectName } = useProjectStore();
 
   // ── Show metadata ──
