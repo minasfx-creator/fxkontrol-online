@@ -540,20 +540,55 @@ export default function VideoChoreoPanel({ onClose }: { onClose: () => void }) {
 
             {/* AI Context input */}
             {processingMode === 'ai-semantic' && (
-              <div className="space-y-1 p-2 rounded-lg border border-accent/20 bg-accent/5">
+              <div className="space-y-2 p-2 rounded-lg border border-accent/20 bg-accent/5">
                 <div className="flex items-center gap-1">
                   <Sparkles className="w-3 h-3 text-accent-foreground" />
-                  <span className="text-[8px] font-bold text-accent-foreground uppercase">Contexto para IA</span>
+                  <span className="text-[8px] font-bold text-accent-foreground uppercase">Motor IA de Última Geração</span>
                 </div>
+
+                {/* Analysis Depth */}
+                <div className="space-y-0.5">
+                  <span className="text-[7px] text-muted-foreground font-semibold uppercase">Profundidade</span>
+                  <div className="grid grid-cols-2 gap-1">
+                    <button
+                      onClick={() => setAnalysisDepth('fast')}
+                      className={cn(
+                        "text-[7px] py-1.5 px-2 rounded border transition-all text-center",
+                        analysisDepth === 'fast'
+                          ? "border-primary/40 bg-primary/10 text-primary font-bold"
+                          : "border-border/40 bg-surface-2 text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      ⚡ Rápido
+                    </button>
+                    <button
+                      onClick={() => setAnalysisDepth('cinematic')}
+                      className={cn(
+                        "text-[7px] py-1.5 px-2 rounded border transition-all text-center",
+                        analysisDepth === 'cinematic'
+                          ? "border-accent/40 bg-accent/10 text-accent-foreground font-bold"
+                          : "border-border/40 bg-surface-2 text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      🎬 Cinematográfico
+                    </button>
+                  </div>
+                </div>
+
+                {/* Context */}
                 <textarea
                   value={aiContext}
                   onChange={(e) => setAiContext(e.target.value)}
-                  placeholder="Ex: Show de Réveillon, tema oceano, público de 5000 pessoas..."
-                  className="w-full h-14 text-[9px] bg-surface-0 border border-border/30 rounded-md p-1.5 resize-none text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-accent/30"
+                  placeholder="Ex: Show de Réveillon, tema oceano, 5000 espectadores, queremos emoção crescente com clímax no meio..."
+                  className="w-full h-16 text-[9px] bg-surface-0 border border-border/30 rounded-md p-1.5 resize-none text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-accent/30"
                 />
-                <p className="text-[7px] text-muted-foreground">
-                  🧠 A IA analisa os frames do vídeo e cria formações baseadas no <strong>significado</strong> do conteúdo, não apenas na silhueta.
-                </p>
+                <div className="flex items-start gap-1 p-1.5 rounded bg-surface-1/80 border border-border/20">
+                  <Brain className="w-3 h-3 text-accent-foreground flex-shrink-0 mt-0.5" />
+                  <p className="text-[7px] text-muted-foreground leading-relaxed">
+                    <strong className="text-foreground">Gemini 2.5 Pro</strong> — Analisa movimento, narrativa temporal, emoções e composição visual.
+                    Gera formações que <strong>capturam o significado</strong> do vídeo, com transições fisicamente corretas e arco dramático.
+                  </p>
+                </div>
               </div>
             )}
           </div>
