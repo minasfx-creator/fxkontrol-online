@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
+import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import {
   type ConnectedDevice,
   type USBDeviceProfile,

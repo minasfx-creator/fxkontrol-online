@@ -163,7 +163,40 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     }
   };
 
-  return (
+  const sendUSBDirect = async () => {
+    if (universes.length === 0) {
+      toast.error('Faça o Auto-Patch primeiro');
+      return;
+    }
+    setSending(true);
+    const t0 = performance.now();
+    try {
+      // Send each universe's channels to all connected USB DMX devices
+      for (const u of universes) {
+        const result = await sendDMXToAll(u.channels);
+        const latency = Math.round(performance.now() - t0);
+        addDiagLog({
+          timestamp: new Date(), type: 'send',
+          message: `USB → Uni ${u.id} · ${result.deviceCount} device(s) · ${result.totalBytes}B`,
+          latency,
+        });
+      }
+      setConnectionStatus('ok');
+      const latency = Math.round(performance.now() - t0);
+      toast.success(`DMX enviado via USB (${universes.length} uni, ${connectedUSBDMX.length} device)`, {
+        description: `Latência: ${latency}ms`,
+      });
+    } catch (e: any) {
+      const latency = Math.round(performance.now() - t0);
+      setConnectionStatus('error');
+      addDiagLog({ timestamp: new Date(), type: 'error', message: e.message || 'Erro USB', latency });
+      toast.error(e.message || 'Erro ao enviar via USB');
+    } finally {
+      setSending(false);
+    }
+  };
+
+
     <div className="h-full bg-surface-1 border-l border-border flex flex-col">
       <div className="flex items-center justify-between px-2 py-1.5 border-b border-border">
         <div className="flex items-center gap-1.5">
