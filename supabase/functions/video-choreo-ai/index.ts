@@ -36,7 +36,7 @@ serve(async (req) => {
 
     userContent.push({
       type: "text",
-      text: buildUserPrompt(selectedFrames.length, drones, context, mode, depth),
+      text: buildUserPrompt(selectedFrames.length, drones, context, mode, depth, !!depthEstimation, !!objectSegmentation),
     });
 
     for (let i = 0; i < selectedFrames.length; i++) {
