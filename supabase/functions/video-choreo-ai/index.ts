@@ -16,7 +16,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const { frameDataUrls, droneCount, context, mode, analysisDepth } = await req.json();
+    const { frameDataUrls, droneCount, context, mode, analysisDepth, depthEstimation, objectSegmentation } = await req.json();
 
     if (!frameDataUrls || !Array.isArray(frameDataUrls) || frameDataUrls.length === 0) {
       return new Response(
@@ -30,13 +30,13 @@ serve(async (req) => {
     const drones = droneCount || 300;
     const depth = analysisDepth || 'cinematic';
 
-    const systemPrompt = buildSystemPrompt(drones, depth);
+    const systemPrompt = buildSystemPrompt(drones, depth, !!depthEstimation, !!objectSegmentation);
 
     const userContent: any[] = [];
 
     userContent.push({
       type: "text",
-      text: buildUserPrompt(selectedFrames.length, drones, context, mode, depth),
+      text: buildUserPrompt(selectedFrames.length, drones, context, mode, depth, !!depthEstimation, !!objectSegmentation),
     });
 
     for (let i = 0; i < selectedFrames.length; i++) {
@@ -137,8 +137,8 @@ serve(async (req) => {
 
 // ─── System Prompt Builder ────────────────────────────────────
 
-function buildSystemPrompt(droneCount: number, depth: string): string {
-  return `You are a world-class drone show choreographer and cinematic director. You design drone light shows performed by swarms of ${droneCount} LED-equipped drones.
+function buildSystemPrompt(droneCount: number, depth: string, depthEstimation: boolean, objectSegmentation: boolean): string {
+  let prompt = `You are a world-class drone show choreographer and cinematic director. You design drone light shows performed by swarms of ${droneCount} LED-equipped drones.
 
 ## Your Expertise
 - Temporal storytelling through aerial formations
@@ -227,6 +227,52 @@ CRITICAL RULES:
 - Formations should be recognizable from GROUND LEVEL (optimize for ~30° viewing angle)
 - Use HEIGHT as a dramatic tool: climax = higher, intimate = lower
 - Generate at least 5 and at most 12 formations for a compelling show`;
+
+  if (depthEstimation) {
+    prompt += `
+
+## Depth Estimation (ENABLED)
+For each formation, you MUST also provide a "depthLayers" field with depth analysis:
+- Identify foreground, midground, and background elements
+- Assign height multipliers: foreground=1.0 (lowest), midground=1.3, background=1.6
+- Each point should have a "depthLayer" property: "foreground"|"midground"|"background"
+- Use depth to create TRUE 3D formations, not flat projections
+- Objects closer to camera should be lower, farther objects higher
+- This creates dramatic parallax when viewed from ground level
+
+Add to each formation:
+"depthLayers": {
+  "foreground": { "heightMultiplier": 1.0, "count": N },
+  "midground": { "heightMultiplier": 1.3, "count": N },
+  "background": { "heightMultiplier": 1.6, "count": N }
+}`;
+  }
+
+  if (objectSegmentation) {
+    prompt += `
+
+## Object Segmentation (ENABLED)
+For each frame, you MUST identify distinct objects/subjects and provide a "segments" field:
+- Detect separate objects (people, animals, vehicles, text, logos, abstract shapes)
+- Each segment gets its own drone group with independent color and movement
+- Provide bounding boxes as normalized coordinates (0-1) for each segment
+- Segments can have different motionDuringHold behaviors
+- This enables multi-layer formations where different objects move independently
+
+Add to each formation:
+"segments": [
+  {
+    "label": "person",
+    "boundingBox": { "x": 0.2, "y": 0.1, "w": 0.3, "h": 0.6 },
+    "dronePercentage": 0.4,
+    "color": "#hex",
+    "motionDuringHold": "breathe",
+    "depthLayer": "foreground"
+  }
+]`;
+  }
+
+  return prompt;
 }
 
 function buildUserPrompt(
@@ -235,11 +281,15 @@ function buildUserPrompt(
   context: string | undefined,
   mode: string | undefined,
   depth: string,
+  depthEstimation: boolean,
+  objectSegmentation: boolean,
 ): string {
   let prompt = `## Show Parameters
 - Drone fleet: ${droneCount} drones with full-color RGB LEDs
 - Analysis depth: ${depth}
 - Frame count: ${frameCount} key frames from source video
+- Depth estimation: ${depthEstimation ? 'ENABLED - provide depthLayers per formation' : 'disabled'}
+- Object segmentation: ${objectSegmentation ? 'ENABLED - provide segments per formation' : 'disabled'}
 
 `;
 
