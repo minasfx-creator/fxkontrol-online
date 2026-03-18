@@ -488,6 +488,58 @@ export default function ShellBurstRenderer({
         />
       </points>
 
+      {/* Pistil inner burst — smaller, different color */}
+      {hasPistil && pistilCount > 0 && (
+        <points ref={pistilPointsRef} frustumCulled={false}>
+          <bufferGeometry drawRange={{ start: 0, count: pistilCount }}>
+            <bufferAttribute attach="attributes-position" args={[pistilBuffers.pos, 3]} />
+            <bufferAttribute attach="attributes-aLife" args={[pistilBuffers.life, 1]} />
+            <bufferAttribute attach="attributes-aMaxLife" args={[pistilBuffers.maxLife, 1]} />
+            <bufferAttribute attach="attributes-aBrightness" args={[pistilBuffers.brightness, 1]} />
+            <bufferAttribute attach="attributes-aVelocity" args={[pistilBuffers.velocity, 3]} />
+          </bufferGeometry>
+          <shaderMaterial
+            vertexShader={BURST_VERTEX}
+            fragmentShader={BURST_FRAGMENT}
+            uniforms={useMemo(() => ({
+              uColor: { value: new THREE.Color(pistilColor) },
+              uColor2: { value: new THREE.Color(pistilColor) },
+              uColorChangePoint: { value: 2.0 },
+              uBaseSize: { value: baseSize * 0.7 },
+              uHDRMultiplier: { value: hdrMultiplier },
+              uTime: { value: 0 },
+              uThermalSpeed: { value: thermalTransitionSpeed },
+              uMaxEnergy: { value: getMaxEnergy(0) },
+            }), [])}
+            transparent
+            depthWrite={false}
+            blending={additiveBlend.blending}
+            blendEquation={additiveBlend.blendEquation}
+            blendSrc={additiveBlend.blendSrc as any}
+            blendDst={additiveBlend.blendDst as any}
+          />
+        </points>
+      )}
+
+      {/* Glitter trail particles */}
+      {trailType === 'glitter' && (
+        <points ref={glitterRef} frustumCulled={false}>
+          <bufferGeometry>
+            <bufferAttribute attach="attributes-position" args={[glitterBuffers.pos, 3]} />
+            <bufferAttribute attach="attributes-color" args={[glitterBuffers.col, 3]} />
+          </bufferGeometry>
+          <pointsMaterial
+            size={0.08 + caliber * 0.02}
+            vertexColors
+            transparent
+            opacity={0.7}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+            sizeAttenuation
+          />
+        </points>
+      )}
+
       {/* Crossette sub-bursts */}
       {crossetteRef.current.map((subGroup, gi) => (
         <CrossetteSubBurst key={gi} particles={subGroup} color={color} caliber={caliber} windVec={windVec} drag={starDrag} />
