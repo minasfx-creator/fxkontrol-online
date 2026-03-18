@@ -241,14 +241,26 @@ export async function generateVideoChoreo(
     opts.onProgress?.(0.58, `${selectedFrames.length}/${frames.length} keyframes selecionados`);
   }
 
-  // Phase 0.5: Compute optical flow fields between consecutive frames
+  // Phase 0.5: Compute optical flow fields via Web Worker
   const flowFields: (OpticalFlowField | null)[] = [null];
   if (opts.useOpticalFlow && selectedFrames.length > 1) {
-    opts.onProgress?.(0.58, 'Calculando optical flow...');
-    for (let i = 1; i < selectedFrames.length; i++) {
-      opts.onProgress?.(0.58 + (i / selectedFrames.length) * 0.04, `Optical flow ${i}/${selectedFrames.length - 1}`);
-      const flow = computeOpticalFlow(selectedFrames[i - 1].imageData, selectedFrames[i].imageData, 8);
-      flowFields.push(flow);
+    opts.onProgress?.(0.58, 'Calculando optical flow (Worker)...');
+    try {
+      const workerResults = await computeOpticalFlowBatchWorker(
+        selectedFrames,
+        8,
+        (current, total) => {
+          opts.onProgress?.(0.58 + (current / total) * 0.04, `Optical flow ${current}/${total} (Worker)`);
+        },
+      );
+      flowFields.push(...workerResults.slice(1));
+    } catch {
+      // Fallback to main thread if worker fails
+      opts.onProgress?.(0.58, 'Optical flow fallback (main thread)...');
+      for (let i = 1; i < selectedFrames.length; i++) {
+        const flow = computeOpticalFlow(selectedFrames[i - 1].imageData, selectedFrames[i].imageData, 8);
+        flowFields.push(flow);
+      }
     }
   }
 
