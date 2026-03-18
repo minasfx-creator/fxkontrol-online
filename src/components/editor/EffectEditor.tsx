@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Sliders, Wand2, X, Sparkles } from 'lucide-react';
+import { Sliders, Wand2, X, Sparkles, Layers, Palette, Leaf } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -22,7 +22,6 @@ export default function EffectEditor({ initialVDL = '', onClose }: EffectEditorP
   const [vdlInput, setVdlInput] = useState(initialVDL);
   const [params, setParams] = useState<VDLResult>(() => parseVDL(initialVDL));
 
-  // Sync VDL input → params
   useEffect(() => {
     if (vdlInput) {
       const parsed = parseVDL(vdlInput);
@@ -30,7 +29,6 @@ export default function EffectEditor({ initialVDL = '', onClose }: EffectEditorP
     }
   }, [vdlInput]);
 
-  // Generate display VDL from params
   const displayVDL = useMemo(() => toVDL(params), [params]);
 
   const updateParam = <K extends keyof VDLResult>(key: K, value: VDLResult[K]) => {
@@ -60,11 +58,6 @@ export default function EffectEditor({ initialVDL = '', onClose }: EffectEditorP
   const handleAddToTimeline = () => {
     const colorStr = params.colorNames.map(c => c.charAt(0).toUpperCase() + c.slice(1)).join('/');
     const name = `${params.caliber}" ${colorStr} ${params.typeName}`.trim();
-    const typeIcons: Record<string, string> = {
-      peony: '🔴', chrysanthemum: '💥', dahlia: '🟣', willow: '🎆',
-      palm: '🌴', brocade: '👑', comet: '☄️', shell: '💫',
-      mine: '💫', fountain: '⚜️', fan: '🪭', salute: '💢',
-    };
 
     const newItem = {
       id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -157,6 +150,123 @@ export default function EffectEditor({ initialVDL = '', onClose }: EffectEditorP
           )}
         </div>
 
+        {/* Color Transition */}
+        {params.colorNames.length >= 2 && (
+          <div className="space-y-1.5">
+            <Label className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+              <Palette className="w-3 h-3" /> Color Transition
+            </Label>
+            <div className="flex gap-1">
+              {(['none', 'to', 'changing', 'alternating'] as const).map(tr => (
+                <Badge
+                  key={tr}
+                  variant={params.colorTransition === tr ? 'default' : 'outline'}
+                  className={cn(
+                    "text-[9px] cursor-pointer capitalize",
+                    params.colorTransition === tr && "bg-primary text-primary-foreground"
+                  )}
+                  onClick={() => updateParam('colorTransition', tr)}
+                >
+                  {tr === 'none' ? 'Static' : tr === 'to' ? 'To →' : tr}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Pistil Toggle */}
+        <div className="space-y-1.5 p-2 rounded-lg bg-surface-2/50 border border-border/20">
+          <div className="flex items-center justify-between">
+            <Label className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-accent" /> Pistil
+            </Label>
+            <Switch
+              checked={params.hasPistil}
+              onCheckedChange={(v) => updateParam('hasPistil', v)}
+            />
+          </div>
+          {params.hasPistil && (
+            <div className="space-y-1">
+              <Label className="text-[9px] text-muted-foreground">Pistil Color</Label>
+              <div className="flex flex-wrap gap-1">
+                {VDL_COLORS.slice(0, 12).map(({ name, hex }) => (
+                  <button
+                    key={name}
+                    onClick={() => updateParam('pistilColor', hex)}
+                    className={cn(
+                      "w-4 h-4 rounded-full border-2 transition-transform",
+                      params.pistilColor === hex
+                        ? "border-foreground scale-110"
+                        : "border-transparent opacity-50 hover:opacity-100"
+                    )}
+                    style={{ backgroundColor: hex }}
+                    title={name}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Multi-Break */}
+        {params.partType === 'shell' && (
+          <div className="space-y-1.5 p-2 rounded-lg bg-surface-2/50 border border-border/20">
+            <div className="flex items-center justify-between">
+              <Label className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                <Layers className="w-3 h-3 text-primary" /> Multi-Break
+              </Label>
+              <span className="text-xs font-mono-code text-foreground">{params.numSplits > 1 ? params.numSplits : 1}x</span>
+            </div>
+            <div className="flex gap-1">
+              {[1, 2, 3, 4].map(n => (
+                <button
+                  key={n}
+                  onClick={() => updateParam('numSplits', n)}
+                  className={cn(
+                    "flex-1 py-1.5 rounded-lg text-[10px] font-semibold transition-all",
+                    params.numSplits === n
+                      ? "bg-primary/15 text-primary border border-primary/30"
+                      : "bg-surface-1 text-muted-foreground/60 border border-transparent hover:bg-surface-2"
+                  )}
+                >
+                  {n}x
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Falling Leaves */}
+        <div className="flex items-center justify-between p-2 rounded-lg bg-surface-2/50 border border-border/20">
+          <Label className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+            <Leaf className="w-3 h-3 text-green-500" /> Falling Leaves
+          </Label>
+          <Switch
+            checked={params.fallingLeaves}
+            onCheckedChange={(v) => updateParam('fallingLeaves', v)}
+          />
+        </div>
+
+        {/* Trail Type */}
+        <div className="space-y-1.5">
+          <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">Trail</Label>
+          <div className="flex flex-wrap gap-1">
+            {(['none', 'comet', 'glitter', 'brocade', 'charcoal'] as const).map(tr => (
+              <Badge
+                key={tr}
+                variant={params.trailType === tr ? 'default' : 'outline'}
+                className={cn(
+                  "text-[9px] cursor-pointer capitalize",
+                  params.trailType === tr && "bg-primary text-primary-foreground"
+                )}
+                onClick={() => updateParam('trailType', tr)}
+              >
+                {tr}
+              </Badge>
+            ))}
+          </div>
+        </div>
+
         {/* Height */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
@@ -241,11 +351,35 @@ export default function EffectEditor({ initialVDL = '', onClose }: EffectEditorP
             <span className="font-mono-code text-foreground">{params.duration}s</span>
             <span className="text-muted-foreground">Stars</span>
             <span className="font-mono-code text-foreground">{params.starCount}</span>
+            {params.hasPistil && (
+              <>
+                <span className="text-muted-foreground">Pistil</span>
+                <div className="flex items-center gap-1">
+                  <div className="w-2.5 h-2.5 rounded-full border border-border" style={{ backgroundColor: params.pistilColor }} />
+                  <span className="font-mono-code text-foreground text-[9px]">Yes</span>
+                </div>
+              </>
+            )}
+            {params.colorTransition !== 'none' && (
+              <>
+                <span className="text-muted-foreground">Transition</span>
+                <span className="font-mono-code text-foreground capitalize">{params.colorTransition}</span>
+              </>
+            )}
+            {params.fallingLeaves && (
+              <>
+                <span className="text-muted-foreground">Leaves</span>
+                <span className="font-mono-code text-foreground">🍂 Yes</span>
+              </>
+            )}
           </div>
           <div className="flex gap-1 mt-1">
             {params.colors.map((c, i) => (
               <div key={i} className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: c }} />
             ))}
+            {params.hasPistil && (
+              <div className="w-4 h-4 rounded-full border-2 border-dashed border-muted-foreground/30" style={{ backgroundColor: params.pistilColor }} title="Pistil" />
+            )}
           </div>
         </div>
       </div>

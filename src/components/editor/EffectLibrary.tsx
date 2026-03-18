@@ -40,6 +40,7 @@ function EffectTableRow({ effect, index }: { effect: Effect; index: number }) {
   const { selectedEffectId, selectEffect, addTimelineItem, currentTime, positions, selectedPositionId, selectedPositionIds } = useProjectStore();
   const isSelected = selectedEffectId === effect.id;
   const isPyro = effect.type === 'firework';
+  const vdl = useMemo(() => isPyro ? parseVDL(`${effect.caliber || 4}in ${effect.name}`) : null, [effect, isPyro]);
 
   const handleAdd = useCallback(() => {
     const validType = isPyro || effect.type === 'sfx' ? 'pyro' : effect.type === 'drone' ? 'drone-pad' : null;
@@ -121,7 +122,14 @@ function EffectTableRow({ effect, index }: { effect: Effect; index: number }) {
       </td>
       {/* Effect name */}
       <td className="px-1.5 py-[5px] font-medium text-foreground truncate max-w-[120px]">
-        {effect.name}
+        <span>{effect.name}</span>
+        {/* VDL feature badges */}
+        <span className="ml-1 inline-flex gap-0.5">
+          {vdl?.hasPistil && <span className="text-[7px] bg-accent/15 text-accent px-1 rounded" title="Pistil">◎</span>}
+          {vdl?.colorTransition && vdl.colorTransition !== 'none' && <span className="text-[7px] bg-primary/15 text-primary px-1 rounded" title="Color change">↔</span>}
+          {vdl?.fallingLeaves && <span className="text-[7px] bg-green-500/15 text-green-400 px-1 rounded" title="Falling leaves">🍂</span>}
+          {vdl?.trailType && vdl.trailType !== 'none' && <span className="text-[7px] bg-yellow-500/15 text-yellow-400 px-1 rounded" title={vdl.trailType}>✦</span>}
+        </span>
       </td>
       {/* Caliber */}
       <td className="px-1.5 py-[5px] text-accent/70 font-mono-code text-center w-8">

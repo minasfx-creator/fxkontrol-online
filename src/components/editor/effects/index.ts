@@ -22,3 +22,7 @@ export { default as SnowMachineEffect } from './SnowMachineEffect';
 export { default as BubbleMachineEffect } from './BubbleMachineEffect';
 export { default as ShellBurstRenderer } from './ShellBurstRenderer';
 export { default as ShellExplosionManager } from './ShellExplosionManager';
+export { default as SaluteEffect } from './SaluteEffect';
+export { default as TourbillonEffect } from './TourbillonEffect';
+export { default as SetPieceEffect } from './SetPieceEffect';
+export { default as WheelEffect } from './WheelEffect';

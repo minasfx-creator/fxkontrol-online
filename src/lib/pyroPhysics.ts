@@ -85,6 +85,47 @@ export function getSafetyDistance(caliberInches: number): number {
   return 300;
 }
 
+// ── Multi-Break Timings ─────────────────────────────────────────────
+
+export interface MultiBreakTiming {
+  height: number;
+  delay: number;
+  starCount: number;
+}
+
+export function createMultiBreakTimings(caliber: number, breakCount: number): MultiBreakTiming[] {
+  const baseHeight = getBreakHeight(caliber);
+  const baseStars = getStarCount(caliber);
+  const timings: MultiBreakTiming[] = [];
+  const heightFactors = [1.0, 0.7, 0.5, 0.35];
+  const starFactors = [0.5, 0.3, 0.15, 0.05];
+  
+  for (let i = 0; i < Math.min(breakCount, 4); i++) {
+    timings.push({
+      height: baseHeight * heightFactors[i],
+      delay: i * (0.3 + Math.random() * 0.2),
+      starCount: Math.round(baseStars * (i === 0 ? starFactors[0] + 0.5 : starFactors[i])),
+    });
+  }
+  return timings;
+}
+
+// ── Glitter Trail Particle ──────────────────────────────────────────
+
+export function createGlitterTrailParticle(parent: ParticleState): ParticleState {
+  return {
+    x: parent.x + (Math.random() - 0.5) * 0.1,
+    y: parent.y + (Math.random() - 0.5) * 0.1,
+    z: parent.z + (Math.random() - 0.5) * 0.1,
+    vx: parent.vx * 0.1 + (Math.random() - 0.5) * 0.5,
+    vy: parent.vy * 0.1 - 0.5,
+    vz: parent.vz * 0.1 + (Math.random() - 0.5) * 0.5,
+    life: 0,
+    maxLife: 0.2 + Math.random() * 0.15,
+    brightness: 0.6 + Math.random() * 0.4,
+  };
+}
+
 // ── Particle Physics ────────────────────────────────────────────────
 
 export interface ParticleState {
@@ -92,21 +133,36 @@ export interface ParticleState {
   vx: number; vy: number; vz: number;
   life: number; maxLife: number;
   brightness: number;
+  seed?: number; // for falling leaves oscillation
+}
+
+export interface StepModifiers {
+  fallingLeaves?: boolean;
+  reducedGravity?: number; // 0-1 factor
 }
 
 export function stepParticle(
   p: ParticleState,
   dt: number,
   wind: [number, number, number],
-  drag: number = AIR_DRAG
+  drag: number = AIR_DRAG,
+  modifiers?: StepModifiers,
 ): void {
-  // Apply gravity
-  p.vy += GRAVITY * dt;
+  const gravityFactor = modifiers?.reducedGravity ?? 1;
+  // Apply gravity (reduced for falling leaves)
+  p.vy += GRAVITY * gravityFactor * dt;
   
   // Apply wind forces
   p.vx += wind[0] * dt * 0.5;
   p.vy += wind[1] * dt * 0.5;
   p.vz += wind[2] * dt * 0.5;
+
+  // Falling leaves: sinusoidal lateral oscillation
+  if (modifiers?.fallingLeaves && p.seed !== undefined) {
+    const osc = Math.sin(p.life * 2 + p.seed * 6.28) * 0.5;
+    p.vx += osc * dt;
+    p.vz += Math.cos(p.life * 1.5 + p.seed * 3.14) * 0.3 * dt;
+  }
   
   // Apply aerodynamic drag
   const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy + p.vz * p.vz);

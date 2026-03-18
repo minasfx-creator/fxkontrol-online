@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
   createShellBurst,
+  createGlitterTrailParticle,
   stepParticle,
   getBreakSpeed,
   getStarCount,
@@ -10,6 +11,7 @@ import {
   getStarSpread,
   type BurstPattern,
   type ParticleState,
+  type StepModifiers,
 } from '@/lib/pyroPhysics';
 import { useSceneStore } from '@/store/useSceneStore';
 import { getThreeBlending, getMaxEnergy, GROUND_LIGHT_SCALE } from '@/lib/niagaraBlenderRules';
@@ -59,6 +61,8 @@ const BURST_FRAGMENT = `
   varying float vSpeed;
   
   uniform vec3 uColor;
+  uniform vec3 uColor2;
+  uniform float uColorChangePoint;
   uniform float uHDRMultiplier;
   uniform float uTime;
   uniform float uThermalSpeed;
@@ -73,42 +77,39 @@ const BURST_FRAGMENT = `
     float rawRatio = clamp(vLife / vMaxLife, 0.0, 1.0);
     float lifeRatio = clamp(rawRatio * uThermalSpeed, 0.0, 1.0);
     
+    // Color-change: interpolate between primary and secondary color
+    vec3 baseHue = mix(uColor, uColor2, smoothstep(uColorChangePoint - 0.1, uColorChangePoint + 0.1, rawRatio));
+    
     // Thermal color transition: white-hot → saturated → ember → charcoal
-    // Reduced white phase, longer saturated phase for vivid colors
-    vec3 whiteHot = mix(vec3(1.0, 0.95, 0.8), uColor * 1.4 + vec3(0.1), 0.5) * (0.25 + uHDRMultiplier * 0.06);
-    vec3 saturated = uColor * 1.5; // Boosted saturation for vivid colors
-    vec3 ember = vec3(uColor.r * 0.5 + 0.25, uColor.g * 0.15 + 0.05, uColor.b * 0.05);
+    vec3 whiteHot = mix(vec3(1.0, 0.95, 0.8), baseHue * 1.4 + vec3(0.1), 0.5) * (0.25 + uHDRMultiplier * 0.06);
+    vec3 saturated = baseHue * 1.5;
+    vec3 ember = vec3(baseHue.r * 0.5 + 0.25, baseHue.g * 0.15 + 0.05, baseHue.b * 0.05);
     vec3 charcoal = vec3(0.12, 0.06, 0.02);
     
     vec3 thermalColor;
     if (lifeRatio < 0.04) {
-      // Very brief white-hot flash — shorter to preserve color
       thermalColor = mix(whiteHot, saturated, lifeRatio / 0.04);
     } else if (lifeRatio < 0.55) {
-      // Extended peak: full vivid saturated color (longer visible phase)
-      thermalColor = mix(saturated, uColor * 1.2, (lifeRatio - 0.04) / 0.51);
+      thermalColor = mix(saturated, baseHue * 1.2, (lifeRatio - 0.04) / 0.51);
     } else if (lifeRatio < 0.80) {
-      // Cooling: desaturating to ember
-      thermalColor = mix(uColor, ember, (lifeRatio - 0.55) / 0.25);
+      thermalColor = mix(baseHue, ember, (lifeRatio - 0.55) / 0.25);
     } else {
-      // Dying: ember to charcoal
       thermalColor = mix(ember, charcoal, (lifeRatio - 0.80) / 0.20);
     }
     
-    // Gaussian glow: bright core, soft edges
+    // Gaussian glow
      float coreGlow = exp(-dist * dist * 28.0);
      float outerGlow = exp(-dist * dist * 10.0);
      float glow = coreGlow * 0.6 + outerGlow * 0.4;
     
-    // Flicker: subtle random twinkle
+    // Flicker
     float flicker = 0.85 + 0.15 * sin(vLife * 47.0 + gl_PointCoord.x * 13.0);
     
-    // Opacity fade: quick fade-in, gradual burnout
+    // Opacity fade
     float fadeIn = smoothstep(0.0, 0.03, rawRatio);
     float fadeOut = 1.0 - pow(rawRatio, 1.8);
     float alpha = fadeIn * fadeOut * vBrightness * glow * flicker;
 
-    // Energy conservation: cap luminance to prevent additive white-out
     vec3 finalColor = min(thermalColor * glow, vec3(uMaxEnergy));
     gl_FragColor = vec4(finalColor, alpha);
   }
@@ -147,10 +148,15 @@ const MAX_PARTICLES = 1500;
 interface ShellBurstRendererProps {
   position: [number, number, number];
   color: string;
-  progress: number; // 0 = just burst, 1 = fully faded
+  progress: number;
   caliber?: number;
   pattern?: BurstPattern;
   secondaryColor?: string;
+  hasPistil?: boolean;
+  pistilColor?: string;
+  colorTransition?: 'none' | 'to' | 'changing' | 'alternating';
+  trailType?: 'none' | 'comet' | 'glitter' | 'brocade' | 'charcoal' | 'smoke';
+  fallingLeaves?: boolean;
 }
 
 /**
@@ -171,10 +177,19 @@ export default function ShellBurstRenderer({
   caliber = 4,
   pattern = 'peony',
   secondaryColor,
+  hasPistil = false,
+  pistilColor = '#FFFFFF',
+  colorTransition = 'none',
+  trailType = 'none',
+  fallingLeaves = false,
 }: ShellBurstRendererProps) {
   const pointsRef = useRef<THREE.Points>(null);
+  const pistilPointsRef = useRef<THREE.Points>(null);
+  const glitterRef = useRef<THREE.Points>(null);
   const afterglowRef = useRef<THREE.Mesh>(null);
   const particlesRef = useRef<ParticleState[] | null>(null);
+  const pistilParticlesRef = useRef<ParticleState[] | null>(null);
+  const glitterParticlesRef = useRef<ParticleState[]>([]);
   const initTimeRef = useRef<number>(0);
 
   // ── Read real-time store values (Skybrush environment + pyro controls) ──
@@ -207,11 +222,28 @@ export default function ShellBurstRenderer({
   const burstSpread = useMemo(() => getStarSpread(caliber), [caliber]);
   const baseSize = useMemo(() => 0.5 + caliber * 0.35, [caliber]);
 
+  const pistilCount = useMemo(() => hasPistil ? Math.round(starCount * 0.25) : 0, [hasPistil, starCount]);
+  const pistilColorObj = useMemo(() => new THREE.Color(pistilColor), [pistilColor]);
+  const secondaryColorObj = useMemo(() => new THREE.Color(secondaryColor || color), [secondaryColor, color]);
+  const stepMods = useMemo<StepModifiers | undefined>(
+    () => fallingLeaves ? { fallingLeaves: true, reducedGravity: 0.3 } : undefined,
+    [fallingLeaves]
+  );
+
   // Initialize particles on first render
   useEffect(() => {
-    particlesRef.current = createShellBurst(starCount, breakSpeed, pattern, starLifetime);
+    const mainParticles = createShellBurst(starCount, breakSpeed, pattern, starLifetime);
+    if (fallingLeaves) mainParticles.forEach((p, i) => { p.seed = i / starCount; });
+    particlesRef.current = mainParticles;
+
+    if (hasPistil) {
+      const pistilPs = createShellBurst(pistilCount, breakSpeed * 0.4, 'peony', starLifetime * 0.8);
+      pistilPs.forEach((p, i) => { p.seed = i / pistilCount; });
+      pistilParticlesRef.current = pistilPs;
+    }
+    glitterParticlesRef.current = [];
     initTimeRef.current = 0;
-  }, [starCount, breakSpeed, pattern, starLifetime]);
+  }, [starCount, breakSpeed, pattern, starLifetime, hasPistil, pistilCount, fallingLeaves]);
 
   // Buffer attributes (reused — no GC pressure)
   const { posBuffer, lifeBuffer, maxLifeBuffer, brightnessBuffer, velocityBuffer } = useMemo(() => ({
@@ -222,9 +254,30 @@ export default function ShellBurstRenderer({
     velocityBuffer: new Float32Array(MAX_PARTICLES * 3),
   }), []);
 
+  // Pistil buffers
+  const pistilBuffers = useMemo(() => ({
+    pos: new Float32Array(MAX_PARTICLES * 3),
+    life: new Float32Array(MAX_PARTICLES),
+    maxLife: new Float32Array(MAX_PARTICLES),
+    brightness: new Float32Array(MAX_PARTICLES),
+    velocity: new Float32Array(MAX_PARTICLES * 3),
+  }), []);
+
+  // Glitter trail buffers
+  const GLITTER_MAX = 800;
+  const glitterBuffers = useMemo(() => ({
+    pos: new Float32Array(GLITTER_MAX * 3),
+    col: new Float32Array(GLITTER_MAX * 3),
+  }), []);
+
+  // Color change point: where in life (0-1) the color switches
+  const colorChangePoint = colorTransition !== 'none' ? 0.45 : 2.0; // >1 means no change
+
   // Shader uniforms — updated every frame from store
   const uniforms = useMemo(() => ({
     uColor: { value: new THREE.Color(color) },
+    uColor2: { value: new THREE.Color(secondaryColor || color) },
+    uColorChangePoint: { value: colorChangePoint },
     uBaseSize: { value: baseSize },
     uHDRMultiplier: { value: hdrMultiplier },
     uTime: { value: 0 },
@@ -235,6 +288,17 @@ export default function ShellBurstRenderer({
   // Pre-compute blend configs (Screen for secondary elements)
   const screenBlend = useMemo(() => getThreeBlending('screen'), []);
   const additiveBlend = useMemo(() => getThreeBlending('additive'), []);
+
+  const pistilUniforms = useMemo(() => ({
+    uColor: { value: new THREE.Color(pistilColor) },
+    uColor2: { value: new THREE.Color(pistilColor) },
+    uColorChangePoint: { value: 2.0 },
+    uBaseSize: { value: baseSize * 0.7 },
+    uHDRMultiplier: { value: hdrMultiplier },
+    uTime: { value: 0 },
+    uThermalSpeed: { value: thermalTransitionSpeed },
+    uMaxEnergy: { value: getMaxEnergy(0) },
+  }), []);
 
   const afterglowUniforms = useMemo(() => ({
     uColor: { value: new THREE.Color(color) },
@@ -259,7 +323,16 @@ export default function ShellBurstRenderer({
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
       if (p.life < p.maxLife) {
-        stepParticle(p, dt, windVec, starDrag);
+        stepParticle(p, dt, windVec, starDrag, stepMods);
+
+        // Glitter trail: emit micro-particles from active stars
+        if (trailType === 'glitter' && p.life > 0.1 && Math.random() < 0.15) {
+          const gp = createGlitterTrailParticle(p);
+          glitterParticlesRef.current.push(gp);
+          if (glitterParticlesRef.current.length > GLITTER_MAX) {
+            glitterParticlesRef.current.shift();
+          }
+        }
       }
 
       // Crossette: sub-burst when star reaches ~40% life
@@ -293,6 +366,68 @@ export default function ShellBurstRenderer({
       velocityBuffer[i * 3 + 2] = p.vz;
     }
 
+    // Step pistil particles
+    if (pistilParticlesRef.current && pistilPointsRef.current) {
+      const pp = pistilParticlesRef.current;
+      for (let i = 0; i < pp.length; i++) {
+        if (pp[i].life < pp[i].maxLife) stepParticle(pp[i], dt, windVec, starDrag * 0.8, stepMods);
+        pistilBuffers.pos[i * 3] = pp[i].x;
+        pistilBuffers.pos[i * 3 + 1] = pp[i].y;
+        pistilBuffers.pos[i * 3 + 2] = pp[i].z;
+        pistilBuffers.life[i] = pp[i].life;
+        pistilBuffers.maxLife[i] = pp[i].maxLife;
+        pistilBuffers.brightness[i] = pp[i].brightness;
+        pistilBuffers.velocity[i * 3] = pp[i].vx;
+        pistilBuffers.velocity[i * 3 + 1] = pp[i].vy;
+        pistilBuffers.velocity[i * 3 + 2] = pp[i].vz;
+      }
+      const pGeo = pistilPointsRef.current.geometry;
+      ['position', 'aLife', 'aMaxLife', 'aBrightness', 'aVelocity'].forEach(attr => {
+        const a = pGeo.getAttribute(attr) as THREE.BufferAttribute;
+        if (a) a.needsUpdate = true;
+      });
+      const pMat = pistilPointsRef.current.material as THREE.ShaderMaterial;
+      pMat.uniforms.uTime.value = time;
+      pMat.uniforms.uColor.value.copy(pistilColorObj);
+      pMat.uniforms.uColor2.value.copy(pistilColorObj);
+      pMat.uniforms.uColorChangePoint.value = 2.0;
+      pMat.uniforms.uHDRMultiplier.value = hdrMultiplier;
+      pMat.uniforms.uBaseSize.value = baseSize * 0.7;
+      pMat.uniforms.uThermalSpeed.value = thermalTransitionSpeed;
+      pMat.uniforms.uMaxEnergy.value = getMaxEnergy(0);
+    }
+
+    // Step glitter trail particles
+    if (glitterRef.current && glitterParticlesRef.current.length > 0) {
+      const gp = glitterParticlesRef.current;
+      // Remove dead glitter
+      for (let i = gp.length - 1; i >= 0; i--) {
+        gp[i].life += dt;
+        gp[i].vy += -9.81 * dt * 0.5;
+        gp[i].x += gp[i].vx * dt;
+        gp[i].y += gp[i].vy * dt;
+        gp[i].z += gp[i].vz * dt;
+        gp[i].brightness = Math.max(0, 1 - gp[i].life / gp[i].maxLife);
+        if (gp[i].life > gp[i].maxLife) { gp.splice(i, 1); }
+      }
+      const gCount = Math.min(gp.length, GLITTER_MAX);
+      for (let i = 0; i < gCount; i++) {
+        glitterBuffers.pos[i * 3] = gp[i].x;
+        glitterBuffers.pos[i * 3 + 1] = gp[i].y;
+        glitterBuffers.pos[i * 3 + 2] = gp[i].z;
+        const fade = gp[i].brightness;
+        glitterBuffers.col[i * 3] = baseColor.r * fade * 0.8;
+        glitterBuffers.col[i * 3 + 1] = baseColor.g * fade * 0.7;
+        glitterBuffers.col[i * 3 + 2] = baseColor.b * fade * 0.5;
+      }
+      const gGeo = glitterRef.current.geometry;
+      gGeo.setDrawRange(0, gCount);
+      const gPosAttr = gGeo.getAttribute('position') as THREE.BufferAttribute;
+      const gColAttr = gGeo.getAttribute('color') as THREE.BufferAttribute;
+      if (gPosAttr) gPosAttr.needsUpdate = true;
+      if (gColAttr) gColAttr.needsUpdate = true;
+    }
+
     // Step crossette sub-particles with store wind/drag
     for (const subGroup of crossetteRef.current) {
       for (const sp of subGroup) {
@@ -300,7 +435,7 @@ export default function ShellBurstRenderer({
       }
     }
 
-    // Update GPU buffers — reuse existing attributes, never create new ones
+    // Update GPU buffers
     const geo = pointsRef.current.geometry;
     const posAttr = geo.getAttribute('position') as THREE.BufferAttribute;
     const lifeAttr = geo.getAttribute('aLife') as THREE.BufferAttribute;
@@ -317,6 +452,8 @@ export default function ShellBurstRenderer({
     const mat = pointsRef.current.material as THREE.ShaderMaterial;
     mat.uniforms.uTime.value = time;
     mat.uniforms.uColor.value.copy(baseColor);
+    mat.uniforms.uColor2.value.copy(secondaryColorObj);
+    mat.uniforms.uColorChangePoint.value = colorChangePoint;
     mat.uniforms.uHDRMultiplier.value = hdrMultiplier;
     mat.uniforms.uBaseSize.value = baseSize;
     mat.uniforms.uThermalSpeed.value = thermalTransitionSpeed;
@@ -361,6 +498,49 @@ export default function ShellBurstRenderer({
           blendDst={additiveBlend.blendDst as any}
         />
       </points>
+
+      {/* Pistil inner burst — smaller, different color */}
+      {hasPistil && pistilCount > 0 && (
+        <points ref={pistilPointsRef} frustumCulled={false}>
+          <bufferGeometry drawRange={{ start: 0, count: pistilCount }}>
+            <bufferAttribute attach="attributes-position" args={[pistilBuffers.pos, 3]} />
+            <bufferAttribute attach="attributes-aLife" args={[pistilBuffers.life, 1]} />
+            <bufferAttribute attach="attributes-aMaxLife" args={[pistilBuffers.maxLife, 1]} />
+            <bufferAttribute attach="attributes-aBrightness" args={[pistilBuffers.brightness, 1]} />
+            <bufferAttribute attach="attributes-aVelocity" args={[pistilBuffers.velocity, 3]} />
+          </bufferGeometry>
+          <shaderMaterial
+            vertexShader={BURST_VERTEX}
+            fragmentShader={BURST_FRAGMENT}
+            uniforms={pistilUniforms}
+            transparent
+            depthWrite={false}
+            blending={additiveBlend.blending}
+            blendEquation={additiveBlend.blendEquation}
+            blendSrc={additiveBlend.blendSrc as any}
+            blendDst={additiveBlend.blendDst as any}
+          />
+        </points>
+      )}
+
+      {/* Glitter trail particles */}
+      {trailType === 'glitter' && (
+        <points ref={glitterRef} frustumCulled={false}>
+          <bufferGeometry>
+            <bufferAttribute attach="attributes-position" args={[glitterBuffers.pos, 3]} />
+            <bufferAttribute attach="attributes-color" args={[glitterBuffers.col, 3]} />
+          </bufferGeometry>
+          <pointsMaterial
+            size={0.08 + caliber * 0.02}
+            vertexColors
+            transparent
+            opacity={0.7}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+            sizeAttenuation
+          />
+        </points>
+      )}
 
       {/* Crossette sub-bursts */}
       {crossetteRef.current.map((subGroup, gi) => (
