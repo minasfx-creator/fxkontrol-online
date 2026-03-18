@@ -3,12 +3,14 @@ import {
   X, Video, Upload, Play, Pause, SkipBack, SkipForward, Loader2,
   Film, Eye, Layers, Trash2, Download, Wand2, Settings2, ChevronDown,
   ChevronRight, Palette, Move3d, Zap, RefreshCw, Maximize2,
+  Brain, Sparkles, MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { useProjectStore } from '@/store/useProjectStore';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 import {
   extractEnhancedFrames, generateVideoChoreo, renderFramePreview,
   isGifFile, isVideoFile, DEFAULT_OPTIONS,
