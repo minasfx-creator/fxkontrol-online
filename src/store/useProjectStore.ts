@@ -1,5 +1,13 @@
 import { create } from 'zustand';
 import { materializeFormation as materialize } from '@/lib/formationMaterializer';
+import type { VideoChoreoResult } from '@/lib/videoChoreoEngine';
+
+export interface DepthLayer {
+  label: string;
+  layer: 'foreground' | 'midground' | 'background';
+  heightMultiplier: number;
+  boundingBox?: { x: number; y: number; w: number; h: number };
+}
 
 export type PartType = 'shell' | 'comet' | 'mine' | 'cake' | 'candle' | 'fan' | 'gerb' | 'flame' | 'sfx' | 'light' | 'laser' | 'drone' | 'formation' | 'single_shot' | 'ground' | 'rocket' | 'waterfall' | 'strobe' | 'set_piece';
 
