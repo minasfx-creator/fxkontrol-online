@@ -40,6 +40,7 @@ function EffectTableRow({ effect, index }: { effect: Effect; index: number }) {
   const { selectedEffectId, selectEffect, addTimelineItem, currentTime, positions, selectedPositionId, selectedPositionIds } = useProjectStore();
   const isSelected = selectedEffectId === effect.id;
   const isPyro = effect.type === 'firework';
+  const vdl = useMemo(() => isPyro ? parseVDL(`${effect.caliber || 4}in ${effect.name}`) : null, [effect, isPyro]);
 
   const handleAdd = useCallback(() => {
     const validType = isPyro || effect.type === 'sfx' ? 'pyro' : effect.type === 'drone' ? 'drone-pad' : null;
