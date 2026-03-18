@@ -149,13 +149,20 @@ export function stepParticle(
   modifiers?: StepModifiers,
 ): void {
   const gravityFactor = modifiers?.reducedGravity ?? 1;
-  // Apply gravity
-  p.vy += GRAVITY * dt;
+  // Apply gravity (reduced for falling leaves)
+  p.vy += GRAVITY * gravityFactor * dt;
   
   // Apply wind forces
   p.vx += wind[0] * dt * 0.5;
   p.vy += wind[1] * dt * 0.5;
   p.vz += wind[2] * dt * 0.5;
+
+  // Falling leaves: sinusoidal lateral oscillation
+  if (modifiers?.fallingLeaves && p.seed !== undefined) {
+    const osc = Math.sin(p.life * 2 + p.seed * 6.28) * 0.5;
+    p.vx += osc * dt;
+    p.vz += Math.cos(p.life * 1.5 + p.seed * 3.14) * 0.3 * dt;
+  }
   
   // Apply aerodynamic drag
   const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy + p.vz * p.vz);
