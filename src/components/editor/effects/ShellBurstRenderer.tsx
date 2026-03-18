@@ -61,6 +61,8 @@ const BURST_FRAGMENT = `
   varying float vSpeed;
   
   uniform vec3 uColor;
+  uniform vec3 uColor2;
+  uniform float uColorChangePoint;
   uniform float uHDRMultiplier;
   uniform float uTime;
   uniform float uThermalSpeed;
@@ -75,42 +77,39 @@ const BURST_FRAGMENT = `
     float rawRatio = clamp(vLife / vMaxLife, 0.0, 1.0);
     float lifeRatio = clamp(rawRatio * uThermalSpeed, 0.0, 1.0);
     
+    // Color-change: interpolate between primary and secondary color
+    vec3 baseHue = mix(uColor, uColor2, smoothstep(uColorChangePoint - 0.1, uColorChangePoint + 0.1, rawRatio));
+    
     // Thermal color transition: white-hot → saturated → ember → charcoal
-    // Reduced white phase, longer saturated phase for vivid colors
-    vec3 whiteHot = mix(vec3(1.0, 0.95, 0.8), uColor * 1.4 + vec3(0.1), 0.5) * (0.25 + uHDRMultiplier * 0.06);
-    vec3 saturated = uColor * 1.5; // Boosted saturation for vivid colors
-    vec3 ember = vec3(uColor.r * 0.5 + 0.25, uColor.g * 0.15 + 0.05, uColor.b * 0.05);
+    vec3 whiteHot = mix(vec3(1.0, 0.95, 0.8), baseHue * 1.4 + vec3(0.1), 0.5) * (0.25 + uHDRMultiplier * 0.06);
+    vec3 saturated = baseHue * 1.5;
+    vec3 ember = vec3(baseHue.r * 0.5 + 0.25, baseHue.g * 0.15 + 0.05, baseHue.b * 0.05);
     vec3 charcoal = vec3(0.12, 0.06, 0.02);
     
     vec3 thermalColor;
     if (lifeRatio < 0.04) {
-      // Very brief white-hot flash — shorter to preserve color
       thermalColor = mix(whiteHot, saturated, lifeRatio / 0.04);
     } else if (lifeRatio < 0.55) {
-      // Extended peak: full vivid saturated color (longer visible phase)
-      thermalColor = mix(saturated, uColor * 1.2, (lifeRatio - 0.04) / 0.51);
+      thermalColor = mix(saturated, baseHue * 1.2, (lifeRatio - 0.04) / 0.51);
     } else if (lifeRatio < 0.80) {
-      // Cooling: desaturating to ember
-      thermalColor = mix(uColor, ember, (lifeRatio - 0.55) / 0.25);
+      thermalColor = mix(baseHue, ember, (lifeRatio - 0.55) / 0.25);
     } else {
-      // Dying: ember to charcoal
       thermalColor = mix(ember, charcoal, (lifeRatio - 0.80) / 0.20);
     }
     
-    // Gaussian glow: bright core, soft edges
+    // Gaussian glow
      float coreGlow = exp(-dist * dist * 28.0);
      float outerGlow = exp(-dist * dist * 10.0);
      float glow = coreGlow * 0.6 + outerGlow * 0.4;
     
-    // Flicker: subtle random twinkle
+    // Flicker
     float flicker = 0.85 + 0.15 * sin(vLife * 47.0 + gl_PointCoord.x * 13.0);
     
-    // Opacity fade: quick fade-in, gradual burnout
+    // Opacity fade
     float fadeIn = smoothstep(0.0, 0.03, rawRatio);
     float fadeOut = 1.0 - pow(rawRatio, 1.8);
     float alpha = fadeIn * fadeOut * vBrightness * glow * flicker;
 
-    // Energy conservation: cap luminance to prevent additive white-out
     vec3 finalColor = min(thermalColor * glow, vec3(uMaxEnergy));
     gl_FragColor = vec4(finalColor, alpha);
   }
