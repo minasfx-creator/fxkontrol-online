@@ -16,6 +16,8 @@ import {
   isGifFile, isVideoFile, DEFAULT_OPTIONS,
   type VideoFrame, type ChoreoKeyframe, type VideoChoreoResult,
 } from '@/lib/videoChoreoEngine';
+import VideoChoreoResultPreview from './VideoChoreoResultPreview';
+import { terminateTrackingWorker } from '@/lib/videoTrackingWorkerClient';
 
 export default function VideoChoreoPanel({ onClose }: { onClose: () => void }) {
   // File state
@@ -1168,6 +1170,14 @@ export default function VideoChoreoPanel({ onClose }: { onClose: () => void }) {
                 <div className="text-[7px] text-muted-foreground">Duração</div>
               </div>
             </div>
+
+            {/* Depth Layers + Regional Colors Preview */}
+            {currentKeyframe && (
+              <VideoChoreoResultPreview
+                keyframe={currentKeyframe}
+                radius={Math.max(15, Math.sqrt(droneCount) * 2.2)}
+              />
+            )}
 
             {/* Preview in 3D */}
             <Button
