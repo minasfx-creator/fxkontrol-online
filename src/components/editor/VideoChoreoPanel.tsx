@@ -3,12 +3,14 @@ import {
   X, Video, Upload, Play, Pause, SkipBack, SkipForward, Loader2,
   Film, Eye, Layers, Trash2, Download, Wand2, Settings2, ChevronDown,
   ChevronRight, Palette, Move3d, Zap, RefreshCw, Maximize2,
+  Brain, Sparkles, MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { useProjectStore } from '@/store/useProjectStore';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 import {
   extractEnhancedFrames, generateVideoChoreo, renderFramePreview,
   isGifFile, isVideoFile, DEFAULT_OPTIONS,
@@ -54,11 +56,156 @@ export default function VideoChoreoPanel({ onClose }: { onClose: () => void }) {
   const [smoothTrajectories, setSmoothTrajectories] = useState(true);
   const [frameRange, setFrameRange] = useState<[number, number]>([0, 100]);
 
+  // AI Mode
+  const [processingMode, setProcessingMode] = useState<'silhouette' | 'ai-semantic'>('silhouette');
+  const [aiContext, setAiContext] = useState('');
+  const [aiResult, setAiResult] = useState<any>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
   // Store
   const addDroneFormation = useProjectStore(s => s.addDroneFormation);
   const droneFormations = useProjectStore(s => s.droneFormations);
   const setCurrentTime = useProjectStore(s => s.setCurrentTime);
   const setPlaying = useProjectStore(s => s.setPlaying);
+
+  // ── AI Semantic Generation ──────────────────────────────────
+  const generateAIChoreo = useCallback(async () => {
+    if (frames.length === 0) return;
+    setAiLoading(true);
+    setLoadingPhase('Preparando frames para IA...');
+    setProgress(10);
+
+    try {
+      // Convert frames to data URLs (downscale for API)
+      const frameDataUrls: string[] = [];
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d')!;
+      canvas.width = 256;
+      canvas.height = 256;
+
+      for (let i = 0; i < frames.length; i++) {
+        setProgress(10 + (i / frames.length) * 30);
+        setLoadingPhase(`Codificando frame ${i + 1}/${frames.length}...`);
+        const img = new Image();
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = reject;
+          img.src = frames[i].thumbnail;
+        });
+        ctx.clearRect(0, 0, 256, 256);
+        ctx.drawImage(img, 0, 0, 256, 256);
+        frameDataUrls.push(canvas.toDataURL('image/jpeg', 0.7));
+      }
+
+      setProgress(45);
+      setLoadingPhase('Analisando vídeo com IA...');
+
+      const { data, error } = await supabase.functions.invoke('video-choreo-ai', {
+        body: {
+          frameDataUrls,
+          droneCount,
+          context: aiContext || undefined,
+          mode: 'semantic',
+        },
+      });
+
+      if (error) throw new Error(error.message || 'AI processing failed');
+      if (data?.error) throw new Error(data.error);
+
+      setProgress(80);
+      setLoadingPhase('Construindo formações...');
+
+      setAiResult(data);
+
+      // Convert AI formations to choreo result
+      const formations = data.formations || [];
+      if (formations.length === 0) throw new Error('IA não gerou formações');
+
+      const keyframes: ChoreoKeyframe[] = [];
+      let time = 0;
+
+      for (let i = 0; i < formations.length; i++) {
+        const f = formations[i];
+        const points = (f.points || []).slice(0, droneCount).map((p: any) => ({
+          x: p.x || 0,
+          y: p.y || f.height || baseHeight,
+          z: p.z || 0,
+        }));
+
+        // If AI didn't generate enough points, fill with formation shape
+        while (points.length < droneCount) {
+          const angle = Math.random() * Math.PI * 2;
+          const r = Math.random() * 15 * (f.spread || 1);
+          points.push({
+            x: Math.cos(angle) * r,
+            y: f.height || baseHeight,
+            z: Math.sin(angle) * r,
+          });
+        }
+
+        keyframes.push({
+          frameIndex: f.frameIndex || i,
+          time,
+          points,
+          color: f.color || '#00E5FF',
+          brightness: 0.7,
+          thumbnail: frames[Math.min(i, frames.length - 1)]?.thumbnail || '',
+        });
+
+        time += (f.suggestedTransitionDuration || transitionDuration) + (f.suggestedHoldDuration || holdDuration);
+      }
+
+      const choreoResult: VideoChoreoResult = {
+        keyframes,
+        trajectories: [],
+        totalDuration: time,
+        droneCount,
+      };
+
+      setResult(choreoResult);
+
+      // Add to project
+      let projectTime = droneFormations.length > 0
+        ? droneFormations[droneFormations.length - 1].startTime +
+          droneFormations[droneFormations.length - 1].transitionDuration +
+          droneFormations[droneFormations.length - 1].holdDuration
+        : 0;
+
+      for (let i = 0; i < keyframes.length; i++) {
+        const kf = keyframes[i];
+        const f = formations[i] || {};
+        addDroneFormation({
+          id: `ai-vchoreo-${Date.now()}-${i}`,
+          formationType: 'ai-semantic',
+          droneCount,
+          height: kf.points[0]?.y || baseHeight,
+          radius: 20,
+          spacing: 2,
+          rotation: f.rotation || 0,
+          startTime: projectTime,
+          transitionDuration: f.suggestedTransitionDuration || transitionDuration,
+          holdDuration: f.suggestedHoldDuration || holdDuration,
+          color: kf.color,
+          points: kf.points.map(p => ({ x: p.x, z: p.z })),
+        });
+        projectTime += (f.suggestedTransitionDuration || transitionDuration) + (f.suggestedHoldDuration || holdDuration);
+      }
+
+      setCurrentTime(0);
+      setProgress(100);
+      toast.success('🧠 Coreografia semântica gerada!', {
+        description: `${data.analysis?.substring(0, 80) || `${formations.length} formações criadas pela IA`}`,
+      });
+
+    } catch (err: any) {
+      console.error('AI choreo error:', err);
+      toast.error('Erro na análise por IA', { description: err.message });
+    } finally {
+      setAiLoading(false);
+      setLoadingPhase('');
+      setProgress(0);
+    }
+  }, [frames, droneCount, aiContext, baseHeight, holdDuration, transitionDuration, droneFormations, addDroneFormation, setCurrentTime]);
 
   // ── File Upload ─────────────────────────────────────────────
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -351,6 +498,64 @@ export default function VideoChoreoPanel({ onClose }: { onClose: () => void }) {
           <Slider value={[droneCount]} onValueChange={([v]) => setDroneCount(v)} min={50} max={2000} step={10} />
         </div>
 
+        {/* ── Processing Mode Toggle ─────────────────────────── */}
+        {frames.length > 0 && (
+          <div className="space-y-1.5">
+            <span className="text-[9px] text-muted-foreground font-semibold uppercase">Modo de Processamento</span>
+            <div className="grid grid-cols-2 gap-1">
+              <button
+                onClick={() => setProcessingMode('silhouette')}
+                className={cn(
+                  "flex items-center gap-1.5 p-2 rounded-lg border transition-all text-left",
+                  processingMode === 'silhouette'
+                    ? "border-primary/40 bg-primary/10 text-primary"
+                    : "border-border/40 bg-surface-1 text-muted-foreground hover:text-foreground hover:border-border/60"
+                )}
+              >
+                <Eye className="w-3.5 h-3.5 flex-shrink-0" />
+                <div>
+                  <div className="text-[8px] font-bold uppercase">Silhueta</div>
+                  <div className="text-[7px] opacity-70">Pixel-based</div>
+                </div>
+              </button>
+              <button
+                onClick={() => setProcessingMode('ai-semantic')}
+                className={cn(
+                  "flex items-center gap-1.5 p-2 rounded-lg border transition-all text-left",
+                  processingMode === 'ai-semantic'
+                    ? "border-accent/40 bg-accent/10 text-accent-foreground"
+                    : "border-border/40 bg-surface-1 text-muted-foreground hover:text-foreground hover:border-border/60"
+                )}
+              >
+                <Brain className="w-3.5 h-3.5 flex-shrink-0" />
+                <div>
+                  <div className="text-[8px] font-bold uppercase">IA Semântica</div>
+                  <div className="text-[7px] opacity-70">Interpreta conteúdo</div>
+                </div>
+              </button>
+            </div>
+
+            {/* AI Context input */}
+            {processingMode === 'ai-semantic' && (
+              <div className="space-y-1 p-2 rounded-lg border border-accent/20 bg-accent/5">
+                <div className="flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-accent-foreground" />
+                  <span className="text-[8px] font-bold text-accent-foreground uppercase">Contexto para IA</span>
+                </div>
+                <textarea
+                  value={aiContext}
+                  onChange={(e) => setAiContext(e.target.value)}
+                  placeholder="Ex: Show de Réveillon, tema oceano, público de 5000 pessoas..."
+                  className="w-full h-14 text-[9px] bg-surface-0 border border-border/30 rounded-md p-1.5 resize-none text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-accent/30"
+                />
+                <p className="text-[7px] text-muted-foreground">
+                  🧠 A IA analisa os frames do vídeo e cria formações baseadas no <strong>significado</strong> do conteúdo, não apenas na silhueta.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── Settings Panel ─────────────────────────────────── */}
         {showSettings && (
           <div className="space-y-2 p-2 rounded-lg border border-border/40 bg-surface-1/50">
@@ -511,7 +716,7 @@ export default function VideoChoreoPanel({ onClose }: { onClose: () => void }) {
         )}
 
         {/* ── Generate Button ────────────────────────────────── */}
-        {frames.length > 0 && (
+        {frames.length > 0 && processingMode === 'silhouette' && (
           <Button
             onClick={generateChoreo}
             disabled={loading}
@@ -530,6 +735,77 @@ export default function VideoChoreoPanel({ onClose }: { onClose: () => void }) {
               </>
             )}
           </Button>
+        )}
+
+        {frames.length > 0 && processingMode === 'ai-semantic' && (
+          <Button
+            onClick={generateAIChoreo}
+            disabled={aiLoading || loading}
+            className="w-full h-9 text-[10px] gap-1.5 font-semibold bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90"
+            size="sm"
+          >
+            {aiLoading ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                {loadingPhase} ({progress}%)
+              </>
+            ) : (
+              <>
+                <Brain className="w-3.5 h-3.5" />
+                🧠 Gerar com IA Semântica ({frames.length} frames)
+              </>
+            )}
+          </Button>
+        )}
+
+        {/* AI Analysis Result */}
+        {aiResult && processingMode === 'ai-semantic' && (
+          <div className="space-y-1.5 p-2 rounded-lg border border-accent/20 bg-accent/5">
+            <div className="flex items-center gap-1">
+              <Brain className="w-3 h-3 text-accent-foreground" />
+              <span className="text-[8px] font-bold text-accent-foreground uppercase">Análise da IA</span>
+            </div>
+            {aiResult.analysis && (
+              <p className="text-[8px] text-foreground">{aiResult.analysis}</p>
+            )}
+            {aiResult.narrative && (
+              <p className="text-[7px] text-muted-foreground italic">"{aiResult.narrative}"</p>
+            )}
+            {aiResult.globalSuggestions && (
+              <div className="flex gap-1 flex-wrap">
+                {aiResult.globalSuggestions.colorPalette?.map((c: string, i: number) => (
+                  <div
+                    key={i}
+                    className="w-4 h-4 rounded-full border border-border/30"
+                    style={{ backgroundColor: c }}
+                    title={c}
+                  />
+                ))}
+                {aiResult.globalSuggestions.musicStyle && (
+                  <span className="text-[7px] bg-surface-1 px-1.5 py-0.5 rounded text-muted-foreground">
+                    🎵 {aiResult.globalSuggestions.musicStyle}
+                  </span>
+                )}
+                {aiResult.globalSuggestions.tempo && (
+                  <span className="text-[7px] bg-surface-1 px-1.5 py-0.5 rounded text-muted-foreground">
+                    ⏱ {aiResult.globalSuggestions.tempo}
+                  </span>
+                )}
+              </div>
+            )}
+            {aiResult.formations && (
+              <div className="space-y-0.5 max-h-24 overflow-y-auto">
+                {aiResult.formations.map((f: any, i: number) => (
+                  <div key={i} className="flex items-center gap-1 text-[7px] text-muted-foreground">
+                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: f.color || '#00E5FF' }} />
+                    <span className="font-semibold text-foreground">{f.shape}</span>
+                    <span>— {f.description?.substring(0, 40)}</span>
+                    <span className="ml-auto text-[6px] bg-surface-2 px-1 rounded">{f.emotion}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         {/* ── Loading Bar ────────────────────────────────────── */}
