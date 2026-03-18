@@ -1171,6 +1171,14 @@ export default function VideoChoreoPanel({ onClose }: { onClose: () => void }) {
               </div>
             </div>
 
+            {/* Depth Layers + Regional Colors Preview */}
+            {currentKeyframe && (
+              <VideoChoreoResultPreview
+                keyframe={currentKeyframe}
+                radius={Math.max(15, Math.sqrt(droneCount) * 2.2)}
+              />
+            )}
+
             {/* Preview in 3D */}
             <Button
               variant="outline"
