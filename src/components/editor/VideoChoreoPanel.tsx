@@ -61,6 +61,8 @@ export default function VideoChoreoPanel({ onClose }: { onClose: () => void }) {
   const [aiContext, setAiContext] = useState('');
   const [aiResult, setAiResult] = useState<any>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [analysisDepth, setAnalysisDepth] = useState<'fast' | 'cinematic'>('cinematic');
+  const [showAiDetails, setShowAiDetails] = useState(true);
 
   // Store
   const addDroneFormation = useProjectStore(s => s.addDroneFormation);
