@@ -137,8 +137,8 @@ serve(async (req) => {
 
 // ─── System Prompt Builder ────────────────────────────────────
 
-function buildSystemPrompt(droneCount: number, depth: string): string {
-  return `You are a world-class drone show choreographer and cinematic director. You design drone light shows performed by swarms of ${droneCount} LED-equipped drones.
+function buildSystemPrompt(droneCount: number, depth: string, depthEstimation: boolean, objectSegmentation: boolean): string {
+  let prompt = `You are a world-class drone show choreographer and cinematic director. You design drone light shows performed by swarms of ${droneCount} LED-equipped drones.
 
 ## Your Expertise
 - Temporal storytelling through aerial formations
