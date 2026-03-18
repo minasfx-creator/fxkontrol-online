@@ -30,7 +30,7 @@ serve(async (req) => {
     const drones = droneCount || 300;
     const depth = analysisDepth || 'cinematic';
 
-    const systemPrompt = buildSystemPrompt(drones, depth);
+    const systemPrompt = buildSystemPrompt(drones, depth, !!depthEstimation, !!objectSegmentation);
 
     const userContent: any[] = [];
 
