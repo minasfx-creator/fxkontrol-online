@@ -323,7 +323,7 @@ export default function VideoChoreoPanel({ onClose }: { onClose: () => void }) {
       setLoadingPhase('');
       setProgress(0);
     }
-  }, [frames, droneCount, baseHeight, heightVariation, threshold, invertDetection, detectionMode, blurRadius, contrastBoost, edgeSensitivity, holdDuration, transitionDuration, smoothTrajectories, droneFormations, addDroneFormation, setCurrentTime]);
+  }, [frames, droneCount, baseHeight, heightVariation, threshold, invertDetection, detectionMode, blurRadius, contrastBoost, edgeSensitivity, holdDuration, transitionDuration, smoothTrajectories, useOpticalFlow, useKalmanFilter, useSmartKeyframes, useRegionalColor, droneFormations, addDroneFormation, setCurrentTime]);
 
   // ── Frame Preview Rendering ─────────────────────────────────
   useEffect(() => {
