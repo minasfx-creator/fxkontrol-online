@@ -509,3 +509,164 @@ export function exportShowCSV(skyc: SkycFile): string {
 
   return lines.join('\n');
 }
+
+// ── Video Choreo → .skyc with Regional Colors & Depth Layers ────
+
+export interface VideoChoreoSkycOptions {
+  projectName: string;
+  gpsOrigin: { lat: number; lng: number; heading: number; altitude: number };
+  coordinateSystem?: 'neu' | 'ned' | 'enu';
+  author?: string;
+  notes?: string;
+  /** Pass the full VideoChoreoResult from videoChoreoEngine */
+  choreoResult: {
+    keyframes: {
+      frameIndex: number;
+      time: number;
+      points: { x: number; y: number; z: number }[];
+      color: string;
+      colors?: string[];
+      brightness: number;
+      regionalColors?: { grid: { row: number; col: number; color: string; r: number; g: number; b: number }[][]; palette: string[] };
+    }[];
+    trajectories: {
+      droneIndex: number;
+      waypoints: { time: number; x: number; y: number; z: number; color: string }[];
+    }[];
+    totalDuration: number;
+    droneCount: number;
+  };
+  /** Depth layers from AI analysis (per-drone or per-region) */
+  depthLayers?: {
+    droneIndex: number;
+    layer: 'foreground' | 'midground' | 'background';
+    heightMultiplier: number;
+    label?: string;
+  }[];
+}
+
+export function exportVideoChoreoSkyc(options: VideoChoreoSkycOptions): SkycFile {
+  const coordSystem = options.coordinateSystem ?? 'neu';
+  const { choreoResult, depthLayers } = options;
+  const totalDuration = choreoResult.totalDuration;
+
+  // Build depth lookup
+  const depthMap = new Map<number, { layer: 'foreground' | 'midground' | 'background'; mult: number; label?: string }>();
+  if (depthLayers) {
+    for (const dl of depthLayers) {
+      depthMap.set(dl.droneIndex, { layer: dl.layer, mult: dl.heightMultiplier, label: dl.label });
+    }
+  }
+
+  // Build regional color lookup from last keyframe with regional data
+  const lastRegionalKf = [...choreoResult.keyframes].reverse().find(kf => kf.regionalColors);
+  const regionalGrid = lastRegionalKf?.regionalColors?.grid;
+
+  const drones: SkycDrone[] = [];
+  for (let d = 0; d < choreoResult.droneCount; d++) {
+    const traj = choreoResult.trajectories[d];
+    if (!traj) continue;
+
+    const home = traj.waypoints[0]
+      ? convertCoordSystem(traj.waypoints[0].x, traj.waypoints[0].y, traj.waypoints[0].z, 'internal', coordSystem)
+      : { x: 0, y: 0, z: 0 };
+
+    // Build trajectory segments
+    const segments: SkycTrajectorySegment[] = traj.waypoints.map(wp => {
+      const depth = depthMap.get(d);
+      const yMultiplier = depth?.mult ?? 1;
+      const pos = convertCoordSystem(wp.x, wp.y * yMultiplier, wp.z, 'internal', coordSystem);
+      return { t: wp.time, ...pos, type: 'goto' as const };
+    });
+
+    // Build per-drone light program from trajectory colors + regional data
+    const lightProgram: SkycLightSegment[] = [{ t: 0, r: 0, g: 0, b: 0, fade: 'instant' as const }];
+    for (const wp of traj.waypoints) {
+      const rgb = hexToRGB(wp.color);
+      lightProgram.push({ t: wp.time, ...rgb, fade: 'linear' as const });
+    }
+
+    // Determine regional color for this drone
+    let droneRegionalColor: { hex: string; region: { row: number; col: number } } | undefined;
+    if (regionalGrid && choreoResult.keyframes.length > 0) {
+      // Map drone index to grid position
+      const gridRows = regionalGrid.length;
+      const gridCols = regionalGrid[0]?.length ?? 4;
+      const dronesPerCell = Math.max(1, Math.ceil(choreoResult.droneCount / (gridRows * gridCols)));
+      const cellIndex = Math.floor(d / dronesPerCell);
+      const row = Math.min(Math.floor(cellIndex / gridCols), gridRows - 1);
+      const col = Math.min(cellIndex % gridCols, gridCols - 1);
+      const cell = regionalGrid[row]?.[col];
+      if (cell) {
+        droneRegionalColor = { hex: cell.color, region: { row, col } };
+      }
+    }
+
+    const depth = depthMap.get(d);
+
+    drones.push({
+      id: `vc-drone-${d}`,
+      name: `VideoChoreo Drone ${d + 1}`,
+      home,
+      trajectory: segments,
+      lightProgram,
+      yawControl: [{ t: 0, yaw: 0 }],
+      pyroProgram: [],
+      startDelay: 0,
+      landPosition: home,
+      regionalColor: droneRegionalColor,
+      depthLayer: depth?.layer,
+      depthMultiplier: depth?.mult,
+      segmentLabel: depth?.label,
+    });
+  }
+
+  const validation = generateValidation(drones, totalDuration);
+
+  return {
+    version: 2,
+    settings: {
+      coordinateSystem: coordSystem,
+      trajectoryFPS: 4,
+      lightFPS: 4,
+      showDuration: totalDuration,
+      indoor: false,
+      yawControl: false,
+      pyroControl: false,
+      cameraExport: false,
+    },
+    environment: {
+      origin: {
+        lat: options.gpsOrigin.lat,
+        lon: options.gpsOrigin.lng,
+        altMSL: options.gpsOrigin.altitude,
+      },
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      magneticDeclination: 0,
+      type: 'outdoor',
+    },
+    drones,
+    cues: {
+      takeoff: { time: 0, staggerDelay: 0.1, order: 'simultaneous' },
+      landing: { time: totalDuration, staggerDelay: 0.1, order: 'simultaneous' },
+      showStart: 0,
+      showEnd: totalDuration,
+      markers: choreoResult.keyframes.map((kf, i) => ({
+        time: kf.time,
+        label: `Frame ${kf.frameIndex}`,
+        type: 'formation' as const,
+      })),
+    },
+    meta: {
+      name: `${options.projectName} (Video Choreo)`,
+      author: options.author ?? 'FX KONTROL',
+      createdAt: new Date().toISOString(),
+      software: 'FX KONTROL by Minas FX',
+      softwareVersion: '2.0.0',
+      droneCount: drones.length,
+      notes: options.notes ?? `Video choreography export with ${depthLayers?.length ?? 0} depth layers, regional colors: ${lastRegionalKf ? 'yes' : 'no'}`,
+      tags: ['video-choreo', 'regional-colors', 'depth-layers', 'skybrush-compatible'],
+    },
+    validation,
+  };
+}

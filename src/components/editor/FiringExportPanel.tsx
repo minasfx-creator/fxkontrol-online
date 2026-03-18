@@ -6,7 +6,7 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { FIRING_SYSTEMS, type FiringSystem } from '@/lib/firingSystemExports';
 import { downloadFile, exportFormationsToKML } from '@/lib/exportEngine';
 import { downloadKMZ, downloadAnimatedKML } from '@/lib/kmzExporter';
-import { exportSkyc, downloadSkycFile, exportShowCSV } from '@/lib/skycExporter';
+import { exportSkyc, downloadSkycFile, exportShowCSV, exportVideoChoreoSkyc } from '@/lib/skycExporter';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
