@@ -16,6 +16,8 @@ import {
   isGifFile, isVideoFile, DEFAULT_OPTIONS,
   type VideoFrame, type ChoreoKeyframe, type VideoChoreoResult,
 } from '@/lib/videoChoreoEngine';
+import VideoChoreoResultPreview from './VideoChoreoResultPreview';
+import { terminateTrackingWorker } from '@/lib/videoTrackingWorkerClient';
 
 export default function VideoChoreoPanel({ onClose }: { onClose: () => void }) {
   // File state
