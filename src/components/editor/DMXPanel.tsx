@@ -29,16 +29,21 @@ interface DiagnosticLog {
 
 export default function DMXPanel({ onClose }: { onClose: () => void }) {
   const { droneFormations, currentTime } = useProjectStore();
+  const { dmxDevices, sendDMXToAll, getConnectedDMXDevices } = useUSBDeviceStore();
   const [universes, setUniverses] = useState<DMXUniverse[]>([]);
   const [keyframes, setKeyframes] = useState<DMXKeyframe[]>([]);
   const [selectedFixture, setSelectedFixture] = useState<string | null>(null);
   const [channelsPerFixture, setChannelsPerFixture] = useState(4);
+  const [outputMode, setOutputMode] = useState<'artnet' | 'usb'>('artnet');
   const [artNetIp, setArtNetIp] = useState('255.255.255.255');
   const [artNetPort, setArtNetPort] = useState(6454);
   const [sending, setSending] = useState(false);
   const [diagLogs, setDiagLogs] = useState<DiagnosticLog[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
   const [showDiag, setShowDiag] = useState(true);
+
+  const connectedUSBDMX = useMemo(() => getConnectedDMXDevices(), [dmxDevices]);
+  const hasUSBDMX = connectedUSBDMX.length > 0;
 
   const addDiagLog = useCallback((log: DiagnosticLog) => {
     setDiagLogs(prev => [log, ...prev].slice(0, 50));
