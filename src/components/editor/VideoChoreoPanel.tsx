@@ -716,7 +716,7 @@ export default function VideoChoreoPanel({ onClose }: { onClose: () => void }) {
         )}
 
         {/* ── Generate Button ────────────────────────────────── */}
-        {frames.length > 0 && (
+        {frames.length > 0 && processingMode === 'silhouette' && (
           <Button
             onClick={generateChoreo}
             disabled={loading}
@@ -735,6 +735,77 @@ export default function VideoChoreoPanel({ onClose }: { onClose: () => void }) {
               </>
             )}
           </Button>
+        )}
+
+        {frames.length > 0 && processingMode === 'ai-semantic' && (
+          <Button
+            onClick={generateAIChoreo}
+            disabled={aiLoading || loading}
+            className="w-full h-9 text-[10px] gap-1.5 font-semibold bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90"
+            size="sm"
+          >
+            {aiLoading ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                {loadingPhase} ({progress}%)
+              </>
+            ) : (
+              <>
+                <Brain className="w-3.5 h-3.5" />
+                🧠 Gerar com IA Semântica ({frames.length} frames)
+              </>
+            )}
+          </Button>
+        )}
+
+        {/* AI Analysis Result */}
+        {aiResult && processingMode === 'ai-semantic' && (
+          <div className="space-y-1.5 p-2 rounded-lg border border-accent/20 bg-accent/5">
+            <div className="flex items-center gap-1">
+              <Brain className="w-3 h-3 text-accent-foreground" />
+              <span className="text-[8px] font-bold text-accent-foreground uppercase">Análise da IA</span>
+            </div>
+            {aiResult.analysis && (
+              <p className="text-[8px] text-foreground">{aiResult.analysis}</p>
+            )}
+            {aiResult.narrative && (
+              <p className="text-[7px] text-muted-foreground italic">"{aiResult.narrative}"</p>
+            )}
+            {aiResult.globalSuggestions && (
+              <div className="flex gap-1 flex-wrap">
+                {aiResult.globalSuggestions.colorPalette?.map((c: string, i: number) => (
+                  <div
+                    key={i}
+                    className="w-4 h-4 rounded-full border border-border/30"
+                    style={{ backgroundColor: c }}
+                    title={c}
+                  />
+                ))}
+                {aiResult.globalSuggestions.musicStyle && (
+                  <span className="text-[7px] bg-surface-1 px-1.5 py-0.5 rounded text-muted-foreground">
+                    🎵 {aiResult.globalSuggestions.musicStyle}
+                  </span>
+                )}
+                {aiResult.globalSuggestions.tempo && (
+                  <span className="text-[7px] bg-surface-1 px-1.5 py-0.5 rounded text-muted-foreground">
+                    ⏱ {aiResult.globalSuggestions.tempo}
+                  </span>
+                )}
+              </div>
+            )}
+            {aiResult.formations && (
+              <div className="space-y-0.5 max-h-24 overflow-y-auto">
+                {aiResult.formations.map((f: any, i: number) => (
+                  <div key={i} className="flex items-center gap-1 text-[7px] text-muted-foreground">
+                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: f.color || '#00E5FF' }} />
+                    <span className="font-semibold text-foreground">{f.shape}</span>
+                    <span>— {f.description?.substring(0, 40)}</span>
+                    <span className="ml-auto text-[6px] bg-surface-2 px-1 rounded">{f.emotion}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         {/* ── Loading Bar ────────────────────────────────────── */}
