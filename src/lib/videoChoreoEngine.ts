@@ -37,8 +37,11 @@ export interface ChoreoKeyframe {
   time: number;
   points: { x: number; y: number; z: number }[];
   color: string;
+  colors?: string[]; // per-drone colors from regional extraction
   brightness: number;
   thumbnail: string;
+  regionalColors?: RegionalColorMap;
+  opticalFlow?: OpticalFlowField;
 }
 
 export interface ChoreoTrajectory {
