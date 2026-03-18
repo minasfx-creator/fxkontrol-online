@@ -275,6 +275,10 @@ export default function VideoChoreoPanel({ onClose }: { onClose: () => void }) {
         blurRadius, contrastBoost, edgeSensitivity,
         holdDuration, transitionDuration,
         smoothTrajectories,
+        useOpticalFlow,
+        useKalmanFilter,
+        useSmartKeyframes,
+        useRegionalColor,
         onProgress: (p, phase) => {
           setProgress(Math.round(p * 100));
           setLoadingPhase(phase);
