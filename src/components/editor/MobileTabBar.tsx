@@ -106,7 +106,7 @@ export default function MobileTabBar({
               <Icon className={cn(
                 "w-5 h-5",
                 isActive && "drop-shadow-[0_0_6px_hsl(var(--primary)/0.5)]",
-                accent && !isActive && "drop-shadow-[0_0_4px_rgba(251,146,60,0.4)]"
+                accent && !isActive && "drop-shadow-[0_0_4px_hsl(var(--destructive)/0.4)]"
               )} />
               <span className={cn(
                 "text-[8px] font-bold uppercase tracking-wider",
