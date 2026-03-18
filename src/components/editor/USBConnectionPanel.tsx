@@ -131,6 +131,7 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
         bytesSent: 0,
       };
       startReadLoop(connectedDevice);
+      registerDevice(connectedDevice);
 
       if (navigator.vibrate) navigator.vibrate(50);
     } catch (e: any) {
