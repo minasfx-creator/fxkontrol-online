@@ -56,6 +56,15 @@ export default function VideoChoreoPanel({ onClose }: { onClose: () => void }) {
   const [smoothTrajectories, setSmoothTrajectories] = useState(true);
   const [frameRange, setFrameRange] = useState<[number, number]>([0, 100]);
 
+  // Advanced tracking
+  const [useOpticalFlow, setUseOpticalFlow] = useState(false);
+  const [useKalmanFilter, setUseKalmanFilter] = useState(false);
+  const [useSmartKeyframes, setUseSmartKeyframes] = useState(false);
+  const [useRegionalColor, setUseRegionalColor] = useState(false);
+  const [useDepthEstimation, setUseDepthEstimation] = useState(false);
+  const [useObjectSegmentation, setUseObjectSegmentation] = useState(false);
+  const [showAdvancedTracking, setShowAdvancedTracking] = useState(false);
+
   // AI Mode
   const [processingMode, setProcessingMode] = useState<'silhouette' | 'ai-semantic'>('silhouette');
   const [aiContext, setAiContext] = useState('');
