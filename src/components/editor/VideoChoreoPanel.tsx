@@ -108,6 +108,7 @@ export default function VideoChoreoPanel({ onClose }: { onClose: () => void }) {
           droneCount,
           context: aiContext || undefined,
           mode: 'semantic',
+          analysisDepth,
         },
       });
 
