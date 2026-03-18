@@ -56,6 +56,11 @@ interface SkycDrone {
   pyroProgram: SkycPyroEvent[];
   startDelay: number;
   landPosition?: { x: number; y: number; z: number };
+  // Video choreo metadata
+  regionalColor?: { hex: string; region: { row: number; col: number } };
+  depthLayer?: 'foreground' | 'midground' | 'background';
+  depthMultiplier?: number;
+  segmentLabel?: string;
 }
 
 interface SkycPyroEvent {
