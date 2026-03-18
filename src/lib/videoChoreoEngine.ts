@@ -54,7 +54,7 @@ export interface VideoChoreoOptions {
   droneCount: number;
   radius: number;
   baseHeight: number;
-  heightVariation: number; // 0 = flat, 1 = full brightness-based height
+  heightVariation: number;
   threshold: number;
   invertDetection: boolean;
   detectionMode: 'threshold' | 'edge' | 'adaptive';
@@ -63,9 +63,16 @@ export interface VideoChoreoOptions {
   edgeSensitivity: number;
   holdDuration: number;
   transitionDuration: number;
-  frameRange: [number, number]; // start/end percentage 0-1
+  frameRange: [number, number];
   colorExtraction: boolean;
   smoothTrajectories: boolean;
+  // Advanced tracking features
+  useOpticalFlow: boolean;
+  useKalmanFilter: boolean;
+  useSmartKeyframes: boolean;
+  useRegionalColor: boolean;
+  useDepthEstimation: boolean;
+  useObjectSegmentation: boolean;
   onProgress?: (progress: number, phase: string) => void;
 }
 
@@ -88,6 +95,12 @@ export const DEFAULT_OPTIONS: VideoChoreoOptions = {
   frameRange: [0, 1],
   colorExtraction: true,
   smoothTrajectories: true,
+  useOpticalFlow: false,
+  useKalmanFilter: false,
+  useSmartKeyframes: false,
+  useRegionalColor: false,
+  useDepthEstimation: false,
+  useObjectSegmentation: false,
 };
 
 // ─── Frame Extraction with Color Analysis ─────────────────────
