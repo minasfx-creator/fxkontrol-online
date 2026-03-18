@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
+import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import {
   type ConnectedDevice,
   type USBDeviceProfile,
@@ -39,6 +40,7 @@ const STATE_INDICATORS: Record<ConnectionState, { color: string; label: string }
 
 export default function USBConnectionPanel({ onClose }: { onClose: () => void }) {
   const isMobile = useIsMobile();
+  const { registerDevice, unregisterDevice } = useUSBDeviceStore();
   const [devices, setDevices] = useState<ConnectedDevice[]>([]);
   const [logs, setLogs] = useState<USBLog[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<string>(DEVICE_PROFILES[0].label);
@@ -129,6 +131,7 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
         bytesSent: 0,
       };
       startReadLoop(connectedDevice);
+      registerDevice(connectedDevice);
 
       if (navigator.vibrate) navigator.vibrate(50);
     } catch (e: any) {
@@ -155,9 +158,10 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
       await closeSerialConnection(device);
       addLog({ deviceId, direction: 'info', message: 'Desconectado' });
     }
+    unregisterDevice(deviceId);
     setDevices(prev => prev.filter(d => d.id !== deviceId));
     if (navigator.vibrate) navigator.vibrate(30);
-  }, [devices, addLog]);
+  }, [devices, addLog, unregisterDevice]);
 
   // Send data to device
   const sendToDevice = useCallback(async (deviceId: string) => {

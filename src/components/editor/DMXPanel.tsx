@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Lightbulb, Plus, Trash2, Send, Wifi, Activity, CheckCircle2, XCircle, Clock, Zap } from 'lucide-react';
+import { Lightbulb, Plus, Trash2, Send, Wifi, Activity, CheckCircle2, XCircle, Clock, Zap, Usb } from 'lucide-react';
+import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
@@ -28,16 +29,21 @@ interface DiagnosticLog {
 
 export default function DMXPanel({ onClose }: { onClose: () => void }) {
   const { droneFormations, currentTime } = useProjectStore();
+  const { dmxDevices, sendDMXToAll, getConnectedDMXDevices } = useUSBDeviceStore();
   const [universes, setUniverses] = useState<DMXUniverse[]>([]);
   const [keyframes, setKeyframes] = useState<DMXKeyframe[]>([]);
   const [selectedFixture, setSelectedFixture] = useState<string | null>(null);
   const [channelsPerFixture, setChannelsPerFixture] = useState(4);
+  const [outputMode, setOutputMode] = useState<'artnet' | 'usb'>('artnet');
   const [artNetIp, setArtNetIp] = useState('255.255.255.255');
   const [artNetPort, setArtNetPort] = useState(6454);
   const [sending, setSending] = useState(false);
   const [diagLogs, setDiagLogs] = useState<DiagnosticLog[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
   const [showDiag, setShowDiag] = useState(true);
+
+  const connectedUSBDMX = useMemo(() => getConnectedDMXDevices(), [dmxDevices]);
+  const hasUSBDMX = connectedUSBDMX.length > 0;
 
   const addDiagLog = useCallback((log: DiagnosticLog) => {
     setDiagLogs(prev => [log, ...prev].slice(0, 50));
@@ -157,6 +163,39 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const sendUSBDirect = async () => {
+    if (universes.length === 0) {
+      toast.error('Faça o Auto-Patch primeiro');
+      return;
+    }
+    setSending(true);
+    const t0 = performance.now();
+    try {
+      // Send each universe's channels to all connected USB DMX devices
+      for (const u of universes) {
+        const result = await sendDMXToAll(u.channels);
+        const latency = Math.round(performance.now() - t0);
+        addDiagLog({
+          timestamp: new Date(), type: 'send',
+          message: `USB → Uni ${u.id} · ${result.deviceCount} device(s) · ${result.totalBytes}B`,
+          latency,
+        });
+      }
+      setConnectionStatus('ok');
+      const latency = Math.round(performance.now() - t0);
+      toast.success(`DMX enviado via USB (${universes.length} uni, ${connectedUSBDMX.length} device)`, {
+        description: `Latência: ${latency}ms`,
+      });
+    } catch (e: any) {
+      const latency = Math.round(performance.now() - t0);
+      setConnectionStatus('error');
+      addDiagLog({ timestamp: new Date(), type: 'error', message: e.message || 'Erro USB', latency });
+      toast.error(e.message || 'Erro ao enviar via USB');
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <div className="h-full bg-surface-1 border-l border-border flex flex-col">
       <div className="flex items-center justify-between px-2 py-1.5 border-b border-border">
@@ -251,35 +290,108 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
-        {/* Art-Net Output */}
+        {/* Output Mode Selector */}
         <div className="space-y-1.5 border-t border-border/50 pt-2">
-          <div className="flex items-center gap-1.5">
-            <Wifi className="h-3 w-3 text-primary" />
-            <span className="text-[9px] text-muted-foreground font-semibold uppercase">Art-Net Output</span>
+          <span className="text-[9px] text-muted-foreground font-semibold uppercase">Modo de Saída</span>
+          <div className="grid grid-cols-2 gap-1">
+            <button
+              onClick={() => setOutputMode('artnet')}
+              className={`flex items-center justify-center gap-1 rounded-sm p-1.5 text-[9px] font-semibold transition-colors ${
+                outputMode === 'artnet'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-surface-2 text-muted-foreground hover:bg-surface-3'
+              }`}
+            >
+              <Wifi className="h-3 w-3" />
+              Art-Net
+            </button>
+            <button
+              onClick={() => setOutputMode('usb')}
+              className={`flex items-center justify-center gap-1 rounded-sm p-1.5 text-[9px] font-semibold transition-colors ${
+                outputMode === 'usb'
+                  ? 'bg-primary text-primary-foreground'
+                  : hasUSBDMX
+                    ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                    : 'bg-surface-2 text-muted-foreground hover:bg-surface-3'
+              }`}
+            >
+              <Usb className="h-3 w-3" />
+              USB Direct {hasUSBDMX && `(${connectedUSBDMX.length})`}
+            </button>
           </div>
-          <div className="flex gap-1">
-            <Input
-              value={artNetIp}
-              onChange={e => setArtNetIp(e.target.value)}
-              className="h-6 text-[9px] font-mono-code bg-surface-0 border-border flex-1"
-              placeholder="IP"
-            />
-            <Input
-              type="number"
-              value={artNetPort}
-              onChange={e => setArtNetPort(Number(e.target.value))}
-              className="h-6 text-[9px] font-mono-code bg-surface-0 border-border w-16"
-            />
-          </div>
-          <Button
-            size="sm" className="h-6 text-[10px] w-full gap-1"
-            onClick={sendArtNet}
-            disabled={universes.length === 0 || sending}
-          >
-            <Send className="h-3 w-3" />
-            {sending ? 'Enviando...' : `Send Art-Net (${universes.length} uni)`}
-          </Button>
         </div>
+
+        {/* Art-Net Output */}
+        {outputMode === 'artnet' && (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <Wifi className="h-3 w-3 text-primary" />
+              <span className="text-[9px] text-muted-foreground font-semibold uppercase">Art-Net Output</span>
+            </div>
+            <div className="flex gap-1">
+              <Input
+                value={artNetIp}
+                onChange={e => setArtNetIp(e.target.value)}
+                className="h-6 text-[9px] font-mono-code bg-surface-0 border-border flex-1"
+                placeholder="IP"
+              />
+              <Input
+                type="number"
+                value={artNetPort}
+                onChange={e => setArtNetPort(Number(e.target.value))}
+                className="h-6 text-[9px] font-mono-code bg-surface-0 border-border w-16"
+              />
+            </div>
+            <Button
+              size="sm" className="h-6 text-[10px] w-full gap-1"
+              onClick={sendArtNet}
+              disabled={universes.length === 0 || sending}
+            >
+              <Send className="h-3 w-3" />
+              {sending ? 'Enviando...' : `Send Art-Net (${universes.length} uni)`}
+            </Button>
+          </div>
+        )}
+
+        {/* USB Direct Output */}
+        {outputMode === 'usb' && (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <Usb className="h-3 w-3 text-primary" />
+              <span className="text-[9px] text-muted-foreground font-semibold uppercase">USB Direct Output</span>
+            </div>
+
+            {!hasUSBDMX ? (
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-sm p-2 text-[9px] text-yellow-400">
+                <p className="font-bold mb-0.5">⚠ Nenhum dispositivo DMX USB conectado</p>
+                <p>Abra o painel <strong>USB Connect</strong> e pareie um ENTTEC Open/Pro DMX.</p>
+              </div>
+            ) : (
+              <>
+                {/* Connected USB DMX devices */}
+                <div className="space-y-1">
+                  {connectedUSBDMX.map(d => (
+                    <div key={d.id} className="flex items-center gap-1.5 bg-surface-2 rounded-sm p-1.5">
+                      <div className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+                      <span className="text-[9px] text-foreground flex-1 truncate">{d.label}</span>
+                      <span className="text-[7px] text-muted-foreground">{d.isENTTECPro ? 'PRO' : 'OPEN'}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Send via USB */}
+                <Button
+                  size="sm" className="h-6 text-[10px] w-full gap-1"
+                  onClick={sendUSBDirect}
+                  disabled={universes.length === 0 || sending}
+                >
+                  <Usb className="h-3 w-3" />
+                  {sending ? 'Enviando...' : `Send USB (${connectedUSBDMX.length} device${connectedUSBDMX.length > 1 ? 's' : ''})`}
+                </Button>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Export */}
         <div className="flex items-center gap-1">
