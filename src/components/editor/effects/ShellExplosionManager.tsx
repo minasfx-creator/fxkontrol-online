@@ -4,6 +4,7 @@ import {
   getLiftTime,
   getStarLifetime,
   getMortarVelocity,
+  createMultiBreakTimings,
   GRAVITY,
   type BurstPattern,
 } from '@/lib/pyroPhysics';
@@ -18,9 +19,7 @@ import SmokeTrailInner from './SmokeTrail';
  *   2. Burst phase (ShellBurstRenderer: GPU particle explosion)
  *   3. Smoke phase (SmokeTrail: persistent volumetric smoke)
  *
- * Equivalent to UE5's AFireworkActor::Launch() + Tick() + Destroy()
- * Wind/drag/HDR parameters are read from useSceneStore in real-time,
- * consistent with Skybrush Flockwave environment data.
+ * Now supports: multi-break, pistil, color-change, glitter, falling leaves.
  */
 
 interface ShellConfig {
@@ -31,8 +30,14 @@ interface ShellConfig {
   pattern: BurstPattern;
   heading: number;
   pitch: number;
-  fireTime: number; // absolute time in show
+  fireTime: number;
   secondaryColor?: string;
+  numBreaks?: number;
+  hasPistil?: boolean;
+  pistilColor?: string;
+  colorTransition?: 'none' | 'to' | 'changing' | 'alternating';
+  trailType?: 'none' | 'comet' | 'glitter' | 'brocade' | 'charcoal' | 'smoke';
+  fallingLeaves?: boolean;
 }
 
 interface ShellExplosionManagerProps {
@@ -47,32 +52,38 @@ function SingleShellLifecycle({
   shell: ShellConfig;
   currentTime: number;
 }) {
-  // Read afterglow duration from store for accurate lifecycle timing
   const afterglowDuration = useSceneStore(st => st.settings.afterglowDuration);
 
   const liftTime = useMemo(() => getLiftTime(shell.caliber), [shell.caliber]);
   const starLife = useMemo(() => getStarLifetime(shell.caliber), [shell.caliber]);
   const breakH = useMemo(() => getBreakHeight(shell.caliber), [shell.caliber]);
   const v0 = useMemo(() => getMortarVelocity(shell.caliber), [shell.caliber]);
+  const numBreaks = shell.numBreaks || 1;
+
+  const multiBreakTimings = useMemo(
+    () => numBreaks > 1 ? createMultiBreakTimings(shell.caliber, numBreaks) : null,
+    [shell.caliber, numBreaks]
+  );
 
   const elapsed = currentTime - shell.fireTime;
 
-  // Phase timing — smoke lingers based on store afterglowDuration
+  // Phase timing
   const liftEnd = liftTime;
-  const burstEnd = liftEnd + starLife;
+  const totalBurstDuration = numBreaks > 1
+    ? starLife + (multiBreakTimings ? multiBreakTimings[multiBreakTimings.length - 1].delay : 0)
+    : starLife;
+  const burstEnd = liftEnd + totalBurstDuration;
   const smokeEnd = burstEnd + Math.max(4, afterglowDuration);
 
-  // Not yet fired or fully done
   if (elapsed < 0 || elapsed > smokeEnd) return null;
 
-  // Calculate burst position (where the shell detonates)
+  // Calculate burst position
   const pitchRad = (shell.pitch || 85) * (Math.PI / 180);
   const headingRad = (shell.heading || 0) * (Math.PI / 180);
   const dirX = Math.sin(headingRad) * Math.cos(pitchRad);
   const dirY = Math.sin(pitchRad);
   const dirZ = -Math.cos(headingRad) * Math.cos(pitchRad);
 
-  // Shell position at break height
   const t = liftTime;
   const dist = Math.min(breakH, v0 * t + 0.5 * GRAVITY * t * t);
   const burstPos: [number, number, number] = [
@@ -83,7 +94,7 @@ function SingleShellLifecycle({
 
   return (
     <>
-      {/* Phase 1: Launch — comet trail rising */}
+      {/* Phase 1: Launch */}
       {elapsed >= 0 && elapsed <= liftEnd && (
         <PrefireShell
           position={shell.position}
@@ -95,19 +106,57 @@ function SingleShellLifecycle({
         />
       )}
 
-      {/* Phase 2: Burst — GPU particle explosion (reads store for HDR/wind/drag) */}
+      {/* Phase 2: Burst(s) */}
       {elapsed > liftEnd && elapsed <= burstEnd && (
-        <ShellBurstRenderer
-          position={burstPos}
-          color={shell.color}
-          progress={(elapsed - liftEnd) / starLife}
-          caliber={shell.caliber}
-          pattern={shell.pattern}
-          secondaryColor={shell.secondaryColor}
-        />
+        <>
+          {numBreaks > 1 && multiBreakTimings ? (
+            // Multi-break: render each break at different heights/times
+            multiBreakTimings.map((mb, idx) => {
+              const breakElapsed = elapsed - liftEnd - mb.delay;
+              if (breakElapsed < 0 || breakElapsed > starLife) return null;
+              const heightFactor = mb.height / breakH;
+              const mbPos: [number, number, number] = [
+                burstPos[0],
+                shell.position[1] + dirY * dist * heightFactor,
+                burstPos[2],
+              ];
+              return (
+                <ShellBurstRenderer
+                  key={`mb-${idx}`}
+                  position={mbPos}
+                  color={shell.color}
+                  progress={breakElapsed / starLife}
+                  caliber={shell.caliber}
+                  pattern={shell.pattern}
+                  secondaryColor={shell.secondaryColor}
+                  hasPistil={idx === 0 ? shell.hasPistil : false}
+                  pistilColor={shell.pistilColor}
+                  colorTransition={shell.colorTransition}
+                  trailType={shell.trailType}
+                  fallingLeaves={shell.fallingLeaves}
+                />
+              );
+            })
+          ) : (
+            // Single break
+            <ShellBurstRenderer
+              position={burstPos}
+              color={shell.color}
+              progress={(elapsed - liftEnd) / starLife}
+              caliber={shell.caliber}
+              pattern={shell.pattern}
+              secondaryColor={shell.secondaryColor}
+              hasPistil={shell.hasPistil}
+              pistilColor={shell.pistilColor}
+              colorTransition={shell.colorTransition}
+              trailType={shell.trailType}
+              fallingLeaves={shell.fallingLeaves}
+            />
+          )}
+        </>
       )}
 
-      {/* Phase 3: Smoke — persistent volumetric cloud */}
+      {/* Phase 3: Smoke */}
       {elapsed > liftEnd && elapsed <= smokeEnd && (
         <SmokeTrailInner
           position={burstPos}
@@ -121,8 +170,6 @@ function SingleShellLifecycle({
 
 /**
  * Renders all active shells in the show.
- * Optimized: only renders shells within a time window.
- * afterglowDuration from store extends the lifecycle window.
  */
 export default function ShellExplosionManager({
   shells,
