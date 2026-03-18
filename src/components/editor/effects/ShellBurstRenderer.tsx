@@ -148,10 +148,15 @@ const MAX_PARTICLES = 1500;
 interface ShellBurstRendererProps {
   position: [number, number, number];
   color: string;
-  progress: number; // 0 = just burst, 1 = fully faded
+  progress: number;
   caliber?: number;
   pattern?: BurstPattern;
   secondaryColor?: string;
+  hasPistil?: boolean;
+  pistilColor?: string;
+  colorTransition?: 'none' | 'to' | 'changing' | 'alternating';
+  trailType?: 'none' | 'comet' | 'glitter' | 'brocade' | 'charcoal' | 'smoke';
+  fallingLeaves?: boolean;
 }
 
 /**
