@@ -1,5 +1,13 @@
 import { create } from 'zustand';
 import { materializeFormation as materialize } from '@/lib/formationMaterializer';
+import type { VideoChoreoResult } from '@/lib/videoChoreoEngine';
+
+export interface DepthLayer {
+  label: string;
+  layer: 'foreground' | 'midground' | 'background';
+  heightMultiplier: number;
+  boundingBox?: { x: number; y: number; w: number; h: number };
+}
 
 export type PartType = 'shell' | 'comet' | 'mine' | 'cake' | 'candle' | 'fan' | 'gerb' | 'flame' | 'sfx' | 'light' | 'laser' | 'drone' | 'formation' | 'single_shot' | 'ground' | 'rocket' | 'waterfall' | 'strobe' | 'set_piece';
 
@@ -155,6 +163,8 @@ export interface ProjectState {
   selectedTrajectoryIds: string[];
   showFormations: boolean;
   cueMarkers: CueMarker[];
+  videoChoreoResult: VideoChoreoResult | null;
+  depthLayers: DepthLayer[];
   gpsOrigin: { lat: number; lng: number; heading: number; altitude: number };
   setGpsOrigin: (origin: { lat: number; lng: number; heading: number; altitude: number }) => void;
 
@@ -220,6 +230,8 @@ export interface ProjectState {
   removeCueMarker: (id: string) => void;
   updateCueMarker: (id: string, updates: Partial<Omit<CueMarker, 'id'>>) => void;
   clearCueMarkers: () => void;
+  setVideoChoreoResult: (result: VideoChoreoResult | null) => void;
+  setDepthLayers: (layers: DepthLayer[]) => void;
 }
 
 export const EFFECT_LIBRARY: Effect[] = [
@@ -393,6 +405,8 @@ export const useProjectStore = create<ProjectState>((set) => ({
   selectedTrajectoryIds: [],
   showFormations: true,
   cueMarkers: [],
+  videoChoreoResult: null,
+  depthLayers: [],
   gpsOrigin: { lat: -23.5505, lng: -46.6333, heading: 0, altitude: 0 },
   setGpsOrigin: (origin) => set({ gpsOrigin: origin }),
 
@@ -661,4 +675,6 @@ export const useProjectStore = create<ProjectState>((set) => ({
     cueMarkers: s.cueMarkers.map((c) => c.id === id ? { ...c, ...updates } : c),
   })),
   clearCueMarkers: () => set({ cueMarkers: [] }),
+  setVideoChoreoResult: (result) => set({ videoChoreoResult: result }),
+  setDepthLayers: (layers) => set({ depthLayers: layers }),
 }));
