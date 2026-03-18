@@ -196,7 +196,7 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     }
   };
 
-
+  return (
     <div className="h-full bg-surface-1 border-l border-border flex flex-col">
       <div className="flex items-center justify-between px-2 py-1.5 border-b border-border">
         <div className="flex items-center gap-1.5">
