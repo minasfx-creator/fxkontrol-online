@@ -3,7 +3,7 @@ import {
   X, Video, Upload, Play, Pause, SkipBack, SkipForward, Loader2,
   Film, Eye, Layers, Trash2, Download, Wand2, Settings2, ChevronDown,
   ChevronRight, Palette, Move3d, Zap, RefreshCw, Maximize2,
-  Brain, Sparkles, MessageSquare,
+  Brain, Sparkles, MessageSquare, Activity, Target, Scan,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
