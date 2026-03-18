@@ -163,6 +163,8 @@ export interface ProjectState {
   selectedTrajectoryIds: string[];
   showFormations: boolean;
   cueMarkers: CueMarker[];
+  videoChoreoResult: VideoChoreoResult | null;
+  depthLayers: DepthLayer[];
   gpsOrigin: { lat: number; lng: number; heading: number; altitude: number };
   setGpsOrigin: (origin: { lat: number; lng: number; heading: number; altitude: number }) => void;
 
