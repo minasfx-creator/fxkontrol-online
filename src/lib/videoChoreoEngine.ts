@@ -15,9 +15,15 @@ import {
   isGifFile, isVideoFile,
   type ExtractedFrame, type FrameFormation,
 } from './videoToFormation';
+import {
+  computeOpticalFlow, kalmanSmoothTrajectory, detectSmartKeyframes,
+  extractRegionalColors, getDroneRegionalColor, applyFlowBiasToAssignment,
+  type OpticalFlowField, type RegionalColorMap, type SmartKeyframeResult,
+} from './videoTrackingAdvanced';
 
 export { isGifFile, isVideoFile };
 export type { ExtractedFrame, FrameFormation };
+export type { OpticalFlowField, RegionalColorMap, SmartKeyframeResult };
 
 // ─── Enhanced Types ──────────────────────────────────────────
 
