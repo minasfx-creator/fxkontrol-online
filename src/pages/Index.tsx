@@ -73,6 +73,7 @@ import TakeoffGridPanel from '@/components/editor/TakeoffGridPanel';
 import TransitionPlannerPanel from '@/components/editor/TransitionPlannerPanel';
 import LaserControlPanel from '@/components/editor/LaserControlPanel';
 import USBConnectionPanel from '@/components/editor/USBConnectionPanel';
+import VideoChoreoPanel from '@/components/editor/VideoChoreoPanel';
 import CinematicIntro from '@/components/editor/CinematicIntro';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
@@ -314,6 +315,7 @@ function Index() {
         {activePanel === 'transitions' && <TransitionPlannerPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'lasercontrol' && <LaserControlPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'usb' && <USBConnectionPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'videochoreo' && <VideoChoreoPanel onClose={() => setActivePanel(null)} />}
       </>
     );
   };
