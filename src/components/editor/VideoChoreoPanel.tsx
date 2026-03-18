@@ -768,7 +768,110 @@ export default function VideoChoreoPanel({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
-        {/* ── Generate Button ────────────────────────────────── */}
+        {/* ── Advanced Tracking ───────────────────────────────── */}
+        {frames.length > 0 && (
+          <div className="space-y-1.5">
+            <button
+              onClick={() => setShowAdvancedTracking(!showAdvancedTracking)}
+              className="flex items-center gap-1.5 w-full text-left"
+            >
+              {showAdvancedTracking ? <ChevronDown className="w-3 h-3 text-primary" /> : <ChevronRight className="w-3 h-3 text-muted-foreground" />}
+              <Activity className="w-3 h-3 text-primary" />
+              <span className="text-[9px] font-bold text-primary uppercase">Rastreio Avançado</span>
+              {(useOpticalFlow || useKalmanFilter || useSmartKeyframes || useRegionalColor || useDepthEstimation || useObjectSegmentation) && (
+                <span className="text-[7px] bg-primary/20 text-primary px-1 py-0.5 rounded font-mono-code ml-auto">
+                  {[useOpticalFlow, useKalmanFilter, useSmartKeyframes, useRegionalColor, useDepthEstimation, useObjectSegmentation].filter(Boolean).length} ativos
+                </span>
+              )}
+            </button>
+
+            {showAdvancedTracking && (
+              <div className="space-y-1 p-2 rounded-lg border border-primary/20 bg-primary/5">
+                {/* Client-side algorithms */}
+                <span className="text-[7px] text-muted-foreground font-semibold uppercase">Algoritmos Client-Side</span>
+                <div className="grid grid-cols-2 gap-1">
+                  {[
+                    { id: 'opticalFlow', label: 'Optical Flow', desc: 'Vetores de movimento', icon: Move3d, active: useOpticalFlow, toggle: () => setUseOpticalFlow(!useOpticalFlow) },
+                    { id: 'kalman', label: 'Kalman Filter', desc: 'Suaviza posições', icon: Zap, active: useKalmanFilter, toggle: () => setUseKalmanFilter(!useKalmanFilter) },
+                    { id: 'smartKf', label: 'Smart Keyframes', desc: 'Auto scene-change', icon: Film, active: useSmartKeyframes, toggle: () => setUseSmartKeyframes(!useSmartKeyframes) },
+                    { id: 'regional', label: 'Cores Regionais', desc: 'Paleta 4×4 por zona', icon: Palette, active: useRegionalColor, toggle: () => setUseRegionalColor(!useRegionalColor) },
+                  ].map(item => (
+                    <button
+                      key={item.id}
+                      onClick={item.toggle}
+                      className={cn(
+                        "flex items-start gap-1.5 p-1.5 rounded-md border transition-all text-left",
+                        item.active
+                          ? "border-primary/40 bg-primary/10 text-primary"
+                          : "border-border/40 bg-surface-2 text-muted-foreground hover:text-foreground hover:border-border/60"
+                      )}
+                    >
+                      <item.icon className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-[7px] font-bold uppercase">{item.label}</div>
+                        <div className="text-[6px] opacity-70">{item.desc}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* AI-powered features */}
+                <span className="text-[7px] text-muted-foreground font-semibold uppercase mt-1.5">Algoritmos IA (Semântico)</span>
+                <div className="grid grid-cols-2 gap-1">
+                  {[
+                    { id: 'depth', label: 'Profundidade 3D', desc: 'Estima depth layers', icon: Layers, active: useDepthEstimation, toggle: () => setUseDepthEstimation(!useDepthEstimation) },
+                    { id: 'segment', label: 'Segmentação', desc: 'Objetos independentes', icon: Scan, active: useObjectSegmentation, toggle: () => setUseObjectSegmentation(!useObjectSegmentation) },
+                  ].map(item => (
+                    <button
+                      key={item.id}
+                      onClick={item.toggle}
+                      className={cn(
+                        "flex items-start gap-1.5 p-1.5 rounded-md border transition-all text-left",
+                        item.active
+                          ? "border-accent/40 bg-accent/10 text-accent-foreground"
+                          : "border-border/40 bg-surface-2 text-muted-foreground hover:text-foreground hover:border-border/60"
+                      )}
+                    >
+                      <item.icon className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-[7px] font-bold uppercase">{item.label}</div>
+                        <div className="text-[6px] opacity-70">{item.desc}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Smart keyframe info badge */}
+                {result?.smartKeyframeInfo && (
+                  <div className="flex items-center gap-1.5 p-1.5 rounded bg-surface-1 border border-border/20">
+                    <Target className="w-3 h-3 text-primary" />
+                    <span className="text-[7px] text-foreground font-mono-code">
+                      {result.smartKeyframeInfo.selectedIndices.length} keyframes selecionados de {result.smartKeyframeInfo.scores.length} frames
+                    </span>
+                  </div>
+                )}
+
+                {/* Regional color preview */}
+                {result?.keyframes[selectedFrame]?.regionalColors && (
+                  <div className="space-y-0.5">
+                    <span className="text-[7px] text-muted-foreground font-semibold">Paleta Regional</span>
+                    <div className="grid grid-cols-4 gap-[2px]">
+                      {result.keyframes[selectedFrame].regionalColors!.grid.flat().map((c, i) => (
+                        <div
+                          key={i}
+                          className="h-3 rounded-sm border border-border/20"
+                          style={{ backgroundColor: c.color }}
+                          title={`${c.color} (sat: ${(c.saturation * 100).toFixed(0)}%)`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {frames.length > 0 && processingMode === 'silhouette' && (
           <Button
             onClick={generateChoreo}
