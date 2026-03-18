@@ -118,6 +118,8 @@ export default function VideoChoreoPanel({ onClose }: { onClose: () => void }) {
           context: aiContext || undefined,
           mode: 'semantic',
           analysisDepth,
+          depthEstimation: useDepthEstimation,
+          objectSegmentation: useObjectSegmentation,
         },
       });
 
