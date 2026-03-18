@@ -34,6 +34,7 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
     icon: Sparkles,
     items: [
       { id: 'swarmgpt', label: 'SwarmGPT AI', icon: Sparkles, shortcut: 'A' },
+      { id: 'videochoreo', label: 'Video Choreo', icon: Video },
       { id: 'synesthesia', label: 'Audio Sync', icon: Music, shortcut: 'Y' },
       { id: 'templates', label: 'Templates', icon: FolderOpen },
       { id: 'storyboard', label: 'Storyboard', icon: Film },
