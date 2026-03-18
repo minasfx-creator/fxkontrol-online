@@ -54,6 +54,7 @@ export interface VideoChoreoResult {
   trajectories: ChoreoTrajectory[];
   totalDuration: number;
   droneCount: number;
+  smartKeyframeInfo?: SmartKeyframeResult;
 }
 
 export interface VideoChoreoOptions {
