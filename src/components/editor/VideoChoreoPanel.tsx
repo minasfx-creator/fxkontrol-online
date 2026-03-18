@@ -798,50 +798,142 @@ export default function VideoChoreoPanel({ onClose }: { onClose: () => void }) {
 
         {/* AI Analysis Result */}
         {aiResult && processingMode === 'ai-semantic' && (
-          <div className="space-y-1.5 p-2 rounded-lg border border-accent/20 bg-accent/5">
-            <div className="flex items-center gap-1">
-              <Brain className="w-3 h-3 text-accent-foreground" />
-              <span className="text-[8px] font-bold text-accent-foreground uppercase">Análise da IA</span>
+          <div className="space-y-2 p-2 rounded-lg border border-accent/20 bg-accent/5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                <Brain className="w-3 h-3 text-accent-foreground" />
+                <span className="text-[8px] font-bold text-accent-foreground uppercase">Análise IA · Gemini Pro</span>
+              </div>
+              <button
+                onClick={() => setShowAiDetails(!showAiDetails)}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showAiDetails ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+              </button>
             </div>
+
+            {/* Analysis summary */}
             {aiResult.analysis && (
-              <p className="text-[8px] text-foreground">{aiResult.analysis}</p>
+              <p className="text-[8px] text-foreground leading-relaxed">{aiResult.analysis}</p>
             )}
-            {aiResult.narrative && (
-              <p className="text-[7px] text-muted-foreground italic">"{aiResult.narrative}"</p>
-            )}
-            {aiResult.globalSuggestions && (
-              <div className="flex gap-1 flex-wrap">
-                {aiResult.globalSuggestions.colorPalette?.map((c: string, i: number) => (
-                  <div
-                    key={i}
-                    className="w-4 h-4 rounded-full border border-border/30"
-                    style={{ backgroundColor: c }}
-                    title={c}
-                  />
-                ))}
-                {aiResult.globalSuggestions.musicStyle && (
-                  <span className="text-[7px] bg-surface-1 px-1.5 py-0.5 rounded text-muted-foreground">
-                    🎵 {aiResult.globalSuggestions.musicStyle}
-                  </span>
-                )}
-                {aiResult.globalSuggestions.tempo && (
-                  <span className="text-[7px] bg-surface-1 px-1.5 py-0.5 rounded text-muted-foreground">
-                    ⏱ {aiResult.globalSuggestions.tempo}
-                  </span>
-                )}
-              </div>
-            )}
-            {aiResult.formations && (
-              <div className="space-y-0.5 max-h-24 overflow-y-auto">
-                {aiResult.formations.map((f: any, i: number) => (
-                  <div key={i} className="flex items-center gap-1 text-[7px] text-muted-foreground">
-                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: f.color || '#00E5FF' }} />
-                    <span className="font-semibold text-foreground">{f.shape}</span>
-                    <span>— {f.description?.substring(0, 40)}</span>
-                    <span className="ml-auto text-[6px] bg-surface-2 px-1 rounded">{f.emotion}</span>
+
+            {showAiDetails && (
+              <>
+                {/* Narrative */}
+                {aiResult.narrative && (
+                  <div className="p-1.5 rounded bg-surface-1/80 border border-border/20">
+                    <span className="text-[7px] text-muted-foreground font-semibold uppercase">Narrativa</span>
+                    <p className="text-[8px] text-foreground italic mt-0.5">"{aiResult.narrative}"</p>
                   </div>
-                ))}
-              </div>
+                )}
+
+                {/* Motion Analysis */}
+                {aiResult.motionAnalysis && (
+                  <div className="p-1.5 rounded bg-surface-1/80 border border-border/20">
+                    <span className="text-[7px] text-muted-foreground font-semibold uppercase">Análise de Movimento</span>
+                    <p className="text-[8px] text-foreground mt-0.5">{aiResult.motionAnalysis}</p>
+                  </div>
+                )}
+
+                {/* Global Suggestions */}
+                {aiResult.globalSuggestions && (
+                  <div className="space-y-1">
+                    <div className="flex gap-1 flex-wrap">
+                      {aiResult.globalSuggestions.colorPalette?.map((c: string, i: number) => (
+                        <div
+                          key={i}
+                          className="w-5 h-5 rounded-full border border-border/30 shadow-sm"
+                          style={{ backgroundColor: c }}
+                          title={c}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex gap-1 flex-wrap">
+                      {aiResult.globalSuggestions.musicStyle && (
+                        <span className="text-[7px] bg-surface-1 px-1.5 py-0.5 rounded text-muted-foreground border border-border/20">
+                          🎵 {aiResult.globalSuggestions.musicStyle}
+                        </span>
+                      )}
+                      {aiResult.globalSuggestions.tempo && (
+                        <span className="text-[7px] bg-surface-1 px-1.5 py-0.5 rounded text-muted-foreground border border-border/20">
+                          ⏱ {aiResult.globalSuggestions.tempo}
+                        </span>
+                      )}
+                      {aiResult.globalSuggestions.showStyle && (
+                        <span className="text-[7px] bg-surface-1 px-1.5 py-0.5 rounded text-muted-foreground border border-border/20">
+                          🎭 {aiResult.globalSuggestions.showStyle}
+                        </span>
+                      )}
+                      {aiResult.globalSuggestions.openingEffect && (
+                        <span className="text-[7px] bg-surface-1 px-1.5 py-0.5 rounded text-muted-foreground border border-border/20">
+                          🚀 {aiResult.globalSuggestions.openingEffect}
+                        </span>
+                      )}
+                      {aiResult.globalSuggestions.finaleEffect && (
+                        <span className="text-[7px] bg-surface-1 px-1.5 py-0.5 rounded text-muted-foreground border border-border/20">
+                          ✨ {aiResult.globalSuggestions.finaleEffect}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Formations List */}
+                {aiResult.formations && (
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    <span className="text-[7px] text-muted-foreground font-semibold uppercase">
+                      Formações ({aiResult.formations.length})
+                    </span>
+                    {aiResult.formations.map((f: any, i: number) => {
+                      const isClimax = aiResult.globalSuggestions?.climaxFormationIndex === i;
+                      return (
+                        <div
+                          key={i}
+                          className={cn(
+                            "p-1.5 rounded border transition-all",
+                            isClimax
+                              ? "border-primary/40 bg-primary/5"
+                              : "border-border/20 bg-surface-1/50"
+                          )}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <div
+                              className="w-3 h-3 rounded-full flex-shrink-0 border border-border/30"
+                              style={{
+                                background: f.secondaryColor
+                                  ? `linear-gradient(135deg, ${f.color || '#00E5FF'}, ${f.secondaryColor})`
+                                  : f.color || '#00E5FF',
+                              }}
+                            />
+                            <span className="text-[8px] font-bold text-foreground flex-1">{f.shape}</span>
+                            {isClimax && (
+                              <span className="text-[6px] bg-primary/20 text-primary px-1 rounded font-bold">CLÍMAX</span>
+                            )}
+                            <span className="text-[6px] bg-surface-2 px-1 rounded text-muted-foreground">{f.emotion}</span>
+                          </div>
+                          {f.description && (
+                            <p className="text-[7px] text-muted-foreground mt-0.5 leading-relaxed">{f.description}</p>
+                          )}
+                          <div className="flex gap-1 mt-0.5 flex-wrap">
+                            {f.transitionStyle && (
+                              <span className="text-[6px] text-muted-foreground/70">↗ {f.transitionStyle}</span>
+                            )}
+                            {f.motionDuringHold && f.motionDuringHold !== 'static' && (
+                              <span className="text-[6px] text-muted-foreground/70">🔄 {f.motionDuringHold}</span>
+                            )}
+                            {f.ledEffect && f.ledEffect !== 'solid' && (
+                              <span className="text-[6px] text-muted-foreground/70">💡 {f.ledEffect}</span>
+                            )}
+                            {f.height && (
+                              <span className="text-[6px] text-muted-foreground/70">↕ {f.height}m</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
