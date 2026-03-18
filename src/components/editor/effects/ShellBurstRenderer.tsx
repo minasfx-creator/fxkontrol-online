@@ -289,6 +289,17 @@ export default function ShellBurstRenderer({
   const screenBlend = useMemo(() => getThreeBlending('screen'), []);
   const additiveBlend = useMemo(() => getThreeBlending('additive'), []);
 
+  const pistilUniforms = useMemo(() => ({
+    uColor: { value: new THREE.Color(pistilColor) },
+    uColor2: { value: new THREE.Color(pistilColor) },
+    uColorChangePoint: { value: 2.0 },
+    uBaseSize: { value: baseSize * 0.7 },
+    uHDRMultiplier: { value: hdrMultiplier },
+    uTime: { value: 0 },
+    uThermalSpeed: { value: thermalTransitionSpeed },
+    uMaxEnergy: { value: getMaxEnergy(0) },
+  }), []);
+
   const afterglowUniforms = useMemo(() => ({
     uColor: { value: new THREE.Color(color) },
     uOpacity: { value: 0 },
