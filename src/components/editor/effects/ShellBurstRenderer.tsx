@@ -222,11 +222,28 @@ export default function ShellBurstRenderer({
   const burstSpread = useMemo(() => getStarSpread(caliber), [caliber]);
   const baseSize = useMemo(() => 0.5 + caliber * 0.35, [caliber]);
 
+  const pistilCount = useMemo(() => hasPistil ? Math.round(starCount * 0.25) : 0, [hasPistil, starCount]);
+  const pistilColorObj = useMemo(() => new THREE.Color(pistilColor), [pistilColor]);
+  const secondaryColorObj = useMemo(() => new THREE.Color(secondaryColor || color), [secondaryColor, color]);
+  const stepMods = useMemo<StepModifiers | undefined>(
+    () => fallingLeaves ? { fallingLeaves: true, reducedGravity: 0.3 } : undefined,
+    [fallingLeaves]
+  );
+
   // Initialize particles on first render
   useEffect(() => {
-    particlesRef.current = createShellBurst(starCount, breakSpeed, pattern, starLifetime);
+    const mainParticles = createShellBurst(starCount, breakSpeed, pattern, starLifetime);
+    if (fallingLeaves) mainParticles.forEach((p, i) => { p.seed = i / starCount; });
+    particlesRef.current = mainParticles;
+
+    if (hasPistil) {
+      const pistilPs = createShellBurst(pistilCount, breakSpeed * 0.4, 'peony', starLifetime * 0.8);
+      pistilPs.forEach((p, i) => { p.seed = i / pistilCount; });
+      pistilParticlesRef.current = pistilPs;
+    }
+    glitterParticlesRef.current = [];
     initTimeRef.current = 0;
-  }, [starCount, breakSpeed, pattern, starLifetime]);
+  }, [starCount, breakSpeed, pattern, starLifetime, hasPistil, pistilCount, fallingLeaves]);
 
   // Buffer attributes (reused — no GC pressure)
   const { posBuffer, lifeBuffer, maxLifeBuffer, brightnessBuffer, velocityBuffer } = useMemo(() => ({
@@ -237,9 +254,30 @@ export default function ShellBurstRenderer({
     velocityBuffer: new Float32Array(MAX_PARTICLES * 3),
   }), []);
 
+  // Pistil buffers
+  const pistilBuffers = useMemo(() => ({
+    pos: new Float32Array(MAX_PARTICLES * 3),
+    life: new Float32Array(MAX_PARTICLES),
+    maxLife: new Float32Array(MAX_PARTICLES),
+    brightness: new Float32Array(MAX_PARTICLES),
+    velocity: new Float32Array(MAX_PARTICLES * 3),
+  }), []);
+
+  // Glitter trail buffers
+  const GLITTER_MAX = 800;
+  const glitterBuffers = useMemo(() => ({
+    pos: new Float32Array(GLITTER_MAX * 3),
+    col: new Float32Array(GLITTER_MAX * 3),
+  }), []);
+
+  // Color change point: where in life (0-1) the color switches
+  const colorChangePoint = colorTransition !== 'none' ? 0.45 : 2.0; // >1 means no change
+
   // Shader uniforms — updated every frame from store
   const uniforms = useMemo(() => ({
     uColor: { value: new THREE.Color(color) },
+    uColor2: { value: new THREE.Color(secondaryColor || color) },
+    uColorChangePoint: { value: colorChangePoint },
     uBaseSize: { value: baseSize },
     uHDRMultiplier: { value: hdrMultiplier },
     uTime: { value: 0 },
