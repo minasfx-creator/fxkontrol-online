@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
   createShellBurst,
+  createGlitterTrailParticle,
   stepParticle,
   getBreakSpeed,
   getStarCount,
@@ -10,6 +11,7 @@ import {
   getStarSpread,
   type BurstPattern,
   type ParticleState,
+  type StepModifiers,
 } from '@/lib/pyroPhysics';
 import { useSceneStore } from '@/store/useSceneStore';
 import { getThreeBlending, getMaxEnergy, GROUND_LIGHT_SCALE } from '@/lib/niagaraBlenderRules';
