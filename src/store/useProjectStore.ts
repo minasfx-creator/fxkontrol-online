@@ -675,4 +675,6 @@ export const useProjectStore = create<ProjectState>((set) => ({
     cueMarkers: s.cueMarkers.map((c) => c.id === id ? { ...c, ...updates } : c),
   })),
   clearCueMarkers: () => set({ cueMarkers: [] }),
+  setVideoChoreoResult: (result) => set({ videoChoreoResult: result }),
+  setDepthLayers: (layers) => set({ depthLayers: layers }),
 }));
