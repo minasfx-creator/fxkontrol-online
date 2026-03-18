@@ -246,6 +246,35 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
             <FileDown className="w-3 h-3 mr-1.5 text-cyan-500" />
             Export .csv (Skybrush Studio)
           </Button>
+
+          <Button
+            variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
+            onClick={() => {
+              try {
+                const store = useProjectStore.getState();
+                // Check if videoChoreoResult exists in store
+                const choreoResult = (store as any).videoChoreoResult;
+                if (!choreoResult) {
+                  toast.error('Nenhum resultado de Video Choreo disponível. Gere uma coreografia primeiro.');
+                  return;
+                }
+                const skyc = exportVideoChoreoSkyc({
+                  projectName: store.projectName,
+                  gpsOrigin: store.gpsOrigin,
+                  choreoResult,
+                  depthLayers: (store as any).depthLayers,
+                  notes: 'Video choreo export with regional colors & depth layers',
+                });
+                downloadSkycFile(skyc, `${store.projectName.replace(/\s+/g, '_')}_videochoreo.skyc`);
+                toast.success('Video Choreo .skyc exportado com cores regionais e depth layers!');
+              } catch (err) {
+                toast.error(`Video Choreo SKYC export failed: ${(err as Error).message}`);
+              }
+            }}
+          >
+            <FileDown className="w-3 h-3 mr-1.5 text-violet-500" />
+            Export .skyc (Video Choreo + Depth)
+          </Button>
         </div>
       </div>
 
