@@ -1,28 +1,27 @@
 /**
  * Mobile Floating Tab Bar
- * Bottom tab bar for mobile devices that opens floating panels over the 3D viewport.
- * Priority panels: Timeline, Assets (EffectLibrary), Properties
+ * Bottom tab bar with quick access to Live FX, Points, Formations, Timeline, and More.
  */
-import { useState, useCallback } from 'react';
-import { Clock, Layers, Settings2, X, ChevronDown, ChevronUp, MoreHorizontal } from 'lucide-react';
+import { useCallback } from 'react';
+import { Clock, Sparkles, MapPin, Layers, X, ChevronDown, ChevronUp, MoreHorizontal, Hexagon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PanelId } from '@/components/editor/PanelTabBar';
 
-export type MobileTab = 'timeline' | 'assets' | 'properties' | 'more';
+export type MobileTab = 'timeline' | 'assets' | 'properties' | 'livefx' | 'points' | 'formations' | 'more';
 
 interface MobileTabBarProps {
   activeTab: MobileTab | null;
   onTabChange: (tab: MobileTab | null) => void;
   onOpenPanel: (id: PanelId) => void;
-  /** Height state for the floating panel: 'collapsed' | 'half' | 'full' */
   panelHeight: 'collapsed' | 'half' | 'full';
   onPanelHeightChange: (h: 'collapsed' | 'half' | 'full') => void;
 }
 
-const TABS: { key: MobileTab; label: string; icon: typeof Clock }[] = [
+const TABS: { key: MobileTab; label: string; icon: typeof Clock; panelId?: PanelId; accent?: boolean }[] = [
+  { key: 'livefx', label: 'Live FX', icon: Sparkles, panelId: 'livefiring', accent: true },
+  { key: 'points', label: 'Points', icon: MapPin, panelId: 'properties' },
+  { key: 'formations', label: 'Formações', icon: Hexagon, panelId: 'swarmgpt' },
   { key: 'timeline', label: 'Timeline', icon: Clock },
-  { key: 'assets', label: 'Assets', icon: Layers },
-  { key: 'properties', label: 'Props', icon: Settings2 },
   { key: 'more', label: 'More', icon: MoreHorizontal },
 ];
 
@@ -34,8 +33,17 @@ export default function MobileTabBar({
   onPanelHeightChange,
 }: MobileTabBarProps) {
   const handleTabClick = useCallback((tab: MobileTab) => {
+    const tabDef = TABS.find(t => t.key === tab);
+    
+    // If tab maps directly to a panel, open it
+    if (tabDef?.panelId) {
+      onOpenPanel(tabDef.panelId);
+      onTabChange(tab);
+      onPanelHeightChange('full');
+      return;
+    }
+
     if (activeTab === tab) {
-      // Toggle: if already active, cycle height or close
       if (panelHeight === 'half') {
         onPanelHeightChange('full');
       } else if (panelHeight === 'full') {
@@ -46,9 +54,9 @@ export default function MobileTabBar({
       }
     } else {
       onTabChange(tab);
-      onPanelHeightChange(tab === 'assets' ? 'full' : 'half');
+      onPanelHeightChange(tab === 'more' ? 'full' : 'half');
     }
-  }, [activeTab, panelHeight, onTabChange, onPanelHeightChange]);
+  }, [activeTab, panelHeight, onTabChange, onPanelHeightChange, onOpenPanel]);
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50">
@@ -68,7 +76,7 @@ export default function MobileTabBar({
               <ChevronUp className="w-4 h-4" />
             )}
             <span className="text-[9px] uppercase tracking-wider font-bold">
-              {panelHeight === 'full' ? 'Minimize' : 'Expand'}
+              {panelHeight === 'full' ? 'Minimizar' : 'Expandir'}
             </span>
           </button>
           <button
@@ -82,23 +90,30 @@ export default function MobileTabBar({
 
       {/* Tab bar */}
       <nav className="flex items-center justify-around bg-card/95 backdrop-blur-xl border-t border-border/50 px-1 pb-[env(safe-area-inset-bottom)]">
-        {TABS.map(({ key, label, icon: Icon }) => {
+        {TABS.map(({ key, label, icon: Icon, accent }) => {
           const isActive = activeTab === key;
           return (
             <button
               key={key}
               onClick={() => handleTabClick(key)}
               className={cn(
-                "flex flex-col items-center gap-0.5 py-2 px-3 rounded-lg transition-all min-w-[60px]",
+                "flex flex-col items-center gap-0.5 py-2 px-2 rounded-lg transition-all min-w-[52px]",
                 isActive
-                  ? "text-primary"
-                  : "text-muted-foreground"
+                  ? accent ? "text-destructive" : "text-primary"
+                  : accent ? "text-orange-400" : "text-muted-foreground"
               )}
             >
-              <Icon className={cn("w-5 h-5", isActive && "drop-shadow-[0_0_6px_hsl(var(--primary)/0.5)]")} />
-              <span className={cn("text-[9px] font-bold uppercase tracking-wider", isActive && "text-primary")}>{label}</span>
+              <Icon className={cn(
+                "w-5 h-5",
+                isActive && "drop-shadow-[0_0_6px_hsl(var(--primary)/0.5)]",
+                accent && !isActive && "drop-shadow-[0_0_4px_hsl(var(--destructive)/0.4)]"
+              )} />
+              <span className={cn(
+                "text-[8px] font-bold uppercase tracking-wider",
+                isActive && (accent ? "text-destructive" : "text-primary")
+              )}>{label}</span>
               {isActive && (
-                <div className="w-1 h-1 rounded-full bg-primary mt-0.5" />
+                <div className={cn("w-1 h-1 rounded-full mt-0.5", accent ? "bg-destructive" : "bg-primary")} />
               )}
             </button>
           );
