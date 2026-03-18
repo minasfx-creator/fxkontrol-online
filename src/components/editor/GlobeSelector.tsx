@@ -561,8 +561,8 @@ export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps
   const [showDropdown, setShowDropdown] = useState(false);
   const [phase, setPhase] = useState<'browse' | 'confirming' | 'zooming'>('browse');
   const [showManualInput, setShowManualInput] = useState(false);
-  const [manualLat, setManualLat] = useState('');
-  const [manualLng, setManualLng] = useState('');
+  const [manualLat, setManualLat] = useState('-23.5505');
+  const [manualLng, setManualLng] = useState('-46.6333');
   const [fadeOut, setFadeOut] = useState(false);
   const controlsRef = useRef<any>(null);
 
