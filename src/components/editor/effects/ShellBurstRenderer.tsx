@@ -177,10 +177,19 @@ export default function ShellBurstRenderer({
   caliber = 4,
   pattern = 'peony',
   secondaryColor,
+  hasPistil = false,
+  pistilColor = '#FFFFFF',
+  colorTransition = 'none',
+  trailType = 'none',
+  fallingLeaves = false,
 }: ShellBurstRendererProps) {
   const pointsRef = useRef<THREE.Points>(null);
+  const pistilPointsRef = useRef<THREE.Points>(null);
+  const glitterRef = useRef<THREE.Points>(null);
   const afterglowRef = useRef<THREE.Mesh>(null);
   const particlesRef = useRef<ParticleState[] | null>(null);
+  const pistilParticlesRef = useRef<ParticleState[] | null>(null);
+  const glitterParticlesRef = useRef<ParticleState[]>([]);
   const initTimeRef = useRef<number>(0);
 
   // ── Read real-time store values (Skybrush environment + pyro controls) ──
