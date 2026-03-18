@@ -158,9 +158,10 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
       await closeSerialConnection(device);
       addLog({ deviceId, direction: 'info', message: 'Desconectado' });
     }
+    unregisterDevice(deviceId);
     setDevices(prev => prev.filter(d => d.id !== deviceId));
     if (navigator.vibrate) navigator.vibrate(30);
-  }, [devices, addLog]);
+  }, [devices, addLog, unregisterDevice]);
 
   // Send data to device
   const sendToDevice = useCallback(async (deviceId: string) => {
