@@ -498,6 +498,64 @@ export default function VideoChoreoPanel({ onClose }: { onClose: () => void }) {
           <Slider value={[droneCount]} onValueChange={([v]) => setDroneCount(v)} min={50} max={2000} step={10} />
         </div>
 
+        {/* ── Processing Mode Toggle ─────────────────────────── */}
+        {frames.length > 0 && (
+          <div className="space-y-1.5">
+            <span className="text-[9px] text-muted-foreground font-semibold uppercase">Modo de Processamento</span>
+            <div className="grid grid-cols-2 gap-1">
+              <button
+                onClick={() => setProcessingMode('silhouette')}
+                className={cn(
+                  "flex items-center gap-1.5 p-2 rounded-lg border transition-all text-left",
+                  processingMode === 'silhouette'
+                    ? "border-primary/40 bg-primary/10 text-primary"
+                    : "border-border/40 bg-surface-1 text-muted-foreground hover:text-foreground hover:border-border/60"
+                )}
+              >
+                <Eye className="w-3.5 h-3.5 flex-shrink-0" />
+                <div>
+                  <div className="text-[8px] font-bold uppercase">Silhueta</div>
+                  <div className="text-[7px] opacity-70">Pixel-based</div>
+                </div>
+              </button>
+              <button
+                onClick={() => setProcessingMode('ai-semantic')}
+                className={cn(
+                  "flex items-center gap-1.5 p-2 rounded-lg border transition-all text-left",
+                  processingMode === 'ai-semantic'
+                    ? "border-accent/40 bg-accent/10 text-accent-foreground"
+                    : "border-border/40 bg-surface-1 text-muted-foreground hover:text-foreground hover:border-border/60"
+                )}
+              >
+                <Brain className="w-3.5 h-3.5 flex-shrink-0" />
+                <div>
+                  <div className="text-[8px] font-bold uppercase">IA Semântica</div>
+                  <div className="text-[7px] opacity-70">Interpreta conteúdo</div>
+                </div>
+              </button>
+            </div>
+
+            {/* AI Context input */}
+            {processingMode === 'ai-semantic' && (
+              <div className="space-y-1 p-2 rounded-lg border border-accent/20 bg-accent/5">
+                <div className="flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-accent-foreground" />
+                  <span className="text-[8px] font-bold text-accent-foreground uppercase">Contexto para IA</span>
+                </div>
+                <textarea
+                  value={aiContext}
+                  onChange={(e) => setAiContext(e.target.value)}
+                  placeholder="Ex: Show de Réveillon, tema oceano, público de 5000 pessoas..."
+                  className="w-full h-14 text-[9px] bg-surface-0 border border-border/30 rounded-md p-1.5 resize-none text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-accent/30"
+                />
+                <p className="text-[7px] text-muted-foreground">
+                  🧠 A IA analisa os frames do vídeo e cria formações baseadas no <strong>significado</strong> do conteúdo, não apenas na silhueta.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── Settings Panel ─────────────────────────────────── */}
         {showSettings && (
           <div className="space-y-2 p-2 rounded-lg border border-border/40 bg-surface-1/50">
