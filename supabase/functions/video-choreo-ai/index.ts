@@ -281,11 +281,15 @@ function buildUserPrompt(
   context: string | undefined,
   mode: string | undefined,
   depth: string,
+  depthEstimation: boolean,
+  objectSegmentation: boolean,
 ): string {
   let prompt = `## Show Parameters
 - Drone fleet: ${droneCount} drones with full-color RGB LEDs
 - Analysis depth: ${depth}
 - Frame count: ${frameCount} key frames from source video
+- Depth estimation: ${depthEstimation ? 'ENABLED - provide depthLayers per formation' : 'disabled'}
+- Object segmentation: ${objectSegmentation ? 'ENABLED - provide segments per formation' : 'disabled'}
 
 `;
 
