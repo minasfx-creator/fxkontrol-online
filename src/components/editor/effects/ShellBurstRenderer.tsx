@@ -512,16 +512,7 @@ export default function ShellBurstRenderer({
           <shaderMaterial
             vertexShader={BURST_VERTEX}
             fragmentShader={BURST_FRAGMENT}
-            uniforms={useMemo(() => ({
-              uColor: { value: new THREE.Color(pistilColor) },
-              uColor2: { value: new THREE.Color(pistilColor) },
-              uColorChangePoint: { value: 2.0 },
-              uBaseSize: { value: baseSize * 0.7 },
-              uHDRMultiplier: { value: hdrMultiplier },
-              uTime: { value: 0 },
-              uThermalSpeed: { value: thermalTransitionSpeed },
-              uMaxEnergy: { value: getMaxEnergy(0) },
-            }), [])}
+            uniforms={pistilUniforms}
             transparent
             depthWrite={false}
             blending={additiveBlend.blending}
