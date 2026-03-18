@@ -56,11 +56,156 @@ export default function VideoChoreoPanel({ onClose }: { onClose: () => void }) {
   const [smoothTrajectories, setSmoothTrajectories] = useState(true);
   const [frameRange, setFrameRange] = useState<[number, number]>([0, 100]);
 
+  // AI Mode
+  const [processingMode, setProcessingMode] = useState<'silhouette' | 'ai-semantic'>('silhouette');
+  const [aiContext, setAiContext] = useState('');
+  const [aiResult, setAiResult] = useState<any>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
   // Store
   const addDroneFormation = useProjectStore(s => s.addDroneFormation);
   const droneFormations = useProjectStore(s => s.droneFormations);
   const setCurrentTime = useProjectStore(s => s.setCurrentTime);
   const setPlaying = useProjectStore(s => s.setPlaying);
+
+  // ── AI Semantic Generation ──────────────────────────────────
+  const generateAIChoreo = useCallback(async () => {
+    if (frames.length === 0) return;
+    setAiLoading(true);
+    setLoadingPhase('Preparando frames para IA...');
+    setProgress(10);
+
+    try {
+      // Convert frames to data URLs (downscale for API)
+      const frameDataUrls: string[] = [];
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d')!;
+      canvas.width = 256;
+      canvas.height = 256;
+
+      for (let i = 0; i < frames.length; i++) {
+        setProgress(10 + (i / frames.length) * 30);
+        setLoadingPhase(`Codificando frame ${i + 1}/${frames.length}...`);
+        const img = new Image();
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = reject;
+          img.src = frames[i].thumbnail;
+        });
+        ctx.clearRect(0, 0, 256, 256);
+        ctx.drawImage(img, 0, 0, 256, 256);
+        frameDataUrls.push(canvas.toDataURL('image/jpeg', 0.7));
+      }
+
+      setProgress(45);
+      setLoadingPhase('Analisando vídeo com IA...');
+
+      const { data, error } = await supabase.functions.invoke('video-choreo-ai', {
+        body: {
+          frameDataUrls,
+          droneCount,
+          context: aiContext || undefined,
+          mode: 'semantic',
+        },
+      });
+
+      if (error) throw new Error(error.message || 'AI processing failed');
+      if (data?.error) throw new Error(data.error);
+
+      setProgress(80);
+      setLoadingPhase('Construindo formações...');
+
+      setAiResult(data);
+
+      // Convert AI formations to choreo result
+      const formations = data.formations || [];
+      if (formations.length === 0) throw new Error('IA não gerou formações');
+
+      const keyframes: ChoreoKeyframe[] = [];
+      let time = 0;
+
+      for (let i = 0; i < formations.length; i++) {
+        const f = formations[i];
+        const points = (f.points || []).slice(0, droneCount).map((p: any) => ({
+          x: p.x || 0,
+          y: p.y || f.height || baseHeight,
+          z: p.z || 0,
+        }));
+
+        // If AI didn't generate enough points, fill with formation shape
+        while (points.length < droneCount) {
+          const angle = Math.random() * Math.PI * 2;
+          const r = Math.random() * 15 * (f.spread || 1);
+          points.push({
+            x: Math.cos(angle) * r,
+            y: f.height || baseHeight,
+            z: Math.sin(angle) * r,
+          });
+        }
+
+        keyframes.push({
+          frameIndex: f.frameIndex || i,
+          time,
+          points,
+          color: f.color || '#00E5FF',
+          brightness: 0.7,
+          thumbnail: frames[Math.min(i, frames.length - 1)]?.thumbnail || '',
+        });
+
+        time += (f.suggestedTransitionDuration || transitionDuration) + (f.suggestedHoldDuration || holdDuration);
+      }
+
+      const choreoResult: VideoChoreoResult = {
+        keyframes,
+        trajectories: [],
+        totalDuration: time,
+        droneCount,
+      };
+
+      setResult(choreoResult);
+
+      // Add to project
+      let projectTime = droneFormations.length > 0
+        ? droneFormations[droneFormations.length - 1].startTime +
+          droneFormations[droneFormations.length - 1].transitionDuration +
+          droneFormations[droneFormations.length - 1].holdDuration
+        : 0;
+
+      for (let i = 0; i < keyframes.length; i++) {
+        const kf = keyframes[i];
+        const f = formations[i] || {};
+        addDroneFormation({
+          id: `ai-vchoreo-${Date.now()}-${i}`,
+          formationType: 'ai-semantic',
+          droneCount,
+          height: kf.points[0]?.y || baseHeight,
+          radius: 20,
+          spacing: 2,
+          rotation: f.rotation || 0,
+          startTime: projectTime,
+          transitionDuration: f.suggestedTransitionDuration || transitionDuration,
+          holdDuration: f.suggestedHoldDuration || holdDuration,
+          color: kf.color,
+          points: kf.points.map(p => ({ x: p.x, z: p.z })),
+        });
+        projectTime += (f.suggestedTransitionDuration || transitionDuration) + (f.suggestedHoldDuration || holdDuration);
+      }
+
+      setCurrentTime(0);
+      setProgress(100);
+      toast.success('🧠 Coreografia semântica gerada!', {
+        description: `${data.analysis?.substring(0, 80) || `${formations.length} formações criadas pela IA`}`,
+      });
+
+    } catch (err: any) {
+      console.error('AI choreo error:', err);
+      toast.error('Erro na análise por IA', { description: err.message });
+    } finally {
+      setAiLoading(false);
+      setLoadingPhase('');
+      setProgress(0);
+    }
+  }, [frames, droneCount, aiContext, baseHeight, holdDuration, transitionDuration, droneFormations, addDroneFormation, setCurrentTime]);
 
   // ── File Upload ─────────────────────────────────────────────
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
