@@ -20,6 +20,9 @@ import {
   extractRegionalColors, getDroneRegionalColor, applyFlowBiasToAssignment,
   type OpticalFlowField, type RegionalColorMap, type SmartKeyframeResult,
 } from './videoTrackingAdvanced';
+import {
+  computeOpticalFlowBatchWorker, kalmanSmoothTrajectoriesWorker,
+} from './videoTrackingWorkerClient';
 
 export { isGifFile, isVideoFile };
 export type { ExtractedFrame, FrameFormation };
