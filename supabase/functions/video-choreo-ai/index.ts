@@ -16,7 +16,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const { frameDataUrls, droneCount, context, mode, analysisDepth } = await req.json();
+    const { frameDataUrls, droneCount, context, mode, analysisDepth, depthEstimation, objectSegmentation } = await req.json();
 
     if (!frameDataUrls || !Array.isArray(frameDataUrls) || frameDataUrls.length === 0) {
       return new Response(

@@ -227,13 +227,44 @@ export async function generateVideoChoreo(
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const { droneCount, radius, baseHeight, heightVariation, holdDuration, transitionDuration } = opts;
 
+  // Phase 0: Smart Keyframe filtering
+  let selectedFrames = frames;
+  let smartKeyframeInfo: SmartKeyframeResult | undefined;
+
+  if (opts.useSmartKeyframes && frames.length > 5) {
+    opts.onProgress?.(0.55, 'Detectando keyframes inteligentes...');
+    smartKeyframeInfo = detectSmartKeyframes(frames, 5, 30);
+    selectedFrames = smartKeyframeInfo.selectedIndices.map(i => frames[i]);
+    opts.onProgress?.(0.58, `${selectedFrames.length}/${frames.length} keyframes selecionados`);
+  }
+
+  // Phase 0.5: Compute optical flow fields between consecutive frames
+  const flowFields: (OpticalFlowField | null)[] = [null];
+  if (opts.useOpticalFlow && selectedFrames.length > 1) {
+    opts.onProgress?.(0.58, 'Calculando optical flow...');
+    for (let i = 1; i < selectedFrames.length; i++) {
+      opts.onProgress?.(0.58 + (i / selectedFrames.length) * 0.04, `Optical flow ${i}/${selectedFrames.length - 1}`);
+      const flow = computeOpticalFlow(selectedFrames[i - 1].imageData, selectedFrames[i].imageData, 8);
+      flowFields.push(flow);
+    }
+  }
+
+  // Phase 0.7: Regional color extraction
+  const regionalColorMaps: (RegionalColorMap | undefined)[] = [];
+  if (opts.useRegionalColor) {
+    opts.onProgress?.(0.62, 'Extraindo cores regionais...');
+    for (let i = 0; i < selectedFrames.length; i++) {
+      regionalColorMaps.push(extractRegionalColors(selectedFrames[i].imageData));
+    }
+  }
+
   const keyframes: ChoreoKeyframe[] = [];
 
   // Phase 1: Convert each frame to formation points
-  for (let i = 0; i < frames.length; i++) {
-    opts.onProgress?.(0.6 + (i / frames.length) * 0.2, `Formação ${i + 1}/${frames.length}`);
+  for (let i = 0; i < selectedFrames.length; i++) {
+    opts.onProgress?.(0.65 + (i / selectedFrames.length) * 0.15, `Formação ${i + 1}/${selectedFrames.length}`);
 
-    const frame = frames[i];
+    const frame = selectedFrames[i];
     const points2d = frameToFormationPoints(frame.imageData, {
       droneCount,
       radius,
@@ -249,25 +280,38 @@ export async function generateVideoChoreo(
     const h = baseHeight + (frame.brightness - 0.5) * heightVariation * 20;
     const points3d = points2d.map(p => ({ x: p.x, y: Math.max(5, h), z: p.z }));
 
+    // Regional colors per drone
+    const rcMap = regionalColorMaps[i];
+    const perDroneColors = rcMap
+      ? points3d.map(p => getDroneRegionalColor(p, rcMap, radius))
+      : undefined;
+
     const time = i * (holdDuration + transitionDuration);
     keyframes.push({
       frameIndex: frame.index,
       time,
       points: points3d,
       color: frame.dominantColor,
+      colors: perDroneColors,
       brightness: frame.brightness,
       thumbnail: frame.thumbnail,
+      regionalColors: rcMap,
+      opticalFlow: flowFields[i] || undefined,
     });
   }
 
-  // Phase 2: Optimal drone assignment between consecutive frames (Hungarian-lite)
-  opts.onProgress?.(0.8, 'Otimizando atribuição de drones...');
+  // Phase 2: Optimal drone assignment with optical flow bias
+  opts.onProgress?.(0.82, 'Otimizando atribuição de drones...');
 
   for (let k = 1; k < keyframes.length; k++) {
     const prev = keyframes[k - 1].points;
     const curr = keyframes[k].points;
-    const assigned = greedyAssignment(prev, curr);
-    keyframes[k].points = assigned;
+
+    if (opts.useOpticalFlow && flowFields[k]) {
+      keyframes[k].points = applyFlowBiasToAssignment(prev, curr, flowFields[k], radius);
+    } else {
+      keyframes[k].points = greedyAssignment(prev, curr);
+    }
   }
 
   // Phase 3: Generate trajectories
@@ -279,11 +323,11 @@ export async function generateVideoChoreo(
     for (const kf of keyframes) {
       if (d < kf.points.length) {
         const p = kf.points[d];
-        waypoints.push({ time: kf.time, x: p.x, y: p.y, z: p.z, color: kf.color });
-        // Add hold waypoint
+        const droneColor = kf.colors?.[d] || kf.color;
+        waypoints.push({ time: kf.time, x: p.x, y: p.y, z: p.z, color: droneColor });
         waypoints.push({
           time: kf.time + transitionDuration,
-          x: p.x, y: p.y, z: p.z, color: kf.color,
+          x: p.x, y: p.y, z: p.z, color: droneColor,
         });
       }
     }
@@ -297,10 +341,18 @@ export async function generateVideoChoreo(
     }
   }
 
+  // Phase 4: Apply Kalman filter smoothing
+  if (opts.useKalmanFilter) {
+    opts.onProgress?.(0.95, 'Aplicando Kalman filter...');
+    for (const traj of trajectories) {
+      traj.waypoints = kalmanSmoothTrajectory(traj.waypoints);
+    }
+  }
+
   const totalDuration = keyframes.length * (holdDuration + transitionDuration);
   opts.onProgress?.(1, 'Concluído!');
 
-  return { keyframes, trajectories, totalDuration, droneCount };
+  return { keyframes, trajectories, totalDuration, droneCount, smartKeyframeInfo };
 }
 
 // ─── Greedy nearest-neighbor assignment ───────────────────────
