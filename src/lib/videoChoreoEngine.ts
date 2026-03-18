@@ -356,11 +356,19 @@ export async function generateVideoChoreo(
     }
   }
 
-  // Phase 4: Apply Kalman filter smoothing
+  // Phase 4: Apply Kalman filter smoothing via Web Worker
   if (opts.useKalmanFilter) {
-    opts.onProgress?.(0.95, 'Aplicando Kalman filter...');
-    for (const traj of trajectories) {
-      traj.waypoints = kalmanSmoothTrajectory(traj.waypoints);
+    opts.onProgress?.(0.95, 'Aplicando Kalman filter (Worker)...');
+    try {
+      const smoothed = await kalmanSmoothTrajectoriesWorker(trajectories);
+      for (let i = 0; i < trajectories.length; i++) {
+        trajectories[i].waypoints = smoothed[i].waypoints;
+      }
+    } catch {
+      // Fallback to main thread
+      for (const traj of trajectories) {
+        traj.waypoints = kalmanSmoothTrajectory(traj.waypoints);
+      }
     }
   }
 
