@@ -315,6 +315,7 @@ function Index() {
         {activePanel === 'transitions' && <TransitionPlannerPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'lasercontrol' && <LaserControlPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'usb' && <USBConnectionPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'videochoreo' && <VideoChoreoPanel onClose={() => setActivePanel(null)} />}
       </>
     );
   };
