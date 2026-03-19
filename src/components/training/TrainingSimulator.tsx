@@ -8,6 +8,8 @@ import SnapPoints from './SnapPoints';
 import EquipmentTray from './EquipmentTray';
 import SimulatorHUD from './SimulatorHUD';
 import VictoryScreen from './VictoryScreen';
+import PlacementVFX from './PlacementVFX';
+import { DrunkNPC, ProducerNPC, ClientNPC } from './NPCs';
 import {
   Mission, Equipment, SnapPoint, PlacedItem, MissionObjective,
   MISSION_SNAP_POINTS, MISSION_TIME_LIMITS,
