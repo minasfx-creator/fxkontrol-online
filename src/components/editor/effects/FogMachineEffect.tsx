@@ -10,11 +10,14 @@ export default function FogMachineEffect({
   color = '#8a8a8a',
   progress,
   spread = 12,
+  lowFog = false,
 }: {
   position: [number, number, number];
   color?: string;
   progress: number;
   spread?: number;
+  /** Creeper AQ mode: fog stays on the ground, spreads horizontally */
+  lowFog?: boolean;
 }) {
   const meshRefs = useRef<(THREE.Mesh | null)[]>([]);
 
