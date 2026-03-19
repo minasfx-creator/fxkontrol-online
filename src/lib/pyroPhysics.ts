@@ -361,6 +361,134 @@ export function getRomanCandleShotAngle(_shotIndex: number, _totalShots: number)
   return (Math.random() - 0.5) * 0.1;
 }
 
+// ── FFIC Real Product Data (Laudo-Calibrated) ───────────────────────
+
+export interface RealProductSpec {
+  name: string;
+  caliber: string;
+  caliberInches: number;
+  tubeDimensions: { heightMM: number; outerDiaMM: number; innerDiaMM: number };
+  effectChargeG: number;
+  liftChargeG: number;
+  burstChargeG: number;
+  totalWeightG: number;
+  fuseDelayMin: number;  // seconds
+  fuseDelayMax: number;
+  fuseDelayNominal: number;
+  unNumber: string;
+  classCode: string;
+  productType: 'shell' | 'cake' | 'single_shot';
+}
+
+export const REAL_PRODUCT_DATA: Record<string, RealProductSpec> = {
+  'shell_2.5_color_peony': {
+    name: 'Bomba Aérea 2.5" Color Peony',
+    caliber: '2.5"',
+    caliberInches: 2.5,
+    tubeDimensions: { heightMM: 85, outerDiaMM: 58, innerDiaMM: 50 },
+    effectChargeG: 51.8,
+    liftChargeG: 25.4,
+    burstChargeG: 21.1,
+    totalWeightG: 98.3,
+    fuseDelayMin: 4.1,
+    fuseDelayMax: 4.9,
+    fuseDelayNominal: 4.5,
+    unNumber: 'UN0335',
+    classCode: '1.3G',
+    productType: 'shell',
+  },
+  'single_shot_30mm_crackling': {
+    name: 'Single Shot 30mm Ti Crackling Willow + Red Mine',
+    caliber: '30mm',
+    caliberInches: 1.18,
+    tubeDimensions: { heightMM: 230, outerDiaMM: 38, innerDiaMM: 30 },
+    effectChargeG: 28.4,
+    liftChargeG: 6.92,
+    burstChargeG: 0,
+    totalWeightG: 35.32,
+    fuseDelayMin: 5.0,
+    fuseDelayMax: 6.9,
+    fuseDelayNominal: 5.95,
+    unNumber: 'UN0335',
+    classCode: '1.3G',
+    productType: 'single_shot',
+  },
+  'cake_20mm_300shot': {
+    name: 'Cake 20mm 300-Shot',
+    caliber: '20mm',
+    caliberInches: 0.79,
+    tubeDimensions: { heightMM: 180, outerDiaMM: 25, innerDiaMM: 20 },
+    effectChargeG: 15.2,
+    liftChargeG: 3.5,
+    burstChargeG: 0,
+    totalWeightG: 18.7,
+    fuseDelayMin: 6.2,
+    fuseDelayMax: 7.3,
+    fuseDelayNominal: 6.75,
+    unNumber: 'UN0335',
+    classCode: '1.4G',
+    productType: 'cake',
+  },
+};
+
+// ── Gaussian Fuse Delay Jitter ──────────────────────────────────────
+
+/** Box-Muller transform for Gaussian random */
+function gaussianRandom(): number {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+}
+
+/**
+ * Returns a fuse delay with realistic Gaussian jitter within measured range.
+ * In a real show with 100 shells, no two explode at exactly the same time.
+ */
+export function fuseDelayWithJitter(
+  nominalDelay: number,
+  minDelay: number,
+  maxDelay: number,
+): number {
+  const sigma = (maxDelay - minDelay) / 4; // 95% within range
+  const jittered = nominalDelay + gaussianRandom() * sigma;
+  return Math.max(minDelay, Math.min(maxDelay, jittered));
+}
+
+/**
+ * Get calibrated fuse delay for a real product spec.
+ */
+export function getProductFuseDelay(productId: string): number {
+  const spec = REAL_PRODUCT_DATA[productId];
+  if (!spec) return 4.0; // generic fallback
+  return fuseDelayWithJitter(spec.fuseDelayNominal, spec.fuseDelayMin, spec.fuseDelayMax);
+}
+
+/**
+ * Get lift time calibrated with real charge weight data.
+ * Uses lift charge mass to adjust velocity instead of purely ballistic formula.
+ */
+export function getCalibratedLiftTime(productId: string): number {
+  const spec = REAL_PRODUCT_DATA[productId];
+  if (!spec) return getLiftTime(2.5);
+  
+  // Real lift velocity estimated from charge weight: v0 ≈ k * sqrt(liftCharge / totalWeight) * base
+  const chargeRatio = spec.liftChargeG / spec.totalWeightG;
+  const baseVelocity = getMortarVelocity(spec.caliberInches);
+  const adjustedV0 = baseVelocity * (0.7 + chargeRatio * 2.5); // calibrated scaling
+  const breakH = getBreakHeight(spec.caliberInches);
+  const discriminant = 1 - 2 * Math.abs(GRAVITY) * breakH / (adjustedV0 * adjustedV0);
+  return adjustedV0 / Math.abs(GRAVITY) * (1 - Math.sqrt(Math.max(0, discriminant)));
+}
+
+export function getRealProduct(id: string): RealProductSpec | undefined {
+  return REAL_PRODUCT_DATA[id];
+}
+
+export function getAllRealProducts(): Record<string, RealProductSpec> {
+  return { ...REAL_PRODUCT_DATA };
+}
+
 // ── CO2 Jet ─────────────────────────────────────────────────────────
 
 export function createCO2Particle(jetHeight: number, isHorizontal: boolean): ParticleState {

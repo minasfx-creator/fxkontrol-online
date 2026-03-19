@@ -112,6 +112,36 @@ export default function LaserControlPanel({ onClose }: LaserControlPanelProps) {
       </div>
 
       <div className="flex-1 px-3 py-3 space-y-5">
+        {/* Hardware Preset */}
+        <div className="space-y-1.5">
+          <label className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold flex items-center gap-1">
+            <Cpu className="w-3 h-3" /> Hardware Preset
+          </label>
+          <Select value={hwPreset} onValueChange={applyHardwarePreset}>
+            <SelectTrigger className="h-8 text-xs bg-surface-2 border-border">
+              <SelectValue placeholder="Select hardware..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none" className="text-xs">Generic</SelectItem>
+              {Object.entries(LASER_HARDWARE_PRESETS).map(([id, p]) => (
+                <SelectItem key={id} value={id} className="text-xs">
+                  {p.model} ({p.totalPower}W)
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {hwPreset !== 'none' && LASER_HARDWARE_PRESETS[hwPreset] && (
+            <div className="text-[8px] text-muted-foreground bg-surface-2 rounded p-1.5 grid grid-cols-2 gap-x-3 gap-y-0.5">
+              <span>R: {LASER_HARDWARE_PRESETS[hwPreset].redPower}W</span>
+              <span>G: {LASER_HARDWARE_PRESETS[hwPreset].greenPower}W</span>
+              <span>B: {LASER_HARDWARE_PRESETS[hwPreset].bluePower}W</span>
+              <span>IP: {LASER_HARDWARE_PRESETS[hwPreset].ipRating}</span>
+              <span>{LASER_HARDWARE_PRESETS[hwPreset].pps / 1000}k PPS</span>
+              <span>{LASER_HARDWARE_PRESETS[hwPreset].weight}kg</span>
+            </div>
+          )}
+        </div>
+
         {/* Pattern */}
         <div className="space-y-1.5">
           <label className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">Pattern</label>

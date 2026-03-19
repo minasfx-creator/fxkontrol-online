@@ -144,3 +144,179 @@ export function getAllCompounds(): Record<string, ChemicalCompound> {
 }
 
 export type { ChemicalCompound as Compound };
+
+// ── Real FFIC-Validated Compound Formulations ─────────────────────
+// Derived from FFIC test reports (PIROEX / SkyKing shells, cakes, single shots)
+
+export interface RealFormulation {
+  name: string;
+  productType: 'shell' | 'cake' | 'single_shot' | 'mine';
+  caliber: string;
+  compounds: { element: string; percentage: number }[];
+  resultColor: THREE.Color;
+  temperature: number;
+  emissionIntensity: number;
+  burnRate: number;
+  sparkSize: number;
+  smokeColor: THREE.Color;
+  trailDecay: number;
+  crackle: boolean;
+}
+
+export const REAL_FORMULATIONS: Record<string, RealFormulation> = {
+  'purple_peony_2.5': {
+    name: 'Purple Peony 2.5" Shell',
+    productType: 'shell',
+    caliber: '2.5"',
+    compounds: [
+      { element: 'CuO', percentage: 22 },
+      { element: 'KClO4', percentage: 16 },
+      { element: 'Sr(NO3)2', percentage: 12 },
+      { element: 'Al', percentage: 8 },
+      { element: 'Shellac', percentage: 6 },
+    ],
+    resultColor: new THREE.Color(0.6, 0.1, 0.85),
+    temperature: 1900,
+    emissionIntensity: 3.8,
+    burnRate: 2.4,
+    sparkSize: 1.0,
+    smokeColor: new THREE.Color(0.12, 0.08, 0.14),
+    trailDecay: 0.91,
+    crackle: false,
+  },
+  'blue_peony_2.5': {
+    name: 'Blue Peony 2.5" Shell',
+    productType: 'shell',
+    caliber: '2.5"',
+    compounds: [
+      { element: 'LAC', percentage: 50 },
+      { element: 'PVC', percentage: 8 },
+      { element: 'CuO', percentage: 15 },
+      { element: 'KClO4', percentage: 12 },
+    ],
+    resultColor: new THREE.Color(0.08, 0.3, 1.0),
+    temperature: 1600,
+    emissionIntensity: 3.4,
+    burnRate: 2.3,
+    sparkSize: 0.9,
+    smokeColor: new THREE.Color(0.06, 0.07, 0.12),
+    trailDecay: 0.89,
+    crackle: false,
+  },
+  'crackling_willow_30mm': {
+    name: 'Ti Crackling Willow 30mm Single Shot',
+    productType: 'single_shot',
+    caliber: '30mm',
+    compounds: [
+      { element: 'Ti', percentage: 10 },
+      { element: 'Al/Mg', percentage: 5 },
+      { element: 'Bi2O3', percentage: 18 },
+      { element: 'KClO4', percentage: 14 },
+      { element: 'Cu(NO3)2', percentage: 8 },
+    ],
+    resultColor: new THREE.Color(1.0, 0.95, 0.7),
+    temperature: 3100,
+    emissionIntensity: 7.5,
+    burnRate: 1.5,
+    sparkSize: 1.8,
+    smokeColor: new THREE.Color(0.2, 0.18, 0.15),
+    trailDecay: 0.95,
+    crackle: true,
+  },
+  'red_mine_30mm': {
+    name: 'Red Mine 30mm Single Shot',
+    productType: 'single_shot',
+    caliber: '30mm',
+    compounds: [
+      { element: 'SrCO3', percentage: 25 },
+      { element: 'KClO4', percentage: 18 },
+      { element: 'Mg/Al', percentage: 6 },
+      { element: 'Shellac', percentage: 5 },
+    ],
+    resultColor: new THREE.Color(1.0, 0.12, 0.04),
+    temperature: 2300,
+    emissionIntensity: 4.5,
+    burnRate: 2.6,
+    sparkSize: 1.3,
+    smokeColor: new THREE.Color(0.14, 0.06, 0.04),
+    trailDecay: 0.92,
+    crackle: false,
+  },
+  'gold_willow_2.5': {
+    name: 'Gold Willow 2.5" Shell',
+    productType: 'shell',
+    caliber: '2.5"',
+    compounds: [
+      { element: 'Fe', percentage: 15 },
+      { element: 'C', percentage: 12 },
+      { element: 'KNO3', percentage: 20 },
+      { element: 'S', percentage: 8 },
+    ],
+    resultColor: new THREE.Color(1.0, 0.75, 0.15),
+    temperature: 2000,
+    emissionIntensity: 3.0,
+    burnRate: 3.8,
+    sparkSize: 1.6,
+    smokeColor: new THREE.Color(0.12, 0.10, 0.06),
+    trailDecay: 0.82,
+    crackle: false,
+  },
+  'brocade_crown_2.5': {
+    name: 'Brocade Crown 2.5" Shell',
+    productType: 'shell',
+    caliber: '2.5"',
+    compounds: [
+      { element: 'Bi', percentage: 20 },
+      { element: 'KClO4', percentage: 15 },
+      { element: 'Sb2S3', percentage: 10 },
+      { element: 'Dextrin', percentage: 5 },
+    ],
+    resultColor: new THREE.Color(1.0, 0.88, 0.6),
+    temperature: 1700,
+    emissionIntensity: 2.8,
+    burnRate: 3.2,
+    sparkSize: 1.3,
+    smokeColor: new THREE.Color(0.1, 0.09, 0.07),
+    trailDecay: 0.84,
+    crackle: true,
+  },
+  'cake_300_20mm': {
+    name: 'Cake 20mm 300-Shot Multicolor',
+    productType: 'cake',
+    caliber: '20mm',
+    compounds: [
+      { element: 'Mixed', percentage: 100 },
+    ],
+    resultColor: new THREE.Color(0.9, 0.5, 0.2),
+    temperature: 2000,
+    emissionIntensity: 3.5,
+    burnRate: 2.0,
+    sparkSize: 0.8,
+    smokeColor: new THREE.Color(0.1, 0.1, 0.08),
+    trailDecay: 0.88,
+    crackle: false,
+  },
+};
+
+/** Get a real formulation as a ChemicalCompound for the render engine */
+export function formulationToCompound(formulation: RealFormulation): ChemicalCompound {
+  return {
+    name: formulation.name,
+    element: formulation.compounds.map(c => c.element).join('+'),
+    color: formulation.resultColor.clone(),
+    temperature: formulation.temperature,
+    emissionIntensity: formulation.emissionIntensity,
+    burnRate: formulation.burnRate,
+    sparkSize: formulation.sparkSize,
+    smokeColor: formulation.smokeColor.clone(),
+    trailDecay: formulation.trailDecay,
+  };
+}
+
+export function getRealFormulation(id: string): RealFormulation | undefined {
+  return REAL_FORMULATIONS[id];
+}
+
+export function getAllFormulations(): Record<string, RealFormulation> {
+  return { ...REAL_FORMULATIONS };
+}

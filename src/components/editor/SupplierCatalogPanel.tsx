@@ -1,8 +1,16 @@
 import { useState } from 'react';
-import { Store, X, Search, CheckCircle2, ExternalLink } from 'lucide-react';
+import { Store, X, Search, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+
+interface SupplierProduct {
+  name: string;
+  caliber: string;
+  unNumber: string;
+  classCode: string;
+  type: string;
+}
 
 interface SupplierCatalog {
   id: string;
@@ -11,9 +19,30 @@ interface SupplierCatalog {
   effectCount: number;
   subscribed: boolean;
   description: string;
+  products?: SupplierProduct[];
 }
 
 const CATALOGS: SupplierCatalog[] = [
+  {
+    id: 'piroex', name: 'PIROEX LTDA', country: '🇧🇷', effectCount: 85, subscribed: true,
+    description: 'Importador profissional brasileiro — laudos FFIC validados',
+    products: [
+      { name: 'Bomba Aérea 2.5" Color Peony', caliber: '2.5"', unNumber: 'UN0335', classCode: '1.3G', type: 'Shell' },
+      { name: 'Bomba Aérea 2.5" Purple Peony', caliber: '2.5"', unNumber: 'UN0335', classCode: '1.3G', type: 'Shell' },
+      { name: 'Bomba Aérea 2.5" Blue Peony', caliber: '2.5"', unNumber: 'UN0335', classCode: '1.3G', type: 'Shell' },
+      { name: 'Bomba Aérea 2.5" Gold Willow', caliber: '2.5"', unNumber: 'UN0335', classCode: '1.3G', type: 'Shell' },
+      { name: 'Bomba Aérea 2.5" Brocade Crown', caliber: '2.5"', unNumber: 'UN0335', classCode: '1.3G', type: 'Shell' },
+    ],
+  },
+  {
+    id: 'skyking', name: 'Changsha SkyKing', country: '🇨🇳', effectCount: 1400, subscribed: true,
+    description: 'Fabricante chinês — shells, cakes, single shots com laudo FFIC',
+    products: [
+      { name: 'Cake 20mm 300-Shot Multicolor', caliber: '20mm', unNumber: 'UN0335', classCode: '1.4G', type: 'Cake' },
+      { name: 'Single Shot 30mm Ti Crackling Willow + Red Mine', caliber: '30mm', unNumber: 'UN0335', classCode: '1.3G', type: 'Single Shot' },
+      { name: 'Single Shot 30mm Color Peony', caliber: '30mm', unNumber: 'UN0335', classCode: '1.3G', type: 'Single Shot' },
+    ],
+  },
   { id: 'celtic', name: 'Celtic Fireworks', country: '🇬🇧', effectCount: 450, subscribed: false, description: 'UK professional effects with detailed specs' },
   { id: 'nica', name: 'Nica / Camspe', country: '🇨🇳', effectCount: 800, subscribed: false, description: 'Chinese manufacturer with wide range' },
   { id: 'jorge', name: 'Jorge Fireworks', country: '🇵🇱', effectCount: 350, subscribed: false, description: 'European quality display fireworks' },
@@ -31,6 +60,7 @@ const CATALOGS: SupplierCatalog[] = [
 export default function SupplierCatalogPanel({ onClose }: { onClose: () => void }) {
   const [search, setSearch] = useState('');
   const [catalogs, setCatalogs] = useState(CATALOGS);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const filtered = catalogs.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -68,23 +98,35 @@ export default function SupplierCatalogPanel({ onClose }: { onClose: () => void 
 
       <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-1">
         {filtered.map(cat => (
-          <button
-            key={cat.id}
-            onClick={() => toggleSubscribe(cat.id)}
-            className={cn(
-              "w-full flex items-center gap-2 px-2 py-2 rounded text-left transition-colors border",
-              cat.subscribed
-                ? "bg-primary/5 border-primary/20"
-                : "bg-surface-1/30 border-border/20 hover:bg-surface-2/30"
+          <div key={cat.id}>
+            <button
+              onClick={() => toggleSubscribe(cat.id)}
+              onDoubleClick={() => setExpandedId(expandedId === cat.id ? null : cat.id)}
+              className={cn(
+                "w-full flex items-center gap-2 px-2 py-2 rounded text-left transition-colors border",
+                cat.subscribed
+                  ? "bg-primary/5 border-primary/20"
+                  : "bg-surface-1/30 border-border/20 hover:bg-surface-2/30"
+              )}
+            >
+              <span className="text-sm">{cat.country}</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] font-medium text-foreground truncate">{cat.name}</div>
+                <div className="text-[8px] text-muted-foreground">{cat.effectCount} effects • {cat.description}</div>
+              </div>
+              {cat.subscribed && <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />}
+            </button>
+            {expandedId === cat.id && cat.products && (
+              <div className="ml-6 mt-1 mb-2 space-y-0.5">
+                {cat.products.map((p, i) => (
+                  <div key={i} className="text-[8px] text-muted-foreground bg-surface-2/50 rounded px-2 py-1 flex justify-between">
+                    <span className="text-foreground/80">{p.name}</span>
+                    <span className="text-primary/60">{p.classCode}</span>
+                  </div>
+                ))}
+              </div>
             )}
-          >
-            <span className="text-sm">{cat.country}</span>
-            <div className="flex-1 min-w-0">
-              <div className="text-[10px] font-medium text-foreground truncate">{cat.name}</div>
-              <div className="text-[8px] text-muted-foreground">{cat.effectCount} effects • {cat.description}</div>
-            </div>
-            {cat.subscribed && <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />}
-          </button>
+          </div>
         ))}
       </div>
     </div>
