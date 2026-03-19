@@ -207,14 +207,14 @@ export default function TrainingSimulator({ mission, allEquipment, onComplete, o
   return (
     <div className="relative h-[calc(100vh-3.5rem)] w-full bg-[hsl(var(--surface-0))]">
       <Canvas
-        camera={{ position: [12, 8, 12], fov: 50 }}
+        camera={{ position: [30, 20, 30], fov: 50 }}
         shadows
         gl={{ antialias: true }}
         style={{ background: 'hsl(240 25% 5%)' }}
       >
         <ambientLight intensity={0.3} color="hsl(214 22% 23%)" />
-        <directionalLight position={[10, 15, 5]} intensity={0.6} color="hsl(28 100% 95%)" castShadow />
-        <fog attach="fog" args={['hsl(240 25% 5%)', 20, 60]} />
+        <directionalLight position={[25, 35, 15]} intensity={0.6} color="hsl(28 100% 95%)" castShadow />
+        <fog attach="fog" args={['hsl(240 25% 5%)', 50, 150]} />
 
         <CameraModeRig mode={cameraMode} focusPosition={firstPersonFocus} />
 
