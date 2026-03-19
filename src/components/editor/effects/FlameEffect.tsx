@@ -19,28 +19,37 @@ export default function FlameEffect({
   color,
   progress,
   height = 8,
+  preset,
 }: {
   position: [number, number, number];
   color: string;
   progress: number;
   height?: number;
+  /** Showven flamer preset — constrains max height and enables multi-nozzle/color */
+  preset?: { id: string; maxHeightM: number; nozzles: number; colorCount: number };
 }) {
+  // Constrain height to hardware limit
+  const effectiveHeight = preset ? Math.min(height, preset.maxHeightM) : height;
   const pointsRef = useRef<THREE.Points>(null);
 
   const seeds = useMemo(() => {
-    const s: { angle: number; speed: number; spread: number; lt: number; phase: number; turbulence: number }[] = [];
+    const s: { angle: number; speed: number; spread: number; lt: number; phase: number; turbulence: number; nozzle: number }[] = [];
+    const nozzleCount = preset?.nozzles ?? 1;
     for (let i = 0; i < PARTICLE_COUNT; i++) {
+      const nozzle = i % nozzleCount;
+      const nozzleAngle = nozzleCount > 1 ? (nozzle / nozzleCount) * Math.PI * 2 : Math.random() * Math.PI * 2;
       s.push({
-        angle: Math.random() * Math.PI * 2,
-        speed: height * (0.35 + Math.random() * 0.65),
+        angle: nozzleAngle + (Math.random() - 0.5) * 0.3,
+        speed: effectiveHeight * (0.35 + Math.random() * 0.65),
         spread: 0.05 + Math.random() * 0.12,
         lt: 0.15 + Math.random() * 0.3,
         phase: Math.random() * Math.PI * 2,
         turbulence: 0.5 + Math.random() * 1.5,
+        nozzle,
       });
     }
     return s;
-  }, [height]);
+  }, [effectiveHeight, preset?.nozzles]);
 
   const posBuffer = useMemo(() => new Float32Array(PARTICLE_COUNT * 3), []);
   const colBuffer = useMemo(() => new Float32Array(PARTICLE_COUNT * 3), []);
@@ -78,9 +87,9 @@ export default function FlameEffect({
       const turbZ = Math.cos(time * 5 + i * 1.1) * seed.turbulence * 0.12 * t;
       const turbY = Math.sin(time * 8 + i * 2.3) * 0.2 * t;
 
-      posBuffer[i3] = Math.cos(seed.angle) * seed.spread * t * height * 0.4 + turbX;
+      posBuffer[i3] = Math.cos(seed.angle) * seed.spread * t * effectiveHeight * 0.4 + turbX;
       posBuffer[i3 + 1] = seed.speed * t + turbY;
-      posBuffer[i3 + 2] = Math.sin(seed.angle) * seed.spread * t * height * 0.4 + turbZ;
+      posBuffer[i3 + 2] = Math.sin(seed.angle) * seed.spread * t * effectiveHeight * 0.4 + turbZ;
 
       const fade = Math.max(0, 1 - cycleTime) * intensity;
       const h = cycleTime; // normalized height in flame

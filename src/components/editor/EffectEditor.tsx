@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Sliders, Wand2, X, Sparkles, Layers, Palette, Leaf } from 'lucide-react';
+import { Sliders, Wand2, X, Sparkles, Layers, Palette, Leaf, FlaskConical } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -9,18 +9,25 @@ import { Badge } from '@/components/ui/badge';
 import { parseVDL, toVDL, getVDLColors, type VDLResult } from '@/lib/vdlParser';
 import { useProjectStore } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
+import { getRealFormulation, formulationToCompound } from '@/render_ultra/fireworks/particleChemistry';
 
 const VDL_COLORS = getVDLColors();
 
 interface EffectEditorProps {
   initialVDL?: string;
   onClose?: () => void;
+  /** Real FFIC formulation ID from supplier catalog */
+  realFormulationId?: string;
 }
 
-export default function EffectEditor({ initialVDL = '', onClose }: EffectEditorProps) {
+export default function EffectEditor({ initialVDL = '', onClose, realFormulationId }: EffectEditorProps) {
   const { addTimelineItem, currentTime } = useProjectStore();
   const [vdlInput, setVdlInput] = useState(initialVDL);
   const [params, setParams] = useState<VDLResult>(() => parseVDL(initialVDL));
+
+  // Real formulation data
+  const realFormulation = useMemo(() => realFormulationId ? getRealFormulation(realFormulationId) : undefined, [realFormulationId]);
+  const realCompound = useMemo(() => realFormulation ? formulationToCompound(realFormulation) : undefined, [realFormulation]);
 
   useEffect(() => {
     if (vdlInput) {
@@ -88,6 +95,43 @@ export default function EffectEditor({ initialVDL = '', onClose }: EffectEditorP
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
+        {/* FFIC Real Product Section */}
+        {realFormulation && realCompound && (
+          <div className="space-y-1.5 p-2 rounded-lg bg-primary/5 border border-primary/20">
+            <div className="flex items-center gap-1.5">
+              <FlaskConical className="w-3 h-3 text-primary" />
+              <Label className="text-[10px] text-primary uppercase tracking-wider font-bold">Real Product</Label>
+              <Badge variant="default" className="text-[7px] px-1.5 py-0 h-3.5 ml-auto">
+                FFIC Calibrated
+              </Badge>
+            </div>
+            <p className="text-[10px] text-foreground font-medium">{realFormulation.name}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <div
+                className="w-5 h-5 rounded-full border-2 border-foreground/30"
+                style={{ backgroundColor: `#${realFormulation.resultColor.getHexString()}` }}
+              />
+              <div className="text-[9px] text-muted-foreground">
+                {realFormulation.caliber} • {realFormulation.productType} • {realFormulation.temperature}K
+              </div>
+            </div>
+            {/* Chemical composition */}
+            <div className="mt-1 space-y-0.5">
+              <p className="text-[8px] text-muted-foreground uppercase tracking-wider">Chemical Composition</p>
+              {realFormulation.compounds.map((c, i) => (
+                <div key={i} className="flex justify-between text-[9px]">
+                  <span className="text-foreground/70 font-mono-code">{c.element}</span>
+                  <span className="text-primary font-mono-code">{c.percentage}%</span>
+                </div>
+              ))}
+            </div>
+            {realFormulation.crackle && (
+              <Badge variant="outline" className="text-[8px] mt-1 border-accent/40 text-accent">
+                ⚡ Crackling Effect
+              </Badge>
+            )}
+          </div>
+        )}
         {/* VDL Input */}
         <div className="space-y-1">
           <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">VDL Description</Label>

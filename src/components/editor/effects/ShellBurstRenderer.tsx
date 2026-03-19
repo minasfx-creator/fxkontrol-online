@@ -12,9 +12,11 @@ import {
   type BurstPattern,
   type ParticleState,
   type StepModifiers,
+  getFormulationModifiers,
 } from '@/lib/pyroPhysics';
 import { useSceneStore } from '@/store/useSceneStore';
 import { getThreeBlending, getMaxEnergy, GROUND_LIGHT_SCALE } from '@/lib/niagaraBlenderRules';
+import { getRealFormulation, formulationToCompound } from '@/render_ultra/fireworks/particleChemistry';
 
 // ── Custom GPU Shaders (Skybrush-grade thermal rendering) ───────────
 
@@ -157,6 +159,8 @@ interface ShellBurstRendererProps {
   colorTransition?: 'none' | 'to' | 'changing' | 'alternating';
   trailType?: 'none' | 'comet' | 'glitter' | 'brocade' | 'charcoal' | 'smoke';
   fallingLeaves?: boolean;
+  /** Real FFIC formulation ID — overrides color/sparkSize/drag from chemical data */
+  formulationId?: string;
 }
 
 /**
@@ -182,6 +186,7 @@ export default function ShellBurstRenderer({
   colorTransition = 'none',
   trailType = 'none',
   fallingLeaves = false,
+  formulationId,
 }: ShellBurstRendererProps) {
   const pointsRef = useRef<THREE.Points>(null);
   const pistilPointsRef = useRef<THREE.Points>(null);
@@ -215,12 +220,31 @@ export default function ShellBurstRenderer({
     ];
   }, [windSpeed, windDirection]);
 
-  const baseColor = useMemo(() => new THREE.Color(color), [color]);
+  // ── Real formulation override ──
+  const realFormulation = useMemo(() => formulationId ? getRealFormulation(formulationId) : undefined, [formulationId]);
+  const realCompound = useMemo(() => realFormulation ? formulationToCompound(realFormulation) : undefined, [realFormulation]);
+  const formMods = useMemo(() => formulationId ? getFormulationModifiers(formulationId) : null, [formulationId]);
+
+  // Use formulation color if available, otherwise prop color
+  const baseColor = useMemo(() => {
+    if (realCompound) return realCompound.color.clone();
+    return new THREE.Color(color);
+  }, [color, realCompound]);
+
   const starCount = useMemo(() => Math.min(MAX_PARTICLES, getStarCount(caliber)), [caliber]);
-  const breakSpeed = useMemo(() => getBreakSpeed(caliber), [caliber]);
-  const starLifetime = useMemo(() => getStarLifetime(caliber), [caliber]);
+  const breakSpeed = useMemo(() => {
+    const base = getBreakSpeed(caliber);
+    return formMods ? base * formMods.velocityScale : base;
+  }, [caliber, formMods]);
+  const starLifetime = useMemo(() => {
+    const base = getStarLifetime(caliber);
+    return formMods ? base * formMods.burnRateScale : base;
+  }, [caliber, formMods]);
   const burstSpread = useMemo(() => getStarSpread(caliber), [caliber]);
-  const baseSize = useMemo(() => 0.5 + caliber * 0.35, [caliber]);
+  const baseSize = useMemo(() => {
+    const base = 0.5 + caliber * 0.35;
+    return formMods ? base * formMods.sparkSizeScale : base;
+  }, [caliber, formMods]);
 
   const pistilCount = useMemo(() => hasPistil ? Math.round(starCount * 0.25) : 0, [hasPistil, starCount]);
   const pistilColorObj = useMemo(() => new THREE.Color(pistilColor), [pistilColor]);
@@ -319,11 +343,12 @@ export default function ShellBurstRenderer({
     initTimeRef.current += dt;
     const time = initTimeRef.current;
 
-    // Step physics using store-driven drag and wind
+    // Step physics using store-driven drag and wind (formulation override if present)
+    const effectiveDrag = formMods ? formMods.dragOverride : starDrag;
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
       if (p.life < p.maxLife) {
-        stepParticle(p, dt, windVec, starDrag, stepMods);
+        stepParticle(p, dt, windVec, effectiveDrag, stepMods);
 
         // Glitter trail: emit micro-particles from active stars
         if (trailType === 'glitter' && p.life > 0.1 && Math.random() < 0.15) {

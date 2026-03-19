@@ -8,7 +8,8 @@ export type PyroEffectType =
   | 'shell' | 'cake' | 'mine' | 'comet' | 'roman_candle'
   | 'fan' | 'gerb' | 'flame' | 'strobe' | 'waterfall'
   | 'crossette' | 'tourbillon' | 'salute' | 'cryo' | 'confetti' | 'laser'
-  | 'sparkle_pot' | 'set_piece' | 'lance' | 'wheel';
+  | 'sparkle_pot' | 'set_piece' | 'lance' | 'wheel'
+  | 'sparkular' | 'fog_low' | 'streamer';
 
 export interface PyroEffectSpec {
   type: PyroEffectType;
@@ -189,6 +190,30 @@ export const EFFECT_TYPES: Record<PyroEffectType, PyroEffectSpec> = {
     minCaliber: 0, maxCaliber: 0, liftTimePerInch: 0,
     category: 'ground', colorChannels: 1,
     description: 'Spinning firework mounted on a central pivot',
+  },
+  sparkular: {
+    type: 'sparkular', label: 'Sparkular / Cold Sparks', icon: '✨',
+    defaultDuration: 8, defaultHeight: 5, defaultSpread: 15,
+    hasLiftPhase: false, isChainable: false, isCake: false, defaultShotsPerDevice: 1,
+    minCaliber: 0, maxCaliber: 0, liftTimePerInch: 0,
+    category: 'sfx', colorChannels: 0,
+    description: 'Indoor-safe cold spark fountain (Showven Sparkular)',
+  },
+  fog_low: {
+    type: 'fog_low', label: 'Low Fog', icon: '🌫️',
+    defaultDuration: 30, defaultHeight: 0.5, defaultSpread: 360,
+    hasLiftPhase: false, isChainable: false, isCake: false, defaultShotsPerDevice: 1,
+    minCaliber: 0, maxCaliber: 0, liftTimePerInch: 0,
+    category: 'sfx', colorChannels: 0,
+    description: 'Floor-hugging low fog (Showven Creeper AQ)',
+  },
+  streamer: {
+    type: 'streamer', label: 'Metallic Streamer', icon: '🎗️',
+    defaultDuration: 3, defaultHeight: 10, defaultSpread: 30,
+    hasLiftPhase: false, isChainable: false, isCake: false, defaultShotsPerDevice: 1,
+    minCaliber: 0, maxCaliber: 0, liftTimePerInch: 0,
+    category: 'sfx', colorChannels: 3,
+    description: 'Metallic streamer cannon for celebrations',
   },
 };
 

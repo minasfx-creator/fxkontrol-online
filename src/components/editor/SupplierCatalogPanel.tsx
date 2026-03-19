@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Store, X, Search, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { getRealFormulation } from '@/render_ultra/fireworks/particleChemistry';
 
 interface SupplierProduct {
   name: string;
@@ -10,6 +12,7 @@ interface SupplierProduct {
   unNumber: string;
   classCode: string;
   type: string;
+  formulationId?: string;
 }
 
 interface SupplierCatalog {
@@ -22,25 +25,39 @@ interface SupplierCatalog {
   products?: SupplierProduct[];
 }
 
+function FormulationSwatch({ formulationId }: { formulationId?: string }) {
+  if (!formulationId) return null;
+  const form = getRealFormulation(formulationId);
+  if (!form) return null;
+  const hex = `#${form.resultColor.getHexString()}`;
+  return (
+    <div
+      className="w-3 h-3 rounded-full border border-border/50 shrink-0"
+      style={{ backgroundColor: hex }}
+      title={`FFIC: ${form.name}`}
+    />
+  );
+}
+
 const CATALOGS: SupplierCatalog[] = [
   {
     id: 'piroex', name: 'PIROEX LTDA', country: '🇧🇷', effectCount: 85, subscribed: true,
     description: 'Importador profissional brasileiro — laudos FFIC validados',
     products: [
-      { name: 'Bomba Aérea 2.5" Color Peony', caliber: '2.5"', unNumber: 'UN0335', classCode: '1.3G', type: 'Shell' },
-      { name: 'Bomba Aérea 2.5" Purple Peony', caliber: '2.5"', unNumber: 'UN0335', classCode: '1.3G', type: 'Shell' },
-      { name: 'Bomba Aérea 2.5" Blue Peony', caliber: '2.5"', unNumber: 'UN0335', classCode: '1.3G', type: 'Shell' },
-      { name: 'Bomba Aérea 2.5" Gold Willow', caliber: '2.5"', unNumber: 'UN0335', classCode: '1.3G', type: 'Shell' },
-      { name: 'Bomba Aérea 2.5" Brocade Crown', caliber: '2.5"', unNumber: 'UN0335', classCode: '1.3G', type: 'Shell' },
+      { name: 'Bomba Aérea 2.5" Color Peony', caliber: '2.5"', unNumber: 'UN0335', classCode: '1.3G', type: 'Shell', formulationId: 'purple_peony_2.5' },
+      { name: 'Bomba Aérea 2.5" Purple Peony', caliber: '2.5"', unNumber: 'UN0335', classCode: '1.3G', type: 'Shell', formulationId: 'purple_peony_2.5' },
+      { name: 'Bomba Aérea 2.5" Blue Peony', caliber: '2.5"', unNumber: 'UN0335', classCode: '1.3G', type: 'Shell', formulationId: 'blue_peony_2.5' },
+      { name: 'Bomba Aérea 2.5" Gold Willow', caliber: '2.5"', unNumber: 'UN0335', classCode: '1.3G', type: 'Shell', formulationId: 'gold_willow_2.5' },
+      { name: 'Bomba Aérea 2.5" Brocade Crown', caliber: '2.5"', unNumber: 'UN0335', classCode: '1.3G', type: 'Shell', formulationId: 'brocade_crown_2.5' },
     ],
   },
   {
     id: 'skyking', name: 'Changsha SkyKing', country: '🇨🇳', effectCount: 1400, subscribed: true,
     description: 'Fabricante chinês — shells, cakes, single shots com laudo FFIC',
     products: [
-      { name: 'Cake 20mm 300-Shot Multicolor', caliber: '20mm', unNumber: 'UN0335', classCode: '1.4G', type: 'Cake' },
-      { name: 'Single Shot 30mm Ti Crackling Willow + Red Mine', caliber: '30mm', unNumber: 'UN0335', classCode: '1.3G', type: 'Single Shot' },
-      { name: 'Single Shot 30mm Color Peony', caliber: '30mm', unNumber: 'UN0335', classCode: '1.3G', type: 'Single Shot' },
+      { name: 'Cake 20mm 300-Shot Multicolor', caliber: '20mm', unNumber: 'UN0335', classCode: '1.4G', type: 'Cake', formulationId: 'cake_300_20mm' },
+      { name: 'Single Shot 30mm Ti Crackling Willow + Red Mine', caliber: '30mm', unNumber: 'UN0335', classCode: '1.3G', type: 'Single Shot', formulationId: 'crackling_willow_30mm' },
+      { name: 'Single Shot 30mm Color Peony', caliber: '30mm', unNumber: 'UN0335', classCode: '1.3G', type: 'Single Shot', formulationId: 'red_mine_30mm' },
     ],
   },
   { id: 'celtic', name: 'Celtic Fireworks', country: '🇬🇧', effectCount: 450, subscribed: false, description: 'UK professional effects with detailed specs' },
@@ -57,7 +74,12 @@ const CATALOGS: SupplierCatalog[] = [
   { id: 'macedo', name: 'Macedo & Coelho', country: '🇧🇷', effectCount: 400, subscribed: false, description: 'Brazilian professional catalog' },
 ];
 
-export default function SupplierCatalogPanel({ onClose }: { onClose: () => void }) {
+interface SupplierCatalogPanelProps {
+  onClose: () => void;
+  onSelectProduct?: (product: SupplierProduct) => void;
+}
+
+export default function SupplierCatalogPanel({ onClose, onSelectProduct }: SupplierCatalogPanelProps) {
   const [search, setSearch] = useState('');
   const [catalogs, setCatalogs] = useState(CATALOGS);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -119,10 +141,20 @@ export default function SupplierCatalogPanel({ onClose }: { onClose: () => void 
             {expandedId === cat.id && cat.products && (
               <div className="ml-6 mt-1 mb-2 space-y-0.5">
                 {cat.products.map((p, i) => (
-                  <div key={i} className="text-[8px] text-muted-foreground bg-surface-2/50 rounded px-2 py-1 flex justify-between">
-                    <span className="text-foreground/80">{p.name}</span>
+                  <button
+                    key={i}
+                    onClick={() => onSelectProduct?.(p)}
+                    className="w-full text-[8px] text-muted-foreground bg-surface-2/50 rounded px-2 py-1 flex items-center gap-1.5 hover:bg-surface-2 transition-colors text-left"
+                  >
+                    <FormulationSwatch formulationId={p.formulationId} />
+                    <span className="text-foreground/80 flex-1 truncate">{p.name}</span>
+                    {p.formulationId && (
+                      <Badge variant="outline" className="text-[7px] px-1 py-0 h-3 border-primary/30 text-primary">
+                        FFIC
+                      </Badge>
+                    )}
                     <span className="text-primary/60">{p.classCode}</span>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}

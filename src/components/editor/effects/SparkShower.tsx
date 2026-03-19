@@ -14,25 +14,35 @@ export default function SparkShower({
   progress,
   height = 20,
   spread = 6,
+  sparkularModel,
 }: {
   position: [number, number, number];
   color: string;
   progress: number;
   height?: number;
   spread?: number;
+  /** Showven Sparkular model — constrains behavior to cold spark physics */
+  sparkularModel?: 'vertical' | 'circular' | 'waterfall' | 'wheel' | 'blast' | 'mobile';
 }) {
+  const isColdSpark = !!sparkularModel;
   const pointsRef = useRef<THREE.Points>(null);
-  const baseColor = useMemo(() => new THREE.Color(color), [color]);
+  const baseColor = useMemo(() => {
+    // Cold sparks are always gold/silver, not user color
+    if (isColdSpark) return new THREE.Color('#FFD700');
+    return new THREE.Color(color);
+  }, [color, isColdSpark]);
 
   const seeds = useMemo(() => {
     const s: { angle: number; r: number; vy: number; phase: number; lt: number; speed: number }[] = [];
     for (let i = 0; i < SPARK_COUNT; i++) {
+      const isWaterfall = sparkularModel === 'waterfall';
+      const isWheel = sparkularModel === 'wheel';
       s.push({
-        angle: Math.random() * Math.PI * 2,
-        r: Math.random() * spread,
-        vy: -2 - Math.random() * 6,
+        angle: isWheel ? (i / SPARK_COUNT) * Math.PI * 2 : Math.random() * Math.PI * 2,
+        r: isWaterfall ? Math.random() * spread * 0.3 : Math.random() * spread,
+        vy: isWaterfall ? -4 - Math.random() * 4 : isColdSpark ? -1 - Math.random() * 3 : -2 - Math.random() * 6,
         phase: Math.random() * Math.PI * 2,
-        lt: 0.3 + Math.random() * 1.2,
+        lt: isColdSpark ? 0.5 + Math.random() * 1.0 : 0.3 + Math.random() * 1.2,
         speed: 0.5 + Math.random() * 2,
       });
     }

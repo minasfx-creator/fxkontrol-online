@@ -320,3 +320,105 @@ export function getRealFormulation(id: string): RealFormulation | undefined {
 export function getAllFormulations(): Record<string, RealFormulation> {
   return { ...REAL_FORMULATIONS };
 }
+
+// ── Emission Spectrum Engine ────────────────────────────────────────
+// Maps chemical elements to dominant emission wavelengths (nm)
+
+interface EmissionLine {
+  wavelength: number; // nm
+  intensity: number;  // 0-1 relative
+}
+
+const ELEMENT_EMISSION: Record<string, EmissionLine[]> = {
+  'Sr': [{ wavelength: 606, intensity: 1.0 }, { wavelength: 650, intensity: 0.6 }],
+  'SrCO3': [{ wavelength: 606, intensity: 1.0 }, { wavelength: 650, intensity: 0.6 }],
+  'Sr(NO3)2': [{ wavelength: 606, intensity: 0.9 }, { wavelength: 640, intensity: 0.5 }],
+  'Ba': [{ wavelength: 524, intensity: 1.0 }, { wavelength: 553, intensity: 0.7 }],
+  'Cu': [{ wavelength: 510, intensity: 0.8 }, { wavelength: 470, intensity: 1.0 }],
+  'CuO': [{ wavelength: 510, intensity: 0.7 }, { wavelength: 470, intensity: 1.0 }],
+  'Cu(NO3)2': [{ wavelength: 505, intensity: 0.8 }, { wavelength: 475, intensity: 0.9 }],
+  'Na': [{ wavelength: 589, intensity: 1.0 }],
+  'Fe': [{ wavelength: 580, intensity: 0.6 }, { wavelength: 620, intensity: 0.8 }],
+  'Ti': [{ wavelength: 400, intensity: 0.3 }, { wavelength: 500, intensity: 0.5 }, { wavelength: 600, intensity: 0.5 }, { wavelength: 700, intensity: 0.3 }], // broadband
+  'Mg/Al': [{ wavelength: 500, intensity: 0.9 }, { wavelength: 520, intensity: 1.0 }],
+  'Al': [{ wavelength: 490, intensity: 0.8 }, { wavelength: 520, intensity: 0.6 }],
+  'Al/Mg': [{ wavelength: 500, intensity: 0.9 }, { wavelength: 520, intensity: 1.0 }],
+  'Bi': [{ wavelength: 560, intensity: 0.6 }, { wavelength: 600, intensity: 0.5 }],
+  'Bi2O3': [{ wavelength: 560, intensity: 0.6 }, { wavelength: 590, intensity: 0.5 }],
+  'C': [{ wavelength: 590, intensity: 0.7 }, { wavelength: 620, intensity: 0.9 }],
+  'S': [{ wavelength: 580, intensity: 0.5 }],
+  'KClO4': [], // oxidizer, no visible emission
+  'KNO3': [],
+  'LAC': [{ wavelength: 470, intensity: 0.9 }], // blue copper compound
+  'PVC': [],  // chlorine donor, no visible emission
+  'Shellac': [],
+  'Dextrin': [],
+  'Sb2S3': [{ wavelength: 560, intensity: 0.4 }],
+  'Mixed': [{ wavelength: 520, intensity: 0.5 }, { wavelength: 580, intensity: 0.6 }, { wavelength: 620, intensity: 0.5 }],
+};
+
+/** Get emission spectrum for a real formulation */
+export function getEmissionSpectrum(formulationId: string): EmissionLine[] {
+  const form = REAL_FORMULATIONS[formulationId];
+  if (!form) return [];
+
+  const lines: EmissionLine[] = [];
+  for (const compound of form.compounds) {
+    const emissions = ELEMENT_EMISSION[compound.element] || [];
+    for (const line of emissions) {
+      lines.push({
+        wavelength: line.wavelength,
+        intensity: line.intensity * (compound.percentage / 100),
+      });
+    }
+  }
+  return lines;
+}
+
+/** Wavelength (nm) to sRGB via CIE approximation */
+function wavelengthToRGB(nm: number): THREE.Color {
+  let r = 0, g = 0, b = 0;
+  if (nm >= 380 && nm < 440) {
+    r = -(nm - 440) / 60; b = 1;
+  } else if (nm < 490) {
+    g = (nm - 440) / 50; b = 1;
+  } else if (nm < 510) {
+    g = 1; b = -(nm - 510) / 20;
+  } else if (nm < 580) {
+    r = (nm - 510) / 70; g = 1;
+  } else if (nm < 645) {
+    r = 1; g = -(nm - 645) / 65;
+  } else if (nm <= 780) {
+    r = 1;
+  }
+  return new THREE.Color(r, g, b);
+}
+
+/** Blend formulation colors from emission spectrum instead of static preset */
+export function blendFormulationColors(formulationId: string): THREE.Color {
+  const spectrum = getEmissionSpectrum(formulationId);
+  if (spectrum.length === 0) {
+    const form = REAL_FORMULATIONS[formulationId];
+    return form ? form.resultColor.clone() : new THREE.Color(1, 1, 1);
+  }
+
+  const result = new THREE.Color(0, 0, 0);
+  let totalWeight = 0;
+
+  for (const line of spectrum) {
+    if (line.intensity < 0.01) continue;
+    const rgb = wavelengthToRGB(line.wavelength);
+    result.r += rgb.r * line.intensity;
+    result.g += rgb.g * line.intensity;
+    result.b += rgb.b * line.intensity;
+    totalWeight += line.intensity;
+  }
+
+  if (totalWeight > 0) {
+    result.r /= totalWeight;
+    result.g /= totalWeight;
+    result.b /= totalWeight;
+  }
+
+  return result;
+}
