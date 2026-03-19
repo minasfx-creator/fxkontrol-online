@@ -113,6 +113,12 @@ export default function LaserControlPanel({ onClose }: LaserControlPanelProps) {
         )}
       </div>
 
+      {/* 3D Viewport Preview Toggle */}
+      <div className="px-3 py-2 border-b border-border flex items-center justify-between">
+        <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">3D Viewport</span>
+        <Switch checked={laserPreviewEnabled} onCheckedChange={setLaserPreviewEnabled} />
+      </div>
+
       {/* Status */}
       <div className="px-3 py-2 border-b border-border">
         <div className={cn(
