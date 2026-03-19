@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import minasfxLogo from '@/assets/minasfx-logo.png';
+import minasfxLogo from '@/assets/minasfx-logo-white.png';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
