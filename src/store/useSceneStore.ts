@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { ViewTransform } from '@/lib/niagaraBlenderRules';
 
-export type GroundStyle = 'finale-dark' | 'google-earth' | 'flat-black' | 'concrete' | 'custom';
+export type GroundStyle = 'finale-dark' | 'google-earth' | 'flat-black' | 'concrete' | 'sfx-stage' | 'custom';
 export type SkyPreset = 'night-clear' | 'night-cloudy' | 'dusk' | 'overcast' | 'foggy' | 'custom';
 export type WeatherCondition = 'clear' | 'light-rain' | 'heavy-rain' | 'snow' | 'fog' | 'haze' | 'wind-only';
 export type QualityPreset = 'realistic' | 'show' | 'performance';
@@ -462,6 +462,52 @@ export const SCENE_PRESETS: Record<string, { name: string; description: string; 
       vignetteIntensity: 0.2,
       chromaticAberration: true,
       filmGrain: 0.015,
+      viewTransform: 'standard' as ViewTransform,
+    },
+  },
+  'sfx-stage': {
+    name: 'SFX Stage (DMXPrevis)',
+    description: 'Indoor venue with truss rigging, moving heads, haze — optimized for Showven SFX preview',
+    settings: {
+      skyPreset: 'custom',
+      groundStyle: 'sfx-stage',
+      ambientIntensity: 0.015,
+      moonIntensity: 0.0,
+      moonColor: '#220033',
+      skyBrightness: 0.05,
+      starDensity: 0.0,
+      groundBrightness: 0.25,
+      gridOpacity: 0.2,
+      gridColor: '#0a0a12',
+      fogDensity: 0.65,
+      fogColor: '#08060e',
+      fogNear: 5000,
+      fogFar: 50000,
+      horizonGlow: 0.0,
+      showTreeline: false,
+      showScalePoles: false,
+      groundFogIntensity: 0.9,
+      effectBrightness: 1.4,
+      effectScale: 1.0,
+      bloomStrength: 1.6,
+      particleDensity: 1.3,
+      smokeOpacity: 0.8,
+      trailLength: 1.0,
+      hdrMultiplier: 3.5,
+      burstFlashIntensity: 0.6,
+      afterglowDuration: 2.0,
+      afterglowIntensity: 0.15,
+      thermalTransitionSpeed: 1.0,
+      weather: 'haze',
+      humidity: 0.5,
+      shadowsEnabled: true,
+      shadowQuality: 'high',
+      rimLightIntensity: 0.7,
+      fillLightIntensity: 0.3,
+      vignetteEnabled: true,
+      vignetteIntensity: 0.4,
+      chromaticAberration: true,
+      filmGrain: 0.02,
       viewTransform: 'standard' as ViewTransform,
     },
   },
