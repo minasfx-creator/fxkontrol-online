@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Sliders, Wand2, X, Sparkles, Layers, Palette, Leaf } from 'lucide-react';
+import { Sliders, Wand2, X, Sparkles, Layers, Palette, Leaf, FlaskConical } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { parseVDL, toVDL, getVDLColors, type VDLResult } from '@/lib/vdlParser';
 import { useProjectStore } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
+import { getRealFormulation, formulationToCompound } from '@/render_ultra/fireworks/particleChemistry';
 
 const VDL_COLORS = getVDLColors();
 
