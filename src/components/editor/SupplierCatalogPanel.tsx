@@ -69,6 +69,33 @@ const CATALOGS: SupplierCatalog[] = [
   { id: 'brothers', name: 'Brothers Pyrotechnics', country: '🇺🇸', effectCount: 600, subscribed: false, description: 'US consumer and display effects' },
   { id: 'vulcan', name: 'Vulcan Fireworks', country: '🇫🇷', effectCount: 280, subscribed: false, description: 'French artisan effects' },
   { id: 'pirotex', name: 'Pirotex SA', country: '🇪🇸', effectCount: 320, subscribed: false, description: 'Spanish Mediterranean effects' },
+  // ── Laser Systems ──
+  {
+    id: 'optlaser', name: 'OPT Laser', country: '🇵🇱', effectCount: 30, subscribed: true,
+    description: 'Professional laser systems — PR, CF, WP series, Skybeam architectural',
+    products: [
+      { name: 'PR4000-RGB', caliber: '4W', unNumber: '-', classCode: 'Class 4', type: 'Laser' },
+      { name: 'PR8000-RGB', caliber: '8W', unNumber: '-', classCode: 'Class 4', type: 'Laser' },
+      { name: 'CF25000-RGB', caliber: '25W', unNumber: '-', classCode: 'Class 4', type: 'Laser' },
+      { name: 'CF33000-RGB', caliber: '33W', unNumber: '-', classCode: 'Class 4', type: 'Laser' },
+      { name: 'CF45000-RGB', caliber: '45W', unNumber: '-', classCode: 'Class 4', type: 'Laser' },
+      { name: 'WP35000-RGB', caliber: '35W', unNumber: '-', classCode: 'Class 4', type: 'Laser' },
+      { name: 'WP60000-RGB', caliber: '60W', unNumber: '-', classCode: 'Class 4', type: 'Laser' },
+      { name: 'WP100000-RGB', caliber: '100W', unNumber: '-', classCode: 'Class 4', type: 'Laser' },
+      { name: 'WP150000-RGB', caliber: '150W', unNumber: '-', classCode: 'Class 4', type: 'Laser' },
+      { name: 'Skybeam', caliber: '20W', unNumber: '-', classCode: 'Class 4', type: 'Laser' },
+    ],
+  },
+  // ── Flying Displays ──
+  {
+    id: 'filmbase', name: 'Filmbase Flying Display', country: '🇮🇹', effectCount: 3, subscribed: true,
+    description: 'Transparent LED mesh screens flown by drone swarms — P30/P40',
+    products: [
+      { name: 'FLY78 5×15m', caliber: 'P30', unNumber: '-', classCode: '-', type: 'Flying Display' },
+      { name: 'L8 3×10m', caliber: 'P40', unNumber: '-', classCode: '-', type: 'Flying Display' },
+      { name: 'FLY78 Custom 8×20m', caliber: 'P30', unNumber: '-', classCode: '-', type: 'Flying Display' },
+    ],
+  },
   { id: 'titanium', name: 'Titanium Salutes', country: '🇮🇹', effectCount: 150, subscribed: false, description: 'Italian salutes and reports' },
   { id: 'starfire', name: 'Starfire Systems', country: '🇧🇷', effectCount: 250, subscribed: false, description: 'Brazilian show effects' },
   { id: 'macedo', name: 'Macedo & Coelho', country: '🇧🇷', effectCount: 400, subscribed: false, description: 'Brazilian professional catalog' },
