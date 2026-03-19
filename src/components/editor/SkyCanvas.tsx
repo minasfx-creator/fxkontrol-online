@@ -3010,6 +3010,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
         
         if (sweepT >= 1) {
           introPhase.current = 'done';
+          __cameraIntroPlayed = true; // Mark intro as played for this session
           camera.position.copy(defaultPos);
           if (controlsRef.current) {
             controlsRef.current.target.copy(defaultLook);
