@@ -83,6 +83,7 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
       { id: 'addressing', label: 'Endereçamento', icon: Cpu },
       { id: 'inventory', label: 'Inventário', icon: DollarSign },
       { id: 'suppliers', label: 'Fornecedores', icon: ShoppingBag },
+      { id: 'showven', label: 'Showven™', icon: Sparkles },
       { id: 'logistics', label: 'Logística', icon: Tag },
     ],
   },
