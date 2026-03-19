@@ -87,9 +87,9 @@ export default function FlameEffect({
       const turbZ = Math.cos(time * 5 + i * 1.1) * seed.turbulence * 0.12 * t;
       const turbY = Math.sin(time * 8 + i * 2.3) * 0.2 * t;
 
-      posBuffer[i3] = Math.cos(seed.angle) * seed.spread * t * height * 0.4 + turbX;
+      posBuffer[i3] = Math.cos(seed.angle) * seed.spread * t * effectiveHeight * 0.4 + turbX;
       posBuffer[i3 + 1] = seed.speed * t + turbY;
-      posBuffer[i3 + 2] = Math.sin(seed.angle) * seed.spread * t * height * 0.4 + turbZ;
+      posBuffer[i3 + 2] = Math.sin(seed.angle) * seed.spread * t * effectiveHeight * 0.4 + turbZ;
 
       const fade = Math.max(0, 1 - cycleTime) * intensity;
       const h = cycleTime; // normalized height in flame

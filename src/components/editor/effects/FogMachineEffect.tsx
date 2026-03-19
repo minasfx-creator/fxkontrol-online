@@ -23,15 +23,15 @@ export default function FogMachineEffect({
 
   const puffs = useMemo(() => {
     return Array.from({ length: FOG_PUFFS }, () => ({
-      x: (Math.random() - 0.5) * spread,
-      z: (Math.random() - 0.5) * spread,
+      x: (Math.random() - 0.5) * spread * (lowFog ? 1.5 : 1),
+      z: (Math.random() - 0.5) * spread * (lowFog ? 1.5 : 1),
       phase: Math.random() * Math.PI * 2,
-      lift: 0.08 + Math.random() * 0.22,
+      lift: lowFog ? 0.01 + Math.random() * 0.03 : 0.08 + Math.random() * 0.22,
       delay: Math.random() * 0.3,
-      scale: 0.9 + Math.random() * 2.2,
-      drift: (Math.random() - 0.5) * 0.4,
+      scale: lowFog ? 1.5 + Math.random() * 3.0 : 0.9 + Math.random() * 2.2,
+      drift: (Math.random() - 0.5) * (lowFog ? 0.8 : 0.4),
     }));
-  }, [spread]);
+  }, [spread, lowFog]);
 
   useFrame(({ clock }) => {
     const time = clock.getElapsedTime();

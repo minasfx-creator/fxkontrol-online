@@ -35,12 +35,14 @@ export default function SparkShower({
   const seeds = useMemo(() => {
     const s: { angle: number; r: number; vy: number; phase: number; lt: number; speed: number }[] = [];
     for (let i = 0; i < SPARK_COUNT; i++) {
+      const isWaterfall = sparkularModel === 'waterfall';
+      const isWheel = sparkularModel === 'wheel';
       s.push({
-        angle: Math.random() * Math.PI * 2,
-        r: Math.random() * spread,
-        vy: -2 - Math.random() * 6,
+        angle: isWheel ? (i / SPARK_COUNT) * Math.PI * 2 : Math.random() * Math.PI * 2,
+        r: isWaterfall ? Math.random() * spread * 0.3 : Math.random() * spread,
+        vy: isWaterfall ? -4 - Math.random() * 4 : isColdSpark ? -1 - Math.random() * 3 : -2 - Math.random() * 6,
         phase: Math.random() * Math.PI * 2,
-        lt: 0.3 + Math.random() * 1.2,
+        lt: isColdSpark ? 0.5 + Math.random() * 1.0 : 0.3 + Math.random() * 1.2,
         speed: 0.5 + Math.random() * 2,
       });
     }
