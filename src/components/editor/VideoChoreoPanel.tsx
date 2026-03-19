@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import {
   extractEnhancedFrames, generateVideoChoreo, renderFramePreview,
+  interpolateKeyframes,
   isGifFile, isVideoFile, DEFAULT_OPTIONS,
   type VideoFrame, type ChoreoKeyframe, type VideoChoreoResult,
 } from '@/lib/videoChoreoEngine';
