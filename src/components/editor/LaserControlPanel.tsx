@@ -3,14 +3,16 @@
  * Real-time control: pan/tilt, pattern, color, intensity, beam count
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Zap, ChevronDown, Upload, Cpu } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { parseILDA, generateShape, type ILDAFrame } from '@/lib/ildaParser';
 import { LASER_HARDWARE_PRESETS } from '@/lib/laserEngine';
+import { useLaserPreviewStore } from '@/store/useLaserPreviewStore';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
