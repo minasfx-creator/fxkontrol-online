@@ -335,20 +335,60 @@ export default function VideoChoreoPanel({ onClose }: { onClose: () => void }) {
   // ── Frame Preview Rendering ─────────────────────────────────
   useEffect(() => {
     if (!previewCanvasRef.current || !result || result.keyframes.length === 0) return;
+    if (isPlaying) return; // rAF handles rendering during playback
     const kf = result.keyframes[selectedFrame % result.keyframes.length];
     if (!kf) return;
     renderFramePreview(previewCanvasRef.current, kf.points, kf.color);
-  }, [selectedFrame, result]);
+  }, [selectedFrame, result, isPlaying]);
 
-  // ── Auto-play ───────────────────────────────────────────────
+  // ── Animated Playback with requestAnimationFrame + Interpolation ──
   useEffect(() => {
-    if (isPlaying && result && result.keyframes.length > 1) {
-      playIntervalRef.current = window.setInterval(() => {
-        setSelectedFrame(prev => (prev + 1) % result.keyframes.length);
-      }, (holdDuration + transitionDuration) * 200); // 5x speed preview
-    }
+    if (!isPlaying || !result || result.keyframes.length < 2) return;
+
+    const totalKf = result.keyframes.length;
+    const segmentDuration = (holdDuration + transitionDuration) * 200; // 5x speed ms
+    const totalDuration = totalKf * segmentDuration;
+    playStartTimeRef.current = performance.now() - selectedFrame * segmentDuration;
+
+    const animate = (now: number) => {
+      if (!previewCanvasRef.current || !result) return;
+
+      const elapsed = (now - playStartTimeRef.current) % totalDuration;
+      const rawFrame = elapsed / segmentDuration;
+      const frameIdx = Math.floor(rawFrame) % totalKf;
+      const frac = rawFrame - Math.floor(rawFrame);
+
+      const kfA = result.keyframes[frameIdx];
+      const kfB = result.keyframes[(frameIdx + 1) % totalKf];
+
+      // During hold phase (first half), show static; during transition, interpolate
+      const holdRatio = holdDuration / (holdDuration + transitionDuration);
+      let prevPoints: { x: number; y: number; z: number }[] | undefined;
+
+      if (frac < holdRatio) {
+        // Hold phase — static
+        renderFramePreview(previewCanvasRef.current, kfA.points, kfA.color);
+        interpolatedPointsRef.current = null;
+      } else {
+        // Transition phase — interpolate
+        const t = (frac - holdRatio) / (1 - holdRatio);
+        const interp = interpolateKeyframes(kfA, kfB, t);
+        prevPoints = kfA.points;
+        renderFramePreview(previewCanvasRef.current, interp.points, interp.color, {
+          prevPoints,
+          trailOpacity: 0.12 * (1 - t),
+        });
+        interpolatedPointsRef.current = interp.points;
+      }
+
+      setSelectedFrame(frameIdx);
+      playRafRef.current = requestAnimationFrame(animate);
+    };
+
+    playRafRef.current = requestAnimationFrame(animate);
+
     return () => {
-      if (playIntervalRef.current) clearInterval(playIntervalRef.current);
+      if (playRafRef.current) cancelAnimationFrame(playRafRef.current);
     };
   }, [isPlaying, result, holdDuration, transitionDuration]);
 
