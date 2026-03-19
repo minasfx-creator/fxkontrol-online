@@ -81,6 +81,9 @@ export default function TrainingSimulator({ mission, allEquipment, onComplete, o
         ...prev,
         { snapPointId: snapPoint.id, equipmentId: selectedEquipment, position: snapPoint.position },
       ]);
+      // Trigger VFX
+      const vfxId = `vfx-${Date.now()}`;
+      setActiveVFX((prev) => [...prev, { id: vfxId, position: snapPoint.position }]);
       setScore((s) => s + 100);
       setSelectedEquipment(null);
     },
