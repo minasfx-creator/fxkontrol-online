@@ -15,7 +15,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import minasfxLogo from '@/assets/minasfx-logo.png';
+import minasfxLogo from '@/assets/minasfx-logo-white.png';
 
 const navItems = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard, desc: 'Visão geral' },
@@ -39,11 +39,11 @@ export function AppSidebar() {
         <div className={`px-3 pt-4 pb-2 ${collapsed ? 'flex justify-center' : ''}`}>
           {collapsed ? (
             <div className="h-8 w-8 rounded-lg bg-primary/15 flex items-center justify-center overflow-hidden">
-              <img src={minasfxLogo} alt="MinasFX" className="h-5 object-contain brightness-0 invert" />
+              <img src={minasfxLogo} alt="MinasFX" className="h-5 object-contain" />
             </div>
           ) : (
             <div className="flex items-center gap-2.5">
-              <img src={minasfxLogo} alt="MinasFX" className="h-7 object-contain shrink-0 brightness-0 invert" />
+              <img src={minasfxLogo} alt="MinasFX" className="h-7 object-contain shrink-0" />
               <div>
                 <p className="text-xs font-bold text-foreground tracking-wide">FX KONTROL</p>
                 <p className="text-[9px] text-muted-foreground font-mono">by MinasFX</p>

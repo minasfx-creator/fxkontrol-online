@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import minasfxLogo from '@/assets/minasfx-logo.png';
+import minasfxLogo from '@/assets/minasfx-logo-white.png';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -40,7 +40,7 @@ export default function Auth() {
     <div className="h-screen w-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-sm space-y-6 px-4">
         <div className="text-center">
-          <img src={minasfxLogo} alt="MinasFX Special FX Solutions" className="h-10 mx-auto mb-4 object-contain brightness-0 invert" />
+          <img src={minasfxLogo} alt="MinasFX Special FX Solutions" className="h-10 mx-auto mb-4 object-contain" />
           <h1 className="text-xl font-semibold text-foreground">FX KONTROL</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {isLogin ? 'Entre para acessar seus projetos' : 'Crie sua conta'}

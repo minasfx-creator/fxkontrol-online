@@ -3,7 +3,7 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { NewsTicker } from '@/components/NewsTicker';
 import { Messenger } from '@/components/Messenger';
-import minasfxLogo from '@/assets/minasfx-logo.png';
+import minasfxLogo from '@/assets/minasfx-logo-white.png';
 
 export default function MainLayout() {
   const location = useLocation();
@@ -25,7 +25,7 @@ export default function MainLayout() {
                 </span>
               </div>
               <div className="ml-auto flex items-center gap-2">
-                <img src={minasfxLogo} alt="MinasFX" className="h-4 object-contain brightness-0 invert opacity-60" />
+                <img src={minasfxLogo} alt="MinasFX" className="h-4 object-contain opacity-60" />
               </div>
             </header>
           )}
