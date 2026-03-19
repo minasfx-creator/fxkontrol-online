@@ -224,6 +224,7 @@ export default function ShowvenEquipmentPanel({ onClose }: ShowvenEquipmentPanel
           <CategorySection category="sparkular" presets={SHOWVEN_SPARKULARS} />
           <CategorySection category="fog" presets={SHOWVEN_FOG} />
           <CategorySection category="confetti" presets={SHOWVEN_CONFETTI} />
+          <CategorySection category="flyingDisplay" presets={SHOWVEN_FLYING_DISPLAYS} />
           <CategorySection category="controller" presets={SHOWVEN_CONTROLLERS} />
         </div>
       </ScrollArea>

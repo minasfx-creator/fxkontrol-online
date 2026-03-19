@@ -3491,6 +3491,7 @@ export default function SkyCanvas() {
         {!isMobile && <CollisionAvoidanceOverlay config={DEFAULT_AVOIDANCE} />}
         <TimelineEffects />
         <LiveSFXEffects />
+        <LaserPreviewBeams />
         {!isMobile && <AudioSpectrumVisualizer />}
         <PlaybackClock />
         {!isMobile && <CameraAnimator />}
