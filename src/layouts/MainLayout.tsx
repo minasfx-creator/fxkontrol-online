@@ -13,23 +13,23 @@ export default function MainLayout() {
         <AppSidebar />
 
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Header — hidden in editor mode for max viewport */}
           {!isEditor && (
-            <header className="h-11 flex items-center border-b border-border px-2 shrink-0">
-              <SidebarTrigger className="text-muted-foreground" />
-              <span className="ml-3 text-sm font-semibold tracking-wide text-foreground/80">
-                FX KONTROL
-              </span>
+            <header className="h-10 flex items-center border-b border-border/50 px-3 shrink-0 bg-[hsl(var(--surface-0))]">
+              <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
+              <div className="ml-3 flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase">
+                  FX KONTROL
+                </span>
+              </div>
             </header>
           )}
 
           <div className="flex-1 flex min-h-0">
-            {/* Main content */}
-            <main className={isEditor ? 'flex-1 min-h-0' : 'flex-1 overflow-auto p-6'}>
+            <main className={isEditor ? 'flex-1 min-h-0' : 'flex-1 overflow-auto p-4 md:p-6'}>
               <Outlet />
             </main>
 
-            {/* News ticker — only on non-editor pages */}
             {!isEditor && <NewsTicker />}
           </div>
         </div>
