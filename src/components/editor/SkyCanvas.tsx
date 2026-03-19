@@ -3050,7 +3050,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
       zoomSpeed={1.2 * sensitivityScale}
       minPolarAngle={Math.PI * 0.05}
       maxPolarAngle={Math.PI * 0.85}
-      minDistance={5}
+      minDistance={0.5}
       maxDistance={90000}
       enablePan
     />
