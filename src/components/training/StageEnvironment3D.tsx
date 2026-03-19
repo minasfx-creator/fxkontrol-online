@@ -254,7 +254,7 @@ function AtmosphereHaze() {
 /* ═══════════════════ MAIN STAGE COMPONENT ═══════════════════ */
 const StageEnvironment3D = forwardRef<THREE.Group>(function StageEnvironment3D(_props, ref) {
   return (
-    <group ref={ref}>
+    <group ref={ref} scale={[3, 3, 3]}>
       {/* ── Ground ── */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
         <planeGeometry args={[60, 60]} />

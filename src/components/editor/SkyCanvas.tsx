@@ -2883,6 +2883,9 @@ function WeatherEffects() {
   );
 }
 
+// Session-level flag: intro only plays once per browser session
+let __cameraIntroPlayed = false;
+
 // --- Camera controller with persistent state + cinematic intro ---
 // Apple-smooth easing: cubic bezier for uniform camera movement
 function easeInOutCubic(t: number): number {
@@ -2897,7 +2900,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
   const animating = useRef(false);
   const initialized = useRef(false);
   const lastPresetKey = useRef('');
-  const introPhase = useRef<'hold' | 'sweep' | 'done'>('hold');
+  const introPhase = useRef<'hold' | 'sweep' | 'done'>(__cameraIntroPlayed ? 'done' : 'hold');
   const introTimer = useRef(0);
 
   const WORLD_HALF_EXTENT = 80000;
@@ -2927,9 +2930,19 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
   // Intro: cinematic positions
   const introStartPos = useRef(new THREE.Vector3(0, 2500, 0.01));
   const introStartLook = useRef(new THREE.Vector3(0, 0, 0));
-  const introDuration = useRef({ hold: 2.5, sweep: 4.0 }); // generous timing for smooth feel
+  const introDuration = useRef({ hold: 2.5, sweep: 4.0 });
 
   useEffect(() => {
+    if (__cameraIntroPlayed) {
+      // Skip intro — go straight to default position
+      camera.position.set(...targetPosition);
+      if (controlsRef.current) {
+        controlsRef.current.target.set(...targetLookAt);
+        controlsRef.current.update();
+      }
+      introPhase.current = 'done';
+      return;
+    }
     camera.position.copy(introStartPos.current);
     camera.lookAt(introStartLook.current);
     introPhase.current = 'hold';
@@ -2997,6 +3010,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
         
         if (sweepT >= 1) {
           introPhase.current = 'done';
+          __cameraIntroPlayed = true; // Mark intro as played for this session
           camera.position.copy(defaultPos);
           if (controlsRef.current) {
             controlsRef.current.target.copy(defaultLook);
