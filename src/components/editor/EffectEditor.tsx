@@ -16,6 +16,8 @@ const VDL_COLORS = getVDLColors();
 interface EffectEditorProps {
   initialVDL?: string;
   onClose?: () => void;
+  /** Real FFIC formulation ID from supplier catalog */
+  realFormulationId?: string;
 }
 
 export default function EffectEditor({ initialVDL = '', onClose }: EffectEditorProps) {
