@@ -10,6 +10,7 @@ import {
   GENERATIVE_PRESETS, GENERATOR_LABELS, BLEND_MODE_LABELS,
   type AudioModulationData,
 } from '@/lib/generativeEngine';
+import useGenerativeStore from '@/store/useGenerativeStore';
 
 interface GenerativeEffectsPanelProps {
   onClose: () => void;
@@ -27,16 +28,39 @@ const AUDIO_BAND_OPTIONS: { value: AudioBand; label: string; color: string }[] =
 ];
 
 export default function GenerativeEffectsPanel({ onClose }: GenerativeEffectsPanelProps) {
+  const genStore = useGenerativeStore();
+
   const [layers, setLayers] = useState<GenerativeLayer[]>(() => {
-    const preset = GENERATIVE_PRESETS[0];
-    return preset.layers.map(l => ({ ...l }));
+    return genStore.layers.map(l => ({ ...l }));
   });
   const [playing, setPlaying] = useState(true);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+  const [viewportLinked, setViewportLinked] = useState(genStore.enabled);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const timeRef = useRef(0);
   const animRef = useRef<number>(0);
   const lastFrameRef = useRef(0);
+
+  // Sync layers to generative store when viewport link is on
+  useEffect(() => {
+    if (viewportLinked) {
+      genStore.setLayers(layers);
+      genStore.setEnabled(true);
+      genStore.setPlaying(playing);
+    }
+  }, [layers, viewportLinked, playing]);
+
+  // Toggle viewport link
+  const toggleViewportLink = useCallback((linked: boolean) => {
+    setViewportLinked(linked);
+    if (linked) {
+      genStore.setLayers(layers);
+      genStore.setEnabled(true);
+      genStore.setPlaying(playing);
+    } else {
+      genStore.setEnabled(false);
+    }
+  }, [layers, playing]);
 
   // Simulated audio (sine-based for preview when no real audio)
   const getSimAudio = useCallback((t: number): AudioModulationData => ({
