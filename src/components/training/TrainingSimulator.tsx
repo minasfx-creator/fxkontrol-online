@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
+import * as THREE from 'three';
 import StageEnvironment3D from './StageEnvironment3D';
 import TechnicianCharacter from './TechnicianCharacter';
 import PlacedEquipment3D from './PlacedEquipment3D';
@@ -22,12 +23,42 @@ interface TrainingSimulatorProps {
   onQuit: () => void;
 }
 
+interface PendingPlacement {
+  snapPointId: string;
+  equipmentId: string;
+  position: [number, number, number];
+}
+
+interface CameraModeRigProps {
+  mode: 'orbit' | 'firstPerson';
+  focusPosition: [number, number, number] | null;
+}
+
+function CameraModeRig({ mode, focusPosition }: CameraModeRigProps) {
+  const { camera } = useThree();
+  const desiredPosition = useRef(new THREE.Vector3());
+  const desiredLookAt = useRef(new THREE.Vector3(0, 2, 0));
+  const smoothLookAt = useRef(new THREE.Vector3(0, 2, 0));
+
+  useFrame(() => {
+    if (mode !== 'firstPerson' || !focusPosition) return;
+
+    desiredPosition.current.set(focusPosition[0], focusPosition[1] + 1.55, focusPosition[2] + 0.36);
+    desiredLookAt.current.set(focusPosition[0], focusPosition[1] + 1.35, focusPosition[2] - 0.9);
+
+    camera.position.lerp(desiredPosition.current, 0.16);
+    smoothLookAt.current.lerp(desiredLookAt.current, 0.16);
+    camera.lookAt(smoothLookAt.current);
+  });
+
+  return null;
+}
+
 export default function TrainingSimulator({ mission, allEquipment, onComplete, onQuit }: TrainingSimulatorProps) {
   const snapPoints = MISSION_SNAP_POINTS[mission.id] || [];
   const missionEquipment = allEquipment.filter((e) => mission.equipment.includes(e.id));
   const timeLimit = MISSION_TIME_LIMITS[mission.id] || 120;
 
-  // Build objectives from snap points
   const objectives: MissionObjective[] = snapPoints.map((sp) => ({
     id: sp.id,
     label: sp.label,
@@ -42,11 +73,25 @@ export default function TrainingSimulator({ mission, allEquipment, onComplete, o
   const [completed, setCompleted] = useState(false);
   const [failed, setFailed] = useState(false);
   const [activeVFX, setActiveVFX] = useState<{ id: string; position: [number, number, number] }[]>([]);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [pendingPlacement, setPendingPlacement] = useState<PendingPlacement | null>(null);
+  const [technicianTarget, setTechnicianTarget] = useState<[number, number, number] | null>(null);
+  const [isTechnicianInteracting, setIsTechnicianInteracting] = useState(false);
+  const [cameraMode, setCameraMode] = useState<'orbit' | 'firstPerson'>('orbit');
+  const [firstPersonFocus, setFirstPersonFocus] = useState<[number, number, number] | null>(null);
 
-  // Timer countdown
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const interactionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (interactionTimeoutRef.current) clearTimeout(interactionTimeoutRef.current);
+    };
+  }, []);
+
   useEffect(() => {
     if (completed || failed) return;
+
     timerRef.current = setInterval(() => {
       setTimeRemaining((t) => {
         if (t <= 1) {
@@ -56,10 +101,12 @@ export default function TrainingSimulator({ mission, allEquipment, onComplete, o
         return t - 1;
       });
     }, 1000);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, [completed, failed]);
 
-  // Check completion
   useEffect(() => {
     if (placedItems.length === snapPoints.length && snapPoints.length > 0 && !completed) {
       setCompleted(true);
@@ -69,29 +116,80 @@ export default function TrainingSimulator({ mission, allEquipment, onComplete, o
     }
   }, [placedItems, snapPoints.length, completed, timeRemaining]);
 
+  useEffect(() => {
+    if (!completed && !failed) return;
+
+    if (interactionTimeoutRef.current) clearTimeout(interactionTimeoutRef.current);
+    setPendingPlacement(null);
+    setTechnicianTarget(null);
+    setIsTechnicianInteracting(false);
+    setCameraMode('orbit');
+    setFirstPersonFocus(null);
+  }, [completed, failed]);
+
+  const commitPlacement = useCallback(() => {
+    if (!pendingPlacement) return;
+
+    setPlacedItems((prev) => {
+      if (prev.some((p) => p.snapPointId === pendingPlacement.snapPointId)) return prev;
+      return [...prev, pendingPlacement];
+    });
+
+    const vfxId = `vfx-${Date.now()}`;
+    setActiveVFX((prev) => [...prev, { id: vfxId, position: pendingPlacement.position }]);
+    setScore((s) => s + 100);
+
+    setPendingPlacement(null);
+    setTechnicianTarget(null);
+    setIsTechnicianInteracting(false);
+    setCameraMode('orbit');
+    setFirstPersonFocus(null);
+  }, [pendingPlacement]);
+
+  const handleReachSnapPoint = useCallback(() => {
+    if (!pendingPlacement || completed || failed) return;
+
+    setIsTechnicianInteracting(true);
+    setCameraMode('firstPerson');
+    setFirstPersonFocus(pendingPlacement.position);
+
+    if (interactionTimeoutRef.current) clearTimeout(interactionTimeoutRef.current);
+    interactionTimeoutRef.current = setTimeout(() => {
+      commitPlacement();
+    }, 900);
+  }, [pendingPlacement, completed, failed, commitPlacement]);
+
   const handleSnapClick = useCallback(
     (snapPoint: SnapPoint) => {
-      if (!selectedEquipment || completed || failed) return;
-      // Check if this snap point accepts the selected equipment
+      if (!selectedEquipment || completed || failed || pendingPlacement || isTechnicianInteracting) return;
       if (snapPoint.equipmentType !== selectedEquipment) return;
-      // Check if already placed
       if (placedItems.some((p) => p.snapPointId === snapPoint.id)) return;
 
-      setPlacedItems((prev) => [
-        ...prev,
-        { snapPointId: snapPoint.id, equipmentId: selectedEquipment, position: snapPoint.position },
-      ]);
-      // Trigger VFX
-      const vfxId = `vfx-${Date.now()}`;
-      setActiveVFX((prev) => [...prev, { id: vfxId, position: snapPoint.position }]);
-      setScore((s) => s + 100);
+      const focusVector = new THREE.Vector3(snapPoint.position[0], 0, snapPoint.position[2]);
+      if (focusVector.lengthSq() < 0.001) focusVector.set(0, 0, 1);
+      focusVector.normalize();
+
+      const technicianStop: [number, number, number] = [
+        snapPoint.position[0] - focusVector.x * 0.45,
+        0.3,
+        snapPoint.position[2] - focusVector.z * 0.45,
+      ];
+
+      const equipmentId = selectedEquipment;
       setSelectedEquipment(null);
+      setPendingPlacement({
+        snapPointId: snapPoint.id,
+        equipmentId,
+        position: snapPoint.position,
+      });
+      setTechnicianTarget(technicianStop);
     },
-    [selectedEquipment, placedItems, completed, failed]
+    [selectedEquipment, completed, failed, pendingPlacement, isTechnicianInteracting, placedItems]
   );
 
   const completedObjectiveIds = new Set(placedItems.map((p) => p.snapPointId));
   const progress = snapPoints.length > 0 ? (placedItems.length / snapPoints.length) * 100 : 0;
+  const isPlacementBusy = Boolean(pendingPlacement) || isTechnicianInteracting;
 
   if (completed) {
     return (
@@ -107,19 +205,25 @@ export default function TrainingSimulator({ mission, allEquipment, onComplete, o
   }
 
   return (
-    <div className="relative w-full h-[calc(100vh-3.5rem)] bg-[hsl(var(--surface-0))]">
+    <div className="relative h-[calc(100vh-3.5rem)] w-full bg-[hsl(var(--surface-0))]">
       <Canvas
         camera={{ position: [12, 8, 12], fov: 50 }}
         shadows
         gl={{ antialias: true }}
-        style={{ background: '#0a0a12' }}
+        style={{ background: 'hsl(240 25% 5%)' }}
       >
-        <ambientLight intensity={0.3} color="#334455" />
-        <directionalLight position={[10, 15, 5]} intensity={0.6} color="#ffeedd" castShadow />
-        <fog attach="fog" args={['#0a0a12', 20, 60]} />
+        <ambientLight intensity={0.3} color="hsl(214 22% 23%)" />
+        <directionalLight position={[10, 15, 5]} intensity={0.6} color="hsl(28 100% 95%)" castShadow />
+        <fog attach="fog" args={['hsl(240 25% 5%)', 20, 60]} />
+
+        <CameraModeRig mode={cameraMode} focusPosition={firstPersonFocus} />
 
         <StageEnvironment3D />
-        <TechnicianCharacter />
+        <TechnicianCharacter
+          targetPosition={technicianTarget}
+          isInteracting={isTechnicianInteracting}
+          onReachTarget={handleReachSnapPoint}
+        />
         <PlacedEquipment3D items={placedItems} />
         <SnapPoints
           points={snapPoints}
@@ -128,7 +232,6 @@ export default function TrainingSimulator({ mission, allEquipment, onComplete, o
           onSnapClick={handleSnapClick}
         />
 
-        {/* Placement VFX */}
         {activeVFX.map((vfx) => (
           <PlacementVFX
             key={vfx.id}
@@ -137,27 +240,34 @@ export default function TrainingSimulator({ mission, allEquipment, onComplete, o
           />
         ))}
 
-        {/* NPCs */}
         <DrunkNPC />
         <ProducerNPC />
         <ClientNPC />
 
         <OrbitControls
+          enabled={cameraMode === 'orbit'}
           target={[0, 2, 0]}
-          minDistance={5}
+          minDistance={1.8}
           maxDistance={30}
-          minPolarAngle={Math.PI * 0.1}
-          maxPolarAngle={Math.PI * 0.45}
-          enablePan={false}
+          minPolarAngle={Math.PI * 0.05}
+          maxPolarAngle={Math.PI * 0.49}
+          enablePan
+          enableDamping
+          dampingFactor={0.08}
+          rotateSpeed={0.7}
+          panSpeed={0.7}
+          zoomSpeed={0.7}
         />
       </Canvas>
 
-      {/* HTML Overlays */}
       <EquipmentTray
         equipment={missionEquipment}
         selectedEquipment={selectedEquipment}
         placedItems={placedItems}
-        onSelect={setSelectedEquipment}
+        onSelect={(equipmentId) => {
+          if (isPlacementBusy) return;
+          setSelectedEquipment(equipmentId);
+        }}
       />
 
       <SimulatorHUD
@@ -170,15 +280,27 @@ export default function TrainingSimulator({ mission, allEquipment, onComplete, o
         onQuit={onQuit}
       />
 
+      {cameraMode === 'firstPerson' && (
+        <div className="pointer-events-none absolute left-1/2 top-5 z-30 -translate-x-1/2 rounded-md border border-border/60 bg-card/85 px-3 py-1 text-xs font-medium text-foreground shadow-lg backdrop-blur-sm">
+          1ª pessoa: técnico ajustando configuração...
+        </div>
+      )}
+
+      {isPlacementBusy && (
+        <div className="pointer-events-none absolute bottom-5 left-1/2 z-30 -translate-x-1/2 rounded-md border border-border/60 bg-card/85 px-4 py-2 text-sm text-foreground shadow-lg backdrop-blur-sm">
+          Técnico a caminho do ponto de montagem...
+        </div>
+      )}
+
       {failed && (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="text-center space-y-3">
+          <div className="space-y-3 text-center">
             <p className="text-4xl">⏰</p>
             <p className="text-xl font-bold text-destructive">Tempo Esgotado!</p>
             <p className="text-sm text-muted-foreground">Você colocou {placedItems.length}/{snapPoints.length} equipamentos</p>
             <button
               onClick={onQuit}
-              className="mt-3 px-6 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
+              className="mt-3 rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
               Voltar ao Hub
             </button>
