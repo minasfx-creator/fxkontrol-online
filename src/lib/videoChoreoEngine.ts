@@ -315,8 +315,8 @@ export async function generateVideoChoreo(
     });
   }
 
-  // Phase 2: Optimal drone assignment with optical flow bias
-  opts.onProgress?.(0.82, 'Otimizando atribuição de drones...');
+  // Phase 2: Optimal drone assignment with auction algorithm + crossing resolution
+  opts.onProgress?.(0.82, 'Otimizando atribuição de drones (Auction)...');
 
   for (let k = 1; k < keyframes.length; k++) {
     const prev = keyframes[k - 1].points;
@@ -325,7 +325,10 @@ export async function generateVideoChoreo(
     if (opts.useOpticalFlow && flowFields[k]) {
       keyframes[k].points = applyFlowBiasToAssignment(prev, curr, flowFields[k], radius);
     } else {
-      keyframes[k].points = greedyAssignment(prev, curr);
+      // Use auction algorithm for better assignment
+      const assigned = auctionAssignment(prev, curr);
+      // Post-process: resolve any remaining crossings
+      keyframes[k].points = resolveCrossings(prev, assigned);
     }
   }
 
