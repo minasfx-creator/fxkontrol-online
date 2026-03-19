@@ -378,8 +378,122 @@ export async function generateVideoChoreo(
   return { keyframes, trajectories, totalDuration, droneCount, smartKeyframeInfo };
 }
 
-// ─── Greedy nearest-neighbor assignment ───────────────────────
-// Approximates Hungarian algorithm with O(n²) greedy matching
+// ─── Auction Algorithm Assignment (Bertsekas) ─────────────────
+// Better than greedy: fewer crossings, more temporally coherent
+
+function auctionAssignment(
+  prev: { x: number; y: number; z: number }[],
+  curr: { x: number; y: number; z: number }[],
+  epsilon: number = 0.5,
+): { x: number; y: number; z: number }[] {
+  const n = Math.min(prev.length, curr.length);
+  if (n === 0) return curr;
+
+  // Prices for each "object" (curr point)
+  const prices = new Float64Array(n);
+  // Assignment: prev[i] → result index in curr
+  const assignment = new Int32Array(n).fill(-1);
+  const reverseAssign = new Int32Array(n).fill(-1); // curr[j] → prev index
+
+  // Cost matrix: negative distance (we want to minimize distance = maximize negative)
+  const maxIter = n * 3;
+  let iter = 0;
+
+  while (iter++ < maxIter) {
+    let allAssigned = true;
+
+    for (let i = 0; i < n; i++) {
+      if (assignment[i] >= 0) continue;
+      allAssigned = false;
+
+      const p = prev[i];
+      let bestVal = -Infinity;
+      let bestJ = 0;
+      let secondVal = -Infinity;
+
+      for (let j = 0; j < n; j++) {
+        const c = curr[j];
+        const benefit = -((p.x - c.x) ** 2 + (p.z - c.z) ** 2) - prices[j];
+        if (benefit > bestVal) {
+          secondVal = bestVal;
+          bestVal = benefit;
+          bestJ = j;
+        } else if (benefit > secondVal) {
+          secondVal = benefit;
+        }
+      }
+
+      // Bid
+      const bidIncrement = bestVal - secondVal + epsilon;
+      prices[bestJ] += bidIncrement;
+
+      // Displace current owner
+      const prevOwner = reverseAssign[bestJ];
+      if (prevOwner >= 0) {
+        assignment[prevOwner] = -1;
+      }
+
+      assignment[i] = bestJ;
+      reverseAssign[bestJ] = i;
+    }
+
+    if (allAssigned) break;
+    // Decrease epsilon for convergence
+    if (iter % n === 0) epsilon *= 0.5;
+  }
+
+  // Build result ordered by prev
+  const result = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const j = assignment[i] >= 0 ? assignment[i] : i;
+    result[i] = curr[j];
+  }
+
+  // Append remaining if curr > prev
+  const usedSet = new Set(assignment);
+  for (let j = 0; j < curr.length; j++) {
+    if (!usedSet.has(j) && result.length < curr.length) {
+      result.push(curr[j]);
+    }
+  }
+
+  return result;
+}
+
+// ─── Post-processing: Resolve Crossing Paths ─────────────────
+
+function resolveCrossings(
+  prev: { x: number; y: number; z: number }[],
+  curr: { x: number; y: number; z: number }[],
+  maxPasses: number = 3,
+): { x: number; y: number; z: number }[] {
+  const result = [...curr];
+  const n = Math.min(prev.length, result.length);
+
+  for (let pass = 0; pass < maxPasses; pass++) {
+    let swaps = 0;
+    for (let i = 0; i < n - 1; i++) {
+      for (let j = i + 1; j < Math.min(i + 20, n); j++) {
+        // Check if paths i→curr[i] and j→curr[j] cross
+        const d_ii = (prev[i].x - result[i].x) ** 2 + (prev[i].z - result[i].z) ** 2;
+        const d_jj = (prev[j].x - result[j].x) ** 2 + (prev[j].z - result[j].z) ** 2;
+        const d_ij = (prev[i].x - result[j].x) ** 2 + (prev[i].z - result[j].z) ** 2;
+        const d_ji = (prev[j].x - result[i].x) ** 2 + (prev[j].z - result[i].z) ** 2;
+
+        if (d_ij + d_ji < d_ii + d_jj) {
+          // Swap reduces total distance → resolve crossing
+          [result[i], result[j]] = [result[j], result[i]];
+          swaps++;
+        }
+      }
+    }
+    if (swaps === 0) break;
+  }
+
+  return result;
+}
+
+// ─── Greedy nearest-neighbor assignment (fallback) ────────────
 
 function greedyAssignment(
   prev: { x: number; y: number; z: number }[],
