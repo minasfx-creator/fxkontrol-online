@@ -19,12 +19,17 @@ export default function FlameEffect({
   color,
   progress,
   height = 8,
+  preset,
 }: {
   position: [number, number, number];
   color: string;
   progress: number;
   height?: number;
+  /** Showven flamer preset — constrains max height and enables multi-nozzle/color */
+  preset?: { id: string; maxHeightM: number; nozzles: number; colorCount: number };
 }) {
+  // Constrain height to hardware limit
+  const effectiveHeight = preset ? Math.min(height, preset.maxHeightM) : height;
   const pointsRef = useRef<THREE.Points>(null);
 
   const seeds = useMemo(() => {
