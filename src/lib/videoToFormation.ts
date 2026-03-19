@@ -860,13 +860,14 @@ export function frameToFormationPoints(
   const shapePixels: { px: number; py: number }[] = [];
 
   if (detectionMode === 'edge') {
-    // Sobel edge detection
-    const edges = sobelEdgeDetection(gray, width, height);
-    const edgeThreshold = 255 - edgeSensitivity * 2.55; // map 0-100 → 255-0
+    // Canny edge detection (multi-scale with NMS + hysteresis)
+    const lowT = Math.max(10, (100 - edgeSensitivity) * 0.8);
+    const highT = lowT * 2.5;
+    const cannyResult = cannyEdgeDetection(gray, width, height, lowT, highT);
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const idx = y * width + x;
-        const shape = edges[idx] > edgeThreshold;
+        const shape = cannyResult[idx];
         isShape[idx] = shape;
         if (shape) shapePixels.push({ px: x, py: y });
       }
