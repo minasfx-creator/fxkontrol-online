@@ -54,6 +54,10 @@ function getSpecLine(preset: AnyPreset, category: ShowvenCategory): string {
     const p = preset as ShowvenControllerPreset;
     return `${p.channels}ch · ${p.type} · ${p.protocol}`;
   }
+  if (category === 'flyingDisplay') {
+    const p = preset as ShowvenFlyingDisplayPreset;
+    return `${p.widthM}×${p.heightM}m · ${p.pixelPitch} · ${p.transparency}% transp · ${p.weightKg}kg`;
+  }
   return '';
 }
 
