@@ -33,19 +33,23 @@ export default function FlameEffect({
   const pointsRef = useRef<THREE.Points>(null);
 
   const seeds = useMemo(() => {
-    const s: { angle: number; speed: number; spread: number; lt: number; phase: number; turbulence: number }[] = [];
+    const s: { angle: number; speed: number; spread: number; lt: number; phase: number; turbulence: number; nozzle: number }[] = [];
+    const nozzleCount = preset?.nozzles ?? 1;
     for (let i = 0; i < PARTICLE_COUNT; i++) {
+      const nozzle = i % nozzleCount;
+      const nozzleAngle = nozzleCount > 1 ? (nozzle / nozzleCount) * Math.PI * 2 : Math.random() * Math.PI * 2;
       s.push({
-        angle: Math.random() * Math.PI * 2,
-        speed: height * (0.35 + Math.random() * 0.65),
+        angle: nozzleAngle + (Math.random() - 0.5) * 0.3,
+        speed: effectiveHeight * (0.35 + Math.random() * 0.65),
         spread: 0.05 + Math.random() * 0.12,
         lt: 0.15 + Math.random() * 0.3,
         phase: Math.random() * Math.PI * 2,
         turbulence: 0.5 + Math.random() * 1.5,
+        nozzle,
       });
     }
     return s;
-  }, [height]);
+  }, [effectiveHeight, preset?.nozzles]);
 
   const posBuffer = useMemo(() => new Float32Array(PARTICLE_COUNT * 3), []);
   const colBuffer = useMemo(() => new Float32Array(PARTICLE_COUNT * 3), []);
