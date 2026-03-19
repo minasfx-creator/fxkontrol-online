@@ -26,7 +26,11 @@ export default function SparkShower({
 }) {
   const isColdSpark = !!sparkularModel;
   const pointsRef = useRef<THREE.Points>(null);
-  const baseColor = useMemo(() => new THREE.Color(color), [color]);
+  const baseColor = useMemo(() => {
+    // Cold sparks are always gold/silver, not user color
+    if (isColdSpark) return new THREE.Color('#FFD700');
+    return new THREE.Color(color);
+  }, [color, isColdSpark]);
 
   const seeds = useMemo(() => {
     const s: { angle: number; r: number; vy: number; phase: number; lt: number; speed: number }[] = [];
