@@ -2,6 +2,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { createDroneMaterials } from '@/render_ultra/drones/droneMaterials';
+import useGenerativeStore from '@/store/useGenerativeStore';
 
 const _dummy = new THREE.Object3D();
 const _color = new THREE.Color();
@@ -114,6 +115,13 @@ export default function InstancedDroneSwarm({
 
     rotorAngle.current += delta * 35;
 
+    // Tick generative engine
+    const genStore = useGenerativeStore.getState();
+    if (genStore.enabled) {
+      genStore.tick(delta, count);
+    }
+    const genColors = genStore.enabled ? genStore.outputColors : null;
+
     const body = bodyRef.current;
     const led = ledRef.current;
     const rotor = rotorRef.current;
@@ -124,6 +132,7 @@ export default function InstancedDroneSwarm({
 
     for (let i = 0; i < count; i++) {
       const p = positions[i];
+      const ledColor = (genColors && genColors[i]) ? genColors[i] : p.color;
       const s = scale;
       const hover = Math.sin(t + p.x * 2 + p.z) * 0.015;
 
@@ -139,7 +148,7 @@ export default function InstancedDroneSwarm({
       _dummy.scale.setScalar(s);
       _dummy.updateMatrix();
       led.setMatrixAt(i, _dummy.matrix);
-      _color.set(p.color);
+      _color.set(ledColor);
       led.setColorAt(i, _color);
 
       // LED halo
@@ -148,7 +157,7 @@ export default function InstancedDroneSwarm({
         _dummy.scale.setScalar(s * 1.0);
         _dummy.updateMatrix();
         halo.setMatrixAt(i, _dummy.matrix);
-        _color.set(p.color);
+        _color.set(ledColor);
         halo.setColorAt(i, _color);
       }
 
@@ -165,7 +174,7 @@ export default function InstancedDroneSwarm({
         _dummy.rotation.set(-Math.PI / 2, rotorAngle.current + r * 1.57, 0);
         _dummy.updateMatrix();
         rotor.setMatrixAt(idx, _dummy.matrix);
-        _color.set(p.color);
+        _color.set(ledColor);
         rotor.setColorAt(idx, _color);
 
         // Nav light
