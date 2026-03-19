@@ -19,6 +19,9 @@ export const GALVO_PRESETS: Record<string, GalvoConfig> = {
   '30k':     { pps: 30000, maxAngle: Math.PI * 0.45, acceleration: 1200, damping: 0.94 },
   '40k':     { pps: 40000, maxAngle: Math.PI * 0.5, acceleration: 1800, damping: 0.95 },
   '60k_pro': { pps: 60000, maxAngle: Math.PI * 0.55, acceleration: 2400, damping: 0.96 },
+  // OPT Laser real hardware presets
+  'WP35_IP65': { pps: 30000, maxAngle: Math.PI * (60 / 360), acceleration: 1400, damping: 0.95 },
+  'CF25_Carbon': { pps: 40000, maxAngle: Math.PI * (60 / 360), acceleration: 1800, damping: 0.95 },
 };
 
 export class GalvoScanner {
@@ -56,6 +59,53 @@ export const LASER_WAVELENGTHS: Record<string, LaserColorProfile> = {
   'yellow': { wavelength: 577, power: 2, divergence: 1.1, color: new THREE.Color('#FFFF00') },
   'magenta':{ wavelength: 405, power: 3, divergence: 1.3, color: new THREE.Color('#FF00FF') },
   'white':  { wavelength: 0,   power: 20, divergence: 1.0, color: new THREE.Color('#FFFFFF') },
+};
+
+// ── OPT Laser Hardware Presets ────────────────────────────────────
+export interface LaserHardwarePreset {
+  model: string;
+  totalPower: number;    // Watts
+  redPower: number;
+  greenPower: number;
+  bluePower: number;
+  divergence: number;    // mrad
+  pps: number;           // ILDA @ 8°
+  scanAngle: number;     // degrees
+  weight: number;        // kg
+  ipRating: string;
+  safetyClass: string;
+  galvoPreset: string;   // key into GALVO_PRESETS
+}
+
+export const LASER_HARDWARE_PRESETS: Record<string, LaserHardwarePreset> = {
+  'WP35_IP65': {
+    model: 'OPT Laser WP35000-RGB',
+    totalPower: 35,
+    redPower: 10,
+    greenPower: 12,
+    bluePower: 13,
+    divergence: 0.9,
+    pps: 30000,
+    scanAngle: 60,
+    weight: 24.5,
+    ipRating: 'IP65',
+    safetyClass: 'Class 4',
+    galvoPreset: 'WP35_IP65',
+  },
+  'CF25_Carbon': {
+    model: 'OPT Laser CF25000-RGB',
+    totalPower: 25,
+    redPower: 7,
+    greenPower: 8,
+    bluePower: 10,
+    divergence: 1.0,
+    pps: 40000,
+    scanAngle: 60,
+    weight: 12,
+    ipRating: 'IP54',
+    safetyClass: 'Class 4',
+    galvoPreset: 'CF25_Carbon',
+  },
 };
 
 // ── Beam Pattern Generators ───────────────────────────────────
