@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { ViewTransform } from '@/lib/niagaraBlenderRules';
 
-export type GroundStyle = 'finale-dark' | 'google-earth' | 'flat-black' | 'concrete' | 'custom';
+export type GroundStyle = 'finale-dark' | 'google-earth' | 'flat-black' | 'concrete' | 'sfx-stage' | 'custom';
 export type SkyPreset = 'night-clear' | 'night-cloudy' | 'dusk' | 'overcast' | 'foggy' | 'custom';
 export type WeatherCondition = 'clear' | 'light-rain' | 'heavy-rain' | 'snow' | 'fog' | 'haze' | 'wind-only';
 export type QualityPreset = 'realistic' | 'show' | 'performance';
