@@ -75,6 +75,7 @@ import LaserControlPanel from '@/components/editor/LaserControlPanel';
 import USBConnectionPanel from '@/components/editor/USBConnectionPanel';
 import VideoChoreoPanel from '@/components/editor/VideoChoreoPanel';
 import ShowvenEquipmentPanel from '@/components/editor/ShowvenEquipmentPanel';
+import GenerativeEffectsPanel from '@/components/editor/GenerativeEffectsPanel';
 import CinematicIntro from '@/components/editor/CinematicIntro';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
