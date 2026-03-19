@@ -4,7 +4,7 @@
  * Used to constrain SFX rendering to physical equipment limits.
  */
 
-export type ShowvenCategory = 'flamer' | 'sparkular' | 'cryo' | 'confetti' | 'fog' | 'controller' | 'remote';
+export type ShowvenCategory = 'flamer' | 'sparkular' | 'cryo' | 'confetti' | 'fog' | 'controller' | 'remote' | 'flyingDisplay';
 
 export interface ShowvenFlamerPreset {
   id: string;
