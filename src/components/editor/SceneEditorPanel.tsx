@@ -189,6 +189,7 @@ export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
                 <SelectItem value="google-earth" className="text-[10px]">Google Earth</SelectItem>
                 <SelectItem value="flat-black" className="text-[10px]">Flat Black</SelectItem>
                 <SelectItem value="concrete" className="text-[10px]">Concrete</SelectItem>
+                <SelectItem value="sfx-stage" className="text-[10px]">🎭 SFX Stage</SelectItem>
               </SelectContent>
             </Select>
           </div>
