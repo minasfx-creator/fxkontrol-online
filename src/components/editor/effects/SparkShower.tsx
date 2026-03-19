@@ -14,13 +14,17 @@ export default function SparkShower({
   progress,
   height = 20,
   spread = 6,
+  sparkularModel,
 }: {
   position: [number, number, number];
   color: string;
   progress: number;
   height?: number;
   spread?: number;
+  /** Showven Sparkular model — constrains behavior to cold spark physics */
+  sparkularModel?: 'vertical' | 'circular' | 'waterfall' | 'wheel' | 'blast' | 'mobile';
 }) {
+  const isColdSpark = !!sparkularModel;
   const pointsRef = useRef<THREE.Points>(null);
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
 
