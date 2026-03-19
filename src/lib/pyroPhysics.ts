@@ -489,6 +489,72 @@ export function getAllRealProducts(): Record<string, RealProductSpec> {
   return { ...REAL_PRODUCT_DATA };
 }
 
+// ── Formulation-Based Physics Modifiers ─────────────────────────────
+
+export interface FormulationModifiers extends StepModifiers {
+  dragOverride: number;
+  velocityScale: number;
+  sparkSizeScale: number;
+  crackleEnabled: boolean;
+  burnRateScale: number;
+}
+
+/**
+ * Returns physics modifiers derived from chemical composition.
+ * Ti = low drag/high velocity (hot metallic sparks fly fast).
+ * Fe/C = high drag/long duration (charcoal streamers linger).
+ * Bi = medium, with crackle micro-bursts.
+ */
+export function getFormulationModifiers(formulationId: string): FormulationModifiers | null {
+  // Lazy import to avoid circular dependency
+  let formulation: any;
+  try {
+    // We access formulation data via a simple lookup
+    const formulationData: Record<string, { compounds: { element: string; percentage: number }[]; crackle: boolean; sparkSize: number; burnRate: number; trailDecay: number }> = {
+      'purple_peony_2.5': { compounds: [{ element: 'CuO', percentage: 22 }, { element: 'KClO4', percentage: 16 }, { element: 'Sr(NO3)2', percentage: 12 }, { element: 'Al', percentage: 8 }], crackle: false, sparkSize: 1.0, burnRate: 2.4, trailDecay: 0.91 },
+      'blue_peony_2.5': { compounds: [{ element: 'LAC', percentage: 50 }, { element: 'PVC', percentage: 8 }, { element: 'CuO', percentage: 15 }], crackle: false, sparkSize: 0.9, burnRate: 2.3, trailDecay: 0.89 },
+      'crackling_willow_30mm': { compounds: [{ element: 'Ti', percentage: 10 }, { element: 'Al/Mg', percentage: 5 }, { element: 'Bi2O3', percentage: 18 }], crackle: true, sparkSize: 1.8, burnRate: 1.5, trailDecay: 0.95 },
+      'red_mine_30mm': { compounds: [{ element: 'SrCO3', percentage: 25 }, { element: 'KClO4', percentage: 18 }, { element: 'Mg/Al', percentage: 6 }], crackle: false, sparkSize: 1.3, burnRate: 2.6, trailDecay: 0.92 },
+      'gold_willow_2.5': { compounds: [{ element: 'Fe', percentage: 15 }, { element: 'C', percentage: 12 }, { element: 'KNO3', percentage: 20 }], crackle: false, sparkSize: 1.6, burnRate: 3.8, trailDecay: 0.82 },
+      'brocade_crown_2.5': { compounds: [{ element: 'Bi', percentage: 20 }, { element: 'KClO4', percentage: 15 }, { element: 'Sb2S3', percentage: 10 }], crackle: true, sparkSize: 1.3, burnRate: 3.2, trailDecay: 0.84 },
+      'cake_300_20mm': { compounds: [{ element: 'Mixed', percentage: 100 }], crackle: false, sparkSize: 0.8, burnRate: 2.0, trailDecay: 0.88 },
+    };
+    formulation = formulationData[formulationId];
+  } catch { return null; }
+
+  if (!formulation) return null;
+
+  // Analyze dominant elements
+  const tiPct = formulation.compounds.reduce((s: number, c: any) => c.element === 'Ti' ? s + c.percentage : s, 0);
+  const fePct = formulation.compounds.reduce((s: number, c: any) => (c.element === 'Fe' || c.element === 'C') ? s + c.percentage : s, 0);
+  const mgPct = formulation.compounds.reduce((s: number, c: any) => (c.element === 'Mg/Al' || c.element === 'Al/Mg' || c.element === 'Al') ? s + c.percentage : s, 0);
+
+  // Ti = fast sparks, low drag
+  // Fe/C = slow streamers, high drag
+  // Mg/Al = medium, bright
+  let dragOverride = STAR_DRAG;
+  let velocityScale = 1.0;
+
+  if (tiPct > 5) {
+    dragOverride = STAR_DRAG * 0.6; // Ti sparks fly faster
+    velocityScale = 1.3;
+  } else if (fePct > 10) {
+    dragOverride = STAR_DRAG * 1.4; // charcoal/iron lingers
+    velocityScale = 0.75;
+  } else if (mgPct > 5) {
+    dragOverride = STAR_DRAG * 0.85;
+    velocityScale = 1.1;
+  }
+
+  return {
+    dragOverride,
+    velocityScale,
+    sparkSizeScale: formulation.sparkSize / 1.0,
+    crackleEnabled: formulation.crackle,
+    burnRateScale: 2.0 / formulation.burnRate, // normalize to baseline 2.0s
+  };
+}
+
 // ── CO2 Jet ─────────────────────────────────────────────────────────
 
 export function createCO2Particle(jetHeight: number, isHorizontal: boolean): ParticleState {

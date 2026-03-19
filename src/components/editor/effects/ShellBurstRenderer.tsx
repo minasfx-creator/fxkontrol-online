@@ -343,11 +343,12 @@ export default function ShellBurstRenderer({
     initTimeRef.current += dt;
     const time = initTimeRef.current;
 
-    // Step physics using store-driven drag and wind
+    // Step physics using store-driven drag and wind (formulation override if present)
+    const effectiveDrag = formMods ? formMods.dragOverride : starDrag;
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
       if (p.life < p.maxLife) {
-        stepParticle(p, dt, windVec, starDrag, stepMods);
+        stepParticle(p, dt, windVec, effectiveDrag, stepMods);
 
         // Glitter trail: emit micro-particles from active stars
         if (trailType === 'glitter' && p.life > 0.1 && Math.random() < 0.15) {
