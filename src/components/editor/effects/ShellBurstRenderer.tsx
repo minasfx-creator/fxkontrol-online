@@ -220,12 +220,31 @@ export default function ShellBurstRenderer({
     ];
   }, [windSpeed, windDirection]);
 
-  const baseColor = useMemo(() => new THREE.Color(color), [color]);
+  // ── Real formulation override ──
+  const realFormulation = useMemo(() => formulationId ? getRealFormulation(formulationId) : undefined, [formulationId]);
+  const realCompound = useMemo(() => realFormulation ? formulationToCompound(realFormulation) : undefined, [realFormulation]);
+  const formMods = useMemo(() => formulationId ? getFormulationModifiers(formulationId) : null, [formulationId]);
+
+  // Use formulation color if available, otherwise prop color
+  const baseColor = useMemo(() => {
+    if (realCompound) return realCompound.color.clone();
+    return new THREE.Color(color);
+  }, [color, realCompound]);
+
   const starCount = useMemo(() => Math.min(MAX_PARTICLES, getStarCount(caliber)), [caliber]);
-  const breakSpeed = useMemo(() => getBreakSpeed(caliber), [caliber]);
-  const starLifetime = useMemo(() => getStarLifetime(caliber), [caliber]);
+  const breakSpeed = useMemo(() => {
+    const base = getBreakSpeed(caliber);
+    return formMods ? base * formMods.velocityScale : base;
+  }, [caliber, formMods]);
+  const starLifetime = useMemo(() => {
+    const base = getStarLifetime(caliber);
+    return formMods ? base * formMods.burnRateScale : base;
+  }, [caliber, formMods]);
   const burstSpread = useMemo(() => getStarSpread(caliber), [caliber]);
-  const baseSize = useMemo(() => 0.5 + caliber * 0.35, [caliber]);
+  const baseSize = useMemo(() => {
+    const base = 0.5 + caliber * 0.35;
+    return formMods ? base * formMods.sparkSizeScale : base;
+  }, [caliber, formMods]);
 
   const pistilCount = useMemo(() => hasPistil ? Math.round(starCount * 0.25) : 0, [hasPistil, starCount]);
   const pistilColorObj = useMemo(() => new THREE.Color(pistilColor), [pistilColor]);
