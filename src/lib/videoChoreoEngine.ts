@@ -315,8 +315,8 @@ export async function generateVideoChoreo(
     });
   }
 
-  // Phase 2: Optimal drone assignment with optical flow bias
-  opts.onProgress?.(0.82, 'Otimizando atribuição de drones...');
+  // Phase 2: Optimal drone assignment with auction algorithm + crossing resolution
+  opts.onProgress?.(0.82, 'Otimizando atribuição de drones (Auction)...');
 
   for (let k = 1; k < keyframes.length; k++) {
     const prev = keyframes[k - 1].points;
@@ -325,7 +325,10 @@ export async function generateVideoChoreo(
     if (opts.useOpticalFlow && flowFields[k]) {
       keyframes[k].points = applyFlowBiasToAssignment(prev, curr, flowFields[k], radius);
     } else {
-      keyframes[k].points = greedyAssignment(prev, curr);
+      // Use auction algorithm for better assignment
+      const assigned = auctionAssignment(prev, curr);
+      // Post-process: resolve any remaining crossings
+      keyframes[k].points = resolveCrossings(prev, assigned);
     }
   }
 
@@ -378,8 +381,122 @@ export async function generateVideoChoreo(
   return { keyframes, trajectories, totalDuration, droneCount, smartKeyframeInfo };
 }
 
-// ─── Greedy nearest-neighbor assignment ───────────────────────
-// Approximates Hungarian algorithm with O(n²) greedy matching
+// ─── Auction Algorithm Assignment (Bertsekas) ─────────────────
+// Better than greedy: fewer crossings, more temporally coherent
+
+function auctionAssignment(
+  prev: { x: number; y: number; z: number }[],
+  curr: { x: number; y: number; z: number }[],
+  epsilon: number = 0.5,
+): { x: number; y: number; z: number }[] {
+  const n = Math.min(prev.length, curr.length);
+  if (n === 0) return curr;
+
+  // Prices for each "object" (curr point)
+  const prices = new Float64Array(n);
+  // Assignment: prev[i] → result index in curr
+  const assignment = new Int32Array(n).fill(-1);
+  const reverseAssign = new Int32Array(n).fill(-1); // curr[j] → prev index
+
+  // Cost matrix: negative distance (we want to minimize distance = maximize negative)
+  const maxIter = n * 3;
+  let iter = 0;
+
+  while (iter++ < maxIter) {
+    let allAssigned = true;
+
+    for (let i = 0; i < n; i++) {
+      if (assignment[i] >= 0) continue;
+      allAssigned = false;
+
+      const p = prev[i];
+      let bestVal = -Infinity;
+      let bestJ = 0;
+      let secondVal = -Infinity;
+
+      for (let j = 0; j < n; j++) {
+        const c = curr[j];
+        const benefit = -((p.x - c.x) ** 2 + (p.z - c.z) ** 2) - prices[j];
+        if (benefit > bestVal) {
+          secondVal = bestVal;
+          bestVal = benefit;
+          bestJ = j;
+        } else if (benefit > secondVal) {
+          secondVal = benefit;
+        }
+      }
+
+      // Bid
+      const bidIncrement = bestVal - secondVal + epsilon;
+      prices[bestJ] += bidIncrement;
+
+      // Displace current owner
+      const prevOwner = reverseAssign[bestJ];
+      if (prevOwner >= 0) {
+        assignment[prevOwner] = -1;
+      }
+
+      assignment[i] = bestJ;
+      reverseAssign[bestJ] = i;
+    }
+
+    if (allAssigned) break;
+    // Decrease epsilon for convergence
+    if (iter % n === 0) epsilon *= 0.5;
+  }
+
+  // Build result ordered by prev
+  const result = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const j = assignment[i] >= 0 ? assignment[i] : i;
+    result[i] = curr[j];
+  }
+
+  // Append remaining if curr > prev
+  const usedSet = new Set(assignment);
+  for (let j = 0; j < curr.length; j++) {
+    if (!usedSet.has(j) && result.length < curr.length) {
+      result.push(curr[j]);
+    }
+  }
+
+  return result;
+}
+
+// ─── Post-processing: Resolve Crossing Paths ─────────────────
+
+function resolveCrossings(
+  prev: { x: number; y: number; z: number }[],
+  curr: { x: number; y: number; z: number }[],
+  maxPasses: number = 3,
+): { x: number; y: number; z: number }[] {
+  const result = [...curr];
+  const n = Math.min(prev.length, result.length);
+
+  for (let pass = 0; pass < maxPasses; pass++) {
+    let swaps = 0;
+    for (let i = 0; i < n - 1; i++) {
+      for (let j = i + 1; j < Math.min(i + 20, n); j++) {
+        // Check if paths i→curr[i] and j→curr[j] cross
+        const d_ii = (prev[i].x - result[i].x) ** 2 + (prev[i].z - result[i].z) ** 2;
+        const d_jj = (prev[j].x - result[j].x) ** 2 + (prev[j].z - result[j].z) ** 2;
+        const d_ij = (prev[i].x - result[j].x) ** 2 + (prev[i].z - result[j].z) ** 2;
+        const d_ji = (prev[j].x - result[i].x) ** 2 + (prev[j].z - result[i].z) ** 2;
+
+        if (d_ij + d_ji < d_ii + d_jj) {
+          // Swap reduces total distance → resolve crossing
+          [result[i], result[j]] = [result[j], result[i]];
+          swaps++;
+        }
+      }
+    }
+    if (swaps === 0) break;
+  }
+
+  return result;
+}
+
+// ─── Greedy nearest-neighbor assignment (fallback) ────────────
 
 function greedyAssignment(
   prev: { x: number; y: number; z: number }[],
@@ -452,19 +569,51 @@ function smoothWaypoints(
   return result;
 }
 
+// ─── Interpolate between keyframes ────────────────────────────
+
+export function interpolateKeyframes(
+  kfA: ChoreoKeyframe,
+  kfB: ChoreoKeyframe,
+  t: number, // 0-1
+): { points: { x: number; y: number; z: number }[]; color: string } {
+  const n = Math.min(kfA.points.length, kfB.points.length);
+  const points: { x: number; y: number; z: number }[] = [];
+  const ease = t * t * (3 - 2 * t); // smoothstep
+
+  for (let i = 0; i < n; i++) {
+    const a = kfA.points[i];
+    const b = kfB.points[i];
+    points.push({
+      x: a.x + (b.x - a.x) * ease,
+      y: a.y + (b.y - a.y) * ease,
+      z: a.z + (b.z - a.z) * ease,
+    });
+  }
+
+  // Interpolate color
+  const color = t < 0.5 ? kfA.color : kfB.color;
+  return { points, color };
+}
+
 // ─── Render frame preview on canvas ───────────────────────────
 
 export function renderFramePreview(
   canvas: HTMLCanvasElement,
   points: { x: number; y?: number; z: number }[],
   color: string,
-  options: { showGrid?: boolean; showCount?: boolean; radius?: number } = {},
+  options: {
+    showGrid?: boolean;
+    showCount?: boolean;
+    radius?: number;
+    prevPoints?: { x: number; y?: number; z: number }[];
+    trailOpacity?: number;
+  } = {},
 ) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
   const w = canvas.width;
   const h = canvas.height;
-  const { showGrid = true, showCount = true, radius = 25 } = options;
+  const { showGrid = true, showCount = true, radius = 25, prevPoints, trailOpacity = 0.15 } = options;
 
   ctx.clearRect(0, 0, w, h);
 
@@ -487,10 +636,32 @@ export function renderFramePreview(
 
   if (points.length === 0) return;
 
-  // Scale
+  // Scale — consider both current and previous points for consistent framing
   let maxDist = 1;
   for (const p of points) maxDist = Math.max(maxDist, Math.abs(p.x), Math.abs(p.z));
+  if (prevPoints) {
+    for (const p of prevPoints) maxDist = Math.max(maxDist, Math.abs(p.x), Math.abs(p.z));
+  }
   const scale = Math.min(w, h) * 0.42 / maxDist;
+
+  // Trail lines from previous positions
+  if (prevPoints && prevPoints.length === points.length) {
+    ctx.globalAlpha = trailOpacity;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      const pp = prevPoints[i];
+      const px1 = w / 2 + pp.x * scale;
+      const py1 = h / 2 - pp.z * scale;
+      const px2 = w / 2 + p.x * scale;
+      const py2 = h / 2 - p.z * scale;
+      ctx.beginPath();
+      ctx.moveTo(px1, py1);
+      ctx.lineTo(px2, py2);
+      ctx.stroke();
+    }
+  }
 
   // Glow layer
   ctx.globalAlpha = 0.3;

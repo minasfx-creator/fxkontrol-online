@@ -518,8 +518,10 @@ function applyContrast(img: ImageData, factor: number): ImageData {
   return out;
 }
 
-function sobelEdgeDetection(gray: Float32Array, width: number, height: number): Float32Array {
+function sobelEdgeDetection(gray: Float32Array, width: number, height: number): { edges: Float32Array; gx: Float32Array; gy: Float32Array } {
   const edges = new Float32Array(width * height);
+  const gxArr = new Float32Array(width * height);
+  const gyArr = new Float32Array(width * height);
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
       const tl = gray[(y - 1) * width + (x - 1)];
@@ -533,10 +535,257 @@ function sobelEdgeDetection(gray: Float32Array, width: number, height: number): 
 
       const gx = -tl - 2 * ml - bl + tr + 2 * mr + br;
       const gy = -tl - 2 * tc - tr + bl + 2 * bc + br;
+      gxArr[y * width + x] = gx;
+      gyArr[y * width + x] = gy;
       edges[y * width + x] = Math.min(255, Math.sqrt(gx * gx + gy * gy));
     }
   }
-  return edges;
+  return { edges, gx: gxArr, gy: gyArr };
+}
+
+// ─── Canny Edge Detection ─────────────────────────────────────
+// Multi-scale: Gaussian blur → Sobel → NMS → Double threshold + hysteresis
+
+function cannyEdgeDetection(
+  gray: Float32Array, width: number, height: number,
+  lowThreshold: number, highThreshold: number,
+): boolean[] {
+  // Step 1: Gaussian blur (sigma=1.4)
+  const blurred = gaussianBlurGray(gray, width, height, 1.4);
+
+  // Step 2: Sobel gradients
+  const { edges, gx, gy } = sobelEdgeDetection(blurred, width, height);
+
+  // Step 3: Non-Maximum Suppression
+  const nms = new Float32Array(width * height);
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const idx = y * width + x;
+      const mag = edges[idx];
+      if (mag < 1) continue;
+
+      // Gradient direction → quantize to 0°, 45°, 90°, 135°
+      let angle = Math.atan2(gy[idx], gx[idx]) * (180 / Math.PI);
+      if (angle < 0) angle += 180;
+
+      let n1 = 0, n2 = 0;
+      if ((angle < 22.5) || (angle >= 157.5)) {
+        n1 = edges[y * width + (x - 1)];
+        n2 = edges[y * width + (x + 1)];
+      } else if (angle < 67.5) {
+        n1 = edges[(y - 1) * width + (x + 1)];
+        n2 = edges[(y + 1) * width + (x - 1)];
+      } else if (angle < 112.5) {
+        n1 = edges[(y - 1) * width + x];
+        n2 = edges[(y + 1) * width + x];
+      } else {
+        n1 = edges[(y - 1) * width + (x - 1)];
+        n2 = edges[(y + 1) * width + (x + 1)];
+      }
+
+      nms[idx] = (mag >= n1 && mag >= n2) ? mag : 0;
+    }
+  }
+
+  // Step 4: Double threshold + hysteresis
+  const result: boolean[] = new Array(width * height).fill(false);
+  const STRONG = 2, WEAK = 1;
+  const labels = new Uint8Array(width * height);
+
+  for (let i = 0; i < width * height; i++) {
+    if (nms[i] >= highThreshold) labels[i] = STRONG;
+    else if (nms[i] >= lowThreshold) labels[i] = WEAK;
+  }
+
+  // Hysteresis: weak pixels connected to strong become strong
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const idx = y * width + x;
+        if (labels[idx] !== WEAK) continue;
+        // Check 8-neighbors for strong
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (labels[(y + dy) * width + (x + dx)] === STRONG) {
+              labels[idx] = STRONG;
+              changed = true;
+              break;
+            }
+          }
+          if (labels[idx] === STRONG) break;
+        }
+      }
+    }
+  }
+
+  for (let i = 0; i < width * height; i++) {
+    result[i] = labels[i] === STRONG;
+  }
+  return result;
+}
+
+function gaussianBlurGray(gray: Float32Array, width: number, height: number, sigma: number): Float32Array {
+  const radius = Math.ceil(sigma * 3);
+  const kernel: number[] = [];
+  let sum = 0;
+  for (let i = -radius; i <= radius; i++) {
+    const v = Math.exp(-(i * i) / (2 * sigma * sigma));
+    kernel.push(v);
+    sum += v;
+  }
+  for (let i = 0; i < kernel.length; i++) kernel[i] /= sum;
+
+  // Horizontal pass
+  const temp = new Float32Array(width * height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let val = 0;
+      for (let k = -radius; k <= radius; k++) {
+        const sx = Math.min(Math.max(x + k, 0), width - 1);
+        val += gray[y * width + sx] * kernel[k + radius];
+      }
+      temp[y * width + x] = val;
+    }
+  }
+
+  // Vertical pass
+  const out = new Float32Array(width * height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let val = 0;
+      for (let k = -radius; k <= radius; k++) {
+        const sy = Math.min(Math.max(y + k, 0), height - 1);
+        val += temp[sy * width + x] * kernel[k + radius];
+      }
+      out[y * width + x] = val;
+    }
+  }
+  return out;
+}
+
+// ─── Morphological Operations ─────────────────────────────────
+// Opening (erosion → dilation) removes noise and closes small gaps
+
+function morphologicalOpen(mask: boolean[], width: number, height: number, kernelSize: number = 3): boolean[] {
+  const half = Math.floor(kernelSize / 2);
+
+  // Erosion: pixel is true only if ALL neighbors are true
+  const eroded: boolean[] = new Array(width * height).fill(false);
+  for (let y = half; y < height - half; y++) {
+    for (let x = half; x < width - half; x++) {
+      let allTrue = true;
+      for (let dy = -half; dy <= half && allTrue; dy++) {
+        for (let dx = -half; dx <= half && allTrue; dx++) {
+          if (!mask[(y + dy) * width + (x + dx)]) allTrue = false;
+        }
+      }
+      eroded[y * width + x] = allTrue;
+    }
+  }
+
+  // Dilation: pixel is true if ANY neighbor is true
+  const dilated: boolean[] = new Array(width * height).fill(false);
+  for (let y = half; y < height - half; y++) {
+    for (let x = half; x < width - half; x++) {
+      for (let dy = -half; dy <= half; dy++) {
+        for (let dx = -half; dx <= half; dx++) {
+          if (eroded[(y + dy) * width + (x + dx)]) {
+            dilated[y * width + x] = true;
+            break;
+          }
+        }
+        if (dilated[y * width + x]) break;
+      }
+    }
+  }
+
+  return dilated;
+}
+
+// ─── Poisson-Disk Sampling (Bridson's Algorithm) ──────────────
+// Produces uniform blue-noise distribution over shape pixels
+
+function poissonDiskSample(
+  shapePixels: { px: number; py: number }[],
+  droneCount: number,
+  width: number,
+  height: number,
+  minDist: number,
+): { px: number; py: number }[] {
+  if (shapePixels.length <= droneCount) return shapePixels;
+
+  // Build lookup set for valid pixels
+  const validSet = new Set<number>();
+  for (const p of shapePixels) validSet.add(p.py * width + p.px);
+
+  const cellSize = minDist / Math.SQRT2;
+  const gridW = Math.ceil(width / cellSize);
+  const gridH = Math.ceil(height / cellSize);
+  const grid: (number | -1)[] = new Array(gridW * gridH).fill(-1);
+  const samples: { px: number; py: number }[] = [];
+  const activeList: number[] = [];
+  const k = 30; // attempts per point
+
+  function gridIdx(px: number, py: number): number {
+    return Math.floor(py / cellSize) * gridW + Math.floor(px / cellSize);
+  }
+
+  function isFarEnough(px: number, py: number): boolean {
+    const gx = Math.floor(px / cellSize);
+    const gy = Math.floor(py / cellSize);
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        const nx = gx + dx, ny = gy + dy;
+        if (nx < 0 || nx >= gridW || ny < 0 || ny >= gridH) continue;
+        const si = grid[ny * gridW + nx];
+        if (si === -1) continue;
+        const s = samples[si];
+        const distSq = (px - s.px) ** 2 + (py - s.py) ** 2;
+        if (distSq < minDist * minDist) return false;
+      }
+    }
+    return true;
+  }
+
+  // Start from random shape pixel
+  const startIdx = Math.floor(Math.random() * shapePixels.length);
+  const start = shapePixels[startIdx];
+  samples.push(start);
+  activeList.push(0);
+  grid[gridIdx(start.px, start.py)] = 0;
+
+  while (activeList.length > 0 && samples.length < droneCount) {
+    const randActive = Math.floor(Math.random() * activeList.length);
+    const activeIdx = activeList[randActive];
+    const activePt = samples[activeIdx];
+    let found = false;
+
+    for (let attempt = 0; attempt < k; attempt++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = minDist + Math.random() * minDist;
+      const nx = Math.round(activePt.px + Math.cos(angle) * dist);
+      const ny = Math.round(activePt.py + Math.sin(angle) * dist);
+
+      if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+      if (!validSet.has(ny * width + nx)) continue;
+      if (!isFarEnough(nx, ny)) continue;
+
+      const newIdx = samples.length;
+      samples.push({ px: nx, py: ny });
+      activeList.push(newIdx);
+      grid[gridIdx(nx, ny)] = newIdx;
+      found = true;
+      break;
+    }
+
+    if (!found) {
+      activeList.splice(randActive, 1);
+    }
+  }
+
+  return samples;
 }
 
 function adaptiveThreshold(
@@ -611,13 +860,14 @@ export function frameToFormationPoints(
   const shapePixels: { px: number; py: number }[] = [];
 
   if (detectionMode === 'edge') {
-    // Sobel edge detection
-    const edges = sobelEdgeDetection(gray, width, height);
-    const edgeThreshold = 255 - edgeSensitivity * 2.55; // map 0-100 → 255-0
+    // Canny edge detection (multi-scale with NMS + hysteresis)
+    const lowT = Math.max(10, (100 - edgeSensitivity) * 0.8);
+    const highT = lowT * 2.5;
+    const cannyResult = cannyEdgeDetection(gray, width, height, lowT, highT);
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const idx = y * width + x;
-        const shape = edges[idx] > edgeThreshold;
+        const shape = cannyResult[idx];
         isShape[idx] = shape;
         if (shape) shapePixels.push({ px: x, py: y });
       }
@@ -651,40 +901,37 @@ export function frameToFormationPoints(
     return generateGrid(droneCount, radius);
   }
 
-  // Step 2: Sample points from shape pixels
-  // Use stratified sampling for even distribution
+  // Step 2.5: Morphological cleanup — remove noise, close gaps
+  const rawMask = isShape;
+  const cleanedMask = morphologicalOpen(rawMask, width, height, 3);
+  
+  // Rebuild shapePixels from cleaned mask
+  const cleanedPixels: { px: number; py: number }[] = [];
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (cleanedMask[y * width + x]) {
+        cleanedPixels.push({ px: x, py: y });
+      }
+    }
+  }
+  
+  // Use cleaned pixels if they have reasonable count, else fall back to raw
+  const finalPixels = cleanedPixels.length >= droneCount * 0.3 ? cleanedPixels : shapePixels;
+
+  // Step 3: Poisson-Disk Sampling for uniform blue-noise distribution
   const points: { x: number; z: number }[] = [];
   
-  if (shapePixels.length <= droneCount) {
-    // Fewer pixels than drones — use all pixels
-    for (const p of shapePixels) {
+  if (finalPixels.length <= droneCount) {
+    for (const p of finalPixels) {
       points.push(pixelToWorld(p.px, p.py, width, height, radius));
     }
   } else {
-    // Poisson-disk-like sampling using a grid
-    const cellSize = Math.sqrt((width * height) / (droneCount * 2));
-    const gridCols = Math.ceil(width / cellSize);
-    const gridRows = Math.ceil(height / cellSize);
-    const cells = new Map<string, { px: number; py: number }>();
-
-    // Shuffle shape pixels
-    const shuffled = [...shapePixels];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-
-    for (const p of shuffled) {
-      const gc = Math.floor(p.px / cellSize);
-      const gr = Math.floor(p.py / cellSize);
-      const key = `${gc},${gr}`;
-      if (!cells.has(key)) {
-        cells.set(key, p);
-        if (cells.size >= droneCount) break;
-      }
-    }
-
-    for (const p of cells.values()) {
+    // Calculate minimum distance for target drone count
+    const area = finalPixels.length; // approx shape area in pixels
+    const minDist = Math.max(1.5, Math.sqrt(area / (droneCount * 1.5)));
+    
+    const sampled = poissonDiskSample(finalPixels, droneCount, width, height, minDist);
+    for (const p of sampled) {
       points.push(pixelToWorld(p.px, p.py, width, height, radius));
     }
   }
