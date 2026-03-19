@@ -1,7 +1,9 @@
 import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Square, Trash2, ZoomIn, ZoomOut, Magnet, Copy, GripVertical } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Square, Trash2, ZoomIn, ZoomOut, Magnet, Copy, GripVertical, Zap, Sparkles, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useLaserPreviewStore } from '@/store/useLaserPreviewStore';
+import { useGenerativeStore } from '@/store/useGenerativeStore';
 import { getPreFireTime } from '@/lib/safetyEngine';
 import { cn } from '@/lib/utils';
 import AudioWaveform from './AudioWaveform';
