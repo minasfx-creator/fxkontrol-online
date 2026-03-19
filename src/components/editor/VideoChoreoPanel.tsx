@@ -38,7 +38,9 @@ export default function VideoChoreoPanel({ onClose }: { onClose: () => void }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
-  const playIntervalRef = useRef<number | null>(null);
+  const playRafRef = useRef<number | null>(null);
+  const playStartTimeRef = useRef<number>(0);
+  const interpolatedPointsRef = useRef<{ x: number; y: number; z: number }[] | null>(null);
 
   // Options
   const [droneCount, setDroneCount] = useState(300);
