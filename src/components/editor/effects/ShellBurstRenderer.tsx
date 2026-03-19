@@ -186,6 +186,7 @@ export default function ShellBurstRenderer({
   colorTransition = 'none',
   trailType = 'none',
   fallingLeaves = false,
+  formulationId,
 }: ShellBurstRendererProps) {
   const pointsRef = useRef<THREE.Points>(null);
   const pistilPointsRef = useRef<THREE.Points>(null);
