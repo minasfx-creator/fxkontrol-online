@@ -246,7 +246,7 @@ export default function TrainingSimulator({ mission, allEquipment, onComplete, o
 
         <OrbitControls
           enabled={cameraMode === 'orbit'}
-          target={[0, 2, 0]}
+          target={[0, 4, 0]}
           minDistance={1.8}
           maxDistance={30}
           minPolarAngle={Math.PI * 0.05}
