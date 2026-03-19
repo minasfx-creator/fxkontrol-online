@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Flame, Sparkles, Cloud, PartyPopper, Cpu, ChevronDown, ChevronRight, GripVertical, X } from 'lucide-react';
+import { Flame, Sparkles, Cloud, PartyPopper, Cpu, ChevronDown, ChevronRight, GripVertical, X, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
-  SHOWVEN_FLAMERS, SHOWVEN_SPARKULARS, SHOWVEN_FOG, SHOWVEN_CONFETTI, SHOWVEN_CONTROLLERS,
+  SHOWVEN_FLAMERS, SHOWVEN_SPARKULARS, SHOWVEN_FOG, SHOWVEN_CONFETTI, SHOWVEN_CONTROLLERS, SHOWVEN_FLYING_DISPLAYS,
   type ShowvenFlamerPreset, type ShowvenSparkularPreset, type ShowvenFogPreset,
   type ShowvenConfettiPreset, type ShowvenControllerPreset, type ShowvenCategory,
+  type ShowvenFlyingDisplayPreset,
 } from '@/lib/showvenPresets';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useUndoStore } from '@/store/useUndoStore';
@@ -19,16 +20,17 @@ interface ShowvenEquipmentPanelProps {
   onClose?: () => void;
 }
 
-type AnyPreset = ShowvenFlamerPreset | ShowvenSparkularPreset | ShowvenFogPreset | ShowvenConfettiPreset | ShowvenControllerPreset;
+type AnyPreset = ShowvenFlamerPreset | ShowvenSparkularPreset | ShowvenFogPreset | ShowvenConfettiPreset | ShowvenControllerPreset | ShowvenFlyingDisplayPreset;
 
 const CATEGORY_META: Record<ShowvenCategory, { label: string; icon: typeof Flame; color: string }> = {
-  flamer:     { label: 'Flamers',     icon: Flame,       color: 'hsl(20 90% 55%)' },
-  sparkular:  { label: 'Sparkulars',  icon: Sparkles,    color: 'hsl(45 95% 60%)' },
-  cryo:       { label: 'Cryo Jets',   icon: Cloud,       color: 'hsl(200 80% 70%)' },
-  confetti:   { label: 'Confetti',    icon: PartyPopper, color: 'hsl(330 80% 65%)' },
-  fog:        { label: 'Fog Machines', icon: Cloud,      color: 'hsl(220 15% 65%)' },
-  controller: { label: 'Controllers', icon: Cpu,         color: 'hsl(150 50% 50%)' },
-  remote:     { label: 'Remotes',     icon: Cpu,         color: 'hsl(270 40% 60%)' },
+  flamer:         { label: 'Flamers',         icon: Flame,       color: 'hsl(20 90% 55%)' },
+  sparkular:      { label: 'Sparkulars',      icon: Sparkles,    color: 'hsl(45 95% 60%)' },
+  cryo:           { label: 'Cryo Jets',       icon: Cloud,       color: 'hsl(200 80% 70%)' },
+  confetti:       { label: 'Confetti',        icon: PartyPopper, color: 'hsl(330 80% 65%)' },
+  fog:            { label: 'Fog Machines',    icon: Cloud,       color: 'hsl(220 15% 65%)' },
+  controller:     { label: 'Controllers',     icon: Cpu,         color: 'hsl(150 50% 50%)' },
+  remote:         { label: 'Remotes',         icon: Cpu,         color: 'hsl(270 40% 60%)' },
+  flyingDisplay:  { label: 'Flying Displays', icon: Monitor,     color: 'hsl(180 70% 55%)' },
 };
 
 function getSpecLine(preset: AnyPreset, category: ShowvenCategory): string {
@@ -51,6 +53,10 @@ function getSpecLine(preset: AnyPreset, category: ShowvenCategory): string {
   if (category === 'controller' || category === 'remote') {
     const p = preset as ShowvenControllerPreset;
     return `${p.channels}ch · ${p.type} · ${p.protocol}`;
+  }
+  if (category === 'flyingDisplay') {
+    const p = preset as ShowvenFlyingDisplayPreset;
+    return `${p.widthM}×${p.heightM}m · ${p.pixelPitch} · ${p.transparency}% transp · ${p.weightKg}kg`;
   }
   return '';
 }
@@ -218,6 +224,7 @@ export default function ShowvenEquipmentPanel({ onClose }: ShowvenEquipmentPanel
           <CategorySection category="sparkular" presets={SHOWVEN_SPARKULARS} />
           <CategorySection category="fog" presets={SHOWVEN_FOG} />
           <CategorySection category="confetti" presets={SHOWVEN_CONFETTI} />
+          <CategorySection category="flyingDisplay" presets={SHOWVEN_FLYING_DISPLAYS} />
           <CategorySection category="controller" presets={SHOWVEN_CONTROLLERS} />
         </div>
       </ScrollArea>

@@ -3,14 +3,16 @@
  * Real-time control: pan/tilt, pattern, color, intensity, beam count
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Zap, ChevronDown, Upload, Cpu } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { parseILDA, generateShape, type ILDAFrame } from '@/lib/ildaParser';
 import { LASER_HARDWARE_PRESETS } from '@/lib/laserEngine';
+import { useLaserPreviewStore } from '@/store/useLaserPreviewStore';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -49,14 +51,24 @@ export default function LaserControlPanel({ onClose }: LaserControlPanelProps) {
   const [ildaShape, setIldaShape] = useState<string>('circle');
   const [hwPreset, setHwPreset] = useState<string>('none');
 
+  const laserPreviewEnabled = useLaserPreviewStore((s) => s.globalEnabled);
+  const setLaserPreviewEnabled = useLaserPreviewStore((s) => s.setGlobalEnabled);
+  const updateDefaultSource = useLaserPreviewStore((s) => s.updateDefaultSource);
+
+  // Sync local state → laser preview store
+  useEffect(() => {
+    updateDefaultSource({ pan, tilt, intensity, color, pattern, beamCount, scanRate, divergence });
+  }, [pan, tilt, intensity, color, pattern, beamCount, scanRate, divergence, updateDefaultSource]);
+
   const applyHardwarePreset = useCallback((presetId: string) => {
     setHwPreset(presetId);
     const preset = LASER_HARDWARE_PRESETS[presetId];
     if (!preset) return;
     setScanRate(preset.pps / 1000);
     setDivergence(preset.divergence);
+    updateDefaultSource({ hwPreset: presetId });
     toast.success(`Hardware: ${preset.model} (${preset.totalPower}W, ${preset.ipRating})`);
-  }, []);
+  }, [updateDefaultSource]);
 
   // Find if selected timeline item is a laser
   const selectedItem = timelineItems.find(i => i.id === selectedTimelineItemId);
@@ -99,6 +111,12 @@ export default function LaserControlPanel({ onClose }: LaserControlPanelProps) {
         {onClose && (
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xs">✕</button>
         )}
+      </div>
+
+      {/* 3D Viewport Preview Toggle */}
+      <div className="px-3 py-2 border-b border-border flex items-center justify-between">
+        <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">3D Viewport</span>
+        <Switch checked={laserPreviewEnabled} onCheckedChange={setLaserPreviewEnabled} />
       </div>
 
       {/* Status */}

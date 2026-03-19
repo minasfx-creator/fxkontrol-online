@@ -19,9 +19,11 @@ export const GALVO_PRESETS: Record<string, GalvoConfig> = {
   '30k':     { pps: 30000, maxAngle: Math.PI * 0.45, acceleration: 1200, damping: 0.94 },
   '40k':     { pps: 40000, maxAngle: Math.PI * 0.5, acceleration: 1800, damping: 0.95 },
   '60k_pro': { pps: 60000, maxAngle: Math.PI * 0.55, acceleration: 2400, damping: 0.96 },
-  // OPT Laser real hardware presets
-  'WP35_IP65': { pps: 30000, maxAngle: Math.PI * (60 / 360), acceleration: 1400, damping: 0.95 },
-  'CF25_Carbon': { pps: 40000, maxAngle: Math.PI * (60 / 360), acceleration: 1800, damping: 0.95 },
+  // OPT Laser real hardware galvo presets
+  'OPT_20k': { pps: 20000, maxAngle: Math.PI * (80 / 360), acceleration: 1000, damping: 0.93 },
+  'OPT_25k': { pps: 25000, maxAngle: Math.PI * (80 / 360), acceleration: 1200, damping: 0.94 },
+  'OPT_30k': { pps: 30000, maxAngle: Math.PI * (80 / 360), acceleration: 1400, damping: 0.95 },
+  'OPT_40k': { pps: 40000, maxAngle: Math.PI * (80 / 360), acceleration: 1800, damping: 0.95 },
 };
 
 export class GalvoScanner {
@@ -78,34 +80,37 @@ export interface LaserHardwarePreset {
 }
 
 export const LASER_HARDWARE_PRESETS: Record<string, LaserHardwarePreset> = {
-  'WP35_IP65': {
-    model: 'OPT Laser WP35000-RGB',
-    totalPower: 35,
-    redPower: 10,
-    greenPower: 12,
-    bluePower: 13,
-    divergence: 0.9,
-    pps: 30000,
-    scanAngle: 60,
-    weight: 24.5,
-    ipRating: 'IP65',
-    safetyClass: 'Class 4',
-    galvoPreset: 'WP35_IP65',
-  },
-  'CF25_Carbon': {
-    model: 'OPT Laser CF25000-RGB',
-    totalPower: 25,
-    redPower: 7,
-    greenPower: 8,
-    bluePower: 10,
-    divergence: 1.0,
-    pps: 40000,
-    scanAngle: 60,
-    weight: 12,
-    ipRating: 'IP54',
-    safetyClass: 'Class 4',
-    galvoPreset: 'CF25_Carbon',
-  },
+  // ── PR5 Series (Indoor/Club) ──
+  'PR4000': { model: 'OPT Laser PR4000-RGB', totalPower: 4, redPower: 1.2, greenPower: 1.3, bluePower: 1.5, divergence: 1.2, pps: 40000, scanAngle: 80, weight: 6.5, ipRating: 'IP54', safetyClass: 'Class 4', galvoPreset: 'OPT_40k' },
+  'PR6000': { model: 'OPT Laser PR6000-RGB', totalPower: 6, redPower: 1.8, greenPower: 2.0, bluePower: 2.2, divergence: 1.1, pps: 40000, scanAngle: 80, weight: 7, ipRating: 'IP54', safetyClass: 'Class 4', galvoPreset: 'OPT_40k' },
+  'PR8000': { model: 'OPT Laser PR8000-RGB', totalPower: 8, redPower: 2.4, greenPower: 2.6, bluePower: 3.0, divergence: 1.0, pps: 40000, scanAngle: 80, weight: 7.5, ipRating: 'IP54', safetyClass: 'Class 4', galvoPreset: 'OPT_40k' },
+  // ── PT6 Series (Touring) ──
+  'PT6000': { model: 'OPT Laser PT6000-RGB', totalPower: 6, redPower: 1.8, greenPower: 2.0, bluePower: 2.2, divergence: 1.0, pps: 40000, scanAngle: 80, weight: 8, ipRating: 'IP54', safetyClass: 'Class 4', galvoPreset: 'OPT_40k' },
+  'PT8000': { model: 'OPT Laser PT8000-RGB', totalPower: 8, redPower: 2.4, greenPower: 2.6, bluePower: 3.0, divergence: 1.0, pps: 40000, scanAngle: 80, weight: 8.5, ipRating: 'IP54', safetyClass: 'Class 4', galvoPreset: 'OPT_40k' },
+  // ── PR10 Series (Mid-power) ──
+  'PR10000': { model: 'OPT Laser PR10000-RGB', totalPower: 10, redPower: 3.0, greenPower: 3.5, bluePower: 3.5, divergence: 0.9, pps: 40000, scanAngle: 80, weight: 10, ipRating: 'IP54', safetyClass: 'Class 4', galvoPreset: 'OPT_40k' },
+  'PR14000': { model: 'OPT Laser PR14000-RGB', totalPower: 14, redPower: 4.2, greenPower: 4.8, bluePower: 5.0, divergence: 0.9, pps: 40000, scanAngle: 80, weight: 11, ipRating: 'IP54', safetyClass: 'Class 4', galvoPreset: 'OPT_40k' },
+  // ── CF Series (Carbon Fiber outdoor) ──
+  'CF20000': { model: 'OPT Laser CF20000-RGB', totalPower: 20, redPower: 6.0, greenPower: 7.0, bluePower: 7.0, divergence: 0.9, pps: 40000, scanAngle: 60, weight: 11, ipRating: 'IPX4', safetyClass: 'Class 4', galvoPreset: 'OPT_40k' },
+  'CF24000': { model: 'OPT Laser CF24000-RGB', totalPower: 24, redPower: 7.0, greenPower: 8.5, bluePower: 8.5, divergence: 0.9, pps: 40000, scanAngle: 60, weight: 11.5, ipRating: 'IPX4', safetyClass: 'Class 4', galvoPreset: 'OPT_40k' },
+  'CF25000': { model: 'OPT Laser CF25000-RGB', totalPower: 25, redPower: 7.0, greenPower: 8.0, bluePower: 10.0, divergence: 1.0, pps: 40000, scanAngle: 60, weight: 12, ipRating: 'IPX4', safetyClass: 'Class 4', galvoPreset: 'OPT_40k' },
+  'CF30000': { model: 'OPT Laser CF30000-RGB', totalPower: 30, redPower: 9.0, greenPower: 10.0, bluePower: 11.0, divergence: 0.8, pps: 40000, scanAngle: 60, weight: 14, ipRating: 'IP65', safetyClass: 'Class 4', galvoPreset: 'OPT_40k' },
+  'CF33000': { model: 'OPT Laser CF33000-RGB', totalPower: 33, redPower: 10.0, greenPower: 11.0, bluePower: 12.0, divergence: 0.8, pps: 40000, scanAngle: 60, weight: 14.5, ipRating: 'IP65', safetyClass: 'Class 4', galvoPreset: 'OPT_40k' },
+  'CF45000': { model: 'OPT Laser CF45000-RGB', totalPower: 45, redPower: 14.0, greenPower: 15.0, bluePower: 16.0, divergence: 0.7, pps: 25000, scanAngle: 60, weight: 18, ipRating: 'IP65', safetyClass: 'Class 4', galvoPreset: 'OPT_25k' },
+  'CF48000': { model: 'OPT Laser CF48000-RGB', totalPower: 48, redPower: 15.0, greenPower: 16.0, bluePower: 17.0, divergence: 0.7, pps: 25000, scanAngle: 60, weight: 18.5, ipRating: 'IP65', safetyClass: 'Class 4', galvoPreset: 'OPT_25k' },
+  // ── WP Series (Waterproof outdoor) ──
+  'WP35000': { model: 'OPT Laser WP35000-RGB', totalPower: 35, redPower: 10.0, greenPower: 12.0, bluePower: 13.0, divergence: 0.9, pps: 30000, scanAngle: 60, weight: 24.5, ipRating: 'IP65', safetyClass: 'Class 4', galvoPreset: 'OPT_30k' },
+  'WP37000': { model: 'OPT Laser WP37000-RGB', totalPower: 37, redPower: 11.0, greenPower: 13.0, bluePower: 13.0, divergence: 0.9, pps: 30000, scanAngle: 60, weight: 25, ipRating: 'IP65', safetyClass: 'Class 4', galvoPreset: 'OPT_30k' },
+  'WP45000': { model: 'OPT Laser WP45000-RGB', totalPower: 45, redPower: 14.0, greenPower: 15.0, bluePower: 16.0, divergence: 0.8, pps: 25000, scanAngle: 60, weight: 28, ipRating: 'IP65', safetyClass: 'Class 4', galvoPreset: 'OPT_25k' },
+  'WP48000': { model: 'OPT Laser WP48000-RGB', totalPower: 48, redPower: 15.0, greenPower: 16.0, bluePower: 17.0, divergence: 0.8, pps: 25000, scanAngle: 60, weight: 28.5, ipRating: 'IP65', safetyClass: 'Class 4', galvoPreset: 'OPT_25k' },
+  'WP60000': { model: 'OPT Laser WP60000-RGB', totalPower: 60, redPower: 18.0, greenPower: 20.0, bluePower: 22.0, divergence: 0.7, pps: 20000, scanAngle: 60, weight: 35, ipRating: 'IP65', safetyClass: 'Class 4', galvoPreset: 'OPT_20k' },
+  'WP70000': { model: 'OPT Laser WP70000-RGB', totalPower: 70, redPower: 21.0, greenPower: 24.0, bluePower: 25.0, divergence: 0.7, pps: 20000, scanAngle: 60, weight: 38, ipRating: 'IP65', safetyClass: 'Class 4', galvoPreset: 'OPT_20k' },
+  'WP80000': { model: 'OPT Laser WP80000-RGB', totalPower: 80, redPower: 24.0, greenPower: 27.0, bluePower: 29.0, divergence: 0.6, pps: 20000, scanAngle: 60, weight: 40, ipRating: 'IP65', safetyClass: 'Class 4', galvoPreset: 'OPT_20k' },
+  'WP100000': { model: 'OPT Laser WP100000-RGB', totalPower: 100, redPower: 30.0, greenPower: 34.0, bluePower: 36.0, divergence: 0.6, pps: 20000, scanAngle: 60, weight: 48, ipRating: 'IP65', safetyClass: 'Class 4', galvoPreset: 'OPT_20k' },
+  'WP140000': { model: 'OPT Laser WP140000-RGB', totalPower: 140, redPower: 42.0, greenPower: 48.0, bluePower: 50.0, divergence: 0.5, pps: 20000, scanAngle: 60, weight: 55, ipRating: 'IP65', safetyClass: 'Class 4', galvoPreset: 'OPT_20k' },
+  'WP150000': { model: 'OPT Laser WP150000-RGB', totalPower: 150, redPower: 45.0, greenPower: 52.0, bluePower: 53.0, divergence: 0.5, pps: 20000, scanAngle: 60, weight: 58, ipRating: 'IP65', safetyClass: 'Class 4', galvoPreset: 'OPT_20k' },
+  // ── Skybeam (Architectural) ──
+  'Skybeam': { model: 'OPT Laser Skybeam', totalPower: 20, redPower: 6.0, greenPower: 7.0, bluePower: 7.0, divergence: 0.3, pps: 0, scanAngle: 0, weight: 18, ipRating: 'IP65', safetyClass: 'Class 4', galvoPreset: 'entry' },
 };
 
 // ── Beam Pattern Generators ───────────────────────────────────

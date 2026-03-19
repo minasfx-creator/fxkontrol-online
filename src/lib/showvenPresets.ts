@@ -4,7 +4,7 @@
  * Used to constrain SFX rendering to physical equipment limits.
  */
 
-export type ShowvenCategory = 'flamer' | 'sparkular' | 'cryo' | 'confetti' | 'fog' | 'controller' | 'remote';
+export type ShowvenCategory = 'flamer' | 'sparkular' | 'cryo' | 'confetti' | 'fog' | 'controller' | 'remote' | 'flyingDisplay';
 
 export interface ShowvenFlamerPreset {
   id: string;
@@ -168,6 +168,40 @@ export const SHOWVEN_CONTROLLERS: ShowvenControllerPreset[] = [
   { id: 'dmx_relay_r12', name: 'DMX Relay R12', channels: 12, type: 'dmx_relay', protocol: 'DMX512', description: '12-channel DMX relay switch' },
 ];
 
+// ── Flying Displays (Filmbase) ──────────────────────────────────────
+
+export interface ShowvenFlyingDisplayPreset {
+  id: string;
+  name: string;
+  widthM: number;
+  heightM: number;
+  weightKg: number;
+  pixelPitch: string;
+  transparency: number;   // percent
+  weightPerSqM: number;   // g/m²
+  resolution: string;
+  dmxChannels: number;
+  description: string;
+}
+
+export const SHOWVEN_FLYING_DISPLAYS: ShowvenFlyingDisplayPreset[] = [
+  {
+    id: 'filmbase_fly78', name: 'Filmbase FLY78', widthM: 5, heightM: 15, weightKg: 48.4,
+    pixelPitch: 'P30', transparency: 95, weightPerSqM: 250, resolution: '167x500',
+    dmxChannels: 0, description: 'Transparent LED mesh flown by drones — 95% see-through, 250g/m²',
+  },
+  {
+    id: 'filmbase_l8', name: 'Filmbase L8', widthM: 3, heightM: 10, weightKg: 22,
+    pixelPitch: 'P40', transparency: 95, weightPerSqM: 250, resolution: '75x250',
+    dmxChannels: 0, description: 'Compact flying LED display — drone-liftable transparent mesh',
+  },
+  {
+    id: 'filmbase_fly78_p30', name: 'Filmbase FLY78 P30 Custom', widthM: 8, heightM: 20, weightKg: 96,
+    pixelPitch: 'P30', transparency: 95, weightPerSqM: 250, resolution: '267x667',
+    dmxChannels: 0, description: 'Large format flying display — multi-drone rigging required',
+  },
+];
+
 // ── Lookup Helpers ──────────────────────────────────────────────────
 
 export function getFlamerPreset(id: string): ShowvenFlamerPreset | undefined {
@@ -189,6 +223,7 @@ export function getAllShowvenEquipment() {
     fog: SHOWVEN_FOG,
     confetti: SHOWVEN_CONFETTI,
     controllers: SHOWVEN_CONTROLLERS,
+    flyingDisplays: SHOWVEN_FLYING_DISPLAYS,
   };
 }
 
