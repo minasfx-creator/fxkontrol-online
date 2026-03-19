@@ -85,12 +85,8 @@ export const MISSION_SNAP_POINTS: Record<string, SnapPoint[]> = {
     { id: 'sp-6', position: [0, 0.9, 6], equipmentType: 'cryo', label: 'Cryo Show' },
   ],
 };
-    { id: 'sp-2', position: [-2, 4.2, -1.8], equipmentType: 'sparkular', label: 'Sparkular L' },
-    { id: 'sp-3', position: [2, 4.2, -1.8], equipmentType: 'flamer', label: 'Flamer R' },
-    { id: 'sp-4', position: [0, 4.2, -1.8], equipmentType: 'moving-head', label: 'Moving Head C' },
-    { id: 'sp-5', position: [0, 0.3, 3], equipmentType: 'mortar', label: 'Morteiro Frontal' },
-  ],
-};
+
+
 
 export const MISSION_TIME_LIMITS: Record<string, number> = {
   'tutorial-truss': 120,
