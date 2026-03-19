@@ -157,6 +157,8 @@ interface ShellBurstRendererProps {
   colorTransition?: 'none' | 'to' | 'changing' | 'alternating';
   trailType?: 'none' | 'comet' | 'glitter' | 'brocade' | 'charcoal' | 'smoke';
   fallingLeaves?: boolean;
+  /** Real FFIC formulation ID — overrides color/sparkSize/drag from chemical data */
+  formulationId?: string;
 }
 
 /**
