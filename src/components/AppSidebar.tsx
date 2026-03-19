@@ -39,7 +39,7 @@ export function AppSidebar() {
         <div className={`px-3 pt-4 pb-2 ${collapsed ? 'flex justify-center' : ''}`}>
           {collapsed ? (
             <div className="h-8 w-8 rounded-lg bg-primary/15 flex items-center justify-center overflow-hidden">
-              <img src={minasfxLogo} alt="MinasFX" className="h-5 object-contain" />
+              <img src={minasfxLogo} alt="MinasFX" className="h-5 object-contain brightness-0 invert" />
             </div>
           ) : (
             <div className="flex items-center gap-2.5">
