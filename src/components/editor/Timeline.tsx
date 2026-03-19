@@ -3,7 +3,7 @@ import { Play, Pause, SkipBack, SkipForward, Square, Trash2, ZoomIn, ZoomOut, Ma
 import { Button } from '@/components/ui/button';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { useLaserPreviewStore } from '@/store/useLaserPreviewStore';
-import { useGenerativeStore } from '@/store/useGenerativeStore';
+import useGenerativeStore from '@/store/useGenerativeStore';
 import { getPreFireTime } from '@/lib/safetyEngine';
 import { cn } from '@/lib/utils';
 import AudioWaveform from './AudioWaveform';
