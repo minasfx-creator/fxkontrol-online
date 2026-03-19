@@ -207,7 +207,7 @@ export default function TrainingSimulator({ mission, allEquipment, onComplete, o
   return (
     <div className="relative h-[calc(100vh-3.5rem)] w-full bg-[hsl(var(--surface-0))]">
       <Canvas
-        camera={{ position: [30, 20, 30], fov: 50 }}
+        camera={{ position: [35, 25, 35], fov: 50 }}
         shadows
         gl={{ antialias: true }}
         style={{ background: 'hsl(240 25% 5%)' }}
@@ -246,7 +246,7 @@ export default function TrainingSimulator({ mission, allEquipment, onComplete, o
 
         <OrbitControls
           enabled={cameraMode === 'orbit'}
-          target={[0, 2, 0]}
+          target={[0, 4, 0]}
           minDistance={1.8}
           maxDistance={30}
           minPolarAngle={Math.PI * 0.05}

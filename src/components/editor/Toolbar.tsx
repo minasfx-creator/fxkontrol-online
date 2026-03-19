@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Zap, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus, Download, ChevronDown, LayoutGrid, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Info, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge } from 'lucide-react';
+import { Zap, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus, Download, ChevronDown, LayoutGrid, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Info, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles } from 'lucide-react';
 import fxkLogo from '@/assets/fxk-logo.png';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -436,8 +436,9 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
           <DropdownMenu
             label="Scene"
             icon={Paintbrush}
-            items={[
+           items={[
               { label: 'Scene Editor', icon: Paintbrush, onClick: () => onOpenPanel?.('scene') },
+              { label: 'Lightjams Engine', icon: Sparkles, onClick: () => onOpenPanel?.('generative') },
               { label: 'Weather', icon: Cloud, onClick: () => onOpenPanel?.('weather') },
               { label: 'Audience View', icon: Eye, onClick: () => onOpenPanel?.('audience') },
               { label: 'Sound Level', icon: Volume2, onClick: () => onOpenPanel?.('soundlevel') },
