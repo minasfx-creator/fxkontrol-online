@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.video-choreo-ai]
 verify_jwt = false
+
+[functions.parse-test-report]
+verify_jwt = false
