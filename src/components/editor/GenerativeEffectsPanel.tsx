@@ -153,7 +153,11 @@ export default function GenerativeEffectsPanel({ onClose }: GenerativeEffectsPan
           <span className="text-sm font-bold text-foreground font-display tracking-wide">LIGHTJAMS</span>
           <span className="text-[9px] text-muted-foreground/50 font-mono-code">GEN ENGINE</span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1" title="Link to 3D viewport">
+            <span className="text-[8px] font-bold text-muted-foreground uppercase">3D</span>
+            <Switch checked={viewportLinked} onCheckedChange={toggleViewportLink} className="h-4 w-7" />
+          </div>
           <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md" onClick={() => setPlaying(!playing)}>
             {playing ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
           </Button>
