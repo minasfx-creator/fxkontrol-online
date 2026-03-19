@@ -922,6 +922,7 @@ function SkyGradient() {
       case 'flat-black':  return new THREE.Vector3(0.001, 0.001, 0.001);
       case 'google-earth': return new THREE.Vector3(0.005, 0.008, 0.004);
       case 'concrete':    return new THREE.Vector3(0.006, 0.006, 0.007);
+      case 'sfx-stage':   return new THREE.Vector3(0.002, 0.001, 0.004);
       default:            return new THREE.Vector3(0.005, 0.005, 0.015);
     }
   }, [groundStyle]);
