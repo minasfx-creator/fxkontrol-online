@@ -317,6 +317,7 @@ function Index() {
         {activePanel === 'lasercontrol' && <LaserControlPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'usb' && <USBConnectionPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'videochoreo' && <VideoChoreoPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'showven' && <ShowvenEquipmentPanel onClose={() => setActivePanel(null)} />}
       </>
     );
   };
