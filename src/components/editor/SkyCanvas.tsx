@@ -19,6 +19,7 @@ import Rack3DView from './Rack3DView';
 import BoidsVisualizer from './BoidsVisualizer';
 import CollisionAvoidanceOverlay from './CollisionAvoidanceOverlay';
 import AudioSpectrumVisualizer from './AudioSpectrumVisualizer';
+import LaserPreviewBeams from './LaserPreviewBeams';
 import { DEFAULT_AVOIDANCE } from '@/lib/collisionAvoidance';
 import QuadcopterModel from './QuadcopterModel';
 // GeofenceVisual removed — green squares issue
