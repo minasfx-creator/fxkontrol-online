@@ -2468,7 +2468,7 @@ function SFXStageEnvironment() {
   );
 }
 
-
+function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) {
   const sc = useSceneStore(st => st.settings);
 
   const renderGround = () => {
