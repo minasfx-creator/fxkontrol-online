@@ -2,6 +2,8 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { NewsTicker } from '@/components/NewsTicker';
+import { Messenger } from '@/components/Messenger';
+import minasfxLogo from '@/assets/minasfx-logo.png';
 
 export default function MainLayout() {
   const location = useLocation();
@@ -22,6 +24,9 @@ export default function MainLayout() {
                   FX KONTROL
                 </span>
               </div>
+              <div className="ml-auto flex items-center gap-2">
+                <img src={minasfxLogo} alt="MinasFX" className="h-4 object-contain opacity-60" />
+              </div>
             </header>
           )}
 
@@ -33,6 +38,9 @@ export default function MainLayout() {
             {!isEditor && <NewsTicker />}
           </div>
         </div>
+
+        {/* Global Messenger */}
+        <Messenger />
       </div>
     </SidebarProvider>
   );
