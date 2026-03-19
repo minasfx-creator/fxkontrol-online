@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Rocket } from 'lucide-react';
 import { toast } from 'sonner';
+import minasfxLogo from '@/assets/minasfx-logo.png';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -40,10 +40,8 @@ export default function Auth() {
     <div className="h-screen w-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-sm space-y-6 px-4">
         <div className="text-center">
-          <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-electric to-safety flex items-center justify-center mx-auto mb-3">
-            <Rocket className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <h1 className="text-xl font-semibold text-foreground">PyroDesigner</h1>
+          <img src={minasfxLogo} alt="MinasFX Special FX Solutions" className="h-10 mx-auto mb-4 object-contain" />
+          <h1 className="text-xl font-semibold text-foreground">FX KONTROL</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {isLogin ? 'Entre para acessar seus projetos' : 'Crie sua conta'}
           </p>
@@ -81,6 +79,10 @@ export default function Auth() {
           >
             {isLogin ? 'Cadastre-se' : 'Faça login'}
           </button>
+        </p>
+
+        <p className="text-center text-[9px] text-muted-foreground/40 font-mono">
+          Powered by MinasFX Special FX Solutions
         </p>
       </div>
     </div>

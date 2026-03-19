@@ -15,6 +15,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
+import minasfxLogo from '@/assets/minasfx-logo.png';
 
 const navItems = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard, desc: 'Visão geral' },
@@ -34,20 +35,18 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r border-border bg-[hsl(var(--surface-0))]">
       <SidebarContent>
-        {/* Brand */}
+        {/* Brand with MinasFX logo */}
         <div className={`px-3 pt-4 pb-2 ${collapsed ? 'flex justify-center' : ''}`}>
           {collapsed ? (
-            <div className="h-8 w-8 rounded-lg bg-primary/15 flex items-center justify-center">
-              <span className="text-[10px] font-bold text-primary font-mono">FX</span>
+            <div className="h-8 w-8 rounded-lg bg-primary/15 flex items-center justify-center overflow-hidden">
+              <img src={minasfxLogo} alt="MinasFX" className="h-5 object-contain" />
             </div>
           ) : (
             <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
-                <span className="text-[10px] font-bold text-primary font-mono">FX</span>
-              </div>
+              <img src={minasfxLogo} alt="MinasFX" className="h-7 object-contain shrink-0" />
               <div>
                 <p className="text-xs font-bold text-foreground tracking-wide">FX KONTROL</p>
-                <p className="text-[9px] text-muted-foreground font-mono">Show Platform</p>
+                <p className="text-[9px] text-muted-foreground font-mono">by MinasFX</p>
               </div>
             </div>
           )}
