@@ -2305,6 +2305,8 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
         return <ConcreteGround brightness={sc.groundBrightness} />;
       case 'finale-dark':
         return <FinaleDarkGround brightness={sc.groundBrightness} />;
+      case 'sfx-stage':
+        return <SFXStageEnvironment />;
       case 'google-earth':
       default:
         return <GrassGround />;
