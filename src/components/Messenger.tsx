@@ -78,7 +78,7 @@ export function Messenger() {
         onClick={() => setMinimized(false)}
       >
         <div className="flex items-center gap-2 px-3 py-2.5">
-          <img src={minasfxLogo} alt="MinasFX" className="h-4 object-contain" />
+          <img src={minasfxLogo} alt="MinasFX" className="h-4 object-contain brightness-0 invert" />
           <span className="text-xs font-medium text-foreground flex-1">Messenger</span>
           <Circle className="h-2 w-2 fill-emerald-400 text-emerald-400" />
         </div>
