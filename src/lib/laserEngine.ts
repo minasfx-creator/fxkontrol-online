@@ -19,9 +19,11 @@ export const GALVO_PRESETS: Record<string, GalvoConfig> = {
   '30k':     { pps: 30000, maxAngle: Math.PI * 0.45, acceleration: 1200, damping: 0.94 },
   '40k':     { pps: 40000, maxAngle: Math.PI * 0.5, acceleration: 1800, damping: 0.95 },
   '60k_pro': { pps: 60000, maxAngle: Math.PI * 0.55, acceleration: 2400, damping: 0.96 },
-  // OPT Laser real hardware presets
-  'WP35_IP65': { pps: 30000, maxAngle: Math.PI * (60 / 360), acceleration: 1400, damping: 0.95 },
-  'CF25_Carbon': { pps: 40000, maxAngle: Math.PI * (60 / 360), acceleration: 1800, damping: 0.95 },
+  // OPT Laser real hardware galvo presets
+  'OPT_20k': { pps: 20000, maxAngle: Math.PI * (80 / 360), acceleration: 1000, damping: 0.93 },
+  'OPT_25k': { pps: 25000, maxAngle: Math.PI * (80 / 360), acceleration: 1200, damping: 0.94 },
+  'OPT_30k': { pps: 30000, maxAngle: Math.PI * (80 / 360), acceleration: 1400, damping: 0.95 },
+  'OPT_40k': { pps: 40000, maxAngle: Math.PI * (80 / 360), acceleration: 1800, damping: 0.95 },
 };
 
 export class GalvoScanner {
