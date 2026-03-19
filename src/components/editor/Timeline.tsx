@@ -414,6 +414,122 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
   );
 }
 
+// ── LASER Track — shows laser cues with live preview state ──
+function LaserTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number; duration: number }) {
+  const { timelineItems, selectedTimelineItemId, selectTimelineItem, addTimelineItem, bpm, snapToBeat } = useProjectStore();
+  const laserEnabled = useLaserPreviewStore((s) => s.globalEnabled);
+  const [collapsed, setCollapsed] = useState(false);
+
+  const laserItems = useMemo(() => timelineItems.filter((i) => {
+    const effect = EFFECT_LIBRARY.find((e) => e.id === i.effectId);
+    return effect?.type === 'laser';
+  }), [timelineItems]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    const hasEffect = e.dataTransfer.types.includes('application/effect-id');
+    if (!hasEffect) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const effectId = e.dataTransfer.getData('application/effect-id');
+    if (!effectId) return;
+    const effect = EFFECT_LIBRARY.find((ef) => ef.id === effectId);
+    if (!effect || effect.type !== 'laser') return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    let time = Math.max(0, Math.min(x / pixelsPerSecond, duration));
+    time = snapTimeToBeat(time, bpm, snapToBeat, pixelsPerSecond);
+    addTimelineItem({
+      id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      effectId: effect.id, startTime: time, trackIndex: 4,
+      position: { x: 0, y: 0.5, z: 0 },
+    });
+  }, [pixelsPerSecond, duration, addTimelineItem, bpm, snapToBeat]);
+
+  return (
+    <div className="flex border-b border-white/[0.03]">
+      <div className="w-24 flex-shrink-0 flex items-center px-2.5 border-r border-white/[0.04] cursor-pointer" style={{ background: 'hsl(var(--card))' }} onClick={() => setCollapsed(!collapsed)}>
+        {collapsed ? <ChevronRight className="w-2.5 h-2.5 text-muted-foreground/30 mr-1" /> : <ChevronDown className="w-2.5 h-2.5 text-muted-foreground/30 mr-1" />}
+        <Zap className="w-2.5 h-2.5 mr-1.5" style={{ color: '#00FF88' }} />
+        <span className="text-[9px] font-semibold text-muted-foreground/50 uppercase tracking-[0.08em]">Laser</span>
+        {laserEnabled && <div className="w-1.5 h-1.5 rounded-full bg-green-400 ml-auto animate-pulse" />}
+      </div>
+      {!collapsed && (
+        <div className="flex-1 relative h-8" style={{ background: 'hsl(var(--background) / 0.4)' }} onDragOver={handleDragOver} onDrop={handleDrop}>
+          {laserItems.map((item) => {
+            const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+            if (!effect) return null;
+            const isSelected = selectedTimelineItemId === item.id;
+            const widthPx = Math.max(effect.duration * pixelsPerSecond, 20);
+            return (
+              <button
+                key={item.id}
+                onClick={(e) => { e.stopPropagation(); selectTimelineItem(item.id); }}
+                className={cn(
+                  "absolute top-0.5 h-7 rounded-md flex items-center px-1.5 text-[8px] font-mono transition-all cursor-pointer border",
+                  isSelected ? "border-primary/50 shadow-[0_0_6px_hsl(var(--primary)/0.15)] z-10" : "border-white/[0.04] hover:border-white/[0.08]"
+                )}
+                style={{ left: `${item.startTime * pixelsPerSecond}px`, width: `${widthPx}px`, backgroundColor: `${effect.color}15` }}
+              >
+                <Zap className="w-2 h-2 mr-0.5 flex-shrink-0" style={{ color: effect.color }} />
+                <span className="truncate text-muted-foreground/60">{effect.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {collapsed && <div className="flex-1 h-2" style={{ background: 'hsl(var(--background) / 0.2)' }} />}
+    </div>
+  );
+}
+
+// ── GENERATIVE Track — shows generative preset blocks ──
+function GenerativeTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number; duration: number }) {
+  const genEnabled = useGenerativeStore((s: any) => s.enabled);
+  const genLayers = useGenerativeStore((s: any) => s.layers) as any[];
+  const [collapsed, setCollapsed] = useState(false);
+
+  // Show a single block representing the generative engine state
+  if (!genEnabled || genLayers.length === 0) return null;
+
+  const activePresetName = genLayers[0]?.type || 'Generative';
+  const layerColors = genLayers.map((_: any, i: number) => {
+    const hue = (i * 60) % 360;
+    return `hsl(${hue} 70% 55%)`;
+  });
+
+  return (
+    <div className="flex border-b border-white/[0.03]">
+      <div className="w-24 flex-shrink-0 flex items-center px-2.5 border-r border-white/[0.04] cursor-pointer" style={{ background: 'hsl(var(--card))' }} onClick={() => setCollapsed(!collapsed)}>
+        {collapsed ? <ChevronRight className="w-2.5 h-2.5 text-muted-foreground/30 mr-1" /> : <ChevronDown className="w-2.5 h-2.5 text-muted-foreground/30 mr-1" />}
+        <Sparkles className="w-2.5 h-2.5 mr-1.5" style={{ color: '#FF44FF' }} />
+        <span className="text-[9px] font-semibold text-muted-foreground/50 uppercase tracking-[0.08em]">Gen</span>
+        {genEnabled && <div className="w-1.5 h-1.5 rounded-full bg-purple-400 ml-auto animate-pulse" />}
+      </div>
+      {!collapsed && (
+        <div className="flex-1 relative h-8" style={{ background: 'hsl(var(--background) / 0.4)' }}>
+          {/* Full-span bar showing active generative engine */}
+          <div
+            className="absolute top-0.5 h-7 rounded-md flex items-center px-2 text-[8px] font-mono border border-purple-500/20"
+            style={{
+              left: 0,
+              width: `${duration * pixelsPerSecond}px`,
+              background: `linear-gradient(90deg, ${layerColors.map((c: string, i: number) => `${c}15 ${(i / layerColors.length) * 100}%`).join(', ')})`,
+            }}
+          >
+            <Sparkles className="w-2 h-2 mr-1 flex-shrink-0 text-purple-400" />
+            <span className="truncate text-purple-300/60">{genLayers.length} layers · {activePresetName}</span>
+          </div>
+        </div>
+      )}
+      {collapsed && <div className="flex-1 h-2" style={{ background: 'hsl(var(--background) / 0.2)' }} />}
+    </div>
+  );
+}
+
 const MIN_PPS = 4;
 const MAX_PPS = 80;
 
