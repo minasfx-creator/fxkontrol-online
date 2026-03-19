@@ -12,9 +12,11 @@ import {
   type BurstPattern,
   type ParticleState,
   type StepModifiers,
+  getFormulationModifiers,
 } from '@/lib/pyroPhysics';
 import { useSceneStore } from '@/store/useSceneStore';
 import { getThreeBlending, getMaxEnergy, GROUND_LIGHT_SCALE } from '@/lib/niagaraBlenderRules';
+import { getRealFormulation, formulationToCompound } from '@/render_ultra/fireworks/particleChemistry';
 
 // ── Custom GPU Shaders (Skybrush-grade thermal rendering) ───────────
 
