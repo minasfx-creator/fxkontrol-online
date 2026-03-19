@@ -115,6 +115,13 @@ export default function InstancedDroneSwarm({
 
     rotorAngle.current += delta * 35;
 
+    // Tick generative engine
+    const genStore = useGenerativeStore.getState();
+    if (genStore.enabled) {
+      genStore.tick(delta, count);
+    }
+    const genColors = genStore.enabled ? genStore.outputColors : null;
+
     const body = bodyRef.current;
     const led = ledRef.current;
     const rotor = rotorRef.current;
@@ -125,6 +132,7 @@ export default function InstancedDroneSwarm({
 
     for (let i = 0; i < count; i++) {
       const p = positions[i];
+      const ledColor = (genColors && genColors[i]) ? genColors[i] : p.color;
       const s = scale;
       const hover = Math.sin(t + p.x * 2 + p.z) * 0.015;
 
