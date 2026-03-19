@@ -569,19 +569,51 @@ function smoothWaypoints(
   return result;
 }
 
+// ─── Interpolate between keyframes ────────────────────────────
+
+export function interpolateKeyframes(
+  kfA: ChoreoKeyframe,
+  kfB: ChoreoKeyframe,
+  t: number, // 0-1
+): { points: { x: number; y: number; z: number }[]; color: string } {
+  const n = Math.min(kfA.points.length, kfB.points.length);
+  const points: { x: number; y: number; z: number }[] = [];
+  const ease = t * t * (3 - 2 * t); // smoothstep
+
+  for (let i = 0; i < n; i++) {
+    const a = kfA.points[i];
+    const b = kfB.points[i];
+    points.push({
+      x: a.x + (b.x - a.x) * ease,
+      y: a.y + (b.y - a.y) * ease,
+      z: a.z + (b.z - a.z) * ease,
+    });
+  }
+
+  // Interpolate color
+  const color = t < 0.5 ? kfA.color : kfB.color;
+  return { points, color };
+}
+
 // ─── Render frame preview on canvas ───────────────────────────
 
 export function renderFramePreview(
   canvas: HTMLCanvasElement,
   points: { x: number; y?: number; z: number }[],
   color: string,
-  options: { showGrid?: boolean; showCount?: boolean; radius?: number } = {},
+  options: {
+    showGrid?: boolean;
+    showCount?: boolean;
+    radius?: number;
+    prevPoints?: { x: number; y?: number; z: number }[];
+    trailOpacity?: number;
+  } = {},
 ) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
   const w = canvas.width;
   const h = canvas.height;
-  const { showGrid = true, showCount = true, radius = 25 } = options;
+  const { showGrid = true, showCount = true, radius = 25, prevPoints, trailOpacity = 0.15 } = options;
 
   ctx.clearRect(0, 0, w, h);
 
@@ -604,10 +636,32 @@ export function renderFramePreview(
 
   if (points.length === 0) return;
 
-  // Scale
+  // Scale — consider both current and previous points for consistent framing
   let maxDist = 1;
   for (const p of points) maxDist = Math.max(maxDist, Math.abs(p.x), Math.abs(p.z));
+  if (prevPoints) {
+    for (const p of prevPoints) maxDist = Math.max(maxDist, Math.abs(p.x), Math.abs(p.z));
+  }
   const scale = Math.min(w, h) * 0.42 / maxDist;
+
+  // Trail lines from previous positions
+  if (prevPoints && prevPoints.length === points.length) {
+    ctx.globalAlpha = trailOpacity;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      const pp = prevPoints[i];
+      const px1 = w / 2 + pp.x * scale;
+      const py1 = h / 2 - pp.z * scale;
+      const px2 = w / 2 + p.x * scale;
+      const py2 = h / 2 - p.z * scale;
+      ctx.beginPath();
+      ctx.moveTo(px1, py1);
+      ctx.lineTo(px2, py2);
+      ctx.stroke();
+    }
+  }
 
   // Glow layer
   ctx.globalAlpha = 0.3;
