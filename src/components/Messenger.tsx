@@ -78,7 +78,7 @@ export function Messenger() {
         onClick={() => setMinimized(false)}
       >
         <div className="flex items-center gap-2 px-3 py-2.5">
-          <img src={minasfxLogo} alt="MinasFX" className="h-4 object-contain" />
+          <img src={minasfxLogo} alt="MinasFX" className="h-4 object-contain brightness-0 invert" />
           <span className="text-xs font-medium text-foreground flex-1">Messenger</span>
           <Circle className="h-2 w-2 fill-emerald-400 text-emerald-400" />
         </div>
@@ -93,7 +93,7 @@ export function Messenger() {
     <div className="fixed bottom-5 right-5 z-50 w-80 h-[480px] rounded-xl bg-[hsl(var(--surface-1))] border border-border shadow-2xl flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border/50 bg-[hsl(var(--surface-0))]">
-        <img src={minasfxLogo} alt="MinasFX" className="h-4 object-contain" />
+        <img src={minasfxLogo} alt="MinasFX" className="h-4 object-contain brightness-0 invert" />
         <span className="text-xs font-semibold text-foreground flex-1">Messenger</span>
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setMinimized(true)}>
           <Minimize2 className="h-3 w-3" />
