@@ -128,6 +128,20 @@ export default function TrainingSimulator({ mission, allEquipment, onComplete, o
           onSnapClick={handleSnapClick}
         />
 
+        {/* Placement VFX */}
+        {activeVFX.map((vfx) => (
+          <PlacementVFX
+            key={vfx.id}
+            position={vfx.position}
+            onComplete={() => setActiveVFX((prev) => prev.filter((v) => v.id !== vfx.id))}
+          />
+        ))}
+
+        {/* NPCs */}
+        <DrunkNPC />
+        <ProducerNPC />
+        <ClientNPC />
+
         <OrbitControls
           target={[0, 2, 0]}
           minDistance={5}
