@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Flame, Sparkles, Cloud, PartyPopper, Cpu, ChevronDown, ChevronRight, GripVertical, X } from 'lucide-react';
+import { Flame, Sparkles, Cloud, PartyPopper, Cpu, ChevronDown, ChevronRight, GripVertical, X, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
-  SHOWVEN_FLAMERS, SHOWVEN_SPARKULARS, SHOWVEN_FOG, SHOWVEN_CONFETTI, SHOWVEN_CONTROLLERS,
+  SHOWVEN_FLAMERS, SHOWVEN_SPARKULARS, SHOWVEN_FOG, SHOWVEN_CONFETTI, SHOWVEN_CONTROLLERS, SHOWVEN_FLYING_DISPLAYS,
   type ShowvenFlamerPreset, type ShowvenSparkularPreset, type ShowvenFogPreset,
   type ShowvenConfettiPreset, type ShowvenControllerPreset, type ShowvenCategory,
+  type ShowvenFlyingDisplayPreset,
 } from '@/lib/showvenPresets';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useUndoStore } from '@/store/useUndoStore';
