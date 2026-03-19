@@ -8,6 +8,8 @@ import SnapPoints from './SnapPoints';
 import EquipmentTray from './EquipmentTray';
 import SimulatorHUD from './SimulatorHUD';
 import VictoryScreen from './VictoryScreen';
+import PlacementVFX from './PlacementVFX';
+import { DrunkNPC, ProducerNPC, ClientNPC } from './NPCs';
 import {
   Mission, Equipment, SnapPoint, PlacedItem, MissionObjective,
   MISSION_SNAP_POINTS, MISSION_TIME_LIMITS,
@@ -39,6 +41,7 @@ export default function TrainingSimulator({ mission, allEquipment, onComplete, o
   const [score, setScore] = useState(0);
   const [completed, setCompleted] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [activeVFX, setActiveVFX] = useState<{ id: string; position: [number, number, number] }[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Timer countdown
@@ -78,6 +81,9 @@ export default function TrainingSimulator({ mission, allEquipment, onComplete, o
         ...prev,
         { snapPointId: snapPoint.id, equipmentId: selectedEquipment, position: snapPoint.position },
       ]);
+      // Trigger VFX
+      const vfxId = `vfx-${Date.now()}`;
+      setActiveVFX((prev) => [...prev, { id: vfxId, position: snapPoint.position }]);
       setScore((s) => s + 100);
       setSelectedEquipment(null);
     },
@@ -121,6 +127,20 @@ export default function TrainingSimulator({ mission, allEquipment, onComplete, o
           selectedEquipment={selectedEquipment}
           onSnapClick={handleSnapClick}
         />
+
+        {/* Placement VFX */}
+        {activeVFX.map((vfx) => (
+          <PlacementVFX
+            key={vfx.id}
+            position={vfx.position}
+            onComplete={() => setActiveVFX((prev) => prev.filter((v) => v.id !== vfx.id))}
+          />
+        ))}
+
+        {/* NPCs */}
+        <DrunkNPC />
+        <ProducerNPC />
+        <ClientNPC />
 
         <OrbitControls
           target={[0, 2, 0]}
