@@ -901,40 +901,37 @@ export function frameToFormationPoints(
     return generateGrid(droneCount, radius);
   }
 
-  // Step 2: Sample points from shape pixels
-  // Use stratified sampling for even distribution
+  // Step 2.5: Morphological cleanup — remove noise, close gaps
+  const rawMask = isShape;
+  const cleanedMask = morphologicalOpen(rawMask, width, height, 3);
+  
+  // Rebuild shapePixels from cleaned mask
+  const cleanedPixels: { px: number; py: number }[] = [];
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (cleanedMask[y * width + x]) {
+        cleanedPixels.push({ px: x, py: y });
+      }
+    }
+  }
+  
+  // Use cleaned pixels if they have reasonable count, else fall back to raw
+  const finalPixels = cleanedPixels.length >= droneCount * 0.3 ? cleanedPixels : shapePixels;
+
+  // Step 3: Poisson-Disk Sampling for uniform blue-noise distribution
   const points: { x: number; z: number }[] = [];
   
-  if (shapePixels.length <= droneCount) {
-    // Fewer pixels than drones — use all pixels
-    for (const p of shapePixels) {
+  if (finalPixels.length <= droneCount) {
+    for (const p of finalPixels) {
       points.push(pixelToWorld(p.px, p.py, width, height, radius));
     }
   } else {
-    // Poisson-disk-like sampling using a grid
-    const cellSize = Math.sqrt((width * height) / (droneCount * 2));
-    const gridCols = Math.ceil(width / cellSize);
-    const gridRows = Math.ceil(height / cellSize);
-    const cells = new Map<string, { px: number; py: number }>();
-
-    // Shuffle shape pixels
-    const shuffled = [...shapePixels];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-
-    for (const p of shuffled) {
-      const gc = Math.floor(p.px / cellSize);
-      const gr = Math.floor(p.py / cellSize);
-      const key = `${gc},${gr}`;
-      if (!cells.has(key)) {
-        cells.set(key, p);
-        if (cells.size >= droneCount) break;
-      }
-    }
-
-    for (const p of cells.values()) {
+    // Calculate minimum distance for target drone count
+    const area = finalPixels.length; // approx shape area in pixels
+    const minDist = Math.max(1.5, Math.sqrt(area / (droneCount * 1.5)));
+    
+    const sampled = poissonDiskSample(finalPixels, droneCount, width, height, minDist);
+    for (const p of sampled) {
       points.push(pixelToWorld(p.px, p.py, width, height, radius));
     }
   }
