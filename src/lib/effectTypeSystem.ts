@@ -8,7 +8,8 @@ export type PyroEffectType =
   | 'shell' | 'cake' | 'mine' | 'comet' | 'roman_candle'
   | 'fan' | 'gerb' | 'flame' | 'strobe' | 'waterfall'
   | 'crossette' | 'tourbillon' | 'salute' | 'cryo' | 'confetti' | 'laser'
-  | 'sparkle_pot' | 'set_piece' | 'lance' | 'wheel';
+  | 'sparkle_pot' | 'set_piece' | 'lance' | 'wheel'
+  | 'sparkular' | 'fog_low' | 'streamer';
 
 export interface PyroEffectSpec {
   type: PyroEffectType;
