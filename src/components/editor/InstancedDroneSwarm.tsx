@@ -174,7 +174,7 @@ export default function InstancedDroneSwarm({
         _dummy.rotation.set(-Math.PI / 2, rotorAngle.current + r * 1.57, 0);
         _dummy.updateMatrix();
         rotor.setMatrixAt(idx, _dummy.matrix);
-        _color.set(p.color);
+        _color.set(ledColor);
         rotor.setColorAt(idx, _color);
 
         // Nav light
