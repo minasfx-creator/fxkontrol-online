@@ -40,7 +40,7 @@ export default function Auth() {
     <div className="h-screen w-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-sm space-y-6 px-4">
         <div className="text-center">
-          <img src={minasfxLogo} alt="MinasFX Special FX Solutions" className="h-10 mx-auto mb-4 object-contain" />
+          <img src={minasfxLogo} alt="MinasFX Special FX Solutions" className="h-10 mx-auto mb-4 object-contain brightness-0 invert" />
           <h1 className="text-xl font-semibold text-foreground">FX KONTROL</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {isLogin ? 'Entre para acessar seus projetos' : 'Crie sua conta'}
