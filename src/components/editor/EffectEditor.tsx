@@ -20,10 +20,14 @@ interface EffectEditorProps {
   realFormulationId?: string;
 }
 
-export default function EffectEditor({ initialVDL = '', onClose }: EffectEditorProps) {
+export default function EffectEditor({ initialVDL = '', onClose, realFormulationId }: EffectEditorProps) {
   const { addTimelineItem, currentTime } = useProjectStore();
   const [vdlInput, setVdlInput] = useState(initialVDL);
   const [params, setParams] = useState<VDLResult>(() => parseVDL(initialVDL));
+
+  // Real formulation data
+  const realFormulation = useMemo(() => realFormulationId ? getRealFormulation(realFormulationId) : undefined, [realFormulationId]);
+  const realCompound = useMemo(() => realFormulation ? formulationToCompound(realFormulation) : undefined, [realFormulation]);
 
   useEffect(() => {
     if (vdlInput) {
