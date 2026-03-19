@@ -14,6 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      events: {
+        Row: {
+          client_name: string | null
+          created_at: string
+          event_date: string | null
+          event_time: string | null
+          event_type: string | null
+          id: string
+          location: string | null
+          name: string
+          notes: string | null
+          project_id: string | null
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_name?: string | null
+          created_at?: string
+          event_date?: string | null
+          event_time?: string | null
+          event_type?: string | null
+          id?: string
+          location?: string | null
+          name: string
+          notes?: string | null
+          project_id?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_name?: string | null
+          created_at?: string
+          event_date?: string | null
+          event_time?: string | null
+          event_type?: string | null
+          id?: string
+          location?: string | null
+          name?: string
+          notes?: string | null
+          project_id?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       positions: {
         Row: {
           color: string
