@@ -148,7 +148,7 @@ export default function InstancedDroneSwarm({
       _dummy.scale.setScalar(s);
       _dummy.updateMatrix();
       led.setMatrixAt(i, _dummy.matrix);
-      _color.set(p.color);
+      _color.set(ledColor);
       led.setColorAt(i, _color);
 
       // LED halo
@@ -157,7 +157,7 @@ export default function InstancedDroneSwarm({
         _dummy.scale.setScalar(s * 1.0);
         _dummy.updateMatrix();
         halo.setMatrixAt(i, _dummy.matrix);
-        _color.set(p.color);
+        _color.set(ledColor);
         halo.setColorAt(i, _color);
       }
 
