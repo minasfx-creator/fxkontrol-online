@@ -146,17 +146,57 @@ export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
 
         {/* ═══ PRESETS ═══ */}
         <Section title="Scene Presets" icon={Monitor} id="presets" open={openSections.has('presets')} onToggle={() => toggleSection('presets')}>
+          {/* ── Featured: SFX Stage ── */}
+          <button
+            onClick={() => applyPreset('sfx-stage')}
+            className={cn(
+              "w-full text-left p-3 rounded-lg border-2 transition-all group mb-2 relative overflow-hidden",
+              settings.groundStyle === 'sfx-stage'
+                ? "border-purple-500/60 bg-purple-500/10 shadow-[0_0_20px_hsl(270_80%_50%/0.15)]"
+                : "border-purple-500/20 hover:border-purple-500/50 hover:bg-purple-500/5"
+            )}
+          >
+            <div className="absolute top-0 right-0 px-2 py-0.5 bg-purple-500/20 rounded-bl-lg">
+              <span className="text-[7px] font-bold text-purple-400 uppercase tracking-wider">NEW</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-md bg-purple-500/15 flex items-center justify-center text-lg">🎭</div>
+              <div className="flex-1">
+                <div className="text-[10px] font-bold text-foreground group-hover:text-purple-400 transition-colors">SFX Stage (DMXPrevis)</div>
+                <div className="text-[8px] text-muted-foreground leading-tight mt-0.5">Indoor venue • Truss • Moving Heads • LED Walls • Fog • Laser Mounts</div>
+              </div>
+            </div>
+            {settings.groundStyle === 'sfx-stage' && (
+              <div className="mt-1.5 flex items-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                <span className="text-[7px] text-green-400 font-bold uppercase tracking-wider">Active</span>
+              </div>
+            )}
+          </button>
+
           <div className="grid grid-cols-2 gap-1.5">
-            {Object.entries(SCENE_PRESETS).map(([id, preset]) => (
-              <button
-                key={id}
-                onClick={() => applyPreset(id)}
-                className="text-left p-2 rounded-md border border-border/20 hover:border-primary/50 hover:bg-primary/5 transition-all group"
-              >
-                <div className="text-[9px] font-bold text-foreground group-hover:text-primary transition-colors">{preset.name}</div>
-                <div className="text-[7px] text-muted-foreground leading-tight mt-0.5">{preset.description}</div>
-              </button>
-            ))}
+            {Object.entries(SCENE_PRESETS).filter(([id]) => id !== 'sfx-stage').map(([id, preset]) => {
+              const isActive = (
+                (id === 'finale-night' && settings.groundStyle === 'finale-dark') ||
+                (id === 'depence-stage' && settings.groundStyle === 'concrete') ||
+                (id === 'studio-black' && settings.groundStyle === 'flat-black')
+              );
+              return (
+                <button
+                  key={id}
+                  onClick={() => applyPreset(id)}
+                  className={cn(
+                    "text-left p-2 rounded-md border transition-all group",
+                    isActive
+                      ? "border-primary/40 bg-primary/10"
+                      : "border-border/20 hover:border-primary/50 hover:bg-primary/5"
+                  )}
+                >
+                  <div className="text-[9px] font-bold text-foreground group-hover:text-primary transition-colors">{preset.name}</div>
+                  <div className="text-[7px] text-muted-foreground leading-tight mt-0.5">{preset.description}</div>
+                </button>
+              );
+            })}
           </div>
         </Section>
 
