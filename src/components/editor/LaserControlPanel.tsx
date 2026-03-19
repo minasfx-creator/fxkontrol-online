@@ -51,14 +51,24 @@ export default function LaserControlPanel({ onClose }: LaserControlPanelProps) {
   const [ildaShape, setIldaShape] = useState<string>('circle');
   const [hwPreset, setHwPreset] = useState<string>('none');
 
+  const laserPreviewEnabled = useLaserPreviewStore((s) => s.globalEnabled);
+  const setLaserPreviewEnabled = useLaserPreviewStore((s) => s.setGlobalEnabled);
+  const updateDefaultSource = useLaserPreviewStore((s) => s.updateDefaultSource);
+
+  // Sync local state → laser preview store
+  useEffect(() => {
+    updateDefaultSource({ pan, tilt, intensity, color, pattern, beamCount, scanRate, divergence });
+  }, [pan, tilt, intensity, color, pattern, beamCount, scanRate, divergence, updateDefaultSource]);
+
   const applyHardwarePreset = useCallback((presetId: string) => {
     setHwPreset(presetId);
     const preset = LASER_HARDWARE_PRESETS[presetId];
     if (!preset) return;
     setScanRate(preset.pps / 1000);
     setDivergence(preset.divergence);
+    updateDefaultSource({ hwPreset: presetId });
     toast.success(`Hardware: ${preset.model} (${preset.totalPower}W, ${preset.ipRating})`);
-  }, []);
+  }, [updateDefaultSource]);
 
   // Find if selected timeline item is a laser
   const selectedItem = timelineItems.find(i => i.id === selectedTimelineItemId);
