@@ -74,6 +74,7 @@ import TransitionPlannerPanel from '@/components/editor/TransitionPlannerPanel';
 import LaserControlPanel from '@/components/editor/LaserControlPanel';
 import USBConnectionPanel from '@/components/editor/USBConnectionPanel';
 import VideoChoreoPanel from '@/components/editor/VideoChoreoPanel';
+import ShowvenEquipmentPanel from '@/components/editor/ShowvenEquipmentPanel';
 import CinematicIntro from '@/components/editor/CinematicIntro';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
@@ -316,6 +317,7 @@ function Index() {
         {activePanel === 'lasercontrol' && <LaserControlPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'usb' && <USBConnectionPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'videochoreo' && <VideoChoreoPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'showven' && <ShowvenEquipmentPanel onClose={() => setActivePanel(null)} />}
       </>
     );
   };
@@ -382,7 +384,42 @@ function Index() {
 
               {/* Center viewport */}
               <ResizablePanel defaultSize={activePanel ? 60 : 80} minSize={30}>
-                <div className="h-full w-full relative">
+                <div
+                  className="h-full w-full relative"
+                  onDragOver={(e) => {
+                    if (e.dataTransfer.types.includes('application/showven-equipment')) {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'copy';
+                    }
+                  }}
+                  onDrop={(e) => {
+                    const raw = e.dataTransfer.getData('application/showven-equipment');
+                    if (!raw) return;
+                    e.preventDefault();
+                    try {
+                      const data = JSON.parse(raw) as { id: string; category: string; effectType: string; name: string };
+                      if (!data.effectType) return;
+                      const store = useProjectStore.getState();
+                      useUndoStore.getState().checkpoint();
+                      const posId = `pos-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+                      const offset = store.positions.length * 2;
+                      store.addPosition({
+                        id: posId, name: data.name,
+                        x: offset, y: 0, z: 0, type: 'pyro',
+                        color: '#ff8800', heading: 0, pitch: 0, roll: 0,
+                      });
+                      store.addTimelineItem({
+                        id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                        effectId: data.effectType,
+                        startTime: store.currentTime,
+                        trackIndex: 0,
+                        position: { x: offset, y: 0, z: 0 },
+                        notes: `Showven ${data.name}`,
+                      });
+                      toast.success(`${data.name} dropped na cena`);
+                    } catch { /* ignore */ }
+                  }}
+                >
                   <CanvasErrorBoundary>
                     <Suspense fallback={<CanvasLoader />}>
                       <SkyCanvas />

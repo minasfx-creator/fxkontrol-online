@@ -191,3 +191,76 @@ export function getAllShowvenEquipment() {
     controllers: SHOWVEN_CONTROLLERS,
   };
 }
+
+// ── Showven → Effect Pipeline Mapper ────────────────────────────────
+
+export interface ShowvenEffectConfig {
+  effectType: string;        // maps to PyroEffectType
+  duration: number;          // seconds
+  height: number;            // meters
+  spread: number;            // degrees
+  presetId: string;          // original showven preset id
+  category: ShowvenCategory;
+  dmxChannels: number;
+  colorMode: 'none' | 'single' | 'multi';
+}
+
+export function showvenToEffect(presetId: string, category: ShowvenCategory): ShowvenEffectConfig | null {
+  if (category === 'flamer') {
+    const p = getFlamerPreset(presetId);
+    if (!p) return null;
+    return {
+      effectType: 'flame',
+      duration: p.burnTimeMin * 60,
+      height: p.maxHeightM,
+      spread: p.nozzles > 1 ? 60 : 15,
+      presetId: p.id,
+      category,
+      dmxChannels: p.dmxChannels,
+      colorMode: p.colorCount > 0 ? 'multi' : 'none',
+    };
+  }
+  if (category === 'sparkular') {
+    const p = getSparkularPreset(presetId);
+    if (!p) return null;
+    return {
+      effectType: 'sparkular',
+      duration: 30,
+      height: p.maxHeightM,
+      spread: p.sparkType === 'circular' ? 360 : p.sparkType === 'waterfall' ? 90 : 20,
+      presetId: p.id,
+      category,
+      dmxChannels: p.dmxChannels,
+      colorMode: p.sparkColor === 'multi' ? 'multi' : 'single',
+    };
+  }
+  if (category === 'fog') {
+    const p = getFogPreset(presetId);
+    if (!p) return null;
+    return {
+      effectType: 'fog_low',
+      duration: 120,
+      height: p.fogType === 'low' ? 0.3 : 3,
+      spread: 180,
+      presetId: p.id,
+      category,
+      dmxChannels: p.dmxChannels,
+      colorMode: 'none',
+    };
+  }
+  if (category === 'confetti') {
+    const c = SHOWVEN_CONFETTI.find(x => x.id === presetId);
+    if (!c) return null;
+    return {
+      effectType: 'confetti',
+      duration: c.type === 'blower' ? 30 : 2,
+      height: c.rangeM,
+      spread: c.type === 'blower' ? 45 : 30,
+      presetId: c.id,
+      category,
+      dmxChannels: c.dmxChannels,
+      colorMode: 'multi',
+    };
+  }
+  return null;
+}
