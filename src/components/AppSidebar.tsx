@@ -43,7 +43,7 @@ export function AppSidebar() {
             </div>
           ) : (
             <div className="flex items-center gap-2.5">
-              <img src={minasfxLogo} alt="MinasFX" className="h-7 object-contain shrink-0 brightness-0 invert" />
+              <img src={minasfxLogo} alt="MinasFX" className="h-7 object-contain shrink-0" />
               <div>
                 <p className="text-xs font-bold text-foreground tracking-wide">FX KONTROL</p>
                 <p className="text-[9px] text-muted-foreground font-mono">by MinasFX</p>
