@@ -3,7 +3,7 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { NewsTicker } from '@/components/NewsTicker';
 import { Messenger } from '@/components/Messenger';
-import minasfxLogo from '@/assets/minasfx-logo.png';
+import minasfxLogo from '@/assets/minasfx-logo-white.png';
 
 export default function MainLayout() {
   const location = useLocation();
