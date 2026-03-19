@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { TrendingUp, TrendingDown, Minus, Circle } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { TrendingUp, TrendingDown, Minus, Circle, Filter } from 'lucide-react';
 
 interface NewsItem {
   id: number;
@@ -24,20 +24,12 @@ const MOCK_NEWS: NewsItem[] = [
   { id: 12, title: 'Regulação europeia proíbe fogos acima de 1.3G sem licença especial', category: 'pyro', sentiment: 'negative', time: '8h' },
 ];
 
-const CATEGORY_COLORS: Record<NewsItem['category'], string> = {
-  pyro: 'text-accent',
-  drones: 'text-primary',
-  sfx: 'hsl(var(--electric-glow))',
-  lighting: 'text-yellow-400',
-  festivals: 'text-purple-400',
-};
-
-const CATEGORY_LABELS: Record<NewsItem['category'], string> = {
-  pyro: 'PYRO',
-  drones: 'DRONE',
-  sfx: 'SFX',
-  lighting: 'LIGHT',
-  festivals: 'FEST',
+const CATEGORY_CONFIG: Record<NewsItem['category'], { color: string; label: string; bg: string }> = {
+  pyro: { color: 'text-accent', label: 'PYRO', bg: 'bg-accent/10' },
+  drones: { color: 'text-primary', label: 'DRONE', bg: 'bg-primary/10' },
+  sfx: { color: 'text-[hsl(var(--fxk-gold))]', label: 'SFX', bg: 'bg-[hsl(var(--fxk-gold)/0.1)]' },
+  lighting: { color: 'text-[hsl(var(--fxk-gold))]', label: 'LIGHT', bg: 'bg-[hsl(var(--fxk-gold)/0.1)]' },
+  festivals: { color: 'text-[hsl(var(--fxk-violet))]', label: 'FEST', bg: 'bg-[hsl(var(--fxk-violet)/0.1)]' },
 };
 
 function SentimentIcon({ sentiment }: { sentiment: NewsItem['sentiment'] }) {
@@ -48,59 +40,104 @@ function SentimentIcon({ sentiment }: { sentiment: NewsItem['sentiment'] }) {
 
 export function NewsTicker() {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [filter, setFilter] = useState<NewsItem['category'] | 'all'>('all');
+  const [paused, setPaused] = useState(false);
+
+  const filteredNews = filter === 'all' ? MOCK_NEWS : MOCK_NEWS.filter(n => n.category === filter);
+  const doubledNews = [...filteredNews, ...filteredNews];
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     let animId: number;
     let scrollPos = 0;
-    const speed = 0.3;
 
     const animate = () => {
-      scrollPos += speed;
-      if (scrollPos >= el.scrollHeight / 2) scrollPos = 0;
-      el.scrollTop = scrollPos;
+      if (!paused) {
+        scrollPos += 0.3;
+        if (scrollPos >= el.scrollHeight / 2) scrollPos = 0;
+        el.scrollTop = scrollPos;
+      }
       animId = requestAnimationFrame(animate);
     };
     animId = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animId);
-  }, []);
+  }, [paused, filter]);
 
-  const doubledNews = [...MOCK_NEWS, ...MOCK_NEWS];
+  const categories: Array<{ key: NewsItem['category'] | 'all'; label: string }> = [
+    { key: 'all', label: 'ALL' },
+    { key: 'pyro', label: '🎆' },
+    { key: 'drones', label: '🤖' },
+    { key: 'sfx', label: '🔥' },
+    { key: 'lighting', label: '💡' },
+    { key: 'festivals', label: '🎪' },
+  ];
 
   return (
-    <div className="w-72 border-l border-border bg-card/80 backdrop-blur-sm flex flex-col h-full">
+    <div className="w-64 border-l border-border bg-[hsl(var(--surface-0))] flex flex-col h-full">
       {/* Header */}
-      <div className="p-3 border-b border-border flex items-center gap-2">
-        <Circle className="h-2 w-2 fill-emerald-400 text-emerald-400 animate-pulse" />
-        <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-          Event Industry Live
-        </span>
+      <div className="p-3 border-b border-border/50">
+        <div className="flex items-center gap-2 mb-2">
+          <Circle className="h-2 w-2 fill-emerald-400 text-emerald-400 animate-pulse" />
+          <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground">
+            Industry Feed
+          </span>
+        </div>
+        {/* Category filters */}
+        <div className="flex gap-1">
+          {categories.map(cat => (
+            <button
+              key={cat.key}
+              onClick={() => setFilter(cat.key)}
+              className={`text-[9px] px-1.5 py-0.5 rounded transition-colors ${
+                filter === cat.key
+                  ? 'bg-primary/20 text-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Scrolling feed */}
-      <div ref={scrollRef} className="flex-1 overflow-hidden">
-        <div className="divide-y divide-border/50">
-          {doubledNews.map((item, i) => (
-            <div
-              key={`${item.id}-${i}`}
-              className="px-3 py-2.5 hover:bg-muted/30 transition-colors cursor-default"
-            >
-              <div className="flex items-center gap-1.5 mb-1">
-                <span className={`text-[9px] font-mono font-bold ${CATEGORY_COLORS[item.category]}`}>
-                  {CATEGORY_LABELS[item.category]}
-                </span>
-                <span className="text-[9px] text-muted-foreground font-mono">
-                  {item.time}
-                </span>
-                <SentimentIcon sentiment={item.sentiment} />
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-hidden"
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+      >
+        <div className="divide-y divide-border/30">
+          {doubledNews.map((item, i) => {
+            const cfg = CATEGORY_CONFIG[item.category];
+            return (
+              <div
+                key={`${item.id}-${i}`}
+                className="px-3 py-2.5 hover:bg-muted/20 transition-colors cursor-default group"
+              >
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span className={`text-[8px] font-mono font-bold px-1 py-px rounded ${cfg.bg} ${cfg.color}`}>
+                    {cfg.label}
+                  </span>
+                  <span className="text-[8px] text-muted-foreground/60 font-mono ml-auto">
+                    {item.time}
+                  </span>
+                  <SentimentIcon sentiment={item.sentiment} />
+                </div>
+                <p className="text-[10px] leading-tight text-foreground/70 group-hover:text-foreground/90 transition-colors">
+                  {item.title}
+                </p>
               </div>
-              <p className="text-[11px] leading-tight text-foreground/80 font-medium">
-                {item.title}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
+      </div>
+
+      {/* Footer stats */}
+      <div className="px-3 py-2 border-t border-border/30 text-[8px] font-mono text-muted-foreground/50 flex justify-between">
+        <span>{MOCK_NEWS.length} notícias</span>
+        <span>AUTO-SCROLL</span>
       </div>
     </div>
   );
