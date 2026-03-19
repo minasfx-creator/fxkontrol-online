@@ -41,6 +41,7 @@ export default function TrainingSimulator({ mission, allEquipment, onComplete, o
   const [score, setScore] = useState(0);
   const [completed, setCompleted] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [activeVFX, setActiveVFX] = useState<{ id: string; position: [number, number, number] }[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Timer countdown
