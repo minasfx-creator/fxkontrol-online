@@ -436,8 +436,9 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
           <DropdownMenu
             label="Scene"
             icon={Paintbrush}
-            items={[
+           items={[
               { label: 'Scene Editor', icon: Paintbrush, onClick: () => onOpenPanel?.('scene') },
+              { label: 'Lightjams Engine', icon: Sparkles, onClick: () => onOpenPanel?.('generative') },
               { label: 'Weather', icon: Cloud, onClick: () => onOpenPanel?.('weather') },
               { label: 'Audience View', icon: Eye, onClick: () => onOpenPanel?.('audience') },
               { label: 'Sound Level', icon: Volume2, onClick: () => onOpenPanel?.('soundlevel') },
