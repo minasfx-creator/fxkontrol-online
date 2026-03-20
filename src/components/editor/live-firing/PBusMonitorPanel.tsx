@@ -163,28 +163,40 @@ function DeviceCard({ device, onArm, onDisarm, onFire, onCueStatus, onSetBand, i
           </div>
 
           {/* Controls */}
-          <div className="flex items-center gap-1.5">
-            <Button size="sm" variant="outline" className="h-7 text-[9px] flex-1" onClick={() => onCueStatus(device.address)}>
-              <RefreshCw className="w-3 h-3 mr-1" /> Continuity
-            </Button>
-            {device.armed ? (
-              <Button size="sm" variant="outline" className="h-7 text-[9px] flex-1 border-emerald-500/30 text-emerald-400" onClick={() => onDisarm(device.address)}>
-                <Shield className="w-3 h-3 mr-1" /> DISARM
+          <div className={cn("flex items-center gap-1.5", isMobile && "flex-col")}>
+            <div className="flex items-center gap-1.5 w-full">
+              <Button size="sm" variant="outline" className={cn("text-[9px] flex-1", isMobile ? "h-10" : "h-7")} onClick={() => onCueStatus(device.address)}>
+                <RefreshCw className="w-3 h-3 mr-1" /> Continuity
               </Button>
-            ) : (
-              <Button size="sm" variant="destructive" className="h-7 text-[9px] flex-1" onClick={() => onArm(device.address)}>
-                <Zap className="w-3 h-3 mr-1" /> ARM
-              </Button>
-            )}
+              {device.armed ? (
+                <Button size="sm" variant="outline" className={cn("text-[9px] flex-1 border-emerald-500/30 text-emerald-400", isMobile ? "h-10" : "h-7")} onClick={() => onDisarm(device.address)}>
+                  <Shield className="w-3 h-3 mr-1" /> DISARM
+                </Button>
+              ) : (
+                <Button size="sm" variant="destructive" className={cn("text-[9px] flex-1", isMobile ? "h-10" : "h-7")} onClick={() => onArm(device.address)}>
+                  <Zap className="w-3 h-3 mr-1" /> ARM
+                </Button>
+              )}
+            </div>
             <Button
               size="sm"
               variant={deadman ? 'destructive' : 'outline'}
-              className={cn("h-7 text-[9px] px-2", deadman && "animate-pulse")}
-              onMouseDown={() => setDeadman(true)}
-              onMouseUp={() => setDeadman(false)}
-              onMouseLeave={() => setDeadman(false)}
+              className={cn(
+                "text-[9px] px-4 relative overflow-hidden",
+                isMobile ? "h-14 w-full text-sm font-black" : "h-7",
+                deadman && "animate-pulse"
+              )}
+              onMouseDown={startDeadman}
+              onMouseUp={endDeadman}
+              onMouseLeave={endDeadman}
+              onTouchStart={(e) => { e.preventDefault(); startDeadman(); }}
+              onTouchEnd={(e) => { e.preventDefault(); endDeadman(); }}
+              onTouchCancel={endDeadman}
             >
-              DEADMAN
+              {isMobile && deadmanProgress > 0 && deadmanProgress < 100 && (
+                <div className="absolute inset-0 bg-red-500/20 transition-all" style={{ width: `${deadmanProgress}%` }} />
+              )}
+              <span className="relative z-10">DEADMAN{isMobile && !deadman ? ' (pressione 0.8s)' : ''}</span>
             </Button>
           </div>
 
