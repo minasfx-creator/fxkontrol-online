@@ -70,7 +70,7 @@ export default function VirtualZK6200({ fs = false }: VirtualZK6200Props) {
       toast.warning('ARM + DEADMAN necessários');
       return;
     }
-    if (navigator.vibrate) navigator.vibrate(30);
+    haptics.fire();
     setFiringZones(prev => new Set(prev).add(zone));
 
     // Route to PBUS hardware if connected and paired
