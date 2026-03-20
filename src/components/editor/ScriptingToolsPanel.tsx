@@ -6,9 +6,9 @@ import { Slider } from '@/components/ui/slider';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import {
   randomizeItems, DEFAULT_RANDOMIZE, type RandomizeConfig,
-  makeIntoSequence, DEFAULT_SEQUENCE, type SequenceConfig,
+  makeIntoSequence, DEFAULT_SEQUENCE, type SequenceConfig, type SequenceSortMode,
   makeIntoFan, DEFAULT_FAN, type FanConfig,
-  spreadOut, reverseOrder, quantizeToGrid,
+  spreadOut, reverseOrder, quantizeToGrid, getAnglesPreview,
 } from '@/lib/scriptingTools';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
