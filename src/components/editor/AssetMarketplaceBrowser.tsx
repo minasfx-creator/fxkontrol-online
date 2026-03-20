@@ -93,11 +93,69 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
     }
   }, []);
 
-  const handleImportAsset = (asset: MarketplaceAsset) => {
-    toast.success(`"${asset.title}" adicionado à lista de importação`, {
-      description: `Fonte: ${SOURCE_CONFIG[asset.source].label} · ${asset.fileFormats.join(', ')}`,
-    });
-  };
+  const handleImportAsset = useCallback(async (asset: MarketplaceAsset) => {
+    if (asset.source === '3dwarehouse') {
+      // Real download via edge function proxy
+      const toastId = toast.loading(`Downloading "${asset.title}"...`);
+      try {
+        const { data, error } = await supabase.functions.invoke('warehouse-download', {
+          body: { modelId: asset.id.replace('3dw-', ''), format: 'gltf' },
+        });
+
+        if (error) throw error;
+
+        // data is the response - check if it's binary
+        let blob: Blob;
+        if (data instanceof Blob) {
+          blob = data;
+        } else if (data instanceof ArrayBuffer) {
+          blob = new Blob([data], { type: 'model/gltf-binary' });
+        } else {
+          // Edge function returned JSON error
+          throw new Error(data?.error || 'Download failed');
+        }
+
+        const blobUrl = URL.createObjectURL(blob);
+        const newModel: SiteModel = {
+          id: `site-${Date.now()}`,
+          name: asset.title,
+          url: blobUrl,
+          position: [0, 0, 0],
+          rotation: [0, 0, 0],
+          scale: 1,
+          visible: true,
+          source: '3dwarehouse',
+        };
+
+        useSceneStore.getState().addSiteModel(newModel);
+        toast.success(`"${asset.title}" importado para o viewport`, { id: toastId });
+      } catch (err: any) {
+        toast.error(`Falha ao baixar: ${err.message || 'Erro desconhecido'}`, { id: toastId });
+      }
+    } else {
+      toast.success(`"${asset.title}" adicionado à lista de importação`, {
+        description: `Fonte: ${SOURCE_CONFIG[asset.source].label} · ${asset.fileFormats.join(', ')}`,
+      });
+    }
+  }, []);
+
+  const handleLocalGLBUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const blobUrl = URL.createObjectURL(file);
+    const newModel: SiteModel = {
+      id: `site-${Date.now()}`,
+      name: file.name.replace(/\.(glb|gltf)$/i, ''),
+      url: blobUrl,
+      position: [0, 0, 0],
+      rotation: [0, 0, 0],
+      scale: 1,
+      visible: true,
+      source: 'local',
+    };
+    useSceneStore.getState().addSiteModel(newModel);
+    toast.success(`"${newModel.name}" carregado no viewport`);
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
