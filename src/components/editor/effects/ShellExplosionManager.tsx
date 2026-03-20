@@ -38,6 +38,8 @@ interface ShellConfig {
   colorTransition?: 'none' | 'to' | 'changing' | 'alternating';
   trailType?: 'none' | 'comet' | 'glitter' | 'brocade' | 'charcoal' | 'smoke';
   fallingLeaves?: boolean;
+  angleOffset?: number;
+  noTrail?: boolean;
 }
 
 interface ShellExplosionManagerProps {

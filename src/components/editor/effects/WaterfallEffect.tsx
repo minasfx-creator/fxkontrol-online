@@ -19,20 +19,25 @@ export default function WaterfallEffect({
   color,
   progress,
   width = 5,
+  caliber = 3,
 }: {
   position: [number, number, number];
   color: string;
   progress: number;
   width?: number;
+  caliber?: number;
 }) {
+  // Scale width and density based on caliber
+  const scaledWidth = width * (0.7 + caliber * 0.12);
+  const SCALED_PARTICLE_COUNT = Math.min(800, Math.round(PARTICLE_COUNT * (0.7 + caliber * 0.12)));
   const pointsRef = useRef<THREE.Points>(null);
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
 
   const seeds = useMemo(() => {
     const s: { x: number; vy: number; vx: number; lt: number; phase: number; flicker: number; offset: number }[] = [];
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
+    for (let i = 0; i < SCALED_PARTICLE_COUNT; i++) {
       s.push({
-        x: (Math.random() - 0.5) * width,
+        x: (Math.random() - 0.5) * scaledWidth,
         vy: -0.2 - Math.random() * 0.6,
         vx: (Math.random() - 0.5) * 0.15,
         lt: 1.8 + Math.random() * 3.0,
@@ -42,19 +47,19 @@ export default function WaterfallEffect({
       });
     }
     return s;
-  }, [width]);
+  }, [scaledWidth, SCALED_PARTICLE_COUNT]);
 
   useFrame(({ clock }) => {
     if (!pointsRef.current) return;
-    const posArr = new Float32Array(PARTICLE_COUNT * 3);
-    const colArr = new Float32Array(PARTICLE_COUNT * 3);
+    const posArr = new Float32Array(SCALED_PARTICLE_COUNT * 3);
+    const colArr = new Float32Array(SCALED_PARTICLE_COUNT * 3);
     const time = clock.getElapsedTime();
     const GRAVITY = -9.81;
 
     const intensity = progress < 0.04 ? Math.pow(progress / 0.04, 0.4) :
                       progress > 0.88 ? Math.pow((1 - progress) / 0.12, 2) : 1;
 
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
+    for (let i = 0; i < SCALED_PARTICLE_COUNT; i++) {
       const seed = seeds[i];
       const cycleTime = ((time * 0.35 + seed.phase) % seed.lt) / seed.lt;
 
@@ -112,18 +117,18 @@ export default function WaterfallEffect({
     <group position={position}>
       {/* Glowing emission wire at top */}
       <mesh position={[0, 0.05, 0]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.025, 0.025, width, 8]} />
+        <cylinderGeometry args={[0.025, 0.025, scaledWidth, 8]} />
         <meshBasicMaterial color="#FFEEAA" transparent opacity={wireOpacity} blending={THREE.AdditiveBlending} />
       </mesh>
       {/* Wire white-hot core */}
       <mesh position={[0, 0.05, 0]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.012, 0.012, width, 6]} />
+        <cylinderGeometry args={[0.012, 0.012, scaledWidth, 6]} />
         <meshBasicMaterial color="#FFFFF0" transparent opacity={wireOpacity * 0.8} blending={THREE.AdditiveBlending} />
       </mesh>
       <points ref={pointsRef}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(PARTICLE_COUNT * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(PARTICLE_COUNT * 3), 3]} />
+          <bufferAttribute attach="attributes-position" args={[new Float32Array(SCALED_PARTICLE_COUNT * 3), 3]} />
+          <bufferAttribute attach="attributes-color" args={[new Float32Array(SCALED_PARTICLE_COUNT * 3), 3]} />
         </bufferGeometry>
         <pointsMaterial size={0.055} vertexColors transparent opacity={0.92} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>

@@ -15,11 +15,15 @@ export default function RomanCandleEffect({
   color,
   progress,
   shotCount = 8,
+  caliber = 2,
+  angleOffset = 0,
 }: {
   position: [number, number, number];
   color: string;
   progress: number;
   shotCount?: number;
+  caliber?: number;
+  angleOffset?: number;
 }) {
   const pointsRef = useRef<THREE.Points>(null);
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
@@ -99,8 +103,10 @@ export default function RomanCandleEffect({
     geo.attributes.color.needsUpdate = true;
   });
 
+  const angleOffsetRad = (angleOffset * Math.PI) / 180;
+
   return (
-    <group position={position}>
+    <group position={position} rotation={[0, 0, angleOffsetRad]}>
       {/* Muzzle flash per shot */}
       {Array.from({ length: shotCount }).map((_, s) => {
         const shotTime = s / shotCount;

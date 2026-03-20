@@ -757,13 +757,7 @@ export function getVDLBodyPatterns() {
 }
 
 /** Convert VDL result to an Effect-compatible object for timeline */
-export function vdlToEffect(vdl: VDLResult): {
-  id: string; name: string;
-  category: 'morteiros' | 'peonias';
-  type: 'firework'; color: string; duration: number; cost: number;
-  icon: string; partType: string; caliber: number; heightMeters: number;
-  prefire: number; pattern: string; safetyDistance: number; vdl: string;
-} {
+export function vdlToEffect(vdl: VDLResult) {
   const typeIcons: Record<string, string> = {
     peony: '🔴', chrysanthemum: '💥', dahlia: '🟣', willow: '🎆',
     palm: '🌴', coconut: '🌴', brocade: '👑', kamuro: '✨',
@@ -779,11 +773,41 @@ export function vdlToEffect(vdl: VDLResult): {
   const colorStr = vdl.colorNames.map(capitalize).join('/');
   const name = `${calStr} ${colorStr} ${vdl.typeName}`.trim();
 
+  // Determine trail type from VDL color and flower type
+  const trailColors = ['silver', 'gold', 'charcoal', 'gamboge'];
+  const trailTypes = ['chrysanthemum', 'willow', 'palm', 'brocade', 'kamuro', 'horsetail'];
+  const hasTrailFromColor = vdl.colorNames.some(c => trailColors.includes(c.toLowerCase()));
+  const hasTrailFromType = trailTypes.includes(vdl.type);
+  const impliesTrail = hasTrailFromColor || hasTrailFromType;
+
+  // Determine trail type string
+  let trailType: string | undefined;
+  if (vdl.noTrail) {
+    trailType = 'none';
+  } else if (hasTrailFromColor) {
+    const tc = vdl.colorNames.find(c => trailColors.includes(c.toLowerCase()));
+    trailType = tc?.toLowerCase() === 'silver' ? 'glitter' :
+                tc?.toLowerCase() === 'gold' ? 'brocade' :
+                tc?.toLowerCase() === 'charcoal' ? 'charcoal' :
+                tc?.toLowerCase() === 'gamboge' ? 'comet' : 'comet';
+  } else if (hasTrailFromType) {
+    trailType = 'comet';
+  }
+
+  // Secondary color from multiColors or color list
+  const secondaryColor = vdl.colors.length > 1 ? vdl.colors[1] : undefined;
+
+  // Determine color transition
+  let colorTransition: string | undefined;
+  if (vdl.multiColors && vdl.multiColors.length > 1) {
+    colorTransition = 'alternating';
+  }
+
   return {
     id: `vdl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     name,
-    category: vdl.caliber >= 4 ? 'morteiros' : 'peonias',
-    type: 'firework',
+    category: (vdl.caliber >= 4 ? 'morteiros' : 'peonias') as 'morteiros' | 'peonias',
+    type: 'firework' as const,
     color: vdl.colors[0],
     duration: vdl.duration,
     cost: vdl.cost,
@@ -795,5 +819,16 @@ export function vdlToEffect(vdl: VDLResult): {
     pattern: vdl.type,
     safetyDistance: vdl.safetyDistance,
     vdl: vdl.raw,
+    shotCount: vdl.shotCount > 0 ? vdl.shotCount : undefined,
+    firingPattern: vdl.firingPattern || undefined,
+    // ── VDL rendering metadata ──
+    angleOffset: vdl.angleOffset !== 0 ? vdl.angleOffset : undefined,
+    trailType,
+    noTrail: vdl.noTrail || undefined,
+    hasPistil: vdl.hasPistil || undefined,
+    pistilColor: vdl.pistilColor || undefined,
+    colorTransition,
+    secondaryColor,
+    impliesTrail: impliesTrail || undefined,
   };
 }
