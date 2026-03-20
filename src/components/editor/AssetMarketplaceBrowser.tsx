@@ -264,7 +264,7 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
           </div>
 
           {/* Search Bar */}
-          <div className="px-6 py-3 border-b border-border/10">
+          {activeSource !== 'mylibrary' && <div className="px-6 py-3 border-b border-border/10">
             {activeSource !== 'ue-project' ? (
               <div className="flex gap-2">
                 <div className="flex-1 relative">
