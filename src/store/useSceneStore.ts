@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { ViewTransform } from '@/lib/niagaraBlenderRules';
+import type { TerrainData, TerrainConfig } from '@/lib/heightmapToTerrain';
 
 export type GroundStyle = 'finale-dark' | 'google-earth' | 'flat-black' | 'concrete' | 'sfx-stage' | 'custom';
 export type SkyPreset = 'night-clear' | 'night-cloudy' | 'dusk' | 'overcast' | 'foggy' | 'custom';
