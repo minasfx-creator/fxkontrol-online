@@ -53,6 +53,7 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const dirInputRef = useRef<HTMLInputElement>(null);
+  const siteModels = useSceneStore((s) => s.siteModels);
 
   const handleSearch = useCallback(async (source?: SourceType) => {
     const src = source || activeSource;
