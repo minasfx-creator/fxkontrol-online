@@ -782,6 +782,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           { key: 'super_dmx' as FXCMode, label: 'Super' },
           { key: 'simple_dmx' as FXCMode, label: 'Simple' },
           { key: 'manual_fire' as FXCMode, label: 'Manual' },
+          { key: 'pyro_fire' as FXCMode, label: '🔥 Pyro' },
           { key: 'auto_fire' as FXCMode, label: 'Auto' },
           { key: 'check_slave' as FXCMode, label: 'Check' },
           { key: 'mobile_link' as FXCMode, label: '📡 Link' },
