@@ -130,7 +130,9 @@ export type FireOneEventType =
   | 'heartbeat'
   | 'emergency-stop'
   | 'dmx-out-confirm'
-  | 'config-response';
+  | 'config-response'
+  | 'wireless-status'
+  | 'wireless-fallback';
 
 export interface FireOneModuleConfig {
   wireless: boolean;
