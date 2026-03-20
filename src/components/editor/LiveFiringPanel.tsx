@@ -386,8 +386,11 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
     setDmxArm(false);
     setDeadmanHeld(false);
     setFiringStartTime(null);
+    // E-STOP all connected hardware
+    if (fireone.isConnected) fireone.emergencyStop().catch(() => {});
+    if (pbus.isConnected) pbus.emergencyStop().catch(() => {});
     toast.error('🚨 PANIC — ALL STOP', { duration: 5000 });
-  }, [sendArtNetPacket]);
+  }, [sendArtNetPacket, fireone, pbus]);
 
   // ─── Fire logic ───
   const fireChannel = useCallback((id: string) => {
