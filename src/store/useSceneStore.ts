@@ -536,10 +536,22 @@ export interface CameraBookmark {
 
 export type CameraInterpMode = 'linear' | 'accelerated' | 'decelerated' | 'acc-dec';
 
+export interface SiteModel {
+  id: string;
+  name: string;
+  url: string; // blob URL
+  position: [number, number, number];
+  rotation: [number, number, number];
+  scale: number;
+  visible: boolean;
+  source: string;
+}
+
 interface SceneSettingsState {
   settings: SceneSettings;
   qualityPreset: QualityPreset;
   environment: EnvironmentState;
+  siteModels: SiteModel[];
   updateSettings: (updates: Partial<SceneSettings>) => void;
   applyPreset: (presetId: string) => void;
   applyQualityPreset: (preset: QualityPreset) => void;
@@ -547,6 +559,9 @@ interface SceneSettingsState {
   updateEnvironment: (updates: Partial<EnvironmentState>) => void;
   addCameraBookmark: (bookmark: CameraBookmark) => void;
   removeCameraBookmark: (id: string) => void;
+  addSiteModel: (model: SiteModel) => void;
+  updateSiteModel: (id: string, updates: Partial<SiteModel>) => void;
+  removeSiteModel: (id: string) => void;
 }
 
 const DEFAULT_ENVIRONMENT: EnvironmentState = {
