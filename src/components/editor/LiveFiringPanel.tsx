@@ -43,6 +43,7 @@ import VirtualFXButton from './VirtualFXButton';
 import FieldMap2D from './FieldMap2D';
 import ConnectionManagerPanel from './ConnectionManagerPanel';
 import PBusMonitorPanel from './live-firing/PBusMonitorPanel';
+import RadioControlPanel from './RadioControlPanel';
 
 // ═══════════════════════════════════════════════════════════
 // CUE KEY — hardware key replica with Lock/Tap mode
