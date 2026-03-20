@@ -379,6 +379,45 @@ export type Database = {
           },
         ]
       }
+      user_library_assets: {
+        Row: {
+          created_at: string
+          file_format: string
+          file_path: string
+          file_size: number | null
+          id: string
+          name: string
+          source: string
+          tags: string[] | null
+          thumbnail_base64: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_format?: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          name: string
+          source?: string
+          tags?: string[] | null
+          thumbnail_base64?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_format?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          name?: string
+          source?: string
+          tags?: string[] | null
+          thumbnail_base64?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       waypoints: {
         Row: {
           created_at: string
