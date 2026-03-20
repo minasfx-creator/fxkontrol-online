@@ -69,8 +69,8 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
       // Continuity Summary
       let goodIgniters = 0, openIgniters = 0, shortIgniters = 0;
       hardware.modules.forEach(m => {
-        if (m.igniterStatus) {
-          m.igniterStatus.forEach(ig => {
+        if (m.igniters) {
+          m.igniters.forEach(ig => {
             if (ig.resistance > 0.5 && ig.resistance < 50) goodIgniters++;
             else if (ig.resistance >= 50 || ig.resistance === 0) openIgniters++;
             else shortIgniters++;
