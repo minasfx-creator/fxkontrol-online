@@ -256,6 +256,30 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
           )}
         </div>
 
+        {/* PBUS Timecode Sync */}
+        <div className={cn(
+          "rounded border p-2 space-y-1",
+          syncToPBus && pbus.isConnected ? "bg-amber-500/5 border-amber-500/30" : "bg-surface-0 border-border"
+        )}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Radio className={cn("w-3.5 h-3.5", syncToPBus && pbus.isConnected ? "text-amber-400" : "text-muted-foreground")} />
+              <Label className="text-[10px] font-mono-code text-foreground font-bold">SYNC TO PBUS</Label>
+            </div>
+            <Switch checked={syncToPBus} onCheckedChange={setSyncToPBus} className="scale-75" />
+          </div>
+          {syncToPBus && (
+            <div className="flex items-center gap-1.5">
+              <div className={cn("w-2 h-2 rounded-full", pbus.isConnected ? "bg-amber-400 animate-pulse" : "bg-yellow-400")} />
+              <span className="text-[9px] font-mono-code text-muted-foreground">
+                {pbus.isConnected
+                  ? `${pbus.deviceCount} dispositivo(s) recebendo TC`
+                  : 'PBUS não conectado'}
+              </span>
+            </div>
+          )}
+        </div>
+
         {/* Auto-follow toggle */}
         <div className="bg-surface-0 rounded p-2 border border-border space-y-1">
           <div className="flex items-center justify-between">

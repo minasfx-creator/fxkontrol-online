@@ -282,14 +282,20 @@ export default function ShowvenEquipmentPanel({ onClose }: ShowvenEquipmentPanel
         </div>
         <div className="flex items-center gap-1">
           {pbus.isConnected ? (
-            <Badge variant="outline" className="text-[8px] h-4 px-1.5 border-emerald-500/30 text-emerald-400">
-              <Wifi className="w-2.5 h-2.5 mr-0.5" /> {pbusDeviceCount} PBUS
-              {pbus.worstBattery !== null && (
-                <span className={cn("ml-1", (pbus.worstBattery ?? 4) < 3.3 ? 'text-destructive' : '')}>
-                  · {(pbus.worstBattery ?? 0).toFixed(1)}V
-                </span>
-              )}
-            </Badge>
+            <div className="flex items-center gap-1">
+              <Badge variant="outline" className="text-[8px] h-4 px-1.5 border-emerald-500/30 text-emerald-400">
+                <Wifi className="w-2.5 h-2.5 mr-0.5" /> {pbusDeviceCount} PBUS
+                {pbus.connectionPath === 'radio' && <span className="ml-0.5 text-amber-400">RF</span>}
+                {pbus.worstBattery !== null && (
+                  <span className={cn("ml-1", (pbus.worstBattery ?? 4) < 3.3 ? 'text-destructive' : '')}>
+                    · {(pbus.worstBattery ?? 0).toFixed(1)}V
+                  </span>
+                )}
+              </Badge>
+              <Button variant="ghost" size="sm" className="h-5 text-[7px] px-1.5" onClick={handleScanAll}>
+                Scan
+              </Button>
+            </div>
           ) : (
             <Button variant="ghost" size="sm" className="h-6 text-[8px] px-2" onClick={handleConnectPBus}>
               <Radio className="w-3 h-3 mr-1" /> Connect PBUS
