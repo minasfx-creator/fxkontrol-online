@@ -972,7 +972,9 @@ export default function PyroFireOnePanel({
           paddingBottom: mob ? 'max(env(safe-area-inset-bottom), 8px)' : undefined,
         }}
       >
+        {renderFileInput()}
         {renderHeader()}
+        {renderConnectionBar()}
         {renderMasterArm()}
         {renderStatusStrip()}
 
