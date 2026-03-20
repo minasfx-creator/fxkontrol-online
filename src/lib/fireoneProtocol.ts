@@ -65,6 +65,10 @@ export enum FireOneCmd {
   // IFMx-i32Q specific
   DMX_OUT         = 0x4F,  // 'O' — Send DMX values to module's built-in DMX output
   MODULE_CONFIG   = 0x47,  // 'G' — Query/set module configuration
+
+  // Wireless IFMx-i32Q
+  WIRELESS_STATUS = 0x57,  // 'W' — Query wireless RSSI, channel, link quality
+  WIRELESS_CONFIG = 0x56,  // 'V' — Set wireless channel, TX power, fallback mode
 }
 
 // ═══════════════════════════════════════════════════════════
