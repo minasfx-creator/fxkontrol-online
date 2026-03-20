@@ -110,8 +110,11 @@ export default function ConnectionManagerPanel({ fs = false }: ConnectionManager
     } else if (connId === 'pbus') {
       pbus.disconnect();
       toast.info('PBUS desconectado');
+    } else if (connId === 'radio') {
+      await radioLink.disconnectAntenna();
+      toast.info('Antena desconectada');
     }
-  }, [fireone, pbus]);
+  }, [fireone, pbus, radioLink]);
 
   const mob = isMobile;
 
