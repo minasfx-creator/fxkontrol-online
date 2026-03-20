@@ -1,54 +1,45 @@
 
 
-# Plan: Layout Presets + Post-Import Adjustment Controls
+# Plan: Filtros, Preview 3D e Presets Customizados no Importador UE5
 
-## Overview
+## 1. Filtros por Universo/Categoria
 
-Two features: (1) a layout preset selector (Arena/Stage/Festival) in the UE5 import dialog, and (2) per-category spacing/height sliders that appear after file parsing to fine-tune layout before importing.
+Add filter buttons above the fixture list in `UE5DMXPrevisImporter.tsx`:
+- Row of category toggle chips (spot, wash, sfx, etc.) — click to show/hide
+- Universe dropdown or chips for filtering by DMX universe
+- "Select Filtered" / "Deselect Filtered" quick actions
+- Filters only control visibility in the list; selection state is preserved
 
-## Changes
+## 2. Preview 3D no Diálogo
 
-### 1. Layout Presets in `src/lib/fixtureAutoLayout.ts`
+Add a mini 3D viewport inside the import dialog using `@react-three/fiber` Canvas:
+- Renders after file is parsed, above the fixture list
+- Calls `computeFixtureLayout()` with current preset + overrides to get positions
+- Renders colored spheres/dots at each fixture position, color-coded by category
+- Updates live as user changes preset or adjusts sliders
+- Simple orbit controls, ~180px height, dark background
+- Lightweight: no full drone models, just instanced spheres + a ground plane grid
 
-Add a `LayoutPreset` type (`'stage' | 'arena' | 'festival'`) and three preset config maps that override the default `CATEGORY_CONFIGS`:
+New component: `src/components/editor/FixtureLayoutPreview.tsx`
+- Props: `fixtures`, `layoutPreset`, `categoryOverrides`
+- Uses `useMemo` to recompute layout when inputs change
+- Renders inside the Collapsible layout section
 
-- **Stage** (default): Current values -- linear front-facing stage with truss overhead
-- **Arena**: 360-degree layout -- fixtures use wider arc angles (full circle for wash/led-bar), trusses at multiple Z depths surrounding a center point, SFX ring around perimeter
-- **Festival**: Large-scale outdoor -- increased `spreadX` values (1.5x), drones pushed further back, higher truss heights, wider spacing
+## 3. Salvar Presets Customizados
 
-Update `computeFixtureLayout` signature to accept an optional `preset` parameter and optional per-category overrides (`spreadScale: number`, `heightOffset: number`):
+Create a new database table `layout_presets` to store user-defined configurations:
+- Columns: `id`, `user_id`, `name`, `preset_base` (stage/arena/festival), `category_overrides` (jsonb), `created_at`
+- RLS: users manage own presets
 
-```typescript
-export type LayoutPreset = 'stage' | 'arena' | 'festival';
+In the importer UI:
+- "Save Layout" button next to preset selector — opens a name input, saves current preset + overrides
+- "Load" dropdown showing saved presets — selecting one applies base preset + overrides
+- "Delete" option per saved preset
 
-export interface LayoutOverrides {
-  spreadScale?: number;   // multiplier on spreadX (default 1.0)
-  heightOffset?: number;  // additive offset on y (default 0)
-}
+## Files Modified
 
-export function computeFixtureLayout(
-  fixtures: LayoutableFixture[],
-  preset?: LayoutPreset,
-  categoryOverrides?: Record<string, LayoutOverrides>
-): LayoutResult[]
-```
-
-### 2. UI Controls in `src/components/editor/UE5DMXPrevisImporter.tsx`
-
-After file is parsed and stats are shown, add a collapsible "Layout Settings" section:
-
-- **Preset selector**: 3 radio buttons or segmented control (Stage / Arena / Festival) with small icons
-- **Per-category adjusters**: For each detected category in the parsed file, show a compact row with:
-  - Category icon + name
-  - "Spread" slider (0.5x to 3.0x, default 1.0x)
-  - "Height" slider (-5m to +15m offset, default 0)
-- Store these as local state: `layoutPreset` and `categoryOverrides`
-- Pass them to `computeFixtureLayout()` in `handleImport`
-
-The dialog max width increases slightly to `sm:max-w-2xl` to fit the layout controls alongside the fixture list.
-
-### Files Modified
-
-1. **`src/lib/fixtureAutoLayout.ts`** -- Add preset configs, accept preset + overrides params
-2. **`src/components/editor/UE5DMXPrevisImporter.tsx`** -- Add preset radio group, per-category sliders, pass to layout engine
+1. **`src/components/editor/UE5DMXPrevisImporter.tsx`** — Add filter chips, preview component slot, save/load preset UI
+2. **`src/components/editor/FixtureLayoutPreview.tsx`** (new) — Mini R3F Canvas with instanced spheres
+3. **Migration** — Create `layout_presets` table with RLS
+4. **`src/hooks/useLayoutPresets.ts`** (new) — CRUD hook for layout presets via database
 
