@@ -46,6 +46,10 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
           bias={0.025}
           samples={16}
           rings={3}
+          worldDistanceThreshold={1.0}
+          worldDistanceFalloff={0.5}
+          worldProximityThreshold={0.5}
+          worldProximityFalloff={0.3}
         />
       )}
 
