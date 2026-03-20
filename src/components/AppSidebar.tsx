@@ -2,6 +2,7 @@ import { LayoutDashboard, Clapperboard, CalendarDays, GraduationCap, LogOut, Gam
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Sidebar,
   SidebarContent,
