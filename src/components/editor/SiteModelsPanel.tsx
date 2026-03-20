@@ -1,9 +1,10 @@
-import React from 'react';
-import { X, Eye, EyeOff, Trash2, Box, Move, RotateCw, Maximize2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Eye, EyeOff, Trash2, Box, Move, RotateCw, Maximize2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSceneStore, type SiteModel } from '@/store/useSceneStore';
 import { cn } from '@/lib/utils';
+import SceneObjectImporter from './SceneObjectImporter';
 
 interface SiteModelsPanelProps {
   onClose: () => void;
