@@ -14,7 +14,8 @@ import {
   RotateCcw, Save, Upload, Lock, Unlock, Timer, Power,
   Shield, ShieldAlert, Gauge, Settings, FolderOpen, Wifi,
   Signal, Thermometer, Activity, Volume2, Eye, EyeOff,
-  Maximize2, Minimize2, Battery, Hand, ChevronLeft, ChevronRight
+  Maximize2, Minimize2, Battery, Hand, ChevronLeft, ChevronRight,
+  Cable
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +35,7 @@ import AutoFirePanel from './live-firing/AutoFirePanel';
 import CheckSlavePanel from './live-firing/CheckSlavePanel';
 import SettingsPanel from './live-firing/SettingsPanel';
 import DeviceLibraryPanel from './live-firing/DeviceLibraryPanel';
+import MobileLinkMode from './live-firing/MobileLinkMode';
 
 // ═══════════════════════════════════════════════════════════
 // CUE KEY — hardware key replica with Lock/Tap mode
@@ -245,7 +247,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   useEffect(() => { return () => { relayWs.current?.close(); }; }, []);
 
   // ─── Swipe gesture for mobile mode switching / close ───
-  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'auto_fire', 'check_slave', 'settings'];
+  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'auto_fire', 'check_slave', 'mobile_link', 'settings'];
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const swipeHandled = useRef(false);
 
@@ -766,6 +768,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           { key: 'manual_fire' as FXCMode, label: 'Manual' },
           { key: 'auto_fire' as FXCMode, label: 'Auto' },
           { key: 'check_slave' as FXCMode, label: 'Check' },
+          { key: 'mobile_link' as FXCMode, label: '📡 Link' },
           { key: 'settings' as FXCMode, label: '⚙' },
         ]).map(m => (
           <button key={m.key} onClick={() => { setMode(m.key); setShowDeviceLib(false); }}
@@ -1086,6 +1089,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
       case 'manual_fire': return renderManualFire(fs);
       case 'auto_fire': return <AutoFirePanel fs={fs} pyroArm={pyroArm} dmxArm={dmxArm} />;
       case 'check_slave': return <CheckSlavePanel fs={fs} pyroArm={pyroArm} />;
+      case 'mobile_link': return <MobileLinkMode fs={fs} fireChannel={fireChannel} channels={channels} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
       case 'settings': return <SettingsPanel fs={fs} settings={settings} onSettingsChange={setSettings} relayConnected={relayConnected} relayUrl={relayUrl} onRelayUrlChange={setRelayUrl} onConnectRelay={connectRelay} onDisconnectRelay={disconnectRelay} />;
       default: return renderSimpleDmx(fs);
     }
