@@ -3,6 +3,7 @@
  * Clean rows, SF symbol sizing, haptic-ready.
  */
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { haptics } from '@/lib/haptics';
 import {
   Wind, FileText, Grid3X3, Package, Navigation, Sliders,
   Gauge, Radio, Timer, Map, Bot, Music2,
