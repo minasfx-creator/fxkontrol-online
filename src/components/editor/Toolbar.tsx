@@ -335,7 +335,8 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
   const [gma2Open, setGma2Open] = useState(false);
   const [ue5DmxOpen, setUe5DmxOpen] = useState(false);
   const [mvrOpen, setMvrOpen] = useState(false);
-  const [droppedFile, setDroppedFile] = useState<{ file: File; type: 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset' } | null>(null);
+  const [ue5MapOpen, setUe5MapOpen] = useState(false);
+  const [droppedFile, setDroppedFile] = useState<{ file: File; type: 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset' | 'ue5map' | 'heightmap' } | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Listen for viewport file drop events
