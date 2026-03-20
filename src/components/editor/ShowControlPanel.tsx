@@ -274,14 +274,14 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
   const handleDeauthorize = useCallback(async () => {
     // Disarm FireOne modules
     if (hardware.isConnected) {
-      try {
-        await hardware.disarmAll();
-        toast.info('FireOne: Módulos DESARMADOS');
-      } catch {}
+      try { await hardware.disarmAll(); toast.info('FireOne: Módulos DESARMADOS'); } catch {}
+    }
+    if (pbus.isConnected) {
+      try { await pbus.disarmAll(); toast.info('PBUS: Dispositivos DESARMADOS'); } catch {}
     }
     await showOrchestrator.deauthorize();
     toast.warning('Show deauthorized');
-  }, [hardware]);
+  }, [hardware, pbus]);
 
   const handleCountdown = useCallback(() => {
     showOrchestrator.startCountdown(countdownTarget);
