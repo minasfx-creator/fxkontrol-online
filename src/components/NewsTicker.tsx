@@ -84,6 +84,33 @@ export function NewsTicker() {
     });
   };
 
+  // Swipe gesture to change category filter
+  const touchStartX = useRef<number | null>(null);
+  const categoryKeys = categories.map(c => c.key);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(dx) < 50) return;
+
+    const currentIdx = categoryKeys.indexOf(filter);
+    if (dx < 0) {
+      // swipe left → next category
+      const next = (currentIdx + 1) % categoryKeys.length;
+      setFilter(categoryKeys[next]);
+    } else {
+      // swipe right → previous category
+      const prev = (currentIdx - 1 + categoryKeys.length) % categoryKeys.length;
+      setFilter(categoryKeys[prev]);
+    }
+    navigator.vibrate?.(15);
+  }, [filter, categoryKeys]);
+
   return (
     <div className="w-72 border-l border-border bg-[hsl(var(--surface-0))] flex flex-col h-full">
       {/* Header */}
