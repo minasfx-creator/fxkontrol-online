@@ -1,87 +1,96 @@
 
 
-# Plan: Gap Fix + MA3 Deep Integration + UI/UX Polish
+# Plan: OSC & sACN Node.js Bridges + Remaining Integration Gaps
 
-## Confirmed Gaps
+## Analysis Summary
 
-### MA3 Integration Gaps
-1. **MA3 not in SWIPE_MODES** — Line 265 of LiveFiringPanel: `SWIPE_MODES` array does not include `'ma3'`, so mobile swipe navigation skips the MA3 panel
-2. **MA3 not in mode bar** — Line 814-826: The renderSceneModeBar modes list has no MA3 entry — users can only reach MA3 through the mode router but have no tab button for it
-3. **MA3 no sACN→DMX bridge** — sACN data received from MA3 is displayed but never fed into the DMX engine or SFX channels — the "monitoring" is display-only with no actual control loop
-4. **MA3 OSC no bidirectional feedback** — Executor faders receive no feedback from MA3 (e.g., if someone moves a fader on the console, the UI doesn't update)
-5. **MA3 no Cue List display** — No visual cue list showing MA3 sequences/cues — just quick buttons for Seq 1-4 hardcoded
-6. **MA3 no sACN→fixture mapping** — sACN universe data has no way to map to actual fixtures in the show
+After thorough review, the FireOne integration is **solid** — ARM/FIRE/PANIC routes to hardware, diagnostics include PBUS+FireOne, FleetManagementPanel has a Hardware tab, etc. The MA3 panel is well-built with OSC control, sACN bridge, and MVR-xchange tabs.
 
-### Showven/FireOne Gaps
-7. **ShowvenEquipmentPanel no live cue overlay** — PBUS hook imported but controller cards never show live cue count, fired state, or battery from real hardware data
-8. **VirtualControllerHub no manufacturer grouping** — All 9 controllers in a flat list, no collapsible sections by manufacturer (FireOne/Showven/Infrastructure)
-9. **SMPTE Panel no PBUS sync** — Only imports `useFireOneHardware`, never sends timecode sync to PBUS devices
-10. **ShowControlPanel no PBUS integration** — Only imports `useFireOneHardware`, never manages PBUS arm/fire phases during show orchestration
-
-### UI/UX Gaps
-11. **Mode bar overflow on desktop** — 12 modes crammed into a horizontal scroll; MA3 would be 13th. Need better mode organization
-12. **No connection health indicator** — Status bar shows DMX/UDP LEDs but no indicator for FireOne/PBUS/Radio connection health
-13. **No show-wide hardware summary** — No quick view showing "total devices connected across all systems"
+**Remaining gaps are primarily the missing Node.js bridge scripts** that the browser-side engines (oscEngine.ts, sacnEngine.ts) connect to via WebSocket. Without these, the MA3 integration is non-functional on real hardware.
 
 ## Changes
 
-### 1. Edit `src/components/editor/LiveFiringPanel.tsx` — Add MA3 to Mode System + Status Bar
-- Add `'ma3'` to `SWIPE_MODES` array (line 265)
-- Add MA3 entry to mode bar in `renderSceneModeBar` (line 814-826): `{ key: 'ma3', label: '🎛 MA3' }`
-- Add hardware connection indicators in status bar: show FireOne/PBUS/Radio connection dots alongside DMX/UDP
-- Group mode tabs into categories with subtle separators: `[DMX modes | Fire modes | Hardware | Settings]`
+### 1. Create `platform/tools/osc-bridge/osc-bridge.js` — OSC UDP ↔ WebSocket Bridge (port 9002)
+Following the same architecture as `artnet-relay.js` (raw HTTP + RFC 6455 minimal frame parser, zero npm deps):
+- **WebSocket server** on port 9002 accepting browser connections
+- **UDP socket** for sending OSC packets to MA3 console (default: 192.168.1.100:8000)
+- **UDP listener** on port 9000 to receive OSC responses from MA3
+- On WS connect, client sends JSON `{ type: 'config', host, txPort, rxPort }` to configure target
+- **WS → UDP path**: Receive raw binary OSC from browser, forward as UDP to MA3 IP:txPort
+- **UDP → WS path**: Receive UDP OSC packets on rxPort, forward raw binary to all connected WS clients
+- CLI args: `--port 9002`, `--target 192.168.1.100`, `--tx-port 8000`, `--rx-port 9000`, `--bind 0.0.0.0`
+- Health endpoint at `/health` showing packet stats, connected clients, target IP
 
-### 2. Edit `src/components/editor/MA3ControlPanel.tsx` — Deep MA3 Enhancements
-- **sACN→DMX Engine bridge**: Add toggle "Route sACN to DMX Engine" — when enabled, feed sACN channel data into the SFX channel store so MA3 console actually controls show effects
-- **OSC bidirectional fader sync**: Update fader values from incoming OSC messages (match `/gma3/exec/{page}.{fader}` address)
-- **Dynamic Cue List**: Add "Cue List" section in OSC tab showing sequences with Go/Pause/GoBack buttons, driven from OSC feedback
-- **MA3 Macro Buttons**: Add configurable macro buttons (Go, Blackout, Full, Panic) that send common MA3 commands
-- **Executor Page selector**: Currently hardcoded to Page 1 — add page selector (1-8)
-- **sACN channel detail view**: Click on a universe to expand full 512-channel grid with channel values
+### 2. Create `platform/tools/osc-bridge/README.md` — Usage documentation
 
-### 3. Edit `src/components/editor/ShowvenEquipmentPanel.tsx` — Live Hardware Overlay
-- When PBUS connected: show live battery badge and cue status (X/16 connected, Y fired) on PyroSlave C16/X4 controller cards
-- Show RSSI quality indicator (signal bars) on wireless device cards
-- Add "Scan All" button that triggers PBUS device discovery
-- Show connection path badge (WIRED/RADIO) on each card when connected
+### 3. Create `platform/tools/sacn-bridge/sacn-bridge.js` — sACN E1.31 UDP Multicast → WebSocket Bridge (port 9003)
+Zero-dependency Node.js script:
+- **Multicast listener** joining sACN multicast groups (239.255.{hi}.{lo} per E1.31 spec, derived from universe number)
+- **WebSocket server** on port 9003 accepting browser connections
+- On WS connect, client sends JSON `{ type: 'subscribe', universes: [1, 2, ...] }` to select universes
+- On `subscribe`: join corresponding multicast groups, start forwarding
+- On `unsubscribe`: leave multicast groups
+- **UDP → WS path**: Parse E1.31 packet headers, extract universe/priority/sequence/sourceName/channels, forward as either:
+  - Raw binary (full E1.31 packet) for clients that parse it themselves
+  - JSON `{ type: 'sacn_data', universe, priority, sequence, sourceName, channels: [...] }` for easy consumption
+- **Universe auto-discovery**: Listen on all sACN multicast range, report new universes to clients
+- CLI args: `--port 9003`, `--bind 0.0.0.0`, `--interface 0.0.0.0` (multicast interface)
+- Health endpoint at `/health`
 
-### 4. Edit `src/components/editor/VirtualControllerHub.tsx` — Manufacturer Grouping + Live Data
-- Group controllers with collapsible sections: FireOne (1 card) / Showven (6 cards) / Infrastructure (2 cards)
-- Show real battery voltage and RSSI from hooks on connected device cards (currently static)
-- Add firmware version display when available from hardware data
-- Add total hardware summary header: "3 connected / 9 available"
+### 4. Create `platform/tools/sacn-bridge/README.md` — Usage documentation
 
-### 5. Edit `src/components/editor/ShowControlPanel.tsx` — PBUS Integration
-- Import `usePBusHardware`
-- In Arm phase: also call `pbus.armAll()` alongside `fireone.armAll()`
-- In E-STOP: call `pbus.emergencyStop()` alongside `fireone.emergencyStop()`
-- Show PBUS device count in hardware summary during preflight
+### 5. Edit `platform/docker-compose.yml` — Add OSC & sACN bridge services
+- Add `osc-bridge` service on port 9002 with configurable MA3 IP
+- Add `sacn-bridge` service on port 9003 with host network mode (needed for multicast)
 
-### 6. Edit `src/components/editor/SMPTEPanel.tsx` — PBUS Timecode Sync
-- Import `usePBusHardware`
-- Add "Sync to PBUS" toggle alongside existing "Sync to FireOne" toggle
-- When enabled, send timecode data to PBUS devices for synchronized firing
+### 6. Edit `src/components/editor/MA3ControlPanel.tsx` — MA3 Integration Enhancements
+- Add **sACN universe auto-discovery**: show newly detected universes from bridge
+- Add **connection status tooltips** showing bridge URLs and packet rates
+- Add **OSC address filter** in the log view (filter by address pattern)
+- Add **sACN channel value inspector**: hover on a channel cell in the 512-grid to show value + DMX %
+- Add **MA3 fixture type presets** in settings: common MA3 fixture mappings (dimmer, RGB, RGBW) for quick sACN channel mapping
+- Add **Export/Import mappings** button to save/restore sACN→SFX channel mapping configurations
 
-### 7. Create `src/lib/sacnDmxBridge.ts` — sACN to DMX Engine Bridge
-- Bridge class that maps sACN universe/channel data to SFX channels
-- Configurable universe→channel mapping table
-- `startBridge()` / `stopBridge()` / `setMapping(universe, startChannel, sfxChannelId)`
-- Consumes `SACNReceiver` data and writes to `useSfxChannelStore`
+### 7. Edit `src/lib/oscEngine.ts` — Add MA3 Feedback Helpers
+- Add `buildMA3TimecodeSync(hours, minutes, seconds, frames)` for SMPTE→MA3 timecode sync via OSC
+- Add `parseMA3FeedbackMessage(msg)` helper to decode common MA3 feedback addresses
+
+### 8. Edit `src/components/editor/SMPTEPanel.tsx` — MA3 Timecode Sync
+- Add "Sync to MA3" toggle alongside existing FireOne/PBUS toggles
+- When enabled, send timecode to MA3 via OSC `/gma3/cmd` with `SetUserVar "tc" "{timecode}"` at 10Hz
+- This allows MA3 macros to follow the show timeline
 
 ## Files Summary
 
-| File | Action | Key Change |
-|------|--------|------------|
-| `LiveFiringPanel.tsx` | Edit | MA3 in SWIPE_MODES + mode bar, status indicators |
-| `MA3ControlPanel.tsx` | Edit | sACN→DMX bridge, bidirectional faders, cue list, macros |
-| `ShowvenEquipmentPanel.tsx` | Edit | Live cue/battery/RSSI overlay on cards |
-| `VirtualControllerHub.tsx` | Edit | Manufacturer grouping + live telemetry |
-| `ShowControlPanel.tsx` | Edit | PBUS arm/estop integration |
-| `SMPTEPanel.tsx` | Edit | PBUS timecode sync |
-| `src/lib/sacnDmxBridge.ts` | Create | sACN→DMX Engine mapping bridge |
+| File | Action | Key Purpose |
+|------|--------|-------------|
+| `platform/tools/osc-bridge/osc-bridge.js` | Create | OSC UDP ↔ WS bridge (port 9002) |
+| `platform/tools/osc-bridge/README.md` | Create | Usage docs |
+| `platform/tools/sacn-bridge/sacn-bridge.js` | Create | sACN multicast → WS bridge (port 9003) |
+| `platform/tools/sacn-bridge/README.md` | Create | Usage docs |
+| `platform/docker-compose.yml` | Edit | Add bridge services |
+| `src/components/editor/MA3ControlPanel.tsx` | Edit | UI enhancements + auto-discovery |
+| `src/lib/oscEngine.ts` | Edit | MA3 timecode + feedback helpers |
+| `src/components/editor/SMPTEPanel.tsx` | Edit | MA3 timecode sync toggle |
+
+## Architecture
+
+```text
+┌─────────────┐    WebSocket     ┌──────────────┐    UDP 8000/9000   ┌──────────────┐
+│  Browser     │ ──────────────► │  OSC Bridge  │ ◄────────────────► │  grandMA3    │
+│  oscEngine   │    port 9002    │  Node.js     │    OSC packets     │  Console     │
+└─────────────┘                  └──────────────┘                    └──────────────┘
+
+┌─────────────┐    WebSocket     ┌──────────────┐    UDP Multicast   ┌──────────────┐
+│  Browser     │ ◄────────────── │  sACN Bridge │ ◄──────────────── │  grandMA3    │
+│  sacnEngine  │    port 9003    │  Node.js     │  239.255.x.x:5568 │  sACN Output │
+└─────────────┘                  └──────────────┘                    └──────────────┘
+```
 
 ## Technical Notes
-- The sACN→DMX bridge is the most impactful MA3 change: it allows the grandMA3 console to actually control the SFX channels in real-time, not just display data
-- Mode bar reorganization uses CSS gap/border separators between mode groups — no structural change to mode routing
-- All PBUS integration in ShowControlPanel mirrors existing FireOne patterns for consistency
+- Both bridges follow the exact same zero-dependency pattern as `artnet-relay.js` (raw HTTP upgrade, RFC 6455 framing)
+- sACN multicast requires the bridge to run on the same network segment as the MA3 console (or use a multicast router)
+- The OSC bridge is fully bidirectional — browser sends OSC to MA3, MA3 responses come back to browser
+- sACN bridge supports both raw binary forwarding (for sacnEngine.ts `handleSACNData`) and JSON mode (for `processUniverseData`)
+- Docker compose uses `network_mode: host` for sACN bridge to receive multicast traffic
 
