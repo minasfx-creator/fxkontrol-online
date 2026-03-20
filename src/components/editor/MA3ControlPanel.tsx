@@ -342,6 +342,7 @@ export default function MA3ControlPanel({ fs = false }: MA3ControlPanelProps) {
           <TabsTrigger value="osc" className="text-[9px] h-5">OSC Control</TabsTrigger>
           <TabsTrigger value="sacn" className="text-[9px] h-5">sACN Bridge</TabsTrigger>
           <TabsTrigger value="mvr" className="text-[9px] h-5">MVR-xchange</TabsTrigger>
+          <TabsTrigger value="monitor" className="text-[9px] h-5">Monitor</TabsTrigger>
         </TabsList>
 
         {/* ═══ OSC Tab ═══ */}
