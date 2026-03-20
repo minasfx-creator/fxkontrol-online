@@ -440,7 +440,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
     if (!cue) return;
     if (!dmxArm && !pyroArm) return;
     // Haptic feedback for CUE fire
-    if (isMobile && navigator.vibrate) navigator.vibrate(20);
+    haptics.tap();
 
     // Lock mode toggle
     if (cue.keyMode === 'lock') {
