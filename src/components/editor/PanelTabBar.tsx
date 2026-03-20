@@ -56,6 +56,7 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
       { id: 'lasercontrol', label: 'Laser Control', icon: Zap },
       { id: 'livefiring', label: 'Live SFX', icon: Sparkles },
       { id: 'mobilelink', label: 'Mobile Link', icon: Cable },
+      { id: 'linkmonitor', label: 'Link Monitor', icon: MonitorPlay },
       { id: 'diagnostic', label: 'Diagnóstico', icon: Bug, shortcut: 'D' },
     ],
   },
