@@ -320,6 +320,46 @@ export function buildReset(moduleAddr: number): Uint8Array {
 }
 
 // ═══════════════════════════════════════════════════════════
+// IFMx-i32Q SPECIFIC COMMANDS
+// ═══════════════════════════════════════════════════════════
+
+/** Send DMX values to IFMx-i32Q built-in DMX output port */
+export function buildDmxOutCommand(moduleAddr: number, startChannel: number, values: number[]): Uint8Array {
+  const payload = new Uint8Array(2 + values.length);
+  payload[0] = (startChannel >> 8) & 0xFF;
+  payload[1] = startChannel & 0xFF;
+  values.forEach((v, i) => { payload[2 + i] = Math.min(255, Math.max(0, v)); });
+  return buildFrame(moduleAddr, FireOneCmd.DMX_OUT, payload);
+}
+
+/** Query module configuration */
+export function buildModuleConfigQuery(moduleAddr: number): Uint8Array {
+  return buildFrame(moduleAddr, FireOneCmd.MODULE_CONFIG, new Uint8Array([0x00])); // 0x00 = query
+}
+
+/** Set module configuration */
+export function buildModuleConfigSet(moduleAddr: number, config: Partial<FireOneModuleConfig>): Uint8Array {
+  const payload = new Uint8Array(5);
+  payload[0] = 0x01; // 0x01 = set
+  payload[1] = config.wireless ? 1 : 0;
+  payload[2] = (config.dmxUniverse ?? 0) & 0xFF;
+  payload[3] = ((config.firingDelay ?? 0) >> 8) & 0xFF;
+  payload[4] = (config.firingDelay ?? 0) & 0xFF;
+  return buildFrame(moduleAddr, FireOneCmd.MODULE_CONFIG, payload);
+}
+
+/** Parse module config response payload */
+export function parseModuleConfig(payload: Uint8Array): FireOneModuleConfig {
+  return {
+    wireless: (payload[0] ?? 0) !== 0,
+    dmxUniverse: payload[1] ?? 0,
+    firingDelay: ((payload[2] ?? 0) << 8) | (payload[3] ?? 0),
+    firmwareVersion: `${payload[4] ?? 1}.${payload[5] ?? 0}`,
+    serialNumber: Array.from(payload.slice(6, 14)).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase(),
+  };
+}
+
+// ═══════════════════════════════════════════════════════════
 // FIREONE SERIAL CONTROLLER CLASS
 // ═══════════════════════════════════════════════════════════
 
