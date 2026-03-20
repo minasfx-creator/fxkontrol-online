@@ -1,8 +1,10 @@
 import { useState, useCallback } from 'react';
-import { Download, FileDown, Search, X, ChevronDown, ChevronUp, Globe, MapPin, FileText } from 'lucide-react';
+import { Download, FileDown, Search, X, ChevronDown, ChevronUp, Globe, MapPin, FileText, Upload, Zap, CheckCircle2, Wifi, Usb } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { FIRING_SYSTEMS, type FiringSystem } from '@/lib/firingSystemExports';
 import { downloadFile, exportFormationsToKML } from '@/lib/exportEngine';
 import { downloadKMZ, downloadAnimatedKML } from '@/lib/kmzExporter';
