@@ -55,6 +55,8 @@ export default function MobileQuickActions() {
     setEditorMode(editorMode === 'select' ? 'add-pyro' : 'select');
   }, [editorMode, setEditorMode]);
 
+  const selectVariant = editorMode === 'select' ? 'active' : 'default';
+  
   const actions = hasSelection
     ? [
         { icon: Pencil, label: 'Edit', onClick: () => window.dispatchEvent(new Event('position-double-click')), variant: 'primary' as const },
@@ -62,7 +64,7 @@ export default function MobileQuickActions() {
         { icon: Trash2, label: 'Del', onClick: handleDelete, variant: 'danger' as const },
       ]
     : [
-        { icon: MousePointer2, label: 'Sel', onClick: handleToggleSelect, variant: (editorMode === 'select' ? 'active' : 'default') as const },
+        { icon: MousePointer2, label: 'Sel', onClick: handleToggleSelect, variant: selectVariant as const },
         { icon: Plus, label: 'Add', onClick: handleAdd, variant: 'default' as const },
         { icon: Undo2, label: 'Undo', onClick: handleUndo, variant: 'default' as const },
         { icon: Redo2, label: 'Redo', onClick: handleRedo, variant: 'default' as const },
