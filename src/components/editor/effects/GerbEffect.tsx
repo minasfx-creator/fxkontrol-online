@@ -50,8 +50,8 @@ export default function GerbEffect({
 
   useFrame(({ clock }) => {
     if (!pointsRef.current) return;
-    const posArr = new Float32Array(PARTICLE_COUNT * 3);
-    const colArr = new Float32Array(PARTICLE_COUNT * 3);
+    const posArr = new Float32Array(SCALED_PARTICLE_COUNT * 3);
+    const colArr = new Float32Array(SCALED_PARTICLE_COUNT * 3);
     const time = clock.getElapsedTime();
     const GRAVITY = -9.81;
 
