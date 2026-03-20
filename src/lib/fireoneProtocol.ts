@@ -142,6 +142,21 @@ export interface FireOneModuleConfig {
   serialNumber: string;
 }
 
+export interface FireOneWirelessStatus {
+  rssiDbm: number;
+  channel: number;
+  packetLoss: number;
+  linkQuality: number;
+  mode: WirelessConnectionMode;
+  txPower: number;
+}
+
+export interface FireOneWirelessConfig {
+  channel: number;
+  txPower: number;
+  autoFallback: boolean;
+}
+
 export interface FireOneEvent {
   type: FireOneEventType;
   moduleAddress: number;
