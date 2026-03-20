@@ -26,6 +26,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
+import { useSfxChannelStore } from '@/store/useSfxChannelStore';
 
 import type { SFXChannel, CueEntry, FXCMode, FXCSettings, DeviceLibEntry } from './live-firing/types';
 import { FIRING_RULES, SFX_TYPES, DEFAULT_CHANNELS, DEFAULT_SETTINGS, CUES_PER_PAGE, formatTimecode, SHOWVEN_LIBRARY } from './live-firing/constants';
@@ -178,7 +179,14 @@ function DeviceRow({
 export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const isMobile = useIsMobile();
   const { isPlaying, currentTime, setPlaying, positions } = useProjectStore();
-  const [channels, setChannels] = useState<SFXChannel[]>(DEFAULT_CHANNELS);
+  const { channels, setChannels: setStoreChannels, updateChannels } = useSfxChannelStore();
+  const setChannels = useCallback((updaterOrValue: SFXChannel[] | ((prev: SFXChannel[]) => SFXChannel[])) => {
+    if (typeof updaterOrValue === 'function') {
+      updateChannels(updaterOrValue);
+    } else {
+      setStoreChannels(updaterOrValue);
+    }
+  }, [updateChannels, setStoreChannels]);
   const [cues, setCues] = useState<CueEntry[]>([]);
   const [activeScene, setActiveScene] = useState(0);
   const [pyroArm, setPyroArm] = useState(false);

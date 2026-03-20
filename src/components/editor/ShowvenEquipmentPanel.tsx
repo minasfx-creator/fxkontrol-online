@@ -14,6 +14,7 @@ import {
 } from '@/lib/showvenPresets';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useUndoStore } from '@/store/useUndoStore';
+import { useSfxChannelStore } from '@/store/useSfxChannelStore';
 import { toast } from 'sonner';
 
 interface ShowvenEquipmentPanelProps {
@@ -93,6 +94,7 @@ function EquipmentCard({ preset, category }: { preset: AnyPreset; category: Show
       return;
     }
     const store = useProjectStore.getState();
+    const sfxStore = useSfxChannelStore.getState();
     useUndoStore.getState().checkpoint();
 
     // Create a pyro position
@@ -122,7 +124,28 @@ function EquipmentCard({ preset, category }: { preset: AnyPreset; category: Show
       notes: `Showven ${preset.name}`,
     });
 
-    toast.success(`${preset.name} adicionado à cena`);
+    // Auto-link to FX Commander
+    const sfxType = effectType as any;
+    const dmxCh = 'dmxChannels' in preset ? (preset as any).dmxChannels : undefined;
+    const linkedChannel = sfxStore.addChannelFromPosition({
+      positionId: posId,
+      name: preset.name,
+      sfxType,
+      dmxChannels: dmxCh,
+      manufacturer: 'SHOWVEN',
+    });
+
+    const addr = `${linkedChannel.dmxUniverse}.${String(linkedChannel.dmxAddress).padStart(3, '0')}`;
+    toast.success(`${preset.name} linked → FXcommander DMX ${addr}`);
+
+    // Art-Net connection test (async, non-blocking)
+    sfxStore.testArtNetConnection().then((result) => {
+      if (result.connected) {
+        toast.success(`✅ Art-Net OK — ${result.latencyMs}ms`, { duration: 3000 });
+      } else {
+        toast.warning(`⚠️ Art-Net offline — dispositivo adicionado localmente`, { duration: 4000 });
+      }
+    });
   }, [preset, category, effectType, meta.color]);
 
   return (
