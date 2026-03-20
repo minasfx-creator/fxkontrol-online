@@ -27,35 +27,35 @@ interface IconProps {
 const MortarTubeIcon = forwardRef<THREE.Group, IconProps>(({ color, emissiveIntensity, isSelected }, ref) => {
   return (
     <group ref={ref}>
-      {/* Base plate — flat rectangle */}
-      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <boxGeometry args={[0.5, 0.35, 0.03]} />
+      {/* Base plate — compact */}
+      <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <boxGeometry args={[0.3, 0.2, 0.02]} />
         <meshStandardMaterial color="#2a2a2a" metalness={0.85} roughness={0.2} />
       </mesh>
       {/* Tube left */}
-      <mesh position={[-0.14, 0.3, 0]}>
-        <cylinderGeometry args={[0.06, 0.07, 0.5, 8, 1, true]} />
+      <mesh position={[-0.08, 0.16, 0]}>
+        <cylinderGeometry args={[0.035, 0.04, 0.28, 6, 1, true]} />
         <meshStandardMaterial color="#3a3a3a" metalness={0.8} roughness={0.2} emissive={color} emissiveIntensity={emissiveIntensity * 0.15} side={THREE.DoubleSide} />
       </mesh>
       {/* Tube center */}
-      <mesh position={[0, 0.35, 0]}>
-        <cylinderGeometry args={[0.07, 0.08, 0.6, 8, 1, true]} />
+      <mesh position={[0, 0.19, 0]}>
+        <cylinderGeometry args={[0.04, 0.045, 0.34, 6, 1, true]} />
         <meshStandardMaterial color="#3a3a3a" metalness={0.8} roughness={0.2} emissive={color} emissiveIntensity={emissiveIntensity * 0.2} side={THREE.DoubleSide} />
       </mesh>
       {/* Tube right */}
-      <mesh position={[0.14, 0.3, 0]}>
-        <cylinderGeometry args={[0.06, 0.07, 0.5, 8, 1, true]} />
+      <mesh position={[0.08, 0.16, 0]}>
+        <cylinderGeometry args={[0.035, 0.04, 0.28, 6, 1, true]} />
         <meshStandardMaterial color="#3a3a3a" metalness={0.8} roughness={0.2} emissive={color} emissiveIntensity={emissiveIntensity * 0.15} side={THREE.DoubleSide} />
       </mesh>
       {/* Color band at top of center tube */}
-      <mesh position={[0, 0.65, 0]}>
-        <torusGeometry args={[0.08, 0.012, 6, 12]} />
+      <mesh position={[0, 0.36, 0]}>
+        <torusGeometry args={[0.045, 0.008, 6, 10]} />
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={emissiveIntensity} metalness={0.5} roughness={0.3} />
       </mesh>
       {/* Glow indicator when selected */}
       {isSelected && (
-        <mesh position={[0, 0.68, 0]}>
-          <sphereGeometry args={[0.035, 6, 6]} />
+        <mesh position={[0, 0.38, 0]}>
+          <sphereGeometry args={[0.025, 6, 6]} />
           <meshBasicMaterial color="#FFDD44" transparent opacity={0.8} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
@@ -109,11 +109,16 @@ const DronePadIcon = forwardRef<THREE.Group, IconProps>(({ color, emissiveIntens
 });
 DronePadIcon.displayName = 'DronePadIcon';
 
+const DISTANCE_REF = 15;
+const SCALE_MIN = 0.15;
+const SCALE_MAX = 0.8;
+
 const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Position, screenPos: { x: number; y: number }) => void }>(function Pin({ position, onRightClick }, ref) {
   const { selectedPositionIds, selectPosition, togglePositionSelection, editorMode, updatePosition, timelineItems } = useProjectStore();
   const isSelected = selectedPositionIds.includes(position.id);
   const color = position.type === 'pyro' ? PYRO_COLOR : (position.color || DRONE_COLOR);
   const glowRef = useRef<THREE.Group>(null);
+  const groupRef = useRef<THREE.Group>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [snapGuides, setSnapGuides] = useState<SnapGuide[]>([]);
@@ -124,15 +129,24 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
   const otherStartPositions = useRef<Map<string, { x: number; z: number }>>(new Map());
   const dragStartPos = useRef<{ x: number; z: number }>({ x: 0, z: 0 });
   const hasSavedCheckpoint = useRef(false);
+  const _posVec = useRef(new THREE.Vector3());
 
   const linkedEffects = timelineItems.filter(
     t => t.positionId === position.id || t.positionIds?.includes(position.id)
   ).length;
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, camera: cam }) => {
     if (glowRef.current && isSelected) {
       const pulse = Math.sin(clock.getElapsedTime() * 3) * 0.12 + 0.88;
       glowRef.current.scale.setScalar(pulse);
+    }
+    // Distance-based scaling — shrink pins when far from camera
+    if (groupRef.current) {
+      _posVec.current.set(position.x, position.y, position.z);
+      const dist = cam.position.distanceTo(_posVec.current);
+      const baseScale = isSelected ? 0.75 : isHovered ? 0.68 : 0.6;
+      const distScale = Math.min(SCALE_MAX, Math.max(SCALE_MIN, baseScale * (DISTANCE_REF / Math.max(dist, 1))));
+      groupRef.current.scale.setScalar(distScale);
     }
   });
 
@@ -300,11 +314,10 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
   }, [position.id, selectPosition]);
 
   const emissiveIntensity = isDragging ? 1.0 : isSelected ? 0.7 : isHovered ? 0.4 : 0.15;
-  const pinScale = isSelected ? 0.75 : isHovered ? 0.68 : 0.6;
   const showLabel = isHovered || isSelected || isDragging;
 
   return (
-    <group ref={ref} position={[position.x, position.y, position.z]} scale={[pinScale, pinScale, pinScale]}>
+    <group ref={(node) => { (groupRef as any).current = node; if (typeof ref === 'function') ref(node); else if (ref) (ref as any).current = node; }} position={[position.x, position.y, position.z]}>
       {/* Base disc */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
         <circleGeometry args={[isSelected ? 0.65 : 0.5, 32]} />
