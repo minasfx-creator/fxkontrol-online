@@ -587,6 +587,8 @@ export const useSceneStore = create<SceneSettingsState>((set) => ({
   qualityPreset: 'show',
   environment: { ...DEFAULT_ENVIRONMENT },
   siteModels: [],
+  selectedSiteModelId: null,
+  siteModelTransformMode: 'translate',
   updateSettings: (updates) => set(s => {
     const next = { ...s.settings, ...updates };
     if (updates.weather && !updates.rainIntensity) {
