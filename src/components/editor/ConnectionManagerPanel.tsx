@@ -1,6 +1,6 @@
 /**
  * ConnectionManagerPanel — Unified Connection Hub
- * Manages all hardware connections: FireOne RS-485, PBUS, Art-Net, USB DMX
+ * Manages all hardware connections: FireOne RS-485, PBUS, Art-Net, USB DMX, Radio
  */
 import { useState, useCallback } from 'react';
 import { Usb, Wifi, WifiOff, Radio, Cable, RefreshCw, Plus, X, Activity, Zap, Signal, ArrowUpDown } from 'lucide-react';
