@@ -160,6 +160,8 @@ export default function TwinmotionImporter({ open, onOpenChange, initialFile }: 
         source: `Twinmotion Import: ${ext.toUpperCase()}`,
       });
       toast.success(`Modelo ${ext.toUpperCase()} importado: ${modelName} (${model3dTransform.scale.toFixed(2)}×)`);
+      // Auto-save to library
+      saveToLibrary(model3dFile, { name: modelName, source: 'twinmotion', file_format: ext });
     } else if (REFERENCE_FORMATS.includes(ext)) {
       addSiteModel({
         id: `tm-ref-${Date.now()}`,
@@ -172,9 +174,10 @@ export default function TwinmotionImporter({ open, onOpenChange, initialFile }: 
         source: `Twinmotion Ref: ${ext.toUpperCase()} (placeholder)`,
       });
       toast.info(`Arquivo ${ext.toUpperCase()} registrado como placeholder`);
+      saveToLibrary(model3dFile, { name: modelName, source: 'twinmotion', file_format: ext });
     }
     onOpenChange(false);
-  }, [model3dFile, model3dTransform, addSiteModel, onOpenChange]);
+  }, [model3dFile, model3dTransform, addSiteModel, onOpenChange, saveToLibrary]);
 
   // ─── Datasmith import ──────────────────────────────────
 
