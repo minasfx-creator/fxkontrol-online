@@ -483,7 +483,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
   // ─── Broadcast FXC channel ───
   const broadcastChannelFire = useCallback((ch: SFXChannel) => {
     if (!masterArmed) { toast.error('Sistema não armado'); return; }
-    if (navigator.vibrate) navigator.vibrate(30);
+    haptics.fire();
     fireChannel(ch.id);
     channelRef.current?.send({
       type: 'broadcast', event: 'fxc-fire',
