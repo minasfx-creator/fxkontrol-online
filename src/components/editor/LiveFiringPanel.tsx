@@ -206,8 +206,35 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const [elapsedMs, setElapsedMs] = useState(0);
   const [firingStartTime, setFiringStartTime] = useState<number | null>(null);
   const [batteryVoltage] = useState(11.82);
+  const [relayConnected, setRelayConnected] = useState(false);
+  const [relayUrl, setRelayUrl] = useState('ws://localhost:9001');
   const sequenceRef = useRef(0);
   const fireTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const relayWs = useRef<WebSocket | null>(null);
+
+  // ─── WebSocket Relay connection ───
+  const connectRelay = useCallback(() => {
+    if (relayWs.current?.readyState === WebSocket.OPEN) return;
+    try {
+      const ws = new WebSocket(relayUrl);
+      ws.onopen = () => { setRelayConnected(true); toast.success('🔌 Relay UDP conectado'); };
+      ws.onclose = () => { setRelayConnected(false); relayWs.current = null; };
+      ws.onerror = () => { setRelayConnected(false); toast.error('Falha ao conectar relay'); };
+      ws.onmessage = (e) => {
+        try { const msg = JSON.parse(e.data); if (msg.error) console.warn('[Relay]', msg.error); } catch {}
+      };
+      relayWs.current = ws;
+    } catch { toast.error('URL do relay inválida'); }
+  }, [relayUrl]);
+
+  const disconnectRelay = useCallback(() => {
+    relayWs.current?.close();
+    relayWs.current = null;
+    setRelayConnected(false);
+  }, []);
+
+  // Cleanup relay on unmount
+  useEffect(() => { return () => { relayWs.current?.close(); }; }, []);
 
   // ─── Swipe gesture for mobile mode switching / close ───
   const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'auto_fire', 'check_slave', 'settings'];

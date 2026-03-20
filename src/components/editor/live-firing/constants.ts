@@ -110,7 +110,7 @@ export const DEFAULT_SETTINGS: FXCSettings = {
   deleteConfirm: true,
   backlight: 100,
   tcpPort: 9175,
-  artNetIp: '255.255.255.255',
+  artNetIp: '192.168.15.2',
   artNetPort: 6454,
   networkIp: '10.171.3.120',
   networkMask: '255.255.255.0',
