@@ -12,7 +12,7 @@ import {
   Radar, CircuitBoard, Lightbulb, ShieldCheck, Battery, Warehouse,
   BookOpen, Layers, Eye, Camera, Share2, MessageSquare,
   Atom, Volume2, Cog, Settings2, Globe, MapPin, Plane,
-  Search
+  Search, ListMusic, FileSignature, Wallet, MonitorPlay
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PanelId } from '@/components/editor/PanelTabBar';
