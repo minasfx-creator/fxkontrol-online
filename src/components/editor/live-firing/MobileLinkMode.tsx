@@ -184,7 +184,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
     setEvents(prev => [{
       id: `evt-${Date.now()}`,
       timestamp: Date.now(),
-      source: 'local',
+      source: 'local' as const,
       fixtureName: ch.name,
       type: ch.type,
       color: ch.color,
