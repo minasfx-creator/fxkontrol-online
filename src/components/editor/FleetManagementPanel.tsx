@@ -4,8 +4,8 @@
  * Real-time status monitoring, preflight checks, mission upload.
  */
 
-import { useState, useCallback, useEffect } from 'react';
-import { Radio, Battery, Satellite, Signal, AlertTriangle, CheckCircle2, XCircle, Wifi, WifiOff, RefreshCw, Zap, Navigation, ArrowUp, ArrowDown, Power, Search, Filter, Eye, ChevronDown } from 'lucide-react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { Radio, Battery, Satellite, Signal, AlertTriangle, CheckCircle2, XCircle, Wifi, WifiOff, RefreshCw, Zap, Navigation, ArrowUp, ArrowDown, Power, Search, Filter, Eye, ChevronDown, Shield, Cpu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +18,8 @@ import { useFleetStore } from '@/store/useFleetStore';
 import { flockwave } from '@/lib/flockwaveProtocol';
 import { runPreflightChecks, exportPreflightReport } from '@/lib/preflightChecks';
 import type { UAVStatus } from '@/lib/flockwaveProtocol';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
+import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
