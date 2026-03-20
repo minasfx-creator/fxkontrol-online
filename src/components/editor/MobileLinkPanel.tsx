@@ -3,7 +3,7 @@
  * from mobile → desktop via Supabase Realtime broadcast.
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Cable, Wifi, WifiOff, Plus, Trash2, Flame, X, Lightbulb, Zap, Wind, Snowflake, Sparkles } from 'lucide-react';
+import { Cable, Wifi, WifiOff, Plus, Trash2, Flame, X, Lightbulb, Zap, Wind, Snowflake, Sparkles, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
