@@ -546,6 +546,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
           { key: 'semiauto' as XL4Mode, label: 'Semi-Auto', icon: SkipForward },
           { key: 'auto' as XL4Mode, label: 'Auto/TC', icon: Timer },
           { key: 'continuity' as XL4Mode, label: 'Continuity', icon: Activity },
+          { key: 'hardware' as XL4Mode, label: 'HW Serial', icon: Usb },
           { key: 'status' as XL4Mode, label: 'Status', icon: Signal },
         ]).map(m => (
           <button key={m.key} onClick={() => setXl4Mode(m.key)}
