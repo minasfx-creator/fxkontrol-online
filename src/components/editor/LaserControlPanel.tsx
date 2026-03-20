@@ -4,17 +4,30 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { Zap, ChevronDown, Upload, Cpu } from 'lucide-react';
+import { Zap, ChevronDown, Upload, Cpu, Shield, AlertTriangle } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { parseILDA, generateShape, type ILDAFrame } from '@/lib/ildaParser';
 import { LASER_HARDWARE_PRESETS } from '@/lib/laserEngine';
+import { SHOWVEN_LASERS, type ShowvenLaserPreset } from '@/lib/showvenPresets';
 import { useLaserPreviewStore } from '@/store/useLaserPreviewStore';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+
+const MAIMAN_PRESETS: Record<string, { label: string; preset: ShowvenLaserPreset; maxPan: number; maxTilt: number }> = {};
+SHOWVEN_LASERS.forEach(l => {
+  MAIMAN_PRESETS[l.id] = {
+    label: `${l.name} (${l.outputW}W)`,
+    preset: l,
+    maxPan: l.scanningAngleDeg,
+    maxTilt: l.scanningAngleDeg,
+  };
+});
 
 const LASER_PATTERNS = [
   { value: 'single', label: 'Single Beam' },
