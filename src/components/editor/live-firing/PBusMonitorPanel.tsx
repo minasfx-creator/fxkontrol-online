@@ -1,14 +1,16 @@
 /**
  * PBUS Monitor Panel — Showven PyroSlave C16/X4 Control
  * Dual-band RSSI, 16-cue continuity grid, ARM/FIRE with deadman
+ * Mobile-responsive with touch DEADMAN (800ms long-press)
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Radio, Battery, Shield, Zap, Signal, AlertTriangle, Wifi, WifiOff, RefreshCw, XCircle, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
 import type { PBusDevice, PBusWirelessBand } from '@/lib/pbusProtocol';
 import { cn } from '@/lib/utils';
