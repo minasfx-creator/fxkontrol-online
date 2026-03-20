@@ -576,6 +576,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       <CatalogImportDialog open={catalogOpen} onOpenChange={setCatalogOpen} />
       <UAssetImporter open={uassetOpen} onOpenChange={setUassetOpen} />
       <AssetMarketplaceBrowser open={marketplaceOpen} onOpenChange={setMarketplaceOpen} />
+      <GMA2PatchImporter open={gma2Open} onOpenChange={setGma2Open} />
 
       <div className="flex-1" />
 
