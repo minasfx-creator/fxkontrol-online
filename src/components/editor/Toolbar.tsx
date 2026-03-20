@@ -17,6 +17,7 @@ import UAssetImporter from './UAssetImporter';
 import GMA2PatchImporter from './GMA2PatchImporter';
 import UE5DMXPrevisImporter from './UE5DMXPrevisImporter';
 import MVRImporter from './MVRImporter';
+import UE5MapImporter from './UE5MapImporter';
 import AssetMarketplaceBrowser from './AssetMarketplaceBrowser';
 import ProjectBrowser from './ProjectBrowser';
 import CatalogImportDialog from './CatalogImportDialog';
