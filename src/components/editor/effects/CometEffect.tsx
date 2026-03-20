@@ -22,12 +22,14 @@ export default function CometEffect({
   progress,
   direction = 'up',
   caliber = 3,
+  angleOffset = 0,
 }: {
   position: [number, number, number];
   color: string;
   progress: number;
   direction?: 'up' | 'down';
   caliber?: number;
+  angleOffset?: number;
 }) {
   const lineRef = useRef<THREE.Line>(null);
   const glowRef = useRef<THREE.Mesh>(null);
