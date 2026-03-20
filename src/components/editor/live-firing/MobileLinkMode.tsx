@@ -14,6 +14,7 @@
  * - Real-time broadcast bridge (mobile → desktop)
  */
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { haptics } from '@/lib/haptics';
 import {
   Cable, Flame, Wind, Sparkles, Zap, Plus, Trash2, Send, MonitorPlay,
   Shield, ShieldAlert, Lock, Unlock, Key, Radio, Signal, Timer,
