@@ -547,11 +547,15 @@ export interface SiteModel {
   source: string;
 }
 
+export type SiteModelTransformMode = 'translate' | 'rotate' | 'scale';
+
 interface SceneSettingsState {
   settings: SceneSettings;
   qualityPreset: QualityPreset;
   environment: EnvironmentState;
   siteModels: SiteModel[];
+  selectedSiteModelId: string | null;
+  siteModelTransformMode: SiteModelTransformMode;
   updateSettings: (updates: Partial<SceneSettings>) => void;
   applyPreset: (presetId: string) => void;
   applyQualityPreset: (preset: QualityPreset) => void;
@@ -562,6 +566,8 @@ interface SceneSettingsState {
   addSiteModel: (model: SiteModel) => void;
   updateSiteModel: (id: string, updates: Partial<SiteModel>) => void;
   removeSiteModel: (id: string) => void;
+  selectSiteModel: (id: string | null) => void;
+  setSiteModelTransformMode: (mode: SiteModelTransformMode) => void;
 }
 
 const DEFAULT_ENVIRONMENT: EnvironmentState = {
@@ -581,6 +587,8 @@ export const useSceneStore = create<SceneSettingsState>((set) => ({
   qualityPreset: 'show',
   environment: { ...DEFAULT_ENVIRONMENT },
   siteModels: [],
+  selectedSiteModelId: null,
+  siteModelTransformMode: 'translate',
   updateSettings: (updates) => set(s => {
     const next = { ...s.settings, ...updates };
     if (updates.weather && !updates.rainIntensity) {
@@ -611,6 +619,8 @@ export const useSceneStore = create<SceneSettingsState>((set) => ({
   removeSiteModel: (id) => set(s => {
     const model = s.siteModels.find(m => m.id === id);
     if (model?.url.startsWith('blob:')) URL.revokeObjectURL(model.url);
-    return { siteModels: s.siteModels.filter(m => m.id !== id) };
+    return { siteModels: s.siteModels.filter(m => m.id !== id), selectedSiteModelId: s.selectedSiteModelId === id ? null : s.selectedSiteModelId };
   }),
+  selectSiteModel: (id) => set({ selectedSiteModelId: id }),
+  setSiteModelTransformMode: (mode) => set({ siteModelTransformMode: mode }),
 }));
