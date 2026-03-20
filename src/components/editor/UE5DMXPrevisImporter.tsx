@@ -170,12 +170,12 @@ export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }
           >
             <Upload className="h-5 w-5 mx-auto text-muted-foreground mb-1.5" />
             <p className="text-xs text-muted-foreground">
-              {fileName ?? 'Click to select CSV or JSON from UE5 DMX Library'}
+              {fileName ?? 'Click to select CSV, JSON, or T3D/COPY from UE5 DMX Library'}
             </p>
             <p className="text-[9px] text-muted-foreground/60 mt-1">
-              UE5: DMX Library → Fixture List → Export &nbsp;|&nbsp; DMXPrevis → Export Patch
+              UE5: DMX Library → Ctrl+C (.COPY) &nbsp;|&nbsp; Export CSV/JSON &nbsp;|&nbsp; T3D Export
             </p>
-            <input ref={fileRef} type="file" accept=".csv,.json,.txt,.tsv" onChange={handleFile} className="hidden" />
+            <input ref={fileRef} type="file" accept=".csv,.json,.txt,.tsv,.copy,.t3d" onChange={handleFile} className="hidden" />
           </div>
 
           {/* Errors */}

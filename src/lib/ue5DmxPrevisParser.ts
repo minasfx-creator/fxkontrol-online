@@ -9,6 +9,7 @@
  */
 
 import { DMX_FIXTURE_PROFILES, type DMXFixture, type DMXUniverse } from './dmxEngine';
+import { isT3DFormat, parseUE5T3D } from './ue5T3dParser';
 
 export interface UE5DMXFixture {
   name: string;
