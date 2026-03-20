@@ -32,6 +32,7 @@ export default function FieldMap2D({ fs = false }: FieldMap2DProps) {
   const isMobile = useIsMobile();
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();
+  const radioLink = useRadioLink();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
@@ -39,8 +40,12 @@ export default function FieldMap2D({ fs = false }: FieldMap2DProps) {
   const [showRssi, setShowRssi] = useState(true);
   const [showContinuity, setShowContinuity] = useState(true);
   const [showSafetyZones, setShowSafetyZones] = useState(true);
+  const [showRadioHeatmap, setShowRadioHeatmap] = useState(true);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const [dragging, setDragging] = useState<{ id: string; offsetX: number; offsetY: number } | null>(null);
+  const [antennaPos, setAntennaPos] = useState({ x: 300, y: 500 });
+  const [draggingAntenna, setDraggingAntenna] = useState(false);
+  const [firePopup, setFirePopup] = useState<{ id: string; x: number; y: number } | null>(null);
 
   // Module positions — auto-generate from hardware state
   const [modulePositions, setModulePositions] = useState<ModulePosition[]>([]);
