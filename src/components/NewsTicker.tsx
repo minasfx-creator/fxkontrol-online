@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { TrendingUp, TrendingDown, Minus, Circle, Heart, MessageCircle, Share2 } from 'lucide-react';
 
 interface NewsItem {
