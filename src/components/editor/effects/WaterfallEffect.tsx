@@ -35,7 +35,7 @@ export default function WaterfallEffect({
 
   const seeds = useMemo(() => {
     const s: { x: number; vy: number; vx: number; lt: number; phase: number; flicker: number; offset: number }[] = [];
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
+    for (let i = 0; i < SCALED_PARTICLE_COUNT; i++) {
       s.push({
         x: (Math.random() - 0.5) * scaledWidth,
         vy: -0.2 - Math.random() * 0.6,
