@@ -27,8 +27,10 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
   const [wsUrlInput, setWsUrlInput] = useState(store.wsUrl);
   const [syncToFireOne, setSyncToFireOne] = useState(false);
   const [syncToPBus, setSyncToPBus] = useState(false);
+  const [syncToMA3, setSyncToMA3] = useState(false);
   const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pbusSyncRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const ma3SyncRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Derive display TC
   const offsetTime = currentTime + store.startTimecodeSeconds;
