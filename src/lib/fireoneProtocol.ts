@@ -758,6 +758,7 @@ export class FireOneController {
 // ═══════════════════════════════════════════════════════════
 
 export function createSimulatedModuleStatus(addr: number, wireless = false): FireOneModuleStatus {
+  const rssi = wireless ? -(40 + Math.floor(Math.random() * 45)) : undefined;
   return {
     moduleAddress: addr,
     armed: false,
@@ -775,6 +776,11 @@ export function createSimulatedModuleStatus(addr: number, wireless = false): Fir
     lastSeen: Date.now(),
     wireless,
     errors: [],
+    rssiDbm: rssi,
+    wirelessChannel: wireless ? 1 + Math.floor(Math.random() * 16) : undefined,
+    packetLoss: wireless ? Math.floor(Math.random() * 5) : undefined,
+    linkQuality: wireless ? 80 + Math.floor(Math.random() * 20) : undefined,
+    connectionMode: wireless ? 'wireless' : 'wired',
   };
 }
 
