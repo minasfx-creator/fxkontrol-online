@@ -114,6 +114,15 @@ services:
     volumes:
       - ./tools/sacn-bridge:/app
 
+  # ─── MVR-xchange Bridge (mDNS + TCP ↔ WebSocket) ───────
+  mvr-xchange-bridge:
+    image: node:20-alpine
+    working_dir: /app
+    command: node mvr-xchange-bridge.js
+    network_mode: host
+    volumes:
+      - ./tools/mvr-xchange-bridge:/app
+
   # ─── Redis (inter-service messaging) ─────────────────────
   redis:
     image: redis:7-alpine
