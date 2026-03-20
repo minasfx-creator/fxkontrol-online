@@ -74,6 +74,7 @@ const ALL_PANELS: PanelItem[] = [
   { id: 'lasercontrol', label: 'Laser', icon: Zap, section: '🔌 Conexões' },
   { id: 'livefiring', label: 'Live SFX', icon: Sparkles, section: '🔌 Conexões' },
   { id: 'mobilelink', label: 'Mobile Link', icon: Cable, section: '🔌 Conexões' },
+  { id: 'linkmonitor', label: 'Link Monitor', icon: MonitorPlay, section: '🔌 Conexões' },
   // Drone
   { id: 'fleet', label: 'Frota', icon: Radar, section: '🚁 Drone' },
   { id: 'takeoffgrid', label: 'Grid', icon: Grid3X3, section: '🚁 Drone' },
