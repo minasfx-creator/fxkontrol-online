@@ -47,6 +47,16 @@ export function useFireOneHardware() {
   const rxRef = useRef(0);
   const wirelessPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const controller = getFireOneController();
+  const radioLink = useRadioLink();
+
+  // Connection path
+  const connectionPath = useMemo((): 'wired' | 'radio' | 'none' => {
+    if (state.isConnected) return 'wired';
+    if (radioLink.isConnected) return 'radio';
+    return 'none';
+  }, [state.isConnected, radioLink.isConnected]);
+
+  const effectivelyConnected = connectionPath !== 'none';
 
   // Computed wireless/wired counts
   const wirelessModuleCount = useMemo(() => {
