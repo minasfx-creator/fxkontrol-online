@@ -3,7 +3,7 @@
  * Shows FireOne modules and PBUS devices with RSSI, continuity, and safety zones
  */
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { MapPin, Wifi, Radio, Battery, Shield, Eye, EyeOff, ZoomIn, ZoomOut, Crosshair, RotateCcw } from 'lucide-react';
+import { MapPin, Wifi, Radio, Battery, Shield, Eye, EyeOff, ZoomIn, ZoomOut, Crosshair, RotateCcw, Zap, Antenna } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -11,7 +11,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
+import { useRadioLink } from '@/hooks/useRadioLink';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface ModulePosition {
   id: string;
