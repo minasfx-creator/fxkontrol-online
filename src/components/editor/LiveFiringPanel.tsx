@@ -623,7 +623,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
             const now = Date.now();
             if (now - showModeTapRef.current < 400) {
               setShowMode(prev => !prev);
-              if (navigator.vibrate) navigator.vibrate(showMode ? [30] : [50, 30, 50]);
+              haptics.showMode(!showMode);
               toast.info(showMode ? '🔓 Show Mode OFF' : '🔒 SHOW MODE — Live Operation', { duration: 2000 });
               showModeTapRef.current = 0;
             } else {

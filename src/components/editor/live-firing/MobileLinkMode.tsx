@@ -574,7 +574,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
       <div className={cn("rounded-lg border-2 transition-all", masterArmed ? "border-red-500/40 bg-red-900/10" : "border-border/20 bg-[hsl(220_10%_7%)]")}>
         <div className={cn("flex items-center gap-2", mob ? "p-2.5" : "p-2")}>
           {/* Key Switch */}
-          <button onClick={() => { setKeyInserted(!keyInserted); if (navigator.vibrate) navigator.vibrate(20); }}
+          <button onClick={() => { setKeyInserted(!keyInserted); haptics.toggle(); }}
             className={cn(
               "flex flex-col items-center justify-center rounded-lg border-2 transition-all shrink-0",
               mob ? "w-14 h-14" : "w-12 h-12",

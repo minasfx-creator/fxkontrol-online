@@ -589,7 +589,7 @@ export default function PyroFireOnePanel({
       sz === 'xl' ? (mob ? "px-4 py-2.5 flex-wrap" : "px-6 py-3") : sz === 'fs' ? "px-4 py-2" : "px-2 py-1",
       masterKeyOn ? "border-red-800/30" : "border-border/15"
     )} style={{ background: masterKeyOn ? 'hsl(0 30% 8%)' : 'hsl(220 12% 7%)' }}>
-      <button onClick={() => { setMasterKeyOn(!masterKeyOn); if (navigator.vibrate) navigator.vibrate(masterKeyOn ? 20 : [30, 20, 30]); }}
+      <button onClick={() => { setMasterKeyOn(!masterKeyOn); haptics[masterKeyOn ? 'disarm' : 'arm'](); }}
         className={cn(
           "flex items-center gap-2 rounded border-2 font-black uppercase transition-all",
           sz === 'xl' ? (mob ? "px-5 py-3 text-xs flex-1" : "px-6 py-3 text-sm") : sz === 'fs' ? "px-4 py-2 text-[10px]" : "px-3 py-1.5 text-[8px]",

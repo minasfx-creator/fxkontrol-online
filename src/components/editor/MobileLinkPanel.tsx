@@ -197,7 +197,7 @@ export default function MobileLinkPanel({ onClose }: MobileLinkPanelProps) {
 
   // FIRE a fixture
   const handleFire = useCallback((fixture: VirtualFixture) => {
-    navigator.vibrate?.(30);
+    haptics.fire();
 
     // Local effect
     fireEffect({

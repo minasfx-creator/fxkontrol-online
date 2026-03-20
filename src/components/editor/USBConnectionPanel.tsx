@@ -161,7 +161,7 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
     }
     unregisterDevice(deviceId);
     setDevices(prev => prev.filter(d => d.id !== deviceId));
-    if (navigator.vibrate) navigator.vibrate(30);
+    haptics.tap();
   }, [devices, addLog, unregisterDevice]);
 
   // Send data to device
