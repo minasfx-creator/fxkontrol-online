@@ -47,7 +47,7 @@ export interface CueEntry {
 
 export type FiringRule = 'sync' | 'ltr' | 'rtl' | 'sides' | 'middle';
 
-export type FXCMode = 'super_dmx' | 'simple_dmx' | 'manual_fire' | 'auto_fire' | 'check_slave' | 'noise_info' | 'file' | 'settings';
+export type FXCMode = 'super_dmx' | 'simple_dmx' | 'manual_fire' | 'auto_fire' | 'check_slave' | 'noise_info' | 'file' | 'settings' | 'mobile_link';
 
 export interface AutoFireCue {
   id: string;
