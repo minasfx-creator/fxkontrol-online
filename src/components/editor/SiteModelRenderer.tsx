@@ -83,6 +83,9 @@ function LoadedModel({ model, isSelected }: { model: SiteModel; isSelected: bool
           mode={transformMode}
           onObjectChange={handleObjectChange}
           size={0.8}
+          translationSnap={transformSnap.enabled ? transformSnap.translateSnap : null}
+          rotationSnap={transformSnap.enabled ? (transformSnap.rotateSnap * Math.PI) / 180 : null}
+          scaleSnap={transformSnap.enabled ? transformSnap.scaleSnap : null}
         />
       )}
     </>
