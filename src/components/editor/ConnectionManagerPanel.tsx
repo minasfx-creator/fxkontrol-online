@@ -38,6 +38,7 @@ export default function ConnectionManagerPanel({ fs = false }: ConnectionManager
   const isMobile = useIsMobile();
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();
+  const radioLink = useRadioLink();
   const [autoReconnect, setAutoReconnect] = useState<Record<string, boolean>>({});
 
   const connections: ConnectionEntry[] = [
