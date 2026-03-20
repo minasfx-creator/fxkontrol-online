@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Upload, Box, Lightbulb, Camera, Layers, Mountain, FileUp, Building2, Cuboid, Check, X, ExternalLink, Palette, Route } from 'lucide-react';
+import Model3DPreview from './Model3DPreview';
 import { parseDatasmith, extractMeshLabel, type DatasmithActor, type DatasmithParseResult } from '@/lib/twinmotionParser';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
@@ -421,6 +422,10 @@ export default function TwinmotionImporter({ open, onOpenChange, initialFile }: 
                   <div className="w-3.5 h-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                 )}
               </div>
+            )}
+
+            {model3dFile && model3dStatus === 'done' && (
+              <Model3DPreview file={model3dFile} />
             )}
 
             <div className="p-3 rounded-lg bg-muted/10 border border-border/10">
