@@ -41,6 +41,19 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
 
   const handleStartTcBlur = () => store.setStartTimecode(startTcInput);
 
+  // FireOne timecode sync
+  useEffect(() => {
+    if (!syncToFireOne || !hardware.isConnected || !store.running) {
+      if (syncIntervalRef.current) { clearInterval(syncIntervalRef.current); syncIntervalRef.current = null; }
+      return;
+    }
+    syncIntervalRef.current = setInterval(() => {
+      const ms = Math.round((currentTime + store.startTimecodeSeconds) * 1000);
+      hardware.syncTimecode(ms).catch(() => {});
+    }, 100); // sync every 100ms
+    return () => { if (syncIntervalRef.current) clearInterval(syncIntervalRef.current); };
+  }, [syncToFireOne, hardware.isConnected, store.running, currentTime, store.startTimecodeSeconds]);
+
   const statusColor = {
     disconnected: 'bg-muted-foreground',
     connecting: 'bg-warning animate-pulse',
