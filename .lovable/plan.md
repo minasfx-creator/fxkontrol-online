@@ -1,85 +1,86 @@
 
 
-# Plan: Wire VDL Properties Through Rendering Pipeline
+# Plan: SuperVDL — Niagara + VDL Fusion, Interactive Preview Panel, Color Transition Rendering
 
-## Problem
-The VDL parser now outputs `angleOffset`, `trailType`, `noTrail`, `caliber`, `firingPattern`, `shotCount`, `hasPistil`, `pistilColor`, `colorTransition`, `impliesTrail`, `multiColors`, and adjustment factors — but **none of these reach the effect renderers**. The `SkyCanvas.tsx` `TimelineEffects` function (line 835) renders effects with minimal props:
+## Summary
+Three interconnected upgrades: (1) merge Niagara particle profiles into the VDL parser so a single description like `"Red Chrysanthemum niagara-blue"` automatically applies Niagara's physics/glow/fade profiles, (2) create an interactive VDL Preview Panel with live 3D simulation, (3) implement per-star color transitions in FireworkBurst ("Red To Blue" renders stars that change color mid-flight).
 
+## Part 1 — SuperVDL: Niagara + VDL Fusion
+
+### `src/lib/vdlParser.ts`
+- Import `NIAGARA_COLOR_PRESETS` and `NiagaraColorPreset`
+- Add to `VDLResult`:
+  ```
+  niagaraPreset?: string;           // matched Niagara preset ID
+  niagaraProfile?: {                // merged particle physics from Niagara
+    starCount: number;
+    lifetime: number;
+    velocity: number;
+    drag: number;
+    gravityScale: number;
+    sparkleRate: number;
+    glowIntensity: number;
+    fadeProfile: 'linear' | 'exponential' | 'ember';
+  };
+  ```
+- In `parseVDL()`: detect Niagara preset references (e.g., `niagara-blue`, `niagara-yellow`, `niagara-pink`) in the description and merge their `particleProfile` + `shaderUniforms` into the result. Also auto-match: if color is Blue and type is Peony, suggest/apply `niagara-blue` profile automatically
+- In `vdlToEffect()`: propagate `niagaraProfile` fields into the Effect object
+
+### `src/store/useProjectStore.ts`
+- Add to `Effect` interface: `niagaraProfile?` with the same shape
+
+### `src/components/editor/SkyCanvas.tsx` — FireworkBurst
+- When `niagaraProfile` is present, override `STAR_COUNT`, `starLife`, `breakSpeed`, drag coefficient, and glow intensity with Niagara values instead of defaults
+- Apply `fadeProfile` (`linear`/`exponential`/`ember`) to the thermal color pipeline fade curve
+
+## Part 2 — Interactive VDL Preview Panel
+
+### New file: `src/components/editor/VDLPreviewPanel.tsx`
+A panel with:
+- **Text input** (textarea) for typing VDL descriptions
+- **Live 3D preview** using a mini `<Canvas>` that renders the parsed effect in a loop
+- **Parameter badges** showing detected properties: caliber, colors (as swatches), type, trail, angle, timing, adjustments, Niagara profile
+- **Quick presets** row: common VDL examples the user can click to load
+- **"Add to Timeline"** button that calls `vdlToEffect()` and inserts into the project
+
+Implementation:
+- Uses `parseVDL()` on every keystroke (debounced 300ms)
+- Renders a single `FireworkBurst` (or appropriate effect component based on `partType`) in the mini canvas, auto-replaying every 3s
+- Shows VDL parse status (valid/invalid) with error hints
+- Badge grid: `caliber`, `type`, `colors[]`, `trailType`, `angleOffset`, `firingPattern`, `shotCount`, `niagaraPreset`, `adjustments[]`
+
+### `src/components/AppSidebar.tsx`
+- Add VDL Preview panel to the sidebar panel registry
+
+## Part 3 — Color Transition Rendering in FireworkBurst
+
+### `src/components/editor/SkyCanvas.tsx` — FireworkBurst `useFrame`
+Currently at line ~546, star colors are computed as:
 ```
-// Current — ignores all VDL metadata
-if (pt === 'mine') return <MineEffect position={pos} color={effect.color} progress={progress} />;
-if (pt === 'cake') return <CakeEffect position={pos} color={effect.color} progress={progress} shotCount={25} />;
+const r = lerp(baseColor.r * userFade, chemR, 0.7);
 ```
 
-Additionally, `vdlToEffect()` (line 760) drops most VDL fields — it only returns `color`, `duration`, `pattern`, `caliber`, `heightMeters`, `prefire`, `safetyDistance`. The `Effect` interface lacks VDL rendering fields.
+When `colorTransition === 'to'` and `secondaryColor` is set:
+- Parse `secondaryColor` into a `THREE.Color`
+- Compute `transitionT = starAge` (0 at birth → 1 at death)
+- Lerp between primary and secondary color based on `transitionT`
+- Apply the same thermal pipeline (white-hot flash, ember fade) on top of the interpolated base color
+- For `colorTransition === 'changing'`: use ping-pong interpolation (back and forth)
+- For `colorTransition === 'alternating'`: use `multiColors` array, each star gets a color based on `i % multiColors.length`
 
-## Changes
+This happens inside the existing `useFrame` loop, modifying the color computation for each star — no new geometry or materials needed.
 
-### 1. `src/store/useProjectStore.ts` — Extend `Effect` interface
-Add VDL rendering fields so they can flow through the pipeline:
-- `angleOffset?: number`
-- `trailType?: string`
-- `noTrail?: boolean`
-- `hasPistil?: boolean`
-- `pistilColor?: string`
-- `colorTransition?: string`
-- `secondaryColor?: string`
-- `firingPattern?: string`
-- `impliesTrail?: boolean`
-
-### 2. `src/lib/vdlParser.ts` — Expand `vdlToEffect` return
-Add the new fields to the returned object so VDL-created effects carry their metadata into the store:
-- `angleOffset`, `trailType`, `noTrail`, `hasPistil`, `pistilColor`, `colorTransition`, `secondaryColor` (from `colors[1]` or multiColors), `firingPattern`, `impliesTrail`, `shotCount`
-
-### 3. `src/components/editor/SkyCanvas.tsx` — Wire VDL props to renderers
-Update `TimelineEffects` (lines 835-866) to pass VDL properties from the `effect` object:
-
-- **MineEffect**: pass `caliber`, `angleOffset`, `heightMeters`
-- **CometEffect**: pass `caliber`, `angleOffset`
-- **CakeEffect**: pass `caliber`, `firingPattern`, `shotCount`
-- **GerbEffect**: pass `caliber` (scale height/count)
-- **WaterfallEffect**: pass `caliber` (scale width/density)
-- **RomanCandleEffect**: pass `caliber`, `angleOffset`
-- **FanEffect**: pass `caliber`
-- **MultiBurstEffect**: pass `caliber`
-- **PrefireShell**: pass `angleOffset`
-- **FireworkBurst**: pass `trailType`, `noTrail`, `hasPistil`, `pistilColor`, `colorTransition`, `secondaryColor`, `angleOffset`
-
-### 4. Effect Components — Accept and apply new props
-
-**`GerbEffect.tsx`** — Add `caliber` prop: scale `PARTICLE_COUNT` and `height` based on caliber.
-
-**`WaterfallEffect.tsx`** — Add `caliber` prop: scale `PARTICLE_COUNT` and `width`.
-
-**`RomanCandleEffect.tsx`** — Add `caliber` and `angleOffset` props: scale star height and apply trajectory tilt.
-
-**`FanEffect.tsx`** — Add `caliber` prop: scale ray height and particle count.
-
-**`MultiBurstEffect.tsx`** — Add `caliber` prop: scale burst size.
-
-**`PrefireShell.tsx`** — Add `angleOffset` prop: tilt the rising comet trail to match VDL angle.
-
-**`ShellExplosionManager.tsx`** — Add `angleOffset` and `noTrail` to `ShellConfig` interface, pass through to `ShellBurstRenderer` and `PrefireShell`.
-
-**`FireworkBurst` (in SkyCanvas.tsx)** — Accept `angleOffset`, `trailType`, `noTrail`, `secondaryColor`, `colorTransition`. Apply `angleOffset` as group rotation. Pass trail/color data to star rendering logic.
-
-### 5. `MineEffect.tsx` and `CometEffect.tsx` — Apply angleOffset rotation
-Both already accept `angleOffset` as a prop but **don't use it**. Add `<group rotation={[0, 0, angleOffsetRad]}>` wrapper to tilt the particle group.
+### `src/lib/vdlParser.ts`
+- Ensure "Red To Blue" correctly sets `colorTransition: 'to'`, `colors[0]` = Red hex, `colors[1]` = Blue hex, and `secondaryColor` = Blue hex in `vdlToEffect()`
 
 ## Files Summary
 
 | File | Change |
 |------|--------|
-| `useProjectStore.ts` | Add VDL rendering fields to `Effect` interface |
-| `vdlParser.ts` | Expand `vdlToEffect` return with VDL metadata |
-| `SkyCanvas.tsx` | Wire VDL props in `TimelineEffects` + `FireworkBurst` |
-| `MineEffect.tsx` | Apply angleOffset rotation |
-| `CometEffect.tsx` | Apply angleOffset rotation |
-| `GerbEffect.tsx` | Add caliber scaling |
-| `WaterfallEffect.tsx` | Add caliber scaling |
-| `RomanCandleEffect.tsx` | Add caliber + angleOffset |
-| `FanEffect.tsx` | Add caliber scaling |
-| `MultiBurstEffect.tsx` | Add caliber scaling |
-| `PrefireShell.tsx` | Add angleOffset tilt |
-| `ShellExplosionManager.tsx` | Add angleOffset + noTrail to ShellConfig |
+| `src/lib/vdlParser.ts` | Add Niagara preset detection + merge, ensure color transition parsing |
+| `src/lib/niagaraColorPresets.ts` | Add more presets (red, green, white, gold) for broader coverage |
+| `src/store/useProjectStore.ts` | Add `niagaraProfile` to Effect interface |
+| `src/components/editor/SkyCanvas.tsx` | Color transition in FireworkBurst useFrame, Niagara profile overrides |
+| `src/components/editor/VDLPreviewPanel.tsx` | New interactive VDL preview panel |
+| `src/components/AppSidebar.tsx` | Register VDL Preview panel |
 
