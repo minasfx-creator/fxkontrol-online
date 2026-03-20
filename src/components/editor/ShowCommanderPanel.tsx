@@ -484,7 +484,7 @@ function SafetyChecklist() {
           const st = statusIcon[c.status];
           return (
             <div key={c.id} className="flex items-center gap-2 px-2 py-1 rounded-md border border-border/5 bg-card/10">
-              <div className={cn("w-1.5 h-1.5 rounded-full", c.status === 'ok' ? 'bg-green-500' : c.status === 'warn' ? 'bg-amber-500' : c.status === 'fail' ? 'bg-red-500' : 'bg-muted-foreground/20')} />
+              <div className={cn("w-1.5 h-1.5 rounded-full", c.status === 'ok' ? 'bg-green-500' : c.status === 'warn' ? 'bg-amber-500' : 'bg-muted-foreground/20')} />
               <span className="text-[9px] text-foreground/70 flex-1">{c.label}</span>
               <span className={cn("text-[8px] font-bold", st.color)}>{st.label}</span>
             </div>
