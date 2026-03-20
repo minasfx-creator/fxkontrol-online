@@ -1,32 +1,29 @@
 
-# Engine Turbo — AAA Rendering Optimizations ✅ IMPLEMENTED
 
-## Otimizações implementadas
+# Plano: Reduzir ícone mortar para não bloquear fogos
 
-### 1. ✅ Frustum Culling Inteligente (`src/lib/spatialCuller.ts`)
-- `isInFrustum()` com objetos pré-alocados (zero GC)
-- `batchFrustumTest()` para testes em lote
-- `SpatialHash` classe para O(1) neighbor lookup
-- Integrado em `TimelineEffects` — efeitos fora da câmera são skippados
+## Problema
+O `MortarTubeIcon` é grande (tubos até 0.65m, base 0.5m) e com escala `pinScale` de 0.6–0.75, ocupa espaço demais no viewport, bloqueando a visualização dos efeitos pyro à distância.
 
-### 2. ✅ Object Pooling (`src/lib/geometryPool.ts`)
-- `BufferPool` — reutiliza Float32Arrays entre explosões
-- `GeometryPool` — recicla BufferGeometry instances
-- `resetPools()` chamado no WebGL context loss recovery
+## Solução
 
-### 3. ✅ LOD Adaptativo por FPS (`src/hooks/useLOD.ts`)
-- `updateAdaptiveLOD(fps)` — auto-reduz qualidade se FPS < 30 por 500ms
-- Auto-aumenta qualidade se FPS > 55 por 2s
-- `getAdaptiveLOD()` combina distância + feedback de performance
-- Integrado no DebugFeed overlay
+### Escala baseada em distância da câmera
+No componente `Pin`, calcular a distância até a câmera a cada frame e aplicar escala inversamente proporcional — quanto mais longe, menor o ícone. Isso garante que os mortars não dominem a cena quando vistos de longe.
 
-### 4. ✅ PostProcessing Condicional (`PostProcessing.tsx`)
-- Bloom layer 2 só ativa quando há bursts ativos
-- Bloom layer 3 (HUGE) só ativa com 3+ bursts simultâneos
-- ChromaticAberration e FilmGrain desativados quando idle
-- ~20% GPU savings em cenas sem pirotecnia
+### Reduzir geometria base do MortarTubeIcon
+- Diminuir dimensões dos tubos (~40% menores): tubos de 0.5→0.3 de altura, raios proporcionais
+- Base plate mais fina e compacta
+- Manter visibilidade quando próximo via escala dinâmica
 
-### 5. ✅ Integração completa em SkyCanvas
-- `_activeBurstCount` módulo-level atualizado por TimelineEffects
-- Frustum culling em cada efeito com raio proporcional ao calibre
-- resetPools() no context loss handler
+### Implementação em `PositionPins.tsx`
+
+1. **`MortarTubeIcon`**: Reduzir todas as dimensões de geometria (~40%)
+2. **`Pin`**: No `useFrame`, calcular distância câmera→pin e aplicar `scale = clamp(baseScale * (referenceDistance / distance), minScale, maxScale)` onde:
+   - `referenceDistance = 15` (distância onde escala é "normal")
+   - `minScale = 0.15` (para distâncias grandes, quase invisível)
+   - `maxScale = 0.8` (para distâncias curtas)
+3. Ajustar hitbox proporcionalmente
+
+### Arquivo modificado
+- `src/components/editor/PositionPins.tsx`
+
