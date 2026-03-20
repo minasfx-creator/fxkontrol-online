@@ -180,9 +180,15 @@ export function usePBusHardware() {
   }, [controller]);
 
   const fireCue = useCallback(async (addr: number, cueIndex: number, durationMs = 500) => {
+    // Radio fallback: route via radio if wired not connected but radio is
+    if (!state.isConnected && radioLink.isConnected) {
+      const frame = new Uint8Array([0x50, 0x42, addr, 0x10, cueIndex, (durationMs >> 8) & 0xFF, durationMs & 0xFF]);
+      await radioLink.sendPBus(addr, frame);
+      return;
+    }
     txRef.current += 10; setState(prev => ({ ...prev, txBytes: txRef.current }));
     await controller.fireCue(addr, cueIndex, durationMs);
-  }, [controller]);
+  }, [controller, state.isConnected, radioLink]);
 
   const requestCueStatus = useCallback(async (addr: number) => {
     txRef.current += 7; setState(prev => ({ ...prev, txBytes: txRef.current }));
