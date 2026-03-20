@@ -465,8 +465,8 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
           { label: 'Fleet', value: `${orc.totalDrones > 0 ? orc.totalDrones : uavs.size}`, icon: Cpu },
           { label: 'Slots', value: `${positions.length}`, icon: Target },
           { label: 'Duration', value: `${duration}s`, icon: Clock },
-          { label: 'Cues', value: `${timelineItems.length}`, icon: Radio },
           { label: 'FireOne', value: hardware.isConnected ? `${hardware.modules.size}` : 'SIM', icon: Zap },
+          { label: 'PBUS', value: pbus.isConnected ? `${pbus.deviceCount}` : 'SIM', icon: Radio },
         ].map(item => (
           <div key={item.label} className="flex flex-col items-center gap-0.5 py-1 rounded-lg bg-surface-1/40">
             <item.icon className="w-3 h-3 text-muted-foreground/50" />
