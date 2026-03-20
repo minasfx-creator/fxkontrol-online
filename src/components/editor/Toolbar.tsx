@@ -516,6 +516,20 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
         </div>
       )}
 
+      {/* Command Center button */}
+      {!isMobile && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2.5 text-[10px] font-semibold gap-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-primary/8 transition-all"
+          title="Command Center (Ctrl+K)"
+          onClick={() => setCommandMenuOpen(true)}
+        >
+          <Command className="h-3.5 w-3.5 text-primary/60" />
+          <span className="tracking-wide uppercase font-display">⌘K</span>
+        </Button>
+      )}
+
       {!isMobile && <div className="w-px h-6 bg-border/20 mx-1" />}
 
       {/* Undo / Redo */}
