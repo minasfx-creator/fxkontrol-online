@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Zap, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus, Download, ChevronDown, LayoutGrid, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Info, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store } from 'lucide-react';
+import { Zap, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus, Download, ChevronDown, LayoutGrid, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Info, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store, Lightbulb } from 'lucide-react';
 import fxkLogo from '@/assets/fxk-logo.png';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -14,6 +14,7 @@ import FormationBuilder from './FormationBuilder';
 import CSVImporter from './CSVImporter';
 import VVIZImporter from './VVIZImporter';
 import UAssetImporter from './UAssetImporter';
+import GMA2PatchImporter from './GMA2PatchImporter';
 import AssetMarketplaceBrowser from './AssetMarketplaceBrowser';
 import ProjectBrowser from './ProjectBrowser';
 import CatalogImportDialog from './CatalogImportDialog';
@@ -328,6 +329,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [uassetOpen, setUassetOpen] = useState(false);
   const [marketplaceOpen, setMarketplaceOpen] = useState(false);
+  const [gma2Open, setGma2Open] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const handleSave = useCallback(async () => {
@@ -473,6 +475,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
               { label: 'CSV Positions', icon: Upload, onClick: () => setCsvOpen(true) },
               { label: 'VVIZ (Finale 3D)', icon: FileJson, onClick: () => setVvizOpen(true) },
               { label: 'UE .uasset (Niagara)', icon: FileCode, onClick: () => setUassetOpen(true) },
+              { label: 'GrandMA2 Patch', icon: Lightbulb, onClick: () => setGma2Open(true) },
               { label: 'Supplier Catalog', icon: Sparkles, onClick: () => setCatalogOpen(true) },
               { label: 'Asset Marketplace', icon: Store, onClick: () => setMarketplaceOpen(true) },
             ]}
@@ -573,6 +576,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       <CatalogImportDialog open={catalogOpen} onOpenChange={setCatalogOpen} />
       <UAssetImporter open={uassetOpen} onOpenChange={setUassetOpen} />
       <AssetMarketplaceBrowser open={marketplaceOpen} onOpenChange={setMarketplaceOpen} />
+      <GMA2PatchImporter open={gma2Open} onOpenChange={setGma2Open} />
 
       <div className="flex-1" />
 
