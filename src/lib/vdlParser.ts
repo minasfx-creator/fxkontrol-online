@@ -63,6 +63,18 @@ export interface VDLResult {
   isAerial: boolean;         // "Shell" or "Aerial" keyword
   multiColors: string[][];   // & separated multi-color groups
   impliesTrail: boolean;     // color implies trail of sparks
+  // ── SuperVDL: Niagara fusion ──
+  niagaraPreset?: string;           // matched Niagara preset ID
+  niagaraProfile?: {
+    starCount: number;
+    lifetime: number;
+    velocity: number;
+    drag: number;
+    gravityScale: number;
+    sparkleRate: number;
+    glowIntensity: number;
+    fadeProfile: 'linear' | 'exponential' | 'ember';
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -330,6 +342,7 @@ const ROW_PATTERNS = [
 // Calibration-aware lookups
 // ═══════════════════════════════════════════════════════════════════════
 import { interpolateCaliberData, MANUFACTURER_PROFILES, type ManufacturerProfile } from './manufacturerCalibration';
+import { NIAGARA_COLOR_PRESETS, getNiagaraPreset, autoMatchNiagaraPreset, presetToNiagaraProfile } from './niagaraColorPresets';
 
 let _activeProfile: ManufacturerProfile = MANUFACTURER_PROFILES[0];
 
@@ -699,6 +712,26 @@ export function parseVDL(input: string): VDLResult {
     result.numSplits = 4;
   }
 
+  // ── SuperVDL: Niagara preset detection + auto-matching ──
+  // 1. Explicit reference: "niagara-blue", "niagara-red" etc.
+  const niagaraExplicit = lower.match(/niagara-(\w+)/);
+  if (niagaraExplicit) {
+    const presetId = `niagara-${niagaraExplicit[1]}`;
+    const preset = getNiagaraPreset(presetId);
+    if (preset) {
+      result.niagaraPreset = presetId;
+      result.niagaraProfile = presetToNiagaraProfile(preset);
+    }
+  }
+  // 2. Auto-match: if no explicit preset, try matching by color + type
+  if (!result.niagaraPreset && result.colorNames.length > 0) {
+    const matched = autoMatchNiagaraPreset(result.colorNames[0], result.type);
+    if (matched) {
+      result.niagaraPreset = matched.id;
+      result.niagaraProfile = presetToNiagaraProfile(matched);
+    }
+  }
+
   result.valid = foundType || result.isChain || result.type === 'cake' || result.colorNames.length > 0 || calMatch !== null || calMmMatch !== null;
 
   return result;
@@ -830,5 +863,8 @@ export function vdlToEffect(vdl: VDLResult) {
     colorTransition,
     secondaryColor,
     impliesTrail: impliesTrail || undefined,
+    // ── SuperVDL: Niagara profile ──
+    niagaraPresetId: vdl.niagaraPreset || undefined,
+    niagaraProfile: vdl.niagaraProfile || undefined,
   };
 }

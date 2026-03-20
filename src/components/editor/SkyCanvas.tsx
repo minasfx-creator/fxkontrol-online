@@ -264,10 +264,15 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
   angleOffset?: number; trailType?: string; noTrail?: boolean;
   secondaryColor?: string; colorTransition?: string;
   hasPistil?: boolean; pistilColor?: string;
+  niagaraProfile?: {
+    starCount: number; lifetime: number; velocity: number;
+    drag: number; gravityScale: number; sparkleRate: number;
+    glowIntensity: number; fadeProfile: 'linear' | 'exponential' | 'ember';
+  };
 }>(function FireworkBurst({ 
   position, color, progress, caliber = 4, pattern = 'peony',
   angleOffset = 0, trailType, noTrail, secondaryColor, colorTransition,
-  hasPistil, pistilColor,
+  hasPistil, pistilColor, niagaraProfile,
 }, _ref) {
   const pointsRef = useRef<THREE.Points>(null);
   const trailRef = useRef<THREE.LineSegments>(null);
@@ -317,6 +322,7 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
   }, [caliber, pattern]);
   
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
+  const secondaryBaseColor = useMemo(() => secondaryColor ? new THREE.Color(secondaryColor) : null, [secondaryColor]);
   // ═══ PyroChem: resolve chemical compound from color ═══
   const compound = useMemo(() => hexToCompound(color), [color]);
   const emberColor = useMemo(() => {
@@ -543,17 +549,46 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
         twinkle = temporalFlicker(sparkleSeeds[i], time, 0.65, 0.30, 0.35);
       }
       
-      // Blend thermal color with user color
+      // Blend thermal color with user color + color transition
       const userFade = 1 - starAge;
-      const r = THREE.MathUtils.lerp(baseColor.r * userFade, chemR, 0.7);
-      const g = THREE.MathUtils.lerp(baseColor.g * userFade, chemG, 0.7);
-      const b = THREE.MathUtils.lerp(baseColor.b * userFade, chemB, 0.7);
+      
+      // ═══ SuperVDL Color Transition ═══
+      let blendR = baseColor.r, blendG = baseColor.g, blendB = baseColor.b;
+      if (secondaryBaseColor && colorTransition) {
+        if (colorTransition === 'to') {
+          // Linear transition: primary at birth → secondary at death
+          blendR = THREE.MathUtils.lerp(baseColor.r, secondaryBaseColor.r, starAge);
+          blendG = THREE.MathUtils.lerp(baseColor.g, secondaryBaseColor.g, starAge);
+          blendB = THREE.MathUtils.lerp(baseColor.b, secondaryBaseColor.b, starAge);
+        } else if (colorTransition === 'changing') {
+          // Ping-pong: primary → secondary → primary
+          const pingPong = Math.sin(starAge * Math.PI);
+          blendR = THREE.MathUtils.lerp(baseColor.r, secondaryBaseColor.r, pingPong);
+          blendG = THREE.MathUtils.lerp(baseColor.g, secondaryBaseColor.g, pingPong);
+          blendB = THREE.MathUtils.lerp(baseColor.b, secondaryBaseColor.b, pingPong);
+        } else if (colorTransition === 'alternating') {
+          // Per-star alternation
+          const useSecondary = i % 2 === 1;
+          if (useSecondary) {
+            blendR = secondaryBaseColor.r;
+            blendG = secondaryBaseColor.g;
+            blendB = secondaryBaseColor.b;
+          }
+        }
+      }
+      
+      const r = THREE.MathUtils.lerp(blendR * userFade, chemR, 0.7);
+      const g = THREE.MathUtils.lerp(blendG * userFade, chemG, 0.7);
+      const b = THREE.MathUtils.lerp(blendB * userFade, chemB, 0.7);
       const brightnessScale = THREE.MathUtils.clamp(effectBrightness, 0.6, 1.8);
       
+      // Apply Niagara glow intensity boost when profile is present
+      const niagaraGlow = niagaraProfile ? niagaraProfile.glowIntensity / 2.0 : 1.0;
+      
       const [safeR, safeG, safeB] = clampNiagaraHDR(
-        r * twinkle * brightnessScale,
-        g * twinkle * brightnessScale,
-        b * twinkle * brightnessScale
+        r * twinkle * brightnessScale * niagaraGlow,
+        g * twinkle * brightnessScale * niagaraGlow,
+        b * twinkle * brightnessScale * niagaraGlow
       );
 
       cols[i * 3] = safeR;
@@ -883,6 +918,7 @@ function TimelineEffects() {
             colorTransition={vdlColorTransition}
             hasPistil={vdlHasPistil}
             pistilColor={vdlPistilColor}
+            niagaraProfile={effect.niagaraProfile}
           />
         );
         return <LightPoint key={item.id} position={pos} color={effect.color} />;
