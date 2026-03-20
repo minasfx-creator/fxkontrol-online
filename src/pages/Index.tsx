@@ -343,13 +343,17 @@ function Index() {
     );
   };
 
-  // Mobile layout
+  // Mobile layout — Full-screen 3D with transparent HUD overlays
   if (isMobile) {
-    return (
-      <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
-        <Toolbar onOpenPanel={(id) => handleTogglePanel(id as PanelId)} />
+    const handleDismissPanel = () => {
+      setMobileTab(null);
+      setMobilePanelHeight('collapsed');
+    };
 
-        <div className="flex-1 min-w-0 relative">
+    return (
+      <div className="h-[100dvh] w-screen relative overflow-hidden bg-background">
+        {/* Full-screen 3D Canvas */}
+        <div className="absolute inset-0">
           <CanvasErrorBoundary>
             <Suspense fallback={<CanvasLoader />}>
               <SkyCanvas />
@@ -358,19 +362,44 @@ function Index() {
           <BoxSelectOverlay />
         </div>
 
-        <MobileFloatingPanel activeTab={mobileTab} height={mobilePanelHeight}>
+        {/* HUD Top Bar */}
+        <MobileHUD
+          onOpenPanel={handleMobileOpenPanel}
+          onMenuOpen={() => {
+            setMobileTab('more');
+            setMobilePanelHeight('full');
+          }}
+        />
+
+        {/* Quick Actions (left FABs) */}
+        <MobileQuickActions />
+
+        {/* Floating Panel (tabs content) */}
+        <MobileFloatingPanel
+          activeTab={mobileTab}
+          height={mobilePanelHeight}
+          onHeightChange={setMobilePanelHeight}
+          onDismiss={handleDismissPanel}
+        >
           {mobileTab === 'timeline' && <Timeline />}
           {mobileTab === 'assets' && <EffectLibrary />}
           {mobileTab === 'properties' && <PropertiesPanel />}
           {mobileTab === 'more' && <MobileMoreMenu onSelectPanel={handleMobileOpenPanel} />}
         </MobileFloatingPanel>
 
+        {/* Panel content from More menu or direct panel open */}
         {activePanel && mobileTab === null && mobilePanelHeight !== 'collapsed' && (
-          <MobileFloatingPanel activeTab={'more' as MobileTab} height={mobilePanelHeight}>
+          <MobileFloatingPanel
+            activeTab={'more' as MobileTab}
+            height={mobilePanelHeight}
+            onHeightChange={setMobilePanelHeight}
+            onDismiss={handleDismissPanel}
+          >
             <div className="h-full overflow-y-auto">{renderPanelContent()}</div>
           </MobileFloatingPanel>
         )}
 
+        {/* Glass Dock */}
         <MobileTabBar
           activeTab={mobileTab}
           onTabChange={setMobileTab}
