@@ -48,13 +48,15 @@ const SOURCE_CONFIG = {
 type SourceType = keyof typeof SOURCE_CONFIG;
 
 export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMarketplaceBrowserProps) {
-  const [activeSource, setActiveSource] = useState<SourceType>('fab');
+  const [activeSource, setActiveSource] = useState<SourceType | 'mylibrary'>('fab');
   const [query, setQuery] = useState('fireworks vfx');
   const [results, setResults] = useState<MarketplaceSearchResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [librarySearch, setLibrarySearch] = useState('');
   const dirInputRef = useRef<HTMLInputElement>(null);
   const siteModels = useSceneStore((s) => s.siteModels);
+  const { assets: libraryAssets, loading: libraryLoading, saveToLibrary, deleteFromLibrary, downloadAsset, fetchAssets } = useMyLibrary();
 
   const handleSearch = useCallback(async (source?: SourceType) => {
     const src = source || activeSource;
