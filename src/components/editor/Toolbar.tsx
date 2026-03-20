@@ -14,6 +14,7 @@ import FormationBuilder from './FormationBuilder';
 import CSVImporter from './CSVImporter';
 import VVIZImporter from './VVIZImporter';
 import UAssetImporter from './UAssetImporter';
+import GMA2PatchImporter from './GMA2PatchImporter';
 import AssetMarketplaceBrowser from './AssetMarketplaceBrowser';
 import ProjectBrowser from './ProjectBrowser';
 import CatalogImportDialog from './CatalogImportDialog';
