@@ -232,6 +232,84 @@ export default function FieldMap2D({ fs = false }: FieldMap2DProps) {
       }
     });
 
+    // ── Radio RSSI Heatmap Overlay ──────────────────────
+    if (showRadioHeatmap && radioLink.isConnected && radioLink.devices.size > 0) {
+      // Draw antenna position marker
+      const ax = antennaPos.x;
+      const ay = antennaPos.y;
+
+      // Heatmap: calculate RSSI at grid points based on distance from antenna
+      const gridStep = 20;
+      for (let gx = 0; gx < 1200; gx += gridStep) {
+        for (let gy = 0; gy < 800; gy += gridStep) {
+          const dist = Math.sqrt((gx - ax) ** 2 + (gy - ay) ** 2);
+          // Simulate RSSI decay: -40dBm at 0m, -3dBm per 20px (~5m)
+          const simRssi = -40 - dist * 0.15;
+          const clampedRssi = Math.max(-100, Math.min(-30, simRssi));
+          // Map to color: green(-30 to -60), amber(-60 to -80), red(-80 to -100)
+          let hue: number;
+          let alpha: number;
+          if (clampedRssi >= -60) {
+            hue = 120; // green
+            alpha = 0.08 + (clampedRssi + 60) / 30 * 0.07;
+          } else if (clampedRssi >= -80) {
+            hue = 40; // amber
+            alpha = 0.05 + (clampedRssi + 80) / 20 * 0.05;
+          } else {
+            hue = 0; // red
+            alpha = 0.03;
+          }
+          ctx.fillStyle = `hsla(${hue}, 60%, 50%, ${alpha})`;
+          ctx.fillRect(gx, gy, gridStep, gridStep);
+        }
+      }
+
+      // Draw real device RSSI dots
+      radioLink.devices.forEach(dev => {
+        const modPos = modulePositions.find(m => m.address === dev.address);
+        if (modPos) {
+          const rssi = dev.rssi;
+          const hue = rssi >= -60 ? 120 : rssi >= -80 ? 40 : 0;
+          ctx.fillStyle = `hsla(${hue}, 70%, 50%, 0.6)`;
+          ctx.beginPath();
+          ctx.arc(modPos.x, modPos.y, 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = `hsla(0, 0%, 100%, 0.5)`;
+          ctx.font = '7px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(`${rssi}dBm`, modPos.x, modPos.y - 10);
+          ctx.textAlign = 'start';
+        }
+      });
+
+      // Antenna marker (draggable triangle)
+      ctx.fillStyle = 'hsla(270, 70%, 60%, 0.9)';
+      ctx.beginPath();
+      ctx.moveTo(ax, ay - 14);
+      ctx.lineTo(ax - 10, ay + 8);
+      ctx.lineTo(ax + 10, ay + 8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'hsla(270, 80%, 70%, 1)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = 'hsla(0, 0%, 100%, 0.7)';
+      ctx.font = 'bold 8px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('ANT', ax, ay + 20);
+      ctx.textAlign = 'start';
+
+      // Coverage radius ring (approx -80dBm boundary)
+      const coverageR = (80 - 40) / 0.15; // pixels where RSSI = -80dBm
+      ctx.strokeStyle = 'hsla(270, 50%, 50%, 0.15)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.arc(ax, ay, coverageR, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
     // Distance rulers to audience
     if (showSafetyZones) {
       modulePositions.forEach(mod => {
@@ -252,7 +330,7 @@ export default function FieldMap2D({ fs = false }: FieldMap2DProps) {
     }
 
     ctx.restore();
-  }, [modulePositions, zoom, pan, showRssi, showContinuity, showSafetyZones, selectedModule, fireone.modules, pbus.devices]);
+  }, [modulePositions, zoom, pan, showRssi, showContinuity, showSafetyZones, showRadioHeatmap, selectedModule, fireone.modules, pbus.devices, radioLink, antennaPos]);
 
   const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
