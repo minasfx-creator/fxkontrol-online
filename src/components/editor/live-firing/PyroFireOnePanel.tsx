@@ -25,7 +25,8 @@ import type { SFXChannel, AutoFireCue } from './types';
 import { DEMO_CUES } from './AutoFirePanel';
 import { formatTimecode } from './constants';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
-import { parseFireOneCSV, parseFireOneFIR, exportFireOneCSV, downloadFile } from '@/lib/fireoneScriptParser';
+import { parseFireOneCSV, parseFireOneFIR, exportFireOneCSV, downloadFile, autoDetectAndParse } from '@/lib/fireoneScriptParser';
+import type { WirelessConnectionMode } from '@/lib/fireoneProtocol';
 
 interface PyroFireOnePanelProps {
   fs: boolean;
