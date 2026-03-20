@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -7,10 +7,13 @@ import { Button } from '@/components/ui/button';
 import {
   Clapperboard, CalendarDays, GraduationCap, Plus, FolderOpen,
   Zap, Rocket, Flame, Target, Clock, ArrowRight, Sparkles,
-  Radio, Cpu, Cable, Activity
+  Radio, Cpu, Cable, Activity, Heart, MessageCircle, Share2,
+  TrendingUp, TrendingDown, Minus, Circle, Bookmark, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
+import CinematicIntro from '@/components/editor/CinematicIntro';
 
+/* ── Types ──────────────────────────────────────────── */
 interface Project {
   id: string;
   name: string;
@@ -27,21 +30,123 @@ interface Event {
   client_name: string;
 }
 
+interface NewsItem {
+  id: number;
+  title: string;
+  category: 'pyro' | 'drones' | 'sfx' | 'lighting' | 'festivals';
+  sentiment: 'positive' | 'negative' | 'neutral';
+  time: string;
+  image: string;
+  source: string;
+  avatar: string;
+}
+
+/* ── Constants ──────────────────────────────────────── */
+const MOCK_NEWS: NewsItem[] = [
+  { id: 1, title: 'Drone shows superam fogos em 35% dos eventos corporativos na Europa', category: 'drones', sentiment: 'positive', time: '2min', image: 'https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=600&h=600&fit=crop', source: 'DroneWorld', avatar: '🤖' },
+  { id: 2, title: 'NFPA atualiza norma 1123 para pirotecnia de proximidade', category: 'pyro', sentiment: 'neutral', time: '15min', image: 'https://images.unsplash.com/photo-1498931299472-f7a63a5a1cfa?w=600&h=600&fit=crop', source: 'PyroNews', avatar: '🎆' },
+  { id: 3, title: 'Showven lança novo SparkularFall 2 com controle DMX integrado', category: 'sfx', sentiment: 'positive', time: '28min', image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=600&fit=crop', source: 'SFX Today', avatar: '🔥' },
+  { id: 4, title: 'Rock in Rio 2026 confirma 40 shows com drones sincronizados', category: 'festivals', sentiment: 'positive', time: '45min', image: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600&h=600&fit=crop', source: 'Festival Mag', avatar: '🎪' },
+  { id: 5, title: 'Escassez global de lítio pode afetar baterias de drones em 2027', category: 'drones', sentiment: 'negative', time: '1h', image: 'https://images.unsplash.com/photo-1527977966376-1c8408f9f108?w=600&h=600&fit=crop', source: 'TechBrief', avatar: '🤖' },
+  { id: 6, title: 'Moving heads Ayrton Perseo ganha prêmio LDI Innovation', category: 'lighting', sentiment: 'positive', time: '2h', image: 'https://images.unsplash.com/photo-1504509546545-e000b4a62425?w=600&h=600&fit=crop', source: 'LDI Weekly', avatar: '💡' },
+  { id: 7, title: 'Novo protocolo Art-Net 5 promete latência sub-1ms', category: 'lighting', sentiment: 'positive', time: '3h', image: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=600&h=600&fit=crop', source: 'ProLight', avatar: '💡' },
+  { id: 8, title: 'FAA restringe voos de drones em 12 novos aeroportos dos EUA', category: 'drones', sentiment: 'negative', time: '4h', image: 'https://images.unsplash.com/photo-1506947411487-a56738b4ccd4?w=600&h=600&fit=crop', source: 'AviationPost', avatar: '🤖' },
+  { id: 9, title: 'Galaxis lança módulo de disparo com 64 canais e GPS integrado', category: 'pyro', sentiment: 'positive', time: '5h', image: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600&h=600&fit=crop', source: 'FireTech', avatar: '🎆' },
+  { id: 10, title: 'Coachella 2026 bate recorde com 1.200 drones em show de encerramento', category: 'festivals', sentiment: 'positive', time: '6h', image: 'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=600&h=600&fit=crop', source: 'Festival Mag', avatar: '🎪' },
+];
+
+const CATEGORY_FILTERS: Array<{ key: NewsItem['category'] | 'all'; label: string; emoji: string }> = [
+  { key: 'all', label: 'Tudo', emoji: '🌐' },
+  { key: 'pyro', label: 'Pyro', emoji: '🎆' },
+  { key: 'drones', label: 'Drones', emoji: '🤖' },
+  { key: 'sfx', label: 'SFX', emoji: '🔥' },
+  { key: 'lighting', label: 'Light', emoji: '💡' },
+  { key: 'festivals', label: 'Festivals', emoji: '🎪' },
+];
+
 const TYPE_ICONS: Record<string, string> = {
   pyro: '🎆', drone: '🤖', sfx: '🔥', mixed: '🎯',
 };
 
 const QUICK_LAUNCH = [
-  { label: 'Show Pirotécnico', emoji: '🎆', type: 'pyro', color: 'hsl(var(--accent))' },
-  { label: 'Drone Show', emoji: '🛸', type: 'drone', color: 'hsl(var(--primary))' },
-  { label: 'Show Misto', emoji: '🎯', type: 'mixed', color: 'hsl(var(--fxk-violet))' },
+  { label: 'Show Pirotécnico', emoji: '🎆', type: 'pyro' },
+  { label: 'Drone Show', emoji: '🛸', type: 'drone' },
+  { label: 'Show Misto', emoji: '🎯', type: 'mixed' },
 ];
 
+/* ── Feed Card (Instagram-style) ─────────────────────── */
+function FeedCard({ item }: { item: NewsItem }) {
+  const [liked, setLiked] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  return (
+    <div className="bg-card border border-border/40 rounded-2xl overflow-hidden group">
+      {/* Header */}
+      <div className="flex items-center gap-2.5 px-4 py-3">
+        <div className="h-8 w-8 rounded-full bg-muted/50 flex items-center justify-center text-sm">
+          {item.avatar}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-foreground truncate">{item.source}</p>
+          <p className="text-[9px] text-muted-foreground font-mono-code">{item.time}</p>
+        </div>
+        {item.sentiment === 'positive' && <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />}
+        {item.sentiment === 'negative' && <TrendingDown className="h-3.5 w-3.5 text-red-400" />}
+        {item.sentiment === 'neutral' && <Minus className="h-3.5 w-3.5 text-muted-foreground" />}
+      </div>
+
+      {/* Image */}
+      <div className="relative aspect-[4/3] overflow-hidden">
+        <img
+          src={item.image}
+          alt={item.title}
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+          loading="lazy"
+        />
+      </div>
+
+      {/* Actions */}
+      <div className="px-4 pt-3 pb-1 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button onClick={() => setLiked(!liked)} className="active:scale-90 transition-transform">
+            <Heart className={`h-5 w-5 ${liked ? 'fill-red-500 text-red-500' : 'text-foreground/70 hover:text-foreground'} transition-colors`} />
+          </button>
+          <MessageCircle className="h-5 w-5 text-foreground/70 hover:text-foreground cursor-pointer transition-colors" />
+          <Share2 className="h-5 w-5 text-foreground/70 hover:text-foreground cursor-pointer transition-colors" />
+        </div>
+        <button onClick={() => setSaved(!saved)} className="active:scale-90 transition-transform">
+          <Bookmark className={`h-5 w-5 ${saved ? 'fill-foreground text-foreground' : 'text-foreground/70 hover:text-foreground'} transition-colors`} />
+        </button>
+      </div>
+
+      {/* Caption */}
+      <div className="px-4 pb-4 pt-1">
+        <p className="text-xs leading-relaxed text-foreground/90">
+          <span className="font-semibold mr-1">{item.source}</span>
+          {item.title}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ── Dashboard ───────────────────────────────────────── */
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
+  const [showIntro, setShowIntro] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const seen = sessionStorage.getItem('fxk-intro-seen');
+    return !seen;
+  });
+  const [feedFilter, setFeedFilter] = useState<NewsItem['category'] | 'all'>('all');
+
+  const handleIntroComplete = useCallback(() => {
+    setShowIntro(false);
+    sessionStorage.setItem('fxk-intro-seen', '1');
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -66,16 +171,21 @@ export default function Dashboard() {
   const totalMinutes = Math.round(projects.reduce((s, p) => s + p.duration, 0) / 60);
   const userName = user?.email?.split('@')[0] ?? 'Operator';
   const lastProjectId = typeof window !== 'undefined' ? localStorage.getItem('fxk-last-project') : null;
-
   const nextEvent = events[0];
   const daysUntilNext = nextEvent?.event_date
     ? differenceInDays(new Date(nextEvent.event_date), new Date())
     : null;
 
+  const filteredNews = feedFilter === 'all' ? MOCK_NEWS : MOCK_NEWS.filter(n => n.category === feedFilter);
+
+  if (showIntro) {
+    return <CinematicIntro onComplete={handleIntroComplete} />;
+  }
+
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      {/* Hero Banner */}
-      <div className="relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br from-[hsl(var(--surface-1))] via-[hsl(var(--surface-2))] to-[hsl(var(--surface-1))] p-6 md:p-8 animate-fxk-fade-up">
+    <div className="max-w-7xl mx-auto pb-10">
+      {/* ── Hero Banner ──────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br from-[hsl(var(--surface-1))] via-[hsl(var(--surface-2))] to-[hsl(var(--surface-1))] p-6 md:p-8 mb-6 animate-fxk-fade-up">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(var(--primary)/0.08),transparent_60%)]" />
         <div className="absolute top-4 right-4 opacity-[0.03]">
           <Sparkles className="h-40 w-40" />
@@ -106,194 +216,235 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* System Status */}
-      <div className="animate-fxk-fade-up" style={{ animationDelay: '0.08s' }}>
-        <Card className="bg-card border-border/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Activity className="h-3.5 w-3.5 text-primary" />
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider font-display">Status do Sistema</span>
-            </div>
-            <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-              {[
-                { label: 'OSC Bridge', icon: Cable, port: 9002 },
-                { label: 'sACN Bridge', icon: Activity, port: 9003 },
-                { label: 'MVR-xchange', icon: Cpu, port: 9004 },
-                { label: 'FireOne', icon: Zap, port: null },
-                { label: 'PBUS', icon: Radio, port: null },
-                { label: 'Radio RF', icon: Radio, port: null },
-              ].map((sys) => (
-                <div key={sys.label} className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[hsl(var(--surface-0)/0.5)] border border-border/10">
-                  <div className="status-dot-offline" />
-                  <div>
-                    <p className="text-[9px] font-semibold text-muted-foreground/70">{sys.label}</p>
-                    {sys.port && <p className="text-[8px] font-mono-code text-muted-foreground/30">:{sys.port}</p>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* ── Main Grid: Left (ops) + Center (feed) ───── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px_1fr] gap-6">
 
-      {/* Quick Launch */}
-      <div className="grid grid-cols-3 gap-3 animate-fxk-fade-up" style={{ animationDelay: '0.12s' }}>
-        {QUICK_LAUNCH.map((q, i) => (
-          <button
-            key={q.type}
-            onClick={() => navigate('/editor')}
-            className="group relative overflow-hidden rounded-lg border border-border/50 bg-card p-4 text-center transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_20px_hsl(var(--primary)/0.08)]"
-          >
-            <span className="text-2xl block mb-2">{q.emoji}</span>
-            <p className="text-xs font-semibold text-foreground">{q.label}</p>
-            <p className="text-[9px] text-muted-foreground mt-0.5">Criar novo</p>
-          </button>
-        ))}
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 animate-fxk-fade-up" style={{ animationDelay: '0.15s' }}>
-        {[
-          { label: 'Novo Projeto', icon: Plus, route: '/editor' },
-          { label: 'Editor 3D', icon: Clapperboard, route: '/editor' },
-          { label: 'Agenda', icon: CalendarDays, route: '/agenda' },
-          { label: 'Simulação', icon: GraduationCap, route: '/training' },
-        ].map((action, i) => (
-          <button
-            key={action.label}
-            onClick={() => navigate(action.route)}
-            className="group relative overflow-hidden rounded-lg border border-border/50 bg-card p-4 text-left transition-all duration-300 hover:border-primary/40 hover:shadow-[0_0_20px_hsl(var(--primary)/0.1)]"
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <action.icon className="h-5 w-5 text-primary mb-3 transition-transform duration-300 group-hover:scale-110" />
-            <p className="text-xs font-semibold text-foreground">{action.label}</p>
-            <ArrowRight className="absolute bottom-3 right-3 h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-1 group-hover:translate-x-0" />
-          </button>
-        ))}
-      </div>
-
-      {/* Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 animate-fxk-fade-up" style={{ animationDelay: '0.2s' }}>
-        {[
-          { value: projects.length, label: 'Projetos', icon: FolderOpen, color: 'text-primary' },
-          { value: events.length, label: 'Próximos Eventos', icon: Target, color: 'text-accent' },
-          { value: totalMinutes, label: 'Min. de Show', icon: Clock, color: 'text-[hsl(var(--fxk-gold))]' },
-          { value: daysUntilNext !== null ? `${daysUntilNext}d` : '—', label: 'Próximo Evento', icon: CalendarDays, color: daysUntilNext !== null && daysUntilNext <= 3 ? 'text-accent' : 'text-primary' },
-        ].map((stat) => (
-          <Card key={stat.label} className="bg-card border-border/50 overflow-hidden group hover:border-primary/20 transition-colors">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-muted/50 flex items-center justify-center shrink-0">
-                <stat.icon className={`h-4 w-4 ${stat.color}`} />
+        {/* ─ Left Column: Operations ─ */}
+        <div className="space-y-4 order-2 lg:order-1">
+          {/* System Status */}
+          <Card className="bg-card border-border/50 animate-fxk-fade-up" style={{ animationDelay: '0.08s' }}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Activity className="h-3.5 w-3.5 text-primary" />
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider font-display">Sistema</span>
               </div>
-              <div>
-                <p className="text-2xl font-bold font-display text-foreground">{stat.value}</p>
-                <p className="text-[10px] text-muted-foreground">{stat.label}</p>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: 'OSC', icon: Cable },
+                  { label: 'sACN', icon: Activity },
+                  { label: 'FireOne', icon: Zap },
+                  { label: 'PBUS', icon: Radio },
+                ].map((sys) => (
+                  <div key={sys.label} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-[hsl(var(--surface-0)/0.5)] border border-border/10">
+                    <div className="status-dot-offline" />
+                    <p className="text-[9px] font-semibold text-muted-foreground/70">{sys.label}</p>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Recent Projects */}
-        <Card className="bg-card border-border/50 animate-fxk-fade-up" style={{ animationDelay: '0.3s' }}>
-          <div className="p-4 pb-2 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <FolderOpen className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold text-foreground">Projetos Recentes</span>
-            </div>
-            <Button variant="ghost" size="sm" className="text-[10px] h-6 text-muted-foreground" onClick={() => navigate('/editor')}>
-              Ver todos
-            </Button>
-          </div>
-          <CardContent className="pt-0 space-y-1">
-            {projects.length === 0 && (
-              <div className="py-8 text-center">
-                <Rocket className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                <p className="text-xs text-muted-foreground">Nenhum projeto ainda.</p>
-                <Button variant="outline" size="sm" className="mt-3 text-xs" onClick={() => navigate('/editor')}>
-                  <Plus className="h-3 w-3 mr-1" /> Criar primeiro projeto
-                </Button>
-              </div>
-            )}
-            {projects.map((p) => (
-              <div
-                key={p.id}
-                className="flex items-center justify-between p-2.5 rounded-lg hover:bg-muted/30 cursor-pointer transition-all duration-200 group"
-                onClick={() => { localStorage.setItem('fxk-last-project', p.id); navigate('/editor'); }}
+          {/* Quick Launch */}
+          <div className="grid grid-cols-3 gap-2 animate-fxk-fade-up" style={{ animationDelay: '0.12s' }}>
+            {QUICK_LAUNCH.map((q) => (
+              <button
+                key={q.type}
+                onClick={() => navigate('/editor')}
+                className="group overflow-hidden rounded-xl border border-border/50 bg-card p-3 text-center transition-all duration-300 hover:border-primary/30 active:scale-[0.97]"
               >
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center">
-                    <Clapperboard className="h-3.5 w-3.5 text-primary" />
+                <span className="text-xl block mb-1">{q.emoji}</span>
+                <p className="text-[10px] font-semibold text-foreground leading-tight">{q.label}</p>
+              </button>
+            ))}
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-2 animate-fxk-fade-up" style={{ animationDelay: '0.16s' }}>
+            {[
+              { value: projects.length, label: 'Projetos', icon: FolderOpen, color: 'text-primary' },
+              { value: events.length, label: 'Eventos', icon: Target, color: 'text-accent' },
+              { value: totalMinutes, label: 'Min. Show', icon: Clock, color: 'text-[hsl(var(--fxk-gold))]' },
+              { value: daysUntilNext !== null ? `${daysUntilNext}d` : '—', label: 'Próx. Evento', icon: CalendarDays, color: daysUntilNext !== null && daysUntilNext <= 3 ? 'text-accent' : 'text-primary' },
+            ].map((stat) => (
+              <Card key={stat.label} className="bg-card border-border/50 hover:border-primary/20 transition-colors">
+                <CardContent className="p-3 flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-lg bg-muted/50 flex items-center justify-center shrink-0">
+                    <stat.icon className={`h-3.5 w-3.5 ${stat.color}`} />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">{p.name}</p>
-                    <p className="text-[10px] text-muted-foreground font-mono-code">
-                      {format(new Date(p.updated_at), 'dd/MM HH:mm')} · {p.duration}s
-                    </p>
+                    <p className="text-lg font-bold font-display text-foreground leading-none">{stat.value}</p>
+                    <p className="text-[9px] text-muted-foreground mt-0.5">{stat.label}</p>
                   </div>
-                </div>
-                <Zap className="h-3 w-3 text-muted-foreground/40 group-hover:text-primary transition-colors" />
-              </div>
+                </CardContent>
+              </Card>
             ))}
-          </CardContent>
-        </Card>
-
-        {/* Upcoming Events */}
-        <Card className="bg-card border-border/50 animate-fxk-fade-up" style={{ animationDelay: '0.35s' }}>
-          <div className="p-4 pb-2 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Flame className="h-4 w-4 text-accent" />
-              <span className="text-sm font-semibold text-foreground">Próximos Eventos</span>
-            </div>
-            <Button variant="ghost" size="sm" className="text-[10px] h-6 text-muted-foreground" onClick={() => navigate('/agenda')}>
-              Agenda
-            </Button>
           </div>
-          <CardContent className="pt-0 space-y-1">
-            {events.length === 0 && (
-              <div className="py-8 text-center">
-                <CalendarDays className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                <p className="text-xs text-muted-foreground">Nenhum evento agendado.</p>
-                <Button variant="outline" size="sm" className="mt-3 text-xs" onClick={() => navigate('/agenda')}>
-                  <Plus className="h-3 w-3 mr-1" /> Criar evento
-                </Button>
+
+          {/* Recent Projects */}
+          <Card className="bg-card border-border/50 animate-fxk-fade-up" style={{ animationDelay: '0.2s' }}>
+            <div className="p-3 pb-1 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FolderOpen className="h-3.5 w-3.5 text-primary" />
+                <span className="text-xs font-semibold text-foreground">Projetos</span>
               </div>
-            )}
-            {events.map((e) => {
-              const daysLeft = e.event_date ? differenceInDays(new Date(e.event_date), new Date()) : null;
-              return (
+              <Button variant="ghost" size="sm" className="text-[10px] h-5 text-muted-foreground" onClick={() => navigate('/editor')}>
+                Todos
+              </Button>
+            </div>
+            <CardContent className="pt-0 pb-2 space-y-0.5">
+              {projects.length === 0 && (
+                <div className="py-6 text-center">
+                  <Rocket className="h-6 w-6 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-[10px] text-muted-foreground">Nenhum projeto.</p>
+                  <Button variant="outline" size="sm" className="mt-2 text-[10px] h-7" onClick={() => navigate('/editor')}>
+                    <Plus className="h-3 w-3 mr-1" /> Criar
+                  </Button>
+                </div>
+              )}
+              {projects.slice(0, 4).map((p) => (
                 <div
-                  key={e.id}
-                  className="flex items-center justify-between p-2.5 rounded-lg hover:bg-muted/30 cursor-pointer transition-all duration-200 group"
-                  onClick={() => navigate('/agenda')}
+                  key={p.id}
+                  className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/30 cursor-pointer transition-colors group"
+                  onClick={() => { localStorage.setItem('fxk-last-project', p.id); navigate('/editor'); }}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-md bg-accent/10 flex items-center justify-center text-sm">
-                      {TYPE_ICONS[e.event_type] ?? '🎯'}
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                      <Clapperboard className="h-3 w-3 text-primary" />
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground group-hover:text-accent transition-colors">{e.name}</p>
-                      <p className="text-[10px] text-muted-foreground font-mono-code">
-                        {e.event_date ? format(new Date(e.event_date), 'dd/MM/yyyy') : '—'} · {e.client_name || 'Sem cliente'}
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate group-hover:text-primary transition-colors">{p.name}</p>
+                      <p className="text-[9px] text-muted-foreground font-mono-code">
+                        {format(new Date(p.updated_at), 'dd/MM HH:mm')}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ─ Center Column: Instagram Feed ─ */}
+        <div className="order-1 lg:order-2 animate-fxk-fade-up" style={{ animationDelay: '0.1s' }}>
+          {/* Stories-style filter bar */}
+          <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1 scrollbar-none">
+            {CATEGORY_FILTERS.map(f => (
+              <button
+                key={f.key}
+                onClick={() => setFeedFilter(f.key)}
+                className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all duration-200 shrink-0 active:scale-[0.95] ${
+                  feedFilter === f.key
+                    ? 'bg-primary/15 ring-1 ring-primary/30'
+                    : 'bg-card border border-border/30 hover:border-primary/20'
+                }`}
+              >
+                <span className="text-base">{f.emoji}</span>
+                <span className={`text-[9px] font-semibold ${feedFilter === f.key ? 'text-primary' : 'text-muted-foreground'}`}>
+                  {f.label}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Feed live indicator */}
+          <div className="flex items-center gap-2 mb-3">
+            <Circle className="h-2 w-2 fill-emerald-400 text-emerald-400 animate-pulse" />
+            <span className="text-[9px] font-mono-code text-muted-foreground tracking-widest uppercase">
+              Industry Feed · {filteredNews.length} posts
+            </span>
+          </div>
+
+          {/* Feed cards */}
+          <div className="space-y-4">
+            {filteredNews.map((item) => (
+              <FeedCard key={item.id} item={item} />
+            ))}
+          </div>
+        </div>
+
+        {/* ─ Right Column: Events + Actions ─ */}
+        <div className="space-y-4 order-3">
+          {/* Quick Actions */}
+          <div className="grid grid-cols-2 gap-2 animate-fxk-fade-up" style={{ animationDelay: '0.14s' }}>
+            {[
+              { label: 'Editor 3D', icon: Clapperboard, route: '/editor' },
+              { label: 'Agenda', icon: CalendarDays, route: '/agenda' },
+              { label: 'Simulação', icon: GraduationCap, route: '/training' },
+              { label: 'Novo Projeto', icon: Plus, route: '/editor' },
+            ].map((action) => (
+              <button
+                key={action.label}
+                onClick={() => navigate(action.route)}
+                className="group overflow-hidden rounded-xl border border-border/50 bg-card p-3 text-left transition-all duration-300 hover:border-primary/40 active:scale-[0.97]"
+              >
+                <action.icon className="h-4 w-4 text-primary mb-2 group-hover:scale-110 transition-transform" />
+                <p className="text-[10px] font-semibold text-foreground">{action.label}</p>
+              </button>
+            ))}
+          </div>
+
+          {/* Upcoming Events */}
+          <Card className="bg-card border-border/50 animate-fxk-fade-up" style={{ animationDelay: '0.22s' }}>
+            <div className="p-3 pb-1 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Flame className="h-3.5 w-3.5 text-accent" />
+                <span className="text-xs font-semibold text-foreground">Eventos</span>
+              </div>
+              <Button variant="ghost" size="sm" className="text-[10px] h-5 text-muted-foreground" onClick={() => navigate('/agenda')}>
+                Agenda
+              </Button>
+            </div>
+            <CardContent className="pt-0 pb-2 space-y-0.5">
+              {events.length === 0 && (
+                <div className="py-6 text-center">
+                  <CalendarDays className="h-6 w-6 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-[10px] text-muted-foreground">Nenhum evento.</p>
+                  <Button variant="outline" size="sm" className="mt-2 text-[10px] h-7" onClick={() => navigate('/agenda')}>
+                    <Plus className="h-3 w-3 mr-1" /> Criar
+                  </Button>
+                </div>
+              )}
+              {events.map((e) => {
+                const daysLeft = e.event_date ? differenceInDays(new Date(e.event_date), new Date()) : null;
+                return (
+                  <div
+                    key={e.id}
+                    className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/30 cursor-pointer transition-colors group"
+                    onClick={() => navigate('/agenda')}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="h-7 w-7 rounded-md bg-accent/10 flex items-center justify-center text-sm shrink-0">
+                        {TYPE_ICONS[e.event_type] ?? '🎯'}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-foreground truncate group-hover:text-accent transition-colors">{e.name}</p>
+                        <p className="text-[9px] text-muted-foreground font-mono-code">
+                          {e.event_date ? format(new Date(e.event_date), 'dd/MM') : '—'} · {e.client_name || '—'}
+                        </p>
+                      </div>
+                    </div>
                     {daysLeft !== null && daysLeft >= 0 && (
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono-code font-bold ${daysLeft <= 3 ? 'bg-accent/15 text-accent' : 'bg-muted text-muted-foreground'}`}>
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono-code font-bold shrink-0 ${daysLeft <= 3 ? 'bg-accent/15 text-accent' : 'bg-muted text-muted-foreground'}`}>
                         {daysLeft === 0 ? 'HOJE' : `${daysLeft}d`}
                       </span>
                     )}
-                    <span className="text-[9px] px-2 py-0.5 rounded-full font-mono-code bg-muted text-muted-foreground">
-                      {e.status}
-                    </span>
                   </div>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
+                );
+              })}
+            </CardContent>
+          </Card>
+
+          {/* Enter Editor CTA */}
+          <button
+            onClick={() => navigate('/editor')}
+            className="w-full group relative overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-accent/5 p-4 text-center transition-all duration-300 hover:border-primary/40 hover:shadow-[0_0_30px_hsl(var(--primary)/0.1)] active:scale-[0.98] animate-fxk-fade-up"
+            style={{ animationDelay: '0.28s' }}
+          >
+            <Zap className="h-5 w-5 text-primary mx-auto mb-2 group-hover:scale-110 transition-transform" />
+            <p className="text-sm font-bold font-display text-foreground">Abrir Editor</p>
+            <p className="text-[9px] text-muted-foreground mt-0.5">Show Design Platform</p>
+          </button>
+        </div>
       </div>
     </div>
   );
