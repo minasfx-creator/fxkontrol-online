@@ -381,6 +381,89 @@ export default function PyroFireOnePanel({
   const mob = isMobile;
   const sz = xl ? 'xl' : fs ? 'fs' : 'sm';
 
+  // ── Hidden file input for CSV/FIR import ──
+  const renderFileInput = () => (
+    <input ref={fileInputRef} type="file" accept=".csv,.fir,.sem" onChange={handleFileImport} className="hidden" />
+  );
+
+  // ── Render: Hardware connection bar ──
+  const renderConnectionBar = () => (
+    <div className={cn(
+      "flex items-center gap-2 border-b border-border/10",
+      sz === 'xl' ? "px-6 py-1.5" : sz === 'fs' ? "px-4 py-1" : "px-2 py-0.5"
+    )} style={{ background: 'hsl(220 12% 5%)' }}>
+      {/* Connection status */}
+      <div className={cn("flex items-center gap-1.5",
+        sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[8px]" : "text-[6px]"
+      )}>
+        {hardware.isConnected ? (
+          <Usb className={cn(sz === 'xl' ? "w-3.5 h-3.5" : "w-2.5 h-2.5", "text-green-400")} />
+        ) : (
+          <WifiOff className={cn(sz === 'xl' ? "w-3.5 h-3.5" : "w-2.5 h-2.5", "text-muted-foreground/30")} />
+        )}
+        <span className={cn("font-mono font-bold",
+          hardware.isConnected ? "text-green-400/80" : "text-muted-foreground/30"
+        )}>
+          {hardware.isConnected ? 'HARDWARE' : 'DISCONNECTED'}
+        </span>
+      </div>
+
+      {/* TX/RX counters (when connected) */}
+      {hardware.isConnected && (
+        <span className={cn("font-mono text-muted-foreground/25",
+          sz === 'xl' ? "text-[9px]" : "text-[6px]"
+        )}>TX:{hardware.txBytes} RX:{hardware.rxBytes}</span>
+      )}
+
+      <div className="ml-auto flex items-center gap-1">
+        {/* Connect / Disconnect */}
+        {hardware.isConnected ? (
+          <button onClick={handleHardwareDisconnect}
+            className={cn("rounded border font-bold uppercase transition-all",
+              sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[6px]",
+              "bg-red-600/10 border-red-500/20 text-red-400/70"
+            )}>DISCONNECT</button>
+        ) : (
+          <button onClick={handleHardwareConnect}
+            className={cn("rounded border font-bold uppercase transition-all",
+              sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[6px]",
+              "bg-green-600/10 border-green-500/20 text-green-400/70 hover:bg-green-600/15"
+            )}>CONNECT RS-485</button>
+        )}
+
+        {/* Scan */}
+        {hardware.isConnected && (
+          <button onClick={handleScan} disabled={hardware.scanning}
+            className={cn("rounded border font-bold uppercase transition-all",
+              sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[6px]",
+              hardware.scanning
+                ? "bg-cyan-600/10 border-cyan-500/20 text-cyan-400/70 animate-pulse"
+                : "bg-cyan-600/10 border-cyan-500/15 text-cyan-400/50 hover:text-cyan-400/70"
+            )}>
+            <ScanLine className={cn(sz === 'xl' ? "w-3 h-3 inline mr-1" : "w-2 h-2 inline mr-0.5")} />
+            {hardware.scanning ? 'SCANNING...' : 'SCAN'}
+          </button>
+        )}
+
+        {/* Import / Export */}
+        <button onClick={() => fileInputRef.current?.click()}
+          className={cn("rounded border font-bold uppercase transition-all",
+            sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[6px]",
+            "bg-amber-600/10 border-amber-500/15 text-amber-400/50 hover:text-amber-400/70"
+          )}>
+          <Upload className={cn(sz === 'xl' ? "w-3 h-3 inline mr-1" : "w-2 h-2 inline mr-0.5")} />CSV
+        </button>
+        <button onClick={handleExportCSV}
+          className={cn("rounded border font-bold uppercase transition-all",
+            sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[6px]",
+            "border-border/10 text-muted-foreground/30 hover:text-muted-foreground/50"
+          )}>
+          <Download className={cn(sz === 'xl' ? "w-3 h-3 inline mr-1" : "w-2 h-2 inline mr-0.5")} />CSV
+        </button>
+      </div>
+    </div>
+  );
+
   // ── Render: Header ──
   const renderHeader = () => (
     <div className={cn(
@@ -419,7 +502,13 @@ export default function PyroFireOnePanel({
             sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[8px]" : "text-[6px]",
             simMode ? "text-amber-400/70" : "text-green-400/70"
           )}>{simMode ? 'SIM' : 'LIVE'}</span>
-          <Switch checked={!simMode} onCheckedChange={(v) => setSimMode(!v)} className="scale-75" />
+          <Switch checked={!simMode} onCheckedChange={(v) => {
+            if (v && !hardware.isConnected) {
+              toast.error('Connect to RS-485 hardware first');
+              return;
+            }
+            setSimMode(!v);
+          }} className="scale-75" />
         </div>
         {/* Fullscreen toggle */}
         <button onClick={() => setPyroFullscreen(!pyroFullscreen)}
