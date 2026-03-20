@@ -105,10 +105,6 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
   const connectedUSBDMX = useMemo(() => getConnectedDMXDevices(), [dmxDevices]);
   const hasUSBDMX = connectedUSBDMX.length > 0;
 
-  const addDiagLog = useCallback((log: DiagnosticLog) => {
-    setDiagLogs(prev => [log, ...prev].slice(0, 50));
-  }, []);
-
   const totalDrones = useMemo(() => {
     if (droneFormations.length === 0) return 0;
     return droneFormations[0].droneCount;
