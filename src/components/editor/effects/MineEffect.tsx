@@ -15,11 +15,15 @@ export default function MineEffect({
   color,
   progress,
   caliber = 3,
+  angleOffset = 0,
+  heightMeters,
 }: {
   position: [number, number, number];
   color: string;
   progress: number;
   caliber?: number;
+  angleOffset?: number;
+  heightMeters?: number;
 }) {
   const count = useMemo(() => Math.min(600, Math.round(200 + caliber * caliber * 14)), [caliber]);
   const pointsRef = useRef<THREE.Points>(null);

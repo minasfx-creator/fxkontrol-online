@@ -159,8 +159,11 @@ interface ShellBurstRendererProps {
   colorTransition?: 'none' | 'to' | 'changing' | 'alternating';
   trailType?: 'none' | 'comet' | 'glitter' | 'brocade' | 'charcoal' | 'smoke';
   fallingLeaves?: boolean;
-  /** Real FFIC formulation ID — overrides color/sparkSize/drag from chemical data */
   formulationId?: string;
+  /** VDL angle offset in degrees — rotates entire burst */
+  angleOffset?: number;
+  /** VDL noTrail flag — suppresses trails even for types that force them */
+  noTrail?: boolean;
 }
 
 /**
@@ -187,6 +190,8 @@ export default function ShellBurstRenderer({
   trailType = 'none',
   fallingLeaves = false,
   formulationId,
+  angleOffset = 0,
+  noTrail = false,
 }: ShellBurstRendererProps) {
   const pointsRef = useRef<THREE.Points>(null);
   const pistilPointsRef = useRef<THREE.Points>(null);
@@ -500,8 +505,11 @@ export default function ShellBurstRenderer({
 
   if (progress <= 0 || progress > 1.1) return null;
 
+  // Apply angleOffset rotation to the group
+  const groupRotation: [number, number, number] = [0, 0, angleOffset ? -(angleOffset * Math.PI) / 180 : 0];
+
   return (
-    <group position={position}>
+    <group position={position} rotation={groupRotation}>
       {/* Main burst particles */}
       <points ref={pointsRef} frustumCulled={false}>
         <bufferGeometry drawRange={{ start: 0, count: starCount }}>

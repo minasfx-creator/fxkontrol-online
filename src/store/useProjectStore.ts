@@ -44,13 +44,22 @@ export interface TimelineItem {
   position: { x: number; y: number; z: number };
   pan?: number;
   tilt?: number;
+  spin?: number;
   chainRef?: string;
   chainGap?: number;
+  chainRow?: number;
   positionName?: string;
   notes?: string;
+  flightCount?: number;
+  hazard?: string;
+  rack?: number;
+  tube?: number;
+  section?: string;
+  universe?: string;
+  customField?: string;
   // ── Finale 3D position linking ──
-  positionId?: string;         // Linked pyro position ID (single)
-  positionIds?: string[];      // Linked to multiple positions (fires simultaneously)
+  positionId?: string;
+  positionIds?: string[];
 }
 
 export type PositionType = 'pyro' | 'drone-pad' | 'light';
