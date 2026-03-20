@@ -1,74 +1,75 @@
 
 
-# Plan: Import Missing UE5 Rendering Technologies from DMX Previs Config
+# Plan: Auto-Link SFX Positions to FX Commander + Art-Net Connection Test
 
-## Analysis
+## Summary
 
-The uploaded `DefaultEngine-3.ini` from Epic's **DMX Previs** sample reveals several rendering technologies we don't yet implement:
+When adding SFX equipment (via Showven Equipment Panel or directly), the system will:
+1. Automatically create an SFX channel in the FX Commander console linked to the position
+2. Run an Art-Net connection test and show the result as a toast notification
 
-| UE5 Setting | What It Does | Our Status |
-|---|---|---|
-| `r.Tonemapper.Sharpen=0.1` | Post-process sharpening | **Missing** |
-| `r.TemporalAA.Upsampling=True` | Temporal anti-aliasing with upscaling | **Missing** (only SMAA) |
-| `r.SSR.Temporal=1` | Screen-Space Reflections | **Missing** |
-| `r.GenerateMeshDistanceFields=True` | Contact shadows via distance fields | **Missing** |
-| `r.ReflectionCaptureResolution=2048` | High-res environment reflections | **Missing** |
-| `r.SupportSkyAtmosphereAffectsHeightFog=True` | Atmosphere-fog interaction | **Missing** |
-| `r.MinRoughnessOverride=0.02` | Material roughness floor | **Missing** |
-| DMX fixture attributes (30+ types) | Extended DMX attribute library | **Partial** |
+## Current State
 
-## What We Can Implement (via `@react-three/postprocessing` + THREE.js)
+- **ShowvenEquipmentPanel** creates a `pyro` position + timeline item on double-click/drag, but does NOT create an FX Commander channel
+- **LiveFiringPanel** manages its own `channels` state (local `useState`), disconnected from positions
+- **Art-Net test** exists in DMXPanel but not triggered automatically
+- `SFXChannel` type already has a `positionId` field, but it's never set automatically
 
-### Feasible Effects
-1. **Sharpening** — Custom shader pass via `postprocessing` library's `Effect` class or the `ShaderPass` approach
-2. **Screen Space Reflections (SSR)** — Available as `SSR` in `@react-three/postprocessing`  
-3. **Contact Shadows** — Available via `@react-three/drei`'s `<ContactShadows />` (already in deps)
-4. **Tonemapper Sharpen** — Implement as a simple convolution kernel post-effect
+## Problem
 
-### Not Feasible in WebGL
-- Temporal AA Upsampling (requires frame history buffers not available in R3F)
-- Mesh Distance Fields (GPU compute, UE5-specific)
-- True atmosphere-fog coupling (approximated via existing fog settings)
+The FX Commander channels and scene positions are completely disconnected. Adding equipment in one panel doesn't register in the other.
 
-## Implementation Steps
+## Implementation
 
-### Step 1: Add SSR + Sharpening to Post-Processing Pipeline
-**File**: `src/components/editor/PostProcessing.tsx`
-- Import `SSR` from `@react-three/postprocessing`  
-- Add conditional SSR pass (expensive — only in Realistic preset)
-- Add a custom sharpening effect using the `postprocessing` `Effect` class with a simple unsharp mask GLSL fragment
+### Step 1: Create a shared SFX Channel Store
+**New file**: `src/store/useSfxChannelStore.ts`
 
-### Step 2: Extend SceneSettings Store
-**File**: `src/store/useSceneStore.ts`
-- Add: `ssrEnabled`, `ssrIntensity`, `ssrThickness`, `sharpenEnabled`, `sharpenStrength`, `contactShadowsEnabled`, `contactShadowsOpacity`, `contactShadowsBlur`
-- Update quality presets:
-  - **Realistic**: SSR on, sharpen on (0.1), contact shadows on
-  - **Show**: SSR off, sharpen on (0.05), contact shadows on
-  - **Performance**: all off
+A Zustand store to hold SFX channels globally (replacing LiveFiringPanel's local state), with actions:
+- `addChannelFromPosition(position, equipmentPreset)` — creates an SFX channel linked to a position, auto-patches DMX address
+- `removeChannel(id)`
+- `testArtNetConnection()` — sends a validate request to `artnet-bridge` edge function, returns status
+- `getChannels()`, `updateChannel()`, `setFiring()`, etc.
 
-### Step 3: Add Contact Shadows to 3D Scene
-**File**: `src/components/editor/SkyCanvas.tsx` (or wherever the main R3F scene is)
-- Add `<ContactShadows>` from drei, controlled by store settings
-- Position beneath drone/effect layer for ground contact darkening
+### Step 2: Auto-link on SFX Position Creation
+**File**: `src/components/editor/ShowvenEquipmentPanel.tsx`
 
-### Step 4: Add UI Controls
-**File**: `src/components/editor/SceneEditorPanel.tsx`
-- Add SSR toggle + intensity slider in the "Advanced (AAA)" section
-- Add Sharpening toggle + strength slider
-- Add Contact Shadows toggle + opacity/blur sliders
+In `handleDoubleClick` (and drag-drop handler), after creating the position + timeline item:
+- Call `useSfxChannelStore.getState().addChannelFromPosition(...)` to create a linked FX Commander channel
+- Call `useSfxChannelStore.getState().testArtNetConnection()` which sends a validate packet to `artnet-bridge`
+- Show toast with result: "✅ Art-Net OK — SPARKULAR L1 linked at DMX 1.001" or "⚠️ Art-Net offline — device added locally"
 
-### Step 5: Sync DMX Fixture Attributes
-**File**: `src/lib/dmxEngine.ts`
-- Import the 30+ DMX attribute definitions from the UE5 config (Pan, Tilt, Gobo, Frost, Shaper Rotation, etc.)
-- Ensure our DMX attribute system supports all fixture categories from the config
+### Step 3: Integrate Store into LiveFiringPanel
+**File**: `src/components/editor/LiveFiringPanel.tsx`
 
-## Files to Modify
+- Replace local `useState<SFXChannel[]>` with `useSfxChannelStore`
+- Keep all firing logic (ARM, CUE, PANIC) working with the shared store
+- New channels added from equipment panel appear immediately in the FX Commander device list
+
+### Step 4: Art-Net Connection Test Function
+**In the new store**: `testArtNetConnection()` sends a minimal validate request:
+
+```typescript
+const { data, error } = await supabase.functions.invoke('artnet-bridge', {
+  body: { action: 'validate', universes: [{ universe: 0, subnet: 0, net: 0, channels: [0], sequence: 0 }] }
+});
+```
+
+Returns `{ connected: boolean, latencyMs: number }` — displayed in toast on equipment add.
+
+## Files to Create/Modify
 
 | File | Change |
 |---|---|
-| `src/store/useSceneStore.ts` | Add SSR, sharpen, contact shadows settings + preset updates |
-| `src/components/editor/PostProcessing.tsx` | Add SSR pass + custom sharpening effect |
-| `src/components/editor/SceneEditorPanel.tsx` | UI controls for new effects |
-| `src/components/editor/SkyCanvas.tsx` | Add `<ContactShadows>` component |
-| `src/lib/dmxEngine.ts` | Sync DMX attribute definitions from UE5 config |
+| `src/store/useSfxChannelStore.ts` | **New** — shared SFX channel store with auto-link + Art-Net test |
+| `src/components/editor/ShowvenEquipmentPanel.tsx` | Call store on equipment add, trigger Art-Net test |
+| `src/components/editor/LiveFiringPanel.tsx` | Use shared store instead of local state |
+
+## User-Facing Behavior
+
+1. User double-clicks a Sparkular in the Equipment Panel
+2. Position appears in 3D viewport (existing)
+3. Timeline item created (existing)
+4. **NEW**: FX Commander channel auto-created with correct DMX type, auto-patched address, linked to position
+5. **NEW**: Art-Net connection test runs → toast shows "Art-Net OK" or "Art-Net offline"
+6. Opening FX Commander shows the new device immediately in the device list
 
