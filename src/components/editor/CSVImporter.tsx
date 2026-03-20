@@ -79,6 +79,18 @@ export default function CSVImporter({ open, onOpenChange, initialFile }: { open:
     reader.readAsText(file);
   }, []);
 
+  // Auto-process initialFile from drag-and-drop
+  useEffect(() => {
+    if (!initialFile || !open) return;
+    setFileName(initialFile.name);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result as string;
+      setParsed(parseCSV(text));
+    };
+    reader.readAsText(initialFile);
+  }, [initialFile, open]);
+
   const handleImport = useCallback(() => {
     for (const row of parsed) {
       addPosition({

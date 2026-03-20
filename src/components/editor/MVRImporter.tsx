@@ -53,6 +53,26 @@ export default function MVRImporter({ open, onOpenChange, initialFile }: Props) 
     }
   }, []);
 
+  // Auto-process initialFile from drag-and-drop
+  useEffect(() => {
+    if (!initialFile || !open) return;
+    const processFile = async () => {
+      setFileName(initialFile.name);
+      setLoading(true);
+      try {
+        const buffer = await initialFile.arrayBuffer();
+        const parsed = await parseMVR(buffer);
+        setResult(parsed);
+        setSelected(new Set(parsed.fixtures.map((_, i) => i)));
+      } catch (err) {
+        toast.error('Failed to parse MVR file');
+      } finally {
+        setLoading(false);
+      }
+    };
+    processFile();
+  }, [initialFile, open]);
+
   const handleImport = useCallback(() => {
     if (!result) return;
 

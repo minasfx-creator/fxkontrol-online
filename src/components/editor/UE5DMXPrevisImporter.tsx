@@ -58,6 +58,20 @@ export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }
     reader.readAsText(file);
   }, []);
 
+  // Auto-process initialFile from drag-and-drop
+  useEffect(() => {
+    if (!initialFile || !open) return;
+    setFileName(initialFile.name);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result as string;
+      const parsed = parseUE5DMXLibrary(text);
+      setResult(parsed);
+      setSelected(new Set(parsed.fixtures.map((_, i) => i)));
+    };
+    reader.readAsText(initialFile);
+  }, [initialFile, open]);
+
   const handleImport = useCallback(() => {
     if (!result) return;
 
