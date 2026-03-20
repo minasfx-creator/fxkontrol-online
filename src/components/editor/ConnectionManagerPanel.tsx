@@ -148,7 +148,9 @@ export default function ConnectionManagerPanel({ fs = false }: ConnectionManager
                   conn.connected ? "bg-green-500/20" : "bg-muted/20",
                   "w-8 h-8"
                 )}>
-                  {conn.connected ? <Wifi className="w-4 h-4 text-green-400" /> : <WifiOff className="w-4 h-4 text-muted-foreground/30" />}
+                {conn.id === 'radio'
+                  ? <Radio className={cn("w-4 h-4", conn.connected ? "text-cyan-400" : "text-muted-foreground/30")} />
+                  : conn.connected ? <Wifi className="w-4 h-4 text-green-400" /> : <WifiOff className="w-4 h-4 text-muted-foreground/30" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
