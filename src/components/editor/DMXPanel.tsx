@@ -42,6 +42,10 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
   const [showDiag, setShowDiag] = useState(true);
 
+  const addDiagLog = useCallback((log: DiagnosticLog) => {
+    setDiagLogs(prev => [log, ...prev].slice(0, 50));
+  }, []);
+
   // WebSocket Relay state
   const [relayUrl, setRelayUrl] = useState('ws://localhost:9001');
   const [relayWs, setRelayWs] = useState<WebSocket | null>(null);
