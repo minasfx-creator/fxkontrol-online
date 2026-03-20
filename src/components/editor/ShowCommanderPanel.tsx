@@ -182,7 +182,7 @@ function MasterTransport() {
           size="sm"
           variant={isPlaying ? 'destructive' : 'default'}
           className={cn("h-10 flex-1 font-bold text-xs", masterArmed && "min-h-[48px]")}
-          onClick={() => togglePlayback()}
+          onClick={() => setPlaying(!isPlaying)}
         >
           {isPlaying ? <><Pause className="w-4 h-4 mr-1" /> STOP</> : <><Play className="w-4 h-4 mr-1" /> GO</>}
         </Button>
