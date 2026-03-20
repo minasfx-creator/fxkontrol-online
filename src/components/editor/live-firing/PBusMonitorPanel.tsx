@@ -213,8 +213,31 @@ function DeviceCard({ device, onArm, onDisarm, onFire, onCueStatus, onSetBand, i
 }
 
 export default function PBusMonitorPanel() {
+  const isMobile = useIsMobile();
   const pbus = usePBusHardware();
   const deviceList = Array.from(pbus.devices.values());
+  const [estopHeld, setEstopHeld] = useState(false);
+  const estopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleEstopStart = useCallback(() => {
+    if (isMobile) {
+      estopTimer.current = setTimeout(() => {
+        pbus.emergencyStop();
+        toast.error('🔴 EMERGENCY STOP — All devices disarmed');
+        if (navigator.vibrate) navigator.vibrate([200, 50, 200]);
+        setEstopHeld(false);
+      }, 500);
+      setEstopHeld(true);
+    } else {
+      pbus.emergencyStop();
+      toast.error('🔴 EMERGENCY STOP — All devices disarmed');
+    }
+  }, [isMobile, pbus]);
+
+  const handleEstopEnd = useCallback(() => {
+    if (estopTimer.current) { clearTimeout(estopTimer.current); estopTimer.current = null; }
+    setEstopHeld(false);
+  }, []);
 
   const handleConnect = useCallback(async () => {
     try {
