@@ -264,6 +264,15 @@ const DEFAULT_SETTINGS: SceneSettings = {
   colorBrightness: 0,
   colorContrast: 0,
   colorSaturation: 0,
+
+  ssrEnabled: false,
+  ssrIntensity: 0.45,
+  ssrThickness: 10,
+  sharpenEnabled: false,
+  sharpenStrength: 0.1,
+  contactShadowsEnabled: false,
+  contactShadowsOpacity: 0.5,
+  contactShadowsBlur: 2.0,
 };
 
 export const SCENE_PRESETS: Record<string, { name: string; description: string; settings: Partial<SceneSettings> }> = {

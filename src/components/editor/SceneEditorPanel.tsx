@@ -390,6 +390,39 @@ export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
           <div className="mt-3 pt-3 border-t border-border/20 space-y-2.5">
             <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-wider">Advanced (AAA)</span>
 
+            {/* SSR — Screen Space Reflections */}
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] text-muted-foreground font-medium">Screen Space Reflections</span>
+              <Switch checked={settings.ssrEnabled} onCheckedChange={v => updateSettings({ ssrEnabled: v })} className="scale-[0.65]" />
+            </div>
+            {settings.ssrEnabled && (
+              <>
+                <SliderRow label="SSR Intensity" value={settings.ssrIntensity} onChange={v => updateSettings({ ssrIntensity: v })} />
+                <SliderRow label="SSR Thickness" value={settings.ssrThickness} onChange={v => updateSettings({ ssrThickness: v })} min={1} max={50} step={1} />
+              </>
+            )}
+
+            {/* Sharpening */}
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] text-muted-foreground font-medium">Sharpening</span>
+              <Switch checked={settings.sharpenEnabled} onCheckedChange={v => updateSettings({ sharpenEnabled: v })} className="scale-[0.65]" />
+            </div>
+            {settings.sharpenEnabled && (
+              <SliderRow label="Sharpen Strength" value={settings.sharpenStrength} onChange={v => updateSettings({ sharpenStrength: v })} max={0.5} step={0.01} />
+            )}
+
+            {/* Contact Shadows */}
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] text-muted-foreground font-medium">Contact Shadows</span>
+              <Switch checked={settings.contactShadowsEnabled} onCheckedChange={v => updateSettings({ contactShadowsEnabled: v })} className="scale-[0.65]" />
+            </div>
+            {settings.contactShadowsEnabled && (
+              <>
+                <SliderRow label="CS Opacity" value={settings.contactShadowsOpacity} onChange={v => updateSettings({ contactShadowsOpacity: v })} />
+                <SliderRow label="CS Blur" value={settings.contactShadowsBlur} onChange={v => updateSettings({ contactShadowsBlur: v })} max={5} step={0.1} />
+              </>
+            )}
+
             {/* SSAO */}
             <div className="flex items-center justify-between">
               <span className="text-[9px] text-muted-foreground font-medium">SSAO (Ambient Occlusion)</span>
