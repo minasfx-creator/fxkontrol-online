@@ -21,10 +21,13 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
   const store = useSMPTEStore();
   const { currentTime, isPlaying } = useProjectStore();
   const hardware = useFireOneHardware();
+  const pbus = usePBusHardware();
   const [startTcInput, setStartTcInput] = useState('01:00:00:00');
   const [wsUrlInput, setWsUrlInput] = useState(store.wsUrl);
   const [syncToFireOne, setSyncToFireOne] = useState(false);
+  const [syncToPBus, setSyncToPBus] = useState(false);
   const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pbusSyncRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Derive display TC
   const offsetTime = currentTime + store.startTimecodeSeconds;
