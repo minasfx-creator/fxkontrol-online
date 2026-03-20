@@ -81,6 +81,8 @@ export default function PyroFireOnePanel({
   fs, fireChannel, channels, pyroArm, dmxArm, deadmanHeld, handlePanic, artNetConnected, relayConnected,
 }: PyroFireOnePanelProps) {
   const isMobile = useIsMobile();
+  const hardware = useFireOneHardware();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [pyroMode, setPyroMode] = useState<PyroMode>('manual');
   const [modules, setModules] = useState<FieldModule[]>(() => {
     const mods: FieldModule[] = [];
