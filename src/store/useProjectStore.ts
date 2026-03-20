@@ -44,6 +44,18 @@ export interface Effect {
   secondaryColor?: string;      // Secondary color from VDL (& or w/)
   firingPattern?: string;       // Z-Shape, Fan, X-Shape, W-Shape, etc.
   impliesTrail?: boolean;       // Color implies trail (Silver, Gold, Charcoal)
+  // ── Niagara particle profile (SuperVDL fusion) ──
+  niagaraProfile?: {
+    starCount: number;
+    lifetime: number;
+    velocity: number;
+    drag: number;
+    gravityScale: number;
+    sparkleRate: number;
+    glowIntensity: number;
+    fadeProfile: 'linear' | 'exponential' | 'ember';
+  };
+  niagaraPresetId?: string;     // matched Niagara preset ID
 }
 
 export interface TimelineItem {

@@ -342,6 +342,7 @@ const ROW_PATTERNS = [
 // Calibration-aware lookups
 // ═══════════════════════════════════════════════════════════════════════
 import { interpolateCaliberData, MANUFACTURER_PROFILES, type ManufacturerProfile } from './manufacturerCalibration';
+import { NIAGARA_COLOR_PRESETS, getNiagaraPreset, autoMatchNiagaraPreset, presetToNiagaraProfile } from './niagaraColorPresets';
 
 let _activeProfile: ManufacturerProfile = MANUFACTURER_PROFILES[0];
 
