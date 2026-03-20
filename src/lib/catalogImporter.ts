@@ -12,15 +12,15 @@ import type { Effect, PartType } from '@/store/useProjectStore';
 
 // Known Finale 3D column headers (case-insensitive)
 const COLUMN_ALIASES: Record<string, string[]> = {
-  name:        ['name', 'description', 'desc', 'product', 'product_name', 'item', 'effect', 'effet'],
+  name:        ['name', 'description', 'desc', 'product', 'product_name', 'item', 'effect_name', 'effet', 'label', 'title', 'bezeichnung', 'display_description', 'product_description', 'article_description'],
   caliber:     ['caliber', 'size', 'bore', 'diameter', 'cal', 'calibre', 'size_inches', 'inch'],
   duration:    ['duration', 'dur', 'time', 'burn_time', 'effect_time', 'burn', 'display_time'],
   color:       ['color', 'colour', 'colors', 'effect_color', 'star_color', 'primary_color'],
-  type:        ['type', 'part_type', 'device_type', 'class', 'category', 'kind', 'parttype'],
+  type:        ['type', 'part_type', 'device_type', 'class', 'category', 'kind', 'parttype', 'fdb_type', 'effect_type'],
   height:      ['height', 'break_height', 'altitude', 'elevation', 'height_m', 'height_ft', 'lift_height'],
   cost:        ['cost', 'price', 'unit_price', 'unit_cost', 'retail', 'wholesale'],
   prefire:     ['prefire', 'pre_fire', 'lift_time', 'pft', 'rise_time', 'fuse_time'],
-  pattern:     ['pattern', 'burst_pattern', 'burst_type', 'effect_type', 'star_pattern'],
+  pattern:     ['pattern', 'burst_pattern', 'burst_type', 'star_pattern'],
   shotCount:   ['shots', 'shot_count', 'num_shots', 'count', 'tubes', 'num_tubes'],
   safety:      ['safety', 'safety_distance', 'nfpa_distance', 'safe_dist', 'safety_m'],
   vdl:         ['vdl', 'visual_description', 'vdl_string'],
