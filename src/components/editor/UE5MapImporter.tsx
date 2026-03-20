@@ -89,7 +89,7 @@ export default function UE5MapImporter({ open, onOpenChange, initialFile }: Prop
         addPosition({
           id: `ue5-light-${Date.now()}-${lightCount}`,
           name: `LGT-${String(lightCount + 1).padStart(3, '0')}`,
-          type: 'fixture',
+          type: 'light',
           x, y, z,
           heading: obj.transform.rotation[1] || 0,
           pitch: obj.transform.rotation[0] || 0,
