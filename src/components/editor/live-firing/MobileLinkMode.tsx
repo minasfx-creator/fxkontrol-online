@@ -185,6 +185,14 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
   const [newAddr, setNewAddr] = useState(1);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
+  // ─── Hardware Serial (FireOne) state ───
+  const fireoneRef = useRef<FireOneController>(getFireOneController());
+  const [hwConnected, setHwConnected] = useState(false);
+  const [hwModules, setHwModules] = useState<FireOneModuleStatus[]>([]);
+  const [hwEvents, setHwEvents] = useState<FireOneEvent[]>([]);
+  const [hwScanning, setHwScanning] = useState(false);
+  const [hwSimulated, setHwSimulated] = useState(false);
+
   // Persist
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(fixtures)); }, [fixtures]);
   useEffect(() => { localStorage.setItem(MODULES_KEY, JSON.stringify(modules)); }, [modules]);
