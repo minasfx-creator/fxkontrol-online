@@ -59,7 +59,7 @@ export default function GerbEffect({
     const intensity = progress < 0.03 ? Math.pow(progress / 0.03, 0.5) :
                       progress > 0.92 ? Math.pow((1 - progress) / 0.08, 2) : 1;
 
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
+    for (let i = 0; i < SCALED_PARTICLE_COUNT; i++) {
       const seed = seeds[i];
       const cycleTime = ((time * 2.5 + seed.phase) % seed.lt) / seed.lt;
 
