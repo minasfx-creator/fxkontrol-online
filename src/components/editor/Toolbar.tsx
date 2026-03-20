@@ -584,6 +584,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       <AssetMarketplaceBrowser open={marketplaceOpen} onOpenChange={setMarketplaceOpen} />
       <GMA2PatchImporter open={gma2Open} onOpenChange={setGma2Open} />
       <UE5DMXPrevisImporter open={ue5DmxOpen} onOpenChange={setUe5DmxOpen} />
+      <MVRImporter open={mvrOpen} onOpenChange={setMvrOpen} />
 
       <div className="flex-1" />
 
