@@ -2307,11 +2307,9 @@ const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflec
       }
     }
 
-    if (flashColor && flashIntensity > 0.1) {
-      u.uReflectionColor.value.copy(flashColor);
+    if (flashIntensity > 0.1) {
       u.uReflectionIntensity.value = flashIntensity;
     } else {
-      // Decay reflection
       u.uReflectionIntensity.value = Math.max(0.5, u.uReflectionIntensity.value * 0.95);
     }
   });
