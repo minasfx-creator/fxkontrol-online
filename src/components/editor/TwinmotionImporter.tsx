@@ -13,6 +13,7 @@ import Model3DPreview, { type ModelTransform } from './Model3DPreview';
 import { parseDatasmith, extractMeshLabel, type DatasmithActor, type DatasmithParseResult } from '@/lib/twinmotionParser';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
+import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { toast } from 'sonner';
 
 interface Props {
@@ -78,6 +79,7 @@ export default function TwinmotionImporter({ open, onOpenChange, initialFile }: 
 
   const addPosition = useProjectStore(s => s.addPosition);
   const addSiteModel = useSceneStore(s => s.addSiteModel);
+  const { saveToLibrary } = useMyLibrary();
 
   // ─── Datasmith XML parsing ──────────────────────────────
 
@@ -158,6 +160,8 @@ export default function TwinmotionImporter({ open, onOpenChange, initialFile }: 
         source: `Twinmotion Import: ${ext.toUpperCase()}`,
       });
       toast.success(`Modelo ${ext.toUpperCase()} importado: ${modelName} (${model3dTransform.scale.toFixed(2)}×)`);
+      // Auto-save to library
+      saveToLibrary(model3dFile, { name: modelName, source: 'twinmotion', file_format: ext });
     } else if (REFERENCE_FORMATS.includes(ext)) {
       addSiteModel({
         id: `tm-ref-${Date.now()}`,
@@ -170,9 +174,10 @@ export default function TwinmotionImporter({ open, onOpenChange, initialFile }: 
         source: `Twinmotion Ref: ${ext.toUpperCase()} (placeholder)`,
       });
       toast.info(`Arquivo ${ext.toUpperCase()} registrado como placeholder`);
+      saveToLibrary(model3dFile, { name: modelName, source: 'twinmotion', file_format: ext });
     }
     onOpenChange(false);
-  }, [model3dFile, model3dTransform, addSiteModel, onOpenChange]);
+  }, [model3dFile, model3dTransform, addSiteModel, onOpenChange, saveToLibrary]);
 
   // ─── Datasmith import ──────────────────────────────────
 

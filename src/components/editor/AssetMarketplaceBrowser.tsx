@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { Search, Store, Box, Gamepad2, FolderOpen, Download, ExternalLink, Star, Package, Filter, Loader2, X, Upload, Grid3X3, List, Tag, Eye, EyeOff, Trash2, Move, RotateCw, Maximize2 } from 'lucide-react';
+import { Search, Store, Box, Gamepad2, FolderOpen, Download, ExternalLink, Star, Package, Filter, Loader2, X, Upload, Grid3X3, List, Tag, Eye, EyeOff, Trash2, Move, RotateCw, Maximize2, FolderHeart, Clock } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { searchFab, search3DWarehouse, scanUEProjectFiles, type MarketplaceAsset, type MarketplaceSearchResult } from '@/lib/marketplaceApi';
 import { useSceneStore, type SiteModel } from '@/store/useSceneStore';
 import { supabase } from '@/integrations/supabase/client';
+import { useMyLibrary, type LibraryAsset } from '@/hooks/useMyLibrary';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -47,13 +48,15 @@ const SOURCE_CONFIG = {
 type SourceType = keyof typeof SOURCE_CONFIG;
 
 export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMarketplaceBrowserProps) {
-  const [activeSource, setActiveSource] = useState<SourceType>('fab');
+  const [activeSource, setActiveSource] = useState<SourceType | 'mylibrary'>('fab');
   const [query, setQuery] = useState('fireworks vfx');
   const [results, setResults] = useState<MarketplaceSearchResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [librarySearch, setLibrarySearch] = useState('');
   const dirInputRef = useRef<HTMLInputElement>(null);
   const siteModels = useSceneStore((s) => s.siteModels);
+  const { assets: libraryAssets, loading: libraryLoading, saveToLibrary, deleteFromLibrary, downloadAsset, fetchAssets } = useMyLibrary();
 
   const handleSearch = useCallback(async (source?: SourceType) => {
     const src = source || activeSource;
@@ -72,9 +75,13 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
   }, [activeSource, query]);
 
   const handleTabChange = (tab: string) => {
-    const src = tab as SourceType;
+    const src = tab as SourceType | 'mylibrary';
     setActiveSource(src);
-    const cfg = SOURCE_CONFIG[src];
+    if (src === 'mylibrary') {
+      fetchAssets();
+      return;
+    }
+    const cfg = SOURCE_CONFIG[src as SourceType];
     if (cfg.defaultQuery) {
       setQuery(cfg.defaultQuery);
     }
@@ -98,7 +105,6 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
     if (asset.source === '3dwarehouse') {
       const rawId = asset.id.replace('3dw-', '');
       
-      // Fallback catalog entries have short slugs, not real 3D Warehouse UUIDs
       const isRealId = rawId.length > 20 || /^[0-9a-f]{8}-/.test(rawId);
       
       if (!isRealId) {
@@ -142,6 +148,14 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
 
         useSceneStore.getState().addSiteModel(newModel);
         toast.success(`"${asset.title}" importado para o viewport`, { id: toastId });
+
+        // Auto-save to library
+        saveToLibrary(blob, {
+          name: asset.title,
+          source: '3dwarehouse',
+          file_format: 'glb',
+          thumbnail_base64: asset.thumbnail || undefined,
+        });
       } catch (err: any) {
         toast.error(`Falha ao baixar: ${err.message || 'Erro desconhecido'}`, { id: toastId });
       }
@@ -150,15 +164,17 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
         description: `Fonte: ${SOURCE_CONFIG[asset.source].label} · ${asset.fileFormats.join(', ')}`,
       });
     }
-  }, []);
+  }, [saveToLibrary]);
 
   const handleLocalGLBUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const blobUrl = URL.createObjectURL(file);
+    const modelName = file.name.replace(/\.(glb|gltf)$/i, '');
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'glb';
     const newModel: SiteModel = {
       id: `site-${Date.now()}`,
-      name: file.name.replace(/\.(glb|gltf)$/i, ''),
+      name: modelName,
       url: blobUrl,
       position: [0, 0, 0],
       rotation: [0, 0, 0],
@@ -167,8 +183,30 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
       source: 'local',
     };
     useSceneStore.getState().addSiteModel(newModel);
-    toast.success(`"${newModel.name}" carregado no viewport`);
-  }, []);
+    toast.success(`"${modelName}" carregado no viewport`);
+
+    // Auto-save to library
+    saveToLibrary(file, { name: modelName, source: 'local', file_format: ext });
+  }, [saveToLibrary]);
+
+  const handleImportFromLibrary = useCallback(async (asset: LibraryAsset) => {
+    const toastId = toast.loading(`Carregando "${asset.name}"...`);
+    const url = await downloadAsset(asset);
+    if (!url) { toast.error('Falha ao carregar', { id: toastId }); return; }
+
+    const newModel: SiteModel = {
+      id: `site-${Date.now()}`,
+      name: asset.name,
+      url,
+      position: [0, 0, 0],
+      rotation: [0, 0, 0],
+      scale: 1,
+      visible: true,
+      source: `library (${asset.source})`,
+    };
+    useSceneStore.getState().addSiteModel(newModel);
+    toast.success(`"${asset.name}" importado da biblioteca`, { id: toastId });
+  }, [downloadAsset]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -212,11 +250,21 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
                   </TabsTrigger>
                 );
               })}
+              <TabsTrigger
+                value="mylibrary"
+                className="h-8 rounded-lg text-[11px] font-semibold px-3 gap-1.5 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-none"
+              >
+                <FolderHeart className="h-3.5 w-3.5" />
+                My Library
+                {libraryAssets.length > 0 && (
+                  <Badge variant="secondary" className="text-[8px] h-4 px-1 ml-1">{libraryAssets.length}</Badge>
+                )}
+              </TabsTrigger>
             </TabsList>
           </div>
 
           {/* Search Bar */}
-          <div className="px-6 py-3 border-b border-border/10">
+          {activeSource !== 'mylibrary' && <div className="px-6 py-3 border-b border-border/10">
             {activeSource !== 'ue-project' ? (
               <div className="flex gap-2">
                 <div className="flex-1 relative">
@@ -296,12 +344,26 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
                 {loading && <Loader2 className="h-4 w-4 text-primary animate-spin" />}
               </div>
             )}
-          </div>
+          </div>}
+
+          {/* My Library search */}
+          {activeSource === 'mylibrary' && (
+            <div className="px-6 py-3 border-b border-border/10">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+                <input
+                  value={librarySearch}
+                  onChange={e => setLibrarySearch(e.target.value)}
+                  placeholder="Buscar na biblioteca..."
+                  className="w-full h-9 pl-9 pr-3 rounded-xl text-sm bg-surface-0 border border-border/30 text-foreground placeholder:text-muted-foreground/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 outline-none transition-all"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Results */}
           <ScrollArea className="flex-1 min-h-0">
             <div className="p-6">
-              {/* All tabs share the same results view */}
               <TabsContent value="fab" className="mt-0">
                 <ResultsView results={results} viewMode={viewMode} loading={loading} onImport={handleImportAsset} source="fab" />
               </TabsContent>
@@ -310,6 +372,15 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
               </TabsContent>
               <TabsContent value="ue-project" className="mt-0">
                 <ResultsView results={results} viewMode={viewMode} loading={loading} onImport={handleImportAsset} source="ue-project" />
+              </TabsContent>
+              <TabsContent value="mylibrary" className="mt-0">
+                <MyLibraryView
+                  assets={libraryAssets}
+                  loading={libraryLoading}
+                  search={librarySearch}
+                  onImport={handleImportFromLibrary}
+                  onDelete={deleteFromLibrary}
+                />
               </TabsContent>
             </div>
           </ScrollArea>
@@ -328,6 +399,118 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function MyLibraryView({
+  assets,
+  loading,
+  search,
+  onImport,
+  onDelete,
+}: {
+  assets: LibraryAsset[];
+  loading: boolean;
+  search: string;
+  onImport: (asset: LibraryAsset) => void;
+  onDelete: (id: string) => void;
+}) {
+  const filtered = search.trim()
+    ? assets.filter(a => a.name.toLowerCase().includes(search.toLowerCase()) || a.source.toLowerCase().includes(search.toLowerCase()))
+    : assets;
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-3">
+        <Loader2 className="h-8 w-8 text-primary animate-spin" />
+        <p className="text-sm text-muted-foreground">Carregando biblioteca...</p>
+      </div>
+    );
+  }
+
+  if (assets.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-primary/10">
+          <FolderHeart className="h-8 w-8 text-primary/60" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-foreground/80">Sua biblioteca está vazia</p>
+          <p className="text-xs text-muted-foreground mt-1">Importe modelos do 3D Warehouse, FAB ou upload local — eles serão salvos aqui automaticamente</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (filtered.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-3">
+        <Package className="h-8 w-8 text-muted-foreground/30" />
+        <p className="text-sm text-muted-foreground">Nenhum asset encontrado para "{search}"</p>
+      </div>
+    );
+  }
+
+  const SOURCE_COLORS: Record<string, string> = {
+    local: 'bg-emerald-500/10 text-emerald-400',
+    '3dwarehouse': 'bg-sky-500/10 text-sky-400',
+    fab: 'bg-purple-500/10 text-purple-400',
+    twinmotion: 'bg-amber-500/10 text-amber-400',
+  };
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+      {filtered.map(asset => (
+        <div
+          key={asset.id}
+          className="group rounded-2xl border border-border/15 overflow-hidden transition-all hover:border-primary/25 hover:shadow-[0_0_20px_hsl(var(--primary)/0.08)]"
+          style={{ background: 'hsl(var(--surface-1) / 0.4)' }}
+        >
+          {/* Thumbnail or placeholder */}
+          <div className="h-28 flex items-center justify-center bg-surface-0/60 relative">
+            {asset.thumbnail_base64 ? (
+              <img src={asset.thumbnail_base64} alt={asset.name} className="w-full h-full object-cover" />
+            ) : (
+              <Box className="h-10 w-10 text-muted-foreground/20" />
+            )}
+            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+              <button
+                onClick={(e) => { e.stopPropagation(); onDelete(asset.id); }}
+                className="w-6 h-6 rounded-lg bg-destructive/80 text-destructive-foreground flex items-center justify-center hover:bg-destructive transition-colors"
+                title="Remover"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+          {/* Info */}
+          <div className="p-3">
+            <p className="text-[12px] font-semibold text-foreground/90 truncate">{asset.name}</p>
+            <div className="flex items-center gap-2 mt-1.5">
+              <Badge className={cn("text-[8px] h-4 px-1.5 border-0", SOURCE_COLORS[asset.source] || 'bg-muted text-muted-foreground')}>
+                {asset.source}
+              </Badge>
+              <span className="text-[9px] text-muted-foreground/40 uppercase">.{asset.file_format}</span>
+              {asset.file_size > 0 && (
+                <span className="text-[9px] text-muted-foreground/30">{(asset.file_size / 1024 / 1024).toFixed(1)}MB</span>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 mt-1">
+              <Clock className="h-3 w-3 text-muted-foreground/30" />
+              <span className="text-[9px] text-muted-foreground/40">{new Date(asset.created_at).toLocaleDateString()}</span>
+            </div>
+            <Button
+              size="sm"
+              className="w-full mt-2.5 h-7 text-[10px] rounded-lg font-semibold"
+              onClick={() => onImport(asset)}
+            >
+              <Download className="h-3 w-3 mr-1" />
+              Importar para Viewport
+            </Button>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
