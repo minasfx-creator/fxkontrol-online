@@ -14,6 +14,7 @@ import {
 } from '@/lib/showvenPresets';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useUndoStore } from '@/store/useUndoStore';
+import { useSfxChannelStore } from '@/store/useSfxChannelStore';
 import { toast } from 'sonner';
 
 interface ShowvenEquipmentPanelProps {
