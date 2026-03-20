@@ -51,20 +51,20 @@ export default function AutoFirePanel({ fs, pyroArm, dmxArm, onFireCue }: AutoFi
   const runTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // FireOne CSV import handler
+  // Multi-format import handler (FireOne CSV, FIR, SES, Flames)
   const handleFileImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
-      const parsed = parseFireOneCSV(text);
+      const { cues: parsed, source } = autoDetectAndParse(text, file.name);
       if (parsed.length === 0) {
-        toast.error('No valid cues found in CSV');
+        toast.error('No valid cues found in file');
         return;
       }
       setCues(parsed);
-      toast.success(`Imported ${parsed.length} cues from ${file.name}`);
+      toast.success(`Imported ${parsed.length} cues from ${source} (${file.name})`);
     };
     reader.readAsText(file);
     e.target.value = '';
