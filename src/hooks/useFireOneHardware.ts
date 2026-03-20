@@ -220,9 +220,15 @@ export function useFireOneHardware() {
   }, [controller]);
 
   const fireIgniter = useCallback(async (addr: number, pin: number, durationMs = 500) => {
+    // Radio fallback
+    if (!state.isConnected && radioLink.isConnected) {
+      const frame = new Uint8Array([0x46, 0x4F, addr, 0x10, pin, (durationMs >> 8) & 0xFF, durationMs & 0xFF]);
+      await radioLink.sendFireOne(addr, frame);
+      return;
+    }
     txRef.current += 8; setState(prev => ({ ...prev, txBytes: txRef.current }));
     await controller.fireIgniter(addr, pin, durationMs);
-  }, [controller]);
+  }, [controller, state.isConnected, radioLink]);
 
   const requestContinuity = useCallback(async (addr: number) => {
     txRef.current += 5; setState(prev => ({ ...prev, txBytes: txRef.current }));
