@@ -185,6 +185,16 @@ export interface SceneSettings {
   colorBrightness: number;      // -1 to 1
   colorContrast: number;        // -1 to 1
   colorSaturation: number;      // -1 to 1
+
+  // UE5 DMXPrevis-inspired effects
+  ssrEnabled: boolean;           // Screen Space Reflections
+  ssrIntensity: number;          // 0-1
+  ssrThickness: number;          // ray thickness (1-50)
+  sharpenEnabled: boolean;       // Tonemapper.Sharpen
+  sharpenStrength: number;       // 0-1
+  contactShadowsEnabled: boolean;
+  contactShadowsOpacity: number; // 0-1
+  contactShadowsBlur: number;    // 0-5
 }
 
 const DEFAULT_SETTINGS: SceneSettings = {
