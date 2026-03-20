@@ -61,11 +61,18 @@ export default function VirtualFXButton({ fs = false }: VirtualFXButtonProps) {
     if (!unlocked) { toast.warning('Deslize para desbloquear primeiro'); return; }
     if (navigator.vibrate) navigator.vibrate(30);
     setFiring(prev => new Set(prev).add(idx));
+
+    // Route to PBUS hardware if paired and connected
+    const pair = pairing[idx];
+    if (pbus.isConnected && pair) {
+      pbus.fireCue(pair.deviceAddr, pair.cueIndex, 1500).catch(() => {});
+    }
+
     setTimeout(() => {
       setFiring(prev => { const n = new Set(prev); n.delete(idx); return n; });
     }, 1500);
-    toast.info(`CH ${idx + 1} FIRED`);
-  }, [unlocked]);
+    toast.info(`CH ${idx + 1} FIRED${pair ? ` · PBUS ${pair.deviceAddr}:${pair.cueIndex}` : ''}`);
+  }, [unlocked, pbus, pairing]);
 
   const mob = isMobile;
 
