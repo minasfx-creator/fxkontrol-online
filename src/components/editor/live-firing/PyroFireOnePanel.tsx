@@ -65,7 +65,8 @@ interface IgniterState {
   misfire: boolean;
 }
 
-function createSimModule(addr: number, connected: boolean): FieldModule {
+function createSimModule(addr: number, connected: boolean, wireless = false): FieldModule {
+  const rssi = wireless ? -(40 + Math.random() * 40) : undefined;
   return {
     address: addr,
     connected,
@@ -73,6 +74,11 @@ function createSimModule(addr: number, connected: boolean): FieldModule {
     batteryVoltage: connected ? 11.2 + Math.random() * 1.6 : 0,
     signalStrength: connected ? 60 + Math.random() * 40 : 0,
     temperature: connected ? 18 + Math.random() * 12 : 0,
+    connectionMode: wireless ? 'wireless' : 'wired',
+    rssiDbm: rssi,
+    wirelessChannel: wireless ? 1 + Math.floor(Math.random() * 16) : undefined,
+    packetLoss: wireless ? Math.floor(Math.random() * 5) : undefined,
+    linkQuality: wireless ? 80 + Math.floor(Math.random() * 20) : undefined,
     igniters: Array.from({ length: 32 }, (_, i) => ({
       position: i + 1,
       connected: connected && Math.random() > 0.15,
