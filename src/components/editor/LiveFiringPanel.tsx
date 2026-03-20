@@ -1124,10 +1124,16 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
         }}
       >
         {renderStatusBar(true)}
-        {renderArmBar(true)}
+        {!showMode && renderArmBar(true)}
         {renderCueKeys(true)}
-        {renderSceneModeBar(true)}
-        <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
+        {!showMode && renderSceneModeBar(true)}
+        {showMode ? (
+          <ScrollArea className="flex-1">
+            <MobileLinkMode fs={true} fireChannel={fireChannel} channels={channels} artNetConnected={artNetConnected} relayConnected={relayConnected} />
+          </ScrollArea>
+        ) : (
+          <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
+        )}
         {renderPanic(true)}
       </div>
     );
