@@ -127,6 +127,17 @@ export interface SceneSettings {
   filmGrain: number;
   viewTransform: ViewTransform;
   exposureCompensation: number;   // -2 to +2 EV (default 0)
+
+  // Advanced Post-Processing (AAA)
+  ssaoEnabled: boolean;
+  ssaoIntensity: number;         // 0-1
+  dofEnabled: boolean;
+  dofFocusDistance: number;      // meters
+  dofBokehScale: number;        // 0-5
+  godRaysEnabled: boolean;
+  colorBrightness: number;      // -1 to 1
+  colorContrast: number;        // -1 to 1
+  colorSaturation: number;      // -1 to 1
 }
 
 const DEFAULT_SETTINGS: SceneSettings = {
