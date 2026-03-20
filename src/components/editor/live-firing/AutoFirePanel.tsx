@@ -271,7 +271,7 @@ export default function AutoFirePanel({ fs, pyroArm, dmxArm, onFireCue }: AutoFi
         "flex items-center justify-between border-t border-border/20",
         fs ? "px-4 py-2" : "px-2 py-1"
       )} style={{ background: 'hsl(220 12% 6%)' }}>
-        <input ref={fileInputRef} type="file" accept=".csv,.fir,.sem" onChange={handleFileImport} className="hidden" />
+        <input ref={fileInputRef} type="file" accept=".csv,.fir,.sem,.ses" onChange={handleFileImport} className="hidden" />
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()} className={cn(fs ? "text-[9px] h-7" : "text-[7px] h-5")}>
             <Upload className={cn(fs ? "w-3 h-3" : "w-2.5 h-2.5", "mr-1")} /> Import CSV
