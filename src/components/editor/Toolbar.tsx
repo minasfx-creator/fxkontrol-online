@@ -334,7 +334,21 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
   const [gma2Open, setGma2Open] = useState(false);
   const [ue5DmxOpen, setUe5DmxOpen] = useState(false);
   const [mvrOpen, setMvrOpen] = useState(false);
+  const [droppedFile, setDroppedFile] = useState<{ file: File; type: 'mvr' | 'csv' | 'ue5json' } | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Listen for viewport file drop events
+  useEffect(() => {
+    const handler = (e: CustomEvent<{ file: File; type: 'mvr' | 'csv' | 'ue5json' }>) => {
+      const { file, type } = e.detail;
+      setDroppedFile({ file, type });
+      if (type === 'mvr') setMvrOpen(true);
+      else if (type === 'csv') setCsvOpen(true);
+      else if (type === 'ue5json') setUe5DmxOpen(true);
+    };
+    window.addEventListener('viewport-file-drop', handler as EventListener);
+    return () => window.removeEventListener('viewport-file-drop', handler as EventListener);
+  }, []);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
