@@ -243,11 +243,17 @@ function getFabFallbackResults(query: string, page: number, pageSize: number): M
     },
   ];
 
-  const filtered = catalog.filter(a =>
-    !lower || a.title.toLowerCase().includes(lower) ||
-    a.tags.some(t => t.includes(lower)) ||
-    a.description.toLowerCase().includes(lower)
-  );
+  const words = lower.split(/\s+/).filter(Boolean);
+  const filtered = catalog.filter(a => {
+    if (words.length === 0) return true;
+    const title = a.title.toLowerCase();
+    const desc = a.description.toLowerCase();
+    return words.some(w =>
+      title.includes(w) ||
+      a.tags.some(t => t.includes(w)) ||
+      desc.includes(w)
+    );
+  });
 
   return {
     assets: filtered.slice((page - 1) * pageSize, page * pageSize),
