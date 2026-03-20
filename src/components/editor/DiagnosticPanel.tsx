@@ -28,6 +28,7 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
   const duration = useProjectStore((s) => s.duration);
 
   const hardware = useFireOneHardware();
+  const pbusHw = usePBusHardware();
 
   const runDiagnostic = useCallback(async () => {
     setRunning(true);
