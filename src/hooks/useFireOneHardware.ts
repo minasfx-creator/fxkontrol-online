@@ -308,6 +308,8 @@ export function useFireOneHardware() {
 
   return {
     ...state,
+    isConnected: effectivelyConnected,
+    connectionPath,
     connect,
     disconnect,
     armModule,
