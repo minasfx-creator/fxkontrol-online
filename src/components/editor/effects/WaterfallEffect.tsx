@@ -117,7 +117,7 @@ export default function WaterfallEffect({
     <group position={position}>
       {/* Glowing emission wire at top */}
       <mesh position={[0, 0.05, 0]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.025, 0.025, width, 8]} />
+        <cylinderGeometry args={[0.025, 0.025, scaledWidth, 8]} />
         <meshBasicMaterial color="#FFEEAA" transparent opacity={wireOpacity} blending={THREE.AdditiveBlending} />
       </mesh>
       {/* Wire white-hot core */}
