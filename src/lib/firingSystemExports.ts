@@ -81,6 +81,15 @@ export function exportFireOne(items: TimelineItem[], positions: Position[]): str
   ).join('\n');
 }
 
+// ─── FIREONE ULTRAFIRE (Full UltraFire CSV spec) ─────────────────────
+export function exportFireOneUltraFire(items: TimelineItem[], positions: Position[]): string {
+  const cues = buildCues(items, positions, 32, 1);
+  const header = 'Row ID,Launch Time(ms),SMPTE,Module,Slat,Cue,Duration(ms),Effect,Caliber,Position,Angle,X,Y,Z,Heading,DMX Channel,DMX Value,Chain Ref';
+  return header + '\n' + cues.map(c =>
+    `${c.cue},${Math.round(c.eventTime * 1000)},${timeToSMPTE(c.eventTime)},${c.module},${c.slat},${c.pin},${Math.round(c.duration * 1000)},${c.effectName},${c.caliber},${c.posName},${c.angle},${c.x},${c.y},${c.z},${c.heading},,${c.chainRef || ''}`
+  ).join('\n');
+}
+
 // ─── PYRODIGITAL ─────────────────────────────────────────────────────
 export function exportPyrodigital(items: TimelineItem[], positions: Position[]): string {
   const cues = buildCues(items, positions, 200, 1);
