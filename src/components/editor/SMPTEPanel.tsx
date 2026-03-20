@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { X, Clock, Radio, Play, Square, RotateCcw, Zap, Volume2, VolumeX, Link2, Unlink2, Timer, Wifi, WifiOff, ArrowDownToLine, Gauge, Satellite } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useSMPTEStore, type ChaseMode } from '@/store/useSMPTEStore';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { formatTimecode, encodeTimecodeToLTC, generateMTCQuarterFrames, secondsToTimecode, type SMPTEFrameRate } from '@/lib/smpteEngine';
 
 interface SMPTEPanelProps {
@@ -17,8 +19,11 @@ interface SMPTEPanelProps {
 export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
   const store = useSMPTEStore();
   const { currentTime, isPlaying } = useProjectStore();
+  const hardware = useFireOneHardware();
   const [startTcInput, setStartTcInput] = useState('01:00:00:00');
   const [wsUrlInput, setWsUrlInput] = useState(store.wsUrl);
+  const [syncToFireOne, setSyncToFireOne] = useState(false);
+  const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Derive display TC
   const offsetTime = currentTime + store.startTimecodeSeconds;
@@ -35,6 +40,19 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
   }, [store.startTimecodeSeconds, store.frameRate]);
 
   const handleStartTcBlur = () => store.setStartTimecode(startTcInput);
+
+  // FireOne timecode sync
+  useEffect(() => {
+    if (!syncToFireOne || !hardware.isConnected || !store.running) {
+      if (syncIntervalRef.current) { clearInterval(syncIntervalRef.current); syncIntervalRef.current = null; }
+      return;
+    }
+    syncIntervalRef.current = setInterval(() => {
+      const ms = Math.round((currentTime + store.startTimecodeSeconds) * 1000);
+      hardware.syncTimecode(ms).catch(() => {});
+    }, 100); // sync every 100ms
+    return () => { if (syncIntervalRef.current) clearInterval(syncIntervalRef.current); };
+  }, [syncToFireOne, hardware.isConnected, store.running, currentTime, store.startTimecodeSeconds]);
 
   const statusColor = {
     disconnected: 'bg-muted-foreground',
@@ -191,6 +209,30 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
                   {`{"type":"transport","command":"play"|"stop"|"locate"}`}
                 </div>
               </div>
+            </div>
+          )}
+        </div>
+
+        {/* FireOne Timecode Sync */}
+        <div className={cn(
+          "rounded border p-2 space-y-1",
+          syncToFireOne && hardware.isConnected ? "bg-green-500/5 border-green-500/30" : "bg-surface-0 border-border"
+        )}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Zap className={cn("w-3.5 h-3.5", syncToFireOne && hardware.isConnected ? "text-green-400" : "text-muted-foreground")} />
+              <Label className="text-[10px] font-mono-code text-foreground font-bold">SYNC TO FIREONE</Label>
+            </div>
+            <Switch checked={syncToFireOne} onCheckedChange={setSyncToFireOne} className="scale-75" />
+          </div>
+          {syncToFireOne && (
+            <div className="flex items-center gap-1.5">
+              <div className={cn("w-2 h-2 rounded-full", hardware.isConnected ? "bg-green-400 animate-pulse" : "bg-yellow-400")} />
+              <span className="text-[9px] font-mono-code text-muted-foreground">
+                {hardware.isConnected
+                  ? `${hardware.modules.size} módulo(s) recebendo TC`
+                  : 'Hardware não conectado'}
+              </span>
             </div>
           )}
         </div>

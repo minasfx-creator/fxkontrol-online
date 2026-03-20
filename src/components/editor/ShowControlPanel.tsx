@@ -9,7 +9,7 @@ import {
   Clock, Play, Pause, Square, Upload, Shield, AlertTriangle,
   CheckCircle2, Timer, Zap, RotateCcw, Loader2, XCircle,
   Plane, ChevronRight, AlertCircle, Radio, Target,
-  Cpu, Wifi, Battery, Navigation, Lock, Unlock, Eye,
+  Cpu, Wifi, Battery, Navigation, Lock, Unlock, Eye, Usb,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,7 @@ import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useFleetStore } from '@/store/useFleetStore';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { showOrchestrator, type ShowPhase, type ShowWarning } from '@/lib/showOrchestrator';
 import type { AuthorizationScope, StartMethod } from '@/lib/flockwaveProtocol';
 import { cn } from '@/lib/utils';
@@ -176,6 +177,7 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
   const projectName = useProjectStore((s) => s.projectName);
   const positions = useProjectStore((s) => s.positions);
   const timelineItems = useProjectStore((s) => s.timelineItems);
+  const hardware = useFireOneHardware();
 
   const [authScope, setAuthScope] = useState<AuthorizationScope>('live');
   const [startMethod, setStartMethod] = useState<StartMethod>('auto');
@@ -196,6 +198,13 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
 
   const handlePreflight = useCallback(async () => {
     setBusy(true);
+    // FireOne hardware preflight checks
+    if (hardware.isConnected) {
+      toast.info(`FireOne: ${hardware.modules.size} módulos detectados`);
+      let lowBatt = 0;
+      hardware.modules.forEach(m => { if (m.batteryVoltage !== undefined && m.batteryVoltage < 11.0) lowBatt++; });
+      if (lowBatt > 0) toast.warning(`FireOne: ${lowBatt} módulo(s) com bateria baixa`);
+    }
     const ok = await showOrchestrator.startPreflight();
     setBusy(false);
     if (ok) {
@@ -204,7 +213,7 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
       if (failures.length > 0) toast.warning(`Preflight: ${failures.length} drone(s) with issues`);
       else toast.success(`Preflight passed — ${st.totalDrones} drones ready`);
     } else toast.error('Preflight failed');
-  }, []);
+  }, [hardware]);
 
   const handleUpload = useCallback(async () => {
     setBusy(true);
@@ -234,16 +243,30 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
 
   const handleAuthorize = useCallback(async () => {
     setBusy(true);
+    // Arm FireOne modules when authorizing
+    if (hardware.isConnected) {
+      try {
+        await hardware.armAll();
+        toast.info('FireOne: Todos os módulos ARMADOS');
+      } catch { toast.warning('FireOne: Falha ao armar módulos'); }
+    }
     const ok = await showOrchestrator.authorize(authScope);
     setBusy(false);
     if (ok) toast.success(`Authorized (${authScope})`);
     else toast.error('Authorization failed');
-  }, [authScope]);
+  }, [authScope, hardware]);
 
   const handleDeauthorize = useCallback(async () => {
+    // Disarm FireOne modules
+    if (hardware.isConnected) {
+      try {
+        await hardware.disarmAll();
+        toast.info('FireOne: Módulos DESARMADOS');
+      } catch {}
+    }
     await showOrchestrator.deauthorize();
     toast.warning('Show deauthorized');
-  }, []);
+  }, [hardware]);
 
   const handleCountdown = useCallback(() => {
     showOrchestrator.startCountdown(countdownTarget);
@@ -253,7 +276,14 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
   const handlePause = useCallback(async () => { await showOrchestrator.pause(); toast.warning('Show paused'); }, []);
   const handleResume = useCallback(async () => { await showOrchestrator.resume(); toast.info('Show resumed'); }, []);
   const handleLand = useCallback(async () => { await showOrchestrator.startLanding(); toast.info('Landing sequence'); }, []);
-  const handleAbort = useCallback(async () => { await showOrchestrator.abort('User emergency abort'); toast.error('🚨 EMERGENCY ABORT'); }, []);
+  const handleAbort = useCallback(async () => {
+    // FireOne emergency stop
+    if (hardware.isConnected) {
+      try { await hardware.emergencyStop(); } catch {}
+    }
+    await showOrchestrator.abort('User emergency abort');
+    toast.error('🚨 EMERGENCY ABORT');
+  }, [hardware]);
   const handleReset = useCallback(() => { showOrchestrator.reset(); toast.info('Show control reset'); }, []);
 
   // ── Derived ───────────────────────────────────────────────────
@@ -412,12 +442,13 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
       )}
 
       {/* ── Show Info Strip ──────────────────────────────── */}
-      <div className="px-3 py-2 border-b border-border/15 grid grid-cols-4 gap-1">
+      <div className="px-3 py-2 border-b border-border/15 grid grid-cols-5 gap-1">
         {[
           { label: 'Fleet', value: `${orc.totalDrones > 0 ? orc.totalDrones : uavs.size}`, icon: Cpu },
           { label: 'Slots', value: `${positions.length}`, icon: Target },
           { label: 'Duration', value: `${duration}s`, icon: Clock },
           { label: 'Cues', value: `${timelineItems.length}`, icon: Radio },
+          { label: 'FireOne', value: hardware.isConnected ? `${hardware.modules.size}` : 'SIM', icon: Zap },
         ].map(item => (
           <div key={item.label} className="flex flex-col items-center gap-0.5 py-1 rounded-lg bg-surface-1/40">
             <item.icon className="w-3 h-3 text-muted-foreground/50" />
@@ -426,6 +457,24 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
           </div>
         ))}
       </div>
+
+      {/* FireOne Hardware Status */}
+      {hardware.isConnected && (
+        <div className="px-3 py-1.5 border-b border-green-500/15 bg-green-500/5 flex items-center gap-2 text-[8px]">
+          <Zap className="w-3 h-3 text-green-400" />
+          <span className="text-green-400 font-bold">FIREONE LIVE</span>
+          <span className="text-muted-foreground">
+            {hardware.wirelessModuleCount > 0 && <><Wifi className="w-2.5 h-2.5 inline mr-0.5" />{hardware.wirelessModuleCount}W</>}
+            {hardware.wiredModuleCount > 0 && <><Usb className="w-2.5 h-2.5 inline mx-0.5" />{hardware.wiredModuleCount}C</>}
+          </span>
+          {hardware.worstRssi !== null && (
+            <span className={hardware.worstRssi > -60 ? 'text-green-400' : hardware.worstRssi > -75 ? 'text-yellow-400' : 'text-red-400'}>
+              RSSI: {hardware.worstRssi}dBm
+            </span>
+          )}
+          <span className="text-muted-foreground/50 ml-auto">TX:{hardware.txBytes}B RX:{hardware.rxBytes}B</span>
+        </div>
+      )}
 
       {/* ── FX Commander Grid — Main Actions ─────────────── */}
       <ScrollArea className="flex-1">

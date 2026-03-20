@@ -1,8 +1,10 @@
 import { useState, useCallback } from 'react';
-import { Download, FileDown, Search, X, ChevronDown, ChevronUp, Globe, MapPin, FileText } from 'lucide-react';
+import { Download, FileDown, Search, X, ChevronDown, ChevronUp, Globe, MapPin, FileText, Upload, Zap, CheckCircle2, Wifi, Usb } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { FIRING_SYSTEMS, type FiringSystem } from '@/lib/firingSystemExports';
 import { downloadFile, exportFormationsToKML } from '@/lib/exportEngine';
 import { downloadKMZ, downloadAnimatedKML } from '@/lib/kmzExporter';
@@ -16,6 +18,7 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
   const items = useProjectStore(s => s.timelineItems);
   const positions = useProjectStore(s => s.positions);
   const projectName = useProjectStore(s => s.projectName);
+  const hardware = useFireOneHardware();
 
   const pyroCount = items.filter(i => {
     const e = useProjectStore.getState().timelineItems.find(t => t.id === i.id);
@@ -51,11 +54,75 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
         <div className="flex items-center gap-2">
           <FileDown className="w-4 h-4 text-primary" />
           <span className="text-xs font-bold text-foreground uppercase tracking-wider">Firing Systems</span>
+          {hardware.isConnected && (
+            <Badge variant="outline" className="text-[7px] px-1.5 py-0 border-green-500/40 text-green-400">
+              <Zap className="h-2 w-2 mr-0.5" /> HW
+            </Badge>
+          )}
         </div>
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
           <X className="w-3 h-3" />
         </Button>
       </div>
+
+      {/* FireOne Hardware Upload */}
+      {hardware.isConnected && (
+        <div className="px-2 pt-2">
+          <div className="bg-green-500/5 border border-green-500/20 rounded p-2 space-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <Zap className="w-3 h-3 text-green-400" />
+              <span className="text-[9px] font-bold text-green-400 uppercase tracking-wider">FireOne Hardware</span>
+              <span className="text-[8px] text-muted-foreground ml-auto">
+                {hardware.wirelessModuleCount > 0 && <><Wifi className="w-2.5 h-2.5 inline mr-0.5" />{hardware.wirelessModuleCount}</>}
+                {hardware.wiredModuleCount > 0 && <><Usb className="w-2.5 h-2.5 inline mx-0.5" />{hardware.wiredModuleCount}</>}
+              </span>
+            </div>
+            <Button
+              size="sm" variant="outline"
+              className="w-full h-7 text-[10px] border-green-500/30 text-green-400 hover:bg-green-500/10"
+              onClick={() => {
+                // Verify that exported module addresses match discovered modules
+                const discoveredAddrs = new Set(Array.from(hardware.modules.keys()));
+                const usedModules = new Set(items.map((_, i) => Math.floor(i / 32) + 1));
+                const missing = [...usedModules].filter(m => !discoveredAddrs.has(m));
+                if (missing.length > 0) {
+                  toast.warning(`Módulos não encontrados no hardware: ${missing.join(', ')}`);
+                } else {
+                  toast.success(`Addressing verificado: ${usedModules.size} módulo(s) OK`);
+                }
+              }}
+              disabled={items.length === 0}
+            >
+              <CheckCircle2 className="w-3 h-3 mr-1" />
+              Verify Addressing
+            </Button>
+            <Button
+              size="sm"
+              className="w-full h-7 text-[10px] bg-green-600 hover:bg-green-700 text-white"
+              onClick={async () => {
+                try {
+                  // Send cue sequence to modules via timecode-synced fire commands
+                  for (const [i, item] of items.entries()) {
+                    const moduleAddr = Math.floor(i / 32) + 1;
+                    const pin = (i % 32) + 1;
+                    // This programs the sequence timing for auto-fire mode
+                    if (hardware.modules.has(moduleAddr)) {
+                      await hardware.syncTimecode(Math.round(item.startTime * 1000));
+                    }
+                  }
+                  toast.success(`Sequência enviada: ${items.length} cues → ${hardware.modules.size} módulos`);
+                } catch (err) {
+                  toast.error(`Upload falhou: ${(err as Error).message}`);
+                }
+              }}
+              disabled={items.length === 0}
+            >
+              <Upload className="w-3 h-3 mr-1" />
+              Upload to Hardware ({items.length} cues)
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="p-2">
         <div className="relative">

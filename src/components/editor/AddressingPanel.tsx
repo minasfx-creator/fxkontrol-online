@@ -1,12 +1,22 @@
 import { useState, useMemo } from 'react';
-import { Cpu, Lock, Unlock, Zap, Plus, Trash2, ArrowUpDown, Box, Cable } from 'lucide-react';
+import { Cpu, Lock, Unlock, Zap, Plus, Trash2, ArrowUpDown, Box, Cable, Wifi, Usb, RefreshCw, Signal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { useAddressingStore, DEFAULT_MODULE_SPECS, type AddressSortMode } from '@/store/useAddressingStore';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { useRackStore } from '@/store/useRackStore';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+
+function getRssiColor(rssi?: number): string {
+  if (rssi === undefined) return 'text-muted-foreground';
+  if (rssi > -60) return 'text-green-400';
+  if (rssi > -75) return 'text-yellow-400';
+  return 'text-red-400';
+}
 
 export default function AddressingPanel({ onClose }: { onClose: () => void }) {
   const {
@@ -17,6 +27,7 @@ export default function AddressingPanel({ onClose }: { onClose: () => void }) {
 
   const { timelineItems, positions } = useProjectStore();
   const { racks } = useRackStore();
+  const hardware = useFireOneHardware();
   const [tab, setTab] = useState<'addresses' | 'modules' | 'splitters' | 'systems'>('addresses');
 
   const activeSpec = moduleSpecs.find(m => m.id === activeModuleSpecId);
@@ -53,12 +64,23 @@ export default function AddressingPanel({ onClose }: { onClose: () => void }) {
     autoAssign(ids);
   };
 
+  const handleSyncFromHardware = () => {
+    if (!hardware.isConnected || hardware.modules.size === 0) {
+      toast.error('Conecte ao hardware FireOne primeiro');
+      return;
+    }
+    // Switch to IFMx-i32Q spec
+    setActiveModuleSpec('fireone-i32q');
+    // Auto-assign using discovered module count
+    const ids = sortedItems.map(s => s.item.id);
+    autoAssign(ids);
+    toast.success(`Sync: ${hardware.modules.size} módulos IFMx-i32Q mapeados`);
+  };
+
   const handleRackAssign = () => {
-    // Assign addresses based on rack tube order
     if (racks.length === 0) return;
     const ids = sortedItems.map(s => s.item.id);
     autoAssign(ids);
-    // Tag with rack IDs
     for (const rack of racks) {
       for (let i = 0; i < rack.tubes.length && i < ids.length; i++) {
         const existing = addresses.find(a => a.timelineItemId === ids[i]);
@@ -73,12 +95,23 @@ export default function AddressingPanel({ onClose }: { onClose: () => void }) {
   const assignedCount = addresses.length;
   const lockedCount = addresses.filter(a => a.locked).length;
 
+  // Get hardware module info for an address
+  const getHwModule = (addr?: { module: number }) => {
+    if (!addr || !hardware.isConnected) return null;
+    return hardware.modules.get(addr.module) || null;
+  };
+
   return (
     <div className="h-full flex flex-col bg-card border-l border-border">
       {/* Header */}
       <div className="px-3 py-2 border-b border-border flex items-center gap-2">
         <Cpu className="h-3.5 w-3.5 text-muted-foreground" />
         <h2 className="text-xs font-semibold text-foreground uppercase tracking-wider flex-1">Addressing</h2>
+        {hardware.isConnected && (
+          <Badge variant="outline" className="text-[7px] px-1.5 py-0 border-green-500/40 text-green-400">
+            <Signal className="h-2 w-2 mr-0.5" /> LIVE
+          </Badge>
+        )}
         <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xs">✕</button>
       </div>
 
@@ -124,6 +157,18 @@ export default function AddressingPanel({ onClose }: { onClose: () => void }) {
                   Clear
                 </Button>
               </div>
+
+              {/* FireOne Hardware Sync */}
+              {hardware.isConnected && (
+                <Button
+                  size="sm" variant="outline"
+                  className="h-6 text-[9px] gap-1 w-full border-green-500/30 text-green-400 hover:bg-green-500/10"
+                  onClick={handleSyncFromHardware}
+                >
+                  <RefreshCw className="h-3 w-3" /> Sync from Hardware ({hardware.modules.size} modules)
+                </Button>
+              )}
+
               {racks.length > 0 && (
                 <Button size="sm" variant="outline" className="h-6 text-[9px] gap-1 w-full" onClick={handleRackAssign}>
                   <Box className="h-3 w-3" /> Rack-Based Assign
@@ -134,6 +179,21 @@ export default function AddressingPanel({ onClose }: { onClose: () => void }) {
                 <span>🔒 {lockedCount} locked</span>
                 <span>{activeSpec?.name}: {totalPins} pins/module</span>
               </div>
+              {hardware.isConnected && (
+                <div className="flex items-center gap-2 text-[8px]">
+                  <span className="text-green-400">
+                    <Wifi className="h-2.5 w-2.5 inline mr-0.5" />{hardware.wirelessModuleCount} wireless
+                  </span>
+                  <span className="text-blue-400">
+                    <Usb className="h-2.5 w-2.5 inline mr-0.5" />{hardware.wiredModuleCount} wired
+                  </span>
+                  {hardware.worstRssi !== null && (
+                    <span className={getRssiColor(hardware.worstRssi)}>
+                      RSSI: {hardware.worstRssi}dBm
+                    </span>
+                  )}
+                </div>
+              )}
               <div className="flex gap-1">
                 <span className="text-[8px] text-muted-foreground leading-6">Sort:</span>
                 {(['time', 'module', 'position', 'rack'] as AddressSortMode[]).map(m => (
@@ -158,36 +218,49 @@ export default function AddressingPanel({ onClose }: { onClose: () => void }) {
                   <th className="px-1 py-0.5 text-left text-muted-foreground">P</th>
                   <th className="px-1 py-0.5 text-left text-muted-foreground">Time</th>
                   <th className="px-1 py-0.5 text-left text-muted-foreground">Effect</th>
+                  {hardware.isConnected && <th className="px-1 py-0.5 text-left text-muted-foreground">Link</th>}
                 </tr>
               </thead>
               <tbody>
-                {sortedItems.map(({ item, effect, addr }) => (
-                  <tr
-                    key={item.id}
-                    className={cn(
-                      "border-b border-border/20 hover:bg-surface-2/30",
-                      addr?.locked && "bg-warning/5"
-                    )}
-                  >
-                    <td className="px-1 py-0.5">
-                      {addr && (
-                        <button onClick={() => toggleLock(item.id)} className="text-muted-foreground hover:text-foreground">
-                          {addr.locked ? <Lock className="h-2.5 w-2.5 text-warning" /> : <Unlock className="h-2.5 w-2.5" />}
-                        </button>
+                {sortedItems.map(({ item, effect, addr }) => {
+                  const hwMod = getHwModule(addr);
+                  return (
+                    <tr
+                      key={item.id}
+                      className={cn(
+                        "border-b border-border/20 hover:bg-surface-2/30",
+                        addr?.locked && "bg-warning/5"
                       )}
-                    </td>
-                    <td className="px-1 py-0.5 text-primary">{addr?.module ?? '—'}</td>
-                    <td className="px-1 py-0.5">{addr?.slat ?? '—'}</td>
-                    <td className="px-1 py-0.5">{addr?.pin ?? '—'}</td>
-                    <td className="px-1 py-0.5 text-muted-foreground">{item.startTime.toFixed(2)}s</td>
-                    <td className="px-1 py-0.5">
-                      <div className="flex items-center gap-1">
-                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: effect.color }} />
-                        <span className="truncate max-w-[80px]">{effect.name}</span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                    >
+                      <td className="px-1 py-0.5">
+                        {addr && (
+                          <button onClick={() => toggleLock(item.id)} className="text-muted-foreground hover:text-foreground">
+                            {addr.locked ? <Lock className="h-2.5 w-2.5 text-warning" /> : <Unlock className="h-2.5 w-2.5" />}
+                          </button>
+                        )}
+                      </td>
+                      <td className="px-1 py-0.5 text-primary">{addr?.module ?? '—'}</td>
+                      <td className="px-1 py-0.5">{addr?.slat ?? '—'}</td>
+                      <td className="px-1 py-0.5">{addr?.pin ?? '—'}</td>
+                      <td className="px-1 py-0.5 text-muted-foreground">{item.startTime.toFixed(2)}s</td>
+                      <td className="px-1 py-0.5">
+                        <div className="flex items-center gap-1">
+                          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: effect.color }} />
+                          <span className="truncate max-w-[80px]">{effect.name}</span>
+                        </div>
+                      </td>
+                      {hardware.isConnected && (
+                        <td className="px-1 py-0.5">
+                          {hwMod ? (
+                            <span className={cn("text-[7px]", hwMod.connectionMode === 'wireless' ? 'text-cyan-400' : hwMod.connectionMode === 'fallback' ? 'text-yellow-400 animate-pulse' : 'text-green-400')}>
+                              {hwMod.connectionMode === 'wireless' ? <Wifi className="h-2 w-2 inline" /> : <Usb className="h-2 w-2 inline" />}
+                            </span>
+                          ) : <span className="text-muted-foreground/30">—</span>}
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
 
@@ -203,11 +276,65 @@ export default function AddressingPanel({ onClose }: { onClose: () => void }) {
         {tab === 'modules' && (
           <div className="p-2 space-y-2">
             <p className="text-[9px] text-muted-foreground mb-2">Module specifications define slat/pin layout per firing system module.</p>
+
+            {/* Hardware discovered modules */}
+            {hardware.isConnected && hardware.modules.size > 0 && (
+              <div className="mb-3">
+                <p className="text-[9px] text-green-400 font-semibold uppercase tracking-wider mb-1">
+                  🟢 Discovered Hardware ({hardware.modules.size})
+                </p>
+                {Array.from(hardware.modules.entries()).map(([addr, mod]) => (
+                  <div key={addr} className="bg-green-500/5 border border-green-500/20 rounded p-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      {mod.connectionMode === 'wireless' ? (
+                        <Wifi className="h-3 w-3 text-cyan-400" />
+                      ) : mod.connectionMode === 'fallback' ? (
+                        <Wifi className="h-3 w-3 text-yellow-400 animate-pulse" />
+                      ) : (
+                        <Usb className="h-3 w-3 text-green-400" />
+                      )}
+                      <span className="text-[10px] font-semibold text-foreground flex-1">
+                        IFMx-i32Q #{addr}
+                      </span>
+                      <Badge variant="outline" className={cn(
+                        "text-[7px] px-1 py-0",
+                        mod.connectionMode === 'wireless' ? 'border-cyan-500/40 text-cyan-400' :
+                        mod.connectionMode === 'fallback' ? 'border-yellow-500/40 text-yellow-400' :
+                        'border-green-500/40 text-green-400'
+                      )}>
+                        {(mod.connectionMode || 'wired').toUpperCase()}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1 text-[8px] text-muted-foreground">
+                      <span>32 pins</span>
+                      <span>Bat: {mod.batteryVoltage?.toFixed(1) ?? '—'}V</span>
+                      {mod.rssiDbm !== undefined && (
+                        <span className={getRssiColor(mod.rssiDbm)}>
+                          RSSI: {mod.rssiDbm}dBm
+                        </span>
+                      )}
+                    </div>
+                    {mod.serialNumber && (
+                      <div className="text-[7px] text-muted-foreground/60 mt-0.5">
+                        S/N: {mod.serialNumber} {mod.firmwareVersion ? `• FW: ${mod.firmwareVersion}` : ''}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             {moduleSpecs.map(spec => (
-              <div key={spec.id} className="bg-surface-2 rounded border border-border p-2">
+              <div key={spec.id} className={cn(
+                "bg-surface-2 rounded border border-border p-2",
+                spec.id === 'fireone-i32q' && "border-primary/30 bg-primary/5"
+              )}>
                 <div className="flex items-center gap-2 mb-1">
                   <Cable className="h-3 w-3 text-primary" />
                   <span className="text-[10px] font-semibold text-foreground flex-1">{spec.name}</span>
+                  {spec.id === 'fireone-i32q' && (
+                    <Badge variant="outline" className="text-[7px] px-1 py-0 border-primary/40 text-primary">IFMx</Badge>
+                  )}
                 </div>
                 <div className="grid grid-cols-3 gap-1 text-[8px] text-muted-foreground">
                   <span>Slats: {spec.slatCount}</span>

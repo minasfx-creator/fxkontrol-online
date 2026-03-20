@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { Lightbulb, Plus, Trash2, Send, Wifi, Activity, CheckCircle2, XCircle, Clock, Zap, Usb, Monitor } from 'lucide-react';
 import DMXMonitorGrid from './DMXMonitorGrid';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
@@ -31,11 +32,12 @@ interface DiagnosticLog {
 export default function DMXPanel({ onClose }: { onClose: () => void }) {
   const { droneFormations, currentTime } = useProjectStore();
   const { dmxDevices, sendDMXToAll, getConnectedDMXDevices } = useUSBDeviceStore();
+  const hardware = useFireOneHardware();
   const [universes, setUniverses] = useState<DMXUniverse[]>([]);
   const [keyframes, setKeyframes] = useState<DMXKeyframe[]>([]);
   const [selectedFixture, setSelectedFixture] = useState<string | null>(null);
   const [channelsPerFixture, setChannelsPerFixture] = useState(4);
-  const [outputMode, setOutputMode] = useState<'artnet' | 'usb'>('artnet');
+  const [outputMode, setOutputMode] = useState<'artnet' | 'usb' | 'fireone'>('artnet');
   const [artNetIp, setArtNetIp] = useState('192.168.15.2');
   const [artNetPort, setArtNetPort] = useState(6454);
   const [sending, setSending] = useState(false);
@@ -258,6 +260,40 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const sendFireOneDMX = async () => {
+    if (universes.length === 0 || !hardware.isConnected) {
+      toast.error(!hardware.isConnected ? 'FireOne não conectado' : 'Faça o Auto-Patch primeiro');
+      return;
+    }
+    setSending(true);
+    const t0 = performance.now();
+    try {
+      for (let i = 0; i < universes.length; i++) {
+        const u = universes[i];
+        const moduleAddr = i + 1; // universe 1 → module 1
+        await hardware.sendDmxOut(moduleAddr, 1, Array.from(u.channels.slice(0, 512)));
+        const latency = Math.round(performance.now() - t0);
+        addDiagLog({
+          timestamp: new Date(), type: 'send',
+          message: `FireOne DMX → Module ${moduleAddr} · ${u.channels.length} ch`,
+          latency,
+        });
+      }
+      setConnectionStatus('ok');
+      const latency = Math.round(performance.now() - t0);
+      toast.success(`DMX via FireOne IFMx-i32Q (${universes.length} uni)`, {
+        description: `Latência: ${latency}ms`,
+      });
+    } catch (e: any) {
+      const latency = Math.round(performance.now() - t0);
+      setConnectionStatus('error');
+      addDiagLog({ timestamp: new Date(), type: 'error', message: e.message || 'FireOne DMX error', latency });
+      toast.error(e.message || 'Erro ao enviar DMX via FireOne');
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <div className="h-full bg-surface-1 border-l border-border flex flex-col">
       <div className="flex items-center justify-between px-2 py-1.5 border-b border-border">
@@ -355,7 +391,7 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
         {/* Output Mode Selector */}
         <div className="space-y-1.5 border-t border-border/50 pt-2">
           <span className="text-[9px] text-muted-foreground font-semibold uppercase">Modo de Saída</span>
-          <div className="grid grid-cols-2 gap-1">
+          <div className="grid grid-cols-3 gap-1">
             <button
               onClick={() => setOutputMode('artnet')}
               className={`flex items-center justify-center gap-1 rounded-sm p-1.5 text-[9px] font-semibold transition-colors ${
@@ -378,7 +414,20 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
               }`}
             >
               <Usb className="h-3 w-3" />
-              USB Direct {hasUSBDMX && `(${connectedUSBDMX.length})`}
+              USB {hasUSBDMX && `(${connectedUSBDMX.length})`}
+            </button>
+            <button
+              onClick={() => setOutputMode('fireone')}
+              className={`flex items-center justify-center gap-1 rounded-sm p-1.5 text-[9px] font-semibold transition-colors ${
+                outputMode === 'fireone'
+                  ? 'bg-primary text-primary-foreground'
+                  : hardware.isConnected
+                    ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                    : 'bg-surface-2 text-muted-foreground hover:bg-surface-3'
+              }`}
+            >
+              <Zap className="h-3 w-3" />
+              FireOne {hardware.isConnected && `(${hardware.modules.size})`}
             </button>
           </div>
         </div>
@@ -495,6 +544,46 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
                 >
                   <Usb className="h-3 w-3" />
                   {sending ? 'Enviando...' : `Send USB (${connectedUSBDMX.length} device${connectedUSBDMX.length > 1 ? 's' : ''})`}
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* FireOne DMX Output */}
+        {outputMode === 'fireone' && (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <Zap className="h-3 w-3 text-green-400" />
+              <span className="text-[9px] text-muted-foreground font-semibold uppercase">FireOne IFMx-i32Q DMX</span>
+            </div>
+
+            {!hardware.isConnected ? (
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-sm p-2 text-[9px] text-yellow-400">
+                <p className="font-bold mb-0.5">⚠ FireOne não conectado</p>
+                <p>Conecte via RS-485 no painel <strong>🔥 Pyro &gt; FireOne</strong></p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-1">
+                  {Array.from(hardware.modules.entries()).map(([addr, mod]) => (
+                    <div key={addr} className="flex items-center gap-1.5 bg-green-500/5 border border-green-500/20 rounded-sm p-1.5">
+                      <div className="w-2 h-2 rounded-full bg-green-400 shrink-0" />
+                      <span className="text-[9px] text-foreground flex-1">Module #{addr}</span>
+                      <span className="text-[7px] text-muted-foreground">DMX Out</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[8px] text-muted-foreground">
+                  Universe 1 → Module 1 DMX port, Universe 2 → Module 2, etc.
+                </p>
+                <Button
+                  size="sm" className="h-6 text-[10px] w-full gap-1"
+                  onClick={sendFireOneDMX}
+                  disabled={universes.length === 0 || sending}
+                >
+                  <Zap className="h-3 w-3" />
+                  {sending ? 'Enviando...' : `Send FireOne DMX (${Math.min(universes.length, hardware.modules.size)} uni)`}
                 </Button>
               </>
             )}
