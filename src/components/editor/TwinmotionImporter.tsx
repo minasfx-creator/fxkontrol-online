@@ -9,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Upload, Box, Lightbulb, Camera, Layers, Mountain, FileUp, Building2, Cuboid, Check, X, ExternalLink, Palette, Route } from 'lucide-react';
-import Model3DPreview from './Model3DPreview';
+import Model3DPreview, { type ModelTransform } from './Model3DPreview';
 import { parseDatasmith, extractMeshLabel, type DatasmithActor, type DatasmithParseResult } from '@/lib/twinmotionParser';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
@@ -72,6 +72,7 @@ export default function TwinmotionImporter({ open, onOpenChange, initialFile }: 
   const [pastedText, setPastedText] = useState('');
   const [model3dFile, setModel3dFile] = useState<File | null>(null);
   const [model3dStatus, setModel3dStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [model3dTransform, setModel3dTransform] = useState<ModelTransform>({ scale: 1, rotationY: 0 });
   const fileRef = useRef<HTMLInputElement>(null);
   const model3dRef = useRef<HTMLInputElement>(null);
 
@@ -126,43 +127,52 @@ export default function TwinmotionImporter({ open, onOpenChange, initialFile }: 
   const handleModel3dUpload = useCallback((file: File) => {
     const ext = getFileExt(file.name);
     setModel3dFile(file);
+    setModel3dTransform({ scale: 1, rotationY: 0 });
 
     if (LOADABLE_FORMATS.includes(ext)) {
-      setModel3dStatus('loading');
-      const url = URL.createObjectURL(file);
-      const modelName = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+      setModel3dStatus('done');
+    } else if (REFERENCE_FORMATS.includes(ext)) {
+      setModel3dStatus('done');
+    } else {
+      setModel3dStatus('error');
+      toast.error(`Formato .${ext} não suportado`);
+    }
+  }, []);
 
+  const handleConfirmModel3d = useCallback(() => {
+    if (!model3dFile) return;
+    const ext = getFileExt(model3dFile.name);
+    const modelName = model3dFile.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+    const rotRad = model3dTransform.rotationY * Math.PI / 180;
+
+    if (LOADABLE_FORMATS.includes(ext)) {
+      const url = URL.createObjectURL(model3dFile);
       addSiteModel({
         id: `tm-3d-${Date.now()}`,
         name: modelName,
         url,
         position: [0, 0, 0],
-        rotation: [0, 0, 0],
-        scale: 1,
+        rotation: [0, rotRad, 0],
+        scale: model3dTransform.scale,
         visible: true,
         source: `Twinmotion Import: ${ext.toUpperCase()}`,
       });
-
-      setModel3dStatus('done');
-      toast.success(`Modelo ${ext.toUpperCase()} importado: ${modelName}`);
+      toast.success(`Modelo ${ext.toUpperCase()} importado: ${modelName} (${model3dTransform.scale.toFixed(2)}×)`);
     } else if (REFERENCE_FORMATS.includes(ext)) {
-      setModel3dStatus('done');
       addSiteModel({
         id: `tm-ref-${Date.now()}`,
-        name: file.name.replace(/\.[^.]+$/, ''),
+        name: model3dFile.name.replace(/\.[^.]+$/, ''),
         url: '',
         position: [0, 0, 0],
-        rotation: [0, 0, 0],
-        scale: 1,
+        rotation: [0, rotRad, 0],
+        scale: model3dTransform.scale,
         visible: true,
         source: `Twinmotion Ref: ${ext.toUpperCase()} (placeholder)`,
       });
-      toast.info(`Arquivo ${ext.toUpperCase()} registrado como placeholder — formato não renderizável no browser`);
-    } else {
-      setModel3dStatus('error');
-      toast.error(`Formato .${ext} não suportado`);
+      toast.info(`Arquivo ${ext.toUpperCase()} registrado como placeholder`);
     }
-  }, [addSiteModel]);
+    onOpenChange(false);
+  }, [model3dFile, model3dTransform, addSiteModel, onOpenChange]);
 
   // ─── Datasmith import ──────────────────────────────────
 
@@ -425,16 +435,19 @@ export default function TwinmotionImporter({ open, onOpenChange, initialFile }: 
             )}
 
             {model3dFile && model3dStatus === 'done' && (
-              <Model3DPreview file={model3dFile} />
+              <Model3DPreview
+                file={model3dFile}
+                transform={model3dTransform}
+                onTransformChange={setModel3dTransform}
+              />
             )}
 
-            <div className="p-3 rounded-lg bg-muted/10 border border-border/10">
-              <p className="text-[10px] text-muted-foreground leading-relaxed">
-                <strong>Formatos renderizáveis</strong> (FBX, OBJ, glTF, GLB) são carregados diretamente no viewport 3D.
-                <strong> Formatos de referência</strong> (SketchUp, IFC, 3DS, etc.) são registrados como placeholder posicionado — 
-                exporte do software original como FBX ou glTF para visualização completa.
-              </p>
-            </div>
+            {model3dFile && model3dStatus === 'done' && (
+              <Button className="w-full" onClick={handleConfirmModel3d}>
+                <FileUp className="w-4 h-4 mr-2" />
+                Importar Modelo ({model3dTransform.scale.toFixed(2)}×, {model3dTransform.rotationY}°)
+              </Button>
+            )}
           </TabsContent>
 
           {/* ═══ Tab 3: Compatibilidade ═══ */}
