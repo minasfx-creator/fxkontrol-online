@@ -1,8 +1,20 @@
-import React, { Suspense, useMemo, useRef, useCallback, useEffect } from 'react';
+import React, { Suspense, useMemo, useRef, useCallback, useEffect, Component, type ReactNode } from 'react';
 import { useGLTF, TransformControls } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useSceneStore, type SiteModel } from '@/store/useSceneStore';
+
+class ModelErrorBoundary extends Component<{ children: ReactNode; modelName: string }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(err: Error) { console.warn(`[SiteModel] Failed to load "${this.props.modelName}":`, err.message); }
+  render() { return this.state.hasError ? null : this.props.children; }
+}
+
+function isValidModelUrl(url: string | undefined | null): url is string {
+  if (!url || typeof url !== 'string' || url.trim() === '') return false;
+  return url.startsWith('blob:') || url.startsWith('http') || url.startsWith('/');
+}
 
 function LoadedModel({ model, isSelected }: { model: SiteModel; isSelected: boolean }) {
   const { scene } = useGLTF(model.url);
@@ -28,7 +40,6 @@ function LoadedModel({ model, isSelected }: { model: SiteModel; isSelected: bool
     return c;
   }, [scene]);
 
-  // Sync transform back to store on gizmo change
   const handleObjectChange = useCallback(() => {
     if (!groupRef.current) return;
     const pos = groupRef.current.position;
@@ -45,7 +56,6 @@ function LoadedModel({ model, isSelected }: { model: SiteModel; isSelected: bool
     });
   }, [model.id, updateSiteModel]);
 
-  // Disable orbit controls while dragging gizmo
   useEffect(() => {
     if (!isSelected || !transformRef.current) return;
     const controls = transformRef.current;
@@ -100,8 +110,10 @@ export default function SiteModelRenderer() {
 
   return (
     <Suspense fallback={null}>
-      {siteModels.map((model) => (
-        <LoadedModel key={model.id} model={model} isSelected={model.id === selectedId} />
+      {siteModels.filter((m) => isValidModelUrl(m.url)).map((model) => (
+        <ModelErrorBoundary key={model.id} modelName={model.name}>
+          <LoadedModel model={model} isSelected={model.id === selectedId} />
+        </ModelErrorBoundary>
       ))}
     </Suspense>
   );

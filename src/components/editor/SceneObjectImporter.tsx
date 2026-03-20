@@ -45,6 +45,7 @@ export default function SceneObjectImporter({ open, onOpenChange }: SceneObjectI
     toast.success(`"${name || file.name}" adicionado à cena`);
     onOpenChange(false);
     setFile(null);
+    // Don't revoke objectUrl here — the scene store still references it for rendering
     setObjectUrl(null);
     setName('');
     setScale(1);
