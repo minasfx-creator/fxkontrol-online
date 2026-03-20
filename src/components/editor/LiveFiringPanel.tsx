@@ -812,14 +812,18 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
       {/* Mode tabs — horizontally scrollable on mobile */}
       <div className={cn("flex overflow-x-auto scrollbar-thin scrollbar-thumb-border/30 scrollbar-track-transparent", fs && mob ? "w-full pb-1" : fs ? "pr-3 gap-0.5" : "pr-1")}>
         {([
+          // DMX modes
           { key: 'super_dmx' as FXCMode, label: 'Super' },
           { key: 'simple_dmx' as FXCMode, label: 'Simple' },
           { key: 'manual_fire' as FXCMode, label: 'Manual' },
+          // Fire modes
           { key: 'pyro_fire' as FXCMode, label: '🔥 Pyro' },
           { key: 'auto_fire' as FXCMode, label: 'Auto' },
           { key: 'check_slave' as FXCMode, label: 'Check' },
+          // Hardware
           { key: 'controllers' as FXCMode, label: '🎛 HW' },
           { key: 'pbus' as FXCMode, label: '📡 PBUS' },
+          { key: 'ma3' as FXCMode, label: '🎛 MA3' },
           { key: 'field_map' as FXCMode, label: '🗺 Map' },
           { key: 'connections' as FXCMode, label: '🔌 Conn' },
           { key: 'mobile_link' as FXCMode, label: '📡 Link' },
