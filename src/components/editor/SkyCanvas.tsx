@@ -1969,7 +1969,9 @@ const DebugFeed = React.forwardRef<THREE.Group, {}>(function DebugFeed(_props, _
       const origin = new THREE.Vector3(0, 100, 0);
       const dist = Math.round(camera.position.distanceTo(origin));
       const lod = calculateLOD(camera.position, origin);
-      setDebugLOD(lod.tier, dist);
+      // ═══ Adaptive LOD: feed FPS into auto-scaling ═══
+      const adaptiveTier = updateAdaptiveLOD(fps);
+      setDebugLOD(adaptiveTier, dist);
     }
   });
   return null;
