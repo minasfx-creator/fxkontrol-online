@@ -80,8 +80,18 @@ export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }
       .map(idx => result.fixtures[idx])
       .filter(Boolean) as UE5DMXFixture[];
 
-    // Add positions to viewport
-    for (const f of selectedFixtures) {
+    // Compute spatial layout based on fixture categories
+    const layout = computeFixtureLayout(selectedFixtures.map(f => ({
+      name: f.name,
+      category: f.category,
+      universe: f.universe,
+      startChannel: f.startChannel,
+    })));
+
+    // Add positions to viewport with auto-layout coordinates
+    for (let i = 0; i < selectedFixtures.length; i++) {
+      const f = selectedFixtures[i];
+      const pos = layout[i];
       const posId = `ue5-${f.universe}-${f.startChannel}-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
       const posType = f.category === 'sfx' ? 'pyro' as const : f.category === 'drone' ? 'drone-pad' as const : 'light' as const;
 
@@ -89,9 +99,9 @@ export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }
         id: posId,
         name: f.name,
         type: posType,
-        x: 0,
-        y: 0,
-        z: 0,
+        x: pos.x,
+        y: pos.y,
+        z: pos.z,
         heading: 0,
         pitch: 0,
         roll: 0,
