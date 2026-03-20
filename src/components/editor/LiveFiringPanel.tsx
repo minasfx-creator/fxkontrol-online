@@ -218,6 +218,8 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const [batteryVoltage] = useState(11.82);
   const [relayConnected, setRelayConnected] = useState(false);
   const [relayUrl, setRelayUrl] = useState('ws://localhost:9001');
+  const [showMode, setShowMode] = useState(false);
+  const showModeTapRef = useRef<number>(0);
   const sequenceRef = useRef(0);
   const fireTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const relayWs = useRef<WebSocket | null>(null);
@@ -581,12 +583,25 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const renderStatusBar = (fs: boolean) => (
     <div className={cn("flex items-center justify-between border-b-2", fs && mob ? "px-3 py-2" : fs ? "px-6 py-3" : "px-2 py-1.5")} style={{ borderColor: 'hsl(220 10% 15%)', background: 'hsl(220 15% 8%)' }}>
       <div className="flex items-center gap-2">
-        <div className={cn("rounded bg-gradient-to-b from-amber-500 to-amber-700 flex items-center justify-center", fs && mob ? "w-6 h-6" : fs ? "w-8 h-8" : "w-5 h-5")}>
+        <div className={cn("rounded bg-gradient-to-b from-amber-500 to-amber-700 flex items-center justify-center cursor-pointer", fs && mob ? "w-6 h-6" : fs ? "w-8 h-8" : "w-5 h-5")}
+          onClick={() => {
+            const now = Date.now();
+            if (now - showModeTapRef.current < 400) {
+              setShowMode(prev => !prev);
+              if (navigator.vibrate) navigator.vibrate(showMode ? [30] : [50, 30, 50]);
+              toast.info(showMode ? '🔓 Show Mode OFF' : '🔒 SHOW MODE — Live Operation', { duration: 2000 });
+              showModeTapRef.current = 0;
+            } else {
+              showModeTapRef.current = now;
+            }
+          }}>
           <Zap className={cn(fs && mob ? "w-3.5 h-3.5" : fs ? "w-5 h-5" : "w-3 h-3", "text-black")} />
         </div>
         <div>
           <div className={cn("font-black text-foreground tracking-[0.12em]", fs && mob ? "text-xs" : fs ? "text-base" : "text-[10px]")}>FXcommander™</div>
-          <div className={cn("font-mono text-muted-foreground/40 tracking-wider", fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[6px]")}>SHOWVEN® · V2.0</div>
+          <div className={cn("font-mono tracking-wider", fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[6px]", showMode ? "text-red-400/60" : "text-muted-foreground/40")}>
+            {showMode ? '● SHOW MODE' : 'SHOWVEN® · V2.0'}
+          </div>
         </div>
       </div>
       <div className="flex items-center gap-2">
@@ -1109,10 +1124,16 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
         }}
       >
         {renderStatusBar(true)}
-        {renderArmBar(true)}
+        {!showMode && renderArmBar(true)}
         {renderCueKeys(true)}
-        {renderSceneModeBar(true)}
-        <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
+        {!showMode && renderSceneModeBar(true)}
+        {showMode ? (
+          <ScrollArea className="flex-1">
+            <MobileLinkMode fs={true} fireChannel={fireChannel} channels={channels} artNetConnected={artNetConnected} relayConnected={relayConnected} />
+          </ScrollArea>
+        ) : (
+          <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
+        )}
         {renderPanic(true)}
       </div>
     );
@@ -1128,10 +1149,16 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
       <div {...swipeProps} className="fixed inset-0 z-[9999] flex flex-col select-none pb-[env(safe-area-inset-bottom)]"
         style={{ background: 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 4%) 100%)' }}>
         {renderStatusBar(true)}
-        {renderArmBar(true)}
+        {!showMode && renderArmBar(true)}
         {renderCueKeys(true)}
-        {renderSceneModeBar(true)}
-        <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
+        {!showMode && renderSceneModeBar(true)}
+        {showMode ? (
+          <ScrollArea className="flex-1">
+            <MobileLinkMode fs={true} fireChannel={fireChannel} channels={channels} artNetConnected={artNetConnected} relayConnected={relayConnected} />
+          </ScrollArea>
+        ) : (
+          <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
+        )}
         {renderPanic(true)}
       </div>
     );
