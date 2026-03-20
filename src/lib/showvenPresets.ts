@@ -4,14 +4,14 @@
  * Used to constrain SFX rendering to physical equipment limits.
  */
 
-export type ShowvenCategory = 'flamer' | 'sparkular' | 'cryo' | 'confetti' | 'fog' | 'controller' | 'remote' | 'flyingDisplay';
+export type ShowvenCategory = 'flamer' | 'sparkular' | 'cryo' | 'confetti' | 'fog' | 'controller' | 'remote' | 'flyingDisplay' | 'laser' | 'infrastructure';
 
 export interface ShowvenFlamerPreset {
   id: string;
   name: string;
   maxHeightM: number;
   nozzles: number;
-  colorCount: number;      // 0 = no color, 5 = RGBWY
+  colorCount: number;
   fuelCapacityL: number;
   burnTimeMin: number;
   dmxChannels: number;
@@ -40,7 +40,7 @@ export interface ShowvenFogPreset {
   fluidCapacityL: number;
   heaterWatts: number;
   weightKg: number;
-  dimensionsMM: [number, number, number]; // W x D x H
+  dimensionsMM: [number, number, number];
   dmxChannels: number;
   description: string;
 }
@@ -60,7 +60,39 @@ export interface ShowvenControllerPreset {
   id: string;
   name: string;
   channels: number;
-  type: 'wired' | 'wireless' | 'dmx_relay';
+  type: 'wired' | 'wireless' | 'dmx_relay' | 'dmx_console' | 'host_controller';
+  protocol: string;
+  wirelessRangeM?: number;
+  wiredRangeM?: number;
+  dualBand?: boolean;
+  supportLTC?: boolean;
+  description: string;
+}
+
+export interface ShowvenLaserPreset {
+  id: string;
+  name: string;
+  outputW: number;
+  wavelengthRGB: [number, number, number]; // nm
+  scanningAngleDeg: number;
+  scanRateKpps: number;
+  beamDivergenceMrad: number;
+  weightKg: number;
+  ipRating: string;
+  laserClass: 4;
+  controlInterfaces: string[];  // DMX, ILDA, Ethernet, FB4, SD, Sound
+  dmxChannels: number;
+  description: string;
+}
+
+export interface ShowvenInfrastructurePreset {
+  id: string;
+  name: string;
+  type: 'dmx_splitter' | 'dmx_relay' | 'power_distro' | 'adaptor';
+  outputs: number;
+  dmxChannels: number;
+  hasEStop: boolean;
+  weightKg: number;
   protocol: string;
   description: string;
 }
@@ -157,15 +189,85 @@ export const SHOWVEN_CONFETTI: ShowvenConfettiPreset[] = [
   },
 ];
 
-// ── Controllers ─────────────────────────────────────────────────────
+// ── Controllers & Remotes ───────────────────────────────────────────
 
 export const SHOWVEN_CONTROLLERS: ShowvenControllerPreset[] = [
-  { id: 'pyroslave_x4', name: 'PyroSlave X4', channels: 4, type: 'wired', protocol: 'E-match', description: '4-channel pyro firing module' },
-  { id: 'pyroslave_c16', name: 'PyroSlave C16', channels: 16, type: 'wired', protocol: 'E-match', description: '16-channel pyro firing module' },
-  { id: 'fxmote', name: 'FXmote', channels: 8, type: 'wireless', protocol: 'RF 433MHz', description: 'Wireless SFX remote control' },
-  { id: 'pyromote', name: 'PyroMote', channels: 12, type: 'wireless', protocol: 'RF 868MHz', description: 'Long-range pyro wireless controller' },
-  { id: 'fxbutton', name: 'FXbutton', channels: 1, type: 'wireless', protocol: 'RF', description: 'Single-button wireless trigger' },
-  { id: 'dmx_relay_r12', name: 'DMX Relay R12', channels: 12, type: 'dmx_relay', protocol: 'DMX512', description: '12-channel DMX relay switch' },
+  {
+    id: 'pyroslave_x4', name: 'PyroSlave X4', channels: 4, type: 'wired', protocol: 'PBUS',
+    wiredRangeM: 2000,
+    description: '4-channel pyro firing module — wired PBUS',
+  },
+  {
+    id: 'pyroslave_c16', name: 'PyroSlave C16', channels: 16, type: 'wireless', protocol: 'PBUS + Dual-band RF',
+    wirelessRangeM: 600, wiredRangeM: 2000, dualBand: true,
+    description: '16-cue firing module — dual-band wireless (433M/868M) + wired PBUS, quickplug & clamp connectors',
+  },
+  {
+    id: 'pyromote', name: 'PyroMote', channels: 256, type: 'wireless', protocol: 'Dual-band RF 433M/868M',
+    wirelessRangeM: 600, dualBand: true, supportLTC: true,
+    description: 'Handheld firing controller — 5" touch screen, LTC timecode, manual/auto fire, audio sync',
+  },
+  {
+    id: 'fxbutton', name: 'FXbutton', channels: 36, type: 'dmx_console', protocol: 'DMX512',
+    description: 'Compact DMX console — rotary encoder, 5 preset firing modes, battery powered, 3/5-pin XLR',
+  },
+  {
+    id: 'zk6200', name: 'ZK6200 Host Controller', channels: 18, type: 'host_controller', protocol: 'DMX512 + CAN + MIDI + LAN',
+    description: 'Sparkular/Flamer host controller — 18 units, RDMX feedback, audio/MIDI trigger, SparkularEdit200',
+  },
+  {
+    id: 'zk6300', name: 'ZK6300 Host Controller Pro', channels: 54, type: 'host_controller', protocol: 'DMX512 + CAN + MIDI + LAN',
+    description: 'Pro host controller — 54 units, 8 files × 36000 lines, multi-controller LAN sync',
+  },
+  {
+    id: 'fxmote', name: 'FXmote', channels: 8, type: 'wireless', protocol: 'RF 433MHz',
+    wirelessRangeM: 300,
+    description: 'Wireless SFX remote control — 8 channels',
+  },
+];
+
+// ── Lasers (Maiman Series) ──────────────────────────────────────────
+
+export const SHOWVEN_LASERS: ShowvenLaserPreset[] = [
+  {
+    id: 'maiman_30', name: 'Maiman 30W', outputW: 30,
+    wavelengthRGB: [638, 520, 445], scanningAngleDeg: 30, scanRateKpps: 35,
+    beamDivergenceMrad: 1.2, weightKg: 27, ipRating: 'IP65', laserClass: 4,
+    controlInterfaces: ['FB4', 'DMX', 'ILDA', 'Ethernet', 'SD', 'Sound'],
+    dmxChannels: 12,
+    description: 'Full-colour RGB laser — 30W, ±30° scan, 35Kpps, TEC cooling, IP65',
+  },
+  {
+    id: 'maiman_40', name: 'Maiman 40W', outputW: 40,
+    wavelengthRGB: [638, 520, 445], scanningAngleDeg: 25, scanRateKpps: 30,
+    beamDivergenceMrad: 1.2, weightKg: 29, ipRating: 'IP65', laserClass: 4,
+    controlInterfaces: ['FB4', 'DMX', 'ILDA', 'Ethernet', 'SD', 'Sound'],
+    dmxChannels: 12,
+    description: 'Full-colour RGB laser — 40W, ±25° scan, 30Kpps, TEC cooling, IP65',
+  },
+  {
+    id: 'maiman_60', name: 'Maiman 60W', outputW: 60,
+    wavelengthRGB: [638, 520, 445], scanningAngleDeg: 20, scanRateKpps: 25,
+    beamDivergenceMrad: 1.5, weightKg: 50, ipRating: 'IP65', laserClass: 4,
+    controlInterfaces: ['FB4', 'DMX', 'ILDA', 'Ethernet', 'SD', 'Sound'],
+    dmxChannels: 12,
+    description: 'Full-colour RGB laser — 60W, ±20° scan, 25Kpps, TEC cooling, IP65, dual-layer housing',
+  },
+];
+
+// ── Infrastructure (Splitters, Relays, Adaptors) ────────────────────
+
+export const SHOWVEN_INFRASTRUCTURE: ShowvenInfrastructurePreset[] = [
+  {
+    id: 'dmx_splitter_8', name: 'DMX Splitter 8', type: 'dmx_splitter', outputs: 8,
+    dmxChannels: 0, hasEStop: true, weightKg: 2.8, protocol: 'DMX512',
+    description: '8-output DMX splitter — bidirectional with SHOWVEN devices, 1000V isolation, Neutrik connectors',
+  },
+  {
+    id: 'dmx_relay_r12', name: 'DMX Relay R12', type: 'dmx_relay', outputs: 12,
+    dmxChannels: 12, hasEStop: true, weightKg: 7, protocol: 'DMX512',
+    description: '12-channel DMX relay — converts DMX to AC voltage output (10A/ch), for CO2 jets, confetti blasters',
+  },
 ];
 
 // ── Flying Displays (Filmbase) ──────────────────────────────────────
@@ -177,8 +279,8 @@ export interface ShowvenFlyingDisplayPreset {
   heightM: number;
   weightKg: number;
   pixelPitch: string;
-  transparency: number;   // percent
-  weightPerSqM: number;   // g/m²
+  transparency: number;
+  weightPerSqM: number;
   resolution: string;
   dmxChannels: number;
   description: string;
@@ -216,6 +318,14 @@ export function getFogPreset(id: string): ShowvenFogPreset | undefined {
   return SHOWVEN_FOG.find(f => f.id === id);
 }
 
+export function getLaserPreset(id: string): ShowvenLaserPreset | undefined {
+  return SHOWVEN_LASERS.find(l => l.id === id);
+}
+
+export function getInfrastructurePreset(id: string): ShowvenInfrastructurePreset | undefined {
+  return SHOWVEN_INFRASTRUCTURE.find(i => i.id === id);
+}
+
 export function getAllShowvenEquipment() {
   return {
     flamers: SHOWVEN_FLAMERS,
@@ -223,6 +333,8 @@ export function getAllShowvenEquipment() {
     fog: SHOWVEN_FOG,
     confetti: SHOWVEN_CONFETTI,
     controllers: SHOWVEN_CONTROLLERS,
+    lasers: SHOWVEN_LASERS,
+    infrastructure: SHOWVEN_INFRASTRUCTURE,
     flyingDisplays: SHOWVEN_FLYING_DISPLAYS,
   };
 }
@@ -230,11 +342,11 @@ export function getAllShowvenEquipment() {
 // ── Showven → Effect Pipeline Mapper ────────────────────────────────
 
 export interface ShowvenEffectConfig {
-  effectType: string;        // maps to PyroEffectType
-  duration: number;          // seconds
-  height: number;            // meters
-  spread: number;            // degrees
-  presetId: string;          // original showven preset id
+  effectType: string;
+  duration: number;
+  height: number;
+  spread: number;
+  presetId: string;
   category: ShowvenCategory;
   dmxChannels: number;
   colorMode: 'none' | 'single' | 'multi';
@@ -294,6 +406,20 @@ export function showvenToEffect(presetId: string, category: ShowvenCategory): Sh
       presetId: c.id,
       category,
       dmxChannels: c.dmxChannels,
+      colorMode: 'multi',
+    };
+  }
+  if (category === 'laser') {
+    const l = getLaserPreset(presetId);
+    if (!l) return null;
+    return {
+      effectType: 'laser',
+      duration: 60,
+      height: 0,
+      spread: l.scanningAngleDeg * 2,
+      presetId: l.id,
+      category,
+      dmxChannels: l.dmxChannels,
       colorMode: 'multi',
     };
   }

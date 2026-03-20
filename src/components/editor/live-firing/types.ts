@@ -25,7 +25,7 @@ export interface SFXChannel {
   manufacturer?: string;
 }
 
-export type SFXType = 'co2' | 'flame' | 'confetti' | 'streamer' | 'cryo' | 'haze' | 'spark' | 'custom' | 'fog' | 'snow' | 'bubble';
+export type SFXType = 'co2' | 'flame' | 'confetti' | 'streamer' | 'cryo' | 'haze' | 'spark' | 'custom' | 'fog' | 'snow' | 'bubble' | 'laser';
 
 export interface CueEntry {
   id: string;

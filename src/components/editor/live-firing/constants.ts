@@ -2,7 +2,7 @@
  * FXcommander™ — Constants and preset data
  */
 import {
-  Flame, Wind, Sparkles, Zap, Lightbulb, Snowflake, CloudRain,
+  Flame, Wind, Sparkles, Zap, Lightbulb, Snowflake, CloudRain, Crosshair,
   type LucideIcon,
 } from 'lucide-react';
 import type { SFXType, SFXChannel, FiringRule, DeviceLibEntry, FXCSettings } from './types';
@@ -26,6 +26,7 @@ export const SFX_TYPES: { key: SFXType; label: string; icon: LucideIcon; color: 
   { key: 'fog', label: 'FOG', icon: CloudRain, color: '#AAAAAA', defaultChannels: 2, defaultDuration: 3000 },
   { key: 'snow', label: 'SNOW', icon: Snowflake, color: '#E0F0FF', defaultChannels: 2, defaultDuration: 5000 },
   { key: 'bubble', label: 'BUBBLE', icon: Wind, color: '#88CCFF', defaultChannels: 2, defaultDuration: 5000 },
+  { key: 'laser', label: 'LASER', icon: Crosshair, color: '#00FF44', defaultChannels: 12, defaultDuration: 5000 },
   { key: 'custom', label: 'DMX', icon: Lightbulb, color: '#00DDFF', defaultChannels: 2, defaultDuration: 1000 },
 ];
 
@@ -96,6 +97,72 @@ export const SHOWVEN_LIBRARY: DeviceLibEntry[] = [
     effects: [
       { id: 'eff-conf-full', name: 'FULL BLAST', description: 'Maximum output', duration: 2.0, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }] },
       { id: 'eff-conf-low', name: 'LOW OUTPUT', description: 'Gentle confetti', duration: 3.0, channelValues: [{ channel: 1, value: 128 }, { channel: 2, value: 255 }] },
+    ],
+  },
+  // ── Maiman Laser Series ──
+  {
+    id: 'lib-maiman-30', name: 'MAIMAN 30W LASER', manufacturer: 'SHOWVEN', dmxChannels: 12, category: 'showven',
+    effects: [
+      { id: 'eff-laser-beam', name: 'BEAM', description: 'Single beam output', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }, { channel: 3, value: 255 }] },
+      { id: 'eff-laser-fan', name: 'FAN', description: 'Fan beam pattern', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 4, value: 128 }] },
+      { id: 'eff-laser-anim', name: 'ANIMATION', description: 'Animated pattern from SD/FB4', duration: 10.0, channelValues: [{ channel: 1, value: 255 }, { channel: 5, value: 200 }] },
+      { id: 'eff-laser-scan', name: 'SCAN', description: 'Scanner mode', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 6, value: 180 }] },
+    ],
+    safetyChannel: 1, safetyValue: 0,
+  },
+  {
+    id: 'lib-maiman-40', name: 'MAIMAN 40W LASER', manufacturer: 'SHOWVEN', dmxChannels: 12, category: 'showven',
+    effects: [
+      { id: 'eff-laser40-beam', name: 'BEAM', description: 'Single beam 40W', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }, { channel: 3, value: 255 }] },
+      { id: 'eff-laser40-fan', name: 'FAN', description: 'Fan pattern 40W', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 4, value: 128 }] },
+    ],
+    safetyChannel: 1, safetyValue: 0,
+  },
+  {
+    id: 'lib-maiman-60', name: 'MAIMAN 60W LASER', manufacturer: 'SHOWVEN', dmxChannels: 12, category: 'showven',
+    effects: [
+      { id: 'eff-laser60-beam', name: 'BEAM', description: 'Single beam 60W', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }, { channel: 3, value: 255 }] },
+      { id: 'eff-laser60-fan', name: 'FAN', description: 'Fan pattern 60W', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 4, value: 128 }] },
+    ],
+    safetyChannel: 1, safetyValue: 0,
+  },
+  // ── DMX Relay R12 ──
+  {
+    id: 'lib-dmx-relay-r12', name: 'DMX RELAY R12', manufacturer: 'SHOWVEN', dmxChannels: 12, category: 'showven',
+    effects: [
+      { id: 'eff-relay-ch1', name: 'CH1 ON', description: 'Activate relay output 1', duration: 1.0, channelValues: [{ channel: 1, value: 255 }] },
+      { id: 'eff-relay-all', name: 'ALL ON', description: 'Activate all 12 relay outputs', duration: 1.0, channelValues: Array.from({ length: 12 }, (_, i) => ({ channel: i + 1, value: 255 })) },
+    ],
+  },
+  // ── PyroSlave C16 ──
+  {
+    id: 'lib-pyroslave-c16', name: 'PYROSLAVE C16', manufacturer: 'SHOWVEN', dmxChannels: 0, category: 'showven',
+    effects: [
+      { id: 'eff-c16-fire', name: 'FIRE CUE', description: 'Fire single cue (500ms, 12V 5A)', duration: 0.5, channelValues: [] },
+      { id: 'eff-c16-seq', name: 'SEQUENCE', description: 'Sequential fire 10ms interval', duration: 1.0, channelValues: [] },
+    ],
+  },
+  // ── FXbutton ──
+  {
+    id: 'lib-fxbutton', name: 'FXBUTTON', manufacturer: 'SHOWVEN', dmxChannels: 36, category: 'showven',
+    effects: [
+      { id: 'eff-fxb-sync', name: 'SYNC', description: 'Synchronous firing all devices', duration: 2.0, channelValues: [] },
+      { id: 'eff-fxb-cte', name: 'CENTER→ENDS', description: 'Center to ends wave', duration: 2.0, channelValues: [] },
+      { id: 'eff-fxb-etc', name: 'ENDS→CENTER', description: 'Ends to center wave', duration: 2.0, channelValues: [] },
+      { id: 'eff-fxb-ltr', name: 'L→R', description: 'Left to right sequence', duration: 2.0, channelValues: [] },
+      { id: 'eff-fxb-rtl', name: 'R→L', description: 'Right to left sequence', duration: 2.0, channelValues: [] },
+    ],
+  },
+  // ── ZK6200/6300 Host Controllers ──
+  {
+    id: 'lib-zk6200', name: 'ZK6200 HOST CONTROLLER', manufacturer: 'SHOWVEN', dmxChannels: 18, category: 'showven',
+    effects: [
+      { id: 'eff-zk-sync', name: 'SYNC', description: 'All 18 units synchronous', duration: 2.0, channelValues: [] },
+      { id: 'eff-zk-cte', name: 'CENTER→ENDS', description: 'Center to ends pattern', duration: 2.0, channelValues: [] },
+      { id: 'eff-zk-etc', name: 'ENDS→CENTER', description: 'Ends to center pattern', duration: 2.0, channelValues: [] },
+      { id: 'eff-zk-ltr', name: 'L→R', description: 'Left to right', duration: 2.0, channelValues: [] },
+      { id: 'eff-zk-rtl', name: 'R→L', description: 'Right to left', duration: 2.0, channelValues: [] },
+      { id: 'eff-zk-special', name: 'SPECIAL FX', description: 'Custom SparkularEdit200 file', duration: 30.0, channelValues: [] },
     ],
   },
 ];
