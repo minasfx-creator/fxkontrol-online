@@ -89,6 +89,16 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
     ],
   },
   {
+    title: 'Produção',
+    icon: ListMusic,
+    items: [
+      { id: 'setlist', label: 'Setlist', icon: ListMusic },
+      { id: 'rider', label: 'Technical Rider', icon: FileSignature },
+      { id: 'budget', label: 'Budget', icon: Wallet },
+      { id: 'showpreview', label: 'Preview & Share', icon: MonitorPlay },
+    ],
+  },
+  {
     title: 'Relatórios',
     icon: BarChart3,
     items: [
