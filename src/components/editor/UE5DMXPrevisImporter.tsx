@@ -18,6 +18,7 @@ import {
   type UE5DMXFixture,
   type UE5DMXParseResult,
 } from '@/lib/ue5DmxPrevisParser';
+import { computeFixtureLayout } from '@/lib/fixtureAutoLayout';
 import { toast } from 'sonner';
 
 interface Props {
