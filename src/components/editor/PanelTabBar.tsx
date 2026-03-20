@@ -17,6 +17,7 @@ const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId;
       { id: 'chains', label: 'Chains', icon: Link2, shortcut: 'C' },
       { id: 'labels', label: 'Etiquetas', icon: StickyNote },
       { id: 'sitelayout', label: 'Layout do Site', icon: Map },
+      { id: 'sitemodels', label: 'Site Models', icon: Box },
     ],
   },
   {
