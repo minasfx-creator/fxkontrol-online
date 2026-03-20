@@ -258,14 +258,24 @@ export function useFireOneHardware() {
   }, [controller, state.isConnected, radioLink]);
 
   const armAll = useCallback(async () => {
+    if (!state.isConnected && radioLink.isConnected) {
+      const frame = new Uint8Array([0x46, 0x4F, 0xFF, 0x20]);
+      await radioLink.sendFireOne(0xFF, frame);
+      return;
+    }
     txRef.current += 5; setState(prev => ({ ...prev, txBytes: txRef.current }));
     await controller.armAll();
-  }, [controller]);
+  }, [controller, state.isConnected, radioLink]);
 
   const disarmAll = useCallback(async () => {
+    if (!state.isConnected && radioLink.isConnected) {
+      const frame = new Uint8Array([0x46, 0x4F, 0xFF, 0x21]);
+      await radioLink.sendFireOne(0xFF, frame);
+      return;
+    }
     txRef.current += 5; setState(prev => ({ ...prev, txBytes: txRef.current }));
     await controller.disarmAll();
-  }, [controller]);
+  }, [controller, state.isConnected, radioLink]);
 
   const syncTimecode = useCallback(async (ms: number) => {
     txRef.current += 9; setState(prev => ({ ...prev, txBytes: txRef.current }));
