@@ -96,23 +96,35 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
 
   const handleImportAsset = useCallback(async (asset: MarketplaceAsset) => {
     if (asset.source === '3dwarehouse') {
-      // Real download via edge function proxy
+      const rawId = asset.id.replace('3dw-', '');
+      
+      // Fallback catalog entries have short slugs, not real 3D Warehouse UUIDs
+      const isRealId = rawId.length > 20 || /^[0-9a-f]{8}-/.test(rawId);
+      
+      if (!isRealId) {
+        toast.info(`"${asset.title}" é um resultado offline. Abra o 3D Warehouse para baixar.`, {
+          action: {
+            label: 'Abrir 3D Warehouse',
+            onClick: () => window.open('https://3dwarehouse.sketchup.com', '_blank'),
+          },
+        });
+        return;
+      }
+
       const toastId = toast.loading(`Downloading "${asset.title}"...`);
       try {
         const { data, error } = await supabase.functions.invoke('warehouse-download', {
-          body: { modelId: asset.id.replace('3dw-', ''), format: 'gltf' },
+          body: { modelId: rawId, format: 'gltf' },
         });
 
         if (error) throw error;
 
-        // data is the response - check if it's binary
         let blob: Blob;
         if (data instanceof Blob) {
           blob = data;
         } else if (data instanceof ArrayBuffer) {
           blob = new Blob([data], { type: 'model/gltf-binary' });
         } else {
-          // Edge function returned JSON error
           throw new Error(data?.error || 'Download failed');
         }
 
