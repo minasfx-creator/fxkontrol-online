@@ -6,7 +6,7 @@ import { useState, useCallback, useRef } from 'react';
 
 export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | 'inventory' | 'waypoints' | 'effects' | 'properties' | 'boids' | 'pid' | 'dmx' | 'battery' | 'mavlink' | 'smpte' | 'maps' | 'diagnostic' | 'logistics' | 'swarmgpt' | 'synesthesia' | 'firing' | 'labels' | 'video' | 'models' | 'safety' | 'scripting' | 'audience' | 'indoor' | 'chains' | 'groups' | 'scene' | 'soundlevel' | 'aroverlay' | 'share' | 'particles' | 'versioning' | 'weather' | 'collisions' | 'approval' | 'trajectory' | 'templates' | 'telemetry' | 'flightlog' | 'marketplace' | 'sitelayout' | 'showsettings' | 'calibration' | 'livefiring' | 'fleet' | 'geofence' | 'storyboard' | 'showcontrol' | 'inspector' | 'lightprogram' | 'safetycheck' | 'takeoffgrid' | 'transitions' | 'lasercontrol' | 'suppliers' | 'usb' | 'videochoreo' | 'showven' | 'generative' | 'sitemodels';
 
-const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId; label: string; icon: typeof Route; shortcut?: string }[] }[] = [
+export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId; label: string; icon: typeof Route; shortcut?: string }[] }[] = [
   {
     title: 'Posições',
     icon: MapPin,

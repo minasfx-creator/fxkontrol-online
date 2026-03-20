@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Zap, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus, Download, ChevronDown, LayoutGrid, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Info, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store, Lightbulb, MonitorSpeaker, FileArchive, Mountain, Building2 } from 'lucide-react';
+import { Zap, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus, Download, ChevronDown, LayoutGrid, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Info, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store, Lightbulb, MonitorSpeaker, FileArchive, Mountain, Building2, Command } from 'lucide-react';
 import fxkLogo from '@/assets/fxk-logo.png';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -26,6 +26,7 @@ import ArrangePositionsDialog from './ArrangePositionsDialog';
 import { ConvertToFanDialog, ConvertToSequenceDialog } from './ScriptingDialogs';
 import { exportVVIZ, exportFiringCSV, exportSkyc, downloadFile } from '@/lib/exportEngine';
 import LanguageSwitcher from './LanguageSwitcher';
+import FullscreenCommandMenu from './FullscreenCommandMenu';
 
 function TimecodeDisplay() {
   const { currentTime, isPlaying } = useProjectStore();
@@ -340,6 +341,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
   const [twinmotionOpen, setTwinmotionOpen] = useState(false);
   const [droppedFile, setDroppedFile] = useState<{ file: File; type: 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset' | 'ue5map' | 'heightmap' | 'twinmotion' } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [commandMenuOpen, setCommandMenuOpen] = useState(false);
 
   // Listen for viewport file drop events
   useEffect(() => {
@@ -398,6 +400,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       if (ctrl && e.key === 's') { e.preventDefault(); handleSave(); }
       if (ctrl && e.key === 'o') { e.preventDefault(); setBrowserOpen(true); }
       if (ctrl && e.key === 'e') { e.preventDefault(); handleExportVVIZ(); }
+      if (ctrl && e.key === 'k') { e.preventDefault(); setCommandMenuOpen(prev => !prev); }
       if (e.key === 'v' && !ctrl && !e.shiftKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
         setEditorMode('select');
       }
@@ -513,6 +516,20 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
         </div>
       )}
 
+      {/* Command Center button */}
+      {!isMobile && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2.5 text-[10px] font-semibold gap-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-primary/8 transition-all"
+          title="Command Center (Ctrl+K)"
+          onClick={() => setCommandMenuOpen(true)}
+        >
+          <Command className="h-3.5 w-3.5 text-primary/60" />
+          <span className="tracking-wide uppercase font-display">⌘K</span>
+        </Button>
+      )}
+
       {!isMobile && <div className="w-px h-6 bg-border/20 mx-1" />}
 
       {/* Undo / Redo */}
@@ -611,6 +628,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       <MVRImporter open={mvrOpen} onOpenChange={(v) => { setMvrOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'mvr' ? droppedFile.file : null} />
       <UE5MapImporter open={ue5MapOpen} onOpenChange={(v) => { setUe5MapOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'ue5map' || droppedFile?.type === 'heightmap' ? droppedFile.file : null} />
       <TwinmotionImporter open={twinmotionOpen} onOpenChange={(v) => { setTwinmotionOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'twinmotion' ? droppedFile.file : null} />
+      <FullscreenCommandMenu open={commandMenuOpen} onClose={() => setCommandMenuOpen(false)} onOpenPanel={(id) => onOpenPanel?.(id)} />
 
       <div className="flex-1" />
 
