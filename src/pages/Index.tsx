@@ -464,6 +464,16 @@ function Index() {
                     </Suspense>
                   </CanvasErrorBoundary>
                   <BoxSelectOverlay />
+                  {/* Drop zone visual overlay */}
+                  {isDragOver && (
+                    <div className="absolute inset-0 z-50 pointer-events-none flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded-md backdrop-blur-[2px] transition-all">
+                      <div className="flex flex-col items-center gap-2 text-primary">
+                        <Upload className="h-10 w-10 animate-bounce" />
+                        <p className="text-sm font-semibold">Solte o arquivo para importar</p>
+                        <p className="text-[10px] text-muted-foreground">.mvr · .csv · .json · .vviz · .uasset</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </ResizablePanel>
 
