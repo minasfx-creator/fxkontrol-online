@@ -322,6 +322,7 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
   }, [caliber, pattern]);
   
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
+  const secondaryBaseColor = useMemo(() => secondaryColor ? new THREE.Color(secondaryColor) : null, [secondaryColor]);
   // ═══ PyroChem: resolve chemical compound from color ═══
   const compound = useMemo(() => hexToCompound(color), [color]);
   const emberColor = useMemo(() => {
