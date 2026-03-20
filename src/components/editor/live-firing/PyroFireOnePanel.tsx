@@ -257,7 +257,7 @@ export default function PyroFireOnePanel({
     toast.warning(armed ? '⚠️ ALL MODULES ARMED' : 'All modules disarmed');
   }, [masterKeyOn, simMode, hardware]);
 
-  // Fire igniter
+  // Fire igniter — routes through hardware when not SIM
   const fireIgniter = useCallback((moduleAddr: number, igniterPos: number) => {
     if (!canFire) return;
     const mod = modules.find(m => m.address === moduleAddr);
@@ -267,13 +267,24 @@ export default function PyroFireOnePanel({
 
     if (navigator.vibrate) navigator.vibrate(40);
 
+    // Route through hardware when connected
+    if (!simMode && hardware.isConnected) {
+      hardware.fireIgniter(moduleAddr, igniterPos, 500).catch(() => {
+        toast.error(`Misfire: No ACK from FM-${String(moduleAddr).padStart(2, '0')}`);
+        setModules(prev => prev.map(m => {
+          if (m.address !== moduleAddr) return m;
+          return { ...m, igniters: m.igniters.map(i => i.position === igniterPos ? { ...i, misfire: true } : i) };
+        }));
+      });
+    }
+
     setModules(prev => prev.map(m => {
       if (m.address !== moduleAddr) return m;
       return {
         ...m,
         igniters: m.igniters.map(i => {
           if (i.position !== igniterPos) return i;
-          const misfire = !simMode ? false : Math.random() < 0.03;
+          const misfire = simMode ? Math.random() < 0.03 : false;
           return { ...i, fired: !misfire, misfire, resistance: misfire ? i.resistance : 0 };
         }),
       };
@@ -288,7 +299,7 @@ export default function PyroFireOnePanel({
     }).catch(() => {});
 
     toast.success(`FIRE FM-${String(moduleAddr).padStart(2, '0')} · I-${String(igniterPos).padStart(2, '0')}`, { duration: 1500 });
-  }, [canFire, modules, channels, fireChannel, simMode]);
+  }, [canFire, modules, channels, fireChannel, simMode, hardware]);
 
   // Step mode
   const stepFire = useCallback(() => {
