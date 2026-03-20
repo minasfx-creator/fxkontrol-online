@@ -139,8 +139,8 @@ export default function GerbEffect({
       {/* Spark particles — Additive (core) */}
       <points ref={pointsRef}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(PARTICLE_COUNT * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(PARTICLE_COUNT * 3), 3]} />
+          <bufferAttribute attach="attributes-position" args={[new Float32Array(SCALED_PARTICLE_COUNT * 3), 3]} />
+          <bufferAttribute attach="attributes-color" args={[new Float32Array(SCALED_PARTICLE_COUNT * 3), 3]} />
         </bufferGeometry>
         <pointsMaterial size={0.06} vertexColors transparent opacity={0.95} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
