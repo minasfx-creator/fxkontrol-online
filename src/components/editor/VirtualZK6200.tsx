@@ -45,7 +45,7 @@ export default function VirtualZK6200({ fs = false }: VirtualZK6200Props) {
       setArmed(true);
       if (pbus.isConnected) pbus.armAll().catch(() => {});
       toast.warning('⚠️ ZK' + model + ' ARMED', { duration: 3000 });
-      if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
+      haptics.arm();
     }
   }, [armed, model, pbus]);
 
