@@ -19,9 +19,10 @@ interface ParsedFile {
 interface UAssetImporterProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialFile?: File | null;
 }
 
-export default function UAssetImporter({ open, onOpenChange }: UAssetImporterProps) {
+export default function UAssetImporter({ open, onOpenChange, initialFile = null }: UAssetImporterProps) {
   const [parsedFiles, setParsedFiles] = useState<ParsedFile[]>([]);
   const [loading, setLoading] = useState(false);
   const [imported, setImported] = useState(false);
