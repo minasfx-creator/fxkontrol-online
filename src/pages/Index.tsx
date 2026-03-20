@@ -391,12 +391,32 @@ function Index() {
                 <div
                   className="h-full w-full relative"
                   onDragOver={(e) => {
+                    // Accept showven equipment drag
                     if (e.dataTransfer.types.includes('application/showven-equipment')) {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'copy';
+                      return;
+                    }
+                    // Accept file drops (.mvr, .csv, .json)
+                    if (e.dataTransfer.types.includes('Files')) {
                       e.preventDefault();
                       e.dataTransfer.dropEffect = 'copy';
                     }
                   }}
                   onDrop={(e) => {
+                    // Handle file drops for importers
+                    if (e.dataTransfer.files?.length > 0) {
+                      const file = e.dataTransfer.files[0];
+                      const ext = file.name.split('.').pop()?.toLowerCase();
+                      if (ext === 'mvr' || ext === 'csv' || ext === 'json') {
+                        e.preventDefault();
+                        const type = ext === 'mvr' ? 'mvr' : ext === 'csv' ? 'csv' : 'ue5json';
+                        window.dispatchEvent(new CustomEvent('viewport-file-drop', { detail: { file, type } }));
+                        toast.info(`📂 ${file.name} dropped — opening importer...`);
+                        return;
+                      }
+                    }
+                    // Handle showven equipment drag
                     const raw = e.dataTransfer.getData('application/showven-equipment');
                     if (!raw) return;
                     e.preventDefault();
