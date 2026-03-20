@@ -4,8 +4,8 @@
  * Based on Skybrush Live geofence configuration dialog.
  */
 
-import { useState } from 'react';
-import { Shield, MapPin, Plus, Trash2, AlertTriangle, ArrowUp } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Shield, MapPin, Plus, Trash2, AlertTriangle, ArrowUp, Radio, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +16,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useFleetStore } from '@/store/useFleetStore';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
+import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
