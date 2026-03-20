@@ -344,12 +344,26 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
                 {loading && <Loader2 className="h-4 w-4 text-primary animate-spin" />}
               </div>
             )}
-          </div>
+          </div>}
+
+          {/* My Library search */}
+          {activeSource === 'mylibrary' && (
+            <div className="px-6 py-3 border-b border-border/10">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+                <input
+                  value={librarySearch}
+                  onChange={e => setLibrarySearch(e.target.value)}
+                  placeholder="Buscar na biblioteca..."
+                  className="w-full h-9 pl-9 pr-3 rounded-xl text-sm bg-surface-0 border border-border/30 text-foreground placeholder:text-muted-foreground/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 outline-none transition-all"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Results */}
           <ScrollArea className="flex-1 min-h-0">
             <div className="p-6">
-              {/* All tabs share the same results view */}
               <TabsContent value="fab" className="mt-0">
                 <ResultsView results={results} viewMode={viewMode} loading={loading} onImport={handleImportAsset} source="fab" />
               </TabsContent>
@@ -358,6 +372,15 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
               </TabsContent>
               <TabsContent value="ue-project" className="mt-0">
                 <ResultsView results={results} viewMode={viewMode} loading={loading} onImport={handleImportAsset} source="ue-project" />
+              </TabsContent>
+              <TabsContent value="mylibrary" className="mt-0">
+                <MyLibraryView
+                  assets={libraryAssets}
+                  loading={libraryLoading}
+                  search={librarySearch}
+                  onImport={handleImportFromLibrary}
+                  onDelete={deleteFromLibrary}
+                />
               </TabsContent>
             </div>
           </ScrollArea>
