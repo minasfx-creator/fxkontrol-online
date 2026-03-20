@@ -6,12 +6,14 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
-import { Shield, AlertTriangle, CheckCircle, XCircle, Play, Download, Settings, ChevronDown, ChevronRight } from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle, XCircle, Play, Download, Settings, ChevronDown, ChevronRight, Radio, Wifi, Battery } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
+import { usePBusHardware } from '@/hooks/usePBusHardware';
 import {
   type SafetyCheckParams,
   type SafetyCheckResult,
