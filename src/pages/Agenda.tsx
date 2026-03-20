@@ -236,9 +236,19 @@ export default function Agenda() {
                     <span className="text-[9px] font-mono">
                       {TYPE_LABELS[ev.event_type] ?? ev.event_type}
                     </span>
-                    <span className={`text-[9px] px-2 py-0.5 rounded-full font-mono ${STATUS_COLORS[ev.status] ?? STATUS_COLORS.planned}`}>
-                      {ev.status}
-                    </span>
+                    <Select value={ev.status} onValueChange={(v) => updateStatus(ev.id, v)}>
+                      <SelectTrigger className={`h-6 w-auto text-[9px] px-2 rounded-full font-mono border-none ${STATUS_COLORS[ev.status] ?? STATUS_COLORS.negotiation}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STATUS_OPTIONS.map(s => (
+                          <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <button onClick={() => duplicateEvent(ev)} className="text-muted-foreground hover:text-foreground" title="Duplicar">
+                      <Copy className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 </div>
               </CardContent>
