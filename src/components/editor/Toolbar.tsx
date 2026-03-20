@@ -400,6 +400,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       if (ctrl && e.key === 's') { e.preventDefault(); handleSave(); }
       if (ctrl && e.key === 'o') { e.preventDefault(); setBrowserOpen(true); }
       if (ctrl && e.key === 'e') { e.preventDefault(); handleExportVVIZ(); }
+      if (ctrl && e.key === 'k') { e.preventDefault(); setCommandMenuOpen(prev => !prev); }
       if (e.key === 'v' && !ctrl && !e.shiftKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
         setEditorMode('select');
       }
