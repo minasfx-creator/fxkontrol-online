@@ -83,6 +83,7 @@ import RiderPanel from '@/components/editor/RiderPanel';
 import BudgetPanel from '@/components/editor/BudgetPanel';
 import ShowPreviewPanel from '@/components/editor/ShowPreviewPanel';
 import MobileLinkPanel from '@/components/editor/MobileLinkPanel';
+import MobileLinkMonitor from '@/components/editor/MobileLinkMonitor';
 import SiteModelsPanel from '@/components/editor/SiteModelsPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
