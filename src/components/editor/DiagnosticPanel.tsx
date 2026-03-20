@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
-import { X, ShieldCheck, AlertTriangle, CheckCircle2, Play, Loader2, Download, Wifi, Usb, Radio } from 'lucide-react';
+import { X, ShieldCheck, AlertTriangle, CheckCircle2, Play, Loader2, Download, Wifi, Usb, Radio, Cable } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
+import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { pushLog } from './ViewportTerminal';
 import { cn } from '@/lib/utils';
 import { getSafetyDistance } from '@/lib/pyroPhysics';
