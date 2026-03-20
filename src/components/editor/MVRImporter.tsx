@@ -26,7 +26,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   strobe: '⚡', sfx: '🔥', laser: '🟢', drone: '🤖',
 };
 
-export default function MVRImporter({ open, onOpenChange }: Props) {
+export default function MVRImporter({ open, onOpenChange, initialFile }: Props) {
   const { addPosition } = useProjectStore();
   const [result, setResult] = useState<MVRParseResult | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
