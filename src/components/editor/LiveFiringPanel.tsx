@@ -46,6 +46,7 @@ import FieldMap2D from './FieldMap2D';
 import ConnectionManagerPanel from './ConnectionManagerPanel';
 import PBusMonitorPanel from './live-firing/PBusMonitorPanel';
 import RadioControlPanel from './RadioControlPanel';
+import MA3ControlPanel from './MA3ControlPanel';
 
 // ═══════════════════════════════════════════════════════════
 // CUE KEY — hardware key replica with Lock/Tap mode
