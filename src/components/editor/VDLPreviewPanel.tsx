@@ -131,7 +131,7 @@ const QUICK_PRESETS = [
 export default function VDLPreviewPanel() {
   const [vdlText, setVdlText] = useState('4in Red Peony');
   const parsed = useMemo(() => parseVDL(vdlText), [vdlText]);
-  const addEffect = useProjectStore(s => s.addEffect);
+  const addTimelineItem = useProjectStore(s => s.addTimelineItem);
 
   const handleAddToTimeline = useCallback(() => {
     if (!parsed.valid) {
@@ -139,9 +139,17 @@ export default function VDLPreviewPanel() {
       return;
     }
     const effect = vdlToEffect(parsed);
-    addEffect(effect);
+    // Add as timeline item with the VDL effect embedded as effectId
+    const item = {
+      id: `vdl-tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      effectId: effect.id,
+      startTime: 0,
+      trackIndex: 0,
+      position: { x: 0, y: 0, z: 0 } as { x: number; y: number; z: number },
+    };
+    addTimelineItem(item);
     toast.success(`Efeito adicionado: ${effect.name}`);
-  }, [parsed, addEffect]);
+  }, [parsed, addTimelineItem]);
 
   const niagaraPreset = parsed.niagaraPreset ? getNiagaraPreset(parsed.niagaraPreset) : null;
 
