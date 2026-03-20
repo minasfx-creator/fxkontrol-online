@@ -61,7 +61,7 @@ function parseCSV(text: string): ParsedRow[] {
   return rows;
 }
 
-export default function CSVImporter({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export default function CSVImporter({ open, onOpenChange, initialFile }: { open: boolean; onOpenChange: (v: boolean) => void; initialFile?: File | null }) {
   const { addPosition } = useProjectStore();
   const [parsed, setParsed] = useState<ParsedRow[]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
