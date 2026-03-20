@@ -399,6 +399,16 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
     setChannels(prev => { const updated = prev.map(ch => ch.id === id ? { ...ch, firing: true } : ch); sendArtNetPacket(updated); return updated; });
     const ch = channels.find(c => c.id === id);
     if (ch) {
+      // Route to bound hardware
+      if (ch.hardwareBinding) {
+        const { system, address, pin } = ch.hardwareBinding;
+        if (system === 'fireone' && fireone.isConnected) {
+          fireone.fireIgniter(address, pin).catch(() => {});
+        } else if ((system === 'pbus' || system === 'radio') && pbus.isConnected) {
+          pbus.fireCue(address, pin, ch.duration).catch(() => {});
+        }
+      }
+
       let pos3d: [number, number, number];
       if (ch.positionId) {
         const linkedPos = positions.find(p => p.id === ch.positionId);
@@ -414,7 +424,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
       }, ch.duration);
       fireTimers.current.set(id, timer);
     }
-  }, [channels, sendArtNetPacket, positions, firingStartTime]);
+  }, [channels, sendArtNetPacket, positions, firingStartTime, fireone, pbus]);
 
   const stopChannel = useCallback((id: string) => {
     const timer = fireTimers.current.get(id);
