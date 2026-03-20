@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { useProjectStore } from '@/store/useProjectStore';
 import type { AutoFireCue } from './types';
 import { formatTimecode, FIRING_RULES } from './constants';
-import { parseFireOneCSV, exportFireOneCSV, downloadFile } from '@/lib/fireoneScriptParser';
+import { parseFireOneCSV, exportFireOneCSV, exportFlamesLauncherCSV, downloadFile, autoDetectAndParse } from '@/lib/fireoneScriptParser';
 
 interface AutoFirePanelProps {
   fs: boolean;
