@@ -435,16 +435,19 @@ export default function TwinmotionImporter({ open, onOpenChange, initialFile }: 
             )}
 
             {model3dFile && model3dStatus === 'done' && (
-              <Model3DPreview file={model3dFile} />
+              <Model3DPreview
+                file={model3dFile}
+                transform={model3dTransform}
+                onTransformChange={setModel3dTransform}
+              />
             )}
 
-            <div className="p-3 rounded-lg bg-muted/10 border border-border/10">
-              <p className="text-[10px] text-muted-foreground leading-relaxed">
-                <strong>Formatos renderizáveis</strong> (FBX, OBJ, glTF, GLB) são carregados diretamente no viewport 3D.
-                <strong> Formatos de referência</strong> (SketchUp, IFC, 3DS, etc.) são registrados como placeholder posicionado — 
-                exporte do software original como FBX ou glTF para visualização completa.
-              </p>
-            </div>
+            {model3dFile && model3dStatus === 'done' && (
+              <Button className="w-full" onClick={handleConfirmModel3d}>
+                <FileUp className="w-4 h-4 mr-2" />
+                Importar Modelo ({model3dTransform.scale.toFixed(2)}×, {model3dTransform.rotationY}°)
+              </Button>
+            )}
           </TabsContent>
 
           {/* ═══ Tab 3: Compatibilidade ═══ */}
