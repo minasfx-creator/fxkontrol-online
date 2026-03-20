@@ -591,10 +591,41 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
             <span className={cn("font-mono text-muted-foreground/40", fs ? "text-[9px]" : "text-[6px]")}>{batteryVoltage.toFixed(2)}V</span>
           </div>
         )}
-        {/* Connection indicators */}
-        <div className="flex items-center gap-1">
-          <div className={cn("rounded-full", artNetConnected ? "bg-green-500" : "bg-muted-foreground/20", fs ? "w-2.5 h-2.5" : "w-1.5 h-1.5")} />
-          <span className={cn("font-mono text-muted-foreground/40", fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[6px]")}>DMX</span>
+        {/* DMX Signal LED Indicator */}
+        <div className="flex items-center gap-1" title={artNetConnected ? `DMX Signal: Active · ${settings.artNetIp}:${settings.artNetPort}` : 'DMX Signal: No Signal'}>
+          {/* LED + signal bars */}
+          <div className="flex items-end gap-[1px]">
+            {/* Main LED */}
+            <div
+              className={cn(
+                "rounded-full transition-colors",
+                artNetConnected
+                  ? "bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.6)]"
+                  : "bg-muted-foreground/20",
+                fs ? "w-2.5 h-2.5" : "w-1.5 h-1.5"
+              )}
+              style={artNetConnected ? { animation: 'pulse 2s ease-in-out infinite' } : undefined}
+            />
+            {/* Signal strength bars */}
+            {[0.3, 0.55, 0.8, 1].map((h, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "rounded-[1px] transition-all",
+                  artNetConnected
+                    ? i < 3 ? "bg-green-500" : relayConnected ? "bg-green-500" : "bg-green-500/30"
+                    : "bg-muted-foreground/15",
+                  fs ? "w-[3px]" : "w-[2px]"
+                )}
+                style={{ height: fs ? `${Math.round(h * 12)}px` : `${Math.round(h * 8)}px` }}
+              />
+            ))}
+          </div>
+          <span className={cn(
+            "font-mono",
+            artNetConnected ? "text-green-500/70" : "text-muted-foreground/40",
+            fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[6px]"
+          )}>DMX</span>
         </div>
         <button onClick={() => relayConnected ? disconnectRelay() : connectRelay()} className="flex items-center gap-1" title={relayConnected ? 'Relay UDP conectado — clique para desconectar' : 'Clique para conectar relay UDP local'}>
           <div className={cn("rounded-full", relayConnected ? "bg-cyan-400" : "bg-muted-foreground/20", fs ? "w-2.5 h-2.5" : "w-1.5 h-1.5")} style={relayConnected ? { boxShadow: '0 0 6px rgba(0,220,255,0.5)' } : undefined} />
