@@ -633,4 +633,5 @@ export const useSceneStore = create<SceneSettingsState>((set) => ({
   }),
   selectSiteModel: (id) => set({ selectedSiteModelId: id }),
   setSiteModelTransformMode: (mode) => set({ siteModelTransformMode: mode }),
+  setTransformSnap: (updates) => set((s) => ({ transformSnap: { ...s.transformSnap, ...updates } })),
 }));
