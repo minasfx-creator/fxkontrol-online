@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { Search, Store, Box, Gamepad2, FolderOpen, Download, ExternalLink, Star, Package, Filter, Loader2, X, Upload, Grid3X3, List, Tag, Eye, EyeOff, Trash2, Move, RotateCw, Maximize2 } from 'lucide-react';
+import { Search, Store, Box, Gamepad2, FolderOpen, Download, ExternalLink, Star, Package, Filter, Loader2, X, Upload, Grid3X3, List, Tag, Eye, EyeOff, Trash2, Move, RotateCw, Maximize2, FolderHeart, Clock } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { searchFab, search3DWarehouse, scanUEProjectFiles, type MarketplaceAsset, type MarketplaceSearchResult } from '@/lib/marketplaceApi';
 import { useSceneStore, type SiteModel } from '@/store/useSceneStore';
 import { supabase } from '@/integrations/supabase/client';
+import { useMyLibrary, type LibraryAsset } from '@/hooks/useMyLibrary';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
