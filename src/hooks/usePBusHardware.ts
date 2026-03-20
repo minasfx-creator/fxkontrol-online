@@ -206,9 +206,16 @@ export function usePBusHardware() {
   }, [controller]);
 
   const emergencyStop = useCallback(async () => {
-    txRef.current += 7; setState(prev => ({ ...prev, txBytes: txRef.current }));
-    await controller.emergencyStop();
-  }, [controller]);
+    // E-STOP always goes through ALL paths
+    if (radioLink.isConnected) {
+      const frame = new Uint8Array([0x50, 0x42, 0xFF, 0xFF]);
+      await radioLink.sendPBus(0xFF, frame).catch(() => {});
+    }
+    if (state.isConnected) {
+      txRef.current += 7; setState(prev => ({ ...prev, txBytes: txRef.current }));
+      await controller.emergencyStop();
+    }
+  }, [controller, state.isConnected, radioLink]);
 
   const setBand = useCallback(async (addr: number, band: PBusWirelessBand) => {
     txRef.current += 8; setState(prev => ({ ...prev, txBytes: txRef.current }));
