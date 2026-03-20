@@ -158,6 +158,18 @@ export class MVRXchangeClient {
     });
   }
 
+  requestDiscovery() {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type: 'discover' }));
+    }
+  }
+
+  connectStation(uuid: string) {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type: 'connect_station', uuid }));
+    }
+  }
+
   private handleMessage(msg: any) {
     switch (msg.type) {
       case 'mvr_join': {
