@@ -66,12 +66,19 @@ import { createLensFlareSprite, flashLensFlare, decayLensFlare } from '@/render_
 import { getBurstConfig, type BurstPattern } from '@/render_ultra/fireworks/burstSimulation';
 import { createSparkTrailSystem, updateSparkTrail, writeSparkTrailsToBuffers, type SparkState } from '@/render_ultra/fireworks/sparkTrailsGPU';
 import { createHDRLightingRig } from '@/render_ultra/lighting/hdrLighting';
-// ═══ LOD System — distance-based quality scaling ═══
-import { useLOD, calculateLOD, useSceneLOD, type LODFactors } from '@/hooks/useLOD';
+// ═══ LOD System — distance-based quality scaling + adaptive FPS ═══
+import { useLOD, calculateLOD, useSceneLOD, updateAdaptiveLOD, getAdaptiveTier, type LODFactors } from '@/hooks/useLOD';
+// ═══ AAA Engine: Frustum Culling + Object Pooling ═══
+import { isInFrustum } from '@/lib/spatialCuller';
+import { resetPools } from '@/lib/geometryPool';
 import ViewportGeoTools, { type GeoToolMode, type GeoMarker, type GeoRulerPoint, type GeoPath } from './ViewportGeoTools';
 import { GeoToolsScene, GeoToolClickHandler } from './GeoToolsR3F';
 import { RenderDebugToggle, RenderDebugPanel, setDebugExposure, setDebugBurstLoad, setDebugLOD, setDebugRendererInfo } from './RenderDebugOverlay';
 import { clampNiagaraHDR, getNiagaraBudgets, setAdaptivePipelineState } from '@/lib/niagaraBlenderRules';
+
+// ═══ Module-level active burst counter for conditional PostProcessing ═══
+let _activeBurstCount = 0;
+export function getActiveBurstCount() { return _activeBurstCount; }
 
 // ═══ PyroChem: map hex colors → real chemical compounds ═══
 function hexToCompound(hexColor: string): ChemicalCompound {
@@ -674,6 +681,7 @@ function estimateFireworkStarCost(
 }
 
 function TimelineEffects() {
+  const { camera } = useThree();
   const { timelineItems, currentTime, positions } = useProjectStore();
   const sceneSettings = useSceneStore(st => st.settings);
   const activeEffects = useMemo(() => {
@@ -778,9 +786,16 @@ function TimelineEffects() {
     });
   }, [activeEffects, sceneSettings.particleDensity]);
 
+  // ═══ Update module-level burst count for conditional PostProcessing ═══
+  _activeBurstCount = cappedEffects.filter(e => e.effect.type === 'firework').length;
+
   return (
     <>
       {cappedEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale, effectBrightness, launchHeading, launchPitch }) => {
+        // ═══ AAA Frustum Culling — skip rendering off-screen effects ═══
+        const effectPos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
+        const cullRadius = effect.type === 'firework' ? (caliber || 4) * 25 : 50;
+        if (!isInFrustum(camera, effectPos, cullRadius)) return null;
         const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
         const eid = effect.id;
         const pt = effect.partType;
@@ -1962,7 +1977,9 @@ const DebugFeed = React.forwardRef<THREE.Group, {}>(function DebugFeed(_props, _
       const origin = new THREE.Vector3(0, 100, 0);
       const dist = Math.round(camera.position.distanceTo(origin));
       const lod = calculateLOD(camera.position, origin);
-      setDebugLOD(lod.tier, dist);
+      // ═══ Adaptive LOD: feed FPS into auto-scaling ═══
+      const adaptiveTier = updateAdaptiveLOD(fps);
+      setDebugLOD(adaptiveTier, dist);
     }
   });
   return null;
@@ -3541,6 +3558,7 @@ export default function SkyCanvas() {
             console.warn('[FXK] WebGL context lost — remounting renderer');
             _starMaterialInstance?.dispose();
             _starMaterialInstance = null;
+            resetPools(); // Clear geometry/buffer pools on context loss
             setCanvasInstanceKey((prev) => prev + 1);
           };
 
@@ -3590,7 +3608,7 @@ export default function SkyCanvas() {
         {!isMobile && <CameraPathPreview />}
         <ViewportRulers />
         <CameraBookmarkSaver />
-        <PostProcessing />
+        <PostProcessing activeBurstCount={_activeBurstCount} />
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
         <DebugFeed />

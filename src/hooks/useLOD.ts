@@ -1,6 +1,8 @@
 /**
- * FX KONTROL · LOD (Level of Detail) System
- * Distance-based quality scaling for the expanded 300km² world.
+ * FX KONTROL · LOD (Level of Detail) System v2 — Adaptive + Distance
+ * 
+ * Distance-based quality scaling PLUS FPS-driven automatic tier adjustment.
+ * UE5-inspired: if frame rate drops below threshold, quality auto-reduces.
  * 
  * LOD Tiers:
  *   ULTRA  (0-1000m)   — full particles, full trails, max geometry
@@ -78,4 +80,107 @@ export function useSceneLOD(): LODFactors {
   const { camera } = useThree();
   const distance = camera.position.length(); // distance from world origin
   return getFactors(getTier(distance));
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Adaptive LOD v2 — FPS-driven automatic quality scaling
+// UE5 "Scalability" inspired: real-time perf feedback loop
+// ═══════════════════════════════════════════════════════════════════════
+
+const TIER_ORDER: LODTier[] = ['ultra', 'high', 'medium', 'low'];
+
+// Module-level adaptive state (shared across all consumers)
+let _adaptiveTierOffset = 0; // 0 = no adjustment, +1 = drop one tier, etc.
+let _fpsHistory: number[] = [];
+let _lastAdaptiveCheck = 0;
+let _adaptiveAutoTier: LODTier = 'high';
+
+// Thresholds
+const FPS_DROP_THRESHOLD = 30;
+const FPS_DROP_DURATION = 500;  // ms below threshold to trigger drop
+const FPS_RAISE_THRESHOLD = 55;
+const FPS_RAISE_DURATION = 2000; // ms above threshold to raise quality
+
+let _belowSince = 0;
+let _aboveSince = 0;
+
+/**
+ * Update the adaptive LOD system. Call once per frame from a central controller.
+ * Returns the current adaptive tier name for debug overlay.
+ */
+export function updateAdaptiveLOD(fps: number): LODTier {
+  const now = performance.now();
+  _fpsHistory.push(fps);
+  if (_fpsHistory.length > 30) _fpsHistory.shift();
+
+  // Only check every 100ms
+  if (now - _lastAdaptiveCheck < 100) return _adaptiveAutoTier;
+  _lastAdaptiveCheck = now;
+
+  const avgFps = _fpsHistory.reduce((a, b) => a + b, 0) / _fpsHistory.length;
+
+  if (avgFps < FPS_DROP_THRESHOLD) {
+    if (_belowSince === 0) _belowSince = now;
+    _aboveSince = 0;
+
+    if (now - _belowSince > FPS_DROP_DURATION) {
+      // Drop quality
+      const currentIdx = TIER_ORDER.indexOf(_adaptiveAutoTier);
+      if (currentIdx < TIER_ORDER.length - 1) {
+        _adaptiveTierOffset++;
+        _adaptiveAutoTier = TIER_ORDER[Math.min(currentIdx + 1, TIER_ORDER.length - 1)];
+        _belowSince = 0;
+        _fpsHistory = [];
+        console.log(`[AdaptiveLOD] FPS ${avgFps.toFixed(0)} → dropping to ${_adaptiveAutoTier.toUpperCase()}`);
+      }
+    }
+  } else if (avgFps > FPS_RAISE_THRESHOLD) {
+    if (_aboveSince === 0) _aboveSince = now;
+    _belowSince = 0;
+
+    if (now - _aboveSince > FPS_RAISE_DURATION) {
+      // Raise quality
+      const currentIdx = TIER_ORDER.indexOf(_adaptiveAutoTier);
+      if (currentIdx > 0) {
+        _adaptiveTierOffset = Math.max(0, _adaptiveTierOffset - 1);
+        _adaptiveAutoTier = TIER_ORDER[Math.max(currentIdx - 1, 0)];
+        _aboveSince = 0;
+        _fpsHistory = [];
+        console.log(`[AdaptiveLOD] FPS ${avgFps.toFixed(0)} → raising to ${_adaptiveAutoTier.toUpperCase()}`);
+      }
+    }
+  } else {
+    _belowSince = 0;
+    _aboveSince = 0;
+  }
+
+  return _adaptiveAutoTier;
+}
+
+/**
+ * Get adaptive LOD factors combining distance + FPS feedback.
+ * The adaptive system can downgrade the distance-based tier if FPS is low.
+ */
+export function getAdaptiveLOD(distanceTier: LODTier): LODFactors {
+  const distIdx = TIER_ORDER.indexOf(distanceTier);
+  const effectiveIdx = Math.min(distIdx + _adaptiveTierOffset, TIER_ORDER.length - 1);
+  return getFactors(TIER_ORDER[effectiveIdx]);
+}
+
+/**
+ * Get current adaptive tier for debug display.
+ */
+export function getAdaptiveTier(): LODTier {
+  return _adaptiveAutoTier;
+}
+
+/**
+ * Reset adaptive state (e.g., on scene change).
+ */
+export function resetAdaptiveLOD() {
+  _adaptiveTierOffset = 0;
+  _fpsHistory = [];
+  _adaptiveAutoTier = 'high';
+  _belowSince = 0;
+  _aboveSince = 0;
 }
