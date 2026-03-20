@@ -31,6 +31,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { SFXChannel } from './types';
+import {
+  FireOneController, getFireOneController,
+  createSimulatedModuleStatus,
+  type FireOneModuleStatus, type FireOneEvent,
+} from '@/lib/fireoneProtocol';
 
 // ═══════════════════════════════════════════════════════════
 // TYPES
