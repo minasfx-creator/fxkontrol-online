@@ -505,8 +505,11 @@ export default function ShellBurstRenderer({
 
   if (progress <= 0 || progress > 1.1) return null;
 
+  // Apply angleOffset rotation to the group
+  const groupRotation: [number, number, number] = [0, 0, angleOffset ? -(angleOffset * Math.PI) / 180 : 0];
+
   return (
-    <group position={position}>
+    <group position={position} rotation={groupRotation}>
       {/* Main burst particles */}
       <points ref={pointsRef} frustumCulled={false}>
         <bufferGeometry drawRange={{ start: 0, count: starCount }}>
