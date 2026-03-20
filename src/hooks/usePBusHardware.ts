@@ -1,6 +1,7 @@
 /**
  * usePBusHardware — React hook for Showven PBUS hardware control
  * Dual-band 433M/868M with auto-select and device discovery
+ * Supports transparent radio fallback via useRadioLink when antenna connected
  */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
@@ -10,6 +11,7 @@ import {
   type PBusEvent,
   type PBusWirelessBand,
 } from '@/lib/pbusProtocol';
+import { useRadioLink } from '@/hooks/useRadioLink';
 
 export interface PBusHardwareState {
   isConnected: boolean;
