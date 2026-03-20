@@ -129,12 +129,12 @@ export default function MobileMoreMenu({ onSelectPanel }: MobileMoreMenuProps) {
   }, [search]);
 
   const sections = useMemo(() => {
-    const map = new Map<string, PanelItem[]>();
+    const map: Record<string, PanelItem[]> = {};
     filtered.forEach(p => {
-      if (!map.has(p.section)) map.set(p.section, []);
-      map.get(p.section)!.push(p);
+      if (!map[p.section]) map[p.section] = [];
+      map[p.section].push(p);
     });
-    return Array.from(map.entries());
+    return Object.entries(map);
   }, [filtered]);
 
   const recentPanels = useMemo(() =>
