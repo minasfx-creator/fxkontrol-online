@@ -66,7 +66,7 @@ export default function MobileTabBar({
         onOpenPanel('livefiring');
         onTabChange('livefx');
         onPanelHeightChange('full');
-        if (navigator.vibrate) navigator.vibrate(50);
+        haptics.success();
       }, 500);
     }
   }, [onOpenPanel, onTabChange, onPanelHeightChange]);

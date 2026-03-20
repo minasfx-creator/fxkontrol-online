@@ -225,7 +225,7 @@ export default function PBusMonitorPanel() {
       estopTimer.current = setTimeout(() => {
         pbus.emergencyStop();
         toast.error('🔴 EMERGENCY STOP — All devices disarmed');
-        if (navigator.vibrate) navigator.vibrate([200, 50, 200]);
+        haptics.panic();
         setEstopHeld(false);
       }, 500);
       setEstopHeld(true);
