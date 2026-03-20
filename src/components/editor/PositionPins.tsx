@@ -109,11 +109,16 @@ const DronePadIcon = forwardRef<THREE.Group, IconProps>(({ color, emissiveIntens
 });
 DronePadIcon.displayName = 'DronePadIcon';
 
+const DISTANCE_REF = 15;
+const SCALE_MIN = 0.15;
+const SCALE_MAX = 0.8;
+
 const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Position, screenPos: { x: number; y: number }) => void }>(function Pin({ position, onRightClick }, ref) {
   const { selectedPositionIds, selectPosition, togglePositionSelection, editorMode, updatePosition, timelineItems } = useProjectStore();
   const isSelected = selectedPositionIds.includes(position.id);
   const color = position.type === 'pyro' ? PYRO_COLOR : (position.color || DRONE_COLOR);
   const glowRef = useRef<THREE.Group>(null);
+  const groupRef = useRef<THREE.Group>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [snapGuides, setSnapGuides] = useState<SnapGuide[]>([]);
@@ -124,15 +129,24 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
   const otherStartPositions = useRef<Map<string, { x: number; z: number }>>(new Map());
   const dragStartPos = useRef<{ x: number; z: number }>({ x: 0, z: 0 });
   const hasSavedCheckpoint = useRef(false);
+  const _posVec = useRef(new THREE.Vector3());
 
   const linkedEffects = timelineItems.filter(
     t => t.positionId === position.id || t.positionIds?.includes(position.id)
   ).length;
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, camera: cam }) => {
     if (glowRef.current && isSelected) {
       const pulse = Math.sin(clock.getElapsedTime() * 3) * 0.12 + 0.88;
       glowRef.current.scale.setScalar(pulse);
+    }
+    // Distance-based scaling — shrink pins when far from camera
+    if (groupRef.current) {
+      _posVec.current.set(position.x, position.y, position.z);
+      const dist = cam.position.distanceTo(_posVec.current);
+      const baseScale = isSelected ? 0.75 : isHovered ? 0.68 : 0.6;
+      const distScale = Math.min(SCALE_MAX, Math.max(SCALE_MIN, baseScale * (DISTANCE_REF / Math.max(dist, 1))));
+      groupRef.current.scale.setScalar(distScale);
     }
   });
 
