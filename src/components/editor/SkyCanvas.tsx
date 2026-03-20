@@ -1702,10 +1702,10 @@ function AtmosphericParticles() {
 function FloorLogo() {
   const texture = useMemo(() => {
     const canvas = document.createElement('canvas');
-    canvas.width = 4096;
-    canvas.height = 1024;
+    canvas.width = 2048;
+    canvas.height = 512;
     const ctx = canvas.getContext('2d')!;
-    ctx.clearRect(0, 0, 4096, 1024);
+    ctx.clearRect(0, 0, 2048, 512);
 
     // Large "MINAS" in very faint silver
     ctx.textAlign = 'center';
