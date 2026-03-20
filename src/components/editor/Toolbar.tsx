@@ -605,6 +605,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       <GMA2PatchImporter open={gma2Open} onOpenChange={setGma2Open} />
       <UE5DMXPrevisImporter open={ue5DmxOpen} onOpenChange={(v) => { setUe5DmxOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'ue5json' ? droppedFile.file : null} />
       <MVRImporter open={mvrOpen} onOpenChange={(v) => { setMvrOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'mvr' ? droppedFile.file : null} />
+      <UE5MapImporter open={ue5MapOpen} onOpenChange={(v) => { setUe5MapOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'ue5map' || droppedFile?.type === 'heightmap' ? droppedFile.file : null} />
 
       <div className="flex-1" />
 

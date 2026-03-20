@@ -137,14 +137,16 @@ function CanvasLoader() {
   );
 }
 
-const SUPPORTED_DROP_EXTENSIONS = ['mvr', 'csv', 'json', 'vviz', 'uasset', 'umap', 'copy', 't3d'];
+const SUPPORTED_DROP_EXTENSIONS = ['mvr', 'csv', 'json', 'vviz', 'uasset', 'umap', 'copy', 't3d', 'png', 'jpg', 'jpeg', 'tif', 'tiff', 'bmp'];
 
-function getDropType(ext: string): 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset' {
+function getDropType(ext: string): 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset' | 'ue5map' | 'heightmap' {
   if (ext === 'mvr') return 'mvr';
   if (ext === 'csv') return 'csv';
   if (ext === 'vviz') return 'vviz';
   if (ext === 'uasset' || ext === 'umap') return 'uasset';
-  return 'ue5json'; // json, copy, t3d all go to UE5 DMX importer
+  if (['png', 'jpg', 'jpeg', 'tif', 'tiff', 'bmp'].includes(ext)) return 'heightmap';
+  if (ext === 't3d') return 'ue5map';
+  return 'ue5json'; // json, copy → UE5 DMX importer
 }
 
 function Index() {
