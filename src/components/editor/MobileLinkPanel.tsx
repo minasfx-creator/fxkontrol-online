@@ -181,7 +181,7 @@ export default function MobileLinkPanel({ onClose }: MobileLinkPanelProps) {
     saveFixtures([...fixtures, f]);
     setFormName('');
     setShowForm(false);
-    navigator.vibrate?.(15);
+    haptics.tap();
   }, [formName, formType, formColor, formUniverse, formAddress, fixtures, saveFixtures]);
 
   // Remove fixture
