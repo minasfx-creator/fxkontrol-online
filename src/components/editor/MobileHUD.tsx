@@ -54,7 +54,7 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
     setPlaying(false);
     setCurrentTime(0);
     if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
-  }, [clearAll, stopPlayback]);
+  }, [clearAll, setPlaying, setCurrentTime]);
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
