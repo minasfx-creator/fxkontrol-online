@@ -1,9 +1,9 @@
 /**
  * ConnectionManagerPanel — Unified Connection Hub
- * Manages all hardware connections: FireOne RS-485, PBUS, Art-Net, USB DMX
+ * Manages all hardware connections: FireOne RS-485, PBUS, Art-Net, USB DMX, Radio
  */
 import { useState, useCallback } from 'react';
-import { Usb, Wifi, WifiOff, Radio, Cable, RefreshCw, Plus, X, Activity, Zap, Signal, ArrowUpDown } from 'lucide-react';
+import { Usb, Wifi, WifiOff, Radio, Cable, RefreshCw, Plus, X, Activity, Zap, Signal, ArrowUpDown, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
+import { useRadioLink } from '@/hooks/useRadioLink';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -37,6 +38,7 @@ export default function ConnectionManagerPanel({ fs = false }: ConnectionManager
   const isMobile = useIsMobile();
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();
+  const radioLink = useRadioLink();
   const [autoReconnect, setAutoReconnect] = useState<Record<string, boolean>>({});
 
   const connections: ConnectionEntry[] = [
@@ -66,6 +68,19 @@ export default function ConnectionManagerPanel({ fs = false }: ConnectionManager
       packetLoss: 0,
       uptime: 0,
     },
+    {
+      id: 'radio',
+      name: 'Radio Antenna',
+      protocol: radioLink.dongleProfile?.label || 'USB Radio',
+      baud: radioLink.dongleProfile?.baudRate,
+      connected: radioLink.isConnected,
+      autoReconnect: autoReconnect['radio'] ?? false,
+      txBytes: radioLink.packetStats.totalTx * 16,
+      rxBytes: radioLink.packetStats.totalRx * 16,
+      latencyMs: 0,
+      packetLoss: radioLink.packetStats.totalTx > 0 ? Math.round((radioLink.packetStats.ackFailed / radioLink.packetStats.totalTx) * 100) : 0,
+      uptime: 0,
+    },
   ];
 
   const handleConnect = useCallback(async (connId: string) => {
@@ -78,11 +93,15 @@ export default function ConnectionManagerPanel({ fs = false }: ConnectionManager
         await pbus.connect();
         toast.success('PBUS conectado');
         await pbus.discoverDevices(64);
+      } else if (connId === 'radio') {
+        await radioLink.connectAntenna();
+        toast.success('📡 Antena rádio conectada');
+        await radioLink.scanDevices();
       }
     } catch (err: any) {
       toast.error(`Falha: ${err.message}`);
     }
-  }, [fireone, pbus]);
+  }, [fireone, pbus, radioLink]);
 
   const handleDisconnect = useCallback(async (connId: string) => {
     if (connId === 'fireone') {
@@ -91,8 +110,11 @@ export default function ConnectionManagerPanel({ fs = false }: ConnectionManager
     } else if (connId === 'pbus') {
       pbus.disconnect();
       toast.info('PBUS desconectado');
+    } else if (connId === 'radio') {
+      await radioLink.disconnectAntenna();
+      toast.info('Antena desconectada');
     }
-  }, [fireone, pbus]);
+  }, [fireone, pbus, radioLink]);
 
   const mob = isMobile;
 
@@ -126,7 +148,9 @@ export default function ConnectionManagerPanel({ fs = false }: ConnectionManager
                   conn.connected ? "bg-green-500/20" : "bg-muted/20",
                   "w-8 h-8"
                 )}>
-                  {conn.connected ? <Wifi className="w-4 h-4 text-green-400" /> : <WifiOff className="w-4 h-4 text-muted-foreground/30" />}
+                {conn.id === 'radio'
+                  ? <Radio className={cn("w-4 h-4", conn.connected ? "text-cyan-400" : "text-muted-foreground/30")} />
+                  : conn.connected ? <Wifi className="w-4 h-4 text-green-400" /> : <WifiOff className="w-4 h-4 text-muted-foreground/30" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
@@ -192,7 +216,8 @@ export default function ConnectionManagerPanel({ fs = false }: ConnectionManager
       {/* Quick info */}
       <div className={cn("flex items-center justify-between text-muted-foreground/30 border-t border-border/10 pt-2", "text-[8px]")}>
         <span>FireOne: {fireone.modules.size} módulos</span>
-        <span>PBUS: {pbus.deviceCount} dispositivos</span>
+        <span>PBUS: {pbus.deviceCount} disp.</span>
+        <span>Radio: {radioLink.devices.size} devs</span>
       </div>
     </div>
   );

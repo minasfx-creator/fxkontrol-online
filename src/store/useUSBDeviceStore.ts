@@ -13,7 +13,7 @@ import {
 export interface USBDMXDevice {
   id: string;
   label: string;
-  type: 'dmx' | 'firing' | 'timecode' | 'serial' | 'pbus';
+  type: 'dmx' | 'firing' | 'timecode' | 'serial' | 'pbus' | 'radio';
   state: 'connected' | 'disconnected';
   isENTTECPro: boolean;
   device: ConnectedDevice;

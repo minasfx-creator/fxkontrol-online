@@ -43,6 +43,7 @@ import VirtualFXButton from './VirtualFXButton';
 import FieldMap2D from './FieldMap2D';
 import ConnectionManagerPanel from './ConnectionManagerPanel';
 import PBusMonitorPanel from './live-firing/PBusMonitorPanel';
+import RadioControlPanel from './RadioControlPanel';
 
 // ═══════════════════════════════════════════════════════════
 // CUE KEY — hardware key replica with Lock/Tap mode
@@ -256,7 +257,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   useEffect(() => { return () => { relayWs.current?.close(); }; }, []);
 
   // ─── Swipe gesture for mobile mode switching / close ───
-  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'auto_fire', 'check_slave', 'controllers', 'pbus', 'field_map', 'connections', 'mobile_link', 'settings'];
+  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'auto_fire', 'check_slave', 'controllers', 'pbus', 'field_map', 'connections', 'radio', 'mobile_link', 'settings'];
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const swipeHandled = useRef(false);
 
@@ -1124,6 +1125,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
       case 'field_map': return <FieldMap2D fs={fs} />;
       case 'pbus': return <PBusMonitorPanel />;
       case 'connections': return <ConnectionManagerPanel fs={fs} />;
+      case 'radio': return <RadioControlPanel fs={fs} />;
       case 'settings': return <SettingsPanel fs={fs} settings={settings} onSettingsChange={setSettings} relayConnected={relayConnected} relayUrl={relayUrl} onRelayUrlChange={setRelayUrl} onConnectRelay={connectRelay} onDisconnectRelay={disconnectRelay} />;
       default: return renderSimpleDmx(fs);
     }

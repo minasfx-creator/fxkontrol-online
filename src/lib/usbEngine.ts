@@ -4,7 +4,7 @@
  * Uses `any` casts for Web Serial/USB APIs since they're not in standard TS lib.
  */
 
-export type USBDeviceType = 'dmx' | 'firing' | 'timecode' | 'serial' | 'pbus';
+export type USBDeviceType = 'dmx' | 'firing' | 'timecode' | 'serial' | 'pbus' | 'radio';
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
 
 export interface USBDeviceProfile {
@@ -101,6 +101,39 @@ export const DEVICE_PROFILES: USBDeviceProfile[] = [
     stopBits: 1,
     parity: 'none',
     description: 'PBUS protocol for PyroSlave C16/X4/PyroMote (433M/868M dual-band)',
+  },
+  {
+    type: 'radio',
+    label: 'CC1101 USB Radio (433/868MHz)',
+    vendorId: 0x1A86,
+    productId: 0x7523,
+    baudRate: 38400,
+    dataBits: 8,
+    stopBits: 1,
+    parity: 'none',
+    description: 'CC1101 OOK/FSK transceiver dongle — dual-band 433/868MHz',
+  },
+  {
+    type: 'radio',
+    label: 'SX1276 LoRa USB',
+    vendorId: 0x10C4,
+    productId: 0xEA60,
+    baudRate: 115200,
+    dataBits: 8,
+    stopBits: 1,
+    parity: 'none',
+    description: 'Semtech SX1276 LoRa USB dongle — long-range FSK/LoRa',
+  },
+  {
+    type: 'radio',
+    label: 'nRF24L01+ USB',
+    vendorId: 0x1A86,
+    productId: 0x7523,
+    baudRate: 57600,
+    dataBits: 8,
+    stopBits: 1,
+    parity: 'none',
+    description: 'Nordic nRF24L01+ 2.4GHz USB dongle',
   },
 ];
 

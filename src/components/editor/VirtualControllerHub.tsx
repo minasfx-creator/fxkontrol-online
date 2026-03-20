@@ -13,7 +13,7 @@ import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-type ConnectionType = 'usb' | 'artnet' | 'wireless' | 'pbus' | 'serial' | 'sim';
+type ConnectionType = 'usb' | 'artnet' | 'wireless' | 'pbus' | 'serial' | 'radio' | 'sim';
 
 interface ControllerCard {
   id: string;
@@ -27,12 +27,12 @@ interface ControllerCard {
 }
 
 const CONTROLLERS: ControllerCard[] = [
-  { id: 'fireone-xl4', name: 'FireOne XL4+', manufacturer: 'FireOne', type: 'firing', connectionTypes: ['usb', 'serial'], channels: 32, description: 'IFMx-i32Q field modules · RS-485 · 32 igniters/module', panelMode: 'pyro_fire' },
+  { id: 'fireone-xl4', name: 'FireOne XL4+', manufacturer: 'FireOne', type: 'firing', connectionTypes: ['usb', 'serial', 'radio'], channels: 32, description: 'IFMx-i32Q field modules · RS-485 · 32 igniters/module', panelMode: 'pyro_fire' },
   { id: 'zk6200', name: 'ZK6200', manufacturer: 'Showven', type: 'sfx', connectionTypes: ['usb', 'artnet', 'wireless'], channels: 20, description: 'Host controller · 20 zones · DMX + LTC', panelMode: 'zk6200' },
   { id: 'zk6300', name: 'ZK6300', manufacturer: 'Showven', type: 'sfx', connectionTypes: ['usb', 'artnet', 'wireless'], channels: 30, description: 'Host controller · 30 zones · DMX + LTC', panelMode: 'zk6200' },
-  { id: 'pyroslave-c16', name: 'PyroSlave C16', manufacturer: 'Showven', type: 'firing', connectionTypes: ['pbus', 'wireless'], channels: 16, description: 'Wireless slave · 16 cues · Dual-band 433/868M', panelMode: 'pbus' },
-  { id: 'fxbutton', name: 'FXbutton', manufacturer: 'Showven', type: 'remote', connectionTypes: ['wireless'], channels: 8, description: 'Wireless remote · 1/4/8 buttons', panelMode: 'fxbutton' },
-  { id: 'pyromote', name: 'PyroMote', manufacturer: 'Showven', type: 'remote', connectionTypes: ['wireless'], channels: 4, description: 'Compact remote · 4 channels · IP65', panelMode: 'fxbutton' },
+  { id: 'pyroslave-c16', name: 'PyroSlave C16', manufacturer: 'Showven', type: 'firing', connectionTypes: ['pbus', 'wireless', 'radio'], channels: 16, description: 'Wireless slave · 16 cues · Dual-band 433/868M', panelMode: 'pbus' },
+  { id: 'fxbutton', name: 'FXbutton', manufacturer: 'Showven', type: 'remote', connectionTypes: ['wireless', 'radio'], channels: 8, description: 'Wireless remote · 1/4/8 buttons', panelMode: 'fxbutton' },
+  { id: 'pyromote', name: 'PyroMote', manufacturer: 'Showven', type: 'remote', connectionTypes: ['wireless', 'radio'], channels: 4, description: 'Compact remote · 4 channels · IP65', panelMode: 'fxbutton' },
   { id: 'dmx-splitter8', name: 'DMX Splitter 8', manufacturer: 'Showven', type: 'dmx', connectionTypes: ['usb'], channels: 8, description: '1→8 DMX512 splitter · Opto-isolated' },
   { id: 'dmx-relay-r12', name: 'DMX Relay R12', manufacturer: 'Showven', type: 'dmx', connectionTypes: ['usb', 'artnet'], channels: 12, description: '12-channel DMX relay · 10A/channel' },
   { id: 'maiman', name: 'Maiman 30W', manufacturer: 'Showven', type: 'laser', connectionTypes: ['artnet'], channels: 14, description: '30W RGB laser · ILDA + DMX · IP54' },
@@ -44,6 +44,7 @@ const CONNECTION_ICONS: Record<ConnectionType, typeof Usb> = {
   wireless: Radio,
   pbus: Cable,
   serial: Cpu,
+  radio: Radio,
   sim: Sparkles,
 };
 
