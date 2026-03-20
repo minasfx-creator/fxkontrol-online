@@ -341,7 +341,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
 
   // Listen for viewport file drop events
   useEffect(() => {
-    const handler = (e: CustomEvent<{ file: File; type: 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset' }>) => {
+    const handler = (e: CustomEvent<{ file: File; type: 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset' | 'ue5map' | 'heightmap' }>) => {
       const { file, type } = e.detail;
       setDroppedFile({ file, type });
       if (type === 'mvr') setMvrOpen(true);
@@ -349,6 +349,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       else if (type === 'ue5json') setUe5DmxOpen(true);
       else if (type === 'vviz') setVvizOpen(true);
       else if (type === 'uasset') setUassetOpen(true);
+      else if (type === 'ue5map' || type === 'heightmap') setUe5MapOpen(true);
     };
     window.addEventListener('viewport-file-drop', handler as EventListener);
     return () => window.removeEventListener('viewport-file-drop', handler as EventListener);
