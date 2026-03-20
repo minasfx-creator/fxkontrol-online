@@ -402,7 +402,119 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
   );
 }
 
-function ResultsView({
+function MyLibraryView({
+  assets,
+  loading,
+  search,
+  onImport,
+  onDelete,
+}: {
+  assets: LibraryAsset[];
+  loading: boolean;
+  search: string;
+  onImport: (asset: LibraryAsset) => void;
+  onDelete: (id: string) => void;
+}) {
+  const filtered = search.trim()
+    ? assets.filter(a => a.name.toLowerCase().includes(search.toLowerCase()) || a.source.toLowerCase().includes(search.toLowerCase()))
+    : assets;
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-3">
+        <Loader2 className="h-8 w-8 text-primary animate-spin" />
+        <p className="text-sm text-muted-foreground">Carregando biblioteca...</p>
+      </div>
+    );
+  }
+
+  if (assets.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-primary/10">
+          <FolderHeart className="h-8 w-8 text-primary/60" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-foreground/80">Sua biblioteca está vazia</p>
+          <p className="text-xs text-muted-foreground mt-1">Importe modelos do 3D Warehouse, FAB ou upload local — eles serão salvos aqui automaticamente</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (filtered.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-3">
+        <Package className="h-8 w-8 text-muted-foreground/30" />
+        <p className="text-sm text-muted-foreground">Nenhum asset encontrado para "{search}"</p>
+      </div>
+    );
+  }
+
+  const SOURCE_COLORS: Record<string, string> = {
+    local: 'bg-emerald-500/10 text-emerald-400',
+    '3dwarehouse': 'bg-sky-500/10 text-sky-400',
+    fab: 'bg-purple-500/10 text-purple-400',
+    twinmotion: 'bg-amber-500/10 text-amber-400',
+  };
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+      {filtered.map(asset => (
+        <div
+          key={asset.id}
+          className="group rounded-2xl border border-border/15 overflow-hidden transition-all hover:border-primary/25 hover:shadow-[0_0_20px_hsl(var(--primary)/0.08)]"
+          style={{ background: 'hsl(var(--surface-1) / 0.4)' }}
+        >
+          {/* Thumbnail or placeholder */}
+          <div className="h-28 flex items-center justify-center bg-surface-0/60 relative">
+            {asset.thumbnail_base64 ? (
+              <img src={asset.thumbnail_base64} alt={asset.name} className="w-full h-full object-cover" />
+            ) : (
+              <Box className="h-10 w-10 text-muted-foreground/20" />
+            )}
+            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+              <button
+                onClick={(e) => { e.stopPropagation(); onDelete(asset.id); }}
+                className="w-6 h-6 rounded-lg bg-destructive/80 text-destructive-foreground flex items-center justify-center hover:bg-destructive transition-colors"
+                title="Remover"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+          {/* Info */}
+          <div className="p-3">
+            <p className="text-[12px] font-semibold text-foreground/90 truncate">{asset.name}</p>
+            <div className="flex items-center gap-2 mt-1.5">
+              <Badge className={cn("text-[8px] h-4 px-1.5 border-0", SOURCE_COLORS[asset.source] || 'bg-muted text-muted-foreground')}>
+                {asset.source}
+              </Badge>
+              <span className="text-[9px] text-muted-foreground/40 uppercase">.{asset.file_format}</span>
+              {asset.file_size > 0 && (
+                <span className="text-[9px] text-muted-foreground/30">{(asset.file_size / 1024 / 1024).toFixed(1)}MB</span>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 mt-1">
+              <Clock className="h-3 w-3 text-muted-foreground/30" />
+              <span className="text-[9px] text-muted-foreground/40">{new Date(asset.created_at).toLocaleDateString()}</span>
+            </div>
+            <Button
+              size="sm"
+              className="w-full mt-2.5 h-7 text-[10px] rounded-lg font-semibold"
+              onClick={() => onImport(asset)}
+            >
+              <Download className="h-3 w-3 mr-1" />
+              Importar para Viewport
+            </Button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
   results,
   viewMode,
   loading,
