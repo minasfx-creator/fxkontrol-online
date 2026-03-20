@@ -1,14 +1,16 @@
 /**
  * PBUS Monitor Panel — Showven PyroSlave C16/X4 Control
  * Dual-band RSSI, 16-cue continuity grid, ARM/FIRE with deadman
+ * Mobile-responsive with touch DEADMAN (800ms long-press)
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Radio, Battery, Shield, Zap, Signal, AlertTriangle, Wifi, WifiOff, RefreshCw, XCircle, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
 import type { PBusDevice, PBusWirelessBand } from '@/lib/pbusProtocol';
 import { cn } from '@/lib/utils';
@@ -31,16 +33,46 @@ function getCueColor(connected: boolean, fired: boolean, resistance: number): st
   return 'bg-emerald-500/20 border-emerald-500/40'; // good
 }
 
-function DeviceCard({ device, onArm, onDisarm, onFire, onCueStatus, onSetBand }: {
+function DeviceCard({ device, onArm, onDisarm, onFire, onCueStatus, onSetBand, isMobile }: {
   device: PBusDevice;
   onArm: (addr: number) => void;
   onDisarm: (addr: number) => void;
   onFire: (addr: number, cue: number) => void;
   onCueStatus: (addr: number) => void;
   onSetBand: (addr: number, band: PBusWirelessBand) => void;
+  isMobile: boolean;
 }) {
   const [expanded, setExpanded] = useState(true);
   const [deadman, setDeadman] = useState(false);
+  const [deadmanProgress, setDeadmanProgress] = useState(0);
+  const deadmanTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const deadmanAnimRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startDeadman = useCallback(() => {
+    if (isMobile) {
+      // 800ms long-press with progress ring
+      let progress = 0;
+      deadmanAnimRef.current = setInterval(() => {
+        progress += 5;
+        setDeadmanProgress(Math.min(100, (progress / 800) * 100 * 50));
+      }, 50);
+      deadmanTimer.current = setTimeout(() => {
+        setDeadman(true);
+        setDeadmanProgress(100);
+        if (deadmanAnimRef.current) clearInterval(deadmanAnimRef.current);
+        if (navigator.vibrate) navigator.vibrate([100]);
+      }, 800);
+    } else {
+      setDeadman(true);
+    }
+  }, [isMobile]);
+
+  const endDeadman = useCallback(() => {
+    if (deadmanTimer.current) { clearTimeout(deadmanTimer.current); deadmanTimer.current = null; }
+    if (deadmanAnimRef.current) { clearInterval(deadmanAnimRef.current); deadmanAnimRef.current = null; }
+    setDeadman(false);
+    setDeadmanProgress(0);
+  }, []);
 
   return (
     <div className="rounded-lg border border-border/20 bg-card/50 overflow-hidden">
@@ -102,8 +134,8 @@ function DeviceCard({ device, onArm, onDisarm, onFire, onCueStatus, onSetBand }:
             </div>
           </div>
 
-          {/* Cue grid */}
-          <div className="grid grid-cols-8 gap-1">
+          {/* Cue grid — 4x4 on mobile, 8x2 on desktop */}
+          <div className={cn("grid gap-1", isMobile ? "grid-cols-4" : "grid-cols-8")}>
             {Array.from({ length: device.channels }, (_, i) => {
               const cue = device.cueStates[i];
               const color = cue ? getCueColor(cue.connected, cue.fired, cue.resistance) : 'bg-muted/20 border-muted/40';
@@ -111,11 +143,14 @@ function DeviceCard({ device, onArm, onDisarm, onFire, onCueStatus, onSetBand }:
                 <button
                   key={i}
                   onClick={() => {
-                    if (device.armed && deadman) onFire(device.address, i);
-                    else toast.warning('ARM + DEADMAN required to fire');
+                    if (device.armed && deadman) {
+                      onFire(device.address, i);
+                      if (navigator.vibrate) navigator.vibrate(30);
+                    } else toast.warning('ARM + DEADMAN required to fire');
                   }}
                   className={cn(
-                    "h-8 rounded border text-[9px] font-mono font-bold transition-all hover:scale-105 active:scale-95",
+                    "rounded border text-[9px] font-mono font-bold transition-all hover:scale-105 active:scale-95",
+                    isMobile ? "h-12 text-xs" : "h-8",
                     color,
                     device.armed && deadman && "cursor-crosshair"
                   )}
@@ -128,28 +163,40 @@ function DeviceCard({ device, onArm, onDisarm, onFire, onCueStatus, onSetBand }:
           </div>
 
           {/* Controls */}
-          <div className="flex items-center gap-1.5">
-            <Button size="sm" variant="outline" className="h-7 text-[9px] flex-1" onClick={() => onCueStatus(device.address)}>
-              <RefreshCw className="w-3 h-3 mr-1" /> Continuity
-            </Button>
-            {device.armed ? (
-              <Button size="sm" variant="outline" className="h-7 text-[9px] flex-1 border-emerald-500/30 text-emerald-400" onClick={() => onDisarm(device.address)}>
-                <Shield className="w-3 h-3 mr-1" /> DISARM
+          <div className={cn("flex items-center gap-1.5", isMobile && "flex-col")}>
+            <div className="flex items-center gap-1.5 w-full">
+              <Button size="sm" variant="outline" className={cn("text-[9px] flex-1", isMobile ? "h-10" : "h-7")} onClick={() => onCueStatus(device.address)}>
+                <RefreshCw className="w-3 h-3 mr-1" /> Continuity
               </Button>
-            ) : (
-              <Button size="sm" variant="destructive" className="h-7 text-[9px] flex-1" onClick={() => onArm(device.address)}>
-                <Zap className="w-3 h-3 mr-1" /> ARM
-              </Button>
-            )}
+              {device.armed ? (
+                <Button size="sm" variant="outline" className={cn("text-[9px] flex-1 border-emerald-500/30 text-emerald-400", isMobile ? "h-10" : "h-7")} onClick={() => onDisarm(device.address)}>
+                  <Shield className="w-3 h-3 mr-1" /> DISARM
+                </Button>
+              ) : (
+                <Button size="sm" variant="destructive" className={cn("text-[9px] flex-1", isMobile ? "h-10" : "h-7")} onClick={() => onArm(device.address)}>
+                  <Zap className="w-3 h-3 mr-1" /> ARM
+                </Button>
+              )}
+            </div>
             <Button
               size="sm"
               variant={deadman ? 'destructive' : 'outline'}
-              className={cn("h-7 text-[9px] px-2", deadman && "animate-pulse")}
-              onMouseDown={() => setDeadman(true)}
-              onMouseUp={() => setDeadman(false)}
-              onMouseLeave={() => setDeadman(false)}
+              className={cn(
+                "text-[9px] px-4 relative overflow-hidden",
+                isMobile ? "h-14 w-full text-sm font-black" : "h-7",
+                deadman && "animate-pulse"
+              )}
+              onMouseDown={startDeadman}
+              onMouseUp={endDeadman}
+              onMouseLeave={endDeadman}
+              onTouchStart={(e) => { e.preventDefault(); startDeadman(); }}
+              onTouchEnd={(e) => { e.preventDefault(); endDeadman(); }}
+              onTouchCancel={endDeadman}
             >
-              DEADMAN
+              {isMobile && deadmanProgress > 0 && deadmanProgress < 100 && (
+                <div className="absolute inset-0 bg-red-500/20 transition-all" style={{ width: `${deadmanProgress}%` }} />
+              )}
+              <span className="relative z-10">DEADMAN{isMobile && !deadman ? ' (pressione 0.8s)' : ''}</span>
             </Button>
           </div>
 
@@ -166,8 +213,31 @@ function DeviceCard({ device, onArm, onDisarm, onFire, onCueStatus, onSetBand }:
 }
 
 export default function PBusMonitorPanel() {
+  const isMobile = useIsMobile();
   const pbus = usePBusHardware();
   const deviceList = Array.from(pbus.devices.values());
+  const [estopHeld, setEstopHeld] = useState(false);
+  const estopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleEstopStart = useCallback(() => {
+    if (isMobile) {
+      estopTimer.current = setTimeout(() => {
+        pbus.emergencyStop();
+        toast.error('🔴 EMERGENCY STOP — All devices disarmed');
+        if (navigator.vibrate) navigator.vibrate([200, 50, 200]);
+        setEstopHeld(false);
+      }, 500);
+      setEstopHeld(true);
+    } else {
+      pbus.emergencyStop();
+      toast.error('🔴 EMERGENCY STOP — All devices disarmed');
+    }
+  }, [isMobile, pbus]);
+
+  const handleEstopEnd = useCallback(() => {
+    if (estopTimer.current) { clearTimeout(estopTimer.current); estopTimer.current = null; }
+    setEstopHeld(false);
+  }, []);
 
   const handleConnect = useCallback(async () => {
     try {
@@ -213,21 +283,27 @@ export default function PBusMonitorPanel() {
         )}
       </div>
 
-      {/* E-STOP */}
+      {/* E-STOP — long-press on mobile */}
       {pbus.isConnected && (
         <Button
           variant="destructive"
-          className="w-full h-8 text-[10px] font-black tracking-wider"
-          onClick={() => { pbus.emergencyStop(); toast.error('🔴 EMERGENCY STOP — All devices disarmed'); }}
+          className={cn("w-full font-black tracking-wider", isMobile ? "h-14 text-base" : "h-8 text-[10px]")}
+          onMouseDown={handleEstopStart}
+          onMouseUp={handleEstopEnd}
+          onMouseLeave={handleEstopEnd}
+          onTouchStart={(e) => { e.preventDefault(); handleEstopStart(); }}
+          onTouchEnd={(e) => { e.preventDefault(); handleEstopEnd(); }}
+          onTouchCancel={handleEstopEnd}
         >
-          <XCircle className="w-3.5 h-3.5 mr-1.5" /> EMERGENCY STOP
+          <XCircle className={cn(isMobile ? "w-5 h-5" : "w-3.5 h-3.5", "mr-1.5")} />
+          EMERGENCY STOP {isMobile ? '(pressione 0.5s)' : ''}
         </Button>
       )}
 
-      {/* Device list */}
+      {/* Device list — horizontal scroll-snap on mobile */}
       {pbus.isConnected && (
-        <ScrollArea className="max-h-[400px]">
-          <div className="space-y-2">
+        <ScrollArea className={cn(isMobile ? "max-h-[500px]" : "max-h-[400px]")}>
+          <div className={cn("space-y-2", isMobile && "snap-x snap-mandatory")}>
             {deviceList.length === 0 && !pbus.scanning && (
               <div className="text-center py-6 text-[10px] text-muted-foreground/50">
                 <Radio className="w-6 h-6 mx-auto mb-2 opacity-30" />
@@ -249,6 +325,7 @@ export default function PBusMonitorPanel() {
                 onFire={pbus.fireCue}
                 onCueStatus={pbus.requestCueStatus}
                 onSetBand={pbus.setBand}
+                isMobile={isMobile}
               />
             ))}
           </div>

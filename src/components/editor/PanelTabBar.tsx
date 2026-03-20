@@ -4,7 +4,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useState, useCallback, useRef } from 'react';
 
-export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | 'inventory' | 'waypoints' | 'effects' | 'properties' | 'boids' | 'pid' | 'dmx' | 'battery' | 'mavlink' | 'smpte' | 'maps' | 'diagnostic' | 'logistics' | 'swarmgpt' | 'synesthesia' | 'firing' | 'labels' | 'video' | 'models' | 'safety' | 'scripting' | 'audience' | 'indoor' | 'chains' | 'groups' | 'scene' | 'soundlevel' | 'aroverlay' | 'share' | 'particles' | 'versioning' | 'weather' | 'collisions' | 'approval' | 'trajectory' | 'templates' | 'telemetry' | 'flightlog' | 'marketplace' | 'sitelayout' | 'showsettings' | 'calibration' | 'livefiring' | 'fleet' | 'geofence' | 'storyboard' | 'showcontrol' | 'inspector' | 'lightprogram' | 'safetycheck' | 'takeoffgrid' | 'transitions' | 'lasercontrol' | 'suppliers' | 'usb' | 'videochoreo' | 'showven' | 'generative' | 'sitemodels' | 'setlist' | 'rider' | 'budget' | 'showpreview' | 'mobilelink' | 'linkmonitor';
+export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | 'inventory' | 'waypoints' | 'effects' | 'properties' | 'boids' | 'pid' | 'dmx' | 'battery' | 'mavlink' | 'smpte' | 'maps' | 'diagnostic' | 'logistics' | 'swarmgpt' | 'synesthesia' | 'firing' | 'labels' | 'video' | 'models' | 'safety' | 'scripting' | 'audience' | 'indoor' | 'chains' | 'groups' | 'scene' | 'soundlevel' | 'aroverlay' | 'share' | 'particles' | 'versioning' | 'weather' | 'collisions' | 'approval' | 'trajectory' | 'templates' | 'telemetry' | 'flightlog' | 'marketplace' | 'sitelayout' | 'showsettings' | 'calibration' | 'livefiring' | 'fleet' | 'geofence' | 'storyboard' | 'showcontrol' | 'inspector' | 'lightprogram' | 'safetycheck' | 'takeoffgrid' | 'transitions' | 'lasercontrol' | 'suppliers' | 'usb' | 'videochoreo' | 'showven' | 'generative' | 'sitemodels' | 'setlist' | 'rider' | 'budget' | 'showpreview' | 'mobilelink' | 'linkmonitor' | 'controllers' | 'fieldmap' | 'connections';
 
 export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId; label: string; icon: typeof Route; shortcut?: string }[] }[] = [
   {
@@ -82,6 +82,9 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
     title: 'Hardware',
     icon: Package,
     items: [
+      { id: 'controllers', label: 'Controladores', icon: Cpu },
+      { id: 'connections', label: 'Conexões HW', icon: Cable },
+      { id: 'fieldmap', label: 'Field Map', icon: Map },
       { id: 'racks', label: 'Racks', icon: Package },
       { id: 'addressing', label: 'Endereçamento', icon: Cpu },
       { id: 'inventory', label: 'Inventário', icon: DollarSign },
