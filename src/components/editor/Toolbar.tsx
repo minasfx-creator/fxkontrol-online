@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Zap, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus, Download, ChevronDown, LayoutGrid, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Info, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store, Lightbulb, MonitorSpeaker } from 'lucide-react';
+import { Zap, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus, Download, ChevronDown, LayoutGrid, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Info, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store, Lightbulb, MonitorSpeaker, FileArchive } from 'lucide-react';
 import fxkLogo from '@/assets/fxk-logo.png';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -16,6 +16,7 @@ import VVIZImporter from './VVIZImporter';
 import UAssetImporter from './UAssetImporter';
 import GMA2PatchImporter from './GMA2PatchImporter';
 import UE5DMXPrevisImporter from './UE5DMXPrevisImporter';
+import MVRImporter from './MVRImporter';
 import AssetMarketplaceBrowser from './AssetMarketplaceBrowser';
 import ProjectBrowser from './ProjectBrowser';
 import CatalogImportDialog from './CatalogImportDialog';
@@ -332,6 +333,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
   const [marketplaceOpen, setMarketplaceOpen] = useState(false);
   const [gma2Open, setGma2Open] = useState(false);
   const [ue5DmxOpen, setUe5DmxOpen] = useState(false);
+  const [mvrOpen, setMvrOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const handleSave = useCallback(async () => {
@@ -479,6 +481,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
               { label: 'UE .uasset (Niagara)', icon: FileCode, onClick: () => setUassetOpen(true) },
               { label: 'GrandMA2 Patch', icon: Lightbulb, onClick: () => setGma2Open(true) },
               { label: 'UE5 DMX Library', icon: MonitorSpeaker, onClick: () => setUe5DmxOpen(true) },
+              { label: 'MVR (My Virtual Rig)', icon: FileArchive, onClick: () => setMvrOpen(true) },
               { label: 'Supplier Catalog', icon: Sparkles, onClick: () => setCatalogOpen(true) },
               { label: 'Asset Marketplace', icon: Store, onClick: () => setMarketplaceOpen(true) },
             ]}
@@ -581,6 +584,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       <AssetMarketplaceBrowser open={marketplaceOpen} onOpenChange={setMarketplaceOpen} />
       <GMA2PatchImporter open={gma2Open} onOpenChange={setGma2Open} />
       <UE5DMXPrevisImporter open={ue5DmxOpen} onOpenChange={setUe5DmxOpen} />
+      <MVRImporter open={mvrOpen} onOpenChange={setMvrOpen} />
 
       <div className="flex-1" />
 
