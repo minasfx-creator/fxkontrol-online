@@ -138,7 +138,7 @@ const CAMERA_PRESETS = [
   { id: 'back', label: 'Back', icon: Video, position: [0, 250, -2000] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
   { id: 'aerial', label: 'Aerial 45°', icon: Plane, position: [0, 3000, 3000] as [number, number, number], target: [0, 300, 0] as [number, number, number] },
   { id: 'closeup', label: 'Close-up', icon: Camera, position: [150, 200, 750] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
-  { id: 'cinematic', label: 'Cinema', icon: Video, position: [-750, 60, 2250] as [number, number, number], target: [0, 600, 0] as [number, number, number] },
+  { id: 'cinematic', label: 'Cinema', icon: Video, position: [-750, 2, 2250] as [number, number, number], target: [0, 400, 0] as [number, number, number] },
   { id: 'drone-follow', label: 'Drone POV', icon: Eye, position: [125, 900, 300] as [number, number, number], target: [0, 600, 0] as [number, number, number] },
   { id: 'vip', label: 'VIP Box', icon: Users, position: [500, 40, 2000] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
 ] as const;
