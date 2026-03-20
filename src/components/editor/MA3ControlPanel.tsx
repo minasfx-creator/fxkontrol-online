@@ -33,7 +33,8 @@ import {
   type OSCConnectionState,
 } from '@/lib/oscEngine';
 import { getSACNReceiver, type SACNUniverse, type SACNConnectionState } from '@/lib/sacnEngine';
-import { getMVRXchangeClient, type MVRXchangeStation, type MVRXchangeState, type MVRXchangeEvent } from '@/lib/mvrXchange';
+import { getMVRXchangeClient, type MVRXchangeStation, type MVRXchangeState, type MVRXchangeEvent, type MDNSDiscoveredStation } from '@/lib/mvrXchange';
+import SACNMonitorPanel from './SACNMonitorPanel';
 import {
   startBridge, stopBridge, isBridgeRunning,
   addMapping, autoMapUniverseToChannels, getMappings, clearMappings,
