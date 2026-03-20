@@ -262,7 +262,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   useEffect(() => { return () => { relayWs.current?.close(); }; }, []);
 
   // ─── Swipe gesture for mobile mode switching / close ───
-  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'auto_fire', 'check_slave', 'controllers', 'pbus', 'field_map', 'connections', 'radio', 'mobile_link', 'settings'];
+  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'auto_fire', 'check_slave', 'controllers', 'pbus', 'field_map', 'connections', 'radio', 'ma3', 'mobile_link', 'settings'];
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const swipeHandled = useRef(false);
 
@@ -812,14 +812,18 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
       {/* Mode tabs — horizontally scrollable on mobile */}
       <div className={cn("flex overflow-x-auto scrollbar-thin scrollbar-thumb-border/30 scrollbar-track-transparent", fs && mob ? "w-full pb-1" : fs ? "pr-3 gap-0.5" : "pr-1")}>
         {([
+          // DMX modes
           { key: 'super_dmx' as FXCMode, label: 'Super' },
           { key: 'simple_dmx' as FXCMode, label: 'Simple' },
           { key: 'manual_fire' as FXCMode, label: 'Manual' },
+          // Fire modes
           { key: 'pyro_fire' as FXCMode, label: '🔥 Pyro' },
           { key: 'auto_fire' as FXCMode, label: 'Auto' },
           { key: 'check_slave' as FXCMode, label: 'Check' },
+          // Hardware
           { key: 'controllers' as FXCMode, label: '🎛 HW' },
           { key: 'pbus' as FXCMode, label: '📡 PBUS' },
+          { key: 'ma3' as FXCMode, label: '🎛 MA3' },
           { key: 'field_map' as FXCMode, label: '🗺 Map' },
           { key: 'connections' as FXCMode, label: '🔌 Conn' },
           { key: 'mobile_link' as FXCMode, label: '📡 Link' },
@@ -857,9 +861,17 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           <span className={cn("font-mono text-muted-foreground/30", fs && mob ? "text-[8px]" : fs ? "text-[9px]" : "text-[6px]")}>{channels.length}CH · {armedCount}RDY</span>
           {firingCount > 0 && <span className={cn("font-mono text-red-400 font-bold animate-pulse", fs ? "text-[9px]" : "text-[6px]")}>🔥 {firingCount}</span>}
         </div>
-        <span className={cn("font-mono", fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[6px]", artNetConnected ? "text-green-500/60" : "text-muted-foreground/20")}>
-          {artNetConnected ? '● Art-Net' : '○ Off'}
-        </span>
+        <div className="flex items-center gap-1.5">
+          {fireone.isConnected && <span className={cn("font-mono text-[6px]", fs ? "text-[8px]" : "")}>
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 mr-0.5" />F1
+          </span>}
+          {pbus.isConnected && <span className={cn("font-mono text-[6px]", fs ? "text-[8px]" : "")}>
+            <span className={cn("inline-block w-1.5 h-1.5 rounded-full mr-0.5", pbus.connectionPath === 'radio' ? "bg-amber-400" : "bg-green-500")} />PB
+          </span>}
+          <span className={cn("font-mono", fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[6px]", artNetConnected ? "text-green-500/60" : "text-muted-foreground/20")}>
+            {artNetConnected ? '● Art-Net' : '○ Off'}
+          </span>
+        </div>
       </div>
     </div>
   );

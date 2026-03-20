@@ -21,6 +21,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useFleetStore } from '@/store/useFleetStore';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
+import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { showOrchestrator, type ShowPhase, type ShowWarning } from '@/lib/showOrchestrator';
 import type { AuthorizationScope, StartMethod } from '@/lib/flockwaveProtocol';
 import { cn } from '@/lib/utils';
@@ -178,6 +179,7 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
   const positions = useProjectStore((s) => s.positions);
   const timelineItems = useProjectStore((s) => s.timelineItems);
   const hardware = useFireOneHardware();
+  const pbus = usePBusHardware();
 
   const [authScope, setAuthScope] = useState<AuthorizationScope>('live');
   const [startMethod, setStartMethod] = useState<StartMethod>('auto');
@@ -205,6 +207,12 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
       hardware.modules.forEach(m => { if (m.batteryVoltage !== undefined && m.batteryVoltage < 11.0) lowBatt++; });
       if (lowBatt > 0) toast.warning(`FireOne: ${lowBatt} módulo(s) com bateria baixa`);
     }
+    if (pbus.isConnected) {
+      toast.info(`PBUS: ${pbus.deviceCount} dispositivos detectados`);
+      if (pbus.worstBattery !== null && pbus.worstBattery < 3.3) {
+        toast.warning(`PBUS: bateria baixa (${pbus.worstBattery.toFixed(1)}V)`);
+      }
+    }
     const ok = await showOrchestrator.startPreflight();
     setBusy(false);
     if (ok) {
@@ -213,7 +221,7 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
       if (failures.length > 0) toast.warning(`Preflight: ${failures.length} drone(s) with issues`);
       else toast.success(`Preflight passed — ${st.totalDrones} drones ready`);
     } else toast.error('Preflight failed');
-  }, [hardware]);
+  }, [hardware, pbus]);
 
   const handleUpload = useCallback(async () => {
     setBusy(true);
@@ -250,23 +258,30 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
         toast.info('FireOne: Todos os módulos ARMADOS');
       } catch { toast.warning('FireOne: Falha ao armar módulos'); }
     }
+    // Arm PBUS devices when authorizing
+    if (pbus.isConnected) {
+      try {
+        await pbus.armAll();
+        toast.info(`PBUS: ${pbus.deviceCount} dispositivos ARMADOS`);
+      } catch { toast.warning('PBUS: Falha ao armar dispositivos'); }
+    }
     const ok = await showOrchestrator.authorize(authScope);
     setBusy(false);
     if (ok) toast.success(`Authorized (${authScope})`);
     else toast.error('Authorization failed');
-  }, [authScope, hardware]);
+  }, [authScope, hardware, pbus]);
 
   const handleDeauthorize = useCallback(async () => {
     // Disarm FireOne modules
     if (hardware.isConnected) {
-      try {
-        await hardware.disarmAll();
-        toast.info('FireOne: Módulos DESARMADOS');
-      } catch {}
+      try { await hardware.disarmAll(); toast.info('FireOne: Módulos DESARMADOS'); } catch {}
+    }
+    if (pbus.isConnected) {
+      try { await pbus.disarmAll(); toast.info('PBUS: Dispositivos DESARMADOS'); } catch {}
     }
     await showOrchestrator.deauthorize();
     toast.warning('Show deauthorized');
-  }, [hardware]);
+  }, [hardware, pbus]);
 
   const handleCountdown = useCallback(() => {
     showOrchestrator.startCountdown(countdownTarget);
@@ -277,13 +292,16 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
   const handleResume = useCallback(async () => { await showOrchestrator.resume(); toast.info('Show resumed'); }, []);
   const handleLand = useCallback(async () => { await showOrchestrator.startLanding(); toast.info('Landing sequence'); }, []);
   const handleAbort = useCallback(async () => {
-    // FireOne emergency stop
+    // Emergency stop all hardware
     if (hardware.isConnected) {
       try { await hardware.emergencyStop(); } catch {}
     }
+    if (pbus.isConnected) {
+      try { await pbus.emergencyStop(); } catch {}
+    }
     await showOrchestrator.abort('User emergency abort');
     toast.error('🚨 EMERGENCY ABORT');
-  }, [hardware]);
+  }, [hardware, pbus]);
   const handleReset = useCallback(() => { showOrchestrator.reset(); toast.info('Show control reset'); }, []);
 
   // ── Derived ───────────────────────────────────────────────────
@@ -447,8 +465,8 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
           { label: 'Fleet', value: `${orc.totalDrones > 0 ? orc.totalDrones : uavs.size}`, icon: Cpu },
           { label: 'Slots', value: `${positions.length}`, icon: Target },
           { label: 'Duration', value: `${duration}s`, icon: Clock },
-          { label: 'Cues', value: `${timelineItems.length}`, icon: Radio },
           { label: 'FireOne', value: hardware.isConnected ? `${hardware.modules.size}` : 'SIM', icon: Zap },
+          { label: 'PBUS', value: pbus.isConnected ? `${pbus.deviceCount}` : 'SIM', icon: Radio },
         ].map(item => (
           <div key={item.label} className="flex flex-col items-center gap-0.5 py-1 rounded-lg bg-surface-1/40">
             <item.icon className="w-3 h-3 text-muted-foreground/50" />

@@ -1,6 +1,6 @@
 /**
  * MA3ControlPanel — grandMA3 Console Integration Panel
- * OSC control, sACN monitoring, MVR-xchange live sync
+ * OSC control, sACN monitoring + DMX bridge, MVR-xchange live sync
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -8,7 +8,8 @@ import {
   Radio, Wifi, WifiOff, Settings, Play, Pause, Square,
   RefreshCw, SkipForward, ChevronDown, ChevronUp, Zap,
   Activity, Monitor, Link2, Unlink, Download, RotateCcw,
-  Gauge, Layers, Signal, Cable
+  Gauge, Layers, Signal, Cable, SkipBack, Moon, Sun,
+  AlertTriangle, Grid3X3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +18,7 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
@@ -32,9 +34,22 @@ import {
 } from '@/lib/oscEngine';
 import { getSACNReceiver, type SACNUniverse, type SACNConnectionState } from '@/lib/sacnEngine';
 import { getMVRXchangeClient, type MVRXchangeStation, type MVRXchangeState, type MVRXchangeEvent } from '@/lib/mvrXchange';
+import {
+  startBridge, stopBridge, isBridgeRunning,
+  addMapping, autoMapUniverseToChannels, getMappings, clearMappings,
+  type SACNMapping,
+} from '@/lib/sacnDmxBridge';
+import { useSfxChannelStore } from '@/store/useSfxChannelStore';
 
 interface MA3ControlPanelProps {
   fs?: boolean;
+}
+
+interface CueListEntry {
+  seq: number;
+  cue: string;
+  label: string;
+  active: boolean;
 }
 
 export default function MA3ControlPanel({ fs = false }: MA3ControlPanelProps) {
@@ -46,12 +61,22 @@ export default function MA3ControlPanel({ fs = false }: MA3ControlPanelProps) {
   const [oscMessages, setOscMessages] = useState<{ dir: 'tx' | 'rx'; addr: string; args: string; time: number }[]>([]);
   const [cmdInput, setCmdInput] = useState('');
   const [faderValues, setFaderValues] = useState<Record<string, number>>({});
+  const [execPage, setExecPage] = useState(1);
+  const [cueList, setCueList] = useState<CueListEntry[]>([
+    { seq: 1, cue: '1', label: 'Intro', active: false },
+    { seq: 1, cue: '2', label: 'Verse 1', active: false },
+    { seq: 1, cue: '3', label: 'Chorus', active: false },
+    { seq: 1, cue: '4', label: 'Bridge', active: false },
+    { seq: 1, cue: '5', label: 'Finale', active: false },
+  ]);
 
   // sACN
   const [sacnState, setSacnState] = useState<SACNConnectionState>('disconnected');
   const [sacnBridgeUrl, setSacnBridgeUrl] = useState('ws://localhost:9003');
   const [sacnUniverses, setSacnUniverses] = useState<SACNUniverse[]>([]);
   const [sacnSubscribeInput, setSacnSubscribeInput] = useState('1');
+  const [bridgeEnabled, setBridgeEnabled] = useState(false);
+  const [expandedUniverse, setExpandedUniverse] = useState<number | null>(null);
 
   // MVR-xchange
   const [mvrState, setMvrState] = useState<MVRXchangeState>('disconnected');
@@ -59,18 +84,38 @@ export default function MA3ControlPanel({ fs = false }: MA3ControlPanelProps) {
   const [mvrStations, setMvrStations] = useState<MVRXchangeStation[]>([]);
   const [mvrCommitLog, setMvrCommitLog] = useState<{ station: string; file: string; time: number }[]>([]);
 
-  // Settings collapsed
   const [showSettings, setShowSettings] = useState(false);
 
   const oscClient = useRef(getOSCClient());
   const sacnReceiver = useRef(getSACNReceiver());
   const mvrClient = useRef(getMVRXchangeClient());
+  const sfxChannels = useSfxChannelStore(s => s.channels);
 
-  // OSC listener
+  // OSC listener — bidirectional fader sync + cue feedback
   useEffect(() => {
     const unsub = oscClient.current.on((msg: OSCMessage) => {
       const argStr = msg.args.map(a => `${a.type}:${a.value}`).join(', ');
       setOscMessages(prev => [...prev.slice(-99), { dir: 'rx', addr: msg.address, args: argStr, time: Date.now() }]);
+
+      // Bidirectional fader sync: /gma3/exec/{page}.{fader}
+      const faderMatch = msg.address.match(/\/gma3\/exec\/(\d+)\.(\d+)/);
+      if (faderMatch && msg.args.length > 0) {
+        const key = `${faderMatch[1]}.${faderMatch[2]}`;
+        const val = typeof msg.args[0].value === 'number' ? msg.args[0].value : parseFloat(String(msg.args[0].value));
+        if (!isNaN(val)) {
+          setFaderValues(prev => ({ ...prev, [key]: Math.min(1, Math.max(0, val)) }));
+        }
+      }
+
+      // Cue feedback: /gma3/seq/{seq}/cue
+      const cueMatch = msg.address.match(/\/gma3\/seq\/(\d+)\/cue/);
+      if (cueMatch && msg.args.length > 0) {
+        const seq = parseInt(cueMatch[1]);
+        const activeCue = String(msg.args[0].value);
+        setCueList(prev => prev.map(c =>
+          c.seq === seq ? { ...c, active: c.cue === activeCue } : c
+        ));
+      }
     });
     return unsub;
   }, []);
@@ -83,6 +128,16 @@ export default function MA3ControlPanel({ fs = false }: MA3ControlPanelProps) {
     }, 500);
     return () => clearInterval(interval);
   }, [sacnState]);
+
+  // Bridge toggle
+  useEffect(() => {
+    if (bridgeEnabled && sacnState === 'connected') {
+      startBridge();
+    } else {
+      stopBridge();
+    }
+    return () => { stopBridge(); };
+  }, [bridgeEnabled, sacnState]);
 
   // MVR-xchange listener
   useEffect(() => {
@@ -155,6 +210,12 @@ export default function MA3ControlPanel({ fs = false }: MA3ControlPanelProps) {
     toast.info(`Seq ${seq} GO`);
   }, []);
 
+  const sendMacro = useCallback((cmd: string, label: string) => {
+    oscClient.current.send(buildMA3Command(cmd));
+    setOscMessages(prev => [...prev.slice(-99), { dir: 'tx', addr: '/gma3/cmd', args: cmd, time: Date.now() }]);
+    toast.info(`MA3: ${label}`);
+  }, []);
+
   // ─── sACN Actions ──────────────────────────────────
   const connectSACN = useCallback(async () => {
     try {
@@ -172,6 +233,8 @@ export default function MA3ControlPanel({ fs = false }: MA3ControlPanelProps) {
     sacnReceiver.current.disconnect();
     setSacnState('disconnected');
     setSacnUniverses([]);
+    stopBridge();
+    setBridgeEnabled(false);
   }, []);
 
   const subscribeSACN = useCallback(() => {
@@ -180,6 +243,11 @@ export default function MA3ControlPanel({ fs = false }: MA3ControlPanelProps) {
     sacnReceiver.current.subscribe(unis);
     toast.info(`Subscribed to sACN universe(s): ${unis.join(', ')}`);
   }, [sacnSubscribeInput]);
+
+  const handleAutoMap = useCallback((universe: number) => {
+    const count = autoMapUniverseToChannels(universe);
+    toast.success(`Auto-mapped ${count} SFX channels to sACN universe ${universe}`);
+  }, []);
 
   // ─── MVR-xchange Actions ───────────────────────────
   const connectMVR = useCallback(async () => {
@@ -228,6 +296,11 @@ export default function MA3ControlPanel({ fs = false }: MA3ControlPanelProps) {
           <Badge variant="outline" className={cn("text-[7px] h-4 px-1", stateColor(mvrState))}>
             MVR {mvrState === 'connected' ? '●' : '○'}
           </Badge>
+          {bridgeEnabled && (
+            <Badge variant="outline" className="text-[7px] h-4 px-1 text-amber-400 border-amber-500/30">
+              BRIDGE ●
+            </Badge>
+          )}
           <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => setShowSettings(s => !s)}>
             <Settings className="w-3 h-3" />
           </Button>
@@ -255,7 +328,7 @@ export default function MA3ControlPanel({ fs = false }: MA3ControlPanelProps) {
       <Tabs defaultValue="osc" className="flex-1 flex flex-col">
         <TabsList className="h-7">
           <TabsTrigger value="osc" className="text-[9px] h-5">OSC Control</TabsTrigger>
-          <TabsTrigger value="sacn" className="text-[9px] h-5">sACN Monitor</TabsTrigger>
+          <TabsTrigger value="sacn" className="text-[9px] h-5">sACN Bridge</TabsTrigger>
           <TabsTrigger value="mvr" className="text-[9px] h-5">MVR-xchange</TabsTrigger>
         </TabsList>
 
@@ -292,32 +365,91 @@ export default function MA3ControlPanel({ fs = false }: MA3ControlPanelProps) {
             </Button>
           </div>
 
-          {/* Quick Actions */}
+          {/* MA3 Macro Buttons */}
           <div className="flex flex-wrap gap-1">
-            {[1, 2, 3, 4].map(seq => (
-              <Button key={seq} size="sm" variant="outline" className="h-6 text-[8px] px-2"
-                onClick={() => sendGo(seq)} disabled={oscState !== 'connected'}>
-                <Play className="w-2.5 h-2.5 mr-0.5" /> Seq {seq}
-              </Button>
-            ))}
             <Button size="sm" variant="outline" className="h-6 text-[8px] px-2"
-              onClick={() => { oscClient.current.send(buildMA3PlaybackControl(1, 'stop')); }} disabled={oscState !== 'connected'}>
-              <Square className="w-2.5 h-2.5 mr-0.5" /> Stop
+              onClick={() => sendMacro('Go+ Seq 1', 'Go+')} disabled={oscState !== 'connected'}>
+              <Play className="w-2.5 h-2.5 mr-0.5" /> Go+
+            </Button>
+            <Button size="sm" variant="outline" className="h-6 text-[8px] px-2"
+              onClick={() => sendMacro('Go- Seq 1', 'Go-')} disabled={oscState !== 'connected'}>
+              <SkipBack className="w-2.5 h-2.5 mr-0.5" /> Go−
+            </Button>
+            <Button size="sm" variant="outline" className="h-6 text-[8px] px-2"
+              onClick={() => sendMacro('Pause Seq 1', 'Pause')} disabled={oscState !== 'connected'}>
+              <Pause className="w-2.5 h-2.5 mr-0.5" /> Pause
+            </Button>
+            <Button size="sm" variant="outline" className="h-6 text-[8px] px-2 text-amber-400 border-amber-500/30"
+              onClick={() => sendMacro('BlackOut', 'Blackout')} disabled={oscState !== 'connected'}>
+              <Moon className="w-2.5 h-2.5 mr-0.5" /> BO
+            </Button>
+            <Button size="sm" variant="outline" className="h-6 text-[8px] px-2 text-emerald-400 border-emerald-500/30"
+              onClick={() => sendMacro('FullOn', 'Full On')} disabled={oscState !== 'connected'}>
+              <Sun className="w-2.5 h-2.5 mr-0.5" /> Full
+            </Button>
+            <Button size="sm" variant="destructive" className="h-6 text-[8px] px-2"
+              onClick={() => sendMacro('Off Executor *.*', '🚨 Panic')} disabled={oscState !== 'connected'}>
+              <AlertTriangle className="w-2.5 h-2.5 mr-0.5" /> Panic
             </Button>
           </div>
 
+          {/* Sequence Quick Go */}
+          <div className="flex flex-wrap gap-1">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map(seq => (
+              <Button key={seq} size="sm" variant="outline" className="h-5 text-[7px] px-1.5"
+                onClick={() => sendGo(seq)} disabled={oscState !== 'connected'}>
+                Seq {seq}
+              </Button>
+            ))}
+          </div>
+
+          {/* Cue List */}
+          <div className="text-[8px] font-bold text-muted-foreground/50 uppercase">Cue List — Seq 1</div>
+          <ScrollArea className="max-h-24">
+            <div className="space-y-0.5">
+              {cueList.map((c, i) => (
+                <button key={i}
+                  onClick={() => {
+                    oscClient.current.send(buildMA3CueTrigger(c.seq, parseFloat(c.cue)));
+                    setCueList(prev => prev.map((p, j) => ({ ...p, active: j === i })));
+                  }}
+                  disabled={oscState !== 'connected'}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-2 py-1 rounded text-[8px] transition-all",
+                    c.active
+                      ? "bg-primary/15 border border-primary/30 text-foreground"
+                      : "bg-background/20 border border-transparent text-muted-foreground/60 hover:bg-background/30"
+                  )}>
+                  <span className="font-mono w-6 text-right">{c.cue}</span>
+                  <span className="flex-1 text-left truncate">{c.label}</span>
+                  {c.active && <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />}
+                </button>
+              ))}
+            </div>
+          </ScrollArea>
+
           {/* Executor Faders */}
-          <div className="text-[8px] font-bold text-muted-foreground/50 uppercase">Executor Page 1</div>
+          <div className="flex items-center justify-between">
+            <span className="text-[8px] font-bold text-muted-foreground/50 uppercase">Executor Page</span>
+            <Select value={String(execPage)} onValueChange={v => setExecPage(parseInt(v))}>
+              <SelectTrigger className="h-5 w-14 text-[8px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map(p => (
+                  <SelectItem key={p} value={String(p)} className="text-[9px]">Page {p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="grid grid-cols-4 gap-1">
             {[1, 2, 3, 4, 5, 6, 7, 8].map(fader => {
-              const key = `1.${fader}`;
+              const key = `${execPage}.${fader}`;
               const val = faderValues[key] ?? 0;
               return (
                 <div key={fader} className="flex flex-col items-center gap-0.5 p-1 rounded bg-background/20 border border-border/10">
                   <span className="text-[7px] font-mono text-muted-foreground/40">F{fader}</span>
                   <Slider
                     value={[val * 100]}
-                    onValueChange={([v]) => sendFader(1, fader, v / 100)}
+                    onValueChange={([v]) => sendFader(execPage, fader, v / 100)}
                     max={100} step={1}
                     orientation="vertical"
                     className="h-12"
@@ -359,6 +491,22 @@ export default function MA3ControlPanel({ fs = false }: MA3ControlPanelProps) {
             )}
           </div>
 
+          {/* sACN → DMX Bridge Toggle */}
+          <div className={cn(
+            "flex items-center justify-between p-2 rounded border",
+            bridgeEnabled ? "bg-amber-500/10 border-amber-500/30" : "bg-background/20 border-border/15"
+          )}>
+            <div className="flex items-center gap-1.5">
+              <Zap className={cn("w-3 h-3", bridgeEnabled ? "text-amber-400" : "text-muted-foreground/40")} />
+              <div>
+                <span className="text-[9px] font-bold text-foreground">Route sACN → DMX Engine</span>
+                <p className="text-[7px] text-muted-foreground/50">MA3 controla SFX channels em tempo real</p>
+              </div>
+            </div>
+            <Switch checked={bridgeEnabled} onCheckedChange={setBridgeEnabled} className="scale-75"
+              disabled={sacnState !== 'connected'} />
+          </div>
+
           {/* Subscribe */}
           <div className="flex gap-1">
             <Input
@@ -383,7 +531,14 @@ export default function MA3ControlPanel({ fs = false }: MA3ControlPanelProps) {
                     <div className="flex items-center gap-1.5">
                       <span className="text-[8px] text-muted-foreground/40">Pri:{u.priority}</span>
                       <span className="text-[8px] text-emerald-400/60">{u.fps}fps</span>
-                      <span className="text-[7px] text-muted-foreground/30">{u.sourceName}</span>
+                      <Button size="sm" variant="ghost" className="h-4 text-[7px] px-1"
+                        onClick={() => handleAutoMap(u.universe)}>
+                        Auto-Map
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-4 w-4 p-0"
+                        onClick={() => setExpandedUniverse(expandedUniverse === u.universe ? null : u.universe)}>
+                        <Grid3X3 className="w-2.5 h-2.5" />
+                      </Button>
                     </div>
                   </div>
                   {/* Channel bar (first 64 channels) */}
@@ -399,8 +554,24 @@ export default function MA3ControlPanel({ fs = false }: MA3ControlPanelProps) {
                     })}
                   </div>
                   <div className="text-[7px] text-muted-foreground/30 mt-0.5">
-                    Last: {new Date(u.lastUpdate).toLocaleTimeString()} · Seq:{u.sequence}
+                    Last: {new Date(u.lastUpdate).toLocaleTimeString()} · Seq:{u.sequence} · {u.sourceName}
                   </div>
+                  {/* Expanded 512-channel grid */}
+                  {expandedUniverse === u.universe && (
+                    <div className="mt-2 p-1 rounded border border-border/10 bg-background/10">
+                      <div className="text-[7px] font-bold text-muted-foreground/50 mb-1">512 Channels</div>
+                      <div className="grid gap-px" style={{ gridTemplateColumns: 'repeat(32, 1fr)' }}>
+                        {Array.from({ length: 512 }, (_, i) => {
+                          const val = u.channels[i] || 0;
+                          return (
+                            <div key={i} className="aspect-square rounded-[1px]" style={{
+                              backgroundColor: val > 0 ? `hsla(210, 60%, 50%, ${Math.max(0.15, val / 255)})` : 'hsla(220, 10%, 15%, 0.3)',
+                            }} title={`Ch ${i + 1}: ${val}`} />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
               {sacnUniverses.length === 0 && sacnState === 'connected' && (
@@ -417,6 +588,30 @@ export default function MA3ControlPanel({ fs = false }: MA3ControlPanelProps) {
               )}
             </div>
           </ScrollArea>
+
+          {/* Active Mappings */}
+          {getMappings().length > 0 && (
+            <div className="p-1.5 rounded border border-border/15 bg-background/20">
+              <div className="flex items-center justify-between text-[8px] mb-1">
+                <span className="font-bold text-muted-foreground/50 uppercase">Active Mappings</span>
+                <Button size="sm" variant="ghost" className="h-4 text-[7px] px-1" onClick={() => { clearMappings(); toast.info('Mappings cleared'); }}>
+                  Clear
+                </Button>
+              </div>
+              <div className="space-y-0.5">
+                {getMappings().slice(0, 8).map((m, i) => {
+                  const ch = sfxChannels.find(c => c.id === m.sfxChannelId);
+                  return (
+                    <div key={i} className="flex items-center gap-1 text-[7px] text-muted-foreground/60">
+                      <span>U{m.universe}:{m.startChannel}</span>
+                      <span>→</span>
+                      <span className="text-foreground/60 truncate">{ch?.name ?? m.sfxChannelId}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         {/* ═══ MVR-xchange Tab ═══ */}

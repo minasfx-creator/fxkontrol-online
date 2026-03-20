@@ -87,10 +87,14 @@ function getEffectType(category: ShowvenCategory): string {
   }
 }
 
-function EquipmentCard({ preset, category }: { preset: AnyPreset; category: ShowvenCategory }) {
+function EquipmentCard({ preset, category, pbusDevices }: { preset: AnyPreset; category: ShowvenCategory; pbusDevices?: Map<number, any> }) {
   const meta = CATEGORY_META[category];
   const Icon = meta.icon;
   const effectType = getEffectType(category);
+
+  // Check if this is a controller type that could have live PBUS data
+  const isController = category === 'controller' || category === 'remote';
+  const liveDeviceCount = pbusDevices?.size ?? 0;
 
   const handleDragStart = useCallback((e: React.DragEvent) => {
     e.dataTransfer.setData('application/showven-equipment', JSON.stringify({
@@ -187,6 +191,15 @@ function EquipmentCard({ preset, category }: { preset: AnyPreset; category: Show
               <p className="text-[9px] text-muted-foreground/70 truncate leading-tight mt-0.5">
                 {getSpecLine(preset, category)}
               </p>
+              {/* Live PBUS status for controllers */}
+              {isController && liveDeviceCount > 0 && (
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-[8px] text-emerald-400 flex items-center gap-0.5">
+                    <Wifi className="w-2.5 h-2.5" /> LIVE
+                  </span>
+                  <span className="text-[8px] text-muted-foreground/50">{liveDeviceCount} connected</span>
+                </div>
+              )}
             </div>
             {effectType && 'dmxChannels' in preset && (preset as any).dmxChannels > 0 && (
               <Badge variant="outline" className="text-[8px] px-1.5 py-0 h-4 border-border/20 text-muted-foreground/50 flex-shrink-0">
@@ -244,6 +257,16 @@ export default function ShowvenEquipmentPanel({ onClose }: ShowvenEquipmentPanel
     }
   }, [pbus]);
 
+  const handleScanAll = useCallback(async () => {
+    if (!pbus.isConnected) {
+      toast.warning('PBUS não conectado');
+      return;
+    }
+    toast.info('Scanning PBUS devices...');
+    await pbus.discoverDevices(64);
+    toast.success(`Found ${pbus.deviceCount} devices`);
+  }, [pbus]);
+
   return (
     <div className="h-full flex flex-col" style={{ background: 'hsl(var(--card))' }}>
       {/* Header */}
@@ -259,14 +282,20 @@ export default function ShowvenEquipmentPanel({ onClose }: ShowvenEquipmentPanel
         </div>
         <div className="flex items-center gap-1">
           {pbus.isConnected ? (
-            <Badge variant="outline" className="text-[8px] h-4 px-1.5 border-emerald-500/30 text-emerald-400">
-              <Wifi className="w-2.5 h-2.5 mr-0.5" /> {pbusDeviceCount} PBUS
-              {pbus.worstBattery !== null && (
-                <span className={cn("ml-1", (pbus.worstBattery ?? 4) < 3.3 ? 'text-destructive' : '')}>
-                  · {(pbus.worstBattery ?? 0).toFixed(1)}V
-                </span>
-              )}
-            </Badge>
+            <div className="flex items-center gap-1">
+              <Badge variant="outline" className="text-[8px] h-4 px-1.5 border-emerald-500/30 text-emerald-400">
+                <Wifi className="w-2.5 h-2.5 mr-0.5" /> {pbusDeviceCount} PBUS
+                {pbus.connectionPath === 'radio' && <span className="ml-0.5 text-amber-400">RF</span>}
+                {pbus.worstBattery !== null && (
+                  <span className={cn("ml-1", (pbus.worstBattery ?? 4) < 3.3 ? 'text-destructive' : '')}>
+                    · {(pbus.worstBattery ?? 0).toFixed(1)}V
+                  </span>
+                )}
+              </Badge>
+              <Button variant="ghost" size="sm" className="h-5 text-[7px] px-1.5" onClick={handleScanAll}>
+                Scan
+              </Button>
+            </div>
           ) : (
             <Button variant="ghost" size="sm" className="h-6 text-[8px] px-2" onClick={handleConnectPBus}>
               <Radio className="w-3 h-3 mr-1" /> Connect PBUS

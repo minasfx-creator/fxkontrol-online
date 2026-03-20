@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { useSMPTEStore, type ChaseMode } from '@/store/useSMPTEStore';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
+import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { formatTimecode, encodeTimecodeToLTC, generateMTCQuarterFrames, secondsToTimecode, type SMPTEFrameRate } from '@/lib/smpteEngine';
 
 interface SMPTEPanelProps {
@@ -20,10 +21,13 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
   const store = useSMPTEStore();
   const { currentTime, isPlaying } = useProjectStore();
   const hardware = useFireOneHardware();
+  const pbus = usePBusHardware();
   const [startTcInput, setStartTcInput] = useState('01:00:00:00');
   const [wsUrlInput, setWsUrlInput] = useState(store.wsUrl);
   const [syncToFireOne, setSyncToFireOne] = useState(false);
+  const [syncToPBus, setSyncToPBus] = useState(false);
   const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pbusSyncRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Derive display TC
   const offsetTime = currentTime + store.startTimecodeSeconds;
@@ -53,6 +57,21 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
     }, 100); // sync every 100ms
     return () => { if (syncIntervalRef.current) clearInterval(syncIntervalRef.current); };
   }, [syncToFireOne, hardware.isConnected, store.running, currentTime, store.startTimecodeSeconds]);
+
+  // PBUS timecode sync
+  useEffect(() => {
+    if (!syncToPBus || !pbus.isConnected || !store.running) {
+      if (pbusSyncRef.current) { clearInterval(pbusSyncRef.current); pbusSyncRef.current = null; }
+      return;
+    }
+    pbusSyncRef.current = setInterval(() => {
+      // PBUS devices receive timecode via requestCueStatus which updates internal clock
+      pbus.devices.forEach((_, addr) => {
+        pbus.requestCueStatus(addr).catch(() => {});
+      });
+    }, 200); // sync every 200ms for PBUS
+    return () => { if (pbusSyncRef.current) clearInterval(pbusSyncRef.current); };
+  }, [syncToPBus, pbus.isConnected, store.running, pbus]);
 
   const statusColor = {
     disconnected: 'bg-muted-foreground',
@@ -232,6 +251,30 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
                 {hardware.isConnected
                   ? `${hardware.modules.size} módulo(s) recebendo TC`
                   : 'Hardware não conectado'}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* PBUS Timecode Sync */}
+        <div className={cn(
+          "rounded border p-2 space-y-1",
+          syncToPBus && pbus.isConnected ? "bg-amber-500/5 border-amber-500/30" : "bg-surface-0 border-border"
+        )}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Radio className={cn("w-3.5 h-3.5", syncToPBus && pbus.isConnected ? "text-amber-400" : "text-muted-foreground")} />
+              <Label className="text-[10px] font-mono-code text-foreground font-bold">SYNC TO PBUS</Label>
+            </div>
+            <Switch checked={syncToPBus} onCheckedChange={setSyncToPBus} className="scale-75" />
+          </div>
+          {syncToPBus && (
+            <div className="flex items-center gap-1.5">
+              <div className={cn("w-2 h-2 rounded-full", pbus.isConnected ? "bg-amber-400 animate-pulse" : "bg-yellow-400")} />
+              <span className="text-[9px] font-mono-code text-muted-foreground">
+                {pbus.isConnected
+                  ? `${pbus.deviceCount} dispositivo(s) recebendo TC`
+                  : 'PBUS não conectado'}
               </span>
             </div>
           )}
