@@ -93,12 +93,16 @@ export default function MultiBurstEffect({
   color,
   progress,
   burstCount = 3,
+  caliber = 3,
 }: {
   position: [number, number, number];
   color: string;
   progress: number;
   burstCount?: number;
+  caliber?: number;
 }) {
+  // Scale burst spread based on caliber
+  const burstScale = 0.7 + caliber * 0.12;
   const bursts = useMemo(() => {
     const b: { offset: [number, number, number]; delay: number; seed: number }[] = [];
     for (let i = 0; i < burstCount; i++) {

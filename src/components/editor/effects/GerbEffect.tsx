@@ -19,12 +19,17 @@ export default function GerbEffect({
   color,
   progress,
   height = 5,
+  caliber = 3,
 }: {
   position: [number, number, number];
   color: string;
   progress: number;
   height?: number;
+  caliber?: number;
 }) {
+  // Scale particle count and height based on caliber
+  const scaledHeight = height * (0.6 + caliber * 0.15);
+  const SCALED_PARTICLE_COUNT = Math.min(600, Math.round(PARTICLE_COUNT * (0.7 + caliber * 0.12)));
   const pointsRef = useRef<THREE.Points>(null);
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
 

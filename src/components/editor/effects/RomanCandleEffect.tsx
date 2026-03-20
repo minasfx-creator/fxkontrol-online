@@ -15,11 +15,15 @@ export default function RomanCandleEffect({
   color,
   progress,
   shotCount = 8,
+  caliber = 2,
+  angleOffset = 0,
 }: {
   position: [number, number, number];
   color: string;
   progress: number;
   shotCount?: number;
+  caliber?: number;
+  angleOffset?: number;
 }) {
   const pointsRef = useRef<THREE.Points>(null);
   const baseColor = useMemo(() => new THREE.Color(color), [color]);

@@ -15,12 +15,16 @@ export default function FanEffect({
   color,
   progress,
   spreadAngle = 90,
+  caliber = 3,
 }: {
   position: [number, number, number];
   color: string;
   progress: number;
   spreadAngle?: number;
+  caliber?: number;
 }) {
+  // Scale ray height and particle count based on caliber
+  const caliberScale = 0.7 + caliber * 0.12;
   const pointsRef = useRef<THREE.Points>(null);
   const linesRef = useRef<THREE.LineSegments>(null);
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
