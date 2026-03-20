@@ -96,9 +96,9 @@ let _lastAdaptiveCheck = 0;
 let _adaptiveAutoTier: LODTier = 'high';
 
 // Thresholds
-const FPS_DROP_THRESHOLD = 30;
-const FPS_DROP_DURATION = 500;  // ms below threshold to trigger drop
-const FPS_RAISE_THRESHOLD = 55;
+const FPS_DROP_THRESHOLD = 35;
+const FPS_DROP_DURATION = 400;  // ms below threshold to trigger drop
+const FPS_RAISE_THRESHOLD = 50;
 const FPS_RAISE_DURATION = 2000; // ms above threshold to raise quality
 
 let _belowSince = 0;

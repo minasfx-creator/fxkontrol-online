@@ -20,4 +20,19 @@ export default defineConfig(({ mode }) => ({
       "react-dom": path.resolve(__dirname, "node_modules/react-dom"),
     },
   },
+  build: {
+    target: 'esnext',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'three-core': ['three'],
+          'r3f': ['@react-three/fiber', '@react-three/drei'],
+          'postprocessing': ['@react-three/postprocessing'],
+        },
+      },
+    },
+  },
+  optimizeDeps: {
+    include: ['three', '@react-three/fiber', '@react-three/drei'],
+  },
 }));

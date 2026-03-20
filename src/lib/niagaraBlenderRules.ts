@@ -3,14 +3,14 @@ import * as THREE from 'three';
 // ── Niagara-style Resource Budgets ──────────────────────────────────
 
 const DESKTOP_RULES = {
-  maxConcurrentBursts: 6,
-  maxStarBudget: 1400,
+  maxConcurrentBursts: 5,
+  maxStarBudget: 1200,
   maxStarsPerBurst: 320,
 } as const;
 
 const MOBILE_RULES = {
   maxConcurrentBursts: 2,
-  maxStarBudget: 420,
+  maxStarBudget: 350,
   maxStarsPerBurst: 120,
 } as const;
 
