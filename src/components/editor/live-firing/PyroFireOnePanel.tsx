@@ -423,7 +423,7 @@ export default function PyroFireOnePanel({
 
   // ── Hidden file input for CSV/FIR import ──
   const renderFileInput = () => (
-    <input ref={fileInputRef} type="file" accept=".csv,.fir,.sem" onChange={handleFileImport} className="hidden" />
+    <input ref={fileInputRef} type="file" accept=".csv,.fir,.sem,.ses" onChange={handleFileImport} className="hidden" />
   );
 
   // ── Render: Hardware connection bar ──
