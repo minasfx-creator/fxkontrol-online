@@ -30,8 +30,34 @@ export default function GeofencePanel({ onClose }: GeofencePanelProps) {
     geofence, setGeofence, addGeofencePoint, removeGeofencePoint, clearGeofence,
   } = useFleetStore();
   const gpsOrigin = useProjectStore(s => s.gpsOrigin);
+  const fireone = useFireOneHardware();
+  const pbus = usePBusHardware();
   const [newLat, setNewLat] = useState('');
   const [newLon, setNewLon] = useState('');
+
+  // Hardware exclusion zones
+  const firingExclusions = useMemo(() => {
+    const zones: { label: string; radiusM: number; system: string }[] = [];
+    if (fireone.isConnected) {
+      const moduleCount = fireone.modules.size;
+      if (moduleCount > 0) {
+        zones.push({ label: `FireOne (${moduleCount} modules)`, radiusM: 30, system: 'FireOne' });
+      }
+    }
+    if (pbus.isConnected) {
+      const deviceCount = pbus.devices.size;
+      if (deviceCount > 0) {
+        zones.push({ label: `PBUS (${deviceCount} devices)`, radiusM: 25, system: 'Showven' });
+      }
+    }
+    return zones;
+  }, [fireone.isConnected, fireone.modules, pbus.isConnected, pbus.devices]);
+
+  const handleHardwareEStop = () => {
+    if (fireone.isConnected) fireone.emergencyStop();
+    if (pbus.isConnected) pbus.emergencyStop();
+    toast.error('🔴 GEOFENCE E-STOP — All hardware stopped');
+  };
 
   const handleAddPoint = () => {
     const lat = parseFloat(newLat);
