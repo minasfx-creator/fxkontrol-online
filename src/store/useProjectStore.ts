@@ -53,7 +53,7 @@ export interface TimelineItem {
   positionIds?: string[];      // Linked to multiple positions (fires simultaneously)
 }
 
-export type PositionType = 'pyro' | 'drone-pad';
+export type PositionType = 'pyro' | 'drone-pad' | 'light';
 
 export interface Position {
   id: string;
