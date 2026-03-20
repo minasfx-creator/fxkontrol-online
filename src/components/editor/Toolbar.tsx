@@ -341,6 +341,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
   const [twinmotionOpen, setTwinmotionOpen] = useState(false);
   const [droppedFile, setDroppedFile] = useState<{ file: File; type: 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset' | 'ue5map' | 'heightmap' | 'twinmotion' } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [commandMenuOpen, setCommandMenuOpen] = useState(false);
 
   // Listen for viewport file drop events
   useEffect(() => {
