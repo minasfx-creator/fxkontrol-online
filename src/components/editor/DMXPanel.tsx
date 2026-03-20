@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Lightbulb, Plus, Trash2, Send, Wifi, Activity, CheckCircle2, XCircle, Clock, Zap, Usb } from 'lucide-react';
+import { Lightbulb, Plus, Trash2, Send, Wifi, Activity, CheckCircle2, XCircle, Clock, Zap, Usb, Monitor } from 'lucide-react';
+import DMXMonitorGrid from './DMXMonitorGrid';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -41,6 +42,7 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
   const [diagLogs, setDiagLogs] = useState<DiagnosticLog[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
   const [showDiag, setShowDiag] = useState(true);
+  const [showMonitor, setShowMonitor] = useState(false);
 
   const addDiagLog = useCallback((log: DiagnosticLog) => {
     setDiagLogs(prev => [log, ...prev].slice(0, 50));
@@ -602,6 +604,27 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
             </div>
           )}
         </div>
+
+        {/* Monitor Toggle */}
+        <Button
+          size="sm" variant={showMonitor ? 'default' : 'outline'}
+          className="h-6 text-[9px] w-full gap-1"
+          onClick={() => setShowMonitor(!showMonitor)}
+        >
+          <Monitor className="w-3 h-3" />
+          {showMonitor ? 'Ocultar Monitor 512ch' : 'Abrir Monitor 512ch'}
+        </Button>
+
+        {/* DMX Monitor Grid */}
+        {showMonitor && universes.length > 0 && (
+          <DMXMonitorGrid universes={universes} />
+        )}
+
+        {showMonitor && universes.length === 0 && (
+          <div className="bg-surface-2 rounded-sm p-3 text-center text-[9px] text-muted-foreground">
+            Faça Auto-Patch para visualizar os canais DMX
+          </div>
+        )}
 
         <div className="bg-surface-2 rounded-sm p-2 text-[9px] text-muted-foreground space-y-1">
           <p><strong>DMX512:</strong> 512 canais por universo, 128 fixtures RGBW</p>
