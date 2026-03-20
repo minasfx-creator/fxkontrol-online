@@ -3,6 +3,7 @@
  * Frosted glass, clean labels, smooth transitions.
  */
 import { useCallback, useRef } from 'react';
+import { haptics } from '@/lib/haptics';
 import { Clock, Sparkles, MapPin, Hexagon, MoreHorizontal, Cable, Cpu, Map, Radio } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PanelId } from '@/components/editor/PanelTabBar';
