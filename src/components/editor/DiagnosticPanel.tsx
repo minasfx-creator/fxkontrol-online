@@ -400,7 +400,12 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
           </span>
           {hardware.isConnected && (
             <Badge variant="outline" className="text-[7px] px-1 py-0 border-green-500/40 text-green-400 ml-1">
-              <Radio className="h-2 w-2 mr-0.5" /> HW
+              <Radio className="h-2 w-2 mr-0.5" /> FO
+            </Badge>
+          )}
+          {pbusHw.isConnected && (
+            <Badge variant="outline" className="text-[7px] px-1 py-0 border-amber-500/40 text-amber-400 ml-1">
+              <Cable className="h-2 w-2 mr-0.5" /> PB
             </Badge>
           )}
         </div>
