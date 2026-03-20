@@ -1,42 +1,53 @@
 
 
-# Fix: Marketplace Search Filtering Bug
+# Plan: Add Missing AAA Post-Processing Technologies
 
-## Problem
-The fallback search in both `getFabFallbackResults()` and `getWarehouseFallbackResults()` in `src/lib/marketplaceApi.ts` checks if a tag contains the entire query string (e.g., `"stage concert venue"`). Since no single tag contains that full phrase, searches with multiple words return 0 results despite matching catalog entries existing.
+## What's Missing
+The project uses `@react-three/postprocessing` but only employs Bloom, Vignette, ChromaticAberration, Noise, SMAA, and ToneMapping. The library supports many more cinematic effects that professional tools like UE5/Depence use. Here's what to add:
 
-## Fix
-**File**: `src/lib/marketplaceApi.ts`
+## New Effects
 
-Split the query into individual words and check if ANY word matches ANY tag or appears in the title/description. This is a standard tokenized search approach.
+| Effect | Purpose | UE5 Equivalent |
+|--------|---------|----------------|
+| **SSAO** | Ambient occlusion in crevices/contacts | Screen Space Ambient Occlusion |
+| **Depth of Field** | Bokeh blur on distant/near objects | DOF / Cinematic Camera |
+| **God Rays** | Volumetric light shafts from explosions | Light Shafts |
+| **Brightness/Contrast** | Color grading base layer | Post Process Volume |
+| **Hue/Saturation** | Color grading creative control | Color Grading LUT |
+| **Color Average** | Auto white-balance reference | Auto Exposure |
 
-### Changes
+## Steps
 
-**Lines 246-249** (`getFabFallbackResults` filter) and **Lines 416-419** (`getWarehouseFallbackResults` filter):
+### Step 1: Extend SceneSettings in store
+**File**: `src/store/useSceneStore.ts`
+- Add new settings: `ssaoEnabled`, `ssaoIntensity`, `dofEnabled`, `dofFocusDistance`, `dofBokehScale`, `godRaysEnabled`, `colorBrightness`, `colorContrast`, `colorSaturation`
+- Add defaults (all disabled by default except in "realistic" quality preset)
 
-Replace the single-string match:
-```typescript
-const filtered = catalog.filter(a =>
-  !lower || a.title.toLowerCase().includes(lower) ||
-  a.tags.some(t => t.includes(lower)) ||
-  a.description.toLowerCase().includes(lower)
-);
-```
+### Step 2: Add effects to PostProcessing pipeline
+**File**: `src/components/editor/PostProcessing.tsx`
+- Import `SSAO`, `DepthOfField`, `GodRays`, `BrightnessContrast`, `HueSaturation` from `@react-three/postprocessing`
+- Add each conditionally based on store settings
+- SSAO: only in realistic/show presets (expensive)
+- DOF: optional, focal point linked to camera target
+- God Rays: triggered during burst flashes (reuse burst count logic)
+- BrightnessContrast + HueSaturation: always active (cheap)
 
-With tokenized word matching:
-```typescript
-const words = lower.split(/\s+/).filter(Boolean);
-const filtered = catalog.filter(a => {
-  if (words.length === 0) return true;
-  const title = a.title.toLowerCase();
-  const desc = a.description.toLowerCase();
-  return words.some(w =>
-    title.includes(w) ||
-    a.tags.some(t => t.includes(w)) ||
-    desc.includes(w)
-  );
-});
-```
+### Step 3: Add UI controls in SceneEditorPanel
+**File**: `src/components/editor/SceneEditorPanel.tsx`
+- Add a new "Advanced Post-Processing" subsection inside the existing "post" section
+- Sliders for: SSAO intensity, DOF focus/bokeh, brightness, contrast, saturation
+- Toggles for: SSAO, DOF, God Rays
 
-This ensures "stage concert venue" matches any asset containing "stage" OR "concert" OR "venue" in its title, tags, or description.
+### Step 4: Update quality presets
+**File**: `src/store/useSceneStore.ts`
+- `realistic`: SSAO on, DOF on, God Rays on
+- `show`: SSAO on (low), DOF off, God Rays on
+- `performance`: all off
+
+## Files to Modify
+| File | Change |
+|------|--------|
+| `src/store/useSceneStore.ts` | New settings + defaults + preset updates |
+| `src/components/editor/PostProcessing.tsx` | Add 5 new effect passes |
+| `src/components/editor/SceneEditorPanel.tsx` | Add UI controls for new effects |
 
