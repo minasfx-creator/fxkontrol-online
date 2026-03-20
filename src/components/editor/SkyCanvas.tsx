@@ -2369,6 +2369,143 @@ const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflec
   );
 });
 // ═══ SFX STAGE — Indoor venue with truss, moving heads, LED walls, fog, laser mounts (DMXPrevis-style) ═══
+// Optimized with InstancedMesh for trusses, braces, moving head bodies, and SFX markers
+
+/* ── Instanced Truss Bars ── */
+function InstancedTrussBars({ trussColor }: { trussColor: string }) {
+  const stageW = 40, stageD = 20, stageHeight = 1.2, trussH = 12;
+  const riggingY = stageHeight + trussH;
+
+  // Horizontal bars: front, back, mid, 2 sides = 5
+  // Diagonal braces: 4 front + 4 back = 8
+  // Vertical legs: 6
+  // Catwalk bar: 1, railing: 1
+  // Total: 21 instanced boxes
+
+  const barData = useMemo(() => {
+    const bars: { pos: [number, number, number]; scale: [number, number, number]; rot?: [number, number, number] }[] = [];
+    // Front truss
+    bars.push({ pos: [0, riggingY, -stageD / 2 + 2], scale: [stageW - 2, 0.3, 0.3] });
+    // Back truss
+    bars.push({ pos: [0, riggingY, stageD / 2 - 2], scale: [stageW - 2, 0.3, 0.3] });
+    // Mid truss
+    bars.push({ pos: [0, riggingY, 0], scale: [stageW - 2, 0.25, 0.25] });
+    // Side truss bars
+    bars.push({ pos: [-(stageW / 2 - 2), riggingY, 0], scale: [0.3, 0.3, stageD - 2] });
+    bars.push({ pos: [stageW / 2 - 2, riggingY, 0], scale: [0.3, 0.3, stageD - 2] });
+    // Diagonal braces front & back
+    for (const i of [-3, -1, 1, 3]) {
+      bars.push({ pos: [i * 5, riggingY, -stageD / 2 + 2], scale: [0.1, 1, 0.1], rot: [0, 0, Math.PI / 4] });
+      bars.push({ pos: [i * 5, riggingY, stageD / 2 - 2], scale: [0.1, 1, 0.1], rot: [0, 0, -Math.PI / 4] });
+    }
+    // Vertical truss legs (6)
+    for (const [sx, sz] of [[-1, -1], [-1, 1], [1, -1], [1, 1], [0, -1], [0, 1]]) {
+      bars.push({ pos: [sx * (stageW / 2 - 2), stageHeight + trussH / 2, sz * (stageD / 2 - 2)], scale: [0.2, trussH, 0.2] });
+    }
+    // Catwalk platform
+    bars.push({ pos: [0, stageHeight + trussH * 0.6, -stageD / 2 - 1.5], scale: [stageW + 2, 0.15, 1.5] });
+    // Catwalk railing
+    bars.push({ pos: [0, stageHeight + trussH * 0.6 + 0.5, -stageD / 2 - 2.2], scale: [stageW + 2, 0.06, 0.06] });
+    return bars;
+  }, []);
+
+  const instancedRef = useRef<THREE.InstancedMesh>(null);
+  const count = barData.length;
+
+  useEffect(() => {
+    if (!instancedRef.current) return;
+    const dummy = new THREE.Object3D();
+    barData.forEach((b, i) => {
+      dummy.position.set(...b.pos);
+      dummy.scale.set(...b.scale);
+      if (b.rot) dummy.rotation.set(...b.rot);
+      else dummy.rotation.set(0, 0, 0);
+      dummy.updateMatrix();
+      instancedRef.current!.setMatrixAt(i, dummy.matrix);
+    });
+    instancedRef.current.instanceMatrix.needsUpdate = true;
+  }, [barData]);
+
+  return (
+    <instancedMesh ref={instancedRef} args={[undefined, undefined, count]} frustumCulled={false}>
+      <boxGeometry args={[1, 1, 1]} />
+      <meshStandardMaterial color={trussColor} metalness={0.8} roughness={0.3} />
+    </instancedMesh>
+  );
+}
+
+/* ── Instanced Moving Head Bodies (yoke + body, no animation = static instanced) ── */
+function InstancedMovingHeadBodies({ positions }: { positions: [number, number, number][] }) {
+  const bodyRef = useRef<THREE.InstancedMesh>(null);
+  const yokeRef = useRef<THREE.InstancedMesh>(null);
+
+  useEffect(() => {
+    const dummy = new THREE.Object3D();
+    positions.forEach((pos, i) => {
+      dummy.position.set(...pos);
+      dummy.scale.set(1, 1, 1);
+      dummy.rotation.set(0, 0, 0);
+      dummy.updateMatrix();
+      bodyRef.current?.setMatrixAt(i, dummy.matrix);
+      dummy.position.set(pos[0], pos[1] + 0.25, pos[2]);
+      dummy.updateMatrix();
+      yokeRef.current?.setMatrixAt(i, dummy.matrix);
+    });
+    if (bodyRef.current) bodyRef.current.instanceMatrix.needsUpdate = true;
+    if (yokeRef.current) yokeRef.current.instanceMatrix.needsUpdate = true;
+  }, [positions]);
+
+  const count = positions.length;
+  return (
+    <>
+      <instancedMesh ref={bodyRef} args={[undefined, undefined, count]} frustumCulled={false}>
+        <cylinderGeometry args={[0.2, 0.15, 0.4, 8]} />
+        <meshStandardMaterial color="#111111" metalness={0.9} roughness={0.2} />
+      </instancedMesh>
+      <instancedMesh ref={yokeRef} args={[undefined, undefined, count]} frustumCulled={false}>
+        <boxGeometry args={[0.35, 0.08, 0.08]} />
+        <meshStandardMaterial color="#0f0f0f" metalness={0.8} roughness={0.3} />
+      </instancedMesh>
+    </>
+  );
+}
+
+/* ── Instanced SFX Position Markers ── */
+function InstancedSFXMarkers({ stageW, stageD, stageHeight }: { stageW: number; stageD: number; stageHeight: number }) {
+  const ringRef = useRef<THREE.InstancedMesh>(null);
+
+  const markerPositions = useMemo(() => {
+    const markers: [number, number, number][] = [];
+    // Front edge 5
+    for (const x of [-4, -2, 0, 2, 4]) markers.push([x * 3, stageHeight + 0.01, -stageD / 2 + 1]);
+    // Side 4
+    for (const side of [-1, 1]) for (const idx of [0, 1]) markers.push([side * (stageW / 2 - 2), stageHeight + 0.01, -3 + idx * 6]);
+    // Back 3
+    for (const x of [-1, 0, 1]) markers.push([x * 8, stageHeight + 0.01, stageD / 2 - 1.5]);
+    return markers;
+  }, [stageW, stageD, stageHeight]);
+
+  useEffect(() => {
+    if (!ringRef.current) return;
+    const dummy = new THREE.Object3D();
+    markerPositions.forEach((pos, i) => {
+      dummy.position.set(...pos);
+      dummy.rotation.set(-Math.PI / 2, 0, 0);
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+      ringRef.current!.setMatrixAt(i, dummy.matrix);
+    });
+    ringRef.current.instanceMatrix.needsUpdate = true;
+  }, [markerPositions]);
+
+  return (
+    <instancedMesh ref={ringRef} args={[undefined, undefined, markerPositions.length]} frustumCulled={false}>
+      <ringGeometry args={[0.3, 0.5, 16]} />
+      <meshBasicMaterial color="#ff6600" transparent opacity={0.4} side={THREE.DoubleSide} />
+    </instancedMesh>
+  );
+}
+
 function SFXStageEnvironment() {
   const timeRef = useRef(0);
   const lightsRef = useRef<THREE.Group>(null);
@@ -2378,7 +2515,6 @@ function SFXStageEnvironment() {
   useFrame((_, delta) => {
     timeRef.current += delta;
     const t = timeRef.current;
-    // Animate moving heads
     if (lightsRef.current) {
       lightsRef.current.children.forEach((child, i) => {
         if (child.userData.isMovingHead) {
@@ -2388,7 +2524,6 @@ function SFXStageEnvironment() {
         }
       });
     }
-    // Animate LED wall color wash
     if (ledWallRef.current) {
       const mat = ledWallRef.current.material as THREE.MeshBasicMaterial;
       const hue = (t * 0.02) % 1;
@@ -2404,24 +2539,19 @@ function SFXStageEnvironment() {
   });
 
   const trussColor = '#1a1a1a';
-  const trussMetal = { color: trussColor, metalness: 0.8, roughness: 0.3 };
   const stageHeight = 1.2;
   const stageW = 40;
   const stageD = 20;
   const trussH = 12;
   const riggingY = stageHeight + trussH;
 
-  // Moving head positions along front truss + side + back
   const mhPositions = useMemo(() => {
     const positions: [number, number, number][] = [];
-    // Front truss (9 heads)
     for (let i = -4; i <= 4; i++) positions.push([i * 4, riggingY - 0.3, -stageD / 2 + 2]);
-    // Side truss (3 per side)
     for (let i = 0; i < 3; i++) {
       positions.push([stageW / 2 - 1, riggingY - 0.3, -stageD / 2 + 4 + i * 5]);
       positions.push([-stageW / 2 + 1, riggingY - 0.3, -stageD / 2 + 4 + i * 5]);
     }
-    // Back truss (5 heads — wash/backlight)
     for (let i = -2; i <= 2; i++) positions.push([i * 5, riggingY - 0.3, stageD / 2 - 2]);
     return positions;
   }, [riggingY]);
@@ -2440,7 +2570,6 @@ function SFXStageEnvironment() {
         <boxGeometry args={[stageW, stageHeight, stageD]} />
         <meshStandardMaterial color="#0a0a0f" roughness={0.15} metalness={0.6} />
       </mesh>
-      {/* Stage edge strip lights */}
       <mesh position={[0, stageHeight + 0.01, -stageD / 2 + 0.15]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[stageW - 2, 0.12]} />
         <meshBasicMaterial color="#ffffff" transparent opacity={0.15} />
@@ -2457,18 +2586,10 @@ function SFXStageEnvironment() {
         <boxGeometry args={[stageW - 2, trussH, 0.3]} />
         <meshBasicMaterial color="#110022" />
       </mesh>
-      {/* LED wall frame */}
       <mesh position={[0, trussH / 2 + stageHeight, -stageD / 2 - 0.5]}>
         <boxGeometry args={[stageW + 2, trussH + 1.5, 0.15]} />
         <meshStandardMaterial color="#080808" metalness={0.9} roughness={0.2} />
       </mesh>
-      {/* LED pixel grid overlay (visual detail) */}
-      {Array.from({ length: 5 }).map((_, row) => (
-        <mesh key={`led-row-${row}`} position={[0, stageHeight + 2 + row * 2.2, -stageD / 2 - 0.12]}>
-          <planeGeometry args={[stageW - 4, 0.03]} />
-          <meshBasicMaterial color="#000000" transparent opacity={0.3} />
-        </mesh>
-      ))}
 
       {/* ─── LED SIDE PANELS ─── */}
       {[-1, 1].map((side, idx) => (
@@ -2481,7 +2602,6 @@ function SFXStageEnvironment() {
             <boxGeometry args={[stageD - 6, trussH - 2, 0.2]} />
             <meshBasicMaterial color="#0a0018" />
           </mesh>
-          {/* Side wall structure */}
           <mesh position={[side * (stageW / 2 + 0.5), trussH / 2 + stageHeight, 0]}>
             <boxGeometry args={[0.6, trussH + 2, stageD + 10]} />
             <meshStandardMaterial color="#050508" roughness={0.9} metalness={0.05} />
@@ -2495,69 +2615,19 @@ function SFXStageEnvironment() {
         <meshStandardMaterial color="#040406" roughness={0.95} metalness={0.05} />
       </mesh>
 
-      {/* ─── TRUSS RIGGING ─── */}
-      {/* Front truss */}
-      <mesh position={[0, riggingY, -stageD / 2 + 2]}>
-        <boxGeometry args={[stageW - 2, 0.3, 0.3]} />
-        <meshStandardMaterial {...trussMetal} />
-      </mesh>
-      {/* Back truss */}
-      <mesh position={[0, riggingY, stageD / 2 - 2]}>
-        <boxGeometry args={[stageW - 2, 0.3, 0.3]} />
-        <meshStandardMaterial {...trussMetal} />
-      </mesh>
-      {/* Mid truss */}
-      <mesh position={[0, riggingY, 0]}>
-        <boxGeometry args={[stageW - 2, 0.25, 0.25]} />
-        <meshStandardMaterial {...trussMetal} />
-      </mesh>
-      {/* Side truss bars */}
-      {[-1, 1].map(side => (
-        <mesh key={`struss-${side}`} position={[side * (stageW / 2 - 2), riggingY, 0]}>
-          <boxGeometry args={[0.3, 0.3, stageD - 2]} />
-          <meshStandardMaterial {...trussMetal} />
-        </mesh>
-      ))}
-      {/* Diagonal braces (front & back) */}
-      {[-3, -1, 1, 3].map(i => (
-        <React.Fragment key={`braces-${i}`}>
-          <mesh position={[i * 5, riggingY, -stageD / 2 + 2]} rotation={[0, 0, Math.PI / 4]}>
-            <boxGeometry args={[0.1, 1, 0.1]} />
-            <meshStandardMaterial {...trussMetal} />
-          </mesh>
-          <mesh position={[i * 5, riggingY, stageD / 2 - 2]} rotation={[0, 0, -Math.PI / 4]}>
-            <boxGeometry args={[0.1, 1, 0.1]} />
-            <meshStandardMaterial {...trussMetal} />
-          </mesh>
-        </React.Fragment>
-      ))}
-      {/* Vertical truss legs (6 columns) */}
-      {[[-1, -1], [-1, 1], [1, -1], [1, 1], [0, -1], [0, 1]].map(([sx, sz], i) => (
-        <mesh key={`leg-${i}`} position={[sx * (stageW / 2 - 2), stageHeight + trussH / 2, sz * (stageD / 2 - 2)]}>
-          <boxGeometry args={[0.2, trussH, 0.2]} />
-          <meshStandardMaterial {...trussMetal} />
-        </mesh>
-      ))}
-      {/* Catwalk platform (mid-height) */}
-      <mesh position={[0, stageHeight + trussH * 0.6, -stageD / 2 - 1.5]}>
-        <boxGeometry args={[stageW + 2, 0.15, 1.5]} />
-        <meshStandardMaterial color="#111115" metalness={0.7} roughness={0.4} />
-      </mesh>
-      {/* Catwalk railing */}
-      <mesh position={[0, stageHeight + trussH * 0.6 + 0.5, -stageD / 2 - 2.2]}>
-        <boxGeometry args={[stageW + 2, 0.06, 0.06]} />
-        <meshStandardMaterial {...trussMetal} />
-      </mesh>
+      {/* ─── INSTANCED TRUSS RIGGING (21 bars → 1 draw call) ─── */}
+      <InstancedTrussBars trussColor={trussColor} />
+
+      {/* ─── INSTANCED MOVING HEAD BODIES (20 bodies + 20 yokes → 2 draw calls) ─── */}
+      <InstancedMovingHeadBodies positions={mhPositions} />
 
       {/* ─── LASER MOUNT POINTS ─── */}
       {[-2, 0, 2].map((x, i) => (
         <group key={`laser-mount-${i}`} position={[x * 6, riggingY - 0.5, 0]}>
-          {/* Mount bracket */}
           <mesh>
             <boxGeometry args={[0.4, 0.4, 0.4]} />
             <meshStandardMaterial color="#222222" metalness={0.9} roughness={0.15} />
           </mesh>
-          {/* Green laser indicator */}
           <mesh position={[0, -0.25, 0]}>
             <sphereGeometry args={[0.06, 8, 8]} />
             <meshBasicMaterial color="#00ff44" />
@@ -2573,12 +2643,10 @@ function SFXStageEnvironment() {
             <boxGeometry args={[0.8, 0.5, 0.5]} />
             <meshStandardMaterial color="#1a1a1a" metalness={0.6} roughness={0.4} />
           </mesh>
-          {/* Fog nozzle indicator */}
           <mesh position={[0, 0.3, -0.15]}>
             <cylinderGeometry args={[0.08, 0.12, 0.15, 8]} />
             <meshStandardMaterial color="#333333" metalness={0.8} roughness={0.2} />
           </mesh>
-          {/* Status LED */}
           <mesh position={[0.25, 0.1, 0.26]}>
             <sphereGeometry args={[0.04, 6, 6]} />
             <meshBasicMaterial color="#00aaff" />
@@ -2586,81 +2654,34 @@ function SFXStageEnvironment() {
         </group>
       ))}
 
-      {/* ─── MOVING HEADS ─── */}
+      {/* ─── MOVING HEAD BEAMS (animated parts — lens glow, cone, light per head) ─── */}
       <group ref={lightsRef}>
         {mhPositions.map((pos, i) => {
           const beamColor = beamColors[i % beamColors.length];
           return (
-            <group key={`mh-${i}`} position={pos} userData={{ isMovingHead: true }}>
-              {/* Fixture body */}
-              <mesh>
-                <cylinderGeometry args={[0.2, 0.15, 0.4, 8]} />
-                <meshStandardMaterial color="#111111" metalness={0.9} roughness={0.2} />
-              </mesh>
-              {/* Yoke */}
-              <mesh position={[0, 0.25, 0]}>
-                <boxGeometry args={[0.35, 0.08, 0.08]} />
-                <meshStandardMaterial color="#0f0f0f" metalness={0.8} roughness={0.3} />
-              </mesh>
-              {/* Lens glow */}
+            <group key={`mh-beam-${i}`} position={pos} userData={{ isMovingHead: true }}>
               <mesh position={[0, -0.22, 0]}>
                 <circleGeometry args={[0.12, 16]} />
                 <meshBasicMaterial color={beamColor} transparent opacity={0.9} />
               </mesh>
-              {/* Volumetric beam cone */}
               <mesh position={[0, -4, 0]}>
                 <coneGeometry args={[2.5, 8, 16, 1, true]} />
                 <meshBasicMaterial color={beamColor} transparent opacity={0.03} side={THREE.DoubleSide} depthWrite={false} />
               </mesh>
-              {/* Point light */}
               <pointLight color={beamColor} intensity={0.8} distance={20} decay={2} />
             </group>
           );
         })}
       </group>
 
-      {/* ─── SFX POSITION MARKERS (Pyro/Flamer zones) ─── */}
-      {/* Front edge — 5 positions */}
-      {[-4, -2, 0, 2, 4].map((x, i) => (
-        <group key={`sfx-front-${i}`} position={[x * 3, stageHeight + 0.01, -stageD / 2 + 1]}>
-          <mesh rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[0.3, 0.5, 16]} />
-            <meshBasicMaterial color="#ff6600" transparent opacity={0.4} side={THREE.DoubleSide} />
-          </mesh>
-          <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <circleGeometry args={[0.15, 16]} />
-            <meshBasicMaterial color="#ff6600" transparent opacity={0.2} />
-          </mesh>
-        </group>
-      ))}
-      {/* Side positions — 2 per side */}
-      {[-1, 1].map(side =>
-        [0, 1].map((idx) => (
-          <group key={`sfx-side-${side}-${idx}`} position={[side * (stageW / 2 - 2), stageHeight + 0.01, -3 + idx * 6]}>
-            <mesh rotation={[-Math.PI / 2, 0, 0]}>
-              <ringGeometry args={[0.25, 0.4, 16]} />
-              <meshBasicMaterial color="#ff3300" transparent opacity={0.35} side={THREE.DoubleSide} />
-            </mesh>
-          </group>
-        ))
-      )}
-      {/* Back positions — 3 */}
-      {[-1, 0, 1].map((x, i) => (
-        <group key={`sfx-back-${i}`} position={[x * 8, stageHeight + 0.01, stageD / 2 - 1.5]}>
-          <mesh rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[0.3, 0.5, 16]} />
-            <meshBasicMaterial color="#ffaa00" transparent opacity={0.35} side={THREE.DoubleSide} />
-          </mesh>
-        </group>
-      ))}
+      {/* ─── INSTANCED SFX POSITION MARKERS (12 rings → 1 draw call) ─── */}
+      <InstancedSFXMarkers stageW={stageW} stageD={stageD} stageHeight={stageHeight} />
 
       {/* ─── AMBIENT LIGHTING ─── */}
       <ambientLight color="#1a0028" intensity={0.08} />
       <directionalLight position={[0, 10, 15]} color="#220044" intensity={0.15} />
       <pointLight position={[0, riggingY, -stageD / 2]} color="#4400aa" intensity={1.5} distance={40} decay={2} />
-      {/* Downstage wash */}
       <pointLight position={[0, riggingY - 1, stageD / 2]} color="#330066" intensity={0.6} distance={30} decay={2} />
-      {/* Side fills */}
       <pointLight position={[-stageW / 2, 6, 0]} color="#220044" intensity={0.4} distance={25} decay={2} />
       <pointLight position={[stageW / 2, 6, 0]} color="#220044" intensity={0.4} distance={25} decay={2} />
 
