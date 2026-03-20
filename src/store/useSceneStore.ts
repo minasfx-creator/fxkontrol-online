@@ -536,10 +536,22 @@ export interface CameraBookmark {
 
 export type CameraInterpMode = 'linear' | 'accelerated' | 'decelerated' | 'acc-dec';
 
+export interface SiteModel {
+  id: string;
+  name: string;
+  url: string; // blob URL
+  position: [number, number, number];
+  rotation: [number, number, number];
+  scale: number;
+  visible: boolean;
+  source: string;
+}
+
 interface SceneSettingsState {
   settings: SceneSettings;
   qualityPreset: QualityPreset;
   environment: EnvironmentState;
+  siteModels: SiteModel[];
   updateSettings: (updates: Partial<SceneSettings>) => void;
   applyPreset: (presetId: string) => void;
   applyQualityPreset: (preset: QualityPreset) => void;
@@ -547,6 +559,9 @@ interface SceneSettingsState {
   updateEnvironment: (updates: Partial<EnvironmentState>) => void;
   addCameraBookmark: (bookmark: CameraBookmark) => void;
   removeCameraBookmark: (id: string) => void;
+  addSiteModel: (model: SiteModel) => void;
+  updateSiteModel: (id: string, updates: Partial<SiteModel>) => void;
+  removeSiteModel: (id: string) => void;
 }
 
 const DEFAULT_ENVIRONMENT: EnvironmentState = {
@@ -565,6 +580,7 @@ export const useSceneStore = create<SceneSettingsState>((set) => ({
   settings: { ...DEFAULT_SETTINGS },
   qualityPreset: 'show',
   environment: { ...DEFAULT_ENVIRONMENT },
+  siteModels: [],
   updateSettings: (updates) => set(s => {
     const next = { ...s.settings, ...updates };
     if (updates.weather && !updates.rainIntensity) {
@@ -588,4 +604,13 @@ export const useSceneStore = create<SceneSettingsState>((set) => ({
   updateEnvironment: (updates) => set(s => ({ environment: { ...s.environment, ...updates } })),
   addCameraBookmark: (bookmark) => set(s => ({ environment: { ...s.environment, cameraBookmarks: [...s.environment.cameraBookmarks, bookmark] } })),
   removeCameraBookmark: (id) => set(s => ({ environment: { ...s.environment, cameraBookmarks: s.environment.cameraBookmarks.filter(b => b.id !== id) } })),
+  addSiteModel: (model) => set(s => ({ siteModels: [...s.siteModels, model] })),
+  updateSiteModel: (id, updates) => set(s => ({
+    siteModels: s.siteModels.map(m => m.id === id ? { ...m, ...updates } : m),
+  })),
+  removeSiteModel: (id) => set(s => {
+    const model = s.siteModels.find(m => m.id === id);
+    if (model?.url.startsWith('blob:')) URL.revokeObjectURL(model.url);
+    return { siteModels: s.siteModels.filter(m => m.id !== id) };
+  }),
 }));

@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.parse-test-report]
 verify_jwt = false
+
+[functions.warehouse-download]
+verify_jwt = false

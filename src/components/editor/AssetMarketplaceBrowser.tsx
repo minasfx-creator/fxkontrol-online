@@ -1,11 +1,14 @@
 import { useState, useCallback, useRef } from 'react';
-import { Search, Store, Box, Gamepad2, FolderOpen, Download, ExternalLink, Star, Package, Filter, Loader2, X, Upload, Grid3X3, List, Tag } from 'lucide-react';
+import { Search, Store, Box, Gamepad2, FolderOpen, Download, ExternalLink, Star, Package, Filter, Loader2, X, Upload, Grid3X3, List, Tag, Eye, EyeOff, Trash2, Move, RotateCw, Maximize2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Slider } from '@/components/ui/slider';
 import { searchFab, search3DWarehouse, scanUEProjectFiles, type MarketplaceAsset, type MarketplaceSearchResult } from '@/lib/marketplaceApi';
+import { useSceneStore, type SiteModel } from '@/store/useSceneStore';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -50,6 +53,7 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const dirInputRef = useRef<HTMLInputElement>(null);
+  const siteModels = useSceneStore((s) => s.siteModels);
 
   const handleSearch = useCallback(async (source?: SourceType) => {
     const src = source || activeSource;
@@ -90,11 +94,69 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
     }
   }, []);
 
-  const handleImportAsset = (asset: MarketplaceAsset) => {
-    toast.success(`"${asset.title}" adicionado à lista de importação`, {
-      description: `Fonte: ${SOURCE_CONFIG[asset.source].label} · ${asset.fileFormats.join(', ')}`,
-    });
-  };
+  const handleImportAsset = useCallback(async (asset: MarketplaceAsset) => {
+    if (asset.source === '3dwarehouse') {
+      // Real download via edge function proxy
+      const toastId = toast.loading(`Downloading "${asset.title}"...`);
+      try {
+        const { data, error } = await supabase.functions.invoke('warehouse-download', {
+          body: { modelId: asset.id.replace('3dw-', ''), format: 'gltf' },
+        });
+
+        if (error) throw error;
+
+        // data is the response - check if it's binary
+        let blob: Blob;
+        if (data instanceof Blob) {
+          blob = data;
+        } else if (data instanceof ArrayBuffer) {
+          blob = new Blob([data], { type: 'model/gltf-binary' });
+        } else {
+          // Edge function returned JSON error
+          throw new Error(data?.error || 'Download failed');
+        }
+
+        const blobUrl = URL.createObjectURL(blob);
+        const newModel: SiteModel = {
+          id: `site-${Date.now()}`,
+          name: asset.title,
+          url: blobUrl,
+          position: [0, 0, 0],
+          rotation: [0, 0, 0],
+          scale: 1,
+          visible: true,
+          source: '3dwarehouse',
+        };
+
+        useSceneStore.getState().addSiteModel(newModel);
+        toast.success(`"${asset.title}" importado para o viewport`, { id: toastId });
+      } catch (err: any) {
+        toast.error(`Falha ao baixar: ${err.message || 'Erro desconhecido'}`, { id: toastId });
+      }
+    } else {
+      toast.success(`"${asset.title}" adicionado à lista de importação`, {
+        description: `Fonte: ${SOURCE_CONFIG[asset.source].label} · ${asset.fileFormats.join(', ')}`,
+      });
+    }
+  }, []);
+
+  const handleLocalGLBUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const blobUrl = URL.createObjectURL(file);
+    const newModel: SiteModel = {
+      id: `site-${Date.now()}`,
+      name: file.name.replace(/\.(glb|gltf)$/i, ''),
+      url: blobUrl,
+      position: [0, 0, 0],
+      rotation: [0, 0, 0],
+      scale: 1,
+      visible: true,
+      source: 'local',
+    };
+    useSceneStore.getState().addSiteModel(newModel);
+    toast.success(`"${newModel.name}" carregado no viewport`);
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -110,6 +172,15 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
               Busque e importe assets de FAB, 3D Warehouse e projetos Unreal Engine
             </DialogDescription>
           </DialogHeader>
+          <div className="flex gap-2 mt-2">
+            <input type="file" accept=".glb,.gltf" className="hidden" id="glb-upload-input" onChange={handleLocalGLBUpload} />
+            <Button variant="outline" size="sm" className="h-7 text-[10px] rounded-lg gap-1.5" onClick={() => document.getElementById('glb-upload-input')?.click()}>
+              <Upload className="h-3 w-3" /> Upload GLB/glTF
+            </Button>
+            {siteModels.length > 0 && (
+              <Badge variant="secondary" className="text-[9px]">{siteModels.length} modelo(s) no viewport</Badge>
+            )}
+          </div>
         </div>
 
         {/* Tabs */}
@@ -231,6 +302,18 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
             </div>
           </ScrollArea>
         </Tabs>
+
+        {/* Imported Site Models Panel */}
+        {siteModels.length > 0 && (
+          <div className="border-t border-border/10 px-6 py-3 max-h-[200px] overflow-y-auto">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Modelos Importados no Viewport</p>
+            <div className="space-y-2">
+              {siteModels.map(model => (
+                <SiteModelControl key={model.id} model={model} />
+              ))}
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -418,6 +501,79 @@ function AssetCardList({ asset, onImport }: { asset: MarketplaceAsset; onImport:
         >
           <Download className="h-3 w-3 mr-1" />
           Import
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function SiteModelControl({ model }: { model: SiteModel }) {
+  const { updateSiteModel, removeSiteModel } = useSceneStore();
+
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-border/20 bg-surface-0/40 p-2">
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] font-semibold text-foreground truncate">{model.name}</p>
+        <div className="flex items-center gap-3 mt-1.5">
+          <div className="flex items-center gap-1 flex-1">
+            <Move className="h-2.5 w-2.5 text-muted-foreground/50 shrink-0" />
+            {(['X', 'Y', 'Z'] as const).map((axis, i) => (
+              <input
+                key={axis}
+                type="number"
+                value={model.position[i]}
+                onChange={e => {
+                  const pos = [...model.position] as [number, number, number];
+                  pos[i] = Number(e.target.value) || 0;
+                  updateSiteModel(model.id, { position: pos });
+                }}
+                className="w-12 h-5 text-[8px] text-center bg-surface-0 border border-border/20 rounded text-foreground"
+                title={axis}
+              />
+            ))}
+          </div>
+          <div className="flex items-center gap-1">
+            <RotateCw className="h-2.5 w-2.5 text-muted-foreground/50 shrink-0" />
+            <input
+              type="number"
+              value={model.rotation[1]}
+              onChange={e => updateSiteModel(model.id, { rotation: [0, Number(e.target.value) || 0, 0] })}
+              className="w-10 h-5 text-[8px] text-center bg-surface-0 border border-border/20 rounded text-foreground"
+              title="Rotation Y°"
+            />
+          </div>
+          <div className="flex items-center gap-1">
+            <Maximize2 className="h-2.5 w-2.5 text-muted-foreground/50 shrink-0" />
+            <Slider
+              value={[model.scale]}
+              min={0.01}
+              max={10}
+              step={0.01}
+              onValueChange={([v]) => updateSiteModel(model.id, { scale: v })}
+              className="w-16"
+            />
+            <span className="text-[8px] text-muted-foreground/60 w-6 text-right">{model.scale.toFixed(1)}×</span>
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-col gap-1 shrink-0">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-5 w-5 p-0 rounded"
+          onClick={() => updateSiteModel(model.id, { visible: !model.visible })}
+          title={model.visible ? 'Ocultar' : 'Mostrar'}
+        >
+          {model.visible ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3 text-muted-foreground/40" />}
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-5 w-5 p-0 rounded text-destructive hover:text-destructive"
+          onClick={() => removeSiteModel(model.id)}
+          title="Remover"
+        >
+          <Trash2 className="h-3 w-3" />
         </Button>
       </div>
     </div>
