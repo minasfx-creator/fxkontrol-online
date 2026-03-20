@@ -16,9 +16,14 @@ interface SettingsPanelProps {
   fs: boolean;
   settings: FXCSettings;
   onSettingsChange: (s: FXCSettings) => void;
+  relayConnected?: boolean;
+  relayUrl?: string;
+  onRelayUrlChange?: (url: string) => void;
+  onConnectRelay?: () => void;
+  onDisconnectRelay?: () => void;
 }
 
-export default function SettingsPanel({ fs, settings, onSettingsChange }: SettingsPanelProps) {
+export default function SettingsPanel({ fs, settings, onSettingsChange, relayConnected, relayUrl, onRelayUrlChange, onConnectRelay, onDisconnectRelay }: SettingsPanelProps) {
   const [local, setLocal] = useState<FXCSettings>({ ...settings });
 
   const update = (patch: Partial<FXCSettings>) => setLocal(prev => ({ ...prev, ...patch }));

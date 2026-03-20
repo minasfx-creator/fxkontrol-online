@@ -1047,7 +1047,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
       case 'manual_fire': return renderManualFire(fs);
       case 'auto_fire': return <AutoFirePanel fs={fs} pyroArm={pyroArm} dmxArm={dmxArm} />;
       case 'check_slave': return <CheckSlavePanel fs={fs} pyroArm={pyroArm} />;
-      case 'settings': return <SettingsPanel fs={fs} settings={settings} onSettingsChange={setSettings} />;
+      case 'settings': return <SettingsPanel fs={fs} settings={settings} onSettingsChange={setSettings} relayConnected={relayConnected} relayUrl={relayUrl} onRelayUrlChange={setRelayUrl} onConnectRelay={connectRelay} onDisconnectRelay={disconnectRelay} />;
       default: return renderSimpleDmx(fs);
     }
   };
