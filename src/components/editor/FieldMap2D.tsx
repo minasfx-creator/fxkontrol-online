@@ -470,6 +470,12 @@ export default function FieldMap2D({ fs = false }: FieldMap2DProps) {
           <div className="w-3 h-3 rounded-full border border-green-500/30" />
           <span className="text-[8px] text-muted-foreground/40">RSSI</span>
         </div>
+        {radioLink.isConnected && (
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded" style={{ background: 'hsla(270, 70%, 60%, 0.6)' }} />
+            <span className="text-[8px] text-muted-foreground/40">Radio ({radioLink.devices.size})</span>
+          </div>
+        )}
         <div className="flex-1" />
         {selectedModule && (
           <Badge variant="outline" className="text-[8px] h-4 px-1.5">
