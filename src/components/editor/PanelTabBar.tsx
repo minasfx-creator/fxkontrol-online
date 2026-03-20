@@ -148,6 +148,31 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
   const containerRef = useRef<HTMLDivElement>(null);
   const [mouseY, setMouseY] = useState<number | null>(null);
   const buttonRefs = useRef<Record<number, HTMLButtonElement | null>>({});
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [favorites, setFavorites] = useState<PanelId[]>(() => {
+    try { return JSON.parse(localStorage.getItem('fxk-panel-favorites') || '[]'); } catch { return []; }
+  });
+
+  const toggleFavorite = useCallback((id: PanelId) => {
+    setFavorites(prev => {
+      const next = prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id];
+      localStorage.setItem('fxk-panel-favorites', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const allItems = useMemo(() => PANEL_SECTIONS.flatMap(s => s.items), []);
+  const favoriteItems = useMemo(() => allItems.filter(i => favorites.includes(i.id)), [allItems, favorites]);
+
+  const filteredSections = useMemo(() => {
+    if (!searchQuery.trim()) return PANEL_SECTIONS;
+    const q = searchQuery.toLowerCase();
+    return PANEL_SECTIONS.map(s => ({
+      ...s,
+      items: s.items.filter(i => i.label.toLowerCase().includes(q) || i.id.toLowerCase().includes(q)),
+    })).filter(s => s.items.length > 0);
+  }, [searchQuery]);
 
   const toggleSection = (title: string) => {
     setCollapsedSections(prev => {
