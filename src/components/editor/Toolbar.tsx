@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Zap, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus, Download, ChevronDown, LayoutGrid, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Info, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode } from 'lucide-react';
+import { Zap, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus, Download, ChevronDown, LayoutGrid, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Info, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store } from 'lucide-react';
 import fxkLogo from '@/assets/fxk-logo.png';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -14,6 +14,7 @@ import FormationBuilder from './FormationBuilder';
 import CSVImporter from './CSVImporter';
 import VVIZImporter from './VVIZImporter';
 import UAssetImporter from './UAssetImporter';
+import AssetMarketplaceBrowser from './AssetMarketplaceBrowser';
 import ProjectBrowser from './ProjectBrowser';
 import CatalogImportDialog from './CatalogImportDialog';
 import ArrangePositionsDialog from './ArrangePositionsDialog';
@@ -326,6 +327,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
   const [browserOpen, setBrowserOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [uassetOpen, setUassetOpen] = useState(false);
+  const [marketplaceOpen, setMarketplaceOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const handleSave = useCallback(async () => {
@@ -472,6 +474,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
               { label: 'VVIZ (Finale 3D)', icon: FileJson, onClick: () => setVvizOpen(true) },
               { label: 'UE .uasset (Niagara)', icon: FileCode, onClick: () => setUassetOpen(true) },
               { label: 'Supplier Catalog', icon: Sparkles, onClick: () => setCatalogOpen(true) },
+              { label: 'Asset Marketplace', icon: Store, onClick: () => setMarketplaceOpen(true) },
             ]}
           />
         </div>
@@ -569,6 +572,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       <ProjectBrowser open={browserOpen} onOpenChange={setBrowserOpen} />
       <CatalogImportDialog open={catalogOpen} onOpenChange={setCatalogOpen} />
       <UAssetImporter open={uassetOpen} onOpenChange={setUassetOpen} />
+      <AssetMarketplaceBrowser open={marketplaceOpen} onOpenChange={setMarketplaceOpen} />
 
       <div className="flex-1" />
 
