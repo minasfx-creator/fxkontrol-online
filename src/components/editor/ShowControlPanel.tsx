@@ -258,11 +258,18 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
         toast.info('FireOne: Todos os módulos ARMADOS');
       } catch { toast.warning('FireOne: Falha ao armar módulos'); }
     }
+    // Arm PBUS devices when authorizing
+    if (pbus.isConnected) {
+      try {
+        await pbus.armAll();
+        toast.info(`PBUS: ${pbus.deviceCount} dispositivos ARMADOS`);
+      } catch { toast.warning('PBUS: Falha ao armar dispositivos'); }
+    }
     const ok = await showOrchestrator.authorize(authScope);
     setBusy(false);
     if (ok) toast.success(`Authorized (${authScope})`);
     else toast.error('Authorization failed');
-  }, [authScope, hardware]);
+  }, [authScope, hardware, pbus]);
 
   const handleDeauthorize = useCallback(async () => {
     // Disarm FireOne modules
