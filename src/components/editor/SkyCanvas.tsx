@@ -23,7 +23,7 @@ import LaserPreviewBeams from './LaserPreviewBeams';
 import { DEFAULT_AVOIDANCE } from '@/lib/collisionAvoidance';
 import QuadcopterModel from './QuadcopterModel';
 // GeofenceVisual removed — green squares issue
-import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Globe, Download, ScanEye, Cog, Paintbrush, MapPinned, Film, ChevronDown, Plus, Lock, Ruler, Bookmark, Trash2 } from 'lucide-react';
+import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Globe, Download, ScanEye, Cog, Paintbrush, MapPinned, Film, ChevronDown, Plus, Lock, Ruler, Bookmark, Trash2, Navigation } from 'lucide-react';
 import SelectionStatusBar from './SelectionStatusBar';
 import { cn } from '@/lib/utils';
 import {
@@ -2893,7 +2893,83 @@ function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
-function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPosition: [number, number, number]; targetLookAt: [number, number, number]; freeLook: boolean }) {
+/** FlyControls — WASD + mouse pointer-lock first-person camera */
+function FlyControls({ onSpeedChange }: { onSpeedChange?: (speed: number) => void }) {
+  const { camera, gl } = useThree();
+  const keys = useRef<Record<string, boolean>>({});
+  const euler = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
+  const speed = useRef(15);
+  const locked = useRef(false);
+  const SENSITIVITY = 0.002;
+
+  useEffect(() => {
+    const canvas = gl.domElement;
+
+    const onPointerLockChange = () => {
+      locked.current = document.pointerLockElement === canvas;
+    };
+    const onMouseMove = (e: MouseEvent) => {
+      if (!locked.current) return;
+      euler.current.setFromQuaternion(camera.quaternion);
+      euler.current.y -= e.movementX * SENSITIVITY;
+      euler.current.x -= e.movementY * SENSITIVITY;
+      euler.current.x = THREE.MathUtils.clamp(euler.current.x, -Math.PI * 0.49, Math.PI * 0.49);
+      camera.quaternion.setFromEuler(euler.current);
+    };
+    const onKeyDown = (e: KeyboardEvent) => { keys.current[e.code] = true; };
+    const onKeyUp = (e: KeyboardEvent) => { keys.current[e.code] = false; };
+    const onWheel = (e: WheelEvent) => {
+      if (!locked.current) return;
+      e.preventDefault();
+      speed.current = THREE.MathUtils.clamp(speed.current * (e.deltaY > 0 ? 0.85 : 1.18), 1, 500);
+      onSpeedChange?.(speed.current);
+    };
+
+    canvas.requestPointerLock();
+    document.addEventListener('pointerlockchange', onPointerLockChange);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+
+    return () => {
+      document.removeEventListener('pointerlockchange', onPointerLockChange);
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('keyup', onKeyUp);
+      canvas.removeEventListener('wheel', onWheel);
+      if (document.pointerLockElement === canvas) document.exitPointerLock();
+      keys.current = {};
+    };
+  }, [camera, gl, onSpeedChange]);
+
+  const dir = useRef(new THREE.Vector3());
+  const right = useRef(new THREE.Vector3());
+
+  useFrame((_, delta) => {
+    if (!locked.current) return;
+    const k = keys.current;
+    const sprint = k['ShiftLeft'] || k['ShiftRight'] ? 3 : 1;
+    const move = speed.current * sprint * delta;
+
+    camera.getWorldDirection(dir.current);
+    right.current.crossVectors(dir.current, camera.up).normalize();
+
+    if (k['KeyW'] || k['ArrowUp']) camera.position.addScaledVector(dir.current, move);
+    if (k['KeyS'] || k['ArrowDown']) camera.position.addScaledVector(dir.current, -move);
+    if (k['KeyA'] || k['ArrowLeft']) camera.position.addScaledVector(right.current, -move);
+    if (k['KeyD'] || k['ArrowRight']) camera.position.addScaledVector(right.current, move);
+    if (k['KeyE'] || k['Space']) camera.position.y += move;
+    if (k['KeyQ']) camera.position.y -= move;
+
+    // Clamp
+    camera.position.y = Math.max(0.5, camera.position.y);
+  });
+
+  return null;
+}
+
+function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: { targetPosition: [number, number, number]; targetLookAt: [number, number, number]; freeLook: boolean; flyMode: boolean }) {
   const { camera } = useThree();
   const controlsRef = useRef<any>(null);
   const targetPos = useRef(new THREE.Vector3(...targetPosition));
@@ -3039,6 +3115,8 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
   });
 
   const sensitivityScale = 0.7; // 30% less sensitivity
+
+  if (flyMode) return null;
 
   return (
     <OrbitControls
@@ -3257,6 +3335,9 @@ export default function SkyCanvas() {
   // cursorStyle moved below geoTool declaration
   const [activePreset, setActivePreset] = useState('free');
   const [freeLook, setFreeLook] = useState(false);
+  const [flyMode, setFlyMode] = useState(false);
+  const [flySpeed, setFlySpeed] = useState(15);
+  const flySpeedCb = useCallback((s: number) => setFlySpeed(Math.round(s)), []);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [cameraMenuOpen, setCameraMenuOpen] = useState(false);
   const preset = CAMERA_PRESETS.find((p) => p.id === activePreset) || CAMERA_PRESETS[0];
@@ -3269,6 +3350,15 @@ export default function SkyCanvas() {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const environment = useSceneStore(st => st.environment);
   const [showDebugOverlay, setShowDebugOverlay] = useState(true);
+
+  // Exit fly mode when pointer lock is lost (ESC)
+  useEffect(() => {
+    const onLockChange = () => {
+      if (!document.pointerLockElement && flyMode) setFlyMode(false);
+    };
+    document.addEventListener('pointerlockchange', onLockChange);
+    return () => document.removeEventListener('pointerlockchange', onLockChange);
+  }, [flyMode]);
 
   // ═══ Google Earth-style Geo Tools state ═══
   const [geoTool, setGeoTool] = useState<GeoToolMode>('none');
@@ -3465,7 +3555,8 @@ export default function SkyCanvas() {
           canvas.addEventListener('webglcontextrestored', handleContextRestored as EventListener);
         }}>
         <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.5} far={250000} />
-        <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook} />
+        <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook || flyMode} flyMode={flyMode} />
+        {flyMode && <FlyControls onSpeedChange={flySpeedCb} />}
 
         <SceneLighting />
         <AdaptiveExposureController />
@@ -3557,10 +3648,10 @@ export default function SkyCanvas() {
       <div className="absolute top-3 left-3 flex items-center gap-1 flex-wrap max-w-[calc(100%-24px)]">
         {/* Free look toggle */}
         <button
-          onClick={() => setFreeLook(!freeLook)}
+          onClick={() => { setFreeLook(!freeLook); if (flyMode) setFlyMode(false); }}
           className={cn(
             "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
-            freeLook
+            freeLook && !flyMode
               ? "bg-warning/20 text-warning border-warning/30 shadow-lg shadow-warning/10"
               : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
           )}
@@ -3568,6 +3659,21 @@ export default function SkyCanvas() {
         >
           <ScanEye className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Look</span>
+        </button>
+
+        {/* Fly mode toggle */}
+        <button
+          onClick={() => { setFlyMode(!flyMode); if (!flyMode) setFreeLook(false); }}
+          className={cn(
+            "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
+            flyMode
+              ? "bg-accent/20 text-accent-foreground border-accent/30 shadow-lg shadow-accent/10"
+              : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+          )}
+          title="Fly Mode (WASD + Mouse)"
+        >
+          <Navigation className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Fly</span>
         </button>
 
         {/* Mobile: camera dropdown; Desktop: inline buttons */}
@@ -3739,13 +3845,27 @@ export default function SkyCanvas() {
       {/* ═══ Viewport Playback Controls ═══ */}
       <ViewportPlaybackControls />
 
+      {/* Fly mode HUD */}
+      {flyMode && (
+        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-40 bg-card/85 backdrop-blur-xl border border-border/25 rounded-xl px-4 py-2 font-mono text-[10px] text-muted-foreground space-y-0.5 select-none pointer-events-none">
+          <div className="text-center text-[9px] font-semibold uppercase tracking-wider text-accent-foreground mb-1">✈ Fly Mode</div>
+          <div className="flex gap-4">
+            <span>WASD Move</span>
+            <span>Q/E Up/Down</span>
+            <span>Shift Sprint</span>
+            <span>Scroll Speed</span>
+          </div>
+          <div className="text-center text-foreground font-semibold">{flySpeed} m/s</div>
+        </div>
+      )}
+
       {/* Bottom info — hidden on mobile to avoid tab bar overlap */}
       {!isMobile && (
         <div className="absolute bottom-3 right-3 text-[9px] font-mono-code text-muted-foreground/60 bg-card/70 backdrop-blur-md px-3 py-2 rounded-xl border border-border/15 space-y-0.5">
           <div className="text-[8px] text-muted-foreground/40 tracking-wider font-display">FX KONTROL v2.0 · Minas FX</div>
-          <div>Orbit: LMB · Pan: MMB · Zoom: Scroll</div>
+          <div>{flyMode ? 'WASD: Move · Mouse: Look · Q/E: Up/Down' : 'Orbit: LMB · Pan: MMB · Zoom: Scroll'}</div>
           <div>Box: Alt+Drag · Multi: Shift+Click · Edit: Dbl-Click</div>
-          <div>{freeLook ? '🔓 Free Look ON' : '🔒 Preset Lock'}</div>
+          <div>{flyMode ? '✈ Fly Mode' : freeLook ? '🔓 Free Look ON' : '🔒 Preset Lock'}</div>
         </div>
       )}
     </div>
