@@ -60,7 +60,7 @@ export default function VirtualFXButton({ fs = false }: VirtualFXButtonProps) {
 
   const handleFire = useCallback((idx: number) => {
     if (!unlocked) { toast.warning('Deslize para desbloquear primeiro'); return; }
-    if (navigator.vibrate) navigator.vibrate(30);
+    haptics.fire();
     setFiring(prev => new Set(prev).add(idx));
 
     // Route to PBUS hardware if paired and connected

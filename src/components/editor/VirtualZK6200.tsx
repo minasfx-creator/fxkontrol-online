@@ -91,7 +91,7 @@ export default function VirtualZK6200({ fs = false }: VirtualZK6200Props) {
     setArmed(false);
     setDeadman(false);
     if (pbus.isConnected) pbus.emergencyStop().catch(() => {});
-    if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
+    haptics.panic();
     toast.error('🚨 ZK' + model + ' EMERGENCY STOP');
   }, [model, pbus]);
 

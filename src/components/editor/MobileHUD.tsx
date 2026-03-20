@@ -53,7 +53,7 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
     clearAll();
     setPlaying(false);
     setCurrentTime(0);
-    if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
+    haptics.panic();
   }, [clearAll, setPlaying, setCurrentTime]);
 
   return (

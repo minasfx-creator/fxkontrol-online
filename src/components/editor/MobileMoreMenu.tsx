@@ -108,7 +108,7 @@ export default function MobileMoreMenu({ onSelectPanel }: MobileMoreMenuProps) {
 
   const handleSelect = useCallback((id: PanelId) => {
     onSelectPanel(id);
-    if (navigator.vibrate) navigator.vibrate(10);
+    haptics.tap();
     const updated = [id, ...recents.filter(r => r !== id)].slice(0, MAX_RECENTS);
     setRecents(updated);
     localStorage.setItem(RECENTS_KEY, JSON.stringify(updated));
