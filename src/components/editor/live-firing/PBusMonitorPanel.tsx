@@ -146,7 +146,7 @@ function DeviceCard({ device, onArm, onDisarm, onFire, onCueStatus, onSetBand, i
                   onClick={() => {
                     if (device.armed && deadman) {
                       onFire(device.address, i);
-                      if (navigator.vibrate) navigator.vibrate(30);
+                      haptics.fire();
                     } else toast.warning('ARM + DEADMAN required to fire');
                   }}
                   className={cn(
