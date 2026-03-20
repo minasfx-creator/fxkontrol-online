@@ -302,6 +302,18 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
             </div>
           </ScrollArea>
         </Tabs>
+
+        {/* Imported Site Models Panel */}
+        {siteModels.length > 0 && (
+          <div className="border-t border-border/10 px-6 py-3 max-h-[200px] overflow-y-auto">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Modelos Importados no Viewport</p>
+            <div className="space-y-2">
+              {siteModels.map(model => (
+                <SiteModelControl key={model.id} model={model} />
+              ))}
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
