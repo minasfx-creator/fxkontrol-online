@@ -18,7 +18,8 @@ import {
   Cable, Flame, Wind, Sparkles, Zap, Plus, Trash2, Send, MonitorPlay,
   Shield, ShieldAlert, Lock, Unlock, Key, Radio, Signal, Timer,
   Play, Square, SkipForward, Hand, AlertTriangle, Check, X,
-  Wifi, WifiOff, ChevronLeft, ChevronRight, Activity, Eye
+  Wifi, WifiOff, ChevronLeft, ChevronRight, Activity, Eye, Usb,
+  RefreshCw, Search, CircuitBoard
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +31,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { SFXChannel } from './types';
+import {
+  FireOneController, getFireOneController,
+  createSimulatedModuleStatus,
+  type FireOneModuleStatus, type FireOneEvent,
+} from '@/lib/fireoneProtocol';
 
 // ═══════════════════════════════════════════════════════════
 // TYPES
@@ -79,7 +85,7 @@ interface AutoCue {
   state: 'queued' | 'ready' | 'fired' | 'skip';
 }
 
-type XL4Mode = 'manual' | 'semiauto' | 'auto' | 'continuity' | 'status';
+type XL4Mode = 'manual' | 'semiauto' | 'auto' | 'continuity' | 'status' | 'hardware';
 
 const FIXTURE_TYPES = [
   { key: 'co2' as const, label: 'CO2', color: '#00d4ff', icon: Wind },
@@ -179,11 +185,20 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
   const [newAddr, setNewAddr] = useState(1);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
+  // ─── Hardware Serial (FireOne) state ───
+  const fireoneRef = useRef<FireOneController>(getFireOneController());
+  const [hwConnected, setHwConnected] = useState(false);
+  const [hwModules, setHwModules] = useState<FireOneModuleStatus[]>([]);
+  const [hwEvents, setHwEvents] = useState<FireOneEvent[]>([]);
+  const [hwScanning, setHwScanning] = useState(false);
+  const [hwSimulated, setHwSimulated] = useState(false);
+
   // Persist
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(fixtures)); }, [fixtures]);
   useEffect(() => { localStorage.setItem(MODULES_KEY, JSON.stringify(modules)); }, [modules]);
 
-  // ─── Realtime Broadcast ───
+
+
   useEffect(() => {
     const ch = supabase.channel('fxc-mobile-link', { config: { broadcast: { self: false } } });
 
@@ -326,7 +341,121 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
     });
   }, [masterArmed, channels, fireChannel]);
 
-  // ─── Broadcast fixture fire ───
+  // ─── Hardware FireOne listener ───
+  useEffect(() => {
+    const ctrl = fireoneRef.current;
+    const unsub = ctrl.on((evt: FireOneEvent) => {
+      setHwEvents(prev => [evt, ...prev].slice(0, 100));
+      if (evt.type === 'status-update' || evt.type === 'module-discovered' || evt.type === 'continuity-result') {
+        setHwModules([...ctrl.discoveredModules]);
+      }
+      if (evt.type === 'fire-confirm') {
+        const matchIdx = (evt.moduleAddress - 1) * 32 + ((evt.data?.igniterPos ?? 1) - 1);
+        if (matchIdx < channels.length) {
+          fireChannel(channels[matchIdx].id);
+        }
+      }
+      if (evt.type === 'emergency-stop') {
+        handlePanic();
+      }
+    });
+    return unsub;
+  }, [channels, fireChannel, handlePanic]);
+
+  const handleHwConnect = useCallback(async () => {
+    const ctrl = fireoneRef.current;
+    try {
+      await ctrl.connect();
+      setHwConnected(true);
+      toast.success('🔌 Hardware FireOne conectado');
+      setHwScanning(true);
+      await ctrl.discoverModules(20);
+      setHwModules([...ctrl.discoveredModules]);
+      setHwScanning(false);
+    } catch (err: any) {
+      toast.error(`Erro: ${err.message}`);
+      setHwConnected(false);
+    }
+  }, []);
+
+  const handleHwDisconnect = useCallback(async () => {
+    await fireoneRef.current.disconnect();
+    setHwConnected(false);
+    setHwModules([]);
+    toast.info('Hardware desconectado');
+  }, []);
+
+  const handleHwScan = useCallback(async () => {
+    setHwScanning(true);
+    if (hwSimulated) {
+      const sims = Array.from({ length: 6 }, (_, i) => createSimulatedModuleStatus(i + 1, i >= 3));
+      setHwModules(sims);
+      toast.success(`${sims.length} módulos simulados carregados`);
+    } else {
+      try {
+        await fireoneRef.current.discoverModules(20);
+        setHwModules([...fireoneRef.current.discoveredModules]);
+        toast.success(`${fireoneRef.current.discoveredModules.length} módulos encontrados`);
+      } catch (err: any) {
+        toast.error(`Scan falhou: ${err.message}`);
+      }
+    }
+    setHwScanning(false);
+  }, [hwSimulated]);
+
+  const handleHwFire = useCallback(async (modAddr: number, igniterPos: number) => {
+    if (!masterArmed || !deadmanHeld) return;
+    if (hwSimulated) {
+      setHwModules(prev => prev.map(m =>
+        m.moduleAddress === modAddr
+          ? { ...m, igniters: m.igniters.map(ig => ig.position === igniterPos ? { ...ig, fired: true } : ig) }
+          : m
+      ));
+      broadcastModuleFire(modAddr, igniterPos, `HW-M${modAddr}-I${igniterPos}`);
+      toast.success(`🔥 HW Fire M${modAddr} I${igniterPos}`);
+    } else {
+      try {
+        await fireoneRef.current.fireIgniter(modAddr, igniterPos, 500);
+      } catch (err: any) {
+        toast.error(`Fire falhou: ${err.message}`);
+      }
+    }
+  }, [masterArmed, deadmanHeld, hwSimulated, broadcastModuleFire]);
+
+  const handleHwArmModule = useCallback(async (modAddr: number, arm: boolean) => {
+    if (hwSimulated) {
+      setHwModules(prev => prev.map(m => m.moduleAddress === modAddr ? { ...m, armed: arm } : m));
+    } else {
+      try {
+        if (arm) await fireoneRef.current.armModule(modAddr);
+        else await fireoneRef.current.disarmModule(modAddr);
+      } catch (err: any) { toast.error(err.message); }
+    }
+  }, [hwSimulated]);
+
+  const handleHwEmergencyStop = useCallback(async () => {
+    if (hwSimulated) {
+      setHwModules(prev => prev.map(m => ({ ...m, armed: false })));
+    } else {
+      try { await fireoneRef.current.emergencyStop(); } catch { /* ignore */ }
+    }
+    handlePanic();
+  }, [hwSimulated, handlePanic]);
+
+  const handleHwContinuity = useCallback(async (modAddr: number) => {
+    if (hwSimulated) {
+      setHwModules(prev => prev.map(m =>
+        m.moduleAddress === modAddr
+          ? { ...m, igniters: m.igniters.map(ig => ({ ...ig, continuityOk: ig.connected && ig.resistance > 0.5 && ig.resistance < 10 })) }
+          : m
+      ));
+      toast.success(`Continuity check M${modAddr} completo`);
+    } else {
+      try { await fireoneRef.current.requestContinuity(modAddr); } catch (err: any) { toast.error(err.message); }
+    }
+  }, [hwSimulated]);
+
+
   const broadcastFire = useCallback((fixture: VirtualFixture) => {
     if (!masterArmed) { toast.error('Sistema não armado'); return; }
     if (navigator.vibrate) navigator.vibrate(30);
@@ -540,6 +669,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
           { key: 'semiauto' as XL4Mode, label: 'Semi-Auto', icon: SkipForward },
           { key: 'auto' as XL4Mode, label: 'Auto/TC', icon: Timer },
           { key: 'continuity' as XL4Mode, label: 'Continuity', icon: Activity },
+          { key: 'hardware' as XL4Mode, label: 'HW Serial', icon: Usb },
           { key: 'status' as XL4Mode, label: 'Status', icon: Signal },
         ]).map(m => (
           <button key={m.key} onClick={() => setXl4Mode(m.key)}
@@ -825,7 +955,182 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
           </div>
         )}
 
-        {/* ─── STATUS ─── */}
+        {/* ─── HARDWARE SERIAL MODE ─── */}
+        {xl4Mode === 'hardware' && (
+          <div className="space-y-2">
+            {/* Connection */}
+            <div className={cn("rounded-lg border bg-[hsl(220_10%_7%)]", hwConnected || hwSimulated ? "border-green-500/30" : "border-border/15")}>
+              <div className={cn("flex items-center gap-2 p-2")}>
+                <CircuitBoard className={cn("shrink-0", mob ? "w-5 h-5" : "w-4 h-4", hwConnected || hwSimulated ? "text-green-400" : "text-muted-foreground/30")} />
+                <div className="flex-1 min-w-0">
+                  <div className={cn("font-bold uppercase tracking-wider text-foreground/70", tsL)}>
+                    FireOne RS-485 {hwSimulated ? '(Simulado)' : ''}
+                  </div>
+                  <div className={cn("font-mono text-muted-foreground/40", tsS)}>
+                    {hwConnected ? '● Conectado · 9600 8N1' : hwSimulated ? '● Modo simulação ativo' : '○ Desconectado'}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => setHwSimulated(!hwSimulated)}
+                    className={cn("rounded border font-bold transition-all", mob ? "px-2 py-1 text-[9px]" : "px-1.5 py-0.5 text-[7px]",
+                      hwSimulated ? "border-amber-500/30 bg-amber-500/10 text-amber-400" : "border-border/15 text-muted-foreground/30")}>
+                    SIM
+                  </button>
+                  {!hwSimulated ? (
+                    hwConnected ? (
+                      <Button size="sm" variant="outline" onClick={handleHwDisconnect}
+                        className={cn(mob ? "h-8 text-[10px]" : "h-6 text-[8px]", "border-red-500/30 text-red-400")}>
+                        Desconectar
+                      </Button>
+                    ) : (
+                      <Button size="sm" onClick={handleHwConnect}
+                        className={cn(mob ? "h-8 text-[10px]" : "h-6 text-[8px]")}>
+                        <Usb className="w-3 h-3 mr-1" /> Conectar
+                      </Button>
+                    )
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
+            {/* Scan & Module list */}
+            <div className="flex items-center justify-between">
+              <span className={cn("font-bold text-muted-foreground/40 uppercase tracking-wider", tsS)}>
+                Módulos de Campo ({hwModules.length})
+              </span>
+              <button onClick={handleHwScan} disabled={hwScanning}
+                className={cn("flex items-center gap-1 text-primary/60 font-bold uppercase", tsS,
+                  hwScanning && "animate-spin")}>
+                <RefreshCw className="w-3 h-3" /> {hwScanning ? 'Scanning...' : 'Scan'}
+              </button>
+            </div>
+
+            {hwModules.length === 0 ? (
+              <div className={cn("text-center text-muted-foreground/20 py-4 font-mono rounded border border-dashed border-border/10", tsS)}>
+                {hwSimulated || hwConnected ? 'Clique em Scan para descobrir módulos' : 'Conecte o hardware ou ative o modo SIM'}
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {hwModules.map(mod => {
+                  const okCount = mod.igniters.filter(ig => ig.connected).length;
+                  const firedCount = mod.igniters.filter(ig => ig.fired).length;
+                  const contOk = mod.igniters.filter(ig => ig.continuityOk).length;
+                  return (
+                    <div key={mod.moduleAddress} className={cn("rounded-lg border bg-[hsl(220_10%_7%)]",
+                      mod.armed ? "border-red-500/30" : "border-border/15")}>
+                      {/* Module header */}
+                      <div className={cn("flex items-center gap-2 p-2")}>
+                        <span className={cn(mod.wireless ? "text-cyan-400" : "text-amber-400", mob ? "text-sm" : "text-xs")}>
+                          {mod.wireless ? '📡' : '🔌'}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className={cn("font-bold text-foreground/70", tsL)}>
+                            FM-{String(mod.moduleAddress).padStart(2, '0')}
+                            <span className={cn("ml-1.5 font-mono text-muted-foreground/30", tsS)}>v{mod.firmwareVersion}</span>
+                          </div>
+                          <div className={cn("font-mono flex items-center gap-2", tsS)}>
+                            <span className="text-green-400/60">{okCount}✓</span>
+                            {firedCount > 0 && <span className="text-red-400/60">{firedCount}🔥</span>}
+                            <span className="text-muted-foreground/30">{mod.batteryVoltage.toFixed(1)}V</span>
+                            <span className="text-muted-foreground/30">{mod.temperature}°C</span>
+                            {mod.wireless && <span className="text-muted-foreground/30">{mod.signalStrength}%</span>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => handleHwContinuity(mod.moduleAddress)}
+                            className={cn("rounded border font-bold transition-all", mob ? "px-2 py-1 text-[9px]" : "px-1.5 py-0.5 text-[7px]",
+                              "border-cyan-500/20 text-cyan-400/60 hover:bg-cyan-500/10")}>
+                            <Activity className="w-3 h-3 inline mr-0.5" />CHK
+                          </button>
+                          <button onClick={() => handleHwArmModule(mod.moduleAddress, !mod.armed)}
+                            disabled={!masterArmed}
+                            className={cn("rounded border font-bold transition-all", mob ? "px-2 py-1 text-[9px]" : "px-1.5 py-0.5 text-[7px]",
+                              mod.armed
+                                ? "border-red-500/40 bg-red-500/15 text-red-400"
+                                : masterArmed ? "border-amber-500/20 text-amber-400/60 hover:bg-amber-500/10" : "border-border/10 text-muted-foreground/15")}>
+                            {mod.armed ? 'DISARM' : 'ARM'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Errors */}
+                      {mod.errors.length > 0 && (
+                        <div className={cn("px-2 pb-1 flex gap-1 flex-wrap")}>
+                          {mod.errors.map(err => (
+                            <span key={err} className={cn("rounded bg-red-500/10 text-red-400 font-mono px-1", tsS)}>{err}</span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Igniter grid — 32 positions */}
+                      <div className={cn("px-2 pb-2")}>
+                        <div className={cn("grid gap-[3px]", mob ? "grid-cols-8" : "grid-cols-8")}>
+                          {mod.igniters.map(ig => (
+                            <button key={ig.position}
+                              onClick={() => handleHwFire(mod.moduleAddress, ig.position)}
+                              disabled={!masterArmed || !deadmanHeld || !ig.connected || ig.fired}
+                              className={cn(
+                                "flex flex-col items-center justify-center rounded border transition-all select-none",
+                                mob ? "min-h-[44px] rounded-lg" : "min-h-[32px]",
+                                ig.fired
+                                  ? "bg-red-900/30 border-red-500/20 text-red-400/40"
+                                  : ig.connected && masterArmed && deadmanHeld
+                                    ? "bg-[hsl(120_30%_12%)] border-green-500/30 text-green-400 hover:bg-green-600/20 active:scale-[0.9] active:bg-red-600/40 cursor-pointer"
+                                    : ig.connected
+                                      ? "bg-[hsl(220_10%_10%)] border-border/15 text-muted-foreground/40"
+                                      : "bg-[hsl(220_10%_6%)] border-border/5 text-muted-foreground/10"
+                              )}>
+                              <span className={cn("font-mono font-bold", mob ? "text-[9px]" : "text-[7px]")}>{ig.position}</span>
+                              <span className={cn("font-mono", tsS)}>
+                                {ig.fired ? '✕' : ig.connected ? `${ig.resistance.toFixed(1)}Ω` : '—'}
+                              </span>
+                              {ig.continuityOk && !ig.fired && (
+                                <span className={cn("text-green-400", "text-[5px]")}>●</span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* HW Event Log */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className={cn("font-bold text-muted-foreground/40 uppercase tracking-wider", tsS)}>Hardware Log</span>
+                {hwEvents.length > 0 && (
+                  <button onClick={() => setHwEvents([])} className={cn("text-muted-foreground/30 hover:text-foreground/50", tsS)}>Clear</button>
+                )}
+              </div>
+              <ScrollArea className={cn("rounded border border-border/10 bg-[hsl(220_10%_5%)]", mob ? "h-24" : "h-16")}>
+                <div className="p-1.5 space-y-0.5">
+                  {hwEvents.length === 0 ? (
+                    <div className={cn("text-center text-muted-foreground/20 py-2 font-mono", tsS)}>Sem eventos de hardware</div>
+                  ) : hwEvents.slice(0, 30).map((evt, i) => (
+                    <div key={i} className={cn("flex items-center gap-1.5 font-mono", tsS)}>
+                      <span className="text-muted-foreground/30">
+                        {new Date(evt.timestamp).toLocaleTimeString('pt-BR', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      </span>
+                      <span className={cn("font-bold px-1 rounded text-[6px] uppercase",
+                        evt.type === 'fire-confirm' ? "bg-red-500/15 text-red-400"
+                          : evt.type === 'error' ? "bg-red-500/15 text-red-300"
+                          : evt.type === 'emergency-stop' ? "bg-red-500/20 text-red-400"
+                          : "bg-primary/10 text-primary/60")}>
+                        {evt.type.replace('-', ' ')}
+                      </span>
+                      <span className="text-muted-foreground/40">M{evt.moduleAddress}</span>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          </div>
+        )}
+
+
         {xl4Mode === 'status' && (
           <div className="space-y-2">
             {/* Virtual Fixtures */}
