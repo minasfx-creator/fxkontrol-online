@@ -105,7 +105,6 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
     if (asset.source === '3dwarehouse') {
       const rawId = asset.id.replace('3dw-', '');
       
-      // Fallback catalog entries have short slugs, not real 3D Warehouse UUIDs
       const isRealId = rawId.length > 20 || /^[0-9a-f]{8}-/.test(rawId);
       
       if (!isRealId) {
@@ -149,6 +148,14 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
 
         useSceneStore.getState().addSiteModel(newModel);
         toast.success(`"${asset.title}" importado para o viewport`, { id: toastId });
+
+        // Auto-save to library
+        saveToLibrary(blob, {
+          name: asset.title,
+          source: '3dwarehouse',
+          file_format: 'glb',
+          thumbnail_base64: asset.thumbnailUrl || undefined,
+        });
       } catch (err: any) {
         toast.error(`Falha ao baixar: ${err.message || 'Erro desconhecido'}`, { id: toastId });
       }
@@ -157,15 +164,17 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
         description: `Fonte: ${SOURCE_CONFIG[asset.source].label} · ${asset.fileFormats.join(', ')}`,
       });
     }
-  }, []);
+  }, [saveToLibrary]);
 
   const handleLocalGLBUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const blobUrl = URL.createObjectURL(file);
+    const modelName = file.name.replace(/\.(glb|gltf)$/i, '');
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'glb';
     const newModel: SiteModel = {
       id: `site-${Date.now()}`,
-      name: file.name.replace(/\.(glb|gltf)$/i, ''),
+      name: modelName,
       url: blobUrl,
       position: [0, 0, 0],
       rotation: [0, 0, 0],
@@ -174,8 +183,30 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
       source: 'local',
     };
     useSceneStore.getState().addSiteModel(newModel);
-    toast.success(`"${newModel.name}" carregado no viewport`);
-  }, []);
+    toast.success(`"${modelName}" carregado no viewport`);
+
+    // Auto-save to library
+    saveToLibrary(file, { name: modelName, source: 'local', file_format: ext });
+  }, [saveToLibrary]);
+
+  const handleImportFromLibrary = useCallback(async (asset: LibraryAsset) => {
+    const toastId = toast.loading(`Carregando "${asset.name}"...`);
+    const url = await downloadAsset(asset);
+    if (!url) { toast.error('Falha ao carregar', { id: toastId }); return; }
+
+    const newModel: SiteModel = {
+      id: `site-${Date.now()}`,
+      name: asset.name,
+      url,
+      position: [0, 0, 0],
+      rotation: [0, 0, 0],
+      scale: 1,
+      visible: true,
+      source: `library (${asset.source})`,
+    };
+    useSceneStore.getState().addSiteModel(newModel);
+    toast.success(`"${asset.name}" importado da biblioteca`, { id: toastId });
+  }, [downloadAsset]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
