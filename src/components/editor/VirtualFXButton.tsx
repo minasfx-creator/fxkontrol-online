@@ -4,6 +4,7 @@
  */
 import { useState, useCallback, useRef } from 'react';
 import { Radio, Lock, Unlock, Signal, Zap } from 'lucide-react';
+import { haptics } from '@/lib/haptics';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useIsMobile } from '@/hooks/use-mobile';
