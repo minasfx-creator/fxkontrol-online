@@ -3335,6 +3335,9 @@ export default function SkyCanvas() {
   // cursorStyle moved below geoTool declaration
   const [activePreset, setActivePreset] = useState('free');
   const [freeLook, setFreeLook] = useState(false);
+  const [flyMode, setFlyMode] = useState(false);
+  const [flySpeed, setFlySpeed] = useState(15);
+  const flySpeedCb = useCallback((s: number) => setFlySpeed(Math.round(s)), []);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [cameraMenuOpen, setCameraMenuOpen] = useState(false);
   const preset = CAMERA_PRESETS.find((p) => p.id === activePreset) || CAMERA_PRESETS[0];
