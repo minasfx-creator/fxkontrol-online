@@ -1,6 +1,7 @@
 /**
  * useFireOneHardware — React hook bridging FireOneController ↔ component state
  * Supports wired RS-485 + wireless IFMx-i32Q with RSSI polling and auto-fallback
+ * Transparent radio fallback via useRadioLink when antenna connected
  */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
@@ -17,6 +18,7 @@ import {
   buildWirelessStatusQuery,
   buildWirelessConfigCommand,
 } from '@/lib/fireoneProtocol';
+import { useRadioLink } from '@/hooks/useRadioLink';
 
 export interface FireOneHardwareState {
   isConnected: boolean;
