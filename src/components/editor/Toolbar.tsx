@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Zap, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus, Download, ChevronDown, LayoutGrid, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Info, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store, Lightbulb, MonitorSpeaker, FileArchive, Mountain } from 'lucide-react';
+import { Zap, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus, Download, ChevronDown, LayoutGrid, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Info, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store, Lightbulb, MonitorSpeaker, FileArchive, Mountain, Building2 } from 'lucide-react';
 import fxkLogo from '@/assets/fxk-logo.png';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -18,6 +18,7 @@ import GMA2PatchImporter from './GMA2PatchImporter';
 import UE5DMXPrevisImporter from './UE5DMXPrevisImporter';
 import MVRImporter from './MVRImporter';
 import UE5MapImporter from './UE5MapImporter';
+import TwinmotionImporter from './TwinmotionImporter';
 import AssetMarketplaceBrowser from './AssetMarketplaceBrowser';
 import ProjectBrowser from './ProjectBrowser';
 import CatalogImportDialog from './CatalogImportDialog';
@@ -336,12 +337,13 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
   const [ue5DmxOpen, setUe5DmxOpen] = useState(false);
   const [mvrOpen, setMvrOpen] = useState(false);
   const [ue5MapOpen, setUe5MapOpen] = useState(false);
-  const [droppedFile, setDroppedFile] = useState<{ file: File; type: 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset' | 'ue5map' | 'heightmap' } | null>(null);
+  const [twinmotionOpen, setTwinmotionOpen] = useState(false);
+  const [droppedFile, setDroppedFile] = useState<{ file: File; type: 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset' | 'ue5map' | 'heightmap' | 'twinmotion' } | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Listen for viewport file drop events
   useEffect(() => {
-    const handler = (e: CustomEvent<{ file: File; type: 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset' | 'ue5map' | 'heightmap' }>) => {
+    const handler = (e: CustomEvent<{ file: File; type: 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset' | 'ue5map' | 'heightmap' | 'twinmotion' }>) => {
       const { file, type } = e.detail;
       setDroppedFile({ file, type });
       if (type === 'mvr') setMvrOpen(true);
@@ -350,6 +352,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       else if (type === 'vviz') setVvizOpen(true);
       else if (type === 'uasset') setUassetOpen(true);
       else if (type === 'ue5map' || type === 'heightmap') setUe5MapOpen(true);
+      else if (type === 'twinmotion') setTwinmotionOpen(true);
     };
     window.addEventListener('viewport-file-drop', handler as EventListener);
     return () => window.removeEventListener('viewport-file-drop', handler as EventListener);
@@ -502,6 +505,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
               { label: 'UE5 DMX Library', icon: MonitorSpeaker, onClick: () => setUe5DmxOpen(true) },
               { label: 'MVR (My Virtual Rig)', icon: FileArchive, onClick: () => setMvrOpen(true) },
               { label: 'UE5 Map / Terreno', icon: Mountain, onClick: () => setUe5MapOpen(true) },
+              { label: 'Twinmotion / Datasmith', icon: Building2, onClick: () => setTwinmotionOpen(true) },
               { label: 'Supplier Catalog', icon: Sparkles, onClick: () => setCatalogOpen(true) },
               { label: 'Asset Marketplace', icon: Store, onClick: () => setMarketplaceOpen(true) },
             ]}
@@ -606,6 +610,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       <UE5DMXPrevisImporter open={ue5DmxOpen} onOpenChange={(v) => { setUe5DmxOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'ue5json' ? droppedFile.file : null} />
       <MVRImporter open={mvrOpen} onOpenChange={(v) => { setMvrOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'mvr' ? droppedFile.file : null} />
       <UE5MapImporter open={ue5MapOpen} onOpenChange={(v) => { setUe5MapOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'ue5map' || droppedFile?.type === 'heightmap' ? droppedFile.file : null} />
+      <TwinmotionImporter open={twinmotionOpen} onOpenChange={(v) => { setTwinmotionOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'twinmotion' ? droppedFile.file : null} />
 
       <div className="flex-1" />
 
