@@ -57,6 +57,8 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
       { id: 'livefiring', label: 'Live SFX', icon: Sparkles },
       { id: 'mobilelink', label: 'Mobile Link', icon: Cable },
       { id: 'linkmonitor', label: 'Link Monitor', icon: MonitorPlay },
+      { id: 'ma3', label: 'grandMA3', icon: Sliders },
+      { id: 'sacnmonitor', label: 'sACN Monitor', icon: Activity },
       { id: 'diagnostic', label: 'Diagnóstico', icon: Bug, shortcut: 'D' },
     ],
   },
