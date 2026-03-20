@@ -33,16 +33,46 @@ function getCueColor(connected: boolean, fired: boolean, resistance: number): st
   return 'bg-emerald-500/20 border-emerald-500/40'; // good
 }
 
-function DeviceCard({ device, onArm, onDisarm, onFire, onCueStatus, onSetBand }: {
+function DeviceCard({ device, onArm, onDisarm, onFire, onCueStatus, onSetBand, isMobile }: {
   device: PBusDevice;
   onArm: (addr: number) => void;
   onDisarm: (addr: number) => void;
   onFire: (addr: number, cue: number) => void;
   onCueStatus: (addr: number) => void;
   onSetBand: (addr: number, band: PBusWirelessBand) => void;
+  isMobile: boolean;
 }) {
   const [expanded, setExpanded] = useState(true);
   const [deadman, setDeadman] = useState(false);
+  const [deadmanProgress, setDeadmanProgress] = useState(0);
+  const deadmanTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const deadmanAnimRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startDeadman = useCallback(() => {
+    if (isMobile) {
+      // 800ms long-press with progress ring
+      let progress = 0;
+      deadmanAnimRef.current = setInterval(() => {
+        progress += 5;
+        setDeadmanProgress(Math.min(100, (progress / 800) * 100 * 50));
+      }, 50);
+      deadmanTimer.current = setTimeout(() => {
+        setDeadman(true);
+        setDeadmanProgress(100);
+        if (deadmanAnimRef.current) clearInterval(deadmanAnimRef.current);
+        if (navigator.vibrate) navigator.vibrate([100]);
+      }, 800);
+    } else {
+      setDeadman(true);
+    }
+  }, [isMobile]);
+
+  const endDeadman = useCallback(() => {
+    if (deadmanTimer.current) { clearTimeout(deadmanTimer.current); deadmanTimer.current = null; }
+    if (deadmanAnimRef.current) { clearInterval(deadmanAnimRef.current); deadmanAnimRef.current = null; }
+    setDeadman(false);
+    setDeadmanProgress(0);
+  }, []);
 
   return (
     <div className="rounded-lg border border-border/20 bg-card/50 overflow-hidden">
