@@ -138,12 +138,14 @@ export function NewsTicker() {
         </div>
       </div>
 
-      {/* Scrolling visual feed */}
+      {/* Scrolling visual feed — swipe left/right to change category */}
       <div
         ref={scrollRef}
         className="flex-1 overflow-hidden"
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
       >
         <div className="space-y-0.5">
           {doubledNews.map((item, i) => {
