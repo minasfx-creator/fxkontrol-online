@@ -130,7 +130,7 @@ class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
 // Camera presets calibrated for real-world firework heights (55m-300m break heights)
 // Audience distance: typically 100-300m from launch site (NFPA 1123)
 const CAMERA_PRESETS = [
-  { id: 'free', label: 'Free', icon: Eye, position: [0, 125, 2000] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
+  { id: 'free', label: 'Free', icon: Eye, position: [0, 2, 2200] as [number, number, number], target: [0, 300, 0] as [number, number, number] },
   { id: 'satellite', label: 'Top', icon: Plane, position: [0, 6000, 0.1] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
   { id: 'audience', label: 'Plateia', icon: Users, position: [0, 15, 2500] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
   { id: 'front', label: 'Front', icon: Users, position: [0, 40, 3000] as [number, number, number], target: [0, 600, 0] as [number, number, number] },

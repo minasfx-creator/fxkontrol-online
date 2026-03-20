@@ -756,23 +756,86 @@ export default function PyroFireOnePanel({
 
   // ═══════════════════════════════════════════════════════════
   // DEDICATED XL4 FULLSCREEN — Portal to body
+  // Replicates the real 10.1" XL4+ LCD with optimized touch
   // ═══════════════════════════════════════════════════════════
   if (pyroFullscreen) {
     const fullscreenContent = (
       <div
-        className="fixed inset-0 z-[99999] flex flex-col select-none"
+        className="fixed inset-0 z-[99999] flex flex-col select-none overflow-hidden"
         style={{
-          background: 'linear-gradient(180deg, hsl(0 15% 6%) 0%, hsl(220 12% 4%) 100%)',
+          background: 'linear-gradient(180deg, hsl(0 12% 5%) 0%, hsl(220 15% 3%) 100%)',
+          paddingTop: mob ? 'env(safe-area-inset-top)' : undefined,
           paddingBottom: mob ? 'max(env(safe-area-inset-bottom), 8px)' : undefined,
         }}
       >
         {renderHeader()}
         {renderMasterArm()}
         {renderStatusStrip()}
-        {renderModeTabs()}
-        {renderModuleSelector()}
-        {renderModuleInfo()}
-        <ScrollArea className="flex-1">{renderModeContent()}</ScrollArea>
+
+        {/* XL4 split layout: on wide screens show module list + content side by side */}
+        {!mob ? (
+          <div className="flex-1 flex min-h-0">
+            {/* Left: Module selector + info (sidebar) */}
+            <div className="w-52 shrink-0 border-r border-border/10 flex flex-col" style={{ background: 'hsl(220 12% 5%)' }}>
+              <div className="px-3 py-2 border-b border-border/10">
+                <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-wider">Field Modules</span>
+              </div>
+              <ScrollArea className="flex-1">
+                <div className="p-2 space-y-1">
+                  {modules.map(m => (
+                    <button key={m.address} onClick={() => setSelectedModule(m.address)}
+                      className={cn(
+                        "w-full flex items-center gap-2 rounded-lg border px-3 py-2.5 transition-all text-left",
+                        selectedModule === m.address
+                          ? m.armed ? "bg-red-600/15 border-red-500/30" : "bg-primary/10 border-primary/30"
+                          : m.armed ? "bg-red-600/5 border-red-800/15 hover:bg-red-600/10"
+                          : m.connected ? "bg-[hsl(220_10%_8%)] border-border/10 hover:bg-[hsl(220_10%_12%)]"
+                          : "bg-[hsl(220_10%_5%)] border-border/5 opacity-40"
+                      )}>
+                      <div className={cn("w-2 h-2 rounded-full shrink-0",
+                        m.armed ? "bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.5)]" :
+                        m.connected ? "bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.4)]" : "bg-muted-foreground/15"
+                      )} />
+                      <div className="flex-1 min-w-0">
+                        <div className={cn("font-mono font-bold text-xs",
+                          selectedModule === m.address ? "text-foreground/80" : "text-foreground/50"
+                        )}>FM-{String(m.address).padStart(2, '0')}</div>
+                        <div className="flex items-center gap-2 text-[8px] text-muted-foreground/30 font-mono">
+                          <span>{m.batteryVoltage.toFixed(1)}V</span>
+                          <span>{Math.round(m.signalStrength)}%</span>
+                          <span>{Math.round(m.temperature)}°C</span>
+                        </div>
+                      </div>
+                      {m.armed && <span className="text-[8px] font-bold text-red-400 uppercase">ARM</span>}
+                    </button>
+                  ))}
+                </div>
+                <div className="px-2 pb-2">
+                  <button onClick={importPyroCues}
+                    className="w-full rounded-lg border font-bold text-[10px] py-2 bg-amber-600/10 border-amber-500/20 text-amber-400/70 hover:bg-amber-600/15 transition-all">
+                    <Download className="w-3.5 h-3.5 inline mr-1.5" />Import Cues
+                  </button>
+                </div>
+              </ScrollArea>
+            </div>
+
+            {/* Right: Mode tabs + content */}
+            <div className="flex-1 flex flex-col min-w-0">
+              {renderModuleInfo()}
+              {renderModeTabs()}
+              <ScrollArea className="flex-1">{renderModeContent()}</ScrollArea>
+            </div>
+          </div>
+        ) : (
+          /* Mobile: stacked layout */
+          <>
+            {renderModeTabs()}
+            {renderModuleSelector()}
+            {renderModuleInfo()}
+            <ScrollArea className="flex-1">{renderModeContent()}</ScrollArea>
+          </>
+        )}
+
         {renderDeadman()}
         {renderPanic()}
       </div>
