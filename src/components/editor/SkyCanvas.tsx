@@ -3275,6 +3275,67 @@ function FullscreenEditMenu() {
     </div>
   );
 }
+
+/** Site Model Transform Toolbar — Move/Rotate/Scale gizmo mode switcher */
+function SiteModelTransformToolbar() {
+  const selectedId = useSceneStore((s) => s.selectedSiteModelId);
+  const mode = useSceneStore((s) => s.siteModelTransformMode);
+  const setMode = useSceneStore((s) => s.setSiteModelTransformMode);
+  const selectModel = useSceneStore((s) => s.selectSiteModel);
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedId) {
+        selectModel(null);
+      }
+      if (selectedId) {
+        if (e.key === 'g' || e.key === 'G') setMode('translate');
+        if (e.key === 'r' || e.key === 'R') setMode('rotate');
+        if (e.key === 's' || e.key === 'S') setMode('scale');
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [selectedId, selectModel, setMode]);
+
+  if (!selectedId) return null;
+
+  const modes = [
+    { key: 'translate' as const, label: 'Move', icon: '⊞', shortcut: 'G' },
+    { key: 'rotate' as const, label: 'Rotate', icon: '↻', shortcut: 'R' },
+    { key: 'scale' as const, label: 'Scale', icon: '⤢', shortcut: 'S' },
+  ];
+
+  return (
+    <div className="absolute top-14 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 bg-card/90 backdrop-blur-xl border border-border/30 rounded-xl px-2 py-1.5 shadow-lg">
+      <span className="text-[9px] text-muted-foreground font-mono mr-1">MODEL</span>
+      {modes.map((m) => (
+        <button
+          key={m.key}
+          onClick={() => setMode(m.key)}
+          className={cn(
+            'px-2.5 py-1 rounded-lg text-[10px] font-medium transition-all',
+            mode === m.key
+              ? 'bg-primary text-primary-foreground shadow-sm'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+          )}
+          title={`${m.label} (${m.shortcut})`}
+        >
+          {m.icon} {m.label}
+        </button>
+      ))}
+      <div className="w-px h-4 bg-border/40 mx-1" />
+      <button
+        onClick={() => selectModel(null)}
+        className="px-2 py-1 rounded-lg text-[10px] text-muted-foreground hover:bg-destructive/20 hover:text-destructive transition-all"
+        title="Deselect (Esc)"
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+
 /** Camera Bookmarks bar — Finale 3D custom camera shortcuts */
 function CameraBookmarksBar({ setActivePreset, setFreeLook }: { setActivePreset: (id: string) => void; setFreeLook: (v: boolean) => void }) {
   const bookmarks = useSceneStore(st => st.environment.cameraBookmarks);
