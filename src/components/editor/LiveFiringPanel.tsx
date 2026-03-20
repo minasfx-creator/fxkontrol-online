@@ -791,6 +791,10 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           { key: 'pyro_fire' as FXCMode, label: '🔥 Pyro' },
           { key: 'auto_fire' as FXCMode, label: 'Auto' },
           { key: 'check_slave' as FXCMode, label: 'Check' },
+          { key: 'controllers' as FXCMode, label: '🎛 HW' },
+          { key: 'pbus' as FXCMode, label: '📡 PBUS' },
+          { key: 'field_map' as FXCMode, label: '🗺 Map' },
+          { key: 'connections' as FXCMode, label: '🔌 Conn' },
           { key: 'mobile_link' as FXCMode, label: '📡 Link' },
           { key: 'settings' as FXCMode, label: '⚙' },
         ]).map(m => (
