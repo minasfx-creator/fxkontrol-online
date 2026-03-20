@@ -327,6 +327,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
   const [browserOpen, setBrowserOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [uassetOpen, setUassetOpen] = useState(false);
+  const [marketplaceOpen, setMarketplaceOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const handleSave = useCallback(async () => {
