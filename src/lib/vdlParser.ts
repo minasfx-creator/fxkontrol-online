@@ -63,6 +63,18 @@ export interface VDLResult {
   isAerial: boolean;         // "Shell" or "Aerial" keyword
   multiColors: string[][];   // & separated multi-color groups
   impliesTrail: boolean;     // color implies trail of sparks
+  // ── SuperVDL: Niagara fusion ──
+  niagaraPreset?: string;           // matched Niagara preset ID
+  niagaraProfile?: {
+    starCount: number;
+    lifetime: number;
+    velocity: number;
+    drag: number;
+    gravityScale: number;
+    sparkleRate: number;
+    glowIntensity: number;
+    fadeProfile: 'linear' | 'exponential' | 'ember';
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════
