@@ -37,7 +37,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   drone: '🤖',
 };
 
-export default function UE5DMXPrevisImporter({ open, onOpenChange }: Props) {
+export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }: Props) {
   const { addPosition } = useProjectStore();
   const [result, setResult] = useState<UE5DMXParseResult | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
