@@ -1,120 +1,83 @@
 
 
-# Plan: Mobile HUD Overhaul — Free Fire Style for Show Professionals
+# Plan: Features for International Artist/DJ Producers
 
-## Overview
-Transform the mobile editor from an opaque-panel layout into a transparent gaming HUD where the 3D world is always 100% visible. All controls become glass overlays. Add real-life show operator features: persistent timecode, connection status, quick-fire controls, countdown timer, and crew communication.
+## Context
+FX KONTROL already has a powerful 3D editor, timeline, live firing, and event agenda. But for a **producer managing international artists/DJs**, key workflow gaps exist: no setlist management, no technical rider builder, no multi-currency budgeting, no timezone-aware scheduling, and no quick way to share show previews with clients abroad.
 
-```text
-┌──────────────────────────────────┐
-│ [⚡FXK] 00:32.15 ▶■  🔋🟢 [☰]  │  ← Glass HUD bar (safe-area)
-│                                  │
-│ [🎯 Select]                      │  ← Left FABs (context-aware)
-│ [➕ Add]                         │
-│ [↩ Undo]                         │
-│                                  │
-│        ═══ 3D WORLD ═══         │  ← Always full-screen
-│                                  │
-│              [🔴 FIRE]           │  ← Quick-fire floating (armed only)
-│                                  │
-│ ┌── glass sheet (swipeable) ──┐  │
-│ │  Panel content              │  │  ← 25/45/85vh snap points
-│ └─────────────────────────────┘  │
-│                                  │
-│   [⚡] [📍] [⬡] [⏱] [≡]       │  ← Glass floating dock
-└──────────────────────────────────┘
-```
+## New Features (5 modules)
 
-## Changes (7 files)
+### 1. Setlist Manager Panel (`SetlistPanel.tsx`)
+A draggable track list synced to the timeline:
+- Add songs with title, artist, BPM, duration, key
+- Drag to reorder; total runtime auto-calculated
+- Each song maps to a timeline segment (start/end markers)
+- "Sync to Timeline" button auto-creates segment markers
+- Import from Spotify/text paste (CSV: title, duration)
+- Color-coded blocks on the timeline track
+- Export as PDF rundown for stage manager
 
-### 1. Create `src/components/editor/MobileHUD.tsx`
-Transparent top bar replacing full Toolbar on mobile:
-- FXK logo icon + live timecode (mono font, cyan)
-- Play/Pause/Stop transport (36px icon-only)
-- Connection status dots: DMX (green/red), USB (blue/gray), SMPTE (yellow/gray) — reads from stores
-- Battery indicator (from useLiveSfxStore if armed)
-- Hamburger menu button → opens save/import/export/settings actions via dropdown
-- **Show Countdown**: when `showDate` is set in settings, displays "T-2d 4h" countdown
-- **PANIC button**: small red circle, visible only when Live FX is armed — triggers emergency stop
-- Glass style: `bg-black/25 backdrop-blur-md`, safe-area padding
+### 2. Technical Rider Builder (`RiderPanel.tsx`)
+Generate professional technical riders:
+- Equipment checklist with quantities (power, DMX universes, firing modules, CO2 tanks, etc.)
+- Auto-populated from current project (reads positions, effects, DMX channels, racks)
+- Venue requirements section (min clearance, safety distances from NFPA panel)
+- Power calculation (amps per circuit, total kW)
+- Export as branded PDF with event logo
+- Share link for venue technical director
 
-### 2. Create `src/components/editor/MobileQuickActions.tsx`
-Left-edge floating vertical FABs:
-- Default state: Select, Add Position, Undo (3 buttons)
-- When position selected: Edit, Delete, Duplicate (context-aware swap)
-- When Live FX armed: shows ARM status + quick FIRE button (large, red, haptic)
-- Semi-transparent glass (`bg-black/30 border border-white/10`), 48px touch targets
-- Positioned 8px from left, vertically centered
-- **Crew Note button**: tap to dictate/type a quick note timestamped to current timecode (stored in project notes)
+### 3. Multi-Currency Budget Panel (`BudgetPanel.tsx`)
+Financial tracking for international tours:
+- Line items: equipment rental, transport, crew, pyro materials, permits
+- Auto-cost from inventory/supplier panels (reads existing data)
+- Multi-currency support (USD, EUR, BRL, GBP) with live conversion
+- Budget vs actual tracking
+- Per-event and tour-total views
+- Export as spreadsheet
 
-### 3. Rewrite `src/components/editor/MobileTabBar.tsx`
-Glass floating dock:
-- Pill-shaped, floating 8px from edges + safe-area bottom
-- `bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl`
-- Icon-only (no text), 44px height total
-- 5 slots: Live FX (orange glow), Points, Formations, Timeline, More
-- Active = neon dot below + `drop-shadow` glow
-- **Long-press on Live FX** = instant fullscreen FXcommander (existing LiveFiringPanel fullscreen mode)
-- Remove drag handle section from this component (move to MobileFloatingPanel)
+### 4. Tour Schedule View (enhance `Agenda.tsx`)
+Upgrade the agenda for international touring:
+- Map view showing all tour dates with route lines
+- Timezone display per event (already have timezone field)
+- Travel time estimates between venues
+- Countdown to next event on Dashboard
+- Status pipeline: Negotiation → Confirmed → Rider Sent → Mounted → Executed → Invoiced
+- Quick-duplicate event (same setup, new city/date)
 
-### 4. Rewrite `src/components/editor/MobileFloatingPanel.tsx`
-Translucent swipeable sheet:
-- Glass background: `bg-black/50 backdrop-blur-2xl`
-- 3 snap heights: peek (25vh), half (45vh), full (85vh — never 100%)
-- Drag handle pill at top (40px × 4px, `bg-white/20`)
-- Rounded top corners (`rounded-t-2xl`)
-- Close button (X) top-right
-- Thin scrollbar inside
-- **Swipe-down to dismiss** (touch gesture detection)
+### 5. Client Preview Share (`ShowPreviewPanel.tsx`)
+One-tap shareable show preview for artists/managers:
+- Generate a video recording of the 3D show (uses existing VideoRecorderPanel)
+- Add branded overlay (event name, artist, date)
+- Generate shareable link (upload to storage, public URL)
+- QR code generation for on-site sharing
+- Approval workflow: client can approve/request changes (ties into existing ClientApprovalPanel)
+- WhatsApp/Email share buttons
 
-### 5. Redesign `src/components/editor/MobileMoreMenu.tsx`
-Compact grid with operator-focused organization:
-- **Search bar** at top (glass input, instant filter)
-- **"Recent" row**: horizontal scroll of last 5 used panels (persisted in localStorage)
-- 5-column icon grid (40px cells) with glass cards (`bg-white/5`)
-- Category headers as compact inline pills
-- **New "Quick Access" section** at top: Show Control, Safety Check, Preflight, Weather — the panels operators need most during a live event
-- **New "Crew Tools" section**: Share, Approval, Storyboard, Reports — for coordination
-
-### 6. Edit `src/pages/Index.tsx` — Mobile layout
-- Remove `<Toolbar>` from mobile render (line 348)
-- Add `<MobileHUD>` as fixed overlay at top (transparent, z-50)
-- Add `<MobileQuickActions>` as fixed left overlay (z-40)
-- Canvas occupies full screen (`h-screen w-screen`) with no flex column reduction
-- All overlays use `pointer-events-none` wrappers with `pointer-events-auto` on children
-- Wire `handleMobileOpenPanel` to new components
-- Pass transport controls (play/pause/stop) to MobileHUD
-
-### 7. Edit `src/index.css` — Glass utility classes
-```css
-.glass-hud { background: rgba(0,0,0,0.25); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.08); }
-.glass-dock { background: rgba(0,0,0,0.4); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); }
-.glass-sheet { background: rgba(0,0,0,0.5); backdrop-filter: blur(24px); }
-.glass-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); }
-.glow-active { filter: drop-shadow(0 0 8px currentColor); }
-.touch-target { min-width: 44px; min-height: 44px; }
-```
-
-## Operator-Focused Design Decisions
-- **Timecode always visible** — sync checks without opening any panel
-- **Connection status at a glance** — DMX/USB/SMPTE colored dots, no panel needed
-- **PANIC always reachable** — small red dot in HUD when armed, one tap to emergency stop
-- **Live FX priority** — orange glow, long-press for instant fullscreen commander
-- **Show countdown** — "T-2d 4h" when show date is set, real-time awareness
-- **Crew notes** — timestamped quick notes for field communication
-- **Quick Access section** — Safety, Preflight, Show Control, Weather at top of More menu
-- **85vh max sheet** — 3D world always peeks through, spatial awareness maintained
-- **Context FABs** — buttons change based on selection state, reducing tap count for common ops
+## Database Changes
+New tables needed:
+- `setlists` (id, project_id, user_id, tracks JSONB, created_at)
+- `budgets` (id, event_id, user_id, currency, line_items JSONB, created_at)
+- `rider_templates` (id, user_id, name, sections JSONB, created_at)
 
 ## Files Summary
 
 | File | Action |
 |------|--------|
-| `src/components/editor/MobileHUD.tsx` | Create |
-| `src/components/editor/MobileQuickActions.tsx` | Create |
-| `src/components/editor/MobileTabBar.tsx` | Rewrite |
-| `src/components/editor/MobileFloatingPanel.tsx` | Rewrite |
-| `src/components/editor/MobileMoreMenu.tsx` | Redesign |
-| `src/pages/Index.tsx` | Edit mobile layout |
-| `src/index.css` | Add glass utilities |
+| `src/components/editor/SetlistPanel.tsx` | Create — setlist manager |
+| `src/components/editor/RiderPanel.tsx` | Create — technical rider builder |
+| `src/components/editor/BudgetPanel.tsx` | Create — multi-currency budget |
+| `src/components/editor/ShowPreviewPanel.tsx` | Create — shareable preview generator |
+| `src/pages/Agenda.tsx` | Edit — add map view, tour pipeline statuses |
+| `src/pages/Dashboard.tsx` | Edit — add tour countdown, next-event widget |
+| `src/components/editor/MobileMoreMenu.tsx` | Edit — add new panels to menu |
+| `src/components/editor/PanelTabBar.tsx` | Edit — register new panel IDs |
+| `src/pages/Index.tsx` | Edit — wire new panels |
+| DB migration | Create setlists, budgets, rider_templates tables |
+
+## Priority Order
+1. **Setlist Manager** — most immediate value for DJ producers
+2. **Technical Rider** — saves hours of manual document creation
+3. **Client Preview Share** — closes deals faster
+4. **Tour Schedule** — essential for multi-city planning
+5. **Budget Panel** — financial control for tour managers
 
