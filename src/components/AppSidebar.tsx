@@ -2,6 +2,7 @@ import { LayoutDashboard, Clapperboard, CalendarDays, GraduationCap, LogOut, Gam
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Sidebar,
   SidebarContent,
@@ -29,11 +30,12 @@ export function AppSidebar() {
   const collapsed = state === 'collapsed';
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const isMobile = useIsMobile();
 
   const initials = user?.email?.slice(0, 2).toUpperCase() ?? 'FX';
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-border bg-[hsl(var(--surface-0))]">
+    <Sidebar collapsible={isMobile ? 'offcanvas' : 'icon'} className="border-r border-border bg-[hsl(var(--surface-0))]">
       <SidebarContent>
         {/* Brand with MinasFX logo */}
         <div className={`px-3 pt-4 pb-2 ${collapsed ? 'flex justify-center' : ''}`}>
