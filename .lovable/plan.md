@@ -1,75 +1,66 @@
 
 
-# Plan: Auto-Link SFX Positions to FX Commander + Art-Net Connection Test
+# Plan: Add UE5 T3D / COPY Format Support to DMX Importer
 
-## Summary
+## Context
 
-When adding SFX equipment (via Showven Equipment Panel or directly), the system will:
-1. Automatically create an SFX channel in the FX Commander console linked to the position
-2. Run an Art-Net connection test and show the result as a toast notification
+You uploaded `DMXLib_v4-2.COPY` -- a UE5 T3D text export of the DMX Library containing 800+ fixture patches. This is the native format you get when you select fixtures in UE5 and press Ctrl+C (Copy). The current importer only supports CSV and JSON but not this T3D format.
 
-## Current State
+The file contains rich structured data per fixture:
+- `Name` (e.g. "SpotMH2_345", "Pyro_11", "AudienceStrip_12", "MatrixStripRGB_90", "CatwalkStrip_7")
+- `UniverseID` and `StartingChannel`
+- `FixtureID` and `ActiveMode`
+- `EditorColor` as linear RGBA (e.g. `R=0.007812,G=0.000000,B=1.000000,A=1.000000`)
+- `ParentFixtureTypeTemplate` reference (e.g. `DMXEntityFixtureType_0`, `_9`, etc.)
+- `MVRFixtureUUID`
 
-- **ShowvenEquipmentPanel** creates a `pyro` position + timeline item on double-click/drag, but does NOT create an FX Commander channel
-- **LiveFiringPanel** manages its own `channels` state (local `useState`), disconnected from positions
-- **Art-Net test** exists in DMXPanel but not triggered automatically
-- `SFXChannel` type already has a `positionId` field, but it's never set automatically
+## Changes
 
-## Problem
+### 1. Add T3D Parser to `src/lib/ue5DmxPrevisParser.ts`
 
-The FX Commander channels and scene positions are completely disconnected. Adding equipment in one panel doesn't register in the other.
+New function `parseUE5T3D(text: string): UE5DMXParseResult` that:
+- Detects T3D format by checking for `Begin Object Class=/Script/DMXRuntime`
+- Uses regex to extract each `Begin Object Name="DMXEntityFixturePatch_..."` block with its properties
+- Parses `Name`, `UniverseID` (default 1), `StartingChannel`, `FixtureID`, `ActiveMode`, `MVRFixtureUUID`
+- Converts `EditorColor=(R=...,G=...,B=...,A=...)` from linear float to hex CSS color
+- Maps `ParentFixtureTypeTemplate` references to fixture type IDs
+- Also extracts `DMXEntityFixtureType` entries to build a type-to-name lookup
+- Uses existing `inferUE5Profile()` for profile mapping based on fixture name keywords
+- Expected to parse all 800+ fixtures from the uploaded file
 
-## Implementation
+Update `parseUE5DMXLibrary()` auto-detect to check for T3D format before JSON/CSV.
 
-### Step 1: Create a shared SFX Channel Store
-**New file**: `src/store/useSfxChannelStore.ts`
+### 2. Update `src/components/editor/UE5DMXPrevisImporter.tsx`
 
-A Zustand store to hold SFX channels globally (replacing LiveFiringPanel's local state), with actions:
-- `addChannelFromPosition(position, equipmentPreset)` — creates an SFX channel linked to a position, auto-patches DMX address
-- `removeChannel(id)`
-- `testArtNetConnection()` — sends a validate request to `artnet-bridge` edge function, returns status
-- `getChannels()`, `updateChannel()`, `setFiring()`, etc.
+- Accept `.copy` and `.t3d` file extensions in addition to `.csv`/`.json`
+- Update file input `accept` attribute and drop zone text
+- No other UI changes needed -- the parser returns the same `UE5DMXParseResult`
 
-### Step 2: Auto-link on SFX Position Creation
-**File**: `src/components/editor/ShowvenEquipmentPanel.tsx`
+### 3. Update Viewport Drag-and-Drop in `src/pages/Index.tsx`
 
-In `handleDoubleClick` (and drag-drop handler), after creating the position + timeline item:
-- Call `useSfxChannelStore.getState().addChannelFromPosition(...)` to create a linked FX Commander channel
-- Call `useSfxChannelStore.getState().testArtNetConnection()` which sends a validate packet to `artnet-bridge`
-- Show toast with result: "✅ Art-Net OK — SPARKULAR L1 linked at DMX 1.001" or "⚠️ Art-Net offline — device added locally"
+- Add `.copy` and `.t3d` to `SUPPORTED_DROP_EXTENSIONS`
+- Map them to the `ue5json` drop type so they open the UE5 DMX importer
 
-### Step 3: Integrate Store into LiveFiringPanel
-**File**: `src/components/editor/LiveFiringPanel.tsx`
+### 4. Update Toolbar drop handler in `src/components/editor/Toolbar.tsx`
 
-- Replace local `useState<SFXChannel[]>` with `useSfxChannelStore`
-- Keep all firing logic (ARM, CUE, PANIC) working with the shared store
-- New channels added from equipment panel appear immediately in the FX Commander device list
+- Handle `.copy` and `.t3d` extensions in the `viewport-file-drop` event listener
 
-### Step 4: Art-Net Connection Test Function
-**In the new store**: `testArtNetConnection()` sends a minimal validate request:
+## Technical Details
 
-```typescript
-const { data, error } = await supabase.functions.invoke('artnet-bridge', {
-  body: { action: 'validate', universes: [{ universe: 0, subnet: 0, net: 0, channels: [0], sequence: 0 }] }
-});
+T3D fixture block structure:
+```text
+Begin Object Name="DMXEntityFixturePatch_734"
+   UniverseID=13          (optional, default 1)
+   StartingChannel=53
+   ParentFixtureTypeTemplate="...DMXEntityFixtureType_0"
+   FixtureID=76
+   ActiveMode=4            (optional)
+   MVRFixtureUUID=8D50...
+   EditorColor=(R=0.000000,G=1.000000,B=0.648438,A=1.000000)
+   Name="SpotMH1_205"
+   ParentLibrary="..."
+End Object
 ```
 
-Returns `{ connected: boolean, latencyMs: number }` — displayed in toast on equipment add.
-
-## Files to Create/Modify
-
-| File | Change |
-|---|---|
-| `src/store/useSfxChannelStore.ts` | **New** — shared SFX channel store with auto-link + Art-Net test |
-| `src/components/editor/ShowvenEquipmentPanel.tsx` | Call store on equipment add, trigger Art-Net test |
-| `src/components/editor/LiveFiringPanel.tsx` | Use shared store instead of local state |
-
-## User-Facing Behavior
-
-1. User double-clicks a Sparkular in the Equipment Panel
-2. Position appears in 3D viewport (existing)
-3. Timeline item created (existing)
-4. **NEW**: FX Commander channel auto-created with correct DMX type, auto-patched address, linked to position
-5. **NEW**: Art-Net connection test runs → toast shows "Art-Net OK" or "Art-Net offline"
-6. Opening FX Commander shows the new device immediately in the device list
+Fixture types found in this file: SpotMH1, SpotMH2, WashMH2, Pyro, Audience, AudienceStrip, CatwalkStrip, MatrixStripRGB, ScenicWash -- all map well to existing profile keywords.
 
