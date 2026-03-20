@@ -34,6 +34,16 @@ export interface Effect {
   laserPattern?: 'fan' | 'harp' | 'tunnel' | 'cone' | 'single' | 'wave' | 'grid'; // For lasers
   beamType?: 'spot' | 'wash' | 'beam'; // For moving heads
   beamCount?: number;                  // Number of beams (lasers)
+  // ── VDL rendering metadata ──────────────────────────────────
+  angleOffset?: number;         // R45, L30 etc. in degrees (+ = right)
+  trailType?: string;           // none, comet, glitter, brocade, charcoal, smoke
+  noTrail?: boolean;            // "No Trail" modifier
+  hasPistil?: boolean;          // w/ Pistil
+  pistilColor?: string;         // Pistil color hex
+  colorTransition?: string;     // none, to, changing, alternating
+  secondaryColor?: string;      // Secondary color from VDL (& or w/)
+  firingPattern?: string;       // Z-Shape, Fan, X-Shape, W-Shape, etc.
+  impliesTrail?: boolean;       // Color implies trail (Silver, Gold, Charcoal)
 }
 
 export interface TimelineItem {

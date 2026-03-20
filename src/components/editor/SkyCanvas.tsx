@@ -261,8 +261,13 @@ function _sharedStarMaterial(): THREE.ShaderMaterial {
 const FireworkBurst = React.forwardRef<THREE.Group, { 
   position: [number, number, number]; color: string; progress: number; 
   caliber?: number; pattern?: string;
+  angleOffset?: number; trailType?: string; noTrail?: boolean;
+  secondaryColor?: string; colorTransition?: string;
+  hasPistil?: boolean; pistilColor?: string;
 }>(function FireworkBurst({ 
-  position, color, progress, caliber = 4, pattern = 'peony' 
+  position, color, progress, caliber = 4, pattern = 'peony',
+  angleOffset = 0, trailType, noTrail, secondaryColor, colorTransition,
+  hasPistil, pistilColor,
 }, _ref) {
   const pointsRef = useRef<THREE.Points>(null);
   const trailRef = useRef<THREE.LineSegments>(null);
