@@ -583,12 +583,25 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const renderStatusBar = (fs: boolean) => (
     <div className={cn("flex items-center justify-between border-b-2", fs && mob ? "px-3 py-2" : fs ? "px-6 py-3" : "px-2 py-1.5")} style={{ borderColor: 'hsl(220 10% 15%)', background: 'hsl(220 15% 8%)' }}>
       <div className="flex items-center gap-2">
-        <div className={cn("rounded bg-gradient-to-b from-amber-500 to-amber-700 flex items-center justify-center", fs && mob ? "w-6 h-6" : fs ? "w-8 h-8" : "w-5 h-5")}>
+        <div className={cn("rounded bg-gradient-to-b from-amber-500 to-amber-700 flex items-center justify-center cursor-pointer", fs && mob ? "w-6 h-6" : fs ? "w-8 h-8" : "w-5 h-5")}
+          onClick={() => {
+            const now = Date.now();
+            if (now - showModeTapRef.current < 400) {
+              setShowMode(prev => !prev);
+              if (navigator.vibrate) navigator.vibrate(showMode ? [30] : [50, 30, 50]);
+              toast.info(showMode ? '🔓 Show Mode OFF' : '🔒 SHOW MODE — Live Operation', { duration: 2000 });
+              showModeTapRef.current = 0;
+            } else {
+              showModeTapRef.current = now;
+            }
+          }}>
           <Zap className={cn(fs && mob ? "w-3.5 h-3.5" : fs ? "w-5 h-5" : "w-3 h-3", "text-black")} />
         </div>
         <div>
           <div className={cn("font-black text-foreground tracking-[0.12em]", fs && mob ? "text-xs" : fs ? "text-base" : "text-[10px]")}>FXcommander™</div>
-          <div className={cn("font-mono text-muted-foreground/40 tracking-wider", fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[6px]")}>SHOWVEN® · V2.0</div>
+          <div className={cn("font-mono tracking-wider", fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[6px]", showMode ? "text-red-400/60" : "text-muted-foreground/40")}>
+            {showMode ? '● SHOW MODE' : 'SHOWVEN® · V2.0'}
+          </div>
         </div>
       </div>
       <div className="flex items-center gap-2">
