@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Usb, Plus, X, Send, Trash2, Wifi, WifiOff, Zap, Activity, CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp, Radio } from 'lucide-react';
+import { haptics } from '@/lib/haptics';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -133,7 +134,7 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
       startReadLoop(connectedDevice);
       registerDevice(connectedDevice);
 
-      if (navigator.vibrate) navigator.vibrate(50);
+      haptics.success();
     } catch (e: any) {
       if (e.name === 'NotFoundError') {
         addLog({ deviceId, direction: 'info', message: 'Seleção cancelada pelo usuário' });
@@ -160,7 +161,7 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
     }
     unregisterDevice(deviceId);
     setDevices(prev => prev.filter(d => d.id !== deviceId));
-    if (navigator.vibrate) navigator.vibrate(30);
+    haptics.tap();
   }, [devices, addLog, unregisterDevice]);
 
   // Send data to device

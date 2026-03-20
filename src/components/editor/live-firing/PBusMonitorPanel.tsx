@@ -5,6 +5,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
+import { haptics } from '@/lib/haptics';
 import { Radio, Battery, Shield, Zap, Signal, AlertTriangle, Wifi, WifiOff, RefreshCw, XCircle, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -60,7 +61,7 @@ function DeviceCard({ device, onArm, onDisarm, onFire, onCueStatus, onSetBand, i
         setDeadman(true);
         setDeadmanProgress(100);
         if (deadmanAnimRef.current) clearInterval(deadmanAnimRef.current);
-        if (navigator.vibrate) navigator.vibrate([100]);
+        haptics.deadman();
       }, 800);
     } else {
       setDeadman(true);
@@ -145,7 +146,7 @@ function DeviceCard({ device, onArm, onDisarm, onFire, onCueStatus, onSetBand, i
                   onClick={() => {
                     if (device.armed && deadman) {
                       onFire(device.address, i);
-                      if (navigator.vibrate) navigator.vibrate(30);
+                      haptics.fire();
                     } else toast.warning('ARM + DEADMAN required to fire');
                   }}
                   className={cn(
@@ -224,7 +225,7 @@ export default function PBusMonitorPanel() {
       estopTimer.current = setTimeout(() => {
         pbus.emergencyStop();
         toast.error('🔴 EMERGENCY STOP — All devices disarmed');
-        if (navigator.vibrate) navigator.vibrate([200, 50, 200]);
+        haptics.panic();
         setEstopHeld(false);
       }, 500);
       setEstopHeld(true);

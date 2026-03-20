@@ -4,6 +4,7 @@
  */
 import { useState, useCallback, useMemo } from 'react';
 import { Play, Pause, Square, Menu, AlertOctagon, Zap, Wifi, Radio } from 'lucide-react';
+import { haptics } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
@@ -52,7 +53,7 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
     clearAll();
     setPlaying(false);
     setCurrentTime(0);
-    if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
+    haptics.panic();
   }, [clearAll, setPlaying, setCurrentTime]);
 
   return (

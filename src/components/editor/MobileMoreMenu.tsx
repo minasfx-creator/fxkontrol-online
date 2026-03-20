@@ -3,6 +3,7 @@
  * Clean rows, SF symbol sizing, haptic-ready.
  */
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { haptics } from '@/lib/haptics';
 import {
   Wind, FileText, Grid3X3, Package, Navigation, Sliders,
   Gauge, Radio, Timer, Map, Bot, Music2,
@@ -107,7 +108,7 @@ export default function MobileMoreMenu({ onSelectPanel }: MobileMoreMenuProps) {
 
   const handleSelect = useCallback((id: PanelId) => {
     onSelectPanel(id);
-    if (navigator.vibrate) navigator.vibrate(10);
+    haptics.tap();
     const updated = [id, ...recents.filter(r => r !== id)].slice(0, MAX_RECENTS);
     setRecents(updated);
     localStorage.setItem(RECENTS_KEY, JSON.stringify(updated));

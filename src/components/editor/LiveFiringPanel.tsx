@@ -6,6 +6,7 @@
  *           RDMX monitoring, Safety channels, Art-Net bridge, CUE grouping
  */
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { haptics } from '@/lib/haptics';
 import { createPortal } from 'react-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -377,7 +378,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
 
   const handlePanic = useCallback(() => {
     // Strong haptic burst for PANIC
-    if (isMobile && navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
+    haptics.panic();
     setChannels(prev => { const updated = prev.map(ch => ({ ...ch, firing: false })); sendArtNetPacket(updated); return updated; });
     fireTimers.current.forEach(t => clearTimeout(t));
     fireTimers.current.clear();
@@ -396,7 +397,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   // ─── Fire logic ───
   const fireChannel = useCallback((id: string) => {
     // Haptic feedback on mobile
-    if (isMobile && navigator.vibrate) navigator.vibrate(30);
+    haptics.fire();
     setChannels(prev => { const updated = prev.map(ch => ch.id === id ? { ...ch, firing: true } : ch); sendArtNetPacket(updated); return updated; });
     const ch = channels.find(c => c.id === id);
     if (ch) {
@@ -439,7 +440,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
     if (!cue) return;
     if (!dmxArm && !pyroArm) return;
     // Haptic feedback for CUE fire
-    if (isMobile && navigator.vibrate) navigator.vibrate(20);
+    haptics.tap();
 
     // Lock mode toggle
     if (cue.keyMode === 'lock') {
@@ -622,7 +623,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
             const now = Date.now();
             if (now - showModeTapRef.current < 400) {
               setShowMode(prev => !prev);
-              if (navigator.vibrate) navigator.vibrate(showMode ? [30] : [50, 30, 50]);
+              haptics.showMode(!showMode);
               toast.info(showMode ? '🔓 Show Mode OFF' : '🔒 SHOW MODE — Live Operation', { duration: 2000 });
               showModeTapRef.current = 0;
             } else {

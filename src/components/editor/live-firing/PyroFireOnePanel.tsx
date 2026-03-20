@@ -5,6 +5,7 @@
  * Includes DEDICATED FULLSCREEN mode replicating the real XL4 10.1" display
  */
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { haptics } from '@/lib/haptics';
 import { createPortal } from 'react-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -278,7 +279,7 @@ export default function PyroFireOnePanel({
     const ig = mod.igniters.find(i => i.position === igniterPos);
     if (!ig?.connected || ig.fired) return;
 
-    if (navigator.vibrate) navigator.vibrate(40);
+    haptics.fire();
 
     // Route through hardware when connected
     if (!simMode && hardware.isConnected) {
@@ -588,7 +589,7 @@ export default function PyroFireOnePanel({
       sz === 'xl' ? (mob ? "px-4 py-2.5 flex-wrap" : "px-6 py-3") : sz === 'fs' ? "px-4 py-2" : "px-2 py-1",
       masterKeyOn ? "border-red-800/30" : "border-border/15"
     )} style={{ background: masterKeyOn ? 'hsl(0 30% 8%)' : 'hsl(220 12% 7%)' }}>
-      <button onClick={() => { setMasterKeyOn(!masterKeyOn); if (navigator.vibrate) navigator.vibrate(masterKeyOn ? 20 : [30, 20, 30]); }}
+      <button onClick={() => { setMasterKeyOn(!masterKeyOn); haptics[masterKeyOn ? 'disarm' : 'arm'](); }}
         className={cn(
           "flex items-center gap-2 rounded border-2 font-black uppercase transition-all",
           sz === 'xl' ? (mob ? "px-5 py-3 text-xs flex-1" : "px-6 py-3 text-sm") : sz === 'fs' ? "px-4 py-2 text-[10px]" : "px-3 py-1.5 text-[8px]",

@@ -14,6 +14,7 @@
  * - Real-time broadcast bridge (mobile → desktop)
  */
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { haptics } from '@/lib/haptics';
 import {
   Cable, Flame, Wind, Sparkles, Zap, Plus, Trash2, Send, MonitorPlay,
   Shield, ShieldAlert, Lock, Unlock, Key, Radio, Signal, Timer,
@@ -222,7 +223,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
         intensity: p.intensity || 200, startedAt: performance.now(),
         duration: p.duration || 2000,
       });
-      if (navigator.vibrate) navigator.vibrate(15);
+      haptics.select();
     });
 
     // Master ARM broadcast
@@ -273,7 +274,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
     }
     setMasterArmed(armed);
     setModules(prev => prev.map(m => ({ ...m, armed })));
-    if (navigator.vibrate) navigator.vibrate(armed ? [50, 30, 50, 30, 100] : [30]);
+    haptics[armed ? 'armAll' : 'disarm']();
 
     channelRef.current?.send({
       type: 'broadcast', event: 'xl4-master',
@@ -285,7 +286,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
 
   // ─── PANIC ───
   const handlePanic = useCallback(() => {
-    if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
+    haptics.panic();
     setMasterArmed(false);
     setDeadmanHeld(false);
     setAutoRunning(false);
@@ -304,7 +305,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
   // ─── Fire module igniter ───
   const broadcastModuleFire = useCallback((moduleId: number, igniterPos: number, name?: string) => {
     if (!masterArmed) return;
-    if (navigator.vibrate) navigator.vibrate(30);
+    haptics.fire();
 
     const label = name || `M${moduleId}-I${igniterPos}`;
 
@@ -458,7 +459,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
 
   const broadcastFire = useCallback((fixture: VirtualFixture) => {
     if (!masterArmed) { toast.error('Sistema não armado'); return; }
-    if (navigator.vibrate) navigator.vibrate(30);
+    haptics.fire();
 
     setEvents(prev => [{
       id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`,
@@ -483,7 +484,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
   // ─── Broadcast FXC channel ───
   const broadcastChannelFire = useCallback((ch: SFXChannel) => {
     if (!masterArmed) { toast.error('Sistema não armado'); return; }
-    if (navigator.vibrate) navigator.vibrate(30);
+    haptics.fire();
     fireChannel(ch.id);
     channelRef.current?.send({
       type: 'broadcast', event: 'fxc-fire',
@@ -574,7 +575,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
       <div className={cn("rounded-lg border-2 transition-all", masterArmed ? "border-red-500/40 bg-red-900/10" : "border-border/20 bg-[hsl(220_10%_7%)]")}>
         <div className={cn("flex items-center gap-2", mob ? "p-2.5" : "p-2")}>
           {/* Key Switch */}
-          <button onClick={() => { setKeyInserted(!keyInserted); if (navigator.vibrate) navigator.vibrate(20); }}
+          <button onClick={() => { setKeyInserted(!keyInserted); haptics.toggle(); }}
             className={cn(
               "flex flex-col items-center justify-center rounded-lg border-2 transition-all shrink-0",
               mob ? "w-14 h-14" : "w-12 h-12",

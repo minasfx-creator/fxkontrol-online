@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { TrendingUp, TrendingDown, Minus, Circle, Heart, MessageCircle, Share2 } from 'lucide-react';
+import { haptics } from '@/lib/haptics';
 
 interface NewsItem {
   id: number;
@@ -108,7 +109,7 @@ export function NewsTicker() {
       const prev = (currentIdx - 1 + categoryKeys.length) % categoryKeys.length;
       setFilter(categoryKeys[prev]);
     }
-    navigator.vibrate?.(15);
+    haptics.select();
   }, [filter, categoryKeys]);
 
   return (

@@ -4,6 +4,7 @@
  */
 import { useState, useCallback, useRef } from 'react';
 import { Radio, Lock, Unlock, Signal, Zap } from 'lucide-react';
+import { haptics } from '@/lib/haptics';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -47,7 +48,7 @@ export default function VirtualFXButton({ fs = false }: VirtualFXButtonProps) {
       setUnlocked(true);
       slideRef.current = null;
       setSlideProgress(0);
-      if (navigator.vibrate) navigator.vibrate([50, 20, 50]);
+      haptics.unlock();
       toast.success('🔓 FXbutton UNLOCKED');
     }
   }, []);
@@ -59,7 +60,7 @@ export default function VirtualFXButton({ fs = false }: VirtualFXButtonProps) {
 
   const handleFire = useCallback((idx: number) => {
     if (!unlocked) { toast.warning('Deslize para desbloquear primeiro'); return; }
-    if (navigator.vibrate) navigator.vibrate(30);
+    haptics.fire();
     setFiring(prev => new Set(prev).add(idx));
 
     // Route to PBUS hardware if paired and connected

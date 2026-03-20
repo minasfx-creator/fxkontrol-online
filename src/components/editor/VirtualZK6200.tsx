@@ -4,6 +4,7 @@
  */
 import { useState, useCallback, useRef } from 'react';
 import { Shield, Hand, Zap, Radio, Clock, Play, Square, Settings, AlertTriangle, Wifi } from 'lucide-react';
+import { haptics } from '@/lib/haptics';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -44,7 +45,7 @@ export default function VirtualZK6200({ fs = false }: VirtualZK6200Props) {
       setArmed(true);
       if (pbus.isConnected) pbus.armAll().catch(() => {});
       toast.warning('⚠️ ZK' + model + ' ARMED', { duration: 3000 });
-      if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
+      haptics.arm();
     }
   }, [armed, model, pbus]);
 
@@ -52,7 +53,7 @@ export default function VirtualZK6200({ fs = false }: VirtualZK6200Props) {
     if (isMobile) {
       deadmanTimer.current = setTimeout(() => {
         setDeadman(true);
-        if (navigator.vibrate) navigator.vibrate([100]);
+        haptics.deadman();
       }, 800);
     } else {
       setDeadman(true);
@@ -69,7 +70,7 @@ export default function VirtualZK6200({ fs = false }: VirtualZK6200Props) {
       toast.warning('ARM + DEADMAN necessários');
       return;
     }
-    if (navigator.vibrate) navigator.vibrate(30);
+    haptics.fire();
     setFiringZones(prev => new Set(prev).add(zone));
 
     // Route to PBUS hardware if connected and paired
@@ -90,7 +91,7 @@ export default function VirtualZK6200({ fs = false }: VirtualZK6200Props) {
     setArmed(false);
     setDeadman(false);
     if (pbus.isConnected) pbus.emergencyStop().catch(() => {});
-    if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
+    haptics.panic();
     toast.error('🚨 ZK' + model + ' EMERGENCY STOP');
   }, [model, pbus]);
 

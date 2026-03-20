@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Cable, Wifi, WifiOff, Plus, Trash2, Flame, X, Lightbulb, Zap, Wind, Snowflake, Sparkles, Smartphone } from 'lucide-react';
+import { haptics } from '@/lib/haptics';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -180,13 +181,13 @@ export default function MobileLinkPanel({ onClose }: MobileLinkPanelProps) {
     saveFixtures([...fixtures, f]);
     setFormName('');
     setShowForm(false);
-    navigator.vibrate?.(15);
+    haptics.tap();
   }, [formName, formType, formColor, formUniverse, formAddress, fixtures, saveFixtures]);
 
   // Remove fixture
   const removeFixture = useCallback((id: string) => {
     saveFixtures(fixtures.filter(f => f.id !== id));
-    navigator.vibrate?.(15);
+    haptics.tap();
   }, [fixtures, saveFixtures]);
 
   // Update intensity
@@ -196,7 +197,7 @@ export default function MobileLinkPanel({ onClose }: MobileLinkPanelProps) {
 
   // FIRE a fixture
   const handleFire = useCallback((fixture: VirtualFixture) => {
-    navigator.vibrate?.(30);
+    haptics.fire();
 
     // Local effect
     fireEffect({
