@@ -159,8 +159,11 @@ interface ShellBurstRendererProps {
   colorTransition?: 'none' | 'to' | 'changing' | 'alternating';
   trailType?: 'none' | 'comet' | 'glitter' | 'brocade' | 'charcoal' | 'smoke';
   fallingLeaves?: boolean;
-  /** Real FFIC formulation ID — overrides color/sparkSize/drag from chemical data */
   formulationId?: string;
+  /** VDL angle offset in degrees — rotates entire burst */
+  angleOffset?: number;
+  /** VDL noTrail flag — suppresses trails even for types that force them */
+  noTrail?: boolean;
 }
 
 /**
