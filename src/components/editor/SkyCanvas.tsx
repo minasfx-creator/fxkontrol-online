@@ -2793,9 +2793,10 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
 
 // --- Layered tree silhouettes with depth ---
 function TreelineSilhouette() {
-  const trees = useMemo(() => {
+  const instancedRef = useRef<THREE.InstancedMesh>(null);
+  
+  const { treeData, totalCount } = useMemo(() => {
     const result: { x: number; z: number; h: number; w: number; layer: number }[] = [];
-    // 6 depth layers — expanded world
     for (let layer = 0; layer < 6; layer++) {
       const count = 120 - layer * 15;
       const baseDist = 4000 + layer * 1500;
@@ -2811,29 +2812,36 @@ function TreelineSilhouette() {
         });
       }
     }
-    return result;
+    return { treeData: result, totalCount: result.length };
   }, []);
 
+  useEffect(() => {
+    if (!instancedRef.current) return;
+    const mesh = instancedRef.current;
+    const dummy = new THREE.Object3D();
+    const color = new THREE.Color();
+    
+    for (let i = 0; i < totalCount; i++) {
+      const t = treeData[i];
+      dummy.position.set(t.x, t.h * 0.5, t.z);
+      dummy.rotation.set(0, Math.atan2(t.x, t.z), 0);
+      dummy.scale.set(t.w, t.h, 1);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+      
+      const brightness = 0.03 + t.layer * 0.015;
+      color.setRGB(brightness, brightness + 0.02, brightness);
+      mesh.setColorAt(i, color);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  }, [treeData, totalCount]);
+
   return (
-    <group>
-      {trees.map((t, i) => {
-        // Darker and more transparent for distant layers
-        const brightness = 0.03 + t.layer * 0.015;
-        const opacity = 0.9 - t.layer * 0.15;
-        return (
-          <mesh key={i} position={[t.x, t.h * 0.5, t.z]}
-            rotation={[0, Math.atan2(t.x, t.z), 0]}>
-            <planeGeometry args={[t.w, t.h]} />
-            <meshBasicMaterial
-              color={new THREE.Color(brightness, brightness + 0.02, brightness)}
-              transparent
-              opacity={opacity}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-        );
-      })}
-    </group>
+    <instancedMesh ref={instancedRef} args={[undefined, undefined, totalCount]} frustumCulled={false}>
+      <planeGeometry args={[1, 1]} />
+      <meshBasicMaterial transparent opacity={0.75} side={THREE.DoubleSide} vertexColors />
+    </instancedMesh>
   );
 }
 
