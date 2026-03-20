@@ -82,6 +82,8 @@ export interface FireOneModuleStatus {
   lastSeen: number;
   wireless: boolean;
   errors: string[];
+  serialNumber?: string;
+  dmxUniverse?: number;
 }
 
 export interface FireOneIgniterStatus {
