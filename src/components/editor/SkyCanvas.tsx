@@ -786,9 +786,16 @@ function TimelineEffects() {
     });
   }, [activeEffects, sceneSettings.particleDensity]);
 
+  // ═══ Update module-level burst count for conditional PostProcessing ═══
+  _activeBurstCount = cappedEffects.filter(e => e.effect.type === 'firework').length;
+
   return (
     <>
       {cappedEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale, effectBrightness, launchHeading, launchPitch }) => {
+        // ═══ AAA Frustum Culling — skip rendering off-screen effects ═══
+        const effectPos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
+        const cullRadius = effect.type === 'firework' ? (caliber || 4) * 25 : 50;
+        if (!isInFrustum(camera, effectPos, cullRadius)) return null;
         const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
         const eid = effect.id;
         const pt = effect.partType;
