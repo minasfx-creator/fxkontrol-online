@@ -354,7 +354,7 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
                   )}
 
                   {/* Divider */}
-                  {si < PANEL_SECTIONS.length - 1 && (
+                  {si < filteredSections.length - 1 && (
                     <div className="mx-3 border-t border-border/8 my-1.5" />
                   )}
                 </div>

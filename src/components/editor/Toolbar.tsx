@@ -643,9 +643,28 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
             <span className="text-border/30">·</span>
             <span className="tabular-nums"><span className="text-foreground/60">{positions.length}</span> pos</span>
           </div>
+          {/* Hardware status dots */}
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-surface-0/40 border border-border/8">
+            <button onClick={() => onOpenPanel?.('livefiring')} className="flex items-center gap-1 group" title="FireOne">
+              <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/25" />
+              <span className="text-[8px] font-mono-code text-muted-foreground/40 group-hover:text-muted-foreground/70">FO</span>
+            </button>
+            <button onClick={() => onOpenPanel?.('connections')} className="flex items-center gap-1 group" title="PBUS">
+              <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/25" />
+              <span className="text-[8px] font-mono-code text-muted-foreground/40 group-hover:text-muted-foreground/70">PB</span>
+            </button>
+            <button onClick={() => onOpenPanel?.('radio')} className="flex items-center gap-1 group" title="Radio">
+              <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/25" />
+              <span className="text-[8px] font-mono-code text-muted-foreground/40 group-hover:text-muted-foreground/70">RF</span>
+            </button>
+            <button onClick={() => onOpenPanel?.('ma3')} className="flex items-center gap-1 group" title="MA3 OSC">
+              <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/25" />
+              <span className="text-[8px] font-mono-code text-muted-foreground/40 group-hover:text-muted-foreground/70">MA</span>
+            </button>
+          </div>
           <div className="flex items-center gap-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-success/60 animate-pulse-glow" />
-            <span className="text-success/50 text-[9px]">SYNC</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--success)/0.6)] animate-pulse-glow" />
+            <span className="text-[hsl(var(--success)/0.5)] text-[9px]">SYNC</span>
           </div>
           <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-destructive/8 hover:text-destructive text-muted-foreground/30" title="Sair" onClick={signOut}>
             <LogOut className="h-3.5 w-3.5" />
