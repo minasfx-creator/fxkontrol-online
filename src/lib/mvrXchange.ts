@@ -201,7 +201,6 @@ export class MVRXchangeClient {
       case 'mvr_new_session_host': {
         const station = this.stations.get(msg.stationUUID);
         if (station) {
-          // Clear old host
           this.stations.forEach(s => { s.isSessionHost = false; });
           station.isSessionHost = true;
         }
@@ -209,13 +208,27 @@ export class MVRXchangeClient {
       }
 
       case 'mvr_fixtures': {
-        // Parsed fixtures from bridge
         if (Array.isArray(msg.fixtures)) {
           this.emit({
             type: 'fixtures-updated',
             fixtures: msg.fixtures as MVRFixture[],
             source: msg.stationName || 'MA3',
           });
+        }
+        break;
+      }
+
+      case 'mdns_service': {
+        if (msg.station) {
+          const s: MDNSDiscoveredStation = {
+            name: msg.station.name || 'Unknown',
+            ip: msg.station.ip || '',
+            port: msg.station.port || 9100,
+            provider: msg.station.provider || '',
+            uuid: msg.station.uuid || '',
+            lastSeen: Date.now(),
+          };
+          this.emit({ type: 'mdns-discovered', station: s });
         }
         break;
       }
