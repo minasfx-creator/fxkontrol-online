@@ -88,7 +88,6 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
       {s.ssrEnabled && (
         <SSR
           intensity={s.ssrIntensity}
-          exponent={1}
           distance={10}
           fade={10}
           roughnessFade={1}
