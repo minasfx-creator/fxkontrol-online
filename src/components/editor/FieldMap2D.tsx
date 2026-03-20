@@ -3,7 +3,7 @@
  * Shows FireOne modules and PBUS devices with RSSI, continuity, and safety zones
  */
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { MapPin, Wifi, Radio, Battery, Shield, Eye, EyeOff, ZoomIn, ZoomOut, Crosshair, RotateCcw } from 'lucide-react';
+import { MapPin, Wifi, Radio, Battery, Shield, Eye, EyeOff, ZoomIn, ZoomOut, Crosshair, RotateCcw, Zap, Antenna } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -11,7 +11,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
+import { useRadioLink } from '@/hooks/useRadioLink';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface ModulePosition {
   id: string;
@@ -30,6 +32,7 @@ export default function FieldMap2D({ fs = false }: FieldMap2DProps) {
   const isMobile = useIsMobile();
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();
+  const radioLink = useRadioLink();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
@@ -37,8 +40,12 @@ export default function FieldMap2D({ fs = false }: FieldMap2DProps) {
   const [showRssi, setShowRssi] = useState(true);
   const [showContinuity, setShowContinuity] = useState(true);
   const [showSafetyZones, setShowSafetyZones] = useState(true);
+  const [showRadioHeatmap, setShowRadioHeatmap] = useState(true);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const [dragging, setDragging] = useState<{ id: string; offsetX: number; offsetY: number } | null>(null);
+  const [antennaPos, setAntennaPos] = useState({ x: 300, y: 500 });
+  const [draggingAntenna, setDraggingAntenna] = useState(false);
+  const [firePopup, setFirePopup] = useState<{ id: string; x: number; y: number } | null>(null);
 
   // Module positions — auto-generate from hardware state
   const [modulePositions, setModulePositions] = useState<ModulePosition[]>([]);
@@ -225,6 +232,84 @@ export default function FieldMap2D({ fs = false }: FieldMap2DProps) {
       }
     });
 
+    // ── Radio RSSI Heatmap Overlay ──────────────────────
+    if (showRadioHeatmap && radioLink.isConnected && radioLink.devices.size > 0) {
+      // Draw antenna position marker
+      const ax = antennaPos.x;
+      const ay = antennaPos.y;
+
+      // Heatmap: calculate RSSI at grid points based on distance from antenna
+      const gridStep = 20;
+      for (let gx = 0; gx < 1200; gx += gridStep) {
+        for (let gy = 0; gy < 800; gy += gridStep) {
+          const dist = Math.sqrt((gx - ax) ** 2 + (gy - ay) ** 2);
+          // Simulate RSSI decay: -40dBm at 0m, -3dBm per 20px (~5m)
+          const simRssi = -40 - dist * 0.15;
+          const clampedRssi = Math.max(-100, Math.min(-30, simRssi));
+          // Map to color: green(-30 to -60), amber(-60 to -80), red(-80 to -100)
+          let hue: number;
+          let alpha: number;
+          if (clampedRssi >= -60) {
+            hue = 120; // green
+            alpha = 0.08 + (clampedRssi + 60) / 30 * 0.07;
+          } else if (clampedRssi >= -80) {
+            hue = 40; // amber
+            alpha = 0.05 + (clampedRssi + 80) / 20 * 0.05;
+          } else {
+            hue = 0; // red
+            alpha = 0.03;
+          }
+          ctx.fillStyle = `hsla(${hue}, 60%, 50%, ${alpha})`;
+          ctx.fillRect(gx, gy, gridStep, gridStep);
+        }
+      }
+
+      // Draw real device RSSI dots
+      radioLink.devices.forEach(dev => {
+        const modPos = modulePositions.find(m => m.address === dev.address);
+        if (modPos) {
+          const rssi = dev.rssi;
+          const hue = rssi >= -60 ? 120 : rssi >= -80 ? 40 : 0;
+          ctx.fillStyle = `hsla(${hue}, 70%, 50%, 0.6)`;
+          ctx.beginPath();
+          ctx.arc(modPos.x, modPos.y, 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = `hsla(0, 0%, 100%, 0.5)`;
+          ctx.font = '7px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(`${rssi}dBm`, modPos.x, modPos.y - 10);
+          ctx.textAlign = 'start';
+        }
+      });
+
+      // Antenna marker (draggable triangle)
+      ctx.fillStyle = 'hsla(270, 70%, 60%, 0.9)';
+      ctx.beginPath();
+      ctx.moveTo(ax, ay - 14);
+      ctx.lineTo(ax - 10, ay + 8);
+      ctx.lineTo(ax + 10, ay + 8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'hsla(270, 80%, 70%, 1)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = 'hsla(0, 0%, 100%, 0.7)';
+      ctx.font = 'bold 8px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('ANT', ax, ay + 20);
+      ctx.textAlign = 'start';
+
+      // Coverage radius ring (approx -80dBm boundary)
+      const coverageR = (80 - 40) / 0.15; // pixels where RSSI = -80dBm
+      ctx.strokeStyle = 'hsla(270, 50%, 50%, 0.15)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.arc(ax, ay, coverageR, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
     // Distance rulers to audience
     if (showSafetyZones) {
       modulePositions.forEach(mod => {
@@ -245,7 +330,7 @@ export default function FieldMap2D({ fs = false }: FieldMap2DProps) {
     }
 
     ctx.restore();
-  }, [modulePositions, zoom, pan, showRssi, showContinuity, showSafetyZones, selectedModule, fireone.modules, pbus.devices]);
+  }, [modulePositions, zoom, pan, showRssi, showContinuity, showSafetyZones, showRadioHeatmap, selectedModule, fireone.modules, pbus.devices, radioLink, antennaPos]);
 
   const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -255,8 +340,22 @@ export default function FieldMap2D({ fs = false }: FieldMap2DProps) {
     const my = (e.clientY - rect.top - pan.y) / zoom;
 
     const clicked = modulePositions.find(m => Math.abs(m.x - mx) < 20 && Math.abs(m.y - my) < 20);
-    setSelectedModule(clicked?.id ?? null);
-  }, [modulePositions, zoom, pan]);
+
+    // Check antenna click for dragging
+    if (Math.abs(mx - antennaPos.x) < 15 && Math.abs(my - antennaPos.y) < 15) {
+      setDraggingAntenna(true);
+      return;
+    }
+
+    // Click-to-fire popup
+    if (clicked) {
+      setFirePopup({ id: clicked.id, x: e.clientX, y: e.clientY });
+      setSelectedModule(clicked.id);
+    } else {
+      setFirePopup(null);
+      setSelectedModule(null);
+    }
+  }, [modulePositions, zoom, pan, antennaPos]);
 
   const mob = isMobile;
 
@@ -289,6 +388,12 @@ export default function FieldMap2D({ fs = false }: FieldMap2DProps) {
             <Switch checked={showSafetyZones} onCheckedChange={setShowSafetyZones} className="h-3.5 w-7" />
             Safety
           </label>
+          {radioLink.isConnected && (
+            <label className="flex items-center gap-1 text-muted-foreground/50 cursor-pointer">
+              <Switch checked={showRadioHeatmap} onCheckedChange={setShowRadioHeatmap} className="h-3.5 w-7" />
+              Radio
+            </label>
+          )}
         </div>
       </div>
 
@@ -297,8 +402,58 @@ export default function FieldMap2D({ fs = false }: FieldMap2DProps) {
         <canvas
           ref={canvasRef}
           onClick={handleCanvasClick}
+          onMouseMove={(e) => {
+            if (draggingAntenna) {
+              const rect = canvasRef.current!.getBoundingClientRect();
+              setAntennaPos({
+                x: (e.clientX - rect.left - pan.x) / zoom,
+                y: (e.clientY - rect.top - pan.y) / zoom,
+              });
+            }
+          }}
+          onMouseUp={() => setDraggingAntenna(false)}
+          onMouseLeave={() => setDraggingAntenna(false)}
           className="absolute inset-0"
         />
+        {/* Click-to-fire popup */}
+        {firePopup && (
+          <div className="absolute z-10 p-1.5 rounded border border-border/30 bg-background/90 backdrop-blur-sm shadow-lg"
+            style={{ left: firePopup.x - 60, top: firePopup.y - 80 }}>
+            <div className="text-[8px] font-bold text-foreground mb-1">
+              {modulePositions.find(m => m.id === firePopup.id)?.label}
+            </div>
+            <div className="flex gap-1">
+              <Button size="sm" variant="outline" className="h-5 text-[7px] px-1.5"
+                onClick={() => {
+                  const mod = modulePositions.find(m => m.id === firePopup.id);
+                  if (mod?.type === 'pbus' && pbus.isConnected) {
+                    pbus.armDevice(mod.address).catch(() => {});
+                    toast.info(`ARM PB-${mod.address}`);
+                  }
+                  setFirePopup(null);
+                }}>
+                ARM
+              </Button>
+              <Button size="sm" variant="destructive" className="h-5 text-[7px] px-1.5"
+                onClick={() => {
+                  const mod = modulePositions.find(m => m.id === firePopup.id);
+                  if (mod?.type === 'pbus' && pbus.isConnected) {
+                    pbus.fireCue(mod.address, 0, 500).catch(() => {});
+                    toast.warning(`FIRE PB-${mod.address}:0`);
+                  } else if (mod?.type === 'fireone' && fireone.isConnected) {
+                    fireone.fireIgniter(mod.address, 0, 500).catch(() => {});
+                    toast.warning(`FIRE FO-${mod.address}:0`);
+                  }
+                  setFirePopup(null);
+                }}>
+                <Zap className="w-2.5 h-2.5 mr-0.5" /> FIRE
+              </Button>
+              <Button size="sm" variant="ghost" className="h-5 text-[7px] px-1" onClick={() => setFirePopup(null)}>
+                ✕
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Legend / Selected info */}
@@ -315,6 +470,12 @@ export default function FieldMap2D({ fs = false }: FieldMap2DProps) {
           <div className="w-3 h-3 rounded-full border border-green-500/30" />
           <span className="text-[8px] text-muted-foreground/40">RSSI</span>
         </div>
+        {radioLink.isConnected && (
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded" style={{ background: 'hsla(270, 70%, 60%, 0.6)' }} />
+            <span className="text-[8px] text-muted-foreground/40">Radio ({radioLink.devices.size})</span>
+          </div>
+        )}
         <div className="flex-1" />
         {selectedModule && (
           <Badge variant="outline" className="text-[8px] h-4 px-1.5">

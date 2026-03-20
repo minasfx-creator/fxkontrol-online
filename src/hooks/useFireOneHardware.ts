@@ -1,6 +1,7 @@
 /**
  * useFireOneHardware — React hook bridging FireOneController ↔ component state
  * Supports wired RS-485 + wireless IFMx-i32Q with RSSI polling and auto-fallback
+ * Transparent radio fallback via useRadioLink when antenna connected
  */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
@@ -17,6 +18,7 @@ import {
   buildWirelessStatusQuery,
   buildWirelessConfigCommand,
 } from '@/lib/fireoneProtocol';
+import { useRadioLink } from '@/hooks/useRadioLink';
 
 export interface FireOneHardwareState {
   isConnected: boolean;
@@ -45,6 +47,16 @@ export function useFireOneHardware() {
   const rxRef = useRef(0);
   const wirelessPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const controller = getFireOneController();
+  const radioLink = useRadioLink();
+
+  // Connection path
+  const connectionPath = useMemo((): 'wired' | 'radio' | 'none' => {
+    if (state.isConnected) return 'wired';
+    if (radioLink.isConnected) return 'radio';
+    return 'none';
+  }, [state.isConnected, radioLink.isConnected]);
+
+  const effectivelyConnected = connectionPath !== 'none';
 
   // Computed wireless/wired counts
   const wirelessModuleCount = useMemo(() => {
@@ -208,9 +220,15 @@ export function useFireOneHardware() {
   }, [controller]);
 
   const fireIgniter = useCallback(async (addr: number, pin: number, durationMs = 500) => {
+    // Radio fallback
+    if (!state.isConnected && radioLink.isConnected) {
+      const frame = new Uint8Array([0x46, 0x4F, addr, 0x10, pin, (durationMs >> 8) & 0xFF, durationMs & 0xFF]);
+      await radioLink.sendFireOne(addr, frame);
+      return;
+    }
     txRef.current += 8; setState(prev => ({ ...prev, txBytes: txRef.current }));
     await controller.fireIgniter(addr, pin, durationMs);
-  }, [controller]);
+  }, [controller, state.isConnected, radioLink]);
 
   const requestContinuity = useCallback(async (addr: number) => {
     txRef.current += 5; setState(prev => ({ ...prev, txBytes: txRef.current }));
@@ -228,19 +246,36 @@ export function useFireOneHardware() {
   }, [controller]);
 
   const emergencyStop = useCallback(async () => {
-    txRef.current += 15; setState(prev => ({ ...prev, txBytes: txRef.current }));
-    await controller.emergencyStop();
-  }, [controller]);
+    // E-STOP goes through ALL paths simultaneously
+    if (radioLink.isConnected) {
+      const frame = new Uint8Array([0x46, 0x4F, 0xFF, 0xFF]);
+      await radioLink.sendFireOne(0xFF, frame).catch(() => {});
+    }
+    if (state.isConnected) {
+      txRef.current += 15; setState(prev => ({ ...prev, txBytes: txRef.current }));
+      await controller.emergencyStop();
+    }
+  }, [controller, state.isConnected, radioLink]);
 
   const armAll = useCallback(async () => {
+    if (!state.isConnected && radioLink.isConnected) {
+      const frame = new Uint8Array([0x46, 0x4F, 0xFF, 0x20]);
+      await radioLink.sendFireOne(0xFF, frame);
+      return;
+    }
     txRef.current += 5; setState(prev => ({ ...prev, txBytes: txRef.current }));
     await controller.armAll();
-  }, [controller]);
+  }, [controller, state.isConnected, radioLink]);
 
   const disarmAll = useCallback(async () => {
+    if (!state.isConnected && radioLink.isConnected) {
+      const frame = new Uint8Array([0x46, 0x4F, 0xFF, 0x21]);
+      await radioLink.sendFireOne(0xFF, frame);
+      return;
+    }
     txRef.current += 5; setState(prev => ({ ...prev, txBytes: txRef.current }));
     await controller.disarmAll();
-  }, [controller]);
+  }, [controller, state.isConnected, radioLink]);
 
   const syncTimecode = useCallback(async (ms: number) => {
     txRef.current += 9; setState(prev => ({ ...prev, txBytes: txRef.current }));
@@ -273,6 +308,8 @@ export function useFireOneHardware() {
 
   return {
     ...state,
+    isConnected: effectivelyConnected,
+    connectionPath,
     connect,
     disconnect,
     armModule,

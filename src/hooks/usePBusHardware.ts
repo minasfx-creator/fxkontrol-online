@@ -1,6 +1,7 @@
 /**
  * usePBusHardware — React hook for Showven PBUS hardware control
  * Dual-band 433M/868M with auto-select and device discovery
+ * Supports transparent radio fallback via useRadioLink when antenna connected
  */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
@@ -10,6 +11,7 @@ import {
   type PBusEvent,
   type PBusWirelessBand,
 } from '@/lib/pbusProtocol';
+import { useRadioLink } from '@/hooks/useRadioLink';
 
 export interface PBusHardwareState {
   isConnected: boolean;
@@ -36,6 +38,17 @@ export function usePBusHardware() {
   const rxRef = useRef(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const controller = getPBusController();
+  const radioLink = useRadioLink();
+
+  // Connection path: 'wired' when serial connected, 'radio' when only antenna available
+  const connectionPath = useMemo((): 'wired' | 'radio' | 'none' => {
+    if (state.isConnected) return 'wired';
+    if (radioLink.isConnected) return 'radio';
+    return 'none';
+  }, [state.isConnected, radioLink.isConnected]);
+
+  // Effective connection = wired OR radio
+  const effectivelyConnected = connectionPath !== 'none';
 
   // Computed
   const deviceCount = useMemo(() => state.devices.size, [state.devices]);
@@ -157,19 +170,35 @@ export function usePBusHardware() {
   }, [controller]);
 
   const armAll = useCallback(async () => {
+    if (!state.isConnected && radioLink.isConnected) {
+      const frame = new Uint8Array([0x50, 0x42, 0xFF, 0x20]);
+      await radioLink.sendPBus(0xFF, frame);
+      return;
+    }
     txRef.current += 7; setState(prev => ({ ...prev, txBytes: txRef.current }));
     await controller.armAll();
-  }, [controller]);
+  }, [controller, state.isConnected, radioLink]);
 
   const disarmAll = useCallback(async () => {
+    if (!state.isConnected && radioLink.isConnected) {
+      const frame = new Uint8Array([0x50, 0x42, 0xFF, 0x21]);
+      await radioLink.sendPBus(0xFF, frame);
+      return;
+    }
     txRef.current += 7; setState(prev => ({ ...prev, txBytes: txRef.current }));
     await controller.disarmAll();
-  }, [controller]);
+  }, [controller, state.isConnected, radioLink]);
 
   const fireCue = useCallback(async (addr: number, cueIndex: number, durationMs = 500) => {
+    // Radio fallback: route via radio if wired not connected but radio is
+    if (!state.isConnected && radioLink.isConnected) {
+      const frame = new Uint8Array([0x50, 0x42, addr, 0x10, cueIndex, (durationMs >> 8) & 0xFF, durationMs & 0xFF]);
+      await radioLink.sendPBus(addr, frame);
+      return;
+    }
     txRef.current += 10; setState(prev => ({ ...prev, txBytes: txRef.current }));
     await controller.fireCue(addr, cueIndex, durationMs);
-  }, [controller]);
+  }, [controller, state.isConnected, radioLink]);
 
   const requestCueStatus = useCallback(async (addr: number) => {
     txRef.current += 7; setState(prev => ({ ...prev, txBytes: txRef.current }));
@@ -177,9 +206,16 @@ export function usePBusHardware() {
   }, [controller]);
 
   const emergencyStop = useCallback(async () => {
-    txRef.current += 7; setState(prev => ({ ...prev, txBytes: txRef.current }));
-    await controller.emergencyStop();
-  }, [controller]);
+    // E-STOP always goes through ALL paths
+    if (radioLink.isConnected) {
+      const frame = new Uint8Array([0x50, 0x42, 0xFF, 0xFF]);
+      await radioLink.sendPBus(0xFF, frame).catch(() => {});
+    }
+    if (state.isConnected) {
+      txRef.current += 7; setState(prev => ({ ...prev, txBytes: txRef.current }));
+      await controller.emergencyStop();
+    }
+  }, [controller, state.isConnected, radioLink]);
 
   const setBand = useCallback(async (addr: number, band: PBusWirelessBand) => {
     txRef.current += 8; setState(prev => ({ ...prev, txBytes: txRef.current }));
@@ -188,6 +224,8 @@ export function usePBusHardware() {
 
   return {
     ...state,
+    isConnected: effectivelyConnected,
+    connectionPath,
     connect,
     disconnect,
     discoverDevices,
