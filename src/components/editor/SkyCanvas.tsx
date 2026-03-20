@@ -3351,6 +3351,15 @@ export default function SkyCanvas() {
   const environment = useSceneStore(st => st.environment);
   const [showDebugOverlay, setShowDebugOverlay] = useState(true);
 
+  // Exit fly mode when pointer lock is lost (ESC)
+  useEffect(() => {
+    const onLockChange = () => {
+      if (!document.pointerLockElement && flyMode) setFlyMode(false);
+    };
+    document.addEventListener('pointerlockchange', onLockChange);
+    return () => document.removeEventListener('pointerlockchange', onLockChange);
+  }, [flyMode]);
+
   // ═══ Google Earth-style Geo Tools state ═══
   const [geoTool, setGeoTool] = useState<GeoToolMode>('none');
   const [geoMarkers, setGeoMarkers] = useState<GeoMarker[]>([]);
