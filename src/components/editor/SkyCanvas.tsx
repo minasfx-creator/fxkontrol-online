@@ -3116,6 +3116,8 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
 
   const sensitivityScale = 0.7; // 30% less sensitivity
 
+  if (flyMode) return null;
+
   return (
     <OrbitControls
       ref={controlsRef}
