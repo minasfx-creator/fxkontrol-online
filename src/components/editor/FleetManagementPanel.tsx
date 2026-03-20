@@ -303,6 +303,7 @@ export default function FleetManagementPanel({ onClose }: FleetManagementPanelPr
           <TabsTrigger value="fleet" className="text-[9px] h-5">Fleet</TabsTrigger>
           <TabsTrigger value="preflight" className="text-[9px] h-5">Preflight</TabsTrigger>
           <TabsTrigger value="commands" className="text-[9px] h-5">Commands</TabsTrigger>
+          <TabsTrigger value="hardware" className="text-[9px] h-5">Hardware</TabsTrigger>
         </TabsList>
 
         {/* Fleet Tab */}
