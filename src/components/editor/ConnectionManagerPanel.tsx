@@ -68,6 +68,19 @@ export default function ConnectionManagerPanel({ fs = false }: ConnectionManager
       packetLoss: 0,
       uptime: 0,
     },
+    {
+      id: 'radio',
+      name: 'Radio Antenna',
+      protocol: radioLink.dongleProfile?.label || 'USB Radio',
+      baud: radioLink.dongleProfile?.baudRate,
+      connected: radioLink.isConnected,
+      autoReconnect: autoReconnect['radio'] ?? false,
+      txBytes: radioLink.packetStats.totalTx * 16,
+      rxBytes: radioLink.packetStats.totalRx * 16,
+      latencyMs: 0,
+      packetLoss: radioLink.packetStats.totalTx > 0 ? Math.round((radioLink.packetStats.ackFailed / radioLink.packetStats.totalTx) * 100) : 0,
+      uptime: 0,
+    },
   ];
 
   const handleConnect = useCallback(async (connId: string) => {
