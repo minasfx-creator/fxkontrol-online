@@ -371,6 +371,11 @@ export const EFFECT_LIBRARY: Effect[] = [
   { id: 'form-06', name: 'Galaxy Spiral', category: 'formacoes', type: 'drone', color: '#9B30FF', duration: 20, cost: 65, icon: '🌌', partType: 'formation' },
   { id: 'form-07', name: 'Phoenix Wings', category: 'formacoes', type: 'drone', color: '#FF4500', duration: 20, cost: 70, icon: '🦅', partType: 'formation' },
   { id: 'form-08', name: 'Countdown 3-2-1', category: 'formacoes', type: 'drone', color: '#FFFFFF', duration: 12, cost: 40, icon: '🔟', partType: 'formation' },
+
+  // ── Niagara-Inspired Effects (UE5 Particle Systems) ───────
+  { id: 'niagara-01', name: 'Ns Blue Peony 5"', category: 'morteiros', type: 'firework', color: '#0066FF', duration: 3.5, cost: 28, icon: '🔵', partType: 'shell', caliber: 5, heightMeters: 100, prefire: 2.5, pattern: 'peony', safetyDistance: 140 },
+  { id: 'niagara-02', name: 'Ns Gold Kamuro 6"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 5.0, cost: 38, icon: '🌟', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'kamuro', safetyDistance: 175 },
+  { id: 'niagara-03', name: 'Ns Pink Multi-Break 4"', category: 'morteiros', type: 'firework', color: '#FF69B4', duration: 3.0, cost: 32, icon: '💖', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'crossette', safetyDistance: 100, numDevices: 3 },
 ];
 
 export const useProjectStore = create<ProjectState>((set) => ({
