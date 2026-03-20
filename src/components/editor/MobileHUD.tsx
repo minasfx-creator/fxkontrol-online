@@ -51,7 +51,8 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
 
   const handlePanic = useCallback(() => {
     clearAll();
-    stopPlayback();
+    setPlaying(false);
+    setCurrentTime(0);
     if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
   }, [clearAll, stopPlayback]);
 
