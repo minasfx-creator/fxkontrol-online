@@ -197,6 +197,16 @@ const DEFAULT_SETTINGS: SceneSettings = {
   filmGrain: 0.025,
   viewTransform: 'aces-filmic' as ViewTransform,
   exposureCompensation: 0,
+
+  ssaoEnabled: false,
+  ssaoIntensity: 0.5,
+  dofEnabled: false,
+  dofFocusDistance: 100,
+  dofBokehScale: 2.0,
+  godRaysEnabled: false,
+  colorBrightness: 0,
+  colorContrast: 0,
+  colorSaturation: 0,
 };
 
 export const SCENE_PRESETS: Record<string, { name: string; description: string; settings: Partial<SceneSettings> }> = {
