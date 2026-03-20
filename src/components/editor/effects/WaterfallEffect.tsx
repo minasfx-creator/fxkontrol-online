@@ -37,7 +37,7 @@ export default function WaterfallEffect({
     const s: { x: number; vy: number; vx: number; lt: number; phase: number; flicker: number; offset: number }[] = [];
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       s.push({
-        x: (Math.random() - 0.5) * width,
+        x: (Math.random() - 0.5) * scaledWidth,
         vy: -0.2 - Math.random() * 0.6,
         vx: (Math.random() - 0.5) * 0.15,
         lt: 1.8 + Math.random() * 3.0,
