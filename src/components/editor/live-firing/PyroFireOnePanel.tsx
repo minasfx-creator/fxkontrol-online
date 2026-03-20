@@ -1055,7 +1055,9 @@ export default function PyroFireOnePanel({
   // ═══════════════════════════════════════════════════════════
   return (
     <div className="flex flex-col h-full">
+      {renderFileInput()}
       {renderHeader()}
+      {renderConnectionBar()}
       {renderMasterArm()}
       {renderStatusStrip()}
       {renderModeTabs()}
