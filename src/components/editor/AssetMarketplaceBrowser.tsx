@@ -506,3 +506,76 @@ function AssetCardList({ asset, onImport }: { asset: MarketplaceAsset; onImport:
     </div>
   );
 }
+
+function SiteModelControl({ model }: { model: SiteModel }) {
+  const { updateSiteModel, removeSiteModel } = useSceneStore();
+
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-border/20 bg-surface-0/40 p-2">
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] font-semibold text-foreground truncate">{model.name}</p>
+        <div className="flex items-center gap-3 mt-1.5">
+          <div className="flex items-center gap-1 flex-1">
+            <Move className="h-2.5 w-2.5 text-muted-foreground/50 shrink-0" />
+            {(['X', 'Y', 'Z'] as const).map((axis, i) => (
+              <input
+                key={axis}
+                type="number"
+                value={model.position[i]}
+                onChange={e => {
+                  const pos = [...model.position] as [number, number, number];
+                  pos[i] = Number(e.target.value) || 0;
+                  updateSiteModel(model.id, { position: pos });
+                }}
+                className="w-12 h-5 text-[8px] text-center bg-surface-0 border border-border/20 rounded text-foreground"
+                title={axis}
+              />
+            ))}
+          </div>
+          <div className="flex items-center gap-1">
+            <RotateCw className="h-2.5 w-2.5 text-muted-foreground/50 shrink-0" />
+            <input
+              type="number"
+              value={model.rotation[1]}
+              onChange={e => updateSiteModel(model.id, { rotation: [0, Number(e.target.value) || 0, 0] })}
+              className="w-10 h-5 text-[8px] text-center bg-surface-0 border border-border/20 rounded text-foreground"
+              title="Rotation Y°"
+            />
+          </div>
+          <div className="flex items-center gap-1">
+            <Maximize2 className="h-2.5 w-2.5 text-muted-foreground/50 shrink-0" />
+            <Slider
+              value={[model.scale]}
+              min={0.01}
+              max={10}
+              step={0.01}
+              onValueChange={([v]) => updateSiteModel(model.id, { scale: v })}
+              className="w-16"
+            />
+            <span className="text-[8px] text-muted-foreground/60 w-6 text-right">{model.scale.toFixed(1)}×</span>
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-col gap-1 shrink-0">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-5 w-5 p-0 rounded"
+          onClick={() => updateSiteModel(model.id, { visible: !model.visible })}
+          title={model.visible ? 'Ocultar' : 'Mostrar'}
+        >
+          {model.visible ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3 text-muted-foreground/40" />}
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-5 w-5 p-0 rounded text-destructive hover:text-destructive"
+          onClick={() => removeSiteModel(model.id)}
+          title="Remover"
+        >
+          <Trash2 className="h-3 w-3" />
+        </Button>
+      </div>
+    </div>
+  );
+}
