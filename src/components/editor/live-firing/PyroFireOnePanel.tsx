@@ -448,6 +448,25 @@ export default function PyroFireOnePanel({
         </span>
       </div>
 
+      {/* Wireless / Wired module counts */}
+      <div className={cn("flex items-center gap-1.5 font-mono",
+        sz === 'xl' ? "text-[9px]" : "text-[6px]"
+      )}>
+        {wirelessCount > 0 && (
+          <span className="flex items-center gap-0.5 text-cyan-400/60">
+            <Wifi className={cn(sz === 'xl' ? "w-3 h-3" : "w-2 h-2")} />{wirelessCount}
+          </span>
+        )}
+        {fallbackCount > 0 && (
+          <span className="flex items-center gap-0.5 text-amber-400/70 animate-pulse">
+            <WifiOff className={cn(sz === 'xl' ? "w-3 h-3" : "w-2 h-2")} />{fallbackCount}
+          </span>
+        )}
+        <span className="flex items-center gap-0.5 text-green-400/40">
+          <Usb className={cn(sz === 'xl' ? "w-3 h-3" : "w-2 h-2")} />{wiredCount}
+        </span>
+      </div>
+
       {/* TX/RX counters (when connected) */}
       {hardware.isConnected && (
         <span className={cn("font-mono text-muted-foreground/25",
