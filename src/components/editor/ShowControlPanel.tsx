@@ -442,12 +442,13 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
       )}
 
       {/* ── Show Info Strip ──────────────────────────────── */}
-      <div className="px-3 py-2 border-b border-border/15 grid grid-cols-4 gap-1">
+      <div className="px-3 py-2 border-b border-border/15 grid grid-cols-5 gap-1">
         {[
           { label: 'Fleet', value: `${orc.totalDrones > 0 ? orc.totalDrones : uavs.size}`, icon: Cpu },
           { label: 'Slots', value: `${positions.length}`, icon: Target },
           { label: 'Duration', value: `${duration}s`, icon: Clock },
           { label: 'Cues', value: `${timelineItems.length}`, icon: Radio },
+          { label: 'FireOne', value: hardware.isConnected ? `${hardware.modules.size}` : 'SIM', icon: Zap },
         ].map(item => (
           <div key={item.label} className="flex flex-col items-center gap-0.5 py-1 rounded-lg bg-surface-1/40">
             <item.icon className="w-3 h-3 text-muted-foreground/50" />
@@ -456,6 +457,24 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
           </div>
         ))}
       </div>
+
+      {/* FireOne Hardware Status */}
+      {hardware.isConnected && (
+        <div className="px-3 py-1.5 border-b border-green-500/15 bg-green-500/5 flex items-center gap-2 text-[8px]">
+          <Zap className="w-3 h-3 text-green-400" />
+          <span className="text-green-400 font-bold">FIREONE LIVE</span>
+          <span className="text-muted-foreground">
+            {hardware.wirelessModuleCount > 0 && <><Wifi className="w-2.5 h-2.5 inline mr-0.5" />{hardware.wirelessModuleCount}W</>}
+            {hardware.wiredModuleCount > 0 && <><Usb className="w-2.5 h-2.5 inline mx-0.5" />{hardware.wiredModuleCount}C</>}
+          </span>
+          {hardware.worstRssi !== null && (
+            <span className={hardware.worstRssi > -60 ? 'text-green-400' : hardware.worstRssi > -75 ? 'text-yellow-400' : 'text-red-400'}>
+              RSSI: {hardware.worstRssi}dBm
+            </span>
+          )}
+          <span className="text-muted-foreground/50 ml-auto">TX:{hardware.txBytes}B RX:{hardware.rxBytes}B</span>
+        </div>
+      )}
 
       {/* ── FX Commander Grid — Main Actions ─────────────── */}
       <ScrollArea className="flex-1">
