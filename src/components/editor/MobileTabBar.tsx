@@ -7,7 +7,7 @@ import { Clock, Sparkles, MapPin, Hexagon, MoreHorizontal, Cable } from 'lucide-
 import { cn } from '@/lib/utils';
 import type { PanelId } from '@/components/editor/PanelTabBar';
 
-export type MobileTab = 'timeline' | 'assets' | 'properties' | 'livefx' | 'points' | 'formations' | 'more';
+export type MobileTab = 'timeline' | 'assets' | 'properties' | 'livefx' | 'points' | 'formations' | 'mobilelink' | 'more';
 
 interface MobileTabBarProps {
   activeTab: MobileTab | null;
@@ -19,6 +19,7 @@ interface MobileTabBarProps {
 
 const TABS: { key: MobileTab; icon: typeof Clock; panelId?: PanelId; accent?: boolean }[] = [
   { key: 'livefx', icon: Sparkles, panelId: 'livefiring', accent: true },
+  { key: 'mobilelink', icon: Cable, panelId: 'mobilelink' },
   { key: 'points', icon: MapPin, panelId: 'properties' },
   { key: 'formations', icon: Hexagon, panelId: 'swarmgpt' },
   { key: 'timeline', icon: Clock },
