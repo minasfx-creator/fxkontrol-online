@@ -250,6 +250,16 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
                   </TabsTrigger>
                 );
               })}
+              <TabsTrigger
+                value="mylibrary"
+                className="h-8 rounded-lg text-[11px] font-semibold px-3 gap-1.5 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-none"
+              >
+                <FolderHeart className="h-3.5 w-3.5" />
+                My Library
+                {libraryAssets.length > 0 && (
+                  <Badge variant="secondary" className="text-[8px] h-4 px-1 ml-1">{libraryAssets.length}</Badge>
+                )}
+              </TabsTrigger>
             </TabsList>
           </div>
 
