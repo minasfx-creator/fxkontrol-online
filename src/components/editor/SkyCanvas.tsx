@@ -918,6 +918,7 @@ function TimelineEffects() {
             colorTransition={vdlColorTransition}
             hasPistil={vdlHasPistil}
             pistilColor={vdlPistilColor}
+            niagaraProfile={effect.niagaraProfile}
           />
         );
         return <LightPoint key={item.id} position={pos} color={effect.color} />;
