@@ -85,6 +85,7 @@ import ShowPreviewPanel from '@/components/editor/ShowPreviewPanel';
 import MobileLinkPanel from '@/components/editor/MobileLinkPanel';
 import MobileLinkMonitor from '@/components/editor/MobileLinkMonitor';
 import SiteModelsPanel from '@/components/editor/SiteModelsPanel';
+import ShowCommanderPanel from '@/components/editor/ShowCommanderPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
@@ -351,6 +352,7 @@ function Index() {
         {activePanel === 'showpreview' && <ShowPreviewPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'mobilelink' && <MobileLinkPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'linkmonitor' && <MobileLinkMonitor onClose={() => setActivePanel(null)} />}
+        {activePanel === 'showcommander' && <ShowCommanderPanel onClose={() => setActivePanel(null)} onOpenPanel={(id) => setActivePanel(id as PanelId)} />}
       </>
     );
   };
