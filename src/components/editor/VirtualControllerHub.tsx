@@ -44,6 +44,7 @@ const CONNECTION_ICONS: Record<ConnectionType, typeof Usb> = {
   wireless: Radio,
   pbus: Cable,
   serial: Cpu,
+  radio: Radio,
   sim: Sparkles,
 };
 
