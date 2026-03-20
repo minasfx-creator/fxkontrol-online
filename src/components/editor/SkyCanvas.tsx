@@ -3546,7 +3546,8 @@ export default function SkyCanvas() {
           canvas.addEventListener('webglcontextrestored', handleContextRestored as EventListener);
         }}>
         <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.5} far={250000} />
-        <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook} />
+        <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook || flyMode} flyMode={flyMode} />
+        {flyMode && <FlyControls onSpeedChange={flySpeedCb} />}
 
         <SceneLighting />
         <AdaptiveExposureController />
