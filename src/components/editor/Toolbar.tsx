@@ -481,6 +481,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
               { label: 'UE .uasset (Niagara)', icon: FileCode, onClick: () => setUassetOpen(true) },
               { label: 'GrandMA2 Patch', icon: Lightbulb, onClick: () => setGma2Open(true) },
               { label: 'UE5 DMX Library', icon: MonitorSpeaker, onClick: () => setUe5DmxOpen(true) },
+              { label: 'MVR (My Virtual Rig)', icon: FileArchive, onClick: () => setMvrOpen(true) },
               { label: 'Supplier Catalog', icon: Sparkles, onClick: () => setCatalogOpen(true) },
               { label: 'Asset Marketplace', icon: Store, onClick: () => setMarketplaceOpen(true) },
             ]}
