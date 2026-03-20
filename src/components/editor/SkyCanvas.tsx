@@ -3282,6 +3282,8 @@ function SiteModelTransformToolbar() {
   const mode = useSceneStore((s) => s.siteModelTransformMode);
   const setMode = useSceneStore((s) => s.setSiteModelTransformMode);
   const selectModel = useSceneStore((s) => s.selectSiteModel);
+  const snap = useSceneStore((s) => s.transformSnap);
+  const setSnap = useSceneStore((s) => s.setTransformSnap);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -3306,6 +3308,8 @@ function SiteModelTransformToolbar() {
     { key: 'scale' as const, label: 'Scale', icon: '⤢', shortcut: 'S' },
   ];
 
+  const snapLabel = mode === 'translate' ? `${snap.translateSnap}m` : mode === 'rotate' ? `${snap.rotateSnap}°` : `${snap.scaleSnap}x`;
+
   return (
     <div className="absolute top-14 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 bg-card/90 backdrop-blur-xl border border-border/30 rounded-xl px-2 py-1.5 shadow-lg">
       <span className="text-[9px] text-muted-foreground font-mono mr-1">MODEL</span>
@@ -3324,6 +3328,38 @@ function SiteModelTransformToolbar() {
           {m.icon} {m.label}
         </button>
       ))}
+      <div className="w-px h-4 bg-border/40 mx-1" />
+      <button
+        onClick={() => setSnap({ enabled: !snap.enabled })}
+        className={cn(
+          'px-2 py-1 rounded-lg text-[10px] font-medium transition-all flex items-center gap-1',
+          snap.enabled
+            ? 'bg-accent text-accent-foreground'
+            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+        )}
+        title={`Snap: ${snap.enabled ? 'ON' : 'OFF'} (${snapLabel})`}
+      >
+        ⊡ Snap {snap.enabled && <span className="text-[9px] opacity-70">{snapLabel}</span>}
+      </button>
+      {snap.enabled && (
+        <>
+          <input
+            type="number"
+            className="w-12 bg-muted/60 border border-border/30 rounded px-1 py-0.5 text-[10px] text-foreground text-center"
+            value={mode === 'translate' ? snap.translateSnap : mode === 'rotate' ? snap.rotateSnap : snap.scaleSnap}
+            min={mode === 'scale' ? 0.01 : 1}
+            step={mode === 'translate' ? 0.5 : mode === 'rotate' ? 5 : 0.05}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value);
+              if (isNaN(v) || v <= 0) return;
+              if (mode === 'translate') setSnap({ translateSnap: v });
+              else if (mode === 'rotate') setSnap({ rotateSnap: v });
+              else setSnap({ scaleSnap: v });
+            }}
+            title={mode === 'translate' ? 'Snap distance (m)' : mode === 'rotate' ? 'Snap angle (°)' : 'Snap scale step'}
+          />
+        </>
+      )}
       <div className="w-px h-4 bg-border/40 mx-1" />
       <button
         onClick={() => selectModel(null)}
