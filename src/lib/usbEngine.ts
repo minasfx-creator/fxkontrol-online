@@ -4,7 +4,7 @@
  * Uses `any` casts for Web Serial/USB APIs since they're not in standard TS lib.
  */
 
-export type USBDeviceType = 'dmx' | 'firing' | 'timecode' | 'serial' | 'pbus';
+export type USBDeviceType = 'dmx' | 'firing' | 'timecode' | 'serial' | 'pbus' | 'radio';
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
 
 export interface USBDeviceProfile {
