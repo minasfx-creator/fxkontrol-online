@@ -82,9 +82,31 @@ export default function Agenda() {
       client_name: form.client_name,
       event_type: form.event_type,
       notes: form.notes,
+      status: form.status,
     });
-    setForm({ name: '', location: '', client_name: '', event_type: 'mixed', notes: '' });
+    setForm({ name: '', location: '', client_name: '', event_type: 'mixed', notes: '', status: 'negotiation' });
     setDialogOpen(false);
+    fetchEvents();
+  };
+
+  const duplicateEvent = async (ev: EventRow) => {
+    if (!user) return;
+    await supabase.from('events').insert({
+      user_id: user.id,
+      name: `${ev.name} (cópia)`,
+      event_date: null,
+      location: ev.location,
+      client_name: ev.client_name,
+      event_type: ev.event_type,
+      notes: ev.notes,
+      status: 'negotiation',
+    });
+    fetchEvents();
+    toast.success('Evento duplicado!');
+  };
+
+  const updateStatus = async (id: string, status: string) => {
+    await supabase.from('events').update({ status }).eq('id', id);
     fetchEvents();
   };
 
