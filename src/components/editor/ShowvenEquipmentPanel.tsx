@@ -87,10 +87,14 @@ function getEffectType(category: ShowvenCategory): string {
   }
 }
 
-function EquipmentCard({ preset, category }: { preset: AnyPreset; category: ShowvenCategory }) {
+function EquipmentCard({ preset, category, pbusDevices }: { preset: AnyPreset; category: ShowvenCategory; pbusDevices?: Map<number, any> }) {
   const meta = CATEGORY_META[category];
   const Icon = meta.icon;
   const effectType = getEffectType(category);
+
+  // Check if this is a controller type that could have live PBUS data
+  const isController = category === 'controller' || category === 'remote';
+  const liveDeviceCount = pbusDevices?.size ?? 0;
 
   const handleDragStart = useCallback((e: React.DragEvent) => {
     e.dataTransfer.setData('application/showven-equipment', JSON.stringify({
@@ -187,6 +191,15 @@ function EquipmentCard({ preset, category }: { preset: AnyPreset; category: Show
               <p className="text-[9px] text-muted-foreground/70 truncate leading-tight mt-0.5">
                 {getSpecLine(preset, category)}
               </p>
+              {/* Live PBUS status for controllers */}
+              {isController && liveDeviceCount > 0 && (
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-[8px] text-emerald-400 flex items-center gap-0.5">
+                    <Wifi className="w-2.5 h-2.5" /> LIVE
+                  </span>
+                  <span className="text-[8px] text-muted-foreground/50">{liveDeviceCount} connected</span>
+                </div>
+              )}
             </div>
             {effectType && 'dmxChannels' in preset && (preset as any).dmxChannels > 0 && (
               <Badge variant="outline" className="text-[8px] px-1.5 py-0 h-4 border-border/20 text-muted-foreground/50 flex-shrink-0">
