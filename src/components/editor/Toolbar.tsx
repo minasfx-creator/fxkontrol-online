@@ -325,6 +325,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
   const [vvizOpen, setVvizOpen] = useState(false);
   const [browserOpen, setBrowserOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
+  const [uassetOpen, setUassetOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const handleSave = useCallback(async () => {
