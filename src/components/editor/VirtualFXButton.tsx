@@ -48,7 +48,7 @@ export default function VirtualFXButton({ fs = false }: VirtualFXButtonProps) {
       setUnlocked(true);
       slideRef.current = null;
       setSlideProgress(0);
-      if (navigator.vibrate) navigator.vibrate([50, 20, 50]);
+      haptics.unlock();
       toast.success('🔓 FXbutton UNLOCKED');
     }
   }, []);
