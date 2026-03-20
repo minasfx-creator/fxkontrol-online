@@ -13,6 +13,7 @@ import Model3DPreview, { type ModelTransform } from './Model3DPreview';
 import { parseDatasmith, extractMeshLabel, type DatasmithActor, type DatasmithParseResult } from '@/lib/twinmotionParser';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
+import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { toast } from 'sonner';
 
 interface Props {
