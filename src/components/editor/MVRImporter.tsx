@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  initialFile?: File | null;
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
