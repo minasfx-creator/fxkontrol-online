@@ -166,10 +166,20 @@ export default function MA3ControlPanel({ fs = false }: MA3ControlPanelProps) {
         case 'fixtures-updated':
           toast.success(`MVR: ${ev.fixtures.length} fixtures synced from ${ev.source}`);
           break;
+        case 'mdns-discovered':
+          setMdnsStations(prev => {
+            const exists = prev.find(s => s.uuid === ev.station.uuid);
+            if (exists) return prev.map(s => s.uuid === ev.station.uuid ? ev.station : s);
+            return [...prev, ev.station];
+          });
+          if (autoConnect && mvrState === 'connected') {
+            mvrClient.current.connectStation(ev.station.uuid);
+          }
+          break;
       }
     });
     return unsub;
-  }, []);
+  }, [autoConnect, mvrState]);
 
   // ─── OSC Actions ────────────────────────────────────
   const connectOSC = useCallback(async () => {
