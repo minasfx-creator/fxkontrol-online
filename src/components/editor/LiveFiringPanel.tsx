@@ -35,6 +35,7 @@ import AutoFirePanel from './live-firing/AutoFirePanel';
 import CheckSlavePanel from './live-firing/CheckSlavePanel';
 import SettingsPanel from './live-firing/SettingsPanel';
 import DeviceLibraryPanel from './live-firing/DeviceLibraryPanel';
+import MobileLinkMode from './live-firing/MobileLinkMode';
 
 // ═══════════════════════════════════════════════════════════
 // CUE KEY — hardware key replica with Lock/Tap mode
