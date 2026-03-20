@@ -156,6 +156,14 @@ export default function Agenda() {
                   <SelectItem value="mixed">🎯 Misto</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map(s => (
+                    <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Input
                 placeholder="Notas"
                 value={form.notes}
