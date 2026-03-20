@@ -719,8 +719,34 @@ export class FireOneController {
         break;
       }
 
+      case FireOneCmd.WIRELESS_STATUS: {
+        const ws = parseWirelessStatus(frame.payload);
+        const module = this.modules.get(addr);
+        if (module) {
+          const prevMode = module.connectionMode;
+          module.rssiDbm = ws.rssiDbm;
+          module.wirelessChannel = ws.channel;
+          module.packetLoss = ws.packetLoss;
+          module.linkQuality = ws.linkQuality;
+          module.connectionMode = ws.mode;
+          module.wireless = ws.mode !== 'wired';
+          this.modules.set(addr, { ...module, lastSeen: Date.now() });
+          // Detect fallback transition
+          if (prevMode === 'wireless' && ws.mode === 'fallback') {
+            this.emit({ type: 'wireless-fallback', moduleAddress: addr, data: ws, timestamp: Date.now() });
+          }
+        }
+        this.emit({ type: 'wireless-status', moduleAddress: addr, data: ws, timestamp: Date.now() });
+        break;
+      }
+
+      case FireOneCmd.WIRELESS_CONFIG: {
+        // ACK for wireless config set
+        this.emit({ type: 'wireless-status', moduleAddress: addr, data: { configured: true }, timestamp: Date.now() });
+        break;
+      }
+
       default: {
-        // Unknown response
         this.emit({ type: 'error', moduleAddress: addr, data: { cmd: frame.command, payload: frame.payload }, timestamp: Date.now() });
       }
     }
