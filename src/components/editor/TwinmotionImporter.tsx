@@ -127,43 +127,52 @@ export default function TwinmotionImporter({ open, onOpenChange, initialFile }: 
   const handleModel3dUpload = useCallback((file: File) => {
     const ext = getFileExt(file.name);
     setModel3dFile(file);
+    setModel3dTransform({ scale: 1, rotationY: 0 });
 
     if (LOADABLE_FORMATS.includes(ext)) {
-      setModel3dStatus('loading');
-      const url = URL.createObjectURL(file);
-      const modelName = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+      setModel3dStatus('done');
+    } else if (REFERENCE_FORMATS.includes(ext)) {
+      setModel3dStatus('done');
+    } else {
+      setModel3dStatus('error');
+      toast.error(`Formato .${ext} não suportado`);
+    }
+  }, []);
 
+  const handleConfirmModel3d = useCallback(() => {
+    if (!model3dFile) return;
+    const ext = getFileExt(model3dFile.name);
+    const modelName = model3dFile.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+    const rotRad = model3dTransform.rotationY * Math.PI / 180;
+
+    if (LOADABLE_FORMATS.includes(ext)) {
+      const url = URL.createObjectURL(model3dFile);
       addSiteModel({
         id: `tm-3d-${Date.now()}`,
         name: modelName,
         url,
         position: [0, 0, 0],
-        rotation: [0, 0, 0],
-        scale: 1,
+        rotation: [0, rotRad, 0],
+        scale: model3dTransform.scale,
         visible: true,
         source: `Twinmotion Import: ${ext.toUpperCase()}`,
       });
-
-      setModel3dStatus('done');
-      toast.success(`Modelo ${ext.toUpperCase()} importado: ${modelName}`);
+      toast.success(`Modelo ${ext.toUpperCase()} importado: ${modelName} (${model3dTransform.scale.toFixed(2)}×)`);
     } else if (REFERENCE_FORMATS.includes(ext)) {
-      setModel3dStatus('done');
       addSiteModel({
         id: `tm-ref-${Date.now()}`,
-        name: file.name.replace(/\.[^.]+$/, ''),
+        name: model3dFile.name.replace(/\.[^.]+$/, ''),
         url: '',
         position: [0, 0, 0],
-        rotation: [0, 0, 0],
-        scale: 1,
+        rotation: [0, rotRad, 0],
+        scale: model3dTransform.scale,
         visible: true,
         source: `Twinmotion Ref: ${ext.toUpperCase()} (placeholder)`,
       });
-      toast.info(`Arquivo ${ext.toUpperCase()} registrado como placeholder — formato não renderizável no browser`);
-    } else {
-      setModel3dStatus('error');
-      toast.error(`Formato .${ext} não suportado`);
+      toast.info(`Arquivo ${ext.toUpperCase()} registrado como placeholder`);
     }
-  }, [addSiteModel]);
+    onOpenChange(false);
+  }, [model3dFile, model3dTransform, addSiteModel, onOpenChange]);
 
   // ─── Datasmith import ──────────────────────────────────
 
