@@ -23,11 +23,24 @@ interface EventRow {
   notes: string;
 }
 
+const STATUS_OPTIONS = ['negotiation', 'confirmed', 'rider_sent', 'mounted', 'executed', 'invoiced'] as const;
+
 const STATUS_COLORS: Record<string, string> = {
-  planned: 'bg-muted text-muted-foreground',
+  negotiation: 'bg-muted text-muted-foreground',
   confirmed: 'bg-primary/20 text-primary',
-  'em montagem': 'bg-accent/20 text-accent',
-  executed: 'bg-emerald-500/20 text-emerald-400',
+  rider_sent: 'bg-accent/20 text-accent-foreground',
+  mounted: 'bg-secondary/20 text-secondary-foreground',
+  executed: 'bg-primary/30 text-primary',
+  invoiced: 'bg-muted text-muted-foreground',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  negotiation: 'Negociação',
+  confirmed: 'Confirmado',
+  rider_sent: 'Rider Enviado',
+  mounted: 'Montado',
+  executed: 'Executado',
+  invoiced: 'Faturado',
 };
 
 const TYPE_LABELS: Record<string, string> = {
