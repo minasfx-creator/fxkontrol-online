@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { TrendingUp, TrendingDown, Minus, Circle, Heart, MessageCircle, Share2 } from 'lucide-react';
 
 interface NewsItem {
@@ -84,6 +84,33 @@ export function NewsTicker() {
     });
   };
 
+  // Swipe gesture to change category filter
+  const touchStartX = useRef<number | null>(null);
+  const categoryKeys = categories.map(c => c.key);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(dx) < 50) return;
+
+    const currentIdx = categoryKeys.indexOf(filter);
+    if (dx < 0) {
+      // swipe left → next category
+      const next = (currentIdx + 1) % categoryKeys.length;
+      setFilter(categoryKeys[next]);
+    } else {
+      // swipe right → previous category
+      const prev = (currentIdx - 1 + categoryKeys.length) % categoryKeys.length;
+      setFilter(categoryKeys[prev]);
+    }
+    navigator.vibrate?.(15);
+  }, [filter, categoryKeys]);
+
   return (
     <div className="w-72 border-l border-border bg-[hsl(var(--surface-0))] flex flex-col h-full">
       {/* Header */}
@@ -111,12 +138,14 @@ export function NewsTicker() {
         </div>
       </div>
 
-      {/* Scrolling visual feed */}
+      {/* Scrolling visual feed — swipe left/right to change category */}
       <div
         ref={scrollRef}
         className="flex-1 overflow-hidden"
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
       >
         <div className="space-y-0.5">
           {doubledNews.map((item, i) => {
