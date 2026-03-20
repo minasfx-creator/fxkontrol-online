@@ -266,7 +266,60 @@ export default function ShowSettingsPanel({ onClose }: ShowSettingsProps) {
               <Field label="Client" value={client} onChange={setClient} placeholder="Acme Events" />
               <Field label="Director" value={director} onChange={setDirector} placeholder="John Smith" />
             </div>
-            <InfoRow label="Duration" value={formatDuration(duration)} accent />
+            {/* Editable Duration */}
+            <div>
+              <label className="text-[10px] text-muted-foreground/70 font-semibold uppercase tracking-wider mb-1.5 block font-display flex items-center gap-1.5">
+                <Clock className="w-3 h-3" /> Duration
+              </label>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-1">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={10}
+                    value={Math.floor(duration / 60)}
+                    onChange={e => {
+                      const mins = Math.max(0, parseInt(e.target.value) || 0);
+                      const secs = Math.floor(duration % 60);
+                      useProjectStore.getState().setDuration(mins * 60 + secs);
+                    }}
+                    className="w-14 h-8 text-[12px] text-center font-mono-code bg-surface-0/60 border-border/15 rounded-lg"
+                  />
+                  <span className="text-[10px] text-muted-foreground/50 font-mono-code">min</span>
+                </div>
+                <span className="text-foreground/30 font-bold">:</span>
+                <div className="flex items-center gap-1">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={59}
+                    value={Math.floor(duration % 60)}
+                    onChange={e => {
+                      const mins = Math.floor(duration / 60);
+                      const secs = Math.min(59, Math.max(0, parseInt(e.target.value) || 0));
+                      useProjectStore.getState().setDuration(mins * 60 + secs);
+                    }}
+                    className="w-14 h-8 text-[12px] text-center font-mono-code bg-surface-0/60 border-border/15 rounded-lg"
+                  />
+                  <span className="text-[10px] text-muted-foreground/50 font-mono-code">sec</span>
+                </div>
+                <Badge variant="outline" className="ml-auto text-[9px] font-mono-code text-primary border-primary/20">
+                  {formatDuration(duration)}
+                </Badge>
+              </div>
+              <Slider
+                value={[duration]}
+                onValueChange={([v]) => useProjectStore.getState().setDuration(v)}
+                min={0}
+                max={600}
+                step={1}
+                className="w-full"
+              />
+              <div className="flex justify-between mt-1">
+                <span className="text-[8px] text-muted-foreground/30 font-mono-code">0:00</span>
+                <span className="text-[8px] text-muted-foreground/30 font-mono-code">10:00</span>
+              </div>
+            </div>
             <InfoRow label="Project" value={projectName} />
           </SettingsSection>
 

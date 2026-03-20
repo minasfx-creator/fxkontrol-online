@@ -107,14 +107,33 @@ function detectDelimiter(text: string): string {
   return ',';
 }
 
-/** Auto-map a header to our known fields */
+/** Auto-map a header to our known fields — exact matches first, then substring */
 function autoMapHeader(header: string): string | null {
   const h = header.toLowerCase().trim().replace(/[^a-z0-9_]/g, '_');
+
+  // Pass 1: exact match (highest priority)
   for (const [field, aliases] of Object.entries(COLUMN_ALIASES)) {
-    if (aliases.some(a => h === a || h.includes(a))) {
+    if (aliases.some(a => h === a)) {
       return field;
     }
   }
+
+  // Pass 2: substring match — longer aliases first to avoid false positives
+  // e.g. "effect_color" should match color's "effect_color" not name's "effect"
+  const allMappings: { field: string; alias: string }[] = [];
+  for (const [field, aliases] of Object.entries(COLUMN_ALIASES)) {
+    for (const a of aliases) {
+      allMappings.push({ field, alias: a });
+    }
+  }
+  allMappings.sort((a, b) => b.alias.length - a.alias.length);
+
+  for (const { field, alias } of allMappings) {
+    if (h.includes(alias)) {
+      return field;
+    }
+  }
+
   return null;
 }
 

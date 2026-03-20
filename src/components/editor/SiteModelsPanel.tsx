@@ -124,6 +124,7 @@ function ModelRow({ model }: { model: SiteModel }) {
 
 export default function SiteModelsPanel({ onClose }: SiteModelsPanelProps) {
   const siteModels = useSceneStore((s) => s.siteModels);
+  const [importerOpen, setImporterOpen] = useState(false);
 
   return (
     <div className="h-full flex flex-col bg-card/95 backdrop-blur-xl border-r border-border/20">
@@ -136,10 +137,17 @@ export default function SiteModelsPanel({ onClose }: SiteModelsPanelProps) {
             {siteModels.length}
           </span>
         </div>
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
-          <X className="h-3.5 w-3.5" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-6 w-6 text-primary" onClick={() => setImporterOpen(true)} title="Importar Modelo 3D">
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
+
+      <SceneObjectImporter open={importerOpen} onOpenChange={setImporterOpen} />
 
       {/* Content */}
       <ScrollArea className="flex-1 px-3 py-2">
