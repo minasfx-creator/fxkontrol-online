@@ -37,6 +37,12 @@ import SettingsPanel from './live-firing/SettingsPanel';
 import DeviceLibraryPanel from './live-firing/DeviceLibraryPanel';
 import MobileLinkMode from './live-firing/MobileLinkMode';
 import PyroFireOnePanel from './live-firing/PyroFireOnePanel';
+import VirtualControllerHub from './VirtualControllerHub';
+import VirtualZK6200 from './VirtualZK6200';
+import VirtualFXButton from './VirtualFXButton';
+import FieldMap2D from './FieldMap2D';
+import ConnectionManagerPanel from './ConnectionManagerPanel';
+import PBusMonitorPanel from './live-firing/PBusMonitorPanel';
 
 // ═══════════════════════════════════════════════════════════
 // CUE KEY — hardware key replica with Lock/Tap mode
