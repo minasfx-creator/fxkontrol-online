@@ -179,6 +179,7 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
   const positions = useProjectStore((s) => s.positions);
   const timelineItems = useProjectStore((s) => s.timelineItems);
   const hardware = useFireOneHardware();
+  const pbus = usePBusHardware();
 
   const [authScope, setAuthScope] = useState<AuthorizationScope>('live');
   const [startMethod, setStartMethod] = useState<StartMethod>('auto');
