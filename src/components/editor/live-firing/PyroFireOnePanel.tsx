@@ -238,18 +238,24 @@ export default function PyroFireOnePanel({
     toast.success(`Scan complete — ${hardware.modules.size} modules found`);
   }, [hardware]);
 
-  // ARM module
+  // ARM module — routes through hardware when not SIM
   const armModule = useCallback((addr: number, armed: boolean) => {
     if (!masterKeyOn) { toast.error('Master Key must be ON to arm'); return; }
+    if (!simMode && hardware.isConnected) {
+      (armed ? hardware.armModule(addr) : hardware.disarmModule(addr)).catch(() => {});
+    }
     setModules(prev => prev.map(m => m.address === addr ? { ...m, armed } : m));
     toast.info(`Module FM-${String(addr).padStart(2, '0')} ${armed ? 'ARMED' : 'DISARMED'}`);
-  }, [masterKeyOn]);
+  }, [masterKeyOn, simMode, hardware]);
 
   const armAll = useCallback((armed: boolean) => {
     if (!masterKeyOn) { toast.error('Master Key must be ON'); return; }
+    if (!simMode && hardware.isConnected) {
+      (armed ? hardware.armAll() : hardware.disarmAll()).catch(() => {});
+    }
     setModules(prev => prev.map(m => m.connected ? { ...m, armed } : m));
     toast.warning(armed ? '⚠️ ALL MODULES ARMED' : 'All modules disarmed');
-  }, [masterKeyOn]);
+  }, [masterKeyOn, simMode, hardware]);
 
   // Fire igniter
   const fireIgniter = useCallback((moduleAddr: number, igniterPos: number) => {
