@@ -224,6 +224,8 @@ export function usePBusHardware() {
 
   return {
     ...state,
+    isConnected: effectivelyConnected,
+    connectionPath,
     connect,
     disconnect,
     discoverDevices,
