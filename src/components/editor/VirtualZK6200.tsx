@@ -4,6 +4,7 @@
  */
 import { useState, useCallback, useRef } from 'react';
 import { Shield, Hand, Zap, Radio, Clock, Play, Square, Settings, AlertTriangle, Wifi } from 'lucide-react';
+import { haptics } from '@/lib/haptics';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
