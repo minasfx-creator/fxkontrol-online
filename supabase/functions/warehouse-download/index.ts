@@ -18,6 +18,17 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Validate that modelId looks like a real 3D Warehouse UUID, not a fallback slug
+    if (modelId.length < 20 && !/^[0-9a-f]{8}-/.test(modelId)) {
+      return new Response(JSON.stringify({ 
+        error: 'Invalid model ID',
+        message: 'This appears to be a placeholder ID. Search 3D Warehouse for real models.',
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // 3D Warehouse provides COLLADA (.dae) downloads via their public API
     // The glTF binary endpoint is at /3dw/GetEntity/modelId?format=gltf
     const downloadUrls = [
