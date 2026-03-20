@@ -42,12 +42,72 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
   const [showDiag, setShowDiag] = useState(true);
 
-  const connectedUSBDMX = useMemo(() => getConnectedDMXDevices(), [dmxDevices]);
-  const hasUSBDMX = connectedUSBDMX.length > 0;
-
   const addDiagLog = useCallback((log: DiagnosticLog) => {
     setDiagLogs(prev => [log, ...prev].slice(0, 50));
   }, []);
+
+  // WebSocket Relay state
+  const [relayUrl, setRelayUrl] = useState('ws://localhost:9001');
+  const [relayWs, setRelayWs] = useState<WebSocket | null>(null);
+  const [relayConnected, setRelayConnected] = useState(false);
+  const [useRelay, setUseRelay] = useState(false);
+
+  const connectRelay = useCallback(() => {
+    if (relayWs) { relayWs.close(); }
+    try {
+      const ws = new WebSocket(relayUrl);
+      ws.onopen = () => {
+        setRelayConnected(true);
+        setConnectionStatus('ok');
+        addDiagLog({ timestamp: new Date(), type: 'info', message: `Relay conectado: ${relayUrl}` });
+        toast.success('Relay Art-Net conectado!');
+        ws.send(JSON.stringify({ action: 'ping' }));
+      };
+      ws.onmessage = (ev) => {
+        try {
+          const msg = JSON.parse(ev.data);
+          if (msg.action === 'pong') {
+            addDiagLog({ timestamp: new Date(), type: 'info', message: `Relay pong — ${msg.packetsSent} pkts enviados, uptime ${Math.round(msg.uptime)}s` });
+          }
+        } catch {}
+      };
+      ws.onclose = () => {
+        setRelayConnected(false);
+        setConnectionStatus('idle');
+        addDiagLog({ timestamp: new Date(), type: 'info', message: 'Relay desconectado' });
+      };
+      ws.onerror = () => {
+        setRelayConnected(false);
+        setConnectionStatus('error');
+        addDiagLog({ timestamp: new Date(), type: 'error', message: `Falha ao conectar relay: ${relayUrl}` });
+        toast.error('Falha ao conectar ao relay Art-Net');
+      };
+      setRelayWs(ws);
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  }, [relayUrl, relayWs, addDiagLog]);
+
+  const disconnectRelay = useCallback(() => {
+    relayWs?.close();
+    setRelayWs(null);
+    setRelayConnected(false);
+  }, [relayWs]);
+
+  const sendViaRelay = useCallback(() => {
+    if (!relayWs || relayWs.readyState !== WebSocket.OPEN || universes.length === 0) return;
+    const batch = universes.map((u, i) => ({
+      universe: u.id % 16,
+      subnet: Math.floor(u.id / 16) % 16,
+      net: Math.floor(u.id / 256),
+      channels: Array.from(u.channels),
+    }));
+    relayWs.send(JSON.stringify({ action: 'dmx-batch', universes: batch }));
+    addDiagLog({ timestamp: new Date(), type: 'send', message: `Relay → ${batch.length} universo(s) via WebSocket` });
+  }, [relayWs, universes, addDiagLog]);
+
+  const connectedUSBDMX = useMemo(() => getConnectedDMXDevices(), [dmxDevices]);
+  const hasUSBDMX = connectedUSBDMX.length > 0;
 
   const totalDrones = useMemo(() => {
     if (droneFormations.length === 0) return 0;
@@ -344,12 +404,58 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
             </div>
             <Button
               size="sm" className="h-6 text-[10px] w-full gap-1"
-              onClick={sendArtNet}
-              disabled={universes.length === 0 || sending}
+              onClick={useRelay && relayConnected ? sendViaRelay : sendArtNet}
+              disabled={universes.length === 0 || sending || (useRelay && !relayConnected)}
             >
               <Send className="h-3 w-3" />
               {sending ? 'Enviando...' : `Send Art-Net (${universes.length} uni)`}
             </Button>
+
+            {/* WebSocket Relay */}
+            <div className="border-t border-border/50 pt-2 mt-2 space-y-1.5">
+              <div className="flex items-center gap-1.5">
+                <Activity className="h-3 w-3 text-primary" />
+                <span className="text-[9px] text-muted-foreground font-semibold uppercase flex-1">UDP Relay (Local)</span>
+                <button
+                  onClick={() => setUseRelay(!useRelay)}
+                  className={`w-7 h-3.5 rounded-full transition-colors relative ${useRelay ? 'bg-primary' : 'bg-muted'}`}
+                >
+                  <span className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-foreground transition-transform ${useRelay ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+              {useRelay && (
+                <>
+                  <div className="flex gap-1">
+                    <Input
+                      value={relayUrl}
+                      onChange={e => setRelayUrl(e.target.value)}
+                      className="h-6 text-[9px] font-mono-code bg-surface-0 border-border flex-1"
+                      placeholder="ws://localhost:9001"
+                    />
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm" variant={relayConnected ? 'destructive' : 'outline'}
+                      className="h-6 text-[10px] flex-1 gap-1"
+                      onClick={relayConnected ? disconnectRelay : connectRelay}
+                    >
+                      {relayConnected ? <CheckCircle2 className="h-3 w-3" /> : <Wifi className="h-3 w-3" />}
+                      {relayConnected ? 'Desconectar' : 'Conectar Relay'}
+                    </Button>
+                  </div>
+                  {relayConnected && (
+                    <p className="text-[8px] text-green-400">
+                      ● Conectado — pacotes serão enviados via UDP na rede local
+                    </p>
+                  )}
+                  {!relayConnected && (
+                    <p className="text-[8px] text-muted-foreground">
+                      Execute <code className="bg-muted px-1 rounded text-[7px]">node artnet-relay.js</code> na máquina local
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         )}
 
