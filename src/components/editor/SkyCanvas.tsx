@@ -1035,7 +1035,7 @@ function SkyGradient() {
 
   return (
     <mesh ref={skyRef} renderOrder={-1000}>
-      <sphereGeometry args={[90000, 64, 64]} />
+      <sphereGeometry args={[90000, 32, 16]} />
       <shaderMaterial
         side={THREE.BackSide}
         uniforms={uniforms}
@@ -1223,7 +1223,7 @@ function Moon() {
     <group position={[7500, 14000, -12500]}>
       {/* Moon body with procedural surface — radius scaled for 5× world */}
       <mesh>
-        <sphereGeometry args={[450, 64, 64]} />
+        <sphereGeometry args={[450, 32, 32]} />
         <shaderMaterial
           vertexShader={`
             varying vec3 vNormal;
@@ -1273,14 +1273,9 @@ function Moon() {
           `}
         />
       </mesh>
-      {/* Inner glow — proportional to 450-unit body ×5 */}
-      <mesh>
-        <sphereGeometry args={[500, 32, 32]} />
-        <meshBasicMaterial color="#d0c8a8" transparent opacity={0.10} blending={THREE.AdditiveBlending} />
-      </mesh>
       {/* Outer volumetric halo */}
       <mesh>
-        <sphereGeometry args={[800, 32, 32]} />
+        <sphereGeometry args={[800, 16, 16]} />
         <shaderMaterial
           transparent
           depthWrite={false}
@@ -1301,11 +1296,6 @@ function Moon() {
             }
           `}
         />
-      </mesh>
-      {/* Wide atmospheric scatter */}
-      <mesh>
-        <sphereGeometry args={[1600, 16, 16]} />
-        <meshBasicMaterial color="#506080" transparent opacity={0.008} blending={THREE.AdditiveBlending} />
       </mesh>
       <pointLight color="#8899bb" intensity={0.15} distance={30000} decay={1} />
     </group>
@@ -1629,7 +1619,7 @@ function GrassGround() {
 
   return (
     <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <planeGeometry args={[100000, 100000, 16, 16]} />
+      <planeGeometry args={[100000, 100000, 1, 1]} />
       <shaderMaterial
         uniforms={uniforms}
         vertexShader={terrainVertexShader}
@@ -1642,7 +1632,7 @@ function GrassGround() {
 // --- Atmospheric dust particles floating in the air ---
 function AtmosphericParticles() {
   const pointsRef = useRef<THREE.Points>(null);
-  const count = 200;
+  const count = 100;
   
   const { positions: posData, sizes, velocities: velData } = useMemo(() => {
     const pos = new Float32Array(count * 3);
@@ -1702,38 +1692,36 @@ function AtmosphericParticles() {
 function FloorLogo() {
   const texture = useMemo(() => {
     const canvas = document.createElement('canvas');
-    canvas.width = 4096;
-    canvas.height = 1024;
+    canvas.width = 2048;
+    canvas.height = 512;
     const ctx = canvas.getContext('2d')!;
-    ctx.clearRect(0, 0, 4096, 1024);
+    ctx.clearRect(0, 0, 2048, 512);
 
     // Large "MINAS" in very faint silver
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = 'bold 360px "Outfit", Arial, sans-serif';
+    ctx.font = 'bold 180px "Outfit", Arial, sans-serif';
     ctx.fillStyle = 'rgba(180, 195, 210, 0.12)';
-    ctx.fillText('MINAS', 1600, 380);
+    ctx.fillText('MINAS', 800, 190);
 
-    // "FX" in faint cyan
-    ctx.font = 'bold 360px "Outfit", Arial, sans-serif';
+    ctx.font = 'bold 180px "Outfit", Arial, sans-serif';
     ctx.fillStyle = 'rgba(0, 229, 255, 0.15)';
-    ctx.fillText('FX', 3100, 380);
+    ctx.fillText('FX', 1550, 190);
 
-    // Subtitle
-    ctx.font = '500 90px "Outfit", Arial, sans-serif';
+    ctx.font = '500 45px "Outfit", Arial, sans-serif';
     ctx.fillStyle = 'rgba(0, 229, 255, 0.08)';
-    ctx.fillText('SPECIAL FX SOLUTIONS', 2048, 680);
+    ctx.fillText('SPECIAL FX SOLUTIONS', 1024, 340);
 
-    // Decorative line — very subtle
     ctx.strokeStyle = 'rgba(255, 107, 0, 0.10)';
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(400, 800);
-    ctx.quadraticCurveTo(2048, 740, 3696, 800);
+    ctx.moveTo(200, 400);
+    ctx.quadraticCurveTo(1024, 370, 1848, 400);
     ctx.stroke();
 
     const tex = new THREE.CanvasTexture(canvas);
-    tex.anisotropy = 16;
+    tex.generateMipmaps = false;
+    tex.minFilter = THREE.LinearFilter;
     return tex;
   }, []);
 
@@ -1855,7 +1843,7 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
 
   return (
     <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <planeGeometry args={[100000, 100000, 16, 16]} />
+      <planeGeometry args={[100000, 100000, 1, 1]} />
       <shaderMaterial
         uniforms={uniforms}
         vertexShader={`
@@ -2305,25 +2293,23 @@ const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflec
 
     // Check for active explosions to flash reflections
     const { timelineItems, currentTime } = useProjectStore.getState();
-    let flashColor: THREE.Color | null = null;
     let flashIntensity = 0;
+    const _reusableColor = u.uReflectionColor.value;
 
     for (const item of timelineItems) {
       const elapsed = currentTime - item.startTime;
       if (elapsed >= 0 && elapsed < 0.3) {
         const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
         if (effect && effect.type === 'firework') {
-          flashColor = new THREE.Color(effect.color);
+          _reusableColor.set(effect.color);
           flashIntensity = Math.max(flashIntensity, 1.0 * (1 - elapsed / 0.3));
         }
       }
     }
 
-    if (flashColor && flashIntensity > 0.1) {
-      u.uReflectionColor.value.copy(flashColor);
+    if (flashIntensity > 0.1) {
       u.uReflectionIntensity.value = flashIntensity;
     } else {
-      // Decay reflection
       u.uReflectionIntensity.value = Math.max(0.5, u.uReflectionIntensity.value * 0.95);
     }
   });
@@ -2805,9 +2791,10 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
 
 // --- Layered tree silhouettes with depth ---
 function TreelineSilhouette() {
-  const trees = useMemo(() => {
+  const instancedRef = useRef<THREE.InstancedMesh>(null);
+  
+  const { treeData, totalCount } = useMemo(() => {
     const result: { x: number; z: number; h: number; w: number; layer: number }[] = [];
-    // 6 depth layers — expanded world
     for (let layer = 0; layer < 6; layer++) {
       const count = 120 - layer * 15;
       const baseDist = 4000 + layer * 1500;
@@ -2823,29 +2810,36 @@ function TreelineSilhouette() {
         });
       }
     }
-    return result;
+    return { treeData: result, totalCount: result.length };
   }, []);
 
+  useEffect(() => {
+    if (!instancedRef.current) return;
+    const mesh = instancedRef.current;
+    const dummy = new THREE.Object3D();
+    const color = new THREE.Color();
+    
+    for (let i = 0; i < totalCount; i++) {
+      const t = treeData[i];
+      dummy.position.set(t.x, t.h * 0.5, t.z);
+      dummy.rotation.set(0, Math.atan2(t.x, t.z), 0);
+      dummy.scale.set(t.w, t.h, 1);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+      
+      const brightness = 0.03 + t.layer * 0.015;
+      color.setRGB(brightness, brightness + 0.02, brightness);
+      mesh.setColorAt(i, color);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  }, [treeData, totalCount]);
+
   return (
-    <group>
-      {trees.map((t, i) => {
-        // Darker and more transparent for distant layers
-        const brightness = 0.03 + t.layer * 0.015;
-        const opacity = 0.9 - t.layer * 0.15;
-        return (
-          <mesh key={i} position={[t.x, t.h * 0.5, t.z]}
-            rotation={[0, Math.atan2(t.x, t.z), 0]}>
-            <planeGeometry args={[t.w, t.h]} />
-            <meshBasicMaterial
-              color={new THREE.Color(brightness, brightness + 0.02, brightness)}
-              transparent
-              opacity={opacity}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-        );
-      })}
-    </group>
+    <instancedMesh ref={instancedRef} args={[undefined, undefined, totalCount]} frustumCulled={false}>
+      <planeGeometry args={[1, 1]} />
+      <meshBasicMaterial transparent opacity={0.75} side={THREE.DoubleSide} vertexColors />
+    </instancedMesh>
   );
 }
 
