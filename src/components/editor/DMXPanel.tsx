@@ -42,6 +42,66 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
   const [showDiag, setShowDiag] = useState(true);
 
+  // WebSocket Relay state
+  const [relayUrl, setRelayUrl] = useState('ws://localhost:9001');
+  const [relayWs, setRelayWs] = useState<WebSocket | null>(null);
+  const [relayConnected, setRelayConnected] = useState(false);
+  const [useRelay, setUseRelay] = useState(false);
+
+  const connectRelay = useCallback(() => {
+    if (relayWs) { relayWs.close(); }
+    try {
+      const ws = new WebSocket(relayUrl);
+      ws.onopen = () => {
+        setRelayConnected(true);
+        setConnectionStatus('ok');
+        addDiagLog({ timestamp: new Date(), type: 'info', message: `Relay conectado: ${relayUrl}` });
+        toast.success('Relay Art-Net conectado!');
+        ws.send(JSON.stringify({ action: 'ping' }));
+      };
+      ws.onmessage = (ev) => {
+        try {
+          const msg = JSON.parse(ev.data);
+          if (msg.action === 'pong') {
+            addDiagLog({ timestamp: new Date(), type: 'info', message: `Relay pong — ${msg.packetsSent} pkts enviados, uptime ${Math.round(msg.uptime)}s` });
+          }
+        } catch {}
+      };
+      ws.onclose = () => {
+        setRelayConnected(false);
+        setConnectionStatus('idle');
+        addDiagLog({ timestamp: new Date(), type: 'info', message: 'Relay desconectado' });
+      };
+      ws.onerror = () => {
+        setRelayConnected(false);
+        setConnectionStatus('error');
+        addDiagLog({ timestamp: new Date(), type: 'error', message: `Falha ao conectar relay: ${relayUrl}` });
+        toast.error('Falha ao conectar ao relay Art-Net');
+      };
+      setRelayWs(ws);
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  }, [relayUrl, relayWs, addDiagLog]);
+
+  const disconnectRelay = useCallback(() => {
+    relayWs?.close();
+    setRelayWs(null);
+    setRelayConnected(false);
+  }, [relayWs]);
+
+  const sendViaRelay = useCallback(() => {
+    if (!relayWs || relayWs.readyState !== WebSocket.OPEN || universes.length === 0) return;
+    const batch = universes.map((u, i) => ({
+      universe: u.id % 16,
+      subnet: Math.floor(u.id / 16) % 16,
+      net: Math.floor(u.id / 256),
+      channels: Array.from(u.channels),
+    }));
+    relayWs.send(JSON.stringify({ action: 'dmx-batch', universes: batch }));
+    addDiagLog({ timestamp: new Date(), type: 'send', message: `Relay → ${batch.length} universo(s) via WebSocket` });
+  }, [relayWs, universes, addDiagLog]);
+
   const connectedUSBDMX = useMemo(() => getConnectedDMXDevices(), [dmxDevices]);
   const hasUSBDMX = connectedUSBDMX.length > 0;
 
