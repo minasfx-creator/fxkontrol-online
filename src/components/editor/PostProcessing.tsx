@@ -1,8 +1,9 @@
-import { EffectComposer, Bloom, Vignette, ChromaticAberration, SMAA, Noise, ToneMapping, SSAO, DepthOfField, BrightnessContrast, HueSaturation } from '@react-three/postprocessing';
-import { KernelSize, BlendFunction, ToneMappingMode } from 'postprocessing';
-import { Vector2 } from 'three';
+import { EffectComposer, Bloom, Vignette, ChromaticAberration, SMAA, Noise, ToneMapping, SSAO, DepthOfField, BrightnessContrast, HueSaturation, SSR } from '@react-three/postprocessing';
+import { KernelSize, BlendFunction, ToneMappingMode, Effect } from 'postprocessing';
+import { Vector2, Uniform } from 'three';
 import { useSceneStore } from '@/store/useSceneStore';
 import type { ViewTransform } from '@/lib/niagaraBlenderRules';
+import { forwardRef, useMemo } from 'react';
 
 const TONE_MAP: Record<ViewTransform, ToneMappingMode> = {
   'aces-filmic': ToneMappingMode.ACES_FILMIC,
@@ -19,9 +20,55 @@ const BLOOM_SCALE: Record<ViewTransform, number> = {
 };
 
 /**
- * Cinematic post-processing pipeline v8 — AAA effects suite.
+ * Custom Sharpening Effect — Unsharp Mask (UE5 r.Tonemapper.Sharpen equivalent)
+ */
+const SHARPEN_FRAGMENT = `
+uniform float strength;
+
+void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+  vec2 texelSize = 1.0 / resolution;
+  
+  vec4 center = inputColor;
+  vec4 top    = texture2D(inputBuffer, uv + vec2(0.0, texelSize.y));
+  vec4 bottom = texture2D(inputBuffer, uv - vec2(0.0, texelSize.y));
+  vec4 left   = texture2D(inputBuffer, uv - vec2(texelSize.x, 0.0));
+  vec4 right  = texture2D(inputBuffer, uv + vec2(texelSize.x, 0.0));
+  
+  vec4 sharpen = center * (1.0 + 4.0 * strength) - (top + bottom + left + right) * strength;
+  outputColor = clamp(sharpen, 0.0, 1.0);
+}
+`;
+
+class SharpenEffect extends Effect {
+  constructor({ strength = 0.1 }: { strength?: number } = {}) {
+    super('SharpenEffect', SHARPEN_FRAGMENT, {
+      uniforms: new Map([['strength', new Uniform(strength)]]),
+    });
+  }
+
+  set strength(value: number) {
+    (this.uniforms.get('strength') as Uniform).value = value;
+  }
+}
+
+/**
+ * Wrapper component for SharpenEffect
+ */
+const Sharpen = forwardRef<SharpenEffect, { strength?: number }>(function Sharpen({ strength = 0.1 }, ref) {
+  const effect = useMemo(() => new SharpenEffect({ strength }), []);
+  
+  // Update strength dynamically
+  useMemo(() => {
+    effect.strength = strength;
+  }, [effect, strength]);
+
+  return <primitive ref={ref} object={effect} />;
+});
+
+/**
+ * Cinematic post-processing pipeline v9 — AAA effects suite + UE5 DMXPrevis tech.
  * 
- * Includes: SSAO, Depth of Field, Color Grading, God Rays (via bright bloom),
+ * Includes: SSR, SSAO, Depth of Field, Sharpening, Color Grading, God Rays (via bright bloom),
  * plus existing Bloom, Vignette, ChromaticAberration, FilmGrain, ToneMapping.
  */
 export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCount?: number }) {
@@ -36,6 +83,37 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
   return (
     <EffectComposer multisampling={0}>
       <SMAA />
+
+      {/* ═══ Screen Space Reflections (UE5 r.SSR.Temporal) ═══ */}
+      {s.ssrEnabled && (
+        <SSR
+          temporalResolve
+          temporalResolveMix={0.9}
+          temporalResolveCorrectionMix={0.4}
+          maxSamples={0}
+          ENABLE_BLUR
+          blurMix={0.5}
+          blurSharpness={10}
+          blurKernelSize={1}
+          rayStep={0.1}
+          intensity={s.ssrIntensity}
+          maxRoughness={0.1}
+          ENABLE_JITTERING
+          jitter={0.75}
+          jitterSpread={0.45}
+          jitterRough={0.1}
+          MAX_STEPS={16}
+          NUM_BINARY_SEARCH_STEPS={4}
+          maxDepthDifference={10}
+          maxDepth={1}
+          thickness={s.ssrThickness}
+          ior={1.45}
+          STRETCH_MISSED_RAYS
+          USE_MRT
+          USE_ROUGHNESSMAP
+          USE_NORMALMAP
+        />
+      )}
 
       {/* ═══ SSAO — Screen Space Ambient Occlusion ═══ */}
       {s.ssaoEnabled && (
@@ -117,6 +195,11 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
           blendFunction={BlendFunction.SOFT_LIGHT}
           opacity={s.filmGrain * 0.6}
         />
+      )}
+
+      {/* ═══ Sharpening — UE5 r.Tonemapper.Sharpen equivalent ═══ */}
+      {s.sharpenEnabled && s.sharpenStrength > 0.01 && (
+        <Sharpen strength={s.sharpenStrength} />
       )}
 
       {/* ═══ Color Grading — Brightness / Contrast / Saturation ═══ */}

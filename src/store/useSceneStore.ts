@@ -32,6 +32,14 @@ export const QUALITY_PRESETS: Record<QualityPreset, { name: string; description:
       colorBrightness: 0,
       colorContrast: 0.05,
       colorSaturation: 0.05,
+      ssrEnabled: true,
+      ssrIntensity: 0.6,
+      ssrThickness: 10,
+      sharpenEnabled: true,
+      sharpenStrength: 0.1,
+      contactShadowsEnabled: true,
+      contactShadowsOpacity: 0.6,
+      contactShadowsBlur: 2.5,
     },
   },
   show: {
@@ -57,6 +65,14 @@ export const QUALITY_PRESETS: Record<QualityPreset, { name: string; description:
       colorBrightness: 0,
       colorContrast: 0,
       colorSaturation: 0,
+      ssrEnabled: false,
+      ssrIntensity: 0.4,
+      ssrThickness: 10,
+      sharpenEnabled: true,
+      sharpenStrength: 0.05,
+      contactShadowsEnabled: true,
+      contactShadowsOpacity: 0.4,
+      contactShadowsBlur: 2.0,
     },
   },
   performance: {
@@ -82,6 +98,14 @@ export const QUALITY_PRESETS: Record<QualityPreset, { name: string; description:
       colorBrightness: 0,
       colorContrast: 0,
       colorSaturation: 0,
+      ssrEnabled: false,
+      ssrIntensity: 0,
+      ssrThickness: 10,
+      sharpenEnabled: false,
+      sharpenStrength: 0,
+      contactShadowsEnabled: false,
+      contactShadowsOpacity: 0,
+      contactShadowsBlur: 1.0,
     },
   },
 };
@@ -161,6 +185,16 @@ export interface SceneSettings {
   colorBrightness: number;      // -1 to 1
   colorContrast: number;        // -1 to 1
   colorSaturation: number;      // -1 to 1
+
+  // UE5 DMXPrevis-inspired effects
+  ssrEnabled: boolean;           // Screen Space Reflections
+  ssrIntensity: number;          // 0-1
+  ssrThickness: number;          // ray thickness (1-50)
+  sharpenEnabled: boolean;       // Tonemapper.Sharpen
+  sharpenStrength: number;       // 0-1
+  contactShadowsEnabled: boolean;
+  contactShadowsOpacity: number; // 0-1
+  contactShadowsBlur: number;    // 0-5
 }
 
 const DEFAULT_SETTINGS: SceneSettings = {
@@ -230,6 +264,15 @@ const DEFAULT_SETTINGS: SceneSettings = {
   colorBrightness: 0,
   colorContrast: 0,
   colorSaturation: 0,
+
+  ssrEnabled: false,
+  ssrIntensity: 0.45,
+  ssrThickness: 10,
+  sharpenEnabled: false,
+  sharpenStrength: 0.1,
+  contactShadowsEnabled: false,
+  contactShadowsOpacity: 0.5,
+  contactShadowsBlur: 2.0,
 };
 
 export const SCENE_PRESETS: Record<string, { name: string; description: string; settings: Partial<SceneSettings> }> = {

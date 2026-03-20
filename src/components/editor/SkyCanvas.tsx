@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Stars, Grid, PerspectiveCamera } from '@react-three/drei';
+import { OrbitControls, Stars, Grid, PerspectiveCamera, ContactShadows } from '@react-three/drei';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
 import React, { useRef, useMemo, useEffect, useState, useCallback, Component, ErrorInfo, ReactNode } from 'react';
@@ -1959,8 +1959,24 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
 
   return null;
 });
+// ═══ CONTACT SHADOWS — UE5 r.GenerateMeshDistanceFields equivalent ═══
+function ContactShadowsLayer() {
+  const s = useSceneStore(st => st.settings);
+  if (!s.contactShadowsEnabled) return null;
+  return (
+    <ContactShadows
+      position={[0, 0.01, 0]}
+      opacity={s.contactShadowsOpacity}
+      scale={200}
+      blur={s.contactShadowsBlur}
+      far={50}
+      resolution={512}
+      color="#000000"
+    />
+  );
+}
 
-// ═══ DEBUG FEED — pushes renderer stats to DOM overlay at ~4Hz ═══
+
 const DebugFeed = React.forwardRef<THREE.Group, {}>(function DebugFeed(_props, _ref) {
   const { gl, camera } = useThree();
   const frameCount = useRef(0);
@@ -3707,6 +3723,7 @@ export default function SkyCanvas() {
         {!isMobile && <CameraPathPreview />}
         <ViewportRulers />
         <CameraBookmarkSaver />
+        <ContactShadowsLayer />
         <PostProcessing activeBurstCount={_activeBurstCount} />
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
