@@ -300,10 +300,10 @@ export default function PBusMonitorPanel() {
         </Button>
       )}
 
-      {/* Device list */}
+      {/* Device list — horizontal scroll-snap on mobile */}
       {pbus.isConnected && (
-        <ScrollArea className="max-h-[400px]">
-          <div className="space-y-2">
+        <ScrollArea className={cn(isMobile ? "max-h-[500px]" : "max-h-[400px]")}>
+          <div className={cn("space-y-2", isMobile && "snap-x snap-mandatory")}>
             {deviceList.length === 0 && !pbus.scanning && (
               <div className="text-center py-6 text-[10px] text-muted-foreground/50">
                 <Radio className="w-6 h-6 mx-auto mb-2 opacity-30" />
@@ -325,6 +325,7 @@ export default function PBusMonitorPanel() {
                 onFire={pbus.fireCue}
                 onCueStatus={pbus.requestCueStatus}
                 onSetBand={pbus.setBand}
+                isMobile={isMobile}
               />
             ))}
           </div>
