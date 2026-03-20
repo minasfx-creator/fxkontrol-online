@@ -4,6 +4,7 @@ import { useUndoStore } from '@/store/useUndoStore';
 import { useUndoKeyboard } from '@/hooks/useUndoKeyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
+import { Upload } from 'lucide-react';
 import Toolbar from '@/components/editor/Toolbar';
 import SplashScreen from '@/components/editor/SplashScreen';
 import GlobeSelector from '@/components/editor/GlobeSelector';
@@ -136,6 +137,16 @@ function CanvasLoader() {
   );
 }
 
+const SUPPORTED_DROP_EXTENSIONS = ['mvr', 'csv', 'json', 'vviz', 'uasset', 'umap'];
+
+function getDropType(ext: string): 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset' {
+  if (ext === 'mvr') return 'mvr';
+  if (ext === 'csv') return 'csv';
+  if (ext === 'vviz') return 'vviz';
+  if (ext === 'uasset' || ext === 'umap') return 'uasset';
+  return 'ue5json';
+}
+
 function Index() {
   const isMobile = useIsMobile();
   const [activePanel, setActivePanel] = useState<PanelId | null>('properties');
@@ -145,6 +156,7 @@ function Index() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab | null>(null);
   const [mobilePanelHeight, setMobilePanelHeight] = useState<'collapsed' | 'half' | 'full'>('collapsed');
+  const [isDragOver, setIsDragOver] = useState(false);
   const selectedPositionId = useProjectStore(s => s.selectedPositionId);
 
   useUndoKeyboard();
@@ -391,26 +403,29 @@ function Index() {
                 <div
                   className="h-full w-full relative"
                   onDragOver={(e) => {
-                    // Accept showven equipment drag
                     if (e.dataTransfer.types.includes('application/showven-equipment')) {
                       e.preventDefault();
                       e.dataTransfer.dropEffect = 'copy';
                       return;
                     }
-                    // Accept file drops (.mvr, .csv, .json)
                     if (e.dataTransfer.types.includes('Files')) {
                       e.preventDefault();
                       e.dataTransfer.dropEffect = 'copy';
+                      setIsDragOver(true);
                     }
                   }}
+                  onDragLeave={(e) => {
+                    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                    setIsDragOver(false);
+                  }}
                   onDrop={(e) => {
-                    // Handle file drops for importers
+                    setIsDragOver(false);
                     if (e.dataTransfer.files?.length > 0) {
                       const file = e.dataTransfer.files[0];
-                      const ext = file.name.split('.').pop()?.toLowerCase();
-                      if (ext === 'mvr' || ext === 'csv' || ext === 'json') {
+                      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+                      if (SUPPORTED_DROP_EXTENSIONS.includes(ext)) {
                         e.preventDefault();
-                        const type = ext === 'mvr' ? 'mvr' : ext === 'csv' ? 'csv' : 'ue5json';
+                        const type = getDropType(ext);
                         window.dispatchEvent(new CustomEvent('viewport-file-drop', { detail: { file, type } }));
                         toast.info(`📂 ${file.name} dropped — opening importer...`);
                         return;
@@ -450,6 +465,16 @@ function Index() {
                     </Suspense>
                   </CanvasErrorBoundary>
                   <BoxSelectOverlay />
+                  {/* Drop zone visual overlay */}
+                  {isDragOver && (
+                    <div className="absolute inset-0 z-50 pointer-events-none flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded-md backdrop-blur-[2px] transition-all">
+                      <div className="flex flex-col items-center gap-2 text-primary">
+                        <Upload className="h-10 w-10 animate-bounce" />
+                        <p className="text-sm font-semibold">Solte o arquivo para importar</p>
+                        <p className="text-[10px] text-muted-foreground">.mvr · .csv · .json · .vviz · .uasset</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </ResizablePanel>
 

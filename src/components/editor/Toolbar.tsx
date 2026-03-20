@@ -334,17 +334,19 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
   const [gma2Open, setGma2Open] = useState(false);
   const [ue5DmxOpen, setUe5DmxOpen] = useState(false);
   const [mvrOpen, setMvrOpen] = useState(false);
-  const [droppedFile, setDroppedFile] = useState<{ file: File; type: 'mvr' | 'csv' | 'ue5json' } | null>(null);
+  const [droppedFile, setDroppedFile] = useState<{ file: File; type: 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset' } | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Listen for viewport file drop events
   useEffect(() => {
-    const handler = (e: CustomEvent<{ file: File; type: 'mvr' | 'csv' | 'ue5json' }>) => {
+    const handler = (e: CustomEvent<{ file: File; type: 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset' }>) => {
       const { file, type } = e.detail;
       setDroppedFile({ file, type });
       if (type === 'mvr') setMvrOpen(true);
       else if (type === 'csv') setCsvOpen(true);
       else if (type === 'ue5json') setUe5DmxOpen(true);
+      else if (type === 'vviz') setVvizOpen(true);
+      else if (type === 'uasset') setUassetOpen(true);
     };
     window.addEventListener('viewport-file-drop', handler as EventListener);
     return () => window.removeEventListener('viewport-file-drop', handler as EventListener);
@@ -591,10 +593,10 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
 
       <FormationBuilder open={formationOpen} onOpenChange={setFormationOpen} />
       <CSVImporter open={csvOpen} onOpenChange={(v) => { setCsvOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'csv' ? droppedFile.file : null} />
-      <VVIZImporter open={vvizOpen} onOpenChange={setVvizOpen} />
+      <VVIZImporter open={vvizOpen} onOpenChange={(v) => { setVvizOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'vviz' ? droppedFile.file : null} />
       <ProjectBrowser open={browserOpen} onOpenChange={setBrowserOpen} />
       <CatalogImportDialog open={catalogOpen} onOpenChange={setCatalogOpen} />
-      <UAssetImporter open={uassetOpen} onOpenChange={setUassetOpen} />
+      <UAssetImporter open={uassetOpen} onOpenChange={(v) => { setUassetOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'uasset' ? droppedFile.file : null} />
       <AssetMarketplaceBrowser open={marketplaceOpen} onOpenChange={setMarketplaceOpen} />
       <GMA2PatchImporter open={gma2Open} onOpenChange={setGma2Open} />
       <UE5DMXPrevisImporter open={ue5DmxOpen} onOpenChange={(v) => { setUe5DmxOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'ue5json' ? droppedFile.file : null} />

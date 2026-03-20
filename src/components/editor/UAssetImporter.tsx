@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Upload, FileCode, Palette, Sparkles, AlertTriangle, Check, X, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -19,9 +19,10 @@ interface ParsedFile {
 interface UAssetImporterProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialFile?: File | null;
 }
 
-export default function UAssetImporter({ open, onOpenChange }: UAssetImporterProps) {
+export default function UAssetImporter({ open, onOpenChange, initialFile = null }: UAssetImporterProps) {
   const [parsedFiles, setParsedFiles] = useState<ParsedFile[]>([]);
   const [loading, setLoading] = useState(false);
   const [imported, setImported] = useState(false);
@@ -44,6 +45,14 @@ export default function UAssetImporter({ open, onOpenChange }: UAssetImporterPro
     setLoading(false);
     setImported(false);
   }, []);
+
+  useEffect(() => {
+    if (initialFile && open) {
+      const dt = new DataTransfer();
+      dt.items.add(initialFile);
+      handleFiles(dt.files);
+    }
+  }, [initialFile, open, handleFiles]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Upload, FileJson, X, Check, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,15 +12,13 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { importVVIZ, type VVIZImportResult } from '@/lib/vvizImporter';
 import { toast } from 'sonner';
 
-export default function VVIZImporter({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export default function VVIZImporter({ open, onOpenChange, initialFile = null }: { open: boolean; onOpenChange: (v: boolean) => void; initialFile?: File | null }) {
   const { addPosition, addTrajectory, setProjectName, setDuration } = useProjectStore();
   const [result, setResult] = useState<VVIZImportResult | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const parseFile = useCallback((file: File) => {
     setFileName(file.name);
     const reader = new FileReader();
     reader.onload = () => {
@@ -33,6 +31,16 @@ export default function VVIZImporter({ open, onOpenChange }: { open: boolean; on
     };
     reader.readAsText(file);
   }, []);
+
+  useEffect(() => {
+    if (initialFile && open) parseFile(initialFile);
+  }, [initialFile, open, parseFile]);
+
+  const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    parseFile(file);
+  }, [parseFile]);
 
   const handleImport = useCallback(() => {
     if (!result) return;
