@@ -354,7 +354,7 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
       `E2E SCAN COMPLETE: ${failures} falhas, ${warnings} avisos, ${passes} OK`,
       failures > 0 ? 'error' : warnings > 0 ? 'warn' : 'success'
     );
-  }, [droneFormations, positions, trajectories, timelineItems, duration, hardware]);
+  }, [droneFormations, positions, trajectories, timelineItems, duration, hardware, pbusHw]);
 
   const exportReport = useCallback(() => {
     if (results.length === 0) return;
