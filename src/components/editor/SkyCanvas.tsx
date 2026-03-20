@@ -1959,8 +1959,24 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
 
   return null;
 });
+// ═══ CONTACT SHADOWS — UE5 r.GenerateMeshDistanceFields equivalent ═══
+function ContactShadowsLayer() {
+  const s = useSceneStore(st => st.settings);
+  if (!s.contactShadowsEnabled) return null;
+  return (
+    <ContactShadows
+      position={[0, 0.01, 0]}
+      opacity={s.contactShadowsOpacity}
+      scale={200}
+      blur={s.contactShadowsBlur}
+      far={50}
+      resolution={512}
+      color="#000000"
+    />
+  );
+}
 
-// ═══ DEBUG FEED — pushes renderer stats to DOM overlay at ~4Hz ═══
+
 const DebugFeed = React.forwardRef<THREE.Group, {}>(function DebugFeed(_props, _ref) {
   const { gl, camera } = useThree();
   const frameCount = useRef(0);
