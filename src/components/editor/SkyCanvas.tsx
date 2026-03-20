@@ -1710,26 +1710,23 @@ function FloorLogo() {
     // Large "MINAS" in very faint silver
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = 'bold 360px "Outfit", Arial, sans-serif';
+    ctx.font = 'bold 180px "Outfit", Arial, sans-serif';
     ctx.fillStyle = 'rgba(180, 195, 210, 0.12)';
-    ctx.fillText('MINAS', 1600, 380);
+    ctx.fillText('MINAS', 800, 190);
 
-    // "FX" in faint cyan
-    ctx.font = 'bold 360px "Outfit", Arial, sans-serif';
+    ctx.font = 'bold 180px "Outfit", Arial, sans-serif';
     ctx.fillStyle = 'rgba(0, 229, 255, 0.15)';
-    ctx.fillText('FX', 3100, 380);
+    ctx.fillText('FX', 1550, 190);
 
-    // Subtitle
-    ctx.font = '500 90px "Outfit", Arial, sans-serif';
+    ctx.font = '500 45px "Outfit", Arial, sans-serif';
     ctx.fillStyle = 'rgba(0, 229, 255, 0.08)';
-    ctx.fillText('SPECIAL FX SOLUTIONS', 2048, 680);
+    ctx.fillText('SPECIAL FX SOLUTIONS', 1024, 340);
 
-    // Decorative line — very subtle
     ctx.strokeStyle = 'rgba(255, 107, 0, 0.10)';
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(400, 800);
-    ctx.quadraticCurveTo(2048, 740, 3696, 800);
+    ctx.moveTo(200, 400);
+    ctx.quadraticCurveTo(1024, 370, 1848, 400);
     ctx.stroke();
 
     const tex = new THREE.CanvasTexture(canvas);
