@@ -464,6 +464,16 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
               { label: 'Firing CSV (Cobra/FireTEK)', icon: Download, onClick: handleExportFiringCSV },
             ]}
           />
+          <DropdownMenu
+            label="Import"
+            icon={Upload}
+            items={[
+              { label: 'CSV Positions', icon: Upload, onClick: () => setCsvOpen(true) },
+              { label: 'VVIZ (Finale 3D)', icon: FileJson, onClick: () => setVvizOpen(true) },
+              { label: 'UE .uasset (Niagara)', icon: FileCode, onClick: () => setUassetOpen(true) },
+              { label: 'Supplier Catalog', icon: Sparkles, onClick: () => setCatalogOpen(true) },
+            ]}
+          />
         </div>
       )}
 
