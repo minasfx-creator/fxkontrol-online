@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Flame, Sparkles, Cloud, PartyPopper, Cpu, ChevronDown, ChevronRight, GripVertical, X, Monitor } from 'lucide-react';
+import { Flame, Sparkles, Cloud, PartyPopper, Cpu, ChevronDown, ChevronRight, GripVertical, X, Monitor, Crosshair, Cable } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -8,9 +8,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   SHOWVEN_FLAMERS, SHOWVEN_SPARKULARS, SHOWVEN_FOG, SHOWVEN_CONFETTI, SHOWVEN_CONTROLLERS, SHOWVEN_FLYING_DISPLAYS,
+  SHOWVEN_LASERS, SHOWVEN_INFRASTRUCTURE,
   type ShowvenFlamerPreset, type ShowvenSparkularPreset, type ShowvenFogPreset,
   type ShowvenConfettiPreset, type ShowvenControllerPreset, type ShowvenCategory,
-  type ShowvenFlyingDisplayPreset,
+  type ShowvenFlyingDisplayPreset, type ShowvenLaserPreset, type ShowvenInfrastructurePreset,
 } from '@/lib/showvenPresets';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useUndoStore } from '@/store/useUndoStore';
@@ -21,7 +22,7 @@ interface ShowvenEquipmentPanelProps {
   onClose?: () => void;
 }
 
-type AnyPreset = ShowvenFlamerPreset | ShowvenSparkularPreset | ShowvenFogPreset | ShowvenConfettiPreset | ShowvenControllerPreset | ShowvenFlyingDisplayPreset;
+type AnyPreset = ShowvenFlamerPreset | ShowvenSparkularPreset | ShowvenFogPreset | ShowvenConfettiPreset | ShowvenControllerPreset | ShowvenFlyingDisplayPreset | ShowvenLaserPreset | ShowvenInfrastructurePreset;
 
 const CATEGORY_META: Record<ShowvenCategory, { label: string; icon: typeof Flame; color: string }> = {
   flamer:         { label: 'Flamers',         icon: Flame,       color: 'hsl(20 90% 55%)' },
@@ -32,6 +33,8 @@ const CATEGORY_META: Record<ShowvenCategory, { label: string; icon: typeof Flame
   controller:     { label: 'Controllers',     icon: Cpu,         color: 'hsl(150 50% 50%)' },
   remote:         { label: 'Remotes',         icon: Cpu,         color: 'hsl(270 40% 60%)' },
   flyingDisplay:  { label: 'Flying Displays', icon: Monitor,     color: 'hsl(180 70% 55%)' },
+  laser:          { label: 'Lasers',          icon: Crosshair,   color: 'hsl(120 90% 45%)' },
+  infrastructure: { label: 'Infrastructure',  icon: Cable,       color: 'hsl(210 30% 55%)' },
 };
 
 function getSpecLine(preset: AnyPreset, category: ShowvenCategory): string {
@@ -53,11 +56,20 @@ function getSpecLine(preset: AnyPreset, category: ShowvenCategory): string {
   }
   if (category === 'controller' || category === 'remote') {
     const p = preset as ShowvenControllerPreset;
-    return `${p.channels}ch · ${p.type} · ${p.protocol}`;
+    const range = p.wirelessRangeM ? `${p.wirelessRangeM}m RF` : p.wiredRangeM ? `${p.wiredRangeM}m` : '';
+    return `${p.channels}ch · ${p.type} · ${p.protocol}${range ? ` · ${range}` : ''}`;
   }
   if (category === 'flyingDisplay') {
     const p = preset as ShowvenFlyingDisplayPreset;
     return `${p.widthM}×${p.heightM}m · ${p.pixelPitch} · ${p.transparency}% transp · ${p.weightKg}kg`;
+  }
+  if (category === 'laser') {
+    const p = preset as ShowvenLaserPreset;
+    return `${p.outputW}W RGB · ±${p.scanningAngleDeg}° · ${p.scanRateKpps}Kpps · ${p.ipRating} · ${p.weightKg}kg`;
+  }
+  if (category === 'infrastructure') {
+    const p = preset as ShowvenInfrastructurePreset;
+    return `${p.outputs} outputs · ${p.protocol}${p.hasEStop ? ' · E-STOP' : ''} · ${p.weightKg}kg`;
   }
   return '';
 }
@@ -69,6 +81,7 @@ function getEffectType(category: ShowvenCategory): string {
     case 'fog': return 'fog_low';
     case 'confetti': return 'confetti';
     case 'cryo': return 'cryo';
+    case 'laser': return 'laser';
     default: return '';
   }
 }
@@ -90,14 +103,13 @@ function EquipmentCard({ preset, category }: { preset: AnyPreset; category: Show
 
   const handleDoubleClick = useCallback(() => {
     if (!effectType) {
-      toast.info(`${preset.name} é um controlador — não gera efeito na cena.`);
+      toast.info(`${preset.name} é um controlador/infra — não gera efeito na cena.`);
       return;
     }
     const store = useProjectStore.getState();
     const sfxStore = useSfxChannelStore.getState();
     useUndoStore.getState().checkpoint();
 
-    // Create a pyro position
     const posId = `pos-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const offset = store.positions.length * 2;
     store.addPosition({
@@ -113,7 +125,6 @@ function EquipmentCard({ preset, category }: { preset: AnyPreset; category: Show
       roll: 0,
     });
 
-    // Create timeline item linked to the effect type
     const tlId = `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     store.addTimelineItem({
       id: tlId,
@@ -124,7 +135,6 @@ function EquipmentCard({ preset, category }: { preset: AnyPreset; category: Show
       notes: `Showven ${preset.name}`,
     });
 
-    // Auto-link to FX Commander
     const sfxType = effectType as any;
     const dmxCh = 'dmxChannels' in preset ? (preset as any).dmxChannels : undefined;
     const linkedChannel = sfxStore.addChannelFromPosition({
@@ -138,7 +148,6 @@ function EquipmentCard({ preset, category }: { preset: AnyPreset; category: Show
     const addr = `${linkedChannel.dmxUniverse}.${String(linkedChannel.dmxAddress).padStart(3, '0')}`;
     toast.success(`${preset.name} linked → FXcommander DMX ${addr}`);
 
-    // Art-Net connection test (async, non-blocking)
     sfxStore.testArtNetConnection().then((result) => {
       if (result.connected) {
         toast.success(`✅ Art-Net OK — ${result.latencyMs}ms`, { duration: 3000 });
@@ -178,9 +187,9 @@ function EquipmentCard({ preset, category }: { preset: AnyPreset; category: Show
                 {getSpecLine(preset, category)}
               </p>
             </div>
-            {effectType && (
+            {effectType && 'dmxChannels' in preset && (preset as any).dmxChannels > 0 && (
               <Badge variant="outline" className="text-[8px] px-1.5 py-0 h-4 border-border/20 text-muted-foreground/50 flex-shrink-0">
-                {'dmxChannels' in preset ? `${(preset as any).dmxChannels}ch` : ''}
+                {`${(preset as any).dmxChannels}ch`}
               </Badge>
             )}
           </div>
@@ -245,10 +254,12 @@ export default function ShowvenEquipmentPanel({ onClose }: ShowvenEquipmentPanel
         <div className="p-2 flex flex-col gap-1">
           <CategorySection category="flamer" presets={SHOWVEN_FLAMERS} />
           <CategorySection category="sparkular" presets={SHOWVEN_SPARKULARS} />
+          <CategorySection category="laser" presets={SHOWVEN_LASERS} />
           <CategorySection category="fog" presets={SHOWVEN_FOG} />
           <CategorySection category="confetti" presets={SHOWVEN_CONFETTI} />
           <CategorySection category="flyingDisplay" presets={SHOWVEN_FLYING_DISPLAYS} />
           <CategorySection category="controller" presets={SHOWVEN_CONTROLLERS} />
+          <CategorySection category="infrastructure" presets={SHOWVEN_INFRASTRUCTURE} />
         </div>
       </ScrollArea>
 
