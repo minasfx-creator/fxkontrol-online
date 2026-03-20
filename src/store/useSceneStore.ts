@@ -580,6 +580,7 @@ export const useSceneStore = create<SceneSettingsState>((set) => ({
   settings: { ...DEFAULT_SETTINGS },
   qualityPreset: 'show',
   environment: { ...DEFAULT_ENVIRONMENT },
+  siteModels: [],
   updateSettings: (updates) => set(s => {
     const next = { ...s.settings, ...updates };
     if (updates.weather && !updates.rainIntensity) {
@@ -603,4 +604,13 @@ export const useSceneStore = create<SceneSettingsState>((set) => ({
   updateEnvironment: (updates) => set(s => ({ environment: { ...s.environment, ...updates } })),
   addCameraBookmark: (bookmark) => set(s => ({ environment: { ...s.environment, cameraBookmarks: [...s.environment.cameraBookmarks, bookmark] } })),
   removeCameraBookmark: (id) => set(s => ({ environment: { ...s.environment, cameraBookmarks: s.environment.cameraBookmarks.filter(b => b.id !== id) } })),
+  addSiteModel: (model) => set(s => ({ siteModels: [...s.siteModels, model] })),
+  updateSiteModel: (id, updates) => set(s => ({
+    siteModels: s.siteModels.map(m => m.id === id ? { ...m, ...updates } : m),
+  })),
+  removeSiteModel: (id) => set(s => {
+    const model = s.siteModels.find(m => m.id === id);
+    if (model?.url.startsWith('blob:')) URL.revokeObjectURL(model.url);
+    return { siteModels: s.siteModels.filter(m => m.id !== id) };
+  }),
 }));
