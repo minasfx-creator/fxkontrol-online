@@ -309,6 +309,15 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
       universe: uniId % 16, subnet: Math.floor(uniId / 16) % 16, net: Math.floor(uniId / 256),
       channels: buf, sequence: (sequenceRef.current++) & 0xFF,
     }));
+
+    // Send via WebSocket relay (real UDP Art-Net) if connected
+    if (relayWs.current?.readyState === WebSocket.OPEN) {
+      try {
+        relayWs.current.send(JSON.stringify({ action: 'dmx-batch', universes }));
+      } catch (e) { console.warn('[Relay] WS send error', e); }
+    }
+
+    // Also send via edge function (for logging/diagnostics)
     try {
       const { data, error } = await supabase.functions.invoke('artnet-bridge', {
         body: { action: 'send', universes, targetIp: settings.artNetIp, targetPort: settings.artNetPort },
