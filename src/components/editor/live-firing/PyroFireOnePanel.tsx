@@ -695,13 +695,39 @@ export default function PyroFireOnePanel({
       <div className={cn("flex items-center gap-3 border-b border-border/10",
         sz === 'xl' ? "px-6 py-2" : sz === 'fs' ? "px-4 py-1" : "px-2 py-0.5"
       )} style={{ background: 'hsl(220 10% 8%)' }}>
+        {/* Connection mode badge */}
+        {(() => {
+          const badge = connectionModeBadge(currentModule.connectionMode);
+          return (
+            <span className={cn("rounded border font-bold uppercase font-mono",
+              sz === 'xl' ? "px-2 py-0.5 text-[8px]" : "px-1.5 py-0.5 text-[5px]",
+              badge.cls
+            )}>{badge.text}</span>
+          );
+        })()}
+        {/* RSSI for wireless modules */}
+        {(currentModule.connectionMode === 'wireless' || currentModule.connectionMode === 'fallback') && currentModule.rssiDbm !== undefined && (
+          <div className="flex items-center gap-1">
+            <div className={cn("rounded-full", sz === 'xl' ? "w-2.5 h-2.5" : "w-1.5 h-1.5", rssiIcon(currentModule.rssiDbm))}
+              style={currentModule.rssiDbm > -60 ? { boxShadow: '0 0 4px rgba(34,197,94,0.4)' } : undefined} />
+            <span className={cn("font-mono", rssiColor(currentModule.rssiDbm),
+              sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[8px]" : "text-[6px]"
+            )}>{currentModule.rssiDbm}dBm</span>
+          </div>
+        )}
+        {currentModule.wirelessChannel !== undefined && (
+          <span className={cn("font-mono text-muted-foreground/30", sz === 'xl' ? "text-[9px]" : "text-[6px]")}>
+            Ch{currentModule.wirelessChannel}
+          </span>
+        )}
+        {currentModule.packetLoss !== undefined && currentModule.packetLoss > 0 && (
+          <span className={cn("font-mono text-amber-400/60", sz === 'xl' ? "text-[9px]" : "text-[6px]")}>
+            {currentModule.packetLoss}% loss
+          </span>
+        )}
         <div className="flex items-center gap-1">
           <Battery className={cn(sz === 'xl' ? "w-4 h-4" : "w-3 h-3", currentModule.batteryVoltage > 11 ? "text-green-400/70" : "text-amber-400")} />
           <span className={cn("font-mono text-muted-foreground/50", sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[8px]" : "text-[6px]")}>{currentModule.batteryVoltage.toFixed(1)}V</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <Signal className={cn(sz === 'xl' ? "w-4 h-4" : "w-3 h-3", "text-cyan-400/60")} />
-          <span className={cn("font-mono text-muted-foreground/50", sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[8px]" : "text-[6px]")}>{Math.round(currentModule.signalStrength)}%</span>
         </div>
         <div className="flex items-center gap-1">
           <Activity className={cn(sz === 'xl' ? "w-4 h-4" : "w-3 h-3", "text-muted-foreground/40")} />
