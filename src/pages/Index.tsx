@@ -350,6 +350,7 @@ function Index() {
         {activePanel === 'budget' && <BudgetPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'showpreview' && <ShowPreviewPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'mobilelink' && <MobileLinkPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'linkmonitor' && <MobileLinkMonitor onClose={() => setActivePanel(null)} />}
       </>
     );
   };
