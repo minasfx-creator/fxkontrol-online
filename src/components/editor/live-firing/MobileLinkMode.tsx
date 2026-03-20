@@ -273,7 +273,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
     }
     setMasterArmed(armed);
     setModules(prev => prev.map(m => ({ ...m, armed })));
-    if (navigator.vibrate) navigator.vibrate(armed ? [50, 30, 50, 30, 100] : [30]);
+    haptics[armed ? 'armAll' : 'disarm']();
 
     channelRef.current?.send({
       type: 'broadcast', event: 'xl4-master',
