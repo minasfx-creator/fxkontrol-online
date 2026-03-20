@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { ViewTransform } from '@/lib/niagaraBlenderRules';
+import type { TerrainData, TerrainConfig } from '@/lib/heightmapToTerrain';
 
 export type GroundStyle = 'finale-dark' | 'google-earth' | 'flat-black' | 'concrete' | 'sfx-stage' | 'custom';
 export type SkyPreset = 'night-clear' | 'night-cloudy' | 'dusk' | 'overcast' | 'foggy' | 'custom';
@@ -651,6 +652,7 @@ interface SceneSettingsState {
   selectedSiteModelId: string | null;
   siteModelTransformMode: SiteModelTransformMode;
   transformSnap: TransformSnapSettings;
+  terrain: TerrainData | null;
   updateSettings: (updates: Partial<SceneSettings>) => void;
   applyPreset: (presetId: string) => void;
   applyQualityPreset: (preset: QualityPreset) => void;
@@ -664,6 +666,9 @@ interface SceneSettingsState {
   selectSiteModel: (id: string | null) => void;
   setSiteModelTransformMode: (mode: SiteModelTransformMode) => void;
   setTransformSnap: (updates: Partial<TransformSnapSettings>) => void;
+  setTerrain: (data: TerrainData | null) => void;
+  updateTerrainConfig: (updates: Partial<TerrainConfig>) => void;
+  clearTerrain: () => void;
 }
 
 const DEFAULT_ENVIRONMENT: EnvironmentState = {
@@ -686,6 +691,7 @@ export const useSceneStore = create<SceneSettingsState>((set) => ({
   selectedSiteModelId: null,
   siteModelTransformMode: 'translate',
   transformSnap: { enabled: true, translateSnap: 1, rotateSnap: 15, scaleSnap: 0.1 },
+  terrain: null,
   updateSettings: (updates) => set(s => {
     const next = { ...s.settings, ...updates };
     if (updates.weather && !updates.rainIntensity) {
@@ -721,4 +727,7 @@ export const useSceneStore = create<SceneSettingsState>((set) => ({
   selectSiteModel: (id) => set({ selectedSiteModelId: id }),
   setSiteModelTransformMode: (mode) => set({ siteModelTransformMode: mode }),
   setTransformSnap: (updates) => set((s) => ({ transformSnap: { ...s.transformSnap, ...updates } })),
+  setTerrain: (data) => set({ terrain: data }),
+  updateTerrainConfig: (updates) => set((s) => s.terrain ? { terrain: { ...s.terrain, config: { ...s.terrain.config, ...updates } } } : {}),
+  clearTerrain: () => set({ terrain: null }),
 }));
