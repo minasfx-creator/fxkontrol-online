@@ -547,11 +547,15 @@ export interface SiteModel {
   source: string;
 }
 
+export type SiteModelTransformMode = 'translate' | 'rotate' | 'scale';
+
 interface SceneSettingsState {
   settings: SceneSettings;
   qualityPreset: QualityPreset;
   environment: EnvironmentState;
   siteModels: SiteModel[];
+  selectedSiteModelId: string | null;
+  siteModelTransformMode: SiteModelTransformMode;
   updateSettings: (updates: Partial<SceneSettings>) => void;
   applyPreset: (presetId: string) => void;
   applyQualityPreset: (preset: QualityPreset) => void;
@@ -562,6 +566,8 @@ interface SceneSettingsState {
   addSiteModel: (model: SiteModel) => void;
   updateSiteModel: (id: string, updates: Partial<SiteModel>) => void;
   removeSiteModel: (id: string) => void;
+  selectSiteModel: (id: string | null) => void;
+  setSiteModelTransformMode: (mode: SiteModelTransformMode) => void;
 }
 
 const DEFAULT_ENVIRONMENT: EnvironmentState = {
