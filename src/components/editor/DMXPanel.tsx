@@ -404,12 +404,58 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
             </div>
             <Button
               size="sm" className="h-6 text-[10px] w-full gap-1"
-              onClick={sendArtNet}
-              disabled={universes.length === 0 || sending}
+              onClick={useRelay && relayConnected ? sendViaRelay : sendArtNet}
+              disabled={universes.length === 0 || sending || (useRelay && !relayConnected)}
             >
               <Send className="h-3 w-3" />
               {sending ? 'Enviando...' : `Send Art-Net (${universes.length} uni)`}
             </Button>
+
+            {/* WebSocket Relay */}
+            <div className="border-t border-border/50 pt-2 mt-2 space-y-1.5">
+              <div className="flex items-center gap-1.5">
+                <Activity className="h-3 w-3 text-primary" />
+                <span className="text-[9px] text-muted-foreground font-semibold uppercase flex-1">UDP Relay (Local)</span>
+                <button
+                  onClick={() => setUseRelay(!useRelay)}
+                  className={`w-7 h-3.5 rounded-full transition-colors relative ${useRelay ? 'bg-primary' : 'bg-muted'}`}
+                >
+                  <span className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-foreground transition-transform ${useRelay ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+              {useRelay && (
+                <>
+                  <div className="flex gap-1">
+                    <Input
+                      value={relayUrl}
+                      onChange={e => setRelayUrl(e.target.value)}
+                      className="h-6 text-[9px] font-mono-code bg-surface-0 border-border flex-1"
+                      placeholder="ws://localhost:9001"
+                    />
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm" variant={relayConnected ? 'destructive' : 'outline'}
+                      className="h-6 text-[10px] flex-1 gap-1"
+                      onClick={relayConnected ? disconnectRelay : connectRelay}
+                    >
+                      {relayConnected ? <CheckCircle2 className="h-3 w-3" /> : <Wifi className="h-3 w-3" />}
+                      {relayConnected ? 'Desconectar' : 'Conectar Relay'}
+                    </Button>
+                  </div>
+                  {relayConnected && (
+                    <p className="text-[8px] text-green-400">
+                      ● Conectado — pacotes serão enviados via UDP na rede local
+                    </p>
+                  )}
+                  {!relayConnected && (
+                    <p className="text-[8px] text-muted-foreground">
+                      Execute <code className="bg-muted px-1 rounded text-[7px]">node artnet-relay.js</code> na máquina local
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         )}
 
