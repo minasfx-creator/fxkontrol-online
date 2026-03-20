@@ -343,7 +343,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
 
   // Listen for viewport file drop events
   useEffect(() => {
-    const handler = (e: CustomEvent<{ file: File; type: 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset' | 'ue5map' | 'heightmap' }>) => {
+    const handler = (e: CustomEvent<{ file: File; type: 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset' | 'ue5map' | 'heightmap' | 'twinmotion' }>) => {
       const { file, type } = e.detail;
       setDroppedFile({ file, type });
       if (type === 'mvr') setMvrOpen(true);
