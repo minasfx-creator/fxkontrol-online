@@ -190,6 +190,8 @@ export default function ShellBurstRenderer({
   trailType = 'none',
   fallingLeaves = false,
   formulationId,
+  angleOffset = 0,
+  noTrail = false,
 }: ShellBurstRendererProps) {
   const pointsRef = useRef<THREE.Points>(null);
   const pistilPointsRef = useRef<THREE.Points>(null);
