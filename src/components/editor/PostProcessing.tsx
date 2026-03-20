@@ -87,26 +87,31 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
       {/* ═══ Screen Space Reflections (UE5 r.SSR.Temporal) ═══ */}
       {s.ssrEnabled && (
         <SSR
+          temporalResolve
+          temporalResolveMix={0.9}
+          temporalResolveCorrectionMix={0.4}
+          maxSamples={0}
+          ENABLE_BLUR
+          blurMix={0.5}
+          blurSharpness={10}
+          blurKernelSize={1}
+          rayStep={0.1}
           intensity={s.ssrIntensity}
-          distance={10}
-          fade={10}
-          roughnessFade={1}
+          maxRoughness={0.1}
+          ENABLE_JITTERING
+          jitter={0.75}
+          jitterSpread={0.45}
+          jitterRough={0.1}
+          MAX_STEPS={16}
+          NUM_BINARY_SEARCH_STEPS={4}
+          maxDepthDifference={10}
+          maxDepth={1}
           thickness={s.ssrThickness}
           ior={1.45}
-          maxRoughness={0.1}
-          maxDepthDifference={10}
-          blend={0.9}
-          correction={1}
-          correctionRadius={1}
-          blur={0.5}
-          blurKernel={1}
-          blurSharpness={10}
-          jitter={0.75}
-          jitterRoughness={0.2}
-          steps={16}
-          refineSteps={4}
-          missedRays={true}
-          resolutionScale={0.5}
+          STRETCH_MISSED_RAYS
+          USE_MRT
+          USE_ROUGHNESSMAP
+          USE_NORMALMAP
         />
       )}
 
