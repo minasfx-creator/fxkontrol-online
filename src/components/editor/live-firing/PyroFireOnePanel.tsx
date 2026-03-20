@@ -345,10 +345,14 @@ export default function PyroFireOnePanel({
     if (tcTimer.current) clearInterval(tcTimer.current);
   }, []);
 
-  // Continuity test
+  // Continuity test — routes through hardware when not SIM
   const runContinuityTest = useCallback(() => {
     if (!currentModule?.connected) return;
     toast.info(`Testing FM-${String(selectedModule).padStart(2, '0')} continuity...`);
+    if (!simMode && hardware.isConnected) {
+      hardware.requestContinuity(selectedModule).catch(() => {});
+      return; // Hardware response will update state via useFireOneHardware
+    }
     setTimeout(() => {
       setModules(prev => prev.map(m => {
         if (m.address !== selectedModule) return m;
@@ -364,7 +368,7 @@ export default function PyroFireOnePanel({
       const good = mod?.igniters.filter(i => i.connected).length || 0;
       toast.success(`Continuity: ${good}/32 OK`);
     }, 1200);
-  }, [currentModule, selectedModule, modules]);
+  }, [currentModule, selectedModule, modules, simMode, hardware]);
 
   const connectedCount = modules.filter(m => m.connected).length;
   const armedModCount = modules.filter(m => m.armed).length;
