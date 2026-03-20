@@ -243,16 +243,30 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
 
   const handleAuthorize = useCallback(async () => {
     setBusy(true);
+    // Arm FireOne modules when authorizing
+    if (hardware.isConnected) {
+      try {
+        await hardware.armAll();
+        toast.info('FireOne: Todos os módulos ARMADOS');
+      } catch { toast.warning('FireOne: Falha ao armar módulos'); }
+    }
     const ok = await showOrchestrator.authorize(authScope);
     setBusy(false);
     if (ok) toast.success(`Authorized (${authScope})`);
     else toast.error('Authorization failed');
-  }, [authScope]);
+  }, [authScope, hardware]);
 
   const handleDeauthorize = useCallback(async () => {
+    // Disarm FireOne modules
+    if (hardware.isConnected) {
+      try {
+        await hardware.disarmAll();
+        toast.info('FireOne: Módulos DESARMADOS');
+      } catch {}
+    }
     await showOrchestrator.deauthorize();
     toast.warning('Show deauthorized');
-  }, []);
+  }, [hardware]);
 
   const handleCountdown = useCallback(() => {
     showOrchestrator.startCountdown(countdownTarget);
