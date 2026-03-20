@@ -655,10 +655,56 @@ export default function MA3ControlPanel({ fs = false }: MA3ControlPanelProps) {
                 <Link2 className="w-3 h-3 mr-1" /> Connect MVR
               </Button>
             )}
+            <Button size="sm" variant="ghost" className="h-6 text-[8px] px-2"
+              onClick={() => { mvrClient.current.requestDiscovery(); toast.info('Scanning LAN...'); }}
+              disabled={mvrState !== 'connected'}>
+              <RefreshCw className="w-3 h-3 mr-0.5" /> Scan
+            </Button>
             <span className="text-[7px] text-muted-foreground/40 ml-auto">
               {mvrStations.length} station(s)
             </span>
           </div>
+
+          {/* Auto-Connect + mDNS Status */}
+          <div className={cn(
+            "flex items-center justify-between p-1.5 rounded border",
+            autoConnect ? "bg-emerald-500/10 border-emerald-500/20" : "bg-background/20 border-border/15"
+          )}>
+            <div className="flex items-center gap-1.5">
+              <Wifi className={cn("w-3 h-3", mdnsStations.length > 0 ? "text-emerald-400" : "text-muted-foreground/40")} />
+              <div>
+                <span className="text-[9px] font-bold text-foreground">Auto-Connect mDNS</span>
+                <p className="text-[7px] text-muted-foreground/50">
+                  {mdnsStations.length > 0
+                    ? `${mdnsStations.length} console(s) discovered`
+                    : mvrState === 'connected' ? 'Scanning LAN...' : 'Connect to scan'}
+                </p>
+              </div>
+            </div>
+            <Switch checked={autoConnect} onCheckedChange={setAutoConnect} className="scale-75" />
+          </div>
+
+          {/* mDNS Discovered Consoles */}
+          {mdnsStations.length > 0 && (
+            <>
+              <div className="text-[8px] font-bold text-muted-foreground/50 uppercase">mDNS Discovery</div>
+              <div className="space-y-1">
+                {mdnsStations.map(s => (
+                  <div key={s.uuid} className="flex items-center justify-between p-1.5 rounded border border-border/15 bg-background/20 text-[8px]">
+                    <div>
+                      <span className="font-bold text-foreground">{s.name}</span>
+                      <span className="text-muted-foreground/40 ml-1">{s.ip}:{s.port}</span>
+                      {s.provider && <span className="text-muted-foreground/30 ml-1">({s.provider})</span>}
+                    </div>
+                    <Button size="sm" variant="ghost" className="h-4 text-[7px] px-1.5"
+                      onClick={() => { mvrClient.current.connectStation(s.uuid); toast.info(`Connecting to ${s.name}...`); }}>
+                      <Link2 className="w-2.5 h-2.5 mr-0.5" /> Connect
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
 
           {/* Discovered Stations */}
           <div className="text-[8px] font-bold text-muted-foreground/50 uppercase">Stations</div>
@@ -716,6 +762,11 @@ export default function MA3ControlPanel({ fs = false }: MA3ControlPanelProps) {
               </ScrollArea>
             </>
           )}
+        </TabsContent>
+
+        {/* ═══ Monitor Tab ═══ */}
+        <TabsContent value="monitor" className="flex-1 flex flex-col mt-1">
+          <SACNMonitorPanel compact />
         </TabsContent>
       </Tabs>
     </div>
