@@ -84,7 +84,8 @@ export default function MA3ControlPanel({ fs = false }: MA3ControlPanelProps) {
   const [mvrBridgeUrl, setMvrBridgeUrl] = useState('ws://localhost:9004');
   const [mvrStations, setMvrStations] = useState<MVRXchangeStation[]>([]);
   const [mvrCommitLog, setMvrCommitLog] = useState<{ station: string; file: string; time: number }[]>([]);
-
+  const [mdnsStations, setMdnsStations] = useState<MDNSDiscoveredStation[]>([]);
+  const [autoConnect, setAutoConnect] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
 
   const oscClient = useRef(getOSCClient());
