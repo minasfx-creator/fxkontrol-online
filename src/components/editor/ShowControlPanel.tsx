@@ -198,6 +198,13 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
 
   const handlePreflight = useCallback(async () => {
     setBusy(true);
+    // FireOne hardware preflight checks
+    if (hardware.isConnected) {
+      toast.info(`FireOne: ${hardware.modules.size} módulos detectados`);
+      let lowBatt = 0;
+      hardware.modules.forEach(m => { if (m.batteryVoltage !== undefined && m.batteryVoltage < 11.0) lowBatt++; });
+      if (lowBatt > 0) toast.warning(`FireOne: ${lowBatt} módulo(s) com bateria baixa`);
+    }
     const ok = await showOrchestrator.startPreflight();
     setBusy(false);
     if (ok) {
@@ -206,7 +213,7 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
       if (failures.length > 0) toast.warning(`Preflight: ${failures.length} drone(s) with issues`);
       else toast.success(`Preflight passed — ${st.totalDrones} drones ready`);
     } else toast.error('Preflight failed');
-  }, []);
+  }, [hardware]);
 
   const handleUpload = useCallback(async () => {
     setBusy(true);
