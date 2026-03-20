@@ -9,6 +9,13 @@ export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | '
 
 export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId; label: string; icon: typeof Route; shortcut?: string }[] }[] = [
   {
+    title: '★ Comando',
+    icon: Target,
+    items: [
+      { id: 'showcommander', label: 'Show Commander', icon: Target, shortcut: 'Q' },
+    ],
+  },
+  {
     title: 'Posições',
     icon: MapPin,
     items: [
