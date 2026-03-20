@@ -2,13 +2,16 @@
  * PyroFireOnePanel — FireOne XL4+ style pyrotechnic firing panel
  * Full XL4 replica: 99 modules × 32 igniters, continuity, safety interlocks,
  * Manual / Step / Timecode / Test modes, AutoFire bridge
+ * Includes DEDICATED FULLSCREEN mode replicating the real XL4 10.1" display
  */
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Shield, ShieldAlert, Hand, AlertTriangle, Zap, Radio,
   ChevronLeft, ChevronRight, RotateCcw, Play, Square, SkipForward,
   CheckCircle2, XCircle, Clock, Activity, Battery, Signal,
-  Lock, Unlock, Search, Download
+  Lock, Unlock, Search, Download, Maximize2, Minimize2, X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -48,7 +51,7 @@ interface IgniterState {
   position: number;
   connected: boolean;
   fired: boolean;
-  resistance: number; // ohms — 0 = open, 1-50 = good, >50 = suspect
+  resistance: number;
   misfire: boolean;
 }
 
@@ -73,6 +76,7 @@ function createSimModule(addr: number, connected: boolean): FieldModule {
 export default function PyroFireOnePanel({
   fs, fireChannel, channels, pyroArm, dmxArm, deadmanHeld, handlePanic, artNetConnected, relayConnected,
 }: PyroFireOnePanelProps) {
+  const isMobile = useIsMobile();
   const [pyroMode, setPyroMode] = useState<PyroMode>('manual');
   const [modules, setModules] = useState<FieldModule[]>(() => {
     const mods: FieldModule[] = [];
@@ -82,6 +86,7 @@ export default function PyroFireOnePanel({
   const [selectedModule, setSelectedModule] = useState(1);
   const [masterKeyOn, setMasterKeyOn] = useState(false);
   const [simMode, setSimMode] = useState(true);
+  const [pyroFullscreen, setPyroFullscreen] = useState(false);
 
   // Step mode
   const [stepIndex, setStepIndex] = useState(0);
@@ -98,6 +103,34 @@ export default function PyroFireOnePanel({
 
   const canFire = masterKeyOn && (pyroArm || dmxArm) && deadmanHeld;
 
+  // Lock body scroll when fullscreen
+  useEffect(() => {
+    if (!pyroFullscreen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [pyroFullscreen]);
+
+  // Browser fullscreen API sync
+  useEffect(() => {
+    if (pyroFullscreen) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    }
+    return () => {
+      if (pyroFullscreen && document.fullscreenElement) {
+        document.exitFullscreen?.().catch(() => {});
+      }
+    };
+  }, [pyroFullscreen]);
+
+  useEffect(() => {
+    const onFsChange = () => {
+      if (!document.fullscreenElement && pyroFullscreen) setPyroFullscreen(false);
+    };
+    document.addEventListener('fullscreenchange', onFsChange);
+    return () => document.removeEventListener('fullscreenchange', onFsChange);
+  }, [pyroFullscreen]);
+
   // Import pyro cues from AutoFire
   const importPyroCues = useCallback(() => {
     const pyroCues = DEMO_CUES.filter(c => c.device === 'pyro');
@@ -105,7 +138,6 @@ export default function PyroFireOnePanel({
     setStepCues(pyroCues);
     setStepIndex(0);
     toast.success(`Imported ${pyroCues.length} pyro cues from AutoFire`);
-    // Broadcast via realtime
     supabase.channel('fxc-pyro-sync').send({
       type: 'broadcast', event: 'pyro-cues-sync',
       payload: { cues: pyroCues },
@@ -133,10 +165,8 @@ export default function PyroFireOnePanel({
     const ig = mod.igniters.find(i => i.position === igniterPos);
     if (!ig?.connected || ig.fired) return;
 
-    // Haptic
     if (navigator.vibrate) navigator.vibrate(40);
 
-    // Update igniter state
     setModules(prev => prev.map(m => {
       if (m.address !== moduleAddr) return m;
       return {
@@ -149,13 +179,9 @@ export default function PyroFireOnePanel({
       };
     }));
 
-    // Bridge to FXC channels
     const chIdx = (moduleAddr - 1) * 32 + (igniterPos - 1);
-    if (chIdx < channels.length) {
-      fireChannel(channels[chIdx].id);
-    }
+    if (chIdx < channels.length) fireChannel(channels[chIdx].id);
 
-    // Broadcast
     supabase.channel('fxc-mobile-link').send({
       type: 'broadcast', event: 'fxc-fire',
       payload: { channelId: chIdx < channels.length ? channels[chIdx].id : null, module: moduleAddr, igniter: igniterPos, source: 'pyro-panel' },
@@ -164,12 +190,11 @@ export default function PyroFireOnePanel({
     toast.success(`FIRE FM-${String(moduleAddr).padStart(2, '0')} · I-${String(igniterPos).padStart(2, '0')}`, { duration: 1500 });
   }, [canFire, modules, channels, fireChannel, simMode]);
 
-  // Step mode: advance
+  // Step mode
   const stepFire = useCallback(() => {
     if (!canFire || stepCues.length === 0) return;
     const cue = stepCues[stepIndex];
     if (!cue) return;
-    // Parse addresses to fire
     const addrs = cue.addresses.split(':').map(Number);
     addrs.forEach(a => {
       const modAddr = Math.floor(a / 32) + 1;
@@ -185,7 +210,6 @@ export default function PyroFireOnePanel({
     tcTimer.current = setInterval(() => {
       setTcTimeMs(prev => {
         const next = prev + 100;
-        // Check cues
         tcCues.forEach(cue => {
           if (!tcFiredSet.current.has(cue.id) && next >= cue.timecodeMs) {
             tcFiredSet.current.add(cue.id);
@@ -237,370 +261,538 @@ export default function PyroFireOnePanel({
   const firedCount = modules.reduce((sum, m) => sum + m.igniters.filter(i => i.fired).length, 0);
   const misfireCount = modules.reduce((sum, m) => sum + m.igniters.filter(i => i.misfire).length, 0);
 
-  return (
-    <div className="flex flex-col h-full">
-      {/* Header: Master Key + Status */}
-      <div className={cn("border-b border-border/15 flex items-center justify-between", fs ? "px-4 py-2" : "px-2 py-1")} style={{ background: 'hsl(0 20% 7%)' }}>
-        <div className="flex items-center gap-2">
-          <span className={cn("font-black text-red-400/80 tracking-wider", fs ? "text-xs" : "text-[8px]")}>🔥 FIREONE XL4+</span>
-          <span className={cn("font-mono text-muted-foreground/30", fs ? "text-[9px]" : "text-[7px]")}>{connectedCount} MOD · {totalIgniters} IG</span>
+  // ── Determine sizing: xl = dedicated fullscreen, fs = parent fullscreen, default = panel
+  const xl = pyroFullscreen;
+  const mob = isMobile;
+  const sz = xl ? 'xl' : fs ? 'fs' : 'sm';
+
+  // ── Render: Header ──
+  const renderHeader = () => (
+    <div className={cn(
+      "border-b border-border/15 flex items-center justify-between",
+      sz === 'xl' ? "px-6 py-3" : sz === 'fs' ? "px-4 py-2" : "px-2 py-1"
+    )} style={{ background: 'hsl(0 20% 7%)' }}>
+      <div className="flex items-center gap-3">
+        <span className={cn("font-black tracking-wider",
+          sz === 'xl' ? "text-sm text-red-400" : sz === 'fs' ? "text-xs text-red-400/80" : "text-[8px] text-red-400/80"
+        )}>🔥 FIREONE XL4+</span>
+        <span className={cn("font-mono text-muted-foreground/30",
+          sz === 'xl' ? "text-xs" : sz === 'fs' ? "text-[9px]" : "text-[7px]"
+        )}>{connectedCount} MOD · {totalIgniters} IG · {firedCount} FIRED</span>
+      </div>
+      <div className="flex items-center gap-3">
+        {/* Art-Net status */}
+        <div className="flex items-center gap-1">
+          <div className={cn("rounded-full", artNetConnected ? "bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.5)]" : "bg-muted-foreground/20",
+            sz === 'xl' ? "w-2.5 h-2.5" : "w-1.5 h-1.5"
+          )} />
+          <span className={cn("font-mono", artNetConnected ? "text-green-500/70" : "text-muted-foreground/30",
+            sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[8px]" : "text-[6px]"
+          )}>DMX</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className={cn("font-mono", fs ? "text-[8px]" : "text-[6px]", simMode ? "text-amber-400/60" : "text-green-400/60")}>{simMode ? 'SIM' : 'LIVE'}</span>
+        <div className="flex items-center gap-1">
+          <div className={cn("rounded-full", relayConnected ? "bg-cyan-400 shadow-[0_0_6px_rgba(0,220,255,0.5)]" : "bg-muted-foreground/20",
+            sz === 'xl' ? "w-2.5 h-2.5" : "w-1.5 h-1.5"
+          )} />
+          <span className={cn("font-mono", relayConnected ? "text-cyan-400/70" : "text-muted-foreground/30",
+            sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[8px]" : "text-[6px]"
+          )}>UDP</span>
+        </div>
+        {/* SIM/LIVE */}
+        <div className="flex items-center gap-1.5">
+          <span className={cn("font-mono font-bold",
+            sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[8px]" : "text-[6px]",
+            simMode ? "text-amber-400/70" : "text-green-400/70"
+          )}>{simMode ? 'SIM' : 'LIVE'}</span>
           <Switch checked={!simMode} onCheckedChange={(v) => setSimMode(!v)} className="scale-75" />
         </div>
+        {/* Fullscreen toggle */}
+        <button onClick={() => setPyroFullscreen(!pyroFullscreen)}
+          className="text-muted-foreground/40 hover:text-foreground transition-colors rounded p-1">
+          {pyroFullscreen
+            ? <Minimize2 className={cn(sz === 'xl' ? "w-5 h-5" : "w-3 h-3")} />
+            : <Maximize2 className={cn(sz === 'xl' ? "w-5 h-5" : sz === 'fs' ? "w-4 h-4" : "w-3 h-3")} />
+          }
+        </button>
       </div>
+    </div>
+  );
 
-      {/* Master Key Switch */}
-      <div className={cn("border-b flex items-center gap-3", fs ? "px-4 py-2" : "px-2 py-1",
-        masterKeyOn ? "border-red-800/30" : "border-border/15"
-      )} style={{ background: masterKeyOn ? 'hsl(0 30% 8%)' : 'hsl(220 12% 7%)' }}>
-        <button onClick={() => setMasterKeyOn(!masterKeyOn)}
+  // ── Render: Master Key + ARM controls ──
+  const renderMasterArm = () => (
+    <div className={cn(
+      "border-b flex items-center gap-3",
+      sz === 'xl' ? (mob ? "px-4 py-2.5 flex-wrap" : "px-6 py-3") : sz === 'fs' ? "px-4 py-2" : "px-2 py-1",
+      masterKeyOn ? "border-red-800/30" : "border-border/15"
+    )} style={{ background: masterKeyOn ? 'hsl(0 30% 8%)' : 'hsl(220 12% 7%)' }}>
+      <button onClick={() => { setMasterKeyOn(!masterKeyOn); if (navigator.vibrate) navigator.vibrate(masterKeyOn ? 20 : [30, 20, 30]); }}
+        className={cn(
+          "flex items-center gap-2 rounded border-2 font-black uppercase transition-all",
+          sz === 'xl' ? (mob ? "px-5 py-3 text-xs flex-1" : "px-6 py-3 text-sm") : sz === 'fs' ? "px-4 py-2 text-[10px]" : "px-3 py-1.5 text-[8px]",
+          masterKeyOn
+            ? "bg-red-600/20 border-red-500/50 text-red-400"
+            : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/40"
+        )}>
+        {masterKeyOn ? <Unlock className={cn(sz === 'xl' ? "w-5 h-5" : "w-3 h-3")} /> : <Lock className={cn(sz === 'xl' ? "w-5 h-5" : "w-3 h-3")} />}
+        MASTER KEY {masterKeyOn ? 'ON' : 'OFF'}
+      </button>
+      <div className="flex items-center gap-1.5">
+        <button onClick={() => armAll(true)} disabled={!masterKeyOn}
+          className={cn("rounded border font-bold uppercase transition-all",
+            sz === 'xl' ? "px-4 py-2.5 text-[11px]" : sz === 'fs' ? "px-3 py-1.5 text-[9px]" : "px-2 py-1 text-[7px]",
+            masterKeyOn ? "bg-red-600/15 border-red-500/30 text-red-400/80" : "border-border/10 text-muted-foreground/20"
+          )}>ARM ALL</button>
+        <button onClick={() => armAll(false)} disabled={!masterKeyOn}
+          className={cn("rounded border font-bold uppercase transition-all",
+            sz === 'xl' ? "px-4 py-2.5 text-[11px]" : sz === 'fs' ? "px-3 py-1.5 text-[9px]" : "px-2 py-1 text-[7px]",
+            masterKeyOn ? "bg-green-600/10 border-green-500/30 text-green-400/80" : "border-border/10 text-muted-foreground/20"
+          )}>DISARM ALL</button>
+      </div>
+      <span className={cn("font-mono ml-auto",
+        sz === 'xl' ? "text-xs" : sz === 'fs' ? "text-[9px]" : "text-[7px]",
+        armedModCount > 0 ? "text-red-400 font-bold" : "text-muted-foreground/30"
+      )}>{armedModCount}/{connectedCount} ARMED</span>
+    </div>
+  );
+
+  // ── Render: Status strip ──
+  const renderStatusStrip = () => (
+    (firedCount > 0 || misfireCount > 0) ? (
+      <div className={cn("flex items-center gap-3 border-b border-border/10",
+        sz === 'xl' ? "px-6 py-1.5" : sz === 'fs' ? "px-4 py-1" : "px-2 py-0.5"
+      )} style={{ background: 'hsl(220 10% 6%)' }}>
+        <span className={cn("font-mono text-green-400/70", sz === 'xl' ? "text-xs" : sz === 'fs' ? "text-[9px]" : "text-[7px]")}>✓ {firedCount} fired</span>
+        {misfireCount > 0 && <span className={cn("font-mono text-red-400 font-bold animate-pulse", sz === 'xl' ? "text-xs" : sz === 'fs' ? "text-[9px]" : "text-[7px]")}>⚠ {misfireCount} misfire</span>}
+      </div>
+    ) : null
+  );
+
+  // ── Render: Mode tabs ──
+  const renderModeTabs = () => (
+    <div className={cn("flex border-b border-border/15")} style={{ background: 'hsl(220 10% 7%)' }}>
+      {([
+        { key: 'manual' as PyroMode, label: 'Manual' },
+        { key: 'step' as PyroMode, label: 'Step' },
+        { key: 'timecode' as PyroMode, label: 'Timecode' },
+        { key: 'test' as PyroMode, label: 'Test' },
+      ]).map(m => (
+        <button key={m.key} onClick={() => setPyroMode(m.key)}
           className={cn(
-            "flex items-center gap-2 rounded border-2 font-black uppercase transition-all",
-            fs ? "px-4 py-2 text-[10px]" : "px-3 py-1.5 text-[8px]",
-            masterKeyOn
-              ? "bg-red-600/20 border-red-500/50 text-red-400"
-              : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/40"
+            "flex-1 font-bold uppercase tracking-wider transition-all border-b-2",
+            sz === 'xl' ? "py-3 text-sm" : sz === 'fs' ? "py-2 text-[10px]" : "py-1.5 text-[7px]",
+            pyroMode === m.key ? "text-red-400/80 border-red-500/60" : "text-muted-foreground/30 border-transparent"
+          )}>{m.label}</button>
+      ))}
+    </div>
+  );
+
+  // ── Render: Module selector ──
+  const renderModuleSelector = () => (
+    <div className={cn("flex items-center gap-1.5 border-b border-border/10 overflow-x-auto scrollbar-thin",
+      sz === 'xl' ? "px-5 py-2" : sz === 'fs' ? "px-3 py-1.5" : "px-2 py-1"
+    )} style={{ background: 'hsl(220 12% 6%)' }}>
+      {modules.map(m => (
+        <button key={m.address} onClick={() => setSelectedModule(m.address)}
+          className={cn(
+            "rounded border font-mono font-bold shrink-0 transition-all",
+            sz === 'xl' ? "px-3.5 py-2 text-xs" : sz === 'fs' ? "px-2.5 py-1.5 text-[9px]" : "px-2 py-1 text-[7px]",
+            selectedModule === m.address
+              ? m.armed ? "bg-red-600/20 border-red-500/40 text-red-400" : "bg-primary/15 border-primary/40 text-primary"
+              : m.armed ? "bg-red-600/10 border-red-800/20 text-red-400/50"
+              : m.connected ? "bg-[hsl(220_10%_10%)] border-border/15 text-foreground/50" : "bg-[hsl(220_10%_7%)] border-border/5 text-muted-foreground/15"
           )}>
-          {masterKeyOn ? <Unlock className={cn(fs ? "w-4 h-4" : "w-3 h-3")} /> : <Lock className={cn(fs ? "w-4 h-4" : "w-3 h-3")} />}
-          MASTER KEY {masterKeyOn ? 'ON' : 'OFF'}
+          FM-{String(m.address).padStart(2, '0')}
+          {m.armed && <span className="ml-1 text-red-400">●</span>}
         </button>
-        <div className="flex items-center gap-1.5">
-          <button onClick={() => armAll(true)} disabled={!masterKeyOn}
-            className={cn("rounded border font-bold uppercase transition-all",
-              fs ? "px-3 py-1.5 text-[9px]" : "px-2 py-1 text-[7px]",
-              masterKeyOn ? "bg-red-600/15 border-red-500/30 text-red-400/80" : "border-border/10 text-muted-foreground/20"
-            )}>ARM ALL</button>
-          <button onClick={() => armAll(false)} disabled={!masterKeyOn}
-            className={cn("rounded border font-bold uppercase transition-all",
-              fs ? "px-3 py-1.5 text-[9px]" : "px-2 py-1 text-[7px]",
-              masterKeyOn ? "bg-green-600/10 border-green-500/30 text-green-400/80" : "border-border/10 text-muted-foreground/20"
-            )}>DISARM ALL</button>
+      ))}
+      <button onClick={importPyroCues}
+        className={cn("rounded border shrink-0 transition-all font-bold",
+          sz === 'xl' ? "px-3.5 py-2 text-[10px]" : sz === 'fs' ? "px-2.5 py-1.5 text-[8px]" : "px-2 py-1 text-[6px]",
+          "bg-amber-600/10 border-amber-500/20 text-amber-400/70"
+        )}>
+        <Download className={cn(sz === 'xl' ? "w-4 h-4 inline mr-1" : "w-3 h-3 inline mr-0.5")} />Import
+      </button>
+    </div>
+  );
+
+  // ── Render: Module info bar ──
+  const renderModuleInfo = () => (
+    currentModule ? (
+      <div className={cn("flex items-center gap-3 border-b border-border/10",
+        sz === 'xl' ? "px-6 py-2" : sz === 'fs' ? "px-4 py-1" : "px-2 py-0.5"
+      )} style={{ background: 'hsl(220 10% 8%)' }}>
+        <div className="flex items-center gap-1">
+          <Battery className={cn(sz === 'xl' ? "w-4 h-4" : "w-3 h-3", currentModule.batteryVoltage > 11 ? "text-green-400/70" : "text-amber-400")} />
+          <span className={cn("font-mono text-muted-foreground/50", sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[8px]" : "text-[6px]")}>{currentModule.batteryVoltage.toFixed(1)}V</span>
         </div>
-        <span className={cn("font-mono ml-auto", fs ? "text-[9px]" : "text-[7px]",
-          armedModCount > 0 ? "text-red-400 font-bold" : "text-muted-foreground/30"
-        )}>{armedModCount}/{connectedCount} ARMED</span>
-      </div>
-
-      {/* Status strip */}
-      {(firedCount > 0 || misfireCount > 0) && (
-        <div className={cn("flex items-center gap-3 border-b border-border/10", fs ? "px-4 py-1" : "px-2 py-0.5")} style={{ background: 'hsl(220 10% 6%)' }}>
-          <span className={cn("font-mono text-green-400/70", fs ? "text-[9px]" : "text-[7px]")}>✓ {firedCount} fired</span>
-          {misfireCount > 0 && <span className={cn("font-mono text-red-400 font-bold animate-pulse", fs ? "text-[9px]" : "text-[7px]")}>⚠ {misfireCount} misfire</span>}
+        <div className="flex items-center gap-1">
+          <Signal className={cn(sz === 'xl' ? "w-4 h-4" : "w-3 h-3", "text-cyan-400/60")} />
+          <span className={cn("font-mono text-muted-foreground/50", sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[8px]" : "text-[6px]")}>{Math.round(currentModule.signalStrength)}%</span>
         </div>
-      )}
-
-      {/* Mode tabs */}
-      <div className={cn("flex border-b border-border/15")} style={{ background: 'hsl(220 10% 7%)' }}>
-        {([
-          { key: 'manual' as PyroMode, label: 'Manual' },
-          { key: 'step' as PyroMode, label: 'Step' },
-          { key: 'timecode' as PyroMode, label: 'Timecode' },
-          { key: 'test' as PyroMode, label: 'Test' },
-        ]).map(m => (
-          <button key={m.key} onClick={() => setPyroMode(m.key)}
-            className={cn(
-              "flex-1 font-bold uppercase tracking-wider transition-all border-b-2",
-              fs ? "py-2 text-[10px]" : "py-1.5 text-[7px]",
-              pyroMode === m.key ? "text-red-400/80 border-red-500/60" : "text-muted-foreground/30 border-transparent"
-            )}>{m.label}</button>
-        ))}
-      </div>
-
-      {/* Module selector */}
-      <div className={cn("flex items-center gap-1 border-b border-border/10 overflow-x-auto", fs ? "px-3 py-1.5" : "px-2 py-1")} style={{ background: 'hsl(220 12% 6%)' }}>
-        {modules.map(m => (
-          <button key={m.address} onClick={() => setSelectedModule(m.address)}
-            className={cn(
-              "rounded border font-mono font-bold shrink-0 transition-all",
-              fs ? "px-2.5 py-1.5 text-[9px]" : "px-2 py-1 text-[7px]",
-              selectedModule === m.address
-                ? m.armed ? "bg-red-600/20 border-red-500/40 text-red-400" : "bg-primary/15 border-primary/40 text-primary"
-                : m.armed ? "bg-red-600/10 border-red-800/20 text-red-400/50"
-                : m.connected ? "bg-[hsl(220_10%_10%)] border-border/15 text-foreground/50" : "bg-[hsl(220_10%_7%)] border-border/5 text-muted-foreground/15"
-            )}>
-            FM-{String(m.address).padStart(2, '0')}
-            {m.armed && <span className="ml-1 text-red-400">●</span>}
-          </button>
-        ))}
-        <button onClick={() => importPyroCues()}
-          className={cn("rounded border shrink-0 transition-all font-bold",
-            fs ? "px-2.5 py-1.5 text-[8px]" : "px-2 py-1 text-[6px]",
-            "bg-amber-600/10 border-amber-500/20 text-amber-400/70"
+        <div className="flex items-center gap-1">
+          <Activity className={cn(sz === 'xl' ? "w-4 h-4" : "w-3 h-3", "text-muted-foreground/40")} />
+          <span className={cn("font-mono text-muted-foreground/50", sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[8px]" : "text-[6px]")}>{Math.round(currentModule.temperature)}°C</span>
+        </div>
+        <button onClick={() => armModule(currentModule.address, !currentModule.armed)} disabled={!masterKeyOn}
+          className={cn("ml-auto rounded border font-bold uppercase transition-all",
+            sz === 'xl' ? "px-4 py-2 text-xs" : sz === 'fs' ? "px-2.5 py-1 text-[8px]" : "px-2 py-0.5 text-[6px]",
+            currentModule.armed ? "bg-red-600/20 border-red-500/40 text-red-400" : masterKeyOn ? "border-border/20 text-muted-foreground/50" : "border-border/10 text-muted-foreground/15"
           )}>
-          <Download className={cn(fs ? "w-3 h-3 inline mr-1" : "w-2.5 h-2.5 inline mr-0.5")} />Import
+          {currentModule.armed ? '● ARMED' : 'ARM'}
         </button>
       </div>
+    ) : null
+  );
 
-      {/* Module info bar */}
-      {currentModule && (
-        <div className={cn("flex items-center gap-3 border-b border-border/10", fs ? "px-4 py-1" : "px-2 py-0.5")} style={{ background: 'hsl(220 10% 8%)' }}>
-          <div className="flex items-center gap-1">
-            <Battery className={cn(fs ? "w-3 h-3" : "w-2.5 h-2.5", currentModule.batteryVoltage > 11 ? "text-green-400/70" : "text-amber-400")} />
-            <span className={cn("font-mono", fs ? "text-[8px]" : "text-[6px]", "text-muted-foreground/50")}>{currentModule.batteryVoltage.toFixed(1)}V</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Signal className={cn(fs ? "w-3 h-3" : "w-2.5 h-2.5", "text-cyan-400/60")} />
-            <span className={cn("font-mono text-muted-foreground/50", fs ? "text-[8px]" : "text-[6px]")}>{Math.round(currentModule.signalStrength)}%</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Activity className={cn(fs ? "w-3 h-3" : "w-2.5 h-2.5", "text-muted-foreground/40")} />
-            <span className={cn("font-mono text-muted-foreground/50", fs ? "text-[8px]" : "text-[6px]")}>{Math.round(currentModule.temperature)}°C</span>
-          </div>
-          <button onClick={() => armModule(currentModule.address, !currentModule.armed)} disabled={!masterKeyOn}
-            className={cn("ml-auto rounded border font-bold uppercase transition-all",
-              fs ? "px-2.5 py-1 text-[8px]" : "px-2 py-0.5 text-[6px]",
-              currentModule.armed ? "bg-red-600/20 border-red-500/40 text-red-400" : masterKeyOn ? "border-border/20 text-muted-foreground/50" : "border-border/10 text-muted-foreground/15"
-            )}>
-            {currentModule.armed ? '● ARMED' : 'ARM'}
-          </button>
-        </div>
-      )}
+  // ── Render: Igniter grid (Manual mode) ──
+  const renderIgniterGrid = () => {
+    if (!currentModule) return null;
+    // In XL fullscreen: 8 cols, larger cells. Mobile XL: 4 cols, huge touch targets
+    const cols = xl && mob ? 'grid-cols-4' : 'grid-cols-8';
+    const cellSize = xl && mob ? 'min-h-[80px] rounded-xl' : xl ? 'min-h-[72px] rounded-lg' : fs ? 'min-h-[56px] rounded-lg' : 'min-h-[40px]';
 
-      {/* Main content by mode */}
-      <ScrollArea className="flex-1">
-        {pyroMode === 'manual' && currentModule && (
-          <div className={cn(fs ? "p-3" : "p-2")}>
-            {!canFire && (masterKeyOn || pyroArm || dmxArm) && (
-              <div className={cn("text-center text-amber-400/50 font-bold uppercase mb-2", fs ? "text-[10px]" : "text-[7px]")}>
-                {!masterKeyOn ? 'Turn Master Key ON' : !deadmanHeld ? 'Hold DEADMAN to fire' : 'ARM system to fire'}
-              </div>
-            )}
-            {/* 8×4 igniter grid */}
-            <div className={cn("grid grid-cols-8", fs ? "gap-1.5" : "gap-1")}>
-              {currentModule.igniters.map(ig => {
-                const ok = ig.connected && !ig.fired && ig.resistance > 0;
-                const canFireIg = canFire && currentModule.armed && ok;
-                return (
-                  <button key={ig.position}
-                    onMouseDown={() => canFireIg && fireIgniter(currentModule.address, ig.position)}
-                    onTouchStart={(e) => { e.preventDefault(); if (canFireIg) fireIgniter(currentModule.address, ig.position); }}
-                    disabled={!canFireIg && !ig.fired}
-                    className={cn(
-                      "relative flex flex-col items-center justify-center rounded border transition-all select-none",
-                      fs ? "min-h-[56px] rounded-lg" : "min-h-[40px]",
-                      ig.fired ? "bg-muted-foreground/10 border-border/10" :
-                      ig.misfire ? "bg-red-600/20 border-red-500/40 animate-pulse" :
-                      canFireIg ? "bg-[hsl(220_10%_12%)] border-border/30 hover:bg-red-700/20 active:scale-[0.93] active:bg-red-600/30 cursor-pointer" :
-                      ig.connected ? "bg-[hsl(220_10%_10%)] border-border/15" :
-                      "bg-[hsl(220_10%_6%)] border-border/5"
-                    )}>
-                    {/* Continuity LED */}
-                    <div className={cn("absolute rounded-full",
-                      fs ? "w-2 h-2 top-1 right-1" : "w-1.5 h-1.5 top-0.5 right-0.5",
-                      ig.fired ? "bg-muted-foreground/20" :
-                      ig.misfire ? "bg-red-500" :
-                      ok ? "bg-green-500" :
-                      ig.connected ? "bg-amber-400" : "bg-muted-foreground/10"
-                    )} style={ok && !ig.fired ? { boxShadow: '0 0 4px rgba(34,197,94,0.4)' } : ig.misfire ? { boxShadow: '0 0 6px rgba(239,68,68,0.6)' } : undefined} />
-                    <span className={cn("font-mono font-bold",
-                      fs ? "text-[10px]" : "text-[7px]",
-                      ig.fired ? "text-muted-foreground/20" : ig.misfire ? "text-red-400" : ok ? "text-foreground/60" : "text-muted-foreground/15"
-                    )}>{String(ig.position).padStart(2, '0')}</span>
-                    <span className={cn("font-mono",
-                      fs ? "text-[7px]" : "text-[5px]",
-                      ig.fired ? "text-muted-foreground/15" : ok ? "text-green-400/50" : "text-muted-foreground/15"
-                    )}>{ig.resistance > 0 ? `${ig.resistance.toFixed(1)}Ω` : '—'}</span>
-                  </button>
-                );
-              })}
-            </div>
+    return (
+      <div className={cn(sz === 'xl' ? "p-4" : sz === 'fs' ? "p-3" : "p-2")}>
+        {!canFire && (masterKeyOn || pyroArm || dmxArm) && (
+          <div className={cn("text-center text-amber-400/50 font-bold uppercase mb-2",
+            sz === 'xl' ? "text-sm py-2" : sz === 'fs' ? "text-[10px]" : "text-[7px]"
+          )}>
+            {!masterKeyOn ? 'Turn Master Key ON' : !deadmanHeld ? 'Hold DEADMAN to fire' : 'ARM system to fire'}
           </div>
         )}
-
-        {pyroMode === 'step' && (
-          <div className={cn(fs ? "p-3" : "p-2")}>
-            {stepCues.length === 0 ? (
-              <div className={cn("text-center text-muted-foreground/30 py-8", fs ? "text-sm" : "text-[10px]")}>
-                No pyro cues. Tap <strong>Import</strong> to load from AutoFire.
-              </div>
-            ) : (
-              <>
-                <div className={cn("flex items-center justify-between mb-2")}>
-                  <span className={cn("font-bold text-foreground/60", fs ? "text-xs" : "text-[9px]")}>
-                    Step {stepIndex + 1} / {stepCues.length}
-                  </span>
-                  <button onClick={() => { setStepIndex(0); toast.info('Step reset'); }}
-                    className={cn("rounded text-muted-foreground/40 hover:text-foreground/60", fs ? "text-[9px] px-2 py-1" : "text-[7px] px-1.5 py-0.5")}>
-                    <RotateCcw className={cn(fs ? "w-3 h-3 inline mr-1" : "w-2.5 h-2.5 inline mr-0.5")} />Reset
-                  </button>
-                </div>
-                {/* Current cue */}
-                {stepCues[stepIndex] && (
-                  <div className={cn("rounded border mb-2",
-                    fs ? "p-3 border-red-500/20" : "p-2 border-border/15"
-                  )} style={{ background: 'hsl(0 20% 8%)' }}>
-                    <div className={cn("font-bold text-red-400/80", fs ? "text-sm" : "text-[9px]")}>{stepCues[stepIndex].name}</div>
-                    <div className={cn("font-mono text-muted-foreground/40", fs ? "text-[9px]" : "text-[7px]")}>
-                      TC: {formatTimecode(stepCues[stepIndex].timecodeMs)} · Addr: {stepCues[stepIndex].addresses} · {stepCues[stepIndex].effect}
-                    </div>
-                  </div>
-                )}
-                <button onClick={stepFire} disabled={!canFire}
-                  className={cn(
-                    "w-full rounded-lg font-black uppercase transition-all border-2 flex items-center justify-center gap-2",
-                    fs ? "py-4 text-base" : "py-3 text-sm",
-                    canFire
-                      ? "bg-gradient-to-b from-red-600 to-red-800 text-white border-red-500/50 active:scale-[0.97]"
-                      : "bg-[hsl(220_10%_10%)] text-muted-foreground/20 border-border/10"
-                  )}>
-                  <SkipForward className={cn(fs ? "w-5 h-5" : "w-4 h-4")} />
-                  NEXT FIRE
-                </button>
-                {/* Cue list */}
-                <div className={cn("mt-2 space-y-0.5")}>
-                  {stepCues.map((cue, i) => (
-                    <div key={cue.id} className={cn(
-                      "flex items-center gap-2 rounded border transition-colors",
-                      fs ? "px-3 py-1.5 text-[9px]" : "px-2 py-1 text-[7px]",
-                      i === stepIndex ? "bg-red-600/10 border-red-500/20 text-foreground/80" :
-                      i < stepIndex ? "border-border/5 text-muted-foreground/20" :
-                      "border-border/10 text-muted-foreground/40"
-                    )}>
-                      <span className="font-mono w-5">{cue.cueNumber}</span>
-                      <span className="font-bold flex-1 truncate">{cue.name}</span>
-                      <span className="font-mono">{formatTimecode(cue.timecodeMs)}</span>
-                      {i < stepIndex && <CheckCircle2 className={cn(fs ? "w-3 h-3" : "w-2.5 h-2.5", "text-green-400/50")} />}
-                      {i === stepIndex && <Zap className={cn(fs ? "w-3 h-3" : "w-2.5 h-2.5", "text-red-400")} />}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {pyroMode === 'timecode' && (
-          <div className={cn(fs ? "p-3" : "p-2")}>
-            {/* TC Display */}
-            <div className={cn("text-center font-mono font-black mb-2",
-              fs ? "text-2xl" : "text-lg",
-              tcRunning ? "text-red-400" : "text-foreground/60"
-            )}>{formatTimecode(tcTimeMs)}</div>
-            {tcCues.length === 0 ? (
-              <div className={cn("text-center text-muted-foreground/30 py-4", fs ? "text-sm" : "text-[10px]")}>
-                No pyro cues. Tap <strong>Import</strong> to load from AutoFire.
-              </div>
-            ) : (
-              <>
-                <div className={cn("flex items-center justify-center gap-2 mb-3")}>
-                  <Button variant="ghost" size="sm" onClick={resetTimecode}
-                    className={cn(fs ? "h-8" : "h-6", "text-[9px]")}>
-                    <RotateCcw className="w-3 h-3 mr-1" /> Reset
-                  </Button>
-                  <button onClick={() => { if (!canFire && !tcRunning) { toast.error('ARM + DEADMAN required'); return; } setTcRunning(!tcRunning); }}
-                    disabled={!canFire && !tcRunning}
-                    className={cn(
-                      "rounded-lg font-black uppercase transition-all border-2 flex items-center gap-2",
-                      fs ? "px-6 py-2.5 text-sm" : "px-4 py-2 text-[10px]",
-                      tcRunning
-                        ? "bg-red-600/30 border-red-500/40 text-red-400"
-                        : canFire
-                          ? "bg-green-600/20 border-green-500/40 text-green-400"
-                          : "bg-[hsl(220_10%_10%)] border-border/10 text-muted-foreground/20"
-                    )}>
-                    {tcRunning ? <Square className={cn(fs ? "w-4 h-4" : "w-3 h-3")} /> : <Play className={cn(fs ? "w-4 h-4" : "w-3 h-3")} />}
-                    {tcRunning ? 'STOP' : 'RUN'}
-                  </button>
-                </div>
-                {/* Progress */}
-                <div className={cn("w-full rounded-full overflow-hidden mb-2", fs ? "h-2" : "h-1")} style={{ background: 'hsl(220 10% 12%)' }}>
-                  <div className="h-full rounded-full transition-all" style={{
-                    width: `${Math.min(100, tcCues.length > 0 ? (tcTimeMs / Math.max(...tcCues.map(c => c.timecodeMs + c.duration * 1000))) * 100 : 0)}%`,
-                    background: 'linear-gradient(90deg, hsl(0 80% 50%), hsl(30 80% 50%))',
-                  }} />
-                </div>
-                {/* Cue list */}
-                <div className="space-y-0.5">
-                  {tcCues.map(cue => {
-                    const fired = tcFiredSet.current.has(cue.id);
-                    return (
-                      <div key={cue.id} className={cn(
-                        "flex items-center gap-2 rounded border",
-                        fs ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[7px]",
-                        fired ? "border-border/5 text-muted-foreground/20" :
-                        tcTimeMs >= cue.timecodeMs - 2000 ? "border-amber-500/20 bg-amber-600/5 text-amber-400/70" :
-                        "border-border/10 text-muted-foreground/40"
-                      )}>
-                        <span className="font-mono w-5">{cue.cueNumber}</span>
-                        <span className="font-bold flex-1 truncate">{cue.name}</span>
-                        <span className="font-mono">{formatTimecode(cue.timecodeMs)}</span>
-                        {fired && <CheckCircle2 className="w-3 h-3 text-green-400/50" />}
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {pyroMode === 'test' && currentModule && (
-          <div className={cn(fs ? "p-3" : "p-2")}>
-            <div className={cn("flex items-center justify-between mb-3")}>
-              <span className={cn("font-bold text-foreground/60 uppercase", fs ? "text-xs" : "text-[9px]")}>Continuity Test — FM-{String(selectedModule).padStart(2, '0')}</span>
-              <button onClick={runContinuityTest} disabled={!currentModule.connected}
-                className={cn("rounded border font-bold uppercase transition-all flex items-center gap-1",
-                  fs ? "px-3 py-1.5 text-[9px]" : "px-2 py-1 text-[7px]",
-                  currentModule.connected ? "bg-cyan-600/15 border-cyan-500/30 text-cyan-400" : "border-border/10 text-muted-foreground/15"
-                )}>
-                <Search className={cn(fs ? "w-3 h-3" : "w-2.5 h-2.5")} /> TEST
-              </button>
-            </div>
-            {/* Igniter resistance grid */}
-            <div className={cn("grid grid-cols-8", fs ? "gap-1.5" : "gap-1")}>
-              {currentModule.igniters.map(ig => (
-                <div key={ig.position} className={cn(
-                  "flex flex-col items-center justify-center rounded border",
-                  fs ? "py-2 min-h-[48px]" : "py-1.5 min-h-[36px]",
-                  ig.connected && ig.resistance > 0 && ig.resistance < 30 ? "bg-green-600/10 border-green-500/20" :
-                  ig.connected && ig.resistance >= 30 ? "bg-amber-600/10 border-amber-500/20" :
-                  ig.connected ? "bg-red-600/10 border-red-500/20" :
+        <div className={cn("grid", cols, sz === 'xl' ? "gap-2" : sz === 'fs' ? "gap-1.5" : "gap-1")}>
+          {currentModule.igniters.map(ig => {
+            const ok = ig.connected && !ig.fired && ig.resistance > 0;
+            const canFireIg = canFire && currentModule.armed && ok;
+            return (
+              <button key={ig.position}
+                onMouseDown={() => canFireIg && fireIgniter(currentModule.address, ig.position)}
+                onTouchStart={(e) => { e.preventDefault(); if (canFireIg) fireIgniter(currentModule.address, ig.position); }}
+                disabled={!canFireIg && !ig.fired}
+                className={cn(
+                  "relative flex flex-col items-center justify-center rounded border transition-all select-none",
+                  cellSize,
+                  ig.fired ? "bg-muted-foreground/10 border-border/10" :
+                  ig.misfire ? "bg-red-600/20 border-red-500/40 animate-pulse" :
+                  canFireIg ? "bg-[hsl(220_10%_12%)] border-border/30 hover:bg-red-700/20 active:scale-[0.93] active:bg-red-600/30 cursor-pointer" :
+                  ig.connected ? "bg-[hsl(220_10%_10%)] border-border/15" :
                   "bg-[hsl(220_10%_6%)] border-border/5"
                 )}>
-                  <span className={cn("font-mono font-bold", fs ? "text-[9px]" : "text-[6px]",
-                    ig.connected ? "text-foreground/50" : "text-muted-foreground/15"
-                  )}>{String(ig.position).padStart(2, '0')}</span>
-                  <span className={cn("font-mono",
-                    fs ? "text-[8px]" : "text-[5px]",
-                    ig.connected && ig.resistance > 0 && ig.resistance < 30 ? "text-green-400/70" :
-                    ig.connected && ig.resistance >= 30 ? "text-amber-400/70" :
-                    ig.connected ? "text-red-400/50" : "text-muted-foreground/10"
-                  )}>
-                    {ig.resistance > 0 ? `${ig.resistance.toFixed(1)}Ω` : ig.connected ? 'OPEN' : '—'}
-                  </span>
-                  {ig.connected && ig.resistance > 0 && ig.resistance < 30
-                    ? <CheckCircle2 className={cn(fs ? "w-2.5 h-2.5" : "w-2 h-2", "text-green-400/50 mt-0.5")} />
-                    : ig.connected
-                      ? <XCircle className={cn(fs ? "w-2.5 h-2.5" : "w-2 h-2", "text-red-400/50 mt-0.5")} />
-                      : null
-                  }
-                </div>
-              ))}
-            </div>
-            {/* Summary */}
-            <div className={cn("mt-3 rounded border border-border/10 flex items-center justify-around", fs ? "px-4 py-2" : "px-2 py-1")} style={{ background: 'hsl(220 10% 7%)' }}>
-              <div className="text-center">
-                <div className={cn("font-mono font-bold text-green-400", fs ? "text-sm" : "text-xs")}>{currentModule.igniters.filter(i => i.connected && i.resistance > 0 && i.resistance < 30).length}</div>
-                <div className={cn("text-muted-foreground/30 uppercase", fs ? "text-[7px]" : "text-[5px]")}>Good</div>
-              </div>
-              <div className="text-center">
-                <div className={cn("font-mono font-bold text-amber-400", fs ? "text-sm" : "text-xs")}>{currentModule.igniters.filter(i => i.connected && i.resistance >= 30).length}</div>
-                <div className={cn("text-muted-foreground/30 uppercase", fs ? "text-[7px]" : "text-[5px]")}>Suspect</div>
-              </div>
-              <div className="text-center">
-                <div className={cn("font-mono font-bold text-red-400", fs ? "text-sm" : "text-xs")}>{currentModule.igniters.filter(i => i.connected && i.resistance === 0).length}</div>
-                <div className={cn("text-muted-foreground/30 uppercase", fs ? "text-[7px]" : "text-[5px]")}>Open</div>
-              </div>
-              <div className="text-center">
-                <div className={cn("font-mono font-bold text-muted-foreground/30", fs ? "text-sm" : "text-xs")}>{currentModule.igniters.filter(i => !i.connected).length}</div>
-                <div className={cn("text-muted-foreground/30 uppercase", fs ? "text-[7px]" : "text-[5px]")}>Empty</div>
-              </div>
-            </div>
+                {/* Continuity LED */}
+                <div className={cn("absolute rounded-full",
+                  sz === 'xl' ? "w-3 h-3 top-1.5 right-1.5" : sz === 'fs' ? "w-2 h-2 top-1 right-1" : "w-1.5 h-1.5 top-0.5 right-0.5",
+                  ig.fired ? "bg-muted-foreground/20" :
+                  ig.misfire ? "bg-red-500" :
+                  ok ? "bg-green-500" :
+                  ig.connected ? "bg-amber-400" : "bg-muted-foreground/10"
+                )} style={ok && !ig.fired ? { boxShadow: '0 0 4px rgba(34,197,94,0.4)' } : ig.misfire ? { boxShadow: '0 0 6px rgba(239,68,68,0.6)' } : undefined} />
+                <span className={cn("font-mono font-bold",
+                  sz === 'xl' ? (mob ? "text-base" : "text-sm") : sz === 'fs' ? "text-[10px]" : "text-[7px]",
+                  ig.fired ? "text-muted-foreground/20" : ig.misfire ? "text-red-400" : ok ? "text-foreground/60" : "text-muted-foreground/15"
+                )}>{String(ig.position).padStart(2, '0')}</span>
+                <span className={cn("font-mono",
+                  sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[7px]" : "text-[5px]",
+                  ig.fired ? "text-muted-foreground/15" : ok ? "text-green-400/50" : "text-muted-foreground/15"
+                )}>{ig.resistance > 0 ? `${ig.resistance.toFixed(1)}Ω` : '—'}</span>
+                {/* Firing flash on mobile xl */}
+                {ig.fired && xl && (
+                  <div className="absolute inset-0 rounded-xl pointer-events-none bg-gradient-radial from-red-500/10 to-transparent" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  // ── Render: Step mode ──
+  const renderStepMode = () => (
+    <div className={cn(sz === 'xl' ? "p-5" : sz === 'fs' ? "p-3" : "p-2")}>
+      {stepCues.length === 0 ? (
+        <div className={cn("text-center text-muted-foreground/30 py-8", sz === 'xl' ? "text-base" : sz === 'fs' ? "text-sm" : "text-[10px]")}>
+          No pyro cues. Tap <strong>Import</strong> to load from AutoFire.
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center justify-between mb-2">
+            <span className={cn("font-bold text-foreground/60", sz === 'xl' ? "text-sm" : sz === 'fs' ? "text-xs" : "text-[9px]")}>
+              Step {stepIndex + 1} / {stepCues.length}
+            </span>
+            <button onClick={() => { setStepIndex(0); toast.info('Step reset'); }}
+              className={cn("rounded text-muted-foreground/40 hover:text-foreground/60",
+                sz === 'xl' ? "text-xs px-3 py-1.5" : sz === 'fs' ? "text-[9px] px-2 py-1" : "text-[7px] px-1.5 py-0.5"
+              )}>
+              <RotateCcw className={cn(sz === 'xl' ? "w-4 h-4 inline mr-1" : "w-3 h-3 inline mr-0.5")} />Reset
+            </button>
           </div>
-        )}
-      </ScrollArea>
+          {stepCues[stepIndex] && (
+            <div className={cn("rounded border mb-3",
+              sz === 'xl' ? "p-4 border-red-500/25" : sz === 'fs' ? "p-3 border-red-500/20" : "p-2 border-border/15"
+            )} style={{ background: 'hsl(0 20% 8%)' }}>
+              <div className={cn("font-bold text-red-400/80", sz === 'xl' ? "text-base" : sz === 'fs' ? "text-sm" : "text-[9px]")}>{stepCues[stepIndex].name}</div>
+              <div className={cn("font-mono text-muted-foreground/40", sz === 'xl' ? "text-xs mt-1" : sz === 'fs' ? "text-[9px]" : "text-[7px]")}>
+                TC: {formatTimecode(stepCues[stepIndex].timecodeMs)} · Addr: {stepCues[stepIndex].addresses} · {stepCues[stepIndex].effect}
+              </div>
+            </div>
+          )}
+          <button onClick={stepFire} disabled={!canFire}
+            className={cn(
+              "w-full rounded-lg font-black uppercase transition-all border-2 flex items-center justify-center gap-2",
+              sz === 'xl' ? "py-5 text-lg rounded-xl" : sz === 'fs' ? "py-4 text-base" : "py-3 text-sm",
+              canFire
+                ? "bg-gradient-to-b from-red-600 to-red-800 text-white border-red-500/50 active:scale-[0.97]"
+                : "bg-[hsl(220_10%_10%)] text-muted-foreground/20 border-border/10"
+            )}>
+            <SkipForward className={cn(sz === 'xl' ? "w-6 h-6" : "w-5 h-5")} />
+            NEXT FIRE
+          </button>
+          <div className={cn("mt-3 space-y-0.5")}>
+            {stepCues.map((cue, i) => (
+              <div key={cue.id} className={cn(
+                "flex items-center gap-2 rounded border transition-colors",
+                sz === 'xl' ? "px-4 py-2 text-xs" : sz === 'fs' ? "px-3 py-1.5 text-[9px]" : "px-2 py-1 text-[7px]",
+                i === stepIndex ? "bg-red-600/10 border-red-500/20 text-foreground/80" :
+                i < stepIndex ? "border-border/5 text-muted-foreground/20" :
+                "border-border/10 text-muted-foreground/40"
+              )}>
+                <span className="font-mono w-5">{cue.cueNumber}</span>
+                <span className="font-bold flex-1 truncate">{cue.name}</span>
+                <span className="font-mono">{formatTimecode(cue.timecodeMs)}</span>
+                {i < stepIndex && <CheckCircle2 className={cn(sz === 'xl' ? "w-4 h-4" : "w-3 h-3", "text-green-400/50")} />}
+                {i === stepIndex && <Zap className={cn(sz === 'xl' ? "w-4 h-4" : "w-3 h-3", "text-red-400")} />}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  // ── Render: Timecode mode ──
+  const renderTimecodeMode = () => (
+    <div className={cn(sz === 'xl' ? "p-5" : sz === 'fs' ? "p-3" : "p-2")}>
+      <div className={cn("text-center font-mono font-black mb-3",
+        sz === 'xl' ? "text-4xl py-2" : sz === 'fs' ? "text-2xl" : "text-lg",
+        tcRunning ? "text-red-400" : "text-foreground/60"
+      )}>{formatTimecode(tcTimeMs)}</div>
+      {tcCues.length === 0 ? (
+        <div className={cn("text-center text-muted-foreground/30 py-4", sz === 'xl' ? "text-base" : sz === 'fs' ? "text-sm" : "text-[10px]")}>
+          No pyro cues. Tap <strong>Import</strong> to load from AutoFire.
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center justify-center gap-3 mb-3">
+            <Button variant="ghost" size="sm" onClick={resetTimecode} className={cn(sz === 'xl' ? "h-10 text-xs" : "h-8 text-[9px]")}>
+              <RotateCcw className="w-3 h-3 mr-1" /> Reset
+            </Button>
+            <button onClick={() => { if (!canFire && !tcRunning) { toast.error('ARM + DEADMAN required'); return; } setTcRunning(!tcRunning); }}
+              disabled={!canFire && !tcRunning}
+              className={cn(
+                "rounded-lg font-black uppercase transition-all border-2 flex items-center gap-2",
+                sz === 'xl' ? "px-8 py-3 text-base rounded-xl" : sz === 'fs' ? "px-6 py-2.5 text-sm" : "px-4 py-2 text-[10px]",
+                tcRunning
+                  ? "bg-red-600/30 border-red-500/40 text-red-400"
+                  : canFire
+                    ? "bg-green-600/20 border-green-500/40 text-green-400"
+                    : "bg-[hsl(220_10%_10%)] border-border/10 text-muted-foreground/20"
+              )}>
+              {tcRunning ? <Square className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              {tcRunning ? 'STOP' : 'RUN'}
+            </button>
+          </div>
+          <div className={cn("w-full rounded-full overflow-hidden mb-3", sz === 'xl' ? "h-3" : sz === 'fs' ? "h-2" : "h-1")} style={{ background: 'hsl(220 10% 12%)' }}>
+            <div className="h-full rounded-full transition-all" style={{
+              width: `${Math.min(100, tcCues.length > 0 ? (tcTimeMs / Math.max(...tcCues.map(c => c.timecodeMs + c.duration * 1000))) * 100 : 0)}%`,
+              background: 'linear-gradient(90deg, hsl(0 80% 50%), hsl(30 80% 50%))',
+            }} />
+          </div>
+          <div className="space-y-0.5">
+            {tcCues.map(cue => {
+              const fired = tcFiredSet.current.has(cue.id);
+              return (
+                <div key={cue.id} className={cn(
+                  "flex items-center gap-2 rounded border",
+                  sz === 'xl' ? "px-4 py-2 text-xs" : sz === 'fs' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[7px]",
+                  fired ? "border-border/5 text-muted-foreground/20" :
+                  tcTimeMs >= cue.timecodeMs - 2000 ? "border-amber-500/20 bg-amber-600/5 text-amber-400/70" :
+                  "border-border/10 text-muted-foreground/40"
+                )}>
+                  <span className="font-mono w-5">{cue.cueNumber}</span>
+                  <span className="font-bold flex-1 truncate">{cue.name}</span>
+                  <span className="font-mono">{formatTimecode(cue.timecodeMs)}</span>
+                  {fired && <CheckCircle2 className="w-3 h-3 text-green-400/50" />}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  // ── Render: Test mode ──
+  const renderTestMode = () => {
+    if (!currentModule) return null;
+    return (
+      <div className={cn(sz === 'xl' ? "p-5" : sz === 'fs' ? "p-3" : "p-2")}>
+        <div className="flex items-center justify-between mb-3">
+          <span className={cn("font-bold text-foreground/60 uppercase", sz === 'xl' ? "text-sm" : sz === 'fs' ? "text-xs" : "text-[9px]")}>
+            Continuity Test — FM-{String(selectedModule).padStart(2, '0')}
+          </span>
+          <button onClick={runContinuityTest} disabled={!currentModule.connected}
+            className={cn("rounded border font-bold uppercase transition-all flex items-center gap-1",
+              sz === 'xl' ? "px-4 py-2 text-xs" : sz === 'fs' ? "px-3 py-1.5 text-[9px]" : "px-2 py-1 text-[7px]",
+              currentModule.connected ? "bg-cyan-600/15 border-cyan-500/30 text-cyan-400" : "border-border/10 text-muted-foreground/15"
+            )}>
+            <Search className={cn(sz === 'xl' ? "w-4 h-4" : "w-3 h-3")} /> TEST
+          </button>
+        </div>
+        <div className={cn("grid", xl && mob ? "grid-cols-4" : "grid-cols-8", sz === 'xl' ? "gap-2" : sz === 'fs' ? "gap-1.5" : "gap-1")}>
+          {currentModule.igniters.map(ig => (
+            <div key={ig.position} className={cn(
+              "flex flex-col items-center justify-center rounded border",
+              sz === 'xl' ? "py-3 min-h-[64px]" : sz === 'fs' ? "py-2 min-h-[48px]" : "py-1.5 min-h-[36px]",
+              ig.connected && ig.resistance > 0 && ig.resistance < 30 ? "bg-green-600/10 border-green-500/20" :
+              ig.connected && ig.resistance >= 30 ? "bg-amber-600/10 border-amber-500/20" :
+              ig.connected ? "bg-red-600/10 border-red-500/20" :
+              "bg-[hsl(220_10%_6%)] border-border/5"
+            )}>
+              <span className={cn("font-mono font-bold",
+                sz === 'xl' ? "text-sm" : sz === 'fs' ? "text-[9px]" : "text-[6px]",
+                ig.connected ? "text-foreground/50" : "text-muted-foreground/15"
+              )}>{String(ig.position).padStart(2, '0')}</span>
+              <span className={cn("font-mono",
+                sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[8px]" : "text-[5px]",
+                ig.connected && ig.resistance > 0 && ig.resistance < 30 ? "text-green-400/70" :
+                ig.connected && ig.resistance >= 30 ? "text-amber-400/70" :
+                ig.connected ? "text-red-400/50" : "text-muted-foreground/10"
+              )}>
+                {ig.resistance > 0 ? `${ig.resistance.toFixed(1)}Ω` : ig.connected ? 'OPEN' : '—'}
+              </span>
+              {ig.connected && ig.resistance > 0 && ig.resistance < 30
+                ? <CheckCircle2 className={cn(sz === 'xl' ? "w-3.5 h-3.5" : "w-2.5 h-2.5", "text-green-400/50 mt-0.5")} />
+                : ig.connected
+                  ? <XCircle className={cn(sz === 'xl' ? "w-3.5 h-3.5" : "w-2.5 h-2.5", "text-red-400/50 mt-0.5")} />
+                  : null
+              }
+            </div>
+          ))}
+        </div>
+        {/* Summary */}
+        <div className={cn("mt-3 rounded border border-border/10 flex items-center justify-around",
+          sz === 'xl' ? "px-6 py-3" : sz === 'fs' ? "px-4 py-2" : "px-2 py-1"
+        )} style={{ background: 'hsl(220 10% 7%)' }}>
+          {[
+            { label: 'Good', count: currentModule.igniters.filter(i => i.connected && i.resistance > 0 && i.resistance < 30).length, color: 'text-green-400' },
+            { label: 'Suspect', count: currentModule.igniters.filter(i => i.connected && i.resistance >= 30).length, color: 'text-amber-400' },
+            { label: 'Open', count: currentModule.igniters.filter(i => i.connected && i.resistance === 0).length, color: 'text-red-400' },
+            { label: 'Empty', count: currentModule.igniters.filter(i => !i.connected).length, color: 'text-muted-foreground/30' },
+          ].map(s => (
+            <div key={s.label} className="text-center">
+              <div className={cn("font-mono font-bold", s.color, sz === 'xl' ? "text-lg" : sz === 'fs' ? "text-sm" : "text-xs")}>{s.count}</div>
+              <div className={cn("text-muted-foreground/30 uppercase", sz === 'xl' ? "text-[9px]" : sz === 'fs' ? "text-[7px]" : "text-[5px]")}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // ── Render: PANIC bar ──
+  const renderPanic = () => (
+    <div className="border-t-2 border-border/20 shrink-0" style={{ background: 'hsl(220 12% 6%)' }}>
+      <div className={cn(sz === 'xl' ? "px-5 py-3" : sz === 'fs' ? "px-4 py-2" : "px-2 py-1.5")}>
+        <button onClick={handlePanic}
+          className={cn(
+            "w-full rounded-lg font-black uppercase transition-all",
+            "bg-gradient-to-b from-red-700 to-red-900 text-white/90",
+            "hover:from-red-600 hover:to-red-800 active:scale-[0.97]",
+            "border-2 border-red-600/50",
+            "flex items-center justify-center gap-2",
+            sz === 'xl' ? "h-16 text-lg tracking-[0.3em] rounded-xl" : sz === 'fs' ? "h-14 text-base tracking-[0.25em]" : "h-10 text-[11px] tracking-[0.25em]"
+          )} style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)' }}>
+          <AlertTriangle className={cn(sz === 'xl' ? "w-7 h-7" : sz === 'fs' ? "w-5 h-5" : "w-4 h-4")} />
+          PANIC — ALL STOP
+        </button>
+      </div>
+    </div>
+  );
+
+  // ── Render: Deadman (for XL fullscreen) ──
+  const renderDeadman = () => (
+    <div className={cn("border-t border-border/15 shrink-0",
+      sz === 'xl' ? "px-5 py-2" : "px-3 py-1.5"
+    )} style={{ background: deadmanHeld ? 'hsl(140 30% 8%)' : 'hsl(220 12% 6%)' }}>
+      <button
+        onMouseDown={() => {/* deadman comes from parent */}}
+        onTouchStart={(e) => { e.preventDefault(); }}
+        className={cn(
+          "w-full rounded-lg font-black uppercase transition-all border-2 flex items-center justify-center gap-2",
+          sz === 'xl' ? "py-4 text-sm rounded-xl" : "py-3 text-[10px]",
+          deadmanHeld
+            ? "bg-green-600/25 border-green-500/50 text-green-400"
+            : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/30"
+        )}>
+        <Hand className={cn(sz === 'xl' ? "w-6 h-6" : "w-4 h-4")} />
+        DEADMAN {deadmanHeld ? '● HELD' : '— INACTIVE'}
+      </button>
+      <p className={cn("text-center text-muted-foreground/20 mt-1", sz === 'xl' ? "text-[9px]" : "text-[7px]")}>
+        Deadman is controlled from FX Commander ARM bar
+      </p>
+    </div>
+  );
+
+  // ── Mode content router ──
+  const renderModeContent = () => {
+    switch (pyroMode) {
+      case 'manual': return renderIgniterGrid();
+      case 'step': return renderStepMode();
+      case 'timecode': return renderTimecodeMode();
+      case 'test': return renderTestMode();
+      default: return renderIgniterGrid();
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════
+  // DEDICATED XL4 FULLSCREEN — Portal to body
+  // ═══════════════════════════════════════════════════════════
+  if (pyroFullscreen) {
+    const fullscreenContent = (
+      <div
+        className="fixed inset-0 z-[99999] flex flex-col select-none"
+        style={{
+          background: 'linear-gradient(180deg, hsl(0 15% 6%) 0%, hsl(220 12% 4%) 100%)',
+          paddingBottom: mob ? 'max(env(safe-area-inset-bottom), 8px)' : undefined,
+        }}
+      >
+        {renderHeader()}
+        {renderMasterArm()}
+        {renderStatusStrip()}
+        {renderModeTabs()}
+        {renderModuleSelector()}
+        {renderModuleInfo()}
+        <ScrollArea className="flex-1">{renderModeContent()}</ScrollArea>
+        {renderDeadman()}
+        {renderPanic()}
+      </div>
+    );
+
+    return createPortal(fullscreenContent, document.body);
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // PANEL MODE (inside FX Commander)
+  // ═══════════════════════════════════════════════════════════
+  return (
+    <div className="flex flex-col h-full">
+      {renderHeader()}
+      {renderMasterArm()}
+      {renderStatusStrip()}
+      {renderModeTabs()}
+      {renderModuleSelector()}
+      {renderModuleInfo()}
+      <ScrollArea className="flex-1">{renderModeContent()}</ScrollArea>
     </div>
   );
 }
