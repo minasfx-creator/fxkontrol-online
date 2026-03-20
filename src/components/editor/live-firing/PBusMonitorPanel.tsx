@@ -283,14 +283,20 @@ export default function PBusMonitorPanel() {
         )}
       </div>
 
-      {/* E-STOP */}
+      {/* E-STOP — long-press on mobile */}
       {pbus.isConnected && (
         <Button
           variant="destructive"
-          className="w-full h-8 text-[10px] font-black tracking-wider"
-          onClick={() => { pbus.emergencyStop(); toast.error('🔴 EMERGENCY STOP — All devices disarmed'); }}
+          className={cn("w-full font-black tracking-wider", isMobile ? "h-14 text-base" : "h-8 text-[10px]")}
+          onMouseDown={handleEstopStart}
+          onMouseUp={handleEstopEnd}
+          onMouseLeave={handleEstopEnd}
+          onTouchStart={(e) => { e.preventDefault(); handleEstopStart(); }}
+          onTouchEnd={(e) => { e.preventDefault(); handleEstopEnd(); }}
+          onTouchCancel={handleEstopEnd}
         >
-          <XCircle className="w-3.5 h-3.5 mr-1.5" /> EMERGENCY STOP
+          <XCircle className={cn(isMobile ? "w-5 h-5" : "w-3.5 h-3.5", "mr-1.5")} />
+          EMERGENCY STOP {isMobile ? '(pressione 0.5s)' : ''}
         </Button>
       )}
 
