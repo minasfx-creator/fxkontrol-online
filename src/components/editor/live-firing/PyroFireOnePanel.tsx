@@ -162,6 +162,11 @@ export default function PyroFireOnePanel({
       batteryVoltage: hm.batteryVoltage,
       signalStrength: hm.signalStrength,
       temperature: hm.temperature,
+      connectionMode: hm.connectionMode,
+      rssiDbm: hm.rssiDbm,
+      wirelessChannel: hm.wirelessChannel,
+      packetLoss: hm.packetLoss,
+      linkQuality: hm.linkQuality,
       igniters: hm.igniters.map(ig => ({
         position: ig.position,
         connected: ig.connected,
