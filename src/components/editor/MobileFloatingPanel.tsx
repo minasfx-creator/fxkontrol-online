@@ -1,6 +1,6 @@
 /**
- * MobileFloatingPanel — Translucent swipeable sheet (Free Fire style)
- * Glass background, 3 snap heights, drag handle, swipe-to-dismiss.
+ * MobileFloatingPanel — Apple-style bottom sheet
+ * Smooth spring transitions, grab indicator, swipe-to-dismiss.
  */
 import { useRef, useCallback, useState } from 'react';
 import { X } from 'lucide-react';
@@ -15,10 +15,10 @@ interface MobileFloatingPanelProps {
   children: React.ReactNode;
 }
 
-const HEIGHT_CLASSES: Record<string, string> = {
+const HEIGHT_MAP: Record<string, string> = {
   collapsed: 'translate-y-full',
-  half: 'h-[45vh]',
-  full: 'h-[85vh]',
+  half: 'h-[50vh]',
+  full: 'h-[88vh]',
 };
 
 export default function MobileFloatingPanel({
@@ -43,16 +43,13 @@ export default function MobileFloatingPanel({
     const deltaY = touch.clientY - dragRef.current.startY;
     setIsDragging(false);
 
-    // Swipe down → shrink or dismiss
     if (deltaY > 60) {
       if (height === 'full') {
         onHeightChange?.('half');
       } else {
         onDismiss?.();
       }
-    }
-    // Swipe up → expand
-    else if (deltaY < -60) {
+    } else if (deltaY < -60) {
       if (height === 'half') {
         onHeightChange?.('full');
       }
@@ -65,37 +62,35 @@ export default function MobileFloatingPanel({
   return (
     <div
       className={cn(
-        "fixed left-0 right-0 z-40 glass-sheet rounded-t-2xl transition-all duration-300 ease-out overflow-hidden",
-        HEIGHT_CLASSES[height]
+        "fixed left-0 right-0 z-40 glass-sheet rounded-t-[20px] overflow-hidden animate-ios-spring-up",
+        HEIGHT_MAP[height]
       )}
       style={{
-        bottom: 'calc(52px + env(safe-area-inset-bottom))',
+        bottom: 'calc(64px + env(safe-area-inset-bottom))',
+        transition: isDragging ? 'none' : 'height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
       }}
     >
-      {/* Drag handle */}
+      {/* Grab indicator — Apple style */}
       <div
-        className="flex items-center justify-center pt-2 pb-1 cursor-grab active:cursor-grabbing"
+        className="flex items-center justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        <div className={cn(
-          "w-10 h-1 rounded-full transition-colors",
-          isDragging ? "bg-primary/50" : "bg-white/20"
-        )} />
+        <div className="sheet-indicator" />
       </div>
 
       {/* Close button */}
       {onDismiss && (
         <button
           onClick={onDismiss}
-          className="absolute top-2 right-3 w-7 h-7 flex items-center justify-center rounded-full glass-card text-muted-foreground hover:text-foreground active:scale-90 transition-all z-10"
+          className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full glass-button text-muted-foreground z-10"
         >
-          <X className="w-3.5 h-3.5" />
+          <X className="w-4 h-4" />
         </button>
       )}
 
       {/* Content */}
-      <div className="h-[calc(100%-28px)] overflow-y-auto overscroll-contain scrollbar-thin px-1">
+      <div className="h-[calc(100%-36px)] overflow-y-auto overscroll-contain px-1 pb-2">
         {children}
       </div>
     </div>

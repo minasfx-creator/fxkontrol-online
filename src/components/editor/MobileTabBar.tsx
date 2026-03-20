@@ -1,6 +1,6 @@
 /**
- * MobileTabBar — Glass floating dock (Free Fire style)
- * Pill-shaped, icon-only, with neon active indicators.
+ * MobileTabBar — Apple-style tab bar with SF icon language
+ * Frosted glass, clean labels, smooth transitions.
  */
 import { useCallback, useRef } from 'react';
 import { Clock, Sparkles, MapPin, Hexagon, MoreHorizontal, Cable, Cpu, Map, Radio } from 'lucide-react';
@@ -17,16 +17,12 @@ interface MobileTabBarProps {
   onPanelHeightChange: (h: 'collapsed' | 'half' | 'full') => void;
 }
 
-const TABS: { key: MobileTab; icon: typeof Clock; panelId?: PanelId; accent?: boolean }[] = [
-  { key: 'livefx', icon: Sparkles, panelId: 'livefiring', accent: true },
-  { key: 'controllers', icon: Cpu, panelId: 'controllers' },
-  { key: 'fieldmap', icon: Map, panelId: 'fieldmap' },
-  { key: 'radio', icon: Radio, panelId: 'radio' },
-  { key: 'mobilelink', icon: Cable, panelId: 'mobilelink' },
-  { key: 'points', icon: MapPin, panelId: 'properties' },
-  { key: 'formations', icon: Hexagon, panelId: 'swarmgpt' },
-  { key: 'timeline', icon: Clock },
-  { key: 'more', icon: MoreHorizontal },
+const TABS: { key: MobileTab; icon: typeof Clock; label: string; panelId?: PanelId; accent?: boolean }[] = [
+  { key: 'livefx', icon: Sparkles, label: 'Live FX', panelId: 'livefiring', accent: true },
+  { key: 'controllers', icon: Cpu, label: 'Control', panelId: 'controllers' },
+  { key: 'fieldmap', icon: Map, label: 'Map', panelId: 'fieldmap' },
+  { key: 'timeline', icon: Clock, label: 'Timeline' },
+  { key: 'more', icon: MoreHorizontal, label: 'More' },
 ];
 
 export default function MobileTabBar({
@@ -66,7 +62,6 @@ export default function MobileTabBar({
   const handleLongPressStart = useCallback((tab: MobileTab) => {
     if (tab === 'livefx') {
       longPressRef.current = setTimeout(() => {
-        // Long-press Live FX → fullscreen commander
         onOpenPanel('livefiring');
         onTabChange('livefx');
         onPanelHeightChange('full');
@@ -84,11 +79,11 @@ export default function MobileTabBar({
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none flex justify-center"
-      style={{ paddingBottom: 'calc(8px + env(safe-area-inset-bottom))' }}
+      className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <nav className="pointer-events-auto glass-dock rounded-2xl px-2 py-1.5 flex items-center gap-1">
-        {TABS.map(({ key, icon: Icon, accent }) => {
+      <nav className="pointer-events-auto glass-dock mx-4 mb-2 rounded-2xl px-1 py-1 flex items-center justify-around">
+        {TABS.map(({ key, icon: Icon, label, accent }) => {
           const isActive = activeTab === key;
           return (
             <button
@@ -98,23 +93,24 @@ export default function MobileTabBar({
               onTouchEnd={handleLongPressEnd}
               onTouchCancel={handleLongPressEnd}
               className={cn(
-                "touch-target flex flex-col items-center justify-center w-12 h-10 rounded-xl transition-all active:scale-90",
-                isActive
-                  ? accent
-                    ? "text-accent glow-active"
-                    : "text-primary glow-active"
-                  : accent
-                    ? "text-accent/60"
-                    : "text-muted-foreground"
+                "flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-200",
+                "active:scale-90"
               )}
             >
-              <Icon className="w-5 h-5" />
-              {isActive && (
-                <div className={cn(
-                  "w-1 h-1 rounded-full mt-0.5",
-                  accent ? "bg-accent shadow-[0_0_6px_hsl(var(--accent))]" : "bg-primary shadow-[0_0_6px_hsl(var(--primary))]"
-                )} />
-              )}
+              <Icon className={cn(
+                "w-5 h-5 transition-colors duration-200",
+                isActive
+                  ? accent ? "text-accent" : "text-primary"
+                  : "text-[hsl(var(--muted-foreground)/0.6)]"
+              )} />
+              <span className={cn(
+                "text-[9px] font-semibold mt-0.5 transition-colors duration-200",
+                isActive
+                  ? accent ? "text-accent" : "text-primary"
+                  : "text-[hsl(var(--muted-foreground)/0.4)]"
+              )}>
+                {label}
+              </span>
             </button>
           );
         })}
