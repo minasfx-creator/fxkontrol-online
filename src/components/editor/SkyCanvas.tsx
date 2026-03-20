@@ -1273,14 +1273,9 @@ function Moon() {
           `}
         />
       </mesh>
-      {/* Inner glow — proportional to 450-unit body ×5 */}
-      <mesh>
-        <sphereGeometry args={[500, 32, 32]} />
-        <meshBasicMaterial color="#d0c8a8" transparent opacity={0.10} blending={THREE.AdditiveBlending} />
-      </mesh>
       {/* Outer volumetric halo */}
       <mesh>
-        <sphereGeometry args={[800, 32, 32]} />
+        <sphereGeometry args={[800, 16, 16]} />
         <shaderMaterial
           transparent
           depthWrite={false}
@@ -1301,11 +1296,6 @@ function Moon() {
             }
           `}
         />
-      </mesh>
-      {/* Wide atmospheric scatter */}
-      <mesh>
-        <sphereGeometry args={[1600, 16, 16]} />
-        <meshBasicMaterial color="#506080" transparent opacity={0.008} blending={THREE.AdditiveBlending} />
       </mesh>
       <pointLight color="#8899bb" intensity={0.15} distance={30000} decay={1} />
     </group>
@@ -1629,7 +1619,7 @@ function GrassGround() {
 
   return (
     <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <planeGeometry args={[100000, 100000, 16, 16]} />
+      <planeGeometry args={[100000, 100000, 1, 1]} />
       <shaderMaterial
         uniforms={uniforms}
         vertexShader={terrainVertexShader}
@@ -1730,7 +1720,8 @@ function FloorLogo() {
     ctx.stroke();
 
     const tex = new THREE.CanvasTexture(canvas);
-    tex.anisotropy = 16;
+    tex.generateMipmaps = false;
+    tex.minFilter = THREE.LinearFilter;
     return tex;
   }, []);
 
@@ -1852,7 +1843,7 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
 
   return (
     <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <planeGeometry args={[100000, 100000, 16, 16]} />
+      <planeGeometry args={[100000, 100000, 1, 1]} />
       <shaderMaterial
         uniforms={uniforms}
         vertexShader={`
