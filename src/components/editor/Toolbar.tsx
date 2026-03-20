@@ -580,6 +580,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       <UAssetImporter open={uassetOpen} onOpenChange={setUassetOpen} />
       <AssetMarketplaceBrowser open={marketplaceOpen} onOpenChange={setMarketplaceOpen} />
       <GMA2PatchImporter open={gma2Open} onOpenChange={setGma2Open} />
+      <UE5DMXPrevisImporter open={ue5DmxOpen} onOpenChange={setUe5DmxOpen} />
 
       <div className="flex-1" />
 
