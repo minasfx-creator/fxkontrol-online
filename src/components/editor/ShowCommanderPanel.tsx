@@ -125,7 +125,7 @@ function useSubsystems(fireone: ReturnType<typeof useFireOneHardware>, pbus: Ret
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 function MasterTransport() {
-  const { currentTime, isPlaying, duration, togglePlayback } = useProjectStore();
+  const { currentTime, isPlaying, duration, setPlaying } = useProjectStore();
   const { frameRate, startTimecodeSeconds } = useSMPTEStore();
   const [masterArmed, setMasterArmed] = useState(false);
 
