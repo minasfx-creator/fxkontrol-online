@@ -321,6 +321,7 @@ function Index() {
         {activePanel === 'videochoreo' && <VideoChoreoPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'showven' && <ShowvenEquipmentPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'generative' && <GenerativeEffectsPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'sitemodels' && <SiteModelsPanel onClose={() => setActivePanel(null)} />}
       </>
     );
   };
