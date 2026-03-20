@@ -3639,10 +3639,10 @@ export default function SkyCanvas() {
       <div className="absolute top-3 left-3 flex items-center gap-1 flex-wrap max-w-[calc(100%-24px)]">
         {/* Free look toggle */}
         <button
-          onClick={() => setFreeLook(!freeLook)}
+          onClick={() => { setFreeLook(!freeLook); if (flyMode) setFlyMode(false); }}
           className={cn(
             "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
-            freeLook
+            freeLook && !flyMode
               ? "bg-warning/20 text-warning border-warning/30 shadow-lg shadow-warning/10"
               : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
           )}
@@ -3650,6 +3650,21 @@ export default function SkyCanvas() {
         >
           <ScanEye className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Look</span>
+        </button>
+
+        {/* Fly mode toggle */}
+        <button
+          onClick={() => { setFlyMode(!flyMode); if (!flyMode) setFreeLook(false); }}
+          className={cn(
+            "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
+            flyMode
+              ? "bg-accent/20 text-accent-foreground border-accent/30 shadow-lg shadow-accent/10"
+              : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+          )}
+          title="Fly Mode (WASD + Mouse)"
+        >
+          <Navigation className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Fly</span>
         </button>
 
         {/* Mobile: camera dropdown; Desktop: inline buttons */}
