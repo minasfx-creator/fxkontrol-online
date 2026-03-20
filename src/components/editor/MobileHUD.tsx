@@ -1,9 +1,9 @@
 /**
- * MobileHUD — Transparent top bar (Free Fire style)
- * Always visible over 3D world. Shows timecode, transport, connection status, PANIC.
+ * MobileHUD — Apple Dynamic Island–inspired top bar
+ * Clean, minimal, high-information density for show operators.
  */
-import { useState, useCallback, useEffect, useMemo } from 'react';
-import { Play, Pause, Square, Menu, AlertOctagon, Zap } from 'lucide-react';
+import { useState, useCallback, useMemo } from 'react';
+import { Play, Pause, Square, Menu, AlertOctagon, Zap, Wifi, Radio } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
@@ -29,9 +29,9 @@ function getCountdown(showDate: string | null): string | null {
   if (diff <= 0) return 'LIVE';
   const days = Math.floor(diff / 86400000);
   const hours = Math.floor((diff % 86400000) / 3600000);
-  if (days > 0) return `T-${days}d ${hours}h`;
+  if (days > 0) return `T-${days}d`;
   const mins = Math.floor((diff % 3600000) / 60000);
-  return `T-${hours}h ${mins}m`;
+  return `T-${hours}h${mins}m`;
 }
 
 export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
@@ -45,7 +45,6 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
   const smpteRunning = useSMPTEStore(s => s.running);
   const { settings } = useShowSettings();
   const isArmed = activeEffects.length > 0;
-  const [showMenu, setShowMenu] = useState(false);
 
   const countdown = useMemo(() => getCountdown(settings?.show_date ?? null), [settings?.show_date]);
 
@@ -58,60 +57,61 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-      <div className="pointer-events-auto glass-hud flex items-center justify-between px-3 py-1.5 mx-2 mt-1 rounded-xl">
-        {/* Left: Logo + Timecode */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1">
-            <Zap className="w-4 h-4 text-primary glow-active" />
-            <span className="text-[9px] font-bold text-primary tracking-wider">FXK</span>
-          </div>
-          <div className="font-mono-code text-sm font-semibold text-primary tabular-nums tracking-tight">
+      <div className="flex items-center justify-between px-3 pt-2 pb-1 mx-3 mt-1">
+        {/* Left: Timecode pill (Dynamic Island style) */}
+        <div className="pointer-events-auto status-pill">
+          <Zap className="w-3 h-3 text-primary" />
+          <span className="font-mono text-[11px] font-semibold text-primary tabular-nums tracking-tight">
             {formatTimecode(currentTime)}
-          </div>
+          </span>
           {countdown && (
             <span className={cn(
-              "text-[8px] font-bold px-1.5 py-0.5 rounded-full",
-              countdown === 'LIVE'
-                ? "bg-destructive/30 text-destructive animate-pulse-glow"
-                : "bg-accent/20 text-accent"
+              "text-[9px] font-bold ml-1",
+              countdown === 'LIVE' ? "text-destructive" : "text-accent"
             )}>
               {countdown}
             </span>
           )}
         </div>
 
-        {/* Center: Transport */}
-        <div className="flex items-center gap-1">
+        {/* Center: Transport controls */}
+        <div className="pointer-events-auto flex items-center gap-1.5">
           <button
             onClick={() => setPlaying(!isPlaying)}
-            className="touch-target flex items-center justify-center w-8 h-8 rounded-full glass-card transition-all active:scale-90"
+            className="glass-button flex items-center justify-center w-10 h-10"
           >
             {isPlaying
-              ? <Pause className="w-4 h-4 text-primary" />
-              : <Play className="w-4 h-4 text-primary ml-0.5" />
+              ? <Pause className="w-4.5 h-4.5 text-foreground" />
+              : <Play className="w-4.5 h-4.5 text-foreground ml-0.5" />
             }
           </button>
           <button
             onClick={() => { setPlaying(false); setCurrentTime(0); }}
-            className="touch-target flex items-center justify-center w-8 h-8 rounded-full glass-card transition-all active:scale-90"
+            className="glass-button flex items-center justify-center w-10 h-10"
           >
             <Square className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
         </div>
 
         {/* Right: Status + PANIC + Menu */}
-        <div className="flex items-center gap-2">
-          {/* Connection dots */}
-          <div className="flex items-center gap-1">
-            <div className={cn("w-2 h-2 rounded-full", usbConnected ? "bg-primary animate-pulse-glow" : "bg-muted-foreground/40")} title="USB" />
-            <div className={cn("w-2 h-2 rounded-full", smpteRunning ? "bg-warning" : "bg-muted-foreground/40")} title="SMPTE" />
+        <div className="pointer-events-auto flex items-center gap-2">
+          {/* Connection status */}
+          <div className="flex items-center gap-1.5 mr-1">
+            <div className={cn(
+              "w-1.5 h-1.5 rounded-full transition-colors",
+              usbConnected ? "bg-[hsl(var(--success))]" : "bg-[hsl(var(--muted-foreground)/0.3)]"
+            )} />
+            <div className={cn(
+              "w-1.5 h-1.5 rounded-full transition-colors",
+              smpteRunning ? "bg-[hsl(var(--warning))]" : "bg-[hsl(var(--muted-foreground)/0.3)]"
+            )} />
           </div>
 
           {/* PANIC — only when armed */}
           {isArmed && (
             <button
               onClick={handlePanic}
-              className="flex items-center justify-center w-7 h-7 rounded-full bg-destructive/80 border border-destructive animate-pulse-glow active:scale-90 transition-transform"
+              className="flex items-center justify-center w-9 h-9 rounded-full bg-destructive/80 armed-pulse active:scale-90 transition-transform"
             >
               <AlertOctagon className="w-4 h-4 text-destructive-foreground" />
             </button>
@@ -119,7 +119,7 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
 
           <button
             onClick={onMenuOpen}
-            className="touch-target flex items-center justify-center w-8 h-8 rounded-full glass-card active:scale-90 transition-transform"
+            className="glass-button flex items-center justify-center w-10 h-10"
           >
             <Menu className="w-4 h-4 text-foreground" />
           </button>
