@@ -514,7 +514,7 @@ function MyLibraryView({
   );
 }
 
-
+function ResultsView({
   results,
   viewMode,
   loading,
