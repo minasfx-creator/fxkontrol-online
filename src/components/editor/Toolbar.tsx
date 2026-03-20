@@ -474,6 +474,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
               { label: 'VVIZ (Finale 3D)', icon: FileJson, onClick: () => setVvizOpen(true) },
               { label: 'UE .uasset (Niagara)', icon: FileCode, onClick: () => setUassetOpen(true) },
               { label: 'Supplier Catalog', icon: Sparkles, onClick: () => setCatalogOpen(true) },
+              { label: 'Asset Marketplace', icon: Store, onClick: () => setMarketplaceOpen(true) },
             ]}
           />
         </div>
