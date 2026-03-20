@@ -58,6 +58,21 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
     return () => { if (syncIntervalRef.current) clearInterval(syncIntervalRef.current); };
   }, [syncToFireOne, hardware.isConnected, store.running, currentTime, store.startTimecodeSeconds]);
 
+  // PBUS timecode sync
+  useEffect(() => {
+    if (!syncToPBus || !pbus.isConnected || !store.running) {
+      if (pbusSyncRef.current) { clearInterval(pbusSyncRef.current); pbusSyncRef.current = null; }
+      return;
+    }
+    pbusSyncRef.current = setInterval(() => {
+      // PBUS devices receive timecode via requestCueStatus which updates internal clock
+      pbus.devices.forEach((_, addr) => {
+        pbus.requestCueStatus(addr).catch(() => {});
+      });
+    }, 200); // sync every 200ms for PBUS
+    return () => { if (pbusSyncRef.current) clearInterval(pbusSyncRef.current); };
+  }, [syncToPBus, pbus.isConnected, store.running, pbus]);
+
   const statusColor = {
     disconnected: 'bg-muted-foreground',
     connecting: 'bg-warning animate-pulse',
