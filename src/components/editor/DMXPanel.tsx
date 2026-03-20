@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Lightbulb, Plus, Trash2, Send, Wifi, Activity, CheckCircle2, XCircle, Clock, Zap, Usb } from 'lucide-react';
+import { Lightbulb, Plus, Trash2, Send, Wifi, Activity, CheckCircle2, XCircle, Clock, Zap, Usb, Monitor } from 'lucide-react';
+import DMXMonitorGrid from './DMXMonitorGrid';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
