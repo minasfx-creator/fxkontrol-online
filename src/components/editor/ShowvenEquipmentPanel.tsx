@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
-import { Flame, Sparkles, Cloud, PartyPopper, Cpu, ChevronDown, ChevronRight, GripVertical, X, Monitor, Crosshair, Cable } from 'lucide-react';
+import { Flame, Sparkles, Cloud, PartyPopper, Cpu, ChevronDown, ChevronRight, GripVertical, X, Monitor, Crosshair, Cable, Wifi, WifiOff, Radio } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
