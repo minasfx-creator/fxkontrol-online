@@ -2893,7 +2893,83 @@ function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
-function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPosition: [number, number, number]; targetLookAt: [number, number, number]; freeLook: boolean }) {
+/** FlyControls — WASD + mouse pointer-lock first-person camera */
+function FlyControls({ onSpeedChange }: { onSpeedChange?: (speed: number) => void }) {
+  const { camera, gl } = useThree();
+  const keys = useRef<Record<string, boolean>>({});
+  const euler = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
+  const speed = useRef(15);
+  const locked = useRef(false);
+  const SENSITIVITY = 0.002;
+
+  useEffect(() => {
+    const canvas = gl.domElement;
+
+    const onPointerLockChange = () => {
+      locked.current = document.pointerLockElement === canvas;
+    };
+    const onMouseMove = (e: MouseEvent) => {
+      if (!locked.current) return;
+      euler.current.setFromQuaternion(camera.quaternion);
+      euler.current.y -= e.movementX * SENSITIVITY;
+      euler.current.x -= e.movementY * SENSITIVITY;
+      euler.current.x = THREE.MathUtils.clamp(euler.current.x, -Math.PI * 0.49, Math.PI * 0.49);
+      camera.quaternion.setFromEuler(euler.current);
+    };
+    const onKeyDown = (e: KeyboardEvent) => { keys.current[e.code] = true; };
+    const onKeyUp = (e: KeyboardEvent) => { keys.current[e.code] = false; };
+    const onWheel = (e: WheelEvent) => {
+      if (!locked.current) return;
+      e.preventDefault();
+      speed.current = THREE.MathUtils.clamp(speed.current * (e.deltaY > 0 ? 0.85 : 1.18), 1, 500);
+      onSpeedChange?.(speed.current);
+    };
+
+    canvas.requestPointerLock();
+    document.addEventListener('pointerlockchange', onPointerLockChange);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+
+    return () => {
+      document.removeEventListener('pointerlockchange', onPointerLockChange);
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('keyup', onKeyUp);
+      canvas.removeEventListener('wheel', onWheel);
+      if (document.pointerLockElement === canvas) document.exitPointerLock();
+      keys.current = {};
+    };
+  }, [camera, gl, onSpeedChange]);
+
+  const dir = useRef(new THREE.Vector3());
+  const right = useRef(new THREE.Vector3());
+
+  useFrame((_, delta) => {
+    if (!locked.current) return;
+    const k = keys.current;
+    const sprint = k['ShiftLeft'] || k['ShiftRight'] ? 3 : 1;
+    const move = speed.current * sprint * delta;
+
+    camera.getWorldDirection(dir.current);
+    right.current.crossVectors(dir.current, camera.up).normalize();
+
+    if (k['KeyW'] || k['ArrowUp']) camera.position.addScaledVector(dir.current, move);
+    if (k['KeyS'] || k['ArrowDown']) camera.position.addScaledVector(dir.current, -move);
+    if (k['KeyA'] || k['ArrowLeft']) camera.position.addScaledVector(right.current, -move);
+    if (k['KeyD'] || k['ArrowRight']) camera.position.addScaledVector(right.current, move);
+    if (k['KeyE'] || k['Space']) camera.position.y += move;
+    if (k['KeyQ']) camera.position.y -= move;
+
+    // Clamp
+    camera.position.y = Math.max(0.5, camera.position.y);
+  });
+
+  return null;
+}
+
+function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: { targetPosition: [number, number, number]; targetLookAt: [number, number, number]; freeLook: boolean; flyMode: boolean }) {
   const { camera } = useThree();
   const controlsRef = useRef<any>(null);
   const targetPos = useRef(new THREE.Vector3(...targetPosition));
