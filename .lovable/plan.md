@@ -1,72 +1,96 @@
 
 
-# Plan: Importação de Mapas e Arquivos UE5
+# Plan: Integrar Tecnologia Twinmotion — Suporte Multi-formato CAD/BIM
 
 ## Contexto
 
-O sistema já suporta importação de `.uasset`, `.umap`, `.t3d`, `.copy` e `.json` do UE5, mas focado em **efeitos Niagara** e **fixtures DMX**. Falta suporte para importar **dados de cenário/mapa** — posições de objetos, terreno, e modelos 3D referenciados em níveis UE5.
+O Twinmotion aceita arquivos de **todas as principais soluções CAD, BIM e modelagem 3D** via plugins Datasmith. Atualmente o FX KONTROL só importa `.udatasmith` XML. Este plano expande o sistema para aceitar os formatos nativos que os usuários do Twinmotion trabalham, adicionar suporte a materiais/texturas do Datasmith, e criar um painel de integração unificado.
 
 ## O que será implementado
 
-### 1. Parser de Mapa UE5 (T3D Scene Parser)
-**Novo arquivo: `src/lib/ue5MapParser.ts`**
+### 1. Suporte a Formatos 3D Nativos (FBX, OBJ, SKP, IFC, GLTF, 3DS)
+**Editar: `src/components/editor/TwinmotionImporter.tsx`**
 
-Parsear texto T3D exportado do UE5 (File → Export ou Ctrl+C de actors) para extrair:
-- **Actors com posição/rotação/escala** — StaticMeshActor, PointLight, SpotLight, NiagaraActor
-- **Referências de mesh** — `/Game/Props/Truss_4m.Truss_4m` → nome legível
-- **Luzes** com cor, intensidade e posição → mapeadas para fixtures DMX no viewport
-- **Volumes/áreas** — trigger boxes, safety zones → mapeadas para geofences
+Expandir o importador para aceitar formatos 3D diretos que o Twinmotion suporta:
+- `.fbx`, `.obj`, `.gltf`, `.glb` — carregados via Three.js loaders (FBXLoader, OBJLoader, GLTFLoader)
+- `.skp` (SketchUp), `.ifc` (BIM), `.3ds`, `.c4d`, `.rvt` — aceitos como referência/placeholder (geometria não interpretável no browser, mas posição e metadados são registrados)
+- Tab "Modelo 3D" no diálogo para upload direto de arquivos 3D
+- Auto-detecção do formato pelo header/extensão
 
-Resultado: lista de `UE5SceneObject` com tipo, nome, transform e metadados.
+### 2. Parser de Materiais Datasmith
+**Editar: `src/lib/twinmotionParser.ts`**
 
-### 2. Diálogo de Importação de Mapa UE5
-**Novo arquivo: `src/components/editor/UE5MapImporter.tsx`**
+Extrair dados de materiais do XML Datasmith:
+- `<MasterMaterial>` e `<Material>` nodes com texturas, cores difusas, roughness, metallic
+- Mapear materiais Twinmotion para propriedades Three.js (MeshStandardMaterial)
+- Interface `DatasmithMaterial` com cor, textura refs, propriedades PBR
+- Adicionar tipo `'material'` ao actor type para referências de material
 
-- Upload de arquivo `.t3d` ou paste de texto copiado do UE5
-- Preview em lista dos objetos encontrados, agrupados por tipo (meshes, luzes, efeitos, volumes)
-- Checkboxes para selecionar quais importar
-- Opções: escala de conversão (UE5 usa cm, sistema usa m → divide por 100), offset de origem
-- Botão "Importar" que:
-  - **Luzes** → cria posições DMX + fixtures no sistema
-  - **Meshes referenciadas** → cria SiteModels placeholder (cubo com nome) posicionados corretamente
-  - **Niagara actors** → cria posições de efeitos pirotécnicos
-  - **Volumes** → cria zonas de segurança/geofence
+### 3. Importação de Caminhos de Câmera (Twinmotion Paths)
+**Editar: `src/lib/twinmotionParser.ts`** e **`src/components/editor/TwinmotionImporter.tsx`**
 
-### 3. Importação de Heightmaps como Terreno
-**Novo arquivo: `src/lib/heightmapToTerrain.ts`**
+- Parsear `<CameraAnimation>` e `<Path>` nodes do Datasmith XML
+- Extrair keyframes de câmera com posição, rotação e tempo
+- Importar como camera bookmarks no `useSceneStore`
 
-- Importar imagens PNG/JPG como heightmaps
-- Converter pixel brightness → altura (0-maxHeight configurável)
-- Gerar geometria `PlaneGeometry` com displacement no viewport 3D
+### 4. Diálogo Unificado Multi-Tab
+**Editar: `src/components/editor/TwinmotionImporter.tsx`**
 
-**Novo componente: `src/components/editor/TerrainRenderer.tsx`**
-- Componente R3F que renderiza o terreno no viewport
-- Malha com displacement map aplicado via vertex shader
-- Configurável: tamanho, altura máxima, cor/textura
+Reorganizar em 3 tabs:
+- **Datasmith XML** — importação atual de `.udatasmith` (já funcional)
+- **Modelo 3D** — upload de FBX/OBJ/GLTF/GLB com preview 3D em miniatura
+- **Compatibilidade** — tabela de softwares suportados (3ds Max, Revit, SketchUp, Rhino, Archicad, etc.) com instruções de exportação para cada um
 
-### 4. Integração no Fluxo Existente
+### 5. Drag-and-drop Expandido
+**Editar: `src/pages/Index.tsx`**
 
-**`src/pages/Index.tsx`**:
-- Adicionar extensões `png`, `jpg`, `tif` ao `SUPPORTED_DROP_EXTENSIONS` (para heightmaps)
-- Novo tipo de drop `'ue5map'` para `.t3d` que contenha actors (não apenas DMX)
+Adicionar extensões: `fbx`, `obj`, `gltf`, `glb`, `skp`, `ifc`, `3ds` ao `SUPPORTED_DROP_EXTENSIONS` e mapeá-las para o tipo `'twinmotion'`.
 
-**`src/components/editor/Toolbar.tsx`**:
-- Menu "Importar → Mapa UE5" e "Importar → Terreno (Heightmap)"
-- Handler para `ue5map` no listener de viewport-file-drop
+### 6. Compatibilidade na Toolbar
+**Editar: `src/components/editor/Toolbar.tsx`**
 
-**`src/store/useSceneStore.ts`**:
-- Adicionar estado `terrain` (heightmap data, dimensões, visibilidade)
-- Actions: `setTerrain`, `clearTerrain`, `updateTerrainSettings`
+Atualizar o accept do file input para incluir os novos formatos. Label do menu: "Twinmotion / 3D Models".
+
+## Detalhes Técnicos
+
+### Three.js Loaders
+```text
+FBX  → three/examples/jsm/loaders/FBXLoader
+OBJ  → three/examples/jsm/loaders/OBJLoader  
+GLTF → three/examples/jsm/loaders/GLTFLoader (já incluso no three)
+GLB  → GLTFLoader (binário)
+```
+
+### DatasmithMaterial interface
+```text
+DatasmithMaterial {
+  name, label, parent
+  diffuseColor: string
+  roughness, metallic, opacity: number
+  textureMaps: { diffuse?, normal?, roughness?, metallic? }
+}
+```
+
+### Softwares compatíveis (tabela de referência)
+```text
+Software          Formato Export    Direct Link
+3ds Max           .udatasmith       Sim
+Revit             .udatasmith       Sim (2024+)
+SketchUp Pro      .udatasmith       Sim
+Rhino/Grasshopper .udatasmith       Sim
+Archicad          .udatasmith       Sim
+Vectorworks       .udatasmith       Sim
+SOLIDWORKS        .udatasmith       Sim
+Blender           .fbx / .gltf     —
+Cinema 4D         .fbx / .c4d      —
+```
 
 ## Arquivos
 
-| Arquivo | Ação |
+| Arquivo | Acao |
 |---------|------|
-| `src/lib/ue5MapParser.ts` | Criar — parser de actors T3D |
-| `src/lib/heightmapToTerrain.ts` | Criar — PNG → heightfield |
-| `src/components/editor/UE5MapImporter.tsx` | Criar — diálogo de importação |
-| `src/components/editor/TerrainRenderer.tsx` | Criar — malha 3D de terreno |
-| `src/store/useSceneStore.ts` | Editar — estado de terreno |
-| `src/pages/Index.tsx` | Editar — extensões de drop |
-| `src/components/editor/Toolbar.tsx` | Editar — menu + handler |
+| `src/lib/twinmotionParser.ts` | Editar — materiais, câmera paths |
+| `src/components/editor/TwinmotionImporter.tsx` | Editar — multi-tab, 3D loader, compat table |
+| `src/pages/Index.tsx` | Editar — extensões drag-drop |
+| `src/components/editor/Toolbar.tsx` | Editar — label e accept |
 
