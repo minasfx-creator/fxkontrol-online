@@ -21,6 +21,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useFleetStore } from '@/store/useFleetStore';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
+import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { showOrchestrator, type ShowPhase, type ShowWarning } from '@/lib/showOrchestrator';
 import type { AuthorizationScope, StartMethod } from '@/lib/flockwaveProtocol';
 import { cn } from '@/lib/utils';
