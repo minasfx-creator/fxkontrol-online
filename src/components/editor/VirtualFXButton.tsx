@@ -27,6 +27,7 @@ export default function VirtualFXButton({ fs = false }: VirtualFXButtonProps) {
   const [firing, setFiring] = useState<Set<number>>(new Set());
   const [slideProgress, setSlideProgress] = useState(0);
   const slideRef = useRef<{ startX: number } | null>(null);
+  const [pairing, setPairing] = useState<Record<number, { deviceAddr: number; cueIndex: number }>>({});
 
   const buttonCount = parseInt(mode);
 
