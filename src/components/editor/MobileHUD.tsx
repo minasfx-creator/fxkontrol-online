@@ -35,11 +35,14 @@ function getCountdown(showDate: string | null): string | null {
 }
 
 export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
-  const { currentTime, isPlaying, togglePlayback, stopPlayback } = useProjectStore();
+  const currentTime = useProjectStore(s => s.currentTime);
+  const isPlaying = useProjectStore(s => s.isPlaying);
+  const setPlaying = useProjectStore(s => s.setPlaying);
+  const setCurrentTime = useProjectStore(s => s.setCurrentTime);
   const activeEffects = useLiveSfxStore(s => s.activeEffects);
   const clearAll = useLiveSfxStore(s => s.clearAll);
-  const usbConnected = useUSBDeviceStore(s => s.devices.length > 0);
-  const smpteRunning = useSMPTEStore(s => s.isRunning);
+  const usbConnected = useUSBDeviceStore(s => s.dmxDevices.length > 0);
+  const smpteRunning = useSMPTEStore(s => s.running);
   const { settings } = useShowSettings();
   const isArmed = activeEffects.length > 0;
   const [showMenu, setShowMenu] = useState(false);
