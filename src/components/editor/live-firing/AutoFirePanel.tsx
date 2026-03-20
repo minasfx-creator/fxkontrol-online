@@ -3,13 +3,15 @@
  * Matches FXcommander Auto Fire interface with CUE list, progress bar, MIDI/LTC/Manual trigger
  */
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Play, Square, RotateCcw, FastForward, Rewind, Music, Upload, Trash2 } from 'lucide-react';
+import { Play, Square, RotateCcw, FastForward, Rewind, Music, Upload, Trash2, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import { useProjectStore } from '@/store/useProjectStore';
 import type { AutoFireCue } from './types';
 import { formatTimecode, FIRING_RULES } from './constants';
+import { parseFireOneCSV, exportFireOneCSV, downloadFile } from '@/lib/fireoneScriptParser';
 
 interface AutoFirePanelProps {
   fs: boolean;
@@ -47,6 +49,34 @@ export default function AutoFirePanel({ fs, pyroArm, dmxArm, onFireCue }: AutoFi
   const [ltcTimecode, setLtcTimecode] = useState('00:00:00:00');
   const [timeOffset, setTimeOffset] = useState(0);
   const runTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // FireOne CSV import handler
+  const handleFileImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const parsed = parseFireOneCSV(text);
+      if (parsed.length === 0) {
+        toast.error('No valid cues found in CSV');
+        return;
+      }
+      setCues(parsed);
+      toast.success(`Imported ${parsed.length} cues from ${file.name}`);
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }, []);
+
+  // FireOne CSV export handler
+  const handleExportCSV = useCallback(() => {
+    if (cues.length === 0) { toast.error('No cues to export'); return; }
+    const csv = exportFireOneCSV(cues);
+    downloadFile(csv, 'fireone_autofire.csv');
+    toast.success(`Exported ${cues.length} cues to FireOne CSV`);
+  }, [cues]);
 
   const handleReset = useCallback(() => {
     setRunTimeMs(0);
@@ -232,9 +262,13 @@ export default function AutoFirePanel({ fs, pyroArm, dmxArm, onFireCue }: AutoFi
         "flex items-center justify-between border-t border-border/20",
         fs ? "px-4 py-2" : "px-2 py-1"
       )} style={{ background: 'hsl(220 12% 6%)' }}>
+        <input ref={fileInputRef} type="file" accept=".csv,.fir,.sem" onChange={handleFileImport} className="hidden" />
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" className={cn(fs ? "text-[9px] h-7" : "text-[7px] h-5")}>
-            <Upload className={cn(fs ? "w-3 h-3" : "w-2.5 h-2.5", "mr-1")} /> Import
+          <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()} className={cn(fs ? "text-[9px] h-7" : "text-[7px] h-5")}>
+            <Upload className={cn(fs ? "w-3 h-3" : "w-2.5 h-2.5", "mr-1")} /> Import CSV
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleExportCSV} className={cn(fs ? "text-[9px] h-7" : "text-[7px] h-5")}>
+            <Download className={cn(fs ? "w-3 h-3" : "w-2.5 h-2.5", "mr-1")} /> Export CSV
           </Button>
           <Button variant="ghost" size="sm" className={cn(fs ? "text-[9px] h-7" : "text-[7px] h-5")}>
             <Trash2 className={cn(fs ? "w-3 h-3" : "w-2.5 h-2.5", "mr-1")} /> Delete

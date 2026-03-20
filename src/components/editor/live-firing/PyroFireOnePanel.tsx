@@ -11,17 +11,21 @@ import {
   Shield, ShieldAlert, Hand, AlertTriangle, Zap, Radio,
   ChevronLeft, ChevronRight, RotateCcw, Play, Square, SkipForward,
   CheckCircle2, XCircle, Clock, Activity, Battery, Signal,
-  Lock, Unlock, Search, Download, Maximize2, Minimize2, X
+  Lock, Unlock, Search, Download, Upload, Maximize2, Minimize2, X,
+  Wifi, WifiOff, Usb, ScanLine, Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import type { SFXChannel, AutoFireCue } from './types';
 import { DEMO_CUES } from './AutoFirePanel';
 import { formatTimecode } from './constants';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
+import { parseFireOneCSV, parseFireOneFIR, exportFireOneCSV, downloadFile } from '@/lib/fireoneScriptParser';
 
 interface PyroFireOnePanelProps {
   fs: boolean;
@@ -77,6 +81,8 @@ export default function PyroFireOnePanel({
   fs, fireChannel, channels, pyroArm, dmxArm, deadmanHeld, handlePanic, artNetConnected, relayConnected,
 }: PyroFireOnePanelProps) {
   const isMobile = useIsMobile();
+  const hardware = useFireOneHardware();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [pyroMode, setPyroMode] = useState<PyroMode>('manual');
   const [modules, setModules] = useState<FieldModule[]>(() => {
     const mods: FieldModule[] = [];
@@ -131,6 +137,28 @@ export default function PyroFireOnePanel({
     return () => document.removeEventListener('fullscreenchange', onFsChange);
   }, [pyroFullscreen]);
 
+  // Sync hardware modules → local state when in HARDWARE mode
+  useEffect(() => {
+    if (simMode || !hardware.isConnected) return;
+    const hwModules = Array.from(hardware.modules.values());
+    if (hwModules.length === 0) return;
+    setModules(hwModules.map(hm => ({
+      address: hm.moduleAddress,
+      connected: true,
+      armed: hm.armed,
+      batteryVoltage: hm.batteryVoltage,
+      signalStrength: hm.signalStrength,
+      temperature: hm.temperature,
+      igniters: hm.igniters.map(ig => ({
+        position: ig.position,
+        connected: ig.connected,
+        fired: ig.fired,
+        resistance: ig.resistance,
+        misfire: false,
+      })),
+    })));
+  }, [simMode, hardware.isConnected, hardware.modules]);
+
   // Import pyro cues from AutoFire
   const importPyroCues = useCallback(() => {
     const pyroCues = DEMO_CUES.filter(c => c.device === 'pyro');
@@ -144,20 +172,92 @@ export default function PyroFireOnePanel({
     }).catch(() => {});
   }, []);
 
-  // ARM module
+  // Import FireOne CSV/FIR file
+  const handleFileImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      let cues: AutoFireCue[] = [];
+      if (file.name.endsWith('.fir') || file.name.endsWith('.sem')) {
+        cues = parseFireOneFIR(text);
+      } else {
+        cues = parseFireOneCSV(text);
+      }
+      if (cues.length === 0) {
+        toast.error('No valid cues found in file');
+        return;
+      }
+      setTcCues(cues);
+      setStepCues(cues);
+      setStepIndex(0);
+      toast.success(`Imported ${cues.length} cues from ${file.name}`);
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }, []);
+
+  // Export current cues to FireOne CSV
+  const handleExportCSV = useCallback(() => {
+    const allCues = tcCues.length > 0 ? tcCues : stepCues;
+    if (allCues.length === 0) {
+      toast.error('No cues to export');
+      return;
+    }
+    const csv = exportFireOneCSV(allCues);
+    downloadFile(csv, 'fireone_script.csv');
+    toast.success(`Exported ${allCues.length} cues to FireOne CSV`);
+  }, [tcCues, stepCues]);
+
+  // Hardware connect/disconnect
+  const handleHardwareConnect = useCallback(async () => {
+    try {
+      await hardware.connect();
+      setSimMode(false);
+      toast.success('🔌 Connected to RS-485 bus');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to connect');
+    }
+  }, [hardware]);
+
+  const handleHardwareDisconnect = useCallback(async () => {
+    await hardware.disconnect();
+    setSimMode(true);
+    toast.info('Disconnected from hardware');
+  }, [hardware]);
+
+  // Hardware module scan
+  const handleScan = useCallback(async () => {
+    if (!hardware.isConnected) {
+      toast.error('Connect to hardware first');
+      return;
+    }
+    toast.info('Scanning RS-485 bus for IFMx-i32Q modules...');
+    await hardware.discoverModules(30);
+    toast.success(`Scan complete — ${hardware.modules.size} modules found`);
+  }, [hardware]);
+
+  // ARM module — routes through hardware when not SIM
   const armModule = useCallback((addr: number, armed: boolean) => {
     if (!masterKeyOn) { toast.error('Master Key must be ON to arm'); return; }
+    if (!simMode && hardware.isConnected) {
+      (armed ? hardware.armModule(addr) : hardware.disarmModule(addr)).catch(() => {});
+    }
     setModules(prev => prev.map(m => m.address === addr ? { ...m, armed } : m));
     toast.info(`Module FM-${String(addr).padStart(2, '0')} ${armed ? 'ARMED' : 'DISARMED'}`);
-  }, [masterKeyOn]);
+  }, [masterKeyOn, simMode, hardware]);
 
   const armAll = useCallback((armed: boolean) => {
     if (!masterKeyOn) { toast.error('Master Key must be ON'); return; }
+    if (!simMode && hardware.isConnected) {
+      (armed ? hardware.armAll() : hardware.disarmAll()).catch(() => {});
+    }
     setModules(prev => prev.map(m => m.connected ? { ...m, armed } : m));
     toast.warning(armed ? '⚠️ ALL MODULES ARMED' : 'All modules disarmed');
-  }, [masterKeyOn]);
+  }, [masterKeyOn, simMode, hardware]);
 
-  // Fire igniter
+  // Fire igniter — routes through hardware when not SIM
   const fireIgniter = useCallback((moduleAddr: number, igniterPos: number) => {
     if (!canFire) return;
     const mod = modules.find(m => m.address === moduleAddr);
@@ -167,13 +267,24 @@ export default function PyroFireOnePanel({
 
     if (navigator.vibrate) navigator.vibrate(40);
 
+    // Route through hardware when connected
+    if (!simMode && hardware.isConnected) {
+      hardware.fireIgniter(moduleAddr, igniterPos, 500).catch(() => {
+        toast.error(`Misfire: No ACK from FM-${String(moduleAddr).padStart(2, '0')}`);
+        setModules(prev => prev.map(m => {
+          if (m.address !== moduleAddr) return m;
+          return { ...m, igniters: m.igniters.map(i => i.position === igniterPos ? { ...i, misfire: true } : i) };
+        }));
+      });
+    }
+
     setModules(prev => prev.map(m => {
       if (m.address !== moduleAddr) return m;
       return {
         ...m,
         igniters: m.igniters.map(i => {
           if (i.position !== igniterPos) return i;
-          const misfire = !simMode ? false : Math.random() < 0.03;
+          const misfire = simMode ? Math.random() < 0.03 : false;
           return { ...i, fired: !misfire, misfire, resistance: misfire ? i.resistance : 0 };
         }),
       };
@@ -188,7 +299,7 @@ export default function PyroFireOnePanel({
     }).catch(() => {});
 
     toast.success(`FIRE FM-${String(moduleAddr).padStart(2, '0')} · I-${String(igniterPos).padStart(2, '0')}`, { duration: 1500 });
-  }, [canFire, modules, channels, fireChannel, simMode]);
+  }, [canFire, modules, channels, fireChannel, simMode, hardware]);
 
   // Step mode
   const stepFire = useCallback(() => {
@@ -234,10 +345,14 @@ export default function PyroFireOnePanel({
     if (tcTimer.current) clearInterval(tcTimer.current);
   }, []);
 
-  // Continuity test
+  // Continuity test — routes through hardware when not SIM
   const runContinuityTest = useCallback(() => {
     if (!currentModule?.connected) return;
     toast.info(`Testing FM-${String(selectedModule).padStart(2, '0')} continuity...`);
+    if (!simMode && hardware.isConnected) {
+      hardware.requestContinuity(selectedModule).catch(() => {});
+      return; // Hardware response will update state via useFireOneHardware
+    }
     setTimeout(() => {
       setModules(prev => prev.map(m => {
         if (m.address !== selectedModule) return m;
@@ -253,7 +368,7 @@ export default function PyroFireOnePanel({
       const good = mod?.igniters.filter(i => i.connected).length || 0;
       toast.success(`Continuity: ${good}/32 OK`);
     }, 1200);
-  }, [currentModule, selectedModule, modules]);
+  }, [currentModule, selectedModule, modules, simMode, hardware]);
 
   const connectedCount = modules.filter(m => m.connected).length;
   const armedModCount = modules.filter(m => m.armed).length;
@@ -265,6 +380,89 @@ export default function PyroFireOnePanel({
   const xl = pyroFullscreen;
   const mob = isMobile;
   const sz = xl ? 'xl' : fs ? 'fs' : 'sm';
+
+  // ── Hidden file input for CSV/FIR import ──
+  const renderFileInput = () => (
+    <input ref={fileInputRef} type="file" accept=".csv,.fir,.sem" onChange={handleFileImport} className="hidden" />
+  );
+
+  // ── Render: Hardware connection bar ──
+  const renderConnectionBar = () => (
+    <div className={cn(
+      "flex items-center gap-2 border-b border-border/10",
+      sz === 'xl' ? "px-6 py-1.5" : sz === 'fs' ? "px-4 py-1" : "px-2 py-0.5"
+    )} style={{ background: 'hsl(220 12% 5%)' }}>
+      {/* Connection status */}
+      <div className={cn("flex items-center gap-1.5",
+        sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[8px]" : "text-[6px]"
+      )}>
+        {hardware.isConnected ? (
+          <Usb className={cn(sz === 'xl' ? "w-3.5 h-3.5" : "w-2.5 h-2.5", "text-green-400")} />
+        ) : (
+          <WifiOff className={cn(sz === 'xl' ? "w-3.5 h-3.5" : "w-2.5 h-2.5", "text-muted-foreground/30")} />
+        )}
+        <span className={cn("font-mono font-bold",
+          hardware.isConnected ? "text-green-400/80" : "text-muted-foreground/30"
+        )}>
+          {hardware.isConnected ? 'HARDWARE' : 'DISCONNECTED'}
+        </span>
+      </div>
+
+      {/* TX/RX counters (when connected) */}
+      {hardware.isConnected && (
+        <span className={cn("font-mono text-muted-foreground/25",
+          sz === 'xl' ? "text-[9px]" : "text-[6px]"
+        )}>TX:{hardware.txBytes} RX:{hardware.rxBytes}</span>
+      )}
+
+      <div className="ml-auto flex items-center gap-1">
+        {/* Connect / Disconnect */}
+        {hardware.isConnected ? (
+          <button onClick={handleHardwareDisconnect}
+            className={cn("rounded border font-bold uppercase transition-all",
+              sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[6px]",
+              "bg-red-600/10 border-red-500/20 text-red-400/70"
+            )}>DISCONNECT</button>
+        ) : (
+          <button onClick={handleHardwareConnect}
+            className={cn("rounded border font-bold uppercase transition-all",
+              sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[6px]",
+              "bg-green-600/10 border-green-500/20 text-green-400/70 hover:bg-green-600/15"
+            )}>CONNECT RS-485</button>
+        )}
+
+        {/* Scan */}
+        {hardware.isConnected && (
+          <button onClick={handleScan} disabled={hardware.scanning}
+            className={cn("rounded border font-bold uppercase transition-all",
+              sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[6px]",
+              hardware.scanning
+                ? "bg-cyan-600/10 border-cyan-500/20 text-cyan-400/70 animate-pulse"
+                : "bg-cyan-600/10 border-cyan-500/15 text-cyan-400/50 hover:text-cyan-400/70"
+            )}>
+            <ScanLine className={cn(sz === 'xl' ? "w-3 h-3 inline mr-1" : "w-2 h-2 inline mr-0.5")} />
+            {hardware.scanning ? 'SCANNING...' : 'SCAN'}
+          </button>
+        )}
+
+        {/* Import / Export */}
+        <button onClick={() => fileInputRef.current?.click()}
+          className={cn("rounded border font-bold uppercase transition-all",
+            sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[6px]",
+            "bg-amber-600/10 border-amber-500/15 text-amber-400/50 hover:text-amber-400/70"
+          )}>
+          <Upload className={cn(sz === 'xl' ? "w-3 h-3 inline mr-1" : "w-2 h-2 inline mr-0.5")} />CSV
+        </button>
+        <button onClick={handleExportCSV}
+          className={cn("rounded border font-bold uppercase transition-all",
+            sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[6px]",
+            "border-border/10 text-muted-foreground/30 hover:text-muted-foreground/50"
+          )}>
+          <Download className={cn(sz === 'xl' ? "w-3 h-3 inline mr-1" : "w-2 h-2 inline mr-0.5")} />CSV
+        </button>
+      </div>
+    </div>
+  );
 
   // ── Render: Header ──
   const renderHeader = () => (
@@ -304,7 +502,13 @@ export default function PyroFireOnePanel({
             sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[8px]" : "text-[6px]",
             simMode ? "text-amber-400/70" : "text-green-400/70"
           )}>{simMode ? 'SIM' : 'LIVE'}</span>
-          <Switch checked={!simMode} onCheckedChange={(v) => setSimMode(!v)} className="scale-75" />
+          <Switch checked={!simMode} onCheckedChange={(v) => {
+            if (v && !hardware.isConnected) {
+              toast.error('Connect to RS-485 hardware first');
+              return;
+            }
+            setSimMode(!v);
+          }} className="scale-75" />
         </div>
         {/* Fullscreen toggle */}
         <button onClick={() => setPyroFullscreen(!pyroFullscreen)}
@@ -768,7 +972,9 @@ export default function PyroFireOnePanel({
           paddingBottom: mob ? 'max(env(safe-area-inset-bottom), 8px)' : undefined,
         }}
       >
+        {renderFileInput()}
         {renderHeader()}
+        {renderConnectionBar()}
         {renderMasterArm()}
         {renderStatusStrip()}
 
@@ -849,7 +1055,9 @@ export default function PyroFireOnePanel({
   // ═══════════════════════════════════════════════════════════
   return (
     <div className="flex flex-col h-full">
+      {renderFileInput()}
       {renderHeader()}
+      {renderConnectionBar()}
       {renderMasterArm()}
       {renderStatusStrip()}
       {renderModeTabs()}

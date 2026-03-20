@@ -61,6 +61,10 @@ export enum FireOneCmd {
   DISARM_ALL      = 0x64,  // 'd' — Disarm all modules (broadcast)
   FIRE_SEQUENCE   = 0x66,  // 'f' — Fire sequence (multi-igniter)
   STATUS_ALL      = 0x73,  // 's' — Status poll all
+
+  // IFMx-i32Q specific
+  DMX_OUT         = 0x4F,  // 'O' — Send DMX values to module's built-in DMX output
+  MODULE_CONFIG   = 0x47,  // 'G' — Query/set module configuration
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -78,6 +82,8 @@ export interface FireOneModuleStatus {
   lastSeen: number;
   wireless: boolean;
   errors: string[];
+  serialNumber?: string;
+  dmxUniverse?: number;
 }
 
 export interface FireOneIgniterStatus {
@@ -111,7 +117,17 @@ export type FireOneEventType =
   | 'arm-confirm'
   | 'error'
   | 'heartbeat'
-  | 'emergency-stop';
+  | 'emergency-stop'
+  | 'dmx-out-confirm'
+  | 'config-response';
+
+export interface FireOneModuleConfig {
+  wireless: boolean;
+  dmxUniverse: number;
+  firingDelay: number;
+  firmwareVersion: string;
+  serialNumber: string;
+}
 
 export interface FireOneEvent {
   type: FireOneEventType;
@@ -301,6 +317,46 @@ export function buildSetAddress(currentAddr: number, newAddr: number): Uint8Arra
 
 export function buildReset(moduleAddr: number): Uint8Array {
   return buildFrame(moduleAddr, FireOneCmd.RESET);
+}
+
+// ═══════════════════════════════════════════════════════════
+// IFMx-i32Q SPECIFIC COMMANDS
+// ═══════════════════════════════════════════════════════════
+
+/** Send DMX values to IFMx-i32Q built-in DMX output port */
+export function buildDmxOutCommand(moduleAddr: number, startChannel: number, values: number[]): Uint8Array {
+  const payload = new Uint8Array(2 + values.length);
+  payload[0] = (startChannel >> 8) & 0xFF;
+  payload[1] = startChannel & 0xFF;
+  values.forEach((v, i) => { payload[2 + i] = Math.min(255, Math.max(0, v)); });
+  return buildFrame(moduleAddr, FireOneCmd.DMX_OUT, payload);
+}
+
+/** Query module configuration */
+export function buildModuleConfigQuery(moduleAddr: number): Uint8Array {
+  return buildFrame(moduleAddr, FireOneCmd.MODULE_CONFIG, new Uint8Array([0x00])); // 0x00 = query
+}
+
+/** Set module configuration */
+export function buildModuleConfigSet(moduleAddr: number, config: Partial<FireOneModuleConfig>): Uint8Array {
+  const payload = new Uint8Array(5);
+  payload[0] = 0x01; // 0x01 = set
+  payload[1] = config.wireless ? 1 : 0;
+  payload[2] = (config.dmxUniverse ?? 0) & 0xFF;
+  payload[3] = ((config.firingDelay ?? 0) >> 8) & 0xFF;
+  payload[4] = (config.firingDelay ?? 0) & 0xFF;
+  return buildFrame(moduleAddr, FireOneCmd.MODULE_CONFIG, payload);
+}
+
+/** Parse module config response payload */
+export function parseModuleConfig(payload: Uint8Array): FireOneModuleConfig {
+  return {
+    wireless: (payload[0] ?? 0) !== 0,
+    dmxUniverse: payload[1] ?? 0,
+    firingDelay: ((payload[2] ?? 0) << 8) | (payload[3] ?? 0),
+    firmwareVersion: `${payload[4] ?? 1}.${payload[5] ?? 0}`,
+    serialNumber: Array.from(payload.slice(6, 14)).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase(),
+  };
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -579,6 +635,25 @@ export class FireOneController {
       case FireOneCmd.EMERGENCY_STOP: {
         this.modules.forEach(m => { m.armed = false; });
         this.emit({ type: 'emergency-stop', moduleAddress: addr, data: null, timestamp: Date.now() });
+        break;
+      }
+
+      case FireOneCmd.DMX_OUT: {
+        this.emit({ type: 'dmx-out-confirm', moduleAddress: addr, data: { payload: frame.payload }, timestamp: Date.now() });
+        break;
+      }
+
+      case FireOneCmd.MODULE_CONFIG: {
+        const config = parseModuleConfig(frame.payload);
+        const module = this.modules.get(addr);
+        if (module) {
+          module.serialNumber = config.serialNumber;
+          module.dmxUniverse = config.dmxUniverse;
+          module.wireless = config.wireless;
+          module.firmwareVersion = config.firmwareVersion;
+          this.modules.set(addr, { ...module, lastSeen: Date.now() });
+        }
+        this.emit({ type: 'config-response', moduleAddress: addr, data: config, timestamp: Date.now() });
         break;
       }
 
