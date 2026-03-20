@@ -1,0 +1,330 @@
+/**
+ * FieldMap2D — 2D site map with live hardware overlay
+ * Shows FireOne modules and PBUS devices with RSSI, continuity, and safety zones
+ */
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { MapPin, Wifi, Radio, Battery, Shield, Eye, EyeOff, ZoomIn, ZoomOut, Crosshair, RotateCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
+import { usePBusHardware } from '@/hooks/usePBusHardware';
+import { cn } from '@/lib/utils';
+
+interface ModulePosition {
+  id: string;
+  type: 'fireone' | 'pbus';
+  address: number;
+  x: number;
+  y: number;
+  label: string;
+}
+
+interface FieldMap2DProps {
+  fs?: boolean;
+}
+
+export default function FieldMap2D({ fs = false }: FieldMap2DProps) {
+  const isMobile = useIsMobile();
+  const fireone = useFireOneHardware();
+  const pbus = usePBusHardware();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [showRssi, setShowRssi] = useState(true);
+  const [showContinuity, setShowContinuity] = useState(true);
+  const [showSafetyZones, setShowSafetyZones] = useState(true);
+  const [selectedModule, setSelectedModule] = useState<string | null>(null);
+  const [dragging, setDragging] = useState<{ id: string; offsetX: number; offsetY: number } | null>(null);
+
+  // Module positions — auto-generate from hardware state
+  const [modulePositions, setModulePositions] = useState<ModulePosition[]>([]);
+
+  // Sync module positions from hardware
+  useEffect(() => {
+    const positions: ModulePosition[] = [];
+    let idx = 0;
+    fireone.modules.forEach((mod, addr) => {
+      const existing = modulePositions.find(p => p.id === `fo-${addr}`);
+      positions.push({
+        id: `fo-${addr}`,
+        type: 'fireone',
+        address: addr,
+        x: existing?.x ?? 100 + (idx % 6) * 80,
+        y: existing?.y ?? 100 + Math.floor(idx / 6) * 80,
+        label: `FO-${addr}`,
+      });
+      idx++;
+    });
+    pbus.devices.forEach((dev, addr) => {
+      const existing = modulePositions.find(p => p.id === `pb-${addr}`);
+      positions.push({
+        id: `pb-${addr}`,
+        type: 'pbus',
+        address: addr,
+        x: existing?.x ?? 400 + (idx % 6) * 80,
+        y: existing?.y ?? 100 + Math.floor(idx / 6) * 80,
+        label: `PB-${addr}`,
+      });
+      idx++;
+    });
+    // Only add demo modules if no real hardware
+    if (positions.length === 0) {
+      for (let i = 0; i < 8; i++) {
+        positions.push({
+          id: `demo-fo-${i}`,
+          type: 'fireone',
+          address: i + 1,
+          x: 80 + (i % 4) * 120,
+          y: 120 + Math.floor(i / 4) * 120,
+          label: `FO-${i + 1}`,
+        });
+      }
+      for (let i = 0; i < 4; i++) {
+        positions.push({
+          id: `demo-pb-${i}`,
+          type: 'pbus',
+          address: i + 1,
+          x: 80 + (i % 4) * 120,
+          y: 360,
+          label: `C16-${i + 1}`,
+        });
+      }
+    }
+    setModulePositions(positions);
+  }, [fireone.modules, pbus.devices]);
+
+  // Canvas drawing
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const rect = container.getBoundingClientRect();
+    canvas.width = rect.width * 2;
+    canvas.height = rect.height * 2;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.scale(2, 2);
+    ctx.clearRect(0, 0, rect.width, rect.height);
+
+    ctx.save();
+    ctx.translate(pan.x, pan.y);
+    ctx.scale(zoom, zoom);
+
+    // Grid
+    ctx.strokeStyle = 'hsla(220, 10%, 20%, 0.3)';
+    ctx.lineWidth = 0.5;
+    for (let x = 0; x < 1200; x += 40) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 800); ctx.stroke();
+    }
+    for (let y = 0; y < 800; y += 40) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(1200, y); ctx.stroke();
+    }
+
+    // Safety zones
+    if (showSafetyZones) {
+      // Audience zone
+      ctx.fillStyle = 'hsla(200, 60%, 40%, 0.06)';
+      ctx.strokeStyle = 'hsla(200, 60%, 50%, 0.2)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.rect(20, 440, 560, 120);
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'hsla(200, 60%, 60%, 0.4)';
+      ctx.font = '10px monospace';
+      ctx.fillText('AUDIENCE ZONE', 240, 505);
+
+      // Safety perimeter
+      ctx.strokeStyle = 'hsla(0, 60%, 50%, 0.15)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.rect(10, 10, 580, 580);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'hsla(0, 60%, 50%, 0.3)';
+      ctx.font = '9px monospace';
+      ctx.fillText('SAFETY PERIMETER', 220, 25);
+    }
+
+    // Draw modules
+    modulePositions.forEach(mod => {
+      const isSelected = selectedModule === mod.id;
+      const x = mod.x;
+      const y = mod.y;
+
+      if (mod.type === 'fireone') {
+        // FireOne: square
+        const foMod = fireone.modules.get(mod.address);
+        const armed = foMod?.armed ?? false;
+        const lowBatt = (foMod?.voltage ?? 12) < 11;
+        const weakSignal = (foMod?.rssiDbm ?? -50) < -75;
+
+        const color = armed ? 'hsla(120, 60%, 45%, 0.8)' : lowBatt ? 'hsla(40, 80%, 50%, 0.8)' : weakSignal ? 'hsla(0, 70%, 50%, 0.8)' : 'hsla(210, 60%, 50%, 0.8)';
+
+        ctx.fillStyle = color;
+        ctx.fillRect(x - 16, y - 16, 32, 32);
+        ctx.strokeStyle = isSelected ? 'hsla(210, 80%, 60%, 1)' : 'hsla(220, 10%, 30%, 0.5)';
+        ctx.lineWidth = isSelected ? 2 : 1;
+        ctx.strokeRect(x - 16, y - 16, 32, 32);
+
+        // RSSI ring
+        if (showRssi && foMod?.rssiDbm !== undefined) {
+          const rssi = foMod.rssiDbm;
+          const radius = 25 + Math.max(0, (rssi + 100) / 2);
+          ctx.strokeStyle = rssi >= -60 ? 'hsla(120, 50%, 50%, 0.2)' : rssi >= -75 ? 'hsla(40, 60%, 50%, 0.2)' : 'hsla(0, 60%, 50%, 0.2)';
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.stroke();
+        }
+
+        // Label
+        ctx.fillStyle = 'hsla(0, 0%, 90%, 0.7)';
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(mod.label, x, y + 4);
+        ctx.textAlign = 'start';
+      } else {
+        // PBUS: circle
+        const pbDev = pbus.devices.get(mod.address);
+
+        ctx.fillStyle = pbDev ? 'hsla(40, 70%, 45%, 0.7)' : 'hsla(40, 30%, 40%, 0.4)';
+        ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = isSelected ? 'hsla(40, 80%, 60%, 1)' : 'hsla(220, 10%, 30%, 0.5)';
+        ctx.lineWidth = isSelected ? 2 : 1;
+        ctx.stroke();
+
+        // Dual-band RSSI rings
+        if (showRssi && pbDev) {
+          // 433M (inner blue)
+          const r433 = 25 + Math.max(0, (pbDev.rssi433 + 100) / 2);
+          ctx.strokeStyle = 'hsla(210, 70%, 50%, 0.15)';
+          ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(x, y, r433, 0, Math.PI * 2); ctx.stroke();
+
+          // 868M (outer cyan)
+          const r868 = 25 + Math.max(0, (pbDev.rssi868 + 100) / 2);
+          ctx.strokeStyle = 'hsla(180, 70%, 50%, 0.15)';
+          ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(x, y, r868, 0, Math.PI * 2); ctx.stroke();
+        }
+
+        // Label
+        ctx.fillStyle = 'hsla(0, 0%, 90%, 0.7)';
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(mod.label, x, y + 4);
+        ctx.textAlign = 'start';
+      }
+    });
+
+    // Distance rulers to audience
+    if (showSafetyZones) {
+      modulePositions.forEach(mod => {
+        const dist = Math.abs(440 - mod.y);
+        if (dist > 30) {
+          ctx.strokeStyle = 'hsla(0, 0%, 50%, 0.15)';
+          ctx.lineWidth = 0.5;
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath(); ctx.moveTo(mod.x, mod.y + 18); ctx.lineTo(mod.x, 440); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = 'hsla(0, 0%, 60%, 0.3)';
+          ctx.font = '7px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(`${Math.round(dist * 0.25)}m`, mod.x, (mod.y + 440) / 2);
+          ctx.textAlign = 'start';
+        }
+      });
+    }
+
+    ctx.restore();
+  }, [modulePositions, zoom, pan, showRssi, showContinuity, showSafetyZones, selectedModule, fireone.modules, pbus.devices]);
+
+  const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left - pan.x) / zoom;
+    const my = (e.clientY - rect.top - pan.y) / zoom;
+
+    const clicked = modulePositions.find(m => Math.abs(m.x - mx) < 20 && Math.abs(m.y - my) < 20);
+    setSelectedModule(clicked?.id ?? null);
+  }, [modulePositions, zoom, pan]);
+
+  const mob = isMobile;
+
+  return (
+    <div className="flex flex-col h-full" style={{ background: 'hsl(220 12% 5%)' }}>
+      {/* Toolbar */}
+      <div className={cn("flex items-center gap-2 border-b border-border/15 flex-wrap", fs ? "px-4 py-2" : "px-2 py-1.5")} style={{ background: 'hsl(220 15% 8%)' }}>
+        <span className={cn("font-black uppercase tracking-wider text-foreground", fs ? "text-xs" : "text-[10px]")}>Field Map</span>
+        <div className="flex-1" />
+        
+        <div className="flex items-center gap-1.5">
+          <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setZoom(z => Math.min(3, z * 1.25))}>
+            <ZoomIn className="w-3.5 h-3.5" />
+          </Button>
+          <span className="text-[8px] font-mono text-muted-foreground/40 w-8 text-center">{Math.round(zoom * 100)}%</span>
+          <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setZoom(z => Math.max(0.3, z / 1.25))}>
+            <ZoomOut className="w-3.5 h-3.5" />
+          </Button>
+          <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}>
+            <RotateCcw className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-3 text-[8px]">
+          <label className="flex items-center gap-1 text-muted-foreground/50 cursor-pointer">
+            <Switch checked={showRssi} onCheckedChange={setShowRssi} className="h-3.5 w-7" />
+            RSSI
+          </label>
+          <label className="flex items-center gap-1 text-muted-foreground/50 cursor-pointer">
+            <Switch checked={showSafetyZones} onCheckedChange={setShowSafetyZones} className="h-3.5 w-7" />
+            Safety
+          </label>
+        </div>
+      </div>
+
+      {/* Canvas */}
+      <div ref={containerRef} className="flex-1 relative overflow-hidden cursor-crosshair">
+        <canvas
+          ref={canvasRef}
+          onClick={handleCanvasClick}
+          className="absolute inset-0"
+        />
+      </div>
+
+      {/* Legend / Selected info */}
+      <div className={cn("flex items-center gap-3 border-t border-border/15", fs ? "px-4 py-2" : "px-2 py-1.5")} style={{ background: 'hsl(220 12% 7%)' }}>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 bg-blue-500/70 rounded-sm" />
+          <span className="text-[8px] text-muted-foreground/40">FireOne</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 bg-amber-500/70 rounded-full" />
+          <span className="text-[8px] text-muted-foreground/40">PBUS</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-full border border-green-500/30" />
+          <span className="text-[8px] text-muted-foreground/40">RSSI</span>
+        </div>
+        <div className="flex-1" />
+        {selectedModule && (
+          <Badge variant="outline" className="text-[8px] h-4 px-1.5">
+            {modulePositions.find(m => m.id === selectedModule)?.label}
+          </Badge>
+        )}
+        <span className="text-[8px] font-mono text-muted-foreground/30">
+          {modulePositions.length} módulos
+        </span>
+      </div>
+    </div>
+  );
+}
