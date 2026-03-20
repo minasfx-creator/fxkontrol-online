@@ -48,11 +48,21 @@ export type MVRXchangeState = 'disconnected' | 'discovering' | 'connected' | 'sy
 
 export type MVRXchangeListener = (event: MVRXchangeEvent) => void;
 
+export interface MDNSDiscoveredStation {
+  name: string;
+  ip: string;
+  port: number;
+  provider: string;
+  uuid: string;
+  lastSeen: number;
+}
+
 export type MVRXchangeEvent =
   | { type: 'station-joined'; station: MVRXchangeStation }
   | { type: 'station-left'; stationUUID: string }
   | { type: 'commit-received'; station: MVRXchangeStation; commit: MVRXchangeCommit }
   | { type: 'fixtures-updated'; fixtures: MVRFixture[]; source: string }
+  | { type: 'mdns-discovered'; station: MDNSDiscoveredStation }
   | { type: 'error'; message: string }
   | { type: 'state-changed'; state: MVRXchangeState };
 
