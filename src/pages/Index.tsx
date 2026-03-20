@@ -85,6 +85,7 @@ import ShowPreviewPanel from '@/components/editor/ShowPreviewPanel';
 import MobileLinkPanel from '@/components/editor/MobileLinkPanel';
 import MobileLinkMonitor from '@/components/editor/MobileLinkMonitor';
 import SiteModelsPanel from '@/components/editor/SiteModelsPanel';
+import ShowCommanderPanel from '@/components/editor/ShowCommanderPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
