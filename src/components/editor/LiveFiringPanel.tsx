@@ -355,9 +355,17 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   // ─── ARM controls ───
   const handlePyroArm = useCallback((armed: boolean) => {
     setPyroArm(armed);
-    if (armed) toast.warning('⚠️ PYRO ARMED — LIVE SYSTEM', { duration: 3000 });
-    else { toast.info('Pyro disarmed'); setLockedKeys(new Set()); }
-  }, []);
+    if (armed) {
+      toast.warning('⚠️ PYRO ARMED — LIVE SYSTEM', { duration: 3000 });
+      if (fireone.isConnected) fireone.armAll().catch(() => {});
+      if (pbus.isConnected) pbus.armAll().catch(() => {});
+    } else {
+      toast.info('Pyro disarmed');
+      setLockedKeys(new Set());
+      if (fireone.isConnected) fireone.disarmAll().catch(() => {});
+      if (pbus.isConnected) pbus.disarmAll().catch(() => {});
+    }
+  }, [fireone, pbus]);
 
   const handleDmxArm = useCallback((armed: boolean) => {
     setDmxArm(armed);
