@@ -568,6 +568,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       <VVIZImporter open={vvizOpen} onOpenChange={setVvizOpen} />
       <ProjectBrowser open={browserOpen} onOpenChange={setBrowserOpen} />
       <CatalogImportDialog open={catalogOpen} onOpenChange={setCatalogOpen} />
+      <UAssetImporter open={uassetOpen} onOpenChange={setUassetOpen} />
 
       <div className="flex-1" />
 
