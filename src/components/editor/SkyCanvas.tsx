@@ -66,12 +66,19 @@ import { createLensFlareSprite, flashLensFlare, decayLensFlare } from '@/render_
 import { getBurstConfig, type BurstPattern } from '@/render_ultra/fireworks/burstSimulation';
 import { createSparkTrailSystem, updateSparkTrail, writeSparkTrailsToBuffers, type SparkState } from '@/render_ultra/fireworks/sparkTrailsGPU';
 import { createHDRLightingRig } from '@/render_ultra/lighting/hdrLighting';
-// ═══ LOD System — distance-based quality scaling ═══
-import { useLOD, calculateLOD, useSceneLOD, type LODFactors } from '@/hooks/useLOD';
+// ═══ LOD System — distance-based quality scaling + adaptive FPS ═══
+import { useLOD, calculateLOD, useSceneLOD, updateAdaptiveLOD, getAdaptiveTier, type LODFactors } from '@/hooks/useLOD';
+// ═══ AAA Engine: Frustum Culling + Object Pooling ═══
+import { isInFrustum } from '@/lib/spatialCuller';
+import { resetPools } from '@/lib/geometryPool';
 import ViewportGeoTools, { type GeoToolMode, type GeoMarker, type GeoRulerPoint, type GeoPath } from './ViewportGeoTools';
 import { GeoToolsScene, GeoToolClickHandler } from './GeoToolsR3F';
 import { RenderDebugToggle, RenderDebugPanel, setDebugExposure, setDebugBurstLoad, setDebugLOD, setDebugRendererInfo } from './RenderDebugOverlay';
 import { clampNiagaraHDR, getNiagaraBudgets, setAdaptivePipelineState } from '@/lib/niagaraBlenderRules';
+
+// ═══ Module-level active burst counter for conditional PostProcessing ═══
+let _activeBurstCount = 0;
+export function getActiveBurstCount() { return _activeBurstCount; }
 
 // ═══ PyroChem: map hex colors → real chemical compounds ═══
 function hexToCompound(hexColor: string): ChemicalCompound {
