@@ -1149,10 +1149,16 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
       <div {...swipeProps} className="fixed inset-0 z-[9999] flex flex-col select-none pb-[env(safe-area-inset-bottom)]"
         style={{ background: 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 4%) 100%)' }}>
         {renderStatusBar(true)}
-        {renderArmBar(true)}
+        {!showMode && renderArmBar(true)}
         {renderCueKeys(true)}
-        {renderSceneModeBar(true)}
-        <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
+        {!showMode && renderSceneModeBar(true)}
+        {showMode ? (
+          <ScrollArea className="flex-1">
+            <MobileLinkMode fs={true} fireChannel={fireChannel} channels={channels} artNetConnected={artNetConnected} relayConnected={relayConnected} />
+          </ScrollArea>
+        ) : (
+          <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
+        )}
         {renderPanic(true)}
       </div>
     );
