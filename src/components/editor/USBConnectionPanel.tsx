@@ -134,7 +134,7 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
       startReadLoop(connectedDevice);
       registerDevice(connectedDevice);
 
-      if (navigator.vibrate) navigator.vibrate(50);
+      haptics.success();
     } catch (e: any) {
       if (e.name === 'NotFoundError') {
         addLog({ deviceId, direction: 'info', message: 'Seleção cancelada pelo usuário' });
