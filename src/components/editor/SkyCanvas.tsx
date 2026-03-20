@@ -681,6 +681,7 @@ function estimateFireworkStarCost(
 }
 
 function TimelineEffects() {
+  const { camera } = useThree();
   const { timelineItems, currentTime, positions } = useProjectStore();
   const sceneSettings = useSceneStore(st => st.settings);
   const activeEffects = useMemo(() => {
