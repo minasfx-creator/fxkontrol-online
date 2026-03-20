@@ -70,6 +70,33 @@ export type Database = {
           },
         ]
       }
+      layout_presets: {
+        Row: {
+          category_overrides: Json
+          created_at: string
+          id: string
+          name: string
+          preset_base: string
+          user_id: string
+        }
+        Insert: {
+          category_overrides?: Json
+          created_at?: string
+          id?: string
+          name: string
+          preset_base?: string
+          user_id: string
+        }
+        Update: {
+          category_overrides?: Json
+          created_at?: string
+          id?: string
+          name?: string
+          preset_base?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       positions: {
         Row: {
           color: string
