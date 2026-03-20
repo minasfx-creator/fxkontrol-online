@@ -3,7 +3,7 @@
  * Pill-shaped, icon-only, with neon active indicators.
  */
 import { useCallback, useRef } from 'react';
-import { Clock, Sparkles, MapPin, Hexagon, MoreHorizontal } from 'lucide-react';
+import { Clock, Sparkles, MapPin, Hexagon, MoreHorizontal, Cable } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PanelId } from '@/components/editor/PanelTabBar';
 
