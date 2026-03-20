@@ -458,7 +458,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
 
   const broadcastFire = useCallback((fixture: VirtualFixture) => {
     if (!masterArmed) { toast.error('Sistema não armado'); return; }
-    if (navigator.vibrate) navigator.vibrate(30);
+    haptics.fire();
 
     setEvents(prev => [{
       id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`,
