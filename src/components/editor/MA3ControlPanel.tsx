@@ -461,11 +461,27 @@ export default function MA3ControlPanel({ fs = false }: MA3ControlPanelProps) {
             })}
           </div>
 
-          {/* OSC Log */}
-          <div className="text-[8px] font-bold text-muted-foreground/50 uppercase">OSC Log</div>
+          {/* OSC Log with filter */}
+          <div className="flex items-center justify-between">
+            <span className="text-[8px] font-bold text-muted-foreground/50 uppercase">OSC Log</span>
+            <Input
+              placeholder="Filter address..."
+              className="h-4 text-[7px] w-24 px-1"
+              onChange={e => {
+                const f = e.target.value.toLowerCase();
+                setOscMessages(prev => prev); // trigger re-render, filter applied below
+                (window as any).__oscFilter = f;
+              }}
+            />
+          </div>
           <ScrollArea className="flex-1 max-h-32">
             <div className="space-y-0.5 font-mono">
-              {oscMessages.slice(-20).reverse().map((m, i) => (
+              {oscMessages.slice(-20).reverse()
+                .filter(m => {
+                  const f = (window as any).__oscFilter || '';
+                  return !f || m.addr.toLowerCase().includes(f);
+                })
+                .map((m, i) => (
                 <div key={i} className={cn("text-[7px] flex gap-1",
                   m.dir === 'tx' ? 'text-blue-400/60' : 'text-emerald-400/60')}>
                   <span className="w-4 shrink-0">{m.dir === 'tx' ? '→' : '←'}</span>
