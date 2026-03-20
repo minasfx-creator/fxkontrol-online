@@ -727,4 +727,7 @@ export const useSceneStore = create<SceneSettingsState>((set) => ({
   selectSiteModel: (id) => set({ selectedSiteModelId: id }),
   setSiteModelTransformMode: (mode) => set({ siteModelTransformMode: mode }),
   setTransformSnap: (updates) => set((s) => ({ transformSnap: { ...s.transformSnap, ...updates } })),
+  setTerrain: (data) => set({ terrain: data }),
+  updateTerrainConfig: (updates) => set((s) => s.terrain ? { terrain: { ...s.terrain, config: { ...s.terrain.config, ...updates } } } : {}),
+  clearTerrain: () => set({ terrain: null }),
 }));

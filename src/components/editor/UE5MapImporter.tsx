@@ -112,7 +112,7 @@ export default function UE5MapImporter({ open, onOpenChange, initialFile }: Prop
         addPosition({
           id: `ue5-zone-${Date.now()}-${volumeCount}`,
           name: `ZONE-${String(volumeCount + 1).padStart(3, '0')}`,
-          type: 'safety-zone',
+          type: 'pyro',
           x, y, z,
           heading: 0, pitch: 0, roll: 0,
           color: '#FF4444',
