@@ -388,6 +388,34 @@ export default function PyroFireOnePanel({
   const totalIgniters = modules.reduce((sum, m) => sum + m.igniters.filter(i => i.connected && !i.fired).length, 0);
   const firedCount = modules.reduce((sum, m) => sum + m.igniters.filter(i => i.fired).length, 0);
   const misfireCount = modules.reduce((sum, m) => sum + m.igniters.filter(i => i.misfire).length, 0);
+  const wirelessCount = modules.filter(m => m.connectionMode === 'wireless' || m.connectionMode === 'fallback').length;
+  const wiredCount = modules.filter(m => m.connectionMode === 'wired' || !m.connectionMode).length;
+  const fallbackCount = modules.filter(m => m.connectionMode === 'fallback').length;
+
+  // RSSI color helper
+  const rssiColor = (rssi?: number) => {
+    if (rssi === undefined) return 'text-muted-foreground/30';
+    if (rssi > -60) return 'text-green-400';
+    if (rssi > -75) return 'text-amber-400';
+    return 'text-red-400';
+  };
+  const rssiIcon = (rssi?: number) => {
+    if (rssi === undefined) return 'bg-muted-foreground/20';
+    if (rssi > -60) return 'bg-green-500';
+    if (rssi > -75) return 'bg-amber-400';
+    return 'bg-red-500';
+  };
+  const connectionModeIcon = (mode?: WirelessConnectionMode) => {
+    if (mode === 'wireless') return Wifi;
+    if (mode === 'fallback') return WifiOff;
+    return Usb;
+  };
+  const connectionModeBadge = (mode?: WirelessConnectionMode) => {
+    if (mode === 'wireless') return { text: 'WIRELESS', cls: 'text-cyan-400 bg-cyan-400/10 border-cyan-500/20' };
+    if (mode === 'fallback') return { text: 'FALLBACK', cls: 'text-amber-400 bg-amber-400/10 border-amber-500/20 animate-pulse' };
+    return { text: 'WIRED', cls: 'text-green-400/70 bg-green-400/10 border-green-500/15' };
+  };
+  const misfireCount = modules.reduce((sum, m) => sum + m.igniters.filter(i => i.misfire).length, 0);
 
   // ── Determine sizing: xl = dedicated fullscreen, fs = parent fullscreen, default = panel
   const xl = pyroFullscreen;
