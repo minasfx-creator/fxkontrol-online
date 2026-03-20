@@ -246,9 +246,16 @@ export function useFireOneHardware() {
   }, [controller]);
 
   const emergencyStop = useCallback(async () => {
-    txRef.current += 15; setState(prev => ({ ...prev, txBytes: txRef.current }));
-    await controller.emergencyStop();
-  }, [controller]);
+    // E-STOP goes through ALL paths simultaneously
+    if (radioLink.isConnected) {
+      const frame = new Uint8Array([0x46, 0x4F, 0xFF, 0xFF]);
+      await radioLink.sendFireOne(0xFF, frame).catch(() => {});
+    }
+    if (state.isConnected) {
+      txRef.current += 15; setState(prev => ({ ...prev, txBytes: txRef.current }));
+      await controller.emergencyStop();
+    }
+  }, [controller, state.isConnected, radioLink]);
 
   const armAll = useCallback(async () => {
     txRef.current += 5; setState(prev => ({ ...prev, txBytes: txRef.current }));
