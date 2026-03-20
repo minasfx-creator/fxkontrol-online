@@ -388,6 +388,40 @@ export function parseModuleConfig(payload: Uint8Array): FireOneModuleConfig {
 }
 
 // ═══════════════════════════════════════════════════════════
+// WIRELESS IFMx-i32Q COMMANDS
+// ═══════════════════════════════════════════════════════════
+
+/** Query wireless status (RSSI, channel, link quality) */
+export function buildWirelessStatusQuery(moduleAddr: number): Uint8Array {
+  return buildFrame(moduleAddr, FireOneCmd.WIRELESS_STATUS, new Uint8Array([0x00]));
+}
+
+/** Set wireless configuration */
+export function buildWirelessConfigCommand(moduleAddr: number, config: FireOneWirelessConfig): Uint8Array {
+  const payload = new Uint8Array(4);
+  payload[0] = 0x01; // set mode
+  payload[1] = config.channel & 0xFF;
+  payload[2] = config.txPower & 0x03;
+  payload[3] = config.autoFallback ? 1 : 0;
+  return buildFrame(moduleAddr, FireOneCmd.WIRELESS_CONFIG, payload);
+}
+
+/** Parse wireless status response */
+export function parseWirelessStatus(payload: Uint8Array): FireOneWirelessStatus {
+  const rssiRaw = payload[0] ?? 0;
+  // RSSI is stored as unsigned offset: value = actual + 128 (so -128 to 0 dBm maps to 0-128)
+  const rssiDbm = rssiRaw > 128 ? rssiRaw - 256 : rssiRaw - 128;
+  return {
+    rssiDbm,
+    channel: payload[1] ?? 1,
+    packetLoss: payload[2] ?? 0,
+    linkQuality: payload[3] ?? 100,
+    mode: payload[4] === 2 ? 'fallback' : payload[4] === 1 ? 'wireless' : 'wired',
+    txPower: payload[5] ?? 3,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════
 // FIREONE SERIAL CONTROLLER CLASS
 // ═══════════════════════════════════════════════════════════
 
