@@ -276,7 +276,14 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
   const handlePause = useCallback(async () => { await showOrchestrator.pause(); toast.warning('Show paused'); }, []);
   const handleResume = useCallback(async () => { await showOrchestrator.resume(); toast.info('Show resumed'); }, []);
   const handleLand = useCallback(async () => { await showOrchestrator.startLanding(); toast.info('Landing sequence'); }, []);
-  const handleAbort = useCallback(async () => { await showOrchestrator.abort('User emergency abort'); toast.error('🚨 EMERGENCY ABORT'); }, []);
+  const handleAbort = useCallback(async () => {
+    // FireOne emergency stop
+    if (hardware.isConnected) {
+      try { await hardware.emergencyStop(); } catch {}
+    }
+    await showOrchestrator.abort('User emergency abort');
+    toast.error('🚨 EMERGENCY ABORT');
+  }, [hardware]);
   const handleReset = useCallback(() => { showOrchestrator.reset(); toast.info('Show control reset'); }, []);
 
   // ── Derived ───────────────────────────────────────────────────
