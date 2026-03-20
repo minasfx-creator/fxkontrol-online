@@ -6,6 +6,7 @@
  *           RDMX monitoring, Safety channels, Art-Net bridge, CUE grouping
  */
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { haptics } from '@/lib/haptics';
 import { createPortal } from 'react-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
