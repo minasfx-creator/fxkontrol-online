@@ -1223,7 +1223,7 @@ function Moon() {
     <group position={[7500, 14000, -12500]}>
       {/* Moon body with procedural surface — radius scaled for 5× world */}
       <mesh>
-        <sphereGeometry args={[450, 64, 64]} />
+        <sphereGeometry args={[450, 32, 32]} />
         <shaderMaterial
           vertexShader={`
             varying vec3 vNormal;
