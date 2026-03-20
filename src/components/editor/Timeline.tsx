@@ -702,6 +702,9 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
           {bpm && <span className="tabular-nums">{bpm}</span>}
         </button>
 
+        {/* LIVE indicator placeholder */}
+        <div className="badge-live hidden" id="live-badge">● LIVE</div>
+
         {/* Multi-select */}
         {selectionCount > 1 && (
           <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-primary/[0.06] border border-primary/10">
