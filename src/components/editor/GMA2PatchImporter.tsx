@@ -10,6 +10,9 @@ import {
 } from '@/components/ui/dialog';
 import { useProjectStore } from '@/store/useProjectStore';
 import { parseGMA2Patch, type GMA2Fixture, type GMA2PatchResult } from '@/lib/gma2PatchParser';
+import { patchGMA2Fixtures } from '@/lib/dmxEngine';
+import { useSfxChannelStore } from '@/store/useSfxChannelStore';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -47,11 +50,16 @@ export default function GMA2PatchImporter({ open, onOpenChange }: Props) {
 
   const handleImport = useCallback(() => {
     if (!result) return;
-    for (const idx of selected) {
-      const f = result.fixtures[idx];
-      if (!f) continue;
+
+    const selectedFixtures = Array.from(selected)
+      .map(idx => result.fixtures[idx])
+      .filter(Boolean) as GMA2Fixture[];
+
+    // 1. Add positions to viewport
+    for (const f of selectedFixtures) {
+      const posId = `gma-${f.universe}-${f.dmxAddress}-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
       addPosition({
-        id: `gma-${f.universe}-${f.dmxAddress}-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+        id: posId,
         name: f.name,
         type: f.positionType,
         x: f.x,
@@ -62,7 +70,35 @@ export default function GMA2PatchImporter({ open, onOpenChange }: Props) {
         roll: f.rotation,
         color: f.color,
       });
+
+      // 3. Auto-link SFX channels for pyro-type fixtures
+      if (f.positionType === 'pyro') {
+        const sfxTypeMap: Record<string, 'flame' | 'cryo' | 'haze' | 'fog' | 'confetti' | 'co2' | 'snow'> = {
+          'sfx-flame': 'flame',
+          'sfx-cryo': 'cryo',
+        };
+        const sfxType = sfxTypeMap[f.dmxProfileId] || 'flame';
+        useSfxChannelStore.getState().addChannelFromPosition({
+          positionId: posId,
+          name: f.name,
+          sfxType,
+          dmxChannels: f.channelCount,
+          manufacturer: f.manufacturer || 'SHOWVEN',
+        });
+      }
     }
+
+    // 2. Patch into DMX universes
+    const dmxUniverses = patchGMA2Fixtures(selectedFixtures);
+    const totalCh = dmxUniverses.reduce((s, u) => s + u.fixtures.length, 0);
+
+    // Test Art-Net connectivity
+    useSfxChannelStore.getState().testArtNetConnection();
+
+    toast.success(`${selectedFixtures.length} fixtures patched`, {
+      description: `${dmxUniverses.length} universe(s), ${totalCh} DMX channels mapped. Art-Net test triggered.`,
+    });
+
     onOpenChange(false);
     setResult(null);
     setFileName(null);

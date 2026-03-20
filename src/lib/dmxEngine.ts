@@ -466,3 +466,53 @@ export function exportDMXCSV(show: DMXShow): string {
 
   return lines.join('\n');
 }
+
+/**
+ * Patch GMA2 fixtures into DMX universes preserving their original universe/address.
+ * Groups fixtures by universe and creates DMXUniverse objects with proper channel mapping.
+ */
+export function patchGMA2Fixtures(
+  fixtures: Array<{
+    fixtureId: number;
+    name: string;
+    universe: number;
+    dmxAddress: number;
+    channelCount: number;
+    dmxProfileId: string;
+  }>,
+): DMXUniverse[] {
+  // Group by universe
+  const byUniverse = new Map<number, typeof fixtures>();
+  for (const f of fixtures) {
+    if (!byUniverse.has(f.universe)) byUniverse.set(f.universe, []);
+    byUniverse.get(f.universe)!.push(f);
+  }
+
+  const universes: DMXUniverse[] = [];
+
+  for (const [uniId, uniFixtures] of byUniverse) {
+    const sorted = uniFixtures.sort((a, b) => a.dmxAddress - b.dmxAddress);
+    const dmxFixtures: DMXFixture[] = sorted.map((f, idx) => {
+      const profile = DMX_FIXTURE_PROFILES[f.dmxProfileId];
+      const chCount = profile?.channelCount ?? f.channelCount;
+      return {
+        id: `gma-u${uniId}-${f.dmxAddress}`,
+        label: f.name,
+        universe: uniId,
+        startChannel: f.dmxAddress,
+        channelCount: chCount,
+        droneIndex: idx,
+        profileId: f.dmxProfileId,
+      };
+    });
+
+    universes.push({
+      id: uniId,
+      label: `Universe ${uniId}`,
+      channels: new Uint8Array(512),
+      fixtures: dmxFixtures,
+    });
+  }
+
+  return universes.sort((a, b) => a.id - b.id);
+}
