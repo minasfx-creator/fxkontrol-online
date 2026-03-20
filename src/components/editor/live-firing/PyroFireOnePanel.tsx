@@ -197,12 +197,7 @@ export default function PyroFireOnePanel({
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
-      let cues: AutoFireCue[] = [];
-      if (file.name.endsWith('.fir') || file.name.endsWith('.sem')) {
-        cues = parseFireOneFIR(text);
-      } else {
-        cues = parseFireOneCSV(text);
-      }
+      const { cues, source } = autoDetectAndParse(text, file.name);
       if (cues.length === 0) {
         toast.error('No valid cues found in file');
         return;
@@ -210,7 +205,7 @@ export default function PyroFireOnePanel({
       setTcCues(cues);
       setStepCues(cues);
       setStepIndex(0);
-      toast.success(`Imported ${cues.length} cues from ${file.name}`);
+      toast.success(`Imported ${cues.length} cues from ${source} (${file.name})`);
     };
     reader.readAsText(file);
     e.target.value = '';
