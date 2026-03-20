@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
+import { useRadioLink } from '@/hooks/useRadioLink';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
