@@ -32,17 +32,21 @@ export default function VirtualZK6200({ fs = false }: VirtualZK6200Props) {
 
   const zoneCount = model === '6300' ? 30 : 20;
 
+  const [slavePairing, setSlavePairing] = useState<Record<number, { addr: number; cue: number }>>({});
+
   const handleArm = useCallback(() => {
     if (armed) {
       setArmed(false);
       setFiringZones(new Set());
+      if (pbus.isConnected) pbus.disarmAll().catch(() => {});
       toast.info('ZK' + model + ' DISARMED');
     } else {
       setArmed(true);
+      if (pbus.isConnected) pbus.armAll().catch(() => {});
       toast.warning('⚠️ ZK' + model + ' ARMED', { duration: 3000 });
       if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
     }
-  }, [armed, model]);
+  }, [armed, model, pbus]);
 
   const handleDeadmanStart = useCallback(() => {
     if (isMobile) {
@@ -67,20 +71,28 @@ export default function VirtualZK6200({ fs = false }: VirtualZK6200Props) {
     }
     if (navigator.vibrate) navigator.vibrate(30);
     setFiringZones(prev => new Set(prev).add(zone));
+
+    // Route to PBUS hardware if connected and paired
+    const pairing = slavePairing[zone];
+    if (pbus.isConnected && pairing) {
+      pbus.fireCue(pairing.addr, pairing.cue, 2000).catch(() => {});
+    }
+
     // Auto-stop after 2s
     setTimeout(() => {
       setFiringZones(prev => { const n = new Set(prev); n.delete(zone); return n; });
     }, 2000);
-    toast.info(`Zone ${zone + 1} FIRED · DMX ${dmxBase + zone * 6}`);
-  }, [armed, deadman, dmxBase]);
+    toast.info(`Zone ${zone + 1} FIRED · DMX ${dmxBase + zone * 6}${pairing ? ` · PBUS ${pairing.addr}:${pairing.cue}` : ''}`);
+  }, [armed, deadman, dmxBase, pbus, slavePairing]);
 
   const handlePanic = useCallback(() => {
     setFiringZones(new Set());
     setArmed(false);
     setDeadman(false);
+    if (pbus.isConnected) pbus.emergencyStop().catch(() => {});
     if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
     toast.error('🚨 ZK' + model + ' EMERGENCY STOP');
-  }, [model]);
+  }, [model, pbus]);
 
   const mob = isMobile;
 

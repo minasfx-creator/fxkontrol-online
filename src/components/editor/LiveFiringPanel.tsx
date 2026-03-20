@@ -28,6 +28,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useSfxChannelStore } from '@/store/useSfxChannelStore';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
+import { usePBusHardware } from '@/hooks/usePBusHardware';
 
 import type { SFXChannel, CueEntry, FXCMode, FXCSettings, DeviceLibEntry } from './live-firing/types';
 import { FIRING_RULES, SFX_TYPES, DEFAULT_CHANNELS, DEFAULT_SETTINGS, CUES_PER_PAGE, formatTimecode, SHOWVEN_LIBRARY } from './live-firing/constants';
@@ -190,6 +192,8 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const isMobile = useIsMobile();
   const { isPlaying, currentTime, setPlaying, positions } = useProjectStore();
   const { channels, setChannels: setStoreChannels, updateChannels } = useSfxChannelStore();
+  const fireone = useFireOneHardware();
+  const pbus = usePBusHardware();
   const setChannels = useCallback((updaterOrValue: SFXChannel[] | ((prev: SFXChannel[]) => SFXChannel[])) => {
     if (typeof updaterOrValue === 'function') {
       updateChannels(updaterOrValue);
@@ -351,9 +355,17 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   // ─── ARM controls ───
   const handlePyroArm = useCallback((armed: boolean) => {
     setPyroArm(armed);
-    if (armed) toast.warning('⚠️ PYRO ARMED — LIVE SYSTEM', { duration: 3000 });
-    else { toast.info('Pyro disarmed'); setLockedKeys(new Set()); }
-  }, []);
+    if (armed) {
+      toast.warning('⚠️ PYRO ARMED — LIVE SYSTEM', { duration: 3000 });
+      if (fireone.isConnected) fireone.armAll().catch(() => {});
+      if (pbus.isConnected) pbus.armAll().catch(() => {});
+    } else {
+      toast.info('Pyro disarmed');
+      setLockedKeys(new Set());
+      if (fireone.isConnected) fireone.disarmAll().catch(() => {});
+      if (pbus.isConnected) pbus.disarmAll().catch(() => {});
+    }
+  }, [fireone, pbus]);
 
   const handleDmxArm = useCallback((armed: boolean) => {
     setDmxArm(armed);
@@ -374,8 +386,11 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
     setDmxArm(false);
     setDeadmanHeld(false);
     setFiringStartTime(null);
+    // E-STOP all connected hardware
+    if (fireone.isConnected) fireone.emergencyStop().catch(() => {});
+    if (pbus.isConnected) pbus.emergencyStop().catch(() => {});
     toast.error('🚨 PANIC — ALL STOP', { duration: 5000 });
-  }, [sendArtNetPacket]);
+  }, [sendArtNetPacket, fireone, pbus]);
 
   // ─── Fire logic ───
   const fireChannel = useCallback((id: string) => {
@@ -384,6 +399,16 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
     setChannels(prev => { const updated = prev.map(ch => ch.id === id ? { ...ch, firing: true } : ch); sendArtNetPacket(updated); return updated; });
     const ch = channels.find(c => c.id === id);
     if (ch) {
+      // Route to bound hardware
+      if (ch.hardwareBinding) {
+        const { system, address, pin } = ch.hardwareBinding;
+        if (system === 'fireone' && fireone.isConnected) {
+          fireone.fireIgniter(address, pin).catch(() => {});
+        } else if ((system === 'pbus' || system === 'radio') && pbus.isConnected) {
+          pbus.fireCue(address, pin, ch.duration).catch(() => {});
+        }
+      }
+
       let pos3d: [number, number, number];
       if (ch.positionId) {
         const linkedPos = positions.find(p => p.id === ch.positionId);
@@ -399,7 +424,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
       }, ch.duration);
       fireTimers.current.set(id, timer);
     }
-  }, [channels, sendArtNetPacket, positions, firingStartTime]);
+  }, [channels, sendArtNetPacket, positions, firingStartTime, fireone, pbus]);
 
   const stopChannel = useCallback((id: string) => {
     const timer = fireTimers.current.get(id);

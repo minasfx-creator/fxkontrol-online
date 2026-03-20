@@ -105,8 +105,21 @@ export default function VirtualControllerHub({ fs = false, onSelectMode }: Virtu
           </p>
         </div>
         <div className="flex items-center gap-1.5">
-          {fireone.isConnected && <Badge variant="outline" className="text-[8px] h-4 px-1.5 border-red-500/30 text-red-400">FireOne</Badge>}
-          {pbus.isConnected && <Badge variant="outline" className="text-[8px] h-4 px-1.5 border-amber-500/30 text-amber-400">PBUS</Badge>}
+          {fireone.isConnected && (
+            <Badge variant="outline" className="text-[8px] h-4 px-1.5 border-red-500/30 text-red-400">
+              FireOne · {fireone.modules.size}
+            </Badge>
+          )}
+          {pbus.isConnected && (
+            <Badge variant="outline" className="text-[8px] h-4 px-1.5 border-amber-500/30 text-amber-400">
+              PBUS · {pbus.deviceCount}
+              {pbus.worstBattery !== null && (
+                <span className={cn("ml-1", (pbus.worstBattery ?? 4) < 3.3 ? 'text-destructive' : '')}>
+                  · {(pbus.worstBattery ?? 0).toFixed(1)}V
+                </span>
+              )}
+            </Badge>
+          )}
         </div>
       </div>
 

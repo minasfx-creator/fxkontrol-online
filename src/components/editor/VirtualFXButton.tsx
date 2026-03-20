@@ -27,6 +27,7 @@ export default function VirtualFXButton({ fs = false }: VirtualFXButtonProps) {
   const [firing, setFiring] = useState<Set<number>>(new Set());
   const [slideProgress, setSlideProgress] = useState(0);
   const slideRef = useRef<{ startX: number } | null>(null);
+  const [pairing, setPairing] = useState<Record<number, { deviceAddr: number; cueIndex: number }>>({});
 
   const buttonCount = parseInt(mode);
 
@@ -60,11 +61,18 @@ export default function VirtualFXButton({ fs = false }: VirtualFXButtonProps) {
     if (!unlocked) { toast.warning('Deslize para desbloquear primeiro'); return; }
     if (navigator.vibrate) navigator.vibrate(30);
     setFiring(prev => new Set(prev).add(idx));
+
+    // Route to PBUS hardware if paired and connected
+    const pair = pairing[idx];
+    if (pbus.isConnected && pair) {
+      pbus.fireCue(pair.deviceAddr, pair.cueIndex, 1500).catch(() => {});
+    }
+
     setTimeout(() => {
       setFiring(prev => { const n = new Set(prev); n.delete(idx); return n; });
     }, 1500);
-    toast.info(`CH ${idx + 1} FIRED`);
-  }, [unlocked]);
+    toast.info(`CH ${idx + 1} FIRED${pair ? ` · PBUS ${pair.deviceAddr}:${pair.cueIndex}` : ''}`);
+  }, [unlocked, pbus, pairing]);
 
   const mob = isMobile;
 
@@ -170,6 +178,12 @@ export default function VirtualFXButton({ fs = false }: VirtualFXButtonProps) {
                 )} style={{ color: isFiring ? '#fff' : color + 'cc' }}>
                   CH {i + 1}
                 </span>
+                {/* Paired device label */}
+                {pairing[i] && (
+                  <span className="text-[7px] font-mono text-muted-foreground/50 mt-0.5">
+                    PBUS {pairing[i].deviceAddr}:{pairing[i].cueIndex}
+                  </span>
+                )}
                 {isFiring && (
                   <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
                     <div className="absolute inset-0 animate-ping opacity-20" style={{ backgroundColor: color }} />

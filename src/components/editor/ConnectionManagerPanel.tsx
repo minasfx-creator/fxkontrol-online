@@ -120,6 +120,7 @@ export default function ConnectionManagerPanel({ fs = false }: ConnectionManager
 
   return (
     <div className={cn("space-y-3", fs ? "p-4" : "p-2")}>
+      {/* Summary header */}
       <div className="flex items-center justify-between">
         <div>
           <h3 className={cn("font-black uppercase tracking-wider text-foreground", fs ? "text-sm" : "text-[10px]")}>
@@ -127,11 +128,29 @@ export default function ConnectionManagerPanel({ fs = false }: ConnectionManager
           </h3>
           <p className={cn("text-muted-foreground/50", fs ? "text-[10px]" : "text-[8px]")}>
             {connections.filter(c => c.connected).length}/{connections.length} ativas
+            {(fireone.modules.size + pbus.deviceCount + radioLink.devices.size) > 0 && (
+              <span className="ml-1 text-foreground/60">
+                · {fireone.modules.size + pbus.deviceCount + radioLink.devices.size} devices
+              </span>
+            )}
           </p>
         </div>
-        <Button size="sm" variant="outline" className="h-7 text-[9px]" onClick={() => toast.info('Abra a URL publicada para conectar hardware via WebSerial')}>
-          <Plus className="w-3 h-3 mr-1" /> Adicionar
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button size="sm" variant="outline" className="h-7 text-[9px]" onClick={async () => {
+            toast.info('Testando todas as conexões...');
+            const results: string[] = [];
+            if (fireone.isConnected) results.push(`FireOne: ${fireone.modules.size} módulos`);
+            if (pbus.isConnected) results.push(`PBUS: ${pbus.deviceCount} disp.`);
+            if (radioLink.isConnected) results.push(`Radio: ${radioLink.devices.size} devs`);
+            if (results.length === 0) toast.warning('Nenhuma conexão ativa');
+            else toast.success(results.join(' · '));
+          }}>
+            <RefreshCw className="w-3 h-3 mr-1" /> Test All
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 text-[9px]" onClick={() => toast.info('Abra a URL publicada para conectar hardware via WebSerial')}>
+            <Plus className="w-3 h-3 mr-1" /> Adicionar
+          </Button>
+        </div>
       </div>
 
       <ScrollArea className={cn(fs ? "max-h-[400px]" : "max-h-[300px]")}>

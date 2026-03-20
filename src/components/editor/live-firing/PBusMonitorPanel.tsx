@@ -54,7 +54,7 @@ function DeviceCard({ device, onArm, onDisarm, onFire, onCueStatus, onSetBand, i
       let progress = 0;
       deadmanAnimRef.current = setInterval(() => {
         progress += 5;
-        setDeadmanProgress(Math.min(100, (progress / 800) * 100 * 50));
+        setDeadmanProgress(Math.min(100, (progress / 80) * 100));
       }, 50);
       deadmanTimer.current = setTimeout(() => {
         setDeadman(true);

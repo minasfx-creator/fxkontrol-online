@@ -303,6 +303,7 @@ export default function FleetManagementPanel({ onClose }: FleetManagementPanelPr
           <TabsTrigger value="fleet" className="text-[9px] h-5">Fleet</TabsTrigger>
           <TabsTrigger value="preflight" className="text-[9px] h-5">Preflight</TabsTrigger>
           <TabsTrigger value="commands" className="text-[9px] h-5">Commands</TabsTrigger>
+          <TabsTrigger value="hardware" className="text-[9px] h-5">Hardware</TabsTrigger>
         </TabsList>
 
         {/* Fleet Tab */}
@@ -513,6 +514,117 @@ export default function FleetManagementPanel({ onClose }: FleetManagementPanelPr
               </Button>
             </div>
           </div>
+        </TabsContent>
+
+        {/* Hardware Tab */}
+        <TabsContent value="hardware" className="flex-1 flex flex-col px-2 pb-2 mt-0">
+          <div className="grid grid-cols-4 gap-1 text-[8px] mb-2">
+            <div className="bg-background rounded px-1.5 py-0.5 text-center">
+              <div className="text-foreground font-bold">{fireoneModules.length}</div>
+              <div className="text-muted-foreground">FireOne</div>
+            </div>
+            <div className="bg-background rounded px-1.5 py-0.5 text-center">
+              <div className="text-foreground font-bold">{pbusDevices.length}</div>
+              <div className="text-muted-foreground">PBUS</div>
+            </div>
+            <div className="bg-background rounded px-1.5 py-0.5 text-center">
+              <div className={cn("font-bold", totalHardwareDevices > 0 ? 'text-success' : 'text-muted-foreground')}>
+                {totalHardwareDevices}
+              </div>
+              <div className="text-muted-foreground">Total</div>
+            </div>
+            <div className="bg-background rounded px-1.5 py-0.5 text-center">
+              <div className={cn("font-bold",
+                fireone.isConnected || pbus.isConnected ? 'text-success' : 'text-muted-foreground'
+              )}>
+                {(fireone.isConnected ? 1 : 0) + (pbus.isConnected ? 1 : 0)}
+              </div>
+              <div className="text-muted-foreground">Links</div>
+            </div>
+          </div>
+
+          <ScrollArea className="flex-1">
+            <div className="space-y-1 pr-2">
+              {/* FireOne Modules */}
+              {fireoneModules.length > 0 && (
+                <div className="text-[8px] font-bold text-red-400 uppercase tracking-wider mb-1">FireOne Modules</div>
+              )}
+              {fireoneModules.map(mod => (
+                <div key={`fo-${mod.moduleAddress}`} className="p-1.5 rounded border border-border bg-background">
+                  <div className="flex items-center justify-between text-[9px]">
+                    <span className="font-bold text-foreground">FO-{mod.moduleAddress}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={cn("text-[8px]", (mod.batteryVoltage ?? 12) < 11 ? 'text-destructive' : 'text-success')}>
+                        {(mod.batteryVoltage ?? 0).toFixed(1)}V
+                      </span>
+                      <span className={cn("text-[8px]", (mod.rssiDbm ?? -50) < -75 ? 'text-warning' : 'text-success')}>
+                        {mod.rssiDbm ?? 0}dBm
+                      </span>
+                      <Badge variant={mod.armed ? 'default' : 'outline'} className="text-[7px] h-3.5 px-1">
+                        {mod.armed ? 'ARMED' : 'SAFE'}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="text-[7px] text-muted-foreground mt-0.5">
+                    {mod.igniters ? `${mod.igniters.filter((ig: any) => ig.resistance > 0.5 && ig.resistance < 50).length}/${mod.igniters.length} igniters OK` : 'No continuity data'}
+                    {mod.firmwareVersion ? ` · FW ${mod.firmwareVersion}` : ''}
+                  </div>
+                </div>
+              ))}
+
+              {/* PBUS Devices */}
+              {pbusDevices.length > 0 && (
+                <div className="text-[8px] font-bold text-amber-400 uppercase tracking-wider mb-1 mt-2">PBUS Devices</div>
+              )}
+              {pbusDevices.map(dev => (
+                <div key={`pb-${dev.address}`} className="p-1.5 rounded border border-border bg-background">
+                  <div className="flex items-center justify-between text-[9px]">
+                    <span className="font-bold text-foreground">{dev.type}-{dev.address}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={cn("text-[8px]", dev.batteryV < 3.3 ? 'text-destructive' : 'text-success')}>
+                        {dev.batteryV.toFixed(1)}V
+                      </span>
+                      <span className="text-[8px] text-muted-foreground">
+                        433:{dev.rssi433}dBm
+                      </span>
+                      <span className="text-[8px] text-muted-foreground">
+                        868:{dev.rssi868}dBm
+                      </span>
+                      <Badge variant={dev.armed ? 'default' : 'outline'} className="text-[7px] h-3.5 px-1">
+                        {dev.armed ? 'ARMED' : 'SAFE'}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="text-[7px] text-muted-foreground mt-0.5">
+                    {dev.cueStates.filter(c => c.connected).length}/{dev.channels} cues connected
+                    · Band: {dev.activeBand}
+                    {dev.firmwareVersion ? ` · FW ${dev.firmwareVersion}` : ''}
+                  </div>
+                </div>
+              ))}
+
+              {totalHardwareDevices === 0 && (
+                <div className="text-center py-8">
+                  <Cpu className="w-6 h-6 text-muted-foreground mx-auto mb-2 opacity-30" />
+                  <p className="text-[10px] text-muted-foreground">No firing hardware connected</p>
+                  <p className="text-[8px] text-muted-foreground mt-1">Connect FireOne or PBUS in Connection Manager</p>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+
+          {totalHardwareDevices > 0 && (
+            <div className="flex gap-1 mt-2">
+              <Button size="sm" variant="outline" className="h-6 text-[8px] flex-1"
+                onClick={() => toast.info('Scanning continuity on all devices...')}>
+                Scan Continuity
+              </Button>
+              <Button size="sm" variant="outline" className="h-6 text-[8px] flex-1"
+                onClick={() => toast.info('Battery report generated')}>
+                Battery Report
+              </Button>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

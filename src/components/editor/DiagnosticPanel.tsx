@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
-import { X, ShieldCheck, AlertTriangle, CheckCircle2, Play, Loader2, Download, Wifi, Usb, Radio } from 'lucide-react';
+import { X, ShieldCheck, AlertTriangle, CheckCircle2, Play, Loader2, Download, Wifi, Usb, Radio, Cable } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
+import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { pushLog } from './ViewportTerminal';
 import { cn } from '@/lib/utils';
 import { getSafetyDistance } from '@/lib/pyroPhysics';
@@ -27,6 +28,7 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
   const duration = useProjectStore((s) => s.duration);
 
   const hardware = useFireOneHardware();
+  const pbusHw = usePBusHardware();
 
   const runDiagnostic = useCallback(async () => {
     setRunning(true);
@@ -132,6 +134,73 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
         status: 'warn',
         detail: 'Modo SIM — hardware não conectado',
         suggestion: 'Conecte via RS-485 no painel PyroFireOne para diagnóstico real',
+      });
+    }
+
+    // ── PBUS / Showven Hardware Checks ──────────────────────
+    if (pbusHw.isConnected) {
+      checks.push({
+        id: 'pbus-link',
+        label: 'PBUS Link',
+        status: 'pass',
+        detail: `Conexão ativa — ${pbusHw.deviceCount} dispositivos · TX: ${pbusHw.txBytes}B / RX: ${pbusHw.rxBytes}B`,
+      });
+
+      // Battery check (<3.3V)
+      let lowBattPbus = 0;
+      pbusHw.devices.forEach(d => {
+        if (d.batteryV < 3.3) lowBattPbus++;
+      });
+      checks.push({
+        id: 'pbus-battery',
+        label: 'PBUS Battery Check',
+        status: lowBattPbus === 0 ? 'pass' : 'fail',
+        detail: lowBattPbus === 0 ? 'Todas as baterias PBUS OK (>3.3V)' : `${lowBattPbus} dispositivo(s) com bateria baixa (<3.3V)`,
+        suggestion: lowBattPbus > 0 ? 'Recarregue dispositivos PyroSlave antes do show' : undefined,
+      });
+
+      // Dual-band signal quality
+      let weakPbus = 0;
+      pbusHw.devices.forEach(d => {
+        const best = Math.max(d.rssi433, d.rssi868);
+        if (best < -80) weakPbus++;
+      });
+      if (pbusHw.deviceCount > 0) {
+        checks.push({
+          id: 'pbus-signal',
+          label: 'PBUS Dual-Band Signal',
+          status: weakPbus === 0 ? 'pass' : 'warn',
+          detail: weakPbus === 0
+            ? `${pbusHw.deviceCount} dispositivo(s) com sinal OK · Banda ideal: ${pbusHw.bestBand}`
+            : `${weakPbus} dispositivo(s) com sinal fraco (<-80dBm)`,
+          suggestion: weakPbus > 0 ? 'Reposicione dispositivos ou troque a banda de rádio' : undefined,
+        });
+      }
+
+      // Cue continuity summary
+      let goodCues = 0, openCues = 0;
+      pbusHw.devices.forEach(d => {
+        d.cueStates.forEach(c => {
+          if (c.connected) goodCues++;
+          else openCues++;
+        });
+      });
+      if (goodCues + openCues > 0) {
+        checks.push({
+          id: 'pbus-continuity',
+          label: 'PBUS Cue Continuity',
+          status: openCues === 0 ? 'pass' : 'warn',
+          detail: `${goodCues} cues OK, ${openCues} abertos (${goodCues + openCues} total)`,
+          suggestion: openCues > 0 ? 'Verifique conexões dos ignitores nos slots PBUS com circuito aberto' : undefined,
+        });
+      }
+    } else {
+      checks.push({
+        id: 'pbus-link',
+        label: 'PBUS Hardware',
+        status: 'warn',
+        detail: 'Modo SIM — PBUS não conectado',
+        suggestion: 'Conecte via serial no Connection Manager para diagnóstico real',
       });
     }
 
@@ -285,7 +354,7 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
       `E2E SCAN COMPLETE: ${failures} falhas, ${warnings} avisos, ${passes} OK`,
       failures > 0 ? 'error' : warnings > 0 ? 'warn' : 'success'
     );
-  }, [droneFormations, positions, trajectories, timelineItems, duration, hardware]);
+  }, [droneFormations, positions, trajectories, timelineItems, duration, hardware, pbusHw]);
 
   const exportReport = useCallback(() => {
     if (results.length === 0) return;
@@ -331,7 +400,12 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
           </span>
           {hardware.isConnected && (
             <Badge variant="outline" className="text-[7px] px-1 py-0 border-green-500/40 text-green-400 ml-1">
-              <Radio className="h-2 w-2 mr-0.5" /> HW
+              <Radio className="h-2 w-2 mr-0.5" /> FO
+            </Badge>
+          )}
+          {pbusHw.isConnected && (
+            <Badge variant="outline" className="text-[7px] px-1 py-0 border-amber-500/40 text-amber-400 ml-1">
+              <Cable className="h-2 w-2 mr-0.5" /> PB
             </Badge>
           )}
         </div>

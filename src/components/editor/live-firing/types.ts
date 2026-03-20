@@ -3,6 +3,12 @@
  * Faithful recreation of Showven FXcommander hardware interface types.
  */
 
+export interface HardwareBinding {
+  system: 'fireone' | 'pbus' | 'radio';
+  address: number;
+  pin: number;
+}
+
 export interface SFXChannel {
   id: string;
   name: string;
@@ -23,6 +29,7 @@ export interface SFXChannel {
   safetyChannel?: number;
   safetyValue?: number;
   manufacturer?: string;
+  hardwareBinding?: HardwareBinding;
 }
 
 export type SFXType = 'co2' | 'flame' | 'confetti' | 'streamer' | 'cryo' | 'haze' | 'spark' | 'custom' | 'fog' | 'snow' | 'bubble' | 'laser';
