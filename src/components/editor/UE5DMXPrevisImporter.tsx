@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import { Upload, MonitorSpeaker, X, Check, AlertTriangle, Zap, Layers } from 'lucide-react';
+import { Upload, MonitorSpeaker, X, Check, AlertTriangle, Zap, Layers, ChevronDown, Theater, CircleDot, Music } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -10,6 +10,8 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Slider } from '@/components/ui/slider';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useSfxChannelStore } from '@/store/useSfxChannelStore';
 import {
@@ -18,7 +20,7 @@ import {
   type UE5DMXFixture,
   type UE5DMXParseResult,
 } from '@/lib/ue5DmxPrevisParser';
-import { computeFixtureLayout } from '@/lib/fixtureAutoLayout';
+import { computeFixtureLayout, type LayoutPreset, type LayoutOverrides } from '@/lib/fixtureAutoLayout';
 import { toast } from 'sonner';
 
 interface Props {
@@ -38,11 +40,20 @@ const CATEGORY_ICONS: Record<string, string> = {
   drone: '🤖',
 };
 
+const PRESET_INFO: { value: LayoutPreset; label: string; desc: string; icon: React.ReactNode }[] = [
+  { value: 'stage', label: 'Stage', desc: 'Front-facing truss layout', icon: <Theater className="h-3 w-3" /> },
+  { value: 'arena', label: 'Arena', desc: '360° surround layout', icon: <CircleDot className="h-3 w-3" /> },
+  { value: 'festival', label: 'Festival', desc: 'Large-scale outdoor', icon: <Music className="h-3 w-3" /> },
+];
+
 export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }: Props) {
   const { addPosition } = useProjectStore();
   const [result, setResult] = useState<UE5DMXParseResult | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [layoutPreset, setLayoutPreset] = useState<LayoutPreset>('stage');
+  const [categoryOverrides, setCategoryOverrides] = useState<Record<string, LayoutOverrides>>({});
+  const [layoutOpen, setLayoutOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,11 +66,11 @@ export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }
       const parsed = parseUE5DMXLibrary(text);
       setResult(parsed);
       setSelected(new Set(parsed.fixtures.map((_, i) => i)));
+      setCategoryOverrides({});
     };
     reader.readAsText(file);
   }, []);
 
-  // Auto-process initialFile from drag-and-drop
   useEffect(() => {
     if (!initialFile || !open) return;
     setFileName(initialFile.name);
@@ -69,9 +80,23 @@ export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }
       const parsed = parseUE5DMXLibrary(text);
       setResult(parsed);
       setSelected(new Set(parsed.fixtures.map((_, i) => i)));
+      setCategoryOverrides({});
     };
     reader.readAsText(initialFile);
   }, [initialFile, open]);
+
+  const detectedCategories = useMemo(() => {
+    if (!result) return [];
+    const cats = new Set(result.fixtures.map(f => f.category));
+    return Array.from(cats).sort();
+  }, [result]);
+
+  const updateOverride = useCallback((cat: string, key: keyof LayoutOverrides, value: number) => {
+    setCategoryOverrides(prev => ({
+      ...prev,
+      [cat]: { ...prev[cat], [key]: value },
+    }));
+  }, []);
 
   const handleImport = useCallback(() => {
     if (!result) return;
@@ -80,15 +105,17 @@ export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }
       .map(idx => result.fixtures[idx])
       .filter(Boolean) as UE5DMXFixture[];
 
-    // Compute spatial layout based on fixture categories
-    const layout = computeFixtureLayout(selectedFixtures.map(f => ({
-      name: f.name,
-      category: f.category,
-      universe: f.universe,
-      startChannel: f.startChannel,
-    })));
+    const layout = computeFixtureLayout(
+      selectedFixtures.map(f => ({
+        name: f.name,
+        category: f.category,
+        universe: f.universe,
+        startChannel: f.startChannel,
+      })),
+      layoutPreset,
+      Object.keys(categoryOverrides).length > 0 ? categoryOverrides : undefined,
+    );
 
-    // Add positions to viewport with auto-layout coordinates
     for (let i = 0; i < selectedFixtures.length; i++) {
       const f = selectedFixtures[i];
       const pos = layout[i];
@@ -108,7 +135,6 @@ export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }
         color: f.color,
       });
 
-      // Auto-link SFX channels for pyro-type fixtures
       if (posType === 'pyro') {
         const sfxTypeMap: Record<string, 'flame' | 'cryo' | 'haze' | 'fog' | 'co2'> = {
           'sfx-flame': 'flame',
@@ -123,21 +149,19 @@ export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }
       }
     }
 
-    // Patch into DMX universes
     const dmxUniverses = patchUE5FixturesToUniverses(selectedFixtures);
-
-    // Test Art-Net connectivity
     useSfxChannelStore.getState().testArtNetConnection();
 
     toast.success(`${selectedFixtures.length} UE5 fixtures patched`, {
-      description: `${dmxUniverses.length} universe(s), ${selectedFixtures.reduce((s, f) => s + f.channelCount, 0)} DMX channels mapped.`,
+      description: `${dmxUniverses.length} universe(s), ${selectedFixtures.reduce((s, f) => s + f.channelCount, 0)} DMX channels. Layout: ${layoutPreset}.`,
     });
 
     onOpenChange(false);
     setResult(null);
     setFileName(null);
     setSelected(new Set());
-  }, [result, selected, addPosition, onOpenChange]);
+    setCategoryOverrides({});
+  }, [result, selected, addPosition, onOpenChange, layoutPreset, categoryOverrides]);
 
   const toggleFixture = (idx: number) => {
     setSelected(prev => {
@@ -161,7 +185,7 @@ export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl bg-card border-border">
+      <DialogContent className="sm:max-w-2xl bg-card border-border">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-sm">
             <MonitorSpeaker className="h-4 w-4 text-primary" />
@@ -169,22 +193,18 @@ export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }
           </DialogTitle>
           <DialogDescription className="text-[11px] text-muted-foreground">
             Import fixture patches from Unreal Engine 5 DMX Library (CSV, JSON, or T3D/COPY).
-            Fixtures are auto-mapped to DMX profiles and patched into universes.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           {/* Upload area */}
           <div
-            className="border-2 border-dashed border-border rounded-md p-5 text-center cursor-pointer hover:border-primary/50 transition-colors"
+            className="border-2 border-dashed border-border rounded-md p-4 text-center cursor-pointer hover:border-primary/50 transition-colors"
             onClick={() => fileRef.current?.click()}
           >
-            <Upload className="h-5 w-5 mx-auto text-muted-foreground mb-1.5" />
+            <Upload className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
             <p className="text-xs text-muted-foreground">
               {fileName ?? 'Click to select CSV, JSON, or T3D/COPY from UE5 DMX Library'}
-            </p>
-            <p className="text-[9px] text-muted-foreground/60 mt-1">
-              UE5: DMX Library → Ctrl+C (.COPY) &nbsp;|&nbsp; Export CSV/JSON &nbsp;|&nbsp; T3D Export
             </p>
             <input ref={fileRef} type="file" accept=".csv,.json,.txt,.tsv,.copy,.t3d" onChange={handleFile} className="hidden" />
           </div>
@@ -224,9 +244,88 @@ export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }
             </div>
           )}
 
+          {/* Layout Settings */}
+          {result && result.fixtures.length > 0 && (
+            <Collapsible open={layoutOpen} onOpenChange={setLayoutOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="w-full h-7 text-[10px] justify-between px-2 text-muted-foreground hover:text-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <Layers className="h-3 w-3" />
+                    Layout Settings — {PRESET_INFO.find(p => p.value === layoutPreset)?.label}
+                  </span>
+                  <ChevronDown className={`h-3 w-3 transition-transform ${layoutOpen ? 'rotate-180' : ''}`} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-2 pt-1">
+                {/* Preset selector */}
+                <div className="flex gap-1.5">
+                  {PRESET_INFO.map(p => (
+                    <button
+                      key={p.value}
+                      onClick={() => setLayoutPreset(p.value)}
+                      className={`flex-1 flex flex-col items-center gap-0.5 rounded-md border px-2 py-1.5 text-[10px] transition-colors
+                        ${layoutPreset === p.value
+                          ? 'border-primary bg-primary/10 text-foreground'
+                          : 'border-border bg-transparent text-muted-foreground hover:bg-muted/30'
+                        }`}
+                    >
+                      <span className="flex items-center gap-1">{p.icon} {p.label}</span>
+                      <span className="text-[8px] text-muted-foreground/70">{p.desc}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Per-category overrides */}
+                {detectedCategories.length > 0 && (
+                  <div className="space-y-1 border border-border rounded-md p-2">
+                    <p className="text-[9px] text-muted-foreground mb-1">Per-category adjustments</p>
+                    {detectedCategories.map(cat => {
+                      const ov = categoryOverrides[cat] || {};
+                      return (
+                        <div key={cat} className="grid grid-cols-[80px_1fr_1fr] gap-2 items-center text-[10px]">
+                          <span className="truncate text-muted-foreground">
+                            {CATEGORY_ICONS[cat] || '•'} {cat}
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[8px] text-muted-foreground/60 w-8 shrink-0">Spread</span>
+                            <Slider
+                              min={50}
+                              max={300}
+                              step={10}
+                              value={[Math.round((ov.spreadScale ?? 1) * 100)]}
+                              onValueChange={([v]) => updateOverride(cat, 'spreadScale', v / 100)}
+                              className="flex-1"
+                            />
+                            <span className="text-[8px] text-muted-foreground/60 w-7 text-right">
+                              {((ov.spreadScale ?? 1) * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[8px] text-muted-foreground/60 w-7 shrink-0">Height</span>
+                            <Slider
+                              min={-500}
+                              max={1500}
+                              step={50}
+                              value={[Math.round((ov.heightOffset ?? 0) * 100)]}
+                              onValueChange={([v]) => updateOverride(cat, 'heightOffset', v / 100)}
+                              className="flex-1"
+                            />
+                            <span className="text-[8px] text-muted-foreground/60 w-9 text-right">
+                              {(ov.heightOffset ?? 0) > 0 ? '+' : ''}{(ov.heightOffset ?? 0).toFixed(1)}m
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+
           {/* Fixture list */}
           {result && result.fixtures.length > 0 && (
-            <ScrollArea className="h-56 rounded-sm border border-border">
+            <ScrollArea className="h-48 rounded-sm border border-border">
               <div className="p-1.5 space-y-0.5">
                 {result.fixtures.map((f, i) => (
                   <div
