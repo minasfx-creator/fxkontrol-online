@@ -1,82 +1,100 @@
 
 
-# Plan: Full FireOne Hardware Integration Across All System Modules
+# Plan: PBUS Protocol + Full FireOne/Showven Integration Completion
 
 ## Overview
-Promote the FireOne IFMx-i32Q hardware integration from the Pyro panel into all related subsystems: **Addressing**, **Diagnostics**, **Show Control**, **DMX Panel**, **SMPTE/Timecode**, **Firing Export**, and **Safety Check**. This connects the real hardware state to every panel that deals with pyro, firing, or show execution.
+Create the PBUS protocol engine for native communication with Showven PyroSlave C16 (dual-band 433M/868M), integrate it into the existing hardware control chain, and connect remaining unlinked panels (Safety Check, Laser Control, Geofence, Fleet Management) with FireOne and Showven hardware state.
 
 ## Changes
 
-### 1. Edit `src/components/editor/AddressingPanel.tsx` — FireOne Hardware Sync
-- Import `useFireOneHardware` hook
-- When hardware connected: populate module list from real discovered IFMx-i32Q modules instead of static specs
-- Add "Sync from Hardware" button that reads discovered module addresses and auto-maps them to the addressing table
-- Show connection mode (wired/wireless) and RSSI per module in the address list
-- Add `fireone-i32q` to `DEFAULT_MODULE_SPECS` in the addressing store (32 pins, 1 slat)
+### 1. Create `src/lib/pbusProtocol.ts` — PBUS Protocol Engine
+Native PBUS serial protocol for Showven PyroSlave devices:
+- Frame format: `[PREAMBLE 0xAA][DEVICE_ADDR][CMD][LEN][PAYLOAD...][CRC16][TERM 0x55]`
+- Commands: `DISCOVER (0x01)`, `ARM (0x10)`, `FIRE (0x20)`, `STATUS (0x30)`, `CUE_STATUS (0x31)`, `CONFIG (0x40)`, `ESTOP (0xFF)`
+- `PBusCmd` enum + `buildPBusFrame()`, `parsePBusResponse()`, `calculateCRC16()`
+- Types: `PBusDevice { address, type, channels, firmwareVersion, batteryV, rssi433, rssi868, cueStates[] }`, `PBusCueState { index, connected, fired, resistance }`, `PBusWirelessBand = '433M' | '868M' | 'dual'`
+- Auto-discovery: scan addresses 1-64, identify device type (C16, X4, PyroMote)
+- Dual-band signal handling: track RSSI for both 433MHz and 868MHz, auto-select best band
+- WebSerial connection at 19200 baud (PBUS standard)
 
-### 2. Edit `src/components/editor/DiagnosticPanel.tsx` — Hardware Diagnostics
-- Import `useFireOneHardware` hook
-- Add new diagnostic checks when hardware connected:
-  - "FireOne Link" — verify RS-485 serial connection is active
-  - "Module Discovery" — check how many modules respond on the bus
-  - "Battery Check" — flag modules with voltage < 11.0V
-  - "Continuity Summary" — run continuity on all modules, report open/short/good counts
-  - "Wireless Signal" — flag modules with RSSI < -75 dBm
-  - "Firmware Version" — list firmware versions, warn if mixed
-- Show SIM mode warning when not connected to real hardware
+### 2. Create `src/hooks/usePBusHardware.ts` — PBUS React Hook
+- `connect()` / `disconnect()` via WebSerial (19200 8N1)
+- `discoverDevices(maxAddr)` — scan PBUS bus, populate `devices: Map<number, PBusDevice>`
+- `armDevice(addr)` / `disarmDevice(addr)` / `armAll()` / `disarmAll()`
+- `fireCue(addr, cueIndex)` — fire single cue with safety interlocks
+- `requestCueStatus(addr)` — get all 16 cue continuity states
+- `emergencyStop()` — broadcast ESTOP
+- RSSI polling (dual-band) every 3s with band quality comparison
+- Auto-fallback between 433M and 868M based on signal quality
+- Expose `bestBand`, `devices`, `isConnected`, `scanning`
 
-### 3. Edit `src/components/editor/ShowControlPanel.tsx` — FireOne Orchestration
-- Import `useFireOneHardware` hook
-- During "Preflight" phase: include FireOne hardware checks (connection, module count, battery, continuity)
-- During "Armed" phase: send ARM ALL to FireOne modules via `hardware.armAll()`
-- During "Running" phase: sync timecode to modules via `hardware.syncTimecode(ms)`
-- During "Abort" phase: send emergency stop to all modules via `hardware.emergencyStop()`
-- Add FireOne status indicator in the phase dashboard showing module count, armed state, connection mode
+### 3. Create `src/components/editor/live-firing/PBusMonitorPanel.tsx` — PBUS Control UI
+Dedicated sub-panel within FXcommander for Showven PBUS devices:
+- Device list showing all discovered PyroSlave C16/X4 units with dual-band RSSI bars
+- 16-cue grid per C16 with continuity color coding (green/red/orange)
+- ARM/FIRE controls per device with deadman interlock
+- Band selector (433M / 868M / Auto) per device
+- Signal quality comparison chart (433 vs 868 MHz)
+- Integration with existing LiveFiringPanel mode tabs
 
-### 4. Edit `src/components/editor/DMXPanel.tsx` — IFMx-i32Q DMX Output
-- Import `useFireOneHardware` hook
-- Add "FireOne DMX" output mode alongside Art-Net and USB Direct
-- When selected, DMX frames route through `hardware.sendDmxOut(moduleAddr, startChannel, values)` to the IFMx-i32Q's built-in DMX output port
-- Show which modules have DMX output capability in the output selector
-- Map DMX universe to module address (universe 1 → module 1 DMX port, etc.)
+### 4. Edit `src/components/editor/SafetyCheckPanel.tsx` — Hardware Safety Gates
+- Import `useFireOneHardware` and `usePBusHardware`
+- Add hardware safety checks: FireOne module battery/continuity, PBUS device status, wireless signal thresholds
+- Show hardware connection status in safety report (pass/fail per system)
+- Block "PASS" if any connected hardware has critical issues (low battery, open igniters, weak signal)
 
-### 5. Edit `src/components/editor/SMPTEPanel.tsx` — Timecode Sync to Modules
-- Import `useFireOneHardware` hook
-- Add "Sync to FireOne" toggle: when enabled, every timecode tick sends `hardware.syncTimecode(ms)` to all field modules
-- Show sync status indicator (green when modules are receiving timecode, amber when no hardware)
-- During external timecode chase mode, forward the received timecode to FireOne modules in real-time
+### 5. Edit `src/components/editor/LaserControlPanel.tsx` — Showven Maiman Integration
+- Import Showven laser presets from `showvenPresets.ts`
+- Add "Showven Maiman" hardware selector linking to preset specs (30W/40W/60W)
+- When Maiman selected: constrain pan/tilt/power to spec limits, show safety channel config
+- Route DMX output through existing Art-Net or FireOne DMX out depending on active hardware
 
-### 6. Edit `src/lib/firingSystemExports.ts` — Enhanced FireOne Export
-- Import types from `fireoneScriptParser`
-- Replace the basic `exportFireOne()` with a version that uses the full FireOne CSV spec (matching UltraFire format)
-- Include DMX commands in the export for IFMx-i32Q modules with DMX output assignments
-- Add `exportFireOneUltraFire()` function that generates the complete UltraFire-compatible CSV with all fields
+### 6. Edit `src/components/editor/GeofencePanel.tsx` — Hardware-Aware Geofence
+- Import `useFireOneHardware` and `usePBusHardware`
+- Auto-populate geofence exclusion zones around connected firing modules (safety radius)
+- Show connected module positions on geofence map
+- Link geofence violations to hardware ESTOP trigger
 
-### 7. Edit `src/components/editor/FiringExportPanel.tsx` — Live Hardware Export
-- Import `useFireOneHardware` hook
-- Add "Upload to Hardware" button for FireOne: when hardware connected, sends the cue list directly to modules as a scripted sequence (using `FIRE_SEQUENCE` commands with timecode offsets)
-- Show hardware connection status in the FireOne export row
-- Add "Verify Addressing" action that cross-checks exported module/pin assignments against physically discovered modules
+### 7. Edit `src/components/editor/FleetManagementPanel.tsx` — Unified Device Fleet
+- Import `useFireOneHardware` and `usePBusHardware`
+- Add "Firing Modules" and "SFX Controllers" sections alongside drone fleet
+- Show all connected FireOne IFMx-i32Q modules + Showven PBUS devices in unified fleet view
+- Display battery, signal, firmware, connection mode per device
+- Bulk actions: firmware check, battery report, full continuity scan
 
-### 8. Edit `src/store/useAddressingStore.ts` — Add IFMx-i32Q Spec
-- Add `{ id: 'fireone-i32q', name: 'FireOne IFMx-i32Q', slatCount: 1, pinsPerSlat: 32, firingSystem: 'Default' }` to `DEFAULT_MODULE_SPECS`
+### 8. Edit `src/components/editor/ShowvenEquipmentPanel.tsx` — Live Hardware Status
+- Import `usePBusHardware`
+- When PBUS connected: show live status badges on PyroSlave C16/X4 equipment cards
+- Show real cue status (connected/fired) overlay on controller cards
+- Add "Connect PBUS" button in Controllers section
+
+### 9. Edit `src/components/editor/live-firing/constants.ts` — PBUS Device Profiles
+- Add `PBUS_DEVICE_PROFILES` with C16 (16 cues, dual-band) and X4 (4 cues, wired) specs
+- Add PBUS connection profile to `DEVICE_PROFILES` in `usbEngine.ts`
+
+### 10. Edit `src/lib/usbEngine.ts` — PBUS Serial Profile
+- Add `'pbus'` to `USBDeviceType`
+- Add PBUS serial profile: 19200 baud, 8N1
 
 ## Files Summary
 
 | File | Action |
 |------|--------|
-| `src/store/useAddressingStore.ts` | Edit — add IFMx-i32Q module spec |
-| `src/components/editor/AddressingPanel.tsx` | Edit — hardware sync, live module discovery |
-| `src/components/editor/DiagnosticPanel.tsx` | Edit — hardware diagnostic checks |
-| `src/components/editor/ShowControlPanel.tsx` | Edit — FireOne orchestration in show phases |
-| `src/components/editor/DMXPanel.tsx` | Edit — IFMx-i32Q DMX output mode |
-| `src/components/editor/SMPTEPanel.tsx` | Edit — timecode sync to field modules |
-| `src/lib/firingSystemExports.ts` | Edit — enhanced UltraFire-compatible export |
-| `src/components/editor/FiringExportPanel.tsx` | Edit — upload to hardware, verify addressing |
+| `src/lib/pbusProtocol.ts` | Create — PBUS protocol engine |
+| `src/hooks/usePBusHardware.ts` | Create — PBUS React hook |
+| `src/components/editor/live-firing/PBusMonitorPanel.tsx` | Create — PBUS control UI |
+| `src/components/editor/SafetyCheckPanel.tsx` | Edit — hardware safety gates |
+| `src/components/editor/LaserControlPanel.tsx` | Edit — Showven Maiman integration |
+| `src/components/editor/GeofencePanel.tsx` | Edit — hardware-aware exclusion zones |
+| `src/components/editor/FleetManagementPanel.tsx` | Edit — unified device fleet |
+| `src/components/editor/ShowvenEquipmentPanel.tsx` | Edit — live PBUS status |
+| `src/components/editor/live-firing/constants.ts` | Edit — PBUS profiles |
+| `src/lib/usbEngine.ts` | Edit — PBUS serial profile |
 
 ## Technical Notes
-- All integrations use the existing `useFireOneHardware` hook — no new protocol code needed
-- When hardware is not connected, all panels fall back to their existing behavior (no breaking changes)
-- Hardware state is shared via the `FireOneController` singleton, so all panels see the same module list
-- Timecode sync to modules uses the same frame format already implemented in `buildSyncTimecode()`
+- PBUS uses 19200 baud (vs FireOne's 9600) — separate serial port connection
+- Both hooks (`useFireOneHardware` + `usePBusHardware`) can be active simultaneously on different serial ports
+- Dual-band RSSI: 433MHz has better range/penetration, 868MHz has better bandwidth — auto-select logic picks the band with better link quality
+- CRC16 (CCITT) used for PBUS frames vs simple XOR checksum for FireOne
+- All panels gracefully degrade when hardware not connected (existing behavior preserved)
 
