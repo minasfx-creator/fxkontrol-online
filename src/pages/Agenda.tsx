@@ -57,7 +57,7 @@ export default function Agenda() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({
-    name: '', location: '', client_name: '', event_type: 'mixed', notes: '',
+    name: '', location: '', client_name: '', event_type: 'mixed', notes: '', status: 'negotiation',
   });
 
   const fetchEvents = async () => {
