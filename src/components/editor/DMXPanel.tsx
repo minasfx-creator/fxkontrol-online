@@ -588,7 +588,7 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
               </>
             )}
           </div>
-        )
+        )}
 
         {/* Export */}
         <div className="flex items-center gap-1">
