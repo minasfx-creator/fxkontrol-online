@@ -28,7 +28,15 @@ export default function UAssetImporter({ open, onOpenChange, initialFile = null 
   const [imported, setImported] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFiles = useCallback(async (files: FileList) => {
+  useEffect(() => {
+    if (initialFile && open) {
+      const dt = new DataTransfer();
+      dt.items.add(initialFile);
+      handleFiles(dt.files);
+    }
+  }, [initialFile, open, handleFiles]);
+
+  const handleFilesInput = useCallback(async (files: FileList) => {
     setLoading(true);
     const results: ParsedFile[] = [];
 
