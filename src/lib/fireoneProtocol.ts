@@ -75,6 +75,8 @@ export enum FireOneCmd {
 // TYPES
 // ═══════════════════════════════════════════════════════════
 
+export type WirelessConnectionMode = 'wired' | 'wireless' | 'fallback';
+
 export interface FireOneModuleStatus {
   moduleAddress: number;
   armed: boolean;
@@ -88,6 +90,11 @@ export interface FireOneModuleStatus {
   errors: string[];
   serialNumber?: string;
   dmxUniverse?: number;
+  rssiDbm?: number;
+  wirelessChannel?: number;
+  packetLoss?: number;
+  linkQuality?: number;
+  connectionMode?: WirelessConnectionMode;
 }
 
 export interface FireOneIgniterStatus {
