@@ -3558,6 +3558,7 @@ export default function SkyCanvas() {
             console.warn('[FXK] WebGL context lost — remounting renderer');
             _starMaterialInstance?.dispose();
             _starMaterialInstance = null;
+            resetPools(); // Clear geometry/buffer pools on context loss
             setCanvasInstanceKey((prev) => prev + 1);
           };
 
