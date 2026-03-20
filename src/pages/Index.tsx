@@ -352,6 +352,7 @@ function Index() {
         {activePanel === 'showpreview' && <ShowPreviewPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'mobilelink' && <MobileLinkPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'linkmonitor' && <MobileLinkMonitor onClose={() => setActivePanel(null)} />}
+        {activePanel === 'showcommander' && <ShowCommanderPanel onClose={() => setActivePanel(null)} onOpenPanel={(id) => setActivePanel(id as PanelId)} />}
       </>
     );
   };
