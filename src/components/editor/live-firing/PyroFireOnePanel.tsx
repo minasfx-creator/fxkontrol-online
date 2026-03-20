@@ -279,7 +279,7 @@ export default function PyroFireOnePanel({
     const ig = mod.igniters.find(i => i.position === igniterPos);
     if (!ig?.connected || ig.fired) return;
 
-    if (navigator.vibrate) navigator.vibrate(40);
+    haptics.fire();
 
     // Route through hardware when connected
     if (!simMode && hardware.isConnected) {
