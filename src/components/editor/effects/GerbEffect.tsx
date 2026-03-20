@@ -131,7 +131,7 @@ export default function GerbEffect({
           </mesh>
           {/* Ground scatter light — Screen */}
           <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <circleGeometry args={[0.8 + height * 0.12, 16]} />
+            <circleGeometry args={[0.8 + scaledHeight * 0.12, 16]} />
             <meshBasicMaterial color={color} transparent opacity={0.04} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} />
           </mesh>
         </>
