@@ -391,7 +391,7 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
         {/* Output Mode Selector */}
         <div className="space-y-1.5 border-t border-border/50 pt-2">
           <span className="text-[9px] text-muted-foreground font-semibold uppercase">Modo de Saída</span>
-          <div className="grid grid-cols-2 gap-1">
+          <div className="grid grid-cols-3 gap-1">
             <button
               onClick={() => setOutputMode('artnet')}
               className={`flex items-center justify-center gap-1 rounded-sm p-1.5 text-[9px] font-semibold transition-colors ${
@@ -414,7 +414,20 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
               }`}
             >
               <Usb className="h-3 w-3" />
-              USB Direct {hasUSBDMX && `(${connectedUSBDMX.length})`}
+              USB {hasUSBDMX && `(${connectedUSBDMX.length})`}
+            </button>
+            <button
+              onClick={() => setOutputMode('fireone')}
+              className={`flex items-center justify-center gap-1 rounded-sm p-1.5 text-[9px] font-semibold transition-colors ${
+                outputMode === 'fireone'
+                  ? 'bg-primary text-primary-foreground'
+                  : hardware.isConnected
+                    ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                    : 'bg-surface-2 text-muted-foreground hover:bg-surface-3'
+              }`}
+            >
+              <Zap className="h-3 w-3" />
+              FireOne {hardware.isConnected && `(${hardware.modules.size})`}
             </button>
           </div>
         </div>
