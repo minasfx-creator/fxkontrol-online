@@ -11,17 +11,21 @@ import {
   Shield, ShieldAlert, Hand, AlertTriangle, Zap, Radio,
   ChevronLeft, ChevronRight, RotateCcw, Play, Square, SkipForward,
   CheckCircle2, XCircle, Clock, Activity, Battery, Signal,
-  Lock, Unlock, Search, Download, Maximize2, Minimize2, X
+  Lock, Unlock, Search, Download, Upload, Maximize2, Minimize2, X,
+  Wifi, WifiOff, Usb, ScanLine, Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import type { SFXChannel, AutoFireCue } from './types';
 import { DEMO_CUES } from './AutoFirePanel';
 import { formatTimecode } from './constants';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
+import { parseFireOneCSV, parseFireOneFIR, exportFireOneCSV, downloadFile } from '@/lib/fireoneScriptParser';
 
 interface PyroFireOnePanelProps {
   fs: boolean;
