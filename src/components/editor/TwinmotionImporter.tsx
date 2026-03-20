@@ -424,6 +424,10 @@ export default function TwinmotionImporter({ open, onOpenChange, initialFile }: 
               </div>
             )}
 
+            {model3dFile && model3dStatus === 'done' && (
+              <Model3DPreview file={model3dFile} />
+            )}
+
             <div className="p-3 rounded-lg bg-muted/10 border border-border/10">
               <p className="text-[10px] text-muted-foreground leading-relaxed">
                 <strong>Formatos renderizáveis</strong> (FBX, OBJ, glTF, GLB) são carregados diretamente no viewport 3D.
