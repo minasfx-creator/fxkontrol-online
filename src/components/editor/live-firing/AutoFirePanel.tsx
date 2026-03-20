@@ -70,12 +70,21 @@ export default function AutoFirePanel({ fs, pyroArm, dmxArm, onFireCue }: AutoFi
     e.target.value = '';
   }, []);
 
-  // FireOne CSV export handler
+  // FireOne CSV export
   const handleExportCSV = useCallback(() => {
     if (cues.length === 0) { toast.error('No cues to export'); return; }
     const csv = exportFireOneCSV(cues);
     downloadFile(csv, 'fireone_autofire.csv');
     toast.success(`Exported ${cues.length} cues to FireOne CSV`);
+  }, [cues]);
+
+  // Flames Launcher export
+  const handleExportFlames = useCallback(() => {
+    const dmxCues = cues.filter(c => c.device === 'dmx');
+    if (dmxCues.length === 0) { toast.error('No DMX cues to export'); return; }
+    const csv = exportFlamesLauncherCSV(dmxCues);
+    downloadFile(csv, 'flames_launcher.csv');
+    toast.success(`Exported ${dmxCues.length} DMX cues to Flames CSV`);
   }, [cues]);
 
   const handleReset = useCallback(() => {
