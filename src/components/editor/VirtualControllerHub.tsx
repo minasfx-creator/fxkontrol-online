@@ -13,7 +13,7 @@ import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-type ConnectionType = 'usb' | 'artnet' | 'wireless' | 'pbus' | 'serial' | 'sim';
+type ConnectionType = 'usb' | 'artnet' | 'wireless' | 'pbus' | 'serial' | 'radio' | 'sim';
 
 interface ControllerCard {
   id: string;
