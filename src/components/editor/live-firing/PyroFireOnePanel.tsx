@@ -25,7 +25,8 @@ import type { SFXChannel, AutoFireCue } from './types';
 import { DEMO_CUES } from './AutoFirePanel';
 import { formatTimecode } from './constants';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
-import { parseFireOneCSV, parseFireOneFIR, exportFireOneCSV, downloadFile } from '@/lib/fireoneScriptParser';
+import { parseFireOneCSV, parseFireOneFIR, exportFireOneCSV, downloadFile, autoDetectAndParse } from '@/lib/fireoneScriptParser';
+import type { WirelessConnectionMode } from '@/lib/fireoneProtocol';
 
 interface PyroFireOnePanelProps {
   fs: boolean;
@@ -49,6 +50,11 @@ interface FieldModule {
   signalStrength: number;
   temperature: number;
   igniters: IgniterState[];
+  connectionMode?: WirelessConnectionMode;
+  rssiDbm?: number;
+  wirelessChannel?: number;
+  packetLoss?: number;
+  linkQuality?: number;
 }
 
 interface IgniterState {
@@ -59,7 +65,8 @@ interface IgniterState {
   misfire: boolean;
 }
 
-function createSimModule(addr: number, connected: boolean): FieldModule {
+function createSimModule(addr: number, connected: boolean, wireless = false): FieldModule {
+  const rssi = wireless ? -(40 + Math.random() * 40) : undefined;
   return {
     address: addr,
     connected,
@@ -67,6 +74,11 @@ function createSimModule(addr: number, connected: boolean): FieldModule {
     batteryVoltage: connected ? 11.2 + Math.random() * 1.6 : 0,
     signalStrength: connected ? 60 + Math.random() * 40 : 0,
     temperature: connected ? 18 + Math.random() * 12 : 0,
+    connectionMode: wireless ? 'wireless' : 'wired',
+    rssiDbm: rssi,
+    wirelessChannel: wireless ? 1 + Math.floor(Math.random() * 16) : undefined,
+    packetLoss: wireless ? Math.floor(Math.random() * 5) : undefined,
+    linkQuality: wireless ? 80 + Math.floor(Math.random() * 20) : undefined,
     igniters: Array.from({ length: 32 }, (_, i) => ({
       position: i + 1,
       connected: connected && Math.random() > 0.15,
@@ -86,7 +98,8 @@ export default function PyroFireOnePanel({
   const [pyroMode, setPyroMode] = useState<PyroMode>('manual');
   const [modules, setModules] = useState<FieldModule[]>(() => {
     const mods: FieldModule[] = [];
-    for (let i = 1; i <= 6; i++) mods.push(createSimModule(i, true));
+    for (let i = 1; i <= 4; i++) mods.push(createSimModule(i, true, false));
+    for (let i = 5; i <= 6; i++) mods.push(createSimModule(i, true, true));
     return mods;
   });
   const [selectedModule, setSelectedModule] = useState(1);
@@ -149,6 +162,11 @@ export default function PyroFireOnePanel({
       batteryVoltage: hm.batteryVoltage,
       signalStrength: hm.signalStrength,
       temperature: hm.temperature,
+      connectionMode: hm.connectionMode,
+      rssiDbm: hm.rssiDbm,
+      wirelessChannel: hm.wirelessChannel,
+      packetLoss: hm.packetLoss,
+      linkQuality: hm.linkQuality,
       igniters: hm.igniters.map(ig => ({
         position: ig.position,
         connected: ig.connected,
@@ -179,12 +197,7 @@ export default function PyroFireOnePanel({
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
-      let cues: AutoFireCue[] = [];
-      if (file.name.endsWith('.fir') || file.name.endsWith('.sem')) {
-        cues = parseFireOneFIR(text);
-      } else {
-        cues = parseFireOneCSV(text);
-      }
+      const { cues, source } = autoDetectAndParse(text, file.name);
       if (cues.length === 0) {
         toast.error('No valid cues found in file');
         return;
@@ -192,7 +205,7 @@ export default function PyroFireOnePanel({
       setTcCues(cues);
       setStepCues(cues);
       setStepIndex(0);
-      toast.success(`Imported ${cues.length} cues from ${file.name}`);
+      toast.success(`Imported ${cues.length} cues from ${source} (${file.name})`);
     };
     reader.readAsText(file);
     e.target.value = '';
@@ -375,6 +388,33 @@ export default function PyroFireOnePanel({
   const totalIgniters = modules.reduce((sum, m) => sum + m.igniters.filter(i => i.connected && !i.fired).length, 0);
   const firedCount = modules.reduce((sum, m) => sum + m.igniters.filter(i => i.fired).length, 0);
   const misfireCount = modules.reduce((sum, m) => sum + m.igniters.filter(i => i.misfire).length, 0);
+  const wirelessCount = modules.filter(m => m.connectionMode === 'wireless' || m.connectionMode === 'fallback').length;
+  const wiredCount = modules.filter(m => m.connectionMode === 'wired' || !m.connectionMode).length;
+  const fallbackCount = modules.filter(m => m.connectionMode === 'fallback').length;
+
+  // RSSI color helper
+  const rssiColor = (rssi?: number) => {
+    if (rssi === undefined) return 'text-muted-foreground/30';
+    if (rssi > -60) return 'text-green-400';
+    if (rssi > -75) return 'text-amber-400';
+    return 'text-red-400';
+  };
+  const rssiIcon = (rssi?: number) => {
+    if (rssi === undefined) return 'bg-muted-foreground/20';
+    if (rssi > -60) return 'bg-green-500';
+    if (rssi > -75) return 'bg-amber-400';
+    return 'bg-red-500';
+  };
+  const connectionModeIcon = (mode?: WirelessConnectionMode) => {
+    if (mode === 'wireless') return Wifi;
+    if (mode === 'fallback') return WifiOff;
+    return Usb;
+  };
+  const connectionModeBadge = (mode?: WirelessConnectionMode) => {
+    if (mode === 'wireless') return { text: 'WIRELESS', cls: 'text-cyan-400 bg-cyan-400/10 border-cyan-500/20' };
+    if (mode === 'fallback') return { text: 'FALLBACK', cls: 'text-amber-400 bg-amber-400/10 border-amber-500/20 animate-pulse' };
+    return { text: 'WIRED', cls: 'text-green-400/70 bg-green-400/10 border-green-500/15' };
+  };
 
   // ── Determine sizing: xl = dedicated fullscreen, fs = parent fullscreen, default = panel
   const xl = pyroFullscreen;
@@ -383,7 +423,7 @@ export default function PyroFireOnePanel({
 
   // ── Hidden file input for CSV/FIR import ──
   const renderFileInput = () => (
-    <input ref={fileInputRef} type="file" accept=".csv,.fir,.sem" onChange={handleFileImport} className="hidden" />
+    <input ref={fileInputRef} type="file" accept=".csv,.fir,.sem,.ses" onChange={handleFileImport} className="hidden" />
   );
 
   // ── Render: Hardware connection bar ──
@@ -405,6 +445,25 @@ export default function PyroFireOnePanel({
           hardware.isConnected ? "text-green-400/80" : "text-muted-foreground/30"
         )}>
           {hardware.isConnected ? 'HARDWARE' : 'DISCONNECTED'}
+        </span>
+      </div>
+
+      {/* Wireless / Wired module counts */}
+      <div className={cn("flex items-center gap-1.5 font-mono",
+        sz === 'xl' ? "text-[9px]" : "text-[6px]"
+      )}>
+        {wirelessCount > 0 && (
+          <span className="flex items-center gap-0.5 text-cyan-400/60">
+            <Wifi className={cn(sz === 'xl' ? "w-3 h-3" : "w-2 h-2")} />{wirelessCount}
+          </span>
+        )}
+        {fallbackCount > 0 && (
+          <span className="flex items-center gap-0.5 text-amber-400/70 animate-pulse">
+            <WifiOff className={cn(sz === 'xl' ? "w-3 h-3" : "w-2 h-2")} />{fallbackCount}
+          </span>
+        )}
+        <span className="flex items-center gap-0.5 text-green-400/40">
+          <Usb className={cn(sz === 'xl' ? "w-3 h-3" : "w-2 h-2")} />{wiredCount}
         </span>
       </div>
 
@@ -595,20 +654,31 @@ export default function PyroFireOnePanel({
     <div className={cn("flex items-center gap-1.5 border-b border-border/10 overflow-x-auto scrollbar-thin",
       sz === 'xl' ? "px-5 py-2" : sz === 'fs' ? "px-3 py-1.5" : "px-2 py-1"
     )} style={{ background: 'hsl(220 12% 6%)' }}>
-      {modules.map(m => (
-        <button key={m.address} onClick={() => setSelectedModule(m.address)}
-          className={cn(
-            "rounded border font-mono font-bold shrink-0 transition-all",
-            sz === 'xl' ? "px-3.5 py-2 text-xs" : sz === 'fs' ? "px-2.5 py-1.5 text-[9px]" : "px-2 py-1 text-[7px]",
-            selectedModule === m.address
-              ? m.armed ? "bg-red-600/20 border-red-500/40 text-red-400" : "bg-primary/15 border-primary/40 text-primary"
-              : m.armed ? "bg-red-600/10 border-red-800/20 text-red-400/50"
-              : m.connected ? "bg-[hsl(220_10%_10%)] border-border/15 text-foreground/50" : "bg-[hsl(220_10%_7%)] border-border/5 text-muted-foreground/15"
-          )}>
-          FM-{String(m.address).padStart(2, '0')}
-          {m.armed && <span className="ml-1 text-red-400">●</span>}
-        </button>
-      ))}
+      {modules.map(m => {
+        const ModeIcon = connectionModeIcon(m.connectionMode);
+        return (
+          <button key={m.address} onClick={() => setSelectedModule(m.address)}
+            className={cn(
+              "rounded border font-mono font-bold shrink-0 transition-all flex items-center gap-1",
+              sz === 'xl' ? "px-3.5 py-2 text-xs" : sz === 'fs' ? "px-2.5 py-1.5 text-[9px]" : "px-2 py-1 text-[7px]",
+              selectedModule === m.address
+                ? m.armed ? "bg-red-600/20 border-red-500/40 text-red-400" : "bg-primary/15 border-primary/40 text-primary"
+                : m.armed ? "bg-red-600/10 border-red-800/20 text-red-400/50"
+                : m.connected ? "bg-[hsl(220_10%_10%)] border-border/15 text-foreground/50" : "bg-[hsl(220_10%_7%)] border-border/5 text-muted-foreground/15"
+            )}>
+            <ModeIcon className={cn(
+              sz === 'xl' ? "w-3 h-3" : "w-2 h-2",
+              m.connectionMode === 'wireless' ? rssiColor(m.rssiDbm) :
+              m.connectionMode === 'fallback' ? "text-amber-400 animate-pulse" : "text-green-400/40"
+            )} />
+            FM-{String(m.address).padStart(2, '0')}
+            {m.armed && <span className="ml-0.5 text-red-400">●</span>}
+            {m.connectionMode === 'wireless' && m.rssiDbm !== undefined && (
+              <span className={cn("text-[5px]", rssiColor(m.rssiDbm))}>{m.rssiDbm}dB</span>
+            )}
+          </button>
+        );
+      })}
       <button onClick={importPyroCues}
         className={cn("rounded border shrink-0 transition-all font-bold",
           sz === 'xl' ? "px-3.5 py-2 text-[10px]" : sz === 'fs' ? "px-2.5 py-1.5 text-[8px]" : "px-2 py-1 text-[6px]",
@@ -625,13 +695,39 @@ export default function PyroFireOnePanel({
       <div className={cn("flex items-center gap-3 border-b border-border/10",
         sz === 'xl' ? "px-6 py-2" : sz === 'fs' ? "px-4 py-1" : "px-2 py-0.5"
       )} style={{ background: 'hsl(220 10% 8%)' }}>
+        {/* Connection mode badge */}
+        {(() => {
+          const badge = connectionModeBadge(currentModule.connectionMode);
+          return (
+            <span className={cn("rounded border font-bold uppercase font-mono",
+              sz === 'xl' ? "px-2 py-0.5 text-[8px]" : "px-1.5 py-0.5 text-[5px]",
+              badge.cls
+            )}>{badge.text}</span>
+          );
+        })()}
+        {/* RSSI for wireless modules */}
+        {(currentModule.connectionMode === 'wireless' || currentModule.connectionMode === 'fallback') && currentModule.rssiDbm !== undefined && (
+          <div className="flex items-center gap-1">
+            <div className={cn("rounded-full", sz === 'xl' ? "w-2.5 h-2.5" : "w-1.5 h-1.5", rssiIcon(currentModule.rssiDbm))}
+              style={currentModule.rssiDbm > -60 ? { boxShadow: '0 0 4px rgba(34,197,94,0.4)' } : undefined} />
+            <span className={cn("font-mono", rssiColor(currentModule.rssiDbm),
+              sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[8px]" : "text-[6px]"
+            )}>{currentModule.rssiDbm}dBm</span>
+          </div>
+        )}
+        {currentModule.wirelessChannel !== undefined && (
+          <span className={cn("font-mono text-muted-foreground/30", sz === 'xl' ? "text-[9px]" : "text-[6px]")}>
+            Ch{currentModule.wirelessChannel}
+          </span>
+        )}
+        {currentModule.packetLoss !== undefined && currentModule.packetLoss > 0 && (
+          <span className={cn("font-mono text-amber-400/60", sz === 'xl' ? "text-[9px]" : "text-[6px]")}>
+            {currentModule.packetLoss}% loss
+          </span>
+        )}
         <div className="flex items-center gap-1">
           <Battery className={cn(sz === 'xl' ? "w-4 h-4" : "w-3 h-3", currentModule.batteryVoltage > 11 ? "text-green-400/70" : "text-amber-400")} />
           <span className={cn("font-mono text-muted-foreground/50", sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[8px]" : "text-[6px]")}>{currentModule.batteryVoltage.toFixed(1)}V</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <Signal className={cn(sz === 'xl' ? "w-4 h-4" : "w-3 h-3", "text-cyan-400/60")} />
-          <span className={cn("font-mono text-muted-foreground/50", sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[8px]" : "text-[6px]")}>{Math.round(currentModule.signalStrength)}%</span>
         </div>
         <div className="flex items-center gap-1">
           <Activity className={cn(sz === 'xl' ? "w-4 h-4" : "w-3 h-3", "text-muted-foreground/40")} />
@@ -988,7 +1084,10 @@ export default function PyroFireOnePanel({
               </div>
               <ScrollArea className="flex-1">
                 <div className="p-2 space-y-1">
-                  {modules.map(m => (
+                  {modules.map(m => {
+                    const ModeIcon = connectionModeIcon(m.connectionMode);
+                    const badge = connectionModeBadge(m.connectionMode);
+                    return (
                     <button key={m.address} onClick={() => setSelectedModule(m.address)}
                       className={cn(
                         "w-full flex items-center gap-2 rounded-lg border px-3 py-2.5 transition-all text-left",
@@ -998,23 +1097,35 @@ export default function PyroFireOnePanel({
                           : m.connected ? "bg-[hsl(220_10%_8%)] border-border/10 hover:bg-[hsl(220_10%_12%)]"
                           : "bg-[hsl(220_10%_5%)] border-border/5 opacity-40"
                       )}>
-                      <div className={cn("w-2 h-2 rounded-full shrink-0",
-                        m.armed ? "bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.5)]" :
-                        m.connected ? "bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.4)]" : "bg-muted-foreground/15"
-                      )} />
+                      <div className="flex flex-col items-center gap-0.5">
+                        <div className={cn("w-2 h-2 rounded-full shrink-0",
+                          m.armed ? "bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.5)]" :
+                          m.connected ? "bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.4)]" : "bg-muted-foreground/15"
+                        )} />
+                        <ModeIcon className={cn("w-2.5 h-2.5",
+                          m.connectionMode === 'wireless' ? rssiColor(m.rssiDbm) :
+                          m.connectionMode === 'fallback' ? "text-amber-400 animate-pulse" : "text-green-400/30"
+                        )} />
+                      </div>
                       <div className="flex-1 min-w-0">
                         <div className={cn("font-mono font-bold text-xs",
                           selectedModule === m.address ? "text-foreground/80" : "text-foreground/50"
                         )}>FM-{String(m.address).padStart(2, '0')}</div>
                         <div className="flex items-center gap-2 text-[8px] text-muted-foreground/30 font-mono">
                           <span>{m.batteryVoltage.toFixed(1)}V</span>
-                          <span>{Math.round(m.signalStrength)}%</span>
                           <span>{Math.round(m.temperature)}°C</span>
+                          {m.rssiDbm !== undefined && (
+                            <span className={rssiColor(m.rssiDbm)}>{m.rssiDbm}dB</span>
+                          )}
                         </div>
                       </div>
-                      {m.armed && <span className="text-[8px] font-bold text-red-400 uppercase">ARM</span>}
+                      <div className="flex flex-col items-end gap-0.5">
+                        {m.armed && <span className="text-[7px] font-bold text-red-400 uppercase">ARM</span>}
+                        <span className={cn("text-[6px] font-bold rounded px-1 border", badge.cls)}>{badge.text}</span>
+                      </div>
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
                 <div className="px-2 pb-2">
                   <button onClick={importPyroCues}

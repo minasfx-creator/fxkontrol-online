@@ -231,3 +231,114 @@ export function downloadFile(content: string, filename: string, mimeType = 'text
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+// ═══════════════════════════════════════════════════════════
+// SCRIPTMAKER VISUAL SESSION PARSER (.ses)
+// ═══════════════════════════════════════════════════════════
+
+/** Parse ScriptMaker Visual .ses session files */
+export function parseScriptMakerSession(text: string): AutoFireCue[] {
+  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0 && !l.startsWith(';') && !l.startsWith('//'));
+  const cues: AutoFireCue[] = [];
+
+  lines.forEach((line, idx) => {
+    // SES format: TIME_MS,MODULE,CUE,PRODUCT_CODE,DESCRIPTION,QTY,SIZE,POSITION,ANGLE
+    const parts = line.split(',').map(p => p.trim());
+    if (parts.length < 5) return;
+
+    const timecodeMs = parseInt(parts[0]) || 0;
+    const module = parseInt(parts[1]) || 1;
+    const cuePin = parseInt(parts[2]) || 1;
+    const productCode = parts[3] || '';
+    const description = parts[4] || '';
+
+    cues.push({
+      id: `ses-${idx + 1}`,
+      cueNumber: idx + 1,
+      device: 'pyro',
+      name: description || `${productCode} M${module}/C${cuePin}`,
+      state: 'ready',
+      timecodeMs,
+      addresses: `${(module - 1) * 32 + (cuePin - 1)}`,
+      mode: 'sync',
+      effect: productCode,
+      duration: 0.5,
+      prefire: 0,
+      trigger: 0,
+      triggerSource: 'manual',
+    });
+  });
+
+  return cues;
+}
+
+// ═══════════════════════════════════════════════════════════
+// FLAMES LAUNCHER DMX PARSER
+// ═══════════════════════════════════════════════════════════
+
+/** Parse Flames Launcher DMX choreography CSV */
+export function parseFlamesLauncherCSV(text: string): AutoFireCue[] {
+  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+  if (lines.length < 2) return [];
+
+  const dataLines = lines.slice(1);
+  const cues: AutoFireCue[] = [];
+
+  dataLines.forEach((line, idx) => {
+    // Flames format: CueID,TimeMS,DMXChannel,DMXValue,Duration,Effect,DeviceName
+    const parts = parseCSVLine(line);
+    if (parts.length < 5) return;
+
+    const timecodeMs = parseInt(parts[1]) || 0;
+    const dmxChannel = parseInt(parts[2]) || 1;
+    const dmxValue = parseInt(parts[3]) || 255;
+    const duration = parseFloat(parts[4]) || 0.2;
+    const effect = parts[5] || 'JET';
+    const deviceName = parts[6] || `Flame Ch${dmxChannel}`;
+
+    cues.push({
+      id: `flames-${idx + 1}`,
+      cueNumber: idx + 1,
+      device: 'dmx',
+      name: deviceName,
+      state: 'ready',
+      timecodeMs,
+      addresses: `${dmxChannel}`,
+      mode: 'sync',
+      effect: `${effect} Val${dmxValue}`,
+      duration,
+      prefire: 0,
+      trigger: 0,
+      triggerSource: 'manual',
+    });
+  });
+
+  return cues;
+}
+
+/** Export cues to Flames Launcher CSV */
+export function exportFlamesLauncherCSV(cues: AutoFireCue[]): string {
+  const header = 'CueID,TimeMS,DMXChannel,DMXValue,Duration,Effect,DeviceName';
+  const rows = cues.filter(c => c.device === 'dmx').map((cue, idx) => {
+    const addr = parseInt(cue.addresses.split(':')[0]) || 1;
+    return [idx + 1, cue.timecodeMs, addr, 255, cue.duration, `"${cue.effect}"`, `"${cue.name}"`].join(',');
+  });
+  return [header, ...rows].join('\n');
+}
+
+/** Auto-detect format from file content and parse */
+export function autoDetectAndParse(text: string, filename: string): { cues: AutoFireCue[]; source: string } {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith('.ses')) {
+    return { cues: parseScriptMakerSession(text), source: 'ScriptMaker' };
+  }
+  if (lower.endsWith('.fir') || lower.endsWith('.sem')) {
+    return { cues: parseFireOneFIR(text), source: 'FIR/SEM' };
+  }
+  // CSV — check if Flames or FireOne by header
+  const firstLine = text.split(/\r?\n/)[0]?.toLowerCase() || '';
+  if (firstLine.includes('cueid') && firstLine.includes('dmxchannel')) {
+    return { cues: parseFlamesLauncherCSV(text), source: 'Flames' };
+  }
+  return { cues: parseFireOneCSV(text), source: 'UltraFire' };
+}

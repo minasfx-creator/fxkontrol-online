@@ -65,11 +65,17 @@ export enum FireOneCmd {
   // IFMx-i32Q specific
   DMX_OUT         = 0x4F,  // 'O' — Send DMX values to module's built-in DMX output
   MODULE_CONFIG   = 0x47,  // 'G' — Query/set module configuration
+
+  // Wireless IFMx-i32Q
+  WIRELESS_STATUS = 0x57,  // 'W' — Query wireless RSSI, channel, link quality
+  WIRELESS_CONFIG = 0x56,  // 'V' — Set wireless channel, TX power, fallback mode
 }
 
 // ═══════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════
+
+export type WirelessConnectionMode = 'wired' | 'wireless' | 'fallback';
 
 export interface FireOneModuleStatus {
   moduleAddress: number;
@@ -84,6 +90,11 @@ export interface FireOneModuleStatus {
   errors: string[];
   serialNumber?: string;
   dmxUniverse?: number;
+  rssiDbm?: number;
+  wirelessChannel?: number;
+  packetLoss?: number;
+  linkQuality?: number;
+  connectionMode?: WirelessConnectionMode;
 }
 
 export interface FireOneIgniterStatus {
@@ -119,7 +130,9 @@ export type FireOneEventType =
   | 'heartbeat'
   | 'emergency-stop'
   | 'dmx-out-confirm'
-  | 'config-response';
+  | 'config-response'
+  | 'wireless-status'
+  | 'wireless-fallback';
 
 export interface FireOneModuleConfig {
   wireless: boolean;
@@ -127,6 +140,21 @@ export interface FireOneModuleConfig {
   firingDelay: number;
   firmwareVersion: string;
   serialNumber: string;
+}
+
+export interface FireOneWirelessStatus {
+  rssiDbm: number;
+  channel: number;
+  packetLoss: number;
+  linkQuality: number;
+  mode: WirelessConnectionMode;
+  txPower: number;
+}
+
+export interface FireOneWirelessConfig {
+  channel: number;
+  txPower: number;
+  autoFallback: boolean;
 }
 
 export interface FireOneEvent {
@@ -356,6 +384,40 @@ export function parseModuleConfig(payload: Uint8Array): FireOneModuleConfig {
     firingDelay: ((payload[2] ?? 0) << 8) | (payload[3] ?? 0),
     firmwareVersion: `${payload[4] ?? 1}.${payload[5] ?? 0}`,
     serialNumber: Array.from(payload.slice(6, 14)).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase(),
+  };
+}
+
+// ═══════════════════════════════════════════════════════════
+// WIRELESS IFMx-i32Q COMMANDS
+// ═══════════════════════════════════════════════════════════
+
+/** Query wireless status (RSSI, channel, link quality) */
+export function buildWirelessStatusQuery(moduleAddr: number): Uint8Array {
+  return buildFrame(moduleAddr, FireOneCmd.WIRELESS_STATUS, new Uint8Array([0x00]));
+}
+
+/** Set wireless configuration */
+export function buildWirelessConfigCommand(moduleAddr: number, config: FireOneWirelessConfig): Uint8Array {
+  const payload = new Uint8Array(4);
+  payload[0] = 0x01; // set mode
+  payload[1] = config.channel & 0xFF;
+  payload[2] = config.txPower & 0x03;
+  payload[3] = config.autoFallback ? 1 : 0;
+  return buildFrame(moduleAddr, FireOneCmd.WIRELESS_CONFIG, payload);
+}
+
+/** Parse wireless status response */
+export function parseWirelessStatus(payload: Uint8Array): FireOneWirelessStatus {
+  const rssiRaw = payload[0] ?? 0;
+  // RSSI is stored as unsigned offset: value = actual + 128 (so -128 to 0 dBm maps to 0-128)
+  const rssiDbm = rssiRaw > 128 ? rssiRaw - 256 : rssiRaw - 128;
+  return {
+    rssiDbm,
+    channel: payload[1] ?? 1,
+    packetLoss: payload[2] ?? 0,
+    linkQuality: payload[3] ?? 100,
+    mode: payload[4] === 2 ? 'fallback' : payload[4] === 1 ? 'wireless' : 'wired',
+    txPower: payload[5] ?? 3,
   };
 }
 
@@ -657,8 +719,34 @@ export class FireOneController {
         break;
       }
 
+      case FireOneCmd.WIRELESS_STATUS: {
+        const ws = parseWirelessStatus(frame.payload);
+        const module = this.modules.get(addr);
+        if (module) {
+          const prevMode = module.connectionMode;
+          module.rssiDbm = ws.rssiDbm;
+          module.wirelessChannel = ws.channel;
+          module.packetLoss = ws.packetLoss;
+          module.linkQuality = ws.linkQuality;
+          module.connectionMode = ws.mode;
+          module.wireless = ws.mode !== 'wired';
+          this.modules.set(addr, { ...module, lastSeen: Date.now() });
+          // Detect fallback transition
+          if (prevMode === 'wireless' && ws.mode === 'fallback') {
+            this.emit({ type: 'wireless-fallback', moduleAddress: addr, data: ws, timestamp: Date.now() });
+          }
+        }
+        this.emit({ type: 'wireless-status', moduleAddress: addr, data: ws, timestamp: Date.now() });
+        break;
+      }
+
+      case FireOneCmd.WIRELESS_CONFIG: {
+        // ACK for wireless config set
+        this.emit({ type: 'wireless-status', moduleAddress: addr, data: { configured: true }, timestamp: Date.now() });
+        break;
+      }
+
       default: {
-        // Unknown response
         this.emit({ type: 'error', moduleAddress: addr, data: { cmd: frame.command, payload: frame.payload }, timestamp: Date.now() });
       }
     }
@@ -670,6 +758,7 @@ export class FireOneController {
 // ═══════════════════════════════════════════════════════════
 
 export function createSimulatedModuleStatus(addr: number, wireless = false): FireOneModuleStatus {
+  const rssi = wireless ? -(40 + Math.floor(Math.random() * 45)) : undefined;
   return {
     moduleAddress: addr,
     armed: false,
@@ -687,6 +776,11 @@ export function createSimulatedModuleStatus(addr: number, wireless = false): Fir
     lastSeen: Date.now(),
     wireless,
     errors: [],
+    rssiDbm: rssi,
+    wirelessChannel: wireless ? 1 + Math.floor(Math.random() * 16) : undefined,
+    packetLoss: wireless ? Math.floor(Math.random() * 5) : undefined,
+    linkQuality: wireless ? 80 + Math.floor(Math.random() * 20) : undefined,
+    connectionMode: wireless ? 'wireless' : 'wired',
   };
 }
 
