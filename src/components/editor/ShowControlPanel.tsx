@@ -207,6 +207,12 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
       hardware.modules.forEach(m => { if (m.batteryVoltage !== undefined && m.batteryVoltage < 11.0) lowBatt++; });
       if (lowBatt > 0) toast.warning(`FireOne: ${lowBatt} módulo(s) com bateria baixa`);
     }
+    if (pbus.isConnected) {
+      toast.info(`PBUS: ${pbus.deviceCount} dispositivos detectados`);
+      if (pbus.worstBattery !== null && pbus.worstBattery < 3.3) {
+        toast.warning(`PBUS: bateria baixa (${pbus.worstBattery.toFixed(1)}V)`);
+      }
+    }
     const ok = await showOrchestrator.startPreflight();
     setBusy(false);
     if (ok) {
@@ -215,7 +221,7 @@ export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
       if (failures.length > 0) toast.warning(`Preflight: ${failures.length} drone(s) with issues`);
       else toast.success(`Preflight passed — ${st.totalDrones} drones ready`);
     } else toast.error('Preflight failed');
-  }, [hardware]);
+  }, [hardware, pbus]);
 
   const handleUpload = useCallback(async () => {
     setBusy(true);
