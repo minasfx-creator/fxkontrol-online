@@ -63,8 +63,7 @@ describe('DMXPanel — Output Mode Defaults', () => {
   });
 
   it('artnet mode should not require WebSerial', () => {
-    // In artnet mode, no USB device is needed
-    const outputMode = 'artnet';
+    const outputMode: string = 'artnet';
     const requiresUSB = outputMode === 'usb';
     expect(requiresUSB).toBe(false);
   });
