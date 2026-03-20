@@ -134,8 +134,8 @@ function DeviceCard({ device, onArm, onDisarm, onFire, onCueStatus, onSetBand, i
             </div>
           </div>
 
-          {/* Cue grid */}
-          <div className="grid grid-cols-8 gap-1">
+          {/* Cue grid — 4x4 on mobile, 8x2 on desktop */}
+          <div className={cn("grid gap-1", isMobile ? "grid-cols-4" : "grid-cols-8")}>
             {Array.from({ length: device.channels }, (_, i) => {
               const cue = device.cueStates[i];
               const color = cue ? getCueColor(cue.connected, cue.fired, cue.resistance) : 'bg-muted/20 border-muted/40';
@@ -143,11 +143,14 @@ function DeviceCard({ device, onArm, onDisarm, onFire, onCueStatus, onSetBand, i
                 <button
                   key={i}
                   onClick={() => {
-                    if (device.armed && deadman) onFire(device.address, i);
-                    else toast.warning('ARM + DEADMAN required to fire');
+                    if (device.armed && deadman) {
+                      onFire(device.address, i);
+                      if (navigator.vibrate) navigator.vibrate(30);
+                    } else toast.warning('ARM + DEADMAN required to fire');
                   }}
                   className={cn(
-                    "h-8 rounded border text-[9px] font-mono font-bold transition-all hover:scale-105 active:scale-95",
+                    "rounded border text-[9px] font-mono font-bold transition-all hover:scale-105 active:scale-95",
+                    isMobile ? "h-12 text-xs" : "h-8",
                     color,
                     device.armed && deadman && "cursor-crosshair"
                   )}
