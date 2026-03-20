@@ -768,6 +768,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           { key: 'manual_fire' as FXCMode, label: 'Manual' },
           { key: 'auto_fire' as FXCMode, label: 'Auto' },
           { key: 'check_slave' as FXCMode, label: 'Check' },
+          { key: 'mobile_link' as FXCMode, label: '📡 Link' },
           { key: 'settings' as FXCMode, label: '⚙' },
         ]).map(m => (
           <button key={m.key} onClick={() => { setMode(m.key); setShowDeviceLib(false); }}
