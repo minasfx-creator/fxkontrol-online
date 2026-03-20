@@ -605,6 +605,27 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
           )}
         </div>
 
+        {/* Monitor Toggle */}
+        <Button
+          size="sm" variant={showMonitor ? 'default' : 'outline'}
+          className="h-6 text-[9px] w-full gap-1"
+          onClick={() => setShowMonitor(!showMonitor)}
+        >
+          <Monitor className="w-3 h-3" />
+          {showMonitor ? 'Ocultar Monitor 512ch' : 'Abrir Monitor 512ch'}
+        </Button>
+
+        {/* DMX Monitor Grid */}
+        {showMonitor && universes.length > 0 && (
+          <DMXMonitorGrid universes={universes} />
+        )}
+
+        {showMonitor && universes.length === 0 && (
+          <div className="bg-surface-2 rounded-sm p-3 text-center text-[9px] text-muted-foreground">
+            Faça Auto-Patch para visualizar os canais DMX
+          </div>
+        )}
+
         <div className="bg-surface-2 rounded-sm p-2 text-[9px] text-muted-foreground space-y-1">
           <p><strong>DMX512:</strong> 512 canais por universo, 128 fixtures RGBW</p>
           <p><strong>Art-Net:</strong> Protocolo UDP porta 6454 para fixtures reais</p>
