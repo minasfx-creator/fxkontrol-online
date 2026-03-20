@@ -195,6 +195,27 @@ export default function SafetyCheckPanel() {
         </div>
       </div>
 
+      {/* Hardware Safety Gates */}
+      <div className="space-y-1 p-2 rounded-lg border border-border/20 bg-card/30">
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <Radio className="w-3 h-3 text-primary" />
+          <span className="text-[10px] font-bold text-foreground">Hardware Safety Gates</span>
+          {hwBlocksFiring && (
+            <Badge variant="destructive" className="text-[8px] h-4 px-1.5 ml-auto">BLOCKED</Badge>
+          )}
+        </div>
+        {hwChecks.map((check, i) => (
+          <div key={i} className="flex items-center gap-2 text-[9px]">
+            {check.status === 'pass' && <CheckCircle className="w-3 h-3 text-emerald-400" />}
+            {check.status === 'fail' && <XCircle className="w-3 h-3 text-destructive" />}
+            {check.status === 'warn' && <AlertTriangle className="w-3 h-3 text-amber-400" />}
+            {check.status === 'na' && <div className="w-3 h-3 rounded-full bg-muted/30" />}
+            <span className="font-medium text-foreground">{check.label}</span>
+            <span className="text-muted-foreground ml-auto">{check.detail}</span>
+          </div>
+        ))}
+      </div>
+
       {/* Run button */}
       <Button
         size="sm"

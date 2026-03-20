@@ -87,6 +87,9 @@ export default function GeofencePanel({ onClose }: GeofencePanelProps) {
 
   const handleUploadToServer = () => {
     toast.info('Geofence uploaded to connected drones');
+    if (fireone.isConnected || pbus.isConnected) {
+      toast.info('Geofence violation will trigger hardware E-STOP');
+    }
   };
 
   return (

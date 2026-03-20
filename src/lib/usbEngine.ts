@@ -93,6 +93,15 @@ export const DEVICE_PROFILES: USBDeviceProfile[] = [
     parity: 'none',
     description: 'RS-232 / RS-485 / Arduino / Custom device',
   },
+  {
+    type: 'pbus',
+    label: 'Showven PBUS (PyroSlave)',
+    baudRate: 19200,
+    dataBits: 8,
+    stopBits: 1,
+    parity: 'none',
+    description: 'PBUS protocol for PyroSlave C16/X4/PyroMote (433M/868M dual-band)',
+  },
 ];
 
 const nav = navigator as any;

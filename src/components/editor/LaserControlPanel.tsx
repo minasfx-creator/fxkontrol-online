@@ -52,6 +52,7 @@ interface LaserControlPanelProps {
 
 export default function LaserControlPanel({ onClose }: LaserControlPanelProps) {
   const { selectedTimelineItemId, timelineItems } = useProjectStore();
+  const fireone = useFireOneHardware();
   const [pan, setPan] = useState(0);
   const [tilt, setTilt] = useState(45);
   const [intensity, setIntensity] = useState(100);
@@ -63,6 +64,7 @@ export default function LaserControlPanel({ onClose }: LaserControlPanelProps) {
   const [ildaFrames, setIldaFrames] = useState<ILDAFrame[]>([]);
   const [ildaShape, setIldaShape] = useState<string>('circle');
   const [hwPreset, setHwPreset] = useState<string>('none');
+  const [maimanPreset, setMaimanPreset] = useState<string>('none');
 
   const laserPreviewEnabled = useLaserPreviewStore((s) => s.globalEnabled);
   const setLaserPreviewEnabled = useLaserPreviewStore((s) => s.setGlobalEnabled);
@@ -72,6 +74,21 @@ export default function LaserControlPanel({ onClose }: LaserControlPanelProps) {
   useEffect(() => {
     updateDefaultSource({ pan, tilt, intensity, color, pattern, beamCount, scanRate, divergence });
   }, [pan, tilt, intensity, color, pattern, beamCount, scanRate, divergence, updateDefaultSource]);
+
+  // Apply Showven Maiman preset constraints
+  const activeMaiman = MAIMAN_PRESETS[maimanPreset];
+
+  const applyMaimanPreset = useCallback((presetId: string) => {
+    setMaimanPreset(presetId);
+    const mp = MAIMAN_PRESETS[presetId];
+    if (!mp) return;
+    setScanRate(mp.preset.scanRateKpps);
+    setDivergence(1.0);
+    setPan(Math.min(pan, mp.maxPan));
+    setTilt(Math.min(tilt, mp.maxTilt));
+    updateDefaultSource({ hwPreset: presetId });
+    toast.success(`Showven Maiman: ${mp.preset.name} (${mp.preset.outputW}W, ${mp.preset.ipRating})`);
+  }, [pan, tilt, updateDefaultSource]);
 
   const applyHardwarePreset = useCallback((presetId: string) => {
     setHwPreset(presetId);

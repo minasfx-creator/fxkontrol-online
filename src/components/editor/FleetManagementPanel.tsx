@@ -125,10 +125,18 @@ export default function FleetManagementPanel({ onClose }: FleetManagementPanelPr
     geofence, showState,
   } = useFleetStore();
 
+  const fireone = useFireOneHardware();
+  const pbus = usePBusHardware();
+
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'id' | 'battery' | 'signal'>('id');
   const [filterMode, setFilterMode] = useState<string>('all');
   const [connecting, setConnecting] = useState(false);
+
+  // Combined fleet stats
+  const fireoneModules = useMemo(() => Array.from(fireone.modules.values()), [fireone.modules]);
+  const pbusDevices = useMemo(() => Array.from(pbus.devices.values()), [pbus.devices]);
+  const totalHardwareDevices = fireoneModules.length + pbusDevices.length;
 
   // Filter and sort UAVs
   const uavList = Array.from(uavs.values())
