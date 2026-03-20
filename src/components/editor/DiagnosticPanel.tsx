@@ -180,7 +180,7 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
       // Cue continuity summary
       let goodCues = 0, openCues = 0;
       pbusHw.devices.forEach(d => {
-        d.cues.forEach(c => {
+        d.cueStates.forEach(c => {
           if (c.connected) goodCues++;
           else openCues++;
         });
