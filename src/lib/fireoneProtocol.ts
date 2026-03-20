@@ -638,6 +638,25 @@ export class FireOneController {
         break;
       }
 
+      case FireOneCmd.DMX_OUT: {
+        this.emit({ type: 'dmx-out-confirm', moduleAddress: addr, data: { payload: frame.payload }, timestamp: Date.now() });
+        break;
+      }
+
+      case FireOneCmd.MODULE_CONFIG: {
+        const config = parseModuleConfig(frame.payload);
+        const module = this.modules.get(addr);
+        if (module) {
+          module.serialNumber = config.serialNumber;
+          module.dmxUniverse = config.dmxUniverse;
+          module.wireless = config.wireless;
+          module.firmwareVersion = config.firmwareVersion;
+          this.modules.set(addr, { ...module, lastSeen: Date.now() });
+        }
+        this.emit({ type: 'config-response', moduleAddress: addr, data: config, timestamp: Date.now() });
+        break;
+      }
+
       default: {
         // Unknown response
         this.emit({ type: 'error', moduleAddress: addr, data: { cmd: frame.command, payload: frame.payload }, timestamp: Date.now() });
