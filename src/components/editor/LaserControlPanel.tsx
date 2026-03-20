@@ -4,17 +4,30 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { Zap, ChevronDown, Upload, Cpu } from 'lucide-react';
+import { Zap, ChevronDown, Upload, Cpu, Shield, AlertTriangle } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { parseILDA, generateShape, type ILDAFrame } from '@/lib/ildaParser';
 import { LASER_HARDWARE_PRESETS } from '@/lib/laserEngine';
+import { SHOWVEN_LASERS, type ShowvenLaserPreset } from '@/lib/showvenPresets';
 import { useLaserPreviewStore } from '@/store/useLaserPreviewStore';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+
+const MAIMAN_PRESETS: Record<string, { label: string; preset: ShowvenLaserPreset; maxPan: number; maxTilt: number }> = {};
+SHOWVEN_LASERS.forEach(l => {
+  MAIMAN_PRESETS[l.id] = {
+    label: `${l.name} (${l.outputW}W)`,
+    preset: l,
+    maxPan: l.scanningAngleDeg,
+    maxTilt: l.scanningAngleDeg,
+  };
+});
 
 const LASER_PATTERNS = [
   { value: 'single', label: 'Single Beam' },
@@ -39,6 +52,7 @@ interface LaserControlPanelProps {
 
 export default function LaserControlPanel({ onClose }: LaserControlPanelProps) {
   const { selectedTimelineItemId, timelineItems } = useProjectStore();
+  const fireone = useFireOneHardware();
   const [pan, setPan] = useState(0);
   const [tilt, setTilt] = useState(45);
   const [intensity, setIntensity] = useState(100);
@@ -50,6 +64,7 @@ export default function LaserControlPanel({ onClose }: LaserControlPanelProps) {
   const [ildaFrames, setIldaFrames] = useState<ILDAFrame[]>([]);
   const [ildaShape, setIldaShape] = useState<string>('circle');
   const [hwPreset, setHwPreset] = useState<string>('none');
+  const [maimanPreset, setMaimanPreset] = useState<string>('none');
 
   const laserPreviewEnabled = useLaserPreviewStore((s) => s.globalEnabled);
   const setLaserPreviewEnabled = useLaserPreviewStore((s) => s.setGlobalEnabled);
@@ -59,6 +74,21 @@ export default function LaserControlPanel({ onClose }: LaserControlPanelProps) {
   useEffect(() => {
     updateDefaultSource({ pan, tilt, intensity, color, pattern, beamCount, scanRate, divergence });
   }, [pan, tilt, intensity, color, pattern, beamCount, scanRate, divergence, updateDefaultSource]);
+
+  // Apply Showven Maiman preset constraints
+  const activeMaiman = MAIMAN_PRESETS[maimanPreset];
+
+  const applyMaimanPreset = useCallback((presetId: string) => {
+    setMaimanPreset(presetId);
+    const mp = MAIMAN_PRESETS[presetId];
+    if (!mp) return;
+    setScanRate(mp.preset.scanRateKpps);
+    setDivergence(1.0);
+    setPan(Math.min(pan, mp.maxPan));
+    setTilt(Math.min(tilt, mp.maxTilt));
+    updateDefaultSource({ hwPreset: presetId });
+    toast.success(`Showven Maiman: ${mp.preset.name} (${mp.preset.outputW}W, ${mp.preset.ipRating})`);
+  }, [pan, tilt, updateDefaultSource]);
 
   const applyHardwarePreset = useCallback((presetId: string) => {
     setHwPreset(presetId);

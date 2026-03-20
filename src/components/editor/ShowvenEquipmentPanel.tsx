@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
-import { Flame, Sparkles, Cloud, PartyPopper, Cpu, ChevronDown, ChevronRight, GripVertical, X, Monitor, Crosshair, Cable } from 'lucide-react';
+import { Flame, Sparkles, Cloud, PartyPopper, Cpu, ChevronDown, ChevronRight, GripVertical, X, Monitor, Crosshair, Cable, Wifi, WifiOff, Radio } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -229,6 +230,20 @@ function CategorySection({ category, presets }: { category: ShowvenCategory; pre
 }
 
 export default function ShowvenEquipmentPanel({ onClose }: ShowvenEquipmentPanelProps) {
+  const pbus = usePBusHardware();
+  const pbusDeviceCount = pbus.devices.size;
+
+  const handleConnectPBus = useCallback(async () => {
+    try {
+      await pbus.connect();
+      toast.success('PBUS connected — scanning...');
+      await pbus.discoverDevices(64);
+      toast.success(`Found ${pbus.deviceCount} Showven devices`);
+    } catch (err: any) {
+      toast.error(`PBUS: ${err.message}`);
+    }
+  }, [pbus]);
+
   return (
     <div className="h-full flex flex-col" style={{ background: 'hsl(var(--card))' }}>
       {/* Header */}
@@ -242,11 +257,22 @@ export default function ShowvenEquipmentPanel({ onClose }: ShowvenEquipmentPanel
             <p className="text-[9px] text-muted-foreground/60">Arraste para a cena 3D</p>
           </div>
         </div>
-        {onClose && (
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
-            <X className="w-3.5 h-3.5" />
-          </Button>
-        )}
+        <div className="flex items-center gap-1">
+          {pbus.isConnected ? (
+            <Badge variant="outline" className="text-[8px] h-4 px-1.5 border-emerald-500/30 text-emerald-400">
+              <Wifi className="w-2.5 h-2.5 mr-0.5" /> {pbusDeviceCount} PBUS
+            </Badge>
+          ) : (
+            <Button variant="ghost" size="sm" className="h-6 text-[8px] px-2" onClick={handleConnectPBus}>
+              <Radio className="w-3 h-3 mr-1" /> Connect PBUS
+            </Button>
+          )}
+          {onClose && (
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
+              <X className="w-3.5 h-3.5" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Equipment list */}

@@ -4,8 +4,8 @@
  * Based on Skybrush Live geofence configuration dialog.
  */
 
-import { useState } from 'react';
-import { Shield, MapPin, Plus, Trash2, AlertTriangle, ArrowUp } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Shield, MapPin, Plus, Trash2, AlertTriangle, ArrowUp, Radio, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +16,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useFleetStore } from '@/store/useFleetStore';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
+import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -28,8 +30,34 @@ export default function GeofencePanel({ onClose }: GeofencePanelProps) {
     geofence, setGeofence, addGeofencePoint, removeGeofencePoint, clearGeofence,
   } = useFleetStore();
   const gpsOrigin = useProjectStore(s => s.gpsOrigin);
+  const fireone = useFireOneHardware();
+  const pbus = usePBusHardware();
   const [newLat, setNewLat] = useState('');
   const [newLon, setNewLon] = useState('');
+
+  // Hardware exclusion zones
+  const firingExclusions = useMemo(() => {
+    const zones: { label: string; radiusM: number; system: string }[] = [];
+    if (fireone.isConnected) {
+      const moduleCount = fireone.modules.size;
+      if (moduleCount > 0) {
+        zones.push({ label: `FireOne (${moduleCount} modules)`, radiusM: 30, system: 'FireOne' });
+      }
+    }
+    if (pbus.isConnected) {
+      const deviceCount = pbus.devices.size;
+      if (deviceCount > 0) {
+        zones.push({ label: `PBUS (${deviceCount} devices)`, radiusM: 25, system: 'Showven' });
+      }
+    }
+    return zones;
+  }, [fireone.isConnected, fireone.modules, pbus.isConnected, pbus.devices]);
+
+  const handleHardwareEStop = () => {
+    if (fireone.isConnected) fireone.emergencyStop();
+    if (pbus.isConnected) pbus.emergencyStop();
+    toast.error('🔴 GEOFENCE E-STOP — All hardware stopped');
+  };
 
   const handleAddPoint = () => {
     const lat = parseFloat(newLat);
@@ -59,6 +87,9 @@ export default function GeofencePanel({ onClose }: GeofencePanelProps) {
 
   const handleUploadToServer = () => {
     toast.info('Geofence uploaded to connected drones');
+    if (fireone.isConnected || pbus.isConnected) {
+      toast.info('Geofence violation will trigger hardware E-STOP');
+    }
   };
 
   return (

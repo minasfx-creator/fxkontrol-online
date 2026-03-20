@@ -6,12 +6,14 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
-import { Shield, AlertTriangle, CheckCircle, XCircle, Play, Download, Settings, ChevronDown, ChevronRight } from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle, XCircle, Play, Download, Settings, ChevronDown, ChevronRight, Radio, Wifi, Battery } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
+import { usePBusHardware } from '@/hooks/usePBusHardware';
 import {
   type SafetyCheckParams,
   type SafetyCheckResult,
@@ -35,11 +37,66 @@ const SEVERITY_ICONS: Record<string, typeof AlertTriangle> = {
 
 export default function SafetyCheckPanel() {
   const { trajectories, droneFormations, duration, setCurrentTime } = useProjectStore();
+  const fireone = useFireOneHardware();
+  const pbus = usePBusHardware();
   const [params, setParams] = useState<SafetyCheckParams>(DEFAULT_SAFETY_PARAMS);
   const [result, setResult] = useState<SafetyCheckResult | null>(null);
   const [running, setRunning] = useState(false);
   const [showParams, setShowParams] = useState(false);
   const [filterSeverity, setFilterSeverity] = useState<string | null>(null);
+
+  // Hardware safety gates
+  const hwChecks = useMemo(() => {
+    const checks: { label: string; status: 'pass' | 'fail' | 'warn' | 'na'; detail: string }[] = [];
+
+    // FireOne checks
+    if (fireone.isConnected) {
+      const modules = Array.from(fireone.modules.values());
+      const lowBatt = modules.filter(m => (m.batteryVoltage ?? 12) < 11.0);
+      checks.push({
+        label: 'FireOne Link',
+        status: 'pass',
+        detail: `${modules.length} modules on RS-485`,
+      });
+      checks.push({
+        label: 'FireOne Battery',
+        status: lowBatt.length > 0 ? 'fail' : 'pass',
+        detail: lowBatt.length > 0 ? `${lowBatt.length} modules < 11.0V` : 'All modules OK',
+      });
+      const weakSignal = modules.filter(m => m.rssiDbm !== undefined && m.rssiDbm < -75);
+      if (weakSignal.length > 0) {
+        checks.push({ label: 'FireOne Signal', status: 'warn', detail: `${weakSignal.length} modules weak RSSI` });
+      }
+    } else {
+      checks.push({ label: 'FireOne', status: 'na', detail: 'Not connected' });
+    }
+
+    // PBUS checks
+    if (pbus.isConnected) {
+      const devices = Array.from(pbus.devices.values());
+      const lowBatt = devices.filter(d => d.batteryV < 11.0);
+      checks.push({
+        label: 'PBUS Link',
+        status: 'pass',
+        detail: `${devices.length} Showven devices`,
+      });
+      checks.push({
+        label: 'PBUS Battery',
+        status: lowBatt.length > 0 ? 'fail' : 'pass',
+        detail: lowBatt.length > 0 ? `${lowBatt.length} devices < 11.0V` : 'All devices OK',
+      });
+      const openCues = devices.reduce((sum, d) => sum + d.cueStates.filter(c => !c.connected && !c.fired).length, 0);
+      if (openCues > 0) {
+        checks.push({ label: 'PBUS Continuity', status: 'warn', detail: `${openCues} open cues` });
+      }
+    } else {
+      checks.push({ label: 'PBUS', status: 'na', detail: 'Not connected' });
+    }
+
+    return checks;
+  }, [fireone.isConnected, fireone.modules, pbus.isConnected, pbus.devices]);
+
+  const hwBlocksFiring = useMemo(() => hwChecks.some(c => c.status === 'fail'), [hwChecks]);
 
   // Build trajectories from drone formations for checking
   const droneTrajectories = useMemo(() => {
@@ -136,6 +193,27 @@ export default function SafetyCheckPanel() {
           <span className="text-xs font-semibold text-foreground">Safety Check</span>
           <Badge variant="outline" className="text-[9px]">Skybrush</Badge>
         </div>
+      </div>
+
+      {/* Hardware Safety Gates */}
+      <div className="space-y-1 p-2 rounded-lg border border-border/20 bg-card/30">
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <Radio className="w-3 h-3 text-primary" />
+          <span className="text-[10px] font-bold text-foreground">Hardware Safety Gates</span>
+          {hwBlocksFiring && (
+            <Badge variant="destructive" className="text-[8px] h-4 px-1.5 ml-auto">BLOCKED</Badge>
+          )}
+        </div>
+        {hwChecks.map((check, i) => (
+          <div key={i} className="flex items-center gap-2 text-[9px]">
+            {check.status === 'pass' && <CheckCircle className="w-3 h-3 text-emerald-400" />}
+            {check.status === 'fail' && <XCircle className="w-3 h-3 text-destructive" />}
+            {check.status === 'warn' && <AlertTriangle className="w-3 h-3 text-amber-400" />}
+            {check.status === 'na' && <div className="w-3 h-3 rounded-full bg-muted/30" />}
+            <span className="font-medium text-foreground">{check.label}</span>
+            <span className="text-muted-foreground ml-auto">{check.detail}</span>
+          </div>
+        ))}
       </div>
 
       {/* Run button */}

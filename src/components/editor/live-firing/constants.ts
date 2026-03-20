@@ -167,6 +167,13 @@ export const SHOWVEN_LIBRARY: DeviceLibEntry[] = [
   },
 ];
 
+// ── PBUS Device Profiles ──
+export const PBUS_DEVICE_PROFILES = [
+  { id: 'pbus-c16', name: 'PyroSlave C16', channels: 16, wireless: true, bands: ['433M', '868M'] as const, firingVoltage: 12, firingCurrent: 5, maxDuration: 500 },
+  { id: 'pbus-x4', name: 'PyroSlave X4', channels: 4, wireless: false, bands: [] as const, firingVoltage: 12, firingCurrent: 5, maxDuration: 500 },
+  { id: 'pbus-pyromote', name: 'PyroMote', channels: 1, wireless: true, bands: ['433M'] as const, firingVoltage: 12, firingCurrent: 3, maxDuration: 500 },
+] as const;
+
 export const DEFAULT_SETTINGS: FXCSettings = {
   language: 'en',
   wirelessDmxEnabled: true,

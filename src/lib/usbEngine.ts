@@ -4,7 +4,7 @@
  * Uses `any` casts for Web Serial/USB APIs since they're not in standard TS lib.
  */
 
-export type USBDeviceType = 'dmx' | 'firing' | 'timecode' | 'serial';
+export type USBDeviceType = 'dmx' | 'firing' | 'timecode' | 'serial' | 'pbus';
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
 
 export interface USBDeviceProfile {
@@ -92,6 +92,15 @@ export const DEVICE_PROFILES: USBDeviceProfile[] = [
     stopBits: 1,
     parity: 'none',
     description: 'RS-232 / RS-485 / Arduino / Custom device',
+  },
+  {
+    type: 'pbus',
+    label: 'Showven PBUS (PyroSlave)',
+    baudRate: 19200,
+    dataBits: 8,
+    stopBits: 1,
+    parity: 'none',
+    description: 'PBUS protocol for PyroSlave C16/X4/PyroMote (433M/868M dual-band)',
   },
 ];
 
