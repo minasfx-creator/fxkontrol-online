@@ -1,93 +1,55 @@
 
 
-# Plan: Mobile Link — Art-Net Test & Virtual Fixtures (Mobile → Desktop)
+# Plan: Integrate Mobile Link into FX Commander Console
 
-## Concept
-A dedicated mobile panel where the operator can:
-1. Test Art-Net connectivity (ping the edge function + relay)
-2. Add **virtual fixtures** (par, wash, strobe, SFX) with DMX addressing
-3. Tap buttons on the phone to **fire/trigger fixtures** — the effect is reflected on the desktop 3D viewport in real-time via shared Zustand stores and Supabase Realtime
+## What
+Add "Mobile Link" as a new mode tab inside the FX Commander (LiveFiringPanel), so from within the console you can control the desktop remotely. The FX Commander will both **send** (when on mobile) and **receive** (when on desktop) fire commands via the existing Supabase Realtime broadcast channel.
 
-The key insight: both mobile and desktop share the same Zustand stores (`useSfxChannelStore`, `useLiveSfxStore`, `useProjectStore`). When the user taps "FIRE" on mobile, it writes to `useLiveSfxStore.fireEffect()` which the desktop SkyCanvas already reads. For cross-device sync (phone ↔ computer on different browsers), we use a Supabase Realtime channel as a broadcast bridge.
+## Changes
 
-```text
-┌─ MOBILE ─────────────────────┐     ┌─ DESKTOP ────────────────┐
-│ [Test Art-Net] → edge func   │     │                          │
-│ [Test Relay]   → ws://9001   │     │   3D Viewport            │
-│                              │     │   ┌──────────────┐       │
-│ Virtual Fixtures:            │     │   │ PAR 1  🔴    │       │
-│ ┌─────────┬─────────┐       │     │   │ WASH 2 🔵    │       │
-│ │ PAR 1   │ WASH 2  │       │ ──→ │   │ STROBE 🟡   │       │
-│ │ [FIRE]  │ [FIRE]  │       │     │   └──────────────┘       │
-│ └─────────┴─────────┘       │     │                          │
-│ ┌─────────┬─────────┐       │     │   DMX output via relay   │
-│ │ STROBE  │ CO2 JET │       │     │                          │
-│ │ [FIRE]  │ [FIRE]  │       │     │                          │
-│ └─────────┴─────────┘       │     └──────────────────────────┘
-│                              │
-│ + Add Fixture                │
-└──────────────────────────────┘
-         ↕ Supabase Realtime broadcast channel
-```
+### 1. Edit `src/components/editor/live-firing/types.ts`
+- Add `'mobile_link'` to the `FXCMode` type union
 
-## Changes (5 files)
+### 2. Create `src/components/editor/live-firing/MobileLinkMode.tsx`
+A compact mode panel that fits inside the FX Commander layout (not a standalone panel):
 
-### 1. Create `src/components/editor/MobileLinkPanel.tsx`
-The main panel with 3 sections:
+**Connection Section:**
+- Art-Net test button (reuses existing `sendArtNetPacket` validation)
+- Relay status indicator (reuses existing relay connection)
+- Realtime broadcast status (green/red dot)
 
-**Connection Test Section:**
-- "Test Art-Net" button → calls `supabase.functions.invoke('artnet-bridge', { body: { action: 'validate' } })` and shows latency + status
-- "Test Relay" button → opens WebSocket to `ws://localhost:9001`, sends ping, shows pong result
-- Status badges: green/red with latency in ms
+**Virtual Fixtures Grid:**
+- Add fixture form (name, type, color, DMX universe/address)
+- 2-column grid of fixture cards with large FIRE buttons
+- Intensity slider per fixture
+- Fixtures persist in localStorage
 
-**Virtual Fixtures Section:**
-- List of virtual fixtures (name, type, DMX address, color swatch)
-- "+ Add Fixture" button opens a mini-form: name, type (PAR/Wash/Strobe/Flame/CO2/Spark), color picker, DMX universe + address
-- Each fixture gets a large **FIRE** button (red, 60px, haptic feedback)
-- Tapping FIRE: calls `useLiveSfxStore.fireEffect()` locally + broadcasts via Supabase Realtime channel `mobile-link`
-- Intensity slider per fixture (0-255)
+**Event Log (Master/Receiver):**
+- When on desktop, shows incoming fire events from mobile devices
+- Scrolling log with fixture name, type, color, timestamp
+- Each received event auto-calls `fireChannel()` from the parent FX Commander — this triggers the **real** Art-Net output + 3D SFX, not just virtual effects
 
-**Broadcast Bridge:**
-- On mount, subscribe to Supabase Realtime channel `mobile-link`
-- When receiving a `fire` event from another device, call `useLiveSfxStore.fireEffect()` locally
-- This enables mobile → desktop triggering across different browser sessions
-- Also sends DMX data to Art-Net bridge edge function when a fixture fires
+**Key difference from standalone MobileLinkPanel:** This version calls the FX Commander's own `fireChannel()` and `sendArtNetPacket()` to trigger real channels, bridging mobile taps to the full DMX pipeline.
 
-### 2. Edit `src/components/editor/PanelTabBar.tsx`
-- Add `'mobilelink'` to `PanelId` type
-- Add entry in Conexões section: `{ id: 'mobilelink', label: 'Mobile Link', icon: Cable }`
+### 3. Edit `src/components/editor/LiveFiringPanel.tsx`
+- Import `MobileLinkMode`
+- Add `'mobile_link'` to `SWIPE_MODES` array
+- Add `{ key: 'mobile_link', label: 'Link' }` to the mode tabs in `renderSceneModeBar`
+- Add `Cable` icon import
+- Add case in `renderModeContent`: render `<MobileLinkMode>` passing `fireChannel`, `channels`, `artNetConnected`, `relayConnected` as props
+- Subscribe to Realtime broadcast channel `mobile-link` at component level — when receiving a `fixture-fire` event, call `fireChannel(channelId)` if the channel exists in the FX Commander's device list, or call `useLiveSfxStore.fireEffect()` for virtual fixtures
 
-### 3. Edit `src/components/editor/MobileMoreMenu.tsx`
-- Add `mobilelink` to the `🔌 Conexões` section
+### 4. Broadcast Protocol Enhancement
+When the mobile FX Commander fires a CUE key or manual channel:
+- Also broadcast via Realtime: `{ event: 'fxc-fire', payload: { channelId, type, color, intensity, duration } }`
+- Desktop FX Commander listens and mirrors the fire locally
+- This means ANY fire action in mobile FX Commander automatically replicates on desktop
 
-### 4. Edit `src/pages/Index.tsx`
-- Import `MobileLinkPanel`
-- Add render case: `{activePanel === 'mobilelink' && <MobileLinkPanel onClose={...} />}`
+## Files Summary
 
-### 5. Edit `src/components/editor/MobileTabBar.tsx`
-- Add a dedicated `Cable` icon tab in the dock for quick access to Mobile Link (replaces or adds alongside existing tabs)
-
-## Realtime Broadcast Protocol
-```typescript
-// Send (mobile)
-channel.send({
-  type: 'broadcast',
-  event: 'fixture-fire',
-  payload: { fixtureId, type, color, intensity, duration, position }
-});
-
-// Receive (desktop)
-channel.on('broadcast', { event: 'fixture-fire' }, (msg) => {
-  useLiveSfxStore.getState().fireEffect(msg.payload);
-});
-```
-
-No database tables needed — uses Supabase Realtime broadcast (ephemeral, no persistence).
-
-## Key Design Decisions
-- **No auth required for broadcast** — uses anonymous Realtime channels scoped by project
-- **Haptic on every FIRE** — `navigator.vibrate(30)` for tactile confirmation
-- **Glass style** — consistent with existing mobile HUD aesthetic
-- **DMX output on fire** — when a fixture fires, also sends the DMX frame to Art-Net bridge for real hardware output
-- **Virtual fixtures persist in localStorage** — survives page refresh on mobile
+| File | Action |
+|------|--------|
+| `src/components/editor/live-firing/types.ts` | Edit — add `mobile_link` to FXCMode |
+| `src/components/editor/live-firing/MobileLinkMode.tsx` | Create — compact link mode for FX Commander |
+| `src/components/editor/LiveFiringPanel.tsx` | Edit — add Link tab, Realtime listener, broadcast on fire |
 
