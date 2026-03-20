@@ -136,6 +136,16 @@ function CanvasLoader() {
   );
 }
 
+const SUPPORTED_DROP_EXTENSIONS = ['mvr', 'csv', 'json', 'vviz', 'uasset', 'umap'];
+
+function getDropType(ext: string): 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset' {
+  if (ext === 'mvr') return 'mvr';
+  if (ext === 'csv') return 'csv';
+  if (ext === 'vviz') return 'vviz';
+  if (ext === 'uasset' || ext === 'umap') return 'uasset';
+  return 'ue5json';
+}
+
 function Index() {
   const isMobile = useIsMobile();
   const [activePanel, setActivePanel] = useState<PanelId | null>('properties');
@@ -145,6 +155,7 @@ function Index() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab | null>(null);
   const [mobilePanelHeight, setMobilePanelHeight] = useState<'collapsed' | 'half' | 'full'>('collapsed');
+  const [isDragOver, setIsDragOver] = useState(false);
   const selectedPositionId = useProjectStore(s => s.selectedPositionId);
 
   useUndoKeyboard();
