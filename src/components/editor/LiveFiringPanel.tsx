@@ -397,7 +397,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   // ─── Fire logic ───
   const fireChannel = useCallback((id: string) => {
     // Haptic feedback on mobile
-    if (isMobile && navigator.vibrate) navigator.vibrate(30);
+    haptics.fire();
     setChannels(prev => { const updated = prev.map(ch => ch.id === id ? { ...ch, firing: true } : ch); sendArtNetPacket(updated); return updated; });
     const ch = channels.find(c => c.id === id);
     if (ch) {
