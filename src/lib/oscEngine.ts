@@ -280,6 +280,63 @@ export class OSCBridgeClient {
   }
 }
 
+// ── MA3 Timecode Sync ────────────────────────────────────
+
+export function buildMA3TimecodeSync(
+  hours: number, minutes: number, seconds: number, frames: number
+): OSCMessage {
+  const tcStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}:${String(frames).padStart(2, '0')}`;
+  return buildMA3Command(`SetUserVar "tc" "${tcStr}"`);
+}
+
+export function buildMA3TimecodeTransport(action: 'play' | 'stop' | 'pause'): OSCMessage {
+  const cmdMap = { play: 'Go+ Seq 1', stop: 'Off Seq 1', pause: 'Pause Seq 1' };
+  return buildMA3Command(cmdMap[action]);
+}
+
+// ── MA3 Feedback Parser ─────────────────────────────────
+
+export interface MA3Feedback {
+  type: 'fader' | 'button' | 'cue' | 'playback' | 'unknown';
+  page?: number;
+  executor?: number;
+  value?: number;
+  sequence?: number;
+  cue?: string;
+  action?: string;
+}
+
+export function parseMA3FeedbackMessage(msg: OSCMessage): MA3Feedback {
+  const { address, args } = msg;
+  const val = args.length > 0 && typeof args[0].value === 'number' ? args[0].value : undefined;
+
+  // /gma3/exec/{page}.{fader}
+  const faderMatch = address.match(/\/gma3\/exec\/(\d+)\.(\d+)$/);
+  if (faderMatch) {
+    return { type: 'fader', page: parseInt(faderMatch[1]), executor: parseInt(faderMatch[2]), value: val };
+  }
+
+  // /gma3/exec/{page}.{button}/key
+  const btnMatch = address.match(/\/gma3\/exec\/(\d+)\.(\d+)\/key$/);
+  if (btnMatch) {
+    return { type: 'button', page: parseInt(btnMatch[1]), executor: parseInt(btnMatch[2]), value: val };
+  }
+
+  // /gma3/seq/{id}/cue
+  const cueMatch = address.match(/\/gma3\/seq\/(\d+)\/cue$/);
+  if (cueMatch) {
+    return { type: 'cue', sequence: parseInt(cueMatch[1]), cue: args[0]?.value != null ? String(args[0].value) : undefined };
+  }
+
+  // /gma3/playback/{id}/{action}
+  const pbMatch = address.match(/\/gma3\/playback\/(\d+)\/(go|pause|stop|goback)$/);
+  if (pbMatch) {
+    return { type: 'playback', sequence: parseInt(pbMatch[1]), action: pbMatch[2] };
+  }
+
+  return { type: 'unknown' };
+}
+
 // Singleton
 let _oscClient: OSCBridgeClient | null = null;
 export function getOSCClient(): OSCBridgeClient {

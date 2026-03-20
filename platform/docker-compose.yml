@@ -93,6 +93,27 @@ services:
     volumes:
       - ./tools/timecodeServer:/app
 
+  # ─── OSC Bridge (grandMA3 ↔ Browser) ───────────────────
+  osc-bridge:
+    image: node:20-alpine
+    working_dir: /app
+    command: node osc-bridge.js --target ${MA3_IP:-192.168.1.100}
+    ports:
+      - "9002:9002"
+    volumes:
+      - ./tools/osc-bridge:/app
+    environment:
+      - MA3_IP=${MA3_IP:-192.168.1.100}
+
+  # ─── sACN Bridge (E1.31 Multicast → Browser) ─────────
+  sacn-bridge:
+    image: node:20-alpine
+    working_dir: /app
+    command: node sacn-bridge.js
+    network_mode: host
+    volumes:
+      - ./tools/sacn-bridge:/app
+
   # ─── Redis (inter-service messaging) ─────────────────────
   redis:
     image: redis:7-alpine
