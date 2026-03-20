@@ -23,6 +23,15 @@ export const QUALITY_PRESETS: Record<QualityPreset, { name: string; description:
       chromaticAberration: true,
       filmGrain: 0.035,
       groundFogIntensity: 0.7,
+      ssaoEnabled: true,
+      ssaoIntensity: 0.7,
+      dofEnabled: true,
+      dofFocusDistance: 150,
+      dofBokehScale: 3.0,
+      godRaysEnabled: true,
+      colorBrightness: 0,
+      colorContrast: 0.05,
+      colorSaturation: 0.05,
     },
   },
   show: {
@@ -41,6 +50,13 @@ export const QUALITY_PRESETS: Record<QualityPreset, { name: string; description:
       chromaticAberration: true,
       filmGrain: 0.02,
       groundFogIntensity: 0.5,
+      ssaoEnabled: true,
+      ssaoIntensity: 0.35,
+      dofEnabled: false,
+      godRaysEnabled: true,
+      colorBrightness: 0,
+      colorContrast: 0,
+      colorSaturation: 0,
     },
   },
   performance: {
@@ -59,6 +75,13 @@ export const QUALITY_PRESETS: Record<QualityPreset, { name: string; description:
       chromaticAberration: false,
       filmGrain: 0,
       groundFogIntensity: 0.1,
+      ssaoEnabled: false,
+      ssaoIntensity: 0,
+      dofEnabled: false,
+      godRaysEnabled: false,
+      colorBrightness: 0,
+      colorContrast: 0,
+      colorSaturation: 0,
     },
   },
 };
@@ -127,6 +150,17 @@ export interface SceneSettings {
   filmGrain: number;
   viewTransform: ViewTransform;
   exposureCompensation: number;   // -2 to +2 EV (default 0)
+
+  // Advanced Post-Processing (AAA)
+  ssaoEnabled: boolean;
+  ssaoIntensity: number;         // 0-1
+  dofEnabled: boolean;
+  dofFocusDistance: number;      // meters
+  dofBokehScale: number;        // 0-5
+  godRaysEnabled: boolean;
+  colorBrightness: number;      // -1 to 1
+  colorContrast: number;        // -1 to 1
+  colorSaturation: number;      // -1 to 1
 }
 
 const DEFAULT_SETTINGS: SceneSettings = {
@@ -186,6 +220,16 @@ const DEFAULT_SETTINGS: SceneSettings = {
   filmGrain: 0.025,
   viewTransform: 'aces-filmic' as ViewTransform,
   exposureCompensation: 0,
+
+  ssaoEnabled: false,
+  ssaoIntensity: 0.5,
+  dofEnabled: false,
+  dofFocusDistance: 100,
+  dofBokehScale: 2.0,
+  godRaysEnabled: false,
+  colorBrightness: 0,
+  colorContrast: 0,
+  colorSaturation: 0,
 };
 
 export const SCENE_PRESETS: Record<string, { name: string; description: string; settings: Partial<SceneSettings> }> = {

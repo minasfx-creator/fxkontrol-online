@@ -1,4 +1,4 @@
-import { EffectComposer, Bloom, Vignette, ChromaticAberration, SMAA, Noise, ToneMapping } from '@react-three/postprocessing';
+import { EffectComposer, Bloom, Vignette, ChromaticAberration, SMAA, Noise, ToneMapping, SSAO, DepthOfField, BrightnessContrast, HueSaturation } from '@react-three/postprocessing';
 import { KernelSize, BlendFunction, ToneMappingMode } from 'postprocessing';
 import { Vector2 } from 'three';
 import { useSceneStore } from '@/store/useSceneStore';
@@ -19,12 +19,10 @@ const BLOOM_SCALE: Record<ViewTransform, number> = {
 };
 
 /**
- * Cinematic post-processing pipeline v7 — Conditional AAA layers.
+ * Cinematic post-processing pipeline v8 — AAA effects suite.
  * 
- * Performance optimizations:
- * - Bloom layers 2 & 3 only render when active bursts exist
- * - ChromaticAberration & FilmGrain skip in performance mode
- * - Reduces GPU fill rate by ~20% when idle
+ * Includes: SSAO, Depth of Field, Color Grading, God Rays (via bright bloom),
+ * plus existing Bloom, Vignette, ChromaticAberration, FilmGrain, ToneMapping.
  */
 export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCount?: number }) {
   const s = useSceneStore(st => st.settings);
@@ -32,13 +30,37 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
   const vt = s.viewTransform || 'aces-filmic';
   const bloomMul = BLOOM_SCALE[vt];
 
-  // AAA optimization: skip expensive layers when no pyro is active
   const hasBursts = activeBurstCount > 0;
   const hasHeavyBursts = activeBurstCount > 3;
 
   return (
     <EffectComposer multisampling={0}>
       <SMAA />
+
+      {/* ═══ SSAO — Screen Space Ambient Occlusion ═══ */}
+      {s.ssaoEnabled && (
+        <SSAO
+          intensity={s.ssaoIntensity * 30}
+          radius={0.15}
+          luminanceInfluence={0.6}
+          bias={0.025}
+          samples={16}
+          rings={3}
+          worldDistanceThreshold={1.0}
+          worldDistanceFalloff={0.5}
+          worldProximityThreshold={0.5}
+          worldProximityFalloff={0.3}
+        />
+      )}
+
+      {/* ═══ Depth of Field — Bokeh ═══ */}
+      {s.dofEnabled && (
+        <DepthOfField
+          focusDistance={0}
+          focalLength={s.dofFocusDistance * 0.001}
+          bokehScale={s.dofBokehScale}
+        />
+      )}
 
       {/* Layer 1: Core catch — always active (low cost) */}
       <Bloom
@@ -60,12 +82,12 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         />
       )}
 
-      {/* Layer 3: Atmospheric — only during heavy bursts (3+ simultaneous) */}
-      {hasHeavyBursts && (
+      {/* Layer 3: Atmospheric / God Rays — heavy bursts or godRays enabled */}
+      {(hasHeavyBursts || (s.godRaysEnabled && hasBursts)) && (
         <Bloom
-          intensity={str * 0.008 * bloomMul}
-          luminanceThreshold={8.0}
-          luminanceSmoothing={0.4}
+          intensity={str * (s.godRaysEnabled ? 0.014 : 0.008) * bloomMul}
+          luminanceThreshold={6.0}
+          luminanceSmoothing={0.5}
           kernelSize={KernelSize.HUGE}
           mipmapBlur
         />
@@ -94,6 +116,20 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         <Noise
           blendFunction={BlendFunction.SOFT_LIGHT}
           opacity={s.filmGrain * 0.6}
+        />
+      )}
+
+      {/* ═══ Color Grading — Brightness / Contrast / Saturation ═══ */}
+      {(s.colorBrightness !== 0 || s.colorContrast !== 0) && (
+        <BrightnessContrast
+          brightness={s.colorBrightness}
+          contrast={s.colorContrast}
+        />
+      )}
+
+      {s.colorSaturation !== 0 && (
+        <HueSaturation
+          saturation={s.colorSaturation}
         />
       )}
 

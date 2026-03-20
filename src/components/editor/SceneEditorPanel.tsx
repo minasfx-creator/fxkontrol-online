@@ -385,6 +385,44 @@ export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
             <Switch checked={settings.chromaticAberration} onCheckedChange={v => updateSettings({ chromaticAberration: v })} className="scale-[0.65]" />
           </div>
           <SliderRow label="Film Grain" value={settings.filmGrain} onChange={v => updateSettings({ filmGrain: v })} />
+
+          {/* ═══ ADVANCED POST-PROCESSING (AAA) ═══ */}
+          <div className="mt-3 pt-3 border-t border-border/20 space-y-2.5">
+            <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-wider">Advanced (AAA)</span>
+
+            {/* SSAO */}
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] text-muted-foreground font-medium">SSAO (Ambient Occlusion)</span>
+              <Switch checked={settings.ssaoEnabled} onCheckedChange={v => updateSettings({ ssaoEnabled: v })} className="scale-[0.65]" />
+            </div>
+            {settings.ssaoEnabled && (
+              <SliderRow label="SSAO Intensity" value={settings.ssaoIntensity} onChange={v => updateSettings({ ssaoIntensity: v })} />
+            )}
+
+            {/* Depth of Field */}
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] text-muted-foreground font-medium">Depth of Field</span>
+              <Switch checked={settings.dofEnabled} onCheckedChange={v => updateSettings({ dofEnabled: v })} className="scale-[0.65]" />
+            </div>
+            {settings.dofEnabled && (
+              <>
+                <SliderRow label="Focus Distance" value={settings.dofFocusDistance} onChange={v => updateSettings({ dofFocusDistance: v })} min={1} max={500} step={1} unit="m" />
+                <SliderRow label="Bokeh Scale" value={settings.dofBokehScale} onChange={v => updateSettings({ dofBokehScale: v })} max={5} step={0.1} />
+              </>
+            )}
+
+            {/* God Rays */}
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] text-muted-foreground font-medium">God Rays (Volumetric)</span>
+              <Switch checked={settings.godRaysEnabled} onCheckedChange={v => updateSettings({ godRaysEnabled: v })} className="scale-[0.65]" />
+            </div>
+
+            {/* Color Grading */}
+            <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-wider block mt-2">Color Grading</span>
+            <SliderRow label="Brightness" value={settings.colorBrightness + 0.5} onChange={v => updateSettings({ colorBrightness: v - 0.5 })} />
+            <SliderRow label="Contrast" value={settings.colorContrast + 0.5} onChange={v => updateSettings({ colorContrast: v - 0.5 })} />
+            <SliderRow label="Saturation" value={settings.colorSaturation + 0.5} onChange={v => updateSettings({ colorSaturation: v - 0.5 })} />
+          </div>
         </Section>
 
         {/* ═══ BACKGROUND IMAGES ═══ */}
