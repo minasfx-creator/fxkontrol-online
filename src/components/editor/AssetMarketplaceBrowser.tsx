@@ -75,9 +75,13 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
   }, [activeSource, query]);
 
   const handleTabChange = (tab: string) => {
-    const src = tab as SourceType;
+    const src = tab as SourceType | 'mylibrary';
     setActiveSource(src);
-    const cfg = SOURCE_CONFIG[src];
+    if (src === 'mylibrary') {
+      fetchAssets();
+      return;
+    }
+    const cfg = SOURCE_CONFIG[src as SourceType];
     if (cfg.defaultQuery) {
       setQuery(cfg.defaultQuery);
     }
