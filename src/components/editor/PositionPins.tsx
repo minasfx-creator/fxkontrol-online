@@ -27,35 +27,35 @@ interface IconProps {
 const MortarTubeIcon = forwardRef<THREE.Group, IconProps>(({ color, emissiveIntensity, isSelected }, ref) => {
   return (
     <group ref={ref}>
-      {/* Base plate — flat rectangle */}
-      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <boxGeometry args={[0.5, 0.35, 0.03]} />
+      {/* Base plate — compact */}
+      <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <boxGeometry args={[0.3, 0.2, 0.02]} />
         <meshStandardMaterial color="#2a2a2a" metalness={0.85} roughness={0.2} />
       </mesh>
       {/* Tube left */}
-      <mesh position={[-0.14, 0.3, 0]}>
-        <cylinderGeometry args={[0.06, 0.07, 0.5, 8, 1, true]} />
+      <mesh position={[-0.08, 0.16, 0]}>
+        <cylinderGeometry args={[0.035, 0.04, 0.28, 6, 1, true]} />
         <meshStandardMaterial color="#3a3a3a" metalness={0.8} roughness={0.2} emissive={color} emissiveIntensity={emissiveIntensity * 0.15} side={THREE.DoubleSide} />
       </mesh>
       {/* Tube center */}
-      <mesh position={[0, 0.35, 0]}>
-        <cylinderGeometry args={[0.07, 0.08, 0.6, 8, 1, true]} />
+      <mesh position={[0, 0.19, 0]}>
+        <cylinderGeometry args={[0.04, 0.045, 0.34, 6, 1, true]} />
         <meshStandardMaterial color="#3a3a3a" metalness={0.8} roughness={0.2} emissive={color} emissiveIntensity={emissiveIntensity * 0.2} side={THREE.DoubleSide} />
       </mesh>
       {/* Tube right */}
-      <mesh position={[0.14, 0.3, 0]}>
-        <cylinderGeometry args={[0.06, 0.07, 0.5, 8, 1, true]} />
+      <mesh position={[0.08, 0.16, 0]}>
+        <cylinderGeometry args={[0.035, 0.04, 0.28, 6, 1, true]} />
         <meshStandardMaterial color="#3a3a3a" metalness={0.8} roughness={0.2} emissive={color} emissiveIntensity={emissiveIntensity * 0.15} side={THREE.DoubleSide} />
       </mesh>
       {/* Color band at top of center tube */}
-      <mesh position={[0, 0.65, 0]}>
-        <torusGeometry args={[0.08, 0.012, 6, 12]} />
+      <mesh position={[0, 0.36, 0]}>
+        <torusGeometry args={[0.045, 0.008, 6, 10]} />
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={emissiveIntensity} metalness={0.5} roughness={0.3} />
       </mesh>
       {/* Glow indicator when selected */}
       {isSelected && (
-        <mesh position={[0, 0.68, 0]}>
-          <sphereGeometry args={[0.035, 6, 6]} />
+        <mesh position={[0, 0.38, 0]}>
+          <sphereGeometry args={[0.025, 6, 6]} />
           <meshBasicMaterial color="#FFDD44" transparent opacity={0.8} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
