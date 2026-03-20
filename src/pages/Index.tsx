@@ -137,7 +137,7 @@ function CanvasLoader() {
   );
 }
 
-const SUPPORTED_DROP_EXTENSIONS = ['mvr', 'csv', 'json', 'vviz', 'uasset', 'umap', 'copy', 't3d', 'png', 'jpg', 'jpeg', 'tif', 'tiff', 'bmp', 'udatasmith', 'ds'];
+const SUPPORTED_DROP_EXTENSIONS = ['mvr', 'csv', 'json', 'vviz', 'uasset', 'umap', 'copy', 't3d', 'png', 'jpg', 'jpeg', 'tif', 'tiff', 'bmp', 'udatasmith', 'ds', 'fbx', 'obj', 'gltf', 'glb', 'skp', 'ifc', '3ds', 'dae', 'dwg'];
 
 function getDropType(ext: string): 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset' | 'ue5map' | 'heightmap' | 'twinmotion' {
   if (ext === 'mvr') return 'mvr';
@@ -146,8 +146,8 @@ function getDropType(ext: string): 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset'
   if (ext === 'uasset' || ext === 'umap') return 'uasset';
   if (['png', 'jpg', 'jpeg', 'tif', 'tiff', 'bmp'].includes(ext)) return 'heightmap';
   if (ext === 't3d') return 'ue5map';
-  if (ext === 'udatasmith' || ext === 'ds') return 'twinmotion';
-  return 'ue5json'; // json, copy → UE5 DMX importer
+  if (['udatasmith', 'ds', 'fbx', 'obj', 'gltf', 'glb', 'skp', 'ifc', '3ds', 'dae', 'dwg', 'c4d', 'rvt'].includes(ext)) return 'twinmotion';
+  return 'ue5json';
 }
 
 function Index() {
