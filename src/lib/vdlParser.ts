@@ -863,5 +863,8 @@ export function vdlToEffect(vdl: VDLResult) {
     colorTransition,
     secondaryColor,
     impliesTrail: impliesTrail || undefined,
+    // ── SuperVDL: Niagara profile ──
+    niagaraPresetId: vdl.niagaraPreset || undefined,
+    niagaraProfile: vdl.niagaraProfile || undefined,
   };
 }
