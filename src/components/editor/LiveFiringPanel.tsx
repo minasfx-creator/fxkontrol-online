@@ -179,7 +179,14 @@ function DeviceRow({
 export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const isMobile = useIsMobile();
   const { isPlaying, currentTime, setPlaying, positions } = useProjectStore();
-  const [channels, setChannels] = useState<SFXChannel[]>(DEFAULT_CHANNELS);
+  const { channels, setChannels: setStoreChannels, updateChannels } = useSfxChannelStore();
+  const setChannels = useCallback((updaterOrValue: SFXChannel[] | ((prev: SFXChannel[]) => SFXChannel[])) => {
+    if (typeof updaterOrValue === 'function') {
+      updateChannels(updaterOrValue);
+    } else {
+      setStoreChannels(updaterOrValue);
+    }
+  }, [updateChannels, setStoreChannels]);
   const [cues, setCues] = useState<CueEntry[]>([]);
   const [activeScene, setActiveScene] = useState(0);
   const [pyroArm, setPyroArm] = useState(false);
