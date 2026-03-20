@@ -38,6 +38,17 @@ export function usePBusHardware() {
   const rxRef = useRef(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const controller = getPBusController();
+  const radioLink = useRadioLink();
+
+  // Connection path: 'wired' when serial connected, 'radio' when only antenna available
+  const connectionPath = useMemo((): 'wired' | 'radio' | 'none' => {
+    if (state.isConnected) return 'wired';
+    if (radioLink.isConnected) return 'radio';
+    return 'none';
+  }, [state.isConnected, radioLink.isConnected]);
+
+  // Effective connection = wired OR radio
+  const effectivelyConnected = connectionPath !== 'none';
 
   // Computed
   const deviceCount = useMemo(() => state.devices.size, [state.devices]);
