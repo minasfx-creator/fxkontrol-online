@@ -563,6 +563,7 @@ interface SceneSettingsState {
   siteModels: SiteModel[];
   selectedSiteModelId: string | null;
   siteModelTransformMode: SiteModelTransformMode;
+  transformSnap: TransformSnapSettings;
   updateSettings: (updates: Partial<SceneSettings>) => void;
   applyPreset: (presetId: string) => void;
   applyQualityPreset: (preset: QualityPreset) => void;
@@ -575,6 +576,7 @@ interface SceneSettingsState {
   removeSiteModel: (id: string) => void;
   selectSiteModel: (id: string | null) => void;
   setSiteModelTransformMode: (mode: SiteModelTransformMode) => void;
+  setTransformSnap: (updates: Partial<TransformSnapSettings>) => void;
 }
 
 const DEFAULT_ENVIRONMENT: EnvironmentState = {
