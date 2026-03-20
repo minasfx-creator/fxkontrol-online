@@ -77,9 +77,9 @@ export default function SetlistPanel({ onClose }: SetlistPanelProps) {
       .maybeSingle();
 
     if (existing) {
-      await supabase.from('setlists').update({ tracks: tracks as unknown as Record<string, unknown>[], updated_at: new Date().toISOString() }).eq('id', existing.id);
+      await supabase.from('setlists').update({ tracks: JSON.parse(JSON.stringify(tracks)), updated_at: new Date().toISOString() }).eq('id', existing.id);
     } else {
-      await supabase.from('setlists').insert({ project_id: projectId, user_id: user.id, tracks: tracks as unknown as Record<string, unknown>[] });
+      await supabase.from('setlists').insert([{ project_id: projectId, user_id: user.id, tracks: JSON.parse(JSON.stringify(tracks)) }]);
     }
     toast.success('Setlist salva!');
   };

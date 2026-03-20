@@ -130,7 +130,7 @@ export default function ShowPreviewPanel({ onClose }: ShowPreviewPanelProps) {
                   className="h-7 text-xs"
                 />
                 {sent ? (
-                  <div className="flex items-center gap-2 text-emerald-400 text-xs py-2">
+                  <div className="flex items-center gap-2 text-primary text-xs py-2">
                     <CheckCircle className="h-4 w-4" />
                     Aguardando aprovação
                   </div>

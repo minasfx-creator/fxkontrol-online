@@ -118,11 +118,11 @@ export default function RiderPanel({ onClose }: RiderPanelProps) {
 
   const saveTemplate = async () => {
     if (!user) return;
-    await supabase.from('rider_templates').insert({
+    await supabase.from('rider_templates').insert([{
       user_id: user.id,
       name: riderName,
-      sections: sections as unknown as Record<string, unknown>[],
-    });
+      sections: JSON.parse(JSON.stringify(sections)),
+    }]);
     toast.success('Rider template salvo!');
   };
 
