@@ -117,7 +117,17 @@ export type FireOneEventType =
   | 'arm-confirm'
   | 'error'
   | 'heartbeat'
-  | 'emergency-stop';
+  | 'emergency-stop'
+  | 'dmx-out-confirm'
+  | 'config-response';
+
+export interface FireOneModuleConfig {
+  wireless: boolean;
+  dmxUniverse: number;
+  firingDelay: number;
+  firmwareVersion: string;
+  serialNumber: string;
+}
 
 export interface FireOneEvent {
   type: FireOneEventType;
