@@ -79,6 +79,7 @@ export default function TwinmotionImporter({ open, onOpenChange, initialFile }: 
 
   const addPosition = useProjectStore(s => s.addPosition);
   const addSiteModel = useSceneStore(s => s.addSiteModel);
+  const { saveToLibrary } = useMyLibrary();
 
   // ─── Datasmith XML parsing ──────────────────────────────
 
