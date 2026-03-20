@@ -47,7 +47,7 @@ export default function WaterfallEffect({
       });
     }
     return s;
-  }, [width]);
+  }, [scaledWidth, SCALED_PARTICLE_COUNT]);
 
   useFrame(({ clock }) => {
     if (!pointsRef.current) return;
