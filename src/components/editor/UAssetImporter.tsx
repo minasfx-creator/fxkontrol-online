@@ -46,7 +46,14 @@ export default function UAssetImporter({ open, onOpenChange, initialFile = null 
     setImported(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  useEffect(() => {
+    if (initialFile && open) {
+      const dt = new DataTransfer();
+      dt.items.add(initialFile);
+      handleFiles(dt.files);
+    }
+  }, [initialFile, open, handleFiles]);
+
     e.preventDefault();
     if (e.dataTransfer.files.length > 0) {
       handleFiles(e.dataTransfer.files);
