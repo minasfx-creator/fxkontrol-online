@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { X, Clock, Radio, Play, Square, RotateCcw, Zap, Volume2, VolumeX, Link2, Unlink2, Timer, Wifi, WifiOff, ArrowDownToLine, Gauge, Satellite } from 'lucide-react';
+import { X, Clock, Radio, Play, Square, RotateCcw, Zap, Volume2, VolumeX, Link2, Unlink2, Timer, Wifi, WifiOff, ArrowDownToLine, Gauge, Satellite, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,6 +12,7 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { formatTimecode, encodeTimecodeToLTC, generateMTCQuarterFrames, secondsToTimecode, type SMPTEFrameRate } from '@/lib/smpteEngine';
+import { getOSCClient, buildMA3TimecodeSync, buildMA3TimecodeTransport } from '@/lib/oscEngine';
 
 interface SMPTEPanelProps {
   onClose: () => void;
