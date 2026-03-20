@@ -13,6 +13,7 @@ function LoadedModel({ model, isSelected }: { model: SiteModel; isSelected: bool
   const selectSiteModel = useSceneStore((s) => s.selectSiteModel);
   const updateSiteModel = useSceneStore((s) => s.updateSiteModel);
   const transformMode = useSceneStore((s) => s.siteModelTransformMode);
+  const transformSnap = useSceneStore((s) => s.transformSnap);
 
   const cloned = useMemo(() => {
     const c = scene.clone(true);
