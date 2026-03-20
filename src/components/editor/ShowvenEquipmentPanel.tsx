@@ -257,6 +257,16 @@ export default function ShowvenEquipmentPanel({ onClose }: ShowvenEquipmentPanel
     }
   }, [pbus]);
 
+  const handleScanAll = useCallback(async () => {
+    if (!pbus.isConnected) {
+      toast.warning('PBUS não conectado');
+      return;
+    }
+    toast.info('Scanning PBUS devices...');
+    await pbus.discoverDevices(64);
+    toast.success(`Found ${pbus.deviceCount} devices`);
+  }, [pbus]);
+
   return (
     <div className="h-full flex flex-col" style={{ background: 'hsl(var(--card))' }}>
       {/* Header */}
