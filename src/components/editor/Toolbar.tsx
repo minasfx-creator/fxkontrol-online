@@ -16,6 +16,7 @@ import VVIZImporter from './VVIZImporter';
 import UAssetImporter from './UAssetImporter';
 import GMA2PatchImporter from './GMA2PatchImporter';
 import UE5DMXPrevisImporter from './UE5DMXPrevisImporter';
+import MVRImporter from './MVRImporter';
 import AssetMarketplaceBrowser from './AssetMarketplaceBrowser';
 import ProjectBrowser from './ProjectBrowser';
 import CatalogImportDialog from './CatalogImportDialog';
