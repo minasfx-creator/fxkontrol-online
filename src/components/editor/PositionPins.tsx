@@ -314,11 +314,10 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
   }, [position.id, selectPosition]);
 
   const emissiveIntensity = isDragging ? 1.0 : isSelected ? 0.7 : isHovered ? 0.4 : 0.15;
-  const pinScale = isSelected ? 0.75 : isHovered ? 0.68 : 0.6;
   const showLabel = isHovered || isSelected || isDragging;
 
   return (
-    <group ref={ref} position={[position.x, position.y, position.z]} scale={[pinScale, pinScale, pinScale]}>
+    <group ref={(node) => { (groupRef as any).current = node; if (typeof ref === 'function') ref(node); else if (ref) (ref as any).current = node; }} position={[position.x, position.y, position.z]}>
       {/* Base disc */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
         <circleGeometry args={[isSelected ? 0.65 : 0.5, 32]} />
