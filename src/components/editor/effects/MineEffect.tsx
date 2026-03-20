@@ -116,8 +116,10 @@ export default function MineEffect({
   const flashSize = 1.2 + caliber * 0.5;
   const screenBlend = useMemo(() => getThreeBlending('screen'), []);
 
+  const angleOffsetRad = (angleOffset * Math.PI) / 180;
+
   return (
-    <group position={position}>
+    <group position={position} rotation={[0, 0, angleOffsetRad]}>
       {/* Ground flash — wide burst light */}
       {progress < 0.08 && (
         <mesh position={[0, 0.3, 0]}>

@@ -122,7 +122,7 @@ export default function WaterfallEffect({
       </mesh>
       {/* Wire white-hot core */}
       <mesh position={[0, 0.05, 0]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.012, 0.012, width, 6]} />
+        <cylinderGeometry args={[0.012, 0.012, scaledWidth, 6]} />
         <meshBasicMaterial color="#FFFFF0" transparent opacity={wireOpacity * 0.8} blending={THREE.AdditiveBlending} />
       </mesh>
       <points ref={pointsRef}>

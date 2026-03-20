@@ -163,8 +163,10 @@ export default function CometEffect({
     return dir * Math.max(0, v0 * sparkBaseT * 0.25 + 0.5 * GRAVITY * sparkBaseT * sparkBaseT * 0.06);
   };
 
+  const angleOffsetRad = (angleOffset * Math.PI) / 180;
+
   return (
-    <group position={position}>
+    <group position={position} rotation={[0, 0, angleOffsetRad]}>
       {/* Muzzle flash */}
       {progress < 0.05 && (
         <mesh position={[0, 0.1, 0]}>

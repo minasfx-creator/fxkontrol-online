@@ -103,8 +103,10 @@ export default function RomanCandleEffect({
     geo.attributes.color.needsUpdate = true;
   });
 
+  const angleOffsetRad = (angleOffset * Math.PI) / 180;
+
   return (
-    <group position={position}>
+    <group position={position} rotation={[0, 0, angleOffsetRad]}>
       {/* Muzzle flash per shot */}
       {Array.from({ length: shotCount }).map((_, s) => {
         const shotTime = s / shotCount;

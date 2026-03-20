@@ -107,11 +107,11 @@ export default function MultiBurstEffect({
     const b: { offset: [number, number, number]; delay: number; seed: number }[] = [];
     for (let i = 0; i < burstCount; i++) {
       const angle = (i / burstCount) * Math.PI * 2;
-      const r = 1.5 + i * 0.8;
+      const r = (1.5 + i * 0.8) * burstScale;
       b.push({
         offset: [
           Math.cos(angle) * r,
-          (i - burstCount / 2) * 1.2,
+          (i - burstCount / 2) * 1.2 * burstScale,
           Math.sin(angle) * r,
         ] as [number, number, number],
         delay: i * 0.18,
