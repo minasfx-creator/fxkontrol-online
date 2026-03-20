@@ -388,6 +388,12 @@ export default function FieldMap2D({ fs = false }: FieldMap2DProps) {
             <Switch checked={showSafetyZones} onCheckedChange={setShowSafetyZones} className="h-3.5 w-7" />
             Safety
           </label>
+          {radioLink.isConnected && (
+            <label className="flex items-center gap-1 text-muted-foreground/50 cursor-pointer">
+              <Switch checked={showRadioHeatmap} onCheckedChange={setShowRadioHeatmap} className="h-3.5 w-7" />
+              Radio
+            </label>
+          )}
         </div>
       </div>
 
