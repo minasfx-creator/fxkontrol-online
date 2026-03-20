@@ -1,82 +1,69 @@
 
 
-# Plan: Gap Fix + New Features + UI/UX Refinement
+# Plan: Capacitor Haptic Feedback Integration
 
-## Confirmed Gaps
-
-### Critical Integration Gaps
-1. **PanelTabBar missing MA3 panel** — No `'ma3'` entry in `PANEL_SECTIONS`. Users cannot access MA3 from the right sidebar — only from within LiveFiringPanel mode tabs.
-2. **PanelTabBar missing sACN Monitor** — `SACNMonitorPanel` exists but has no panel entry for standalone access.
-3. **Toolbar has no hardware status indicators** — Status area (line 639-654) only shows cue count, position count, and a static "SYNC" dot. No FireOne/PBUS/Radio/MA3 connection status.
-4. **Auth page is bare** — No cinematic branding, no glassmorphism, no animated background. Just a white form on a dark background.
-5. **Dashboard has no system status** — No hardware/bridge connection indicators. No "resume last session" quick action.
-6. **Agenda has no production pipeline** — No status pipeline strip, no "days until" countdown, no "Open in Editor" link.
-7. **Timeline has no LIVE/ARMED indicator** — Transport bar shows play/pause but no visual state for armed systems during live execution.
-8. **PanelTabBar has no search/filter** — 70+ panels with no quick-find capability.
-
-### Missing Features
-9. **No "radio" panel in PANEL_SECTIONS Conexões section** — `radio` exists in Hardware section but not in Conexões where users expect connection-type panels.
-10. **No delete event** in Agenda — Can duplicate but can't delete events.
-11. **No event time field display** — `event_time` exists in the DB/type but is never shown on event cards.
+## What
+Replace all 155+ `navigator.vibrate()` calls across 12 files with a unified haptic feedback service that uses **Capacitor Haptics plugin** on native iOS/Android and falls back to `navigator.vibrate()` on web.
 
 ## Changes
 
-### 1. Edit `src/components/editor/PanelTabBar.tsx` — Add MA3 + sACN + Search
-- Add `'ma3'` and `'sacnmonitor'` to `PanelId` type
-- Add MA3 entry to Conexões section: `{ id: 'ma3', label: 'grandMA3', icon: Sliders }`
-- Add sACN Monitor to Conexões: `{ id: 'sacnmonitor', label: 'sACN Monitor', icon: Activity }`
-- Add search input at top of sidebar: small magnifying glass icon, filters panels in real-time
-- Add favorites system: click star to pin panels (stored in localStorage), pinned section at top
+### 1. Install dependencies
+- `@capacitor/core`, `@capacitor/cli` (dev), `@capacitor/haptics`
+- Initialize Capacitor with `npx cap init` (appId: `app.lovable.98b5e02e4ef047eeafa0148a304fb6c2`, appName: `fxkontrol`)
+- Configure server URL for hot-reload: `https://98b5e02e-4ef0-47ee-afa0-148a304fb6c2.lovableproject.com?forceHideBadge=true`
 
-### 2. Edit `src/components/editor/Toolbar.tsx` — Hardware Status Dots + ARMED Badge
-- After the SYNC indicator (line 646-649), add hardware connection dots: FireOne (green/red), PBUS (green/red), Radio (green/red)
-- Import `useFireOneHardware`, `usePBusHardware`, `useRadioLink`
-- Each dot is clickable → calls `onOpenPanel?.('livefiring')` etc.
-- When any system is armed, show pulsing red "ARMED" badge next to timecode
+### 2. Create `src/lib/haptics.ts` — Unified Haptic Service
+Abstraction layer with typed presets mapped to show control actions:
 
-### 3. Edit `src/pages/Auth.tsx` — Cinematic Branded Login
-- Add animated CSS gradient background with radial glow effects
-- Wrap form in glassmorphism card with border glow
-- Add "Professional Show Control Platform" tagline
-- Add subtle grid pattern overlay
+| Method | Native (Capacitor) | Web Fallback | Use Case |
+|--------|-------------------|--------------|----------|
+| `tap()` | `ImpactStyle.Light` | `vibrate(10)` | UI button press |
+| `fire()` | `ImpactStyle.Heavy` | `vibrate(30)` | Cue fire |
+| `arm()` | `NotificationType.Warning` + pattern | `vibrate([50,30,50])` | System arm |
+| `panic()` | `NotificationType.Error` + long pattern | `vibrate([100,50,100,50,200])` | Emergency stop |
+| `unlock()` | `ImpactStyle.Medium` × 2 | `vibrate([50,20,50])` | Safety unlock |
+| `success()` | `NotificationType.Success` | `vibrate(50)` | Connection success |
+| `select()` | `SelectionChanged` | `vibrate(15)` | Selection change |
 
-### 4. Edit `src/pages/Dashboard.tsx` — System Status + Quick Actions
-- Add "System Status" row showing bridge connections (OSC/sACN/MVR) and hardware (FireOne/PBUS/Radio) with green/red dots
-- Add "Resume Last Session" button (stores last project ID in localStorage)
-- Add "Quick Launch" cards: "New Pyro Show", "New Drone Show", "New Mixed Show"
-- Add "Days until next event" countdown in the events card
+Auto-detects Capacitor native platform via `Capacitor.isNativePlatform()`. On web, gracefully falls back.
 
-### 5. Edit `src/pages/Agenda.tsx` — Pipeline Strip + Delete + Editor Link
-- Add horizontal pipeline strip at top showing event counts per status (Negotiation → Invoiced)
-- Add "Open in Editor" button on each event card
-- Add delete button with confirmation
-- Add "Days until" countdown badge on upcoming events
-- Show `event_time` when available
+### 3. Update 12 files — Replace `navigator.vibrate` with haptics service
+All files with existing vibration calls get updated to import and use the new service:
 
-### 6. Edit `src/components/editor/Timeline.tsx` — LIVE Mode Indicator
-- When armed (read from a shared state or prop), show pulsing red "● LIVE" badge in transport bar
-- Increase play/stop button size to 48px touch targets when in armed/live mode
-- Add show elapsed time display during live execution
+- `MobileHUD.tsx` — `haptics.panic()` on panic button
+- `MobileTabBar.tsx` — `haptics.tap()` on long-press
+- `MobileQuickActions.tsx` — (no vibrate currently, but add `haptics.tap()`)
+- `MobileMoreMenu.tsx` — `haptics.select()` on panel select
+- `MobileLinkPanel.tsx` — `haptics.tap()` on add/remove, `haptics.fire()` on fire
+- `MobileLinkMode.tsx` — `haptics.fire()` on fire, `haptics.arm()` on arm, `haptics.panic()` on panic
+- `VirtualFXButton.tsx` — `haptics.unlock()` on slide unlock, `haptics.fire()` on fire
+- `VirtualZK6200.tsx` — `haptics.arm()` on arm, `haptics.fire()` on fire, `haptics.panic()` on estop
+- `USBConnectionPanel.tsx` — `haptics.success()` on connect
+- `NewsTicker.tsx` — `haptics.select()` on filter change
+- `ShowCommanderPanel.tsx` — `haptics.fire()` on GO, `haptics.panic()` on panic
+- `MobileFloatingPanel.tsx` — `haptics.tap()` on snap points
 
-### 7. Edit `src/index.css` — New Utility Classes
-- Add `.status-dot-online` / `.status-dot-offline` with glow
-- Add `.armed-pulse` animation (red pulsing glow)
-- Add `.badge-live` for live operation badges
-- Add `.glass-card-glow` for Auth page glassmorphism
+### 4. Create `capacitor.config.ts`
+Standard Capacitor config with hot-reload server URL pointing to the Lovable preview.
 
-### 8. Edit `src/layouts/MainLayout.tsx` — Global Status Footer
-- Add 24px status bar at bottom (not on /editor route) showing: connected hardware count, next event countdown, and "PRE-FLIGHT" quick button
+## Architecture
+```text
+src/lib/haptics.ts
+├── Capacitor.isNativePlatform()?
+│   ├── YES → @capacitor/haptics (iOS Taptic / Android VibrationEffect)
+│   └── NO  → navigator.vibrate() fallback
+│
+├── haptics.fire()    → ImpactStyle.Heavy
+├── haptics.panic()   → NotificationType.Error + pattern
+├── haptics.arm()     → NotificationType.Warning + pattern
+├── haptics.tap()     → ImpactStyle.Light
+├── haptics.select()  → SelectionChanged
+└── haptics.unlock()  → ImpactStyle.Medium × 2
+```
 
-## Files Summary
-
-| File | Key Change |
-|------|------------|
-| `PanelTabBar.tsx` | MA3 + sACN entries, search filter, favorites |
-| `Toolbar.tsx` | Hardware status dots + ARMED badge |
-| `Auth.tsx` | Cinematic glassmorphism login |
-| `Dashboard.tsx` | System status + resume + quick launch |
-| `Agenda.tsx` | Pipeline strip + delete + countdown |
-| `Timeline.tsx` | LIVE badge + larger transport in armed mode |
-| `index.css` | Status/live utility classes |
-| `MainLayout.tsx` | Global status footer bar |
+## Post-Implementation
+User will need to:
+1. Export to GitHub, clone locally
+2. `npm install` → `npx cap add ios` / `npx cap add android`
+3. `npm run build` → `npx cap sync` → `npx cap run ios/android`
 
