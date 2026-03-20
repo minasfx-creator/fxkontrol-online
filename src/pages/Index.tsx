@@ -78,6 +78,10 @@ import VideoChoreoPanel from '@/components/editor/VideoChoreoPanel';
 import ShowvenEquipmentPanel from '@/components/editor/ShowvenEquipmentPanel';
 import GenerativeEffectsPanel from '@/components/editor/GenerativeEffectsPanel';
 import CinematicIntro from '@/components/editor/CinematicIntro';
+import SetlistPanel from '@/components/editor/SetlistPanel';
+import RiderPanel from '@/components/editor/RiderPanel';
+import BudgetPanel from '@/components/editor/BudgetPanel';
+import ShowPreviewPanel from '@/components/editor/ShowPreviewPanel';
 import SiteModelsPanel from '@/components/editor/SiteModelsPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
@@ -339,6 +343,10 @@ function Index() {
         {activePanel === 'showven' && <ShowvenEquipmentPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'generative' && <GenerativeEffectsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'sitemodels' && <SiteModelsPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'setlist' && <SetlistPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'rider' && <RiderPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'budget' && <BudgetPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'showpreview' && <ShowPreviewPanel onClose={() => setActivePanel(null)} />}
       </>
     );
   };

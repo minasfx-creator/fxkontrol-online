@@ -12,7 +12,7 @@ import {
   Radar, CircuitBoard, Lightbulb, ShieldCheck, Battery, Warehouse,
   BookOpen, Layers, Eye, Camera, Share2, MessageSquare,
   Atom, Volume2, Cog, Settings2, Globe, MapPin, Plane,
-  Search
+  Search, ListMusic, FileSignature, Wallet, MonitorPlay
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PanelId } from '@/components/editor/PanelTabBar';
@@ -34,6 +34,11 @@ const ALL_PANELS: PanelItem[] = [
   { id: 'weather', label: 'Clima', icon: Cloud, section: '⚡ Acesso Rápido' },
   { id: 'telemetry', label: 'Telemetria', icon: Activity, section: '⚡ Acesso Rápido' },
   { id: 'diagnostic', label: 'Diagnóstico', icon: Bug, section: '⚡ Acesso Rápido' },
+  // Produção (DJ/Artist)
+  { id: 'setlist', label: 'Setlist', icon: ListMusic, section: '🎵 Produção' },
+  { id: 'rider', label: 'Rider', icon: FileSignature, section: '🎵 Produção' },
+  { id: 'budget', label: 'Budget', icon: Wallet, section: '🎵 Produção' },
+  { id: 'showpreview', label: 'Preview', icon: MonitorPlay, section: '🎵 Produção' },
   // Crew Tools
   { id: 'share', label: 'Compartilhar', icon: Share2, section: '👥 Equipe' },
   { id: 'approval', label: 'Aprovação', icon: MessageSquare, section: '👥 Equipe' },

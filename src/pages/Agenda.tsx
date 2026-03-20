@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, CalendarDays, MapPin, User } from 'lucide-react';
+import { Plus, CalendarDays, MapPin, User, Copy } from 'lucide-react';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 interface EventRow {
@@ -23,11 +24,24 @@ interface EventRow {
   notes: string;
 }
 
+const STATUS_OPTIONS = ['negotiation', 'confirmed', 'rider_sent', 'mounted', 'executed', 'invoiced'] as const;
+
 const STATUS_COLORS: Record<string, string> = {
-  planned: 'bg-muted text-muted-foreground',
+  negotiation: 'bg-muted text-muted-foreground',
   confirmed: 'bg-primary/20 text-primary',
-  'em montagem': 'bg-accent/20 text-accent',
-  executed: 'bg-emerald-500/20 text-emerald-400',
+  rider_sent: 'bg-accent/20 text-accent-foreground',
+  mounted: 'bg-secondary/20 text-secondary-foreground',
+  executed: 'bg-primary/30 text-primary',
+  invoiced: 'bg-muted text-muted-foreground',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  negotiation: 'Negociação',
+  confirmed: 'Confirmado',
+  rider_sent: 'Rider Enviado',
+  mounted: 'Montado',
+  executed: 'Executado',
+  invoiced: 'Faturado',
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -43,7 +57,7 @@ export default function Agenda() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({
-    name: '', location: '', client_name: '', event_type: 'mixed', notes: '',
+    name: '', location: '', client_name: '', event_type: 'mixed', notes: '', status: 'negotiation',
   });
 
   const fetchEvents = async () => {
@@ -68,9 +82,31 @@ export default function Agenda() {
       client_name: form.client_name,
       event_type: form.event_type,
       notes: form.notes,
+      status: form.status,
     });
-    setForm({ name: '', location: '', client_name: '', event_type: 'mixed', notes: '' });
+    setForm({ name: '', location: '', client_name: '', event_type: 'mixed', notes: '', status: 'negotiation' });
     setDialogOpen(false);
+    fetchEvents();
+  };
+
+  const duplicateEvent = async (ev: EventRow) => {
+    if (!user) return;
+    await supabase.from('events').insert({
+      user_id: user.id,
+      name: `${ev.name} (cópia)`,
+      event_date: null,
+      location: ev.location,
+      client_name: ev.client_name,
+      event_type: ev.event_type,
+      notes: ev.notes,
+      status: 'negotiation',
+    });
+    fetchEvents();
+    toast.success('Evento duplicado!');
+  };
+
+  const updateStatus = async (id: string, status: string) => {
+    await supabase.from('events').update({ status }).eq('id', id);
     fetchEvents();
   };
 
@@ -118,6 +154,14 @@ export default function Agenda() {
                   <SelectItem value="drone">🤖 Drone Show</SelectItem>
                   <SelectItem value="sfx">🔥 SFX</SelectItem>
                   <SelectItem value="mixed">🎯 Misto</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map(s => (
+                    <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <Input
@@ -192,9 +236,19 @@ export default function Agenda() {
                     <span className="text-[9px] font-mono">
                       {TYPE_LABELS[ev.event_type] ?? ev.event_type}
                     </span>
-                    <span className={`text-[9px] px-2 py-0.5 rounded-full font-mono ${STATUS_COLORS[ev.status] ?? STATUS_COLORS.planned}`}>
-                      {ev.status}
-                    </span>
+                    <Select value={ev.status} onValueChange={(v) => updateStatus(ev.id, v)}>
+                      <SelectTrigger className={`h-6 w-auto text-[9px] px-2 rounded-full font-mono border-none ${STATUS_COLORS[ev.status] ?? STATUS_COLORS.negotiation}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STATUS_OPTIONS.map(s => (
+                          <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <button onClick={() => duplicateEvent(ev)} className="text-muted-foreground hover:text-foreground" title="Duplicar">
+                      <Copy className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 </div>
               </CardContent>
