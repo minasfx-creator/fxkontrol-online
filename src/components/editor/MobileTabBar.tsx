@@ -21,6 +21,7 @@ const TABS: { key: MobileTab; icon: typeof Clock; panelId?: PanelId; accent?: bo
   { key: 'livefx', icon: Sparkles, panelId: 'livefiring', accent: true },
   { key: 'controllers', icon: Cpu, panelId: 'controllers' },
   { key: 'fieldmap', icon: Map, panelId: 'fieldmap' },
+  { key: 'radio', icon: Radio, panelId: 'radio' },
   { key: 'mobilelink', icon: Cable, panelId: 'mobilelink' },
   { key: 'points', icon: MapPin, panelId: 'properties' },
   { key: 'formations', icon: Hexagon, panelId: 'swarmgpt' },

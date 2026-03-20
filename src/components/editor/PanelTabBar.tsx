@@ -84,6 +84,7 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
     items: [
       { id: 'controllers', label: 'Controladores', icon: Cpu },
       { id: 'connections', label: 'Conexões HW', icon: Cable },
+      { id: 'radio', label: 'Rádio USB', icon: Radio },
       { id: 'fieldmap', label: 'Field Map', icon: Map },
       { id: 'racks', label: 'Racks', icon: Package },
       { id: 'addressing', label: 'Endereçamento', icon: Cpu },

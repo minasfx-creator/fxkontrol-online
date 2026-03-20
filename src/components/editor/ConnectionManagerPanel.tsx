@@ -216,7 +216,8 @@ export default function ConnectionManagerPanel({ fs = false }: ConnectionManager
       {/* Quick info */}
       <div className={cn("flex items-center justify-between text-muted-foreground/30 border-t border-border/10 pt-2", "text-[8px]")}>
         <span>FireOne: {fireone.modules.size} módulos</span>
-        <span>PBUS: {pbus.deviceCount} dispositivos</span>
+        <span>PBUS: {pbus.deviceCount} disp.</span>
+        <span>Radio: {radioLink.devices.size} devs</span>
       </div>
     </div>
   );
