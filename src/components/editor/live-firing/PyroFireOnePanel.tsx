@@ -50,6 +50,11 @@ interface FieldModule {
   signalStrength: number;
   temperature: number;
   igniters: IgniterState[];
+  connectionMode?: WirelessConnectionMode;
+  rssiDbm?: number;
+  wirelessChannel?: number;
+  packetLoss?: number;
+  linkQuality?: number;
 }
 
 interface IgniterState {
