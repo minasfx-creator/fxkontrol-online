@@ -206,8 +206,35 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const [elapsedMs, setElapsedMs] = useState(0);
   const [firingStartTime, setFiringStartTime] = useState<number | null>(null);
   const [batteryVoltage] = useState(11.82);
+  const [relayConnected, setRelayConnected] = useState(false);
+  const [relayUrl, setRelayUrl] = useState('ws://localhost:9001');
   const sequenceRef = useRef(0);
   const fireTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const relayWs = useRef<WebSocket | null>(null);
+
+  // ─── WebSocket Relay connection ───
+  const connectRelay = useCallback(() => {
+    if (relayWs.current?.readyState === WebSocket.OPEN) return;
+    try {
+      const ws = new WebSocket(relayUrl);
+      ws.onopen = () => { setRelayConnected(true); toast.success('🔌 Relay UDP conectado'); };
+      ws.onclose = () => { setRelayConnected(false); relayWs.current = null; };
+      ws.onerror = () => { setRelayConnected(false); toast.error('Falha ao conectar relay'); };
+      ws.onmessage = (e) => {
+        try { const msg = JSON.parse(e.data); if (msg.error) console.warn('[Relay]', msg.error); } catch {}
+      };
+      relayWs.current = ws;
+    } catch { toast.error('URL do relay inválida'); }
+  }, [relayUrl]);
+
+  const disconnectRelay = useCallback(() => {
+    relayWs.current?.close();
+    relayWs.current = null;
+    setRelayConnected(false);
+  }, []);
+
+  // Cleanup relay on unmount
+  useEffect(() => { return () => { relayWs.current?.close(); }; }, []);
 
   // ─── Swipe gesture for mobile mode switching / close ───
   const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'auto_fire', 'check_slave', 'settings'];
@@ -282,6 +309,15 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
       universe: uniId % 16, subnet: Math.floor(uniId / 16) % 16, net: Math.floor(uniId / 256),
       channels: buf, sequence: (sequenceRef.current++) & 0xFF,
     }));
+
+    // Send via WebSocket relay (real UDP Art-Net) if connected
+    if (relayWs.current?.readyState === WebSocket.OPEN) {
+      try {
+        relayWs.current.send(JSON.stringify({ action: 'dmx-batch', universes }));
+      } catch (e) { console.warn('[Relay] WS send error', e); }
+    }
+
+    // Also send via edge function (for logging/diagnostics)
     try {
       const { data, error } = await supabase.functions.invoke('artnet-bridge', {
         body: { action: 'send', universes, targetIp: settings.artNetIp, targetPort: settings.artNetPort },
@@ -560,6 +596,10 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           <div className={cn("rounded-full", artNetConnected ? "bg-green-500" : "bg-muted-foreground/20", fs ? "w-2.5 h-2.5" : "w-1.5 h-1.5")} />
           <span className={cn("font-mono text-muted-foreground/40", fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[6px]")}>DMX</span>
         </div>
+        <button onClick={() => relayConnected ? disconnectRelay() : connectRelay()} className="flex items-center gap-1" title={relayConnected ? 'Relay UDP conectado — clique para desconectar' : 'Clique para conectar relay UDP local'}>
+          <div className={cn("rounded-full", relayConnected ? "bg-cyan-400" : "bg-muted-foreground/20", fs ? "w-2.5 h-2.5" : "w-1.5 h-1.5")} style={relayConnected ? { boxShadow: '0 0 6px rgba(0,220,255,0.5)' } : undefined} />
+          <span className={cn("font-mono", relayConnected ? "text-cyan-400/70" : "text-muted-foreground/40", fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[6px]")}>UDP</span>
+        </button>
         <div className="flex items-center gap-1">
           <Signal className={cn(pyroArm ? "text-red-500" : "text-muted-foreground/20", fs && mob ? "w-3.5 h-3.5" : fs ? "w-4 h-4" : "w-2.5 h-2.5")} />
         </div>
@@ -1007,7 +1047,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
       case 'manual_fire': return renderManualFire(fs);
       case 'auto_fire': return <AutoFirePanel fs={fs} pyroArm={pyroArm} dmxArm={dmxArm} />;
       case 'check_slave': return <CheckSlavePanel fs={fs} pyroArm={pyroArm} />;
-      case 'settings': return <SettingsPanel fs={fs} settings={settings} onSettingsChange={setSettings} />;
+      case 'settings': return <SettingsPanel fs={fs} settings={settings} onSettingsChange={setSettings} relayConnected={relayConnected} relayUrl={relayUrl} onRelayUrlChange={setRelayUrl} onConnectRelay={connectRelay} onDisconnectRelay={disconnectRelay} />;
       default: return renderSimpleDmx(fs);
     }
   };
