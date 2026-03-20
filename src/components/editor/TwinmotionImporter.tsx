@@ -9,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Upload, Box, Lightbulb, Camera, Layers, Mountain, FileUp, Building2, Cuboid, Check, X, ExternalLink, Palette, Route } from 'lucide-react';
-import Model3DPreview from './Model3DPreview';
+import Model3DPreview, { type ModelTransform } from './Model3DPreview';
 import { parseDatasmith, extractMeshLabel, type DatasmithActor, type DatasmithParseResult } from '@/lib/twinmotionParser';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
