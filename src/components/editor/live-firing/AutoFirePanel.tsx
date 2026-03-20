@@ -49,6 +49,34 @@ export default function AutoFirePanel({ fs, pyroArm, dmxArm, onFireCue }: AutoFi
   const [ltcTimecode, setLtcTimecode] = useState('00:00:00:00');
   const [timeOffset, setTimeOffset] = useState(0);
   const runTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // FireOne CSV import handler
+  const handleFileImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const parsed = parseFireOneCSV(text);
+      if (parsed.length === 0) {
+        toast.error('No valid cues found in CSV');
+        return;
+      }
+      setCues(parsed);
+      toast.success(`Imported ${parsed.length} cues from ${file.name}`);
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }, []);
+
+  // FireOne CSV export handler
+  const handleExportCSV = useCallback(() => {
+    if (cues.length === 0) { toast.error('No cues to export'); return; }
+    const csv = exportFireOneCSV(cues);
+    downloadFile(csv, 'fireone_autofire.csv');
+    toast.success(`Exported ${cues.length} cues to FireOne CSV`);
+  }, [cues]);
 
   const handleReset = useCallback(() => {
     setRunTimeMs(0);
