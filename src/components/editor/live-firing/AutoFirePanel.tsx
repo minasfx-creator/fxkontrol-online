@@ -3,13 +3,15 @@
  * Matches FXcommander Auto Fire interface with CUE list, progress bar, MIDI/LTC/Manual trigger
  */
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Play, Square, RotateCcw, FastForward, Rewind, Music, Upload, Trash2 } from 'lucide-react';
+import { Play, Square, RotateCcw, FastForward, Rewind, Music, Upload, Trash2, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import { useProjectStore } from '@/store/useProjectStore';
 import type { AutoFireCue } from './types';
 import { formatTimecode, FIRING_RULES } from './constants';
+import { parseFireOneCSV, exportFireOneCSV, downloadFile } from '@/lib/fireoneScriptParser';
 
 interface AutoFirePanelProps {
   fs: boolean;
