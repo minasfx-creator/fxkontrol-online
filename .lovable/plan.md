@@ -1,83 +1,93 @@
 
 
-# Plan: Features for International Artist/DJ Producers
+# Plan: Mobile Link — Art-Net Test & Virtual Fixtures (Mobile → Desktop)
 
-## Context
-FX KONTROL already has a powerful 3D editor, timeline, live firing, and event agenda. But for a **producer managing international artists/DJs**, key workflow gaps exist: no setlist management, no technical rider builder, no multi-currency budgeting, no timezone-aware scheduling, and no quick way to share show previews with clients abroad.
+## Concept
+A dedicated mobile panel where the operator can:
+1. Test Art-Net connectivity (ping the edge function + relay)
+2. Add **virtual fixtures** (par, wash, strobe, SFX) with DMX addressing
+3. Tap buttons on the phone to **fire/trigger fixtures** — the effect is reflected on the desktop 3D viewport in real-time via shared Zustand stores and Supabase Realtime
 
-## New Features (5 modules)
+The key insight: both mobile and desktop share the same Zustand stores (`useSfxChannelStore`, `useLiveSfxStore`, `useProjectStore`). When the user taps "FIRE" on mobile, it writes to `useLiveSfxStore.fireEffect()` which the desktop SkyCanvas already reads. For cross-device sync (phone ↔ computer on different browsers), we use a Supabase Realtime channel as a broadcast bridge.
 
-### 1. Setlist Manager Panel (`SetlistPanel.tsx`)
-A draggable track list synced to the timeline:
-- Add songs with title, artist, BPM, duration, key
-- Drag to reorder; total runtime auto-calculated
-- Each song maps to a timeline segment (start/end markers)
-- "Sync to Timeline" button auto-creates segment markers
-- Import from Spotify/text paste (CSV: title, duration)
-- Color-coded blocks on the timeline track
-- Export as PDF rundown for stage manager
+```text
+┌─ MOBILE ─────────────────────┐     ┌─ DESKTOP ────────────────┐
+│ [Test Art-Net] → edge func   │     │                          │
+│ [Test Relay]   → ws://9001   │     │   3D Viewport            │
+│                              │     │   ┌──────────────┐       │
+│ Virtual Fixtures:            │     │   │ PAR 1  🔴    │       │
+│ ┌─────────┬─────────┐       │     │   │ WASH 2 🔵    │       │
+│ │ PAR 1   │ WASH 2  │       │ ──→ │   │ STROBE 🟡   │       │
+│ │ [FIRE]  │ [FIRE]  │       │     │   └──────────────┘       │
+│ └─────────┴─────────┘       │     │                          │
+│ ┌─────────┬─────────┐       │     │   DMX output via relay   │
+│ │ STROBE  │ CO2 JET │       │     │                          │
+│ │ [FIRE]  │ [FIRE]  │       │     │                          │
+│ └─────────┴─────────┘       │     └──────────────────────────┘
+│                              │
+│ + Add Fixture                │
+└──────────────────────────────┘
+         ↕ Supabase Realtime broadcast channel
+```
 
-### 2. Technical Rider Builder (`RiderPanel.tsx`)
-Generate professional technical riders:
-- Equipment checklist with quantities (power, DMX universes, firing modules, CO2 tanks, etc.)
-- Auto-populated from current project (reads positions, effects, DMX channels, racks)
-- Venue requirements section (min clearance, safety distances from NFPA panel)
-- Power calculation (amps per circuit, total kW)
-- Export as branded PDF with event logo
-- Share link for venue technical director
+## Changes (5 files)
 
-### 3. Multi-Currency Budget Panel (`BudgetPanel.tsx`)
-Financial tracking for international tours:
-- Line items: equipment rental, transport, crew, pyro materials, permits
-- Auto-cost from inventory/supplier panels (reads existing data)
-- Multi-currency support (USD, EUR, BRL, GBP) with live conversion
-- Budget vs actual tracking
-- Per-event and tour-total views
-- Export as spreadsheet
+### 1. Create `src/components/editor/MobileLinkPanel.tsx`
+The main panel with 3 sections:
 
-### 4. Tour Schedule View (enhance `Agenda.tsx`)
-Upgrade the agenda for international touring:
-- Map view showing all tour dates with route lines
-- Timezone display per event (already have timezone field)
-- Travel time estimates between venues
-- Countdown to next event on Dashboard
-- Status pipeline: Negotiation → Confirmed → Rider Sent → Mounted → Executed → Invoiced
-- Quick-duplicate event (same setup, new city/date)
+**Connection Test Section:**
+- "Test Art-Net" button → calls `supabase.functions.invoke('artnet-bridge', { body: { action: 'validate' } })` and shows latency + status
+- "Test Relay" button → opens WebSocket to `ws://localhost:9001`, sends ping, shows pong result
+- Status badges: green/red with latency in ms
 
-### 5. Client Preview Share (`ShowPreviewPanel.tsx`)
-One-tap shareable show preview for artists/managers:
-- Generate a video recording of the 3D show (uses existing VideoRecorderPanel)
-- Add branded overlay (event name, artist, date)
-- Generate shareable link (upload to storage, public URL)
-- QR code generation for on-site sharing
-- Approval workflow: client can approve/request changes (ties into existing ClientApprovalPanel)
-- WhatsApp/Email share buttons
+**Virtual Fixtures Section:**
+- List of virtual fixtures (name, type, DMX address, color swatch)
+- "+ Add Fixture" button opens a mini-form: name, type (PAR/Wash/Strobe/Flame/CO2/Spark), color picker, DMX universe + address
+- Each fixture gets a large **FIRE** button (red, 60px, haptic feedback)
+- Tapping FIRE: calls `useLiveSfxStore.fireEffect()` locally + broadcasts via Supabase Realtime channel `mobile-link`
+- Intensity slider per fixture (0-255)
 
-## Database Changes
-New tables needed:
-- `setlists` (id, project_id, user_id, tracks JSONB, created_at)
-- `budgets` (id, event_id, user_id, currency, line_items JSONB, created_at)
-- `rider_templates` (id, user_id, name, sections JSONB, created_at)
+**Broadcast Bridge:**
+- On mount, subscribe to Supabase Realtime channel `mobile-link`
+- When receiving a `fire` event from another device, call `useLiveSfxStore.fireEffect()` locally
+- This enables mobile → desktop triggering across different browser sessions
+- Also sends DMX data to Art-Net bridge edge function when a fixture fires
 
-## Files Summary
+### 2. Edit `src/components/editor/PanelTabBar.tsx`
+- Add `'mobilelink'` to `PanelId` type
+- Add entry in Conexões section: `{ id: 'mobilelink', label: 'Mobile Link', icon: Cable }`
 
-| File | Action |
-|------|--------|
-| `src/components/editor/SetlistPanel.tsx` | Create — setlist manager |
-| `src/components/editor/RiderPanel.tsx` | Create — technical rider builder |
-| `src/components/editor/BudgetPanel.tsx` | Create — multi-currency budget |
-| `src/components/editor/ShowPreviewPanel.tsx` | Create — shareable preview generator |
-| `src/pages/Agenda.tsx` | Edit — add map view, tour pipeline statuses |
-| `src/pages/Dashboard.tsx` | Edit — add tour countdown, next-event widget |
-| `src/components/editor/MobileMoreMenu.tsx` | Edit — add new panels to menu |
-| `src/components/editor/PanelTabBar.tsx` | Edit — register new panel IDs |
-| `src/pages/Index.tsx` | Edit — wire new panels |
-| DB migration | Create setlists, budgets, rider_templates tables |
+### 3. Edit `src/components/editor/MobileMoreMenu.tsx`
+- Add `mobilelink` to the `🔌 Conexões` section
 
-## Priority Order
-1. **Setlist Manager** — most immediate value for DJ producers
-2. **Technical Rider** — saves hours of manual document creation
-3. **Client Preview Share** — closes deals faster
-4. **Tour Schedule** — essential for multi-city planning
-5. **Budget Panel** — financial control for tour managers
+### 4. Edit `src/pages/Index.tsx`
+- Import `MobileLinkPanel`
+- Add render case: `{activePanel === 'mobilelink' && <MobileLinkPanel onClose={...} />}`
+
+### 5. Edit `src/components/editor/MobileTabBar.tsx`
+- Add a dedicated `Cable` icon tab in the dock for quick access to Mobile Link (replaces or adds alongside existing tabs)
+
+## Realtime Broadcast Protocol
+```typescript
+// Send (mobile)
+channel.send({
+  type: 'broadcast',
+  event: 'fixture-fire',
+  payload: { fixtureId, type, color, intensity, duration, position }
+});
+
+// Receive (desktop)
+channel.on('broadcast', { event: 'fixture-fire' }, (msg) => {
+  useLiveSfxStore.getState().fireEffect(msg.payload);
+});
+```
+
+No database tables needed — uses Supabase Realtime broadcast (ephemeral, no persistence).
+
+## Key Design Decisions
+- **No auth required for broadcast** — uses anonymous Realtime channels scoped by project
+- **Haptic on every FIRE** — `navigator.vibrate(30)` for tactile confirmation
+- **Glass style** — consistent with existing mobile HUD aesthetic
+- **DMX output on fire** — when a fixture fires, also sends the DMX frame to Art-Net bridge for real hardware output
+- **Virtual fixtures persist in localStorage** — survives page refresh on mobile
 
