@@ -297,6 +297,33 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
           )}
         </div>
 
+        {/* MA3 Timecode Sync via OSC */}
+        <div className={cn(
+          "rounded border p-2 space-y-1",
+          syncToMA3 ? "bg-blue-500/5 border-blue-500/30" : "bg-surface-0 border-border"
+        )}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Monitor className={cn("w-3.5 h-3.5", syncToMA3 ? "text-blue-400" : "text-muted-foreground")} />
+              <Label className="text-[10px] font-mono-code text-foreground font-bold">SYNC TO MA3</Label>
+            </div>
+            <Switch checked={syncToMA3} onCheckedChange={setSyncToMA3} className="scale-75" />
+          </div>
+          {syncToMA3 && (
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5">
+                <div className={cn("w-2 h-2 rounded-full", store.running ? "bg-blue-400 animate-pulse" : "bg-muted-foreground")} />
+                <span className="text-[9px] font-mono-code text-muted-foreground">
+                  {store.running ? 'Sending TC via OSC @ 10Hz' : 'Aguardando playback'}
+                </span>
+              </div>
+              <div className="text-[7px] font-mono-code text-muted-foreground/50">
+                OSC → SetUserVar "tc" → MA3 macros podem ler o timecode
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Auto-follow toggle */}
         <div className="bg-surface-0 rounded p-2 border border-border space-y-1">
           <div className="flex items-center justify-between">
