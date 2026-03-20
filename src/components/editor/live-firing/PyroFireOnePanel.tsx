@@ -1084,7 +1084,10 @@ export default function PyroFireOnePanel({
               </div>
               <ScrollArea className="flex-1">
                 <div className="p-2 space-y-1">
-                  {modules.map(m => (
+                  {modules.map(m => {
+                    const ModeIcon = connectionModeIcon(m.connectionMode);
+                    const badge = connectionModeBadge(m.connectionMode);
+                    return (
                     <button key={m.address} onClick={() => setSelectedModule(m.address)}
                       className={cn(
                         "w-full flex items-center gap-2 rounded-lg border px-3 py-2.5 transition-all text-left",
@@ -1094,23 +1097,35 @@ export default function PyroFireOnePanel({
                           : m.connected ? "bg-[hsl(220_10%_8%)] border-border/10 hover:bg-[hsl(220_10%_12%)]"
                           : "bg-[hsl(220_10%_5%)] border-border/5 opacity-40"
                       )}>
-                      <div className={cn("w-2 h-2 rounded-full shrink-0",
-                        m.armed ? "bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.5)]" :
-                        m.connected ? "bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.4)]" : "bg-muted-foreground/15"
-                      )} />
+                      <div className="flex flex-col items-center gap-0.5">
+                        <div className={cn("w-2 h-2 rounded-full shrink-0",
+                          m.armed ? "bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.5)]" :
+                          m.connected ? "bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.4)]" : "bg-muted-foreground/15"
+                        )} />
+                        <ModeIcon className={cn("w-2.5 h-2.5",
+                          m.connectionMode === 'wireless' ? rssiColor(m.rssiDbm) :
+                          m.connectionMode === 'fallback' ? "text-amber-400 animate-pulse" : "text-green-400/30"
+                        )} />
+                      </div>
                       <div className="flex-1 min-w-0">
                         <div className={cn("font-mono font-bold text-xs",
                           selectedModule === m.address ? "text-foreground/80" : "text-foreground/50"
                         )}>FM-{String(m.address).padStart(2, '0')}</div>
                         <div className="flex items-center gap-2 text-[8px] text-muted-foreground/30 font-mono">
                           <span>{m.batteryVoltage.toFixed(1)}V</span>
-                          <span>{Math.round(m.signalStrength)}%</span>
                           <span>{Math.round(m.temperature)}°C</span>
+                          {m.rssiDbm !== undefined && (
+                            <span className={rssiColor(m.rssiDbm)}>{m.rssiDbm}dB</span>
+                          )}
                         </div>
                       </div>
-                      {m.armed && <span className="text-[8px] font-bold text-red-400 uppercase">ARM</span>}
+                      <div className="flex flex-col items-end gap-0.5">
+                        {m.armed && <span className="text-[7px] font-bold text-red-400 uppercase">ARM</span>}
+                        <span className={cn("text-[6px] font-bold rounded px-1 border", badge.cls)}>{badge.text}</span>
+                      </div>
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
                 <div className="px-2 pb-2">
                   <button onClick={importPyroCues}
