@@ -61,7 +61,7 @@ function DeviceCard({ device, onArm, onDisarm, onFire, onCueStatus, onSetBand, i
         setDeadman(true);
         setDeadmanProgress(100);
         if (deadmanAnimRef.current) clearInterval(deadmanAnimRef.current);
-        if (navigator.vibrate) navigator.vibrate([100]);
+        haptics.deadman();
       }, 800);
     } else {
       setDeadman(true);
