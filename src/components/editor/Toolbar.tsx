@@ -331,6 +331,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
   const [uassetOpen, setUassetOpen] = useState(false);
   const [marketplaceOpen, setMarketplaceOpen] = useState(false);
   const [gma2Open, setGma2Open] = useState(false);
+  const [ue5DmxOpen, setUe5DmxOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const handleSave = useCallback(async () => {
