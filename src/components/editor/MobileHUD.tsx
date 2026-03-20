@@ -83,7 +83,7 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
         {/* Center: Transport */}
         <div className="flex items-center gap-1">
           <button
-            onClick={togglePlayback}
+            onClick={() => setPlaying(!isPlaying)}
             className="touch-target flex items-center justify-center w-8 h-8 rounded-full glass-card transition-all active:scale-90"
           >
             {isPlaying
