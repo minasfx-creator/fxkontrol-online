@@ -137,6 +137,28 @@ export default function PyroFireOnePanel({
     return () => document.removeEventListener('fullscreenchange', onFsChange);
   }, [pyroFullscreen]);
 
+  // Sync hardware modules → local state when in HARDWARE mode
+  useEffect(() => {
+    if (simMode || !hardware.isConnected) return;
+    const hwModules = Array.from(hardware.modules.values());
+    if (hwModules.length === 0) return;
+    setModules(hwModules.map(hm => ({
+      address: hm.moduleAddress,
+      connected: true,
+      armed: hm.armed,
+      batteryVoltage: hm.batteryVoltage,
+      signalStrength: hm.signalStrength,
+      temperature: hm.temperature,
+      igniters: hm.igniters.map(ig => ({
+        position: ig.position,
+        connected: ig.connected,
+        fired: ig.fired,
+        resistance: ig.resistance,
+        misfire: false,
+      })),
+    })));
+  }, [simMode, hardware.isConnected, hardware.modules]);
+
   // Import pyro cues from AutoFire
   const importPyroCues = useCallback(() => {
     const pyroCues = DEMO_CUES.filter(c => c.device === 'pyro');
@@ -149,6 +171,72 @@ export default function PyroFireOnePanel({
       payload: { cues: pyroCues },
     }).catch(() => {});
   }, []);
+
+  // Import FireOne CSV/FIR file
+  const handleFileImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      let cues: AutoFireCue[] = [];
+      if (file.name.endsWith('.fir') || file.name.endsWith('.sem')) {
+        cues = parseFireOneFIR(text);
+      } else {
+        cues = parseFireOneCSV(text);
+      }
+      if (cues.length === 0) {
+        toast.error('No valid cues found in file');
+        return;
+      }
+      setTcCues(cues);
+      setStepCues(cues);
+      setStepIndex(0);
+      toast.success(`Imported ${cues.length} cues from ${file.name}`);
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }, []);
+
+  // Export current cues to FireOne CSV
+  const handleExportCSV = useCallback(() => {
+    const allCues = tcCues.length > 0 ? tcCues : stepCues;
+    if (allCues.length === 0) {
+      toast.error('No cues to export');
+      return;
+    }
+    const csv = exportFireOneCSV(allCues);
+    downloadFile(csv, 'fireone_script.csv');
+    toast.success(`Exported ${allCues.length} cues to FireOne CSV`);
+  }, [tcCues, stepCues]);
+
+  // Hardware connect/disconnect
+  const handleHardwareConnect = useCallback(async () => {
+    try {
+      await hardware.connect();
+      setSimMode(false);
+      toast.success('🔌 Connected to RS-485 bus');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to connect');
+    }
+  }, [hardware]);
+
+  const handleHardwareDisconnect = useCallback(async () => {
+    await hardware.disconnect();
+    setSimMode(true);
+    toast.info('Disconnected from hardware');
+  }, [hardware]);
+
+  // Hardware module scan
+  const handleScan = useCallback(async () => {
+    if (!hardware.isConnected) {
+      toast.error('Connect to hardware first');
+      return;
+    }
+    toast.info('Scanning RS-485 bus for IFMx-i32Q modules...');
+    await hardware.discoverModules(30);
+    toast.success(`Scan complete — ${hardware.modules.size} modules found`);
+  }, [hardware]);
 
   // ARM module
   const armModule = useCallback((addr: number, armed: boolean) => {
