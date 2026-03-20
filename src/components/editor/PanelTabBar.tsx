@@ -337,7 +337,15 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
                               </button>
                             </TooltipTrigger>
                             <TooltipContent side="left" className="text-[11px] font-semibold bg-popover border-border/15 rounded-xl px-3 py-1.5" sideOffset={scale > 1.1 ? 10 : 6}>
-                              {label}{shortcut ? ` (${shortcut})` : ''}
+                              <div className="flex items-center gap-2">
+                                <span>{label}{shortcut ? ` (${shortcut})` : ''}</span>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); toggleFavorite(id); }}
+                                  className={cn("w-3 h-3 transition-colors", favorites.includes(id) ? "text-[hsl(var(--fxk-gold))]" : "text-muted-foreground/30 hover:text-[hsl(var(--fxk-gold))]")}
+                                >
+                                  <Star className="w-3 h-3" fill={favorites.includes(id) ? 'currentColor' : 'none'} />
+                                </button>
+                              </div>
                             </TooltipContent>
                           </Tooltip>
                         );
