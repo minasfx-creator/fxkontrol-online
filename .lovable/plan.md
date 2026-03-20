@@ -1,125 +1,85 @@
 
 
-# Plan: VDL Full Spec + Finale 3D Scripting Overhaul
+# Plan: Wire VDL Properties Through Rendering Pipeline
 
-## Part 1 — VDL Parser: Finale-Exact Colors, Trails, Timing, Adjustments
+## Problem
+The VDL parser now outputs `angleOffset`, `trailType`, `noTrail`, `caliber`, `firingPattern`, `shotCount`, `hasPistil`, `pistilColor`, `colorTransition`, `impliesTrail`, `multiColors`, and adjustment factors — but **none of these reach the effect renderers**. The `SkyCanvas.tsx` `TimelineEffects` function (line 835) renders effects with minimal props:
 
-### `src/lib/vdlParser.ts`
-
-**A. Replace VDL_COLORS** with Finale-exact RGB table (25 colors). Add `impliesTrail` flag per color. Silver, Gold, Charcoal, Gamboge auto-trigger comet trails. Add "Tip" variants (Silver Tip, Gold Tip) that render color without trail.
-
-**B. Add to VDLResult interface:**
-```text
-angleOffset: number;       // R45, L30 etc. in degrees (+ = right)
-liftTime: number;          // LFT override
-delayBefore: number;       // DLY
-durOverride: number;       // DUR (shots in cakes/chains)
-noTrail: boolean;          // "No Trail" modifier
-isChain: boolean;          // Chain keyword detected
-chainCount: number;        // Chain Of N
-chainEffects: string[];    // individual VDL per shell (split by +)
-chainDelays: number[];     // CDS values per gap
-shotCount: number;         // N Shot (cakes)
-cakeDuration: number;      // total cake time
-cakeRows: number;          // N Rows
-firingPattern: string;     // Z-Shape, Fan, X-Shape, W-Shape, etc.
-isAerial: boolean;         // "Shell" or "Aerial" keyword in cake
-multiColors: string[][];   // & separated multi-color groups
+```
+// Current — ignores all VDL metadata
+if (pt === 'mine') return <MineEffect position={pos} color={effect.color} progress={progress} />;
+if (pt === 'cake') return <CakeEffect position={pos} color={effect.color} progress={progress} shotCount={25} />;
 ```
 
-**C. Complete Adjustment Terms** — Replace flat 20-entry list with full Finale matrix (Size, Brightness, Trail Brightness, Tip Brightness, Density, Thickness, Trail Length, Duration, Droopy, Ragged, Uniform — each with Slightly/Normal/Very levels). Support compound stacking ("Very Big Very Big").
+Additionally, `vdlToEffect()` (line 760) drops most VDL fields — it only returns `color`, `duration`, `pattern`, `caliber`, `heightMeters`, `prefire`, `safetyDistance`. The `Effect` interface lacks VDL rendering fields.
 
-**D. Parse Timing Terms** — Regex for `PFT`, `LFT`, `DLY`, `DUR`, `CDS`. Apply PFT rule: `< 0.5` = delay, `>= 0.5` = lift time.
+## Changes
 
-**E. Parse Angle Terms** — R15 through R180 and L15 through L180. Set `angleOffset`.
+### 1. `src/store/useProjectStore.ts` — Extend `Effect` interface
+Add VDL rendering fields so they can flow through the pipeline:
+- `angleOffset?: number`
+- `trailType?: string`
+- `noTrail?: boolean`
+- `hasPistil?: boolean`
+- `pistilColor?: string`
+- `colorTransition?: string`
+- `secondaryColor?: string`
+- `firingPattern?: string`
+- `impliesTrail?: boolean`
 
-**F. Parse Conjunctions correctly:**
-- `+` → separates shots in cake/chain
-- `&` → multi-color effect (Red & Blue Peony = one shell, two colors)
-- `w/` or `With` → combines with mine/tail/pistil
-- `And` → left undefined per spec, interpret smartly as `&` or `w/`
+### 2. `src/lib/vdlParser.ts` — Expand `vdlToEffect` return
+Add the new fields to the returned object so VDL-created effects carry their metadata into the store:
+- `angleOffset`, `trailType`, `noTrail`, `hasPistil`, `pistilColor`, `colorTransition`, `secondaryColor` (from `colors[1]` or multiColors), `firingPattern`, `impliesTrail`, `shotCount`
 
-**G. Parse "No Trail"** — Override trailType to `'none'` even for Chrysanthemum/Willow.
+### 3. `src/components/editor/SkyCanvas.tsx` — Wire VDL props to renderers
+Update `TimelineEffects` (lines 835-866) to pass VDL properties from the `effect` object:
 
-**H. Parse Cake descriptions** — `N Shot`, `Cake`, firing pattern keywords, row specs.
+- **MineEffect**: pass `caliber`, `angleOffset`, `heightMeters`
+- **CometEffect**: pass `caliber`, `angleOffset`
+- **CakeEffect**: pass `caliber`, `firingPattern`, `shotCount`
+- **GerbEffect**: pass `caliber` (scale height/count)
+- **WaterfallEffect**: pass `caliber` (scale width/density)
+- **RomanCandleEffect**: pass `caliber`, `angleOffset`
+- **FanEffect**: pass `caliber`
+- **MultiBurstEffect**: pass `caliber`
+- **PrefireShell**: pass `angleOffset`
+- **FireworkBurst**: pass `trailType`, `noTrail`, `hasPistil`, `pistilColor`, `colorTransition`, `secondaryColor`, `angleOffset`
 
-**I. Parse Chain descriptions** — `Chain Of N`, `+` separated effects, `CDS` delays.
+### 4. Effect Components — Accept and apply new props
 
-### `src/components/editor/effects/ShellBurstRenderer.tsx`
+**`GerbEffect.tsx`** — Add `caliber` prop: scale `PARTICLE_COUNT` and `height` based on caliber.
 
-- Add `angleOffset` prop — rotate burst group by angle
-- Auto-set trail when VDL type forces it (Chrysanthemum, Willow, Palm, Brocade, Kamuro)
-- Respect `noTrail` flag
+**`WaterfallEffect.tsx`** — Add `caliber` prop: scale `PARTICLE_COUNT` and `width`.
 
-### `src/components/editor/effects/CometEffect.tsx`
+**`RomanCandleEffect.tsx`** — Add `caliber` and `angleOffset` props: scale star height and apply trajectory tilt.
 
-- Add `angleOffset` prop — tilt trajectory direction
+**`FanEffect.tsx`** — Add `caliber` prop: scale ray height and particle count.
 
-### `src/components/editor/effects/MineEffect.tsx`
+**`MultiBurstEffect.tsx`** — Add `caliber` prop: scale burst size.
 
-- Add `angleOffset` and `heightMeters` props
+**`PrefireShell.tsx`** — Add `angleOffset` prop: tilt the rising comet trail to match VDL angle.
 
-### `src/components/editor/effects/CakeEffect.tsx`
+**`ShellExplosionManager.tsx`** — Add `angleOffset` and `noTrail` to `ShellConfig` interface, pass through to `ShellBurstRenderer` and `PrefireShell`.
 
-- Expand firing patterns to full Finale spec: STR, STL, STT, FNR, FNL, FNT, ALR, ALL, ALT, ARR, ARL, ART, CTO, OTC, BLR, BLL, BLT, BRR, BRL, BRT, TRI, TRX, TRS, VST, VSS
-- Map Z-Shape, X-Shape, W-Shape, V-Shape, Fan, Bookend, Wipe, Angle, Peacock body keywords to row patterns
-- Support multi-row cakes with per-row firing descriptions
+**`FireworkBurst` (in SkyCanvas.tsx)** — Accept `angleOffset`, `trailType`, `noTrail`, `secondaryColor`, `colorTransition`. Apply `angleOffset` as group rotation. Pass trail/color data to star rendering logic.
 
-## Part 2 — Scripting Tools: Finale 3D Randomize + Sequence + Fan
-
-### `src/lib/scriptingTools.ts`
-
-**A. Upgrade `randomizeItems` to Finale's "looks random" algorithm:**
-- Instead of pure random permutation of times, implement constraint-based shuffle that avoids consecutive repeats from the same position/angle/effect type
-- Deterministic seed based on times + positions + call count (undo-friendly)
-
-**B. Upgrade `makeIntoSequence`:**
-- Add sort modes: `'position-name'`, `'position-ltr'`, `'position-clockwise'`, `'angle'`, `'angle-center-out'`, `'angle-edges-in'`, `'effect-time'`
-- Add `cycles` and `bounce` options (multiple cycles, zig-zag)
-- Add `groupMode`: `'individual'` | `'stick-subsequences'` | `'multiple-cycles'` | `'bouncing-cycles'`
-- Handle chains atomically (don't break chain internal timing)
-
-**C. Upgrade `makeIntoFan`:**
-- Add sort modes: `'time'`, `'time-center-out'`, `'time-edges-in'`
-- Add `inward` fan option (converge toward center)
-- Support combining with sequence (fan + sequence = choreography patterns)
-
-### `src/components/editor/ScriptingToolsPanel.tsx`
-
-- Update UI to expose new sort modes, cycles/bounce, group modes
-- Add "Duplicate & Fan" quick action (Finale workflow: duplicate N times → sequence → fan)
-- Show ASCII angle preview like Finale's `\|/` notation
-
-## Part 3 — Script Window Columns
-
-### `src/store/useProjectStore.ts` (TimelineItem type)
-
-Add missing Finale script columns to TimelineItem:
-```text
-spin: number;              // rotation around trajectory
-chainRef: string;          // chain reference ID
-chainGap: number;          // ms delay in chain
-chainRow: number;          // row index in multi-effect chain
-flightCount: number;       // devices at same time+position
-hazard: string;            // lockout class
-rack: number;              // rack reference
-tube: number;              // tube in rack
-section: string;           // show section
-universe: string;          // firing system universe
-notes: string;             // user notes
-customField: string;       // user custom field
-```
+### 5. `MineEffect.tsx` and `CometEffect.tsx` — Apply angleOffset rotation
+Both already accept `angleOffset` as a prop but **don't use it**. Add `<group rotation={[0, 0, angleOffsetRad]}>` wrapper to tilt the particle group.
 
 ## Files Summary
 
 | File | Change |
 |------|--------|
-| `src/lib/vdlParser.ts` | Finale RGB colors + impliesTrail, timing terms, angles, adjustments, conjunctions, cake/chain parsing |
-| `src/lib/scriptingTools.ts` | Finale randomize algorithm, sequence cycles/bounce/groups, fan sort modes |
-| `src/components/editor/ScriptingToolsPanel.tsx` | UI for new sort modes, cycles, bounce, groups |
-| `ShellBurstRenderer.tsx` | angleOffset prop, auto-trail from type |
-| `CakeEffect.tsx` | 25 Finale firing pattern keywords |
-| `CometEffect.tsx` | angleOffset prop |
-| `MineEffect.tsx` | angleOffset + heightMeters props |
-| `useProjectStore.ts` | Extended TimelineItem with Finale script columns |
+| `useProjectStore.ts` | Add VDL rendering fields to `Effect` interface |
+| `vdlParser.ts` | Expand `vdlToEffect` return with VDL metadata |
+| `SkyCanvas.tsx` | Wire VDL props in `TimelineEffects` + `FireworkBurst` |
+| `MineEffect.tsx` | Apply angleOffset rotation |
+| `CometEffect.tsx` | Apply angleOffset rotation |
+| `GerbEffect.tsx` | Add caliber scaling |
+| `WaterfallEffect.tsx` | Add caliber scaling |
+| `RomanCandleEffect.tsx` | Add caliber + angleOffset |
+| `FanEffect.tsx` | Add caliber scaling |
+| `MultiBurstEffect.tsx` | Add caliber scaling |
+| `PrefireShell.tsx` | Add angleOffset tilt |
+| `ShellExplosionManager.tsx` | Add angleOffset + noTrail to ShellConfig |
 
