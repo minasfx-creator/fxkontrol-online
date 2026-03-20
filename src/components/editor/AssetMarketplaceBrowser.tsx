@@ -154,7 +154,7 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
           name: asset.title,
           source: '3dwarehouse',
           file_format: 'glb',
-          thumbnail_base64: asset.thumbnailUrl || undefined,
+          thumbnail_base64: asset.thumbnail || undefined,
         });
       } catch (err: any) {
         toast.error(`Falha ao baixar: ${err.message || 'Erro desconhecido'}`, { id: toastId });
