@@ -61,6 +61,10 @@ export enum FireOneCmd {
   DISARM_ALL      = 0x64,  // 'd' — Disarm all modules (broadcast)
   FIRE_SEQUENCE   = 0x66,  // 'f' — Fire sequence (multi-igniter)
   STATUS_ALL      = 0x73,  // 's' — Status poll all
+
+  // IFMx-i32Q specific
+  DMX_OUT         = 0x4F,  // 'O' — Send DMX values to module's built-in DMX output
+  MODULE_CONFIG   = 0x47,  // 'G' — Query/set module configuration
 }
 
 // ═══════════════════════════════════════════════════════════
