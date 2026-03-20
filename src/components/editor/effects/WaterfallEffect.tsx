@@ -59,7 +59,7 @@ export default function WaterfallEffect({
     const intensity = progress < 0.04 ? Math.pow(progress / 0.04, 0.4) :
                       progress > 0.88 ? Math.pow((1 - progress) / 0.12, 2) : 1;
 
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
+    for (let i = 0; i < SCALED_PARTICLE_COUNT; i++) {
       const seed = seeds[i];
       const cycleTime = ((time * 0.35 + seed.phase) % seed.lt) / seed.lt;
 
