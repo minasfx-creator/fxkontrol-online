@@ -114,6 +114,31 @@ export default function SettingsPanel({ fs, settings, onSettingsChange, relayCon
         </div>
       </div>
 
+      {/* UDP Relay */}
+      <div className={sectionCn} style={{ background: 'hsl(200 15% 7%)' }}>
+        <div className="flex items-center justify-between mb-1.5">
+          <span className={labelCn}>UDP Relay (Art-Net Local)</span>
+          <div className="flex items-center gap-1">
+            <div className={cn("rounded-full", relayConnected ? "bg-cyan-400" : "bg-muted-foreground/20", "w-2 h-2")} style={relayConnected ? { boxShadow: '0 0 6px rgba(0,220,255,0.5)' } : undefined} />
+            <span className={cn("font-mono", relayConnected ? "text-cyan-400/70" : "text-muted-foreground/30", fs ? "text-[9px]" : "text-[7px]")}>
+              {relayConnected ? 'ONLINE' : 'OFFLINE'}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 mt-1">
+          <Input value={relayUrl || 'ws://localhost:9001'} onChange={e => onRelayUrlChange?.(e.target.value)}
+            className={cn(valueCn, "flex-1")} placeholder="ws://localhost:9001" />
+          <Button size="sm" variant={relayConnected ? "destructive" : "default"}
+            onClick={() => relayConnected ? onDisconnectRelay?.() : onConnectRelay?.()}
+            className={cn(fs ? "h-8 text-[10px] px-3" : "h-5 text-[7px] px-2")}>
+            {relayConnected ? 'Desconectar' : 'Conectar'}
+          </Button>
+        </div>
+        <p className={cn("text-muted-foreground/30 mt-1", fs ? "text-[8px]" : "text-[6px]")}>
+          Rode <code className="text-cyan-400/50">node artnet-relay.js --target {local.artNetIp}</code> no PC local
+        </p>
+      </div>
+
       {/* Safety */}
       <div className={sectionCn} style={{ background: 'hsl(220 10% 8%)' }}>
         <span className={labelCn}>Safety</span>
