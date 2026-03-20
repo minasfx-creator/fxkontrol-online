@@ -98,7 +98,8 @@ export default function PyroFireOnePanel({
   const [pyroMode, setPyroMode] = useState<PyroMode>('manual');
   const [modules, setModules] = useState<FieldModule[]>(() => {
     const mods: FieldModule[] = [];
-    for (let i = 1; i <= 6; i++) mods.push(createSimModule(i, true));
+    for (let i = 1; i <= 4; i++) mods.push(createSimModule(i, true, false));
+    for (let i = 5; i <= 6; i++) mods.push(createSimModule(i, true, true));
     return mods;
   });
   const [selectedModule, setSelectedModule] = useState(1);
