@@ -198,6 +198,55 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
   return (
     <TooltipProvider delayDuration={200}>
       <div className="w-[52px] flex-shrink-0 border-l border-border/10 flex flex-col" style={{ background: 'hsl(var(--card))' }}>
+        {/* Search toggle */}
+        <div className="flex items-center justify-center py-1.5 border-b border-border/8">
+          <button
+            onClick={() => setSearchOpen(!searchOpen)}
+            className={cn("w-8 h-8 flex items-center justify-center rounded-lg transition-colors", searchOpen ? "bg-primary/12 text-primary" : "text-muted-foreground/40 hover:text-muted-foreground/70")}
+          >
+            <Search className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        {searchOpen && (
+          <div className="px-1.5 py-1.5 border-b border-border/8">
+            <input
+              type="text"
+              placeholder="..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              autoFocus
+              className="w-full h-7 px-1.5 text-[9px] rounded-lg bg-surface-0/60 border border-border/20 text-foreground placeholder:text-muted-foreground/30 outline-none focus:border-primary/30"
+            />
+          </div>
+        )}
+
+        {/* Favorites */}
+        {favoriteItems.length > 0 && !searchQuery && (
+          <div className="flex flex-col items-center gap-[2px] py-1.5 border-b border-primary/10">
+            {favoriteItems.map(({ id, label, icon: Icon }) => (
+              <Tooltip key={id}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => onTogglePanel(id)}
+                    className={cn(
+                      "w-9 h-9 flex items-center justify-center rounded-xl relative transition-colors duration-150",
+                      activePanel === id
+                        ? "bg-primary/12 text-primary shadow-[0_0_12px_hsl(var(--primary)/0.15)]"
+                        : "text-[hsl(var(--fxk-gold))] hover:text-foreground hover:bg-surface-1/40"
+                    )}
+                  >
+                    {activePanel === id && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 bg-primary rounded-r" />}
+                    <Icon className="w-4 h-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="left" className="text-[11px] font-semibold bg-popover border-border/15 rounded-xl px-3 py-1.5">
+                  ★ {label}
+                </TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
+        )}
+
         <ScrollArea className="flex-1">
           <div
             ref={containerRef}
@@ -205,7 +254,7 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
           >
-            {PANEL_SECTIONS.map((section, si) => {
+            {filteredSections.map((section, si) => {
               const isCollapsed = collapsedSections.has(section.title);
               const hasActive = section.items.some(i => i.id === activePanel);
               const SectionIcon = section.icon;
