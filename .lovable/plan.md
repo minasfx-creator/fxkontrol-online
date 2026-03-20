@@ -1,71 +1,82 @@
 
 
-# Plan: MVR-xchange Bridge + sACN Real-Time Monitor + MA3 Completion
+# Plan: Gap Fix + New Features + UI/UX Refinement
 
-## What's Missing
+## Confirmed Gaps
 
-1. **No MVR-xchange Node.js bridge** — `mvrXchange.ts` connects to `ws://localhost:9004` but there's no bridge script. The browser can never discover real grandMA3 consoles.
-2. **sACN monitoring is basic** — only shows a 64-channel mini bar and a flat 512-grid. No activity sparkline, no color-coded heat, no per-channel hover detail with DMX %.
-3. **MVR-xchange has no mDNS discovery** — the bridge needs to use DNS-SD/mDNS to find `_mvrxchange._tcp` services on the LAN (how grandMA3 announces itself per ANSI E1.67).
+### Critical Integration Gaps
+1. **PanelTabBar missing MA3 panel** — No `'ma3'` entry in `PANEL_SECTIONS`. Users cannot access MA3 from the right sidebar — only from within LiveFiringPanel mode tabs.
+2. **PanelTabBar missing sACN Monitor** — `SACNMonitorPanel` exists but has no panel entry for standalone access.
+3. **Toolbar has no hardware status indicators** — Status area (line 639-654) only shows cue count, position count, and a static "SYNC" dot. No FireOne/PBUS/Radio/MA3 connection status.
+4. **Auth page is bare** — No cinematic branding, no glassmorphism, no animated background. Just a white form on a dark background.
+5. **Dashboard has no system status** — No hardware/bridge connection indicators. No "resume last session" quick action.
+6. **Agenda has no production pipeline** — No status pipeline strip, no "days until" countdown, no "Open in Editor" link.
+7. **Timeline has no LIVE/ARMED indicator** — Transport bar shows play/pause but no visual state for armed systems during live execution.
+8. **PanelTabBar has no search/filter** — 70+ panels with no quick-find capability.
+
+### Missing Features
+9. **No "radio" panel in PANEL_SECTIONS Conexões section** — `radio` exists in Hardware section but not in Conexões where users expect connection-type panels.
+10. **No delete event** in Agenda — Can duplicate but can't delete events.
+11. **No event time field display** — `event_time` exists in the DB/type but is never shown on event cards.
 
 ## Changes
 
-### 1. Create `platform/tools/mvr-xchange-bridge/mvr-xchange-bridge.js`
-Zero-dependency Node.js bridge on **port 9004**:
-- **mDNS listener** on UDP 5353 for `_mvrxchange._tcp.local` service announcements (grandMA3 broadcasts these)
-- **TCP client** connects to discovered MA3 stations on their advertised port (typically 9100)
-- **MVR-xchange protocol**: send/receive JSON messages (mvr_join, mvr_leave, mvr_commit, mvr_request) per ANSI E1.67
-- **WebSocket server** on port 9004 relaying discovered stations + messages to the browser
-- When MVR commit received from MA3: accept the file transfer, parse fixture list, forward `mvr_fixtures` event to browser
-- Health endpoint at `/health`
+### 1. Edit `src/components/editor/PanelTabBar.tsx` — Add MA3 + sACN + Search
+- Add `'ma3'` and `'sacnmonitor'` to `PanelId` type
+- Add MA3 entry to Conexões section: `{ id: 'ma3', label: 'grandMA3', icon: Sliders }`
+- Add sACN Monitor to Conexões: `{ id: 'sacnmonitor', label: 'sACN Monitor', icon: Activity }`
+- Add search input at top of sidebar: small magnifying glass icon, filters panels in real-time
+- Add favorites system: click star to pin panels (stored in localStorage), pinned section at top
 
-### 2. Create `platform/tools/mvr-xchange-bridge/README.md`
+### 2. Edit `src/components/editor/Toolbar.tsx` — Hardware Status Dots + ARMED Badge
+- After the SYNC indicator (line 646-649), add hardware connection dots: FireOne (green/red), PBUS (green/red), Radio (green/red)
+- Import `useFireOneHardware`, `usePBusHardware`, `useRadioLink`
+- Each dot is clickable → calls `onOpenPanel?.('livefiring')` etc.
+- When any system is armed, show pulsing red "ARMED" badge next to timecode
 
-### 3. Edit `platform/docker-compose.yml`
-- Add `mvr-xchange-bridge` service on port 9004, `network_mode: host` (needed for mDNS multicast)
+### 3. Edit `src/pages/Auth.tsx` — Cinematic Branded Login
+- Add animated CSS gradient background with radial glow effects
+- Wrap form in glassmorphism card with border glow
+- Add "Professional Show Control Platform" tagline
+- Add subtle grid pattern overlay
 
-### 4. Create `src/components/editor/SACNMonitorPanel.tsx` — Full sACN Real-Time Monitor
-Dedicated panel (also usable as a tab or standalone):
-- **Universe selector** with auto-discovered universes from bridge
-- **512-channel grid** with color-coded cells (black→blue→cyan→white heat ramp based on value)
-- **Channel hover tooltip**: shows Ch number, DMX value (0-255), percentage, and mapped SFX channel name if any
-- **Activity sparkline** per universe: rolling 60-second graph showing channel change rate (packets/sec)
-- **Channel bar chart**: horizontal bars for first 64 channels with labels (like a mini DMX monitor)
-- **Source info**: priority, sequence, source name, FPS counter, merge mode indicator
-- **Highlight active**: channels with value > 0 pulse subtly; channels that changed in last 500ms have a flash border
-- **Group view**: toggle between flat 512 grid and 32×16 block layout grouped by fixture type
+### 4. Edit `src/pages/Dashboard.tsx` — System Status + Quick Actions
+- Add "System Status" row showing bridge connections (OSC/sACN/MVR) and hardware (FireOne/PBUS/Radio) with green/red dots
+- Add "Resume Last Session" button (stores last project ID in localStorage)
+- Add "Quick Launch" cards: "New Pyro Show", "New Drone Show", "New Mixed Show"
+- Add "Days until next event" countdown in the events card
 
-### 5. Edit `src/components/editor/MA3ControlPanel.tsx` — Integrate sACN Monitor
-- Add 4th tab: **"Monitor"** that renders `SACNMonitorPanel` inline
-- In MVR tab: show mDNS discovery status badge ("Scanning LAN...") and auto-discovered console details (IP, port, firmware version from provider string)
-- Add "Auto-Connect" toggle in MVR that attempts to connect to the first discovered MA3 station automatically
+### 5. Edit `src/pages/Agenda.tsx` — Pipeline Strip + Delete + Editor Link
+- Add horizontal pipeline strip at top showing event counts per status (Negotiation → Invoiced)
+- Add "Open in Editor" button on each event card
+- Add delete button with confirmation
+- Add "Days until" countdown badge on upcoming events
+- Show `event_time` when available
 
-### 6. Edit `src/lib/mvrXchange.ts` — mDNS Discovery Events
-- Add new event type `'mdns-discovered'` with discovered service info (name, ip, port, provider)
-- Add `handleMessage` case for `'mdns_service'` messages from the bridge
-- Add `requestDiscovery()` method that sends `{ type: 'discover' }` to the bridge to trigger a fresh mDNS scan
+### 6. Edit `src/components/editor/Timeline.tsx` — LIVE Mode Indicator
+- When armed (read from a shared state or prop), show pulsing red "● LIVE" badge in transport bar
+- Increase play/stop button size to 48px touch targets when in armed/live mode
+- Add show elapsed time display during live execution
+
+### 7. Edit `src/index.css` — New Utility Classes
+- Add `.status-dot-online` / `.status-dot-offline` with glow
+- Add `.armed-pulse` animation (red pulsing glow)
+- Add `.badge-live` for live operation badges
+- Add `.glass-card-glow` for Auth page glassmorphism
+
+### 8. Edit `src/layouts/MainLayout.tsx` — Global Status Footer
+- Add 24px status bar at bottom (not on /editor route) showing: connected hardware count, next event countdown, and "PRE-FLIGHT" quick button
 
 ## Files Summary
 
-| File | Action | Purpose |
-|------|--------|---------|
-| `platform/tools/mvr-xchange-bridge/mvr-xchange-bridge.js` | Create | mDNS + MVR-xchange TCP ↔ WS bridge |
-| `platform/tools/mvr-xchange-bridge/README.md` | Create | Docs |
-| `platform/docker-compose.yml` | Edit | Add mvr-xchange-bridge service |
-| `src/components/editor/SACNMonitorPanel.tsx` | Create | Full 512-ch real-time monitor |
-| `src/components/editor/MA3ControlPanel.tsx` | Edit | Add Monitor tab + mDNS status |
-| `src/lib/mvrXchange.ts` | Edit | mDNS discovery events + methods |
-
-## Architecture
-```text
-┌──────────┐  mDNS 5353   ┌─────────────────┐  TCP 9100    ┌──────────┐
-│ LAN      │ ◄──────────► │ MVR-xchange     │ ◄──────────► │ grandMA3 │
-│ multicast│              │ Bridge :9004    │  MVR JSON    │ Console  │
-└──────────┘              └────────┬────────┘              └──────────┘
-                                   │ WS JSON
-                          ┌────────▼────────┐
-                          │ Browser         │
-                          │ mvrXchange.ts   │
-                          └─────────────────┘
-```
+| File | Key Change |
+|------|------------|
+| `PanelTabBar.tsx` | MA3 + sACN entries, search filter, favorites |
+| `Toolbar.tsx` | Hardware status dots + ARMED badge |
+| `Auth.tsx` | Cinematic glassmorphism login |
+| `Dashboard.tsx` | System status + resume + quick launch |
+| `Agenda.tsx` | Pipeline strip + delete + countdown |
+| `Timeline.tsx` | LIVE badge + larger transport in armed mode |
+| `index.css` | Status/live utility classes |
+| `MainLayout.tsx` | Global status footer bar |
 
