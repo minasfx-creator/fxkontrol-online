@@ -37,11 +37,66 @@ const SEVERITY_ICONS: Record<string, typeof AlertTriangle> = {
 
 export default function SafetyCheckPanel() {
   const { trajectories, droneFormations, duration, setCurrentTime } = useProjectStore();
+  const fireone = useFireOneHardware();
+  const pbus = usePBusHardware();
   const [params, setParams] = useState<SafetyCheckParams>(DEFAULT_SAFETY_PARAMS);
   const [result, setResult] = useState<SafetyCheckResult | null>(null);
   const [running, setRunning] = useState(false);
   const [showParams, setShowParams] = useState(false);
   const [filterSeverity, setFilterSeverity] = useState<string | null>(null);
+
+  // Hardware safety gates
+  const hwChecks = useMemo(() => {
+    const checks: { label: string; status: 'pass' | 'fail' | 'warn' | 'na'; detail: string }[] = [];
+
+    // FireOne checks
+    if (fireone.isConnected) {
+      const modules = Array.from(fireone.modules.values());
+      const lowBatt = modules.filter(m => (m.batteryVoltage ?? 12) < 11.0);
+      checks.push({
+        label: 'FireOne Link',
+        status: 'pass',
+        detail: `${modules.length} modules on RS-485`,
+      });
+      checks.push({
+        label: 'FireOne Battery',
+        status: lowBatt.length > 0 ? 'fail' : 'pass',
+        detail: lowBatt.length > 0 ? `${lowBatt.length} modules < 11.0V` : 'All modules OK',
+      });
+      const weakSignal = modules.filter(m => m.rssiDbm !== undefined && m.rssiDbm < -75);
+      if (weakSignal.length > 0) {
+        checks.push({ label: 'FireOne Signal', status: 'warn', detail: `${weakSignal.length} modules weak RSSI` });
+      }
+    } else {
+      checks.push({ label: 'FireOne', status: 'na', detail: 'Not connected' });
+    }
+
+    // PBUS checks
+    if (pbus.isConnected) {
+      const devices = Array.from(pbus.devices.values());
+      const lowBatt = devices.filter(d => d.batteryV < 11.0);
+      checks.push({
+        label: 'PBUS Link',
+        status: 'pass',
+        detail: `${devices.length} Showven devices`,
+      });
+      checks.push({
+        label: 'PBUS Battery',
+        status: lowBatt.length > 0 ? 'fail' : 'pass',
+        detail: lowBatt.length > 0 ? `${lowBatt.length} devices < 11.0V` : 'All devices OK',
+      });
+      const openCues = devices.reduce((sum, d) => sum + d.cueStates.filter(c => !c.connected && !c.fired).length, 0);
+      if (openCues > 0) {
+        checks.push({ label: 'PBUS Continuity', status: 'warn', detail: `${openCues} open cues` });
+      }
+    } else {
+      checks.push({ label: 'PBUS', status: 'na', detail: 'Not connected' });
+    }
+
+    return checks;
+  }, [fireone.isConnected, fireone.modules, pbus.isConnected, pbus.devices]);
+
+  const hwBlocksFiring = useMemo(() => hwChecks.some(c => c.status === 'fail'), [hwChecks]);
 
   // Build trajectories from drone formations for checking
   const droneTrajectories = useMemo(() => {
