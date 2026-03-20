@@ -590,15 +590,15 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       )}
 
       <FormationBuilder open={formationOpen} onOpenChange={setFormationOpen} />
-      <CSVImporter open={csvOpen} onOpenChange={setCsvOpen} />
+      <CSVImporter open={csvOpen} onOpenChange={(v) => { setCsvOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'csv' ? droppedFile.file : null} />
       <VVIZImporter open={vvizOpen} onOpenChange={setVvizOpen} />
       <ProjectBrowser open={browserOpen} onOpenChange={setBrowserOpen} />
       <CatalogImportDialog open={catalogOpen} onOpenChange={setCatalogOpen} />
       <UAssetImporter open={uassetOpen} onOpenChange={setUassetOpen} />
       <AssetMarketplaceBrowser open={marketplaceOpen} onOpenChange={setMarketplaceOpen} />
       <GMA2PatchImporter open={gma2Open} onOpenChange={setGma2Open} />
-      <UE5DMXPrevisImporter open={ue5DmxOpen} onOpenChange={setUe5DmxOpen} />
-      <MVRImporter open={mvrOpen} onOpenChange={setMvrOpen} />
+      <UE5DMXPrevisImporter open={ue5DmxOpen} onOpenChange={(v) => { setUe5DmxOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'ue5json' ? droppedFile.file : null} />
+      <MVRImporter open={mvrOpen} onOpenChange={(v) => { setMvrOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'mvr' ? droppedFile.file : null} />
 
       <div className="flex-1" />
 
