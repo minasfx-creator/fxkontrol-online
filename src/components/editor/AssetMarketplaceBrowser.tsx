@@ -180,6 +180,7 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
               <Badge variant="secondary" className="text-[9px]">{siteModels.length} modelo(s) no viewport</Badge>
             )}
           </div>
+        </div>
 
         {/* Tabs */}
         <Tabs value={activeSource} onValueChange={handleTabChange} className="flex-1 flex flex-col min-h-0">
