@@ -304,7 +304,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
   // ─── Fire module igniter ───
   const broadcastModuleFire = useCallback((moduleId: number, igniterPos: number, name?: string) => {
     if (!masterArmed) return;
-    if (navigator.vibrate) navigator.vibrate(30);
+    haptics.fire();
 
     const label = name || `M${moduleId}-I${igniterPos}`;
 
