@@ -83,7 +83,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
       setEvents(prev => [{
         id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`,
         timestamp: Date.now(),
-        source: 'remote',
+        source: 'remote' as const,
         fixtureName: p.name || p.type,
         type: p.type,
         color: p.color || '#fff',
