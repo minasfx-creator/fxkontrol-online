@@ -549,6 +549,13 @@ export interface SiteModel {
 
 export type SiteModelTransformMode = 'translate' | 'rotate' | 'scale';
 
+export interface TransformSnapSettings {
+  enabled: boolean;
+  translateSnap: number;
+  rotateSnap: number;
+  scaleSnap: number;
+}
+
 interface SceneSettingsState {
   settings: SceneSettings;
   qualityPreset: QualityPreset;
