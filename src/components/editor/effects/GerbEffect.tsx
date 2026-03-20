@@ -72,9 +72,9 @@ export default function GerbEffect({
       const t = cycleTime * seed.lt;
       const drag = Math.exp(-0.08 * t);
       // Narrow spray with gravity + drag
-      posArr[i * 3] = Math.cos(seed.angle) * seed.spread * height * t * drag;
+      posArr[i * 3] = Math.cos(seed.angle) * seed.spread * scaledHeight * t * drag;
       posArr[i * 3 + 1] = Math.max(0, seed.speed * t * drag + 0.5 * GRAVITY * t * t * 0.15);
-      posArr[i * 3 + 2] = Math.sin(seed.angle) * seed.spread * height * t * drag;
+      posArr[i * 3 + 2] = Math.sin(seed.angle) * seed.spread * scaledHeight * t * drag;
 
       const fade = Math.max(0, 1 - cycleTime * 0.8) * intensity;
       const heightRatio = cycleTime;
