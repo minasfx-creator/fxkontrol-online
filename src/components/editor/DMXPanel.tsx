@@ -260,6 +260,40 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const sendFireOneDMX = async () => {
+    if (universes.length === 0 || !hardware.isConnected) {
+      toast.error(!hardware.isConnected ? 'FireOne não conectado' : 'Faça o Auto-Patch primeiro');
+      return;
+    }
+    setSending(true);
+    const t0 = performance.now();
+    try {
+      for (let i = 0; i < universes.length; i++) {
+        const u = universes[i];
+        const moduleAddr = i + 1; // universe 1 → module 1
+        await hardware.sendDmxOut(moduleAddr, 1, Array.from(u.channels.slice(0, 512)));
+        const latency = Math.round(performance.now() - t0);
+        addDiagLog({
+          timestamp: new Date(), type: 'send',
+          message: `FireOne DMX → Module ${moduleAddr} · ${u.channels.length} ch`,
+          latency,
+        });
+      }
+      setConnectionStatus('ok');
+      const latency = Math.round(performance.now() - t0);
+      toast.success(`DMX via FireOne IFMx-i32Q (${universes.length} uni)`, {
+        description: `Latência: ${latency}ms`,
+      });
+    } catch (e: any) {
+      const latency = Math.round(performance.now() - t0);
+      setConnectionStatus('error');
+      addDiagLog({ timestamp: new Date(), type: 'error', message: e.message || 'FireOne DMX error', latency });
+      toast.error(e.message || 'Erro ao enviar DMX via FireOne');
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <div className="h-full bg-surface-1 border-l border-border flex flex-col">
       <div className="flex items-center justify-between px-2 py-1.5 border-b border-border">
