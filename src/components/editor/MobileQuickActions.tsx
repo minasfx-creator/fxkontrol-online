@@ -55,19 +55,20 @@ export default function MobileQuickActions() {
     setEditorMode(editorMode === 'select' ? 'add-pyro' : 'select');
   }, [editorMode, setEditorMode]);
 
-  const selectVariant = editorMode === 'select' ? 'active' : 'default';
+  type ActionVariant = 'primary' | 'default' | 'danger' | 'active';
+  const selectVariant: ActionVariant = editorMode === 'select' ? 'active' : 'default';
   
-  const actions = hasSelection
+  const actions: { icon: typeof Pencil; label: string; onClick: () => void; variant: ActionVariant }[] = hasSelection
     ? [
-        { icon: Pencil, label: 'Edit', onClick: () => window.dispatchEvent(new Event('position-double-click')), variant: 'primary' as const },
-        { icon: Copy, label: 'Dup', onClick: handleDuplicate, variant: 'default' as const },
-        { icon: Trash2, label: 'Del', onClick: handleDelete, variant: 'danger' as const },
+        { icon: Pencil, label: 'Edit', onClick: () => window.dispatchEvent(new Event('position-double-click')), variant: 'primary' },
+        { icon: Copy, label: 'Dup', onClick: handleDuplicate, variant: 'default' },
+        { icon: Trash2, label: 'Del', onClick: handleDelete, variant: 'danger' },
       ]
     : [
-        { icon: MousePointer2, label: 'Sel', onClick: handleToggleSelect, variant: selectVariant as const },
-        { icon: Plus, label: 'Add', onClick: handleAdd, variant: 'default' as const },
-        { icon: Undo2, label: 'Undo', onClick: handleUndo, variant: 'default' as const },
-        { icon: Redo2, label: 'Redo', onClick: handleRedo, variant: 'default' as const },
+        { icon: MousePointer2, label: 'Sel', onClick: handleToggleSelect, variant: selectVariant },
+        { icon: Plus, label: 'Add', onClick: handleAdd, variant: 'default' },
+        { icon: Undo2, label: 'Undo', onClick: handleUndo, variant: 'default' },
+        { icon: Redo2, label: 'Redo', onClick: handleRedo, variant: 'default' },
       ];
 
   return (
