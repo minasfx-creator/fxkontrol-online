@@ -187,7 +187,7 @@ export default function MobileLinkPanel({ onClose }: MobileLinkPanelProps) {
   // Remove fixture
   const removeFixture = useCallback((id: string) => {
     saveFixtures(fixtures.filter(f => f.id !== id));
-    navigator.vibrate?.(15);
+    haptics.tap();
   }, [fixtures, saveFixtures]);
 
   // Update intensity
