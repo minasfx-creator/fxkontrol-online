@@ -550,9 +550,9 @@ export default function FleetManagementPanel({ onClose }: FleetManagementPanelPr
                 <div className="text-[8px] font-bold text-red-400 uppercase tracking-wider mb-1">FireOne Modules</div>
               )}
               {fireoneModules.map(mod => (
-                <div key={`fo-${mod.address}`} className="p-1.5 rounded border border-border bg-background">
+                <div key={`fo-${mod.moduleAddress}`} className="p-1.5 rounded border border-border bg-background">
                   <div className="flex items-center justify-between text-[9px]">
-                    <span className="font-bold text-foreground">FO-{mod.address}</span>
+                    <span className="font-bold text-foreground">FO-{mod.moduleAddress}</span>
                     <div className="flex items-center gap-1.5">
                       <span className={cn("text-[8px]", (mod.batteryVoltage ?? 12) < 11 ? 'text-destructive' : 'text-success')}>
                         {(mod.batteryVoltage ?? 0).toFixed(1)}V

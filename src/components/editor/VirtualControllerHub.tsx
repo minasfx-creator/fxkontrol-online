@@ -108,11 +108,6 @@ export default function VirtualControllerHub({ fs = false, onSelectMode }: Virtu
           {fireone.isConnected && (
             <Badge variant="outline" className="text-[8px] h-4 px-1.5 border-red-500/30 text-red-400">
               FireOne · {fireone.modules.size}
-              {fireone.worstBattery !== null && (
-                <span className={cn("ml-1", (fireone.worstBattery ?? 12) < 11 ? 'text-destructive' : '')}>
-                  {(fireone.worstBattery ?? 0).toFixed(1)}V
-                </span>
-              )}
             </Badge>
           )}
           {pbus.isConnected && (
@@ -120,7 +115,7 @@ export default function VirtualControllerHub({ fs = false, onSelectMode }: Virtu
               PBUS · {pbus.deviceCount}
               {pbus.worstBattery !== null && (
                 <span className={cn("ml-1", (pbus.worstBattery ?? 4) < 3.3 ? 'text-destructive' : '')}>
-                  {(pbus.worstBattery ?? 0).toFixed(1)}V
+                  · {(pbus.worstBattery ?? 0).toFixed(1)}V
                 </span>
               )}
             </Badge>
