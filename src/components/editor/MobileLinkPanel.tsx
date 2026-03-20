@@ -3,7 +3,7 @@
  * from mobile → desktop via Supabase Realtime broadcast.
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Cable, Wifi, WifiOff, Plus, Trash2, Flame, X, Lightbulb, Zap, Wind, Snowflake, Sparkles } from 'lucide-react';
+import { Cable, Wifi, WifiOff, Plus, Trash2, Flame, X, Lightbulb, Zap, Wind, Snowflake, Sparkles, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -274,6 +274,27 @@ export default function MobileLinkPanel({ onClose }: MobileLinkPanelProps) {
         <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7">
           <X className="w-4 h-4" />
         </Button>
+      </div>
+
+      {/* Slave Mode Indicator */}
+      <div className="px-3 py-2 border-b border-border bg-accent/10">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Smartphone className="w-3.5 h-3.5 text-accent-foreground" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Modo: SLAVE (Mobile)
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className={cn(
+              "w-2 h-2 rounded-full",
+              realtimeConnected ? "bg-green-500 animate-pulse" : "bg-destructive"
+            )} />
+            <span className="text-[9px] text-muted-foreground">
+              {realtimeConnected ? 'Master conectado' : 'Sem Master'}
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-4">
