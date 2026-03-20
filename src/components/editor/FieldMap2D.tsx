@@ -340,8 +340,22 @@ export default function FieldMap2D({ fs = false }: FieldMap2DProps) {
     const my = (e.clientY - rect.top - pan.y) / zoom;
 
     const clicked = modulePositions.find(m => Math.abs(m.x - mx) < 20 && Math.abs(m.y - my) < 20);
-    setSelectedModule(clicked?.id ?? null);
-  }, [modulePositions, zoom, pan]);
+
+    // Check antenna click for dragging
+    if (Math.abs(mx - antennaPos.x) < 15 && Math.abs(my - antennaPos.y) < 15) {
+      setDraggingAntenna(true);
+      return;
+    }
+
+    // Click-to-fire popup
+    if (clicked) {
+      setFirePopup({ id: clicked.id, x: e.clientX, y: e.clientY });
+      setSelectedModule(clicked.id);
+    } else {
+      setFirePopup(null);
+      setSelectedModule(null);
+    }
+  }, [modulePositions, zoom, pan, antennaPos]);
 
   const mob = isMobile;
 
