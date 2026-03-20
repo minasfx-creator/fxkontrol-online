@@ -53,7 +53,7 @@ export default function VirtualZK6200({ fs = false }: VirtualZK6200Props) {
     if (isMobile) {
       deadmanTimer.current = setTimeout(() => {
         setDeadman(true);
-        if (navigator.vibrate) navigator.vibrate([100]);
+        haptics.deadman();
       }, 800);
     } else {
       setDeadman(true);
