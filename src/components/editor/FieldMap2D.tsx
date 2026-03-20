@@ -402,8 +402,58 @@ export default function FieldMap2D({ fs = false }: FieldMap2DProps) {
         <canvas
           ref={canvasRef}
           onClick={handleCanvasClick}
+          onMouseMove={(e) => {
+            if (draggingAntenna) {
+              const rect = canvasRef.current!.getBoundingClientRect();
+              setAntennaPos({
+                x: (e.clientX - rect.left - pan.x) / zoom,
+                y: (e.clientY - rect.top - pan.y) / zoom,
+              });
+            }
+          }}
+          onMouseUp={() => setDraggingAntenna(false)}
+          onMouseLeave={() => setDraggingAntenna(false)}
           className="absolute inset-0"
         />
+        {/* Click-to-fire popup */}
+        {firePopup && (
+          <div className="absolute z-10 p-1.5 rounded border border-border/30 bg-background/90 backdrop-blur-sm shadow-lg"
+            style={{ left: firePopup.x - 60, top: firePopup.y - 80 }}>
+            <div className="text-[8px] font-bold text-foreground mb-1">
+              {modulePositions.find(m => m.id === firePopup.id)?.label}
+            </div>
+            <div className="flex gap-1">
+              <Button size="sm" variant="outline" className="h-5 text-[7px] px-1.5"
+                onClick={() => {
+                  const mod = modulePositions.find(m => m.id === firePopup.id);
+                  if (mod?.type === 'pbus' && pbus.isConnected) {
+                    pbus.armDevice(mod.address).catch(() => {});
+                    toast.info(`ARM PB-${mod.address}`);
+                  }
+                  setFirePopup(null);
+                }}>
+                ARM
+              </Button>
+              <Button size="sm" variant="destructive" className="h-5 text-[7px] px-1.5"
+                onClick={() => {
+                  const mod = modulePositions.find(m => m.id === firePopup.id);
+                  if (mod?.type === 'pbus' && pbus.isConnected) {
+                    pbus.fireCue(mod.address, 0, 500).catch(() => {});
+                    toast.warning(`FIRE PB-${mod.address}:0`);
+                  } else if (mod?.type === 'fireone' && fireone.isConnected) {
+                    fireone.fireIgniter(mod.address, 0, 500).catch(() => {});
+                    toast.warning(`FIRE FO-${mod.address}:0`);
+                  }
+                  setFirePopup(null);
+                }}>
+                <Zap className="w-2.5 h-2.5 mr-0.5" /> FIRE
+              </Button>
+              <Button size="sm" variant="ghost" className="h-5 text-[7px] px-1" onClick={() => setFirePopup(null)}>
+                ✕
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Legend / Selected info */}
