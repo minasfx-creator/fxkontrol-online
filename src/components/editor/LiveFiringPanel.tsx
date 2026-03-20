@@ -1152,6 +1152,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
       case 'pbus': return <PBusMonitorPanel />;
       case 'connections': return <ConnectionManagerPanel fs={fs} />;
       case 'radio': return <RadioControlPanel fs={fs} />;
+      case 'ma3': return <MA3ControlPanel fs={fs} />;
       case 'settings': return <SettingsPanel fs={fs} settings={settings} onSettingsChange={setSettings} relayConnected={relayConnected} relayUrl={relayUrl} onRelayUrlChange={setRelayUrl} onConnectRelay={connectRelay} onDisconnectRelay={disconnectRelay} />;
       default: return renderSimpleDmx(fs);
     }

@@ -266,7 +266,7 @@ export class OSCBridgeClient {
   send(msg: OSCMessage) {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
     const encoded = encodeOSCMessage(msg);
-    this.ws.send(encoded);
+    this.ws.send(encoded.buffer);
     this.txCount++;
   }
 
