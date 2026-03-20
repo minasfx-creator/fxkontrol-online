@@ -402,26 +402,29 @@ function Index() {
                 <div
                   className="h-full w-full relative"
                   onDragOver={(e) => {
-                    // Accept showven equipment drag
                     if (e.dataTransfer.types.includes('application/showven-equipment')) {
                       e.preventDefault();
                       e.dataTransfer.dropEffect = 'copy';
                       return;
                     }
-                    // Accept file drops (.mvr, .csv, .json)
                     if (e.dataTransfer.types.includes('Files')) {
                       e.preventDefault();
                       e.dataTransfer.dropEffect = 'copy';
+                      setIsDragOver(true);
                     }
                   }}
+                  onDragLeave={(e) => {
+                    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                    setIsDragOver(false);
+                  }}
                   onDrop={(e) => {
-                    // Handle file drops for importers
+                    setIsDragOver(false);
                     if (e.dataTransfer.files?.length > 0) {
                       const file = e.dataTransfer.files[0];
-                      const ext = file.name.split('.').pop()?.toLowerCase();
-                      if (ext === 'mvr' || ext === 'csv' || ext === 'json') {
+                      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+                      if (SUPPORTED_DROP_EXTENSIONS.includes(ext)) {
                         e.preventDefault();
-                        const type = ext === 'mvr' ? 'mvr' : ext === 'csv' ? 'csv' : 'ue5json';
+                        const type = getDropType(ext);
                         window.dispatchEvent(new CustomEvent('viewport-file-drop', { detail: { file, type } }));
                         toast.info(`📂 ${file.name} dropped — opening importer...`);
                         return;
