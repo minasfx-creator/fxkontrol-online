@@ -213,6 +213,30 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
           )}
         </div>
 
+        {/* FireOne Timecode Sync */}
+        <div className={cn(
+          "rounded border p-2 space-y-1",
+          syncToFireOne && hardware.isConnected ? "bg-green-500/5 border-green-500/30" : "bg-surface-0 border-border"
+        )}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Zap className={cn("w-3.5 h-3.5", syncToFireOne && hardware.isConnected ? "text-green-400" : "text-muted-foreground")} />
+              <Label className="text-[10px] font-mono-code text-foreground font-bold">SYNC TO FIREONE</Label>
+            </div>
+            <Switch checked={syncToFireOne} onCheckedChange={setSyncToFireOne} className="scale-75" />
+          </div>
+          {syncToFireOne && (
+            <div className="flex items-center gap-1.5">
+              <div className={cn("w-2 h-2 rounded-full", hardware.isConnected ? "bg-green-400 animate-pulse" : "bg-yellow-400")} />
+              <span className="text-[9px] font-mono-code text-muted-foreground">
+                {hardware.isConnected
+                  ? `${hardware.modules.size} módulo(s) recebendo TC`
+                  : 'Hardware não conectado'}
+              </span>
+            </div>
+          )}
+        </div>
+
         {/* Auto-follow toggle */}
         <div className="bg-surface-0 rounded p-2 border border-border space-y-1">
           <div className="flex items-center justify-between">

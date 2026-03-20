@@ -32,11 +32,12 @@ interface DiagnosticLog {
 export default function DMXPanel({ onClose }: { onClose: () => void }) {
   const { droneFormations, currentTime } = useProjectStore();
   const { dmxDevices, sendDMXToAll, getConnectedDMXDevices } = useUSBDeviceStore();
+  const hardware = useFireOneHardware();
   const [universes, setUniverses] = useState<DMXUniverse[]>([]);
   const [keyframes, setKeyframes] = useState<DMXKeyframe[]>([]);
   const [selectedFixture, setSelectedFixture] = useState<string | null>(null);
   const [channelsPerFixture, setChannelsPerFixture] = useState(4);
-  const [outputMode, setOutputMode] = useState<'artnet' | 'usb'>('artnet');
+  const [outputMode, setOutputMode] = useState<'artnet' | 'usb' | 'fireone'>('artnet');
   const [artNetIp, setArtNetIp] = useState('192.168.15.2');
   const [artNetPort, setArtNetPort] = useState(6454);
   const [sending, setSending] = useState(false);
