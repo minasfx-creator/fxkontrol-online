@@ -14,6 +14,7 @@ export const DEFAULT_MODULE_SPECS: ModuleSpec[] = [
   { id: 'cobra-18r2', name: 'Cobra 18R2', slatCount: 6, pinsPerSlat: 18, firingSystem: 'Default' },
   { id: 'cobra-18r3', name: 'Cobra 18R3', slatCount: 9, pinsPerSlat: 18, firingSystem: 'Default' },
   { id: 'fireone-32', name: 'FireOne 32ch', slatCount: 4, pinsPerSlat: 8, firingSystem: 'Default' },
+  { id: 'fireone-i32q', name: 'FireOne IFMx-i32Q', slatCount: 1, pinsPerSlat: 32, firingSystem: 'Default' },
   { id: 'pyrodigital-32', name: 'PyroDigital 32', slatCount: 4, pinsPerSlat: 8, firingSystem: 'Default' },
   { id: 'galaxis-g2', name: 'Galaxis G2', slatCount: 5, pinsPerSlat: 20, firingSystem: 'Default' },
   { id: 'custom', name: 'Custom Module', slatCount: 5, pinsPerSlat: 20, firingSystem: 'Default' },
