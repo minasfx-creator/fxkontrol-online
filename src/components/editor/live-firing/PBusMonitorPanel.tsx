@@ -5,6 +5,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
+import { haptics } from '@/lib/haptics';
 import { Radio, Battery, Shield, Zap, Signal, AlertTriangle, Wifi, WifiOff, RefreshCw, XCircle, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
