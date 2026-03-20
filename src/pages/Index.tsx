@@ -77,6 +77,7 @@ import VideoChoreoPanel from '@/components/editor/VideoChoreoPanel';
 import ShowvenEquipmentPanel from '@/components/editor/ShowvenEquipmentPanel';
 import GenerativeEffectsPanel from '@/components/editor/GenerativeEffectsPanel';
 import CinematicIntro from '@/components/editor/CinematicIntro';
+import SiteModelsPanel from '@/components/editor/SiteModelsPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
