@@ -137,6 +137,73 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
       });
     }
 
+    // ── PBUS / Showven Hardware Checks ──────────────────────
+    if (pbusHw.isConnected) {
+      checks.push({
+        id: 'pbus-link',
+        label: 'PBUS Link',
+        status: 'pass',
+        detail: `Conexão ativa — ${pbusHw.deviceCount} dispositivos · TX: ${pbusHw.txBytes}B / RX: ${pbusHw.rxBytes}B`,
+      });
+
+      // Battery check (<3.3V)
+      let lowBattPbus = 0;
+      pbusHw.devices.forEach(d => {
+        if (d.batteryV < 3.3) lowBattPbus++;
+      });
+      checks.push({
+        id: 'pbus-battery',
+        label: 'PBUS Battery Check',
+        status: lowBattPbus === 0 ? 'pass' : 'fail',
+        detail: lowBattPbus === 0 ? 'Todas as baterias PBUS OK (>3.3V)' : `${lowBattPbus} dispositivo(s) com bateria baixa (<3.3V)`,
+        suggestion: lowBattPbus > 0 ? 'Recarregue dispositivos PyroSlave antes do show' : undefined,
+      });
+
+      // Dual-band signal quality
+      let weakPbus = 0;
+      pbusHw.devices.forEach(d => {
+        const best = Math.max(d.rssi433, d.rssi868);
+        if (best < -80) weakPbus++;
+      });
+      if (pbusHw.deviceCount > 0) {
+        checks.push({
+          id: 'pbus-signal',
+          label: 'PBUS Dual-Band Signal',
+          status: weakPbus === 0 ? 'pass' : 'warn',
+          detail: weakPbus === 0
+            ? `${pbusHw.deviceCount} dispositivo(s) com sinal OK · Banda ideal: ${pbusHw.bestBand}`
+            : `${weakPbus} dispositivo(s) com sinal fraco (<-80dBm)`,
+          suggestion: weakPbus > 0 ? 'Reposicione dispositivos ou troque a banda de rádio' : undefined,
+        });
+      }
+
+      // Cue continuity summary
+      let goodCues = 0, openCues = 0;
+      pbusHw.devices.forEach(d => {
+        d.cues.forEach(c => {
+          if (c.connected) goodCues++;
+          else openCues++;
+        });
+      });
+      if (goodCues + openCues > 0) {
+        checks.push({
+          id: 'pbus-continuity',
+          label: 'PBUS Cue Continuity',
+          status: openCues === 0 ? 'pass' : 'warn',
+          detail: `${goodCues} cues OK, ${openCues} abertos (${goodCues + openCues} total)`,
+          suggestion: openCues > 0 ? 'Verifique conexões dos ignitores nos slots PBUS com circuito aberto' : undefined,
+        });
+      }
+    } else {
+      checks.push({
+        id: 'pbus-link',
+        label: 'PBUS Hardware',
+        status: 'warn',
+        detail: 'Modo SIM — PBUS não conectado',
+        suggestion: 'Conecte via serial no Connection Manager para diagnóstico real',
+      });
+    }
+
     // 1. Fleet check
     const totalDrones = droneFormations.reduce((sum, f) => sum + f.droneCount, 0);
     checks.push({
