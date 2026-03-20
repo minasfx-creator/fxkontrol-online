@@ -1,86 +1,110 @@
 
 
-# Plan: SuperVDL — Niagara + VDL Fusion, Interactive Preview Panel, Color Transition Rendering
+# Plan: Maximum Performance Optimization
 
-## Summary
-Three interconnected upgrades: (1) merge Niagara particle profiles into the VDL parser so a single description like `"Red Chrysanthemum niagara-blue"` automatically applies Niagara's physics/glow/fade profiles, (2) create an interactive VDL Preview Panel with live 3D simulation, (3) implement per-star color transitions in FireworkBurst ("Red To Blue" renders stars that change color mid-flight).
+## Analysis
 
-## Part 1 — SuperVDL: Niagara + VDL Fusion
+After reviewing the full 4070-line `SkyCanvas.tsx`, all rendering systems, LOD, pools, and scene store, I identified several performance bottlenecks and optimization opportunities.
 
-### `src/lib/vdlParser.ts`
-- Import `NIAGARA_COLOR_PRESETS` and `NiagaraColorPreset`
-- Add to `VDLResult`:
-  ```
-  niagaraPreset?: string;           // matched Niagara preset ID
-  niagaraProfile?: {                // merged particle physics from Niagara
-    starCount: number;
-    lifetime: number;
-    velocity: number;
-    drag: number;
-    gravityScale: number;
-    sparkleRate: number;
-    glowIntensity: number;
-    fadeProfile: 'linear' | 'exponential' | 'ember';
-  };
-  ```
-- In `parseVDL()`: detect Niagara preset references (e.g., `niagara-blue`, `niagara-yellow`, `niagara-pink`) in the description and merge their `particleProfile` + `shaderUniforms` into the result. Also auto-match: if color is Blue and type is Peony, suggest/apply `niagara-blue` profile automatically
-- In `vdlToEffect()`: propagate `niagaraProfile` fields into the Effect object
+## Critical Issues Found
 
-### `src/store/useProjectStore.ts`
-- Add to `Effect` interface: `niagaraProfile?` with the same shape
+### 1. Sky Sphere — 64x64 segments is excessive
+The `SkyGradient` uses `sphereGeometry args={[90000, 64, 64]}` — that's 8192 vertices for a shader-only background. Since all color comes from the fragment shader, 32x16 is more than sufficient.
 
-### `src/components/editor/SkyCanvas.tsx` — FireworkBurst
-- When `niagaraProfile` is present, override `STAR_COUNT`, `starLife`, `breakSpeed`, drag coefficient, and glow intensity with Niagara values instead of defaults
-- Apply `fadeProfile` (`linear`/`exponential`/`ember`) to the thermal color pipeline fade curve
+### 2. Moon — multiple overlapping spheres with expensive shaders
+4 nested meshes (body 64x64, inner glow 32x32, halo 32x32, scatter 16x16) plus a `pointLight`. The body shader has redundant `noise()` calls. The scatter sphere (1600 radius, 16x16) adds draw calls for nearly invisible effect.
 
-## Part 2 — Interactive VDL Preview Panel
+### 3. Ground plane — 100000x100000 with 16x16 subdivisions
+`FinaleDarkGround`, `GrassGround`, and `GroundFog` all create enormous planes (`100000x100000`). The ground fog shader runs a 4-octave FBM on every pixel. These should use `1, 1` subdivisions (flat plane needs no subdivisions).
 
-### New file: `src/components/editor/VDLPreviewPanel.tsx`
-A panel with:
-- **Text input** (textarea) for typing VDL descriptions
-- **Live 3D preview** using a mini `<Canvas>` that renders the parsed effect in a loop
-- **Parameter badges** showing detected properties: caliber, colors (as swatches), type, trail, angle, timing, adjustments, Niagara profile
-- **Quick presets** row: common VDL examples the user can click to load
-- **"Add to Timeline"** button that calls `vdlToEffect()` and inserts into the project
+### 4. TreelineSilhouette — creates 500+ individual `<mesh>` elements
+Each tree is a separate React element with its own material. This creates 500+ draw calls. Should use `InstancedMesh`.
 
-Implementation:
-- Uses `parseVDL()` on every keystroke (debounced 300ms)
-- Renders a single `FireworkBurst` (or appropriate effect component based on `partType`) in the mini canvas, auto-replaying every 3s
-- Shows VDL parse status (valid/invalid) with error hints
-- Badge grid: `caliber`, `type`, `colors[]`, `trailType`, `angleOffset`, `firingPattern`, `shotCount`, `niagaraPreset`, `adjustments[]`
+### 5. SFXStageEnvironment — 40+ individual meshes
+Truss bars, LED panels, moving heads — each is a separate `<mesh>` with separate material. Many could share materials or use InstancedMesh.
 
-### `src/components/AppSidebar.tsx`
-- Add VDL Preview panel to the sidebar panel registry
+### 6. GroundReflections — runs timeline scan every frame
+The `useFrame` loop iterates `timelineItems` every frame to check for explosion flashes, creating `new THREE.Color()` per burst found — GC pressure.
 
-## Part 3 — Color Transition Rendering in FireworkBurst
+### 7. GI/Smoke/Flare Controllers — all scan timeline every frame
+Three separate controllers (`GlobalIlluminationController`, `SmokeController`, `LensFlareController`) each independently iterate `timelineItems` and call `EFFECT_LIBRARY.find()` every frame. Should consolidate into one scan.
 
-### `src/components/editor/SkyCanvas.tsx` — FireworkBurst `useFrame`
-Currently at line ~546, star colors are computed as:
-```
-const r = lerp(baseColor.r * userFade, chemR, 0.7);
-```
+### 8. SparkTrailController — creates `new THREE.Vector3()` per spark per frame
+Line 2269 creates `new Color()` per spark per frame. Line 2243-2248 creates `new THREE.Vector3()` per spawn. These should use pre-allocated objects.
 
-When `colorTransition === 'to'` and `secondaryColor` is set:
-- Parse `secondaryColor` into a `THREE.Color`
-- Compute `transitionT = starAge` (0 at birth → 1 at death)
-- Lerp between primary and secondary color based on `transitionT`
-- Apply the same thermal pipeline (white-hot flash, ember fade) on top of the interpolated base color
-- For `colorTransition === 'changing'`: use ping-pong interpolation (back and forth)
-- For `colorTransition === 'alternating'`: use `multiColors` array, each star gets a color based on `i % multiColors.length`
+### 9. Vite config — no build optimizations
+No tree-shaking hints, no chunk splitting, no dependency optimization.
 
-This happens inside the existing `useFrame` loop, modifying the color computation for each star — no new geometry or materials needed.
+### 10. FloorLogo — 4096x1024 canvas texture on every mount
+Creates a huge canvas texture every mount. Should be smaller (2048x512 is plenty) and the texture should use power-of-2 dimensions.
 
-### `src/lib/vdlParser.ts`
-- Ensure "Red To Blue" correctly sets `colorTransition: 'to'`, `colors[0]` = Red hex, `colors[1]` = Blue hex, and `secondaryColor` = Blue hex in `vdlToEffect()`
+### 11. AtmosphericParticles — 200 particles with per-frame Math.sin/cos per particle
+Minor but runs 200 trig calls per frame. Could be simplified.
+
+### 12. PostProcessing — SSR + SSAO + DOF + multiple Bloom layers simultaneously
+Default settings enable too many expensive effects. The `performance` preset is already defined but not auto-applied.
+
+## Changes
+
+### `vite.config.ts`
+- Add `build.rollupOptions.output.manualChunks` to split Three.js and postprocessing into separate chunks
+- Add `optimizeDeps.include` for Three.js
+- Set `build.target: 'esnext'` for modern JS output
+
+### `src/components/editor/SkyCanvas.tsx`
+
+**A. Sky sphere segments**: `[90000, 64, 64]` → `[90000, 32, 16]`
+
+**B. Moon optimization**: Remove outer scatter sphere (opacity 0.008 = invisible). Reduce body to `[450, 32, 32]`. Remove inner glow sphere. Reduce halo to `[800, 16, 16]`.
+
+**C. Ground planes**: Change all `planeGeometry args={[100000, 100000, 16, 16]}` to `args={[100000, 100000, 1, 1]}` — flat planes don't need subdivisions.
+
+**D. TreelineSilhouette**: Replace 500+ individual `<mesh>` with a single `InstancedMesh`. Pre-compute matrix and color per instance in `useMemo`.
+
+**E. Consolidate timeline scan**: Create a single `ActiveBurstScanner` component that runs once per frame and writes results to a shared ref. Remove duplicate scans from GroundReflections, GI, Smoke, Flare, and SparkTrail controllers.
+
+**F. Pre-allocate objects in GroundReflections**: Replace `new THREE.Color(effect.color)` with a reusable pre-allocated color.
+
+**G. Pre-allocate objects in SparkTrailController**: Replace per-spawn `new THREE.Vector3()` with pooled vectors. Replace per-frame `new Color()` with reusable.
+
+**H. FloorLogo texture**: Reduce canvas to `2048x512`. Add `tex.generateMipmaps = false` and `tex.minFilter = THREE.LinearFilter`.
+
+**I. AtmosphericParticles**: Reduce count from 200 to 100.
+
+**J. ContactShadows resolution**: Only render when `groundStyle !== 'flat-black'`.
+
+### `src/store/useSceneStore.ts`
+
+**K. Optimize default settings for better baseline performance**:
+- Default `particleDensity`: `1.2` → `1.0`
+- Default `bloomStrength`: `1.4` → `1.1`
+- Default `groundFogIntensity`: `0.6` → `0.4`
+- Default `shadowQuality`: `'high'` → `'medium'` (4096→2048 shadow map)
+- Default `ssaoEnabled`: already false by default (good)
+- Disable `contactShadowsEnabled` by default
+- Lower `starDensity`: `1.3` → `1.0`
+
+### `src/lib/niagaraBlenderRules.ts`
+
+**L. Tighten Niagara budgets**:
+- Desktop `maxConcurrentBursts`: `6` → `5`
+- Desktop `maxStarBudget`: `1400` → `1200`
+- Mobile `maxStarBudget`: `420` → `350`
+
+### `src/hooks/useLOD.ts`
+
+**M. Tune adaptive LOD thresholds**:
+- `FPS_DROP_THRESHOLD`: `30` → `35` (trigger quality drop sooner)
+- `FPS_RAISE_THRESHOLD`: `55` → `50` (recover sooner too)
+- `FPS_DROP_DURATION`: `500` → `400` (react faster)
 
 ## Files Summary
 
 | File | Change |
 |------|--------|
-| `src/lib/vdlParser.ts` | Add Niagara preset detection + merge, ensure color transition parsing |
-| `src/lib/niagaraColorPresets.ts` | Add more presets (red, green, white, gold) for broader coverage |
-| `src/store/useProjectStore.ts` | Add `niagaraProfile` to Effect interface |
-| `src/components/editor/SkyCanvas.tsx` | Color transition in FireworkBurst useFrame, Niagara profile overrides |
-| `src/components/editor/VDLPreviewPanel.tsx` | New interactive VDL preview panel |
-| `src/components/AppSidebar.tsx` | Register VDL Preview panel |
+| `vite.config.ts` | Build optimizations, chunk splitting |
+| `SkyCanvas.tsx` | Sky segments, Moon cleanup, ground subdivisions, TreelineInstanced, consolidate timeline scans, pre-allocate GC-heavy objects, FloorLogo optimization |
+| `useSceneStore.ts` | Lower default quality settings for better baseline perf |
+| `niagaraBlenderRules.ts` | Tighter particle budgets |
+| `useLOD.ts` | More responsive adaptive thresholds |
 
