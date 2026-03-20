@@ -264,10 +264,15 @@ const FireworkBurst = React.forwardRef<THREE.Group, {
   angleOffset?: number; trailType?: string; noTrail?: boolean;
   secondaryColor?: string; colorTransition?: string;
   hasPistil?: boolean; pistilColor?: string;
+  niagaraProfile?: {
+    starCount: number; lifetime: number; velocity: number;
+    drag: number; gravityScale: number; sparkleRate: number;
+    glowIntensity: number; fadeProfile: 'linear' | 'exponential' | 'ember';
+  };
 }>(function FireworkBurst({ 
   position, color, progress, caliber = 4, pattern = 'peony',
   angleOffset = 0, trailType, noTrail, secondaryColor, colorTransition,
-  hasPistil, pistilColor,
+  hasPistil, pistilColor, niagaraProfile,
 }, _ref) {
   const pointsRef = useRef<THREE.Points>(null);
   const trailRef = useRef<THREE.LineSegments>(null);
