@@ -157,7 +157,7 @@ export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }
             Import UE5 DMX Library
           </DialogTitle>
           <DialogDescription className="text-[11px] text-muted-foreground">
-            Import fixture patches from Unreal Engine 5 DMX Library (CSV or JSON export).
+            Import fixture patches from Unreal Engine 5 DMX Library (CSV, JSON, or T3D/COPY).
             Fixtures are auto-mapped to DMX profiles and patched into universes.
           </DialogDescription>
         </DialogHeader>
