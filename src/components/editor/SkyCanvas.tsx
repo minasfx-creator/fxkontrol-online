@@ -3592,6 +3592,7 @@ export default function SkyCanvas() {
         {!isMobile && <WeatherEffects />}
 
         <StageGround satelliteTexture={satelliteTexture} />
+        <SiteModelRenderer />
         <PositionPins />
         <PyroLaunchAngles />
         {!isMobile && <Rack3DView />}
