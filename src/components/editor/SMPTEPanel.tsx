@@ -76,6 +76,20 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
     return () => { if (pbusSyncRef.current) clearInterval(pbusSyncRef.current); };
   }, [syncToPBus, pbus.isConnected, store.running, pbus]);
 
+  // MA3 timecode sync via OSC
+  useEffect(() => {
+    if (!syncToMA3 || !store.running) {
+      if (ma3SyncRef.current) { clearInterval(ma3SyncRef.current); ma3SyncRef.current = null; }
+      return;
+    }
+    const oscClient = getOSCClient();
+    ma3SyncRef.current = setInterval(() => {
+      const t = secondsToTimecode(currentTime + store.startTimecodeSeconds, store.frameRate, store.frameRate === 29.97);
+      oscClient.send(buildMA3TimecodeSync(t.hours, t.minutes, t.seconds, t.frames));
+    }, 100); // 10Hz sync
+    return () => { if (ma3SyncRef.current) clearInterval(ma3SyncRef.current); };
+  }, [syncToMA3, store.running, currentTime, store.startTimecodeSeconds, store.frameRate]);
+
   const statusColor = {
     disconnected: 'bg-muted-foreground',
     connecting: 'bg-warning animate-pulse',
