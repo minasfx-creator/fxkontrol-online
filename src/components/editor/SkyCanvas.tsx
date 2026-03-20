@@ -3836,13 +3836,27 @@ export default function SkyCanvas() {
       {/* ═══ Viewport Playback Controls ═══ */}
       <ViewportPlaybackControls />
 
+      {/* Fly mode HUD */}
+      {flyMode && (
+        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-40 bg-card/85 backdrop-blur-xl border border-border/25 rounded-xl px-4 py-2 font-mono text-[10px] text-muted-foreground space-y-0.5 select-none pointer-events-none">
+          <div className="text-center text-[9px] font-semibold uppercase tracking-wider text-accent-foreground mb-1">✈ Fly Mode</div>
+          <div className="flex gap-4">
+            <span>WASD Move</span>
+            <span>Q/E Up/Down</span>
+            <span>Shift Sprint</span>
+            <span>Scroll Speed</span>
+          </div>
+          <div className="text-center text-foreground font-semibold">{flySpeed} m/s</div>
+        </div>
+      )}
+
       {/* Bottom info — hidden on mobile to avoid tab bar overlap */}
       {!isMobile && (
         <div className="absolute bottom-3 right-3 text-[9px] font-mono-code text-muted-foreground/60 bg-card/70 backdrop-blur-md px-3 py-2 rounded-xl border border-border/15 space-y-0.5">
           <div className="text-[8px] text-muted-foreground/40 tracking-wider font-display">FX KONTROL v2.0 · Minas FX</div>
-          <div>Orbit: LMB · Pan: MMB · Zoom: Scroll</div>
+          <div>{flyMode ? 'WASD: Move · Mouse: Look · Q/E: Up/Down' : 'Orbit: LMB · Pan: MMB · Zoom: Scroll'}</div>
           <div>Box: Alt+Drag · Multi: Shift+Click · Edit: Dbl-Click</div>
-          <div>{freeLook ? '🔓 Free Look ON' : '🔒 Preset Lock'}</div>
+          <div>{flyMode ? '✈ Fly Mode' : freeLook ? '🔓 Free Look ON' : '🔒 Preset Lock'}</div>
         </div>
       )}
     </div>
