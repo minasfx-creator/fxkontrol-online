@@ -1,110 +1,120 @@
 
 
-# Plan: Maximum Performance Optimization
+# Plan: FireOne Integration Fixes — Document-Driven Corrections
 
-## Analysis
+## Issues Found by Cross-Referencing Manuals with Codebase
 
-After reviewing the full 4070-line `SkyCanvas.tsx`, all rendering systems, LOD, pools, and scene store, I identified several performance bottlenecks and optimization opportunities.
+### Critical Issues
 
-## Critical Issues Found
+**1. XLII+ supports 40 modules (2×20), not 20**
+The manual states: "Each of the two outputs will support 20 firing modules" for a total of **40 modules**. The protocol's `discoverModules(maxAddr = 20)` default only scans 20 — misses the second output bank entirely. The maximum is 40 wired + unlimited wireless.
 
-### 1. Sky Sphere — 64x64 segments is excessive
-The `SkyGradient` uses `sphereGeometry args={[90000, 64, 64]}` — that's 8192 vertices for a shader-only background. Since all color comes from the fragment shader, 32x16 is more than sufficient.
+**2. Module addressing: 1–39 for manual, 1–40 for auto — not 1–99**
+The comment in `fireoneProtocol.ts` says "Master → Field Module addressing (1–99)" but the XLII+ manual states the panel has buttons for 39 modules in manual mode (0–9 multiplier × lower row) and controls 40 modules via software. The protocol header says 1–99 but the panel physically only addresses 40. For the `discoverModules` default, 40 is the correct maximum for XLII+.
 
-### 2. Moon — multiple overlapping spheres with expensive shaders
-4 nested meshes (body 64x64, inner glow 32x32, halo 32x32, scatter 16x16) plus a `pointLight`. The body shader has redundant `noise()` calls. The scatter sphere (1600 radius, 16x16) adds draw calls for nearly invisible effect.
+**3. Firing duration range is 20–1000ms, not uncapped**
+The XLII+ manual (Wireless Module Configuration page) states: "Firing Duration: 20 milliseconds (range is 20 to 1000ms, only applies to v5.00.08 firmware or greater)". The `buildFireCommand` defaults to 500ms but has no validation for the 20–1000ms range. Duration values <20ms or >1000ms could damage hardware.
 
-### 3. Ground plane — 100000x100000 with 16x16 subdivisions
-`FinaleDarkGround`, `GrassGround`, and `GroundFog` all create enormous planes (`100000x100000`). The ground fog shader runs a 4-octave FBM on every pixel. These should use `1, 1` subdivisions (flat plane needs no subdivisions).
+**4. Resistance calculation is wrong**
+In `parseStatusPayload`: `resistance: resistanceTenths / 10 * 5` — this maps 5 bits (0–31) to 0–15.5Ω. But the XLII+ manual says 1–5 Ω is normal range for e-matches, and the comment says ">50 = short". The formula should be `resistanceTenths * 0.5` to give 0–15.5Ω range, but the code produces `(value/10)*5 = value*0.5` which is actually correct mathematically. However, the `FireOneIgniterStatus` comment says `>50 = short` which contradicts a 5-bit field. Need to fix the comment and document correct ranges.
 
-### 4. TreelineSilhouette — creates 500+ individual `<mesh>` elements
-Each tree is a separate React element with its own material. This creates 500+ draw calls. Should use `InstancedMesh`.
+**5. UltraFire mode not implemented**
+The XLII+ manual extensively documents UltraFire mode: downloading fire files directly to modules with verify codes, enabling sub-frame timing with zero latency. This is FireOne's killer feature (modules fire independently based on synced time). The protocol has no `DOWNLOAD_TO_MODULE` or `VERIFY_ULTRAFIRE` commands.
 
-### 5. SFXStageEnvironment — 40+ individual meshes
-Truss bars, LED panels, moving heads — each is a separate `<mesh>` with separate material. Many could share materials or use InstancedMesh.
+**6. Priority Disable system missing**
+The XLII+ supports 16 priority levels (1–16) for selectively disabling product groups during live firing. No priority command exists in the protocol, and the `AutoFireCue.priority` field from CSV import is never used for firing control.
 
-### 6. GroundReflections — runs timeline scan every frame
-The `useFrame` loop iterates `timelineItems` every frame to check for explosion flashes, creating `new THREE.Color()` per burst found — GC pressure.
+**7. Semi-Auto Event system not implemented**
+Semi-Auto mode fires groups of cues ("Events") with operator-initiated GO between events. The manual says up to 999 events with 4000 total firings. The current `AutoFirePanel` only supports full auto with no event-based stepping.
 
-### 7. GI/Smoke/Flare Controllers — all scan timeline every frame
-Three separate controllers (`GlobalIlluminationController`, `SmokeController`, `LensFlareController`) each independently iterate `timelineItems` and call `EFFECT_LIBRARY.find()` every frame. Should consolidate into one scan.
+**8. Preset (Load button) firing not implemented**
+The manual describes a preset system where the operator programs multiple module/cue combinations and fires them all with a single FIRE button press. No equivalent in the virtual interface.
 
-### 8. SparkTrailController — creates `new THREE.Vector3()` per spark per frame
-Line 2269 creates `new Color()` per spark per frame. Line 2243-2248 creates `new THREE.Vector3()` per spawn. These should use pre-allocated objects.
+**9. 8 fire file memory slots**
+The XLII+ stores 8 fire files internally (buttons 1–8 in Cue Selection). Current system has no concept of panel-side file management.
 
-### 9. Vite config — no build optimizations
-No tree-shaking hints, no chunk splitting, no dependency optimization.
+**10. PyroMote bands wrong in constants**
+`PBUS_DEVICE_PROFILES` lists PyroMote with `bands: ['433M']` but the manual clearly states "433M and 868M dual band wireless". Should be `['433M', '868M']`.
 
-### 10. FloorLogo — 4096x1024 canvas texture on every mount
-Creates a huge canvas texture every mount. Should be smaller (2048x512 is plenty) and the texture should use power-of-2 dimensions.
+**11. cFlamer missing from device library**
+The uploaded cFlamer manual documents a complete device with 3 DMX modes (2CH-P, 2CH-N, 6CH-N), external pyro trigger (9-60V), E-Stop chain, dual igniters, pressure monitoring, color fluid support (Red/Green/Blue/Yellow/Purple), and safety levels. Not in `SHOWVEN_LIBRARY`.
 
-### 11. AtmosphericParticles — 200 particles with per-frame Math.sin/cos per particle
-Minor but runs 200 trig calls per frame. Could be simplified.
+**12. cFlamer safety channel logic differs from R12**
+cFlamer 2CH-P mode: safety channel with configurable thresholds (five ranges: 76-120, 102-153, 127-178, 153-204, 178-229). Firing value: CH-F 111-255 = ON. Emergency stop: CH-F 0-101 AND CH-S outside threshold. This is more complex than a simple on/off.
 
-### 12. PostProcessing — SSR + SSAO + DOF + multiple Bloom layers simultaneously
-Default settings enable too many expensive effects. The `performance` preset is already defined but not auto-applied.
+**13. FireOne Flames Launcher SCL format not supported**
+The Flames manual describes an SCL (Show Cue List) format generated by the Flames Wizard from .fir files + audio. The `fireoneScriptParser.ts` only handles CSV and FIR. SCL import would enable flame choreography workflows.
 
 ## Changes
 
-### `vite.config.ts`
-- Add `build.rollupOptions.output.manualChunks` to split Three.js and postprocessing into separate chunks
-- Add `optimizeDeps.include` for Three.js
-- Set `build.target: 'esnext'` for modern JS output
+### 1. `src/lib/fireoneProtocol.ts` — Fix constraints and add UltraFire commands
 
-### `src/components/editor/SkyCanvas.tsx`
+- Add `FIREONE_MAX_MODULES = 40` constant (2×20 per XLII+ manual)
+- Add `FIREONE_MIN_FIRE_DURATION = 20` and `FIREONE_MAX_FIRE_DURATION = 1000` constants
+- Clamp `durationMs` in `buildFireCommand()` to 20–1000ms range
+- Fix `FireOneIgniterStatus.resistance` comment to document correct Ω ranges
+- Add `UltraFire` commands to `FireOneCmd` enum:
+  - `DOWNLOAD_MODULE = 0x55` — Download fire file data to module
+  - `VERIFY_ULTRAFIRE = 0x50` — Verify code for UltraFire mode
+  - `PRIORITY_DISABLE = 0x70` — Enable/disable priority (1-16)
+- Add `buildDownloadToModule(addr, verifyCode, cueData)`, `buildVerifyUltraFire(verifyCode)`, `buildPriorityDisable(priority, enabled)` functions
+- Add `UltraFire` event types: `'ultrafire-verify'`, `'priority-update'`
+- Handle new commands in `handleFrame()`
+- Change `discoverModules()` default from 20 to 40
 
-**A. Sky sphere segments**: `[90000, 64, 64]` → `[90000, 32, 16]`
+### 2. `src/hooks/useFireOneHardware.ts` — Expose UltraFire and priority
 
-**B. Moon optimization**: Remove outer scatter sphere (opacity 0.008 = invisible). Reduce body to `[450, 32, 32]`. Remove inner glow sphere. Reduce halo to `[800, 16, 16]`.
+- Add `ultraFireMode: boolean` and `verifyCode: string | null` to state
+- Add `downloadToModules(cues, verifyCode)` — iterates all modules and downloads fire file
+- Add `verifyUltraFire(code)` — sends verify and updates state
+- Add `setPriorityDisable(priority, enabled)` — toggles priority group
+- Add `priorities: Map<number, boolean>` state (1-16 → enabled/disabled)
+- Fix `discoverModules` default from 20 to 40
 
-**C. Ground planes**: Change all `planeGeometry args={[100000, 100000, 16, 16]}` to `args={[100000, 100000, 1, 1]}` — flat planes don't need subdivisions.
+### 3. `src/components/editor/live-firing/constants.ts` — Fix profiles, add cFlamer
 
-**D. TreelineSilhouette**: Replace 500+ individual `<mesh>` with a single `InstancedMesh`. Pre-compute matrix and color per instance in `useMemo`.
+- **Fix PyroMote bands**: `['433M']` → `['433M', '868M']`
+- **Add `minFiringDuration: 20` and `maxFiringDuration: 1000`** to PBUS profiles
+- **Add cFlamer** to `SHOWVEN_LIBRARY`:
+  - 3 DMX modes: 2CH-P (1 fire + 1 safety), 2CH-N (2 channels), 6CH-N (6 channels for Circle Flamer host)
+  - Effects: JET (fire on), PULSE, COLOR RED/GREEN/BLUE/YELLOW/PURPLE
+  - Safety channel with configurable threshold ranges
+  - E-Stop chain support
+  - Pyro trigger input (9-60V)
+  - Specs: 5.3L tank, max 10m flame height, 400W
+- **Add cFlamer MINI** variant if applicable
 
-**E. Consolidate timeline scan**: Create a single `ActiveBurstScanner` component that runs once per frame and writes results to a shared ref. Remove duplicate scans from GroundReflections, GI, Smoke, Flare, and SparkTrail controllers.
+### 4. `src/components/editor/live-firing/types.ts` — Extend types for UltraFire
 
-**F. Pre-allocate objects in GroundReflections**: Replace `new THREE.Color(effect.color)` with a reusable pre-allocated color.
+- Add `priority?: number` (1-16) to `CueEntry`
+- Add `eventNumber?: number` to `AutoFireCue` for semi-auto event grouping
+- Add `UltraFireState` interface: `{ enabled: boolean; verifyCode: string; modulesVerified: number[]; }`
+- Add `safetyThreshold?: { min: number; max: number }` to `SFXChannel` for cFlamer-style safety
+- Add `dmxMode?: '2CH-P' | '2CH-N' | '6CH-N'` to `SFXChannel`
+- Add `externalTrigger?: boolean` and `pyroVoltageRange?: string` to `SFXChannel`
 
-**G. Pre-allocate objects in SparkTrailController**: Replace per-spawn `new THREE.Vector3()` with pooled vectors. Replace per-frame `new Color()` with reusable.
+### 5. `src/components/editor/live-firing/AutoFirePanel.tsx` — Add Semi-Auto event mode
 
-**H. FloorLogo texture**: Reduce canvas to `2048x512`. Add `tex.generateMipmaps = false` and `tex.minFilter = THREE.LinearFilter`.
+- Add event grouping: display event boundaries in cue list with visual separators
+- Add GO button for semi-auto: fires current event then waits for next GO
+- Add priority disable row: 16 toggleable buttons (1-16) that send priority commands
+- Add UltraFire toggle: checkbox to enable UltraFire mode with verify code input
+- Show fire file slot selector (1-8) for panel memory
 
-**I. AtmosphericParticles**: Reduce count from 200 to 100.
+### 6. `src/lib/fireoneScriptParser.ts` — Add SCL format support
 
-**J. ContactShadows resolution**: Only render when `groundStyle !== 'flat-black'`.
-
-### `src/store/useSceneStore.ts`
-
-**K. Optimize default settings for better baseline performance**:
-- Default `particleDensity`: `1.2` → `1.0`
-- Default `bloomStrength`: `1.4` → `1.1`
-- Default `groundFogIntensity`: `0.6` → `0.4`
-- Default `shadowQuality`: `'high'` → `'medium'` (4096→2048 shadow map)
-- Default `ssaoEnabled`: already false by default (good)
-- Disable `contactShadowsEnabled` by default
-- Lower `starDensity`: `1.3` → `1.0`
-
-### `src/lib/niagaraBlenderRules.ts`
-
-**L. Tighten Niagara budgets**:
-- Desktop `maxConcurrentBursts`: `6` → `5`
-- Desktop `maxStarBudget`: `1400` → `1200`
-- Mobile `maxStarBudget`: `420` → `350`
-
-### `src/hooks/useLOD.ts`
-
-**M. Tune adaptive LOD thresholds**:
-- `FPS_DROP_THRESHOLD`: `30` → `35` (trigger quality drop sooner)
-- `FPS_RAISE_THRESHOLD`: `55` → `50` (recover sooner too)
-- `FPS_DROP_DURATION`: `500` → `400` (react faster)
+- Add `parseSCL(text)` function to import Flames Launcher SCL files
+- SCL contains cue list + duration + channel mapping for flame choreography
+- Map SCL entries to `AutoFireCue[]`
 
 ## Files Summary
 
 | File | Change |
 |------|--------|
-| `vite.config.ts` | Build optimizations, chunk splitting |
-| `SkyCanvas.tsx` | Sky segments, Moon cleanup, ground subdivisions, TreelineInstanced, consolidate timeline scans, pre-allocate GC-heavy objects, FloorLogo optimization |
-| `useSceneStore.ts` | Lower default quality settings for better baseline perf |
-| `niagaraBlenderRules.ts` | Tighter particle budgets |
-| `useLOD.ts` | More responsive adaptive thresholds |
+| `src/lib/fireoneProtocol.ts` | Fix duration clamping, add UltraFire/Priority commands, fix max modules to 40 |
+| `src/hooks/useFireOneHardware.ts` | Add UltraFire mode, priority disable, fix discover default |
+| `src/components/editor/live-firing/constants.ts` | Fix PyroMote bands, add cFlamer to library |
+| `src/components/editor/live-firing/types.ts` | Add UltraFire, priority, semi-auto, cFlamer safety types |
+| `src/components/editor/live-firing/AutoFirePanel.tsx` | Add semi-auto events, priority row, UltraFire toggle |
+| `src/lib/fireoneScriptParser.ts` | Add SCL format import |
 
