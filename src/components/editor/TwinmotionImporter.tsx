@@ -72,6 +72,7 @@ export default function TwinmotionImporter({ open, onOpenChange, initialFile }: 
   const [pastedText, setPastedText] = useState('');
   const [model3dFile, setModel3dFile] = useState<File | null>(null);
   const [model3dStatus, setModel3dStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [model3dTransform, setModel3dTransform] = useState<ModelTransform>({ scale: 1, rotationY: 0 });
   const fileRef = useRef<HTMLInputElement>(null);
   const model3dRef = useRef<HTMLInputElement>(null);
 
