@@ -1,80 +1,82 @@
 
 
-# Plan: Wireless IFMx-i32Q Support with RSSI + Wired Fallback + Full FireOne Integration
+# Plan: Full FireOne Hardware Integration Across All System Modules
 
 ## Overview
-Add wireless module detection, RSSI signal monitoring with visual indicators, automatic wired fallback, and unify all FireOne technologies (RS-485 wired, wireless bridge, DMX output, UltraFire CSV, ScriptMaker, Flames Launcher) into a single cohesive control system.
+Promote the FireOne IFMx-i32Q hardware integration from the Pyro panel into all related subsystems: **Addressing**, **Diagnostics**, **Show Control**, **DMX Panel**, **SMPTE/Timecode**, **Firing Export**, and **Safety Check**. This connects the real hardware state to every panel that deals with pyro, firing, or show execution.
 
 ## Changes
 
-### 1. Extend `src/lib/fireoneProtocol.ts` — Wireless Commands
-Add wireless-specific protocol support:
-- New commands: `WIRELESS_STATUS = 0x57` (query RSSI, channel, link quality), `WIRELESS_CONFIG = 0x56` (set channel, power, fallback mode)
-- `buildWirelessStatusQuery(addr)` — request wireless telemetry (RSSI dBm, channel, packet loss %, link quality)
-- `buildWirelessConfig(addr, config)` — set wireless channel (1-16), TX power, auto-fallback flag
-- `parseWirelessStatus(payload)` — returns `{ rssiDbm, channel, packetLoss, linkQuality, mode: 'wireless'|'wired'|'fallback' }`
-- Extend `FireOneModuleStatus` with: `rssiDbm?: number`, `wirelessChannel?: number`, `packetLoss?: number`, `linkQuality?: number`, `connectionMode: 'wired' | 'wireless' | 'fallback'`
-- Add `'wireless-status'` and `'wireless-fallback'` to `FireOneEventType`
-- Handle wireless status frames and auto-fallback detection in `handleFrame()`
+### 1. Edit `src/components/editor/AddressingPanel.tsx` — FireOne Hardware Sync
+- Import `useFireOneHardware` hook
+- When hardware connected: populate module list from real discovered IFMx-i32Q modules instead of static specs
+- Add "Sync from Hardware" button that reads discovered module addresses and auto-maps them to the addressing table
+- Show connection mode (wired/wireless) and RSSI per module in the address list
+- Add `fireone-i32q` to `DEFAULT_MODULE_SPECS` in the addressing store (32 pins, 1 slat)
 
-### 2. Extend `src/hooks/useFireOneHardware.ts` — Wireless Polling + Fallback
-- Add `queryWirelessStatus(addr)` — sends wireless status query
-- Add periodic wireless polling: when connected, poll RSSI every 3s for wireless modules
-- Detect RSSI threshold (-80 dBm) and emit fallback event when signal degrades
-- Add `wirelessModuleCount` and `wiredModuleCount` computed from module status
-- Track `connectionMode` per module in React state from hardware events
+### 2. Edit `src/components/editor/DiagnosticPanel.tsx` — Hardware Diagnostics
+- Import `useFireOneHardware` hook
+- Add new diagnostic checks when hardware connected:
+  - "FireOne Link" — verify RS-485 serial connection is active
+  - "Module Discovery" — check how many modules respond on the bus
+  - "Battery Check" — flag modules with voltage < 11.0V
+  - "Continuity Summary" — run continuity on all modules, report open/short/good counts
+  - "Wireless Signal" — flag modules with RSSI < -75 dBm
+  - "Firmware Version" — list firmware versions, warn if mixed
+- Show SIM mode warning when not connected to real hardware
 
-### 3. Edit `src/components/editor/live-firing/PyroFireOnePanel.tsx` — Wireless UI
-Add wireless indicators and controls throughout the panel:
+### 3. Edit `src/components/editor/ShowControlPanel.tsx` — FireOne Orchestration
+- Import `useFireOneHardware` hook
+- During "Preflight" phase: include FireOne hardware checks (connection, module count, battery, continuity)
+- During "Armed" phase: send ARM ALL to FireOne modules via `hardware.armAll()`
+- During "Running" phase: sync timecode to modules via `hardware.syncTimecode(ms)`
+- During "Abort" phase: send emergency stop to all modules via `hardware.emergencyStop()`
+- Add FireOne status indicator in the phase dashboard showing module count, armed state, connection mode
 
-**Connection bar enhancements:**
-- Wireless module count badge (e.g., "3 Wireless · 2 Wired")
-- Global RSSI indicator bar showing worst-case signal across all wireless modules
+### 4. Edit `src/components/editor/DMXPanel.tsx` — IFMx-i32Q DMX Output
+- Import `useFireOneHardware` hook
+- Add "FireOne DMX" output mode alongside Art-Net and USB Direct
+- When selected, DMX frames route through `hardware.sendDmxOut(moduleAddr, startChannel, values)` to the IFMx-i32Q's built-in DMX output port
+- Show which modules have DMX output capability in the output selector
+- Map DMX universe to module address (universe 1 → module 1 DMX port, etc.)
 
-**Module selector:**
-- Wifi/Usb icon per module showing connection mode (wireless/wired/fallback)
-- Color-coded RSSI: green (>-60dBm), amber (-60 to -75dBm), red (<-75dBm), flashing red (fallback triggered)
+### 5. Edit `src/components/editor/SMPTEPanel.tsx` — Timecode Sync to Modules
+- Import `useFireOneHardware` hook
+- Add "Sync to FireOne" toggle: when enabled, every timecode tick sends `hardware.syncTimecode(ms)` to all field modules
+- Show sync status indicator (green when modules are receiving timecode, amber when no hardware)
+- During external timecode chase mode, forward the received timecode to FireOne modules in real-time
 
-**Module info bar:**
-- RSSI dBm readout with signal bars icon for wireless modules
-- Connection mode badge: "WIRELESS" (cyan), "WIRED" (green), "FALLBACK" (amber flash)
-- Packet loss % indicator
-- Wireless channel number
+### 6. Edit `src/lib/firingSystemExports.ts` — Enhanced FireOne Export
+- Import types from `fireoneScriptParser`
+- Replace the basic `exportFireOne()` with a version that uses the full FireOne CSV spec (matching UltraFire format)
+- Include DMX commands in the export for IFMx-i32Q modules with DMX output assignments
+- Add `exportFireOneUltraFire()` function that generates the complete UltraFire-compatible CSV with all fields
 
-**Fullscreen sidebar (desktop):**
-- Per-module row shows connection mode icon + RSSI bar
-- Fallback alert: when a module switches from wireless to wired fallback, flash the row amber and show toast
+### 7. Edit `src/components/editor/FiringExportPanel.tsx` — Live Hardware Export
+- Import `useFireOneHardware` hook
+- Add "Upload to Hardware" button for FireOne: when hardware connected, sends the cue list directly to modules as a scripted sequence (using `FIRE_SEQUENCE` commands with timecode offsets)
+- Show hardware connection status in the FireOne export row
+- Add "Verify Addressing" action that cross-checks exported module/pin assignments against physically discovered modules
 
-**New "Network" sub-section in Test mode:**
-- Wireless channel scanner showing all 16 channels with noise levels
-- Per-module RSSI history sparkline (last 30 readings)
-- Bulk wireless config: set channel + TX power for all wireless modules
-
-### 4. Edit `src/lib/fireoneScriptParser.ts` — ScriptMaker + Flames Integration
-Extend the parser to support additional FireOne software formats:
-- `parseScriptMakerSession(text)` — parse ScriptMaker Visual session files (.ses) with timing, product data, position info
-- `parseFlamesLauncherCSV(text)` — parse Flames Launcher DMX choreography exports
-- `exportFlamesLauncherCSV(cues)` — generate Flames-compatible CSV for DMX flame machines
-- Map ScriptMaker product numbers to internal effect types
-
-### 5. Edit `src/components/editor/live-firing/AutoFirePanel.tsx` — Unified Import
-- Add "ScriptMaker" and "Flames" import options alongside existing FireOne CSV
-- File picker accepts `.ses`, `.csv`, `.fir`, `.sem` with auto-detection
-- Show source badge on imported cues ("UltraFire", "ScriptMaker", "Flames")
+### 8. Edit `src/store/useAddressingStore.ts` — Add IFMx-i32Q Spec
+- Add `{ id: 'fireone-i32q', name: 'FireOne IFMx-i32Q', slatCount: 1, pinsPerSlat: 32, firingSystem: 'Default' }` to `DEFAULT_MODULE_SPECS`
 
 ## Files Summary
 
 | File | Action |
 |------|--------|
-| `src/lib/fireoneProtocol.ts` | Edit — wireless commands, extended status fields, fallback detection |
-| `src/hooks/useFireOneHardware.ts` | Edit — wireless polling, RSSI tracking, fallback logic |
-| `src/components/editor/live-firing/PyroFireOnePanel.tsx` | Edit — RSSI indicators, connection mode badges, wireless config UI |
-| `src/lib/fireoneScriptParser.ts` | Edit — ScriptMaker + Flames Launcher format support |
-| `src/components/editor/live-firing/AutoFirePanel.tsx` | Edit — unified multi-format import |
+| `src/store/useAddressingStore.ts` | Edit — add IFMx-i32Q module spec |
+| `src/components/editor/AddressingPanel.tsx` | Edit — hardware sync, live module discovery |
+| `src/components/editor/DiagnosticPanel.tsx` | Edit — hardware diagnostic checks |
+| `src/components/editor/ShowControlPanel.tsx` | Edit — FireOne orchestration in show phases |
+| `src/components/editor/DMXPanel.tsx` | Edit — IFMx-i32Q DMX output mode |
+| `src/components/editor/SMPTEPanel.tsx` | Edit — timecode sync to field modules |
+| `src/lib/firingSystemExports.ts` | Edit — enhanced UltraFire-compatible export |
+| `src/components/editor/FiringExportPanel.tsx` | Edit — upload to hardware, verify addressing |
 
 ## Technical Notes
-- RSSI polling uses 3s interval to avoid flooding RS-485 bus
-- Auto-fallback: when RSSI drops below -80 dBm for 3 consecutive readings, controller sends `WIRELESS_CONFIG` with fallback flag; module switches to wired RS-485 automatically
-- Fallback is non-destructive: module retains wireless config and will auto-reconnect wireless when signal recovers above -70 dBm (5 dB hysteresis)
-- All wireless commands go through the same RS-485 serial path (wireless bridge transparently relays)
+- All integrations use the existing `useFireOneHardware` hook — no new protocol code needed
+- When hardware is not connected, all panels fall back to their existing behavior (no breaking changes)
+- Hardware state is shared via the `FireOneController` singleton, so all panels see the same module list
+- Timecode sync to modules uses the same frame format already implemented in `buildSyncTimecode()`
 
