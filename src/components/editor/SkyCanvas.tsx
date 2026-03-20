@@ -23,7 +23,7 @@ import LaserPreviewBeams from './LaserPreviewBeams';
 import { DEFAULT_AVOIDANCE } from '@/lib/collisionAvoidance';
 import QuadcopterModel from './QuadcopterModel';
 // GeofenceVisual removed — green squares issue
-import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Globe, Download, ScanEye, Cog, Paintbrush, MapPinned, Film, ChevronDown, Plus, Lock, Ruler, Bookmark, Trash2 } from 'lucide-react';
+import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Globe, Download, ScanEye, Cog, Paintbrush, MapPinned, Film, ChevronDown, Plus, Lock, Ruler, Bookmark, Trash2, Navigation } from 'lucide-react';
 import SelectionStatusBar from './SelectionStatusBar';
 import { cn } from '@/lib/utils';
 import {
