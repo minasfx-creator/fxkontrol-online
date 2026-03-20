@@ -18,7 +18,7 @@ interface AutoFirePanelProps {
   onFireCue?: (cue: AutoFireCue) => void;
 }
 
-const DEMO_CUES: AutoFireCue[] = [
+export const DEMO_CUES: AutoFireCue[] = [
   { id: 'af-1', cueNumber: 1, device: 'dmx', name: 'SPARKULAR', state: 'ready', timecodeMs: 4858, addresses: '1:3:5:7', mode: 'ltr', effect: 'Height 10', duration: 5.5, prefire: 2.5, trigger: 0, triggerSource: 'manual' },
   { id: 'af-2', cueNumber: 2, device: 'dmx', name: 'SPARKULAR JET', state: 'ready', timecodeMs: 57846, addresses: '13:15', mode: 'sync', effect: 'JET ON', duration: 1.0, prefire: 0, trigger: 0, triggerSource: 'manual' },
   { id: 'af-3', cueNumber: 3, device: 'dmx', name: 'uFlamer 2CH', state: 'ready', timecodeMs: 57854, addresses: '21:23:25:27', mode: 'sync', effect: 'JET', duration: 0.2, prefire: 0.2, trigger: 0, triggerSource: 'midi' },
