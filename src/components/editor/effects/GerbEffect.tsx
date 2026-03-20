@@ -35,18 +35,18 @@ export default function GerbEffect({
 
   const seeds = useMemo(() => {
     const s: { angle: number; speed: number; spread: number; lt: number; phase: number; size: number }[] = [];
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
+    for (let i = 0; i < SCALED_PARTICLE_COUNT; i++) {
       s.push({
         angle: Math.random() * Math.PI * 2,
-        speed: height * (0.65 + Math.random() * 0.7),
-        spread: 0.02 + Math.random() * 0.06, // ultra-narrow cone
+        speed: scaledHeight * (0.65 + Math.random() * 0.7),
+        spread: 0.02 + Math.random() * 0.06,
         lt: 0.4 + Math.random() * 0.7,
         phase: Math.random() * Math.PI * 2,
         size: 0.5 + Math.random() * 1.0,
       });
     }
     return s;
-  }, [height]);
+  }, [scaledHeight, SCALED_PARTICLE_COUNT]);
 
   useFrame(({ clock }) => {
     if (!pointsRef.current) return;
