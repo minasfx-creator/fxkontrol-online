@@ -619,6 +619,8 @@ export const useSceneStore = create<SceneSettingsState>((set) => ({
   removeSiteModel: (id) => set(s => {
     const model = s.siteModels.find(m => m.id === id);
     if (model?.url.startsWith('blob:')) URL.revokeObjectURL(model.url);
-    return { siteModels: s.siteModels.filter(m => m.id !== id) };
+    return { siteModels: s.siteModels.filter(m => m.id !== id), selectedSiteModelId: s.selectedSiteModelId === id ? null : s.selectedSiteModelId };
   }),
+  selectSiteModel: (id) => set({ selectedSiteModelId: id }),
+  setSiteModelTransformMode: (mode) => set({ siteModelTransformMode: mode }),
 }));

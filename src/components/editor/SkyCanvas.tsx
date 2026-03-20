@@ -3851,6 +3851,9 @@ export default function SkyCanvas() {
       {/* Camera Bookmarks bar */}
       <CameraBookmarksBar setActivePreset={setActivePreset} setFreeLook={setFreeLook} />
 
+      {/* Site Model Transform Toolbar */}
+      <SiteModelTransformToolbar />
+
       {/* Debug overlay toggle + panel */}
       {!isMobile && showDebugOverlay && <RenderDebugPanel />}
 
