@@ -222,7 +222,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
         intensity: p.intensity || 200, startedAt: performance.now(),
         duration: p.duration || 2000,
       });
-      if (navigator.vibrate) navigator.vibrate(15);
+      haptics.select();
     });
 
     // Master ARM broadcast
