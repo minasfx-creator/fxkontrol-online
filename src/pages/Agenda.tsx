@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, CalendarDays, MapPin, User } from 'lucide-react';
+import { Plus, CalendarDays, MapPin, User, Copy } from 'lucide-react';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 interface EventRow {
