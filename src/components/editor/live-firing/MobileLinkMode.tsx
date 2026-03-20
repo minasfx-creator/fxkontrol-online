@@ -85,7 +85,7 @@ interface AutoCue {
   state: 'queued' | 'ready' | 'fired' | 'skip';
 }
 
-type XL4Mode = 'manual' | 'semiauto' | 'auto' | 'continuity' | 'status';
+type XL4Mode = 'manual' | 'semiauto' | 'auto' | 'continuity' | 'status' | 'hardware';
 
 const FIXTURE_TYPES = [
   { key: 'co2' as const, label: 'CO2', color: '#00d4ff', icon: Wind },
