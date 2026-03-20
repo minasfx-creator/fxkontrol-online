@@ -36,6 +36,7 @@ import CheckSlavePanel from './live-firing/CheckSlavePanel';
 import SettingsPanel from './live-firing/SettingsPanel';
 import DeviceLibraryPanel from './live-firing/DeviceLibraryPanel';
 import MobileLinkMode from './live-firing/MobileLinkMode';
+import PyroFireOnePanel from './live-firing/PyroFireOnePanel';
 
 // ═══════════════════════════════════════════════════════════
 // CUE KEY — hardware key replica with Lock/Tap mode
@@ -249,7 +250,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   useEffect(() => { return () => { relayWs.current?.close(); }; }, []);
 
   // ─── Swipe gesture for mobile mode switching / close ───
-  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'auto_fire', 'check_slave', 'mobile_link', 'settings'];
+  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'auto_fire', 'check_slave', 'mobile_link', 'settings'];
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const swipeHandled = useRef(false);
 
@@ -781,6 +782,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           { key: 'super_dmx' as FXCMode, label: 'Super' },
           { key: 'simple_dmx' as FXCMode, label: 'Simple' },
           { key: 'manual_fire' as FXCMode, label: 'Manual' },
+          { key: 'pyro_fire' as FXCMode, label: '🔥 Pyro' },
           { key: 'auto_fire' as FXCMode, label: 'Auto' },
           { key: 'check_slave' as FXCMode, label: 'Check' },
           { key: 'mobile_link' as FXCMode, label: '📡 Link' },
@@ -1103,6 +1105,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
       case 'simple_dmx': return renderSimpleDmx(fs);
       case 'manual_fire': return renderManualFire(fs);
       case 'auto_fire': return <AutoFirePanel fs={fs} pyroArm={pyroArm} dmxArm={dmxArm} />;
+      case 'pyro_fire': return <PyroFireOnePanel fs={fs} fireChannel={fireChannel} channels={channels} pyroArm={pyroArm} dmxArm={dmxArm} deadmanHeld={deadmanHeld} handlePanic={handlePanic} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
       case 'check_slave': return <CheckSlavePanel fs={fs} pyroArm={pyroArm} />;
       case 'mobile_link': return <MobileLinkMode fs={fs} fireChannel={fireChannel} channels={channels} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
       case 'settings': return <SettingsPanel fs={fs} settings={settings} onSettingsChange={setSettings} relayConnected={relayConnected} relayUrl={relayUrl} onRelayUrlChange={setRelayUrl} onConnectRelay={connectRelay} onDisconnectRelay={disconnectRelay} />;
