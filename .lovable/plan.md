@@ -1,34 +1,42 @@
 
 
-# Plan: Interactive Transform Gizmos for Site Models
+# Fix: Marketplace Search Filtering Bug
 
-## Overview
-Add `TransformControls` from `@react-three/drei` to allow users to translate, rotate, and scale imported 3D models directly in the viewport. Clicking a model selects it and shows the gizmo; a toolbar lets the user switch between translate/rotate/scale modes.
+## Problem
+The fallback search in both `getFabFallbackResults()` and `getWarehouseFallbackResults()` in `src/lib/marketplaceApi.ts` checks if a tag contains the entire query string (e.g., `"stage concert venue"`). Since no single tag contains that full phrase, searches with multiple words return 0 results despite matching catalog entries existing.
 
-## Steps
+## Fix
+**File**: `src/lib/marketplaceApi.ts`
 
-### Step 1: Add selection state to scene store
-**Modify**: `src/store/useSceneStore.ts`
-- Add `selectedSiteModelId: string | null` and `siteModelTransformMode: 'translate' | 'rotate' | 'scale'`
-- Add actions: `selectSiteModel(id | null)`, `setSiteModelTransformMode(mode)`
+Split the query into individual words and check if ANY word matches ANY tag or appears in the title/description. This is a standard tokenized search approach.
 
-### Step 2: Update SiteModelRenderer with TransformControls
-**Modify**: `src/components/editor/SiteModelRenderer.tsx`
-- Import `TransformControls` from `@react-three/drei`
-- When a model is selected, wrap it in `<TransformControls>` with the current mode
-- On `mouseDown` / click on the `<primitive>`, call `selectSiteModel(id)`
-- On `TransformControls` `objectChange` event, sync position/rotation/scale back to the store via `updateSiteModel`
-- Disable `OrbitControls` while dragging the gizmo (use `onMouseDown`/`onMouseUp` events to toggle a flag)
+### Changes
 
-### Step 3: Add gizmo mode toolbar in SkyCanvas
-**Modify**: `src/components/editor/SkyCanvas.tsx`
-- When `selectedSiteModelId` is set, show a small floating toolbar with Move/Rotate/Scale buttons
-- Add an Escape key handler to deselect (`selectSiteModel(null)`)
+**Lines 246-249** (`getFabFallbackResults` filter) and **Lines 416-419** (`getWarehouseFallbackResults` filter):
 
-## Files to Modify
-| File | Change |
-|------|--------|
-| `src/store/useSceneStore.ts` | Add selection state + transform mode |
-| `src/components/editor/SiteModelRenderer.tsx` | Add TransformControls + click-to-select |
-| `src/components/editor/SkyCanvas.tsx` | Add gizmo mode toolbar overlay |
+Replace the single-string match:
+```typescript
+const filtered = catalog.filter(a =>
+  !lower || a.title.toLowerCase().includes(lower) ||
+  a.tags.some(t => t.includes(lower)) ||
+  a.description.toLowerCase().includes(lower)
+);
+```
+
+With tokenized word matching:
+```typescript
+const words = lower.split(/\s+/).filter(Boolean);
+const filtered = catalog.filter(a => {
+  if (words.length === 0) return true;
+  const title = a.title.toLowerCase();
+  const desc = a.description.toLowerCase();
+  return words.some(w =>
+    title.includes(w) ||
+    a.tags.some(t => t.includes(w)) ||
+    desc.includes(w)
+  );
+});
+```
+
+This ensures "stage concert venue" matches any asset containing "stage" OR "concert" OR "venue" in its title, tags, or description.
 
