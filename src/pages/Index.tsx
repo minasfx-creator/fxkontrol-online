@@ -343,6 +343,10 @@ function Index() {
         {activePanel === 'showven' && <ShowvenEquipmentPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'generative' && <GenerativeEffectsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'sitemodels' && <SiteModelsPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'setlist' && <SetlistPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'rider' && <RiderPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'budget' && <BudgetPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'showpreview' && <ShowPreviewPanel onClose={() => setActivePanel(null)} />}
       </>
     );
   };
