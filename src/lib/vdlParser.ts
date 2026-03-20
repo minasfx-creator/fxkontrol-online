@@ -712,6 +712,26 @@ export function parseVDL(input: string): VDLResult {
     result.numSplits = 4;
   }
 
+  // ── SuperVDL: Niagara preset detection + auto-matching ──
+  // 1. Explicit reference: "niagara-blue", "niagara-red" etc.
+  const niagaraExplicit = lower.match(/niagara-(\w+)/);
+  if (niagaraExplicit) {
+    const presetId = `niagara-${niagaraExplicit[1]}`;
+    const preset = getNiagaraPreset(presetId);
+    if (preset) {
+      result.niagaraPreset = presetId;
+      result.niagaraProfile = presetToNiagaraProfile(preset);
+    }
+  }
+  // 2. Auto-match: if no explicit preset, try matching by color + type
+  if (!result.niagaraPreset && result.colorNames.length > 0) {
+    const matched = autoMatchNiagaraPreset(result.colorNames[0], result.type);
+    if (matched) {
+      result.niagaraPreset = matched.id;
+      result.niagaraProfile = presetToNiagaraProfile(matched);
+    }
+  }
+
   result.valid = foundType || result.isChain || result.type === 'cake' || result.colorNames.length > 0 || calMatch !== null || calMmMatch !== null;
 
   return result;
