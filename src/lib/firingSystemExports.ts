@@ -292,6 +292,7 @@ export interface FiringSystem {
 export const FIRING_SYSTEMS: FiringSystem[] = [
   { id: 'cobra', name: 'Cobra 18R2', country: '🇺🇸', format: 'CSV', pinsPerSlat: 18, exportFn: exportCobra, fileExt: 'csv', mimeType: 'text/csv' },
   { id: 'fireone', name: 'FireOne', country: '🇺🇸', format: 'CSV', pinsPerSlat: 32, exportFn: exportFireOne, fileExt: 'csv', mimeType: 'text/csv' },
+  { id: 'fireone-ultrafire', name: 'FireOne UltraFire', country: '🇺🇸', format: 'UltraFire CSV', pinsPerSlat: 32, exportFn: exportFireOneUltraFire, fileExt: 'csv', mimeType: 'text/csv' },
   { id: 'pyrodigital', name: 'Pyrodigital', country: '🇺🇸', format: 'CSV/SMPTE', pinsPerSlat: 200, exportFn: exportPyrodigital, fileExt: 'csv', mimeType: 'text/csv' },
   { id: 'galaxis', name: 'Galaxis', country: '🇩🇪', format: 'CSV (;)', pinsPerSlat: 20, exportFn: exportGalaxis, fileExt: 'csv', mimeType: 'text/csv' },
   { id: 'explo', name: 'Explo', country: '🇩🇪', format: 'INI', pinsPerSlat: 40, exportFn: exportExplo, fileExt: 'ini', mimeType: 'text/plain' },

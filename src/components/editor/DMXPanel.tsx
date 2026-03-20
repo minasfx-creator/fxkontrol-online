@@ -550,6 +550,46 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
+        {/* FireOne DMX Output */}
+        {outputMode === 'fireone' && (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <Zap className="h-3 w-3 text-green-400" />
+              <span className="text-[9px] text-muted-foreground font-semibold uppercase">FireOne IFMx-i32Q DMX</span>
+            </div>
+
+            {!hardware.isConnected ? (
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-sm p-2 text-[9px] text-yellow-400">
+                <p className="font-bold mb-0.5">⚠ FireOne não conectado</p>
+                <p>Conecte via RS-485 no painel <strong>🔥 Pyro &gt; FireOne</strong></p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-1">
+                  {Array.from(hardware.modules.entries()).map(([addr, mod]) => (
+                    <div key={addr} className="flex items-center gap-1.5 bg-green-500/5 border border-green-500/20 rounded-sm p-1.5">
+                      <div className="w-2 h-2 rounded-full bg-green-400 shrink-0" />
+                      <span className="text-[9px] text-foreground flex-1">Module #{addr}</span>
+                      <span className="text-[7px] text-muted-foreground">DMX Out</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[8px] text-muted-foreground">
+                  Universe 1 → Module 1 DMX port, Universe 2 → Module 2, etc.
+                </p>
+                <Button
+                  size="sm" className="h-6 text-[10px] w-full gap-1"
+                  onClick={sendFireOneDMX}
+                  disabled={universes.length === 0 || sending}
+                >
+                  <Zap className="h-3 w-3" />
+                  {sending ? 'Enviando...' : `Send FireOne DMX (${Math.min(universes.length, hardware.modules.size)} uni)`}
+                </Button>
+              </>
+            )}
+          </div>
+        )
+
         {/* Export */}
         <div className="flex items-center gap-1">
           <Button
