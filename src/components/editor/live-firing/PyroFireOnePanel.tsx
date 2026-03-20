@@ -654,20 +654,31 @@ export default function PyroFireOnePanel({
     <div className={cn("flex items-center gap-1.5 border-b border-border/10 overflow-x-auto scrollbar-thin",
       sz === 'xl' ? "px-5 py-2" : sz === 'fs' ? "px-3 py-1.5" : "px-2 py-1"
     )} style={{ background: 'hsl(220 12% 6%)' }}>
-      {modules.map(m => (
-        <button key={m.address} onClick={() => setSelectedModule(m.address)}
-          className={cn(
-            "rounded border font-mono font-bold shrink-0 transition-all",
-            sz === 'xl' ? "px-3.5 py-2 text-xs" : sz === 'fs' ? "px-2.5 py-1.5 text-[9px]" : "px-2 py-1 text-[7px]",
-            selectedModule === m.address
-              ? m.armed ? "bg-red-600/20 border-red-500/40 text-red-400" : "bg-primary/15 border-primary/40 text-primary"
-              : m.armed ? "bg-red-600/10 border-red-800/20 text-red-400/50"
-              : m.connected ? "bg-[hsl(220_10%_10%)] border-border/15 text-foreground/50" : "bg-[hsl(220_10%_7%)] border-border/5 text-muted-foreground/15"
-          )}>
-          FM-{String(m.address).padStart(2, '0')}
-          {m.armed && <span className="ml-1 text-red-400">●</span>}
-        </button>
-      ))}
+      {modules.map(m => {
+        const ModeIcon = connectionModeIcon(m.connectionMode);
+        return (
+          <button key={m.address} onClick={() => setSelectedModule(m.address)}
+            className={cn(
+              "rounded border font-mono font-bold shrink-0 transition-all flex items-center gap-1",
+              sz === 'xl' ? "px-3.5 py-2 text-xs" : sz === 'fs' ? "px-2.5 py-1.5 text-[9px]" : "px-2 py-1 text-[7px]",
+              selectedModule === m.address
+                ? m.armed ? "bg-red-600/20 border-red-500/40 text-red-400" : "bg-primary/15 border-primary/40 text-primary"
+                : m.armed ? "bg-red-600/10 border-red-800/20 text-red-400/50"
+                : m.connected ? "bg-[hsl(220_10%_10%)] border-border/15 text-foreground/50" : "bg-[hsl(220_10%_7%)] border-border/5 text-muted-foreground/15"
+            )}>
+            <ModeIcon className={cn(
+              sz === 'xl' ? "w-3 h-3" : "w-2 h-2",
+              m.connectionMode === 'wireless' ? rssiColor(m.rssiDbm) :
+              m.connectionMode === 'fallback' ? "text-amber-400 animate-pulse" : "text-green-400/40"
+            )} />
+            FM-{String(m.address).padStart(2, '0')}
+            {m.armed && <span className="ml-0.5 text-red-400">●</span>}
+            {m.connectionMode === 'wireless' && m.rssiDbm !== undefined && (
+              <span className={cn("text-[5px]", rssiColor(m.rssiDbm))}>{m.rssiDbm}dB</span>
+            )}
+          </button>
+        );
+      })}
       <button onClick={importPyroCues}
         className={cn("rounded border shrink-0 transition-all font-bold",
           sz === 'xl' ? "px-3.5 py-2 text-[10px]" : sz === 'fs' ? "px-2.5 py-1.5 text-[8px]" : "px-2 py-1 text-[6px]",
