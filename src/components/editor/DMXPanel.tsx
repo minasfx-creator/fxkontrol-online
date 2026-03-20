@@ -42,6 +42,7 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
   const [diagLogs, setDiagLogs] = useState<DiagnosticLog[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
   const [showDiag, setShowDiag] = useState(true);
+  const [showMonitor, setShowMonitor] = useState(false);
 
   const addDiagLog = useCallback((log: DiagnosticLog) => {
     setDiagLogs(prev => [log, ...prev].slice(0, 50));
