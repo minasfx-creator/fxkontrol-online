@@ -39,18 +39,8 @@ export default function VVIZImporter({ open, onOpenChange, initialFile = null }:
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const text = reader.result as string;
-      const parsed = importVVIZ(text);
-      setResult(parsed);
-      if (parsed.errors.length > 0) {
-        toast.warning(`${parsed.errors.length} aviso(s) durante o import`);
-      }
-    };
-    reader.readAsText(file);
-  }, []);
+    parseFile(file);
+  }, [parseFile]);
 
   const handleImport = useCallback(() => {
     if (!result) return;
