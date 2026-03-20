@@ -3707,6 +3707,7 @@ export default function SkyCanvas() {
         {!isMobile && <CameraPathPreview />}
         <ViewportRulers />
         <CameraBookmarkSaver />
+        <ContactShadowsLayer />
         <PostProcessing activeBurstCount={_activeBurstCount} />
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
