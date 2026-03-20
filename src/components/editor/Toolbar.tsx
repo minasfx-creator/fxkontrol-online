@@ -352,6 +352,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       else if (type === 'vviz') setVvizOpen(true);
       else if (type === 'uasset') setUassetOpen(true);
       else if (type === 'ue5map' || type === 'heightmap') setUe5MapOpen(true);
+      else if (type === 'twinmotion') setTwinmotionOpen(true);
     };
     window.addEventListener('viewport-file-drop', handler as EventListener);
     return () => window.removeEventListener('viewport-file-drop', handler as EventListener);
