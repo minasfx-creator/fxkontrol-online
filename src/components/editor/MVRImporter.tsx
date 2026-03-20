@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { Upload, FileArchive, X, Check, AlertTriangle, Zap, Layers, MapPin, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  initialFile?: File | null;
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -25,7 +26,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   strobe: '⚡', sfx: '🔥', laser: '🟢', drone: '🤖',
 };
 
-export default function MVRImporter({ open, onOpenChange }: Props) {
+export default function MVRImporter({ open, onOpenChange, initialFile }: Props) {
   const { addPosition } = useProjectStore();
   const [result, setResult] = useState<MVRParseResult | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -51,6 +52,26 @@ export default function MVRImporter({ open, onOpenChange }: Props) {
       setLoading(false);
     }
   }, []);
+
+  // Auto-process initialFile from drag-and-drop
+  useEffect(() => {
+    if (!initialFile || !open) return;
+    const processFile = async () => {
+      setFileName(initialFile.name);
+      setLoading(true);
+      try {
+        const buffer = await initialFile.arrayBuffer();
+        const parsed = await parseMVR(buffer);
+        setResult(parsed);
+        setSelected(new Set(parsed.fixtures.map((_, i) => i)));
+      } catch (err) {
+        toast.error('Failed to parse MVR file');
+      } finally {
+        setLoading(false);
+      }
+    };
+    processFile();
+  }, [initialFile, open]);
 
   const handleImport = useCallback(() => {
     if (!result) return;

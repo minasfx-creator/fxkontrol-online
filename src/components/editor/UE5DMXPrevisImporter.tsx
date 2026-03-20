@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { Upload, MonitorSpeaker, X, Check, AlertTriangle, Zap, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  initialFile?: File | null;
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -36,7 +37,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   drone: '🤖',
 };
 
-export default function UE5DMXPrevisImporter({ open, onOpenChange }: Props) {
+export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }: Props) {
   const { addPosition } = useProjectStore();
   const [result, setResult] = useState<UE5DMXParseResult | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -56,6 +57,20 @@ export default function UE5DMXPrevisImporter({ open, onOpenChange }: Props) {
     };
     reader.readAsText(file);
   }, []);
+
+  // Auto-process initialFile from drag-and-drop
+  useEffect(() => {
+    if (!initialFile || !open) return;
+    setFileName(initialFile.name);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result as string;
+      const parsed = parseUE5DMXLibrary(text);
+      setResult(parsed);
+      setSelected(new Set(parsed.fixtures.map((_, i) => i)));
+    };
+    reader.readAsText(initialFile);
+  }, [initialFile, open]);
 
   const handleImport = useCallback(() => {
     if (!result) return;

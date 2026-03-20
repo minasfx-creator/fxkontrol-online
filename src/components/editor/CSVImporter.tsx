@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Upload, FileSpreadsheet, X, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -61,7 +61,7 @@ function parseCSV(text: string): ParsedRow[] {
   return rows;
 }
 
-export default function CSVImporter({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export default function CSVImporter({ open, onOpenChange, initialFile }: { open: boolean; onOpenChange: (v: boolean) => void; initialFile?: File | null }) {
   const { addPosition } = useProjectStore();
   const [parsed, setParsed] = useState<ParsedRow[]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -78,6 +78,18 @@ export default function CSVImporter({ open, onOpenChange }: { open: boolean; onO
     };
     reader.readAsText(file);
   }, []);
+
+  // Auto-process initialFile from drag-and-drop
+  useEffect(() => {
+    if (!initialFile || !open) return;
+    setFileName(initialFile.name);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result as string;
+      setParsed(parseCSV(text));
+    };
+    reader.readAsText(initialFile);
+  }, [initialFile, open]);
 
   const handleImport = useCallback(() => {
     for (const row of parsed) {
