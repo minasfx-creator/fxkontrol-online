@@ -5,6 +5,7 @@
  * Includes DEDICATED FULLSCREEN mode replicating the real XL4 10.1" display
  */
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { haptics } from '@/lib/haptics';
 import { createPortal } from 'react-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
