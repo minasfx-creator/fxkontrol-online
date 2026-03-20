@@ -86,6 +86,8 @@ import PositionContextMenu from '@/components/editor/PositionContextMenu';
 import MobileTabBar, { type MobileTab } from '@/components/editor/MobileTabBar';
 import MobileFloatingPanel from '@/components/editor/MobileFloatingPanel';
 import MobileMoreMenu from '@/components/editor/MobileMoreMenu';
+import MobileHUD from '@/components/editor/MobileHUD';
+import MobileQuickActions from '@/components/editor/MobileQuickActions';
 import {
   ResizablePanelGroup,
   ResizablePanel,
