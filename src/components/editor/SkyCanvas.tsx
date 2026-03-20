@@ -3718,6 +3718,7 @@ export default function SkyCanvas() {
         <TimelineEffects />
         <LiveSFXEffects />
         <LaserPreviewBeams />
+        <StageFixtures />
         {!isMobile && <AudioSpectrumVisualizer />}
         <PlaybackClock />
         {!isMobile && <CameraAnimator />}
