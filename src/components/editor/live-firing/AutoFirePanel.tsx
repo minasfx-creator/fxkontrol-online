@@ -274,10 +274,13 @@ export default function AutoFirePanel({ fs, pyroArm, dmxArm, onFireCue }: AutoFi
         <input ref={fileInputRef} type="file" accept=".csv,.fir,.sem,.ses" onChange={handleFileImport} className="hidden" />
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()} className={cn(fs ? "text-[9px] h-7" : "text-[7px] h-5")}>
-            <Upload className={cn(fs ? "w-3 h-3" : "w-2.5 h-2.5", "mr-1")} /> Import CSV
+            <Upload className={cn(fs ? "w-3 h-3" : "w-2.5 h-2.5", "mr-1")} /> Import
           </Button>
           <Button variant="ghost" size="sm" onClick={handleExportCSV} className={cn(fs ? "text-[9px] h-7" : "text-[7px] h-5")}>
-            <Download className={cn(fs ? "w-3 h-3" : "w-2.5 h-2.5", "mr-1")} /> Export CSV
+            <Download className={cn(fs ? "w-3 h-3" : "w-2.5 h-2.5", "mr-1")} /> FireOne CSV
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleExportFlames} className={cn(fs ? "text-[9px] h-7" : "text-[7px] h-5")}>
+            <Download className={cn(fs ? "w-3 h-3" : "w-2.5 h-2.5", "mr-1")} /> Flames
           </Button>
           <Button variant="ghost" size="sm" className={cn(fs ? "text-[9px] h-7" : "text-[7px] h-5")}>
             <Trash2 className={cn(fs ? "w-3 h-3" : "w-2.5 h-2.5", "mr-1")} /> Delete
