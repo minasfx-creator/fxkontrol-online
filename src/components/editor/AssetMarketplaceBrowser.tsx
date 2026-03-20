@@ -171,7 +171,15 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
               Busque e importe assets de FAB, 3D Warehouse e projetos Unreal Engine
             </DialogDescription>
           </DialogHeader>
-        </div>
+          <div className="flex gap-2 mt-2">
+            <input type="file" accept=".glb,.gltf" className="hidden" id="glb-upload-input" onChange={handleLocalGLBUpload} />
+            <Button variant="outline" size="sm" className="h-7 text-[10px] rounded-lg gap-1.5" onClick={() => document.getElementById('glb-upload-input')?.click()}>
+              <Upload className="h-3 w-3" /> Upload GLB/glTF
+            </Button>
+            {siteModels.length > 0 && (
+              <Badge variant="secondary" className="text-[9px]">{siteModels.length} modelo(s) no viewport</Badge>
+            )}
+          </div>
 
         {/* Tabs */}
         <Tabs value={activeSource} onValueChange={handleTabChange} className="flex-1 flex flex-col min-h-0">
