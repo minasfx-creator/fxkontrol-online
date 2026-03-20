@@ -549,6 +549,13 @@ export interface SiteModel {
 
 export type SiteModelTransformMode = 'translate' | 'rotate' | 'scale';
 
+export interface TransformSnapSettings {
+  enabled: boolean;
+  translateSnap: number;
+  rotateSnap: number;
+  scaleSnap: number;
+}
+
 interface SceneSettingsState {
   settings: SceneSettings;
   qualityPreset: QualityPreset;
@@ -556,6 +563,7 @@ interface SceneSettingsState {
   siteModels: SiteModel[];
   selectedSiteModelId: string | null;
   siteModelTransformMode: SiteModelTransformMode;
+  transformSnap: TransformSnapSettings;
   updateSettings: (updates: Partial<SceneSettings>) => void;
   applyPreset: (presetId: string) => void;
   applyQualityPreset: (preset: QualityPreset) => void;
@@ -568,6 +576,7 @@ interface SceneSettingsState {
   removeSiteModel: (id: string) => void;
   selectSiteModel: (id: string | null) => void;
   setSiteModelTransformMode: (mode: SiteModelTransformMode) => void;
+  setTransformSnap: (updates: Partial<TransformSnapSettings>) => void;
 }
 
 const DEFAULT_ENVIRONMENT: EnvironmentState = {
@@ -589,6 +598,7 @@ export const useSceneStore = create<SceneSettingsState>((set) => ({
   siteModels: [],
   selectedSiteModelId: null,
   siteModelTransformMode: 'translate',
+  transformSnap: { enabled: true, translateSnap: 1, rotateSnap: 15, scaleSnap: 0.1 },
   updateSettings: (updates) => set(s => {
     const next = { ...s.settings, ...updates };
     if (updates.weather && !updates.rainIntensity) {
@@ -623,4 +633,5 @@ export const useSceneStore = create<SceneSettingsState>((set) => ({
   }),
   selectSiteModel: (id) => set({ selectedSiteModelId: id }),
   setSiteModelTransformMode: (mode) => set({ siteModelTransformMode: mode }),
+  setTransformSnap: (updates) => set((s) => ({ transformSnap: { ...s.transformSnap, ...updates } })),
 }));

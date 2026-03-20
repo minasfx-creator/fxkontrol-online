@@ -13,6 +13,7 @@ function LoadedModel({ model, isSelected }: { model: SiteModel; isSelected: bool
   const selectSiteModel = useSceneStore((s) => s.selectSiteModel);
   const updateSiteModel = useSceneStore((s) => s.updateSiteModel);
   const transformMode = useSceneStore((s) => s.siteModelTransformMode);
+  const transformSnap = useSceneStore((s) => s.transformSnap);
 
   const cloned = useMemo(() => {
     const c = scene.clone(true);
@@ -82,6 +83,9 @@ function LoadedModel({ model, isSelected }: { model: SiteModel; isSelected: bool
           mode={transformMode}
           onObjectChange={handleObjectChange}
           size={0.8}
+          translationSnap={transformSnap.enabled ? transformSnap.translateSnap : null}
+          rotationSnap={transformSnap.enabled ? (transformSnap.rotateSnap * Math.PI) / 180 : null}
+          scaleSnap={transformSnap.enabled ? transformSnap.scaleSnap : null}
         />
       )}
     </>
