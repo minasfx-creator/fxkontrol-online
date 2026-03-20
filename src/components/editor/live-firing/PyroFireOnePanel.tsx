@@ -415,7 +415,6 @@ export default function PyroFireOnePanel({
     if (mode === 'fallback') return { text: 'FALLBACK', cls: 'text-amber-400 bg-amber-400/10 border-amber-500/20 animate-pulse' };
     return { text: 'WIRED', cls: 'text-green-400/70 bg-green-400/10 border-green-500/15' };
   };
-  const misfireCount = modules.reduce((sum, m) => sum + m.igniters.filter(i => i.misfire).length, 0);
 
   // ── Determine sizing: xl = dedicated fullscreen, fs = parent fullscreen, default = panel
   const xl = pyroFullscreen;
