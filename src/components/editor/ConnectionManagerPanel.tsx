@@ -93,11 +93,15 @@ export default function ConnectionManagerPanel({ fs = false }: ConnectionManager
         await pbus.connect();
         toast.success('PBUS conectado');
         await pbus.discoverDevices(64);
+      } else if (connId === 'radio') {
+        await radioLink.connectAntenna();
+        toast.success('📡 Antena rádio conectada');
+        await radioLink.scanDevices();
       }
     } catch (err: any) {
       toast.error(`Falha: ${err.message}`);
     }
-  }, [fireone, pbus]);
+  }, [fireone, pbus, radioLink]);
 
   const handleDisconnect = useCallback(async (connId: string) => {
     if (connId === 'fireone') {
