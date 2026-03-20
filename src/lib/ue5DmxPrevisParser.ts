@@ -204,6 +204,12 @@ export function parseUE5DMXJson(jsonText: string): UE5DMXParseResult {
 /** Auto-detect format and parse */
 export function parseUE5DMXLibrary(text: string): UE5DMXParseResult {
   const trimmed = text.trim();
+
+  // Check T3D/COPY format first (UE5 native clipboard/export)
+  if (isT3DFormat(trimmed)) {
+    return parseUE5T3D(trimmed);
+  }
+
   if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
     return parseUE5DMXJson(trimmed);
   }
