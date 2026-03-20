@@ -165,7 +165,7 @@ export default function FieldMap2D({ fs = false }: FieldMap2DProps) {
         // FireOne: square
         const foMod = fireone.modules.get(mod.address);
         const armed = foMod?.armed ?? false;
-        const lowBatt = (foMod?.voltage ?? 12) < 11;
+        const lowBatt = ((foMod as any)?.voltage ?? (foMod as any)?.batteryVoltage ?? 12) < 11;
         const weakSignal = (foMod?.rssiDbm ?? -50) < -75;
 
         const color = armed ? 'hsla(120, 60%, 45%, 0.8)' : lowBatt ? 'hsla(40, 80%, 50%, 0.8)' : weakSignal ? 'hsla(0, 70%, 50%, 0.8)' : 'hsla(210, 60%, 50%, 0.8)';
