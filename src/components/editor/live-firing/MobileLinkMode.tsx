@@ -285,7 +285,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
 
   // ─── PANIC ───
   const handlePanic = useCallback(() => {
-    if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
+    haptics.panic();
     setMasterArmed(false);
     setDeadmanHeld(false);
     setAutoRunning(false);
