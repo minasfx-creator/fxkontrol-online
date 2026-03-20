@@ -2293,15 +2293,15 @@ const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflec
 
     // Check for active explosions to flash reflections
     const { timelineItems, currentTime } = useProjectStore.getState();
-    let flashColor: THREE.Color | null = null;
     let flashIntensity = 0;
+    const _reusableColor = u.uReflectionColor.value;
 
     for (const item of timelineItems) {
       const elapsed = currentTime - item.startTime;
       if (elapsed >= 0 && elapsed < 0.3) {
         const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
         if (effect && effect.type === 'firework') {
-          flashColor = new THREE.Color(effect.color);
+          _reusableColor.set(effect.color);
           flashIntensity = Math.max(flashIntensity, 1.0 * (1 - elapsed / 0.3));
         }
       }
