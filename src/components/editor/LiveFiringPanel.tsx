@@ -14,7 +14,8 @@ import {
   RotateCcw, Save, Upload, Lock, Unlock, Timer, Power,
   Shield, ShieldAlert, Gauge, Settings, FolderOpen, Wifi,
   Signal, Thermometer, Activity, Volume2, Eye, EyeOff,
-  Maximize2, Minimize2, Battery, Hand, ChevronLeft, ChevronRight
+  Maximize2, Minimize2, Battery, Hand, ChevronLeft, ChevronRight,
+  Cable
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
