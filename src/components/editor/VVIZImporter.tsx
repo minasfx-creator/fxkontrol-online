@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Upload, FileJson, X, Check, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
