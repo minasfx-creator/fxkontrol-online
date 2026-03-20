@@ -18,6 +18,8 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
   const items = useProjectStore(s => s.timelineItems);
   const positions = useProjectStore(s => s.positions);
   const projectName = useProjectStore(s => s.projectName);
+  const hardware = useFireOneHardware();
+  const projectName = useProjectStore(s => s.projectName);
 
   const pyroCount = items.filter(i => {
     const e = useProjectStore.getState().timelineItems.find(t => t.id === i.id);
