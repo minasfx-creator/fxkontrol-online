@@ -57,7 +57,7 @@ export default function MobileQuickActions() {
   }, []);
 
   const handleToggleSelect = useCallback(() => {
-    setEditorMode(editorMode === 'select' ? 'orbit' : 'select');
+    setEditorMode(editorMode === 'select' ? 'add-pyro' : 'select');
   }, [editorMode, setEditorMode]);
 
   // Context-aware actions

@@ -92,7 +92,7 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
             }
           </button>
           <button
-            onClick={stopPlayback}
+            onClick={() => { setPlaying(false); setCurrentTime(0); }}
             className="touch-target flex items-center justify-center w-8 h-8 rounded-full glass-card transition-all active:scale-90"
           >
             <Square className="w-3.5 h-3.5 text-muted-foreground" />
