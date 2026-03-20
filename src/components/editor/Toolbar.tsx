@@ -572,6 +572,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       <ProjectBrowser open={browserOpen} onOpenChange={setBrowserOpen} />
       <CatalogImportDialog open={catalogOpen} onOpenChange={setCatalogOpen} />
       <UAssetImporter open={uassetOpen} onOpenChange={setUassetOpen} />
+      <AssetMarketplaceBrowser open={marketplaceOpen} onOpenChange={setMarketplaceOpen} />
 
       <div className="flex-1" />
 
