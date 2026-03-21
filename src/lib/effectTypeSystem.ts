@@ -216,6 +216,46 @@ export const EFFECT_TYPES: Record<PyroEffectType, PyroEffectSpec> = {
     category: 'sfx', colorChannels: 3,
     description: 'Metallic streamer cannon for celebrations',
   },
+  bengal: {
+    type: 'bengal', label: 'Bengal Light', icon: '🔴',
+    defaultDuration: 60, defaultHeight: 0, defaultSpread: 0,
+    hasLiftPhase: false, isChainable: false, isCake: false, defaultShotsPerDevice: 1,
+    minCaliber: 0, maxCaliber: 0, liftTimePerInch: 0,
+    category: 'ground', colorChannels: 1,
+    description: 'Intense monochromatic ground flare (bengala) — Sr=red, Ba=green, Cu=blue, Na=yellow',
+  },
+  rocket: {
+    type: 'rocket', label: 'Rocket', icon: '🚀',
+    defaultDuration: 3, defaultHeight: 80, defaultSpread: 15,
+    hasLiftPhase: false, isChainable: false, isCake: false, defaultShotsPerDevice: 1,
+    minCaliber: 1, maxCaliber: 6, liftTimePerInch: 0,
+    category: 'aerial', colorChannels: 1,
+    description: 'Self-propelled aerial device with stick stabilizer and motor exhaust trail (cohete)',
+  },
+  firecracker_string: {
+    type: 'firecracker_string', label: 'Firecracker String', icon: '🧨',
+    defaultDuration: 5, defaultHeight: 0, defaultSpread: 0,
+    hasLiftPhase: false, isChainable: false, isCake: false, defaultShotsPerDevice: 50,
+    minCaliber: 0, maxCaliber: 0, liftTimePerInch: 0,
+    category: 'ground', colorChannels: 0,
+    description: 'Rapid sequence of small reports connected by quick-match (traca) — 1m/s propagation',
+  },
+  saxon: {
+    type: 'saxon', label: 'Saxon / Ground Spinner', icon: '🌻',
+    defaultDuration: 8, defaultHeight: 0, defaultSpread: 360,
+    hasLiftPhase: false, isChainable: false, isCake: false, defaultShotsPerDevice: 1,
+    minCaliber: 0, maxCaliber: 0, liftTimePerInch: 0,
+    category: 'ground', colorChannels: 1,
+    description: 'Horizontal ground spinner with radiating flame arms (margarita/girasol)',
+  },
+  parachute_flare: {
+    type: 'parachute_flare', label: 'Parachute Flare', icon: '🪂',
+    defaultDuration: 20, defaultHeight: 60, defaultSpread: 5,
+    hasLiftPhase: true, isChainable: false, isCake: false, defaultShotsPerDevice: 1,
+    minCaliber: 2, maxCaliber: 8, liftTimePerInch: 0.38,
+    category: 'aerial', colorChannels: 1,
+    description: 'Aerial shell deploying a slow-descending illumination star on a parachute',
+  },
 };
 
 export function getLiftTime(type: PyroEffectType, caliberInches: number): number {
