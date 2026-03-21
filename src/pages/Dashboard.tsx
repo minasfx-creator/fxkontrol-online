@@ -454,6 +454,7 @@ export default function Dashboard() {
             borderClass="border-primary/20 hover:border-primary/40 transition-colors"
             badgeBg="bg-primary/15 text-primary"
             navigate={navigate}
+            delay="0.2s"
           />
 
           {/* Stats */}
