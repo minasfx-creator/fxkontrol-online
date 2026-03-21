@@ -748,7 +748,7 @@ export default function ShellBurstRenderer({
       {/* Burst flash — Screen blending to prevent white-out accumulation */}
       {progress < 0.08 && (
         <mesh>
-          <sphereGeometry args={[1.5 + caliber * 0.8, 16, 16]} />
+          <sphereGeometry args={[1.0 + caliber * 1.0, 16, 16]} />
           <meshBasicMaterial
             color={secondaryColor || color}
             transparent
