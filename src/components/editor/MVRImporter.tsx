@@ -121,6 +121,11 @@ export default function MVRImporter({ open, onOpenChange, initialFile }: Props) 
       description: `${dmxUniverses.length} universe(s), ${result.gdtfProfiles.size} GDTF profiles, ${selectedFixtures.reduce((s, f) => s + f.channelCount, 0)} DMX channels.`,
     });
 
+    // Auto-save to library
+    if (currentFile) {
+      saveToLibrary(currentFile, { name: fileName || 'MVR Import', source: 'mvr', file_format: 'mvr', tags: ['mvr', 'fixtures'] });
+    }
+
     onOpenChange(false);
     setResult(null);
     setFileName(null);

@@ -390,8 +390,8 @@ function ParsedFileCard({ file, onToggle, imported }: { file: ParsedFile; onTogg
       {/* DMX Profile badge for fixtures */}
       {profile && (
         <div className="flex items-center gap-1.5 mt-1 mb-1">
-          <Lightbulb className="h-3 w-3 text-amber-400" />
-          <span className="text-[10px] font-semibold text-amber-400">{profile.name}</span>
+          <Lightbulb className="h-3 w-3 text-warning" />
+          <span className="text-[10px] font-semibold text-warning">{profile.name}</span>
           <Badge variant="outline" className="text-[8px] ml-1">{profile.channelCount}ch</Badge>
           <Badge variant="outline" className="text-[8px]">{profile.category}</Badge>
         </div>
