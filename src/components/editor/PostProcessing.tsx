@@ -52,12 +52,94 @@ class SharpenEffect extends Effect {
 }
 
 /**
+ * Custom Heat Distortion Effect — UE5 Niagara Heat Haze
+ * Screen-space UV displacement using scrolling procedural noise
+ */
+const HEAT_DISTORTION_FRAGMENT = `
+uniform float intensity;
+uniform float time;
+uniform float scale;
+
+float hash(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  float a = hash(i);
+  float b = hash(i + vec2(1.0, 0.0));
+  float c = hash(i + vec2(0.0, 1.0));
+  float d = hash(i + vec2(1.0, 1.0));
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
+float fbm(vec2 p) {
+  float v = 0.0;
+  float a = 0.5;
+  for (int i = 0; i < 3; i++) {
+    v += a * noise(p);
+    p *= 2.0;
+    a *= 0.5;
+  }
+  return v;
+}
+
+void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+  // Scrolling noise for heat shimmer
+  vec2 noiseCoord = uv * scale + vec2(0.0, -time * 0.8);
+  float n1 = fbm(noiseCoord * 8.0);
+  float n2 = fbm(noiseCoord * 12.0 + vec2(100.0));
+  
+  // UV displacement — subtle but visible shimmer
+  vec2 displacement = vec2(
+    (n1 - 0.5) * intensity * 0.008,
+    (n2 - 0.5) * intensity * 0.012
+  );
+  
+  // Apply displacement with center weighting (stronger in center of screen)
+  vec2 centerWeight = 1.0 - pow(abs(uv - 0.5) * 2.0, vec2(2.0));
+  displacement *= centerWeight.x * centerWeight.y;
+  
+  vec4 displaced = texture2D(inputBuffer, uv + displacement);
+  
+  // Slight chromatic shift on displacement
+  float chromatic = length(displacement) * 50.0;
+  displaced.r = texture2D(inputBuffer, uv + displacement * 1.1).r;
+  displaced.b = texture2D(inputBuffer, uv + displacement * 0.9).b;
+  
+  outputColor = displaced;
+}
+`;
+
+class HeatDistortionEffect extends Effect {
+  constructor({ intensity = 0.5, scale = 1.0 }: { intensity?: number; scale?: number } = {}) {
+    super('HeatDistortionEffect', HEAT_DISTORTION_FRAGMENT, {
+      uniforms: new Map([
+        ['intensity', new Uniform(intensity)],
+        ['time', new Uniform(0)],
+        ['scale', new Uniform(scale)],
+      ]),
+    });
+  }
+
+  update(_renderer: any, _inputBuffer: any, deltaTime: number) {
+    const timeUniform = this.uniforms.get('time') as Uniform;
+    timeUniform.value += deltaTime;
+  }
+
+  set intensity(value: number) {
+    (this.uniforms.get('intensity') as Uniform).value = value;
+  }
+}
+
+/**
  * Wrapper component for SharpenEffect
  */
 const Sharpen = forwardRef<SharpenEffect, { strength?: number }>(function Sharpen({ strength = 0.1 }, ref) {
   const effect = useMemo(() => new SharpenEffect({ strength }), []);
   
-  // Update strength dynamically
   useMemo(() => {
     effect.strength = strength;
   }, [effect, strength]);
@@ -66,10 +148,24 @@ const Sharpen = forwardRef<SharpenEffect, { strength?: number }>(function Sharpe
 });
 
 /**
- * Cinematic post-processing pipeline v9 — AAA effects suite + UE5 DMXPrevis tech.
+ * Wrapper component for HeatDistortionEffect
+ */
+const HeatDistortion = forwardRef<HeatDistortionEffect, { intensity?: number }>(function HeatDistortion({ intensity = 0.5 }, ref) {
+  const effect = useMemo(() => new HeatDistortionEffect({ intensity }), []);
+  
+  useMemo(() => {
+    effect.intensity = intensity;
+  }, [effect, intensity]);
+
+  return <primitive ref={ref} object={effect} />;
+});
+
+/**
+ * Cinematic post-processing pipeline v10 — AAA effects suite + UE5 Niagara techniques.
  * 
  * Includes: SSR, SSAO, Depth of Field, Sharpening, Color Grading, God Rays (via bright bloom),
- * plus existing Bloom, Vignette, ChromaticAberration, FilmGrain, ToneMapping.
+ * Heat Distortion (Niagara heat haze), plus existing Bloom, Vignette, ChromaticAberration,
+ * FilmGrain, ToneMapping.
  */
 export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCount?: number }) {
   const s = useSceneStore(st => st.settings);
@@ -169,6 +265,11 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
           kernelSize={KernelSize.HUGE}
           mipmapBlur
         />
+      )}
+
+      {/* ═══ Heat Distortion — UE5 Niagara Heat Haze ═══ */}
+      {s.heatDistortionEnabled && hasBursts && (
+        <HeatDistortion intensity={0.3 + activeBurstCount * 0.1} />
       )}
 
       {/* Cinematic vignette */}
