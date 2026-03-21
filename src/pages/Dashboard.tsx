@@ -309,30 +309,42 @@ export default function Dashboard() {
           />
 
           {/* Mobile Command Launcher */}
-          <button
-            onClick={() => navigate('/editor?panel=remotecontrol')}
-            className="w-full group relative overflow-hidden rounded-xl border border-accent/20 bg-gradient-to-r from-accent/5 via-card to-primary/5 p-4 text-left transition-all duration-300 hover:border-accent/40 hover:shadow-[0_0_20px_hsl(var(--accent)/0.1)] active:scale-[0.98] animate-fxk-stagger"
-            style={{ animationDelay: '0.2s' }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0 group-hover:bg-accent/20 transition-colors">
-                <Smartphone className="h-5 w-5 text-accent" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-bold font-display text-foreground">Mobile Command</p>
-                  <div className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse-glow" />
-                  <span className="text-[7px] font-bold font-mono-code uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-accent/15 text-accent">
-                    {isMobile ? 'INICIAR' : 'PAIR'}
-                  </span>
+          <div className="space-y-2 animate-fxk-stagger" style={{ animationDelay: '0.2s' }}>
+            <button
+              onClick={() => navigate('/editor?panel=remotecontrol')}
+              className="w-full group relative overflow-hidden rounded-xl border border-accent/20 bg-gradient-to-r from-accent/5 via-card to-primary/5 p-4 text-left transition-all duration-300 hover:border-accent/40 hover:shadow-[0_0_20px_hsl(var(--accent)/0.1)] active:scale-[0.98]"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0 group-hover:bg-accent/20 transition-colors">
+                  <Smartphone className="h-5 w-5 text-accent" />
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
-                  {isMobile ? 'Controle o show pelo smartphone' : 'Pareie um dispositivo móvel'}
-                </p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-bold font-display text-foreground">Mobile Command</p>
+                    <div className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse-glow" />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Controle remoto Master/Slave para qualquer dispositivo
+                  </p>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-accent transition-colors shrink-0" />
               </div>
-              <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-accent transition-colors shrink-0" />
+            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => navigate('/editor?panel=remotecontrol&mode=wifi')}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-accent/20 bg-accent/5 text-[9px] font-semibold text-accent hover:bg-accent/10 transition-colors active:scale-95"
+              >
+                📶 WiFi
+              </button>
+              <button
+                onClick={() => navigate('/editor?panel=remotecontrol&mode=cloud')}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/20 bg-primary/5 text-[9px] font-semibold text-primary hover:bg-primary/10 transition-colors active:scale-95"
+              >
+                ☁️ Cloud
+              </button>
             </div>
-          </button>
+          </div>
 
           {/* System Status */}
           <Card className="bg-card border-border/50 animate-fxk-stagger" style={{ animationDelay: '0.3s' }}>

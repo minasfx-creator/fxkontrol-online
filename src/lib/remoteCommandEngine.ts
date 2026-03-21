@@ -1,11 +1,12 @@
 /**
  * Remote Command Engine — Supabase Realtime Mobile→PC bidirectional control
- * Pairing via 6-digit session code, broadcast commands through channels.
+ * Supports Cloud (6-digit code) and WiFi auto-discovery modes.
  */
 import { supabase } from '@/integrations/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export type CommandAction = 'transport' | 'panel' | 'camera' | 'effect' | 'undo' | 'redo' | 'panic';
+export type ConnectionMode = 'cloud' | 'wifi-auto';
 
 export interface CommandPacket {
   id: string;
@@ -41,6 +42,7 @@ export interface RemoteSession {
   sendState: (state: RemoteState) => void;
   destroy: () => void;
   senderId: string;
+  mode: ConnectionMode;
 }
 
 const SESSION_ID_KEY = 'fxk-remote-sender-id';
@@ -65,7 +67,8 @@ export function createRemoteSession(
     onCommand?: CommandHandler;
     onState?: StateHandler;
     onPresence?: PresenceHandler;
-  }
+  },
+  mode: ConnectionMode = 'cloud'
 ): RemoteSession {
   const senderId = getSenderId();
   const channelName = `remote:${code}`;
@@ -74,21 +77,18 @@ export function createRemoteSession(
     config: { broadcast: { self: false } },
   });
 
-  // Listen for commands
   if (handlers.onCommand) {
     channel.on('broadcast', { event: 'cmd' }, ({ payload }) => {
       handlers.onCommand!(payload as CommandPacket);
     });
   }
 
-  // Listen for state sync
   if (handlers.onState) {
     channel.on('broadcast', { event: 'state' }, ({ payload }) => {
       handlers.onState!(payload as RemoteState);
     });
   }
 
-  // Presence tracking
   if (handlers.onPresence) {
     channel.on('presence', { event: 'sync' }, () => {
       const state = channel.presenceState();
@@ -138,5 +138,71 @@ export function createRemoteSession(
     supabase.removeChannel(channel);
   };
 
-  return { code, channel, sendCommand, sendState, destroy, senderId };
+  return { code, channel, sendCommand, sendState, destroy, senderId, mode };
+}
+
+/* ── WiFi Auto-Discovery ─────────────────────────── */
+
+export interface WifiDiscoveryCallbacks {
+  onDeviceFound: (device: RemoteDevice & { sessionCode: string }) => void;
+  onLost: () => void;
+}
+
+export interface WifiDiscoveryHandle {
+  channel: RealtimeChannel;
+  destroy: () => void;
+}
+
+/**
+ * Join a well-known discovery channel. When another device with a different role
+ * appears, auto-exchange session codes so they can connect without manual entry.
+ */
+export function startWifiDiscovery(
+  role: 'controller' | 'receiver',
+  sessionCode: string,
+  callbacks: WifiDiscoveryCallbacks
+): WifiDiscoveryHandle {
+  const senderId = getSenderId();
+  const channel = supabase.channel('remote:wifi-discover', {
+    config: { broadcast: { self: false } },
+  });
+
+  channel.on('presence', { event: 'sync' }, () => {
+    const state = channel.presenceState();
+    let found = false;
+    for (const key of Object.keys(state)) {
+      for (const p of state[key] as any[]) {
+        if (p.senderId !== senderId && p.role !== role) {
+          found = true;
+          callbacks.onDeviceFound({
+            id: p.senderId,
+            name: p.name || 'Unknown',
+            role: p.role,
+            joinedAt: p.joinedAt || Date.now(),
+            sessionCode: p.sessionCode || '',
+          });
+        }
+      }
+    }
+    if (!found) callbacks.onLost();
+  });
+
+  channel.subscribe(async (status) => {
+    if (status === 'SUBSCRIBED') {
+      await channel.track({
+        senderId,
+        role,
+        name: role === 'receiver' ? 'Desktop/Master' : 'Mobile/Slave',
+        joinedAt: Date.now(),
+        sessionCode,
+      });
+    }
+  });
+
+  const destroy = () => {
+    channel.untrack();
+    supabase.removeChannel(channel);
+  };
+
+  return { channel, destroy };
 }

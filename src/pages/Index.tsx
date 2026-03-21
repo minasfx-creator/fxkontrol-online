@@ -93,7 +93,7 @@ import BluetoothPanel from '@/components/editor/BluetoothPanel';
 import NFCPairPanel from '@/components/editor/NFCPairPanel';
 import DMXOutputPanel from '@/components/editor/DMXOutputPanel';
 import RemoteControlPanel from '@/components/editor/RemoteControlPanel';
-import RemoteReceiverOverlay from '@/components/editor/RemoteReceiverOverlay';
+// RemoteReceiverOverlay functionality is now unified inside RemoteControlPanel
 import ConnectionManagerPanel from '@/components/editor/ConnectionManagerPanel';
 import RadioControlPanel from '@/components/editor/RadioControlPanel';
 import MA3ControlPanel from '@/components/editor/MA3ControlPanel';
@@ -182,6 +182,7 @@ function Index() {
   const [mobileTab, setMobileTab] = useState<MobileTab | null>(null);
   const [mobilePanelHeight, setMobilePanelHeight] = useState<'collapsed' | 'half' | 'full'>('collapsed');
   const [isDragOver, setIsDragOver] = useState(false);
+  const [remoteMode, setRemoteMode] = useState<'cloud' | 'wifi-auto'>('cloud');
   const selectedPositionId = useProjectStore(s => s.selectedPositionId);
 
   useUndoKeyboard();
@@ -189,18 +190,19 @@ function Index() {
   // Deep-link: auto-open panel from ?panel= query param (used by Dashboard hubs)
   useEffect(() => {
     const panelParam = searchParams.get('panel');
+    const modeParam = searchParams.get('mode');
     if (panelParam) {
       setActivePanel(panelParam as PanelId);
+      if (modeParam === 'wifi') setRemoteMode('wifi-auto');
+      else if (modeParam === 'cloud') setRemoteMode('cloud');
       setSearchParams({}, { replace: true });
-      // Skip splash/globe and go straight to editor
       setAppPhase('editor');
-      // On mobile, also open the floating panel at full height
-      if (isMobile) {
+      if (window.innerWidth < 768) {
         setMobileTab(null);
         setMobilePanelHeight('full');
       }
     }
-  }, [searchParams, setSearchParams, isMobile]);
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     const dblClickHandler = () => {
@@ -386,9 +388,7 @@ function Index() {
         {activePanel === 'nfc' && <NFCPairPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'dmxoutput' && <DMXOutputPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'remotecontrol' && (
-          isMobile
-            ? <RemoteControlPanel onClose={() => setActivePanel(null)} />
-            : <RemoteReceiverOverlay onOpenPanel={(id) => handleTogglePanel(id as PanelId)} />
+          <RemoteControlPanel onClose={() => setActivePanel(null)} initialMode={remoteMode} />
         )}
         {activePanel === 'controllers' && <VirtualControllerHub onClose={() => setActivePanel(null)} />}
         {activePanel === 'fieldmap' && <FieldMap2D onClose={() => setActivePanel(null)} />}
