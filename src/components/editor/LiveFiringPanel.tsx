@@ -262,6 +262,43 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   // Cleanup relay on unmount
   useEffect(() => { return () => { relayWs.current?.close(); }; }, []);
 
+  // ─── Remote LiveFX relay listener ───
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail) return;
+      const { type, scene, cueIndex, channelId, field, value, armed } = detail;
+      if (type === 'fire-cue' && typeof cueIndex === 'number') {
+        if (typeof scene === 'number') setActiveScene(scene);
+        const cue = cues[cueIndex];
+        if (cue) {
+          const ch = channels.find(c => c.type === cue.effect);
+          if (ch) {
+            useLiveSfxStore.getState().fireEffect({
+              id: `remote-${Date.now()}`,
+              type: ch.type as any,
+              position: [0, 0, 0],
+              color: ch.color,
+              intensity: ch.intensity,
+              startedAt: performance.now(),
+              duration: ch.duration,
+            });
+          }
+        }
+      } else if (type === 'scene-change' && typeof scene === 'number') {
+        setActiveScene(scene);
+      } else if (type === 'arm' && typeof armed === 'boolean') {
+        setPyroArm(armed);
+      } else if (type === 'channel-adjust' && channelId && field) {
+        setChannels((prev: SFXChannel[]) =>
+          prev.map((c: SFXChannel) => c.id === channelId ? { ...c, [field]: value } : c)
+        );
+      }
+    };
+    window.addEventListener('remote-livefx', handler);
+    return () => window.removeEventListener('remote-livefx', handler);
+  }, [cues, channels, setChannels]);
+
   // ─── Swipe gesture for mobile mode switching / close ───
   const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'auto_fire', 'check_slave', 'controllers', 'pbus', 'field_map', 'connections', 'radio', 'ma3', 'mobile_link', 'settings'];
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
