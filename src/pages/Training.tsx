@@ -223,6 +223,31 @@ const INITIAL_MISSIONS: Mission[] = [
     scenario: '🕯️ Mesa de trabalho com tubos vazios. Monte a candela romana camada por camada, sem pular etapas.',
     equipment: ['roman-candle'], difficulty: 'medium', xp: 300, completed: false, locked: false,
   },
+  // ── Cap. 9 — Niagara VFX Fundamentals ──
+  {
+    id: 'niagara-system-emitter', chapter: 'Cap. 9 — Niagara VFX', title: 'Sistema vs Emitter vs Módulo',
+    description: 'Entenda a hierarquia Niagara: System contém Emitters, Emitters contêm Módulos (Spawn, Init, Update, Render). Monte um sistema com 2 emitters.',
+    scenario: '🎮 Editor Niagara aberto. Crie um sistema com spark burst + smoke puff.',
+    equipment: ['sparkular'], difficulty: 'easy', xp: 200, completed: false, locked: false,
+  },
+  {
+    id: 'niagara-sprite-materials', chapter: 'Cap. 9 — Niagara VFX', title: 'Materiais de Partículas',
+    description: 'Aplique soft particles (depth-fade), velocity stretching, flipbook animation e blending modes (additive vs screen) para realismo.',
+    scenario: '🎨 Partículas cortando no chão. Aplique soft particles e velocity stretch.',
+    equipment: ['sparkular', 'flamer'], difficulty: 'medium', xp: 300, completed: false, locked: false,
+  },
+  {
+    id: 'niagara-ribbon-trails', chapter: 'Cap. 9 — Niagara VFX', title: 'Ribbon Trails',
+    description: 'Crie ribbon trails para cometas e efeitos de arma. UV modes (stretch vs tile), width curves e tapering do cabeça à cauda.',
+    scenario: '☄️ Cometa sem rastro. Monte ribbon trail com tapering e UV stretch.',
+    equipment: ['sparkular', 'roman-candle'], difficulty: 'medium', xp: 350, completed: false, locked: false,
+  },
+  {
+    id: 'niagara-optimization', chapter: 'Cap. 9 — Niagara VFX', title: 'Otimização GPU vs CPU',
+    description: 'Gerencie budgets de partículas: GPU para sparks densos, CPU para colisões. LOD emitters, redução de overdraw e profiling.',
+    scenario: '📊 Show com 50 efeitos simultâneos. FPS caiu para 15. Otimize sem perder qualidade.',
+    equipment: ['sparkular', 'flamer', 'mortar'], difficulty: 'hard', xp: 400, completed: false, locked: true,
+  },
 ];
 
 const DIFF_CONFIG: Record<string, { color: string; bg: string; stars: number }> = {
@@ -237,6 +262,7 @@ const CHAPTER_ICONS: Record<string, typeof BookOpen> = {
   'Cap. 6 — Segurança NFPA': Shield,
   'Cap. 7 — Pólvora e Propelentes': Flame,
   'Cap. 8 — Técnicas Históricas': History,
+  'Cap. 9 — Niagara VFX': Sparkles,
 };
 
 export default function Training() {

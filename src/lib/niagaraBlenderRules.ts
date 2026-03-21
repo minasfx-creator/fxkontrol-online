@@ -14,6 +14,95 @@ const MOBILE_RULES = {
   maxStarsPerBurst: 120,
 } as const;
 
+// ── Per-Emitter Budget System (Niagara Optimization Guide) ─────────
+
+export interface NiagaraBudgetConfig {
+  maxParticlesPerEmitter: number;
+  maxOverdrawLayers: number;
+  maxConcurrentEmitters: number;
+  maxRibbonPoints: number;
+  gpuParticleThreshold: number;
+}
+
+export const DESKTOP_BUDGET: NiagaraBudgetConfig = {
+  maxParticlesPerEmitter: 4096,
+  maxOverdrawLayers: 8,
+  maxConcurrentEmitters: 24,
+  maxRibbonPoints: 128,
+  gpuParticleThreshold: 256,
+};
+
+export const MOBILE_BUDGET: NiagaraBudgetConfig = {
+  maxParticlesPerEmitter: 512,
+  maxOverdrawLayers: 3,
+  maxConcurrentEmitters: 8,
+  maxRibbonPoints: 32,
+  gpuParticleThreshold: 64,
+};
+
+export interface BudgetWarning {
+  emitterId: string;
+  type: 'particle-count' | 'overdraw' | 'emitter-count' | 'ribbon-points' | 'gpu-threshold';
+  message: string;
+  current: number;
+  limit: number;
+}
+
+export function checkBudget(
+  emitters: { id: string; particleCount: number; ribbonPoints?: number; useGPU?: boolean }[],
+  budget: NiagaraBudgetConfig = DESKTOP_BUDGET
+): BudgetWarning[] {
+  const warnings: BudgetWarning[] = [];
+
+  if (emitters.length > budget.maxConcurrentEmitters) {
+    warnings.push({
+      emitterId: 'system',
+      type: 'emitter-count',
+      message: `Too many concurrent emitters (${emitters.length}/${budget.maxConcurrentEmitters})`,
+      current: emitters.length,
+      limit: budget.maxConcurrentEmitters,
+    });
+  }
+
+  for (const e of emitters) {
+    if (e.particleCount > budget.maxParticlesPerEmitter) {
+      warnings.push({
+        emitterId: e.id,
+        type: 'particle-count',
+        message: `Emitter "${e.id}" exceeds particle limit (${e.particleCount}/${budget.maxParticlesPerEmitter})`,
+        current: e.particleCount,
+        limit: budget.maxParticlesPerEmitter,
+      });
+    }
+
+    if (e.ribbonPoints && e.ribbonPoints > budget.maxRibbonPoints) {
+      warnings.push({
+        emitterId: e.id,
+        type: 'ribbon-points',
+        message: `Emitter "${e.id}" exceeds ribbon point limit (${e.ribbonPoints}/${budget.maxRibbonPoints})`,
+        current: e.ribbonPoints,
+        limit: budget.maxRibbonPoints,
+      });
+    }
+
+    if (!e.useGPU && e.particleCount > budget.gpuParticleThreshold) {
+      warnings.push({
+        emitterId: e.id,
+        type: 'gpu-threshold',
+        message: `Emitter "${e.id}" should use GPU mode (${e.particleCount} particles > threshold ${budget.gpuParticleThreshold})`,
+        current: e.particleCount,
+        limit: budget.gpuParticleThreshold,
+      });
+    }
+  }
+
+  return warnings;
+}
+
+export function getBudgetForPlatform(isMobile: boolean): NiagaraBudgetConfig {
+  return isMobile ? MOBILE_BUDGET : DESKTOP_BUDGET;
+}
+
 const MAX_HDR_CHANNEL = 1.35;
 const MAX_HDR_LUMA = 1.15;
 
