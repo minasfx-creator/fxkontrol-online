@@ -1,15 +1,18 @@
 /**
- * FireOne XL4+ Serial Protocol Engine
+ * FireOne XLII+ Serial Protocol Engine
  * 
  * Implements the communication protocol for FireOne firing systems:
  * - RS-485 bus communication (9600 baud, 8N1)
- * - Master → Field Module addressing (1–99)
+ * - Master → Field Module addressing (1–40 per XLII+ manual, 2×20 outputs)
  * - ARM/DISARM with safety interlock
- * - FIRE with igniter position (1–32)
+ * - FIRE with igniter position (1–32) and duration clamped to 20–1000ms
  * - CONTINUITY CHECK per module
  * - STATUS polling (battery, signal, temperature)
  * - EMERGENCY STOP broadcast
  * - Heartbeat keep-alive
+ * - UltraFire mode: download fire files to modules for sub-frame autonomous firing
+ * - Priority Disable: 16 priority groups for selective product disabling
+ * - Semi-Auto Events: operator-initiated GO between event groups
  * 
  * Protocol frame format:
  * [STX][MODULE_ADDR][CMD][PAYLOAD...][CHECKSUM][ETX]
@@ -25,6 +28,25 @@ export const FIREONE_BAUD_RATE = 9600;
 export const FIREONE_DATA_BITS = 8;
 export const FIREONE_STOP_BITS = 1;
 export const FIREONE_PARITY = 'none';
+
+/** XLII+ supports 2×20 = 40 modules max */
+export const FIREONE_MAX_MODULES = 40;
+
+/** Firing duration range per XLII+ manual (firmware v5.00.08+) */
+export const FIREONE_MIN_FIRE_DURATION = 20;   // ms
+export const FIREONE_MAX_FIRE_DURATION = 1000;  // ms
+
+/** Number of fire file slots in XLII+ panel memory */
+export const FIREONE_FILE_SLOTS = 8;
+
+/** Max events for Semi-Auto mode */
+export const FIREONE_MAX_EVENTS = 999;
+
+/** Max total firings per show file */
+export const FIREONE_MAX_FIRINGS = 4000;
+
+/** Number of priority groups */
+export const FIREONE_PRIORITY_GROUPS = 16;
 
 const STX = 0x02;
 const ETX = 0x03;
@@ -69,6 +91,19 @@ export enum FireOneCmd {
   // Wireless IFMx-i32Q
   WIRELESS_STATUS = 0x57,  // 'W' — Query wireless RSSI, channel, link quality
   WIRELESS_CONFIG = 0x56,  // 'V' — Set wireless channel, TX power, fallback mode
+
+  // UltraFire mode (XLII+ manual)
+  DOWNLOAD_MODULE = 0x55,  // 'U' — Download fire file data to module
+  VERIFY_ULTRAFIRE = 0x50, // 'P' — Verify UltraFire download with verify code
+  ULTRAFIRE_GO    = 0x67,  // 'g' — Start UltraFire autonomous playback
+
+  // Priority Disable (XLII+ 16 priority groups)
+  PRIORITY_DISABLE = 0x70, // 'p' — Enable/disable priority group (1–16)
+
+  // Preset firing
+  PRESET_LOAD     = 0x6C,  // 'l' — Load preset (module + cue combination)
+  PRESET_FIRE     = 0x71,  // 'q' — Fire all loaded presets
+  PRESET_CLEAR    = 0x72,  // 'r' — Clear preset buffer
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -95,13 +130,14 @@ export interface FireOneModuleStatus {
   packetLoss?: number;
   linkQuality?: number;
   connectionMode?: WirelessConnectionMode;
+  ultraFireVerified?: boolean;
 }
 
 export interface FireOneIgniterStatus {
   position: number;       // 1–32
   connected: boolean;
   fired: boolean;
-  resistance: number;     // Ω (0 = open, >50 = short, 1–5 = normal)
+  resistance: number;     // Ω — 5-bit field (0–31) × 0.5 = 0–15.5Ω range. Normal e-match: 1–5Ω. >10Ω = suspect. 0 = open circuit.
   continuityOk: boolean;
 }
 
@@ -132,7 +168,10 @@ export type FireOneEventType =
   | 'dmx-out-confirm'
   | 'config-response'
   | 'wireless-status'
-  | 'wireless-fallback';
+  | 'wireless-fallback'
+  | 'ultrafire-verify'
+  | 'ultrafire-download-progress'
+  | 'priority-update';
 
 export interface FireOneModuleConfig {
   wireless: boolean;
@@ -157,6 +196,14 @@ export interface FireOneWirelessConfig {
   autoFallback: boolean;
 }
 
+/** UltraFire cue data for downloading to modules */
+export interface UltraFireCueData {
+  igniterPos: number;     // 1–32
+  timecodeMs: number;     // absolute time in show
+  durationMs: number;     // firing duration (20–1000ms)
+  priority: number;       // priority group (0 = none, 1–16)
+}
+
 export interface FireOneEvent {
   type: FireOneEventType;
   moduleAddress: number;
@@ -165,6 +212,15 @@ export interface FireOneEvent {
 }
 
 export type FireOneListener = (event: FireOneEvent) => void;
+
+// ═══════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════
+
+/** Clamp firing duration to hardware-safe range (20–1000ms) */
+export function clampFireDuration(durationMs: number): number {
+  return Math.min(FIREONE_MAX_FIRE_DURATION, Math.max(FIREONE_MIN_FIRE_DURATION, Math.round(durationMs)));
+}
 
 // ═══════════════════════════════════════════════════════════
 // CHECKSUM
@@ -228,7 +284,7 @@ export function parseStatusPayload(moduleAddr: number, payload: Uint8Array): Fir
   // [4]    = signal strength (0-100%)
   // [5-6]  = firmware version (major.minor)
   // [7]    = error flags
-  // [8..N] = igniter status bytes (1 byte each: bits = connected|fired|continuity, 5 bits = resistance/10)
+  // [8..N] = igniter status bytes (1 byte each: bits = connected|fired|continuity, 5 bits = resistance × 0.5Ω)
 
   const armed = (payload[0] ?? 0) !== 0;
   const batteryMv = ((payload[1] ?? 0) << 8) | (payload[2] ?? 0);
@@ -256,7 +312,7 @@ export function parseStatusPayload(moduleAddr: number, payload: Uint8Array): Fir
       connected,
       fired,
       continuityOk,
-      resistance: resistanceTenths / 10 * 5, // scale to 0–15.5Ω range
+      resistance: resistanceTenths * 0.5, // 5-bit field × 0.5 = 0–15.5Ω range
     });
   }
 
@@ -286,11 +342,13 @@ export function buildDisarmCommand(moduleAddr: number): Uint8Array {
   return buildFrame(moduleAddr, FireOneCmd.DISARM);
 }
 
+/** Build fire command with duration clamped to 20–1000ms (per XLII+ manual) */
 export function buildFireCommand(moduleAddr: number, igniterPos: number, durationMs: number = 500): Uint8Array {
+  const validDuration = clampFireDuration(durationMs);
   const payload = new Uint8Array(3);
   payload[0] = igniterPos & 0xFF;
-  payload[1] = (durationMs >> 8) & 0xFF;
-  payload[2] = durationMs & 0xFF;
+  payload[1] = (validDuration >> 8) & 0xFF;
+  payload[2] = validDuration & 0xFF;
   return buildFrame(moduleAddr, FireOneCmd.FIRE, payload);
 }
 
@@ -419,6 +477,87 @@ export function parseWirelessStatus(payload: Uint8Array): FireOneWirelessStatus 
     mode: payload[4] === 2 ? 'fallback' : payload[4] === 1 ? 'wireless' : 'wired',
     txPower: payload[5] ?? 3,
   };
+}
+
+// ═══════════════════════════════════════════════════════════
+// ULTRAFIRE COMMANDS (XLII+ manual)
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Download fire cue data to a module for UltraFire autonomous firing.
+ * Each module stores its own cue list and fires based on synced timecode.
+ * Payload: [verifyCode(2)][cueCount(1)][cues: igniterPos(1)+timeMs(4)+durationMs(2)+priority(1) × N]
+ */
+export function buildDownloadToModule(moduleAddr: number, verifyCode: number, cues: UltraFireCueData[]): Uint8Array {
+  const cueBytes = 8; // per cue: 1 + 4 + 2 + 1
+  const payload = new Uint8Array(3 + cues.length * cueBytes);
+  payload[0] = (verifyCode >> 8) & 0xFF;
+  payload[1] = verifyCode & 0xFF;
+  payload[2] = cues.length & 0xFF;
+
+  cues.forEach((cue, i) => {
+    const off = 3 + i * cueBytes;
+    const dur = clampFireDuration(cue.durationMs);
+    payload[off] = cue.igniterPos & 0xFF;
+    payload[off + 1] = (cue.timecodeMs >> 24) & 0xFF;
+    payload[off + 2] = (cue.timecodeMs >> 16) & 0xFF;
+    payload[off + 3] = (cue.timecodeMs >> 8) & 0xFF;
+    payload[off + 4] = cue.timecodeMs & 0xFF;
+    payload[off + 5] = (dur >> 8) & 0xFF;
+    payload[off + 6] = dur & 0xFF;
+    payload[off + 7] = cue.priority & 0x0F;
+  });
+
+  return buildFrame(moduleAddr, FireOneCmd.DOWNLOAD_MODULE, payload);
+}
+
+/** Verify UltraFire download — modules compare verify code and report readiness */
+export function buildVerifyUltraFire(verifyCode: number): Uint8Array {
+  const payload = new Uint8Array(2);
+  payload[0] = (verifyCode >> 8) & 0xFF;
+  payload[1] = verifyCode & 0xFF;
+  return buildFrame(BROADCAST_ADDR, FireOneCmd.VERIFY_ULTRAFIRE, payload);
+}
+
+/** Start UltraFire autonomous playback — modules fire independently based on synced time */
+export function buildUltraFireGo(): Uint8Array {
+  return buildFrame(BROADCAST_ADDR, FireOneCmd.ULTRAFIRE_GO);
+}
+
+// ═══════════════════════════════════════════════════════════
+// PRIORITY DISABLE COMMANDS
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Enable or disable a priority group (1–16).
+ * When disabled, all cues assigned to that priority will be skipped during firing.
+ * Used for selectively disabling product groups during live shows (wind, safety, etc.)
+ */
+export function buildPriorityDisable(priority: number, enabled: boolean): Uint8Array {
+  const p = Math.min(16, Math.max(1, priority));
+  const payload = new Uint8Array(2);
+  payload[0] = p;
+  payload[1] = enabled ? 1 : 0;
+  return buildFrame(BROADCAST_ADDR, FireOneCmd.PRIORITY_DISABLE, payload);
+}
+
+// ═══════════════════════════════════════════════════════════
+// PRESET COMMANDS
+// ═══════════════════════════════════════════════════════════
+
+/** Load a module/cue into the preset buffer for batch firing */
+export function buildPresetLoad(moduleAddr: number, igniterPos: number): Uint8Array {
+  return buildFrame(BROADCAST_ADDR, FireOneCmd.PRESET_LOAD, new Uint8Array([moduleAddr, igniterPos]));
+}
+
+/** Fire all loaded presets simultaneously */
+export function buildPresetFire(): Uint8Array {
+  return buildFrame(BROADCAST_ADDR, FireOneCmd.PRESET_FIRE);
+}
+
+/** Clear preset buffer */
+export function buildPresetClear(): Uint8Array {
+  return buildFrame(BROADCAST_ADDR, FireOneCmd.PRESET_CLEAR);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -551,7 +690,8 @@ export class FireOneController {
     await this.send(buildContinuityCommand(addr));
   }
 
-  async discoverModules(maxAddr = 20): Promise<void> {
+  /** Discover modules — default 40 per XLII+ manual (2×20 outputs) */
+  async discoverModules(maxAddr = FIREONE_MAX_MODULES): Promise<void> {
     for (let addr = 1; addr <= maxAddr; addr++) {
       await this.send(buildIdentify(addr));
       await new Promise(r => setTimeout(r, 50)); // 50ms gap between polls
@@ -573,6 +713,39 @@ export class FireOneController {
 
   async fireSequence(addr: number, igniters: number[], delayMs = 100): Promise<void> {
     await this.send(buildFireSequence(addr, igniters, delayMs));
+  }
+
+  /** Download UltraFire cues to a specific module */
+  async downloadUltraFire(addr: number, verifyCode: number, cues: UltraFireCueData[]): Promise<void> {
+    await this.send(buildDownloadToModule(addr, verifyCode, cues));
+  }
+
+  /** Verify all modules have correct UltraFire data */
+  async verifyUltraFire(verifyCode: number): Promise<void> {
+    await this.send(buildVerifyUltraFire(verifyCode));
+  }
+
+  /** Start UltraFire autonomous playback */
+  async startUltraFire(): Promise<void> {
+    await this.send(buildUltraFireGo());
+  }
+
+  /** Set priority group enabled/disabled */
+  async setPriorityDisable(priority: number, enabled: boolean): Promise<void> {
+    await this.send(buildPriorityDisable(priority, enabled));
+  }
+
+  /** Load preset, fire presets, clear presets */
+  async loadPreset(moduleAddr: number, igniterPos: number): Promise<void> {
+    await this.send(buildPresetLoad(moduleAddr, igniterPos));
+  }
+
+  async firePresets(): Promise<void> {
+    await this.send(buildPresetFire());
+  }
+
+  async clearPresets(): Promise<void> {
+    await this.send(buildPresetClear());
   }
 
   // ─── Read loop ───
@@ -636,7 +809,7 @@ export class FireOneController {
             if (status.igniters[i]) {
               status.igniters[i].connected = (byte & 0x80) !== 0;
               status.igniters[i].continuityOk = (byte & 0x20) !== 0;
-              status.igniters[i].resistance = (byte & 0x1F) / 10 * 5;
+              status.igniters[i].resistance = (byte & 0x1F) * 0.5; // Fixed: × 0.5 for 0–15.5Ω range
             }
           }
           this.modules.set(addr, { ...status, lastSeen: Date.now() });
@@ -746,6 +919,32 @@ export class FireOneController {
         break;
       }
 
+      case FireOneCmd.VERIFY_ULTRAFIRE: {
+        // Module reports UltraFire verification result
+        const verified = (frame.payload[0] ?? 0) === ACK;
+        const module = this.modules.get(addr);
+        if (module) {
+          module.ultraFireVerified = verified;
+          this.modules.set(addr, { ...module, lastSeen: Date.now() });
+        }
+        this.emit({ type: 'ultrafire-verify', moduleAddress: addr, data: { verified }, timestamp: Date.now() });
+        break;
+      }
+
+      case FireOneCmd.DOWNLOAD_MODULE: {
+        // ACK for download — report progress
+        const accepted = (frame.payload[0] ?? 0) === ACK;
+        this.emit({ type: 'ultrafire-download-progress', moduleAddress: addr, data: { accepted }, timestamp: Date.now() });
+        break;
+      }
+
+      case FireOneCmd.PRIORITY_DISABLE: {
+        const priority = frame.payload[0] ?? 0;
+        const enabled = (frame.payload[1] ?? 0) !== 0;
+        this.emit({ type: 'priority-update', moduleAddress: addr, data: { priority, enabled }, timestamp: Date.now() });
+        break;
+      }
+
       default: {
         this.emit({ type: 'error', moduleAddress: addr, data: { cmd: frame.command, payload: frame.payload }, timestamp: Date.now() });
       }
@@ -765,7 +964,7 @@ export function createSimulatedModuleStatus(addr: number, wireless = false): Fir
     batteryVoltage: 11.5 + Math.random() * 1.5,
     temperature: 20 + Math.floor(Math.random() * 15),
     signalStrength: wireless ? 60 + Math.floor(Math.random() * 40) : 100,
-    firmwareVersion: '2.4',
+    firmwareVersion: '5.0',
     igniters: Array.from({ length: 32 }, (_, i) => ({
       position: i + 1,
       connected: Math.random() > 0.1,

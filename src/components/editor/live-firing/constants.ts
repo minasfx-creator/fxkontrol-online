@@ -78,6 +78,33 @@ export const SHOWVEN_LIBRARY: DeviceLibEntry[] = [
       { id: 'eff-cf-bigwave', name: 'BIG Wave 1→15', description: 'Full wave', duration: 2.0, channelValues: [] },
     ],
   },
+  // ── cFlamer (from manual) ──
+  {
+    id: 'lib-cflamer', name: 'cFLAMER', manufacturer: 'SHOWVEN', dmxChannels: 2, category: 'showven',
+    dmxModes: ['2CH-P', '2CH-N', '6CH-N'],
+    capabilities: { eStopChain: true, externalPyroTrigger: true },
+    effects: [
+      { id: 'eff-cfl-jet', name: 'JET ON', description: 'Flame jet (CH-F 111-255)', duration: 0.5, channelValues: [{ channel: 1, value: 200 }] },
+      { id: 'eff-cfl-pulse', name: 'PULSE', description: 'Pulsing flame', duration: 1.0, channelValues: [{ channel: 1, value: 150 }] },
+      { id: 'eff-cfl-red', name: 'COLOR RED', description: 'Red fluid flame', duration: 1.0, channelValues: [{ channel: 1, value: 200 }] },
+      { id: 'eff-cfl-green', name: 'COLOR GREEN', description: 'Green fluid flame', duration: 1.0, channelValues: [{ channel: 1, value: 200 }] },
+      { id: 'eff-cfl-blue', name: 'COLOR BLUE', description: 'Blue fluid flame', duration: 1.0, channelValues: [{ channel: 1, value: 200 }] },
+      { id: 'eff-cfl-yellow', name: 'COLOR YELLOW', description: 'Yellow fluid flame', duration: 1.0, channelValues: [{ channel: 1, value: 200 }] },
+      { id: 'eff-cfl-purple', name: 'COLOR PURPLE', description: 'Purple fluid flame', duration: 1.0, channelValues: [{ channel: 1, value: 200 }] },
+    ],
+    safetyChannel: 2, safetyValue: 127,
+  },
+  // ── cFlamer MINI ──
+  {
+    id: 'lib-cflamer-mini', name: 'cFLAMER MINI', manufacturer: 'SHOWVEN', dmxChannels: 2, category: 'showven',
+    dmxModes: ['2CH-P', '2CH-N'],
+    capabilities: { eStopChain: true, externalPyroTrigger: true },
+    effects: [
+      { id: 'eff-cflm-jet', name: 'JET ON', description: 'Flame jet mini', duration: 0.3, channelValues: [{ channel: 1, value: 200 }] },
+      { id: 'eff-cflm-pulse', name: 'PULSE', description: 'Pulsing flame mini', duration: 0.8, channelValues: [{ channel: 1, value: 150 }] },
+    ],
+    safetyChannel: 2, safetyValue: 127,
+  },
   {
     id: 'lib-co2jet', name: 'CO₂ JET', manufacturer: 'SHOWVEN', dmxChannels: 2, category: 'showven',
     effects: [
@@ -129,10 +156,20 @@ export const SHOWVEN_LIBRARY: DeviceLibEntry[] = [
   // ── DMX Relay R12 ──
   {
     id: 'lib-dmx-relay-r12', name: 'DMX RELAY R12', manufacturer: 'SHOWVEN', dmxChannels: 12, category: 'showven',
+    dmxModes: ['12CH', '12CH-P'],
     effects: [
-      { id: 'eff-relay-ch1', name: 'CH1 ON', description: 'Activate relay output 1', duration: 1.0, channelValues: [{ channel: 1, value: 255 }] },
+      { id: 'eff-relay-ch1', name: 'CH1 ON', description: 'Activate relay output 1 (100-255=ON)', duration: 1.0, channelValues: [{ channel: 1, value: 255 }] },
       { id: 'eff-relay-all', name: 'ALL ON', description: 'Activate all 12 relay outputs', duration: 1.0, channelValues: Array.from({ length: 12 }, (_, i) => ({ channel: i + 1, value: 255 })) },
     ],
+    // 12CH-P mode: safety channel (CH-S) with threshold 50-200 = enable
+    safetyChannel: 13, safetyValue: 128,
+  },
+  // ── DMX Splitter 8 ──
+  {
+    id: 'lib-dmx-splitter-8', name: 'DMX SPLITTER 8', manufacturer: 'SHOWVEN', dmxChannels: 0, category: 'showven',
+    capabilities: { eStopChain: true, rdmx: true },
+    effects: [],
+    // No DMX channels — pass-through only with E-STOP chain and 1000V isolation per output
   },
   // ── PyroSlave C16 ──
   {
@@ -165,14 +202,41 @@ export const SHOWVEN_LIBRARY: DeviceLibEntry[] = [
       { id: 'eff-zk-special', name: 'SPECIAL FX', description: 'Custom SparkularEdit200 file', duration: 30.0, channelValues: [] },
     ],
   },
+  {
+    id: 'lib-zk6300', name: 'ZK6300 HOST CONTROLLER', manufacturer: 'SHOWVEN', dmxChannels: 54, category: 'showven',
+    capabilities: { canBus: true },
+    effects: [
+      { id: 'eff-zk3-sync', name: 'SYNC', description: 'All 54 units synchronous', duration: 2.0, channelValues: [] },
+      { id: 'eff-zk3-cte', name: 'CENTER→ENDS', description: 'Center to ends pattern', duration: 2.0, channelValues: [] },
+      { id: 'eff-zk3-etc', name: 'ENDS→CENTER', description: 'Ends to center pattern', duration: 2.0, channelValues: [] },
+      { id: 'eff-zk3-ltr', name: 'L→R', description: 'Left to right', duration: 2.0, channelValues: [] },
+      { id: 'eff-zk3-rtl', name: 'R→L', description: 'Right to left', duration: 2.0, channelValues: [] },
+      { id: 'eff-zk3-special', name: 'SPECIAL FX', description: 'Custom SparkularEdit200 file', duration: 30.0, channelValues: [] },
+    ],
+  },
 ];
 
 // ── PBUS Device Profiles ──
 export const PBUS_DEVICE_PROFILES = [
-  { id: 'pbus-c16', name: 'PyroSlave C16', channels: 16, wireless: true, bands: ['433M', '868M'] as const, firingVoltage: 12, firingCurrent: 5, maxDuration: 500 },
-  { id: 'pbus-x4', name: 'PyroSlave X4', channels: 4, wireless: false, bands: [] as const, firingVoltage: 12, firingCurrent: 5, maxDuration: 500 },
-  { id: 'pbus-pyromote', name: 'PyroMote', channels: 1, wireless: true, bands: ['433M'] as const, firingVoltage: 12, firingCurrent: 3, maxDuration: 500 },
+  { id: 'pbus-c16', name: 'PyroSlave C16', channels: 16, wireless: true, bands: ['433M', '868M'] as const, firingVoltage: 12, firingCurrent: 5, maxDuration: 500, minFiringDuration: 10, maxAddress: 255, wirelessRange: 600, wiredRange: 2000 },
+  { id: 'pbus-x4', name: 'PyroSlave X4', channels: 4, wireless: false, bands: [] as const, firingVoltage: 12, firingCurrent: 5, maxDuration: 500, minFiringDuration: 10, maxAddress: 255, wirelessRange: 0, wiredRange: 2000 },
+  { id: 'pbus-pyromote', name: 'PyroMote', channels: 1, wireless: true, bands: ['433M', '868M'] as const, firingVoltage: 12, firingCurrent: 3, maxDuration: 500, minFiringDuration: 10, maxAddress: 255, wirelessRange: 600, wiredRange: 0, ltcSupport: true, simpleDmxChannels: 128, sceneCount: 4 },
 ] as const;
+
+/** cFlamer safety threshold ranges per manual (5 configurable levels) */
+export const CFLAMER_SAFETY_THRESHOLDS = [
+  { level: 1, min: 76, max: 120, label: 'Level 1' },
+  { level: 2, min: 102, max: 153, label: 'Level 2' },
+  { level: 3, min: 127, max: 178, label: 'Level 3 (default)' },
+  { level: 4, min: 153, max: 204, label: 'Level 4' },
+  { level: 5, min: 178, max: 229, label: 'Level 5' },
+] as const;
+
+/** cFlamer firing threshold: CH-F 111-255 = ON, 0-101 = OFF */
+export const CFLAMER_FIRE_THRESHOLD = { on: 111, off: 101 };
+
+/** DMX Relay R12 safety channel threshold: 50-200 = enable */
+export const R12_SAFETY_THRESHOLD = { enable: { min: 50, max: 200 }, onValue: 100 };
 
 export const DEFAULT_SETTINGS: FXCSettings = {
   language: 'en',

@@ -2,21 +2,26 @@
  * useFireOneHardware — React hook bridging FireOneController ↔ component state
  * Supports wired RS-485 + wireless IFMx-i32Q with RSSI polling and auto-fallback
  * Transparent radio fallback via useRadioLink when antenna connected
+ * UltraFire mode: download fire files to modules for autonomous firing
+ * Priority Disable: 16 groups for selective product disabling
  */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
   getFireOneController,
+  FIREONE_MAX_MODULES,
   type FireOneModuleStatus,
   type FireOneEvent,
   type FireOneModuleConfig,
   type FireOneWirelessStatus,
   type FireOneWirelessConfig,
   type WirelessConnectionMode,
+  type UltraFireCueData,
   buildDmxOutCommand,
   buildModuleConfigQuery,
   buildWirelessStatusQuery,
   buildWirelessConfigCommand,
+  clampFireDuration,
 } from '@/lib/fireoneProtocol';
 import { useRadioLink } from '@/hooks/useRadioLink';
 
@@ -28,6 +33,13 @@ export interface FireOneHardwareState {
   txBytes: number;
   rxBytes: number;
   scanning: boolean;
+  // UltraFire
+  ultraFireMode: boolean;
+  verifyCode: string | null;
+  ultraFireVerifiedModules: number[];
+  ultraFireDownloading: boolean;
+  // Priority Disable (1–16 → enabled)
+  priorities: Map<number, boolean>;
 }
 
 const RSSI_POLL_INTERVAL = 3000;
@@ -41,6 +53,11 @@ export function useFireOneHardware() {
     txBytes: 0,
     rxBytes: 0,
     scanning: false,
+    ultraFireMode: false,
+    verifyCode: null,
+    ultraFireVerifiedModules: [],
+    ultraFireDownloading: false,
+    priorities: new Map(Array.from({ length: 16 }, (_, i) => [i + 1, true])),
   });
 
   const txRef = useRef(0);
@@ -139,7 +156,6 @@ export function useFireOneHardware() {
         }
 
         case 'wireless-fallback': {
-          // Module fell back to wired — state already updated via wireless-status
           break;
         }
 
@@ -158,6 +174,32 @@ export function useFireOneHardware() {
               });
             }
             return { ...prev, modules: newModules, rxBytes: rxRef.current };
+          });
+          break;
+        }
+
+        case 'ultrafire-verify': {
+          const { verified } = event.data as { verified: boolean };
+          if (verified) {
+            setState(prev => ({
+              ...prev,
+              ultraFireVerifiedModules: [...prev.ultraFireVerifiedModules, event.moduleAddress],
+              rxBytes: rxRef.current,
+            }));
+          }
+          break;
+        }
+
+        case 'ultrafire-download-progress': {
+          break;
+        }
+
+        case 'priority-update': {
+          const { priority, enabled } = event.data as { priority: number; enabled: boolean };
+          setState(prev => {
+            const newPriorities = new Map(prev.priorities);
+            newPriorities.set(priority, enabled);
+            return { ...prev, priorities: newPriorities, rxBytes: rxRef.current };
           });
           break;
         }
@@ -220,14 +262,15 @@ export function useFireOneHardware() {
   }, [controller]);
 
   const fireIgniter = useCallback(async (addr: number, pin: number, durationMs = 500) => {
+    const safeDuration = clampFireDuration(durationMs);
     // Radio fallback
     if (!state.isConnected && radioLink.isConnected) {
-      const frame = new Uint8Array([0x46, 0x4F, addr, 0x10, pin, (durationMs >> 8) & 0xFF, durationMs & 0xFF]);
+      const frame = new Uint8Array([0x46, 0x4F, addr, 0x10, pin, (safeDuration >> 8) & 0xFF, safeDuration & 0xFF]);
       await radioLink.sendFireOne(addr, frame);
       return;
     }
     txRef.current += 8; setState(prev => ({ ...prev, txBytes: txRef.current }));
-    await controller.fireIgniter(addr, pin, durationMs);
+    await controller.fireIgniter(addr, pin, safeDuration);
   }, [controller, state.isConnected, radioLink]);
 
   const requestContinuity = useCallback(async (addr: number) => {
@@ -235,7 +278,8 @@ export function useFireOneHardware() {
     await controller.requestContinuity(addr);
   }, [controller]);
 
-  const discoverModules = useCallback(async (maxAddr = 20) => {
+  /** Discover modules — default 40 per XLII+ manual */
+  const discoverModules = useCallback(async (maxAddr = FIREONE_MAX_MODULES) => {
     setState(prev => ({ ...prev, scanning: true }));
     try {
       await controller.discoverModules(maxAddr);
@@ -306,6 +350,86 @@ export function useFireOneHardware() {
     await controller.send(frame);
   }, [controller]);
 
+  // ═══════════════════════════════════════════════════════════
+  // UltraFire mode
+  // ═══════════════════════════════════════════════════════════
+
+  const enableUltraFire = useCallback((verifyCode: string) => {
+    setState(prev => ({
+      ...prev,
+      ultraFireMode: true,
+      verifyCode,
+      ultraFireVerifiedModules: [],
+    }));
+  }, []);
+
+  const disableUltraFire = useCallback(() => {
+    setState(prev => ({
+      ...prev,
+      ultraFireMode: false,
+      verifyCode: null,
+      ultraFireVerifiedModules: [],
+      ultraFireDownloading: false,
+    }));
+  }, []);
+
+  /** Download fire cues to all relevant modules */
+  const downloadToModules = useCallback(async (cuesByModule: Map<number, UltraFireCueData[]>, verifyCode: number) => {
+    setState(prev => ({ ...prev, ultraFireDownloading: true, ultraFireVerifiedModules: [] }));
+    try {
+      for (const [addr, cues] of cuesByModule.entries()) {
+        txRef.current += 3 + cues.length * 8;
+        setState(prev => ({ ...prev, txBytes: txRef.current }));
+        await controller.downloadUltraFire(addr, verifyCode, cues);
+        await new Promise(r => setTimeout(r, 100)); // gap between modules
+      }
+      // Verify all
+      txRef.current += 7;
+      setState(prev => ({ ...prev, txBytes: txRef.current }));
+      await controller.verifyUltraFire(verifyCode);
+    } finally {
+      setState(prev => ({ ...prev, ultraFireDownloading: false }));
+    }
+  }, [controller]);
+
+  const startUltraFire = useCallback(async () => {
+    txRef.current += 5; setState(prev => ({ ...prev, txBytes: txRef.current }));
+    await controller.startUltraFire();
+  }, [controller]);
+
+  // ═══════════════════════════════════════════════════════════
+  // Priority Disable
+  // ═══════════════════════════════════════════════════════════
+
+  const setPriorityDisable = useCallback(async (priority: number, enabled: boolean) => {
+    txRef.current += 7; setState(prev => ({ ...prev, txBytes: txRef.current }));
+    await controller.setPriorityDisable(priority, enabled);
+    setState(prev => {
+      const newPriorities = new Map(prev.priorities);
+      newPriorities.set(priority, enabled);
+      return { ...prev, priorities: newPriorities };
+    });
+  }, [controller]);
+
+  // ═══════════════════════════════════════════════════════════
+  // Presets
+  // ═══════════════════════════════════════════════════════════
+
+  const loadPreset = useCallback(async (moduleAddr: number, igniterPos: number) => {
+    txRef.current += 7; setState(prev => ({ ...prev, txBytes: txRef.current }));
+    await controller.loadPreset(moduleAddr, igniterPos);
+  }, [controller]);
+
+  const firePresets = useCallback(async () => {
+    txRef.current += 5; setState(prev => ({ ...prev, txBytes: txRef.current }));
+    await controller.firePresets();
+  }, [controller]);
+
+  const clearPresets = useCallback(async () => {
+    txRef.current += 5; setState(prev => ({ ...prev, txBytes: txRef.current }));
+    await controller.clearPresets();
+  }, [controller]);
+
   return {
     ...state,
     isConnected: effectivelyConnected,
@@ -328,5 +452,16 @@ export function useFireOneHardware() {
     wirelessModuleCount,
     wiredModuleCount,
     worstRssi,
+    // UltraFire
+    enableUltraFire,
+    disableUltraFire,
+    downloadToModules,
+    startUltraFire,
+    // Priority
+    setPriorityDisable,
+    // Presets
+    loadPreset,
+    firePresets,
+    clearPresets,
   };
 }
