@@ -93,7 +93,7 @@ import BluetoothPanel from '@/components/editor/BluetoothPanel';
 import NFCPairPanel from '@/components/editor/NFCPairPanel';
 import DMXOutputPanel from '@/components/editor/DMXOutputPanel';
 import RemoteControlPanel from '@/components/editor/RemoteControlPanel';
-import RemoteReceiverOverlay from '@/components/editor/RemoteReceiverOverlay';
+// RemoteReceiverOverlay functionality is now unified inside RemoteControlPanel
 import ConnectionManagerPanel from '@/components/editor/ConnectionManagerPanel';
 import RadioControlPanel from '@/components/editor/RadioControlPanel';
 import MA3ControlPanel from '@/components/editor/MA3ControlPanel';
