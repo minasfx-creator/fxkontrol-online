@@ -2,6 +2,13 @@
  * FX KONTROL · Particle Chemistry Engine
  * Chemical-based color simulation for realistic fireworks.
  * Reproduces real pyrotechnic compound emission spectra.
+ * 
+ * Enhanced with Manual de Pirotecnia data:
+ * - Ignition temperatures from manual (°C)
+ * - Electrostatic sensitivity (mJ)
+ * - Combustion products
+ * - Hygroscopicity data
+ * - Safety classification (F/R/C risk levels)
  */
 
 import * as THREE from 'three';
@@ -22,11 +29,25 @@ export interface ChemicalCompound {
   sulfurContent?: number;
   /** Charcoal type — Manual: 'red' = low-temp easy ignite, 'black' = high-temp hard ignite */
   charcoalType?: 'red' | 'black';
+  /** Ignition temperature in °C — from manual's chemical data sheets */
+  ignitionTemp?: number;
+  /** Electrostatic sensitivity in mJ — lower = more sensitive */
+  electrostaticSensitivity?: number;
+  /** Combustion products — chemical formula strings */
+  combustionProducts?: string;
+  /** Hygroscopicity — weight gain % at 90% RH */
+  hygroscopicity?: number;
+  /** Safety risk classification from manual (0-4 scale): F=Fire, R=Reactivity, C=Contact */
+  riskClassification?: { fire: number; reactivity: number; contact: number };
+  /** Density in g/cc — affects particle weight/fall behavior */
+  density?: number;
+  /** Melting point °C — affects thermal color transitions */
+  meltingPoint?: number;
 }
 
 const COMPOUNDS: Record<string, ChemicalCompound> = {
   strontium: {
-    name: 'Strontium Carbonate',
+    name: 'Nitrato de Estroncio',
     element: 'Sr',
     color: new THREE.Color(1.0, 0.15, 0.05),
     temperature: 2200,
@@ -35,9 +56,15 @@ const COMPOUNDS: Record<string, ChemicalCompound> = {
     sparkSize: 1.2,
     smokeColor: new THREE.Color(0.15, 0.08, 0.06),
     trailDecay: 0.92,
+    ignitionTemp: 570,
+    density: 2.986,
+    meltingPoint: 570,
+    combustionProducts: 'SrO + NO2',
+    riskClassification: { fire: 1, reactivity: 0, contact: 3 },
+    hygroscopicity: 0.06,
   },
   barium: {
-    name: 'Barium Chlorate',
+    name: 'Nitrato de Bario',
     element: 'Ba',
     color: new THREE.Color(0.1, 1.0, 0.3),
     temperature: 1800,
@@ -46,9 +73,13 @@ const COMPOUNDS: Record<string, ChemicalCompound> = {
     sparkSize: 1.0,
     smokeColor: new THREE.Color(0.08, 0.12, 0.06),
     trailDecay: 0.90,
+    density: 3.24,
+    combustionProducts: 'NO2 + O2',
+    riskClassification: { fire: 3, reactivity: 0, contact: 3 },
+    hygroscopicity: 0.1,
   },
   copper: {
-    name: 'Copper Acetoarsenite',
+    name: 'Óxido de Cobre',
     element: 'Cu',
     color: new THREE.Color(0.05, 0.45, 1.0),
     temperature: 1500,
@@ -57,9 +88,10 @@ const COMPOUNDS: Record<string, ChemicalCompound> = {
     sparkSize: 0.9,
     smokeColor: new THREE.Color(0.06, 0.08, 0.12),
     trailDecay: 0.88,
+    riskClassification: { fire: 2, reactivity: 0, contact: 0 },
   },
   sodium: {
-    name: 'Sodium Oxalate',
+    name: 'Nitrato de Sodio',
     element: 'Na',
     color: new THREE.Color(1.0, 0.85, 0.1),
     temperature: 2100,
@@ -68,9 +100,13 @@ const COMPOUNDS: Record<string, ChemicalCompound> = {
     sparkSize: 1.1,
     smokeColor: new THREE.Color(0.12, 0.10, 0.06),
     trailDecay: 0.94,
+    density: 2.261,
+    meltingPoint: 307,
+    combustionProducts: 'Na2O + NO2',
+    hygroscopicity: 5.52, // deliquescent — critical humidity 82.7%
   },
   magnesium: {
-    name: 'Magnalium',
+    name: 'Magnesio Metálico',
     element: 'Mg/Al',
     color: new THREE.Color(1.0, 1.0, 0.95),
     temperature: 3200,
@@ -79,9 +115,34 @@ const COMPOUNDS: Record<string, ChemicalCompound> = {
     sparkSize: 1.5,
     smokeColor: new THREE.Color(0.2, 0.2, 0.2),
     trailDecay: 0.96,
+    ignitionTemp: 490, // nube de polvo atomizado
+    electrostaticSensitivity: 40, // mJ nube de polvo atomizado
+    density: 1.74,
+    meltingPoint: 650,
+    combustionProducts: 'MgO',
+    riskClassification: { fire: 1, reactivity: 3, contact: 2 },
+    hygroscopicity: 0.62,
+  },
+  magnalium: {
+    name: 'Magnalium (Al 50% + Mg 50%)',
+    element: 'Mg/Al',
+    color: new THREE.Color(1.0, 1.0, 0.92),
+    temperature: 3400,
+    emissionIntensity: 9.0,
+    burnRate: 1.0,
+    sparkSize: 1.6,
+    smokeColor: new THREE.Color(0.22, 0.22, 0.22),
+    trailDecay: 0.97,
+    ignitionTemp: 535,
+    electrostaticSensitivity: 80, // nube de polvo
+    density: 2.14,
+    meltingPoint: 460,
+    combustionProducts: 'MgO + Al2O3',
+    riskClassification: { fire: 1, reactivity: 3, contact: 2 },
+    hygroscopicity: 6.3, // at ~100% RH after 29 days
   },
   titanium: {
-    name: 'Titanium Sponge',
+    name: 'Titanio Esponja',
     element: 'Ti',
     color: new THREE.Color(1.0, 1.0, 1.0),
     temperature: 3500,
@@ -90,9 +151,15 @@ const COMPOUNDS: Record<string, ChemicalCompound> = {
     sparkSize: 2.0,
     smokeColor: new THREE.Color(0.25, 0.25, 0.25),
     trailDecay: 0.98,
+    ignitionTemp: 460, // nube de polvo
+    electrostaticSensitivity: 25,
+    density: 4.5,
+    meltingPoint: 1667,
+    combustionProducts: 'TiO2',
+    riskClassification: { fire: 1, reactivity: 3, contact: 2 },
   },
   iron: {
-    name: 'Cast Iron Filings',
+    name: 'Limaduras de Hierro',
     element: 'Fe',
     color: new THREE.Color(1.0, 0.65, 0.15),
     temperature: 2800,
@@ -103,7 +170,7 @@ const COMPOUNDS: Record<string, ChemicalCompound> = {
     trailDecay: 0.85,
   },
   charcoal: {
-    name: 'Charcoal Streamer',
+    name: 'Carbón Vegetal',
     element: 'C',
     color: new THREE.Color(1.0, 0.55, 0.08),
     temperature: 1800,
@@ -116,9 +183,9 @@ const COMPOUNDS: Record<string, ChemicalCompound> = {
     sulfurContent: 0,
   },
   zinc: {
-    name: 'Zinc Filings',
+    name: 'Limaduras de Zinc',
     element: 'Zn',
-    color: new THREE.Color(0.85, 0.9, 1.0),
+    color: new THREE.Color(0.85, 0.9, 1.0), // "luz blanca ligeramente azulada"
     temperature: 1700,
     emissionIntensity: 3.5,
     burnRate: 2.0,
@@ -127,11 +194,14 @@ const COMPOUNDS: Record<string, ChemicalCompound> = {
     trailDecay: 0.88,
     frictionSensitivity: 8,
     sulfurContent: 0,
+    density: 7.14,
+    meltingPoint: 419,
+    riskClassification: { fire: 1, reactivity: 3, contact: 2 },
   },
   antimony: {
-    name: 'Antimony Trisulfide',
+    name: 'Trisulfuro de Antimonio',
     element: 'Sb',
-    color: new THREE.Color(0.8, 0.85, 1.0),
+    color: new THREE.Color(0.8, 0.85, 1.0), // "llama blancoazulada"
     temperature: 1600,
     emissionIntensity: 3.0,
     burnRate: 2.5,
@@ -140,11 +210,14 @@ const COMPOUNDS: Record<string, ChemicalCompound> = {
     trailDecay: 0.86,
     frictionSensitivity: 3,
     sulfurContent: 0.3,
+    density: 4.64,
+    meltingPoint: 546,
+    riskClassification: { fire: 3, reactivity: 3, contact: 2 },
   },
   calcium: {
-    name: 'Calcium Carbonate',
+    name: 'Carbonato de Calcio',
     element: 'Ca',
-    color: new THREE.Color(1.0, 0.45, 0.25),
+    color: new THREE.Color(1.0, 0.45, 0.25), // "rojo claro" — distinct from Sr carmesí
     temperature: 2000,
     emissionIntensity: 3.2,
     burnRate: 2.6,
@@ -153,6 +226,9 @@ const COMPOUNDS: Record<string, ChemicalCompound> = {
     trailDecay: 0.90,
     frictionSensitivity: 7,
     sulfurContent: 0,
+    density: 2.71,
+    meltingPoint: 825,
+    combustionProducts: 'CaO + CO2',
   },
   black_powder: {
     name: 'Pólvora Negra (KNO3 75 + S 12.5 + C 12.5)',
@@ -162,23 +238,140 @@ const COMPOUNDS: Record<string, ChemicalCompound> = {
     emissionIntensity: 2.0,
     burnRate: 1.5,
     sparkSize: 0.8,
-    smokeColor: new THREE.Color(0.45, 0.40, 0.30),
+    smokeColor: new THREE.Color(0.45, 0.40, 0.30), // sulfurous yellow-gray
     trailDecay: 0.75,
     frictionSensitivity: 6,
     sulfurContent: 0.125,
     charcoalType: 'black',
+    combustionProducts: 'K2CO3 + K2SO4 + CO2 + N2',
+  },
+  // ── New compounds from Manual de Pirotecnia (Manejo de Riesgos) ──
+  potassium_perchlorate: {
+    name: 'Perclorato de Potasio',
+    element: 'KClO4',
+    color: new THREE.Color(0.9, 0.8, 1.0), // purple-tinged flame
+    temperature: 1400,
+    emissionIntensity: 1.5,
+    burnRate: 1.0,
+    sparkSize: 0.6,
+    smokeColor: new THREE.Color(0.15, 0.15, 0.15),
+    trailDecay: 0.70,
+    ignitionTemp: 610,
+    density: 2.52,
+    meltingPoint: 610,
+    combustionProducts: 'KCl + O2',
+    riskClassification: { fire: 1, reactivity: 0, contact: 3 },
+    hygroscopicity: 0.01,
+  },
+  potassium_chlorate: {
+    name: 'Clorato de Potasio (PELIGROSO)',
+    element: 'KClO3',
+    color: new THREE.Color(0.85, 0.75, 0.95),
+    temperature: 1500,
+    emissionIntensity: 2.0,
+    burnRate: 0.6, // faster — more dangerous
+    sparkSize: 0.7,
+    smokeColor: new THREE.Color(0.12, 0.12, 0.12),
+    trailDecay: 0.65,
+    ignitionTemp: 356,
+    density: 2.32,
+    meltingPoint: 356,
+    combustionProducts: 'KCl + O2',
+    riskClassification: { fire: 1, reactivity: 0, contact: 3 },
+    hygroscopicity: 0.3,
+  },
+  aluminum: {
+    name: 'Aluminio Pirotécnico',
+    element: 'Al',
+    color: new THREE.Color(0.95, 0.95, 1.0),
+    temperature: 3100,
+    emissionIntensity: 7.0,
+    burnRate: 1.3,
+    sparkSize: 1.4,
+    smokeColor: new THREE.Color(0.2, 0.2, 0.2),
+    trailDecay: 0.95,
+    ignitionTemp: 590,
+    electrostaticSensitivity: 50,
+    density: 2.7,
+    meltingPoint: 660,
+    combustionProducts: 'Al2O3',
+    riskClassification: { fire: 1, reactivity: 3, contact: 2 },
+  },
+  sulfur: {
+    name: 'Azufre',
+    element: 'S',
+    color: new THREE.Color(0.6, 0.55, 0.15), // blue flame with sulfurous yellow
+    temperature: 1400,
+    emissionIntensity: 1.8,
+    burnRate: 2.0,
+    sparkSize: 0.5,
+    smokeColor: new THREE.Color(0.35, 0.30, 0.15), // SO2 yellowish smoke
+    trailDecay: 0.72,
+    ignitionTemp: 261,
+    density: 2.07,
+    meltingPoint: 113,
+    combustionProducts: 'SO2',
+    sulfurContent: 1.0,
+  },
+  bismuth_subnitrate: {
+    name: 'Subnitrato de Bismuto',
+    element: 'Bi',
+    color: new THREE.Color(0.95, 0.9, 0.75),
+    temperature: 1800,
+    emissionIntensity: 2.5,
+    burnRate: 2.8,
+    sparkSize: 1.2,
+    smokeColor: new THREE.Color(0.12, 0.11, 0.09),
+    trailDecay: 0.83,
+    density: 4.928,
+    combustionProducts: 'Bi2O3',
+  },
+  pvc: {
+    name: 'Cloruro de Polivinilo (PVC)',
+    element: 'PVC',
+    color: new THREE.Color(0.5, 0.7, 1.0), // color intensifier for blues
+    temperature: 1200,
+    emissionIntensity: 1.0,
+    burnRate: 3.0,
+    sparkSize: 0.4,
+    smokeColor: new THREE.Color(0.1, 0.1, 0.1),
+    trailDecay: 0.60,
+    density: 1.4,
+    combustionProducts: 'HCl + CO + CO2',
+    riskClassification: { fire: 2, reactivity: 1, contact: 1 },
+  },
+  nitrocellulose: {
+    name: 'Nitrocelulosa (12.6% N)',
+    element: 'NC',
+    color: new THREE.Color(1.0, 0.95, 0.7),
+    temperature: 2200,
+    emissionIntensity: 4.0,
+    burnRate: 0.3, // extremely fast — burns instantaneously
+    sparkSize: 0.6,
+    smokeColor: new THREE.Color(0.1, 0.1, 0.1),
+    trailDecay: 0.50,
+    ignitionTemp: 170,
+    density: 1.66,
+    combustionProducts: 'CO + CO2 + H2O + N2',
   },
 };
 
 /**
  * Thermal color transition: white-hot → compound color → ember → dark
+ * Enhanced with ignition temperature influence from manual data
  */
 export function thermalColor(compound: ChemicalCompound, lifeRatio: number, hdrMult: number): THREE.Color {
   const c = compound.color.clone();
   
-  if (lifeRatio > 0.85) {
-    // White-hot ignition core
-    c.lerp(new THREE.Color(1, 1, 0.95), (lifeRatio - 0.85) / 0.15);
+  // Factor in ignition temperature — higher ignition = longer white-hot phase
+  const ignitionFactor = compound.ignitionTemp 
+    ? Math.min(1.5, compound.ignitionTemp / 500) 
+    : 1.0;
+  const whiteHotThreshold = 0.85 + (ignitionFactor - 1) * 0.05;
+  
+  if (lifeRatio > whiteHotThreshold) {
+    // White-hot ignition core — intensity modulated by compound temperature
+    c.lerp(new THREE.Color(1, 1, 0.95), (lifeRatio - whiteHotThreshold) / (1 - whiteHotThreshold));
     c.multiplyScalar(hdrMult * compound.emissionIntensity);
   } else if (lifeRatio > 0.3) {
     // Peak compound color
@@ -194,6 +387,31 @@ export function thermalColor(compound: ChemicalCompound, lifeRatio: number, hdrM
   }
   
   return c;
+}
+
+/**
+ * Get smoke color modulated by sulfur content from manual
+ * More sulfur = more yellow-gray smoke (SO2 residue)
+ */
+export function getSulfurModulatedSmokeColor(compound: ChemicalCompound): THREE.Color {
+  const base = compound.smokeColor.clone();
+  const sulfur = compound.sulfurContent ?? 0;
+  if (sulfur > 0) {
+    // Blend toward sulfurous yellow-gray
+    const sulfurSmoke = new THREE.Color(0.45, 0.40, 0.25);
+    base.lerp(sulfurSmoke, Math.min(1, sulfur * 2));
+  }
+  return base;
+}
+
+/**
+ * Get burn rate modifier based on electrostatic sensitivity
+ * Lower sensitivity value = more sensitive = faster initial ignition ramp
+ */
+export function getIgnitionRampSpeed(compound: ChemicalCompound): number {
+  if (!compound.electrostaticSensitivity) return 1.0;
+  // Lower mJ = faster ignition ramp (more sensitive)
+  return Math.max(0.5, Math.min(3.0, 100 / compound.electrostaticSensitivity));
 }
 
 export function getCompound(name: string): ChemicalCompound {
@@ -357,6 +575,44 @@ export const REAL_FORMULATIONS: Record<string, RealFormulation> = {
     trailDecay: 0.88,
     crackle: false,
   },
+  // ── Manual-derived compositions ──
+  'trueno_seguro': {
+    name: 'Trueno Seguro (KClO4 70% + Al Negro 30%)',
+    productType: 'shell',
+    caliber: '3"',
+    compounds: [
+      { element: 'KClO4', percentage: 70 },
+      { element: 'Al', percentage: 30 },
+    ],
+    resultColor: new THREE.Color(1.0, 1.0, 0.95),
+    temperature: 3000,
+    emissionIntensity: 9.0,
+    burnRate: 0.3,
+    sparkSize: 0.5,
+    smokeColor: new THREE.Color(0.2, 0.2, 0.2),
+    trailDecay: 0.50,
+    crackle: false,
+  },
+  'green_star_bano3': {
+    name: 'Estrella Verde (Ba(NO3)2 + Mg/Al)',
+    productType: 'shell',
+    caliber: '3"',
+    compounds: [
+      { element: 'Ba', percentage: 45 },
+      { element: 'KClO4', percentage: 25 },
+      { element: 'Mg/Al', percentage: 12 },
+      { element: 'PVC', percentage: 8 },
+      { element: 'Shellac', percentage: 5 },
+    ],
+    resultColor: new THREE.Color(0.08, 0.95, 0.25),
+    temperature: 1900,
+    emissionIntensity: 4.0,
+    burnRate: 2.5,
+    sparkSize: 1.0,
+    smokeColor: new THREE.Color(0.08, 0.1, 0.06),
+    trailDecay: 0.90,
+    crackle: false,
+  },
 };
 
 /** Get a real formulation as a ChemicalCompound for the render engine */
@@ -400,7 +656,7 @@ const ELEMENT_EMISSION: Record<string, EmissionLine[]> = {
   'Cu(NO3)2': [{ wavelength: 505, intensity: 0.8 }, { wavelength: 475, intensity: 0.9 }],
   'Na': [{ wavelength: 589, intensity: 1.0 }],
   'Fe': [{ wavelength: 580, intensity: 0.6 }, { wavelength: 620, intensity: 0.8 }],
-  'Ti': [{ wavelength: 400, intensity: 0.3 }, { wavelength: 500, intensity: 0.5 }, { wavelength: 600, intensity: 0.5 }, { wavelength: 700, intensity: 0.3 }], // broadband
+  'Ti': [{ wavelength: 400, intensity: 0.3 }, { wavelength: 500, intensity: 0.5 }, { wavelength: 600, intensity: 0.5 }, { wavelength: 700, intensity: 0.3 }],
   'Mg/Al': [{ wavelength: 500, intensity: 0.9 }, { wavelength: 520, intensity: 1.0 }],
   'Al': [{ wavelength: 490, intensity: 0.8 }, { wavelength: 520, intensity: 0.6 }],
   'Al/Mg': [{ wavelength: 500, intensity: 0.9 }, { wavelength: 520, intensity: 1.0 }],
@@ -413,12 +669,14 @@ const ELEMENT_EMISSION: Record<string, EmissionLine[]> = {
   'Ca': [{ wavelength: 622, intensity: 0.9 }, { wavelength: 553, intensity: 0.4 }],
   'KNO3+C+S': [{ wavelength: 590, intensity: 0.6 }, { wavelength: 620, intensity: 0.4 }],
   'KClO4': [],
+  'KClO3': [],
   'KNO3': [],
   'LAC': [{ wavelength: 470, intensity: 0.9 }],
   'PVC': [],
   'Shellac': [],
   'Dextrin': [],
   'Sb2S3': [{ wavelength: 560, intensity: 0.4 }],
+  'NC': [],
   'Mixed': [{ wavelength: 520, intensity: 0.5 }, { wavelength: 580, intensity: 0.6 }, { wavelength: 620, intensity: 0.5 }],
 };
 
