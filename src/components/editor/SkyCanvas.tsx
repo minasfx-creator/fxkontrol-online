@@ -64,7 +64,7 @@ import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { createExposureController, updateExposure, flashEvent } from '@/render_ultra/postprocessing/exposure';
 import { getCompound, thermalColor, type ChemicalCompound } from '@/render_ultra/fireworks/particleChemistry';
 import { GlobalIlluminationSystem } from '@/render_ultra/lighting/globalIllumination';
-import { SmokeSystem } from '@/render_ultra/fireworks/smokeSimulation';
+// SmokeSystem removed — handled by NiagaraVFXController
 import { createLensFlareSprite, flashLensFlare, decayLensFlare } from '@/render_ultra/postprocessing/lensFlare';
 import { getBurstConfig, type BurstPattern } from '@/render_ultra/fireworks/burstSimulation';
 import { createSparkTrailSystem, updateSparkTrail, writeSparkTrailsToBuffers, type SparkState } from '@/render_ultra/fireworks/sparkTrailsGPU';
