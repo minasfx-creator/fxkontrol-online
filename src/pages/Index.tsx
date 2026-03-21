@@ -85,6 +85,8 @@ import ShowPreviewPanel from '@/components/editor/ShowPreviewPanel';
 import MobileLinkPanel from '@/components/editor/MobileLinkPanel';
 import MobileLinkMonitor from '@/components/editor/MobileLinkMonitor';
 import SiteModelsPanel from '@/components/editor/SiteModelsPanel';
+import VirtualControllerHub from '@/components/editor/VirtualControllerHub';
+import FieldMap2D from '@/components/editor/FieldMap2D';
 import ShowCommanderPanel from '@/components/editor/ShowCommanderPanel';
 import BluetoothPanel from '@/components/editor/BluetoothPanel';
 import NFCPairPanel from '@/components/editor/NFCPairPanel';
@@ -361,7 +363,13 @@ function Index() {
         {activePanel === 'bluetooth' && <BluetoothPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'nfc' && <NFCPairPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'dmxoutput' && <DMXOutputPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'remotecontrol' && <RemoteControlPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'remotecontrol' && (
+          isMobile
+            ? <RemoteControlPanel onClose={() => setActivePanel(null)} />
+            : <RemoteReceiverOverlay onOpenPanel={(id) => handleTogglePanel(id as PanelId)} />
+        )}
+        {activePanel === 'controllers' && <VirtualControllerHub />}
+        {activePanel === 'fieldmap' && <FieldMap2D />}
       </>
     );
   };
@@ -408,6 +416,10 @@ function Index() {
           {mobileTab === 'assets' && <EffectLibrary />}
           {mobileTab === 'properties' && <PropertiesPanel />}
           {mobileTab === 'more' && <MobileMoreMenu onSelectPanel={handleMobileOpenPanel} />}
+          {/* Panel-based tabs (livefx, controllers, remote, fieldmap) */}
+          {mobileTab && !['timeline', 'assets', 'properties', 'more'].includes(mobileTab) && activePanel && (
+            <div className="h-full overflow-y-auto">{renderPanelContent()}</div>
+          )}
         </MobileFloatingPanel>
 
         {/* Panel content from More menu or direct panel open */}
