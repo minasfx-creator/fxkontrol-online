@@ -1,12 +1,16 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
-import { getThreeBlending } from '@/lib/niagaraBlenderRules';
+import { useProjectStore } from '@/store/useProjectStore';
 
 const PARTICLE_COUNT = 60;
 const GRAVITY = -4;
 
-function particlePos(vx: number, vy: number, vz: number, t: number): [number, number, number] {
-  return [vx * t * 0.5, vy * t * 0.5 + 0.5 * GRAVITY * t * t * 0.25, vz * t * 0.5];
+function particlePos(vx: number, vy: number, vz: number, t: number, windX: number, windZ: number): [number, number, number] {
+  return [
+    vx * t * 0.5 + windX * t * t * 0.3,
+    vy * t * 0.5 + 0.5 * GRAVITY * t * t * 0.25,
+    vz * t * 0.5 + windZ * t * t * 0.3,
+  ];
 }
 
 function MiniBurst({
@@ -38,13 +42,18 @@ function MiniBurst({
 
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
 
-  // Pre-allocate buffers — zero GC pressure (computed once per progress change via render)
   const { positions, colors } = useMemo(() => ({
     positions: new Float32Array(PARTICLE_COUNT * 3),
     colors: new Float32Array(PARTICLE_COUNT * 3),
   }), []);
 
   if (progress <= 0 || progress > 1) return null;
+
+  // Read wind
+  const { wind } = useProjectStore.getState();
+  const windRad = (wind.direction * Math.PI) / 180;
+  const windX = wind.enabled ? Math.sin(windRad) * wind.speed * 0.03 : 0;
+  const windZ = wind.enabled ? Math.cos(windRad) * wind.speed * 0.03 : 0;
 
   const t = progress * 2.5;
 
@@ -54,9 +63,9 @@ function MiniBurst({
     const vz = velocities[i * 3 + 2];
     const fade = Math.max(0, 1 - progress / lifetimes[i]);
 
-    const [hx, hy, hz] = particlePos(vx, vy, vz, t);
+    const [hx, hy, hz] = particlePos(vx, vy, vz, t, windX, windZ);
     positions[i * 3] = hx;
-    positions[i * 3 + 1] = hy;
+    positions[i * 3 + 1] = Math.max(0, hy); // Ground collision
     positions[i * 3 + 2] = hz;
 
     colors[i * 3] = baseColor.r * fade;
@@ -87,6 +96,7 @@ function MiniBurst({
 
 /**
  * MultiBurst: Multiple sequential explosions at staggered times and offset positions.
+ * Integrated with wind force module.
  */
 export default function MultiBurstEffect({
   position,

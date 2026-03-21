@@ -2,24 +2,16 @@ import { useRef, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { getMaterialType, getRiskDivision, getBurstSmokeDensity, getParticleSize } from '@/lib/pyroPhysics';
+import { injectDensity, injectTemperature, type FluidGrid } from '@/render_ultra/fireworks/niagaraFluids';
 
 /**
- * SaluteEffect — Concussive flash + fresnel shockwave + volumetric sphere + debris.
- * UE5 Niagara-grade: custom fresnel shader, debris physics, air distortion, ground scorch.
- * 
- * Enhanced with Manual de Pirotecnia concepts:
- * - Material type: 'detonante' (materia detonante → trueno/apertura) 
- * - Risk Division 1.1: mass explosion → stronger shockwave, more debris
- * - Quadratic debris scaling: caliber² relationship (larger = exponentially more debris)
- * - Dense post-detonation smoke cloud (SO2 + KCl residue)
- * - Temperature ranges from manual: deflagración 1500-4000°C, detonación 2000-4000°C
+ * SaluteEffect — Concussive flash + fresnel shockwave + heat distortion + fluid grid injection.
+ * Enhanced with HeatHaze particles and NiagaraFluids integration for post-detonation smoke advection.
  */
 
-// ── Fresnel Shockwave Shader (UE5 Niagara style) ───────────────────
 const SHOCKWAVE_VERTEX = `
   varying vec3 vNormal;
   varying vec3 vViewDir;
-  
   void main() {
     vNormal = normalize(normalMatrix * normal);
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
@@ -31,28 +23,19 @@ const SHOCKWAVE_VERTEX = `
 const SHOCKWAVE_FRAGMENT = `
   varying vec3 vNormal;
   varying vec3 vViewDir;
-  
   uniform float uOpacity;
   uniform float uProgress;
   uniform vec3 uColor;
-  
   void main() {
-    // Fresnel: bright at edges, transparent at center (like real shockwave)
     float fresnel = 1.0 - abs(dot(vNormal, vViewDir));
     fresnel = pow(fresnel, 3.0);
-    
-    // Inner ring shimmer
     float ring = smoothstep(0.6, 0.8, fresnel) * 0.5;
-    
-    // Chromatic edge shift
     vec3 edgeColor = mix(uColor, vec3(0.8, 0.9, 1.0), fresnel * 0.5);
-    
     float alpha = (fresnel * 0.8 + ring) * uOpacity;
     gl_FragColor = vec4(edgeColor * (1.0 + fresnel * 2.0), alpha);
   }
 `;
 
-// ── Air Distortion Ring Shader ──────────────────────────────────────
 const DISTORTION_VERTEX = `
   varying vec2 vUv;
   void main() {
@@ -65,28 +48,47 @@ const DISTORTION_FRAGMENT = `
   varying vec2 vUv;
   uniform float uOpacity;
   uniform float uTime;
-  
   float hash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
   }
-  
   void main() {
     vec2 centered = (vUv - 0.5) * 2.0;
     float dist = length(centered);
-    
-    // Ring shape
     float ring = smoothstep(0.7, 0.85, dist) * smoothstep(1.0, 0.9, dist);
-    
-    // Noise disturbance
     float n = hash(centered * 10.0 + vec2(uTime));
     ring *= 0.7 + n * 0.3;
-    
-    // Refraction-like tint (slight color shift)
     vec3 col = vec3(0.95, 0.97, 1.0);
-    
     gl_FragColor = vec4(col, ring * uOpacity);
   }
 `;
+
+// Heat haze particles shader
+const HEAT_HAZE_VERTEX = `
+  attribute float aHeatIntensity;
+  attribute float aHeatSize;
+  varying float vIntensity;
+  void main() {
+    vIntensity = aHeatIntensity;
+    vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+    gl_Position = projectionMatrix * mvPos;
+    gl_PointSize = clamp(aHeatSize * (300.0 / -mvPos.z), 1.0, 80.0);
+  }
+`;
+
+const HEAT_HAZE_FRAGMENT = `
+  uniform float uTime;
+  varying float vIntensity;
+  void main() {
+    float d = length(gl_PointCoord - 0.5) * 2.0;
+    float circle = 1.0 - smoothstep(0.0, 1.0, d);
+    if (circle < 0.01) discard;
+    float shimmer = 0.5 + 0.5 * sin(uTime * 10.0 + gl_PointCoord.x * 25.0);
+    float alpha = circle * vIntensity * shimmer * 0.05;
+    gl_FragColor = vec4(1.0, 0.98, 0.95, alpha);
+  }
+`;
+
+const HEAT_HAZE_COUNT = 16;
 
 interface SaluteEffectProps {
   position: [number, number, number];
@@ -107,29 +109,41 @@ export default function SaluteEffect({
   const debrisRef = useRef<THREE.Points>(null);
   const scorchRef = useRef<THREE.Mesh>(null);
   const smokeCloudRef = useRef<THREE.Mesh>(null);
+  const heatHazeRef = useRef<THREE.Points>(null);
   const { camera } = useThree();
   const shakeOffset = useRef(new THREE.Vector3());
+  const fluidInjectedRef = useRef(false);
 
-  // Manual-derived classification
   const materialType = useMemo(() => getMaterialType('salute'), []);
   const riskDivision = useMemo(() => getRiskDivision(caliber, materialType), [caliber, materialType]);
   const smokeDensity = useMemo(() => getBurstSmokeDensity(caliber), [caliber]);
   
-  // Division 1.1 = mass explosion risk → more violent
   const isDiv11 = riskDivision === '1.1';
   const flashSize = 2 + caliber * 1.2 * (isDiv11 ? 1.4 : 1.0);
   const flashDuration = isDiv11 ? 0.12 : 0.15;
 
-  // Quadratic debris scaling (manual: detonation → more projectiles with larger calibers)
   const DEBRIS_COUNT = useMemo(() => Math.round(20 + caliber * caliber * 3), [caliber]);
 
-  // Pre-allocate debris buffers
   const debrisPos = useMemo(() => new Float32Array(DEBRIS_COUNT * 3), [DEBRIS_COUNT]);
   const debrisCol = useMemo(() => new Float32Array(DEBRIS_COUNT * 3), [DEBRIS_COUNT]);
 
+  // Heat haze buffers
+  const heatPos = useMemo(() => new Float32Array(HEAT_HAZE_COUNT * 3), []);
+  const heatIntensity2 = useMemo(() => new Float32Array(HEAT_HAZE_COUNT), []);
+  const heatSize = useMemo(() => new Float32Array(HEAT_HAZE_COUNT), []);
+  const heatHazeSeeds = useMemo(() => {
+    return Array.from({ length: HEAT_HAZE_COUNT }, () => ({
+      angle: Math.random() * Math.PI * 2,
+      spread: 1 + Math.random() * caliber * 2,
+      riseSpeed: 1 + Math.random() * 2,
+      phase: Math.random() * Math.PI * 2,
+    }));
+  }, [caliber]);
+
+  const heatUniforms = useMemo(() => ({ uTime: { value: 0 } }), []);
+
   const debrisSeeds = useMemo(() => {
     const s: { vx: number; vy: number; vz: number; size: number; spin: number }[] = [];
-    // Division 1.1: higher velocity fragments (manual: "altísimas presiones locales")
     const speedMult = isDiv11 ? 1.5 : 1.0;
     for (let i = 0; i < DEBRIS_COUNT; i++) {
       const theta = Math.random() * Math.PI * 2;
@@ -146,14 +160,12 @@ export default function SaluteEffect({
     return s;
   }, [DEBRIS_COUNT, isDiv11]);
 
-  // Fresnel shockwave uniforms
   const shockUniforms = useMemo(() => ({
     uOpacity: { value: 0 },
     uProgress: { value: 0 },
     uColor: { value: new THREE.Color('#FFFAF0') },
   }), []);
 
-  // Distortion ring uniforms
   const distortUniforms = useMemo(() => ({
     uOpacity: { value: 0 },
     uTime: { value: 0 },
@@ -162,7 +174,16 @@ export default function SaluteEffect({
   useFrame(({ clock }) => {
     const time = clock.getElapsedTime();
 
-    // Camera shake — stronger for Division 1.1 (manual: "efectos de onda de choque")
+    // Inject into fluid grid on detonation
+    const fluidGrid = (window as any).__niagaraFluidGrid as FluidGrid | undefined;
+    if (fluidGrid && progress > 0.01 && progress < 0.1 && !fluidInjectedRef.current) {
+      injectDensity(fluidGrid, position[0], position[2], 5.0 * caliber, caliber * 3);
+      injectTemperature(fluidGrid, position[0], position[2], 8.0 * caliber, caliber * 2);
+      fluidInjectedRef.current = true;
+    }
+    if (progress <= 0) fluidInjectedRef.current = false;
+
+    // Camera shake
     const shakeMultiplier = isDiv11 ? 1.8 : 1.0;
     if (progress < 0.25 && progress > 0) {
       const shakeMag = 0.025 * intensity * (1 - progress / 0.25) * caliber * 0.5 * shakeMultiplier;
@@ -179,7 +200,6 @@ export default function SaluteEffect({
       shakeOffset.current.set(0, 0, 0);
     }
 
-    // Update fresnel shockwave — expands faster for detonante
     if (shockRef.current) {
       const shockSpeed = isDiv11 ? 5 : 4;
       const shockProgress = Math.min(1, progress * shockSpeed);
@@ -189,7 +209,6 @@ export default function SaluteEffect({
       shockUniforms.uProgress.value = shockProgress;
     }
 
-    // Update distortion ring
     if (distortionRef.current) {
       const distProgress = Math.min(1, progress * 3);
       const distRadius = flashSize * (1 + distProgress * 8);
@@ -198,7 +217,6 @@ export default function SaluteEffect({
       distortUniforms.uTime.value = time;
     }
 
-    // Update debris particles
     if (debrisRef.current && progress > 0 && progress < 0.9) {
       const GRAVITY = -9.81;
       for (let i = 0; i < DEBRIS_COUNT; i++) {
@@ -210,7 +228,6 @@ export default function SaluteEffect({
         debrisPos[i * 3 + 2] = seed.vz * t * drag;
         
         const fade = Math.max(0, 1 - progress * 1.3) * 0.8;
-        // Charred debris: dark with orange hot spots
         const hotspot = Math.sin(time * seed.spin + i) > 0.7 ? 0.4 : 0;
         debrisCol[i * 3] = (0.12 + hotspot) * fade;
         debrisCol[i * 3 + 1] = (0.06 + hotspot * 0.3) * fade;
@@ -223,7 +240,28 @@ export default function SaluteEffect({
       if (colAttr) colAttr.needsUpdate = true;
     }
 
-    // Dense post-detonation smoke cloud (manual: detonation produces significant smoke)
+    // Heat haze particles — shimmer above detonation
+    if (heatHazeRef.current && progress > 0.05 && progress < 0.8) {
+      heatUniforms.uTime.value = time;
+      const hazeIntensity = progress < 0.15 ? (progress - 0.05) / 0.1 : Math.max(0, 1 - (progress - 0.15) / 0.65);
+      for (let i = 0; i < HEAT_HAZE_COUNT; i++) {
+        const seed = heatHazeSeeds[i];
+        const age = progress - 0.05;
+        heatPos[i * 3] = Math.cos(seed.angle) * seed.spread * 0.3 + Math.sin(time * 2 + seed.phase) * 0.3;
+        heatPos[i * 3 + 1] = seed.riseSpeed * age * 3 + 1;
+        heatPos[i * 3 + 2] = Math.sin(seed.angle) * seed.spread * 0.3 + Math.cos(time * 1.5 + seed.phase) * 0.25;
+        heatIntensity2[i] = hazeIntensity * intensity;
+        heatSize[i] = 25 + age * 30;
+      }
+      const hGeo = heatHazeRef.current.geometry;
+      const hPos = hGeo.getAttribute('position') as THREE.BufferAttribute;
+      const hInt = hGeo.getAttribute('aHeatIntensity') as THREE.BufferAttribute;
+      const hSz = hGeo.getAttribute('aHeatSize') as THREE.BufferAttribute;
+      if (hPos) hPos.needsUpdate = true;
+      if (hInt) hInt.needsUpdate = true;
+      if (hSz) hSz.needsUpdate = true;
+    }
+
     if (smokeCloudRef.current) {
       const smokeProgress = Math.max(0, progress - 0.05);
       const expand = 1 + smokeProgress * caliber * 2.5;
@@ -234,7 +272,6 @@ export default function SaluteEffect({
       mat.opacity = 0.08 * smokeDensity * fadeIn * fadeOut * intensity;
     }
 
-    // Ground scorch fade — larger for detonante (manual: "destrucción del local")
     if (scorchRef.current) {
       const mat = scorchRef.current.material as THREE.MeshBasicMaterial;
       const scorchScale = isDiv11 ? 1.4 : 1.0;
@@ -256,115 +293,68 @@ export default function SaluteEffect({
 
   return (
     <group position={position}>
-      {/* Central flash sphere — brighter for detonante */}
       {flashOpacity > 0.01 && (
         <mesh ref={flashRef} scale={flashSize * (1 + progress * 2)}>
           <sphereGeometry args={[1, 16, 16]} />
-          <meshBasicMaterial
-            color={isDiv11 ? '#FFFFFF' : '#FFFAF0'}
-            transparent
-            opacity={flashOpacity}
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
-          />
+          <meshBasicMaterial color={isDiv11 ? '#FFFFFF' : '#FFFAF0'} transparent opacity={flashOpacity} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       )}
 
-      {/* Fresnel shockwave sphere — bright at edges */}
       {progress < 0.3 && (
         <mesh ref={shockRef}>
           <sphereGeometry args={[1, 32, 32]} />
-          <shaderMaterial
-            vertexShader={SHOCKWAVE_VERTEX}
-            fragmentShader={SHOCKWAVE_FRAGMENT}
-            uniforms={shockUniforms}
-            transparent
-            depthWrite={false}
-            blending={THREE.AdditiveBlending}
-            side={THREE.DoubleSide}
-          />
+          <shaderMaterial vertexShader={SHOCKWAVE_VERTEX} fragmentShader={SHOCKWAVE_FRAGMENT} uniforms={shockUniforms} transparent depthWrite={false} blending={THREE.AdditiveBlending} side={THREE.DoubleSide} />
         </mesh>
       )}
 
-      {/* Expanding primary shockwave ring */}
       {ringOpacity > 0.01 && (
         <mesh rotation={[Math.PI / 2, 0, 0]}>
           <ringGeometry args={[ringRadius * 0.85, ringRadius, 48]} />
-          <meshBasicMaterial
-            color="#FFFFFF"
-            transparent
-            opacity={ringOpacity}
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
-            side={THREE.DoubleSide}
-          />
+          <meshBasicMaterial color="#FFFFFF" transparent opacity={ringOpacity} blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} />
         </mesh>
       )}
 
-      {/* Air distortion ring — refraction-like shader */}
       {progress < 0.4 && (
         <mesh ref={distortionRef} rotation={[Math.PI / 2, 0, 0]}>
           <planeGeometry args={[2, 2]} />
-          <shaderMaterial
-            vertexShader={DISTORTION_VERTEX}
-            fragmentShader={DISTORTION_FRAGMENT}
-            uniforms={distortUniforms}
-            transparent
-            depthWrite={false}
-            blending={THREE.AdditiveBlending}
-            side={THREE.DoubleSide}
-          />
+          <shaderMaterial vertexShader={DISTORTION_VERTEX} fragmentShader={DISTORTION_FRAGMENT} uniforms={distortUniforms} transparent depthWrite={false} blending={THREE.AdditiveBlending} side={THREE.DoubleSide} />
         </mesh>
       )}
 
-      {/* Dense post-detonation smoke cloud */}
+      {/* Heat haze particles */}
+      {progress > 0.05 && progress < 0.8 && (
+        <points ref={heatHazeRef} frustumCulled={false} renderOrder={999}>
+          <bufferGeometry>
+            <bufferAttribute attach="attributes-position" args={[heatPos, 3]} />
+            <bufferAttribute attach="attributes-aHeatIntensity" args={[heatIntensity2, 1]} />
+            <bufferAttribute attach="attributes-aHeatSize" args={[heatSize, 1]} />
+          </bufferGeometry>
+          <shaderMaterial vertexShader={HEAT_HAZE_VERTEX} fragmentShader={HEAT_HAZE_FRAGMENT} uniforms={heatUniforms} transparent depthWrite={false} blending={THREE.AdditiveBlending} />
+        </points>
+      )}
+
       <mesh ref={smokeCloudRef} position={[0, caliber * 0.3, 0]}>
         <sphereGeometry args={[1, 12, 12]} />
-        <meshBasicMaterial
-          color="#887766"
-          transparent
-          opacity={0}
-          depthWrite={false}
-        />
+        <meshBasicMaterial color="#887766" transparent opacity={0} depthWrite={false} />
       </mesh>
 
-      {/* Ground scorch mark — proportional to caliber and risk division */}
       <mesh ref={scorchRef} position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[caliber * (isDiv11 ? 1.2 : 0.9), 24]} />
-        <meshBasicMaterial
-          color="#0A0500"
-          transparent
-          opacity={0}
-          depthWrite={false}
-        />
+        <meshBasicMaterial color="#0A0500" transparent opacity={0} depthWrite={false} />
       </mesh>
 
-      {/* Debris fragments — quadratic scaling */}
       {progress > 0 && progress < 0.9 && (
         <points ref={debrisRef} frustumCulled={false}>
           <bufferGeometry>
             <bufferAttribute attach="attributes-position" args={[debrisPos, 3]} />
             <bufferAttribute attach="attributes-color" args={[debrisCol, 3]} />
           </bufferGeometry>
-          <pointsMaterial
-            size={getParticleSize(caliber) * 0.05}
-            vertexColors
-            transparent
-            opacity={0.85}
-            depthWrite={false}
-            sizeAttenuation
-          />
+          <pointsMaterial size={getParticleSize(caliber) * 0.05} vertexColors transparent opacity={0.85} depthWrite={false} sizeAttenuation />
         </points>
       )}
 
-      {/* Ground flash illumination — stronger for detonante */}
       {progress < 0.3 && (
-        <pointLight
-          color={isDiv11 ? '#FFFFFF' : '#FFFAF0'}
-          intensity={caliber * (isDiv11 ? 5.0 : 3.5) * intensity * (1 - progress / 0.3)}
-          distance={50 + caliber * 12}
-          decay={2}
-        />
+        <pointLight color={isDiv11 ? '#FFFFFF' : '#FFFAF0'} intensity={caliber * (isDiv11 ? 5.0 : 3.5) * intensity * (1 - progress / 0.3)} distance={50 + caliber * 12} decay={2} />
       )}
     </group>
   );

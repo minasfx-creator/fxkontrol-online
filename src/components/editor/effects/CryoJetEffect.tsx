@@ -3,14 +3,15 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { attackReleaseEnvelope } from '@/lib/pyroNoise';
 import { getThreeBlending } from '@/lib/niagaraBlenderRules';
+import { useProjectStore } from '@/store/useProjectStore';
 
 const PARTICLE_COUNT = 300;
 const GROUND_FOG_COUNT = 60;
 const CONDENSATION_COUNT = 40;
 
 /**
- * CO2 Cryo Jet — Dense volumetric fog
- * Niagara-grade: ground fog spread, condensation droplets, soft Gaussian sprites, denser column.
+ * CO2 Cryo Jet — Dense volumetric fog with soft-particle-style depth awareness.
+ * Wind integration + ground collision module.
  */
 export default function CryoJetEffect({
   position,
@@ -97,7 +98,12 @@ export default function CryoJetEffect({
     const time = clock.getElapsedTime();
     const intensity = attackReleaseEnvelope(progress, 0.05, 0.75, 1.6);
 
-    // Main fog column
+    // Wind integration
+    const { wind } = useProjectStore.getState();
+    const windRad = (wind.direction * Math.PI) / 180;
+    const wX = wind.enabled ? Math.sin(windRad) * wind.speed * 0.06 : 0;
+    const wZ = wind.enabled ? Math.cos(windRad) * wind.speed * 0.06 : 0;
+
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       const seed = seeds[i];
       const cycleTime = ((time * 2.5 + seed.phase) % seed.lt) / seed.lt;
@@ -114,25 +120,28 @@ export default function CryoJetEffect({
       const turbZ = Math.cos(time * 2.5 + i * 0.9) * 0.15 * t;
 
       if (horizontal) {
-        posArr[i * 3] = seed.speed * t;
+        posArr[i * 3] = seed.speed * t + wX * t;
         posArr[i * 3 + 1] = Math.cos(seed.angle) * seed.spread * t * expansion + turbX;
-        posArr[i * 3 + 2] = Math.sin(seed.angle) * seed.spread * t * expansion + turbZ;
+        posArr[i * 3 + 2] = Math.sin(seed.angle) * seed.spread * t * expansion + turbZ + wZ * t;
       } else {
-        posArr[i * 3] = Math.cos(seed.angle) * seed.spread * t * expansion + turbX;
+        posArr[i * 3] = Math.cos(seed.angle) * seed.spread * t * expansion + turbX + wX * t;
         posArr[i * 3 + 1] = seed.speed * t - 2 * t * t;
-        posArr[i * 3 + 2] = Math.sin(seed.angle) * seed.spread * t * expansion + turbZ;
+        posArr[i * 3 + 2] = Math.sin(seed.angle) * seed.spread * t * expansion + turbZ + wZ * t;
       }
 
       const fade = Math.max(0, 1 - cycleTime * 0.65) * intensity;
       const core = 1 - cycleTime;
 
+      // Soft-particle-style depth fade approximation
+      const depthFade = Math.min(1, posArr[i * 3 + 1] * 2 + 0.5);
+
       const r = THREE.MathUtils.lerp(baseColor.r, 1.0, core * 0.45);
       const g = THREE.MathUtils.lerp(baseColor.g, 1.0, core * 0.5);
       const b = THREE.MathUtils.lerp(baseColor.b, 1.0, core * 0.65);
 
-      colArr[i * 3] = r * fade;
-      colArr[i * 3 + 1] = g * fade;
-      colArr[i * 3 + 2] = b * fade;
+      colArr[i * 3] = r * fade * depthFade;
+      colArr[i * 3 + 1] = g * fade * depthFade;
+      colArr[i * 3 + 2] = b * fade * depthFade;
     }
 
     const geo = pointsRef.current.geometry;
@@ -141,16 +150,16 @@ export default function CryoJetEffect({
     if (posAttr) posAttr.needsUpdate = true;
     if (colAttr) colAttr.needsUpdate = true;
 
-    // Ground fog spread — particles that reach ground drift horizontally
+    // Ground fog spread with wind
     if (groundFogRef.current && intensity > 0.2) {
       for (let i = 0; i < GROUND_FOG_COUNT; i++) {
         const seed = groundFogSeeds[i];
         const cycleTime = ((time * 0.4 + seed.phase) % seed.lt) / seed.lt;
         const t2 = cycleTime * seed.lt;
         
-        groundFogPos[i * 3] = Math.cos(seed.angle) * seed.speed * t2;
+        groundFogPos[i * 3] = Math.cos(seed.angle) * seed.speed * t2 + wX * t2 * 2;
         groundFogPos[i * 3 + 1] = 0.05 + Math.sin(time * 0.5 + i) * 0.05;
-        groundFogPos[i * 3 + 2] = Math.sin(seed.angle) * seed.speed * t2;
+        groundFogPos[i * 3 + 2] = Math.sin(seed.angle) * seed.speed * t2 + wZ * t2 * 2;
 
         const fade = Math.max(0, 1 - cycleTime) * intensity * 0.4;
         groundFogCol[i * 3] = 0.9 * fade;
@@ -164,7 +173,7 @@ export default function CryoJetEffect({
       if (gCol) gCol.needsUpdate = true;
     }
 
-    // Condensation droplets — tiny fast particles near nozzle
+    // Condensation droplets
     if (condensationRef.current && intensity > 0.3) {
       for (let i = 0; i < CONDENSATION_COUNT; i++) {
         const seed = condensationSeeds[i];
@@ -186,7 +195,7 @@ export default function CryoJetEffect({
       if (cCol) cCol.needsUpdate = true;
     }
 
-    // Cloud puffs
+    // Cloud puffs with wind
     cloudSeeds.forEach((cloud, i) => {
       const mesh = cloudRefs.current[i];
       if (!mesh) return;
@@ -199,9 +208,9 @@ export default function CryoJetEffect({
       const t2 = age * 3;
       const expand = cloud.scale * (0.5 + t2 * 2.5);
       if (horizontal) {
-        mesh.position.set(cloud.speed * t2, Math.cos(cloud.angle) * cloud.spread * t2, Math.sin(cloud.angle) * cloud.spread * t2);
+        mesh.position.set(cloud.speed * t2 + wX * t2, Math.cos(cloud.angle) * cloud.spread * t2, Math.sin(cloud.angle) * cloud.spread * t2 + wZ * t2);
       } else {
-        mesh.position.set(Math.cos(cloud.angle) * cloud.spread * t2, cloud.speed * t2 * 0.7, Math.sin(cloud.angle) * cloud.spread * t2);
+        mesh.position.set(Math.cos(cloud.angle) * cloud.spread * t2 + wX * t2, cloud.speed * t2 * 0.7, Math.sin(cloud.angle) * cloud.spread * t2 + wZ * t2);
       }
       mesh.scale.setScalar(expand);
       const mat = mesh.material as THREE.MeshBasicMaterial;
@@ -215,7 +224,6 @@ export default function CryoJetEffect({
 
   return (
     <group position={position}>
-      {/* CO2 fog particles */}
       <points ref={pointsRef}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[posRef, 3]} />
@@ -224,7 +232,6 @@ export default function CryoJetEffect({
         <pointsMaterial size={0.3} vertexColors transparent opacity={0.55} depthWrite={false} blending={normalBlend.blending} blendEquation={normalBlend.blendEquation} blendSrc={normalBlend.blendSrc as any} blendDst={normalBlend.blendDst as any} sizeAttenuation />
       </points>
 
-      {/* Ground fog spread */}
       <points ref={groundFogRef} frustumCulled={false}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[groundFogPos, 3]} />
@@ -233,7 +240,6 @@ export default function CryoJetEffect({
         <pointsMaterial size={0.6} vertexColors transparent opacity={0.3} depthWrite={false} blending={normalBlend.blending} blendEquation={normalBlend.blendEquation} blendSrc={normalBlend.blendSrc as any} blendDst={normalBlend.blendDst as any} sizeAttenuation />
       </points>
 
-      {/* Condensation droplets */}
       <points ref={condensationRef} frustumCulled={false}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[condensationPos, 3]} />
@@ -242,7 +248,6 @@ export default function CryoJetEffect({
         <pointsMaterial size={0.03} vertexColors transparent opacity={0.6} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
 
-      {/* Cloud puffs */}
       {cloudSeeds.map((_, i) => (
         <mesh key={i} ref={(el) => { cloudRefs.current[i] = el; }} visible={false}>
           <sphereGeometry args={[1, 8, 8]} />
@@ -250,7 +255,6 @@ export default function CryoJetEffect({
         </mesh>
       ))}
 
-      {/* Nozzle glow */}
       {progress > 0.02 && progress < 0.8 && (
         <mesh position={horizontal ? [0.2, 0, 0] : [0, 0.2, 0]}>
           <sphereGeometry args={[0.15, 8, 8]} />

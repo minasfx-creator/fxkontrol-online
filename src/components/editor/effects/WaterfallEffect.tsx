@@ -1,12 +1,13 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { useProjectStore } from '@/store/useProjectStore';
 
 const PARTICLE_COUNT = 500;
 
 /**
- * Finale-grade Waterfall / Cascade / Niagara Effect
- * Niagara-grade: reusable buffers (zero GC), thermal gradient, multi-frequency flicker.
+ * Waterfall / Cascade / Niagara Effect
+ * Integrated with wind force module from project store.
  */
 export default function WaterfallEffect({
   position,
@@ -26,7 +27,6 @@ export default function WaterfallEffect({
   const pointsRef = useRef<THREE.Points>(null);
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
 
-  // Pre-allocate buffers — zero GC pressure
   const posArr = useMemo(() => new Float32Array(SCALED_PARTICLE_COUNT * 3), [SCALED_PARTICLE_COUNT]);
   const colArr = useMemo(() => new Float32Array(SCALED_PARTICLE_COUNT * 3), [SCALED_PARTICLE_COUNT]);
 
@@ -51,6 +51,12 @@ export default function WaterfallEffect({
     const time = clock.getElapsedTime();
     const GRAVITY = -9.81;
 
+    // Wind integration
+    const { wind } = useProjectStore.getState();
+    const windRad = (wind.direction * Math.PI) / 180;
+    const windX = wind.enabled ? Math.sin(windRad) * wind.speed * 0.04 : 0;
+    const windZ = wind.enabled ? Math.cos(windRad) * wind.speed * 0.04 : 0;
+
     const intensity = progress < 0.04 ? Math.pow(progress / 0.04, 0.4) :
                       progress > 0.88 ? Math.pow((1 - progress) / 0.12, 2) : 1;
 
@@ -66,9 +72,15 @@ export default function WaterfallEffect({
 
       const t = cycleTime * seed.lt;
       const drag = Math.exp(-0.03 * t);
-      posArr[i * 3] = seed.x + seed.vx * t * drag + Math.sin(time * 0.5 + seed.phase) * 0.04;
-      posArr[i * 3 + 1] = seed.vy * t * drag + 0.5 * GRAVITY * t * t * 0.08;
-      posArr[i * 3 + 2] = Math.sin(seed.phase + time * 0.25) * 0.08;
+
+      // Ground collision — particles that go below 0 bounce with restitution
+      const rawY = seed.vy * t * drag + 0.5 * GRAVITY * t * t * 0.08;
+      const bounced = rawY < -0.1;
+      const yPos = bounced ? Math.abs(rawY) * 0.1 : rawY;
+
+      posArr[i * 3] = seed.x + seed.vx * t * drag + Math.sin(time * 0.5 + seed.phase) * 0.04 + windX * t;
+      posArr[i * 3 + 1] = yPos;
+      posArr[i * 3 + 2] = Math.sin(seed.phase + time * 0.25) * 0.08 + windZ * t;
 
       const fade = Math.max(0, 1 - cycleTime * 0.85) * intensity;
       

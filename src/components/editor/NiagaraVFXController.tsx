@@ -32,6 +32,7 @@ import { clampNiagaraHDR, getNiagaraBudgets } from '@/lib/niagaraBlenderRules';
 import { createSmokeSoftMaterial } from '@/render_ultra/fireworks/softParticleShader';
 import { RibbonTrail } from '@/render_ultra/fireworks/ribbonTrailRenderer';
 import { HeatHazeEmitter } from '@/render_ultra/fireworks/heatDistortion';
+import { createFluidGrid, advectFluid, applyWindForce, type FluidGrid } from '@/render_ultra/fireworks/niagaraFluids';
 
 // ── Emitter Templates ───────────────────────────────────────────────
 
@@ -367,6 +368,7 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
     const { scene, camera, size } = useThree();
     const activeSystems = useRef<ActiveVFXSystem[]>([]);
     const lastBurstIds = useRef<Set<string>>(new Set());
+    const fluidGridRef = useRef<FluidGrid>(createFluidGrid(64, 64));
     const { hdrMultiplier, effectBrightness } = useSceneStore(st => st.settings);
     const environment = useSceneStore(st => st.environment);
 
@@ -397,6 +399,12 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
     // Points objects
     const sparkPointsRef = useRef<THREE.Points | null>(null);
     const smokePointsRef = useRef<THREE.Points | null>(null);
+
+    // Expose fluid grid globally for effects to read
+    useEffect(() => {
+      (window as any).__niagaraFluidGrid = fluidGridRef.current;
+      return () => { delete (window as any).__niagaraFluidGrid; };
+    }, []);
 
     useEffect(() => {
       const sparkPoints = new THREE.Points(sparkBuffers.geometry, sparkMaterial);
@@ -447,11 +455,19 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
       const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
       const budgets = getNiagaraBudgets(isMobile);
 
-      // ── Update wind from project state ──
+      // ── Advect fluid grid ──
+      const grid = fluidGridRef.current;
       const { wind } = useProjectStore.getState();
       if (wind.enabled) {
         const rad = (wind.direction * Math.PI) / 180;
-        windModuleRef.current.direction.set(Math.sin(rad), 0, Math.cos(rad));
+        applyWindForce(grid, Math.sin(rad) * wind.speed * 0.1, Math.cos(rad) * wind.speed * 0.1, dt);
+      }
+      advectFluid(grid, dt);
+
+      // ── Update wind module from project state ──
+      if (wind.enabled) {
+        const windRad = (wind.direction * Math.PI) / 180;
+        windModuleRef.current.direction.set(Math.sin(windRad), 0, Math.cos(windRad));
         windModuleRef.current.strength = wind.speed * 0.5;
         windModuleRef.current.enabled = true;
       } else {
