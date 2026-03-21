@@ -678,7 +678,7 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
 
                 <button
                   className={cn("flex flex-col items-center gap-0.5 p-2.5 rounded-xl border active:scale-90 transition-transform",
-                    slavePermissions.canArm ? "bg-blue-500/10 border-blue-500/30 text-blue-400" : "bg-muted/20 border-border/30 text-muted-foreground/40"
+                    slavePermissions.canArm ? "bg-primary/10 border-primary/30 text-primary" : "bg-muted/20 border-border/30 text-muted-foreground/40"
                   )}
                   disabled={!slavePermissions.canArm}
                   onClick={() => { send('hardware', { target: 'pbus', action: 'arm-all' }); haptics.tap(); }}
