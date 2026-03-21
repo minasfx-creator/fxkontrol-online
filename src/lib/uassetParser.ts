@@ -7,6 +7,12 @@
  * - Niagara system/emitter identification
  */
 
+export type UAssetType =
+  | 'niagara_system' | 'niagara_emitter'
+  | 'blueprint_fixture' | 'blueprint_pyro' | 'blueprint_sfx'
+  | 'material' | 'material_instance' | 'material_param_collection'
+  | 'curve_table' | 'texture' | 'dmx_library' | 'unknown';
+
 export interface UAssetParseResult {
   valid: boolean;
   engineVersion: number;
@@ -21,8 +27,10 @@ export interface UAssetParseResult {
     suggestedName: string;
     suggestedColor: string;
     suggestedPattern: string;
-    suggestedCategory: 'aerial' | 'ground' | 'sfx';
+    suggestedCategory: 'aerial' | 'ground' | 'sfx' | 'fixture';
   };
+  assetType: UAssetType;
+  suggestedFixtureProfile?: string;
   rawStringTable: string[];
   fileSize: number;
   errors: string[];
