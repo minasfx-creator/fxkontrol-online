@@ -615,6 +615,54 @@ export default function ShellBurstRenderer({
       amat.uniforms.uTime.value = time;
       amat.uniforms.uAfterglowIntensity.value = afterglowIntensity;
     }
+
+    // ── Volumetric Smoke Billboards (Niagara SubUV) ──
+    // Spawn smoke puffs when burst reaches ~20% progress
+    if (progress > 0.15 && !smokeSpawned.current && sceneSettings.smokeRenderQuality !== 'off') {
+      smokeSpawned.current = true;
+      const sp: typeof smokeParticles.current = [];
+      for (let i = 0; i < SMOKE_COUNT; i++) {
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
+        const r = burstSpread * 0.15;
+        sp.push({
+          x: Math.sin(phi) * Math.cos(theta) * r,
+          y: Math.cos(phi) * r + burstSpread * 0.1,
+          z: Math.sin(phi) * Math.sin(theta) * r,
+          vx: Math.sin(phi) * Math.cos(theta) * 0.3 + windVec[0] * 0.1,
+          vy: 0.2 + Math.random() * 0.3,
+          vz: Math.sin(phi) * Math.sin(theta) * 0.3 + windVec[2] * 0.1,
+          age: 0,
+          maxAge: 3 + Math.random() * 4,
+          scale: 2 + Math.random() * 3,
+          seed: Math.random(),
+        });
+      }
+      smokeParticles.current = sp;
+    }
+
+    // Step smoke particles and update meshes
+    smokeUniforms.uTime.value = time;
+    smokeUniforms.uSmokeColor.value.copy(baseColor);
+    smokeUniforms.uSmokeOpacity.value = sceneSettings.smokeRenderQuality === 'high' ? 0.06 : 0.03;
+    for (let i = 0; i < smokeParticles.current.length; i++) {
+      const sp = smokeParticles.current[i];
+      sp.age += dt;
+      // Buoyancy + wind drift + turbulent displacement
+      sp.x += sp.vx * dt + Math.sin(time * 0.5 + sp.seed * 10) * 0.02;
+      sp.y += sp.vy * dt;
+      sp.z += sp.vz * dt + Math.cos(time * 0.4 + sp.seed * 7) * 0.02;
+      sp.vy *= 0.995; // slow deceleration
+      
+      const mesh = smokeMeshRefs.current[i];
+      if (mesh) {
+        mesh.position.set(sp.x, sp.y, sp.z);
+        const lifeRatio = sp.age / sp.maxAge;
+        const expansion = sp.scale * (0.5 + lifeRatio * 3.0);
+        mesh.scale.setScalar(expansion);
+        mesh.visible = sp.age < sp.maxAge;
+      }
+    }
   });
 
   if (progress <= 0 || progress > 1.1) return null;
