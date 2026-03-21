@@ -16,7 +16,7 @@ export interface DMXOutputAdapter {
   baudRate: number;
   dataBits: number;
   stopBits: number;
-  parity: ParityType;
+  parity: string;
   useWidgetProtocol: boolean;
   description: string;
 }

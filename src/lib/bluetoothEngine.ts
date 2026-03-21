@@ -185,9 +185,9 @@ export function onBLENotification(
 ): void {
   if (!connDevice.statusChar) return;
   connDevice.statusChar.startNotifications();
-  connDevice.statusChar.addEventListener('characteristicvaluechanged', (event: Event) => {
-    const target = event.target as BluetoothRemoteGATTCharacteristic;
-    if (target.value) callback(target.value);
+  connDevice.statusChar.addEventListener('characteristicvaluechanged', (event: any) => {
+    const target = event.target;
+    if (target?.value) callback(target.value);
   });
 }
 
