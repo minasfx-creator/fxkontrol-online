@@ -3,19 +3,25 @@ import { useThree, useFrame } from '@react-three/fiber';
 import { Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { useProjectStore, type Position } from '@/store/useProjectStore';
+import { useUndoStore } from '@/store/useUndoStore';
 
 const ARROW_LENGTH = 4;
 const TRAJECTORY_POINTS = 30;
 
 /**
- * PyroLaunchAngle: Editable launch angle visualizer for pyro positions.
- * Shows a draggable arc handle to set heading and pitch (tilt angle).
+ * LaunchAngleGizmo: Draggable arc handle for heading/pitch.
+ * In batch mode, dragging one handle applies the same delta to all selected positions.
  */
-const LaunchAngleGizmo = forwardRef<THREE.Group, { position: Position }>(({ position }, ref) => {
-  const { updatePosition, selectedPositionIds } = useProjectStore();
-  const isSelected = selectedPositionIds.includes(position.id);
+const LaunchAngleGizmo = forwardRef<THREE.Group, {
+  position: Position;
+  batchMode?: boolean;
+  selectedIds?: string[];
+}>(({ position, batchMode, selectedIds }, ref) => {
+  const { updatePosition } = useProjectStore();
   const [isDragging, setIsDragging] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const dragStartRef = useRef<{ heading: number; pitch: number } | null>(null);
+  const batchStartRef = useRef<Map<string, { heading: number; pitch: number }>>(new Map());
   const handleRef = useRef<THREE.Mesh>(null);
   const { camera, raycaster, gl } = useThree();
 
@@ -57,9 +63,23 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, { position: Position }>(({ posi
 
   const onPointerDown = useCallback((e: any) => {
     e.stopPropagation();
+    useUndoStore.getState().checkpoint();
     setIsDragging(true);
+    dragStartRef.current = { heading: position.heading, pitch: position.pitch || 85 };
+
+    // Store batch start angles
+    if (batchMode && selectedIds) {
+      const store = useProjectStore.getState();
+      const map = new Map<string, { heading: number; pitch: number }>();
+      selectedIds.forEach(id => {
+        const p = store.positions.find(pos => pos.id === id);
+        if (p) map.set(id, { heading: p.heading, pitch: p.pitch || 85 });
+      });
+      batchStartRef.current = map;
+    }
+
     (gl.domElement as HTMLElement).style.cursor = 'grabbing';
-  }, [gl]);
+  }, [gl, position, batchMode, selectedIds]);
 
   useEffect(() => {
     if (!isDragging) return;
@@ -81,11 +101,28 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, { position: Position }>(({ posi
       const newHeading = Math.atan2(dir.x, -dir.z) * (180 / Math.PI);
       const newPitch = Math.max(5, Math.min(85, Math.asin(Math.max(0, dir.y)) * (180 / Math.PI)));
 
-      updatePosition(position.id, { heading: newHeading, pitch: newPitch });
+      if (batchMode && selectedIds && dragStartRef.current) {
+        // Apply delta to all selected positions
+        const dHeading = newHeading - dragStartRef.current.heading;
+        const dPitch = newPitch - dragStartRef.current.pitch;
+
+        selectedIds.forEach(id => {
+          const start = batchStartRef.current.get(id);
+          if (start) {
+            const h = start.heading + dHeading;
+            const p = Math.max(5, Math.min(85, start.pitch + dPitch));
+            updatePosition(id, { heading: h, pitch: p });
+          }
+        });
+      } else {
+        updatePosition(position.id, { heading: newHeading, pitch: newPitch });
+      }
     };
 
     const handleUp = () => {
       setIsDragging(false);
+      dragStartRef.current = null;
+      batchStartRef.current.clear();
       (gl.domElement as HTMLElement).style.cursor = '';
     };
 
@@ -95,9 +132,7 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, { position: Position }>(({ posi
       window.removeEventListener('pointermove', handleMove);
       window.removeEventListener('pointerup', handleUp);
     };
-  }, [isDragging, position, updatePosition, camera, raycaster, gl]);
-
-  if (!isSelected) return null;
+  }, [isDragging, position, updatePosition, camera, raycaster, gl, batchMode, selectedIds]);
 
   return (
     <group ref={ref} position={[position.x, position.y, position.z]}>
@@ -144,15 +179,97 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, { position: Position }>(({ posi
 });
 LaunchAngleGizmo.displayName = 'LaunchAngleGizmo';
 
+/**
+ * AngleFanArc: Visual arc showing the heading spread of selected positions.
+ */
+function AngleFanArc({ positions }: { positions: Position[] }) {
+  const arcPoints = useMemo(() => {
+    if (positions.length < 2) return null;
+
+    // Find centroid
+    const cx = positions.reduce((s, p) => s + p.x, 0) / positions.length;
+    const cz = positions.reduce((s, p) => s + p.z, 0) / positions.length;
+    const cy = positions.reduce((s, p) => s + p.y, 0) / positions.length;
+
+    const headings = positions.map(p => p.heading);
+    const minH = Math.min(...headings) * (Math.PI / 180);
+    const maxH = Math.max(...headings) * (Math.PI / 180);
+    const avgPitch = (positions.reduce((s, p) => s + (p.pitch || 85), 0) / positions.length) * (Math.PI / 180);
+
+    const r = 3;
+    const steps = 24;
+    const pts: [number, number, number][] = [[cx, cy, cz]];
+
+    for (let i = 0; i <= steps; i++) {
+      const angle = minH + (maxH - minH) * (i / steps);
+      pts.push([
+        cx + Math.sin(angle) * Math.cos(avgPitch) * r,
+        cy + Math.sin(avgPitch) * r * 0.5,
+        cz - Math.cos(angle) * Math.cos(avgPitch) * r,
+      ]);
+    }
+    pts.push([cx, cy, cz]);
+
+    return pts;
+  }, [positions]);
+
+  if (!arcPoints) return null;
+
+  return (
+    <Line
+      points={arcPoints}
+      color="#FF6B35"
+      lineWidth={1.5}
+      transparent
+      opacity={0.3}
+    />
+  );
+}
+
 export default function PyroLaunchAngles() {
   const positions = useProjectStore(s => s.positions);
+  const selectedIds = useProjectStore(s => s.selectedPositionIds);
+  const editorMode = useProjectStore(s => s.editorMode);
   const pyroPositions = positions.filter(p => p.type === 'pyro');
+
+  const isAngleMode = editorMode === 'adjust-angles';
+
+  // In adjust-angles mode: show gizmos for ALL selected positions
+  // In normal mode: show gizmo only for individually selected positions
+  const visiblePositions = isAngleMode
+    ? pyroPositions.filter(p => selectedIds.includes(p.id))
+    : pyroPositions.filter(p => selectedIds.includes(p.id));
+
+  const selectedPyroPositions = pyroPositions.filter(p => selectedIds.includes(p.id));
+  const isBatch = selectedIds.length > 1;
+
+  // Keyboard shortcut: A to toggle adjust-angles mode
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'a' || e.key === 'A') {
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+        const store = useProjectStore.getState();
+        store.setEditorMode(store.editorMode === 'adjust-angles' ? 'select' : 'adjust-angles');
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   return (
     <>
-      {pyroPositions.map(pos => (
-        <LaunchAngleGizmo key={pos.id} position={pos} />
+      {visiblePositions.map(pos => (
+        <LaunchAngleGizmo
+          key={pos.id}
+          position={pos}
+          batchMode={isBatch}
+          selectedIds={selectedIds}
+        />
       ))}
+      {/* Fan arc showing heading spread for batch selection */}
+      {isBatch && selectedPyroPositions.length > 1 && (
+        <AngleFanArc positions={selectedPyroPositions} />
+      )}
     </>
   );
 }

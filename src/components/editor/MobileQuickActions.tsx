@@ -3,7 +3,7 @@
  * Contextual, minimal, with smooth spring animations.
  */
 import { useCallback } from 'react';
-import { MousePointer2, Plus, Undo2, Redo2, Trash2, Copy, Pencil } from 'lucide-react';
+import { MousePointer2, Plus, Undo2, Redo2, Trash2, Copy, Pencil, Compass } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useUndoStore } from '@/store/useUndoStore';
@@ -57,15 +57,22 @@ export default function MobileQuickActions() {
 
   type ActionVariant = 'primary' | 'default' | 'danger' | 'active';
   const selectVariant: ActionVariant = editorMode === 'select' ? 'active' : 'default';
+  const angleVariant: ActionVariant = editorMode === 'adjust-angles' ? 'active' : 'default';
   
+  const handleToggleAngles = useCallback(() => {
+    setEditorMode(editorMode === 'adjust-angles' ? 'select' : 'adjust-angles');
+  }, [editorMode, setEditorMode]);
+
   const actions: { icon: typeof Pencil; label: string; onClick: () => void; variant: ActionVariant }[] = hasSelection
     ? [
         { icon: Pencil, label: 'Edit', onClick: () => window.dispatchEvent(new Event('position-double-click')), variant: 'primary' },
+        { icon: Compass, label: 'Angle', onClick: handleToggleAngles, variant: angleVariant },
         { icon: Copy, label: 'Dup', onClick: handleDuplicate, variant: 'default' },
         { icon: Trash2, label: 'Del', onClick: handleDelete, variant: 'danger' },
       ]
     : [
         { icon: MousePointer2, label: 'Sel', onClick: handleToggleSelect, variant: selectVariant },
+        { icon: Compass, label: 'Angle', onClick: handleToggleAngles, variant: angleVariant },
         { icon: Plus, label: 'Add', onClick: handleAdd, variant: 'default' },
         { icon: Undo2, label: 'Undo', onClick: handleUndo, variant: 'default' },
         { icon: Redo2, label: 'Redo', onClick: handleRedo, variant: 'default' },
