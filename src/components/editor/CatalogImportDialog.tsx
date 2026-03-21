@@ -130,12 +130,19 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
       description: `Disponíveis na Asset Palette`,
     });
 
+    // Auto-save to library
+    if (currentFile) {
+      const ext = currentFile.name.split('.').pop()?.toLowerCase() || 'csv';
+      saveToLibrary(currentFile, { name: fileName || 'Catalog', source: 'catalog', file_format: ext, tags: ['catalog', 'effects'] });
+    }
+
     onOpenChange(false);
     setStep('upload');
     setParsedEffects([]);
     setColumns([]);
     setFileName(null);
-  }, [parsedEffects, selectedEffects, fileName, onOpenChange]);
+    setCurrentFile(null);
+  }, [parsedEffects, selectedEffects, fileName, onOpenChange, currentFile, saveToLibrary]);
 
   const toggleSelectAll = () => {
     if (selectedEffects.size === parsedEffects.length) {

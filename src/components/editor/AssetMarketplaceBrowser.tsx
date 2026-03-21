@@ -415,9 +415,28 @@ function MyLibraryView({
   onImport: (asset: LibraryAsset) => void;
   onDelete: (id: string) => void;
 }) {
-  const filtered = search.trim()
-    ? assets.filter(a => a.name.toLowerCase().includes(search.toLowerCase()) || a.source.toLowerCase().includes(search.toLowerCase()))
-    : assets;
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
+
+  const TAG_FILTERS = [
+    { label: 'All', value: null },
+    { label: '3D Models', value: '3d-model' },
+    { label: 'UE5 Assets', value: 'ue5-uasset' },
+    { label: 'DMX/Patch', value: 'dmx' },
+    { label: 'Shows', value: 'show' },
+    { label: 'Catalogs', value: 'catalog' },
+    { label: 'Formations', value: 'formation' },
+    { label: 'Fixtures', value: 'fixture' },
+  ];
+
+  const filtered = assets.filter(a => {
+    if (search.trim() && !a.name.toLowerCase().includes(search.toLowerCase()) && !a.source.toLowerCase().includes(search.toLowerCase())) return false;
+    if (tagFilter) {
+      const tags = a.tags || [];
+      const source = a.source || '';
+      if (!tags.some(t => t.includes(tagFilter)) && !source.includes(tagFilter)) return false;
+    }
+    return true;
+  });
 
   if (loading) {
     return (
