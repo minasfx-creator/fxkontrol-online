@@ -9,12 +9,13 @@
  * Features:
  *   - Finale-exact RGB color table with impliesTrail flag
  *   - Complete adjustment terms (Size, Brightness, Density, etc.)
- *   - Timing terms: PFT, LFT, DLY, DUR, CDS
+ *   - Timing terms: PFT, LFT, DLY, DUR, CDS, FD (fuse delay)
  *   - Angle terms: R15-R180, L15-L180
  *   - Conjunctions: + (cake/chain shots), & (multi-color), w/ (combine)
  *   - "No Trail" modifier
  *   - Cake descriptions with firing patterns
  *   - Chain descriptions with CDS delays
+ *   - Type-aware prefire/duration/height per Finale Manual Table 2
  */
 
 export interface VDLResult {
@@ -63,6 +64,7 @@ export interface VDLResult {
   isAerial: boolean;         // "Shell" or "Aerial" keyword
   multiColors: string[][];   // & separated multi-color groups
   impliesTrail: boolean;     // color implies trail of sparks
+  fuseDelay: number;         // FD — visco fuse delay (distinct from prefire), -1 = not set
   // ── SuperVDL: Niagara fusion ──
   niagaraPreset?: string;           // matched Niagara preset ID
   niagaraProfile?: {
@@ -156,7 +158,7 @@ interface VDLTypeSpec {
   baseBreakSpeed: number;
   trailDefault: VDLResult['trailType'];
   partType: string;
-  forcesTrail?: boolean; // Chrysanthemum, Willow etc. force trails regardless of color
+  forcesTrail?: boolean;
 }
 
 const VDL_TYPES: Record<string, VDLTypeSpec> = {
@@ -192,6 +194,12 @@ const VDL_TYPES: Record<string, VDLTypeSpec> = {
   // ── Additional Finale types ──
   ghost:         { name: 'Ghost Shell', baseSpread: 50, baseDuration: 2.5, baseStars: 120, baseBreakSpeed: 26, trailDefault: 'smoke', partType: 'shell' },
   bombette:      { name: 'Bombette', baseSpread: 25, baseDuration: 1.4, baseStars: 40, baseBreakSpeed: 20, trailDefault: 'none', partType: 'shell' },
+  // ── Missing Finale part types (Manual Table 2) ──
+  rocket:        { name: 'Rocket', baseSpread: 40, baseDuration: 2.0, baseStars: 100, baseBreakSpeed: 30, trailDefault: 'comet', partType: 'rocket', forcesTrail: true },
+  'single shot': { name: 'Single Shot', baseSpread: 35, baseDuration: 1.5, baseStars: 80, baseBreakSpeed: 26, trailDefault: 'none', partType: 'single_shot' },
+  'single_shot': { name: 'Single Shot', baseSpread: 35, baseDuration: 1.5, baseStars: 80, baseBreakSpeed: 26, trailDefault: 'none', partType: 'single_shot' },
+  light:         { name: 'Light', baseSpread: 0, baseDuration: 5.0, baseStars: 0, baseBreakSpeed: 0, trailDefault: 'none', partType: 'light' },
+  ground:        { name: 'Ground Effect', baseSpread: 30, baseDuration: 4.0, baseStars: 80, baseBreakSpeed: 10, trailDefault: 'comet', partType: 'ground' },
 };
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -309,6 +317,7 @@ const LFT_REGEX = /(\d+\.?\d*)\s*LFT/i;
 const DLY_REGEX = /(\d+\.?\d*)\s*DLY/i;
 const DUR_REGEX = /(\d+\.?\d*)\s*DUR/i;
 const CDS_REGEX = /(\d+\.?\d*)\s*CDS/gi;
+const FD_REGEX = /(\d+\.?\d*)\s*FD/i; // Fuse Delay
 
 // ── Angle regexes ──
 const ANGLE_RIGHT_REGEX = /\bR(\d+)\b/g;
@@ -342,6 +351,7 @@ const ROW_PATTERNS = [
 // Calibration-aware lookups
 // ═══════════════════════════════════════════════════════════════════════
 import { interpolateCaliberData, MANUFACTURER_PROFILES, type ManufacturerProfile } from './manufacturerCalibration';
+import { getTypedPrefire, getTypedDuration, getTypedHeight, type FinalePartType } from './pyroPhysics';
 import { NIAGARA_COLOR_PRESETS, getNiagaraPreset, autoMatchNiagaraPreset, presetToNiagaraProfile } from './niagaraColorPresets';
 
 let _activeProfile: ManufacturerProfile = MANUFACTURER_PROFILES[0];
@@ -394,6 +404,7 @@ export function parseVDL(input: string): VDLResult {
     shotCount: 0, cakeDuration: -1, cakeRows: 0,
     firingPattern: '', isAerial: false,
     multiColors: [], impliesTrail: false,
+    fuseDelay: -1,
   };
 
   if (!raw) return result;
@@ -426,6 +437,8 @@ export function parseVDL(input: string): VDLResult {
   if (dlyMatch) result.delayBefore = parseFloat(dlyMatch[1]);
   const durMatch = raw.match(DUR_REGEX);
   if (durMatch) result.durOverride = parseFloat(durMatch[1]);
+  const fdMatch = raw.match(FD_REGEX);
+  if (fdMatch) result.fuseDelay = parseFloat(fdMatch[1]);
 
   // ── Parse angle offset (R45, L30, etc.) ──
   let angleMatch: RegExpExecArray | null;
@@ -629,9 +642,8 @@ export function parseVDL(input: string): VDLResult {
 
   // ── Apply caliber-based manufacturer-calibrated physics ──
   const calData = interpolateCaliberData(_activeProfile, result.caliber);
-  if (!htMatch) result.height = calData.heightM; // only if not explicitly set
-  if (!pftMatch && !lftMatch) result.prefire = calData.prefireSec;
   result.safetyDistance = calData.safetyM;
+  result.cost = Math.round(calData.costFactor * 10) / 10;
   
   const refData = interpolateCaliberData(_activeProfile, 3);
   const calRatio = {
@@ -640,10 +652,24 @@ export function parseVDL(input: string): VDLResult {
     speed: calData.breakSpeed / refData.breakSpeed,
   };
   result.spread = Math.round(result.spread * calRatio.spread);
-  result.duration = Math.round(result.duration * (0.85 + (result.caliber / 3) * 0.25) * 10) / 10;
   result.starCount = Math.round(result.starCount * calRatio.stars);
   result.breakSpeed = Math.round(result.breakSpeed * calRatio.speed * 10) / 10;
-  result.cost = Math.round(calData.costFactor * 10) / 10;
+
+  // ── Type-aware height (Finale Manual: gerb height = spark cloud, shell = apex) ──
+  const pt = result.partType as FinalePartType;
+  if (!htMatch) {
+    result.height = getTypedHeight(pt, result.caliber);
+  }
+
+  // ── Type-aware prefire (Finale Manual Table 2) ──
+  const explicitPF = (pftMatch || lftMatch) ? result.prefire : undefined;
+  result.prefire = getTypedPrefire(pt, result.caliber, explicitPF);
+
+  // ── Type-aware duration (Finale Manual Table 2) ──
+  const cakeInterval = result.cakeDuration > 0 && result.shotCount > 1
+    ? (result.cakeDuration / (result.shotCount - 1)) * 1000
+    : undefined;
+  result.duration = getTypedDuration(pt, result.caliber, result.duration, result.shotCount || undefined, cakeInterval);
 
   // ── Apply DUR override ──
   if (result.durOverride >= 0) {
@@ -760,6 +786,7 @@ export function toVDL(params: Partial<VDLResult>): string {
     parts.push(params.angleOffset > 0 ? `R${params.angleOffset}` : `L${Math.abs(params.angleOffset)}`);
   }
   if (params.isChain) parts.push(`Chain Of ${params.chainCount || 10}`);
+  if (params.fuseDelay !== undefined && params.fuseDelay >= 0) parts.push(`${params.fuseDelay}FD`);
   return parts.join(' ');
 }
 
@@ -799,7 +826,8 @@ export function vdlToEffect(vdl: VDLResult) {
     gerb: '🔥', roman: '🎇', candle: '🕯️', cake: '🎆', shell: '💫',
     salute: '💢', flare: '🔥', fan: '🪭', tourbillion: '🌀',
     spinner: '🌀', flame: '🔥', cryo: '💨', confetti: '🎊',
-    ghost: '👻', bombette: '💣',
+    ghost: '👻', bombette: '💣', rocket: '🚀', light: '💡',
+    ground: '🎇', 'single shot': '🎯', 'single_shot': '🎯',
   };
 
   const calStr = `${vdl.caliber}"`;
@@ -854,6 +882,7 @@ export function vdlToEffect(vdl: VDLResult) {
     vdl: vdl.raw,
     shotCount: vdl.shotCount > 0 ? vdl.shotCount : undefined,
     firingPattern: vdl.firingPattern || undefined,
+    fuseDelay: vdl.fuseDelay >= 0 ? vdl.fuseDelay : undefined,
     // ── VDL rendering metadata ──
     angleOffset: vdl.angleOffset !== 0 ? vdl.angleOffset : undefined,
     trailType,
