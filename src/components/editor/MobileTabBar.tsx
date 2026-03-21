@@ -21,8 +21,8 @@ interface MobileTabBarProps {
 const TABS: { key: MobileTab; icon: typeof Clock; label: string; panelId?: PanelId; accent?: boolean }[] = [
   { key: 'livefx', icon: Sparkles, label: 'Live FX', panelId: 'livefiring', accent: true },
   { key: 'controllers', icon: Cpu, label: 'Control', panelId: 'controllers' },
+  { key: 'remote', icon: Smartphone, label: 'Remote', panelId: 'remotecontrol' },
   { key: 'fieldmap', icon: Map, label: 'Map', panelId: 'fieldmap' },
-  { key: 'timeline', icon: Clock, label: 'Timeline' },
   { key: 'more', icon: MoreHorizontal, label: 'More' },
 ];
 
