@@ -25,10 +25,10 @@ export interface BLEConnectedDevice {
   id: string;
   name: string;
   profile: BLEDeviceProfile;
-  device: BluetoothDevice | null;
-  server: BluetoothRemoteGATTServer | null;
-  dmxChar: BluetoothRemoteGATTCharacteristic | null;
-  statusChar: BluetoothRemoteGATTCharacteristic | null;
+  device: BtDevice;
+  server: BtGATTServer;
+  dmxChar: BtCharacteristic;
+  statusChar: BtCharacteristic;
   rssi: number;
   batteryLevel: number | null;
   connected: boolean;
