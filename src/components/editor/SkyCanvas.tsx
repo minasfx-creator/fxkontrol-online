@@ -1132,17 +1132,19 @@ function WaterLayer() {
 }
 
 function GroundDecalManager() {
-  const decalRef = useRef<ReturnType<typeof createDecalSystem> | null>(null);
   const { scene } = useThree();
 
   useEffect(() => {
-    const system = createDecalSystem(scene);
-    decalRef.current = system;
-    return () => { clearDecals(system); };
+    const group = createDecalSystem();
+    scene.add(group);
+    return () => {
+      scene.remove(group);
+      clearDecals();
+    };
   }, [scene]);
 
   useFrame(({ clock }) => {
-    if (decalRef.current) updateDecals(decalRef.current, clock.getDelta());
+    updateDecals(clock.getDelta());
   });
 
   return null;
