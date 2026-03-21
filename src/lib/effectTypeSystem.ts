@@ -10,7 +10,8 @@ export type PyroEffectType =
   | 'crossette' | 'tourbillon' | 'salute' | 'cryo' | 'confetti' | 'laser'
   | 'sparkle_pot' | 'set_piece' | 'lance' | 'wheel'
   | 'sparkular' | 'fog_low' | 'streamer'
-  | 'bengal' | 'rocket' | 'firecracker_string' | 'saxon' | 'parachute_flare';
+  | 'bengal' | 'rocket' | 'firecracker_string' | 'saxon' | 'parachute_flare'
+  | 'strobe_pot' | 'go_getter' | 'flying_fish' | 'crackling' | 'girandola' | 'whistler';
 
 export interface PyroEffectSpec {
   type: PyroEffectType;

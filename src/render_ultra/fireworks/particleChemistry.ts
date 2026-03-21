@@ -573,6 +573,93 @@ const COMPOUNDS: Record<string, ChemicalCompound> = {
   },
 };
 
+// ── Veline Color Mixing System ──────────────────────────────────────
+// Public domain color-blending ratios from Skylighter reference.
+// Maps composite display colors to weighted blends of primary flame colors.
+
+export const VELINE_COLOR_MIXING: Record<string, Record<string, number>> = {
+  yellow:     { green: 0.55, orange: 0.45 },
+  chartreuse: { green: 0.80, orange: 0.20 },
+  aqua:       { green: 0.80, blue: 0.20 },
+  turquoise:  { green: 0.55, blue: 0.45 },
+  magenta:    { red: 0.50, blue: 0.50 },
+  purple:     { orange: 0.05, red: 0.15, blue: 0.80 },
+  peach:      { orange: 0.60, red: 0.25, blue: 0.15 },
+  maroon:     { red: 0.85, blue: 0.15 },
+};
+
+const VELINE_PRIMARY_COLORS: Record<string, THREE.Color> = {
+  red:    new THREE.Color(1.0, 0.08, 0.03),   // SrCO3
+  green:  new THREE.Color(0.12, 0.95, 0.30),   // BaCO3
+  blue:   new THREE.Color(0.05, 0.25, 1.0),    // CuCl
+  orange: new THREE.Color(1.0, 0.55, 0.05),    // Ca compound
+};
+
+/** Blend a Veline composite color from primary flame colors */
+export function getVelineCompositeColor(name: string): THREE.Color {
+  const mix = VELINE_COLOR_MIXING[name];
+  if (!mix) return new THREE.Color(1, 1, 1);
+  const result = new THREE.Color(0, 0, 0);
+  for (const [primary, weight] of Object.entries(mix)) {
+    const pc = VELINE_PRIMARY_COLORS[primary];
+    if (pc) {
+      result.r += pc.r * weight;
+      result.g += pc.g * weight;
+      result.b += pc.b * weight;
+    }
+  }
+  return result;
+}
+
+// ── Dangerous Combinations (Safety Table) ───────────────────────────
+
+export interface DangerousCombination {
+  chemicals: [string, string];
+  hazard: string;
+  severity: 'critical' | 'high' | 'moderate';
+}
+
+export const DANGEROUS_COMBINATIONS: DangerousCombination[] = [
+  { chemicals: ['KClO3', 'S'], hazard: 'Spontaneous ignition — sulfuric acid forms ClO2 gas', severity: 'critical' },
+  { chemicals: ['KClO3', 'Sb2S3'], hazard: 'Spontaneous ignition — extremely friction-sensitive', severity: 'critical' },
+  { chemicals: ['KClO3', 'Al'], hazard: 'Extremely sensitive to friction and shock', severity: 'high' },
+  { chemicals: ['KClO3', 'Mg'], hazard: 'Extremely sensitive to friction and shock', severity: 'high' },
+  { chemicals: ['NH4NO3', 'KClO3'], hazard: 'Forms ammonium chlorate — explosive, spontaneous ignition', severity: 'critical' },
+  { chemicals: ['NH4NO3', 'Al'], hazard: 'Exothermic amide reaction when wet — spontaneous ignition', severity: 'high' },
+  { chemicals: ['Ba(ClO3)2', 'S'], hazard: 'Spontaneous ignition — more sensitive than KClO3 mixtures', severity: 'critical' },
+  { chemicals: ['Ba(ClO3)2', 'Sb2S3'], hazard: 'Spontaneous ignition', severity: 'critical' },
+  { chemicals: ['P_red', 'KClO3'], hazard: 'Explosive on contact — Armstrong mixture', severity: 'critical' },
+];
+
+/** Check if two chemicals form a dangerous combination */
+export function checkDangerousCombination(chem1: string, chem2: string): DangerousCombination | undefined {
+  return DANGEROUS_COMBINATIONS.find(dc =>
+    (dc.chemicals[0] === chem1 && dc.chemicals[1] === chem2) ||
+    (dc.chemicals[0] === chem2 && dc.chemicals[1] === chem1)
+  );
+}
+
+// ── Black Powder Grades ─────────────────────────────────────────────
+
+export interface BPGrade {
+  name: string;
+  grainSizeMm: number;
+  burnRateModifier: number;
+  use: string;
+}
+
+export const BLACK_POWDER_GRADES: Record<string, BPGrade> = {
+  cannon:  { name: 'Cannon Grade', grainSizeMm: 4.76, burnRateModifier: 1.0, use: 'Standard lift charge' },
+  '4fa':   { name: '4FA',          grainSizeMm: 1.68, burnRateModifier: 1.3, use: 'Fine burst charge' },
+  meal_d:  { name: 'Meal D',       grainSizeMm: 0.42, burnRateModifier: 2.0, use: 'Priming, fast ignition' },
+  '5fg':   { name: '5FG',          grainSizeMm: 0.149, burnRateModifier: 3.0, use: 'Finest — nearly instantaneous' },
+};
+
+/** Get burn rate modifier for a given BP grade */
+export function getBPBurnRateModifier(grade: string): number {
+  return BLACK_POWDER_GRADES[grade]?.burnRateModifier ?? 1.0;
+}
+
 /**
  * Thermal color transition: white-hot → compound color → ember → dark
  * Enhanced with ignition temperature influence from manual data
