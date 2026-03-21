@@ -126,6 +126,10 @@ export default function RemoteReceiverOverlay({ onOpenPanel }: RemoteReceiverOve
       }
 
       toast.info(`🔧 HW OK: ${label}`);
+      // Dispatch action mirror event for master UI
+      window.dispatchEvent(new CustomEvent('remote-action-mirror', {
+        detail: { action: `hw:${label}`, ts: Date.now() },
+      }));
     } catch (err: any) {
       toast.error(`❌ HW fail: ${label} — ${err?.message || 'unknown'}`);
     }
