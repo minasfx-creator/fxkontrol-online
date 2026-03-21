@@ -111,7 +111,7 @@ export const DMX_ATTRIBUTE_LIBRARY: Record<string, DMXAttributeDefinition> = {
 export interface DMXFixtureProfile {
   name: string;
   manufacturer: string;
-  category: 'moving-head' | 'led-bar' | 'strobe' | 'laser' | 'sfx' | 'drone' | 'wash' | 'spot' | 'beam';
+  category: 'moving-head' | 'led-bar' | 'strobe' | 'laser' | 'sfx' | 'drone' | 'wash' | 'spot' | 'beam' | 'matrix' | 'toner' | 'audience';
   attributes: string[];   // keys from DMX_ATTRIBUTE_LIBRARY
   channelCount: number;
 }
@@ -188,6 +188,144 @@ export const DMX_FIXTURE_PROFILES: Record<string, DMXFixtureProfile> = {
     attributes: ['Dimmer', 'EffectWheel', 'Control'],
     channelCount: 3,
   },
+  // ── 12 New UE5 Blueprint-derived Profiles ──
+  'spot-mh-standard': {
+    name: 'Spot MH Standard',
+    manufacturer: 'Generic',
+    category: 'spot',
+    attributes: ['Pan', 'PanFine', 'Tilt', 'TiltFine', 'PanTiltSpeed', 'Dimmer', 'DimmerFine', 'Strobe', 'ColorWheel', 'Gobo1', 'Gobo1Rotation', 'Prism', 'Focus', 'Zoom', 'Iris', 'Frost', 'Red', 'Green', 'Blue', 'White'],
+    channelCount: 20,
+  },
+  'spot-mh-hq': {
+    name: 'Spot MH HQ (Shaper)',
+    manufacturer: 'Generic',
+    category: 'spot',
+    attributes: ['Pan', 'PanFine', 'Tilt', 'TiltFine', 'PanTiltSpeed', 'Dimmer', 'DimmerFine', 'Strobe', 'ColorWheel', 'CTO', 'Gobo1', 'Gobo1Rotation', 'Gobo1Fine', 'Gobo2', 'Gobo2Rotation', 'Prism', 'PrismRotation', 'Focus', 'FocusFine', 'Zoom', 'ZoomFine', 'Iris', 'Frost', 'ShaperRotation', 'ShaperBlade1A', 'ShaperBlade1B', 'ShaperBlade2A', 'ShaperBlade2B', 'ShaperBlade3A', 'ShaperBlade3B', 'ShaperBlade4A', 'ShaperBlade4B'],
+    channelCount: 32,
+  },
+  'audience-toner': {
+    name: 'Audience Toner',
+    manufacturer: 'Generic',
+    category: 'toner',
+    attributes: ['Dimmer', 'Red', 'Green', 'Blue', 'White', 'CTO', 'Strobe', 'Zoom'],
+    channelCount: 8,
+  },
+  'stadium-light': {
+    name: 'Stadium Light',
+    manufacturer: 'Generic',
+    category: 'audience',
+    attributes: ['Dimmer', 'Red', 'Green', 'Blue', 'White', 'CTO', 'Zoom', 'Strobe', 'MacroEffect'],
+    channelCount: 9,
+  },
+  'static-scene-light': {
+    name: 'Static Scene Light',
+    manufacturer: 'Generic',
+    category: 'spot',
+    attributes: ['Dimmer', 'Red', 'Green', 'Blue', 'White', 'CTO', 'Zoom'],
+    channelCount: 7,
+  },
+  'static-toner': {
+    name: 'Static Toner',
+    manufacturer: 'Generic',
+    category: 'toner',
+    attributes: ['Dimmer', 'Red', 'Green', 'Blue', 'White', 'CTO'],
+    channelCount: 6,
+  },
+  'toner-beam': {
+    name: 'Toner with Beam',
+    manufacturer: 'Generic',
+    category: 'beam',
+    attributes: ['Dimmer', 'Red', 'Green', 'Blue', 'White', 'CTO', 'Zoom', 'Focus', 'Frost'],
+    channelCount: 9,
+  },
+  'led-matrix-5x1': {
+    name: 'LED Matrix 5x1',
+    manufacturer: 'Generic',
+    category: 'matrix',
+    attributes: ['Dimmer', 'Red', 'Green', 'Blue', 'White', 'EffectWheel', 'EffectSpeed'],
+    channelCount: 7,
+  },
+  'led-matrix-panel': {
+    name: 'LED Matrix Panel',
+    manufacturer: 'Generic',
+    category: 'matrix',
+    attributes: ['Dimmer', 'Red', 'Green', 'Blue', 'White', 'MacroEffect', 'EffectSpeed', 'Strobe'],
+    channelCount: 8,
+  },
+  'strobe-high-power': {
+    name: 'High Power Strobe',
+    manufacturer: 'Generic',
+    category: 'strobe',
+    attributes: ['Dimmer', 'Strobe', 'StrobeDuration', 'StrobeMode', 'Red', 'Green', 'Blue', 'White'],
+    channelCount: 8,
+  },
+  'wash-led-par': {
+    name: 'Wash LED PAR',
+    manufacturer: 'Generic',
+    category: 'wash',
+    attributes: ['Dimmer', 'Red', 'Green', 'Blue', 'White', 'Amber', 'UV', 'Strobe', 'Zoom'],
+    channelCount: 9,
+  },
+  'wash-spotlight': {
+    name: 'Wash Spotlight',
+    manufacturer: 'Generic',
+    category: 'wash',
+    attributes: ['Dimmer', 'DimmerFine', 'Red', 'Green', 'Blue', 'White', 'CTO', 'Zoom', 'ZoomFine', 'Strobe'],
+    channelCount: 10,
+  },
+};
+
+// ── UE5 Blueprint → Profile Mapping ──
+export const UE5_BLUEPRINT_MAP: Record<string, string> = {
+  'BP_SpotMH1_v2': 'spot-mh-standard',
+  'BP_SpotMH2_v2': 'spot-mh-standard',
+  'BP_SpotMH2_v2_HQ': 'spot-mh-hq',
+  'BP_WashMH1_v2': 'moving-head-wash',
+  'BP_WashMH2': 'moving-head-wash',
+  'BP_WashLED_v2': 'wash-led-par',
+  'BP_WashSL1_v2': 'wash-spotlight',
+  'BP_Static_SceneLight': 'static-scene-light',
+  'BP_Static_Toner': 'static-toner',
+  'BP_TonerWBeam': 'toner-beam',
+  'BP_Audience_Toner': 'audience-toner',
+  'BP_StadiumLights': 'stadium-light',
+  'BP_StaticMatrix_5x1': 'led-matrix-5x1',
+  'BP_StaticMatrix_NoBorder': 'led-matrix-panel',
+  'BP_StaticMatrix_v2': 'led-matrix-panel',
+  'BP_Strobe1_v3': 'strobe-high-power',
+  'BP_Sphere': 'generic-rgbw',
+  'BP_Firework_v2': 'drone-led',
+  'BP_Pyro_v4': 'sfx-flame',
+  'BP_Laser_Extended': 'generic-rgb',
+  'DMXLib_v4': 'generic-rgbw',
+};
+
+// ── Strobe Curve Tables ──
+export interface StrobeCurve {
+  source: string;
+  minHz: number;
+  maxHz: number;
+  profile: string;
+}
+
+export const STROBE_CURVES: Record<string, StrobeCurve> = {
+  'stadium': { source: 'StadiumLights_Strobe_Table', minHz: 1, maxHz: 25, profile: 'stadium-light' },
+  'static-scene': { source: 'StaticScene_Strobe_Table', minHz: 1, maxHz: 20, profile: 'static-scene-light' },
+  'strobe-rgb': { source: 'StrobeRGB_Strobe_Table', minHz: 1, maxHz: 30, profile: 'strobe-high-power' },
+  'wash-mh1': { source: 'WashMH1_Strobe_Table', minHz: 1, maxHz: 15, profile: 'moving-head-wash' },
+  'wash-mh2': { source: 'WashMH2_Strobe_Table', minHz: 1, maxHz: 15, profile: 'moving-head-wash' },
+};
+
+// ── Gobo Textures ──
+export interface GoboTexture {
+  source: string;
+  label: string;
+  variant: 'clean' | 'frosted';
+}
+
+export const GOBO_TEXTURES: Record<string, GoboTexture> = {
+  'gobo-disk01-clean': { source: 'T_GoboDisk01_Clean', label: 'Gobo Disk 01 (Clean)', variant: 'clean' },
+  'gobo-disk01-frosted': { source: 'T_GoboDisk01_Frosted', label: 'Gobo Disk 01 (Frosted)', variant: 'frosted' },
 };
 
 export interface DMXFixture {

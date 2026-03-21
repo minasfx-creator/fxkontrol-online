@@ -10,16 +10,20 @@ import {
 } from '@/components/ui/dialog';
 import { useProjectStore } from '@/store/useProjectStore';
 import { importVVIZ, type VVIZImportResult } from '@/lib/vvizImporter';
+import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { toast } from 'sonner';
 
 export default function VVIZImporter({ open, onOpenChange, initialFile = null }: { open: boolean; onOpenChange: (v: boolean) => void; initialFile?: File | null }) {
   const { addPosition, addTrajectory, setProjectName, setDuration } = useProjectStore();
   const [result, setResult] = useState<VVIZImportResult | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [currentFile, setCurrentFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { saveToLibrary } = useMyLibrary();
 
   const parseFile = useCallback((file: File) => {
     setFileName(file.name);
+    setCurrentFile(file);
     const reader = new FileReader();
     reader.onload = () => {
       const text = reader.result as string;
@@ -64,10 +68,17 @@ export default function VVIZImporter({ open, onOpenChange, initialFile = null }:
     }
 
     toast.success(`Importado: ${result.droneCount} drones, ${result.trajectories.length} trajetórias`);
+
+    // Auto-save to library
+    if (currentFile) {
+      saveToLibrary(currentFile, { name: fileName || 'VVIZ Import', source: 'vviz', file_format: 'vviz', tags: ['show', 'vviz'] });
+    }
+
     onOpenChange(false);
     setResult(null);
     setFileName(null);
-  }, [result, addPosition, addTrajectory, setProjectName, setDuration, onOpenChange]);
+    setCurrentFile(null);
+  }, [result, addPosition, addTrajectory, setProjectName, setDuration, onOpenChange, currentFile, fileName, saveToLibrary]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

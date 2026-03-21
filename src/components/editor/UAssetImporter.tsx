@@ -1,17 +1,20 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Upload, FileCode, Palette, Sparkles, AlertTriangle, Check, X, Loader2 } from 'lucide-react';
+import { Upload, FileCode, Palette, Sparkles, AlertTriangle, Check, X, Loader2, Lightbulb, Flame, Image, BarChart3, Settings } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { parseUAsset, parseUMap, linearColorToHex, type UAssetParseResult } from '@/lib/uassetParser';
+import { parseUAsset, parseUMap, linearColorToHex, type UAssetParseResult, type UAssetType } from '@/lib/uassetParser';
 import { NIAGARA_COLOR_PRESETS } from '@/lib/niagaraColorPresets';
+import { DMX_FIXTURE_PROFILES } from '@/lib/dmxEngine';
 import { useProjectStore, type Effect } from '@/store/useProjectStore';
+import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 interface ParsedFile {
   fileName: string;
+  file: File;
   result: UAssetParseResult;
   selected: boolean;
 }
@@ -22,11 +25,42 @@ interface UAssetImporterProps {
   initialFile?: File | null;
 }
 
+const ASSET_TYPE_ICON: Record<UAssetType, React.ElementType> = {
+  blueprint_fixture: Lightbulb,
+  blueprint_pyro: Flame,
+  blueprint_sfx: Sparkles,
+  niagara_system: Sparkles,
+  niagara_emitter: Sparkles,
+  material: Palette,
+  material_instance: Palette,
+  material_param_collection: Settings,
+  curve_table: BarChart3,
+  texture: Image,
+  dmx_library: Settings,
+  unknown: FileCode,
+};
+
+const ASSET_TYPE_LABEL: Record<UAssetType, string> = {
+  blueprint_fixture: 'Fixture',
+  blueprint_pyro: 'Pyro',
+  blueprint_sfx: 'SFX',
+  niagara_system: 'Niagara',
+  niagara_emitter: 'Emitter',
+  material: 'Material',
+  material_instance: 'Mat. Instance',
+  material_param_collection: 'MPC',
+  curve_table: 'Curve Table',
+  texture: 'Texture',
+  dmx_library: 'DMX Library',
+  unknown: 'Unknown',
+};
+
 export default function UAssetImporter({ open, onOpenChange, initialFile = null }: UAssetImporterProps) {
   const [parsedFiles, setParsedFiles] = useState<ParsedFile[]>([]);
   const [loading, setLoading] = useState(false);
   const [imported, setImported] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { saveToLibrary } = useMyLibrary();
 
   const handleFiles = useCallback(async (files: FileList) => {
     setLoading(true);
@@ -38,7 +72,7 @@ export default function UAssetImporter({ open, onOpenChange, initialFile = null 
       const result = file.name.endsWith('.umap')
         ? parseUMap(buffer, file.name)
         : parseUAsset(buffer, file.name);
-      results.push({ fileName: file.name, result, selected: true });
+      results.push({ fileName: file.name, file, result, selected: true });
     }
 
     setParsedFiles(results);
@@ -69,59 +103,101 @@ export default function UAssetImporter({ open, onOpenChange, initialFile = null 
     setParsedFiles(prev => prev.map((f, i) => i === index ? { ...f, selected: !f.selected } : f));
   };
 
-  const handleImport = useCallback(() => {
+  const handleImport = useCallback(async () => {
     const store = useProjectStore.getState();
     const selected = parsedFiles.filter(f => f.selected);
-    let addedCount = 0;
+    let fixtureCount = 0;
+    let effectCount = 0;
+    let refCount = 0;
 
-    for (const file of selected) {
-      const { result } = file;
+    for (const pf of selected) {
+      const { result, file } = pf;
       const h = result.heuristic;
+      const aType = result.assetType;
 
-      // Find matching Niagara preset
-      const preset = NIAGARA_COLOR_PRESETS.find(p => p.source === file.fileName);
-
-      const effect: Effect = {
-        id: `niagara-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-        name: preset?.name || h.suggestedName,
-        category: h.suggestedCategory === 'aerial' ? 'morteiros' : h.suggestedCategory === 'ground' ? 'sfx' : 'sfx',
-        type: 'firework',
-        color: preset?.primary || (result.extractedColors.length > 0
-          ? linearColorToHex(result.extractedColors[0])
-          : h.suggestedColor),
-        duration: preset?.particleProfile.lifetime
-          ? preset.particleProfile.lifetime + 1.5
-          : 3.5,
-        cost: 25,
-        icon: '🎆',
-        partType: 'shell',
-        caliber: 5,
-        heightMeters: 100,
-        prefire: 2.5,
-        pattern: h.suggestedPattern,
-        safetyDistance: 140,
-      };
-
-      // Add to timeline at a staggered position
-      store.addTimelineItem({
-        id: `tl-niagara-${Date.now()}-${addedCount}`,
-        effectId: effect.id,
-        startTime: addedCount * 2,
-        trackIndex: 0,
-        position: { x: addedCount * 5, y: 0, z: 0 },
+      // Auto-save to library
+      const tags: string[] = [aType as string, h.suggestedCategory as string];
+      if (result.suggestedFixtureProfile) tags.push(result.suggestedFixtureProfile);
+      saveToLibrary(file, {
+        name: h.suggestedName,
+        source: 'ue5-uasset',
+        file_format: 'uasset',
+        tags,
       });
 
-      addedCount++;
+      if (aType === 'blueprint_fixture') {
+        const profileId = result.suggestedFixtureProfile;
+        const profile = profileId ? DMX_FIXTURE_PROFILES[profileId] : null;
+        toast.info(`🔧 ${h.suggestedName} → DMX Profile: ${profile?.name || 'Generic'} (${profile?.channelCount || '?'}ch)`, { duration: 4000 });
+        fixtureCount++;
+      } else if (aType === 'material' || aType === 'material_instance' || aType === 'material_param_collection') {
+        toast.info(`🎨 ${h.suggestedName} registrado como referência visual`, { duration: 3000 });
+        refCount++;
+      } else if (aType === 'curve_table') {
+        toast.info(`📊 ${h.suggestedName} — curva de strobe vinculada`, { duration: 3000 });
+        refCount++;
+      } else if (aType === 'texture') {
+        toast.info(`🖼️ ${h.suggestedName} — textura registrada`, { duration: 3000 });
+        refCount++;
+      } else if (aType === 'dmx_library') {
+        toast.info(`⚙️ ${h.suggestedName} — biblioteca DMX referenciada`, { duration: 3000 });
+        refCount++;
+      } else {
+        // Niagara / pyro / sfx → create timeline effect
+        const preset = NIAGARA_COLOR_PRESETS.find(p => p.source === pf.fileName);
+
+        const effect: Effect = {
+          id: `niagara-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+          name: preset?.name || h.suggestedName,
+          category: h.suggestedCategory === 'aerial' ? 'morteiros' : 'sfx',
+          type: 'firework',
+          color: preset?.primary || (result.extractedColors.length > 0
+            ? linearColorToHex(result.extractedColors[0])
+            : h.suggestedColor),
+          duration: preset?.particleProfile.lifetime
+            ? preset.particleProfile.lifetime + 1.5
+            : 3.5,
+          cost: 25,
+          icon: '🎆',
+          partType: 'shell',
+          caliber: 5,
+          heightMeters: 100,
+          prefire: 2.5,
+          pattern: h.suggestedPattern,
+          safetyDistance: 140,
+        };
+
+        store.addTimelineItem({
+          id: `tl-niagara-${Date.now()}-${effectCount}`,
+          effectId: effect.id,
+          startTime: effectCount * 2,
+          trackIndex: 0,
+          position: { x: effectCount * 5, y: 0, z: 0 },
+        });
+
+        effectCount++;
+      }
     }
 
     setImported(true);
-    toast.success(`${addedCount} efeitos Niagara importados com sucesso`);
-  }, [parsedFiles]);
+    const parts = [];
+    if (effectCount > 0) parts.push(`${effectCount} efeitos`);
+    if (fixtureCount > 0) parts.push(`${fixtureCount} fixtures`);
+    if (refCount > 0) parts.push(`${refCount} referências`);
+    toast.success(`${parts.join(', ')} importados e salvos na biblioteca`);
+  }, [parsedFiles, saveToLibrary]);
 
   const handleReset = () => {
     setParsedFiles([]);
     setImported(false);
   };
+
+  // Summary counts
+  const typeCounts = parsedFiles.filter(f => f.selected).reduce((acc, f) => {
+    const t = f.result.assetType;
+    acc[t] = (acc[t] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -132,7 +208,7 @@ export default function UAssetImporter({ open, onOpenChange, initialFile = null 
             Unreal Engine Asset Importer
           </DialogTitle>
           <DialogDescription className="text-muted-foreground text-xs">
-            Importe arquivos .uasset (Niagara Particle Systems) e .umap para extrair efeitos pirotécnicos
+            Importe .uasset (Fixtures, Niagara, Materials, Textures) — salvos automaticamente na biblioteca
           </DialogDescription>
         </DialogHeader>
 
@@ -170,13 +246,30 @@ export default function UAssetImporter({ open, onOpenChange, initialFile = null 
                       <p className="text-sm font-medium text-foreground/80">Arraste .uasset / .umap aqui</p>
                       <p className="text-xs text-muted-foreground mt-1">ou clique para selecionar arquivos</p>
                     </div>
-                    <div className="flex gap-2 mt-2">
-                      <Badge variant="outline" className="text-[10px]">Niagara Systems</Badge>
-                      <Badge variant="outline" className="text-[10px]">Niagara Emitters</Badge>
-                      <Badge variant="outline" className="text-[10px]">Level Maps</Badge>
+                    <div className="flex gap-2 mt-2 flex-wrap justify-center">
+                      <Badge variant="outline" className="text-[10px]">Fixtures</Badge>
+                      <Badge variant="outline" className="text-[10px]">Niagara</Badge>
+                      <Badge variant="outline" className="text-[10px]">Materials</Badge>
+                      <Badge variant="outline" className="text-[10px]">Textures</Badge>
+                      <Badge variant="outline" className="text-[10px]">Curve Tables</Badge>
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Import summary */}
+            {parsedFiles.length > 0 && Object.keys(typeCounts).length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {Object.entries(typeCounts).map(([type, count]) => {
+                  const Icon = ASSET_TYPE_ICON[type as UAssetType] || FileCode;
+                  return (
+                    <Badge key={type} variant="secondary" className="text-[9px] gap-1">
+                      <Icon className="h-3 w-3" />
+                      {count} {ASSET_TYPE_LABEL[type as UAssetType] || type}
+                    </Badge>
+                  );
+                })}
               </div>
             )}
 
@@ -236,7 +329,7 @@ export default function UAssetImporter({ open, onOpenChange, initialFile = null 
                     ) : (
                       <>
                         <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                        Importar {parsedFiles.filter(f => f.selected).length} efeitos
+                        Importar {parsedFiles.filter(f => f.selected).length} assets
                       </>
                     )}
                   </Button>
@@ -255,6 +348,9 @@ function ParsedFileCard({ file, onToggle, imported }: { file: ParsedFile; onTogg
   const colorSwatches = result.extractedColors.length > 0
     ? result.extractedColors.slice(0, 6)
     : [{ r: 0.5, g: 0.5, b: 0.5, a: 1 }];
+
+  const TypeIcon = ASSET_TYPE_ICON[result.assetType] || FileCode;
+  const profile = result.suggestedFixtureProfile ? DMX_FIXTURE_PROFILES[result.suggestedFixtureProfile] : null;
 
   return (
     <div
@@ -275,17 +371,31 @@ function ParsedFileCard({ file, onToggle, imported }: { file: ParsedFile; onTogg
           )}>
             {file.selected && <Check className="h-3 w-3 text-primary-foreground" />}
           </div>
+          <TypeIcon className="h-4 w-4 text-muted-foreground" />
           <div>
             <p className="text-sm font-semibold text-foreground">{result.heuristic.suggestedName}</p>
             <p className="text-[10px] text-muted-foreground font-mono-code">{file.fileName} · {(result.fileSize / 1024).toFixed(1)} KB</p>
           </div>
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1 flex-wrap justify-end">
+          <Badge className="text-[8px] bg-secondary/30 text-secondary-foreground border-0">
+            {ASSET_TYPE_LABEL[result.assetType]}
+          </Badge>
           {result.valid && <Badge className="text-[8px] bg-success/15 text-success border-0">UE4 Valid</Badge>}
           {result.isNiagaraSystem && <Badge className="text-[8px] bg-primary/15 text-primary border-0">Niagara</Badge>}
           {!result.valid && <Badge className="text-[8px] bg-warning/15 text-warning border-0">Heuristic</Badge>}
         </div>
       </div>
+
+      {/* DMX Profile badge for fixtures */}
+      {profile && (
+        <div className="flex items-center gap-1.5 mt-1 mb-1">
+          <Lightbulb className="h-3 w-3 text-warning" />
+          <span className="text-[10px] font-semibold text-warning">{profile.name}</span>
+          <Badge variant="outline" className="text-[8px] ml-1">{profile.channelCount}ch</Badge>
+          <Badge variant="outline" className="text-[8px]">{profile.category}</Badge>
+        </div>
+      )}
 
       {/* Extracted colors */}
       <div className="flex items-center gap-2 mt-2">

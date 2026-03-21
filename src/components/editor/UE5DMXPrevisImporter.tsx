@@ -29,6 +29,7 @@ import {
 } from '@/lib/ue5DmxPrevisParser';
 import { computeFixtureLayout, type LayoutPreset, type LayoutOverrides } from '@/lib/fixtureAutoLayout';
 import { useLayoutPresets } from '@/hooks/useLayoutPresets';
+import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { toast } from 'sonner';
 
 const FixtureLayoutPreview = lazy(() => import('./FixtureLayoutPreview'));
@@ -64,7 +65,9 @@ export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }
   const [layoutPreset, setLayoutPreset] = useState<LayoutPreset>('stage');
   const [categoryOverrides, setCategoryOverrides] = useState<Record<string, LayoutOverrides>>({});
   const [layoutOpen, setLayoutOpen] = useState(false);
+  const [currentFile, setCurrentFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { saveToLibrary } = useMyLibrary();
 
   // Filters
   const [activeCategories, setActiveCategories] = useState<Set<string>>(new Set());
@@ -79,6 +82,7 @@ export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }
     const file = e.target.files?.[0];
     if (!file) return;
     setFileName(file.name);
+    setCurrentFile(file);
     const reader = new FileReader();
     reader.onload = () => {
       const text = reader.result as string;
@@ -95,6 +99,7 @@ export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }
   useEffect(() => {
     if (!initialFile || !open) return;
     setFileName(initialFile.name);
+    setCurrentFile(initialFile);
     const reader = new FileReader();
     reader.onload = () => {
       const text = reader.result as string;
@@ -236,6 +241,11 @@ export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }
     toast.success(`${selectedFixtures.length} UE5 fixtures patched`, {
       description: `${dmxUniverses.length} universe(s), ${selectedFixtures.reduce((s, f) => s + f.channelCount, 0)} DMX channels. Layout: ${layoutPreset}.`,
     });
+
+    // Auto-save to library
+    if (currentFile) {
+      saveToLibrary(currentFile, { name: fileName || 'UE5 DMX', source: 'ue5-dmx', file_format: 'json', tags: ['dmx', 'ue5'] });
+    }
 
     onOpenChange(false);
     setResult(null);

@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Upload, Box, RotateCw, Maximize2, Check } from 'lucide-react';
 import { useSceneStore } from '@/store/useSceneStore';
+import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { toast } from 'sonner';
 
 interface SceneObjectImporterProps {
@@ -20,6 +21,7 @@ export default function SceneObjectImporter({ open, onOpenChange }: SceneObjectI
   const [rotY, setRotY] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const addSiteModel = useSceneStore((s) => s.addSiteModel);
+  const { saveToLibrary } = useMyLibrary();
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -32,6 +34,7 @@ export default function SceneObjectImporter({ open, onOpenChange }: SceneObjectI
 
   const handleImport = useCallback(() => {
     if (!file || !objectUrl) return;
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'glb';
     addSiteModel({
       id: `obj-${Date.now()}`,
       name: name || file.name,
@@ -43,14 +46,17 @@ export default function SceneObjectImporter({ open, onOpenChange }: SceneObjectI
       source: 'local',
     });
     toast.success(`"${name || file.name}" adicionado à cena`);
+
+    // Auto-save to library
+    saveToLibrary(file, { name: name || file.name, source: 'local-3d', file_format: ext, tags: ['3d-model', 'scene'] });
+
     onOpenChange(false);
     setFile(null);
-    // Don't revoke objectUrl here — the scene store still references it for rendering
     setObjectUrl(null);
     setName('');
     setScale(1);
     setRotY(0);
-  }, [file, objectUrl, name, scale, rotY, addSiteModel, onOpenChange]);
+  }, [file, objectUrl, name, scale, rotY, addSiteModel, onOpenChange, saveToLibrary]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

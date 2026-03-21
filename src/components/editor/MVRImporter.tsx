@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useSfxChannelStore } from '@/store/useSfxChannelStore';
 import { parseMVR, patchMVRFixturesToUniverses, type MVRFixture, type MVRParseResult } from '@/lib/mvrParser';
+import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { toast } from 'sonner';
 
 interface Props {
@@ -34,11 +35,14 @@ export default function MVRImporter({ open, onOpenChange, initialFile }: Props) 
   const [loading, setLoading] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { saveToLibrary } = useMyLibrary();
+  const [currentFile, setCurrentFile] = useState<File | null>(null);
 
   const handleFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setFileName(file.name);
+    setCurrentFile(file);
     setLoading(true);
 
     try {
@@ -58,6 +62,7 @@ export default function MVRImporter({ open, onOpenChange, initialFile }: Props) 
     if (!initialFile || !open) return;
     const processFile = async () => {
       setFileName(initialFile.name);
+      setCurrentFile(initialFile);
       setLoading(true);
       try {
         const buffer = await initialFile.arrayBuffer();
@@ -115,6 +120,11 @@ export default function MVRImporter({ open, onOpenChange, initialFile }: Props) 
     toast.success(`${selectedFixtures.length} MVR fixtures imported`, {
       description: `${dmxUniverses.length} universe(s), ${result.gdtfProfiles.size} GDTF profiles, ${selectedFixtures.reduce((s, f) => s + f.channelCount, 0)} DMX channels.`,
     });
+
+    // Auto-save to library
+    if (currentFile) {
+      saveToLibrary(currentFile, { name: fileName || 'MVR Import', source: 'mvr', file_format: 'mvr', tags: ['mvr', 'fixtures'] });
+    }
 
     onOpenChange(false);
     setResult(null);

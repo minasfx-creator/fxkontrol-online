@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { useProjectStore, type Effect, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { parseCatalogFile, catalogToEffects, parseAnyFormat, type CatalogColumnMapping, type ParsedCatalogEffect } from '@/lib/catalogImporter';
+import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -44,12 +45,15 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
   const [parsedEffects, setParsedEffects] = useState<ParsedCatalogEffect[]>([]);
   const [delimiter, setDelimiter] = useState(',');
   const [selectedEffects, setSelectedEffects] = useState<Set<number>>(new Set());
+  const [currentFile, setCurrentFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { saveToLibrary } = useMyLibrary();
 
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setFileName(file.name);
+    setCurrentFile(file);
     const reader = new FileReader();
     reader.onload = () => {
       const text = reader.result as string;
@@ -126,12 +130,19 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
       description: `Disponíveis na Asset Palette`,
     });
 
+    // Auto-save to library
+    if (currentFile) {
+      const ext = currentFile.name.split('.').pop()?.toLowerCase() || 'csv';
+      saveToLibrary(currentFile, { name: fileName || 'Catalog', source: 'catalog', file_format: ext, tags: ['catalog', 'effects'] });
+    }
+
     onOpenChange(false);
     setStep('upload');
     setParsedEffects([]);
     setColumns([]);
     setFileName(null);
-  }, [parsedEffects, selectedEffects, fileName, onOpenChange]);
+    setCurrentFile(null);
+  }, [parsedEffects, selectedEffects, fileName, onOpenChange, currentFile, saveToLibrary]);
 
   const toggleSelectAll = () => {
     if (selectedEffects.size === parsedEffects.length) {

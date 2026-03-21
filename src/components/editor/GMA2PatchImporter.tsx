@@ -12,6 +12,7 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { parseGMA2Patch, type GMA2Fixture, type GMA2PatchResult } from '@/lib/gma2PatchParser';
 import { patchGMA2Fixtures } from '@/lib/dmxEngine';
 import { useSfxChannelStore } from '@/store/useSfxChannelStore';
+import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -32,12 +33,15 @@ export default function GMA2PatchImporter({ open, onOpenChange }: Props) {
   const [result, setResult] = useState<GMA2PatchResult | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [currentFile, setCurrentFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { saveToLibrary } = useMyLibrary();
 
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setFileName(file.name);
+    setCurrentFile(file);
     const reader = new FileReader();
     reader.onload = () => {
       const text = reader.result as string;
@@ -98,6 +102,11 @@ export default function GMA2PatchImporter({ open, onOpenChange }: Props) {
     toast.success(`${selectedFixtures.length} fixtures patched`, {
       description: `${dmxUniverses.length} universe(s), ${totalCh} DMX channels mapped. Art-Net test triggered.`,
     });
+
+    // Auto-save to library
+    if (currentFile) {
+      saveToLibrary(currentFile, { name: fileName || 'GMA2 Patch', source: 'gma2', file_format: 'csv', tags: ['patch', 'dmx'] });
+    }
 
     onOpenChange(false);
     setResult(null);
