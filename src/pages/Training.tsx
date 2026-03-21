@@ -236,6 +236,7 @@ const CHAPTER_ICONS: Record<string, typeof BookOpen> = {
   'Cap. 5 — Química Pirotécnica': FlaskConical,
   'Cap. 6 — Segurança NFPA': Shield,
   'Cap. 7 — Pólvora e Propelentes': Flame,
+  'Cap. 8 — Técnicas Históricas': History,
 };
 
 export default function Training() {

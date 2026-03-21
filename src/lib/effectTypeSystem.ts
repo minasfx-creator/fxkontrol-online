@@ -306,6 +306,33 @@ export const EFFECT_TYPES: Record<PyroEffectType, PyroEffectSpec> = {
     category: 'aerial', colorChannels: 0,
     description: 'Whistle composition tube (KClO4+sodium benzoate) — ascending screamer',
   },
+
+  // ── Historical Effect Types (Pyrotechny 1829 / Anderson 1696) ──────
+
+  caduceus: {
+    type: 'caduceus', label: 'Caduceus Rockets', icon: '⚕️',
+    defaultDuration: 5, defaultHeight: 60, defaultSpread: 25,
+    hasLiftPhase: true, isChainable: false, isCake: false, defaultShotsPerDevice: 2,
+    minCaliber: 1, maxCaliber: 4, liftTimePerInch: 0.35,
+    category: 'aerial', colorChannels: 1,
+    description: 'Two rockets on opposite sides of a stick forming intertwined spiral trails (Pyrotechny 1829)',
+  },
+  table_rocket: {
+    type: 'table_rocket', label: 'Table Rocket', icon: '🔄',
+    defaultDuration: 8, defaultHeight: 0, defaultSpread: 360,
+    hasLiftPhase: false, isChainable: false, isCake: false, defaultShotsPerDevice: 1,
+    minCaliber: 1, maxCaliber: 3, liftTimePerInch: 0,
+    category: 'ground', colorChannels: 1,
+    description: 'Horizontal spinner on a cone pivot — circle of fire on a table or post (Pyrotechny 1829)',
+  },
+  spur_fire: {
+    type: 'spur_fire', label: 'Spur Fire', icon: '🌟',
+    defaultDuration: 12, defaultHeight: 2, defaultSpread: 20,
+    hasLiftPhase: false, isChainable: false, isCake: false, defaultShotsPerDevice: 1,
+    minCaliber: 0, maxCaliber: 0, liftTimePerInch: 0,
+    category: 'ground', colorChannels: 1,
+    description: '"Most beautiful fire known" — clusters of stars/pinks without drossy sparks (Pyrotechny 1829, KNO3+S+Lampblack)',
+  },
 };
 
 export function getLiftTime(type: PyroEffectType, caliberInches: number): number {

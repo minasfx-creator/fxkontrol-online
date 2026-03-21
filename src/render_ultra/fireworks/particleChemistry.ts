@@ -950,6 +950,153 @@ export const REAL_FORMULATIONS: Record<string, RealFormulation> = {
     trailDecay: 0.90,
     crackle: false,
   },
+  // ── Historical Formulations (Kurt Saxon / Pyrotechny 1829 / Anderson 1696) ──
+
+  'crimson_star_saxon': {
+    name: 'Crimson Star (Kurt Saxon #1)',
+    productType: 'shell', caliber: '3"',
+    compounds: [
+      { element: 'KClO3', percentage: 24 }, { element: 'Sr(NO3)2', percentage: 3 },
+      { element: 'Hg2Cl2', percentage: 12 }, { element: 'S', percentage: 6 }, { element: 'Shellac', percentage: 6 },
+    ],
+    resultColor: new THREE.Color(1.0, 0.05, 0.02), temperature: 2100, emissionIntensity: 4.8,
+    burnRate: 2.2, sparkSize: 1.1, smokeColor: new THREE.Color(0.15, 0.06, 0.04), trailDecay: 0.90, crackle: false,
+  },
+  'blue_star_intense': {
+    name: 'Most Intense Blue (Saxon Blue #3)',
+    productType: 'shell', caliber: '3"',
+    compounds: [
+      { element: 'KClO3', percentage: 16 }, { element: 'CuO', percentage: 12 },
+      { element: 'Hg2Cl2', percentage: 8 }, { element: 'S', percentage: 2 }, { element: 'Shellac', percentage: 1 },
+    ],
+    resultColor: new THREE.Color(0.04, 0.15, 1.0), temperature: 1700, emissionIntensity: 5.2,
+    burnRate: 2.0, sparkSize: 0.9, smokeColor: new THREE.Color(0.05, 0.06, 0.12), trailDecay: 0.88, crackle: false,
+  },
+  'violet_star_manual': {
+    name: 'Violet Star (Saxon Purple)',
+    productType: 'shell', caliber: '3"',
+    compounds: [
+      { element: 'KClO3', percentage: 9 }, { element: 'Sr(NO3)2', percentage: 4 },
+      { element: 'S', percentage: 6 }, { element: 'CuCO3', percentage: 1 }, { element: 'Hg2Cl2', percentage: 1 },
+    ],
+    resultColor: new THREE.Color(0.55, 0.08, 0.90), temperature: 1800, emissionIntensity: 3.5,
+    burnRate: 2.4, sparkSize: 1.0, smokeColor: new THREE.Color(0.10, 0.06, 0.12), trailDecay: 0.87, crackle: false,
+  },
+  'rose_colored_star': {
+    name: 'Rose Colored Star (Saxon — Moisture Resistant)',
+    productType: 'shell', caliber: '3"',
+    compounds: [
+      { element: 'KClO3', percentage: 20 }, { element: 'SrCO3', percentage: 8 },
+      { element: 'Hg2Cl2', percentage: 10 }, { element: 'Shellac', percentage: 2 }, { element: 'S', percentage: 3 },
+    ],
+    resultColor: new THREE.Color(1.0, 0.35, 0.45), temperature: 1900, emissionIntensity: 4.0,
+    burnRate: 2.5, sparkSize: 1.0, smokeColor: new THREE.Color(0.14, 0.08, 0.08), trailDecay: 0.89, crackle: false,
+  },
+  'golden_yellow_star': {
+    name: 'Golden Yellow Star (Saxon — Contrast with Blue)',
+    productType: 'shell', caliber: '3"',
+    compounds: [
+      { element: 'KClO3', percentage: 20 }, { element: 'Ba', percentage: 30 },
+      { element: 'Na', percentage: 15 }, { element: 'S', percentage: 8 }, { element: 'Shellac', percentage: 4 },
+    ],
+    resultColor: new THREE.Color(1.0, 0.85, 0.10), temperature: 2000, emissionIntensity: 4.5,
+    burnRate: 2.3, sparkSize: 1.1, smokeColor: new THREE.Color(0.12, 0.10, 0.06), trailDecay: 0.88, crackle: false,
+  },
+  'spur_fire_1829': {
+    name: 'Spur Fire — "Most Beautiful Fire Known" (1829)',
+    productType: 'shell', caliber: '3"',
+    compounds: [
+      { element: 'KNO3', percentage: 57 }, { element: 'S', percentage: 29 }, { element: 'C', percentage: 14 },
+    ],
+    resultColor: new THREE.Color(1.0, 0.65, 0.08), temperature: 1800, emissionIntensity: 3.5,
+    burnRate: 3.5, sparkSize: 0.8, smokeColor: new THREE.Color(0.40, 0.35, 0.20), trailDecay: 0.78, crackle: false,
+  },
+  'roman_candle_comp_3': {
+    name: 'Roman Candle Comp. #3 (Saxon — Antimony Sparks)',
+    productType: 'shell', caliber: '1"',
+    compounds: [
+      { element: 'KNO3', percentage: 16 }, { element: 'KNO3+C+S', percentage: 11 },
+      { element: 'S', percentage: 6 }, { element: 'Sb', percentage: 4 },
+    ],
+    resultColor: new THREE.Color(0.85, 0.80, 1.0), temperature: 1700, emissionIntensity: 3.0,
+    burnRate: 2.8, sparkSize: 1.0, smokeColor: new THREE.Color(0.18, 0.17, 0.20), trailDecay: 0.85, crackle: false,
+  },
+  'gerbe_golden_rain': {
+    name: 'Gerbe Golden Rain (Saxon — Zinc Flowers)',
+    productType: 'shell', caliber: '2"',
+    compounds: [
+      { element: 'KNO3', percentage: 30 }, { element: 'S', percentage: 16 },
+      { element: 'KNO3+C+S', percentage: 11 }, { element: 'C', percentage: 20 }, { element: 'Zn', percentage: 8 },
+    ],
+    resultColor: new THREE.Color(1.0, 0.78, 0.15), temperature: 1900, emissionIntensity: 3.2,
+    burnRate: 3.0, sparkSize: 1.5, smokeColor: new THREE.Color(0.15, 0.12, 0.08), trailDecay: 0.82, crackle: false,
+  },
+  'white_fire_1903': {
+    name: 'White Fire (Scientific American 1903)',
+    productType: 'shell', caliber: '2"',
+    compounds: [
+      { element: 'KNO3', percentage: 16 }, { element: 'KNO3+C+S', percentage: 1 }, { element: 'S', percentage: 8 },
+    ],
+    resultColor: new THREE.Color(1.0, 1.0, 0.92), temperature: 2200, emissionIntensity: 5.0,
+    burnRate: 1.8, sparkSize: 1.2, smokeColor: new THREE.Color(0.20, 0.18, 0.15), trailDecay: 0.85, crackle: false,
+  },
+  'signal_scarlet': {
+    name: 'Scarlet Signal Fire (Lamarre Patent — Saxon)',
+    productType: 'shell', caliber: '3"',
+    compounds: [
+      { element: 'Sr(NO3)2', percentage: 55 }, { element: 'Ba', percentage: 45 },
+    ],
+    resultColor: new THREE.Color(1.0, 0.15, 0.05), temperature: 2100, emissionIntensity: 5.5,
+    burnRate: 2.0, sparkSize: 1.3, smokeColor: new THREE.Color(0.15, 0.06, 0.04), trailDecay: 0.90, crackle: false,
+  },
+};
+
+// ── Pyro Reference Library Index (FreePyroInfo Catalog) ─────────────
+
+export interface PyroReference {
+  title: string;
+  author?: string;
+  topic: string;
+}
+
+export const PYRO_REFERENCE_LIBRARY: Record<string, PyroReference[]> = {
+  'Black Powder': [
+    { title: 'Discovery of Gunpowder', topic: 'History' },
+    { title: 'Chemical & Ballistic Properties of BP', author: 'Perigrin', topic: 'Chemistry' },
+    { title: 'Greek Fire — Historical Incendiary', topic: 'History' },
+    { title: 'Potassium Nitrate Manufacture', topic: 'Chemistry' },
+    { title: 'Charcoal Types & Performance', topic: 'Materials' },
+    { title: 'Granulation & Grain Sizing', topic: 'Manufacturing' },
+    { title: 'Corning & Glazing Methods', topic: 'Manufacturing' },
+    { title: 'BP Substitutes (Pyrodex, Visco)', topic: 'Materials' },
+  ],
+  'Stars & Colors': [
+    { title: 'Veline Color Mixing System', topic: 'Color Theory' },
+    { title: 'Chlorate vs Perchlorate Star Compositions', topic: 'Chemistry' },
+    { title: 'Color Purity & Emission Spectra', topic: 'Physics' },
+    { title: 'Star Rolling & Pumping Methods', author: 'Weingart', topic: 'Manufacturing' },
+    { title: 'Saxon Star Formulas (1903 Cyclopedia)', author: 'Kurt Saxon', topic: 'Formulations' },
+    { title: 'Historical Calomel-Based Colors', topic: 'History' },
+  ],
+  'Rocket Science': [
+    { title: 'Anderson 1696 — Bore Ratios & Fill Heights', author: 'Robert Anderson', topic: 'Construction' },
+    { title: 'Pyrotechny 1829 — Mallet Strokes & Stick Lengths', topic: 'Construction' },
+    { title: 'Rocket Motor Composition Tables', topic: 'Formulations' },
+    { title: 'Center of Gravity & Stick Balancing', author: 'Anderson', topic: 'Physics' },
+    { title: 'Caduceus & Girandola Construction', topic: 'Construction' },
+  ],
+  'Roman Candles': [
+    { title: 'Charging Sequence — Clay, Powder, Star, Fuse', topic: 'Construction' },
+    { title: 'Saxon Roman Candle Compositions (3 variants)', author: 'Kurt Saxon', topic: 'Formulations' },
+    { title: 'Graduated Scoops Method', topic: 'Manufacturing' },
+  ],
+  'Safety & Regulations': [
+    { title: 'NFPA 1123 — Outdoor Display Safety', topic: 'Regulations' },
+    { title: 'NFPA 1124 — Manufacture & Storage', topic: 'Regulations' },
+    { title: 'APA 87-1 Risk Classification', topic: 'Regulations' },
+    { title: 'Dangerous Chemical Combinations', topic: 'Safety' },
+    { title: 'Flash Powder Safety Limits (>35g = 1.1G)', topic: 'Safety' },
+  ],
 };
 
 /** Get a real formulation as a ChemicalCompound for the render engine */

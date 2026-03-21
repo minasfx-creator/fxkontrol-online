@@ -263,6 +263,38 @@ export function getRocketApogee(caliberInches: number): number {
   return getBreakHeight(caliberInches) * 1.3;
 }
 
+// ── Historical Rocket Construction Tables ───────────────────────────
+// From Pyrotechny 1829 "Endless Amusement" & Anderson 1696 "The Making of Rockets"
+
+/** Mallet strokes per ladle of charge, by rocket weight (Pyrotechny 1829) */
+export const ROCKET_MALLET_STROKES: Record<string, number> = {
+  '4oz': 16, '8oz': 20, '1lb': 28, '2lb': 36, '4lb': 42, '6lb': 56,
+};
+
+/** Rocket stick length in feet, by rocket weight (Pyrotechny 1829) */
+export const ROCKET_STICK_LENGTH: Record<string, number> = {
+  '4oz': 5.25, '8oz': 6.5, '1lb': 8.2, '2lb': 9.3, '4lb': 10, '6lb': 11,
+};
+
+/** Bore diameter = 1/3 rocket exterior diameter (Anderson 1696) */
+export const ROCKET_BORE_RATIO = 1 / 3;
+
+/** Composition fill height = 4 × rocket diameter (Anderson 1696) */
+export const ROCKET_FILL_DIAMETERS = 4;
+
+/** Bore depth = 2-3 diameters (Anderson 1696) */
+export const ROCKET_BORE_DEPTH_DIAMETERS = { min: 2, max: 3 };
+
+/** Get stick length for a given rocket weight (returns feet) */
+export function getRocketStickLength(weightLabel: string): number {
+  return ROCKET_STICK_LENGTH[weightLabel] ?? 8.2;
+}
+
+/** Get mallet strokes for a given rocket weight */
+export function getRocketMalletStrokes(weightLabel: string): number {
+  return ROCKET_MALLET_STROKES[weightLabel] ?? 28;
+}
+
 // ── Caliber-Aware Particle Scaling (Manual de Pirotecnia) ───────────
 
 /** Particle visual size by caliber (quadratic relationship — star area ∝ caliber²) */
