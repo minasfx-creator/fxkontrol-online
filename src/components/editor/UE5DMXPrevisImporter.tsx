@@ -65,7 +65,9 @@ export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }
   const [layoutPreset, setLayoutPreset] = useState<LayoutPreset>('stage');
   const [categoryOverrides, setCategoryOverrides] = useState<Record<string, LayoutOverrides>>({});
   const [layoutOpen, setLayoutOpen] = useState(false);
+  const [currentFile, setCurrentFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { saveToLibrary } = useMyLibrary();
 
   // Filters
   const [activeCategories, setActiveCategories] = useState<Set<string>>(new Set());
