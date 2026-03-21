@@ -162,6 +162,9 @@ export function useProjectPersistence() {
             startTime: item.start_time,
             trackIndex: item.track_index,
             position: { x: item.pos_x, y: item.pos_y, z: item.pos_z },
+            positionId: (item as any).position_id || undefined,
+            positionName: (item as any).position_name || undefined,
+            notes: (item as any).notes || undefined,
           });
         }
       }

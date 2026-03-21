@@ -90,6 +90,9 @@ function EffectTableRow({ effect, index }: { effect: Effect; index: number }) {
       });
     });
     toast.success(`${effect.name} → ${targetIds.length} pos @ ${currentTime.toFixed(1)}s`);
+    if (isPyro && targetIds.length > 0) {
+      useProjectStore.getState().setEditorMode('adjust-angles');
+    }
   }, [effect, currentTime, positions, selectedPositionId, selectedPositionIds, addTimelineItem, isPyro]);
 
   const handleDragStart = useCallback((e: React.DragEvent) => {
