@@ -464,7 +464,7 @@ export default function Dashboard() {
               { value: events.length, label: 'Eventos', icon: Target, color: 'text-accent' },
               { value: totalMinutes, label: 'Min. Show', icon: Clock, color: 'text-[hsl(var(--fxk-gold))]' },
               { value: daysUntilNext !== null ? `${daysUntilNext}d` : '—', label: 'Próx. Evento', icon: CalendarDays, color: daysUntilNext !== null && daysUntilNext <= 3 ? 'text-accent' : 'text-primary' },
-            ].map((stat) => (
+            ].map((stat, i) => (
               <Card key={stat.label} className="bg-card border-border/50 hover:border-primary/20 transition-colors animate-fxk-stagger" style={{ animationDelay: `${0.3 + i * 0.08}s` }}>
                 <CardContent className="p-3 flex items-center gap-2.5">
                   <div className="h-8 w-8 rounded-lg bg-muted/50 flex items-center justify-center shrink-0">
