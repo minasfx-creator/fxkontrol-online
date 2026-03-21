@@ -176,6 +176,7 @@
   .animate-fxk-fade-scale { animation: fxk-fade-scale 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   .animate-fxk-glow { animation: fxk-glow-pulse 3s ease-in-out infinite; }
   .animate-fxk-slide-down { animation: fxk-slide-down 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  .animate-fxk-stagger { opacity: 0; animation: fxk-fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
   /* Panel hover micro-interaction */
   @keyframes fxk-panel-slide {

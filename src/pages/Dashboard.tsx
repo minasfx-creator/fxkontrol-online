@@ -142,7 +142,7 @@ function FeedCard({ item }: { item: NewsItem }) {
 
 /* ── Hub Card Component ──────────────────────────────── */
 function HubCard({
-  title, subtitle, badge, tools, accentClass, borderClass, badgeBg, navigate
+  title, subtitle, badge, tools, accentClass, borderClass, badgeBg, navigate, delay = '0s'
 }: {
   title: string;
   subtitle: string;
@@ -152,7 +152,9 @@ function HubCard({
   borderClass: string;
   badgeBg: string;
   navigate: (path: string) => void;
+  delay?: string;
 }) {
+  const baseDelay = parseFloat(delay);
   const goToTool = (panel: string) => {
     if (panel) {
       navigate(`/editor?panel=${panel}`);
@@ -162,11 +164,12 @@ function HubCard({
   };
 
   return (
-    <Card className={`bg-card ${borderClass} overflow-hidden animate-fxk-fade-up`}>
+    <Card className={`bg-card ${borderClass} overflow-hidden animate-fxk-stagger group/hub`} style={{ animationDelay: delay }}>
       <CardContent className="p-0">
-        {/* Hub Header */}
-        <div className={`px-4 py-3 border-b border-border/30 bg-gradient-to-r ${accentClass}`}>
-          <div className="flex items-center justify-between">
+        {/* Hub Header — shimmer on hover */}
+        <div className={`px-4 py-3 border-b border-border/30 bg-gradient-to-r ${accentClass} relative overflow-hidden`}>
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[hsl(var(--foreground)/0.03)] to-transparent opacity-0 group-hover/hub:opacity-100 transition-opacity duration-500" style={{ backgroundSize: '200% 100%', animation: 'fxk-shimmer 3s linear infinite' }} />
+          <div className="flex items-center justify-between relative z-10">
             <div>
               <h2 className="text-sm font-bold font-display text-foreground tracking-tight">{title}</h2>
               <p className="text-[9px] text-muted-foreground mt-0.5">{subtitle}</p>
@@ -177,15 +180,16 @@ function HubCard({
           </div>
         </div>
 
-        {/* Tool Grid */}
+        {/* Tool Grid — staggered buttons */}
         <div className="p-3 grid grid-cols-3 gap-1.5">
-          {tools.map((tool) => (
+          {tools.map((tool, i) => (
             <button
               key={tool.label}
               onClick={() => goToTool(tool.panel)}
-              className="group flex flex-col items-center gap-1.5 p-2.5 rounded-xl transition-all duration-200 hover:bg-muted/40 active:scale-[0.95] border border-transparent hover:border-border/30"
+              className="group flex flex-col items-center gap-1.5 p-2.5 rounded-xl transition-all duration-200 hover:bg-muted/40 active:scale-[0.95] border border-transparent hover:border-border/30 animate-fxk-stagger"
+              style={{ animationDelay: `${baseDelay + 0.05 * i}s` }}
             >
-              <div className="h-8 w-8 rounded-lg bg-muted/30 flex items-center justify-center group-hover:bg-muted/60 transition-colors">
+              <div className="h-8 w-8 rounded-lg bg-muted/30 flex items-center justify-center group-hover:bg-muted/60 group-hover:scale-110 transition-all duration-200">
                 <tool.icon className="h-3.5 w-3.5 text-foreground/70 group-hover:text-foreground transition-colors" />
               </div>
               <span className="text-[9px] font-semibold text-muted-foreground group-hover:text-foreground text-center leading-tight transition-colors">
@@ -301,12 +305,14 @@ export default function Dashboard() {
             borderClass="border-accent/20 hover:border-accent/40 transition-colors"
             badgeBg="bg-accent/15 text-accent"
             navigate={navigate}
+            delay="0.1s"
           />
 
           {/* Mobile Command Launcher */}
           <button
             onClick={() => navigate('/editor?panel=remotecontrol')}
-            className="w-full group relative overflow-hidden rounded-xl border border-accent/20 bg-gradient-to-r from-accent/5 via-card to-primary/5 p-4 text-left transition-all duration-300 hover:border-accent/40 hover:shadow-[0_0_20px_hsl(var(--accent)/0.1)] active:scale-[0.98] animate-fxk-fade-up"
+            className="w-full group relative overflow-hidden rounded-xl border border-accent/20 bg-gradient-to-r from-accent/5 via-card to-primary/5 p-4 text-left transition-all duration-300 hover:border-accent/40 hover:shadow-[0_0_20px_hsl(var(--accent)/0.1)] active:scale-[0.98] animate-fxk-stagger"
+            style={{ animationDelay: '0.2s' }}
           >
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0 group-hover:bg-accent/20 transition-colors">
@@ -315,6 +321,7 @@ export default function Dashboard() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-bold font-display text-foreground">Mobile Command</p>
+                  <div className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse-glow" />
                   <span className="text-[7px] font-bold font-mono-code uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-accent/15 text-accent">
                     {isMobile ? 'INICIAR' : 'PAIR'}
                   </span>
@@ -328,7 +335,7 @@ export default function Dashboard() {
           </button>
 
           {/* System Status */}
-          <Card className="bg-card border-border/50 animate-fxk-fade-up">
+          <Card className="bg-card border-border/50 animate-fxk-stagger" style={{ animationDelay: '0.3s' }}>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Activity className="h-3.5 w-3.5 text-primary" />
@@ -351,7 +358,7 @@ export default function Dashboard() {
           </Card>
 
           {/* Events */}
-          <Card className="bg-card border-border/50 animate-fxk-fade-up">
+          <Card className="bg-card border-border/50 animate-fxk-stagger" style={{ animationDelay: '0.35s' }}>
             <div className="p-3 pb-1 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Flame className="h-3.5 w-3.5 text-accent" />
@@ -403,7 +410,7 @@ export default function Dashboard() {
         </div>
 
         {/* ─ Center Column: Instagram Feed ─ */}
-        <div className="order-1 lg:order-2 animate-fxk-fade-up" style={{ animationDelay: '0.1s' }}>
+        <div className="order-1 lg:order-2 animate-fxk-stagger" style={{ animationDelay: '0.15s' }}>
           <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1 scrollbar-none">
             {CATEGORY_FILTERS.map(f => (
               <button
@@ -429,8 +436,10 @@ export default function Dashboard() {
             </span>
           </div>
           <div className="space-y-4">
-            {filteredNews.map((item) => (
-              <FeedCard key={item.id} item={item} />
+            {filteredNews.map((item, i) => (
+              <div key={item.id} className="animate-fxk-stagger" style={{ animationDelay: `${0.2 + i * 0.08}s` }}>
+                <FeedCard item={item} />
+              </div>
             ))}
           </div>
         </div>
@@ -447,17 +456,18 @@ export default function Dashboard() {
             borderClass="border-primary/20 hover:border-primary/40 transition-colors"
             badgeBg="bg-primary/15 text-primary"
             navigate={navigate}
+            delay="0.2s"
           />
 
           {/* Stats */}
-          <div className="grid grid-cols-2 gap-2 animate-fxk-fade-up">
+          <div className="grid grid-cols-2 gap-2">
             {[
               { value: projects.length, label: 'Projetos', icon: FolderOpen, color: 'text-primary' },
               { value: events.length, label: 'Eventos', icon: Target, color: 'text-accent' },
               { value: totalMinutes, label: 'Min. Show', icon: Clock, color: 'text-[hsl(var(--fxk-gold))]' },
               { value: daysUntilNext !== null ? `${daysUntilNext}d` : '—', label: 'Próx. Evento', icon: CalendarDays, color: daysUntilNext !== null && daysUntilNext <= 3 ? 'text-accent' : 'text-primary' },
-            ].map((stat) => (
-              <Card key={stat.label} className="bg-card border-border/50 hover:border-primary/20 transition-colors">
+            ].map((stat, i) => (
+              <Card key={stat.label} className="bg-card border-border/50 hover:border-primary/20 transition-colors animate-fxk-stagger" style={{ animationDelay: `${0.3 + i * 0.08}s` }}>
                 <CardContent className="p-3 flex items-center gap-2.5">
                   <div className="h-8 w-8 rounded-lg bg-muted/50 flex items-center justify-center shrink-0">
                     <stat.icon className={`h-3.5 w-3.5 ${stat.color}`} />
@@ -472,7 +482,7 @@ export default function Dashboard() {
           </div>
 
           {/* Recent Projects */}
-          <Card className="bg-card border-border/50 animate-fxk-fade-up">
+          <Card className="bg-card border-border/50 animate-fxk-stagger" style={{ animationDelay: '0.5s' }}>
             <div className="p-3 pb-1 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <FolderOpen className="h-3.5 w-3.5 text-primary" />
@@ -517,7 +527,8 @@ export default function Dashboard() {
           {/* Enter Editor CTA */}
           <button
             onClick={() => navigate('/editor')}
-            className="w-full group relative overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-accent/5 p-4 text-center transition-all duration-300 hover:border-primary/40 hover:shadow-[0_0_30px_hsl(var(--primary)/0.1)] active:scale-[0.98] animate-fxk-fade-up"
+            className="w-full group relative overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-accent/5 p-4 text-center transition-all duration-300 hover:border-primary/40 hover:shadow-[0_0_30px_hsl(var(--primary)/0.1)] active:scale-[0.98] animate-fxk-stagger"
+            style={{ animationDelay: '0.6s' }}
           >
             <Zap className="h-5 w-5 text-primary mx-auto mb-2 group-hover:scale-110 transition-transform" />
             <p className="text-sm font-bold font-display text-foreground">Abrir Editor</p>
