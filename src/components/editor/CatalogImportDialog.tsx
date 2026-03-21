@@ -45,7 +45,9 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
   const [parsedEffects, setParsedEffects] = useState<ParsedCatalogEffect[]>([]);
   const [delimiter, setDelimiter] = useState(',');
   const [selectedEffects, setSelectedEffects] = useState<Set<number>>(new Set());
+  const [currentFile, setCurrentFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { saveToLibrary } = useMyLibrary();
 
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

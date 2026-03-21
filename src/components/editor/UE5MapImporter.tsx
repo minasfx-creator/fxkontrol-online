@@ -47,6 +47,7 @@ export default function UE5MapImporter({ open, onOpenChange, initialFile }: Prop
   const addPosition = useProjectStore(s => s.addPosition);
   const addSiteModel = useSceneStore(s => s.addSiteModel);
   const setTerrain = useSceneStore(s => s.setTerrain);
+  const { saveToLibrary } = useMyLibrary();
 
   const handleParse = useCallback((text: string) => {
     const result = parseUE5Map(text);

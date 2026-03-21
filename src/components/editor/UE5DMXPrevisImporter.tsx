@@ -242,6 +242,11 @@ export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }
       description: `${dmxUniverses.length} universe(s), ${selectedFixtures.reduce((s, f) => s + f.channelCount, 0)} DMX channels. Layout: ${layoutPreset}.`,
     });
 
+    // Auto-save to library
+    if (currentFile) {
+      saveToLibrary(currentFile, { name: fileName || 'UE5 DMX', source: 'ue5-dmx', file_format: 'json', tags: ['dmx', 'ue5'] });
+    }
+
     onOpenChange(false);
     setResult(null);
     setFileName(null);
