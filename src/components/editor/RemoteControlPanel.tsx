@@ -73,7 +73,7 @@ export default function RemoteControlPanel({ onClose }: RemoteControlPanelProps)
   const send = useCallback((action: any, payload: Record<string, unknown>) => {
     if (!session) return;
     session.sendCommand(action, payload);
-    haptics.light();
+    haptics.tap();
   }, [session]);
 
   // Camera orbit touch handler
