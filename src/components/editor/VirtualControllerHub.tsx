@@ -67,9 +67,10 @@ const GROUP_META: Record<string, { label: string; color: string }> = {
 interface VirtualControllerHubProps {
   fs?: boolean;
   onSelectMode?: (mode: string) => void;
+  onClose?: () => void;
 }
 
-export default function VirtualControllerHub({ fs = false, onSelectMode }: VirtualControllerHubProps) {
+export default function VirtualControllerHub({ fs = false, onSelectMode, onClose }: VirtualControllerHubProps) {
   const isMobile = useIsMobile();
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();
