@@ -194,8 +194,13 @@ function Index() {
       setSearchParams({}, { replace: true });
       // Skip splash/globe and go straight to editor
       setAppPhase('editor');
+      // On mobile, also open the floating panel at full height
+      if (isMobile) {
+        setMobileTab(null);
+        setMobilePanelHeight('full');
+      }
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, isMobile]);
 
   useEffect(() => {
     const dblClickHandler = () => {
