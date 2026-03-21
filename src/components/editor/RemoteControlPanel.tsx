@@ -335,7 +335,7 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
   }, [session]);
 
   const isPlaying = remoteState?.isPlaying ?? false;
-  const latencyColor = latency < 30 ? 'text-emerald-400' : latency < 100 ? 'text-yellow-400' : 'text-red-400';
+  const latencyColor = latency < 30 ? 'text-success' : latency < 100 ? 'text-warning' : 'text-destructive';
 
   return (
     <ScrollArea className="h-full">
