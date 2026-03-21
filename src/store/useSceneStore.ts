@@ -77,6 +77,9 @@ export const QUALITY_PRESETS: Record<QualityPreset, { name: string; description:
       contactShadowsEnabled: true,
       contactShadowsOpacity: 0.4,
       contactShadowsBlur: 2.0,
+      heatDistortionEnabled: true,
+      smokeRenderQuality: 'low' as const,
+      ribbonTrails: true,
     },
   },
   performance: {
