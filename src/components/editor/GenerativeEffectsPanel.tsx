@@ -9,8 +9,10 @@ import {
   createDefaultLayer, renderGenerativeFrame, rgbToHex,
   GENERATIVE_PRESETS, GENERATOR_LABELS, BLEND_MODE_LABELS,
   type AudioModulationData,
+  type RGBColor,
 } from '@/lib/generativeEngine';
 import useGenerativeStore from '@/store/useGenerativeStore';
+import { setFixtureColor, type DMXUniverse } from '@/lib/dmxEngine';
 
 interface GenerativeEffectsPanelProps {
   onClose: () => void;
