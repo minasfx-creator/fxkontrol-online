@@ -3,7 +3,7 @@
  * Contextual, minimal, with smooth spring animations.
  */
 import { useCallback } from 'react';
-import { MousePointer2, Plus, Undo2, Redo2, Trash2, Copy, Pencil } from 'lucide-react';
+import { MousePointer2, Plus, Undo2, Redo2, Trash2, Copy, Pencil, Compass } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useUndoStore } from '@/store/useUndoStore';
