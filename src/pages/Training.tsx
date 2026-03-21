@@ -204,6 +204,25 @@ const INITIAL_MISSIONS: Mission[] = [
     scenario: '📊 Designer quer "mais estrelas, mais alto, mais tempo". Calcule os limites reais.',
     equipment: ['mortar', 'roman-candle'], difficulty: 'medium', xp: 350, completed: false, locked: false,
   },
+  // ── Cap. 8 — Técnicas Históricas ──
+  {
+    id: 'historical-star-formulas', chapter: 'Cap. 8 — Técnicas Históricas', title: 'Fórmulas Clássicas de Estrelas',
+    description: 'Identifique qual fórmula histórica produz cada cor: Crimson (Saxon #1), Blue Intense (Saxon Blue #3), Violet, Rose, Golden Yellow. Reconheça o uso histórico de calomel como doador de cloro.',
+    scenario: '📜 Arquivo da Cyclopedia de 1903 na mesa. 5 fórmulas, 5 cores. Qual faz o carmesim mais intenso?',
+    equipment: ['mortar'], difficulty: 'easy', xp: 200, completed: false, locked: false,
+  },
+  {
+    id: 'rocket-proportions', chapter: 'Cap. 8 — Técnicas Históricas', title: 'Proporções Matemáticas de Foguetes',
+    description: 'Calcule proporções de Anderson (1696): furo = ⅓ diâmetro, preenchimento = 4D, profundidade do furo = 2-3D. Use a tabela de 1829: 6lb = 56 golpes, vara = 11 pés.',
+    scenario: '🔨 Oficina de foguetes. Um foguete de 6 libras precisa de quantos golpes de maço? E o tamanho da vara?',
+    equipment: ['mortar'], difficulty: 'medium', xp: 350, completed: false, locked: false,
+  },
+  {
+    id: 'roman-candle-charging', chapter: 'Cap. 8 — Técnicas Históricas', title: 'Carregamento de Candelas Romanas',
+    description: 'Sequencie corretamente: tampão de argila → pólvora de sopro (colheres graduadas) → estrela → estopim → repetir. Identifique as 3 composições do Saxon.',
+    scenario: '🕯️ Mesa de trabalho com tubos vazios. Monte a candela romana camada por camada, sem pular etapas.',
+    equipment: ['roman-candle'], difficulty: 'medium', xp: 300, completed: false, locked: false,
+  },
 ];
 
 const DIFF_CONFIG: Record<string, { color: string; bg: string; stars: number }> = {
