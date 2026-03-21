@@ -410,7 +410,7 @@ export default function Dashboard() {
         </div>
 
         {/* ─ Center Column: Instagram Feed ─ */}
-        <div className="order-1 lg:order-2 animate-fxk-fade-up" style={{ animationDelay: '0.1s' }}>
+        <div className="order-1 lg:order-2 animate-fxk-stagger" style={{ animationDelay: '0.15s' }}>
           <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1 scrollbar-none">
             {CATEGORY_FILTERS.map(f => (
               <button
