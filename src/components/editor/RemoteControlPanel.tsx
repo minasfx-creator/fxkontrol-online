@@ -85,6 +85,7 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
   const [devices, setDevices] = useState<RemoteDevice[]>([]);
   const [latency, setLatency] = useState(0);
   const [log, setLog] = useState<{ action: string; ts: number; sender?: string }[]>([]);
+  const connectedRef = useRef(false);
   const [wifiScanning, setWifiScanning] = useState(false);
   const [slavePermissions, setSlavePermissions] = useState<RemotePermissions>(DEFAULT_PERMISSIONS);
   const [masterPermissions, setMasterPermissions] = useState<Map<string, RemotePermissions>>(new Map());
