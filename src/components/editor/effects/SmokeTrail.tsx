@@ -152,6 +152,8 @@ function SmokeTrailInner({
   const puffs = useMemo(() => Array.from({ length: SMOKE_COUNT }, (_, i) => i), [SMOKE_COUNT]);
 
   if (progress <= 0) return null;
+
+  return (
     <group position={position}>
       {puffs.map((_, i) => (
         <mesh
