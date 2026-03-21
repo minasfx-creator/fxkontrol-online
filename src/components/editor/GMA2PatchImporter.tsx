@@ -12,6 +12,7 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { parseGMA2Patch, type GMA2Fixture, type GMA2PatchResult } from '@/lib/gma2PatchParser';
 import { patchGMA2Fixtures } from '@/lib/dmxEngine';
 import { useSfxChannelStore } from '@/store/useSfxChannelStore';
+import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
