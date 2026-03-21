@@ -58,6 +58,7 @@ export function parseUAsset(buffer: ArrayBuffer, fileName: string): UAssetParseR
       suggestedPattern: 'peony',
       suggestedCategory: 'aerial',
     },
+    assetType: 'unknown',
     rawStringTable: [],
     fileSize: buffer.byteLength,
     errors: [],
