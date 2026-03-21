@@ -182,6 +182,7 @@ function Index() {
   const [mobileTab, setMobileTab] = useState<MobileTab | null>(null);
   const [mobilePanelHeight, setMobilePanelHeight] = useState<'collapsed' | 'half' | 'full'>('collapsed');
   const [isDragOver, setIsDragOver] = useState(false);
+  const [remoteMode, setRemoteMode] = useState<'cloud' | 'wifi-auto'>('cloud');
   const selectedPositionId = useProjectStore(s => s.selectedPositionId);
 
   useUndoKeyboard();
