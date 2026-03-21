@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSceneStore, SCENE_PRESETS, QUALITY_PRESETS, type GroundStyle, type WeatherCondition, type QualityPreset, type ViewTransform } from '@/store/useSceneStore';
 import { getAllViewTransforms } from '@/lib/niagaraBlenderRules';
+import { getTerrainPresets } from '@/render_ultra/environment/terrainPBR';
 import { useProjectStore } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
