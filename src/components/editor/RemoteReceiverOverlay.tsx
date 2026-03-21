@@ -297,7 +297,7 @@ export default function RemoteReceiverOverlay({ onOpenPanel }: RemoteReceiverOve
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-border/30">
           <div className="flex items-center gap-1.5">
-            <Wifi className="w-3 h-3 text-green-400" />
+            <Wifi className="w-3 h-3 text-success" />
             <span className="text-[9px] font-bold uppercase text-foreground">Remote</span>
             {controllerCount > 0 && (
               <Badge variant="default" className="text-[7px] px-1 h-4">{controllerCount}</Badge>

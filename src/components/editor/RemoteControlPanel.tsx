@@ -721,10 +721,10 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
               <p className="text-[9px] font-semibold uppercase text-muted-foreground tracking-wider">SFX</p>
               <div className="grid grid-cols-4 gap-1.5">
                 {[
-                  { type: 'flame', icon: Flame, label: 'Flame', color: 'bg-orange-500/15 text-orange-400 border-orange-500/30' },
-                  { type: 'co2', icon: Snowflake, label: 'CO₂', color: 'bg-blue-500/15 text-blue-400 border-blue-500/30' },
-                  { type: 'spark', icon: Sparkles, label: 'Spark', color: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' },
-                  { type: 'haze', icon: Wind, label: 'Haze', color: 'bg-purple-500/15 text-purple-400 border-purple-500/30' },
+                  { type: 'flame', icon: Flame, label: 'Flame', color: 'bg-accent/15 text-accent border-accent/30' },
+                  { type: 'co2', icon: Snowflake, label: 'CO₂', color: 'bg-primary/15 text-primary border-primary/30' },
+                  { type: 'spark', icon: Sparkles, label: 'Spark', color: 'bg-warning/15 text-warning border-warning/30' },
+                  { type: 'haze', icon: Wind, label: 'Haze', color: 'bg-secondary/15 text-secondary-foreground border-secondary/30' },
                 ].map(fx => (
                   <button
                     key={fx.type}
