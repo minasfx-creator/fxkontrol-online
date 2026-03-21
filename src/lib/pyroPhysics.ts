@@ -4,8 +4,9 @@
  * Refactored: uses interpolateTable to eliminate code duplication.
  * 
  * Caliber reference (real-world):
- *   2" = 30-45m, 3" = 50-70m, 4" = 75-100m, 5" = 100-130m
- *   6" = 130-170m, 8" = 170-220m, 10" = 220-270m, 12" = 270-300m
+ *   1" = 10-20m, 1.5" = 20-30m, 2" = 30-45m, 3" = 50-70m
+ *   4" = 75-100m, 5" = 100-130m, 6" = 130-170m, 8" = 170-220m
+ *   10" = 220-270m, 12" = 270-300m
  */
 
 import { interpolateTable, interpolateTableRound, type LookupTable } from './interpolateTable';
@@ -16,22 +17,26 @@ export const GRAVITY = -9.81; // m/s²
 export const AIR_DRAG = 0.03;
 export const STAR_DRAG = 0.08;
 
-// ── Lookup Tables ───────────────────────────────────────────────────
+// ── Lookup Tables (sub-2" calibers added per Finale manual) ─────────
 
 const MORTAR_VELOCITY: LookupTable = {
-  2: 42, 3: 56, 4: 68, 5: 78, 6: 88, 8: 105, 10: 118, 12: 130, 16: 145,
+  1: 22, 1.5: 32, 2: 42, 3: 56, 4: 68, 5: 78, 6: 88, 8: 105, 10: 118, 12: 130, 16: 145,
 };
 
 const BREAK_HEIGHT: LookupTable = {
-  2: 35, 3: 55, 4: 80, 5: 110, 6: 140, 8: 190, 10: 240, 12: 280, 16: 320,
+  1: 15, 1.5: 25, 2: 35, 3: 55, 4: 80, 5: 110, 6: 140, 8: 190, 10: 240, 12: 280, 16: 320,
 };
 
 const BREAK_SPEED: LookupTable = {
-  2: 18, 3: 28, 4: 38, 5: 48, 6: 58, 8: 72, 10: 85, 12: 95, 16: 110,
+  1: 10, 1.5: 14, 2: 18, 3: 28, 4: 38, 5: 48, 6: 58, 8: 72, 10: 85, 12: 95, 16: 110,
 };
 
 const STAR_COUNT: LookupTable = {
-  2: 80, 3: 150, 4: 250, 5: 350, 6: 500, 8: 700, 10: 900, 12: 1100,
+  1: 30, 1.5: 55, 2: 80, 3: 150, 4: 250, 5: 350, 6: 500, 8: 700, 10: 900, 12: 1100,
+};
+
+const STAR_LIFETIME: LookupTable = {
+  1: 0.8, 1.5: 1.1, 2: 1.4, 3: 1.6, 4: 2.2, 5: 2.8, 6: 3.5, 8: 4.5, 10: 6.0, 12: 7.5,
 };
 
 // ── Caliber-Based Functions ─────────────────────────────────────────
@@ -60,14 +65,7 @@ export function getLiftTime(caliberInches: number): number {
 }
 
 export function getStarLifetime(caliberInches: number): number {
-  // Calibrated to real pyro: 3"=1.6s, 4"=2.2s, 6"=3.5s, 8"=4.5s, 10"=6s, 12"=7.5s
-  if (caliberInches <= 3) return 1.6;
-  if (caliberInches <= 4) return 2.2;
-  if (caliberInches <= 5) return 2.8;
-  if (caliberInches <= 6) return 3.5;
-  if (caliberInches <= 8) return 4.5;
-  if (caliberInches <= 10) return 6.0;
-  return 7.5;
+  return interpolateTable(STAR_LIFETIME, caliberInches, 1.6);
 }
 
 export function getStarSpread(caliberInches: number): number {
@@ -75,14 +73,155 @@ export function getStarSpread(caliberInches: number): number {
 }
 
 // Safety distance (NFPA 1123)
+const SAFETY_DISTANCE: LookupTable = {
+  1: 40, 1.5: 40, 2: 40, 3: 70, 4: 100, 5: 140, 6: 175, 8: 210, 10: 280, 12: 300,
+};
+
 export function getSafetyDistance(caliberInches: number): number {
-  if (caliberInches <= 3) return 70;
-  if (caliberInches <= 4) return 100;
-  if (caliberInches <= 5) return 140;
-  if (caliberInches <= 6) return 175;
-  if (caliberInches <= 8) return 210;
-  if (caliberInches <= 10) return 280;
-  return 300;
+  return interpolateTable(SAFETY_DISTANCE, caliberInches, 70);
+}
+
+// ── Type-Aware Physics Helpers (Finale 3D Manual Table 2) ───────────
+
+/** Finale part types */
+export type FinalePartType = 'shell' | 'cake' | 'candle' | 'mine' | 'comet' | 'gerb' | 'waterfall' | 'fan' | 'flame' | 'sfx' | 'single_shot' | 'ground' | 'rocket' | 'light';
+
+/**
+ * Shell prefire = break time (time from mortar to burst).
+ * Per Finale manual: prefire does NOT affect apex height, only timing.
+ */
+export function getShellPrefire(caliberInches: number): number {
+  return getLiftTime(caliberInches);
+}
+
+/**
+ * Cake prefire = lift time of sub-shells.
+ * Per Finale manual: blank/0 prefire → auto-calculate from caliber.
+ * Setting prefire < lift time makes shells break on the way up (bad).
+ */
+export function getCakePrefire(caliberInches: number, explicitPrefire?: number): number {
+  const liftTime = getLiftTime(caliberInches);
+  if (explicitPrefire === undefined || explicitPrefire <= 0) {
+    return liftTime; // auto-calculate
+  }
+  // Warn-clamp: prefire < liftTime * 0.7 would make shells break on the way up
+  return Math.max(explicitPrefire, liftTime * 0.7);
+}
+
+/**
+ * Cake/Candle total duration = time from first launch to last break.
+ * Different from shell duration (which is star lifetime).
+ */
+export function getCakeDuration(shotCount: number, intervalMs: number): number {
+  return (shotCount - 1) * (intervalMs / 1000);
+}
+
+/**
+ * Get type-appropriate prefire based on Finale manual Table 2.
+ */
+export function getTypedPrefire(partType: FinalePartType, caliberInches: number, explicitPrefire?: number): number {
+  switch (partType) {
+    case 'shell':
+    case 'single_shot':
+      return explicitPrefire && explicitPrefire > 0 ? explicitPrefire : getShellPrefire(caliberInches);
+    case 'cake':
+    case 'candle':
+      return getCakePrefire(caliberInches, explicitPrefire);
+    case 'comet':
+    case 'mine':
+      return 0; // prefire only matters for script timing, not simulation
+    case 'gerb':
+    case 'waterfall':
+    case 'fan':
+    case 'flame':
+    case 'sfx':
+    case 'ground':
+    case 'light':
+      return 0;
+    case 'rocket':
+      return explicitPrefire && explicitPrefire > 0 ? explicitPrefire : 0.5; // motor ignition delay
+    default:
+      return getShellPrefire(caliberInches);
+  }
+}
+
+/**
+ * Get type-appropriate duration based on Finale manual Table 2.
+ */
+export function getTypedDuration(
+  partType: FinalePartType,
+  caliberInches: number,
+  baseDuration: number,
+  shotCount?: number,
+  intervalMs?: number,
+): number {
+  switch (partType) {
+    case 'shell':
+    case 'single_shot':
+    case 'comet':
+    case 'mine':
+      return getStarLifetime(caliberInches); // star lifetime
+    case 'cake':
+    case 'candle':
+      if (shotCount && shotCount > 1 && intervalMs) {
+        return getCakeDuration(shotCount, intervalMs);
+      }
+      return baseDuration; // use VDL-specified duration
+    case 'gerb':
+    case 'waterfall':
+    case 'fan':
+    case 'flame':
+    case 'sfx':
+    case 'ground':
+      return baseDuration; // continuous effect time
+    case 'rocket':
+      return baseDuration * 1.5; // rockets have longer visible time
+    case 'light':
+      return baseDuration;
+    default:
+      return baseDuration;
+  }
+}
+
+/**
+ * Get type-appropriate height interpretation.
+ * Shells: ballistic apex height.
+ * Gerbs/Fountains: spark cloud top (not ballistic).
+ */
+export function getTypedHeight(partType: FinalePartType, caliberInches: number, explicitHeight?: number): number {
+  switch (partType) {
+    case 'shell':
+    case 'single_shot':
+    case 'cake':
+    case 'candle':
+      return explicitHeight ?? getBreakHeight(caliberInches);
+    case 'gerb':
+    case 'waterfall':
+    case 'fan':
+      // Spark cloud height — not ballistic, use explicit or small default
+      return explicitHeight ?? Math.min(15, caliberInches * 3);
+    case 'rocket':
+      return explicitHeight ?? getBreakHeight(caliberInches) * 1.3; // rockets go higher
+    default:
+      return explicitHeight ?? getBreakHeight(caliberInches);
+  }
+}
+
+// ── Rocket Physics ──────────────────────────────────────────────────
+
+export function createRocketTrail(motorBurnTime: number): ParticleState {
+  const spread = 0.08;
+  return {
+    x: (Math.random() - 0.5) * spread,
+    y: 0,
+    z: (Math.random() - 0.5) * spread,
+    vx: (Math.random() - 0.5) * 2,
+    vy: -8 - Math.random() * 4, // exhaust downward
+    vz: (Math.random() - 0.5) * 2,
+    life: 0,
+    maxLife: 0.2 + Math.random() * 0.3,
+    brightness: 1,
+  };
 }
 
 // ── Multi-Break Timings ─────────────────────────────────────────────

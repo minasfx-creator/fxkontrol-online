@@ -28,9 +28,7 @@ export interface ManufacturerProfile {
 }
 
 // ── Finale 3D defaults (reference baseline) ─────────────────────────
-// Aligned with pyroPhysics.ts real-world ballistic tables:
-//   breakSpeed = BREAK_SPEED table, starCount = STAR_COUNT table,
-//   heightM = BREAK_HEIGHT table, prefireSec = getLiftTime()
+// Sub-2" calibers added per Finale manual (30mm single shots, 20mm cakes)
 const FINALE_CALIBERS: Record<number, CaliberData> = {
   1:    { heightM: 15,  spreadDeg: 16, prefireSec: 0.35, starCount: 30,  breakSpeed: 10, safetyM: 40,  costFactor: 0.3 },
   1.5:  { heightM: 25,  spreadDeg: 24, prefireSec: 0.55, starCount: 55,  breakSpeed: 14, safetyM: 40,  costFactor: 0.5 },
@@ -75,6 +73,21 @@ const PYRODIGITAL_CALIBERS: Record<number, CaliberData> = {
   12:   { heightM: 265, spreadDeg: 115, prefireSec: 4.60, starCount: 1050, breakSpeed: 90, safetyM: 300, costFactor: 140.0 },
 };
 
+// ── FireOne XLII+ — calibrated from FireOne manual and UltraFire specs ──
+const FIREONE_CALIBERS: Record<number, CaliberData> = {
+  1:    { heightM: 14,  spreadDeg: 15, prefireSec: 0.38, starCount: 28,  breakSpeed: 9,  safetyM: 40,  costFactor: 0.35 },
+  1.5:  { heightM: 24,  spreadDeg: 23, prefireSec: 0.58, starCount: 52,  breakSpeed: 13, safetyM: 40,  costFactor: 0.55 },
+  2:    { heightM: 34,  spreadDeg: 31, prefireSec: 0.78, starCount: 78,  breakSpeed: 17, safetyM: 40,  costFactor: 1.1 },
+  2.5:  { heightM: 44,  spreadDeg: 37, prefireSec: 0.98, starCount: 112, breakSpeed: 22, safetyM: 70,  costFactor: 2.2 },
+  3:    { heightM: 54,  spreadDeg: 44, prefireSec: 1.18, starCount: 145, breakSpeed: 27, safetyM: 70,  costFactor: 3.8 },
+  4:    { heightM: 78,  spreadDeg: 54, prefireSec: 1.58, starCount: 245, breakSpeed: 37, safetyM: 100, costFactor: 8.5 },
+  5:    { heightM: 108, spreadDeg: 64, prefireSec: 1.98, starCount: 340, breakSpeed: 47, safetyM: 140, costFactor: 16.0 },
+  6:    { heightM: 138, spreadDeg: 74, prefireSec: 2.42, starCount: 490, breakSpeed: 57, safetyM: 175, costFactor: 26.0 },
+  8:    { heightM: 188, spreadDeg: 88, prefireSec: 3.12, starCount: 680, breakSpeed: 70, safetyM: 210, costFactor: 52.0 },
+  10:   { heightM: 238, spreadDeg: 103, prefireSec: 3.82, starCount: 880, breakSpeed: 83, safetyM: 280, costFactor: 92.0 },
+  12:   { heightM: 275, spreadDeg: 118, prefireSec: 4.52, starCount: 1080, breakSpeed: 93, safetyM: 300, costFactor: 155.0 },
+};
+
 // ── All built-in profiles ──
 export const MANUFACTURER_PROFILES: ManufacturerProfile[] = [
   {
@@ -100,6 +113,14 @@ export const MANUFACTURER_PROFILES: ManufacturerProfile[] = [
     description: 'Pyrodigital — precisão europeia, spread controlado, prefire consistente, excelente para coreografia fina',
     icon: '⚡',
     calibers: PYRODIGITAL_CALIBERS,
+  },
+  {
+    id: 'fireone',
+    name: 'FireOne',
+    country: 'US',
+    description: 'FireOne XLII+ — sistema profissional com suporte SCL e UltraFire, calibrado para precisão de timing',
+    icon: '🔥',
+    calibers: FIREONE_CALIBERS,
   },
 ];
 

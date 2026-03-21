@@ -7,6 +7,8 @@
  * - Spread Out: space items based on durations
  * - Reverse Order: reverse timing
  * - Quantize: snap to grid
+ * - Duplicate Into Flights: fan copies at angle intervals (Finale manual)
+ * - Angle snap: 1°, 5°, 22.5° grid (per Finale manual)
  */
 
 import type { TimelineItem, Position } from '@/store/useProjectStore';
@@ -462,21 +464,91 @@ export function quantizeToGrid(
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// Finale ASCII Angle Preview
+// Finale ASCII Angle Preview — 22.5° snap grid (per Finale 3D manual)
 // ═══════════════════════════════════════════════════════════════════════
 
-/** Generate ASCII art angle preview like Finale's \|/ notation */
+/** Snap angle to nearest interval (1°, 5°, or 22.5° per Finale manual) */
+export function snapAngle(degrees: number, snapInterval: 1 | 5 | 22.5 = 22.5): number {
+  return Math.round(degrees / snapInterval) * snapInterval;
+}
+
+/** Generate ASCII art angle preview matching Finale's 22.5° notation grid */
 export function getAngleAscii(panDegrees: number): string {
-  if (panDegrees < 30) return '\\\\';
-  if (panDegrees < 60) return '\\';
-  if (panDegrees < 80) return '\\|';
-  if (panDegrees <= 100) return '|';
-  if (panDegrees < 120) return '|/';
-  if (panDegrees < 150) return '/';
+  // Finale manual: 0° = hard left, 90° = straight up, 180° = hard right
+  if (panDegrees < 11.25) return '\\\\';
+  if (panDegrees < 33.75) return '\\';
+  if (panDegrees < 56.25) return '\\|';
+  if (panDegrees < 78.75) return '\\|';
+  if (panDegrees <= 101.25) return '|';
+  if (panDegrees < 123.75) return '|/';
+  if (panDegrees < 146.25) return '|/';
+  if (panDegrees < 168.75) return '/';
   return '//';
 }
 
 /** Generate combined angle preview for a list of items */
 export function getAnglesPreview(items: { pan?: number }[]): string {
   return items.map(i => getAngleAscii(i.pan ?? 90)).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Duplicate Into Flights — Finale 3D "Script > Duplicate > Duplicate Into Flights..."
+// ═══════════════════════════════════════════════════════════════════════
+
+export interface DuplicateFlightsConfig {
+  flightsPerItem: number;       // total flight count (including original)
+  angleSeparation: number;      // degrees between flights
+  timeSeparation: number;       // seconds between flights (0 = simultaneous)
+  centerOnOriginal: boolean;    // center the fan on the original angle
+}
+
+export const DEFAULT_DUPLICATE_FLIGHTS: DuplicateFlightsConfig = {
+  flightsPerItem: 5,
+  angleSeparation: 15,
+  timeSeparation: 0,
+  centerOnOriginal: true,
+};
+
+/**
+ * Duplicate Into Flights: creates N-1 copies of each item, fanned at specified angle intervals.
+ * Each selected item gets N-1 copies, each angled `angleSeparation` degrees apart,
+ * optionally staggered in time. This matches Finale's "Script > Duplicate > Duplicate Into Flights..."
+ */
+export function duplicateIntoFlights(
+  items: TimelineItem[],
+  config: DuplicateFlightsConfig,
+): { originalId: string; copies: Partial<Omit<TimelineItem, 'id'>>[] }[] {
+  return items.map(item => {
+    const basePan = item.pan ?? 90;
+    const copies: Partial<Omit<TimelineItem, 'id'>>[] = [];
+
+    // Calculate starting angle (centered or from original)
+    const totalSpread = (config.flightsPerItem - 1) * config.angleSeparation;
+    const startAngle = config.centerOnOriginal
+      ? basePan - totalSpread / 2
+      : basePan;
+
+    // Create N-1 copies (original stays as-is, index 0)
+    for (let i = 1; i < config.flightsPerItem; i++) {
+      const newPan = startAngle + i * config.angleSeparation;
+      copies.push({
+        startTime: item.startTime + i * config.timeSeparation,
+        pan: newPan,
+        tilt: item.tilt ?? 0,
+        position: { ...item.position },
+        effectId: item.effectId,
+        positionName: item.positionName,
+      });
+    }
+
+    // Also update the original's pan to the fan start if centering
+    if (config.centerOnOriginal && config.flightsPerItem > 1) {
+      copies.unshift({
+        pan: startAngle,
+        startTime: item.startTime,
+      });
+    }
+
+    return { originalId: item.id, copies };
+  });
 }
