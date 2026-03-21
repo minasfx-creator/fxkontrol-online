@@ -109,3 +109,7 @@ export { GlobalIlluminationSystem } from './lighting/globalIllumination';
 // Post-processing
 export { createLensFlareSprite, flashLensFlare, decayLensFlare } from './postprocessing/lensFlare';
 export { createExposureController, updateExposure, flashEvent } from './postprocessing/exposure';
+
+// Niagara Fluids
+export { createFluidGrid, advectFluid, injectDensity, injectVelocity, injectTemperature, readDensityAt, applyWindForce, clearFluidGrid } from './fireworks/niagaraFluids';
+export type { FluidGrid, FluidConfig } from './fireworks/niagaraFluids';

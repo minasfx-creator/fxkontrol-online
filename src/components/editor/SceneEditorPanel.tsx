@@ -252,28 +252,20 @@ export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
           </div>
         </Section>
 
-        {/* ═══ WEATHER ═══ */}
-        <Section title="Weather" icon={Cloud} id="weather" open={openSections.has('weather')} onToggle={() => toggleSection('weather')}>
-          <div>
-            <span className="text-[9px] text-muted-foreground font-medium">Condition</span>
-            <Select value={settings.weather} onValueChange={v => updateSettings({ weather: v as WeatherCondition })}>
-              <SelectTrigger className="h-7 text-[10px] mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="clear" className="text-[10px]">Clear</SelectItem>
-                <SelectItem value="haze" className="text-[10px]">Haze</SelectItem>
-                <SelectItem value="fog" className="text-[10px]">Fog</SelectItem>
-                <SelectItem value="light-rain" className="text-[10px]">Light Rain</SelectItem>
-                <SelectItem value="heavy-rain" className="text-[10px]">Heavy Rain</SelectItem>
-                <SelectItem value="snow" className="text-[10px]">Snow</SelectItem>
-                <SelectItem value="wind-only" className="text-[10px]">Wind Only</SelectItem>
-              </SelectContent>
-            </Select>
+        {/* ═══ WEATHER — moved to WeatherAtmospherePanel ═══ */}
+        <Section title="Weather & Atmosphere" icon={Cloud} id="weather" open={openSections.has('weather')} onToggle={() => toggleSection('weather')}>
+          <div className="text-center py-3 space-y-2">
+            <Cloud className="w-5 h-5 text-muted-foreground/40 mx-auto" />
+            <p className="text-[8px] text-muted-foreground">Weather, clouds, water, time-of-day, and atmosphere controls moved to the dedicated panel.</p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-[9px] h-7 border-primary/30 text-primary hover:bg-primary/10"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-weather-panel'))}
+            >
+              <Cloud className="w-3 h-3 mr-1.5" /> Open Weather & Atmosphere
+            </Button>
           </div>
-          <SliderRow label="Rain Intensity" value={settings.rainIntensity} onChange={v => updateSettings({ rainIntensity: v })} />
-          <SliderRow label="Wind Effect" value={settings.windEffect} onChange={v => updateSettings({ windEffect: v })} />
-          <SliderRow label="Humidity" value={settings.humidity} onChange={v => updateSettings({ humidity: v })} />
-          <SliderRow label="Temperature" value={settings.temperature} onChange={v => updateSettings({ temperature: v })} min={-10} max={45} step={1} unit="°C" />
-          <SliderRow label="Visibility" value={settings.visibility} onChange={v => updateSettings({ visibility: v })} />
         </Section>
 
         {/* ═══ EFFECTS RENDERING ═══ */}
