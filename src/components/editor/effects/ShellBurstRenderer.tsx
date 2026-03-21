@@ -71,15 +71,18 @@ const BURST_FRAGMENT = `
   uniform float uMaxEnergy;
 
   void main() {
-    // Gaussian sprite: soft circle with hot core
-    float dist = length(gl_PointCoord - vec2(0.5));
+    // Velocity-based sprite elongation (Niagara Sprite Alignment → Velocity)
+    float speedFactor = clamp(vSpeed * 0.05, 0.0, 3.0);
+    vec2 stretchedCoord = gl_PointCoord;
+    stretchedCoord.y = (stretchedCoord.y - 0.5) / (1.0 + speedFactor) + 0.5;
+    
+    float dist = length(stretchedCoord - vec2(0.5));
     if (dist > 0.5) discard;
     
-    // Thermal speed controls how fast the color cools down
     float rawRatio = clamp(vLife / vMaxLife, 0.0, 1.0);
     float lifeRatio = clamp(rawRatio * uThermalSpeed, 0.0, 1.0);
     
-    // Color-change: interpolate between primary and secondary color
+    // Color-change
     vec3 baseHue = mix(uColor, uColor2, smoothstep(uColorChangePoint - 0.1, uColorChangePoint + 0.1, rawRatio));
     
     // Thermal color transition: white-hot → saturated → ember → charcoal
@@ -99,13 +102,14 @@ const BURST_FRAGMENT = `
       thermalColor = mix(ember, charcoal, (lifeRatio - 0.80) / 0.20);
     }
     
-    // Gaussian glow
-     float coreGlow = exp(-dist * dist * 28.0);
-     float outerGlow = exp(-dist * dist * 10.0);
-     float glow = coreGlow * 0.6 + outerGlow * 0.4;
+    // Soft particle edge — Gaussian with speed-dependent tightness
+    float coreRadius = mix(28.0, 15.0, clamp(speedFactor * 0.3, 0.0, 1.0));
+    float coreGlow = exp(-dist * dist * coreRadius);
+    float outerGlow = exp(-dist * dist * 10.0);
+    float glow = coreGlow * 0.6 + outerGlow * 0.4;
     
     // Flicker
-    float flicker = 0.85 + 0.15 * sin(vLife * 47.0 + gl_PointCoord.x * 13.0);
+    float flicker = 0.85 + 0.15 * sin(vLife * 47.0 + stretchedCoord.x * 13.0);
     
     // Opacity fade
     float fadeIn = smoothstep(0.0, 0.03, rawRatio);
@@ -145,7 +149,7 @@ const AFTERGLOW_FRAGMENT = `
 
 // ── Constants ───────────────────────────────────────────────────────
 
-const MAX_PARTICLES = 1500;
+const MAX_PARTICLES = 2000;
 
 interface ShellBurstRendererProps {
   position: [number, number, number];

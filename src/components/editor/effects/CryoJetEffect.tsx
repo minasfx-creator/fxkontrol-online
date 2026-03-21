@@ -4,13 +4,13 @@ import * as THREE from 'three';
 import { attackReleaseEnvelope } from '@/lib/pyroNoise';
 import { getThreeBlending } from '@/lib/niagaraBlenderRules';
 
-const PARTICLE_COUNT = 180;
+const PARTICLE_COUNT = 300;
+const GROUND_FOG_COUNT = 60;
+const CONDENSATION_COUNT = 40;
 
 /**
- * CO2 Cryo refinado:
- * - envelope de potência estável
- * - buffers reutilizados
- * - tint dinâmico baseado na cor do efeito
+ * CO2 Cryo Jet — Dense volumetric fog
+ * Niagara-grade: ground fog spread, condensation droplets, soft Gaussian sprites, denser column.
  */
 export default function CryoJetEffect({
   position,
@@ -26,11 +26,18 @@ export default function CryoJetEffect({
   horizontal?: boolean;
 }) {
   const pointsRef = useRef<THREE.Points>(null);
+  const groundFogRef = useRef<THREE.Points>(null);
+  const condensationRef = useRef<THREE.Points>(null);
   const cloudRefs = useRef<(THREE.Mesh | null)[]>([]);
   const CLOUD_COUNT = 12;
 
-  const posRef = useRef(new Float32Array(PARTICLE_COUNT * 3));
-  const colRef = useRef(new Float32Array(PARTICLE_COUNT * 3));
+  const posRef = useMemo(() => new Float32Array(PARTICLE_COUNT * 3), []);
+  const colRef = useMemo(() => new Float32Array(PARTICLE_COUNT * 3), []);
+  const groundFogPos = useMemo(() => new Float32Array(GROUND_FOG_COUNT * 3), []);
+  const groundFogCol = useMemo(() => new Float32Array(GROUND_FOG_COUNT * 3), []);
+  const condensationPos = useMemo(() => new Float32Array(CONDENSATION_COUNT * 3), []);
+  const condensationCol = useMemo(() => new Float32Array(CONDENSATION_COUNT * 3), []);
+
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
   const coolTint = useMemo(() => new THREE.Color('#e8f0ff'), []);
 
@@ -48,6 +55,31 @@ export default function CryoJetEffect({
     return s;
   }, [height]);
 
+  const groundFogSeeds = useMemo(() => {
+    const s: { angle: number; speed: number; lt: number; phase: number }[] = [];
+    for (let i = 0; i < GROUND_FOG_COUNT; i++) {
+      s.push({
+        angle: Math.random() * Math.PI * 2,
+        speed: 0.3 + Math.random() * 1.2,
+        lt: 1.5 + Math.random() * 3.0,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+    return s;
+  }, []);
+
+  const condensationSeeds = useMemo(() => {
+    const s: { angle: number; speed: number; phase: number }[] = [];
+    for (let i = 0; i < CONDENSATION_COUNT; i++) {
+      s.push({
+        angle: Math.random() * Math.PI * 2,
+        speed: 2 + Math.random() * 5,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+    return s;
+  }, []);
+
   const cloudSeeds = useMemo(() => {
     return Array.from({ length: CLOUD_COUNT }, (_, i) => ({
       delay: i * 0.06,
@@ -60,22 +92,19 @@ export default function CryoJetEffect({
 
   useFrame(({ clock }) => {
     if (!pointsRef.current) return;
-    const posArr = posRef.current;
-    const colArr = colRef.current;
+    const posArr = posRef;
+    const colArr = colRef;
     const time = clock.getElapsedTime();
     const intensity = attackReleaseEnvelope(progress, 0.05, 0.75, 1.6);
 
+    // Main fog column
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       const seed = seeds[i];
       const cycleTime = ((time * 2.5 + seed.phase) % seed.lt) / seed.lt;
 
       if (cycleTime > intensity) {
-        posArr[i * 3] = 0;
-        posArr[i * 3 + 1] = -100;
-        posArr[i * 3 + 2] = 0;
-        colArr[i * 3] = 0;
-        colArr[i * 3 + 1] = 0;
-        colArr[i * 3 + 2] = 0;
+        posArr[i * 3] = 0; posArr[i * 3 + 1] = -100; posArr[i * 3 + 2] = 0;
+        colArr[i * 3] = 0; colArr[i * 3 + 1] = 0; colArr[i * 3 + 2] = 0;
         continue;
       }
 
@@ -107,11 +136,57 @@ export default function CryoJetEffect({
     }
 
     const geo = pointsRef.current.geometry;
-    geo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
-    geo.attributes.position.needsUpdate = true;
-    geo.attributes.color.needsUpdate = true;
+    const posAttr = geo.getAttribute('position') as THREE.BufferAttribute;
+    const colAttr = geo.getAttribute('color') as THREE.BufferAttribute;
+    if (posAttr) posAttr.needsUpdate = true;
+    if (colAttr) colAttr.needsUpdate = true;
 
+    // Ground fog spread — particles that reach ground drift horizontally
+    if (groundFogRef.current && intensity > 0.2) {
+      for (let i = 0; i < GROUND_FOG_COUNT; i++) {
+        const seed = groundFogSeeds[i];
+        const cycleTime = ((time * 0.4 + seed.phase) % seed.lt) / seed.lt;
+        const t2 = cycleTime * seed.lt;
+        
+        groundFogPos[i * 3] = Math.cos(seed.angle) * seed.speed * t2;
+        groundFogPos[i * 3 + 1] = 0.05 + Math.sin(time * 0.5 + i) * 0.05;
+        groundFogPos[i * 3 + 2] = Math.sin(seed.angle) * seed.speed * t2;
+
+        const fade = Math.max(0, 1 - cycleTime) * intensity * 0.4;
+        groundFogCol[i * 3] = 0.9 * fade;
+        groundFogCol[i * 3 + 1] = 0.92 * fade;
+        groundFogCol[i * 3 + 2] = 0.95 * fade;
+      }
+      const gGeo = groundFogRef.current.geometry;
+      const gPos = gGeo.getAttribute('position') as THREE.BufferAttribute;
+      const gCol = gGeo.getAttribute('color') as THREE.BufferAttribute;
+      if (gPos) gPos.needsUpdate = true;
+      if (gCol) gCol.needsUpdate = true;
+    }
+
+    // Condensation droplets — tiny fast particles near nozzle
+    if (condensationRef.current && intensity > 0.3) {
+      for (let i = 0; i < CONDENSATION_COUNT; i++) {
+        const seed = condensationSeeds[i];
+        const cycleTime = ((time * 8 + seed.phase) % 0.15) / 0.15;
+        
+        condensationPos[i * 3] = Math.cos(seed.angle) * 0.1 * cycleTime;
+        condensationPos[i * 3 + 1] = horizontal ? 0 : 0.3 + cycleTime * 0.5;
+        condensationPos[i * 3 + 2] = Math.sin(seed.angle) * 0.1 * cycleTime;
+
+        const fade = Math.max(0, 1 - cycleTime) * intensity * 0.5;
+        condensationCol[i * 3] = 0.8 * fade;
+        condensationCol[i * 3 + 1] = 0.85 * fade;
+        condensationCol[i * 3 + 2] = 1.0 * fade;
+      }
+      const cGeo = condensationRef.current.geometry;
+      const cPos = cGeo.getAttribute('position') as THREE.BufferAttribute;
+      const cCol = cGeo.getAttribute('color') as THREE.BufferAttribute;
+      if (cPos) cPos.needsUpdate = true;
+      if (cCol) cCol.needsUpdate = true;
+    }
+
+    // Cloud puffs
     cloudSeeds.forEach((cloud, i) => {
       const mesh = cloudRefs.current[i];
       if (!mesh) return;
@@ -140,22 +215,42 @@ export default function CryoJetEffect({
 
   return (
     <group position={position}>
-      {/* CO2 fog particles — Normal blending (opaque fog, not emissive) */}
+      {/* CO2 fog particles */}
       <points ref={pointsRef}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(PARTICLE_COUNT * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(PARTICLE_COUNT * 3), 3]} />
+          <bufferAttribute attach="attributes-position" args={[posRef, 3]} />
+          <bufferAttribute attach="attributes-color" args={[colRef, 3]} />
         </bufferGeometry>
         <pointsMaterial size={0.3} vertexColors transparent opacity={0.55} depthWrite={false} blending={normalBlend.blending} blendEquation={normalBlend.blendEquation} blendSrc={normalBlend.blendSrc as any} blendDst={normalBlend.blendDst as any} sizeAttenuation />
       </points>
-      {/* Cloud puffs — Normal blending */}
+
+      {/* Ground fog spread */}
+      <points ref={groundFogRef} frustumCulled={false}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[groundFogPos, 3]} />
+          <bufferAttribute attach="attributes-color" args={[groundFogCol, 3]} />
+        </bufferGeometry>
+        <pointsMaterial size={0.6} vertexColors transparent opacity={0.3} depthWrite={false} blending={normalBlend.blending} blendEquation={normalBlend.blendEquation} blendSrc={normalBlend.blendSrc as any} blendDst={normalBlend.blendDst as any} sizeAttenuation />
+      </points>
+
+      {/* Condensation droplets */}
+      <points ref={condensationRef} frustumCulled={false}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[condensationPos, 3]} />
+          <bufferAttribute attach="attributes-color" args={[condensationCol, 3]} />
+        </bufferGeometry>
+        <pointsMaterial size={0.03} vertexColors transparent opacity={0.6} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+      </points>
+
+      {/* Cloud puffs */}
       {cloudSeeds.map((_, i) => (
         <mesh key={i} ref={(el) => { cloudRefs.current[i] = el; }} visible={false}>
           <sphereGeometry args={[1, 8, 8]} />
           <meshBasicMaterial color={color} transparent opacity={0} depthWrite={false} />
         </mesh>
       ))}
-      {/* Nozzle glow — Screen */}
+
+      {/* Nozzle glow */}
       {progress > 0.02 && progress < 0.8 && (
         <mesh position={horizontal ? [0.2, 0, 0] : [0, 0.2, 0]}>
           <sphereGeometry args={[0.15, 8, 8]} />

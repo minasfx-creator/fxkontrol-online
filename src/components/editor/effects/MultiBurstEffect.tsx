@@ -2,9 +2,6 @@ import { useMemo } from 'react';
 import * as THREE from 'three';
 import { getThreeBlending } from '@/lib/niagaraBlenderRules';
 
-// Reuse the FireworkBurst from SkyCanvas but with staggered timing
-// Import it as a lazy inline to avoid circular deps - we'll define a mini burst here
-
 const PARTICLE_COUNT = 60;
 const GRAVITY = -4;
 
@@ -41,11 +38,15 @@ function MiniBurst({
 
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
 
+  // Pre-allocate buffers — zero GC pressure (computed once per progress change via render)
+  const { positions, colors } = useMemo(() => ({
+    positions: new Float32Array(PARTICLE_COUNT * 3),
+    colors: new Float32Array(PARTICLE_COUNT * 3),
+  }), []);
+
   if (progress <= 0 || progress > 1) return null;
 
   const t = progress * 2.5;
-  const positions = new Float32Array(PARTICLE_COUNT * 3);
-  const colors = new Float32Array(PARTICLE_COUNT * 3);
 
   for (let i = 0; i < PARTICLE_COUNT; i++) {
     const vx = velocities[i * 3];
@@ -65,7 +66,6 @@ function MiniBurst({
 
   return (
     <group position={offset}>
-      {/* Glow handled by bloom — no pointLight to avoid uniform overflow */}
       <points>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[positions, 3]} />
@@ -101,7 +101,6 @@ export default function MultiBurstEffect({
   burstCount?: number;
   caliber?: number;
 }) {
-  // Scale burst spread based on caliber
   const burstScale = 0.7 + caliber * 0.12;
   const bursts = useMemo(() => {
     const b: { offset: [number, number, number]; delay: number; seed: number }[] = [];

@@ -41,6 +41,9 @@ export const QUALITY_PRESETS: Record<QualityPreset, { name: string; description:
       contactShadowsEnabled: true,
       contactShadowsOpacity: 0.6,
       contactShadowsBlur: 2.5,
+      heatDistortionEnabled: true,
+      smokeRenderQuality: 'high' as const,
+      ribbonTrails: true,
     },
   },
   show: {
@@ -74,6 +77,9 @@ export const QUALITY_PRESETS: Record<QualityPreset, { name: string; description:
       contactShadowsEnabled: true,
       contactShadowsOpacity: 0.4,
       contactShadowsBlur: 2.0,
+      heatDistortionEnabled: true,
+      smokeRenderQuality: 'low' as const,
+      ribbonTrails: true,
     },
   },
   performance: {
@@ -107,6 +113,9 @@ export const QUALITY_PRESETS: Record<QualityPreset, { name: string; description:
       contactShadowsEnabled: false,
       contactShadowsOpacity: 0,
       contactShadowsBlur: 1.0,
+      heatDistortionEnabled: false,
+      smokeRenderQuality: 'off' as const,
+      ribbonTrails: false,
     },
   },
 };
@@ -196,6 +205,11 @@ export interface SceneSettings {
   contactShadowsEnabled: boolean;
   contactShadowsOpacity: number; // 0-1
   contactShadowsBlur: number;    // 0-5
+
+  // Niagara-grade rendering settings
+  heatDistortionEnabled: boolean;
+  smokeRenderQuality: 'off' | 'low' | 'high';
+  ribbonTrails: boolean;
 }
 
 const DEFAULT_SETTINGS: SceneSettings = {
@@ -274,6 +288,10 @@ const DEFAULT_SETTINGS: SceneSettings = {
   contactShadowsEnabled: false,
   contactShadowsOpacity: 0.5,
   contactShadowsBlur: 2.0,
+
+  heatDistortionEnabled: false,
+  smokeRenderQuality: 'low',
+  ribbonTrails: false,
 };
 
 export const SCENE_PRESETS: Record<string, { name: string; description: string; settings: Partial<SceneSettings> }> = {

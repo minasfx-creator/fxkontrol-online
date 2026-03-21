@@ -7,6 +7,8 @@ const SPARK_COUNT = 150;
 /**
  * SparkShower: Dense shower of tiny bright sparks cascading down.
  * Used as overlay for shells, cakes, waterfalls to add crackling detail.
+ * 
+ * Niagara-grade: reusable buffers (zero GC), thermal fade, velocity stretch.
  */
 export default function SparkShower({
   position,
@@ -21,16 +23,18 @@ export default function SparkShower({
   progress: number;
   height?: number;
   spread?: number;
-  /** Showven Sparkular model — constrains behavior to cold spark physics */
   sparkularModel?: 'vertical' | 'circular' | 'waterfall' | 'wheel' | 'blast' | 'mobile';
 }) {
   const isColdSpark = !!sparkularModel;
   const pointsRef = useRef<THREE.Points>(null);
   const baseColor = useMemo(() => {
-    // Cold sparks are always gold/silver, not user color
     if (isColdSpark) return new THREE.Color('#FFD700');
     return new THREE.Color(color);
   }, [color, isColdSpark]);
+
+  // Pre-allocate buffers — zero GC pressure
+  const posArr = useMemo(() => new Float32Array(SPARK_COUNT * 3), []);
+  const colArr = useMemo(() => new Float32Array(SPARK_COUNT * 3), []);
 
   const seeds = useMemo(() => {
     const s: { angle: number; r: number; vy: number; phase: number; lt: number; speed: number }[] = [];
@@ -51,8 +55,6 @@ export default function SparkShower({
 
   useFrame(({ clock }) => {
     if (!pointsRef.current || progress < 0.1 || progress > 0.95) return;
-    const posArr = new Float32Array(SPARK_COUNT * 3);
-    const colArr = new Float32Array(SPARK_COUNT * 3);
     const time = clock.getElapsedTime();
 
     for (let i = 0; i < SPARK_COUNT; i++) {
@@ -74,7 +76,6 @@ export default function SparkShower({
       posArr[i * 3 + 2] = z;
 
       const fade = Math.max(0, 1 - cycleTime);
-      // Quick bright flash then dim
       const flash = cycleTime < 0.1 ? 1.5 : 1;
       const flicker = 0.6 + Math.sin(i * 23 + time * 50) * 0.4;
       colArr[i * 3] = Math.min(1, baseColor.r * fade * flash * flicker * 1.2);
@@ -83,10 +84,10 @@ export default function SparkShower({
     }
 
     const geo = pointsRef.current.geometry;
-    geo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
-    geo.attributes.position.needsUpdate = true;
-    geo.attributes.color.needsUpdate = true;
+    const posAttr = geo.getAttribute('position') as THREE.BufferAttribute;
+    const colAttr = geo.getAttribute('color') as THREE.BufferAttribute;
+    if (posAttr) posAttr.needsUpdate = true;
+    if (colAttr) colAttr.needsUpdate = true;
   });
 
   if (progress < 0.1 || progress > 0.95) return null;
@@ -95,8 +96,8 @@ export default function SparkShower({
     <group position={position}>
       <points ref={pointsRef}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(SPARK_COUNT * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(SPARK_COUNT * 3), 3]} />
+          <bufferAttribute attach="attributes-position" args={[posArr, 3]} />
+          <bufferAttribute attach="attributes-color" args={[colArr, 3]} />
         </bufferGeometry>
         <pointsMaterial
           size={0.04}
