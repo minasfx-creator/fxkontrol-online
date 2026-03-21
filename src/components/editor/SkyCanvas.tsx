@@ -1017,6 +1017,160 @@ const LiveSFXEffects = React.forwardRef<any>(function LiveSFXEffects(_props, _re
 });
 
 // ========================================================================
+// ═══ ENVIRONMENT V2 — UE5.7 Virtual Worlds ═══
+// Sky Atmosphere V2, Volumetric Clouds, Water, Ground Decals, Time-of-Day
+// ========================================================================
+import {
+  createSkyAtmosphereV2,
+  createVolumetricCloudLayer, CLOUD_PRESETS,
+  createWaterSystem, WATER_PRESETS,
+  evaluateTimeOfDay,
+  createDecalSystem, spawnScorchMark, spawnLightSplash, updateDecals, clearDecals,
+} from '@/render_ultra';
+
+function SkyAtmosphereV2Layer() {
+  const meshRef = useRef<THREE.Mesh | null>(null);
+  const skySystemRef = useRef<ReturnType<typeof createSkyAtmosphereV2> | null>(null);
+  const { scene } = useThree();
+  const timeOfDay = useSceneStore(st => st.settings.timeOfDay);
+  const timeOfDayEnabled = useSceneStore(st => st.settings.timeOfDayEnabled);
+
+  useEffect(() => {
+    const system = createSkyAtmosphereV2(90000);
+    skySystemRef.current = system;
+    scene.add(system.mesh);
+    return () => {
+      scene.remove(system.mesh);
+      system.mesh.geometry.dispose();
+      (system.mesh.material as THREE.ShaderMaterial).dispose();
+    };
+  }, [scene]);
+
+  useFrame(({ camera }) => {
+    const sys = skySystemRef.current;
+    if (!sys) return;
+    sys.mesh.position.copy(camera.position);
+
+    if (timeOfDayEnabled) {
+      const tod = evaluateTimeOfDay(timeOfDay);
+      sys.setSunDirection(tod.sunDirection);
+      sys.setSunIntensity(tod.sunIntensity);
+      sys.setMoonDirection(tod.moonDirection);
+      sys.setStarBrightness(tod.starBrightness);
+      sys.setTimeOfDay(tod.skyZenith, tod.skyHorizon, tod.skyNight);
+    }
+  });
+
+  return null;
+}
+
+function VolumetricCloudLayer() {
+  const cloudRef = useRef<ReturnType<typeof createVolumetricCloudLayer> | null>(null);
+  const { scene } = useThree();
+  const cloudCoverage = useSceneStore(st => st.settings.cloudCoverage);
+  const cloudDensity = useSceneStore(st => st.settings.cloudDensity);
+  const cloudWindSpeed = useSceneStore(st => st.settings.cloudWindSpeed);
+
+  useEffect(() => {
+    const cloud = createVolumetricCloudLayer({
+      coverage: cloudCoverage,
+      density: cloudDensity,
+      windSpeed: cloudWindSpeed,
+    });
+    cloudRef.current = cloud;
+    scene.add(cloud.mesh);
+    return () => {
+      scene.remove(cloud.mesh);
+      cloud.mesh.geometry.dispose();
+      (cloud.mesh.material as THREE.ShaderMaterial).dispose();
+    };
+  }, [scene]);
+
+  useEffect(() => {
+    const c = cloudRef.current;
+    if (!c) return;
+    c.setCoverage(cloudCoverage);
+    c.setDensity(cloudDensity);
+    c.setWindSpeed(cloudWindSpeed);
+  }, [cloudCoverage, cloudDensity, cloudWindSpeed]);
+
+  useFrame(({ clock }) => {
+    cloudRef.current?.update(clock.getElapsedTime());
+  });
+
+  return null;
+}
+
+function WaterLayer() {
+  const waterRef = useRef<ReturnType<typeof createWaterSystem> | null>(null);
+  const { scene } = useThree();
+  const waterLevel = useSceneStore(st => st.settings.waterLevel);
+  const waterPreset = useSceneStore(st => st.settings.waterPreset);
+
+  useEffect(() => {
+    const presetCfg = WATER_PRESETS[waterPreset] || {};
+    const water = createWaterSystem(presetCfg);
+    waterRef.current = water;
+    water.mesh.position.y = waterLevel;
+    scene.add(water.mesh);
+    return () => {
+      scene.remove(water.mesh);
+      water.mesh.geometry.dispose();
+      (water.mesh.material as THREE.ShaderMaterial).dispose();
+    };
+  }, [scene, waterPreset]);
+
+  useEffect(() => {
+    if (waterRef.current) waterRef.current.mesh.position.y = waterLevel;
+  }, [waterLevel]);
+
+  useFrame(({ clock }) => {
+    waterRef.current?.update(clock.getElapsedTime());
+  });
+
+  return null;
+}
+
+function GroundDecalManager() {
+  const decalRef = useRef<ReturnType<typeof createDecalSystem> | null>(null);
+  const { scene } = useThree();
+
+  useEffect(() => {
+    const system = createDecalSystem(scene);
+    decalRef.current = system;
+    return () => { clearDecals(system); };
+  }, [scene]);
+
+  useFrame(({ clock }) => {
+    if (decalRef.current) updateDecals(decalRef.current, clock.getDelta());
+  });
+
+  return null;
+}
+
+function TimeOfDayController() {
+  const timeOfDay = useSceneStore(st => st.settings.timeOfDay);
+  const { scene } = useThree();
+
+  useFrame(() => {
+    const tod = evaluateTimeOfDay(timeOfDay);
+    // Update scene ambient/fog based on time-of-day
+    if (scene.fog && scene.fog instanceof THREE.FogExp2) {
+      scene.fog.color.copy(tod.fogColor);
+    }
+    // Update ambient lights
+    scene.traverse(obj => {
+      if (obj instanceof THREE.AmbientLight) {
+        obj.color.copy(tod.ambientColor);
+        obj.intensity = tod.ambientIntensity * 2;
+      }
+    });
+  });
+
+  return null;
+}
+
+// ========================================================================
 // GOOGLE EARTH-STYLE — Atmospheric sky with realistic horizon
 // ========================================================================
 function SkyGradient() {
