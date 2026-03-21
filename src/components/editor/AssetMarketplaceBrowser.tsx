@@ -478,6 +478,24 @@ function MyLibraryView({
   };
 
   return (
+    <div className="space-y-3">
+      {/* Tag filter chips */}
+      <div className="flex flex-wrap gap-1.5">
+        {TAG_FILTERS.map(tf => (
+          <button
+            key={tf.label}
+            onClick={() => setTagFilter(tf.value)}
+            className={cn(
+              "px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all border",
+              tagFilter === tf.value
+                ? "bg-primary/15 text-primary border-primary/30"
+                : "bg-surface-0/50 text-muted-foreground border-border/20 hover:border-primary/20"
+            )}
+          >
+            {tf.label}
+          </button>
+        ))}
+      </div>
     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
       {filtered.map(asset => (
         <div
