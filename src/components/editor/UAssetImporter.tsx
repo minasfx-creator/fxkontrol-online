@@ -116,7 +116,7 @@ export default function UAssetImporter({ open, onOpenChange, initialFile = null 
       const aType = result.assetType;
 
       // Auto-save to library
-      const tags = [aType, h.suggestedCategory];
+      const tags: string[] = [aType as string, h.suggestedCategory as string];
       if (result.suggestedFixtureProfile) tags.push(result.suggestedFixtureProfile);
       saveToLibrary(file, {
         name: h.suggestedName,
