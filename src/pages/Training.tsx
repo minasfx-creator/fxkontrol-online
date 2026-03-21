@@ -5,7 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import {
   Gamepad2, Package, CheckCircle2, ArrowRight, Star, Lock,
   Trophy, Zap, Users, Target, BookOpen, FlaskConical, Shield,
-  Palette, AlertTriangle, Ruler, Flame, Sparkles
+  Palette, AlertTriangle, Ruler, Flame, Sparkles, History
 } from 'lucide-react';
 import TrainingSimulator from '@/components/training/TrainingSimulator';
 import { Equipment, Mission } from '@/components/training/types';
