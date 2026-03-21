@@ -2067,48 +2067,7 @@ const GlobalIlluminationController = React.forwardRef<THREE.Group, {}>(function 
   return null;
 });
 
-// ═══ VOLUMETRIC SMOKE CONTROLLER — post-burst smoke with wind drift ═══
-const SmokeController = React.forwardRef<THREE.Group, {}>(function SmokeController(_props, _ref) {
-  const smokeRef = useRef<SmokeSystem | null>(null);
-  const { scene } = useThree();
-
-  useEffect(() => {
-    const smoke = new SmokeSystem(4096);
-    smokeRef.current = smoke;
-    scene.add(smoke.mesh);
-    return () => {
-      scene.remove(smoke.mesh);
-      smokeRef.current = null;
-    };
-  }, [scene]);
-
-  useFrame((_, delta) => {
-    if (!smokeRef.current) return;
-    const smoke = smokeRef.current;
-
-    // Emit smoke for fresh bursts
-    const { timelineItems, currentTime } = useProjectStore.getState();
-    for (const item of timelineItems) {
-      const elapsed = currentTime - item.startTime;
-      if (elapsed >= 0 && elapsed < 0.05) {
-        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
-        if (effect && effect.type === 'firework') {
-          const caliber = effect.caliber || 4;
-          const breakH = getBreakHeight(caliber);
-          const origin = new THREE.Vector3(item.position.x, item.position.y + breakH, item.position.z);
-          const smokeColor = new THREE.Color(0.15, 0.14, 0.12); // warm grey smoke
-          smoke.emit(origin, Math.round(15 + caliber * 3), smokeColor, caliber * 2);
-        }
-      }
-    }
-
-    // Update with wind
-    const w = getWindForce();
-    smoke.update(delta, w[0] * 3, w[2] * 3);
-  });
-
-  return null;
-});
+// SmokeController removed — replaced by NiagaraVFXController smoke emitters
 
 // ═══ LENS FLARE CONTROLLER — cinematic optics on bright bursts ═══
 const LensFlareController = React.forwardRef<THREE.Group, {}>(function LensFlareController(_props, _ref) {
