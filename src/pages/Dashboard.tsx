@@ -525,7 +525,8 @@ export default function Dashboard() {
           {/* Enter Editor CTA */}
           <button
             onClick={() => navigate('/editor')}
-            className="w-full group relative overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-accent/5 p-4 text-center transition-all duration-300 hover:border-primary/40 hover:shadow-[0_0_30px_hsl(var(--primary)/0.1)] active:scale-[0.98] animate-fxk-fade-up"
+            className="w-full group relative overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-accent/5 p-4 text-center transition-all duration-300 hover:border-primary/40 hover:shadow-[0_0_30px_hsl(var(--primary)/0.1)] active:scale-[0.98] animate-fxk-stagger"
+            style={{ animationDelay: '0.6s' }}
           >
             <Zap className="h-5 w-5 text-primary mx-auto mb-2 group-hover:scale-110 transition-transform" />
             <p className="text-sm font-bold font-display text-foreground">Abrir Editor</p>
