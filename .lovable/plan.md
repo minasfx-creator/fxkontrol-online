@@ -1,71 +1,83 @@
 
 
-# Plan: Fix Mobile Menu + Panel Rendering + Missing Panel Routes
+# Plan: UX/UI Fixes — Missing Panel Routes, Dead Buttons, Desktop Overlay Conflict
 
 ## Issues Found
 
-### Critical: Mobile bottom tabs do nothing (4 out of 5 broken)
-**Root cause**: When MobileTabBar tabs with `panelId` (Live FX, Control, Remote, Map) are tapped:
-1. `onOpenPanel(panelId)` is called → routes to `handleTogglePanel` → sets `activePanel`
-2. `onTabChange(tab)` → sets `mobileTab` to e.g. `'remote'`
-3. `onPanelHeightChange('full')` → sets height
+### 1. Four PanelTabBar panels have no render route (clicking does nothing)
+`PanelTabBar` defines these panel IDs with clickable buttons, but `renderPanelContent()` in `Index.tsx` has NO case for them:
+- `connections` → should render `ConnectionManagerPanel`
+- `radio` → should render `RadioControlPanel`
+- `ma3` → should render `MA3ControlPanel`
+- `sacnmonitor` → should render `SACNMonitorPanel`
 
-But the `MobileFloatingPanel` children only handle `mobileTab === 'timeline' | 'assets' | 'properties' | 'more'`. The second `MobileFloatingPanel` requires `mobileTab === null`. So panel-based tabs fall through both paths → nothing renders.
+These components exist and are already imported in `LiveFiringPanel.tsx` but never wired into the main editor routing.
 
-### Critical: `controllers` and `fieldmap` panels have no render case
-`renderPanelContent()` has no entry for `activePanel === 'controllers'` or `activePanel === 'fieldmap'`. MobileTabBar routes to them but they render nothing even if the rendering bug above is fixed.
+### 2. MobileMoreMenu missing 6 panels
+`ALL_PANELS` in `MobileMoreMenu.tsx` is missing the newly added panels:
+- `bluetooth` (Bluetooth BLE)
+- `nfc` (NFC Pair)
+- `dmxoutput` (DMX Output)
+- `remotecontrol` (Remote Control)
+- `connections` (Conexões HW)
+- `radio` (Rádio USB)
 
-### Issue: `handleMobileOpenPanel` sets `mobileTab(null)` — conflicts with tab highlighting
-When `handleMobileOpenPanel` is called from `MobileMoreMenu`, it correctly sets `mobileTab(null)`. But `MobileTabBar.handleTabClick` calls `onOpenPanel` first, then `onTabChange(tab)` — however `onOpenPanel` maps to `handleTogglePanel` (line 429), NOT `handleMobileOpenPanel`. So `handleTogglePanel` just toggles `activePanel` but doesn't set `mobileTab(null)`, which is correct for tab-based panels. But `handleMobileOpenPanel` (used by MobileMoreMenu) does set `mobileTab(null)`, which blocks the second floating panel from rendering. This is actually fine for "More" submenu, but the tab-based flow is broken.
+Users on mobile tapping "More" cannot find these panels at all.
 
-### Issue: `ConnectionManagerPanel` calls `discoverModules(20)` instead of 40
-Line 128: `await fireone.discoverModules(20)` — should be 40 per the FireOne fix.
+### 3. RemoteReceiverOverlay renders TWICE on desktop
+Line 584 mounts `<RemoteReceiverOverlay />` unconditionally as a floating button. But when `activePanel === 'remotecontrol'` on desktop (line 366-370), it renders `<RemoteReceiverOverlay />` AGAIN inside the panel. Two overlapping instances, both creating sessions. Remove the always-mounted instance and only show it via the panel system.
 
-### Issue: `RemoteReceiverOverlay` only on desktop, no way to open it from panel
-The overlay is always mounted on desktop (line 572) but it's a small floating button. If user opens `remotecontrol` panel on desktop, they get the mobile controller panel (meant for mobile), not the receiver. Need to show receiver-appropriate UI on desktop.
+### 4. `VirtualControllerHub` and `FieldMap2D` missing `onClose` prop
+Lines 371-372 render `<VirtualControllerHub />` and `<FieldMap2D />` without `onClose`, but every other panel passes `onClose`. These components accept an `fs` prop but not `onClose` in their interfaces. The panel has no close button, trapping users.
 
 ## Changes
 
-### 1. `src/pages/Index.tsx` — Fix mobile panel rendering (CRITICAL)
+### 1. `src/pages/Index.tsx` — Add 4 missing panel render cases + fix overlay duplication
 
-Add fallback in the first `MobileFloatingPanel` for panel-based tabs:
+Add imports:
 ```tsx
-{mobileTab === 'timeline' && <Timeline />}
-{mobileTab === 'assets' && <EffectLibrary />}
-{mobileTab === 'properties' && <PropertiesPanel />}
-{mobileTab === 'more' && <MobileMoreMenu onSelectPanel={handleMobileOpenPanel} />}
-{/* Panel-based tabs (livefx, controllers, remote, fieldmap) */}
-{mobileTab && !['timeline','assets','properties','more'].includes(mobileTab) && activePanel && (
-  <div className="h-full overflow-y-auto">{renderPanelContent()}</div>
-)}
+import ConnectionManagerPanel from '@/components/editor/ConnectionManagerPanel';
+import RadioControlPanel from '@/components/editor/RadioControlPanel';
+import MA3ControlPanel from '@/components/editor/MA3ControlPanel';
+import SACNMonitorPanel from '@/components/editor/SACNMonitorPanel';
 ```
 
-Add missing panel entries to `renderPanelContent()`:
-- `controllers` → render `VirtualControllerHub` (already imported? check) or `ConnectionManagerPanel`
-- `fieldmap` → render `FieldMap2D`
-
-### 2. `src/pages/Index.tsx` — Add missing panel imports and render cases
-
 Add to `renderPanelContent()`:
+```tsx
+{activePanel === 'connections' && <ConnectionManagerPanel />}
+{activePanel === 'radio' && <RadioControlPanel onClose={() => setActivePanel(null)} />}
+{activePanel === 'ma3' && <MA3ControlPanel onClose={() => setActivePanel(null)} />}
+{activePanel === 'sacnmonitor' && <SACNMonitorPanel onClose={() => setActivePanel(null)} />}
+```
+
+Remove the always-mounted `<RemoteReceiverOverlay />` from line 584 (desktop layout bottom). It's already accessible via the `remotecontrol` panel.
+
+### 2. `src/components/editor/MobileMoreMenu.tsx` — Add 6 missing panels
+
+Add to `ALL_PANELS` array in the appropriate sections:
+- Conexões section: `bluetooth`, `nfc`, `dmxoutput`, `remotecontrol`, `connections`, `radio`
+
+### 3. `src/components/editor/VirtualControllerHub.tsx` — Accept onClose prop
+
+Add `onClose?: () => void` to props interface and render a close button in the header.
+
+### 4. `src/components/editor/FieldMap2D.tsx` — Accept onClose prop  
+
+Add `onClose?: () => void` to props interface and render a close button in the header.
+
+### 5. `src/pages/Index.tsx` — Pass onClose to VirtualControllerHub and FieldMap2D
+
 ```tsx
 {activePanel === 'controllers' && <VirtualControllerHub onClose={() => setActivePanel(null)} />}
 {activePanel === 'fieldmap' && <FieldMap2D onClose={() => setActivePanel(null)} />}
 ```
 
-Import `VirtualControllerHub` and `FieldMap2D` at top.
-
-### 3. `src/components/editor/ConnectionManagerPanel.tsx` — Fix discoverModules(20) → 40
-
-Line 128: change `discoverModules(20)` to `discoverModules(40)`.
-
-### 4. `src/pages/Index.tsx` — Desktop `remotecontrol` panel should show receiver info
-
-When `activePanel === 'remotecontrol'` on desktop, show a combined view: the `RemoteReceiverOverlay` session start inline, not the mobile controller. Add a wrapper that detects `isMobile` and renders `RemoteControlPanel` on mobile, receiver UI on desktop.
-
 ## Files Summary
 
 | File | Change |
 |------|--------|
-| `src/pages/Index.tsx` | Fix mobile floating panel fallback, add controllers/fieldmap render cases, desktop remote panel logic |
-| `src/components/editor/ConnectionManagerPanel.tsx` | Fix discoverModules(20) → 40 |
+| `src/pages/Index.tsx` | Add 4 missing panel routes, remove duplicate overlay, pass onClose to 2 panels |
+| `src/components/editor/MobileMoreMenu.tsx` | Add 6 missing panel entries |
+| `src/components/editor/VirtualControllerHub.tsx` | Add onClose prop + close button |
+| `src/components/editor/FieldMap2D.tsx` | Add onClose prop + close button |
 
