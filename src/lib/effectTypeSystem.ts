@@ -9,7 +9,8 @@ export type PyroEffectType =
   | 'fan' | 'gerb' | 'flame' | 'strobe' | 'waterfall'
   | 'crossette' | 'tourbillon' | 'salute' | 'cryo' | 'confetti' | 'laser'
   | 'sparkle_pot' | 'set_piece' | 'lance' | 'wheel'
-  | 'sparkular' | 'fog_low' | 'streamer';
+  | 'sparkular' | 'fog_low' | 'streamer'
+  | 'bengal' | 'rocket' | 'firecracker_string' | 'saxon' | 'parachute_flare';
 
 export interface PyroEffectSpec {
   type: PyroEffectType;
