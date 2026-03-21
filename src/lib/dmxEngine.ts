@@ -111,7 +111,7 @@ export const DMX_ATTRIBUTE_LIBRARY: Record<string, DMXAttributeDefinition> = {
 export interface DMXFixtureProfile {
   name: string;
   manufacturer: string;
-  category: 'moving-head' | 'led-bar' | 'strobe' | 'laser' | 'sfx' | 'drone' | 'wash' | 'spot' | 'beam';
+  category: 'moving-head' | 'led-bar' | 'strobe' | 'laser' | 'sfx' | 'drone' | 'wash' | 'spot' | 'beam' | 'matrix' | 'toner' | 'audience';
   attributes: string[];   // keys from DMX_ATTRIBUTE_LIBRARY
   channelCount: number;
 }
