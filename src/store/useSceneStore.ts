@@ -305,6 +305,19 @@ const DEFAULT_SETTINGS: SceneSettings = {
   heatDistortionEnabled: false,
   smokeRenderQuality: 'low',
   ribbonTrails: false,
+
+  // Environment v2 defaults
+  skyEngineV2: false,
+  cloudCoverage: 0.1,
+  cloudDensity: 0.5,
+  cloudWindSpeed: 8,
+  waterEnabled: false,
+  waterLevel: -0.5,
+  waterPreset: 'lake',
+  timeOfDay: 21.5,
+  timeOfDayEnabled: false,
+  decalsEnabled: true,
+  niagaraFluidsEnabled: false,
 };
 
 export const SCENE_PRESETS: Record<string, { name: string; description: string; settings: Partial<SceneSettings> }> = {
