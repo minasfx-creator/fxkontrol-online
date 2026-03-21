@@ -1,11 +1,29 @@
 
-# Plan: UE5.7 Niagara Parity — COMPLETED ✅
+# Plan: Complete Niagara Integration — COMPLETED ✅
 
 ## Implemented
 
-1. **`niagaraSpawnShapes.ts`** — 9 spawn shapes (point, sphere, hemisphere, cone, box, torus, ring, cylinder, mesh-surface) with uniform sampling
-2. **`niagaraDataInterfaces.ts`** — Curve, Mesh (area-weighted), Texture, Skeletal data interfaces
-3. **`niagaraForceModules.ts`** — PointAttractor, Vortex, Orbit, Wind, KillZone, Collision (ground bounce + friction)
-4. **`niagaraEmitterSystem.ts`** — Enhanced with spawn shapes, force modules, data interfaces, custom particle attributes, sub-emitter spawning, warmup/pre-simulation, emitter inheritance via templates, 4 new presets (Fireball, Comet, Vortex, Debris)
-5. **`niagaraBlenderRules.ts`** — 5 scalability groups (cinematic, high, medium, low, mobile) with `applyScalability()`
-6. **`render_ultra/index.ts`** — All new modules exported
+1. **Legacy Controller Removal** — Removed `SmokeController` and `SparkTrailController` from SkyCanvas, eliminating duplicate particles
+2. **NiagaraVFXController Enhanced** — Wired soft-particle material (depth-fade), ribbon trails (comet/willow), heat haze emitter (caliber ≥6"), sub-emitter spawning (ember on spark death), thermal color evolution
+3. **CometEffect → Niagara Ribbon** — Replaced hand-rolled trail with `RibbonTrail` from ribbonTrailRenderer, keeping spark detach and muzzle flash
+4. **GerbEffect → Niagara Emitter** — Replaced manual particle arrays with `NiagaraSystem` using cone spawn shape + collision module
+5. **SmokeTrail → Niagara Smoke Emitter** — Replaced manual smoke with `NiagaraSystem` using sphere spawn, curl noise turbulence, negative gravity, soft-particle config
+
+## Architecture
+
+```text
+SkyCanvas
+  ├─ NiagaraVFXController (central burst VFX)
+  │    ├─ SparkEmitter (velocity stretch + sub-emitter on death)
+  │    ├─ SmokeEmitter (soft particles + curl noise)
+  │    ├─ EmberEmitter (collision + bounce)
+  │    ├─ RibbonTrail (comet/willow patterns)
+  │    └─ HeatHazeEmitter (distortion, caliber ≥ 6)
+  │
+  ├─ CometEffect → RibbonTrail + detach sparks
+  ├─ GerbEffect → NiagaraSystem (cone spawn + collision)
+  ├─ SmokeTrail → NiagaraSystem (sphere spawn + curl noise)
+  │
+  ├─ LensFlareController (kept — complementary)
+  └─ [other effects unchanged]
+```
