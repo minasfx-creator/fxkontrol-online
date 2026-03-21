@@ -5,12 +5,135 @@ import * as THREE from 'three';
 import { useProjectStore, type Position } from '@/store/useProjectStore';
 import { useUndoStore } from '@/store/useUndoStore';
 
-const ARROW_LENGTH = 4;
-const TRAJECTORY_POINTS = 30;
+const ARROW_LENGTH = 3.5;
+const PITCH_ARC_RADIUS = 2.2;
+const HEADING_ARC_RADIUS = 1.8;
+const TRAJECTORY_POINTS = 40;
+
+/* ─── Finale 3D Colors ─── */
+const COLORS = {
+  arrow: '#4FC3F7',        // Launch direction
+  arrowActive: '#81D4FA',
+  pitchArc: '#FF8A65',     // Pitch arc orange
+  headingArc: '#4FC3F7',   // Heading arc blue
+  trajectory: '#FFD54F',   // Predicted trajectory
+  handle: '#FFFFFF',
+  handleActive: '#FFD54F',
+  handleHover: '#81D4FA',
+  grid: '#4FC3F7',
+  label: '#B0BEC5',
+  labelValue: '#FFFFFF',
+};
 
 /**
- * LaunchAngleGizmo: Draggable arc handle for heading/pitch.
- * In batch mode, dragging one handle applies the same delta to all selected positions.
+ * PitchArcGizmo: Finale-style pitch arc visualization.
+ * Shows a curved arc from vertical (90°) to current pitch angle.
+ */
+function PitchArc({ heading, pitch }: { heading: number; pitch: number }) {
+  const points = useMemo(() => {
+    const pts: [number, number, number][] = [];
+    const hRad = heading * (Math.PI / 180);
+    const startAngle = Math.PI / 2; // 90° vertical
+    const endAngle = pitch * (Math.PI / 180);
+    const steps = 20;
+
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const angle = startAngle + (endAngle - startAngle) * t;
+      const r = PITCH_ARC_RADIUS;
+      pts.push([
+        Math.sin(hRad) * Math.cos(angle) * r,
+        Math.sin(angle) * r,
+        -Math.cos(hRad) * Math.cos(angle) * r,
+      ]);
+    }
+    return pts;
+  }, [heading, pitch]);
+
+  if (points.length < 2) return null;
+
+  return (
+    <Line
+      points={points}
+      color={COLORS.pitchArc}
+      lineWidth={2}
+      transparent
+      opacity={0.7}
+    />
+  );
+}
+
+/**
+ * HeadingCompassArc: Shows a ground-level arc from North (0°) to heading.
+ * Finale 3D style — thin dashed circle with heading tick.
+ */
+function HeadingCompass({ heading }: { heading: number }) {
+  const compassCircle = useMemo(() => {
+    const pts: [number, number, number][] = [];
+    const r = HEADING_ARC_RADIUS;
+    for (let i = 0; i <= 64; i++) {
+      const angle = (i / 64) * Math.PI * 2;
+      pts.push([Math.sin(angle) * r, 0.02, -Math.cos(angle) * r]);
+    }
+    return pts;
+  }, []);
+
+  const headingTick = useMemo(() => {
+    const hRad = heading * (Math.PI / 180);
+    const r = HEADING_ARC_RADIUS;
+    const inner = r * 0.85;
+    const outer = r * 1.15;
+    return [
+      [Math.sin(hRad) * inner, 0.02, -Math.cos(hRad) * inner] as [number, number, number],
+      [Math.sin(hRad) * outer, 0.02, -Math.cos(hRad) * outer] as [number, number, number],
+    ];
+  }, [heading]);
+
+  // North indicator
+  const northTick = useMemo(() => {
+    const r = HEADING_ARC_RADIUS;
+    return [
+      [0, 0.02, -(r * 0.85)] as [number, number, number],
+      [0, 0.02, -(r * 1.15)] as [number, number, number],
+    ];
+  }, []);
+
+  // Heading arc from 0 to heading
+  const headingArc = useMemo(() => {
+    const pts: [number, number, number][] = [];
+    const r = HEADING_ARC_RADIUS * 0.95;
+    const hRad = heading * (Math.PI / 180);
+    const steps = Math.max(2, Math.abs(Math.round(heading / 5)));
+    for (let i = 0; i <= steps; i++) {
+      const angle = (i / steps) * hRad;
+      pts.push([Math.sin(angle) * r, 0.03, -Math.cos(angle) * r]);
+    }
+    return pts;
+  }, [heading]);
+
+  return (
+    <group>
+      {/* Full compass circle */}
+      <Line points={compassCircle} color={COLORS.grid} lineWidth={0.8} transparent opacity={0.15} />
+      {/* North tick */}
+      <Line points={northTick} color="#EF5350" lineWidth={2} transparent opacity={0.5} />
+      {/* Heading tick */}
+      <Line points={headingTick} color={COLORS.headingArc} lineWidth={2.5} transparent opacity={0.8} />
+      {/* Arc sweep */}
+      {headingArc.length >= 2 && (
+        <Line points={headingArc} color={COLORS.headingArc} lineWidth={1.8} transparent opacity={0.5} />
+      )}
+    </group>
+  );
+}
+
+/**
+ * LaunchAngleGizmo: Finale 3D-style heading/pitch editing.
+ * - Direction arrow with conical tip
+ * - Pitch arc from 90° to current angle
+ * - Heading compass ring on the ground
+ * - Draggable tip handle
+ * - Professional label: H: xxx° P: xxx°
  */
 const LaunchAngleGizmo = forwardRef<THREE.Group, {
   position: Position;
@@ -28,6 +151,7 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
   const heading = position.heading * (Math.PI / 180);
   const pitch = Math.max(5, Math.min(85, position.pitch || 85)) * (Math.PI / 180);
 
+  // Arrow tip position
   const handlePos = useMemo((): [number, number, number] => {
     const r = ARROW_LENGTH;
     return [
@@ -37,9 +161,25 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
     ];
   }, [heading, pitch]);
 
+  // Arrow shaft segments for a tapered look
+  const arrowShaftPoints = useMemo((): [number, number, number][] => {
+    const pts: [number, number, number][] = [];
+    const steps = 8;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      pts.push([
+        handlePos[0] * t,
+        handlePos[1] * t,
+        handlePos[2] * t,
+      ]);
+    }
+    return pts;
+  }, [handlePos]);
+
+  // Ballistic trajectory preview
   const trajectoryPoints = useMemo(() => {
     const pts: [number, number, number][] = [];
-    const v0 = 40 + (position.pitch || 85) * 0.5;
+    const v0 = 35 + (position.pitch || 85) * 0.6;
     const hRad = heading;
     const pRad = pitch;
     const vx = Math.sin(hRad) * Math.cos(pRad) * v0;
@@ -47,27 +187,23 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
     const vz = -Math.cos(hRad) * Math.cos(pRad) * v0;
 
     for (let i = 0; i < TRAJECTORY_POINTS; i++) {
-      const t = (i / TRAJECTORY_POINTS) * 3;
-      const x = vx * t * 0.04;
-      const y = Math.max(0, vy * t * 0.04 + 0.5 * -9.81 * t * t * 0.0016);
-      const z = vz * t * 0.04;
+      const t = (i / TRAJECTORY_POINTS) * 3.5;
+      const x = vx * t * 0.035;
+      const y = Math.max(0, vy * t * 0.035 + 0.5 * -9.81 * t * t * 0.0012);
+      const z = vz * t * 0.035;
       pts.push([x, y, z]);
-      if (y <= 0 && i > 2) break;
+      if (y <= 0 && i > 3) break;
     }
     return pts;
   }, [heading, pitch, position.pitch]);
 
-  const dirLinePoints = useMemo((): [number, number, number][] => {
-    return [[0, 0, 0], handlePos];
-  }, [handlePos]);
-
+  // Pointer events
   const onPointerDown = useCallback((e: any) => {
     e.stopPropagation();
     useUndoStore.getState().checkpoint();
     setIsDragging(true);
     dragStartRef.current = { heading: position.heading, pitch: position.pitch || 85 };
 
-    // Store batch start angles
     if (batchMode && selectedIds) {
       const store = useProjectStore.getState();
       const map = new Map<string, { heading: number; pitch: number }>();
@@ -77,7 +213,6 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
       });
       batchStartRef.current = map;
     }
-
     (gl.domElement as HTMLElement).style.cursor = 'grabbing';
   }, [gl, position, batchMode, selectedIds]);
 
@@ -102,10 +237,8 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
       const newPitch = Math.max(5, Math.min(85, Math.asin(Math.max(0, dir.y)) * (180 / Math.PI)));
 
       if (batchMode && selectedIds && dragStartRef.current) {
-        // Apply delta to all selected positions
         const dHeading = newHeading - dragStartRef.current.heading;
         const dPitch = newPitch - dragStartRef.current.pitch;
-
         selectedIds.forEach(id => {
           const start = batchStartRef.current.get(id);
           if (start) {
@@ -134,17 +267,49 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
     };
   }, [isDragging, position, updatePosition, camera, raycaster, gl, batchMode, selectedIds]);
 
+  const handleColor = isDragging ? COLORS.handleActive : isHovered ? COLORS.handleHover : COLORS.handle;
+  const handleSize = isDragging ? 0.22 : isHovered ? 0.2 : 0.15;
+
   return (
     <group ref={ref} position={[position.x, position.y, position.z]}>
-      {/* Launch direction line */}
-      <Line points={dirLinePoints} color="#FF6B35" lineWidth={2} transparent opacity={0.7} />
+      {/* Heading compass ring on ground */}
+      <HeadingCompass heading={position.heading} />
 
-      {/* Trajectory arc */}
+      {/* Pitch arc */}
+      <PitchArc heading={position.heading} pitch={position.pitch || 85} />
+
+      {/* Launch direction arrow shaft */}
+      <Line points={arrowShaftPoints} color={COLORS.arrow} lineWidth={2.5} transparent opacity={0.85} />
+
+      {/* Ballistic trajectory preview */}
       {trajectoryPoints.length > 1 && (
-        <Line points={trajectoryPoints} color="#FF9955" lineWidth={1} dashed dashSize={0.3} gapSize={0.15} transparent opacity={0.5} />
+        <Line
+          points={trajectoryPoints}
+          color={COLORS.trajectory}
+          lineWidth={1}
+          dashed
+          dashSize={0.25}
+          gapSize={0.12}
+          transparent
+          opacity={0.4}
+        />
       )}
 
-      {/* Draggable handle sphere */}
+      {/* Arrow cone tip */}
+      <mesh
+        position={handlePos}
+        rotation={(() => {
+          const dir = new THREE.Vector3(...handlePos).normalize();
+          const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+          const e = new THREE.Euler().setFromQuaternion(q);
+          return [e.x, e.y, e.z] as [number, number, number];
+        })()}
+      >
+        <coneGeometry args={[0.08, 0.25, 6]} />
+        <meshBasicMaterial color={COLORS.arrow} transparent opacity={0.8} />
+      </mesh>
+
+      {/* Draggable handle sphere at tip */}
       <mesh
         ref={handleRef}
         position={handlePos}
@@ -152,26 +317,64 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
         onPointerOver={() => { setIsHovered(true); (gl.domElement as HTMLElement).style.cursor = 'grab'; }}
         onPointerOut={() => { setIsHovered(false); if (!isDragging) (gl.domElement as HTMLElement).style.cursor = ''; }}
       >
-        <sphereGeometry args={[isHovered || isDragging ? 0.25 : 0.18, 12, 12]} />
+        <sphereGeometry args={[handleSize, 12, 12]} />
         <meshBasicMaterial
-          color={isDragging ? '#FFAA44' : '#FF6B35'}
+          color={handleColor}
           transparent
-          opacity={0.9}
-          blending={THREE.AdditiveBlending}
+          opacity={isDragging ? 1.0 : 0.7}
         />
       </mesh>
 
-      {/* Angle label */}
-      <Html position={[handlePos[0] + 0.3, handlePos[1] + 0.3, handlePos[2]]} center>
-        <div className="px-1.5 py-0.5 rounded text-[8px] font-mono whitespace-nowrap select-none"
+      {/* Outer glow ring on handle when active */}
+      {(isDragging || isHovered) && (
+        <mesh position={handlePos}>
+          <ringGeometry args={[handleSize + 0.05, handleSize + 0.12, 16]} />
+          <meshBasicMaterial
+            color={COLORS.handleActive}
+            transparent
+            opacity={0.3}
+            side={THREE.DoubleSide}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+      )}
+
+      {/* Finale 3D-style label: position name + H/P values */}
+      <Html
+        position={[handlePos[0] * 1.15 + 0.4, handlePos[1] * 1.15 + 0.5, handlePos[2] * 1.15]}
+        center
+        occlude
+        distanceFactor={10}
+      >
+        <div
+          className="select-none pointer-events-none"
           style={{
-            backgroundColor: 'rgba(0,0,0,0.7)',
-            color: '#FF9955',
-            border: '1px solid rgba(255,153,85,0.4)',
-            pointerEvents: 'none',
+            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+            fontSize: '10px',
+            lineHeight: '1.3',
+            background: 'rgba(13, 17, 23, 0.92)',
+            border: '1px solid rgba(79, 195, 247, 0.3)',
+            borderRadius: '3px',
+            padding: '3px 6px',
+            whiteSpace: 'nowrap',
+            color: COLORS.label,
+            backdropFilter: 'blur(4px)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
           }}
         >
-          {Math.round(position.pitch || 85)}° / {Math.round(position.heading)}°
+          <div style={{ fontWeight: 700, color: COLORS.labelValue, fontSize: '9px', marginBottom: '1px' }}>
+            {position.name}
+          </div>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <span>
+              <span style={{ color: COLORS.headingArc, fontWeight: 600 }}>H</span>
+              <span style={{ color: COLORS.labelValue }}>{Math.round(position.heading)}°</span>
+            </span>
+            <span>
+              <span style={{ color: COLORS.pitchArc, fontWeight: 600 }}>P</span>
+              <span style={{ color: COLORS.labelValue }}>{Math.round(position.pitch || 85)}°</span>
+            </span>
+          </div>
         </div>
       </Html>
     </group>
@@ -180,13 +383,13 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
 LaunchAngleGizmo.displayName = 'LaunchAngleGizmo';
 
 /**
- * AngleFanArc: Visual arc showing the heading spread of selected positions.
+ * AngleFanArc: Finale-style fan showing heading spread for batch selection.
+ * Solid filled wedge instead of just a line.
  */
 function AngleFanArc({ positions }: { positions: Position[] }) {
   const arcPoints = useMemo(() => {
     if (positions.length < 2) return null;
 
-    // Find centroid
     const cx = positions.reduce((s, p) => s + p.x, 0) / positions.length;
     const cz = positions.reduce((s, p) => s + p.z, 0) / positions.length;
     const cy = positions.reduce((s, p) => s + p.y, 0) / positions.length;
@@ -196,19 +399,19 @@ function AngleFanArc({ positions }: { positions: Position[] }) {
     const maxH = Math.max(...headings) * (Math.PI / 180);
     const avgPitch = (positions.reduce((s, p) => s + (p.pitch || 85), 0) / positions.length) * (Math.PI / 180);
 
-    const r = 3;
-    const steps = 24;
-    const pts: [number, number, number][] = [[cx, cy, cz]];
+    const r = 3.5;
+    const steps = 32;
+    const pts: [number, number, number][] = [[cx, cy + 0.05, cz]];
 
     for (let i = 0; i <= steps; i++) {
       const angle = minH + (maxH - minH) * (i / steps);
       pts.push([
         cx + Math.sin(angle) * Math.cos(avgPitch) * r,
-        cy + Math.sin(avgPitch) * r * 0.5,
+        cy + Math.sin(avgPitch) * r * 0.3 + 0.05,
         cz - Math.cos(angle) * Math.cos(avgPitch) * r,
       ]);
     }
-    pts.push([cx, cy, cz]);
+    pts.push([cx, cy + 0.05, cz]);
 
     return pts;
   }, [positions]);
@@ -218,11 +421,66 @@ function AngleFanArc({ positions }: { positions: Position[] }) {
   return (
     <Line
       points={arcPoints}
-      color="#FF6B35"
+      color={COLORS.headingArc}
       lineWidth={1.5}
       transparent
-      opacity={0.3}
+      opacity={0.25}
     />
+  );
+}
+
+/**
+ * BatchAngleLabel: Shows aggregate stats for batch selection.
+ */
+function BatchAngleLabel({ positions }: { positions: Position[] }) {
+  const center = useMemo(() => {
+    const cx = positions.reduce((s, p) => s + p.x, 0) / positions.length;
+    const cy = positions.reduce((s, p) => s + p.y, 0) / positions.length;
+    const cz = positions.reduce((s, p) => s + p.z, 0) / positions.length;
+    return [cx, cy + 2, cz] as [number, number, number];
+  }, [positions]);
+
+  const stats = useMemo(() => {
+    const hs = positions.map(p => p.heading);
+    const ps = positions.map(p => p.pitch || 85);
+    return {
+      hMin: Math.round(Math.min(...hs)),
+      hMax: Math.round(Math.max(...hs)),
+      pMin: Math.round(Math.min(...ps)),
+      pMax: Math.round(Math.max(...ps)),
+      count: positions.length,
+    };
+  }, [positions]);
+
+  return (
+    <Html position={center} center distanceFactor={12}>
+      <div
+        className="select-none pointer-events-none"
+        style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: '9px',
+          lineHeight: '1.3',
+          background: 'rgba(13, 17, 23, 0.95)',
+          border: '1px solid rgba(255, 213, 79, 0.4)',
+          borderRadius: '3px',
+          padding: '3px 6px',
+          whiteSpace: 'nowrap',
+          color: COLORS.label,
+        }}
+      >
+        <div style={{ fontWeight: 700, color: COLORS.handleActive, fontSize: '8px' }}>
+          BATCH × {stats.count}
+        </div>
+        <div style={{ display: 'flex', gap: '4px' }}>
+          <span style={{ color: COLORS.headingArc }}>H</span>
+          <span style={{ color: COLORS.labelValue }}>{stats.hMin}°–{stats.hMax}°</span>
+        </div>
+        <div style={{ display: 'flex', gap: '4px' }}>
+          <span style={{ color: COLORS.pitchArc }}>P</span>
+          <span style={{ color: COLORS.labelValue }}>{stats.pMin}°–{stats.pMax}°</span>
+        </div>
+      </div>
+    </Html>
   );
 }
 
@@ -234,8 +492,6 @@ export default function PyroLaunchAngles() {
 
   const isAngleMode = editorMode === 'adjust-angles';
 
-  // In adjust-angles mode: show gizmos for ALL selected positions
-  // In normal mode: show gizmo only for individually selected positions
   const visiblePositions = isAngleMode
     ? (selectedIds.length > 0 ? pyroPositions.filter(p => selectedIds.includes(p.id)) : pyroPositions)
     : pyroPositions.filter(p => selectedIds.includes(p.id));
@@ -266,9 +522,12 @@ export default function PyroLaunchAngles() {
           selectedIds={selectedIds}
         />
       ))}
-      {/* Fan arc showing heading spread for batch selection */}
+      {/* Fan arc + batch label for multi-selection */}
       {isBatch && selectedPyroPositions.length > 1 && (
-        <AngleFanArc positions={selectedPyroPositions} />
+        <>
+          <AngleFanArc positions={selectedPyroPositions} />
+          <BatchAngleLabel positions={selectedPyroPositions} />
+        </>
       )}
     </>
   );
