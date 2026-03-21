@@ -35,6 +35,8 @@ export default function MVRImporter({ open, onOpenChange, initialFile }: Props) 
   const [loading, setLoading] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { saveToLibrary } = useMyLibrary();
+  const [currentFile, setCurrentFile] = useState<File | null>(null);
 
   const handleFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
