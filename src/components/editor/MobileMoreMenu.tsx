@@ -14,7 +14,8 @@ import {
   Radar, CircuitBoard, Lightbulb, ShieldCheck, Battery, Warehouse,
   BookOpen, Layers, Eye, Camera, Share2, MessageSquare,
   Atom, Volume2, Cog, Settings2, Globe, MapPin, Plane,
-  Search, ListMusic, FileSignature, Wallet, MonitorPlay, Target
+  Search, ListMusic, FileSignature, Wallet, MonitorPlay, Target,
+  Bluetooth, Smartphone, Nfc
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PanelId } from '@/components/editor/PanelTabBar';
@@ -70,6 +71,12 @@ const ALL_PANELS: PanelItem[] = [
   { id: 'lasercontrol', label: 'Laser', icon: Zap, section: 'Conexões' },
   { id: 'livefiring', label: 'Live SFX', icon: Sparkles, section: 'Conexões' },
   { id: 'mobilelink', label: 'Mobile Link', icon: Cable, section: 'Conexões' },
+  { id: 'bluetooth', label: 'Bluetooth BLE', icon: Bluetooth, section: 'Conexões' },
+  { id: 'nfc', label: 'NFC Pair', icon: Nfc, section: 'Conexões' },
+  { id: 'dmxoutput', label: 'DMX Output', icon: ScanLine, section: 'Conexões' },
+  { id: 'remotecontrol', label: 'Remote Control', icon: Smartphone, section: 'Conexões' },
+  { id: 'connections', label: 'Conexões HW', icon: Cable, section: 'Conexões' },
+  { id: 'radio', label: 'Rádio USB', icon: Radio, section: 'Conexões' },
 
   { id: 'fleet', label: 'Frota', icon: Radar, section: 'Drones' },
   { id: 'takeoffgrid', label: 'Grid', icon: Grid3X3, section: 'Drones' },

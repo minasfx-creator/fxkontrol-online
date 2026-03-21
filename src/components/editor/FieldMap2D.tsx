@@ -26,9 +26,10 @@ interface ModulePosition {
 
 interface FieldMap2DProps {
   fs?: boolean;
+  onClose?: () => void;
 }
 
-export default function FieldMap2D({ fs = false }: FieldMap2DProps) {
+export default function FieldMap2D({ fs = false, onClose }: FieldMap2DProps) {
   const isMobile = useIsMobile();
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();
@@ -364,6 +365,12 @@ export default function FieldMap2D({ fs = false }: FieldMap2DProps) {
       {/* Toolbar */}
       <div className={cn("flex items-center gap-2 border-b border-border/15 flex-wrap", fs ? "px-4 py-2" : "px-2 py-1.5")} style={{ background: 'hsl(220 15% 8%)' }}>
         <span className={cn("font-black uppercase tracking-wider text-foreground", fs ? "text-xs" : "text-[10px]")}>Field Map</span>
+        {onClose && (
+          <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={onClose}>
+            <span className="sr-only">Fechar</span>
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </Button>
+        )}
         <div className="flex-1" />
         
         <div className="flex items-center gap-1.5">

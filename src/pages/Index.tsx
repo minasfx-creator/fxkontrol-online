@@ -93,6 +93,10 @@ import NFCPairPanel from '@/components/editor/NFCPairPanel';
 import DMXOutputPanel from '@/components/editor/DMXOutputPanel';
 import RemoteControlPanel from '@/components/editor/RemoteControlPanel';
 import RemoteReceiverOverlay from '@/components/editor/RemoteReceiverOverlay';
+import ConnectionManagerPanel from '@/components/editor/ConnectionManagerPanel';
+import RadioControlPanel from '@/components/editor/RadioControlPanel';
+import MA3ControlPanel from '@/components/editor/MA3ControlPanel';
+import SACNMonitorPanel from '@/components/editor/SACNMonitorPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
@@ -368,8 +372,12 @@ function Index() {
             ? <RemoteControlPanel onClose={() => setActivePanel(null)} />
             : <RemoteReceiverOverlay onOpenPanel={(id) => handleTogglePanel(id as PanelId)} />
         )}
-        {activePanel === 'controllers' && <VirtualControllerHub />}
-        {activePanel === 'fieldmap' && <FieldMap2D />}
+        {activePanel === 'controllers' && <VirtualControllerHub onClose={() => setActivePanel(null)} />}
+        {activePanel === 'fieldmap' && <FieldMap2D onClose={() => setActivePanel(null)} />}
+        {activePanel === 'connections' && <ConnectionManagerPanel />}
+        {activePanel === 'radio' && <RadioControlPanel />}
+        {activePanel === 'ma3' && <MA3ControlPanel />}
+        {activePanel === 'sacnmonitor' && <SACNMonitorPanel />}
       </>
     );
   };
@@ -581,7 +589,7 @@ function Index() {
         <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />
       )}
       <PositionContextMenu />
-      <RemoteReceiverOverlay onOpenPanel={(id) => handleTogglePanel(id as PanelId)} />
+      {/* RemoteReceiverOverlay accessed via remotecontrol panel */}
     </div>
   );
 }
