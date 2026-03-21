@@ -754,6 +754,34 @@ function TimelineEffects() {
         }
       }
 
+      // ── VDL enrichment: parse VDL string on any effect that has one ──
+      if (effect && effect.vdl && !item.effectId.startsWith('vdl-')) {
+        const parsed = parseVDL(effect.vdl);
+        if (parsed.valid) {
+          // Merge VDL-derived physics onto effect without losing existing props
+          const vdlDerived = vdlToEffect(parsed);
+          effect = {
+            ...effect,
+            caliber: vdlDerived.caliber || effect.caliber,
+            heightMeters: vdlDerived.heightMeters || effect.heightMeters,
+            prefire: vdlDerived.prefire ?? effect.prefire,
+            partType: (vdlDerived.partType || effect.partType) as (typeof EFFECT_LIBRARY)[number]['partType'],
+            pattern: vdlDerived.pattern || effect.pattern,
+            shotCount: vdlDerived.shotCount || effect.shotCount,
+            angleOffset: vdlDerived.angleOffset ?? effect.angleOffset,
+            trailType: vdlDerived.trailType || effect.trailType,
+            noTrail: vdlDerived.noTrail ?? effect.noTrail,
+            secondaryColor: vdlDerived.secondaryColor || effect.secondaryColor,
+            colorTransition: vdlDerived.colorTransition || effect.colorTransition,
+            hasPistil: vdlDerived.hasPistil ?? effect.hasPistil,
+            pistilColor: vdlDerived.pistilColor || effect.pistilColor,
+            firingPattern: vdlDerived.firingPattern || effect.firingPattern,
+            impliesTrail: vdlDerived.impliesTrail ?? effect.impliesTrail,
+            niagaraProfile: vdlDerived.niagaraProfile || effect.niagaraProfile,
+          } as typeof effect;
+        }
+      }
+
       if (!effect) return null;
 
       // ── Resolve position from linked pyropoint ──
@@ -769,20 +797,26 @@ function TimelineEffects() {
         }
       }
 
-      // ── Real physics: caliber-based heights ──
+      // ── Type-aware physics (Finale 3D Manual Table 2) ──
       const caliber = effect.caliber || 4;
-      const isShellType = effect.partType === 'shell' || effect.partType === 'single_shot' || effect.type === 'firework';
-      const prefireDuration = isShellType ? (effect.prefire || getLiftTime(caliber)) : 0;
+      const partType = (effect.partType || 'shell') as FinalePartType;
+      const isShellType = partType === 'shell' || partType === 'single_shot' || partType === 'rocket';
+      const isCakeType = partType === 'cake' || partType === 'candle';
+      const isGroundType = partType === 'gerb' || partType === 'waterfall' || partType === 'flame' || partType === 'fan' || partType === 'ground' || partType === 'sfx' || partType === 'light';
+
+      // Use Finale-compliant typed prefire/duration
+      const prefireDuration = getTypedPrefire(partType, caliber, effect.prefire);
+      const typedDuration = getTypedDuration(partType, caliber, effect.duration, effect.shotCount);
       // Weather affects duration: rain shortens, humidity shortens
-      const weatherDuration = effect.duration * weatherDampening * humidityFactor;
-      const totalDuration = prefireDuration + weatherDuration;
+      const weatherDuration = typedDuration * weatherDampening * humidityFactor;
+      const totalDuration = (isShellType ? prefireDuration : 0) + weatherDuration;
 
       if (currentTime < item.startTime || currentTime > item.startTime + totalDuration) return null;
       const elapsed = currentTime - item.startTime;
 
       const inPrefire = isShellType && elapsed < prefireDuration;
       const prefireProgress = prefireDuration > 0 ? Math.min(1, elapsed / prefireDuration) : 0;
-      const burstProgress = prefireDuration > 0
+      const burstProgress = isShellType && prefireDuration > 0
         ? Math.max(0, (elapsed - prefireDuration) / weatherDuration)
         : elapsed / weatherDuration;
 
