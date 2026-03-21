@@ -165,9 +165,9 @@ export function sampleMesh(di: MeshDataInterface): MeshSampleResult {
 
   let uv: THREE.Vector2 | undefined;
   if (uvAttr) {
-    const uv0 = new THREE.Vector2().fromBufferAttribute(uvAttr, i0);
-    const uv1 = new THREE.Vector2().fromBufferAttribute(uvAttr, i1);
-    const uv2 = new THREE.Vector2().fromBufferAttribute(uvAttr, i2);
+    const uv0 = new THREE.Vector2(uvAttr.getX(i0), uvAttr.getY(i0));
+    const uv1 = new THREE.Vector2(uvAttr.getX(i1), uvAttr.getY(i1));
+    const uv2 = new THREE.Vector2(uvAttr.getX(i2), uvAttr.getY(i2));
     uv = uv0.multiplyScalar(w).add(uv1.multiplyScalar(u)).add(uv2.multiplyScalar(v));
   }
 
