@@ -419,6 +419,7 @@ export default function ShellBurstRenderer({
     uColor2: { value: new THREE.Color(secondaryColor || color) },
     uColorChangePoint: { value: colorChangePoint },
     uBaseSize: { value: baseSize },
+    uCaliberScale: { value: caliber },
     uHDRMultiplier: { value: hdrMultiplier },
     uTime: { value: 0 },
     uThermalSpeed: { value: thermalTransitionSpeed },
