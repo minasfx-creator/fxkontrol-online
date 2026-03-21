@@ -638,7 +638,7 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
               <div className="grid grid-cols-4 gap-1.5">
                 <button
                   className={cn("flex flex-col items-center gap-0.5 p-2.5 rounded-xl border active:scale-90 transition-transform",
-                    slavePermissions.canArm ? "bg-red-500/10 border-red-500/30 text-red-400" : "bg-muted/20 border-border/30 text-muted-foreground/40"
+                    slavePermissions.canArm ? "bg-destructive/10 border-destructive/30 text-destructive" : "bg-muted/20 border-border/30 text-muted-foreground/40"
                   )}
                   disabled={!slavePermissions.canArm}
                   onClick={() => {
