@@ -1,59 +1,102 @@
 
 
-# Plan: Auto-Enter Angle Mode After Effect Spawn + Fix SFX Cue Persistence
+# Plan: Integrate render_ultra Pipeline into All Effects
 
-## Problems Identified
+## Summary
 
-1. **No angle editing after effect spawn**: When effects are added to positions, the editor stays in `select` mode. Users want it to automatically enter `adjust-angles` mode with the affected positions highlighted, similar to Finale 3D workflow.
+Most effects (Mine, Waterfall, SparkShower, RomanCandle, Fan, Tourbillon, Wheel, MultiBurst, Flame, CryoJet, Fog, Haze, Confetti, Bengal, Saxon, SetPiece, FirecrackerString, ParachuteFlare, Rocket, SnowMachine, BubbleMachine) still use raw THREE.js particle systems with manual physics. Only GerbEffect, CometEffect, and ShellBurstRenderer currently use `render_ultra` modules (NiagaraEmitterSystem, RibbonTrail, particleChemistry).
 
-2. **SFX cues don't save**: The `timeline_items` table only has `effect_id`, `start_time`, `track_index`, `pos_x/y/z`. Critical fields like `position_id`, `position_name`, and `notes` are NOT persisted — so on reload, SFX cues lose their position link and appear broken.
+This plan upgrades the remaining effects to use render_ultra's composable Niagara pipeline: emitter systems with force modules, soft-particle depth-fade, velocity stretching, ribbon trails, heat distortion, and fluid grid integration.
 
-3. **Batch angle editing**: Already implemented with `A` key toggle. Just needs the auto-trigger after spawn to complete the workflow.
+## Architecture
+
+```text
+render_ultra modules used per effect:
+┌─────────────────────┬──────────┬──────────┬────────┬──────┬───────┐
+│ Effect              │ Emitter  │ Ribbon   │ Soft   │ Heat │ Fluid │
+│                     │ System   │ Trail    │ Part.  │ Dist │ Grid  │
+├─────────────────────┼──────────┼──────────┼────────┼──────┼───────┤
+│ GerbEffect ✓        │ ✓        │          │        │      │       │
+│ CometEffect ✓       │          │ ✓        │        │      │       │
+│ ShellBurstRenderer ✓│          │          │        │      │       │
+│ MineEffect          │ ✓ NEW    │          │ ✓ NEW  │      │ ✓ NEW │
+│ WaterfallEffect     │ ✓ NEW    │          │        │      │       │
+│ SparkShower         │ ✓ NEW    │          │        │      │       │
+│ RomanCandleEffect   │ ✓ NEW    │ ✓ NEW    │        │      │       │
+│ FanEffect           │ ✓ NEW    │          │        │      │       │
+│ MultiBurstEffect    │ ✓ NEW    │          │        │      │       │
+│ FlameEffect         │          │          │ ✓ NEW  │ ✓NEW │       │
+│ SaluteEffect        │          │          │        │ ✓NEW │ ✓ NEW │
+│ CryoJetEffect       │ ✓ NEW    │          │ ✓ NEW  │      │       │
+│ TourbillonEffect    │ ✓ NEW    │ ✓ NEW    │        │      │       │
+│ WheelEffect         │ ✓ NEW    │ ✓ NEW    │        │      │       │
+│ FogMachineEffect    │          │          │ ✓ NEW  │      │ ✓ NEW │
+│ HazeMachineEffect   │          │          │ ✓ NEW  │      │ ✓ NEW │
+│ FireworkBurst (Sky) │          │          │ ✓ NEW  │      │       │
+└─────────────────────┴──────────┴──────────┴────────┴──────┴───────┘
+```
 
 ## Changes
 
-### 1. Database Migration — Add Missing Columns to `timeline_items`
+### 1. Pyro Effects → NiagaraEmitterSystem (6 files)
 
-Add columns to persist position linkage and metadata:
-```sql
-ALTER TABLE public.timeline_items 
-  ADD COLUMN IF NOT EXISTS position_id TEXT,
-  ADD COLUMN IF NOT EXISTS position_name TEXT,
-  ADD COLUMN IF NOT EXISTS notes TEXT;
-```
+**MineEffect.tsx**: Replace manual velocity arrays with `createEmitter` using cone spawn shape (30-60° from vertical), collision module for ground bounce, wind force module from store. Inject density into NiagaraFluids grid on burst for smoke advection.
 
-### 2. `src/hooks/useProjectPersistence.ts` — Save & Load New Fields
+**WaterfallEffect.tsx**: Replace manual seed loop with `createEmitter` using box spawn shape (width × thin), downward velocity with gravity, collision module. Keeps zero-GC buffer strategy but physics computed by NiagaraSystem.
 
-**Save** (line ~82-90): Add `position_id`, `position_name`, `notes` to the `tlRows` mapping.
+**SparkShower.tsx**: Replace manual cycling with `createEmitter` using sphere spawn, high spawn rate, short lifetime. Add wind force module.
 
-**Load** (line ~156-163): Read back `position_id`, `position_name`, `notes` from loaded data and pass them to `addTimelineItem`.
+**RomanCandleEffect.tsx**: Replace manual shot timing with `createSystem` containing one emitter per shot with `burstDelay`. Add `RibbonTrail` for each star's comet trail.
 
-### 3. `src/components/editor/EffectLibrary.tsx` — Auto-Enter Angle Mode After Add
+**FanEffect.tsx**: Replace manual ray calculation with `createSystem` containing one emitter per ray, each with different cone angle within the spread. Uses burst spawn mode.
 
-In both `EffectTableRow` and `EffectCard` `handleAdd` callbacks, after adding timeline items to pyro positions:
-- Set `editorMode` to `'adjust-angles'` so gizmos appear immediately
-- The positions are already selected (via `selectPosition` or `selectMultiplePositions`), so the angle handles will show on the correct positions
+**MultiBurstEffect.tsx**: Replace MiniBurst function with `createSystem` using multiple emitters at staggered delays and different positions.
 
-~3 lines added to each handler, after the `toast.success()` call:
-```typescript
-if (isPyro && targetIds.length > 0) {
-  store.setEditorMode('adjust-angles');
-}
-```
+### 2. Specialty Effects → Ribbon + Heat (3 files)
 
-### 4. `src/components/editor/PyroLaunchAngle.tsx` — Show Gizmos for All Pyro in Angle Mode
+**TourbillonEffect.tsx**: Add `RibbonTrail` for the helical spark trail (like CometEffect). Replace manual trail buffer with ribbon renderer. Add wind force module.
 
-Currently both branches of `visiblePositions` are identical. Fix:
-- In `adjust-angles` mode with NO selection: show gizmos for ALL pyro positions (so user can click any to start adjusting)
-- In `adjust-angles` mode with selection: show gizmos only for selected (current behavior)
-- Keeps `A` key toggle and batch drag working as-is
+**WheelEffect.tsx**: Add `RibbonTrail` per arm for trailing spark arcs. Each arm gets its own ribbon instance managed in a ref array.
+
+**FlameEffect.tsx**: Add `HeatHazeEmitter` from heatDistortion.ts for realistic heat shimmer above the flame column. Replace the basic cylinderGeometry heat mesh with proper distortion particles.
+
+### 3. Atmospheric Effects → Soft Particles + Fluid Grid (4 files)
+
+**CryoJetEffect.tsx**: Convert main column and ground fog to use `createSoftParticleMaterial` for depth-fade against terrain/objects. Add `createEmitter` for the column particles with collision module.
+
+**FogMachineEffect.tsx**: Replace manual puff meshes with soft-particle point cloud using `createSmokeSoftMaterial`. Connect to `niagaraFluids` grid — read density field to modulate puff positions/opacity (fog follows fluid advection).
+
+**HazeMachineEffect.tsx**: Replace PointsMaterial with `createSmokeSoftMaterial` for depth-aware blending. Read wind from fluid grid via `readDensityAt` for drift coherence.
+
+**SaluteEffect.tsx**: Add `HeatHazeEmitter` for post-detonation heat shimmer. Inject temperature + density into fluid grid on flash for realistic smoke plume advection.
+
+### 4. FireworkBurst (SkyCanvas) → Soft Particles (1 file)
+
+**SkyCanvas.tsx** (FireworkBurst component ~line 264): Replace `PointsMaterial` with custom shader that includes soft-particle depth fade uniform. Import `updateSoftParticleUniforms` and call in useFrame to pass depth texture.
+
+### 5. Shared: Fluid Grid Event Bus
+
+**NiagaraVFXController.tsx**: Add fluid grid instance (`createFluidGrid`). On burst events, call `injectDensity` + `injectTemperature` at burst position. Call `advectFluid` each frame. Expose grid via `window.__niagaraFluidGrid` for effects to read.
+
+Effects that need fluid (Fog, Haze, Salute, Mine) read from the shared grid via `readDensityAt` to modulate their particles.
 
 ## Files
 
 | File | Change |
 |------|--------|
-| DB migration | Add `position_id`, `position_name`, `notes` to `timeline_items` |
-| `src/hooks/useProjectPersistence.ts` | Persist and restore position link fields |
-| `src/components/editor/EffectLibrary.tsx` | Auto-enter `adjust-angles` after pyro effect add |
-| `src/components/editor/PyroLaunchAngle.tsx` | Show all pyro gizmos when in angle mode with no selection |
+| `src/components/editor/effects/MineEffect.tsx` | NiagaraEmitter + collision + wind + fluid inject |
+| `src/components/editor/effects/WaterfallEffect.tsx` | NiagaraEmitter + collision |
+| `src/components/editor/effects/SparkShower.tsx` | NiagaraEmitter + wind |
+| `src/components/editor/effects/RomanCandleEffect.tsx` | NiagaraSystem multi-emitter + RibbonTrail |
+| `src/components/editor/effects/FanEffect.tsx` | NiagaraSystem multi-emitter |
+| `src/components/editor/effects/MultiBurstEffect.tsx` | NiagaraSystem staggered emitters |
+| `src/components/editor/effects/TourbillonEffect.tsx` | RibbonTrail + wind |
+| `src/components/editor/effects/WheelEffect.tsx` | RibbonTrail per arm |
+| `src/components/editor/effects/FlameEffect.tsx` | HeatHazeEmitter |
+| `src/components/editor/effects/SaluteEffect.tsx` | HeatHazeEmitter + fluid inject |
+| `src/components/editor/effects/CryoJetEffect.tsx` | NiagaraEmitter + softParticleMaterial |
+| `src/components/editor/effects/FogMachineEffect.tsx` | softParticleMaterial + fluid read |
+| `src/components/editor/effects/HazeMachineEffect.tsx` | softParticleMaterial + fluid read |
+| `src/components/editor/SkyCanvas.tsx` | FireworkBurst soft-particle depth fade |
+| `src/components/editor/NiagaraVFXController.tsx` | Shared fluid grid instance + advection loop |
 
