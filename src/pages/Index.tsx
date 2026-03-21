@@ -372,8 +372,12 @@ function Index() {
             ? <RemoteControlPanel onClose={() => setActivePanel(null)} />
             : <RemoteReceiverOverlay onOpenPanel={(id) => handleTogglePanel(id as PanelId)} />
         )}
-        {activePanel === 'controllers' && <VirtualControllerHub />}
-        {activePanel === 'fieldmap' && <FieldMap2D />}
+        {activePanel === 'controllers' && <VirtualControllerHub onClose={() => setActivePanel(null)} />}
+        {activePanel === 'fieldmap' && <FieldMap2D onClose={() => setActivePanel(null)} />}
+        {activePanel === 'connections' && <ConnectionManagerPanel />}
+        {activePanel === 'radio' && <RadioControlPanel />}
+        {activePanel === 'ma3' && <MA3ControlPanel />}
+        {activePanel === 'sacnmonitor' && <SACNMonitorPanel />}
       </>
     );
   };
