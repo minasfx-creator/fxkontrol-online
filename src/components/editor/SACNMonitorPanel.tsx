@@ -24,6 +24,7 @@ import {
 
 interface SACNMonitorPanelProps {
   compact?: boolean;
+  onClose?: () => void;
 }
 
 type ViewMode = 'grid' | 'bars';
