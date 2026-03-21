@@ -401,9 +401,12 @@ export type Database = {
           created_at: string
           effect_id: string
           id: string
+          notes: string | null
           pos_x: number
           pos_y: number
           pos_z: number
+          position_id: string | null
+          position_name: string | null
           project_id: string
           start_time: number
           track_index: number
@@ -412,9 +415,12 @@ export type Database = {
           created_at?: string
           effect_id: string
           id?: string
+          notes?: string | null
           pos_x?: number
           pos_y?: number
           pos_z?: number
+          position_id?: string | null
+          position_name?: string | null
           project_id: string
           start_time?: number
           track_index?: number
@@ -423,9 +429,12 @@ export type Database = {
           created_at?: string
           effect_id?: string
           id?: string
+          notes?: string | null
           pos_x?: number
           pos_y?: number
           pos_z?: number
+          position_id?: string | null
+          position_name?: string | null
           project_id?: string
           start_time?: number
           track_index?: number
