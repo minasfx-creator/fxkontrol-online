@@ -321,6 +321,7 @@ export default function Dashboard() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-bold font-display text-foreground">Mobile Command</p>
+                  <div className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse-glow" />
                   <span className="text-[7px] font-bold font-mono-code uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-accent/15 text-accent">
                     {isMobile ? 'INICIAR' : 'PAIR'}
                   </span>
