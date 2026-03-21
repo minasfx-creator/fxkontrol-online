@@ -149,7 +149,7 @@ const AFTERGLOW_FRAGMENT = `
 
 // ── Constants ───────────────────────────────────────────────────────
 
-const MAX_PARTICLES = 1500;
+const MAX_PARTICLES = 2000;
 
 interface ShellBurstRendererProps {
   position: [number, number, number];

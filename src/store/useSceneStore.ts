@@ -279,6 +279,10 @@ const DEFAULT_SETTINGS: SceneSettings = {
   contactShadowsEnabled: false,
   contactShadowsOpacity: 0.5,
   contactShadowsBlur: 2.0,
+
+  heatDistortionEnabled: false,
+  smokeRenderQuality: 'low',
+  ribbonTrails: false,
 };
 
 export const SCENE_PRESETS: Record<string, { name: string; description: string; settings: Partial<SceneSettings> }> = {
