@@ -6,9 +6,7 @@ const STARS_PER_SHOT = 20;
 
 /**
  * Roman Candle: Fires individual stars at regular intervals from a tube.
- * Realistic: each star is a single bright ball with a short comet trail,
- * launches nearly vertical with slight random wobble, arcs under gravity,
- * height ~15-25m for typical roman candles, individual star colors.
+ * Niagara-grade: reusable buffers (zero GC), realistic gravity, comet trails.
  */
 export default function RomanCandleEffect({
   position,
@@ -29,20 +27,24 @@ export default function RomanCandleEffect({
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
   const totalParticles = shotCount * STARS_PER_SHOT;
 
+  // Pre-allocate buffers — zero GC pressure
+  const posArr = useMemo(() => new Float32Array(totalParticles * 3), [totalParticles]);
+  const colArr = useMemo(() => new Float32Array(totalParticles * 3), [totalParticles]);
+
   const shotSeeds = useMemo(() => {
     const seeds: { vx: number; vy: number; vz: number; lt: number }[][] = [];
     for (let s = 0; s < shotCount; s++) {
       const shot: { vx: number; vy: number; vz: number; lt: number }[] = [];
-      const tiltAngle = (Math.random() - 0.5) * 0.12; // near-vertical
+      const tiltAngle = (Math.random() - 0.5) * 0.12;
       const tiltDir = Math.random() * Math.PI * 2;
       for (let j = 0; j < STARS_PER_SHOT; j++) {
-        const isMain = j === 0; // first particle is the star, rest are trail
+        const isMain = j === 0;
         const spread = isMain ? 0 : 0.6;
         shot.push({
           vx: Math.sin(tiltAngle) * Math.cos(tiltDir) * (isMain ? 1.5 : 0) + (Math.random() - 0.5) * spread,
-          vy: 16 + Math.random() * 6, // 16-22 m/s — realistic for roman candle
+          vy: 16 + Math.random() * 6,
           vz: Math.sin(tiltAngle) * Math.sin(tiltDir) * (isMain ? 1.5 : 0) + (Math.random() - 0.5) * spread,
-          lt: isMain ? 1.4 : 0.3 + Math.random() * 0.5, // main star lasts longer
+          lt: isMain ? 1.4 : 0.3 + Math.random() * 0.5,
         });
       }
       seeds.push(shot);
@@ -52,8 +54,6 @@ export default function RomanCandleEffect({
 
   useFrame(() => {
     if (!pointsRef.current) return;
-    const posArr = new Float32Array(totalParticles * 3);
-    const colArr = new Float32Array(totalParticles * 3);
     const GRAVITY = -9.81;
 
     for (let s = 0; s < shotCount; s++) {
@@ -87,7 +87,6 @@ export default function RomanCandleEffect({
           ? 0.85 + Math.sin(idx * 7 + progress * 30) * 0.15
           : 0.5 + Math.sin(idx * 19 + progress * 60) * 0.5;
 
-        // Main star is brighter, trail particles are dimmer
         const brightness = isMain ? 1.0 : 0.5;
         const flashPhase = Math.max(0, 1 - timeSinceFire * 15);
         colArr[idx * 3] = THREE.MathUtils.lerp(baseColor.r, 1.0, flashPhase) * fade * sparkle * brightness;
@@ -97,17 +96,16 @@ export default function RomanCandleEffect({
     }
 
     const geo = pointsRef.current.geometry;
-    geo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
-    geo.attributes.position.needsUpdate = true;
-    geo.attributes.color.needsUpdate = true;
+    const posAttr = geo.getAttribute('position') as THREE.BufferAttribute;
+    const colAttr = geo.getAttribute('color') as THREE.BufferAttribute;
+    if (posAttr) posAttr.needsUpdate = true;
+    if (colAttr) colAttr.needsUpdate = true;
   });
 
   const angleOffsetRad = (angleOffset * Math.PI) / 180;
 
   return (
     <group position={position} rotation={[0, 0, angleOffsetRad]}>
-      {/* Muzzle flash per shot */}
       {Array.from({ length: shotCount }).map((_, s) => {
         const shotTime = s / shotCount;
         const dt = progress - shotTime;
@@ -121,8 +119,8 @@ export default function RomanCandleEffect({
       })}
       <points ref={pointsRef}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(totalParticles * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(totalParticles * 3), 3]} />
+          <bufferAttribute attach="attributes-position" args={[posArr, 3]} />
+          <bufferAttribute attach="attributes-color" args={[colArr, 3]} />
         </bufferGeometry>
         <pointsMaterial size={0.16} vertexColors transparent opacity={0.95} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>

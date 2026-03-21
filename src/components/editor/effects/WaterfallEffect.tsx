@@ -6,13 +6,7 @@ const PARTICLE_COUNT = 500;
 
 /**
  * Finale-grade Waterfall / Cascade / Niagara Effect
- * - Dense curtain of sparks falling from elevated emission line
- * - White-hot at emission → golden cascade → charcoal at bottom
- * - Individual spark flicker with thermal variation
- * - Very slow initial velocity, gravity-dominated fall
- * - Wind drift on each particle
- * - Glowing emission wire at top
- * - Ground splash scatter
+ * Niagara-grade: reusable buffers (zero GC), thermal gradient, multi-frequency flicker.
  */
 export default function WaterfallEffect({
   position,
@@ -27,11 +21,14 @@ export default function WaterfallEffect({
   width?: number;
   caliber?: number;
 }) {
-  // Scale width and density based on caliber
   const scaledWidth = width * (0.7 + caliber * 0.12);
   const SCALED_PARTICLE_COUNT = Math.min(800, Math.round(PARTICLE_COUNT * (0.7 + caliber * 0.12)));
   const pointsRef = useRef<THREE.Points>(null);
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
+
+  // Pre-allocate buffers — zero GC pressure
+  const posArr = useMemo(() => new Float32Array(SCALED_PARTICLE_COUNT * 3), [SCALED_PARTICLE_COUNT]);
+  const colArr = useMemo(() => new Float32Array(SCALED_PARTICLE_COUNT * 3), [SCALED_PARTICLE_COUNT]);
 
   const seeds = useMemo(() => {
     const s: { x: number; vy: number; vx: number; lt: number; phase: number; flicker: number; offset: number }[] = [];
@@ -43,7 +40,7 @@ export default function WaterfallEffect({
         lt: 1.8 + Math.random() * 3.0,
         phase: Math.random() * Math.PI * 2,
         flicker: 15 + Math.random() * 50,
-        offset: Math.random() * 0.3, // staggered emission
+        offset: Math.random() * 0.3,
       });
     }
     return s;
@@ -51,8 +48,6 @@ export default function WaterfallEffect({
 
   useFrame(({ clock }) => {
     if (!pointsRef.current) return;
-    const posArr = new Float32Array(SCALED_PARTICLE_COUNT * 3);
-    const colArr = new Float32Array(SCALED_PARTICLE_COUNT * 3);
     const time = clock.getElapsedTime();
     const GRAVITY = -9.81;
 
@@ -70,7 +65,6 @@ export default function WaterfallEffect({
       }
 
       const t = cycleTime * seed.lt;
-      // Gravity-dominated fall with slight air resistance
       const drag = Math.exp(-0.03 * t);
       posArr[i * 3] = seed.x + seed.vx * t * drag + Math.sin(time * 0.5 + seed.phase) * 0.04;
       posArr[i * 3 + 1] = seed.vy * t * drag + 0.5 * GRAVITY * t * t * 0.08;
@@ -78,20 +72,17 @@ export default function WaterfallEffect({
 
       const fade = Math.max(0, 1 - cycleTime * 0.85) * intensity;
       
-      // Multi-frequency flicker — signature of real spark waterfalls
       const flicker = 0.4
         + Math.sin(i * 11 + time * seed.flicker) * 0.22
         + Math.sin(i * 3 + time * seed.flicker * 0.65) * 0.18
         + Math.sin(i * 29 + time * seed.flicker * 1.4) * 0.12
         + (Math.random() > 0.97 ? 0.35 : 0);
       
-      // Thermal gradient: white-hot emission → golden cascade → dim charcoal
       const thermalPhase = Math.pow(cycleTime, 0.4);
       let r = THREE.MathUtils.lerp(1.3, baseColor.r * 0.7, thermalPhase * 0.7);
       let g = THREE.MathUtils.lerp(0.95, baseColor.g * 0.6, thermalPhase * 0.8);
       let b = THREE.MathUtils.lerp(0.4, baseColor.b * 0.3, thermalPhase * 0.9);
       
-      // Late charcoal
       if (cycleTime > 0.7) {
         const charcoal = (cycleTime - 0.7) / 0.3;
         r *= (1 - charcoal * 0.7);
@@ -105,30 +96,28 @@ export default function WaterfallEffect({
     }
 
     const geo = pointsRef.current.geometry;
-    geo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
-    geo.attributes.position.needsUpdate = true;
-    geo.attributes.color.needsUpdate = true;
+    const posAttr = geo.getAttribute('position') as THREE.BufferAttribute;
+    const colAttr = geo.getAttribute('color') as THREE.BufferAttribute;
+    if (posAttr) posAttr.needsUpdate = true;
+    if (colAttr) colAttr.needsUpdate = true;
   });
 
   const wireOpacity = progress < 0.88 ? Math.min(1, progress / 0.04) * 0.35 : (1 - progress) / 0.12 * 0.35;
 
   return (
     <group position={position}>
-      {/* Glowing emission wire at top */}
       <mesh position={[0, 0.05, 0]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.025, 0.025, scaledWidth, 8]} />
         <meshBasicMaterial color="#FFEEAA" transparent opacity={wireOpacity} blending={THREE.AdditiveBlending} />
       </mesh>
-      {/* Wire white-hot core */}
       <mesh position={[0, 0.05, 0]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.012, 0.012, scaledWidth, 6]} />
         <meshBasicMaterial color="#FFFFF0" transparent opacity={wireOpacity * 0.8} blending={THREE.AdditiveBlending} />
       </mesh>
       <points ref={pointsRef}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(SCALED_PARTICLE_COUNT * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(SCALED_PARTICLE_COUNT * 3), 3]} />
+          <bufferAttribute attach="attributes-position" args={[posArr, 3]} />
+          <bufferAttribute attach="attributes-color" args={[colArr, 3]} />
         </bufferGeometry>
         <pointsMaterial size={0.055} vertexColors transparent opacity={0.92} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
