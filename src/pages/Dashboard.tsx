@@ -311,7 +311,8 @@ export default function Dashboard() {
           {/* Mobile Command Launcher */}
           <button
             onClick={() => navigate('/editor?panel=remotecontrol')}
-            className="w-full group relative overflow-hidden rounded-xl border border-accent/20 bg-gradient-to-r from-accent/5 via-card to-primary/5 p-4 text-left transition-all duration-300 hover:border-accent/40 hover:shadow-[0_0_20px_hsl(var(--accent)/0.1)] active:scale-[0.98] animate-fxk-fade-up"
+            className="w-full group relative overflow-hidden rounded-xl border border-accent/20 bg-gradient-to-r from-accent/5 via-card to-primary/5 p-4 text-left transition-all duration-300 hover:border-accent/40 hover:shadow-[0_0_20px_hsl(var(--accent)/0.1)] active:scale-[0.98] animate-fxk-stagger"
+            style={{ animationDelay: '0.2s' }}
           >
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0 group-hover:bg-accent/20 transition-colors">
