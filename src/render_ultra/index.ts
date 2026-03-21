@@ -90,6 +90,18 @@ export { createAtmosphereSphere } from './environment/atmosphereScattering';
 export { createTerrainPlane, createTerrainMaterial, getTerrainPresets } from './environment/terrainPBR';
 export { createReflectionPlane } from './environment/reflections';
 
+// Environment v2 — UE5.7 Virtual Worlds
+export { createVolumetricCloudLayer, CLOUD_PRESETS } from './environment/volumetricClouds';
+export type { CloudConfig } from './environment/volumetricClouds';
+export { createSkyAtmosphereV2, SKY_PRESETS } from './environment/skyAtmosphereV2';
+export type { SkyAtmosphereConfig } from './environment/skyAtmosphereV2';
+export { createWaterSystem, WATER_PRESETS } from './environment/waterRendering';
+export type { WaterConfig } from './environment/waterRendering';
+export { evaluateTimeOfDay, getShowTimeHour, TOD_PRESETS } from './environment/timeOfDay';
+export type { TimeOfDayState } from './environment/timeOfDay';
+export { createDecalSystem, spawnScorchMark, spawnLightSplash, updateDecals, clearDecals, getActiveDecalCount } from './environment/groundDecals';
+export type { DecalInstance, DecalType } from './environment/groundDecals';
+
 // Lighting
 export { createHDRLightingRig } from './lighting/hdrLighting';
 export { GlobalIlluminationSystem } from './lighting/globalIllumination';
