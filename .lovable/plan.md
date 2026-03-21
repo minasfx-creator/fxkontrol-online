@@ -1,88 +1,90 @@
 
 
-# Plan: Integrate Historical Manual Knowledge into Chemistry, Physics & Training
+# Plan: Integrar Importadores à Content Library + Expandir Parser UAsset + DMX Profiles
 
-## Summary
+## Resumo
 
-Three new historical sources provide formulations and techniques absent from our system:
-- **Kurt Saxon (1903–1907 cyclopedias)**: 12 Gerbe compositions, Roman Candle compositions (3 variants), star formulations for every color (Crimson, Rose, Green, Yellow, Blue, Violet, White, Mauve/Lilac, Purple), signal fire recipes, lance compositions, and Pin Wheel charges
-- **Pyrotechny 1829**: Spur Fire composition (the "most beautiful fire"), rocket mallet-stroke tables by weight (4oz=16, 1lb=28, 2lb=36, 4lb=42, 6lb=56), rocket stick proportions, Caduceus Rockets, Tourbillon construction, wheel compositions (slow/dead/brilliant/Chinese fire)
-- **Anderson 1696**: Mathematical rocket proportions (bore=⅓ diameter, fill 4 diameters, bore 2-3), star recipes (Sulphur/Antimony/Saltpetre ratios), center-of-gravity stick balancing
-- **FreePyroInfo library**: Catalog index of 100+ PDF references organized by topic (Black Powder, Stars, Shells, Rockets, Colors, Safety)
+Todos os importadores atualmente salvam apenas na timeline/viewport local. Apenas 2 de 8 importadores salvam na biblioteca do usuário (`useMyLibrary`). Este plano:
+1. Conecta **todos os importadores** ao `useMyLibrary` para auto-salvar assets importados
+2. Expande o parser UAsset com classificação por tipo (fixture, pyro, material, texture, curve table)
+3. Adiciona 12 novos DMX fixture profiles dos 26 .uasset acumulados
+4. Cria nova aba "Content Library" no AssetMarketplaceBrowser com filtros por tipo de conteúdo
 
-## Changes
+## Mudanças
 
-### 1. `src/render_ultra/fireworks/particleChemistry.ts` — Historical Formulations
+### 1. `src/lib/uassetParser.ts` — Classificação por Tipo de Asset
 
-Add 10 new `REAL_FORMULATIONS` entries from the manuals:
+Adicionar campos ao `UAssetParseResult`:
+- `assetType`: 11 tipos (`blueprint_fixture`, `blueprint_pyro`, `material`, `material_instance`, `texture`, `curve_table`, `material_param_collection`, `dmx_library`, `niagara_system`, `niagara_emitter`, `unknown`)
+- `suggestedFixtureProfile?: string` — mapeia para profile DMX
 
-- **`crimson_star_saxon`**: KClO3 24 + Sr(NO3)2 3 + HgCl (calomel) 12 + S 6 + Shellac 6 — intense crimson (Kurt Saxon's formula #1)
-- **`blue_star_intense`**: KClO3 16 + Cu(Chertier) 12 + HgCl 8 + Stearine 2 + S 2 + Shellac 1 — "most intense blue" (Saxon formula Blue #3)
-- **`violet_star_manual`**: KClO3 9 + Sr(NO3)2 4 + S 6 + CuCO3 1 + HgCl 1 — purple/violet (Saxon)
-- **`rose_colored_star`**: KClO3 20 + SrCO3 8 + HgCl 10 + Shellac 2 + S 3 — moisture-resistant rose (Saxon)
-- **`golden_yellow_star`**: KClO3 20 + Ba(NO3)2 30 + Na oxalate 15 + S 8 + Shellac 4 — "beautiful contrast with blue" (Saxon)
-- **`spur_fire_1829`**: KNO3 4lb + S 2lb + Lampblack 1lb — "most beautiful fire known" (Pyrotechny 1829)
-- **`roman_candle_comp_3`**: KNO3 16 + meal powder 11 + S 6 + Sb 4 — Roman candle with antimony sparks (Saxon)
-- **`gerbe_golden_rain`**: KNO3 + S 16 + meal powder 11 + Lampblack 20 + Zn flowers + gum arabic — golden rain from gerbe tables (Saxon)
-- **`white_fire_1903`**: KNO3 16 + meal powder 1 + S 8 — classic white fire (Scientific American 1903)
-- **`signal_scarlet`**: Sr(NO3)2 24 + Ba(NO3)2 20 — Lamarre patent scarlet signal fire (Saxon)
+Expandir `applyFileNameHeuristics` para detectar prefixos:
+- `BP_Spot/Wash/Static/Toner/Audience/Stadium/Matrix/Strobe` → `blueprint_fixture`
+- `BP_Pyro/Firework/Laser` → `blueprint_pyro`/`blueprint_sfx`
+- `M_` → `material`, `MI_` → `material_instance`, `MPC_` → `material_param_collection`
+- `T_` → `texture`, `*_Table` → `curve_table`, `DMXLib` → `dmx_library`
 
-Add `malachite` compound (Cu2(CO3)(OH)2): green colorant, used in violet fire compositions, density 3.8.
+### 2. `src/lib/dmxEngine.ts` — 12 Novos Fixture Profiles + Registros
 
-Add `calomel` compound (HgCl2/Hg2Cl2): chlorine donor historically used in star compositions (now obsolete due to toxicity), noted as **HISTORICAL ONLY — TOXIC**.
+Expandir `category` para incluir `'matrix' | 'toner' | 'audience'`.
 
-### 2. `src/lib/pyroPhysics.ts` — Rocket Ramming & Stick Proportions
+Adicionar 12 profiles: `spot-mh-standard` (20ch), `spot-mh-hq` (32ch com shapers), `audience-toner` (8ch), `stadium-light` (9ch), `static-scene-light` (7ch), `static-toner` (6ch), `toner-beam` (9ch), `led-matrix-5x1` (7ch), `led-matrix-panel` (8ch), `strobe-high-power` (8ch), `wash-led-par` (9ch), `wash-spotlight` (10ch).
 
-Add from Pyrotechny 1829:
+Adicionar `UE5_BLUEPRINT_MAP` (26 entradas), `STROBE_CURVES` (5 entries), `GOBO_TEXTURES` (2 entries).
 
-- **`ROCKET_MALLET_STROKES`** table: maps rocket weight to required mallet strokes per ladle of charge:
-  - 4oz=16, 8oz=20, 1lb=28, 2lb=36, 4lb=42, 6lb=56
-- **`ROCKET_STICK_LENGTH`** table: maps rocket weight to stick length (in feet):
-  - 6lb=11ft, 4lb=10ft, 2lb=9.3ft, 1lb=8.2ft, 8oz=6.5ft, 4oz=5.25ft
-- **`ROCKET_BORE_RATIO`**: constant 1/3 (Anderson 1696: bore diameter = ⅓ rocket diameter)
-- **`ROCKET_FILL_DIAMETERS`**: 4 (fill height = 4× diameter, bore 2-3 diameters)
+### 3. `src/lib/effectTypeSystem.ts` — Novo Tipo `orb_drone`
 
-Add `getRocketStickLength(weightLbs)` and `getRocketMalletStrokes(weightOz)` functions.
+Adicionar `orb_drone`: esfera luminosa (category: `sfx`, duration: 60s, colorChannels: 3).
 
-### 3. `src/lib/effectTypeSystem.ts` — Add Historical Effect Types
+### 4. `src/lib/niagaraColorPresets.ts` — 4 Novos Presets
 
-Add 4 new types from the manuals:
+Presets para: `bp-firework-v2`, `bp-pyro-v4`, `bp-laser-extended`, `bp-sphere-orb`.
 
-| Type | Source | Category | Description |
-|------|--------|----------|-------------|
-| `tourbillon` | Pyrotechny 1829 | aerial | Spinning case with opposing vents, rises while rotating |
-| `caduceus` | Pyrotechny 1829 | aerial | Two rockets on opposite sides of stick forming spiral lines |
-| `table_rocket` | Pyrotechny 1829 | ground | Spins horizontally on a cone point, circle of fire |
-| `spur_fire` | Pyrotechny 1829 | ground | "Most beautiful fire" — clusters of stars/pinks without drossy sparks |
+### 5. `src/components/editor/UAssetImporter.tsx` — Import Inteligente + Salvar na Library
 
-### 4. `src/pages/Training.tsx` — Add Manual References + New Chapter
+- Ícones por `assetType` (Lightbulb, Flame, Palette, Image, BarChart3)
+- Badge com profile DMX sugerido para fixtures
+- **Auto-salvar** arquivo .uasset na biblioteca via `useMyLibrary.saveToLibrary()` com tags baseadas no `assetType`
+- Import diferenciado: fixtures → toast com profile DMX; pyro/niagara → criar Effect na timeline
 
-Add 3 new manuals to `MANUALS` array:
-- **Kurt Saxon "Granddad's Fireworks"** (1903-1907 cyclopedias): Topics — Star Formulas, Roman Candles, Gerbe Compositions, Signal Fires, Lance Work
-- **Pyrotechny 1829 "Endless Amusement"**: Topics — Rocket Construction, Wheels, Tourbillons, Spur Fire, Touch Paper, Quick Match
-- **Anderson 1696 "The Making of Rockets"**: Topics — Mathematical Rocket Proportions, Bore Ratios, Composition Recipes, Stick Balancing, Center of Gravity
+### 6. Importadores que passam a salvar na Content Library
 
-Add new chapter **Cap. 8 — Técnicas Históricas** with 3 missions:
-- **`historical-star-formulas`**: "Fórmulas Clássicas de Estrelas" — Identify which historical formula produces each color (crimson, blue, violet, rose, golden yellow). Reference Saxon's compositions. Difficulty: easy, XP: 200
-- **`rocket-proportions`**: "Proporções Matemáticas de Foguetes" — Calculate bore diameter (⅓), fill height (4D), stick length (11× for 6lb), and mallet strokes per Anderson & 1829 manuals. Difficulty: medium, XP: 350
-- **`roman-candle-charging`**: "Carregamento de Candelas Romanas" — Sequence the charging process: clay plug → blowing powder (graduated scoops) → star → fuse → repeat. Per Saxon's detailed instructions. Difficulty: medium, XP: 300
+Cada importador ganha `useMyLibrary()` e chama `saveToLibrary()` ao importar:
 
-### 5. `src/render_ultra/fireworks/particleChemistry.ts` — FreePyroInfo Reference Index
+| Importador | source tag | file_format | tags |
+|---|---|---|---|
+| `UAssetImporter` | `ue5-uasset` | `uasset` | `[assetType, suggestedCategory]` |
+| `MVRImporter` | `mvr` | `mvr` | `['mvr', 'fixtures']` |
+| `CSVImporter` | `csv-import` | `csv` | `['positions', 'formation']` |
+| `VVIZImporter` | `vviz` | `vviz` | `['show', 'vviz']` |
+| `SceneObjectImporter` | `local-3d` | ext (glb/fbx/obj) | `['3d-model', 'scene']` |
+| `CatalogImportDialog` | `catalog` | ext (csv/fdb) | `['catalog', 'effects']` |
+| `GMA2PatchImporter` | `gma2` | `csv` | `['patch', 'dmx']` |
+| `UE5DMXPrevisImporter` | `ue5-dmx` | `json` | `['dmx', 'ue5']` |
+| `UE5MapImporter` | `ue5-map` | ext | `['map', 'terrain']` |
 
-Add `PYRO_REFERENCE_LIBRARY` constant: array of categorized reference entries from the FreePyroInfo catalog, grouped by topic:
-- Black Powder (8 references: Discovery of Gunpowder, Chemical & Ballistic Properties, Greek Fire, etc.)
-- Stars & Colors (per Saxon's systematic color tables)
-- Rocket Science (Anderson 1696, Pyrotechny 1829 proportions)
-- Roman Candles (charging technique, scoops, fuse intervals)
+### 7. `src/components/editor/AssetMarketplaceBrowser.tsx` — Filtros na Content Library
 
-This serves as metadata for the Training library UI — no file downloads, just topic/title/author for educational reference.
+Na aba "My Library", adicionar filtros por tag:
+- Chips: `All`, `3D Models`, `UE5 Assets`, `DMX/Patch`, `Shows`, `Catalogs`, `Formations`
+- Filtrar `libraryAssets` por tags correspondentes
 
-## Files Summary
+## Arquivos
 
-| File | Change |
-|------|--------|
-| `src/render_ultra/fireworks/particleChemistry.ts` | 10 historical formulations, malachite & calomel compounds, reference library index |
-| `src/lib/pyroPhysics.ts` | Rocket ramming strokes, stick length tables, bore ratio constants |
-| `src/lib/effectTypeSystem.ts` | Add tourbillon, caduceus, table_rocket, spur_fire |
-| `src/pages/Training.tsx` | 3 new manuals, Cap. 8 with 3 historical technique missions |
+| Arquivo | Mudança |
+|---------|---------|
+| `src/lib/uassetParser.ts` | assetType (11 tipos), suggestedFixtureProfile, heurísticas expandidas |
+| `src/lib/dmxEngine.ts` | 12 profiles, category types, UE5_BLUEPRINT_MAP, STROBE_CURVES, GOBO_TEXTURES |
+| `src/lib/effectTypeSystem.ts` | Novo tipo orb_drone |
+| `src/lib/niagaraColorPresets.ts` | 4 novos presets BP_ |
+| `src/components/editor/UAssetImporter.tsx` | Classificação visual, import diferenciado, auto-save library |
+| `src/components/editor/MVRImporter.tsx` | Auto-save to library |
+| `src/components/editor/CSVImporter.tsx` | Auto-save to library |
+| `src/components/editor/VVIZImporter.tsx` | Auto-save to library |
+| `src/components/editor/SceneObjectImporter.tsx` | Auto-save to library |
+| `src/components/editor/CatalogImportDialog.tsx` | Auto-save to library |
+| `src/components/editor/GMA2PatchImporter.tsx` | Auto-save to library |
+| `src/components/editor/UE5DMXPrevisImporter.tsx` | Auto-save to library |
+| `src/components/editor/UE5MapImporter.tsx` | Auto-save to library |
+| `src/components/editor/AssetMarketplaceBrowser.tsx` | Filtros por tag na aba My Library |
 
