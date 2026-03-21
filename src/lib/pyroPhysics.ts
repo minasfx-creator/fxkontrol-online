@@ -81,6 +81,32 @@ export function getSafetyDistance(caliberInches: number): number {
   return interpolateTable(SAFETY_DISTANCE, caliberInches, 70);
 }
 
+// ── Real Burst Heights (NFPA / Skylighter reference) ────────────────
+// These are actual field-measured burst heights, much higher than viewport-scaled values.
+// Used for safety radius calculations and regulatory compliance, NOT for viewport rendering.
+
+const REAL_BURST_HEIGHT_NFPA: LookupTable = {
+  3: 120, 4: 150, 5: 180, 6: 210, 8: 270, 10: 320, 12: 350,
+};
+
+/** Real-world burst height from NFPA data (meters). For safety calculations only. */
+export function getRealBurstHeight(caliberInches: number): number {
+  return interpolateTable(REAL_BURST_HEIGHT_NFPA, caliberInches, 150);
+}
+
+// ── APA 87-1 Risk Division / Classification ─────────────────────────
+
+/** Deflagration temperature range for pyrotechnic compositions (°C) */
+export const DEFLAGRATION_TEMP_RANGE = { min: 1500, max: 4000 };
+
+/** Detonation pressure range for high explosives (kPa) */
+export const DETONATION_PRESSURE_RANGE = { min: 100000, max: 2000000 };
+
+/** Black powder grade burn rate modifiers (matches particleChemistry.ts) */
+export const BP_GRADE_BURN_MODIFIER: Record<string, number> = {
+  cannon: 1.0, '4fa': 1.3, meal_d: 2.0, '5fg': 3.0,
+};
+
 // ── Type-Aware Physics Helpers (Finale 3D Manual Table 2) ───────────
 
 /** Finale part types */

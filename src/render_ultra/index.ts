@@ -11,8 +11,8 @@
  */
 
 // Fireworks
-export { getCompound, getAllCompounds, thermalColor } from './fireworks/particleChemistry';
-export type { ChemicalCompound } from './fireworks/particleChemistry';
+export { getCompound, getAllCompounds, thermalColor, getVelineCompositeColor, checkDangerousCombination, getBPBurnRateModifier } from './fireworks/particleChemistry';
+export type { ChemicalCompound, DangerousCombination, BPGrade } from './fireworks/particleChemistry';
 export { createSparkTrailSystem, updateSparkTrail, writeSparkTrailsToBuffers } from './fireworks/sparkTrailsGPU';
 export { generateBurst, getBurstConfig, getAllPatterns } from './fireworks/burstSimulation';
 export type { BurstPattern } from './fireworks/burstSimulation';

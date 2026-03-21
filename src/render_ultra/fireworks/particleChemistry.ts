@@ -354,7 +354,311 @@ const COMPOUNDS: Record<string, ChemicalCompound> = {
     density: 1.66,
     combustionProducts: 'CO + CO2 + H2O + N2',
   },
+
+  // ── Skylighter Chemical Encyclopedia Compounds ──────────────────────
+
+  ammonium_perchlorate: {
+    name: 'Ammonium Perchlorate',
+    element: 'NH4ClO4',
+    color: new THREE.Color(1.0, 0.95, 0.85),
+    temperature: 2400,
+    emissionIntensity: 3.5,
+    burnRate: 1.8,
+    sparkSize: 0.6,
+    smokeColor: new THREE.Color(0.15, 0.15, 0.15),
+    trailDecay: 0.60,
+    ignitionTemp: 240,
+    density: 1.95,
+    combustionProducts: 'HCl + H2O + N2 + O2',
+    riskClassification: { fire: 1, reactivity: 3, contact: 2 },
+  },
+  barium_chlorate: {
+    name: 'Barium Chlorate',
+    element: 'Ba(ClO3)2',
+    color: new THREE.Color(0.15, 0.95, 0.35),
+    temperature: 1800,
+    emissionIntensity: 4.5,
+    burnRate: 2.2,
+    sparkSize: 0.9,
+    smokeColor: new THREE.Color(0.08, 0.12, 0.06),
+    trailDecay: 0.88,
+    ignitionTemp: 280,
+    density: 3.18,
+    combustionProducts: 'BaCl + O2',
+    riskClassification: { fire: 3, reactivity: 3, contact: 3 },
+  },
+  barium_carbonate: {
+    name: 'Barium Carbonate',
+    element: 'BaCO3',
+    color: new THREE.Color(0.12, 0.88, 0.30),
+    temperature: 1700,
+    emissionIntensity: 3.8,
+    burnRate: 2.5,
+    sparkSize: 0.8,
+    smokeColor: new THREE.Color(0.1, 0.12, 0.08),
+    trailDecay: 0.90,
+    ignitionTemp: 811,
+    density: 3.785,
+    hygroscopicity: 0,
+    riskClassification: { fire: 1, reactivity: 1, contact: 2 },
+  },
+  barium_sulfate: {
+    name: 'Barium Sulfate',
+    element: 'BaSO4',
+    color: new THREE.Color(0.10, 0.85, 0.28),
+    temperature: 1900,
+    emissionIntensity: 3.5,
+    burnRate: 3.0,
+    sparkSize: 0.7,
+    smokeColor: new THREE.Color(0.12, 0.12, 0.10),
+    trailDecay: 0.85,
+    ignitionTemp: 1580,
+    density: 4.49,
+    riskClassification: { fire: 1, reactivity: 0, contact: 1 },
+  },
+  copper_chloride: {
+    name: 'Copper(I) Chloride',
+    element: 'CuCl',
+    color: new THREE.Color(0.05, 0.25, 1.0),
+    temperature: 1600,
+    emissionIntensity: 5.0,
+    burnRate: 2.0,
+    sparkSize: 0.7,
+    smokeColor: new THREE.Color(0.04, 0.06, 0.12),
+    trailDecay: 0.87,
+    ignitionTemp: 430,
+    density: 4.14,
+    hygroscopicity: 2.5,
+    combustionProducts: 'CuCl+ (emitter)',
+    riskClassification: { fire: 1, reactivity: 1, contact: 2 },
+  },
+  copper_carbonate: {
+    name: 'Copper Carbonate',
+    element: 'CuCO3',
+    color: new THREE.Color(0.06, 0.28, 0.95),
+    temperature: 1550,
+    emissionIntensity: 4.2,
+    burnRate: 2.3,
+    sparkSize: 0.8,
+    smokeColor: new THREE.Color(0.05, 0.07, 0.10),
+    trailDecay: 0.88,
+    ignitionTemp: 290,
+    density: 3.6,
+    riskClassification: { fire: 1, reactivity: 1, contact: 1 },
+  },
+  strontium_carbonate: {
+    name: 'Strontium Carbonate',
+    element: 'SrCO3',
+    color: new THREE.Color(1.0, 0.08, 0.03),
+    temperature: 1900,
+    emissionIntensity: 4.5,
+    burnRate: 2.4,
+    sparkSize: 1.0,
+    smokeColor: new THREE.Color(0.14, 0.06, 0.04),
+    trailDecay: 0.91,
+    ignitionTemp: 1100,
+    density: 3.7,
+    riskClassification: { fire: 1, reactivity: 0, contact: 1 },
+  },
+  lithium_carbonate: {
+    name: 'Lithium Carbonate',
+    element: 'Li2CO3',
+    color: new THREE.Color(0.85, 0.10, 0.08),
+    temperature: 1700,
+    emissionIntensity: 2.5,
+    burnRate: 2.6,
+    sparkSize: 0.8,
+    smokeColor: new THREE.Color(0.12, 0.06, 0.05),
+    trailDecay: 0.88,
+    ignitionTemp: 723,
+    density: 2.11,
+    riskClassification: { fire: 0, reactivity: 0, contact: 1 },
+  },
+  cryolite: {
+    name: 'Cryolite (Greenland Spar)',
+    element: 'Na3AlF6',
+    color: new THREE.Color(1.0, 0.85, 0.10),
+    temperature: 1800,
+    emissionIntensity: 4.0,
+    burnRate: 2.8,
+    sparkSize: 0.9,
+    smokeColor: new THREE.Color(0.15, 0.12, 0.06),
+    trailDecay: 0.86,
+    ignitionTemp: 1012,
+    density: 2.97,
+    hygroscopicity: 0,
+    riskClassification: { fire: 0, reactivity: 0, contact: 1 },
+  },
+  parlon: {
+    name: 'Parlon (Chlorinated Isoprene Rubber)',
+    element: 'C5H6Cl4',
+    color: new THREE.Color(0.3, 0.3, 0.3),
+    temperature: 1200,
+    emissionIntensity: 1.0,
+    burnRate: 3.5,
+    sparkSize: 0.3,
+    smokeColor: new THREE.Color(0.2, 0.2, 0.2),
+    trailDecay: 0.70,
+    combustionProducts: 'HCl + CO2 + CO',
+    riskClassification: { fire: 1, reactivity: 0, contact: 0 },
+  },
+  red_gum: {
+    name: 'Red Gum (Accroids Resin)',
+    element: 'C-H-O resin',
+    color: new THREE.Color(0.85, 0.55, 0.15),
+    temperature: 1400,
+    emissionIntensity: 2.0,
+    burnRate: 3.0,
+    sparkSize: 0.5,
+    smokeColor: new THREE.Color(0.15, 0.12, 0.08),
+    trailDecay: 0.75,
+    ignitionTemp: 350,
+    riskClassification: { fire: 2, reactivity: 0, contact: 0 },
+  },
+  lampblack: {
+    name: 'Lampblack (Carbon)',
+    element: 'C',
+    color: new THREE.Color(1.0, 0.75, 0.15),
+    temperature: 1800,
+    emissionIntensity: 2.5,
+    burnRate: 4.0,
+    sparkSize: 0.4,
+    smokeColor: new THREE.Color(0.05, 0.05, 0.04),
+    trailDecay: 0.80,
+    ignitionTemp: 400,
+    density: 1.77,
+    riskClassification: { fire: 2, reactivity: 0, contact: 0 },
+  },
+  iron_filings: {
+    name: 'Iron Filings (Linseed-Coated)',
+    element: 'Fe',
+    color: new THREE.Color(1.0, 0.82, 0.20),
+    temperature: 2200,
+    emissionIntensity: 3.0,
+    burnRate: 3.5,
+    sparkSize: 2.0,
+    smokeColor: new THREE.Color(0.12, 0.10, 0.08),
+    trailDecay: 0.92,
+    ignitionTemp: 560,
+    density: 7.87,
+    riskClassification: { fire: 1, reactivity: 1, contact: 0 },
+  },
+  magnalium_alloy: {
+    name: 'Magnalium (Mg/Al 50:50)',
+    element: 'MgAl',
+    color: new THREE.Color(1.0, 1.0, 0.95),
+    temperature: 2800,
+    emissionIntensity: 6.0,
+    burnRate: 1.5,
+    sparkSize: 1.2,
+    smokeColor: new THREE.Color(0.2, 0.2, 0.2),
+    trailDecay: 0.88,
+    ignitionTemp: 430,
+    density: 2.0,
+    riskClassification: { fire: 3, reactivity: 2, contact: 1 },
+  },
+  dextrin_binder: {
+    name: 'Dextrin',
+    element: '(C6H10O5)n',
+    color: new THREE.Color(0.5, 0.4, 0.2),
+    temperature: 1000,
+    emissionIntensity: 0.5,
+    burnRate: 4.0,
+    sparkSize: 0.1,
+    smokeColor: new THREE.Color(0.1, 0.1, 0.08),
+    trailDecay: 0.60,
+    ignitionTemp: 250,
+    density: 1.5,
+    riskClassification: { fire: 1, reactivity: 0, contact: 0 },
+  },
 };
+
+// ── Veline Color Mixing System ──────────────────────────────────────
+// Public domain color-blending ratios from Skylighter reference.
+// Maps composite display colors to weighted blends of primary flame colors.
+
+export const VELINE_COLOR_MIXING: Record<string, Record<string, number>> = {
+  yellow:     { green: 0.55, orange: 0.45 },
+  chartreuse: { green: 0.80, orange: 0.20 },
+  aqua:       { green: 0.80, blue: 0.20 },
+  turquoise:  { green: 0.55, blue: 0.45 },
+  magenta:    { red: 0.50, blue: 0.50 },
+  purple:     { orange: 0.05, red: 0.15, blue: 0.80 },
+  peach:      { orange: 0.60, red: 0.25, blue: 0.15 },
+  maroon:     { red: 0.85, blue: 0.15 },
+};
+
+const VELINE_PRIMARY_COLORS: Record<string, THREE.Color> = {
+  red:    new THREE.Color(1.0, 0.08, 0.03),   // SrCO3
+  green:  new THREE.Color(0.12, 0.95, 0.30),   // BaCO3
+  blue:   new THREE.Color(0.05, 0.25, 1.0),    // CuCl
+  orange: new THREE.Color(1.0, 0.55, 0.05),    // Ca compound
+};
+
+/** Blend a Veline composite color from primary flame colors */
+export function getVelineCompositeColor(name: string): THREE.Color {
+  const mix = VELINE_COLOR_MIXING[name];
+  if (!mix) return new THREE.Color(1, 1, 1);
+  const result = new THREE.Color(0, 0, 0);
+  for (const [primary, weight] of Object.entries(mix)) {
+    const pc = VELINE_PRIMARY_COLORS[primary];
+    if (pc) {
+      result.r += pc.r * weight;
+      result.g += pc.g * weight;
+      result.b += pc.b * weight;
+    }
+  }
+  return result;
+}
+
+// ── Dangerous Combinations (Safety Table) ───────────────────────────
+
+export interface DangerousCombination {
+  chemicals: [string, string];
+  hazard: string;
+  severity: 'critical' | 'high' | 'moderate';
+}
+
+export const DANGEROUS_COMBINATIONS: DangerousCombination[] = [
+  { chemicals: ['KClO3', 'S'], hazard: 'Spontaneous ignition — sulfuric acid forms ClO2 gas', severity: 'critical' },
+  { chemicals: ['KClO3', 'Sb2S3'], hazard: 'Spontaneous ignition — extremely friction-sensitive', severity: 'critical' },
+  { chemicals: ['KClO3', 'Al'], hazard: 'Extremely sensitive to friction and shock', severity: 'high' },
+  { chemicals: ['KClO3', 'Mg'], hazard: 'Extremely sensitive to friction and shock', severity: 'high' },
+  { chemicals: ['NH4NO3', 'KClO3'], hazard: 'Forms ammonium chlorate — explosive, spontaneous ignition', severity: 'critical' },
+  { chemicals: ['NH4NO3', 'Al'], hazard: 'Exothermic amide reaction when wet — spontaneous ignition', severity: 'high' },
+  { chemicals: ['Ba(ClO3)2', 'S'], hazard: 'Spontaneous ignition — more sensitive than KClO3 mixtures', severity: 'critical' },
+  { chemicals: ['Ba(ClO3)2', 'Sb2S3'], hazard: 'Spontaneous ignition', severity: 'critical' },
+  { chemicals: ['P_red', 'KClO3'], hazard: 'Explosive on contact — Armstrong mixture', severity: 'critical' },
+];
+
+/** Check if two chemicals form a dangerous combination */
+export function checkDangerousCombination(chem1: string, chem2: string): DangerousCombination | undefined {
+  return DANGEROUS_COMBINATIONS.find(dc =>
+    (dc.chemicals[0] === chem1 && dc.chemicals[1] === chem2) ||
+    (dc.chemicals[0] === chem2 && dc.chemicals[1] === chem1)
+  );
+}
+
+// ── Black Powder Grades ─────────────────────────────────────────────
+
+export interface BPGrade {
+  name: string;
+  grainSizeMm: number;
+  burnRateModifier: number;
+  use: string;
+}
+
+export const BLACK_POWDER_GRADES: Record<string, BPGrade> = {
+  cannon:  { name: 'Cannon Grade', grainSizeMm: 4.76, burnRateModifier: 1.0, use: 'Standard lift charge' },
+  '4fa':   { name: '4FA',          grainSizeMm: 1.68, burnRateModifier: 1.3, use: 'Fine burst charge' },
+  meal_d:  { name: 'Meal D',       grainSizeMm: 0.42, burnRateModifier: 2.0, use: 'Priming, fast ignition' },
+  '5fg':   { name: '5FG',          grainSizeMm: 0.149, burnRateModifier: 3.0, use: 'Finest — nearly instantaneous' },
+};
+
+/** Get burn rate modifier for a given BP grade */
+export function getBPBurnRateModifier(grade: string): number {
+  return BLACK_POWDER_GRADES[grade]?.burnRateModifier ?? 1.0;
+}
 
 /**
  * Thermal color transition: white-hot → compound color → ember → dark

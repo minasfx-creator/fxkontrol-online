@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
-import { getBreakHeight, getMortarVelocity, GRAVITY, getStarLifetime, getCakeParticlesPerShot, getParticleSize } from '@/lib/pyroPhysics';
+import { getBreakHeight, getMortarVelocity, GRAVITY, getStarLifetime, getCakeParticlesPerShot, getParticleSize, getBreakSpeed } from '@/lib/pyroPhysics';
 import { getThreeBlending } from '@/lib/niagaraBlenderRules';
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -224,7 +224,7 @@ function CakeShot({
     const v = new Float32Array(PARTICLES_PER_SHOT * 3);
     const l = new Float32Array(PARTICLES_PER_SHOT);
     const rng = (i: number) => Math.sin(seed * 9999 + i * 7919) * 0.5 + 0.5;
-    const breakSpeed = 5 + caliber * 2.5;
+    const breakSpeed = getBreakSpeed(caliber) * 0.5;
     for (let i = 0; i < PARTICLES_PER_SHOT; i++) {
       const theta = rng(i * 2) * Math.PI * 2;
       const phi = Math.acos(2 * rng(i * 2 + 1) - 1);

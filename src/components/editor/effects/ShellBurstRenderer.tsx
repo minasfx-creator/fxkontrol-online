@@ -37,6 +37,7 @@ const BURST_VERTEX = `
   uniform float uTime;
   uniform float uBaseSize;
   uniform float uHDRMultiplier;
+  uniform float uCaliberScale;
   
   void main() {
     vLife = aLife;
@@ -53,7 +54,7 @@ const BURST_VERTEX = `
     float birthPulse = lifeRatio < 0.05 ? 1.0 + (1.0 - lifeRatio / 0.05) * 0.8 : 1.0;
     
     gl_PointSize = uBaseSize * sizeDecay * birthPulse * (300.0 / -mvPosition.z);
-    gl_PointSize = clamp(gl_PointSize, 1.0, 64.0);
+    gl_PointSize = clamp(gl_PointSize, 1.0, 64.0 + uCaliberScale * 8.0);
     
     gl_Position = projectionMatrix * mvPosition;
   }
@@ -418,6 +419,7 @@ export default function ShellBurstRenderer({
     uColor2: { value: new THREE.Color(secondaryColor || color) },
     uColorChangePoint: { value: colorChangePoint },
     uBaseSize: { value: baseSize },
+    uCaliberScale: { value: caliber },
     uHDRMultiplier: { value: hdrMultiplier },
     uTime: { value: 0 },
     uThermalSpeed: { value: thermalTransitionSpeed },
@@ -433,6 +435,7 @@ export default function ShellBurstRenderer({
     uColor2: { value: new THREE.Color(pistilColor) },
     uColorChangePoint: { value: 2.0 },
     uBaseSize: { value: baseSize * 0.7 },
+    uCaliberScale: { value: caliber },
     uHDRMultiplier: { value: hdrMultiplier },
     uTime: { value: 0 },
     uThermalSpeed: { value: thermalTransitionSpeed },
@@ -729,7 +732,7 @@ export default function ShellBurstRenderer({
             <bufferAttribute attach="attributes-color" args={[glitterBuffers.col, 3]} />
           </bufferGeometry>
           <pointsMaterial
-            size={0.08 + caliber * 0.02}
+            size={getParticleSize(caliber) * 0.06}
             vertexColors
             transparent
             opacity={0.7}
@@ -748,7 +751,7 @@ export default function ShellBurstRenderer({
       {/* Burst flash — Screen blending to prevent white-out accumulation */}
       {progress < 0.08 && (
         <mesh>
-          <sphereGeometry args={[1.5 + caliber * 0.8, 16, 16]} />
+          <sphereGeometry args={[1.0 + caliber * 1.0, 16, 16]} />
           <meshBasicMaterial
             color={secondaryColor || color}
             transparent
@@ -887,7 +890,7 @@ function CrossetteSubBurst({
         <bufferAttribute attach="attributes-color" args={[buffers.col, 3]} />
       </bufferGeometry>
       <pointsMaterial
-        size={0.15 + caliber * 0.04}
+        size={getParticleSize(caliber) * 0.1}
         vertexColors
         transparent
         opacity={0.9}
