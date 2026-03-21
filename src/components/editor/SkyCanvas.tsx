@@ -68,6 +68,8 @@ import { createLensFlareSprite, flashLensFlare, decayLensFlare } from '@/render_
 import { getBurstConfig, type BurstPattern } from '@/render_ultra/fireworks/burstSimulation';
 import { createSparkTrailSystem, updateSparkTrail, writeSparkTrailsToBuffers, type SparkState } from '@/render_ultra/fireworks/sparkTrailsGPU';
 import { createHDRLightingRig } from '@/render_ultra/lighting/hdrLighting';
+import { createVolumetricFogPlane } from '@/render_ultra/environment/volumetricFog';
+import { createReflectionPlane } from '@/render_ultra/environment/reflections';
 // ═══ LOD System — distance-based quality scaling + adaptive FPS ═══
 import { useLOD, calculateLOD, useSceneLOD, updateAdaptiveLOD, getAdaptiveTier, type LODFactors } from '@/hooks/useLOD';
 // ═══ AAA Engine: Frustum Culling + Object Pooling ═══
