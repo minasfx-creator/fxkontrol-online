@@ -455,6 +455,15 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
       const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
       const budgets = getNiagaraBudgets(isMobile);
 
+      // ── Advect fluid grid ──
+      const grid = fluidGridRef.current;
+      const { wind } = useProjectStore.getState();
+      if (wind.enabled) {
+        const rad = (wind.direction * Math.PI) / 180;
+        applyWindForce(grid, Math.sin(rad) * wind.speed * 0.1, Math.cos(rad) * wind.speed * 0.1, dt);
+      }
+      advectFluid(grid, dt);
+
       // ── Update wind from project state ──
       const { wind } = useProjectStore.getState();
       if (wind.enabled) {
