@@ -1150,6 +1150,25 @@ function GroundDecalManager() {
   return null;
 }
 
+/** Switcher: renders sky engine + optional cloud/water/decal/ToD layers based on store settings */
+function EnvironmentV2Switcher() {
+  const skyEngineV2 = useSceneStore(st => st.settings.skyEngineV2);
+  const cloudCoverage = useSceneStore(st => st.settings.cloudCoverage);
+  const waterEnabled = useSceneStore(st => st.settings.waterEnabled);
+  const decalsEnabled = useSceneStore(st => st.settings.decalsEnabled);
+  const timeOfDayEnabled = useSceneStore(st => st.settings.timeOfDayEnabled);
+
+  return (
+    <>
+      {skyEngineV2 ? <SkyAtmosphereV2Layer /> : <SkyGradient />}
+      {cloudCoverage > 0.05 && <VolumetricCloudLayer />}
+      {waterEnabled && <WaterLayer />}
+      {decalsEnabled && <GroundDecalManager />}
+      {timeOfDayEnabled && <TimeOfDayController />}
+    </>
+  );
+}
+
 function TimeOfDayController() {
   const timeOfDay = useSceneStore(st => st.settings.timeOfDay);
   const { scene } = useThree();
