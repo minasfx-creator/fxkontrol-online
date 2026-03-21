@@ -42,6 +42,7 @@ export default function GenerativeEffectsPanel({ onClose }: GenerativeEffectsPan
   const timeRef = useRef(0);
   const animRef = useRef<number>(0);
   const lastFrameRef = useRef(0);
+  const dmxUniverseRef = useRef<DMXUniverse | null>(null);
 
   // Sync layers to generative store when viewport link is on
   useEffect(() => {
