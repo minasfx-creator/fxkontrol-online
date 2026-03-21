@@ -86,6 +86,11 @@ import MobileLinkPanel from '@/components/editor/MobileLinkPanel';
 import MobileLinkMonitor from '@/components/editor/MobileLinkMonitor';
 import SiteModelsPanel from '@/components/editor/SiteModelsPanel';
 import ShowCommanderPanel from '@/components/editor/ShowCommanderPanel';
+import BluetoothPanel from '@/components/editor/BluetoothPanel';
+import NFCPairPanel from '@/components/editor/NFCPairPanel';
+import DMXOutputPanel from '@/components/editor/DMXOutputPanel';
+import RemoteControlPanel from '@/components/editor/RemoteControlPanel';
+import RemoteReceiverOverlay from '@/components/editor/RemoteReceiverOverlay';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
@@ -353,6 +358,10 @@ function Index() {
         {activePanel === 'mobilelink' && <MobileLinkPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'linkmonitor' && <MobileLinkMonitor onClose={() => setActivePanel(null)} />}
         {activePanel === 'showcommander' && <ShowCommanderPanel onClose={() => setActivePanel(null)} onOpenPanel={(id) => setActivePanel(id as PanelId)} />}
+        {activePanel === 'bluetooth' && <BluetoothPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'nfc' && <NFCPairPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'dmxoutput' && <DMXOutputPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'remotecontrol' && <RemoteControlPanel onClose={() => setActivePanel(null)} />}
       </>
     );
   };
@@ -560,6 +569,7 @@ function Index() {
         <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />
       )}
       <PositionContextMenu />
+      <RemoteReceiverOverlay onOpenPanel={(id) => handleTogglePanel(id as PanelId)} />
     </div>
   );
 }

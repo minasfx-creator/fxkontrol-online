@@ -4,11 +4,11 @@
  */
 import { useCallback, useRef } from 'react';
 import { haptics } from '@/lib/haptics';
-import { Clock, Sparkles, MapPin, Hexagon, MoreHorizontal, Cable, Cpu, Map, Radio } from 'lucide-react';
+import { Clock, Sparkles, MapPin, Hexagon, MoreHorizontal, Cable, Cpu, Map, Radio, Smartphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PanelId } from '@/components/editor/PanelTabBar';
 
-export type MobileTab = 'timeline' | 'assets' | 'properties' | 'livefx' | 'points' | 'formations' | 'mobilelink' | 'controllers' | 'fieldmap' | 'radio' | 'more';
+export type MobileTab = 'timeline' | 'assets' | 'properties' | 'livefx' | 'points' | 'formations' | 'mobilelink' | 'controllers' | 'fieldmap' | 'radio' | 'remote' | 'more';
 
 interface MobileTabBarProps {
   activeTab: MobileTab | null;
@@ -21,8 +21,8 @@ interface MobileTabBarProps {
 const TABS: { key: MobileTab; icon: typeof Clock; label: string; panelId?: PanelId; accent?: boolean }[] = [
   { key: 'livefx', icon: Sparkles, label: 'Live FX', panelId: 'livefiring', accent: true },
   { key: 'controllers', icon: Cpu, label: 'Control', panelId: 'controllers' },
+  { key: 'remote', icon: Smartphone, label: 'Remote', panelId: 'remotecontrol' },
   { key: 'fieldmap', icon: Map, label: 'Map', panelId: 'fieldmap' },
-  { key: 'timeline', icon: Clock, label: 'Timeline' },
   { key: 'more', icon: MoreHorizontal, label: 'More' },
 ];
 
