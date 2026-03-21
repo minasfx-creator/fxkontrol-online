@@ -42,6 +42,7 @@ export default function MVRImporter({ open, onOpenChange, initialFile }: Props) 
     const file = e.target.files?.[0];
     if (!file) return;
     setFileName(file.name);
+    setCurrentFile(file);
     setLoading(true);
 
     try {
