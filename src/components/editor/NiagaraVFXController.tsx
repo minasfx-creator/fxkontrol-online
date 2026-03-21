@@ -368,6 +368,7 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
     const { scene, camera, size } = useThree();
     const activeSystems = useRef<ActiveVFXSystem[]>([]);
     const lastBurstIds = useRef<Set<string>>(new Set());
+    const fluidGridRef = useRef<FluidGrid>(createFluidGrid(64, 64));
     const { hdrMultiplier, effectBrightness } = useSceneStore(st => st.settings);
     const environment = useSceneStore(st => st.environment);
 
