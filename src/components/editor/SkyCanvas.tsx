@@ -3614,9 +3614,7 @@ export default function SkyCanvas() {
         <AdaptiveExposureController />
         {!environment.disableLighting && <GlobalIlluminationController />}
         <GroundReflections />
-        {!environment.disableSmoke && <SmokeController />}
         {!environment.disableLighting && <LensFlareController />}
-        <SparkTrailController />
         <NiagaraVFXController />
 
         <SkyGradient />
