@@ -12,6 +12,7 @@ import { parseUE5Map, ue5ToThreeJS, extractAssetName, type UE5SceneObject, type 
 import { imageToHeightmap, sampleHeightmap, DEFAULT_TERRAIN_CONFIG, type TerrainConfig } from '@/lib/heightmapToTerrain';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
+import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
