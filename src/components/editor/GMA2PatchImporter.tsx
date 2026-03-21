@@ -103,6 +103,11 @@ export default function GMA2PatchImporter({ open, onOpenChange }: Props) {
       description: `${dmxUniverses.length} universe(s), ${totalCh} DMX channels mapped. Art-Net test triggered.`,
     });
 
+    // Auto-save to library
+    if (currentFile) {
+      saveToLibrary(currentFile, { name: fileName || 'GMA2 Patch', source: 'gma2', file_format: 'csv', tags: ['patch', 'dmx'] });
+    }
+
     onOpenChange(false);
     setResult(null);
     setFileName(null);

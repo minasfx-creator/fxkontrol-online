@@ -417,13 +417,20 @@ export default function CSVImporter({ open, onOpenChange, initialFile }: { open:
       });
     }
     toast.success(`${parsed.length} posições importadas (${detectedFormat || 'CSV'})`);
+
+    // Auto-save to library
+    if (currentFile) {
+      saveToLibrary(currentFile, { name: fileName || 'CSV Import', source: 'csv-import', file_format: 'csv', tags: ['positions', 'formation'] });
+    }
+
     onOpenChange(false);
     setParsed([]);
     setFileName(null);
+    setCurrentFile(null);
     setRawText(null);
     setDetectedFormat(null);
     setShowOptions(false);
-  }, [parsed, addPosition, onOpenChange, detectedFormat]);
+  }, [parsed, addPosition, onOpenChange, detectedFormat, currentFile, fileName, saveToLibrary]);
 
   const formatLabels: Record<DetectedFormat, string> = {
     'positions-csv': 'Posições CSV',
