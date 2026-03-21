@@ -209,6 +209,97 @@ export function getTypedHeight(partType: FinalePartType, caliberInches: number, 
 
 // ── Rocket Physics ──────────────────────────────────────────────────
 
+/** Rocket motor thrust table: caliber → { thrust (N), burnTime (s) } */
+const ROCKET_MOTOR_THRUST: Record<number, { thrust: number; burnTime: number }> = {
+  1: { thrust: 8, burnTime: 0.8 },
+  2: { thrust: 20, burnTime: 1.2 },
+  3: { thrust: 40, burnTime: 1.5 },
+  4: { thrust: 70, burnTime: 1.8 },
+  5: { thrust: 100, burnTime: 2.0 },
+  6: { thrust: 140, burnTime: 2.2 },
+};
+
+export function getRocketMotorBurnTime(caliberInches: number): number {
+  const keys = Object.keys(ROCKET_MOTOR_THRUST).map(Number).sort((a, b) => a - b);
+  if (caliberInches <= keys[0]) return ROCKET_MOTOR_THRUST[keys[0]].burnTime;
+  if (caliberInches >= keys[keys.length - 1]) return ROCKET_MOTOR_THRUST[keys[keys.length - 1]].burnTime;
+  for (let i = 0; i < keys.length - 1; i++) {
+    if (caliberInches >= keys[i] && caliberInches <= keys[i + 1]) {
+      const t = (caliberInches - keys[i]) / (keys[i + 1] - keys[i]);
+      return ROCKET_MOTOR_THRUST[keys[i]].burnTime * (1 - t) + ROCKET_MOTOR_THRUST[keys[i + 1]].burnTime * t;
+    }
+  }
+  return 1.5;
+}
+
+export function getRocketApogee(caliberInches: number): number {
+  // Rockets go ~30% higher than shells of same caliber
+  return getBreakHeight(caliberInches) * 1.3;
+}
+
+// ── Caliber-Aware Particle Scaling (Manual de Pirotecnia) ───────────
+
+/** Particle visual size by caliber (quadratic relationship — star area ∝ caliber²) */
+const PARTICLE_SIZE: LookupTable = {
+  1: 0.3, 2: 0.6, 3: 1.0, 4: 1.5, 5: 2.0, 6: 2.5, 8: 3.5, 10: 4.2, 12: 5.0,
+};
+
+/** Cake sub-shell particles per shot */
+const CAKE_PARTICLES_PER_SHOT: LookupTable = {
+  0.5: 10, 1: 15, 1.5: 25, 2: 35, 3: 65, 4: 100, 5: 150,
+};
+
+/** Gerb particle count by caliber */
+const GERB_PARTICLE_COUNT: LookupTable = {
+  1: 150, 2: 250, 3: 350, 4: 500, 6: 700,
+};
+
+/** Burst smoke density multiplier by caliber */
+const BURST_SMOKE_DENSITY: LookupTable = {
+  1: 0.4, 2: 0.6, 3: 0.8, 4: 1.0, 5: 1.3, 6: 1.6, 8: 2.2, 10: 2.8, 12: 3.5,
+};
+
+export function getParticleSize(caliberInches: number): number {
+  return interpolateTable(PARTICLE_SIZE, caliberInches, 1.0);
+}
+
+export function getCakeParticlesPerShot(caliberInches: number): number {
+  return interpolateTableRound(CAKE_PARTICLES_PER_SHOT, caliberInches, 35);
+}
+
+export function getGerbParticleCount(caliberInches: number): number {
+  return interpolateTableRound(GERB_PARTICLE_COUNT, caliberInches, 350);
+}
+
+export function getBurstSmokeDensity(caliberInches: number): number {
+  return interpolateTable(BURST_SMOKE_DENSITY, caliberInches, 1.0);
+}
+
+// ── Material Classification (Manual de Pirotecnia RD 989/2015) ──────
+
+export type MaterialType = 'detonante' | 'pirotecnica';
+export type RiskDivision = '1.1' | '1.3' | '1.4';
+
+export function getMaterialType(pattern: string): MaterialType {
+  const detonantPatterns = ['sphere', 'salute', 'thunder', 'report'];
+  return detonantPatterns.some(p => pattern.toLowerCase().includes(p)) ? 'detonante' : 'pirotecnica';
+}
+
+export function getRiskDivision(caliberInches: number, materialType: MaterialType): RiskDivision {
+  if (materialType === 'detonante' && caliberInches >= 3) return '1.1';
+  if (caliberInches <= 1.5) return '1.4';
+  return '1.3';
+}
+
+/** Lift smoke configuration based on pólvora negra (KNO3+C+S) chemistry */
+export const LIFT_SMOKE_CONFIG = {
+  black_powder: { color: '#B8A87A', density: 1.4, riseSpeed: 0.3 },
+  flash: { color: '#CCCCCC', density: 0.8, riseSpeed: 0.5 },
+  composite: { color: '#999999', density: 1.0, riseSpeed: 0.4 },
+} as const;
+
+export type LiftChargeType = keyof typeof LIFT_SMOKE_CONFIG;
+
 export function createRocketTrail(motorBurnTime: number): ParticleState {
   const spread = 0.08;
   return {

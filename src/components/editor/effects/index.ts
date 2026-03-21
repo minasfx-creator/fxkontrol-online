@@ -26,3 +26,8 @@ export { default as SaluteEffect } from './SaluteEffect';
 export { default as TourbillonEffect } from './TourbillonEffect';
 export { default as SetPieceEffect } from './SetPieceEffect';
 export { default as WheelEffect } from './WheelEffect';
+export { default as RocketEffect } from './RocketEffect';
+export { default as BengalEffect } from './BengalEffect';
+export { default as FirecrackerStringEffect } from './FirecrackerStringEffect';
+export { default as SaxonEffect } from './SaxonEffect';
+export { default as ParachuteFlareEffect } from './ParachuteFlareEffect';

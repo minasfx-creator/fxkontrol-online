@@ -16,6 +16,12 @@ export interface ChemicalCompound {
   sparkSize: number;         // base particle size
   smokeColor: THREE.Color;
   trailDecay: number;        // 0-1, how fast trail fades
+  /** Friction sensitivity (kg) — Manual: SR < 5kg = high sensitivity, faster burn */
+  frictionSensitivity?: number;
+  /** Sulfur content (0-1) — affects smoke color (yellow-gray residue from pólvora negra) */
+  sulfurContent?: number;
+  /** Charcoal type — Manual: 'red' = low-temp easy ignite, 'black' = high-temp hard ignite */
+  charcoalType?: 'red' | 'black';
 }
 
 const COMPOUNDS: Record<string, ChemicalCompound> = {
@@ -106,6 +112,61 @@ const COMPOUNDS: Record<string, ChemicalCompound> = {
     sparkSize: 1.4,
     smokeColor: new THREE.Color(0.1, 0.08, 0.04),
     trailDecay: 0.80,
+    charcoalType: 'red',
+    sulfurContent: 0,
+  },
+  zinc: {
+    name: 'Zinc Filings',
+    element: 'Zn',
+    color: new THREE.Color(0.85, 0.9, 1.0),
+    temperature: 1700,
+    emissionIntensity: 3.5,
+    burnRate: 2.0,
+    sparkSize: 1.0,
+    smokeColor: new THREE.Color(0.2, 0.2, 0.22),
+    trailDecay: 0.88,
+    frictionSensitivity: 8,
+    sulfurContent: 0,
+  },
+  antimony: {
+    name: 'Antimony Trisulfide',
+    element: 'Sb',
+    color: new THREE.Color(0.8, 0.85, 1.0),
+    temperature: 1600,
+    emissionIntensity: 3.0,
+    burnRate: 2.5,
+    sparkSize: 0.9,
+    smokeColor: new THREE.Color(0.18, 0.18, 0.2),
+    trailDecay: 0.86,
+    frictionSensitivity: 3,
+    sulfurContent: 0.3,
+  },
+  calcium: {
+    name: 'Calcium Carbonate',
+    element: 'Ca',
+    color: new THREE.Color(1.0, 0.45, 0.25),
+    temperature: 2000,
+    emissionIntensity: 3.2,
+    burnRate: 2.6,
+    sparkSize: 1.1,
+    smokeColor: new THREE.Color(0.14, 0.1, 0.08),
+    trailDecay: 0.90,
+    frictionSensitivity: 7,
+    sulfurContent: 0,
+  },
+  black_powder: {
+    name: 'Pólvora Negra (KNO3 75 + S 12.5 + C 12.5)',
+    element: 'KNO3+C+S',
+    color: new THREE.Color(1.0, 0.7, 0.2),
+    temperature: 1600,
+    emissionIntensity: 2.0,
+    burnRate: 1.5,
+    sparkSize: 0.8,
+    smokeColor: new THREE.Color(0.45, 0.40, 0.30),
+    trailDecay: 0.75,
+    frictionSensitivity: 6,
+    sulfurContent: 0.125,
+    charcoalType: 'black',
   },
 };
 
@@ -347,10 +408,14 @@ const ELEMENT_EMISSION: Record<string, EmissionLine[]> = {
   'Bi2O3': [{ wavelength: 560, intensity: 0.6 }, { wavelength: 590, intensity: 0.5 }],
   'C': [{ wavelength: 590, intensity: 0.7 }, { wavelength: 620, intensity: 0.9 }],
   'S': [{ wavelength: 580, intensity: 0.5 }],
-  'KClO4': [], // oxidizer, no visible emission
+  'Zn': [{ wavelength: 470, intensity: 0.7 }, { wavelength: 510, intensity: 0.5 }],
+  'Sb': [{ wavelength: 465, intensity: 0.6 }, { wavelength: 500, intensity: 0.5 }],
+  'Ca': [{ wavelength: 622, intensity: 0.9 }, { wavelength: 553, intensity: 0.4 }],
+  'KNO3+C+S': [{ wavelength: 590, intensity: 0.6 }, { wavelength: 620, intensity: 0.4 }],
+  'KClO4': [],
   'KNO3': [],
-  'LAC': [{ wavelength: 470, intensity: 0.9 }], // blue copper compound
-  'PVC': [],  // chlorine donor, no visible emission
+  'LAC': [{ wavelength: 470, intensity: 0.9 }],
+  'PVC': [],
   'Shellac': [],
   'Dextrin': [],
   'Sb2S3': [{ wavelength: 560, intensity: 0.4 }],
