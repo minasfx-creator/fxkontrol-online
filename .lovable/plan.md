@@ -1,29 +1,28 @@
 
-# Plan: Complete Niagara Integration — COMPLETED ✅
+# Plan: Orphaned Position Cleanup + Mobile Enhancements — COMPLETED ✅
 
 ## Implemented
 
-1. **Legacy Controller Removal** — Removed `SmokeController` and `SparkTrailController` from SkyCanvas, eliminating duplicate particles
-2. **NiagaraVFXController Enhanced** — Wired soft-particle material (depth-fade), ribbon trails (comet/willow), heat haze emitter (caliber ≥6"), sub-emitter spawning (ember on spark death), thermal color evolution
-3. **CometEffect → Niagara Ribbon** — Replaced hand-rolled trail with `RibbonTrail` from ribbonTrailRenderer, keeping spark detach and muzzle flash
-4. **GerbEffect → Niagara Emitter** — Replaced manual particle arrays with `NiagaraSystem` using cone spawn shape + collision module
-5. **SmokeTrail → Niagara Smoke Emitter** — Replaced manual smoke with `NiagaraSystem` using sphere spawn, curl noise turbulence, negative gravity, soft-particle config
+1. **Auto-Clean Orphaned Positions** — `removeTimelineItem` and `removeMultipleTimelineItems` now detect and remove positions with no remaining linked effects
+2. **Compact Mobile Labels** — Position labels use `occlude`, `distanceFactor={8}`, smaller padding, removed emoji/SNAP/effects count. Mobile hides labels unless selected
+3. **`showPositionLabels` Toggle** — Added to `EnvironmentState` in `useSceneStore` (default: `true`)
+4. **Remote Command Engine Expanded** — New actions: `livefx`, `sfx-channel`, `store-sync` with corresponding executor cases
+5. **LiveFX Remote Listener** — `LiveFiringPanel` listens for `remote-livefx` events (fire-cue, scene-change, arm, channel-adjust)
+6. **LIVE RELAY Badge** — `RemoteControlPanel` shows `🔴 LIVE RELAY` badge when slave is connected
+7. **useRemoteRelay Hook** — New hook for session-aware action mirroring (`relayAction`, `relayLiveFx`, `relaySfxChannel`)
 
 ## Architecture
 
 ```text
-SkyCanvas
-  ├─ NiagaraVFXController (central burst VFX)
-  │    ├─ SparkEmitter (velocity stretch + sub-emitter on death)
-  │    ├─ SmokeEmitter (soft particles + curl noise)
-  │    ├─ EmberEmitter (collision + bounce)
-  │    ├─ RibbonTrail (comet/willow patterns)
-  │    └─ HeatHazeEmitter (distortion, caliber ≥ 6)
-  │
-  ├─ CometEffect → RibbonTrail + detach sparks
-  ├─ GerbEffect → NiagaraSystem (cone spawn + collision)
-  ├─ SmokeTrail → NiagaraSystem (sphere spawn + curl noise)
-  │
-  ├─ LensFlareController (kept — complementary)
-  └─ [other effects unchanged]
+Remote Control Flow:
+  Slave (Mobile)
+    ├─ useRemoteRelay hook → wraps actions
+    ├─ Sends 'livefx' commands → CUE fires, scene changes
+    ├─ Sends 'sfx-channel' → effect triggers
+    └─ Sends 'store-sync' → state deltas
+  
+  Master (Desktop)
+    ├─ executeRemoteCommand() → dispatches CustomEvents
+    ├─ LiveFiringPanel → listens 'remote-livefx'
+    └─ Actions mirrored in real-time
 ```
