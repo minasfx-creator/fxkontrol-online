@@ -196,6 +196,11 @@ export interface SceneSettings {
   contactShadowsEnabled: boolean;
   contactShadowsOpacity: number; // 0-1
   contactShadowsBlur: number;    // 0-5
+
+  // Niagara-grade rendering settings
+  heatDistortionEnabled: boolean;
+  smokeRenderQuality: 'off' | 'low' | 'high';
+  ribbonTrails: boolean;
 }
 
 const DEFAULT_SETTINGS: SceneSettings = {
