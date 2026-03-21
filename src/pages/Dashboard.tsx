@@ -458,7 +458,7 @@ export default function Dashboard() {
           />
 
           {/* Stats */}
-          <div className="grid grid-cols-2 gap-2 animate-fxk-fade-up">
+          <div className="grid grid-cols-2 gap-2">
             {[
               { value: projects.length, label: 'Projetos', icon: FolderOpen, color: 'text-primary' },
               { value: events.length, label: 'Eventos', icon: Target, color: 'text-accent' },
