@@ -104,12 +104,14 @@ export default function InstancedDroneSwarm({
     [0.3, 0.05, -0.3],
   ], []);
 
+  // Nav light colors from render_ultra droneLights module — calibrated HDR
+  const navLightsCfg = useMemo(() => getNavLights(), []);
   const navColors = useMemo(() => [
-    new THREE.Color('#00ff44'),
-    new THREE.Color('#00ff44'),
-    new THREE.Color('#ff2200'),
-    new THREE.Color('#ff2200'),
-  ], []);
+    new THREE.Color(navLightsCfg.front.color),
+    new THREE.Color(navLightsCfg.front.color),
+    new THREE.Color(navLightsCfg.rear.color),
+    new THREE.Color(navLightsCfg.rear.color),
+  ], [navLightsCfg]);
 
   useFrame((_, delta) => {
     if (!bodyRef.current || !ledRef.current || !rotorRef.current) return;

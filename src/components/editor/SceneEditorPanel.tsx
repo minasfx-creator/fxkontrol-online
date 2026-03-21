@@ -237,6 +237,19 @@ export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
           <SliderRow label="Ground Brightness" value={settings.groundBrightness} onChange={v => updateSettings({ groundBrightness: v })} max={2} />
           <SliderRow label="Grid Opacity" value={settings.gridOpacity} onChange={v => updateSettings({ gridOpacity: v })} />
           <SliderRow label="Ground Fog" value={settings.groundFogIntensity} onChange={v => updateSettings({ groundFogIntensity: v })} />
+
+          {/* Terrain PBR Preset — render_ultra material */}
+          <div>
+            <span className="text-[9px] text-muted-foreground font-medium">Terrain Material</span>
+            <Select value={terrainPreset} onValueChange={v => setTerrainPreset(v)}>
+              <SelectTrigger className="h-7 text-[10px] mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {getTerrainPresets().map(p => (
+                  <SelectItem key={p} value={p} className="text-[10px] capitalize">{p.replace('-', ' ')}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </Section>
 
         {/* ═══ WEATHER ═══ */}
