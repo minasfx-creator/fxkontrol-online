@@ -254,9 +254,9 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
   }, [session, multiManager]);
 
   /* ── Send (slave) ──────────────────────────────── */
-  const send = useCallback((action: any, payload: Record<string, unknown> | HardwareCommandPayload) => {
+  const send = useCallback((action: any, payload: any) => {
     if (!session) return;
-    session.sendCommand(action, payload);
+    session.sendCommand(action, payload as Record<string, unknown>);
     haptics.tap();
   }, [session]);
 
