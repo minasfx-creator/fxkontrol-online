@@ -192,15 +192,14 @@ function Index() {
     if (panelParam) {
       setActivePanel(panelParam as PanelId);
       setSearchParams({}, { replace: true });
-      // Skip splash/globe and go straight to editor
       setAppPhase('editor');
-      // On mobile, also open the floating panel at full height
-      if (isMobile) {
+      // Use window.innerWidth directly to avoid async hook delay
+      if (window.innerWidth < 768) {
         setMobileTab(null);
         setMobilePanelHeight('full');
       }
     }
-  }, [searchParams, setSearchParams, isMobile]);
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     const dblClickHandler = () => {
