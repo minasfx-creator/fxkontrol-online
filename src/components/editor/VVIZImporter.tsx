@@ -17,7 +17,9 @@ export default function VVIZImporter({ open, onOpenChange, initialFile = null }:
   const { addPosition, addTrajectory, setProjectName, setDuration } = useProjectStore();
   const [result, setResult] = useState<VVIZImportResult | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [currentFile, setCurrentFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { saveToLibrary } = useMyLibrary();
 
   const parseFile = useCallback((file: File) => {
     setFileName(file.name);
