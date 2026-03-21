@@ -237,7 +237,7 @@ export default function PyroLaunchAngles() {
   // In adjust-angles mode: show gizmos for ALL selected positions
   // In normal mode: show gizmo only for individually selected positions
   const visiblePositions = isAngleMode
-    ? pyroPositions.filter(p => selectedIds.includes(p.id))
+    ? (selectedIds.length > 0 ? pyroPositions.filter(p => selectedIds.includes(p.id)) : pyroPositions)
     : pyroPositions.filter(p => selectedIds.includes(p.id));
 
   const selectedPyroPositions = pyroPositions.filter(p => selectedIds.includes(p.id));
