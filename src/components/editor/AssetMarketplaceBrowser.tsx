@@ -556,7 +556,7 @@ function MyLibraryView({
     </div>
   );
 }
-
+function ResultsView({
   results,
   viewMode,
   loading,
