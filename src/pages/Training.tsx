@@ -391,7 +391,7 @@ export default function Training() {
       {/* Missions by chapter */}
       {chapters.map((chapter, ci) => {
         const ChapterIcon = CHAPTER_ICONS[chapter] || Sparkles;
-        const isManualChapter = chapter.includes('Química') || chapter.includes('NFPA') || chapter.includes('Pólvora');
+        const isManualChapter = chapter.includes('Química') || chapter.includes('NFPA') || chapter.includes('Pólvora') || chapter.includes('Históricas');
         return (
           <div key={chapter} className="space-y-2 animate-fxk-fade-up" style={{ animationDelay: `${0.2 + ci * 0.05}s` }}>
             <div className="flex items-center gap-2 px-1">
