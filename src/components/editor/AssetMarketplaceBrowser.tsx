@@ -496,60 +496,65 @@ function MyLibraryView({
           </button>
         ))}
       </div>
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-      {filtered.map(asset => (
-        <div
-          key={asset.id}
-          className="group rounded-2xl border border-border/15 overflow-hidden transition-all hover:border-primary/25 hover:shadow-[0_0_20px_hsl(var(--primary)/0.08)]"
-          style={{ background: 'hsl(var(--surface-1) / 0.4)' }}
-        >
-          {/* Thumbnail or placeholder */}
-          <div className="h-28 flex items-center justify-center bg-surface-0/60 relative">
-            {asset.thumbnail_base64 ? (
-              <img src={asset.thumbnail_base64} alt={asset.name} className="w-full h-full object-cover" />
-            ) : (
-              <Box className="h-10 w-10 text-muted-foreground/20" />
-            )}
-            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-              <button
-                onClick={(e) => { e.stopPropagation(); onDelete(asset.id); }}
-                className="w-6 h-6 rounded-lg bg-destructive/80 text-destructive-foreground flex items-center justify-center hover:bg-destructive transition-colors"
-                title="Remover"
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
-            </div>
-          </div>
-          {/* Info */}
-          <div className="p-3">
-            <p className="text-[12px] font-semibold text-foreground/90 truncate">{asset.name}</p>
-            <div className="flex items-center gap-2 mt-1.5">
-              <Badge className={cn("text-[8px] h-4 px-1.5 border-0", SOURCE_COLORS[asset.source] || 'bg-muted text-muted-foreground')}>
-                {asset.source}
-              </Badge>
-              <span className="text-[9px] text-muted-foreground/40 uppercase">.{asset.file_format}</span>
-              {asset.file_size > 0 && (
-                <span className="text-[9px] text-muted-foreground/30">{(asset.file_size / 1024 / 1024).toFixed(1)}MB</span>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {filtered.map(asset => (
+          <div
+            key={asset.id}
+            className="group rounded-2xl border border-border/15 overflow-hidden transition-all hover:border-primary/25 hover:shadow-[0_0_20px_hsl(var(--primary)/0.08)]"
+            style={{ background: 'hsl(var(--surface-1) / 0.4)' }}
+          >
+            <div className="h-28 flex items-center justify-center bg-surface-0/60 relative">
+              {asset.thumbnail_base64 ? (
+                <img src={asset.thumbnail_base64} alt={asset.name} className="w-full h-full object-cover" />
+              ) : (
+                <Box className="h-10 w-10 text-muted-foreground/20" />
               )}
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                <button
+                  onClick={(e) => { e.stopPropagation(); onDelete(asset.id); }}
+                  className="w-6 h-6 rounded-lg bg-destructive/80 text-destructive-foreground flex items-center justify-center hover:bg-destructive transition-colors"
+                  title="Remover"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5 mt-1">
-              <Clock className="h-3 w-3 text-muted-foreground/30" />
-              <span className="text-[9px] text-muted-foreground/40">{new Date(asset.created_at).toLocaleDateString()}</span>
+            <div className="p-3">
+              <p className="text-[12px] font-semibold text-foreground/90 truncate">{asset.name}</p>
+              <div className="flex items-center gap-2 mt-1.5">
+                <Badge className={cn("text-[8px] h-4 px-1.5 border-0", SOURCE_COLORS[asset.source] || 'bg-muted text-muted-foreground')}>
+                  {asset.source}
+                </Badge>
+                <span className="text-[9px] text-muted-foreground/40 uppercase">.{asset.file_format}</span>
+                {asset.file_size > 0 && (
+                  <span className="text-[9px] text-muted-foreground/30">{(asset.file_size / 1024 / 1024).toFixed(1)}MB</span>
+                )}
+              </div>
+              {asset.tags && asset.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {asset.tags.slice(0, 3).map(tag => (
+                    <Badge key={tag} variant="outline" className="text-[7px] px-1 py-0">{tag}</Badge>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center gap-1.5 mt-1">
+                <Clock className="h-3 w-3 text-muted-foreground/30" />
+                <span className="text-[9px] text-muted-foreground/40">{new Date(asset.created_at).toLocaleDateString()}</span>
+              </div>
+              <Button
+                size="sm"
+                className="w-full mt-2.5 h-7 text-[10px] rounded-lg font-semibold"
+                onClick={() => onImport(asset)}
+              >
+                <Download className="h-3 w-3 mr-1" />
+                Importar para Viewport
+              </Button>
             </div>
-            <Button
-              size="sm"
-              className="w-full mt-2.5 h-7 text-[10px] rounded-lg font-semibold"
-              onClick={() => onImport(asset)}
-            >
-              <Download className="h-3 w-3 mr-1" />
-              Importar para Viewport
-            </Button>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
-}
 
 function ResultsView({
   results,
