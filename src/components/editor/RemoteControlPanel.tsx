@@ -350,6 +350,11 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
             <Badge variant={connected ? 'default' : 'secondary'} className="text-[9px]">
               {connected ? <><Wifi className="w-3 h-3 mr-1" />Online</> : <><WifiOff className="w-3 h-3 mr-1" />Offline</>}
             </Badge>
+            {connected && role === 'slave' && (
+              <Badge variant="destructive" className="text-[8px] animate-pulse gap-1">
+                🔴 LIVE RELAY
+              </Badge>
+            )}
             {onClose && (
               <Button size="icon" variant="ghost" className="w-6 h-6" onClick={onClose}>
                 <X className="w-3 h-3" />

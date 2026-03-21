@@ -12,7 +12,8 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 export type CommandAction =
   | 'transport' | 'panel' | 'camera' | 'effect'
   | 'undo' | 'redo' | 'panic'
-  | 'hardware' | 'open-panel' | 'system-status';
+  | 'hardware' | 'open-panel' | 'system-status'
+  | 'livefx' | 'sfx-channel' | 'store-sync';
 
 export type ConnectionMode = 'cloud' | 'wifi-auto';
 
@@ -255,6 +256,22 @@ export function executeRemoteCommand(packet: CommandPacket, deps: CommandExecuto
     case 'hardware': {
       const hwPayload = packet.payload as unknown as HardwareCommandPayload;
       onHardwareCommand?.(hwPayload);
+      break;
+    }
+    case 'livefx': {
+      window.dispatchEvent(new CustomEvent('remote-livefx', { detail: packet.payload }));
+      break;
+    }
+    case 'sfx-channel': {
+      const { effect } = packet.payload as any;
+      if (effect) sfxStore.fireEffect(effect);
+      break;
+    }
+    case 'store-sync': {
+      const { delta } = packet.payload as any;
+      if (delta && typeof projectStore.setState === 'function') {
+        (projectStore as any).setState(delta);
+      }
       break;
     }
     case 'undo': undoStore.undo?.(); break;

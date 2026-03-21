@@ -629,6 +629,7 @@ export interface EnvironmentState {
   smokeIntensity: number;        // 0-1 ShowSim smoke intensity slider
   groundColorOverride: string | null; // ShowSim custom ground color (null = use preset)
   showRulers: boolean;           // ShowSim: vertical/horizontal rulers toggle
+  showPositionLabels: boolean;   // Toggle position name labels in viewport
   cameraBookmarks: CameraBookmark[];
 }
 
@@ -700,6 +701,7 @@ const DEFAULT_ENVIRONMENT: EnvironmentState = {
   smokeIntensity: 0.45,
   groundColorOverride: null,
   showRulers: false,
+  showPositionLabels: true,
   cameraBookmarks: [],
 };
 
