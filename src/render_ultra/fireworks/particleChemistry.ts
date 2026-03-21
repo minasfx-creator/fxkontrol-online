@@ -571,6 +571,39 @@ const COMPOUNDS: Record<string, ChemicalCompound> = {
     density: 1.5,
     riskClassification: { fire: 1, reactivity: 0, contact: 0 },
   },
+  // ── Historical Compounds (Kurt Saxon / Pyrotechny 1829 / Anderson 1696) ──
+
+  malachite: {
+    name: 'Malachite (Copper Carbonate Hydroxide)',
+    element: 'Cu2(CO3)(OH)2',
+    color: new THREE.Color(0.10, 0.85, 0.35),
+    temperature: 1550,
+    emissionIntensity: 3.5,
+    burnRate: 2.8,
+    sparkSize: 0.7,
+    smokeColor: new THREE.Color(0.06, 0.10, 0.06),
+    trailDecay: 0.88,
+    ignitionTemp: 300,
+    density: 3.8,
+    combustionProducts: 'CuO + CO2 + H2O',
+    riskClassification: { fire: 1, reactivity: 1, contact: 1 },
+  },
+  calomel: {
+    name: 'Calomel (HISTORICAL — TOXIC, Obsolete)',
+    element: 'Hg2Cl2',
+    color: new THREE.Color(0.9, 0.9, 0.95),
+    temperature: 1400,
+    emissionIntensity: 2.0,
+    burnRate: 2.5,
+    sparkSize: 0.5,
+    smokeColor: new THREE.Color(0.2, 0.2, 0.2),
+    trailDecay: 0.70,
+    ignitionTemp: 383,
+    density: 7.15,
+    meltingPoint: 383,
+    combustionProducts: 'HgCl + Cl (chlorine donor)',
+    riskClassification: { fire: 2, reactivity: 2, contact: 4 },
+  },
 };
 
 // ── Veline Color Mixing System ──────────────────────────────────────
