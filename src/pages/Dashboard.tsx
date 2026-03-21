@@ -335,7 +335,7 @@ export default function Dashboard() {
           </button>
 
           {/* System Status */}
-          <Card className="bg-card border-border/50 animate-fxk-fade-up">
+          <Card className="bg-card border-border/50 animate-fxk-stagger" style={{ animationDelay: '0.3s' }}>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Activity className="h-3.5 w-3.5 text-primary" />
