@@ -12,7 +12,8 @@ export type PyroEffectType =
   | 'sparkular' | 'fog_low' | 'streamer'
   | 'bengal' | 'rocket' | 'firecracker_string' | 'saxon' | 'parachute_flare'
   | 'strobe_pot' | 'go_getter' | 'flying_fish' | 'crackling' | 'girandola' | 'whistler'
-  | 'caduceus' | 'table_rocket' | 'spur_fire';
+  | 'caduceus' | 'table_rocket' | 'spur_fire'
+  | 'orb_drone';
 
 export interface PyroEffectSpec {
   type: PyroEffectType;
