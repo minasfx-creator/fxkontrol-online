@@ -62,6 +62,7 @@ export default function MVRImporter({ open, onOpenChange, initialFile }: Props) 
     if (!initialFile || !open) return;
     const processFile = async () => {
       setFileName(initialFile.name);
+      setCurrentFile(initialFile);
       setLoading(true);
       try {
         const buffer = await initialFile.arrayBuffer();
