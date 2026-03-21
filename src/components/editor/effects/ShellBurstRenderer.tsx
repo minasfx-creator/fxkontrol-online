@@ -37,6 +37,7 @@ const BURST_VERTEX = `
   uniform float uTime;
   uniform float uBaseSize;
   uniform float uHDRMultiplier;
+  uniform float uCaliberScale;
   
   void main() {
     vLife = aLife;
