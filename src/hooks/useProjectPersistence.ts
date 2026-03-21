@@ -87,6 +87,9 @@ export function useProjectPersistence() {
             pos_x: item.position.x,
             pos_y: item.position.y,
             pos_z: item.position.z,
+            position_id: (item as any).positionId || null,
+            position_name: (item as any).positionName || null,
+            notes: (item as any).notes || null,
           }));
           const { error } = await supabase.from('timeline_items').insert(tlRows);
           if (error) console.warn('Timeline save error:', error.message);
