@@ -8,7 +8,7 @@ import { Clock, Sparkles, MapPin, Hexagon, MoreHorizontal, Cable, Cpu, Map, Radi
 import { cn } from '@/lib/utils';
 import type { PanelId } from '@/components/editor/PanelTabBar';
 
-export type MobileTab = 'timeline' | 'assets' | 'properties' | 'livefx' | 'points' | 'formations' | 'mobilelink' | 'controllers' | 'fieldmap' | 'radio' | 'more';
+export type MobileTab = 'timeline' | 'assets' | 'properties' | 'livefx' | 'points' | 'formations' | 'mobilelink' | 'controllers' | 'fieldmap' | 'radio' | 'remote' | 'more';
 
 interface MobileTabBarProps {
   activeTab: MobileTab | null;
