@@ -464,11 +464,10 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
       }
       advectFluid(grid, dt);
 
-      // ── Update wind from project state ──
-      const { wind } = useProjectStore.getState();
+      // ── Update wind module from project state ──
       if (wind.enabled) {
-        const rad = (wind.direction * Math.PI) / 180;
-        windModuleRef.current.direction.set(Math.sin(rad), 0, Math.cos(rad));
+        const windRad = (wind.direction * Math.PI) / 180;
+        windModuleRef.current.direction.set(Math.sin(windRad), 0, Math.cos(windRad));
         windModuleRef.current.strength = wind.speed * 0.5;
         windModuleRef.current.enabled = true;
       } else {
