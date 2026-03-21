@@ -16,6 +16,12 @@ export interface ChemicalCompound {
   sparkSize: number;         // base particle size
   smokeColor: THREE.Color;
   trailDecay: number;        // 0-1, how fast trail fades
+  /** Friction sensitivity (kg) — Manual: SR < 5kg = high sensitivity, faster burn */
+  frictionSensitivity?: number;
+  /** Sulfur content (0-1) — affects smoke color (yellow-gray residue from pólvora negra) */
+  sulfurContent?: number;
+  /** Charcoal type — Manual: 'red' = low-temp easy ignite, 'black' = high-temp hard ignite */
+  charcoalType?: 'red' | 'black';
 }
 
 const COMPOUNDS: Record<string, ChemicalCompound> = {
