@@ -32,9 +32,10 @@ interface ConnectionEntry {
 
 interface ConnectionManagerPanelProps {
   fs?: boolean;
+  onClose?: () => void;
 }
 
-export default function ConnectionManagerPanel({ fs = false }: ConnectionManagerPanelProps) {
+export default function ConnectionManagerPanel({ fs = false, onClose }: ConnectionManagerPanelProps) {
   const isMobile = useIsMobile();
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();

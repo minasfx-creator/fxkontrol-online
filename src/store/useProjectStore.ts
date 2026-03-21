@@ -425,7 +425,7 @@ export const useProjectStore = create<ProjectState>((set) => ({
   trajectories: [],
   selectedTrajectoryId: null,
   selectedWaypointId: null,
-  showTrajectories: false,
+  showTrajectories: true,
   drawHeight: 10,
   waypointUndoStack: [],
   audioUrl: null,

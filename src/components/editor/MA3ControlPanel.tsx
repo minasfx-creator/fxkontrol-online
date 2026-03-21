@@ -44,6 +44,7 @@ import { useSfxChannelStore } from '@/store/useSfxChannelStore';
 
 interface MA3ControlPanelProps {
   fs?: boolean;
+  onClose?: () => void;
 }
 
 interface CueListEntry {
@@ -53,7 +54,7 @@ interface CueListEntry {
   active: boolean;
 }
 
-export default function MA3ControlPanel({ fs = false }: MA3ControlPanelProps) {
+export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanelProps) {
   // OSC
   const [oscState, setOscState] = useState<OSCConnectionState>('disconnected');
   const [oscHost, setOscHost] = useState('192.168.1.100');

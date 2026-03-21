@@ -165,7 +165,7 @@ function TimelineTrackRow({
     if (!effectId) return;
     const effect = EFFECT_LIBRARY.find((ef) => ef.id === effectId);
     if (!effect) return;
-    if (effect.type === 'firework' && trackIndex !== 0) return;
+    if ((effect.type === 'firework' || effect.type === 'sfx') && trackIndex !== 0) return;
     if (effect.type === 'drone' && trackIndex !== 1) return;
 
     const rect = e.currentTarget.getBoundingClientRect();

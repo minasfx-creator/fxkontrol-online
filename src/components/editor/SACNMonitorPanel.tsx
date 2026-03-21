@@ -24,6 +24,7 @@ import {
 
 interface SACNMonitorPanelProps {
   compact?: boolean;
+  onClose?: () => void;
 }
 
 type ViewMode = 'grid' | 'bars';
@@ -44,7 +45,7 @@ function getHeatColor(val: number): string {
   return HEAT_COLORS[idx];
 }
 
-export default function SACNMonitorPanel({ compact = false }: SACNMonitorPanelProps) {
+export default function SACNMonitorPanel({ compact = false, onClose }: SACNMonitorPanelProps) {
   const [universes, setUniverses] = useState<SACNUniverse[]>([]);
   const [selectedUniverse, setSelectedUniverse] = useState<number>(1);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
