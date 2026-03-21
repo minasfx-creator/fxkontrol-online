@@ -443,6 +443,13 @@ export default function ShellBurstRenderer({
     uAfterglowIntensity: { value: afterglowIntensity },
   }), []);
 
+  // Smoke billboard uniforms
+  const smokeUniforms = useMemo(() => ({
+    uSmokeColor: { value: new THREE.Color(color) },
+    uSmokeOpacity: { value: 0.06 },
+    uTime: { value: 0 },
+  }), []);
+
   // Crossette sub-bursts
   const crossetteRef = useRef<ParticleState[][]>([]);
   const crossetteTriggered = useRef(new Set<number>());
