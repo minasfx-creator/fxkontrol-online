@@ -1,7 +1,7 @@
 import { useRef, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { getMaterialType, getRiskDivision, getBurstSmokeDensity } from '@/lib/pyroPhysics';
+import { getMaterialType, getRiskDivision, getBurstSmokeDensity, getParticleSize } from '@/lib/pyroPhysics';
 
 /**
  * SaluteEffect — Concussive flash + fresnel shockwave + volumetric sphere + debris.
