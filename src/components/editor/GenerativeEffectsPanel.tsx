@@ -9,8 +9,10 @@ import {
   createDefaultLayer, renderGenerativeFrame, rgbToHex,
   GENERATIVE_PRESETS, GENERATOR_LABELS, BLEND_MODE_LABELS,
   type AudioModulationData,
+  type RGBColor,
 } from '@/lib/generativeEngine';
 import useGenerativeStore from '@/store/useGenerativeStore';
+import { setFixtureColor, type DMXUniverse } from '@/lib/dmxEngine';
 
 interface GenerativeEffectsPanelProps {
   onClose: () => void;
@@ -40,6 +42,7 @@ export default function GenerativeEffectsPanel({ onClose }: GenerativeEffectsPan
   const timeRef = useRef(0);
   const animRef = useRef<number>(0);
   const lastFrameRef = useRef(0);
+  const dmxUniverseRef = useRef<DMXUniverse | null>(null);
 
   // Sync layers to generative store when viewport link is on
   useEffect(() => {
@@ -95,6 +98,15 @@ export default function GenerativeEffectsPanel({ onClose }: GenerativeEffectsPan
             const c = colors[i];
             ctx.fillStyle = `rgb(${Math.round(c.r * 255)},${Math.round(c.g * 255)},${Math.round(c.b * 255)})`;
             ctx.fillRect(gx * pw + 0.5, gy * ph + 0.5, pw - 1, ph - 1);
+          }
+
+          // ═══ DMX Bridge — pipe generative colors to DMX universe when linked ═══
+          if (viewportLinked && dmxUniverseRef.current) {
+            const uni = dmxUniverseRef.current;
+            for (let i = 0; i < Math.min(colors.length, uni.fixtures.length); i++) {
+              const c = colors[i];
+              setFixtureColor(uni, uni.fixtures[i], c.r * 255, c.g * 255, c.b * 255);
+            }
           }
         }
       }

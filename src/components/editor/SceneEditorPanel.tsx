@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSceneStore, SCENE_PRESETS, QUALITY_PRESETS, type GroundStyle, type WeatherCondition, type QualityPreset, type ViewTransform } from '@/store/useSceneStore';
 import { getAllViewTransforms } from '@/lib/niagaraBlenderRules';
+import { getTerrainPresets } from '@/render_ultra/environment/terrainPBR';
 import { useProjectStore } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -51,7 +52,7 @@ interface BgImage {
 }
 
 export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
-  const { settings, updateSettings, applyPreset, applyQualityPreset, qualityPreset, resetToDefault } = useSceneStore();
+  const { settings, updateSettings, applyPreset, applyQualityPreset, qualityPreset, resetToDefault, terrainPreset, setTerrainPreset } = useSceneStore();
   const { droneFormations, positions, showTrajectories, setShowTrajectories, showFormations, setShowFormations } = useProjectStore();
   const [openSections, setOpenSections] = useState<Set<SectionId>>(new Set(['quick', 'presets']));
   const [bgImages, setBgImages] = useState<BgImage[]>([]);
@@ -236,6 +237,19 @@ export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
           <SliderRow label="Ground Brightness" value={settings.groundBrightness} onChange={v => updateSettings({ groundBrightness: v })} max={2} />
           <SliderRow label="Grid Opacity" value={settings.gridOpacity} onChange={v => updateSettings({ gridOpacity: v })} />
           <SliderRow label="Ground Fog" value={settings.groundFogIntensity} onChange={v => updateSettings({ groundFogIntensity: v })} />
+
+          {/* Terrain PBR Preset — render_ultra material */}
+          <div>
+            <span className="text-[9px] text-muted-foreground font-medium">Terrain Material</span>
+            <Select value={terrainPreset} onValueChange={v => setTerrainPreset(v)}>
+              <SelectTrigger className="h-7 text-[10px] mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {getTerrainPresets().map(p => (
+                  <SelectItem key={p} value={p} className="text-[10px] capitalize">{p.replace('-', ' ')}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </Section>
 
         {/* ═══ WEATHER ═══ */}

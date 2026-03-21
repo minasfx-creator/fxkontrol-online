@@ -1,10 +1,12 @@
-import { useMemo, useRef, useEffect } from 'react';
+import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import type { TerrainData } from '@/lib/heightmapToTerrain';
 import { useSceneStore } from '@/store/useSceneStore';
+import { createTerrainMaterial } from '@/render_ultra/environment/terrainPBR';
 
 export default function TerrainRenderer() {
   const terrain = useSceneStore(s => s.terrain);
+  const terrainPreset = useSceneStore(s => s.terrainPreset);
   const meshRef = useRef<THREE.Mesh>(null);
 
   const geometry = useMemo(() => {
@@ -18,7 +20,6 @@ export default function TerrainRenderer() {
     const cols = segments + 1;
 
     for (let i = 0; i < posAttr.count; i++) {
-      // PlaneGeometry after rotateX: x stays, y is up, z is depth
       const gx = i % cols;
       const gz = Math.floor(i / cols);
       const hmIdx = gz * cols + gx;
@@ -31,22 +32,18 @@ export default function TerrainRenderer() {
     return geo;
   }, [terrain]);
 
+  // PBR material from render_ultra — preset-driven (grass, concrete, wet, dirt)
+  const material = useMemo(() => createTerrainMaterial(terrainPreset), [terrainPreset]);
+
   if (!geometry || !terrain) return null;
 
   return (
     <mesh
       ref={meshRef}
       geometry={geometry}
+      material={material}
       position={[terrain.config.offsetX, 0, terrain.config.offsetZ]}
       receiveShadow
-    >
-      <meshStandardMaterial
-        color="#2a3a2a"
-        roughness={0.9}
-        metalness={0.05}
-        side={THREE.DoubleSide}
-        wireframe={false}
-      />
-    </mesh>
+    />
   );
 }

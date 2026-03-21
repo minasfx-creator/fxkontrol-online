@@ -671,6 +671,7 @@ interface SceneSettingsState {
   siteModelTransformMode: SiteModelTransformMode;
   transformSnap: TransformSnapSettings;
   terrain: TerrainData | null;
+  terrainPreset: string;
   updateSettings: (updates: Partial<SceneSettings>) => void;
   applyPreset: (presetId: string) => void;
   applyQualityPreset: (preset: QualityPreset) => void;
@@ -687,6 +688,7 @@ interface SceneSettingsState {
   setTerrain: (data: TerrainData | null) => void;
   updateTerrainConfig: (updates: Partial<TerrainConfig>) => void;
   clearTerrain: () => void;
+  setTerrainPreset: (preset: string) => void;
 }
 
 const DEFAULT_ENVIRONMENT: EnvironmentState = {
@@ -710,6 +712,7 @@ export const useSceneStore = create<SceneSettingsState>((set) => ({
   siteModelTransformMode: 'translate',
   transformSnap: { enabled: true, translateSnap: 1, rotateSnap: 15, scaleSnap: 0.1 },
   terrain: null,
+  terrainPreset: 'grass-field',
   updateSettings: (updates) => set(s => {
     const next = { ...s.settings, ...updates };
     if (updates.weather && !updates.rainIntensity) {
@@ -748,4 +751,5 @@ export const useSceneStore = create<SceneSettingsState>((set) => ({
   setTerrain: (data) => set({ terrain: data }),
   updateTerrainConfig: (updates) => set((s) => s.terrain ? { terrain: { ...s.terrain, config: { ...s.terrain.config, ...updates } } } : {}),
   clearTerrain: () => set({ terrain: null }),
+  setTerrainPreset: (preset) => set({ terrainPreset: preset }),
 }));

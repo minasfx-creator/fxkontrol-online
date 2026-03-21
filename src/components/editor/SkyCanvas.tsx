@@ -68,6 +68,8 @@ import { createLensFlareSprite, flashLensFlare, decayLensFlare } from '@/render_
 import { getBurstConfig, type BurstPattern } from '@/render_ultra/fireworks/burstSimulation';
 import { createSparkTrailSystem, updateSparkTrail, writeSparkTrailsToBuffers, type SparkState } from '@/render_ultra/fireworks/sparkTrailsGPU';
 import { createHDRLightingRig } from '@/render_ultra/lighting/hdrLighting';
+import { createVolumetricFogPlane } from '@/render_ultra/environment/volumetricFog';
+import { createReflectionPlane } from '@/render_ultra/environment/reflections';
 // ═══ LOD System — distance-based quality scaling + adaptive FPS ═══
 import { useLOD, calculateLOD, useSceneLOD, updateAdaptiveLOD, getAdaptiveTier, type LODFactors } from '@/hooks/useLOD';
 // ═══ AAA Engine: Frustum Culling + Object Pooling ═══
@@ -1776,89 +1778,29 @@ function FloorLogo() {
 
 // ═══ VOLUMETRIC GROUND FOG — render_ultra FBM 4-octave noise ═══
 function GroundFog() {
-  const fogRef = useRef<THREE.Mesh>(null);
+  const fogRef = useRef<THREE.Group>(null);
   const fogIntensity = useSceneStore(st => st.settings.groundFogIntensity);
-  const uniforms = useMemo(() => ({
-    uTime: { value: 0 },
-    uIntensity: { value: fogIntensity },
-    uHeight: { value: 15.0 },
-    uFogColor: { value: new THREE.Color(0.03, 0.04, 0.08) },
-  }), []);
+
+  // ═══ render_ultra volumetric fog — FBM 4-octave noise, animated, height-faded ═══
+  const fogSystem = useMemo(() => createVolumetricFogPlane(
+    100000,
+    new THREE.Color(0.03, 0.04, 0.08),
+    fogIntensity,
+    15
+  ), []);
 
   useEffect(() => {
-    uniforms.uIntensity.value = fogIntensity;
-  }, [fogIntensity]);
+    fogSystem.setIntensity(fogIntensity);
+  }, [fogIntensity, fogSystem]);
 
   useFrame(({ clock }) => {
-    uniforms.uTime.value = clock.getElapsedTime();
+    fogSystem.update(clock.getElapsedTime());
   });
 
   return (
-    <mesh ref={fogRef} position={[0, 0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[100000, 100000, 1, 1]} />
-      <shaderMaterial
-        transparent
-        depthWrite={false}
-        side={THREE.DoubleSide}
-        uniforms={uniforms}
-        vertexShader={`
-          varying vec2 vUv;
-          varying float vWorldY;
-          varying vec3 vWorldPos;
-          void main() {
-            vUv = uv;
-            vec4 worldPos = modelMatrix * vec4(position, 1.0);
-            vWorldY = worldPos.y;
-            vWorldPos = worldPos.xyz;
-            gl_Position = projectionMatrix * viewMatrix * worldPos;
-          }
-        `}
-        fragmentShader={`
-          uniform float uTime;
-          uniform float uIntensity;
-          uniform float uHeight;
-          uniform vec3 uFogColor;
-          varying vec2 vUv;
-          varying float vWorldY;
-          varying vec3 vWorldPos;
-
-          float hash(vec2 p) {
-            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-          }
-          float noise(vec2 p) {
-            vec2 i = floor(p);
-            vec2 f = fract(p);
-            f = f * f * (3.0 - 2.0 * f);
-            float a = hash(i);
-            float b = hash(i + vec2(1.0, 0.0));
-            float c = hash(i + vec2(0.0, 1.0));
-            float d = hash(i + vec2(1.0, 1.0));
-            return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-          }
-          float fbm(vec2 p) {
-            float v = 0.0;
-            v += 0.5 * noise(p); p *= 2.01;
-            v += 0.25 * noise(p); p *= 2.02;
-            v += 0.125 * noise(p); p *= 2.03;
-            v += 0.0625 * noise(p);
-            return v;
-          }
-
-          void main() {
-            // Use world-space coordinates for noise so it tiles seamlessly
-            vec2 worldUV = vWorldPos.xz * 0.0001;
-            vec2 uv = worldUV * 4.0 + vec2(uTime * 0.02, uTime * 0.01);
-            float n = fbm(uv);
-            float heightFade = smoothstep(uHeight, 0.0, vWorldY);
-            // Distance-based circular fade — no square edges
-            float dist = length(vWorldPos.xz) / 45000.0;
-            float edgeFade = 1.0 - smoothstep(0.7, 1.0, dist);
-            float alpha = n * heightFade * edgeFade * uIntensity;
-            gl_FragColor = vec4(uFogColor, alpha * 0.4);
-          }
-        `}
-      />
-    </mesh>
+    <group ref={fogRef}>
+      <primitive object={fogSystem.mesh} />
+    </group>
   );
 }
 
