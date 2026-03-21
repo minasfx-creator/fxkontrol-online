@@ -39,9 +39,18 @@ export default function MobileTabBar({
     const tabDef = TABS.find(t => t.key === tab);
 
     if (tabDef?.panelId) {
-      onOpenPanel(tabDef.panelId);
-      onTabChange(tab);
-      onPanelHeightChange('full');
+      if (activeTab === tab) {
+        if (panelHeight === 'full') {
+          onTabChange(null);
+          onPanelHeightChange('collapsed');
+        } else {
+          onPanelHeightChange('full');
+        }
+      } else {
+        onOpenPanel(tabDef.panelId);
+        onTabChange(tab);
+        onPanelHeightChange('full');
+      }
       return;
     }
 

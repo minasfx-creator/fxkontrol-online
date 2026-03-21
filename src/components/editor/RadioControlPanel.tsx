@@ -28,7 +28,7 @@ const BAND_OPTIONS: { value: RadioBand; label: string; freq: string }[] = [
   { value: 'lora', label: 'LoRa', freq: '868.10' },
 ];
 
-export default function RadioControlPanel({ fs = false }: RadioControlPanelProps) {
+export default function RadioControlPanel({ fs = false, onClose }: RadioControlPanelProps) {
   const isMobile = useIsMobile();
   const radio = useRadioLink();
   const [rangeTestTarget, setRangeTestTarget] = useState<number | null>(null);
