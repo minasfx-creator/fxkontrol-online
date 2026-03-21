@@ -1,53 +1,68 @@
 
 
-# Plan: Refine Remote Control — Transparent Command Relay + Hardware Integration
+# Plan: Calibrate Platform — Maximize Existing Technology Usage
 
-## Core Insight
+## Summary
 
-The current slave UI is over-engineered with 5 tabs (Dashboard, Transport, Hardware, Panels, SFX) duplicating master functionality. The AnyDesk model means: **mobile connects, sends commands, and they just happen on the PC**. Mobile doesn't need its own dashboard — it's a transparent remote. The PC (master) should clearly show what the remote is doing.
+Connect 6 unused `render_ultra` modules to the scene pipeline and wire 3 disconnected engine→UI integrations. No new features — just connecting existing code that was built but never plugged in.
 
 ## Problems Found
 
-1. **Slave UI too heavy**: 5-tab interface with redundant state display. Mobile should be a simple command pad — connect and go
-2. **Master doesn't mirror slave actions visually**: When slave sends a command, master should show it happening (panel opens, transport moves, etc.) with visual feedback of "who did what"
-3. **Hardware status in master state sync uses hardcoded zeros** (lines 150-155 in RemoteControlPanel): Master sends `fireoneModules: 0` instead of real values from hardware hooks
-4. **Master panel doesn't use real hardware hooks**: Unlike ReceiverOverlay, RemoteControlPanel master mode doesn't import `useFireOneHardware`/`usePBusHardware` for live status
-5. **No "mirror indicator"**: PC doesn't show that a remote action is happening in real-time (e.g., "Remote user opened Safety panel")
+### Unused render_ultra Modules (built, exported, never imported)
+1. **`render_ultra/environment/volumetricFog.ts`** — Full shader with FBM noise, height fade, animation. SkyCanvas has an inline GroundFog with simpler version of same shader, ignoring the render_ultra implementation
+2. **`render_ultra/environment/atmosphereScattering.ts`** — Rayleigh sky sphere with explosion light scatter uniforms. SkyCanvas has inline SkyGradient that duplicates this but lacks the `uLightScatter` reactivity
+3. **`render_ultra/environment/terrainPBR.ts`** — PBR terrain materials (grass, concrete, wet, sand presets). TerrainRenderer uses basic `meshStandardMaterial` with hardcoded colors instead
+4. **`render_ultra/environment/reflections.ts`** — Wet-look ground reflection shader. SkyCanvas has inline GroundReflections that partially duplicates this
+5. **`render_ultra/drones/propellerMotionBlur.ts`** — Motion blur disc rig for quadcopters. InstancedDroneSwarm creates its own rotor discs manually instead of using this
+6. **`render_ultra/drones/droneLights.ts`** — LED halo sprites + nav light rig with HDR emission. InstancedDroneSwarm doesn't use LED halos or nav lights from this module
+
+### Disconnected Engine → UI
+7. **`reportEngine.ts`** — ReportsPanel imports it correctly, but is the ONLY consumer; the auto-save system doesn't persist report snapshots
+8. **`lightProgramEngine.ts`** — LightProgramPanel imports it, but the drone programs are never sent to InstancedDroneSwarm for live color preview during playback
+9. **`generativeEngine.ts`** — GenerativeEffectsPanel renders to a small canvas preview but the pixel map output is never bridged to the DMX engine for actual fixture output
 
 ## Changes
 
-### 1. `src/components/editor/RemoteControlPanel.tsx` — Simplify slave, enhance master
+### 1. `src/components/editor/SkyCanvas.tsx` — Wire render_ultra environment modules
 
-**Slave connected view** — replace 5-tab interface with single flat command pad:
-- Top: connection status bar (code, latency, permissions badges)
-- Transport row: Play/Pause/Stop/Seek (large touch targets, single row)
-- Quick Actions grid: 2x4 grid of most-used commands (ARM ALL, DISARM ALL, FIRE, CONTINUITY, SCAN, PANIC, Undo, Redo)
-- Panels quick-launch: horizontal scrollable row of panel icons (not a full tab)
-- SFX triggers: single row of 4 icons (Flame, CO2, Spark, Haze)
-- Camera orbit pad stays (useful on mobile)
-- PANIC bar at bottom (always)
-- Remove Dashboard tab entirely (slave doesn't need to mirror master state — it just controls)
-- Remove Hardware tab (merge ARM/FIRE into quick actions grid)
+- **Replace inline GroundFog** with `createVolumetricFogPlane()` from `render_ultra/environment/volumetricFog`; connect `uTime` via useFrame. Saves ~80 lines of duplicated shader code
+- **Replace inline SkyGradient shader** with `createAtmosphereSphere()` from `render_ultra/environment/atmosphereScattering`; wire `uLightScatter` + `uScatterIntensity` to the existing `_skyScatterUniforms` system so explosions properly tint the atmosphere
+- **Wire GroundReflections** to use `createReflectionPlane()` from `render_ultra/environment/reflections` instead of inline shader, gaining the wet-look specular calculation
 
-**Master connected view** — add real hardware status:
-- Import `useFireOneHardware` and `usePBusHardware` hooks
-- Replace hardcoded zeros in state sync with real hardware values from hooks
-- Add "Action Mirror" section: shows last 5 actions from slaves with visual feedback ("🎮 Slave opened Safety panel", "🎮 Slave pressed PLAY")
-- Show hardware connection paths (USB/Radio/PBUS) in status area
+### 2. `src/components/editor/TerrainRenderer.tsx` — Use PBR terrain materials
 
-### 2. `src/components/editor/RemoteReceiverOverlay.tsx` — Add action mirror toast
+- Import `createTerrainMaterial` and `getTerrainPresets` from `render_ultra/environment/terrainPBR`
+- Replace hardcoded `meshStandardMaterial` with `createTerrainMaterial(preset)` based on scene settings
+- Add terrain preset selection to SceneEditorPanel (grass-field, concrete, wet, sand)
 
-- When executing a remote command, dispatch a visual indicator on master screen showing what the slave just did (toast with slave name + action)
-- Add `remote-action-mirror` custom event so other components can show what's happening
+### 3. `src/components/editor/InstancedDroneSwarm.tsx` — Connect drone render modules
 
-### 3. `src/lib/remoteCommandEngine.ts` — No changes needed
+- Import `createDroneLightRig` from `render_ultra/drones/droneLights` for nav light colors/positions (use as instanced data, not full Group — keep InstancedMesh pattern)
+- Import nav light color constants from `droneLights.ts` and apply to the existing navRef instanced mesh
+- Wire `lightProgramEngine` colors: accept an optional `lightPrograms` prop; when provided, evaluate `evaluateLightProgram()` per drone at current time and override LED emissive colors
 
-Engine already supports all required command types and permissions.
+### 4. `src/components/editor/SceneEditorPanel.tsx` — Expose terrain preset selector
+
+- Add dropdown for terrain material preset (grass-field, concrete, wet, sand) from `getTerrainPresets()`
+- Store selection in `useSceneStore`
+
+### 5. `src/store/useSceneStore.ts` — Add terrain preset field
+
+- Add `terrainPreset: string` to scene settings with default `'grass-field'`
+
+### 6. `src/components/editor/GenerativeEffectsPanel.tsx` — Bridge to DMX output
+
+- When `viewportLinked` is true AND DMX engine is active, pipe `renderGenerativeFrame()` output colors to DMX universe channels via `dmxEngine.setChannelValues()`
+- Import `dmxEngine` and bridge the existing pixel array to DMX channels (RGB per fixture, starting at channel 1)
 
 ## Files Summary
 
 | File | Change |
 |------|--------|
-| `src/components/editor/RemoteControlPanel.tsx` | Flatten slave to single command pad, add real hardware hooks to master, action mirror |
-| `src/components/editor/RemoteReceiverOverlay.tsx` | Add action mirror visual feedback on command execution |
+| `src/components/editor/SkyCanvas.tsx` | Replace inline GroundFog/SkyGradient/Reflections with render_ultra module calls |
+| `src/components/editor/TerrainRenderer.tsx` | Use `createTerrainMaterial(preset)` from render_ultra |
+| `src/components/editor/InstancedDroneSwarm.tsx` | Wire nav light constants from droneLights + accept light program colors |
+| `src/components/editor/SceneEditorPanel.tsx` | Add terrain preset dropdown |
+| `src/store/useSceneStore.ts` | Add `terrainPreset` field |
+| `src/components/editor/GenerativeEffectsPanel.tsx` | Bridge generative output to DMX channels |
 
