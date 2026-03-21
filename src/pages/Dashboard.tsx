@@ -8,10 +8,13 @@ import {
   Clapperboard, CalendarDays, GraduationCap, Plus, FolderOpen,
   Zap, Rocket, Flame, Target, Clock, ArrowRight, Sparkles,
   Radio, Cpu, Cable, Activity, Heart, MessageCircle, Share2,
-  TrendingUp, TrendingDown, Minus, Circle, Bookmark, ChevronLeft, ChevronRight
+  TrendingUp, TrendingDown, Minus, Circle, Bookmark,
+  Shield, Smartphone, Play, Palette, Wand2, Layers,
+  Timer, Crosshair, Volume2, Lightbulb, Pencil, LayoutTemplate
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import CinematicIntro from '@/components/editor/CinematicIntro';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 /* ── Types ──────────────────────────────────────────── */
 interface Project {
@@ -68,10 +71,29 @@ const TYPE_ICONS: Record<string, string> = {
   pyro: '🎆', drone: '🤖', sfx: '🔥', mixed: '🎯',
 };
 
-const QUICK_LAUNCH = [
-  { label: 'Show Pirotécnico', emoji: '🎆', type: 'pyro' },
-  { label: 'Drone Show', emoji: '🛸', type: 'drone' },
-  { label: 'Show Misto', emoji: '🎯', type: 'mixed' },
+/* ── Hub Tool Definitions ───────────────────────────── */
+interface HubTool {
+  label: string;
+  icon: React.ElementType;
+  panel: string;
+}
+
+const SHOW_COMMANDER_TOOLS: HubTool[] = [
+  { label: 'Show Commander', icon: Target, panel: 'showcommander' },
+  { label: 'Live SFX', icon: Flame, panel: 'livefiring' },
+  { label: 'Show Control', icon: Play, panel: 'showcontrol' },
+  { label: 'Fleet', icon: Cpu, panel: 'fleet' },
+  { label: 'SMPTE', icon: Timer, panel: 'smpte' },
+  { label: 'Safety', icon: Shield, panel: 'safetycheck' },
+];
+
+const MASTER_EDITOR_TOOLS: HubTool[] = [
+  { label: 'Script Editor', icon: Pencil, panel: 'script' },
+  { label: 'Efeitos', icon: Wand2, panel: 'effects' },
+  { label: 'SwarmGPT AI', icon: Sparkles, panel: 'swarmgpt' },
+  { label: 'Storyboard', icon: Layers, panel: 'storyboard' },
+  { label: 'Timeline', icon: Clapperboard, panel: '' },
+  { label: 'Templates', icon: LayoutTemplate, panel: 'templates' },
 ];
 
 /* ── Feed Card (Instagram-style) ─────────────────────── */
@@ -81,7 +103,6 @@ function FeedCard({ item }: { item: NewsItem }) {
 
   return (
     <div className="bg-card border border-border/40 rounded-2xl overflow-hidden group">
-      {/* Header */}
       <div className="flex items-center gap-2.5 px-4 py-3">
         <div className="h-8 w-8 rounded-full bg-muted/50 flex items-center justify-center text-sm">
           {item.avatar}
@@ -94,18 +115,9 @@ function FeedCard({ item }: { item: NewsItem }) {
         {item.sentiment === 'negative' && <TrendingDown className="h-3.5 w-3.5 text-red-400" />}
         {item.sentiment === 'neutral' && <Minus className="h-3.5 w-3.5 text-muted-foreground" />}
       </div>
-
-      {/* Image */}
       <div className="relative aspect-[4/3] overflow-hidden">
-        <img
-          src={item.image}
-          alt={item.title}
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
-          loading="lazy"
-        />
+        <img src={item.image} alt={item.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" loading="lazy" />
       </div>
-
-      {/* Actions */}
       <div className="px-4 pt-3 pb-1 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button onClick={() => setLiked(!liked)} className="active:scale-90 transition-transform">
@@ -118,8 +130,6 @@ function FeedCard({ item }: { item: NewsItem }) {
           <Bookmark className={`h-5 w-5 ${saved ? 'fill-foreground text-foreground' : 'text-foreground/70 hover:text-foreground'} transition-colors`} />
         </button>
       </div>
-
-      {/* Caption */}
       <div className="px-4 pb-4 pt-1">
         <p className="text-xs leading-relaxed text-foreground/90">
           <span className="font-semibold mr-1">{item.source}</span>
@@ -130,10 +140,70 @@ function FeedCard({ item }: { item: NewsItem }) {
   );
 }
 
+/* ── Hub Card Component ──────────────────────────────── */
+function HubCard({
+  title, subtitle, badge, tools, accentClass, borderClass, badgeBg, navigate
+}: {
+  title: string;
+  subtitle: string;
+  badge: string;
+  tools: HubTool[];
+  accentClass: string;
+  borderClass: string;
+  badgeBg: string;
+  navigate: (path: string) => void;
+}) {
+  const goToTool = (panel: string) => {
+    if (panel) {
+      navigate(`/editor?panel=${panel}`);
+    } else {
+      navigate('/editor');
+    }
+  };
+
+  return (
+    <Card className={`bg-card ${borderClass} overflow-hidden animate-fxk-fade-up`}>
+      <CardContent className="p-0">
+        {/* Hub Header */}
+        <div className={`px-4 py-3 border-b border-border/30 bg-gradient-to-r ${accentClass}`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-bold font-display text-foreground tracking-tight">{title}</h2>
+              <p className="text-[9px] text-muted-foreground mt-0.5">{subtitle}</p>
+            </div>
+            <span className={`text-[8px] font-bold font-mono-code uppercase tracking-widest px-2 py-0.5 rounded-full ${badgeBg}`}>
+              {badge}
+            </span>
+          </div>
+        </div>
+
+        {/* Tool Grid */}
+        <div className="p-3 grid grid-cols-3 gap-1.5">
+          {tools.map((tool) => (
+            <button
+              key={tool.label}
+              onClick={() => goToTool(tool.panel)}
+              className="group flex flex-col items-center gap-1.5 p-2.5 rounded-xl transition-all duration-200 hover:bg-muted/40 active:scale-[0.95] border border-transparent hover:border-border/30"
+            >
+              <div className="h-8 w-8 rounded-lg bg-muted/30 flex items-center justify-center group-hover:bg-muted/60 transition-colors">
+                <tool.icon className="h-3.5 w-3.5 text-foreground/70 group-hover:text-foreground transition-colors" />
+              </div>
+              <span className="text-[9px] font-semibold text-muted-foreground group-hover:text-foreground text-center leading-tight transition-colors">
+                {tool.label}
+              </span>
+            </button>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 /* ── Dashboard ───────────────────────────────────────── */
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [projects, setProjects] = useState<Project[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [showIntro, setShowIntro] = useState(() => {
@@ -216,13 +286,49 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Main Grid: Left (ops) + Center (feed) ───── */}
+      {/* ── Main Grid: Left (ops) + Center (feed) + Right ─ */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px_1fr] gap-6">
 
-        {/* ─ Left Column: Operations ─ */}
+        {/* ─ Left Column ─ */}
         <div className="space-y-4 order-2 lg:order-1">
+          {/* Show Commander Hub */}
+          <HubCard
+            title="Show Commander"
+            subtitle="Execução e controle ao vivo"
+            badge="LIVE"
+            tools={SHOW_COMMANDER_TOOLS}
+            accentClass="from-accent/5 to-transparent"
+            borderClass="border-accent/20 hover:border-accent/40 transition-colors"
+            badgeBg="bg-accent/15 text-accent"
+            navigate={navigate}
+          />
+
+          {/* Mobile Command Launcher */}
+          <button
+            onClick={() => navigate('/editor?panel=remotecontrol')}
+            className="w-full group relative overflow-hidden rounded-xl border border-accent/20 bg-gradient-to-r from-accent/5 via-card to-primary/5 p-4 text-left transition-all duration-300 hover:border-accent/40 hover:shadow-[0_0_20px_hsl(var(--accent)/0.1)] active:scale-[0.98] animate-fxk-fade-up"
+          >
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0 group-hover:bg-accent/20 transition-colors">
+                <Smartphone className="h-5 w-5 text-accent" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-bold font-display text-foreground">Mobile Command</p>
+                  <span className="text-[7px] font-bold font-mono-code uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-accent/15 text-accent">
+                    {isMobile ? 'INICIAR' : 'PAIR'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  {isMobile ? 'Controle o show pelo smartphone' : 'Pareie um dispositivo móvel'}
+                </p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-accent transition-colors shrink-0" />
+            </div>
+          </button>
+
           {/* System Status */}
-          <Card className="bg-card border-border/50 animate-fxk-fade-up" style={{ animationDelay: '0.08s' }}>
+          <Card className="bg-card border-border/50 animate-fxk-fade-up">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Activity className="h-3.5 w-3.5 text-primary" />
@@ -244,147 +350,8 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Quick Launch */}
-          <div className="grid grid-cols-3 gap-2 animate-fxk-fade-up" style={{ animationDelay: '0.12s' }}>
-            {QUICK_LAUNCH.map((q) => (
-              <button
-                key={q.type}
-                onClick={() => navigate('/editor')}
-                className="group overflow-hidden rounded-xl border border-border/50 bg-card p-3 text-center transition-all duration-300 hover:border-primary/30 active:scale-[0.97]"
-              >
-                <span className="text-xl block mb-1">{q.emoji}</span>
-                <p className="text-[10px] font-semibold text-foreground leading-tight">{q.label}</p>
-              </button>
-            ))}
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 gap-2 animate-fxk-fade-up" style={{ animationDelay: '0.16s' }}>
-            {[
-              { value: projects.length, label: 'Projetos', icon: FolderOpen, color: 'text-primary' },
-              { value: events.length, label: 'Eventos', icon: Target, color: 'text-accent' },
-              { value: totalMinutes, label: 'Min. Show', icon: Clock, color: 'text-[hsl(var(--fxk-gold))]' },
-              { value: daysUntilNext !== null ? `${daysUntilNext}d` : '—', label: 'Próx. Evento', icon: CalendarDays, color: daysUntilNext !== null && daysUntilNext <= 3 ? 'text-accent' : 'text-primary' },
-            ].map((stat) => (
-              <Card key={stat.label} className="bg-card border-border/50 hover:border-primary/20 transition-colors">
-                <CardContent className="p-3 flex items-center gap-2.5">
-                  <div className="h-8 w-8 rounded-lg bg-muted/50 flex items-center justify-center shrink-0">
-                    <stat.icon className={`h-3.5 w-3.5 ${stat.color}`} />
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold font-display text-foreground leading-none">{stat.value}</p>
-                    <p className="text-[9px] text-muted-foreground mt-0.5">{stat.label}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Recent Projects */}
-          <Card className="bg-card border-border/50 animate-fxk-fade-up" style={{ animationDelay: '0.2s' }}>
-            <div className="p-3 pb-1 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FolderOpen className="h-3.5 w-3.5 text-primary" />
-                <span className="text-xs font-semibold text-foreground">Projetos</span>
-              </div>
-              <Button variant="ghost" size="sm" className="text-[10px] h-5 text-muted-foreground" onClick={() => navigate('/editor')}>
-                Todos
-              </Button>
-            </div>
-            <CardContent className="pt-0 pb-2 space-y-0.5">
-              {projects.length === 0 && (
-                <div className="py-6 text-center">
-                  <Rocket className="h-6 w-6 text-muted-foreground/30 mx-auto mb-2" />
-                  <p className="text-[10px] text-muted-foreground">Nenhum projeto.</p>
-                  <Button variant="outline" size="sm" className="mt-2 text-[10px] h-7" onClick={() => navigate('/editor')}>
-                    <Plus className="h-3 w-3 mr-1" /> Criar
-                  </Button>
-                </div>
-              )}
-              {projects.slice(0, 4).map((p) => (
-                <div
-                  key={p.id}
-                  className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/30 cursor-pointer transition-colors group"
-                  onClick={() => { localStorage.setItem('fxk-last-project', p.id); navigate('/editor'); }}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                      <Clapperboard className="h-3 w-3 text-primary" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium text-foreground truncate group-hover:text-primary transition-colors">{p.name}</p>
-                      <p className="text-[9px] text-muted-foreground font-mono-code">
-                        {format(new Date(p.updated_at), 'dd/MM HH:mm')}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* ─ Center Column: Instagram Feed ─ */}
-        <div className="order-1 lg:order-2 animate-fxk-fade-up" style={{ animationDelay: '0.1s' }}>
-          {/* Stories-style filter bar */}
-          <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1 scrollbar-none">
-            {CATEGORY_FILTERS.map(f => (
-              <button
-                key={f.key}
-                onClick={() => setFeedFilter(f.key)}
-                className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all duration-200 shrink-0 active:scale-[0.95] ${
-                  feedFilter === f.key
-                    ? 'bg-primary/15 ring-1 ring-primary/30'
-                    : 'bg-card border border-border/30 hover:border-primary/20'
-                }`}
-              >
-                <span className="text-base">{f.emoji}</span>
-                <span className={`text-[9px] font-semibold ${feedFilter === f.key ? 'text-primary' : 'text-muted-foreground'}`}>
-                  {f.label}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          {/* Feed live indicator */}
-          <div className="flex items-center gap-2 mb-3">
-            <Circle className="h-2 w-2 fill-emerald-400 text-emerald-400 animate-pulse" />
-            <span className="text-[9px] font-mono-code text-muted-foreground tracking-widest uppercase">
-              Industry Feed · {filteredNews.length} posts
-            </span>
-          </div>
-
-          {/* Feed cards */}
-          <div className="space-y-4">
-            {filteredNews.map((item) => (
-              <FeedCard key={item.id} item={item} />
-            ))}
-          </div>
-        </div>
-
-        {/* ─ Right Column: Events + Actions ─ */}
-        <div className="space-y-4 order-3">
-          {/* Quick Actions */}
-          <div className="grid grid-cols-2 gap-2 animate-fxk-fade-up" style={{ animationDelay: '0.14s' }}>
-            {[
-              { label: 'Editor 3D', icon: Clapperboard, route: '/editor' },
-              { label: 'Agenda', icon: CalendarDays, route: '/agenda' },
-              { label: 'Simulação', icon: GraduationCap, route: '/training' },
-              { label: 'Novo Projeto', icon: Plus, route: '/editor' },
-            ].map((action) => (
-              <button
-                key={action.label}
-                onClick={() => navigate(action.route)}
-                className="group overflow-hidden rounded-xl border border-border/50 bg-card p-3 text-left transition-all duration-300 hover:border-primary/40 active:scale-[0.97]"
-              >
-                <action.icon className="h-4 w-4 text-primary mb-2 group-hover:scale-110 transition-transform" />
-                <p className="text-[10px] font-semibold text-foreground">{action.label}</p>
-              </button>
-            ))}
-          </div>
-
-          {/* Upcoming Events */}
-          <Card className="bg-card border-border/50 animate-fxk-fade-up" style={{ animationDelay: '0.22s' }}>
+          {/* Events */}
+          <Card className="bg-card border-border/50 animate-fxk-fade-up">
             <div className="p-3 pb-1 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Flame className="h-3.5 w-3.5 text-accent" />
@@ -433,12 +400,124 @@ export default function Dashboard() {
               })}
             </CardContent>
           </Card>
+        </div>
+
+        {/* ─ Center Column: Instagram Feed ─ */}
+        <div className="order-1 lg:order-2 animate-fxk-fade-up" style={{ animationDelay: '0.1s' }}>
+          <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1 scrollbar-none">
+            {CATEGORY_FILTERS.map(f => (
+              <button
+                key={f.key}
+                onClick={() => setFeedFilter(f.key)}
+                className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all duration-200 shrink-0 active:scale-[0.95] ${
+                  feedFilter === f.key
+                    ? 'bg-primary/15 ring-1 ring-primary/30'
+                    : 'bg-card border border-border/30 hover:border-primary/20'
+                }`}
+              >
+                <span className="text-base">{f.emoji}</span>
+                <span className={`text-[9px] font-semibold ${feedFilter === f.key ? 'text-primary' : 'text-muted-foreground'}`}>
+                  {f.label}
+                </span>
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 mb-3">
+            <Circle className="h-2 w-2 fill-emerald-400 text-emerald-400 animate-pulse" />
+            <span className="text-[9px] font-mono-code text-muted-foreground tracking-widest uppercase">
+              Industry Feed · {filteredNews.length} posts
+            </span>
+          </div>
+          <div className="space-y-4">
+            {filteredNews.map((item) => (
+              <FeedCard key={item.id} item={item} />
+            ))}
+          </div>
+        </div>
+
+        {/* ─ Right Column ─ */}
+        <div className="space-y-4 order-3">
+          {/* Master Editor Hub */}
+          <HubCard
+            title="Master Editor"
+            subtitle="Design, script e coreografia"
+            badge="DESIGN"
+            tools={MASTER_EDITOR_TOOLS}
+            accentClass="from-primary/5 to-transparent"
+            borderClass="border-primary/20 hover:border-primary/40 transition-colors"
+            badgeBg="bg-primary/15 text-primary"
+            navigate={navigate}
+          />
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-2 animate-fxk-fade-up">
+            {[
+              { value: projects.length, label: 'Projetos', icon: FolderOpen, color: 'text-primary' },
+              { value: events.length, label: 'Eventos', icon: Target, color: 'text-accent' },
+              { value: totalMinutes, label: 'Min. Show', icon: Clock, color: 'text-[hsl(var(--fxk-gold))]' },
+              { value: daysUntilNext !== null ? `${daysUntilNext}d` : '—', label: 'Próx. Evento', icon: CalendarDays, color: daysUntilNext !== null && daysUntilNext <= 3 ? 'text-accent' : 'text-primary' },
+            ].map((stat) => (
+              <Card key={stat.label} className="bg-card border-border/50 hover:border-primary/20 transition-colors">
+                <CardContent className="p-3 flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-lg bg-muted/50 flex items-center justify-center shrink-0">
+                    <stat.icon className={`h-3.5 w-3.5 ${stat.color}`} />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold font-display text-foreground leading-none">{stat.value}</p>
+                    <p className="text-[9px] text-muted-foreground mt-0.5">{stat.label}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Recent Projects */}
+          <Card className="bg-card border-border/50 animate-fxk-fade-up">
+            <div className="p-3 pb-1 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FolderOpen className="h-3.5 w-3.5 text-primary" />
+                <span className="text-xs font-semibold text-foreground">Projetos</span>
+              </div>
+              <Button variant="ghost" size="sm" className="text-[10px] h-5 text-muted-foreground" onClick={() => navigate('/editor')}>
+                Todos
+              </Button>
+            </div>
+            <CardContent className="pt-0 pb-2 space-y-0.5">
+              {projects.length === 0 && (
+                <div className="py-6 text-center">
+                  <Rocket className="h-6 w-6 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-[10px] text-muted-foreground">Nenhum projeto.</p>
+                  <Button variant="outline" size="sm" className="mt-2 text-[10px] h-7" onClick={() => navigate('/editor')}>
+                    <Plus className="h-3 w-3 mr-1" /> Criar
+                  </Button>
+                </div>
+              )}
+              {projects.slice(0, 4).map((p) => (
+                <div
+                  key={p.id}
+                  className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/30 cursor-pointer transition-colors group"
+                  onClick={() => { localStorage.setItem('fxk-last-project', p.id); navigate('/editor'); }}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                      <Clapperboard className="h-3 w-3 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate group-hover:text-primary transition-colors">{p.name}</p>
+                      <p className="text-[9px] text-muted-foreground font-mono-code">
+                        {format(new Date(p.updated_at), 'dd/MM HH:mm')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
 
           {/* Enter Editor CTA */}
           <button
             onClick={() => navigate('/editor')}
             className="w-full group relative overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-accent/5 p-4 text-center transition-all duration-300 hover:border-primary/40 hover:shadow-[0_0_30px_hsl(var(--primary)/0.1)] active:scale-[0.98] animate-fxk-fade-up"
-            style={{ animationDelay: '0.28s' }}
           >
             <Zap className="h-5 w-5 text-primary mx-auto mb-2 group-hover:scale-110 transition-transform" />
             <p className="text-sm font-bold font-display text-foreground">Abrir Editor</p>
