@@ -701,6 +701,7 @@ const DEFAULT_ENVIRONMENT: EnvironmentState = {
   smokeIntensity: 0.45,
   groundColorOverride: null,
   showRulers: false,
+  showPositionLabels: true,
   cameraBookmarks: [],
 };
 

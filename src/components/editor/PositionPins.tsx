@@ -401,14 +401,14 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
 
       {/* Clickable Label Plate — visible on hover/select only */}
       {showLabel && (
-        <Html position={[0, position.type === 'pyro' ? 1.1 : 0.75, 0]} center>
+        <Html position={[0, position.type === 'pyro' ? 1.1 : 0.75, 0]} center occlude distanceFactor={8}>
           <div
-            className="px-2.5 py-1 rounded-md text-[10px] font-mono whitespace-nowrap flex items-center gap-1.5 backdrop-blur-md select-none cursor-pointer transition-all duration-150 hover:scale-105"
+            className="px-1.5 py-0.5 rounded-md text-[9px] font-mono whitespace-nowrap flex items-center gap-1 backdrop-blur-md select-none cursor-pointer transition-all duration-150 hover:scale-105"
             style={{
               backgroundColor: isSelected ? `${color}66` : `${color}22`,
-              border: `1.5px solid ${isSelected ? `${color}bb` : `${color}55`}`,
+              border: `1px solid ${isSelected ? `${color}bb` : `${color}55`}`,
               color,
-              boxShadow: isSelected ? `0 0 16px ${color}55, 0 2px 8px rgba(0,0,0,0.4)` : '0 2px 6px rgba(0,0,0,0.3)',
+              boxShadow: isSelected ? `0 0 12px ${color}44, 0 1px 4px rgba(0,0,0,0.3)` : '0 1px 4px rgba(0,0,0,0.25)',
               pointerEvents: 'auto',
             }}
             onPointerDown={(e) => {
@@ -429,23 +429,11 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
               window.dispatchEvent(new CustomEvent('position-double-click', { detail: { posId: position.id } }));
             }}
           >
-            <span style={{ fontSize: '11px' }}>{position.type === 'pyro' ? '🎯' : '🛸'}</span>
             <span className="font-bold">{position.name}</span>
-            {linkedEffects > 0 && (
-              <span className="text-[8px] opacity-80 bg-black/30 px-1 rounded">🎆{linkedEffects}</span>
-            )}
-            {position.type === 'pyro' && (position.pitch || 0) < 85 && (
-              <span className="text-[8px] opacity-70 bg-black/30 px-1 rounded">
-                {Math.round(position.pitch || 85)}°
-              </span>
-            )}
             {isDragging && (
               <span className="opacity-80 font-mono text-[8px] bg-black/30 px-1 rounded">
                 {position.x.toFixed(1)}, {position.z.toFixed(1)}
               </span>
-            )}
-            {snapGuides.length > 0 && (
-              <span className="text-[7px] text-green-400 bg-black/40 px-1 rounded">SNAP</span>
             )}
           </div>
         </Html>

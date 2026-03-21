@@ -258,6 +258,22 @@ export function executeRemoteCommand(packet: CommandPacket, deps: CommandExecuto
       onHardwareCommand?.(hwPayload);
       break;
     }
+    case 'livefx': {
+      window.dispatchEvent(new CustomEvent('remote-livefx', { detail: packet.payload }));
+      break;
+    }
+    case 'sfx-channel': {
+      const { effect } = packet.payload as any;
+      if (effect) sfxStore.fireEffect(effect);
+      break;
+    }
+    case 'store-sync': {
+      const { delta } = packet.payload as any;
+      if (delta && typeof projectStore.setState === 'function') {
+        (projectStore as any).setState(delta);
+      }
+      break;
+    }
     case 'undo': undoStore.undo?.(); break;
     case 'redo': undoStore.redo?.(); break;
     case 'panic': {

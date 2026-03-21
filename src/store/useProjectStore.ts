@@ -450,15 +450,37 @@ export const useProjectStore = create<ProjectState>((set) => ({
   setCurrentTime: (time) => set({ currentTime: time }),
   setDuration: (duration) => set({ duration }),
   addTimelineItem: (item) => set((s) => ({ timelineItems: [...s.timelineItems, item] })),
-  removeTimelineItem: (id) => set((s) => ({ 
-    timelineItems: s.timelineItems.filter((i) => i.id !== id),
-    selectedTimelineItemId: s.selectedTimelineItemId === id ? null : s.selectedTimelineItemId,
-  })),
-  removeMultipleTimelineItems: (ids) => set((s) => ({
-    timelineItems: s.timelineItems.filter((i) => !ids.includes(i.id)),
-    selectedTimelineItemId: ids.includes(s.selectedTimelineItemId || '') ? null : s.selectedTimelineItemId,
-    selectedTimelineItemIds: [],
-  })),
+  removeTimelineItem: (id) => set((s) => {
+    const removed = s.timelineItems.find(i => i.id === id);
+    const nextTimeline = s.timelineItems.filter(i => i.id !== id);
+    // Auto-clean orphaned positions
+    let nextPositions = s.positions;
+    if (removed?.positionId) {
+      const stillReferenced = nextTimeline.some(i => i.positionId === removed.positionId);
+      if (!stillReferenced) {
+        nextPositions = s.positions.filter(p => p.id !== removed.positionId);
+      }
+    }
+    return {
+      timelineItems: nextTimeline,
+      positions: nextPositions,
+      selectedTimelineItemId: s.selectedTimelineItemId === id ? null : s.selectedTimelineItemId,
+    };
+  }),
+  removeMultipleTimelineItems: (ids) => set((s) => {
+    const removedItems = s.timelineItems.filter(i => ids.includes(i.id));
+    const nextTimeline = s.timelineItems.filter(i => !ids.includes(i.id));
+    // Auto-clean orphaned positions
+    const posIdsToCheck = [...new Set(removedItems.map(i => i.positionId).filter(Boolean))] as string[];
+    const orphanedIds = posIdsToCheck.filter(pId => !nextTimeline.some(i => i.positionId === pId));
+    const nextPositions = orphanedIds.length > 0 ? s.positions.filter(p => !orphanedIds.includes(p.id)) : s.positions;
+    return {
+      timelineItems: nextTimeline,
+      positions: nextPositions,
+      selectedTimelineItemId: ids.includes(s.selectedTimelineItemId || '') ? null : s.selectedTimelineItemId,
+      selectedTimelineItemIds: [],
+    };
+  }),
   updateTimelineItem: (id, updates) => set((s) => ({
     timelineItems: s.timelineItems.map((i) => i.id === id ? { ...i, ...updates } : i),
   })),
