@@ -5,7 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import {
   Gamepad2, Package, CheckCircle2, ArrowRight, Star, Lock,
   Trophy, Zap, Users, Target, BookOpen, FlaskConical, Shield,
-  Palette, AlertTriangle, Ruler, Flame, Sparkles
+  Palette, AlertTriangle, Ruler, Flame, Sparkles, History
 } from 'lucide-react';
 import TrainingSimulator from '@/components/training/TrainingSimulator';
 import { Equipment, Mission } from '@/components/training/types';
@@ -67,6 +67,33 @@ const MANUALS: ManualReference[] = [
     color: 'text-yellow-400',
     topics: ['Alturas de Abertura', 'Raios de Segurança', 'Classificação por Calibre', 'Inspeção', 'Licenciamento'],
     description: 'Normas NFPA para exibições pirotécnicas ao ar livre. Tabelas de altura de abertura, raios de segurança e requisitos de licenciamento.',
+  },
+  {
+    id: 'kurt-saxon',
+    title: 'Kurt Saxon — Granddad\'s Fireworks',
+    author: 'Kurt Saxon (1903–1907 Cyclopedias)',
+    icon: '📕',
+    color: 'text-orange-400',
+    topics: ['Star Formulas', 'Roman Candles', 'Gerbe Compositions', 'Signal Fires', 'Lance Work'],
+    description: 'Compilação de fórmulas de estrelas coloridas (Crimson, Blue, Violet, Rose, Golden Yellow), composições de candela romana e gerbe com tabelas detalhadas.',
+  },
+  {
+    id: 'pyrotechny-1829',
+    title: 'Pyrotechny 1829 — Endless Amusement',
+    author: 'Anônimo, 1829',
+    icon: '📜',
+    color: 'text-stone-400',
+    topics: ['Rocket Construction', 'Wheels', 'Tourbillons', 'Spur Fire', 'Touch Paper', 'Quick Match'],
+    description: 'Manual histórico com tabelas de golpes de maço por peso de foguete, proporções de vara, construção de Caduceus e a composição Spur Fire — "o fogo mais bonito conhecido".',
+  },
+  {
+    id: 'anderson-1696',
+    title: 'Anderson 1696 — The Making of Rockets',
+    author: 'Robert Anderson, 1696',
+    icon: '📖',
+    color: 'text-amber-600',
+    topics: ['Mathematical Rocket Proportions', 'Bore Ratios', 'Composition Recipes', 'Stick Balancing', 'Center of Gravity'],
+    description: 'O mais antigo tratado matemático sobre foguetes: furo = ⅓ do diâmetro, preenchimento = 4× diâmetro, balanceamento por centro de gravidade.',
   },
 ];
 
@@ -177,6 +204,25 @@ const INITIAL_MISSIONS: Mission[] = [
     scenario: '📊 Designer quer "mais estrelas, mais alto, mais tempo". Calcule os limites reais.',
     equipment: ['mortar', 'roman-candle'], difficulty: 'medium', xp: 350, completed: false, locked: false,
   },
+  // ── Cap. 8 — Técnicas Históricas ──
+  {
+    id: 'historical-star-formulas', chapter: 'Cap. 8 — Técnicas Históricas', title: 'Fórmulas Clássicas de Estrelas',
+    description: 'Identifique qual fórmula histórica produz cada cor: Crimson (Saxon #1), Blue Intense (Saxon Blue #3), Violet, Rose, Golden Yellow. Reconheça o uso histórico de calomel como doador de cloro.',
+    scenario: '📜 Arquivo da Cyclopedia de 1903 na mesa. 5 fórmulas, 5 cores. Qual faz o carmesim mais intenso?',
+    equipment: ['mortar'], difficulty: 'easy', xp: 200, completed: false, locked: false,
+  },
+  {
+    id: 'rocket-proportions', chapter: 'Cap. 8 — Técnicas Históricas', title: 'Proporções Matemáticas de Foguetes',
+    description: 'Calcule proporções de Anderson (1696): furo = ⅓ diâmetro, preenchimento = 4D, profundidade do furo = 2-3D. Use a tabela de 1829: 6lb = 56 golpes, vara = 11 pés.',
+    scenario: '🔨 Oficina de foguetes. Um foguete de 6 libras precisa de quantos golpes de maço? E o tamanho da vara?',
+    equipment: ['mortar'], difficulty: 'medium', xp: 350, completed: false, locked: false,
+  },
+  {
+    id: 'roman-candle-charging', chapter: 'Cap. 8 — Técnicas Históricas', title: 'Carregamento de Candelas Romanas',
+    description: 'Sequencie corretamente: tampão de argila → pólvora de sopro (colheres graduadas) → estrela → estopim → repetir. Identifique as 3 composições do Saxon.',
+    scenario: '🕯️ Mesa de trabalho com tubos vazios. Monte a candela romana camada por camada, sem pular etapas.',
+    equipment: ['roman-candle'], difficulty: 'medium', xp: 300, completed: false, locked: false,
+  },
 ];
 
 const DIFF_CONFIG: Record<string, { color: string; bg: string; stars: number }> = {
@@ -190,6 +236,7 @@ const CHAPTER_ICONS: Record<string, typeof BookOpen> = {
   'Cap. 5 — Química Pirotécnica': FlaskConical,
   'Cap. 6 — Segurança NFPA': Shield,
   'Cap. 7 — Pólvora e Propelentes': Flame,
+  'Cap. 8 — Técnicas Históricas': History,
 };
 
 export default function Training() {
@@ -344,7 +391,7 @@ export default function Training() {
       {/* Missions by chapter */}
       {chapters.map((chapter, ci) => {
         const ChapterIcon = CHAPTER_ICONS[chapter] || Sparkles;
-        const isManualChapter = chapter.includes('Química') || chapter.includes('NFPA') || chapter.includes('Pólvora');
+        const isManualChapter = chapter.includes('Química') || chapter.includes('NFPA') || chapter.includes('Pólvora') || chapter.includes('Históricas');
         return (
           <div key={chapter} className="space-y-2 animate-fxk-fade-up" style={{ animationDelay: `${0.2 + ci * 0.05}s` }}>
             <div className="flex items-center gap-2 px-1">
