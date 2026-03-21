@@ -332,7 +332,9 @@ export default function CSVImporter({ open, onOpenChange, initialFile }: { open:
   const [options, setOptions] = useState<ImportOptions>(DEFAULT_OPTIONS);
   const [showOptions, setShowOptions] = useState(false);
   const [detectedFormat, setDetectedFormat] = useState<DetectedFormat | null>(null);
+  const [currentFile, setCurrentFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { saveToLibrary } = useMyLibrary();
 
   const processFile = useCallback((file: File) => {
     setFileName(file.name);
