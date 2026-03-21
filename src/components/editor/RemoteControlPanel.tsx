@@ -514,7 +514,7 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
                   <div key={dev.id} className="bg-muted/20 rounded-lg p-2 space-y-1.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
                         <span className="text-[10px] font-semibold text-foreground">{dev.name}</span>
                         <span className="text-[7px] text-muted-foreground font-mono">{dev.id.slice(0, 6)}</span>
                       </div>
