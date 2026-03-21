@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Upload, Box, RotateCw, Maximize2, Check } from 'lucide-react';
 import { useSceneStore } from '@/store/useSceneStore';
+import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { toast } from 'sonner';
 
 interface SceneObjectImporterProps {
