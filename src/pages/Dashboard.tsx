@@ -441,7 +441,6 @@ export default function Dashboard() {
                 <FeedCard item={item} />
               </div>
             ))}
-            ))}
           </div>
         </div>
 
