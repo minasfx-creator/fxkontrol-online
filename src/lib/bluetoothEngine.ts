@@ -88,18 +88,19 @@ export function isWebBluetoothSupported(): boolean {
   return typeof navigator !== 'undefined' && 'bluetooth' in navigator;
 }
 
-export async function scanBluetoothDevices(profileFilter?: BLEDeviceProfile): Promise<BluetoothDevice> {
+export async function scanBluetoothDevices(profileFilter?: BLEDeviceProfile): Promise<BtDevice> {
   if (!isWebBluetoothSupported()) {
     throw new Error('Web Bluetooth não suportado neste navegador. Use Chrome/Edge ou o app nativo iOS.');
   }
 
-  const filters: BluetoothRequestDeviceFilter[] = profileFilter
+  const nav = navigator as any;
+  const filters = profileFilter
     ? [{ services: [profileFilter.serviceUUID] }]
     : BLE_PROFILES.map(p => ({ services: [p.serviceUUID] }));
 
   const optionalServices = [BATTERY_SERVICE_UUID];
 
-  return navigator.bluetooth.requestDevice({
+  return nav.bluetooth.requestDevice({
     filters,
     optionalServices,
   });
