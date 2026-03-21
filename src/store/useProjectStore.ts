@@ -121,7 +121,7 @@ export interface Trajectory {
   name: string;
 }
 
-export type EditorMode = 'select' | 'add-pyro' | 'add-drone' | 'add-waypoint';
+export type EditorMode = 'select' | 'add-pyro' | 'add-drone' | 'add-waypoint' | 'adjust-angles';
 
 export interface DroneFormation {
   id: string;
