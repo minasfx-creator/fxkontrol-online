@@ -2,6 +2,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { createDroneMaterials } from '@/render_ultra/drones/droneMaterials';
+import { getNavLights } from '@/render_ultra/drones/droneLights';
 import useGenerativeStore from '@/store/useGenerativeStore';
 
 const _dummy = new THREE.Object3D();
