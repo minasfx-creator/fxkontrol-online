@@ -1,9 +1,12 @@
 /**
- * FireOne Script Parser — UltraFire CSV / FIR interchange
+ * FireOne Script Parser — UltraFire CSV / FIR / SCL interchange
  * 
  * Supports:
  * - Official FireOne CSV format (import/export)
  * - Pipe-delimited FIR/SEM text exports (import only)
+ * - ScriptMaker Visual .ses session files (import only)
+ * - Flames Launcher CSV (import/export)
+ * - SCL (Show Cue List) from Flames Launcher wizard (import only)
  * - Maps between FireOne Slat/Cue numbering and internal Module/Igniter addressing
  */
 
@@ -25,7 +28,7 @@ export interface FireOneCSVRow {
   launchTime: string;     // "MM:SS.mmm" or "HH:MM:SS.mmm"
   delay: number;          // ms
   event: number;          // 0 = single trigger, 1-999 = semi-auto group
-  module: number;         // Slat address (1-99)
+  module: number;         // Slat address (1-40 per XLII+ manual)
   cue: number | null;     // Pin (1-32), null = DMX command
   quantity: number;
   size: string;
@@ -115,6 +118,7 @@ export function parseFireOneCSV(text: string): AutoFireCue[] {
     const duration = parseFloat(cols[8]) || 0.5;
     const description = cols[14] || cols[9] || '';
     const event = parseInt(cols[3]) || 0;
+    const priority = parseInt(cols[16]) || 0;
 
     cues.push({
       id: `fone-${idx + 1}`,
@@ -132,6 +136,8 @@ export function parseFireOneCSV(text: string): AutoFireCue[] {
       prefire: (parseFloat(cols[2]) || 0) / 1000, // delay → prefire in seconds
       trigger: 0,
       triggerSource: 'manual',
+      eventNumber: event > 0 ? event : undefined,
+      priority: priority > 0 ? priority : undefined,
     });
   });
 
@@ -157,7 +163,7 @@ export function exportFireOneCSV(cues: AutoFireCue[]): string {
       idx + 1,                              // Row ID
       msToTimeStr(cue.timecodeMs),          // Launch Time
       Math.round(cue.prefire * 1000),       // Delay (ms)
-      0,                                     // Event
+      cue.eventNumber ?? 0,                 // Event
       module || '',                          // Module (Slat)
       pin,                                   // Cue (Pin)
       1,                                     // Quantity
@@ -170,7 +176,7 @@ export function exportFireOneCSV(cues: AutoFireCue[]): string {
       '',                                    // DMX Rate
       `"${cue.name.replace(/"/g, '""')}"`,  // Description
       `"${cue.effect.replace(/"/g, '""')}"`, // Comment
-      0,                                     // Priority
+      cue.priority ?? 0,                    // Priority
       '',                                    // Position
     ];
 
@@ -198,6 +204,7 @@ export function parseFireOneFIR(text: string): AutoFireCue[] {
     const slat = parseInt(parts[1]) || 1;
     const cuePin = parseInt(parts[2]) || 1;
     const description = parts[3] || '';
+    const event = parts.length >= 8 ? (parseInt(parts[7]) || 0) : 0;
 
     cues.push({
       id: `fir-${idx + 1}`,
@@ -213,6 +220,7 @@ export function parseFireOneFIR(text: string): AutoFireCue[] {
       prefire: 0,
       trigger: 0,
       triggerSource: 'manual',
+      eventNumber: event > 0 ? event : undefined,
     });
   });
 
@@ -326,19 +334,79 @@ export function exportFlamesLauncherCSV(cues: AutoFireCue[]): string {
   return [header, ...rows].join('\n');
 }
 
+// ═══════════════════════════════════════════════════════════
+// SCL PARSER (Flames Launcher Show Cue List)
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Parse SCL (Show Cue List) files from Flames Launcher Wizard.
+ * SCL is generated from .fir files + audio for flame choreography.
+ * 
+ * SCL format (tab or comma separated):
+ * CueNo, TimeCode, Channel, Value, Duration, Effect, Device, EventGroup
+ */
+export function parseSCL(text: string): AutoFireCue[] {
+  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+  if (lines.length < 2) return [];
+
+  const cues: AutoFireCue[] = [];
+  // Detect delimiter: tab or comma
+  const delimiter = lines[0].includes('\t') ? '\t' : ',';
+  const dataLines = lines.slice(1); // skip header
+
+  dataLines.forEach((line, idx) => {
+    const parts = line.split(delimiter).map(p => p.trim().replace(/^"|"$/g, ''));
+    if (parts.length < 5) return;
+
+    const cueNo = parseInt(parts[0]) || (idx + 1);
+    const timecodeMs = parseTimeToMs(parts[1] || '');
+    const channel = parseInt(parts[2]) || 1;
+    const value = parseInt(parts[3]) || 255;
+    const duration = parseFloat(parts[4]) || 0.2;
+    const effect = parts[5] || 'FIRE';
+    const device = parts[6] || `CH${channel}`;
+    const eventGroup = parts.length >= 8 ? (parseInt(parts[7]) || 0) : 0;
+
+    cues.push({
+      id: `scl-${idx + 1}`,
+      cueNumber: cueNo,
+      device: 'dmx',
+      name: device,
+      state: 'ready',
+      timecodeMs,
+      addresses: `${channel}`,
+      mode: 'sync',
+      effect: `${effect} Val${value}`,
+      duration,
+      prefire: 0,
+      trigger: 0,
+      triggerSource: 'ltc', // SCL files typically sync to LTC
+      eventNumber: eventGroup > 0 ? eventGroup : undefined,
+    });
+  });
+
+  return cues;
+}
+
 /** Auto-detect format from file content and parse */
 export function autoDetectAndParse(text: string, filename: string): { cues: AutoFireCue[]; source: string } {
   const lower = filename.toLowerCase();
   if (lower.endsWith('.ses')) {
     return { cues: parseScriptMakerSession(text), source: 'ScriptMaker' };
   }
+  if (lower.endsWith('.scl')) {
+    return { cues: parseSCL(text), source: 'Flames SCL' };
+  }
   if (lower.endsWith('.fir') || lower.endsWith('.sem')) {
     return { cues: parseFireOneFIR(text), source: 'FIR/SEM' };
   }
-  // CSV — check if Flames or FireOne by header
+  // CSV — check if Flames, SCL-style, or FireOne by header
   const firstLine = text.split(/\r?\n/)[0]?.toLowerCase() || '';
   if (firstLine.includes('cueid') && firstLine.includes('dmxchannel')) {
     return { cues: parseFlamesLauncherCSV(text), source: 'Flames' };
+  }
+  if (firstLine.includes('cueno') && firstLine.includes('timecode') && firstLine.includes('eventgroup')) {
+    return { cues: parseSCL(text), source: 'Flames SCL' };
   }
   return { cues: parseFireOneCSV(text), source: 'UltraFire' };
 }

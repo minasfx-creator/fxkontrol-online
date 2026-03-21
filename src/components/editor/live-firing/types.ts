@@ -30,6 +30,16 @@ export interface SFXChannel {
   safetyValue?: number;
   manufacturer?: string;
   hardwareBinding?: HardwareBinding;
+  /** DMX channel mode for multi-mode devices (e.g. R12: '12CH' | '12CH-P', cFlamer: '2CH-P' | '2CH-N' | '6CH-N') */
+  dmxChannelMode?: string;
+  /** Separate safety address for 12CH-P mode (must not overlap with dmxAddress) */
+  safetyAddressSeparate?: number;
+  /** Safety threshold range for cFlamer-style configurable safety */
+  safetyThreshold?: { min: number; max: number };
+  /** External pyro trigger input */
+  externalTrigger?: boolean;
+  /** External pyro trigger voltage range string */
+  pyroVoltageRange?: string;
 }
 
 export type SFXType = 'co2' | 'flame' | 'confetti' | 'streamer' | 'cryo' | 'haze' | 'spark' | 'custom' | 'fog' | 'snow' | 'bubble' | 'laser';
@@ -50,11 +60,17 @@ export interface CueEntry {
   keyMode: 'tap' | 'lock';
   groupId?: string;
   customPerDevice?: Record<string, string>; // deviceId → effect override
+  /** Interval between igniters in ms (PyroMote manual) */
+  intervalMs?: number;
+  /** Slave type for this cue */
+  slaveType?: 'X4' | 'X16' | 'C16';
+  /** Scene index for PyroMote 4-scene manual fire (0–3) */
+  sceneIndex?: number;
+  /** Priority group 1–16 for FireOne Priority Disable */
+  priority?: number;
 }
 
 export type FiringRule = 'sync' | 'ltr' | 'rtl' | 'sides' | 'middle';
-
-export type FXCMode = 'super_dmx' | 'simple_dmx' | 'manual_fire' | 'pyro_fire' | 'auto_fire' | 'check_slave' | 'noise_info' | 'file' | 'settings' | 'mobile_link' | 'controllers' | 'field_map' | 'pbus' | 'connections' | 'zk6200' | 'fxbutton' | 'radio' | 'ma3';
 
 export interface AutoFireCue {
   id: string;
@@ -70,6 +86,10 @@ export interface AutoFireCue {
   prefire: number;
   trigger: number;
   triggerSource: 'manual' | 'midi' | 'ltc';
+  /** Semi-auto event number (0 = single trigger, 1–999 = event group) */
+  eventNumber?: number;
+  /** Priority group 1–16 for FireOne Priority Disable */
+  priority?: number;
 }
 
 export interface SlaveStatus {
@@ -96,6 +116,10 @@ export interface DeviceLibEntry {
   safetyChannel?: number;
   safetyValue?: number;
   category: 'showven' | 'user';
+  /** Available DMX channel modes for multi-mode devices */
+  dmxModes?: string[];
+  /** Device capabilities flags */
+  capabilities?: DeviceCapabilities;
 }
 
 export interface DeviceEffect {
@@ -105,6 +129,28 @@ export interface DeviceEffect {
   duration: number;
   channelValues: { channel: number; value: number }[];
 }
+
+export interface DeviceCapabilities {
+  ltcSupport?: boolean;
+  audioOutput?: boolean;
+  simpleDmx?: number;   // number of simple DMX channels
+  canBus?: boolean;
+  rdmx?: boolean;
+  eStopChain?: boolean;
+  externalPyroTrigger?: boolean;
+}
+
+/** UltraFire state for FireOne XLII+ */
+export interface UltraFireState {
+  enabled: boolean;
+  verifyCode: string;
+  modulesVerified: number[];
+  fileSlot: number;   // 1–8
+  downloading: boolean;
+  downloadProgress: number; // 0–100
+}
+
+export type FXCMode = 'super_dmx' | 'simple_dmx' | 'manual_fire' | 'pyro_fire' | 'auto_fire' | 'check_slave' | 'noise_info' | 'file' | 'settings' | 'mobile_link' | 'controllers' | 'field_map' | 'pbus' | 'connections' | 'zk6200' | 'fxbutton' | 'radio' | 'ma3';
 
 export interface FXCSettings {
   language: string;
