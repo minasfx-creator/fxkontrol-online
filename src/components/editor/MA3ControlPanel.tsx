@@ -44,6 +44,7 @@ import { useSfxChannelStore } from '@/store/useSfxChannelStore';
 
 interface MA3ControlPanelProps {
   fs?: boolean;
+  onClose?: () => void;
 }
 
 interface CueListEntry {
