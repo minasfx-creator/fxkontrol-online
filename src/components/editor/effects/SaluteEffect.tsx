@@ -347,7 +347,7 @@ export default function SaluteEffect({
             <bufferAttribute attach="attributes-color" args={[debrisCol, 3]} />
           </bufferGeometry>
           <pointsMaterial
-            size={0.1 + caliber * 0.02}
+            size={getParticleSize(caliber) * 0.05}
             vertexColors
             transparent
             opacity={0.85}

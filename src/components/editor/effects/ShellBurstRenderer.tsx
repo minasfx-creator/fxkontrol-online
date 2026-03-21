@@ -887,7 +887,7 @@ function CrossetteSubBurst({
         <bufferAttribute attach="attributes-color" args={[buffers.col, 3]} />
       </bufferGeometry>
       <pointsMaterial
-        size={0.15 + caliber * 0.04}
+        size={getParticleSize(caliber) * 0.1}
         vertexColors
         transparent
         opacity={0.9}
