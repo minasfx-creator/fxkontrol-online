@@ -219,7 +219,8 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
       },
       onPresence: (devs) => {
         setDevices(devs);
-        if (devs.some(d => d.role === 'receiver') && !connected) {
+        if (devs.some(d => d.role === 'receiver') && !connectedRef.current) {
+          connectedRef.current = true;
           setConnected(true);
           haptics.success();
           toast.success('🔗 Conectado ao Master!');
@@ -231,8 +232,9 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
     multiManager.add(s);
     setSites(prev => [...prev, { code, name: `Site ${prev.length + 1}`, connected: true }]);
     setConnected(false);
+    connectedRef.current = false;
     toast.info('Conectando...');
-  }, [code, connected, connMode, multiManager]);
+  }, [code, connMode, multiManager]);
 
   /* ── WiFi Slave ────────────────────────────────── */
   const startWifiSlave = useCallback(() => {
