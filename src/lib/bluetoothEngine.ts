@@ -107,7 +107,7 @@ export async function scanBluetoothDevices(profileFilter?: BLEDeviceProfile): Pr
 }
 
 export async function connectBLEDevice(
-  device: BluetoothDevice,
+  device: BtDevice,
   profile: BLEDeviceProfile
 ): Promise<BLEConnectedDevice> {
   if (!device.gatt) throw new Error('GATT not available');
@@ -116,7 +116,7 @@ export async function connectBLEDevice(
   const service = await server.getPrimaryService(profile.serviceUUID);
   const dmxChar = await service.getCharacteristic(profile.dmxCharUUID);
 
-  let statusChar: BluetoothRemoteGATTCharacteristic | null = null;
+  let statusChar: BtCharacteristic = null;
   if (profile.statusCharUUID) {
     try {
       statusChar = await service.getCharacteristic(profile.statusCharUUID);
