@@ -408,10 +408,14 @@ const ELEMENT_EMISSION: Record<string, EmissionLine[]> = {
   'Bi2O3': [{ wavelength: 560, intensity: 0.6 }, { wavelength: 590, intensity: 0.5 }],
   'C': [{ wavelength: 590, intensity: 0.7 }, { wavelength: 620, intensity: 0.9 }],
   'S': [{ wavelength: 580, intensity: 0.5 }],
-  'KClO4': [], // oxidizer, no visible emission
+  'Zn': [{ wavelength: 470, intensity: 0.7 }, { wavelength: 510, intensity: 0.5 }],
+  'Sb': [{ wavelength: 465, intensity: 0.6 }, { wavelength: 500, intensity: 0.5 }],
+  'Ca': [{ wavelength: 622, intensity: 0.9 }, { wavelength: 553, intensity: 0.4 }],
+  'KNO3+C+S': [{ wavelength: 590, intensity: 0.6 }, { wavelength: 620, intensity: 0.4 }],
+  'KClO4': [],
   'KNO3': [],
-  'LAC': [{ wavelength: 470, intensity: 0.9 }], // blue copper compound
-  'PVC': [],  // chlorine donor, no visible emission
+  'LAC': [{ wavelength: 470, intensity: 0.9 }],
+  'PVC': [],
   'Shellac': [],
   'Dextrin': [],
   'Sb2S3': [{ wavelength: 560, intensity: 0.4 }],
