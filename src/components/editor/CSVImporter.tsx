@@ -377,6 +377,7 @@ export default function CSVImporter({ open, onOpenChange, initialFile }: { open:
   // Override processFile to also store raw text
   const processFileWithRaw = useCallback((file: File) => {
     setFileName(file.name);
+    setCurrentFile(file);
     const reader = new FileReader();
     reader.onload = () => {
       const text = reader.result as string;
