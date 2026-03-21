@@ -67,7 +67,7 @@ import { GlobalIlluminationSystem } from '@/render_ultra/lighting/globalIllumina
 // SmokeSystem removed — handled by NiagaraVFXController
 import { createLensFlareSprite, flashLensFlare, decayLensFlare } from '@/render_ultra/postprocessing/lensFlare';
 import { getBurstConfig, type BurstPattern } from '@/render_ultra/fireworks/burstSimulation';
-import { createSparkTrailSystem, updateSparkTrail, writeSparkTrailsToBuffers, type SparkState } from '@/render_ultra/fireworks/sparkTrailsGPU';
+// sparkTrailsGPU removed — handled by NiagaraVFXController
 import { createHDRLightingRig } from '@/render_ultra/lighting/hdrLighting';
 import { createVolumetricFogPlane } from '@/render_ultra/environment/volumetricFog';
 import { createReflectionPlane } from '@/render_ultra/environment/reflections';
