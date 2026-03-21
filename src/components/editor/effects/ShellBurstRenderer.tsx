@@ -303,6 +303,12 @@ export default function ShellBurstRenderer({
   const glitterParticlesRef = useRef<ParticleState[]>([]);
   const initTimeRef = useRef<number>(0);
 
+  // ── Smoke billboard system ──
+  const SMOKE_COUNT = 10;
+  const smokeMeshRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const smokeSpawned = useRef(false);
+  const smokeParticles = useRef<{ x: number; y: number; z: number; vx: number; vy: number; vz: number; age: number; maxAge: number; scale: number; seed: number }[]>([]);
+
   // ── Read real-time store values (Skybrush environment + pyro controls) ──
   const sceneSettings = useSceneStore(st => st.settings);
   const {
