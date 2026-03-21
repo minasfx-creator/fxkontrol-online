@@ -110,7 +110,14 @@ export default function RemoteReceiverOverlay({ onOpenPanel }: RemoteReceiverOve
               }
               break;
             case 'continuity':
-              if (payload.moduleAddr != null) await pbus.requestCueStatus(payload.moduleAddr);
+              if (payload.moduleAddr != null) {
+                await pbus.requestCueStatus(payload.moduleAddr);
+              } else {
+                const pbusAddrs = Array.from(pbus.devices.keys());
+                for (const addr of pbusAddrs) {
+                  await pbus.requestCueStatus(addr);
+                }
+              }
               break;
             case 'scan':
               await pbus.discoverDevices();
