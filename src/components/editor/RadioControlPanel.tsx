@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 
 interface RadioControlPanelProps {
   fs?: boolean;
+  onClose?: () => void;
 }
 
 const BAND_OPTIONS: { value: RadioBand; label: string; freq: string }[] = [
