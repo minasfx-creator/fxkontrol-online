@@ -72,7 +72,7 @@ const ALL_PANELS: PanelItem[] = [
   { id: 'livefiring', label: 'Live SFX', icon: Sparkles, section: 'Conexões' },
   { id: 'mobilelink', label: 'Mobile Link', icon: Cable, section: 'Conexões' },
   { id: 'bluetooth', label: 'Bluetooth BLE', icon: Bluetooth, section: 'Conexões' },
-  { id: 'nfc', label: 'NFC Pair', icon: NfcIcon, section: 'Conexões' },
+  { id: 'nfc', label: 'NFC Pair', icon: Nfc, section: 'Conexões' },
   { id: 'dmxoutput', label: 'DMX Output', icon: ScanLine, section: 'Conexões' },
   { id: 'remotecontrol', label: 'Remote Control', icon: Smartphone, section: 'Conexões' },
   { id: 'connections', label: 'Conexões HW', icon: Cable, section: 'Conexões' },
