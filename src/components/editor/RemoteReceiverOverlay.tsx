@@ -70,7 +70,15 @@ export default function RemoteReceiverOverlay({ onOpenPanel }: RemoteReceiverOve
               }
               break;
             case 'continuity':
-              if (payload.moduleAddr != null) await fireone.requestContinuity(payload.moduleAddr);
+              if (payload.moduleAddr != null) {
+                await fireone.requestContinuity(payload.moduleAddr);
+              } else {
+                // Broadcast continuity check to all discovered modules
+                const moduleAddrs = Array.from(fireone.modules.keys());
+                for (const addr of moduleAddrs) {
+                  await fireone.requestContinuity(addr);
+                }
+              }
               break;
             case 'scan':
               await fireone.discoverModules();
@@ -102,7 +110,14 @@ export default function RemoteReceiverOverlay({ onOpenPanel }: RemoteReceiverOve
               }
               break;
             case 'continuity':
-              if (payload.moduleAddr != null) await pbus.requestCueStatus(payload.moduleAddr);
+              if (payload.moduleAddr != null) {
+                await pbus.requestCueStatus(payload.moduleAddr);
+              } else {
+                const pbusAddrs = Array.from(pbus.devices.keys());
+                for (const addr of pbusAddrs) {
+                  await pbus.requestCueStatus(addr);
+                }
+              }
               break;
             case 'scan':
               await pbus.discoverDevices();
@@ -277,12 +292,12 @@ export default function RemoteReceiverOverlay({ onOpenPanel }: RemoteReceiverOve
       {/* ── Overlay Widget ── */}
       <div className={cn(
         "fixed bottom-4 right-4 z-40 w-60 rounded-xl border backdrop-blur-md bg-background/90 shadow-lg overflow-hidden",
-        controllerCount > 0 && "ring-2 ring-green-500/50"
+        controllerCount > 0 && "ring-2 ring-success/50"
       )}>
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-border/30">
           <div className="flex items-center gap-1.5">
-            <Wifi className="w-3 h-3 text-green-400" />
+            <Wifi className="w-3 h-3 text-success" />
             <span className="text-[9px] font-bold uppercase text-foreground">Remote</span>
             {controllerCount > 0 && (
               <Badge variant="default" className="text-[7px] px-1 h-4">{controllerCount}</Badge>

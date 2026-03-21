@@ -85,6 +85,7 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
   const [devices, setDevices] = useState<RemoteDevice[]>([]);
   const [latency, setLatency] = useState(0);
   const [log, setLog] = useState<{ action: string; ts: number; sender?: string }[]>([]);
+  const connectedRef = useRef(false);
   const [wifiScanning, setWifiScanning] = useState(false);
   const [slavePermissions, setSlavePermissions] = useState<RemotePermissions>(DEFAULT_PERMISSIONS);
   const [masterPermissions, setMasterPermissions] = useState<Map<string, RemotePermissions>>(new Map());
@@ -136,6 +137,9 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
     };
   }, [fireone, pbus]);
 
+  // Keep ref in sync with state to avoid stale closures in channel callbacks
+  useEffect(() => { connectedRef.current = connected; }, [connected]);
+
   /* ── Connect as Master ────────────────────────── */
   const startMaster = useCallback(() => {
     const newCode = generateSessionCode();
@@ -153,7 +157,6 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
           },
         });
         setLog(prev => [{ action: packet.action, ts: packet.ts, sender: packet.senderId }, ...prev].slice(0, 20));
-        // Action mirror
         setActionMirror(prev => [
           { action: packet.action, sender: packet.senderId || 'slave', ts: Date.now() },
           ...prev,
@@ -162,7 +165,8 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
       onPresence: (devs) => {
         setDevices(devs);
         const hasController = devs.some(d => d.role === 'controller');
-        if (hasController && !connected) {
+        if (hasController && !connectedRef.current) {
+          connectedRef.current = true;
           setConnected(true);
           haptics.success();
           toast.success('🔗 Slave conectado!');
@@ -172,6 +176,7 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
 
     setSession(s);
     setConnected(false);
+    connectedRef.current = false;
 
     // State sync with REAL hardware status
     stateIntervalRef.current = setInterval(() => {
@@ -198,7 +203,7 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
         onLost: () => {},
       });
     }
-  }, [connMode, connected, onOpenPanel, slavePermissions, getHardwareStatus]);
+  }, [connMode, onOpenPanel, slavePermissions, getHardwareStatus]);
 
   /* ── Connect as Slave ──────────────────────────── */
   const connectSlave = useCallback(() => {
@@ -214,7 +219,8 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
       },
       onPresence: (devs) => {
         setDevices(devs);
-        if (devs.some(d => d.role === 'receiver') && !connected) {
+        if (devs.some(d => d.role === 'receiver') && !connectedRef.current) {
+          connectedRef.current = true;
           setConnected(true);
           haptics.success();
           toast.success('🔗 Conectado ao Master!');
@@ -226,8 +232,9 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
     multiManager.add(s);
     setSites(prev => [...prev, { code, name: `Site ${prev.length + 1}`, connected: true }]);
     setConnected(false);
+    connectedRef.current = false;
     toast.info('Conectando...');
-  }, [code, connected, connMode, multiManager]);
+  }, [code, connMode, multiManager]);
 
   /* ── WiFi Slave ────────────────────────────────── */
   const startWifiSlave = useCallback(() => {
@@ -246,7 +253,8 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
             },
             onPresence: (devs) => {
               setDevices(devs);
-              if (devs.some(d => d.role === 'receiver')) {
+              if (devs.some(d => d.role === 'receiver') && !connectedRef.current) {
+                connectedRef.current = true;
                 setConnected(true);
                 haptics.success();
                 toast.success('🔗 Conectado via WiFi!');
@@ -327,7 +335,7 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
   }, [session]);
 
   const isPlaying = remoteState?.isPlaying ?? false;
-  const latencyColor = latency < 30 ? 'text-emerald-400' : latency < 100 ? 'text-yellow-400' : 'text-red-400';
+  const latencyColor = latency < 30 ? 'text-success' : latency < 100 ? 'text-warning' : 'text-destructive';
 
   return (
     <ScrollArea className="h-full">
@@ -485,7 +493,7 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
                   <p className="text-[6px] text-muted-foreground/60">{pbus.connectionPath}</p>
                 </div>
                 <div className="bg-muted/20 rounded-lg p-2 text-center border border-border/20">
-                  <Battery className="w-3 h-3 mx-auto text-emerald-400 mb-0.5" />
+                  <Battery className="w-3 h-3 mx-auto text-success mb-0.5" />
                   <p className="text-[7px] text-muted-foreground">Battery</p>
                   <p className="text-xs font-bold text-foreground">
                     {pbus.worstBattery !== null ? `${pbus.worstBattery.toFixed(1)}V` : '—'}
@@ -506,7 +514,7 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
                   <div key={dev.id} className="bg-muted/20 rounded-lg p-2 space-y-1.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
                         <span className="text-[10px] font-semibold text-foreground">{dev.name}</span>
                         <span className="text-[7px] text-muted-foreground font-mono">{dev.id.slice(0, 6)}</span>
                       </div>
@@ -630,7 +638,7 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
               <div className="grid grid-cols-4 gap-1.5">
                 <button
                   className={cn("flex flex-col items-center gap-0.5 p-2.5 rounded-xl border active:scale-90 transition-transform",
-                    slavePermissions.canArm ? "bg-red-500/10 border-red-500/30 text-red-400" : "bg-muted/20 border-border/30 text-muted-foreground/40"
+                    slavePermissions.canArm ? "bg-destructive/10 border-destructive/30 text-destructive" : "bg-muted/20 border-border/30 text-muted-foreground/40"
                   )}
                   disabled={!slavePermissions.canArm}
                   onClick={() => {
@@ -643,7 +651,7 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
 
                 <button
                   className={cn("flex flex-col items-center gap-0.5 p-2.5 rounded-xl border active:scale-90 transition-transform",
-                    slavePermissions.canArm ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-muted/20 border-border/30 text-muted-foreground/40"
+                    slavePermissions.canArm ? "bg-success/10 border-success/30 text-success" : "bg-muted/20 border-border/30 text-muted-foreground/40"
                   )}
                   disabled={!slavePermissions.canArm}
                   onClick={() => { send('hardware', { target: 'fireone', action: 'disarm-all' }); haptics.tap(); }}
@@ -670,7 +678,7 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
 
                 <button
                   className={cn("flex flex-col items-center gap-0.5 p-2.5 rounded-xl border active:scale-90 transition-transform",
-                    slavePermissions.canArm ? "bg-blue-500/10 border-blue-500/30 text-blue-400" : "bg-muted/20 border-border/30 text-muted-foreground/40"
+                    slavePermissions.canArm ? "bg-primary/10 border-primary/30 text-primary" : "bg-muted/20 border-border/30 text-muted-foreground/40"
                   )}
                   disabled={!slavePermissions.canArm}
                   onClick={() => { send('hardware', { target: 'pbus', action: 'arm-all' }); haptics.tap(); }}
@@ -681,7 +689,7 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
 
                 <button
                   className={cn("flex flex-col items-center gap-0.5 p-2.5 rounded-xl border active:scale-90 transition-transform",
-                    slavePermissions.canArm ? "bg-blue-500/10 border-blue-500/30 text-blue-400" : "bg-muted/20 border-border/30 text-muted-foreground/40"
+                    slavePermissions.canArm ? "bg-primary/10 border-primary/30 text-primary" : "bg-muted/20 border-border/30 text-muted-foreground/40"
                   )}
                   disabled={!slavePermissions.canArm}
                   onClick={() => { send('hardware', { target: 'pbus', action: 'disarm-all' }); haptics.tap(); }}
@@ -713,10 +721,10 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
               <p className="text-[9px] font-semibold uppercase text-muted-foreground tracking-wider">SFX</p>
               <div className="grid grid-cols-4 gap-1.5">
                 {[
-                  { type: 'flame', icon: Flame, label: 'Flame', color: 'bg-orange-500/15 text-orange-400 border-orange-500/30' },
-                  { type: 'co2', icon: Snowflake, label: 'CO₂', color: 'bg-blue-500/15 text-blue-400 border-blue-500/30' },
-                  { type: 'spark', icon: Sparkles, label: 'Spark', color: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' },
-                  { type: 'haze', icon: Wind, label: 'Haze', color: 'bg-purple-500/15 text-purple-400 border-purple-500/30' },
+                  { type: 'flame', icon: Flame, label: 'Flame', color: 'bg-accent/15 text-accent border-accent/30' },
+                  { type: 'co2', icon: Snowflake, label: 'CO₂', color: 'bg-primary/15 text-primary border-primary/30' },
+                  { type: 'spark', icon: Sparkles, label: 'Spark', color: 'bg-warning/15 text-warning border-warning/30' },
+                  { type: 'haze', icon: Wind, label: 'Haze', color: 'bg-secondary/15 text-secondary-foreground border-secondary/30' },
                 ].map(fx => (
                   <button
                     key={fx.type}
