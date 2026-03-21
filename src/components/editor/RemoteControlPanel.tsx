@@ -223,7 +223,7 @@ export default function RemoteControlPanel({ onClose }: RemoteControlPanelProps)
                   <button
                     key={fx.type}
                     className={cn("flex flex-col items-center gap-1 p-3 rounded-xl border border-border/30 active:scale-90 transition-transform", fx.color)}
-                    onClick={() => { send('effect', { type: fx.type, action: 'fire' }); haptics.medium(); }}
+                    onClick={() => { send('effect', { type: fx.type, action: 'fire' }); haptics.fire(); }}
                   >
                     <fx.icon className="w-6 h-6" />
                     <span className="text-[8px] font-semibold">{fx.label}</span>
