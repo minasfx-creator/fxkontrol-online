@@ -12,7 +12,8 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 export type CommandAction =
   | 'transport' | 'panel' | 'camera' | 'effect'
   | 'undo' | 'redo' | 'panic'
-  | 'hardware' | 'open-panel' | 'system-status';
+  | 'hardware' | 'open-panel' | 'system-status'
+  | 'livefx' | 'sfx-channel' | 'store-sync';
 
 export type ConnectionMode = 'cloud' | 'wifi-auto';
 
