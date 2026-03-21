@@ -4,6 +4,13 @@
  * For iOS native: requires @capacitor-community/bluetooth-le plugin.
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+// Web Bluetooth types (not in standard TS lib)
+type BtDevice = any;
+type BtGATTServer = any;
+type BtCharacteristic = any;
+
 export interface BLEDeviceProfile {
   name: string;
   serviceUUID: string;
