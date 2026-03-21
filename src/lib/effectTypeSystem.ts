@@ -334,6 +334,14 @@ export const EFFECT_TYPES: Record<PyroEffectType, PyroEffectSpec> = {
     category: 'ground', colorChannels: 1,
     description: '"Most beautiful fire known" — clusters of stars/pinks without drossy sparks (Pyrotechny 1829, KNO3+S+Lampblack)',
   },
+  orb_drone: {
+    type: 'orb_drone', label: 'Orb Drone / Light Sphere', icon: '🔮',
+    defaultDuration: 60, defaultHeight: 20, defaultSpread: 0,
+    hasLiftPhase: false, isChainable: false, isCake: false, defaultShotsPerDevice: 1,
+    minCaliber: 0, maxCaliber: 0, liftTimePerInch: 0,
+    category: 'sfx', colorChannels: 3,
+    description: 'Illuminated sphere/orb — DMX-controlled LED drone ball (BP_Sphere + MPC_DMX_Sphere)',
+  },
 };
 
 export function getLiftTime(type: PyroEffectType, caliberInches: number): number {
