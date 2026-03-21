@@ -137,6 +137,9 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
     };
   }, [fireone, pbus]);
 
+  // Keep ref in sync with state to avoid stale closures in channel callbacks
+  useEffect(() => { connectedRef.current = connected; }, [connected]);
+
   /* ── Connect as Master ────────────────────────── */
   const startMaster = useCallback(() => {
     const newCode = generateSessionCode();
@@ -154,7 +157,6 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
           },
         });
         setLog(prev => [{ action: packet.action, ts: packet.ts, sender: packet.senderId }, ...prev].slice(0, 20));
-        // Action mirror
         setActionMirror(prev => [
           { action: packet.action, sender: packet.senderId || 'slave', ts: Date.now() },
           ...prev,
@@ -163,7 +165,8 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
       onPresence: (devs) => {
         setDevices(devs);
         const hasController = devs.some(d => d.role === 'controller');
-        if (hasController && !connected) {
+        if (hasController && !connectedRef.current) {
+          connectedRef.current = true;
           setConnected(true);
           haptics.success();
           toast.success('🔗 Slave conectado!');
@@ -173,6 +176,7 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
 
     setSession(s);
     setConnected(false);
+    connectedRef.current = false;
 
     // State sync with REAL hardware status
     stateIntervalRef.current = setInterval(() => {
@@ -199,7 +203,7 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
         onLost: () => {},
       });
     }
-  }, [connMode, connected, onOpenPanel, slavePermissions, getHardwareStatus]);
+  }, [connMode, onOpenPanel, slavePermissions, getHardwareStatus]);
 
   /* ── Connect as Slave ──────────────────────────── */
   const connectSlave = useCallback(() => {
