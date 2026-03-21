@@ -56,6 +56,7 @@ import { getLiftTime, getBreakHeight, getBreakSpeed, getTypedPrefire, getTypedDu
 import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
 import { temporalFlicker } from '@/lib/pyroNoise';
 // MiniMap removed per user request
+import NiagaraVFXController from './NiagaraVFXController';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
