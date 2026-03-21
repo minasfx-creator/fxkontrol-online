@@ -1,14 +1,6 @@
 /**
  * FX KONTROL · Ultra-Realistic Render Engine
  * Cinematic VFX-grade rendering pipeline.
- * 
- * Architecture:
- * - fireworks/   Chemical color, GPU spark trails, burst patterns, volumetric smoke,
- *                Niagara emitter system, soft particles, ribbons, flipbooks, heat distortion
- * - drones/      PBR materials, HDR LED lights, propeller motion blur
- * - environment/  Volumetric fog, atmosphere scattering, terrain PBR, reflections
- * - lighting/     HDR lighting rig, dynamic global illumination
- * - postprocessing/ Lens flares, adaptive exposure
  */
 
 // Fireworks
@@ -24,13 +16,48 @@ export { SmokeSystem } from './fireworks/smokeSimulation';
 export {
   createEmitter, createSystem, tickSystem, getSystemParticleCount, onEmitterEvent,
   defaultSpawnConfig, defaultInitConfig, defaultUpdateConfig, defaultRenderConfig,
-  createSparkBurstPreset, createSmokePuffPreset,
+  createSparkBurstPreset, createSmokePuffPreset, createFireballPreset, createCometPreset,
+  createVortexPreset, createDebrisPreset, createEmitterFromTemplate, warmupSystem,
 } from './fireworks/niagaraEmitterSystem';
 export type {
   NiagaraModule, NiagaraEmitter, NiagaraSystem, NiagaraParticle,
   SpawnConfig, InitConfig, UpdateConfig, RenderConfig,
   EmitterEvent, EmitterEventType, EmitterEventHandler,
+  SubEmitterConfig, ScalabilityGroup,
 } from './fireworks/niagaraEmitterSystem';
+
+// Niagara Spawn Shapes
+export { sampleSpawnShape, defaultSpawnShapeConfig } from './fireworks/niagaraSpawnShapes';
+export type { SpawnShapeType, SpawnShapeConfig, SpawnSample } from './fireworks/niagaraSpawnShapes';
+
+// Niagara Data Interfaces
+export {
+  createCurveDataInterface, sampleFloatCurve, sampleColorCurve,
+  createMeshDataInterface, sampleMesh,
+  createTextureDataInterface, sampleTexture,
+  createSkeletalDataInterface, updateSkeletalBones, getBoneTransform, sampleRandomBonePosition, bonesFromSkeleton,
+} from './fireworks/niagaraDataInterfaces';
+export type {
+  DataInterface, DataInterfaceType, CurveDataInterface, CurveKeyframe, ColorCurveKeyframe,
+  MeshDataInterface, MeshSampleResult, TextureDataInterface,
+  SkeletalDataInterface, BoneTransform,
+} from './fireworks/niagaraDataInterfaces';
+
+// Niagara Force Modules
+export {
+  createPointAttractor, applyPointAttractor,
+  createVortex, applyVortex,
+  createOrbit, applyOrbit,
+  createWind, applyWind,
+  createKillZone, applyKillZone,
+  createCollision, applyCollision,
+  applyForceModule,
+} from './fireworks/niagaraForceModules';
+export type {
+  ForceModule, ForceModuleType, ForceResult,
+  PointAttractorModule, VortexModule, OrbitModule, WindModule,
+  KillZoneModule, KillZoneShape, KillZoneMode, CollisionModule,
+} from './fireworks/niagaraForceModules';
 
 // Soft Particles & Velocity Stretch
 export { createSoftParticleMaterial, createSmokeSoftMaterial, updateSoftParticleUniforms } from './fireworks/softParticleShader';
