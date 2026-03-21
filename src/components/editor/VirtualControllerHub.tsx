@@ -234,6 +234,12 @@ export default function VirtualControllerHub({ fs = false, onSelectMode, onClose
             {connectedCount} conectados / {CONTROLLERS.length} disponíveis
           </p>
         </div>
+        {onClose && (
+          <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={onClose}>
+            <span className="sr-only">Fechar</span>
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </Button>
+        )}
         <div className="flex items-center gap-1.5">
           {fireone.isConnected && (
             <Badge variant="outline" className="text-[8px] h-4 px-1.5 border-red-500/30 text-red-400">

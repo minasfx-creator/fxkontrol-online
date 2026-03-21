@@ -71,6 +71,12 @@ const ALL_PANELS: PanelItem[] = [
   { id: 'lasercontrol', label: 'Laser', icon: Zap, section: 'Conexões' },
   { id: 'livefiring', label: 'Live SFX', icon: Sparkles, section: 'Conexões' },
   { id: 'mobilelink', label: 'Mobile Link', icon: Cable, section: 'Conexões' },
+  { id: 'bluetooth', label: 'Bluetooth BLE', icon: Bluetooth, section: 'Conexões' },
+  { id: 'nfc', label: 'NFC Pair', icon: NfcIcon, section: 'Conexões' },
+  { id: 'dmxoutput', label: 'DMX Output', icon: ScanLine, section: 'Conexões' },
+  { id: 'remotecontrol', label: 'Remote Control', icon: Smartphone, section: 'Conexões' },
+  { id: 'connections', label: 'Conexões HW', icon: Cable, section: 'Conexões' },
+  { id: 'radio', label: 'Rádio USB', icon: Radio, section: 'Conexões' },
 
   { id: 'fleet', label: 'Frota', icon: Radar, section: 'Drones' },
   { id: 'takeoffgrid', label: 'Grid', icon: Grid3X3, section: 'Drones' },

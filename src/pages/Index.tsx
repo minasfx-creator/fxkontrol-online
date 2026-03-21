@@ -589,7 +589,7 @@ function Index() {
         <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />
       )}
       <PositionContextMenu />
-      <RemoteReceiverOverlay onOpenPanel={(id) => handleTogglePanel(id as PanelId)} />
+      {/* RemoteReceiverOverlay accessed via remotecontrol panel */}
     </div>
   );
 }
