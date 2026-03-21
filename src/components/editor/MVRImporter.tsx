@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useSfxChannelStore } from '@/store/useSfxChannelStore';
 import { parseMVR, patchMVRFixturesToUniverses, type MVRFixture, type MVRParseResult } from '@/lib/mvrParser';
+import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { toast } from 'sonner';
 
 interface Props {
