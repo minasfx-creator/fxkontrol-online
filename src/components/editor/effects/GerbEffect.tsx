@@ -2,13 +2,19 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { getThreeBlending } from '@/lib/niagaraBlenderRules';
+import { getGerbParticleCount, getParticleSize } from '@/lib/pyroPhysics';
 
-const PARTICLE_COUNT = 350;
 const TRAIL_HISTORY = 4;
 
 /**
  * Finale-grade Gerb / Fountain / Cold Spark Effect
  * Niagara-grade: reusable buffers, ribbon trails, ground bounce, thermal gradient.
+ * 
+ * Enhanced with Manual de Pirotecnia:
+ * - Caliber-proportional particle count via getGerbParticleCount()
+ * - Particle size via getParticleSize() (quadratic relationship)
+ * - Differentiated black powder gerbs (golden-orange) vs cold sparks (silver-white)
+ * - Spread radius scales with caliber
  */
 export default function GerbEffect({
   position,
@@ -16,15 +22,18 @@ export default function GerbEffect({
   progress,
   height = 5,
   caliber = 3,
+  coldSpark = false,
 }: {
   position: [number, number, number];
   color: string;
   progress: number;
   height?: number;
   caliber?: number;
+  coldSpark?: boolean;
 }) {
   const scaledHeight = height * (0.6 + caliber * 0.15);
-  const SCALED_PARTICLE_COUNT = Math.min(600, Math.round(PARTICLE_COUNT * (0.7 + caliber * 0.12)));
+  const SCALED_PARTICLE_COUNT = Math.min(700, getGerbParticleCount(caliber));
+  const particleVisualSize = getParticleSize(caliber) * 0.04;
   const pointsRef = useRef<THREE.Points>(null);
   const trailRef = useRef<THREE.LineSegments>(null);
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
@@ -217,7 +226,7 @@ export default function GerbEffect({
           <bufferAttribute attach="attributes-position" args={[posArr, 3]} />
           <bufferAttribute attach="attributes-color" args={[colArr, 3]} />
         </bufferGeometry>
-        <pointsMaterial size={0.06} vertexColors transparent opacity={0.95} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        <pointsMaterial size={particleVisualSize} vertexColors transparent opacity={0.95} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
     </group>
   );

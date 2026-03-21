@@ -1,9 +1,7 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
-import { getBreakHeight, getMortarVelocity, GRAVITY, getStarLifetime } from '@/lib/pyroPhysics';
+import { getBreakHeight, getMortarVelocity, GRAVITY, getStarLifetime, getCakeParticlesPerShot, getParticleSize } from '@/lib/pyroPhysics';
 import { getThreeBlending } from '@/lib/niagaraBlenderRules';
-
-const PARTICLES_PER_SHOT = 55;
 
 // ═══════════════════════════════════════════════════════════════════════
 // Finale 3D Firing Pattern System
@@ -216,6 +214,8 @@ function CakeShot({
   angle: number;
   caliber: number;
 }) {
+  const PARTICLES_PER_SHOT = useMemo(() => getCakeParticlesPerShot(caliber), [caliber]);
+  const particleVisualSize = useMemo(() => getParticleSize(caliber) * 0.08, [caliber]);
   const breakH = useMemo(() => getBreakHeight(caliber), [caliber]);
   const v0 = useMemo(() => getMortarVelocity(caliber), [caliber]);
   const starLife = useMemo(() => getStarLifetime(caliber), [caliber]);
@@ -318,7 +318,7 @@ function CakeShot({
           <bufferAttribute attach="attributes-position" args={[positions, 3]} />
           <bufferAttribute attach="attributes-color" args={[colors, 3]} />
         </bufferGeometry>
-        <pointsMaterial size={0.12 + caliber * 0.02} vertexColors transparent opacity={0.9} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        <pointsMaterial size={particleVisualSize} vertexColors transparent opacity={0.9} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
     </group>
   );

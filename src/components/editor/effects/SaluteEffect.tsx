@@ -1,13 +1,19 @@
 import { useRef, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { getMaterialType, getRiskDivision, getBurstSmokeDensity } from '@/lib/pyroPhysics';
 
 /**
  * SaluteEffect — Concussive flash + fresnel shockwave + volumetric sphere + debris.
  * UE5 Niagara-grade: custom fresnel shader, debris physics, air distortion, ground scorch.
+ * 
+ * Enhanced with Manual de Pirotecnia concepts:
+ * - Material type: 'detonante' (materia detonante → trueno/apertura) 
+ * - Risk Division 1.1: mass explosion → stronger shockwave, more debris
+ * - Quadratic debris scaling: caliber² relationship (larger = exponentially more debris)
+ * - Dense post-detonation smoke cloud (SO2 + KCl residue)
+ * - Temperature ranges from manual: deflagración 1500-4000°C, detonación 2000-4000°C
  */
-
-const DEBRIS_COUNT = 40;
 
 // ── Fresnel Shockwave Shader (UE5 Niagara style) ───────────────────
 const SHOCKWAVE_VERTEX = `
@@ -100,22 +106,35 @@ export default function SaluteEffect({
   const distortionRef = useRef<THREE.Mesh>(null);
   const debrisRef = useRef<THREE.Points>(null);
   const scorchRef = useRef<THREE.Mesh>(null);
+  const smokeCloudRef = useRef<THREE.Mesh>(null);
   const { camera } = useThree();
   const shakeOffset = useRef(new THREE.Vector3());
 
-  const flashSize = 2 + caliber * 1.2;
-  const flashDuration = 0.15;
+  // Manual-derived classification
+  const materialType = useMemo(() => getMaterialType('salute'), []);
+  const riskDivision = useMemo(() => getRiskDivision(caliber, materialType), [caliber, materialType]);
+  const smokeDensity = useMemo(() => getBurstSmokeDensity(caliber), [caliber]);
+  
+  // Division 1.1 = mass explosion risk → more violent
+  const isDiv11 = riskDivision === '1.1';
+  const flashSize = 2 + caliber * 1.2 * (isDiv11 ? 1.4 : 1.0);
+  const flashDuration = isDiv11 ? 0.12 : 0.15;
+
+  // Quadratic debris scaling (manual: detonation → more projectiles with larger calibers)
+  const DEBRIS_COUNT = useMemo(() => Math.round(20 + caliber * caliber * 3), [caliber]);
 
   // Pre-allocate debris buffers
-  const debrisPos = useMemo(() => new Float32Array(DEBRIS_COUNT * 3), []);
-  const debrisCol = useMemo(() => new Float32Array(DEBRIS_COUNT * 3), []);
+  const debrisPos = useMemo(() => new Float32Array(DEBRIS_COUNT * 3), [DEBRIS_COUNT]);
+  const debrisCol = useMemo(() => new Float32Array(DEBRIS_COUNT * 3), [DEBRIS_COUNT]);
 
   const debrisSeeds = useMemo(() => {
     const s: { vx: number; vy: number; vz: number; size: number; spin: number }[] = [];
+    // Division 1.1: higher velocity fragments (manual: "altísimas presiones locales")
+    const speedMult = isDiv11 ? 1.5 : 1.0;
     for (let i = 0; i < DEBRIS_COUNT; i++) {
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
-      const speed = 4 + Math.random() * 10;
+      const speed = (4 + Math.random() * 10) * speedMult;
       s.push({
         vx: Math.sin(phi) * Math.cos(theta) * speed,
         vy: Math.cos(phi) * speed * 0.6 + 3,
@@ -125,7 +144,7 @@ export default function SaluteEffect({
       });
     }
     return s;
-  }, []);
+  }, [DEBRIS_COUNT, isDiv11]);
 
   // Fresnel shockwave uniforms
   const shockUniforms = useMemo(() => ({
@@ -143,9 +162,10 @@ export default function SaluteEffect({
   useFrame(({ clock }) => {
     const time = clock.getElapsedTime();
 
-    // Camera shake — dampened spring
+    // Camera shake — stronger for Division 1.1 (manual: "efectos de onda de choque")
+    const shakeMultiplier = isDiv11 ? 1.8 : 1.0;
     if (progress < 0.25 && progress > 0) {
-      const shakeMag = 0.025 * intensity * (1 - progress / 0.25) * caliber * 0.5;
+      const shakeMag = 0.025 * intensity * (1 - progress / 0.25) * caliber * 0.5 * shakeMultiplier;
       const freq = 30 + caliber * 5;
       const newOffset = new THREE.Vector3(
         Math.sin(time * freq) * shakeMag,
@@ -159,12 +179,13 @@ export default function SaluteEffect({
       shakeOffset.current.set(0, 0, 0);
     }
 
-    // Update fresnel shockwave
+    // Update fresnel shockwave — expands faster for detonante
     if (shockRef.current) {
-      const shockProgress = Math.min(1, progress * 4);
+      const shockSpeed = isDiv11 ? 5 : 4;
+      const shockProgress = Math.min(1, progress * shockSpeed);
       const shockRadius = flashSize * (0.5 + shockProgress * 5);
       shockRef.current.scale.setScalar(shockRadius);
-      shockUniforms.uOpacity.value = Math.max(0, 0.35 * (1 - shockProgress) * intensity);
+      shockUniforms.uOpacity.value = Math.max(0, 0.35 * (1 - shockProgress) * intensity * (isDiv11 ? 1.5 : 1.0));
       shockUniforms.uProgress.value = shockProgress;
     }
 
@@ -202,19 +223,31 @@ export default function SaluteEffect({
       if (colAttr) colAttr.needsUpdate = true;
     }
 
-    // Ground scorch fade
+    // Dense post-detonation smoke cloud (manual: detonation produces significant smoke)
+    if (smokeCloudRef.current) {
+      const smokeProgress = Math.max(0, progress - 0.05);
+      const expand = 1 + smokeProgress * caliber * 2.5;
+      smokeCloudRef.current.scale.setScalar(expand);
+      const mat = smokeCloudRef.current.material as THREE.MeshBasicMaterial;
+      const fadeIn = Math.min(1, smokeProgress * 5);
+      const fadeOut = Math.max(0, 1 - Math.pow(smokeProgress / 0.8, 1.5));
+      mat.opacity = 0.08 * smokeDensity * fadeIn * fadeOut * intensity;
+    }
+
+    // Ground scorch fade — larger for detonante (manual: "destrucción del local")
     if (scorchRef.current) {
       const mat = scorchRef.current.material as THREE.MeshBasicMaterial;
+      const scorchScale = isDiv11 ? 1.4 : 1.0;
       mat.opacity = progress < 0.4 
-        ? Math.min(0.18, progress * 2.5) 
-        : Math.max(0, 0.18 * (1 - (progress - 0.4) * 1.67));
+        ? Math.min(0.22 * scorchScale, progress * 2.5) 
+        : Math.max(0, 0.22 * scorchScale * (1 - (progress - 0.4) * 1.67));
     }
   });
 
   if (progress < 0 || progress > 1) return null;
 
   const flashOpacity = progress < flashDuration
-    ? intensity * (1 - progress / flashDuration) * 0.9
+    ? intensity * (1 - progress / flashDuration) * (isDiv11 ? 1.2 : 0.9)
     : 0;
 
   const ringProgress = Math.min(1, progress * 3);
@@ -223,12 +256,12 @@ export default function SaluteEffect({
 
   return (
     <group position={position}>
-      {/* Central flash sphere */}
+      {/* Central flash sphere — brighter for detonante */}
       {flashOpacity > 0.01 && (
         <mesh ref={flashRef} scale={flashSize * (1 + progress * 2)}>
           <sphereGeometry args={[1, 16, 16]} />
           <meshBasicMaterial
-            color="#FFFAF0"
+            color={isDiv11 ? '#FFFFFF' : '#FFFAF0'}
             transparent
             opacity={flashOpacity}
             blending={THREE.AdditiveBlending}
@@ -284,9 +317,20 @@ export default function SaluteEffect({
         </mesh>
       )}
 
-      {/* Ground scorch mark */}
+      {/* Dense post-detonation smoke cloud */}
+      <mesh ref={smokeCloudRef} position={[0, caliber * 0.3, 0]}>
+        <sphereGeometry args={[1, 12, 12]} />
+        <meshBasicMaterial
+          color="#887766"
+          transparent
+          opacity={0}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* Ground scorch mark — proportional to caliber and risk division */}
       <mesh ref={scorchRef} position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[caliber * 0.9, 24]} />
+        <circleGeometry args={[caliber * (isDiv11 ? 1.2 : 0.9), 24]} />
         <meshBasicMaterial
           color="#0A0500"
           transparent
@@ -295,7 +339,7 @@ export default function SaluteEffect({
         />
       </mesh>
 
-      {/* Debris fragments */}
+      {/* Debris fragments — quadratic scaling */}
       {progress > 0 && progress < 0.9 && (
         <points ref={debrisRef} frustumCulled={false}>
           <bufferGeometry>
@@ -303,7 +347,7 @@ export default function SaluteEffect({
             <bufferAttribute attach="attributes-color" args={[debrisCol, 3]} />
           </bufferGeometry>
           <pointsMaterial
-            size={0.1}
+            size={0.1 + caliber * 0.02}
             vertexColors
             transparent
             opacity={0.85}
@@ -313,11 +357,11 @@ export default function SaluteEffect({
         </points>
       )}
 
-      {/* Ground flash illumination */}
+      {/* Ground flash illumination — stronger for detonante */}
       {progress < 0.3 && (
         <pointLight
-          color="#FFFAF0"
-          intensity={caliber * 3.5 * intensity * (1 - progress / 0.3)}
+          color={isDiv11 ? '#FFFFFF' : '#FFFAF0'}
+          intensity={caliber * (isDiv11 ? 5.0 : 3.5) * intensity * (1 - progress / 0.3)}
           distance={50 + caliber * 12}
           decay={2}
         />

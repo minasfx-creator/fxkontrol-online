@@ -9,6 +9,9 @@ import {
   getStarCount,
   getStarLifetime,
   getStarSpread,
+  getParticleSize,
+  getMaterialType,
+  getBurstSmokeDensity,
   type BurstPattern,
   type ParticleState,
   type StepModifiers,
@@ -354,7 +357,7 @@ export default function ShellBurstRenderer({
   }, [caliber, formMods]);
   const burstSpread = useMemo(() => getStarSpread(caliber), [caliber]);
   const baseSize = useMemo(() => {
-    const base = 0.5 + caliber * 0.35;
+    const base = getParticleSize(caliber);
     return formMods ? base * formMods.sparkSizeScale : base;
   }, [caliber, formMods]);
 
