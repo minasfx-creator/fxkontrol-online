@@ -68,6 +68,33 @@ const MANUALS: ManualReference[] = [
     topics: ['Alturas de Abertura', 'Raios de Segurança', 'Classificação por Calibre', 'Inspeção', 'Licenciamento'],
     description: 'Normas NFPA para exibições pirotécnicas ao ar livre. Tabelas de altura de abertura, raios de segurança e requisitos de licenciamento.',
   },
+  {
+    id: 'kurt-saxon',
+    title: 'Kurt Saxon — Granddad\'s Fireworks',
+    author: 'Kurt Saxon (1903–1907 Cyclopedias)',
+    icon: '📕',
+    color: 'text-orange-400',
+    topics: ['Star Formulas', 'Roman Candles', 'Gerbe Compositions', 'Signal Fires', 'Lance Work'],
+    description: 'Compilação de fórmulas de estrelas coloridas (Crimson, Blue, Violet, Rose, Golden Yellow), composições de candela romana e gerbe com tabelas detalhadas.',
+  },
+  {
+    id: 'pyrotechny-1829',
+    title: 'Pyrotechny 1829 — Endless Amusement',
+    author: 'Anônimo, 1829',
+    icon: '📜',
+    color: 'text-stone-400',
+    topics: ['Rocket Construction', 'Wheels', 'Tourbillons', 'Spur Fire', 'Touch Paper', 'Quick Match'],
+    description: 'Manual histórico com tabelas de golpes de maço por peso de foguete, proporções de vara, construção de Caduceus e a composição Spur Fire — "o fogo mais bonito conhecido".',
+  },
+  {
+    id: 'anderson-1696',
+    title: 'Anderson 1696 — The Making of Rockets',
+    author: 'Robert Anderson, 1696',
+    icon: '📖',
+    color: 'text-amber-600',
+    topics: ['Mathematical Rocket Proportions', 'Bore Ratios', 'Composition Recipes', 'Stick Balancing', 'Center of Gravity'],
+    description: 'O mais antigo tratado matemático sobre foguetes: furo = ⅓ do diâmetro, preenchimento = 4× diâmetro, balanceamento por centro de gravidade.',
+  },
 ];
 
 // ── Equipment & Missions ──────────────────────────────────────────────
