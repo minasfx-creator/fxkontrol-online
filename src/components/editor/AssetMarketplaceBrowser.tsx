@@ -455,7 +455,7 @@ function MyLibraryView({
         </div>
         <div>
           <p className="text-sm font-medium text-foreground/80">Sua biblioteca está vazia</p>
-          <p className="text-xs text-muted-foreground mt-1">Importe modelos do 3D Warehouse, FAB ou upload local — eles serão salvos aqui automaticamente</p>
+          <p className="text-xs text-muted-foreground mt-1">Importe assets de qualquer importador — eles serão salvos aqui automaticamente</p>
         </div>
       </div>
     );
