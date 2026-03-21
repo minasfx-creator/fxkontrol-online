@@ -26,9 +26,10 @@ interface ModulePosition {
 
 interface FieldMap2DProps {
   fs?: boolean;
+  onClose?: () => void;
 }
 
-export default function FieldMap2D({ fs = false }: FieldMap2DProps) {
+export default function FieldMap2D({ fs = false, onClose }: FieldMap2DProps) {
   const isMobile = useIsMobile();
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();
