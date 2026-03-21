@@ -436,8 +436,11 @@ export default function Dashboard() {
             </span>
           </div>
           <div className="space-y-4">
-            {filteredNews.map((item) => (
-              <FeedCard key={item.id} item={item} />
+            {filteredNews.map((item, i) => (
+              <div key={item.id} className="animate-fxk-stagger" style={{ animationDelay: `${0.2 + i * 0.08}s` }}>
+                <FeedCard item={item} />
+              </div>
+            ))}
             ))}
           </div>
         </div>
