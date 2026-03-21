@@ -408,6 +408,10 @@ function Index() {
           {mobileTab === 'assets' && <EffectLibrary />}
           {mobileTab === 'properties' && <PropertiesPanel />}
           {mobileTab === 'more' && <MobileMoreMenu onSelectPanel={handleMobileOpenPanel} />}
+          {/* Panel-based tabs (livefx, controllers, remote, fieldmap) */}
+          {mobileTab && !['timeline', 'assets', 'properties', 'more'].includes(mobileTab) && activePanel && (
+            <div className="h-full overflow-y-auto">{renderPanelContent()}</div>
+          )}
         </MobileFloatingPanel>
 
         {/* Panel content from More menu or direct panel open */}
