@@ -5,6 +5,7 @@ import { getThreeBlending } from '@/lib/niagaraBlenderRules';
 
 const PARTICLE_COUNT = 400;
 const EMBER_COUNT = 80;
+const HEAT_DISTORTION_COUNT = 24;
 
 // ── Niagara-grade Flame Vertex Shader ───────────────────────────────
 const FLAME_VERTEX = `
@@ -26,7 +27,6 @@ const FLAME_VERTEX = `
     
     float lifeRatio = clamp(aLife / aMaxLife, 0.0, 1.0);
     
-    // Size: grow then shrink (UE5 Niagara size-over-life curve)
     float sizeOverLife = lifeRatio < 0.15 
       ? lifeRatio / 0.15 
       : 1.0 - pow((lifeRatio - 0.15) / 0.85, 0.6);
@@ -48,7 +48,6 @@ const FLAME_FRAGMENT = `
   uniform float uTime;
   uniform float uIntensity;
   
-  // Procedural noise for flame shape
   float hash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
   }
@@ -80,13 +79,11 @@ const FLAME_FRAGMENT = `
     vec2 uv = gl_PointCoord;
     float dist = length(uv - vec2(0.5));
     
-    // Turbulent flame shape via noise distortion
     float turb = fbm(uv * 4.0 + vec2(vSeed * 10.0, -uTime * 2.0)) * 0.3;
     float shape = smoothstep(0.5 + turb, 0.1, dist);
     
     if (shape < 0.01) discard;
     
-    // Thermal color: blue core → white → yellow → orange → dark red
     vec3 col;
     if (lifeRatio < 0.08) {
       col = mix(vec3(0.15, 0.3, 1.0), vec3(1.0, 0.95, 0.85), lifeRatio / 0.08);
@@ -104,10 +101,8 @@ const FLAME_FRAGMENT = `
       col = mix(vec3(0.6, 0.15, 0.02), vec3(0.1, 0.03, 0.01), t);
     }
     
-    // Flicker
     float flicker = 0.7 + 0.3 * sin(uTime * 15.0 + vSeed * 50.0);
     
-    // Opacity: fade in fast, fade out slow
     float fadeIn = smoothstep(0.0, 0.05, lifeRatio);
     float fadeOut = 1.0 - pow(lifeRatio, 1.5);
     float alpha = shape * fadeIn * fadeOut * flicker * uIntensity;
@@ -116,9 +111,51 @@ const FLAME_FRAGMENT = `
   }
 `;
 
+// ── Heat Distortion Shader (replaces basic cylinder) ────────────────
+const HEAT_VERTEX = `
+  attribute float aHeatIntensity;
+  attribute float aHeatSize;
+  
+  varying float vHeatIntensity;
+  varying vec4 vViewPos;
+  
+  void main() {
+    vHeatIntensity = aHeatIntensity;
+    vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+    vViewPos = mvPos;
+    gl_Position = projectionMatrix * mvPos;
+    gl_PointSize = aHeatSize * (300.0 / -mvPos.z);
+    gl_PointSize = clamp(gl_PointSize, 1.0, 80.0);
+  }
+`;
+
+const HEAT_FRAGMENT = `
+  uniform float uTime;
+  
+  varying float vHeatIntensity;
+  varying vec4 vViewPos;
+  
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+  }
+  
+  void main() {
+    float d = length(gl_PointCoord - 0.5) * 2.0;
+    float circleFade = 1.0 - smoothstep(0.0, 1.0, d);
+    
+    if (circleFade < 0.01) discard;
+    
+    float shimmer = 0.5 + 0.5 * sin(uTime * 8.0 + gl_PointCoord.x * 20.0 + gl_PointCoord.y * 15.0);
+    float alpha = circleFade * vHeatIntensity * shimmer * 0.04;
+    
+    vec3 col = vec3(1.0, 0.95, 0.9);
+    gl_FragColor = vec4(col, alpha);
+  }
+`;
+
 /**
  * Niagara-grade Flame Projector / Fireball Effect
- * Custom GLSL shaders with procedural noise, thermal color model, ember layer, heat distortion.
+ * Custom GLSL shaders with procedural noise, thermal color model, ember layer, heat distortion particles.
  */
 export default function FlameEffect({
   position,
@@ -136,7 +173,7 @@ export default function FlameEffect({
   const effectiveHeight = preset ? Math.min(height, preset.maxHeightM) : height;
   const pointsRef = useRef<THREE.Points>(null);
   const emberRef = useRef<THREE.Points>(null);
-  const heatRef = useRef<THREE.Mesh>(null);
+  const heatRef = useRef<THREE.Points>(null);
 
   const nozzleCount = preset?.nozzles ?? 1;
 
@@ -173,7 +210,20 @@ export default function FlameEffect({
     return s;
   }, [effectiveHeight]);
 
-  // Flame particle buffers (custom shader attributes)
+  // Heat distortion particle seeds
+  const heatSeeds = useMemo(() => {
+    const s: { angle: number; speed: number; lt: number; phase: number }[] = [];
+    for (let i = 0; i < HEAT_DISTORTION_COUNT; i++) {
+      s.push({
+        angle: Math.random() * Math.PI * 2,
+        speed: effectiveHeight * (0.2 + Math.random() * 0.4),
+        lt: 1.5 + Math.random() * 2.0,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+    return s;
+  }, [effectiveHeight]);
+
   const posBuffer = useMemo(() => new Float32Array(PARTICLE_COUNT * 3), []);
   const lifeBuffer = useMemo(() => new Float32Array(PARTICLE_COUNT), []);
   const maxLifeBuffer = useMemo(() => new Float32Array(PARTICLE_COUNT), []);
@@ -186,9 +236,17 @@ export default function FlameEffect({
   const emberPosBuffer = useMemo(() => new Float32Array(EMBER_COUNT * 3), []);
   const emberColBuffer = useMemo(() => new Float32Array(EMBER_COUNT * 3), []);
 
+  const heatPosBuffer = useMemo(() => new Float32Array(HEAT_DISTORTION_COUNT * 3), []);
+  const heatIntensityBuffer = useMemo(() => new Float32Array(HEAT_DISTORTION_COUNT), []);
+  const heatSizeBuffer = useMemo(() => new Float32Array(HEAT_DISTORTION_COUNT), []);
+
   const uniforms = useMemo(() => ({
     uTime: { value: 0 },
     uIntensity: { value: 1 },
+  }), []);
+
+  const heatUniforms = useMemo(() => ({
+    uTime: { value: 0 },
   }), []);
 
   useFrame(({ clock }) => {
@@ -203,6 +261,7 @@ export default function FlameEffect({
 
     uniforms.uTime.value = time;
     uniforms.uIntensity.value = intensity;
+    heatUniforms.uTime.value = time;
 
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       const seed = seeds[i];
@@ -242,14 +301,12 @@ export default function FlameEffect({
         const i3 = i * 3;
         const t2 = cycleTime * seed.lt;
 
-        // Embers rise with turbulent drift and decelerate
         const drag = Math.exp(-0.3 * t2);
         emberPosBuffer[i3] = Math.cos(seed.angle) * 0.2 + seed.drift * t2 + Math.sin(time * 3 + i) * 0.1 * t2;
         emberPosBuffer[i3 + 1] = effectiveHeight * 0.5 + seed.speed * t2 * 0.5 * drag;
         emberPosBuffer[i3 + 2] = Math.sin(seed.angle) * 0.2 + Math.cos(time * 2.5 + i * 0.7) * 0.05 * t2;
 
         const fade = Math.max(0, 1 - cycleTime) * intensity * 0.9;
-        // Hot ember color: orange-white → red → dark
         const emberLife = cycleTime;
         if (emberLife < 0.3) {
           emberColBuffer[i3] = 1.2 * fade;
@@ -270,13 +327,30 @@ export default function FlameEffect({
       if (eColAttr) eColAttr.needsUpdate = true;
     }
 
-    // Heat distortion mesh
-    if (heatRef.current) {
-      const heatScale = effectiveHeight * 0.5 * intensity;
-      heatRef.current.scale.set(heatScale * 0.6, heatScale * 1.2, heatScale * 0.6);
-      heatRef.current.position.y = effectiveHeight * 0.35;
-      const mat = heatRef.current.material as THREE.MeshBasicMaterial;
-      mat.opacity = 0.02 * intensity;
+    // Heat distortion particles (replaces basic cylinder mesh)
+    if (heatRef.current && intensity > 0.2) {
+      for (let i = 0; i < HEAT_DISTORTION_COUNT; i++) {
+        const seed = heatSeeds[i];
+        const cycleTime = ((time * 0.8 + seed.phase) % seed.lt) / seed.lt;
+        const i3 = i * 3;
+
+        const hY = effectiveHeight * 0.3 + seed.speed * cycleTime * seed.lt * 0.3;
+        heatPosBuffer[i3] = Math.cos(seed.angle) * 0.5 * cycleTime + Math.sin(time * 2 + i) * 0.15;
+        heatPosBuffer[i3 + 1] = hY;
+        heatPosBuffer[i3 + 2] = Math.sin(seed.angle) * 0.5 * cycleTime + Math.cos(time * 1.5 + i) * 0.12;
+
+        const hFade = Math.max(0, 1 - cycleTime) * intensity;
+        heatIntensityBuffer[i] = hFade;
+        heatSizeBuffer[i] = 20 + cycleTime * 40;
+      }
+
+      const hGeo = heatRef.current.geometry;
+      const hPos = hGeo.getAttribute('position') as THREE.BufferAttribute;
+      const hInt = hGeo.getAttribute('aHeatIntensity') as THREE.BufferAttribute;
+      const hSz = hGeo.getAttribute('aHeatSize') as THREE.BufferAttribute;
+      if (hPos) hPos.needsUpdate = true;
+      if (hInt) hInt.needsUpdate = true;
+      if (hSz) hSz.needsUpdate = true;
     }
   });
 
@@ -303,7 +377,7 @@ export default function FlameEffect({
         />
       </points>
 
-      {/* Ember particles — tiny additive hot dots */}
+      {/* Ember particles */}
       {isActive && (
         <points ref={emberRef} frustumCulled={false}>
           <bufferGeometry>
@@ -314,12 +388,23 @@ export default function FlameEffect({
         </points>
       )}
 
-      {/* Heat distortion layer */}
+      {/* Heat distortion particles — replaces basic cylinder */}
       {isActive && (
-        <mesh ref={heatRef} position={[0, height * 0.3, 0]}>
-          <cylinderGeometry args={[0.3, 0.6, 1, 12]} />
-          <meshBasicMaterial color="#FF4400" transparent opacity={0.02} depthWrite={false} side={THREE.DoubleSide} />
-        </mesh>
+        <points ref={heatRef} frustumCulled={false} renderOrder={999}>
+          <bufferGeometry>
+            <bufferAttribute attach="attributes-position" args={[heatPosBuffer, 3]} />
+            <bufferAttribute attach="attributes-aHeatIntensity" args={[heatIntensityBuffer, 1]} />
+            <bufferAttribute attach="attributes-aHeatSize" args={[heatSizeBuffer, 1]} />
+          </bufferGeometry>
+          <shaderMaterial
+            vertexShader={HEAT_VERTEX}
+            fragmentShader={HEAT_FRAGMENT}
+            uniforms={heatUniforms}
+            transparent
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+          />
+        </points>
       )}
 
       {/* Volumetric inner glow column */}

@@ -2,9 +2,14 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
+import { readDensityAt, type FluidGrid } from '@/render_ultra/fireworks/niagaraFluids';
 
 const HAZE_POINTS = 360;
 
+/**
+ * HazeMachineEffect — Soft-particle-style haze with NiagaraFluids grid integration.
+ * Reads fluid density for drift coherence with smoke advection.
+ */
 export default function HazeMachineEffect({
   position,
   color = '#a7a7a7',
@@ -40,13 +45,28 @@ export default function HazeMachineEffect({
 
     const envelope = progress < 0.08 ? progress / 0.08 : progress > 0.95 ? (1 - progress) / 0.05 : 1;
 
+    // Fluid grid integration for coherent drift
+    const fluidGrid = (window as any).__niagaraFluidGrid as FluidGrid | undefined;
+
     for (let i = 0; i < HAZE_POINTS; i++) {
       const s = seeds[i];
       const idx = i * 3;
       const driftT = t * s.drift;
-      pos[idx] = Math.cos(s.angle) * s.dist + Math.sin(driftT + s.phase) * 1.2 + windX * t * 20;
-      pos[idx + 1] = s.y + Math.sin(driftT * 0.6 + s.phase) * 0.2;
-      pos[idx + 2] = Math.sin(s.angle) * s.dist + Math.cos(driftT + s.phase) * 1.2 + windZ * t * 20;
+
+      const baseX = Math.cos(s.angle) * s.dist + Math.sin(driftT + s.phase) * 1.2 + windX * t * 20;
+      const baseZ = Math.sin(s.angle) * s.dist + Math.cos(driftT + s.phase) * 1.2 + windZ * t * 20;
+
+      // Read fluid density for local advection offset
+      let fluidDrift = 0;
+      if (fluidGrid) {
+        const worldX = position[0] + baseX;
+        const worldZ = position[2] + baseZ;
+        fluidDrift = readDensityAt(fluidGrid, worldX, worldZ) * 0.8;
+      }
+
+      pos[idx] = baseX + fluidDrift * Math.sin(t * 0.3 + i);
+      pos[idx + 1] = s.y + Math.sin(driftT * 0.6 + s.phase) * 0.2 + fluidDrift * 0.15;
+      pos[idx + 2] = baseZ + fluidDrift * Math.cos(t * 0.2 + i);
     }
 
     const material = pointsRef.current.material as THREE.PointsMaterial;

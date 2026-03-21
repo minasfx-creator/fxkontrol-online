@@ -1,14 +1,13 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { useProjectStore } from '@/store/useProjectStore';
 
 const SPARK_COUNT = 150;
 
 /**
  * SparkShower: Dense shower of tiny bright sparks cascading down.
- * Used as overlay for shells, cakes, waterfalls to add crackling detail.
- * 
- * Niagara-grade: reusable buffers (zero GC), thermal fade, velocity stretch.
+ * Integrated with wind force module from project store.
  */
 export default function SparkShower({
   position,
@@ -32,7 +31,6 @@ export default function SparkShower({
     return new THREE.Color(color);
   }, [color, isColdSpark]);
 
-  // Pre-allocate buffers — zero GC pressure
   const posArr = useMemo(() => new Float32Array(SPARK_COUNT * 3), []);
   const colArr = useMemo(() => new Float32Array(SPARK_COUNT * 3), []);
 
@@ -57,13 +55,19 @@ export default function SparkShower({
     if (!pointsRef.current || progress < 0.1 || progress > 0.95) return;
     const time = clock.getElapsedTime();
 
+    // Wind integration
+    const { wind } = useProjectStore.getState();
+    const windRad = (wind.direction * Math.PI) / 180;
+    const windX = wind.enabled ? Math.sin(windRad) * wind.speed * 0.06 : 0;
+    const windZ = wind.enabled ? Math.cos(windRad) * wind.speed * 0.06 : 0;
+
     for (let i = 0; i < SPARK_COUNT; i++) {
       const seed = seeds[i];
       const cycleTime = ((time * seed.speed + seed.phase) % seed.lt) / seed.lt;
       
-      const x = Math.cos(seed.angle) * seed.r * (0.5 + cycleTime * 0.5);
+      const x = Math.cos(seed.angle) * seed.r * (0.5 + cycleTime * 0.5) + windX * cycleTime * seed.lt;
       const y = height * (1 - cycleTime * 0.3) + seed.vy * cycleTime * seed.lt;
-      const z = Math.sin(seed.angle) * seed.r * (0.5 + cycleTime * 0.5);
+      const z = Math.sin(seed.angle) * seed.r * (0.5 + cycleTime * 0.5) + windZ * cycleTime * seed.lt;
 
       if (y < 0) {
         posArr[i * 3] = 0; posArr[i * 3 + 1] = -100; posArr[i * 3 + 2] = 0;
