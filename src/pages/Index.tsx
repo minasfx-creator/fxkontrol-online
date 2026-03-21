@@ -190,11 +190,13 @@ function Index() {
   // Deep-link: auto-open panel from ?panel= query param (used by Dashboard hubs)
   useEffect(() => {
     const panelParam = searchParams.get('panel');
+    const modeParam = searchParams.get('mode');
     if (panelParam) {
       setActivePanel(panelParam as PanelId);
+      if (modeParam === 'wifi') setRemoteMode('wifi-auto');
+      else if (modeParam === 'cloud') setRemoteMode('cloud');
       setSearchParams({}, { replace: true });
       setAppPhase('editor');
-      // Use window.innerWidth directly to avoid async hook delay
       if (window.innerWidth < 768) {
         setMobileTab(null);
         setMobilePanelHeight('full');
