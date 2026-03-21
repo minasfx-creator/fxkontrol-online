@@ -15,7 +15,7 @@ import {
   BookOpen, Layers, Eye, Camera, Share2, MessageSquare,
   Atom, Volume2, Cog, Settings2, Globe, MapPin, Plane,
   Search, ListMusic, FileSignature, Wallet, MonitorPlay, Target,
-  Bluetooth, Smartphone, NfcIcon
+  Bluetooth, Smartphone, Nfc
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PanelId } from '@/components/editor/PanelTabBar';
