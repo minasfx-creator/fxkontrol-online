@@ -480,7 +480,7 @@ export default function Dashboard() {
           </div>
 
           {/* Recent Projects */}
-          <Card className="bg-card border-border/50 animate-fxk-fade-up">
+          <Card className="bg-card border-border/50 animate-fxk-stagger" style={{ animationDelay: '0.5s' }}>
             <div className="p-3 pb-1 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <FolderOpen className="h-3.5 w-3.5 text-primary" />
