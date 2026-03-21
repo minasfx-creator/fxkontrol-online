@@ -41,6 +41,7 @@ export default function GMA2PatchImporter({ open, onOpenChange }: Props) {
     const file = e.target.files?.[0];
     if (!file) return;
     setFileName(file.name);
+    setCurrentFile(file);
     const reader = new FileReader();
     reader.onload = () => {
       const text = reader.result as string;
