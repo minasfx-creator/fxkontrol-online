@@ -3773,12 +3773,16 @@ export default function SkyCanvas() {
         {!environment.disableLighting && <LensFlareController />}
         <NiagaraVFXController />
 
-        <SkyGradient />
+        {settings.skyEngineV2 ? <SkyAtmosphereV2Layer /> : <SkyGradient />}
         <Moon />
         <SceneStarsWired />
         {!isMobile && !environment.lowQualityMode && <AtmosphericParticles />}
         <SceneFog />
         {!isMobile && <WeatherEffects />}
+        {settings.cloudCoverage > 0.05 && <VolumetricCloudLayer />}
+        {settings.waterEnabled && <WaterLayer />}
+        {settings.decalsEnabled && <GroundDecalManager />}
+        {settings.timeOfDayEnabled && <TimeOfDayController />}
 
         <StageGround satelliteTexture={satelliteTexture} />
         <SiteModelRenderer />
