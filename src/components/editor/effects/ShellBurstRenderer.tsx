@@ -53,7 +53,7 @@ const BURST_VERTEX = `
     float birthPulse = lifeRatio < 0.05 ? 1.0 + (1.0 - lifeRatio / 0.05) * 0.8 : 1.0;
     
     gl_PointSize = uBaseSize * sizeDecay * birthPulse * (300.0 / -mvPosition.z);
-    gl_PointSize = clamp(gl_PointSize, 1.0, 64.0);
+    gl_PointSize = clamp(gl_PointSize, 1.0, 64.0 + uCaliberScale * 8.0);
     
     gl_Position = projectionMatrix * mvPosition;
   }
