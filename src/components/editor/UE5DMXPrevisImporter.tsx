@@ -100,6 +100,7 @@ export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }
     if (!initialFile || !open) return;
     setFileName(initialFile.name);
     setCurrentFile(initialFile);
+    const reader = new FileReader();
     reader.onload = () => {
       const text = reader.result as string;
       const parsed = parseUE5DMXLibrary(text);
