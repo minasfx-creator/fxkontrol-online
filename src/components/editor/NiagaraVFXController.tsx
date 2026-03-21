@@ -400,6 +400,12 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
     const sparkPointsRef = useRef<THREE.Points | null>(null);
     const smokePointsRef = useRef<THREE.Points | null>(null);
 
+    // Expose fluid grid globally for effects to read
+    useEffect(() => {
+      (window as any).__niagaraFluidGrid = fluidGridRef.current;
+      return () => { delete (window as any).__niagaraFluidGrid; };
+    }, []);
+
     useEffect(() => {
       const sparkPoints = new THREE.Points(sparkBuffers.geometry, sparkMaterial);
       sparkPoints.frustumCulled = false;
