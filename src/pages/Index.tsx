@@ -173,6 +173,7 @@ function getDropType(ext: string): 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset'
 
 function Index() {
   const isMobile = useIsMobile();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activePanel, setActivePanel] = useState<PanelId | null>('properties');
   const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'globe' | 'editor'>('globe');
   const [showLocation, setShowLocation] = useState<{ name: string; lat: number; lng: number } | null>(null);
@@ -184,6 +185,17 @@ function Index() {
   const selectedPositionId = useProjectStore(s => s.selectedPositionId);
 
   useUndoKeyboard();
+
+  // Deep-link: auto-open panel from ?panel= query param (used by Dashboard hubs)
+  useEffect(() => {
+    const panelParam = searchParams.get('panel');
+    if (panelParam) {
+      setActivePanel(panelParam as PanelId);
+      setSearchParams({}, { replace: true });
+      // Skip splash/globe and go straight to editor
+      setAppPhase('editor');
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     const dblClickHandler = () => {
