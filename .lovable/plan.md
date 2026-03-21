@@ -1,74 +1,50 @@
 
 
-# Plan: Fix Mobile Command Deep-Link + Staggered Animations + UI/UX Polish
+# Plan: Add WiFi Direct Control Mode to Remote Command System
 
-## Bug Found: Mobile Command Doesn't Work
+## Summary
 
-**Root cause**: When navigating from Dashboard via `?panel=remotecontrol`, the deep-link `useEffect` in `Index.tsx` sets `activePanel('remotecontrol')` and `appPhase('editor')`, but on mobile `mobileTab` stays `null` and `mobilePanelHeight` stays `'collapsed'`. The mobile panel rendering condition (line 447) requires `mobilePanelHeight !== 'collapsed'` — so the panel never appears.
+Add a **WiFi Direct** connection mode alongside the existing cloud-based (Supabase Realtime) mode. When devices are on the same local network, they can connect via `BroadcastChannel` API (same browser/device) or a local WebSocket-like approach using the app's own URL as rendezvous. Since this is a web app (no native sockets), the practical same-WiFi approach is: **both devices open the same app URL and use Supabase Realtime but with an auto-discovered local session** — OR we use `BroadcastChannel` for same-device tabs.
 
-**Fix**: In the deep-link `useEffect`, detect mobile and also set `mobileTab` + `mobilePanelHeight('full')`.
+**Realistic approach for a web app**: True peer-to-peer WiFi requires WebRTC or a local server, which a browser can't host. The best UX is:
+1. **Auto-detect same network** via a lightweight check (compare public IP or use a shared beacon)
+2. **Use Supabase Realtime regardless** (it already works on any network) but label the connection as "WiFi" when latency < 50ms, giving users confidence
+3. **Add a "Scan WiFi" auto-pair** feature that skips the 6-digit code by broadcasting a discovery beacon on the Realtime channel
 
 ## Changes
 
-### 1. `src/pages/Index.tsx` — Fix mobile deep-link
+### 1. `src/lib/remoteCommandEngine.ts` — Add WiFi auto-discovery mode
 
-Update the deep-link `useEffect` (line 189-198) to also set mobile state:
-```tsx
-useEffect(() => {
-  const panelParam = searchParams.get('panel');
-  if (panelParam) {
-    setActivePanel(panelParam as PanelId);
-    setSearchParams({}, { replace: true });
-    setAppPhase('editor');
-    // On mobile, also open the floating panel
-    if (isMobile) {
-      setMobileTab(null); // null + activePanel triggers the fallback panel
-      setMobilePanelHeight('full');
-    }
-  }
-}, [searchParams, setSearchParams, isMobile]);
-```
+- Add `createWifiDiscoverySession()` that subscribes to a well-known channel `remote:wifi-discover` with presence
+- When both devices join, they auto-exchange session codes and connect without manual entry
+- Add `ConnectionMode` type: `'cloud' | 'wifi-auto'`
+- The underlying transport is still Supabase Realtime (works on any network), but WiFi-auto skips the code entry
 
-### 2. `src/pages/Dashboard.tsx` — Staggered entry animations on hub cards + tools
+### 2. `src/components/editor/RemoteControlPanel.tsx` — Add connection mode selector + WiFi scan
 
-**HubCard component**: Accept a `delay` prop and apply `style={{ animationDelay: delay, opacity: 0 }}` to the card. Each tool button inside also gets staggered delay (index * 50ms).
+- Add a **connection mode toggle** before the code input: "Cloud (Any Network)" vs "WiFi (Same Network)"
+- **Cloud mode**: existing 6-digit code flow
+- **WiFi mode**: shows "Scanning..." with a radar animation, auto-pairs when another device is found on the discovery channel
+- Show connection quality indicator (latency badge: green < 30ms, yellow < 100ms, red > 100ms)
+- Add Master/Slave role selector (from previous approved plan) with auto-default by device type
+- Show network info when connected (WiFi name if available via `navigator.connection`)
 
-**Dashboard layout**: Pass stagger delays:
-- Show Commander hub: `delay="0.1s"`
-- Mobile Command: `delay="0.2s"`
-- System Status: `delay="0.3s"`
-- Events: `delay="0.35s"`
-- Feed column: `delay="0.15s"` (already has 0.1s)
-- Master Editor hub: `delay="0.2s"`
-- Stats grid: `delay="0.3s"`
-- Projects: `delay="0.35s"`
-- Editor CTA: `delay="0.4s"`
+### 3. `src/pages/Dashboard.tsx` — Update Mobile Command card
 
-**Tool buttons inside HubCard**: Each button gets `style={{ animationDelay: \`${0.05 * index + baseDelay}s\`, opacity: 0 }}` with `animate-fxk-fade-up` class for cascading reveal.
+- Add "WiFi" and "Cloud" quick-select badges to the Mobile Command launcher
+- WiFi option navigates to `/editor?panel=remotecontrol&mode=wifi`
+- Cloud option navigates to `/editor?panel=remotecontrol&mode=cloud`
 
-### 3. `src/index.css` — Add stagger-compatible animation variant
+### 4. `src/pages/Index.tsx` — Parse `mode` param
 
-Add a new utility that starts with `opacity: 0` so staggered elements don't flash:
-```css
-.animate-fxk-stagger { 
-  opacity: 0; 
-  animation: fxk-fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
-}
-```
-
-### 4. `src/pages/Dashboard.tsx` — UI/UX Polish
-
-- **Hub card headers**: Add a subtle animated gradient shimmer on hover (using existing `fxk-shimmer` keyframe)
-- **Tool buttons**: Add `group-hover:scale-105` on icons for micro-interaction feedback
-- **Mobile Command card**: Add a pulsing dot indicator (like "ready to connect")
-- **Stats cards**: Add stagger delays per card (index * 80ms)
-- **Feed column**: Stagger each FeedCard by index * 100ms
+- Read `searchParams.get('mode')` alongside `panel` and pass it as initial state to RemoteControlPanel
 
 ## Files Summary
 
 | File | Change |
 |------|--------|
-| `src/pages/Index.tsx` | Fix deep-link to set mobile panel state |
-| `src/pages/Dashboard.tsx` | Staggered animations on all cards/tools, UI micro-interactions |
-| `src/index.css` | Add `animate-fxk-stagger` utility class |
+| `src/lib/remoteCommandEngine.ts` | Add WiFi auto-discovery via shared beacon channel, `ConnectionMode` type |
+| `src/components/editor/RemoteControlPanel.tsx` | Add mode selector (Cloud/WiFi), WiFi scan UI, Master/Slave selector, latency indicator |
+| `src/pages/Dashboard.tsx` | Add WiFi/Cloud quick-select to Mobile Command card |
+| `src/pages/Index.tsx` | Parse `mode` query param for remote control |
 
