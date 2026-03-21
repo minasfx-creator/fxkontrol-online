@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { useProjectStore } from '@/store/useProjectStore';
 import { importVVIZ, type VVIZImportResult } from '@/lib/vvizImporter';
+import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { toast } from 'sonner';
 
 export default function VVIZImporter({ open, onOpenChange, initialFile = null }: { open: boolean; onOpenChange: (v: boolean) => void; initialFile?: File | null }) {
