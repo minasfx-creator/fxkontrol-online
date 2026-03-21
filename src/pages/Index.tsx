@@ -368,8 +368,8 @@ function Index() {
             ? <RemoteControlPanel onClose={() => setActivePanel(null)} />
             : <RemoteReceiverOverlay onOpenPanel={(id) => handleTogglePanel(id as PanelId)} />
         )}
-        {activePanel === 'controllers' && <VirtualControllerHub onClose={() => setActivePanel(null)} />}
-        {activePanel === 'fieldmap' && <FieldMap2D onClose={() => setActivePanel(null)} />}
+        {activePanel === 'controllers' && <VirtualControllerHub />}
+        {activePanel === 'fieldmap' && <FieldMap2D />}
       </>
     );
   };
