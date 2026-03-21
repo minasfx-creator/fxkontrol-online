@@ -68,10 +68,17 @@ export default function VVIZImporter({ open, onOpenChange, initialFile = null }:
     }
 
     toast.success(`Importado: ${result.droneCount} drones, ${result.trajectories.length} trajetórias`);
+
+    // Auto-save to library
+    if (currentFile) {
+      saveToLibrary(currentFile, { name: fileName || 'VVIZ Import', source: 'vviz', file_format: 'vviz', tags: ['show', 'vviz'] });
+    }
+
     onOpenChange(false);
     setResult(null);
     setFileName(null);
-  }, [result, addPosition, addTrajectory, setProjectName, setDuration, onOpenChange]);
+    setCurrentFile(null);
+  }, [result, addPosition, addTrajectory, setProjectName, setDuration, onOpenChange, currentFile, fileName, saveToLibrary]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
