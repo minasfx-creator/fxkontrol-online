@@ -361,7 +361,13 @@ function Index() {
         {activePanel === 'bluetooth' && <BluetoothPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'nfc' && <NFCPairPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'dmxoutput' && <DMXOutputPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'remotecontrol' && <RemoteControlPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'remotecontrol' && (
+          isMobile
+            ? <RemoteControlPanel onClose={() => setActivePanel(null)} />
+            : <RemoteReceiverOverlay onOpenPanel={(id) => handleTogglePanel(id as PanelId)} />
+        )}
+        {activePanel === 'controllers' && <VirtualControllerHub onClose={() => setActivePanel(null)} />}
+        {activePanel === 'fieldmap' && <FieldMap2D onClose={() => setActivePanel(null)} />}
       </>
     );
   };

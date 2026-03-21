@@ -125,7 +125,7 @@ export default function ConnectionManagerPanel({ fs = false }: ConnectionManager
       if (connId === 'fireone') {
         await fireone.connect();
         toast.success('FireOne RS-485 conectado');
-        await fireone.discoverModules(20);
+        await fireone.discoverModules(40);
       } else if (connId === 'pbus') {
         await pbus.connect();
         toast.success('PBUS conectado');
