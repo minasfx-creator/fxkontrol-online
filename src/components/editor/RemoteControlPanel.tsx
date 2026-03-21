@@ -246,7 +246,7 @@ export default function RemoteControlPanel({ onClose }: RemoteControlPanelProps)
             <Button
               variant="destructive"
               className="w-full h-14 text-lg font-black uppercase tracking-widest"
-              onClick={() => { send('panic', {}); haptics.error(); toast.error('🚨 PANIC — All stop!'); }}
+              onClick={() => { send('panic', {}); haptics.panic(); toast.error('🚨 PANIC — All stop!'); }}
             >
               <AlertTriangle className="w-6 h-6 mr-2" /> PANIC
             </Button>
