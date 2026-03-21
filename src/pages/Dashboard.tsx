@@ -358,7 +358,7 @@ export default function Dashboard() {
           </Card>
 
           {/* Events */}
-          <Card className="bg-card border-border/50 animate-fxk-fade-up">
+          <Card className="bg-card border-border/50 animate-fxk-stagger" style={{ animationDelay: '0.35s' }}>
             <div className="p-3 pb-1 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Flame className="h-3.5 w-3.5 text-accent" />
