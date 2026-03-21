@@ -292,7 +292,7 @@ export default function RemoteReceiverOverlay({ onOpenPanel }: RemoteReceiverOve
       {/* ── Overlay Widget ── */}
       <div className={cn(
         "fixed bottom-4 right-4 z-40 w-60 rounded-xl border backdrop-blur-md bg-background/90 shadow-lg overflow-hidden",
-        controllerCount > 0 && "ring-2 ring-green-500/50"
+        controllerCount > 0 && "ring-2 ring-success/50"
       )}>
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-border/30">
