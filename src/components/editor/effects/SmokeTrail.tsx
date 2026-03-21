@@ -148,12 +148,10 @@ function SmokeTrailInner({
     }
   });
 
-  if (progress <= 0) return null;
-
-  // Generate puff array for rendering (keeps visual compatibility with R3F declarative meshes)
+  // Generate puff array for rendering
   const puffs = useMemo(() => Array.from({ length: SMOKE_COUNT }, (_, i) => i), [SMOKE_COUNT]);
 
-  return (
+  if (progress <= 0) return null;
     <group position={position}>
       {puffs.map((_, i) => (
         <mesh

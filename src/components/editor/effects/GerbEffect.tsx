@@ -66,7 +66,7 @@ export default function GerbEffect({
           max: new THREE.Vector3(spraySpeed * 0.06, spraySpeed * 1.0, spraySpeed * 0.06),
         },
         color: baseColor.clone(),
-        spawnShape: { type: 'cone', radius: 0.08, angle: 8 },
+        spawnShape: { type: 'cone', radius: 0.08, coneAngle: 8 * Math.PI / 180 },
       },
       update: [{
         drag: 0.08,
