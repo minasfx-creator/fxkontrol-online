@@ -64,10 +64,10 @@ import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { createExposureController, updateExposure, flashEvent } from '@/render_ultra/postprocessing/exposure';
 import { getCompound, thermalColor, type ChemicalCompound } from '@/render_ultra/fireworks/particleChemistry';
 import { GlobalIlluminationSystem } from '@/render_ultra/lighting/globalIllumination';
-import { SmokeSystem } from '@/render_ultra/fireworks/smokeSimulation';
+// SmokeSystem removed — handled by NiagaraVFXController
 import { createLensFlareSprite, flashLensFlare, decayLensFlare } from '@/render_ultra/postprocessing/lensFlare';
 import { getBurstConfig, type BurstPattern } from '@/render_ultra/fireworks/burstSimulation';
-import { createSparkTrailSystem, updateSparkTrail, writeSparkTrailsToBuffers, type SparkState } from '@/render_ultra/fireworks/sparkTrailsGPU';
+// sparkTrailsGPU removed — handled by NiagaraVFXController
 import { createHDRLightingRig } from '@/render_ultra/lighting/hdrLighting';
 import { createVolumetricFogPlane } from '@/render_ultra/environment/volumetricFog';
 import { createReflectionPlane } from '@/render_ultra/environment/reflections';
@@ -2067,48 +2067,7 @@ const GlobalIlluminationController = React.forwardRef<THREE.Group, {}>(function 
   return null;
 });
 
-// ═══ VOLUMETRIC SMOKE CONTROLLER — post-burst smoke with wind drift ═══
-const SmokeController = React.forwardRef<THREE.Group, {}>(function SmokeController(_props, _ref) {
-  const smokeRef = useRef<SmokeSystem | null>(null);
-  const { scene } = useThree();
-
-  useEffect(() => {
-    const smoke = new SmokeSystem(4096);
-    smokeRef.current = smoke;
-    scene.add(smoke.mesh);
-    return () => {
-      scene.remove(smoke.mesh);
-      smokeRef.current = null;
-    };
-  }, [scene]);
-
-  useFrame((_, delta) => {
-    if (!smokeRef.current) return;
-    const smoke = smokeRef.current;
-
-    // Emit smoke for fresh bursts
-    const { timelineItems, currentTime } = useProjectStore.getState();
-    for (const item of timelineItems) {
-      const elapsed = currentTime - item.startTime;
-      if (elapsed >= 0 && elapsed < 0.05) {
-        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
-        if (effect && effect.type === 'firework') {
-          const caliber = effect.caliber || 4;
-          const breakH = getBreakHeight(caliber);
-          const origin = new THREE.Vector3(item.position.x, item.position.y + breakH, item.position.z);
-          const smokeColor = new THREE.Color(0.15, 0.14, 0.12); // warm grey smoke
-          smoke.emit(origin, Math.round(15 + caliber * 3), smokeColor, caliber * 2);
-        }
-      }
-    }
-
-    // Update with wind
-    const w = getWindForce();
-    smoke.update(delta, w[0] * 3, w[2] * 3);
-  });
-
-  return null;
-});
+// SmokeController removed — replaced by NiagaraVFXController smoke emitters
 
 // ═══ LENS FLARE CONTROLLER — cinematic optics on bright bursts ═══
 const LensFlareController = React.forwardRef<THREE.Group, {}>(function LensFlareController(_props, _ref) {
@@ -2161,97 +2120,7 @@ const LensFlareController = React.forwardRef<THREE.Group, {}>(function LensFlare
   return null;
 });
 
-// ═══ GPU SPARK TRAIL CONTROLLER — incandescent trails with 32-point history ═══
-const SparkTrailController = React.forwardRef<THREE.Group, {}>(function SparkTrailController(_props, _ref) {
-  const { scene } = useThree();
-  const sparksRef = useRef<SparkState[]>([]);
-  const systemRef = useRef<ReturnType<typeof createSparkTrailSystem> | null>(null);
-  const { hdrMultiplier, effectBrightness } = useSceneStore(st => st.settings);
-
-  useEffect(() => {
-    const sys = createSparkTrailSystem();
-    systemRef.current = sys;
-    scene.add(sys.points);
-    return () => {
-      scene.remove(sys.points);
-      sys.geometry.dispose();
-    };
-  }, [scene]);
-
-  useFrame((_, delta) => {
-    const sys = systemRef.current;
-    if (!sys) return;
-    const sparks = sparksRef.current;
-    const dt = Math.min(delta, 0.05); // cap dt
-
-    // Spawn sparks from fresh bursts
-    const { timelineItems, currentTime } = useProjectStore.getState();
-    for (const item of timelineItems) {
-      const elapsed = currentTime - item.startTime;
-      if (elapsed >= 0 && elapsed < 0.04 && sparks.length < 1600) {
-        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
-        if (effect && effect.type === 'firework') {
-          const caliber = effect.caliber || 4;
-          const breakH = getBreakHeight(caliber);
-          const breakSpd = getBreakSpeed(caliber);
-          const compound = hexToCompound(effect.color);
-          const adaptiveScale = THREE.MathUtils.clamp(_adaptiveExposure / 1.2, 0.45, 1.35);
-          const hdrScale = THREE.MathUtils.clamp((hdrMultiplier / 3.5) * adaptiveScale, 0.8, 1.8);
-          const baseColor = thermalColor(compound, 1.0, hdrScale);
-          const sparkCount = Math.min(24, Math.round(caliber * 3));
-          
-          for (let s = 0; s < sparkCount; s++) {
-            const theta = Math.random() * Math.PI * 2;
-            const phi = Math.acos(2 * Math.random() - 1);
-            const speed = breakSpd * (0.4 + Math.random() * 0.6);
-            sparks.push({
-              position: new THREE.Vector3(
-                item.position.x,
-                item.position.y + breakH,
-                item.position.z
-              ),
-              velocity: new THREE.Vector3(
-                Math.sin(phi) * Math.cos(theta) * speed,
-                Math.sin(phi) * Math.sin(theta) * speed * 0.8 + breakSpd * 0.2,
-                Math.cos(phi) * speed
-              ),
-              color: baseColor.clone(),
-              life: 0.8 + Math.random() * 1.5 * (caliber / 6),
-              maxLife: 0.8 + 1.5 * (caliber / 6),
-              size: 0.5 + Math.random() * 0.5,
-              trailHistory: [],
-            });
-          }
-        }
-      }
-    }
-
-    // Update physics & trails
-    for (let i = sparks.length - 1; i >= 0; i--) {
-      updateSparkTrail(sparks[i], dt, 0.04, -9.81);
-      // Thermal color cooling
-      const lifeRatio = Math.max(0, sparks[i].life / sparks[i].maxLife);
-      const compound = hexToCompound('#' + sparks[i].color.getHexString());
-      const adaptiveScale = THREE.MathUtils.clamp(_adaptiveExposure / 1.2, 0.45, 1.35);
-      const hdrScale = THREE.MathUtils.clamp((hdrMultiplier / 3.5) * adaptiveScale, 0.8, 1.8);
-      const cooled = thermalColor(compound, lifeRatio, hdrScale).multiplyScalar(THREE.MathUtils.clamp(effectBrightness, 0.6, 1.8));
-      sparks[i].color.copy(cooled);
-      
-      if (sparks[i].life <= 0) {
-        sparks.splice(i, 1);
-      }
-    }
-
-    // Write to GPU buffers
-    const vertCount = writeSparkTrailsToBuffers(sparks, sys.positions, sys.colors, sys.opacities);
-    sys.geometry.attributes.position.needsUpdate = true;
-    sys.geometry.attributes.color.needsUpdate = true;
-    (sys.geometry.attributes as any).opacity.needsUpdate = true;
-    sys.geometry.setDrawRange(0, vertCount);
-  });
-
-  return null;
-});
+// SparkTrailController removed — replaced by NiagaraVFXController spark emitters
 
 
 const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflections(_props, _ref) {
@@ -3745,9 +3614,7 @@ export default function SkyCanvas() {
         <AdaptiveExposureController />
         {!environment.disableLighting && <GlobalIlluminationController />}
         <GroundReflections />
-        {!environment.disableSmoke && <SmokeController />}
         {!environment.disableLighting && <LensFlareController />}
-        <SparkTrailController />
         <NiagaraVFXController />
 
         <SkyGradient />

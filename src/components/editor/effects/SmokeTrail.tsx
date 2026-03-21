@@ -1,19 +1,20 @@
-import { useRef, useMemo } from 'react';
+/**
+ * SmokeTrail — Niagara-grade smoke using composable emitter system
+ * Uses NiagaraSystem with sphere spawn, curl noise turbulence,
+ * negative gravity for rising smoke, and soft-particle rendering config.
+ */
+
+import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { LIFT_SMOKE_CONFIG, getBurstSmokeDensity, type LiftChargeType } from '@/lib/pyroPhysics';
+import {
+  createEmitter, createSystem, tickSystem,
+  type NiagaraSystem,
+} from '@/render_ultra/fireworks/niagaraEmitterSystem';
 
 const BASE_SMOKE_COUNT = 80;
 
-/**
- * Finale-grade Smoke Trail with Manual de Pirotecnia chemistry:
- * - Pólvora Negra (KNO3+C+S): thick sulfurous yellow-gray (#B8A87A), slow rise
- * - Flash Powder: light gray-white (#CCCCCC), dissipates faster  
- * - Composite: neutral gray, medium behavior
- * 
- * Caliber-proportional puff count via getBurstSmokeDensity().
- * Niagara-grade: FBM turbulence on puff edges, billboard orientation.
- */
 function SmokeTrailInner({
   position,
   progress,
@@ -29,67 +30,126 @@ function SmokeTrailInner({
   liftChargeType?: LiftChargeType;
   caliber?: number;
 }) {
-  // Get smoke config from manual-derived lift charge data
   const smokeConfig = LIFT_SMOKE_CONFIG[liftChargeType];
   const smokeColor = color || smokeConfig.color;
   const smokeDensityMult = getBurstSmokeDensity(caliber);
   const SMOKE_COUNT = Math.min(120, Math.round(BASE_SMOKE_COUNT * smokeDensityMult));
-  
+
   const meshRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const niagaraRef = useRef<NiagaraSystem | null>(null);
 
-  const puffs = useMemo(() => {
-    const p: { x: number; z: number; vy: number; scale: number; phase: number; delay: number; drift: number }[] = [];
-    // Spread and scale influenced by charge type
-    const spreadMult = liftChargeType === 'black_powder' ? 1.3 : 0.9; // black powder = thicker cloud
-    const scaleMult = smokeConfig.density;
-    
-    for (let i = 0; i < SMOKE_COUNT; i++) {
-      p.push({
-        x: (Math.random() - 0.5) * 3.5 * spreadMult,
-        z: (Math.random() - 0.5) * 3.5 * spreadMult,
-        vy: smokeConfig.riseSpeed * (0.8 + Math.random() * 1.2),
-        scale: (0.6 + Math.random() * 1.8) * scaleMult,
-        phase: Math.random() * Math.PI * 2,
-        delay: Math.random() * 0.35,
-        drift: (Math.random() - 0.5) * 0.3,
-      });
-    }
-    return p;
-  }, [SMOKE_COUNT, liftChargeType, smokeConfig]);
+  // Create Niagara smoke system
+  useEffect(() => {
+    const riseSpeed = smokeConfig.riseSpeed;
+    const density = smokeConfig.density;
+    const spreadMult = liftChargeType === 'black_powder' ? 1.3 : 0.9;
 
-  useFrame(({ clock }) => {
+    const emitter = createEmitter({
+      id: `smoke-trail-${Date.now()}`,
+      name: 'Lift Smoke',
+      maxParticles: SMOKE_COUNT * 2,
+      spawn: {
+        rate: SMOKE_COUNT * 3,
+        burstCount: SMOKE_COUNT,
+        burstInterval: 0,
+        burstDelay: 0,
+      },
+      init: {
+        lifetime: [2, 5],
+        size: [0.6 * density, 1.8 * density],
+        velocity: {
+          min: new THREE.Vector3(-3.5 * spreadMult * 0.5, riseSpeed * 0.3, -3.5 * spreadMult * 0.5),
+          max: new THREE.Vector3(3.5 * spreadMult * 0.5, riseSpeed * 1.5, 3.5 * spreadMult * 0.5),
+        },
+        color: new THREE.Color(smokeColor),
+        spawnShape: { type: 'sphere', radius: 1.5 * spreadMult, surfaceOnly: false },
+      },
+      update: [{
+        drag: 1.8,
+        gravityScale: -0.05, // Rising smoke
+        curlNoiseStrength: 3,
+        curlNoiseScale: 0.03,
+        colorOverLife: [
+          { t: 0, color: new THREE.Color(smokeColor).multiplyScalar(1.2) },
+          { t: 0.5, color: new THREE.Color(smokeColor) },
+          { t: 1, color: new THREE.Color(smokeColor).multiplyScalar(0.5) },
+        ],
+        sizeOverLife: [
+          { t: 0, value: 0.5 },
+          { t: 0.3, value: 1.0 },
+          { t: 1, value: liftChargeType === 'black_powder' ? 2.0 : 1.5 },
+        ],
+        rotationRate: 0.2,
+      }],
+      render: {
+        mode: 'sprite',
+        blendMode: 'normal',
+        softParticles: true,
+        softRange: 1.5,
+      },
+    });
+
+    const sys = createSystem({
+      id: `smoke-trail-sys-${Date.now()}`,
+      name: 'Smoke Trail',
+      emitters: [emitter],
+      maxParticleBudget: SMOKE_COUNT * 2,
+      scalabilityGroup: 'high',
+    });
+    niagaraRef.current = sys;
+
+    return () => { niagaraRef.current = null; };
+  }, [SMOKE_COUNT, liftChargeType, smokeConfig, smokeColor]);
+
+  useFrame(({ clock }, delta) => {
+    if (!niagaraRef.current) return;
     const time = clock.getElapsedTime();
-    puffs.forEach((puff, i) => {
-      const mesh = meshRefs.current[i];
-      if (!mesh) return;
-      const age = Math.max(0, progress - puff.delay);
-      if (age <= 0 || progress > 0.95) {
-        mesh.visible = false;
-        return;
-      }
+    const dt = Math.min(delta, 0.05);
+    const sys = niagaraRef.current;
+
+    // Only spawn when progressing
+    for (const emitter of sys.emitters) {
+      emitter.enabled = progress > 0 && progress < 0.95;
+    }
+
+    if (progress > 0) {
+      tickSystem(sys, dt);
+    }
+
+    // Render Niagara particles to the mesh array (visual compatibility)
+    const emitter = sys.emitters[0];
+    if (!emitter) return;
+
+    let visIdx = 0;
+    for (const p of emitter.particles) {
+      if (!p.alive || visIdx >= SMOKE_COUNT) continue;
+      const mesh = meshRefs.current[visIdx];
+      if (!mesh) { visIdx++; continue; }
+
+      const t = p.age / p.lifetime;
       mesh.visible = true;
-      const t = age * 2.5;
-      
-      // Black powder smoke lingers longer (heavier particulate from charcoal+sulfur)
-      const lingerFactor = liftChargeType === 'black_powder' ? 0.7 : 1.0;
-      const expand = puff.scale * (1 + t * 3.0 * lingerFactor);
-      
-      mesh.position.set(
-        puff.x + Math.sin(time * 0.2 + puff.phase) * 0.6 * t + puff.drift * t * 2,
-        puff.vy * t * 0.6,
-        puff.z + Math.cos(time * 0.15 + puff.phase) * 0.5 * t
-      );
-      mesh.scale.setScalar(expand);
+      mesh.position.set(p.position.x, p.position.y, p.position.z);
+      mesh.scale.setScalar(p.size);
+
       const mat = mesh.material as THREE.MeshBasicMaterial;
-      
-      // Persistent opacity — black powder smoke lingers much longer
-      const fadeIn = Math.min(1, age * 8);
+      const fadeIn = Math.min(1, p.age * 8);
       const fadeOutPower = liftChargeType === 'black_powder' ? 1.5 : 2.0;
-      const fadeOut = Math.max(0, 1 - Math.pow(age / 0.85, fadeOutPower));
+      const fadeOut = Math.max(0, 1 - Math.pow(t, fadeOutPower));
       const baseOpacity = liftChargeType === 'black_powder' ? 0.08 : 0.05;
       mat.opacity = Math.max(0, baseOpacity * intensity * fadeIn * fadeOut * smokeDensityMult);
-    });
+
+      visIdx++;
+    }
+
+    // Hide remaining meshes
+    for (let i = visIdx; i < SMOKE_COUNT; i++) {
+      const mesh = meshRefs.current[i];
+      if (mesh) mesh.visible = false;
+    }
   });
+
+  // Generate puff array for rendering
+  const puffs = useMemo(() => Array.from({ length: SMOKE_COUNT }, (_, i) => i), [SMOKE_COUNT]);
 
   if (progress <= 0) return null;
 
