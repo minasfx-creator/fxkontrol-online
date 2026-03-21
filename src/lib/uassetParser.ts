@@ -233,11 +233,75 @@ function extractNotableFloats(view: DataView, length: number): number[] {
 /**
  * Derive effect properties from the filename using Niagara naming conventions.
  */
+/** Blueprint → fixture profile mapping */
+const BLUEPRINT_FIXTURE_MAP: Record<string, string> = {
+  'bp_spotmh1': 'spot-mh-standard',
+  'bp_spotmh2': 'spot-mh-standard',
+  'bp_spotmh2_hq': 'spot-mh-hq',
+  'bp_washmh1': 'moving-head-wash',
+  'bp_washmh2': 'moving-head-wash',
+  'bp_washled': 'wash-led-par',
+  'bp_washsl1': 'wash-spotlight',
+  'bp_static_scenelight': 'static-scene-light',
+  'bp_static_toner': 'static-toner',
+  'bp_tonerwbeam': 'toner-beam',
+  'bp_audience_toner': 'audience-toner',
+  'bp_stadiumlights': 'stadium-light',
+  'bp_staticmatrix_5x1': 'led-matrix-5x1',
+  'bp_staticmatrix_noborder': 'led-matrix-panel',
+  'bp_staticmatrix': 'led-matrix-panel',
+  'bp_strobe1': 'strobe-high-power',
+  'bp_sphere': 'generic-rgbw',
+};
+
 function applyFileNameHeuristics(result: UAssetParseResult, fileName: string): void {
-  const name = fileName.replace(/\.uasset$/i, '').replace(/_/g, ' ');
+  const rawName = fileName.replace(/\.uasset$/i, '');
+  const name = rawName.replace(/_/g, ' ');
   const lower = name.toLowerCase();
+  const rawLower = rawName.toLowerCase();
 
   result.heuristic.suggestedName = name;
+
+  // ── Asset type classification by prefix/pattern ──
+  if (rawLower.endsWith('_strobe_table') || rawLower.endsWith('_table')) {
+    result.assetType = 'curve_table';
+    result.heuristic.suggestedCategory = 'fixture';
+  } else if (rawLower.startsWith('mpc_')) {
+    result.assetType = 'material_param_collection';
+    result.heuristic.suggestedCategory = 'fixture';
+  } else if (rawLower.startsWith('mi_')) {
+    result.assetType = 'material_instance';
+  } else if (rawLower.startsWith('m_') && !rawLower.startsWith('mi_')) {
+    result.assetType = 'material';
+  } else if (rawLower.startsWith('t_')) {
+    result.assetType = 'texture';
+  } else if (rawLower.startsWith('dmxlib') || rawLower.includes('dmxlib')) {
+    result.assetType = 'dmx_library';
+    result.heuristic.suggestedCategory = 'fixture';
+  } else if (rawLower.startsWith('bp_spot') || rawLower.startsWith('bp_wash') || rawLower.startsWith('bp_static') ||
+             rawLower.startsWith('bp_toner') || rawLower.startsWith('bp_audience') || rawLower.startsWith('bp_stadium') ||
+             rawLower.startsWith('bp_strobe') || rawLower.startsWith('bp_staticmatrix')) {
+    result.assetType = 'blueprint_fixture';
+    result.heuristic.suggestedCategory = 'fixture';
+    // Map to fixture profile
+    const matchKey = Object.keys(BLUEPRINT_FIXTURE_MAP).find(k => rawLower.startsWith(k));
+    if (matchKey) {
+      result.suggestedFixtureProfile = BLUEPRINT_FIXTURE_MAP[matchKey];
+    }
+  } else if (rawLower.startsWith('bp_pyro') || rawLower.startsWith('bp_firework')) {
+    result.assetType = 'blueprint_pyro';
+    result.heuristic.suggestedCategory = 'aerial';
+  } else if (rawLower.startsWith('bp_laser')) {
+    result.assetType = 'blueprint_sfx';
+    result.heuristic.suggestedCategory = 'sfx';
+  } else if (rawLower.startsWith('bp_sphere')) {
+    result.assetType = 'blueprint_sfx';
+    result.heuristic.suggestedCategory = 'sfx';
+  } else if (result.isNiagaraSystem) {
+    result.assetType = 'niagara_system';
+  } else if (result.isNiagaraEmitter) {
+    result.assetType = 'niagara_emitter';
+  }
 
   // Color detection from filename
   const colorMap: Record<string, { color: string; pattern: string }> = {
@@ -263,13 +327,15 @@ function applyFileNameHeuristics(result: UAssetParseResult, fileName: string): v
     }
   }
 
-  // Category detection
-  if (lower.includes('firework') || lower.includes('shell') || lower.includes('burst')) {
-    result.heuristic.suggestedCategory = 'aerial';
-  } else if (lower.includes('fountain') || lower.includes('gerb') || lower.includes('ground')) {
-    result.heuristic.suggestedCategory = 'ground';
-  } else if (lower.includes('cryo') || lower.includes('flame') || lower.includes('fog') || lower.includes('confetti')) {
-    result.heuristic.suggestedCategory = 'sfx';
+  // Category detection (only override if not already set by asset type)
+  if (result.heuristic.suggestedCategory === 'aerial') {
+    if (lower.includes('firework') || lower.includes('shell') || lower.includes('burst')) {
+      result.heuristic.suggestedCategory = 'aerial';
+    } else if (lower.includes('fountain') || lower.includes('gerb') || lower.includes('ground')) {
+      result.heuristic.suggestedCategory = 'ground';
+    } else if (lower.includes('cryo') || lower.includes('flame') || lower.includes('fog') || lower.includes('confetti')) {
+      result.heuristic.suggestedCategory = 'sfx';
+    }
   }
 }
 
