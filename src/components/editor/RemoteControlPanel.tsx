@@ -493,7 +493,7 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
                   <p className="text-[6px] text-muted-foreground/60">{pbus.connectionPath}</p>
                 </div>
                 <div className="bg-muted/20 rounded-lg p-2 text-center border border-border/20">
-                  <Battery className="w-3 h-3 mx-auto text-emerald-400 mb-0.5" />
+                  <Battery className="w-3 h-3 mx-auto text-success mb-0.5" />
                   <p className="text-[7px] text-muted-foreground">Battery</p>
                   <p className="text-xs font-bold text-foreground">
                     {pbus.worstBattery !== null ? `${pbus.worstBattery.toFixed(1)}V` : '—'}
