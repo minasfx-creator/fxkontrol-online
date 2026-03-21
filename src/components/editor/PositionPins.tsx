@@ -314,7 +314,9 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
   }, [position.id, selectPosition]);
 
   const emissiveIntensity = isDragging ? 1.0 : isSelected ? 0.7 : isHovered ? 0.4 : 0.15;
-  const showLabel = isHovered || isSelected || isDragging;
+  const labelsVisible = useSceneStore(s => s.environment.showPositionLabels);
+  const isMobileView = typeof window !== 'undefined' && window.innerWidth < 768;
+  const showLabel = labelsVisible && (isMobileView ? (isSelected || isDragging) : (isHovered || isSelected || isDragging));
 
   return (
     <group ref={(node) => { (groupRef as any).current = node; if (typeof ref === 'function') ref(node); else if (ref) (ref as any).current = node; }} position={[position.x, position.y, position.z]}>
