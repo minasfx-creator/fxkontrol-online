@@ -32,6 +32,7 @@ import { clampNiagaraHDR, getNiagaraBudgets } from '@/lib/niagaraBlenderRules';
 import { createSmokeSoftMaterial } from '@/render_ultra/fireworks/softParticleShader';
 import { RibbonTrail } from '@/render_ultra/fireworks/ribbonTrailRenderer';
 import { HeatHazeEmitter } from '@/render_ultra/fireworks/heatDistortion';
+import { createFluidGrid, advectFluid, applyWindForce, type FluidGrid } from '@/render_ultra/fireworks/niagaraFluids';
 
 // ── Emitter Templates ───────────────────────────────────────────────
 
