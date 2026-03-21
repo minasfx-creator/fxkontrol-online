@@ -253,7 +253,8 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
             },
             onPresence: (devs) => {
               setDevices(devs);
-              if (devs.some(d => d.role === 'receiver')) {
+              if (devs.some(d => d.role === 'receiver') && !connectedRef.current) {
+                connectedRef.current = true;
                 setConnected(true);
                 haptics.success();
                 toast.success('🔗 Conectado via WiFi!');
