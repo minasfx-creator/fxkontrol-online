@@ -3748,6 +3748,7 @@ export default function SkyCanvas() {
         {!environment.disableSmoke && <SmokeController />}
         {!environment.disableLighting && <LensFlareController />}
         <SparkTrailController />
+        <NiagaraVFXController />
 
         <SkyGradient />
         <Moon />
