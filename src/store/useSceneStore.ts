@@ -210,6 +210,19 @@ export interface SceneSettings {
   heatDistortionEnabled: boolean;
   smokeRenderQuality: 'off' | 'low' | 'high';
   ribbonTrails: boolean;
+
+  // ═══ Environment v2 — UE5.7 Virtual Worlds ═══
+  skyEngineV2: boolean;           // toggle Sky Atmosphere V2
+  cloudCoverage: number;          // 0-1
+  cloudDensity: number;           // 0-2
+  cloudWindSpeed: number;         // 0-20 m/s
+  waterEnabled: boolean;
+  waterLevel: number;             // -5 to 5 meters
+  waterPreset: 'lake' | 'river' | 'ocean' | 'puddle';
+  timeOfDay: number;              // 0-24 hours
+  timeOfDayEnabled: boolean;
+  decalsEnabled: boolean;
+  niagaraFluidsEnabled: boolean;  // GPU fluid advection for smoke
 }
 
 const DEFAULT_SETTINGS: SceneSettings = {
