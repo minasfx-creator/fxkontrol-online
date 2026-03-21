@@ -712,6 +712,7 @@ export const useSceneStore = create<SceneSettingsState>((set) => ({
   siteModelTransformMode: 'translate',
   transformSnap: { enabled: true, translateSnap: 1, rotateSnap: 15, scaleSnap: 0.1 },
   terrain: null,
+  terrainPreset: 'grass-field',
   updateSettings: (updates) => set(s => {
     const next = { ...s.settings, ...updates };
     if (updates.weather && !updates.rainIntensity) {
