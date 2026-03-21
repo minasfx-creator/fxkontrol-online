@@ -29,6 +29,7 @@ import {
 } from '@/lib/ue5DmxPrevisParser';
 import { computeFixtureLayout, type LayoutPreset, type LayoutOverrides } from '@/lib/fixtureAutoLayout';
 import { useLayoutPresets } from '@/hooks/useLayoutPresets';
+import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { toast } from 'sonner';
 
 const FixtureLayoutPreview = lazy(() => import('./FixtureLayoutPreview'));
