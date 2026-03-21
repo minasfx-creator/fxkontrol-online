@@ -99,6 +99,15 @@ export default function GenerativeEffectsPanel({ onClose }: GenerativeEffectsPan
             ctx.fillStyle = `rgb(${Math.round(c.r * 255)},${Math.round(c.g * 255)},${Math.round(c.b * 255)})`;
             ctx.fillRect(gx * pw + 0.5, gy * ph + 0.5, pw - 1, ph - 1);
           }
+
+          // ═══ DMX Bridge — pipe generative colors to DMX universe when linked ═══
+          if (viewportLinked && dmxUniverseRef.current) {
+            const uni = dmxUniverseRef.current;
+            for (let i = 0; i < Math.min(colors.length, uni.fixtures.length); i++) {
+              const c = colors[i];
+              setFixtureColor(uni, uni.fixtures[i], c.r * 255, c.g * 255, c.b * 255);
+            }
+          }
         }
       }
 
