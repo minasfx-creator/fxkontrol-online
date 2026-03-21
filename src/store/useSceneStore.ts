@@ -751,4 +751,5 @@ export const useSceneStore = create<SceneSettingsState>((set) => ({
   setTerrain: (data) => set({ terrain: data }),
   updateTerrainConfig: (updates) => set((s) => s.terrain ? { terrain: { ...s.terrain, config: { ...s.terrain.config, ...updates } } } : {}),
   clearTerrain: () => set({ terrain: null }),
+  setTerrainPreset: (preset) => set({ terrainPreset: preset }),
 }));
