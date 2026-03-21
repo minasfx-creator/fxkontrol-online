@@ -23,6 +23,7 @@ export default function VVIZImporter({ open, onOpenChange, initialFile = null }:
 
   const parseFile = useCallback((file: File) => {
     setFileName(file.name);
+    setCurrentFile(file);
     const reader = new FileReader();
     reader.onload = () => {
       const text = reader.result as string;
