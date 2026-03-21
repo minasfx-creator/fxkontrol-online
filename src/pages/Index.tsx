@@ -388,7 +388,7 @@ function Index() {
         {activePanel === 'nfc' && <NFCPairPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'dmxoutput' && <DMXOutputPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'remotecontrol' && (
-          <RemoteControlPanel onClose={() => setActivePanel(null)} />
+          <RemoteControlPanel onClose={() => setActivePanel(null)} initialMode={remoteMode} />
         )}
         {activePanel === 'controllers' && <VirtualControllerHub onClose={() => setActivePanel(null)} />}
         {activePanel === 'fieldmap' && <FieldMap2D onClose={() => setActivePanel(null)} />}
