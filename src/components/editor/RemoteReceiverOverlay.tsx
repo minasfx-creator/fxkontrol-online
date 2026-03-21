@@ -70,7 +70,15 @@ export default function RemoteReceiverOverlay({ onOpenPanel }: RemoteReceiverOve
               }
               break;
             case 'continuity':
-              if (payload.moduleAddr != null) await fireone.requestContinuity(payload.moduleAddr);
+              if (payload.moduleAddr != null) {
+                await fireone.requestContinuity(payload.moduleAddr);
+              } else {
+                // Broadcast continuity check to all discovered modules
+                const moduleAddrs = Array.from(fireone.modules.keys());
+                for (const addr of moduleAddrs) {
+                  await fireone.requestContinuity(addr);
+                }
+              }
               break;
             case 'scan':
               await fireone.discoverModules();
