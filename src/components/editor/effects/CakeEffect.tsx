@@ -214,6 +214,8 @@ function CakeShot({
   angle: number;
   caliber: number;
 }) {
+  const PARTICLES_PER_SHOT = useMemo(() => getCakeParticlesPerShot(caliber), [caliber]);
+  const particleVisualSize = useMemo(() => getParticleSize(caliber) * 0.08, [caliber]);
   const breakH = useMemo(() => getBreakHeight(caliber), [caliber]);
   const v0 = useMemo(() => getMortarVelocity(caliber), [caliber]);
   const starLife = useMemo(() => getStarLifetime(caliber), [caliber]);
