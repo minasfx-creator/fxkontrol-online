@@ -147,6 +147,103 @@ const AFTERGLOW_FRAGMENT = `
   }
 `;
 
+// ── Volumetric Smoke Billboard Shader (Niagara SubUV style) ─────────
+
+const SMOKE_VERTEX = `
+  attribute float aAge;
+  attribute float aMaxAge;
+  attribute float aScale;
+  attribute float aSeed;
+  
+  varying float vAge;
+  varying float vMaxAge;
+  varying float vSeed;
+  varying vec2 vUv;
+  
+  void main() {
+    vAge = aAge;
+    vMaxAge = aMaxAge;
+    vSeed = aSeed;
+    vUv = uv;
+    
+    // Billboard: always face camera
+    vec3 cameraRight = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
+    vec3 cameraUp = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
+    
+    float lifeRatio = clamp(aAge / aMaxAge, 0.0, 1.0);
+    float expansion = aScale * (0.5 + lifeRatio * 3.0);
+    
+    vec3 vertexPosition = position.x * cameraRight * expansion + position.y * cameraUp * expansion;
+    vec4 mvPosition = modelViewMatrix * vec4(vertexPosition, 1.0);
+    
+    gl_Position = projectionMatrix * mvPosition;
+  }
+`;
+
+const SMOKE_FRAGMENT = `
+  varying float vAge;
+  varying float vMaxAge;
+  varying float vSeed;
+  varying vec2 vUv;
+  
+  uniform vec3 uSmokeColor;
+  uniform float uSmokeOpacity;
+  uniform float uTime;
+  
+  // Procedural turbulence noise (GPU-friendly)
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+  }
+  
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float a = hash(i);
+    float b = hash(i + vec2(1.0, 0.0));
+    float c = hash(i + vec2(0.0, 1.0));
+    float d = hash(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+  }
+  
+  float fbm(vec2 p) {
+    float v = 0.0;
+    float a = 0.5;
+    vec2 shift = vec2(100.0);
+    for (int i = 0; i < 4; i++) {
+      v += a * noise(p);
+      p = p * 2.0 + shift;
+      a *= 0.5;
+    }
+    return v;
+  }
+  
+  void main() {
+    float lifeRatio = clamp(vAge / vMaxAge, 0.0, 1.0);
+    vec2 centered = (vUv - 0.5) * 2.0;
+    float dist = length(centered);
+    
+    // Soft circular mask with turbulent edge
+    float turbulence = fbm(centered * 3.0 + vec2(vSeed * 10.0, uTime * 0.3));
+    float edgeSoftness = 0.9 + turbulence * 0.3;
+    float mask = smoothstep(edgeSoftness, edgeSoftness - 0.4, dist);
+    
+    // Internal wisps
+    float wisps = fbm(centered * 5.0 + vec2(uTime * 0.15, vSeed * 20.0));
+    mask *= 0.6 + wisps * 0.4;
+    
+    // Fade in/out over lifetime
+    float fadeIn = smoothstep(0.0, 0.15, lifeRatio);
+    float fadeOut = 1.0 - smoothstep(0.5, 1.0, lifeRatio);
+    float alpha = mask * fadeIn * fadeOut * uSmokeOpacity;
+    
+    // Warm gray tinted by burst color, darkening over time
+    vec3 col = mix(uSmokeColor * 0.4 + vec3(0.15), vec3(0.08, 0.06, 0.05), lifeRatio * 0.7);
+    
+    gl_FragColor = vec4(col, alpha);
+  }
+`;
+
 // ── Constants ───────────────────────────────────────────────────────
 
 const MAX_PARTICLES = 2000;
