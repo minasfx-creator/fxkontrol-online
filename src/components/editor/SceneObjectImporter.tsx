@@ -21,6 +21,7 @@ export default function SceneObjectImporter({ open, onOpenChange }: SceneObjectI
   const [rotY, setRotY] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const addSiteModel = useSceneStore((s) => s.addSiteModel);
+  const { saveToLibrary } = useMyLibrary();
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
