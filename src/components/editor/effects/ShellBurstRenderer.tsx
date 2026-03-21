@@ -729,7 +729,7 @@ export default function ShellBurstRenderer({
             <bufferAttribute attach="attributes-color" args={[glitterBuffers.col, 3]} />
           </bufferGeometry>
           <pointsMaterial
-            size={0.08 + caliber * 0.02}
+            size={getParticleSize(caliber) * 0.06}
             vertexColors
             transparent
             opacity={0.7}
