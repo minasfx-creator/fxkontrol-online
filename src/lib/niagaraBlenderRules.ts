@@ -40,6 +40,92 @@ export const MOBILE_BUDGET: NiagaraBudgetConfig = {
   gpuParticleThreshold: 64,
 };
 
+// ── UE5.7-Style Scalability Groups ─────────────────────────────────
+
+export type ScalabilityGroupName = 'cinematic' | 'high' | 'medium' | 'low' | 'mobile';
+
+export interface ScalabilityConfig {
+  label: string;
+  particleCountMultiplier: number;
+  spawnRateMultiplier: number;
+  maxEmitters: number;
+  enableSoftParticles: boolean;
+  enableVelocityStretch: boolean;
+  ribbonQuality: number; // 0-1, multiplier for ribbon point count
+  maxParticleBudget: number;
+}
+
+export const SCALABILITY_GROUPS: Record<ScalabilityGroupName, ScalabilityConfig> = {
+  cinematic: {
+    label: 'Cinematic',
+    particleCountMultiplier: 2.0,
+    spawnRateMultiplier: 2.0,
+    maxEmitters: 48,
+    enableSoftParticles: true,
+    enableVelocityStretch: true,
+    ribbonQuality: 1.0,
+    maxParticleBudget: 16384,
+  },
+  high: {
+    label: 'High',
+    particleCountMultiplier: 1.0,
+    spawnRateMultiplier: 1.0,
+    maxEmitters: 24,
+    enableSoftParticles: true,
+    enableVelocityStretch: true,
+    ribbonQuality: 1.0,
+    maxParticleBudget: 8192,
+  },
+  medium: {
+    label: 'Medium',
+    particleCountMultiplier: 0.6,
+    spawnRateMultiplier: 0.6,
+    maxEmitters: 16,
+    enableSoftParticles: true,
+    enableVelocityStretch: false,
+    ribbonQuality: 0.5,
+    maxParticleBudget: 4096,
+  },
+  low: {
+    label: 'Low',
+    particleCountMultiplier: 0.3,
+    spawnRateMultiplier: 0.3,
+    maxEmitters: 8,
+    enableSoftParticles: false,
+    enableVelocityStretch: false,
+    ribbonQuality: 0.25,
+    maxParticleBudget: 2048,
+  },
+  mobile: {
+    label: 'Mobile',
+    particleCountMultiplier: 0.25,
+    spawnRateMultiplier: 0.25,
+    maxEmitters: 6,
+    enableSoftParticles: false,
+    enableVelocityStretch: false,
+    ribbonQuality: 0.2,
+    maxParticleBudget: 1024,
+  },
+};
+
+export function getScalabilityConfig(group: ScalabilityGroupName): ScalabilityConfig {
+  return SCALABILITY_GROUPS[group];
+}
+
+/** Apply scalability settings to a Niagara system's emitters */
+export function applyScalability(
+  emitters: { maxParticles: number; spawnModule: { rate: number }; renderModule: { softParticles: boolean; velocityStretch: boolean } }[],
+  group: ScalabilityGroupName
+): void {
+  const cfg = SCALABILITY_GROUPS[group];
+  for (const e of emitters) {
+    e.maxParticles = Math.floor(e.maxParticles * cfg.particleCountMultiplier);
+    e.spawnModule.rate = Math.floor(e.spawnModule.rate * cfg.spawnRateMultiplier);
+    if (!cfg.enableSoftParticles) e.renderModule.softParticles = false;
+    if (!cfg.enableVelocityStretch) e.renderModule.velocityStretch = false;
+  }
+}
+
 export interface BudgetWarning {
   emitterId: string;
   type: 'particle-count' | 'overdraw' | 'emitter-count' | 'ribbon-points' | 'gpu-threshold';
