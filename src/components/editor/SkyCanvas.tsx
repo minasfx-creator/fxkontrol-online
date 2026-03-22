@@ -3134,7 +3134,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   }, [camera]);
 
   // Intro: cinematic positions
-  const introStartPos = useRef(new THREE.Vector3(0, 2500, 0.01));
+  const introStartPos = useRef(new THREE.Vector3(0, 300, 100));
   const introStartLook = useRef(new THREE.Vector3(0, 0, 0));
   const introDuration = useRef({ hold: 2.5, sweep: 4.0 });
 
