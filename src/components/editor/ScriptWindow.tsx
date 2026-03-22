@@ -1160,7 +1160,7 @@ export default function ScriptWindow() {
             {isDraggingFill && fillDragCount > 0 && (
               Array.from({ length: fillDragCount }).map((_, i) => (
                 <tr key={`fill-preview-${i}`} className="border-b border-primary/20 bg-primary/5 pointer-events-none">
-                  <td colSpan={14} className="px-2 py-0.5 text-[9px] text-primary/60 font-mono-code">
+                  <td colSpan={16} className="px-2 py-0.5 text-[9px] text-primary/60 font-mono-code">
                     + Copy {i + 1}
                   </td>
                 </tr>
