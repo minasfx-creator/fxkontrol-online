@@ -1127,190 +1127,176 @@ export default function ScriptWindow() {
                   onClick={(e) => toggleSelect(row.id, e)}
                 >
                   {/* Cue number */}
-                  <td className="px-0.5 py-0.5 text-center text-muted-foreground/40 text-[8px] font-bold">
-                    Q{rowIdx + 1}
-                  </td>
+                  {isColVisible('cue') && (
+                    <td className="px-0.5 py-0.5 text-center text-muted-foreground/40 text-[8px] font-bold">
+                      Q{rowIdx + 1}
+                    </td>
+                  )}
 
                   {/* Chain collapse / icon */}
-                  <td className="px-0.5 py-0.5 text-center">
-                    {isChainHead && chainCount > 1 ? (
-                      <button
-                        className="text-muted-foreground hover:text-foreground"
-                        onClick={(e) => { e.stopPropagation(); toggleChainCollapse(row.chainRef!); }}
-                      >
-                        {collapsed
-                          ? <ChevronRight className="h-3 w-3" />
-                          : <ChevronDown className="h-3 w-3" />
-                        }
-                      </button>
-                    ) : (
-                      <span className="text-[8px]">{row.icon}</span>
-                    )}
-                  </td>
+                  {isColVisible('icon') && (
+                    <td className="px-0.5 py-0.5 text-center">
+                      {isChainHead && chainCount > 1 ? (
+                        <button
+                          className="text-muted-foreground hover:text-foreground"
+                          onClick={(e) => { e.stopPropagation(); toggleChainCollapse(row.chainRef!); }}
+                        >
+                          {collapsed
+                            ? <ChevronRight className="h-3 w-3" />
+                            : <ChevronDown className="h-3 w-3" />
+                          }
+                        </button>
+                      ) : (
+                        <span className="text-[8px]">{row.icon}</span>
+                      )}
+                    </td>
+                  )}
 
-                  {/* Event Time — click-to-edit with Tab/Enter */}
-                  <td className="px-1 py-0.5">
-                    {renderEditableCell(row.id, 'eventTime', row.eventTime, 'w-16', 'text-foreground')}
-                  </td>
+                  {/* Event Time */}
+                  {isColVisible('eventTime') && (
+                    <td className="px-1 py-0.5">
+                      {renderEditableCell(row.id, 'eventTime', row.eventTime, 'w-full', 'text-foreground')}
+                    </td>
+                  )}
 
                   {/* Effect Time */}
-                  <td className="px-1 py-0.5 text-primary/80">
-                    {formatTime(row.effectTime)}
-                  </td>
+                  {isColVisible('effectTime') && (
+                    <td className="px-1 py-0.5 text-primary/80">
+                      {formatTime(row.effectTime)}
+                    </td>
+                  )}
 
                   {/* Prefire */}
-                  <td className="px-1 py-0.5">
-                    {row.prefire > 0 ? (
-                      <span className="text-warning">{row.prefire.toFixed(1)}s</span>
-                    ) : (
-                      <span className="text-muted-foreground/30">—</span>
-                    )}
-                  </td>
+                  {isColVisible('pft') && (
+                    <td className="px-1 py-0.5">
+                      {row.prefire > 0 ? (
+                        <span className="text-warning">{row.prefire.toFixed(1)}s</span>
+                      ) : (
+                        <span className="text-muted-foreground/30">—</span>
+                      )}
+                    </td>
+                  )}
 
-                  {/* Size (Caliber) */}
-                  <td className="px-1 py-0.5">
-                    {row.type === 'firework' ? (
-                      <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-accent/15 text-accent tabular-nums">
-                        {(() => { const m = row.description.match(/(\d+)(?:in|")/); return m ? `${m[1]}"` : '4"'; })()}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground/30">—</span>
-                    )}
-                  </td>
-
-                  {/* Part Type */}
-                  <td className="px-1 py-0.5">
-                    <span className="text-[7px] font-bold px-1 py-0.5 rounded bg-muted/20 text-muted-foreground uppercase">
-                      {row.category === 'mines' ? 'MINE' : row.category === 'roman_candles' ? 'RC' : row.category === 'cakes_batteries' ? 'CAKE' : row.category === 'waterfalls' ? 'FALL' : row.type === 'firework' ? 'SHELL' : row.type === 'drone' ? 'DRN' : row.type?.slice(0, 3).toUpperCase() || '—'}
-                    </span>
-                  </td>
-
-                  {/* Description with caliber badge + type icon */}
-                  <td className="px-1 py-0.5">
-                    <div className="flex items-center gap-1">
-                      {/* Section color stripe */}
-                      {(() => {
-                        const pos = positions.find(p => p.name === row.position);
-                        const sec = pos?.section;
-                        const sColors: Record<string, string> = { A: '#4CAF50', B: '#2196F3', C: '#FF9800', D: '#E91E63', E: '#9C27B0', F: '#00BCD4' };
-                        return <div className="w-[3px] h-4 rounded-full flex-shrink-0" style={{ backgroundColor: sec ? sColors[sec] || '#555' : 'hsl(var(--muted) / 0.2)' }} />;
-                      })()}
-                      <div
-                        className="w-2.5 h-2.5 rounded-full flex-shrink-0 ring-1 ring-white/10"
-                        style={{ backgroundColor: row.color }}
-                      />
-                      {/* Caliber badge for pyro */}
-                      {row.type === 'firework' && (
-                        <span className="text-[7px] font-bold px-1 py-0.5 rounded bg-accent/15 text-accent tabular-nums flex-shrink-0">
+                  {/* Size */}
+                  {isColVisible('size') && (
+                    <td className="px-1 py-0.5">
+                      {row.type === 'firework' ? (
+                        <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-accent/15 text-accent tabular-nums">
                           {(() => { const m = row.description.match(/(\d+)(?:in|")/); return m ? `${m[1]}"` : '4"'; })()}
                         </span>
+                      ) : (
+                        <span className="text-muted-foreground/30">—</span>
                       )}
-                      {/* Type icon */}
-                      {row.category && (
-                        <span className="text-[8px] flex-shrink-0 opacity-50">
-                          {row.category === 'mines' ? '💥' : row.category === 'roman_candles' ? '🕯️' : row.category === 'cakes_batteries' ? '📦' : row.category === 'waterfalls' ? '💧' : row.type === 'firework' ? '🎆' : ''}
-                        </span>
-                      )}
-                      <span className="text-foreground truncate max-w-[120px] font-medium">
-                        {row.description}
-                        {collapsed && chainCount > 1 && (
-                          <span className="text-muted-foreground ml-1 font-normal">×{chainCount}</span>
-                        )}
+                    </td>
+                  )}
+
+                  {/* Type */}
+                  {isColVisible('type') && (
+                    <td className="px-1 py-0.5">
+                      <span className="text-[7px] font-bold px-1 py-0.5 rounded bg-muted/20 text-muted-foreground uppercase">
+                        {row.category === 'mines' ? 'MINE' : row.category === 'roman_candles' ? 'RC' : row.category === 'cakes_batteries' ? 'CAKE' : row.category === 'waterfalls' ? 'FALL' : row.type === 'firework' ? 'SHELL' : row.type === 'drone' ? 'DRN' : row.type?.slice(0, 3).toUpperCase() || '—'}
                       </span>
-                    </div>
-                  </td>
+                    </td>
+                  )}
 
-                  {/* Position — click to assign via dropdown */}
-                  <td className="px-1 py-0.5 relative">
-                    <span
-                      className={cn(
-                        "truncate max-w-[80px] block cursor-pointer border-b border-transparent hover:border-border/40 transition-colors",
-                        row.position === 'UNASSIGNED' ? "text-destructive/60 italic" : "text-muted-foreground"
-                      )}
-                      onClick={(e) => { e.stopPropagation(); setPosDropdown(posDropdown?.rowId === row.id ? null : { rowId: row.id }); }}
-                    >
-                      {row.position}
-                    </span>
-                    {posDropdown?.rowId === row.id && (
-                      <div className="absolute z-50 top-full left-0 mt-0.5 min-w-[120px] max-h-[160px] overflow-y-auto rounded-md border border-border/60 bg-popover/95 p-0.5 shadow-lg backdrop-blur-sm">
-                        {positions.filter(p => p.type === 'pyro').map(pos => (
-                          <button
-                            key={pos.id}
-                            className="flex w-full items-center gap-1.5 rounded-sm px-2 py-1 text-[9px] hover:bg-accent/50 transition-colors"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const targetIds = selectedIds.size > 1 && selectedIds.has(row.id)
-                                ? Array.from(selectedIds) : [row.id];
-                              targetIds.forEach(id => {
-                                updateTimelineItem(id, {
-                                  positionId: pos.id,
-                                  positionName: pos.name,
-                                  position: { x: pos.x, y: pos.y, z: pos.z },
+                  {/* Description */}
+                  {isColVisible('description') && (
+                    <td className="px-1 py-0.5">
+                      <div className="flex items-center gap-1 overflow-hidden">
+                        {(() => {
+                          const pos = positions.find(p => p.name === row.position);
+                          const sec = pos?.section;
+                          const sColors: Record<string, string> = { A: '#4CAF50', B: '#2196F3', C: '#FF9800', D: '#E91E63', E: '#9C27B0', F: '#00BCD4' };
+                          return <div className="w-[3px] h-4 rounded-full flex-shrink-0" style={{ backgroundColor: sec ? sColors[sec] || '#555' : 'hsl(var(--muted) / 0.2)' }} />;
+                        })()}
+                        <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 ring-1 ring-white/10" style={{ backgroundColor: row.color }} />
+                        {row.type === 'firework' && (
+                          <span className="text-[7px] font-bold px-1 py-0.5 rounded bg-accent/15 text-accent tabular-nums flex-shrink-0">
+                            {(() => { const m = row.description.match(/(\d+)(?:in|")/); return m ? `${m[1]}"` : '4"'; })()}
+                          </span>
+                        )}
+                        {row.category && (
+                          <span className="text-[8px] flex-shrink-0 opacity-50">
+                            {row.category === 'mines' ? '💥' : row.category === 'roman_candles' ? '🕯️' : row.category === 'cakes_batteries' ? '📦' : row.category === 'waterfalls' ? '💧' : row.type === 'firework' ? '🎆' : ''}
+                          </span>
+                        )}
+                        <span className="text-foreground truncate font-medium">
+                          {row.description}
+                          {collapsed && chainCount > 1 && (
+                            <span className="text-muted-foreground ml-1 font-normal">×{chainCount}</span>
+                          )}
+                        </span>
+                      </div>
+                    </td>
+                  )}
+
+                  {/* Position */}
+                  {isColVisible('position') && (
+                    <td className="px-1 py-0.5 relative">
+                      <span
+                        className={cn(
+                          "truncate block cursor-pointer border-b border-transparent hover:border-border/40 transition-colors",
+                          row.position === 'UNASSIGNED' ? "text-destructive/60 italic" : "text-muted-foreground"
+                        )}
+                        onClick={(e) => { e.stopPropagation(); setPosDropdown(posDropdown?.rowId === row.id ? null : { rowId: row.id }); }}
+                      >
+                        {row.position}
+                      </span>
+                      {posDropdown?.rowId === row.id && (
+                        <div className="absolute z-50 top-full left-0 mt-0.5 min-w-[120px] max-h-[160px] overflow-y-auto rounded-md border border-border/60 bg-popover/95 p-0.5 shadow-lg backdrop-blur-sm">
+                          {positions.filter(p => p.type === 'pyro').map(pos => (
+                            <button
+                              key={pos.id}
+                              className="flex w-full items-center gap-1.5 rounded-sm px-2 py-1 text-[9px] hover:bg-accent/50 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const targetIds = selectedIds.size > 1 && selectedIds.has(row.id)
+                                  ? Array.from(selectedIds) : [row.id];
+                                targetIds.forEach(id => {
+                                  updateTimelineItem(id, {
+                                    positionId: pos.id,
+                                    positionName: pos.name,
+                                    position: { x: pos.x, y: pos.y, z: pos.z },
+                                  });
                                 });
-                              });
-                              setPosDropdown(null);
-                            }}
-                          >
-                            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: pos.color }} />
-                            <span className="truncate">{pos.name}</span>
-                          </button>
-                        ))}
-                        {positions.filter(p => p.type === 'pyro').length === 0 && (
-                          <div className="px-2 py-1 text-[8px] text-muted-foreground/50 italic">No positions</div>
-                        )}
-                      </div>
-                    )}
-                  </td>
+                                setPosDropdown(null);
+                              }}
+                            >
+                              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: pos.color }} />
+                              <span className="truncate">{pos.name}</span>
+                            </button>
+                          ))}
+                          {positions.filter(p => p.type === 'pyro').length === 0 && (
+                            <div className="px-2 py-1 text-[8px] text-muted-foreground/50 italic">No positions</div>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  )}
 
-                  {/* Pan — click-to-edit */}
-                  <td className="px-1 py-0.5">
-                    {renderEditableCell(row.id, 'pan', row.pan, 'w-8', 'text-muted-foreground')}
-                  </td>
+                  {isColVisible('pan') && <td className="px-1 py-0.5">{renderEditableCell(row.id, 'pan', row.pan, 'w-full', 'text-muted-foreground')}</td>}
+                  {isColVisible('tilt') && <td className="px-1 py-0.5">{renderEditableCell(row.id, 'tilt', row.tilt, 'w-full', 'text-muted-foreground')}</td>}
+                  {isColVisible('spin') && <td className="px-1 py-0.5">{renderEditableCell(row.id, 'spin', row.spin, 'w-full', 'text-muted-foreground')}</td>}
+                  {isColVisible('angles') && <td className="px-1 py-0.5 text-center"><span className="text-muted-foreground font-mono text-[10px]">{row.anglesArt}</span></td>}
+                  {isColVisible('dP') && <td className="px-1 py-0.5"><span className="text-muted-foreground/60 text-[9px] font-mono">{row.derivedPitch}°</span></td>}
+                  {isColVisible('dR') && <td className="px-1 py-0.5"><span className="text-muted-foreground/60 text-[9px] font-mono">{row.derivedRoll}°</span></td>}
+                  {isColVisible('dur') && <td className="px-1 py-0.5 text-muted-foreground">{row.duration}s</td>}
+                  {isColVisible('cost') && <td className="px-1 py-0.5 text-success">${row.cost}</td>}
 
-                  {/* Tilt — click-to-edit */}
-                  <td className="px-1 py-0.5">
-                    {renderEditableCell(row.id, 'tilt', row.tilt, 'w-8', 'text-muted-foreground')}
-                  </td>
-
-                  {/* Spin — click-to-edit */}
-                  <td className="px-1 py-0.5">
-                    {renderEditableCell(row.id, 'spin', row.spin, 'w-8', 'text-muted-foreground')}
-                  </td>
-
-                  {/* Angles* ASCII art — read-only */}
-                  <td className="px-1 py-0.5 text-center">
-                    <span className="text-muted-foreground font-mono text-[10px]">{row.anglesArt}</span>
-                  </td>
-
-                  {/* Derived Pitch — read-only */}
-                  <td className="px-1 py-0.5">
-                    <span className="text-muted-foreground/60 text-[9px] font-mono">{row.derivedPitch}°</span>
-                  </td>
-
-                  {/* Derived Roll — read-only */}
-                  <td className="px-1 py-0.5">
-                    <span className="text-muted-foreground/60 text-[9px] font-mono">{row.derivedRoll}°</span>
-                  </td>
-
-                  {/* Duration */}
-                  <td className="px-1 py-0.5 text-muted-foreground">{row.duration}s</td>
-
-                  {/* Cost */}
-                  <td className="px-1 py-0.5 text-success">${row.cost}</td>
-
-                  {/* Chain */}
-                  <td className="px-1 py-0.5">
-                    {row.chainRef ? (
-                      <div className="flex items-center gap-0.5">
-                        <Link2 className="h-2.5 w-2.5" style={{ color: chainColor }} />
-                        {row.chainGap != null && row.chainGap > 0 && (
-                          <span className="text-[8px] text-muted-foreground">{row.chainGap}ms</span>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground/20">—</span>
-                    )}
-                  </td>
+                  {isColVisible('chain') && (
+                    <td className="px-1 py-0.5">
+                      {row.chainRef ? (
+                        <div className="flex items-center gap-0.5">
+                          <Link2 className="h-2.5 w-2.5" style={{ color: chainColor }} />
+                          {row.chainGap != null && row.chainGap > 0 && (
+                            <span className="text-[8px] text-muted-foreground">{row.chainGap}ms</span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground/20">—</span>
+                      )}
+                    </td>
+                  )}
 
                   {/* Notes — click-to-edit */}
                   <td className="px-1 py-0.5">
