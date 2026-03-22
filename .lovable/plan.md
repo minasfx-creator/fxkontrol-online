@@ -1,136 +1,89 @@
 
 
-# BR2049 Platform Upgrade — Opening Animations, Smart Swaps, MacBook Menus & Ambient Sound
+# Simplificar Controladores — Fusão Net+Módulo, Eliminar Auto, Check BR2049, IA Holográfica
 
-## Overview
+## Resumo
 
-Four major enhancements to deepen the Blade Runner 2049 immersion: (1) cinematic opening animations on every console/page, (2) intelligent swap transitions between panels, (3) macOS-style menus in the sidebar, and (4) ambient sound engine with synthesized hum and navigation bleeps.
+1. **Fundir** `artnet_modules` (FXK-NET) + `module` (FXK Module) em um único painel **FXK-NET** que combina gestão de rede Art-Net com controle de módulos de campo
+2. **Eliminar** `auto_fire` (Auto Fire) como painel separado — a lógica de auto-fire já existe no PyroFireOne
+3. **Reimaginar** o Check Slave como um painel diagnóstico BR2049 com testes de canal individuais, scanlines e estética holográfica
+4. **Evoluir** o FXK-AI Assistant para estilo "Joi" (BR2049) — assistente holográfico integrado ao workspace, não apenas chat flutuante
 
-## 1. Opening Animations on Consoles & Pages
+## Mudanças
 
-### `src/index.css` — New keyframes
+### 1. `src/components/editor/live-firing/types.ts` — Limpar FXCMode
 
-Add boot-sequence animations:
-- `@keyframes console-boot`: staged reveal — horizontal line scan (0-30%), grid materialize (30-60%), content fade-in (60-100%)
-- `@keyframes terminal-type`: typewriter cursor effect for headers
-- `@keyframes holo-materialize`: scale(0.96) + blur(8px) → scale(1) + blur(0) with amber glow flash at 40%
-- `.animate-console-boot`, `.animate-holo-materialize`, `.animate-terminal-type` utility classes
+- Remover `'auto_fire'` e `'module'` do tipo `FXCMode`
+- `artnet_modules` permanece como key unificada para o painel fusionado
 
-### `src/pages/Dashboard.tsx`
+### 2. NEW: `src/components/editor/live-firing/FXKNetPanel.tsx` — Painel Fusionado
 
-- Wrap hero banner in `animate-holo-materialize` with 0.1s delay
-- Each HubCard gets staggered `animate-console-boot` (already has stagger, enhance with new boot effect)
-- Feed cards get `animate-holo-materialize` with incremental delays
+Combina ArtNetModulePanel + VirtualIFMx32QPanel em um painel unificado com 2 abas:
+- **NETWORK**: Lista de módulos Art-Net com discovery, IP, universo, status de conexão (herda de ArtNetModulePanel)
+- **MODULE**: Controle individual do módulo selecionado — grade de ignitores 32-pin, ARM/DISARM, firing, LCD virtual (herda de VirtualIFMx32QPanel)
+- Seleção de módulo na aba NETWORK abre automaticamente aba MODULE
+- Estética BR2049: borders âmbar, scanlines, font mono, status dots com glow
+- Header com telemetria compacta: módulos online, latência, sinal RF
 
-### `src/pages/CommandCenter.tsx`
+### 3. `src/components/editor/live-firing/CheckSlavePanel.tsx` — BR2049 Channel Diagnostics
 
-- On mode change (`handleModeChange`): add a `transitioning` state (true for 300ms) that applies a CSS class to the content area
-- Content area gets `animate-console-boot` on each mode swap (key prop forces remount)
-- Sidebar mode buttons: add `animate-holo-materialize` on first render
-- Breadcrumb bar: typewriter-style label animation on mode change
+Reimaginação completa como terminal de diagnóstico holográfico:
+- **Grade de canais expandida**: 32 canais (não apenas 16) com teste individual por canal
+- **Teste de continuidade**: botão TEST por canal que pulsa corrente de verificação e mostra resultado (OK/FAIL/OPEN/SHORT) com animação de scan âmbar
+- **Barra de resistência visual**: cada canal mostra barra horizontal de resistência com gradiente verde→amarelo→vermelho
+- **Teste em lote**: botão "SCAN ALL" com progresso sequencial canal-a-canal com animação tipo Matrix/BR2049
+- **Status summary**: contadores PASS/FAIL/OPEN com ícones holográficos
+- **Estética BR2049**: background escuro com vinheta, scanlines horizontais, borders âmbar `hsl(32 100% 50%)`, labels em mono tracking-wide, status dots com glow pulsante, overlay de rain-streak sutil
+- **Detalhes por canal**: popup/tooltip ao clicar mostrando histórico de resistência, último teste, status do ignitor
 
-### `src/pages/Auth.tsx`
+### 4. `src/components/FXKAssistant.tsx` — Evolução "Joi" BR2049
 
-- Card entrance: `animate-holo-materialize` with 0.3s delay
-- Input fields: staggered `animate-fxk-stagger` (0.4s, 0.5s)
-- Button: `animate-fxk-stagger` at 0.6s
-- Add boot text sequence above card: "NEXUS TERMINAL v2.0 // INITIALIZING..." that types out then fades
+Transformar de chat flutuante para assistente holográfico integrado:
+- **Modo docked**: ao invés de floating bubble, pode ancorar lateralmente no workspace (slide-in panel de 360px)
+- **Holographic avatar**: círculo âmbar animado no header com ondas de áudio quando AI fala (3 barras oscilantes)
+- **Thinking visualization**: durante processamento, mostra padrão de onda senoidal âmbar animada (não apenas dots)
+- **Context awareness**: presets dinâmicos baseados no modo ativo (se está em PYRO, mostra presets de pirotecnia; se DMX, presets de efeitos)
+- **Voice line styling**: respostas da AI com efeito de "materialização" — texto aparece com opacity fade + blur sutil, simulando projeção holográfica
+- **Amber rain overlay** no painel inteiro quando idle
+- **Close → dissolve animation**: ao fechar, efeito de dissolução holográfica (scale down + blur + fade)
 
-### `src/components/editor/SplashScreen.tsx`
+### 5. `src/pages/CommandCenter.tsx` — Atualizar Navegação
 
-- Migrate colors from cyan (`hsl(165...)`) to amber (`hsl(32...)`) to match BR2049 palette
-- Corner brackets, grid, glow, product line indicators all amber-tinted
-- INITIALIZE button: amber styling
+- Remover `auto_fire` e `module` das MODE_SECTIONS
+- `artnet_modules` → label "FXK-NET" (já está) — agora renderiza `<FXKNetPanel>`
+- Atualizar CONSOLE_ACCENTS removendo entries obsoletos
+- Check mode label: "Check" → "DIAGNOSTICS"
 
-## 2. Smart Swap Transitions
+### 6. `src/components/editor/LiveFiringPanel.tsx` — Atualizar Referências
 
-### `src/pages/CommandCenter.tsx`
+- Remover `auto_fire` dos MODE_CATEGORIES e SWIPE_MODES
+- Remover `module` dos MODE_CATEGORIES
+- Case `artnet_modules` → renderizar `<FXKNetPanel>`
+- Remover case `module` e case `auto_fire`
+- Importar FXKNetPanel, remover imports de ArtNetModulePanel e VirtualIFMx32QPanel
 
-- Add `prevMode` state alongside `activeMode`
-- On mode change: set `swapPhase` to `'out'`, after 200ms set new mode + `'in'`, after 400ms set `'idle'`
-- Content wrapper applies:
-  - `out`: `opacity-0 scale-[0.97] translate-x-[-8px]` (slides left + fades)
-  - `in`: `opacity-0 scale-[0.97] translate-x-[8px]` → animates to neutral via CSS transition
-  - `idle`: normal state
-- This creates a directional swap feel without unmounting (uses CSS transitions, not React AnimatePresence)
+### 7. `src/index.css` — Novas Animações BR2049
 
-### `src/layouts/MainLayout.tsx`
+- `@keyframes channel-scan`: varredura horizontal por canal (para o teste sequencial)
+- `@keyframes holo-dissolve`: scale(1)→scale(0.9) + blur(12px) + opacity(0)
+- `@keyframes voice-wave`: oscilação de barras de áudio para avatar da AI
+- `.animate-channel-scan`, `.animate-holo-dissolve`, `.animate-voice-wave`
 
-- Add route-change detection via `useLocation().pathname`
-- On pathname change: flash a horizontal amber scanline across the content area (200ms CSS animation)
-- Content area (`<Outlet />`) wrapper: apply `animate-holo-materialize` keyed by pathname
+## Arquivos
 
-## 3. MacBook Pro-Style Menus
+1. `src/components/editor/live-firing/types.ts` — Limpar FXCMode
+2. `src/components/editor/live-firing/FXKNetPanel.tsx` — **NOVO** painel fusionado
+3. `src/components/editor/live-firing/CheckSlavePanel.tsx` — Reimaginação BR2049
+4. `src/components/FXKAssistant.tsx` — Evolução holográfica "Joi"
+5. `src/pages/CommandCenter.tsx` — Navegação simplificada
+6. `src/components/editor/LiveFiringPanel.tsx` — Referências atualizadas
+7. `src/index.css` — Animações BR2049
 
-### `src/components/AppSidebar.tsx`
+## Notas Técnicas
 
-- Redesign nav items as a macOS-style dock:
-  - Rounded pill shape with frosted glass background on hover
-  - Active item: filled pill with amber glow, icon slightly scales up (1.1x)
-  - Hover tooltip (non-collapsed): subtle description popover with glass background, arrow pointer
-  - Group separator: thin amber gradient line with diamond marker (existing pattern)
-- Add "quick actions" row at bottom (above user): small icon-only buttons for Search, Notifications, Theme — macOS menu bar style
-- Collapsed state: icons get macOS dock magnification effect on hover (scale 1.15 with smooth transition)
-- Footer user card: macOS-style avatar with ring glow + online status dot
-
-### `src/pages/CommandCenter.tsx` sidebar
-
-- Mode list items: add macOS-style hover state — subtle inset shadow + scale(1.02) + glass background reveal
-- Active mode: left accent bar slides in with spring animation (CSS transition)
-- Section headers: small amber diamond bullet instead of plain line
-
-## 4. Ambient Sound Engine — BR2049 Hum & Bleeps
-
-### NEW: `src/lib/ambientSound.ts`
-
-Create a singleton `AmbientSoundEngine` using Web Audio API:
-- **Base hum**: OscillatorNode (sawtooth, 55Hz) + GainNode (volume 0.015) + BiquadFilterNode (lowpass 200Hz). Starts on first user interaction.
-- **Navigation bleep**: Short sine tone (880Hz, 40ms decay) triggered on route change. Gain envelope: attack 5ms, decay 40ms.
-- **Click feedback**: Higher sine (1200Hz, 20ms) for button interactions.
-- **Console boot**: Descending sweep (2000Hz → 200Hz, 300ms) when opening a new console/mode.
-- **Error tone**: Two-tone discord (440Hz + 466Hz, 100ms) for toast errors.
-- Master volume control (default 0.3), mute toggle, stored in localStorage.
-- `play(sound: 'nav' | 'click' | 'boot' | 'error')` method
-- `startHum()` / `stopHum()` for background drone
-- Auto-resume on AudioContext unlock (mobile)
-
-### `src/layouts/MainLayout.tsx`
-
-- Import `ambientSound` singleton
-- On route change (`useEffect` with `location.pathname`): `ambientSound.play('nav')`
-- On first render: `ambientSound.startHum()` (guarded by user gesture via click listener)
-- Add small volume control in footer status bar: speaker icon + mute toggle (8px tactical style)
-
-### `src/pages/CommandCenter.tsx`
-
-- On mode change: `ambientSound.play('boot')`
-
-### `src/components/AppSidebar.tsx`
-
-- Nav item click: `ambientSound.play('click')`
-
-### `src/pages/Auth.tsx`
-
-- On successful login: `ambientSound.play('boot')`
-- On error: `ambientSound.play('error')`
-
-## Files (priority order)
-
-1. `src/lib/ambientSound.ts` — **NEW** Web Audio ambient engine
-2. `src/index.css` — New boot/materialize/type keyframes
-3. `src/components/editor/SplashScreen.tsx` — Amber palette migration
-4. `src/components/AppSidebar.tsx` — MacBook dock-style menus
-5. `src/layouts/MainLayout.tsx` — Route transitions + sound integration + volume control
-6. `src/pages/Auth.tsx` — Boot sequence + sound hooks
-7. `src/pages/Dashboard.tsx` — Console boot animations
-8. `src/pages/CommandCenter.tsx` — Smart swaps + boot animations + sound
-
-## Technical Notes
-
-- All sound via Web Audio API (no audio files, no external deps)
-- Sound respects user gesture requirement (AudioContext.resume on click)
-- Volume persisted in localStorage (`fxk-ambient-volume`, `fxk-ambient-muted`)
-- CSS transitions for swaps (no framer-motion dependency)
-- SplashScreen cyan→amber migration aligns with global BR2049 palette
-- No database changes
+- Sem mudanças no banco de dados
+- Sem novas dependências
+- AutoFirePanel.tsx e ArtNetModulePanel.tsx ficam como arquivos mortos (não deletados, apenas não importados) — export DEMO_CUES de AutoFirePanel ainda é usado por PyroFireOnePanel
+- VirtualIFMx32QPanel reutilizado internamente pelo FXKNetPanel (composição)
+- Cores de segurança (vermelho ARM, verde SUCCESS) preservadas
 
