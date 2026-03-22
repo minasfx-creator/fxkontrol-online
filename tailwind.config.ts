@@ -15,6 +15,7 @@ export default {
         sans: ['Outfit', 'Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
         display: ['Outfit', 'sans-serif'],
+        tech: ['Space Grotesk', 'Inter', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -76,6 +77,10 @@ export default {
           gold: "hsl(var(--fxk-gold))",
           violet: "hsl(var(--fxk-violet))",
           magenta: "hsl(var(--fxk-magenta))",
+          red: "hsl(var(--fxk-red))",
+          blue: "hsl(var(--fxk-blue))",
+          green: "hsl(var(--fxk-green))",
+          indigo: "hsl(var(--fxk-indigo))",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
