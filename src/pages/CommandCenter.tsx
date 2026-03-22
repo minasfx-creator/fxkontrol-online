@@ -3,8 +3,9 @@
  * Intelligent routing: Fire modes get full chrome, Hardware/Network get direct rendering
  * Each console has unique accent identity
  */
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { ambientSound } from '@/lib/ambientSound';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
