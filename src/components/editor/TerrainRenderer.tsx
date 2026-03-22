@@ -1,5 +1,6 @@
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { useFrame } from '@react-three/fiber';
 import type { TerrainData } from '@/lib/heightmapToTerrain';
 import { useSceneStore } from '@/store/useSceneStore';
 import { createTerrainMaterial } from '@/render_ultra/environment/terrainPBR';
@@ -14,7 +15,7 @@ export default function TerrainRenderer() {
     const { config, heightmap, width: hmW } = terrain;
     const segments = Math.min(config.resolution, 256);
     const geo = new THREE.PlaneGeometry(config.width, config.depth, segments, segments);
-    geo.rotateX(-Math.PI / 2); // lay flat
+    geo.rotateX(-Math.PI / 2);
 
     const posAttr = geo.attributes.position;
     const cols = segments + 1;
@@ -32,8 +33,15 @@ export default function TerrainRenderer() {
     return geo;
   }, [terrain]);
 
-  // PBR material from render_ultra — preset-driven (grass, concrete, wet, dirt)
+  // UE5.7 triplanar PBR material — preset-driven with animated wetness
   const material = useMemo(() => createTerrainMaterial(terrainPreset), [terrainPreset]);
+
+  // Animate time uniform for puddle ripples and detail
+  useFrame((_, delta) => {
+    if (material && 'uniforms' in material) {
+      (material as THREE.ShaderMaterial).uniforms.uTime.value += delta;
+    }
+  });
 
   if (!geometry || !terrain) return null;
 

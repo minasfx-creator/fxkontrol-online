@@ -108,8 +108,19 @@ export { GlobalIlluminationSystem } from './lighting/globalIllumination';
 
 // Post-processing
 export { createLensFlareSprite, flashLensFlare, decayLensFlare } from './postprocessing/lensFlare';
-export { createExposureController, updateExposure, flashEvent } from './postprocessing/exposure';
+export { createExposureController, updateExposure, flashEvent, getAverageLuminance, resetLuminanceAccum } from './postprocessing/exposure';
+export type { ExposureState } from './postprocessing/exposure';
 
 // Niagara Fluids
 export { createFluidGrid, advectFluid, injectDensity, injectVelocity, injectTemperature, readDensityAt, applyWindForce, clearFluidGrid } from './fireworks/niagaraFluids';
 export type { FluidGrid, FluidConfig } from './fireworks/niagaraFluids';
+
+// GPU Instanced Particle Rendering
+export { InstancedParticleRenderer, createSparkInstancedRenderer, createSmokeInstancedRenderer } from './fireworks/instancedParticleRenderer';
+export type { InstancedParticleConfig } from './fireworks/instancedParticleRenderer';
+
+// Fog v2
+export type { FogConfig } from './environment/volumetricFog';
+
+// Lighting v2
+export type { HDRLightingConfig, BurstLightConfig } from './lighting/hdrLighting';
