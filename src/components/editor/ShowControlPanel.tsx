@@ -1,685 +1,219 @@
 /**
- * ─── Show Control Panel — FX Commander Style ──────────────────────
- * Inspired by Showven FX Commander hardware controller.
- * Skybrush workflow: Preflight → Upload → Authorize → Countdown → Running → Landing
+ * ShowControlPanel — Macro Mission Overview
+ * Real-time monitoring of all 4 systems: PYRO, DMX, LIGHT, DRONE
+ * BR2049 holographic command center aesthetic
  */
-
-import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
-import {
-  Clock, Play, Pause, Square, Upload, Shield, AlertTriangle,
-  CheckCircle2, Timer, Zap, RotateCcw, Loader2, XCircle,
-  Plane, ChevronRight, AlertCircle, Radio, Target,
-  Cpu, Wifi, Battery, Navigation, Lock, Unlock, Eye, Usb,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Switch } from '@/components/ui/switch';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useFleetStore } from '@/store/useFleetStore';
-import { useProjectStore } from '@/store/useProjectStore';
-import { useFireOneHardware } from '@/hooks/useFireOneHardware';
-import { usePBusHardware } from '@/hooks/usePBusHardware';
-import { showOrchestrator, type ShowPhase, type ShowWarning } from '@/lib/showOrchestrator';
-import type { AuthorizationScope, StartMethod } from '@/lib/flockwaveProtocol';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { Flame, Zap, Gauge, Layers, Activity, Radio, Shield } from 'lucide-react';
+import { useLiveSfxStore } from '@/store/useLiveSfxStore';
+import { useSfxChannelStore } from '@/store/useSfxChannelStore';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
-// ── Helpers ─────────────────────────────────────────────────────────
-
-function formatCountdown(seconds: number): string {
-  if (seconds <= 0) return 'T-00:00';
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `T-${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+interface EventLog {
+  id: string;
+  system: string;
+  color: string;
+  message: string;
+  timestamp: number;
 }
 
-function formatTime(ms: number): string {
-  const date = new Date(ms);
-  return date.toLocaleTimeString('en-GB', { hour12: false }) + '.' + String(date.getMilliseconds()).padStart(3, '0');
-}
-
-function formatElapsed(sec: number): string {
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  const ms = Math.floor((sec % 1) * 10);
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${ms}`;
-}
-
-function phaseLabel(phase: ShowPhase): string {
-  const map: Record<ShowPhase, string> = {
-    idle: 'STANDBY', preflight: 'PREFLIGHT', uploading: 'UPLOADING',
-    uploaded: 'READY', authorized: 'ARMED', countdown: 'COUNTDOWN',
-    running: 'LIVE', paused: 'HOLD', landing: 'LANDING',
-    complete: 'COMPLETE', error: 'FAULT', aborted: 'ABORT',
-  };
-  return map[phase];
-}
-
-// ── Hook: subscribe to ShowOrchestrator ─────────────────────────────
-
-function useOrchestratorState() {
-  return useSyncExternalStore(
-    (cb) => showOrchestrator.subscribe(cb),
-    () => showOrchestrator.getState(),
-  );
-}
-
-// ── Phase Step Indicator ────────────────────────────────────────────
-
-const PHASES_SEQUENCE: { key: string; label: string; icon: typeof CheckCircle2 }[] = [
-  { key: 'preflight', label: 'Check', icon: CheckCircle2 },
-  { key: 'upload', label: 'Upload', icon: Upload },
-  { key: 'authorize', label: 'Arm', icon: Shield },
-  { key: 'start', label: 'GO', icon: Play },
-  { key: 'landing', label: 'Land', icon: Plane },
+const SYSTEMS = [
+  { name: 'FXK-PYRO', code: 'PYRO', icon: Flame, color: 'hsl(0 85% 48%)', glow: 'hsl(0 85% 48% / 0.08)' },
+  { name: 'FXK-DMX', code: 'DMX', icon: Zap, color: 'hsl(200 80% 48%)', glow: 'hsl(200 80% 48% / 0.08)' },
+  { name: 'FXK-LIGHT', code: 'LIGHT', icon: Gauge, color: 'hsl(240 50% 52%)', glow: 'hsl(240 50% 52% / 0.08)' },
+  { name: 'FXK-DRONE', code: 'DRONE', icon: Layers, color: 'hsl(165 100% 42%)', glow: 'hsl(165 100% 42% / 0.08)' },
 ];
 
-function PhaseIndicator({ currentPhase }: { currentPhase: ShowPhase }) {
-  const phaseIndex = (() => {
-    switch (currentPhase) {
-      case 'idle': return -1;
-      case 'preflight': return 0;
-      case 'uploading': case 'uploaded': return 1;
-      case 'authorized': return 2;
-      case 'countdown': case 'running': case 'paused': return 3;
-      case 'landing': case 'complete': return 4;
-      default: return -1;
-    }
-  })();
-
+function Sparkline({ data, color }: { data: number[]; color: string }) {
+  const max = Math.max(...data, 1);
   return (
-    <div className="flex items-center gap-0.5 px-3 py-2">
-      {PHASES_SEQUENCE.map((p, i) => {
-        const isDone = i < phaseIndex;
-        const isActive = i === phaseIndex;
-        const Icon = p.icon;
-        return (
-          <div key={p.key} className="flex items-center flex-1">
-            <div className={cn(
-              "flex flex-col items-center gap-0.5 flex-1",
-            )}>
-              <div className={cn(
-                "w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all",
-                isDone ? "bg-success border-success text-success-foreground" :
-                isActive ? "bg-primary border-primary text-primary-foreground animate-pulse" :
-                "bg-surface-1 border-border/40 text-muted-foreground"
-              )}>
-                {isDone ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Icon className="w-3 h-3" />}
-              </div>
-              <span className={cn(
-                "text-[7px] font-bold tracking-wider",
-                isDone ? "text-success" : isActive ? "text-primary" : "text-muted-foreground/50"
-              )}>{p.label}</span>
-            </div>
-            {i < PHASES_SEQUENCE.length - 1 && (
-              <div className={cn(
-                "h-[2px] flex-1 rounded-full mx-0.5 -mt-3",
-                i < phaseIndex ? "bg-success" : "bg-border/30"
-              )} />
-            )}
-          </div>
-        );
-      })}
+    <div className="flex items-end gap-[1px] h-4">
+      {data.map((v, i) => (
+        <div
+          key={i}
+          className="w-[3px] rounded-t-sm transition-all duration-300"
+          style={{
+            height: `${(v / max) * 100}%`,
+            backgroundColor: v > 0 ? color : 'hsl(220 10% 15%)',
+            opacity: 0.4 + (i / data.length) * 0.6,
+          }}
+        />
+      ))}
     </div>
   );
 }
 
-// ── FX Commander Grid Button ────────────────────────────────────────
-
-function CommanderButton({
-  icon: Icon, label, sublabel, color, active, disabled, pulse, onClick, className,
-}: {
-  icon: typeof Play; label: string; sublabel?: string;
-  color?: string; active?: boolean; disabled?: boolean;
-  pulse?: boolean; onClick?: () => void; className?: string;
-}) {
+function TimecodeDisplay({ ms }: { ms: number }) {
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  const f = Math.floor((ms % 1000) / (1000 / 30));
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        "relative flex flex-col items-center justify-center gap-1 rounded-xl border p-2.5 transition-all",
-        "backdrop-blur-md select-none min-h-[60px]",
-        active
-          ? "bg-gradient-to-b from-primary/20 to-primary/5 border-primary/40 shadow-lg shadow-primary/15"
-          : disabled
-            ? "bg-surface-1/30 border-border/20 text-muted-foreground/40 cursor-not-allowed"
-            : "bg-surface-1/60 border-border/30 hover:bg-surface-1/80 hover:border-border/50 active:scale-[0.97]",
-        pulse && "animate-pulse",
-        className,
-      )}
-      style={active && color ? { borderColor: color, boxShadow: `0 0 20px ${color}33` } : undefined}
-    >
-      <Icon className={cn("w-5 h-5", active ? "text-primary" : "")} style={color ? { color } : undefined} />
-      <span className={cn("text-[9px] font-bold tracking-wider uppercase", active ? "text-foreground" : "text-muted-foreground")}>
-        {label}
+    <div className="font-mono font-black text-center" style={{ color: 'hsl(32 100% 60%)' }}>
+      <span className="text-2xl tracking-[0.15em]">
+        {String(h).padStart(2, '0')}:{String(m).padStart(2, '0')}:{String(s).padStart(2, '0')}
       </span>
-      {sublabel && <span className="text-[7px] text-muted-foreground/60">{sublabel}</span>}
-      {active && (
-        <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-success animate-pulse" />
-      )}
-    </button>
+      <span className="text-lg text-[hsl(32_100%_40%)] ml-1">:{String(f).padStart(2, '0')}</span>
+    </div>
   );
 }
 
-// ── Component ───────────────────────────────────────────────────────
-
 interface ShowControlPanelProps {
+  fs?: boolean;
   onClose?: () => void;
 }
 
-export default function ShowControlPanel({ onClose }: ShowControlPanelProps) {
-  const orc = useOrchestratorState();
-  const { clockSync, connectionState, uavs } = useFleetStore();
-  const duration = useProjectStore((s) => s.duration);
-  const projectName = useProjectStore((s) => s.projectName);
-  const positions = useProjectStore((s) => s.positions);
-  const timelineItems = useProjectStore((s) => s.timelineItems);
-  const hardware = useFireOneHardware();
-  const pbus = usePBusHardware();
-
-  const [authScope, setAuthScope] = useState<AuthorizationScope>('live');
-  const [startMethod, setStartMethod] = useState<StartMethod>('auto');
-  const [countdownTarget, setCountdownTarget] = useState(30);
-  const [scheduledTime, setScheduledTime] = useState('');
-  const [localTime, setLocalTime] = useState(Date.now());
-  const [busy, setBusy] = useState(false);
+export default function ShowControlPanel({ fs = false, onClose }: ShowControlPanelProps) {
+  const activeEffects = useLiveSfxStore(s => s.activeEffects);
+  const channels = useSfxChannelStore(s => s.channels);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [eventLog, setEventLog] = useState<EventLog[]>([]);
+  const startRef = useRef(Date.now());
+  const prevEffectCountRef = useRef(0);
 
   useEffect(() => {
-    const t = setInterval(() => setLocalTime(Date.now()), 100);
-    return () => clearInterval(t);
+    const iv = setInterval(() => setElapsedMs(Date.now() - startRef.current), 100);
+    return () => clearInterval(iv);
   }, []);
 
-  useEffect(() => { showOrchestrator.setShowDuration(duration); }, [duration]);
-  useEffect(() => { showOrchestrator.setStartMethod(startMethod); }, [startMethod]);
-
-  // ── Actions ───────────────────────────────────────────────────
-
-  const handlePreflight = useCallback(async () => {
-    setBusy(true);
-    // FireOne hardware preflight checks
-    if (hardware.isConnected) {
-      toast.info(`FireOne: ${hardware.modules.size} módulos detectados`);
-      let lowBatt = 0;
-      hardware.modules.forEach(m => { if (m.batteryVoltage !== undefined && m.batteryVoltage < 11.0) lowBatt++; });
-      if (lowBatt > 0) toast.warning(`FireOne: ${lowBatt} módulo(s) com bateria baixa`);
+  useEffect(() => {
+    if (activeEffects.length > prevEffectCountRef.current) {
+      const newEffect = activeEffects[activeEffects.length - 1];
+      setEventLog(prev => [{
+        id: `log-${Date.now()}`,
+        system: newEffect?.type === 'flame' ? 'PYRO' : 'DMX',
+        color: newEffect?.type === 'flame' ? 'hsl(0 85% 48%)' : 'hsl(200 80% 48%)',
+        message: `FIRE ${newEffect?.type?.toUpperCase()} @ ${newEffect?.intensity ?? 255}`,
+        timestamp: Date.now(),
+      }, ...prev].slice(0, 50));
     }
-    if (pbus.isConnected) {
-      toast.info(`PBUS: ${pbus.deviceCount} dispositivos detectados`);
-      if (pbus.worstBattery !== null && pbus.worstBattery < 3.3) {
-        toast.warning(`PBUS: bateria baixa (${pbus.worstBattery.toFixed(1)}V)`);
-      }
-    }
-    const ok = await showOrchestrator.startPreflight();
-    setBusy(false);
-    if (ok) {
-      const st = showOrchestrator.getState();
-      const failures = st.preflightResults.filter(r => !r.passed);
-      if (failures.length > 0) toast.warning(`Preflight: ${failures.length} drone(s) with issues`);
-      else toast.success(`Preflight passed — ${st.totalDrones} drones ready`);
-    } else toast.error('Preflight failed');
-  }, [hardware, pbus]);
+    prevEffectCountRef.current = activeEffects.length;
+  }, [activeEffects]);
 
-  const handleUpload = useCallback(async () => {
-    setBusy(true);
-    const trajectories = positions.map((pos, i) => ({
-      droneId: `drone-${i + 1}`,
-      points: [
-        { t: 0, x: pos.x, y: 0, z: pos.z },
-        { t: duration * 0.1, x: pos.x, y: pos.y + 30, z: pos.z },
-        { t: duration * 0.9, x: pos.x, y: pos.y + 30, z: pos.z },
-        { t: duration, x: pos.x, y: 0, z: pos.z },
-      ],
-    }));
-    const lightProgram = positions.map(() => [
-      { t: 0, r: 0, g: 0, b: 0, w: 0 },
-      { t: duration * 0.1, r: 255, g: 255, b: 255, w: 0 },
-      { t: duration * 0.9, r: 255, g: 255, b: 255, w: 0 },
-      { t: duration, r: 0, g: 0, b: 0, w: 0 },
-    ]);
-    const ok = await showOrchestrator.uploadShow({
-      trajectories, lightProgram, startMethod,
-      coordinateSystem: 'neu', origin: { lat: 0, lon: 0, altMSL: 0 },
+  const systems = useMemo(() => {
+    const pyroChannels = channels.filter(c => ['flame', 'spark', 'confetti', 'streamer'].includes(c.type));
+    const dmxChannels = channels.filter(c => ['co2', 'cryo', 'haze', 'fog', 'snow', 'bubble'].includes(c.type));
+    const firingPyro = pyroChannels.filter(c => c.firing).length;
+    const firingDmx = dmxChannels.filter(c => c.firing).length;
+
+    return SYSTEMS.map(sys => {
+      const isP = sys.code === 'PYRO';
+      const isD = sys.code === 'DMX';
+      const ch = isP ? pyroChannels : isD ? dmxChannels : [];
+      const active = isP ? firingPyro : isD ? firingDmx : 0;
+      const armed = ch.some(c => c.armed);
+      return {
+        ...sys,
+        status: (armed ? 'ARMED' : ch.length > 0 ? 'ONLINE' : 'STANDBY') as 'ARMED' | 'ONLINE' | 'STANDBY',
+        channels: ch.length,
+        activeCount: active,
+        lastCommand: active > 0 ? 'FIRING' : 'IDLE',
+        activity: Array.from({ length: 20 }, () => Math.random() * (active > 0 ? 80 : ch.length > 0 ? 15 : 2)),
+      };
     });
-    setBusy(false);
-    if (ok) toast.success(`Show uploaded — ${trajectories.length} drones`);
-    else toast.error('Upload failed');
-  }, [positions, duration, startMethod]);
+  }, [channels, activeEffects]);
 
-  const handleAuthorize = useCallback(async () => {
-    setBusy(true);
-    // Arm FireOne modules when authorizing
-    if (hardware.isConnected) {
-      try {
-        await hardware.armAll();
-        toast.info('FireOne: Todos os módulos ARMADOS');
-      } catch { toast.warning('FireOne: Falha ao armar módulos'); }
-    }
-    // Arm PBUS devices when authorizing
-    if (pbus.isConnected) {
-      try {
-        await pbus.armAll();
-        toast.info(`PBUS: ${pbus.deviceCount} dispositivos ARMADOS`);
-      } catch { toast.warning('PBUS: Falha ao armar dispositivos'); }
-    }
-    const ok = await showOrchestrator.authorize(authScope);
-    setBusy(false);
-    if (ok) toast.success(`Authorized (${authScope})`);
-    else toast.error('Authorization failed');
-  }, [authScope, hardware, pbus]);
-
-  const handleDeauthorize = useCallback(async () => {
-    // Disarm FireOne modules
-    if (hardware.isConnected) {
-      try { await hardware.disarmAll(); toast.info('FireOne: Módulos DESARMADOS'); } catch {}
-    }
-    if (pbus.isConnected) {
-      try { await pbus.disarmAll(); toast.info('PBUS: Dispositivos DESARMADOS'); } catch {}
-    }
-    await showOrchestrator.deauthorize();
-    toast.warning('Show deauthorized');
-  }, [hardware, pbus]);
-
-  const handleCountdown = useCallback(() => {
-    showOrchestrator.startCountdown(countdownTarget);
-    toast.info(`Countdown: T-${countdownTarget}s`);
-  }, [countdownTarget]);
-
-  const handlePause = useCallback(async () => { await showOrchestrator.pause(); toast.warning('Show paused'); }, []);
-  const handleResume = useCallback(async () => { await showOrchestrator.resume(); toast.info('Show resumed'); }, []);
-  const handleLand = useCallback(async () => { await showOrchestrator.startLanding(); toast.info('Landing sequence'); }, []);
-  const handleAbort = useCallback(async () => {
-    // Emergency stop all hardware
-    if (hardware.isConnected) {
-      try { await hardware.emergencyStop(); } catch {}
-    }
-    if (pbus.isConnected) {
-      try { await pbus.emergencyStop(); } catch {}
-    }
-    await showOrchestrator.abort('User emergency abort');
-    toast.error('🚨 EMERGENCY ABORT');
-  }, [hardware, pbus]);
-  const handleReset = useCallback(() => { showOrchestrator.reset(); toast.info('Show control reset'); }, []);
-
-  // ── Derived ───────────────────────────────────────────────────
-
-  const serverTime = clockSync.synced ? localTime + clockSync.offset : null;
-  const progress = showOrchestrator.getProgress();
-  const phase = orc.phase;
-  const isLive = phase === 'running' || phase === 'countdown' || phase === 'paused' || phase === 'landing';
-  const canReset = phase === 'complete' || phase === 'aborted' || phase === 'error';
-  const activeWarnings = orc.warnings.filter(w => !w.dismissed);
-
-  const preflightDone = phase !== 'idle' && phase !== 'preflight';
-  const uploadDone = ['uploaded', 'authorized', 'countdown', 'running', 'paused', 'landing', 'complete'].includes(phase);
-  const authDone = ['authorized', 'countdown', 'running', 'paused', 'landing', 'complete'].includes(phase);
-
-  const getPhaseGlow = (): string => {
-    switch (phase) {
-      case 'countdown': return 'shadow-[0_0_40px_hsl(var(--warning)/0.15)]';
-      case 'running': return 'shadow-[0_0_40px_hsl(var(--success)/0.15)]';
-      case 'aborted': case 'error': return 'shadow-[0_0_40px_hsl(var(--destructive)/0.15)]';
-      default: return '';
-    }
-  };
+  const totalArmed = channels.filter(c => c.armed).length;
+  const totalFiring = channels.filter(c => c.firing).length;
 
   return (
-    <div className={cn("h-full flex flex-col bg-surface-0/95 backdrop-blur-2xl border-l border-border/30", getPhaseGlow())}>
-      {/* ── Header — FX Commander style top bar ────────────── */}
-      <div className="px-3 py-2.5 border-b border-border/30 bg-gradient-to-b from-surface-1/80 to-surface-0/60">
-        <div className="flex items-center justify-between mb-1.5">
-          <div className="flex items-center gap-2">
-            <div className={cn(
-              "w-2.5 h-2.5 rounded-full",
-              phase === 'running' ? "bg-success animate-pulse" :
-              phase === 'countdown' ? "bg-warning animate-pulse" :
-              phase === 'error' || phase === 'aborted' ? "bg-destructive" :
-              phase === 'authorized' ? "bg-success" :
-              "bg-muted-foreground/30"
-            )} />
-            <span className="text-[11px] font-bold text-foreground tracking-[0.15em] font-display uppercase">Show Control</span>
+    <div className="flex flex-col h-full" style={{ background: 'hsl(220 15% 4%)' }}>
+      {/* Header */}
+      <div className="shrink-0 px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: 'hsl(32 100% 50% / 0.1)', background: 'hsl(220 12% 5%)' }}>
+        <div className="flex items-center gap-3">
+          <Activity className="w-4 h-4" style={{ color: 'hsl(32 100% 55%)' }} />
+          <span className="text-[10px] font-black font-mono tracking-[0.25em] text-foreground/80">SHOW CONTROL</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            <Shield className="w-3 h-3 text-red-400/50" />
+            <span className="text-[8px] font-mono font-bold text-red-400/60">{totalArmed} ARMED</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <Badge variant="outline" className={cn(
-              "text-[8px] px-2 py-0.5 font-bold tracking-wider border-2",
-              phase === 'running' ? "text-success border-success/40 bg-success/10" :
-              phase === 'countdown' ? "text-warning border-warning/40 bg-warning/10 animate-pulse" :
-              phase === 'authorized' ? "text-success border-success/30" :
-              phase === 'error' || phase === 'aborted' ? "text-destructive border-destructive/40" :
-              "text-muted-foreground border-border/40"
-            )}>
-              {phaseLabel(phase)}
-            </Badge>
-            {canReset && (
-              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground" onClick={handleReset}>
-                <RotateCcw className="w-3 h-3" />
-              </Button>
-            )}
+            <Radio className="w-3 h-3 text-amber-400/50" />
+            <span className="text-[8px] font-mono font-bold text-amber-400/60">{totalFiring} ACTIVE</span>
           </div>
         </div>
-
-        {/* Phase progress indicator */}
-        <PhaseIndicator currentPhase={phase} />
       </div>
 
-      {/* ── Master Clock / Status Display ────────────────── */}
-      <div className={cn(
-        "px-3 py-3 border-b border-border/20 text-center",
-        phase === 'countdown' ? "bg-warning/5" :
-        phase === 'running' ? "bg-success/5" :
-        phase === 'landing' ? "bg-primary/5" :
-        phase === 'aborted' || phase === 'error' ? "bg-destructive/5" : ""
-      )}>
-        {phase === 'countdown' ? (
-          <div className="text-4xl font-mono font-black text-warning tracking-[0.2em] animate-pulse drop-shadow-lg">
-            {formatCountdown(orc.countdown)}
-          </div>
-        ) : phase === 'running' || phase === 'paused' ? (
-          <div className="text-3xl font-mono font-black text-foreground tracking-wider">
-            {formatElapsed(orc.showElapsed)}
-          </div>
-        ) : (
-          <div className="text-2xl font-mono font-bold text-foreground/80 tracking-wide">
-            {formatTime(localTime)}
-          </div>
-        )}
-
-        {/* Clock sync status */}
-        <div className="flex items-center justify-center gap-1.5 mt-1">
-          {clockSync.synced ? (
-            <>
-              <div className="w-1.5 h-1.5 rounded-full bg-success" />
-              <span className="text-[8px] text-muted-foreground font-mono">
-                Sync: {serverTime ? formatTime(serverTime) : '---'} (Δ{clockSync.offset.toFixed(0)}ms)
-              </span>
-            </>
-          ) : (
-            <>
-              <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />
-              <span className="text-[8px] text-muted-foreground/60">Clock not synced</span>
-            </>
-          )}
+      {/* Timecode */}
+      <div className="shrink-0 py-3 border-b" style={{ borderColor: 'hsl(32 100% 50% / 0.06)', background: 'linear-gradient(180deg, hsl(32 100% 50% / 0.03) 0%, transparent 100%)' }}>
+        <TimecodeDisplay ms={elapsedMs} />
+        <div className="text-center mt-1">
+          <span className="text-[7px] font-mono tracking-[0.3em] text-muted-foreground/30">MASTER TIMECODE</span>
         </div>
-
-        {/* Progress bars */}
-        {phase === 'uploading' && (
-          <div className="mt-2.5">
-            <Progress value={orc.uploadProgress * 100} className="h-2 rounded-full" />
-            <span className="text-[8px] text-muted-foreground mt-1 block">
-              Uploading… {(orc.uploadProgress * 100).toFixed(0)}%
-            </span>
-          </div>
-        )}
-        {(phase === 'running' || phase === 'paused') && (
-          <div className="mt-2.5">
-            <Progress value={progress * 100} className="h-2 rounded-full" />
-            <div className="flex justify-between text-[8px] text-muted-foreground mt-1">
-              <span>{orc.showElapsed.toFixed(1)}s</span>
-              <span className="font-bold text-foreground">{(progress * 100).toFixed(0)}%</span>
-              <span>{orc.showDuration.toFixed(0)}s</span>
-            </div>
-          </div>
-        )}
-        {phase === 'landing' && (
-          <div className="mt-2 flex items-center justify-center gap-2">
-            <Plane className="w-4 h-4 text-primary animate-bounce" />
-            <span className="text-[10px] text-primary font-bold tracking-wider">LANDING IN PROGRESS</span>
-          </div>
-        )}
       </div>
 
-      {/* ── Warnings & Errors ────────────────────────────── */}
-      {activeWarnings.length > 0 && (
-        <div className="px-2 py-1.5 border-b border-warning/20 bg-warning/5 max-h-20 overflow-y-auto">
-          {activeWarnings.slice(0, 4).map(w => (
-            <div key={w.id} className="flex items-center gap-1.5 text-[8px] py-0.5">
-              {w.severity === 'critical' ? (
-                <XCircle className="w-3 h-3 text-destructive shrink-0" />
-              ) : (
-                <AlertCircle className="w-3 h-3 text-warning shrink-0" />
-              )}
-              <span className="text-foreground/80 flex-1 truncate">{w.message}</span>
-              <button className="text-muted-foreground hover:text-foreground shrink-0 text-[10px]"
-                onClick={() => showOrchestrator.dismissWarning(w.id)}>✕</button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {orc.error && (
-        <div className="px-3 py-2 border-b border-destructive/30 bg-destructive/5">
-          <div className="flex items-center gap-1.5 text-[9px] text-destructive">
-            <XCircle className="w-3.5 h-3.5 shrink-0" />
-            <span className="font-bold">Error:</span>
-            <span className="truncate">{orc.error}</span>
-          </div>
-        </div>
-      )}
-
-      {/* ── Show Info Strip ──────────────────────────────── */}
-      <div className="px-3 py-2 border-b border-border/15 grid grid-cols-5 gap-1">
-        {[
-          { label: 'Fleet', value: `${orc.totalDrones > 0 ? orc.totalDrones : uavs.size}`, icon: Cpu },
-          { label: 'Slots', value: `${positions.length}`, icon: Target },
-          { label: 'Duration', value: `${duration}s`, icon: Clock },
-          { label: 'FireOne', value: hardware.isConnected ? `${hardware.modules.size}` : 'SIM', icon: Zap },
-          { label: 'PBUS', value: pbus.isConnected ? `${pbus.deviceCount}` : 'SIM', icon: Radio },
-        ].map(item => (
-          <div key={item.label} className="flex flex-col items-center gap-0.5 py-1 rounded-lg bg-surface-1/40">
-            <item.icon className="w-3 h-3 text-muted-foreground/50" />
-            <span className="text-[10px] font-bold text-foreground">{item.value}</span>
-            <span className="text-[7px] text-muted-foreground/60 uppercase tracking-wider">{item.label}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* FireOne Hardware Status */}
-      {hardware.isConnected && (
-        <div className="px-3 py-1.5 border-b border-green-500/15 bg-green-500/5 flex items-center gap-2 text-[8px]">
-          <Zap className="w-3 h-3 text-green-400" />
-          <span className="text-green-400 font-bold">FIREONE LIVE</span>
-          <span className="text-muted-foreground">
-            {hardware.wirelessModuleCount > 0 && <><Wifi className="w-2.5 h-2.5 inline mr-0.5" />{hardware.wirelessModuleCount}W</>}
-            {hardware.wiredModuleCount > 0 && <><Usb className="w-2.5 h-2.5 inline mx-0.5" />{hardware.wiredModuleCount}C</>}
-          </span>
-          {hardware.worstRssi !== null && (
-            <span className={hardware.worstRssi > -60 ? 'text-green-400' : hardware.worstRssi > -75 ? 'text-yellow-400' : 'text-red-400'}>
-              RSSI: {hardware.worstRssi}dBm
-            </span>
-          )}
-          <span className="text-muted-foreground/50 ml-auto">TX:{hardware.txBytes}B RX:{hardware.rxBytes}B</span>
-        </div>
-      )}
-
-      {/* ── FX Commander Grid — Main Actions ─────────────── */}
-      <ScrollArea className="flex-1">
-        <div className="p-3 space-y-3">
-
-          {/* Row 1: Preflight & Upload */}
-          <div className="grid grid-cols-2 gap-2">
-            <CommanderButton
-              icon={CheckCircle2}
-              label="Check Show"
-              sublabel={preflightDone ? '✓ Passed' : 'Preflight'}
-              active={phase === 'preflight'}
-              disabled={phase !== 'idle' || busy}
-              onClick={handlePreflight}
-              color="hsl(var(--primary))"
-            />
-            <CommanderButton
-              icon={Upload}
-              label="Upload"
-              sublabel={uploadDone ? '✓ Sent' : `${positions.length} slots`}
-              active={phase === 'uploading'}
-              disabled={phase !== 'preflight' || busy}
-              pulse={phase === 'uploading'}
-              onClick={handleUpload}
-              color="hsl(var(--primary))"
-            />
-          </div>
-
-          {/* Row 2: Authorize & Config */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1.5">
-              <CommanderButton
-                icon={Shield}
-                label="Authorize"
-                sublabel={authDone ? `✓ ${authScope}` : 'Arm show'}
-                active={authDone}
-                disabled={phase !== 'uploaded' || busy}
-                onClick={handleAuthorize}
-                color="hsl(var(--success))"
-              />
-              {phase === 'authorized' && (
-                <button onClick={handleDeauthorize}
-                  className="w-full text-[8px] text-warning/70 hover:text-warning py-0.5 tracking-wider uppercase">
-                  Revoke Auth
-                </button>
-              )}
-            </div>
-            <div className="space-y-1.5">
-              <select
-                value={authScope}
-                onChange={(e) => setAuthScope(e.target.value as AuthorizationScope)}
-                className="h-7 w-full text-[9px] bg-surface-1/40 border border-border/30 rounded-lg px-2 text-foreground"
-              >
-                <option value="live">🟢 Live Mode</option>
-                <option value="rehearsal">🟡 Rehearsal</option>
-              </select>
-              <select
-                value={startMethod}
-                onChange={(e) => setStartMethod(e.target.value as StartMethod)}
-                className="h-7 w-full text-[9px] bg-surface-1/40 border border-border/30 rounded-lg px-2 text-foreground"
-              >
-                <option value="auto">Manual Start</option>
-                <option value="rc">RC Trigger</option>
-                <option value="gps_time">GPS Time Sync</option>
-              </select>
-              {startMethod === 'gps_time' && (
-                <Input type="time" step="1" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)}
-                  className="h-7 text-[9px] bg-surface-1/40 border-border/30 rounded-lg" />
-              )}
-            </div>
-          </div>
-
-          {/* ── Countdown & GO ────────────────────────────── */}
-          <div className="rounded-xl border border-border/20 bg-surface-1/30 p-2.5 space-y-2">
-            <div className="flex items-center gap-2">
-              <Input
-                type="number" value={countdownTarget}
-                onChange={(e) => setCountdownTarget(parseInt(e.target.value) || 10)}
-                className="h-8 text-[10px] w-16 bg-surface-0/60 border-border/30 rounded-lg font-mono text-center font-bold"
-              />
-              <Button
-                className={cn(
-                  "flex-1 h-10 text-[11px] font-bold tracking-[0.2em] uppercase rounded-xl transition-all",
-                  phase === 'authorized'
-                    ? "bg-gradient-to-b from-success to-success/80 text-success-foreground hover:from-success/90 hover:to-success/70 shadow-lg shadow-success/20"
-                    : ""
-                )}
-                disabled={phase !== 'authorized'}
-                onClick={handleCountdown}
-              >
-                <Clock className="w-4 h-4 mr-2" />
-                START COUNTDOWN
-              </Button>
-            </div>
-          </div>
-
-          {/* ── Live Controls — visible during show ──────── */}
-          {isLive && (
-            <div className="rounded-xl border-2 border-warning/30 bg-warning/5 p-3 space-y-2">
-              <div className="flex items-center gap-2 mb-1">
-                <Radio className="w-4 h-4 text-warning animate-pulse" />
-                <span className="text-[10px] font-black text-warning tracking-[0.2em] uppercase">Live Controls</span>
+      {/* Quad Split */}
+      <div className="grid grid-cols-2 gap-[1px] flex-1 min-h-0" style={{ background: 'hsl(220 10% 8%)' }}>
+        {systems.map(sys => {
+          const Icon = sys.icon;
+          const isArmed = sys.status === 'ARMED';
+          return (
+            <div key={sys.code} className="flex flex-col p-3 relative overflow-hidden" style={{
+              background: isArmed
+                ? `linear-gradient(135deg, hsl(0 40% 6%) 0%, hsl(220 15% 4%) 100%)`
+                : `linear-gradient(135deg, ${sys.glow} 0%, hsl(220 15% 4%) 100%)`,
+            }}>
+              <div className="absolute inset-0 pointer-events-none opacity-[0.02]" style={{
+                background: 'repeating-linear-gradient(0deg, transparent 0px, transparent 2px, hsl(32 100% 50%) 2px, hsl(32 100% 50%) 3px)',
+              }} />
+              <div className="flex items-center justify-between mb-2 relative z-10">
+                <div className="flex items-center gap-2">
+                  <Icon className="w-4 h-4" style={{ color: sys.color }} />
+                  <span className="text-[9px] font-black font-mono tracking-[0.2em]" style={{ color: sys.color }}>{sys.code}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className={cn("w-1.5 h-1.5 rounded-full", isArmed && "animate-pulse")} style={{
+                    backgroundColor: isArmed ? 'hsl(0 85% 48%)' : sys.status === 'ONLINE' ? 'hsl(120 70% 40%)' : 'hsl(220 10% 25%)',
+                    boxShadow: isArmed ? '0 0 6px hsl(0 85% 48%)' : sys.status === 'ONLINE' ? `0 0 4px ${sys.color}` : 'none',
+                  }} />
+                  <span className={cn("text-[7px] font-bold font-mono tracking-wider", isArmed ? "text-red-400" : sys.status === 'ONLINE' ? "text-foreground/50" : "text-muted-foreground/30")}>{sys.status}</span>
+                </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                {phase === 'running' && (
-                  <CommanderButton icon={Pause} label="Pause" onClick={handlePause} color="hsl(var(--warning))" />
-                )}
-                {phase === 'paused' && (
-                  <CommanderButton icon={Play} label="Resume" onClick={handleResume} color="hsl(var(--success))" active />
-                )}
-                {(phase === 'running' || phase === 'paused') && (
-                  <CommanderButton icon={Plane} label="Land" onClick={handleLand} color="hsl(var(--primary))" />
-                )}
-              </div>
-
-              {/* EMERGENCY ABORT — large, unmistakable */}
-              <button
-                onClick={handleAbort}
-                className={cn(
-                  "w-full h-12 rounded-xl font-black text-[12px] tracking-[0.25em] uppercase transition-all select-none",
-                  "bg-gradient-to-b from-destructive to-destructive/80 text-destructive-foreground",
-                  "hover:from-destructive/90 hover:to-destructive/70 active:scale-[0.97]",
-                  "shadow-lg shadow-destructive/30 border-2 border-destructive/50",
-                  "flex items-center justify-center gap-2"
-                )}
-              >
-                <AlertTriangle className="w-5 h-5" />
-                🚨 EMERGENCY ABORT
-              </button>
-            </div>
-          )}
-
-          {/* ── Drone Mapping Summary ────────────────────── */}
-          {orc.droneMapping.length > 0 && (
-            <div className="rounded-xl border border-border/20 bg-surface-1/30 p-2.5">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[9px] font-bold text-foreground tracking-wider uppercase">Drone Mapping</span>
-                <Badge variant="outline" className="text-[7px] px-1.5">
-                  {orc.droneMapping.filter(Boolean).length}/{orc.droneMapping.length}
-                </Badge>
-              </div>
-              <div className="grid grid-cols-4 gap-1 max-h-24 overflow-y-auto">
-                {orc.droneMapping.slice(0, 24).map((droneId, slot) => (
-                  <div key={slot} className="flex items-center gap-1 bg-surface-0/50 rounded-md px-1.5 py-0.5">
-                    <span className="text-[7px] font-mono text-muted-foreground">#{slot + 1}</span>
-                    <div className={cn("w-1.5 h-1.5 rounded-full", droneId ? "bg-success" : "bg-muted-foreground/30")} />
+              <div className="space-y-1.5 relative z-10 flex-1">
+                {[
+                  { label: 'CHANNELS', value: sys.channels },
+                  { label: 'ACTIVE', value: sys.activeCount, highlight: sys.activeCount > 0 },
+                  { label: 'STATE', value: sys.lastCommand },
+                ].map(row => (
+                  <div key={row.label} className="flex items-center justify-between">
+                    <span className="text-[7px] font-mono text-muted-foreground/30">{row.label}</span>
+                    <span className={cn("text-[10px] font-mono font-bold", row.highlight ? "text-red-400" : "text-foreground/50")}>{row.value}</span>
                   </div>
                 ))}
               </div>
-              {orc.droneMapping.length > 24 && (
-                <div className="text-[7px] text-muted-foreground/50 text-center mt-1">
-                  +{orc.droneMapping.length - 24} more
-                </div>
-              )}
+              <div className="mt-2 relative z-10">
+                <Sparkline data={sys.activity} color={sys.color} />
+              </div>
             </div>
-          )}
+          );
+        })}
+      </div>
 
-          {/* ── Config Summary ───────────────────────────── */}
-          <div className="rounded-xl border border-border/20 bg-surface-1/30 p-2.5 space-y-1.5">
-            <span className="text-[9px] font-bold text-foreground tracking-wider uppercase block mb-1">Configuration</span>
-            {[
-              { label: 'Show', value: projectName },
-              { label: 'Auth', value: orc.authorization.authorized ? `✅ ${orc.authorization.scope}` : '—' },
-              { label: 'Method', value: startMethod === 'auto' ? 'Manual' : startMethod === 'rc' ? 'RC Trigger' : 'GPS Time' },
-              { label: 'Clock', value: clockSync.synced ? `✅ Δ${clockSync.offset.toFixed(0)}ms` : '❌ Not synced' },
-            ].map(item => (
-              <div key={item.label} className="flex items-center justify-between text-[8px]">
-                <span className="text-muted-foreground/60">{item.label}</span>
-                <span className="text-foreground/80 font-mono truncate max-w-[120px]">{item.value}</span>
+      {/* Event Log */}
+      <div className="shrink-0 border-t" style={{ borderColor: 'hsl(32 100% 50% / 0.08)' }}>
+        <div className="px-3 py-1.5 flex items-center justify-between" style={{ background: 'hsl(220 12% 5%)' }}>
+          <span className="text-[7px] font-mono font-bold tracking-[0.2em] text-muted-foreground/40">EVENT LOG</span>
+          <span className="text-[7px] font-mono text-muted-foreground/25">{eventLog.length} entries</span>
+        </div>
+        <ScrollArea className="h-28">
+          <div className="px-3 py-1 space-y-[2px]">
+            {eventLog.length === 0 ? (
+              <div className="text-[8px] font-mono text-muted-foreground/20 text-center py-4">NO EVENTS LOGGED</div>
+            ) : eventLog.map(e => (
+              <div key={e.id} className="flex items-center gap-2 py-0.5">
+                <span className="text-[7px] font-mono text-muted-foreground/25 shrink-0">
+                  {new Date(e.timestamp).toLocaleTimeString('en', { hour12: false })}
+                </span>
+                <div className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: e.color }} />
+                <span className="text-[7px] font-mono font-bold shrink-0" style={{ color: e.color }}>{e.system}</span>
+                <span className="text-[8px] font-mono text-foreground/40 truncate">{e.message}</span>
               </div>
             ))}
           </div>
-        </div>
-      </ScrollArea>
-
-      {/* ── Bottom Status Bar ────────────────────────────── */}
-      <div className="px-3 py-2 border-t border-border/20 bg-surface-1/30 flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <Wifi className={cn("w-3 h-3", connectionState === 'connected' ? "text-success" : "text-muted-foreground/40")} />
-          <span className="text-[7px] font-mono text-muted-foreground/60 uppercase tracking-wider">
-            {connectionState === 'connected' ? 'Connected' : 'Offline'}
-          </span>
-        </div>
-        <span className="text-[7px] font-mono text-muted-foreground/40">
-          Skybrush · Flockwave v1.0
-        </span>
+        </ScrollArea>
       </div>
     </div>
   );
