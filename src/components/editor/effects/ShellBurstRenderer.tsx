@@ -651,26 +651,46 @@ export default function ShellBurstRenderer({
       smokeParticles.current = sp;
     }
 
-    // Step smoke particles and update meshes
+    // Step smoke particles with turbulence drift and fluid grid modulation
     smokeUniforms.uTime.value = time;
     smokeUniforms.uSmokeColor.value.copy(baseColor);
-    smokeUniforms.uSmokeOpacity.value = sceneSettings.smokeRenderQuality === 'high' ? 0.06 : 0.03;
+    smokeUniforms.uSmokeOpacity.value = sceneSettings.smokeRenderQuality === 'high' ? 0.07 : 0.035;
+
+    // Read fluid density for smoke modulation if available
+    const fluidGrid = (window as any).__niagaraFluidGrid;
+    
     for (let i = 0; i < smokeParticles.current.length; i++) {
       const sp = smokeParticles.current[i];
       sp.age += dt;
-      // Buoyancy + wind drift + turbulent displacement
-      sp.x += sp.vx * dt + Math.sin(time * 0.5 + sp.seed * 10) * 0.02;
+      
+      // Turbulence drift using hash01 seeded per particle for non-uniform expansion
+      const turbSeed = hash01(sp.seed * 127 + i);
+      const turbFreqX = 0.3 + turbSeed * 0.4;
+      const turbFreqZ = 0.25 + turbSeed * 0.35;
+      const turbAmp = 0.02 + turbSeed * 0.03;
+      
+      sp.x += sp.vx * dt + Math.sin(time * turbFreqX + sp.seed * 10) * turbAmp;
       sp.y += sp.vy * dt;
-      sp.z += sp.vz * dt + Math.cos(time * 0.4 + sp.seed * 7) * 0.02;
-      sp.vy *= 0.995; // slow deceleration
+      sp.z += sp.vz * dt + Math.cos(time * turbFreqZ + sp.seed * 7) * turbAmp;
+      sp.vy *= 0.994;
       
       const mesh = smokeMeshRefs.current[i];
       if (mesh) {
         mesh.position.set(sp.x, sp.y, sp.z);
         const lifeRatio = sp.age / sp.maxAge;
-        const expansion = sp.scale * (0.5 + lifeRatio * 3.0);
+        const expansion = sp.scale * (0.5 + lifeRatio * 3.5);
         mesh.scale.setScalar(expansion);
         mesh.visible = sp.age < sp.maxAge;
+        
+        // Modulate opacity by fluid grid density if available
+        if (fluidGrid && mesh.material) {
+          const worldX = (position as number[])[0] + sp.x;
+          const worldZ = (position as number[])[2] + sp.z;
+          const { readDensityAt } = require('@/render_ultra/fireworks/niagaraFluids');
+          const density = readDensityAt(fluidGrid, worldX, worldZ);
+          const fluidBoost = 1 + density * 0.4;
+          (mesh.material as any).uniforms.uSmokeOpacity.value = smokeUniforms.uSmokeOpacity.value * fluidBoost;
+        }
       }
     }
   });
