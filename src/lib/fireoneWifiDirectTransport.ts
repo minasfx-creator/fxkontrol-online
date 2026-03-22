@@ -231,7 +231,7 @@ export class WiFiDirectTransport implements FireOneTransport {
     let payload: ArrayBuffer;
     if (this._encryptionKey) {
       const encrypted = await encrypt(this._encryptionKey, frame);
-      payload = encrypted.buffer as ArrayBuffer;
+      payload = (encrypted as unknown as { buffer: ArrayBuffer }).buffer;
     } else {
       payload = frame.slice().buffer as ArrayBuffer;
     }

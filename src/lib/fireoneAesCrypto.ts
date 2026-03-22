@@ -39,9 +39,9 @@ export async function deriveKey(psk: string): Promise<CryptoKey> {
 export async function encrypt(key: CryptoKey, plaintext: Uint8Array): Promise<Uint8Array> {
   const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
   const cipherBuffer = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
+    { name: 'AES-GCM', iv: iv as unknown as ArrayBuffer },
     key,
-    plaintext
+    plaintext as unknown as ArrayBuffer
   );
   const cipher = new Uint8Array(cipherBuffer);
   const packed = new Uint8Array(IV_LENGTH + cipher.length);
