@@ -138,6 +138,8 @@ class ArtNetModuleService {
       gpsLat: config.gpsLat,
       gpsLng: config.gpsLng,
       label: config.label,
+      cloneOf: config.cloneOf,
+      redundancyMode: config.redundancyMode ?? 'failover',
     };
 
     this.controller.modules.push(module);
