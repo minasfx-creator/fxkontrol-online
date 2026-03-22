@@ -269,11 +269,11 @@ export default function Dashboard() {
         {/* Tactical grid overlay */}
         <div className="absolute inset-0 tactical-grid" />
         <div className="absolute inset-0 tactical-scanline" />
-        {/* Corner accents */}
-        <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-primary/30" />
-        <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-primary/30" />
-        <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-primary/30" />
-        <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-primary/30" />
+        {/* Corner accents — amber */}
+        <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2" style={{ borderColor: 'hsl(32 100% 50% / 0.3)' }} />
+        <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2" style={{ borderColor: 'hsl(32 100% 50% / 0.3)' }} />
+        <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2" style={{ borderColor: 'hsl(32 100% 50% / 0.3)' }} />
+        <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2" style={{ borderColor: 'hsl(32 100% 50% / 0.3)' }} />
         
         <div className="relative z-10 flex items-start justify-between">
           <div>
