@@ -67,6 +67,7 @@ export function useRadioLink() {
   const readLoopRef = useRef(false);
   const rangeTestIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const bufferRef = useRef(new Uint8Array(0));
+  const tdmaRef = useRef<TDMAScheduler | null>(null);
 
   // Read loop
   const startReadLoop = useCallback(async () => {
