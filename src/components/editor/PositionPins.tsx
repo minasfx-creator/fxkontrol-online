@@ -547,27 +547,35 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
 Pin.displayName = 'Pin';
 
 /** Always-on direction line — shows launch vector from H/P/R Euler rotation */
-function DirectionLine({ position, color, isSelected, isHovered }: { position: Position; color: string; isSelected: boolean; isHovered: boolean }) {
+function DirectionLine({ position, color, isSelected, isHovered, hasEffects }: { position: Position; color: string; isSelected: boolean; isHovered: boolean; hasEffects: boolean }) {
   const linePoints = useMemo((): [number, number, number][] => {
     if (position.type !== 'pyro') return [];
     const hRad = position.heading * (Math.PI / 180);
     const pRad = (position.pitch || 85) * (Math.PI / 180);
-    const length = isSelected ? 3 : 2;
+    const length = isSelected ? 5 : isHovered ? 3 : hasEffects ? 4 : 2;
     const dx = Math.sin(hRad) * Math.cos(pRad) * length;
     const dy = Math.sin(pRad) * length;
     const dz = -Math.cos(hRad) * Math.cos(pRad) * length;
     return [[0, 0.15, 0], [dx, dy + 0.15, dz]];
-  }, [position.heading, position.pitch, position.type, isSelected]);
+  }, [position.heading, position.pitch, position.type, isSelected, isHovered, hasEffects]);
 
   if (linePoints.length < 2) return null;
 
-  const opacity = isSelected ? 0.7 : isHovered ? 0.3 : 0.15;
-  const lineWidth = isSelected ? 2.5 : isHovered ? 1.5 : 1;
+  const opacity = isSelected ? 0.85 : isHovered ? 0.4 : hasEffects ? 0.5 : 0.2;
+  const lineWidth = isSelected ? 3 : isHovered ? 2 : hasEffects ? 2 : 1;
+  const lineColor = (isSelected || hasEffects) ? color : '#aaaaaa';
 
   return (
     <>
-      <Line points={linePoints} color={isSelected ? color : '#aaaaaa'} lineWidth={lineWidth} transparent opacity={opacity} />
-      {/* Small arrowhead at tip */}
+      <Line points={linePoints} color={lineColor} lineWidth={lineWidth} transparent opacity={opacity} />
+      {/* Armed indicator dot at origin */}
+      {hasEffects && (
+        <mesh position={[0, 0.15, 0]}>
+          <sphereGeometry args={[0.04, 8, 8]} />
+          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.5} transparent opacity={0.8} />
+        </mesh>
+      )}
+      {/* Arrowhead at tip */}
       {(() => {
         const tip = linePoints[1];
         const dir = new THREE.Vector3(tip[0], tip[1] - 0.15, tip[2]).normalize();
@@ -575,8 +583,8 @@ function DirectionLine({ position, color, isSelected, isHovered }: { position: P
         const e = new THREE.Euler().setFromQuaternion(q);
         return (
           <mesh position={tip} rotation={[e.x, e.y, e.z]}>
-            <coneGeometry args={[0.06, 0.18, 4]} />
-            <meshBasicMaterial color={isSelected ? color : '#aaaaaa'} transparent opacity={opacity} />
+            <coneGeometry args={[0.08, 0.22, 4]} />
+            <meshBasicMaterial color={lineColor} transparent opacity={opacity} />
           </mesh>
         );
       })()}
