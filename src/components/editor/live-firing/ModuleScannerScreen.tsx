@@ -161,7 +161,7 @@ export default function ModuleScannerScreen({
               );
             })}
           </svg>
-          {scanning && (
+          {radarActive && (
             <div className="absolute inset-0 rounded-full" style={{
               boxShadow: '0 0 6px hsl(32 100% 50% / 0.3)',
             }} />
