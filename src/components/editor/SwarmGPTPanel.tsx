@@ -934,23 +934,27 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
         </div>}
 
         {/* Prompt input */}
-        {mode !== 'video' && mode !== 'presets' && <Textarea
-          placeholder={
-            mode === 'full-show' ? "Descreva o tema do show completo..."
-            : mode === 'music-sync' ? "Descreva o estilo visual sincronizado com a música..."
-            : mode === 'image' ? "(Opcional) Descreva o que extrair da imagem..."
-            : "Descreva a formação..."
-          }
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !loading) {
-              e.preventDefault();
-              handleGenerate();
+        {mode !== 'video' && mode !== 'presets' && <div className="space-y-1">
+          <span className="text-[7px] font-mono font-bold uppercase tracking-[0.2em]" style={{ color: 'hsl(165 50% 40%)' }}>MISSION BRIEF</span>
+          <Textarea
+            placeholder={
+              mode === 'full-show' ? "Descreva o tema do show completo..."
+              : mode === 'music-sync' ? "Descreva o estilo visual sincronizado com a música..."
+              : mode === 'image' ? "(Opcional) Descreva o que extrair da imagem..."
+              : "Descreva a formação..."
             }
-          }}
-          className="h-16 text-[10px] bg-surface-2 border-border resize-none"
-        />}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !loading) {
+                e.preventDefault();
+                handleGenerate();
+              }
+            }}
+            className="h-16 text-[10px] bg-surface-2 resize-none font-mono"
+            style={{ borderColor: 'hsl(165 30% 20%)' }}
+          />
+        </div>}
 
         {/* Generate + Preview buttons */}
         {mode !== 'presets' && <div className="flex gap-1">
