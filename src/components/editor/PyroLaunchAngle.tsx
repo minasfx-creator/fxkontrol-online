@@ -639,7 +639,7 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
         <>
           <Line points={trajectoryPoints} color={COLORS.trajectory} lineWidth={2} transparent opacity={0.6} />
           {/* Burst indicator — animated starburst at apex */}
-          <BurstIndicator position={trajectoryData.apexPoint as [number, number, number]} color={COLORS.trajectory} />
+          <BurstIndicator position={trajectoryData.apexPoint as [number, number, number]} color={COLORS.trajectory} caliber={realCaliber} breakHeight={getBreakHeight(realCaliber)} />
         </>
       )}
 
