@@ -394,17 +394,17 @@ export default function CommandCenter() {
   // ══════════════════════════════════════════════
   return (
     <div className="h-[calc(100vh-3rem)] flex overflow-hidden">
-      {/* Sidebar — Apple glassmorphism × BR2049 */}
+      {/* Sidebar — Apple glassmorphism dock */}
       <div
         className={cn(
-          "shrink-0 flex flex-col border-r transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
+          "shrink-0 flex flex-col transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
           sidebarCollapsed ? "w-[56px]" : "w-56"
         )}
         style={{
-          background: 'linear-gradient(180deg, hsl(220 22% 4% / 0.95), hsl(220 22% 2% / 0.98))',
-          borderColor: 'hsl(var(--primary) / 0.06)',
-          backdropFilter: 'blur(40px) saturate(1.5)',
-          WebkitBackdropFilter: 'blur(40px) saturate(1.5)',
+          background: 'rgba(8, 10, 14, 0.85)',
+          backdropFilter: 'blur(48px) saturate(1.8)',
+          WebkitBackdropFilter: 'blur(48px) saturate(1.8)',
+          borderRight: '1px solid rgba(255, 255, 255, 0.04)',
         }}
       >
         {/* Status Header — frosted glass card */}
@@ -541,9 +541,10 @@ export default function CommandCenter() {
         <div
           className="h-11 shrink-0 flex items-center justify-between px-5 border-b relative overflow-hidden"
           style={{
-            background: `linear-gradient(90deg, ${accent.glow} 0%, hsl(220 22% 3% / 0.95) 50%)`,
-            borderColor: 'hsl(var(--primary) / 0.04)',
-            backdropFilter: 'blur(32px) saturate(1.3)',
+            background: 'rgba(8, 10, 14, 0.88)',
+            backdropFilter: 'blur(48px) saturate(1.8)',
+            WebkitBackdropFilter: 'blur(48px) saturate(1.8)',
+            borderColor: 'rgba(255, 255, 255, 0.04)',
           }}
         >
           {/* Ambient accent line */}
