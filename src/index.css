@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,24 +6,24 @@
 
 @layer base {
   :root {
-    /* FX KONTROL Identity — deep cinematic dark with electric cyan + fire orange */
-    --background: 225 12% 7%;
-    --foreground: 210 20% 93%;
+    /* FX KONTROL Identity — cinematic deep space with electric precision */
+    --background: 228 15% 6%;
+    --foreground: 210 25% 95%;
 
-    --card: 225 10% 9%;
-    --card-foreground: 210 20% 93%;
+    --card: 228 13% 8%;
+    --card-foreground: 210 25% 95%;
 
-    --popover: 225 10% 11%;
-    --popover-foreground: 210 20% 93%;
+    --popover: 228 12% 10%;
+    --popover-foreground: 210 25% 95%;
 
     --primary: 195 100% 50%;
-    --primary-foreground: 225 20% 5%;
+    --primary-foreground: 228 20% 4%;
 
-    --secondary: 225 8% 14%;
-    --secondary-foreground: 210 15% 78%;
+    --secondary: 228 10% 13%;
+    --secondary-foreground: 210 18% 80%;
 
-    --muted: 225 8% 16%;
-    --muted-foreground: 220 10% 50%;
+    --muted: 228 10% 15%;
+    --muted-foreground: 220 12% 48%;
 
     --accent: 18 100% 55%;
     --accent-foreground: 0 0% 100%;
@@ -31,20 +31,20 @@
     --destructive: 0 80% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 225 10% 14%;
-    --input: 225 8% 16%;
+    --border: 228 12% 13%;
+    --input: 228 10% 15%;
     --ring: 195 100% 50%;
 
-    --radius: 0.5rem;
+    --radius: 0.625rem;
 
-    /* FX KONTROL surface hierarchy — refined gradient */
-    --surface-0: 225 14% 5%;
-    --surface-1: 225 12% 8%;
-    --surface-2: 225 10% 11%;
-    --surface-3: 225 9% 15%;
-    --surface-4: 225 8% 19%;
+    /* Surface hierarchy — 5 refined levels for depth */
+    --surface-0: 228 16% 4%;
+    --surface-1: 228 14% 7%;
+    --surface-2: 228 12% 10%;
+    --surface-3: 228 10% 14%;
+    --surface-4: 228 9% 18%;
 
-    /* FX KONTROL accent palette */
+    /* FXK accent palette — electric & precise */
     --electric: 195 100% 50%;
     --electric-glow: 195 100% 64%;
     --safety: 18 100% 55%;
@@ -52,29 +52,45 @@
     --success: 155 80% 42%;
     --success-foreground: 0 0% 100%;
     --warning: 42 95% 52%;
-    --timeline-bg: 225 14% 4%;
-    --timeline-track: 225 10% 9%;
+    --timeline-bg: 228 16% 3%;
+    --timeline-track: 228 12% 8%;
 
-    /* FX KONTROL brand */
+    /* FXK product line colors */
     --fxk-cyan: 195 100% 50%;
     --fxk-orange: 18 100% 55%;
     --fxk-gold: 42 95% 52%;
     --fxk-violet: 270 70% 55%;
     --fxk-magenta: 330 85% 55%;
+    --fxk-red: 0 80% 55%;
+    --fxk-blue: 210 90% 55%;
+    --fxk-green: 150 70% 45%;
+    --fxk-indigo: 250 60% 60%;
 
-    --sidebar-background: 225 13% 6%;
-    --sidebar-foreground: 210 15% 78%;
+    /* Premium gradients */
+    --gradient-brand: linear-gradient(135deg, hsl(195 100% 50%), hsl(210 90% 55%), hsl(250 60% 60%));
+    --gradient-fire: linear-gradient(135deg, hsl(0 80% 55%), hsl(18 100% 55%), hsl(42 95% 52%));
+    --gradient-glass: linear-gradient(180deg, hsl(228 14% 10% / 0.8), hsl(228 16% 6% / 0.95));
+
+    /* Premium shadows */
+    --shadow-sm: 0 1px 2px hsl(228 20% 2% / 0.6);
+    --shadow-md: 0 4px 16px hsl(228 20% 2% / 0.5), 0 1px 3px hsl(228 20% 2% / 0.3);
+    --shadow-lg: 0 8px 32px hsl(228 20% 2% / 0.6), 0 2px 8px hsl(228 20% 2% / 0.4);
+    --shadow-glow: 0 0 24px hsl(195 100% 50% / 0.15), 0 0 60px hsl(195 100% 50% / 0.06);
+
+    --sidebar-background: 228 15% 5%;
+    --sidebar-foreground: 210 18% 78%;
     --sidebar-primary: 195 100% 50%;
-    --sidebar-primary-foreground: 225 20% 5%;
-    --sidebar-accent: 225 8% 14%;
-    --sidebar-accent-foreground: 210 20% 90%;
-    --sidebar-border: 225 10% 12%;
+    --sidebar-primary-foreground: 228 20% 4%;
+    --sidebar-accent: 228 10% 13%;
+    --sidebar-accent-foreground: 210 25% 92%;
+    --sidebar-border: 228 12% 11%;
     --sidebar-ring: 195 100% 50%;
 
-    /* Glass effect tokens */
-    --glass-bg: 225 12% 8% / 0.75;
-    --glass-border: 225 10% 20% / 0.4;
-    --glass-shine: 195 100% 50% / 0.05;
+    /* Glass effect tokens — refined */
+    --glass-bg: 228 14% 8% / 0.78;
+    --glass-border: 228 10% 22% / 0.35;
+    --glass-shine: 195 100% 80% / 0.04;
+    --glass-frosted: 228 12% 6% / 0.85;
   }
 }
 
