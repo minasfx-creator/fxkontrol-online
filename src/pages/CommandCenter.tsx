@@ -24,7 +24,6 @@ import LiveFiringPanel from '@/components/editor/LiveFiringPanel';
 import VirtualControllerHub from '@/components/editor/VirtualControllerHub';
 import PBusMonitorPanel from '@/components/editor/live-firing/PBusMonitorPanel';
 import MA3ControlPanel from '@/components/editor/MA3ControlPanel';
-import VirtualIFMx32QPanel from '@/components/editor/live-firing/VirtualIFMx32QPanel';
 import WiFiDirectControlPanel from '@/components/editor/live-firing/WiFiDirectControlPanel';
 import FXKNetPanel from '@/components/editor/live-firing/FXKNetPanel';
 import ConnectionManagerPanel from '@/components/editor/ConnectionManagerPanel';
