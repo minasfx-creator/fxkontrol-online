@@ -92,7 +92,7 @@
     /* Glass — tactical frosted */
     --glass-bg: 220 18% 6% / 0.85;
     --glass-border: 220 12% 18% / 0.4;
-    --glass-shine: 165 100% 60% / 0.03;
+    --glass-shine: 32 100% 60% / 0.03;
     --glass-frosted: 220 20% 4% / 0.92;
   }
 }
