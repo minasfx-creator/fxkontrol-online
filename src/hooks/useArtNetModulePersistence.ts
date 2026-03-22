@@ -22,6 +22,8 @@ interface DbModule {
   gps_lat: number | null;
   gps_lng: number | null;
   sort_order: number;
+  clone_of: string | null;
+  redundancy_mode: string;
 }
 
 function dbToConfig(row: DbModule): Partial<ArtNetModuleConfig> {
