@@ -182,6 +182,8 @@ export interface ProjectState {
   selectedPositionId: string | null;
   selectedPositionIds: string[];
   editorMode: EditorMode;
+  selectionMode: SelectionMode;
+  linkedTimelineItemIds: string[]; // Timeline items highlighted via position selection
   trajectories: Trajectory[];
   selectedTrajectoryId: string | null;
   selectedWaypointId: string | null;
