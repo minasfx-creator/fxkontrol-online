@@ -575,6 +575,7 @@ import {
   type TransportStatus,
   type TransportType,
 } from '@/lib/fireoneTransport';
+import { WiFiDirectTransport } from '@/lib/fireoneWifiDirectTransport';
 
 export class FireOneController {
   private conn: FireOneConnection | null = null;
