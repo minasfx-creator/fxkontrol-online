@@ -99,7 +99,7 @@ function createSimModule(addr: number, connected: boolean, wireless = false): Fi
 }
 
 export default function PyroFireOnePanel({
-  fs, fireChannel, channels, pyroArm, dmxArm, deadmanHeld, handlePanic, artNetConnected, relayConnected,
+  fs, fireChannel, channels, pyroArm, dmxArm, handlePanic, artNetConnected, relayConnected,
 }: PyroFireOnePanelProps) {
   const isMobile = useIsMobile();
   const hardware = useFireOneHardware();
