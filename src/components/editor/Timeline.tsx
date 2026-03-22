@@ -368,6 +368,65 @@ function TimelineTrackRow({
     if (e.shiftKey || e.ctrlKey || e.metaKey) { toggleTimelineItemSelection(itemId); } else { selectTimelineItem(itemId); }
   }, [selectTimelineItem, toggleTimelineItemSelection]);
 
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; item: any } | null>(null);
+
+  // Marquee selection state
+  const [marquee, setMarquee] = useState<{ startX: number; startY: number; currentX: number; currentY: number } | null>(null);
+  const trackAreaRef = useRef<HTMLDivElement>(null);
+
+  const handleContextMenu = useCallback((e: React.MouseEvent, item: any) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, item });
+  }, []);
+
+  const handleResize = useCallback((itemId: string, edge: 'left' | 'right', value: number) => {
+    if (edge === 'right') {
+      updateTimelineItem(itemId, { durationOverride: value });
+    } else {
+      updateTimelineItem(itemId, { startTime: value });
+    }
+  }, [updateTimelineItem]);
+
+  // Marquee selection
+  const handleMarqueeStart = useCallback((e: React.MouseEvent) => {
+    // Only start marquee on empty space (not on items)
+    if ((e.target as HTMLElement).closest('button')) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    setMarquee({ startX: x, startY: y, currentX: x, currentY: y });
+
+    const handleMove = (me: MouseEvent) => {
+      const cx = me.clientX - rect.left;
+      const cy = me.clientY - rect.top;
+      setMarquee(prev => prev ? { ...prev, currentX: cx, currentY: cy } : null);
+    };
+    const handleUp = (me: MouseEvent) => {
+      setMarquee(prev => {
+        if (!prev) return null;
+        const cx = me.clientX - rect.left;
+        const minX = Math.min(prev.startX, cx);
+        const maxX = Math.max(prev.startX, cx);
+        // Select items within marquee bounds
+        items.forEach(item => {
+          const effect = EFFECT_LIBRARY.find(ef => ef.id === item.effectId);
+          if (!effect) return;
+          const itemLeft = item.startTime * pixelsPerSecond;
+          const itemRight = itemLeft + Math.max((item.durationOverride ?? effect.duration) * pixelsPerSecond, 28);
+          if (itemLeft < maxX && itemRight > minX) {
+            if (!me.shiftKey) toggleTimelineItemSelection(item.id);
+            else toggleTimelineItemSelection(item.id);
+          }
+        });
+        return null;
+      });
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+    };
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+  }, [items, pixelsPerSecond, toggleTimelineItemSelection]);
+
   return (
     <div className="flex border-b border-white/[0.03]">
       <div className="w-24 flex-shrink-0 flex items-center px-2.5 border-r border-white/[0.04]" style={{ background: 'hsl(var(--card))' }}>
@@ -375,10 +434,25 @@ function TimelineTrackRow({
         <span className="text-[9px] font-semibold text-muted-foreground/50 uppercase tracking-[0.08em]">{label}</span>
       </div>
       <div
+        ref={trackAreaRef}
         className={cn("flex-1 relative h-8 transition-colors", isDragOver && "ring-1 ring-primary/30 bg-primary/[0.03]")}
         style={{ background: 'hsl(var(--background) / 0.4)' }}
         onDragOver={handleDragOver} onDragEnter={handleDragEnter} onDragLeave={handleDragLeave} onDrop={handleDrop}
+        onMouseDown={handleMarqueeStart}
       >
+        {/* Marquee selection rectangle */}
+        {marquee && (
+          <div
+            className="absolute pointer-events-none z-30 border border-dashed border-primary/50 rounded-sm"
+            style={{
+              left: Math.min(marquee.startX, marquee.currentX),
+              top: Math.min(marquee.startY, marquee.currentY),
+              width: Math.abs(marquee.currentX - marquee.startX),
+              height: Math.abs(marquee.currentY - marquee.startY),
+              background: 'hsl(var(--primary) / 0.08)',
+            }}
+          />
+        )}
         {items.map((item) => {
           const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
           if (!effect) return null;
@@ -389,10 +463,19 @@ function TimelineTrackRow({
               isMultiSelected={selectedTimelineItemIds.includes(item.id)}
               onSelect={(e) => handleItemSelect(e, item.id)}
               onDragStart={handleItemDragStart}
+              onContextMenu={handleContextMenu}
+              onResize={handleResize}
             />
           );
         })}
       </div>
+      {/* Context Menu */}
+      {contextMenu && (
+        <TimelineContextMenu
+          x={contextMenu.x} y={contextMenu.y} item={contextMenu.item}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 }
