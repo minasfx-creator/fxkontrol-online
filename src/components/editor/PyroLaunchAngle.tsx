@@ -350,6 +350,9 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
     (gl.domElement as HTMLElement).style.cursor = 'grabbing';
   }, [gl, position, batchMode, selectedIds]);
 
+  // Delta HUD state for angle changes
+  const [angleDelta, setAngleDelta] = useState<{ h: number; p: number } | null>(null);
+
   useEffect(() => {
     if (!isDragging) return;
     const handleMove = (e: PointerEvent) => {
@@ -368,9 +371,23 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
       let newHeading = Math.atan2(dir.x, -dir.z) * (180 / Math.PI);
       let newPitch = Math.max(-180, Math.min(180, Math.asin(Math.max(-1, Math.min(1, dir.y))) * (180 / Math.PI)));
 
+      // Shift-snap to 5° increments
+      if (e.shiftKey) {
+        newHeading = Math.round(newHeading / 5) * 5;
+        newPitch = Math.round(newPitch / 5) * 5;
+      }
+
       // Axis constraints
       if (dragAxis === 'heading') newPitch = position.pitch || 85;
       if (dragAxis === 'pitch') newHeading = position.heading;
+
+      // Compute delta for HUD
+      if (dragStartRef.current) {
+        setAngleDelta({
+          h: Math.round(newHeading - dragStartRef.current.heading),
+          p: Math.round(newPitch - dragStartRef.current.pitch),
+        });
+      }
 
       if (batchMode && selectedIds && dragStartRef.current) {
         const dHeading = newHeading - dragStartRef.current.heading;
@@ -378,8 +395,9 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
         selectedIds.forEach(id => {
           const start = batchStartRef.current.get(id);
           if (start) {
-            const h = dragAxis === 'pitch' ? start.heading : start.heading + dHeading;
-            const p = dragAxis === 'heading' ? start.pitch : Math.max(-180, Math.min(180, start.pitch + dPitch));
+            let h = dragAxis === 'pitch' ? start.heading : start.heading + dHeading;
+            let p = dragAxis === 'heading' ? start.pitch : Math.max(-180, Math.min(180, start.pitch + dPitch));
+            if (e.shiftKey) { h = Math.round(h / 5) * 5; p = Math.round(p / 5) * 5; }
             updatePosition(id, { heading: h, pitch: p });
           }
         });
@@ -389,6 +407,7 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
     };
     const handleUp = () => {
       setIsDragging(false);
+      setAngleDelta(null);
       dragStartRef.current = null;
       batchStartRef.current.clear();
       (gl.domElement as HTMLElement).style.cursor = '';
