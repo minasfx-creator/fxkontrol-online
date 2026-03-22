@@ -793,6 +793,10 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           {pyroArm && dmxArm ? '⚠ DMX + PYRO ARMED ⚠' : pyroArm ? '⚠ PYRO ARMED ⚠' : 'DMX ARMED'}
         </div>
       )}
+      {/* ── Lockout Risk Groups (Finale 3D) ── */}
+      {(pyroArm) && (
+        <LockoutPanel fs={fs} mob={mob} />
+      )}
     </>
   );
 
