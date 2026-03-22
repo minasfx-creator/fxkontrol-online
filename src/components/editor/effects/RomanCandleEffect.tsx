@@ -30,9 +30,15 @@ export default function RomanCandleEffect({
   angleOffset?: number;
   formulationId?: string;
 }) {
-  const pointsRef = useRef<THREE.Points>(null);
-  const trailLinesRef = useRef<THREE.LineSegments>(null);
-  const baseColor = useMemo(() => new THREE.Color(color), [color]);
+  const chemistry = useMemo(() => {
+    const fId = formulationId || autoMatchFormulation(color, 'candle', caliber);
+    return fId ? getChemistryForRendering(fId) : null;
+  }, [formulationId, color, caliber]);
+
+  const baseColor = useMemo(() => {
+    if (chemistry?.resultColor) return chemistry.resultColor.clone();
+    return new THREE.Color(color);
+  }, [color, chemistry]);
   const totalParticles = shotCount * STARS_PER_SHOT;
   const totalTrailSegs = shotCount * TRAIL_POINTS_PER_SHOT * 2;
 

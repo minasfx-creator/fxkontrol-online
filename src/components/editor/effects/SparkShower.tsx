@@ -30,10 +30,16 @@ export default function SparkShower({
 }) {
   const isColdSpark = !!sparkularModel;
   const pointsRef = useRef<THREE.Points>(null);
+  const chemistry = useMemo(() => {
+    const fId = formulationId || autoMatchFormulation(color, 'gerb', 3);
+    return fId ? getChemistryForRendering(fId) : null;
+  }, [formulationId, color]);
+
   const baseColor = useMemo(() => {
     if (isColdSpark) return new THREE.Color('#FFD700');
+    if (chemistry?.resultColor) return chemistry.resultColor.clone();
     return new THREE.Color(color);
-  }, [color, isColdSpark]);
+  }, [color, isColdSpark, chemistry]);
 
   const posArr = useMemo(() => new Float32Array(SPARK_COUNT * 3), []);
   const colArr = useMemo(() => new Float32Array(SPARK_COUNT * 3), []);

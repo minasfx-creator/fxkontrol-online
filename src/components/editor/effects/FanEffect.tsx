@@ -33,9 +33,15 @@ export default function FanEffect({
   const PARTICLES_PER_RAY = Math.min(50, Math.round(BASE_PARTICLES_PER_RAY * caliberScale));
   const TOTAL_PARTICLES = RAYS * PARTICLES_PER_RAY;
 
-  const pointsRef = useRef<THREE.Points>(null);
-  const linesRef = useRef<THREE.LineSegments>(null);
-  const baseColor = useMemo(() => new THREE.Color(color), [color]);
+  const chemistry = useMemo(() => {
+    const fId = formulationId || autoMatchFormulation(color, 'gerb', caliber);
+    return fId ? getChemistryForRendering(fId) : null;
+  }, [formulationId, color, caliber]);
+
+  const baseColor = useMemo(() => {
+    if (chemistry?.resultColor) return chemistry.resultColor.clone();
+    return new THREE.Color(color);
+  }, [color, chemistry]);
 
   const posArr = useRef(new Float32Array(TOTAL_PARTICLES * 3));
   const colArr = useRef(new Float32Array(TOTAL_PARTICLES * 3));
