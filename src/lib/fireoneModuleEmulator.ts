@@ -99,6 +99,8 @@ const FIRE_GROUP_STAGGER_MS = 2;
 export type HardwareFireCallback = (pin: number, durationMs: number) => Promise<boolean>;
 export type ContinuityReadCallback = (pin: number) => Promise<number>;
 
+export type HardwareMode = 'cds' | 'direct_relay';
+
 export interface ModuleEmulatorConfig {
   address?: number;
   onFire?: HardwareFireCallback;
@@ -106,6 +108,7 @@ export interface ModuleEmulatorConfig {
   onStateChange?: (state: ModuleState) => void;
   onStatusUpdate?: (status: ModuleStatus) => void;
   simulateHardware?: boolean;
+  hardwareMode?: HardwareMode;
 }
 
 export class FireOneModuleEmulator {
