@@ -1,73 +1,108 @@
 
 
-# Fix: Box Select + Direction Line + Interaction System Overhaul
+# Refactor: UE5.7 Virtual Worlds + VFX + Rendering Pipeline Overhaul
 
-## Problems Identified
+## Current State Assessment
 
-### 1. Box Select Doesn't Work — Conflict with OrbitControls
-The `BoxSelectOverlay` attaches mousedown with `capture: true` on `window`, but OrbitControls (Three.js) also captures mouse events on the canvas. The 8px dead-zone approach has a fundamental flaw: OrbitControls starts rotating immediately on mousedown, and by the time box-select activates (after 8px), the camera has already moved. The `box-select-active` event disables OrbitControls too late.
+The `render_ultra` engine already has strong UE5.7-inspired foundations:
+- Niagara emitter system with spawn shapes, force modules, data interfaces, sub-emitters
+- Volumetric clouds (raymarched FBM), Sky Atmosphere v2 (Rayleigh+Mie), Water (Gerstner waves)
+- Terrain PBR, Ground Decals, Volumetric Fog, Time-of-Day
+- Post-processing: SSR, SSAO, DOF, Bloom (3-layer), Heat Distortion, Sharpening, Color Grading
+- Soft particles, Velocity Stretching, Ribbon Trails, Flipbook Animation
+- Global Illumination (probe-based), HDR Lighting, Adaptive Exposure, Lens Flares
+- Niagara Fluids (2D grid advection)
 
-**Root cause**: OrbitControls uses `mouseButtons.LEFT = ROTATE` by default. In `select` mode, left-drag should ONLY do box-select, not orbit.
+## Gaps vs UE5.7 Standard
 
-### 2. Direction Lines Scale Mismatch with Gizmo
-- `DirectionLine` (PositionPins.tsx): renders at real scale (80m for 4" shell) — correct
-- `LaunchAngleGizmo` (PyroLaunchAngle.tsx): renders at ARROW_LENGTH=3.5 scale — tiny preview
-- When selected position has effects in select mode, BOTH render: the 80-unit DirectionLine AND the 3.5-unit gizmo trajectory. They overlap confusingly.
+### 1. Terrain — No procedural detail or texture layers
+`terrainPBR.ts` creates a plain `MeshStandardMaterial` with a solid color. UE5.7 uses **Landscape Material** with triplanar projection, detail normal maps, and multi-layer blending. Current terrain looks flat and uniform.
 
-### 3. OrbitControls Fight with Selection in Select Mode
-Left-click on empty space triggers both orbit rotation AND deselection via `GroundDeselectPlane`. Users can't orbit the camera without deselecting everything.
+### 2. Volumetric Fog — No height-based density or light scattering
+Current fog is a flat plane with FBM noise. UE5.7 uses **Exponential Height Fog** with volumetric light shafts and inscattering from explosion light sources.
 
-## Solution — UE5.7 Niagara-Inspired Interaction Architecture
+### 3. Clouds — No explosion-reactive lighting or 3D depth
+Clouds use 2D FBM on a dome. UE5.7 has temporal reprojection and multi-octave 3D noise. Current `uExplosionFlash` uniform exists but is never driven by actual burst events.
 
-Following UE5.7's viewport interaction model where tools don't fight with navigation:
+### 4. Water — No caustics or SSR integration
+Water has Gerstner waves and Fresnel but no subsurface scattering approximation or caustic patterns on nearby surfaces.
 
-### Change 1: `BoxSelectOverlay.tsx` — Disable OrbitControls BEFORE drag starts
-- On mousedown in select mode on canvas: **immediately** dispatch `box-select-active: true` to disable OrbitControls
-- If the user doesn't drag past 8px dead-zone, re-enable on mouseup (acts as a click)
-- This ensures OrbitControls never starts rotating during a potential box-select
-- For camera orbit in select mode: use **middle mouse button** or **Alt+Left-click** (standard 3D app convention)
+### 5. Post-Processing — Missing Motion Blur and Auto-Exposure integration
+UE5.7 has per-object motion blur and camera auto-exposure built into the pipeline. Current `exposure.ts` exists but is only partially wired to PostProcessing.
 
-### Change 2: `SkyCanvas.tsx` — OrbitControls mouse button mapping
-- In `select` mode: set `mouseButtons={{ LEFT: null, MIDDLE: THREE.MOUSE.ROTATE, RIGHT: THREE.MOUSE.PAN }}`
-- In other modes: keep default LEFT=ROTATE behavior
-- This eliminates the conflict entirely: left-drag = select, middle-drag = orbit, right-drag = pan
+### 6. Niagara — No GPU Instanced rendering for particles
+All particle rendering is CPU-side with individual meshes. UE5.7 uses GPU instancing for thousands of particles efficiently.
 
-### Change 3: `PositionPins.tsx` — DirectionLine hides when gizmo is visible
-- Currently hides only when `editorMode === 'adjust-angles' && isSelected`
-- Also hide when `PyroLaunchAngle` is rendering for this position (selected + has effects in select mode)
-- This prevents the 80-unit line from overlapping the gizmo trajectory
+### 7. Lighting — No Light Functions or IES Profiles
+HDR rig is static. UE5.7 supports light cookies/IES profiles for realistic light distribution from stage fixtures.
 
-### Change 4: `PyroLaunchAngle.tsx` — Gizmo uses real scale in select mode
-- When showing in select mode (not angle mode), render trajectory at **real scale** (not ARROW_LENGTH=3.5)
-- Only show trajectory line + grab handle in select mode (no compass/arcs)
-- In adjust-angles mode: keep current small gizmo behavior
-- Pass `showFullScale` prop based on `editorMode !== 'adjust-angles'`
+## Plan — Priority Changes (Impact vs Effort)
 
-### Change 5: `PositionPins.tsx` — Simplify DirectionLine
-- Only show the short cosmetic line (2-3 units) when no effects are linked and position is hovered/selected
-- When effects are linked: let `PyroLaunchAngle` handle the full trajectory display exclusively
-- Remove grab handle from DirectionLine (PyroLaunchAngle already has one)
-- This eliminates duplication and confusion between the two components
+### Phase 1: Terrain PBR v2 — Triplanar + Detail Texturing
+**File**: `src/render_ultra/environment/terrainPBR.ts`
+- Replace `MeshStandardMaterial` with custom `ShaderMaterial` using triplanar UV projection
+- Add procedural detail normal map (FBM-based micro-bumps)
+- Multi-layer blending: base (grass/concrete) + detail (gravel/moss) with slope-based mixing
+- Add 6 new presets: `beach-sand`, `gravel`, `snow`, `mud`, `rocky`, `festival-ground`
+- Wetness now produces real specular puddles with animated ripple noise
 
-## Technical Details
+### Phase 2: Exponential Height Fog v2
+**File**: `src/render_ultra/environment/volumetricFog.ts`
+- Replace flat plane fog with **Exponential Height Fog** using volumetric raymarching
+- Height-based density falloff (configurable `fogHeightFalloff`)
+- Inscattering from sun direction (light shafts through fog)
+- Explosion flash scattering (burst light illuminates nearby fog volumes)
+- Wind-driven fog drift (synced to scene wind)
+- Add `FogConfig` type: `{ density, heightFalloff, inscatteringColor, inscatteringIntensity, maxOpacity, startDistance }`
 
-```text
-Select Mode Interaction Map:
-  Left-Click on position  → Select position
-  Left-Drag on empty      → Box select rectangle
-  Shift+Left-Click        → Add to selection
-  Middle-Drag             → Orbit camera
-  Right-Drag              → Pan camera
-  Scroll                  → Zoom
-  Alt+Left-Drag           → Orbit camera (alternative)
-```
+### Phase 3: Cloud v2 — Explosion-Reactive + Temporal
+**File**: `src/render_ultra/environment/volumetricClouds.ts`
+- Wire `uExplosionFlash` and `uExplosionColor` uniforms to actual burst events via NiagaraVFXController
+- Add temporal smoothing for cloud lighting (flash in → decay out over 0.5s)
+- Improve noise: add Worley noise layer for more natural cloud edges
+- Add `uCloudThickness` uniform for parallax depth illusion
+- New preset: `storm` (dark, low, turbulent) for dramatic shows
 
-## Files
+### Phase 4: GPU Instanced Particle Rendering
+**File**: `src/render_ultra/fireworks/instancedParticleRenderer.ts` (NEW)
+- Create `InstancedParticleRenderer` class using `THREE.InstancedMesh` + `THREE.InstancedBufferGeometry`
+- Write particle state to instance matrices + color attributes each frame
+- Support velocity stretching via custom vertex shader on instances
+- Budget: 4096 particles per instanced batch vs current per-mesh approach
+- Wire into `NiagaraVFXController` as the primary render path
+
+### Phase 5: Post-Processing Pipeline v2
+**File**: `src/components/editor/PostProcessing.tsx`
+- Add per-object motion blur effect (velocity buffer based)
+- Wire adaptive exposure from `exposure.ts` into ToneMapping — auto-darken during dense salvos, recover in quiet periods
+- Add `ColorLUT` effect for cinematic color grading presets (Day-for-Night, Warm Golden Hour, Cool Blue Night)
+- Add God Rays as a separate radial blur pass (not just bloom)
+
+### Phase 6: Lighting v2 — Light Functions + Dynamic Shadows
+**File**: `src/render_ultra/lighting/hdrLighting.ts`
+- Add IES profile support via `THREE.SpotLight` with cookie textures
+- Per-burst point light spawning with physics-based falloff (inverse square)
+- Burst lights cast dynamic shadows onto terrain + structures
+- Light color inherits from chemical compound (`particleChemistry`)
+
+### Phase 7: Terrain Renderer Integration
+**File**: `src/components/editor/TerrainRenderer.tsx`
+- Replace `createTerrainMaterial` call with new triplanar shader material
+- Pass wind/time uniforms for animated grass/ripple detail
+- Connect wetness to weather system for dynamic puddles
+
+## Files Summary
 
 | File | Change |
 |------|--------|
-| `src/components/editor/BoxSelectOverlay.tsx` | Immediately disable OrbitControls on mousedown, restore on mouseup if no drag |
-| `src/components/editor/SkyCanvas.tsx` | Set OrbitControls mouseButtons based on editorMode; LEFT=null in select mode |
-| `src/components/editor/PositionPins.tsx` | Simplify DirectionLine to cosmetic-only; delegate full trajectory to PyroLaunchAngle |
-| `src/components/editor/PyroLaunchAngle.tsx` | Add real-scale trajectory mode for select-mode display |
+| `src/render_ultra/environment/terrainPBR.ts` | Triplanar ShaderMaterial, detail normals, 6 new presets |
+| `src/render_ultra/environment/volumetricFog.ts` | Exponential height fog, inscattering, explosion reactivity |
+| `src/render_ultra/environment/volumetricClouds.ts` | Worley noise, explosion flash wiring, storm preset |
+| `src/render_ultra/fireworks/instancedParticleRenderer.ts` | NEW — GPU instanced particle renderer |
+| `src/components/editor/PostProcessing.tsx` | Motion blur, auto-exposure wiring, Color LUT, God Rays |
+| `src/render_ultra/lighting/hdrLighting.ts` | IES profiles, per-burst dynamic point lights |
+| `src/components/editor/TerrainRenderer.tsx` | Wire new terrain shader, animated detail |
+| `src/components/editor/NiagaraVFXController.tsx` | Wire cloud flash uniforms, instanced renderer |
+| `src/render_ultra/environment/waterRendering.ts` | Caustic pattern overlay, subsurface approximation |
+| `src/render_ultra/index.ts` | Export new modules |
 
