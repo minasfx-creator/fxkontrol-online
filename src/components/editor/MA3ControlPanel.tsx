@@ -300,17 +300,17 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
           </p>
         </div>
         <div className="flex items-center gap-1">
-          <Badge variant="outline" className={cn("text-[7px] h-4 px-1", stateColor(oscState))}>
+          <Badge variant="outline" className={cn("text-[8px] h-4 px-1", stateColor(oscState))}>
             OSC {oscState === 'connected' ? '●' : '○'}
           </Badge>
-          <Badge variant="outline" className={cn("text-[7px] h-4 px-1", stateColor(sacnState))}>
+          <Badge variant="outline" className={cn("text-[8px] h-4 px-1", stateColor(sacnState))}>
             sACN {sacnState === 'connected' ? '●' : '○'}
           </Badge>
-          <Badge variant="outline" className={cn("text-[7px] h-4 px-1", stateColor(mvrState))}>
+          <Badge variant="outline" className={cn("text-[8px] h-4 px-1", stateColor(mvrState))}>
             MVR {mvrState === 'connected' ? '●' : '○'}
           </Badge>
           {bridgeEnabled && (
-            <Badge variant="outline" className="text-[7px] h-4 px-1 text-amber-400 border-amber-500/30">
+            <Badge variant="outline" className="text-[8px] h-4 px-1 text-amber-400 border-amber-500/30">
               BRIDGE ●
             </Badge>
           )}
@@ -359,7 +359,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
                 <Link2 className="w-3 h-3 mr-1" /> Connect OSC
               </Button>
             )}
-            <span className="text-[7px] text-muted-foreground/40 ml-auto">
+            <span className="text-[8px] text-muted-foreground/40 ml-auto">
               TX:{oscClient.current.stats.tx} RX:{oscClient.current.stats.rx}
             </span>
           </div>
@@ -410,7 +410,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
           {/* Sequence Quick Go */}
           <div className="flex flex-wrap gap-1">
             {[1, 2, 3, 4, 5, 6, 7, 8].map(seq => (
-              <Button key={seq} size="sm" variant="outline" className="h-5 text-[7px] px-1.5"
+              <Button key={seq} size="sm" variant="outline" className="h-5 text-[8px] px-1.5"
                 onClick={() => sendGo(seq)} disabled={oscState !== 'connected'}>
                 Seq {seq}
               </Button>
@@ -460,7 +460,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
               const val = faderValues[key] ?? 0;
               return (
                 <div key={fader} className="flex flex-col items-center gap-0.5 p-1 rounded bg-background/20 border border-border/10">
-                  <span className="text-[7px] font-mono text-muted-foreground/40">F{fader}</span>
+                  <span className="text-[8px] font-mono text-muted-foreground/40">F{fader}</span>
                   <Slider
                     value={[val * 100]}
                     onValueChange={([v]) => sendFader(execPage, fader, v / 100)}
@@ -469,7 +469,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
                     className="h-12"
                     disabled={oscState !== 'connected'}
                   />
-                  <span className="text-[7px] font-mono text-foreground/50">{Math.round(val * 100)}%</span>
+                  <span className="text-[8px] font-mono text-foreground/50">{Math.round(val * 100)}%</span>
                 </div>
               );
             })}
@@ -480,7 +480,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
             <span className="text-[8px] font-bold text-muted-foreground/50 uppercase">OSC Log</span>
             <Input
               placeholder="Filter address..."
-              className="h-4 text-[7px] w-24 px-1"
+              className="h-4 text-[8px] w-24 px-1"
               onChange={e => {
                 const f = e.target.value.toLowerCase();
                 setOscMessages(prev => prev); // trigger re-render, filter applied below
@@ -496,7 +496,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
                   return !f || m.addr.toLowerCase().includes(f);
                 })
                 .map((m, i) => (
-                <div key={i} className={cn("text-[7px] flex gap-1",
+                <div key={i} className={cn("text-[8px] flex gap-1",
                   m.dir === 'tx' ? 'text-blue-400/60' : 'text-emerald-400/60')}>
                   <span className="w-4 shrink-0">{m.dir === 'tx' ? '→' : '←'}</span>
                   <span className="truncate">{m.addr}</span>
@@ -530,7 +530,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
               <Zap className={cn("w-3 h-3", bridgeEnabled ? "text-amber-400" : "text-muted-foreground/40")} />
               <div>
                 <span className="text-[9px] font-bold text-foreground">Route sACN → DMX Engine</span>
-                <p className="text-[7px] text-muted-foreground/50">MA3 controla SFX channels em tempo real</p>
+                <p className="text-[8px] text-muted-foreground/50">MA3 controla SFX channels em tempo real</p>
               </div>
             </div>
             <Switch checked={bridgeEnabled} onCheckedChange={setBridgeEnabled} className="scale-75"
@@ -561,7 +561,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
                     <div className="flex items-center gap-1.5">
                       <span className="text-[8px] text-muted-foreground/40">Pri:{u.priority}</span>
                       <span className="text-[8px] text-emerald-400/60">{u.fps}fps</span>
-                      <Button size="sm" variant="ghost" className="h-4 text-[7px] px-1"
+                      <Button size="sm" variant="ghost" className="h-4 text-[8px] px-1"
                         onClick={() => handleAutoMap(u.universe)}>
                         Auto-Map
                       </Button>
@@ -583,13 +583,13 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
                       );
                     })}
                   </div>
-                  <div className="text-[7px] text-muted-foreground/30 mt-0.5">
+                  <div className="text-[8px] text-muted-foreground/30 mt-0.5">
                     Last: {new Date(u.lastUpdate).toLocaleTimeString()} · Seq:{u.sequence} · {u.sourceName}
                   </div>
                   {/* Expanded 512-channel grid */}
                   {expandedUniverse === u.universe && (
                     <div className="mt-2 p-1 rounded border border-border/10 bg-background/10">
-                      <div className="text-[7px] font-bold text-muted-foreground/50 mb-1">512 Channels</div>
+                      <div className="text-[8px] font-bold text-muted-foreground/50 mb-1">512 Channels</div>
                       <div className="grid gap-px" style={{ gridTemplateColumns: 'repeat(32, 1fr)' }}>
                         {Array.from({ length: 512 }, (_, i) => {
                           const val = u.channels[i] || 0;
@@ -624,7 +624,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
             <div className="p-1.5 rounded border border-border/15 bg-background/20">
               <div className="flex items-center justify-between text-[8px] mb-1">
                 <span className="font-bold text-muted-foreground/50 uppercase">Active Mappings</span>
-                <Button size="sm" variant="ghost" className="h-4 text-[7px] px-1" onClick={() => { clearMappings(); toast.info('Mappings cleared'); }}>
+                <Button size="sm" variant="ghost" className="h-4 text-[8px] px-1" onClick={() => { clearMappings(); toast.info('Mappings cleared'); }}>
                   Clear
                 </Button>
               </div>
@@ -632,7 +632,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
                 {getMappings().slice(0, 8).map((m, i) => {
                   const ch = sfxChannels.find(c => c.id === m.sfxChannelId);
                   return (
-                    <div key={i} className="flex items-center gap-1 text-[7px] text-muted-foreground/60">
+                    <div key={i} className="flex items-center gap-1 text-[8px] text-muted-foreground/60">
                       <span>U{m.universe}:{m.startChannel}</span>
                       <span>→</span>
                       <span className="text-foreground/60 truncate">{ch?.name ?? m.sfxChannelId}</span>
@@ -661,7 +661,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
               disabled={mvrState !== 'connected'}>
               <RefreshCw className="w-3 h-3 mr-0.5" /> Scan
             </Button>
-            <span className="text-[7px] text-muted-foreground/40 ml-auto">
+            <span className="text-[8px] text-muted-foreground/40 ml-auto">
               {mvrStations.length} station(s)
             </span>
           </div>
@@ -675,7 +675,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
               <Wifi className={cn("w-3 h-3", mdnsStations.length > 0 ? "text-emerald-400" : "text-muted-foreground/40")} />
               <div>
                 <span className="text-[9px] font-bold text-foreground">Auto-Connect mDNS</span>
-                <p className="text-[7px] text-muted-foreground/50">
+                <p className="text-[8px] text-muted-foreground/50">
                   {mdnsStations.length > 0
                     ? `${mdnsStations.length} console(s) discovered`
                     : mvrState === 'connected' ? 'Scanning LAN...' : 'Connect to scan'}
@@ -697,7 +697,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
                       <span className="text-muted-foreground/40 ml-1">{s.ip}:{s.port}</span>
                       {s.provider && <span className="text-muted-foreground/30 ml-1">({s.provider})</span>}
                     </div>
-                    <Button size="sm" variant="ghost" className="h-4 text-[7px] px-1.5"
+                    <Button size="sm" variant="ghost" className="h-4 text-[8px] px-1.5"
                       onClick={() => { mvrClient.current.connectStation(s.uuid); toast.info(`Connecting to ${s.name}...`); }}>
                       <Link2 className="w-2.5 h-2.5 mr-0.5" /> Connect
                     </Button>
@@ -718,15 +718,15 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
                       <Monitor className="w-3 h-3 text-foreground/60" />
                       <span className="font-bold text-foreground">{station.name}</span>
                       {station.isSessionHost && (
-                        <Badge variant="outline" className="text-[6px] h-3 px-1 border-amber-500/30 text-amber-400">HOST</Badge>
+                        <Badge variant="outline" className="text-[8px] h-3 px-1 border-amber-500/30 text-amber-400">HOST</Badge>
                       )}
                     </div>
-                    <Button size="sm" variant="ghost" className="h-5 text-[7px] px-1.5"
+                    <Button size="sm" variant="ghost" className="h-5 text-[8px] px-1.5"
                       onClick={() => { mvrClient.current.requestLatest(station.uuid); toast.info(`Requesting latest from ${station.name}`); }}>
                       <Download className="w-2.5 h-2.5 mr-0.5" /> Sync
                     </Button>
                   </div>
-                  <div className="text-[7px] text-muted-foreground/40 mt-0.5">
+                  <div className="text-[8px] text-muted-foreground/40 mt-0.5">
                     {station.provider} · {station.ip} · {station.commits.length} commits
                   </div>
                 </div>
@@ -753,7 +753,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
               <ScrollArea className="max-h-24">
                 <div className="space-y-0.5 font-mono">
                   {mvrCommitLog.slice(-10).reverse().map((c, i) => (
-                    <div key={i} className="text-[7px] flex gap-1 text-muted-foreground/50">
+                    <div key={i} className="text-[8px] flex gap-1 text-muted-foreground/50">
                       <span className="text-foreground/40">{new Date(c.time).toLocaleTimeString()}</span>
                       <span className="text-emerald-400/60">{c.station}</span>
                       <span className="truncate">{c.file}</span>

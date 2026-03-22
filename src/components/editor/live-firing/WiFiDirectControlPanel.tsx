@@ -99,7 +99,7 @@ export default function WiFiDirectControlPanel({ fs = false, onClose }: WiFiDire
         </div>
         <div className="flex items-center gap-1.5">
           {isConnectedWiFiDirect && (
-            <Badge className="text-[7px] h-4 px-1.5 bg-red-600/80 animate-pulse border-transparent">
+            <Badge className="text-[8px] h-4 px-1.5 bg-red-600/80 animate-pulse border-transparent">
               REAL
             </Badge>
           )}
@@ -131,7 +131,7 @@ export default function WiFiDirectControlPanel({ fs = false, onClose }: WiFiDire
               <Button
                 size="sm"
                 variant="outline"
-                className="h-5 text-[7px] px-2"
+                className="h-5 text-[8px] px-2"
                 onClick={scanDevices}
                 disabled={scanning}
               >
@@ -166,12 +166,12 @@ export default function WiFiDirectControlPanel({ fs = false, onClose }: WiFiDire
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className="text-[9px] font-bold text-foreground">{device.label}</span>
-                          <Badge variant="outline" className="text-[6px] h-3 px-1">{device.deviceType}</Badge>
+                          <Badge variant="outline" className="text-[8px] h-3 px-1">{device.deviceType}</Badge>
                           {isThisConnected && (
-                            <Badge className="text-[6px] h-3 px-1 bg-emerald-600/80 border-transparent">CONECTADO</Badge>
+                            <Badge className="text-[8px] h-3 px-1 bg-emerald-600/80 border-transparent">CONECTADO</Badge>
                           )}
                         </div>
-                        <span className="text-[7px] text-muted-foreground/40">{device.host}:{device.port}</span>
+                        <span className="text-[8px] text-muted-foreground/40">{device.host}:{device.port}</span>
                       </div>
                       {device.rssi != null && (
                         <div className="flex gap-px items-end h-3">
@@ -380,7 +380,7 @@ export default function WiFiDirectControlPanel({ fs = false, onClose }: WiFiDire
                   { label: 'RX', value: `${fireone.rxBytes}B` },
                 ].map(item => (
                   <div key={item.label} className="rounded-lg border border-border/10 bg-card/20 p-1.5 text-center">
-                    <div className="text-[7px] text-muted-foreground/40 uppercase">{item.label}</div>
+                    <div className="text-[8px] text-muted-foreground/40 uppercase">{item.label}</div>
                     <div className="text-[9px] font-mono font-bold text-foreground">{item.value}</div>
                   </div>
                 ))}

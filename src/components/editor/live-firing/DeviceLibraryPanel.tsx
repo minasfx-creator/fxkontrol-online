@@ -66,7 +66,7 @@ export default function DeviceLibraryPanel({ fs, channels, onAddDevice, onBack }
     toast.success('Device created');
   }, [editName, editManufacturer, editChannels, editSafetyChannel, editSafetyValue]);
 
-  const labelCn = cn("font-bold text-muted-foreground/40 uppercase tracking-wider", fs ? "text-[9px]" : "text-[6px]");
+  const labelCn = cn("font-bold text-muted-foreground/40 uppercase tracking-wider", fs ? "text-[9px]" : "text-[8px]");
   const inputCn = cn("bg-transparent border-border/15 font-mono", fs ? "h-7 text-xs" : "h-5 text-[8px]");
 
   return (
@@ -88,7 +88,7 @@ export default function DeviceLibraryPanel({ fs, channels, onAddDevice, onBack }
               <button key={tab} onClick={() => { setActiveTab(tab); setSelectedDevice(null); }}
                 className={cn(
                   "flex-1 font-bold uppercase tracking-wider transition-all border-b-2",
-                  fs ? "py-2 text-[9px]" : "py-1.5 text-[6px]",
+                  fs ? "py-2 text-[9px]" : "py-1.5 text-[8px]",
                   activeTab === tab ? "text-primary border-primary" : "text-muted-foreground/30 border-transparent"
                 )}>
                 LIB_{tab === 'showven' ? 'SHOWVEN' : 'USER'}
@@ -102,11 +102,11 @@ export default function DeviceLibraryPanel({ fs, channels, onAddDevice, onBack }
               <button key={dev.id} onClick={() => { setSelectedDevice(dev); setSelectedEffect(dev.effects[0] || null); setEditName(dev.name); setEditManufacturer(dev.manufacturer); setEditChannels(dev.dmxChannels); }}
                 className={cn(
                   "w-full text-left border-b border-border/5 transition-all",
-                  fs ? "px-3 py-2 text-[10px]" : "px-2 py-1 text-[7px]",
+                  fs ? "px-3 py-2 text-[10px]" : "px-2 py-1 text-[8px]",
                   selectedDevice?.id === dev.id ? "bg-primary/10 text-primary" : "text-foreground/60 hover:bg-surface-2/30"
                 )}>
                 <div className="font-bold truncate">{dev.name}</div>
-                {dev.manufacturer && <div className={cn("text-muted-foreground/30", fs ? "text-[8px]" : "text-[5px]")}>{dev.manufacturer}</div>}
+                {dev.manufacturer && <div className={cn("text-muted-foreground/30", fs ? "text-[8px]" : "text-[8px]")}>{dev.manufacturer}</div>}
               </button>
             ))}
           </ScrollArea>
@@ -115,10 +115,10 @@ export default function DeviceLibraryPanel({ fs, channels, onAddDevice, onBack }
           <div className={cn("flex gap-1 border-t border-border/15", fs ? "p-2" : "p-1")}>
             {activeTab === 'user' && (
               <>
-                <Button variant="ghost" size="sm" onClick={handleCreateDevice} className={cn(fs ? "text-[8px] h-6" : "text-[6px] h-4")}>
+                <Button variant="ghost" size="sm" onClick={handleCreateDevice} className={cn(fs ? "text-[8px] h-6" : "text-[8px] h-4")}>
                   <Plus className="w-2.5 h-2.5 mr-0.5" /> Create
                 </Button>
-                <Button variant="ghost" size="sm" className={cn(fs ? "text-[8px] h-6" : "text-[6px] h-4")}>
+                <Button variant="ghost" size="sm" className={cn(fs ? "text-[8px] h-6" : "text-[8px] h-4")}>
                   <Trash2 className="w-2.5 h-2.5 mr-0.5" /> Delete
                 </Button>
               </>
@@ -135,16 +135,16 @@ export default function DeviceLibraryPanel({ fs, channels, onAddDevice, onBack }
                 <span className={labelCn}>Edit Device</span>
                 <div className="grid grid-cols-2 gap-1.5">
                   <div>
-                    <span className={cn("text-muted-foreground/30 block", fs ? "text-[8px]" : "text-[5px]")}>ProductName *</span>
+                    <span className={cn("text-muted-foreground/30 block", fs ? "text-[8px]" : "text-[8px]")}>ProductName *</span>
                     <Input value={editName} onChange={e => setEditName(e.target.value)} className={inputCn} readOnly={activeTab === 'showven'} />
                   </div>
                   <div>
-                    <span className={cn("text-muted-foreground/30 block", fs ? "text-[8px]" : "text-[5px]")}>Manufacturer</span>
+                    <span className={cn("text-muted-foreground/30 block", fs ? "text-[8px]" : "text-[8px]")}>Manufacturer</span>
                     <Input value={editManufacturer} onChange={e => setEditManufacturer(e.target.value)} className={inputCn} readOnly={activeTab === 'showven'} />
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={cn("text-muted-foreground/30", fs ? "text-[8px]" : "text-[5px]")}>DMX Channels:</span>
+                  <span className={cn("text-muted-foreground/30", fs ? "text-[8px]" : "text-[8px]")}>DMX Channels:</span>
                   <span className={cn("font-mono font-bold text-foreground/60", fs ? "text-xs" : "text-[8px]")}>{selectedDevice.dmxChannels}</span>
                 </div>
               </div>
@@ -154,11 +154,11 @@ export default function DeviceLibraryPanel({ fs, channels, onAddDevice, onBack }
                 <span className={labelCn}>SafeChannel Setting</span>
                 <div className="grid grid-cols-2 gap-1.5">
                   <div>
-                    <span className={cn("text-muted-foreground/30 block", fs ? "text-[8px]" : "text-[5px]")}>Channel</span>
+                    <span className={cn("text-muted-foreground/30 block", fs ? "text-[8px]" : "text-[8px]")}>Channel</span>
                     <Input type="number" value={selectedDevice.safetyChannel || ''} className={inputCn} readOnly={activeTab === 'showven'} />
                   </div>
                   <div>
-                    <span className={cn("text-muted-foreground/30 block", fs ? "text-[8px]" : "text-[5px]")}>Value</span>
+                    <span className={cn("text-muted-foreground/30 block", fs ? "text-[8px]" : "text-[8px]")}>Value</span>
                     <Input type="number" value={selectedDevice.safetyValue || 255} className={inputCn} readOnly={activeTab === 'showven'} />
                   </div>
                 </div>
@@ -172,7 +172,7 @@ export default function DeviceLibraryPanel({ fs, channels, onAddDevice, onBack }
                     <button key={eff.id} onClick={() => setSelectedEffect(eff)}
                       className={cn(
                         "w-full text-left rounded transition-all",
-                        fs ? "px-2 py-1 text-[10px]" : "px-1.5 py-0.5 text-[7px]",
+                        fs ? "px-2 py-1 text-[10px]" : "px-1.5 py-0.5 text-[8px]",
                         selectedEffect?.id === eff.id ? "bg-primary/10 text-primary" : "text-foreground/50 hover:bg-surface-2/20"
                       )}>
                       {eff.name}
@@ -186,10 +186,10 @@ export default function DeviceLibraryPanel({ fs, channels, onAddDevice, onBack }
                 <span className={labelCn}>Start DMX Address</span>
                 <div className="flex items-center gap-2">
                   <Input type="number" value={startAddress} onChange={e => setStartAddress(Number(e.target.value))} className={cn(inputCn, "flex-1")} min={1} max={512} />
-                  <button onClick={autoAddress} className={cn("rounded bg-primary/15 text-primary font-bold border border-primary/30", fs ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[7px]")}>AUTO</button>
+                  <button onClick={autoAddress} className={cn("rounded bg-primary/15 text-primary font-bold border border-primary/30", fs ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[8px]")}>AUTO</button>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={cn("text-muted-foreground/30", fs ? "text-[9px]" : "text-[6px]")}>Device count:</span>
+                  <span className={cn("text-muted-foreground/30", fs ? "text-[9px]" : "text-[8px]")}>Device count:</span>
                   <div className="flex items-center gap-1">
                     <button onClick={() => setDeviceCount(Math.max(1, deviceCount - 1))} className={cn("rounded bg-surface-2/40 text-foreground/50 font-bold", fs ? "w-6 h-6 text-sm" : "w-4 h-4 text-[10px]")}>-</button>
                     <span className={cn("font-mono font-bold text-foreground/60 w-6 text-center", fs ? "text-sm" : "text-[9px]")}>{deviceCount}</span>
@@ -211,10 +211,10 @@ export default function DeviceLibraryPanel({ fs, channels, onAddDevice, onBack }
 
       {/* Import/Export */}
       <div className={cn("flex gap-1 border-t border-border/20", fs ? "px-4 py-2" : "px-2 py-1")} style={{ background: 'hsl(220 12% 6%)' }}>
-        <Button variant="ghost" size="sm" className={cn("flex-1", fs ? "text-[9px] h-7" : "text-[7px] h-5")}>
+        <Button variant="ghost" size="sm" className={cn("flex-1", fs ? "text-[9px] h-7" : "text-[8px] h-5")}>
           <Upload className="w-2.5 h-2.5 mr-1" /> Import
         </Button>
-        <Button variant="ghost" size="sm" className={cn("flex-1", fs ? "text-[9px] h-7" : "text-[7px] h-5")}>
+        <Button variant="ghost" size="sm" className={cn("flex-1", fs ? "text-[9px] h-7" : "text-[8px] h-5")}>
           <Download className="w-2.5 h-2.5 mr-1" /> Export
         </Button>
       </div>
