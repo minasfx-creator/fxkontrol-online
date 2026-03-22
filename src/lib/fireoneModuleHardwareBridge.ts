@@ -67,9 +67,10 @@ export class FireOneHardwareBridge {
   /** Connect via Web Bluetooth BLE */
   async connectBLE(): Promise<boolean> {
     try {
-      if (!navigator.bluetooth) throw new Error('Web Bluetooth not supported');
+      const nav = navigator as any;
+      if (!nav.bluetooth) throw new Error('Web Bluetooth not supported');
 
-      const device = await navigator.bluetooth.requestDevice({
+      const device = await nav.bluetooth.requestDevice({
         filters: [{ services: [BLE_SERVICE_UUID] }],
         optionalServices: [BLE_SERVICE_UUID],
       });
@@ -81,9 +82,8 @@ export class FireOneHardwareBridge {
 
       // Listen for responses
       await this.bleCharRx.startNotifications();
-      this.bleCharRx.addEventListener('characteristicvaluechanged', (event: Event) => {
-        const target = event.target as BluetoothRemoteGATTCharacteristic;
-        const value = new TextDecoder().decode(target.value!.buffer);
+      this.bleCharRx.addEventListener('characteristicvaluechanged', (event: any) => {
+        const value = new TextDecoder().decode(event.target.value.buffer);
         this.handleResponse(value);
       });
 
