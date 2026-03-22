@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { isLassoActive } from './SelectionModeBar';
 
 /**
  * R3F-aware box selection — projects all positions to screen space
@@ -105,6 +106,9 @@ export default function BoxSelectOverlay() {
       if (e.button !== 0) return;
       const store = useProjectStore.getState();
       if (store.editorMode !== 'select') return;
+
+      // Only activate box select when lasso tool is ON
+      if (!isLassoActive()) return;
 
       // Only start on canvas area (not UI overlays)
       const target = e.target as HTMLElement;

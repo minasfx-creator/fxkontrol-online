@@ -1,7 +1,7 @@
 import { useProjectStore, type SelectionMode } from '@/store/useProjectStore';
 import { MapPin, Zap, Link2, Lasso, Grid3x3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 const SECTION_OPTIONS = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
 const SECTION_COLORS: Record<string, string> = {
@@ -14,9 +14,36 @@ const modes: { id: SelectionMode; icon: typeof MapPin; label: string; shortcut: 
   { id: 'both', icon: Link2, label: 'Ambos', shortcut: '3' },
 ];
 
+/** Global lasso state — read by BoxSelectOverlay */
+let _lassoActive = false;
+export function isLassoActive() { return _lassoActive; }
+
 export default function SelectionModeBar() {
   const { selectionMode, setSelectionMode, editorMode, positions, selectMultiplePositionsAndLinkedEvents } = useProjectStore();
   const [showSections, setShowSections] = useState(false);
+  const [lassoOn, setLassoOn] = useState(false);
+
+  // Sync global state
+  useEffect(() => {
+    _lassoActive = lassoOn;
+  }, [lassoOn]);
+
+  // Keyboard shortcut: L toggles lasso
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === 'l' || e.key === 'L') {
+        setLassoOn(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // Deactivate lasso when leaving select mode
+  useEffect(() => {
+    if (editorMode !== 'select') setLassoOn(false);
+  }, [editorMode]);
 
   const selectBySection = useCallback((section: string) => {
     const ids = positions.filter(p => p.section === section).map(p => p.id);
@@ -48,15 +75,19 @@ export default function SelectionModeBar() {
 
       <div className="w-px h-4 bg-border/30 mx-0.5" />
 
-      {/* Lasso toggle — activates box select */}
+      {/* Lasso toggle — must be active to use box select */}
       <button
-        onClick={() => {
-          // Box select is always available via Shift+Drag, this is just a visual indicator
-        }}
-        className="flex items-center gap-1 px-1.5 py-1.5 rounded-md text-[9px] text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/20 transition-all"
-        title="Lasso (Click+Drag)"
+        onClick={() => setLassoOn(!lassoOn)}
+        className={cn(
+          "flex items-center gap-1 px-1.5 py-1.5 rounded-md text-[9px] transition-all",
+          lassoOn
+            ? "bg-primary/20 text-primary border border-primary/30 shadow-[0_0_6px_rgba(var(--primary),0.3)]"
+            : "text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/20 border border-transparent"
+        )}
+        title="Laço de seleção (L)"
       >
         <Lasso className="w-3 h-3" />
+        {lassoOn && <span className="text-[7px] font-bold">ON</span>}
       </button>
 
       {/* Select by Section */}
