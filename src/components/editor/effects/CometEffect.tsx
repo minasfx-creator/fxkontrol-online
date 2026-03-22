@@ -176,26 +176,27 @@ export default function CometEffect({
     if (sparkPointsRef.current) {
       const posArr = sparkPosBuffer;
       const colArr = sparkColBuffer;
-      let visibleCount = 0;
+      const sizeArr = sparkSizeBuffer;
 
       for (let i = 0; i < SPARK_COUNT; i++) {
-        const detachT = sparkSeeds[i * 5];
-        const spreadAngle = sparkSeeds[i * 5 + 1];
-        const drag = sparkSeeds[i * 5 + 2];
-        const seed = sparkSeeds[i * 5 + 4];
+        const detachT = sparkSeeds[i * 6];
+        const spreadAngle = sparkSeeds[i * 6 + 1];
+        const drag = sparkSeeds[i * 6 + 2];
+        const sizeBase = sparkSeeds[i * 6 + 3];
+        const seed = sparkSeeds[i * 6 + 4];
 
         if (progress < detachT) {
           posArr[i * 3] = 0;
-          posArr[i * 3 + 1] = -1000; // hide below
+          posArr[i * 3 + 1] = -1000;
           posArr[i * 3 + 2] = 0;
           colArr[i * 3] = colArr[i * 3 + 1] = colArr[i * 3 + 2] = 0;
+          sizeArr[i] = 0;
           continue;
         }
 
         const elapsed = (progress - detachT) * 2.8;
         const dragFactor = Math.pow(drag, elapsed * 60);
 
-        // Detach position: head pos at detach time
         const detachPos = getHeadPos(detachT);
         const spreadSpeed = 0.3 + hash01(seed) * 1.2;
 
@@ -206,6 +207,7 @@ export default function CometEffect({
         if (sparkY < -0.5) {
           posArr[i * 3 + 1] = -1000;
           colArr[i * 3] = colArr[i * 3 + 1] = colArr[i * 3 + 2] = 0;
+          sizeArr[i] = 0;
           continue;
         }
 
@@ -213,24 +215,26 @@ export default function CometEffect({
         posArr[i * 3 + 1] = sparkY;
         posArr[i * 3 + 2] = sparkZ;
 
-        // Color: orange → red → charcoal
-        const sparkFade = Math.max(0, 1 - elapsed * 1.0);
-        const emberT = Math.min(1, elapsed * 2);
-        const sr = THREE.MathUtils.lerp(1.0, 0.2, emberT) * sparkFade;
-        const sg = THREE.MathUtils.lerp(0.7, 0.06, emberT) * sparkFade;
-        const sb = THREE.MathUtils.lerp(0.15, 0.02, emberT) * sparkFade;
+        // Thermal color ramp: orange → red → charcoal
+        const sparkLife = Math.min(1, elapsed * 1.0);
+        const thermal = thermalColorRamp(1.0, 0.5, 0.1, sparkLife * 0.7 + 0.15, 1.0);
+        const sparkFade = Math.max(0, 1 - sparkLife);
 
-        colArr[i * 3] = sr;
-        colArr[i * 3 + 1] = sg;
-        colArr[i * 3 + 2] = sb;
-        visibleCount++;
+        colArr[i * 3] = thermal.r * sparkFade;
+        colArr[i * 3 + 1] = thermal.g * sparkFade;
+        colArr[i * 3 + 2] = thermal.b * sparkFade;
+        
+        // Per-particle size
+        sizeArr[i] = sizeBase * (1 - sparkLife * 0.5);
       }
 
       const sparkGeo = sparkPointsRef.current.geometry;
       sparkGeo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
       sparkGeo.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
+      sparkGeo.setAttribute('size', new THREE.BufferAttribute(sizeArr, 1));
       sparkGeo.attributes.position.needsUpdate = true;
       sparkGeo.attributes.color.needsUpdate = true;
+      sparkGeo.attributes.size.needsUpdate = true;
     }
 
     // ── Smoke wake ──
