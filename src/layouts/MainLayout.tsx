@@ -46,7 +46,7 @@ export default function MainLayout() {
 
   const backlight = useDisplayStore(s => s.backlight);
 
-  const showDock = !isEditor && !isCommand && !isMobile;
+  const showDock = !isEditor && !isMobile;
   const showMobileDock = !isEditor && !isCommand && isMobile;
 
   // Start ambient hum on first user gesture
