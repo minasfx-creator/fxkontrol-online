@@ -27,6 +27,7 @@ const TRANSPORT_ICONS: Record<TransportType, typeof Cable> = {
   serial: Cable,
   radio: Radio,
   wifi: Globe,
+  wifi_direct: Antenna,
   artnet: Zap,
 };
 
@@ -34,6 +35,7 @@ const TRANSPORT_LABELS: Record<TransportType, string> = {
   serial: 'RS-485 Cable',
   radio: 'Radio RF',
   wifi: 'Wi-Fi Relay',
+  wifi_direct: 'Wi-Fi Direct',
   artnet: 'Art-Net DMX',
 };
 
