@@ -96,7 +96,7 @@ const SHOW_COMMANDER_TOOLS: HubTool[] = [
   { label: 'FXK-PYRO', icon: Flame, panel: 'pyro_fire' },
   { label: 'Show Ctrl', icon: Activity, panel: 'show_control' },
   { label: 'DMX Mon', icon: Radio, panel: 'dmx_monitor' },
-  { label: 'FXK-LINK', icon: Smartphone, panel: 'mobile_link' },
+  { label: 'FXK-LIGHT', icon: Lightbulb, panel: 'fxk_light' },
   { label: 'Module', icon: Cpu, panel: 'module' },
 ];
 
