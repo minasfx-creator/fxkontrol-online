@@ -228,6 +228,10 @@ export interface ProjectState {
   togglePositionSelection: (id: string) => void;
   selectMultiplePositions: (ids: string[]) => void;
   setEditorMode: (mode: EditorMode) => void;
+  setSelectionMode: (mode: SelectionMode) => void;
+  selectPositionAndLinkedEvents: (positionId: string) => void;
+  selectMultiplePositionsAndLinkedEvents: (ids: string[]) => void;
+  selectTimelineItemAndLinkedPosition: (itemId: string) => void;
   addTrajectory: (traj: Trajectory) => void;
   updateTrajectory: (id: string, updates: Partial<Omit<Trajectory, 'id'>>) => void;
   removeTrajectory: (id: string) => void;
