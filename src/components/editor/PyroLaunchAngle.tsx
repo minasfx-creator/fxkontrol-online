@@ -452,28 +452,32 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
   useEffect(() => {
     if (!isDragging) return;
     const handleMove = (e: PointerEvent) => {
+      if (!dragStartRef.current) return;
       const rect = gl.domElement.getBoundingClientRect();
-      const mouse = new THREE.Vector2(
-        ((e.clientX - rect.left) / rect.width) * 2 - 1,
-        -((e.clientY - rect.top) / rect.height) * 2 + 1
-      );
-      raycaster.setFromCamera(mouse, camera);
-      const origin = new THREE.Vector3(position.x, position.y, position.z);
 
-      // Use sphere intersection for smoother, more intuitive angle control
-      const sphere = new THREE.Sphere(origin, 50);
-      const intersectPt = new THREE.Vector3();
-      const hit = raycaster.ray.intersectSphere(sphere, intersectPt);
-      const dir = hit
-        ? intersectPt.sub(origin).normalize()
-        : (() => {
-            const fallback = new THREE.Vector3();
-            raycaster.ray.closestPointToPoint(origin, fallback);
-            return fallback.sub(origin).normalize();
-          })();
+      // ── Camera-aware axis weighting ──
+      const camDir = camera.getWorldDirection(new THREE.Vector3());
+      const frontWeight = Math.abs(camDir.z); // looking along Z = front view
+      const sideWeight = Math.abs(camDir.x);  // looking along X = side view
+      const topWeight = Math.abs(camDir.y);    // looking down Y = top view
 
-      let newHeading = Math.atan2(dir.x, -dir.z) * (180 / Math.PI);
-      let newPitch = Math.max(-180, Math.min(180, Math.asin(Math.max(-1, Math.min(1, dir.y))) * (180 / Math.PI)));
+      // Heading: strong from front/top, weak from side
+      const hSensitivity = Math.max(frontWeight, topWeight);
+      // Pitch: strong from front/side, weak from top
+      const pSensitivity = 1 - topWeight * 0.8;
+
+      setAxisDominance({ h: hSensitivity, p: pSensitivity });
+
+      // ── Delta-based drag (screen pixels → degrees) ──
+      const scale = 0.35; // degrees per pixel
+      const deltaX = e.clientX - dragStartRef.current.mouseX;
+      const deltaY = -(e.clientY - dragStartRef.current.mouseY); // invert Y
+
+      let newHeading = dragStartRef.current.heading + deltaX * hSensitivity * scale;
+      let newPitch = dragStartRef.current.pitch + deltaY * pSensitivity * scale;
+
+      // Clamp pitch
+      newPitch = Math.max(-180, Math.min(180, newPitch));
 
       // Shift-snap to 5° increments
       if (e.shiftKey) {
@@ -481,22 +485,19 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
         newPitch = Math.round(newPitch / 5) * 5;
       }
 
-      // Axis constraints
+      // Axis constraints (from context menu or keyboard)
       if (dragAxis === 'heading' || dragAxis === 'up-vector') newPitch = position.pitch || 85;
       if (dragAxis === 'pitch') newHeading = position.heading;
       if (dragAxis === 'roll') {
-        // Roll: compute from mouse position relative to launch axis
         newHeading = position.heading;
         newPitch = position.pitch || 85;
       }
 
       // Compute delta for HUD
-      if (dragStartRef.current) {
-        setAngleDelta({
-          h: Math.round(newHeading - dragStartRef.current.heading),
-          p: Math.round(newPitch - dragStartRef.current.pitch),
-        });
-      }
+      setAngleDelta({
+        h: Math.round(newHeading - dragStartRef.current.heading),
+        p: Math.round(newPitch - dragStartRef.current.pitch),
+      });
 
       if (batchMode && selectedIds && dragStartRef.current) {
         const dHeading = newHeading - dragStartRef.current.heading;
@@ -517,6 +518,7 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
     const handleUp = () => {
       setIsDragging(false);
       setAngleDelta(null);
+      setAxisDominance({ h: 1, p: 1 });
       dragStartRef.current = null;
       batchStartRef.current.clear();
       (gl.domElement as HTMLElement).style.cursor = '';
