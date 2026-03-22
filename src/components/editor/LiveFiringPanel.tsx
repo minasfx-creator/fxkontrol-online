@@ -36,6 +36,7 @@ import type { SFXChannel, CueEntry, FXCMode, FXCSettings, DeviceLibEntry } from 
 import { FIRING_RULES, SFX_TYPES, DEFAULT_CHANNELS, DEFAULT_SETTINGS, CUES_PER_PAGE, formatTimecode, SHOWVEN_LIBRARY } from './live-firing/constants';
 import AutoFirePanel from './live-firing/AutoFirePanel';
 import CheckSlavePanel from './live-firing/CheckSlavePanel';
+import FXKNetPanel from './live-firing/FXKNetPanel';
 import SettingsPanel from './live-firing/SettingsPanel';
 import DeviceLibraryPanel from './live-firing/DeviceLibraryPanel';
 import MobileLinkMode from './live-firing/MobileLinkMode';
