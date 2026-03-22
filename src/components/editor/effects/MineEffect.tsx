@@ -201,34 +201,29 @@ export default function MineEffect({
       let r: number, g: number, b: number;
 
       if (isColumn) {
-        // White-hot → base color transition
-        const heat = Math.max(0, 1 - progress * 8);
-        r = THREE.MathUtils.lerp(baseColor.r * 1.3, 1.5, heat);
-        g = THREE.MathUtils.lerp(baseColor.g * 1.3, 1.3, heat);
-        b = THREE.MathUtils.lerp(baseColor.b * 1.3, 1.0, heat);
+        // Column: white-hot → base using thermal ramp (very early life)
+        const colLife = Math.min(1, progress * 8);
+        const thermal = thermalColorRamp(baseColor.r, baseColor.g, baseColor.b, colLife * 0.3, 2.0);
+        r = thermal.r;
+        g = thermal.g;
+        b = thermal.b;
       } else if (isDrip) {
-        // Orange → red → charcoal ramp
-        const dripAge = Math.min(1, age * 1.5);
-        const dripPhase1 = Math.min(1, dripAge * 2); // orange→red
-        const dripPhase2 = Math.max(0, (dripAge - 0.5) * 2); // red→charcoal
-        r = THREE.MathUtils.lerp(THREE.MathUtils.lerp(1.0, 0.8, dripPhase1), charcoalColor.r, dripPhase2);
-        g = THREE.MathUtils.lerp(THREE.MathUtils.lerp(0.5, 0.15, dripPhase1), charcoalColor.g, dripPhase2);
-        b = THREE.MathUtils.lerp(THREE.MathUtils.lerp(0.1, 0.03, dripPhase1), charcoalColor.b, dripPhase2);
+        // Drip: thermal ramp with ember bias
+        const dripLife = Math.min(1, age * 1.5);
+        const thermal = thermalColorRamp(0.9, 0.35, 0.08, dripLife * 0.6 + 0.4, 0.8);
+        r = thermal.r;
+        g = thermal.g;
+        b = thermal.b;
       } else {
-        // Spray: standard color with ember transition
-        r = THREE.MathUtils.lerp(baseColor.r * 1.3, 1.4, flashIntensity);
-        g = THREE.MathUtils.lerp(baseColor.g * 1.3, 1.15, flashIntensity);
-        b = THREE.MathUtils.lerp(baseColor.b * 1.3, 0.9, flashIntensity);
-
-        if (emberPhase > 0) {
-          const ep = emberPhase * emberPhase;
-          r = THREE.MathUtils.lerp(r, emberColor.r, ep * 0.6);
-          g = THREE.MathUtils.lerp(g, emberColor.g, ep * 0.7);
-          b = THREE.MathUtils.lerp(b, emberColor.b, ep * 0.8);
-        }
+        // Spray: standard thermal color ramp
+        const sprayLife = Math.min(1, age * 0.8);
+        const thermal = thermalColorRamp(baseColor.r, baseColor.g, baseColor.b, sprayLife, 1.5);
+        r = thermal.r;
+        g = thermal.g;
+        b = thermal.b;
       }
 
-      const hdrBoost = isColumn ? (2.0 + flashIntensity * 4.0) : (1.4 + flashIntensity * 3.0);
+      const hdrBoost = isColumn ? (1.5 + flashIntensity * 3.0) : (1.0 + flashIntensity * 2.0);
       colArr[i * 3] = r * fadeSq * twinkle * hdrBoost * envelope * smokeBoost;
       colArr[i * 3 + 1] = g * fadeSq * twinkle * hdrBoost * envelope * smokeBoost;
       colArr[i * 3 + 2] = b * fadeSq * twinkle * hdrBoost * envelope * smokeBoost;
