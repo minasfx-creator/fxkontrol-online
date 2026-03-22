@@ -1,63 +1,63 @@
 
+# XL4 2.0 — Redesign Command Center + Consoles Dedicados (Mobile & Desktop)
 
-# XL4 2.0 Mobile Redesign + Auditoria Global de Falhas
+## Problemas Atuais
 
-## Problemas Identificados
+1. **Command Center genérico**: Todos os 17 modos usam o mesmo `LiveFiringPanel` sem diferenciação visual — Super DMX, Pyro XL4, Manual Fire, Auto Fire todos parecem iguais
+2. **Tipografia ilegível**: Ainda existem 125+ ocorrências de `text-[5px]`/`text-[6px]` em `DeviceLibraryPanel`, `AutoFirePanel`, `WiFiDirectControlPanel`, `CheckSlavePanel`
+3. **Mobile Command Center**: Funciona mas o layout é básico — pills + LiveFiringPanel sem chrome dedicado por console
+4. **Desktop sidebar**: Funcional mas todos os modos misturados numa lista plana sem separação visual forte entre Fire Control vs Hardware vs Network
+5. **LiveFiringPanel monolítico**: 1415 linhas com 21 modos roteados por switch — difícil manter e cada modo herda o mesmo chrome (status bar, arm bar, cue keys, panic) mesmo quando não precisa (ex: Settings, Field Map, Controllers não precisam de ARM/PANIC)
 
-### A. CommandCenter Mobile — Experiencia Minima
-O `CommandCenter.tsx` no mobile (linhas 106-112) simplesmente renderiza `<LiveFiringPanel>` em fullscreen sem nenhum chrome proprio — sem Dynamic Island, sem status de conexao, sem navegacao rapida. O operador perde toda a interface glassmorphism do desktop.
+## Plano de Redesign
 
-### B. PyroFireOnePanel — Tipografia Critica (Mobile)
-Ainda contem `text-[5px]`, `text-[6px]`, `text-[7px]` extensivamente:
-- Linha 798: `text-[6px]` para latencia ArtNet
-- Linha 803: `text-[5px]` para RSSI dB
-- Linhas 829, 848, 859, 864, 869, 875, 879, 883: `text-[6px]` e `text-[5px]` em badges, voltagem, temperatura, ARM buttons
-- Linhas 710, 721, 726, 731, 761, 781: `text-[7px]` em panel mode para botoes criticos de seguranca
+### 1. Command Center — Layout Inteligente por Tipo de Console
 
-### C. MobileLinkMode — 1250 linhas com tipografia tiny
-Arquivo inteiro usa `text-[5px]` a `text-[7px]` em badges, labels e controles criticos de seguranca — num componente feito para MOBILE.
+Redesenhar `CommandCenter.tsx` para que o **chrome** (status bar, arm controls, panic) só apareça nos modos de **disparo** (super_dmx, simple_dmx, manual_fire, pyro_fire, auto_fire, check_slave). Modos de hardware/network/system renderizam o componente diretamente sem o overhead do LiveFiringPanel.
 
-### D. CommandCenter Mobile — Sem Dynamic Island Status
-Desktop tem sidebar com Dynamic Island + status de conexao + safety footer. Mobile nao tem nada disso.
+**Desktop**: 
+- Sidebar glassmorphism refinada com seções visuais claras (separadores, ícones de status por seção)
+- Modos de disparo: renderizam `LiveFiringPanel` com ARM bar + CUE keys + PANIC
+- Modos de hardware: renderizam componente direto (VirtualControllerHub, PBusMonitorPanel, etc.) em layout glassmorphism próprio
+- Breadcrumb bar com ícone contextual por modo
 
-### E. LiveFiringPanel CueKey — `text-[8px]` para KEY label
-Linha 271: KEY labels em mobile fullscreen usam `text-[9px]` (com `isBig`), mas em panel mode usam `text-[8px]` — marginal.
+**Mobile**:
+- Dynamic Island expandido com timecode quando em modo de disparo
+- Bottom tab bar com indicador de modo ativo animado
+- Modos de disparo: full chrome (ARM + CUE + PANIC)
+- Modos de hardware/network: componente direto com header simples
 
-### F. MobileTabBar — Sem badge de contagem de efeitos ativos
-O tab "Live FX" tem indicador pulsante vermelho quando ativo, mas nao mostra quantos efeitos estao ativos.
+### 2. Consoles de Disparo — Layouts Únicos
 
-## Plano de Correcao
+Cada console de disparo terá identidade visual própria:
 
-### 1. CommandCenter Mobile — Apple HUD Completo
-Redesenhar o bloco mobile do `CommandCenter.tsx` para incluir:
-- **Dynamic Island** no topo: pill com status de conexao (connected count), modo ativo, badge ARMED
-- **Bottom navigation**: segmented control glassmorphism com as 4 categorias (Fire / HW / Net / System)
-- **Quick mode pills**: 4 botoes rapidos (DMX, Pyro, ArtNet, Map) abaixo do Island
-- **Safety indicator**: banner vermelho pulsante quando ARMED
-- Manter `LiveFiringPanel` como conteudo principal mas com chrome proprio
+- **Super DMX**: Accent azul, grid de dispositivos dominante, CUE keys 8x2
+- **Pyro XL4**: Accent vermelho, réplica do hardware, módulos na sidebar
+- **Manual Fire**: Accent laranja, botões grandes de fire (2 colunas mobile, 4 desktop), FIRE ALL proeminente
+- **Auto Fire**: Accent amber, timeline/sequencer visual, controles de step/timecode
+- **Simple DMX**: Accent verde, sliders dominantes, layout clean de faders
+- **Check Slave**: Accent cyan, diagnostics grid, status de módulos
 
-### 2. PyroFireOnePanel — Tipografia Minima Global
-Substituir em todo o arquivo (1325 linhas):
-- `text-[5px]` → `text-[8px]` (13 ocorrencias)
-- `text-[6px]` → `text-[8px]` (25 ocorrencias) 
-- `text-[7px]` → `text-[8px]` em panel mode (30 ocorrencias)
+Cada console terá um **header badge** com cor única e ícone para identificação rápida.
 
-### 3. MobileLinkMode — Tipografia Minima
-Substituir em todo o arquivo (1250 linhas):
-- `text-[5px]` → `text-[9px]`
-- `text-[6px]` → `text-[9px]`
-- `text-[7px]` → `text-[9px]` (este e um componente mobile-first, minimo 9px)
+### 3. Tipografia — Cleanup Final
 
-### 4. MobileTabBar — Badge de efeitos ativos
-Adicionar `useLiveSfxStore` para ler `activeEffects.length` e exibir badge numerico no icone Live FX quando > 0.
+Substituir em todos os arquivos restantes:
+- `text-[5px]` → `text-[8px]` (DeviceLibraryPanel, AutoFirePanel)
+- `text-[6px]` → `text-[8px]` (WiFiDirectControlPanel, DeviceLibraryPanel, AutoFirePanel, CheckSlavePanel, MA3ControlPanel, ClientApprovalPanel, VideoChoreoResultPreview)
 
-### 5. MobileHUD — Melhorar com ARM Status
-Adicionar indicador de ARMED state ao HUD (borda vermelha pulsante no pill quando armed).
+### 4. Refinamento Glassmorphism
+
+- Adicionar `glass-card` pattern consistente no Command Center
+- Cards com `backdrop-filter: blur(40px)` e borders sutis
+- Transições suaves entre modos (fade + slide)
 
 ## Arquivos Afetados
-1. **Editar**: `src/pages/CommandCenter.tsx` — redesign mobile com Dynamic Island + bottom nav
-2. **Editar**: `src/components/editor/live-firing/PyroFireOnePanel.tsx` — tipografia minima
-3. **Editar**: `src/components/editor/live-firing/MobileLinkMode.tsx` — tipografia minima
-4. **Editar**: `src/components/editor/MobileTabBar.tsx` — badge efeitos ativos
-5. **Editar**: `src/components/editor/MobileHUD.tsx` — ARM status indicator
 
+1. **Editar**: `src/pages/CommandCenter.tsx` — redesign completo com routing inteligente fire vs hardware, layouts únicos por console, mobile HUD refinado
+2. **Editar**: `src/components/editor/LiveFiringPanel.tsx` — aceitar prop `consoleAccent` para cor contextual por modo
+3. **Editar**: `src/components/editor/live-firing/DeviceLibraryPanel.tsx` — tipografia mínima
+4. **Editar**: `src/components/editor/live-firing/AutoFirePanel.tsx` — tipografia mínima
+5. **Editar**: `src/components/editor/live-firing/WiFiDirectControlPanel.tsx` — tipografia mínima
+6. **Editar**: `src/components/editor/live-firing/CheckSlavePanel.tsx` — tipografia mínima
+7. **Editar**: `src/components/editor/MA3ControlPanel.tsx` — tipografia mínima
