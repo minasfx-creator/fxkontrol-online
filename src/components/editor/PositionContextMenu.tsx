@@ -283,6 +283,7 @@ export default function PositionContextMenu() {
           { label: 'Heading', axis: 'heading', color: '#4FC3F7' },
           { label: 'Pitch', axis: 'pitch', color: '#FF8A65' },
           { label: 'Roll', axis: 'roll', color: '#66BB6A' },
+          { label: 'Around Up Vector', axis: 'up-vector', color: '#AB47BC' },
         ].map(r => (
           <button
             key={r.axis}
@@ -291,10 +292,22 @@ export default function PositionContextMenu() {
           >
             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: r.color }} />
             <span>{r.label}</span>
-            <span className="text-[8px] text-muted-foreground ml-auto font-mono">{r.axis[0].toUpperCase()}</span>
+            <span className="text-[8px] text-muted-foreground ml-auto font-mono">{r.axis === 'up-vector' ? 'U' : r.axis[0].toUpperCase()}</span>
           </button>
         ))}
       </div>
+
+      {/* ── Move on Axis ── */}
+      <button
+        onClick={() => {
+          window.dispatchEvent(new CustomEvent('move-on-axis', { detail: { posId: pos.id } }));
+          setMenu(null);
+        }}
+        className="w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-surface-2 transition-colors text-foreground"
+      >
+        <span className="w-2 h-2 rounded-full bg-yellow-500" />
+        <span>Move on Axis...</span>
+      </button>
 
       {/* ── Standard Actions ── */}
       {[
