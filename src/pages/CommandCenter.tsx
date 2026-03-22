@@ -361,8 +361,8 @@ export default function CommandCenter() {
               {accent.label}
             </Badge>
             <div className="h-3 w-[1px]" style={{ background: 'hsl(var(--primary) / 0.1)' }} />
-            <span className="text-[8px] text-muted-foreground/30 font-mono tracking-[0.2em]">
-              {isFireMode(activeMode) ? 'FIRE CONTROL' : 'SYS PANEL'}
+            <span className="text-[7px] text-muted-foreground/25 font-mono tracking-[0.15em]">
+              {accent.subtitle}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
