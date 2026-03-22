@@ -4,7 +4,7 @@ import { Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { useProjectStore, type Position } from '@/store/useProjectStore';
 import { useUndoStore } from '@/store/useUndoStore';
-import { calcWindCompensation } from '@/lib/pyroPhysics';
+import { calcWindCompensation, getBreakHeight, getMortarVelocity, getLiftTime } from '@/lib/pyroPhysics';
 
 const ARROW_LENGTH = 3.5;
 const PITCH_ARC_RADIUS = 2.2;
