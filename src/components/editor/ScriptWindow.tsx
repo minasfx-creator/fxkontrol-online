@@ -897,6 +897,43 @@ export default function ScriptWindow() {
             📋{clipboard.length}
           </span>
         )}
+
+        {/* Column visibility toggle */}
+        <div className="relative ml-auto">
+          <button
+            onClick={() => setShowColumnMenu(!showColumnMenu)}
+            className="text-[9px] px-1.5 py-0.5 rounded bg-surface-2 text-muted-foreground hover:text-foreground transition-colors"
+            title="Show/hide columns"
+          >
+            Cols ▾
+          </button>
+          {showColumnMenu && (
+            <div className="absolute right-0 top-full mt-1 z-50 min-w-[140px] max-h-[240px] overflow-y-auto rounded-md border border-border/60 bg-popover/95 p-1 shadow-lg backdrop-blur-sm">
+              {COLUMN_KEYS.filter(k => k !== 'cue' && k !== 'actions').map(key => (
+                <label
+                  key={key}
+                  className="flex items-center gap-1.5 px-2 py-0.5 text-[9px] hover:bg-accent/30 rounded cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={isColVisible(key)}
+                    onChange={() => toggleColumnVisibility(key)}
+                    className="w-3 h-3"
+                  />
+                  <span className="capitalize">{key}</span>
+                </label>
+              ))}
+              <div className="border-t border-border/30 mt-1 pt-1">
+                <button
+                  onClick={() => { setColumnWidths({ ...DEFAULT_WIDTHS }); setHiddenColumns(new Set()); }}
+                  className="text-[8px] text-primary px-2 py-0.5 w-full text-left hover:bg-accent/30 rounded"
+                >
+                  Reset All
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Fill Handle Dialog */}
