@@ -2942,7 +2942,14 @@ function SceneLighting() {
     rig.moon.shadow.camera.far = 25000;
 
     scene.add(rig.group);
-    return () => { scene.remove(rig.group); };
+
+    // Expose HDR rig globally for NiagaraVFXController burst lights
+    (window as any).__hdrLightingRig = rig;
+
+    return () => {
+      scene.remove(rig.group);
+      delete (window as any).__hdrLightingRig;
+    };
   }, [scene]);
 
   // Reactively sync store settings to rig
