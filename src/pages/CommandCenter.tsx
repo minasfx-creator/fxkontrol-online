@@ -94,6 +94,7 @@ export default function CommandCenter() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileCategory, setMobileCategory] = useState(0);
   const [isLandscape, setIsLandscape] = useState(false);
+  const [bootConsole, setBootConsole] = useState<CommandMode | null>(null);
   const isMobile = useIsMobile();
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();
