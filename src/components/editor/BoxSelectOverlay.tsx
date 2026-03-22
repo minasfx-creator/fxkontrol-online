@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { isLassoActive } from './SelectionModeBar';
 
 /**
  * R3F-aware box selection — projects all positions to screen space
