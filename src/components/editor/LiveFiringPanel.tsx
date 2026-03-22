@@ -393,7 +393,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const [showMode, setShowMode] = useState(false);
   const showModeTapRef = useRef<number>(0);
   const sequenceRef = useRef(0);
-  const fireTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const fireTimers = useRef(new globalThis.Map<string, NodeJS.Timeout>());
   const relayWs = useRef<WebSocket | null>(null);
 
   // ─── WebSocket Relay connection ───
@@ -518,7 +518,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
 
   // ─── Art-Net Bridge ───
   const sendArtNetPacket = useCallback(async (currentChannels: SFXChannel[]) => {
-    const universeMap = new Map<number, number[]>();
+    const universeMap = new globalThis.Map<number, number[]>();
     for (const ch of currentChannels) {
       if (!universeMap.has(ch.dmxUniverse)) universeMap.set(ch.dmxUniverse, new Array(512).fill(0));
       const buf = universeMap.get(ch.dmxUniverse)!;
