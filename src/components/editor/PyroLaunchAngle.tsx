@@ -261,43 +261,77 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
   // Expanded pitch range: -180 to 180 per Finale 3D spec
   const pitch = Math.max(-180, Math.min(180, position.pitch || 85)) * (Math.PI / 180);
 
-  const handlePos = useMemo((): [number, number, number] => {
-    const r = ARROW_LENGTH;
-    return [
-      Math.sin(heading) * Math.cos(pitch) * r,
-      Math.sin(pitch) * r,
-      -Math.cos(heading) * Math.cos(pitch) * r,
-    ];
-  }, [heading, pitch]);
-
-  const arrowShaftPoints = useMemo((): [number, number, number][] => {
-    const pts: [number, number, number][] = [];
-    const steps = 8;
-    for (let i = 0; i <= steps; i++) {
-      const t = i / steps;
-      pts.push([handlePos[0] * t, handlePos[1] * t, handlePos[2] * t]);
-    }
-    return pts;
-  }, [handlePos]);
-
-  const trajectoryPoints = useMemo(() => {
-    const pts: [number, number, number][] = [];
-    const v0 = 35 + (position.pitch || 85) * 0.6;
+  // Compute physics-based trajectory using caliber-derived parameters
+  const trajectoryData = useMemo(() => {
+    const caliber = 4; // default caliber for gizmo visualization
+    const v0 = getMortarVelocity(caliber);
     const hRad = heading;
     const pRad = pitch;
     const vx = Math.sin(hRad) * Math.cos(pRad) * v0;
     const vy = Math.sin(pRad) * v0;
     const vz = -Math.cos(hRad) * Math.cos(pRad) * v0;
-    for (let i = 0; i < TRAJECTORY_POINTS; i++) {
-      const t = (i / TRAJECTORY_POINTS) * 3.5;
-      const x = vx * t * 0.035;
-      const y = Math.max(0, vy * t * 0.035 + 0.5 * -9.81 * t * t * 0.0012);
-      const z = vz * t * 0.035;
-      pts.push([x, y, z]);
-      if (y <= 0 && i > 3) break;
+    const g = 9.81;
+    const drag = 0.03;
+    const dt = 0.05;
+    const maxT = 8;
+
+    const pts: [number, number, number][] = [];
+    let px = 0, py = 0, pz = 0;
+    let cvx = vx, cvy = vy, cvz = vz;
+    let apexY = 0;
+    let apexIdx = 0;
+
+    // Scale factor for gizmo display (real meters → gizmo units)
+    const scale = ARROW_LENGTH / getBreakHeight(caliber);
+
+    for (let t = 0; t < maxT; t += dt) {
+      pts.push([px * scale, py * scale, pz * scale]);
+      if (py > apexY) { apexY = py; apexIdx = pts.length - 1; }
+
+      // Physics step
+      const speed = Math.sqrt(cvx * cvx + cvy * cvy + cvz * cvz);
+      const dragF = drag * speed;
+      cvx -= cvx * dragF * dt;
+      cvy -= (g + cvy * dragF) * dt;
+      cvz -= cvz * dragF * dt;
+      px += cvx * dt;
+      py += cvy * dt;
+      pz += cvz * dt;
+
+      if (py < 0 && t > 0.5) break;
+    }
+
+    // Clamp apex index
+    const safeApex = Math.min(apexIdx, pts.length - 1);
+    const apexPoint = pts[safeApex] || [0, ARROW_LENGTH, 0];
+
+    // Also compute the last point (end of trajectory)
+    const lastPoint = pts[pts.length - 1] || apexPoint;
+
+    return { points: pts, apexPoint, lastPoint, apexIdx: safeApex };
+  }, [heading, pitch]);
+
+  // Handle at the END of the trajectory (Finale 3D style — grab burst point)
+  const handlePos = useMemo((): [number, number, number] => {
+    return trajectoryData.lastPoint as [number, number, number];
+  }, [trajectoryData]);
+
+  const arrowShaftPoints = useMemo((): [number, number, number][] => {
+    const pts: [number, number, number][] = [];
+    const steps = 8;
+    const tipDir: [number, number, number] = [
+      Math.sin(heading) * Math.cos(pitch) * ARROW_LENGTH,
+      Math.sin(pitch) * ARROW_LENGTH,
+      -Math.cos(heading) * Math.cos(pitch) * ARROW_LENGTH,
+    ];
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      pts.push([tipDir[0] * t, tipDir[1] * t, tipDir[2] * t]);
     }
     return pts;
-  }, [heading, pitch, position.pitch]);
+  }, [heading, pitch]);
+
+  const trajectoryPoints = trajectoryData.points;
 
   const onPointerDown = useCallback((e: any) => {
     e.stopPropagation();
