@@ -1,113 +1,103 @@
 
 
-# FXK Platform — Gaps & Refinements for Real Show Operations
+# FXK Platform — 4 Product Line Controller Identities
 
-## Real-World Gaps Identified
+## Summary
 
-After analyzing the full codebase against real show site conditions, here are the critical gaps:
+Give each of the 4 controller platforms a unique visual and operational identity. Two platforms need visual restyling (PYRO, DMX), two need new branded components (LIGHT, DRONES). Plus wire everything into CommandCenter with platform-aware chrome.
 
-### 1. **Backlight / Readability in Dark Environments**
-Show sites are always dark — operators work with headlamps off to avoid blinding performers/audience. Current issues:
-- Text at `text-muted-foreground/20`, `/25`, `/30`, `/35`, `/40` is **unreadable** outdoors at night
-- Active tab indicators use tiny 1-2px dots that disappear in peripheral vision
-- Borders at `/05`, `/06`, `/08` provide zero visual separation on dark screens with glare
-- The backlight slider in Settings only stores a value but **doesn't actually adjust anything** — it's decorative
+## Changes
 
-### 2. **Touch Targets Too Small for Gloved Hands**
-Pyro operators often wear work gloves. Current issues:
-- Command Center mode buttons: `min-h-[36px]` — too small with gloves
-- Mobile bottom nav buttons: `py-1.5 px-3` — barely 32px
-- PanelTabBar items: `px-2.5 py-1.5` — ~28px height
-- Need minimum **48px** touch targets for mission-critical buttons
+### 1. PyroFireOnePanel.tsx — XL4+ 2.0 Identity (Restyle)
 
-### 3. **No Ambient Light Adaptation**
-- No "night mode" / "show mode" that maximizes contrast
-- No option to dim non-essential UI (news feed, stats) during live show
-- The backlight setting should actually control a CSS opacity/brightness filter on the whole UI
+The panel already has strong functionality. Add visual branding:
 
-### 4. **Critical Status Visibility**
-- ARMED state: only a tiny badge — needs to be an unmissable full-width bar
-- Connection loss: no persistent warning — just a dot changing color
-- No audio/haptic feedback on ARM/DISARM state changes
+- **Header**: Replace emoji "🔥 FXK-PYRO" with branded bar: `FXK-PYRO · XL4+ 2.0` in red accent stripe, LCD-style module/igniter/fired counters in bordered boxes
+- **4 Output Groups**: Add A/B/C/D output group indicators above module selector — each group covers 8 modules (A=1-8, B=9-16, C=17-24, D=25-32) with individual LED status dots and group ARM toggles
+- **Mode tabs**: Style as membrane-button look — sharp edges, slight inset shadow, uppercase monospace, matching real XL4+ membrane overlay aesthetic
+- **Master Key**: Add key-switch rotation animation (CSS transform on toggle), larger touch target (64px width minimum)
+- **Igniter grid cells**: Show resistance readout (Ω value) below igniter number, color-code: green ≤10Ω, amber 10-50Ω, red >50Ω/open
+- **Background tint**: Deep red-tinted dark (`hsl(0 15% 5%)`)
 
-### 5. **Dashboard Noise During Show Day**
-- Instagram-style news feed occupies the center column — irrelevant on show day
-- No "Show Day" mode that surfaces only: next event countdown, hardware status, quick-launch to Command Center
+### 2. LiveFiringPanel.tsx — DMX FXCommander 2.0 Identity (Restyle status bar + Simple DMX faders)
 
-### 6. **Missing Emergency Access**
-- PANIC button only exists inside LiveFiringPanel — needs to be globally accessible when armed
-- No quick-return to Command Center from any screen when armed
+- **Status bar**: Context-aware branding based on active mode:
+  - Fire modes → "FXK-PYRO · XL4+ 2.0" red accent
+  - DMX modes → "FXK-DMX · FXCOMMANDER 2.0" cyan accent
+- **Simple DMX mode content area**: Replace flat channel list with vertical fader bank UI:
+  - 8 faders per bank, vertical sliders with channel number bottom, value top
+  - Color indicator strip on each fader track matching device type color
+  - Bank selector tabs (1-8, 9-16, 17-24, etc.)
+- **Mode tab styling per platform**:
+  - DMX modes: smooth rounded pills with subtle cyan glow
+  - Fire modes: sharp-edged membrane buttons with red tint
+- **CUE key grid in Super DMX**: Group CUE keys by effect type with colored section headers (flames=red, CO2=blue, sparks=amber, etc.)
 
-## Plan
+### 3. MA3ControlPanel.tsx — LIGHTDESK 2.0 Identity (Restyle)
 
-### Step 1: Fix Contrast & Readability (index.css + components)
+- **Header**: "FXK-LIGHT · LIGHTDESK 2.0" with indigo/violet accent stripe (`hsl(240 50% 52%)`)
+- **Background tint**: Subtle violet dark (`hsl(240 12% 5%)`)
+- **Connection indicators**: Restyle OSC/sACN/MVR badges as console port LEDs (round dots with label, green=linked, amber=standby, red=fault)
+- **Executor faders section**: Restyle as proper console executor bank:
+  - Each fader gets a backlit label strip effect (subtle glow behind label)
+  - Active executor gets violet glow highlight
+  - Grand Master fader visually separated with "GM" label and distinct border
+- **Cue list GO/BACK/PAUSE buttons**: Enlarge to theater-style membrane keys (min-h-[48px], prominent GO button in violet, BACK in muted)
+- **Blackout button**: Make full-width, prominent, styled as physical console BLACKOUT key (dark background, bright label, amber warning stripe)
+- **Tab styling**: Violet-tinted tab triggers with curtain-inspired gradient
 
-**index.css changes:**
-- Raise all `muted-foreground` minimum from `/20` → `/50` in interactive elements
-- Add new utility classes:
-  - `.high-contrast` — forces minimum brightness on all text children
-  - `.night-mode` — CSS class on `<body>` that applies `filter: brightness(var(--ui-brightness))` controlled by backlight slider
-- Increase border opacity minimums from `/05` → `/12`
+### 4. DroneCommandPanel.tsx — SWARM OPS 2.0 (New Component)
 
-**Component changes across all files:**
-- Replace all `text-muted-foreground/20`, `/25`, `/30` with minimum `/50` for interactive elements
-- Replace `/35`, `/40` with minimum `/55` for labels
-- Keep `/20`-`/30` only for truly decorative elements (grid lines, scanlines)
+Create a new unified drone operations dashboard:
 
-### Step 2: Enlarge Touch Targets for Show Operations
+- **Header**: "FXK-DRONES · SWARM OPS 2.0" with teal accent (`hsl(165 100% 42%)`)
+- **Background**: Dark with HUD grid overlay, teal tint (`hsl(165 8% 5%)`)
+- **4-quadrant layout**:
+  1. **FLEET STATUS** (top-left): Drone count from `useProjectStore`, battery aggregate bar, GPS lock indicator, signal strength
+  2. **FORMATION PREVIEW** (top-right): Canvas/SVG showing current formation shape as dots, reads from `droneFormations`
+  3. **MISSION TIMELINE** (bottom-left): Horizontal timeline of formation sequence with transition arrows
+  4. **TELEMETRY FEED** (bottom-right): Scrolling readout of simulated altitude, speed, heading per drone
+- **Launch Sequence bar** (bottom): Pre-flight checklist indicators (GPS ✓, BATTERY ✓, GEOFENCE ✓, SAFETY ✓, CLEARANCE ✓) + two-step "ARM SWARM" → "LAUNCH" button
+- **Props**: `fs?: boolean`, reads from existing `useProjectStore` for formations/trajectory data
 
-**CommandCenter.tsx:**
-- Mobile mode pills: `min-h-[36px]` → `min-h-[48px]`
-- Bottom nav buttons: add `min-h-[48px] min-w-[48px]`
-- Desktop sidebar buttons: `py-1.5` → `py-2.5`
+### 5. SwarmGPTPanel.tsx — SWARM OPS Branding (Minor restyle)
 
-**MobileTabBar.tsx:**
-- Tab buttons: enforce `min-h-[52px]` with larger icons (`w-6 h-6`)
+- Add "SWARM OPS 2.0" branding header with teal accent stripe
+- Style prompt textarea with teal border and "MISSION BRIEF" label
+- Quick prompt cards get teal-tinted borders and aerospace-style labels
+- Generation progress text: "COMPUTING TRAJECTORIES..." with teal spinner
 
-### Step 3: Make Backlight Slider Functional
+### 6. CommandCenter.tsx — Platform-Aware Sidebar & Drone Mode
 
-**MainLayout.tsx:**
-- Read backlight value from a global store/localStorage
-- Apply `filter: brightness(${backlight}%)` on the main app container
-- Default: 80% (comfortable for dark sites)
+- Add `drone_ops` as new `CommandMode` and wire to `DroneCommandPanel`
+- Add to HARDWARE section in `MODE_SECTIONS` with teal accent
+- Add to `CONSOLE_ACCENTS`: `drone_ops: { color: 'hsl(165 100% 42%)', label: 'FXK-DRONES', badge: teal }`
+- Add to `renderDirectPanel`: `case 'drone_ops': return <DroneCommandPanel fs />`
+- Platform-aware sidebar tint: when active mode is in fire group → red left border glow, dmx → cyan, ma3 → indigo, drone_ops → teal
 
-**New: `src/store/useDisplayStore.ts`**
-- Stores `backlight` (10-100), `nightMode` (bool), `showMode` (bool)
-- Persists to localStorage
+### 7. VirtualControllerHub.tsx — Platform-Branded Cards
 
-### Step 4: Global ARMED Banner
+- Add FXK-DRONES group with teal card borders and drone icon
+- FXK Fire Systems cards: red-tinted border `border-red-500/20`
+- Showven cards: amber-tinted border `border-amber-500/20`
+- Add "LIGHTDESK 2.0" subtitle to ma3 card, "SWARM OPS 2.0" to drone card
+- Add drone controller card entry in CONTROLLERS array pointing to `drone_ops` panelMode
 
-**MainLayout.tsx:**
-- When any effects are armed (read from `useLiveSfxStore`), render a persistent top bar:
-  - Full-width, `bg-destructive/90`, pulsing, with text "⚠ SYSTEM ARMED — X CHANNELS HOT"
-  - Click navigates to Command Center
-  - Cannot be dismissed while armed
+## Files
 
-### Step 5: Show Day Dashboard Mode
+1. `src/components/editor/live-firing/PyroFireOnePanel.tsx` — XL4+ 2.0 visual identity
+2. `src/components/editor/LiveFiringPanel.tsx` — FXCommander 2.0 branding + DMX fader bank
+3. `src/components/editor/MA3ControlPanel.tsx` — LIGHTDESK 2.0 theater identity
+4. `src/components/editor/DroneCommandPanel.tsx` — **NEW** SWARM OPS 2.0 mission control
+5. `src/components/editor/SwarmGPTPanel.tsx` — SWARM OPS branding pass
+6. `src/pages/CommandCenter.tsx` — drone_ops mode + platform-aware chrome
+7. `src/components/editor/VirtualControllerHub.tsx` — branded card groups
 
-**Dashboard.tsx:**
-- Detect if there's an event today (`daysUntilNext === 0`)
-- Auto-switch to a simplified "Show Day" layout:
-  - Full-width countdown timer to event start
-  - Hardware status grid (connected/disconnected per device type)
-  - Single large "ENTER COMMAND MODE" button
-  - Hide news feed, stats, project list
-- Manual toggle: "Show Day Mode" switch in hero banner
+## Technical Notes
 
-### Step 6: Global Emergency FAB
-
-**MainLayout.tsx:**
-- When armed, show a floating PANIC button (bottom-right, 64x64, red, pulsing)
-- Fires all-stop on `useLiveSfxStore`
-- Visible on ALL pages, not just Command Center
-
-## Files Modified
-
-1. `src/index.css` — contrast utilities, night mode, touch target classes
-2. `src/store/useDisplayStore.ts` — new store for display settings
-3. `src/layouts/MainLayout.tsx` — backlight filter, ARMED banner, PANIC FAB
-4. `src/pages/CommandCenter.tsx` — touch target sizes, contrast fixes
-5. `src/pages/Dashboard.tsx` — Show Day mode, contrast fixes
-6. `src/components/editor/MobileTabBar.tsx` — larger touch targets
-7. `src/components/editor/live-firing/SettingsPanel.tsx` — wire backlight to real store
+- No new dependencies — all Tailwind + existing components
+- No database changes
+- DroneCommandPanel reads from existing `useProjectStore` (droneFormations, trajectories)
+- All touch targets maintain 48px+ minimum
+- All text maintains `/50` minimum opacity for dark-environment readability
 
