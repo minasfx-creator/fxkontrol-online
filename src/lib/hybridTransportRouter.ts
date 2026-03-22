@@ -615,10 +615,10 @@ export class StarlinkTransport implements FireOneTransport {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error('Starlink não conectado');
     }
-    const t0 = performance.now();
+    // Use ping/pong for true RTT instead of local buffer time
     this.ws.send(frame.buffer as ArrayBuffer);
-    this.latencyMs = Math.round(performance.now() - t0);
     this.txBytes += frame.length;
+    // latencyMs is updated by pong handler in onmessage — not measured here
   }
 
   private calibrateBaseline(): void {
