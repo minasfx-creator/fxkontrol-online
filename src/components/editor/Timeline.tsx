@@ -463,6 +463,8 @@ function TimelineTrackRow({
         const cx = me.clientX - rect.left;
         const minX = Math.min(prev.startX, cx);
         const maxX = Math.max(prev.startX, cx);
+        const selectedIds: string[] = [];
+        const linkedPosIds = new Set<string>();
         items.forEach(item => {
           const effect = EFFECT_LIBRARY.find(ef => ef.id === item.effectId);
           if (!effect) return;
@@ -470,8 +472,15 @@ function TimelineTrackRow({
           const itemRight = itemLeft + Math.max((item.durationOverride ?? effect.duration) * pixelsPerSecond, 28);
           if (itemLeft < maxX && itemRight > minX) {
             toggleTimelineItemSelection(item.id);
+            selectedIds.push(item.id);
+            if (item.positionId) linkedPosIds.add(item.positionId);
+            item.positionIds?.forEach(pid => linkedPosIds.add(pid));
           }
         });
+        // Sync linked positions to viewport
+        if (linkedPosIds.size > 0) {
+          useProjectStore.getState().selectMultiplePositionsAndLinkedEvents(Array.from(linkedPosIds));
+        }
         return null;
       });
       window.removeEventListener('mousemove', handleMove);

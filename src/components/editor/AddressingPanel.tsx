@@ -225,6 +225,7 @@ export default function AddressingPanel({ onClose }: { onClose: () => void }) {
               <tbody>
                 {sortedItems.map(({ item, effect, addr }) => {
                   const hwMod = getHwModule(addr);
+                  const posName = item.positionName || (item.positionId ? positions.find(p => p.id === item.positionId)?.name : null);
                   return (
                     <tr
                       key={item.id}
@@ -249,6 +250,9 @@ export default function AddressingPanel({ onClose }: { onClose: () => void }) {
                           <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: effect.color }} />
                           <span className="truncate max-w-[80px]">{effect.name}</span>
                         </div>
+                      </td>
+                      <td className="px-1 py-0.5 text-muted-foreground/60 truncate max-w-[60px]">
+                        {posName ? <span className="text-accent/70">{posName}</span> : <span className="text-muted-foreground/20">—</span>}
                       </td>
                       {hardware.isConnected && (
                         <td className="px-1 py-0.5">

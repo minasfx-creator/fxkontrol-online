@@ -415,12 +415,26 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
         </group>
       )}
 
+      {/* Linked glow ring — pulses when events are selected from timeline */}
+      {hasLinkedGlow && !isSelected && (
+        <LinkedGlowRing color={position.type === 'pyro' ? '#FF8A65' : '#4FC3F7'} />
+      )}
+
       {/* Hover ring */}
       {isHovered && !isSelected && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.025, 0]}>
           <ringGeometry args={[0.55, 0.65, 24]} />
           <meshBasicMaterial color={color} transparent opacity={0.35} />
         </mesh>
+      )}
+
+      {/* FireOne module badge */}
+      {moduleBadge && (
+        <Html position={[0.5, position.type === 'pyro' ? 0.6 : 0.55, 0]} center distanceFactor={8}>
+          <div className="px-1 py-0 rounded text-[7px] font-mono font-bold bg-green-600/80 text-white border border-green-400/40 shadow-sm whitespace-nowrap">
+            {moduleBadge}
+          </div>
+        </Html>
       )}
 
       {/* Direction arrow */}
