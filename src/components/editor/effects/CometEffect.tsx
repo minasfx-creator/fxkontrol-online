@@ -12,12 +12,12 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { getMortarVelocity, GRAVITY } from '@/lib/pyroPhysics';
 import { getThreeBlending } from '@/lib/niagaraBlenderRules';
-import { combustionFlicker, hash01 } from '@/lib/pyroNoise';
+import { combustionFlicker, hash01, thermalColorRamp } from '@/lib/pyroNoise';
 import { RibbonTrail } from '@/render_ultra/fireworks/ribbonTrailRenderer';
 import { useProjectStore } from '@/store/useProjectStore';
 
 const SPARK_COUNT = 120;
-const SMOKE_WAKE_COUNT = 30;
+const SMOKE_WAKE_COUNT = 50;
 
 export default function CometEffect({
   position,
@@ -81,14 +81,15 @@ export default function CometEffect({
 
   // GPU spark seeds (pre-allocated, zero-GC)
   const sparkSeeds = useMemo(() => {
-    const seeds = new Float32Array(SPARK_COUNT * 5); // detachT, spreadAngle, drag, sizeScale, seed
+    const seeds = new Float32Array(SPARK_COUNT * 6); // detachT, spreadAngle, drag, sizeBase, seed, turbAmp
     for (let i = 0; i < SPARK_COUNT; i++) {
       const angle = Math.random() * Math.PI * 2;
-      seeds[i * 5] = 0.03 + Math.random() * 0.8; // detachT
-      seeds[i * 5 + 1] = angle; // spread angle
-      seeds[i * 5 + 2] = 0.90 + Math.random() * 0.08; // drag
-      seeds[i * 5 + 3] = 0.012 + Math.random() * 0.022; // size
-      seeds[i * 5 + 4] = Math.random() * 999 + i; // seed
+      seeds[i * 6] = 0.03 + Math.random() * 0.8; // detachT
+      seeds[i * 6 + 1] = angle; // spread angle
+      seeds[i * 6 + 2] = 0.90 + Math.random() * 0.08; // drag
+      seeds[i * 6 + 3] = 0.04 + hash01(i * 3.7) * 0.10; // size variation (0.04–0.14)
+      seeds[i * 6 + 4] = Math.random() * 999 + i; // seed
+      seeds[i * 6 + 5] = 0.02 + Math.random() * 0.04; // turbulence amplitude
     }
     return seeds;
   }, []);
@@ -96,13 +97,15 @@ export default function CometEffect({
   // Spark GPU buffers
   const sparkPosBuffer = useMemo(() => new Float32Array(SPARK_COUNT * 3), []);
   const sparkColBuffer = useMemo(() => new Float32Array(SPARK_COUNT * 3), []);
+  const sparkSizeBuffer = useMemo(() => new Float32Array(SPARK_COUNT), []);
 
   // Smoke wake seeds
   const smokeWakeSeeds = useMemo(() => {
-    const s = new Float32Array(SMOKE_WAKE_COUNT * 2); // spawnProgress, seed
+    const s = new Float32Array(SMOKE_WAKE_COUNT * 3); // spawnProgress, seed, turbAmp
     for (let i = 0; i < SMOKE_WAKE_COUNT; i++) {
-      s[i * 2] = (i / SMOKE_WAKE_COUNT) * 0.9 + 0.03;
-      s[i * 2 + 1] = Math.random() * 999 + i;
+      s[i * 3] = (i / SMOKE_WAKE_COUNT) * 0.9 + 0.03;
+      s[i * 3 + 1] = Math.random() * 999 + i;
+      s[i * 3 + 2] = 0.04 + Math.random() * 0.08; // per-particle turbulence amplitude
     }
     return s;
   }, []);
@@ -173,26 +176,27 @@ export default function CometEffect({
     if (sparkPointsRef.current) {
       const posArr = sparkPosBuffer;
       const colArr = sparkColBuffer;
-      let visibleCount = 0;
+      const sizeArr = sparkSizeBuffer;
 
       for (let i = 0; i < SPARK_COUNT; i++) {
-        const detachT = sparkSeeds[i * 5];
-        const spreadAngle = sparkSeeds[i * 5 + 1];
-        const drag = sparkSeeds[i * 5 + 2];
-        const seed = sparkSeeds[i * 5 + 4];
+        const detachT = sparkSeeds[i * 6];
+        const spreadAngle = sparkSeeds[i * 6 + 1];
+        const drag = sparkSeeds[i * 6 + 2];
+        const sizeBase = sparkSeeds[i * 6 + 3];
+        const seed = sparkSeeds[i * 6 + 4];
 
         if (progress < detachT) {
           posArr[i * 3] = 0;
-          posArr[i * 3 + 1] = -1000; // hide below
+          posArr[i * 3 + 1] = -1000;
           posArr[i * 3 + 2] = 0;
           colArr[i * 3] = colArr[i * 3 + 1] = colArr[i * 3 + 2] = 0;
+          sizeArr[i] = 0;
           continue;
         }
 
         const elapsed = (progress - detachT) * 2.8;
         const dragFactor = Math.pow(drag, elapsed * 60);
 
-        // Detach position: head pos at detach time
         const detachPos = getHeadPos(detachT);
         const spreadSpeed = 0.3 + hash01(seed) * 1.2;
 
@@ -203,6 +207,7 @@ export default function CometEffect({
         if (sparkY < -0.5) {
           posArr[i * 3 + 1] = -1000;
           colArr[i * 3] = colArr[i * 3 + 1] = colArr[i * 3 + 2] = 0;
+          sizeArr[i] = 0;
           continue;
         }
 
@@ -210,24 +215,26 @@ export default function CometEffect({
         posArr[i * 3 + 1] = sparkY;
         posArr[i * 3 + 2] = sparkZ;
 
-        // Color: orange → red → charcoal
-        const sparkFade = Math.max(0, 1 - elapsed * 1.0);
-        const emberT = Math.min(1, elapsed * 2);
-        const sr = THREE.MathUtils.lerp(1.0, 0.2, emberT) * sparkFade;
-        const sg = THREE.MathUtils.lerp(0.7, 0.06, emberT) * sparkFade;
-        const sb = THREE.MathUtils.lerp(0.15, 0.02, emberT) * sparkFade;
+        // Thermal color ramp: orange → red → charcoal
+        const sparkLife = Math.min(1, elapsed * 1.0);
+        const thermal = thermalColorRamp(1.0, 0.5, 0.1, sparkLife * 0.7 + 0.15, 1.0);
+        const sparkFade = Math.max(0, 1 - sparkLife);
 
-        colArr[i * 3] = sr;
-        colArr[i * 3 + 1] = sg;
-        colArr[i * 3 + 2] = sb;
-        visibleCount++;
+        colArr[i * 3] = thermal.r * sparkFade;
+        colArr[i * 3 + 1] = thermal.g * sparkFade;
+        colArr[i * 3 + 2] = thermal.b * sparkFade;
+        
+        // Per-particle size
+        sizeArr[i] = sizeBase * (1 - sparkLife * 0.5);
       }
 
       const sparkGeo = sparkPointsRef.current.geometry;
       sparkGeo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
       sparkGeo.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
+      sparkGeo.setAttribute('size', new THREE.BufferAttribute(sizeArr, 1));
       sparkGeo.attributes.position.needsUpdate = true;
       sparkGeo.attributes.color.needsUpdate = true;
+      sparkGeo.attributes.size.needsUpdate = true;
     }
 
     // ── Smoke wake ──
@@ -236,8 +243,9 @@ export default function CometEffect({
       const sCol = smokeColBuffer;
 
       for (let i = 0; i < SMOKE_WAKE_COUNT; i++) {
-        const spawnProg = smokeWakeSeeds[i * 2];
-        const seed = smokeWakeSeeds[i * 2 + 1];
+        const spawnProg = smokeWakeSeeds[i * 3];
+        const seed = smokeWakeSeeds[i * 3 + 1];
+        const turbAmp = smokeWakeSeeds[i * 3 + 2];
 
         if (progress < spawnProg) {
           sPos[i * 3 + 1] = -1000;
@@ -253,14 +261,14 @@ export default function CometEffect({
         }
 
         const spawnPos = getHeadPos(spawnProg);
-        const turbX = Math.sin(time * 0.2 + seed * 3.7) * 0.08;
-        const turbZ = Math.cos(time * 0.15 + seed * 5.1) * 0.06;
+        const turbX = Math.sin(time * 0.2 + seed * 3.7) * turbAmp;
+        const turbZ = Math.cos(time * 0.15 + seed * 5.1) * turbAmp * 0.8;
 
         sPos[i * 3] = spawnPos.headX + turbX + windX * smokeAge * 0.5;
         sPos[i * 3 + 1] = spawnPos.headY + smokeAge * 0.15;
         sPos[i * 3 + 2] = spawnPos.headZ + turbZ + windZ * smokeAge * 0.5;
 
-        const smokeFade = Math.max(0, 1 - smokeAge / 1.5) * 0.05;
+        const smokeFade = Math.max(0, 1 - smokeAge / 1.5) * 0.09;
         sCol[i * 3] = 0.3 * smokeFade;
         sCol[i * 3 + 1] = 0.25 * smokeFade;
         sCol[i * 3 + 2] = 0.2 * smokeFade;
@@ -305,15 +313,33 @@ export default function CometEffect({
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[new Float32Array(SPARK_COUNT * 3), 3]} />
           <bufferAttribute attach="attributes-color" args={[new Float32Array(SPARK_COUNT * 3), 3]} />
+          <bufferAttribute attach="attributes-size" args={[new Float32Array(SPARK_COUNT), 1]} />
         </bufferGeometry>
-        <pointsMaterial
-          size={0.08 + caliber * 0.02}
-          vertexColors
+        <shaderMaterial
+          vertexShader={`
+            attribute float size;
+            attribute vec3 color;
+            varying vec3 vColor;
+            void main() {
+              vColor = color;
+              vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+              gl_PointSize = size * (300.0 / -mvPosition.z);
+              gl_PointSize = clamp(gl_PointSize, 1.0, 48.0);
+              gl_Position = projectionMatrix * mvPosition;
+            }
+          `}
+          fragmentShader={`
+            varying vec3 vColor;
+            void main() {
+              float dist = length(gl_PointCoord - vec2(0.5));
+              if (dist > 0.5) discard;
+              float alpha = smoothstep(0.5, 0.15, dist);
+              gl_FragColor = vec4(vColor, alpha * 0.9);
+            }
+          `}
           transparent
-          opacity={0.85}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
-          sizeAttenuation
         />
       </points>
 
@@ -324,10 +350,10 @@ export default function CometEffect({
           <bufferAttribute attach="attributes-color" args={[new Float32Array(SMOKE_WAKE_COUNT * 3), 3]} />
         </bufferGeometry>
         <pointsMaterial
-          size={1.2 + caliber * 0.3}
+          size={1.5 + caliber * 0.4}
           vertexColors
           transparent
-          opacity={0.06}
+          opacity={0.09}
           depthWrite={false}
           sizeAttenuation
         />

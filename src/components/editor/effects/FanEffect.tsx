@@ -2,14 +2,14 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
+import { temporalFlicker, thermalColorRamp } from '@/lib/pyroNoise';
 
-const RAYS = 9;
-const PARTICLES_PER_RAY = 30;
-const TOTAL_PARTICLES = RAYS * PARTICLES_PER_RAY;
+const BASE_RAYS = 9;
+const BASE_PARTICLES_PER_RAY = 30;
 
 /**
  * Fan effect: Multiple rays of particles spreading in an arc pattern.
- * Integrated with wind force module from project store.
+ * Integrated with wind, combustion flicker, and thermal color ramp.
  */
 export default function FanEffect({
   position,
@@ -25,6 +25,11 @@ export default function FanEffect({
   caliber?: number;
 }) {
   const caliberScale = 0.7 + caliber * 0.12;
+  // Scale particle density by caliber
+  const RAYS = Math.min(15, Math.round(BASE_RAYS * caliberScale));
+  const PARTICLES_PER_RAY = Math.min(50, Math.round(BASE_PARTICLES_PER_RAY * caliberScale));
+  const TOTAL_PARTICLES = RAYS * PARTICLES_PER_RAY;
+
   const pointsRef = useRef<THREE.Points>(null);
   const linesRef = useRef<THREE.LineSegments>(null);
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
@@ -34,7 +39,7 @@ export default function FanEffect({
   const linePos = useRef(new Float32Array(RAYS * 2 * 3));
   const lineCol = useRef(new Float32Array(RAYS * 2 * 3));
 
-  useFrame(() => {
+  useFrame(({ clock }) => {
     if (!pointsRef.current || !linesRef.current) return;
 
     const p = posArr.current;
@@ -43,6 +48,7 @@ export default function FanEffect({
     const lc = lineCol.current;
     const halfSpread = (spreadAngle * Math.PI) / 360;
     const t = progress * 2;
+    const time = clock.getElapsedTime();
 
     // Wind
     const { wind } = useProjectStore.getState();
@@ -86,10 +92,17 @@ export default function FanEffect({
         p[idx * 3 + 2] = dirZ * dist + Math.cos(j * 7.3 + ray * 3.3) * 0.2 * pct + wZ * pct * t;
 
         const fade = Math.max(0, 1 - pct * 0.6) * Math.max(0, 1 - progress * 0.8);
-        const sparkle = 0.7 + Math.sin(j * 17 + progress * 30) * 0.3;
-        c[idx * 3] = THREE.MathUtils.lerp(1, baseColor.r, pct * 0.8) * fade * sparkle;
-        c[idx * 3 + 1] = THREE.MathUtils.lerp(0.9, baseColor.g, pct * 0.9) * fade * sparkle;
-        c[idx * 3 + 2] = THREE.MathUtils.lerp(0.6, baseColor.b, pct) * fade * sparkle;
+        
+        // Combustion flicker per-particle (organic brightness)
+        const flicker = temporalFlicker(idx * 17.3 + ray * 5.1, time, 0.65, 0.30, 0.28);
+        
+        // Thermal color ramp: white-hot at birth → base → ember
+        const lifeRatio = pct * 0.8 + progress * 0.3;
+        const thermal = thermalColorRamp(baseColor.r, baseColor.g, baseColor.b, lifeRatio, 1.3);
+        
+        c[idx * 3] = thermal.r * fade * flicker;
+        c[idx * 3 + 1] = thermal.g * fade * flicker;
+        c[idx * 3 + 2] = thermal.b * fade * flicker;
       }
     }
 

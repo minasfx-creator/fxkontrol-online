@@ -2,12 +2,13 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
+import { temporalFlicker } from '@/lib/pyroNoise';
 
 const SPARK_COUNT = 150;
 
 /**
  * SparkShower: Dense shower of tiny bright sparks cascading down.
- * Integrated with wind force module from project store.
+ * Integrated with wind and temporal flicker for organic brightness.
  */
 export default function SparkShower({
   position,
@@ -35,7 +36,7 @@ export default function SparkShower({
   const colArr = useMemo(() => new Float32Array(SPARK_COUNT * 3), []);
 
   const seeds = useMemo(() => {
-    const s: { angle: number; r: number; vy: number; phase: number; lt: number; speed: number }[] = [];
+    const s: { angle: number; r: number; vy: number; phase: number; lt: number; speed: number; seed: number }[] = [];
     for (let i = 0; i < SPARK_COUNT; i++) {
       const isWaterfall = sparkularModel === 'waterfall';
       const isWheel = sparkularModel === 'wheel';
@@ -46,6 +47,7 @@ export default function SparkShower({
         phase: Math.random() * Math.PI * 2,
         lt: isColdSpark ? 0.5 + Math.random() * 1.0 : 0.3 + Math.random() * 1.2,
         speed: 0.5 + Math.random() * 2,
+        seed: Math.random() * 999 + i,
       });
     }
     return s;
@@ -80,11 +82,14 @@ export default function SparkShower({
       posArr[i * 3 + 2] = z;
 
       const fade = Math.max(0, 1 - cycleTime);
-      const flash = cycleTime < 0.1 ? 1.5 : 1;
-      const flicker = 0.6 + Math.sin(i * 23 + time * 50) * 0.4;
-      colArr[i * 3] = Math.min(1, baseColor.r * fade * flash * flicker * 1.2);
-      colArr[i * 3 + 1] = Math.min(1, baseColor.g * fade * flash * flicker * 0.8);
-      colArr[i * 3 + 2] = Math.min(1, baseColor.b * fade * flash * flicker * 0.5);
+      // White-hot spawn boost (first 10% of life)
+      const spawnBoost = cycleTime < 0.1 ? 1.0 + (1 - cycleTime / 0.1) * 0.5 : 1.0;
+      // Organic temporal flicker
+      const flicker = temporalFlicker(seed.seed, time, 0.6, 0.34, 0.32);
+      
+      colArr[i * 3] = Math.min(1.5, baseColor.r * fade * spawnBoost * flicker * 1.2);
+      colArr[i * 3 + 1] = Math.min(1.5, baseColor.g * fade * spawnBoost * flicker * 0.8);
+      colArr[i * 3 + 2] = Math.min(1.5, baseColor.b * fade * spawnBoost * flicker * 0.5);
     }
 
     const geo = pointsRef.current.geometry;

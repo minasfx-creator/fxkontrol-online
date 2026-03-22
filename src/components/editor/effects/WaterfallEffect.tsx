@@ -2,12 +2,13 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
+import { temporalFlicker, thermalColorRamp } from '@/lib/pyroNoise';
 
 const PARTICLE_COUNT = 500;
 
 /**
  * Waterfall / Cascade / Niagara Effect
- * Integrated with wind force module from project store.
+ * Integrated with wind, temporal flicker, and thermal color ramp.
  */
 export default function WaterfallEffect({
   position,
@@ -31,7 +32,7 @@ export default function WaterfallEffect({
   const colArr = useMemo(() => new Float32Array(SCALED_PARTICLE_COUNT * 3), [SCALED_PARTICLE_COUNT]);
 
   const seeds = useMemo(() => {
-    const s: { x: number; vy: number; vx: number; lt: number; phase: number; flicker: number; offset: number }[] = [];
+    const s: { x: number; vy: number; vx: number; lt: number; phase: number; flicker: number; offset: number; seed: number }[] = [];
     for (let i = 0; i < SCALED_PARTICLE_COUNT; i++) {
       s.push({
         x: (Math.random() - 0.5) * scaledWidth,
@@ -41,6 +42,7 @@ export default function WaterfallEffect({
         phase: Math.random() * Math.PI * 2,
         flicker: 15 + Math.random() * 50,
         offset: Math.random() * 0.3,
+        seed: Math.random() * 999 + i,
       });
     }
     return s;
@@ -84,27 +86,15 @@ export default function WaterfallEffect({
 
       const fade = Math.max(0, 1 - cycleTime * 0.85) * intensity;
       
-      const flicker = 0.4
-        + Math.sin(i * 11 + time * seed.flicker) * 0.22
-        + Math.sin(i * 3 + time * seed.flicker * 0.65) * 0.18
-        + Math.sin(i * 29 + time * seed.flicker * 1.4) * 0.12
-        + (Math.random() > 0.97 ? 0.35 : 0);
+      // Organic temporal flicker per-particle
+      const flicker = temporalFlicker(seed.seed, time, 0.6, 0.32, 0.30);
       
-      const thermalPhase = Math.pow(cycleTime, 0.4);
-      let r = THREE.MathUtils.lerp(1.3, baseColor.r * 0.7, thermalPhase * 0.7);
-      let g = THREE.MathUtils.lerp(0.95, baseColor.g * 0.6, thermalPhase * 0.8);
-      let b = THREE.MathUtils.lerp(0.4, baseColor.b * 0.3, thermalPhase * 0.9);
+      // Thermal color ramp for natural cooling
+      const thermal = thermalColorRamp(baseColor.r, baseColor.g, baseColor.b, cycleTime, 1.2);
       
-      if (cycleTime > 0.7) {
-        const charcoal = (cycleTime - 0.7) / 0.3;
-        r *= (1 - charcoal * 0.7);
-        g *= (1 - charcoal * 0.8);
-        b *= (1 - charcoal * 0.85);
-      }
-      
-      colArr[i * 3] = r * fade * flicker;
-      colArr[i * 3 + 1] = g * fade * flicker;
-      colArr[i * 3 + 2] = b * fade * flicker;
+      colArr[i * 3] = thermal.r * fade * flicker;
+      colArr[i * 3 + 1] = thermal.g * fade * flicker;
+      colArr[i * 3 + 2] = thermal.b * fade * flicker;
     }
 
     const geo = pointsRef.current.geometry;
