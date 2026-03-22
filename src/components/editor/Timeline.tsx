@@ -290,13 +290,13 @@ function TimelineTrackRow({
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     const effectId = e.dataTransfer.types.includes('application/effect-id');
-    if (!effectId || trackIndex === 2) return;
+    if (!effectId) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
-  }, [trackIndex]);
+  }, []);
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
-    if (!e.dataTransfer.types.includes('application/effect-id') || trackIndex === 2) return;
+    if (!e.dataTransfer.types.includes('application/effect-id')) return;
     e.preventDefault();
     setIsDragOver(true);
   }, [trackIndex]);
@@ -314,6 +314,8 @@ function TimelineTrackRow({
     if (!effect) return;
     if ((effect.type === 'firework' || effect.type === 'sfx') && trackIndex !== 0) return;
     if (effect.type === 'drone' && trackIndex !== 1) return;
+    if (effect.type === 'light' && trackIndex !== 2) return;
+    if (effect.type === 'laser' && trackIndex !== 0 && trackIndex !== 2) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -987,6 +989,8 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
           <GenerativeTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
           <PyroTimelineTrack pixelsPerSecond={pixelsPerSecond} duration={duration} />
           <TimelineTrackRow label="PYRO SYS" trackIndex={0} pixelsPerSecond={pixelsPerSecond} color="#FF6B35" duration={duration} scrollRef={scrollRef} />
+          <TimelineTrackRow label="DRONE SYS" trackIndex={1} pixelsPerSecond={pixelsPerSecond} color="#00B4D8" duration={duration} scrollRef={scrollRef} />
+          <TimelineTrackRow label="LIGHT SYS" trackIndex={2} pixelsPerSecond={pixelsPerSecond} color="#FBBF24" duration={duration} scrollRef={scrollRef} />
           <WaypointTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
           <AudioWaveform pixelsPerSecond={pixelsPerSecond} />
         </div>

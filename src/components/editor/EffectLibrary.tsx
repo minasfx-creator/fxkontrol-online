@@ -38,11 +38,12 @@ const FILTER_CHIPS: { key: FilterType; label: string; icon: typeof Flame }[] = [
 const CALIBER_OPTIONS = [2, 3, 4, 5, 6, 8, 10, 12];
 
 /* ─── Finale 3D-style Table Row ─── */
-function EffectTableRow({ effect, index }: { effect: Effect; index: number }) {
+function EffectTableRow({ effect, index, usageCount }: { effect: Effect; index: number; usageCount: number }) {
   const { selectedEffectId, selectEffect, addTimelineItem, currentTime, positions, selectedPositionId, selectedPositionIds } = useProjectStore();
   const isSelected = selectedEffectId === effect.id;
   const isPyro = effect.type === 'firework';
   const vdl = useMemo(() => isPyro ? parseVDL(`${effect.caliber || 4}in ${effect.name}`) : null, [effect, isPyro]);
+  const [flashFeedback, setFlashFeedback] = useState(false);
 
   const handleAdd = useCallback(() => {
     const validType = isPyro || effect.type === 'sfx' ? 'pyro' : effect.type === 'drone' ? 'drone-pad' : null;
@@ -95,6 +96,8 @@ function EffectTableRow({ effect, index }: { effect: Effect; index: number }) {
     if (isPyro && targetIds.length > 0) {
       useProjectStore.getState().setEditorMode('adjust-angles');
     }
+    setFlashFeedback(true);
+    setTimeout(() => setFlashFeedback(false), 800);
   }, [effect, currentTime, positions, selectedPositionId, selectedPositionIds, addTimelineItem, isPyro]);
 
   const handleDragStart = useCallback((e: React.DragEvent) => {
@@ -110,6 +113,7 @@ function EffectTableRow({ effect, index }: { effect: Effect; index: number }) {
       onDoubleClick={handleAdd}
       className={cn(
         "cursor-pointer transition-colors group text-[10px]",
+        flashFeedback && "bg-success/15 transition-none",
         isSelected
           ? "bg-primary/10"
           : index % 2 === 0
@@ -156,6 +160,17 @@ function EffectTableRow({ effect, index }: { effect: Effect; index: number }) {
         )}>
           {effect.type === 'firework' ? 'PY' : effect.type.slice(0, 2).toUpperCase()}
         </span>
+      </td>
+      {/* Position usage count */}
+      <td className="px-1 py-[5px] text-center w-8">
+        {usageCount > 0 ? (
+          <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-primary/12 text-primary tabular-nums">
+            ×{usageCount}
+            {flashFeedback && <span className="text-success ml-0.5 animate-pulse">+1</span>}
+          </span>
+        ) : (
+          <span className="text-muted-foreground/20">—</span>
+        )}
       </td>
     </tr>
   );
@@ -352,6 +367,41 @@ function EffectCard({ effect }: { effect: Effect }) {
   );
 }
 
+/* ─── Table View wrapper with usage counts ─── */
+function EffectTableView({ effects }: { effects: Effect[] }) {
+  const { timelineItems } = useProjectStore();
+  const usageCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    timelineItems.forEach(item => {
+      counts[item.effectId] = (counts[item.effectId] || 0) + 1;
+    });
+    return counts;
+  }, [timelineItems]);
+
+  return (
+    <div className="py-1">
+      <table className="w-full border-collapse">
+        <thead>
+          <tr className="text-[8px] uppercase tracking-wider text-muted-foreground/40 font-display border-b border-border/10">
+            <th className="px-1.5 py-1.5 text-right w-8"><Hash className="w-2.5 h-2.5 inline" /></th>
+            <th className="px-1 py-1.5 w-5"></th>
+            <th className="px-1.5 py-1.5 text-left">Effect</th>
+            <th className="px-1.5 py-1.5 text-center w-8">Cal</th>
+            <th className="px-1.5 py-1.5 text-right w-10">Dur</th>
+            <th className="px-1.5 py-1.5 w-12">Type</th>
+            <th className="px-1 py-1.5 text-center w-8">Pos</th>
+          </tr>
+        </thead>
+        <tbody>
+          {effects.map((effect, i) => (
+            <EffectTableRow key={effect.id} effect={effect} index={i} usageCount={usageCounts[effect.id] || 0} />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function EffectLibrary() {
   const [search, setSearch] = useState('');
   const [vdlInput, setVdlInput] = useState('');
@@ -494,27 +544,7 @@ export default function EffectLibrary() {
       <ScrollArea className="flex-1">
         {viewMode === 'table' ? (
           /* ─── Finale 3D Table View ─── */
-          <div className="py-1">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="text-[8px] uppercase tracking-wider text-muted-foreground/40 font-display border-b border-border/10">
-                  <th className="px-1.5 py-1.5 text-right w-8">
-                    <Hash className="w-2.5 h-2.5 inline" />
-                  </th>
-                  <th className="px-1 py-1.5 w-5"></th>
-                  <th className="px-1.5 py-1.5 text-left">Effect</th>
-                  <th className="px-1.5 py-1.5 text-center w-8">Cal</th>
-                  <th className="px-1.5 py-1.5 text-right w-10">Dur</th>
-                  <th className="px-1.5 py-1.5 w-12">Type</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredEffects.map((effect, i) => (
-                  <EffectTableRow key={effect.id} effect={effect} index={i} />
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <EffectTableView effects={filteredEffects} />
         ) : (
           /* ─── Card/List View (default) ─── */
           <div className="py-1 px-1">
