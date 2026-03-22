@@ -487,6 +487,7 @@ export default function CommandCenter() {
           }}
         >
           <div className="flex items-center gap-2.5">
+            {(() => { const L = CONSOLE_LOGOS[activeMode]; return L ? <L size={24} active /> : null; })()}
             <Badge variant="outline" className={cn("text-[7px] h-4.5 px-2 font-black border font-mono tracking-[0.15em] rounded-sm", accent.badge)}>
               {accent.label}
             </Badge>
@@ -495,7 +496,8 @@ export default function CommandCenter() {
               {accent.subtitle}
             </span>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-3">
+            <span className="text-[9px] font-mono font-bold" style={{ color: 'hsl(32 100% 55%)', textShadow: '0 0 8px hsl(32 100% 50% / 0.25)' }}>{missionClock}</span>
             {isArmed && (
               <Badge variant="destructive" className="text-[7px] h-4.5 animate-pulse font-mono tracking-wider rounded-sm">
                 ARMED // {activeEffects.length}
