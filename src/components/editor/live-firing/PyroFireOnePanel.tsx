@@ -857,11 +857,11 @@ export default function PyroFireOnePanel({
     ) : null
   );
 
-  // ── Render: Mode tabs — XL4+ Membrane Button Style ──
+  // ── Render: Mode tabs — XL4+ Physical Membrane Keypad ──
   const renderModeTabs = () => (
     <div className={cn("flex border-b gap-0.5",
       sz === 'xl' ? "px-4 py-1.5" : sz === 'fs' ? "px-3 py-1" : "px-2 py-0.5"
-    )} style={{ background: 'hsl(0 8% 5%)', borderColor: 'hsl(0 15% 12%)' }}>
+    )} style={{ background: 'hsl(0 0% 10%)', borderColor: 'hsl(0 0% 15%)' }}>
       {([
         { key: 'manual' as PyroMode, label: 'MANUAL', sub: 'Direct' },
         { key: 'step' as PyroMode, label: 'STEP', sub: 'Sequential' },
@@ -870,18 +870,25 @@ export default function PyroFireOnePanel({
       ]).map(m => (
         <button key={m.key} onClick={() => setPyroMode(m.key)}
           className={cn(
-            "flex-1 font-mono font-black uppercase tracking-[0.15em] transition-all rounded-sm border-2 min-h-[48px]",
+            "flex-1 font-mono font-black uppercase tracking-[0.15em] transition-all min-h-[48px]",
             sz === 'xl' ? "py-3 text-[11px]" : sz === 'fs' ? "py-2 text-[9px]" : "py-1.5 text-[8px]",
             pyroMode === m.key
-              ? "text-red-300 border-red-500/50 bg-red-500/10"
-              : "text-muted-foreground/30 border-transparent bg-transparent hover:bg-red-500/5 hover:border-red-500/15"
-          )} style={pyroMode === m.key ? {
-            boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.4), 0 0 8px hsl(0 70% 40% / 0.15)',
-          } : {
-            boxShadow: 'inset 0 -1px 0 rgba(255,255,255,0.03), inset 0 1px 2px rgba(0,0,0,0.3)',
+              ? "text-white/90"
+              : "text-white/30 hover:text-white/50"
+          )} style={{
+            /* Membrane button: flat gray with embossed double-border */
+            background: pyroMode === m.key ? 'hsl(0 0% 22%)' : 'hsl(0 0% 18%)',
+            border: pyroMode === m.key
+              ? '2px solid hsl(0 0% 30%)'
+              : '1px solid hsl(0 0% 12%)',
+            borderRadius: '2px',
+            /* Physical membrane emboss: outer dark, inner light highlight */
+            boxShadow: pyroMode === m.key
+              ? 'inset 0 1px 0 hsl(0 0% 28%), inset 0 -1px 0 hsl(0 0% 10%), 0 0 8px hsl(0 70% 40% / 0.2)'
+              : 'inset 0 1px 0 hsl(0 0% 22%), inset 0 -1px 0 hsl(0 0% 8%), 0 1px 2px rgba(0,0,0,0.3)',
           }}>
           <div>{m.label}</div>
-          {sz !== 'sm' && <div className={cn("font-normal text-muted-foreground/20", sz === 'xl' ? "text-[7px]" : "text-[6px]")}>{m.sub}</div>}
+          {sz !== 'sm' && <div className="font-normal text-[6px]" style={{ color: pyroMode === m.key ? 'hsl(0 0% 50%)' : 'hsl(0 0% 30%)' }}>{m.sub}</div>}
         </button>
       ))}
     </div>
