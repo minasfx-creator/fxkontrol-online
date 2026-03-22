@@ -158,6 +158,7 @@ export class FireOneModuleEmulator {
     this.onStateChange = config.onStateChange ?? null;
     this.onStatusUpdate = config.onStatusUpdate ?? null;
     this.simulateHardware = config.simulateHardware ?? true;
+    this.hardwareMode = config.hardwareMode ?? 'cds';
 
     // Initialize 32 igniter channels
     for (let i = 0; i < 32; i++) {
