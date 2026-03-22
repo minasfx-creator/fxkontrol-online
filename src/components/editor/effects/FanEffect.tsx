@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
 import { temporalFlicker, thermalColorRamp } from '@/lib/pyroNoise';
+import { getChemistryForRendering, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
 
 const BASE_RAYS = 9;
 const BASE_PARTICLES_PER_RAY = 30;
@@ -17,12 +18,14 @@ export default function FanEffect({
   progress,
   spreadAngle = 90,
   caliber = 3,
+  formulationId,
 }: {
   position: [number, number, number];
   color: string;
   progress: number;
   spreadAngle?: number;
   caliber?: number;
+  formulationId?: string;
 }) {
   const caliberScale = 0.7 + caliber * 0.12;
   // Scale particle density by caliber
@@ -32,7 +35,16 @@ export default function FanEffect({
 
   const pointsRef = useRef<THREE.Points>(null);
   const linesRef = useRef<THREE.LineSegments>(null);
-  const baseColor = useMemo(() => new THREE.Color(color), [color]);
+
+  const chemistry = useMemo(() => {
+    const fId = formulationId || autoMatchFormulation(color, 'gerb', caliber);
+    return fId ? getChemistryForRendering(fId) : null;
+  }, [formulationId, color, caliber]);
+
+  const baseColor = useMemo(() => {
+    if (chemistry?.resultColor) return chemistry.resultColor.clone();
+    return new THREE.Color(color);
+  }, [color, chemistry]);
 
   const posArr = useRef(new Float32Array(TOTAL_PARTICLES * 3));
   const colArr = useRef(new Float32Array(TOTAL_PARTICLES * 3));

@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
 import { temporalFlicker, thermalColorRamp } from '@/lib/pyroNoise';
+import { getChemistryForRendering, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
 
 const PARTICLE_COUNT = 500;
 
@@ -16,17 +17,28 @@ export default function WaterfallEffect({
   progress,
   width = 5,
   caliber = 3,
+  formulationId,
 }: {
   position: [number, number, number];
   color: string;
   progress: number;
   width?: number;
   caliber?: number;
+  formulationId?: string;
 }) {
   const scaledWidth = width * (0.7 + caliber * 0.12);
   const SCALED_PARTICLE_COUNT = Math.min(800, Math.round(PARTICLE_COUNT * (0.7 + caliber * 0.12)));
   const pointsRef = useRef<THREE.Points>(null);
-  const baseColor = useMemo(() => new THREE.Color(color), [color]);
+
+  const chemistry = useMemo(() => {
+    const fId = formulationId || autoMatchFormulation(color, 'waterfall', caliber);
+    return fId ? getChemistryForRendering(fId) : null;
+  }, [formulationId, color, caliber]);
+
+  const baseColor = useMemo(() => {
+    if (chemistry?.resultColor) return chemistry.resultColor.clone();
+    return new THREE.Color(color);
+  }, [color, chemistry]);
 
   const posArr = useMemo(() => new Float32Array(SCALED_PARTICLE_COUNT * 3), [SCALED_PARTICLE_COUNT]);
   const colArr = useMemo(() => new Float32Array(SCALED_PARTICLE_COUNT * 3), [SCALED_PARTICLE_COUNT]);

@@ -15,6 +15,7 @@ import { getThreeBlending } from '@/lib/niagaraBlenderRules';
 import { combustionFlicker, hash01, thermalColorRamp } from '@/lib/pyroNoise';
 import { RibbonTrail } from '@/render_ultra/fireworks/ribbonTrailRenderer';
 import { useProjectStore } from '@/store/useProjectStore';
+import { getChemistryForRendering, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
 
 const SPARK_COUNT = 120;
 const SMOKE_WAKE_COUNT = 50;
@@ -26,6 +27,7 @@ export default function CometEffect({
   direction = 'up',
   caliber = 3,
   angleOffset = 0,
+  formulationId,
 }: {
   position: [number, number, number];
   color: string;
@@ -33,6 +35,7 @@ export default function CometEffect({
   direction?: 'up' | 'down';
   caliber?: number;
   angleOffset?: number;
+  formulationId?: string;
 }) {
   const { scene, camera } = useThree();
   const glowRef = useRef<THREE.Mesh>(null);

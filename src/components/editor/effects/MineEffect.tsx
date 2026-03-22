@@ -5,6 +5,7 @@ import { attackReleaseEnvelope, temporalFlicker, combustionFlicker, hash01, ther
 import { getThreeBlending } from '@/lib/niagaraBlenderRules';
 import { useProjectStore } from '@/store/useProjectStore';
 import { readDensityAt, injectDensity, injectVelocity, type FluidGrid } from '@/render_ultra/fireworks/niagaraFluids';
+import { getChemistryForRendering, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
 
 /**
  * Mine Effect — Multi-phase ground burst (PyroJam 2026 reference)
@@ -28,6 +29,7 @@ export default function MineEffect({
   caliber = 3,
   angleOffset = 0,
   heightMeters,
+  formulationId,
 }: {
   position: [number, number, number];
   color: string;
@@ -35,6 +37,7 @@ export default function MineEffect({
   caliber?: number;
   angleOffset?: number;
   heightMeters?: number;
+  formulationId?: string;
 }) {
   const count = useMemo(() => Math.min(600, Math.round(200 + caliber * caliber * 14)), [caliber]);
   const pointsRef = useRef<THREE.Points>(null);
@@ -49,7 +52,16 @@ export default function MineEffect({
   const smokeColRef = useRef(new Float32Array(SMOKE_COUNT * 3));
   const smokeSizeRef = useRef(new Float32Array(SMOKE_COUNT));
 
-  const baseColor = useMemo(() => new THREE.Color(color), [color]);
+  // Chemistry-enhanced color: use formulation if available, else auto-match by color+type
+  const chemistry = useMemo(() => {
+    const fId = formulationId || autoMatchFormulation(color, 'mine', caliber);
+    return fId ? getChemistryForRendering(fId) : null;
+  }, [formulationId, color, caliber]);
+
+  const baseColor = useMemo(() => {
+    if (chemistry?.resultColor) return chemistry.resultColor.clone();
+    return new THREE.Color(color);
+  }, [color, chemistry]);
   const emberColor = useMemo(() => new THREE.Color().setHSL(0.05, 0.8, 0.12), []);
   const charcoalColor = useMemo(() => new THREE.Color(0.15, 0.08, 0.03), []);
 

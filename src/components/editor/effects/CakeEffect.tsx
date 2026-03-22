@@ -341,6 +341,7 @@ export default function CakeEffect({
   caliber = 2,
   cakeRows,
   angleOffset = 0,
+  formulationId,
 }: {
   position: [number, number, number];
   color: string;
@@ -350,6 +351,7 @@ export default function CakeEffect({
   caliber?: number;
   cakeRows?: number;
   angleOffset?: number;
+  formulationId?: string;
 }) {
   const shots = useMemo(() => {
     const rows = cakeRows || (shotCount <= 12 ? 1 : Math.max(1, Math.round(Math.sqrt(shotCount))));

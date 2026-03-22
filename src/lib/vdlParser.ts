@@ -925,10 +925,26 @@ export function vdlToEffect(vdl: VDLResult) {
     colorTransition = 'alternating';
   }
 
+  // ── Category from partType (fix: mine was being categorized as morteiro) ──
+  const categoryFromPartType = (): string => {
+    switch (vdl.partType) {
+      case 'mine': return 'mines';
+      case 'gerb': return 'gerbs';
+      case 'cake': return 'cakes_batteries';
+      case 'waterfall': return 'waterfalls';
+      case 'candle': return 'roman_candles';
+      case 'flame': return 'flames';
+      case 'comet': return 'comets';
+      default:
+        // Only shells use caliber-based classification
+        return vdl.caliber >= 4 ? 'morteiros' : 'peonias';
+    }
+  };
+
   return {
     id: `vdl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     name,
-    category: (vdl.caliber >= 4 ? 'morteiros' : 'peonias') as 'morteiros' | 'peonias',
+    category: categoryFromPartType(),
     type: 'firework' as const,
     color: vdl.colors[0],
     duration: vdl.duration,

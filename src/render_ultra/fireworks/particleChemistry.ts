@@ -1118,6 +1118,87 @@ export function getRealFormulation(id: string): RealFormulation | undefined {
   return REAL_FORMULATIONS[id];
 }
 
+// ── Auto-Match Formulation ──────────────────────────────────────────
+// Maps VDL color names + part types to real chemical formulations
+
+const COLOR_TO_COMPOUND: Record<string, string[]> = {
+  red:      ['crimson_star_saxon', 'signal_scarlet', 'rose_colored_star'],
+  green:    ['green_star_bano3'],
+  blue:     ['blue_star_intense'],
+  yellow:   ['golden_yellow_star'],
+  white:    ['white_fire_1903'],
+  violet:   ['violet_star_manual'],
+  purple:   ['violet_star_manual'],
+  gold:     ['gerbe_golden_rain', 'spur_fire_1829'],
+  silver:   ['white_fire_1903'],
+  orange:   ['spur_fire_1829'],
+  pink:     ['rose_colored_star'],
+  magenta:  ['violet_star_manual'],
+};
+
+const TYPE_TO_FORMULATION: Record<string, string> = {
+  gerb:      'gerbe_golden_rain',
+  mine:      'trueno_seguro',
+  candle:    'roman_candle_comp_3',
+  waterfall: 'gerbe_golden_rain',
+  cake:      'cake_20mm_300shot',
+};
+
+/**
+ * Auto-match a VDL color + type + caliber to a real chemical formulation.
+ * Returns formulationId or undefined if no match found.
+ */
+export function autoMatchFormulation(
+  color: string,
+  partType: string,
+  _caliber: number
+): string | undefined {
+  const colorLower = color.toLowerCase();
+
+  // 1. Try type-specific override first
+  const typeMatch = TYPE_TO_FORMULATION[partType];
+
+  // 2. Try color match
+  for (const [colorKey, formIds] of Object.entries(COLOR_TO_COMPOUND)) {
+    if (colorLower.includes(colorKey)) {
+      return formIds[0];
+    }
+  }
+
+  // 3. Fallback to type match
+  if (typeMatch) return typeMatch;
+
+  return undefined;
+}
+
+/** Get chemistry data for rendering: compound properties for a given formulation */
+export function getChemistryForRendering(formulationId: string | undefined) {
+  if (!formulationId) return null;
+  const form = getRealFormulation(formulationId);
+  if (!form) return null;
+
+  // Find dominant spark metal
+  const sparkMetals = ['Ti', 'Fe', 'Al', 'Mg/Al', 'Zn', 'Sb', 'C'];
+  let sparkType: 'titanium' | 'iron' | 'aluminum' | 'charcoal' = 'charcoal';
+  for (const comp of form.compounds) {
+    if (comp.element === 'Ti') { sparkType = 'titanium'; break; }
+    if (comp.element === 'Fe') { sparkType = 'iron'; break; }
+    if (comp.element === 'Al' || comp.element === 'Mg/Al') { sparkType = 'aluminum'; break; }
+  }
+
+  return {
+    temperature: form.temperature,
+    emissionIntensity: form.emissionIntensity,
+    burnRate: form.burnRate,
+    sparkSize: form.sparkSize,
+    resultColor: form.resultColor,
+    smokeColor: form.smokeColor,
+    trailDecay: form.trailDecay,
+    sparkType,
+    crackle: form.crackle,
+  };
+}
+
 export function getAllFormulations(): Record<string, RealFormulation> {
   return { ...REAL_FORMULATIONS };
 }

@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
 import { combustionFlicker, temporalFlicker, thermalColorRamp } from '@/lib/pyroNoise';
+import { getChemistryForRendering, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
 
 const STARS_PER_SHOT = 20;
 const TRAIL_POINTS_PER_SHOT = 12;
@@ -19,6 +20,7 @@ export default function RomanCandleEffect({
   shotCount = 8,
   caliber = 2,
   angleOffset = 0,
+  formulationId,
 }: {
   position: [number, number, number];
   color: string;
@@ -26,10 +28,20 @@ export default function RomanCandleEffect({
   shotCount?: number;
   caliber?: number;
   angleOffset?: number;
+  formulationId?: string;
 }) {
   const pointsRef = useRef<THREE.Points>(null);
   const trailLinesRef = useRef<THREE.LineSegments>(null);
-  const baseColor = useMemo(() => new THREE.Color(color), [color]);
+
+  const chemistry = useMemo(() => {
+    const fId = formulationId || autoMatchFormulation(color, 'candle', caliber);
+    return fId ? getChemistryForRendering(fId) : null;
+  }, [formulationId, color, caliber]);
+
+  const baseColor = useMemo(() => {
+    if (chemistry?.resultColor) return chemistry.resultColor.clone();
+    return new THREE.Color(color);
+  }, [color, chemistry]);
   const totalParticles = shotCount * STARS_PER_SHOT;
   const totalTrailSegs = shotCount * TRAIL_POINTS_PER_SHOT * 2;
 
