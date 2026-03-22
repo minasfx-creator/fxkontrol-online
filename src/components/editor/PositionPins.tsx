@@ -114,20 +114,69 @@ const DISTANCE_REF = 15;
 const SCALE_MIN = 0.15;
 const SCALE_MAX = 0.8;
 
-/** Pulsing glow ring for positions whose linked events are selected from the timeline */
+/** Enhanced pulsing glow with shockwave + orbiting particles */
 function LinkedGlowRing({ color }: { color: string }) {
   const ringRef = useRef<THREE.Mesh>(null);
+  const shockwaveRef = useRef<THREE.Mesh>(null);
+  const particlesRef = useRef<THREE.Group>(null);
+  const shockwaveMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
+
   useFrame(({ clock }) => {
+    const t = clock.getElapsedTime();
+    // Primary ring pulse
     if (ringRef.current) {
-      const s = 1 + Math.sin(clock.getElapsedTime() * 5) * 0.2;
+      const s = 1 + Math.sin(t * 5) * 0.25;
       ringRef.current.scale.setScalar(s);
     }
+    // Shockwave expanding ring (loops every 2s)
+    if (shockwaveRef.current && shockwaveMaterialRef.current) {
+      const cycle = (t % 2) / 2; // 0→1 over 2s
+      const scale = 1 + cycle * 2.5;
+      shockwaveRef.current.scale.setScalar(scale);
+      shockwaveMaterialRef.current.opacity = 0.5 * (1 - cycle);
+    }
+    // Orbiting particles
+    if (particlesRef.current) {
+      particlesRef.current.rotation.y = t * 2.5;
+      particlesRef.current.children.forEach((child, i) => {
+        const offset = (i / 8) * Math.PI * 2;
+        const bob = Math.sin(t * 4 + offset) * 0.08;
+        child.position.y = 0.15 + bob;
+      });
+    }
   });
+
+  const particlePositions = useMemo(() => {
+    const positions: [number, number, number][] = [];
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      positions.push([Math.cos(angle) * 0.7, 0.15, Math.sin(angle) * 0.7]);
+    }
+    return positions;
+  }, []);
+
   return (
-    <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]}>
-      <ringGeometry args={[0.85, 1.15, 32]} />
-      <meshBasicMaterial color={color} transparent opacity={0.45} blending={THREE.AdditiveBlending} />
-    </mesh>
+    <group>
+      {/* Primary pulsing ring */}
+      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]}>
+        <ringGeometry args={[0.7, 1.4, 32]} />
+        <meshBasicMaterial color={color} transparent opacity={0.6} blending={THREE.AdditiveBlending} />
+      </mesh>
+      {/* Shockwave expanding ring */}
+      <mesh ref={shockwaveRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.035, 0]}>
+        <ringGeometry args={[0.5, 0.65, 32]} />
+        <meshBasicMaterial ref={shockwaveMaterialRef} color={color} transparent opacity={0.5} blending={THREE.AdditiveBlending} />
+      </mesh>
+      {/* Orbiting particles */}
+      <group ref={particlesRef}>
+        {particlePositions.map((pos, i) => (
+          <mesh key={i} position={pos}>
+            <sphereGeometry args={[0.045, 8, 8]} />
+            <meshBasicMaterial color={color} transparent opacity={0.7} blending={THREE.AdditiveBlending} />
+          </mesh>
+        ))}
+      </group>
+    </group>
   );
 }
 
@@ -416,9 +465,9 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
         </group>
       )}
 
-      {/* Linked glow ring — pulses when events are selected from timeline */}
-      {hasLinkedGlow && !isSelected && (
-        <LinkedGlowRing color={position.type === 'pyro' ? '#FF8A65' : '#4FC3F7'} />
+      {/* Linked glow ring — pulses when events are selected from timeline (visible even when selected) */}
+      {hasLinkedGlow && (
+        <LinkedGlowRing color={position.type === 'pyro' ? '#FF6B35' : '#00B4D8'} />
       )}
 
       {/* Hover ring */}
