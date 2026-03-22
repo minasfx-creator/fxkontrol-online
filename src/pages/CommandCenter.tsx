@@ -59,7 +59,6 @@ const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: stri
   pbus:        { color: 'hsl(38 100% 50%)',  glow: 'hsl(38 100% 50% / 0.08)',  label: 'P-BUS',       badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20' },
   ma3:         { color: 'hsl(240 50% 52%)', glow: 'hsl(240 50% 52% / 0.08)', label: 'FXK-LIGHT',    badge: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/20' },
   wifi_direct: { color: 'hsl(200 80% 48%)', glow: 'hsl(200 80% 48% / 0.08)', label: 'WIFI DIRECT', badge: 'bg-sky-500/15 text-sky-400 border-sky-500/20' },
-  wifi_direct: { color: 'hsl(200 80% 48%)', glow: 'hsl(200 80% 48% / 0.08)', label: 'WIFI DIRECT', badge: 'bg-sky-500/15 text-sky-400 border-sky-500/20' },
   artnet_modules: { color: 'hsl(270 60% 50%)', glow: 'hsl(270 60% 50% / 0.08)', label: 'FXK-NET', badge: 'bg-violet-500/15 text-violet-400 border-violet-500/20' },
   connections: { color: 'hsl(165 100% 42%)', glow: 'hsl(165 100% 42% / 0.08)', label: 'CONNECTIONS', badge: 'bg-teal-500/15 text-teal-400 border-teal-500/20' },
   radio:       { color: 'hsl(340 80% 50%)', glow: 'hsl(340 80% 50% / 0.08)', label: 'RF COMMS',    badge: 'bg-pink-500/15 text-pink-400 border-pink-500/20' },
