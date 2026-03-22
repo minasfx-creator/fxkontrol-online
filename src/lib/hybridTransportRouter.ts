@@ -629,24 +629,52 @@ export class StarlinkTransport implements FireOneTransport {
     // latencyMs is updated by pong handler in onmessage — not measured here
   }
 
+  /**
+   * Calibrate baseline latency using Promise-based ping/pong collection.
+   * Avoids race condition of setTimeout-based collection.
+   */
   private calibrateBaseline(): void {
-    // Send 5 pings to establish baseline latency
-    let count = 0;
     const latencies: number[] = [];
+    let pingsLeft = 5;
+
+    // Temporarily intercept pong to collect calibration data
+    const originalOnMessage = this.ws?.onmessage;
+    const collectPong = (ev: MessageEvent) => {
+      // Call original handler first
+      if (originalOnMessage) originalOnMessage.call(this.ws, ev);
+
+      if (typeof ev.data === 'string') {
+        try {
+          const msg = JSON.parse(ev.data);
+          if (msg.type === 'pong' && pingsLeft > 0) {
+            latencies.push(Math.round(performance.now() - (msg.t0 || 0)));
+            pingsLeft--;
+            if (pingsLeft <= 0) {
+              // Restore original handler and compute median
+              if (this.ws) this.ws.onmessage = originalOnMessage!;
+              if (latencies.length > 0) {
+                this.latencyBaseline = latencies.sort((a, b) => a - b)[Math.floor(latencies.length / 2)];
+              }
+            }
+          }
+        } catch { /* ignore */ }
+      }
+    };
+
+    if (this.ws) {
+      this.ws.onmessage = collectPong as any;
+    }
+
+    // Send 5 pings at 500ms intervals
+    let sent = 0;
     const interval = setInterval(() => {
-      if (!this.ws || this.ws.readyState !== WebSocket.OPEN || count >= 5) {
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN || sent >= 5) {
         clearInterval(interval);
-        if (latencies.length > 0) {
-          this.latencyBaseline = latencies.sort((a, b) => a - b)[Math.floor(latencies.length / 2)];
-        }
         return;
       }
-      const t0 = performance.now();
-      this.ws.send(JSON.stringify({ type: 'ping', t0 }));
-      count++;
-      // Collect via onmessage handler above
-      setTimeout(() => { latencies.push(this.latencyMs); }, 2000);
-    }, 1000);
+      this.ws.send(JSON.stringify({ type: 'ping', t0: performance.now() }));
+      sent++;
+    }, 500);
   }
 
   private attemptReconnect(): void {
