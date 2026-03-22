@@ -36,18 +36,59 @@ export default function ModuleScannerScreen({
 }: ModuleScannerScreenProps) {
   const [radarAngle, setRadarAngle] = useState(0);
   const [showScreen, setShowScreen] = useState(false);
+  const [autoDiscovery, setAutoDiscovery] = useState(false);
+  const [telemetryPulse, setTelemetryPulse] = useState(false);
+  const [lastScanTime, setLastScanTime] = useState<number | null>(null);
+  const [scanCycle, setScanCycle] = useState(0);
   const radarRef = useRef<number | null>(null);
+  const autoDiscoveryRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const telemetryRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Radar sweep animation when scanning
+  // Radar sweep animation — runs when scanning OR auto-discovery is active
+  const radarActive = scanning || autoDiscovery;
   useEffect(() => {
-    if (!scanning) { setRadarAngle(0); return; }
+    if (!radarActive) { setRadarAngle(0); return; }
+    const speed = autoDiscovery && !scanning ? 1.5 : 3;
     const animate = () => {
-      setRadarAngle(prev => (prev + 3) % 360);
+      setRadarAngle(prev => (prev + speed) % 360);
       radarRef.current = requestAnimationFrame(animate);
     };
     radarRef.current = requestAnimationFrame(animate);
     return () => { if (radarRef.current) cancelAnimationFrame(radarRef.current); };
-  }, [scanning]);
+  }, [radarActive, scanning, autoDiscovery]);
+
+  // Auto-discovery: trigger scan every 5 seconds
+  useEffect(() => {
+    if (!autoDiscovery) {
+      if (autoDiscoveryRef.current) clearInterval(autoDiscoveryRef.current);
+      return;
+    }
+    // Immediate first scan
+    onScan().then(() => {
+      setLastScanTime(Date.now());
+      setScanCycle(prev => prev + 1);
+    });
+    autoDiscoveryRef.current = setInterval(() => {
+      onScan().then(() => {
+        setLastScanTime(Date.now());
+        setScanCycle(prev => prev + 1);
+      });
+    }, 5000);
+    return () => { if (autoDiscoveryRef.current) clearInterval(autoDiscoveryRef.current); };
+  }, [autoDiscovery, onScan]);
+
+  // Telemetry pulse animation (heartbeat every 2s)
+  useEffect(() => {
+    if (!autoDiscovery) {
+      if (telemetryRef.current) clearInterval(telemetryRef.current);
+      return;
+    }
+    telemetryRef.current = setInterval(() => {
+      setTelemetryPulse(true);
+      setTimeout(() => setTelemetryPulse(false), 400);
+    }, 2000);
+    return () => { if (telemetryRef.current) clearInterval(telemetryRef.current); };
+  }, [autoDiscovery]);
 
   const onlineModules = modules.filter(m => m.connected);
   const armedCount = modules.filter(m => m.armed).length;
@@ -108,7 +149,7 @@ export default function ModuleScannerScreen({
             <circle cx="9" cy="9" r="7" fill="none" stroke="hsl(32 100% 50% / 0.25)" strokeWidth="0.5" />
             <circle cx="9" cy="9" r="4" fill="none" stroke="hsl(32 100% 50% / 0.15)" strokeWidth="0.5" />
             <line x1="9" y1="9" x2="9" y2="2" stroke="hsl(32 100% 50% / 0.6)" strokeWidth="1"
-              transform={`rotate(${scanning ? radarAngle : 0} 9 9)`} />
+              transform={`rotate(${radarActive ? radarAngle : 0} 9 9)`} />
             {onlineModules.map((m, i) => {
               const angle = (i / Math.max(modules.length, 1)) * Math.PI * 2 - Math.PI / 2;
               const r = 5;
@@ -120,7 +161,7 @@ export default function ModuleScannerScreen({
               );
             })}
           </svg>
-          {scanning && (
+          {radarActive && (
             <div className="absolute inset-0 rounded-full" style={{
               boxShadow: '0 0 6px hsl(32 100% 50% / 0.3)',
             }} />
@@ -141,7 +182,18 @@ export default function ModuleScannerScreen({
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          {scanning && (
+          {autoDiscovery && (
+            <span className={cn("font-bold", isCompact ? "text-[8px]" : "text-[9px]")}
+              style={{ color: 'hsl(120 70% 45% / 0.8)' }}>
+              <span className="inline-block w-1.5 h-1.5 rounded-full mr-1" style={{
+                background: 'hsl(120 70% 45%)',
+                boxShadow: '0 0 4px hsl(120 70% 45% / 0.5)',
+                animation: 'pulse 2s infinite',
+              }} />
+              AUTO · #{scanCycle}
+            </span>
+          )}
+          {scanning && !autoDiscovery && (
             <span className={cn("font-bold animate-pulse", isCompact ? "text-[8px]" : "text-[9px]")}
               style={{ color: 'hsl(32 100% 50%)' }}>
               SCANNING...
@@ -265,25 +317,59 @@ export default function ModuleScannerScreen({
                 ))}
               </div>
 
-              {/* Scan button */}
-              <button
-                onClick={onScan}
-                disabled={scanning}
-                className={cn(
-                  "mt-2 rounded-lg border font-mono font-bold uppercase tracking-[0.15em] transition-all flex items-center gap-1.5",
-                  isCompact ? "px-4 py-1.5 text-[9px]" : "px-5 py-2 text-[10px]",
-                  scanning
-                    ? "border-primary/40 text-primary"
-                    : "border-primary/25 text-primary/70 hover:border-primary/50 hover:text-primary"
-                )}
-                style={{
-                  background: scanning ? 'hsl(32 100% 50% / 0.08)' : 'hsl(32 100% 50% / 0.04)',
-                  boxShadow: scanning ? '0 0 12px hsl(32 100% 50% / 0.15)' : undefined,
-                }}
-              >
-                <Search className={cn(isCompact ? "w-3 h-3" : "w-3.5 h-3.5", scanning && "animate-pulse")} />
-                {scanning ? 'SCANNING...' : 'SCAN NETWORK'}
-              </button>
+              {/* Scan + Auto-Discovery buttons */}
+              <div className="flex items-center gap-2 mt-2">
+                <button
+                  onClick={onScan}
+                  disabled={scanning || autoDiscovery}
+                  className={cn(
+                    "rounded-lg border font-mono font-bold uppercase tracking-[0.15em] transition-all flex items-center gap-1.5",
+                    isCompact ? "px-3 py-1.5 text-[9px]" : "px-4 py-2 text-[10px]",
+                    scanning
+                      ? "border-primary/40 text-primary"
+                      : "border-primary/25 text-primary/70 hover:border-primary/50 hover:text-primary"
+                  )}
+                  style={{
+                    background: scanning ? 'hsl(32 100% 50% / 0.08)' : 'hsl(32 100% 50% / 0.04)',
+                    boxShadow: scanning ? '0 0 12px hsl(32 100% 50% / 0.15)' : undefined,
+                  }}
+                >
+                  <Search className={cn(isCompact ? "w-3 h-3" : "w-3.5 h-3.5", scanning && "animate-pulse")} />
+                  SCAN
+                </button>
+
+                <button
+                  onClick={() => setAutoDiscovery(!autoDiscovery)}
+                  className={cn(
+                    "rounded-lg border font-mono font-bold uppercase tracking-[0.1em] transition-all flex items-center gap-1.5",
+                    isCompact ? "px-3 py-1.5 text-[9px]" : "px-4 py-2 text-[10px]",
+                    autoDiscovery
+                      ? "text-green-400 border-green-500/40"
+                      : "border-primary/20 text-primary/50 hover:border-primary/40 hover:text-primary/80"
+                  )}
+                  style={{
+                    background: autoDiscovery ? 'hsl(120 70% 45% / 0.08)' : 'hsl(32 100% 50% / 0.03)',
+                    boxShadow: autoDiscovery ? '0 0 12px hsl(120 70% 45% / 0.15)' : undefined,
+                  }}
+                >
+                  <Activity className={cn(isCompact ? "w-3 h-3" : "w-3.5 h-3.5", autoDiscovery && "animate-pulse")} />
+                  {autoDiscovery ? 'AUTO ●' : 'AUTO'}
+                </button>
+              </div>
+
+              {/* Auto-discovery status */}
+              {autoDiscovery && (
+                <div className={cn("mt-1.5 text-center font-mono",
+                  isCompact ? "text-[7px]" : "text-[8px]"
+                )} style={{ color: 'hsl(120 70% 45% / 0.5)' }}>
+                  CYCLE #{scanCycle} · INTERVAL 5s
+                  {lastScanTime && (
+                    <span className="ml-2" style={{ color: 'hsl(32 100% 50% / 0.3)' }}>
+                      LAST: {new Date(lastScanTime).toLocaleTimeString()}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Module list */}
@@ -317,6 +403,13 @@ export default function ModuleScannerScreen({
                               : "border-border/5 bg-[hsl(220_12%_4%)] opacity-40"
                       )}
                     >
+                      {/* Telemetry pulse flash */}
+                      {autoDiscovery && m.connected && telemetryPulse && (
+                        <div className="absolute inset-0 pointer-events-none rounded-lg transition-opacity duration-300" style={{
+                          background: 'hsl(32 100% 50% / 0.04)',
+                          boxShadow: 'inset 0 0 8px hsl(32 100% 50% / 0.06)',
+                        }} />
+                      )}
                       {/* Selected glow edge */}
                       {isSelected && (
                         <div className="absolute left-0 top-0 bottom-0 w-[2px]" style={{
@@ -462,7 +555,9 @@ export default function ModuleScannerScreen({
                     : 0}%
                 </span>
                 <span className="ml-auto text-muted-foreground/20">
-                  TAP MODULE → FIRE CONSOLE
+                  {autoDiscovery
+                    ? `AUTO-DISCOVERY ● CYCLE #${scanCycle}`
+                    : 'TAP MODULE → FIRE CONSOLE'}
                 </span>
               </div>
             </div>
