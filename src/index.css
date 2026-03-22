@@ -733,19 +733,105 @@ body.night-mode {
   transform: scale(1.15);
 }
 
-/* Smart swap transitions */
+/* ── Holographic Console Swap ── */
 .swap-out {
   opacity: 0;
-  transform: scale(0.97) translateX(-8px);
-  transition: all 0.2s ease-out;
+  transform: scale(0.94) translateY(6px);
+  filter: blur(6px) brightness(1.4) saturate(0.3);
+  transition: all 0.25s cubic-bezier(0.4, 0, 1, 1);
 }
 .swap-in {
-  opacity: 0;
-  transform: scale(0.97) translateX(8px);
-  animation: swap-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: holo-swap-in 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-@keyframes swap-enter {
-  to { opacity: 1; transform: scale(1) translateX(0); }
+@keyframes holo-swap-in {
+  0% {
+    opacity: 0;
+    transform: scale(1.03) translateY(-8px);
+    filter: blur(10px) brightness(1.6) saturate(0);
+    clip-path: inset(45% 0 45% 0);
+  }
+  30% {
+    opacity: 0.6;
+    transform: scale(1.01) translateY(-2px);
+    filter: blur(3px) brightness(1.2) saturate(0.6);
+    clip-path: inset(8% 0 8% 0);
+  }
+  60% {
+    opacity: 0.9;
+    transform: scale(1) translateY(0);
+    filter: blur(0.5px) brightness(1.05);
+    clip-path: inset(1% 0 1% 0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0) brightness(1);
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* Holographic flash overlay — add as ::after on swap container */
+.holo-swap-container {
+  position: relative;
+  overflow: hidden;
+}
+.holo-swap-container.swap-flash::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  animation: holo-flash 0.5s ease-out forwards;
+}
+@keyframes holo-flash {
+  0% {
+    background: linear-gradient(
+      180deg,
+      hsl(32 100% 50% / 0.3) 0%,
+      transparent 20%,
+      hsl(32 100% 50% / 0.08) 48%,
+      hsl(32 100% 60% / 0.15) 50%,
+      hsl(32 100% 50% / 0.08) 52%,
+      transparent 80%,
+      hsl(32 100% 50% / 0.3) 100%
+    );
+    opacity: 1;
+  }
+  60% {
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      hsl(32 100% 50% / 0.04) 49%,
+      hsl(32 100% 50% / 0.08) 50%,
+      hsl(32 100% 50% / 0.04) 51%,
+      transparent 100%
+    );
+    opacity: 0.6;
+  }
+  100% { opacity: 0; }
+}
+
+/* Scanline sweep on swap */
+.holo-swap-container.swap-flash::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 51;
+  animation: holo-scanline-sweep 0.4s ease-out forwards;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    hsl(32 100% 50% / 0.12) 49.5%,
+    hsl(32 100% 70% / 0.25) 50%,
+    hsl(32 100% 50% / 0.12) 50.5%,
+    transparent 100%
+  );
+  background-size: 100% 4px;
+}
+@keyframes holo-scanline-sweep {
+  0% { transform: translateY(-100%); opacity: 1; }
+  100% { transform: translateY(100%); opacity: 0; }
 }
 
 /* BR2049 Channel scan */

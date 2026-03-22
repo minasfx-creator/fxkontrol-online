@@ -88,6 +88,7 @@ export default function CommandCenter() {
   const initialMode = (searchParams.get('mode') as CommandMode) || 'show_control';
   const [activeMode, setActiveMode] = useState<CommandMode>(initialMode);
   const [swapPhase, setSwapPhase] = useState<'idle' | 'out' | 'in'>('idle');
+  const [swapFlash, setSwapFlash] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileCategory, setMobileCategory] = useState(0);
   const isMobile = useIsMobile();
@@ -109,12 +110,17 @@ export default function CommandCenter() {
     if (mode === activeMode) return;
     ambientSound.play('boot');
     setSwapPhase('out');
+    setSwapFlash(false);
     setTimeout(() => {
       setActiveMode(mode);
       setSearchParams({ mode }, { replace: true });
       setSwapPhase('in');
-      setTimeout(() => setSwapPhase('idle'), 300);
-    }, 200);
+      setSwapFlash(true);
+      setTimeout(() => {
+        setSwapPhase('idle');
+        setSwapFlash(false);
+      }, 550);
+    }, 250);
   }, [setSearchParams, activeMode]);
 
   // Direct-render for non-fire modes
@@ -377,7 +383,11 @@ export default function CommandCenter() {
         </div>
 
         {/* Content */}
-        <div className={`flex-1 overflow-hidden transition-all duration-200 ${swapPhase === 'out' ? 'swap-out' : swapPhase === 'in' ? 'swap-in' : ''}`}>
+        <div className={cn(
+          "flex-1 overflow-hidden holo-swap-container",
+          swapPhase === 'out' ? 'swap-out' : swapPhase === 'in' ? 'swap-in' : '',
+          swapFlash && 'swap-flash'
+        )}>
           {isFireMode(activeMode) ? (
             <LiveFiringPanel initialMode={activeMode} standalone />
           ) : (
