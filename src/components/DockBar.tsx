@@ -48,7 +48,7 @@ export default function DockBar() {
 
   const handleClick = useCallback((path: string) => {
     ambientSound.play('click');
-    haptics.light();
+    haptics.tap();
     navigate(path);
   }, [navigate]);
 
