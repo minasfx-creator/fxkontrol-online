@@ -1,6 +1,6 @@
 /**
- * FXcommander™ Digital Console — Type definitions
- * Faithful recreation of Showven FXcommander hardware interface types.
+ * FXK-PYRO Digital Console — Type definitions
+ * FX KONTROL firing console hardware interface types.
  */
 
 export interface HardwareBinding {

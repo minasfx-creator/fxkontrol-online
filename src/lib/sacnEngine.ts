@@ -83,7 +83,7 @@ export class SACNReceiver {
               const json = JSON.parse(ev.data);
               if (json.type === 'sacn_data') {
                 const channels = new Uint8Array(json.channels);
-                this.processUniverseData(json.universe, channels, json.sourceName || 'MA3', json.priority || 100, json.sequence || 0);
+                this.processUniverseData(json.universe, channels, json.sourceName || 'FXK-LIGHT', json.priority || 100, json.sequence || 0);
               }
             } catch { /* ignore */ }
           }

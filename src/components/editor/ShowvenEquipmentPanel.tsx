@@ -151,7 +151,7 @@ function EquipmentCard({ preset, category, pbusDevices }: { preset: AnyPreset; c
     });
 
     const addr = `${linkedChannel.dmxUniverse}.${String(linkedChannel.dmxAddress).padStart(3, '0')}`;
-    toast.success(`${preset.name} linked → FXcommander DMX ${addr}`);
+    toast.success(`${preset.name} linked → FXK-DMX ${addr}`);
 
     sfxStore.testArtNetConnection().then((result) => {
       if (result.connected) {

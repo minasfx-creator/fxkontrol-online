@@ -1,6 +1,6 @@
 /**
  * Check Slave Panel — Igniter status grid (16 positions per slave)
- * Matches FXcommander Check Slave interface
+ * Matches FXK-PYRO Check Slave interface
  */
 import { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';

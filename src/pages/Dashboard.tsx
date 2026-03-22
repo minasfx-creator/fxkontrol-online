@@ -62,7 +62,7 @@ const MOCK_NEWS: NewsItem[] = [
 const CATEGORY_FILTERS: Array<{ key: NewsItem['category'] | 'all'; label: string; emoji: string }> = [
   { key: 'all', label: 'Tudo', emoji: '🌐' },
   { key: 'pyro', label: 'Pyro', emoji: '🎆' },
-  { key: 'drones', label: 'Drones', emoji: '🤖' },
+  { key: 'drones', label: 'FXK-DRONES', emoji: '🤖' },
   { key: 'sfx', label: 'SFX', emoji: '🔥' },
   { key: 'lighting', label: 'Light', emoji: '💡' },
   { key: 'festivals', label: 'Festivals', emoji: '🎪' },
@@ -81,10 +81,10 @@ interface HubTool {
 
 const SHOW_COMMANDER_TOOLS: HubTool[] = [
   { label: 'Super DMX', icon: Zap, panel: 'super_dmx' },
-  { label: 'Pyro XL4', icon: Flame, panel: 'pyro_fire' },
+  { label: 'FXK-PYRO', icon: Flame, panel: 'pyro_fire' },
   { label: 'Auto Fire', icon: Timer, panel: 'auto_fire' },
   { label: 'Manual Fire', icon: Hand, panel: 'manual_fire' },
-  { label: 'Mobile Link', icon: Smartphone, panel: 'mobile_link' },
+  { label: 'FXK-LINK', icon: Smartphone, panel: 'mobile_link' },
   { label: 'Safety', icon: Shield, panel: 'check_slave' },
 ];
 
@@ -301,7 +301,7 @@ export default function Dashboard() {
         <div className="space-y-4 order-2 lg:order-1">
           {/* Show Commander Hub */}
           <HubCard
-            title="Show Commander"
+            title="FXK-PYRO Hub"
             subtitle="Execução e controle ao vivo"
             badge="LIVE"
             tools={SHOW_COMMANDER_TOOLS}
@@ -368,10 +368,10 @@ export default function Dashboard() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { label: 'FireOne XL4+', icon: Zap, mode: 'pyro_fire', color: 'text-red-400', border: 'border-red-500/15' },
+                  { label: 'FXK-PYRO', icon: Zap, mode: 'pyro_fire', color: 'text-red-400', border: 'border-red-500/15' },
                   { label: 'ZK6200', icon: Gauge, mode: 'super_dmx', color: 'text-amber-400', border: 'border-amber-500/15' },
                   { label: 'Art-Net', icon: Globe, mode: 'artnet_modules', color: 'text-primary', border: 'border-primary/15' },
-                  { label: 'IFM x32Q', icon: Cpu, mode: 'module', color: 'text-orange-400', border: 'border-orange-500/15' },
+                  { label: 'FXK Module', icon: Cpu, mode: 'module', color: 'text-orange-400', border: 'border-orange-500/15' },
                   { label: 'P-BUS', icon: Cable, mode: 'pbus', color: 'text-amber-400', border: 'border-amber-500/15' },
                   { label: 'Radio', icon: Radio, mode: 'radio', color: 'text-cyan-400', border: 'border-cyan-500/15' },
                 ].map((hw) => (
