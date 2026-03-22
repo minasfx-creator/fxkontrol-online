@@ -705,8 +705,13 @@ export class FireOneController {
     this.modules.clear();
   }
 
-  // ─── Send raw frame — routes via TransportManager ───
+  // ─── Send raw frame — routes via HybridRouter or TransportManager ───
   async send(data: Uint8Array): Promise<void> {
+    // Hybrid mode: intelligent routing (Radio for fire/estop, Starlink for sync)
+    if (this._hybridMode && this.hybridRouter) {
+      await this.hybridRouter.send(data);
+      return;
+    }
     if (this.transportManager.isConnected) {
       await this.transportManager.send(data);
       return;
