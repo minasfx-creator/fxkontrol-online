@@ -227,7 +227,7 @@ export default function CommandCenter() {
                       "text-[10px] font-bold border min-h-[48px] font-mono tracking-wider uppercase rounded-sm",
                       isActive
                         ? "text-foreground"
-                        : "border-border/10 text-muted-foreground/35 active:scale-95"
+                        : "border-border/10 text-muted-foreground/50 active:scale-95"
                     )}
                     style={{
                       background: isActive ? mAccent?.glow : 'hsl(220 18% 5% / 0.6)',
