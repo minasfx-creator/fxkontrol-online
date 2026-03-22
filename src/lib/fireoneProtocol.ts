@@ -562,7 +562,19 @@ export function buildPresetClear(): Uint8Array {
 
 // ═══════════════════════════════════════════════════════════
 // FIREONE SERIAL CONTROLLER CLASS
+// Now uses TransportManager for multi-path communication
 // ═══════════════════════════════════════════════════════════
+
+import {
+  getTransportManager,
+  SerialTransport,
+  RadioTransport,
+  WiFiTransport,
+  ArtNetTransport,
+  type FireOneTransportManager as TransportMgr,
+  type TransportStatus,
+  type TransportType,
+} from '@/lib/fireoneTransport';
 
 export class FireOneController {
   private conn: FireOneConnection | null = null;
@@ -570,9 +582,28 @@ export class FireOneController {
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
   private readBuffer = new Uint8Array(0);
   private modules: Map<number, FireOneModuleStatus> = new Map();
+  private transportManager: TransportMgr;
+
+  constructor() {
+    this.transportManager = getTransportManager();
+    // Subscribe to incoming data from all transports
+    this.transportManager.on((event) => {
+      if (event.type === 'data') {
+        this.processIncoming(event.data);
+      }
+    });
+  }
 
   get isConnected(): boolean {
-    return this.conn?.connected ?? false;
+    return this.transportManager.isConnected || (this.conn?.connected ?? false);
+  }
+
+  get transports(): TransportStatus[] {
+    return this.transportManager.allTransports;
+  }
+
+  get connectedTransportCount(): number {
+    return this.transportManager.connectedCount;
   }
 
   get discoveredModules(): FireOneModuleStatus[] {
