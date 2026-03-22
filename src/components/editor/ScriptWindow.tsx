@@ -159,43 +159,14 @@ export default function ScriptWindow() {
       });
     }
 
-    if (moveDir === 'next-cell') {
-      // Tab → next editable field in same row
-      const idx = EDITABLE_FIELDS.indexOf(field as any);
-      if (idx >= 0 && idx < EDITABLE_FIELDS.length - 1) {
-        const nextField = EDITABLE_FIELDS[idx + 1];
-        const row = rows.find(r => r.id === rowId);
-        if (row) {
-          const val = nextField === 'eventTime' ? row.eventTime
-            : nextField === 'pan' ? row.pan
-            : nextField === 'tilt' ? row.tilt
-            : row.notes;
-          setEditingCell({ rowId, field: nextField });
-          setEditDraft(String(val));
-          setTimeout(() => editInputRef.current?.select(), 0);
-          return;
-        }
-      }
-    }
-
-    if (moveDir === 'next-row') {
-      // Enter → same field, next row
-      const rowIdx = rows.findIndex(r => r.id === rowId);
-      if (rowIdx >= 0 && rowIdx < rows.length - 1) {
-        const nextRow = rows[rowIdx + 1];
-        const val = field === 'eventTime' ? nextRow.eventTime
-          : field === 'pan' ? nextRow.pan
-          : field === 'tilt' ? nextRow.tilt
-          : nextRow.notes;
-        setEditingCell({ rowId: nextRow.id, field });
-        setEditDraft(String(val));
-        setTimeout(() => editInputRef.current?.select(), 0);
-        return;
-      }
+    // For next-cell / next-row, we defer to after rows are available
+    // by storing intent and resolving in an effect
+    if (moveDir === 'next-cell' || moveDir === 'next-row') {
+      setEditNavIntent({ dir: moveDir, fromRowId: rowId, fromField: field });
     }
 
     setEditingCell(null);
-  }, [editingCell, editDraft, selectedIds, updateTimelineItem, rows]);
+  }, [editingCell, editDraft, selectedIds, updateTimelineItem]);
 
   const handleCellKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Tab') {
