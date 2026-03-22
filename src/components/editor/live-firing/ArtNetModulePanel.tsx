@@ -174,6 +174,7 @@ export default function ArtNetModulePanel() {
     if (!ctrl) {
       ctrl = artnetModuleService.initController({ name: 'FXK MASTER CONTROLLER' });
     }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     setController({ ...ctrl });
 
     const unsub = artnetModuleService.subscribe((type, data) => {
