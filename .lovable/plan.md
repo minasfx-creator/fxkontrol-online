@@ -1,49 +1,69 @@
 
 
-# PDF Comparativo + Protótipo FXK-M1 Plug & Play
+# PCB Layout FXK-M1 — Design Philosophy + Technical PDF
 
-## O que será entregue
+## Design Philosophy: "Copper Topology"
 
-### 1. Design Philosophy (.md) ✅ Já criado
-Arquivo `FXK_Ignition_Systems_Philosophy.md` — manifesto visual "Pyrotechnic Futurism" com estética de hardware de campo: paleta escura, tipografia machined, grid de circuito impresso.
+Extending the existing "Circuit Cartography" aesthetic into the physical domain of PCB fabrication — where copper pours become terrain maps, silk screen becomes cartographic annotation, and drill holes become coordinate markers in a landscape of engineered precision.
 
-### 2. PDF de 5 páginas: Mobile vs Hardware Convencional
+Will create `FXK_M1_PCB_Philosophy.md` with 4-6 paragraphs covering the visual language of fabrication drawings: copper layers as topographic surfaces, component footprints as architectural floor plans, via arrays as constellation maps.
 
-**Página 1 — Capa**
-- Título "MOBILE vs HARDWARE" com métricas-chave (6+ transportes, 50ms E-STOP, alcance global, 12+ sensores)
-- Teaser do protótipo FXK-M1
+## PDF Content: Single A3 landscape page (or 4 pages)
 
-**Página 2 — Tabela Comparativa**
-- 16 categorias comparadas: Alcance, Transportes, E-STOP, Sensores, Confirmação de Tiro, Lógica, Redundância, Custo, Setup, Atualização, Mesh, Spectrum, Clima, Continuidade, IP Rating, Temperatura
-- Indicadores visuais verde (vantagem clara) / âmbar (equivalente com dock)
+### Page 1 — Top Layer: Component Placement
+- Board outline: 180mm × 120mm with M3 mounting holes at corners
+- All major components placed with reference designators:
+  - U1: ESP32-S3-WROOM-1 (center-left)
+  - U2-U5: 74HC595 shift register chain (top row)
+  - Q1-Q32: IRLZ44N MOSFETs in 4×8 grid (right half)
+  - U6: CC1101 radio module (top-left, isolated)
+  - U7-U8: CD74HC4067 MUX (bottom-left, near ADC)
+  - U9: TP4056 charger + U10: AMS1117-3.3 (bottom edge)
+  - J1: USB-C connector, J2: Smartphone dock connector
+  - TB1-TB4: Terminal blocks (32 channels, right edge)
+- Silk screen layer: white outlines, ref designators, pin-1 markers
+- Keep-out zones: antenna clearance (CC1101), high-current isolation
 
-**Página 3 — Tecnologias Exclusivas do Mobile**
-- 10 cards: Confirmação Acústica, AR, Detecção de Inclinação, Wi-Fi Mesh, GPS Firing (ICET), Spectrum Analyzer, TDMA Anti-Colisão, UWB Positioning, Thermal Camera, NFC Tap-to-Pair
-- Cada card com descrição técnica de 2 linhas
+### Page 2 — Bottom Layer: Ground Plane + Routing
+- Solid copper ground pour with thermal relief on ground pads
+- Signal traces:
+  - SPI bus (ESP32 → CC1101, ESP32 → 74HC595 chain): 0.25mm, green
+  - ADC lines (MUX → ESP32): 0.2mm, cyan, guarded
+  - Gate drive (595 → MOSFETs): 0.3mm, amber
+  - Power rails (3.3V, 5V, VBAT): 0.5mm-1.0mm, red
+  - E-STOP signal: 0.4mm, crimson, priority routing
+- Via stitching around RF section
+- Analog/digital ground split with single-point bridge
 
-**Página 4 — Protótipo FXK-M1 (Esquemático)**
-- Vista superior do módulo com:
-  - Dock universal para smartphone (mola + trava)
-  - USB-C passthrough (carga + dados)
-  - PCB com ESP32-S3, 74HC595, MOSFETs, CC1101, LiPo
-  - 32 terminais de parafuso para ignitores
-  - 7 anotações técnicas numeradas
-- Estética de schematic técnico com traces pontilhados
+### Page 3 — Drill Chart + Board Dimensions
+- Full dimensioned drawing with:
+  - Overall dimensions, mounting hole positions
+  - Drill table: hole sizes, quantities, plated/non-plated
+  - Layer stackup: 2-layer FR4, 1.6mm, 1oz copper, HASL finish
+  - Minimum trace/space: 0.2mm/0.2mm
+  - Board edge clearance markers
 
-**Página 5 — Arquitetura + BOM**
-- Diagrama de 3 camadas: Software → Dock → Campo
-- Bill of Materials com 12 itens, custo total estimado: ~US$ 83
+### Page 4 — Assembly Guide + Fabrication Notes
+- Component BOM cross-reference
+- Soldering order (SMD first, then through-hole)
+- Test points: TP1-TP8 locations
+- Fabrication specifications table
+- Gerber file naming convention
 
-### Estética
-- Background escuro (#0A0C10) com grid sutil
-- Fontes: Tektur (títulos), IBM Plex Mono (dados), Work Sans (corpo)
-- Retângulos chanfrados (chamfered) — estética de metal usinado
-- Paleta: verde fosforescente, âmbar, ciano, vermelho (só E-STOP)
+## Visual Approach
+- Dark substrate (#0A0C10) representing bare FR4
+- Copper traces in characteristic amber/gold
+- Silk screen in white
+- Solder mask openings in lighter shade
+- Ground pour as subtle crosshatch pattern
+- Grid overlay at 2.54mm pitch (standard 0.1" grid)
+- Chamfered title blocks per "Circuit Cartography" philosophy
 
-### Processo
-1. Executar script Python com reportlab
-2. Converter para imagens para QA visual
-3. Verificar overlaps, margens, legibilidade
-4. Corrigir issues encontradas
-5. Entregar PDF + .md
+## Process
+1. Create `FXK_M1_PCB_Philosophy.md`
+2. Build Python script with reportlab for 4-page A3 PDF
+3. Render board outline, components as accurate footprints, trace routing
+4. Convert to images for QA
+5. Fix any overlaps or readability issues
+6. Deliver final PDF
 
