@@ -159,9 +159,8 @@ export default function CommandCenter() {
       case 'controllers': return <VirtualControllerHub fs onSelectMode={(m) => handleModeChange(m as CommandMode)} />;
       case 'pbus': return <PBusMonitorPanel />;
       case 'ma3': return <MA3ControlPanel fs />;
-      case 'module': return <VirtualIFMx32QPanel fs />;
       case 'wifi_direct': return <WiFiDirectControlPanel fs />;
-      case 'artnet_modules': return <ArtNetModulePanel fs />;
+      case 'artnet_modules': return <FXKNetPanel fs />;
       case 'connections': return <ConnectionManagerPanel fs />;
       case 'radio': return <RadioControlPanel fs />;
       case 'field_map': return <FieldMap2D fs />;
