@@ -296,7 +296,7 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
 
           {/* Hardware Bridge Status */}
           <div className={cn(
-            "rounded-lg border p-2 space-y-1",
+            "rounded-lg border p-2 space-y-1.5",
             bridgeStatus?.connected ? "border-emerald-500/30 bg-emerald-950/10" : "border-border/15 bg-card/20"
           )}>
             <div className="flex items-center justify-between">
@@ -310,28 +310,66 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
                   : 'DESCONECTADO'}
               </Badge>
             </div>
-            <div className="flex gap-1 flex-wrap">
+
+            {/* 6 Transport Options */}
+            <div className="grid grid-cols-3 gap-1">
               {[
-                { label: 'BLE', icon: Radio, action: module.connectBLE },
-                { label: 'USB', icon: Usb, action: module.connectUSB },
-                { label: 'Wi-Fi', icon: Wifi, action: () => module.connectWS() },
-                { label: 'RELAY', icon: Zap, action: module.connectDirectRelay },
-              ].map(btn => (
-                <button
-                  key={btn.label}
-                  onClick={() => btn.action()}
-                  className={cn(
-                    "flex-1 rounded px-2 py-1 flex items-center justify-center gap-1 transition-colors",
-                    "bg-muted/10 hover:bg-muted/20 text-muted-foreground/50 hover:text-foreground/70",
-                    "text-[8px] uppercase font-bold border border-border/10",
-                    btn.label === 'RELAY' && bridgeStatus?.transport === 'direct_relay' && bridgeStatus.connected && "border-amber-500/40 bg-amber-950/20 text-amber-400"
-                  )}
-                >
-                  <btn.icon className="w-3 h-3" />
-                  {btn.label}
-                </button>
-              ))}
+                { label: 'BLE', sub: '~30m', icon: Radio, action: module.connectBLE, transport: 'ble' as const },
+                { label: 'BLE LR', sub: '~1km', icon: Satellite, action: module.connectBLELongRange, transport: 'ble_lr' as const },
+                { label: 'Wi-Fi P2P', sub: 'Rádio', icon: Signal, action: () => module.connectWiFiDirect(), transport: 'wifi_direct' as const },
+                { label: 'Wi-Fi AP', sub: 'ESP32', icon: Wifi, action: () => module.connectWS(), transport: 'websocket' as const },
+                { label: 'USB', sub: 'OTG', icon: Usb, action: module.connectUSB, transport: 'usb' as const },
+                { label: 'RELAY', sub: 'Direto', icon: Zap, action: module.connectDirectRelay, transport: 'direct_relay' as const },
+              ].map(btn => {
+                const isActive = bridgeStatus?.connected && bridgeStatus.transport === btn.transport;
+                return (
+                  <button
+                    key={btn.label}
+                    onClick={() => btn.action()}
+                    className={cn(
+                      "rounded-lg px-2 py-1.5 flex flex-col items-center gap-0.5 transition-all",
+                      "border text-[7px] uppercase font-bold",
+                      isActive
+                        ? "border-emerald-500/50 bg-emerald-950/30 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.15)]"
+                        : "bg-muted/10 hover:bg-muted/20 text-muted-foreground/50 hover:text-foreground/70 border-border/10"
+                    )}
+                  >
+                    <btn.icon className="w-3.5 h-3.5" />
+                    <span>{btn.label}</span>
+                    <span className={cn("text-[6px] font-normal", isActive ? "text-emerald-400/60" : "text-muted-foreground/30")}>{btn.sub}</span>
+                  </button>
+                );
+              })}
             </div>
+
+            {/* RSSI / Distance indicator */}
+            {bridgeStatus?.connected && (bridgeStatus.rssi != null || bridgeStatus.estimatedDistance != null) && (
+              <div className="flex items-center gap-2 px-1">
+                <div className="flex gap-px items-end h-3">
+                  {[0, 1, 2, 3].map(i => {
+                    const strength = bridgeStatus.rssi != null
+                      ? Math.max(0, Math.min(4, Math.floor((bridgeStatus.rssi + 100) / 15)))
+                      : 2;
+                    return (
+                      <div
+                        key={i}
+                        className={cn("w-1 rounded-sm", i < strength ? "bg-emerald-400" : "bg-muted-foreground/20")}
+                        style={{ height: `${(i + 1) * 25}%` }}
+                      />
+                    );
+                  })}
+                </div>
+                {bridgeStatus.rssi != null && (
+                  <span className="text-[7px] text-muted-foreground/50">{bridgeStatus.rssi} dBm</span>
+                )}
+                {bridgeStatus.estimatedDistance != null && (
+                  <Badge variant="outline" className="text-[6px] h-3 px-1">
+                    ~{bridgeStatus.estimatedDistance}m
+                  </Badge>
+                )}
+              </div>
+            )}
+
             {bridgeStatus?.connected && (
               <div className="flex items-center justify-between text-[7px] text-muted-foreground/40">
                 <span>TX: {bridgeStatus.txBytes}B · RX: {bridgeStatus.rxBytes}B{bridgeStatus.firmwareVersion ? ` · FW: ${bridgeStatus.firmwareVersion}` : ''}</span>
