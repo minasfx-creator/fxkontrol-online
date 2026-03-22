@@ -524,6 +524,8 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
       dragStartRef.current = null;
       batchStartRef.current.clear();
       (gl.domElement as HTMLElement).style.cursor = '';
+      // Re-enable camera
+      window.dispatchEvent(new CustomEvent('box-select-active', { detail: false }));
     };
     window.addEventListener('pointermove', handleMove);
     window.addEventListener('pointerup', handleUp);
