@@ -522,11 +522,14 @@ function TimelineTrackRow({
         {!muted && items.map((item) => {
           const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
           if (!effect) return null;
+          const linkedIds = useProjectStore.getState().linkedTimelineItemIds;
+          const isLinked = linkedIds.includes(item.id);
           return (
             <DraggableTimelineItem
               key={item.id} item={item} effect={effect} pixelsPerSecond={pixelsPerSecond}
               isSelected={selectedTimelineItemId === item.id}
               isMultiSelected={selectedTimelineItemIds.includes(item.id)}
+              isLinkedHighlight={isLinked}
               onSelect={(e) => handleItemSelect(e, item.id)}
               onDragStart={handleItemDragStart}
               onContextMenu={handleContextMenu}
