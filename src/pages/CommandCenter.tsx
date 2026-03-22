@@ -1,9 +1,8 @@
 /**
  * CommandCenter — FXK 2.0 Execution Hub
- * Intelligent routing: Fire modes get full chrome, Hardware/Network get direct rendering
- * Each console has unique accent identity
+ * 7 focused consoles: 4 main + Show Control + Module + DMX Monitor
  */
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ambientSound } from '@/lib/ambientSound';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -12,115 +11,78 @@ import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { cn } from '@/lib/utils';
 import {
-  Zap, Lightbulb, Hand, Flame, Check, Cpu, Cable,
-  Gauge, Wifi, Globe, Plug, Radio, Map, Smartphone, Settings,
-  Shield, ChevronRight, AlertOctagon, Layers
+  Zap, Flame, Gauge, Layers, Activity, Cpu, Radio,
+  Shield, Map
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import LiveFiringPanel from '@/components/editor/LiveFiringPanel';
 
-// Direct-render components for non-fire modes (no ARM/CUE/PANIC chrome)
-import VirtualControllerHub from '@/components/editor/VirtualControllerHub';
-import PBusMonitorPanel from '@/components/editor/live-firing/PBusMonitorPanel';
+// Direct-render components
 import MA3ControlPanel from '@/components/editor/MA3ControlPanel';
-import WiFiDirectControlPanel from '@/components/editor/live-firing/WiFiDirectControlPanel';
-import FXKNetPanel from '@/components/editor/live-firing/FXKNetPanel';
-import ConnectionManagerPanel from '@/components/editor/ConnectionManagerPanel';
-import RadioControlPanel from '@/components/editor/RadioControlPanel';
-import FieldMap2D from '@/components/editor/FieldMap2D';
-import MobileLinkMode from '@/components/editor/live-firing/MobileLinkMode';
-import SettingsPanel from '@/components/editor/live-firing/SettingsPanel';
 import DroneCommandPanel from '@/components/editor/DroneCommandPanel';
+import ShowControlPanel from '@/components/editor/ShowControlPanel';
+import FXKNetPanel from '@/components/editor/live-firing/FXKNetPanel';
+import DMXMonitorPanel from '@/components/editor/DMXMonitorPanel';
 
 // ── Types ──
 type CommandMode =
-  | 'super_dmx' | 'simple_dmx' | 'manual_fire' | 'pyro_fire' | 'check_slave'
-  | 'controllers' | 'pbus' | 'ma3' | 'wifi_direct'
-  | 'artnet_modules' | 'connections' | 'radio' | 'field_map'
-  | 'mobile_link' | 'settings' | 'drone_ops';
+  | 'pyro_fire' | 'super_dmx' | 'fxk_light' | 'drone_ops'
+  | 'show_control' | 'module' | 'dmx_monitor';
 
 // Fire modes get full LiveFiringPanel chrome (ARM, CUE keys, PANIC)
-const FIRE_MODES: CommandMode[] = [
-  'super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'check_slave',
-];
-
+const FIRE_MODES: CommandMode[] = ['pyro_fire', 'super_dmx'];
 const isFireMode = (m: CommandMode) => FIRE_MODES.includes(m);
 
-// ── Console Accent Config — Tactical ──
+// ── Console Accent Config ──
 const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: string; badge: string }> = {
-  super_dmx:   { color: 'hsl(200 80% 48%)', glow: 'hsl(200 80% 48% / 0.1)', label: 'FXK-DMX',   badge: 'bg-blue-500/15 text-blue-400 border-blue-500/20' },
-  simple_dmx:  { color: 'hsl(120 70% 38%)', glow: 'hsl(120 70% 38% / 0.1)', label: 'FXK-DMX LITE',  badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' },
-  manual_fire: { color: 'hsl(32 100% 50%)',  glow: 'hsl(32 100% 50% / 0.1)',  label: 'MANUAL FIRE', badge: 'bg-orange-500/15 text-orange-400 border-orange-500/20' },
-  pyro_fire:   { color: 'hsl(0 85% 48%)',   glow: 'hsl(0 85% 48% / 0.1)',   label: 'FXK-PYRO',    badge: 'bg-red-500/15 text-red-400 border-red-500/20' },
-  check_slave: { color: 'hsl(32 100% 50%)', glow: 'hsl(32 100% 50% / 0.1)', label: 'DIAGNOSTICS', badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20' },
-  controllers: { color: 'hsl(270 60% 50%)', glow: 'hsl(270 60% 50% / 0.08)', label: 'CONTROLLERS', badge: 'bg-purple-500/15 text-purple-400 border-purple-500/20' },
-  pbus:        { color: 'hsl(38 100% 50%)',  glow: 'hsl(38 100% 50% / 0.08)',  label: 'P-BUS',       badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20' },
-  ma3:         { color: 'hsl(240 50% 52%)', glow: 'hsl(240 50% 52% / 0.08)', label: 'FXK-LIGHT',    badge: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/20' },
-  wifi_direct: { color: 'hsl(200 80% 48%)', glow: 'hsl(200 80% 48% / 0.08)', label: 'WIFI DIRECT', badge: 'bg-sky-500/15 text-sky-400 border-sky-500/20' },
-  artnet_modules: { color: 'hsl(270 60% 50%)', glow: 'hsl(270 60% 50% / 0.08)', label: 'FXK-NET', badge: 'bg-violet-500/15 text-violet-400 border-violet-500/20' },
-  connections: { color: 'hsl(165 100% 42%)', glow: 'hsl(165 100% 42% / 0.08)', label: 'CONNECTIONS', badge: 'bg-teal-500/15 text-teal-400 border-teal-500/20' },
-  radio:       { color: 'hsl(340 80% 50%)', glow: 'hsl(340 80% 50% / 0.08)', label: 'RF COMMS',    badge: 'bg-pink-500/15 text-pink-400 border-pink-500/20' },
-  field_map:   { color: 'hsl(120 70% 38%)', glow: 'hsl(120 70% 38% / 0.08)', label: 'FIELD MAP',   badge: 'bg-green-500/15 text-green-400 border-green-500/20' },
-  mobile_link: { color: 'hsl(240 50% 52%)', glow: 'hsl(240 50% 52% / 0.08)', label: 'FXK-LINK', badge: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/20' },
-  settings:    { color: 'hsl(200 8% 50%)', glow: 'hsl(200 8% 50% / 0.06)', label: 'SETTINGS',    badge: 'bg-muted/30 text-muted-foreground border-border/15' },
-  drone_ops:   { color: 'hsl(165 100% 42%)', glow: 'hsl(165 100% 42% / 0.08)', label: 'FXK-DRONES', badge: 'bg-teal-500/15 text-teal-400 border-teal-500/20' },
+  pyro_fire:    { color: 'hsl(0 85% 48%)',    glow: 'hsl(0 85% 48% / 0.1)',    label: 'FXK-PYRO',    badge: 'bg-red-500/15 text-red-400 border-red-500/20' },
+  super_dmx:    { color: 'hsl(200 80% 48%)',   glow: 'hsl(200 80% 48% / 0.1)',   label: 'FXK-DMX',     badge: 'bg-blue-500/15 text-blue-400 border-blue-500/20' },
+  fxk_light:    { color: 'hsl(240 50% 52%)',   glow: 'hsl(240 50% 52% / 0.08)',  label: 'FXK-LIGHT',   badge: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/20' },
+  drone_ops:    { color: 'hsl(165 100% 42%)',  glow: 'hsl(165 100% 42% / 0.08)', label: 'FXK-DRONE',   badge: 'bg-teal-500/15 text-teal-400 border-teal-500/20' },
+  show_control: { color: 'hsl(32 100% 50%)',   glow: 'hsl(32 100% 50% / 0.08)',  label: 'SHOW CTRL',   badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20' },
+  module:       { color: 'hsl(270 60% 50%)',   glow: 'hsl(270 60% 50% / 0.08)',  label: 'MODULE',      badge: 'bg-violet-500/15 text-violet-400 border-violet-500/20' },
+  dmx_monitor:  { color: 'hsl(120 70% 42%)',   glow: 'hsl(120 70% 42% / 0.08)',  label: 'DMX MONITOR', badge: 'bg-green-500/15 text-green-400 border-green-500/20' },
 };
 
 // ── Sidebar Sections ──
 const MODE_SECTIONS = [
   {
-    label: 'FIRE CONTROL',
+    label: 'CONSOLES',
     accent: 'text-red-400',
     modes: [
-      { key: 'super_dmx' as CommandMode, label: 'FXK-DMX', icon: Zap },
-      { key: 'simple_dmx' as CommandMode, label: 'Simple DMX', icon: Lightbulb },
-      { key: 'manual_fire' as CommandMode, label: 'Manual', icon: Hand },
       { key: 'pyro_fire' as CommandMode, label: 'FXK-PYRO', icon: Flame },
-      { key: 'check_slave' as CommandMode, label: 'DIAGNOSTICS', icon: Check },
+      { key: 'super_dmx' as CommandMode, label: 'FXK-DMX', icon: Zap },
+      { key: 'fxk_light' as CommandMode, label: 'FXK-LIGHT', icon: Gauge },
+      { key: 'drone_ops' as CommandMode, label: 'FXK-DRONE', icon: Layers },
     ],
   },
   {
-    label: 'HARDWARE',
+    label: 'SHOW CONTROL',
     accent: 'text-amber-400',
     modes: [
-      { key: 'controllers' as CommandMode, label: 'Controllers', icon: Cpu },
-      { key: 'pbus' as CommandMode, label: 'P-BUS', icon: Cable },
-      { key: 'ma3' as CommandMode, label: 'FXK-LIGHT', icon: Gauge },
-      { key: 'wifi_direct' as CommandMode, label: 'WiFi Direct', icon: Wifi },
-      { key: 'drone_ops' as CommandMode, label: 'FXK-DRONES', icon: Layers },
+      { key: 'show_control' as CommandMode, label: 'SHOW CTRL', icon: Activity },
     ],
   },
   {
-    label: 'NETWORK',
+    label: 'TOOLS',
     accent: 'text-primary',
     modes: [
-      { key: 'artnet_modules' as CommandMode, label: 'FXK-NET', icon: Globe },
-      { key: 'connections' as CommandMode, label: 'Connections', icon: Plug },
-      { key: 'radio' as CommandMode, label: 'Radio', icon: Radio },
-      { key: 'field_map' as CommandMode, label: 'Field Map', icon: Map },
-    ],
-  },
-  {
-    label: 'SYSTEM',
-    accent: 'text-muted-foreground',
-    modes: [
-      { key: 'mobile_link' as CommandMode, label: 'FXK-LINK', icon: Smartphone },
-      { key: 'settings' as CommandMode, label: 'Settings', icon: Settings },
+      { key: 'module' as CommandMode, label: 'MODULE', icon: Cpu },
+      { key: 'dmx_monitor' as CommandMode, label: 'DMX MONITOR', icon: Radio },
     ],
   },
 ];
 
 const MOBILE_CATEGORIES = [
-  { label: 'Fire', icon: Flame, section: 0 },
-  { label: 'HW', icon: Cpu, section: 1 },
-  { label: 'Net', icon: Globe, section: 2 },
-  { label: 'Sys', icon: Settings, section: 3 },
+  { label: 'Console', icon: Flame, section: 0 },
+  { label: 'Show', icon: Activity, section: 1 },
+  { label: 'Tools', icon: Cpu, section: 2 },
 ];
 
 export default function CommandCenter() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialMode = (searchParams.get('mode') as CommandMode) || 'super_dmx';
+  const initialMode = (searchParams.get('mode') as CommandMode) || 'show_control';
   const [activeMode, setActiveMode] = useState<CommandMode>(initialMode);
   const [swapPhase, setSwapPhase] = useState<'idle' | 'out' | 'in'>('idle');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -131,7 +93,7 @@ export default function CommandCenter() {
   const activeEffects = useLiveSfxStore(s => s.activeEffects);
   const isArmed = activeEffects.length > 0;
 
-  const accent = CONSOLE_ACCENTS[activeMode] ?? CONSOLE_ACCENTS.settings;
+  const accent = CONSOLE_ACCENTS[activeMode] ?? CONSOLE_ACCENTS.show_control;
 
   const connectedCount = useMemo(() => {
     let c = 0;
@@ -152,40 +114,35 @@ export default function CommandCenter() {
     }, 200);
   }, [setSearchParams, activeMode]);
 
-  // ── Direct-render for non-fire modes (no ARM/CUE/PANIC chrome) ──
+  // Direct-render for non-fire modes
   const renderDirectPanel = useCallback((mode: CommandMode) => {
     switch (mode) {
-      case 'controllers': return <VirtualControllerHub fs onSelectMode={(m) => handleModeChange(m as CommandMode)} />;
-      case 'pbus': return <PBusMonitorPanel />;
-      case 'ma3': return <MA3ControlPanel fs />;
-      case 'wifi_direct': return <WiFiDirectControlPanel fs />;
-      case 'artnet_modules': return <FXKNetPanel fs />;
-      case 'connections': return <ConnectionManagerPanel fs />;
-      case 'radio': return <RadioControlPanel fs />;
-      case 'field_map': return <FieldMap2D fs />;
-      case 'mobile_link': return <MobileLinkMode fs fireChannel={() => {}} channels={[]} artNetConnected={false} relayConnected={false} />;
-      case 'settings': return <SettingsPanel fs settings={{ language: 'pt', wirelessDmxEnabled: false, wirelessDmxId: 1, globalSafetyChannel: 0, globalSafetyValue: 0, pyroArmRequired: true, deleteConfirm: true, backlight: 80, tcpPort: 8000, artNetIp: '2.0.0.1', artNetPort: 6454, networkIp: '192.168.1.100', networkMask: '255.255.255.0', networkGateway: '192.168.1.1' }} onSettingsChange={() => {}} relayConnected={false} relayUrl="" onRelayUrlChange={() => {}} onConnectRelay={() => {}} onDisconnectRelay={() => {}} />;
+      case 'fxk_light': return <MA3ControlPanel fs />;
       case 'drone_ops': return <DroneCommandPanel fs />;
+      case 'show_control': return <ShowControlPanel fs />;
+      case 'module': return <FXKNetPanel fs />;
+      case 'dmx_monitor': return <DMXMonitorPanel fs />;
       default: return null;
     }
-  }, [handleModeChange]);
+  }, []);
 
-  // ══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════
   // MOBILE LAYOUT
-  // ══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════
   if (isMobile) {
-    const categoryModes = MODE_SECTIONS[mobileCategory]?.modes ?? [];
+    // For mobile, combine SHOW CONTROL + TOOLS into one group
+    const allMobileModes = mobileCategory === 0
+      ? MODE_SECTIONS[0].modes
+      : [...MODE_SECTIONS[1].modes, ...MODE_SECTIONS[2].modes];
 
     return (
       <div className="h-[100dvh] w-screen flex flex-col bg-background">
-        {/* ── Tactical HUD — Mobile ── */}
+        {/* HUD */}
         <div className="shrink-0 px-2 pt-1.5 pb-1" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
           <div
             className={cn(
               "flex items-center justify-between px-3 py-2 rounded border transition-all",
-              isArmed
-                ? "border-destructive/30 glow-danger"
-                : "border-primary/10"
+              isArmed ? "border-destructive/30 glow-danger" : "border-primary/10"
             )}
             style={{ background: 'hsl(220 22% 3% / 0.95)', backdropFilter: 'blur(24px)' }}
           >
@@ -198,30 +155,20 @@ export default function CommandCenter() {
                 {connectedCount > 0 ? `${connectedCount} LINK` : 'NO LINK'}
               </span>
             </div>
-
             <Badge variant="outline" className={cn("text-[7px] h-4.5 px-2 font-black border font-mono tracking-[0.15em] rounded-sm", accent.badge)}>
               {accent.label}
             </Badge>
-
             <div className="flex items-center gap-1">
-              {fireone.isConnected && (
-                <Badge variant="outline" className="text-[6px] h-3.5 px-1 border-red-500/15 text-red-400 font-mono rounded-sm">FO</Badge>
-              )}
-              {pbus.isConnected && (
-                <Badge variant="outline" className="text-[6px] h-3.5 px-1 border-amber-500/15 text-amber-400 font-mono rounded-sm">PB</Badge>
-              )}
-              {isArmed && (
-                <Badge variant="destructive" className="text-[6px] h-3.5 px-1 animate-pulse font-mono rounded-sm">ARM</Badge>
-              )}
+              {isArmed && <Badge variant="destructive" className="text-[6px] h-3.5 px-1 animate-pulse font-mono rounded-sm">ARM</Badge>}
             </div>
           </div>
         </div>
 
-        {/* ── Mode Selector — Tactical Pills ── */}
+        {/* Mode Selector */}
         <div className="shrink-0 px-2 py-1">
           <ScrollArea className="w-full">
             <div className="flex gap-1 pb-1">
-              {categoryModes.map(mode => {
+              {allMobileModes.map(mode => {
                 const isActive = activeMode === mode.key;
                 const mAccent = CONSOLE_ACCENTS[mode.key];
                 const Icon = mode.icon;
@@ -232,9 +179,7 @@ export default function CommandCenter() {
                     className={cn(
                       "flex items-center gap-1.5 px-3 py-2.5 whitespace-nowrap transition-all",
                       "text-[10px] font-bold border min-h-[48px] font-mono tracking-wider uppercase rounded-sm",
-                      isActive
-                        ? "text-foreground"
-                        : "border-border/10 text-muted-foreground/50 active:scale-95"
+                      isActive ? "text-foreground" : "border-border/10 text-muted-foreground/50 active:scale-95"
                     )}
                     style={{
                       background: isActive ? mAccent?.glow : 'hsl(220 18% 5% / 0.6)',
@@ -250,20 +195,18 @@ export default function CommandCenter() {
           </ScrollArea>
         </div>
 
-        {/* ── Content ── */}
+        {/* Content */}
         <div className="flex-1 overflow-hidden">
           {isFireMode(activeMode) ? (
             <LiveFiringPanel initialMode={activeMode} standalone />
           ) : (
             <ScrollArea className="h-full">
-              <div className="h-full surface-0">
-                {renderDirectPanel(activeMode)}
-              </div>
+              <div className="h-full surface-0">{renderDirectPanel(activeMode)}</div>
             </ScrollArea>
           )}
         </div>
 
-        {/* ── Bottom Nav — Tactical ── */}
+        {/* Bottom Nav */}
         <div
           className="shrink-0"
           style={{
@@ -296,35 +239,28 @@ export default function CommandCenter() {
     );
   }
 
-  // ══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════
   // DESKTOP LAYOUT
-  // ══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════
   return (
     <div className="h-[calc(100vh-3rem)] flex overflow-hidden">
-      {/* ── Sidebar — Tactical Command ── */}
+      {/* Sidebar */}
       <div
         className={cn(
           "shrink-0 flex flex-col border-r transition-all duration-200",
           sidebarCollapsed ? "w-14" : "w-52"
         )}
-        style={{
-          background: 'hsl(220 22% 3%)',
-          borderColor: 'hsl(var(--primary) / 0.06)',
-        }}
+        style={{ background: 'hsl(220 22% 3%)', borderColor: 'hsl(var(--primary) / 0.06)' }}
       >
-        {/* Tactical Status Header */}
+        {/* Status Header */}
         <div className="px-2 pt-3 pb-2">
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className={cn(
-              "w-full rounded border transition-all duration-200",
-              "hover:border-primary/15",
+              "w-full rounded border transition-all duration-200 hover:border-primary/15",
               sidebarCollapsed ? "p-2" : "px-3 py-2"
             )}
-            style={{
-              background: accent.glow,
-              borderColor: accent.color + '15',
-            }}
+            style={{ background: accent.glow, borderColor: accent.color + '15' }}
           >
             {sidebarCollapsed ? (
               <div className="flex flex-col items-center gap-1">
@@ -338,18 +274,12 @@ export default function CommandCenter() {
                   <p className="text-[8px] font-bold text-foreground font-mono tracking-[0.2em] truncate">FXK COMMAND</p>
                   <p className="text-[7px] text-muted-foreground/50 font-mono tracking-wider">{connectedCount} LINKS</p>
                 </div>
-                {fireone.isConnected && (
-                  <Badge variant="outline" className="text-[6px] h-3.5 px-1 border-red-500/15 text-red-400 shrink-0 font-mono rounded-sm">FO</Badge>
-                )}
-                {pbus.isConnected && (
-                  <Badge variant="outline" className="text-[6px] h-3.5 px-1 border-amber-500/15 text-amber-400 shrink-0 font-mono rounded-sm">PB</Badge>
-                )}
               </div>
             )}
           </button>
         </div>
 
-        {/* Mode List — Tactical */}
+        {/* Mode List */}
         <ScrollArea className="flex-1 px-1">
           <div className="space-y-3 pb-3">
             {MODE_SECTIONS.map(section => (
@@ -378,10 +308,7 @@ export default function CommandCenter() {
                             ? "text-foreground border-l-2"
                             : "text-muted-foreground/50 hover:bg-primary/3 hover:text-foreground/60 border-l-2 border-transparent"
                         )}
-                        style={isActive ? {
-                          background: mAccent?.glow,
-                          borderLeftColor: mAccent?.color,
-                        } : undefined}
+                        style={isActive ? { background: mAccent?.glow, borderLeftColor: mAccent?.color } : undefined}
                         title={sidebarCollapsed ? mode.label : undefined}
                       >
                         <mode.icon className={cn("shrink-0", sidebarCollapsed ? "w-4 h-4" : "w-3.5 h-3.5")} />
@@ -400,14 +327,12 @@ export default function CommandCenter() {
           </div>
         </ScrollArea>
 
-        {/* Safety Footer — Tactical */}
+        {/* Safety Footer */}
         {!sidebarCollapsed && (
           <div className="p-2 border-t" style={{ borderColor: 'hsl(var(--destructive) / 0.08)' }}>
             <div className={cn(
               "flex items-center gap-2 px-2 py-1.5 rounded-sm border transition-all",
-              isArmed
-                ? "danger-stripe border-destructive/20"
-                : "bg-destructive/3 border-destructive/8"
+              isArmed ? "danger-stripe border-destructive/20" : "bg-destructive/3 border-destructive/8"
             )}>
               <Shield className="h-3 w-3 text-destructive/40 shrink-0" />
               <span className="text-[7px] text-destructive/50 font-bold font-mono tracking-[0.15em]">
@@ -418,9 +343,9 @@ export default function CommandCenter() {
         )}
       </div>
 
-      {/* ── Main Content ── */}
+      {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Breadcrumb — Tactical Command Bar */}
+        {/* Breadcrumb */}
         <div
           className="h-10 shrink-0 flex items-center justify-between px-4 border-b"
           style={{
@@ -457,9 +382,7 @@ export default function CommandCenter() {
             <LiveFiringPanel initialMode={activeMode} standalone />
           ) : (
             <ScrollArea className="h-full">
-              <div className="h-full surface-0">
-                {renderDirectPanel(activeMode)}
-              </div>
+              <div className="h-full surface-0">{renderDirectPanel(activeMode)}</div>
             </ScrollArea>
           )}
         </div>
