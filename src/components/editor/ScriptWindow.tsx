@@ -949,6 +949,10 @@ export default function ScriptWindow() {
               <SortableHeader label="Position" field="position" current={sortField} dir={sortDir} onSort={toggleSort} />
               <th className="px-1 py-1 text-left text-muted-foreground font-medium">Pan°</th>
               <th className="px-1 py-1 text-left text-muted-foreground font-medium">Tilt°</th>
+              <th className="px-1 py-1 text-left text-muted-foreground font-medium">Spin°</th>
+              <th className="px-1 py-1 text-left text-muted-foreground font-medium w-6" title="Angles ASCII art">∠*</th>
+              <th className="px-1 py-1 text-left text-muted-foreground font-medium w-8" title="Derived Pitch (read-only)">dP</th>
+              <th className="px-1 py-1 text-left text-muted-foreground font-medium w-8" title="Derived Roll (read-only)">dR</th>
               <SortableHeader label="Dur" field="duration" current={sortField} dir={sortDir} onSort={toggleSort} />
               <SortableHeader label="$" field="cost" current={sortField} dir={sortDir} onSort={toggleSort} />
               <th className="px-1 py-1 text-left text-muted-foreground font-medium">Chain</th>
