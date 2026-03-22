@@ -130,10 +130,9 @@ export default function BoxSelectOverlay() {
           setIsSelecting(true);
           pendingRef.current.active = false;
 
-          // Clear previous selection unless Shift held for additive
           if (!e.shiftKey) {
             const store = useProjectStore.getState();
-            store.clearSelection();
+            store.selectMultiplePositions([]);
           }
         }
       }
