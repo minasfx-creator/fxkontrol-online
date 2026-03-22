@@ -426,6 +426,7 @@ export default function CommandCenter() {
                   {section.modes.map(mode => {
                     const isActive = activeMode === mode.key;
                     const mAccent = CONSOLE_ACCENTS[mode.key];
+                    const Logo = CONSOLE_LOGOS[mode.key];
                     return (
                       <button
                         key={mode.key}
@@ -434,13 +435,16 @@ export default function CommandCenter() {
                           "w-full flex items-center gap-2 rounded-sm transition-all duration-150",
                           sidebarCollapsed ? "justify-center p-2.5" : "px-2.5 py-2.5 min-h-[40px]",
                           isActive
-                            ? "text-foreground border-l-2"
+                            ? "text-foreground border-l-2 console-logo-glow"
                             : "text-muted-foreground/50 hover:bg-primary/3 hover:text-foreground/60 border-l-2 border-transparent"
                         )}
                         style={isActive ? { background: mAccent?.glow, borderLeftColor: mAccent?.color } : undefined}
                         title={sidebarCollapsed ? mode.label : undefined}
                       >
-                        <mode.icon className={cn("shrink-0", sidebarCollapsed ? "w-4 h-4" : "w-3.5 h-3.5")} />
+                        {Logo
+                          ? <Logo size={sidebarCollapsed ? 22 : 20} active={isActive} />
+                          : <mode.icon className={cn("shrink-0", sidebarCollapsed ? "w-4 h-4" : "w-3.5 h-3.5")} />
+                        }
                         {!sidebarCollapsed && (
                           <span className="text-[9px] font-bold truncate font-mono tracking-wider uppercase">{mode.label}</span>
                         )}
