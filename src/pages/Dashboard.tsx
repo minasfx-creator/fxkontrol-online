@@ -449,16 +449,16 @@ export default function Dashboard() {
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { label: 'FXK-PYRO', icon: Zap, mode: 'pyro_fire', color: 'text-red-400', border: 'border-red-500/15' },
-                  { label: 'ZK6200', icon: Gauge, mode: 'super_dmx', color: 'text-amber-400', border: 'border-amber-500/15' },
-                  { label: 'Art-Net', icon: Globe, mode: 'artnet_modules', color: 'text-primary', border: 'border-primary/15' },
-                  { label: 'FXK Module', icon: Cpu, mode: 'module', color: 'text-orange-400', border: 'border-orange-500/15' },
-                  { label: 'P-BUS', icon: Cable, mode: 'pbus', color: 'text-amber-400', border: 'border-amber-500/15' },
-                  { label: 'Radio', icon: Radio, mode: 'radio', color: 'text-cyan-400', border: 'border-cyan-500/15' },
+                  { label: 'FXK-DMX', icon: Gauge, mode: 'super_dmx', color: 'text-amber-400', border: 'border-amber-500/15' },
+                  { label: 'FXK-LIGHT', icon: Lightbulb, mode: 'fxk_light', color: 'text-indigo-400', border: 'border-indigo-500/15' },
+                  { label: 'MODULE', icon: Cpu, mode: 'module', color: 'text-violet-400', border: 'border-violet-500/15' },
+                  { label: 'FXK-DRONE', icon: Layers, mode: 'drone_ops', color: 'text-teal-400', border: 'border-teal-500/15' },
+                  { label: 'DMX Monitor', icon: Radio, mode: 'dmx_monitor', color: 'text-green-400', border: 'border-green-500/15' },
                 ].map((hw) => (
                   <button
                     key={hw.label}
                     onClick={() => navigate(`/command?mode=${hw.mode}`)}
-                    className={`flex items-center gap-2 px-2.5 py-2 rounded-xl bg-[hsl(var(--surface-0)/0.5)] border ${hw.border} hover:bg-muted/20 transition-all active:scale-[0.97] text-left`}
+                    className={`flex items-center gap-2 px-2.5 py-2 rounded-xl bg-[hsl(var(--surface-0)/0.5)] border ${hw.border} hover:bg-muted/20 transition-all active:scale-[0.97] text-left min-h-[48px]`}
                   >
                     <hw.icon className={`h-3.5 w-3.5 ${hw.color} shrink-0`} />
                     <span className="text-[9px] font-semibold text-foreground/70 truncate">{hw.label}</span>
