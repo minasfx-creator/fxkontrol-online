@@ -41,7 +41,6 @@ function ContinuityGrid({ cds }: { cds: boolean[] }) {
 }
 
 export default function DevicePairing() {
-  const navigate = useNavigate();
   const [step, setStep] = useState<PairStep>('idle');
   const [moduleState, setModuleState] = useState<FXKModuleState>(initialModuleState);
   const [nfcDeviceName, setNfcDeviceName] = useState<string | null>(null);

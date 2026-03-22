@@ -210,7 +210,6 @@ function ComparisonTable({ venues }: { venues: VenueResult[] }) {
 }
 
 export default function ShowTestSimulator() {
-  const navigate = useNavigate();
   const [venues, setVenues] = useState<VenueResult[]>([]);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<{ startedAt: string; completedAt: string | null; edgeFunctionAlive: boolean } | null>(null);
