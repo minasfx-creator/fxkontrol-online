@@ -124,6 +124,9 @@ export default function ScriptWindow() {
 
   // Editable fields in order for Tab navigation
   const EDITABLE_FIELDS = ['eventTime', 'pan', 'tilt', 'notes'] as const;
+  
+  // Navigation intent resolved after rows are computed
+  const [editNavIntent, setEditNavIntent] = useState<{ dir: 'next-cell' | 'next-row'; fromRowId: string; fromField: string } | null>(null);
 
   const startEditing = useCallback((rowId: string, field: string, currentValue: string | number) => {
     setEditingCell({ rowId, field });
