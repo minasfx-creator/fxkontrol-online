@@ -212,9 +212,10 @@ export default function ArtNetModulePanel() {
       channelCount: parseInt(newModule.channels) || 32,
       label: newModule.label,
     });
+    saveModule(m, controller?.modules.length || 0);
     setShowAddModule(false);
     setNewModule({ name: '', ip: '192.168.1.100', port: '6454', transport: 'lan', universe: '0', subnet: '0', net: '0', startAddr: '1', channels: '32', label: '', relayUrl: '' });
-  }, [newModule, controller]);
+  }, [newModule, controller, saveModule]);
 
   const handleMasterArm = useCallback(() => {
     if (!controller) return;
