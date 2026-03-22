@@ -597,9 +597,7 @@ function Index() {
         </ResizablePanel>
       </ResizablePanelGroup>
 
-      {showPositionEditor && selectedPositionId && (
-        <PositionPopupEditor onClose={() => setShowPositionEditor(false)} />
-      )}
+      {/* Position properties now unified in PositionContextMenu */}
       {showShortcuts && (
         <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />
       )}
