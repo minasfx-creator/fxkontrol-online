@@ -48,6 +48,7 @@ function App() {
                 <Route path="/editor" element={<Index />} />
                 <Route path="/agenda" element={<Agenda />} />
                 <Route path="/training" element={<Training />} />
+                <Route path="/pcb-viewer" element={<PCBViewer />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
