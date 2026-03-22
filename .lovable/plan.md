@@ -1,64 +1,76 @@
 
 
-# Refinamentos e Correção de Falhas — FXcommander Live FX
+# Calibração da Plataforma — Auditoria Completa e Refinamentos
 
-## Problemas Identificados
+## Problemas Encontrados
 
-### 1. Tipografia Ilegível (Crítico — UX)
-125+ ocorrências de `text-[5px]` e `text-[6px]` em `LiveFiringPanel.tsx`. Texto de 5-6px é impossível de ler em qualquer dispositivo. Minimum legível: `text-[8px]` em desktop panel, `text-[10px]` em mobile/fullscreen.
+### A. Tipografia Ilegível (483 ocorrências em 23 arquivos)
+- `text-[5px]` e `text-[6px]` espalhados em 23 componentes — impossível de ler em qualquer dispositivo
+- `text-[7px]` em 71 arquivos (1814 ocorrências) — marginal, aceitável apenas em labels muito pequenos de desktop panel
+- **LiveFiringPanel.tsx** ainda tem 117 ocorrências de `text-[7px]` após a última correção, incluindo em elementos importantes como CUE key labels, scene tabs, e status indicators
+- Arquivos afetados mais críticos: `MobileLinkMode.tsx` (usa `text-[5px]` e `text-[6px]`), `SettingsPanel.tsx`, `DMXMonitorGrid.tsx`, `CollisionPanel.tsx`, `USBConnectionPanel.tsx`
 
-**Arquivos**: `LiveFiringPanel.tsx` (125 ocorrências)
+### B. LiveFiringPanel — Problemas Residuais
+1. **`text-[7px]` em mobile fullscreen**: Linhas como 838, 888, 893, 944, 984 usam `text-[7px]` no contexto `fs && mob` — ilegível em celular
+2. **CueKey** (linha 271): `text-[7px]` para KEY label em panel mode — deveria ser `text-[9px]`
+3. **DeviceRow** (linha 323): `text-[7px]` para index number — deveria ser `text-[8px]`
+4. **Scene tabs** (linha 1012): `text-[7px]` em panel mode para S0/S1/S2/S3
+5. **DEADMAN** (linha 944): `text-[7px]` em panel mode
+6. **Inconsistência fs/non-fs**: Muitos ternários `fs ? "text-[10px]" : "text-[10px]"` onde ambos os lados são iguais — código morto
 
-### 2. Redundância de Layout Mobile
-O bloco `if (mob)` (linhas 1413-1430) e o bloco `if (isFullscreen)` (linhas 1382-1408) renderizam conteúdo quase idêntico. Como `isMobile` já seta `isFullscreen = true` no `useEffect`, o bloco `if (mob)` é código morto na prática (o `isFullscreen` sempre é true quando `mob` é true). Deve ser removido para evitar confusão.
+### C. MobileLinkMode.tsx — Tipografia Crítica
+- Linha 538: `tsS = 'text-[6px]'` usado em labels de status
+- Linha 816: `text-[6px]` em igniters grid
+- Linha 900, 944, 1089, 1118, 1221: `text-[5px]` e `text-[6px]` em badges, indicators, event logs
+- Tudo ilegível em mobile, que é o contexto principal deste componente
 
-### 3. `globalThis.Map` Workaround Frágil
-Linhas 396 e 521 usam `globalThis.Map` para contornar um shadowing de tipo. Isso indica que existe algum tipo `Map` importado ou declarado que conflita. A solução correta é identificar e renomear o tipo conflitante, ou usar type assertion.
+### D. SettingsPanel.tsx
+- Linhas 84, 89, 137: `text-[6px]` em labels de configuração
 
-### 4. MobileModeTabs — Labels `text-[8px]` Ilegíveis
-O grid de modos mobile (linha 155) usa `text-[8px]` nos labels e `text-[8px]` nos headers de categoria (linha 141). Touch targets de 56px estão OK, mas labels precisam ser maiores.
-
-### 5. Swipe Interfere com Scroll
-O swipe handler (linhas 460-500) na raiz do painel captura gestos horizontais com threshold de 60px, o que pode conflitar com scroll horizontal dentro de painéis filhos (sliders, scroll areas).
-
-### 6. `ArtNetModulePanel` não Recebe `fs` prop
-Na linha 1373, `<ArtNetModulePanel />` é renderizado sem a prop `fs`, então ele não adapta layout entre panel e fullscreen mode.
-
-### 7. `relay_server_url` Não Persiste
-O campo `relay_server_url` existe na tabela DB mas `configToDb` no hook de persistence não o mapeia — módulos WAN/Relay perdem a URL do relay entre sessões.
-
-### 8. `addModule` Gera IDs Novos Sempre
-Quando `useArtNetModulePersistence` carrega módulos do DB e chama `addModule(dbToConfig(row))`, o `addModule` gera um novo `id` em vez de usar o `id` do banco. Isso causa duplicatas se o módulo já existir com ID diferente.
+### E. Engine / Lógica
+1. **`globalThis.Map` workaround** (LiveFiringPanel linhas 396, 527): Funciona mas é frágil — deveria usar type alias
+2. **`sceneCues` memo inútil** (linha 513): `cues.filter(() => true)` filtra nada — deveria filtrar por `activeScene`
+3. **`pageCues` ignora scenes** (linha 516): `sceneCues.slice(0, 128)` não filtra por scene — os 4 scenes (S0-S3) provavelmente compartilham todos os CUEs, anulando o propósito do scene selector
+4. **Fullscreen API forçada** (linhas 769-781): `requestFullscreen()` é chamado automaticamente ao entrar em fullscreen state, o que pode ser intrusivo e causar popups de permissão
+5. **Ternários idênticos**: Dezenas de `fs ? "text-[10px]" : "text-[10px]"` — código redundante que dificulta manutenção
 
 ## Plano de Correção
 
-### Correção 1 — Tipografia Mínima
-Em `LiveFiringPanel.tsx`, substituir todas as ocorrências de `text-[5px]` por `text-[8px]` e `text-[6px]` por `text-[8px]` no contexto panel (não-fullscreen). Em contexto mobile/fullscreen, garantir mínimo `text-[9px]`.
+### 1. Tipografia Global — Mínimos Legíveis
+Substituir em **todos os arquivos afetados**:
+- `text-[5px]` → `text-[8px]`
+- `text-[6px]` → `text-[8px]`
+- `text-[7px]` em contexto mobile (`fs && mob`, `mob`) → `text-[9px]`
+- `text-[7px]` em contexto panel (non-fs) → `text-[8px]`
 
-### Correção 2 — Remover Bloco `if (mob)` Redundante
-Remover linhas 1413-1430 (`if (mob)` block). O `useEffect` já força `isFullscreen = true` em mobile.
+**Arquivos prioritários** (6 mais impactantes):
+1. `LiveFiringPanel.tsx` — 117 ocorrências de `text-[7px]`
+2. `MobileLinkMode.tsx` — `text-[5px]`, `text-[6px]`, `text-[7px]`
+3. `SettingsPanel.tsx` — `text-[6px]`
+4. `DMXMonitorGrid.tsx` — `text-[6px]`
+5. `USBConnectionPanel.tsx` — `text-[7px]`
+6. `CollisionPanel.tsx` — `text-[6px]`
 
-### Correção 3 — Map Type Fix
-Substituir `globalThis.Map` por `new Map` com type assertion explícita, ou adicionar alias `type MapType = typeof Map` se necessário.
+### 2. Scene-CUE Filtering Fix
+Corrigir `sceneCues` para filtrar CUEs pelo `activeScene`:
+```
+const sceneCues = useMemo(() => cues.filter(c => (c.sceneIndex ?? 0) === activeScene), [cues, activeScene]);
+```
 
-### Correção 4 — Mobile Mode Labels
-Aumentar labels de `text-[8px]` para `text-[10px]` e headers de categoria de `text-[8px]` para `text-[9px]` em `MobileModeTabs`.
+### 3. Limpar Ternários Redundantes
+Substituir `fs ? "text-[10px]" : "text-[10px]"` por `"text-[10px]"` em todos os pontos.
 
-### Correção 5 — Swipe Guard
-Adicionar check: ignorar swipe se o touch start foi dentro de um `ScrollArea`, `Slider`, ou input interativo.
+### 4. Remover Fullscreen API Forçada
+Remover o `useEffect` (linhas 768-781) que chama `requestFullscreen()` automaticamente — deixar apenas o estado CSS `fixed inset-0` que já funciona como fullscreen visual. O usuário pode usar o botão de maximize se quiser fullscreen real.
 
-### Correção 6 — Pass `fs` to ArtNetModulePanel
-Adicionar prop `fs` ao componente `ArtNetModulePanel` e passá-lo na chamada (linha 1373).
-
-### Correção 7 — Persistir `relay_server_url`
-Adicionar mapeamento de `relayServerUrl` ↔ `relay_server_url` em `configToDb` e `dbToConfig` no `useArtNetModulePersistence.ts`.
-
-### Correção 8 — Preservar IDs do DB
-No `addModule` do service, se `config.id` for fornecido, usar esse ID em vez de gerar novo. Já existe lógica similar para `moduleAddress`.
+### 5. Map Type Alias
+Adicionar `type TimerMap = Map<string, NodeJS.Timeout>` e usar em vez de `globalThis.Map`.
 
 ## Arquivos Afetados
-1. **Editar**: `src/components/editor/LiveFiringPanel.tsx` — tipografia, remover bloco morto, swipe guard, Map fix
-2. **Editar**: `src/hooks/useArtNetModulePersistence.ts` — mapear relay_server_url
-3. **Editar**: `src/services/artnetModuleService.ts` — preservar ID fornecido em addModule
-4. **Editar**: `src/components/editor/live-firing/ArtNetModulePanel.tsx` — aceitar prop `fs`
+1. `src/components/editor/LiveFiringPanel.tsx` — tipografia, scene filter, ternários, Map fix, fullscreen
+2. `src/components/editor/live-firing/MobileLinkMode.tsx` — tipografia mínima
+3. `src/components/editor/live-firing/SettingsPanel.tsx` — tipografia mínima
+4. `src/components/editor/DMXMonitorGrid.tsx` — tipografia mínima
+5. `src/components/editor/USBConnectionPanel.tsx` — tipografia mínima
+6. `src/components/editor/CollisionPanel.tsx` — tipografia mínima
 
