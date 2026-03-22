@@ -1,9 +1,10 @@
-import { useRef, useState, useCallback, useEffect, forwardRef } from 'react';
+import { useRef, useState, useCallback, useEffect, useMemo, forwardRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { useProjectStore, type Position, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
 import { useUndoStore } from '@/store/useUndoStore';
+import { useAddressingStore } from '@/store/useAddressingStore';
 import * as THREE from 'three';
 
 const PYRO_COLOR = '#FF6B35';
@@ -113,8 +114,25 @@ const DISTANCE_REF = 15;
 const SCALE_MIN = 0.15;
 const SCALE_MAX = 0.8;
 
+/** Pulsing glow ring for positions whose linked events are selected from the timeline */
+function LinkedGlowRing({ color }: { color: string }) {
+  const ringRef = useRef<THREE.Mesh>(null);
+  useFrame(({ clock }) => {
+    if (ringRef.current) {
+      const s = 1 + Math.sin(clock.getElapsedTime() * 5) * 0.2;
+      ringRef.current.scale.setScalar(s);
+    }
+  });
+  return (
+    <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]}>
+      <ringGeometry args={[0.85, 1.15, 32]} />
+      <meshBasicMaterial color={color} transparent opacity={0.45} blending={THREE.AdditiveBlending} />
+    </mesh>
+  );
+}
+
 const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Position, screenPos: { x: number; y: number }) => void }>(function Pin({ position, onRightClick }, ref) {
-  const { selectedPositionIds, selectPosition, togglePositionSelection, editorMode, updatePosition, timelineItems } = useProjectStore();
+  const { selectedPositionIds, selectPosition, selectPositionAndLinkedEvents, togglePositionSelection, editorMode, updatePosition, timelineItems, linkedTimelineItemIds } = useProjectStore();
   const isSelected = selectedPositionIds.includes(position.id);
   const color = position.type === 'pyro' ? PYRO_COLOR : (position.color || DRONE_COLOR);
   const glowRef = useRef<THREE.Group>(null);
@@ -131,9 +149,24 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
   const hasSavedCheckpoint = useRef(false);
   const _posVec = useRef(new THREE.Vector3());
 
-  const linkedEffects = timelineItems.filter(
-    t => t.positionId === position.id || t.positionIds?.includes(position.id)
-  ).length;
+  const linkedItemIds = useMemo(() =>
+    timelineItems.filter(t => t.positionId === position.id || t.positionIds?.includes(position.id)).map(t => t.id),
+    [timelineItems, position.id]
+  );
+  const linkedEffects = linkedItemIds.length;
+
+  // Check if this position's linked events are highlighted from the timeline
+  const hasLinkedGlow = useMemo(() =>
+    linkedItemIds.some(id => linkedTimelineItemIds.includes(id)),
+    [linkedItemIds, linkedTimelineItemIds]
+  );
+
+  // FireOne module badge
+  const addresses = useAddressingStore(s => s.addresses);
+  const moduleBadge = useMemo(() => {
+    const addr = addresses.find(a => linkedItemIds.includes(a.timelineItemId));
+    return addr ? `M${addr.module}` : null;
+  }, [addresses, linkedItemIds]);
 
   useFrame(({ clock, camera: cam }) => {
     if (glowRef.current && isSelected) {
@@ -191,7 +224,7 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
     }
 
     if (!selectedPositionIds.includes(position.id)) {
-      selectPosition(position.id);
+      selectPositionAndLinkedEvents(position.id);
     }
 
     // If positions are locked, only allow selection, not dragging
@@ -230,7 +263,7 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
         if (p) otherStartPositions.current.set(id, { x: p.x, z: p.z });
       }
     });
-  }, [editorMode, position, selectPosition, togglePositionSelection, selectedPositionIds, gl, camera, raycaster, onRightClick]);
+  }, [editorMode, position, selectPositionAndLinkedEvents, togglePositionSelection, selectedPositionIds, gl, camera, raycaster, onRightClick]);
 
   useEffect(() => {
     if (!isDragging) return;
@@ -383,12 +416,26 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
         </group>
       )}
 
+      {/* Linked glow ring — pulses when events are selected from timeline */}
+      {hasLinkedGlow && !isSelected && (
+        <LinkedGlowRing color={position.type === 'pyro' ? '#FF8A65' : '#4FC3F7'} />
+      )}
+
       {/* Hover ring */}
       {isHovered && !isSelected && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.025, 0]}>
           <ringGeometry args={[0.55, 0.65, 24]} />
           <meshBasicMaterial color={color} transparent opacity={0.35} />
         </mesh>
+      )}
+
+      {/* FireOne module badge */}
+      {moduleBadge && (
+        <Html position={[0.5, position.type === 'pyro' ? 0.6 : 0.55, 0]} center distanceFactor={8}>
+          <div className="px-1 py-0 rounded text-[7px] font-mono font-bold bg-green-600/80 text-white border border-green-400/40 shadow-sm whitespace-nowrap">
+            {moduleBadge}
+          </div>
+        </Html>
       )}
 
       {/* Direction arrow */}
