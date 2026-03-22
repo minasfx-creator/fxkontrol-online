@@ -288,7 +288,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
   };
 
   return (
-    <div className={cn("flex flex-col h-full", fs ? "p-3" : "p-2")} style={{ background: 'hsl(240 12% 5%)' }}>
+    <div className={cn("flex flex-col h-full", fs ? "p-3" : "p-2")} style={{ background: 'hsl(220 5% 8%)' }}>
       {/* Header — LIGHTDESK 2.0 Identity */}
       <div className="mb-2 rounded-lg overflow-hidden" style={{ border: '1px solid hsl(240 30% 20%)' }}>
         <div className="flex items-center justify-between px-3 py-2" style={{
