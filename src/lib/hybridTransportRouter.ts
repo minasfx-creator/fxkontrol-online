@@ -29,7 +29,7 @@ import {
 // ═══════════════════════════════════════════════════════════
 
 /** FireOne command bytes that map to safety-critical operations */
-const ESTOP_CMD = 0x45;   // 'E' — Emergency Stop
+const ESTOP_CMD = 0x58;   // 'X' — Emergency Stop (FireOneCmd.EMERGENCY_STOP)
 const ARM_CMD = 0x41;     // 'A' — Arm module
 const FIRE_CMD = 0x46;    // 'F' — Fire cue
 const DISARM_CMD = 0x44;  // 'D' — Disarm module
@@ -40,7 +40,7 @@ const DMX_CMD = 0x4F;     // 'O' — DMX output
 const SCRIPT_CMD = 0x55;  // 'U' — UltraFire script upload
 
 export type CommandPriority = 'critical' | 'high' | 'normal' | 'bulk';
-export type RoutingPath = 'radio' | 'starlink' | 'any' | 'broadcast';
+export type RoutingPath = 'radio' | 'starlink' | 'cellular' | 'any' | 'broadcast';
 
 export interface RoutingDecision {
   priority: CommandPriority;
@@ -346,6 +346,9 @@ export class HybridTransportRouter {
         ...this.manager.getTransportsByType('wifi'),
       ];
     }
+    if (path === 'cellular') {
+      return this.manager.getTransportsByType('cellular');
+    }
     if (path === 'any') {
       // All connected, sorted by priority
       return this.manager.allTransports
@@ -454,6 +457,7 @@ export class HybridTransportRouter {
     return [
       ...this.health.getHealthyByType('wifi_direct'),
       ...this.health.getHealthyByType('wifi'),
+      ...this.health.getHealthyByType('cellular'),
     ].length > 0;
   }
 
@@ -473,6 +477,7 @@ export class HybridTransportRouter {
     const satHealth = [
       ...this.health.getByType('wifi_direct'),
       ...this.health.getByType('wifi'),
+      ...this.health.getByType('cellular'),
     ];
     return {
       mode: this.recommendedMode,
@@ -612,10 +617,10 @@ export class StarlinkTransport implements FireOneTransport {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error('Starlink não conectado');
     }
-    const t0 = performance.now();
+    // Use ping/pong for true RTT instead of local buffer time
     this.ws.send(frame.buffer as ArrayBuffer);
-    this.latencyMs = Math.round(performance.now() - t0);
     this.txBytes += frame.length;
+    // latencyMs is updated by pong handler in onmessage — not measured here
   }
 
   private calibrateBaseline(): void {
@@ -645,6 +650,156 @@ export class StarlinkTransport implements FireOneTransport {
     }
     this.setState('reconnecting');
     const delay = Math.min(2000 * Math.pow(1.5, this.reconnectAttempts), 30000);
+    this.reconnectAttempts++;
+    this.reconnectTimer = setTimeout(() => {
+      this.connect().catch(() => this.attemptReconnect());
+    }, delay);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// CELLULAR TRANSPORT (4G/LTE/5G via WebSocket relay)
+// ═══════════════════════════════════════════════════════════
+
+export class CellularTransport implements FireOneTransport {
+  readonly id: string;
+  readonly type: TransportType = 'cellular';
+  readonly label = 'Cellular 4G/5G';
+  priority = 2.5; // Between Wi-Fi Direct and Radio
+  state: TransportState = 'disconnected';
+  latencyMs = 0;
+  txBytes = 0;
+  rxBytes = 0;
+
+  private ws: WebSocket | null = null;
+  private receiveCallbacks: Array<(data: Uint8Array, id: string) => void> = [];
+  private stateCallbacks: Array<(id: string, state: TransportState, error?: string) => void> = [];
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private reconnectAttempts = 0;
+  private _networkInfo: { effectiveType: string; downlink: number; rtt: number } = {
+    effectiveType: 'unknown', downlink: 0, rtt: 0,
+  };
+
+  constructor(id?: string) {
+    this.id = id || `cellular-${Date.now()}`;
+  }
+
+  get networkInfo() { return { ...this._networkInfo }; }
+
+  onReceive(cb: (data: Uint8Array, id: string) => void) { this.receiveCallbacks.push(cb); }
+  onStateChange(cb: (id: string, state: TransportState, error?: string) => void) { this.stateCallbacks.push(cb); }
+
+  isAvailable(): boolean {
+    const conn = (navigator as any).connection;
+    if (!conn) return typeof WebSocket !== 'undefined';
+    // Available if on cellular data (not wifi)
+    return typeof WebSocket !== 'undefined' && conn.type !== 'wifi';
+  }
+
+  private setState(s: TransportState, error?: string) {
+    this.state = s;
+    this.stateCallbacks.forEach(cb => cb(this.id, s, error));
+  }
+
+  private updateNetworkInfo(): void {
+    const conn = (navigator as any).connection;
+    if (conn) {
+      this._networkInfo = {
+        effectiveType: conn.effectiveType || 'unknown',
+        downlink: conn.downlink || 0,
+        rtt: conn.rtt || 0,
+      };
+      this.latencyMs = conn.rtt || this.latencyMs;
+    }
+  }
+
+  async connect(config?: Record<string, any>): Promise<void> {
+    const relayUrl = config?.relayUrl || 'wss://relay.fxkontrol.com/cellular';
+    this.setState('connecting');
+    this.updateNetworkInfo();
+
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.ws?.close();
+        reject(new Error('Cellular connection timeout'));
+      }, 10000);
+
+      this.ws = new WebSocket(relayUrl);
+      this.ws.binaryType = 'arraybuffer';
+
+      this.ws.onopen = () => {
+        clearTimeout(timer);
+        this.reconnectAttempts = 0;
+        this.setState('connected');
+        // Start latency measurement via ping/pong
+        this.startPingLoop();
+        resolve();
+      };
+
+      this.ws.onmessage = (ev: MessageEvent) => {
+        if (ev.data instanceof ArrayBuffer) {
+          const data = new Uint8Array(ev.data);
+          this.rxBytes += data.length;
+          this.receiveCallbacks.forEach(cb => cb(data, this.id));
+        } else if (typeof ev.data === 'string') {
+          try {
+            const msg = JSON.parse(ev.data);
+            if (msg.type === 'pong') {
+              this.latencyMs = Math.round(performance.now() - (msg.t0 || 0));
+            }
+          } catch { /* ignore */ }
+        }
+      };
+
+      this.ws.onerror = () => {
+        clearTimeout(timer);
+        this.setState('error', 'Cellular connection error');
+        reject(new Error('Cellular WebSocket error'));
+      };
+
+      this.ws.onclose = () => {
+        if (this.state === 'connected') {
+          this.attemptReconnect();
+        } else {
+          this.setState('disconnected');
+        }
+      };
+    });
+  }
+
+  async disconnect(): Promise<void> {
+    if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
+    if (this.ws) { this.ws.close(); this.ws = null; }
+    this.setState('disconnected');
+  }
+
+  async send(frame: Uint8Array): Promise<void> {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      throw new Error('Cellular não conectado');
+    }
+    this.ws.send(frame.buffer as ArrayBuffer);
+    this.txBytes += frame.length;
+    this.updateNetworkInfo();
+  }
+
+  private startPingLoop(): void {
+    const interval = setInterval(() => {
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+        clearInterval(interval);
+        return;
+      }
+      this.ws.send(JSON.stringify({ type: 'ping', t0: performance.now() }));
+      this.updateNetworkInfo();
+    }, 5000);
+  }
+
+  private attemptReconnect(): void {
+    if (this.reconnectAttempts >= 8) {
+      this.setState('error', 'Cellular: reconexão falhou');
+      return;
+    }
+    this.setState('reconnecting');
+    const delay = Math.min(1500 * Math.pow(2, this.reconnectAttempts), 30000);
     this.reconnectAttempts++;
     this.reconnectTimer = setTimeout(() => {
       this.connect().catch(() => this.attemptReconnect());

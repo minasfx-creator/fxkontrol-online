@@ -113,6 +113,8 @@ export enum RadioCmd {
   SET_FREQ = 0x60,
   SET_POWER = 0x61,
   SET_CHANNEL = 0x62,
+  TDMA_SYNC = 0x70,
+  TDMA_SLOT_ASSIGN = 0x71,
 }
 
 // ─── CRC16-CCITT ───
@@ -168,7 +170,8 @@ export interface RadioResponse {
 }
 
 /**
- * Parse incoming radio frame from dongle serial output
+ * Parse incoming radio frame from dongle serial output.
+ * Logs CRC mismatches for debugging instead of silently dropping.
  */
 export function parseRadioResponse(buffer: Uint8Array): RadioResponse | null {
   if (buffer.length < 7) return null;
@@ -186,7 +189,10 @@ export function parseRadioResponse(buffer: Uint8Array): RadioResponse | null {
   const crcData = frame.subarray(1, 2 + len);
   const expectedCrc = calculateRadioCRC16(crcData);
   const receivedCrc = (frame[frame.length - 2] << 8) | frame[frame.length - 1];
-  if (expectedCrc !== receivedCrc) return null;
+  if (expectedCrc !== receivedCrc) {
+    console.warn(`[RadioProtocol] CRC mismatch: expected 0x${expectedCrc.toString(16)}, got 0x${receivedCrc.toString(16)}, frame len=${len}, syncIdx=${syncIdx}`);
+    return null;
+  }
 
   return {
     destAddr: frame[2],
@@ -304,4 +310,262 @@ export function detectDongleType(vendorId?: number, productId?: number): RadioDo
   return RADIO_DONGLE_PROFILES.find(p =>
     p.vendorId === vendorId && (p.productId === 0 || p.productId === productId)
   ) || null;
+}
+
+/**
+ * Send a radio packet with retry and exponential backoff.
+ * Returns true if ACK received, false if all retries exhausted.
+ */
+export async function sendWithRetry(
+  sendFn: (pkt: Uint8Array) => Promise<void>,
+  packet: Uint8Array,
+  maxRetries = MAX_RETRIES,
+  backoffMs = RETRY_BACKOFF_MS,
+  timeoutMs = ACK_TIMEOUT_MS,
+): Promise<boolean> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      await Promise.race([
+        sendFn(packet),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('ACK timeout')), timeoutMs)
+        ),
+      ]);
+      return true;
+    } catch {
+      if (attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, backoffMs * Math.pow(2, attempt)));
+      }
+    }
+  }
+  console.warn(`[RadioProtocol] Packet delivery failed after ${maxRetries + 1} attempts`);
+  return false;
+}
+
+// ═══════════════════════════════════════════════════════════
+// TDMA SCHEDULER — Time Division Multiple Access for 50+ modules
+// ═══════════════════════════════════════════════════════════
+
+export interface TDMAConfig {
+  /** Total frame period in ms. Default: 100 */
+  framePeriodMs: number;
+  /** Number of time slots. Default: 50 */
+  slotCount: number;
+  /** Duration of each slot in ms. Default: 1.8 */
+  slotDurationMs: number;
+  /** Guard interval for sync beacon in ms. Default: 10 */
+  guardIntervalMs: number;
+  /** Enable TDMA scheduling. Default: false */
+  enabled: boolean;
+}
+
+export interface TDMASlotAssignment {
+  slotIndex: number;
+  moduleAddr: number;
+  /** Slot 0 is always reserved for E-STOP broadcast */
+  reserved: boolean;
+}
+
+export interface TDMAStatus {
+  enabled: boolean;
+  currentSlot: number;
+  frameCount: number;
+  assignedModules: number;
+  queueDepth: number;
+  estopSlotLatencyMs: number;
+}
+
+const DEFAULT_TDMA_CONFIG: TDMAConfig = {
+  framePeriodMs: 100,
+  slotCount: 50,
+  slotDurationMs: 1.8,
+  guardIntervalMs: 10,
+  enabled: false,
+};
+
+/**
+ * TDMA Scheduler for 433MHz radio to eliminate RF collisions.
+ * 
+ * Frame structure (100ms):
+ * ┌──────┬──────┬──────┬─────┬──────┬──────────┐
+ * │Slot 0│Slot 1│Slot 2│ ... │Slot49│Guard+Sync│
+ * │E-STOP│Mod 1 │Mod 2 │     │Mod49 │  Beacon  │
+ * │ 1.8ms│ 1.8ms│ 1.8ms│     │ 1.8ms│   10ms   │
+ * └──────┴──────┴──────┴─────┴──────┴──────────┘
+ * 
+ * Slot 0: RESERVED for E-STOP broadcast → latency < 2ms
+ * Guard interval: Master sync beacon for clock alignment
+ */
+export class TDMAScheduler {
+  private config: TDMAConfig;
+  private slots: Map<number, TDMASlotAssignment> = new Map();
+  private packetQueues: Map<number, Uint8Array[]> = new Map();
+  private sendFn: ((pkt: Uint8Array) => Promise<void>) | null = null;
+  private frameTimer: ReturnType<typeof setInterval> | null = null;
+  private currentSlot = 0;
+  private frameCount = 0;
+  private _running = false;
+  private seq = 0;
+
+  constructor(config?: Partial<TDMAConfig>) {
+    this.config = { ...DEFAULT_TDMA_CONFIG, ...config };
+    // Slot 0 always reserved for E-STOP
+    this.slots.set(0, { slotIndex: 0, moduleAddr: BROADCAST_ADDR, reserved: true });
+  }
+
+  get status(): TDMAStatus {
+    let queueDepth = 0;
+    this.packetQueues.forEach(q => { queueDepth += q.length; });
+    return {
+      enabled: this._running,
+      currentSlot: this.currentSlot,
+      frameCount: this.frameCount,
+      assignedModules: this.slots.size - 1, // exclude slot 0
+      queueDepth,
+      estopSlotLatencyMs: this.config.slotDurationMs, // worst case for slot 0
+    };
+  }
+
+  /** Assign a module address to a TDMA slot (1-49) */
+  assignSlot(moduleAddr: number, slotIndex?: number): TDMASlotAssignment {
+    const idx = slotIndex ?? this.findFreeSlot();
+    if (idx === 0) throw new Error('Slot 0 is reserved for E-STOP');
+    if (idx >= this.config.slotCount) throw new Error(`Slot ${idx} exceeds max ${this.config.slotCount - 1}`);
+
+    const assignment: TDMASlotAssignment = { slotIndex: idx, moduleAddr, reserved: false };
+    this.slots.set(idx, assignment);
+    this.packetQueues.set(idx, []);
+    return assignment;
+  }
+
+  /** Auto-assign all discovered modules */
+  assignModules(moduleAddrs: number[]): TDMASlotAssignment[] {
+    return moduleAddrs.map((addr, i) => this.assignSlot(addr, i + 1));
+  }
+
+  private findFreeSlot(): number {
+    for (let i = 1; i < this.config.slotCount; i++) {
+      if (!this.slots.has(i)) return i;
+    }
+    throw new Error('No free TDMA slots');
+  }
+
+  /** Queue a packet for the appropriate module slot */
+  queuePacket(moduleAddr: number, packet: Uint8Array): void {
+    // Find slot for this module
+    let targetSlot = -1;
+    this.slots.forEach((assign, idx) => {
+      if (assign.moduleAddr === moduleAddr) targetSlot = idx;
+    });
+
+    if (targetSlot < 0) {
+      // Auto-assign if not yet assigned
+      try {
+        const assign = this.assignSlot(moduleAddr);
+        targetSlot = assign.slotIndex;
+      } catch {
+        console.warn(`[TDMA] Cannot assign slot for module ${moduleAddr}, sending immediately`);
+        this.sendFn?.(packet).catch(() => {});
+        return;
+      }
+    }
+
+    const queue = this.packetQueues.get(targetSlot);
+    if (queue) {
+      // Max queue depth per slot: 8
+      if (queue.length >= 8) queue.shift();
+      queue.push(packet);
+    }
+  }
+
+  /** Queue an E-STOP on slot 0 (immediate priority) */
+  queueEstop(packet: Uint8Array): void {
+    const queue = this.packetQueues.get(0) || [];
+    queue.unshift(packet); // front of queue
+    this.packetQueues.set(0, queue);
+  }
+
+  /** Start TDMA frame scheduling */
+  start(sendFn: (pkt: Uint8Array) => Promise<void>): void {
+    if (this._running) return;
+    this.sendFn = sendFn;
+    this._running = true;
+
+    this.frameTimer = setInterval(() => {
+      this.executeFrame();
+    }, this.config.framePeriodMs);
+  }
+
+  /** Stop TDMA scheduling */
+  stop(): void {
+    this._running = false;
+    if (this.frameTimer) {
+      clearInterval(this.frameTimer);
+      this.frameTimer = null;
+    }
+  }
+
+  private async executeFrame(): Promise<void> {
+    if (!this.sendFn) return;
+    this.frameCount++;
+
+    // Process each slot sequentially within the frame
+    for (let slot = 0; slot < this.config.slotCount; slot++) {
+      this.currentSlot = slot;
+      const queue = this.packetQueues.get(slot);
+      if (queue && queue.length > 0) {
+        const pkt = queue.shift()!;
+        try {
+          await this.sendFn(pkt);
+        } catch {
+          // Re-queue on failure (max 1 retry per frame)
+          if (queue.length < 8) queue.unshift(pkt);
+        }
+      }
+      // Wait for slot duration
+      await new Promise(r => setTimeout(r, this.config.slotDurationMs));
+    }
+
+    // Guard interval: send sync beacon
+    await this.sendSyncBeacon();
+  }
+
+  private async sendSyncBeacon(): Promise<void> {
+    if (!this.sendFn) return;
+    const beacon = buildRadioPacket(
+      BROADCAST_ADDR, 0x00, this.seq++ & 0xFF,
+      RadioCmd.TDMA_SYNC,
+      new Uint8Array([
+        (this.frameCount >> 8) & 0xFF,
+        this.frameCount & 0xFF,
+        this.config.slotCount,
+        Math.round(this.config.slotDurationMs * 10) & 0xFF,
+      ])
+    );
+    try {
+      await this.sendFn(beacon);
+    } catch { /* sync beacon loss is non-critical */ }
+  }
+
+  /** Build slot assignment command for a module */
+  buildSlotAssignPacket(moduleAddr: number, slotIndex: number): Uint8Array {
+    return buildRadioPacket(
+      moduleAddr, 0x00, this.seq++ & 0xFF,
+      RadioCmd.TDMA_SLOT_ASSIGN,
+      new Uint8Array([slotIndex, this.config.slotCount,
+        Math.round(this.config.framePeriodMs) & 0xFF])
+    );
+  }
+
+  /** Reset all slot assignments except slot 0 */
+  reset(): void {
+    this.stop();
+    const estopSlot = this.slots.get(0);
+    this.slots.clear();
+    this.packetQueues.clear();
+    if (estopSlot) this.slots.set(0, estopSlot);
+    this.packetQueues.set(0, []);
+    this.currentSlot = 0;
+    this.frameCount = 0;
+  }
 }

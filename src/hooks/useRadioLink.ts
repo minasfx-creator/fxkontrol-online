@@ -13,6 +13,8 @@ import {
   type RadioConfig,
   type RadioDongleProfile,
   type RadioResponse,
+  type TDMAConfig,
+  type TDMAStatus,
   RADIO_DONGLE_PROFILES,
   BAND_FREQUENCIES,
   buildRadioPacket,
@@ -24,6 +26,7 @@ import {
   wrapProtocolFrame,
   getDefaultRadioConfig,
   RadioCmd,
+  TDMAScheduler,
 } from '@/lib/radioProtocol';
 
 const nav = navigator as any;
@@ -38,6 +41,7 @@ export interface RadioLinkState {
   isScanning: boolean;
   rangeTestActive: boolean;
   rangeTestRssiHistory: number[];
+  tdmaStatus: TDMAStatus | null;
   error: string | null;
 }
 
@@ -52,6 +56,7 @@ export function useRadioLink() {
     isScanning: false,
     rangeTestActive: false,
     rangeTestRssiHistory: [],
+    tdmaStatus: null,
     error: null,
   });
 
@@ -62,6 +67,7 @@ export function useRadioLink() {
   const readLoopRef = useRef(false);
   const rangeTestIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const bufferRef = useRef(new Uint8Array(0));
+  const tdmaRef = useRef<TDMAScheduler | null>(null);
 
   // Read loop
   const startReadLoop = useCallback(async () => {
@@ -296,11 +302,35 @@ export function useRadioLink() {
     setLinkState(prev => ({ ...prev, rangeTestActive: false }));
   }, []);
 
+  const enableTDMA = useCallback(async (config?: Partial<TDMAConfig>) => {
+    const scheduler = new TDMAScheduler(config);
+    tdmaRef.current = scheduler;
+    // Auto-assign discovered modules
+    const addrs = Array.from(linkState.devices.keys());
+    if (addrs.length > 0) scheduler.assignModules(addrs);
+    scheduler.start(sendRaw);
+    setLinkState(prev => ({ ...prev, tdmaStatus: scheduler.status }));
+  }, [linkState.devices, sendRaw]);
+
+  const disableTDMA = useCallback(() => {
+    if (tdmaRef.current) {
+      tdmaRef.current.stop();
+      tdmaRef.current.reset();
+      tdmaRef.current = null;
+    }
+    setLinkState(prev => ({ ...prev, tdmaStatus: null }));
+  }, []);
+
+  const getTDMAStatus = useCallback((): TDMAStatus | null => {
+    return tdmaRef.current?.status ?? null;
+  }, []);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       readLoopRef.current = false;
       if (rangeTestIntervalRef.current) clearInterval(rangeTestIntervalRef.current);
+      tdmaRef.current?.stop();
     };
   }, []);
 
@@ -316,5 +346,8 @@ export function useRadioLink() {
     setTxPower,
     startRangeTest,
     stopRangeTest,
+    enableTDMA,
+    disableTDMA,
+    getTDMAStatus,
   };
 }
