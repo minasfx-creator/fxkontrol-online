@@ -429,6 +429,7 @@ export default function EffectLibrary() {
             >
               <Plus className="w-3 h-3" />
             </button>
+          </div>
           {/* View toggle — Finale 3D has list/table */}
           <div className="flex gap-0.5 p-0.5 rounded-lg bg-surface-0/50">
             <button
