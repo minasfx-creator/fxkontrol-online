@@ -1,69 +1,92 @@
 
 
-# UE5.7 Render Pipeline — Final Integration Pass
+# Niagara Full Integration — VDL → Emitter Physics Pipeline
 
-## Current State
+## Problem
 
-The `render_ultra` engine is already 90%+ complete with UE5.7 parity:
-- Niagara emitter system with GPU instancing, sub-emitters, force modules ✅
-- Volumetric clouds, sky atmosphere v2, water (Gerstner), terrain PBR (triplanar) ✅
-- Explosion-reactive clouds/fog, dynamic burst lights, adaptive exposure ✅
-- SSR, SSAO, DOF, Bloom (3-layer), Heat Distortion, Sharpening ✅
-- Ribbon trails, flipbook animation, soft particles, velocity stretching ✅
-- Ground decals, GI probes, lens flares, Niagara fluids ✅
+The `niagaraProfile` from VDL parsing (starCount, lifetime, velocity, drag, gravityScale, sparkleRate, fadeProfile) is stored on each effect but **never consumed by NiagaraVFXController**. The controller uses hardcoded `createSparkEmitterTemplate(caliber, color)` that ignores the VDL-derived physics. This means a "4in Gold Kamuro" and a "4in Blue Peony" get identical particle physics — wrong.
 
-## Remaining Gaps vs UE5.7
+Additionally, per-type behavior (willow drooping, crossette splitting, mine ground-up, comet single-star) is not differentiated in the Niagara system — only the legacy `FireworkBurst` component in SkyCanvas handles pattern variation, but that's the old CPU path.
 
-| Gap | Impact |
-|-----|--------|
-| No **Motion Blur** (per-object velocity-based) | Fast-moving sparks/shells look static |
-| **God Rays** faked via bloom, not proper radial blur | No volumetric light shaft directionality |
-| No **Color LUT** presets | No cinematic grading (Day-for-Night, Golden Hour) |
-| **GI probes** not wired to burst events | GI system exists but only driven by SkyCanvas, not VFX controller |
-| **Ground decals** not triggered by bursts | `spawnScorchMark` imported but never called on impact |
+## Architecture Change
+
+```text
+VDL "4in Gold Kamuro"
+  → parseVDL() → niagaraProfile { starCount:600, lifetime:3.5, drag:0.985, gravityScale:0.7, fadeProfile:'ember' }
+  → NiagaraVFXController reads effect.niagaraProfile
+  → createSparkEmitterTemplate(caliber, color, niagaraProfile)  ← NEW signature
+  → Emitter init overrides: lifetime, velocity, drag, gravityScale from profile
+  → Emitter update overrides: fadeProfile controls colorOverLife curve shape
+```
 
 ## Changes
 
-### 1. `PostProcessing.tsx` — Add Motion Blur + God Rays + Color LUT
+### 1. `NiagaraVFXController.tsx` — Apply niagaraProfile to emitter templates
 
-**Motion Blur**: Custom `Effect` class using velocity-based screen-space blur. Uses per-pixel motion vector estimation from frame delta to simulate UE5's `MotionBlurAmount`. Controlled by `settings.motionBlurEnabled` and `settings.motionBlurIntensity`.
+**Modify `createSparkEmitterTemplate`** to accept optional `niagaraProfile` and `pattern`:
+- `starCount` → override `sparkCount` (clamped to budget)
+- `lifetime` → override `init.lifetime` range
+- `velocity` → scale `breakSpeed` multiplier
+- `drag` → override `update.drag`
+- `gravityScale` → override `update.gravityScale`
+- `fadeProfile` → switch colorOverLife curve shape (linear=even fade, exponential=fast burn, ember=slow glow)
+- `sparkleRate` → add randomized brightness flicker in colorOverLife
 
-**God Rays (Radial Blur)**: Replace the fake bloom Layer 3 with a proper radial blur `Effect` that samples toward a configurable sun/explosion source point. This produces directional light shafts instead of uniform bloom glow.
+**Add pattern-specific emitter variants**:
+- `willow/kamuro`: high drag (0.98+), low gravity (0.5-0.7), long lifetime, downward-heavy velocity bias
+- `crossette`: spawn 4 sub-bursts at spark death via sub-emitter with right-angle velocity
+- `mine`: velocity bias upward only (no downward component), fast burn
+- `comet`: single large star with ribbon trail, high velocity stretch
+- `palm`: asymmetric velocity (strong upward, wide horizontal), heavy gravity for drooping
+- `horsetail`: extreme lifetime, very high drag, low gravity — hangs in air
+- `strobe`: add blink module (opacity oscillation in update)
+- `ring`: spawn on torus shape instead of sphere
+- `dahlia`: fewer stars, higher velocity, longer trails
 
-**Color LUT**: Add a `ColorGradingEffect` with 6 presets: `neutral`, `day-for-night`, `golden-hour`, `cool-blue-night`, `warm-sunset`, `high-contrast`. Uses a 3D color transform in the fragment shader (no texture needed). Controlled by `settings.colorGradingPreset`.
+**Read `effect.niagaraProfile`** when spawning burst systems (line ~356-376):
+```typescript
+const niagaraProfile = effect.niagaraProfile;
+const sparkEmitter = createSparkEmitterTemplate(caliber, burstColor, pattern, niagaraProfile);
+```
 
-### 2. `useSceneStore.ts` — Add settings for new effects
+### 2. `NiagaraVFXController.tsx` — Pattern-specific spawn shapes + force modules
 
-Add to `SceneSettings`:
-- `motionBlurEnabled: boolean` (default `false`)
-- `motionBlurIntensity: number` (default `0.5`)
-- `colorGradingPreset: string` (default `'neutral'`)
+Map VDL patterns to Niagara spawn shapes:
+- `ring` → `{ type: 'torus', radius: caliber*3, tubeRadius: 0.5 }`
+- `crossette` → sphere surface + sub-emitter on death with 4-way split
+- `palm` → cone spawn `{ type: 'cone', coneAngle: 25° }` + point attractor below
+- `fan` → limited arc spawn
 
-### 3. `SceneEditorPanel.tsx` — UI controls for new effects
+Add force modules per pattern:
+- `willow/kamuro` → point attractor pulling down gently
+- `horsetail` → extreme drag (0.99), minimal gravity
+- `tourbillion` → vortex force module for spinning
 
-Add controls in the Post-Processing section:
-- Motion Blur toggle + intensity slider
-- Color Grading preset dropdown
-- God Rays toggle already exists — will now use the real radial blur
+### 3. `vdlParser.ts` — Expand auto-matching for all effect types
 
-### 4. `NiagaraVFXController.tsx` — Wire GI probes + ground decals
+Currently `autoMatchNiagaraPreset` only matches by color+type for a few presets. Expand to ensure ALL VDL types get a `niagaraProfile` even without a named preset — generate profile from type physics:
 
-On burst spawn:
-- Call `GlobalIlluminationSystem.addExplosionProbe(burstPos, burstColor, caliber * 1.5)` via window ref
-- Call `spawnScorchMark(burstPos, caliber * 2)` for ground impact marks
-- Call `spawnLightSplash(burstPos, burstColor, caliber * 3)` for temporary light decals
+Add `generateNiagaraProfileFromType(type, caliber)` function that creates a profile based on pyrotechnic reality:
+- `willow`: starCount=300, lifetime=4.5, velocity=30, drag=0.985, gravityScale=0.6, fadeProfile='ember'
+- `crossette`: starCount=100, lifetime=1.8, velocity=50, drag=0.95, gravityScale=1.2, fadeProfile='linear'
+- `mine`: starCount=200, lifetime=1.5, velocity=60, drag=0.92, gravityScale=0.8, fadeProfile='linear'
+- `comet`: starCount=50, lifetime=3.0, velocity=45, drag=0.98, gravityScale=0.9, fadeProfile='ember'
+- `palm`: starCount=250, lifetime=3.0, velocity=40, drag=0.97, gravityScale=1.3, fadeProfile='exponential'
+- `horsetail`: starCount=400, lifetime=6.0, velocity=25, drag=0.995, gravityScale=0.4, fadeProfile='ember'
+- `strobe`: starCount=150, lifetime=2.5, velocity=35, drag=0.96, gravityScale=1.0, fadeProfile='linear' + sparkleRate=8
+- (etc for all ~25 types)
 
-### 5. `SkyCanvas.tsx` — Expose GI system globally
+This ensures every VDL description automatically gets physics-correct Niagara behavior.
 
-Expose `GlobalIlluminationSystem` instance via `window.__giSystem` so NiagaraVFXController can register explosion probes directly.
+### 4. `niagaraColorPresets.ts` — Add presets for missing effect types
 
-## Files
+Add presets for: `crossette`, `mine`, `comet`, `palm`, `horsetail`, `strobe`, `dahlia`, `ring`, `fan`, `waterfall`, `salute` — each with calibrated particleProfile and autoMatchTypes.
+
+## Files Summary
 
 | File | Change |
 |------|--------|
-| `src/components/editor/PostProcessing.tsx` | Motion Blur effect, Radial God Rays effect, Color LUT effect |
-| `src/store/useSceneStore.ts` | Add motionBlur, colorGrading settings |
-| `src/components/editor/SceneEditorPanel.tsx` | UI for motion blur + color grading |
-| `src/components/editor/NiagaraVFXController.tsx` | Wire GI probes + ground decals on burst |
-| `src/components/editor/SkyCanvas.tsx` | Expose GI system globally |
+| `src/components/editor/NiagaraVFXController.tsx` | Refactor emitter templates to consume niagaraProfile + pattern; add pattern-specific spawn shapes and force modules |
+| `src/lib/vdlParser.ts` | Add `generateNiagaraProfileFromType()` fallback so all effects get a profile |
+| `src/lib/niagaraColorPresets.ts` | Add ~12 new presets for missing effect types |
 
