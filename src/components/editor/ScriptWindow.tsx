@@ -137,7 +137,7 @@ export default function ScriptWindow() {
   const [posDropdown, setPosDropdown] = useState<{ rowId: string } | null>(null);
 
   // Editable fields in order for Tab navigation
-  const EDITABLE_FIELDS = ['eventTime', 'position', 'pan', 'tilt', 'notes'] as const;
+  const EDITABLE_FIELDS = ['eventTime', 'position', 'pan', 'tilt', 'spin', 'notes'] as const;
   
   // Navigation intent resolved after rows are computed
   const [editNavIntent, setEditNavIntent] = useState<{ dir: 'next-cell' | 'next-row'; fromRowId: string; fromField: string } | null>(null);
