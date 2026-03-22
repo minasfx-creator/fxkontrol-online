@@ -15,7 +15,9 @@ import {
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-type ToolMode = 'randomize' | 'sequence' | 'fan' | 'spread' | 'reverse' | 'quantize' | 'duplicate-flights';
+import { calcWindCompensation } from '@/lib/pyroPhysics';
+
+type ToolMode = 'randomize' | 'sequence' | 'fan' | 'spread' | 'reverse' | 'quantize' | 'duplicate-flights' | 'wind-comp';
 
 export default function ScriptingToolsPanel({ onClose }: { onClose: () => void }) {
   const { timelineItems, positions, selectedTimelineItemIds, updateTimelineItem, addTimelineItem } = useProjectStore();
