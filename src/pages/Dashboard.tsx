@@ -309,6 +309,7 @@ export default function Dashboard() {
             borderClass="border-accent/20 hover:border-accent/40 transition-colors"
             badgeBg="bg-accent/15 text-accent"
             navigate={navigate}
+            commandRoute
             delay="0.1s"
           />
 
