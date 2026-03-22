@@ -125,7 +125,7 @@ export default function DMXMonitorGrid({ universes, className }: DMXMonitorGridP
             {Array.from({ length: cols }, (_, i) => (
               <div
                 key={i}
-                className="text-[6px] text-muted-foreground/60 text-center font-mono"
+                className="text-[8px] text-muted-foreground/60 text-center font-mono"
                 style={{ width: viewMode === 'compact' ? 14 : 28, minWidth: viewMode === 'compact' ? 14 : 28 }}
               >
                 {i + 1}

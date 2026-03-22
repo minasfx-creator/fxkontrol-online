@@ -113,7 +113,7 @@ export default function CollisionPanel({ onClose }: { onClose: () => void }) {
                     );
                   })}
                 </div>
-                <div className="flex justify-between text-[6px] text-muted-foreground font-mono-code px-1">
+                <div className="flex justify-between text-[8px] text-muted-foreground font-mono-code px-1">
                   <span>{analysis.minDistanceOverTime[0]?.time.toFixed(0)}s</span>
                   <span>{analysis.minDistanceOverTime[analysis.minDistanceOverTime.length - 1]?.time.toFixed(0)}s</span>
                 </div>

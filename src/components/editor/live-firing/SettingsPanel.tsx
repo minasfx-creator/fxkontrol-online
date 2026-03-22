@@ -81,12 +81,12 @@ export default function SettingsPanel({ fs, settings, onSettingsChange, relayCon
         <span className={labelCn}>Global Safety Channel</span>
         <div className="grid grid-cols-2 gap-2 mt-1.5">
           <div>
-            <span className={cn("text-muted-foreground/30 block mb-0.5", fs ? "text-[8px]" : "text-[6px]")}>Channel</span>
+            <span className={cn("text-muted-foreground/30 block mb-0.5", fs ? "text-[8px]" : "text-[8px]")}>Channel</span>
             <Input type="number" value={local.globalSafetyChannel} onChange={e => update({ globalSafetyChannel: Number(e.target.value) })}
               className={valueCn} min={1} max={512} />
           </div>
           <div>
-            <span className={cn("text-muted-foreground/30 block mb-0.5", fs ? "text-[8px]" : "text-[6px]")}>Value</span>
+            <span className={cn("text-muted-foreground/30 block mb-0.5", fs ? "text-[8px]" : "text-[8px]")}>Value</span>
             <Input type="number" value={local.globalSafetyValue} onChange={e => update({ globalSafetyValue: Number(e.target.value) })}
               className={valueCn} min={0} max={255} />
           </div>
@@ -134,7 +134,7 @@ export default function SettingsPanel({ fs, settings, onSettingsChange, relayCon
             {relayConnected ? 'Desconectar' : 'Conectar'}
           </Button>
         </div>
-        <p className={cn("text-muted-foreground/30 mt-1", fs ? "text-[8px]" : "text-[6px]")}>
+        <p className={cn("text-muted-foreground/30 mt-1", fs ? "text-[8px]" : "text-[8px]")}>
           Rode <code className="text-cyan-400/50">node artnet-relay.js --target {local.artNetIp}</code> no PC local
         </p>
       </div>

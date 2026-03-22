@@ -456,7 +456,7 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
                         <p className="text-[7px] font-mono-code text-primary/60 break-all">{bytesToHex(log.data, 16)}</p>
                       )}
                     </div>
-                    <span className="text-[6px] text-muted-foreground shrink-0">
+                    <span className="text-[8px] text-muted-foreground shrink-0">
                       {log.timestamp.toLocaleTimeString()}
                     </span>
                   </div>

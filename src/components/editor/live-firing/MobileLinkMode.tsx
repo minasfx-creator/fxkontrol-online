@@ -535,7 +535,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
 
   const ts = mob ? 'text-[9px]' : fs ? 'text-[8px]' : 'text-[7px]';
   const tsL = mob ? 'text-[11px]' : fs ? 'text-[10px]' : 'text-[9px]';
-  const tsS = mob ? 'text-[8px]' : fs ? 'text-[7px]' : 'text-[6px]';
+  const tsS = mob ? 'text-[8px]' : fs ? 'text-[7px]' : 'text-[8px]';
 
   return (
     <div className={cn("flex flex-col h-full", mob ? "p-2 gap-2" : fs ? "p-3 gap-2" : "p-2 gap-1.5")}>
@@ -813,7 +813,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
                   </div>
                   <div className="flex gap-0.5 flex-wrap">
                     {currentModule.igniters.filter(ig => ig.connected).map((ig, i) => (
-                      <div key={ig.position} className={cn("rounded-sm font-mono", mob ? "w-5 h-5 text-[7px]" : "w-4 h-4 text-[6px]",
+                      <div key={ig.position} className={cn("rounded-sm font-mono", mob ? "w-5 h-5 text-[7px]" : "w-4 h-4 text-[8px]",
                         "flex items-center justify-center",
                         ig.fired ? "bg-red-900/40 text-red-400/40" : i === semiAutoStep ? "bg-amber-500/20 text-amber-400 border border-amber-500/40" : "bg-[hsl(220_10%_12%)] text-muted-foreground/30")}>
                         {ig.position}
@@ -897,7 +897,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
                       <span className="text-muted-foreground/30 w-6">#{cue.cueNumber}</span>
                       <span className="text-muted-foreground/40 w-20">{fmtTC(cue.timecodeMs)}</span>
                       <span className="flex-1 truncate">{cue.name}</span>
-                      <span className={cn("uppercase font-bold px-1 rounded text-[6px]",
+                      <span className={cn("uppercase font-bold px-1 rounded text-[8px]",
                         cue.state === 'fired' ? "bg-red-500/15 text-red-400" : cue.state === 'ready' ? "bg-green-500/15 text-green-400" : "bg-muted text-muted-foreground/30")}>
                         {cue.state}
                       </span>
@@ -941,7 +941,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
                     {mod.igniters.map(ig => (
                       <div key={ig.position}
                         className={cn("rounded-sm flex items-center justify-center font-mono",
-                          mob ? "w-5 h-4 text-[6px]" : "w-4 h-3 text-[5px]",
+                          mob ? "w-5 h-4 text-[8px]" : "w-4 h-3 text-[8px]",
                           ig.fired ? "bg-red-500/20 text-red-400/50"
                             : ig.connected ? "bg-green-500/15 text-green-400/60"
                               : "bg-red-500/10 text-red-400/30"
@@ -1086,7 +1086,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
                                 {ig.fired ? '✕' : ig.connected ? `${ig.resistance.toFixed(1)}Ω` : '—'}
                               </span>
                               {ig.continuityOk && !ig.fired && (
-                                <span className={cn("text-green-400", "text-[5px]")}>●</span>
+                                <span className={cn("text-green-400", "text-[8px]")}>●</span>
                               )}
                             </button>
                           ))}
@@ -1115,7 +1115,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
                       <span className="text-muted-foreground/30">
                         {new Date(evt.timestamp).toLocaleTimeString('pt-BR', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                       </span>
-                      <span className={cn("font-bold px-1 rounded text-[6px] uppercase",
+                      <span className={cn("font-bold px-1 rounded text-[8px] uppercase",
                         evt.type === 'fire-confirm' ? "bg-red-500/15 text-red-400"
                           : evt.type === 'error' ? "bg-red-500/15 text-red-300"
                           : evt.type === 'emergency-stop' ? "bg-red-500/20 text-red-400"
@@ -1218,7 +1218,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
                       <span className="text-muted-foreground/30">
                         {new Date(evt.timestamp).toLocaleTimeString('pt-BR', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                       </span>
-                      <span className={cn("font-bold px-1 rounded text-[6px] uppercase",
+                      <span className={cn("font-bold px-1 rounded text-[8px] uppercase",
                         evt.source === 'remote' ? "bg-cyan-500/15 text-cyan-400" : "bg-amber-500/15 text-amber-400")}>
                         {evt.source === 'remote' ? 'RX' : 'TX'}
                       </span>
