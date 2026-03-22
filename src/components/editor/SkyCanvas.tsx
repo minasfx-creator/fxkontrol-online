@@ -1105,10 +1105,15 @@ function VolumetricCloudLayer() {
     });
     cloudRef.current = cloud;
     scene.add(cloud.mesh);
+
+    // Expose cloud system globally for NiagaraVFXController explosion flash
+    (window as any).__volumetricCloudSystem = cloud;
+
     return () => {
       scene.remove(cloud.mesh);
       cloud.mesh.geometry.dispose();
       (cloud.mesh.material as THREE.ShaderMaterial).dispose();
+      delete (window as any).__volumetricCloudSystem;
     };
   }, [scene]);
 
@@ -1984,12 +1989,17 @@ function GroundFog() {
   const fogIntensity = useSceneStore(st => st.settings.groundFogIntensity);
 
   // ═══ render_ultra volumetric fog — FBM 4-octave noise, animated, height-faded ═══
-  const fogSystem = useMemo(() => createVolumetricFogPlane(
-    100000,
-    new THREE.Color(0.03, 0.04, 0.08),
-    fogIntensity,
-    15
-  ), []);
+  const fogSystem = useMemo(() => {
+    const sys = createVolumetricFogPlane(
+      100000,
+      new THREE.Color(0.03, 0.04, 0.08),
+      fogIntensity,
+      15
+    );
+    // Expose fog system globally for NiagaraVFXController explosion flash
+    (window as any).__volumetricFogSystem = sys;
+    return sys;
+  }, []);
 
   useEffect(() => {
     fogSystem.setIntensity(fogIntensity);
@@ -2942,7 +2952,14 @@ function SceneLighting() {
     rig.moon.shadow.camera.far = 25000;
 
     scene.add(rig.group);
-    return () => { scene.remove(rig.group); };
+
+    // Expose HDR rig globally for NiagaraVFXController burst lights
+    (window as any).__hdrLightingRig = rig;
+
+    return () => {
+      scene.remove(rig.group);
+      delete (window as any).__hdrLightingRig;
+    };
   }, [scene]);
 
   // Reactively sync store settings to rig

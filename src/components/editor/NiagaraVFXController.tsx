@@ -33,6 +33,7 @@ import { createSmokeSoftMaterial } from '@/render_ultra/fireworks/softParticleSh
 import { RibbonTrail } from '@/render_ultra/fireworks/ribbonTrailRenderer';
 import { HeatHazeEmitter } from '@/render_ultra/fireworks/heatDistortion';
 import { createFluidGrid, advectFluid, applyWindForce, type FluidGrid } from '@/render_ultra/fireworks/niagaraFluids';
+import { InstancedParticleRenderer, createSparkInstancedRenderer, createSmokeInstancedRenderer } from '@/render_ultra/fireworks/instancedParticleRenderer';
 
 // ── Emitter Templates ───────────────────────────────────────────────
 
@@ -208,158 +209,46 @@ interface ActiveVFXSystem {
   pattern?: string;
 }
 
-// ── GPU Buffer Manager ──────────────────────────────────────────────
+// ── GPU Instanced Renderer (replaces manual Points + buffer writes) ──
 
-const MAX_NIAGARA_PARTICLES = 4096;
-
-function createNiagaraBuffers() {
-  const positions = new Float32Array(MAX_NIAGARA_PARTICLES * 3);
-  const colors = new Float32Array(MAX_NIAGARA_PARTICLES * 3);
-  const sizes = new Float32Array(MAX_NIAGARA_PARTICLES);
-  const opacities = new Float32Array(MAX_NIAGARA_PARTICLES);
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
-  geometry.setAttribute('aOpacity', new THREE.BufferAttribute(opacities, 1));
-  geometry.setDrawRange(0, 0);
-
-  return { geometry, positions, colors, sizes, opacities };
-}
-
-function writeParticlesToBuffers(
+function collectParticlesFromSystems(
   systems: ActiveVFXSystem[],
-  positions: Float32Array,
-  colors: Float32Array,
-  sizes: Float32Array,
-  opacities: Float32Array,
+  filterAdditive: boolean,
   hdrScale: number,
-): number {
-  let idx = 0;
-  const maxIdx = MAX_NIAGARA_PARTICLES;
+): Array<{ position: THREE.Vector3; velocity: THREE.Vector3; color: THREE.Color; size: number; opacity: number }> {
+  const result: Array<{ position: THREE.Vector3; velocity: THREE.Vector3; color: THREE.Color; size: number; opacity: number }> = [];
 
   for (const { system, position: sysPos } of systems) {
-    for (const emitter of system.emitters) {
+    const allEmitters = [...system.emitters, ...system._activeSubEmitters];
+    for (const emitter of allEmitters) {
       if (!emitter.enabled) continue;
-      if (emitter.renderModule.blendMode === 'normal') continue;
+      const isNormal = emitter.renderModule.blendMode === 'normal';
+      if (filterAdditive && isNormal) continue;
+      if (!filterAdditive && !isNormal) continue;
 
       for (const p of emitter.particles) {
-        if (idx >= maxIdx) return idx;
-        if (!p.alive) continue;
-
+        if (!p.alive || result.length >= 4096) continue;
         const t = p.age / p.lifetime;
+        const thermalT = filterAdditive ? (1 - t) : 1;
+        const opacity = filterAdditive ? Math.max(0, 1 - t) : Math.max(0, (1 - t) * 0.35);
 
-        // Thermal color evolution using chemistry
-        const thermalT = 1 - t;
+        const [r, g, b] = filterAdditive
+          ? clampNiagaraHDR(p.color.r * hdrScale * thermalT, p.color.g * hdrScale * thermalT, p.color.b * hdrScale * thermalT)
+          : [p.color.r, p.color.g, p.color.b];
 
-        positions[idx * 3] = p.position.x + sysPos.x;
-        positions[idx * 3 + 1] = p.position.y + sysPos.y;
-        positions[idx * 3 + 2] = p.position.z + sysPos.z;
-
-        const [r, g, b] = clampNiagaraHDR(
-          p.color.r * hdrScale * thermalT,
-          p.color.g * hdrScale * thermalT,
-          p.color.b * hdrScale * thermalT
-        );
-        colors[idx * 3] = r;
-        colors[idx * 3 + 1] = g;
-        colors[idx * 3 + 2] = b;
-
-        sizes[idx] = p.size;
-        opacities[idx] = Math.max(0, 1 - t);
-
-        idx++;
-      }
-    }
-
-    // Sub-emitters
-    for (const subE of system._activeSubEmitters) {
-      if (!subE.enabled || subE.renderModule.blendMode === 'normal') continue;
-      for (const p of subE.particles) {
-        if (idx >= maxIdx || !p.alive) continue;
-        const t = p.age / p.lifetime;
-        positions[idx * 3] = p.position.x + sysPos.x;
-        positions[idx * 3 + 1] = p.position.y + sysPos.y;
-        positions[idx * 3 + 2] = p.position.z + sysPos.z;
-        const [r, g, b] = clampNiagaraHDR(p.color.r * hdrScale, p.color.g * hdrScale, p.color.b * hdrScale);
-        colors[idx * 3] = r;
-        colors[idx * 3 + 1] = g;
-        colors[idx * 3 + 2] = b;
-        sizes[idx] = p.size;
-        opacities[idx] = Math.max(0, 1 - t);
-        idx++;
+        result.push({
+          position: new THREE.Vector3(p.position.x + sysPos.x, p.position.y + sysPos.y, p.position.z + sysPos.z),
+          velocity: p.velocity.clone(),
+          color: new THREE.Color(r, g, b),
+          size: p.size,
+          opacity,
+        });
       }
     }
   }
 
-  return idx;
+  return result;
 }
-
-// Smoke particles — rendered with soft-particle material (normal blend)
-function writeSmokeToBuffers(
-  systems: ActiveVFXSystem[],
-  positions: Float32Array,
-  colors: Float32Array,
-  sizes: Float32Array,
-  opacities: Float32Array,
-): number {
-  let idx = 0;
-  const maxIdx = MAX_NIAGARA_PARTICLES;
-
-  for (const { system, position: sysPos } of systems) {
-    for (const emitter of [...system.emitters, ...system._activeSubEmitters]) {
-      if (!emitter.enabled || emitter.renderModule.blendMode !== 'normal') continue;
-      for (const p of emitter.particles) {
-        if (idx >= maxIdx || !p.alive) continue;
-        const t = p.age / p.lifetime;
-        positions[idx * 3] = p.position.x + sysPos.x;
-        positions[idx * 3 + 1] = p.position.y + sysPos.y;
-        positions[idx * 3 + 2] = p.position.z + sysPos.z;
-        colors[idx * 3] = p.color.r;
-        colors[idx * 3 + 1] = p.color.g;
-        colors[idx * 3 + 2] = p.color.b;
-        sizes[idx] = p.size;
-        opacities[idx] = Math.max(0, (1 - t) * 0.35);
-        idx++;
-      }
-    }
-  }
-
-  return idx;
-}
-
-// ── Sprite Shaders (sparks — additive with velocity stretch feel) ───
-
-const NIAGARA_SPARK_VERTEX = `
-  attribute float aSize;
-  attribute float aOpacity;
-  varying vec3 vColor;
-  varying float vOpacity;
-  void main() {
-    vColor = color;
-    vOpacity = aOpacity;
-    vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-    gl_PointSize = aSize * (6000.0 / -mvPos.z);
-    gl_PointSize = clamp(gl_PointSize, 1.0, 100.0);
-    gl_Position = projectionMatrix * mvPos;
-  }
-`;
-
-const NIAGARA_SPARK_FRAGMENT = `
-  varying vec3 vColor;
-  varying float vOpacity;
-  void main() {
-    vec2 uv = gl_PointCoord - 0.5;
-    float dist = length(uv);
-    float core = exp(-dist * dist * 60.0);
-    float glow = exp(-dist * dist * 15.0);
-    float alpha = (core * 1.0 + glow * 0.4) * vOpacity;
-    vec3 col = mix(vColor, vec3(1.1, 1.0, 0.85), core * 0.3);
-    float edge = 1.0 - smoothstep(0.42, 0.5, dist);
-    gl_FragColor = vec4(col, alpha * edge);
-  }
-`;
 
 // ── Main Component ──────────────────────────────────────────────────
 
@@ -372,33 +261,15 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
     const { hdrMultiplier, effectBrightness } = useSceneStore(st => st.settings);
     const environment = useSceneStore(st => st.environment);
 
-    // GPU buffers for spark/ember particles (additive blend)
-    const sparkBuffers = useMemo(() => createNiagaraBuffers(), []);
-    const sparkMaterial = useMemo(() => new THREE.ShaderMaterial({
-      vertexShader: NIAGARA_SPARK_VERTEX,
-      fragmentShader: NIAGARA_SPARK_FRAGMENT,
-      vertexColors: true,
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-    }), []);
-
-    // GPU buffers for smoke particles — using soft-particle material for depth-fade
-    const smokeBuffers = useMemo(() => createNiagaraBuffers(), []);
-    const smokeMaterial = useMemo(() => createSmokeSoftMaterial({
-      softParticles: true,
-      softRange: 1.5,
-    }), []);
+    // ── GPU Instanced Renderers (replaces manual Points + buffer writes) ──
+    const sparkRenderer = useMemo(() => createSparkInstancedRenderer(4096), []);
+    const smokeRenderer = useMemo(() => createSmokeInstancedRenderer(2048), []);
 
     // Heat haze emitter for large caliber bursts (≥6")
     const heatHazeRef = useRef<HeatHazeEmitter | null>(null);
 
     // Ribbon trails pool for comet/willow patterns
     const ribbonTrailsRef = useRef<RibbonTrail[]>([]);
-
-    // Points objects
-    const sparkPointsRef = useRef<THREE.Points | null>(null);
-    const smokePointsRef = useRef<THREE.Points | null>(null);
 
     // Expose fluid grid globally for effects to read
     useEffect(() => {
@@ -407,17 +278,11 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
     }, []);
 
     useEffect(() => {
-      const sparkPoints = new THREE.Points(sparkBuffers.geometry, sparkMaterial);
-      sparkPoints.frustumCulled = false;
-      sparkPoints.renderOrder = 50;
-      scene.add(sparkPoints);
-      sparkPointsRef.current = sparkPoints;
-
-      const smokePoints = new THREE.Points(smokeBuffers.geometry, smokeMaterial);
-      smokePoints.frustumCulled = false;
-      smokePoints.renderOrder = 10;
-      scene.add(smokePoints);
-      smokePointsRef.current = smokePoints;
+      // Add instanced meshes to scene
+      sparkRenderer.mesh.renderOrder = 50;
+      smokeRenderer.mesh.renderOrder = 10;
+      scene.add(sparkRenderer.mesh);
+      scene.add(smokeRenderer.mesh);
 
       // Heat haze emitter
       const haze = new HeatHazeEmitter(32);
@@ -425,13 +290,11 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
       heatHazeRef.current = haze;
 
       return () => {
-        scene.remove(sparkPoints);
-        scene.remove(smokePoints);
+        scene.remove(sparkRenderer.mesh);
+        scene.remove(smokeRenderer.mesh);
         scene.remove(haze.mesh);
-        sparkBuffers.geometry.dispose();
-        smokeBuffers.geometry.dispose();
-        sparkMaterial.dispose();
-        smokeMaterial.dispose();
+        sparkRenderer.dispose();
+        smokeRenderer.dispose();
         haze.dispose();
         // Dispose ribbon trails
         ribbonTrailsRef.current.forEach(rt => {
@@ -449,7 +312,7 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
       turbulenceScale: 0.05,
     }));
 
-    useFrame((_, delta) => {
+    useFrame((state, delta) => {
       const dt = Math.min(delta, 0.05);
       const systems = activeSystems.current;
       const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
@@ -477,6 +340,13 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
       // ── Detect new bursts from timeline ──
       const { timelineItems, currentTime } = useProjectStore.getState();
       const newBurstIds = new Set<string>();
+
+      // Access HDR lighting rig for burst lights (exposed by SceneLighting)
+      const hdrRig = (window as any).__hdrLightingRig as ReturnType<typeof import('@/render_ultra/lighting/hdrLighting').createHDRLightingRig> | undefined;
+
+      // Access cloud/fog systems for explosion flash
+      const cloudSystem = (window as any).__volumetricCloudSystem as { flashExplosion: (color: THREE.Color, intensity: number, position?: THREE.Vector3) => void } | undefined;
+      const fogSystem = (window as any).__volumetricFogSystem as { flashExplosion: (position: THREE.Vector3, color: THREE.Color, intensity: number) => void } | undefined;
 
       for (const item of timelineItems) {
         const elapsed = currentTime - item.startTime;
@@ -551,6 +421,19 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
               heatHazeRef.current.emit(burstPos, Math.round(caliber * 1.5), caliber * 3, 2.5);
             }
 
+            // ── Wire burst light to HDR rig ──
+            if (hdrRig) {
+              hdrRig.spawnBurstLight(burstPos, burstColor, caliber * 2.5, 1.0 + caliber * 0.15);
+            }
+
+            // ── Wire cloud/fog explosion flash ──
+            if (cloudSystem) {
+              cloudSystem.flashExplosion(burstColor, caliber * 0.3, burstPos);
+            }
+            if (fogSystem) {
+              fogSystem.flashExplosion(burstPos, burstColor, caliber * 0.3);
+            }
+
             systems.push(entry);
           }
         }
@@ -604,29 +487,24 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
         heatHazeRef.current.update(dt);
       }
 
-      // ── Write to GPU buffers ──
+      // ── Update burst lights (HDR rig decay) ──
+      if (hdrRig) {
+        hdrRig.updateBurstLights(dt);
+      }
+
+      // ── Write to GPU Instanced Renderers ──
       const hdrScale = THREE.MathUtils.clamp(
         (hdrMultiplier / 3.5) * THREE.MathUtils.clamp(effectBrightness, 0.6, 1.8),
         0.6, 2.0
       );
 
-      const sparkCount = writeParticlesToBuffers(
-        systems, sparkBuffers.positions, sparkBuffers.colors, sparkBuffers.sizes, sparkBuffers.opacities, hdrScale
-      );
-      sparkBuffers.geometry.attributes.position.needsUpdate = true;
-      sparkBuffers.geometry.attributes.color.needsUpdate = true;
-      (sparkBuffers.geometry.attributes as any).aSize.needsUpdate = true;
-      (sparkBuffers.geometry.attributes as any).aOpacity.needsUpdate = true;
-      sparkBuffers.geometry.setDrawRange(0, sparkCount);
+      const sparkParticles = collectParticlesFromSystems(systems, true, hdrScale);
+      sparkRenderer.writeParticles(sparkParticles, camera);
+      sparkRenderer.update(state.clock.getElapsedTime());
 
-      const smokeCount = writeSmokeToBuffers(
-        systems, smokeBuffers.positions, smokeBuffers.colors, smokeBuffers.sizes, smokeBuffers.opacities
-      );
-      smokeBuffers.geometry.attributes.position.needsUpdate = true;
-      smokeBuffers.geometry.attributes.color.needsUpdate = true;
-      (smokeBuffers.geometry.attributes as any).aSize.needsUpdate = true;
-      (smokeBuffers.geometry.attributes as any).aOpacity.needsUpdate = true;
-      smokeBuffers.geometry.setDrawRange(0, smokeCount);
+      const smokeParticles = collectParticlesFromSystems(systems, false, 1.0);
+      smokeRenderer.writeParticles(smokeParticles, camera);
+      smokeRenderer.update(state.clock.getElapsedTime());
     });
 
     return null;
