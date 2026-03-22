@@ -184,6 +184,7 @@ export default function CommandCenter() {
   if (isMobile && isLandscape) {
     const ActiveLogo = CONSOLE_LOGOS[activeMode];
     return (
+      <>
       <div className="h-[100dvh] w-screen flex flex-col bg-background overflow-hidden">
         {/* Top HUD bar — 32px */}
         <div className="landscape-hud-bar shrink-0 h-8 flex items-center justify-between px-2 relative z-20"
@@ -267,7 +268,7 @@ export default function CommandCenter() {
       {bootConsole && (
         <ConsoleBootSequence consoleKey={bootConsole} label={CONSOLE_ACCENTS[bootConsole]?.label ?? ''} subtitle={CONSOLE_ACCENTS[bootConsole]?.subtitle ?? ''} accentColor={CONSOLE_ACCENTS[bootConsole]?.color ?? 'hsl(32 100% 50%)'} onComplete={handleBootComplete} />
       )}
-    </div>
+      </>
     );
   }
 
