@@ -585,6 +585,8 @@ export class FireOneController {
   private readBuffer = new Uint8Array(0);
   private modules: Map<number, FireOneModuleStatus> = new Map();
   private transportManager: TransportMgr;
+  private hybridRouter: HybridTransportRouter | null = null;
+  private _hybridMode = false;
 
   constructor() {
     this.transportManager = getTransportManager();
