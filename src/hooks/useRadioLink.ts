@@ -13,6 +13,8 @@ import {
   type RadioConfig,
   type RadioDongleProfile,
   type RadioResponse,
+  type TDMAConfig,
+  type TDMAStatus,
   RADIO_DONGLE_PROFILES,
   BAND_FREQUENCIES,
   buildRadioPacket,
@@ -24,6 +26,7 @@ import {
   wrapProtocolFrame,
   getDefaultRadioConfig,
   RadioCmd,
+  TDMAScheduler,
 } from '@/lib/radioProtocol';
 
 const nav = navigator as any;
