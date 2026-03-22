@@ -961,9 +961,9 @@ export default function ScriptWindow() {
                   }}
                   onClick={(e) => toggleSelect(row.id, e)}
                 >
-                  {/* Row number */}
-                  <td className="px-0.5 py-0.5 text-center text-muted-foreground/40 text-[8px]">
-                    {rowIdx + 1}
+                  {/* Cue number */}
+                  <td className="px-0.5 py-0.5 text-center text-muted-foreground/40 text-[8px] font-bold">
+                    Q{rowIdx + 1}
                   </td>
 
                   {/* Chain collapse / icon */}
@@ -1000,6 +1000,24 @@ export default function ScriptWindow() {
                     ) : (
                       <span className="text-muted-foreground/30">—</span>
                     )}
+                  </td>
+
+                  {/* Size (Caliber) */}
+                  <td className="px-1 py-0.5">
+                    {row.type === 'firework' ? (
+                      <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-accent/15 text-accent tabular-nums">
+                        {(() => { const m = row.description.match(/(\d+)(?:in|")/); return m ? `${m[1]}"` : '4"'; })()}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground/30">—</span>
+                    )}
+                  </td>
+
+                  {/* Part Type */}
+                  <td className="px-1 py-0.5">
+                    <span className="text-[7px] font-bold px-1 py-0.5 rounded bg-muted/20 text-muted-foreground uppercase">
+                      {row.category === 'mines' ? 'MINE' : row.category === 'roman_candles' ? 'RC' : row.category === 'cakes_batteries' ? 'CAKE' : row.category === 'waterfalls' ? 'FALL' : row.type === 'firework' ? 'SHELL' : row.type === 'drone' ? 'DRN' : row.type?.slice(0, 3).toUpperCase() || '—'}
+                    </span>
                   </td>
 
                   {/* Description with caliber badge + type icon */}
