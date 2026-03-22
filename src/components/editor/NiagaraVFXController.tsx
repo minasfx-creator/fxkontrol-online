@@ -25,7 +25,7 @@ import {
   onEmitterEvent, warmupSystem, createEmitterFromTemplate,
   type NiagaraSystem, type NiagaraEmitter, type NiagaraParticle,
 } from '@/render_ultra/fireworks/niagaraEmitterSystem';
-import { createCollision, createWind, createPointAttractor } from '@/render_ultra/fireworks/niagaraForceModules';
+import { createCollision, createWind, createPointAttractor, createVortex } from '@/render_ultra/fireworks/niagaraForceModules';
 import { getBreakHeight, getBreakSpeed } from '@/lib/pyroPhysics';
 import { thermalColor, getCompound, type ChemicalCompound } from '@/render_ultra/fireworks/particleChemistry';
 import { clampNiagaraHDR, getNiagaraBudgets } from '@/lib/niagaraBlenderRules';
