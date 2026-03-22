@@ -103,9 +103,9 @@ export function AppSidebar() {
       {/* Footer with user */}
       <SidebarFooter className="p-2 space-y-1">
         {!collapsed && (
-          <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-muted/20">
-            <div className="h-7 w-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-              <span className="text-[9px] font-bold text-primary">{initials}</span>
+          <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg" style={{ background: 'hsl(32 100% 50% / 0.05)' }}>
+            <div className="h-7 w-7 rounded-full flex items-center justify-center shrink-0" style={{ background: 'hsl(32 100% 50% / 0.15)' }}>
+              <span className="text-[9px] font-bold" style={{ color: 'hsl(32 100% 50%)' }}>{initials}</span>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-medium text-foreground truncate">{user?.email?.split('@')[0]}</p>

@@ -114,7 +114,7 @@ export default function MainLayout() {
 
         {!isEditor && (
           <div className="fixed bottom-0 left-0 right-0 h-6 flex items-center justify-between px-4 border-t z-40"
-            style={{ background: 'hsl(var(--surface-0) / 0.9)', backdropFilter: 'blur(12px)', borderColor: 'hsl(var(--border) / 0.1)' }}
+            style={{ background: 'hsl(var(--surface-0) / 0.9)', backdropFilter: 'blur(12px)', borderColor: 'hsl(32 100% 50% / 0.06)' }}
           >
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5">
@@ -122,13 +122,14 @@ export default function MainLayout() {
                 <span className="text-[8px] font-mono-code text-muted-foreground/50">0 HW</span>
               </div>
               <span className="text-[8px] font-mono-code text-muted-foreground/30">·</span>
-              <span className="text-[8px] font-mono-code text-muted-foreground/50">
+              <span className="text-[8px] font-mono-code" style={{ color: isArmed ? 'hsl(0 85% 48%)' : 'hsl(32 100% 50% / 0.5)' }}>
                 {isArmed ? 'ARMED' : 'IDLE'}
               </span>
             </div>
             <button
               onClick={() => window.location.href = '/editor'}
-              className="text-[8px] font-mono-code text-primary/60 hover:text-primary px-2 py-0.5 rounded hover:bg-primary/5 transition-colors"
+              className="text-[8px] font-mono-code px-2 py-0.5 rounded transition-colors"
+              style={{ color: 'hsl(32 100% 50% / 0.6)' }}
             >
               PRE-FLIGHT →
             </button>
