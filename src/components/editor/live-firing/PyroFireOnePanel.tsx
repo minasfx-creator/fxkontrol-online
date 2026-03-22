@@ -387,6 +387,85 @@ export default function PyroFireOnePanel({
     }, 1200);
   }, [currentModule, selectedModule, modules, simMode, hardware]);
 
+  // ── ArtNet Link: discover and connect Art-Net modules ──
+  const handleArtnetLink = useCallback(async () => {
+    setArtnetLinking(true);
+    toast.info('ARTNET LINK: Scanning for Art-Net modules...');
+    try {
+      // Init controller if needed
+      let ctrl = artnetModuleService.getController();
+      if (!ctrl) {
+        ctrl = artnetModuleService.initController({ name: 'XL4+ ARTNET BRIDGE' });
+      }
+      // Discover via ArtPoll
+      await artnetModuleService.discoverModules();
+      // For each XL4 field module, register in Art-Net service if not already
+      const registered = new Set<number>();
+      for (const m of modules) {
+        if (!m.connected) continue;
+        const existing = ctrl.modules.find(am => am.moduleAddress === m.address);
+        if (!existing) {
+          artnetModuleService.addModule({
+            name: `FM-${String(m.address).padStart(2, '0')}`,
+            moduleAddress: m.address,
+            ip: '192.168.1.' + (100 + m.address),
+            transport: 'lan',
+            channelCount: 32,
+            dmxStartAddress: (m.address - 1) * 32 + 1,
+            label: `XL4 Module ${m.address}`,
+          });
+        }
+        registered.add(m.address);
+      }
+      // Connect all registered modules
+      await artnetModuleService.connectAllModules();
+      setArtnetLinkedModules(registered);
+      toast.success(`ARTNET LINK: ${registered.size} modules linked via Art-Net`);
+    } catch (err: any) {
+      toast.error(`ARTNET LINK failed: ${err.message}`);
+    } finally {
+      setArtnetLinking(false);
+    }
+  }, [modules]);
+
+  const handleModuleArtnetLink = useCallback(async (moduleAddr: number) => {
+    try {
+      let ctrl = artnetModuleService.getController();
+      if (!ctrl) {
+        ctrl = artnetModuleService.initController({ name: 'XL4+ ARTNET BRIDGE' });
+      }
+      const existing = ctrl.modules.find(am => am.moduleAddress === moduleAddr);
+      if (existing) {
+        // Already registered — toggle connect/disconnect
+        const state = artnetModuleService.getModuleState(existing.id);
+        if (state === 'connected') {
+          artnetModuleService.disconnectModule(existing.id);
+          setArtnetLinkedModules(prev => { const n = new Set(prev); n.delete(moduleAddr); return n; });
+          toast.info(`FM-${String(moduleAddr).padStart(2, '0')}: Art-Net unlinked`);
+        } else {
+          await artnetModuleService.connectModule(existing.id);
+          setArtnetLinkedModules(prev => new Set(prev).add(moduleAddr));
+          toast.success(`FM-${String(moduleAddr).padStart(2, '0')}: Art-Net linked`);
+        }
+      } else {
+        const mod = artnetModuleService.addModule({
+          name: `FM-${String(moduleAddr).padStart(2, '0')}`,
+          moduleAddress: moduleAddr,
+          ip: '192.168.1.' + (100 + moduleAddr),
+          transport: 'lan',
+          channelCount: 32,
+          dmxStartAddress: (moduleAddr - 1) * 32 + 1,
+          label: `XL4 Module ${moduleAddr}`,
+        });
+        await artnetModuleService.connectModule(mod.id);
+        setArtnetLinkedModules(prev => new Set(prev).add(moduleAddr));
+        toast.success(`FM-${String(moduleAddr).padStart(2, '0')}: Art-Net linked`);
+      }
+    } catch (err: any) {
+      toast.error(`Art-Net link failed: ${err.message}`);
+    }
+  }, []);
+
   const connectedCount = modules.filter(m => m.connected).length;
   const armedModCount = modules.filter(m => m.armed).length;
   const totalIgniters = modules.reduce((sum, m) => sum + m.igniters.filter(i => i.connected && !i.fired).length, 0);
