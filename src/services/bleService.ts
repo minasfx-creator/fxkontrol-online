@@ -33,11 +33,11 @@ export const initialModuleState: FXKModuleState = {
 type StateListener = (state: FXKModuleState) => void;
 
 class BLEService {
-  private device: BluetoothDevice | null = null;
-  private server: BluetoothRemoteGATTServer | null = null;
-  private cmdChar: BluetoothRemoteGATTCharacteristic | null = null;
-  private statusChar: BluetoothRemoteGATTCharacteristic | null = null;
-  private cdsChar: BluetoothRemoteGATTCharacteristic | null = null;
+  private device: any = null;
+  private server: any = null;
+  private cmdChar: any = null;
+  private statusChar: any = null;
+  private cdsChar: any = null;
   private state: FXKModuleState = { ...initialModuleState };
   private listeners: Set<StateListener> = new Set();
 
