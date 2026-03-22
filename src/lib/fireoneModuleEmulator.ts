@@ -277,7 +277,8 @@ export class FireOneModuleEmulator {
     const ig = this.igniters[pin];
 
     if (ig.fired) return false;
-    if (ig.cdsVoltage < CDS_MIN_FIRE_VOLTAGE) return false;
+    // In direct_relay mode, skip CDS voltage check — relay fires directly from battery
+    if (this.hardwareMode === 'cds' && ig.cdsVoltage < CDS_MIN_FIRE_VOLTAGE) return false;
 
     this.setState('firing');
 
