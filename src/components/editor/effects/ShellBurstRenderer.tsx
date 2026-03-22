@@ -1,6 +1,7 @@
 import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { hash01 } from '@/lib/pyroNoise';
 import {
   createShellBurst,
   createGlitterTrailParticle,
