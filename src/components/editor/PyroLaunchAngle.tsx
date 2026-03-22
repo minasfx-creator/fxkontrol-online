@@ -313,8 +313,9 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
   const [isDragging, setIsDragging] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [dragAxis, setDragAxis] = useState<'all' | 'heading' | 'pitch' | 'roll' | 'up-vector'>('all');
-  const dragStartRef = useRef<{ heading: number; pitch: number } | null>(null);
+  const dragStartRef = useRef<{ heading: number; pitch: number; mouseX: number; mouseY: number } | null>(null);
   const batchStartRef = useRef<Map<string, { heading: number; pitch: number }>>(new Map());
+  const [axisDominance, setAxisDominance] = useState<{ h: number; p: number }>({ h: 1, p: 1 });
   const handleRef = useRef<THREE.Mesh>(null);
   const { camera, raycaster, gl } = useThree();
 
