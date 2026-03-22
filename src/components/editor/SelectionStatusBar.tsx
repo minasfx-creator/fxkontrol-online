@@ -9,6 +9,8 @@ export default function SelectionStatusBar() {
     selectedPositionIds, positions, timelineItems, editorMode,
     updatePosition, selectMultiplePositions,
     trajectories, selectedTrajectoryIds, batchOffsetWaypoints,
+    selectionMode, linkedTimelineItemIds,
+    selectMultiplePositionsAndLinkedEvents,
   } = useProjectStore();
   const [showBatchTools, setShowBatchTools] = useState(false);
 
