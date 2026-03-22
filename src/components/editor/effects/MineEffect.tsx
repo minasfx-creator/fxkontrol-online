@@ -377,13 +377,19 @@ export default function MineEffect({
             <bufferAttribute attach="attributes-position" args={[new Float32Array(SMOKE_COUNT * 3), 3]} />
             <bufferAttribute attach="attributes-color" args={[new Float32Array(SMOKE_COUNT * 3), 3]} />
           </bufferGeometry>
-          <pointsMaterial
-            size={2.5}
-            vertexColors
+          <shaderMaterial
+            vertexShader={sizeVertexShader.replace('size *', '3.0 *')}
+            fragmentShader={`
+              varying vec3 vColor;
+              void main() {
+                float dist = length(gl_PointCoord - vec2(0.5));
+                if (dist > 0.5) discard;
+                float alpha = smoothstep(0.5, 0.2, dist) * 0.08;
+                gl_FragColor = vec4(vColor, alpha);
+              }
+            `}
             transparent
-            opacity={0.08}
             depthWrite={false}
-            sizeAttenuation
           />
         </points>
       )}

@@ -350,10 +350,10 @@ export default function CometEffect({
           <bufferAttribute attach="attributes-color" args={[new Float32Array(SMOKE_WAKE_COUNT * 3), 3]} />
         </bufferGeometry>
         <pointsMaterial
-          size={1.2 + caliber * 0.3}
+          size={1.5 + caliber * 0.4}
           vertexColors
           transparent
-          opacity={0.06}
+          opacity={0.09}
           depthWrite={false}
           sizeAttenuation
         />
