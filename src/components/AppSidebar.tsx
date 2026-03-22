@@ -1,8 +1,9 @@
-import { LayoutDashboard, Clapperboard, CalendarDays, LogOut, Gamepad2, Crosshair, Volume2, VolumeX, Cpu, Bluetooth, Rocket } from 'lucide-react';
+import { LayoutDashboard, Clapperboard, CalendarDays, LogOut, Gamepad2, Crosshair, Volume2, VolumeX, Cpu, Bluetooth, Rocket, Settings, Shield } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAdminRole } from '@/hooks/useAdminRole';
 import { useState } from 'react';
 import { ambientSound } from '@/lib/ambientSound';
 import {
@@ -38,6 +39,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const isMobile = useIsMobile();
+  const { isAdmin } = useAdminRole();
   const [soundMuted, setSoundMuted] = useState(ambientSound.muted);
 
   const initials = user?.email?.slice(0, 2).toUpperCase() ?? 'FX';
@@ -132,6 +134,57 @@ export function AppSidebar() {
                   }
 
                   return navContent;
+                })}
+              </TooltipProvider>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      {/* Settings & Admin links */}
+      <SidebarContent className="mt-auto pb-0">
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-[9px] uppercase tracking-[0.2em] px-3" style={{ color: 'hsl(32 100% 50% / 0.4)' }}>
+            {!collapsed && 'Sistema'}
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <TooltipProvider delayDuration={0}>
+                {[
+                  { title: 'Configurações', url: '/settings', icon: Settings, desc: 'Perfil operador' },
+                  ...(isAdmin ? [{ title: 'Admin', url: '/admin', icon: Shield, desc: 'Gestão plataforma' }] : []),
+                ].map(item => {
+                  const active = location.pathname === item.url;
+                  const content = (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to={item.url}
+                          onClick={handleNavClick}
+                          className={`dock-item gap-3 rounded-xl mx-1 transition-all duration-200 ${
+                            active ? 'shadow-[inset_0_0_0_1px_hsl(32_100%_50%/0.15)]' : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+                          }`}
+                          style={active ? { background: 'hsl(32 100% 50% / 0.1)', color: 'hsl(32 100% 50%)' } : undefined}
+                          activeClassName=""
+                        >
+                          <item.icon className={`h-4 w-4 shrink-0 ${active ? 'scale-110' : ''}`} style={active ? { color: 'hsl(32 100% 50%)', filter: 'drop-shadow(0 0 4px hsl(32 100% 50% / 0.4))' } : undefined} />
+                          {!collapsed && <span className="text-xs font-medium">{item.title}</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                  if (collapsed) {
+                    return (
+                      <Tooltip key={item.title}>
+                        <TooltipTrigger asChild>{content}</TooltipTrigger>
+                        <TooltipContent side="right" className="glass-hud border-primary/10 text-[10px] font-mono-code">
+                          <p className="font-bold">{item.title}</p>
+                          <p className="text-muted-foreground text-[8px]">{item.desc}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  }
+                  return content;
                 })}
               </TooltipProvider>
             </SidebarMenu>

@@ -15,6 +15,8 @@ import PCBViewer from "./pages/PCBViewer";
 import DevicePairing from "./pages/DevicePairing";
 import CommandCenter from "./pages/CommandCenter";
 import ShowTestSimulator from "./pages/ShowTestSimulator";
+import Settings from "./pages/Settings";
+import Admin from "./pages/Admin";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +57,8 @@ function App() {
                 <Route path="/pairing" element={<DevicePairing />} />
                 <Route path="/command" element={<CommandCenter />} />
                 <Route path="/show-test" element={<ShowTestSimulator />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/admin" element={<Admin />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
