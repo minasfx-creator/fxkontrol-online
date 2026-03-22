@@ -57,6 +57,8 @@ function App() {
                 <Route path="/pairing" element={<DevicePairing />} />
                 <Route path="/command" element={<CommandCenter />} />
                 <Route path="/show-test" element={<ShowTestSimulator />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/admin" element={<Admin />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
