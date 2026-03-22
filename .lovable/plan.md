@@ -1,47 +1,76 @@
 
 
-# Plan: Debug Overlay Default, Camera Spawn, Trajectory Angle Handle & Finale UX
+# Plan: Timeline & Angles UX Improvements — Finale 3D Style
 
 ## Summary
 
-Four fixes: (1) render debug starts closed, (2) camera spawns at ground level ~100m from center, (3) angle editing trajectory shows the actual shell parabola with the drag handle at the trajectory apex, (4) Finale 3D-style inline data editing in script window.
+Based on Finale 3D Episode 4 (Timeline & Angles) and PyroJam 2023 Design Template workflows, the timeline and angle editing need several UX refinements: right-click context menus on cues, timeline item resize handles, angle indicators on timeline bars, marquee selection, and improved angle gizmo feedback.
 
 ## Changes
 
-### 1. `src/components/editor/SkyCanvas.tsx` — Debug Overlay Starts Closed
+### 1. `src/components/editor/Timeline.tsx` — Right-Click Context Menu on Cues
 
-Line 3578: Change `useState(true)` → `useState(false)`.
+Add `onContextMenu` handler to `DraggableTimelineItem`:
+- **Set Time...** — opens inline time input at click position
+- **Set Angle...** — selects the item and enters angle-edit mode, focusing the 3D gizmo on its position
+- **Duplicate** (Ctrl+D)
+- **Delete** (Del)
+- **Assign to Position →** submenu listing pyro positions
+- **Add to Chain** / **Break Chain**
+- **Copy / Cut / Paste at Playhead**
 
-### 2. `src/components/editor/SkyCanvas.tsx` — Camera Spawn Fix
+Render a small floating `<div>` context menu positioned at mouse coordinates, dismissed on click-outside or Escape.
 
-Default `free` preset (line 136): Change position from `[0, 2, 2200]` to `[0, 1.7, 100]` — ground level, 100m from center, looking at launch area. Update target to `[0, 50, 0]` so the user looks slightly upward toward where effects will appear.
+### 2. `src/components/editor/Timeline.tsx` — Resize Handles on Timeline Items
 
-Also update the cinematic intro start position (`introStartPos`, line 3137) from `[0, 2500, 0.01]` to `[0, 300, 100]` for a less extreme sweep.
+Add left and right edge drag handles to `DraggableTimelineItem`:
+- **Right edge**: drag to change effect duration (updates `updateTimelineItem` with custom duration override)
+- **Left edge**: drag to change start time (slip edit)
+- Handles appear as 3px hover zones on edges, cursor changes to `col-resize`
+- Minimum width constraint of 20px
 
-### 3. `src/components/editor/PyroLaunchAngle.tsx` — Trajectory Handle at Apex
+### 3. `src/components/editor/Timeline.tsx` — Angle Indicator on Timeline Bars
 
-**Move the drag handle to the end of the trajectory parabola** instead of the arrow tip:
-- Keep the arrow shaft for direction visualization
-- Compute the trajectory apex point (highest point of the parabola) as the handle position
-- The `trajectoryPoints` array already computes the parabolic path — use the last point (or apex) as `handlePos`
-- This matches Finale 3D where you grab the burst point to adjust angles
+For firework items, show a small angle arrow indicator inside the timeline bar:
+- A tiny SVG arrow (8×8px) rotated to match the item's `pan` angle
+- Color-coded: blue for heading-dominated, orange for steep pitch
+- Only visible when bar width > 40px
 
-**Show effect trajectory lines**: For each timeline item linked to this position, render a trajectory line showing the actual shell flight path (using caliber-derived physics from `pyroPhysics.ts` — `getBreakHeight`, `getMortarVelocity`, `getLiftTime`). This gives visual feedback of where shells will burst.
+### 4. `src/components/editor/Timeline.tsx` — Marquee/Lasso Selection
 
-### 4. `src/components/editor/ScriptWindow.tsx` — Finale-Style Inline Data Editing
+Add rubber-band selection on the timeline track area:
+- On mousedown (not on an item), start drawing a selection rectangle
+- On mousemove, highlight items whose bounds intersect the rectangle
+- On mouseup, select all intersected items (add to selection if Shift held)
+- Visual: semi-transparent blue rectangle with dashed border
 
-Replicate Finale 3D's "Directly Editing Effect and Script Data" pattern:
-- **Click-to-edit cells**: Time, position, angle, and description cells become editable on click (currently only some fields are editable)
-- **Add inline editing for**: heading (H), pitch (P), effect description/VDL, and notes columns
-- **Tab navigation**: Tab moves to next editable cell in the row, Shift+Tab goes back
-- **Enter commits and moves down**, Escape cancels edit
-- **Multi-select edit**: When multiple rows are selected, editing a field applies the value to all selected rows (Finale "batch edit" pattern)
+### 5. `src/components/editor/PyroLaunchAngle.tsx` — Angle Snap & Grid Feedback
+
+- Add angle snapping: hold Shift while dragging to snap heading to 5° increments and pitch to 5° increments
+- Show snap grid lines on the heading compass when Shift is held (every 15°)
+- Add a subtle "angle changed" toast/HUD showing delta (e.g. "ΔH +15° ΔP -3°") during drag, positioned near the handle
+
+### 6. `src/components/editor/ScriptWindow.tsx` — Position Assignment Column
+
+Make the Position column editable:
+- Click on position name → dropdown of available pyro positions
+- Selecting a position updates `positionId`, `positionName`, and `position.x/y/z` from the position data
+- Shows "UNASSIGNED" in red italic when no position linked
+- Batch-assignable: when multiple rows selected, assigning a position applies to all
+
+### 7. `src/store/useProjectStore.ts` — Duration Override Support
+
+Add optional `durationOverride` field to `TimelineItem`:
+- When set, used instead of `effect.duration` for rendering width
+- Enables timeline resize to persist
+- Update all references that read `effect.duration` to check `item.durationOverride ?? effect.duration`
 
 ## Files
 
 | File | Change |
 |------|--------|
-| `src/components/editor/SkyCanvas.tsx` | Debug overlay default `false`, camera spawn at ground ~100m from center |
-| `src/components/editor/PyroLaunchAngle.tsx` | Drag handle at trajectory apex, show linked effect trajectories |
-| `src/components/editor/ScriptWindow.tsx` | Inline editable cells with Tab/Enter navigation, batch edit |
+| `src/components/editor/Timeline.tsx` | Context menu, resize handles, angle indicators, marquee selection |
+| `src/components/editor/PyroLaunchAngle.tsx` | Shift-snap to 5° grid, snap grid visualization, delta HUD |
+| `src/components/editor/ScriptWindow.tsx` | Editable position column with dropdown |
+| `src/store/useProjectStore.ts` | Add `durationOverride` to TimelineItem type |
 
