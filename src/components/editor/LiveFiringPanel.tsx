@@ -36,6 +36,7 @@ import type { SFXChannel, CueEntry, FXCMode, FXCSettings, DeviceLibEntry } from 
 import { FIRING_RULES, SFX_TYPES, DEFAULT_CHANNELS, DEFAULT_SETTINGS, CUES_PER_PAGE, formatTimecode, SHOWVEN_LIBRARY } from './live-firing/constants';
 import AutoFirePanel from './live-firing/AutoFirePanel';
 import CheckSlavePanel from './live-firing/CheckSlavePanel';
+import FXKNetPanel from './live-firing/FXKNetPanel';
 import SettingsPanel from './live-firing/SettingsPanel';
 import DeviceLibraryPanel from './live-firing/DeviceLibraryPanel';
 import MobileLinkMode from './live-firing/MobileLinkMode';
@@ -63,8 +64,7 @@ const MODE_CATEGORIES = [
       { key: 'simple_dmx' as FXCMode, label: 'Simple', icon: Lightbulb },
       { key: 'manual_fire' as FXCMode, label: 'Manual', icon: Hand },
       { key: 'pyro_fire' as FXCMode, label: 'FXK-PYRO', icon: Flame },
-      { key: 'auto_fire' as FXCMode, label: 'Auto Fire', icon: Timer },
-      { key: 'check_slave' as FXCMode, label: 'Check', icon: Check },
+      { key: 'check_slave' as FXCMode, label: 'Diagnostics', icon: Check },
     ],
   },
   {
@@ -72,13 +72,12 @@ const MODE_CATEGORIES = [
       { key: 'controllers' as FXCMode, label: 'Controllers', icon: Cpu },
       { key: 'pbus' as FXCMode, label: 'P-BUS', icon: Cable },
       { key: 'ma3' as FXCMode, label: 'FXK-LIGHT', icon: Gauge },
-      { key: 'module' as FXCMode, label: 'FXK Module', icon: Cpu },
       { key: 'wifi_direct' as FXCMode, label: 'WiFi Direct', icon: Wifi },
     ],
   },
   {
     label: '🌐 NETWORK', modes: [
-      { key: 'artnet_modules' as FXCMode, label: 'Art-Net', icon: Globe },
+      { key: 'artnet_modules' as FXCMode, label: 'FXK-NET', icon: Globe },
       { key: 'connections' as FXCMode, label: 'Connections', icon: Plug },
       { key: 'radio' as FXCMode, label: 'Radio', icon: Radio },
       { key: 'field_map' as FXCMode, label: 'Field Map', icon: Map },
@@ -458,7 +457,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   }, [cues, channels, setChannels]);
 
   // ─── Swipe gesture for mobile mode switching / close ───
-  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'auto_fire', 'check_slave', 'controllers', 'pbus', 'field_map', 'connections', 'wifi_direct', 'radio', 'ma3', 'module', 'artnet_modules', 'mobile_link', 'settings'];
+  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'check_slave', 'controllers', 'pbus', 'field_map', 'connections', 'wifi_direct', 'radio', 'ma3', 'artnet_modules', 'mobile_link', 'settings'];
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const swipeHandled = useRef(false);
 
@@ -805,7 +804,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
 
   // Platform-aware branding
   const isDmxMode = mode === 'super_dmx' || mode === 'simple_dmx';
-  const isFireMode = mode === 'pyro_fire' || mode === 'manual_fire' || mode === 'auto_fire';
+  const isFireMode = mode === 'pyro_fire' || mode === 'manual_fire';
   const platformAccent = isDmxMode
     ? { name: 'FXK-DMX', sub: 'FXCOMMANDER 2.0', color: 'hsl(200 80% 48%)', textClass: 'text-cyan-400', bgGrad: 'linear-gradient(135deg, hsl(200 80% 48%), hsl(200 60% 30%))' }
     : { name: 'FXK-PYRO', sub: 'XL4+ 2.0', color: 'hsl(0 85% 48%)', textClass: 'text-red-400', bgGrad: 'linear-gradient(135deg, hsl(0 80% 45%), hsl(0 70% 30%))' };
@@ -1388,7 +1387,6 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
         );
       case 'simple_dmx': return renderSimpleDmx(fs);
       case 'manual_fire': return renderManualFire(fs);
-      case 'auto_fire': return <AutoFirePanel fs={fs} pyroArm={pyroArm} dmxArm={dmxArm} />;
       case 'pyro_fire': return <PyroFireOnePanel fs={fs} fireChannel={fireChannel} channels={channels} pyroArm={pyroArm} dmxArm={dmxArm} deadmanHeld={deadmanHeld} handlePanic={handlePanic} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
       case 'check_slave': return <CheckSlavePanel fs={fs} pyroArm={pyroArm} />;
       case 'mobile_link': return <MobileLinkMode fs={fs} fireChannel={fireChannel} channels={channels} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
@@ -1400,9 +1398,8 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
       case 'connections': return <ConnectionManagerPanel fs={fs} />;
       case 'radio': return <RadioControlPanel fs={fs} />;
       case 'ma3': return <MA3ControlPanel fs={fs} />;
-      case 'module': return <VirtualIFMx32QPanel fs={fs} />;
       case 'wifi_direct': return <WiFiDirectControlPanel fs={fs} />;
-      case 'artnet_modules': return <ArtNetModulePanel fs={fs} />;
+      case 'artnet_modules': return <FXKNetPanel fs={fs} />;
       case 'settings': return <SettingsPanel fs={fs} settings={settings} onSettingsChange={setSettings} relayConnected={relayConnected} relayUrl={relayUrl} onRelayUrlChange={setRelayUrl} onConnectRelay={connectRelay} onDisconnectRelay={disconnectRelay} />;
       default: return renderSimpleDmx(fs);
     }

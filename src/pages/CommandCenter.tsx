@@ -12,7 +12,7 @@ import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { cn } from '@/lib/utils';
 import {
-  Zap, Lightbulb, Hand, Flame, Timer, Check, Cpu, Cable,
+  Zap, Lightbulb, Hand, Flame, Check, Cpu, Cable,
   Gauge, Wifi, Globe, Plug, Radio, Map, Smartphone, Settings,
   Shield, ChevronRight, AlertOctagon, Layers
 } from 'lucide-react';
@@ -24,9 +24,8 @@ import LiveFiringPanel from '@/components/editor/LiveFiringPanel';
 import VirtualControllerHub from '@/components/editor/VirtualControllerHub';
 import PBusMonitorPanel from '@/components/editor/live-firing/PBusMonitorPanel';
 import MA3ControlPanel from '@/components/editor/MA3ControlPanel';
-import VirtualIFMx32QPanel from '@/components/editor/live-firing/VirtualIFMx32QPanel';
 import WiFiDirectControlPanel from '@/components/editor/live-firing/WiFiDirectControlPanel';
-import ArtNetModulePanel from '@/components/editor/live-firing/ArtNetModulePanel';
+import FXKNetPanel from '@/components/editor/live-firing/FXKNetPanel';
 import ConnectionManagerPanel from '@/components/editor/ConnectionManagerPanel';
 import RadioControlPanel from '@/components/editor/RadioControlPanel';
 import FieldMap2D from '@/components/editor/FieldMap2D';
@@ -36,14 +35,14 @@ import DroneCommandPanel from '@/components/editor/DroneCommandPanel';
 
 // ── Types ──
 type CommandMode =
-  | 'super_dmx' | 'simple_dmx' | 'manual_fire' | 'pyro_fire' | 'auto_fire' | 'check_slave'
-  | 'controllers' | 'pbus' | 'ma3' | 'module' | 'wifi_direct'
+  | 'super_dmx' | 'simple_dmx' | 'manual_fire' | 'pyro_fire' | 'check_slave'
+  | 'controllers' | 'pbus' | 'ma3' | 'wifi_direct'
   | 'artnet_modules' | 'connections' | 'radio' | 'field_map'
   | 'mobile_link' | 'settings' | 'drone_ops';
 
 // Fire modes get full LiveFiringPanel chrome (ARM, CUE keys, PANIC)
 const FIRE_MODES: CommandMode[] = [
-  'super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'auto_fire', 'check_slave',
+  'super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'check_slave',
 ];
 
 const isFireMode = (m: CommandMode) => FIRE_MODES.includes(m);
@@ -54,12 +53,10 @@ const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: stri
   simple_dmx:  { color: 'hsl(120 70% 38%)', glow: 'hsl(120 70% 38% / 0.1)', label: 'FXK-DMX LITE',  badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' },
   manual_fire: { color: 'hsl(32 100% 50%)',  glow: 'hsl(32 100% 50% / 0.1)',  label: 'MANUAL FIRE', badge: 'bg-orange-500/15 text-orange-400 border-orange-500/20' },
   pyro_fire:   { color: 'hsl(0 85% 48%)',   glow: 'hsl(0 85% 48% / 0.1)',   label: 'FXK-PYRO',    badge: 'bg-red-500/15 text-red-400 border-red-500/20' },
-  auto_fire:   { color: 'hsl(45 100% 50%)',  glow: 'hsl(45 100% 50% / 0.1)',  label: 'AUTO FIRE',   badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20' },
-  check_slave: { color: 'hsl(165 100% 42%)', glow: 'hsl(165 100% 42% / 0.1)', label: 'DIAGNOSTICS', badge: 'bg-teal-500/15 text-teal-400 border-teal-500/20' },
+  check_slave: { color: 'hsl(32 100% 50%)', glow: 'hsl(32 100% 50% / 0.1)', label: 'DIAGNOSTICS', badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20' },
   controllers: { color: 'hsl(270 60% 50%)', glow: 'hsl(270 60% 50% / 0.08)', label: 'CONTROLLERS', badge: 'bg-purple-500/15 text-purple-400 border-purple-500/20' },
   pbus:        { color: 'hsl(38 100% 50%)',  glow: 'hsl(38 100% 50% / 0.08)',  label: 'P-BUS',       badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20' },
   ma3:         { color: 'hsl(240 50% 52%)', glow: 'hsl(240 50% 52% / 0.08)', label: 'FXK-LIGHT',    badge: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/20' },
-  module:      { color: 'hsl(165 100% 42%)', glow: 'hsl(165 100% 42% / 0.08)', label: 'FXK MODULE',    badge: 'bg-teal-500/15 text-teal-400 border-teal-500/20' },
   wifi_direct: { color: 'hsl(200 80% 48%)', glow: 'hsl(200 80% 48% / 0.08)', label: 'WIFI DIRECT', badge: 'bg-sky-500/15 text-sky-400 border-sky-500/20' },
   artnet_modules: { color: 'hsl(270 60% 50%)', glow: 'hsl(270 60% 50% / 0.08)', label: 'FXK-NET', badge: 'bg-violet-500/15 text-violet-400 border-violet-500/20' },
   connections: { color: 'hsl(165 100% 42%)', glow: 'hsl(165 100% 42% / 0.08)', label: 'CONNECTIONS', badge: 'bg-teal-500/15 text-teal-400 border-teal-500/20' },
@@ -80,8 +77,7 @@ const MODE_SECTIONS = [
       { key: 'simple_dmx' as CommandMode, label: 'Simple DMX', icon: Lightbulb },
       { key: 'manual_fire' as CommandMode, label: 'Manual', icon: Hand },
       { key: 'pyro_fire' as CommandMode, label: 'FXK-PYRO', icon: Flame },
-      { key: 'auto_fire' as CommandMode, label: 'Auto Fire', icon: Timer },
-      { key: 'check_slave' as CommandMode, label: 'Check', icon: Check },
+      { key: 'check_slave' as CommandMode, label: 'DIAGNOSTICS', icon: Check },
     ],
   },
   {
@@ -91,7 +87,6 @@ const MODE_SECTIONS = [
       { key: 'controllers' as CommandMode, label: 'Controllers', icon: Cpu },
       { key: 'pbus' as CommandMode, label: 'P-BUS', icon: Cable },
       { key: 'ma3' as CommandMode, label: 'FXK-LIGHT', icon: Gauge },
-      { key: 'module' as CommandMode, label: 'FXK Module', icon: Cpu },
       { key: 'wifi_direct' as CommandMode, label: 'WiFi Direct', icon: Wifi },
       { key: 'drone_ops' as CommandMode, label: 'FXK-DRONES', icon: Layers },
     ],
@@ -163,9 +158,8 @@ export default function CommandCenter() {
       case 'controllers': return <VirtualControllerHub fs onSelectMode={(m) => handleModeChange(m as CommandMode)} />;
       case 'pbus': return <PBusMonitorPanel />;
       case 'ma3': return <MA3ControlPanel fs />;
-      case 'module': return <VirtualIFMx32QPanel fs />;
       case 'wifi_direct': return <WiFiDirectControlPanel fs />;
-      case 'artnet_modules': return <ArtNetModulePanel fs />;
+      case 'artnet_modules': return <FXKNetPanel fs />;
       case 'connections': return <ConnectionManagerPanel fs />;
       case 'radio': return <RadioControlPanel fs />;
       case 'field_map': return <FieldMap2D fs />;
