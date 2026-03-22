@@ -340,8 +340,9 @@ export default function Dashboard() {
                 className="group relative overflow-hidden rounded-2xl border p-3 text-left transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-[1.06] active:scale-[0.95] animate-fxk-stagger"
                 style={{
                   animationDelay: `${0.1 + i * 0.04}s`,
-                  borderColor: `${console.color}20`,
-                  background: `linear-gradient(135deg, ${console.glow} 0%, hsl(220 18% 4%) 100%)`,
+                  borderColor: `${console.color}15`,
+                  background: `rgba(8, 10, 14, 0.7)`,
+                  backdropFilter: 'blur(24px) saturate(1.4)',
                 }}
               >
                 {/* Accent top bar */}
