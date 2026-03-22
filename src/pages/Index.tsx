@@ -102,6 +102,7 @@ import SACNMonitorPanel from '@/components/editor/SACNMonitorPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
+import SelectionModeBar from '@/components/editor/SelectionModeBar';
 import PositionContextMenu from '@/components/editor/PositionContextMenu';
 import MobileTabBar, { type MobileTab } from '@/components/editor/MobileTabBar';
 import MobileFloatingPanel from '@/components/editor/MobileFloatingPanel';
