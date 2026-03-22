@@ -216,6 +216,12 @@ export function useFireOneModuleMode(): UseFireOneModuleReturn {
     return ok;
   }, []);
 
+  const connectDirectRelay = useCallback(async () => {
+    const ok = await (bridgeRef.current?.connectDirectRelay() ?? false);
+    setBridgeStatus(bridgeRef.current?.getStatus() ?? null);
+    return ok;
+  }, []);
+
   const disconnectHardware = useCallback(async () => {
     await bridgeRef.current?.disconnect();
     setBridgeStatus(bridgeRef.current?.getStatus() ?? null);
