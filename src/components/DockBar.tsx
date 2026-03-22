@@ -10,7 +10,7 @@ import { ambientSound } from '@/lib/ambientSound';
 import { haptics } from '@/lib/haptics';
 import {
   LayoutDashboard, Clapperboard, CalendarDays,
-  Crosshair, Gamepad2, Cpu, Bluetooth, Rocket,
+  Crosshair, Gamepad2, Rocket,
   Settings, Shield,
 } from 'lucide-react';
 import { useAdminRole } from '@/hooks/useAdminRole';
