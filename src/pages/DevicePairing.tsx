@@ -6,7 +6,7 @@ import { bleService, initialModuleState, type FXKModuleState } from '@/services/
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
-  ArrowLeft, Bluetooth, BluetoothConnected, Nfc, Wifi, WifiOff,
+  Bluetooth, BluetoothConnected, Nfc,
   Battery, BatteryFull, BatteryLow, BatteryMedium, BatteryCharging,
   Shield, ShieldAlert, ShieldCheck, ShieldOff,
   Zap, Radio, CircleDot, AlertTriangle, Check, X, Loader2
