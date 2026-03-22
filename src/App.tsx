@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import Agenda from "./pages/Agenda";
 import Training from "./pages/Training";
 import NotFound from "./pages/NotFound";
+import PCBViewer from "./pages/PCBViewer";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ function App() {
                 <Route path="/editor" element={<Index />} />
                 <Route path="/agenda" element={<Agenda />} />
                 <Route path="/training" element={<Training />} />
+                <Route path="/pcb-viewer" element={<PCBViewer />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
