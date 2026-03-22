@@ -57,6 +57,7 @@ export interface Effect {
     fadeProfile: 'linear' | 'exponential' | 'ember';
   };
   niagaraPresetId?: string;     // matched Niagara preset ID
+  formulationId?: string;       // Chemical formulation ID for realistic rendering
 }
 
 export interface TimelineItem {
