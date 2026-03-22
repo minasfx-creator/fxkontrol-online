@@ -8,7 +8,7 @@
  * TransportManager handles priority routing, E-STOP broadcast, and auto-fallback.
  */
 
-export type TransportType = 'serial' | 'radio' | 'wifi' | 'artnet';
+export type TransportType = 'serial' | 'radio' | 'wifi' | 'wifi_direct' | 'artnet';
 export type TransportState = 'disconnected' | 'connecting' | 'connected' | 'error' | 'reconnecting';
 
 export interface TransportStatus {
