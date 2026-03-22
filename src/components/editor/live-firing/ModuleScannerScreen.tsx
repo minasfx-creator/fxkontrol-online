@@ -182,7 +182,18 @@ export default function ModuleScannerScreen({
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          {scanning && (
+          {autoDiscovery && (
+            <span className={cn("font-bold", isCompact ? "text-[8px]" : "text-[9px]")}
+              style={{ color: 'hsl(120 70% 45% / 0.8)' }}>
+              <span className="inline-block w-1.5 h-1.5 rounded-full mr-1" style={{
+                background: 'hsl(120 70% 45%)',
+                boxShadow: '0 0 4px hsl(120 70% 45% / 0.5)',
+                animation: 'pulse 2s infinite',
+              }} />
+              AUTO · #{scanCycle}
+            </span>
+          )}
+          {scanning && !autoDiscovery && (
             <span className={cn("font-bold animate-pulse", isCompact ? "text-[8px]" : "text-[9px]")}
               style={{ color: 'hsl(32 100% 50%)' }}>
               SCANNING...
