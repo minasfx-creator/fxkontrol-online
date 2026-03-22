@@ -89,6 +89,7 @@ import SiteModelsPanel from '@/components/editor/SiteModelsPanel';
 import VirtualControllerHub from '@/components/editor/VirtualControllerHub';
 import FieldMap2D from '@/components/editor/FieldMap2D';
 import ShowCommanderPanel from '@/components/editor/ShowCommanderPanel';
+import PositionWindow from '@/components/editor/PositionWindow';
 import BluetoothPanel from '@/components/editor/BluetoothPanel';
 import NFCPairPanel from '@/components/editor/NFCPairPanel';
 import DMXOutputPanel from '@/components/editor/DMXOutputPanel';
@@ -313,6 +314,7 @@ function Index() {
     if (!activePanel) return null;
     return (
       <>
+        {activePanel === 'positions' && <PositionWindow onClose={() => setActivePanel(null)} />}
         {activePanel === 'properties' && <PropertiesPanel />}
         {activePanel === 'script' && <ScriptWindow />}
         {activePanel === 'waypoints' && <WaypointEditor onClose={() => setActivePanel(null)} />}
