@@ -17,12 +17,14 @@ export default function FanEffect({
   progress,
   spreadAngle = 90,
   caliber = 3,
+  formulationId,
 }: {
   position: [number, number, number];
   color: string;
   progress: number;
   spreadAngle?: number;
   caliber?: number;
+  formulationId?: string;
 }) {
   const caliberScale = 0.7 + caliber * 0.12;
   // Scale particle density by caliber

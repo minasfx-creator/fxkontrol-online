@@ -19,6 +19,7 @@ export default function RomanCandleEffect({
   shotCount = 8,
   caliber = 2,
   angleOffset = 0,
+  formulationId,
 }: {
   position: [number, number, number];
   color: string;
@@ -26,6 +27,7 @@ export default function RomanCandleEffect({
   shotCount?: number;
   caliber?: number;
   angleOffset?: number;
+  formulationId?: string;
 }) {
   const pointsRef = useRef<THREE.Points>(null);
   const trailLinesRef = useRef<THREE.LineSegments>(null);

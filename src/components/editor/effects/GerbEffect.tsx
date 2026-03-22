@@ -24,6 +24,7 @@ export default function GerbEffect({
   height = 5,
   caliber = 3,
   coldSpark = false,
+  formulationId,
 }: {
   position: [number, number, number];
   color: string;
@@ -31,6 +32,7 @@ export default function GerbEffect({
   height?: number;
   caliber?: number;
   coldSpark?: boolean;
+  formulationId?: string;
 }) {
   const { scene } = useThree();
   const scaledHeight = height * (0.6 + caliber * 0.15);

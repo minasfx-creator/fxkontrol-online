@@ -17,6 +17,7 @@ export default function SparkShower({
   height = 20,
   spread = 6,
   sparkularModel,
+  formulationId,
 }: {
   position: [number, number, number];
   color: string;
@@ -24,6 +25,7 @@ export default function SparkShower({
   height?: number;
   spread?: number;
   sparkularModel?: 'vertical' | 'circular' | 'waterfall' | 'wheel' | 'blast' | 'mobile';
+  formulationId?: string;
 }) {
   const isColdSpark = !!sparkularModel;
   const pointsRef = useRef<THREE.Points>(null);

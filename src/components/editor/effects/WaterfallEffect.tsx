@@ -16,12 +16,14 @@ export default function WaterfallEffect({
   progress,
   width = 5,
   caliber = 3,
+  formulationId,
 }: {
   position: [number, number, number];
   color: string;
   progress: number;
   width?: number;
   caliber?: number;
+  formulationId?: string;
 }) {
   const scaledWidth = width * (0.7 + caliber * 0.12);
   const SCALED_PARTICLE_COUNT = Math.min(800, Math.round(PARTICLE_COUNT * (0.7 + caliber * 0.12)));

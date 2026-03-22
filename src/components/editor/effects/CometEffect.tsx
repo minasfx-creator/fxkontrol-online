@@ -26,6 +26,7 @@ export default function CometEffect({
   direction = 'up',
   caliber = 3,
   angleOffset = 0,
+  formulationId,
 }: {
   position: [number, number, number];
   color: string;
@@ -33,6 +34,7 @@ export default function CometEffect({
   direction?: 'up' | 'down';
   caliber?: number;
   angleOffset?: number;
+  formulationId?: string;
 }) {
   const { scene, camera } = useThree();
   const glowRef = useRef<THREE.Mesh>(null);
