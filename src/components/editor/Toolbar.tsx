@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Zap, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus, Download, ChevronDown, LayoutGrid, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Info, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store, Lightbulb, MonitorSpeaker, FileArchive, Mountain, Building2, Command } from 'lucide-react';
+import { Zap, Save, FolderOpen, Undo, Redo, MapPin, Target, MousePointer, Shapes, LogOut, Upload, FileJson, FilePlus, Download, ChevronDown, LayoutGrid, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Info, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store, Lightbulb, MonitorSpeaker, FileArchive, Mountain, Building2, Command, Copy, Trash2, SkipBack } from 'lucide-react';
 import fxkLogo from '@/assets/fxk-logo.png';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -458,9 +458,31 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       {!isMobile && (
         <div className="flex items-center gap-0.5">
           <DropdownMenu
+            label="Edit"
+            icon={Command}
+            items={[
+              { label: 'Select All (Ctrl+A)', icon: BoxSelect, onClick: () => {
+                const store = useProjectStore.getState();
+                store.timelineItems.forEach(i => store.toggleTimelineItemSelection(i.id));
+              }},
+              { label: 'Duplicate (Ctrl+D)', icon: Copy, onClick: () => {
+                const store = useProjectStore.getState();
+                const ids = store.selectedTimelineItemIds.length > 0 ? store.selectedTimelineItemIds : store.selectedTimelineItemId ? [store.selectedTimelineItemId] : [];
+                if (ids.length > 0) store.duplicateTimelineItems(ids);
+              }},
+              { label: 'Delete (Del)', icon: Trash2, onClick: () => {
+                const store = useProjectStore.getState();
+                if (store.selectedTimelineItemIds.length > 0) store.removeMultipleTimelineItems(store.selectedTimelineItemIds);
+                else if (store.selectedTimelineItemId) store.removeTimelineItem(store.selectedTimelineItemId);
+              }},
+            ]}
+          />
+          <DropdownMenu
             label="Show"
             icon={Film}
             items={[
+              { label: 'Play / Pause (Space)', icon: Film, onClick: () => { const s = useProjectStore.getState(); s.setPlaying(!s.isPlaying); } },
+              { label: 'Rewind', icon: SkipBack, onClick: () => useProjectStore.getState().setCurrentTime(0) },
               { label: 'Show Settings', icon: Cog, onClick: () => onOpenPanel?.('showsettings') },
               { label: 'Show Summary', icon: FileBarChart, onClick: () => onOpenPanel?.('summary') },
               { label: 'VDL Calibration', icon: Gauge, onClick: () => onOpenPanel?.('calibration') },
@@ -475,7 +497,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
             label="View"
             icon={Eye}
             items={[
-              { label: 'Position Window', icon: MapPin, onClick: () => onOpenPanel?.('positions') },
+              { label: 'Position Window (V)', icon: MapPin, onClick: () => onOpenPanel?.('positions') },
               { label: 'Properties', icon: Cog, onClick: () => onOpenPanel?.('properties') },
               { label: 'Script Editor', icon: Film, onClick: () => onOpenPanel?.('script') },
               { label: 'Groups', icon: Users, onClick: () => onOpenPanel?.('groups') },

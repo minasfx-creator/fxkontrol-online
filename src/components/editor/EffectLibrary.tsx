@@ -129,6 +129,14 @@ function EffectTableRow({ effect, index, usageCount }: { effect: Effect; index: 
       <td className="px-1 py-[5px] w-5">
         <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: effect.color, boxShadow: `0 0 6px ${effect.color}44` }} />
       </td>
+      {/* Part type badge */}
+      <td className="px-1 py-[5px] w-10">
+        {isPyro && (
+          <span className="text-[7px] font-bold px-1 py-0.5 rounded bg-accent/12 text-accent uppercase tracking-wider">
+            {effect.category === 'mines' ? 'MINE' : effect.category === 'roman_candles' ? 'RC' : effect.category === 'cakes_batteries' ? 'CAKE' : effect.category === 'waterfalls' ? 'FALL' : 'SHELL'}
+          </span>
+        )}
+      </td>
       {/* Effect name */}
       <td className="px-1.5 py-[5px] font-medium text-foreground truncate max-w-[120px]">
         <span>{effect.name}</span>
@@ -282,10 +290,15 @@ function EffectCard({ effect }: { effect: Effect }) {
         <div className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full transition-opacity" style={{ backgroundColor: accentColor, opacity: isSelected ? 1 : 0.3 }} />
         <GripVertical className="w-3 h-3 text-muted-foreground/15 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
         <div className="w-3.5 h-3.5 rounded-md flex-shrink-0" style={{ backgroundColor: effect.color, boxShadow: `0 0 8px ${effect.color}33` }} />
-        <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0">
           <p className="truncate text-[11px] font-medium leading-tight text-foreground">{effect.name}</p>
           <div className="flex items-center gap-1.5 mt-0.5">
             {isPyro && <span className="text-[9px] text-accent/60 font-mono-code font-semibold">{effect.caliber || 4}"</span>}
+            {isPyro && (
+              <span className="text-[7px] px-1 py-0.5 rounded bg-accent/10 text-accent/60 font-bold uppercase">
+                {effect.category === 'mines' ? 'MINE' : effect.category === 'roman_candles' ? 'RC' : effect.category === 'cakes_batteries' ? 'CAKE' : effect.category === 'waterfalls' ? 'FALL' : 'SHELL'}
+              </span>
+            )}
             <span className="text-[9px] text-muted-foreground/50 font-mono-code">{effect.duration}s</span>
           </div>
         </div>
