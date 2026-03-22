@@ -962,18 +962,19 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
           <Button
             onClick={handleGenerate}
             disabled={loading || (mode === 'video' ? videoFrames.length === 0 : mode === 'image' ? !imageBase64 : !prompt.trim())}
-            className="flex-1 h-8 text-[10px] gap-1"
+            className="flex-1 h-8 text-[10px] gap-1 font-mono font-bold uppercase tracking-wider"
             size="sm"
+            style={{ background: loading ? 'hsl(165 30% 15%)' : 'hsl(165 50% 25%)', color: 'hsl(165 100% 80%)' }}
           >
             {loading ? (
               <>
-                <Loader2 className="w-3 h-3 animate-spin" />
-                {loadingPhase}
+                <Loader2 className="w-3 h-3 animate-spin" style={{ color: 'hsl(165 100% 50%)' }} />
+                COMPUTING TRAJECTORIES...
               </>
             ) : (
               <>
                 <Send className="w-3 h-3" />
-                {mode === 'full-show' ? 'Gerar Show' : mode === 'music-sync' ? 'Music Sync' : mode === 'image' ? '📷 Imagem' : mode === 'video' ? '🎬 Vídeo' : 'Gerar'} ({droneCount})
+                {mode === 'full-show' ? 'DEPLOY SHOW' : mode === 'music-sync' ? 'SYNC DEPLOY' : mode === 'image' ? 'IMAGE TRACE' : mode === 'video' ? 'VIDEO TRACE' : 'DEPLOY'} ({droneCount})
               </>
             )}
           </Button>
