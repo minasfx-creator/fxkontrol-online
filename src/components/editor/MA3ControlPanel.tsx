@@ -404,24 +404,44 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
             </Button>
           </div>
 
-          {/* FXK-LIGHT Macros */}
-          <div className="flex flex-wrap gap-1">
-            <Button size="sm" variant="outline" className="h-6 text-[8px] px-2"
-              onClick={() => sendMacro('Go+ Seq 1', 'Go+')} disabled={oscState !== 'connected'}>
-              <Play className="w-2.5 h-2.5 mr-0.5" /> Go+
-            </Button>
-            <Button size="sm" variant="outline" className="h-6 text-[8px] px-2"
-              onClick={() => sendMacro('Go- Seq 1', 'Go-')} disabled={oscState !== 'connected'}>
-              <SkipBack className="w-2.5 h-2.5 mr-0.5" /> Go−
-            </Button>
-            <Button size="sm" variant="outline" className="h-6 text-[8px] px-2"
-              onClick={() => sendMacro('Pause Seq 1', 'Pause')} disabled={oscState !== 'connected'}>
-              <Pause className="w-2.5 h-2.5 mr-0.5" /> Pause
-            </Button>
-            <Button size="sm" variant="outline" className="h-6 text-[8px] px-2 text-amber-400 border-amber-500/30"
-              onClick={() => sendMacro('BlackOut', 'Blackout')} disabled={oscState !== 'connected'}>
-              <Moon className="w-2.5 h-2.5 mr-0.5" /> BO
-            </Button>
+          {/* Theater Membrane Keys — GO / BACK / PAUSE / BLACKOUT */}
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => sendMacro('Go+ Seq 1', 'Go+')}
+              disabled={oscState !== 'connected'}
+              className={cn(
+                "flex-[2] flex items-center justify-center gap-1.5 rounded-sm border-2 font-black uppercase tracking-[0.15em] transition-all min-h-[48px]",
+                oscState === 'connected'
+                  ? "border-indigo-500/50 bg-indigo-500/15 text-indigo-300 hover:bg-indigo-500/25 active:scale-[0.97]"
+                  : "border-border/10 bg-transparent text-muted-foreground/20"
+              )} style={{ boxShadow: oscState === 'connected' ? 'inset 0 2px 4px rgba(0,0,0,0.3), 0 0 12px hsl(240 50% 50% / 0.1)' : 'inset 0 1px 2px rgba(0,0,0,0.3)' }}>
+              <Play className="w-4 h-4" /> GO
+            </button>
+            <button onClick={() => sendMacro('Go- Seq 1', 'Go-')} disabled={oscState !== 'connected'}
+              className="flex-1 flex items-center justify-center gap-1 rounded-sm border-2 border-border/15 bg-transparent text-muted-foreground/50 hover:bg-muted/10 font-bold text-[9px] min-h-[48px] transition-all active:scale-[0.97]"
+              style={{ boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.3)' }}>
+              <SkipBack className="w-3 h-3" /> BACK
+            </button>
+            <button onClick={() => sendMacro('Pause Seq 1', 'Pause')} disabled={oscState !== 'connected'}
+              className="flex-1 flex items-center justify-center gap-1 rounded-sm border-2 border-border/15 bg-transparent text-muted-foreground/50 hover:bg-muted/10 font-bold text-[9px] min-h-[48px] transition-all active:scale-[0.97]"
+              style={{ boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.3)' }}>
+              <Pause className="w-3 h-3" /> PAUSE
+            </button>
+          </div>
+          {/* BLACKOUT — Full width prominent key */}
+          <button onClick={() => sendMacro('BlackOut', 'Blackout')} disabled={oscState !== 'connected'}
+            className={cn(
+              "w-full flex items-center justify-center gap-2 rounded-sm border-2 font-black uppercase tracking-[0.2em] transition-all min-h-[44px]",
+              oscState === 'connected'
+                ? "border-amber-500/40 bg-amber-500/5 text-amber-400 hover:bg-amber-500/15 active:scale-[0.98]"
+                : "border-border/10 text-muted-foreground/20"
+            )} style={{
+              boxShadow: oscState === 'connected' ? 'inset 0 2px 4px rgba(0,0,0,0.4)' : 'none',
+              background: oscState === 'connected' ? 'linear-gradient(180deg, hsl(40 20% 8%) 0%, hsl(40 10% 4%) 100%)' : undefined,
+            }}>
+            <Moon className="w-4 h-4" /> BLACKOUT
+          </button>
+          <div className="flex gap-1">
             <Button size="sm" variant="outline" className="h-6 text-[8px] px-2 text-emerald-400 border-emerald-500/30"
               onClick={() => sendMacro('FullOn', 'Full On')} disabled={oscState !== 'connected'}>
               <Sun className="w-2.5 h-2.5 mr-0.5" /> Full

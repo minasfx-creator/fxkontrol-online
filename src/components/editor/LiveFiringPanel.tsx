@@ -803,10 +803,23 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
 
   const mob = isMobile; // shorthand
 
+  // Platform-aware branding
+  const isDmxMode = mode === 'super_dmx' || mode === 'simple_dmx';
+  const isFireMode = mode === 'pyro_fire' || mode === 'manual_fire' || mode === 'auto_fire';
+  const platformAccent = isDmxMode
+    ? { name: 'FXK-DMX', sub: 'FXCOMMANDER 2.0', color: 'hsl(200 80% 48%)', textClass: 'text-cyan-400', bgGrad: 'linear-gradient(135deg, hsl(200 80% 48%), hsl(200 60% 30%))' }
+    : { name: 'FXK-PYRO', sub: 'XL4+ 2.0', color: 'hsl(0 85% 48%)', textClass: 'text-red-400', bgGrad: 'linear-gradient(135deg, hsl(0 80% 45%), hsl(0 70% 30%))' };
+
   const renderStatusBar = (fs: boolean) => (
-    <div className={cn("flex items-center justify-between border-b-2", fs && mob ? "px-3 py-2" : fs ? "px-6 py-3" : "px-2 py-1.5")} style={{ borderColor: 'hsl(220 10% 15%)', background: 'hsl(220 15% 8%)' }}>
+    <div className={cn("flex items-center justify-between border-b-2", fs && mob ? "px-3 py-2" : fs ? "px-6 py-3" : "px-2 py-1.5")}
+      style={{
+        borderColor: isDmxMode ? 'hsl(200 60% 25%)' : 'hsl(0 40% 20%)',
+        background: isDmxMode ? 'hsl(200 15% 7%)' : 'hsl(220 15% 8%)',
+      }}>
       <div className="flex items-center gap-2">
-        <div className={cn("rounded bg-gradient-to-b from-amber-500 to-amber-700 flex items-center justify-center cursor-pointer", fs && mob ? "w-6 h-6" : fs ? "w-8 h-8" : "w-5 h-5")}
+        <div className={cn("rounded flex items-center justify-center cursor-pointer font-black text-white",
+          fs && mob ? "w-6 h-6 text-[9px]" : fs ? "w-8 h-8 text-[10px]" : "w-5 h-5 text-[7px]"
+        )} style={{ background: platformAccent.bgGrad }}
           onClick={() => {
             const now = Date.now();
             if (now - showModeTapRef.current < 400) {
@@ -818,64 +831,48 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
               showModeTapRef.current = now;
             }
           }}>
-          <Zap className={cn(fs && mob ? "w-3.5 h-3.5" : fs ? "w-5 h-5" : "w-3 h-3", "text-black")} />
+          {isDmxMode ? 'DX' : 'F1'}
         </div>
         <div>
-          <div className={cn("font-black text-foreground tracking-[0.12em]", fs && mob ? "text-xs" : fs ? "text-base" : "text-[10px]")}>FXK-PYRO</div>
-          <div className={cn("font-mono tracking-wider", fs && mob ? "text-[9px]" : fs ? "text-[9px]" : "text-[10px]", showMode ? "text-red-400/60" : "text-muted-foreground/40")}>
-            {showMode ? '● SHOW MODE' : 'FX KONTROL · V2.0'}
+          <div className={cn("font-black tracking-[0.12em]", platformAccent.textClass,
+            fs && mob ? "text-xs" : fs ? "text-base" : "text-[10px]"
+          )}>{platformAccent.name}</div>
+          <div className={cn("font-mono tracking-wider",
+            fs && mob ? "text-[9px]" : fs ? "text-[9px]" : "text-[10px]",
+            showMode ? "text-red-400/60" : "text-muted-foreground/40"
+          )}>
+            {showMode ? '● SHOW MODE' : platformAccent.sub}
           </div>
         </div>
       </div>
       <div className="flex items-center gap-2">
-        {/* Elapsed timer */}
         <span className={cn("font-mono text-foreground/40", fs && mob ? "text-[10px]" : fs ? "text-sm" : "text-[10px]")}>
           {formatTimecode(elapsedMs)}
         </span>
-        {/* Battery — hide on mobile fs for space */}
         {!(fs && mob) && (
           <div className="flex items-center gap-1">
             <Battery className={cn(batteryVoltage > 11 ? "text-green-400/60" : "text-amber-400", fs ? "w-4 h-4" : "w-2.5 h-2.5")} />
             <span className={cn("font-mono text-muted-foreground/40", fs ? "text-[9px]" : "text-[10px]")}>{batteryVoltage.toFixed(2)}V</span>
           </div>
         )}
-        {/* DMX Signal LED Indicator */}
-        <div className="flex items-center gap-1" title={artNetConnected ? `DMX Signal: Active · ${settings.artNetIp}:${settings.artNetPort}` : 'DMX Signal: No Signal'}>
-          {/* LED + signal bars */}
+        <div className="flex items-center gap-1" title={artNetConnected ? `DMX Signal: Active` : 'DMX Signal: No Signal'}>
           <div className="flex items-end gap-[1px]">
-            {/* Main LED */}
-            <div
-              className={cn(
-                "rounded-full transition-colors",
-                artNetConnected
-                  ? "bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.6)]"
-                  : "bg-muted-foreground/20",
-                fs ? "w-2.5 h-2.5" : "w-1.5 h-1.5"
-              )}
-              style={artNetConnected ? { animation: 'pulse 2s ease-in-out infinite' } : undefined}
-            />
-            {/* Signal strength bars */}
+            <div className={cn("rounded-full transition-colors",
+              artNetConnected ? "bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.6)]" : "bg-muted-foreground/20",
+              fs ? "w-2.5 h-2.5" : "w-1.5 h-1.5"
+            )} />
             {[0.3, 0.55, 0.8, 1].map((h, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "rounded-[1px] transition-all",
-                  artNetConnected
-                    ? i < 3 ? "bg-green-500" : relayConnected ? "bg-green-500" : "bg-green-500/30"
-                    : "bg-muted-foreground/15",
-                  fs ? "w-[3px]" : "w-[2px]"
-                )}
-                style={{ height: fs ? `${Math.round(h * 12)}px` : `${Math.round(h * 8)}px` }}
-              />
+              <div key={i} className={cn("rounded-[1px]",
+                artNetConnected ? i < 3 ? "bg-green-500" : relayConnected ? "bg-green-500" : "bg-green-500/30" : "bg-muted-foreground/15",
+                fs ? "w-[3px]" : "w-[2px]"
+              )} style={{ height: fs ? `${Math.round(h * 12)}px` : `${Math.round(h * 8)}px` }} />
             ))}
           </div>
-          <span className={cn(
-            "font-mono",
-            artNetConnected ? "text-green-500/70" : "text-muted-foreground/40",
+          <span className={cn("font-mono", artNetConnected ? "text-green-500/70" : "text-muted-foreground/40",
             fs && mob ? "text-[9px]" : fs ? "text-[9px]" : "text-[10px]"
           )}>DMX</span>
         </div>
-        <button onClick={() => relayConnected ? disconnectRelay() : connectRelay()} className="flex items-center gap-1" title={relayConnected ? 'Relay UDP conectado — clique para desconectar' : 'Clique para conectar relay UDP local'}>
+        <button onClick={() => relayConnected ? disconnectRelay() : connectRelay()} className="flex items-center gap-1">
           <div className={cn("rounded-full", relayConnected ? "bg-cyan-400" : "bg-muted-foreground/20", fs ? "w-2.5 h-2.5" : "w-1.5 h-1.5")} style={relayConnected ? { boxShadow: '0 0 6px rgba(0,220,255,0.5)' } : undefined} />
           <span className={cn("font-mono", relayConnected ? "text-cyan-400/70" : "text-muted-foreground/40", fs && mob ? "text-[9px]" : fs ? "text-[9px]" : "text-[10px]")}>UDP</span>
         </button>
