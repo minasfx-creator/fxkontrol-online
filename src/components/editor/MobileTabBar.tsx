@@ -6,6 +6,7 @@ import { useCallback, useRef } from 'react';
 import { haptics } from '@/lib/haptics';
 import { Clock, Sparkles, MapPin, Hexagon, MoreHorizontal, Cable, Cpu, Map, Radio, Smartphone, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import type { PanelId } from '@/components/editor/PanelTabBar';
 
 export type MobileTab = 'timeline' | 'assets' | 'properties' | 'livefx' | 'points' | 'formations' | 'mobilelink' | 'controllers' | 'fieldmap' | 'radio' | 'remote' | 'more';
@@ -34,6 +35,7 @@ export default function MobileTabBar({
   onPanelHeightChange,
 }: MobileTabBarProps) {
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeEffectsCount = useLiveSfxStore(s => s.activeEffects.length);
 
   const handleTabClick = useCallback((tab: MobileTab) => {
     const tabDef = TABS.find(t => t.key === tab);
@@ -107,12 +109,21 @@ export default function MobileTabBar({
                 "active:scale-90"
               )}
             >
-              <Icon className={cn(
-                "w-5 h-5 transition-colors duration-200",
-                isActive
-                  ? accent ? "text-accent" : "text-primary"
-                  : "text-[hsl(var(--muted-foreground)/0.6)]"
-              )} />
+              <div className="relative">
+                <Icon className={cn(
+                  "w-5 h-5 transition-colors duration-200",
+                  isActive
+                    ? accent ? "text-accent" : "text-primary"
+                    : "text-[hsl(var(--muted-foreground)/0.6)]"
+                )} />
+                {/* Active effects count badge */}
+                {key === 'livefx' && activeEffectsCount > 0 && (
+                  <span className="absolute -top-1.5 -right-2 min-w-[14px] h-[14px] rounded-full bg-destructive text-destructive-foreground text-[8px] font-bold flex items-center justify-center px-0.5"
+                    style={{ boxShadow: '0 0 6px hsl(var(--destructive) / 0.5)' }}>
+                    {activeEffectsCount}
+                  </span>
+                )}
+              </div>
               <span className={cn(
                 "text-[9px] font-semibold mt-0.5 transition-colors duration-200",
                 isActive
@@ -121,11 +132,6 @@ export default function MobileTabBar({
               )}>
                 {label}
               </span>
-              {/* Live FX active indicator */}
-              {key === 'livefx' && isActive && (
-                <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 animate-pulse" 
-                  style={{ boxShadow: '0 0 4px rgba(239,68,68,0.6)' }} />
-              )}
             </button>
           );
         })}
