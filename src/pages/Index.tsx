@@ -613,7 +613,7 @@ function Index() {
         <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />
       )}
       <PositionContextMenu />
-      {/* RemoteReceiverOverlay accessed via remotecontrol panel */}
+      <SmartScriptAssistant open={smartScriptOpen} onClose={() => setSmartScriptOpen(false)} />
     </div>
   );
 }
