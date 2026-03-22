@@ -334,18 +334,19 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
       py += cvy * dt;
       pz += cvz * dt;
 
-      if (py < 0 && t > 0.5) break;
+      // Stop at apex — trajectory only goes UP to burst point, not back down
+      if (cvy < 0 && t > 0.1) {
+        pts.push([px * scale, py * scale, pz * scale]);
+        break;
+      }
     }
 
     // Clamp apex index
     const safeApex = Math.min(apexIdx, pts.length - 1);
     const defaultApex: [number, number, number] = [0, useFullScale ? getBreakHeight(caliber) * effectScale : ARROW_LENGTH, 0];
-    const apexPoint = pts[safeApex] || defaultApex;
+    const apexPoint = pts[pts.length - 1] || defaultApex; // Last point IS the burst point
 
-    // Also compute the last point (end of trajectory)
-    const lastPoint = pts[pts.length - 1] || apexPoint;
-
-    return { points: pts, apexPoint, lastPoint, apexIdx: safeApex };
+    return { points: pts, apexPoint, apexIdx: safeApex };
   }, [heading, pitch, realCaliber, useFullScale, effectScale]);
 
   // Handle at the APEX of the trajectory (burst point — Finale 3D style)
