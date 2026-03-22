@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { artnetModuleService, type ArtNetModuleConfig, type ModuleTransport } from '@/services/artnetModuleService';
+import { artnetModuleService, type ArtNetModuleConfig, type ModuleTransport, type RedundancyMode } from '@/services/artnetModuleService';
 
 interface DbModule {
   id: string;
