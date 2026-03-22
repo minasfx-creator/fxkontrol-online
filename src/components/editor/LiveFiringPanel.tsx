@@ -835,7 +835,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
         </div>
         <div>
           <div className={cn("font-black text-foreground tracking-[0.12em]", fs && mob ? "text-xs" : fs ? "text-base" : "text-[10px]")}>FXcommander™</div>
-          <div className={cn("font-mono tracking-wider", fs && mob ? "text-[8px]" : fs ? "text-[9px]" : "text-[10px]", showMode ? "text-red-400/60" : "text-muted-foreground/40")}>
+          <div className={cn("font-mono tracking-wider", fs && mob ? "text-[9px]" : fs ? "text-[9px]" : "text-[10px]", showMode ? "text-red-400/60" : "text-muted-foreground/40")}>
             {showMode ? '● SHOW MODE' : 'SHOWVEN® · V2.0'}
           </div>
         </div>
@@ -885,12 +885,12 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           <span className={cn(
             "font-mono",
             artNetConnected ? "text-green-500/70" : "text-muted-foreground/40",
-            fs && mob ? "text-[8px]" : fs ? "text-[9px]" : "text-[10px]"
+            fs && mob ? "text-[9px]" : fs ? "text-[9px]" : "text-[10px]"
           )}>DMX</span>
         </div>
         <button onClick={() => relayConnected ? disconnectRelay() : connectRelay()} className="flex items-center gap-1" title={relayConnected ? 'Relay UDP conectado — clique para desconectar' : 'Clique para conectar relay UDP local'}>
           <div className={cn("rounded-full", relayConnected ? "bg-cyan-400" : "bg-muted-foreground/20", fs ? "w-2.5 h-2.5" : "w-1.5 h-1.5")} style={relayConnected ? { boxShadow: '0 0 6px rgba(0,220,255,0.5)' } : undefined} />
-          <span className={cn("font-mono", relayConnected ? "text-cyan-400/70" : "text-muted-foreground/40", fs && mob ? "text-[8px]" : fs ? "text-[9px]" : "text-[10px]")}>UDP</span>
+          <span className={cn("font-mono", relayConnected ? "text-cyan-400/70" : "text-muted-foreground/40", fs && mob ? "text-[9px]" : fs ? "text-[9px]" : "text-[10px]")}>UDP</span>
         </button>
         <div className="flex items-center gap-1">
           <Signal className={cn(pyroArm ? "text-red-500" : "text-muted-foreground/20", fs && mob ? "w-3.5 h-3.5" : fs ? "w-4 h-4" : "w-2.5 h-2.5")} />
@@ -981,7 +981,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
             <ChevronRight className={cn(fs ? "w-4 h-4" : "w-3 h-3")} />
           </button>
         </div>
-        <span className={cn("font-mono text-muted-foreground/20", fs && mob ? "text-[8px]" : fs ? "text-[10px]" : "text-[10px]")}>
+        <span className={cn("font-mono text-muted-foreground/20", fs && mob ? "text-[9px]" : fs ? "text-[10px]" : "text-[10px]")}>
           Page {cuePage + 1}/16
         </span>
       </div>
@@ -1077,7 +1077,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           {pbus.isConnected && <span className={cn("font-mono text-[10px]", fs ? "text-[10px]" : "")}>
             <span className={cn("inline-block w-1.5 h-1.5 rounded-full mr-0.5", pbus.connectionPath === 'radio' ? "bg-amber-400" : "bg-green-500")} />PB
           </span>}
-          <span className={cn("font-mono", fs && mob ? "text-[8px]" : fs ? "text-[9px]" : "text-[10px]", artNetConnected ? "text-green-500/60" : "text-muted-foreground/20")}>
+          <span className={cn("font-mono", fs && mob ? "text-[9px]" : fs ? "text-[9px]" : "text-[10px]", artNetConnected ? "text-green-500/60" : "text-muted-foreground/20")}>
             {artNetConnected ? '● Art-Net' : '○ Off'}
           </span>
         </div>
