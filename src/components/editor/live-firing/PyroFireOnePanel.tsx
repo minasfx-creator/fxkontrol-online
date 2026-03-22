@@ -20,6 +20,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import ModuleScannerScreen from './ModuleScannerScreen';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import type { SFXChannel, AutoFireCue } from './types';
