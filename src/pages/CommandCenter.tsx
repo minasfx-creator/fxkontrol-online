@@ -138,6 +138,7 @@ export default function CommandCenter() {
 
   const handleBootComplete = useCallback(() => {
     if (!bootConsole) return;
+    if (!initialBootDone) setInitialBootDone(true);
     setActiveMode(bootConsole);
     setSearchParams({ mode: bootConsole }, { replace: true });
     setSwapPhase('in');
@@ -147,7 +148,7 @@ export default function CommandCenter() {
       setSwapPhase('idle');
       setSwapFlash(false);
     }, 400);
-  }, [bootConsole, setSearchParams]);
+  }, [bootConsole, setSearchParams, initialBootDone]);
 
   // Direct-render for non-fire modes
   const renderDirectPanel = useCallback((mode: CommandMode) => {
