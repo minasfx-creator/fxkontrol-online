@@ -179,7 +179,7 @@ function RollArc({ heading, pitch, roll }: { heading: number; pitch: number; rol
 /**
  * HeadingCompassArc
  */
-function HeadingCompass({ heading }: { heading: number }) {
+function HeadingCompass({ heading, shiftHeld }: { heading: number; shiftHeld?: boolean }) {
   const compassCircle = useMemo(() => {
     const pts: [number, number, number][] = [];
     const r = HEADING_ARC_RADIUS;
@@ -189,6 +189,21 @@ function HeadingCompass({ heading }: { heading: number }) {
     }
     return pts;
   }, []);
+
+  // Snap grid lines every 15° when Shift held
+  const snapGridLines = useMemo(() => {
+    if (!shiftHeld) return null;
+    const lines: [number, number, number][][] = [];
+    const r = HEADING_ARC_RADIUS;
+    for (let deg = 0; deg < 360; deg += 15) {
+      const rad = deg * (Math.PI / 180);
+      lines.push([
+        [Math.sin(rad) * r * 0.8, 0.02, -Math.cos(rad) * r * 0.8],
+        [Math.sin(rad) * r * 1.1, 0.02, -Math.cos(rad) * r * 1.1],
+      ]);
+    }
+    return lines;
+  }, [shiftHeld]);
 
   const headingTick = useMemo(() => {
     const hRad = heading * (Math.PI / 180);
@@ -222,6 +237,9 @@ function HeadingCompass({ heading }: { heading: number }) {
   return (
     <group>
       <Line points={compassCircle} color={COLORS.grid} lineWidth={0.8} transparent opacity={0.15} />
+      {snapGridLines && snapGridLines.map((pts, i) => (
+        <Line key={i} points={pts} color={COLORS.grid} lineWidth={0.5} transparent opacity={0.25} />
+      ))}
       <Line points={northTick} color="#EF5350" lineWidth={2} transparent opacity={0.5} />
       <Line points={headingTick} color={COLORS.headingArc} lineWidth={2.5} transparent opacity={0.8} />
       {headingArc.length >= 2 && (
@@ -350,6 +368,9 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
     (gl.domElement as HTMLElement).style.cursor = 'grabbing';
   }, [gl, position, batchMode, selectedIds]);
 
+  // Delta HUD state for angle changes
+  const [angleDelta, setAngleDelta] = useState<{ h: number; p: number } | null>(null);
+
   useEffect(() => {
     if (!isDragging) return;
     const handleMove = (e: PointerEvent) => {
@@ -368,9 +389,23 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
       let newHeading = Math.atan2(dir.x, -dir.z) * (180 / Math.PI);
       let newPitch = Math.max(-180, Math.min(180, Math.asin(Math.max(-1, Math.min(1, dir.y))) * (180 / Math.PI)));
 
+      // Shift-snap to 5° increments
+      if (e.shiftKey) {
+        newHeading = Math.round(newHeading / 5) * 5;
+        newPitch = Math.round(newPitch / 5) * 5;
+      }
+
       // Axis constraints
       if (dragAxis === 'heading') newPitch = position.pitch || 85;
       if (dragAxis === 'pitch') newHeading = position.heading;
+
+      // Compute delta for HUD
+      if (dragStartRef.current) {
+        setAngleDelta({
+          h: Math.round(newHeading - dragStartRef.current.heading),
+          p: Math.round(newPitch - dragStartRef.current.pitch),
+        });
+      }
 
       if (batchMode && selectedIds && dragStartRef.current) {
         const dHeading = newHeading - dragStartRef.current.heading;
@@ -378,8 +413,9 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
         selectedIds.forEach(id => {
           const start = batchStartRef.current.get(id);
           if (start) {
-            const h = dragAxis === 'pitch' ? start.heading : start.heading + dHeading;
-            const p = dragAxis === 'heading' ? start.pitch : Math.max(-180, Math.min(180, start.pitch + dPitch));
+            let h = dragAxis === 'pitch' ? start.heading : start.heading + dHeading;
+            let p = dragAxis === 'heading' ? start.pitch : Math.max(-180, Math.min(180, start.pitch + dPitch));
+            if (e.shiftKey) { h = Math.round(h / 5) * 5; p = Math.round(p / 5) * 5; }
             updatePosition(id, { heading: h, pitch: p });
           }
         });
@@ -389,6 +425,7 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
     };
     const handleUp = () => {
       setIsDragging(false);
+      setAngleDelta(null);
       dragStartRef.current = null;
       batchStartRef.current.clear();
       (gl.domElement as HTMLElement).style.cursor = '';
@@ -429,7 +466,7 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
 
   return (
     <group ref={ref} position={[position.x, position.y, position.z]}>
-      <HeadingCompass heading={position.heading} />
+      <HeadingCompass heading={position.heading} shiftHeld={isDragging} />
       <PitchArc heading={position.heading} pitch={position.pitch || 85} />
       <RollArc heading={position.heading} pitch={position.pitch || 85} roll={position.roll || 0} />
 
@@ -549,6 +586,12 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
           {windCompGhost && (
             <div style={{ fontSize: '8px', color: '#4CAF50', opacity: 0.8, marginTop: '1px' }}>
               ↻ drift {windCompGhost.drift.driftX}m × {windCompGhost.drift.driftZ}m
+            </div>
+          )}
+          {/* Delta HUD during drag */}
+          {isDragging && angleDelta && (
+            <div style={{ fontSize: '9px', color: COLORS.handleActive, fontWeight: 700, marginTop: '2px', letterSpacing: '0.5px' }}>
+              ΔH {angleDelta.h > 0 ? '+' : ''}{angleDelta.h}° · ΔP {angleDelta.p > 0 ? '+' : ''}{angleDelta.p}°
             </div>
           )}
         </div>

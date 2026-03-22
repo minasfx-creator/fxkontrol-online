@@ -121,9 +121,10 @@ export default function ScriptWindow() {
   const [editingCell, setEditingCell] = useState<{ rowId: string; field: string } | null>(null);
   const [editDraft, setEditDraft] = useState('');
   const editInputRef = useRef<HTMLInputElement>(null);
+  const [posDropdown, setPosDropdown] = useState<{ rowId: string } | null>(null);
 
   // Editable fields in order for Tab navigation
-  const EDITABLE_FIELDS = ['eventTime', 'pan', 'tilt', 'notes'] as const;
+  const EDITABLE_FIELDS = ['eventTime', 'position', 'pan', 'tilt', 'notes'] as const;
   
   // Navigation intent resolved after rows are computed
   const [editNavIntent, setEditNavIntent] = useState<{ dir: 'next-cell' | 'next-row'; fromRowId: string; fromField: string } | null>(null);
@@ -306,11 +307,15 @@ export default function ScriptWindow() {
         const nextField = EDITABLE_FIELDS[idx + 1];
         const row = rows.find(r => r.id === fromRowId);
         if (row) {
-          const val = nextField === 'eventTime' ? row.eventTime
-            : nextField === 'pan' ? row.pan
-            : nextField === 'tilt' ? row.tilt
-            : row.notes;
-          startEditing(fromRowId, nextField, val);
+          if (nextField === 'position') {
+            setPosDropdown({ rowId: fromRowId });
+          } else {
+            const val = nextField === 'eventTime' ? row.eventTime
+              : nextField === 'pan' ? row.pan
+              : nextField === 'tilt' ? row.tilt
+              : row.notes;
+            startEditing(fromRowId, nextField, val);
+          }
         }
       }
     } else if (dir === 'next-row') {
@@ -1009,14 +1014,46 @@ export default function ScriptWindow() {
                     </div>
                   </td>
 
-                  {/* Position */}
-                  <td className="px-1 py-0.5">
-                    <span className={cn(
-                      "truncate max-w-[60px] block",
-                      row.position === 'UNASSIGNED' ? "text-destructive/60 italic" : "text-muted-foreground"
-                    )}>
+                  {/* Position — click to assign via dropdown */}
+                  <td className="px-1 py-0.5 relative">
+                    <span
+                      className={cn(
+                        "truncate max-w-[80px] block cursor-pointer border-b border-transparent hover:border-border/40 transition-colors",
+                        row.position === 'UNASSIGNED' ? "text-destructive/60 italic" : "text-muted-foreground"
+                      )}
+                      onClick={(e) => { e.stopPropagation(); setPosDropdown(posDropdown?.rowId === row.id ? null : { rowId: row.id }); }}
+                    >
                       {row.position}
                     </span>
+                    {posDropdown?.rowId === row.id && (
+                      <div className="absolute z-50 top-full left-0 mt-0.5 min-w-[120px] max-h-[160px] overflow-y-auto rounded-md border border-border/60 bg-popover/95 p-0.5 shadow-lg backdrop-blur-sm">
+                        {positions.filter(p => p.type === 'pyro').map(pos => (
+                          <button
+                            key={pos.id}
+                            className="flex w-full items-center gap-1.5 rounded-sm px-2 py-1 text-[9px] hover:bg-accent/50 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const targetIds = selectedIds.size > 1 && selectedIds.has(row.id)
+                                ? Array.from(selectedIds) : [row.id];
+                              targetIds.forEach(id => {
+                                updateTimelineItem(id, {
+                                  positionId: pos.id,
+                                  positionName: pos.name,
+                                  position: { x: pos.x, y: pos.y, z: pos.z },
+                                });
+                              });
+                              setPosDropdown(null);
+                            }}
+                          >
+                            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: pos.color }} />
+                            <span className="truncate">{pos.name}</span>
+                          </button>
+                        ))}
+                        {positions.filter(p => p.type === 'pyro').length === 0 && (
+                          <div className="px-2 py-1 text-[8px] text-muted-foreground/50 italic">No positions</div>
+                        )}
+                      </div>
+                    )}
                   </td>
 
                   {/* Pan — click-to-edit */}

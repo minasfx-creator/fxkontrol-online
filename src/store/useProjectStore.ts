@@ -80,6 +80,7 @@ export interface TimelineItem {
   section?: string;
   universe?: string;
   customField?: string;
+  durationOverride?: number;  // Manual duration override from timeline resize
   // ── Finale 3D position linking ──
   positionId?: string;
   positionIds?: string[];
