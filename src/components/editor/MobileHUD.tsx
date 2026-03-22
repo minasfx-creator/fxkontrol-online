@@ -60,12 +60,20 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
     <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="flex items-center justify-between px-3 pt-2 pb-1 mx-3 mt-1">
         {/* Left: Timecode pill (Dynamic Island style) */}
-        <div className="pointer-events-auto status-pill">
-          <Zap className="w-3 h-3 text-primary" />
+        <div className={cn(
+          "pointer-events-auto status-pill transition-all duration-300",
+          isArmed && "ring-1 ring-destructive/40 shadow-[0_0_8px_hsl(var(--destructive)/0.15)]"
+        )}>
+          <Zap className={cn("w-3 h-3", isArmed ? "text-destructive" : "text-primary")} />
           <span className="font-mono text-[11px] font-semibold text-primary tabular-nums tracking-tight">
             {formatTimecode(currentTime)}
           </span>
-          {countdown && (
+          {isArmed && (
+            <span className="text-[9px] font-bold text-destructive animate-pulse ml-1">
+              ARMED
+            </span>
+          )}
+          {countdown && !isArmed && (
             <span className={cn(
               "text-[9px] font-bold ml-1",
               countdown === 'LIVE' ? "text-destructive" : "text-accent"

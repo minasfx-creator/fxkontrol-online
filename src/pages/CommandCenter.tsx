@@ -7,11 +7,12 @@ import { useSearchParams } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
+import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { cn } from '@/lib/utils';
 import {
   Zap, Lightbulb, Hand, Flame, Timer, Check, Cpu, Cable,
   Gauge, Wifi, Globe, Plug, Radio, Map, Smartphone, Settings,
-  Shield, AlertTriangle, ChevronRight
+  Shield, AlertTriangle, ChevronRight, AlertOctagon
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -73,14 +74,25 @@ const MODE_SECTIONS = [
   },
 ];
 
+/* ── Mobile Category Tabs ── */
+const MOBILE_CATEGORIES = [
+  { label: 'Fire', icon: Flame, section: 0 },
+  { label: 'HW', icon: Cpu, section: 1 },
+  { label: 'Net', icon: Globe, section: 2 },
+  { label: 'Sys', icon: Settings, section: 3 },
+];
+
 export default function CommandCenter() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialMode = (searchParams.get('mode') as CommandMode) || 'super_dmx';
   const [activeMode, setActiveMode] = useState<CommandMode>(initialMode);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileCategory, setMobileCategory] = useState(0);
   const isMobile = useIsMobile();
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();
+  const activeEffects = useLiveSfxStore(s => s.activeEffects);
+  const isArmed = activeEffects.length > 0;
 
   const connectedCount = useMemo(() => {
     let c = 0;
@@ -102,15 +114,126 @@ export default function CommandCenter() {
     return activeMode;
   }, [activeMode]);
 
-  // Mobile: render LiveFiringPanel in fullscreen with initial mode
+  // ── Mobile Layout ──
   if (isMobile) {
+    const categoryModes = MODE_SECTIONS[mobileCategory]?.modes ?? [];
+
     return (
-      <div className="h-[100dvh] w-screen">
-        <LiveFiringPanel initialMode={activeMode} standalone />
+      <div className="h-[100dvh] w-screen flex flex-col bg-background">
+        {/* ── Dynamic Island Status ── */}
+        <div className="shrink-0 px-3 pt-2 pb-1" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+          <div className={cn(
+            "flex items-center justify-between px-3 py-2 rounded-2xl border transition-all",
+            "bg-[hsl(var(--surface-1)/0.6)] backdrop-blur-xl",
+            isArmed
+              ? "border-destructive/40 shadow-[0_0_12px_hsl(var(--destructive)/0.2)]"
+              : "border-border/20"
+          )}>
+            {/* Connection status */}
+            <div className="flex items-center gap-2">
+              <div className={cn(
+                "h-2 w-2 rounded-full shrink-0",
+                connectedCount > 0 ? "bg-emerald-400 animate-pulse" : "bg-muted-foreground/30"
+              )} />
+              <span className="text-[9px] font-bold text-foreground uppercase tracking-wider">
+                {connectedCount > 0 ? `${connectedCount} ONLINE` : 'OFFLINE'}
+              </span>
+            </div>
+
+            {/* Active mode label */}
+            <span className="text-[9px] font-mono font-semibold text-primary">
+              {currentModeLabel}
+            </span>
+
+            {/* ARMED badge */}
+            <div className="flex items-center gap-1.5">
+              {fireone.isConnected && (
+                <Badge variant="outline" className="text-[8px] h-4 px-1 border-red-500/30 text-red-400">FO</Badge>
+              )}
+              {pbus.isConnected && (
+                <Badge variant="outline" className="text-[8px] h-4 px-1 border-amber-500/30 text-amber-400">PB</Badge>
+              )}
+              {isArmed && (
+                <Badge variant="destructive" className="text-[8px] h-4 px-1 animate-pulse">ARMED</Badge>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Quick Mode Pills ── */}
+        <div className="shrink-0 px-3 py-1.5">
+          <ScrollArea className="w-full">
+            <div className="flex gap-1.5 pb-1">
+              {categoryModes.map(mode => {
+                const isActive = activeMode === mode.key;
+                const Icon = mode.icon;
+                return (
+                  <button
+                    key={mode.key}
+                    onClick={() => handleModeChange(mode.key)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-xl whitespace-nowrap transition-all",
+                      "text-[10px] font-semibold border",
+                      isActive
+                        ? "bg-primary/15 text-primary border-primary/30"
+                        : "bg-[hsl(var(--surface-1)/0.4)] text-muted-foreground/60 border-border/10 active:scale-95"
+                    )}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {mode.label}
+                  </button>
+                );
+              })}
+            </div>
+          </ScrollArea>
+        </div>
+
+        {/* ── Main Content ── */}
+        <div className="flex-1 overflow-hidden">
+          <LiveFiringPanel initialMode={activeMode} standalone />
+        </div>
+
+        {/* ── Bottom Category Navigation ── */}
+        <div
+          className="shrink-0 border-t border-border/15"
+          style={{
+            paddingBottom: 'env(safe-area-inset-bottom)',
+            background: 'hsl(225 12% 5% / 0.9)',
+            backdropFilter: 'blur(40px)',
+          }}
+        >
+          <nav className="flex items-center justify-around py-1.5">
+            {MOBILE_CATEGORIES.map((cat, idx) => {
+              const isActive = mobileCategory === idx;
+              const Icon = cat.icon;
+              return (
+                <button
+                  key={cat.label}
+                  onClick={() => setMobileCategory(idx)}
+                  className={cn(
+                    "flex flex-col items-center gap-0.5 py-1 px-4 rounded-xl transition-all active:scale-90",
+                  )}
+                >
+                  <Icon className={cn(
+                    "w-5 h-5 transition-colors",
+                    isActive ? "text-primary" : "text-muted-foreground/40"
+                  )} />
+                  <span className={cn(
+                    "text-[9px] font-semibold transition-colors",
+                    isActive ? "text-primary" : "text-muted-foreground/30"
+                  )}>
+                    {cat.label}
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
       </div>
     );
   }
 
+  // ── Desktop Layout (unchanged) ──
   return (
     <div className="h-[calc(100vh-3rem)] flex overflow-hidden">
       {/* ── Glass Sidebar ── */}
@@ -148,10 +271,10 @@ export default function CommandCenter() {
                   <p className="text-[8px] text-muted-foreground font-mono">{connectedCount} connected</p>
                 </div>
                 {fireone.isConnected && (
-                  <Badge variant="outline" className="text-[7px] h-4 px-1 border-red-500/30 text-red-400 shrink-0">FO</Badge>
+                  <Badge variant="outline" className="text-[8px] h-4 px-1 border-red-500/30 text-red-400 shrink-0">FO</Badge>
                 )}
                 {pbus.isConnected && (
-                  <Badge variant="outline" className="text-[7px] h-4 px-1 border-amber-500/30 text-amber-400 shrink-0">PB</Badge>
+                  <Badge variant="outline" className="text-[8px] h-4 px-1 border-amber-500/30 text-amber-400 shrink-0">PB</Badge>
                 )}
               </div>
             )}
@@ -223,6 +346,11 @@ export default function CommandCenter() {
             <span className="text-[10px] font-bold text-foreground uppercase tracking-wider">{currentModeLabel}</span>
           </div>
           <div className="flex items-center gap-2">
+            {isArmed && (
+              <Badge variant="destructive" className="text-[8px] h-5 animate-pulse">
+                ARMED • {activeEffects.length}
+              </Badge>
+            )}
             {connectedCount > 0 && (
               <Badge variant="outline" className="text-[8px] h-5 border-emerald-500/20 text-emerald-400">
                 {connectedCount} ONLINE
