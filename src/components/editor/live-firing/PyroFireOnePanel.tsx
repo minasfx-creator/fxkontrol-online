@@ -1469,88 +1469,19 @@ export default function PyroFireOnePanel({
     </div>
   );
 
-  // ── Render: Module Monitor (replaces deadman) ──
-  const renderModuleMonitor = () => {
-    const onlineCount = modules.filter(m => m.connected).length;
-    const totalBatteryOk = modules.filter(m => m.connected && m.batteryVoltage > 11).length;
-    const avgSignal = modules.filter(m => m.connected).reduce((s, m) => s + m.signalStrength, 0) / Math.max(onlineCount, 1);
-    
-    return (
-      <div className={cn("border-t border-primary/15 shrink-0",
-        sz === 'xl' ? "px-5 py-2" : "px-3 py-1.5"
-      )} style={{ background: 'hsl(220 12% 4%)' }}>
-        {/* Summary bar */}
-        <div className={cn("flex items-center gap-3 font-mono",
-          sz === 'xl' ? "text-[10px] mb-2" : "text-[8px] mb-1"
-        )}>
-          <span className="text-primary/60 font-bold tracking-wider">MODULE TELEMETRY</span>
-          <span className="text-green-400/70">ONLINE: {onlineCount}/{modules.length}</span>
-          <span className={cn(armedModCount > 0 ? "text-red-400" : "text-muted-foreground/30")}>ARMED: {armedModCount}</span>
-          <span className={cn(totalBatteryOk === onlineCount ? "text-green-400/60" : "text-amber-400/70")}>BATT: {totalBatteryOk === onlineCount ? 'OK' : `${totalBatteryOk}/${onlineCount}`}</span>
-          <span className={cn(avgSignal > 70 ? "text-green-400/60" : "text-amber-400/70")}>SIG: {avgSignal > 70 ? 'STRONG' : 'WEAK'}</span>
-          <button onClick={handleModuleScan} disabled={scanning}
-            className={cn("ml-auto rounded border font-bold uppercase transition-all flex items-center gap-1",
-              sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[8px]",
-              scanning
-                ? "bg-primary/10 border-primary/30 text-primary pyro-scan-sweep"
-                : "border-primary/20 text-primary/60 hover:text-primary hover:border-primary/40"
-            )}>
-            <Search className={cn(sz === 'xl' ? "w-3 h-3" : "w-2.5 h-2.5")} />
-            {scanning ? 'SCANNING...' : 'SCAN'}
-          </button>
-        </div>
-        {/* Scan progress */}
-        {scanning && (
-          <div className="w-full h-0.5 rounded-full overflow-hidden mb-1" style={{ background: 'hsl(220 10% 10%)' }}>
-            <div className="h-full rounded-full transition-all" style={{
-              width: `${scanProgress}%`,
-              background: 'linear-gradient(90deg, hsl(var(--primary)), hsl(var(--electric-glow)))',
-              boxShadow: '0 0 8px hsl(var(--primary) / 0.4)',
-            }} />
-          </div>
-        )}
-        {/* Module cards grid */}
-        <div className={cn("grid gap-1", sz === 'xl' ? "grid-cols-6" : "grid-cols-3")}>
-          {modules.map(m => (
-            <div key={m.address} className={cn(
-              "rounded border p-1.5 font-mono transition-all",
-              m.armed ? "border-red-500/30 bg-red-500/5 armed-pulse" :
-              m.connected ? (m.batteryVoltage > 11 && m.signalStrength > 60 ? "border-green-500/20 bg-green-500/5" : "border-amber-400/20 bg-amber-400/5") :
-              "border-border/5 bg-transparent opacity-30"
-            )}>
-              <div className="flex items-center justify-between">
-                <span className={cn("font-bold", sz === 'xl' ? "text-[10px]" : "text-[8px]",
-                  m.armed ? "text-red-400" : m.connected ? "text-foreground/60" : "text-muted-foreground/20"
-                )}>FM-{String(m.address).padStart(2, '0')}</span>
-                {/* Signal bars */}
-                <div className="flex items-end gap-px">
-                  {[1, 2, 3, 4, 5].map(bar => (
-                    <div key={bar} className={cn(
-                      "w-[2px] rounded-t",
-                      bar * 20 <= m.signalStrength ? "bg-green-400/70" : "bg-muted-foreground/10"
-                    )} style={{ height: `${bar * 2 + 2}px` }} />
-                  ))}
-                </div>
-              </div>
-              {m.connected && (
-                <div className={cn("flex items-center gap-1.5 mt-0.5", sz === 'xl' ? "text-[8px]" : "text-[7px]")}>
-                  {/* Battery SVG arc */}
-                  <svg width="16" height="10" viewBox="0 0 16 10">
-                    <rect x="0.5" y="1" width="13" height="8" rx="1" fill="none" stroke="hsl(var(--muted-foreground) / 0.2)" strokeWidth="0.7" />
-                    <rect x="13.5" y="3" width="2" height="4" rx="0.5" fill="hsl(var(--muted-foreground) / 0.15)" />
-                    <rect x="1.5" y="2" width={`${Math.min(11, (m.batteryVoltage / 12.8) * 11)}`} height="6" rx="0.5"
-                      fill={m.batteryVoltage > 11.5 ? 'hsl(120 70% 40%)' : m.batteryVoltage > 11 ? 'hsl(45 100% 50%)' : 'hsl(0 80% 50%)'} />
-                  </svg>
-                  <span className="text-muted-foreground/40">{m.batteryVoltage.toFixed(1)}V</span>
-                  <span className="text-muted-foreground/30">{Math.round(m.temperature)}°</span>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
+  // ── Render: Module Scanner Screen ──
+  const renderModuleScanner = () => (
+    <ModuleScannerScreen
+      modules={modules}
+      selectedModule={selectedModule}
+      onSelectModule={setSelectedModule}
+      onScan={handleModuleScan}
+      scanning={scanning}
+      scanProgress={scanProgress}
+      sz={sz}
+      isMobile={mob}
+    />
+  );
 
   // ── Mode content router ──
   const renderModeContent = () => {
