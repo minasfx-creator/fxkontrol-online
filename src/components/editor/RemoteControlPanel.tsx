@@ -122,8 +122,9 @@ export default function RemoteControlPanel({ onClose, onOpenPanel, initialMode =
       if (d.batteryV > 0) { batterySum += d.batteryV; batteryCount++; }
     });
     const paths: ('usb' | 'radio' | 'pbus')[] = [];
-    if (fireone.connectionPath === 'wired') paths.push('usb');
+    if (fireone.connectionPath === 'serial') paths.push('usb');
     if (fireone.connectionPath === 'radio') paths.push('radio');
+    if (fireone.connectionPath === 'wifi') paths.push('usb');
     if (pbus.connectionPath === 'wired') paths.push('pbus');
     if (pbus.connectionPath === 'radio') paths.push('radio');
     return {

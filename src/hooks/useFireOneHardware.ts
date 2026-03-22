@@ -1,9 +1,7 @@
 /**
  * useFireOneHardware — React hook bridging FireOneController ↔ component state
- * Supports wired RS-485 + wireless IFMx-i32Q with RSSI polling and auto-fallback
- * Transparent radio fallback via useRadioLink when antenna connected
- * UltraFire mode: download fire files to modules for autonomous firing
- * Priority Disable: 16 groups for selective product disabling
+ * Multi-transport: Cable (RS-485), Radio, Wi-Fi (WebSocket relay), Art-Net
+ * UltraFire mode, Priority Disable, Preset firing
  */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
@@ -23,7 +21,7 @@ import {
   buildWirelessConfigCommand,
   clampFireDuration,
 } from '@/lib/fireoneProtocol';
-import { useRadioLink } from '@/hooks/useRadioLink';
+import { getTransportManager, type TransportStatus, type TransportType } from '@/lib/fireoneTransport';
 
 export interface FireOneHardwareState {
   isConnected: boolean;
@@ -33,6 +31,8 @@ export interface FireOneHardwareState {
   txBytes: number;
   rxBytes: number;
   scanning: boolean;
+  // Multi-transport
+  transports: TransportStatus[];
   // UltraFire
   ultraFireMode: boolean;
   verifyCode: string | null;
@@ -53,6 +53,7 @@ export function useFireOneHardware() {
     txBytes: 0,
     rxBytes: 0,
     scanning: false,
+    transports: [],
     ultraFireMode: false,
     verifyCode: null,
     ultraFireVerifiedModules: [],
@@ -64,14 +65,13 @@ export function useFireOneHardware() {
   const rxRef = useRef(0);
   const wirelessPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const controller = getFireOneController();
-  const radioLink = useRadioLink();
+  const transportManager = getTransportManager();
 
-  // Connection path
-  const connectionPath = useMemo((): 'wired' | 'radio' | 'none' => {
-    if (state.isConnected) return 'wired';
-    if (radioLink.isConnected) return 'radio';
-    return 'none';
-  }, [state.isConnected, radioLink.isConnected]);
+  // Connection path — best transport type
+  const connectionPath = useMemo((): TransportType | 'none' => {
+    const best = state.transports.find(t => t.state === 'connected');
+    return best?.type ?? 'none';
+  }, [state.transports]);
 
   const effectivelyConnected = connectionPath !== 'none';
 
@@ -88,7 +88,6 @@ export function useFireOneHardware() {
     return count;
   }, [state.modules]);
 
-  // Worst RSSI across all wireless modules
   const worstRssi = useMemo(() => {
     let worst: number | null = null;
     state.modules.forEach(m => {
@@ -98,6 +97,16 @@ export function useFireOneHardware() {
     });
     return worst;
   }, [state.modules]);
+
+  // Subscribe to transport manager events
+  useEffect(() => {
+    const unsub = transportManager.on((event) => {
+      if (event.type === 'transport-added' || event.type === 'transport-removed' || event.type === 'transport-state') {
+        setState(prev => ({ ...prev, transports: transportManager.allTransports }));
+      }
+    });
+    return unsub;
+  }, [transportManager]);
 
   // Subscribe to controller events
   useEffect(() => {
@@ -115,7 +124,6 @@ export function useFireOneHardware() {
           });
           break;
         }
-
         case 'continuity-result':
         case 'fire-confirm':
         case 'arm-confirm':
@@ -128,12 +136,10 @@ export function useFireOneHardware() {
           });
           break;
         }
-
         case 'heartbeat': {
           setState(prev => ({ ...prev, lastHeartbeat: event.timestamp, rxBytes: rxRef.current }));
           break;
         }
-
         case 'wireless-status': {
           const ws = event.data as FireOneWirelessStatus;
           setState(prev => {
@@ -141,24 +147,16 @@ export function useFireOneHardware() {
             const existing = newModules.get(event.moduleAddress);
             if (existing) {
               newModules.set(event.moduleAddress, {
-                ...existing,
-                rssiDbm: ws.rssiDbm,
-                wirelessChannel: ws.channel,
-                packetLoss: ws.packetLoss,
-                linkQuality: ws.linkQuality,
-                connectionMode: ws.mode,
-                wireless: ws.mode !== 'wired',
+                ...existing, rssiDbm: ws.rssiDbm, wirelessChannel: ws.channel,
+                packetLoss: ws.packetLoss, linkQuality: ws.linkQuality,
+                connectionMode: ws.mode, wireless: ws.mode !== 'wired',
               });
             }
             return { ...prev, modules: newModules, rxBytes: rxRef.current };
           });
           break;
         }
-
-        case 'wireless-fallback': {
-          break;
-        }
-
+        case 'wireless-fallback': break;
         case 'config-response': {
           const config = event.data as FireOneModuleConfig;
           setState(prev => {
@@ -166,34 +164,25 @@ export function useFireOneHardware() {
             const existing = newModules.get(event.moduleAddress);
             if (existing) {
               newModules.set(event.moduleAddress, {
-                ...existing,
-                serialNumber: config.serialNumber,
-                dmxUniverse: config.dmxUniverse,
-                wireless: config.wireless,
-                firmwareVersion: config.firmwareVersion,
+                ...existing, serialNumber: config.serialNumber, dmxUniverse: config.dmxUniverse,
+                wireless: config.wireless, firmwareVersion: config.firmwareVersion,
               });
             }
             return { ...prev, modules: newModules, rxBytes: rxRef.current };
           });
           break;
         }
-
         case 'ultrafire-verify': {
           const { verified } = event.data as { verified: boolean };
           if (verified) {
             setState(prev => ({
-              ...prev,
-              ultraFireVerifiedModules: [...prev.ultraFireVerifiedModules, event.moduleAddress],
+              ...prev, ultraFireVerifiedModules: [...prev.ultraFireVerifiedModules, event.moduleAddress],
               rxBytes: rxRef.current,
             }));
           }
           break;
         }
-
-        case 'ultrafire-download-progress': {
-          break;
-        }
-
+        case 'ultrafire-download-progress': break;
         case 'priority-update': {
           const { priority, enabled } = event.data as { priority: number; enabled: boolean };
           setState(prev => {
@@ -203,24 +192,21 @@ export function useFireOneHardware() {
           });
           break;
         }
-
         case 'error': {
           setState(prev => ({ ...prev, connectionError: `Module ${event.moduleAddress}: ${JSON.stringify(event.data)}` }));
           break;
         }
       }
     });
-
     return unsubscribe;
   }, [controller]);
 
-  // Wireless RSSI polling — poll every 3s when connected
+  // Wireless RSSI polling
   useEffect(() => {
-    if (!state.isConnected) {
+    if (!effectivelyConnected) {
       if (wirelessPollRef.current) { clearInterval(wirelessPollRef.current); wirelessPollRef.current = null; }
       return;
     }
-
     wirelessPollRef.current = setInterval(() => {
       state.modules.forEach((m) => {
         if (m.wireless || m.connectionMode === 'wireless' || m.connectionMode === 'fallback') {
@@ -231,25 +217,73 @@ export function useFireOneHardware() {
       });
       setState(prev => ({ ...prev, txBytes: txRef.current }));
     }, RSSI_POLL_INTERVAL);
-
     return () => { if (wirelessPollRef.current) clearInterval(wirelessPollRef.current); };
-  }, [state.isConnected, state.modules, controller]);
+  }, [effectivelyConnected, state.modules, controller]);
+
+  // ═══════════════════════════════════════════════════════════
+  // Connection methods — multi-transport
+  // ═══════════════════════════════════════════════════════════
 
   const connect = useCallback(async () => {
     try {
       setState(prev => ({ ...prev, connectionError: null }));
       await controller.connect();
-      setState(prev => ({ ...prev, isConnected: true }));
+      setState(prev => ({ ...prev, isConnected: true, transports: transportManager.allTransports }));
     } catch (err: any) {
-      setState(prev => ({ ...prev, isConnected: false, connectionError: err.message || 'Failed to connect' }));
+      setState(prev => ({ ...prev, connectionError: err.message || 'Falha ao conectar' }));
       throw err;
     }
-  }, [controller]);
+  }, [controller, transportManager]);
+
+  const connectWiFi = useCallback(async (relayIp: string, relayPort = 9485) => {
+    try {
+      setState(prev => ({ ...prev, connectionError: null }));
+      const id = await controller.connectWiFi(relayIp, relayPort);
+      setState(prev => ({ ...prev, transports: transportManager.allTransports }));
+      return id;
+    } catch (err: any) {
+      setState(prev => ({ ...prev, connectionError: err.message }));
+      throw err;
+    }
+  }, [controller, transportManager]);
+
+  const connectRadio = useCallback(async (baudRate = 38400) => {
+    try {
+      setState(prev => ({ ...prev, connectionError: null }));
+      const id = await controller.connectRadio(baudRate);
+      setState(prev => ({ ...prev, transports: transportManager.allTransports }));
+      return id;
+    } catch (err: any) {
+      setState(prev => ({ ...prev, connectionError: err.message }));
+      throw err;
+    }
+  }, [controller, transportManager]);
+
+  const connectArtNet = useCallback(async (targetIp = '2.0.0.1') => {
+    try {
+      setState(prev => ({ ...prev, connectionError: null }));
+      const id = await controller.connectArtNet(targetIp);
+      setState(prev => ({ ...prev, transports: transportManager.allTransports }));
+      return id;
+    } catch (err: any) {
+      setState(prev => ({ ...prev, connectionError: err.message }));
+      throw err;
+    }
+  }, [controller, transportManager]);
+
+  const removeTransport = useCallback((id: string) => {
+    controller.removeTransport(id);
+    setState(prev => ({ ...prev, transports: transportManager.allTransports }));
+  }, [controller, transportManager]);
 
   const disconnect = useCallback(async () => {
     await controller.disconnect();
-    setState(prev => ({ ...prev, isConnected: false, modules: new Map(), lastHeartbeat: null }));
+    setState(prev => ({ ...prev, isConnected: false, modules: new Map(), lastHeartbeat: null, transports: [] }));
   }, [controller]);
+
+  // ═══════════════════════════════════════════════════════════
+  // Firing commands — route via TransportManager automatically
+  // ═══════════════════════════════════════════════════════════
 
   const armModule = useCallback(async (addr: number) => {
     txRef.current += 5; setState(prev => ({ ...prev, txBytes: txRef.current }));
@@ -263,22 +297,15 @@ export function useFireOneHardware() {
 
   const fireIgniter = useCallback(async (addr: number, pin: number, durationMs = 500) => {
     const safeDuration = clampFireDuration(durationMs);
-    // Radio fallback
-    if (!state.isConnected && radioLink.isConnected) {
-      const frame = new Uint8Array([0x46, 0x4F, addr, 0x10, pin, (safeDuration >> 8) & 0xFF, safeDuration & 0xFF]);
-      await radioLink.sendFireOne(addr, frame);
-      return;
-    }
     txRef.current += 8; setState(prev => ({ ...prev, txBytes: txRef.current }));
     await controller.fireIgniter(addr, pin, safeDuration);
-  }, [controller, state.isConnected, radioLink]);
+  }, [controller]);
 
   const requestContinuity = useCallback(async (addr: number) => {
     txRef.current += 5; setState(prev => ({ ...prev, txBytes: txRef.current }));
     await controller.requestContinuity(addr);
   }, [controller]);
 
-  /** Discover modules — default 40 per XLII+ manual */
   const discoverModules = useCallback(async (maxAddr = FIREONE_MAX_MODULES) => {
     setState(prev => ({ ...prev, scanning: true }));
     try {
@@ -290,36 +317,19 @@ export function useFireOneHardware() {
   }, [controller]);
 
   const emergencyStop = useCallback(async () => {
-    // E-STOP goes through ALL paths simultaneously
-    if (radioLink.isConnected) {
-      const frame = new Uint8Array([0x46, 0x4F, 0xFF, 0xFF]);
-      await radioLink.sendFireOne(0xFF, frame).catch(() => {});
-    }
-    if (state.isConnected) {
-      txRef.current += 15; setState(prev => ({ ...prev, txBytes: txRef.current }));
-      await controller.emergencyStop();
-    }
-  }, [controller, state.isConnected, radioLink]);
+    txRef.current += 15; setState(prev => ({ ...prev, txBytes: txRef.current }));
+    await controller.emergencyStop();
+  }, [controller]);
 
   const armAll = useCallback(async () => {
-    if (!state.isConnected && radioLink.isConnected) {
-      const frame = new Uint8Array([0x46, 0x4F, 0xFF, 0x20]);
-      await radioLink.sendFireOne(0xFF, frame);
-      return;
-    }
     txRef.current += 5; setState(prev => ({ ...prev, txBytes: txRef.current }));
     await controller.armAll();
-  }, [controller, state.isConnected, radioLink]);
+  }, [controller]);
 
   const disarmAll = useCallback(async () => {
-    if (!state.isConnected && radioLink.isConnected) {
-      const frame = new Uint8Array([0x46, 0x4F, 0xFF, 0x21]);
-      await radioLink.sendFireOne(0xFF, frame);
-      return;
-    }
     txRef.current += 5; setState(prev => ({ ...prev, txBytes: txRef.current }));
     await controller.disarmAll();
-  }, [controller, state.isConnected, radioLink]);
+  }, [controller]);
 
   const syncTimecode = useCallback(async (ms: number) => {
     txRef.current += 9; setState(prev => ({ ...prev, txBytes: txRef.current }));
@@ -350,30 +360,15 @@ export function useFireOneHardware() {
     await controller.send(frame);
   }, [controller]);
 
-  // ═══════════════════════════════════════════════════════════
-  // UltraFire mode
-  // ═══════════════════════════════════════════════════════════
-
+  // UltraFire
   const enableUltraFire = useCallback((verifyCode: string) => {
-    setState(prev => ({
-      ...prev,
-      ultraFireMode: true,
-      verifyCode,
-      ultraFireVerifiedModules: [],
-    }));
+    setState(prev => ({ ...prev, ultraFireMode: true, verifyCode, ultraFireVerifiedModules: [] }));
   }, []);
 
   const disableUltraFire = useCallback(() => {
-    setState(prev => ({
-      ...prev,
-      ultraFireMode: false,
-      verifyCode: null,
-      ultraFireVerifiedModules: [],
-      ultraFireDownloading: false,
-    }));
+    setState(prev => ({ ...prev, ultraFireMode: false, verifyCode: null, ultraFireVerifiedModules: [], ultraFireDownloading: false }));
   }, []);
 
-  /** Download fire cues to all relevant modules */
   const downloadToModules = useCallback(async (cuesByModule: Map<number, UltraFireCueData[]>, verifyCode: number) => {
     setState(prev => ({ ...prev, ultraFireDownloading: true, ultraFireVerifiedModules: [] }));
     try {
@@ -381,9 +376,8 @@ export function useFireOneHardware() {
         txRef.current += 3 + cues.length * 8;
         setState(prev => ({ ...prev, txBytes: txRef.current }));
         await controller.downloadUltraFire(addr, verifyCode, cues);
-        await new Promise(r => setTimeout(r, 100)); // gap between modules
+        await new Promise(r => setTimeout(r, 100));
       }
-      // Verify all
       txRef.current += 7;
       setState(prev => ({ ...prev, txBytes: txRef.current }));
       await controller.verifyUltraFire(verifyCode);
@@ -397,10 +391,7 @@ export function useFireOneHardware() {
     await controller.startUltraFire();
   }, [controller]);
 
-  // ═══════════════════════════════════════════════════════════
   // Priority Disable
-  // ═══════════════════════════════════════════════════════════
-
   const setPriorityDisable = useCallback(async (priority: number, enabled: boolean) => {
     txRef.current += 7; setState(prev => ({ ...prev, txBytes: txRef.current }));
     await controller.setPriorityDisable(priority, enabled);
@@ -411,10 +402,7 @@ export function useFireOneHardware() {
     });
   }, [controller]);
 
-  // ═══════════════════════════════════════════════════════════
   // Presets
-  // ═══════════════════════════════════════════════════════════
-
   const loadPreset = useCallback(async (moduleAddr: number, igniterPos: number) => {
     txRef.current += 7; setState(prev => ({ ...prev, txBytes: txRef.current }));
     await controller.loadPreset(moduleAddr, igniterPos);
@@ -435,6 +423,10 @@ export function useFireOneHardware() {
     isConnected: effectivelyConnected,
     connectionPath,
     connect,
+    connectWiFi,
+    connectRadio,
+    connectArtNet,
+    removeTransport,
     disconnect,
     armModule,
     disarmModule,
@@ -452,14 +444,11 @@ export function useFireOneHardware() {
     wirelessModuleCount,
     wiredModuleCount,
     worstRssi,
-    // UltraFire
     enableUltraFire,
     disableUltraFire,
     downloadToModules,
     startUltraFire,
-    // Priority
     setPriorityDisable,
-    // Presets
     loadPreset,
     firePresets,
     clearPresets,

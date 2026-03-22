@@ -562,7 +562,19 @@ export function buildPresetClear(): Uint8Array {
 
 // ═══════════════════════════════════════════════════════════
 // FIREONE SERIAL CONTROLLER CLASS
+// Now uses TransportManager for multi-path communication
 // ═══════════════════════════════════════════════════════════
+
+import {
+  getTransportManager,
+  SerialTransport,
+  RadioTransport,
+  WiFiTransport,
+  ArtNetTransport,
+  type FireOneTransportManager as TransportMgr,
+  type TransportStatus,
+  type TransportType,
+} from '@/lib/fireoneTransport';
 
 export class FireOneController {
   private conn: FireOneConnection | null = null;
@@ -570,9 +582,28 @@ export class FireOneController {
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
   private readBuffer = new Uint8Array(0);
   private modules: Map<number, FireOneModuleStatus> = new Map();
+  private transportManager: TransportMgr;
+
+  constructor() {
+    this.transportManager = getTransportManager();
+    // Subscribe to incoming data from all transports
+    this.transportManager.on((event) => {
+      if (event.type === 'data') {
+        this.processIncoming(event.data);
+      }
+    });
+  }
 
   get isConnected(): boolean {
-    return this.conn?.connected ?? false;
+    return this.transportManager.isConnected || (this.conn?.connected ?? false);
+  }
+
+  get transports(): TransportStatus[] {
+    return this.transportManager.allTransports;
+  }
+
+  get connectedTransportCount(): number {
+    return this.transportManager.connectedCount;
   }
 
   get discoveredModules(): FireOneModuleStatus[] {
@@ -588,75 +619,63 @@ export class FireOneController {
     this.listeners.forEach(l => l(event));
   }
 
-  // ─── Connect via WebSerial ───
+  // ─── Connect via WebSerial (legacy — adds SerialTransport to manager) ───
   async connect(): Promise<void> {
-    if (!('serial' in navigator)) {
-      throw new Error('WebSerial API não suportada neste navegador');
-    }
-
-    const nav = navigator as any;
-    const port = await nav.serial.requestPort({
-      filters: [
-        { usbVendorId: 0x0403 },  // FTDI (common RS-485 adapters)
-        { usbVendorId: 0x067B },  // Prolific PL2303
-        { usbVendorId: 0x10C4 },  // Silicon Labs CP210x
-        { usbVendorId: 0x1A86 },  // CH340/CH341
-      ],
-    });
-
-    await port.open({
-      baudRate: FIREONE_BAUD_RATE,
-      dataBits: FIREONE_DATA_BITS,
-      stopBits: FIREONE_STOP_BITS,
-      parity: FIREONE_PARITY,
-      bufferSize: 4096,
-    });
-
-    const reader = port.readable?.getReader() ?? null;
-    const writer = port.writable?.getWriter() ?? null;
-
-    this.conn = { port, reader, writer, connected: true, readLoop: true };
-
-    // Start read loop
-    this.startReadLoop();
-
-    // Start heartbeat (every 2s)
-    this.heartbeatInterval = setInterval(() => {
-      this.send(buildHeartbeat()).catch(() => {});
-    }, 2000);
+    const serial = new SerialTransport();
+    this.transportManager.addTransport(serial);
+    await serial.connect();
+    this.transportManager.startHeartbeat(() => buildHeartbeat(), 2000);
   }
 
-  // ─── Disconnect ───
-  async disconnect(): Promise<void> {
-    if (this.heartbeatInterval) {
-      clearInterval(this.heartbeatInterval);
-      this.heartbeatInterval = null;
-    }
+  /** Connect a Wi-Fi relay transport */
+  async connectWiFi(relayIp: string, relayPort = 9485): Promise<string> {
+    const wifi = new WiFiTransport();
+    this.transportManager.addTransport(wifi);
+    await wifi.connect({ relayIp, relayPort });
+    return wifi.id;
+  }
 
+  /** Connect a Radio transport */
+  async connectRadio(baudRate = 38400): Promise<string> {
+    const radio = new RadioTransport();
+    this.transportManager.addTransport(radio);
+    await radio.connect({ baudRate });
+    return radio.id;
+  }
+
+  /** Connect an Art-Net transport for IFMx-i32Q DMX output */
+  async connectArtNet(targetIp = '2.0.0.1'): Promise<string> {
+    const artnet = new ArtNetTransport();
+    this.transportManager.addTransport(artnet);
+    await artnet.connect({ targetIp, edgeFunctionUrl: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/artnet-bridge` });
+    return artnet.id;
+  }
+
+  /** Remove a transport by ID */
+  removeTransport(id: string): void {
+    this.transportManager.removeTransport(id);
+  }
+
+  // ─── Disconnect all ───
+  async disconnect(): Promise<void> {
+    this.transportManager.stopHeartbeat();
+    await this.transportManager.disconnectAll();
     if (this.conn) {
-      this.conn.readLoop = false;
-      try {
-        if (this.conn.reader) {
-          await this.conn.reader.cancel().catch(() => {});
-          this.conn.reader.releaseLock();
-        }
-        if (this.conn.writer) {
-          await this.conn.writer.close().catch(() => {});
-          this.conn.writer.releaseLock();
-        }
-        await this.conn.port.close().catch(() => {});
-      } catch { /* ignore */ }
       this.conn.connected = false;
       this.conn = null;
     }
-
     this.modules.clear();
   }
 
-  // ─── Send raw frame ───
+  // ─── Send raw frame — routes via TransportManager ───
   async send(data: Uint8Array): Promise<void> {
+    if (this.transportManager.isConnected) {
+      await this.transportManager.send(data);
+      return;
+    }
+    // Legacy fallback to direct conn
     if (!this.conn?.writer || !this.conn.connected) {
-      throw new Error('Não conectado ao hardware FireOne');
+      throw new Error('Nenhum transporte FireOne conectado');
     }
     await this.conn.writer.write(data);
   }
@@ -675,10 +694,11 @@ export class FireOneController {
   }
 
   async emergencyStop(): Promise<void> {
-    await this.send(buildEmergencyStop());
-    // Send 3 times for redundancy
-    await this.send(buildEmergencyStop());
-    await this.send(buildEmergencyStop());
+    // E-STOP broadcasts on ALL transports simultaneously
+    const estop = buildEmergencyStop();
+    await this.transportManager.broadcast(estop);
+    await this.transportManager.broadcast(estop);
+    await this.transportManager.broadcast(estop);
     this.modules.forEach(m => { m.armed = false; });
   }
 
