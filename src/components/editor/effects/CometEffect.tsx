@@ -81,14 +81,15 @@ export default function CometEffect({
 
   // GPU spark seeds (pre-allocated, zero-GC)
   const sparkSeeds = useMemo(() => {
-    const seeds = new Float32Array(SPARK_COUNT * 5); // detachT, spreadAngle, drag, sizeScale, seed
+    const seeds = new Float32Array(SPARK_COUNT * 6); // detachT, spreadAngle, drag, sizeBase, seed, turbAmp
     for (let i = 0; i < SPARK_COUNT; i++) {
       const angle = Math.random() * Math.PI * 2;
-      seeds[i * 5] = 0.03 + Math.random() * 0.8; // detachT
-      seeds[i * 5 + 1] = angle; // spread angle
-      seeds[i * 5 + 2] = 0.90 + Math.random() * 0.08; // drag
-      seeds[i * 5 + 3] = 0.012 + Math.random() * 0.022; // size
-      seeds[i * 5 + 4] = Math.random() * 999 + i; // seed
+      seeds[i * 6] = 0.03 + Math.random() * 0.8; // detachT
+      seeds[i * 6 + 1] = angle; // spread angle
+      seeds[i * 6 + 2] = 0.90 + Math.random() * 0.08; // drag
+      seeds[i * 6 + 3] = 0.04 + hash01(i * 3.7) * 0.10; // size variation (0.04–0.14)
+      seeds[i * 6 + 4] = Math.random() * 999 + i; // seed
+      seeds[i * 6 + 5] = 0.02 + Math.random() * 0.04; // turbulence amplitude
     }
     return seeds;
   }, []);
