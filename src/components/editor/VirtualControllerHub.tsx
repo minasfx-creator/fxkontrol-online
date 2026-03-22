@@ -49,6 +49,7 @@ const CONNECTION_ICONS: Record<ConnectionType, typeof Usb> = {
   serial: Cpu,
   radio: Radio,
   sim: Sparkles,
+  ble: Radio,
 };
 
 const TYPE_COLORS: Record<string, string> = {
