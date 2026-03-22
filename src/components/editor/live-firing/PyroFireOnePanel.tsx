@@ -1276,6 +1276,33 @@ export default function PyroFireOnePanel({
               );
             })}
           </div>
+          {/* Fire Confirmation Log */}
+          {fireLog.length > 0 && (
+            <div className="mt-3 border-t border-primary/10 pt-2">
+              <div className={cn("font-mono font-bold text-primary/50 uppercase mb-1", sz === 'xl' ? "text-[10px]" : "text-[8px]")}>
+                FIRE CONFIRMATION LOG
+              </div>
+              <div className="space-y-0.5">
+                {fireLog.slice(-10).reverse().map((entry, i) => (
+                  <div key={i} className={cn(
+                    "flex items-center gap-2 rounded border font-mono",
+                    sz === 'xl' ? "px-3 py-1 text-[10px]" : "px-2 py-0.5 text-[8px]",
+                    entry.status === 'OK' ? "border-green-500/15 bg-green-500/5 text-green-400/70" :
+                    entry.status === 'LATE' ? "border-amber-400/15 bg-amber-400/5 text-amber-400/70" :
+                    "border-red-500/15 bg-red-500/5 text-red-400/70"
+                  )}>
+                    <span className="w-8">{entry.cueId}</span>
+                    <span className="text-muted-foreground/40">EXP:{formatTimecode(entry.expectedMs)}</span>
+                    <span>ACT:{formatTimecode(entry.actualMs)}</span>
+                    <span className={cn("font-bold",
+                      entry.status === 'OK' ? "text-green-400" : entry.status === 'LATE' ? "text-amber-400" : "text-red-400"
+                    )}>Δ{entry.delta > 0 ? '+' : ''}{entry.delta}ms</span>
+                    <span className="ml-auto font-bold">{entry.status}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
