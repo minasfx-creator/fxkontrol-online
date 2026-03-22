@@ -110,12 +110,17 @@ export default function CommandCenter() {
     if (mode === activeMode) return;
     ambientSound.play('boot');
     setSwapPhase('out');
+    setSwapFlash(false);
     setTimeout(() => {
       setActiveMode(mode);
       setSearchParams({ mode }, { replace: true });
       setSwapPhase('in');
-      setTimeout(() => setSwapPhase('idle'), 300);
-    }, 200);
+      setSwapFlash(true);
+      setTimeout(() => {
+        setSwapPhase('idle');
+        setSwapFlash(false);
+      }, 550);
+    }, 250);
   }, [setSearchParams, activeMode]);
 
   // Direct-render for non-fire modes
