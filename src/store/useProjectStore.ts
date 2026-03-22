@@ -442,6 +442,8 @@ export const useProjectStore = create<ProjectState>((set) => ({
   selectedPositionId: null,
   selectedPositionIds: [],
   editorMode: 'select',
+  selectionMode: 'both',
+  linkedTimelineItemIds: [],
   trajectories: [],
   selectedTrajectoryId: null,
   selectedWaypointId: null,
