@@ -647,6 +647,28 @@ function DirectionLine({ position, color, isSelected, isHovered, hasEffects }: {
         <coneGeometry args={[0.08, 0.22, 4]} />
         <meshBasicMaterial color={typeColor} transparent opacity={opacity} />
       </mesh>
+      {/* Show H/P angle labels when selected */}
+      {isSelected && position.type === 'pyro' && (
+        <Html position={[tip[0] + 0.3, tip[1] + 0.3, tip[2]]} center distanceFactor={10}>
+          <div style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: '9px',
+            background: 'rgba(13,17,23,0.9)',
+            border: '1px solid hsl(32 100% 50% / 0.3)',
+            borderRadius: '3px',
+            padding: '2px 5px',
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+            color: '#B0BEC5',
+          }}>
+            <span style={{ color: '#4FC3F7', fontWeight: 600 }}>H</span>{' '}
+            <span style={{ color: '#fff' }}>{Math.round(position.heading)}°</span>
+            <span style={{ margin: '0 3px', opacity: 0.3 }}>·</span>
+            <span style={{ color: '#FF8A65', fontWeight: 600 }}>P</span>{' '}
+            <span style={{ color: '#fff' }}>{Math.round(position.pitch || 85)}°</span>
+          </div>
+        </Html>
+      )}
     </>
   );
 }
