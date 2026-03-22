@@ -131,7 +131,7 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
             <div className="p-3 space-y-2">
               <div className="flex items-center gap-3">
                 <button
-                  onClick={powered ? module.powerOff : module.powerOn}
+                  onClick={() => powered ? module.powerOff() : module.powerOn()}
                   className={cn(
                     "rounded-full w-10 h-10 flex items-center justify-center transition-all border-2",
                     powered
