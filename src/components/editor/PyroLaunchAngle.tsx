@@ -588,6 +588,12 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
               ↻ drift {windCompGhost.drift.driftX}m × {windCompGhost.drift.driftZ}m
             </div>
           )}
+          {/* Delta HUD during drag */}
+          {isDragging && angleDelta && (
+            <div style={{ fontSize: '9px', color: COLORS.handleActive, fontWeight: 700, marginTop: '2px', letterSpacing: '0.5px' }}>
+              ΔH {angleDelta.h > 0 ? '+' : ''}{angleDelta.h}° · ΔP {angleDelta.p > 0 ? '+' : ''}{angleDelta.p}°
+            </div>
+          )}
         </div>
       </Html>
     </group>
