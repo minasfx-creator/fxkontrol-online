@@ -1004,6 +1004,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
     </div>
   );
 
+  const renderSceneModeBar = (fs: boolean) => (
     <div className={cn("flex items-center border-b border-border/15", fs && mob ? "flex-col" : "")} style={{ background: 'hsl(220 10% 7%)' }}>
       {/* Scenes — styled as backlit console buttons */}
       <div className={cn("flex", fs && mob ? "w-full border-b border-border/10" : "")}>
