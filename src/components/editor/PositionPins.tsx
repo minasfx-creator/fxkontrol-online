@@ -1,9 +1,10 @@
-import { useRef, useState, useCallback, useEffect, forwardRef } from 'react';
+import { useRef, useState, useCallback, useEffect, useMemo, forwardRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { useProjectStore, type Position, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
 import { useUndoStore } from '@/store/useUndoStore';
+import { useAddressingStore } from '@/store/useAddressingStore';
 import * as THREE from 'three';
 
 const PYRO_COLOR = '#FF6B35';
