@@ -54,7 +54,7 @@ export default function SelectionModeBar() {
           // Box select is always available via Shift+Drag, this is just a visual indicator
         }}
         className="flex items-center gap-1 px-1.5 py-1.5 rounded-md text-[9px] text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/20 transition-all"
-        title="Lasso (Shift+Drag)"
+        title="Lasso (Click+Drag)"
       >
         <Lasso className="w-3 h-3" />
       </button>

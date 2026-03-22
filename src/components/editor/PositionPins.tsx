@@ -623,9 +623,9 @@ function DirectionLine({ position, color, isSelected, isHovered, hasEffects }: {
   // Hide stub line when full gizmo is active
   if (editorMode === 'adjust-angles' && isSelected) return null;
 
-  const opacity = isSelected ? 0.85 : isHovered ? 0.5 : hasEffects ? 0.6 : 0.2;
-  const lineWidth = isSelected ? 3 : hasEffects ? 2 : 1;
-  const lineColor = hasEffects ? '#FF3333' : isSelected ? color : '#aaaaaa';
+  const opacity = isSelected ? 1.0 : isHovered ? 0.5 : hasEffects ? 0.7 : 0.2;
+  const lineWidth = isSelected ? 2.5 : hasEffects ? 1.5 : 1;
+  const typeColor = position.type === 'pyro' ? '#FF6B35' : '#00B4D8';
 
   const tip = linePoints[1];
   const dir = new THREE.Vector3(tip[0], tip[1] - 0.15, tip[2]).normalize();
@@ -634,47 +634,37 @@ function DirectionLine({ position, color, isSelected, isHovered, hasEffects }: {
 
   return (
     <>
-      {/* Dotted trajectory line to burst height */}
+      {/* Solid trajectory line to burst height — color matches position type */}
       <Line
         points={linePoints}
-        color={lineColor}
+        color={typeColor}
         lineWidth={lineWidth}
         transparent
         opacity={opacity}
-        dashed={hasEffects}
-        dashSize={0.15}
-        dashOffset={0}
-        gapSize={0.1}
       />
-      {/* Armed indicator dot at origin */}
-      {hasEffects && (
-        <mesh position={[0, 0.15, 0]}>
-          <sphereGeometry args={[0.04, 8, 8]} />
-          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.5} transparent opacity={0.8} />
-        </mesh>
-      )}
-      {/* Arrowhead at tip */}
+      {/* Arrowhead at tip — same color as line */}
       <mesh position={tip} rotation={[e.x, e.y, e.z]}>
         <coneGeometry args={[0.08, 0.22, 4]} />
-        <meshBasicMaterial color={lineColor} transparent opacity={opacity} />
+        <meshBasicMaterial color={typeColor} transparent opacity={opacity} />
       </mesh>
-      {/* Draggable grab handle at burst point — Finale 3D red ring */}
+      {/* Diamond grab handle at burst point — Finale 3D style */}
       {hasEffects && (
         <group position={tip}>
-          {/* Red ring */}
-          <mesh rotation={[e.x, e.y, e.z]}>
-            <torusGeometry args={[0.15, 0.025, 8, 16]} />
+          {/* Diamond shape (octahedron rotated 45°) */}
+          <mesh rotation={[Math.PI / 4, 0, Math.PI / 4]}>
+            <octahedronGeometry args={[0.12, 0]} />
             <meshStandardMaterial
-              color="#FF3333"
-              emissive="#FF3333"
+              color={typeColor}
+              emissive={typeColor}
               emissiveIntensity={isDraggingHandle ? 1.5 : 0.6}
               metalness={0.3}
               roughness={0.5}
+              transparent
+              opacity={0.9}
             />
           </mesh>
           {/* Invisible larger hitbox for easier grabbing */}
           <mesh
-            rotation={[e.x, e.y, e.z]}
             onPointerDown={(ev) => {
               ev.stopPropagation();
               useUndoStore.getState().checkpoint();
@@ -686,7 +676,7 @@ function DirectionLine({ position, color, isSelected, isHovered, hasEffects }: {
             onPointerOver={() => { (gl.domElement as HTMLElement).style.cursor = 'grab'; }}
             onPointerOut={() => { if (!isDraggingHandle) (gl.domElement as HTMLElement).style.cursor = ''; }}
           >
-            <torusGeometry args={[0.2, 0.08, 6, 12]} />
+            <sphereGeometry args={[0.2, 8, 8]} />
             <meshBasicMaterial visible={false} />
           </mesh>
         </group>
