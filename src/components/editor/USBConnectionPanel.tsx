@@ -235,13 +235,13 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
         <div className="flex items-center gap-1">
           <div className="flex items-center gap-0.5 mr-1">
             {serialSupported && (
-              <span className="text-[7px] px-1 py-0.5 rounded bg-green-500/20 text-green-400">Serial</span>
+              <span className="text-[8px] px-1 py-0.5 rounded bg-green-500/20 text-green-400">Serial</span>
             )}
             {usbSupported && (
-              <span className="text-[7px] px-1 py-0.5 rounded bg-cyan-500/20 text-cyan-400">USB</span>
+              <span className="text-[8px] px-1 py-0.5 rounded bg-cyan-500/20 text-cyan-400">USB</span>
             )}
             {!serialSupported && !usbSupported && (
-              <span className="text-[7px] px-1 py-0.5 rounded bg-destructive/20 text-destructive">N/A</span>
+              <span className="text-[8px] px-1 py-0.5 rounded bg-destructive/20 text-destructive">N/A</span>
             )}
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xs">✕</button>
@@ -344,7 +344,7 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
                       <p className={`text-[10px] font-semibold truncate ${TYPE_COLORS[device.profile.type]}`}>
                         {device.profile.label}
                       </p>
-                      <p className="text-[7px] text-muted-foreground">
+                      <p className="text-[8px] text-muted-foreground">
                         {stateInfo.label} · ↑{device.bytesSent}B ↓{device.bytesReceived}B
                       </p>
                     </div>
@@ -391,8 +391,8 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
                           {/* Last received data */}
                           {device.lastData && (
                             <div className="bg-surface-0 rounded-sm p-1">
-                              <p className="text-[7px] text-muted-foreground mb-0.5">Último RX:</p>
-                              <p className="text-[7px] font-mono-code text-primary/80 break-all">
+                              <p className="text-[8px] text-muted-foreground mb-0.5">Último RX:</p>
+                              <p className="text-[8px] font-mono-code text-primary/80 break-all">
                                 {bytesToHex(device.lastData)}
                               </p>
                             </div>
@@ -442,7 +442,7 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
                 )}
                 {logs.map((log, i) => (
                   <div key={i} className="bg-surface-2 rounded-sm px-1.5 py-0.5 flex items-start gap-1">
-                    <span className={`text-[7px] font-bold shrink-0 ${
+                    <span className={`text-[8px] font-bold shrink-0 ${
                       log.direction === 'tx' ? 'text-cyan-400' :
                       log.direction === 'rx' ? 'text-green-400' :
                       log.direction === 'error' ? 'text-destructive' :
@@ -453,7 +453,7 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
                     <div className="flex-1 min-w-0">
                       <p className="text-[8px] text-foreground truncate">{log.message}</p>
                       {log.data && (
-                        <p className="text-[7px] font-mono-code text-primary/60 break-all">{bytesToHex(log.data, 16)}</p>
+                        <p className="text-[8px] font-mono-code text-primary/60 break-all">{bytesToHex(log.data, 16)}</p>
                       )}
                     </div>
                     <span className="text-[8px] text-muted-foreground shrink-0">

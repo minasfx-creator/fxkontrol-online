@@ -533,9 +533,9 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
   // RENDER
   // ═══════════════════════════════════════════════════════════
 
-  const ts = mob ? 'text-[9px]' : fs ? 'text-[8px]' : 'text-[7px]';
+  const ts = mob ? 'text-[9px]' : fs ? 'text-[8px]' : 'text-[8px]';
   const tsL = mob ? 'text-[11px]' : fs ? 'text-[10px]' : 'text-[9px]';
-  const tsS = mob ? 'text-[8px]' : fs ? 'text-[7px]' : 'text-[8px]';
+  const tsS = mob ? 'text-[8px]' : fs ? 'text-[8px]' : 'text-[8px]';
 
   return (
     <div className={cn("flex flex-col h-full", mob ? "p-2 gap-2" : fs ? "p-3 gap-2" : "p-2 gap-1.5")}>
@@ -676,7 +676,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
           <button key={m.key} onClick={() => setXl4Mode(m.key)}
             className={cn(
               "flex items-center gap-1 rounded font-bold uppercase tracking-wider transition-all whitespace-nowrap shrink-0 border",
-              mob ? "px-2.5 py-2 text-[9px]" : fs ? "px-2 py-1.5 text-[8px]" : "px-1.5 py-1 text-[7px]",
+              mob ? "px-2.5 py-2 text-[9px]" : fs ? "px-2 py-1.5 text-[8px]" : "px-1.5 py-1 text-[8px]",
               xl4Mode === m.key
                 ? "bg-primary/10 border-primary/30 text-primary"
                 : "bg-[hsl(220_10%_8%)] border-border/10 text-muted-foreground/30 hover:text-muted-foreground/50"
@@ -813,7 +813,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
                   </div>
                   <div className="flex gap-0.5 flex-wrap">
                     {currentModule.igniters.filter(ig => ig.connected).map((ig, i) => (
-                      <div key={ig.position} className={cn("rounded-sm font-mono", mob ? "w-5 h-5 text-[7px]" : "w-4 h-4 text-[8px]",
+                      <div key={ig.position} className={cn("rounded-sm font-mono", mob ? "w-5 h-5 text-[8px]" : "w-4 h-4 text-[8px]",
                         "flex items-center justify-center",
                         ig.fired ? "bg-red-900/40 text-red-400/40" : i === semiAutoStep ? "bg-amber-500/20 text-amber-400 border border-amber-500/40" : "bg-[hsl(220_10%_12%)] text-muted-foreground/30")}>
                         {ig.position}
@@ -973,7 +973,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
                 </div>
                 <div className="flex items-center gap-1">
                   <button onClick={() => setHwSimulated(!hwSimulated)}
-                    className={cn("rounded border font-bold transition-all", mob ? "px-2 py-1 text-[9px]" : "px-1.5 py-0.5 text-[7px]",
+                    className={cn("rounded border font-bold transition-all", mob ? "px-2 py-1 text-[9px]" : "px-1.5 py-0.5 text-[8px]",
                       hwSimulated ? "border-amber-500/30 bg-amber-500/10 text-amber-400" : "border-border/15 text-muted-foreground/30")}>
                     SIM
                   </button>
@@ -1039,13 +1039,13 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
                         </div>
                         <div className="flex items-center gap-1">
                           <button onClick={() => handleHwContinuity(mod.moduleAddress)}
-                            className={cn("rounded border font-bold transition-all", mob ? "px-2 py-1 text-[9px]" : "px-1.5 py-0.5 text-[7px]",
+                            className={cn("rounded border font-bold transition-all", mob ? "px-2 py-1 text-[9px]" : "px-1.5 py-0.5 text-[8px]",
                               "border-cyan-500/20 text-cyan-400/60 hover:bg-cyan-500/10")}>
                             <Activity className="w-3 h-3 inline mr-0.5" />CHK
                           </button>
                           <button onClick={() => handleHwArmModule(mod.moduleAddress, !mod.armed)}
                             disabled={!masterArmed}
-                            className={cn("rounded border font-bold transition-all", mob ? "px-2 py-1 text-[9px]" : "px-1.5 py-0.5 text-[7px]",
+                            className={cn("rounded border font-bold transition-all", mob ? "px-2 py-1 text-[9px]" : "px-1.5 py-0.5 text-[8px]",
                               mod.armed
                                 ? "border-red-500/40 bg-red-500/15 text-red-400"
                                 : masterArmed ? "border-amber-500/20 text-amber-400/60 hover:bg-amber-500/10" : "border-border/10 text-muted-foreground/15")}>
@@ -1081,7 +1081,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
                                       ? "bg-[hsl(220_10%_10%)] border-border/15 text-muted-foreground/40"
                                       : "bg-[hsl(220_10%_6%)] border-border/5 text-muted-foreground/10"
                               )}>
-                              <span className={cn("font-mono font-bold", mob ? "text-[9px]" : "text-[7px]")}>{ig.position}</span>
+                              <span className={cn("font-mono font-bold", mob ? "text-[9px]" : "text-[8px]")}>{ig.position}</span>
                               <span className={cn("font-mono", tsS)}>
                                 {ig.fired ? '✕' : ig.connected ? `${ig.resistance.toFixed(1)}Ω` : '—'}
                               </span>
@@ -1138,7 +1138,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
             <div>
               <div className="flex items-center justify-between mb-1">
                 <span className={cn("font-bold text-muted-foreground/40 uppercase tracking-wider", tsS)}>Virtual Fixtures ({fixtures.length})</span>
-                <button onClick={() => setShowAddForm(!showAddForm)} className={cn("rounded bg-primary/10 text-primary/70", mob ? "px-2 py-1 text-[9px]" : "px-1.5 py-0.5 text-[7px]")}>
+                <button onClick={() => setShowAddForm(!showAddForm)} className={cn("rounded bg-primary/10 text-primary/70", mob ? "px-2 py-1 text-[9px]" : "px-1.5 py-0.5 text-[8px]")}>
                   <Plus className="w-3 h-3 inline mr-0.5" /> Add
                 </button>
               </div>
@@ -1150,7 +1150,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
                   <div className="flex gap-1 flex-wrap">
                     {FIXTURE_TYPES.map(t => (
                       <button key={t.key} onClick={() => { setNewType(t.key); setNewColor(t.color); }}
-                        className={cn("rounded border font-bold transition-all", mob ? "px-2 py-1 text-[9px]" : "px-1.5 py-0.5 text-[7px]",
+                        className={cn("rounded border font-bold transition-all", mob ? "px-2 py-1 text-[9px]" : "px-1.5 py-0.5 text-[8px]",
                           newType === t.key ? "border-primary/40 bg-primary/15 text-primary" : "border-border/15 text-muted-foreground/30")}>
                         {t.label}
                       </button>
