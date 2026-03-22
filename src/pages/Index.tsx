@@ -314,6 +314,7 @@ function Index() {
     if (!activePanel) return null;
     return (
       <>
+        {activePanel === 'positions' && <PositionWindow onClose={() => setActivePanel(null)} />}
         {activePanel === 'properties' && <PropertiesPanel />}
         {activePanel === 'script' && <ScriptWindow />}
         {activePanel === 'waypoints' && <WaypointEditor onClose={() => setActivePanel(null)} />}

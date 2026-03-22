@@ -469,6 +469,16 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
             ]}
           />
           <DropdownMenu
+            label="View"
+            icon={Eye}
+            items={[
+              { label: 'Position Window', icon: MapPin, onClick: () => onOpenPanel?.('positions') },
+              { label: 'Properties', icon: Cog, onClick: () => onOpenPanel?.('properties') },
+              { label: 'Script Editor', icon: Film, onClick: () => onOpenPanel?.('script') },
+              { label: 'Groups', icon: Users, onClick: () => onOpenPanel?.('groups') },
+            ]}
+          />
+          <DropdownMenu
             label="Scene"
             icon={Paintbrush}
            items={[
