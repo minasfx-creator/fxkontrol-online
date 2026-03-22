@@ -12,10 +12,11 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Outfit', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['Rajdhani', 'Space Grotesk', 'Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
-        display: ['Outfit', 'sans-serif'],
-        tech: ['Space Grotesk', 'Inter', 'sans-serif'],
+        display: ['Rajdhani', 'Outfit', 'sans-serif'],
+        tech: ['Rajdhani', 'Space Grotesk', 'Inter', 'sans-serif'],
+        tactical: ['JetBrains Mono', 'monospace'],
       },
       colors: {
         border: "hsl(var(--border))",
