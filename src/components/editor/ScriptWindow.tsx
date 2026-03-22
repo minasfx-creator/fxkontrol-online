@@ -342,6 +342,7 @@ export default function ScriptWindow() {
         const val = fromField === 'eventTime' ? nextRow.eventTime
           : fromField === 'pan' ? nextRow.pan
           : fromField === 'tilt' ? nextRow.tilt
+          : fromField === 'spin' ? nextRow.spin
           : nextRow.notes;
         startEditing(nextRow.id, fromField, val);
       }
