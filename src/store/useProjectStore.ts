@@ -34,6 +34,7 @@ export interface Effect {
   laserPattern?: 'fan' | 'harp' | 'tunnel' | 'cone' | 'single' | 'wave' | 'grid'; // For lasers
   beamType?: 'spot' | 'wash' | 'beam'; // For moving heads
   beamCount?: number;                  // Number of beams (lasers)
+  lockoutDefault?: string;      // Risk group for lockout system (e.g. "A", "B", "C", "D")
   // ── VDL rendering metadata ──────────────────────────────────
   angleOffset?: number;         // R45, L30 etc. in degrees (+ = right)
   trailType?: string;           // none, comet, glitter, brocade, charcoal, smoke
