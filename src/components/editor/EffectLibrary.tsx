@@ -421,6 +421,14 @@ export default function EffectLibrary() {
               <p className="text-[8px] text-muted-foreground/40 mt-0.5 font-mono-code">{filteredEffects.length} items</p>
             </div>
           </div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowCreateDialog(true)}
+              className="p-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+              title="Create Effect from VDL"
+            >
+              <Plus className="w-3 h-3" />
+            </button>
           {/* View toggle — Finale 3D has list/table */}
           <div className="flex gap-0.5 p-0.5 rounded-lg bg-surface-0/50">
             <button
