@@ -805,7 +805,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
 
   // Platform-aware branding
   const isDmxMode = mode === 'super_dmx' || mode === 'simple_dmx';
-  const isFireMode = mode === 'pyro_fire' || mode === 'manual_fire' || mode === 'auto_fire';
+  const isFireMode = mode === 'pyro_fire' || mode === 'manual_fire';
   const platformAccent = isDmxMode
     ? { name: 'FXK-DMX', sub: 'FXCOMMANDER 2.0', color: 'hsl(200 80% 48%)', textClass: 'text-cyan-400', bgGrad: 'linear-gradient(135deg, hsl(200 80% 48%), hsl(200 60% 30%))' }
     : { name: 'FXK-PYRO', sub: 'XL4+ 2.0', color: 'hsl(0 85% 48%)', textClass: 'text-red-400', bgGrad: 'linear-gradient(135deg, hsl(0 80% 45%), hsl(0 70% 30%))' };
