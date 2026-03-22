@@ -113,8 +113,25 @@ const DISTANCE_REF = 15;
 const SCALE_MIN = 0.15;
 const SCALE_MAX = 0.8;
 
+/** Pulsing glow ring for positions whose linked events are selected from the timeline */
+function LinkedGlowRing({ color }: { color: string }) {
+  const ringRef = useRef<THREE.Mesh>(null);
+  useFrame(({ clock }) => {
+    if (ringRef.current) {
+      const s = 1 + Math.sin(clock.getElapsedTime() * 5) * 0.2;
+      ringRef.current.scale.setScalar(s);
+    }
+  });
+  return (
+    <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]}>
+      <ringGeometry args={[0.85, 1.15, 32]} />
+      <meshBasicMaterial color={color} transparent opacity={0.45} blending={THREE.AdditiveBlending} />
+    </mesh>
+  );
+}
+
 const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Position, screenPos: { x: number; y: number }) => void }>(function Pin({ position, onRightClick }, ref) {
-  const { selectedPositionIds, selectPosition, togglePositionSelection, editorMode, updatePosition, timelineItems } = useProjectStore();
+  const { selectedPositionIds, selectPosition, selectPositionAndLinkedEvents, togglePositionSelection, editorMode, updatePosition, timelineItems, linkedTimelineItemIds } = useProjectStore();
   const isSelected = selectedPositionIds.includes(position.id);
   const color = position.type === 'pyro' ? PYRO_COLOR : (position.color || DRONE_COLOR);
   const glowRef = useRef<THREE.Group>(null);
