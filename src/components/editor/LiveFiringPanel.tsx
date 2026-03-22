@@ -49,6 +49,7 @@ import PBusMonitorPanel from './live-firing/PBusMonitorPanel';
 import RadioControlPanel from './RadioControlPanel';
 import MA3ControlPanel from './MA3ControlPanel';
 import VirtualIFMx32QPanel from './live-firing/VirtualIFMx32QPanel';
+import WiFiDirectControlPanel from './live-firing/WiFiDirectControlPanel';
 import { RISK_GROUP_LABELS, RISK_GROUP_COLORS, type RiskGroup } from '@/lib/pyroPhysics';
 
 // ═══════════════════════════════════════════════════════════
@@ -1255,6 +1256,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
       case 'radio': return <RadioControlPanel fs={fs} />;
       case 'ma3': return <MA3ControlPanel fs={fs} />;
       case 'module': return <VirtualIFMx32QPanel fs={fs} />;
+      case 'wifi_direct': return <WiFiDirectControlPanel fs={fs} />;
       case 'settings': return <SettingsPanel fs={fs} settings={settings} onSettingsChange={setSettings} relayConnected={relayConnected} relayUrl={relayUrl} onRelayUrlChange={setRelayUrl} onConnectRelay={connectRelay} onDisconnectRelay={disconnectRelay} />;
       default: return renderSimpleDmx(fs);
     }

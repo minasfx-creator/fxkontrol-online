@@ -282,6 +282,16 @@ export default function ConnectionManagerPanel({ fs = false, onClose }: Connecti
                   <Button size="sm" variant="ghost" className="h-5 text-[8px] px-2" onClick={() => setShowWiFiInput(v => !v)}>
                     <Globe className="w-2.5 h-2.5 mr-0.5" /> +Wi-Fi
                   </Button>
+                  <Button size="sm" variant="ghost" className="h-5 text-[8px] px-2" onClick={async () => {
+                    try {
+                      await fireone.connectWiFiDirect();
+                      toast.success('Wi-Fi Direct conectado (auto-discovery)');
+                    } catch (err: any) {
+                      toast.error(`Wi-Fi Direct: ${err.message}`);
+                    }
+                  }}>
+                    <Antenna className="w-2.5 h-2.5 mr-0.5" /> +Wi-Fi Direct
+                  </Button>
                   <Button size="sm" variant="ghost" className="h-5 text-[8px] px-2" onClick={() => setShowArtNetInput(v => !v)}>
                     <Zap className="w-2.5 h-2.5 mr-0.5" /> +Art-Net
                   </Button>
