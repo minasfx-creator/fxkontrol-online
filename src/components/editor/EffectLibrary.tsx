@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Search, ChevronDown, ChevronRight, Flame, Sparkles, Radio, Shapes, Wand2, Zap, Lightbulb, Droplets, Bomb, CandlestickChart as Candle, Waves, Box, GripVertical, Clock, MapPin, Ruler, List, LayoutGrid, Hash, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
@@ -423,7 +423,31 @@ export default function EffectLibrary() {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createVdl, setCreateVdl] = useState('');
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const { addTimelineItem, currentTime, positions } = useProjectStore();
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // C-key quick search (Finale 3D behavior)
+  useEffect(() => {
+    const handler = () => {
+      searchInputRef.current?.focus();
+      searchInputRef.current?.select();
+    };
+    window.addEventListener('focus-effect-search', handler);
+    return () => window.removeEventListener('focus-effect-search', handler);
+  }, []);
+
+  // Ctrl+Enter inserts selected effect at playhead
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!searchInputRef.current || document.activeElement !== searchInputRef.current) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIndex(i => i + 1); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIndex(i => Math.max(0, i - 1)); }
+      if (e.key === 'Escape') { setSearch(''); searchInputRef.current?.blur(); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   const toggleCategory = (key: string) => {
     setOpenCategories((prev) => {
@@ -522,9 +546,10 @@ export default function EffectLibrary() {
         <div className="relative mb-2">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/30" />
           <Input
-            placeholder="Search effects..."
+            ref={searchInputRef}
+            placeholder="Search effects... (C)"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setSelectedIndex(0); }}
             className="h-7 pl-7 text-[11px] bg-surface-0/50 border-border/15 focus:border-primary/30 rounded-lg"
           />
         </div>

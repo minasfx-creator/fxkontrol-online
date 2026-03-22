@@ -920,11 +920,13 @@ export default function ScriptWindow() {
         <table className="w-full text-[9px] font-mono-code border-collapse min-w-[600px]">
           <thead className="sticky top-0 bg-surface-1 z-10">
             <tr className="border-b border-border/40">
-              <th className="px-0.5 py-1 w-6 text-center text-muted-foreground/50 font-medium">#</th>
+              <th className="px-0.5 py-1 w-6 text-center text-muted-foreground/50 font-medium">Cue</th>
               <th className="px-1 py-1 w-5"></th>
               <SortableHeader label="Event Time" field="eventTime" current={sortField} dir={sortDir} onSort={toggleSort} />
               <SortableHeader label="Effect Time" field="effectTime" current={sortField} dir={sortDir} onSort={toggleSort} />
               <th className="px-1 py-1 text-left text-muted-foreground font-medium">PFT</th>
+              <th className="px-1 py-1 text-left text-muted-foreground font-medium w-8">Size</th>
+              <th className="px-1 py-1 text-left text-muted-foreground font-medium w-10">Type</th>
               <SortableHeader label="Description" field="description" current={sortField} dir={sortDir} onSort={toggleSort} />
               <SortableHeader label="Position" field="position" current={sortField} dir={sortDir} onSort={toggleSort} />
               <th className="px-1 py-1 text-left text-muted-foreground font-medium">Pan°</th>
@@ -959,9 +961,9 @@ export default function ScriptWindow() {
                   }}
                   onClick={(e) => toggleSelect(row.id, e)}
                 >
-                  {/* Row number */}
-                  <td className="px-0.5 py-0.5 text-center text-muted-foreground/40 text-[8px]">
-                    {rowIdx + 1}
+                  {/* Cue number */}
+                  <td className="px-0.5 py-0.5 text-center text-muted-foreground/40 text-[8px] font-bold">
+                    Q{rowIdx + 1}
                   </td>
 
                   {/* Chain collapse / icon */}
@@ -998,6 +1000,24 @@ export default function ScriptWindow() {
                     ) : (
                       <span className="text-muted-foreground/30">—</span>
                     )}
+                  </td>
+
+                  {/* Size (Caliber) */}
+                  <td className="px-1 py-0.5">
+                    {row.type === 'firework' ? (
+                      <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-accent/15 text-accent tabular-nums">
+                        {(() => { const m = row.description.match(/(\d+)(?:in|")/); return m ? `${m[1]}"` : '4"'; })()}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground/30">—</span>
+                    )}
+                  </td>
+
+                  {/* Part Type */}
+                  <td className="px-1 py-0.5">
+                    <span className="text-[7px] font-bold px-1 py-0.5 rounded bg-muted/20 text-muted-foreground uppercase">
+                      {row.category === 'mines' ? 'MINE' : row.category === 'roman_candles' ? 'RC' : row.category === 'cakes_batteries' ? 'CAKE' : row.category === 'waterfalls' ? 'FALL' : row.type === 'firework' ? 'SHELL' : row.type === 'drone' ? 'DRN' : row.type?.slice(0, 3).toUpperCase() || '—'}
+                    </span>
                   </td>
 
                   {/* Description with caliber badge + type icon */}
@@ -1140,7 +1160,7 @@ export default function ScriptWindow() {
             {isDraggingFill && fillDragCount > 0 && (
               Array.from({ length: fillDragCount }).map((_, i) => (
                 <tr key={`fill-preview-${i}`} className="border-b border-primary/20 bg-primary/5 pointer-events-none">
-                  <td colSpan={14} className="px-2 py-0.5 text-[9px] text-primary/60 font-mono-code">
+                  <td colSpan={16} className="px-2 py-0.5 text-[9px] text-primary/60 font-mono-code">
                     + Copy {i + 1}
                   </td>
                 </tr>

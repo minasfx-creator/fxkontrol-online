@@ -393,29 +393,51 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
     window.location.reload();
   }, [timelineItems, positions]);
 
-  // Global keyboard shortcuts
+  // Global keyboard shortcuts — Full Finale 3D mapping
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const ctrl = e.ctrlKey || e.metaKey;
-      if (ctrl && e.key === 's') { e.preventDefault(); handleSave(); }
-      if (ctrl && e.key === 'o') { e.preventDefault(); setBrowserOpen(true); }
-      if (ctrl && e.key === 'e') { e.preventDefault(); handleExportVVIZ(); }
-      if (ctrl && e.key === 'k') { e.preventDefault(); setCommandMenuOpen(prev => !prev); }
-      if (e.key === 'v' && !ctrl && !e.shiftKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
-        onOpenPanel?.('positions');
-      }
-      if (e.key === 's' && !ctrl && !e.shiftKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
-        setEditorMode('select');
-      }
-      if (e.key === ' ' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
-        e.preventDefault();
-        const { isPlaying, setPlaying } = useProjectStore.getState();
-        setPlaying(!isPlaying);
+      const isInput = document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA';
+
+      // Ctrl combos — always active
+      if (ctrl && e.key === 's') { e.preventDefault(); handleSave(); return; }
+      if (ctrl && e.key === 'o') { e.preventDefault(); setBrowserOpen(true); return; }
+      if (ctrl && e.key === 'e') { e.preventDefault(); handleExportVVIZ(); return; }
+      if (ctrl && e.key === 'k') { e.preventDefault(); setCommandMenuOpen(prev => !prev); return; }
+      if (ctrl && e.key === 'l') { e.preventDefault(); const store = useProjectStore.getState(); const id = `pos-${Date.now()}-${Math.random().toString(36).slice(2,5)}`; const count = store.positions.length; store.addPosition({ id, name: `POS-${String(count+1).padStart(3,'0')}`, type: 'pyro', x: count * 2, y: 0, z: 0, heading: 0, pitch: 85, roll: 0, color: '#FF6B35' }); store.selectPosition(id); toast.success('Position added'); return; }
+      if (ctrl && e.key === 'h' && !e.shiftKey) { e.preventDefault(); const store = useProjectStore.getState(); if (store.selectedTimelineItemIds.length >= 2) { store.combineAsChain(store.selectedTimelineItemIds); toast.success('Combined as chain'); } return; }
+      if (ctrl && e.key === 'g') { e.preventDefault(); onOpenPanel?.('effects'); return; }
+      if (ctrl && e.key === 'a' && !isInput) { e.preventDefault(); const store = useProjectStore.getState(); store.selectMultiplePositions(store.positions.map(p => p.id)); return; }
+      if (ctrl && e.key === 'd' && !isInput) { e.preventDefault(); const store = useProjectStore.getState(); const ids = store.selectedTimelineItemIds.length > 0 ? store.selectedTimelineItemIds : store.selectedTimelineItemId ? [store.selectedTimelineItemId] : []; if (ids.length) store.duplicateTimelineItems(ids); return; }
+
+      if (isInput) return;
+
+      // Single-key Finale shortcuts
+      switch (e.key) {
+        case ' ': e.preventDefault(); { const { isPlaying, setPlaying } = useProjectStore.getState(); setPlaying(!isPlaying); } break;
+        case 'c': case 'C': onOpenPanel?.('effects'); window.dispatchEvent(new Event('focus-effect-search')); break;
+        case 'v': case 'V': onOpenPanel?.('positions'); break;
+        case 'p': case 'P': onOpenPanel?.('addressing'); break;
+        case 'i': case 'I': { const store = useProjectStore.getState(); store.addTimelineItem({ id: `cue-${Date.now()}`, effectId: 'mort-01', startTime: store.currentTime, trackIndex: 0, position: { x: 0, y: 0, z: 0 } }); toast.success('Empty cue inserted'); break; }
+        case 'f': case 'F': if (!e.shiftKey) { window.dispatchEvent(new CustomEvent('open-scripting-tool', { detail: 'fan' })); } break;
+        case 'k': case 'K': { const store = useProjectStore.getState(); store.selectedTimelineItemIds.forEach(id => { const item = store.timelineItems.find(i => i.id === id); if (item?.pan != null) store.updateTimelineItem(id, { pan: -(item.pan) }); }); toast.success('Angles mirrored'); break; }
+        case 'h': case 'H': if (!ctrl) { window.dispatchEvent(new CustomEvent('open-scripting-tool', { detail: 'spread' })); } break;
+        case 'm': case 'M': if (e.shiftKey) { toast.info('Randomize order — use Scripting Tools'); } else { toast.info('Reverse order — use Scripting Tools'); } break;
+        case 'd': case 'D': if (!ctrl) { const store = useProjectStore.getState(); const ids = store.selectedTimelineItemIds; if (ids.length) store.duplicateTimelineItems(ids); } break;
+        case 'g': case 'G': if (!ctrl) { toast.info('Group — select items first'); } break;
+        case 'l': case 'L': if (!ctrl) { toast.info('Lock addresses'); } break;
+        case 'z': case 'Z': if (!ctrl) { onOpenPanel?.('racks'); } break;
+        case 'Home': { e.preventDefault(); useProjectStore.getState().setCurrentTime(0); break; }
+        case 'End': { e.preventDefault(); useProjectStore.getState().setCurrentTime(useProjectStore.getState().duration); break; }
+        case 'ArrowLeft': { e.preventDefault(); const store = useProjectStore.getState(); const sorted = [...store.timelineItems].sort((a, b) => a.startTime - b.startTime); const current = store.currentTime; const prev = sorted.filter(i => i.startTime < current - 0.01).pop(); if (prev) { store.setCurrentTime(prev.startTime); store.selectTimelineItem(prev.id); } break; }
+        case 'ArrowRight': { e.preventDefault(); const store = useProjectStore.getState(); const sorted = [...store.timelineItems].sort((a, b) => a.startTime - b.startTime); const current = store.currentTime; const next = sorted.find(i => i.startTime > current + 0.01); if (next) { store.setCurrentTime(next.startTime); store.selectTimelineItem(next.id); } break; }
+        case 'Delete': case 'Backspace': { const store = useProjectStore.getState(); if (store.selectedTimelineItemIds.length > 0) store.removeMultipleTimelineItems(store.selectedTimelineItemIds); else if (store.selectedTimelineItemId) store.removeTimelineItem(store.selectedTimelineItemId); break; }
+        case 'Escape': setEditorMode('select'); break;
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [handleSave, handleExportVVIZ, setEditorMode]);
+  }, [handleSave, handleExportVVIZ, setEditorMode, onOpenPanel]);
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 

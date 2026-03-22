@@ -78,6 +78,7 @@ import USBConnectionPanel from '@/components/editor/USBConnectionPanel';
 import VideoChoreoPanel from '@/components/editor/VideoChoreoPanel';
 import ShowvenEquipmentPanel from '@/components/editor/ShowvenEquipmentPanel';
 import GenerativeEffectsPanel from '@/components/editor/GenerativeEffectsPanel';
+import SmartScriptAssistant from '@/components/editor/SmartScriptAssistant';
 import CinematicIntro from '@/components/editor/CinematicIntro';
 import SetlistPanel from '@/components/editor/SetlistPanel';
 import RiderPanel from '@/components/editor/RiderPanel';
@@ -182,6 +183,7 @@ function Index() {
   const [showPositionEditor, setShowPositionEditor] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab | null>(null);
+  const [smartScriptOpen, setSmartScriptOpen] = useState(false);
   const [mobilePanelHeight, setMobilePanelHeight] = useState<'collapsed' | 'half' | 'full'>('collapsed');
   const [isDragOver, setIsDragOver] = useState(false);
   const [remoteMode, setRemoteMode] = useState<'cloud' | 'wifi-auto'>('cloud');
@@ -227,6 +229,11 @@ function Index() {
         if (e.key === '1') useProjectStore.getState().setSelectionMode('positions');
         if (e.key === '2') useProjectStore.getState().setSelectionMode('events');
         if (e.key === '3') useProjectStore.getState().setSelectionMode('both');
+      }
+      // Ctrl+Shift+A → Smart Script Assistant
+      if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+        e.preventDefault();
+        setSmartScriptOpen(prev => !prev);
       }
       if (e.key === 'i' && !e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
         const store = useProjectStore.getState();
@@ -611,7 +618,7 @@ function Index() {
         <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />
       )}
       <PositionContextMenu />
-      {/* RemoteReceiverOverlay accessed via remotecontrol panel */}
+      <SmartScriptAssistant open={smartScriptOpen} onClose={() => setSmartScriptOpen(false)} />
     </div>
   );
 }
