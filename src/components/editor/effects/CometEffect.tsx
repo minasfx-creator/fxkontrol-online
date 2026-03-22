@@ -1,7 +1,10 @@
 /**
- * CometEffect — Niagara-grade comet with ribbon trail
- * Uses RibbonTrail from ribbonTrailRenderer for the comet tail,
- * and NiagaraSystem for spark/drip particles with cone spawn shape.
+ * CometEffect — PyroJam 2026 grade comet with:
+ * - GPU point cloud spark trail (120 particles, zero-GC)
+ * - Ribbon trail with wider profile and core glow
+ * - Smoke wake secondary cloud
+ * - Combustion-flickering head with colored halo
+ * - Ignition flare at launch
  */
 
 import { useRef, useMemo, useEffect } from 'react';
@@ -9,11 +12,13 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { getMortarVelocity, GRAVITY } from '@/lib/pyroPhysics';
 import { getThreeBlending } from '@/lib/niagaraBlenderRules';
+import { combustionFlicker, hash01 } from '@/lib/pyroNoise';
 import { RibbonTrail } from '@/render_ultra/fireworks/ribbonTrailRenderer';
+import { useProjectStore } from '@/store/useProjectStore';
 
-/**
- * Comet effect with Niagara ribbon trail and physics-based trajectory.
- */
+const SPARK_COUNT = 120;
+const SMOKE_WAKE_COUNT = 30;
+
 export default function CometEffect({
   position,
   color,
@@ -31,22 +36,26 @@ export default function CometEffect({
 }) {
   const { scene, camera } = useThree();
   const glowRef = useRef<THREE.Mesh>(null);
+  const haloRef = useRef<THREE.Mesh>(null);
+  const sparkPointsRef = useRef<THREE.Points>(null);
+  const smokePointsRef = useRef<THREE.Points>(null);
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
   const v0 = useMemo(() => getMortarVelocity(caliber), [caliber]);
 
-  // Niagara ribbon trail for the comet tail
+  // Ribbon trail
   const ribbonRef = useRef<RibbonTrail | null>(null);
 
   useEffect(() => {
     const ribbon = new RibbonTrail({
-      maxPoints: 64,
-      lifetime: 1.8,
-      baseWidth: 0.3 + caliber * 0.15,
+      maxPoints: 96,
+      lifetime: 2.2,
+      baseWidth: (0.3 + caliber * 0.15) * 1.5,
       blendMode: 'additive',
       widthCurve: [
         { t: 0, value: 1.0 },
-        { t: 0.3, value: 0.7 },
-        { t: 0.7, value: 0.3 },
+        { t: 0.15, value: 0.85 },
+        { t: 0.5, value: 0.5 },
+        { t: 0.8, value: 0.2 },
         { t: 1, value: 0 },
       ],
     });
@@ -60,7 +69,7 @@ export default function CometEffect({
     };
   }, [scene, caliber]);
 
-  // Wobble path for lateral movement
+  // Wobble path
   const wobbleSeeds = useMemo(() => ({
     freqX: 8 + Math.random() * 6,
     freqZ: 7 + Math.random() * 5,
@@ -70,34 +79,61 @@ export default function CometEffect({
     phaseZ: Math.random() * Math.PI * 2,
   }), []);
 
-  // Spark seeds for detaching sparks
+  // GPU spark seeds (pre-allocated, zero-GC)
   const sparkSeeds = useMemo(() => {
-    const s: { spreadX: number; spreadZ: number; detachT: number; drag: number; size: number }[] = [];
-    for (let i = 0; i < 30; i++) {
+    const seeds = new Float32Array(SPARK_COUNT * 5); // detachT, spreadAngle, drag, sizeScale, seed
+    for (let i = 0; i < SPARK_COUNT; i++) {
       const angle = Math.random() * Math.PI * 2;
-      s.push({
-        spreadX: Math.cos(angle) * (0.3 + Math.random() * 1.2),
-        spreadZ: Math.sin(angle) * (0.3 + Math.random() * 1.2),
-        detachT: 0.05 + Math.random() * 0.75,
-        drag: 0.92 + Math.random() * 0.06,
-        size: 0.015 + Math.random() * 0.025,
-      });
+      seeds[i * 5] = 0.03 + Math.random() * 0.8; // detachT
+      seeds[i * 5 + 1] = angle; // spread angle
+      seeds[i * 5 + 2] = 0.90 + Math.random() * 0.08; // drag
+      seeds[i * 5 + 3] = 0.012 + Math.random() * 0.022; // size
+      seeds[i * 5 + 4] = Math.random() * 999 + i; // seed
+    }
+    return seeds;
+  }, []);
+
+  // Spark GPU buffers
+  const sparkPosBuffer = useMemo(() => new Float32Array(SPARK_COUNT * 3), []);
+  const sparkColBuffer = useMemo(() => new Float32Array(SPARK_COUNT * 3), []);
+
+  // Smoke wake seeds
+  const smokeWakeSeeds = useMemo(() => {
+    const s = new Float32Array(SMOKE_WAKE_COUNT * 2); // spawnProgress, seed
+    for (let i = 0; i < SMOKE_WAKE_COUNT; i++) {
+      s[i * 2] = (i / SMOKE_WAKE_COUNT) * 0.9 + 0.03;
+      s[i * 2 + 1] = Math.random() * 999 + i;
     }
     return s;
   }, []);
 
+  const smokePosBuffer = useMemo(() => new Float32Array(SMOKE_WAKE_COUNT * 3), []);
+  const smokeColBuffer = useMemo(() => new Float32Array(SMOKE_WAKE_COUNT * 3), []);
+
   const lastProgressRef = useRef(0);
 
-  useFrame((_, delta) => {
+  // Compute head position (shared logic)
+  const getHeadPos = (prog: number) => {
     const dir = direction === 'up' ? 1 : -1;
     const maxT = v0 / Math.abs(GRAVITY) * 1.5;
-    const t = progress * maxT * 0.5;
-
+    const t = prog * maxT * 0.5;
     const headY = dir * Math.max(0, v0 * t * 0.25 + 0.5 * GRAVITY * t * t * 0.06);
-    const headX = Math.sin(progress * wobbleSeeds.freqX + wobbleSeeds.phaseX) * wobbleSeeds.ampX;
-    const headZ = Math.cos(progress * wobbleSeeds.freqZ + wobbleSeeds.phaseZ) * wobbleSeeds.ampZ;
+    const headX = Math.sin(prog * wobbleSeeds.freqX + wobbleSeeds.phaseX) * wobbleSeeds.ampX;
+    const headZ = Math.cos(prog * wobbleSeeds.freqZ + wobbleSeeds.phaseZ) * wobbleSeeds.ampZ;
+    return { headX, headY, headZ, maxT };
+  };
 
-    // Add point to ribbon trail every frame
+  useFrame((_, delta) => {
+    const { headX, headY, headZ, maxT } = getHeadPos(progress);
+    const time = performance.now() / 1000;
+
+    // Wind
+    const { wind } = useProjectStore.getState();
+    const windRad = (wind.direction * Math.PI) / 180;
+    const windX = wind.enabled ? Math.sin(windRad) * wind.speed * 0.06 : 0;
+    const windZ = wind.enabled ? Math.cos(windRad) * wind.speed * 0.06 : 0;
+
+    // ── Ribbon trail ──
     if (ribbonRef.current && progress > 0.01 && progress < 0.95) {
       const worldPos = new THREE.Vector3(
         position[0] + headX,
@@ -105,12 +141,13 @@ export default function CometEffect({
         position[2] + headZ
       );
 
-      // Color: white-hot at head → base color → ember
       const headHeat = Math.max(0, 1 - progress * 0.5);
+      // Inner core glow: brighter white-hot at center
+      const coreBoost = 1.0 + headHeat * 0.8;
       const ribbonColor = new THREE.Color(
-        THREE.MathUtils.lerp(baseColor.r, 1.0, headHeat * 0.5),
-        THREE.MathUtils.lerp(baseColor.g, 0.95, headHeat * 0.4),
-        THREE.MathUtils.lerp(baseColor.b, 0.7, headHeat * 0.3),
+        THREE.MathUtils.lerp(baseColor.r, 1.0, headHeat * 0.6) * coreBoost,
+        THREE.MathUtils.lerp(baseColor.g, 0.95, headHeat * 0.5) * coreBoost,
+        THREE.MathUtils.lerp(baseColor.b, 0.7, headHeat * 0.35) * coreBoost,
       );
 
       ribbonRef.current.addPoint(worldPos, ribbonColor, headHeat);
@@ -118,41 +155,142 @@ export default function CometEffect({
       ribbonRef.current.update(delta, camPos);
     }
 
-    // Update glow head
+    // ── Combustion head glow ──
     if (glowRef.current) {
       glowRef.current.position.set(headX, headY, headZ);
-      const pulse = 1 + Math.sin(progress * 40) * 0.15;
-      glowRef.current.scale.setScalar((0.2 + (1 - progress) * 0.35) * pulse);
+      const combFlicker = combustionFlicker(42.7, time, 1.3);
+      const pulse = combFlicker;
+      glowRef.current.scale.setScalar((0.2 + (1 - progress) * 0.4) * pulse);
+    }
+
+    // ── Colored halo ──
+    if (haloRef.current) {
+      haloRef.current.position.set(headX, headY, headZ);
+      haloRef.current.scale.setScalar((0.5 + (1 - progress) * 0.6));
+    }
+
+    // ── GPU spark cloud ──
+    if (sparkPointsRef.current) {
+      const posArr = sparkPosBuffer;
+      const colArr = sparkColBuffer;
+      let visibleCount = 0;
+
+      for (let i = 0; i < SPARK_COUNT; i++) {
+        const detachT = sparkSeeds[i * 5];
+        const spreadAngle = sparkSeeds[i * 5 + 1];
+        const drag = sparkSeeds[i * 5 + 2];
+        const seed = sparkSeeds[i * 5 + 4];
+
+        if (progress < detachT) {
+          posArr[i * 3] = 0;
+          posArr[i * 3 + 1] = -1000; // hide below
+          posArr[i * 3 + 2] = 0;
+          colArr[i * 3] = colArr[i * 3 + 1] = colArr[i * 3 + 2] = 0;
+          continue;
+        }
+
+        const elapsed = (progress - detachT) * 2.8;
+        const dragFactor = Math.pow(drag, elapsed * 60);
+
+        // Detach position: head pos at detach time
+        const detachPos = getHeadPos(detachT);
+        const spreadSpeed = 0.3 + hash01(seed) * 1.2;
+
+        const sparkX = detachPos.headX + Math.cos(spreadAngle) * spreadSpeed * elapsed * dragFactor + windX * elapsed * elapsed * 0.3;
+        const sparkY = detachPos.headY + GRAVITY * elapsed * elapsed * 0.4;
+        const sparkZ = detachPos.headZ + Math.sin(spreadAngle) * spreadSpeed * elapsed * dragFactor + windZ * elapsed * elapsed * 0.3;
+
+        if (sparkY < -0.5) {
+          posArr[i * 3 + 1] = -1000;
+          colArr[i * 3] = colArr[i * 3 + 1] = colArr[i * 3 + 2] = 0;
+          continue;
+        }
+
+        posArr[i * 3] = sparkX;
+        posArr[i * 3 + 1] = sparkY;
+        posArr[i * 3 + 2] = sparkZ;
+
+        // Color: orange → red → charcoal
+        const sparkFade = Math.max(0, 1 - elapsed * 1.0);
+        const emberT = Math.min(1, elapsed * 2);
+        const sr = THREE.MathUtils.lerp(1.0, 0.2, emberT) * sparkFade;
+        const sg = THREE.MathUtils.lerp(0.7, 0.06, emberT) * sparkFade;
+        const sb = THREE.MathUtils.lerp(0.15, 0.02, emberT) * sparkFade;
+
+        colArr[i * 3] = sr;
+        colArr[i * 3 + 1] = sg;
+        colArr[i * 3 + 2] = sb;
+        visibleCount++;
+      }
+
+      const sparkGeo = sparkPointsRef.current.geometry;
+      sparkGeo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+      sparkGeo.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
+      sparkGeo.attributes.position.needsUpdate = true;
+      sparkGeo.attributes.color.needsUpdate = true;
+    }
+
+    // ── Smoke wake ──
+    if (smokePointsRef.current && progress > 0.05) {
+      const sPos = smokePosBuffer;
+      const sCol = smokeColBuffer;
+
+      for (let i = 0; i < SMOKE_WAKE_COUNT; i++) {
+        const spawnProg = smokeWakeSeeds[i * 2];
+        const seed = smokeWakeSeeds[i * 2 + 1];
+
+        if (progress < spawnProg) {
+          sPos[i * 3 + 1] = -1000;
+          sCol[i * 3] = sCol[i * 3 + 1] = sCol[i * 3 + 2] = 0;
+          continue;
+        }
+
+        const smokeAge = (progress - spawnProg) * 3;
+        if (smokeAge > 1.5) {
+          sPos[i * 3 + 1] = -1000;
+          sCol[i * 3] = sCol[i * 3 + 1] = sCol[i * 3 + 2] = 0;
+          continue;
+        }
+
+        const spawnPos = getHeadPos(spawnProg);
+        const turbX = Math.sin(time * 0.2 + seed * 3.7) * 0.08;
+        const turbZ = Math.cos(time * 0.15 + seed * 5.1) * 0.06;
+
+        sPos[i * 3] = spawnPos.headX + turbX + windX * smokeAge * 0.5;
+        sPos[i * 3 + 1] = spawnPos.headY + smokeAge * 0.15;
+        sPos[i * 3 + 2] = spawnPos.headZ + turbZ + windZ * smokeAge * 0.5;
+
+        const smokeFade = Math.max(0, 1 - smokeAge / 1.5) * 0.05;
+        sCol[i * 3] = 0.3 * smokeFade;
+        sCol[i * 3 + 1] = 0.25 * smokeFade;
+        sCol[i * 3 + 2] = 0.2 * smokeFade;
+      }
+
+      const smokeGeo = smokePointsRef.current.geometry;
+      smokeGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3));
+      smokeGeo.setAttribute('color', new THREE.BufferAttribute(sCol, 3));
+      smokeGeo.attributes.position.needsUpdate = true;
+      smokeGeo.attributes.color.needsUpdate = true;
     }
 
     lastProgressRef.current = progress;
   });
 
   const headFade = Math.max(0, 1 - progress * 0.5);
-  const dir = direction === 'up' ? 1 : -1;
-  const maxT = v0 / Math.abs(GRAVITY) * 1.5;
-  const t = progress * maxT * 0.5;
-  const headY = dir * Math.max(0, v0 * t * 0.25 + 0.5 * GRAVITY * t * t * 0.06);
-  const headX = Math.sin(progress * wobbleSeeds.freqX + wobbleSeeds.phaseX) * wobbleSeeds.ampX;
-  const headZ = Math.cos(progress * wobbleSeeds.freqZ + wobbleSeeds.phaseZ) * wobbleSeeds.ampZ;
+  const { headX, headY, headZ } = getHeadPos(progress);
   const screenBlend = useMemo(() => getThreeBlending('screen'), []);
   const angleOffsetRad = (angleOffset * Math.PI) / 180;
 
-  const getSparkDetachY = (detachT: number) => {
-    const sparkBaseT = detachT * maxT * 0.5;
-    return dir * Math.max(0, v0 * sparkBaseT * 0.25 + 0.5 * GRAVITY * sparkBaseT * sparkBaseT * 0.06);
-  };
-
   return (
     <group position={position} rotation={[0, 0, angleOffsetRad]}>
-      {/* Muzzle flash */}
-      {progress < 0.05 && (
+      {/* Ignition flare — aggressive first 3% */}
+      {progress < 0.03 && (
         <mesh position={[0, 0.1, 0]}>
-          <sphereGeometry args={[0.25 + progress * 6, 8, 8]} />
+          <sphereGeometry args={[0.4 + progress * 60, 12, 12]} />
           <meshBasicMaterial
-            color="#FFEEAA"
+            color="#FFEECC"
             transparent
-            opacity={0.6 * (1 - progress / 0.05)}
+            opacity={0.8 * (1 - progress / 0.03)}
             blending={screenBlend.blending}
             blendEquation={screenBlend.blendEquation}
             blendSrc={screenBlend.blendSrc as any}
@@ -162,43 +300,46 @@ export default function CometEffect({
         </mesh>
       )}
 
-      {/* Detaching sparks */}
-      {sparkSeeds.map((spark, i) => {
-        if (progress < spark.detachT) return null;
-        const elapsed = (progress - spark.detachT) * 2.5;
-        const dragFactor = Math.pow(spark.drag, elapsed * 60);
-        const baseY = getSparkDetachY(spark.detachT);
-        const sparkY = baseY + GRAVITY * elapsed * elapsed * 0.4;
-        if (sparkY < -0.5) return null;
-        const sparkFade = Math.max(0, 1 - elapsed * 1.2);
-        const lateralX = spark.spreadX * elapsed * dragFactor;
-        const lateralZ = spark.spreadZ * elapsed * dragFactor;
-        const emberT = Math.min(1, elapsed * 2);
-        const sr = THREE.MathUtils.lerp(1.0, 0.8, emberT);
-        const sg = THREE.MathUtils.lerp(0.75, 0.25, emberT);
-        const sb = THREE.MathUtils.lerp(0.2, 0.05, emberT);
+      {/* GPU spark cloud */}
+      <points ref={sparkPointsRef} frustumCulled={false}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[new Float32Array(SPARK_COUNT * 3), 3]} />
+          <bufferAttribute attach="attributes-color" args={[new Float32Array(SPARK_COUNT * 3), 3]} />
+        </bufferGeometry>
+        <pointsMaterial
+          size={0.08 + caliber * 0.02}
+          vertexColors
+          transparent
+          opacity={0.85}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          sizeAttenuation
+        />
+      </points>
 
-        return (
-          <mesh key={`s${i}`} position={[lateralX, sparkY, lateralZ]}>
-            <sphereGeometry args={[spark.size, 4, 4]} />
-            <meshBasicMaterial
-              color={new THREE.Color(sr, sg, sb)}
-              transparent
-              opacity={0.7 * sparkFade}
-              blending={THREE.AdditiveBlending}
-              depthWrite={false}
-            />
-          </mesh>
-        );
-      })}
+      {/* Smoke wake cloud */}
+      <points ref={smokePointsRef} frustumCulled={false}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[new Float32Array(SMOKE_WAKE_COUNT * 3), 3]} />
+          <bufferAttribute attach="attributes-color" args={[new Float32Array(SMOKE_WAKE_COUNT * 3), 3]} />
+        </bufferGeometry>
+        <pointsMaterial
+          size={1.2 + caliber * 0.3}
+          vertexColors
+          transparent
+          opacity={0.06}
+          depthWrite={false}
+          sizeAttenuation
+        />
+      </points>
 
-      {/* Head glow */}
+      {/* Combustion head glow — flickering white core */}
       <mesh ref={glowRef}>
         <sphereGeometry args={[0.25, 12, 12]} />
         <meshBasicMaterial
           color="#FFFFDD"
           transparent
-          opacity={0.75 * headFade}
+          opacity={0.8 * headFade}
           blending={screenBlend.blending}
           blendEquation={screenBlend.blendEquation}
           blendSrc={screenBlend.blendSrc as any}
@@ -207,14 +348,14 @@ export default function CometEffect({
         />
       </mesh>
 
-      {/* Secondary halo */}
-      {headFade > 0.2 && (
-        <mesh position={[headX, headY, headZ]}>
-          <sphereGeometry args={[0.5, 8, 8]} />
+      {/* Colored halo ring around head */}
+      {headFade > 0.15 && (
+        <mesh ref={haloRef} position={[headX, headY, headZ]}>
+          <sphereGeometry args={[0.55, 10, 10]} />
           <meshBasicMaterial
             color={color}
             transparent
-            opacity={0.15 * headFade}
+            opacity={0.12 * headFade}
             blending={screenBlend.blending}
             blendEquation={screenBlend.blendEquation}
             blendSrc={screenBlend.blendSrc as any}
