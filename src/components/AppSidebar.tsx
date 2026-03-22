@@ -41,18 +41,19 @@ export function AppSidebar() {
         {/* Brand with MinasFX logo */}
         <div className={`px-3 pt-4 pb-2 ${collapsed ? 'flex justify-center' : ''}`}>
           {collapsed ? (
-            <div className="h-8 w-8 rounded-lg bg-primary/15 flex items-center justify-center overflow-hidden">
+            <div className="h-8 w-8 rounded-lg flex items-center justify-center overflow-hidden" style={{ background: 'hsl(32 100% 50% / 0.15)' }}>
               <img src={minasfxLogo} alt="MinasFX" className="h-5 object-contain" />
             </div>
           ) : (
             <div className="flex items-center gap-2.5">
-              <img src={minasfxLogo} alt="MinasFX" className="h-7 object-contain shrink-0" />
+              <img src={minasfxLogo} alt="MinasFX" className="h-7 object-contain shrink-0" style={{ filter: 'drop-shadow(0 0 6px hsl(32 100% 50% / 0.3))' }} />
               <div>
-                <p className="text-xs font-bold text-foreground tracking-wide">FX KONTROL</p>
-                <p className="text-[9px] text-muted-foreground font-mono">by MinasFX</p>
+                <p className="text-xs font-bold text-foreground tracking-wide" style={{ textShadow: '0 0 8px hsl(32 100% 50% / 0.2)' }}>FX KONTROL</p>
+                <p className="text-[9px] font-mono-code" style={{ color: 'hsl(32 100% 50% / 0.5)' }}>by MinasFX</p>
               </div>
             </div>
           )}
+          {!collapsed && <div className="mt-2 h-[1px]" style={{ background: 'linear-gradient(90deg, hsl(32 100% 50% / 0.2), transparent)' }} />}
         </div>
 
         <SidebarGroup>
