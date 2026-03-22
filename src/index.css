@@ -614,3 +614,41 @@ body.night-mode {
   animation: amber-pulse 3s ease-in-out infinite;
   pointer-events: none;
 }
+
+/* ===== BR2049 Environmental Effects ===== */
+@keyframes rain-fall {
+  0% { background-position: 0 -100vh; }
+  100% { background-position: 0 100vh; }
+}
+@keyframes dust-float {
+  0% { transform: translateX(-10px) translateY(0); opacity: 0; }
+  20% { opacity: 0.4; }
+  80% { opacity: 0.4; }
+  100% { transform: translateX(10px) translateY(-20px); opacity: 0; }
+}
+
+.br2049-rain::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 120px,
+    hsl(32 100% 50% / 0.015) 120px,
+    hsl(32 100% 50% / 0.015) 121px
+  );
+  background-size: 100% 200vh;
+  animation: rain-fall 8s linear infinite;
+}
+
+.br2049-vignette::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  background: radial-gradient(ellipse at center, transparent 50%, hsl(20 30% 3% / 0.4) 100%);
+}
