@@ -171,49 +171,49 @@ export default function CommandCenter() {
 
     return (
       <div className="h-[100dvh] w-screen flex flex-col bg-background">
-        {/* ── Dynamic Island — Premium ── */}
-        <div className="shrink-0 px-3 pt-2 pb-1" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+        {/* ── Tactical HUD — Mobile ── */}
+        <div className="shrink-0 px-2 pt-1.5 pb-1" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
           <div
             className={cn(
-              "flex items-center justify-between px-3.5 py-2.5 rounded-2xl border transition-all",
+              "flex items-center justify-between px-3 py-2 rounded border transition-all",
               isArmed
-                ? "border-destructive/30 shadow-[0_0_16px_hsl(var(--destructive)/0.15)]"
-                : "border-[rgba(255,255,255,0.06)]"
+                ? "border-destructive/30 glow-danger"
+                : "border-primary/10"
             )}
-            style={{ background: accent.glow, backdropFilter: 'blur(40px) saturate(1.8)' }}
+            style={{ background: 'hsl(220 22% 3% / 0.95)', backdropFilter: 'blur(24px)' }}
           >
             <div className="flex items-center gap-2">
               <div
-                className={cn("h-2 w-2 rounded-full shrink-0", connectedCount > 0 ? "animate-pulse" : "")}
-                style={{ backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.25)', boxShadow: connectedCount > 0 ? `0 0 8px ${accent.color}66` : 'none' }}
+                className={cn("h-2 w-2 shrink-0", connectedCount > 0 ? "animate-pulse" : "")}
+                style={{ backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.2)', boxShadow: connectedCount > 0 ? `0 0 6px ${accent.color}` : 'none' }}
               />
-              <span className="text-[9px] font-bold text-foreground uppercase tracking-[0.15em] font-tech">
-                {connectedCount > 0 ? `${connectedCount} ONLINE` : 'OFFLINE'}
+              <span className="text-[8px] font-bold text-foreground font-mono tracking-[0.15em]">
+                {connectedCount > 0 ? `${connectedCount} LINK` : 'NO LINK'}
               </span>
             </div>
 
-            <Badge variant="outline" className={cn("text-[8px] h-5 px-2.5 font-black border font-mono tracking-wider", accent.badge)}>
+            <Badge variant="outline" className={cn("text-[7px] h-4.5 px-2 font-black border font-mono tracking-[0.15em] rounded-sm", accent.badge)}>
               {accent.label}
             </Badge>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               {fireone.isConnected && (
-                <Badge variant="outline" className="text-[7px] h-4 px-1.5 border-red-500/20 text-red-400 font-mono">FO</Badge>
+                <Badge variant="outline" className="text-[6px] h-3.5 px-1 border-red-500/15 text-red-400 font-mono rounded-sm">FO</Badge>
               )}
               {pbus.isConnected && (
-                <Badge variant="outline" className="text-[7px] h-4 px-1.5 border-amber-500/20 text-amber-400 font-mono">PB</Badge>
+                <Badge variant="outline" className="text-[6px] h-3.5 px-1 border-amber-500/15 text-amber-400 font-mono rounded-sm">PB</Badge>
               )}
               {isArmed && (
-                <Badge variant="destructive" className="text-[7px] h-4 px-1.5 animate-pulse font-mono">ARMED</Badge>
+                <Badge variant="destructive" className="text-[6px] h-3.5 px-1 animate-pulse font-mono rounded-sm">ARM</Badge>
               )}
             </div>
           </div>
         </div>
 
-        {/* ── Mode Pills — Refined ── */}
-        <div className="shrink-0 px-3 py-1.5">
+        {/* ── Mode Selector — Tactical Pills ── */}
+        <div className="shrink-0 px-2 py-1">
           <ScrollArea className="w-full">
-            <div className="flex gap-1.5 pb-1">
+            <div className="flex gap-1 pb-1">
               {categoryModes.map(mode => {
                 const isActive = activeMode === mode.key;
                 const mAccent = CONSOLE_ACCENTS[mode.key];
@@ -223,19 +223,18 @@ export default function CommandCenter() {
                     key={mode.key}
                     onClick={() => handleModeChange(mode.key)}
                     className={cn(
-                      "flex items-center gap-1.5 px-3 py-2 rounded-xl whitespace-nowrap transition-all",
-                      "text-[10px] font-bold border min-h-[40px] font-tech",
+                      "flex items-center gap-1.5 px-2.5 py-1.5 whitespace-nowrap transition-all",
+                      "text-[9px] font-bold border min-h-[36px] font-mono tracking-wider uppercase rounded-sm",
                       isActive
-                        ? "border-opacity-30 text-foreground"
-                        : "border-[rgba(255,255,255,0.04)] text-muted-foreground/40 active:scale-95"
+                        ? "text-foreground"
+                        : "border-border/10 text-muted-foreground/35 active:scale-95"
                     )}
                     style={{
-                      background: isActive ? mAccent?.glow : 'rgba(255,255,255,0.02)',
+                      background: isActive ? mAccent?.glow : 'hsl(220 18% 5% / 0.6)',
                       borderColor: isActive ? mAccent?.color + '33' : undefined,
-                      boxShadow: isActive ? `0 2px 12px ${mAccent?.glow}` : 'none',
                     }}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-3.5 h-3.5" />
                     {mode.label}
                   </button>
                 );
@@ -250,24 +249,24 @@ export default function CommandCenter() {
             <LiveFiringPanel initialMode={activeMode} standalone />
           ) : (
             <ScrollArea className="h-full">
-              <div className="h-full" style={{ background: 'hsl(228 16% 5%)' }}>
+              <div className="h-full surface-0">
                 {renderDirectPanel(activeMode)}
               </div>
             </ScrollArea>
           )}
         </div>
 
-        {/* ── Bottom Nav — Premium ── */}
+        {/* ── Bottom Nav — Tactical ── */}
         <div
           className="shrink-0"
           style={{
             paddingBottom: 'env(safe-area-inset-bottom)',
-            background: 'rgba(14, 14, 20, 0.92)',
-            backdropFilter: 'blur(48px) saturate(2)',
-            borderTop: '0.5px solid rgba(255,255,255,0.06)',
+            background: 'hsl(220 22% 3% / 0.95)',
+            backdropFilter: 'blur(32px)',
+            borderTop: '1px solid hsl(var(--primary) / 0.08)',
           }}
         >
-          <nav className="flex items-center justify-around py-2">
+          <nav className="flex items-center justify-around py-1.5">
             {MOBILE_CATEGORIES.map((cat, idx) => {
               const isActive = mobileCategory === idx;
               const Icon = cat.icon;
@@ -275,10 +274,10 @@ export default function CommandCenter() {
                 <button
                   key={cat.label}
                   onClick={() => setMobileCategory(idx)}
-                  className="flex flex-col items-center gap-0.5 py-1 px-4 rounded-xl transition-all active:scale-90"
+                  className="flex flex-col items-center gap-0.5 py-1 px-3 transition-all active:scale-90"
                 >
-                  <Icon className={cn("w-5 h-5 transition-colors", isActive ? "text-primary" : "text-muted-foreground/30")} style={isActive ? { filter: 'drop-shadow(0 0 6px hsl(var(--primary) / 0.4))' } : undefined} />
-                  <span className={cn("text-[8px] font-bold font-tech tracking-wider transition-colors", isActive ? "text-primary" : "text-muted-foreground/25")}>
+                  <Icon className={cn("w-5 h-5 transition-colors", isActive ? "text-primary" : "text-muted-foreground/25")} style={isActive ? { filter: 'drop-shadow(0 0 4px hsl(var(--primary) / 0.5))' } : undefined} />
+                  <span className={cn("text-[7px] font-bold font-mono tracking-[0.15em] transition-colors uppercase", isActive ? "text-primary" : "text-muted-foreground/20")}>
                     {cat.label}
                   </span>
                 </button>
