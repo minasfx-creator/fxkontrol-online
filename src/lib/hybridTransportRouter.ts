@@ -819,9 +819,10 @@ export class CellularTransport implements FireOneTransport {
   }
 
   private startPingLoop(): void {
-    const interval = setInterval(() => {
+    if (this._pingInterval) clearInterval(this._pingInterval);
+    this._pingInterval = setInterval(() => {
       if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-        clearInterval(interval);
+        if (this._pingInterval) { clearInterval(this._pingInterval); this._pingInterval = null; }
         return;
       }
       this.ws.send(JSON.stringify({ type: 'ping', t0: performance.now() }));

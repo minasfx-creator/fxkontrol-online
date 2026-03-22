@@ -335,11 +335,10 @@ export class WiFiTransport implements FireOneTransport {
 
   async send(frame: Uint8Array): Promise<void> {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) throw new Error('Wi-Fi relay não conectado');
-    const t0 = performance.now();
     // Send as binary for lowest latency
     this.ws.send(frame.slice().buffer as ArrayBuffer);
-    this.latencyMs = Math.round(performance.now() - t0);
     this.txBytes += frame.length;
+    // latencyMs updated via ping/pong in onmessage — not measured here (buffer write ≈ 0ms)
   }
 
   private measureLatency() {
