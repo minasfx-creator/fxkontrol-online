@@ -514,8 +514,8 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
     };
   }, [isDragging, position, updatePosition, camera, raycaster, gl, batchMode, selectedIds, dragAxis]);
 
-  const handleColor = isDragging ? COLORS.handleActive : isHovered ? COLORS.handleHover : COLORS.handle;
-  const handleSize = isDragging ? 0.22 : isHovered ? 0.2 : 0.15;
+  const handleColor = isDragging ? '#FFD54F' : isHovered ? '#81D4FA' : '#FF6B35';
+  const handleSize = isDragging ? 0.35 : isHovered ? 0.3 : 0.25;
 
   // Axis color indicator during drag
   const axisIndicatorColor = dragAxis === 'heading' ? COLORS.headingArc : dragAxis === 'pitch' ? COLORS.pitchArc : dragAxis === 'roll' ? COLORS.rollArc : null;
