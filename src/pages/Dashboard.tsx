@@ -351,24 +351,38 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* System Status */}
-          <Card className="bg-card border-border/50 animate-fxk-stagger" style={{ animationDelay: '0.3s' }}>
+          {/* Hardware Controllers */}
+          <Card className="bg-card border-border/50 animate-fxk-stagger overflow-hidden" style={{ animationDelay: '0.3s' }}>
             <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Activity className="h-3.5 w-3.5 text-primary" />
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider font-display">Sistema</span>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Cpu className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider font-display">Hardware</span>
+                </div>
+                <button
+                  onClick={() => navigate('/command?mode=controllers')}
+                  className="text-[9px] text-primary hover:text-primary/80 font-semibold transition-colors"
+                >
+                  Ver todos →
+                </button>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { label: 'OSC', icon: Cable },
-                  { label: 'sACN', icon: Activity },
-                  { label: 'FireOne', icon: Zap },
-                  { label: 'PBUS', icon: Radio },
-                ].map((sys) => (
-                  <div key={sys.label} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-[hsl(var(--surface-0)/0.5)] border border-border/10">
-                    <div className="status-dot-offline" />
-                    <p className="text-[9px] font-semibold text-muted-foreground/70">{sys.label}</p>
-                  </div>
+                  { label: 'FireOne XL4+', icon: Zap, mode: 'pyro_fire', color: 'text-red-400', border: 'border-red-500/15' },
+                  { label: 'ZK6200', icon: Gauge, mode: 'super_dmx', color: 'text-amber-400', border: 'border-amber-500/15' },
+                  { label: 'Art-Net', icon: Globe, mode: 'artnet_modules', color: 'text-primary', border: 'border-primary/15' },
+                  { label: 'IFM x32Q', icon: Cpu, mode: 'module', color: 'text-orange-400', border: 'border-orange-500/15' },
+                  { label: 'P-BUS', icon: Cable, mode: 'pbus', color: 'text-amber-400', border: 'border-amber-500/15' },
+                  { label: 'Radio', icon: Radio, mode: 'radio', color: 'text-cyan-400', border: 'border-cyan-500/15' },
+                ].map((hw) => (
+                  <button
+                    key={hw.label}
+                    onClick={() => navigate(`/command?mode=${hw.mode}`)}
+                    className={`flex items-center gap-2 px-2.5 py-2 rounded-xl bg-[hsl(var(--surface-0)/0.5)] border ${hw.border} hover:bg-muted/20 transition-all active:scale-[0.97] text-left`}
+                  >
+                    <hw.icon className={`h-3.5 w-3.5 ${hw.color} shrink-0`} />
+                    <span className="text-[9px] font-semibold text-foreground/70 truncate">{hw.label}</span>
+                  </button>
                 ))}
               </div>
             </CardContent>
