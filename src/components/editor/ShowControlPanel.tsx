@@ -174,7 +174,7 @@ export default function ShowControlPanel({ fs = false }: { fs?: boolean; onClose
         id: `log-${Date.now()}`, system: sys,
         color: sys === 'PYRO' ? 'hsl(0 85% 48%)' : 'hsl(200 80% 48%)',
         message: `FIRE ${ne?.type?.toUpperCase()} · INT ${ne?.intensity ?? 255} · DUR ${ne?.duration ?? 0}ms`,
-        timestamp: Date.now(), severity: sys === 'PYRO' ? 'warn' : 'info',
+        timestamp: Date.now(), severity: (sys === 'PYRO' ? 'warn' : 'info') as const,
       }, ...prev].slice(0, 50));
       setLastLatency(prev => ({ ...prev, [sys]: Date.now() }));
     }
