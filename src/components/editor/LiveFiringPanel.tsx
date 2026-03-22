@@ -49,6 +49,7 @@ import PBusMonitorPanel from './live-firing/PBusMonitorPanel';
 import RadioControlPanel from './RadioControlPanel';
 import MA3ControlPanel from './MA3ControlPanel';
 import VirtualIFMx32QPanel from './live-firing/VirtualIFMx32QPanel';
+import WiFiDirectControlPanel from './live-firing/WiFiDirectControlPanel';
 import { RISK_GROUP_LABELS, RISK_GROUP_COLORS, type RiskGroup } from '@/lib/pyroPhysics';
 
 // ═══════════════════════════════════════════════════════════
