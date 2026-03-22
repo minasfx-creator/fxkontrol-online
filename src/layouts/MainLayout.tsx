@@ -33,8 +33,12 @@ export default function MainLayout() {
   const isCommand = location.pathname === '/command';
   const isMobile = useIsMobile();
   const prevPathRef = useRef(location.pathname);
-  const [showFlash, setShowFlash] = useState(false);
   const [humStarted, setHumStarted] = useState(false);
+
+  // Page transition state machine
+  const [transitionPhase, setTransitionPhase] = useState<'idle' | 'dissolve-out' | 'materialize-in'>('idle');
+  const [displayedPath, setDisplayedPath] = useState(location.pathname);
+  const transitionTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activeEffects = useLiveSfxStore(s => s.activeEffects);
   const clearAll = useLiveSfxStore(s => s.clearAll);
@@ -42,7 +46,6 @@ export default function MainLayout() {
 
   const backlight = useDisplayStore(s => s.backlight);
 
-  // Hide dock on editor/command pages (they have their own UI)
   const showDock = !isEditor && !isCommand && !isMobile;
   const showMobileDock = !isEditor && !isCommand && isMobile;
 
@@ -58,15 +61,31 @@ export default function MainLayout() {
     return () => document.removeEventListener('click', handler);
   }, [humStarted]);
 
-  // Route change: play nav sound + flash
+  // Route change: holographic dissolve-out → materialize-in
   useEffect(() => {
     if (prevPathRef.current !== location.pathname) {
       ambientSound.play('nav');
-      setShowFlash(true);
-      const t = setTimeout(() => setShowFlash(false), 300);
+
+      // Phase 1: dissolve out current content
+      setTransitionPhase('dissolve-out');
+
+      if (transitionTimeout.current) clearTimeout(transitionTimeout.current);
+
+      transitionTimeout.current = setTimeout(() => {
+        // Phase 2: swap content & materialize in
+        setDisplayedPath(location.pathname);
+        setTransitionPhase('materialize-in');
+
+        transitionTimeout.current = setTimeout(() => {
+          setTransitionPhase('idle');
+        }, 700);
+      }, 350);
+
       prevPathRef.current = location.pathname;
-      return () => clearTimeout(t);
     }
+    return () => {
+      if (transitionTimeout.current) clearTimeout(transitionTimeout.current);
+    };
   }, [location.pathname]);
 
   const handlePanic = () => {
@@ -80,11 +99,10 @@ export default function MainLayout() {
         className="min-h-screen flex w-full bg-background br2049-vignette"
         style={{ filter: `brightness(${backlight / 100})` }}
       >
-        {/* Sidebar hidden on mobile — dock replaces it */}
         {!isMobile && <AppSidebar />}
 
         <div className="flex-1 flex flex-col min-w-0">
-          {/* ARMED Banner — global, unmissable */}
+          {/* ARMED Banner */}
           {isArmed && (
             <button
               onClick={() => navigate('/command')}
@@ -111,7 +129,6 @@ export default function MainLayout() {
               borderColor: 'hsl(32 100% 50% / 0.06)',
             }}
           >
-            {/* Subtle scanline in header */}
             <div className="absolute inset-0 animate-holographic-scan pointer-events-none opacity-20" />
             <SidebarToggleButton />
             <div className="ml-3 flex items-center gap-2 relative z-10">
@@ -127,10 +144,21 @@ export default function MainLayout() {
 
           <main className={`${isEditor ? 'flex-1 min-h-0' : 'flex-1 overflow-auto p-4 md:p-6'} relative`}
             style={showDock || showMobileDock ? { paddingBottom: '72px' } : undefined}>
-            {/* Route change flash */}
-            {showFlash && <div className="animate-route-flash" />}
-            {/* Content with holo-materialize keyed by route */}
-            <div key={location.pathname} className="animate-holo-materialize h-full">
+            {/* Holographic light sweep overlay during transition */}
+            {transitionPhase !== 'idle' && (
+              <div className="absolute inset-0 pointer-events-none z-50 animate-page-sweep" />
+            )}
+            {/* Content with dissolve/materialize phase transitions */}
+            <div
+              key={displayedPath}
+              className={`h-full ${
+                transitionPhase === 'dissolve-out'
+                  ? 'animate-page-dissolve-out'
+                  : transitionPhase === 'materialize-in'
+                    ? 'animate-page-materialize-in'
+                    : ''
+              }`}
+            >
               <Outlet />
             </div>
           </main>
@@ -138,7 +166,7 @@ export default function MainLayout() {
 
         <FXKAssistant />
 
-        {/* Global PANIC FAB — visible on all pages when armed */}
+        {/* Global PANIC FAB */}
         {isArmed && (
           <button
             onClick={handlePanic}
@@ -160,10 +188,7 @@ export default function MainLayout() {
           </button>
         )}
 
-        {/* macOS-style Dock Bar — desktop non-editor pages */}
         {showDock && <DockBar />}
-
-        {/* Mobile dock bar */}
         {showMobileDock && <DockBar />}
       </div>
     </SidebarProvider>
