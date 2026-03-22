@@ -171,7 +171,7 @@ function LockoutPanel({ fs, mob }: { fs: boolean; mob: boolean }) {
 
   return (
     <div className={cn("border-t border-border/15", fs && mob ? "px-3 py-1.5" : fs ? "px-4 py-2" : "px-2 py-1")} style={{ background: 'hsl(220 12% 7%)' }}>
-      <div className={cn("flex items-center gap-2 mb-1", fs ? "text-[9px]" : "text-[7px]")}>
+      <div className={cn("flex items-center gap-2 mb-1", fs ? "text-[9px]" : "text-[8px]")}>
         <Shield className={cn(fs ? "w-3.5 h-3.5" : "w-2.5 h-2.5", "text-amber-400/60")} />
         <span className="font-bold text-muted-foreground/50 uppercase tracking-wider">Lockout Groups</span>
       </div>
@@ -268,7 +268,7 @@ function CueKey({
 
       <span className={cn(
         "font-mono font-bold",
-        isBig ? "text-[9px] mb-0.5" : fs ? "text-xs mb-1" : "text-[7px]",
+        isBig ? "text-[9px] mb-0.5" : fs ? "text-xs mb-1" : "text-[8px]",
         firing ? "text-white" : "text-muted-foreground/50"
       )}>KEY{index + 1}</span>
 
@@ -283,14 +283,14 @@ function CueKey({
           </span>
           <span className={cn(
             "font-mono",
-            isBig ? "text-[7px] mt-0.5" : fs ? "text-[10px] mt-0.5" : "text-[10px]",
+            isBig ? "text-[8px] mt-0.5" : fs ? "text-[10px] mt-0.5" : "text-[10px]",
             firing ? "text-red-200" : "text-muted-foreground/40"
           )}>
             {cue.deviceIds.length}dev · {FIRING_RULES.find(r => r.key === cue.firingRule)?.label}
           </span>
         </>
       ) : (
-        <span className={cn(isBig ? "text-xs" : fs ? "text-sm" : "text-[7px]", "text-muted-foreground/20")}>—</span>
+        <span className={cn(isBig ? "text-xs" : fs ? "text-sm" : "text-[8px]", "text-muted-foreground/20")}>—</span>
       )}
     </button>
   );
@@ -320,7 +320,7 @@ function DeviceRow({
         "hover:bg-[hsl(220_10%_10%)]",
         !channel.enabled && "opacity-40"
       )}>
-      <span className={cn("font-mono text-muted-foreground/40 text-right shrink-0", fs ? "text-[10px] w-4" : "text-[7px] w-3")}>{index + 1}</span>
+      <span className={cn("font-mono text-muted-foreground/40 text-right shrink-0", fs ? "text-[10px] w-4" : "text-[8px] w-3")}>{index + 1}</span>
       <div className={cn("rounded-sm shrink-0", fs ? "w-2 h-7" : "w-1.5 h-6")} style={{ backgroundColor: sfxType?.color || '#888' }} />
       <div className="flex-1 min-w-0">
         <div className={cn("font-bold uppercase truncate leading-tight", fs ? "text-[10px]" : "text-[10px]", selected ? "text-primary" : "text-foreground/80")}>
@@ -393,7 +393,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const [showMode, setShowMode] = useState(false);
   const showModeTapRef = useRef<number>(0);
   const sequenceRef = useRef(0);
-  const fireTimers = useRef<globalThis.Map<string, NodeJS.Timeout>>(new (globalThis.Map)());
+  const fireTimers = useRef(new globalThis.Map<string, ReturnType<typeof setTimeout>>());
   const relayWs = useRef<WebSocket | null>(null);
 
   // ─── WebSocket Relay connection ───
@@ -510,7 +510,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
     onTouchEnd: handleSwipeEnd,
   } : {};
 
-  const sceneCues = useMemo(() => cues.filter(() => true), [cues]);
+  const sceneCues = useMemo(() => cues.filter(c => (c as any).sceneIndex === undefined || (c as any).sceneIndex === activeScene), [cues, activeScene]);
   const pageStart = cuePage * CUES_PER_PAGE;
   const pageEnd = pageStart + CUES_PER_PAGE;
   const pageCues = sceneCues.slice(0, 128); // Max 128
@@ -764,21 +764,8 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
     }
   }, [isMobile]);
 
-  // Sync browser Fullscreen API with isFullscreen state
-  useEffect(() => {
-    if (isFullscreen) {
-      const timer = setTimeout(() => {
-        if (!document.fullscreenElement) {
-          document.documentElement.requestFullscreen?.().catch(() => {});
-        }
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-
-    if (document.fullscreenElement) {
-      document.exitFullscreen?.().catch(() => {});
-    }
-  }, [isFullscreen]);
+  // Fullscreen API removed — CSS `fixed inset-0` handles visual fullscreen
+  // User can manually enter browser fullscreen via the maximize button
 
   // Lock body scroll while mobile commander is fullscreen (prevents cropped controls)
   useEffect(() => {
@@ -835,7 +822,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
         </div>
         <div>
           <div className={cn("font-black text-foreground tracking-[0.12em]", fs && mob ? "text-xs" : fs ? "text-base" : "text-[10px]")}>FXcommander™</div>
-          <div className={cn("font-mono tracking-wider", fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[10px]", showMode ? "text-red-400/60" : "text-muted-foreground/40")}>
+          <div className={cn("font-mono tracking-wider", fs && mob ? "text-[9px]" : fs ? "text-[9px]" : "text-[10px]", showMode ? "text-red-400/60" : "text-muted-foreground/40")}>
             {showMode ? '● SHOW MODE' : 'SHOWVEN® · V2.0'}
           </div>
         </div>
@@ -885,12 +872,12 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           <span className={cn(
             "font-mono",
             artNetConnected ? "text-green-500/70" : "text-muted-foreground/40",
-            fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[10px]"
+            fs && mob ? "text-[9px]" : fs ? "text-[9px]" : "text-[10px]"
           )}>DMX</span>
         </div>
         <button onClick={() => relayConnected ? disconnectRelay() : connectRelay()} className="flex items-center gap-1" title={relayConnected ? 'Relay UDP conectado — clique para desconectar' : 'Clique para conectar relay UDP local'}>
           <div className={cn("rounded-full", relayConnected ? "bg-cyan-400" : "bg-muted-foreground/20", fs ? "w-2.5 h-2.5" : "w-1.5 h-1.5")} style={relayConnected ? { boxShadow: '0 0 6px rgba(0,220,255,0.5)' } : undefined} />
-          <span className={cn("font-mono", relayConnected ? "text-cyan-400/70" : "text-muted-foreground/40", fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[10px]")}>UDP</span>
+          <span className={cn("font-mono", relayConnected ? "text-cyan-400/70" : "text-muted-foreground/40", fs && mob ? "text-[9px]" : fs ? "text-[9px]" : "text-[10px]")}>UDP</span>
         </button>
         <div className="flex items-center gap-1">
           <Signal className={cn(pyroArm ? "text-red-500" : "text-muted-foreground/20", fs && mob ? "w-3.5 h-3.5" : fs ? "w-4 h-4" : "w-2.5 h-2.5")} />
@@ -941,7 +928,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           onTouchEnd={(e) => { e.preventDefault(); setDeadmanHeld(false); }}
           className={cn(
             "flex items-center justify-center rounded border-2 font-black uppercase transition-all gap-2",
-            fs && mob ? "w-full py-3 text-[10px]" : fs ? "w-16 py-3 text-[10px] shrink-0" : "w-10 py-1.5 text-[7px] shrink-0",
+            fs && mob ? "w-full py-3 text-[10px]" : fs ? "w-16 py-3 text-[10px] shrink-0" : "w-10 py-1.5 text-[8px] shrink-0",
             deadmanHeld ? "bg-green-600/30 border-green-500/60 text-green-400" : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/30"
           )}>
           <Hand className={cn(fs && mob ? "w-5 h-5" : fs ? "w-4 h-4" : "w-3 h-3")} />
@@ -981,7 +968,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
             <ChevronRight className={cn(fs ? "w-4 h-4" : "w-3 h-3")} />
           </button>
         </div>
-        <span className={cn("font-mono text-muted-foreground/20", fs && mob ? "text-[7px]" : fs ? "text-[10px]" : "text-[10px]")}>
+        <span className={cn("font-mono text-muted-foreground/20", fs && mob ? "text-[9px]" : fs ? "text-[10px]" : "text-[10px]")}>
           Page {cuePage + 1}/16
         </span>
       </div>
@@ -1009,7 +996,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           <button key={s} onClick={() => setActiveScene(s)} disabled={pyroArm}
             className={cn(
               "font-bold uppercase tracking-wider transition-all border-b-2",
-              fs && mob ? "flex-1 px-3 py-2.5 text-[10px]" : fs ? "px-5 py-2.5 text-xs" : "px-2.5 py-1.5 text-[7px]",
+              fs && mob ? "flex-1 px-3 py-2.5 text-[10px]" : fs ? "px-5 py-2.5 text-xs" : "px-2.5 py-1.5 text-[8px]",
               activeScene === s ? "text-primary border-primary bg-primary/5" : "text-muted-foreground/30 border-transparent hover:text-muted-foreground/60"
             )}>S{s}</button>
         ))}
@@ -1077,7 +1064,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           {pbus.isConnected && <span className={cn("font-mono text-[10px]", fs ? "text-[10px]" : "")}>
             <span className={cn("inline-block w-1.5 h-1.5 rounded-full mr-0.5", pbus.connectionPath === 'radio' ? "bg-amber-400" : "bg-green-500")} />PB
           </span>}
-          <span className={cn("font-mono", fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[10px]", artNetConnected ? "text-green-500/60" : "text-muted-foreground/20")}>
+          <span className={cn("font-mono", fs && mob ? "text-[9px]" : fs ? "text-[9px]" : "text-[10px]", artNetConnected ? "text-green-500/60" : "text-muted-foreground/20")}>
             {artNetConnected ? '● Art-Net' : '○ Off'}
           </span>
         </div>
@@ -1088,10 +1075,10 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const renderDeviceList = (fs: boolean) => (
     <div className="border-b border-border/15">
       <div className={cn("flex items-center justify-between", fs ? "px-4 py-2" : "px-2 py-1")} style={{ background: 'hsl(220 10% 9%)' }}>
-        <span className={cn("font-bold text-muted-foreground/50 uppercase tracking-wider", fs ? "text-[10px]" : "text-[7px]")}>Device List</span>
+        <span className={cn("font-bold text-muted-foreground/50 uppercase tracking-wider", fs ? "text-[10px]" : "text-[8px]")}>Device List</span>
         <div className="flex items-center gap-2">
-          <span className={cn("font-mono text-muted-foreground/30", fs ? "text-[9px]" : "text-[7px]")}>{enabledCount}/{channels.length}</span>
-          {firingCount > 0 && <span className={cn("font-mono text-red-400 font-bold animate-pulse", fs ? "text-[9px]" : "text-[7px]")}>🔥 {firingCount}</span>}
+          <span className={cn("font-mono text-muted-foreground/30", fs ? "text-[9px]" : "text-[8px]")}>{enabledCount}/{channels.length}</span>
+          {firingCount > 0 && <span className={cn("font-mono text-red-400 font-bold animate-pulse", fs ? "text-[9px]" : "text-[8px]")}>🔥 {firingCount}</span>}
         </div>
       </div>
       <div className={cn("overflow-y-auto", fs ? "max-h-[300px]" : "max-h-[140px]")}>
@@ -1125,7 +1112,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
     <div className={cn("space-y-2", fs ? "p-4" : "p-2")}>
       <div className="flex items-center justify-between">
         <span className={cn("font-bold text-muted-foreground/50 uppercase tracking-wider", fs ? "text-[10px]" : "text-[10px]")}>CUE Setting</span>
-        <span className={cn("font-mono text-primary/50", fs ? "text-[9px]" : "text-[7px]")}>{selectedDevices.size} selected</span>
+        <span className={cn("font-mono text-primary/50", fs ? "text-[9px]" : "text-[8px]")}>{selectedDevices.size} selected</span>
       </div>
       {/* Key selector */}
       <div className={cn("grid grid-cols-8", fs ? "gap-1.5" : "gap-0.5")}>
@@ -1133,7 +1120,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           <button key={i} onClick={() => setEditingCue(editingCue === i ? null : i)}
             className={cn(
               "rounded font-bold transition-all border",
-              fs ? "py-2 text-xs" : "py-1 text-[7px]",
+              fs ? "py-2 text-xs" : "py-1 text-[8px]",
               editingCue === i ? "bg-primary/15 border-primary/40 text-primary"
                 : pageCues.find(c => c.keyIndex === i + pageStart) ? "bg-[hsl(220_12%_14%)] border-border/20 text-foreground/50"
                 : "bg-[hsl(220_10%_8%)] border-border/10 text-muted-foreground/30"
@@ -1187,7 +1174,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
             <button onClick={() => setCueKeyMode(cueKeyMode === 'tap' ? 'lock' : 'tap')}
               className={cn(
                 "rounded border font-bold flex items-center gap-1 transition-all",
-                fs ? "px-3 py-1 text-[10px]" : "px-2 py-0.5 text-[7px]",
+                fs ? "px-3 py-1 text-[10px]" : "px-2 py-0.5 text-[8px]",
                 cueKeyMode === 'lock' ? "bg-amber-500/15 border-amber-500/40 text-amber-400" : "bg-[hsl(220_10%_12%)] border-border/15 text-muted-foreground/50"
               )}>
               {cueKeyMode === 'lock' ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
@@ -1202,7 +1189,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
       )}
       {/* Quick add device */}
       <div className="pt-1 border-t border-border/10">
-        <span className={cn("font-bold text-muted-foreground/30 uppercase tracking-wider mb-1 block", fs ? "text-[9px]" : "text-[7px]")}>Quick Add</span>
+        <span className={cn("font-bold text-muted-foreground/30 uppercase tracking-wider mb-1 block", fs ? "text-[9px]" : "text-[8px]")}>Quick Add</span>
         <div className={cn("grid grid-cols-4", fs ? "gap-1.5" : "gap-0.5")}>
           {SFX_TYPES.slice(0, 8).map(t => (
             <button key={t.key} onClick={() => addChannel(t.key)}
@@ -1211,7 +1198,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
                 fs ? "gap-1 py-3" : "gap-0.5 py-1.5"
               )}>
               <t.icon className={cn(fs ? "w-5 h-5" : "w-3 h-3")} style={{ color: t.color }} />
-              <span className={cn("font-bold uppercase text-muted-foreground/40", fs ? "text-[7px]" : "text-[10px]")}>{t.label}</span>
+              <span className={cn("font-bold uppercase text-muted-foreground/40", fs ? "text-[8px]" : "text-[10px]")}>{t.label}</span>
             </button>
           ))}
         </div>
@@ -1222,7 +1209,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const renderSimpleDmx = (fs: boolean) => (
     <div className={cn("space-y-1", fs ? "p-4" : "p-2")}>
       <div className="flex items-center justify-between px-1 mb-1">
-        <span className={cn("font-bold text-muted-foreground/40 uppercase tracking-wider", fs ? "text-[9px]" : "text-[7px]")}>
+        <span className={cn("font-bold text-muted-foreground/40 uppercase tracking-wider", fs ? "text-[9px]" : "text-[8px]")}>
           DMX Output — {channels.length} channels
         </span>
         <button onClick={() => setChannels(prev => prev.map(c => ({ ...c, intensity: 0 })))}
@@ -1232,11 +1219,11 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
         const sfxType = SFX_TYPES.find(t => t.key === ch.type);
         return (
           <div key={ch.id} className={cn("flex items-center gap-1.5 rounded border border-border/5", fs ? "px-3 py-2" : "px-1.5 py-1")} style={{ background: 'hsl(220 10% 8%)' }}>
-            <span className={cn("font-mono text-muted-foreground/30 text-right", fs ? "text-[9px] w-5" : "text-[7px] w-4")}>{String(i + 1).padStart(2, '0')}</span>
+            <span className={cn("font-mono text-muted-foreground/30 text-right", fs ? "text-[9px] w-5" : "text-[8px] w-4")}>{String(i + 1).padStart(2, '0')}</span>
             <div className={cn("rounded-full shrink-0", fs ? "w-2.5 h-2.5" : "w-1.5 h-1.5")} style={{ backgroundColor: sfxType?.color }} />
             <span className={cn("font-bold flex-1 truncate text-foreground/70", fs ? "text-xs" : "text-[10px]")}>{ch.name}</span>
             <Slider value={[ch.intensity]} min={0} max={255} step={1} onValueChange={([v]) => setChannels(prev => prev.map(c => c.id === ch.id ? { ...c, intensity: v } : c))} className={cn(fs ? "w-28" : "w-16")} />
-            <span className={cn("font-mono text-muted-foreground/50 text-right", fs ? "text-[9px] w-10" : "text-[7px] w-8")}>{ch.intensity}/{Math.round(ch.intensity / 255 * 100)}%</span>
+            <span className={cn("font-mono text-muted-foreground/50 text-right", fs ? "text-[9px] w-10" : "text-[8px] w-8")}>{ch.intensity}/{Math.round(ch.intensity / 255 * 100)}%</span>
             <button onClick={() => setChannels(prev => prev.map(c => c.id === ch.id ? { ...c, enabled: !c.enabled } : c))} className="p-0.5">
               {ch.enabled ? <Eye className={cn(fs ? "w-4 h-4" : "w-2.5 h-2.5", "text-green-500/60")} /> : <EyeOff className={cn(fs ? "w-4 h-4" : "w-2.5 h-2.5", "text-muted-foreground/20")} />}
             </button>
@@ -1251,7 +1238,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
     return (
       <div className={cn("space-y-2", isMobileFire ? "p-3" : fs ? "p-4" : "p-2")}>
         <div className="flex items-center justify-between px-1">
-          <span className={cn("font-bold text-muted-foreground/40 uppercase tracking-wider", isMobileFire ? "text-[10px]" : fs ? "text-[9px]" : "text-[7px]")}>
+          <span className={cn("font-bold text-muted-foreground/40 uppercase tracking-wider", isMobileFire ? "text-[10px]" : fs ? "text-[9px]" : "text-[8px]")}>
             Pyro Manual Fire
           </span>
           <span className={cn("font-mono text-foreground/40", isMobileFire ? "text-sm" : fs ? "text-xs" : "text-[10px]")}>{formatTimecode(elapsedMs)}</span>
@@ -1274,7 +1261,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           </button>
         )}
         {settings.pyroArmRequired && !deadmanHeld && (pyroArm || dmxArm) && (
-          <div className={cn("text-center text-amber-400/50 font-bold uppercase", isMobileFire ? "text-xs" : fs ? "text-[10px]" : "text-[7px]")}>
+          <div className={cn("text-center text-amber-400/50 font-bold uppercase", isMobileFire ? "text-xs" : fs ? "text-[10px]" : "text-[8px]")}>
             Hold DEADMAN to enable firing
           </div>
         )}

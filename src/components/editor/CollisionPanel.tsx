@@ -75,17 +75,17 @@ export default function CollisionPanel({ onClose }: { onClose: () => void }) {
             <div className="grid grid-cols-3 gap-1">
               <div className="p-1.5 rounded-sm bg-surface-2 border border-border/50 text-center">
                 <p className="text-[10px] font-mono-code text-foreground">{droneFormations.length}</p>
-                <p className="text-[7px] text-muted-foreground">Formações</p>
+                <p className="text-[8px] text-muted-foreground">Formações</p>
               </div>
               <div className="p-1.5 rounded-sm bg-surface-2 border border-border/50 text-center">
                 <p className="text-[10px] font-mono-code text-foreground">{droneFormations[0]?.droneCount || 0}</p>
-                <p className="text-[7px] text-muted-foreground">Drones</p>
+                <p className="text-[8px] text-muted-foreground">Drones</p>
               </div>
               <div className="p-1.5 rounded-sm bg-surface-2 border border-border/50 text-center">
                 <p className={cn('text-[10px] font-mono-code', analysis.worstDistance > 0 && analysis.worstDistance < 1.5 ? 'text-red-400' : 'text-green-400')}>
                   {analysis.worstDistance > 0 ? `${analysis.worstDistance.toFixed(2)}m` : '—'}
                 </p>
-                <p className="text-[7px] text-muted-foreground">Dist. Mín.</p>
+                <p className="text-[8px] text-muted-foreground">Dist. Mín.</p>
               </div>
             </div>
 
@@ -113,7 +113,7 @@ export default function CollisionPanel({ onClose }: { onClose: () => void }) {
                     );
                   })}
                 </div>
-                <div className="flex justify-between text-[6px] text-muted-foreground font-mono-code px-1">
+                <div className="flex justify-between text-[8px] text-muted-foreground font-mono-code px-1">
                   <span>{analysis.minDistanceOverTime[0]?.time.toFixed(0)}s</span>
                   <span>{analysis.minDistanceOverTime[analysis.minDistanceOverTime.length - 1]?.time.toFixed(0)}s</span>
                 </div>
@@ -137,7 +137,7 @@ export default function CollisionPanel({ onClose }: { onClose: () => void }) {
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-[8px] text-foreground truncate">{c.message}</p>
-                      <div className="flex items-center gap-1 text-[7px] text-muted-foreground">
+                      <div className="flex items-center gap-1 text-[8px] text-muted-foreground">
                         <span>t={c.time.toFixed(1)}s</span>
                         {c.formationBId && (
                           <>
@@ -166,7 +166,7 @@ export default function CollisionPanel({ onClose }: { onClose: () => void }) {
                     key={r}
                     onClick={() => setSampleRate(r)}
                     className={cn(
-                      'px-1.5 py-0.5 rounded-sm border text-[7px]',
+                      'px-1.5 py-0.5 rounded-sm border text-[8px]',
                       sampleRate === r ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border/50 hover:text-foreground'
                     )}
                   >

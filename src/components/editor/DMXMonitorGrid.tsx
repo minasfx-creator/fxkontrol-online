@@ -125,7 +125,7 @@ export default function DMXMonitorGrid({ universes, className }: DMXMonitorGridP
             {Array.from({ length: cols }, (_, i) => (
               <div
                 key={i}
-                className="text-[6px] text-muted-foreground/60 text-center font-mono"
+                className="text-[8px] text-muted-foreground/60 text-center font-mono"
                 style={{ width: viewMode === 'compact' ? 14 : 28, minWidth: viewMode === 'compact' ? 14 : 28 }}
               >
                 {i + 1}
@@ -140,7 +140,7 @@ export default function DMXMonitorGrid({ universes, className }: DMXMonitorGridP
               <div key={row} className="flex gap-px items-center">
                 {/* Row label */}
                 <div
-                  className="text-[7px] text-muted-foreground/60 font-mono text-right pr-1 shrink-0"
+                  className="text-[8px] text-muted-foreground/60 font-mono text-right pr-1 shrink-0"
                   style={{ width: viewMode === 'expanded' ? 28 : 20 }}
                 >
                   {startCh}
@@ -185,7 +185,7 @@ export default function DMXMonitorGrid({ universes, className }: DMXMonitorGridP
       </div>
 
       {/* Color legend */}
-      <div className="flex items-center gap-1 px-2 py-1 border-t border-border/50 text-[7px] text-muted-foreground">
+      <div className="flex items-center gap-1 px-2 py-1 border-t border-border/50 text-[8px] text-muted-foreground">
         <span>0</span>
         <div className="flex gap-px flex-1">
           {[0, 32, 64, 96, 128, 160, 192, 224].map(v => (
