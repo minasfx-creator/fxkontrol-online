@@ -1593,7 +1593,7 @@ export default function PyroFireOnePanel({
           </>
         )}
 
-        {renderModuleMonitor()}
+        {renderModuleScanner()}
         {renderPanic()}
       </div>
     );
