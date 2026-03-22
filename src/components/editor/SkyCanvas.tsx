@@ -3575,7 +3575,7 @@ export default function SkyCanvas() {
   const recoveringContextRef = useRef(false);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const environment = useSceneStore(st => st.environment);
-  const [showDebugOverlay, setShowDebugOverlay] = useState(true);
+  const [showDebugOverlay, setShowDebugOverlay] = useState(false);
 
   // Exit fly mode when pointer lock is lost (ESC)
   useEffect(() => {
