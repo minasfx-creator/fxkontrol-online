@@ -130,6 +130,11 @@ export default function VirtualControllerHub({ fs = false, onSelectMode, onClose
           return;
         }
       }
+      if (connType === 'wifi_direct') {
+        await fireone.connectWiFiDirect();
+        toast.success(`${card.name}: Wi-Fi Direct conectado`);
+        return;
+      }
       if (connType === 'pbus') {
         await pbus.connect();
         toast.success('PBUS conectado — escaneando dispositivos...');

@@ -436,6 +436,7 @@ export function useFireOneHardware() {
     connectionPath,
     connect,
     connectWiFi,
+    connectWiFiDirect,
     connectRadio,
     connectArtNet,
     removeTransport,
