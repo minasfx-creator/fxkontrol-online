@@ -576,6 +576,7 @@ import {
   type TransportType,
 } from '@/lib/fireoneTransport';
 import { WiFiDirectTransport } from '@/lib/fireoneWifiDirectTransport';
+import { getHybridRouter, StarlinkTransport, type HybridTransportRouter, type HybridRouterConfig } from '@/lib/hybridTransportRouter';
 
 export class FireOneController {
   private conn: FireOneConnection | null = null;
