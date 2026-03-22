@@ -2,7 +2,7 @@ import { useRef, useState, useCallback, useMemo, useEffect, forwardRef } from 'r
 import { useThree, useFrame } from '@react-three/fiber';
 import { Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
-import { useProjectStore, type Position } from '@/store/useProjectStore';
+import { useProjectStore, type Position, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { useUndoStore } from '@/store/useUndoStore';
 import { calcWindCompensation, getBreakHeight, getMortarVelocity, getLiftTime } from '@/lib/pyroPhysics';
 
@@ -279,9 +279,21 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
   // Expanded pitch range: -180 to 180 per Finale 3D spec
   const pitch = Math.max(-180, Math.min(180, position.pitch || 85)) * (Math.PI / 180);
 
+  // Get real caliber from linked effects
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const realCaliber = useMemo(() => {
+    const linked = timelineItems.filter(t => t.positionId === position.id || t.positionIds?.includes(position.id));
+    let cal = 4;
+    for (const item of linked) {
+      const eff = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      if (eff?.caliber && eff.caliber > cal) cal = eff.caliber;
+    }
+    return cal;
+  }, [timelineItems, position.id]);
+
   // Compute physics-based trajectory using caliber-derived parameters
   const trajectoryData = useMemo(() => {
-    const caliber = 4; // default caliber for gizmo visualization
+    const caliber = realCaliber;
     const v0 = getMortarVelocity(caliber);
     const hRad = heading;
     const pRad = pitch;
@@ -705,11 +717,22 @@ export default function PyroLaunchAngles() {
   const positions = useProjectStore(s => s.positions);
   const selectedIds = useProjectStore(s => s.selectedPositionIds);
   const editorMode = useProjectStore(s => s.editorMode);
+  const timelineItems = useProjectStore(s => s.timelineItems);
   const pyroPositions = positions.filter(p => p.type === 'pyro');
   const isAngleMode = editorMode === 'adjust-angles';
-  const visiblePositions = isAngleMode
-    ? (selectedIds.length > 0 ? pyroPositions.filter(p => selectedIds.includes(p.id)) : pyroPositions)
-    : pyroPositions.filter(p => selectedIds.includes(p.id));
+  
+  // Auto-show trajectory for selected positions with effects (even in select mode)
+  const visiblePositions = useMemo(() => {
+    if (isAngleMode) {
+      return selectedIds.length > 0 ? pyroPositions.filter(p => selectedIds.includes(p.id)) : pyroPositions;
+    }
+    // In select mode: show for selected positions that have linked effects
+    return pyroPositions.filter(p => {
+      if (!selectedIds.includes(p.id)) return false;
+      return timelineItems.some(t => t.positionId === p.id || t.positionIds?.includes(p.id));
+    });
+  }, [isAngleMode, selectedIds, pyroPositions, timelineItems]);
+  
   const selectedPyroPositions = pyroPositions.filter(p => selectedIds.includes(p.id));
   const isBatch = selectedIds.length > 1;
 
