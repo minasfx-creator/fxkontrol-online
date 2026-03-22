@@ -10,6 +10,7 @@ import { useDisplayStore } from '@/store/useDisplayStore';
 import { haptics } from '@/lib/haptics';
 import { ambientSound } from '@/lib/ambientSound';
 import { useEffect, useRef, useState } from 'react';
+import DockBar from '@/components/DockBar';
 
 function SidebarToggleButton() {
   const { state, toggleSidebar } = useSidebar();
@@ -17,7 +18,7 @@ function SidebarToggleButton() {
   return (
     <button
       onClick={toggleSidebar}
-      className="flex items-center justify-center h-7 w-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+      className="flex items-center justify-center h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-all active:scale-90"
       title={collapsed ? 'Expandir menu' : 'Recolher menu'}
     >
       {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
@@ -29,6 +30,7 @@ export default function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const isEditor = location.pathname === '/editor';
+  const isCommand = location.pathname === '/command';
   const isMobile = useIsMobile();
   const prevPathRef = useRef(location.pathname);
   const [showFlash, setShowFlash] = useState(false);
@@ -39,6 +41,10 @@ export default function MainLayout() {
   const isArmed = activeEffects.length > 0;
 
   const backlight = useDisplayStore(s => s.backlight);
+
+  // Hide dock on editor/command pages (they have their own UI)
+  const showDock = !isEditor && !isCommand && !isMobile;
+  const showMobileDock = !isEditor && !isCommand && isMobile;
 
   // Start ambient hum on first user gesture
   useEffect(() => {
@@ -74,7 +80,8 @@ export default function MainLayout() {
         className="min-h-screen flex w-full bg-background br2049-vignette"
         style={{ filter: `brightness(${backlight / 100})` }}
       >
-        <AppSidebar />
+        {/* Sidebar hidden on mobile — dock replaces it */}
+        {!isMobile && <AppSidebar />}
 
         <div className="flex-1 flex flex-col min-w-0">
           {/* ARMED Banner — global, unmissable */}
@@ -94,11 +101,18 @@ export default function MainLayout() {
             </button>
           )}
 
-          {/* Header — BR2049 amber chrome */}
-          <header className={`flex items-center border-b px-3 shrink-0 relative overflow-hidden ${isEditor ? 'h-8' : 'h-10'}`}
-            style={{ background: 'hsl(var(--surface-0))', borderColor: 'hsl(32 100% 50% / 0.08)' }}>
+          {/* Header — Apple frosted glass bar */}
+          <header
+            className={`flex items-center border-b px-3 shrink-0 relative overflow-hidden ${isEditor ? 'h-8' : 'h-10'}`}
+            style={{
+              background: 'rgba(8, 10, 14, 0.85)',
+              backdropFilter: 'blur(48px) saturate(1.8)',
+              WebkitBackdropFilter: 'blur(48px) saturate(1.8)',
+              borderColor: 'hsl(32 100% 50% / 0.06)',
+            }}
+          >
             {/* Subtle scanline in header */}
-            <div className="absolute inset-0 animate-holographic-scan pointer-events-none opacity-30" />
+            <div className="absolute inset-0 animate-holographic-scan pointer-events-none opacity-20" />
             <SidebarToggleButton />
             <div className="ml-3 flex items-center gap-2 relative z-10">
               <div className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: 'hsl(32 100% 50%)', boxShadow: '0 0 6px hsl(32 100% 50% / 0.5)' }} />
@@ -111,7 +125,8 @@ export default function MainLayout() {
             </div>
           </header>
 
-          <main className={`${isEditor ? 'flex-1 min-h-0' : 'flex-1 overflow-auto p-4 md:p-6'} relative`}>
+          <main className={`${isEditor ? 'flex-1 min-h-0' : 'flex-1 overflow-auto p-4 md:p-6'} relative`}
+            style={showDock || showMobileDock ? { paddingBottom: '72px' } : undefined}>
             {/* Route change flash */}
             {showFlash && <div className="animate-route-flash" />}
             {/* Content with holo-materialize keyed by route */}
@@ -127,9 +142,9 @@ export default function MainLayout() {
         {isArmed && (
           <button
             onClick={handlePanic}
-            className="fixed z-[9999] flex items-center justify-center rounded-sm border-2 border-destructive/60 transition-all active:scale-90 armed-pulse"
+            className="fixed z-[9999] flex items-center justify-center rounded-xl border-2 border-destructive/60 transition-all active:scale-90 armed-pulse"
             style={{
-              bottom: isMobile ? '80px' : '32px',
+              bottom: isMobile ? '80px' : '80px',
               right: '16px',
               width: '64px',
               height: '64px',
@@ -145,29 +160,11 @@ export default function MainLayout() {
           </button>
         )}
 
-        {!isEditor && (
-          <div className="fixed bottom-0 left-0 right-0 h-6 flex items-center justify-between px-4 border-t z-40"
-            style={{ background: 'hsl(var(--surface-0) / 0.9)', backdropFilter: 'blur(12px)', borderColor: 'hsl(32 100% 50% / 0.06)' }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <div className="status-dot-offline" />
-                <span className="text-[8px] font-mono-code text-muted-foreground/50">0 HW</span>
-              </div>
-              <span className="text-[8px] font-mono-code text-muted-foreground/30">·</span>
-              <span className="text-[8px] font-mono-code" style={{ color: isArmed ? 'hsl(0 85% 48%)' : 'hsl(32 100% 50% / 0.5)' }}>
-                {isArmed ? 'ARMED' : 'IDLE'}
-              </span>
-            </div>
-            <button
-              onClick={() => navigate('/editor')}
-              className="text-[8px] font-mono-code px-2 py-0.5 rounded transition-colors"
-              style={{ color: 'hsl(32 100% 50% / 0.6)' }}
-            >
-              PRE-FLIGHT →
-            </button>
-          </div>
-        )}
+        {/* macOS-style Dock Bar — desktop non-editor pages */}
+        {showDock && <DockBar />}
+
+        {/* Mobile dock bar */}
+        {showMobileDock && <DockBar />}
       </div>
     </SidebarProvider>
   );
