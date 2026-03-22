@@ -74,9 +74,9 @@ class ArtNetModuleService {
   private moduleStates = new Map<string, ModuleConnectionState>();
   private sequenceCounters = new Map<string, number>();
 
-  subscribe(fn: ModuleEventListener) {
+  subscribe(fn: ModuleEventListener): () => void {
     this.listeners.add(fn);
-    return () => this.listeners.delete(fn);
+    return () => { this.listeners.delete(fn); };
   }
 
   private emit(type: ModuleEventType, data: any) {
