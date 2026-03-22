@@ -62,7 +62,7 @@ import { toast } from 'sonner';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 // ═══ render_ultra integrations — Blender/Cycles-grade tech ═══
 import { createExposureController, updateExposure, flashEvent } from '@/render_ultra/postprocessing/exposure';
-import { getCompound, thermalColor, type ChemicalCompound } from '@/render_ultra/fireworks/particleChemistry';
+import { getCompound, thermalColor, autoMatchFormulation, type ChemicalCompound } from '@/render_ultra/fireworks/particleChemistry';
 import { GlobalIlluminationSystem } from '@/render_ultra/lighting/globalIllumination';
 // SmokeSystem removed — handled by NiagaraVFXController
 import { createLensFlareSprite, flashLensFlare, decayLensFlare } from '@/render_ultra/postprocessing/lensFlare';
