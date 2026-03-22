@@ -463,6 +463,12 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const swipeHandled = useRef(false);
 
   const handleSwipeStart = useCallback((e: React.TouchEvent) => {
+    // Guard: ignore swipe if started inside interactive elements
+    const target = e.target as HTMLElement;
+    if (target.closest('[role="slider"], input, textarea, [data-radix-scroll-area-viewport], .scroll-area')) {
+      touchRef.current = null;
+      return;
+    }
     const touch = e.touches[0];
     touchRef.current = { x: touch.clientX, y: touch.clientY, t: Date.now() };
     swipeHandled.current = false;
