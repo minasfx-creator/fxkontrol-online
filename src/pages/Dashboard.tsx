@@ -262,17 +262,18 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto pb-10">
-      {/* ── Hero Banner — Tactical Command ──── */}
-      <div className="relative overflow-hidden rounded border border-primary/15 bg-surface-1 p-5 md:p-7 mb-5 animate-fxk-fade-up">
+    <div className="max-w-7xl mx-auto pb-10 relative br2049-rain">
+      {/* ── Hero Banner — BR2049 Tactical Command ──── */}
+      <div className="relative overflow-hidden rounded border bg-surface-1 p-5 md:p-7 mb-5 animate-fxk-fade-up"
+        style={{ borderColor: 'hsl(32 100% 50% / 0.15)' }}>
         {/* Tactical grid overlay */}
         <div className="absolute inset-0 tactical-grid" />
         <div className="absolute inset-0 tactical-scanline" />
-        {/* Corner accents */}
-        <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-primary/30" />
-        <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-primary/30" />
-        <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-primary/30" />
-        <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-primary/30" />
+        {/* Corner accents — amber */}
+        <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2" style={{ borderColor: 'hsl(32 100% 50% / 0.3)' }} />
+        <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2" style={{ borderColor: 'hsl(32 100% 50% / 0.3)' }} />
+        <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2" style={{ borderColor: 'hsl(32 100% 50% / 0.3)' }} />
+        <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2" style={{ borderColor: 'hsl(32 100% 50% / 0.3)' }} />
         
         <div className="relative z-10 flex items-start justify-between">
           <div>
@@ -474,8 +475,8 @@ export default function Dashboard() {
             ))}
           </div>
           <div className="flex items-center gap-2 mb-3">
-            <Circle className="h-2 w-2 fill-emerald-400 text-emerald-400 animate-pulse" />
-            <span className="text-[9px] font-mono-code text-muted-foreground tracking-widest uppercase">
+            <Circle className="h-2 w-2 fill-current animate-pulse" style={{ color: 'hsl(32 100% 50%)' }} />
+            <span className="text-[9px] font-mono-code text-muted-foreground tracking-widest uppercase" style={{ color: 'hsl(32 100% 50% / 0.5)' }}>
               Industry Feed · {filteredNews.length} posts
             </span>
           </div>

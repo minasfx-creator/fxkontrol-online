@@ -43,7 +43,7 @@ export default function MainLayout() {
   return (
     <SidebarProvider defaultOpen={!isMobile}>
       <div
-        className="min-h-screen flex w-full bg-background"
+        className="min-h-screen flex w-full bg-background br2049-vignette"
         style={{ filter: `brightness(${backlight / 100})` }}
       >
         <AppSidebar />
@@ -66,16 +66,19 @@ export default function MainLayout() {
             </button>
           )}
 
-          {/* Header */}
-          <header className={`flex items-center border-b border-border/50 px-3 shrink-0 bg-[hsl(var(--surface-0))] ${isEditor ? 'h-8' : 'h-10'}`}>
+          {/* Header — BR2049 amber chrome */}
+          <header className={`flex items-center border-b px-3 shrink-0 relative overflow-hidden ${isEditor ? 'h-8' : 'h-10'}`}
+            style={{ background: 'hsl(var(--surface-0))', borderColor: 'hsl(32 100% 50% / 0.08)' }}>
+            {/* Subtle scanline in header */}
+            <div className="absolute inset-0 animate-holographic-scan pointer-events-none opacity-30" />
             <SidebarToggleButton />
-            <div className="ml-3 flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase">
+            <div className="ml-3 flex items-center gap-2 relative z-10">
+              <div className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: 'hsl(32 100% 50%)', boxShadow: '0 0 6px hsl(32 100% 50% / 0.5)' }} />
+              <span className="text-[10px] font-mono tracking-widest uppercase" style={{ color: 'hsl(32 100% 50% / 0.8)', textShadow: '0 0 8px hsl(32 100% 50% / 0.3)' }}>
                 FX KONTROL
               </span>
             </div>
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-2 relative z-10">
               <img src={minasfxLogo} alt="MinasFX" className="h-4 object-contain opacity-60" />
             </div>
           </header>
@@ -111,7 +114,7 @@ export default function MainLayout() {
 
         {!isEditor && (
           <div className="fixed bottom-0 left-0 right-0 h-6 flex items-center justify-between px-4 border-t z-40"
-            style={{ background: 'hsl(var(--surface-0) / 0.9)', backdropFilter: 'blur(12px)', borderColor: 'hsl(var(--border) / 0.1)' }}
+            style={{ background: 'hsl(var(--surface-0) / 0.9)', backdropFilter: 'blur(12px)', borderColor: 'hsl(32 100% 50% / 0.06)' }}
           >
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5">
@@ -119,13 +122,14 @@ export default function MainLayout() {
                 <span className="text-[8px] font-mono-code text-muted-foreground/50">0 HW</span>
               </div>
               <span className="text-[8px] font-mono-code text-muted-foreground/30">·</span>
-              <span className="text-[8px] font-mono-code text-muted-foreground/50">
+              <span className="text-[8px] font-mono-code" style={{ color: isArmed ? 'hsl(0 85% 48%)' : 'hsl(32 100% 50% / 0.5)' }}>
                 {isArmed ? 'ARMED' : 'IDLE'}
               </span>
             </div>
             <button
               onClick={() => window.location.href = '/editor'}
-              className="text-[8px] font-mono-code text-primary/60 hover:text-primary px-2 py-0.5 rounded hover:bg-primary/5 transition-colors"
+              className="text-[8px] font-mono-code px-2 py-0.5 rounded transition-colors"
+              style={{ color: 'hsl(32 100% 50% / 0.6)' }}
             >
               PRE-FLIGHT →
             </button>

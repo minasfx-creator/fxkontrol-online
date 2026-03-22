@@ -301,13 +301,13 @@ export default function Training() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Hero */}
-      <div className="relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br from-[hsl(var(--surface-1))] via-[hsl(var(--surface-2))] to-[hsl(var(--surface-1))] p-6 animate-fxk-fade-up">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,hsl(var(--fxk-violet)/0.08),transparent_60%)]" />
+      <div className="relative overflow-hidden rounded-xl border bg-gradient-to-br from-[hsl(var(--surface-1))] via-[hsl(var(--surface-2))] to-[hsl(var(--surface-1))] p-6 animate-fxk-fade-up" style={{ borderColor: 'hsl(32 100% 50% / 0.15)' }}>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,hsl(32_100%_50%/0.06),transparent_60%)]" />
         <div className="absolute top-4 right-6 opacity-[0.04]"><Gamepad2 className="h-32 w-32" /></div>
         <div className="relative z-10 flex items-start justify-between">
           <div>
-            <p className="text-[10px] font-mono text-[hsl(var(--fxk-violet))] tracking-widest uppercase mb-1">MODO SIMULAÇÃO</p>
-            <h1 className="text-2xl font-bold font-display text-foreground">Training Center</h1>
+            <p className="text-[10px] font-mono tracking-widest uppercase mb-1" style={{ color: 'hsl(32 100% 50% / 0.7)' }}>SIMULATION PROTOCOLS</p>
+            <h1 className="text-2xl font-bold font-display text-foreground" style={{ textShadow: '0 0 12px hsl(32 100% 50% / 0.15)' }}>Training Center</h1>
             <p className="text-xs text-muted-foreground mt-1 max-w-md">
               Simulação de montagem e operação de eventos em terceira pessoa. Complete missões, ganhe XP e desbloqueie cenários.
             </p>

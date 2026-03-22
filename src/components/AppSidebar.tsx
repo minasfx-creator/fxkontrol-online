@@ -41,22 +41,23 @@ export function AppSidebar() {
         {/* Brand with MinasFX logo */}
         <div className={`px-3 pt-4 pb-2 ${collapsed ? 'flex justify-center' : ''}`}>
           {collapsed ? (
-            <div className="h-8 w-8 rounded-lg bg-primary/15 flex items-center justify-center overflow-hidden">
+            <div className="h-8 w-8 rounded-lg flex items-center justify-center overflow-hidden" style={{ background: 'hsl(32 100% 50% / 0.15)' }}>
               <img src={minasfxLogo} alt="MinasFX" className="h-5 object-contain" />
             </div>
           ) : (
             <div className="flex items-center gap-2.5">
-              <img src={minasfxLogo} alt="MinasFX" className="h-7 object-contain shrink-0" />
+              <img src={minasfxLogo} alt="MinasFX" className="h-7 object-contain shrink-0" style={{ filter: 'drop-shadow(0 0 6px hsl(32 100% 50% / 0.3))' }} />
               <div>
-                <p className="text-xs font-bold text-foreground tracking-wide">FX KONTROL</p>
-                <p className="text-[9px] text-muted-foreground font-mono">by MinasFX</p>
+                <p className="text-xs font-bold text-foreground tracking-wide" style={{ textShadow: '0 0 8px hsl(32 100% 50% / 0.2)' }}>FX KONTROL</p>
+                <p className="text-[9px] font-mono-code" style={{ color: 'hsl(32 100% 50% / 0.5)' }}>by MinasFX</p>
               </div>
             </div>
           )}
+          {!collapsed && <div className="mt-2 h-[1px]" style={{ background: 'linear-gradient(90deg, hsl(32 100% 50% / 0.2), transparent)' }} />}
         </div>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/60 px-3">
+          <SidebarGroupLabel className="text-[9px] uppercase tracking-[0.2em] px-3" style={{ color: 'hsl(32 100% 50% / 0.4)' }}>
             {!collapsed && 'Módulos'}
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -73,12 +74,13 @@ export function AppSidebar() {
                         end={item.url === '/'}
                         className={`gap-3 rounded-lg mx-1 transition-all duration-200 ${
                           isActive 
-                            ? 'bg-primary/10 text-primary shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.15)]' 
+                            ? 'shadow-[inset_0_0_0_1px_hsl(32_100%_50%/0.15)]' 
                             : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
                         }`}
+                        style={isActive ? { background: 'hsl(32 100% 50% / 0.1)', color: 'hsl(32 100% 50%)' } : undefined}
                         activeClassName=""
                       >
-                        <item.icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-primary' : ''}`} />
+                        <item.icon className={`h-4 w-4 shrink-0 ${isActive ? '' : ''}`} style={isActive ? { color: 'hsl(32 100% 50%)' } : undefined} />
                         {!collapsed && (
                           <div className="flex flex-col">
                             <span className="text-xs font-medium">{item.title}</span>
@@ -86,7 +88,7 @@ export function AppSidebar() {
                           </div>
                         )}
                         {isActive && !collapsed && (
-                          <div className="ml-auto h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                          <div className="ml-auto h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: 'hsl(32 100% 50%)', boxShadow: '0 0 6px hsl(32 100% 50% / 0.5)' }} />
                         )}
                       </NavLink>
                     </SidebarMenuButton>
@@ -101,9 +103,9 @@ export function AppSidebar() {
       {/* Footer with user */}
       <SidebarFooter className="p-2 space-y-1">
         {!collapsed && (
-          <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-muted/20">
-            <div className="h-7 w-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-              <span className="text-[9px] font-bold text-primary">{initials}</span>
+          <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg" style={{ background: 'hsl(32 100% 50% / 0.05)' }}>
+            <div className="h-7 w-7 rounded-full flex items-center justify-center shrink-0" style={{ background: 'hsl(32 100% 50% / 0.15)' }}>
+              <span className="text-[9px] font-bold" style={{ color: 'hsl(32 100% 50%)' }}>{initials}</span>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-medium text-foreground truncate">{user?.email?.split('@')[0]}</p>
