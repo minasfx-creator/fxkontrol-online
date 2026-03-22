@@ -1447,9 +1447,13 @@ export default function PyroFireOnePanel({
     );
   };
 
-  // ── Render: PANIC bar ──
+  // ── Render: PANIC bar — with warning stripes ──
   const renderPanic = () => (
-    <div className="border-t-2 border-border/20 shrink-0" style={{ background: 'hsl(220 12% 6%)' }}>
+    <div className="border-t-2 border-red-800/30 shrink-0" style={{
+      background: armedModCount > 0
+        ? 'repeating-linear-gradient(-45deg, hsl(45 100% 50% / 0.04), hsl(45 100% 50% / 0.04) 4px, hsl(220 12% 6%) 4px, hsl(220 12% 6%) 8px)'
+        : 'hsl(220 12% 6%)',
+    }}>
       <div className={cn(sz === 'xl' ? "px-5 py-3" : sz === 'fs' ? "px-4 py-2" : "px-2 py-1.5")}>
         <button onClick={handlePanic}
           className={cn(
@@ -1458,8 +1462,9 @@ export default function PyroFireOnePanel({
             "hover:from-red-600 hover:to-red-800 active:scale-[0.97]",
             "border-2 border-red-600/50",
             "flex items-center justify-center gap-2",
-            sz === 'xl' ? "h-16 text-lg tracking-[0.3em] rounded-xl" : sz === 'fs' ? "h-14 text-base tracking-[0.25em]" : "h-10 text-[11px] tracking-[0.25em]"
-          )} style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)' }}>
+            sz === 'xl' ? "h-16 text-lg tracking-[0.3em] rounded-xl" : sz === 'fs' ? "h-14 text-base tracking-[0.25em]" : "h-10 text-[11px] tracking-[0.25em]",
+            armedModCount > 0 && "armed-pulse"
+          )} style={{ boxShadow: armedModCount > 0 ? '0 0 20px rgba(239,68,68,0.3), inset 0 1px 0 rgba(255,255,255,0.1)' : 'inset 0 1px 0 rgba(255,255,255,0.1)' }}>
           <AlertTriangle className={cn(sz === 'xl' ? "w-7 h-7" : sz === 'fs' ? "w-5 h-5" : "w-4 h-4")} />
           PANIC — ALL STOP
         </button>
