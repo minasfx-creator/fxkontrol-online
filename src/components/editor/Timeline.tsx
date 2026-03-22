@@ -290,10 +290,10 @@ function TimelineTrackRow({
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     const effectId = e.dataTransfer.types.includes('application/effect-id');
-    if (!effectId || trackIndex === 2) return;
+    if (!effectId) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
-  }, [trackIndex]);
+  }, []);
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     if (!e.dataTransfer.types.includes('application/effect-id') || trackIndex === 2) return;
