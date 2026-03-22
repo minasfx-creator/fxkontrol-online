@@ -23,15 +23,16 @@ interface DockItem {
   accent?: string;
 }
 
-const DOCK_ITEMS: DockItem[] = [
+const DOCK_MAIN: DockItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: Crosshair, label: 'Command', path: '/command', accent: 'hsl(0 85% 48%)' },
   { icon: Clapperboard, label: 'Editor 3D', path: '/editor', accent: 'hsl(32 100% 50%)' },
   { icon: CalendarDays, label: 'Agenda', path: '/agenda' },
   { icon: Gamepad2, label: 'Training', path: '/training' },
   { icon: Rocket, label: 'Show Test', path: '/show-test' },
-  { icon: Bluetooth, label: 'Pairing', path: '/pairing' },
-  { icon: Cpu, label: 'PCB Viewer', path: '/pcb-viewer' },
+];
+
+const DOCK_SYSTEM: DockItem[] = [
   { icon: Settings, label: 'Config', path: '/settings' },
 ];
 
