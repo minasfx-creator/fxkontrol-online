@@ -317,25 +317,59 @@ export default function ModuleScannerScreen({
                 ))}
               </div>
 
-              {/* Scan button */}
-              <button
-                onClick={onScan}
-                disabled={scanning}
-                className={cn(
-                  "mt-2 rounded-lg border font-mono font-bold uppercase tracking-[0.15em] transition-all flex items-center gap-1.5",
-                  isCompact ? "px-4 py-1.5 text-[9px]" : "px-5 py-2 text-[10px]",
-                  scanning
-                    ? "border-primary/40 text-primary"
-                    : "border-primary/25 text-primary/70 hover:border-primary/50 hover:text-primary"
-                )}
-                style={{
-                  background: scanning ? 'hsl(32 100% 50% / 0.08)' : 'hsl(32 100% 50% / 0.04)',
-                  boxShadow: scanning ? '0 0 12px hsl(32 100% 50% / 0.15)' : undefined,
-                }}
-              >
-                <Search className={cn(isCompact ? "w-3 h-3" : "w-3.5 h-3.5", scanning && "animate-pulse")} />
-                {scanning ? 'SCANNING...' : 'SCAN NETWORK'}
-              </button>
+              {/* Scan + Auto-Discovery buttons */}
+              <div className="flex items-center gap-2 mt-2">
+                <button
+                  onClick={onScan}
+                  disabled={scanning || autoDiscovery}
+                  className={cn(
+                    "rounded-lg border font-mono font-bold uppercase tracking-[0.15em] transition-all flex items-center gap-1.5",
+                    isCompact ? "px-3 py-1.5 text-[9px]" : "px-4 py-2 text-[10px]",
+                    scanning
+                      ? "border-primary/40 text-primary"
+                      : "border-primary/25 text-primary/70 hover:border-primary/50 hover:text-primary"
+                  )}
+                  style={{
+                    background: scanning ? 'hsl(32 100% 50% / 0.08)' : 'hsl(32 100% 50% / 0.04)',
+                    boxShadow: scanning ? '0 0 12px hsl(32 100% 50% / 0.15)' : undefined,
+                  }}
+                >
+                  <Search className={cn(isCompact ? "w-3 h-3" : "w-3.5 h-3.5", scanning && "animate-pulse")} />
+                  SCAN
+                </button>
+
+                <button
+                  onClick={() => setAutoDiscovery(!autoDiscovery)}
+                  className={cn(
+                    "rounded-lg border font-mono font-bold uppercase tracking-[0.1em] transition-all flex items-center gap-1.5",
+                    isCompact ? "px-3 py-1.5 text-[9px]" : "px-4 py-2 text-[10px]",
+                    autoDiscovery
+                      ? "text-green-400 border-green-500/40"
+                      : "border-primary/20 text-primary/50 hover:border-primary/40 hover:text-primary/80"
+                  )}
+                  style={{
+                    background: autoDiscovery ? 'hsl(120 70% 45% / 0.08)' : 'hsl(32 100% 50% / 0.03)',
+                    boxShadow: autoDiscovery ? '0 0 12px hsl(120 70% 45% / 0.15)' : undefined,
+                  }}
+                >
+                  <Activity className={cn(isCompact ? "w-3 h-3" : "w-3.5 h-3.5", autoDiscovery && "animate-pulse")} />
+                  {autoDiscovery ? 'AUTO ●' : 'AUTO'}
+                </button>
+              </div>
+
+              {/* Auto-discovery status */}
+              {autoDiscovery && (
+                <div className={cn("mt-1.5 text-center font-mono",
+                  isCompact ? "text-[7px]" : "text-[8px]"
+                )} style={{ color: 'hsl(120 70% 45% / 0.5)' }}>
+                  CYCLE #{scanCycle} · INTERVAL 5s
+                  {lastScanTime && (
+                    <span className="ml-2" style={{ color: 'hsl(32 100% 50% / 0.3)' }}>
+                      LAST: {new Date(lastScanTime).toLocaleTimeString()}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Module list */}
