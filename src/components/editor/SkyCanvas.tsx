@@ -3273,6 +3273,17 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
 
   if (flyMode) return null;
 
+  // Disable OrbitControls while box-select is active
+  useEffect(() => {
+    const handler = (e: CustomEvent) => {
+      if (controlsRef.current) {
+        controlsRef.current.enabled = !e.detail;
+      }
+    };
+    window.addEventListener('box-select-active' as any, handler as any);
+    return () => window.removeEventListener('box-select-active' as any, handler as any);
+  }, []);
+
   return (
     <OrbitControls
       ref={controlsRef}

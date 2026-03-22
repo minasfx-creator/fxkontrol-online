@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -6,7 +6,6 @@ import * as THREE from 'three';
 /**
  * R3F-aware box selection — projects all positions to screen space
  * and selects those within the drawn rectangle.
- * Activated by Click+Drag on empty area of the viewport.
  */
 export function BoxSelectR3F() {
   const { camera } = useThree();
@@ -62,8 +61,8 @@ export function BoxSelectR3F() {
 
 /**
  * HTML overlay that draws the selection rectangle.
- * Click+Drag on empty canvas area (no modifier key needed).
- * Uses an 8px dead-zone before activating to avoid blocking OrbitControls.
+ * Click+Drag on empty canvas area — 8px dead-zone before activating.
+ * Dispatches box-select-active to disable OrbitControls during drag.
  */
 export default function BoxSelectOverlay() {
   const [isSelecting, setIsSelecting] = useState(false);
@@ -71,20 +70,42 @@ export default function BoxSelectOverlay() {
   const pendingRef = useRef<{ x: number; y: number; active: boolean }>({ x: 0, y: 0, active: false });
   const selectingRef = useRef(false);
   const rectRef = useRef({ x1: 0, y1: 0, x2: 0, y2: 0 });
+  const canvasRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    const canvas = document.querySelector('[data-sky-canvas]') as HTMLElement;
-    if (!canvas) return;
+    // Use MutationObserver to wait for canvas element to appear
+    const findCanvas = () => document.querySelector('[data-sky-canvas]') as HTMLElement | null;
 
+    const setup = (canvas: HTMLElement) => {
+      canvasRef.current = canvas;
+    };
+
+    const existing = findCanvas();
+    if (existing) {
+      setup(existing);
+    } else {
+      const observer = new MutationObserver(() => {
+        const el = findCanvas();
+        if (el) {
+          setup(el);
+          observer.disconnect();
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      return () => observer.disconnect();
+    }
+  }, []);
+
+  useEffect(() => {
     const DEAD_ZONE = 8;
 
     const onDown = (e: MouseEvent) => {
-      // Only left click, only in select mode, don't intercept if clicking on interactive elements
+      const canvas = canvasRef.current;
+      if (!canvas) return;
       if (e.button !== 0) return;
       const store = useProjectStore.getState();
       if (store.editorMode !== 'select') return;
 
-      // Check if click target is the canvas itself (not a mesh/button/interactive)
       const target = e.target as HTMLElement;
       if (target !== canvas && !canvas.contains(target)) return;
 
@@ -92,12 +113,13 @@ export default function BoxSelectOverlay() {
       const x = e.clientX - r.left;
       const y = e.clientY - r.top;
 
-      // Enter pending state — don't activate yet, wait for dead-zone
       pendingRef.current = { x, y, active: true };
     };
 
     const onMove = (e: MouseEvent) => {
-      // If already selecting, update rect
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
       if (selectingRef.current) {
         const r = canvas.getBoundingClientRect();
         const updated = {
@@ -110,7 +132,6 @@ export default function BoxSelectOverlay() {
         return;
       }
 
-      // If pending, check dead-zone
       if (pendingRef.current.active) {
         const r = canvas.getBoundingClientRect();
         const cx = e.clientX - r.left;
@@ -120,7 +141,6 @@ export default function BoxSelectOverlay() {
         const dist = Math.sqrt(dx * dx + dy * dy);
 
         if (dist >= DEAD_ZONE) {
-          // Activate box select
           const x = pendingRef.current.x;
           const y = pendingRef.current.y;
           const newRect = { x1: x, y1: y, x2: cx, y2: cy };
@@ -129,6 +149,9 @@ export default function BoxSelectOverlay() {
           selectingRef.current = true;
           setIsSelecting(true);
           pendingRef.current.active = false;
+
+          // Disable OrbitControls during box select
+          window.dispatchEvent(new CustomEvent('box-select-active', { detail: true }));
 
           if (!e.shiftKey) {
             const store = useProjectStore.getState();
@@ -145,6 +168,9 @@ export default function BoxSelectOverlay() {
       selectingRef.current = false;
       setIsSelecting(false);
 
+      // Re-enable OrbitControls
+      window.dispatchEvent(new CustomEvent('box-select-active', { detail: false }));
+
       const r = rectRef.current;
       const left = Math.min(r.x1, r.x2);
       const right = Math.max(r.x1, r.x2);
@@ -153,7 +179,7 @@ export default function BoxSelectOverlay() {
 
       if (right - left < 8 && bottom - top < 8) return;
 
-      const canvasEl = document.querySelector('[data-sky-canvas]') as HTMLElement;
+      const canvasEl = canvasRef.current;
       if (!canvasEl) return;
       const cr = canvasEl.getBoundingClientRect();
 
@@ -166,11 +192,11 @@ export default function BoxSelectOverlay() {
       }));
     };
 
-    canvas.addEventListener('mousedown', onDown);
+    window.addEventListener('mousedown', onDown, true);
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
     return () => {
-      canvas.removeEventListener('mousedown', onDown);
+      window.removeEventListener('mousedown', onDown, true);
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };

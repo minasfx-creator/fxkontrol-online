@@ -566,13 +566,13 @@ function DirectionLine({ position, color, isSelected, isHovered, hasEffects }: {
     return cal;
   }, [timelineItems, position.id, position.type, hasEffects]);
 
-  // Scale: use same factor as PyroLaunchAngle (ARROW_LENGTH / getBreakHeight(caliber))
-  const ARROW_LENGTH = 3.5;
+  // Real burst height in scene units (1 unit = 1 meter) scaled by effectScale
+  const effectScale = useSceneStore(s => s.settings.effectScale);
   const sceneLength = useMemo(() => {
     if (!hasEffects) return isSelected ? 3 : isHovered ? 2 : 1.5;
-    const breakH = getBreakHeight(maxCaliber);
-    return breakH * (ARROW_LENGTH / getBreakHeight(4)); // Scaled to scene units
-  }, [hasEffects, maxCaliber, isSelected, isHovered]);
+    // Use actual break height — scene is 1:1 meters
+    return getBreakHeight(maxCaliber) * effectScale;
+  }, [hasEffects, maxCaliber, isSelected, isHovered, effectScale]);
 
   const linePoints = useMemo((): [number, number, number][] => {
     if (position.type !== 'pyro') return [];
