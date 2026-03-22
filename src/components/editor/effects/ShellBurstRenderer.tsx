@@ -21,6 +21,7 @@ import {
 import { useSceneStore } from '@/store/useSceneStore';
 import { getThreeBlending, getMaxEnergy, GROUND_LIGHT_SCALE } from '@/lib/niagaraBlenderRules';
 import { getRealFormulation, formulationToCompound } from '@/render_ultra/fireworks/particleChemistry';
+import { readDensityAt, type FluidGrid } from '@/render_ultra/fireworks/niagaraFluids';
 
 // ── Custom GPU Shaders (Skybrush-grade thermal rendering) ───────────
 
