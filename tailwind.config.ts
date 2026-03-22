@@ -82,6 +82,8 @@ export default {
           blue: "hsl(var(--fxk-blue))",
           green: "hsl(var(--fxk-green))",
           indigo: "hsl(var(--fxk-indigo))",
+          phosphor: "hsl(var(--fxk-phosphor))",
+          amber: "hsl(var(--fxk-amber))",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
