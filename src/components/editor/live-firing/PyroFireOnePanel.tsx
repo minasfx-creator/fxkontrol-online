@@ -1629,6 +1629,7 @@ export default function PyroFireOnePanel({
       {renderModuleSelector()}
       {renderModuleInfo()}
       <ScrollArea className="flex-1">{renderModeContent()}</ScrollArea>
+      {renderModuleScanner()}
     </div>
   );
 }
