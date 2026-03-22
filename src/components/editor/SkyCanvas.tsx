@@ -1989,12 +1989,17 @@ function GroundFog() {
   const fogIntensity = useSceneStore(st => st.settings.groundFogIntensity);
 
   // ═══ render_ultra volumetric fog — FBM 4-octave noise, animated, height-faded ═══
-  const fogSystem = useMemo(() => createVolumetricFogPlane(
-    100000,
-    new THREE.Color(0.03, 0.04, 0.08),
-    fogIntensity,
-    15
-  ), []);
+  const fogSystem = useMemo(() => {
+    const sys = createVolumetricFogPlane(
+      100000,
+      new THREE.Color(0.03, 0.04, 0.08),
+      fogIntensity,
+      15
+    );
+    // Expose fog system globally for NiagaraVFXController explosion flash
+    (window as any).__volumetricFogSystem = sys;
+    return sys;
+  }, []);
 
   useEffect(() => {
     fogSystem.setIntensity(fogIntensity);
