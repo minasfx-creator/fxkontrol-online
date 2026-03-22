@@ -3832,16 +3832,16 @@ export default function SkyCanvas() {
         key={canvasInstanceKey}
         shadows
         gl={{
-          antialias: false,
+          antialias: !isMobile,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.2,
-          powerPreference: isMobile ? 'default' : 'high-performance',
+          toneMappingExposure: 1.3,
+          powerPreference: 'high-performance',
           alpha: false,
           stencil: false,
-          logarithmicDepthBuffer: !isMobile,
+          logarithmicDepthBuffer: true,
           outputColorSpace: THREE.SRGBColorSpace,
         }}
-        dpr={isMobile ? [1, 1] : [1, 1.5]}
+        dpr={isMobile ? [1, 1.5] : [1, 2]}
         performance={{ min: 0.5 }}
         onCreated={({ gl }) => {
           const canvas = gl.domElement;
