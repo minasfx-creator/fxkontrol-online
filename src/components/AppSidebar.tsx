@@ -74,12 +74,13 @@ export function AppSidebar() {
                         end={item.url === '/'}
                         className={`gap-3 rounded-lg mx-1 transition-all duration-200 ${
                           isActive 
-                            ? 'bg-primary/10 text-primary shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.15)]' 
+                            ? 'shadow-[inset_0_0_0_1px_hsl(32_100%_50%/0.15)]' 
                             : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
                         }`}
+                        style={isActive ? { background: 'hsl(32 100% 50% / 0.1)', color: 'hsl(32 100% 50%)' } : undefined}
                         activeClassName=""
                       >
-                        <item.icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-primary' : ''}`} />
+                        <item.icon className={`h-4 w-4 shrink-0 ${isActive ? '' : ''}`} style={isActive ? { color: 'hsl(32 100% 50%)' } : undefined} />
                         {!collapsed && (
                           <div className="flex flex-col">
                             <span className="text-xs font-medium">{item.title}</span>
@@ -87,7 +88,7 @@ export function AppSidebar() {
                           </div>
                         )}
                         {isActive && !collapsed && (
-                          <div className="ml-auto h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                          <div className="ml-auto h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: 'hsl(32 100% 50%)', boxShadow: '0 0 6px hsl(32 100% 50% / 0.5)' }} />
                         )}
                       </NavLink>
                     </SidebarMenuButton>
