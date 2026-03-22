@@ -110,6 +110,25 @@ export default function PyroFireOnePanel({
   const [pyroFullscreen, setPyroFullscreen] = useState(false);
   const [artnetLinking, setArtnetLinking] = useState(false);
   const [artnetLinkedModules, setArtnetLinkedModules] = useState<Set<number>>(new Set());
+  const [artnetLatencies, setArtnetLatencies] = useState<Map<number, number>>(new Map());
+
+  // Simulate latency polling for linked modules
+  useEffect(() => {
+    if (artnetLinkedModules.size === 0) return;
+    const iv = setInterval(() => {
+      setArtnetLatencies(prev => {
+        const next = new Map(prev);
+        artnetLinkedModules.forEach(addr => {
+          const mod = modules.find(m => m.address === addr);
+          const base = mod?.connectionMode === 'wireless' ? 8 : 2;
+          const jitter = Math.random() * 6;
+          next.set(addr, Math.round(base + jitter));
+        });
+        return next;
+      });
+    }, 2000);
+    return () => clearInterval(iv);
+  }, [artnetLinkedModules, modules]);
 
   // Step mode
   const [stepIndex, setStepIndex] = useState(0);
