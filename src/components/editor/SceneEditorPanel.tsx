@@ -452,8 +452,33 @@ export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
 
             {/* God Rays */}
             <div className="flex items-center justify-between">
-              <span className="text-[9px] text-muted-foreground font-medium">God Rays (Volumetric)</span>
+              <span className="text-[9px] text-muted-foreground font-medium">God Rays (Radial Blur)</span>
               <Switch checked={settings.godRaysEnabled} onCheckedChange={v => updateSettings({ godRaysEnabled: v })} className="scale-[0.65]" />
+            </div>
+
+            {/* Motion Blur — UE5.7 */}
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] text-muted-foreground font-medium">Motion Blur</span>
+              <Switch checked={settings.motionBlurEnabled} onCheckedChange={v => updateSettings({ motionBlurEnabled: v })} className="scale-[0.65]" />
+            </div>
+            {settings.motionBlurEnabled && (
+              <SliderRow label="Motion Blur Intensity" value={settings.motionBlurIntensity} onChange={v => updateSettings({ motionBlurIntensity: v })} />
+            )}
+
+            {/* Color Grading LUT — UE5.7 */}
+            <div>
+              <span className="text-[9px] text-muted-foreground font-medium">Color Grading Preset</span>
+              <Select value={settings.colorGradingPreset || 'neutral'} onValueChange={v => updateSettings({ colorGradingPreset: v })}>
+                <SelectTrigger className="h-7 text-[10px] mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="neutral" className="text-[10px]">Neutral</SelectItem>
+                  <SelectItem value="day-for-night" className="text-[10px]">Day for Night</SelectItem>
+                  <SelectItem value="golden-hour" className="text-[10px]">Golden Hour</SelectItem>
+                  <SelectItem value="cool-blue-night" className="text-[10px]">Cool Blue Night</SelectItem>
+                  <SelectItem value="warm-sunset" className="text-[10px]">Warm Sunset</SelectItem>
+                  <SelectItem value="high-contrast" className="text-[10px]">High Contrast</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Color Grading */}

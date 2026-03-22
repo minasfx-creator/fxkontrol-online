@@ -19,9 +19,10 @@ const BLOOM_SCALE: Record<ViewTransform, number> = {
   'pbr-neutral': 0.85,
 };
 
-/**
- * Custom Sharpening Effect — Unsharp Mask (UE5 r.Tonemapper.Sharpen equivalent)
- */
+// ═══════════════════════════════════════════════════════════════════════
+// Custom Sharpening Effect — Unsharp Mask (UE5 r.Tonemapper.Sharpen)
+// ═══════════════════════════════════════════════════════════════════════
+
 const SHARPEN_FRAGMENT = `
 uniform float strength;
 
@@ -51,10 +52,10 @@ class SharpenEffect extends Effect {
   }
 }
 
-/**
- * Custom Heat Distortion Effect — UE5 Niagara Heat Haze
- * Screen-space UV displacement using scrolling procedural noise
- */
+// ═══════════════════════════════════════════════════════════════════════
+// Heat Distortion Effect — UE5 Niagara Heat Haze
+// ═══════════════════════════════════════════════════════════════════════
+
 const HEAT_DISTORTION_FRAGMENT = `
 uniform float intensity;
 uniform float time;
@@ -87,25 +88,19 @@ float fbm(vec2 p) {
 }
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
-  // Scrolling noise for heat shimmer
   vec2 noiseCoord = uv * scale + vec2(0.0, -time * 0.8);
   float n1 = fbm(noiseCoord * 8.0);
   float n2 = fbm(noiseCoord * 12.0 + vec2(100.0));
   
-  // UV displacement — subtle but visible shimmer
   vec2 displacement = vec2(
     (n1 - 0.5) * intensity * 0.008,
     (n2 - 0.5) * intensity * 0.012
   );
   
-  // Apply displacement with center weighting (stronger in center of screen)
   vec2 centerWeight = 1.0 - pow(abs(uv - 0.5) * 2.0, vec2(2.0));
   displacement *= centerWeight.x * centerWeight.y;
   
   vec4 displaced = texture2D(inputBuffer, uv + displacement);
-  
-  // Slight chromatic shift on displacement
-  float chromatic = length(displacement) * 50.0;
   displaced.r = texture2D(inputBuffer, uv + displacement * 1.1).r;
   displaced.b = texture2D(inputBuffer, uv + displacement * 0.9).b;
   
@@ -134,39 +129,254 @@ class HeatDistortionEffect extends Effect {
   }
 }
 
-/**
- * Wrapper component for SharpenEffect
- */
+// ═══════════════════════════════════════════════════════════════════════
+// Motion Blur Effect — UE5 MotionBlurAmount (screen-space velocity blur)
+// ═══════════════════════════════════════════════════════════════════════
+
+const MOTION_BLUR_FRAGMENT = `
+uniform float intensity;
+
+void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+  vec2 texelSize = 1.0 / resolution;
+  
+  // Estimate motion from neighbor color differences (screen-space)
+  vec4 left  = texture2D(inputBuffer, uv - vec2(texelSize.x * 2.0, 0.0));
+  vec4 right = texture2D(inputBuffer, uv + vec2(texelSize.x * 2.0, 0.0));
+  vec4 up    = texture2D(inputBuffer, uv + vec2(0.0, texelSize.y * 2.0));
+  vec4 down  = texture2D(inputBuffer, uv - vec2(0.0, texelSize.y * 2.0));
+  
+  // Luminance-based velocity estimation
+  float lC = dot(inputColor.rgb, vec3(0.299, 0.587, 0.114));
+  float lL = dot(left.rgb, vec3(0.299, 0.587, 0.114));
+  float lR = dot(right.rgb, vec3(0.299, 0.587, 0.114));
+  float lU = dot(up.rgb, vec3(0.299, 0.587, 0.114));
+  float lD = dot(down.rgb, vec3(0.299, 0.587, 0.114));
+  
+  vec2 velocity = vec2(lR - lL, lU - lD) * intensity * 8.0;
+  velocity = clamp(velocity, -0.02, 0.02);
+  
+  // Multi-sample blur along velocity direction
+  vec4 result = inputColor;
+  float totalWeight = 1.0;
+  
+  for (int i = 1; i <= 4; i++) {
+    float t = float(i) / 4.0;
+    float weight = 1.0 - t * 0.5;
+    result += texture2D(inputBuffer, uv + velocity * t) * weight;
+    result += texture2D(inputBuffer, uv - velocity * t) * weight * 0.5;
+    totalWeight += weight + weight * 0.5;
+  }
+  
+  outputColor = result / totalWeight;
+}
+`;
+
+class MotionBlurEffect extends Effect {
+  constructor({ intensity = 0.5 }: { intensity?: number } = {}) {
+    super('MotionBlurEffect', MOTION_BLUR_FRAGMENT, {
+      uniforms: new Map([['intensity', new Uniform(intensity)]]),
+    });
+  }
+
+  set intensity(value: number) {
+    (this.uniforms.get('intensity') as Uniform).value = value;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Radial God Rays Effect — UE5 Light Shaft (radial blur from source)
+// ═══════════════════════════════════════════════════════════════════════
+
+const GOD_RAYS_FRAGMENT = `
+uniform float intensity;
+uniform vec2 lightPos;
+
+void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+  vec2 delta = uv - lightPos;
+  float dist = length(delta);
+  
+  // Only apply to bright areas
+  float lum = dot(inputColor.rgb, vec3(0.299, 0.587, 0.114));
+  float brightMask = smoothstep(0.6, 1.5, lum);
+  
+  if (brightMask < 0.01) {
+    outputColor = inputColor;
+    return;
+  }
+  
+  vec2 rayDir = normalize(delta) * 0.005 * intensity;
+  
+  vec4 accum = vec4(0.0);
+  float decay = 1.0;
+  vec2 sampleUV = uv;
+  
+  for (int i = 0; i < 16; i++) {
+    sampleUV -= rayDir;
+    vec4 s = texture2D(inputBuffer, clamp(sampleUV, 0.0, 1.0));
+    float sLum = dot(s.rgb, vec3(0.299, 0.587, 0.114));
+    accum += s * decay * smoothstep(0.4, 1.2, sLum);
+    decay *= 0.94;
+  }
+  
+  accum /= 16.0;
+  
+  // Blend radial light shafts over original
+  outputColor = inputColor + accum * brightMask * intensity * 0.6;
+}
+`;
+
+class GodRaysEffect extends Effect {
+  constructor({ intensity = 0.5 }: { intensity?: number } = {}) {
+    super('GodRaysEffect', GOD_RAYS_FRAGMENT, {
+      uniforms: new Map<string, Uniform<number | Vector2>>([
+        ['intensity', new Uniform(intensity)],
+        ['lightPos', new Uniform(new Vector2(0.5, 0.8))],
+      ]) as Map<string, Uniform>,
+    });
+  }
+
+  set intensity(value: number) {
+    (this.uniforms.get('intensity') as Uniform).value = value;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Color LUT Effect — Cinematic Color Grading Presets (UE5 Film Stock)
+// ═══════════════════════════════════════════════════════════════════════
+
+export type ColorGradingPreset = 'neutral' | 'day-for-night' | 'golden-hour' | 'cool-blue-night' | 'warm-sunset' | 'high-contrast';
+
+const COLOR_LUT_FRAGMENT = `
+uniform float preset;
+uniform float mix_amount;
+
+vec3 applyNeutral(vec3 c) { return c; }
+
+vec3 applyDayForNight(vec3 c) {
+  float lum = dot(c, vec3(0.299, 0.587, 0.114));
+  vec3 blue = vec3(0.05, 0.08, 0.18);
+  vec3 tinted = mix(blue, c * vec3(0.4, 0.55, 0.9), lum);
+  return mix(c, tinted * 0.6, mix_amount);
+}
+
+vec3 applyGoldenHour(vec3 c) {
+  vec3 warm = c * vec3(1.15, 1.0, 0.75);
+  float lum = dot(c, vec3(0.299, 0.587, 0.114));
+  warm += vec3(0.08, 0.04, 0.0) * (1.0 - lum);
+  return mix(c, warm, mix_amount);
+}
+
+vec3 applyCoolBlueNight(vec3 c) {
+  float lum = dot(c, vec3(0.299, 0.587, 0.114));
+  vec3 cool = c * vec3(0.8, 0.9, 1.2);
+  cool += vec3(0.0, 0.02, 0.06) * (1.0 - lum);
+  return mix(c, cool, mix_amount);
+}
+
+vec3 applyWarmSunset(vec3 c) {
+  vec3 warm = c * vec3(1.2, 0.95, 0.7);
+  float lum = dot(c, vec3(0.299, 0.587, 0.114));
+  warm = mix(warm, warm * vec3(1.1, 0.8, 0.6), 1.0 - lum);
+  return mix(c, warm, mix_amount);
+}
+
+vec3 applyHighContrast(vec3 c) {
+  float lum = dot(c, vec3(0.299, 0.587, 0.114));
+  vec3 contrast = (c - 0.5) * 1.4 + 0.5;
+  contrast = clamp(contrast, 0.0, 1.0);
+  // Slight teal-orange split toning
+  vec3 shadows = vec3(0.0, 0.03, 0.05);
+  vec3 highlights = vec3(0.05, 0.02, 0.0);
+  contrast += mix(shadows, highlights, lum);
+  return mix(c, contrast, mix_amount);
+}
+
+void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+  vec3 c = inputColor.rgb;
+  
+  // preset: 0=neutral, 1=day-for-night, 2=golden-hour, 3=cool-blue, 4=warm-sunset, 5=high-contrast
+  if (preset < 0.5) {
+    c = applyNeutral(c);
+  } else if (preset < 1.5) {
+    c = applyDayForNight(c);
+  } else if (preset < 2.5) {
+    c = applyGoldenHour(c);
+  } else if (preset < 3.5) {
+    c = applyCoolBlueNight(c);
+  } else if (preset < 4.5) {
+    c = applyWarmSunset(c);
+  } else {
+    c = applyHighContrast(c);
+  }
+  
+  outputColor = vec4(c, inputColor.a);
+}
+`;
+
+const PRESET_INDEX: Record<ColorGradingPreset, number> = {
+  'neutral': 0,
+  'day-for-night': 1,
+  'golden-hour': 2,
+  'cool-blue-night': 3,
+  'warm-sunset': 4,
+  'high-contrast': 5,
+};
+
+class ColorGradingEffect extends Effect {
+  constructor({ preset = 'neutral', mixAmount = 1.0 }: { preset?: ColorGradingPreset; mixAmount?: number } = {}) {
+    super('ColorGradingEffect', COLOR_LUT_FRAGMENT, {
+      uniforms: new Map([
+        ['preset', new Uniform(PRESET_INDEX[preset] ?? 0)],
+        ['mix_amount', new Uniform(mixAmount)],
+      ]),
+    });
+  }
+
+  set preset(value: ColorGradingPreset) {
+    (this.uniforms.get('preset') as Uniform).value = PRESET_INDEX[value] ?? 0;
+  }
+
+  set mixAmount(value: number) {
+    (this.uniforms.get('mix_amount') as Uniform).value = value;
+  }
+}
+
+// ═══ Wrapper Components ═══
+
 const Sharpen = forwardRef<SharpenEffect, { strength?: number }>(function Sharpen({ strength = 0.1 }, ref) {
   const effect = useMemo(() => new SharpenEffect({ strength }), []);
-  
-  useMemo(() => {
-    effect.strength = strength;
-  }, [effect, strength]);
-
+  useMemo(() => { effect.strength = strength; }, [effect, strength]);
   return <primitive ref={ref} object={effect} />;
 });
 
-/**
- * Wrapper component for HeatDistortionEffect
- */
 const HeatDistortion = forwardRef<HeatDistortionEffect, { intensity?: number }>(function HeatDistortion({ intensity = 0.5 }, ref) {
   const effect = useMemo(() => new HeatDistortionEffect({ intensity }), []);
-  
-  useMemo(() => {
-    effect.intensity = intensity;
-  }, [effect, intensity]);
-
+  useMemo(() => { effect.intensity = intensity; }, [effect, intensity]);
   return <primitive ref={ref} object={effect} />;
 });
 
-/**
- * Cinematic post-processing pipeline v10 — AAA effects suite + UE5 Niagara techniques.
- * 
- * Includes: SSR, SSAO, Depth of Field, Sharpening, Color Grading, God Rays (via bright bloom),
- * Heat Distortion (Niagara heat haze), plus existing Bloom, Vignette, ChromaticAberration,
- * FilmGrain, ToneMapping.
- */
+const MotionBlur = forwardRef<MotionBlurEffect, { intensity?: number }>(function MotionBlur({ intensity = 0.5 }, ref) {
+  const effect = useMemo(() => new MotionBlurEffect({ intensity }), []);
+  useMemo(() => { effect.intensity = intensity; }, [effect, intensity]);
+  return <primitive ref={ref} object={effect} />;
+});
+
+const GodRays = forwardRef<GodRaysEffect, { intensity?: number }>(function GodRays({ intensity = 0.5 }, ref) {
+  const effect = useMemo(() => new GodRaysEffect({ intensity }), []);
+  useMemo(() => { effect.intensity = intensity; }, [effect, intensity]);
+  return <primitive ref={ref} object={effect} />;
+});
+
+const ColorGrading = forwardRef<ColorGradingEffect, { preset?: ColorGradingPreset }>(function ColorGrading({ preset = 'neutral' }, ref) {
+  const effect = useMemo(() => new ColorGradingEffect({ preset }), []);
+  useMemo(() => { effect.preset = preset; }, [effect, preset]);
+  return <primitive ref={ref} object={effect} />;
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// Cinematic post-processing pipeline v11 — Full UE5.7 parity
+// ═══════════════════════════════════════════════════════════════════════
+
 export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCount?: number }) {
   const s = useSceneStore(st => st.settings);
   const str = s.bloomStrength;
@@ -236,6 +446,11 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         />
       )}
 
+      {/* ═══ Motion Blur — UE5 MotionBlurAmount ═══ */}
+      {s.motionBlurEnabled && (
+        <MotionBlur intensity={s.motionBlurIntensity} />
+      )}
+
       {/* Layer 1: Core catch — always active (low cost) */}
       <Bloom
         intensity={str * 0.048 * bloomMul}
@@ -256,16 +471,18 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         />
       )}
 
-      {/* Layer 3: Atmospheric / God Rays — heavy bursts or godRays enabled */}
-      {(hasHeavyBursts || (s.godRaysEnabled && hasBursts)) && (
+      {/* Layer 3: Atmospheric / God Rays — real radial blur when enabled */}
+      {s.godRaysEnabled && hasBursts ? (
+        <GodRays intensity={0.5 + activeBurstCount * 0.08} />
+      ) : (hasHeavyBursts && (
         <Bloom
-          intensity={str * (s.godRaysEnabled ? 0.014 : 0.008) * bloomMul}
+          intensity={str * 0.008 * bloomMul}
           luminanceThreshold={6.0}
           luminanceSmoothing={0.5}
           kernelSize={KernelSize.HUGE}
           mipmapBlur
         />
-      )}
+      ))}
 
       {/* ═══ Heat Distortion — UE5 Niagara Heat Haze ═══ */}
       {s.heatDistortionEnabled && hasBursts && (
@@ -298,7 +515,7 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         />
       )}
 
-      {/* ═══ Sharpening — UE5 r.Tonemapper.Sharpen equivalent ═══ */}
+      {/* ═══ Sharpening — UE5 r.Tonemapper.Sharpen ═══ */}
       {s.sharpenEnabled && s.sharpenStrength > 0.01 && (
         <Sharpen strength={s.sharpenStrength} />
       )}
@@ -315,6 +532,11 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         <HueSaturation
           saturation={s.colorSaturation}
         />
+      )}
+
+      {/* ═══ Color LUT — Cinematic Grading Presets ═══ */}
+      {s.colorGradingPreset && s.colorGradingPreset !== 'neutral' && (
+        <ColorGrading preset={s.colorGradingPreset as ColorGradingPreset} />
       )}
 
       {/* Dynamic tone mapping */}

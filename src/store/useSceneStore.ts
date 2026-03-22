@@ -211,6 +211,13 @@ export interface SceneSettings {
   smokeRenderQuality: 'off' | 'low' | 'high';
   ribbonTrails: boolean;
 
+  // UE5.7 — Motion Blur
+  motionBlurEnabled: boolean;
+  motionBlurIntensity: number;    // 0-1
+
+  // UE5.7 — Color Grading LUT Preset
+  colorGradingPreset: string;     // 'neutral' | 'day-for-night' | 'golden-hour' | 'cool-blue-night' | 'warm-sunset' | 'high-contrast'
+
   // ═══ Environment v2 — UE5.7 Virtual Worlds ═══
   skyEngineV2: boolean;           // toggle Sky Atmosphere V2
   cloudCoverage: number;          // 0-1
@@ -305,6 +312,11 @@ const DEFAULT_SETTINGS: SceneSettings = {
   heatDistortionEnabled: false,
   smokeRenderQuality: 'low',
   ribbonTrails: false,
+
+  // UE5.7 defaults
+  motionBlurEnabled: false,
+  motionBlurIntensity: 0.5,
+  colorGradingPreset: 'neutral',
 
   // Environment v2 defaults
   skyEngineV2: false,

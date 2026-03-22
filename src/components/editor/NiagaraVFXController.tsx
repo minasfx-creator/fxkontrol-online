@@ -34,6 +34,8 @@ import { RibbonTrail } from '@/render_ultra/fireworks/ribbonTrailRenderer';
 import { HeatHazeEmitter } from '@/render_ultra/fireworks/heatDistortion';
 import { createFluidGrid, advectFluid, applyWindForce, type FluidGrid } from '@/render_ultra/fireworks/niagaraFluids';
 import { InstancedParticleRenderer, createSparkInstancedRenderer, createSmokeInstancedRenderer } from '@/render_ultra/fireworks/instancedParticleRenderer';
+import { GlobalIlluminationSystem } from '@/render_ultra/lighting/globalIllumination';
+import { spawnScorchMark, spawnLightSplash, updateDecals } from '@/render_ultra/environment/groundDecals';
 
 // ── Emitter Templates ───────────────────────────────────────────────
 
@@ -434,6 +436,17 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
               fogSystem.flashExplosion(burstPos, burstColor, caliber * 0.3);
             }
 
+            // ── Wire GI probes — explosion bounce light ──
+            const giSystem = (window as any).__giSystem as GlobalIlluminationSystem | undefined;
+            if (giSystem) {
+              giSystem.addExplosionProbe(burstPos, burstColor, caliber * 1.5);
+            }
+
+            // ── Wire ground decals — scorch marks + light splash ──
+            const groundImpactPos = new THREE.Vector3(burstPos.x, 0, burstPos.z);
+            spawnScorchMark(groundImpactPos, caliber * 2);
+            spawnLightSplash(groundImpactPos, caliber * 3, burstColor, 3);
+
             systems.push(entry);
           }
         }
@@ -491,6 +504,9 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
       if (hdrRig) {
         hdrRig.updateBurstLights(dt);
       }
+
+      // ── Update ground decals ──
+      updateDecals(dt);
 
       // ── Write to GPU Instanced Renderers ──
       const hdrScale = THREE.MathUtils.clamp(
