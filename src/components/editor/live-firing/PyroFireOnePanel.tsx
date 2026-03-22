@@ -753,46 +753,48 @@ export default function PyroFireOnePanel({
     )} style={{ background: 'hsl(220 12% 6%)' }}>
       {modules.map(m => {
         const ModeIcon = connectionModeIcon(m.connectionMode);
+        const isLinked = artnetLinkedModules.has(m.address);
         return (
-          <button key={m.address} onClick={() => setSelectedModule(m.address)}
-            className={cn(
-              "rounded border font-mono font-bold shrink-0 transition-all flex items-center gap-1",
-              sz === 'xl' ? "px-3.5 py-2 text-xs" : sz === 'fs' ? "px-2.5 py-1.5 text-[9px]" : "px-2 py-1 text-[7px]",
-              selectedModule === m.address
-                ? m.armed ? "bg-red-600/20 border-red-500/40 text-red-400" : "bg-primary/15 border-primary/40 text-primary"
-                : m.armed ? "bg-red-600/10 border-red-800/20 text-red-400/50"
-                : m.connected ? "bg-[hsl(220_10%_10%)] border-border/15 text-foreground/50" : "bg-[hsl(220_10%_7%)] border-border/5 text-muted-foreground/15"
-            )}>
-            <ModeIcon className={cn(
-              sz === 'xl' ? "w-3 h-3" : "w-2 h-2",
-              m.connectionMode === 'wireless' ? rssiColor(m.rssiDbm) :
-              m.connectionMode === 'fallback' ? "text-amber-400 animate-pulse" : "text-green-400/40"
-            )} />
-            FM-{String(m.address).padStart(2, '0')}
-            {m.armed && <span className="ml-0.5 text-red-400">●</span>}
-            {artnetLinkedModules.has(m.address) && (
-              <Globe className={cn(sz === 'xl' ? "w-2.5 h-2.5" : "w-2 h-2", "text-violet-400")} />
-            )}
-            {m.connectionMode === 'wireless' && m.rssiDbm !== undefined && (
-              <span className={cn("text-[5px]", rssiColor(m.rssiDbm))}>{m.rssiDbm}dB</span>
-            )}
-          </button>
-          {/* Per-module ArtNet Link button */}
-          {m.connected && (
-            <button
-              onClick={(e) => { e.stopPropagation(); handleModuleArtnetLink(m.address); }}
+          <div key={m.address} className="flex items-center gap-0.5 shrink-0">
+            <button onClick={() => setSelectedModule(m.address)}
               className={cn(
-                "rounded border shrink-0 transition-all",
-                sz === 'xl' ? "p-1.5" : "p-0.5",
-                artnetLinkedModules.has(m.address)
-                  ? "bg-violet-600/15 border-violet-500/30 text-violet-400"
-                  : "border-border/10 text-muted-foreground/30 hover:text-violet-400/60 hover:border-violet-500/20"
+                "rounded border font-mono font-bold shrink-0 transition-all flex items-center gap-1",
+                sz === 'xl' ? "px-3.5 py-2 text-xs" : sz === 'fs' ? "px-2.5 py-1.5 text-[9px]" : "px-2 py-1 text-[7px]",
+                selectedModule === m.address
+                  ? m.armed ? "bg-red-600/20 border-red-500/40 text-red-400" : "bg-primary/15 border-primary/40 text-primary"
+                  : m.armed ? "bg-red-600/10 border-red-800/20 text-red-400/50"
+                  : m.connected ? "bg-[hsl(220_10%_10%)] border-border/15 text-foreground/50" : "bg-[hsl(220_10%_7%)] border-border/5 text-muted-foreground/15"
+              )}>
+              <ModeIcon className={cn(
+                sz === 'xl' ? "w-3 h-3" : "w-2 h-2",
+                m.connectionMode === 'wireless' ? rssiColor(m.rssiDbm) :
+                m.connectionMode === 'fallback' ? "text-amber-400 animate-pulse" : "text-green-400/40"
+              )} />
+              FM-{String(m.address).padStart(2, '0')}
+              {m.armed && <span className="ml-0.5 text-red-400">●</span>}
+              {isLinked && (
+                <Globe className={cn(sz === 'xl' ? "w-2.5 h-2.5" : "w-2 h-2", "text-violet-400")} />
               )}
-              title={`ArtNet Link FM-${String(m.address).padStart(2, '0')}`}
-            >
-              <Globe className={cn(sz === 'xl' ? "w-3 h-3" : "w-2 h-2")} />
+              {m.connectionMode === 'wireless' && m.rssiDbm !== undefined && (
+                <span className={cn("text-[5px]", rssiColor(m.rssiDbm))}>{m.rssiDbm}dB</span>
+              )}
             </button>
-          )}
+            {m.connected && (
+              <button
+                onClick={() => handleModuleArtnetLink(m.address)}
+                className={cn(
+                  "rounded border shrink-0 transition-all",
+                  sz === 'xl' ? "p-1.5" : "p-0.5",
+                  isLinked
+                    ? "bg-violet-600/15 border-violet-500/30 text-violet-400"
+                    : "border-border/10 text-muted-foreground/30 hover:text-violet-400/60 hover:border-violet-500/20"
+                )}
+                title={`ArtNet Link FM-${String(m.address).padStart(2, '0')}`}
+              >
+                <Globe className={cn(sz === 'xl' ? "w-3 h-3" : "w-2 h-2")} />
+              </button>
+            )}
+          </div>
         );
       })}
       <button onClick={importPyroCues}
