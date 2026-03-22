@@ -143,7 +143,7 @@ function FeedCard({ item }: { item: NewsItem }) {
 
 /* ── Hub Card Component ──────────────────────────────── */
 function HubCard({
-  title, subtitle, badge, tools, accentClass, borderClass, badgeBg, navigate, delay = '0s'
+  title, subtitle, badge, tools, accentClass, borderClass, badgeBg, navigate, delay = '0s', commandRoute = false
 }: {
   title: string;
   subtitle: string;
@@ -154,6 +154,7 @@ function HubCard({
   badgeBg: string;
   navigate: (path: string) => void;
   delay?: string;
+  commandRoute?: boolean;
 }) {
   const baseDelay = parseFloat(delay);
   const goToTool = (panel: string) => {
