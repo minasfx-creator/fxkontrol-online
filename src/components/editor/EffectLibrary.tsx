@@ -509,25 +509,7 @@ export default function EffectLibrary() {
       <ScrollArea className="flex-1">
         {viewMode === 'table' ? (
           /* ─── Finale 3D Table View ─── */
-          <div className="py-1">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="text-[8px] uppercase tracking-wider text-muted-foreground/40 font-display border-b border-border/10">
-                  <th className="px-1.5 py-1.5 text-right w-8">
-                    <Hash className="w-2.5 h-2.5 inline" />
-                  </th>
-                  <th className="px-1 py-1.5 w-5"></th>
-                  <th className="px-1.5 py-1.5 text-left">Effect</th>
-                  <th className="px-1.5 py-1.5 text-center w-8">Cal</th>
-                  <th className="px-1.5 py-1.5 text-right w-10">Dur</th>
-                  <th className="px-1.5 py-1.5 w-12">Type</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredEffects.map((effect, i) => (
-                  <EffectTableRow key={effect.id} effect={effect} index={i} />
-                ))}
-              </tbody>
+          <EffectTableView effects={filteredEffects} />
             </table>
           </div>
         ) : (

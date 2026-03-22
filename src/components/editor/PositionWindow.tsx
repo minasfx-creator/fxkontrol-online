@@ -272,6 +272,39 @@ export default function PositionWindow({ onClose }: PositionWindowProps) {
     </th>
   );
 
+  // Keyboard shortcuts: Ctrl+A, Delete, Ctrl+D
+  useEffect(() => {
+    const handler = (e: globalThis.KeyboardEvent) => {
+      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
+      const ctrl = e.ctrlKey || e.metaKey;
+
+      if (ctrl && e.key === 'a') {
+        e.preventDefault();
+        selectMultiplePositions(filteredPositions.map(p => p.id));
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedPositionIds.length > 0) {
+          e.preventDefault();
+          selectedPositionIds.forEach(id => removePosition(id));
+          toast.success(`${selectedPositionIds.length} posição(ões) removida(s)`);
+        }
+      }
+      if (ctrl && e.key === 'd') {
+        e.preventDefault();
+        const ids = selectedPositionIds.length > 0 ? selectedPositionIds : selectedPositionId ? [selectedPositionId] : [];
+        ids.forEach(id => {
+          const p = positions.find(pp => pp.id === id);
+          if (!p) return;
+          const newId = `pos-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+          addPosition({ ...p, id: newId, name: `${p.name}_copy`, x: p.x + 1 });
+        });
+        if (ids.length > 0) toast.success(`${ids.length} posição(ões) duplicada(s)`);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [filteredPositions, selectedPositionIds, selectedPositionId, positions, selectMultiplePositions, removePosition, addPosition]);
+
   return (
     <div className="h-full flex flex-col" style={{ background: 'hsl(var(--card))' }}>
       {/* Header */}

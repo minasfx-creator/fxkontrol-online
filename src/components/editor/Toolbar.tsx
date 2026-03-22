@@ -563,7 +563,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
           variant="ghost"
           size="sm"
           className={cn("btn-tool", editorMode === 'select' && "btn-tool-active")}
-          title="Select (V)"
+          title="Select (S)"
           onClick={() => setEditorMode('select')}
         >
           <MousePointer className="h-3.5 w-3.5" />

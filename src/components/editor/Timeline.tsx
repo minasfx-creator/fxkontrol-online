@@ -314,6 +314,8 @@ function TimelineTrackRow({
     if (!effect) return;
     if ((effect.type === 'firework' || effect.type === 'sfx') && trackIndex !== 0) return;
     if (effect.type === 'drone' && trackIndex !== 1) return;
+    if (effect.type === 'light' && trackIndex !== 2) return;
+    if (effect.type === 'laser' && trackIndex !== 0 && trackIndex !== 2) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
