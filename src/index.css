@@ -104,23 +104,24 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+    font-family: 'Rajdhani', 'Space Grotesk', 'Inter', system-ui, sans-serif;
+    letter-spacing: 0.01em;
   }
 
-  /* Scrollbar — ultra-thin dark */
+  /* Scrollbar — tactical thin */
   ::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
+    width: 3px;
+    height: 3px;
   }
   ::-webkit-scrollbar-track {
-    background: transparent;
+    background: hsl(var(--surface-0));
   }
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--surface-4));
-    border-radius: 4px;
+    background: hsl(var(--primary) / 0.25);
+    border-radius: 0;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground));
+    background: hsl(var(--primary) / 0.45);
   }
 }
 
