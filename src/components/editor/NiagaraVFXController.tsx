@@ -216,7 +216,6 @@ function createSparkEmitterTemplate(
       position: new THREE.Vector3(0, -50, 0),
       strength: pat === 'horsetail' ? 0.5 : 1.5,
       radius: 200,
-      falloff: 'linear',
     }));
   }
 
