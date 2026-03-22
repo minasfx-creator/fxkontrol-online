@@ -826,7 +826,7 @@ export default function PyroFireOnePanel({
       })}
       <button onClick={importPyroCues}
         className={cn("rounded border shrink-0 transition-all font-bold",
-          sz === 'xl' ? "px-3.5 py-2 text-[10px]" : sz === 'fs' ? "px-2.5 py-1.5 text-[8px]" : "px-2 py-1 text-[6px]",
+          sz === 'xl' ? "px-3.5 py-2 text-[10px]" : sz === 'fs' ? "px-2.5 py-1.5 text-[8px]" : "px-2 py-1 text-[8px]",
           "bg-amber-600/10 border-amber-500/20 text-amber-400/70"
         )}>
         <Download className={cn(sz === 'xl' ? "w-4 h-4 inline mr-1" : "w-3 h-3 inline mr-0.5")} />Import
