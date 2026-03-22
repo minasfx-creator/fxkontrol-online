@@ -367,6 +367,41 @@ function EffectCard({ effect }: { effect: Effect }) {
   );
 }
 
+/* ─── Table View wrapper with usage counts ─── */
+function EffectTableView({ effects }: { effects: Effect[] }) {
+  const { timelineItems } = useProjectStore();
+  const usageCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    timelineItems.forEach(item => {
+      counts[item.effectId] = (counts[item.effectId] || 0) + 1;
+    });
+    return counts;
+  }, [timelineItems]);
+
+  return (
+    <div className="py-1">
+      <table className="w-full border-collapse">
+        <thead>
+          <tr className="text-[8px] uppercase tracking-wider text-muted-foreground/40 font-display border-b border-border/10">
+            <th className="px-1.5 py-1.5 text-right w-8"><Hash className="w-2.5 h-2.5 inline" /></th>
+            <th className="px-1 py-1.5 w-5"></th>
+            <th className="px-1.5 py-1.5 text-left">Effect</th>
+            <th className="px-1.5 py-1.5 text-center w-8">Cal</th>
+            <th className="px-1.5 py-1.5 text-right w-10">Dur</th>
+            <th className="px-1.5 py-1.5 w-12">Type</th>
+            <th className="px-1 py-1.5 text-center w-8">Pos</th>
+          </tr>
+        </thead>
+        <tbody>
+          {effects.map((effect, i) => (
+            <EffectTableRow key={effect.id} effect={effect} index={i} usageCount={usageCounts[effect.id] || 0} />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function EffectLibrary() {
   const [search, setSearch] = useState('');
   const [vdlInput, setVdlInput] = useState('');
