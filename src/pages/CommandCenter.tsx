@@ -26,7 +26,7 @@ import PBusMonitorPanel from '@/components/editor/live-firing/PBusMonitorPanel';
 import MA3ControlPanel from '@/components/editor/MA3ControlPanel';
 import VirtualIFMx32QPanel from '@/components/editor/live-firing/VirtualIFMx32QPanel';
 import WiFiDirectControlPanel from '@/components/editor/live-firing/WiFiDirectControlPanel';
-import ArtNetModulePanel from '@/components/editor/live-firing/ArtNetModulePanel';
+import FXKNetPanel from '@/components/editor/live-firing/FXKNetPanel';
 import ConnectionManagerPanel from '@/components/editor/ConnectionManagerPanel';
 import RadioControlPanel from '@/components/editor/RadioControlPanel';
 import FieldMap2D from '@/components/editor/FieldMap2D';
