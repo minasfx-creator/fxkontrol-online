@@ -7,7 +7,6 @@ import {
   Rocket, Globe, Wifi, Radio, Zap, CheckCircle2, XCircle, 
   ArrowLeft, Shield, Activity, Timer
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { runShowTest, VenueResult, TransportType, TransportMetrics } from '@/services/showTestEngine';
 
 const TRANSPORT_LABELS: Record<TransportType, { label: string; icon: React.ReactNode; color: string }> = {

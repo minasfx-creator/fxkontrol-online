@@ -2,7 +2,7 @@
  * FXK-M1 NFC Tap-to-Pair & BLE Connection Page
  */
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { bleService, initialModuleState, type FXKModuleState } from '@/services/bleService';
 import { bleService, initialModuleState, type FXKModuleState } from '@/services/bleService';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
