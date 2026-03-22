@@ -545,6 +545,41 @@ export const useProjectStore = create<ProjectState>((set) => ({
   }),
   selectMultiplePositions: (ids) => set({ selectedPositionIds: ids, selectedPositionId: ids[ids.length - 1] ?? null }),
   setEditorMode: (mode) => set({ editorMode: mode }),
+  setSelectionMode: (mode) => set({ selectionMode: mode }),
+  selectPositionAndLinkedEvents: (positionId) => set((s) => {
+    const linkedItems = s.selectionMode !== 'positions'
+      ? s.timelineItems.filter(i => i.positionId === positionId || i.positionIds?.includes(positionId)).map(i => i.id)
+      : [];
+    return {
+      selectedPositionId: positionId,
+      selectedPositionIds: [positionId],
+      linkedTimelineItemIds: linkedItems,
+    };
+  }),
+  selectMultiplePositionsAndLinkedEvents: (ids) => set((s) => {
+    const linkedItems = s.selectionMode !== 'positions'
+      ? s.timelineItems.filter(i => ids.includes(i.positionId || '') || i.positionIds?.some(pid => ids.includes(pid))).map(i => i.id)
+      : [];
+    return {
+      selectedPositionIds: ids,
+      selectedPositionId: ids[ids.length - 1] ?? null,
+      linkedTimelineItemIds: linkedItems,
+    };
+  }),
+  selectTimelineItemAndLinkedPosition: (itemId) => set((s) => {
+    const item = s.timelineItems.find(i => i.id === itemId);
+    if (!item) return { selectedTimelineItemId: itemId, selectedTimelineItemIds: [] };
+    const posIds = s.selectionMode !== 'events'
+      ? [item.positionId, ...(item.positionIds || [])].filter(Boolean) as string[]
+      : [];
+    return {
+      selectedTimelineItemId: itemId,
+      selectedTimelineItemIds: [],
+      selectedPositionIds: posIds,
+      selectedPositionId: posIds[0] ?? s.selectedPositionId,
+      linkedTimelineItemIds: [],
+    };
+  }),
 
   addTrajectory: (traj) => set((s) => ({ trajectories: [...s.trajectories, traj] })),
   updateTrajectory: (id, updates) => set((s) => ({
