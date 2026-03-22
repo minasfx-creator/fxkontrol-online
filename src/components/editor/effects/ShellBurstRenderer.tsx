@@ -632,6 +632,9 @@ export default function ShellBurstRenderer({
         const theta = Math.random() * Math.PI * 2;
         const phi = Math.acos(2 * Math.random() - 1);
         const r = burstSpread * 0.15;
+        const seedVal = Math.random();
+        // Warm vs cool gray based on seed (hot burst = warm, cold sparks = cool)
+        const isWarm = seedVal > 0.4;
         sp.push({
           x: Math.sin(phi) * Math.cos(theta) * r,
           y: Math.cos(phi) * r + burstSpread * 0.1,
@@ -640,9 +643,9 @@ export default function ShellBurstRenderer({
           vy: 0.2 + Math.random() * 0.3,
           vz: Math.sin(phi) * Math.sin(theta) * 0.3 + windVec[2] * 0.1,
           age: 0,
-          maxAge: 3 + Math.random() * 4,
-          scale: 2 + Math.random() * 3,
-          seed: Math.random(),
+          maxAge: 3 + Math.random() * 5,
+          scale: 2 + Math.random() * 3.5,
+          seed: seedVal,
         });
       }
       smokeParticles.current = sp;
