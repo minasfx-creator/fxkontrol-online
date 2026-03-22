@@ -313,15 +313,33 @@ export default function CometEffect({
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[new Float32Array(SPARK_COUNT * 3), 3]} />
           <bufferAttribute attach="attributes-color" args={[new Float32Array(SPARK_COUNT * 3), 3]} />
+          <bufferAttribute attach="attributes-size" args={[new Float32Array(SPARK_COUNT), 1]} />
         </bufferGeometry>
-        <pointsMaterial
-          size={0.08 + caliber * 0.02}
-          vertexColors
+        <shaderMaterial
+          vertexShader={`
+            attribute float size;
+            attribute vec3 color;
+            varying vec3 vColor;
+            void main() {
+              vColor = color;
+              vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+              gl_PointSize = size * (300.0 / -mvPosition.z);
+              gl_PointSize = clamp(gl_PointSize, 1.0, 48.0);
+              gl_Position = projectionMatrix * mvPosition;
+            }
+          `}
+          fragmentShader={`
+            varying vec3 vColor;
+            void main() {
+              float dist = length(gl_PointCoord - vec2(0.5));
+              if (dist > 0.5) discard;
+              float alpha = smoothstep(0.5, 0.15, dist);
+              gl_FragColor = vec4(vColor, alpha * 0.9);
+            }
+          `}
           transparent
-          opacity={0.85}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
-          sizeAttenuation
         />
       </points>
 
