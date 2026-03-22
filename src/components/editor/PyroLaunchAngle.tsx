@@ -451,19 +451,23 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
         <Line points={trajectoryPoints} color={COLORS.trajectory} lineWidth={1} dashed dashSize={0.25} gapSize={0.12} transparent opacity={0.4} />
       )}
 
-      {/* Arrow cone tip */}
-      <mesh
-        position={handlePos}
-        rotation={(() => {
-          const dir = new THREE.Vector3(...handlePos).normalize();
-          const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-          const e = new THREE.Euler().setFromQuaternion(q);
-          return [e.x, e.y, e.z] as [number, number, number];
-        })()}
-      >
-        <coneGeometry args={[0.08, 0.25, 6]} />
-        <meshBasicMaterial color={COLORS.arrow} transparent opacity={0.8} />
-      </mesh>
+      {/* Arrow cone tip at end of shaft */}
+      {(() => {
+        const tipPos: [number, number, number] = [
+          Math.sin(heading) * Math.cos(pitch) * ARROW_LENGTH,
+          Math.sin(pitch) * ARROW_LENGTH,
+          -Math.cos(heading) * Math.cos(pitch) * ARROW_LENGTH,
+        ];
+        const dir = new THREE.Vector3(...tipPos).normalize();
+        const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+        const e = new THREE.Euler().setFromQuaternion(q);
+        return (
+          <mesh position={tipPos} rotation={[e.x, e.y, e.z]}>
+            <coneGeometry args={[0.08, 0.25, 6]} />
+            <meshBasicMaterial color={COLORS.arrow} transparent opacity={0.8} />
+          </mesh>
+        );
+      })()}
 
       {/* Draggable handle */}
       <mesh
