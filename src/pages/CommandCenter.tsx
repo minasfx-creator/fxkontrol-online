@@ -54,7 +54,7 @@ const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: stri
   simple_dmx:  { color: 'hsl(120 70% 38%)', glow: 'hsl(120 70% 38% / 0.1)', label: 'FXK-DMX LITE',  badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' },
   manual_fire: { color: 'hsl(32 100% 50%)',  glow: 'hsl(32 100% 50% / 0.1)',  label: 'MANUAL FIRE', badge: 'bg-orange-500/15 text-orange-400 border-orange-500/20' },
   pyro_fire:   { color: 'hsl(0 85% 48%)',   glow: 'hsl(0 85% 48% / 0.1)',   label: 'FXK-PYRO',    badge: 'bg-red-500/15 text-red-400 border-red-500/20' },
-  auto_fire:   { color: 'hsl(45 100% 50%)',  glow: 'hsl(45 100% 50% / 0.1)',  label: 'AUTO FIRE',   badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20' },
+  check_slave: { color: 'hsl(32 100% 50%)', glow: 'hsl(32 100% 50% / 0.1)', label: 'DIAGNOSTICS', badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20' },
   check_slave: { color: 'hsl(165 100% 42%)', glow: 'hsl(165 100% 42% / 0.1)', label: 'DIAGNOSTICS', badge: 'bg-teal-500/15 text-teal-400 border-teal-500/20' },
   controllers: { color: 'hsl(270 60% 50%)', glow: 'hsl(270 60% 50% / 0.08)', label: 'CONTROLLERS', badge: 'bg-purple-500/15 text-purple-400 border-purple-500/20' },
   pbus:        { color: 'hsl(38 100% 50%)',  glow: 'hsl(38 100% 50% / 0.08)',  label: 'P-BUS',       badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20' },
