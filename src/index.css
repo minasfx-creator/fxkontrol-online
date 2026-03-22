@@ -413,6 +413,26 @@
     border-color: hsl(var(--border) / 0.1);
     background: hsl(var(--surface-0) / 0.3);
   }
+
+  /* FXK-PYRO specific utilities */
+  .pyro-scan-sweep {
+    position: relative;
+    overflow: hidden;
+  }
+  .pyro-scan-sweep::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.3), transparent);
+    animation: pyro-sweep 1.5s ease-in-out infinite;
+  }
+  @keyframes pyro-sweep {
+    0% { left: -50%; }
+    100% { left: 150%; }
+  }
 }
 /* Hide scrollbar but keep scroll functionality */
 .no-scrollbar::-webkit-scrollbar { display: none; }
