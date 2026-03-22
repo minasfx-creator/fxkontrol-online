@@ -88,6 +88,7 @@ export default function CommandCenter() {
   const initialMode = (searchParams.get('mode') as CommandMode) || 'show_control';
   const [activeMode, setActiveMode] = useState<CommandMode>(initialMode);
   const [swapPhase, setSwapPhase] = useState<'idle' | 'out' | 'in'>('idle');
+  const [swapFlash, setSwapFlash] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileCategory, setMobileCategory] = useState(0);
   const isMobile = useIsMobile();
