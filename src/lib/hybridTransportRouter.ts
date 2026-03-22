@@ -40,7 +40,7 @@ const DMX_CMD = 0x4F;     // 'O' — DMX output
 const SCRIPT_CMD = 0x55;  // 'U' — UltraFire script upload
 
 export type CommandPriority = 'critical' | 'high' | 'normal' | 'bulk';
-export type RoutingPath = 'radio' | 'starlink' | 'any' | 'broadcast';
+export type RoutingPath = 'radio' | 'starlink' | 'cellular' | 'any' | 'broadcast';
 
 export interface RoutingDecision {
   priority: CommandPriority;
