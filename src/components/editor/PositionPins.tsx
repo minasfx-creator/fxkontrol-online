@@ -623,9 +623,9 @@ function DirectionLine({ position, color, isSelected, isHovered, hasEffects }: {
   // Hide stub line when full gizmo is active
   if (editorMode === 'adjust-angles' && isSelected) return null;
 
-  const opacity = isSelected ? 0.85 : isHovered ? 0.5 : hasEffects ? 0.6 : 0.2;
-  const lineWidth = isSelected ? 3 : hasEffects ? 2 : 1;
-  const lineColor = hasEffects ? '#FF3333' : isSelected ? color : '#aaaaaa';
+  const opacity = isSelected ? 1.0 : isHovered ? 0.5 : hasEffects ? 0.7 : 0.2;
+  const lineWidth = isSelected ? 2.5 : hasEffects ? 1.5 : 1;
+  const typeColor = position.type === 'pyro' ? '#FF6B35' : '#00B4D8';
 
   const tip = linePoints[1];
   const dir = new THREE.Vector3(tip[0], tip[1] - 0.15, tip[2]).normalize();
