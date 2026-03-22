@@ -775,21 +775,42 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
             {position.section && (
               <span style={{ marginLeft: '4px', fontSize: '8px', color: '#4FC3F7', opacity: 0.7 }}>§{position.section}</span>
             )}
+            {linkedCues.length > 0 && (
+              <span style={{ marginLeft: '4px', fontSize: '7px', color: '#FF8A65', opacity: 0.7 }}>CUE</span>
+            )}
           </div>
+          {/* Show base position angles vs cue override */}
+          {linkedCues.length > 0 && linkedCues[0].cueHeading !== undefined && (
+            <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.35)', marginBottom: '1px' }}>
+              Base: H {Math.round(position.heading)}° · P {Math.round(position.pitch || 85)}°
+            </div>
+          )}
           <div style={{ display: 'flex', gap: '6px' }}>
             <InlineAngleInput
               label="H"
-              value={position.heading}
+              value={effectiveHeading}
               color={COLORS.headingArc}
-              onChange={v => updatePosition(position.id, { heading: v })}
+              onChange={v => {
+                if (linkedCues.length > 0) {
+                  linkedCues.forEach(item => updateTimelineItem(item.id, { cueHeading: v }));
+                } else {
+                  updatePosition(position.id, { heading: v });
+                }
+              }}
               min={-360}
               max={360}
             />
             <InlineAngleInput
               label="P"
-              value={position.pitch || 85}
+              value={effectivePitch}
               color={COLORS.pitchArc}
-              onChange={v => updatePosition(position.id, { pitch: v })}
+              onChange={v => {
+                if (linkedCues.length > 0) {
+                  linkedCues.forEach(item => updateTimelineItem(item.id, { cuePitch: v }));
+                } else {
+                  updatePosition(position.id, { pitch: v });
+                }
+              }}
               min={-180}
               max={180}
             />
@@ -804,19 +825,53 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
               />
             )}
           </div>
+          {/* Reset to base button */}
+          {linkedCues.length > 0 && linkedCues[0].cueHeading !== undefined && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                linkedCues.forEach(item => updateTimelineItem(item.id, { cueHeading: undefined, cuePitch: undefined }));
+              }}
+              style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '7px',
+                padding: '1px 4px',
+                background: 'rgba(79,195,247,0.1)',
+                border: '1px solid rgba(79,195,247,0.2)',
+                borderRadius: '2px',
+                color: '#4FC3F7',
+                cursor: 'pointer',
+                marginTop: '2px',
+                width: '100%',
+              }}
+            >
+              ↺ RESET TO BASE
+            </button>
+          )}
           {/* Pitch presets */}
           <div style={{ display: 'flex', gap: '2px', marginTop: '3px', flexWrap: 'wrap' }}>
             {[15, 30, 45, 60, 75, 80, 85, 90].map(deg => {
-              const isActive = Math.round(position.pitch || 85) === deg;
+              const isActive = Math.round(effectivePitch) === deg;
               return (
                 <button
                   key={deg}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (batchMode && selectedIds) {
-                      selectedIds.forEach(id => updatePosition(id, { pitch: deg }));
+                    if (linkedCues.length > 0) {
+                      if (batchMode && selectedIds) {
+                        selectedIds.forEach(id => {
+                          const posItems = timelineItems.filter(t => t.positionId === id || t.positionIds?.includes(id));
+                          posItems.forEach(item => updateTimelineItem(item.id, { cuePitch: deg }));
+                        });
+                      } else {
+                        linkedCues.forEach(item => updateTimelineItem(item.id, { cuePitch: deg }));
+                      }
                     } else {
-                      updatePosition(position.id, { pitch: deg });
+                      if (batchMode && selectedIds) {
+                        selectedIds.forEach(id => updatePosition(id, { pitch: deg }));
+                      } else {
+                        updatePosition(position.id, { pitch: deg });
+                      }
                     }
                   }}
                   style={{
