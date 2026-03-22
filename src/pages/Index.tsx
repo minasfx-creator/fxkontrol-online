@@ -99,7 +99,7 @@ import RadioControlPanel from '@/components/editor/RadioControlPanel';
 import MA3ControlPanel from '@/components/editor/MA3ControlPanel';
 import SACNMonitorPanel from '@/components/editor/SACNMonitorPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
-import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
+import { ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
 import PositionContextMenu from '@/components/editor/PositionContextMenu';
 import MobileTabBar, { type MobileTab } from '@/components/editor/MobileTabBar';
@@ -469,9 +469,6 @@ function Index() {
           onPanelHeightChange={setMobilePanelHeight}
         />
 
-        {showPositionEditor && selectedPositionId && (
-          <PositionPopupEditor onClose={() => setShowPositionEditor(false)} />
-        )}
         <PositionContextMenu />
       </div>
     );
@@ -600,9 +597,7 @@ function Index() {
         </ResizablePanel>
       </ResizablePanelGroup>
 
-      {showPositionEditor && selectedPositionId && (
-        <PositionPopupEditor onClose={() => setShowPositionEditor(false)} />
-      )}
+      {/* Position properties now unified in PositionContextMenu */}
       {showShortcuts && (
         <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />
       )}
