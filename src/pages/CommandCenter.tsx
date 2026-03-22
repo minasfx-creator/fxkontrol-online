@@ -91,6 +91,7 @@ const MODE_SECTIONS = [
       { key: 'ma3' as CommandMode, label: 'FXK-LIGHT', icon: Gauge },
       { key: 'module' as CommandMode, label: 'FXK Module', icon: Cpu },
       { key: 'wifi_direct' as CommandMode, label: 'WiFi Direct', icon: Wifi },
+      { key: 'drone_ops' as CommandMode, label: 'FXK-DRONES', icon: Layers },
     ],
   },
   {
