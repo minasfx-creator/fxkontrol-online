@@ -531,11 +531,20 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
     };
   }, [isDragging, position, updatePosition, camera, raycaster, gl, batchMode, selectedIds, dragAxis]);
 
-  const handleColor = isDragging ? '#FFD54F' : isHovered ? '#81D4FA' : '#FF6B35';
+  // Camera-aware handle color: blue=heading dominant, orange=pitch dominant, blend for mixed
+  const handleColor = useMemo(() => {
+    if (!isDragging) return isHovered ? '#81D4FA' : '#FF6B35';
+    if (axisDominance.h > 0.7 && axisDominance.p < 0.4) return COLORS.headingArc; // blue = heading
+    if (axisDominance.p > 0.7 && axisDominance.h < 0.4) return COLORS.pitchArc;   // orange = pitch
+    return '#FFD54F'; // yellow = both
+  }, [isDragging, isHovered, axisDominance]);
   const handleSize = isDragging ? 0.35 : isHovered ? 0.3 : 0.25;
 
   // Axis color indicator during drag
-  const axisIndicatorColor = dragAxis === 'heading' ? COLORS.headingArc : dragAxis === 'pitch' ? COLORS.pitchArc : dragAxis === 'roll' ? COLORS.rollArc : null;
+  const axisIndicatorColor = isDragging
+    ? (dragAxis === 'heading' ? COLORS.headingArc : dragAxis === 'pitch' ? COLORS.pitchArc : dragAxis === 'roll' ? COLORS.rollArc
+      : (axisDominance.h > axisDominance.p * 1.5 ? COLORS.headingArc : axisDominance.p > axisDominance.h * 1.5 ? COLORS.pitchArc : null))
+    : null;
 
   const wind = useProjectStore(s => s.wind);
   const windCompGhost = useMemo(() => {
