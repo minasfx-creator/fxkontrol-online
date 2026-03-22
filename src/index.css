@@ -727,3 +727,33 @@ body.night-mode {
 @keyframes swap-enter {
   to { opacity: 1; transform: scale(1) translateX(0); }
 }
+
+/* BR2049 Channel scan */
+@keyframes channel-scan {
+  0% { box-shadow: inset 0 0 0 1px hsl(32 100% 50% / 0); background: hsl(32 100% 50% / 0); }
+  30% { box-shadow: inset 0 0 0 2px hsl(32 100% 50% / 0.4); background: hsl(32 100% 50% / 0.1); }
+  100% { box-shadow: inset 0 0 0 1px hsl(32 100% 50% / 0); background: hsl(32 100% 50% / 0); }
+}
+.animate-channel-scan {
+  animation: channel-scan 0.4s ease-out;
+}
+
+/* Holographic dissolve */
+@keyframes holo-dissolve {
+  0% { opacity: 1; transform: scale(1); filter: blur(0); }
+  100% { opacity: 0; transform: scale(0.92); filter: blur(12px); }
+}
+.animate-holo-dissolve {
+  animation: holo-dissolve 0.35s ease-in forwards;
+}
+
+/* Voice wave bars */
+@keyframes voice-wave {
+  0%, 100% { height: 4px; }
+  25% { height: 14px; }
+  50% { height: 8px; }
+  75% { height: 18px; }
+}
+.animate-voice-wave {
+  animation: voice-wave 0.8s ease-in-out infinite;
+}
