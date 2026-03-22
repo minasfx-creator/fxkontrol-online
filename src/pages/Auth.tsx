@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { ambientSound } from '@/lib/ambientSound';
-import minasfxLogo from '@/assets/minasfx-logo-new.png';
-import fxkLogo from '@/assets/fxk-logo-new.png';
+import minasfxLogo from '@/assets/minasfx-logo-tactical.png';
+import fxkLogo from '@/assets/fxk-logo-tactical.png';
 
 const BOOT_LINES = [
   'NEXUS AUTH v4.2 · SECURE CHANNEL',
