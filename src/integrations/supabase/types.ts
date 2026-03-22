@@ -145,6 +145,50 @@ export type Database = {
           },
         ]
       }
+      dmx_logs: {
+        Row: {
+          channel_data: Json
+          created_at: string
+          id: string
+          project_id: string
+          protocol: string
+          session_id: string
+          source: string
+          timestamp: string
+          universe: number
+        }
+        Insert: {
+          channel_data?: Json
+          created_at?: string
+          id?: string
+          project_id: string
+          protocol?: string
+          session_id: string
+          source?: string
+          timestamp?: string
+          universe?: number
+        }
+        Update: {
+          channel_data?: Json
+          created_at?: string
+          id?: string
+          project_id?: string
+          protocol?: string
+          session_id?: string
+          source?: string
+          timestamp?: string
+          universe?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dmx_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           client_name: string | null

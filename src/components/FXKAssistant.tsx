@@ -1,22 +1,52 @@
 /**
  * FXKAssistant — "Joi" BR2049 Holographic AI Assistant
  * Docked panel with voice wave avatar, materializing text, dissolve animations
+ * Enhanced: textarea, session history, feedback, expand, timestamps, clear, context presets
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Terminal, Volume2 } from 'lucide-react';
+import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Terminal, Maximize2, Trash2, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 
-type Msg = { role: 'user' | 'assistant'; content: string };
+type Msg = { role: 'user' | 'assistant'; content: string; ts?: number; feedback?: 'up' | 'down' };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fxk-ai-chat`;
+const HISTORY_KEY = 'fxk-ai-history';
+const MAX_HISTORY = 10;
 
-const PRESETS = [
+const PRESETS_COMMAND = [
   { label: 'DIAGNÓSTICO', icon: Activity, prompt: 'Execute um diagnóstico completo do sistema FXK — módulos, DMX, canais ativos, status de segurança.' },
   { label: 'SCRIPT', icon: Terminal, prompt: 'Preciso de ajuda criando um script de show pirotécnico.' },
   { label: 'SAFETY', icon: ShieldCheck, prompt: 'Quais são os protocolos de segurança NFPA que devo seguir para este show?' },
   { label: 'STATUS', icon: Zap, prompt: 'Qual o status atual do show — timeline, posições configuradas e módulos online?' },
 ];
+
+const PRESETS_EDITOR = [
+  { label: 'DESIGN', icon: Zap, prompt: 'Me ajude a criar um design de show com efeitos visuais impressionantes.' },
+  { label: 'TIMELINE', icon: Activity, prompt: 'Preciso organizar a timeline do show com transições suaves.' },
+  { label: 'SAFETY', icon: ShieldCheck, prompt: 'Verifique a segurança das posições configuradas no meu show.' },
+  { label: 'EXPORT', icon: Terminal, prompt: 'Como exportar meu projeto para diferentes formatos de firing system?' },
+];
+
+function getContextPresets() {
+  const path = window.location.pathname;
+  if (path.includes('command')) return PRESETS_COMMAND;
+  return PRESETS_EDITOR;
+}
+
+function loadHistory(): Msg[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw).slice(-MAX_HISTORY);
+  } catch { return []; }
+}
+
+function saveHistory(msgs: Msg[]) {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(msgs.slice(-MAX_HISTORY)));
+  } catch {}
+}
 
 async function streamChat(
   messages: Msg[],
@@ -30,7 +60,7 @@ async function streamChat(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
     },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages: messages.map(m => ({ role: m.role, content: m.content })) }),
     signal,
   });
 
@@ -68,7 +98,6 @@ async function streamChat(
   onDone();
 }
 
-/* Voice wave bars for avatar */
 function VoiceWave({ active }: { active: boolean }) {
   return (
     <div className="flex items-center gap-[2px] h-5">
@@ -87,7 +116,6 @@ function VoiceWave({ active }: { active: boolean }) {
   );
 }
 
-/* Thinking wave visualization */
 function ThinkingWave() {
   return (
     <div className="flex items-center gap-2 py-2 animate-fade-in">
@@ -110,21 +138,66 @@ function ThinkingWave() {
   );
 }
 
+function formatTime(ts?: number) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 export function FXKAssistant() {
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [closing, setClosing] = useState(false);
-  const [messages, setMessages] = useState<Msg[]>([]);
+  const [expanded, setExpanded] = useState(false);
+  const [messages, setMessages] = useState<Msg[]>(() => loadHistory());
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [connectionOk, setConnectionOk] = useState<boolean | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const isAtBottom = useRef(true);
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  // Check connection on mount
+  useEffect(() => {
+    fetch(CHAT_URL, { method: 'OPTIONS' })
+      .then(() => setConnectionOk(true))
+      .catch(() => setConnectionOk(false));
+  }, []);
+
+  // Smart auto-scroll: only when at bottom
+  useEffect(() => {
+    if (isAtBottom.current) {
+      endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    isAtBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+  }, []);
+
+  // Save history
+  useEffect(() => {
+    if (messages.length > 0) saveHistory(messages);
+  }, [messages]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (ta) {
+      ta.style.height = 'auto';
+      ta.style.height = Math.min(ta.scrollHeight, 80) + 'px';
+    }
+  }, [input]);
+
+  const presets = getContextPresets();
 
   const send = useCallback(async (text: string) => {
     if (!text.trim() || loading) return;
-    const userMsg: Msg = { role: 'user', content: text.trim() };
+    const userMsg: Msg = { role: 'user', content: text.trim(), ts: Date.now() };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setLoading(true);
@@ -137,7 +210,7 @@ export function FXKAssistant() {
         if (last?.role === 'assistant') {
           return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: soFar } : m);
         }
-        return [...prev, { role: 'assistant', content: soFar }];
+        return [...prev, { role: 'assistant', content: soFar, ts: Date.now() }];
       });
     };
 
@@ -148,11 +221,20 @@ export function FXKAssistant() {
       await streamChat([...messages, userMsg], upsert, () => setLoading(false), ctrl.signal);
     } catch (e: any) {
       if (e.name !== 'AbortError') {
-        setMessages(prev => [...prev, { role: 'assistant', content: `⚠ ${e.message}` }]);
+        setMessages(prev => [...prev, { role: 'assistant', content: `⚠ ${e.message}`, ts: Date.now() }]);
       }
       setLoading(false);
     }
   }, [messages, loading]);
+
+  const handleFeedback = useCallback((idx: number, fb: 'up' | 'down') => {
+    setMessages(prev => prev.map((m, i) => i === idx ? { ...m, feedback: fb } : m));
+  }, []);
+
+  const clearMessages = useCallback(() => {
+    setMessages([]);
+    localStorage.removeItem(HISTORY_KEY);
+  }, []);
 
   const handleClose = useCallback(() => {
     setClosing(true);
@@ -161,6 +243,15 @@ export function FXKAssistant() {
       setClosing(false);
     }, 350);
   }, []);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      send(input);
+    }
+  }, [input, send]);
+
+  const panelWidth = expanded ? 560 : 360;
 
   // Bubble
   if (!open) {
@@ -199,14 +290,14 @@ export function FXKAssistant() {
     );
   }
 
-  // Full panel — BR2049 Joi style
   return (
     <div
       className={cn(
-        "fixed bottom-5 right-5 z-50 w-[360px] h-[560px] rounded-xl flex flex-col overflow-hidden fxk-panel",
+        "fixed bottom-5 right-5 z-50 h-[560px] rounded-xl flex flex-col overflow-hidden fxk-panel transition-all duration-300",
         closing ? "animate-holo-dissolve" : "animate-holo-materialize"
       )}
       style={{
+        width: panelWidth,
         background: 'hsl(220 22% 4% / 0.96)',
         border: '1px solid hsl(32 100% 50% / 0.2)',
         boxShadow: '0 0 50px hsl(32 100% 50% / 0.12), 0 20px 80px hsl(0 0% 0% / 0.7)',
@@ -219,9 +310,8 @@ export function FXKAssistant() {
       {/* Rain overlay when idle */}
       {messages.length === 0 && <div className="absolute inset-0 pointer-events-none br2049-rain rounded-xl" style={{ zIndex: 1 }} />}
 
-      {/* Header — Joi identity */}
+      {/* Header */}
       <div className="relative z-10 flex items-center gap-2.5 px-3 py-3 shrink-0" style={{ borderBottom: '1px solid hsl(32 100% 50% / 0.12)' }}>
-        {/* Holographic avatar */}
         <div
           className="h-8 w-8 rounded-full flex items-center justify-center shrink-0"
           style={{
@@ -234,14 +324,26 @@ export function FXKAssistant() {
         </div>
 
         <div className="flex-1 min-w-0">
-          <span className="text-[10px] font-mono font-bold tracking-[0.25em] uppercase block" style={{ color: 'hsl(32 100% 60%)' }}>
-            FXK-AI · NEXUS
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-mono font-bold tracking-[0.25em] uppercase" style={{ color: 'hsl(32 100% 60%)' }}>
+              FXK-AI · NEXUS
+            </span>
+            {/* Connection indicator */}
+            <div className={cn("w-1.5 h-1.5 rounded-full",
+              connectionOk === true ? "bg-green-500" : connectionOk === false ? "bg-red-500" : "bg-muted-foreground/20"
+            )} style={{ boxShadow: connectionOk === true ? '0 0 4px hsl(120 70% 50%)' : 'none' }} />
+          </div>
           <span className="text-[7px] font-mono tracking-[0.15em] uppercase" style={{ color: 'hsl(32 100% 50% / 0.4)' }}>
             {loading ? 'PROCESSING...' : 'HOLOGRAPHIC INTERFACE'}
           </span>
         </div>
 
+        <button onClick={clearMessages} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors" title="Clear">
+          <Trash2 className="h-3 w-3" style={{ color: 'hsl(32 100% 50% / 0.4)' }} />
+        </button>
+        <button onClick={() => setExpanded(!expanded)} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors" title="Expand">
+          <Maximize2 className="h-3 w-3" style={{ color: 'hsl(32 100% 50% / 0.6)' }} />
+        </button>
         <button onClick={() => setMinimized(true)} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors">
           <Minimize2 className="h-3 w-3" style={{ color: 'hsl(32 100% 50% / 0.6)' }} />
         </button>
@@ -251,10 +353,9 @@ export function FXKAssistant() {
       </div>
 
       {/* Messages */}
-      <div className="relative z-10 flex-1 overflow-y-auto px-3 py-2 space-y-3 scrollbar-thin">
+      <div ref={scrollRef} onScroll={handleScroll} className="relative z-10 flex-1 overflow-y-auto px-3 py-2 space-y-3 scrollbar-thin">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-4 opacity-80">
-            {/* Holographic emblem */}
             <div
               className="h-16 w-16 rounded-full flex items-center justify-center"
               style={{
@@ -269,15 +370,16 @@ export function FXKAssistant() {
               NEXUS ONLINE · AWAITING INPUT
             </p>
             <div className="flex flex-wrap gap-1.5 justify-center px-2">
-              {PRESETS.map(p => (
+              {presets.map((p, idx) => (
                 <button
                   key={p.label}
                   onClick={() => send(p.prompt)}
-                  className="flex items-center gap-1 px-2.5 py-2 rounded-lg text-[8px] font-mono tracking-wider uppercase transition-all hover:scale-105 active:scale-95"
+                  className="flex items-center gap-1 px-2.5 py-2 rounded-lg text-[8px] font-mono tracking-wider uppercase transition-all hover:scale-105 active:scale-95 animate-fade-in"
                   style={{
                     background: 'hsl(32 100% 50% / 0.06)',
                     border: '1px solid hsl(32 100% 50% / 0.15)',
                     color: 'hsl(32 100% 60%)',
+                    animationDelay: `${idx * 50}ms`,
                   }}
                 >
                   <p.icon className="h-3 w-3" />
@@ -295,27 +397,55 @@ export function FXKAssistant() {
             style={{ animation: msg.role === 'assistant' ? 'holo-materialize 0.5s cubic-bezier(0.16, 1, 0.3, 1) both' : 'fade-in 0.2s ease-out both' }}
           >
             {msg.role === 'user' ? (
-              <div
-                className="px-3 py-2 rounded-lg rounded-br-sm text-[11px] font-mono leading-relaxed"
-                style={{
-                  background: 'hsl(32 100% 50% / 0.1)',
-                  border: '1px solid hsl(32 100% 50% / 0.18)',
-                  color: 'hsl(32 100% 80%)',
-                }}
-              >
-                {msg.content}
+              <div>
+                <div
+                  className="px-3 py-2 rounded-lg rounded-br-sm text-[11px] font-mono leading-relaxed"
+                  style={{
+                    background: 'hsl(32 100% 50% / 0.1)',
+                    border: '1px solid hsl(32 100% 50% / 0.18)',
+                    color: 'hsl(32 100% 80%)',
+                  }}
+                >
+                  {msg.content}
+                </div>
+                {msg.ts && <span className="text-[6px] font-mono block text-right mt-0.5" style={{ color: 'hsl(32 100% 50% / 0.2)' }}>{formatTime(msg.ts)}</span>}
               </div>
             ) : (
-              <div
-                className="px-3 py-2 rounded-lg rounded-bl-sm text-[11px] leading-relaxed"
-                style={{
-                  borderLeft: '2px solid hsl(32 100% 50% / 0.35)',
-                  background: 'hsl(220 20% 6% / 0.6)',
-                  color: 'hsl(180 8% 82%)',
-                }}
-              >
-                <div className="prose prose-invert prose-xs max-w-none [&_p]:my-1 [&_code]:text-[hsl(32_100%_65%)] [&_code]:bg-transparent [&_pre]:bg-[hsl(220_20%_8%)] [&_pre]:border [&_pre]:border-[hsl(32_100%_50%/0.1)] [&_strong]:text-[hsl(32_100%_70%)] [&_a]:text-[hsl(32_100%_60%)]">
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+              <div>
+                <div
+                  className="px-3 py-2 rounded-lg rounded-bl-sm text-[11px] leading-relaxed"
+                  style={{
+                    borderLeft: '2px solid hsl(32 100% 50% / 0.35)',
+                    background: 'hsl(220 20% 6% / 0.6)',
+                    color: 'hsl(180 8% 82%)',
+                  }}
+                >
+                  <div className="prose prose-invert prose-xs max-w-none [&_p]:my-1 [&_code]:text-[hsl(32_100%_65%)] [&_code]:bg-transparent [&_pre]:bg-[hsl(220_20%_8%)] [&_pre]:border [&_pre]:border-[hsl(32_100%_50%/0.1)] [&_strong]:text-[hsl(32_100%_70%)] [&_a]:text-[hsl(32_100%_60%)]">
+                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between mt-0.5">
+                  {msg.ts && <span className="text-[6px] font-mono" style={{ color: 'hsl(32 100% 50% / 0.2)' }}>{formatTime(msg.ts)}</span>}
+                  {!loading && (
+                    <div className="flex gap-0.5 ml-auto">
+                      <button
+                        onClick={() => handleFeedback(i, 'up')}
+                        className={cn("h-4 w-4 rounded flex items-center justify-center transition-colors",
+                          msg.feedback === 'up' ? "bg-green-500/20" : "hover:bg-white/5"
+                        )}
+                      >
+                        <ThumbsUp className="h-2.5 w-2.5" style={{ color: msg.feedback === 'up' ? 'hsl(120 70% 50%)' : 'hsl(32 100% 50% / 0.2)' }} />
+                      </button>
+                      <button
+                        onClick={() => handleFeedback(i, 'down')}
+                        className={cn("h-4 w-4 rounded flex items-center justify-center transition-colors",
+                          msg.feedback === 'down' ? "bg-red-500/20" : "hover:bg-white/5"
+                        )}
+                      >
+                        <ThumbsDown className="h-2.5 w-2.5" style={{ color: msg.feedback === 'down' ? 'hsl(0 70% 50%)' : 'hsl(32 100% 50% / 0.2)' }} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -328,10 +458,10 @@ export function FXKAssistant() {
         <div ref={endRef} />
       </div>
 
-      {/* Quick presets (visible when conversation active) */}
+      {/* Quick presets */}
       {messages.length > 0 && (
         <div className="relative z-10 flex gap-1 px-3 py-1.5 overflow-x-auto shrink-0" style={{ borderTop: '1px solid hsl(32 100% 50% / 0.06)' }}>
-          {PRESETS.map(p => (
+          {presets.map(p => (
             <button
               key={p.label}
               onClick={() => send(p.prompt)}
@@ -349,29 +479,31 @@ export function FXKAssistant() {
         </div>
       )}
 
-      {/* Input */}
+      {/* Input — multiline textarea */}
       <div className="relative z-10 p-2.5 shrink-0" style={{ borderTop: '1px solid hsl(32 100% 50% / 0.1)' }}>
         <div
-          className="flex items-center gap-1.5 rounded-lg px-3 py-2"
+          className="flex items-end gap-1.5 rounded-lg px-3 py-2"
           style={{
             background: 'hsl(220 20% 5%)',
             border: '1px solid hsl(32 100% 50% / 0.12)',
           }}
         >
-          <span className="text-[10px] font-mono shrink-0" style={{ color: 'hsl(32 100% 50% / 0.4)' }}>&gt;_</span>
-          <input
-            className="flex-1 bg-transparent border-none outline-none text-[11px] font-mono placeholder:text-[hsl(32_100%_50%/0.2)]"
-            style={{ color: 'hsl(32 100% 75%)', caretColor: 'hsl(32 100% 50%)' }}
-            placeholder="Comando..."
+          <span className="text-[10px] font-mono shrink-0 pb-0.5" style={{ color: 'hsl(32 100% 50% / 0.4)' }}>&gt;_</span>
+          <textarea
+            ref={textareaRef}
+            className="flex-1 bg-transparent border-none outline-none text-[11px] font-mono placeholder:text-[hsl(32_100%_50%/0.2)] resize-none overflow-hidden leading-relaxed"
+            style={{ color: 'hsl(32 100% 75%)', caretColor: 'hsl(32 100% 50%)', minHeight: '20px', maxHeight: '80px' }}
+            placeholder="Comando... (Shift+Enter nova linha)"
             value={input}
             onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send(input)}
+            onKeyDown={handleKeyDown}
             disabled={loading}
+            rows={1}
           />
           <button
             onClick={() => send(input)}
             disabled={!input.trim() || loading}
-            className="h-7 w-7 rounded flex items-center justify-center transition-all disabled:opacity-20 hover:scale-110 active:scale-90"
+            className="h-7 w-7 rounded flex items-center justify-center transition-all disabled:opacity-20 hover:scale-110 active:scale-90 shrink-0"
             style={{ background: input.trim() ? 'hsl(32 100% 50% / 0.15)' : 'transparent' }}
           >
             <Send className="h-3.5 w-3.5" style={{ color: 'hsl(32 100% 55%)' }} />

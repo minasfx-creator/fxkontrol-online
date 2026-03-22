@@ -48,36 +48,39 @@ const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: stri
 // ── Sidebar Sections ──
 const MODE_SECTIONS = [
   {
-    label: 'CONSOLES',
+    label: 'EXECUTION',
     accent: 'text-red-400',
+    icon: Flame,
     modes: [
       { key: 'pyro_fire' as CommandMode, label: 'FXK-PYRO', icon: Flame },
       { key: 'super_dmx' as CommandMode, label: 'FXK-DMX', icon: Zap },
+    ],
+  },
+  {
+    label: 'MONITORING',
+    accent: 'text-amber-400',
+    icon: Activity,
+    modes: [
+      { key: 'show_control' as CommandMode, label: 'SHOW CTRL', icon: Activity },
+      { key: 'dmx_monitor' as CommandMode, label: 'DMX MONITOR', icon: Radio },
       { key: 'fxk_light' as CommandMode, label: 'FXK-LIGHT', icon: Gauge },
       { key: 'drone_ops' as CommandMode, label: 'FXK-DRONE', icon: Layers },
     ],
   },
   {
-    label: 'SHOW CONTROL',
-    accent: 'text-amber-400',
-    modes: [
-      { key: 'show_control' as CommandMode, label: 'SHOW CTRL', icon: Activity },
-    ],
-  },
-  {
-    label: 'TOOLS',
-    accent: 'text-primary',
+    label: 'HARDWARE',
+    accent: 'text-violet-400',
+    icon: Cpu,
     modes: [
       { key: 'module' as CommandMode, label: 'MODULE', icon: Cpu },
-      { key: 'dmx_monitor' as CommandMode, label: 'DMX MONITOR', icon: Radio },
     ],
   },
 ];
 
 const MOBILE_CATEGORIES = [
-  { label: 'Console', icon: Flame, section: 0 },
-  { label: 'Show', icon: Activity, section: 1 },
-  { label: 'Tools', icon: Cpu, section: 2 },
+  { label: 'Exec', icon: Flame, section: 0 },
+  { label: 'Monitor', icon: Activity, section: 1 },
+  { label: 'Hardware', icon: Cpu, section: 2 },
 ];
 
 export default function CommandCenter() {
