@@ -762,10 +762,10 @@ export default function PyroFireOnePanel({
             <div>
               <div className={cn("font-black tracking-[0.2em]",
                 sz === 'xl' ? "text-sm" : sz === 'fs' ? "text-xs" : "text-[9px]"
-              )} style={{ color: 'hsl(0 0% 85%)', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>FXK-PYRO</div>
-              <div className={cn("font-mono tracking-wider",
+              )} style={{ color: 'hsl(32 100% 55%)', textShadow: '0 0 12px hsl(32 100% 50% / 0.3)' }}>FXK-PYRO</div>
+              <div className={cn("font-mono tracking-[0.15em]",
                 sz === 'xl' ? "text-[9px]" : "text-[7px]",
-              )} style={{ color: 'hsl(0 0% 45%)' }}>XL4+ 2.0 · IFMx-i32Q · FIELD CONTROLLER</div>
+              )} style={{ color: 'hsl(32 100% 50% / 0.4)' }}>NEXUS FIELD CONTROLLER</div>
             </div>
           </div>
 
