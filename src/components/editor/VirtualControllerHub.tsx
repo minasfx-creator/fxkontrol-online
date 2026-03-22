@@ -64,10 +64,11 @@ const TYPE_COLORS: Record<string, string> = {
   module: 'text-orange-400',
 };
 
-const GROUP_META: Record<string, { label: string; color: string }> = {
-  fireone: { label: 'FXK Fire Systems', color: 'text-red-400' },
-  showven: { label: 'Showven Devices', color: 'text-amber-400' },
-  infrastructure: { label: 'Infrastructure', color: 'text-muted-foreground' },
+const GROUP_META: Record<string, { label: string; color: string; borderColor: string }> = {
+  fireone: { label: 'FXK Fire Systems', color: 'text-red-400', borderColor: 'border-red-500/20' },
+  showven: { label: 'Showven Devices', color: 'text-amber-400', borderColor: 'border-amber-500/20' },
+  drones: { label: 'FXK Drone Systems', color: 'text-teal-400', borderColor: 'border-teal-500/20' },
+  infrastructure: { label: 'Infrastructure', color: 'text-muted-foreground', borderColor: 'border-border/15' },
 };
 
 interface VirtualControllerHubProps {
