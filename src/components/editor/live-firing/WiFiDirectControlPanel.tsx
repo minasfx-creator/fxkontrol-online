@@ -375,7 +375,7 @@ export default function WiFiDirectControlPanel({ fs = false, onClose }: WiFiDire
               <span className="text-[9px] font-bold uppercase text-muted-foreground/60">Telemetria</span>
               <div className="grid grid-cols-3 gap-1">
                 {[
-                  { label: 'Latência', value: `${fireone.transports.find(t => t.type === ('wifi_direct' as any))?.latencyMs ?? '--'}ms` },
+                  { label: 'Latência', value: `${fireone.transports.find(t => t.type === 'wifi_direct')?.latencyMs ?? '--'}ms` },
                   { label: 'TX', value: `${fireone.txBytes}B` },
                   { label: 'RX', value: `${fireone.rxBytes}B` },
                 ].map(item => (

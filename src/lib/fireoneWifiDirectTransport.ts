@@ -40,7 +40,7 @@ export interface WiFiDirectDeviceInfo {
 
 export class WiFiDirectTransport implements FireOneTransport {
   readonly id: string;
-  readonly type: TransportType = 'wifi_direct' as TransportType;
+  readonly type: TransportType = 'wifi_direct';
   readonly label: string;
   priority = 1.5;
   state: TransportState = 'disconnected';
