@@ -1236,7 +1236,7 @@ export default function PyroFireOnePanel({
             <Button variant="ghost" size="sm" onClick={resetTimecode} className={cn(sz === 'xl' ? "h-10 text-xs" : "h-8 text-[9px]")}>
               <RotateCcw className="w-3 h-3 mr-1" /> Reset
             </Button>
-            <button onClick={() => { if (!canFire && !tcRunning) { toast.error('ARM + DEADMAN required'); return; } setTcRunning(!tcRunning); }}
+            <button onClick={() => { if (!canFire && !tcRunning) { toast.error('ARM system to fire'); return; } setTcRunning(!tcRunning); }}
               disabled={!canFire && !tcRunning}
               className={cn(
                 "rounded-lg font-black uppercase transition-all border-2 flex items-center gap-2",
