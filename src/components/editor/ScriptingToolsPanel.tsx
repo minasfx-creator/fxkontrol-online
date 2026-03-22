@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Wand2, Shuffle, ArrowLeftRight, Fan, AlignHorizontalSpaceAround, ArrowDownUp, Grid3X3, X, Copy } from 'lucide-react';
+import { Wand2, Shuffle, ArrowLeftRight, Fan, AlignHorizontalSpaceAround, ArrowDownUp, Grid3X3, X, Copy, Wind } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
@@ -15,7 +15,9 @@ import {
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-type ToolMode = 'randomize' | 'sequence' | 'fan' | 'spread' | 'reverse' | 'quantize' | 'duplicate-flights';
+import { calcWindCompensation } from '@/lib/pyroPhysics';
+
+type ToolMode = 'randomize' | 'sequence' | 'fan' | 'spread' | 'reverse' | 'quantize' | 'duplicate-flights' | 'wind-comp';
 
 export default function ScriptingToolsPanel({ onClose }: { onClose: () => void }) {
   const { timelineItems, positions, selectedTimelineItemIds, updateTimelineItem, addTimelineItem } = useProjectStore();
@@ -115,6 +117,27 @@ export default function ScriptingToolsPanel({ onClose }: { onClose: () => void }
         toast.success(`${totalCopies} flights criados a partir de ${selectedItems.length} items`);
         break;
       }
+      case 'wind-comp': {
+        const wind = useProjectStore.getState().wind;
+        if (!wind.enabled || wind.speed < 0.5) {
+          toast.error('Ative o vento nas configurações');
+          break;
+        }
+        let updated = 0;
+        selectedItems.forEach(item => {
+          const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+          if (!effect || effect.type !== 'firework') return;
+          const caliber = effect.caliber || 4;
+          const comp = calcWindCompensation(caliber, wind.speed, wind.direction, item.pan ?? 90);
+          updateTimelineItem(item.id, {
+            pan: (item.pan ?? 90) + comp.headingOffset,
+            tilt: (item.tilt ?? 0) + comp.pitchOffset,
+          });
+          updated++;
+        });
+        toast.success(`Wind compensation applied to ${updated} items (${wind.speed}m/s)`);
+        break;
+      }
     }
   };
 
@@ -122,6 +145,7 @@ export default function ScriptingToolsPanel({ onClose }: { onClose: () => void }
     { id: 'sequence', label: 'Sequenciar', icon: ArrowLeftRight, desc: 'Distribuir no tempo por posição' },
     { id: 'fan', label: 'Leque', icon: Fan, desc: 'Distribuir ângulos Pan/Tilt' },
     { id: 'duplicate-flights', label: 'Flights', icon: Copy, desc: 'Duplicar em leque com N cópias (Finale)' },
+    { id: 'wind-comp', label: 'Windage', icon: Wind, desc: 'Compensar ângulos para vento (Finale 3D)' },
     { id: 'randomize', label: 'Randomizar', icon: Shuffle, desc: 'Variar tempo/posição/ângulos' },
     { id: 'spread', label: 'Espaçar', icon: AlignHorizontalSpaceAround, desc: 'Espaçar por duração' },
     { id: 'reverse', label: 'Reverter', icon: ArrowDownUp, desc: 'Inverter ordem temporal' },

@@ -942,3 +942,94 @@ export function createLaserPattern(
 
   return beams;
 }
+
+// ── Risk Groups (Lockout System — Finale 3D) ────────────────────────
+
+export type RiskGroup = 'A' | 'B' | 'C' | 'D' | 'E';
+
+/**
+ * Map caliber to risk group for lockout system.
+ * A = small ground (≤2"), B = medium aerial (3-4"), C = large aerial (5-6"),
+ * D = extra-large (8-10"), E = monster (12"+)
+ */
+export function getRiskGroup(caliberInches: number): RiskGroup {
+  if (caliberInches <= 2) return 'A';
+  if (caliberInches <= 4) return 'B';
+  if (caliberInches <= 6) return 'C';
+  if (caliberInches <= 10) return 'D';
+  return 'E';
+}
+
+export const RISK_GROUP_LABELS: Record<RiskGroup, string> = {
+  A: 'Ground ≤2"',
+  B: 'Aerial 3-4"',
+  C: 'Aerial 5-6"',
+  D: 'Large 8-10"',
+  E: 'Monster 12"+',
+};
+
+export const RISK_GROUP_COLORS: Record<RiskGroup, string> = {
+  A: '#4CAF50',
+  B: '#FFC107',
+  C: '#FF9800',
+  D: '#F44336',
+  E: '#9C27B0',
+};
+
+// ── Windage Compensation (Finale 3D) ────────────────────────────────
+
+export interface WindCompensation {
+  headingOffset: number;  // degrees to adjust heading
+  pitchOffset: number;    // degrees to adjust pitch
+  driftX: number;         // estimated lateral drift in meters
+  driftZ: number;         // estimated forward/back drift in meters
+}
+
+/**
+ * Calculate wind compensation for a shell.
+ * Wind pushes the shell during flight; compensation aims upwind.
+ * 
+ * @param caliberInches Shell caliber
+ * @param windSpeedMs Wind speed in m/s
+ * @param windDirDeg Wind direction in degrees (where it comes FROM)
+ * @param headingDeg Current shell heading
+ * @returns Suggested offset to aim into the wind
+ */
+export function calcWindCompensation(
+  caliberInches: number,
+  windSpeedMs: number,
+  windDirDeg: number,
+  headingDeg: number,
+): WindCompensation {
+  if (windSpeedMs < 0.5) {
+    return { headingOffset: 0, pitchOffset: 0, driftX: 0, driftZ: 0 };
+  }
+
+  const flightTime = getLiftTime(caliberInches) + getStarLifetime(caliberInches) * 0.5;
+  const height = getBreakHeight(caliberInches);
+  
+  // Wind drift ≈ wind_speed * flight_time * drag_factor
+  // Heavier shells have less windage
+  const dragFactor = 0.6 / Math.sqrt(caliberInches);
+  const driftDistance = windSpeedMs * flightTime * dragFactor;
+
+  // Wind direction: convert "from" to "towards" (add 180°)
+  const windToRad = ((windDirDeg + 180) % 360) * (Math.PI / 180);
+  const driftX = Math.sin(windToRad) * driftDistance;
+  const driftZ = -Math.cos(windToRad) * driftDistance;
+
+  // To compensate, aim opposite to drift
+  const compensationAngle = Math.atan2(-driftX, driftZ) * (180 / Math.PI);
+  const headingOffset = compensationAngle - headingDeg;
+
+  // Pitch compensation: wind reduces effective height slightly
+  const heightReduction = windSpeedMs * flightTime * 0.02;
+  const pitchOffset = Math.atan2(heightReduction, height) * (180 / Math.PI) * 0.3;
+
+  return {
+    headingOffset: Math.round(headingOffset * 10) / 10,
+    pitchOffset: Math.round(pitchOffset * 10) / 10,
+    driftX: Math.round(driftX * 10) / 10,
+    driftZ: Math.round(driftZ * 10) / 10,
+  };
+}

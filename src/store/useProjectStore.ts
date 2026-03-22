@@ -34,6 +34,7 @@ export interface Effect {
   laserPattern?: 'fan' | 'harp' | 'tunnel' | 'cone' | 'single' | 'wave' | 'grid'; // For lasers
   beamType?: 'spot' | 'wash' | 'beam'; // For moving heads
   beamCount?: number;                  // Number of beams (lasers)
+  lockoutDefault?: string;      // Risk group for lockout system (e.g. "A", "B", "C", "D")
   // ── VDL rendering metadata ──────────────────────────────────
   angleOffset?: number;         // R45, L30 etc. in degrees (+ = right)
   trailType?: string;           // none, comet, glitter, brocade, charcoal, smoke
@@ -97,6 +98,7 @@ export interface Position {
   pitch: number;
   roll: number;
   color: string;
+  section?: string;      // Show section for semi-auto firing segmentation (Finale 3D)
 }
 
 export interface BezierHandle {
@@ -164,6 +166,9 @@ export interface WindSettings {
 
 export interface ProjectState {
   projectName: string;
+  activeLockouts: string[];  // Risk groups currently locked out from firing
+  setActiveLockouts: (lockouts: string[]) => void;
+  toggleLockout: (riskGroup: string) => void;
   isPlaying: boolean;
   currentTime: number;
   duration: number;
@@ -412,6 +417,13 @@ export const EFFECT_LIBRARY: Effect[] = [
 export const useProjectStore = create<ProjectState>((set) => ({
   projectName: 'Untitled Show',
   isPlaying: false,
+  activeLockouts: [],
+  setActiveLockouts: (lockouts) => set({ activeLockouts: lockouts }),
+  toggleLockout: (riskGroup) => set((s) => ({
+    activeLockouts: s.activeLockouts.includes(riskGroup)
+      ? s.activeLockouts.filter(r => r !== riskGroup)
+      : [...s.activeLockouts, riskGroup],
+  })),
   currentTime: 0,
   duration: 120,
   timelineItems: [],
