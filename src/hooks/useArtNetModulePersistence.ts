@@ -44,6 +44,8 @@ function dbToConfig(row: DbModule): Partial<ArtNetModuleConfig> {
     label: row.label ?? undefined,
     gpsLat: row.gps_lat ?? undefined,
     gpsLng: row.gps_lng ?? undefined,
+    cloneOf: row.clone_of ?? undefined,
+    redundancyMode: (row.redundancy_mode as RedundancyMode) ?? 'failover',
   };
 }
 
