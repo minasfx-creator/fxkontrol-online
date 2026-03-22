@@ -66,6 +66,7 @@ function configToDb(mod: ArtNetModuleConfig, projectId: string, sortOrder: numbe
     relay_token: mod.relayToken || null,
     channel_count: mod.channelCount,
     label: mod.label || null,
+    relay_server_url: null,
     gps_lat: mod.gpsLat ?? null,
     gps_lng: mod.gpsLng ?? null,
     sort_order: sortOrder,

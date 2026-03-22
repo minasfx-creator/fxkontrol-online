@@ -116,7 +116,7 @@ class ArtNetModuleService {
     while (existingAddresses.has(addr)) addr++;
 
     const module: ArtNetModuleConfig = {
-      id: `mod-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+      id: config.id || `mod-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
       name: config.name || `MODULE ${addr}`,
       moduleAddress: addr,
       dmxUniverse: config.dmxUniverse ?? 0,

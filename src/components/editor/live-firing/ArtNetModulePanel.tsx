@@ -200,7 +200,7 @@ function ModuleCard({ module, connectionState, masterArmed, isClone, onConnect, 
   );
 }
 
-export default function ArtNetModulePanel() {
+export default function ArtNetModulePanel({ fs = false }: { fs?: boolean }) {
   const projectId = useProjectStore(s => s.projectId);
   const { saveModule, deleteModule } = useArtNetModulePersistence(projectId);
   const [controller, setController] = useState<ArtNetControllerConfig | null>(null);

@@ -138,7 +138,7 @@ function MobileModeTabs({ mode, onModeChange }: { mode: FXCMode; onModeChange: (
       {/* Categories grid */}
       {MODE_CATEGORIES.map(cat => (
         <div key={cat.label}>
-          <div className="text-[8px] font-bold uppercase tracking-[0.2em] text-muted-foreground/30 mb-1 px-1">{cat.label}</div>
+          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/30 mb-1 px-1">{cat.label}</div>
           <div className="grid grid-cols-3 gap-1.5">
             {cat.modes.map(m => (
               <button
@@ -152,7 +152,7 @@ function MobileModeTabs({ mode, onModeChange }: { mode: FXCMode; onModeChange: (
                 )}
               >
                 <m.icon className="w-5 h-5" />
-                <span className="text-[8px] font-bold uppercase tracking-wider">{m.label}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider">{m.label}</span>
               </button>
             ))}
           </div>
@@ -184,14 +184,14 @@ function LockoutPanel({ fs, mob }: { fs: boolean; mob: boolean }) {
               onClick={() => toggleLockout(g)}
               className={cn(
                 "flex-1 rounded border-2 font-bold uppercase transition-all flex flex-col items-center",
-                fs && mob ? "py-2 text-[9px] min-w-[60px]" : fs ? "py-1.5 text-[8px]" : "py-1 text-[6px]",
+                fs && mob ? "py-2 text-[9px] min-w-[60px]" : fs ? "py-1.5 text-[10px]" : "py-1 text-[10px]",
                 locked
                   ? "border-red-500/60 bg-red-500/15 text-red-400"
                   : "border-border/20 bg-[hsl(220_10%_10%)] text-muted-foreground/40 hover:border-border/40"
               )}
             >
               <span className="font-black" style={{ color: locked ? undefined : RISK_GROUP_COLORS[g] }}>{g}</span>
-              <span className={cn("font-normal", fs ? "text-[6px]" : "text-[5px]")}>
+              <span className={cn("font-normal", fs ? "text-[10px]" : "text-[10px]")}>
                 {locked ? '🔒' : RISK_GROUP_LABELS[g].split(' ')[0]}
               </span>
             </button>
@@ -199,7 +199,7 @@ function LockoutPanel({ fs, mob }: { fs: boolean; mob: boolean }) {
         })}
       </div>
       {activeLockouts.length > 0 && (
-        <div className={cn("text-center font-bold text-red-400/70 uppercase mt-1", fs ? "text-[8px]" : "text-[6px]")}>
+        <div className={cn("text-center font-bold text-red-400/70 uppercase mt-1", fs ? "text-[10px]" : "text-[10px]")}>
           ⛔ {activeLockouts.length} group{activeLockouts.length > 1 ? 's' : ''} locked out
         </div>
       )}
@@ -276,14 +276,14 @@ function CueKey({
         <>
           <span className={cn(
             "font-black uppercase tracking-wide leading-tight text-center px-0.5 truncate w-full",
-            isBig ? "text-[10px]" : fs ? "text-sm" : "text-[8px]",
+            isBig ? "text-[10px]" : fs ? "text-sm" : "text-[10px]",
             firing ? "text-white" : "text-foreground/80"
           )} style={{ color: firing ? undefined : cue.keyColor }}>
             {cue.keyLabel || cue.effect}
           </span>
           <span className={cn(
             "font-mono",
-            isBig ? "text-[7px] mt-0.5" : fs ? "text-[10px] mt-0.5" : "text-[6px]",
+            isBig ? "text-[7px] mt-0.5" : fs ? "text-[10px] mt-0.5" : "text-[10px]",
             firing ? "text-red-200" : "text-muted-foreground/40"
           )}>
             {cue.deviceIds.length}dev · {FIRING_RULES.find(r => r.key === cue.firingRule)?.label}
@@ -320,24 +320,24 @@ function DeviceRow({
         "hover:bg-[hsl(220_10%_10%)]",
         !channel.enabled && "opacity-40"
       )}>
-      <span className={cn("font-mono text-muted-foreground/40 text-right shrink-0", fs ? "text-[8px] w-4" : "text-[7px] w-3")}>{index + 1}</span>
+      <span className={cn("font-mono text-muted-foreground/40 text-right shrink-0", fs ? "text-[10px] w-4" : "text-[7px] w-3")}>{index + 1}</span>
       <div className={cn("rounded-sm shrink-0", fs ? "w-2 h-7" : "w-1.5 h-6")} style={{ backgroundColor: sfxType?.color || '#888' }} />
       <div className="flex-1 min-w-0">
-        <div className={cn("font-bold uppercase truncate leading-tight", fs ? "text-[10px]" : "text-[8px]", selected ? "text-primary" : "text-foreground/80")}>
+        <div className={cn("font-bold uppercase truncate leading-tight", fs ? "text-[10px]" : "text-[10px]", selected ? "text-primary" : "text-foreground/80")}>
           {channel.name}
         </div>
-        <div className={cn("font-mono text-muted-foreground/40 leading-tight", fs ? "text-[8px]" : "text-[6px]")}>
+        <div className={cn("font-mono text-muted-foreground/40 leading-tight", fs ? "text-[10px]" : "text-[10px]")}>
           {sfxType?.label} · U{channel.dmxUniverse}.{String(channel.dmxAddress).padStart(3, '0')}
         </div>
       </div>
       <div className="flex flex-col items-end gap-0.5 shrink-0">
         {channel.temperature !== undefined && (
-          <span className={cn("font-mono", fs ? "text-[8px]" : "text-[6px]", channel.temperature > 600 ? "text-red-400" : "text-green-400/70")}>
+          <span className={cn("font-mono", fs ? "text-[10px]" : "text-[10px]", channel.temperature > 600 ? "text-red-400" : "text-green-400/70")}>
             {channel.temperature}°
           </span>
         )}
         {channel.pressure !== undefined && (
-          <span className={cn("font-mono text-cyan-400/70", fs ? "text-[8px]" : "text-[6px]")}>{channel.pressure}bar</span>
+          <span className={cn("font-mono text-cyan-400/70", fs ? "text-[10px]" : "text-[10px]")}>{channel.pressure}bar</span>
         )}
       </div>
       {channel.firing && <div className={cn("rounded-full bg-red-500 animate-pulse shrink-0", fs ? "w-2.5 h-2.5" : "w-2 h-2")} />}
@@ -393,7 +393,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const [showMode, setShowMode] = useState(false);
   const showModeTapRef = useRef<number>(0);
   const sequenceRef = useRef(0);
-  const fireTimers = useRef(new globalThis.Map<string, NodeJS.Timeout>());
+  const fireTimers = useRef<globalThis.Map<string, NodeJS.Timeout>>(new (globalThis.Map)());
   const relayWs = useRef<WebSocket | null>(null);
 
   // ─── WebSocket Relay connection ───
@@ -463,6 +463,12 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const swipeHandled = useRef(false);
 
   const handleSwipeStart = useCallback((e: React.TouchEvent) => {
+    // Guard: ignore swipe if started inside interactive elements
+    const target = e.target as HTMLElement;
+    if (target.closest('[role="slider"], input, textarea, [data-radix-scroll-area-viewport], .scroll-area')) {
+      touchRef.current = null;
+      return;
+    }
     const touch = e.touches[0];
     touchRef.current = { x: touch.clientX, y: touch.clientY, t: Date.now() };
     swipeHandled.current = false;
@@ -829,21 +835,21 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
         </div>
         <div>
           <div className={cn("font-black text-foreground tracking-[0.12em]", fs && mob ? "text-xs" : fs ? "text-base" : "text-[10px]")}>FXcommander™</div>
-          <div className={cn("font-mono tracking-wider", fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[6px]", showMode ? "text-red-400/60" : "text-muted-foreground/40")}>
+          <div className={cn("font-mono tracking-wider", fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[10px]", showMode ? "text-red-400/60" : "text-muted-foreground/40")}>
             {showMode ? '● SHOW MODE' : 'SHOWVEN® · V2.0'}
           </div>
         </div>
       </div>
       <div className="flex items-center gap-2">
         {/* Elapsed timer */}
-        <span className={cn("font-mono text-foreground/40", fs && mob ? "text-[10px]" : fs ? "text-sm" : "text-[8px]")}>
+        <span className={cn("font-mono text-foreground/40", fs && mob ? "text-[10px]" : fs ? "text-sm" : "text-[10px]")}>
           {formatTimecode(elapsedMs)}
         </span>
         {/* Battery — hide on mobile fs for space */}
         {!(fs && mob) && (
           <div className="flex items-center gap-1">
             <Battery className={cn(batteryVoltage > 11 ? "text-green-400/60" : "text-amber-400", fs ? "w-4 h-4" : "w-2.5 h-2.5")} />
-            <span className={cn("font-mono text-muted-foreground/40", fs ? "text-[9px]" : "text-[6px]")}>{batteryVoltage.toFixed(2)}V</span>
+            <span className={cn("font-mono text-muted-foreground/40", fs ? "text-[9px]" : "text-[10px]")}>{batteryVoltage.toFixed(2)}V</span>
           </div>
         )}
         {/* DMX Signal LED Indicator */}
@@ -879,12 +885,12 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           <span className={cn(
             "font-mono",
             artNetConnected ? "text-green-500/70" : "text-muted-foreground/40",
-            fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[6px]"
+            fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[10px]"
           )}>DMX</span>
         </div>
         <button onClick={() => relayConnected ? disconnectRelay() : connectRelay()} className="flex items-center gap-1" title={relayConnected ? 'Relay UDP conectado — clique para desconectar' : 'Clique para conectar relay UDP local'}>
           <div className={cn("rounded-full", relayConnected ? "bg-cyan-400" : "bg-muted-foreground/20", fs ? "w-2.5 h-2.5" : "w-1.5 h-1.5")} style={relayConnected ? { boxShadow: '0 0 6px rgba(0,220,255,0.5)' } : undefined} />
-          <span className={cn("font-mono", relayConnected ? "text-cyan-400/70" : "text-muted-foreground/40", fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[6px]")}>UDP</span>
+          <span className={cn("font-mono", relayConnected ? "text-cyan-400/70" : "text-muted-foreground/40", fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[10px]")}>UDP</span>
         </button>
         <div className="flex items-center gap-1">
           <Signal className={cn(pyroArm ? "text-red-500" : "text-muted-foreground/20", fs && mob ? "w-3.5 h-3.5" : fs ? "w-4 h-4" : "w-2.5 h-2.5")} />
@@ -945,7 +951,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
       {(pyroArm || dmxArm) && (
         <div className={cn(
           "text-center font-black uppercase animate-pulse",
-          fs && mob ? "px-3 py-1 text-[10px] tracking-[0.25em]" : fs ? "px-4 py-1.5 text-xs tracking-[0.3em]" : "px-2 py-0.5 text-[8px] tracking-[0.25em]",
+          fs && mob ? "px-3 py-1 text-[10px] tracking-[0.25em]" : fs ? "px-4 py-1.5 text-xs tracking-[0.3em]" : "px-2 py-0.5 text-[10px] tracking-[0.25em]",
           pyroArm && dmxArm ? "text-red-400" : pyroArm ? "text-red-400" : "text-amber-400"
         )} style={{ background: pyroArm ? 'hsl(0 50% 8%)' : 'hsl(40 40% 8%)' }}>
           {pyroArm && dmxArm ? '⚠ DMX + PYRO ARMED ⚠' : pyroArm ? '⚠ PYRO ARMED ⚠' : 'DMX ARMED'}
@@ -967,7 +973,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
             className={cn("rounded text-muted-foreground/30 hover:text-foreground/60 disabled:opacity-20 transition-colors", fs && mob ? "p-1.5" : fs ? "p-1" : "p-0.5")}>
             <ChevronLeft className={cn(fs ? "w-4 h-4" : "w-3 h-3")} />
           </button>
-          <span className={cn("font-mono text-muted-foreground/40", fs && mob ? "text-[8px]" : fs ? "text-[9px]" : "text-[6px]")}>
+          <span className={cn("font-mono text-muted-foreground/40", fs && mob ? "text-[10px]" : fs ? "text-[9px]" : "text-[10px]")}>
             {cuePage * CUES_PER_PAGE + 1}-{Math.min((cuePage + 1) * CUES_PER_PAGE, 128)}
           </span>
           <button onClick={() => setCuePage(Math.min(15, cuePage + 1))}
@@ -975,7 +981,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
             <ChevronRight className={cn(fs ? "w-4 h-4" : "w-3 h-3")} />
           </button>
         </div>
-        <span className={cn("font-mono text-muted-foreground/20", fs && mob ? "text-[7px]" : fs ? "text-[8px]" : "text-[5px]")}>
+        <span className={cn("font-mono text-muted-foreground/20", fs && mob ? "text-[7px]" : fs ? "text-[10px]" : "text-[10px]")}>
           Page {cuePage + 1}/16
         </span>
       </div>
@@ -1034,7 +1040,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
             <button key={m.key} onClick={() => { setMode(m.key); setShowDeviceLib(false); }}
               className={cn(
                 "font-bold uppercase tracking-wider transition-all whitespace-nowrap shrink-0",
-                fs ? "px-3 py-2.5 text-[9px]" : "px-1.5 py-1.5 text-[6px]",
+                fs ? "px-3 py-2.5 text-[9px]" : "px-1.5 py-1.5 text-[10px]",
                 mode === m.key ? "text-foreground/80" : "text-muted-foreground/25 hover:text-muted-foreground/50"
               )}>{m.label}</button>
           ))}
@@ -1061,17 +1067,17 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
       </div>
       <div className={cn("flex items-center justify-between border-t border-border/10", fs && mob ? "px-3 py-1.5" : fs ? "px-6 py-2" : "px-2 py-1")}>
         <div className="flex items-center gap-2">
-          <span className={cn("font-mono text-muted-foreground/30", fs && mob ? "text-[8px]" : fs ? "text-[9px]" : "text-[6px]")}>{channels.length}CH · {armedCount}RDY</span>
-          {firingCount > 0 && <span className={cn("font-mono text-red-400 font-bold animate-pulse", fs ? "text-[9px]" : "text-[6px]")}>🔥 {firingCount}</span>}
+          <span className={cn("font-mono text-muted-foreground/30", fs && mob ? "text-[10px]" : fs ? "text-[9px]" : "text-[10px]")}>{channels.length}CH · {armedCount}RDY</span>
+          {firingCount > 0 && <span className={cn("font-mono text-red-400 font-bold animate-pulse", fs ? "text-[9px]" : "text-[10px]")}>🔥 {firingCount}</span>}
         </div>
         <div className="flex items-center gap-1.5">
-          {fireone.isConnected && <span className={cn("font-mono text-[6px]", fs ? "text-[8px]" : "")}>
+          {fireone.isConnected && <span className={cn("font-mono text-[10px]", fs ? "text-[10px]" : "")}>
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 mr-0.5" />F1
           </span>}
-          {pbus.isConnected && <span className={cn("font-mono text-[6px]", fs ? "text-[8px]" : "")}>
+          {pbus.isConnected && <span className={cn("font-mono text-[10px]", fs ? "text-[10px]" : "")}>
             <span className={cn("inline-block w-1.5 h-1.5 rounded-full mr-0.5", pbus.connectionPath === 'radio' ? "bg-amber-400" : "bg-green-500")} />PB
           </span>}
-          <span className={cn("font-mono", fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[6px]", artNetConnected ? "text-green-500/60" : "text-muted-foreground/20")}>
+          <span className={cn("font-mono", fs && mob ? "text-[7px]" : fs ? "text-[9px]" : "text-[10px]", artNetConnected ? "text-green-500/60" : "text-muted-foreground/20")}>
             {artNetConnected ? '● Art-Net' : '○ Off'}
           </span>
         </div>
@@ -1107,7 +1113,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
         ].map(b => (
           <button key={b.label} onClick={b.fn} className={cn(
             "rounded text-muted-foreground/50 hover:text-foreground/70 transition-colors",
-            fs ? "text-[8px] px-2.5 py-1" : "text-[6px] px-1.5 py-0.5",
+            fs ? "text-[10px] px-2.5 py-1" : "text-[10px] px-1.5 py-0.5",
             b.label === 'Add Device' ? "bg-primary/10 text-primary/70" : "bg-[hsl(220_10%_12%)]"
           )}>{b.label}</button>
         ))}
@@ -1118,7 +1124,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const renderCueSetting = (fs: boolean) => (
     <div className={cn("space-y-2", fs ? "p-4" : "p-2")}>
       <div className="flex items-center justify-between">
-        <span className={cn("font-bold text-muted-foreground/50 uppercase tracking-wider", fs ? "text-[10px]" : "text-[8px]")}>CUE Setting</span>
+        <span className={cn("font-bold text-muted-foreground/50 uppercase tracking-wider", fs ? "text-[10px]" : "text-[10px]")}>CUE Setting</span>
         <span className={cn("font-mono text-primary/50", fs ? "text-[9px]" : "text-[7px]")}>{selectedDevices.size} selected</span>
       </div>
       {/* Key selector */}
@@ -1138,9 +1144,9 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
         <div className={cn("space-y-2 rounded-md border border-primary/20 bg-primary/5", fs ? "p-4" : "p-2")}>
           <div className="flex gap-1.5">
             <Input value={cueEffect} onChange={e => setCueEffect(e.target.value)} placeholder="Effect name..."
-              className={cn("flex-1 bg-background/60 border-border/20", fs ? "h-8 text-xs" : "h-5 text-[8px]")} />
+              className={cn("flex-1 bg-background/60 border-border/20", fs ? "h-8 text-xs" : "h-5 text-[10px]")} />
             <Input value={cueKeyLabel} onChange={e => setCueKeyLabel(e.target.value)} placeholder="Key label"
-              className={cn("bg-background/60 border-border/20", fs ? "h-8 text-xs w-24" : "h-5 text-[8px] w-16")} />
+              className={cn("bg-background/60 border-border/20", fs ? "h-8 text-xs w-24" : "h-5 text-[10px] w-16")} />
           </div>
           {/* Firing rules */}
           <div className="flex gap-1">
@@ -1148,7 +1154,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
               <button key={rule.key} onClick={() => setCueFiringRule(rule.key)}
                 className={cn(
                   "flex-1 rounded font-bold transition-all border",
-                  fs ? "py-2 text-sm" : "py-1 text-[8px]",
+                  fs ? "py-2 text-sm" : "py-1 text-[10px]",
                   cueFiringRule === rule.key ? "bg-primary/15 border-primary/40 text-primary"
                     : "bg-[hsl(220_10%_10%)] border-border/10 text-muted-foreground/40 hover:text-muted-foreground/70"
                 )}>{rule.label}</button>
@@ -1163,21 +1169,21 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
               { label: 'Repeat Counts', value: cueRepeatCount, set: setCueRepeatCount },
             ].map(p => (
               <div key={p.label}>
-                <label className={cn("text-muted-foreground/40 uppercase block", fs ? "text-[8px]" : "text-[6px]")}>{p.label}</label>
+                <label className={cn("text-muted-foreground/40 uppercase block", fs ? "text-[10px]" : "text-[10px]")}>{p.label}</label>
                 <Input type="number" value={p.value} onChange={e => p.set(Number(e.target.value))} step={p.label.includes('Count') ? 1 : 0.1}
-                  className={cn("bg-background/60 border-border/20 font-mono", fs ? "h-8 text-xs" : "h-5 text-[8px]")} />
+                  className={cn("bg-background/60 border-border/20 font-mono", fs ? "h-8 text-xs" : "h-5 text-[10px]")} />
               </div>
             ))}
           </div>
           {/* CUE Group Repeat */}
           <div className="flex items-center gap-2">
-            <label className={cn("text-muted-foreground/40 uppercase", fs ? "text-[8px]" : "text-[6px]")}>CUE Group Repeat:</label>
+            <label className={cn("text-muted-foreground/40 uppercase", fs ? "text-[10px]" : "text-[10px]")}>CUE Group Repeat:</label>
             <Input type="number" value={cueGroupRepeat} onChange={e => setCueGroupRepeat(Number(e.target.value))} min={1}
-              className={cn("bg-background/60 border-border/20 font-mono w-16", fs ? "h-7 text-xs" : "h-5 text-[8px]")} />
+              className={cn("bg-background/60 border-border/20 font-mono w-16", fs ? "h-7 text-xs" : "h-5 text-[10px]")} />
           </div>
           {/* Key mode */}
           <div className="flex items-center gap-2">
-            <label className={cn("text-muted-foreground/40 uppercase", fs ? "text-[8px]" : "text-[6px]")}>Key Mode:</label>
+            <label className={cn("text-muted-foreground/40 uppercase", fs ? "text-[10px]" : "text-[10px]")}>Key Mode:</label>
             <button onClick={() => setCueKeyMode(cueKeyMode === 'tap' ? 'lock' : 'tap')}
               className={cn(
                 "rounded border font-bold flex items-center gap-1 transition-all",
@@ -1189,7 +1195,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
             </button>
           </div>
           <Button size={fs ? "default" : "sm"} onClick={addCue} disabled={selectedDevices.size === 0}
-            className={cn("w-full font-bold uppercase tracking-wider", fs ? "h-10 text-sm" : "h-6 text-[8px]")}>
+            className={cn("w-full font-bold uppercase tracking-wider", fs ? "h-10 text-sm" : "h-6 text-[10px]")}>
             <Check className={cn(fs ? "w-4 h-4" : "w-3 h-3", "mr-1")} /> OK — Assign to KEY{editingCue + 1}
           </Button>
         </div>
@@ -1205,7 +1211,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
                 fs ? "gap-1 py-3" : "gap-0.5 py-1.5"
               )}>
               <t.icon className={cn(fs ? "w-5 h-5" : "w-3 h-3")} style={{ color: t.color }} />
-              <span className={cn("font-bold uppercase text-muted-foreground/40", fs ? "text-[7px]" : "text-[5px]")}>{t.label}</span>
+              <span className={cn("font-bold uppercase text-muted-foreground/40", fs ? "text-[7px]" : "text-[10px]")}>{t.label}</span>
             </button>
           ))}
         </div>
@@ -1220,7 +1226,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           DMX Output — {channels.length} channels
         </span>
         <button onClick={() => setChannels(prev => prev.map(c => ({ ...c, intensity: 0 })))}
-          className={cn("text-muted-foreground/30 hover:text-foreground/60 font-bold uppercase", fs ? "text-[8px]" : "text-[6px]")}>Clear All</button>
+          className={cn("text-muted-foreground/30 hover:text-foreground/60 font-bold uppercase", fs ? "text-[10px]" : "text-[10px]")}>Clear All</button>
       </div>
       {channels.map((ch, i) => {
         const sfxType = SFX_TYPES.find(t => t.key === ch.type);
@@ -1228,7 +1234,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           <div key={ch.id} className={cn("flex items-center gap-1.5 rounded border border-border/5", fs ? "px-3 py-2" : "px-1.5 py-1")} style={{ background: 'hsl(220 10% 8%)' }}>
             <span className={cn("font-mono text-muted-foreground/30 text-right", fs ? "text-[9px] w-5" : "text-[7px] w-4")}>{String(i + 1).padStart(2, '0')}</span>
             <div className={cn("rounded-full shrink-0", fs ? "w-2.5 h-2.5" : "w-1.5 h-1.5")} style={{ backgroundColor: sfxType?.color }} />
-            <span className={cn("font-bold flex-1 truncate text-foreground/70", fs ? "text-xs" : "text-[8px]")}>{ch.name}</span>
+            <span className={cn("font-bold flex-1 truncate text-foreground/70", fs ? "text-xs" : "text-[10px]")}>{ch.name}</span>
             <Slider value={[ch.intensity]} min={0} max={255} step={1} onValueChange={([v]) => setChannels(prev => prev.map(c => c.id === ch.id ? { ...c, intensity: v } : c))} className={cn(fs ? "w-28" : "w-16")} />
             <span className={cn("font-mono text-muted-foreground/50 text-right", fs ? "text-[9px] w-10" : "text-[7px] w-8")}>{ch.intensity}/{Math.round(ch.intensity / 255 * 100)}%</span>
             <button onClick={() => setChannels(prev => prev.map(c => c.id === ch.id ? { ...c, enabled: !c.enabled } : c))} className="p-0.5">
@@ -1248,7 +1254,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           <span className={cn("font-bold text-muted-foreground/40 uppercase tracking-wider", isMobileFire ? "text-[10px]" : fs ? "text-[9px]" : "text-[7px]")}>
             Pyro Manual Fire
           </span>
-          <span className={cn("font-mono text-foreground/40", isMobileFire ? "text-sm" : fs ? "text-xs" : "text-[8px]")}>{formatTimecode(elapsedMs)}</span>
+          <span className={cn("font-mono text-foreground/40", isMobileFire ? "text-sm" : fs ? "text-xs" : "text-[10px]")}>{formatTimecode(elapsedMs)}</span>
         </div>
         {(dmxArm || pyroArm) && (
           <button
@@ -1307,7 +1313,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
                 )}
                 <span className={cn(
                   "absolute font-mono text-muted-foreground/30",
-                  isMobileFire ? "text-[10px] top-1.5 left-2.5" : fs ? "text-[8px] top-0.5 left-1" : "text-[6px] top-0.5 left-1"
+                  isMobileFire ? "text-[10px] top-1.5 left-2.5" : fs ? "text-[10px] top-0.5 left-1" : "text-[10px] top-0.5 left-1"
                 )}>{String(i + 1).padStart(2, '0')}</span>
                 {sfxType && <sfxType.icon className={cn(
                   isMobileFire ? "w-8 h-8 mb-1" : fs ? "w-6 h-6 mb-0.5" : "w-4 h-4 mb-0.5",
@@ -1315,14 +1321,14 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
                 )} style={{ color: ch.firing ? '#ff4444' : sfxType.color }} />}
                 <span className={cn(
                   "font-bold uppercase truncate w-full text-center px-1",
-                  isMobileFire ? "text-sm" : fs ? "text-xs" : "text-[8px]",
+                  isMobileFire ? "text-sm" : fs ? "text-xs" : "text-[10px]",
                   ch.firing ? "text-red-300" : "text-foreground/70"
                 )}>
                   {ch.name}
                 </span>
                 <span className={cn(
                   "font-mono text-muted-foreground/30",
-                  isMobileFire ? "text-[10px] mt-0.5" : fs ? "text-[8px]" : "text-[6px]"
+                  isMobileFire ? "text-[10px] mt-0.5" : fs ? "text-[10px]" : "text-[10px]"
                 )}>{ch.duration}ms</span>
                 {/* Firing indicator bar */}
                 {ch.firing && (
@@ -1370,7 +1376,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
       case 'ma3': return <MA3ControlPanel fs={fs} />;
       case 'module': return <VirtualIFMx32QPanel fs={fs} />;
       case 'wifi_direct': return <WiFiDirectControlPanel fs={fs} />;
-      case 'artnet_modules': return <ArtNetModulePanel />;
+      case 'artnet_modules': return <ArtNetModulePanel fs={fs} />;
       case 'settings': return <SettingsPanel fs={fs} settings={settings} onSettingsChange={setSettings} relayConnected={relayConnected} relayUrl={relayUrl} onRelayUrlChange={setRelayUrl} onConnectRelay={connectRelay} onDisconnectRelay={disconnectRelay} />;
       default: return renderSimpleDmx(fs);
     }
@@ -1407,28 +1413,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
     return mob ? createPortal(fullscreenContent, document.body) : fullscreenContent;
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // PANEL LAYOUT — auto-fullscreen on mobile
-  // ═══════════════════════════════════════════════════════════
-  if (mob) {
-    return (
-      <div {...swipeProps} className="fixed inset-0 z-[9999] flex flex-col select-none pb-[env(safe-area-inset-bottom)]"
-        style={{ background: 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 4%) 100%)' }}>
-        {renderStatusBar(true)}
-        {!showMode && renderArmBar(true)}
-        {renderCueKeys(true)}
-        {!showMode && renderSceneModeBar(true)}
-        {showMode ? (
-          <ScrollArea className="flex-1">
-            <MobileLinkMode fs={true} fireChannel={fireChannel} channels={channels} artNetConnected={artNetConnected} relayConnected={relayConnected} />
-          </ScrollArea>
-        ) : (
-          <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
-        )}
-        {renderPanic(true)}
-      </div>
-    );
-  }
+  // (mob block removed — useEffect already sets isFullscreen=true on mobile)
 
   return (
     <div className="h-full flex flex-col overflow-hidden select-none" style={{ minWidth: 300, maxWidth: 380, background: 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 5%) 100%)' }}>
