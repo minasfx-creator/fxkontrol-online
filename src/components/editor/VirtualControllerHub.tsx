@@ -25,11 +25,12 @@ interface ControllerCard {
   channels: number;
   description: string;
   panelMode?: string;
-  group: 'fireone' | 'showven' | 'infrastructure';
+  group: 'fireone' | 'showven' | 'infrastructure' | 'drones';
+  platformLabel?: string;
 }
 
 const CONTROLLERS: ControllerCard[] = [
-  { id: 'fireone-xl4', name: 'FXK-PYRO', manufacturer: 'FXK', type: 'firing', connectionTypes: ['usb', 'serial', 'radio', 'wifi_direct'], channels: 32, description: 'IFMx-i32Q field modules · RS-485 · 32 igniters/module', panelMode: 'pyro_fire', group: 'fireone' },
+  { id: 'fireone-xl4', name: 'FXK-PYRO', manufacturer: 'FXK', type: 'firing', connectionTypes: ['usb', 'serial', 'radio', 'wifi_direct'], channels: 32, description: 'IFMx-i32Q field modules · RS-485 · 32 igniters/module', panelMode: 'pyro_fire', group: 'fireone', platformLabel: 'XL4+ 2.0' },
   { id: 'zk6200', name: 'ZK6200', manufacturer: 'Showven', type: 'sfx', connectionTypes: ['usb', 'artnet', 'wireless'], channels: 20, description: 'Host controller · 20 zones · DMX + LTC', panelMode: 'zk6200', group: 'showven' },
   { id: 'zk6300', name: 'ZK6300', manufacturer: 'Showven', type: 'sfx', connectionTypes: ['usb', 'artnet', 'wireless'], channels: 30, description: 'Host controller · 30 zones · DMX + LTC', panelMode: 'zk6200', group: 'showven' },
   { id: 'pyroslave-c16', name: 'PyroSlave C16', manufacturer: 'Showven', type: 'firing', connectionTypes: ['pbus', 'wireless', 'radio'], channels: 16, description: 'Wireless slave · 16 cues · Dual-band 433/868M', panelMode: 'pbus', group: 'showven' },
@@ -38,7 +39,8 @@ const CONTROLLERS: ControllerCard[] = [
   { id: 'maiman', name: 'Maiman 30W', manufacturer: 'Showven', type: 'laser', connectionTypes: ['artnet'], channels: 14, description: '30W RGB laser · ILDA + DMX · IP54', group: 'showven' },
   { id: 'dmx-splitter8', name: 'DMX Splitter 8', manufacturer: 'Showven', type: 'dmx', connectionTypes: ['usb'], channels: 8, description: '1→8 DMX512 splitter · Opto-isolated', group: 'infrastructure' },
   { id: 'dmx-relay-r12', name: 'DMX Relay R12', manufacturer: 'Showven', type: 'dmx', connectionTypes: ['usb', 'artnet'], channels: 12, description: '12-channel DMX relay · 10A/channel', group: 'infrastructure' },
-  { id: 'ifmx-i32q-module', name: 'FXK-PYRO Module', manufacturer: 'FXK', type: 'module', connectionTypes: ['wireless', 'ble', 'usb', 'wifi_direct'], channels: 32, description: 'Virtual field module · 32 igniters · CDS · ESP32 bridge', panelMode: 'module', group: 'fireone' },
+  { id: 'ifmx-i32q-module', name: 'FXK-PYRO Module', manufacturer: 'FXK', type: 'module', connectionTypes: ['wireless', 'ble', 'usb', 'wifi_direct'], channels: 32, description: 'Virtual field module · 32 igniters · CDS · ESP32 bridge', panelMode: 'module', group: 'fireone', platformLabel: 'XL4+ 2.0' },
+  { id: 'fxk-swarm', name: 'FXK-SWARM', manufacturer: 'FXK', type: 'module', connectionTypes: ['wifi_direct', 'radio'], channels: 500, description: 'Swarm controller · 500 drones · GPS+RTK', panelMode: 'drone_ops', group: 'drones', platformLabel: 'SWARM OPS 2.0' },
 ];
 
 const CONNECTION_ICONS: Record<ConnectionType, typeof Usb> = {
@@ -62,10 +64,11 @@ const TYPE_COLORS: Record<string, string> = {
   module: 'text-orange-400',
 };
 
-const GROUP_META: Record<string, { label: string; color: string }> = {
-  fireone: { label: 'FXK Fire Systems', color: 'text-red-400' },
-  showven: { label: 'Showven Devices', color: 'text-amber-400' },
-  infrastructure: { label: 'Infrastructure', color: 'text-muted-foreground' },
+const GROUP_META: Record<string, { label: string; color: string; borderColor: string }> = {
+  fireone: { label: 'FXK Fire Systems', color: 'text-red-400', borderColor: 'border-red-500/20' },
+  showven: { label: 'Showven Devices', color: 'text-amber-400', borderColor: 'border-amber-500/20' },
+  drones: { label: 'FXK Drone Systems', color: 'text-teal-400', borderColor: 'border-teal-500/20' },
+  infrastructure: { label: 'Infrastructure', color: 'text-muted-foreground', borderColor: 'border-border/15' },
 };
 
 interface VirtualControllerHubProps {
@@ -85,8 +88,11 @@ export default function VirtualControllerHub({ fs = false, onSelectMode, onClose
   }, []);
 
   const grouped = useMemo(() => {
-    const groups: Record<string, ControllerCard[]> = { fireone: [], showven: [], infrastructure: [] };
-    CONTROLLERS.forEach(c => groups[c.group].push(c));
+    const groups: Record<string, ControllerCard[]> = { fireone: [], showven: [], drones: [], infrastructure: [] };
+    CONTROLLERS.forEach(c => {
+      if (!groups[c.group]) groups[c.group] = [];
+      groups[c.group].push(c);
+    });
     return groups;
   }, []);
 
@@ -159,7 +165,8 @@ export default function VirtualControllerHub({ fs = false, onSelectMode, onClose
           "hover:border-primary/30 active:scale-[0.97]",
           status.live
             ? "border-primary/20 bg-primary/5"
-            : "border-border/15 bg-card/30",
+            : GROUP_META[card.group]?.borderColor || "border-border/15",
+          !status.live && "bg-card/30",
           isMobile ? "p-4 min-h-[56px]" : fs ? "p-3" : "p-2"
         )}
       >
@@ -183,6 +190,11 @@ export default function VirtualControllerHub({ fs = false, onSelectMode, onClose
                 {status.label}
               </Badge>
             </div>
+            {card.platformLabel && (
+              <p className={cn("font-mono tracking-wider", fs ? "text-[8px]" : "text-[7px]")} style={{ color: GROUP_META[card.group]?.color === 'text-red-400' ? 'hsl(0 60% 50%)' : GROUP_META[card.group]?.color === 'text-teal-400' ? 'hsl(165 60% 45%)' : 'hsl(var(--muted-foreground) / 0.4)' }}>
+                {card.platformLabel}
+              </p>
+            )}
             <p className={cn("text-muted-foreground/40 truncate", fs ? "text-[9px]" : "text-[7px]")}>
               {card.description}
             </p>

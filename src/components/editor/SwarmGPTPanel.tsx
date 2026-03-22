@@ -628,9 +628,10 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
             key={id}
             onClick={() => setMode(id)}
             className={cn(
-              "flex-1 flex items-center justify-center gap-1 py-1.5 text-[8px] font-semibold uppercase transition-colors",
-              mode === id ? "text-primary border-b-2 border-primary bg-primary/5" : "text-muted-foreground hover:text-foreground"
+              "flex-1 flex items-center justify-center gap-1 py-1.5 text-[8px] font-bold uppercase tracking-wider transition-colors font-mono",
+              mode === id ? "border-b-2 bg-teal-500/8" : "text-muted-foreground hover:text-foreground"
             )}
+            style={mode === id ? { color: 'hsl(165 80% 55%)', borderColor: 'hsl(165 100% 42%)' } : undefined}
           >
             <Icon className="w-3 h-3" />
             {label}
@@ -910,8 +911,8 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
 
         {/* Quick prompts */}
         {mode !== 'video' && mode !== 'presets' && <div className="space-y-1">
-          <span className="text-[9px] text-muted-foreground font-semibold uppercase">
-            {mode === 'full-show' ? 'Temas de Show' : mode === 'music-sync' ? 'Estilos Musicais' : 'Prompts Rápidos'}
+          <span className="text-[9px] font-mono font-bold uppercase tracking-[0.15em]" style={{ color: 'hsl(165 50% 45%)' }}>
+            {mode === 'full-show' ? 'MISSION THEMES' : mode === 'music-sync' ? 'SYNC PROFILES' : 'QUICK DEPLOY'}
           </span>
           <div className="grid grid-cols-2 gap-1">
             {quickList.map((q) => (
@@ -920,55 +921,60 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
                 onClick={() => setPrompt(q.prompt)}
                 disabled={loading}
                 className={cn(
-                  "flex items-center gap-1 px-1.5 py-1 rounded-sm text-[8px] text-left transition-colors border",
+                  "flex items-center gap-1 px-1.5 py-1 rounded-sm text-[8px] text-left transition-colors border font-mono",
                   prompt === q.prompt
-                    ? "border-primary/40 bg-primary/10 text-primary"
-                    : "border-border/50 bg-surface-2 hover:bg-surface-3 text-muted-foreground hover:text-foreground"
+                    ? "border-teal-500/40 bg-teal-500/10 text-teal-300"
+                    : "border-teal-500/10 bg-surface-2 hover:bg-surface-3 text-muted-foreground hover:text-foreground hover:border-teal-500/20"
                 )}
               >
                 <span className="text-sm">{q.emoji}</span>
-                <span className="truncate">{q.label}</span>
+                <span className="truncate uppercase tracking-wider">{q.label}</span>
               </button>
             ))}
           </div>
         </div>}
 
         {/* Prompt input */}
-        {mode !== 'video' && mode !== 'presets' && <Textarea
-          placeholder={
-            mode === 'full-show' ? "Descreva o tema do show completo..."
-            : mode === 'music-sync' ? "Descreva o estilo visual sincronizado com a música..."
-            : mode === 'image' ? "(Opcional) Descreva o que extrair da imagem..."
-            : "Descreva a formação..."
-          }
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !loading) {
-              e.preventDefault();
-              handleGenerate();
+        {mode !== 'video' && mode !== 'presets' && <div className="space-y-1">
+          <span className="text-[7px] font-mono font-bold uppercase tracking-[0.2em]" style={{ color: 'hsl(165 50% 40%)' }}>MISSION BRIEF</span>
+          <Textarea
+            placeholder={
+              mode === 'full-show' ? "Descreva o tema do show completo..."
+              : mode === 'music-sync' ? "Descreva o estilo visual sincronizado com a música..."
+              : mode === 'image' ? "(Opcional) Descreva o que extrair da imagem..."
+              : "Descreva a formação..."
             }
-          }}
-          className="h-16 text-[10px] bg-surface-2 border-border resize-none"
-        />}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !loading) {
+                e.preventDefault();
+                handleGenerate();
+              }
+            }}
+            className="h-16 text-[10px] bg-surface-2 resize-none font-mono"
+            style={{ borderColor: 'hsl(165 30% 20%)' }}
+          />
+        </div>}
 
         {/* Generate + Preview buttons */}
         {mode !== 'presets' && <div className="flex gap-1">
           <Button
             onClick={handleGenerate}
             disabled={loading || (mode === 'video' ? videoFrames.length === 0 : mode === 'image' ? !imageBase64 : !prompt.trim())}
-            className="flex-1 h-8 text-[10px] gap-1"
+            className="flex-1 h-8 text-[10px] gap-1 font-mono font-bold uppercase tracking-wider"
             size="sm"
+            style={{ background: loading ? 'hsl(165 30% 15%)' : 'hsl(165 50% 25%)', color: 'hsl(165 100% 80%)' }}
           >
             {loading ? (
               <>
-                <Loader2 className="w-3 h-3 animate-spin" />
-                {loadingPhase}
+                <Loader2 className="w-3 h-3 animate-spin" style={{ color: 'hsl(165 100% 50%)' }} />
+                COMPUTING TRAJECTORIES...
               </>
             ) : (
               <>
                 <Send className="w-3 h-3" />
-                {mode === 'full-show' ? 'Gerar Show' : mode === 'music-sync' ? 'Music Sync' : mode === 'image' ? '📷 Imagem' : mode === 'video' ? '🎬 Vídeo' : 'Gerar'} ({droneCount})
+                {mode === 'full-show' ? 'DEPLOY SHOW' : mode === 'music-sync' ? 'SYNC DEPLOY' : mode === 'image' ? 'IMAGE TRACE' : mode === 'video' ? 'VIDEO TRACE' : 'DEPLOY'} ({droneCount})
               </>
             )}
           </Button>

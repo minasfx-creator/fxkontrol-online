@@ -689,10 +689,18 @@ export default function PyroFireOnePanel({
               <div key={c.label} className={cn(
                 "rounded border font-mono text-center",
                 sz === 'xl' ? "px-3 py-1.5 min-w-[52px]" : sz === 'fs' ? "px-2 py-1 min-w-[40px]" : "px-1.5 py-0.5 min-w-[32px]"
-              )} style={{ background: 'hsl(0 10% 4%)', borderColor: 'hsl(0 20% 15%)' }}>
+              )} style={{
+                background: 'hsl(0 10% 4%)',
+                borderColor: 'hsl(0 20% 15%)',
+                boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.5)',
+              }}>
                 <div className={cn("font-bold", c.color,
                   sz === 'xl' ? "text-sm" : sz === 'fs' ? "text-[10px]" : "text-[9px]"
-                )}>{c.value}</div>
+                )} style={{
+                  textShadow: c.label === 'MOD' ? '0 0 8px hsl(120 80% 40% / 0.5)' :
+                    c.label === 'IG' ? '0 0 8px hsl(180 80% 40% / 0.4)' :
+                    c.label === 'FIRE' && c.value > 0 ? '0 0 8px hsl(0 80% 50% / 0.5)' : 'none',
+                }}>{c.value}</div>
                 <div className={cn("text-muted-foreground/25 uppercase",
                   sz === 'xl' ? "text-[7px]" : "text-[6px]"
                 )}>{c.label}</div>
@@ -787,10 +795,12 @@ export default function PyroFireOnePanel({
             ? "bg-red-600/20 border-red-500/50 text-red-400"
             : "bg-[hsl(0_8%_10%)] border-border/20 text-muted-foreground/40"
         )} style={masterKeyOn ? {
-          boxShadow: 'inset 0 0 12px rgba(255,50,30,0.1)',
-          transition: 'transform 0.3s ease',
-        } : { transition: 'transform 0.3s ease' }}>
-        {masterKeyOn ? <Unlock className={cn(sz === 'xl' ? "w-5 h-5" : "w-3 h-3")} style={{ transform: 'rotate(45deg)' }} /> : <Lock className={cn(sz === 'xl' ? "w-5 h-5" : "w-3 h-3")} />}
+          boxShadow: 'inset 0 0 12px rgba(255,50,30,0.1), 0 0 20px rgba(255,50,30,0.15)',
+          animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        } : {}}>
+        {masterKeyOn
+          ? <Unlock className={cn(sz === 'xl' ? "w-5 h-5" : "w-3 h-3")} style={{ transform: 'rotate(45deg)', transition: 'transform 0.3s ease' }} />
+          : <Lock className={cn(sz === 'xl' ? "w-5 h-5" : "w-3 h-3")} style={{ transform: 'rotate(0deg)', transition: 'transform 0.3s ease' }} />}
         MASTER KEY {masterKeyOn ? 'ON' : 'OFF'}
       </button>
       <div className="flex items-center gap-1.5">
@@ -1399,7 +1409,16 @@ export default function PyroFireOnePanel({
   // PANEL MODE (inside FX Commander)
   // ═══════════════════════════════════════════════════════════
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative overflow-hidden" style={{ background: 'hsl(0 15% 5%)' }}>
+      {/* Scanline overlay */}
+      <div className="absolute inset-0 pointer-events-none z-10" style={{
+        backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0,0,0,0.03) 1px, rgba(0,0,0,0.03) 2px)',
+        backgroundSize: '100% 2px',
+      }} />
+      {/* Red vignette */}
+      <div className="absolute inset-0 pointer-events-none z-10" style={{
+        background: 'radial-gradient(ellipse at center, transparent 60%, hsl(0 30% 3% / 0.6) 100%)',
+      }} />
       {renderFileInput()}
       {renderHeader()}
       {renderConnectionBar()}

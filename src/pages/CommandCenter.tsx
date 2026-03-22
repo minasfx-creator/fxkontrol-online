@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import {
   Zap, Lightbulb, Hand, Flame, Timer, Check, Cpu, Cable,
   Gauge, Wifi, Globe, Plug, Radio, Map, Smartphone, Settings,
-  Shield, ChevronRight, AlertOctagon
+  Shield, ChevronRight, AlertOctagon, Layers
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -31,13 +31,14 @@ import RadioControlPanel from '@/components/editor/RadioControlPanel';
 import FieldMap2D from '@/components/editor/FieldMap2D';
 import MobileLinkMode from '@/components/editor/live-firing/MobileLinkMode';
 import SettingsPanel from '@/components/editor/live-firing/SettingsPanel';
+import DroneCommandPanel from '@/components/editor/DroneCommandPanel';
 
 // ── Types ──
 type CommandMode =
   | 'super_dmx' | 'simple_dmx' | 'manual_fire' | 'pyro_fire' | 'auto_fire' | 'check_slave'
   | 'controllers' | 'pbus' | 'ma3' | 'module' | 'wifi_direct'
   | 'artnet_modules' | 'connections' | 'radio' | 'field_map'
-  | 'mobile_link' | 'settings';
+  | 'mobile_link' | 'settings' | 'drone_ops';
 
 // Fire modes get full LiveFiringPanel chrome (ARM, CUE keys, PANIC)
 const FIRE_MODES: CommandMode[] = [
@@ -65,6 +66,7 @@ const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: stri
   field_map:   { color: 'hsl(120 70% 38%)', glow: 'hsl(120 70% 38% / 0.08)', label: 'FIELD MAP',   badge: 'bg-green-500/15 text-green-400 border-green-500/20' },
   mobile_link: { color: 'hsl(240 50% 52%)', glow: 'hsl(240 50% 52% / 0.08)', label: 'FXK-LINK', badge: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/20' },
   settings:    { color: 'hsl(200 8% 50%)', glow: 'hsl(200 8% 50% / 0.06)', label: 'SETTINGS',    badge: 'bg-muted/30 text-muted-foreground border-border/15' },
+  drone_ops:   { color: 'hsl(165 100% 42%)', glow: 'hsl(165 100% 42% / 0.08)', label: 'FXK-DRONES', badge: 'bg-teal-500/15 text-teal-400 border-teal-500/20' },
 };
 
 // ── Sidebar Sections ──
@@ -90,6 +92,7 @@ const MODE_SECTIONS = [
       { key: 'ma3' as CommandMode, label: 'FXK-LIGHT', icon: Gauge },
       { key: 'module' as CommandMode, label: 'FXK Module', icon: Cpu },
       { key: 'wifi_direct' as CommandMode, label: 'WiFi Direct', icon: Wifi },
+      { key: 'drone_ops' as CommandMode, label: 'FXK-DRONES', icon: Layers },
     ],
   },
   {
@@ -159,6 +162,7 @@ export default function CommandCenter() {
       case 'field_map': return <FieldMap2D fs />;
       case 'mobile_link': return <MobileLinkMode fs fireChannel={() => {}} channels={[]} artNetConnected={false} relayConnected={false} />;
       case 'settings': return <SettingsPanel fs settings={{ language: 'pt', wirelessDmxEnabled: false, wirelessDmxId: 1, globalSafetyChannel: 0, globalSafetyValue: 0, pyroArmRequired: true, deleteConfirm: true, backlight: 80, tcpPort: 8000, artNetIp: '2.0.0.1', artNetPort: 6454, networkIp: '192.168.1.100', networkMask: '255.255.255.0', networkGateway: '192.168.1.1' }} onSettingsChange={() => {}} relayConnected={false} relayUrl="" onRelayUrlChange={() => {}} onConnectRelay={() => {}} onDisconnectRelay={() => {}} />;
+      case 'drone_ops': return <DroneCommandPanel fs />;
       default: return null;
     }
   }, [handleModeChange]);
