@@ -190,6 +190,11 @@ export default function VirtualControllerHub({ fs = false, onSelectMode, onClose
                 {status.label}
               </Badge>
             </div>
+            {card.platformLabel && (
+              <p className={cn("font-mono tracking-wider", fs ? "text-[8px]" : "text-[7px]")} style={{ color: GROUP_META[card.group]?.color === 'text-red-400' ? 'hsl(0 60% 50%)' : GROUP_META[card.group]?.color === 'text-teal-400' ? 'hsl(165 60% 45%)' : 'hsl(var(--muted-foreground) / 0.4)' }}>
+                {card.platformLabel}
+              </p>
+            )}
             <p className={cn("text-muted-foreground/40 truncate", fs ? "text-[9px]" : "text-[7px]")}>
               {card.description}
             </p>
