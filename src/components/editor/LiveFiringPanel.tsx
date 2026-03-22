@@ -71,14 +71,12 @@ const MODE_CATEGORIES = [
     label: '📡 MONITORING', modes: [
       { key: 'show_control' as FXCMode, label: 'SHOW CTRL', icon: Activity },
       { key: 'dmx_monitor' as FXCMode, label: 'DMX MON', icon: Radio },
-      { key: 'ma3' as FXCMode, label: 'FXK-LIGHT', icon: Gauge },
+      { key: 'fxk_light' as FXCMode, label: 'FXK-LIGHT', icon: Gauge },
     ],
   },
   {
     label: '🔧 HARDWARE', modes: [
-      { key: 'artnet_modules' as FXCMode, label: 'MODULE', icon: Globe },
-      { key: 'check_slave' as FXCMode, label: 'Diagnostics', icon: Check },
-      { key: 'settings' as FXCMode, label: 'Settings', icon: Settings },
+      { key: 'module' as FXCMode, label: 'MODULE', icon: Globe },
     ],
   },
 ];
