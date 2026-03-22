@@ -26,8 +26,8 @@ export default function SelectionStatusBar() {
   // Select all drones
   const selectAllDrones = useCallback(() => {
     const droneIds = positions.filter(p => p.type === 'drone-pad').map(p => p.id);
-    selectMultiplePositions(droneIds);
-  }, [positions, selectMultiplePositions]);
+    selectMultiplePositionsAndLinkedEvents(droneIds);
+  }, [positions, selectMultiplePositionsAndLinkedEvents]);
 
   // Batch move selected positions
   const batchMove = useCallback((dx: number, dy: number, dz: number) => {
