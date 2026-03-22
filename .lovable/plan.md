@@ -1,60 +1,133 @@
 
 
-# Refactor: Wire UE5.7 Render Systems into Live Pipeline
+# FireOne Multi-Transport Communication Engine
 
-## Problem
+## Current State
 
-The `render_ultra` engine has all the UE5.7-grade modules built but **they're not connected**. Three critical systems exist in isolation:
+The system already has a solid `FireOneController` class (`fireoneProtocol.ts`) with full protocol support: ARM/FIRE/DISARM, UltraFire download, Priority Disable, IFMx-i32Q DMX output, wireless RSSI polling, and preset firing. The hook `useFireOneHardware.ts` bridges this to React with radio fallback via `useRadioLink`.
 
-1. **GPU Instanced Renderer** — `InstancedParticleRenderer` is exported but NiagaraVFXController still uses `THREE.Points` with CPU buffer writes
-2. **Dynamic Burst Lights** — `spawnBurstLight` in `hdrLighting.ts` is never called from any burst event
-3. **Cloud/Fog Explosion Flash** — `flashExplosion` on volumetric clouds and fog is never triggered by bursts
-4. **HDR Lighting Rig** — `createHDRLightingRig` is exported but never instantiated in SkyCanvas
+**However, the controller is locked to a single transport: WebSerial (wired RS-485).** To act as a true virtual XLII+ controller, it needs a **multi-transport abstraction** that routes commands through whichever path is available — Cable, Radio, Wi-Fi (WebSocket to local relay), or Art-Net (for IFMx-i32Q DMX ports).
 
-These are integration wires, not new features. The modules work — they just need to be plugged in.
+## Gap Analysis
+
+| Transport | Status | What's Missing |
+|-----------|--------|----------------|
+| **RS-485 Cable** | Working | Single transport, no abstraction layer |
+| **Radio (CC1101/SX1276)** | Partial | `useRadioLink` wraps frames but `FireOneController` doesn't use it natively — hook has ad-hoc fallback code |
+| **Wi-Fi** | Missing | XLII+ manual documents Wi-Fi operation via wireless transceivers; no WebSocket/HTTP relay to local network XLII+ |
+| **Art-Net** | Partial | `artnet-bridge` edge function exists but only for DMX universes, not FireOne protocol frames. IFMx-i32Q has built-in DMX but no Art-Net bridge for the RS-485 commands |
+
+## Architecture
+
+```text
+┌─────────────────────────────────────────────────┐
+│           FireOneController (singleton)          │
+│  ┌───────────────────────────────────────────┐   │
+│  │        FireOneTransportManager            │   │
+│  │   ┌─────────┐ ┌─────────┐ ┌───────────┐  │   │
+│  │   │ Serial  │ │  Radio  │ │   WiFi    │  │   │
+│  │   │ RS-485  │ │ CC1101  │ │ WebSocket │  │   │
+│  │   └─────────┘ └─────────┘ └───────────┘  │   │
+│  │   ┌─────────┐ ┌─────────────────────────┐ │   │
+│  │   │ Art-Net │ │ Priority Router         │ │   │
+│  │   │ DMX Out │ │ Cable > WiFi > Radio    │ │   │
+│  │   └─────────┘ └─────────────────────────┘ │   │
+│  └───────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────┘
+```
 
 ## Changes
 
-### 1. `NiagaraVFXController.tsx` — Replace Points with InstancedParticleRenderer
+### 1. `src/lib/fireoneTransport.ts` (NEW) — Transport Abstraction Layer
 
-Replace the manual `THREE.Points` + `writeParticlesToBuffers` approach with the GPU instanced path:
-- Import `createSparkInstancedRenderer`, `createSmokeInstancedRenderer` from render_ultra
-- Create instanced renderers in `useMemo`, add their `.mesh` to scene
-- In `useFrame`, collect particles into the `writeParticles()` API with camera for billboarding
-- Remove the old `createNiagaraBuffers`, `sparkBuffers`, `smokeBuffers`, `NIAGARA_SPARK_VERTEX/FRAGMENT` shader code
-- This gives velocity stretching on GPU and supports 4096 particles per batch
+Create a `FireOneTransport` interface and implementations for each path:
 
-### 2. `NiagaraVFXController.tsx` — Wire Burst Lights
+```typescript
+interface FireOneTransport {
+  id: string;
+  type: 'serial' | 'radio' | 'wifi' | 'artnet';
+  priority: number; // lower = preferred (serial=1, wifi=2, radio=3)
+  connected: boolean;
+  latencyMs: number;
+  connect(): Promise<void>;
+  disconnect(): Promise<void>;
+  send(frame: Uint8Array): Promise<void>;
+  onReceive(callback: (data: Uint8Array) => void): void;
+}
+```
 
-When spawning a new burst system:
-- Access the HDR lighting rig (via ref or scene lookup)
-- Call `spawnBurstLight(burstPos, burstColor, caliber * 2.5, 1.0 + caliber * 0.15)`
-- Call `updateBurstLights(dt)` every frame
+**Implementations:**
+- `SerialTransport` — wraps existing WebSerial logic from `FireOneController.connect()`
+- `RadioTransport` — wraps `radioProtocol.ts` `wrapProtocolFrame()`, uses `useRadioLink` dongle connection
+- `WiFiTransport` — WebSocket client connecting to a local relay (Node.js/Python on field laptop that bridges WebSocket↔RS-485)
+- `ArtNetTransport` — for IFMx-i32Q DMX output only, routes `DMX_OUT` commands via Art-Net bridge
 
-### 3. `NiagaraVFXController.tsx` — Wire Cloud/Fog Flash
+**Transport Manager:**
+- `FireOneTransportManager` holds all transports, auto-selects best by priority
+- E-STOP sends on ALL transports simultaneously (per XLII+ safety standard)
+- Auto-fallback: if primary transport fails, seamlessly switch to next
+- Heartbeat on all active transports
 
-When spawning a new burst:
-- Find volumetric cloud and fog materials in scene (via refs or window global)
-- Call `flashExplosion(burstColor, caliber * 0.3, burstPos)` on both cloud and fog systems
-- This makes clouds and fog react to explosions with light scattering
+### 2. `src/lib/fireoneProtocol.ts` — Refactor Controller to use TransportManager
 
-### 4. `SkyCanvas.tsx` — Instantiate HDR Lighting Rig
+- Extract serial connect/disconnect/send/read logic into `SerialTransport`
+- Replace `this.conn` with `TransportManager` instance
+- `send()` delegates to manager's best transport
+- `emergencyStop()` broadcasts on ALL transports
+- Read loop runs on each transport independently, all feed into same `processIncoming()`
+- Add `getTransportStatus()` method returning all transport states
 
-- Import `createHDRLightingRig` from render_ultra
-- Create the rig in a `useMemo` and add group to scene
-- Pass rig ref to NiagaraVFXController via props or context
-- Call `updateBurstLights(dt)` in the NiagaraVFXController frame loop
+### 3. `src/lib/fireoneWiFiRelay.ts` (NEW) — Wi-Fi Transport
 
-### 5. `SkyCanvas.tsx` — Wire Cloud/Fog refs to NiagaraVFXController
+Per XLII+ manual: wireless operation uses FHSS transceivers. Our virtual equivalent uses WebSocket to a local relay:
 
-- Store refs to volumetric cloud and fog systems
-- Pass `flashExplosion` callbacks to NiagaraVFXController
-- NiagaraVFXController calls them on burst spawn
+- `WiFiRelayTransport` connects to `ws://<relay-ip>:9485` (configurable)
+- Relay protocol: JSON envelope `{ type: 'fireone-frame', data: base64(frame) }` or binary WebSocket frames
+- Auto-discovery via mDNS-style broadcast (relay announces itself)
+- Reconnect with exponential backoff
+- Latency measurement via ping/pong
 
-## Files
+### 4. `src/lib/fireoneArtNetBridge.ts` (NEW) — Art-Net DMX for IFMx-i32Q
+
+IFMx-i32Q modules have built-in DMX output ports. This transport:
+- Routes only `DMX_OUT` commands via Art-Net (not firing commands)
+- Uses existing `artnet4Engine.ts` packet builders
+- Sends via `artnet-bridge` edge function or direct UDP (when local relay available)
+- Maps module address to Art-Net universe (module N → universe N)
+
+### 5. `src/hooks/useFireOneHardware.ts` — Expose transport layer
+
+- Remove ad-hoc radio fallback code (now handled by TransportManager)
+- Add `transports` state: array of `{ id, type, connected, latencyMs, priority }`
+- Add `addTransport(type, config)` / `removeTransport(id)` methods
+- Add `connectWiFi(relayIp)` convenience method
+- Add `connectArtNet(targetIp)` convenience method
+- `connectionPath` becomes multi-path: can have Cable+WiFi+Radio simultaneously
+
+### 6. `src/components/editor/ConnectionManagerPanel.tsx` — Multi-Transport UI
+
+Update FireOne connection entry to show multiple transports:
+- Each transport as a sub-row with status indicator (green/yellow/red)
+- "Add Wi-Fi Relay" button → prompts for relay IP
+- "Add Art-Net Bridge" → prompts for Art-Net node IP
+- Priority ordering visible (drag to reorder)
+- E-STOP indicator showing "broadcasts on N transports"
+
+### 7. DMX Relay R12 + Splitter 8 Integration
+
+Add Showven DMX Relay R12 as a recognized device in the SFX channel system:
+- 12 output channels, safety channel (CH-S), threshold 100-255 = ON
+- Auto-configure DMX address when detected via Art-Net discovery
+- Splitter 8 is transparent (no protocol changes needed)
+
+## Files Summary
 
 | File | Change |
 |------|--------|
-| `src/components/editor/NiagaraVFXController.tsx` | Replace Points with InstancedParticleRenderer; wire burst lights and cloud/fog flash |
-| `src/components/editor/SkyCanvas.tsx` | Instantiate HDR lighting rig; pass flash callbacks to VFX controller |
+| `src/lib/fireoneTransport.ts` | NEW — Transport interface + SerialTransport + RadioTransport + TransportManager |
+| `src/lib/fireoneWiFiRelay.ts` | NEW — WiFi WebSocket transport for local relay |
+| `src/lib/fireoneArtNetBridge.ts` | NEW — Art-Net bridge for IFMx-i32Q DMX output |
+| `src/lib/fireoneProtocol.ts` | Refactor FireOneController to use TransportManager |
+| `src/hooks/useFireOneHardware.ts` | Remove ad-hoc fallback, expose multi-transport API |
+| `src/components/editor/ConnectionManagerPanel.tsx` | Multi-transport UI per FireOne connection |
 
