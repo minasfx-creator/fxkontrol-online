@@ -3,7 +3,7 @@
  * Grouped by manufacturer with live telemetry from hardware hooks.
  */
 import { useState, useCallback, useMemo } from 'react';
-import { Cpu, Wifi, WifiOff, Usb, Radio, Zap, Battery, Signal, ChevronRight, ChevronDown, Sparkles, Cable } from 'lucide-react';
+import { Cpu, Wifi, WifiOff, Usb, Radio, Zap, Battery, Signal, ChevronRight, ChevronDown, Sparkles, Cable, Antenna } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
