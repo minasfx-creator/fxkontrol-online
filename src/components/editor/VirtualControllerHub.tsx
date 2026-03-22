@@ -29,7 +29,7 @@ interface ControllerCard {
 }
 
 const CONTROLLERS: ControllerCard[] = [
-  { id: 'fireone-xl4', name: 'FireOne XL4+', manufacturer: 'FireOne', type: 'firing', connectionTypes: ['usb', 'serial', 'radio', 'wifi_direct'], channels: 32, description: 'IFMx-i32Q field modules · RS-485 · 32 igniters/module', panelMode: 'pyro_fire', group: 'fireone' },
+  { id: 'fireone-xl4', name: 'FXK-PYRO', manufacturer: 'FXK', type: 'firing', connectionTypes: ['usb', 'serial', 'radio', 'wifi_direct'], channels: 32, description: 'IFMx-i32Q field modules · RS-485 · 32 igniters/module', panelMode: 'pyro_fire', group: 'fireone' },
   { id: 'zk6200', name: 'ZK6200', manufacturer: 'Showven', type: 'sfx', connectionTypes: ['usb', 'artnet', 'wireless'], channels: 20, description: 'Host controller · 20 zones · DMX + LTC', panelMode: 'zk6200', group: 'showven' },
   { id: 'zk6300', name: 'ZK6300', manufacturer: 'Showven', type: 'sfx', connectionTypes: ['usb', 'artnet', 'wireless'], channels: 30, description: 'Host controller · 30 zones · DMX + LTC', panelMode: 'zk6200', group: 'showven' },
   { id: 'pyroslave-c16', name: 'PyroSlave C16', manufacturer: 'Showven', type: 'firing', connectionTypes: ['pbus', 'wireless', 'radio'], channels: 16, description: 'Wireless slave · 16 cues · Dual-band 433/868M', panelMode: 'pbus', group: 'showven' },
@@ -38,7 +38,7 @@ const CONTROLLERS: ControllerCard[] = [
   { id: 'maiman', name: 'Maiman 30W', manufacturer: 'Showven', type: 'laser', connectionTypes: ['artnet'], channels: 14, description: '30W RGB laser · ILDA + DMX · IP54', group: 'showven' },
   { id: 'dmx-splitter8', name: 'DMX Splitter 8', manufacturer: 'Showven', type: 'dmx', connectionTypes: ['usb'], channels: 8, description: '1→8 DMX512 splitter · Opto-isolated', group: 'infrastructure' },
   { id: 'dmx-relay-r12', name: 'DMX Relay R12', manufacturer: 'Showven', type: 'dmx', connectionTypes: ['usb', 'artnet'], channels: 12, description: '12-channel DMX relay · 10A/channel', group: 'infrastructure' },
-  { id: 'ifmx-i32q-module', name: 'IFMx-i32Q Module', manufacturer: 'FireOne', type: 'module', connectionTypes: ['wireless', 'ble', 'usb', 'wifi_direct'], channels: 32, description: 'Virtual field module · 32 igniters · CDS · ESP32 bridge', panelMode: 'module', group: 'fireone' },
+  { id: 'ifmx-i32q-module', name: 'FXK-PYRO Module', manufacturer: 'FXK', type: 'module', connectionTypes: ['wireless', 'ble', 'usb', 'wifi_direct'], channels: 32, description: 'Virtual field module · 32 igniters · CDS · ESP32 bridge', panelMode: 'module', group: 'fireone' },
 ];
 
 const CONNECTION_ICONS: Record<ConnectionType, typeof Usb> = {
@@ -63,7 +63,7 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 const GROUP_META: Record<string, { label: string; color: string }> = {
-  fireone: { label: 'FireOne Systems', color: 'text-red-400' },
+  fireone: { label: 'FXK Fire Systems', color: 'text-red-400' },
   showven: { label: 'Showven Devices', color: 'text-amber-400' },
   infrastructure: { label: 'Infrastructure', color: 'text-muted-foreground' },
 };
@@ -126,7 +126,7 @@ export default function VirtualControllerHub({ fs = false, onSelectMode, onClose
       if (connType === 'usb' || connType === 'serial') {
         if (card.id === 'fireone-xl4') {
           await fireone.connect();
-          toast.success(`FireOne XL4+ conectado via RS-485`);
+          toast.success(`FXK-PYRO conectado via RS-485`);
           return;
         }
       }
@@ -252,7 +252,7 @@ export default function VirtualControllerHub({ fs = false, onSelectMode, onClose
         <div className="flex items-center gap-1.5">
           {fireone.isConnected && (
             <Badge variant="outline" className="text-[8px] h-4 px-1.5 border-red-500/30 text-red-400">
-              FireOne · {fireone.modules.size}
+              FXK · {fireone.modules.size}
             </Badge>
           )}
           {pbus.isConnected && (

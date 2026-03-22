@@ -1,5 +1,5 @@
 /**
- * FXcommander™ — Constants and preset data
+ * FXK-PYRO — Constants and preset data
  */
 import {
   Flame, Wind, Sparkles, Zap, Lightbulb, Snowflake, CloudRain, Crosshair,

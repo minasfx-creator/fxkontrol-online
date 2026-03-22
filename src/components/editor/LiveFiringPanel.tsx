@@ -1,5 +1,5 @@
 /**
- * FXcommander™ Digital Console — Complete recreation + enhancements
+ * FXK-PYRO Digital Console — Complete recreation + enhancements
  * 
  * Modes: Super DMX · Simple DMX · Manual Fire · Auto Fire · Check Slave · Settings
  * Features: 4 Scenes, 128 CUEs/scene, Lock/Tap keys, Deadman, PANIC, Device Library,
@@ -59,10 +59,10 @@ import { RISK_GROUP_LABELS, RISK_GROUP_COLORS, type RiskGroup } from '@/lib/pyro
 const MODE_CATEGORIES = [
   {
     label: '🔥 FIRE', modes: [
-      { key: 'super_dmx' as FXCMode, label: 'Super DMX', icon: Zap },
+      { key: 'super_dmx' as FXCMode, label: 'FXK-DMX', icon: Zap },
       { key: 'simple_dmx' as FXCMode, label: 'Simple', icon: Lightbulb },
       { key: 'manual_fire' as FXCMode, label: 'Manual', icon: Hand },
-      { key: 'pyro_fire' as FXCMode, label: 'Pyro XL4', icon: Flame },
+      { key: 'pyro_fire' as FXCMode, label: 'FXK-PYRO', icon: Flame },
       { key: 'auto_fire' as FXCMode, label: 'Auto Fire', icon: Timer },
       { key: 'check_slave' as FXCMode, label: 'Check', icon: Check },
     ],
@@ -71,8 +71,8 @@ const MODE_CATEGORIES = [
     label: '🎛 HARDWARE', modes: [
       { key: 'controllers' as FXCMode, label: 'Controllers', icon: Cpu },
       { key: 'pbus' as FXCMode, label: 'P-BUS', icon: Cable },
-      { key: 'ma3' as FXCMode, label: 'MA3', icon: Gauge },
-      { key: 'module' as FXCMode, label: 'IFM x32Q', icon: Cpu },
+      { key: 'ma3' as FXCMode, label: 'FXK-LIGHT', icon: Gauge },
+      { key: 'module' as FXCMode, label: 'FXK Module', icon: Cpu },
       { key: 'wifi_direct' as FXCMode, label: 'WiFi Direct', icon: Wifi },
     ],
   },
@@ -86,7 +86,7 @@ const MODE_CATEGORIES = [
   },
   {
     label: '⚙ SYSTEM', modes: [
-      { key: 'mobile_link' as FXCMode, label: 'Mobile Link', icon: Smartphone },
+      { key: 'mobile_link' as FXCMode, label: 'FXK-LINK', icon: Smartphone },
       { key: 'settings' as FXCMode, label: 'Settings', icon: Settings },
     ],
   },
@@ -821,9 +821,9 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
           <Zap className={cn(fs && mob ? "w-3.5 h-3.5" : fs ? "w-5 h-5" : "w-3 h-3", "text-black")} />
         </div>
         <div>
-          <div className={cn("font-black text-foreground tracking-[0.12em]", fs && mob ? "text-xs" : fs ? "text-base" : "text-[10px]")}>FXcommander™</div>
+          <div className={cn("font-black text-foreground tracking-[0.12em]", fs && mob ? "text-xs" : fs ? "text-base" : "text-[10px]")}>FXK-PYRO</div>
           <div className={cn("font-mono tracking-wider", fs && mob ? "text-[9px]" : fs ? "text-[9px]" : "text-[10px]", showMode ? "text-red-400/60" : "text-muted-foreground/40")}>
-            {showMode ? '● SHOW MODE' : 'SHOWVEN® · V2.0'}
+            {showMode ? '● SHOW MODE' : 'FX KONTROL · V2.0'}
           </div>
         </div>
       </div>
@@ -1147,7 +1147,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
                 )}>{rule.label}</button>
             ))}
           </div>
-          {/* Parameters — matches real FXcommander layout */}
+          {/* Parameters — matches real FXK-PYRO layout */}
           <div className="grid grid-cols-2 gap-1.5">
             {[
               { label: 'Duration(s)', value: cueDuration, set: setCueDuration },

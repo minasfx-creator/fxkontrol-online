@@ -1,5 +1,5 @@
 /**
- * MA3ControlPanel — grandMA3 Console Integration Panel
+ * MA3ControlPanel — FXK-LIGHT Console Integration Panel
  * OSC control, sACN monitoring + DMX bridge, MVR-xchange live sync
  */
 
@@ -192,7 +192,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
       });
       await oscClient.current.connect();
       setOscState('connected');
-      toast.success('OSC connected to MA3');
+      toast.success('OSC connected to FXK-LIGHT');
     } catch {
       setOscState('error');
       toast.error('OSC connection failed — check bridge');
@@ -226,7 +226,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
   const sendMacro = useCallback((cmd: string, label: string) => {
     oscClient.current.send(buildMA3Command(cmd));
     setOscMessages(prev => [...prev.slice(-99), { dir: 'tx', addr: '/gma3/cmd', args: cmd, time: Date.now() }]);
-    toast.info(`MA3: ${label}`);
+    toast.info(`FXK-LIGHT: ${label}`);
   }, []);
 
   // ─── sACN Actions ──────────────────────────────────
@@ -293,7 +293,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
       <div className="flex items-center justify-between mb-2">
         <div>
           <h3 className={cn("font-black uppercase tracking-wider text-foreground", fs ? "text-sm" : "text-[10px]")}>
-            grandMA3
+            FXK-LIGHT
           </h3>
           <p className={cn("text-muted-foreground/50", fs ? "text-[10px]" : "text-[8px]")}>
             OSC · sACN · MVR-xchange
@@ -324,7 +324,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
       {showSettings && (
         <div className="space-y-2 mb-2 p-2 rounded border border-border/20 bg-background/30 text-[9px]">
           <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 items-center">
-            <span className="text-muted-foreground/50">MA3 IP</span>
+            <span className="text-muted-foreground/50">FXK-LIGHT IP</span>
             <Input value={oscHost} onChange={e => setOscHost(e.target.value)} className="h-5 text-[9px]" />
             <span className="text-muted-foreground/50">OSC Port</span>
             <Input value={oscPort} onChange={e => setOscPort(e.target.value)} className="h-5 text-[9px]" />
@@ -370,7 +370,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
               value={cmdInput}
               onChange={e => setCmdInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && sendCmd()}
-              placeholder="MA3 Command (e.g. Go Seq 1)"
+              placeholder="FXK-LIGHT Command (e.g. Go Seq 1)"
               className="h-6 text-[9px] font-mono flex-1"
               disabled={oscState !== 'connected'}
             />
@@ -379,7 +379,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
             </Button>
           </div>
 
-          {/* MA3 Macro Buttons */}
+          {/* FXK-LIGHT Macros */}
           <div className="flex flex-wrap gap-1">
             <Button size="sm" variant="outline" className="h-6 text-[8px] px-2"
               onClick={() => sendMacro('Go+ Seq 1', 'Go+')} disabled={oscState !== 'connected'}>
@@ -530,7 +530,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
               <Zap className={cn("w-3 h-3", bridgeEnabled ? "text-amber-400" : "text-muted-foreground/40")} />
               <div>
                 <span className="text-[9px] font-bold text-foreground">Route sACN → DMX Engine</span>
-                <p className="text-[8px] text-muted-foreground/50">MA3 controla SFX channels em tempo real</p>
+                <p className="text-[8px] text-muted-foreground/50">FXK-LIGHT controla SFX channels em tempo real</p>
               </div>
             </div>
             <Switch checked={bridgeEnabled} onCheckedChange={setBridgeEnabled} className="scale-75"
@@ -613,7 +613,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
               {sacnState !== 'connected' && (
                 <div className="text-center py-6">
                   <Cable className="w-5 h-5 mx-auto text-muted-foreground/20 mb-1" />
-                  <p className="text-[9px] text-muted-foreground/40">Connect sACN bridge to receive DMX data from MA3</p>
+                  <p className="text-[9px] text-muted-foreground/40">Connect sACN bridge to receive DMX data from FXK-LIGHT</p>
                 </div>
               )}
             </div>
@@ -740,7 +740,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
               {mvrState !== 'connected' && (
                 <div className="text-center py-6">
                   <Signal className="w-5 h-5 mx-auto text-muted-foreground/20 mb-1" />
-                  <p className="text-[9px] text-muted-foreground/40">Connect to discover grandMA3 consoles via MVR-xchange</p>
+                  <p className="text-[9px] text-muted-foreground/40">Connect to discover FXK-LIGHT consoles via MVR-xchange</p>
                 </div>
               )}
             </div>

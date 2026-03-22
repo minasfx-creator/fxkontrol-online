@@ -1,5 +1,5 @@
 /**
- * CommandCenter — XL4 2.0 Execution Hub
+ * CommandCenter — FXK 2.0 Execution Hub
  * Intelligent routing: Fire modes get full chrome, Hardware/Network get direct rendering
  * Each console has unique accent identity
  */
@@ -35,22 +35,22 @@ const isFireMode = (m: CommandMode) => FIRE_MODES.includes(m);
 
 // ── Console Accent Config ──
 const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: string; badge: string }> = {
-  super_dmx:   { color: 'hsl(210 90% 55%)', glow: 'hsl(210 90% 55% / 0.15)', label: 'SUPER DMX',   badge: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-  simple_dmx:  { color: 'hsl(150 70% 45%)', glow: 'hsl(150 70% 45% / 0.15)', label: 'SIMPLE DMX',  badge: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+  super_dmx:   { color: 'hsl(210 90% 55%)', glow: 'hsl(210 90% 55% / 0.15)', label: 'FXK-DMX',   badge: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  simple_dmx:  { color: 'hsl(150 70% 45%)', glow: 'hsl(150 70% 45% / 0.15)', label: 'FXK-DMX Lite',  badge: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
   manual_fire: { color: 'hsl(25 90% 55%)',  glow: 'hsl(25 90% 55% / 0.15)',  label: 'MANUAL FIRE', badge: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
-  pyro_fire:   { color: 'hsl(0 80% 55%)',   glow: 'hsl(0 80% 55% / 0.15)',   label: 'PYRO XL4',    badge: 'bg-red-500/20 text-red-400 border-red-500/30' },
+  pyro_fire:   { color: 'hsl(0 80% 55%)',   glow: 'hsl(0 80% 55% / 0.15)',   label: 'FXK-PYRO',    badge: 'bg-red-500/20 text-red-400 border-red-500/30' },
   auto_fire:   { color: 'hsl(45 90% 55%)',  glow: 'hsl(45 90% 55% / 0.15)',  label: 'AUTO FIRE',   badge: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
   check_slave: { color: 'hsl(185 70% 50%)', glow: 'hsl(185 70% 50% / 0.15)', label: 'CHECK SLAVE', badge: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
   controllers: { color: 'hsl(270 60% 55%)', glow: 'hsl(270 60% 55% / 0.12)', label: 'CONTROLLERS', badge: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
   pbus:        { color: 'hsl(35 80% 50%)',  glow: 'hsl(35 80% 50% / 0.12)',  label: 'P-BUS',       badge: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
-  ma3:         { color: 'hsl(220 70% 55%)', glow: 'hsl(220 70% 55% / 0.12)', label: 'grandMA3',    badge: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
-  module:      { color: 'hsl(160 60% 45%)', glow: 'hsl(160 60% 45% / 0.12)', label: 'IFM x32Q',    badge: 'bg-teal-500/20 text-teal-400 border-teal-500/30' },
+  ma3:         { color: 'hsl(220 70% 55%)', glow: 'hsl(220 70% 55% / 0.12)', label: 'FXK-LIGHT',    badge: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
+  module:      { color: 'hsl(160 60% 45%)', glow: 'hsl(160 60% 45% / 0.12)', label: 'FXK Module',    badge: 'bg-teal-500/20 text-teal-400 border-teal-500/30' },
   wifi_direct: { color: 'hsl(200 70% 50%)', glow: 'hsl(200 70% 50% / 0.12)', label: 'WiFi Direct', badge: 'bg-sky-500/20 text-sky-400 border-sky-500/30' },
-  artnet_modules: { color: 'hsl(280 60% 50%)', glow: 'hsl(280 60% 50% / 0.12)', label: 'Art-Net', badge: 'bg-violet-500/20 text-violet-400 border-violet-500/30' },
+  artnet_modules: { color: 'hsl(280 60% 50%)', glow: 'hsl(280 60% 50% / 0.12)', label: 'FXK-NET', badge: 'bg-violet-500/20 text-violet-400 border-violet-500/30' },
   connections: { color: 'hsl(190 60% 50%)', glow: 'hsl(190 60% 50% / 0.12)', label: 'Connections', badge: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
   radio:       { color: 'hsl(340 60% 55%)', glow: 'hsl(340 60% 55% / 0.12)', label: 'Radio',       badge: 'bg-pink-500/20 text-pink-400 border-pink-500/30' },
   field_map:   { color: 'hsl(120 50% 45%)', glow: 'hsl(120 50% 45% / 0.12)', label: 'Field Map',   badge: 'bg-green-500/20 text-green-400 border-green-500/30' },
-  mobile_link: { color: 'hsl(250 50% 55%)', glow: 'hsl(250 50% 55% / 0.12)', label: 'Mobile Link', badge: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
+  mobile_link: { color: 'hsl(250 50% 55%)', glow: 'hsl(250 50% 55% / 0.12)', label: 'FXK-LINK', badge: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
   settings:    { color: 'hsl(220 10% 55%)', glow: 'hsl(220 10% 55% / 0.12)', label: 'Settings',    badge: 'bg-muted/40 text-muted-foreground border-border/20' },
 };
 
@@ -60,10 +60,10 @@ const MODE_SECTIONS = [
     label: 'FIRE CONTROL',
     accent: 'text-red-400',
     modes: [
-      { key: 'super_dmx' as CommandMode, label: 'Super DMX', icon: Zap },
+      { key: 'super_dmx' as CommandMode, label: 'FXK-DMX', icon: Zap },
       { key: 'simple_dmx' as CommandMode, label: 'Simple DMX', icon: Lightbulb },
       { key: 'manual_fire' as CommandMode, label: 'Manual', icon: Hand },
-      { key: 'pyro_fire' as CommandMode, label: 'Pyro XL4', icon: Flame },
+      { key: 'pyro_fire' as CommandMode, label: 'FXK-PYRO', icon: Flame },
       { key: 'auto_fire' as CommandMode, label: 'Auto Fire', icon: Timer },
       { key: 'check_slave' as CommandMode, label: 'Check', icon: Check },
     ],
@@ -74,8 +74,8 @@ const MODE_SECTIONS = [
     modes: [
       { key: 'controllers' as CommandMode, label: 'Controllers', icon: Cpu },
       { key: 'pbus' as CommandMode, label: 'P-BUS', icon: Cable },
-      { key: 'ma3' as CommandMode, label: 'MA3', icon: Gauge },
-      { key: 'module' as CommandMode, label: 'IFM x32Q', icon: Cpu },
+      { key: 'ma3' as CommandMode, label: 'FXK-LIGHT', icon: Gauge },
+      { key: 'module' as CommandMode, label: 'FXK Module', icon: Cpu },
       { key: 'wifi_direct' as CommandMode, label: 'WiFi Direct', icon: Wifi },
     ],
   },
@@ -83,7 +83,7 @@ const MODE_SECTIONS = [
     label: 'NETWORK',
     accent: 'text-primary',
     modes: [
-      { key: 'artnet_modules' as CommandMode, label: 'Art-Net', icon: Globe },
+      { key: 'artnet_modules' as CommandMode, label: 'FXK-NET', icon: Globe },
       { key: 'connections' as CommandMode, label: 'Connections', icon: Plug },
       { key: 'radio' as CommandMode, label: 'Radio', icon: Radio },
       { key: 'field_map' as CommandMode, label: 'Field Map', icon: Map },
@@ -93,7 +93,7 @@ const MODE_SECTIONS = [
     label: 'SYSTEM',
     accent: 'text-muted-foreground',
     modes: [
-      { key: 'mobile_link' as CommandMode, label: 'Mobile Link', icon: Smartphone },
+      { key: 'mobile_link' as CommandMode, label: 'FXK-LINK', icon: Smartphone },
       { key: 'settings' as CommandMode, label: 'Settings', icon: Settings },
     ],
   },
@@ -287,7 +287,7 @@ export default function CommandCenter() {
               <div className="flex items-center gap-2">
                 <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.3)' }} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-[9px] font-bold text-foreground uppercase tracking-wider truncate">Command Center</p>
+                  <p className="text-[9px] font-bold text-foreground uppercase tracking-wider truncate">FXK Command</p>
                   <p className="text-[8px] text-muted-foreground font-mono">{connectedCount} connected</p>
                 </div>
                 {fireone.isConnected && (

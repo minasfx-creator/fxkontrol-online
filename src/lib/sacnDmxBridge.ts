@@ -1,6 +1,6 @@
 /**
  * sACN → DMX Engine Bridge
- * Maps sACN universe/channel data from grandMA3 to SFX channels in real-time.
+ * Maps sACN universe/channel data from FXK-LIGHT to SFX channels in real-time.
  */
 
 import { getSACNReceiver, type SACNUniverse } from '@/lib/sacnEngine';

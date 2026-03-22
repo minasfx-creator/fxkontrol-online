@@ -107,7 +107,7 @@ export default function VirtualZK6200({ fs = false }: VirtualZK6200Props) {
           </div>
           <div>
             <span className={cn("font-black text-foreground tracking-wider", fs ? "text-xs" : "text-[10px]")}>ZK{model}</span>
-            <span className={cn("text-muted-foreground/40 ml-2", fs ? "text-[9px]" : "text-[7px]")}>SHOWVEN®</span>
+            <span className={cn("text-muted-foreground/40 ml-2", fs ? "text-[9px]" : "text-[7px]")}>FX KONTROL</span>
           </div>
         </div>
         <div className="flex items-center gap-2">

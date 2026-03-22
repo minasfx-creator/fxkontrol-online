@@ -1,5 +1,5 @@
 /**
- * PyroFireOnePanel — FireOne XL4+ style pyrotechnic firing panel
+ * PyroFireOnePanel — FXK-PYRO style pyrotechnic firing panel
  * Full XL4 replica: 99 modules × 32 igniters, continuity, safety interlocks,
  * Manual / Step / Timecode / Test modes, AutoFire bridge
  * Includes DEDICATED FULLSCREEN mode replicating the real XL4 10.1" display
@@ -414,7 +414,7 @@ export default function PyroFireOnePanel({
       // Init controller if needed
       let ctrl = artnetModuleService.getController();
       if (!ctrl) {
-        ctrl = artnetModuleService.initController({ name: 'XL4+ ARTNET BRIDGE' });
+        ctrl = artnetModuleService.initController({ name: 'FXK-PYRO ARTNET BRIDGE' });
       }
       // Discover via ArtPoll
       await artnetModuleService.discoverModules();
@@ -451,7 +451,7 @@ export default function PyroFireOnePanel({
     try {
       let ctrl = artnetModuleService.getController();
       if (!ctrl) {
-        ctrl = artnetModuleService.initController({ name: 'XL4+ ARTNET BRIDGE' });
+        ctrl = artnetModuleService.initController({ name: 'FXK-PYRO ARTNET BRIDGE' });
       }
       const existing = ctrl.modules.find(am => am.moduleAddress === moduleAddr);
       if (existing) {
@@ -648,7 +648,7 @@ export default function PyroFireOnePanel({
       <div className="flex items-center gap-3">
         <span className={cn("font-black tracking-wider",
           sz === 'xl' ? "text-sm text-red-400" : sz === 'fs' ? "text-xs text-red-400/80" : "text-[8px] text-red-400/80"
-        )}>🔥 FIREONE XL4+</span>
+        )}>🔥 FXK-PYRO</span>
         <span className={cn("font-mono text-muted-foreground/30",
           sz === 'xl' ? "text-xs" : sz === 'fs' ? "text-[9px]" : "text-[8px]"
         )}>{connectedCount} MOD · {totalIgniters} IG · {firedCount} FIRED</span>

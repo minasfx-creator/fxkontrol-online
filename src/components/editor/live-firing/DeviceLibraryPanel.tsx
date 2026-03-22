@@ -1,6 +1,6 @@
 /**
  * Device Library Panel — LIB_SHOWVEN + LIB_USER
- * Matches FXcommander Add Device interface with device selection, effects, safety channels
+ * Matches FXK-PYRO Add Device interface with device selection, effects, safety channels
  */
 import { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
