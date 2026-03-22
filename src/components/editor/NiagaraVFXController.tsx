@@ -505,6 +505,9 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
         hdrRig.updateBurstLights(dt);
       }
 
+      // ── Update ground decals ──
+      updateDecals(dt);
+
       // ── Write to GPU Instanced Renderers ──
       const hdrScale = THREE.MathUtils.clamp(
         (hdrMultiplier / 3.5) * THREE.MathUtils.clamp(effectBrightness, 0.6, 1.8),
