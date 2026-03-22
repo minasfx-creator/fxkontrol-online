@@ -83,13 +83,35 @@ export default function AlignmentTools() {
     toast.success('Headings reset to 0°');
   }, [selected, updatePosition]);
 
-  if (selected.length === 0) return null;
+  if (allSelected.length === 0) return null;
 
   const btnClass = "h-7 w-7 p-0";
+  const filterBtn = (type: PositionType | 'all', icon: React.ReactNode, label: string) => (
+    <button
+      onClick={() => setTypeFilter(type)}
+      className={cn(
+        "px-1.5 py-0.5 text-[8px] rounded border transition-colors flex items-center gap-0.5",
+        typeFilter === type
+          ? "bg-primary/15 text-primary border-primary/30"
+          : "text-muted-foreground/50 border-border/30 hover:text-muted-foreground"
+      )}
+      title={label}
+    >
+      {icon}
+    </button>
+  );
 
   return (
     <div className="absolute top-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 bg-surface-1/95 backdrop-blur-md border border-border/60 rounded-lg px-2 py-1 shadow-xl">
-      <span className="text-[9px] font-mono text-muted-foreground mr-1">{selected.length} sel</span>
+      {/* Type filter */}
+      <div className="flex items-center gap-0.5 mr-1">
+        {filterBtn('all', <span className="text-[7px]">ALL</span>, 'All types')}
+        {pyroCount > 0 && filterBtn('pyro', <Flame className="w-2.5 h-2.5" />, `Pyro (${pyroCount})`)}
+        {droneCount > 0 && filterBtn('drone-pad', <CircleDot className="w-2.5 h-2.5" />, `Drone (${droneCount})`)}
+        {lightCount > 0 && filterBtn('light', <Lightbulb className="w-2.5 h-2.5" />, `Light (${lightCount})`)}
+      </div>
+
+      <span className="text-[9px] font-mono text-muted-foreground mr-1">{selected.length}/{allSelected.length}</span>
       <Separator orientation="vertical" className="h-5" />
       
       {/* Alignment */}
