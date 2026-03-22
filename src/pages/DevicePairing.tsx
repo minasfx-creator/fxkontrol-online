@@ -49,7 +49,8 @@ export default function DevicePairing() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    return bleService.subscribe(setModuleState);
+    const unsub = bleService.subscribe(setModuleState);
+    return () => { unsub(); };
   }, []);
 
   const startNFCPairing = useCallback(async () => {
