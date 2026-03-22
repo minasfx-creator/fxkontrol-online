@@ -974,15 +974,9 @@ export default function ScriptWindow() {
                     )}
                   </td>
 
-                  {/* Event Time */}
+                  {/* Event Time — click-to-edit with Tab/Enter */}
                   <td className="px-1 py-0.5">
-                    <input
-                      type="number" step="0.001" min="0"
-                      className="w-16 bg-transparent border-b border-transparent hover:border-border/40 focus:border-primary text-foreground outline-none transition-colors"
-                      value={row.eventTime}
-                      onChange={(e) => updateTimelineItem(row.id, { startTime: parseFloat(e.target.value) || 0 })}
-                      onClick={(e) => e.stopPropagation()}
-                    />
+                    {renderEditableCell(row.id, 'eventTime', row.eventTime, 'w-16', 'text-foreground')}
                   </td>
 
                   {/* Effect Time */}
