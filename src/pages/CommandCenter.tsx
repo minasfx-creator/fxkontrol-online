@@ -12,7 +12,7 @@ import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { cn } from '@/lib/utils';
 import {
-  Zap, Lightbulb, Hand, Flame, Timer, Check, Cpu, Cable,
+  Zap, Lightbulb, Hand, Flame, Check, Cpu, Cable,
   Gauge, Wifi, Globe, Plug, Radio, Map, Smartphone, Settings,
   Shield, ChevronRight, AlertOctagon, Layers
 } from 'lucide-react';
