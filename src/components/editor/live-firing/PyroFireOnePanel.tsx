@@ -771,6 +771,64 @@ export default function PyroFireOnePanel({
       </div>
     );
   };
+  // ── Render: Module selector ──
+  const renderModuleSelector = () => (
+    <div className={cn("flex items-center gap-1.5 border-b border-border/10 overflow-x-auto scrollbar-thin",
+      sz === 'xl' ? "px-5 py-2" : sz === 'fs' ? "px-3 py-1.5" : "px-2 py-1"
+    )} style={{ background: 'hsl(0 8% 5%)' }}>
+      {modules.map(m => {
+        const ModeIcon = connectionModeIcon(m.connectionMode);
+        const isLinked = artnetLinkedModules.has(m.address);
+        return (
+          <div key={m.address} className="flex items-center gap-0.5 shrink-0">
+            <button onClick={() => setSelectedModule(m.address)}
+              className={cn(
+                "rounded border font-mono font-bold shrink-0 transition-all flex items-center gap-1 min-h-[48px]",
+                sz === 'xl' ? "px-3.5 py-2 text-xs" : sz === 'fs' ? "px-2.5 py-1.5 text-[9px]" : "px-2 py-1 text-[8px]",
+                selectedModule === m.address
+                  ? m.armed ? "bg-red-600/20 border-red-500/40 text-red-400" : "bg-primary/15 border-primary/40 text-primary"
+                  : m.armed ? "bg-red-600/10 border-red-800/20 text-red-400/50"
+                  : m.connected ? "bg-[hsl(0_8%_10%)] border-border/15 text-foreground/50" : "bg-[hsl(0_8%_6%)] border-border/5 text-muted-foreground/15"
+              )}>
+              <ModeIcon className={cn(
+                sz === 'xl' ? "w-3 h-3" : "w-2 h-2",
+                m.connectionMode === 'wireless' ? rssiColor(m.rssiDbm) :
+                m.connectionMode === 'fallback' ? "text-amber-400 animate-pulse" : "text-green-400/40"
+              )} />
+              FM-{String(m.address).padStart(2, '0')}
+              {m.armed && <span className="ml-0.5 text-red-400">●</span>}
+              {isLinked && (
+                <>
+                  <Globe className={cn(sz === 'xl' ? "w-2.5 h-2.5" : "w-2 h-2", "text-violet-400")} />
+                  {artnetLatencies.has(m.address) && (
+                    <span className="text-[8px] font-mono text-violet-300">{artnetLatencies.get(m.address)}ms</span>
+                  )}
+                </>
+              )}
+              {m.connectionMode === 'wireless' && m.rssiDbm !== undefined && !isLinked && (
+                <span className={cn("text-[8px]", rssiColor(m.rssiDbm))}>{m.rssiDbm}dB</span>
+              )}
+            </button>
+            {m.connected && (
+              <button
+                onClick={() => handleModuleArtnetLink(m.address)}
+                className={cn(
+                  "rounded border shrink-0 transition-all flex items-center gap-0.5",
+                  sz === 'xl' ? "p-2 min-w-[44px] min-h-[44px] justify-center" : "p-1 min-w-[32px] min-h-[32px] justify-center",
+                  isLinked
+                    ? "bg-violet-600/15 border-violet-500/30 text-violet-400"
+                    : "border-border/10 text-muted-foreground/30 hover:text-violet-400/60 hover:border-violet-500/20"
+                )}
+                title={`ArtNet Link FM-${String(m.address).padStart(2, '0')}`}
+              >
+                <Globe className={cn(sz === 'xl' ? "w-4 h-4" : "w-3 h-3")} />
+                {isLinked && artnetLatencies.has(m.address) && (
+                  <span className={cn("font-mono text-violet-300", "text-[8px]")}>{artnetLatencies.get(m.address)}ms</span>
+                )}
+              </button>
+            )}
+          </div>
+        );
       })}
       <button onClick={importPyroCues}
         className={cn("rounded border shrink-0 transition-all font-bold",
