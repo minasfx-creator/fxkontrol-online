@@ -21,6 +21,8 @@ import {
   type ModuleTransport,
   type ModuleConnectionState,
 } from '@/services/artnetModuleService';
+import { useArtNetModulePersistence } from '@/hooks/useArtNetModulePersistence';
+import { useProjectStore } from '@/store/useProjectStore';
 
 function ConnectionBadge({ state }: { state: ModuleConnectionState }) {
   const config: Record<ModuleConnectionState, { color: string; label: string; icon: React.ReactNode }> = {
