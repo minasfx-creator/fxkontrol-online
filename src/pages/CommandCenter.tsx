@@ -171,48 +171,46 @@ export default function CommandCenter() {
 
     return (
       <div className="h-[100dvh] w-screen flex flex-col bg-background">
-        {/* ── Dynamic Island ── */}
+        {/* ── Dynamic Island — Premium ── */}
         <div className="shrink-0 px-3 pt-2 pb-1" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
           <div
             className={cn(
-              "flex items-center justify-between px-3 py-2 rounded-2xl border transition-all",
-              "backdrop-blur-xl",
+              "flex items-center justify-between px-3.5 py-2.5 rounded-2xl border transition-all",
               isArmed
-                ? "border-destructive/40 shadow-[0_0_12px_hsl(var(--destructive)/0.2)]"
-                : "border-border/20"
+                ? "border-destructive/30 shadow-[0_0_16px_hsl(var(--destructive)/0.15)]"
+                : "border-[rgba(255,255,255,0.06)]"
             )}
-            style={{ background: accent.glow }}
+            style={{ background: accent.glow, backdropFilter: 'blur(40px) saturate(1.8)' }}
           >
             <div className="flex items-center gap-2">
               <div
-                className={cn("h-2.5 w-2.5 rounded-full shrink-0", connectedCount > 0 ? "animate-pulse" : "")}
-                style={{ backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.3)' }}
+                className={cn("h-2 w-2 rounded-full shrink-0", connectedCount > 0 ? "animate-pulse" : "")}
+                style={{ backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.25)', boxShadow: connectedCount > 0 ? `0 0 8px ${accent.color}66` : 'none' }}
               />
-              <span className="text-[9px] font-bold text-foreground uppercase tracking-wider">
+              <span className="text-[9px] font-bold text-foreground uppercase tracking-[0.15em] font-tech">
                 {connectedCount > 0 ? `${connectedCount} ONLINE` : 'OFFLINE'}
               </span>
             </div>
 
-            {/* Console badge */}
-            <Badge variant="outline" className={cn("text-[9px] h-5 px-2 font-black border", accent.badge)}>
+            <Badge variant="outline" className={cn("text-[8px] h-5 px-2.5 font-black border font-mono tracking-wider", accent.badge)}>
               {accent.label}
             </Badge>
 
             <div className="flex items-center gap-1.5">
               {fireone.isConnected && (
-                <Badge variant="outline" className="text-[8px] h-4 px-1 border-red-500/30 text-red-400">FO</Badge>
+                <Badge variant="outline" className="text-[7px] h-4 px-1.5 border-red-500/20 text-red-400 font-mono">FO</Badge>
               )}
               {pbus.isConnected && (
-                <Badge variant="outline" className="text-[8px] h-4 px-1 border-amber-500/30 text-amber-400">PB</Badge>
+                <Badge variant="outline" className="text-[7px] h-4 px-1.5 border-amber-500/20 text-amber-400 font-mono">PB</Badge>
               )}
               {isArmed && (
-                <Badge variant="destructive" className="text-[8px] h-4 px-1 animate-pulse">ARMED</Badge>
+                <Badge variant="destructive" className="text-[7px] h-4 px-1.5 animate-pulse font-mono">ARMED</Badge>
               )}
             </div>
           </div>
         </div>
 
-        {/* ── Mode Pills ── */}
+        {/* ── Mode Pills — Refined ── */}
         <div className="shrink-0 px-3 py-1.5">
           <ScrollArea className="w-full">
             <div className="flex gap-1.5 pb-1">
@@ -226,14 +224,15 @@ export default function CommandCenter() {
                     onClick={() => handleModeChange(mode.key)}
                     className={cn(
                       "flex items-center gap-1.5 px-3 py-2 rounded-xl whitespace-nowrap transition-all",
-                      "text-[10px] font-bold border min-h-[40px]",
+                      "text-[10px] font-bold border min-h-[40px] font-tech",
                       isActive
-                        ? "border-opacity-40 text-foreground"
-                        : "border-border/10 text-muted-foreground/50 active:scale-95"
+                        ? "border-opacity-30 text-foreground"
+                        : "border-[rgba(255,255,255,0.04)] text-muted-foreground/40 active:scale-95"
                     )}
                     style={{
-                      background: isActive ? mAccent?.glow : 'hsl(220 10% 8% / 0.6)',
-                      borderColor: isActive ? mAccent?.color : undefined,
+                      background: isActive ? mAccent?.glow : 'rgba(255,255,255,0.02)',
+                      borderColor: isActive ? mAccent?.color + '33' : undefined,
+                      boxShadow: isActive ? `0 2px 12px ${mAccent?.glow}` : 'none',
                     }}
                   >
                     <Icon className="w-4 h-4" />
@@ -251,23 +250,24 @@ export default function CommandCenter() {
             <LiveFiringPanel initialMode={activeMode} standalone />
           ) : (
             <ScrollArea className="h-full">
-              <div className="h-full" style={{ background: 'hsl(220 15% 6%)' }}>
+              <div className="h-full" style={{ background: 'hsl(228 16% 5%)' }}>
                 {renderDirectPanel(activeMode)}
               </div>
             </ScrollArea>
           )}
         </div>
 
-        {/* ── Bottom Nav ── */}
+        {/* ── Bottom Nav — Premium ── */}
         <div
-          className="shrink-0 border-t border-border/15"
+          className="shrink-0"
           style={{
             paddingBottom: 'env(safe-area-inset-bottom)',
-            background: 'hsl(225 12% 5% / 0.9)',
-            backdropFilter: 'blur(40px)',
+            background: 'rgba(14, 14, 20, 0.92)',
+            backdropFilter: 'blur(48px) saturate(2)',
+            borderTop: '0.5px solid rgba(255,255,255,0.06)',
           }}
         >
-          <nav className="flex items-center justify-around py-1.5">
+          <nav className="flex items-center justify-around py-2">
             {MOBILE_CATEGORIES.map((cat, idx) => {
               const isActive = mobileCategory === idx;
               const Icon = cat.icon;
@@ -277,8 +277,8 @@ export default function CommandCenter() {
                   onClick={() => setMobileCategory(idx)}
                   className="flex flex-col items-center gap-0.5 py-1 px-4 rounded-xl transition-all active:scale-90"
                 >
-                  <Icon className={cn("w-5 h-5 transition-colors", isActive ? "text-primary" : "text-muted-foreground/40")} />
-                  <span className={cn("text-[9px] font-semibold transition-colors", isActive ? "text-primary" : "text-muted-foreground/30")}>
+                  <Icon className={cn("w-5 h-5 transition-colors", isActive ? "text-primary" : "text-muted-foreground/30")} style={isActive ? { filter: 'drop-shadow(0 0 6px hsl(var(--primary) / 0.4))' } : undefined} />
+                  <span className={cn("text-[8px] font-bold font-tech tracking-wider transition-colors", isActive ? "text-primary" : "text-muted-foreground/25")}>
                     {cat.label}
                   </span>
                 </button>
