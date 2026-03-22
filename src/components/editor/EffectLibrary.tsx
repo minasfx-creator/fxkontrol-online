@@ -161,6 +161,17 @@ function EffectTableRow({ effect, index, usageCount }: { effect: Effect; index: 
           {effect.type === 'firework' ? 'PY' : effect.type.slice(0, 2).toUpperCase()}
         </span>
       </td>
+      {/* Position usage count */}
+      <td className="px-1 py-[5px] text-center w-8">
+        {usageCount > 0 ? (
+          <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-primary/12 text-primary tabular-nums">
+            ×{usageCount}
+            {flashFeedback && <span className="text-success ml-0.5 animate-pulse">+1</span>}
+          </span>
+        ) : (
+          <span className="text-muted-foreground/20">—</span>
+        )}
+      </td>
     </tr>
   );
 }
