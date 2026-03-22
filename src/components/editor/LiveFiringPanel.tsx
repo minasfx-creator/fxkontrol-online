@@ -518,7 +518,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
 
   // ─── Art-Net Bridge ───
   const sendArtNetPacket = useCallback(async (currentChannels: SFXChannel[]) => {
-    const universeMap = new Map<number, number[]>();
+    const universeMap = new globalThis.Map<number, number[]>();
     for (const ch of currentChannels) {
       if (!universeMap.has(ch.dmxUniverse)) universeMap.set(ch.dmxUniverse, new Array(512).fill(0));
       const buf = universeMap.get(ch.dmxUniverse)!;
