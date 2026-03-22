@@ -54,13 +54,13 @@ export async function encrypt(key: CryptoKey, plaintext: Uint8Array): Promise<Ui
  * Decrypt a packed AES-128-GCM frame.
  * Input: [12-byte IV][ciphertext + GCM tag]
  */
-export async function decrypt(key: CryptoKey, packed: Uint8Array): Promise<Uint8Array> {
+export async function decrypt(key: CryptoKey, packed: Uint8Array): Promise<Uint8Array<ArrayBuffer>> {
   const iv = packed.slice(0, IV_LENGTH);
   const ciphertext = packed.slice(IV_LENGTH);
   const plainBuffer = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv },
+    { name: 'AES-GCM', iv: iv as unknown as ArrayBuffer },
     key,
-    ciphertext
+    ciphertext as unknown as ArrayBuffer
   );
   return new Uint8Array(plainBuffer);
 }
