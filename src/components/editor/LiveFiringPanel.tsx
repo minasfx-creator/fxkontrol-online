@@ -986,10 +986,13 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
             "flex items-center justify-center gap-2",
             fs && mob ? "h-14 text-base tracking-[0.25em]" : fs ? "h-16 text-lg tracking-[0.3em]" : "h-10 text-[11px] tracking-[0.25em]"
           )} style={{
+            /* Danger stripe pattern when armed */
             background: (pyroArm || dmxArm)
-              ? 'repeating-linear-gradient(135deg, hsl(0 70% 30%) 0px, hsl(0 70% 30%) 6px, hsl(0 50% 18%) 6px, hsl(0 50% 18%) 12px)'
+              ? 'repeating-linear-gradient(135deg, hsl(40 90% 35%) 0px, hsl(40 90% 35%) 5px, hsl(0 0% 8%) 5px, hsl(0 0% 8%) 10px)'
               : 'linear-gradient(180deg, hsl(0 70% 35%) 0%, hsl(0 60% 22%) 100%)',
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)',
+            boxShadow: (pyroArm || dmxArm)
+              ? 'inset 0 1px 0 rgba(255,255,255,0.1), 0 0 16px rgba(255,60,30,0.3)'
+              : 'inset 0 1px 0 rgba(255,255,255,0.1)',
           }}>
           <AlertTriangle className={cn(fs && mob ? "w-5 h-5" : fs ? "w-6 h-6" : "w-4 h-4")} />
           PANIC
