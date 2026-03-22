@@ -113,8 +113,8 @@ export enum RadioCmd {
   SET_FREQ = 0x60,
   SET_POWER = 0x61,
   SET_CHANNEL = 0x62,
-  TDMA_SYNC = 0x70,
-  TDMA_SLOT_ASSIGN = 0x71,
+  TDMA_SYNC = 0x74,        // was 0x70 — avoids conflict with FireOneCmd.PRIORITY_DISABLE
+  TDMA_SLOT_ASSIGN = 0x75, // was 0x71
 }
 
 // ─── CRC16-CCITT ───
