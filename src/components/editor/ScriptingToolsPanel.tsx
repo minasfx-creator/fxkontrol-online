@@ -145,6 +145,7 @@ export default function ScriptingToolsPanel({ onClose }: { onClose: () => void }
     { id: 'sequence', label: 'Sequenciar', icon: ArrowLeftRight, desc: 'Distribuir no tempo por posição' },
     { id: 'fan', label: 'Leque', icon: Fan, desc: 'Distribuir ângulos Pan/Tilt' },
     { id: 'duplicate-flights', label: 'Flights', icon: Copy, desc: 'Duplicar em leque com N cópias (Finale)' },
+    { id: 'wind-comp', label: 'Windage', icon: Wind, desc: 'Compensar ângulos para vento (Finale 3D)' },
     { id: 'randomize', label: 'Randomizar', icon: Shuffle, desc: 'Variar tempo/posição/ângulos' },
     { id: 'spread', label: 'Espaçar', icon: AlignHorizontalSpaceAround, desc: 'Espaçar por duração' },
     { id: 'reverse', label: 'Reverter', icon: ArrowDownUp, desc: 'Inverter ordem temporal' },
