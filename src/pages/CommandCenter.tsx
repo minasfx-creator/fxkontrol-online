@@ -36,14 +36,14 @@ import DroneCommandPanel from '@/components/editor/DroneCommandPanel';
 
 // ── Types ──
 type CommandMode =
-  | 'super_dmx' | 'simple_dmx' | 'manual_fire' | 'pyro_fire' | 'auto_fire' | 'check_slave'
-  | 'controllers' | 'pbus' | 'ma3' | 'module' | 'wifi_direct'
+  | 'super_dmx' | 'simple_dmx' | 'manual_fire' | 'pyro_fire' | 'check_slave'
+  | 'controllers' | 'pbus' | 'ma3' | 'wifi_direct'
   | 'artnet_modules' | 'connections' | 'radio' | 'field_map'
   | 'mobile_link' | 'settings' | 'drone_ops';
 
 // Fire modes get full LiveFiringPanel chrome (ARM, CUE keys, PANIC)
 const FIRE_MODES: CommandMode[] = [
-  'super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'auto_fire', 'check_slave',
+  'super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'check_slave',
 ];
 
 const isFireMode = (m: CommandMode) => FIRE_MODES.includes(m);
