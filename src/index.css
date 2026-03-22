@@ -652,3 +652,78 @@ body.night-mode {
   z-index: 50;
   background: radial-gradient(ellipse at center, transparent 50%, hsl(20 30% 3% / 0.4) 100%);
 }
+
+/* ===== BR2049 Console Boot Animations ===== */
+@keyframes console-boot {
+  0% { opacity: 0; clip-path: inset(50% 0 50% 0); }
+  30% { opacity: 0.4; clip-path: inset(20% 0 20% 0); }
+  60% { opacity: 0.7; clip-path: inset(5% 0 5% 0); filter: brightness(1.3); }
+  100% { opacity: 1; clip-path: inset(0 0 0 0); filter: brightness(1); }
+}
+@keyframes holo-materialize {
+  0% { opacity: 0; transform: scale(0.96); filter: blur(8px); }
+  40% { opacity: 0.7; transform: scale(0.99); filter: blur(2px); box-shadow: 0 0 40px hsl(32 100% 50% / 0.15); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0); box-shadow: none; }
+}
+@keyframes terminal-type {
+  0% { width: 0; border-right-color: hsl(32 100% 50%); }
+  100% { width: 100%; border-right-color: hsl(32 100% 50%); }
+}
+@keyframes terminal-cursor-blink {
+  0%, 100% { border-right-color: hsl(32 100% 50%); }
+  50% { border-right-color: transparent; }
+}
+@keyframes route-flash {
+  0% { opacity: 0.8; top: 0; }
+  100% { opacity: 0; top: 100%; }
+}
+
+.animate-console-boot {
+  animation: console-boot 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.animate-holo-materialize {
+  animation: holo-materialize 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.animate-terminal-type {
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 2px solid hsl(32 100% 50%);
+  animation: terminal-type 0.8s steps(20) both, terminal-cursor-blink 0.7s step-end infinite;
+  display: inline-block;
+}
+.animate-route-flash {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, hsl(32 100% 50% / 0.6), transparent);
+  animation: route-flash 0.3s ease-out forwards;
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* macOS dock magnification */
+.dock-item {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease;
+}
+.dock-item:hover {
+  transform: scale(1.08);
+}
+.sidebar-collapsed .dock-item:hover {
+  transform: scale(1.15);
+}
+
+/* Smart swap transitions */
+.swap-out {
+  opacity: 0;
+  transform: scale(0.97) translateX(-8px);
+  transition: all 0.2s ease-out;
+}
+.swap-in {
+  opacity: 0;
+  transform: scale(0.97) translateX(8px);
+  animation: swap-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes swap-enter {
+  to { opacity: 1; transform: scale(1) translateX(0); }
+}

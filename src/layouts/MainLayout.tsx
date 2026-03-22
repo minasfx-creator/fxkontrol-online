@@ -1,5 +1,5 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { SidebarProvider, SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
+import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { FXKAssistant } from '@/components/FXKAssistant';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -8,6 +8,8 @@ import minasfxLogo from '@/assets/minasfx-logo-white.png';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useDisplayStore } from '@/store/useDisplayStore';
 import { haptics } from '@/lib/haptics';
+import { ambientSound } from '@/lib/ambientSound';
+import { useEffect, useRef, useState } from 'react';
 
 function SidebarToggleButton() {
   const { state, toggleSidebar } = useSidebar();
@@ -28,12 +30,38 @@ export default function MainLayout() {
   const navigate = useNavigate();
   const isEditor = location.pathname === '/editor';
   const isMobile = useIsMobile();
+  const prevPathRef = useRef(location.pathname);
+  const [showFlash, setShowFlash] = useState(false);
+  const [humStarted, setHumStarted] = useState(false);
 
   const activeEffects = useLiveSfxStore(s => s.activeEffects);
   const clearAll = useLiveSfxStore(s => s.clearAll);
   const isArmed = activeEffects.length > 0;
 
   const backlight = useDisplayStore(s => s.backlight);
+
+  // Start ambient hum on first user gesture
+  useEffect(() => {
+    if (humStarted) return;
+    const handler = () => {
+      ambientSound.startHum();
+      setHumStarted(true);
+      document.removeEventListener('click', handler);
+    };
+    document.addEventListener('click', handler, { once: true });
+    return () => document.removeEventListener('click', handler);
+  }, [humStarted]);
+
+  // Route change: play nav sound + flash
+  useEffect(() => {
+    if (prevPathRef.current !== location.pathname) {
+      ambientSound.play('nav');
+      setShowFlash(true);
+      const t = setTimeout(() => setShowFlash(false), 300);
+      prevPathRef.current = location.pathname;
+      return () => clearTimeout(t);
+    }
+  }, [location.pathname]);
 
   const handlePanic = () => {
     clearAll();
@@ -83,8 +111,13 @@ export default function MainLayout() {
             </div>
           </header>
 
-          <main className={isEditor ? 'flex-1 min-h-0' : 'flex-1 overflow-auto p-4 md:p-6'}>
-            <Outlet />
+          <main className={`${isEditor ? 'flex-1 min-h-0' : 'flex-1 overflow-auto p-4 md:p-6'} relative`}>
+            {/* Route change flash */}
+            {showFlash && <div className="animate-route-flash" />}
+            {/* Content with holo-materialize keyed by route */}
+            <div key={location.pathname} className="animate-holo-materialize h-full">
+              <Outlet />
+            </div>
           </main>
         </div>
 
