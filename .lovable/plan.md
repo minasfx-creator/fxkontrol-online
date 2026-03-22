@@ -1,66 +1,45 @@
 
 
-# Persistência Art-Net Modules no Banco de Dados
+# Sistema de Clonagem de Módulos com Redundância
 
-## Objetivo
-Salvar/carregar configuração do controlador Art-Net e seus módulos FXK-M1 no banco de dados, vinculados ao projeto ativo, para que sobrevivam entre sessões.
+## Contexto
+A persistência já está implementada (tabela `artnet_modules` + hook `useArtNetModulePersistence`). O foco é o **sistema de clonagem para redundância de disparos** — quando um módulo primário falha, o clone assume automaticamente.
 
-## 1. Criar tabela `artnet_modules`
+## Conceito
+Cada módulo pode ter um ou mais "clones" (backups). Ao disparar um canal, o sistema envia o comando ao primário e monitora resposta. Se o primário falhar (timeout/error), o clone dispara automaticamente. Opcionalmente, pode operar em modo "simultâneo" onde primário + clone disparam juntos para garantia total.
 
-Migration SQL:
+## Implementação
+
+### 1. Schema — adicionar campo `clone_of` na tabela `artnet_modules`
 ```sql
-CREATE TABLE public.artnet_modules (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id uuid NOT NULL,
-  name text NOT NULL DEFAULT 'MODULE',
-  module_address integer NOT NULL DEFAULT 0,
-  dmx_universe integer NOT NULL DEFAULT 0,
-  dmx_subnet integer NOT NULL DEFAULT 0,
-  dmx_net integer NOT NULL DEFAULT 0,
-  dmx_start_address integer NOT NULL DEFAULT 1,
-  dmx_channel_count integer NOT NULL DEFAULT 32,
-  ip text NOT NULL DEFAULT '192.168.1.100',
-  port integer NOT NULL DEFAULT 6454,
-  transport text NOT NULL DEFAULT 'lan',
-  relay_token text,
-  channel_count integer NOT NULL DEFAULT 32,
-  label text,
-  relay_server_url text,
-  gps_lat numeric,
-  gps_lng numeric,
-  sort_order integer NOT NULL DEFAULT 0,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-
-ALTER TABLE public.artnet_modules ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users manage own artnet modules"
-  ON public.artnet_modules FOR ALL TO authenticated
-  USING (is_project_owner(project_id))
-  WITH CHECK (is_project_owner(project_id));
+ALTER TABLE public.artnet_modules 
+  ADD COLUMN clone_of uuid REFERENCES public.artnet_modules(id) ON DELETE SET NULL,
+  ADD COLUMN redundancy_mode text NOT NULL DEFAULT 'failover'; 
+  -- 'failover' = clone só dispara se primário falhar
+  -- 'simultaneous' = ambos disparam juntos
+  -- 'manual' = operador escolhe qual usar
 ```
 
-## 2. Criar hook `useArtNetModulePersistence`
+### 2. Serviço — `artnetModuleService.ts`
+- Adicionar campo `cloneOf?: string` e `redundancyMode` ao `ArtNetModuleConfig`
+- Novo método `cloneModule(moduleId)`: duplica config com novo ID, IP editável, seta `cloneOf`
+- Modificar `fireChannel()`: se módulo tem clones em modo `simultaneous`, dispara em todos; se `failover`, tenta primário e faz fallback ao clone se falhar
+- Novo método `getClones(moduleId)`: retorna módulos clone de um primário
+- Novo método `getPrimary(moduleId)`: retorna o primário de um clone
 
-**Arquivo**: `src/hooks/useArtNetModulePersistence.ts`
+### 3. Persistence hook — atualizar mapeamento
+- Adicionar `clone_of` e `redundancy_mode` ao `configToDb`/`dbToConfig`
 
-- Recebe `projectId` do store
-- On mount: carrega módulos da tabela `artnet_modules` e popula o `artnetModuleService`
-- Ao adicionar/remover/editar módulo: upsert/delete na tabela
-- Debounce de 500ms para updates frequentes (latência, GPS, etc. ficam apenas em memória)
-- Apenas dados de configuração são persistidos (IP, transport, DMX addressing, label, GPS)
+### 4. UI — `ArtNetModulePanel.tsx`
+- Botão "CLONE" no `ModuleCard` (ícone Copy) que duplica o módulo com formulário para editar IP do clone
+- Badge visual "PRIMARY" / "BACKUP" nos cards
+- Indicador de redundância: linha conectando primário ↔ clone(s)
+- Select de modo de redundância (Failover / Simultaneous / Manual)
+- Clones indentados visualmente abaixo do primário na lista
 
-## 3. Integrar no ArtNetModulePanel
-
-- Importar `useArtNetModulePersistence(projectId)` no painel
-- Obter `projectId` do `useProjectStore`
-- Chamar `saveModule()` após `handleAddModule`
-- Chamar `deleteModule()` após remove
-- Carregar módulos salvos no `useEffect` inicial
-
-## Arquivos
-1. **Migration**: Nova tabela `artnet_modules` com RLS
-2. **Novo**: `src/hooks/useArtNetModulePersistence.ts`
-3. **Editar**: `src/components/editor/live-firing/ArtNetModulePanel.tsx` — integrar persistence hook
+### Arquivos
+1. **Migration**: `ALTER TABLE artnet_modules ADD COLUMN clone_of, redundancy_mode`
+2. **Editar**: `src/services/artnetModuleService.ts` — `cloneModule()`, `fireChannel()` com fallback
+3. **Editar**: `src/hooks/useArtNetModulePersistence.ts` — mapear novos campos
+4. **Editar**: `src/components/editor/live-firing/ArtNetModulePanel.tsx` — UI de clonagem + badges
 
