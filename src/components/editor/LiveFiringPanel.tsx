@@ -367,7 +367,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   const [dmxArm, setDmxArm] = useState(false);
   const [deadmanHeld, setDeadmanHeld] = useState(false);
   const [selectedDevices, setSelectedDevices] = useState<Set<string>>(new Set());
-  const [mode, setMode] = useState<FXCMode>('super_dmx');
+  const [mode, setMode] = useState<FXCMode>((initialMode as FXCMode) || 'super_dmx');
   const [artNetConnected, setArtNetConnected] = useState(false);
   const [firingKeys, setFiringKeys] = useState<Set<number>>(new Set());
   const [lockedKeys, setLockedKeys] = useState<Set<number>>(new Set());

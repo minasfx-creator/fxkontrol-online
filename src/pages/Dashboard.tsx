@@ -80,12 +80,12 @@ interface HubTool {
 }
 
 const SHOW_COMMANDER_TOOLS: HubTool[] = [
-  { label: 'Show Commander', icon: Target, panel: 'showcommander' },
-  { label: 'Live SFX', icon: Flame, panel: 'livefiring' },
-  { label: 'Show Control', icon: Play, panel: 'showcontrol' },
-  { label: 'Fleet', icon: Cpu, panel: 'fleet' },
-  { label: 'SMPTE', icon: Timer, panel: 'smpte' },
-  { label: 'Safety', icon: Shield, panel: 'safetycheck' },
+  { label: 'Super DMX', icon: Zap, panel: 'super_dmx' },
+  { label: 'Pyro XL4', icon: Flame, panel: 'pyro_fire' },
+  { label: 'Auto Fire', icon: Timer, panel: 'auto_fire' },
+  { label: 'Manual Fire', icon: Hand, panel: 'manual_fire' },
+  { label: 'Mobile Link', icon: Smartphone, panel: 'mobile_link' },
+  { label: 'Safety', icon: Shield, panel: 'check_slave' },
 ];
 
 const MASTER_EDITOR_TOOLS: HubTool[] = [
