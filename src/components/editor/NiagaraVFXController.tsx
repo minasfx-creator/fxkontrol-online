@@ -209,158 +209,46 @@ interface ActiveVFXSystem {
   pattern?: string;
 }
 
-// ── GPU Buffer Manager ──────────────────────────────────────────────
+// ── GPU Instanced Renderer (replaces manual Points + buffer writes) ──
 
-const MAX_NIAGARA_PARTICLES = 4096;
-
-function createNiagaraBuffers() {
-  const positions = new Float32Array(MAX_NIAGARA_PARTICLES * 3);
-  const colors = new Float32Array(MAX_NIAGARA_PARTICLES * 3);
-  const sizes = new Float32Array(MAX_NIAGARA_PARTICLES);
-  const opacities = new Float32Array(MAX_NIAGARA_PARTICLES);
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
-  geometry.setAttribute('aOpacity', new THREE.BufferAttribute(opacities, 1));
-  geometry.setDrawRange(0, 0);
-
-  return { geometry, positions, colors, sizes, opacities };
-}
-
-function writeParticlesToBuffers(
+function collectParticlesFromSystems(
   systems: ActiveVFXSystem[],
-  positions: Float32Array,
-  colors: Float32Array,
-  sizes: Float32Array,
-  opacities: Float32Array,
+  filterAdditive: boolean,
   hdrScale: number,
-): number {
-  let idx = 0;
-  const maxIdx = MAX_NIAGARA_PARTICLES;
+): Array<{ position: THREE.Vector3; velocity: THREE.Vector3; color: THREE.Color; size: number; opacity: number }> {
+  const result: Array<{ position: THREE.Vector3; velocity: THREE.Vector3; color: THREE.Color; size: number; opacity: number }> = [];
 
   for (const { system, position: sysPos } of systems) {
-    for (const emitter of system.emitters) {
+    const allEmitters = [...system.emitters, ...system._activeSubEmitters];
+    for (const emitter of allEmitters) {
       if (!emitter.enabled) continue;
-      if (emitter.renderModule.blendMode === 'normal') continue;
+      const isNormal = emitter.renderModule.blendMode === 'normal';
+      if (filterAdditive && isNormal) continue;
+      if (!filterAdditive && !isNormal) continue;
 
       for (const p of emitter.particles) {
-        if (idx >= maxIdx) return idx;
-        if (!p.alive) continue;
-
+        if (!p.alive || result.length >= 4096) continue;
         const t = p.age / p.lifetime;
+        const thermalT = filterAdditive ? (1 - t) : 1;
+        const opacity = filterAdditive ? Math.max(0, 1 - t) : Math.max(0, (1 - t) * 0.35);
 
-        // Thermal color evolution using chemistry
-        const thermalT = 1 - t;
+        const [r, g, b] = filterAdditive
+          ? clampNiagaraHDR(p.color.r * hdrScale * thermalT, p.color.g * hdrScale * thermalT, p.color.b * hdrScale * thermalT)
+          : [p.color.r, p.color.g, p.color.b];
 
-        positions[idx * 3] = p.position.x + sysPos.x;
-        positions[idx * 3 + 1] = p.position.y + sysPos.y;
-        positions[idx * 3 + 2] = p.position.z + sysPos.z;
-
-        const [r, g, b] = clampNiagaraHDR(
-          p.color.r * hdrScale * thermalT,
-          p.color.g * hdrScale * thermalT,
-          p.color.b * hdrScale * thermalT
-        );
-        colors[idx * 3] = r;
-        colors[idx * 3 + 1] = g;
-        colors[idx * 3 + 2] = b;
-
-        sizes[idx] = p.size;
-        opacities[idx] = Math.max(0, 1 - t);
-
-        idx++;
-      }
-    }
-
-    // Sub-emitters
-    for (const subE of system._activeSubEmitters) {
-      if (!subE.enabled || subE.renderModule.blendMode === 'normal') continue;
-      for (const p of subE.particles) {
-        if (idx >= maxIdx || !p.alive) continue;
-        const t = p.age / p.lifetime;
-        positions[idx * 3] = p.position.x + sysPos.x;
-        positions[idx * 3 + 1] = p.position.y + sysPos.y;
-        positions[idx * 3 + 2] = p.position.z + sysPos.z;
-        const [r, g, b] = clampNiagaraHDR(p.color.r * hdrScale, p.color.g * hdrScale, p.color.b * hdrScale);
-        colors[idx * 3] = r;
-        colors[idx * 3 + 1] = g;
-        colors[idx * 3 + 2] = b;
-        sizes[idx] = p.size;
-        opacities[idx] = Math.max(0, 1 - t);
-        idx++;
+        result.push({
+          position: new THREE.Vector3(p.position.x + sysPos.x, p.position.y + sysPos.y, p.position.z + sysPos.z),
+          velocity: p.velocity.clone(),
+          color: new THREE.Color(r, g, b),
+          size: p.size,
+          opacity,
+        });
       }
     }
   }
 
-  return idx;
+  return result;
 }
-
-// Smoke particles — rendered with soft-particle material (normal blend)
-function writeSmokeToBuffers(
-  systems: ActiveVFXSystem[],
-  positions: Float32Array,
-  colors: Float32Array,
-  sizes: Float32Array,
-  opacities: Float32Array,
-): number {
-  let idx = 0;
-  const maxIdx = MAX_NIAGARA_PARTICLES;
-
-  for (const { system, position: sysPos } of systems) {
-    for (const emitter of [...system.emitters, ...system._activeSubEmitters]) {
-      if (!emitter.enabled || emitter.renderModule.blendMode !== 'normal') continue;
-      for (const p of emitter.particles) {
-        if (idx >= maxIdx || !p.alive) continue;
-        const t = p.age / p.lifetime;
-        positions[idx * 3] = p.position.x + sysPos.x;
-        positions[idx * 3 + 1] = p.position.y + sysPos.y;
-        positions[idx * 3 + 2] = p.position.z + sysPos.z;
-        colors[idx * 3] = p.color.r;
-        colors[idx * 3 + 1] = p.color.g;
-        colors[idx * 3 + 2] = p.color.b;
-        sizes[idx] = p.size;
-        opacities[idx] = Math.max(0, (1 - t) * 0.35);
-        idx++;
-      }
-    }
-  }
-
-  return idx;
-}
-
-// ── Sprite Shaders (sparks — additive with velocity stretch feel) ───
-
-const NIAGARA_SPARK_VERTEX = `
-  attribute float aSize;
-  attribute float aOpacity;
-  varying vec3 vColor;
-  varying float vOpacity;
-  void main() {
-    vColor = color;
-    vOpacity = aOpacity;
-    vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-    gl_PointSize = aSize * (6000.0 / -mvPos.z);
-    gl_PointSize = clamp(gl_PointSize, 1.0, 100.0);
-    gl_Position = projectionMatrix * mvPos;
-  }
-`;
-
-const NIAGARA_SPARK_FRAGMENT = `
-  varying vec3 vColor;
-  varying float vOpacity;
-  void main() {
-    vec2 uv = gl_PointCoord - 0.5;
-    float dist = length(uv);
-    float core = exp(-dist * dist * 60.0);
-    float glow = exp(-dist * dist * 15.0);
-    float alpha = (core * 1.0 + glow * 0.4) * vOpacity;
-    vec3 col = mix(vColor, vec3(1.1, 1.0, 0.85), core * 0.3);
-    float edge = 1.0 - smoothstep(0.42, 0.5, dist);
-    gl_FragColor = vec4(col, alpha * edge);
-  }
-`;
 
 // ── Main Component ──────────────────────────────────────────────────
 
