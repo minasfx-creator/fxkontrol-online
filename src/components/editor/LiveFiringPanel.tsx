@@ -814,13 +814,25 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
     <div>
       <div className={cn("flex items-center justify-between border-b-2", fs && mob ? "px-3 py-2" : fs ? "px-6 py-3" : "px-2 py-1.5")}
         style={{
-          borderColor: isDmxMode ? 'hsl(200 60% 25%)' : 'hsl(0 40% 20%)',
-          background: isDmxMode ? 'hsl(200 15% 7%)' : 'hsl(220 15% 8%)',
+          borderColor: isDmxMode ? 'hsl(200 40% 20%)' : 'hsl(0 40% 20%)',
+          background: isDmxMode
+            ? 'hsl(200 10% 7%)'
+            : 'hsl(0 5% 8%)',
+          /* FX Commander: thin dark bezel enclosure border */
+          ...(isDmxMode ? {
+            borderLeft: '2px solid hsl(200 5% 12%)',
+            borderRight: '2px solid hsl(200 5% 12%)',
+            borderTop: '2px solid hsl(200 5% 12%)',
+          } : {}),
         }}>
         <div className="flex items-center gap-2">
           <div className={cn("rounded flex items-center justify-center cursor-pointer font-black text-white",
             fs && mob ? "w-6 h-6 text-[9px]" : fs ? "w-8 h-8 text-[10px]" : "w-5 h-5 text-[7px]"
-          )} style={{ background: platformAccent.bgGrad }}
+          )} style={{
+            background: platformAccent.bgGrad,
+            /* Physical console button 3D effect */
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15), 0 2px 4px rgba(0,0,0,0.4)',
+          }}
             onClick={() => {
               const now = Date.now();
               if (now - showModeTapRef.current < 400) {
@@ -832,16 +844,16 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
                 showModeTapRef.current = now;
               }
             }}>
-            {isDmxMode ? 'DX' : 'F1'}
+            {isDmxMode ? 'FX' : 'F1'}
           </div>
           <div>
-            <div className={cn("font-black tracking-[0.12em]", platformAccent.textClass,
+            <div className={cn("font-black tracking-[0.12em]",
               fs && mob ? "text-xs" : fs ? "text-base" : "text-[10px]"
-            )}>{platformAccent.name}</div>
+            )} style={{ color: isDmxMode ? 'hsl(200 80% 60%)' : 'hsl(0 0% 85%)' }}>{platformAccent.name}</div>
             <div className={cn("font-mono tracking-wider",
               fs && mob ? "text-[9px]" : fs ? "text-[9px]" : "text-[10px]",
-              showMode ? "text-red-400/60" : "text-muted-foreground/40"
-            )}>
+              showMode ? "text-red-400/60" : ""
+            )} style={{ color: showMode ? undefined : isDmxMode ? 'hsl(200 30% 35%)' : 'hsl(0 0% 40%)' }}>
               {showMode ? '● SHOW MODE' : platformAccent.sub}
             </div>
           </div>
@@ -856,27 +868,25 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
               <span className={cn("font-mono text-muted-foreground/40", fs ? "text-[9px]" : "text-[10px]")}>{batteryVoltage.toFixed(2)}V</span>
             </div>
           )}
-          <div className="flex items-center gap-1" title={artNetConnected ? `DMX Signal: Active` : 'DMX Signal: No Signal'}>
-            <div className="flex items-end gap-[1px]">
-              <div className={cn("rounded-full transition-colors",
-                artNetConnected ? "bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.6)]" : "bg-muted-foreground/20",
-                fs ? "w-2.5 h-2.5" : "w-1.5 h-1.5"
-              )} />
-              {[0.3, 0.55, 0.8, 1].map((h, i) => (
-                <div key={i} className={cn("rounded-[1px]",
-                  artNetConnected ? i < 3 ? "bg-green-500" : relayConnected ? "bg-green-500" : "bg-green-500/30" : "bg-muted-foreground/15",
-                  fs ? "w-[3px]" : "w-[2px]"
-                )} style={{ height: fs ? `${Math.round(h * 12)}px` : `${Math.round(h * 8)}px` }} />
-              ))}
-            </div>
-            <span className={cn("font-mono", artNetConnected ? "text-green-500/70" : "text-muted-foreground/40",
-              fs && mob ? "text-[9px]" : fs ? "text-[9px]" : "text-[10px]"
-            )}>DMX</span>
+          {/* Physical console port LED indicators */}
+          <div className="flex items-center gap-1.5">
+            {[
+              { label: 'DMX', active: artNetConnected, color: 'hsl(120 70% 45%)' },
+              { label: 'UDP', active: relayConnected, color: 'hsl(180 70% 50%)' },
+            ].map(led => (
+              <div key={led.label} className="flex items-center gap-0.5">
+                <div className={cn("rounded-full", fs ? "w-2 h-2" : "w-1.5 h-1.5")} style={{
+                  background: led.active
+                    ? `radial-gradient(circle at 40% 35%, ${led.color}, hsl(120 40% 20%) 80%)`
+                    : 'radial-gradient(circle at 40% 35%, hsl(0 0% 22%), hsl(0 0% 10%))',
+                  boxShadow: led.active ? `0 0 6px ${led.color}` : 'none',
+                }} />
+                <span className={cn("font-mono", led.active ? "text-green-500/70" : "text-muted-foreground/30",
+                  fs && mob ? "text-[8px]" : fs ? "text-[8px]" : "text-[10px]"
+                )}>{led.label}</span>
+              </div>
+            ))}
           </div>
-          <button onClick={() => relayConnected ? disconnectRelay() : connectRelay()} className="flex items-center gap-1">
-            <div className={cn("rounded-full", relayConnected ? "bg-cyan-400" : "bg-muted-foreground/20", fs ? "w-2.5 h-2.5" : "w-1.5 h-1.5")} style={relayConnected ? { boxShadow: '0 0 6px rgba(0,220,255,0.5)' } : undefined} />
-            <span className={cn("font-mono", relayConnected ? "text-cyan-400/70" : "text-muted-foreground/40", fs && mob ? "text-[9px]" : fs ? "text-[9px]" : "text-[10px]")}>UDP</span>
-          </button>
           <div className="flex items-center gap-1">
             <Signal className={cn(pyroArm ? "text-red-500" : "text-muted-foreground/20", fs && mob ? "w-3.5 h-3.5" : fs ? "w-4 h-4" : "w-2.5 h-2.5")} />
           </div>
@@ -886,12 +896,18 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
           {!isFullscreen && <button onClick={onClose} className="text-muted-foreground/30 hover:text-foreground p-0.5 rounded transition-colors text-xs ml-1">✕</button>}
         </div>
       </div>
-      {/* Accent shimmer bar */}
-      <div className="h-[2px] w-full" style={{
+      {/* FX Commander accent shimmer bar — animated */}
+      <div className="h-[2px] w-full relative overflow-hidden" style={{
         background: isDmxMode
           ? 'linear-gradient(90deg, transparent 0%, hsl(200 80% 48% / 0.6) 30%, hsl(200 80% 48% / 0.1) 100%)'
           : 'linear-gradient(90deg, transparent 0%, hsl(0 70% 45% / 0.4) 30%, hsl(0 70% 45% / 0.05) 100%)',
-      }} />
+      }}>
+        {isDmxMode && <div className="absolute inset-0" style={{
+          background: 'linear-gradient(90deg, transparent 0%, hsl(200 90% 60% / 0.3) 50%, transparent 100%)',
+          animation: 'shimmer 3s ease-in-out infinite',
+          backgroundSize: '200% 100%',
+        }} />}
+      </div>
     </div>
   );
 
@@ -903,7 +919,6 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
         !fs || !mob ? (fs ? "px-6 py-2.5" : "px-2 py-1") : "",
         (pyroArm || dmxArm) ? "border-red-800/30" : "border-border/15"
       )} style={{ background: (pyroArm || dmxArm) ? 'hsl(0 40% 8%)' : 'hsl(220 12% 7%)' }}>
-        {/* On mobile fullscreen, stack PYRO + DMX horizontally but bigger, DEADMAN below */}
         <div className={cn(fs && mob ? "flex gap-2" : "contents")}>
           <button onClick={() => handlePyroArm(!pyroArm)}
             className={cn(
@@ -924,7 +939,6 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
             {dmxArm ? 'DMX ●' : 'DMX'}
           </button>
         </div>
-        {/* DEADMAN — full width on mobile */}
         <button
           onMouseDown={() => setDeadmanHeld(true)}
           onMouseUp={() => setDeadmanHeld(false)}
@@ -949,7 +963,6 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
           {pyroArm && dmxArm ? '⚠ DMX + PYRO ARMED ⚠' : pyroArm ? '⚠ PYRO ARMED ⚠' : 'DMX ARMED'}
         </div>
       )}
-      {/* ── Lockout Risk Groups (Finale 3D) ── */}
       {(pyroArm) && (
         <LockoutPanel fs={fs} mob={mob} />
       )}
@@ -958,7 +971,6 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
 
   const renderCueKeys = (fs: boolean) => (
     <div className={cn("border-b border-border/15", fs && mob ? "px-2 py-2" : fs ? "px-6 py-4" : "px-1.5 py-1.5")} style={{ background: 'hsl(220 12% 6%)' }}>
-      {/* Pagination */}
       <div className={cn("flex items-center justify-between", fs && mob ? "mb-1.5" : fs ? "mb-2" : "mb-0.5")}>
         <div className="flex items-center gap-1">
           <button onClick={() => setCuePage(Math.max(0, cuePage - 1))} disabled={cuePage === 0}
@@ -977,7 +989,6 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
           Page {cuePage + 1}/16
         </span>
       </div>
-      {/* 4 cols on mobile fullscreen, 8 cols on desktop */}
       <div className={cn("grid", fs && mob ? "grid-cols-4 gap-1.5" : fs ? "grid-cols-8 gap-2" : "grid-cols-8 gap-0.5")}>
         {Array.from({ length: CUES_PER_PAGE }).map((_, i) => {
           const globalIndex = i + pageStart;
@@ -993,17 +1004,31 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
     </div>
   );
 
-  const renderSceneModeBar = (fs: boolean) => (
     <div className={cn("flex items-center border-b border-border/15", fs && mob ? "flex-col" : "")} style={{ background: 'hsl(220 10% 7%)' }}>
-      {/* Scenes */}
+      {/* Scenes — styled as backlit console buttons */}
       <div className={cn("flex", fs && mob ? "w-full border-b border-border/10" : "")}>
         {[0, 1, 2, 3].map(s => (
           <button key={s} onClick={() => setActiveScene(s)} disabled={pyroArm}
             className={cn(
-              "font-bold uppercase tracking-wider transition-all border-b-2",
+              "font-bold uppercase tracking-wider transition-all",
               fs && mob ? "flex-1 px-3 py-2.5 text-[10px]" : fs ? "px-5 py-2.5 text-xs" : "px-2.5 py-1.5 text-[8px]",
-              activeScene === s ? "text-primary border-primary bg-primary/5" : "text-muted-foreground/30 border-transparent hover:text-muted-foreground/60"
-            )}>S{s}</button>
+            )}
+            style={{
+              /* Console button cap: raised 3D effect */
+              background: activeScene === s
+                ? isDmxMode ? 'hsl(200 20% 14%)' : 'hsl(220 15% 14%)'
+                : 'hsl(220 10% 8%)',
+              color: activeScene === s
+                ? isDmxMode ? 'hsl(200 80% 60%)' : 'hsl(var(--primary))'
+                : 'hsl(220 5% 30%)',
+              borderBottom: activeScene === s
+                ? `2px solid ${isDmxMode ? 'hsl(200 80% 48%)' : 'hsl(var(--primary))'}`
+                : '2px solid transparent',
+              borderRadius: '4px 4px 0 0',
+              boxShadow: activeScene === s
+                ? `0 2px 8px ${isDmxMode ? 'hsl(200 80% 48% / 0.2)' : 'hsl(var(--primary) / 0.2)'}`
+                : 'inset 0 1px 2px rgba(0,0,0,0.3)',
+            }}>S{s}</button>
         ))}
       </div>
       {!mob && <div className="flex-1" />}
@@ -1053,10 +1078,13 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
             "flex items-center justify-center gap-2",
             fs && mob ? "h-14 text-base tracking-[0.25em]" : fs ? "h-16 text-lg tracking-[0.3em]" : "h-10 text-[11px] tracking-[0.25em]"
           )} style={{
+            /* Danger stripe pattern when armed */
             background: (pyroArm || dmxArm)
-              ? 'repeating-linear-gradient(135deg, hsl(0 70% 30%) 0px, hsl(0 70% 30%) 6px, hsl(0 50% 18%) 6px, hsl(0 50% 18%) 12px)'
+              ? 'repeating-linear-gradient(135deg, hsl(40 90% 35%) 0px, hsl(40 90% 35%) 5px, hsl(0 0% 8%) 5px, hsl(0 0% 8%) 10px)'
               : 'linear-gradient(180deg, hsl(0 70% 35%) 0%, hsl(0 60% 22%) 100%)',
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)',
+            boxShadow: (pyroArm || dmxArm)
+              ? 'inset 0 1px 0 rgba(255,255,255,0.1), 0 0 16px rgba(255,60,30,0.3)'
+              : 'inset 0 1px 0 rgba(255,255,255,0.1)',
           }}>
           <AlertTriangle className={cn(fs && mob ? "w-5 h-5" : fs ? "w-6 h-6" : "w-4 h-4")} />
           PANIC

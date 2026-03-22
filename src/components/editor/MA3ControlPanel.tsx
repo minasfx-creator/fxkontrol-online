@@ -288,25 +288,42 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
   };
 
   return (
-    <div className={cn("flex flex-col h-full", fs ? "p-3" : "p-2")} style={{ background: 'hsl(240 12% 5%)' }}>
-      {/* Header — LIGHTDESK 2.0 Identity */}
-      <div className="mb-2 rounded-lg overflow-hidden" style={{ border: '1px solid hsl(240 30% 20%)' }}>
+    <div className={cn("flex flex-col h-full", fs ? "p-3" : "p-2")} style={{ background: 'hsl(220 5% 8%)' }}>
+      {/* Header — grandMA3 Heritage: anthracite housing + silver trim */}
+      <div className="mb-2 rounded-sm overflow-hidden" style={{ border: '1px solid hsl(220 5% 18%)', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+        {/* Silver/gray accent trim line */}
+        <div className="h-[2px]" style={{ background: 'linear-gradient(90deg, hsl(220 5% 25%), hsl(220 5% 40%), hsl(220 5% 25%))' }} />
         <div className="flex items-center justify-between px-3 py-2" style={{
-          background: 'linear-gradient(135deg, hsl(240 20% 8%) 0%, hsl(240 15% 6%) 100%)',
+          background: 'linear-gradient(135deg, hsl(220 5% 10%) 0%, hsl(220 5% 7%) 100%)',
           borderBottom: '2px solid hsl(240 50% 40%)',
         }}>
           <div className="flex items-center gap-2.5">
-            <div className={cn("rounded flex items-center justify-center font-black text-white",
-              fs ? "w-8 h-8 text-[10px]" : "w-6 h-6 text-[8px]"
-            )} style={{ background: 'linear-gradient(135deg, hsl(240 50% 52%), hsl(260 40% 35%))' }}>
-              LT
+            {/* grandMA3-style encoder wheel icon */}
+            <div className={cn("rounded-full flex items-center justify-center font-black text-white relative",
+              fs ? "w-9 h-9 text-[10px]" : "w-7 h-7 text-[8px]"
+            )} style={{
+              background: 'radial-gradient(circle at 45% 40%, hsl(240 30% 35%), hsl(240 20% 20%) 70%)',
+              border: '2px solid hsl(220 5% 30%)',
+              boxShadow: 'inset 0 0 8px rgba(0,0,0,0.4), 0 0 12px hsl(240 50% 52% / 0.15)',
+            }}>
+              {/* Tick marks on encoder wheel */}
+              {[0, 45, 90, 135, 180, 225, 270, 315].map(deg => (
+                <div key={deg} className="absolute w-[1px] h-1" style={{
+                  background: 'hsl(220 5% 45%)',
+                  top: '2px',
+                  left: '50%',
+                  transformOrigin: `0 ${fs ? '16px' : '12px'}`,
+                  transform: `rotate(${deg}deg)`,
+                }} />
+              ))}
+              <span style={{ textShadow: '0 0 6px hsl(240 50% 60%)' }}>MA</span>
             </div>
             <div>
-              <h3 className={cn("font-black uppercase tracking-[0.2em]", fs ? "text-sm" : "text-[10px]")} style={{ color: 'hsl(240 70% 72%)' }}>
+              <h3 className={cn("font-black uppercase tracking-[0.2em]", fs ? "text-sm" : "text-[10px]")} style={{ color: 'hsl(220 5% 80%)', textShadow: '0 0 8px hsl(240 50% 52% / 0.3)' }}>
                 FXK-LIGHT
               </h3>
-              <p className={cn("font-mono tracking-wider", fs ? "text-[9px]" : "text-[7px]")} style={{ color: 'hsl(240 30% 45%)' }}>
-                LIGHTDESK 2.0 · OSC · sACN · MVR
+              <p className={cn("font-mono tracking-wider", fs ? "text-[9px]" : "text-[7px]")} style={{ color: 'hsl(220 5% 35%)' }}>
+                LIGHTDESK 2.0 · CONSOLE INTEGRATION
               </p>
             </div>
           </div>
@@ -389,17 +406,19 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
             </span>
           </div>
 
-          {/* Command Line */}
-          <div className="flex gap-1">
+          {/* Command Line — grandMA3 style with Cmd> prompt */}
+          <div className="flex gap-1 rounded-sm overflow-hidden" style={{ border: '1px solid hsl(220 5% 15%)', background: 'hsl(220 5% 5%)' }}>
+            <span className="flex items-center px-2 font-mono text-[9px] font-bold shrink-0" style={{ color: 'hsl(240 50% 60%)' }}>Cmd&gt;</span>
             <Input
               value={cmdInput}
               onChange={e => setCmdInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && sendCmd()}
-              placeholder="FXK-LIGHT Command (e.g. Go Seq 1)"
-              className="h-6 text-[9px] font-mono flex-1"
+              placeholder="Go Seq 1, Store Cue 1..."
+              className="h-6 text-[9px] font-mono flex-1 border-0 bg-transparent focus-visible:ring-0"
+              style={{ color: 'hsl(220 5% 75%)', caretColor: 'hsl(240 50% 60%)' }}
               disabled={oscState !== 'connected'}
             />
-            <Button size="sm" className="h-6 text-[8px] px-2" onClick={sendCmd} disabled={oscState !== 'connected'}>
+            <Button size="sm" className="h-6 text-[8px] px-2 rounded-none" onClick={sendCmd} disabled={oscState !== 'connected'}>
               Send
             </Button>
           </div>

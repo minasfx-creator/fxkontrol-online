@@ -639,7 +639,7 @@ export default function PyroFireOnePanel({
     </div>
   );
 
-  // ── Render: Header — XL4+ 2.0 Identity ──
+  // ── Render: Header — XL4+ 2.0 Heritage (FireOne XL4+ LCD + brushed metal) ──
   const renderHeader = () => {
     // Output group indicators (A=1-8, B=9-16, C=17-24, D=25-32)
     const outputGroups = ['A', 'B', 'C', 'D'].map((label, gi) => {
@@ -652,58 +652,70 @@ export default function PyroFireOnePanel({
     return (
       <div className={cn(
         "border-b flex flex-col",
-      )} style={{ background: 'linear-gradient(180deg, hsl(0 15% 8%) 0%, hsl(0 12% 5%) 100%)' }}>
-        {/* Top branding stripe */}
+      )} style={{ background: 'linear-gradient(180deg, hsl(0 5% 12%) 0%, hsl(0 5% 8%) 100%)' }}>
+        {/* Brushed-metal header bar */}
         <div className={cn(
           "flex items-center justify-between",
           sz === 'xl' ? "px-6 py-2.5" : sz === 'fs' ? "px-4 py-2" : "px-2 py-1"
-        )} style={{ borderBottom: '2px solid hsl(0 70% 35%)' }}>
+        )} style={{
+          borderBottom: '2px solid hsl(0 70% 35%)',
+          backgroundImage: 'repeating-linear-gradient(90deg, hsl(0 0% 14%) 0px, hsl(0 0% 16%) 1px, hsl(0 0% 13%) 2px, hsl(0 0% 15%) 3px)',
+        }}>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <div className={cn(
-                "rounded flex items-center justify-center font-black",
-                sz === 'xl' ? "w-8 h-8 text-sm" : "w-6 h-6 text-[10px]"
-              )} style={{ background: 'linear-gradient(135deg, hsl(0 80% 45%), hsl(0 70% 30%))', color: 'white' }}>
-                F1
-              </div>
-              <div>
-                <div className={cn("font-black tracking-[0.2em] text-red-400",
-                  sz === 'xl' ? "text-sm" : sz === 'fs' ? "text-xs" : "text-[9px]"
-                )}>FXK-PYRO</div>
-                <div className={cn("font-mono tracking-wider",
-                  sz === 'xl' ? "text-[9px]" : "text-[7px]",
-                  "text-red-400/40"
-                )}>XL4+ 2.0 · IFMx-i32Q</div>
-              </div>
+            {/* Key switch graphic */}
+            <div className={cn(
+              "rounded-full flex items-center justify-center shrink-0 transition-transform duration-300",
+              sz === 'xl' ? "w-10 h-10" : "w-7 h-7"
+            )} style={{
+              background: 'radial-gradient(circle at 40% 35%, hsl(0 0% 55%), hsl(0 0% 30%) 60%, hsl(0 0% 20%) 100%)',
+              border: '2px solid hsl(0 0% 40%)',
+              boxShadow: masterKeyOn ? '0 0 12px rgba(255,50,30,0.4), inset 0 0 6px rgba(0,0,0,0.5)' : 'inset 0 0 6px rgba(0,0,0,0.5)',
+            }}>
+              <div className={cn(sz === 'xl' ? "w-4 h-0.5" : "w-3 h-[1px]")} style={{
+                background: masterKeyOn ? 'hsl(0 80% 55%)' : 'hsl(0 0% 50%)',
+                transform: masterKeyOn ? 'rotate(45deg)' : 'rotate(0deg)',
+                transition: 'transform 0.3s ease, background 0.3s ease',
+                boxShadow: masterKeyOn ? '0 0 4px rgba(255,80,50,0.6)' : 'none',
+              }} />
+            </div>
+            <div>
+              <div className={cn("font-black tracking-[0.2em]",
+                sz === 'xl' ? "text-sm" : sz === 'fs' ? "text-xs" : "text-[9px]"
+              )} style={{ color: 'hsl(0 0% 85%)', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>FXK-PYRO</div>
+              <div className={cn("font-mono tracking-wider",
+                sz === 'xl' ? "text-[9px]" : "text-[7px]",
+              )} style={{ color: 'hsl(0 0% 45%)' }}>XL4+ 2.0 · IFMx-i32Q · FIELD CONTROLLER</div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* LCD-style counters */}
+            {/* LCD-style counters — green phosphor on black */}
             {[
-              { label: 'MOD', value: connectedCount, color: 'text-green-400' },
-              { label: 'IG', value: totalIgniters, color: 'text-cyan-400' },
-              { label: 'FIRE', value: firedCount, color: firedCount > 0 ? 'text-red-400' : 'text-muted-foreground/30' },
-              ...(misfireCount > 0 ? [{ label: 'FAIL', value: misfireCount, color: 'text-red-500 animate-pulse' }] : []),
+              { label: 'MOD', value: connectedCount, color: 'hsl(120 100% 45%)' },
+              { label: 'IG', value: totalIgniters, color: 'hsl(120 100% 45%)' },
+              { label: 'FIRE', value: firedCount, color: firedCount > 0 ? 'hsl(0 80% 50%)' : 'hsl(120 100% 45%)' },
+              ...(misfireCount > 0 ? [{ label: 'FAIL', value: misfireCount, color: 'hsl(0 80% 50%)' }] : []),
             ].map(c => (
               <div key={c.label} className={cn(
-                "rounded border font-mono text-center",
+                "rounded-sm font-mono text-center",
                 sz === 'xl' ? "px-3 py-1.5 min-w-[52px]" : sz === 'fs' ? "px-2 py-1 min-w-[40px]" : "px-1.5 py-0.5 min-w-[32px]"
               )} style={{
-                background: 'hsl(0 10% 4%)',
-                borderColor: 'hsl(0 20% 15%)',
-                boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.5)',
+                background: 'hsl(120 5% 4%)',
+                border: '1px solid hsl(120 10% 12%)',
+                boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.6)',
+                backgroundImage: 'repeating-linear-gradient(0deg, transparent 0px, transparent 1px, hsl(120 5% 6%) 1px, hsl(120 5% 6%) 2px)',
+                backgroundSize: '100% 2px',
               }}>
-                <div className={cn("font-bold", c.color,
+                <div className={cn("font-bold",
                   sz === 'xl' ? "text-sm" : sz === 'fs' ? "text-[10px]" : "text-[9px]"
                 )} style={{
-                  textShadow: c.label === 'MOD' ? '0 0 8px hsl(120 80% 40% / 0.5)' :
-                    c.label === 'IG' ? '0 0 8px hsl(180 80% 40% / 0.4)' :
-                    c.label === 'FIRE' && c.value > 0 ? '0 0 8px hsl(0 80% 50% / 0.5)' : 'none',
+                  color: c.color,
+                  textShadow: `0 0 8px ${c.color}`,
+                  fontFamily: 'monospace',
                 }}>{c.value}</div>
-                <div className={cn("text-muted-foreground/25 uppercase",
+                <div className={cn("uppercase",
                   sz === 'xl' ? "text-[7px]" : "text-[6px]"
-                )}>{c.label}</div>
+                )} style={{ color: 'hsl(120 30% 25%)' }}>{c.label}</div>
               </div>
             ))}
 
@@ -728,52 +740,63 @@ export default function PyroFireOnePanel({
           </div>
         </div>
 
-        {/* Output Group Indicators (A/B/C/D) */}
+        {/* Yellow caution stripe — like physical panel labeling */}
+        <div className="h-[3px]" style={{
+          background: 'repeating-linear-gradient(90deg, hsl(45 90% 50%) 0px, hsl(45 90% 50%) 8px, hsl(0 0% 10%) 8px, hsl(0 0% 10%) 16px)',
+        }} />
+
+        {/* 4 Output Port LEDs — physical glass dome indicators */}
         <div className={cn(
           "flex items-center gap-1",
           sz === 'xl' ? "px-6 py-1.5" : sz === 'fs' ? "px-4 py-1" : "px-2 py-0.5"
-        )} style={{ background: 'hsl(0 10% 4%)' }}>
+        )} style={{ background: 'hsl(0 5% 6%)' }}>
           {outputGroups.map(g => (
             <div key={g.label} className={cn(
-              "flex items-center gap-1.5 rounded border font-mono",
+              "flex items-center gap-1.5 rounded-sm border font-mono",
               sz === 'xl' ? "px-3 py-1 text-[9px]" : sz === 'fs' ? "px-2 py-0.5 text-[8px]" : "px-1.5 py-0.5 text-[7px]",
               g.armed > 0 ? "border-red-500/30 bg-red-500/5" : "border-border/10 bg-transparent"
             )}>
               <span className={cn("font-black",
                 g.armed > 0 ? "text-red-400" : g.connected > 0 ? "text-foreground/50" : "text-muted-foreground/15"
-              )}>OUT-{g.label}</span>
-              <div className="flex gap-0.5">
-                {Array.from({ length: Math.max(1, g.total) }, (_, i) => (
-                  <div key={i} className={cn(
-                    "rounded-full",
-                    sz === 'xl' ? "w-2 h-2" : "w-1.5 h-1.5",
-                    i < g.armed ? "bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.5)]" :
-                    i < g.connected ? "bg-green-500 shadow-[0_0_3px_rgba(34,197,94,0.3)]" :
-                    "bg-muted-foreground/10"
-                  )} />
-                ))}
-              </div>
+              )} style={{ textShadow: g.armed > 0 ? '0 0 4px rgba(239,68,68,0.3)' : 'none' }}>OUTPUT {g.label}</span>
+              {/* Glass dome LED */}
+              <div className={cn(
+                "rounded-full shrink-0",
+                sz === 'xl' ? "w-3 h-3" : "w-2 h-2",
+              )} style={{
+                background: g.armed > 0
+                  ? 'radial-gradient(circle at 40% 35%, hsl(0 90% 65%), hsl(0 80% 45%) 60%, hsl(0 70% 30%))'
+                  : g.connected > 0
+                    ? 'radial-gradient(circle at 40% 35%, hsl(120 90% 65%), hsl(120 70% 40%) 60%, hsl(120 60% 25%))'
+                    : 'radial-gradient(circle at 40% 35%, hsl(0 0% 30%), hsl(0 0% 15%) 60%, hsl(0 0% 10%))',
+                boxShadow: g.armed > 0
+                  ? '0 0 8px rgba(239,68,68,0.6), inset 0 -1px 2px rgba(0,0,0,0.3)'
+                  : g.connected > 0
+                    ? '0 0 6px rgba(34,197,94,0.4), inset 0 -1px 2px rgba(0,0,0,0.3)'
+                    : 'inset 0 -1px 2px rgba(0,0,0,0.3)',
+              }} />
             </div>
           ))}
           <div className="flex-1" />
-          {/* Art-Net + UDP status LEDs */}
+          {/* Physical LED status dots for DMX + UDP */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1">
-              <div className={cn("rounded-full", artNetConnected ? "bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.5)]" : "bg-muted-foreground/20",
-                sz === 'xl' ? "w-2.5 h-2.5" : "w-1.5 h-1.5"
-              )} />
-              <span className={cn("font-mono", artNetConnected ? "text-green-500/70" : "text-muted-foreground/30",
-                sz === 'xl' ? "text-[10px]" : "text-[8px]"
-              )}>DMX</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className={cn("rounded-full", relayConnected ? "bg-cyan-400 shadow-[0_0_6px_rgba(0,220,255,0.5)]" : "bg-muted-foreground/20",
-                sz === 'xl' ? "w-2.5 h-2.5" : "w-1.5 h-1.5"
-              )} />
-              <span className={cn("font-mono", relayConnected ? "text-cyan-400/70" : "text-muted-foreground/30",
-                sz === 'xl' ? "text-[10px]" : "text-[8px]"
-              )}>UDP</span>
-            </div>
+            {[
+              { label: 'RS-485', active: hardware.isConnected, color: 'hsl(120 80% 45%)' },
+              { label: 'DMX', active: artNetConnected, color: 'hsl(120 80% 45%)' },
+              { label: 'UDP', active: relayConnected, color: 'hsl(180 80% 50%)' },
+            ].map(led => (
+              <div key={led.label} className="flex items-center gap-1">
+                <div className={cn("rounded-full", sz === 'xl' ? "w-2.5 h-2.5" : "w-1.5 h-1.5")} style={{
+                  background: led.active
+                    ? `radial-gradient(circle at 40% 35%, ${led.color}, hsl(120 50% 25%) 80%)`
+                    : 'radial-gradient(circle at 40% 35%, hsl(0 0% 25%), hsl(0 0% 12%))',
+                  boxShadow: led.active ? `0 0 6px ${led.color}` : 'none',
+                }} />
+                <span className={cn("font-mono", led.active ? "text-green-400/70" : "text-muted-foreground/30",
+                  sz === 'xl' ? "text-[10px]" : "text-[8px]"
+                )}>{led.label}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -834,11 +857,11 @@ export default function PyroFireOnePanel({
     ) : null
   );
 
-  // ── Render: Mode tabs — XL4+ Membrane Button Style ──
+  // ── Render: Mode tabs — XL4+ Physical Membrane Keypad ──
   const renderModeTabs = () => (
     <div className={cn("flex border-b gap-0.5",
       sz === 'xl' ? "px-4 py-1.5" : sz === 'fs' ? "px-3 py-1" : "px-2 py-0.5"
-    )} style={{ background: 'hsl(0 8% 5%)', borderColor: 'hsl(0 15% 12%)' }}>
+    )} style={{ background: 'hsl(0 0% 10%)', borderColor: 'hsl(0 0% 15%)' }}>
       {([
         { key: 'manual' as PyroMode, label: 'MANUAL', sub: 'Direct' },
         { key: 'step' as PyroMode, label: 'STEP', sub: 'Sequential' },
@@ -847,18 +870,25 @@ export default function PyroFireOnePanel({
       ]).map(m => (
         <button key={m.key} onClick={() => setPyroMode(m.key)}
           className={cn(
-            "flex-1 font-mono font-black uppercase tracking-[0.15em] transition-all rounded-sm border-2 min-h-[48px]",
+            "flex-1 font-mono font-black uppercase tracking-[0.15em] transition-all min-h-[48px]",
             sz === 'xl' ? "py-3 text-[11px]" : sz === 'fs' ? "py-2 text-[9px]" : "py-1.5 text-[8px]",
             pyroMode === m.key
-              ? "text-red-300 border-red-500/50 bg-red-500/10"
-              : "text-muted-foreground/30 border-transparent bg-transparent hover:bg-red-500/5 hover:border-red-500/15"
-          )} style={pyroMode === m.key ? {
-            boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.4), 0 0 8px hsl(0 70% 40% / 0.15)',
-          } : {
-            boxShadow: 'inset 0 -1px 0 rgba(255,255,255,0.03), inset 0 1px 2px rgba(0,0,0,0.3)',
+              ? "text-white/90"
+              : "text-white/30 hover:text-white/50"
+          )} style={{
+            /* Membrane button: flat gray with embossed double-border */
+            background: pyroMode === m.key ? 'hsl(0 0% 22%)' : 'hsl(0 0% 18%)',
+            border: pyroMode === m.key
+              ? '2px solid hsl(0 0% 30%)'
+              : '1px solid hsl(0 0% 12%)',
+            borderRadius: '2px',
+            /* Physical membrane emboss: outer dark, inner light highlight */
+            boxShadow: pyroMode === m.key
+              ? 'inset 0 1px 0 hsl(0 0% 28%), inset 0 -1px 0 hsl(0 0% 10%), 0 0 8px hsl(0 70% 40% / 0.2)'
+              : 'inset 0 1px 0 hsl(0 0% 22%), inset 0 -1px 0 hsl(0 0% 8%), 0 1px 2px rgba(0,0,0,0.3)',
           }}>
           <div>{m.label}</div>
-          {sz !== 'sm' && <div className={cn("font-normal text-muted-foreground/20", sz === 'xl' ? "text-[7px]" : "text-[6px]")}>{m.sub}</div>}
+          {sz !== 'sm' && <div className="font-normal text-[6px]" style={{ color: pyroMode === m.key ? 'hsl(0 0% 50%)' : 'hsl(0 0% 30%)' }}>{m.sub}</div>}
         </button>
       ))}
     </div>
@@ -1409,15 +1439,15 @@ export default function PyroFireOnePanel({
   // PANEL MODE (inside FX Commander)
   // ═══════════════════════════════════════════════════════════
   return (
-    <div className="flex flex-col h-full relative overflow-hidden" style={{ background: 'hsl(0 15% 5%)' }}>
-      {/* Scanline overlay */}
+    <div className="flex flex-col h-full relative overflow-hidden" style={{ background: 'hsl(0 5% 7%)' }}>
+      {/* Scanline overlay — CRT effect */}
       <div className="absolute inset-0 pointer-events-none z-10" style={{
-        backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0,0,0,0.03) 1px, rgba(0,0,0,0.03) 2px)',
+        backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0,0,0,0.04) 1px, rgba(0,0,0,0.04) 2px)',
         backgroundSize: '100% 2px',
       }} />
-      {/* Red vignette */}
+      {/* Industrial panel housing corners */}
       <div className="absolute inset-0 pointer-events-none z-10" style={{
-        background: 'radial-gradient(ellipse at center, transparent 60%, hsl(0 30% 3% / 0.6) 100%)',
+        background: 'radial-gradient(ellipse at center, transparent 55%, hsl(0 0% 3% / 0.5) 100%)',
       }} />
       {renderFileInput()}
       {renderHeader()}
