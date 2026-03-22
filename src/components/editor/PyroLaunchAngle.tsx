@@ -637,9 +637,9 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
 
   return (
     <group ref={ref} position={[position.x, position.y, position.z]}>
-      <HeadingCompass heading={position.heading} shiftHeld={isDragging} />
-      <PitchArc heading={position.heading} pitch={position.pitch || 85} />
-      <RollArc heading={position.heading} pitch={position.pitch || 85} roll={position.roll || 0} />
+      <HeadingCompass heading={effectiveHeading} shiftHeld={isDragging} />
+      <PitchArc heading={effectiveHeading} pitch={effectivePitch} />
+      <RollArc heading={effectiveHeading} pitch={effectivePitch} roll={position.roll || 0} />
 
       {/* Axis constraint indicator ring */}
       {isDragging && axisIndicatorColor && (
