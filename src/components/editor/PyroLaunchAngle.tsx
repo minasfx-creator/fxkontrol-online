@@ -346,14 +346,16 @@ function BurstIndicator({ position: pos, color, caliber, breakHeight }: {
 }
 
 /**
- * LaunchAngleGizmo: Finale 3D-style heading/pitch/roll editing with inline editable inputs.
+ * LaunchAngleGizmo: Finale 3D-style heading/pitch/roll editing.
+ * IMPORTANT: Edits per-CUE angles (cueHeading/cuePitch on TimelineItem),
+ * NOT position base angles. New cues inherit position defaults.
  */
 const LaunchAngleGizmo = forwardRef<THREE.Group, {
   position: Position;
   batchMode?: boolean;
   selectedIds?: string[];
 }>(({ position, batchMode, selectedIds }, ref) => {
-  const { updatePosition } = useProjectStore();
+  const { updatePosition, updateTimelineItem, timelineItems } = useProjectStore();
   const [isDragging, setIsDragging] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [dragAxis, setDragAxis] = useState<'all' | 'heading' | 'pitch' | 'roll' | 'up-vector'>('all');
@@ -362,6 +364,23 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
   const [axisDominance, setAxisDominance] = useState<{ h: number; p: number }>({ h: 1, p: 1 });
   const handleRef = useRef<THREE.Mesh>(null);
   const { camera, raycaster, gl } = useThree();
+
+  // Find linked cues for this position
+  const linkedCues = useMemo(() => {
+    return timelineItems.filter(t => t.positionId === position.id || t.positionIds?.includes(position.id));
+  }, [timelineItems, position.id]);
+
+  // The "effective" heading/pitch: use cue override if exists, else position base
+  // When multiple cues exist, use the first one's overrides (or position base)
+  const effectiveHeading = useMemo(() => {
+    if (linkedCues.length > 0 && linkedCues[0].cueHeading !== undefined) return linkedCues[0].cueHeading;
+    return position.heading;
+  }, [linkedCues, position.heading]);
+  
+  const effectivePitch = useMemo(() => {
+    if (linkedCues.length > 0 && linkedCues[0].cuePitch !== undefined) return linkedCues[0].cuePitch;
+    return position.pitch || 85;
+  }, [linkedCues, position.pitch]);
 
   // Listen for axis-constrained rotation from context menu
   useEffect(() => {
