@@ -1,144 +1,83 @@
 
 
-# IFMx-i32Q — Correção de Bugs, Modos de Disparo e Design de Hardware
+# Simplificação Hardware: Celular + Bateria 12V + Placa 32 Relés + Adaptador USB-C OTG
 
-## Bugs Identificados
+## Conceito Simplificado
 
-| Bug | Localização | Impacto |
-|-----|-------------|---------|
-| `onFire` callback no hook NÃO reconecta ao bridge quando conectado após powerOn | `useFireOneModuleMode.ts:62-76` | Se conectar hardware DEPOIS de ligar módulo, disparos ficam em modo simulação |
-| `fireGroup` no emulador executa em paralelo (`Promise.all`) — descarga CDS simultânea pode causar queda de tensão irreal | `fireoneModuleEmulator.ts:236-238` | Disparo simultâneo de 32 canais sem controle de corrente |
-| Bridge `fire()` retorna `Promise<boolean>` mas `sendCommand` não espera confirmação do hardware | `fireoneModuleHardwareBridge.ts:177-180` | Fire retorna `true` antes do hardware confirmar disparo |
-| E-STOP no emulador volta para `ready` ao invés de `idle` — deveria desligar fire power E parar carregamento | `fireoneModuleEmulator.ts:179-188` | E-STOP permite re-armar imediatamente (perigoso) |
-| `buildStatusResponse` usa bitshift `>>` em JavaScript que trunca em 32 bits — funciona, mas `mask` usa `\|=` sem `>>>` — pins 31 overflow signed | `fireoneModuleEmulator.ts:416-418` | Pin 31 pode mostrar continuidade invertida |
-| Panel UI não atualiza `bridgeStatus` após conectar — só atualiza em eventos | `VirtualIFMx32QPanel.tsx` | Badge mostra "SIM" mesmo após conexão bem-sucedida |
-
-## Modos de Disparo Faltantes (per Manual)
-
-O IFMx-i32Q real suporta 4 modos de disparo que não estão implementados:
-
-1. **Manual** — Toque individual por pin (já existe, mas sem confirmação visual estilo XLII+)
-2. **Semi-Auto** — Disparo por eventos (groups de cues), step-by-step, controlado pelo master
-3. **Auto (Timecode)** — Script pré-carregado com tempos absolutos, auto-fire sincronizado
-4. **UltraFire** — Script baixado para o módulo, executa independente do master
-5. **Preset** — Seleção múltipla de pins → Fire único (parcialmente implementado)
-
-## Melhor Hardware para Réplica Idêntica
+O sistema atual assume ESP32 + Shift Registers + ULN2803 + MOSFETs + Capacitores — componentes demais. O usuário quer o setup mais simples possível:
 
 ```text
-OPÇÃO RECOMENDADA: ESP32-S3 + Shift Register Chain
-──────────────────────────────────────────────────────
-
-Custo: ~$18-25 total
-Vantagem: Idêntico ao IFMx real (CDS per channel)
-
-┌─────────────┐
-│  ESP32-S3   │  ← Wi-Fi + BLE + USB-C nativo
-│  DevKitC-1  │  ← 44 GPIO (suficiente para controle)
-└──┬──┬──┬──┬─┘
-   │  │  │  │
-   ▼  ▼  ▼  ▼
-┌──────────────────────────────────────────┐
-│  4x 74HC595 (Shift Register 8-bit)       │
-│  Saída: 32 linhas digitais via 3 pinos   │
-│  (DATA, CLOCK, LATCH = 3 GPIO total)     │
-└──────────┬───────────────────────────────┘
-           │ 32 linhas
-           ▼
-┌──────────────────────────────────────────┐
-│  4x ULN2803A (Darlington Array 8ch)      │
-│  500mA por canal, flyback diodes built-in│
-└──────────┬───────────────────────────────┘
-           │ 32 linhas open-collector
-           ▼
-┌──────────────────────────────────────────┐
-│  32x 470µF 25V + 32x SCR (ou MOSFET)    │
-│  CDS: Capacitive Discharge System        │
-│  Cada canal: Cap → SCR Gate → E-match    │
-└──────────┬───────────────────────────────┘
-           │
-    ┌──────┴──────┐
-    │ Continuity  │  ← 2x CD4051 (8:1 MUX) + ADC
-    │ Readback    │  ← Mede resistência de cada ignitor
-    └─────────────┘
-
-Alimentação: LiPo 3S 11.1V (mesmo do IFMx real)
-Charge IC: TP4056 ou similar para carga USB-C
+┌──────────────┐    USB-C OTG     ┌────────────────────┐    12V    ┌──────────┐
+│  CELULAR     │ ──────────────── │ Placa 32ch Relé    │ ◄─────── │ Bateria  │
+│  (FX Kontrol)│   Adaptador     │ (ex: SainSmart)    │          │ 12V 7Ah  │
+│              │   USB→Serial    │ IN1-IN32 → Relé    │──── E-matches
+└──────────────┘                 │ COM → 12V+         │
+                                 │ NO → Ignitor       │
+                                 └────────────────────┘
 ```
 
-**Lista de componentes:**
-- ESP32-S3 DevKitC ($6)
-- 4x 74HC595 shift registers ($1)
-- 4x ULN2803A Darlington arrays ($2)
-- 32x 470µF 25V capacitors ($4)
-- 32x IRFZ44N MOSFETs ou BT169 SCRs ($5)
-- 2x CD4051 analog MUX para continuity ($1)
-- 1x LiPo 3S 11.1V 2200mAh ($8)
-- PCB custom ou protoboard ($2-5)
+**Diferença chave:** Sem ESP32. O celular conecta DIRETO via USB-C OTG + adaptador USB-Serial (CH340/CP2102) à placa de 32 relés. O adaptador USB-Serial custa ~$2 e o celular envia comandos seriais direto.
 
-## Changes
+**Componentes ($15-20 total):**
+- Placa 32 canais relé (~$10) — já tem optoisoladores
+- Adaptador USB-C OTG ($1)  
+- Conversor USB-Serial CH340 ($2)
+- Bateria 12V 7Ah selada ($5-8) — ou LiPo 3S
 
-### 1. `fireoneModuleEmulator.ts` — Fix bugs + add firing modes
+## Mudanças
 
-**Bugs:**
-- E-STOP → state `idle` (não `ready`), desliga fire power, zera tudo
-- `fireGroup` → sequencial com 2ms delay entre canais (simula corrente real do CDS)
-- `buildStatusResponse` → use `>>> 0` (unsigned shift) para pin 31
-- Add `rearmDelay` após E-STOP (3s lockout per manual)
+### 1. `fireoneModuleHardwareBridge.ts` — Adicionar modo "Direct Serial Relay"
 
-**Firing modes:**
-- Add `firingMode: 'manual' | 'semi_auto' | 'auto' | 'ultrafire'` to state
-- **Semi-Auto**: `loadSemiAutoScript(events[])` + `stepEvent()` — dispara próximo evento, espera comando
-- **Auto**: `loadAutoScript(cues[])` + `startAutoFire()` — executa por timecode interno
-- **UltraFire**: `downloadScript(slot, script)` + `runUltraFire()` — roda independente com verify code
-- **Preset**: `setPreset(pins[])` + `firePreset()` — seleciona múltiplos, disparo único
+Novo método `connectDirectRelay()` que usa WebSerial para falar direto com CH340/CP2102 sem precisar de ESP32 firmware. O celular controla os pinos do conversor serial diretamente:
+- Protocolo simplificado: enviar bytes que representam estado dos 32 relés
+- Usar DTR/RTS toggling do serial para controle básico, ou protocolo de 4 bytes (header + pin + state + checksum)
+- Sem necessidade de firmware — o adaptador USB-Serial apenas roteia sinais
 
-### 2. `fireoneModuleHardwareBridge.ts` — Fix fire confirmation + add protocol
+**Alternativa realista:** Como CH340 só tem 2 pinos de controle (DTR/RTS), precisamos de um Arduino Nano ($3) como intermediário simples entre USB e os 32 relés. O firmware é trivial (~20 linhas).
 
-**Bugs:**
-- `fire()` → wait for `OK:FIRE:pin` response with 2s timeout before resolving
-- Add heartbeat ping every 5s to detect disconnection
-- Add firmware version query on connect (`VERSION\n`)
+### 2. `fireoneModuleEmulator.ts` — Remover dependência de CDS
 
-**New commands:**
-- `BATCH:mask:durationMs\n` → fire multiple via bitmask (hardware-level group fire)
-- `CDS:pin\n` → read capacitor voltage (responds `CDS:pin:volts\n`)
-- `HEARTBEAT\n` → responds `PONG\n`
+- Substituir lógica CDS (capacitive discharge) por "direct relay" mode
+- Quando `hardwareMode === 'direct_relay'`: sem simulação de carga de capacitor, disparo é instantâneo via relé
+- Bateria 12V alimenta diretamente os relés → ignitor (sem CDS intermediário)
+- Simplificar `IgniterChannel` para não exigir `cdsVoltage` no modo direto
 
-### 3. `useFireOneModuleMode.ts` — Fix bridge reconnection + expose modes
+### 3. `VirtualIFMx32QPanel.tsx` — Atualizar aba Hardware
 
-**Bugs:**
-- When bridge connects AFTER powerOn, update emulator callbacks dynamically
-- Add `bridgeStatus` polling interval (1s) to keep UI in sync
-- Track `firingMode` in hook state
+- Novo esquemático simplificado mostrando: Celular → USB-C OTG → CH340 → Arduino Nano → Placa 32 Relés → Bateria 12V
+- Lista de componentes atualizada (~$15-20)
+- Diagrama de fiação simples
+- Instruções passo-a-passo de montagem
+- Firmware Arduino Nano (20 linhas) embutido no painel
 
-**New:**
-- Expose `setFiringMode()`, `loadScript()`, `stepEvent()`, `startAutoFire()`, `firePreset()`
+### 4. `useFireOneModuleMode.ts` — Adicionar `connectDirectRelay()`
 
-### 4. `VirtualIFMx32QPanel.tsx` — Fix UI bugs + add mode selector + hardware design tab
+Expor novo método de conexão direta ao relé board via USB OTG.
 
-**Bugs:**
-- Update `bridgeStatus` after connect actions (await + setBridgeStatus)
-- Add visual E-STOP lockout timer (3s countdown)
+## Arquitetura Final
 
-**Firing mode UI:**
-- Mode selector tabs: Manual | Semi-Auto | Auto | UltraFire
-- Semi-Auto: event list with step button, current event highlight
-- Auto: timecode display, start/stop, progress bar
-- UltraFire: slot selector (1-8), download progress, verify code display
+```text
+CELULAR (FX Kontrol app)
+  │ USB-C OTG
+  ▼
+Adaptador USB-Serial (CH340)
+  │ TX/RX (115200 baud)
+  ▼
+Arduino Nano ($3) — firmware 20 linhas
+  │ Digital pins D2-D9 + A0-A5 (via shift register 74HC595 x4)
+  │ OU: 2x MCP23017 (I2C GPIO expander = 32 pins com 2 chips)
+  ▼
+Placa 32 Relés (5V logic, 12V switching)
+  │ COM ← Bateria 12V+
+  │ NO → E-match → GND bateria
+  ▼
+DISPARO REAL
+```
 
-**Hardware tab:**
-- Schematic diagram (ASCII/SVG) of ESP32 + 74HC595 + ULN2803 + CDS
-- Component checklist with links
-- Firmware upload instructions
-- Pin mapping table (ESP32 GPIO → Shift Register → ULN2803 → Igniter)
-
-## Files
-
-| File | Change |
-|------|--------|
-| `src/lib/fireoneModuleEmulator.ts` | Fix E-STOP, fireGroup, bitshift; add 4 firing modes + script engine |
-| `src/lib/fireoneModuleHardwareBridge.ts` | Fix fire confirmation, add heartbeat, batch fire, CDS read |
-| `src/hooks/useFireOneModuleMode.ts` | Fix bridge reconnection, expose firing modes |
-| `src/components/editor/live-firing/VirtualIFMx32QPanel.tsx` | Fix bridgeStatus sync, add mode tabs, hardware schematic tab |
+| Arquivo | Mudança |
+|---------|---------|
+| `src/lib/fireoneModuleHardwareBridge.ts` | Add `connectDirectRelay()`, simplified serial protocol |
+| `src/lib/fireoneModuleEmulator.ts` | Add `direct_relay` hardware mode, bypass CDS |
+| `src/components/editor/live-firing/VirtualIFMx32QPanel.tsx` | Updated hardware tab with simplified schematic + Arduino Nano firmware |
+| `src/hooks/useFireOneModuleMode.ts` | Expose `connectDirectRelay()` |
 
