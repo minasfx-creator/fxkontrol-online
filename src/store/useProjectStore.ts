@@ -417,6 +417,13 @@ export const EFFECT_LIBRARY: Effect[] = [
 export const useProjectStore = create<ProjectState>((set) => ({
   projectName: 'Untitled Show',
   isPlaying: false,
+  activeLockouts: [],
+  setActiveLockouts: (lockouts) => set({ activeLockouts: lockouts }),
+  toggleLockout: (riskGroup) => set((s) => ({
+    activeLockouts: s.activeLockouts.includes(riskGroup)
+      ? s.activeLockouts.filter(r => r !== riskGroup)
+      : [...s.activeLockouts, riskGroup],
+  })),
   currentTime: 0,
   duration: 120,
   timelineItems: [],
