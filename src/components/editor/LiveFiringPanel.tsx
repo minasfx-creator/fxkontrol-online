@@ -1147,7 +1147,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
                 )}>{rule.label}</button>
             ))}
           </div>
-          {/* Parameters — matches real FXcommander layout */}
+          {/* Parameters — matches real FXK-PYRO layout */}
           <div className="grid grid-cols-2 gap-1.5">
             {[
               { label: 'Duration(s)', value: cueDuration, set: setCueDuration },

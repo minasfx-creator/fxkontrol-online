@@ -252,7 +252,7 @@ export default function VirtualControllerHub({ fs = false, onSelectMode, onClose
         <div className="flex items-center gap-1.5">
           {fireone.isConnected && (
             <Badge variant="outline" className="text-[8px] h-4 px-1.5 border-red-500/30 text-red-400">
-              FireOne · {fireone.modules.size}
+              FXK · {fireone.modules.size}
             </Badge>
           )}
           {pbus.isConnected && (

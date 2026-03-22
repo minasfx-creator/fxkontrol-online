@@ -293,7 +293,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
       <div className="flex items-center justify-between mb-2">
         <div>
           <h3 className={cn("font-black uppercase tracking-wider text-foreground", fs ? "text-sm" : "text-[10px]")}>
-            grandMA3
+            FXK-LIGHT
           </h3>
           <p className={cn("text-muted-foreground/50", fs ? "text-[10px]" : "text-[8px]")}>
             OSC · sACN · MVR-xchange

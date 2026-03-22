@@ -299,7 +299,7 @@ export default function Dashboard() {
 
         {/* ─ Left Column ─ */}
         <div className="space-y-4 order-2 lg:order-1">
-          {/* Show Commander Hub */}
+          {/* FXK-PYRO Hub */}
           <HubCard
             title="FXK-PYRO Hub"
             subtitle="Execução e controle ao vivo"
