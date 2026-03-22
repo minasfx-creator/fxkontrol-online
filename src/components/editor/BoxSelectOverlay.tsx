@@ -106,14 +106,21 @@ export default function BoxSelectOverlay() {
       const store = useProjectStore.getState();
       if (store.editorMode !== 'select') return;
 
+      // Only start on canvas area (not UI overlays)
       const target = e.target as HTMLElement;
       if (target !== canvas && !canvas.contains(target)) return;
+
+      // Alt+click = orbit camera (standard 3D convention)
+      if (e.altKey) return;
 
       const r = canvas.getBoundingClientRect();
       const x = e.clientX - r.left;
       const y = e.clientY - r.top;
 
       pendingRef.current = { x, y, active: true };
+
+      // Immediately disable OrbitControls to prevent any rotation
+      window.dispatchEvent(new CustomEvent('box-select-active', { detail: true }));
     };
 
     const onMove = (e: MouseEvent) => {
@@ -150,9 +157,7 @@ export default function BoxSelectOverlay() {
           setIsSelecting(true);
           pendingRef.current.active = false;
 
-          // Disable OrbitControls during box select
-          window.dispatchEvent(new CustomEvent('box-select-active', { detail: true }));
-
+          // Clear previous selection unless Shift is held (additive)
           if (!e.shiftKey) {
             const store = useProjectStore.getState();
             store.selectMultiplePositions([]);
@@ -162,14 +167,15 @@ export default function BoxSelectOverlay() {
     };
 
     const onUp = () => {
+      const wasPending = pendingRef.current.active;
       pendingRef.current.active = false;
+
+      // Re-enable OrbitControls
+      window.dispatchEvent(new CustomEvent('box-select-active', { detail: false }));
 
       if (!selectingRef.current) return;
       selectingRef.current = false;
       setIsSelecting(false);
-
-      // Re-enable OrbitControls
-      window.dispatchEvent(new CustomEvent('box-select-active', { detail: false }));
 
       const r = rectRef.current;
       const left = Math.min(r.x1, r.x2);

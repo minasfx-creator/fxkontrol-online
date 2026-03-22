@@ -620,9 +620,11 @@ function DirectionLine({ position, color, isSelected, isHovered, hasEffects }: {
 
   if (linePoints.length < 2) return null;
 
-  // Hide stub line when full gizmo is active
+  // Hide when full gizmo is active (adjust-angles mode, OR selected with effects in select mode)
   if (editorMode === 'adjust-angles' && isSelected) return null;
+  if (isSelected && hasEffects) return null; // PyroLaunchAngle handles full trajectory
 
+  // Short cosmetic line only (no effects linked, or not selected)
   const opacity = isSelected ? 1.0 : isHovered ? 0.5 : hasEffects ? 0.7 : 0.2;
   const lineWidth = isSelected ? 2.5 : hasEffects ? 1.5 : 1;
   const typeColor = position.type === 'pyro' ? '#FF6B35' : '#00B4D8';
@@ -634,7 +636,6 @@ function DirectionLine({ position, color, isSelected, isHovered, hasEffects }: {
 
   return (
     <>
-      {/* Solid trajectory line to burst height — color matches position type */}
       <Line
         points={linePoints}
         color={typeColor}
@@ -642,45 +643,10 @@ function DirectionLine({ position, color, isSelected, isHovered, hasEffects }: {
         transparent
         opacity={opacity}
       />
-      {/* Arrowhead at tip — same color as line */}
       <mesh position={tip} rotation={[e.x, e.y, e.z]}>
         <coneGeometry args={[0.08, 0.22, 4]} />
         <meshBasicMaterial color={typeColor} transparent opacity={opacity} />
       </mesh>
-      {/* Diamond grab handle at burst point — Finale 3D style */}
-      {hasEffects && (
-        <group position={tip}>
-          {/* Diamond shape (octahedron rotated 45°) */}
-          <mesh rotation={[Math.PI / 4, 0, Math.PI / 4]}>
-            <octahedronGeometry args={[0.12, 0]} />
-            <meshStandardMaterial
-              color={typeColor}
-              emissive={typeColor}
-              emissiveIntensity={isDraggingHandle ? 1.5 : 0.6}
-              metalness={0.3}
-              roughness={0.5}
-              transparent
-              opacity={0.9}
-            />
-          </mesh>
-          {/* Invisible larger hitbox for easier grabbing */}
-          <mesh
-            onPointerDown={(ev) => {
-              ev.stopPropagation();
-              useUndoStore.getState().checkpoint();
-              selectPosition(position.id);
-              setIsDraggingHandle(true);
-              dragStartRef.current = { heading: position.heading, pitch: position.pitch || 85 };
-              (gl.domElement as HTMLElement).style.cursor = 'grabbing';
-            }}
-            onPointerOver={() => { (gl.domElement as HTMLElement).style.cursor = 'grab'; }}
-            onPointerOut={() => { if (!isDraggingHandle) (gl.domElement as HTMLElement).style.cursor = ''; }}
-          >
-            <sphereGeometry args={[0.2, 8, 8]} />
-            <meshBasicMaterial visible={false} />
-          </mesh>
-        </group>
-      )}
     </>
   );
 }

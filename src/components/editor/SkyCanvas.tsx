@@ -3284,6 +3284,30 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     return () => window.removeEventListener('box-select-active' as any, handler as any);
   }, []);
 
+  // In select mode: disable left-mouse orbit so box-select works exclusively
+  const editorMode = useProjectStore(s => s.editorMode);
+  const isSelectMode = editorMode === 'select';
+
+  // Update mouse buttons when mode changes
+  useEffect(() => {
+    if (!controlsRef.current) return;
+    if (isSelectMode) {
+      // Left = nothing (box select), Middle = orbit, Right = pan
+      controlsRef.current.mouseButtons = {
+        LEFT: -1, // disabled
+        MIDDLE: THREE.MOUSE.ROTATE,
+        RIGHT: THREE.MOUSE.PAN,
+      };
+    } else {
+      // Default: Left = orbit, Middle = dolly, Right = pan
+      controlsRef.current.mouseButtons = {
+        LEFT: THREE.MOUSE.ROTATE,
+        MIDDLE: THREE.MOUSE.DOLLY,
+        RIGHT: THREE.MOUSE.PAN,
+      };
+    }
+  }, [isSelectMode]);
+
   return (
     <OrbitControls
       ref={controlsRef}
