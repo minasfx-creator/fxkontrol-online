@@ -546,9 +546,10 @@ export default function EffectLibrary() {
         <div className="relative mb-2">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/30" />
           <Input
-            placeholder="Search effects..."
+            ref={searchInputRef}
+            placeholder="Search effects... (C)"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setSelectedIndex(0); }}
             className="h-7 pl-7 text-[11px] bg-surface-0/50 border-border/15 focus:border-primary/30 rounded-lg"
           />
         </div>
