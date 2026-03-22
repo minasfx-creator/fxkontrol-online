@@ -346,6 +346,9 @@ export class HybridTransportRouter {
         ...this.manager.getTransportsByType('wifi'),
       ];
     }
+    if (path === 'cellular') {
+      return this.manager.getTransportsByType('cellular');
+    }
     if (path === 'any') {
       // All connected, sorted by priority
       return this.manager.allTransports
