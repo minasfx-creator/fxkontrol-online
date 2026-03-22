@@ -169,6 +169,9 @@ export default function ScriptWindow() {
           case 'tilt':
             updateTimelineItem(id, { tilt: parseFloat(value) || 0 });
             break;
+          case 'spin':
+            updateTimelineItem(id, { spin: parseFloat(value) || 0 });
+            break;
           case 'notes':
             updateTimelineItem(id, { notes: value });
             break;
