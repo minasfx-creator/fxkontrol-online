@@ -85,7 +85,7 @@ export default function MainLayout() {
           </main>
         </div>
 
-        <Messenger />
+        <FXKAssistant />
 
         {/* Global PANIC FAB — visible on all pages when armed */}
         {isArmed && (

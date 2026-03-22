@@ -579,3 +579,38 @@ body.night-mode {
   50% { opacity: 1; }
 }
 .armed-banner-pulse { animation: armed-banner-pulse 1s ease-in-out infinite; }
+
+/* ===== FXK-AI Holographic Effects ===== */
+@keyframes holographic-scan {
+  0% { background-position: 0 -100%; }
+  100% { background-position: 0 200%; }
+}
+.animate-holographic-scan {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    hsl(32 100% 50% / 0.03) 45%,
+    hsl(32 100% 60% / 0.06) 50%,
+    hsl(32 100% 50% / 0.03) 55%,
+    transparent 100%
+  );
+  background-size: 100% 50%;
+  animation: holographic-scan 4s linear infinite;
+}
+
+@keyframes amber-pulse {
+  0%, 100% { opacity: 0.6; box-shadow: 0 0 4px hsl(32 100% 50% / 0.3); }
+  50% { opacity: 1; box-shadow: 0 0 12px hsl(32 100% 50% / 0.6); }
+}
+.animate-amber-pulse { animation: amber-pulse 2s ease-in-out infinite; }
+
+/* FXK bubble glow */
+.fxk-bubble::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: radial-gradient(circle, hsl(32 100% 50% / 0.15), transparent 70%);
+  animation: amber-pulse 3s ease-in-out infinite;
+  pointer-events: none;
+}
