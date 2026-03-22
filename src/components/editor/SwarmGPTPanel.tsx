@@ -910,8 +910,8 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
 
         {/* Quick prompts */}
         {mode !== 'video' && mode !== 'presets' && <div className="space-y-1">
-          <span className="text-[9px] text-muted-foreground font-semibold uppercase">
-            {mode === 'full-show' ? 'Temas de Show' : mode === 'music-sync' ? 'Estilos Musicais' : 'Prompts Rápidos'}
+          <span className="text-[9px] font-mono font-bold uppercase tracking-[0.15em]" style={{ color: 'hsl(165 50% 45%)' }}>
+            {mode === 'full-show' ? 'MISSION THEMES' : mode === 'music-sync' ? 'SYNC PROFILES' : 'QUICK DEPLOY'}
           </span>
           <div className="grid grid-cols-2 gap-1">
             {quickList.map((q) => (
@@ -920,14 +920,14 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
                 onClick={() => setPrompt(q.prompt)}
                 disabled={loading}
                 className={cn(
-                  "flex items-center gap-1 px-1.5 py-1 rounded-sm text-[8px] text-left transition-colors border",
+                  "flex items-center gap-1 px-1.5 py-1 rounded-sm text-[8px] text-left transition-colors border font-mono",
                   prompt === q.prompt
-                    ? "border-primary/40 bg-primary/10 text-primary"
-                    : "border-border/50 bg-surface-2 hover:bg-surface-3 text-muted-foreground hover:text-foreground"
+                    ? "border-teal-500/40 bg-teal-500/10 text-teal-300"
+                    : "border-teal-500/10 bg-surface-2 hover:bg-surface-3 text-muted-foreground hover:text-foreground hover:border-teal-500/20"
                 )}
               >
                 <span className="text-sm">{q.emoji}</span>
-                <span className="truncate">{q.label}</span>
+                <span className="truncate uppercase tracking-wider">{q.label}</span>
               </button>
             ))}
           </div>
