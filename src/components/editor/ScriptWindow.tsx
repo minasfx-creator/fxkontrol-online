@@ -1048,29 +1048,59 @@ export default function ScriptWindow() {
 
       {/* Table */}
       <div className="flex-1 overflow-auto" ref={tableRef}>
-        <table className="w-full text-[9px] font-mono-code border-collapse min-w-[600px]">
+        <table className="text-[9px] font-mono-code border-collapse" style={{ minWidth: '600px', tableLayout: 'fixed', width: Object.entries(columnWidths).filter(([k]) => isColVisible(k as ColumnKey)).reduce((s, [, w]) => s + w, 0) }}>
+          <colgroup>
+            {COLUMN_KEYS.map(key => isColVisible(key) ? <col key={key} style={{ width: columnWidths[key] }} /> : null)}
+          </colgroup>
           <thead className="sticky top-0 bg-surface-1 z-10">
             <tr className="border-b border-border/40">
-              <th className="px-0.5 py-1 w-6 text-center text-muted-foreground/50 font-medium">Cue</th>
-              <th className="px-1 py-1 w-5"></th>
-              <SortableHeader label="Event Time" field="eventTime" current={sortField} dir={sortDir} onSort={toggleSort} />
-              <SortableHeader label="Effect Time" field="effectTime" current={sortField} dir={sortDir} onSort={toggleSort} />
-              <th className="px-1 py-1 text-left text-muted-foreground font-medium">PFT</th>
-              <th className="px-1 py-1 text-left text-muted-foreground font-medium w-8">Size</th>
-              <th className="px-1 py-1 text-left text-muted-foreground font-medium w-10">Type</th>
-              <SortableHeader label="Description" field="description" current={sortField} dir={sortDir} onSort={toggleSort} />
-              <SortableHeader label="Position" field="position" current={sortField} dir={sortDir} onSort={toggleSort} />
-              <th className="px-1 py-1 text-left text-muted-foreground font-medium">Pan°</th>
-              <th className="px-1 py-1 text-left text-muted-foreground font-medium">Tilt°</th>
-              <th className="px-1 py-1 text-left text-muted-foreground font-medium">Spin°</th>
-              <th className="px-1 py-1 text-left text-muted-foreground font-medium w-6" title="Angles ASCII art">∠*</th>
-              <th className="px-1 py-1 text-left text-muted-foreground font-medium w-8" title="Derived Pitch (read-only)">dP</th>
-              <th className="px-1 py-1 text-left text-muted-foreground font-medium w-8" title="Derived Roll (read-only)">dR</th>
-              <SortableHeader label="Dur" field="duration" current={sortField} dir={sortDir} onSort={toggleSort} />
-              <SortableHeader label="$" field="cost" current={sortField} dir={sortDir} onSort={toggleSort} />
-              <th className="px-1 py-1 text-left text-muted-foreground font-medium">Chain</th>
-              <th className="px-1 py-1 text-left text-muted-foreground font-medium">Notes</th>
-              <th className="px-1 py-1 w-8"></th>
+              {([
+                { key: 'cue' as ColumnKey, label: 'Cue', sortable: false },
+                { key: 'icon' as ColumnKey, label: '', sortable: false },
+                { key: 'eventTime' as ColumnKey, label: 'Event Time', sortable: true, field: 'eventTime' as SortField },
+                { key: 'effectTime' as ColumnKey, label: 'Effect Time', sortable: true, field: 'effectTime' as SortField },
+                { key: 'pft' as ColumnKey, label: 'PFT', sortable: false },
+                { key: 'size' as ColumnKey, label: 'Size', sortable: false },
+                { key: 'type' as ColumnKey, label: 'Type', sortable: false },
+                { key: 'description' as ColumnKey, label: 'Description', sortable: true, field: 'description' as SortField },
+                { key: 'position' as ColumnKey, label: 'Position', sortable: true, field: 'position' as SortField },
+                { key: 'pan' as ColumnKey, label: 'Pan°', sortable: false },
+                { key: 'tilt' as ColumnKey, label: 'Tilt°', sortable: false },
+                { key: 'spin' as ColumnKey, label: 'Spin°', sortable: false },
+                { key: 'angles' as ColumnKey, label: '∠*', sortable: false },
+                { key: 'dP' as ColumnKey, label: 'dP', sortable: false },
+                { key: 'dR' as ColumnKey, label: 'dR', sortable: false },
+                { key: 'dur' as ColumnKey, label: 'Dur', sortable: true, field: 'duration' as SortField },
+                { key: 'cost' as ColumnKey, label: '$', sortable: true, field: 'cost' as SortField },
+                { key: 'chain' as ColumnKey, label: 'Chain', sortable: false },
+                { key: 'notes' as ColumnKey, label: 'Notes', sortable: false },
+                { key: 'actions' as ColumnKey, label: '', sortable: false },
+              ] as const).filter(col => isColVisible(col.key)).map(col => (
+                <th
+                  key={col.key}
+                  className="px-1 py-1 text-left text-muted-foreground font-medium relative select-none"
+                  style={{ width: columnWidths[col.key] }}
+                >
+                  {col.sortable && col.field ? (
+                    <span
+                      className={cn("cursor-pointer hover:text-foreground transition-colors", sortField === col.field && "text-primary")}
+                      onClick={() => toggleSort(col.field!)}
+                    >
+                      {col.label}
+                      {sortField === col.field && (
+                        <ArrowUpDown className="inline h-2.5 w-2.5 ml-0.5" />
+                      )}
+                    </span>
+                  ) : (
+                    col.label
+                  )}
+                  {/* Resize handle */}
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/40 transition-colors"
+                    onMouseDown={(e) => handleResizeStart(col.key, e)}
+                  />
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
