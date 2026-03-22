@@ -319,6 +319,60 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* ── CONSOLE LAUNCHER — Click to open fullscreen landscape ──── */}
+      <div className="mb-6 animate-fxk-stagger" style={{ animationDelay: '0.08s' }}>
+        <div className="flex items-center gap-2 mb-3">
+          <div className="h-[1px] w-4" style={{ background: 'hsl(32 100% 50% / 0.3)' }} />
+          <span className="text-[9px] font-mono font-bold tracking-[0.3em] uppercase" style={{ color: 'hsl(32 100% 50% / 0.6)' }}>
+            COMMAND CONSOLES
+          </span>
+          <div className="h-[1px] flex-1" style={{ background: 'hsl(32 100% 50% / 0.1)' }} />
+          <span className="text-[8px] font-mono text-muted-foreground/30 tracking-wider">TAP TO ENTER</span>
+        </div>
+        <div className={cn("grid gap-2", isMobile ? "grid-cols-2" : "grid-cols-7")}>
+          {CONSOLE_CARDS.map((console, i) => {
+            const Icon = console.icon;
+            return (
+              <button
+                key={console.key}
+                onClick={() => navigate(`/command?mode=${console.key}`)}
+                className="group relative overflow-hidden rounded-lg border p-3 text-left transition-all duration-200 hover:scale-[1.02] active:scale-[0.97] animate-fxk-stagger"
+                style={{
+                  animationDelay: `${0.1 + i * 0.04}s`,
+                  borderColor: `${console.color}20`,
+                  background: `linear-gradient(135deg, ${console.glow} 0%, hsl(220 18% 4%) 100%)`,
+                }}
+              >
+                {/* Accent top bar */}
+                <div className="absolute top-0 left-0 right-0 h-[2px]" style={{
+                  background: `linear-gradient(90deg, transparent, ${console.color}60, transparent)`,
+                }} />
+                {/* Corner brackets */}
+                <div className="absolute top-0.5 left-0.5 w-2 h-2 border-t border-l pointer-events-none" style={{ borderColor: `${console.color}25` }} />
+                <div className="absolute top-0.5 right-0.5 w-2 h-2 border-t border-r pointer-events-none" style={{ borderColor: `${console.color}25` }} />
+                
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className="h-10 w-10 rounded-lg flex items-center justify-center transition-all group-hover:scale-110"
+                    style={{ background: `${console.color}12`, border: `1px solid ${console.color}20` }}>
+                    <Icon className="w-5 h-5" style={{ color: console.color }} />
+                  </div>
+                  <span className="text-[9px] font-mono font-bold tracking-[0.1em] text-foreground/70 group-hover:text-foreground transition-colors">
+                    {console.label}
+                  </span>
+                  <span className="text-[7px] font-mono text-muted-foreground/30 tracking-wider">
+                    {console.subtitle}
+                  </span>
+                </div>
+
+                {/* Hover glow */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                  style={{ boxShadow: `inset 0 0 20px ${console.color}10, 0 0 15px ${console.color}08` }} />
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* ── Main Grid: Left (ops) + Center (feed) + Right ─ */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px_1fr] gap-6">
 
