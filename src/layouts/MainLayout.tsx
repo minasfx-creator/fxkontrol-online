@@ -142,8 +142,8 @@ export default function MainLayout() {
             </div>
           </header>
 
-          <main className={`${isEditor ? 'flex-1 min-h-0' : 'flex-1 overflow-auto p-4 md:p-6'} relative`}
-            style={showDock || showMobileDock ? { paddingBottom: '72px' } : undefined}>
+          <main className={`${(isEditor || isCommand) ? 'flex-1 min-h-0' : 'flex-1 overflow-auto p-4 md:p-6'} relative`}
+            style={showDock || showMobileDock ? { paddingBottom: isCommand ? undefined : '72px' } : undefined}>
             {/* Holographic light sweep overlay during transition */}
             {transitionPhase !== 'idle' && (
               <div className="absolute inset-0 pointer-events-none z-50 animate-page-sweep" />
