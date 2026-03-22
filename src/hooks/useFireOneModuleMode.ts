@@ -90,11 +90,13 @@ export function useFireOneModuleMode(): UseFireOneModuleReturn {
     return () => clearInterval(interval);
   }, []);
 
-  const powerOn = useCallback(() => {
+  const powerOn = useCallback((hardwareMode: 'cds' | 'direct_relay' = 'cds') => {
     const bridge = bridgeRef.current;
     const bridgeConnected = bridge?.getStatus().connected ?? false;
+    const isDirectRelay = hardwareMode === 'direct_relay' || bridge?.getStatus().transport === 'direct_relay';
     const emu = new FireOneModuleEmulator({
       simulateHardware: !bridgeConnected,
+      hardwareMode: isDirectRelay ? 'direct_relay' : hardwareMode,
       onFire: bridgeConnected && bridge ? (pin, dur) => bridge.fire(pin, dur) : undefined,
       onContinuityRead: bridgeConnected && bridge ? (pin) => bridge.readContinuity(pin) : undefined,
       onStateChange: (_state: ModuleState) => {},
