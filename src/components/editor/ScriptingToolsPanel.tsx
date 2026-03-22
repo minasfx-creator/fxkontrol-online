@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Wand2, Shuffle, ArrowLeftRight, Fan, AlignHorizontalSpaceAround, ArrowDownUp, Grid3X3, X, Copy } from 'lucide-react';
+import { Wand2, Shuffle, ArrowLeftRight, Fan, AlignHorizontalSpaceAround, ArrowDownUp, Grid3X3, X, Copy, Wind } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
