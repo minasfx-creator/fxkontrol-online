@@ -1399,7 +1399,16 @@ export default function PyroFireOnePanel({
   // PANEL MODE (inside FX Commander)
   // ═══════════════════════════════════════════════════════════
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative overflow-hidden" style={{ background: 'hsl(0 15% 5%)' }}>
+      {/* Scanline overlay */}
+      <div className="absolute inset-0 pointer-events-none z-10" style={{
+        backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0,0,0,0.03) 1px, rgba(0,0,0,0.03) 2px)',
+        backgroundSize: '100% 2px',
+      }} />
+      {/* Red vignette */}
+      <div className="absolute inset-0 pointer-events-none z-10" style={{
+        background: 'radial-gradient(ellipse at center, transparent 60%, hsl(0 30% 3% / 0.6) 100%)',
+      }} />
       {renderFileInput()}
       {renderHeader()}
       {renderConnectionBar()}
