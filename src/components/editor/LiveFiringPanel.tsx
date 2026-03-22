@@ -814,13 +814,25 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
     <div>
       <div className={cn("flex items-center justify-between border-b-2", fs && mob ? "px-3 py-2" : fs ? "px-6 py-3" : "px-2 py-1.5")}
         style={{
-          borderColor: isDmxMode ? 'hsl(200 60% 25%)' : 'hsl(0 40% 20%)',
-          background: isDmxMode ? 'hsl(200 15% 7%)' : 'hsl(220 15% 8%)',
+          borderColor: isDmxMode ? 'hsl(200 40% 20%)' : 'hsl(0 40% 20%)',
+          background: isDmxMode
+            ? 'hsl(200 10% 7%)'
+            : 'hsl(0 5% 8%)',
+          /* FX Commander: thin dark bezel enclosure border */
+          ...(isDmxMode ? {
+            borderLeft: '2px solid hsl(200 5% 12%)',
+            borderRight: '2px solid hsl(200 5% 12%)',
+            borderTop: '2px solid hsl(200 5% 12%)',
+          } : {}),
         }}>
         <div className="flex items-center gap-2">
           <div className={cn("rounded flex items-center justify-center cursor-pointer font-black text-white",
             fs && mob ? "w-6 h-6 text-[9px]" : fs ? "w-8 h-8 text-[10px]" : "w-5 h-5 text-[7px]"
-          )} style={{ background: platformAccent.bgGrad }}
+          )} style={{
+            background: platformAccent.bgGrad,
+            /* Physical console button 3D effect */
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15), 0 2px 4px rgba(0,0,0,0.4)',
+          }}
             onClick={() => {
               const now = Date.now();
               if (now - showModeTapRef.current < 400) {
@@ -832,16 +844,16 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
                 showModeTapRef.current = now;
               }
             }}>
-            {isDmxMode ? 'DX' : 'F1'}
+            {isDmxMode ? 'FX' : 'F1'}
           </div>
           <div>
-            <div className={cn("font-black tracking-[0.12em]", platformAccent.textClass,
+            <div className={cn("font-black tracking-[0.12em]",
               fs && mob ? "text-xs" : fs ? "text-base" : "text-[10px]"
-            )}>{platformAccent.name}</div>
+            )} style={{ color: isDmxMode ? 'hsl(200 80% 60%)' : 'hsl(0 0% 85%)' }}>{platformAccent.name}</div>
             <div className={cn("font-mono tracking-wider",
               fs && mob ? "text-[9px]" : fs ? "text-[9px]" : "text-[10px]",
-              showMode ? "text-red-400/60" : "text-muted-foreground/40"
-            )}>
+              showMode ? "text-red-400/60" : ""
+            )} style={{ color: showMode ? undefined : isDmxMode ? 'hsl(200 30% 35%)' : 'hsl(0 0% 40%)' }}>
               {showMode ? '● SHOW MODE' : platformAccent.sub}
             </div>
           </div>
@@ -856,27 +868,25 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
               <span className={cn("font-mono text-muted-foreground/40", fs ? "text-[9px]" : "text-[10px]")}>{batteryVoltage.toFixed(2)}V</span>
             </div>
           )}
-          <div className="flex items-center gap-1" title={artNetConnected ? `DMX Signal: Active` : 'DMX Signal: No Signal'}>
-            <div className="flex items-end gap-[1px]">
-              <div className={cn("rounded-full transition-colors",
-                artNetConnected ? "bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.6)]" : "bg-muted-foreground/20",
-                fs ? "w-2.5 h-2.5" : "w-1.5 h-1.5"
-              )} />
-              {[0.3, 0.55, 0.8, 1].map((h, i) => (
-                <div key={i} className={cn("rounded-[1px]",
-                  artNetConnected ? i < 3 ? "bg-green-500" : relayConnected ? "bg-green-500" : "bg-green-500/30" : "bg-muted-foreground/15",
-                  fs ? "w-[3px]" : "w-[2px]"
-                )} style={{ height: fs ? `${Math.round(h * 12)}px` : `${Math.round(h * 8)}px` }} />
-              ))}
-            </div>
-            <span className={cn("font-mono", artNetConnected ? "text-green-500/70" : "text-muted-foreground/40",
-              fs && mob ? "text-[9px]" : fs ? "text-[9px]" : "text-[10px]"
-            )}>DMX</span>
+          {/* Physical console port LED indicators */}
+          <div className="flex items-center gap-1.5">
+            {[
+              { label: 'DMX', active: artNetConnected, color: 'hsl(120 70% 45%)' },
+              { label: 'UDP', active: relayConnected, color: 'hsl(180 70% 50%)' },
+            ].map(led => (
+              <div key={led.label} className="flex items-center gap-0.5">
+                <div className={cn("rounded-full", fs ? "w-2 h-2" : "w-1.5 h-1.5")} style={{
+                  background: led.active
+                    ? `radial-gradient(circle at 40% 35%, ${led.color}, hsl(120 40% 20%) 80%)`
+                    : 'radial-gradient(circle at 40% 35%, hsl(0 0% 22%), hsl(0 0% 10%))',
+                  boxShadow: led.active ? `0 0 6px ${led.color}` : 'none',
+                }} />
+                <span className={cn("font-mono", led.active ? "text-green-500/70" : "text-muted-foreground/30",
+                  fs && mob ? "text-[8px]" : fs ? "text-[8px]" : "text-[10px]"
+                )}>{led.label}</span>
+              </div>
+            ))}
           </div>
-          <button onClick={() => relayConnected ? disconnectRelay() : connectRelay()} className="flex items-center gap-1">
-            <div className={cn("rounded-full", relayConnected ? "bg-cyan-400" : "bg-muted-foreground/20", fs ? "w-2.5 h-2.5" : "w-1.5 h-1.5")} style={relayConnected ? { boxShadow: '0 0 6px rgba(0,220,255,0.5)' } : undefined} />
-            <span className={cn("font-mono", relayConnected ? "text-cyan-400/70" : "text-muted-foreground/40", fs && mob ? "text-[9px]" : fs ? "text-[9px]" : "text-[10px]")}>UDP</span>
-          </button>
           <div className="flex items-center gap-1">
             <Signal className={cn(pyroArm ? "text-red-500" : "text-muted-foreground/20", fs && mob ? "w-3.5 h-3.5" : fs ? "w-4 h-4" : "w-2.5 h-2.5")} />
           </div>
@@ -886,109 +896,17 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
           {!isFullscreen && <button onClick={onClose} className="text-muted-foreground/30 hover:text-foreground p-0.5 rounded transition-colors text-xs ml-1">✕</button>}
         </div>
       </div>
-      {/* Accent shimmer bar */}
-      <div className="h-[2px] w-full" style={{
+      {/* FX Commander accent shimmer bar — animated */}
+      <div className="h-[2px] w-full relative overflow-hidden" style={{
         background: isDmxMode
           ? 'linear-gradient(90deg, transparent 0%, hsl(200 80% 48% / 0.6) 30%, hsl(200 80% 48% / 0.1) 100%)'
           : 'linear-gradient(90deg, transparent 0%, hsl(0 70% 45% / 0.4) 30%, hsl(0 70% 45% / 0.05) 100%)',
-      }} />
-    </div>
-  );
-
-  const renderArmBar = (fs: boolean) => (
-    <>
-      <div className={cn(
-        "border-b transition-colors",
-        fs && mob ? "px-3 py-2 flex flex-col gap-2" : "flex items-center gap-3",
-        !fs || !mob ? (fs ? "px-6 py-2.5" : "px-2 py-1") : "",
-        (pyroArm || dmxArm) ? "border-red-800/30" : "border-border/15"
-      )} style={{ background: (pyroArm || dmxArm) ? 'hsl(0 40% 8%)' : 'hsl(220 12% 7%)' }}>
-        {/* On mobile fullscreen, stack PYRO + DMX horizontally but bigger, DEADMAN below */}
-        <div className={cn(fs && mob ? "flex gap-2" : "contents")}>
-          <button onClick={() => handlePyroArm(!pyroArm)}
-            className={cn(
-              "flex items-center justify-center gap-2 rounded border-2 font-black uppercase transition-all",
-              fs && mob ? "flex-1 py-3.5 text-[11px] tracking-[0.15em]" : fs ? "flex-1 py-3 text-sm tracking-[0.2em]" : "flex-1 py-1.5 text-[9px] tracking-[0.15em]",
-              pyroArm ? "bg-red-600/20 border-red-500/60 text-red-400" : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/40 hover:border-border/40"
-            )} style={pyroArm ? { boxShadow: 'inset 0 0 12px rgba(255,50,30,0.1)' } : undefined}>
-            <Shield className={cn(fs && mob ? "w-4 h-4" : fs ? "w-5 h-5" : "w-3 h-3")} />
-            {pyroArm ? 'PYRO ●' : 'PYRO'}
-          </button>
-          <button onClick={() => handleDmxArm(!dmxArm)}
-            className={cn(
-              "flex items-center justify-center gap-2 rounded border-2 font-black uppercase transition-all",
-              fs && mob ? "flex-1 py-3.5 text-[11px] tracking-[0.15em]" : fs ? "flex-1 py-3 text-sm tracking-[0.2em]" : "flex-1 py-1.5 text-[9px] tracking-[0.15em]",
-              dmxArm ? "bg-amber-600/20 border-amber-500/60 text-amber-400" : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/40 hover:border-border/40"
-            )} style={dmxArm ? { boxShadow: 'inset 0 0 12px rgba(255,180,30,0.1)' } : undefined}>
-            <Radio className={cn(fs && mob ? "w-4 h-4" : fs ? "w-5 h-5" : "w-3 h-3")} />
-            {dmxArm ? 'DMX ●' : 'DMX'}
-          </button>
-        </div>
-        {/* DEADMAN — full width on mobile */}
-        <button
-          onMouseDown={() => setDeadmanHeld(true)}
-          onMouseUp={() => setDeadmanHeld(false)}
-          onMouseLeave={() => setDeadmanHeld(false)}
-          onTouchStart={(e) => { e.preventDefault(); setDeadmanHeld(true); }}
-          onTouchEnd={(e) => { e.preventDefault(); setDeadmanHeld(false); }}
-          className={cn(
-            "flex items-center justify-center rounded border-2 font-black uppercase transition-all gap-2",
-            fs && mob ? "w-full py-3 text-[10px]" : fs ? "w-16 py-3 text-[10px] shrink-0" : "w-10 py-1.5 text-[8px] shrink-0",
-            deadmanHeld ? "bg-green-600/30 border-green-500/60 text-green-400" : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/30"
-          )}>
-          <Hand className={cn(fs && mob ? "w-5 h-5" : fs ? "w-4 h-4" : "w-3 h-3")} />
-          {fs && mob && <span>DEADMAN</span>}
-        </button>
-      </div>
-      {(pyroArm || dmxArm) && (
-        <div className={cn(
-          "text-center font-black uppercase animate-pulse",
-          fs && mob ? "px-3 py-1 text-[10px] tracking-[0.25em]" : fs ? "px-4 py-1.5 text-xs tracking-[0.3em]" : "px-2 py-0.5 text-[10px] tracking-[0.25em]",
-          pyroArm && dmxArm ? "text-red-400" : pyroArm ? "text-red-400" : "text-amber-400"
-        )} style={{ background: pyroArm ? 'hsl(0 50% 8%)' : 'hsl(40 40% 8%)' }}>
-          {pyroArm && dmxArm ? '⚠ DMX + PYRO ARMED ⚠' : pyroArm ? '⚠ PYRO ARMED ⚠' : 'DMX ARMED'}
-        </div>
-      )}
-      {/* ── Lockout Risk Groups (Finale 3D) ── */}
-      {(pyroArm) && (
-        <LockoutPanel fs={fs} mob={mob} />
-      )}
-    </>
-  );
-
-  const renderCueKeys = (fs: boolean) => (
-    <div className={cn("border-b border-border/15", fs && mob ? "px-2 py-2" : fs ? "px-6 py-4" : "px-1.5 py-1.5")} style={{ background: 'hsl(220 12% 6%)' }}>
-      {/* Pagination */}
-      <div className={cn("flex items-center justify-between", fs && mob ? "mb-1.5" : fs ? "mb-2" : "mb-0.5")}>
-        <div className="flex items-center gap-1">
-          <button onClick={() => setCuePage(Math.max(0, cuePage - 1))} disabled={cuePage === 0}
-            className={cn("rounded text-muted-foreground/30 hover:text-foreground/60 disabled:opacity-20 transition-colors", fs && mob ? "p-1.5" : fs ? "p-1" : "p-0.5")}>
-            <ChevronLeft className={cn(fs ? "w-4 h-4" : "w-3 h-3")} />
-          </button>
-          <span className={cn("font-mono text-muted-foreground/40", fs && mob ? "text-[10px]" : fs ? "text-[9px]" : "text-[10px]")}>
-            {cuePage * CUES_PER_PAGE + 1}-{Math.min((cuePage + 1) * CUES_PER_PAGE, 128)}
-          </span>
-          <button onClick={() => setCuePage(Math.min(15, cuePage + 1))}
-            className={cn("rounded text-muted-foreground/30 hover:text-foreground/60 transition-colors", fs && mob ? "p-1.5" : fs ? "p-1" : "p-0.5")}>
-            <ChevronRight className={cn(fs ? "w-4 h-4" : "w-3 h-3")} />
-          </button>
-        </div>
-        <span className={cn("font-mono text-muted-foreground/20", fs && mob ? "text-[9px]" : fs ? "text-[10px]" : "text-[10px]")}>
-          Page {cuePage + 1}/16
-        </span>
-      </div>
-      {/* 4 cols on mobile fullscreen, 8 cols on desktop */}
-      <div className={cn("grid", fs && mob ? "grid-cols-4 gap-1.5" : fs ? "grid-cols-8 gap-2" : "grid-cols-8 gap-0.5")}>
-        {Array.from({ length: CUES_PER_PAGE }).map((_, i) => {
-          const globalIndex = i + pageStart;
-          const cue = pageCues.find(c => c.keyIndex === globalIndex);
-          return (
-            <CueKey key={i} index={i} cue={cue} firing={firingKeys.has(i)}
-              onPress={() => fireCueKey(i)} onRelease={() => stopCueKey(i)}
-              onLongPress={() => toggleKeyMode(i)}
-              pyroArmed={pyroArm} dmxArmed={dmxArm} fs={fs} mobile={mob} />
-          );
-        })}
+      }}>
+        {isDmxMode && <div className="absolute inset-0" style={{
+          background: 'linear-gradient(90deg, transparent 0%, hsl(200 90% 60% / 0.3) 50%, transparent 100%)',
+          animation: 'shimmer 3s ease-in-out infinite',
+          backgroundSize: '200% 100%',
+        }} />}
       </div>
     </div>
   );
