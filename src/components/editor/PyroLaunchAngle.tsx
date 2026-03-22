@@ -346,14 +346,16 @@ function BurstIndicator({ position: pos, color, caliber, breakHeight }: {
 }
 
 /**
- * LaunchAngleGizmo: Finale 3D-style heading/pitch/roll editing with inline editable inputs.
+ * LaunchAngleGizmo: Finale 3D-style heading/pitch/roll editing.
+ * IMPORTANT: Edits per-CUE angles (cueHeading/cuePitch on TimelineItem),
+ * NOT position base angles. New cues inherit position defaults.
  */
 const LaunchAngleGizmo = forwardRef<THREE.Group, {
   position: Position;
   batchMode?: boolean;
   selectedIds?: string[];
 }>(({ position, batchMode, selectedIds }, ref) => {
-  const { updatePosition } = useProjectStore();
+  const { updatePosition, updateTimelineItem, timelineItems } = useProjectStore();
   const [isDragging, setIsDragging] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [dragAxis, setDragAxis] = useState<'all' | 'heading' | 'pitch' | 'roll' | 'up-vector'>('all');
@@ -362,6 +364,23 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
   const [axisDominance, setAxisDominance] = useState<{ h: number; p: number }>({ h: 1, p: 1 });
   const handleRef = useRef<THREE.Mesh>(null);
   const { camera, raycaster, gl } = useThree();
+
+  // Find linked cues for this position
+  const linkedCues = useMemo(() => {
+    return timelineItems.filter(t => t.positionId === position.id || t.positionIds?.includes(position.id));
+  }, [timelineItems, position.id]);
+
+  // The "effective" heading/pitch: use cue override if exists, else position base
+  // When multiple cues exist, use the first one's overrides (or position base)
+  const effectiveHeading = useMemo(() => {
+    if (linkedCues.length > 0 && linkedCues[0].cueHeading !== undefined) return linkedCues[0].cueHeading;
+    return position.heading;
+  }, [linkedCues, position.heading]);
+  
+  const effectivePitch = useMemo(() => {
+    if (linkedCues.length > 0 && linkedCues[0].cuePitch !== undefined) return linkedCues[0].cuePitch;
+    return position.pitch || 85;
+  }, [linkedCues, position.pitch]);
 
   // Listen for axis-constrained rotation from context menu
   useEffect(() => {
@@ -372,21 +391,19 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
     return () => window.removeEventListener('angle-mode-axis' as any, handler as any);
   }, []);
 
-  const heading = position.heading * (Math.PI / 180);
-  // Expanded pitch range: -180 to 180 per Finale 3D spec
-  const pitch = Math.max(-180, Math.min(180, position.pitch || 85)) * (Math.PI / 180);
+  // Use effective (cue-level) angles for gizmo display
+  const heading = effectiveHeading * (Math.PI / 180);
+  const pitch = Math.max(-180, Math.min(180, effectivePitch)) * (Math.PI / 180);
 
   // Get real caliber from linked effects
-  const timelineItems = useProjectStore(s => s.timelineItems);
   const realCaliber = useMemo(() => {
-    const linked = timelineItems.filter(t => t.positionId === position.id || t.positionIds?.includes(position.id));
     let cal = 4;
-    for (const item of linked) {
+    for (const item of linkedCues) {
       const eff = EFFECT_LIBRARY.find(e => e.id === item.effectId);
       if (eff?.caliber && eff.caliber > cal) cal = eff.caliber;
     }
     return cal;
-  }, [timelineItems, position.id]);
+  }, [linkedCues]);
 
   // Check if we're in select mode (show full-scale trajectory) vs adjust-angles (gizmo scale)
   const editorMode = useProjectStore(s => s.editorMode);
@@ -475,8 +492,8 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
     window.dispatchEvent(new CustomEvent('box-select-active', { detail: true }));
     const nativeEvent = e.nativeEvent || e;
     dragStartRef.current = {
-      heading: position.heading,
-      pitch: position.pitch || 85,
+      heading: effectiveHeading,
+      pitch: effectivePitch,
       mouseX: nativeEvent.clientX ?? 0,
       mouseY: nativeEvent.clientY ?? 0,
     };
@@ -532,11 +549,11 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
       }
 
       // Axis constraints (from context menu or keyboard)
-      if (dragAxis === 'heading' || dragAxis === 'up-vector') newPitch = position.pitch || 85;
-      if (dragAxis === 'pitch') newHeading = position.heading;
+      if (dragAxis === 'heading' || dragAxis === 'up-vector') newPitch = effectivePitch;
+      if (dragAxis === 'pitch') newHeading = effectiveHeading;
       if (dragAxis === 'roll') {
-        newHeading = position.heading;
-        newPitch = position.pitch || 85;
+        newHeading = effectiveHeading;
+        newPitch = effectivePitch;
       }
 
       // Compute delta for HUD
@@ -545,6 +562,7 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
         p: Math.round(newPitch - dragStartRef.current.pitch),
       });
 
+      // Update CUE angles (not position base angles)
       if (batchMode && selectedIds && dragStartRef.current) {
         const dHeading = newHeading - dragStartRef.current.heading;
         const dPitch = newPitch - dragStartRef.current.pitch;
@@ -554,11 +572,14 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
             let h = dragAxis === 'pitch' ? start.heading : start.heading + dHeading;
             let p = dragAxis === 'heading' ? start.pitch : Math.max(-180, Math.min(180, start.pitch + dPitch));
             if (e.shiftKey) { h = Math.round(h / 5) * 5; p = Math.round(p / 5) * 5; }
-            updatePosition(id, { heading: h, pitch: p });
+            // Update all cues linked to this position
+            const posItems = timelineItems.filter(t => t.positionId === id || t.positionIds?.includes(id));
+            posItems.forEach(item => updateTimelineItem(item.id, { cueHeading: h, cuePitch: p }));
           }
         });
       } else {
-        updatePosition(position.id, { heading: newHeading, pitch: newPitch });
+        // Update all cues linked to this position
+        linkedCues.forEach(item => updateTimelineItem(item.id, { cueHeading: newHeading, cuePitch: newPitch }));
       }
     };
     const handleUp = () => {
@@ -616,9 +637,9 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
 
   return (
     <group ref={ref} position={[position.x, position.y, position.z]}>
-      <HeadingCompass heading={position.heading} shiftHeld={isDragging} />
-      <PitchArc heading={position.heading} pitch={position.pitch || 85} />
-      <RollArc heading={position.heading} pitch={position.pitch || 85} roll={position.roll || 0} />
+      <HeadingCompass heading={effectiveHeading} shiftHeld={isDragging} />
+      <PitchArc heading={effectiveHeading} pitch={effectivePitch} />
+      <RollArc heading={effectiveHeading} pitch={effectivePitch} roll={position.roll || 0} />
 
       {/* Axis constraint indicator ring */}
       {isDragging && axisIndicatorColor && (
@@ -754,21 +775,42 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
             {position.section && (
               <span style={{ marginLeft: '4px', fontSize: '8px', color: '#4FC3F7', opacity: 0.7 }}>§{position.section}</span>
             )}
+            {linkedCues.length > 0 && (
+              <span style={{ marginLeft: '4px', fontSize: '7px', color: '#FF8A65', opacity: 0.7 }}>CUE</span>
+            )}
           </div>
+          {/* Show base position angles vs cue override */}
+          {linkedCues.length > 0 && linkedCues[0].cueHeading !== undefined && (
+            <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.35)', marginBottom: '1px' }}>
+              Base: H {Math.round(position.heading)}° · P {Math.round(position.pitch || 85)}°
+            </div>
+          )}
           <div style={{ display: 'flex', gap: '6px' }}>
             <InlineAngleInput
               label="H"
-              value={position.heading}
+              value={effectiveHeading}
               color={COLORS.headingArc}
-              onChange={v => updatePosition(position.id, { heading: v })}
+              onChange={v => {
+                if (linkedCues.length > 0) {
+                  linkedCues.forEach(item => updateTimelineItem(item.id, { cueHeading: v }));
+                } else {
+                  updatePosition(position.id, { heading: v });
+                }
+              }}
               min={-360}
               max={360}
             />
             <InlineAngleInput
               label="P"
-              value={position.pitch || 85}
+              value={effectivePitch}
               color={COLORS.pitchArc}
-              onChange={v => updatePosition(position.id, { pitch: v })}
+              onChange={v => {
+                if (linkedCues.length > 0) {
+                  linkedCues.forEach(item => updateTimelineItem(item.id, { cuePitch: v }));
+                } else {
+                  updatePosition(position.id, { pitch: v });
+                }
+              }}
               min={-180}
               max={180}
             />
@@ -783,19 +825,53 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
               />
             )}
           </div>
+          {/* Reset to base button */}
+          {linkedCues.length > 0 && linkedCues[0].cueHeading !== undefined && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                linkedCues.forEach(item => updateTimelineItem(item.id, { cueHeading: undefined, cuePitch: undefined }));
+              }}
+              style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '7px',
+                padding: '1px 4px',
+                background: 'rgba(79,195,247,0.1)',
+                border: '1px solid rgba(79,195,247,0.2)',
+                borderRadius: '2px',
+                color: '#4FC3F7',
+                cursor: 'pointer',
+                marginTop: '2px',
+                width: '100%',
+              }}
+            >
+              ↺ RESET TO BASE
+            </button>
+          )}
           {/* Pitch presets */}
           <div style={{ display: 'flex', gap: '2px', marginTop: '3px', flexWrap: 'wrap' }}>
             {[15, 30, 45, 60, 75, 80, 85, 90].map(deg => {
-              const isActive = Math.round(position.pitch || 85) === deg;
+              const isActive = Math.round(effectivePitch) === deg;
               return (
                 <button
                   key={deg}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (batchMode && selectedIds) {
-                      selectedIds.forEach(id => updatePosition(id, { pitch: deg }));
+                    if (linkedCues.length > 0) {
+                      if (batchMode && selectedIds) {
+                        selectedIds.forEach(id => {
+                          const posItems = timelineItems.filter(t => t.positionId === id || t.positionIds?.includes(id));
+                          posItems.forEach(item => updateTimelineItem(item.id, { cuePitch: deg }));
+                        });
+                      } else {
+                        linkedCues.forEach(item => updateTimelineItem(item.id, { cuePitch: deg }));
+                      }
                     } else {
-                      updatePosition(position.id, { pitch: deg });
+                      if (batchMode && selectedIds) {
+                        selectedIds.forEach(id => updatePosition(id, { pitch: deg }));
+                      } else {
+                        updatePosition(position.id, { pitch: deg });
+                      }
                     }
                   }}
                   style={{

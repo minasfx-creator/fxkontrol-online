@@ -85,6 +85,11 @@ export interface TimelineItem {
   // ── Finale 3D position linking ──
   positionId?: string;
   positionIds?: string[];
+  // ── Per-cue launch angle overrides (Finale 3D) ──
+  // When set, these override the position's base heading/pitch for this specific cue.
+  // New cues inherit position defaults. Gizmo edits go here, not on position.
+  cueHeading?: number;
+  cuePitch?: number;
 }
 
 export type PositionType = 'pyro' | 'drone-pad' | 'light';

@@ -795,8 +795,9 @@ function TimelineEffects() {
         const linkedPos = positions.find(p => p.id === item.positionId);
         if (linkedPos) {
           resolvedPos = { x: linkedPos.x, y: linkedPos.y, z: linkedPos.z };
-          launchHeading = linkedPos.heading || 0;
-          launchPitch = linkedPos.pitch || 85;
+          // Per-cue angle overrides take priority over position base angles
+          launchHeading = item.cueHeading ?? linkedPos.heading ?? 0;
+          launchPitch = item.cuePitch ?? linkedPos.pitch ?? 85;
         }
       }
 
