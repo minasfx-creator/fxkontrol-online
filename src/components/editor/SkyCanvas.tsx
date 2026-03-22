@@ -3271,8 +3271,6 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
 
   const sensitivityScale = 0.7; // 30% less sensitivity
 
-  if (flyMode) return null;
-
   // Disable OrbitControls while box-select is active
   useEffect(() => {
     const handler = (e: CustomEvent) => {
@@ -3283,6 +3281,30 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     window.addEventListener('box-select-active' as any, handler as any);
     return () => window.removeEventListener('box-select-active' as any, handler as any);
   }, []);
+
+  // In select mode: disable left-mouse orbit so box-select works exclusively
+  const editorMode = useProjectStore(s => s.editorMode);
+  const isSelectMode = editorMode === 'select';
+
+  // Update mouse buttons when mode changes
+  useEffect(() => {
+    if (!controlsRef.current) return;
+    if (isSelectMode) {
+      controlsRef.current.mouseButtons = {
+        LEFT: -1,
+        MIDDLE: THREE.MOUSE.ROTATE,
+        RIGHT: THREE.MOUSE.PAN,
+      };
+    } else {
+      controlsRef.current.mouseButtons = {
+        LEFT: THREE.MOUSE.ROTATE,
+        MIDDLE: THREE.MOUSE.DOLLY,
+        RIGHT: THREE.MOUSE.PAN,
+      };
+    }
+  }, [isSelectMode]);
+
+  if (flyMode) return null;
 
   // In select mode: disable left-mouse orbit so box-select works exclusively
   const editorMode = useProjectStore(s => s.editorMode);

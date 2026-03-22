@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { useProjectStore, type Position, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { useUndoStore } from '@/store/useUndoStore';
 import { calcWindCompensation, getBreakHeight, getMortarVelocity, getLiftTime } from '@/lib/pyroPhysics';
+import { useSceneStore } from '@/store/useSceneStore';
 
 const ARROW_LENGTH = 3.5;
 const PITCH_ARC_RADIUS = 2.2;
