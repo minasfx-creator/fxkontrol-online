@@ -1,12 +1,14 @@
 import { useProjectStore } from '@/store/useProjectStore';
-import { AlignHorizontalJustifyCenter, AlignVerticalJustifyCenter, AlignStartHorizontal, AlignEndHorizontal, AlignStartVertical, AlignEndVertical, Rows3, Columns3, Copy, Clipboard, Trash2, RotateCcw } from 'lucide-react';
+import { AlignHorizontalJustifyCenter, AlignVerticalJustifyCenter, AlignStartHorizontal, AlignEndHorizontal, AlignStartVertical, AlignEndVertical, Rows3, Columns3, Copy, Clipboard, Trash2, RotateCcw, Flame, CircleDot, Lightbulb } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { useCallback, useState } from 'react';
-import type { Position } from '@/store/useProjectStore';
+import type { Position, PositionType } from '@/store/useProjectStore';
+import { cn } from '@/lib/utils';
 
-let clipboard: Position[] = [];
+let clipboard: Position[];
+clipboard = [];
 
 export default function AlignmentTools() {
   const { selectedPositionIds, positions, updatePosition, addPosition, removePosition, selectMultiplePositions } = useProjectStore();
