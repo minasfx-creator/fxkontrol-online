@@ -157,7 +157,9 @@ function HubCard({
 }) {
   const baseDelay = parseFloat(delay);
   const goToTool = (panel: string) => {
-    if (panel) {
+    if (commandRoute) {
+      navigate(panel ? `/command?mode=${panel}` : '/command');
+    } else if (panel) {
       navigate(`/editor?panel=${panel}`);
     } else {
       navigate('/editor');
