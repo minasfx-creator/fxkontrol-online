@@ -19,6 +19,7 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
     title: 'Posições',
     icon: MapPin,
     items: [
+      { id: 'positions', label: 'Position Window', icon: MapPin, shortcut: 'V' },
       { id: 'properties', label: 'Propriedades', icon: Settings2, shortcut: 'P' },
       { id: 'waypoints', label: 'Waypoints', icon: Spline, shortcut: 'W' },
       { id: 'groups', label: 'Grupos', icon: Users, shortcut: 'G' },
