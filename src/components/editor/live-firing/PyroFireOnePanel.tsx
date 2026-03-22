@@ -1111,64 +1111,108 @@ export default function PyroFireOnePanel({
     ) : null
   );
 
-  // ── Render: Igniter grid (Manual mode) ──
+  // ── Render: Igniter grid (Manual mode) — BR2049 with group headers ──
   const renderIgniterGrid = () => {
     if (!currentModule) return null;
-    // In XL fullscreen: 8 cols, larger cells. Mobile XL: 4 cols, huge touch targets
     const cols = xl && mob ? 'grid-cols-4' : 'grid-cols-8';
     const cellSize = xl && mob ? 'min-h-[80px] rounded-xl' : xl ? 'min-h-[72px] rounded-lg' : fs ? 'min-h-[56px] rounded-lg' : 'min-h-[40px]';
+    const groups = [
+      { label: 'A', range: [1, 8] },
+      { label: 'B', range: [9, 16] },
+      { label: 'C', range: [17, 24] },
+      { label: 'D', range: [25, 32] },
+    ];
 
     return (
       <div className={cn(sz === 'xl' ? "p-4" : sz === 'fs' ? "p-3" : "p-2")}>
         {!canFire && (masterKeyOn || pyroArm || dmxArm) && (
-          <div className={cn("text-center text-amber-400/50 font-bold uppercase mb-2",
+          <div className={cn("text-center text-primary/50 font-bold uppercase mb-2",
             sz === 'xl' ? "text-sm py-2" : sz === 'fs' ? "text-[10px]" : "text-[8px]"
           )}>
             {!masterKeyOn ? 'Turn Master Key ON' : 'ARM system to fire'}
           </div>
         )}
-        <div className={cn("grid", cols, sz === 'xl' ? "gap-2" : sz === 'fs' ? "gap-1.5" : "gap-1")}>
-          {currentModule.igniters.map(ig => {
-            const ok = ig.connected && !ig.fired && ig.resistance > 0;
-            const canFireIg = canFire && currentModule.armed && ok;
-            return (
-              <button key={ig.position}
-                onMouseDown={() => canFireIg && fireIgniter(currentModule.address, ig.position)}
-                onTouchStart={(e) => { e.preventDefault(); if (canFireIg) fireIgniter(currentModule.address, ig.position); }}
-                disabled={!canFireIg && !ig.fired}
-                className={cn(
-                  "relative flex flex-col items-center justify-center rounded border transition-all select-none",
-                  cellSize,
-                  ig.fired ? "bg-muted-foreground/10 border-border/10" :
-                  ig.misfire ? "bg-red-600/20 border-red-500/40 animate-pulse" :
-                  canFireIg ? "bg-[hsl(220_10%_12%)] border-border/30 hover:bg-red-700/20 active:scale-[0.93] active:bg-red-600/30 cursor-pointer" :
-                  ig.connected ? "bg-[hsl(220_10%_10%)] border-border/15" :
-                  "bg-[hsl(220_10%_6%)] border-border/5"
-                )}>
-                {/* Continuity LED */}
-                <div className={cn("absolute rounded-full",
-                  sz === 'xl' ? "w-3 h-3 top-1.5 right-1.5" : sz === 'fs' ? "w-2 h-2 top-1 right-1" : "w-1.5 h-1.5 top-0.5 right-0.5",
-                  ig.fired ? "bg-muted-foreground/20" :
-                  ig.misfire ? "bg-red-500" :
-                  ok ? "bg-green-500" :
-                  ig.connected ? "bg-amber-400" : "bg-muted-foreground/10"
-                )} style={ok && !ig.fired ? { boxShadow: '0 0 4px rgba(34,197,94,0.4)' } : ig.misfire ? { boxShadow: '0 0 6px rgba(239,68,68,0.6)' } : undefined} />
-                <span className={cn("font-mono font-bold",
-                  sz === 'xl' ? (mob ? "text-base" : "text-sm") : sz === 'fs' ? "text-[10px]" : "text-[8px]",
-                  ig.fired ? "text-muted-foreground/20" : ig.misfire ? "text-red-400" : ok ? "text-foreground/60" : "text-muted-foreground/15"
-                )}>{String(ig.position).padStart(2, '0')}</span>
-                <span className={cn("font-mono",
-                  sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[8px]" : "text-[8px]",
-                  ig.fired ? "text-muted-foreground/15" : ok ? "text-green-400/50" : "text-muted-foreground/15"
-                )}>{ig.resistance > 0 ? `${ig.resistance.toFixed(1)}Ω` : '—'}</span>
-                {/* Firing flash on mobile xl */}
-                {ig.fired && xl && (
-                  <div className="absolute inset-0 rounded-xl pointer-events-none bg-gradient-radial from-red-500/10 to-transparent" />
-                )}
-              </button>
-            );
-          })}
-        </div>
+        {groups.map(group => {
+          const groupIgniters = currentModule.igniters.filter(ig => ig.position >= group.range[0] && ig.position <= group.range[1]);
+          return (
+            <div key={group.label} className="mb-2">
+              {/* Group header */}
+              <div className={cn("flex items-center gap-2 mb-1",
+                sz === 'xl' ? "text-[10px]" : "text-[8px]"
+              )}>
+                <div className="h-px flex-1" style={{ background: 'hsl(var(--primary) / 0.15)' }} />
+                <span className="font-mono font-bold tracking-[0.2em]" style={{ color: 'hsl(var(--primary) / 0.5)' }}>
+                  GROUP {group.label} · {group.range[0]}–{group.range[1]}
+                </span>
+                <div className="h-px flex-1" style={{ background: 'hsl(var(--primary) / 0.15)' }} />
+              </div>
+              <div className={cn("grid", cols, sz === 'xl' ? "gap-2" : sz === 'fs' ? "gap-1.5" : "gap-1")}>
+                {groupIgniters.map(ig => {
+                  const ok = ig.connected && !ig.fired && ig.resistance > 0;
+                  const canFireIg = canFire && currentModule.armed && ok;
+                  const isHolding = holdingIgniter?.moduleAddr === currentModule.address && holdingIgniter?.pos === ig.position;
+                  return (
+                    <button key={ig.position}
+                      onMouseDown={() => canFireIg && !isMobile && fireIgniter(currentModule.address, ig.position)}
+                      onTouchStart={(e) => {
+                        e.preventDefault();
+                        if (canFireIg && isMobile) startHoldFire(currentModule.address, ig.position);
+                      }}
+                      onTouchEnd={(e) => { e.preventDefault(); if (isMobile) cancelHoldFire(); }}
+                      onTouchCancel={() => { if (isMobile) cancelHoldFire(); }}
+                      disabled={!canFireIg && !ig.fired}
+                      className={cn(
+                        "relative flex flex-col items-center justify-center rounded border transition-all select-none",
+                        cellSize,
+                        ig.fired ? "bg-muted-foreground/5 border-border/5" :
+                        ig.misfire ? "bg-red-600/20 border-red-500/40 animate-pulse" :
+                        currentModule.armed && ok && !canFireIg ? "bg-[hsl(220_10%_10%)] border-red-500/20" :
+                        canFireIg ? "bg-[hsl(220_10%_12%)] border-border/30 hover:bg-red-700/20 active:scale-[0.93] active:bg-red-600/30 cursor-pointer" :
+                        ig.connected ? "bg-[hsl(220_10%_10%)] border-border/15" :
+                        "bg-[hsl(220_10%_6%)] border-border/5"
+                      )}
+                      style={currentModule.armed && ok ? { boxShadow: '0 0 6px hsl(0 80% 50% / 0.15)' } : undefined}
+                    >
+                      {/* Fired diagonal strikethrough */}
+                      {ig.fired && (
+                        <div className="absolute inset-0 pointer-events-none overflow-hidden rounded" style={{
+                          background: 'repeating-linear-gradient(-45deg, transparent, transparent 3px, hsl(var(--muted-foreground) / 0.06) 3px, hsl(var(--muted-foreground) / 0.06) 4px)',
+                        }} />
+                      )}
+                      {/* Mobile hold-to-fire ring */}
+                      {isHolding && isMobile && (
+                        <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 44 44">
+                          <circle cx="22" cy="22" r="18" fill="none" stroke="hsl(32 100% 50% / 0.3)" strokeWidth="2" />
+                          <circle cx="22" cy="22" r="18" fill="none" stroke="hsl(32 100% 50%)" strokeWidth="2.5"
+                            strokeDasharray={`${holdProgress * 113} 113`}
+                            strokeLinecap="round" transform="rotate(-90 22 22)"
+                            style={{ filter: 'drop-shadow(0 0 4px hsl(32 100% 50% / 0.5))' }}
+                          />
+                        </svg>
+                      )}
+                      {/* Continuity LED */}
+                      <div className={cn("absolute rounded-full",
+                        sz === 'xl' ? "w-3 h-3 top-1.5 right-1.5" : sz === 'fs' ? "w-2 h-2 top-1 right-1" : "w-1.5 h-1.5 top-0.5 right-0.5",
+                        ig.fired ? "bg-muted-foreground/20" :
+                        ig.misfire ? "bg-red-500" :
+                        ok ? "bg-green-500" :
+                        ig.connected ? "bg-amber-400" : "bg-muted-foreground/10"
+                      )} style={ok && !ig.fired ? { boxShadow: '0 0 4px rgba(34,197,94,0.4)' } : ig.misfire ? { boxShadow: '0 0 6px rgba(239,68,68,0.6)' } : undefined} />
+                      <span className={cn("font-mono font-bold",
+                        sz === 'xl' ? (mob ? "text-base" : "text-sm") : sz === 'fs' ? "text-[10px]" : "text-[8px]",
+                        ig.fired ? "text-muted-foreground/20" : ig.misfire ? "text-red-400" : ok ? "text-foreground/60" : "text-muted-foreground/15"
+                      )}>{String(ig.position).padStart(2, '0')}</span>
+                      <span className={cn("font-mono",
+                        sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[8px]" : "text-[8px]",
+                        ig.fired ? "text-muted-foreground/15" : ok ? "text-green-400/50" : "text-muted-foreground/15"
+                      )}>{ig.resistance > 0 ? `${ig.resistance.toFixed(1)}Ω` : '—'}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </div>
     );
   };
