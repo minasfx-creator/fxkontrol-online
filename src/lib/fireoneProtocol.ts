@@ -576,6 +576,7 @@ import {
   type TransportType,
 } from '@/lib/fireoneTransport';
 import { WiFiDirectTransport } from '@/lib/fireoneWifiDirectTransport';
+import { getHybridRouter, StarlinkTransport, type HybridTransportRouter, type HybridRouterConfig } from '@/lib/hybridTransportRouter';
 
 export class FireOneController {
   private conn: FireOneConnection | null = null;
@@ -584,6 +585,8 @@ export class FireOneController {
   private readBuffer = new Uint8Array(0);
   private modules: Map<number, FireOneModuleStatus> = new Map();
   private transportManager: TransportMgr;
+  private hybridRouter: HybridTransportRouter | null = null;
+  private _hybridMode = false;
 
   constructor() {
     this.transportManager = getTransportManager();
@@ -665,7 +668,33 @@ export class FireOneController {
     return wd.id;
   }
 
-  // ─── Disconnect all ───
+  /** Connect a Starlink satellite transport for remote supervision */
+  async connectStarlink(relayUrl?: string): Promise<string> {
+    const starlink = new StarlinkTransport();
+    this.transportManager.addTransport(starlink);
+    await starlink.connect({ relayUrl });
+    return starlink.id;
+  }
+
+  /**
+   * Enable Hybrid Mode: Radio for E-STOP/fire + Starlink for sync.
+   * Requires at least one radio and one Wi-Fi/Starlink transport connected.
+   */
+  enableHybridMode(config?: Partial<HybridRouterConfig>): HybridTransportRouter {
+    this.hybridRouter = getHybridRouter(config);
+    this._hybridMode = true;
+    return this.hybridRouter;
+  }
+
+  disableHybridMode(): void {
+    this.hybridRouter?.destroy();
+    this.hybridRouter = null;
+    this._hybridMode = false;
+  }
+
+  get isHybridMode(): boolean { return this._hybridMode; }
+  get hybridSummary() { return this.hybridRouter?.summary ?? null; }
+
   async disconnect(): Promise<void> {
     this.transportManager.stopHeartbeat();
     await this.transportManager.disconnectAll();
@@ -676,8 +705,13 @@ export class FireOneController {
     this.modules.clear();
   }
 
-  // ─── Send raw frame — routes via TransportManager ───
+  // ─── Send raw frame — routes via HybridRouter or TransportManager ───
   async send(data: Uint8Array): Promise<void> {
+    // Hybrid mode: intelligent routing (Radio for fire/estop, Starlink for sync)
+    if (this._hybridMode && this.hybridRouter) {
+      await this.hybridRouter.send(data);
+      return;
+    }
     if (this.transportManager.isConnected) {
       await this.transportManager.send(data);
       return;
