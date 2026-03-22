@@ -370,41 +370,53 @@
 .scrollbar-thin::-webkit-scrollbar-thumb { background: hsl(var(--border) / 0.3); border-radius: 2px; }
 .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: hsl(var(--border) / 0.5); }
 
-/* ===== Apple-style Glass System ===== */
+/* ===== Apple-style Glass System — Premium ===== */
 .glass-hud {
-  background: rgba(22, 22, 26, 0.72);
-  backdrop-filter: blur(40px) saturate(1.8);
-  -webkit-backdrop-filter: blur(40px) saturate(1.8);
-  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  background: rgba(18, 18, 24, 0.78);
+  backdrop-filter: blur(48px) saturate(2);
+  -webkit-backdrop-filter: blur(48px) saturate(2);
+  border: 0.5px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
 }
 .glass-dock {
-  background: rgba(22, 22, 26, 0.78);
-  backdrop-filter: blur(50px) saturate(2);
-  -webkit-backdrop-filter: blur(50px) saturate(2);
-  border: 0.5px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(255, 255, 255, 0.06) inset;
+  background: rgba(18, 18, 24, 0.82);
+  backdrop-filter: blur(56px) saturate(2.2);
+  -webkit-backdrop-filter: blur(56px) saturate(2.2);
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.05) inset;
 }
 .glass-sheet {
-  background: rgba(28, 28, 32, 0.88);
-  backdrop-filter: blur(50px) saturate(1.8);
-  -webkit-backdrop-filter: blur(50px) saturate(1.8);
-  border-top: 0.5px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.5);
+  background: rgba(22, 22, 28, 0.9);
+  backdrop-filter: blur(56px) saturate(2);
+  -webkit-backdrop-filter: blur(56px) saturate(2);
+  border-top: 0.5px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -8px 48px rgba(0, 0, 0, 0.6);
 }
 .glass-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 0.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}
+.glass-card-elevated {
   background: rgba(255, 255, 255, 0.06);
   border: 0.5px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 .glass-button {
-  background: rgba(255, 255, 255, 0.08);
-  border: 0.5px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.07);
+  border: 0.5px solid rgba(255, 255, 255, 0.09);
   border-radius: 10px;
-  transition: background 0.15s ease, transform 0.1s ease;
+  transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+}
+.glass-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
 }
 .glass-button:active {
-  background: rgba(255, 255, 255, 0.14);
-  transform: scale(0.96);
+  background: rgba(255, 255, 255, 0.13);
+  transform: scale(0.97);
 }
 .glow-active {
   filter: drop-shadow(0 0 6px currentColor);
@@ -414,27 +426,25 @@
   min-height: 44px;
 }
 
-/* iOS-style sheet grab indicator */
-.sheet-indicator {
-  width: 36px;
-  height: 5px;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.18);
-  margin: 0 auto;
+/* Premium divider with glow */
+.divider-glow {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.15), transparent);
 }
 
-/* Apple Dynamic Island inspired status pill */
+/* Status pill — premium */
 .status-pill {
-  background: rgba(0, 0, 0, 0.85);
-  border-radius: 20px;
-  padding: 4px 12px;
+  background: rgba(0, 0, 0, 0.88);
+  border-radius: 22px;
+  padding: 5px 14px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.02em;
-  border: 0.5px solid rgba(255, 255, 255, 0.1);
+  letter-spacing: 0.03em;
+  border: 0.5px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
 }
 
 /* iOS segmented control */
