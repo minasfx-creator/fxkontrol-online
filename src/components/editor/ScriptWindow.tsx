@@ -117,6 +117,136 @@ export default function ScriptWindow() {
   const [fillDragCount, setFillDragCount] = useState(0);
   const tableRef = useRef<HTMLDivElement>(null);
 
+  // ─── Inline cell editing state (Finale 3D style) ─────────────────
+  const [editingCell, setEditingCell] = useState<{ rowId: string; field: string } | null>(null);
+  const [editDraft, setEditDraft] = useState('');
+  const editInputRef = useRef<HTMLInputElement>(null);
+
+  // Editable fields in order for Tab navigation
+  const EDITABLE_FIELDS = ['eventTime', 'pan', 'tilt', 'notes'] as const;
+
+  const startEditing = useCallback((rowId: string, field: string, currentValue: string | number) => {
+    setEditingCell({ rowId, field });
+    setEditDraft(String(currentValue));
+    setTimeout(() => editInputRef.current?.select(), 0);
+  }, []);
+
+  const commitEdit = useCallback((moveDir?: 'next-cell' | 'next-row' | 'cancel') => {
+    if (!editingCell) return;
+    const { rowId, field } = editingCell;
+
+    if (moveDir !== 'cancel') {
+      const value = editDraft;
+      // Apply to all selected rows if batch
+      const targetIds = selectedIds.size > 1 && selectedIds.has(rowId)
+        ? Array.from(selectedIds) : [rowId];
+
+      targetIds.forEach(id => {
+        switch (field) {
+          case 'eventTime':
+            updateTimelineItem(id, { startTime: parseFloat(value) || 0 });
+            break;
+          case 'pan':
+            updateTimelineItem(id, { pan: parseFloat(value) || 0 });
+            break;
+          case 'tilt':
+            updateTimelineItem(id, { tilt: parseFloat(value) || 0 });
+            break;
+          case 'notes':
+            updateTimelineItem(id, { notes: value });
+            break;
+        }
+      });
+    }
+
+    if (moveDir === 'next-cell') {
+      // Tab → next editable field in same row
+      const idx = EDITABLE_FIELDS.indexOf(field as any);
+      if (idx >= 0 && idx < EDITABLE_FIELDS.length - 1) {
+        const nextField = EDITABLE_FIELDS[idx + 1];
+        const row = rows.find(r => r.id === rowId);
+        if (row) {
+          const val = nextField === 'eventTime' ? row.eventTime
+            : nextField === 'pan' ? row.pan
+            : nextField === 'tilt' ? row.tilt
+            : row.notes;
+          setEditingCell({ rowId, field: nextField });
+          setEditDraft(String(val));
+          setTimeout(() => editInputRef.current?.select(), 0);
+          return;
+        }
+      }
+    }
+
+    if (moveDir === 'next-row') {
+      // Enter → same field, next row
+      const rowIdx = rows.findIndex(r => r.id === rowId);
+      if (rowIdx >= 0 && rowIdx < rows.length - 1) {
+        const nextRow = rows[rowIdx + 1];
+        const val = field === 'eventTime' ? nextRow.eventTime
+          : field === 'pan' ? nextRow.pan
+          : field === 'tilt' ? nextRow.tilt
+          : nextRow.notes;
+        setEditingCell({ rowId: nextRow.id, field });
+        setEditDraft(String(val));
+        setTimeout(() => editInputRef.current?.select(), 0);
+        return;
+      }
+    }
+
+    setEditingCell(null);
+  }, [editingCell, editDraft, selectedIds, updateTimelineItem, rows]);
+
+  const handleCellKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      commitEdit(e.shiftKey ? 'cancel' : 'next-cell');
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      commitEdit('next-row');
+    } else if (e.key === 'Escape') {
+      commitEdit('cancel');
+    }
+  }, [commitEdit]);
+
+  // Render an inline editable cell
+  const renderEditableCell = (rowId: string, field: string, value: string | number, width: string, extraClass?: string) => {
+    const isEditing = editingCell?.rowId === rowId && editingCell?.field === field;
+    const isBatchTarget = selectedIds.size > 1 && selectedIds.has(rowId);
+
+    if (isEditing) {
+      return (
+        <input
+          ref={editInputRef}
+          type={field === 'notes' ? 'text' : 'number'}
+          step={field === 'eventTime' ? '0.001' : '1'}
+          className={cn(
+            "bg-primary/10 border border-primary/50 text-foreground outline-none rounded-sm px-0.5 transition-colors",
+            isBatchTarget && "ring-1 ring-accent/40",
+            width
+          )}
+          value={editDraft}
+          onChange={e => setEditDraft(e.target.value)}
+          onBlur={() => commitEdit()}
+          onKeyDown={handleCellKeyDown}
+          autoFocus
+        />
+      );
+    }
+
+    return (
+      <span
+        className={cn(
+          "cursor-text border-b border-transparent hover:border-border/40 transition-colors inline-block",
+          width, extraClass
+        )}
+        onClick={e => { e.stopPropagation(); startEditing(rowId, field, value); }}
+      >
+        {field === 'eventTime' ? String(value) : String(value)}
+      </span>
+    );
+  };
+
   // ─── Undo/Redo system ───────────────────────────────────────────
   const undoStack = useRef<TimelineItem[][]>([]);
   const redoStack = useRef<TimelineItem[][]>([]);
