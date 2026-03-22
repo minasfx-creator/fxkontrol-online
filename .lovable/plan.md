@@ -1,53 +1,54 @@
 
 
-# Fix: Direction Lines Must Reach Burst Height + Grab Point + Auto-Show Gizmo
+# Refactor: Click+Drag Box Select on Viewport & Timeline + Direction Line Visual Fix
 
-## Problem
+## Problems
 
-In Finale 3D, when effects are placed on a position:
-1. A **long line extends from the mortar to the burst height** (the actual altitude where the shell explodes) — not a short 2-5 unit cosmetic stub
-2. A **draggable grab handle** sits at the tip of that line for immediate angle adjustment
-3. This appears **automatically in select mode** — no need to press "A" to enter angle mode
+1. **Box select requires Shift+Drag** — user wants plain click+drag on empty area to start a selection rectangle (like Finale 3D). Currently Shift is mandatory in `BoxSelectOverlay.tsx` line 79.
 
-Current FX KONTROL: `DirectionLine` is only 2-5 scene units long (cosmetic). The full gizmo with trajectory + handle only appears in `adjust-angles` mode. Users see almost nothing after placing effects.
+2. **Direction lines look wrong** — Reference screenshot (image 2) shows **solid colored arrows** (cyan for drones, orange for pyro) with **diamond-shaped grab handles** at the burst point. Current implementation uses red dotted lines with a torus ring handle — doesn't match.
+
+3. **Timeline marquee already works** via `handleMarqueeStart` in `Timeline.tsx` — but it only triggers when clicking empty space, and syncs to viewport. This is functional but needs to also work in the same click+drag pattern (no modifier key).
 
 ## Changes
 
-### 1. `src/components/editor/PositionPins.tsx` — DirectionLine uses real break height
+### 1. `src/components/editor/BoxSelectOverlay.tsx` — Remove Shift Requirement
 
-Replace fixed `length = 2/3/4/5` with actual burst height from linked effects:
-- Get max caliber from linked timeline items (already have `linkedItemIds` + access to `timelineItems`)
-- Call `getBreakHeight(caliber)` from `pyroPhysics.ts` to get real height in meters
-- Scale to scene units: `breakHeight * (ARROW_LENGTH / getBreakHeight(4))` — same scale factor used in `PyroLaunchAngle.tsx` line 303
-- Default to caliber 3 (55m → ~2.4 scene units) if no caliber found, ensuring minimum visibility
-- Line direction uses full H/P/R Euler rotation applied to up vector (already correct)
-- When `hasEffects`: use dotted red style (matching Finale), opacity 0.6, lineWidth 1.5
-- Add a **draggable sphere** (radius 0.12) at the line tip when `hasEffects` is true
-  - On pointerDown: auto-switch to `adjust-angles` mode + begin drag using same ray-project logic as `PyroLaunchAngle.tsx` (lines 376-429)
-  - This lets users adjust angles without manually pressing "A"
-- Hide the short `DirectionLine` entirely when `PyroLaunchAngle` gizmo is active for this position (check `editorMode === 'adjust-angles'` and position is selected)
+- Line 79: Remove `if (!e.shiftKey) return;`
+- Instead, check that: (a) the click target is NOT a mesh/interactive element (check `e.target === canvas` or closest canvas element), (b) `editorMode === 'select'`, (c) no other modifier active that would conflict
+- Add a small dead-zone (5px movement) before activating selection to avoid interfering with single clicks on positions
+- Also clear previous selection on box-select start (unless Shift is held for additive selection)
 
-### 2. `src/components/editor/PyroLaunchAngle.tsx` — Auto-show trajectory for selected positions with effects
+### 2. `src/components/editor/BoxSelectOverlay.tsx` — Fix: Don't Block OrbitControls
 
-Change `visiblePositions` logic (lines 710-712):
-- Currently: full gizmo shows only in `adjust-angles` mode; in `select` mode only selected positions get it
-- New behavior: in `select` mode, also show the **trajectory line + grab handle** (but NOT the compass/arcs) for any selected position that has linked effects
-- Add a `hasEffects` check by looking up timeline items for each position
-- The compass rings, pitch/roll arcs remain `adjust-angles` only
-- The trajectory + handle appear for selected+effects in ANY mode
+Currently `e.preventDefault()` and `e.stopPropagation()` on line 80-81 block OrbitControls. Solution:
+- Only start box-select after a minimum drag distance (8px) — until then, let OrbitControls handle it
+- Use a "pending" state: on mousedown record start point, on mousemove check distance, if > 8px then activate box select and cancel orbit
+- If user just clicks without dragging 8px → treat as normal click (orbit or position select)
 
-### 3. `src/components/editor/PyroLaunchAngle.tsx` — Use real caliber for trajectory
+### 3. `src/components/editor/PositionPins.tsx` — Direction Line Visual Overhaul
 
-Currently hardcodes `caliber = 4` (line 284). Change to:
-- Accept optional `caliber` prop from linked timeline items
-- Look up max caliber from timeline items linked to this position
-- Fall back to 4 if none found
-- This makes the trajectory line reach the correct height for the actual effect placed
+Match reference screenshot exactly:
+- **Solid line** (not dashed) — remove `dashed` prop from Line
+- **Color by type**: orange `#FF6B35` for pyro, cyan `#00B4D8` for drone (matching position color, not red)
+- **Diamond grab handle** at burst point instead of torus ring — use `<mesh>` with `octahedronGeometry` (args `[0.12, 0]`) rotated 45° for diamond shape
+- **Arrow tip**: keep cone at tip, same color as line
+- **Opacity**: 0.7 when has effects (unselected), 1.0 when selected
+- **Line width**: 1.5 normal, 2.5 selected
+
+### 4. `src/components/editor/SelectionModeBar.tsx` — Update Tooltip
+
+Change Lasso tooltip from "Shift+Drag" to "Click+Drag" since Shift is no longer required.
+
+### 5. `src/components/editor/Timeline.tsx` — Verify Marquee Works Without Modifier
+
+The timeline marquee in `handleMarqueeStart` (line 448) already works on plain mousedown — just verify it doesn't require any modifier key. Currently it checks `if ((e.target as HTMLElement).closest('button')) return;` which is correct — clicks on buttons are skipped, clicks on empty track area start marquee.
 
 ## Files
 
 | File | Change |
 |------|--------|
-| `src/components/editor/PositionPins.tsx` | DirectionLine uses break height from caliber, adds grab handle, hides when gizmo active |
-| `src/components/editor/PyroLaunchAngle.tsx` | Auto-show trajectory+handle in select mode for positions with effects, use real caliber |
+| `src/components/editor/BoxSelectOverlay.tsx` | Remove Shift requirement, add dead-zone to avoid breaking orbit, clear selection on start |
+| `src/components/editor/PositionPins.tsx` | Solid colored lines (not red dashed), diamond grab handle instead of torus |
+| `src/components/editor/SelectionModeBar.tsx` | Update tooltip text |
 
