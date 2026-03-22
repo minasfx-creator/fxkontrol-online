@@ -1256,6 +1256,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
       case 'radio': return <RadioControlPanel fs={fs} />;
       case 'ma3': return <MA3ControlPanel fs={fs} />;
       case 'module': return <VirtualIFMx32QPanel fs={fs} />;
+      case 'wifi_direct': return <WiFiDirectControlPanel fs={fs} />;
       case 'settings': return <SettingsPanel fs={fs} settings={settings} onSettingsChange={setSettings} relayConnected={relayConnected} relayUrl={relayUrl} onRelayUrlChange={setRelayUrl} onConnectRelay={connectRelay} onDisconnectRelay={disconnectRelay} />;
       default: return renderSimpleDmx(fs);
     }
