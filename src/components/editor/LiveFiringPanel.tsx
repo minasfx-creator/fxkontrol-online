@@ -511,7 +511,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
     onTouchEnd: handleSwipeEnd,
   } : {};
 
-  const sceneCues = useMemo(() => cues.filter(() => true), [cues]);
+  const sceneCues = useMemo(() => cues.filter(c => (c as any).sceneIndex === undefined || (c as any).sceneIndex === activeScene), [cues, activeScene]);
   const pageStart = cuePage * CUES_PER_PAGE;
   const pageEnd = pageStart + CUES_PER_PAGE;
   const pageCues = sceneCues.slice(0, 128); // Max 128
