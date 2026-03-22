@@ -239,9 +239,11 @@ const DraggableTimelineItem = React.forwardRef<HTMLButtonElement, {
           "h-7 rounded-md flex items-center px-1.5 text-[9px] font-medium transition-all cursor-grab active:cursor-grabbing border group",
           isSelected
             ? "border-primary/60 shadow-[0_0_10px_hsl(var(--primary)/0.2)] z-10 ring-1 ring-primary/15"
-            : isMultiSelected
-              ? "border-primary/25 z-10"
-              : "border-white/[0.04] hover:border-white/[0.08] hover:shadow-sm"
+            : isLinkedHighlight
+              ? "border-accent/40 shadow-[0_0_8px_hsl(var(--accent)/0.15)] z-10 ring-1 ring-accent/20 border-dashed"
+              : isMultiSelected
+                ? "border-primary/25 z-10"
+                : "border-white/[0.04] hover:border-white/[0.08] hover:shadow-sm"
         )}
         style={{
           width: `${widthPx}px`,
