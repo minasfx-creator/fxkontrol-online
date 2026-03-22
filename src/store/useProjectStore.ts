@@ -125,6 +125,7 @@ export interface Trajectory {
 }
 
 export type EditorMode = 'select' | 'add-pyro' | 'add-drone' | 'add-waypoint' | 'adjust-angles';
+export type SelectionMode = 'positions' | 'events' | 'both';
 
 export interface DroneFormation {
   id: string;
@@ -181,6 +182,8 @@ export interface ProjectState {
   selectedPositionId: string | null;
   selectedPositionIds: string[];
   editorMode: EditorMode;
+  selectionMode: SelectionMode;
+  linkedTimelineItemIds: string[]; // Timeline items highlighted via position selection
   trajectories: Trajectory[];
   selectedTrajectoryId: string | null;
   selectedWaypointId: string | null;
@@ -225,6 +228,10 @@ export interface ProjectState {
   togglePositionSelection: (id: string) => void;
   selectMultiplePositions: (ids: string[]) => void;
   setEditorMode: (mode: EditorMode) => void;
+  setSelectionMode: (mode: SelectionMode) => void;
+  selectPositionAndLinkedEvents: (positionId: string) => void;
+  selectMultiplePositionsAndLinkedEvents: (ids: string[]) => void;
+  selectTimelineItemAndLinkedPosition: (itemId: string) => void;
   addTrajectory: (traj: Trajectory) => void;
   updateTrajectory: (id: string, updates: Partial<Omit<Trajectory, 'id'>>) => void;
   removeTrajectory: (id: string) => void;
@@ -435,6 +442,8 @@ export const useProjectStore = create<ProjectState>((set) => ({
   selectedPositionId: null,
   selectedPositionIds: [],
   editorMode: 'select',
+  selectionMode: 'both',
+  linkedTimelineItemIds: [],
   trajectories: [],
   selectedTrajectoryId: null,
   selectedWaypointId: null,
@@ -536,6 +545,41 @@ export const useProjectStore = create<ProjectState>((set) => ({
   }),
   selectMultiplePositions: (ids) => set({ selectedPositionIds: ids, selectedPositionId: ids[ids.length - 1] ?? null }),
   setEditorMode: (mode) => set({ editorMode: mode }),
+  setSelectionMode: (mode) => set({ selectionMode: mode }),
+  selectPositionAndLinkedEvents: (positionId) => set((s) => {
+    const linkedItems = s.selectionMode !== 'positions'
+      ? s.timelineItems.filter(i => i.positionId === positionId || i.positionIds?.includes(positionId)).map(i => i.id)
+      : [];
+    return {
+      selectedPositionId: positionId,
+      selectedPositionIds: [positionId],
+      linkedTimelineItemIds: linkedItems,
+    };
+  }),
+  selectMultiplePositionsAndLinkedEvents: (ids) => set((s) => {
+    const linkedItems = s.selectionMode !== 'positions'
+      ? s.timelineItems.filter(i => ids.includes(i.positionId || '') || i.positionIds?.some(pid => ids.includes(pid))).map(i => i.id)
+      : [];
+    return {
+      selectedPositionIds: ids,
+      selectedPositionId: ids[ids.length - 1] ?? null,
+      linkedTimelineItemIds: linkedItems,
+    };
+  }),
+  selectTimelineItemAndLinkedPosition: (itemId) => set((s) => {
+    const item = s.timelineItems.find(i => i.id === itemId);
+    if (!item) return { selectedTimelineItemId: itemId, selectedTimelineItemIds: [] };
+    const posIds = s.selectionMode !== 'events'
+      ? [item.positionId, ...(item.positionIds || [])].filter(Boolean) as string[]
+      : [];
+    return {
+      selectedTimelineItemId: itemId,
+      selectedTimelineItemIds: [],
+      selectedPositionIds: posIds,
+      selectedPositionId: posIds[0] ?? s.selectedPositionId,
+      linkedTimelineItemIds: [],
+    };
+  }),
 
   addTrajectory: (traj) => set((s) => ({ trajectories: [...s.trajectories, traj] })),
   updateTrajectory: (id, updates) => set((s) => ({

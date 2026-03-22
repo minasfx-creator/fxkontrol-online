@@ -45,7 +45,12 @@ export function BoxSelectR3F() {
       });
 
       if (selected.length > 0) {
-        selectMultiplePositions(selected);
+        const store = useProjectStore.getState();
+        if (store.selectionMode === 'both') {
+          store.selectMultiplePositionsAndLinkedEvents(selected);
+        } else {
+          selectMultiplePositions(selected);
+        }
       }
     };
 

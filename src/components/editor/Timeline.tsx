@@ -169,13 +169,14 @@ const DraggableTimelineItem = React.forwardRef<HTMLButtonElement, {
   pixelsPerSecond: number;
   isSelected: boolean;
   isMultiSelected: boolean;
+  isLinkedHighlight?: boolean;
   onSelect: (e: React.MouseEvent) => void;
   onDragStart: (e: React.MouseEvent, itemId: string) => void;
   onContextMenu: (e: React.MouseEvent, item: any) => void;
   onResize: (itemId: string, edge: 'left' | 'right', deltaTime: number) => void;
   sectionColor?: string;
 }>(function DraggableTimelineItem({
-  item, effect, pixelsPerSecond, isSelected, isMultiSelected, onSelect, onDragStart, onContextMenu, onResize, sectionColor,
+  item, effect, pixelsPerSecond, isSelected, isMultiSelected, isLinkedHighlight, onSelect, onDragStart, onContextMenu, onResize, sectionColor,
 }, ref) {
   const pft = effect.type === 'firework' ? getPreFireTime(effect.name) : 0;
   const pftPx = pft * pixelsPerSecond;
@@ -238,9 +239,11 @@ const DraggableTimelineItem = React.forwardRef<HTMLButtonElement, {
           "h-7 rounded-md flex items-center px-1.5 text-[9px] font-medium transition-all cursor-grab active:cursor-grabbing border group",
           isSelected
             ? "border-primary/60 shadow-[0_0_10px_hsl(var(--primary)/0.2)] z-10 ring-1 ring-primary/15"
-            : isMultiSelected
-              ? "border-primary/25 z-10"
-              : "border-white/[0.04] hover:border-white/[0.08] hover:shadow-sm"
+            : isLinkedHighlight
+              ? "border-accent/40 shadow-[0_0_8px_hsl(var(--accent)/0.15)] z-10 ring-1 ring-accent/20 border-dashed"
+              : isMultiSelected
+                ? "border-primary/25 z-10"
+                : "border-white/[0.04] hover:border-white/[0.08] hover:shadow-sm"
         )}
         style={{
           width: `${widthPx}px`,
@@ -414,8 +417,13 @@ function TimelineTrackRow({
 
   const handleItemSelect = useCallback((e: React.MouseEvent, itemId: string) => {
     e.stopPropagation();
-    if (e.shiftKey || e.ctrlKey || e.metaKey) { toggleTimelineItemSelection(itemId); } else { selectTimelineItem(itemId); }
-  }, [selectTimelineItem, toggleTimelineItemSelection]);
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      toggleTimelineItemSelection(itemId);
+    } else {
+      // Bidirectional: select item and linked position
+      useProjectStore.getState().selectTimelineItemAndLinkedPosition(itemId);
+    }
+  }, [toggleTimelineItemSelection]);
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; item: any } | null>(null);
 
@@ -517,11 +525,14 @@ function TimelineTrackRow({
         {!muted && items.map((item) => {
           const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
           if (!effect) return null;
+          const linkedIds = useProjectStore.getState().linkedTimelineItemIds;
+          const isLinked = linkedIds.includes(item.id);
           return (
             <DraggableTimelineItem
               key={item.id} item={item} effect={effect} pixelsPerSecond={pixelsPerSecond}
               isSelected={selectedTimelineItemId === item.id}
               isMultiSelected={selectedTimelineItemIds.includes(item.id)}
+              isLinkedHighlight={isLinked}
               onSelect={(e) => handleItemSelect(e, item.id)}
               onDragStart={handleItemDragStart}
               onContextMenu={handleContextMenu}

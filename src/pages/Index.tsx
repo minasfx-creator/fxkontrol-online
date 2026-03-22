@@ -102,6 +102,7 @@ import SACNMonitorPanel from '@/components/editor/SACNMonitorPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
+import SelectionModeBar from '@/components/editor/SelectionModeBar';
 import PositionContextMenu from '@/components/editor/PositionContextMenu';
 import MobileTabBar, { type MobileTab } from '@/components/editor/MobileTabBar';
 import MobileFloatingPanel from '@/components/editor/MobileFloatingPanel';
@@ -220,6 +221,12 @@ function Index() {
       }
       if (e.key === '?' && e.shiftKey) {
         setShowShortcuts(prev => !prev);
+      }
+      // Selection mode shortcuts
+      if (!e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        if (e.key === '1') useProjectStore.getState().setSelectionMode('positions');
+        if (e.key === '2') useProjectStore.getState().setSelectionMode('events');
+        if (e.key === '3') useProjectStore.getState().setSelectionMode('both');
       }
       if (e.key === 'i' && !e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
         const store = useProjectStore.getState();
@@ -559,7 +566,7 @@ function Index() {
                     </Suspense>
                   </CanvasErrorBoundary>
                   <BoxSelectOverlay />
-                  {/* Drop zone visual overlay */}
+                  <SelectionModeBar />
                   {isDragOver && (
                     <div className="absolute inset-0 z-50 pointer-events-none flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded-md backdrop-blur-[2px] transition-all">
                       <div className="flex flex-col items-center gap-2 text-primary">
