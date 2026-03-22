@@ -619,68 +619,51 @@ export class FireOneController {
     this.listeners.forEach(l => l(event));
   }
 
-  // ─── Connect via WebSerial ───
+  // ─── Connect via WebSerial (legacy — adds SerialTransport to manager) ───
   async connect(): Promise<void> {
-    if (!('serial' in navigator)) {
-      throw new Error('WebSerial API não suportada neste navegador');
-    }
-
-    const nav = navigator as any;
-    const port = await nav.serial.requestPort({
-      filters: [
-        { usbVendorId: 0x0403 },  // FTDI (common RS-485 adapters)
-        { usbVendorId: 0x067B },  // Prolific PL2303
-        { usbVendorId: 0x10C4 },  // Silicon Labs CP210x
-        { usbVendorId: 0x1A86 },  // CH340/CH341
-      ],
-    });
-
-    await port.open({
-      baudRate: FIREONE_BAUD_RATE,
-      dataBits: FIREONE_DATA_BITS,
-      stopBits: FIREONE_STOP_BITS,
-      parity: FIREONE_PARITY,
-      bufferSize: 4096,
-    });
-
-    const reader = port.readable?.getReader() ?? null;
-    const writer = port.writable?.getWriter() ?? null;
-
-    this.conn = { port, reader, writer, connected: true, readLoop: true };
-
-    // Start read loop
-    this.startReadLoop();
-
-    // Start heartbeat (every 2s)
-    this.heartbeatInterval = setInterval(() => {
-      this.send(buildHeartbeat()).catch(() => {});
-    }, 2000);
+    const serial = new SerialTransport();
+    this.transportManager.addTransport(serial);
+    await serial.connect();
+    this.transportManager.startHeartbeat(() => buildHeartbeat(), 2000);
   }
 
-  // ─── Disconnect ───
-  async disconnect(): Promise<void> {
-    if (this.heartbeatInterval) {
-      clearInterval(this.heartbeatInterval);
-      this.heartbeatInterval = null;
-    }
+  /** Connect a Wi-Fi relay transport */
+  async connectWiFi(relayIp: string, relayPort = 9485): Promise<string> {
+    const wifi = new WiFiTransport();
+    this.transportManager.addTransport(wifi);
+    await wifi.connect({ relayIp, relayPort });
+    return wifi.id;
+  }
 
+  /** Connect a Radio transport */
+  async connectRadio(baudRate = 38400): Promise<string> {
+    const radio = new RadioTransport();
+    this.transportManager.addTransport(radio);
+    await radio.connect({ baudRate });
+    return radio.id;
+  }
+
+  /** Connect an Art-Net transport for IFMx-i32Q DMX output */
+  async connectArtNet(targetIp = '2.0.0.1'): Promise<string> {
+    const artnet = new ArtNetTransport();
+    this.transportManager.addTransport(artnet);
+    await artnet.connect({ targetIp, edgeFunctionUrl: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/artnet-bridge` });
+    return artnet.id;
+  }
+
+  /** Remove a transport by ID */
+  removeTransport(id: string): void {
+    this.transportManager.removeTransport(id);
+  }
+
+  // ─── Disconnect all ───
+  async disconnect(): Promise<void> {
+    this.transportManager.stopHeartbeat();
+    await this.transportManager.disconnectAll();
     if (this.conn) {
-      this.conn.readLoop = false;
-      try {
-        if (this.conn.reader) {
-          await this.conn.reader.cancel().catch(() => {});
-          this.conn.reader.releaseLock();
-        }
-        if (this.conn.writer) {
-          await this.conn.writer.close().catch(() => {});
-          this.conn.writer.releaseLock();
-        }
-        await this.conn.port.close().catch(() => {});
-      } catch { /* ignore */ }
       this.conn.connected = false;
       this.conn = null;
     }
-
     this.modules.clear();
   }
 
