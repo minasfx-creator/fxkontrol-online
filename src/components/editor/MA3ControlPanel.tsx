@@ -503,9 +503,15 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
             {[1, 2, 3, 4, 5, 6, 7, 8].map(fader => {
               const key = `${execPage}.${fader}`;
               const val = faderValues[key] ?? 0;
+              const isActive = val > 0;
               return (
-                <div key={fader} className="flex flex-col items-center gap-0.5 p-1 rounded bg-background/20 border border-border/10">
-                  <span className="text-[8px] font-mono text-muted-foreground/40">F{fader}</span>
+                <div key={fader} className={cn(
+                  "flex flex-col items-center gap-0.5 p-1 rounded border transition-all",
+                  isActive
+                    ? "border-indigo-500/40 bg-indigo-500/8"
+                    : "border-border/10 bg-background/20"
+                )} style={isActive ? { boxShadow: '0 0 12px hsl(240 50% 52% / 0.15)' } : undefined}>
+                  <span className={cn("text-[8px] font-mono", isActive ? "text-indigo-300 font-bold" : "text-muted-foreground/40")}>F{fader}</span>
                   <Slider
                     value={[val * 100]}
                     onValueChange={([v]) => sendFader(execPage, fader, v / 100)}
@@ -514,10 +520,30 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
                     className="h-12"
                     disabled={oscState !== 'connected'}
                   />
-                  <span className="text-[8px] font-mono text-foreground/50">{Math.round(val * 100)}%</span>
+                  <span className={cn("text-[8px] font-mono", isActive ? "text-indigo-200" : "text-foreground/50")}>{Math.round(val * 100)}%</span>
                 </div>
               );
             })}
+          </div>
+
+          {/* Grand Master Fader */}
+          <div className="mt-1">
+            <div className="rounded border-2 border-indigo-500/30 p-2 relative overflow-hidden" style={{ background: 'hsl(240 15% 8%)' }}>
+              <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(90deg, hsl(240 50% 52%), hsl(260 40% 40%))' }} />
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-black font-mono text-indigo-300 tracking-[0.2em]">GM</span>
+                <Slider
+                  value={[(faderValues['201.1'] ?? 1) * 100]}
+                  onValueChange={([v]) => sendFader(201, 1, v / 100)}
+                  max={100} step={1}
+                  className="flex-1 h-4"
+                  disabled={oscState !== 'connected'}
+                />
+                <span className="text-[10px] font-mono font-bold text-indigo-200 w-8 text-right">
+                  {Math.round((faderValues['201.1'] ?? 1) * 100)}%
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* OSC Log with filter */}
