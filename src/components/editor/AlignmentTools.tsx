@@ -12,7 +12,13 @@ clipboard = [];
 
 export default function AlignmentTools() {
   const { selectedPositionIds, positions, updatePosition, addPosition, removePosition, selectMultiplePositions } = useProjectStore();
-  const selected = positions.filter(p => selectedPositionIds.includes(p.id));
+  const [typeFilter, setTypeFilter] = useState<PositionType | 'all'>('all');
+  const allSelected = positions.filter(p => selectedPositionIds.includes(p.id));
+  const selected = typeFilter === 'all' ? allSelected : allSelected.filter(p => p.type === typeFilter);
+
+  const pyroCount = allSelected.filter(p => p.type === 'pyro').length;
+  const droneCount = allSelected.filter(p => p.type === 'drone-pad').length;
+  const lightCount = allSelected.filter(p => p.type === 'light').length;
 
   const align = useCallback((mode: 'left' | 'right' | 'top' | 'bottom' | 'center-x' | 'center-z') => {
     if (selected.length < 2) return;
