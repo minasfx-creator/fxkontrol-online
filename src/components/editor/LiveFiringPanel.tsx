@@ -911,7 +911,99 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
     </div>
   );
 
-  const renderSceneModeBar = (fs: boolean) => (
+  const renderArmBar = (fs: boolean) => (
+    <>
+      <div className={cn(
+        "border-b transition-colors",
+        fs && mob ? "px-3 py-2 flex flex-col gap-2" : "flex items-center gap-3",
+        !fs || !mob ? (fs ? "px-6 py-2.5" : "px-2 py-1") : "",
+        (pyroArm || dmxArm) ? "border-red-800/30" : "border-border/15"
+      )} style={{ background: (pyroArm || dmxArm) ? 'hsl(0 40% 8%)' : 'hsl(220 12% 7%)' }}>
+        <div className={cn(fs && mob ? "flex gap-2" : "contents")}>
+          <button onClick={() => handlePyroArm(!pyroArm)}
+            className={cn(
+              "flex items-center justify-center gap-2 rounded border-2 font-black uppercase transition-all",
+              fs && mob ? "flex-1 py-3.5 text-[11px] tracking-[0.15em]" : fs ? "flex-1 py-3 text-sm tracking-[0.2em]" : "flex-1 py-1.5 text-[9px] tracking-[0.15em]",
+              pyroArm ? "bg-red-600/20 border-red-500/60 text-red-400" : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/40 hover:border-border/40"
+            )} style={pyroArm ? { boxShadow: 'inset 0 0 12px rgba(255,50,30,0.1)' } : undefined}>
+            <Shield className={cn(fs && mob ? "w-4 h-4" : fs ? "w-5 h-5" : "w-3 h-3")} />
+            {pyroArm ? 'PYRO ●' : 'PYRO'}
+          </button>
+          <button onClick={() => handleDmxArm(!dmxArm)}
+            className={cn(
+              "flex items-center justify-center gap-2 rounded border-2 font-black uppercase transition-all",
+              fs && mob ? "flex-1 py-3.5 text-[11px] tracking-[0.15em]" : fs ? "flex-1 py-3 text-sm tracking-[0.2em]" : "flex-1 py-1.5 text-[9px] tracking-[0.15em]",
+              dmxArm ? "bg-amber-600/20 border-amber-500/60 text-amber-400" : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/40 hover:border-border/40"
+            )} style={dmxArm ? { boxShadow: 'inset 0 0 12px rgba(255,180,30,0.1)' } : undefined}>
+            <Radio className={cn(fs && mob ? "w-4 h-4" : fs ? "w-5 h-5" : "w-3 h-3")} />
+            {dmxArm ? 'DMX ●' : 'DMX'}
+          </button>
+        </div>
+        <button
+          onMouseDown={() => setDeadmanHeld(true)}
+          onMouseUp={() => setDeadmanHeld(false)}
+          onMouseLeave={() => setDeadmanHeld(false)}
+          onTouchStart={(e) => { e.preventDefault(); setDeadmanHeld(true); }}
+          onTouchEnd={(e) => { e.preventDefault(); setDeadmanHeld(false); }}
+          className={cn(
+            "flex items-center justify-center rounded border-2 font-black uppercase transition-all gap-2",
+            fs && mob ? "w-full py-3 text-[10px]" : fs ? "w-16 py-3 text-[10px] shrink-0" : "w-10 py-1.5 text-[8px] shrink-0",
+            deadmanHeld ? "bg-green-600/30 border-green-500/60 text-green-400" : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/30"
+          )}>
+          <Hand className={cn(fs && mob ? "w-5 h-5" : fs ? "w-4 h-4" : "w-3 h-3")} />
+          {fs && mob && <span>DEADMAN</span>}
+        </button>
+      </div>
+      {(pyroArm || dmxArm) && (
+        <div className={cn(
+          "text-center font-black uppercase animate-pulse",
+          fs && mob ? "px-3 py-1 text-[10px] tracking-[0.25em]" : fs ? "px-4 py-1.5 text-xs tracking-[0.3em]" : "px-2 py-0.5 text-[10px] tracking-[0.25em]",
+          pyroArm && dmxArm ? "text-red-400" : pyroArm ? "text-red-400" : "text-amber-400"
+        )} style={{ background: pyroArm ? 'hsl(0 50% 8%)' : 'hsl(40 40% 8%)' }}>
+          {pyroArm && dmxArm ? '⚠ DMX + PYRO ARMED ⚠' : pyroArm ? '⚠ PYRO ARMED ⚠' : 'DMX ARMED'}
+        </div>
+      )}
+      {(pyroArm) && (
+        <LockoutPanel fs={fs} mob={mob} />
+      )}
+    </>
+  );
+
+  const renderCueKeys = (fs: boolean) => (
+    <div className={cn("border-b border-border/15", fs && mob ? "px-2 py-2" : fs ? "px-6 py-4" : "px-1.5 py-1.5")} style={{ background: 'hsl(220 12% 6%)' }}>
+      <div className={cn("flex items-center justify-between", fs && mob ? "mb-1.5" : fs ? "mb-2" : "mb-0.5")}>
+        <div className="flex items-center gap-1">
+          <button onClick={() => setCuePage(Math.max(0, cuePage - 1))} disabled={cuePage === 0}
+            className={cn("rounded text-muted-foreground/30 hover:text-foreground/60 disabled:opacity-20 transition-colors", fs && mob ? "p-1.5" : fs ? "p-1" : "p-0.5")}>
+            <ChevronLeft className={cn(fs ? "w-4 h-4" : "w-3 h-3")} />
+          </button>
+          <span className={cn("font-mono text-muted-foreground/40", fs && mob ? "text-[10px]" : fs ? "text-[9px]" : "text-[10px]")}>
+            {cuePage * CUES_PER_PAGE + 1}-{Math.min((cuePage + 1) * CUES_PER_PAGE, 128)}
+          </span>
+          <button onClick={() => setCuePage(Math.min(15, cuePage + 1))}
+            className={cn("rounded text-muted-foreground/30 hover:text-foreground/60 transition-colors", fs && mob ? "p-1.5" : fs ? "p-1" : "p-0.5")}>
+            <ChevronRight className={cn(fs ? "w-4 h-4" : "w-3 h-3")} />
+          </button>
+        </div>
+        <span className={cn("font-mono text-muted-foreground/20", fs && mob ? "text-[9px]" : fs ? "text-[10px]" : "text-[10px]")}>
+          Page {cuePage + 1}/16
+        </span>
+      </div>
+      <div className={cn("grid", fs && mob ? "grid-cols-4 gap-1.5" : fs ? "grid-cols-8 gap-2" : "grid-cols-8 gap-0.5")}>
+        {Array.from({ length: CUES_PER_PAGE }).map((_, i) => {
+          const globalIndex = i + pageStart;
+          const cue = pageCues.find(c => c.keyIndex === globalIndex);
+          return (
+            <CueKey key={i} index={i} cue={cue} firing={firingKeys.has(i)}
+              onPress={() => fireCueKey(i)} onRelease={() => stopCueKey(i)}
+              onLongPress={() => toggleKeyMode(i)}
+              pyroArmed={pyroArm} dmxArmed={dmxArm} fs={fs} mobile={mob} />
+          );
+        })}
+      </div>
+    </div>
+  );
+
     <div className={cn("flex items-center border-b border-border/15", fs && mob ? "flex-col" : "")} style={{ background: 'hsl(220 10% 7%)' }}>
       {/* Scenes — styled as backlit console buttons */}
       <div className={cn("flex", fs && mob ? "w-full border-b border-border/10" : "")}>
