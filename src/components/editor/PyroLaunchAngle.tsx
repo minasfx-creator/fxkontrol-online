@@ -549,11 +549,11 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
       }
 
       // Axis constraints (from context menu or keyboard)
-      if (dragAxis === 'heading' || dragAxis === 'up-vector') newPitch = position.pitch || 85;
-      if (dragAxis === 'pitch') newHeading = position.heading;
+      if (dragAxis === 'heading' || dragAxis === 'up-vector') newPitch = effectivePitch;
+      if (dragAxis === 'pitch') newHeading = effectiveHeading;
       if (dragAxis === 'roll') {
-        newHeading = position.heading;
-        newPitch = position.pitch || 85;
+        newHeading = effectiveHeading;
+        newPitch = effectivePitch;
       }
 
       // Compute delta for HUD
@@ -562,6 +562,7 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
         p: Math.round(newPitch - dragStartRef.current.pitch),
       });
 
+      // Update CUE angles (not position base angles)
       if (batchMode && selectedIds && dragStartRef.current) {
         const dHeading = newHeading - dragStartRef.current.heading;
         const dPitch = newPitch - dragStartRef.current.pitch;
@@ -571,11 +572,14 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
             let h = dragAxis === 'pitch' ? start.heading : start.heading + dHeading;
             let p = dragAxis === 'heading' ? start.pitch : Math.max(-180, Math.min(180, start.pitch + dPitch));
             if (e.shiftKey) { h = Math.round(h / 5) * 5; p = Math.round(p / 5) * 5; }
-            updatePosition(id, { heading: h, pitch: p });
+            // Update all cues linked to this position
+            const posItems = timelineItems.filter(t => t.positionId === id || t.positionIds?.includes(id));
+            posItems.forEach(item => updateTimelineItem(item.id, { cueHeading: h, cuePitch: p }));
           }
         });
       } else {
-        updatePosition(position.id, { heading: newHeading, pitch: newPitch });
+        // Update all cues linked to this position
+        linkedCues.forEach(item => updateTimelineItem(item.id, { cueHeading: newHeading, cuePitch: newPitch }));
       }
     };
     const handleUp = () => {
