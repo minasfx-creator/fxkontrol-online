@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { artnetModuleService, type ArtNetModuleConfig, type ModuleTransport } from '@/services/artnetModuleService';
+import { artnetModuleService, type ArtNetModuleConfig, type ModuleTransport, type RedundancyMode } from '@/services/artnetModuleService';
 
 interface DbModule {
   id: string;
@@ -22,6 +22,8 @@ interface DbModule {
   gps_lat: number | null;
   gps_lng: number | null;
   sort_order: number;
+  clone_of: string | null;
+  redundancy_mode: string;
 }
 
 function dbToConfig(row: DbModule): Partial<ArtNetModuleConfig> {
@@ -42,6 +44,8 @@ function dbToConfig(row: DbModule): Partial<ArtNetModuleConfig> {
     label: row.label ?? undefined,
     gpsLat: row.gps_lat ?? undefined,
     gpsLng: row.gps_lng ?? undefined,
+    cloneOf: row.clone_of ?? undefined,
+    redundancyMode: (row.redundancy_mode as RedundancyMode) ?? 'failover',
   };
 }
 
@@ -65,6 +69,8 @@ function configToDb(mod: ArtNetModuleConfig, projectId: string, sortOrder: numbe
     gps_lat: mod.gpsLat ?? null,
     gps_lng: mod.gpsLng ?? null,
     sort_order: sortOrder,
+    clone_of: mod.cloneOf || null,
+    redundancy_mode: mod.redundancyMode || 'failover',
   };
 }
 

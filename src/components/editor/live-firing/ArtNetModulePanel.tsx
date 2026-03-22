@@ -1,18 +1,16 @@
 /**
- * Art-Net Module Control Panel
- * Internet-capable control of FXK-M1 modules via Art-Net over IP.
+ * Art-Net Module Control Panel with Cloning & Redundancy
  */
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Wifi, WifiOff, Globe, Radio, Shield, ShieldAlert, ShieldCheck, ShieldOff,
-  Plus, Trash2, Zap, MapPin, Battery, Loader2, AlertTriangle, Check,
-  RefreshCw, Power, Maximize2, Minimize2, Search, Link2, Unlink2
+  Wifi, WifiOff, Globe, Radio, Shield, ShieldCheck, ShieldOff,
+  Plus, Trash2, MapPin, Battery, Loader2, AlertTriangle,
+  Maximize2, Minimize2, Search, Link2, Unlink2, Copy
 } from 'lucide-react';
 import {
   artnetModuleService,
@@ -20,6 +18,7 @@ import {
   type ArtNetControllerConfig,
   type ModuleTransport,
   type ModuleConnectionState,
+  type RedundancyMode,
 } from '@/services/artnetModuleService';
 import { useArtNetModulePersistence } from '@/hooks/useArtNetModulePersistence';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -48,25 +47,39 @@ function TransportIcon({ transport }: { transport: ModuleTransport }) {
   }
 }
 
+function RedundancyBadge({ module }: { module: ArtNetModuleConfig }) {
+  if (module.cloneOf) {
+    return <Badge variant="outline" className="text-[8px] px-1.5 py-0 h-4 border-amber-500/40 text-amber-400 font-mono">BACKUP</Badge>;
+  }
+  const clones = artnetModuleService.getClones(module.id);
+  if (clones.length > 0) {
+    return <Badge variant="outline" className="text-[8px] px-1.5 py-0 h-4 border-cyan-500/40 text-cyan-400 font-mono">PRIMARY × {clones.length}</Badge>;
+  }
+  return null;
+}
+
 interface ModuleCardProps {
   module: ArtNetModuleConfig;
   connectionState: ModuleConnectionState;
   masterArmed: boolean;
+  isClone: boolean;
   onConnect: () => void;
   onDisconnect: () => void;
   onArm: () => void;
   onDisarm: () => void;
   onRemove: () => void;
   onFire: (ch: number) => void;
+  onClone: () => void;
+  onSetRedundancy: (mode: RedundancyMode) => void;
 }
 
-function ModuleCard({ module, connectionState, masterArmed, onConnect, onDisconnect, onArm, onDisarm, onRemove, onFire }: ModuleCardProps) {
+function ModuleCard({ module, connectionState, masterArmed, isClone, onConnect, onDisconnect, onArm, onDisarm, onRemove, onFire, onClone, onSetRedundancy }: ModuleCardProps) {
   const [expanded, setExpanded] = useState(false);
   const isOnline = connectionState === 'connected';
   const canArm = isOnline && masterArmed;
 
   return (
-    <div className={`rounded-lg border p-3 transition-colors ${
+    <div className={`rounded-lg border p-3 transition-colors ${isClone ? 'ml-6 border-dashed' : ''} ${
       isOnline
         ? module.armed ? 'border-red-500/50 bg-red-500/5' : 'border-emerald-500/30 bg-emerald-500/5'
         : 'border-border/30 bg-muted/5'
@@ -77,6 +90,7 @@ function ModuleCard({ module, connectionState, masterArmed, onConnect, onDisconn
           <TransportIcon transport={module.transport} />
           <span className="font-mono text-xs font-bold text-foreground">{module.name}</span>
           <span className="text-[9px] font-mono text-muted-foreground">#{module.moduleAddress}</span>
+          <RedundancyBadge module={module} />
         </div>
         <div className="flex items-center gap-2">
           <ConnectionBadge state={connectionState} />
@@ -87,7 +101,7 @@ function ModuleCard({ module, connectionState, masterArmed, onConnect, onDisconn
       </div>
 
       {/* Info Row */}
-      <div className="flex items-center gap-3 mb-2 text-[10px] text-muted-foreground font-mono">
+      <div className="flex items-center gap-3 mb-2 text-[10px] text-muted-foreground font-mono flex-wrap">
         <span>U:{module.dmxUniverse} S:{module.dmxSubnet} N:{module.dmxNet}</span>
         <span>DMX {module.dmxStartAddress}-{module.dmxStartAddress + module.dmxChannelCount - 1}</span>
         <span className="flex items-center gap-1">
@@ -99,10 +113,13 @@ function ModuleCard({ module, connectionState, masterArmed, onConnect, onDisconn
           </span>
         )}
         {module.label && <span className="text-cyan-400">{module.label}</span>}
+        {module.redundancyMode !== 'failover' && (
+          <span className="text-amber-400">MODE: {module.redundancyMode.toUpperCase()}</span>
+        )}
       </div>
 
       {/* Controls */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         {isOnline ? (
           <Button size="sm" variant="outline" className="h-7 text-[10px] font-mono" onClick={onDisconnect}>
             <Unlink2 className="w-3 h-3 mr-1" /> DISCONNECT
@@ -122,6 +139,26 @@ function ModuleCard({ module, connectionState, masterArmed, onConnect, onDisconn
           <Button size="sm" variant="destructive" className="h-7 text-[10px] font-mono" onClick={onDisarm}>
             <ShieldOff className="w-3 h-3 mr-1" /> DISARM
           </Button>
+        )}
+
+        {!isClone && (
+          <Button size="sm" variant="outline" className="h-7 text-[10px] font-mono border-amber-500/20 text-amber-400 hover:bg-amber-500/10" onClick={onClone}>
+            <Copy className="w-3 h-3 mr-1" /> CLONE
+          </Button>
+        )}
+
+        {/* Redundancy mode selector for primaries with clones */}
+        {!isClone && artnetModuleService.getClones(module.id).length > 0 && (
+          <Select value={module.redundancyMode} onValueChange={v => onSetRedundancy(v as RedundancyMode)}>
+            <SelectTrigger className="h-7 w-[110px] text-[9px] font-mono">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="failover">Failover</SelectItem>
+              <SelectItem value="simultaneous">Simultaneous</SelectItem>
+              <SelectItem value="manual">Manual</SelectItem>
+            </SelectContent>
+          </Select>
         )}
 
         <Button size="sm" variant="ghost" className="h-7 text-[10px] ml-auto" onClick={() => setExpanded(!expanded)}>
@@ -173,19 +210,16 @@ export default function ArtNetModulePanel() {
   });
 
   useEffect(() => {
-    // Init controller if needed
     let ctrl = artnetModuleService.getController();
     if (!ctrl) {
       ctrl = artnetModuleService.initController({ name: 'FXK MASTER CONTROLLER' });
     }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     setController({ ...ctrl });
 
     const unsub = artnetModuleService.subscribe((type, data) => {
       const c = artnetModuleService.getController();
       if (c) setController({ ...c });
 
-      // Update connection states
       if (type === 'module-connected' || type === 'module-disconnected' || type === 'module-error') {
         setModuleStates(prev => {
           const next = new Map(prev);
@@ -217,6 +251,19 @@ export default function ArtNetModulePanel() {
     setNewModule({ name: '', ip: '192.168.1.100', port: '6454', transport: 'lan', universe: '0', subnet: '0', net: '0', startAddr: '1', channels: '32', label: '', relayUrl: '' });
   }, [newModule, controller, saveModule]);
 
+  const handleCloneModule = useCallback((moduleId: string) => {
+    const clone = artnetModuleService.cloneModule(moduleId);
+    if (clone) {
+      saveModule(clone, controller?.modules.length || 0);
+    }
+  }, [controller, saveModule]);
+
+  const handleSetRedundancy = useCallback((moduleId: string, mode: RedundancyMode) => {
+    artnetModuleService.updateModule(moduleId, { redundancyMode: mode } as any);
+    const mod = artnetModuleService.getController()?.modules.find(m => m.id === moduleId);
+    if (mod) saveModule(mod);
+  }, [saveModule]);
+
   const handleMasterArm = useCallback(() => {
     if (!controller) return;
     artnetModuleService.setMasterArm(!controller.masterArmed);
@@ -238,6 +285,22 @@ export default function ArtNetModulePanel() {
 
   const onlineCount = controller.modules.filter(m => moduleStates.get(m.id) === 'connected').length;
   const armedCount = controller.modules.filter(m => m.armed).length;
+
+  // Sort: primaries first, then their clones indented below
+  const primaries = controller.modules.filter(m => !m.cloneOf);
+  const orderedModules: { module: ArtNetModuleConfig; isClone: boolean }[] = [];
+  for (const p of primaries) {
+    orderedModules.push({ module: p, isClone: false });
+    const clones = controller.modules.filter(m => m.cloneOf === p.id);
+    for (const c of clones) {
+      orderedModules.push({ module: c, isClone: true });
+    }
+  }
+  // Orphan clones (primary deleted)
+  const orphans = controller.modules.filter(m => m.cloneOf && !primaries.find(p => p.id === m.cloneOf));
+  for (const o of orphans) {
+    orderedModules.push({ module: o, isClone: true });
+  }
 
   return (
     <div className="flex flex-col h-full bg-background text-foreground">
@@ -330,17 +393,18 @@ export default function ArtNetModulePanel() {
       {/* Module List */}
       <ScrollArea className="flex-1">
         <div className="p-3 space-y-2">
-          {controller.modules.length === 0 ? (
+          {orderedModules.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Globe className="w-8 h-8 mx-auto mb-2 opacity-30" />
               <p className="text-xs font-mono">No modules configured</p>
               <p className="text-[10px] font-mono opacity-60">Click + to add an FXK-M1 module</p>
             </div>
           ) : (
-            controller.modules.map(module => (
+            orderedModules.map(({ module, isClone }) => (
               <ModuleCard
                 key={module.id}
                 module={module}
+                isClone={isClone}
                 connectionState={moduleStates.get(module.id) || 'disconnected'}
                 masterArmed={controller.masterArmed}
                 onConnect={() => artnetModuleService.connectModule(module.id)}
@@ -349,6 +413,8 @@ export default function ArtNetModulePanel() {
                 onDisarm={() => artnetModuleService.disarmModule(module.id)}
                 onRemove={() => { artnetModuleService.removeModule(module.id); deleteModule(module.id); }}
                 onFire={(ch) => artnetModuleService.fireChannel(module.id, ch)}
+                onClone={() => handleCloneModule(module.id)}
+                onSetRedundancy={(mode) => handleSetRedundancy(module.id, mode)}
               />
             ))
           )}

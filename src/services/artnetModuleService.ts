@@ -8,29 +8,33 @@ import { supabase } from '@/integrations/supabase/client';
 export type ModuleTransport = 'lan' | 'wan' | 'relay';
 export type ModuleConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error' | 'timeout';
 
+export type RedundancyMode = 'failover' | 'simultaneous' | 'manual';
+
 export interface ArtNetModuleConfig {
   id: string;
   name: string;
-  moduleAddress: number;       // 0-255 unique module ID
-  dmxUniverse: number;         // Art-Net universe (0-32767)
-  dmxSubnet: number;           // 0-15
-  dmxNet: number;              // 0-127
-  dmxStartAddress: number;     // 1-512
-  dmxChannelCount: number;     // channels used
-  ip: string;                  // Module IP or relay endpoint
-  port: number;                // Art-Net port (default 6454)
+  moduleAddress: number;
+  dmxUniverse: number;
+  dmxSubnet: number;
+  dmxNet: number;
+  dmxStartAddress: number;
+  dmxChannelCount: number;
+  ip: string;
+  port: number;
   transport: ModuleTransport;
-  relayToken?: string;         // Auth token for WAN relay
-  channelCount: number;        // Pyro channels (e.g. 32)
+  relayToken?: string;
+  channelCount: number;
   armed: boolean;
   enabled: boolean;
-  lastSeen: number;            // timestamp
+  lastSeen: number;
   latencyMs: number | null;
   firmwareVersion?: string;
   batteryLevel?: number;
   gpsLat?: number;
   gpsLng?: number;
-  label?: string;              // Field label e.g. "STAGE LEFT"
+  label?: string;
+  cloneOf?: string;
+  redundancyMode: RedundancyMode;
 }
 
 export interface ArtNetControllerConfig {
@@ -134,6 +138,8 @@ class ArtNetModuleService {
       gpsLat: config.gpsLat,
       gpsLng: config.gpsLng,
       label: config.label,
+      cloneOf: config.cloneOf,
+      redundancyMode: config.redundancyMode ?? 'failover',
     };
 
     this.controller.modules.push(module);
@@ -336,11 +342,40 @@ class ArtNetModuleService {
     return !error;
   }
 
-  // ─── Fire Commands ───────────────────────────────
+  // ─── Fire Commands (with redundancy) ─────────────
   async fireChannel(moduleId: string, channel: number, intensity = 255, durationMs = 500): Promise<boolean> {
     const module = this.controller?.modules.find(m => m.id === moduleId);
     if (!module || !module.armed) return false;
     if (!this.controller?.masterArmed) return false;
+
+    const clones = this.getClones(moduleId);
+
+    // Simultaneous: fire primary + all clones together
+    if (clones.length > 0 && module.redundancyMode === 'simultaneous') {
+      const allIds = [moduleId, ...clones.map(c => c.id)];
+      const results = await Promise.all(allIds.map(id => this.fireSingle(id, channel, intensity, durationMs)));
+      return results.some(r => r);
+    }
+
+    // Failover: try primary, fallback to clone on failure
+    const primaryResult = await this.fireSingle(moduleId, channel, intensity, durationMs);
+    if (!primaryResult && clones.length > 0 && module.redundancyMode === 'failover') {
+      for (const clone of clones) {
+        if (this.moduleStates.get(clone.id) === 'connected') {
+          const cloneResult = await this.fireSingle(clone.id, channel, intensity, durationMs);
+          if (cloneResult) {
+            this.emit('module-fired', { moduleId: clone.id, channel, intensity, durationMs, failover: true, primaryId: moduleId });
+            return true;
+          }
+        }
+      }
+    }
+    return primaryResult;
+  }
+
+  private async fireSingle(moduleId: string, channel: number, intensity: number, durationMs: number): Promise<boolean> {
+    const module = this.controller?.modules.find(m => m.id === moduleId);
+    if (!module) return false;
 
     const dmxChannels = Array(module.dmxChannelCount).fill(0);
     if (channel >= 0 && channel < dmxChannels.length) {
@@ -350,8 +385,6 @@ class ArtNetModuleService {
     const sent = await this.sendDMX(moduleId, dmxChannels);
     if (sent) {
       this.emit('module-fired', { moduleId, channel, intensity, durationMs });
-
-      // Auto-off after duration
       setTimeout(async () => {
         const offChannels = Array(module.dmxChannelCount).fill(0);
         await this.sendDMX(moduleId, offChannels);
@@ -364,6 +397,33 @@ class ArtNetModuleService {
     return Promise.all(commands.map(cmd =>
       this.fireChannel(cmd.moduleId, cmd.channel, cmd.intensity, cmd.duration)
     ));
+  }
+
+  // ─── Cloning ────────────────────────────────────
+  cloneModule(moduleId: string, overrides: Partial<ArtNetModuleConfig> = {}): ArtNetModuleConfig | null {
+    const source = this.controller?.modules.find(m => m.id === moduleId);
+    if (!source || !this.controller) return null;
+
+    return this.addModule({
+      ...source,
+      id: undefined as any,
+      name: `${source.name} [BKP]`,
+      ip: overrides.ip || source.ip,
+      cloneOf: moduleId,
+      redundancyMode: overrides.redundancyMode ?? 'failover',
+      label: overrides.label ?? (source.label ? `${source.label} BACKUP` : 'BACKUP'),
+      armed: false,
+    });
+  }
+
+  getClones(moduleId: string): ArtNetModuleConfig[] {
+    return this.controller?.modules.filter(m => m.cloneOf === moduleId) || [];
+  }
+
+  getPrimary(moduleId: string): ArtNetModuleConfig | null {
+    const module = this.controller?.modules.find(m => m.id === moduleId);
+    if (!module?.cloneOf) return null;
+    return this.controller?.modules.find(m => m.id === module.cloneOf) || null;
   }
 
   // ─── ARM / DISARM ────────────────────────────────
