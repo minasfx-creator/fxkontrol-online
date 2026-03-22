@@ -477,6 +477,7 @@ export class HybridTransportRouter {
     const satHealth = [
       ...this.health.getByType('wifi_direct'),
       ...this.health.getByType('wifi'),
+      ...this.health.getByType('cellular'),
     ];
     return {
       mode: this.recommendedMode,
