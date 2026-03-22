@@ -113,6 +113,7 @@ function EffectTableRow({ effect, index, usageCount }: { effect: Effect; index: 
       onDoubleClick={handleAdd}
       className={cn(
         "cursor-pointer transition-colors group text-[10px]",
+        flashFeedback && "bg-success/15 transition-none",
         isSelected
           ? "bg-primary/10"
           : index % 2 === 0
