@@ -41,6 +41,7 @@ export interface RadioLinkState {
   isScanning: boolean;
   rangeTestActive: boolean;
   rangeTestRssiHistory: number[];
+  tdmaStatus: TDMAStatus | null;
   error: string | null;
 }
 
