@@ -30,13 +30,20 @@ import { parseFireOneCSV, parseFireOneFIR, exportFireOneCSV, downloadFile, autoD
 import type { WirelessConnectionMode } from '@/lib/fireoneProtocol';
 import { artnetModuleService } from '@/services/artnetModuleService';
 
+interface FireLogEntry {
+  cueId: string;
+  expectedMs: number;
+  actualMs: number;
+  delta: number;
+  status: 'OK' | 'LATE' | 'EARLY';
+}
+
 interface PyroFireOnePanelProps {
   fs: boolean;
   fireChannel: (id: string) => void;
   channels: SFXChannel[];
   pyroArm: boolean;
   dmxArm: boolean;
-  deadmanHeld: boolean;
   handlePanic: () => void;
   artNetConnected: boolean;
   relayConnected: boolean;
@@ -92,7 +99,7 @@ function createSimModule(addr: number, connected: boolean, wireless = false): Fi
 }
 
 export default function PyroFireOnePanel({
-  fs, fireChannel, channels, pyroArm, dmxArm, deadmanHeld, handlePanic, artNetConnected, relayConnected,
+  fs, fireChannel, channels, pyroArm, dmxArm, handlePanic, artNetConnected, relayConnected,
 }: PyroFireOnePanelProps) {
   const isMobile = useIsMobile();
   const hardware = useFireOneHardware();
@@ -143,7 +150,76 @@ export default function PyroFireOnePanel({
 
   const currentModule = useMemo(() => modules.find(m => m.address === selectedModule), [modules, selectedModule]);
 
-  const canFire = masterKeyOn && (pyroArm || dmxArm) && deadmanHeld;
+  const canFire = masterKeyOn && (pyroArm || dmxArm);
+
+  // Fire confirmation log for timecode mode
+  const [fireLog, setFireLog] = useState<FireLogEntry[]>([]);
+
+  // Mobile hold-to-fire state
+  const [holdingIgniter, setHoldingIgniter] = useState<{ moduleAddr: number; pos: number } | null>(null);
+  const [holdProgress, setHoldProgress] = useState(0);
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const holdAnimRef = useRef<number | null>(null);
+  const holdStartRef = useRef<number>(0);
+
+  // Module scanner state
+  const [scanning, setScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
+
+  // Mission clock
+  const [missionClock, setMissionClock] = useState('00:00:00');
+  useEffect(() => {
+    const iv = setInterval(() => {
+      const now = new Date();
+      setMissionClock(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`);
+    }, 1000);
+    return () => clearInterval(iv);
+  }, []);
+
+  // Hold-to-fire handlers for mobile
+  const startHoldFire = useCallback((moduleAddr: number, pos: number) => {
+    setHoldingIgniter({ moduleAddr, pos });
+    holdStartRef.current = performance.now();
+    const animate = () => {
+      const elapsed = performance.now() - holdStartRef.current;
+      const progress = Math.min(elapsed / 300, 1);
+      setHoldProgress(progress);
+      if (progress < 1) {
+        holdAnimRef.current = requestAnimationFrame(animate);
+      } else {
+        // Fire!
+        fireIgniter(moduleAddr, pos);
+        setHoldingIgniter(null);
+        setHoldProgress(0);
+      }
+    };
+    holdAnimRef.current = requestAnimationFrame(animate);
+  }, []);
+
+  const cancelHoldFire = useCallback(() => {
+    if (holdAnimRef.current) cancelAnimationFrame(holdAnimRef.current);
+    if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+    setHoldingIgniter(null);
+    setHoldProgress(0);
+  }, []);
+
+  // Module scan animation
+  const handleModuleScan = useCallback(async () => {
+    setScanning(true);
+    setScanProgress(0);
+    const steps = 20;
+    for (let i = 0; i <= steps; i++) {
+      await new Promise(r => setTimeout(r, 100));
+      setScanProgress((i / steps) * 100);
+    }
+    if (hardware.isConnected) {
+      await hardware.discoverModules(30);
+      toast.success(`Scan complete — ${hardware.modules.size} modules found`);
+    } else {
+      toast.success(`SIM Scan — ${modules.filter(m => m.connected).length} modules online`);
+    }
+    setScanning(false);
+  }, [hardware, modules]);
 
   // Lock body scroll when fullscreen
   useEffect(() => {
@@ -366,6 +442,16 @@ export default function PyroFireOnePanel({
               const igPos = (a % 32) + 1;
               fireIgniter(modAddr, igPos);
             });
+            // Log fire confirmation
+            const delta = next - cue.timecodeMs;
+            const status: 'OK' | 'LATE' | 'EARLY' = Math.abs(delta) < 50 ? 'OK' : delta > 0 ? 'LATE' : 'EARLY';
+            setFireLog(prev => [...prev, {
+              cueId: String(cue.cueNumber || cue.id.slice(0, 4)),
+              expectedMs: cue.timecodeMs,
+              actualMs: next,
+              delta,
+              status,
+            }]);
           }
         });
         return next;
@@ -653,13 +739,18 @@ export default function PyroFireOnePanel({
       <div className={cn(
         "border-b flex flex-col",
       )} style={{ background: 'linear-gradient(180deg, hsl(0 5% 12%) 0%, hsl(0 5% 8%) 100%)' }}>
-        {/* Brushed-metal header bar */}
+        {/* Amber accent line at top — BR2049 */}
+        <div className="h-[2px]" style={{
+          background: 'linear-gradient(90deg, transparent, hsl(32 100% 50% / 0.6), hsl(38 100% 58% / 0.8), hsl(32 100% 50% / 0.6), transparent)',
+          boxShadow: '0 0 8px hsl(32 100% 50% / 0.3)',
+        }} />
+        {/* Dark glass header bar — BR2049 */}
         <div className={cn(
           "flex items-center justify-between",
           sz === 'xl' ? "px-6 py-2.5" : sz === 'fs' ? "px-4 py-2" : "px-2 py-1"
         )} style={{
-          borderBottom: '2px solid hsl(0 70% 35%)',
-          backgroundImage: 'repeating-linear-gradient(90deg, hsl(0 0% 14%) 0px, hsl(0 0% 16%) 1px, hsl(0 0% 13%) 2px, hsl(0 0% 15%) 3px)',
+          background: 'linear-gradient(180deg, hsl(220 18% 7% / 0.95) 0%, hsl(220 20% 4% / 0.98) 100%)',
+          borderBottom: '1px solid hsl(32 100% 50% / 0.15)',
         }}>
           <div className="flex items-center gap-3">
             {/* Key switch graphic */}
@@ -681,30 +772,28 @@ export default function PyroFireOnePanel({
             <div>
               <div className={cn("font-black tracking-[0.2em]",
                 sz === 'xl' ? "text-sm" : sz === 'fs' ? "text-xs" : "text-[9px]"
-              )} style={{ color: 'hsl(0 0% 85%)', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>FXK-PYRO</div>
-              <div className={cn("font-mono tracking-wider",
+              )} style={{ color: 'hsl(32 100% 55%)', textShadow: '0 0 12px hsl(32 100% 50% / 0.3)' }}>FXK-PYRO</div>
+              <div className={cn("font-mono tracking-[0.15em]",
                 sz === 'xl' ? "text-[9px]" : "text-[7px]",
-              )} style={{ color: 'hsl(0 0% 45%)' }}>XL4+ 2.0 · IFMx-i32Q · FIELD CONTROLLER</div>
+              )} style={{ color: 'hsl(32 100% 50% / 0.4)' }}>NEXUS FIELD CONTROLLER</div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* LCD-style counters — green phosphor on black */}
+            {/* LCD-style counters — amber/red on black (BR2049) */}
             {[
-              { label: 'MOD', value: connectedCount, color: 'hsl(120 100% 45%)' },
-              { label: 'IG', value: totalIgniters, color: 'hsl(120 100% 45%)' },
-              { label: 'FIRE', value: firedCount, color: firedCount > 0 ? 'hsl(0 80% 50%)' : 'hsl(120 100% 45%)' },
+              { label: 'MOD', value: connectedCount, color: 'hsl(32 100% 50%)' },
+              { label: 'IG', value: totalIgniters, color: 'hsl(32 100% 50%)' },
+              { label: 'FIRE', value: firedCount, color: firedCount > 0 ? 'hsl(0 80% 50%)' : 'hsl(32 100% 50%)' },
               ...(misfireCount > 0 ? [{ label: 'FAIL', value: misfireCount, color: 'hsl(0 80% 50%)' }] : []),
             ].map(c => (
               <div key={c.label} className={cn(
                 "rounded-sm font-mono text-center",
                 sz === 'xl' ? "px-3 py-1.5 min-w-[52px]" : sz === 'fs' ? "px-2 py-1 min-w-[40px]" : "px-1.5 py-0.5 min-w-[32px]"
               )} style={{
-                background: 'hsl(120 5% 4%)',
-                border: '1px solid hsl(120 10% 12%)',
+                background: 'hsl(220 20% 3%)',
+                border: '1px solid hsl(32 100% 50% / 0.12)',
                 boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.6)',
-                backgroundImage: 'repeating-linear-gradient(0deg, transparent 0px, transparent 1px, hsl(120 5% 6%) 1px, hsl(120 5% 6%) 2px)',
-                backgroundSize: '100% 2px',
               }}>
                 <div className={cn("font-bold",
                   sz === 'xl' ? "text-sm" : sz === 'fs' ? "text-[10px]" : "text-[9px]"
@@ -715,9 +804,23 @@ export default function PyroFireOnePanel({
                 }}>{c.value}</div>
                 <div className={cn("uppercase",
                   sz === 'xl' ? "text-[7px]" : "text-[6px]"
-                )} style={{ color: 'hsl(120 30% 25%)' }}>{c.label}</div>
+                )} style={{ color: 'hsl(32 100% 50% / 0.3)' }}>{c.label}</div>
               </div>
             ))}
+
+            {/* Mission clock */}
+            <div className={cn(
+              "rounded-sm font-mono text-center",
+              sz === 'xl' ? "px-3 py-1.5" : sz === 'fs' ? "px-2 py-1" : "px-1.5 py-0.5"
+            )} style={{
+              background: 'hsl(220 20% 3%)',
+              border: '1px solid hsl(32 100% 50% / 0.08)',
+            }}>
+              <div className={cn("font-bold",
+                sz === 'xl' ? "text-sm" : sz === 'fs' ? "text-[10px]" : "text-[9px]"
+              )} style={{ color: 'hsl(32 100% 50%)', textShadow: '0 0 6px hsl(32 100% 50% / 0.3)' }}>{missionClock}</div>
+              <div className={cn("uppercase", sz === 'xl' ? "text-[7px]" : "text-[6px]")} style={{ color: 'hsl(32 100% 50% / 0.25)' }}>CLOCK</div>
+            </div>
 
             {/* SIM/LIVE + Fullscreen */}
             <div className="flex items-center gap-1.5">
@@ -857,11 +960,11 @@ export default function PyroFireOnePanel({
     ) : null
   );
 
-  // ── Render: Mode tabs — XL4+ Physical Membrane Keypad ──
+  // ── Render: Mode tabs — BR2049 segmented control with amber underline ──
   const renderModeTabs = () => (
-    <div className={cn("flex border-b gap-0.5",
-      sz === 'xl' ? "px-4 py-1.5" : sz === 'fs' ? "px-3 py-1" : "px-2 py-0.5"
-    )} style={{ background: 'hsl(0 0% 10%)', borderColor: 'hsl(0 0% 15%)' }}>
+    <div className={cn("flex border-b gap-0",
+      sz === 'xl' ? "px-4" : sz === 'fs' ? "px-3" : "px-2"
+    )} style={{ background: 'hsl(220 18% 5%)', borderColor: 'hsl(var(--primary) / 0.1)' }}>
       {([
         { key: 'manual' as PyroMode, label: 'MANUAL', sub: 'Direct' },
         { key: 'step' as PyroMode, label: 'STEP', sub: 'Sequential' },
@@ -870,25 +973,21 @@ export default function PyroFireOnePanel({
       ]).map(m => (
         <button key={m.key} onClick={() => setPyroMode(m.key)}
           className={cn(
-            "flex-1 font-mono font-black uppercase tracking-[0.15em] transition-all min-h-[48px]",
+            "flex-1 font-mono font-black uppercase tracking-[0.12em] transition-all relative",
             sz === 'xl' ? "py-3 text-[11px]" : sz === 'fs' ? "py-2 text-[9px]" : "py-1.5 text-[8px]",
             pyroMode === m.key
-              ? "text-white/90"
-              : "text-white/30 hover:text-white/50"
-          )} style={{
-            /* Membrane button: flat gray with embossed double-border */
-            background: pyroMode === m.key ? 'hsl(0 0% 22%)' : 'hsl(0 0% 18%)',
-            border: pyroMode === m.key
-              ? '2px solid hsl(0 0% 30%)'
-              : '1px solid hsl(0 0% 12%)',
-            borderRadius: '2px',
-            /* Physical membrane emboss: outer dark, inner light highlight */
-            boxShadow: pyroMode === m.key
-              ? 'inset 0 1px 0 hsl(0 0% 28%), inset 0 -1px 0 hsl(0 0% 10%), 0 0 8px hsl(0 70% 40% / 0.2)'
-              : 'inset 0 1px 0 hsl(0 0% 22%), inset 0 -1px 0 hsl(0 0% 8%), 0 1px 2px rgba(0,0,0,0.3)',
-          }}>
+              ? "text-primary"
+              : "text-muted-foreground/30 hover:text-muted-foreground/50"
+          )}>
           <div>{m.label}</div>
-          {sz !== 'sm' && <div className="font-normal text-[6px]" style={{ color: pyroMode === m.key ? 'hsl(0 0% 50%)' : 'hsl(0 0% 30%)' }}>{m.sub}</div>}
+          {sz !== 'sm' && <div className="font-normal text-[6px]" style={{ color: pyroMode === m.key ? 'hsl(var(--primary) / 0.5)' : 'hsl(var(--muted-foreground) / 0.2)' }}>{m.sub}</div>}
+          {/* Amber underline indicator */}
+          {pyroMode === m.key && (
+            <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full" style={{
+              background: 'hsl(var(--primary))',
+              boxShadow: '0 0 8px hsl(var(--primary) / 0.4)',
+            }} />
+          )}
         </button>
       ))}
     </div>
@@ -1018,64 +1117,108 @@ export default function PyroFireOnePanel({
     ) : null
   );
 
-  // ── Render: Igniter grid (Manual mode) ──
+  // ── Render: Igniter grid (Manual mode) — BR2049 with group headers ──
   const renderIgniterGrid = () => {
     if (!currentModule) return null;
-    // In XL fullscreen: 8 cols, larger cells. Mobile XL: 4 cols, huge touch targets
     const cols = xl && mob ? 'grid-cols-4' : 'grid-cols-8';
     const cellSize = xl && mob ? 'min-h-[80px] rounded-xl' : xl ? 'min-h-[72px] rounded-lg' : fs ? 'min-h-[56px] rounded-lg' : 'min-h-[40px]';
+    const groups = [
+      { label: 'A', range: [1, 8] },
+      { label: 'B', range: [9, 16] },
+      { label: 'C', range: [17, 24] },
+      { label: 'D', range: [25, 32] },
+    ];
 
     return (
       <div className={cn(sz === 'xl' ? "p-4" : sz === 'fs' ? "p-3" : "p-2")}>
         {!canFire && (masterKeyOn || pyroArm || dmxArm) && (
-          <div className={cn("text-center text-amber-400/50 font-bold uppercase mb-2",
+          <div className={cn("text-center text-primary/50 font-bold uppercase mb-2",
             sz === 'xl' ? "text-sm py-2" : sz === 'fs' ? "text-[10px]" : "text-[8px]"
           )}>
-            {!masterKeyOn ? 'Turn Master Key ON' : !deadmanHeld ? 'Hold DEADMAN to fire' : 'ARM system to fire'}
+            {!masterKeyOn ? 'Turn Master Key ON' : 'ARM system to fire'}
           </div>
         )}
-        <div className={cn("grid", cols, sz === 'xl' ? "gap-2" : sz === 'fs' ? "gap-1.5" : "gap-1")}>
-          {currentModule.igniters.map(ig => {
-            const ok = ig.connected && !ig.fired && ig.resistance > 0;
-            const canFireIg = canFire && currentModule.armed && ok;
-            return (
-              <button key={ig.position}
-                onMouseDown={() => canFireIg && fireIgniter(currentModule.address, ig.position)}
-                onTouchStart={(e) => { e.preventDefault(); if (canFireIg) fireIgniter(currentModule.address, ig.position); }}
-                disabled={!canFireIg && !ig.fired}
-                className={cn(
-                  "relative flex flex-col items-center justify-center rounded border transition-all select-none",
-                  cellSize,
-                  ig.fired ? "bg-muted-foreground/10 border-border/10" :
-                  ig.misfire ? "bg-red-600/20 border-red-500/40 animate-pulse" :
-                  canFireIg ? "bg-[hsl(220_10%_12%)] border-border/30 hover:bg-red-700/20 active:scale-[0.93] active:bg-red-600/30 cursor-pointer" :
-                  ig.connected ? "bg-[hsl(220_10%_10%)] border-border/15" :
-                  "bg-[hsl(220_10%_6%)] border-border/5"
-                )}>
-                {/* Continuity LED */}
-                <div className={cn("absolute rounded-full",
-                  sz === 'xl' ? "w-3 h-3 top-1.5 right-1.5" : sz === 'fs' ? "w-2 h-2 top-1 right-1" : "w-1.5 h-1.5 top-0.5 right-0.5",
-                  ig.fired ? "bg-muted-foreground/20" :
-                  ig.misfire ? "bg-red-500" :
-                  ok ? "bg-green-500" :
-                  ig.connected ? "bg-amber-400" : "bg-muted-foreground/10"
-                )} style={ok && !ig.fired ? { boxShadow: '0 0 4px rgba(34,197,94,0.4)' } : ig.misfire ? { boxShadow: '0 0 6px rgba(239,68,68,0.6)' } : undefined} />
-                <span className={cn("font-mono font-bold",
-                  sz === 'xl' ? (mob ? "text-base" : "text-sm") : sz === 'fs' ? "text-[10px]" : "text-[8px]",
-                  ig.fired ? "text-muted-foreground/20" : ig.misfire ? "text-red-400" : ok ? "text-foreground/60" : "text-muted-foreground/15"
-                )}>{String(ig.position).padStart(2, '0')}</span>
-                <span className={cn("font-mono",
-                  sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[8px]" : "text-[8px]",
-                  ig.fired ? "text-muted-foreground/15" : ok ? "text-green-400/50" : "text-muted-foreground/15"
-                )}>{ig.resistance > 0 ? `${ig.resistance.toFixed(1)}Ω` : '—'}</span>
-                {/* Firing flash on mobile xl */}
-                {ig.fired && xl && (
-                  <div className="absolute inset-0 rounded-xl pointer-events-none bg-gradient-radial from-red-500/10 to-transparent" />
-                )}
-              </button>
-            );
-          })}
-        </div>
+        {groups.map(group => {
+          const groupIgniters = currentModule.igniters.filter(ig => ig.position >= group.range[0] && ig.position <= group.range[1]);
+          return (
+            <div key={group.label} className="mb-2">
+              {/* Group header */}
+              <div className={cn("flex items-center gap-2 mb-1",
+                sz === 'xl' ? "text-[10px]" : "text-[8px]"
+              )}>
+                <div className="h-px flex-1" style={{ background: 'hsl(var(--primary) / 0.15)' }} />
+                <span className="font-mono font-bold tracking-[0.2em]" style={{ color: 'hsl(var(--primary) / 0.5)' }}>
+                  GROUP {group.label} · {group.range[0]}–{group.range[1]}
+                </span>
+                <div className="h-px flex-1" style={{ background: 'hsl(var(--primary) / 0.15)' }} />
+              </div>
+              <div className={cn("grid", cols, sz === 'xl' ? "gap-2" : sz === 'fs' ? "gap-1.5" : "gap-1")}>
+                {groupIgniters.map(ig => {
+                  const ok = ig.connected && !ig.fired && ig.resistance > 0;
+                  const canFireIg = canFire && currentModule.armed && ok;
+                  const isHolding = holdingIgniter?.moduleAddr === currentModule.address && holdingIgniter?.pos === ig.position;
+                  return (
+                    <button key={ig.position}
+                      onMouseDown={() => canFireIg && !isMobile && fireIgniter(currentModule.address, ig.position)}
+                      onTouchStart={(e) => {
+                        e.preventDefault();
+                        if (canFireIg && isMobile) startHoldFire(currentModule.address, ig.position);
+                      }}
+                      onTouchEnd={(e) => { e.preventDefault(); if (isMobile) cancelHoldFire(); }}
+                      onTouchCancel={() => { if (isMobile) cancelHoldFire(); }}
+                      disabled={!canFireIg && !ig.fired}
+                      className={cn(
+                        "relative flex flex-col items-center justify-center rounded border transition-all select-none",
+                        cellSize,
+                        ig.fired ? "bg-muted-foreground/5 border-border/5" :
+                        ig.misfire ? "bg-red-600/20 border-red-500/40 animate-pulse" :
+                        currentModule.armed && ok && !canFireIg ? "bg-[hsl(220_10%_10%)] border-red-500/20" :
+                        canFireIg ? "bg-[hsl(220_10%_12%)] border-border/30 hover:bg-red-700/20 active:scale-[0.93] active:bg-red-600/30 cursor-pointer" :
+                        ig.connected ? "bg-[hsl(220_10%_10%)] border-border/15" :
+                        "bg-[hsl(220_10%_6%)] border-border/5"
+                      )}
+                      style={currentModule.armed && ok ? { boxShadow: '0 0 6px hsl(0 80% 50% / 0.15)' } : undefined}
+                    >
+                      {/* Fired diagonal strikethrough */}
+                      {ig.fired && (
+                        <div className="absolute inset-0 pointer-events-none overflow-hidden rounded" style={{
+                          background: 'repeating-linear-gradient(-45deg, transparent, transparent 3px, hsl(var(--muted-foreground) / 0.06) 3px, hsl(var(--muted-foreground) / 0.06) 4px)',
+                        }} />
+                      )}
+                      {/* Mobile hold-to-fire ring */}
+                      {isHolding && isMobile && (
+                        <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 44 44">
+                          <circle cx="22" cy="22" r="18" fill="none" stroke="hsl(32 100% 50% / 0.3)" strokeWidth="2" />
+                          <circle cx="22" cy="22" r="18" fill="none" stroke="hsl(32 100% 50%)" strokeWidth="2.5"
+                            strokeDasharray={`${holdProgress * 113} 113`}
+                            strokeLinecap="round" transform="rotate(-90 22 22)"
+                            style={{ filter: 'drop-shadow(0 0 4px hsl(32 100% 50% / 0.5))' }}
+                          />
+                        </svg>
+                      )}
+                      {/* Continuity LED */}
+                      <div className={cn("absolute rounded-full",
+                        sz === 'xl' ? "w-3 h-3 top-1.5 right-1.5" : sz === 'fs' ? "w-2 h-2 top-1 right-1" : "w-1.5 h-1.5 top-0.5 right-0.5",
+                        ig.fired ? "bg-muted-foreground/20" :
+                        ig.misfire ? "bg-red-500" :
+                        ok ? "bg-green-500" :
+                        ig.connected ? "bg-amber-400" : "bg-muted-foreground/10"
+                      )} style={ok && !ig.fired ? { boxShadow: '0 0 4px rgba(34,197,94,0.4)' } : ig.misfire ? { boxShadow: '0 0 6px rgba(239,68,68,0.6)' } : undefined} />
+                      <span className={cn("font-mono font-bold",
+                        sz === 'xl' ? (mob ? "text-base" : "text-sm") : sz === 'fs' ? "text-[10px]" : "text-[8px]",
+                        ig.fired ? "text-muted-foreground/20" : ig.misfire ? "text-red-400" : ok ? "text-foreground/60" : "text-muted-foreground/15"
+                      )}>{String(ig.position).padStart(2, '0')}</span>
+                      <span className={cn("font-mono",
+                        sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[8px]" : "text-[8px]",
+                        ig.fired ? "text-muted-foreground/15" : ok ? "text-green-400/50" : "text-muted-foreground/15"
+                      )}>{ig.resistance > 0 ? `${ig.resistance.toFixed(1)}Ω` : '—'}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </div>
     );
   };
@@ -1160,7 +1303,7 @@ export default function PyroFireOnePanel({
             <Button variant="ghost" size="sm" onClick={resetTimecode} className={cn(sz === 'xl' ? "h-10 text-xs" : "h-8 text-[9px]")}>
               <RotateCcw className="w-3 h-3 mr-1" /> Reset
             </Button>
-            <button onClick={() => { if (!canFire && !tcRunning) { toast.error('ARM + DEADMAN required'); return; } setTcRunning(!tcRunning); }}
+            <button onClick={() => { if (!canFire && !tcRunning) { toast.error('ARM system to fire'); return; } setTcRunning(!tcRunning); }}
               disabled={!canFire && !tcRunning}
               className={cn(
                 "rounded-lg font-black uppercase transition-all border-2 flex items-center gap-2",
@@ -1200,6 +1343,33 @@ export default function PyroFireOnePanel({
               );
             })}
           </div>
+          {/* Fire Confirmation Log */}
+          {fireLog.length > 0 && (
+            <div className="mt-3 border-t border-primary/10 pt-2">
+              <div className={cn("font-mono font-bold text-primary/50 uppercase mb-1", sz === 'xl' ? "text-[10px]" : "text-[8px]")}>
+                FIRE CONFIRMATION LOG
+              </div>
+              <div className="space-y-0.5">
+                {fireLog.slice(-10).reverse().map((entry, i) => (
+                  <div key={i} className={cn(
+                    "flex items-center gap-2 rounded border font-mono",
+                    sz === 'xl' ? "px-3 py-1 text-[10px]" : "px-2 py-0.5 text-[8px]",
+                    entry.status === 'OK' ? "border-green-500/15 bg-green-500/5 text-green-400/70" :
+                    entry.status === 'LATE' ? "border-amber-400/15 bg-amber-400/5 text-amber-400/70" :
+                    "border-red-500/15 bg-red-500/5 text-red-400/70"
+                  )}>
+                    <span className="w-8">{entry.cueId}</span>
+                    <span className="text-muted-foreground/40">EXP:{formatTimecode(entry.expectedMs)}</span>
+                    <span>ACT:{formatTimecode(entry.actualMs)}</span>
+                    <span className={cn("font-bold",
+                      entry.status === 'OK' ? "text-green-400" : entry.status === 'LATE' ? "text-amber-400" : "text-red-400"
+                    )}>Δ{entry.delta > 0 ? '+' : ''}{entry.delta}ms</span>
+                    <span className="ml-auto font-bold">{entry.status}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
@@ -1273,9 +1443,13 @@ export default function PyroFireOnePanel({
     );
   };
 
-  // ── Render: PANIC bar ──
+  // ── Render: PANIC bar — with warning stripes ──
   const renderPanic = () => (
-    <div className="border-t-2 border-border/20 shrink-0" style={{ background: 'hsl(220 12% 6%)' }}>
+    <div className="border-t-2 border-red-800/30 shrink-0" style={{
+      background: armedModCount > 0
+        ? 'repeating-linear-gradient(-45deg, hsl(45 100% 50% / 0.04), hsl(45 100% 50% / 0.04) 4px, hsl(220 12% 6%) 4px, hsl(220 12% 6%) 8px)'
+        : 'hsl(220 12% 6%)',
+    }}>
       <div className={cn(sz === 'xl' ? "px-5 py-3" : sz === 'fs' ? "px-4 py-2" : "px-2 py-1.5")}>
         <button onClick={handlePanic}
           className={cn(
@@ -1284,8 +1458,9 @@ export default function PyroFireOnePanel({
             "hover:from-red-600 hover:to-red-800 active:scale-[0.97]",
             "border-2 border-red-600/50",
             "flex items-center justify-center gap-2",
-            sz === 'xl' ? "h-16 text-lg tracking-[0.3em] rounded-xl" : sz === 'fs' ? "h-14 text-base tracking-[0.25em]" : "h-10 text-[11px] tracking-[0.25em]"
-          )} style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)' }}>
+            sz === 'xl' ? "h-16 text-lg tracking-[0.3em] rounded-xl" : sz === 'fs' ? "h-14 text-base tracking-[0.25em]" : "h-10 text-[11px] tracking-[0.25em]",
+            armedModCount > 0 && "armed-pulse"
+          )} style={{ boxShadow: armedModCount > 0 ? '0 0 20px rgba(239,68,68,0.3), inset 0 1px 0 rgba(255,255,255,0.1)' : 'inset 0 1px 0 rgba(255,255,255,0.1)' }}>
           <AlertTriangle className={cn(sz === 'xl' ? "w-7 h-7" : sz === 'fs' ? "w-5 h-5" : "w-4 h-4")} />
           PANIC — ALL STOP
         </button>
@@ -1293,29 +1468,88 @@ export default function PyroFireOnePanel({
     </div>
   );
 
-  // ── Render: Deadman (for XL fullscreen) ──
-  const renderDeadman = () => (
-    <div className={cn("border-t border-border/15 shrink-0",
-      sz === 'xl' ? "px-5 py-2" : "px-3 py-1.5"
-    )} style={{ background: deadmanHeld ? 'hsl(140 30% 8%)' : 'hsl(220 12% 6%)' }}>
-      <button
-        onMouseDown={() => {/* deadman comes from parent */}}
-        onTouchStart={(e) => { e.preventDefault(); }}
-        className={cn(
-          "w-full rounded-lg font-black uppercase transition-all border-2 flex items-center justify-center gap-2",
-          sz === 'xl' ? "py-4 text-sm rounded-xl" : "py-3 text-[10px]",
-          deadmanHeld
-            ? "bg-green-600/25 border-green-500/50 text-green-400"
-            : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/30"
+  // ── Render: Module Monitor (replaces deadman) ──
+  const renderModuleMonitor = () => {
+    const onlineCount = modules.filter(m => m.connected).length;
+    const totalBatteryOk = modules.filter(m => m.connected && m.batteryVoltage > 11).length;
+    const avgSignal = modules.filter(m => m.connected).reduce((s, m) => s + m.signalStrength, 0) / Math.max(onlineCount, 1);
+    
+    return (
+      <div className={cn("border-t border-primary/15 shrink-0",
+        sz === 'xl' ? "px-5 py-2" : "px-3 py-1.5"
+      )} style={{ background: 'hsl(220 12% 4%)' }}>
+        {/* Summary bar */}
+        <div className={cn("flex items-center gap-3 font-mono",
+          sz === 'xl' ? "text-[10px] mb-2" : "text-[8px] mb-1"
         )}>
-        <Hand className={cn(sz === 'xl' ? "w-6 h-6" : "w-4 h-4")} />
-        DEADMAN {deadmanHeld ? '● HELD' : '— INACTIVE'}
-      </button>
-      <p className={cn("text-center text-muted-foreground/20 mt-1", sz === 'xl' ? "text-[9px]" : "text-[8px]")}>
-        Deadman is controlled from FX Commander ARM bar
-      </p>
-    </div>
-  );
+          <span className="text-primary/60 font-bold tracking-wider">MODULE TELEMETRY</span>
+          <span className="text-green-400/70">ONLINE: {onlineCount}/{modules.length}</span>
+          <span className={cn(armedModCount > 0 ? "text-red-400" : "text-muted-foreground/30")}>ARMED: {armedModCount}</span>
+          <span className={cn(totalBatteryOk === onlineCount ? "text-green-400/60" : "text-amber-400/70")}>BATT: {totalBatteryOk === onlineCount ? 'OK' : `${totalBatteryOk}/${onlineCount}`}</span>
+          <span className={cn(avgSignal > 70 ? "text-green-400/60" : "text-amber-400/70")}>SIG: {avgSignal > 70 ? 'STRONG' : 'WEAK'}</span>
+          <button onClick={handleModuleScan} disabled={scanning}
+            className={cn("ml-auto rounded border font-bold uppercase transition-all flex items-center gap-1",
+              sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[8px]",
+              scanning
+                ? "bg-primary/10 border-primary/30 text-primary pyro-scan-sweep"
+                : "border-primary/20 text-primary/60 hover:text-primary hover:border-primary/40"
+            )}>
+            <Search className={cn(sz === 'xl' ? "w-3 h-3" : "w-2.5 h-2.5")} />
+            {scanning ? 'SCANNING...' : 'SCAN'}
+          </button>
+        </div>
+        {/* Scan progress */}
+        {scanning && (
+          <div className="w-full h-0.5 rounded-full overflow-hidden mb-1" style={{ background: 'hsl(220 10% 10%)' }}>
+            <div className="h-full rounded-full transition-all" style={{
+              width: `${scanProgress}%`,
+              background: 'linear-gradient(90deg, hsl(var(--primary)), hsl(var(--electric-glow)))',
+              boxShadow: '0 0 8px hsl(var(--primary) / 0.4)',
+            }} />
+          </div>
+        )}
+        {/* Module cards grid */}
+        <div className={cn("grid gap-1", sz === 'xl' ? "grid-cols-6" : "grid-cols-3")}>
+          {modules.map(m => (
+            <div key={m.address} className={cn(
+              "rounded border p-1.5 font-mono transition-all",
+              m.armed ? "border-red-500/30 bg-red-500/5 armed-pulse" :
+              m.connected ? (m.batteryVoltage > 11 && m.signalStrength > 60 ? "border-green-500/20 bg-green-500/5" : "border-amber-400/20 bg-amber-400/5") :
+              "border-border/5 bg-transparent opacity-30"
+            )}>
+              <div className="flex items-center justify-between">
+                <span className={cn("font-bold", sz === 'xl' ? "text-[10px]" : "text-[8px]",
+                  m.armed ? "text-red-400" : m.connected ? "text-foreground/60" : "text-muted-foreground/20"
+                )}>FM-{String(m.address).padStart(2, '0')}</span>
+                {/* Signal bars */}
+                <div className="flex items-end gap-px">
+                  {[1, 2, 3, 4, 5].map(bar => (
+                    <div key={bar} className={cn(
+                      "w-[2px] rounded-t",
+                      bar * 20 <= m.signalStrength ? "bg-green-400/70" : "bg-muted-foreground/10"
+                    )} style={{ height: `${bar * 2 + 2}px` }} />
+                  ))}
+                </div>
+              </div>
+              {m.connected && (
+                <div className={cn("flex items-center gap-1.5 mt-0.5", sz === 'xl' ? "text-[8px]" : "text-[7px]")}>
+                  {/* Battery SVG arc */}
+                  <svg width="16" height="10" viewBox="0 0 16 10">
+                    <rect x="0.5" y="1" width="13" height="8" rx="1" fill="none" stroke="hsl(var(--muted-foreground) / 0.2)" strokeWidth="0.7" />
+                    <rect x="13.5" y="3" width="2" height="4" rx="0.5" fill="hsl(var(--muted-foreground) / 0.15)" />
+                    <rect x="1.5" y="2" width={`${Math.min(11, (m.batteryVoltage / 12.8) * 11)}`} height="6" rx="0.5"
+                      fill={m.batteryVoltage > 11.5 ? 'hsl(120 70% 40%)' : m.batteryVoltage > 11 ? 'hsl(45 100% 50%)' : 'hsl(0 80% 50%)'} />
+                  </svg>
+                  <span className="text-muted-foreground/40">{m.batteryVoltage.toFixed(1)}V</span>
+                  <span className="text-muted-foreground/30">{Math.round(m.temperature)}°</span>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   // ── Mode content router ──
   const renderModeContent = () => {
@@ -1427,7 +1661,7 @@ export default function PyroFireOnePanel({
           </>
         )}
 
-        {renderDeadman()}
+        {renderModuleMonitor()}
         {renderPanic()}
       </div>
     );
@@ -1436,18 +1670,23 @@ export default function PyroFireOnePanel({
   }
 
   // ═══════════════════════════════════════════════════════════
-  // PANEL MODE (inside FX Commander)
+  // PANEL MODE (inside FX Commander) — with HUD corners
   // ═══════════════════════════════════════════════════════════
   return (
-    <div className="flex flex-col h-full relative overflow-hidden" style={{ background: 'hsl(0 5% 7%)' }}>
-      {/* Scanline overlay — CRT effect */}
+    <div className="flex flex-col h-full relative overflow-hidden" style={{ background: 'hsl(220 18% 4%)' }}>
+      {/* Amber scanline overlay — BR2049 */}
       <div className="absolute inset-0 pointer-events-none z-10" style={{
-        backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0,0,0,0.04) 1px, rgba(0,0,0,0.04) 2px)',
-        backgroundSize: '100% 2px',
+        backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, hsl(32 100% 50% / 0.012) 2px, hsl(32 100% 50% / 0.012) 4px)',
+        backgroundSize: '100% 4px',
       }} />
-      {/* Industrial panel housing corners */}
+      {/* HUD corner brackets */}
+      <div className="absolute top-1 left-1 w-4 h-4 pointer-events-none z-10 border-l-2 border-t-2" style={{ borderColor: 'hsl(var(--primary) / 0.2)' }} />
+      <div className="absolute top-1 right-1 w-4 h-4 pointer-events-none z-10 border-r-2 border-t-2" style={{ borderColor: 'hsl(var(--primary) / 0.2)' }} />
+      <div className="absolute bottom-1 left-1 w-4 h-4 pointer-events-none z-10 border-l-2 border-b-2" style={{ borderColor: 'hsl(var(--primary) / 0.2)' }} />
+      <div className="absolute bottom-1 right-1 w-4 h-4 pointer-events-none z-10 border-r-2 border-b-2" style={{ borderColor: 'hsl(var(--primary) / 0.2)' }} />
+      {/* Vignette */}
       <div className="absolute inset-0 pointer-events-none z-10" style={{
-        background: 'radial-gradient(ellipse at center, transparent 55%, hsl(0 0% 3% / 0.5) 100%)',
+        background: 'radial-gradient(ellipse at center, transparent 55%, hsl(220 20% 2% / 0.5) 100%)',
       }} />
       {renderFileInput()}
       {renderHeader()}

@@ -1379,7 +1379,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
         );
       case 'simple_dmx': return renderSimpleDmx(fs);
       case 'manual_fire': return renderManualFire(fs);
-      case 'pyro_fire': return <PyroFireOnePanel fs={fs} fireChannel={fireChannel} channels={channels} pyroArm={pyroArm} dmxArm={dmxArm} deadmanHeld={deadmanHeld} handlePanic={handlePanic} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
+      case 'pyro_fire': return <PyroFireOnePanel fs={fs} fireChannel={fireChannel} channels={channels} pyroArm={pyroArm} dmxArm={dmxArm} handlePanic={handlePanic} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
       case 'check_slave': return <CheckSlavePanel fs={fs} pyroArm={pyroArm} />;
       case 'mobile_link': return <MobileLinkMode fs={fs} fireChannel={fireChannel} channels={channels} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
       case 'controllers': return <VirtualControllerHub fs={fs} onSelectMode={(m) => setMode(m as FXCMode)} />;
