@@ -436,6 +436,17 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
               fogSystem.flashExplosion(burstPos, burstColor, caliber * 0.3);
             }
 
+            // ── Wire GI probes — explosion bounce light ──
+            const giSystem = (window as any).__giSystem as GlobalIlluminationSystem | undefined;
+            if (giSystem) {
+              giSystem.addExplosionProbe(burstPos, burstColor, caliber * 1.5);
+            }
+
+            // ── Wire ground decals — scorch marks + light splash ──
+            const groundImpactPos = new THREE.Vector3(burstPos.x, 0, burstPos.z);
+            spawnScorchMark(groundImpactPos, caliber * 2);
+            spawnLightSplash(groundImpactPos, caliber * 3, burstColor, 3);
+
             systems.push(entry);
           }
         }

@@ -2245,7 +2245,12 @@ const GlobalIlluminationController = React.forwardRef<THREE.Group, {}>(function 
 
   useEffect(() => {
     giRef.current = new GlobalIlluminationSystem(scene);
-    return () => { giRef.current = null; };
+    // Expose GI system globally for NiagaraVFXController to register probes
+    (window as any).__giSystem = giRef.current;
+    return () => {
+      delete (window as any).__giSystem;
+      giRef.current = null;
+    };
   }, [scene]);
 
   useFrame((_, delta) => {
