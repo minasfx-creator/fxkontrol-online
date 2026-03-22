@@ -574,10 +574,11 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
               item.position.z
             );
             const burstColor = new THREE.Color(effect.color);
-            const pattern = (effect as any).burstPattern || '';
+            const pattern = (effect as any).burstPattern || (effect as any).pattern || '';
+            const niagaraProfile = (effect as any).niagaraProfile as NiagaraProfile | undefined;
 
-            // Create composable NiagaraSystem with multiple emitters
-            const sparkEmitter = createSparkEmitterTemplate(caliber, burstColor);
+            // Create composable NiagaraSystem with multiple emitters — driven by VDL niagaraProfile
+            const sparkEmitter = createSparkEmitterTemplate(caliber, burstColor, pattern, niagaraProfile);
             const smokeEmitter = environment.disableSmoke ? null : createSmokeEmitterTemplate(caliber);
             const emberEmitter = createEmberEmitterTemplate(caliber, burstColor);
 
