@@ -6,36 +6,69 @@
  * can perform real firings via CDS (Capacitive Discharge System).
  * 
  * State machine: IDLE → SAFE_SENSE → READY → ARMED → FIRING
- * Protocol: STX(0x02) CMD PAYLOAD ETX(0x03) with ACK/NAK responses
+ * Firing modes: Manual, Semi-Auto, Auto (Timecode), UltraFire
  */
 
-export type ModuleState = 'idle' | 'safe_sense' | 'ready' | 'armed' | 'firing' | 'error';
+export type ModuleState = 'idle' | 'safe_sense' | 'ready' | 'armed' | 'firing' | 'error' | 'estop_lockout';
+
+export type FiringMode = 'manual' | 'semi_auto' | 'auto' | 'ultrafire' | 'preset';
 
 export interface IgniterChannel {
-  pin: number;            // 0–31
-  connected: boolean;     // continuity detected
+  pin: number;
+  connected: boolean;
   fired: boolean;
-  resistance: number;     // ohms (0 = open, <50 = good, >200 = marginal)
-  cdsVoltage: number;     // capacitor voltage (0–12V)
+  resistance: number;
+  cdsVoltage: number;
   cdsCharging: boolean;
-  lastFireTime: number;   // timestamp ms
-  fireDuration: number;   // last fire duration ms
+  lastFireTime: number;
+  fireDuration: number;
+}
+
+export interface ScriptEvent {
+  id: string;
+  pins: number[];
+  duration: number;
+  timeMs: number;       // absolute time offset for auto mode
+  label?: string;
+}
+
+export interface UltraFireSlot {
+  slot: number;         // 1–8
+  events: ScriptEvent[];
+  verifyCode: string;
+  loaded: boolean;
 }
 
 export interface ModuleStatus {
   state: ModuleState;
-  address: number;        // 01–99
+  address: number;
   igniters: IgniterChannel[];
   batteryVoltage: number;
-  signalStrength: number; // dBm (-30 to -90)
+  signalStrength: number;
   firePowerOn: boolean;
   communicating: boolean;
   rfActive: boolean;
   charging: boolean;
   errorCode: number;
-  safeSenseProgress: number; // 0–100
+  safeSenseProgress: number;
   totalFired: number;
-  uptime: number;         // seconds
+  uptime: number;
+  firingMode: FiringMode;
+  // Semi-auto
+  semiAutoEvents: ScriptEvent[];
+  semiAutoIndex: number;
+  // Auto
+  autoRunning: boolean;
+  autoElapsedMs: number;
+  autoTotalMs: number;
+  // UltraFire
+  ultraSlots: UltraFireSlot[];
+  ultraActiveSlot: number;
+  ultraRunning: boolean;
+  // Preset
+  presetPins: number[];
+  // E-STOP lockout
+  estopLockoutEnd: number;
 }
 
 // Protocol command bytes
@@ -54,15 +87,17 @@ const CMD = {
   CDS_STATUS: 0x50,
 } as const;
 
-const CDS_TARGET_VOLTAGE = 11.5;  // Target cap charge voltage
-const CDS_CHARGE_RATE = 0.8;      // V per second
-const CDS_MIN_FIRE_VOLTAGE = 8.0; // Minimum voltage to fire
-const SAFE_SENSE_DURATION = 3000; // 3 seconds
-const MAX_FIRE_DURATION = 1000;   // 1000ms max
-const MIN_FIRE_DURATION = 20;     // 20ms minimum
+const CDS_TARGET_VOLTAGE = 11.5;
+const CDS_CHARGE_RATE = 0.8;
+const CDS_MIN_FIRE_VOLTAGE = 8.0;
+const SAFE_SENSE_DURATION = 3000;
+const MAX_FIRE_DURATION = 1000;
+const MIN_FIRE_DURATION = 20;
+const ESTOP_LOCKOUT_MS = 3000;
+const FIRE_GROUP_STAGGER_MS = 2;
 
 export type HardwareFireCallback = (pin: number, durationMs: number) => Promise<boolean>;
-export type ContinuityReadCallback = (pin: number) => Promise<number>; // returns ohms
+export type ContinuityReadCallback = (pin: number) => Promise<number>;
 
 export interface ModuleEmulatorConfig {
   address?: number;
@@ -70,7 +105,7 @@ export interface ModuleEmulatorConfig {
   onContinuityRead?: ContinuityReadCallback;
   onStateChange?: (state: ModuleState) => void;
   onStatusUpdate?: (status: ModuleStatus) => void;
-  simulateHardware?: boolean; // If true, simulate igniters without real hardware
+  simulateHardware?: boolean;
 }
 
 export class FireOneModuleEmulator {
@@ -90,8 +125,24 @@ export class FireOneModuleEmulator {
   private chargeInterval: ReturnType<typeof setInterval> | null = null;
   private safeSenseTimer: ReturnType<typeof setTimeout> | null = null;
 
-  private onFire: HardwareFireCallback | null;
-  private onContinuityRead: ContinuityReadCallback | null;
+  // Firing modes
+  private firingMode: FiringMode = 'manual';
+  private semiAutoEvents: ScriptEvent[] = [];
+  private semiAutoIndex = 0;
+  private autoEvents: ScriptEvent[] = [];
+  private autoRunning = false;
+  private autoStartTime = 0;
+  private autoTimer: ReturnType<typeof setInterval> | null = null;
+  private ultraSlots: UltraFireSlot[] = [];
+  private ultraActiveSlot = 0;
+  private ultraRunning = false;
+  private ultraTimer: ReturnType<typeof setInterval> | null = null;
+  private presetPins: number[] = [];
+  private estopLockoutEnd = 0;
+
+  // Dynamic callbacks (can be updated after construction)
+  onFire: HardwareFireCallback | null;
+  onContinuityRead: ContinuityReadCallback | null;
   private onStateChange: ((state: ModuleState) => void) | null;
   private onStatusUpdate: ((status: ModuleStatus) => void) | null;
   private simulateHardware: boolean;
@@ -117,16 +168,21 @@ export class FireOneModuleEmulator {
         fireDuration: 0,
       });
     }
+
+    // Initialize 8 UltraFire slots
+    for (let s = 1; s <= 8; s++) {
+      this.ultraSlots.push({ slot: s, events: [], verifyCode: '', loaded: false });
+    }
   }
 
-  /** Power on — starts safe-sense sequence */
+  // ─── Power ──────────────────────────────────────────────
+
   powerOn(): void {
     if (this.state !== 'idle') return;
     this.setState('safe_sense');
     this.safeSenseProgress = 0;
     this.communicating = true;
 
-    // Safe-sense: 3-second ramp (per IFMx manual)
     const startTime = Date.now();
     const tick = () => {
       const elapsed = Date.now() - startTime;
@@ -143,9 +199,10 @@ export class FireOneModuleEmulator {
     this.safeSenseTimer = setTimeout(tick, 100);
   }
 
-  /** Power off */
   powerOff(): void {
     this.stopCharging();
+    this.stopAuto();
+    this.stopUltraFire();
     if (this.safeSenseTimer) clearTimeout(this.safeSenseTimer);
     this.setState('idle');
     this.firePowerOn = false;
@@ -157,37 +214,56 @@ export class FireOneModuleEmulator {
     this.emitStatus();
   }
 
-  /** ARM the module — enables fire power */
+  // ─── ARM / DISARM ───────────────────────────────────────
+
   arm(): boolean {
     if (this.state !== 'ready') return false;
+    // Check E-STOP lockout
+    if (Date.now() < this.estopLockoutEnd) return false;
     this.firePowerOn = true;
     this.setState('armed');
     this.emitStatus();
     return true;
   }
 
-  /** DISARM — disable fire power */
   disarm(): void {
     if (this.state === 'armed' || this.state === 'firing') {
       this.firePowerOn = false;
+      this.stopAuto();
+      this.stopUltraFire();
       this.setState('ready');
       this.emitStatus();
     }
   }
 
-  /** EMERGENCY STOP — immediate disarm + discharge all caps */
+  // ─── E-STOP (goes to idle, 3s lockout) ──────────────────
+
   eStop(): void {
     this.firePowerOn = false;
     this.stopCharging();
+    this.stopAuto();
+    this.stopUltraFire();
     this.igniters.forEach(ig => {
       ig.cdsVoltage = 0;
       ig.cdsCharging = false;
     });
-    this.setState('ready');
+    this.estopLockoutEnd = Date.now() + ESTOP_LOCKOUT_MS;
+    this.setState('estop_lockout');
+
+    // After lockout, return to idle
+    setTimeout(() => {
+      if (this.state === 'estop_lockout') {
+        this.setState('idle');
+        this.communicating = false;
+        this.emitStatus();
+      }
+    }, ESTOP_LOCKOUT_MS);
+
     this.emitStatus();
   }
 
-  /** Fire a single igniter channel */
+  // ─── Fire ───────────────────────────────────────────────
+
   async fire(pin: number, durationMs: number): Promise<boolean> {
     if (this.state !== 'armed') return false;
     if (pin < 0 || pin > 31) return false;
@@ -195,12 +271,11 @@ export class FireOneModuleEmulator {
     const dur = Math.max(MIN_FIRE_DURATION, Math.min(MAX_FIRE_DURATION, durationMs));
     const ig = this.igniters[pin];
 
-    if (ig.fired) return false; // Already fired
-    if (ig.cdsVoltage < CDS_MIN_FIRE_VOLTAGE) return false; // Insufficient charge
+    if (ig.fired) return false;
+    if (ig.cdsVoltage < CDS_MIN_FIRE_VOLTAGE) return false;
 
     this.setState('firing');
 
-    // Route to hardware if available
     let hardwareSuccess = true;
     if (this.onFire) {
       try {
@@ -214,13 +289,12 @@ export class FireOneModuleEmulator {
       ig.fired = true;
       ig.connected = false;
       ig.resistance = 0;
-      ig.cdsVoltage = 0; // Cap discharged
+      ig.cdsVoltage = 0;
       ig.lastFireTime = Date.now();
       ig.fireDuration = dur;
       this.totalFired++;
     }
 
-    // Return to armed state after fire
     setTimeout(() => {
       if (this.state === 'firing') {
         this.setState('armed');
@@ -232,12 +306,21 @@ export class FireOneModuleEmulator {
     return hardwareSuccess;
   }
 
-  /** Fire multiple pins simultaneously */
+  /** Fire multiple pins sequentially with 2ms stagger (simulates CDS current draw) */
   async fireGroup(pins: number[], durationMs: number): Promise<boolean[]> {
-    return Promise.all(pins.map(p => this.fire(p, durationMs)));
+    const results: boolean[] = [];
+    for (const pin of pins) {
+      const ok = await this.fire(pin, durationMs);
+      results.push(ok);
+      if (pins.indexOf(pin) < pins.length - 1) {
+        await new Promise(r => setTimeout(r, FIRE_GROUP_STAGGER_MS));
+      }
+    }
+    return results;
   }
 
-  /** Read continuity for a channel */
+  // ─── Continuity ─────────────────────────────────────────
+
   async readContinuity(pin: number): Promise<number> {
     if (pin < 0 || pin > 31) return 0;
     
@@ -248,27 +331,188 @@ export class FireOneModuleEmulator {
       this.emitStatus();
       return ohms;
     }
-
-    // Simulated
     return this.igniters[pin].resistance;
   }
 
-  /** Read all continuities */
   async readAllContinuity(): Promise<number[]> {
     return Promise.all(this.igniters.map((_, i) => this.readContinuity(i)));
   }
 
-  /** Set module address (01–99) */
+  // ─── Address ────────────────────────────────────────────
+
   setAddress(addr: number): void {
     this.address = Math.max(1, Math.min(99, Math.floor(addr)));
     this.emitStatus();
   }
 
-  /** Handle incoming protocol frame from controller */
+  // ─── Firing Modes ───────────────────────────────────────
+
+  setFiringMode(mode: FiringMode): void {
+    this.firingMode = mode;
+    this.stopAuto();
+    this.stopUltraFire();
+    this.emitStatus();
+  }
+
+  getFiringMode(): FiringMode {
+    return this.firingMode;
+  }
+
+  // ── Semi-Auto ──
+
+  loadSemiAutoScript(events: ScriptEvent[]): void {
+    this.semiAutoEvents = [...events];
+    this.semiAutoIndex = 0;
+    this.firingMode = 'semi_auto';
+    this.emitStatus();
+  }
+
+  /** Fire the next event in semi-auto queue, returns false if done */
+  async stepEvent(): Promise<boolean> {
+    if (this.firingMode !== 'semi_auto') return false;
+    if (this.semiAutoIndex >= this.semiAutoEvents.length) return false;
+    if (this.state !== 'armed') return false;
+
+    const event = this.semiAutoEvents[this.semiAutoIndex];
+    await this.fireGroup(event.pins, event.duration);
+    this.semiAutoIndex++;
+    this.emitStatus();
+    return this.semiAutoIndex < this.semiAutoEvents.length;
+  }
+
+  resetSemiAuto(): void {
+    this.semiAutoIndex = 0;
+    this.emitStatus();
+  }
+
+  // ── Auto (Timecode) ──
+
+  loadAutoScript(events: ScriptEvent[]): void {
+    this.autoEvents = [...events].sort((a, b) => a.timeMs - b.timeMs);
+    this.firingMode = 'auto';
+    this.autoRunning = false;
+    this.emitStatus();
+  }
+
+  startAutoFire(): void {
+    if (this.firingMode !== 'auto' || this.state !== 'armed') return;
+    if (this.autoEvents.length === 0) return;
+
+    this.autoRunning = true;
+    this.autoStartTime = Date.now();
+    let nextIndex = 0;
+
+    this.autoTimer = setInterval(() => {
+      const elapsed = Date.now() - this.autoStartTime;
+
+      while (nextIndex < this.autoEvents.length && this.autoEvents[nextIndex].timeMs <= elapsed) {
+        const ev = this.autoEvents[nextIndex];
+        this.fireGroup(ev.pins, ev.duration);
+        nextIndex++;
+      }
+
+      this.emitStatus();
+
+      if (nextIndex >= this.autoEvents.length) {
+        this.stopAuto();
+      }
+    }, 10); // 10ms resolution
+    this.emitStatus();
+  }
+
+  stopAuto(): void {
+    if (this.autoTimer) {
+      clearInterval(this.autoTimer);
+      this.autoTimer = null;
+    }
+    this.autoRunning = false;
+    this.emitStatus();
+  }
+
+  getAutoElapsedMs(): number {
+    if (!this.autoRunning) return 0;
+    return Date.now() - this.autoStartTime;
+  }
+
+  getAutoTotalMs(): number {
+    if (this.autoEvents.length === 0) return 0;
+    return this.autoEvents[this.autoEvents.length - 1].timeMs;
+  }
+
+  // ── UltraFire ──
+
+  downloadScript(slot: number, events: ScriptEvent[], verifyCode: string): void {
+    if (slot < 1 || slot > 8) return;
+    const s = this.ultraSlots[slot - 1];
+    s.events = [...events];
+    s.verifyCode = verifyCode;
+    s.loaded = true;
+    this.emitStatus();
+  }
+
+  setUltraSlot(slot: number): void {
+    if (slot < 1 || slot > 8) return;
+    this.ultraActiveSlot = slot - 1;
+    this.emitStatus();
+  }
+
+  startUltraFire(): void {
+    if (this.firingMode !== 'ultrafire' || this.state !== 'armed') return;
+    const slot = this.ultraSlots[this.ultraActiveSlot];
+    if (!slot.loaded || slot.events.length === 0) return;
+
+    this.ultraRunning = true;
+    const startTime = Date.now();
+    let nextIdx = 0;
+    const sorted = [...slot.events].sort((a, b) => a.timeMs - b.timeMs);
+
+    this.ultraTimer = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      while (nextIdx < sorted.length && sorted[nextIdx].timeMs <= elapsed) {
+        this.fireGroup(sorted[nextIdx].pins, sorted[nextIdx].duration);
+        nextIdx++;
+      }
+      this.emitStatus();
+      if (nextIdx >= sorted.length) {
+        this.stopUltraFire();
+      }
+    }, 10);
+    this.emitStatus();
+  }
+
+  stopUltraFire(): void {
+    if (this.ultraTimer) {
+      clearInterval(this.ultraTimer);
+      this.ultraTimer = null;
+    }
+    this.ultraRunning = false;
+    this.emitStatus();
+  }
+
+  // ── Preset ──
+
+  setPreset(pins: number[]): void {
+    this.presetPins = pins.filter(p => p >= 0 && p < 32);
+    this.firingMode = 'preset';
+    this.emitStatus();
+  }
+
+  async firePreset(): Promise<boolean[]> {
+    if (this.presetPins.length === 0) return [];
+    return this.fireGroup(this.presetPins, 200);
+  }
+
+  clearPreset(): void {
+    this.presetPins = [];
+    this.emitStatus();
+  }
+
+  // ─── Protocol Frame Handler ─────────────────────────────
+
   handleFrame(cmd: number, payload: Uint8Array): Uint8Array {
     switch (cmd) {
       case CMD.IDENTIFY:
-        return this.buildResponse(CMD.ACK, new Uint8Array([this.address, 0x32])); // 0x32 = 32 channels
+        return this.buildResponse(CMD.ACK, new Uint8Array([this.address, 0x32]));
 
       case CMD.STATUS:
         return this.buildStatusResponse();
@@ -291,7 +535,7 @@ export class FireOneModuleEmulator {
 
       case CMD.FIRE_GROUP:
         if (payload.length >= 5) {
-          const mask = (payload[0] << 24) | (payload[1] << 16) | (payload[2] << 8) | payload[3];
+          const mask = ((payload[0] << 24) | (payload[1] << 16) | (payload[2] << 8) | payload[3]) >>> 0;
           const dur = (payload[4] << 8) | (payload[5] ?? 100);
           const pins: number[] = [];
           for (let i = 0; i < 32; i++) {
@@ -328,7 +572,8 @@ export class FireOneModuleEmulator {
     }
   }
 
-  /** Get current status snapshot */
+  // ─── Status ─────────────────────────────────────────────
+
   getStatus(): ModuleStatus {
     return {
       state: this.state,
@@ -344,16 +589,28 @@ export class FireOneModuleEmulator {
       safeSenseProgress: this.safeSenseProgress,
       totalFired: this.totalFired,
       uptime: (Date.now() - this.startTime) / 1000,
+      firingMode: this.firingMode,
+      semiAutoEvents: this.semiAutoEvents,
+      semiAutoIndex: this.semiAutoIndex,
+      autoRunning: this.autoRunning,
+      autoElapsedMs: this.getAutoElapsedMs(),
+      autoTotalMs: this.getAutoTotalMs(),
+      ultraSlots: this.ultraSlots,
+      ultraActiveSlot: this.ultraActiveSlot,
+      ultraRunning: this.ultraRunning,
+      presetPins: this.presetPins,
+      estopLockoutEnd: this.estopLockoutEnd,
     };
   }
 
-  /** Cleanup */
   destroy(): void {
     this.stopCharging();
+    this.stopAuto();
+    this.stopUltraFire();
     if (this.safeSenseTimer) clearTimeout(this.safeSenseTimer);
   }
 
-  // ─── Private ─────────────────────────────────────────────
+  // ─── Private ────────────────────────────────────────────
 
   private setState(s: ModuleState): void {
     this.state = s;
@@ -378,7 +635,6 @@ export class FireOneModuleEmulator {
           ig.cdsCharging = false;
         }
       });
-      // Simulate battery drain
       this.batteryVoltage = Math.max(9.0, this.batteryVoltage - 0.001);
       if (allCharged) this.charging = false;
       this.emitStatus();
@@ -395,30 +651,30 @@ export class FireOneModuleEmulator {
 
   private buildResponse(cmd: number, data: Uint8Array): Uint8Array {
     const frame = new Uint8Array(data.length + 3);
-    frame[0] = 0x02; // STX
+    frame[0] = 0x02;
     frame[1] = cmd;
     frame.set(data, 2);
-    frame[frame.length - 1] = 0x03; // ETX
+    frame[frame.length - 1] = 0x03;
     return frame;
   }
 
   private buildStatusResponse(): Uint8Array {
     const stateMap: Record<ModuleState, number> = {
-      idle: 0, safe_sense: 1, ready: 2, armed: 3, firing: 4, error: 5,
+      idle: 0, safe_sense: 1, ready: 2, armed: 3, firing: 4, error: 5, estop_lockout: 6,
     };
     const data = new Uint8Array(8);
     data[0] = this.address;
     data[1] = stateMap[this.state];
     data[2] = Math.round(this.batteryVoltage * 10);
     data[3] = Math.abs(this.signalStrength);
-    // Continuity bitmap (32 bits = 4 bytes)
+    // Continuity bitmap — use >>> 0 for unsigned 32-bit
     let mask = 0;
     this.igniters.forEach(ig => {
-      if (ig.connected && !ig.fired) mask |= (1 << ig.pin);
+      if (ig.connected && !ig.fired) mask = (mask | (1 << ig.pin)) >>> 0;
     });
-    data[4] = (mask >> 24) & 0xFF;
-    data[5] = (mask >> 16) & 0xFF;
-    data[6] = (mask >> 8) & 0xFF;
+    data[4] = (mask >>> 24) & 0xFF;
+    data[5] = (mask >>> 16) & 0xFF;
+    data[6] = (mask >>> 8) & 0xFF;
     data[7] = mask & 0xFF;
     return this.buildResponse(CMD.STATUS, data);
   }
@@ -426,7 +682,7 @@ export class FireOneModuleEmulator {
   private buildCdsResponse(): Uint8Array {
     const data = new Uint8Array(32);
     this.igniters.forEach((ig, i) => {
-      data[i] = Math.round(ig.cdsVoltage * 10); // tenths of volt
+      data[i] = Math.round(ig.cdsVoltage * 10);
     });
     return this.buildResponse(CMD.CDS_STATUS, data);
   }
