@@ -5,6 +5,7 @@ import { useProjectStore, type Position, EFFECT_LIBRARY } from '@/store/useProje
 import { useSceneStore } from '@/store/useSceneStore';
 import { useUndoStore } from '@/store/useUndoStore';
 import { useAddressingStore } from '@/store/useAddressingStore';
+import { getBreakHeight } from '@/lib/pyroPhysics';
 import * as THREE from 'three';
 
 const PYRO_COLOR = '#FF6B35';
