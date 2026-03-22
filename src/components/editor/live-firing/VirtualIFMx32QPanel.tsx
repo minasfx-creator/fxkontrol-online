@@ -5,7 +5,7 @@
  * Hardware Design tab with ESP32-S3 schematic
  */
 import { useState, useCallback, useEffect } from 'react';
-import { Power, Zap, Shield, ShieldAlert, Wifi, Usb, Radio, Battery, AlertTriangle, ChevronUp, ChevronDown, Activity, Play, Square, SkipForward, Download, Cpu, Wrench } from 'lucide-react';
+import { Power, Zap, Shield, ShieldAlert, Wifi, Usb, Radio, Battery, AlertTriangle, ChevronUp, ChevronDown, Activity, Play, Square, SkipForward, Download, Cpu, Wrench, Signal, Satellite } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
