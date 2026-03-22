@@ -347,7 +347,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   }, [cues, channels, setChannels]);
 
   // ─── Swipe gesture for mobile mode switching / close ───
-  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'auto_fire', 'check_slave', 'controllers', 'pbus', 'field_map', 'connections', 'radio', 'ma3', 'mobile_link', 'settings'];
+  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'auto_fire', 'check_slave', 'controllers', 'pbus', 'field_map', 'connections', 'radio', 'ma3', 'module', 'mobile_link', 'settings'];
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const swipeHandled = useRef(false);
 
