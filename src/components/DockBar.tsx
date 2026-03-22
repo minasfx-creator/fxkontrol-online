@@ -3,7 +3,7 @@
  * magnification on hover, and active indicators.
  * Fixed at the bottom of the viewport (non-editor pages).
  */
-import { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { ambientSound } from '@/lib/ambientSound';
