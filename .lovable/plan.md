@@ -1,76 +1,49 @@
 
 
-# Melhoramentos Identificados — Correções e Refinamentos
+# PDF Comparativo + Protótipo FXK-M1 Plug & Play
 
-## Falhas Encontradas
+## O que será entregue
 
-### CRÍTICAS
+### 1. Design Philosophy (.md) ✅ Já criado
+Arquivo `FXK_Ignition_Systems_Philosophy.md` — manifesto visual "Pyrotechnic Futurism" com estética de hardware de campo: paleta escura, tipografia machined, grid de circuito impresso.
 
-**1. TDMA slots de 1.8ms são impossíveis no browser**
-`setTimeout` tem resolução mínima de ~4ms em browsers. O `executeFrame()` usa `await new Promise(r => setTimeout(r, 1.8))` que na prática espera ~4-5ms por slot. Com 50 slots, o frame real leva ~200-250ms em vez de 100ms. Slots se sobrepõem com o próximo `setInterval(100ms)`.
+### 2. PDF de 5 páginas: Mobile vs Hardware Convencional
 
-**2. E-STOP via TDMA não é imediato**
-`queueEstop()` coloca o pacote na fila do slot 0, mas **espera o próximo frame** (até 100ms). Isso viola o requisito de < 2ms. E-STOP precisa de bypass imediato do scheduler.
+**Página 1 — Capa**
+- Título "MOBILE vs HARDWARE" com métricas-chave (6+ transportes, 50ms E-STOP, alcance global, 12+ sensores)
+- Teaser do protótipo FXK-M1
 
-**3. Conflito de opcode: `PRIORITY_DISABLE = 0x70` vs `TDMA_SYNC = 0x70`**
-`fireoneProtocol.ts` define `PRIORITY_DISABLE = 0x70` e `radioProtocol.ts` define `TDMA_SYNC = 0x70`. Mesmo byte = ambiguidade no parser.
+**Página 2 — Tabela Comparativa**
+- 16 categorias comparadas: Alcance, Transportes, E-STOP, Sensores, Confirmação de Tiro, Lógica, Redundância, Custo, Setup, Atualização, Mesh, Spectrum, Clima, Continuidade, IP Rating, Temperatura
+- Indicadores visuais verde (vantagem clara) / âmbar (equivalente com dock)
 
-**4. CellularTransport ping loop vaza memória**
-`startPingLoop()` cria `setInterval` sem guardar referência. Em `disconnect()`, o interval continua rodando indefinidamente.
+**Página 3 — Tecnologias Exclusivas do Mobile**
+- 10 cards: Confirmação Acústica, AR, Detecção de Inclinação, Wi-Fi Mesh, GPS Firing (ICET), Spectrum Analyzer, TDMA Anti-Colisão, UWB Positioning, Thermal Camera, NFC Tap-to-Pair
+- Cada card com descrição técnica de 2 linhas
 
-### MODERADAS
+**Página 4 — Protótipo FXK-M1 (Esquemático)**
+- Vista superior do módulo com:
+  - Dock universal para smartphone (mola + trava)
+  - USB-C passthrough (carga + dados)
+  - PCB com ESP32-S3, 74HC595, MOSFETs, CC1101, LiPo
+  - 32 terminais de parafuso para ignitores
+  - 7 anotações técnicas numeradas
+- Estética de schematic técnico com traces pontilhados
 
-**5. RadioTransport.send() duplica lógica CRC**
-Reimplementa CRC16 e packet building inline em vez de usar `buildRadioPacket()` do `radioProtocol.ts`.
+**Página 5 — Arquitetura + BOM**
+- Diagrama de 3 camadas: Software → Dock → Campo
+- Bill of Materials com 12 itens, custo total estimado: ~US$ 83
 
-**6. WiFiTransport.send() ainda mede buffer time local**
-Mesmo bug que foi corrigido no Starlink — mede `performance.now()` ao redor de `ws.send()` que é ~0ms.
+### Estética
+- Background escuro (#0A0C10) com grid sutil
+- Fontes: Tektur (títulos), IBM Plex Mono (dados), Work Sans (corpo)
+- Retângulos chanfrados (chamfered) — estética de metal usinado
+- Paleta: verde fosforescente, âmbar, ciano, vermelho (só E-STOP)
 
-**7. `packetLossRate` calculado incorretamente**
-`TransportHealthMonitor` calcula `consecutiveFailures / latencyHistory.length` — não reflete taxa de perda real. Deveria rastrear success/fail ratio.
-
-**8. useRadioLink TDMA status nunca atualiza**
-Após `enableTDMA()`, o estado `tdmaStatus` nunca é re-polled. O UI mostra valores estáticos.
-
-**9. StarlinkTransport calibrateBaseline race condition**
-Coleta latência com `setTimeout(2000)` após cada ping, mas o pong pode não ter chegado ainda.
-
-## Plano de Correção
-
-### Arquivo 1: `src/lib/radioProtocol.ts`
-- Mudar `TDMA_SYNC` para `0x74` e `TDMA_SLOT_ASSIGN` para `0x75` (evitar conflito com `PRIORITY_DISABLE`)
-- Refatorar `executeFrame()`: usar `performance.now()` busy-wait loop em vez de `setTimeout` para slots sub-4ms
-- Proteger contra frame overlap: flag `_executing` que bloqueia reentrada
-- Adicionar `sendEstopImmediate()` que bypassa o scheduler e envia direto via `sendFn` (latência real < 2ms)
-
-### Arquivo 2: `src/lib/fireoneTransport.ts`
-- **RadioTransport.send()**: substituir CRC inline por `wrapProtocolFrame()` importado
-- **CellularTransport**: guardar referência do ping interval, limpar em `disconnect()`
-- **WiFiTransport.send()**: remover medição de buffer time, usar ping/pong RTT (como Starlink)
-
-### Arquivo 3: `src/lib/hybridTransportRouter.ts`
-- **TransportHealthMonitor**: rastrear `totalSuccess` + `totalFailure` para cálculo real de packet loss
-- **StarlinkTransport.calibrateBaseline()**: usar Promise-based collection em vez de setTimeout race
-- **broadcastEstop()**: chamar `TDMAScheduler.sendEstopImmediate()` quando TDMA ativo
-
-### Arquivo 4: `src/hooks/useRadioLink.ts`
-- Adicionar polling interval (100ms) para `tdmaStatus` enquanto TDMA ativo
-- Limpar interval no `disableTDMA()` e unmount
-
-## Detalhes Técnicos
-
-```text
-TDMA Timing Fix:
-  BEFORE: setTimeout(1.8ms) → real ~4-5ms → 50 slots = 200-250ms
-  AFTER:  performance.now() busy-wait → real ~1.8ms → 50 slots = 90ms
-
-E-STOP Bypass:
-  BEFORE: queueEstop() → wait up to 100ms for next frame
-  AFTER:  sendEstopImmediate() → direct sendFn() → latency < 2ms
-
-Opcode Conflict Fix:
-  PRIORITY_DISABLE = 0x70 (fireoneProtocol.ts — unchanged)
-  TDMA_SYNC        = 0x74 (was 0x70 — CHANGED)
-  TDMA_SLOT_ASSIGN = 0x75 (was 0x71 — CHANGED)
-```
+### Processo
+1. Executar script Python com reportlab
+2. Converter para imagens para QA visual
+3. Verificar overlaps, margens, legibilidade
+4. Corrigir issues encontradas
+5. Entregar PDF + .md
 
