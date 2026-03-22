@@ -134,6 +134,12 @@ export default function SelectionStatusBar() {
         <span className="flex items-center gap-1 text-foreground">
           <Zap className="w-3 h-3" />
           {linkedEffectCount} fx
+          {linkedTimelineItemIds.length > 0 && linkedTimelineItemIds.length !== linkedEffectCount && (
+            <span className="text-accent text-[8px]">({linkedTimelineItemIds.length} linked)</span>
+          )}
+        </span>
+        <span className="text-[7px] text-muted-foreground/30 ml-1">
+          {selectionMode === 'both' ? '🔗' : selectionMode === 'positions' ? '📍' : '⚡'}
         </span>
         <div className="flex-1" />
         <button
