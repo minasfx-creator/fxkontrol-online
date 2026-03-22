@@ -440,9 +440,17 @@ export default function CommandCenter() {
           </div>
         </div>
 
-        {/* Content — LiveFiringPanel for all modes */}
+        {/* Content — Fire modes get LiveFiringPanel, others render directly */}
         <div className="flex-1 overflow-hidden">
-          <LiveFiringPanel initialMode={activeMode} standalone />
+          {isFireMode(activeMode) ? (
+            <LiveFiringPanel initialMode={activeMode} standalone />
+          ) : (
+            <ScrollArea className="h-full">
+              <div className="h-full" style={{ background: 'hsl(220 15% 6%)' }}>
+                {renderDirectPanel(activeMode)}
+              </div>
+            </ScrollArea>
+          )}
         </div>
       </div>
     </div>
