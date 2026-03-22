@@ -758,6 +758,11 @@ export function parseVDL(input: string): VDLResult {
     }
   }
 
+  // 3. Fallback: generate physics-correct profile from type if still no profile
+  if (!result.niagaraProfile && result.type) {
+    result.niagaraProfile = generateNiagaraProfileFromType(result.type, result.caliber);
+  }
+
   result.valid = foundType || result.isChain || result.type === 'cake' || result.colorNames.length > 0 || calMatch !== null || calMmMatch !== null;
 
   return result;
