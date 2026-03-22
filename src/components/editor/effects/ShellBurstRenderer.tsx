@@ -654,8 +654,12 @@ export default function ShellBurstRenderer({
     }
 
     // Step smoke particles with turbulence drift and fluid grid modulation
+    // Step smoke: update time and set warm/cool smoke color per-particle
     smokeUniforms.uTime.value = time;
-    smokeUniforms.uSmokeColor.value.copy(baseColor);
+    // Base smoke color varies: warm gray #776655 vs cool gray #667788
+    const warmColor = new THREE.Color(0.47, 0.40, 0.33);
+    const coolColor = new THREE.Color(0.40, 0.47, 0.53);
+    smokeUniforms.uSmokeColor.value.copy(baseColor.r > 0.5 ? warmColor : coolColor);
     smokeUniforms.uSmokeOpacity.value = sceneSettings.smokeRenderQuality === 'high' ? 0.07 : 0.035;
 
     // Read fluid density for smoke modulation if available
