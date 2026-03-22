@@ -928,20 +928,22 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
             {dmxArm ? 'DMX ●' : 'DMX'}
           </button>
         </div>
-        <button
-          onMouseDown={() => setDeadmanHeld(true)}
-          onMouseUp={() => setDeadmanHeld(false)}
-          onMouseLeave={() => setDeadmanHeld(false)}
-          onTouchStart={(e) => { e.preventDefault(); setDeadmanHeld(true); }}
-          onTouchEnd={(e) => { e.preventDefault(); setDeadmanHeld(false); }}
-          className={cn(
-            "flex items-center justify-center rounded border-2 font-black uppercase transition-all gap-2",
-            fs && mob ? "w-full py-3 text-[10px]" : fs ? "w-16 py-3 text-[10px] shrink-0" : "w-10 py-1.5 text-[8px] shrink-0",
-            deadmanHeld ? "bg-green-600/30 border-green-500/60 text-green-400" : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/30"
-          )}>
-          <Hand className={cn(fs && mob ? "w-5 h-5" : fs ? "w-4 h-4" : "w-3 h-3")} />
-          {fs && mob && <span>DEADMAN</span>}
-        </button>
+        {mode !== 'pyro_fire' && (
+          <button
+            onMouseDown={() => setDeadmanHeld(true)}
+            onMouseUp={() => setDeadmanHeld(false)}
+            onMouseLeave={() => setDeadmanHeld(false)}
+            onTouchStart={(e) => { e.preventDefault(); setDeadmanHeld(true); }}
+            onTouchEnd={(e) => { e.preventDefault(); setDeadmanHeld(false); }}
+            className={cn(
+              "flex items-center justify-center rounded border-2 font-black uppercase transition-all gap-2",
+              fs && mob ? "w-full py-3 text-[10px]" : fs ? "w-16 py-3 text-[10px] shrink-0" : "w-10 py-1.5 text-[8px] shrink-0",
+              deadmanHeld ? "bg-green-600/30 border-green-500/60 text-green-400" : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/30"
+            )}>
+            <Hand className={cn(fs && mob ? "w-5 h-5" : fs ? "w-4 h-4" : "w-3 h-3")} />
+            {fs && mob && <span>DEADMAN</span>}
+          </button>
+        )}
       </div>
       {(pyroArm || dmxArm) && (
         <div className={cn(
