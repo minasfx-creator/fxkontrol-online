@@ -56,6 +56,7 @@ export function useRadioLink() {
     isScanning: false,
     rangeTestActive: false,
     rangeTestRssiHistory: [],
+    tdmaStatus: null,
     error: null,
   });
 
