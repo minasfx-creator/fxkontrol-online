@@ -792,9 +792,14 @@ export default function PyroFireOnePanel({
               FM-{String(m.address).padStart(2, '0')}
               {m.armed && <span className="ml-0.5 text-red-400">●</span>}
               {isLinked && (
-                <Globe className={cn(sz === 'xl' ? "w-2.5 h-2.5" : "w-2 h-2", "text-violet-400")} />
+                <>
+                  <Globe className={cn(sz === 'xl' ? "w-2.5 h-2.5" : "w-2 h-2", "text-violet-400")} />
+                  {artnetLatencies.has(m.address) && (
+                    <span className="text-[6px] font-mono text-violet-300">{artnetLatencies.get(m.address)}ms</span>
+                  )}
+                </>
               )}
-              {m.connectionMode === 'wireless' && m.rssiDbm !== undefined && (
+              {m.connectionMode === 'wireless' && m.rssiDbm !== undefined && !isLinked && (
                 <span className={cn("text-[5px]", rssiColor(m.rssiDbm))}>{m.rssiDbm}dB</span>
               )}
             </button>
