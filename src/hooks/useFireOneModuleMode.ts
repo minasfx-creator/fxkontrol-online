@@ -3,7 +3,7 @@
  * 
  * Instantiates the module emulator and hardware bridge,
  * provides reactive state for the VirtualIFMx32QPanel UI.
- * Dynamically reconnects bridge callbacks when hardware connects after powerOn.
+ * Supports 6 transport modes: BLE, BLE LR, USB, WebSocket, Wi-Fi Direct, Direct Relay.
  */
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { FireOneModuleEmulator, type ModuleStatus, type ModuleState, type FiringMode, type ScriptEvent } from '@/lib/fireoneModuleEmulator';
@@ -23,7 +23,6 @@ export interface UseFireOneModuleReturn {
   readContinuity: (pin: number) => Promise<number>;
   readAllContinuity: () => Promise<number[]>;
   setAddress: (addr: number) => void;
-  // Firing modes
   setFiringMode: (mode: FiringMode) => void;
   loadSemiAutoScript: (events: ScriptEvent[]) => void;
   stepEvent: () => Promise<boolean>;
@@ -38,11 +37,12 @@ export interface UseFireOneModuleReturn {
   setPreset: (pins: number[]) => void;
   firePreset: () => Promise<boolean[]>;
   clearPreset: () => void;
-  // Hardware bridge
   bridgeStatus: BridgeStatus | null;
   connectBLE: () => Promise<boolean>;
+  connectBLELongRange: () => Promise<boolean>;
   connectUSB: () => Promise<boolean>;
   connectWS: (url?: string) => Promise<boolean>;
+  connectWiFiDirect: (url?: string) => Promise<boolean>;
   connectDirectRelay: () => Promise<boolean>;
   disconnectHardware: () => Promise<void>;
 }
@@ -55,13 +55,11 @@ export function useFireOneModuleMode(): UseFireOneModuleReturn {
   const emulatorRef = useRef<FireOneModuleEmulator | null>(null);
   const bridgeRef = useRef<FireOneHardwareBridge | null>(null);
 
-  // Initialize bridge
   useEffect(() => {
     const bridge = new FireOneHardwareBridge((event, data) => {
       if (event === 'connected') {
         toast.success(`Hardware conectado: ${(data as any)?.device}`);
         setBridgeStatus(bridge.getStatus());
-        // Dynamically update emulator callbacks
         const emu = emulatorRef.current;
         if (emu) {
           emu.onFire = (pin, dur) => bridge.fire(pin, dur);
@@ -73,15 +71,16 @@ export function useFireOneModuleMode(): UseFireOneModuleReturn {
       } else if (event === 'heartbeat_timeout') {
         toast.warning('Hardware sem resposta — desconectado');
         setBridgeStatus(bridge.getStatus());
+      } else if (event === 'reconnecting') {
+        const { attempt } = data as any;
+        toast.info(`Reconectando... tentativa ${attempt}/3`);
       }
     });
     bridgeRef.current = bridge;
     setBridgeStatus(bridge.getStatus());
-
     return () => { bridge.disconnect(); };
   }, []);
 
-  // Poll bridgeStatus every 1s to keep UI in sync
   useEffect(() => {
     const interval = setInterval(() => {
       const bridge = bridgeRef.current;
@@ -126,80 +125,39 @@ export function useFireOneModuleMode(): UseFireOneModuleReturn {
 
   const fire = useCallback(async (pin: number, duration: number) =>
     emulatorRef.current?.fire(pin, duration) ?? false, []);
-
   const fireGroup = useCallback(async (pins: number[], duration: number) =>
     emulatorRef.current?.fireGroup(pins, duration) ?? [], []);
-
   const readContinuity = useCallback(async (pin: number) =>
     emulatorRef.current?.readContinuity(pin) ?? 0, []);
-
   const readAllContinuity = useCallback(async () =>
     emulatorRef.current?.readAllContinuity() ?? [], []);
+  const setAddress = useCallback((addr: number) => { emulatorRef.current?.setAddress(addr); }, []);
 
-  const setAddress = useCallback((addr: number) => {
-    emulatorRef.current?.setAddress(addr);
-  }, []);
-
-  // ─── Firing mode controls ──────────────────────────────
-
-  const setFiringMode = useCallback((mode: FiringMode) => {
-    emulatorRef.current?.setFiringMode(mode);
-  }, []);
-
-  const loadSemiAutoScript = useCallback((events: ScriptEvent[]) => {
-    emulatorRef.current?.loadSemiAutoScript(events);
-  }, []);
-
-  const stepEvent = useCallback(async () =>
-    emulatorRef.current?.stepEvent() ?? false, []);
-
-  const resetSemiAuto = useCallback(() => {
-    emulatorRef.current?.resetSemiAuto();
-  }, []);
-
-  const loadAutoScript = useCallback((events: ScriptEvent[]) => {
-    emulatorRef.current?.loadAutoScript(events);
-  }, []);
-
-  const startAutoFire = useCallback(() => {
-    emulatorRef.current?.startAutoFire();
-  }, []);
-
-  const stopAutoFire = useCallback(() => {
-    emulatorRef.current?.stopAuto();
-  }, []);
-
-  const downloadUltraScript = useCallback((slot: number, events: ScriptEvent[], code: string) => {
-    emulatorRef.current?.downloadScript(slot, events, code);
-  }, []);
-
-  const setUltraSlot = useCallback((slot: number) => {
-    emulatorRef.current?.setUltraSlot(slot);
-  }, []);
-
-  const startUltraFire = useCallback(() => {
-    emulatorRef.current?.startUltraFire();
-  }, []);
-
-  const stopUltraFire = useCallback(() => {
-    emulatorRef.current?.stopUltraFire();
-  }, []);
-
-  const setPreset = useCallback((pins: number[]) => {
-    emulatorRef.current?.setPreset(pins);
-  }, []);
-
-  const firePreset = useCallback(async () =>
-    emulatorRef.current?.firePreset() ?? [], []);
-
-  const clearPreset = useCallback(() => {
-    emulatorRef.current?.clearPreset();
-  }, []);
+  const setFiringMode = useCallback((mode: FiringMode) => { emulatorRef.current?.setFiringMode(mode); }, []);
+  const loadSemiAutoScript = useCallback((events: ScriptEvent[]) => { emulatorRef.current?.loadSemiAutoScript(events); }, []);
+  const stepEvent = useCallback(async () => emulatorRef.current?.stepEvent() ?? false, []);
+  const resetSemiAuto = useCallback(() => { emulatorRef.current?.resetSemiAuto(); }, []);
+  const loadAutoScript = useCallback((events: ScriptEvent[]) => { emulatorRef.current?.loadAutoScript(events); }, []);
+  const startAutoFire = useCallback(() => { emulatorRef.current?.startAutoFire(); }, []);
+  const stopAutoFire = useCallback(() => { emulatorRef.current?.stopAuto(); }, []);
+  const downloadUltraScript = useCallback((slot: number, events: ScriptEvent[], code: string) => { emulatorRef.current?.downloadScript(slot, events, code); }, []);
+  const setUltraSlot = useCallback((slot: number) => { emulatorRef.current?.setUltraSlot(slot); }, []);
+  const startUltraFire = useCallback(() => { emulatorRef.current?.startUltraFire(); }, []);
+  const stopUltraFire = useCallback(() => { emulatorRef.current?.stopUltraFire(); }, []);
+  const setPreset = useCallback((pins: number[]) => { emulatorRef.current?.setPreset(pins); }, []);
+  const firePreset = useCallback(async () => emulatorRef.current?.firePreset() ?? [], []);
+  const clearPreset = useCallback(() => { emulatorRef.current?.clearPreset(); }, []);
 
   // ─── Bridge connections ────────────────────────────────
 
   const connectBLE = useCallback(async () => {
     const ok = await (bridgeRef.current?.connectBLE() ?? false);
+    setBridgeStatus(bridgeRef.current?.getStatus() ?? null);
+    return ok;
+  }, []);
+
+  const connectBLELongRange = useCallback(async () => {
+    const ok = await (bridgeRef.current?.connectBLELongRange() ?? false);
     setBridgeStatus(bridgeRef.current?.getStatus() ?? null);
     return ok;
   }, []);
@@ -212,6 +170,12 @@ export function useFireOneModuleMode(): UseFireOneModuleReturn {
 
   const connectWS = useCallback(async (url?: string) => {
     const ok = await (bridgeRef.current?.connectWebSocket(url) ?? false);
+    setBridgeStatus(bridgeRef.current?.getStatus() ?? null);
+    return ok;
+  }, []);
+
+  const connectWiFiDirect = useCallback(async (url?: string) => {
+    const ok = await (bridgeRef.current?.connectWiFiDirect(url) ?? false);
     setBridgeStatus(bridgeRef.current?.getStatus() ?? null);
     return ok;
   }, []);
@@ -235,6 +199,7 @@ export function useFireOneModuleMode(): UseFireOneModuleReturn {
     loadAutoScript, startAutoFire, stopAutoFire,
     downloadUltraScript, setUltraSlot, startUltraFire, stopUltraFire,
     setPreset, firePreset, clearPreset,
-    bridgeStatus, connectBLE, connectUSB, connectWS, connectDirectRelay, disconnectHardware,
+    bridgeStatus, connectBLE, connectBLELongRange, connectUSB, connectWS,
+    connectWiFiDirect, connectDirectRelay, disconnectHardware,
   };
 }
