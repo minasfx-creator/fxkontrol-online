@@ -149,7 +149,7 @@ export default function ModuleScannerScreen({
             <circle cx="9" cy="9" r="7" fill="none" stroke="hsl(32 100% 50% / 0.25)" strokeWidth="0.5" />
             <circle cx="9" cy="9" r="4" fill="none" stroke="hsl(32 100% 50% / 0.15)" strokeWidth="0.5" />
             <line x1="9" y1="9" x2="9" y2="2" stroke="hsl(32 100% 50% / 0.6)" strokeWidth="1"
-              transform={`rotate(${scanning ? radarAngle : 0} 9 9)`} />
+              transform={`rotate(${radarActive ? radarAngle : 0} 9 9)`} />
             {onlineModules.map((m, i) => {
               const angle = (i / Math.max(modules.length, 1)) * Math.PI * 2 - Math.PI / 2;
               const r = 5;
