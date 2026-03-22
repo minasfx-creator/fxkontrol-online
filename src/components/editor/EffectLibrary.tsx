@@ -573,6 +573,66 @@ export default function EffectLibrary() {
           </p>
         )}
       </div>
+
+      {/* Create Effect from VDL Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Create Effect from VDL</DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Type a VDL description to auto-generate an effect with full simulation parameters.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              placeholder='e.g. 6in Red w/ Gold Glitter Willow'
+              value={createVdl}
+              onChange={e => setCreateVdl(e.target.value)}
+              className="h-9 text-sm font-mono-code"
+              autoFocus
+            />
+            {createVdl && parseVDL(createVdl).valid && (() => {
+              const v = parseVDL(createVdl);
+              return (
+                <div className="rounded-lg bg-surface-0 border border-border/20 p-3 space-y-1 text-xs">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Type</span><span className="font-semibold">{v.typeName}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Caliber</span><span className="font-mono-code">{v.caliber}"</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Height</span><span className="font-mono-code">{v.height}m</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Duration</span><span className="font-mono-code">{v.duration}s</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Stars</span><span className="font-mono-code">{v.starCount}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Colors</span><span>{v.colorNames.join(', ')}</span></div>
+                  {v.trailType && v.trailType !== 'none' && <div className="flex justify-between"><span className="text-muted-foreground">Trail</span><span>{v.trailType}</span></div>}
+                  {v.hasPistil && <div className="flex justify-between"><span className="text-muted-foreground">Pistil</span><span>Yes</span></div>}
+                </div>
+              );
+            })()}
+            <Button
+              disabled={!createVdl || !parseVDL(createVdl).valid}
+              onClick={() => {
+                const v = parseVDL(createVdl);
+                if (!v.valid) return;
+                const colorStr = v.colorNames.map(c => c.charAt(0).toUpperCase() + c.slice(1)).join('/');
+                addTimelineItem({
+                  id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                  effectId: `vdl-${Date.now()}`,
+                  startTime: currentTime,
+                  trackIndex: 0,
+                  position: { x: 0, y: v.height / 10, z: 0 },
+                  notes: `VDL: ${v.caliber}" ${colorStr} ${v.typeName}`,
+                });
+                toast.success(`Created: ${v.caliber}" ${colorStr} ${v.typeName}`);
+                setCreateVdl('');
+                setShowCreateDialog(false);
+              }}
+              className="w-full"
+              size="sm"
+            >
+              <Plus className="w-3.5 h-3.5 mr-1.5" />
+              Create & Add to Timeline
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
