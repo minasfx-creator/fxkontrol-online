@@ -329,6 +329,7 @@ export default function ScriptWindow() {
             const val = nextField === 'eventTime' ? row.eventTime
               : nextField === 'pan' ? row.pan
               : nextField === 'tilt' ? row.tilt
+              : nextField === 'spin' ? row.spin
               : row.notes;
             startEditing(fromRowId, nextField, val);
           }
