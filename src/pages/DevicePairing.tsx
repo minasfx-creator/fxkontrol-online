@@ -3,7 +3,6 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { bleService, initialModuleState, type FXKModuleState } from '@/services/bleService';
-import { bleService, initialModuleState, type FXKModuleState } from '@/services/bleService';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
