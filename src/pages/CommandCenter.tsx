@@ -530,6 +530,7 @@ export default function CommandCenter() {
             </ScrollArea>
           )}
         </div>
+      </div>
       {/* Boot Sequence Overlay */}
       {bootConsole && (
         <ConsoleBootSequence
