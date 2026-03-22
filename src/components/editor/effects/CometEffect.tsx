@@ -17,7 +17,7 @@ import { RibbonTrail } from '@/render_ultra/fireworks/ribbonTrailRenderer';
 import { useProjectStore } from '@/store/useProjectStore';
 
 const SPARK_COUNT = 120;
-const SMOKE_WAKE_COUNT = 30;
+const SMOKE_WAKE_COUNT = 50;
 
 export default function CometEffect({
   position,
