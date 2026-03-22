@@ -103,37 +103,40 @@ function FeedCard({ item }: { item: NewsItem }) {
   const [saved, setSaved] = useState(false);
 
   return (
-    <div className="bg-card border border-border/40 rounded-2xl overflow-hidden group">
-      <div className="flex items-center gap-2.5 px-4 py-3">
-        <div className="h-8 w-8 rounded-full bg-muted/50 flex items-center justify-center text-sm">
+    <div className="bg-card border border-border/50 rounded overflow-hidden group relative">
+      {/* Scanline overlay */}
+      <div className="absolute inset-0 tactical-scanline z-10" />
+      <div className="flex items-center gap-2.5 px-3 py-2.5 border-b border-border/30 relative z-20">
+        <div className="h-7 w-7 rounded bg-muted/30 flex items-center justify-center text-sm border border-border/30">
           {item.avatar}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-foreground truncate">{item.source}</p>
-          <p className="text-[9px] text-muted-foreground font-mono-code">{item.time}</p>
+          <p className="text-xs font-bold text-foreground truncate font-display tracking-wide">{item.source}</p>
+          <p className="text-[9px] text-muted-foreground font-mono">{item.time}</p>
         </div>
         {item.sentiment === 'positive' && <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />}
         {item.sentiment === 'negative' && <TrendingDown className="h-3.5 w-3.5 text-red-400" />}
         {item.sentiment === 'neutral' && <Minus className="h-3.5 w-3.5 text-muted-foreground" />}
       </div>
       <div className="relative aspect-[4/3] overflow-hidden">
-        <img src={item.image} alt={item.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" loading="lazy" />
+        <img src={item.image} alt={item.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03] brightness-[0.85]" loading="lazy" />
+        <div className="absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent" />
       </div>
-      <div className="px-4 pt-3 pb-1 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="px-3 pt-2.5 pb-1 flex items-center justify-between relative z-20">
+        <div className="flex items-center gap-3">
           <button onClick={() => setLiked(!liked)} className="active:scale-90 transition-transform">
-            <Heart className={`h-5 w-5 ${liked ? 'fill-red-500 text-red-500' : 'text-foreground/70 hover:text-foreground'} transition-colors`} />
+            <Heart className={`h-4.5 w-4.5 ${liked ? 'fill-red-500 text-red-500' : 'text-foreground/60 hover:text-foreground'} transition-colors`} />
           </button>
-          <MessageCircle className="h-5 w-5 text-foreground/70 hover:text-foreground cursor-pointer transition-colors" />
-          <Share2 className="h-5 w-5 text-foreground/70 hover:text-foreground cursor-pointer transition-colors" />
+          <MessageCircle className="h-4.5 w-4.5 text-foreground/60 hover:text-foreground cursor-pointer transition-colors" />
+          <Share2 className="h-4.5 w-4.5 text-foreground/60 hover:text-foreground cursor-pointer transition-colors" />
         </div>
         <button onClick={() => setSaved(!saved)} className="active:scale-90 transition-transform">
-          <Bookmark className={`h-5 w-5 ${saved ? 'fill-foreground text-foreground' : 'text-foreground/70 hover:text-foreground'} transition-colors`} />
+          <Bookmark className={`h-4.5 w-4.5 ${saved ? 'fill-foreground text-foreground' : 'text-foreground/60 hover:text-foreground'} transition-colors`} />
         </button>
       </div>
-      <div className="px-4 pb-4 pt-1">
-        <p className="text-xs leading-relaxed text-foreground/90">
-          <span className="font-semibold mr-1">{item.source}</span>
+      <div className="px-3 pb-3 pt-1 relative z-20">
+        <p className="text-[11px] leading-relaxed text-foreground/85 font-tech">
+          <span className="font-bold mr-1 text-primary/80">{item.source}</span>
           {item.title}
         </p>
       </div>
@@ -141,7 +144,7 @@ function FeedCard({ item }: { item: NewsItem }) {
   );
 }
 
-/* ── Hub Card Component — Premium Glassmorphism ──── */
+/* ── Hub Card Component — Tactical ──── */
 function HubCard({
   title, subtitle, badge, tools, accentClass, borderClass, badgeBg, navigate, delay = '0s', commandRoute = false
 }: {
@@ -168,34 +171,34 @@ function HubCard({
   };
 
   return (
-    <div className={`glass-card-elevated overflow-hidden animate-fxk-stagger group/hub`} style={{ animationDelay: delay }}>
-      {/* Hub Header — premium gradient with shimmer */}
-      <div className={`px-4 py-3.5 border-b border-border/20 bg-gradient-to-r ${accentClass} relative overflow-hidden`}>
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[rgba(255,255,255,0.02)] to-transparent opacity-0 group-hover/hub:opacity-100 transition-opacity duration-700" style={{ backgroundSize: '200% 100%', animation: 'fxk-shimmer 3s linear infinite' }} />
+    <div className={`glass-card-elevated overflow-hidden animate-fxk-stagger group/hub tactical-border-l`} style={{ animationDelay: delay }}>
+      {/* Hub Header — tactical with warning stripe accent */}
+      <div className={`px-4 py-3 border-b border-border/30 bg-gradient-to-r ${accentClass} relative overflow-hidden`}>
+        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
         <div className="flex items-center justify-between relative z-10">
           <div>
-            <h2 className="text-sm font-bold font-display text-foreground tracking-tight">{title}</h2>
-            <p className="text-[10px] text-muted-foreground/70 mt-0.5 font-tech tracking-wide">{subtitle}</p>
+            <h2 className="text-sm font-bold font-display text-foreground tracking-[0.05em] uppercase">{title}</h2>
+            <p className="text-[9px] text-muted-foreground/60 mt-0.5 font-mono tracking-wider uppercase">{subtitle}</p>
           </div>
-          <span className={`text-[7px] font-bold font-mono tracking-[0.2em] uppercase px-2.5 py-1 rounded-full ${badgeBg} border border-current/10`}>
+          <span className={`text-[7px] font-bold font-mono tracking-[0.2em] uppercase px-2 py-0.5 rounded-sm ${badgeBg} border border-current/15`}>
             {badge}
           </span>
         </div>
       </div>
 
-      {/* Tool Grid — refined with hover states */}
+      {/* Tool Grid — tactical buttons */}
       <div className="p-3 grid grid-cols-3 gap-1.5">
         {tools.map((tool, i) => (
           <button
             key={tool.label}
             onClick={() => goToTool(tool.panel)}
-            className="group flex flex-col items-center gap-1.5 p-2.5 rounded-xl transition-all duration-200 hover:bg-[rgba(255,255,255,0.04)] active:scale-[0.95] border border-transparent hover:border-[rgba(255,255,255,0.06)] animate-fxk-stagger"
+            className="group flex flex-col items-center gap-1.5 p-2.5 rounded transition-all duration-150 hover:bg-primary/5 active:scale-[0.96] border border-transparent hover:border-primary/10 animate-fxk-stagger"
             style={{ animationDelay: `${baseDelay + 0.05 * i}s` }}
           >
-            <div className="h-9 w-9 rounded-xl bg-[rgba(255,255,255,0.04)] flex items-center justify-center group-hover:bg-[rgba(255,255,255,0.08)] group-hover:scale-110 transition-all duration-200 group-hover:shadow-[0_0_12px_rgba(0,200,255,0.08)]">
-              <tool.icon className="h-4 w-4 text-foreground/60 group-hover:text-foreground transition-colors" />
+            <div className="h-9 w-9 rounded bg-surface-2/80 flex items-center justify-center group-hover:bg-primary/10 group-hover:scale-105 transition-all duration-150 border border-border/30 group-hover:border-primary/20">
+              <tool.icon className="h-4 w-4 text-foreground/50 group-hover:text-primary transition-colors" />
             </div>
-            <span className="text-[9px] font-semibold text-muted-foreground group-hover:text-foreground text-center leading-tight transition-colors font-tech">
+            <span className="text-[8px] font-bold text-muted-foreground group-hover:text-foreground text-center leading-tight transition-colors font-mono tracking-wider uppercase">
               {tool.label}
             </span>
           </button>
@@ -260,38 +263,45 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-7xl mx-auto pb-10">
-      {/* ── Hero Banner — Premium ──────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/30 bg-gradient-to-br from-[hsl(var(--surface-1))] via-[hsl(var(--surface-2)/0.6)] to-[hsl(var(--surface-1))] p-6 md:p-8 mb-6 animate-fxk-fade-up">
-        {/* Ambient glow */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(var(--primary)/0.06),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,hsl(var(--fxk-violet)/0.04),transparent_50%)]" />
-        {/* Grid overlay */}
-        <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+      {/* ── Hero Banner — Tactical Command ──── */}
+      <div className="relative overflow-hidden rounded border border-primary/15 bg-surface-1 p-5 md:p-7 mb-5 animate-fxk-fade-up">
+        {/* Tactical grid overlay */}
+        <div className="absolute inset-0 tactical-grid" />
+        <div className="absolute inset-0 tactical-scanline" />
+        {/* Corner accents */}
+        <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-primary/30" />
+        <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-primary/30" />
+        <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-primary/30" />
+        <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-primary/30" />
         
         <div className="relative z-10 flex items-start justify-between">
           <div>
-            <div className="flex items-center gap-2.5 mb-3">
-              <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_hsl(155_80%_42%/0.5)]" />
-              <p className="text-[10px] font-mono text-primary/70 tracking-[0.25em] uppercase font-semibold">
-                FX KONTROL ONLINE
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-2 w-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_hsl(var(--primary)/0.5)]" />
+              <p className="text-[10px] font-mono text-primary tracking-[0.3em] uppercase font-bold">
+                SYS::ONLINE
+              </p>
+              <div className="h-[1px] w-12 bg-primary/20" />
+              <p className="text-[9px] font-mono text-muted-foreground/50 tracking-wider">
+                FX KONTROL v2.0
               </p>
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold font-display tracking-tight text-foreground leading-[1.1]">
-              Bem-vindo, <span className="text-fxk-gradient">{userName}</span>
+            <h1 className="text-2xl md:text-3xl font-bold font-display tracking-[0.04em] text-foreground uppercase leading-[1.1]">
+              Operador: <span className="text-fxk-gradient">{userName}</span>
             </h1>
-            <p className="text-sm text-muted-foreground mt-2.5 max-w-lg font-tech leading-relaxed">
-              Plataforma inteligente para controle de shows pirotécnicos, drones e efeitos especiais.
+            <p className="text-xs text-muted-foreground/60 mt-2 max-w-lg font-mono tracking-wider uppercase">
+              TACTICAL CONTROL PLATFORM // PYRO · DMX · DRONES · SFX
             </p>
           </div>
           {lastProjectId && (
             <Button
               variant="outline"
               size="sm"
-              className="hidden md:flex gap-1.5 text-xs border-primary/20 text-primary hover:bg-primary/10 rounded-xl"
+              className="hidden md:flex gap-1.5 text-[10px] font-mono tracking-wider border-primary/20 text-primary hover:bg-primary/10 rounded uppercase"
               onClick={() => navigate('/editor')}
             >
               <ArrowRight className="h-3 w-3" />
-              Retomar sessão
+              RESUME
             </Button>
           )}
         </div>

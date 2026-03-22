@@ -46,25 +46,25 @@ const FIRE_MODES: CommandMode[] = [
 
 const isFireMode = (m: CommandMode) => FIRE_MODES.includes(m);
 
-// ── Console Accent Config ──
+// ── Console Accent Config — Tactical ──
 const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: string; badge: string }> = {
-  super_dmx:   { color: 'hsl(210 90% 55%)', glow: 'hsl(210 90% 55% / 0.15)', label: 'FXK-DMX',   badge: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-  simple_dmx:  { color: 'hsl(150 70% 45%)', glow: 'hsl(150 70% 45% / 0.15)', label: 'FXK-DMX Lite',  badge: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
-  manual_fire: { color: 'hsl(25 90% 55%)',  glow: 'hsl(25 90% 55% / 0.15)',  label: 'MANUAL FIRE', badge: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
-  pyro_fire:   { color: 'hsl(0 80% 55%)',   glow: 'hsl(0 80% 55% / 0.15)',   label: 'FXK-PYRO',    badge: 'bg-red-500/20 text-red-400 border-red-500/30' },
-  auto_fire:   { color: 'hsl(45 90% 55%)',  glow: 'hsl(45 90% 55% / 0.15)',  label: 'AUTO FIRE',   badge: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
-  check_slave: { color: 'hsl(185 70% 50%)', glow: 'hsl(185 70% 50% / 0.15)', label: 'CHECK SLAVE', badge: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
-  controllers: { color: 'hsl(270 60% 55%)', glow: 'hsl(270 60% 55% / 0.12)', label: 'CONTROLLERS', badge: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
-  pbus:        { color: 'hsl(35 80% 50%)',  glow: 'hsl(35 80% 50% / 0.12)',  label: 'P-BUS',       badge: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
-  ma3:         { color: 'hsl(220 70% 55%)', glow: 'hsl(220 70% 55% / 0.12)', label: 'FXK-LIGHT',    badge: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
-  module:      { color: 'hsl(160 60% 45%)', glow: 'hsl(160 60% 45% / 0.12)', label: 'FXK Module',    badge: 'bg-teal-500/20 text-teal-400 border-teal-500/30' },
-  wifi_direct: { color: 'hsl(200 70% 50%)', glow: 'hsl(200 70% 50% / 0.12)', label: 'WiFi Direct', badge: 'bg-sky-500/20 text-sky-400 border-sky-500/30' },
-  artnet_modules: { color: 'hsl(280 60% 50%)', glow: 'hsl(280 60% 50% / 0.12)', label: 'FXK-NET', badge: 'bg-violet-500/20 text-violet-400 border-violet-500/30' },
-  connections: { color: 'hsl(190 60% 50%)', glow: 'hsl(190 60% 50% / 0.12)', label: 'Connections', badge: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
-  radio:       { color: 'hsl(340 60% 55%)', glow: 'hsl(340 60% 55% / 0.12)', label: 'Radio',       badge: 'bg-pink-500/20 text-pink-400 border-pink-500/30' },
-  field_map:   { color: 'hsl(120 50% 45%)', glow: 'hsl(120 50% 45% / 0.12)', label: 'Field Map',   badge: 'bg-green-500/20 text-green-400 border-green-500/30' },
-  mobile_link: { color: 'hsl(250 50% 55%)', glow: 'hsl(250 50% 55% / 0.12)', label: 'FXK-LINK', badge: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
-  settings:    { color: 'hsl(220 10% 55%)', glow: 'hsl(220 10% 55% / 0.12)', label: 'Settings',    badge: 'bg-muted/40 text-muted-foreground border-border/20' },
+  super_dmx:   { color: 'hsl(200 80% 48%)', glow: 'hsl(200 80% 48% / 0.1)', label: 'FXK-DMX',   badge: 'bg-blue-500/15 text-blue-400 border-blue-500/20' },
+  simple_dmx:  { color: 'hsl(120 70% 38%)', glow: 'hsl(120 70% 38% / 0.1)', label: 'FXK-DMX LITE',  badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' },
+  manual_fire: { color: 'hsl(32 100% 50%)',  glow: 'hsl(32 100% 50% / 0.1)',  label: 'MANUAL FIRE', badge: 'bg-orange-500/15 text-orange-400 border-orange-500/20' },
+  pyro_fire:   { color: 'hsl(0 85% 48%)',   glow: 'hsl(0 85% 48% / 0.1)',   label: 'FXK-PYRO',    badge: 'bg-red-500/15 text-red-400 border-red-500/20' },
+  auto_fire:   { color: 'hsl(45 100% 50%)',  glow: 'hsl(45 100% 50% / 0.1)',  label: 'AUTO FIRE',   badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20' },
+  check_slave: { color: 'hsl(165 100% 42%)', glow: 'hsl(165 100% 42% / 0.1)', label: 'DIAGNOSTICS', badge: 'bg-teal-500/15 text-teal-400 border-teal-500/20' },
+  controllers: { color: 'hsl(270 60% 50%)', glow: 'hsl(270 60% 50% / 0.08)', label: 'CONTROLLERS', badge: 'bg-purple-500/15 text-purple-400 border-purple-500/20' },
+  pbus:        { color: 'hsl(38 100% 50%)',  glow: 'hsl(38 100% 50% / 0.08)',  label: 'P-BUS',       badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20' },
+  ma3:         { color: 'hsl(240 50% 52%)', glow: 'hsl(240 50% 52% / 0.08)', label: 'FXK-LIGHT',    badge: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/20' },
+  module:      { color: 'hsl(165 100% 42%)', glow: 'hsl(165 100% 42% / 0.08)', label: 'FXK MODULE',    badge: 'bg-teal-500/15 text-teal-400 border-teal-500/20' },
+  wifi_direct: { color: 'hsl(200 80% 48%)', glow: 'hsl(200 80% 48% / 0.08)', label: 'WIFI DIRECT', badge: 'bg-sky-500/15 text-sky-400 border-sky-500/20' },
+  artnet_modules: { color: 'hsl(270 60% 50%)', glow: 'hsl(270 60% 50% / 0.08)', label: 'FXK-NET', badge: 'bg-violet-500/15 text-violet-400 border-violet-500/20' },
+  connections: { color: 'hsl(165 100% 42%)', glow: 'hsl(165 100% 42% / 0.08)', label: 'CONNECTIONS', badge: 'bg-teal-500/15 text-teal-400 border-teal-500/20' },
+  radio:       { color: 'hsl(340 80% 50%)', glow: 'hsl(340 80% 50% / 0.08)', label: 'RF COMMS',    badge: 'bg-pink-500/15 text-pink-400 border-pink-500/20' },
+  field_map:   { color: 'hsl(120 70% 38%)', glow: 'hsl(120 70% 38% / 0.08)', label: 'FIELD MAP',   badge: 'bg-green-500/15 text-green-400 border-green-500/20' },
+  mobile_link: { color: 'hsl(240 50% 52%)', glow: 'hsl(240 50% 52% / 0.08)', label: 'FXK-LINK', badge: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/20' },
+  settings:    { color: 'hsl(200 8% 50%)', glow: 'hsl(200 8% 50% / 0.06)', label: 'SETTINGS',    badge: 'bg-muted/30 text-muted-foreground border-border/15' },
 };
 
 // ── Sidebar Sections ──
@@ -171,49 +171,49 @@ export default function CommandCenter() {
 
     return (
       <div className="h-[100dvh] w-screen flex flex-col bg-background">
-        {/* ── Dynamic Island — Premium ── */}
-        <div className="shrink-0 px-3 pt-2 pb-1" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+        {/* ── Tactical HUD — Mobile ── */}
+        <div className="shrink-0 px-2 pt-1.5 pb-1" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
           <div
             className={cn(
-              "flex items-center justify-between px-3.5 py-2.5 rounded-2xl border transition-all",
+              "flex items-center justify-between px-3 py-2 rounded border transition-all",
               isArmed
-                ? "border-destructive/30 shadow-[0_0_16px_hsl(var(--destructive)/0.15)]"
-                : "border-[rgba(255,255,255,0.06)]"
+                ? "border-destructive/30 glow-danger"
+                : "border-primary/10"
             )}
-            style={{ background: accent.glow, backdropFilter: 'blur(40px) saturate(1.8)' }}
+            style={{ background: 'hsl(220 22% 3% / 0.95)', backdropFilter: 'blur(24px)' }}
           >
             <div className="flex items-center gap-2">
               <div
-                className={cn("h-2 w-2 rounded-full shrink-0", connectedCount > 0 ? "animate-pulse" : "")}
-                style={{ backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.25)', boxShadow: connectedCount > 0 ? `0 0 8px ${accent.color}66` : 'none' }}
+                className={cn("h-2 w-2 shrink-0", connectedCount > 0 ? "animate-pulse" : "")}
+                style={{ backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.2)', boxShadow: connectedCount > 0 ? `0 0 6px ${accent.color}` : 'none' }}
               />
-              <span className="text-[9px] font-bold text-foreground uppercase tracking-[0.15em] font-tech">
-                {connectedCount > 0 ? `${connectedCount} ONLINE` : 'OFFLINE'}
+              <span className="text-[8px] font-bold text-foreground font-mono tracking-[0.15em]">
+                {connectedCount > 0 ? `${connectedCount} LINK` : 'NO LINK'}
               </span>
             </div>
 
-            <Badge variant="outline" className={cn("text-[8px] h-5 px-2.5 font-black border font-mono tracking-wider", accent.badge)}>
+            <Badge variant="outline" className={cn("text-[7px] h-4.5 px-2 font-black border font-mono tracking-[0.15em] rounded-sm", accent.badge)}>
               {accent.label}
             </Badge>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               {fireone.isConnected && (
-                <Badge variant="outline" className="text-[7px] h-4 px-1.5 border-red-500/20 text-red-400 font-mono">FO</Badge>
+                <Badge variant="outline" className="text-[6px] h-3.5 px-1 border-red-500/15 text-red-400 font-mono rounded-sm">FO</Badge>
               )}
               {pbus.isConnected && (
-                <Badge variant="outline" className="text-[7px] h-4 px-1.5 border-amber-500/20 text-amber-400 font-mono">PB</Badge>
+                <Badge variant="outline" className="text-[6px] h-3.5 px-1 border-amber-500/15 text-amber-400 font-mono rounded-sm">PB</Badge>
               )}
               {isArmed && (
-                <Badge variant="destructive" className="text-[7px] h-4 px-1.5 animate-pulse font-mono">ARMED</Badge>
+                <Badge variant="destructive" className="text-[6px] h-3.5 px-1 animate-pulse font-mono rounded-sm">ARM</Badge>
               )}
             </div>
           </div>
         </div>
 
-        {/* ── Mode Pills — Refined ── */}
-        <div className="shrink-0 px-3 py-1.5">
+        {/* ── Mode Selector — Tactical Pills ── */}
+        <div className="shrink-0 px-2 py-1">
           <ScrollArea className="w-full">
-            <div className="flex gap-1.5 pb-1">
+            <div className="flex gap-1 pb-1">
               {categoryModes.map(mode => {
                 const isActive = activeMode === mode.key;
                 const mAccent = CONSOLE_ACCENTS[mode.key];
@@ -223,19 +223,18 @@ export default function CommandCenter() {
                     key={mode.key}
                     onClick={() => handleModeChange(mode.key)}
                     className={cn(
-                      "flex items-center gap-1.5 px-3 py-2 rounded-xl whitespace-nowrap transition-all",
-                      "text-[10px] font-bold border min-h-[40px] font-tech",
+                      "flex items-center gap-1.5 px-2.5 py-1.5 whitespace-nowrap transition-all",
+                      "text-[9px] font-bold border min-h-[36px] font-mono tracking-wider uppercase rounded-sm",
                       isActive
-                        ? "border-opacity-30 text-foreground"
-                        : "border-[rgba(255,255,255,0.04)] text-muted-foreground/40 active:scale-95"
+                        ? "text-foreground"
+                        : "border-border/10 text-muted-foreground/35 active:scale-95"
                     )}
                     style={{
-                      background: isActive ? mAccent?.glow : 'rgba(255,255,255,0.02)',
+                      background: isActive ? mAccent?.glow : 'hsl(220 18% 5% / 0.6)',
                       borderColor: isActive ? mAccent?.color + '33' : undefined,
-                      boxShadow: isActive ? `0 2px 12px ${mAccent?.glow}` : 'none',
                     }}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-3.5 h-3.5" />
                     {mode.label}
                   </button>
                 );
@@ -250,24 +249,24 @@ export default function CommandCenter() {
             <LiveFiringPanel initialMode={activeMode} standalone />
           ) : (
             <ScrollArea className="h-full">
-              <div className="h-full" style={{ background: 'hsl(228 16% 5%)' }}>
+              <div className="h-full surface-0">
                 {renderDirectPanel(activeMode)}
               </div>
             </ScrollArea>
           )}
         </div>
 
-        {/* ── Bottom Nav — Premium ── */}
+        {/* ── Bottom Nav — Tactical ── */}
         <div
           className="shrink-0"
           style={{
             paddingBottom: 'env(safe-area-inset-bottom)',
-            background: 'rgba(14, 14, 20, 0.92)',
-            backdropFilter: 'blur(48px) saturate(2)',
-            borderTop: '0.5px solid rgba(255,255,255,0.06)',
+            background: 'hsl(220 22% 3% / 0.95)',
+            backdropFilter: 'blur(32px)',
+            borderTop: '1px solid hsl(var(--primary) / 0.08)',
           }}
         >
-          <nav className="flex items-center justify-around py-2">
+          <nav className="flex items-center justify-around py-1.5">
             {MOBILE_CATEGORIES.map((cat, idx) => {
               const isActive = mobileCategory === idx;
               const Icon = cat.icon;
@@ -275,10 +274,10 @@ export default function CommandCenter() {
                 <button
                   key={cat.label}
                   onClick={() => setMobileCategory(idx)}
-                  className="flex flex-col items-center gap-0.5 py-1 px-4 rounded-xl transition-all active:scale-90"
+                  className="flex flex-col items-center gap-0.5 py-1 px-3 transition-all active:scale-90"
                 >
-                  <Icon className={cn("w-5 h-5 transition-colors", isActive ? "text-primary" : "text-muted-foreground/30")} style={isActive ? { filter: 'drop-shadow(0 0 6px hsl(var(--primary) / 0.4))' } : undefined} />
-                  <span className={cn("text-[8px] font-bold font-tech tracking-wider transition-colors", isActive ? "text-primary" : "text-muted-foreground/25")}>
+                  <Icon className={cn("w-5 h-5 transition-colors", isActive ? "text-primary" : "text-muted-foreground/25")} style={isActive ? { filter: 'drop-shadow(0 0 4px hsl(var(--primary) / 0.5))' } : undefined} />
+                  <span className={cn("text-[7px] font-bold font-mono tracking-[0.15em] transition-colors uppercase", isActive ? "text-primary" : "text-muted-foreground/20")}>
                     {cat.label}
                   </span>
                 </button>
@@ -295,71 +294,69 @@ export default function CommandCenter() {
   // ══════════════════════════════════════════════════════
   return (
     <div className="h-[calc(100vh-3rem)] flex overflow-hidden">
-      {/* ── Sidebar — Premium Glassmorphism ── */}
+      {/* ── Sidebar — Tactical Command ── */}
       <div
         className={cn(
-          "shrink-0 flex flex-col border-r transition-all duration-300",
-          sidebarCollapsed ? "w-14" : "w-56"
+          "shrink-0 flex flex-col border-r transition-all duration-200",
+          sidebarCollapsed ? "w-14" : "w-52"
         )}
         style={{
-          background: 'linear-gradient(180deg, hsl(228 16% 6% / 0.97) 0%, hsl(228 18% 4% / 0.99) 100%)',
-          backdropFilter: 'blur(48px) saturate(1.8)',
-          borderColor: 'rgba(255,255,255,0.06)',
+          background: 'hsl(220 22% 3%)',
+          borderColor: 'hsl(var(--primary) / 0.06)',
         }}
       >
-        {/* Dynamic Island — Premium */}
-        <div className="px-3 pt-4 pb-3">
+        {/* Tactical Status Header */}
+        <div className="px-2 pt-3 pb-2">
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className={cn(
-              "w-full rounded-2xl border transition-all duration-300",
-              "hover:border-primary/20",
-              sidebarCollapsed ? "p-2" : "px-3.5 py-2.5"
+              "w-full rounded border transition-all duration-200",
+              "hover:border-primary/15",
+              sidebarCollapsed ? "p-2" : "px-3 py-2"
             )}
             style={{
               background: accent.glow,
-              borderColor: 'rgba(255,255,255,0.06)',
-              boxShadow: `0 2px 16px ${accent.glow}`,
+              borderColor: accent.color + '15',
             }}
           >
             {sidebarCollapsed ? (
               <div className="flex flex-col items-center gap-1">
-                <div className="h-2 w-2 rounded-full" style={{ backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.3)' }} />
+                <div className="h-2 w-2" style={{ backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.2)' }} />
                 <span className="text-[7px] font-mono text-muted-foreground font-bold">{connectedCount}</span>
               </div>
             ) : (
-              <div className="flex items-center gap-2.5">
-                <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.3)', boxShadow: connectedCount > 0 ? `0 0 8px ${accent.color}66` : 'none' }} />
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 shrink-0" style={{ backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.2)', boxShadow: connectedCount > 0 ? `0 0 6px ${accent.color}` : 'none' }} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-[9px] font-bold text-foreground uppercase tracking-[0.15em] truncate font-tech">FXK Command</p>
-                  <p className="text-[8px] text-muted-foreground/60 font-mono">{connectedCount} connected</p>
+                  <p className="text-[8px] font-bold text-foreground font-mono tracking-[0.2em] truncate">FXK COMMAND</p>
+                  <p className="text-[7px] text-muted-foreground/50 font-mono tracking-wider">{connectedCount} LINKS</p>
                 </div>
                 {fireone.isConnected && (
-                  <Badge variant="outline" className="text-[7px] h-4 px-1.5 border-red-500/20 text-red-400 shrink-0 font-mono">FO</Badge>
+                  <Badge variant="outline" className="text-[6px] h-3.5 px-1 border-red-500/15 text-red-400 shrink-0 font-mono rounded-sm">FO</Badge>
                 )}
                 {pbus.isConnected && (
-                  <Badge variant="outline" className="text-[7px] h-4 px-1.5 border-amber-500/20 text-amber-400 shrink-0 font-mono">PB</Badge>
+                  <Badge variant="outline" className="text-[6px] h-3.5 px-1 border-amber-500/15 text-amber-400 shrink-0 font-mono rounded-sm">PB</Badge>
                 )}
               </div>
             )}
           </button>
         </div>
 
-        {/* Mode List — Premium spacing */}
-        <ScrollArea className="flex-1 px-1.5">
-          <div className="space-y-4 pb-4">
+        {/* Mode List — Tactical */}
+        <ScrollArea className="flex-1 px-1">
+          <div className="space-y-3 pb-3">
             {MODE_SECTIONS.map(section => (
               <div key={section.label}>
                 {!sidebarCollapsed && (
-                  <div className="flex items-center gap-2 px-2 mb-1.5">
-                    <div className="divider-glow flex-1" />
-                    <p className={cn("text-[7px] font-bold uppercase tracking-[0.25em] font-mono shrink-0", section.accent)}>
+                  <div className="flex items-center gap-1.5 px-2 mb-1">
+                    <div className="h-[1px] w-2 bg-current opacity-30" />
+                    <p className={cn("text-[7px] font-bold tracking-[0.3em] font-mono shrink-0", section.accent)}>
                       {section.label}
                     </p>
-                    <div className="divider-glow flex-1" />
+                    <div className="h-[1px] flex-1" style={{ background: 'hsl(var(--primary) / 0.06)' }} />
                   </div>
                 )}
-                <div className="space-y-0.5">
+                <div className="space-y-px">
                   {section.modes.map(mode => {
                     const isActive = activeMode === mode.key;
                     const mAccent = CONSOLE_ACCENTS[mode.key];
@@ -368,25 +365,24 @@ export default function CommandCenter() {
                         key={mode.key}
                         onClick={() => handleModeChange(mode.key)}
                         className={cn(
-                          "w-full flex items-center gap-2.5 rounded-xl transition-all duration-200",
-                          sidebarCollapsed ? "justify-center p-2" : "px-3 py-2",
+                          "w-full flex items-center gap-2 rounded-sm transition-all duration-150",
+                          sidebarCollapsed ? "justify-center p-2" : "px-2.5 py-1.5",
                           isActive
-                            ? "text-foreground border"
-                            : "text-muted-foreground/50 hover:bg-[rgba(255,255,255,0.03)] hover:text-foreground/70 border border-transparent"
+                            ? "text-foreground border-l-2"
+                            : "text-muted-foreground/40 hover:bg-primary/3 hover:text-foreground/60 border-l-2 border-transparent"
                         )}
                         style={isActive ? {
                           background: mAccent?.glow,
-                          borderColor: mAccent?.color + '22',
-                          boxShadow: `0 2px 12px ${mAccent?.glow}`,
+                          borderLeftColor: mAccent?.color,
                         } : undefined}
                         title={sidebarCollapsed ? mode.label : undefined}
                       >
                         <mode.icon className={cn("shrink-0", sidebarCollapsed ? "w-4 h-4" : "w-3.5 h-3.5")} />
                         {!sidebarCollapsed && (
-                          <span className="text-[10px] font-semibold truncate font-tech">{mode.label}</span>
+                          <span className="text-[9px] font-bold truncate font-mono tracking-wider uppercase">{mode.label}</span>
                         )}
                         {!sidebarCollapsed && isActive && (
-                          <div className="ml-auto h-1.5 w-1.5 rounded-full animate-pulse shrink-0" style={{ backgroundColor: mAccent?.color, boxShadow: `0 0 6px ${mAccent?.color}` }} />
+                          <div className="ml-auto h-1 w-1 animate-pulse shrink-0" style={{ backgroundColor: mAccent?.color, boxShadow: `0 0 4px ${mAccent?.color}` }} />
                         )}
                       </button>
                     );
@@ -397,18 +393,18 @@ export default function CommandCenter() {
           </div>
         </ScrollArea>
 
-        {/* Safety Footer — Premium */}
+        {/* Safety Footer — Tactical */}
         {!sidebarCollapsed && (
-          <div className="p-2.5 border-t" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+          <div className="p-2 border-t" style={{ borderColor: 'hsl(var(--destructive) / 0.08)' }}>
             <div className={cn(
-              "flex items-center gap-2 px-2.5 py-2 rounded-xl border transition-all",
+              "flex items-center gap-2 px-2 py-1.5 rounded-sm border transition-all",
               isArmed
-                ? "bg-destructive/10 border-destructive/25"
-                : "bg-[rgba(255,255,255,0.02)] border-destructive/8"
+                ? "danger-stripe border-destructive/20"
+                : "bg-destructive/3 border-destructive/8"
             )}>
-              <Shield className="h-3 w-3 text-destructive/50 shrink-0" />
-              <span className="text-[8px] text-destructive/50 font-semibold font-mono tracking-wider">
-                {isArmed ? `ARMED · ${activeEffects.length} ACTIVE` : 'SAFETY LOCK'}
+              <Shield className="h-3 w-3 text-destructive/40 shrink-0" />
+              <span className="text-[7px] text-destructive/50 font-bold font-mono tracking-[0.15em]">
+                {isArmed ? `ARMED // ${activeEffects.length} HOT` : 'SAFETY INTERLOCK'}
               </span>
             </div>
           </div>
@@ -417,32 +413,31 @@ export default function CommandCenter() {
 
       {/* ── Main Content ── */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Breadcrumb bar — Premium with glass */}
+        {/* Breadcrumb — Tactical Command Bar */}
         <div
-          className="h-11 shrink-0 flex items-center justify-between px-4 border-b"
+          className="h-10 shrink-0 flex items-center justify-between px-4 border-b"
           style={{
-            background: `linear-gradient(90deg, ${accent.glow} 0%, hsl(228 14% 6% / 0.85) 50%)`,
-            backdropFilter: 'blur(24px)',
-            borderColor: 'rgba(255,255,255,0.04)',
+            background: `linear-gradient(90deg, ${accent.glow} 0%, hsl(220 22% 3% / 0.9) 40%)`,
+            borderColor: 'hsl(var(--primary) / 0.05)',
           }}
         >
-          <div className="flex items-center gap-3">
-            <Badge variant="outline" className={cn("text-[8px] h-5 px-2.5 font-black border font-mono tracking-wider", accent.badge)}>
+          <div className="flex items-center gap-2.5">
+            <Badge variant="outline" className={cn("text-[7px] h-4.5 px-2 font-black border font-mono tracking-[0.15em] rounded-sm", accent.badge)}>
               {accent.label}
             </Badge>
-            <div className="h-3 w-[1px] bg-border/20" />
-            <span className="text-[9px] text-muted-foreground/35 font-mono tracking-wider">
-              {isFireMode(activeMode) ? 'FIRE CONSOLE' : 'DIRECT PANEL'}
+            <div className="h-3 w-[1px]" style={{ background: 'hsl(var(--primary) / 0.1)' }} />
+            <span className="text-[8px] text-muted-foreground/30 font-mono tracking-[0.2em]">
+              {isFireMode(activeMode) ? 'FIRE CONTROL' : 'SYS PANEL'}
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {isArmed && (
-              <Badge variant="destructive" className="text-[8px] h-5 animate-pulse font-mono">
-                ARMED · {activeEffects.length}
+              <Badge variant="destructive" className="text-[7px] h-4.5 animate-pulse font-mono tracking-wider rounded-sm">
+                ARMED // {activeEffects.length}
               </Badge>
             )}
             {connectedCount > 0 && (
-              <Badge variant="outline" className="text-[8px] h-5 border-emerald-500/15 text-emerald-400 font-mono">
+              <Badge variant="outline" className="text-[7px] h-4.5 border-primary/12 text-primary font-mono tracking-wider rounded-sm">
                 {connectedCount} ONLINE
               </Badge>
             )}
@@ -455,7 +450,7 @@ export default function CommandCenter() {
             <LiveFiringPanel initialMode={activeMode} standalone />
           ) : (
             <ScrollArea className="h-full">
-              <div className="h-full" style={{ background: 'hsl(228 16% 5%)' }}>
+              <div className="h-full surface-0">
                 {renderDirectPanel(activeMode)}
               </div>
             </ScrollArea>
