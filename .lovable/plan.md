@@ -1,102 +1,76 @@
 
 
-# Plan: Integrate render_ultra Pipeline into All Effects
+# Plan: Missing Finale 3D Features Integration
 
 ## Summary
 
-Most effects (Mine, Waterfall, SparkShower, RomanCandle, Fan, Tourbillon, Wheel, MultiBurst, Flame, CryoJet, Fog, Haze, Confetti, Bengal, Saxon, SetPiece, FirecrackerString, ParachuteFlare, Rocket, SnowMachine, BubbleMachine) still use raw THREE.js particle systems with manual physics. Only GerbEffect, CometEffect, and ShellBurstRenderer currently use `render_ultra` modules (NiagaraEmitterSystem, RibbonTrail, particleChemistry).
+After reviewing the full Finale 3D manual against the current codebase, the following features are **missing or incomplete**. The project already covers most core features (VDL, effects library, scripting tools, fans, sequences, flights, chains, camera animation, camera bookmarks, position groups, rack management, firing system exports, DMX). These are the gaps:
 
-This plan upgrades the remaining effects to use render_ultra's composable Niagara pipeline: emitter systems with force modules, soft-particle depth-fade, velocity stretching, ribbon trails, heat distortion, and fluid grid integration.
+## Missing Features
 
-## Architecture
+### 1. Lockout / Risk Groups (Real-Time Safety Override)
 
-```text
-render_ultra modules used per effect:
-┌─────────────────────┬──────────┬──────────┬────────┬──────┬───────┐
-│ Effect              │ Emitter  │ Ribbon   │ Soft   │ Heat │ Fluid │
-│                     │ System   │ Trail    │ Part.  │ Dist │ Grid  │
-├─────────────────────┼──────────┼──────────┼────────┼──────┼───────┤
-│ GerbEffect ✓        │ ✓        │          │        │      │       │
-│ CometEffect ✓       │          │ ✓        │        │      │       │
-│ ShellBurstRenderer ✓│          │          │        │      │       │
-│ MineEffect          │ ✓ NEW    │          │ ✓ NEW  │      │ ✓ NEW │
-│ WaterfallEffect     │ ✓ NEW    │          │        │      │       │
-│ SparkShower         │ ✓ NEW    │          │        │      │       │
-│ RomanCandleEffect   │ ✓ NEW    │ ✓ NEW    │        │      │       │
-│ FanEffect           │ ✓ NEW    │          │        │      │       │
-│ MultiBurstEffect    │ ✓ NEW    │          │        │      │       │
-│ FlameEffect         │          │          │ ✓ NEW  │ ✓NEW │       │
-│ SaluteEffect        │          │          │        │ ✓NEW │ ✓ NEW │
-│ CryoJetEffect       │ ✓ NEW    │          │ ✓ NEW  │      │       │
-│ TourbillonEffect    │ ✓ NEW    │ ✓ NEW    │        │      │       │
-│ WheelEffect         │ ✓ NEW    │ ✓ NEW    │        │      │       │
-│ FogMachineEffect    │          │          │ ✓ NEW  │      │ ✓ NEW │
-│ HazeMachineEffect   │          │          │ ✓ NEW  │      │ ✓ NEW │
-│ FireworkBurst (Sky) │          │          │ ✓ NEW  │      │       │
-└─────────────────────┴──────────┴──────────┴────────┴──────┴───────┘
-```
+Finale 3D has a "lockout" system where effects have a `lockoutDefault` hazard class (e.g. caliber group). During live firing, operators can block entire risk groups from firing based on real-time wind conditions.
 
-## Changes
+**Changes:**
+- `src/store/useProjectStore.ts`: Add `lockoutDefault` field to effect type and `activeLockouts: string[]` to show state
+- `src/components/editor/live-firing/` or `LiveFiringPanel.tsx`: Add lockout toggle panel with risk group buttons (e.g. "Block 4"+ shells", "Block all aerial")
+- `src/lib/pyroPhysics.ts`: Add `getRiskGroup(caliber)` mapping
 
-### 1. Pyro Effects → NiagaraEmitterSystem (6 files)
+### 2. Position Sections (Show Segmentation)
 
-**MineEffect.tsx**: Replace manual velocity arrays with `createEmitter` using cone spawn shape (30-60° from vertical), collision module for ground bounce, wind force module from store. Inject density into NiagaraFluids grid on burst for smoke advection.
+Finale manual describes a `Section` field on positions for splitting shows into sequences for semi-automatic firing. Positions get a section label; the show can be split into independently-fireable segments.
 
-**WaterfallEffect.tsx**: Replace manual seed loop with `createEmitter` using box spawn shape (width × thin), downward velocity with gravity, collision module. Keeps zero-GC buffer strategy but physics computed by NiagaraSystem.
+**Changes:**
+- `src/store/useProjectStore.ts`: Add `section?: string` to `Position` type
+- `src/components/editor/PositionContextMenu.tsx`: Add section assignment in unified menu
+- `src/components/editor/ScriptWindow.tsx`: Add "group by section" view and section filter
+- `src/components/editor/Timeline.tsx`: Visual section dividers on timeline
 
-**SparkShower.tsx**: Replace manual cycling with `createEmitter` using sphere spawn, high spawn rate, short lifetime. Add wind force module.
+### 3. Windage Compensation
 
-**RomanCandleEffect.tsx**: Replace manual shot timing with `createSystem` containing one emitter per shot with `burstDelay`. Add `RibbonTrail` for each star's comet trail.
+Manual mentions adjusting angles to compensate for wind drift on shells. Currently wind affects particle rendering but doesn't offer automatic angle compensation suggestions.
 
-**FanEffect.tsx**: Replace manual ray calculation with `createSystem` containing one emitter per ray, each with different cone angle within the spread. Uses burst spawn mode.
+**Changes:**
+- `src/lib/pyroPhysics.ts`: Add `calcWindCompensation(caliber, height, windSpeed, windDir, heading)` returning suggested heading/pitch offset
+- `src/components/editor/PyroLaunchAngle.tsx`: Show wind compensation indicator on gizmo (ghost arrow showing corrected trajectory)
+- `src/components/editor/ScriptingToolsPanel.tsx`: Add "Apply Wind Compensation" tool that batch-adjusts all selected items' angles
 
-**MultiBurstEffect.tsx**: Replace MiniBurst function with `createSystem` using multiple emitters at staggered delays and different positions.
+### 4. Snap-to-Surface for Positions on 3D Models
 
-### 2. Specialty Effects → Ribbon + Heat (3 files)
+Manual describes positions auto-snapping to imported 3D model surfaces. Currently positions only snap to ground plane.
 
-**TourbillonEffect.tsx**: Add `RibbonTrail` for the helical spark trail (like CometEffect). Replace manual trail buffer with ribbon renderer. Add wind force module.
+**Changes:**
+- `src/components/editor/SkyCanvas.tsx`: In position drag handler, raycast against site models (not just ground plane) to snap position Y to mesh surface
+- `src/components/editor/SiteModelRenderer.tsx`: Expose mesh refs for raycasting
 
-**WheelEffect.tsx**: Add `RibbonTrail` per arm for trailing spark arcs. Each arm gets its own ribbon instance managed in a ref array.
+### 5. Effect Creation from VDL Description
 
-**FlameEffect.tsx**: Add `HeatHazeEmitter` from heatDistortion.ts for realistic heat shimmer above the flame column. Replace the basic cylinderGeometry heat mesh with proper distortion particles.
+Manual describes typing a VDL description to auto-create an effect with simulation. The VDL parser exists but there's no "Create Effect from Description" dialog.
 
-### 3. Atmospheric Effects → Soft Particles + Fluid Grid (4 files)
+**Changes:**
+- `src/components/editor/EffectLibrary.tsx`: Add "Create Effect..." button that opens a dialog where user types a VDL string, parser generates all parameters, and effect is added to the library
 
-**CryoJetEffect.tsx**: Convert main column and ground fog to use `createSoftParticleMaterial` for depth-fade against terrain/objects. Add `createEmitter` for the column particles with collision module.
+### 6. Show Duration / Info Panel
 
-**FogMachineEffect.tsx**: Replace manual puff meshes with soft-particle point cloud using `createSmokeSoftMaterial`. Connect to `niagaraFluids` grid — read density field to modulate puff positions/opacity (fog follows fluid advection).
+Manual references "Show > Settings" with show duration, site info, client info. `ShowSettingsPanel` exists but is missing some fields.
 
-**HazeMachineEffect.tsx**: Replace PointsMaterial with `createSmokeSoftMaterial` for depth-aware blending. Read wind from fluid grid via `readDensityAt` for drift coherence.
-
-**SaluteEffect.tsx**: Add `HeatHazeEmitter` for post-detonation heat shimmer. Inject temperature + density into fluid grid on flash for realistic smoke plume advection.
-
-### 4. FireworkBurst (SkyCanvas) → Soft Particles (1 file)
-
-**SkyCanvas.tsx** (FireworkBurst component ~line 264): Replace `PointsMaterial` with custom shader that includes soft-particle depth fade uniform. Import `updateSoftParticleUniforms` and call in useFrame to pass depth texture.
-
-### 5. Shared: Fluid Grid Event Bus
-
-**NiagaraVFXController.tsx**: Add fluid grid instance (`createFluidGrid`). On burst events, call `injectDensity` + `injectTemperature` at burst position. Call `advectFluid` each frame. Expose grid via `window.__niagaraFluidGrid` for effects to read.
-
-Effects that need fluid (Fog, Haze, Salute, Mine) read from the shared grid via `readDensityAt` to modulate their particles.
+**Changes:**
+- `src/components/editor/ShowSettingsPanel.tsx`: Add show info fields: client name, site name, show date, show category, notes — persisted to database
 
 ## Files
 
 | File | Change |
 |------|--------|
-| `src/components/editor/effects/MineEffect.tsx` | NiagaraEmitter + collision + wind + fluid inject |
-| `src/components/editor/effects/WaterfallEffect.tsx` | NiagaraEmitter + collision |
-| `src/components/editor/effects/SparkShower.tsx` | NiagaraEmitter + wind |
-| `src/components/editor/effects/RomanCandleEffect.tsx` | NiagaraSystem multi-emitter + RibbonTrail |
-| `src/components/editor/effects/FanEffect.tsx` | NiagaraSystem multi-emitter |
-| `src/components/editor/effects/MultiBurstEffect.tsx` | NiagaraSystem staggered emitters |
-| `src/components/editor/effects/TourbillonEffect.tsx` | RibbonTrail + wind |
-| `src/components/editor/effects/WheelEffect.tsx` | RibbonTrail per arm |
-| `src/components/editor/effects/FlameEffect.tsx` | HeatHazeEmitter |
-| `src/components/editor/effects/SaluteEffect.tsx` | HeatHazeEmitter + fluid inject |
-| `src/components/editor/effects/CryoJetEffect.tsx` | NiagaraEmitter + softParticleMaterial |
-| `src/components/editor/effects/FogMachineEffect.tsx` | softParticleMaterial + fluid read |
-| `src/components/editor/effects/HazeMachineEffect.tsx` | softParticleMaterial + fluid read |
-| `src/components/editor/SkyCanvas.tsx` | FireworkBurst soft-particle depth fade |
-| `src/components/editor/NiagaraVFXController.tsx` | Shared fluid grid instance + advection loop |
+| `src/store/useProjectStore.ts` | Add `section` to Position, `lockoutDefault` to effects, `activeLockouts` to state |
+| `src/lib/pyroPhysics.ts` | Add `getRiskGroup()`, `calcWindCompensation()` |
+| `src/components/editor/PyroLaunchAngle.tsx` | Wind compensation ghost arrow indicator |
+| `src/components/editor/PositionContextMenu.tsx` | Section assignment field |
+| `src/components/editor/ScriptWindow.tsx` | Group-by-section view |
+| `src/components/editor/Timeline.tsx` | Section dividers |
+| `src/components/editor/ScriptingToolsPanel.tsx` | "Apply Wind Compensation" tool |
+| `src/components/editor/EffectLibrary.tsx` | "Create Effect from VDL" dialog |
+| `src/components/editor/LiveFiringPanel.tsx` | Lockout risk group toggles |
+| `src/components/editor/SkyCanvas.tsx` | Position snap-to-surface raycasting |
+| `src/components/editor/ShowSettingsPanel.tsx` | Show info fields (client, site, date) |
 
