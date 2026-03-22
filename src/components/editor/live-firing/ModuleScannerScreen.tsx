@@ -403,6 +403,13 @@ export default function ModuleScannerScreen({
                               : "border-border/5 bg-[hsl(220_12%_4%)] opacity-40"
                       )}
                     >
+                      {/* Telemetry pulse flash */}
+                      {autoDiscovery && m.connected && telemetryPulse && (
+                        <div className="absolute inset-0 pointer-events-none rounded-lg transition-opacity duration-300" style={{
+                          background: 'hsl(32 100% 50% / 0.04)',
+                          boxShadow: 'inset 0 0 8px hsl(32 100% 50% / 0.06)',
+                        }} />
+                      )}
                       {/* Selected glow edge */}
                       {isSelected && (
                         <div className="absolute left-0 top-0 bottom-0 w-[2px]" style={{
