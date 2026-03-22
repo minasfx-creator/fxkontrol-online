@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import {
   Zap, Lightbulb, Hand, Flame, Timer, Check, Cpu, Cable,
   Gauge, Wifi, Globe, Plug, Radio, Map, Smartphone, Settings,
-  Shield, ChevronRight, AlertOctagon
+  Shield, ChevronRight, AlertOctagon, Layers
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
