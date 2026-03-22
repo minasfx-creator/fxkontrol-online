@@ -16,6 +16,7 @@
  * Minimal ESP32 Arduino sketch (see comments at bottom)
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export type BridgeTransport = 'ble' | 'usb' | 'websocket' | 'none';
 
 export interface BridgeStatus {
