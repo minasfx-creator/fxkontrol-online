@@ -770,10 +770,29 @@ export default function PyroFireOnePanel({
             )} />
             FM-{String(m.address).padStart(2, '0')}
             {m.armed && <span className="ml-0.5 text-red-400">●</span>}
+            {artnetLinkedModules.has(m.address) && (
+              <Globe className={cn(sz === 'xl' ? "w-2.5 h-2.5" : "w-2 h-2", "text-violet-400")} />
+            )}
             {m.connectionMode === 'wireless' && m.rssiDbm !== undefined && (
               <span className={cn("text-[5px]", rssiColor(m.rssiDbm))}>{m.rssiDbm}dB</span>
             )}
           </button>
+          {/* Per-module ArtNet Link button */}
+          {m.connected && (
+            <button
+              onClick={(e) => { e.stopPropagation(); handleModuleArtnetLink(m.address); }}
+              className={cn(
+                "rounded border shrink-0 transition-all",
+                sz === 'xl' ? "p-1.5" : "p-0.5",
+                artnetLinkedModules.has(m.address)
+                  ? "bg-violet-600/15 border-violet-500/30 text-violet-400"
+                  : "border-border/10 text-muted-foreground/30 hover:text-violet-400/60 hover:border-violet-500/20"
+              )}
+              title={`ArtNet Link FM-${String(m.address).padStart(2, '0')}`}
+            >
+              <Globe className={cn(sz === 'xl' ? "w-3 h-3" : "w-2 h-2")} />
+            </button>
+          )}
         );
       })}
       <button onClick={importPyroCues}
