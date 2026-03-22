@@ -476,12 +476,14 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
                   className={cn(
                     "w-full flex items-center gap-2 px-2 py-1 rounded text-[8px] transition-all",
                     c.active
-                      ? "bg-primary/15 border border-primary/30 text-foreground"
-                      : "bg-background/20 border border-transparent text-muted-foreground/60 hover:bg-background/30"
+                      ? "bg-indigo-500/15 border-l-[3px] border-indigo-500 text-foreground"
+                      : i === cueList.findIndex(x => x.active) + 1
+                        ? "bg-indigo-500/5 border border-indigo-500/10 text-muted-foreground/70"
+                        : "bg-background/20 border border-transparent text-muted-foreground/60 hover:bg-background/30"
                   )}>
                   <span className="font-mono w-6 text-right">{c.cue}</span>
                   <span className="flex-1 text-left truncate">{c.label}</span>
-                  {c.active && <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />}
+                  {c.active && <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" style={{ boxShadow: '0 0 6px hsl(240 50% 52%)' }} />}
                 </button>
               ))}
             </div>
