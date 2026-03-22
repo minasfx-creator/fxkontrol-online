@@ -279,9 +279,25 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
   // Expanded pitch range: -180 to 180 per Finale 3D spec
   const pitch = Math.max(-180, Math.min(180, position.pitch || 85)) * (Math.PI / 180);
 
+  // Get real caliber from linked effects
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const realCaliber = useMemo(() => {
+    const linked = timelineItems.filter(t => t.positionId === position.id || (t as any).positionIds?.includes(position.id));
+    let cal = 4;
+    for (const item of linked) {
+      const eff = (window as any).__EFFECT_LIBRARY?.find?.((e: any) => e.id === item.effectId);
+      // Fallback: import from store
+      const { default: store } = { default: useProjectStore.getState() };
+      const lib = (store as any).effectLibrary || [];
+      const found = lib.find?.((e: any) => e.id === item.effectId);
+      if (found?.caliber && found.caliber > cal) cal = found.caliber;
+    }
+    return cal;
+  }, [timelineItems, position.id]);
+
   // Compute physics-based trajectory using caliber-derived parameters
   const trajectoryData = useMemo(() => {
-    const caliber = 4; // default caliber for gizmo visualization
+    const caliber = realCaliber;
     const v0 = getMortarVelocity(caliber);
     const hRad = heading;
     const pRad = pitch;

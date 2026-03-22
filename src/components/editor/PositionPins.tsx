@@ -547,28 +547,105 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
 });
 Pin.displayName = 'Pin';
 
-/** Always-on direction line — shows launch vector from H/P/R Euler rotation */
+/** Always-on direction line — extends to real burst height when effects are linked (Finale 3D) */
 function DirectionLine({ position, color, isSelected, isHovered, hasEffects }: { position: Position; color: string; isSelected: boolean; isHovered: boolean; hasEffects: boolean }) {
+  const { timelineItems, editorMode, setEditorMode, selectPosition, updatePosition } = useProjectStore();
+  const { camera, raycaster, gl } = useThree();
+  const [isDraggingHandle, setIsDraggingHandle] = useState(false);
+  const dragStartRef = useRef<{ heading: number; pitch: number } | null>(null);
+
+  // Get max caliber from linked effects for real burst height
+  const maxCaliber = useMemo(() => {
+    if (!hasEffects || position.type !== 'pyro') return 3;
+    const linked = timelineItems.filter(t => t.positionId === position.id || t.positionIds?.includes(position.id));
+    let cal = 3;
+    for (const item of linked) {
+      const eff = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      if (eff?.caliber && eff.caliber > cal) cal = eff.caliber;
+    }
+    return cal;
+  }, [timelineItems, position.id, position.type, hasEffects]);
+
+  // Scale: use same factor as PyroLaunchAngle (ARROW_LENGTH / getBreakHeight(caliber))
+  const ARROW_LENGTH = 3.5;
+  const sceneLength = useMemo(() => {
+    if (!hasEffects) return isSelected ? 3 : isHovered ? 2 : 1.5;
+    const breakH = getBreakHeight(maxCaliber);
+    return breakH * (ARROW_LENGTH / getBreakHeight(4)); // Scaled to scene units
+  }, [hasEffects, maxCaliber, isSelected, isHovered]);
+
   const linePoints = useMemo((): [number, number, number][] => {
     if (position.type !== 'pyro') return [];
     const hRad = position.heading * (Math.PI / 180);
     const pRad = (position.pitch || 85) * (Math.PI / 180);
-    const length = isSelected ? 5 : isHovered ? 3 : hasEffects ? 4 : 2;
-    const dx = Math.sin(hRad) * Math.cos(pRad) * length;
-    const dy = Math.sin(pRad) * length;
-    const dz = -Math.cos(hRad) * Math.cos(pRad) * length;
+    const dx = Math.sin(hRad) * Math.cos(pRad) * sceneLength;
+    const dy = Math.sin(pRad) * sceneLength;
+    const dz = -Math.cos(hRad) * Math.cos(pRad) * sceneLength;
     return [[0, 0.15, 0], [dx, dy + 0.15, dz]];
-  }, [position.heading, position.pitch, position.type, isSelected, isHovered, hasEffects]);
+  }, [position.heading, position.pitch, position.type, sceneLength]);
+
+  // Grab handle drag logic — auto-enters adjust-angles on drag
+  useEffect(() => {
+    if (!isDraggingHandle) return;
+    const handleMove = (e: PointerEvent) => {
+      const rect = gl.domElement.getBoundingClientRect();
+      const mouse = new THREE.Vector2(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1
+      );
+      raycaster.setFromCamera(mouse, camera);
+      const origin = new THREE.Vector3(position.x, position.y, position.z);
+      const closest = new THREE.Vector3();
+      raycaster.ray.closestPointToPoint(origin, closest);
+      const dir = closest.sub(origin).normalize();
+      let newHeading = Math.atan2(dir.x, -dir.z) * (180 / Math.PI);
+      let newPitch = Math.max(-180, Math.min(180, Math.asin(Math.max(-1, Math.min(1, dir.y))) * (180 / Math.PI)));
+      if (e.shiftKey) {
+        newHeading = Math.round(newHeading / 5) * 5;
+        newPitch = Math.round(newPitch / 5) * 5;
+      }
+      updatePosition(position.id, { heading: newHeading, pitch: newPitch });
+    };
+    const handleUp = () => {
+      setIsDraggingHandle(false);
+      (gl.domElement as HTMLElement).style.cursor = '';
+    };
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+    return () => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+    };
+  }, [isDraggingHandle, camera, gl, raycaster, position, updatePosition]);
 
   if (linePoints.length < 2) return null;
 
-  const opacity = isSelected ? 0.85 : isHovered ? 0.4 : hasEffects ? 0.5 : 0.2;
-  const lineWidth = isSelected ? 3 : isHovered ? 2 : hasEffects ? 2 : 1;
-  const lineColor = (isSelected || hasEffects) ? color : '#aaaaaa';
+  // Hide stub line when full gizmo is active
+  if (editorMode === 'adjust-angles' && isSelected) return null;
+
+  const opacity = isSelected ? 0.85 : isHovered ? 0.5 : hasEffects ? 0.6 : 0.2;
+  const lineWidth = isSelected ? 3 : hasEffects ? 2 : 1;
+  const lineColor = hasEffects ? '#FF3333' : isSelected ? color : '#aaaaaa';
+
+  const tip = linePoints[1];
+  const dir = new THREE.Vector3(tip[0], tip[1] - 0.15, tip[2]).normalize();
+  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+  const e = new THREE.Euler().setFromQuaternion(q);
 
   return (
     <>
-      <Line points={linePoints} color={lineColor} lineWidth={lineWidth} transparent opacity={opacity} />
+      {/* Dotted trajectory line to burst height */}
+      <Line
+        points={linePoints}
+        color={lineColor}
+        lineWidth={lineWidth}
+        transparent
+        opacity={opacity}
+        dashed={hasEffects}
+        dashSize={0.15}
+        dashOffset={0}
+        gapSize={0.1}
+      />
       {/* Armed indicator dot at origin */}
       {hasEffects && (
         <mesh position={[0, 0.15, 0]}>
@@ -577,18 +654,43 @@ function DirectionLine({ position, color, isSelected, isHovered, hasEffects }: {
         </mesh>
       )}
       {/* Arrowhead at tip */}
-      {(() => {
-        const tip = linePoints[1];
-        const dir = new THREE.Vector3(tip[0], tip[1] - 0.15, tip[2]).normalize();
-        const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-        const e = new THREE.Euler().setFromQuaternion(q);
-        return (
-          <mesh position={tip} rotation={[e.x, e.y, e.z]}>
-            <coneGeometry args={[0.08, 0.22, 4]} />
-            <meshBasicMaterial color={lineColor} transparent opacity={opacity} />
+      <mesh position={tip} rotation={[e.x, e.y, e.z]}>
+        <coneGeometry args={[0.08, 0.22, 4]} />
+        <meshBasicMaterial color={lineColor} transparent opacity={opacity} />
+      </mesh>
+      {/* Draggable grab handle at burst point — Finale 3D red ring */}
+      {hasEffects && (
+        <group position={tip}>
+          {/* Red ring */}
+          <mesh rotation={[e.x, e.y, e.z]}>
+            <torusGeometry args={[0.15, 0.025, 8, 16]} />
+            <meshStandardMaterial
+              color="#FF3333"
+              emissive="#FF3333"
+              emissiveIntensity={isDraggingHandle ? 1.5 : 0.6}
+              metalness={0.3}
+              roughness={0.5}
+            />
           </mesh>
-        );
-      })()}
+          {/* Invisible larger hitbox for easier grabbing */}
+          <mesh
+            rotation={[e.x, e.y, e.z]}
+            onPointerDown={(ev) => {
+              ev.stopPropagation();
+              useUndoStore.getState().checkpoint();
+              selectPosition(position.id);
+              setIsDraggingHandle(true);
+              dragStartRef.current = { heading: position.heading, pitch: position.pitch || 85 };
+              (gl.domElement as HTMLElement).style.cursor = 'grabbing';
+            }}
+            onPointerOver={() => { (gl.domElement as HTMLElement).style.cursor = 'grab'; }}
+            onPointerOut={() => { if (!isDraggingHandle) (gl.domElement as HTMLElement).style.cursor = ''; }}
+          >
+            <torusGeometry args={[0.2, 0.08, 6, 12]} />
+            <meshBasicMaterial visible={false} />
+          </mesh>
+        </group>
+      )}
     </>
   );
 }
