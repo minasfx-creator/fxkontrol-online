@@ -307,11 +307,15 @@ export default function ScriptWindow() {
         const nextField = EDITABLE_FIELDS[idx + 1];
         const row = rows.find(r => r.id === fromRowId);
         if (row) {
-          const val = nextField === 'eventTime' ? row.eventTime
-            : nextField === 'pan' ? row.pan
-            : nextField === 'tilt' ? row.tilt
-            : row.notes;
-          startEditing(fromRowId, nextField, val);
+          if (nextField === 'position') {
+            setPosDropdown({ rowId: fromRowId });
+          } else {
+            const val = nextField === 'eventTime' ? row.eventTime
+              : nextField === 'pan' ? row.pan
+              : nextField === 'tilt' ? row.tilt
+              : row.notes;
+            startEditing(fromRowId, nextField, val);
+          }
         }
       }
     } else if (dir === 'next-row') {
