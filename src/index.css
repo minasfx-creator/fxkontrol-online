@@ -82,12 +82,12 @@
 
     --sidebar-background: 220 22% 3%;
     --sidebar-foreground: 180 8% 68%;
-    --sidebar-primary: 165 100% 42%;
+    --sidebar-primary: 32 100% 50%;
     --sidebar-primary-foreground: 220 20% 3%;
     --sidebar-accent: 220 14% 10%;
     --sidebar-accent-foreground: 180 8% 85%;
     --sidebar-border: 220 15% 8%;
-    --sidebar-ring: 165 100% 42%;
+    --sidebar-ring: 32 100% 50%;
 
     /* Glass — tactical frosted */
     --glass-bg: 220 18% 6% / 0.85;
