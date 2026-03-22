@@ -807,15 +807,18 @@ export default function PyroFireOnePanel({
               <button
                 onClick={() => handleModuleArtnetLink(m.address)}
                 className={cn(
-                  "rounded border shrink-0 transition-all",
-                  sz === 'xl' ? "p-1.5" : "p-0.5",
+                  "rounded border shrink-0 transition-all flex items-center gap-0.5",
+                  sz === 'xl' ? "p-2 min-w-[44px] min-h-[44px] justify-center" : "p-1 min-w-[32px] min-h-[32px] justify-center",
                   isLinked
                     ? "bg-violet-600/15 border-violet-500/30 text-violet-400"
                     : "border-border/10 text-muted-foreground/30 hover:text-violet-400/60 hover:border-violet-500/20"
                 )}
                 title={`ArtNet Link FM-${String(m.address).padStart(2, '0')}`}
               >
-                <Globe className={cn(sz === 'xl' ? "w-3 h-3" : "w-2 h-2")} />
+                <Globe className={cn(sz === 'xl' ? "w-4 h-4" : "w-3 h-3")} />
+                {isLinked && artnetLatencies.has(m.address) && (
+                  <span className={cn("font-mono text-violet-300", sz === 'xl' ? "text-[8px]" : "text-[6px]")}>{artnetLatencies.get(m.address)}ms</span>
+                )}
               </button>
             )}
           </div>

@@ -900,36 +900,37 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
         ))}
       </div>
       {!mob && <div className="flex-1" />}
-      {/* Mode tabs — horizontally scrollable on mobile */}
-      <div className={cn("flex overflow-x-auto scrollbar-thin scrollbar-thumb-border/30 scrollbar-track-transparent", fs && mob ? "w-full pb-1" : fs ? "pr-3 gap-0.5" : "pr-1")}>
-        {([
-          // DMX modes
-          { key: 'super_dmx' as FXCMode, label: 'Super' },
-          { key: 'simple_dmx' as FXCMode, label: 'Simple' },
-          { key: 'manual_fire' as FXCMode, label: 'Manual' },
-          // Fire modes
-          { key: 'pyro_fire' as FXCMode, label: '🔥 Pyro' },
-          { key: 'auto_fire' as FXCMode, label: 'Auto' },
-          { key: 'check_slave' as FXCMode, label: 'Check' },
-          // Hardware
-          { key: 'controllers' as FXCMode, label: '🎛 HW' },
-          { key: 'pbus' as FXCMode, label: '📡 PBUS' },
-          { key: 'ma3' as FXCMode, label: '🎛 MA3' },
-          { key: 'field_map' as FXCMode, label: '🗺 Map' },
-          { key: 'connections' as FXCMode, label: '🔌 Conn' },
-          { key: 'wifi_direct' as FXCMode, label: '📡 WFD' },
-          { key: 'artnet_modules' as FXCMode, label: '🌐 ArtNet' },
-          { key: 'mobile_link' as FXCMode, label: '📡 Link' },
-          { key: 'settings' as FXCMode, label: '⚙' },
-        ]).map(m => (
-          <button key={m.key} onClick={() => { setMode(m.key); setShowDeviceLib(false); }}
-            className={cn(
-              "font-bold uppercase tracking-wider transition-all whitespace-nowrap shrink-0",
-              fs && mob ? "px-3 py-2.5 text-[10px]" : fs ? "px-3 py-2.5 text-[9px]" : "px-1.5 py-1.5 text-[6px]",
-              mode === m.key ? "text-foreground/80" : "text-muted-foreground/25 hover:text-muted-foreground/50"
-            )}>{m.label}</button>
-        ))}
-      </div>
+      {/* Mode tabs — categorized grid on mobile, scrollable on desktop */}
+      {fs && mob ? (
+        <MobileModeTabs mode={mode} onModeChange={(m) => { setMode(m); setShowDeviceLib(false); }} />
+      ) : (
+        <div className={cn("flex overflow-x-auto scrollbar-thin scrollbar-thumb-border/30 scrollbar-track-transparent", fs ? "pr-3 gap-0.5" : "pr-1")}>
+          {([
+            { key: 'super_dmx' as FXCMode, label: 'Super' },
+            { key: 'simple_dmx' as FXCMode, label: 'Simple' },
+            { key: 'manual_fire' as FXCMode, label: 'Manual' },
+            { key: 'pyro_fire' as FXCMode, label: '🔥 Pyro' },
+            { key: 'auto_fire' as FXCMode, label: 'Auto' },
+            { key: 'check_slave' as FXCMode, label: 'Check' },
+            { key: 'controllers' as FXCMode, label: '🎛 HW' },
+            { key: 'pbus' as FXCMode, label: '📡 PBUS' },
+            { key: 'ma3' as FXCMode, label: '🎛 MA3' },
+            { key: 'field_map' as FXCMode, label: '🗺 Map' },
+            { key: 'connections' as FXCMode, label: '🔌 Conn' },
+            { key: 'wifi_direct' as FXCMode, label: '📡 WFD' },
+            { key: 'artnet_modules' as FXCMode, label: '🌐 ArtNet' },
+            { key: 'mobile_link' as FXCMode, label: '📡 Link' },
+            { key: 'settings' as FXCMode, label: '⚙' },
+          ]).map(m => (
+            <button key={m.key} onClick={() => { setMode(m.key); setShowDeviceLib(false); }}
+              className={cn(
+                "font-bold uppercase tracking-wider transition-all whitespace-nowrap shrink-0",
+                fs ? "px-3 py-2.5 text-[9px]" : "px-1.5 py-1.5 text-[6px]",
+                mode === m.key ? "text-foreground/80" : "text-muted-foreground/25 hover:text-muted-foreground/50"
+              )}>{m.label}</button>
+          ))}
+        </div>
+      )}
     </div>
   );
 
