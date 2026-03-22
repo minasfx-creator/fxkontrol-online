@@ -4,7 +4,7 @@
  * Plus PBUS, Bluetooth, Art-Net, USB-C DMX
  */
 import { useState, useCallback } from 'react';
-import { Wifi, WifiOff, Radio, RefreshCw, Plus, X, Activity, Cable, Globe, Zap } from 'lucide-react';
+import { Wifi, WifiOff, Radio, RefreshCw, Plus, X, Activity, Cable, Globe, Zap, Antenna } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
