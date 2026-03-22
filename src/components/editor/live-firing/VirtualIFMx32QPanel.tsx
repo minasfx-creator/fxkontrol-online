@@ -520,88 +520,134 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
         {/* ─── HARDWARE DESIGN TAB ─── */}
         <TabsContent value="hardware" className="mt-1 space-y-2">
           <div className="rounded-lg border border-border/20 p-3 space-y-3">
-            <h3 className="text-[10px] font-black uppercase text-muted-foreground/60">Esquema: ESP32-S3 + CDS Réplica</h3>
+            <h3 className="text-[10px] font-black uppercase text-muted-foreground/60">Setup Simplificado: Celular + Bateria 12V + 32 Relés</h3>
 
-            {/* Schematic */}
+            {/* Simplified Schematic */}
             <pre className="text-[7px] font-mono text-muted-foreground/50 bg-muted/5 rounded p-2 overflow-x-auto whitespace-pre leading-tight">{`
-┌─────────────┐
-│  ESP32-S3   │ GPIO11 → SR_DATA
-│  DevKitC-1  │ GPIO12 → SR_CLOCK
-│  (USB-C)    │ GPIO13 → SR_LATCH
-└──┬──┬──┬──┬─┘ GPIO14 → CDS_CHARGE_EN
-   │  │  │  │   GPIO4-7 → MUX A,B,C,SEL
-   │  │  │  │   GPIO1  → MUX_ADC
-   ▼  ▼  ▼  ▼
-┌──────────────────────────────────┐
-│ 4x 74HC595 (Shift Register)     │
-│ Q0-Q7 → 32 linhas (daisy chain)│
-└──────────┬───────────────────────┘
-           ▼
-┌──────────────────────────────────┐
-│ 4x ULN2803A (Darlington Array)  │
-│ IN1-IN8 ← 595 Q0-Q7            │
-│ OUT1-OUT8 → open collector      │
-└──────────┬───────────────────────┘
-           ▼
-┌──────────────────────────────────┐
-│ 32x IRFZ44N MOSFET + 470µF Cap │
-│ Gate ← ULN2803 OUT              │
-│ Drain → E-match terminal        │
-│ Source → GND                    │
-└──────────────────────────────────┘
+┌──────────────┐  USB-C OTG  ┌──────────────┐  Serial  ┌──────────────┐
+│  CELULAR     │ ──────────► │ Adaptador    │ ───────► │ Arduino Nano │
+│  (FX Kontrol)│             │ USB→Serial   │  TX/RX   │ (ATmega328)  │
+│  WebSerial   │             │ CH340/CP2102 │  115200  │              │
+└──────────────┘             └──────────────┘          └──────┬───────┘
+                                                              │ D2-D9
+                                                              │ + 4x 74HC595
+                                                              ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│  Placa 32 Canais Relé (5V logic, 12V switching)                     │
+│  ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ... ┌─────┐                      │
+│  │ R01 │ │ R02 │ │ R03 │ │ R04 │     │ R32 │  IN ← Arduino pins   │
+│  │ COM │ │ COM │ │ COM │ │ COM │     │ COM │  COM ← Bateria 12V+  │
+│  │ NO  │ │ NO  │ │ NO  │ │ NO  │     │ NO  │  NO  → E-match       │
+│  └─────┘ └─────┘ └─────┘ └─────┘     └─────┘                      │
+└──────────────────────────────────────────────────────────────────────┘
+           │                                            │
+           └──── E-match ──── GND Bateria 12V ──────────┘
 
-Continuity: 2x CD4051 → ADC (GPIO1)
-Power: LiPo 3S 11.1V → regulador 3.3V`}</pre>
+Protocolo Serial: FIRE:pin:ms\\n → OK:FIRE:pin\\n
+                  RELAY:pin:ON\\n / RELAY:pin:OFF\\n
+                  ESTOP\\n → OK:ESTOP\\n`}</pre>
 
             {/* Component List */}
             <div className="space-y-1">
-              <h4 className="text-[9px] font-bold text-muted-foreground/60">Lista de Componentes (~$25)</h4>
+              <h4 className="text-[9px] font-bold text-muted-foreground/60">Lista de Componentes (~$15-20)</h4>
               {[
-                { item: 'ESP32-S3 DevKitC-1', qty: '1x', price: '$6' },
-                { item: '74HC595 Shift Register', qty: '4x', price: '$1' },
-                { item: 'ULN2803A Darlington Array', qty: '4x', price: '$2' },
-                { item: '470µF 25V Capacitor', qty: '32x', price: '$4' },
-                { item: 'IRFZ44N MOSFET', qty: '32x', price: '$5' },
-                { item: 'CD4051 Analog MUX', qty: '2x', price: '$1' },
-                { item: 'LiPo 3S 11.1V 2200mAh', qty: '1x', price: '$8' },
-                { item: 'PCB / Protoboard', qty: '1x', price: '$3' },
+                { item: 'Placa 32ch Relé (SainSmart/similar)', qty: '1x', price: '$10' },
+                { item: 'Adaptador USB-C OTG', qty: '1x', price: '$1' },
+                { item: 'Conversor USB-Serial CH340', qty: '1x', price: '$2' },
+                { item: 'Arduino Nano (ATmega328)', qty: '1x', price: '$3' },
+                { item: 'Bateria 12V 7Ah selada (ou LiPo 3S)', qty: '1x', price: '$5-8' },
+                { item: 'Fios/conectores para E-matches', qty: '—', price: '$1' },
               ].map(c => (
                 <div key={c.item} className="flex items-center text-[8px] text-muted-foreground/50">
                   <span className="flex-1">{c.item}</span>
                   <span className="w-8 text-right">{c.qty}</span>
-                  <span className="w-8 text-right text-primary/60">{c.price}</span>
+                  <span className="w-10 text-right text-primary/60">{c.price}</span>
                 </div>
               ))}
             </div>
 
-            {/* Pin Mapping */}
+            {/* Wiring Instructions */}
             <div className="space-y-1">
-              <h4 className="text-[9px] font-bold text-muted-foreground/60">Mapeamento de Pinos ESP32-S3</h4>
-              <div className="grid grid-cols-2 gap-1">
-                {[
-                  { gpio: 'GPIO11', fn: 'SR_DATA (74HC595 SER)' },
-                  { gpio: 'GPIO12', fn: 'SR_CLOCK (74HC595 SRCLK)' },
-                  { gpio: 'GPIO13', fn: 'SR_LATCH (74HC595 RCLK)' },
-                  { gpio: 'GPIO14', fn: 'CDS_CHARGE_EN' },
-                  { gpio: 'GPIO4-7', fn: 'CD4051 MUX A/B/C/SEL' },
-                  { gpio: 'GPIO1', fn: 'ADC Input (continuidade)' },
-                ].map(p => (
-                  <div key={p.gpio} className="text-[7px] text-muted-foreground/40">
-                    <span className="font-mono text-primary/60">{p.gpio}</span> → {p.fn}
-                  </div>
-                ))}
-              </div>
+              <h4 className="text-[9px] font-bold text-muted-foreground/60">Montagem Passo-a-Passo</h4>
+              <ol className="text-[8px] text-muted-foreground/40 space-y-0.5 list-decimal list-inside">
+                <li>Conecte Arduino Nano à placa de relés (D2-D9 + 74HC595 para 32ch)</li>
+                <li>Ligue COM de todos os relés ao terminal + da bateria 12V</li>
+                <li>Ligue NO de cada relé ao terminal + do e-match correspondente</li>
+                <li>Ligue terminal − dos e-matches ao GND da bateria 12V</li>
+                <li>Conecte Arduino Nano via USB ao adaptador CH340</li>
+                <li>Conecte CH340 via adaptador USB-C OTG ao celular</li>
+                <li>No app: Hardware Bridge → RELAY → selecionar porta serial</li>
+              </ol>
             </div>
 
-            {/* Firmware */}
+            {/* Arduino Nano Firmware */}
             <div className="space-y-1">
-              <h4 className="text-[9px] font-bold text-muted-foreground/60">Firmware ESP32</h4>
-              <p className="text-[8px] text-muted-foreground/40">
-                O firmware Arduino está documentado no código-fonte (fireoneModuleHardwareBridge.ts).
-                Compile com Arduino IDE ou PlatformIO, flash via USB-C.
-              </p>
-              <p className="text-[8px] text-muted-foreground/40">
-                Protocolo: FIRE:pin:ms · BATCH:mask:ms · CONT:pin · CDS:pin · STATUS · HEARTBEAT · VERSION · ESTOP
+              <h4 className="text-[9px] font-bold text-muted-foreground/60">Firmware Arduino Nano (~30 linhas)</h4>
+              <pre className="text-[6.5px] font-mono text-emerald-400/60 bg-black/40 rounded p-2 overflow-x-auto whitespace-pre leading-tight">{`#include <Wire.h>
+// 4x 74HC595 para 32 canais
+#define DATA  11  // SER
+#define CLOCK 12  // SRCLK
+#define LATCH 13  // RCLK
+
+uint32_t relayState = 0;
+
+void shiftOut32(uint32_t mask) {
+  digitalWrite(LATCH, LOW);
+  for (int i = 31; i >= 0; i--) {
+    digitalWrite(DATA, (mask >> i) & 1);
+    digitalWrite(CLOCK, HIGH);
+    delayMicroseconds(1);
+    digitalWrite(CLOCK, LOW);
+  }
+  digitalWrite(LATCH, HIGH);
+}
+
+void firePin(int pin, int ms) {
+  if (pin < 0 || pin > 31) return;
+  ms = constrain(ms, 20, 1000);
+  relayState |= (1UL << pin);
+  shiftOut32(relayState);
+  delay(ms);
+  relayState &= ~(1UL << pin);
+  shiftOut32(relayState);
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(DATA, OUTPUT);
+  pinMode(CLOCK, OUTPUT);
+  pinMode(LATCH, OUTPUT);
+  shiftOut32(0);
+}
+
+void loop() {
+  if (!Serial.available()) return;
+  String cmd = Serial.readStringUntil('\\n');
+  cmd.trim();
+  if (cmd.startsWith("FIRE:")) {
+    int c1 = cmd.indexOf(':', 5);
+    int pin = cmd.substring(5, c1).toInt();
+    int dur = cmd.substring(c1+1).toInt();
+    firePin(pin, dur);
+    Serial.println("OK:FIRE:" + String(pin));
+  } else if (cmd == "ESTOP") {
+    relayState = 0;
+    shiftOut32(0);
+    Serial.println("OK:ESTOP");
+  } else if (cmd == "HEARTBEAT") {
+    Serial.println("PONG");
+  } else if (cmd == "VERSION") {
+    Serial.println("VER:RELAY-1.0");
+  }
+}`}</pre>
+            </div>
+
+            {/* Connection mode info */}
+            <div className="rounded border border-amber-500/20 bg-amber-950/10 p-2">
+              <p className="text-[8px] text-amber-300/60">
+                <strong>⚡ Modo Direct Relay:</strong> O celular envia comandos seriais diretamente via USB OTG.
+                Sem Wi-Fi, sem Bluetooth, sem ESP32. O Arduino Nano atua apenas como ponte entre USB e os 32 relés.
+                A bateria 12V alimenta diretamente os ignitores quando o relé fecha o circuito.
               </p>
             </div>
           </div>
