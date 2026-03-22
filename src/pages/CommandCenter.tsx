@@ -31,6 +31,7 @@ import RadioControlPanel from '@/components/editor/RadioControlPanel';
 import FieldMap2D from '@/components/editor/FieldMap2D';
 import MobileLinkMode from '@/components/editor/live-firing/MobileLinkMode';
 import SettingsPanel from '@/components/editor/live-firing/SettingsPanel';
+import DroneCommandPanel from '@/components/editor/DroneCommandPanel';
 
 // ── Types ──
 type CommandMode =
