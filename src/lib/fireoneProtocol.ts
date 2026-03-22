@@ -694,10 +694,11 @@ export class FireOneController {
   }
 
   async emergencyStop(): Promise<void> {
-    await this.send(buildEmergencyStop());
-    // Send 3 times for redundancy
-    await this.send(buildEmergencyStop());
-    await this.send(buildEmergencyStop());
+    // E-STOP broadcasts on ALL transports simultaneously
+    const estop = buildEmergencyStop();
+    await this.transportManager.broadcast(estop);
+    await this.transportManager.broadcast(estop);
+    await this.transportManager.broadcast(estop);
     this.modules.forEach(m => { m.armed = false; });
   }
 
