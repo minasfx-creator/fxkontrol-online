@@ -1403,6 +1403,11 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
       case 'ma3': return <MA3ControlPanel fs={fs} />;
       case 'wifi_direct': return <WiFiDirectControlPanel fs={fs} />;
       case 'artnet_modules': return <FXKNetPanel fs={fs} />;
+      case 'show_control': return <ShowControlPanel fs={fs} />;
+      case 'module': return <FXKNetPanel fs={fs} />;
+      case 'dmx_monitor': return <DMXMonitorPanel fs={fs} />;
+      case 'fxk_light': return <MA3ControlPanel fs={fs} />;
+      case 'drone_ops': return <DroneCommandPanel fs={fs} />;
       case 'settings': return <SettingsPanel fs={fs} settings={settings} onSettingsChange={setSettings} relayConnected={relayConnected} relayUrl={relayUrl} onRelayUrlChange={setRelayUrl} onConnectRelay={connectRelay} onDisconnectRelay={disconnectRelay} />;
       default: return renderSimpleDmx(fs);
     }
