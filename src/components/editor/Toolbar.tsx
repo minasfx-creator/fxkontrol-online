@@ -402,6 +402,9 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       if (ctrl && e.key === 'e') { e.preventDefault(); handleExportVVIZ(); }
       if (ctrl && e.key === 'k') { e.preventDefault(); setCommandMenuOpen(prev => !prev); }
       if (e.key === 'v' && !ctrl && !e.shiftKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        onOpenPanel?.('positions');
+      }
+      if (e.key === 's' && !ctrl && !e.shiftKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
         setEditorMode('select');
       }
       if (e.key === ' ' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
