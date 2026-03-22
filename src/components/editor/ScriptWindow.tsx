@@ -130,6 +130,82 @@ export default function ScriptWindow() {
   const [fillDragCount, setFillDragCount] = useState(0);
   const tableRef = useRef<HTMLDivElement>(null);
 
+  // ─── Resizable columns state ─────────────────────────────────────
+  const COLUMN_KEYS = ['cue', 'icon', 'eventTime', 'effectTime', 'pft', 'size', 'type', 'description', 'position', 'pan', 'tilt', 'spin', 'angles', 'dP', 'dR', 'dur', 'cost', 'chain', 'notes', 'actions'] as const;
+  type ColumnKey = typeof COLUMN_KEYS[number];
+
+  const DEFAULT_WIDTHS: Record<ColumnKey, number> = {
+    cue: 30, icon: 24, eventTime: 72, effectTime: 72, pft: 44, size: 36,
+    type: 48, description: 160, position: 80, pan: 36, tilt: 36, spin: 36,
+    angles: 28, dP: 36, dR: 36, dur: 36, cost: 36, chain: 48, notes: 100, actions: 36,
+  };
+
+  const [columnWidths, setColumnWidths] = useState<Record<ColumnKey, number>>(() => {
+    try {
+      const saved = localStorage.getItem('fxk-script-col-widths');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { ...DEFAULT_WIDTHS };
+  });
+
+  const [hiddenColumns, setHiddenColumns] = useState<Set<ColumnKey>>(() => {
+    try {
+      const saved = localStorage.getItem('fxk-script-hidden-cols');
+      if (saved) return new Set(JSON.parse(saved));
+    } catch {}
+    return new Set<ColumnKey>();
+  });
+
+  // Persist column widths
+  useEffect(() => {
+    localStorage.setItem('fxk-script-col-widths', JSON.stringify(columnWidths));
+  }, [columnWidths]);
+
+  useEffect(() => {
+    localStorage.setItem('fxk-script-hidden-cols', JSON.stringify([...hiddenColumns]));
+  }, [hiddenColumns]);
+
+  // Column resize drag handler
+  const resizingCol = useRef<{ key: ColumnKey; startX: number; startW: number } | null>(null);
+
+  const handleResizeStart = useCallback((key: ColumnKey, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    resizingCol.current = { key, startX: e.clientX, startW: columnWidths[key] };
+
+    const handleMove = (me: MouseEvent) => {
+      if (!resizingCol.current) return;
+      const delta = me.clientX - resizingCol.current.startX;
+      const newW = Math.max(20, resizingCol.current.startW + delta);
+      setColumnWidths(prev => ({ ...prev, [resizingCol.current!.key]: newW }));
+    };
+
+    const handleUp = () => {
+      resizingCol.current = null;
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleUp);
+      document.body.style.cursor = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleUp);
+  }, [columnWidths]);
+
+  const toggleColumnVisibility = useCallback((key: ColumnKey) => {
+    setHiddenColumns(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const [showColumnMenu, setShowColumnMenu] = useState(false);
+
+  const isColVisible = (key: ColumnKey) => !hiddenColumns.has(key);
+  const colW = (key: ColumnKey) => isColVisible(key) ? columnWidths[key] : 0;
+
   // ─── Inline cell editing state (Finale 3D style) ─────────────────
   const [editingCell, setEditingCell] = useState<{ rowId: string; field: string } | null>(null);
   const [editDraft, setEditDraft] = useState('');
