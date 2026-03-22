@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { MapPin, Plus, Trash2, Copy, ChevronDown, ChevronRight, GripVertical, Search, Flame, Radio, Lightbulb, Hash, ArrowUpDown, MoreHorizontal, Crosshair, Users } from 'lucide-react';
 import { useProjectStore, EFFECT_LIBRARY, type Position, type PositionType } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
