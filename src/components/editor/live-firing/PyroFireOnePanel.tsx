@@ -150,7 +150,76 @@ export default function PyroFireOnePanel({
 
   const currentModule = useMemo(() => modules.find(m => m.address === selectedModule), [modules, selectedModule]);
 
-  const canFire = masterKeyOn && (pyroArm || dmxArm) && deadmanHeld;
+  const canFire = masterKeyOn && (pyroArm || dmxArm);
+
+  // Fire confirmation log for timecode mode
+  const [fireLog, setFireLog] = useState<FireLogEntry[]>([]);
+
+  // Mobile hold-to-fire state
+  const [holdingIgniter, setHoldingIgniter] = useState<{ moduleAddr: number; pos: number } | null>(null);
+  const [holdProgress, setHoldProgress] = useState(0);
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const holdAnimRef = useRef<number | null>(null);
+  const holdStartRef = useRef<number>(0);
+
+  // Module scanner state
+  const [scanning, setScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
+
+  // Mission clock
+  const [missionClock, setMissionClock] = useState('00:00:00');
+  useEffect(() => {
+    const iv = setInterval(() => {
+      const now = new Date();
+      setMissionClock(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`);
+    }, 1000);
+    return () => clearInterval(iv);
+  }, []);
+
+  // Hold-to-fire handlers for mobile
+  const startHoldFire = useCallback((moduleAddr: number, pos: number) => {
+    setHoldingIgniter({ moduleAddr, pos });
+    holdStartRef.current = performance.now();
+    const animate = () => {
+      const elapsed = performance.now() - holdStartRef.current;
+      const progress = Math.min(elapsed / 300, 1);
+      setHoldProgress(progress);
+      if (progress < 1) {
+        holdAnimRef.current = requestAnimationFrame(animate);
+      } else {
+        // Fire!
+        fireIgniter(moduleAddr, pos);
+        setHoldingIgniter(null);
+        setHoldProgress(0);
+      }
+    };
+    holdAnimRef.current = requestAnimationFrame(animate);
+  }, []);
+
+  const cancelHoldFire = useCallback(() => {
+    if (holdAnimRef.current) cancelAnimationFrame(holdAnimRef.current);
+    if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+    setHoldingIgniter(null);
+    setHoldProgress(0);
+  }, []);
+
+  // Module scan animation
+  const handleModuleScan = useCallback(async () => {
+    setScanning(true);
+    setScanProgress(0);
+    const steps = 20;
+    for (let i = 0; i <= steps; i++) {
+      await new Promise(r => setTimeout(r, 100));
+      setScanProgress((i / steps) * 100);
+    }
+    if (hardware.isConnected) {
+      await hardware.discoverModules(30);
+      toast.success(`Scan complete — ${hardware.modules.size} modules found`);
+    } else {
+      toast.success(`SIM Scan — ${modules.filter(m => m.connected).length} modules online`);
+    }
+    setScanning(false);
+  }, [hardware, modules]);
 
   // Lock body scroll when fullscreen
   useEffect(() => {
