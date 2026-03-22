@@ -456,7 +456,7 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
       </group>
 
       {/* Always-on direction line — Finale 3D style */}
-      <DirectionLine position={position} color={color} isSelected={isSelected} isHovered={isHovered} />
+      <DirectionLine position={position} color={color} isSelected={isSelected} isHovered={isHovered} hasEffects={linkedEffects > 0} />
 
       {/* Selection ring */}
       {isSelected && (
