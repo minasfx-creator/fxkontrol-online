@@ -17,6 +17,7 @@ export type Database = {
       artnet_modules: {
         Row: {
           channel_count: number
+          clone_of: string | null
           created_at: string
           dmx_channel_count: number
           dmx_net: number
@@ -32,6 +33,7 @@ export type Database = {
           name: string
           port: number
           project_id: string
+          redundancy_mode: string
           relay_server_url: string | null
           relay_token: string | null
           sort_order: number
@@ -40,6 +42,7 @@ export type Database = {
         }
         Insert: {
           channel_count?: number
+          clone_of?: string | null
           created_at?: string
           dmx_channel_count?: number
           dmx_net?: number
@@ -55,6 +58,7 @@ export type Database = {
           name?: string
           port?: number
           project_id: string
+          redundancy_mode?: string
           relay_server_url?: string | null
           relay_token?: string | null
           sort_order?: number
@@ -63,6 +67,7 @@ export type Database = {
         }
         Update: {
           channel_count?: number
+          clone_of?: string | null
           created_at?: string
           dmx_channel_count?: number
           dmx_net?: number
@@ -78,6 +83,7 @@ export type Database = {
           name?: string
           port?: number
           project_id?: string
+          redundancy_mode?: string
           relay_server_url?: string | null
           relay_token?: string | null
           sort_order?: number
@@ -85,6 +91,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "artnet_modules_clone_of_fkey"
+            columns: ["clone_of"]
+            isOneToOne: false
+            referencedRelation: "artnet_modules"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "artnet_modules_project_id_fkey"
             columns: ["project_id"]
