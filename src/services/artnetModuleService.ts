@@ -8,29 +8,33 @@ import { supabase } from '@/integrations/supabase/client';
 export type ModuleTransport = 'lan' | 'wan' | 'relay';
 export type ModuleConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error' | 'timeout';
 
+export type RedundancyMode = 'failover' | 'simultaneous' | 'manual';
+
 export interface ArtNetModuleConfig {
   id: string;
   name: string;
-  moduleAddress: number;       // 0-255 unique module ID
-  dmxUniverse: number;         // Art-Net universe (0-32767)
-  dmxSubnet: number;           // 0-15
-  dmxNet: number;              // 0-127
-  dmxStartAddress: number;     // 1-512
-  dmxChannelCount: number;     // channels used
-  ip: string;                  // Module IP or relay endpoint
-  port: number;                // Art-Net port (default 6454)
+  moduleAddress: number;
+  dmxUniverse: number;
+  dmxSubnet: number;
+  dmxNet: number;
+  dmxStartAddress: number;
+  dmxChannelCount: number;
+  ip: string;
+  port: number;
   transport: ModuleTransport;
-  relayToken?: string;         // Auth token for WAN relay
-  channelCount: number;        // Pyro channels (e.g. 32)
+  relayToken?: string;
+  channelCount: number;
   armed: boolean;
   enabled: boolean;
-  lastSeen: number;            // timestamp
+  lastSeen: number;
   latencyMs: number | null;
   firmwareVersion?: string;
   batteryLevel?: number;
   gpsLat?: number;
   gpsLng?: number;
-  label?: string;              // Field label e.g. "STAGE LEFT"
+  label?: string;
+  cloneOf?: string;
+  redundancyMode: RedundancyMode;
 }
 
 export interface ArtNetControllerConfig {
