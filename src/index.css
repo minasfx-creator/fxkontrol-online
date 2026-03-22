@@ -122,30 +122,41 @@
 }
 
 @layer utilities {
-  /* Glass effects */
+  /* Glass effects — premium frosted */
   .glass {
     background: hsl(var(--glass-bg));
-    backdrop-filter: blur(16px) saturate(1.4);
-    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    backdrop-filter: blur(24px) saturate(1.6);
+    -webkit-backdrop-filter: blur(24px) saturate(1.6);
   }
   .glass-subtle {
     background: hsl(var(--glass-bg));
-    backdrop-filter: blur(8px) saturate(1.2);
-    -webkit-backdrop-filter: blur(8px) saturate(1.2);
+    backdrop-filter: blur(12px) saturate(1.3);
+    -webkit-backdrop-filter: blur(12px) saturate(1.3);
+  }
+  .glass-premium {
+    background: hsl(var(--glass-frosted));
+    backdrop-filter: blur(40px) saturate(1.8);
+    -webkit-backdrop-filter: blur(40px) saturate(1.8);
+    border: 0.5px solid hsl(var(--glass-border));
+    box-shadow: 0 8px 32px hsl(228 20% 2% / 0.4), inset 0 1px 0 hsl(var(--glass-shine));
   }
   .glass-border {
     border-color: hsl(var(--glass-border));
   }
 
   .glow-electric {
-    box-shadow: 0 0 16px hsl(var(--electric) / 0.35), 0 0 4px hsl(var(--electric) / 0.2);
+    box-shadow: 0 0 20px hsl(var(--electric) / 0.3), 0 0 6px hsl(var(--electric) / 0.15);
   }
   .glow-safety {
-    box-shadow: 0 0 16px hsl(var(--safety) / 0.35), 0 0 4px hsl(var(--safety) / 0.2);
+    box-shadow: 0 0 20px hsl(var(--safety) / 0.3), 0 0 6px hsl(var(--safety) / 0.15);
   }
   .glow-fxk {
-    box-shadow: 0 0 20px hsl(var(--fxk-cyan) / 0.3), 0 0 60px hsl(var(--fxk-cyan) / 0.1);
+    box-shadow: 0 0 24px hsl(var(--fxk-cyan) / 0.25), 0 0 64px hsl(var(--fxk-cyan) / 0.08);
   }
+  .glow-brand {
+    box-shadow: 0 0 24px hsl(var(--primary) / 0.2), 0 4px 16px hsl(228 20% 2% / 0.5);
+  }
+
   .surface-0 { background-color: hsl(var(--surface-0)); }
   .surface-1 { background-color: hsl(var(--surface-1)); }
   .surface-2 { background-color: hsl(var(--surface-2)); }
@@ -157,10 +168,19 @@
   .font-display {
     font-family: 'Outfit', sans-serif;
   }
+  .font-tech {
+    font-family: 'Space Grotesk', 'Inter', sans-serif;
+  }
 
-  /* FX KONTROL gradient text */
+  /* FX KONTROL gradient text — premium multi-stop */
   .text-fxk-gradient {
-    background: linear-gradient(135deg, hsl(var(--fxk-cyan)), hsl(var(--fxk-orange)));
+    background: linear-gradient(135deg, hsl(var(--fxk-cyan)), hsl(var(--fxk-blue)), hsl(var(--fxk-violet)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .text-fxk-fire {
+    background: linear-gradient(135deg, hsl(var(--fxk-red)), hsl(var(--fxk-orange)), hsl(var(--fxk-gold)));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
