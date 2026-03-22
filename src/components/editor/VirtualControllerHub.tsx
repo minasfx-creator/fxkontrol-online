@@ -20,7 +20,7 @@ interface ControllerCard {
   id: string;
   name: string;
   manufacturer: string;
-  type: 'firing' | 'sfx' | 'remote' | 'dmx' | 'laser';
+  type: 'firing' | 'sfx' | 'remote' | 'dmx' | 'laser' | 'module';
   connectionTypes: ConnectionType[];
   channels: number;
   description: string;
