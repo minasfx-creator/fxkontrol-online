@@ -259,10 +259,10 @@ export function useFireOneHardware() {
     }
   }, [controller, transportManager]);
 
-  const connectWiFiDirect = useCallback(async (targetHost?: string) => {
+  const connectWiFiDirect = useCallback(async (targetHost?: string, psk?: string) => {
     try {
       setState(prev => ({ ...prev, connectionError: null }));
-      const id = await controller.connectWiFiDirect(targetHost);
+      const id = await controller.connectWiFiDirect(targetHost, psk);
       setState(prev => ({ ...prev, transports: transportManager.allTransports }));
       return id;
     } catch (err: any) {

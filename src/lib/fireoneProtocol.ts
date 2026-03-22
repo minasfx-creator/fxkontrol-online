@@ -658,10 +658,10 @@ export class FireOneController {
   }
 
   /** Connect a Wi-Fi Direct transport (auto-discovery via mDNS) */
-  async connectWiFiDirect(targetHost?: string): Promise<string> {
+  async connectWiFiDirect(targetHost?: string, psk?: string): Promise<string> {
     const wd = new WiFiDirectTransport();
     this.transportManager.addTransport(wd);
-    await wd.connect({ targetHost });
+    await wd.connect({ targetHost, psk });
     return wd.id;
   }
 

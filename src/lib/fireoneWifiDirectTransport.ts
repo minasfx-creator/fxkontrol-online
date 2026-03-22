@@ -5,17 +5,18 @@
  * Used for connecting to XL4/XL2 gateways and FM-i32Q modules
  * via Wi-Fi Direct P2P (no router needed).
  * 
+ * Supports AES-128-GCM encryption when PSK is provided.
  * Priority: 1.5 (between Serial=1 and WiFi=2)
  */
 
 import {
-  WiFiTransport,
   type TransportType,
   type TransportState,
   type TransportReceiveCallback,
   type TransportStateCallback,
   type FireOneTransport,
 } from '@/lib/fireoneTransport';
+import { deriveKey, encrypt, decrypt } from '@/lib/fireoneAesCrypto';
 
 const WIFI_DIRECT_DISCOVERY_ENDPOINTS = [
   { host: 'fxk-xl4.local', port: 81, label: 'XL4 Gateway' },
@@ -26,6 +27,7 @@ const WIFI_DIRECT_DISCOVERY_ENDPOINTS = [
 ];
 
 const DISCOVERY_TIMEOUT = 8000;
+const SCAN_TIMEOUT = 5000;
 
 export type WiFiDirectDeviceType = 'XL4' | 'XL2' | 'FM-i32Q' | 'unknown';
 
@@ -60,6 +62,9 @@ export class WiFiDirectTransport implements FireOneTransport {
   private _rssi?: number;
   private _deviceType: WiFiDirectDeviceType = 'unknown';
   private _connectedDevice: WiFiDirectDeviceInfo | null = null;
+  private _encrypted = false;
+  private _encryptionKey: CryptoKey | null = null;
+  private _psk?: string;
 
   constructor(id?: string) {
     this.id = id || `wifi-direct-${Date.now()}`;
@@ -69,6 +74,7 @@ export class WiFiDirectTransport implements FireOneTransport {
   get rssi(): number | undefined { return this._rssi; }
   get deviceType(): WiFiDirectDeviceType { return this._deviceType; }
   get connectedDevice(): WiFiDirectDeviceInfo | null { return this._connectedDevice; }
+  get encrypted(): boolean { return this._encrypted; }
 
   onReceive(cb: TransportReceiveCallback) { this.receiveCallbacks.push(cb); }
   onStateChange(cb: TransportStateCallback) { this.stateCallbacks.push(cb); }
@@ -82,11 +88,20 @@ export class WiFiDirectTransport implements FireOneTransport {
   /**
    * Auto-discovery connect: tries mDNS endpoints sequentially,
    * then falls back to known IPs. Use targetHost to skip discovery.
+   * Pass `psk` in config to enable AES-128-GCM encryption.
    */
   async connect(config?: Record<string, any>): Promise<void> {
     const targetHost = config?.targetHost as string | undefined;
     const targetPort = config?.targetPort as number | undefined;
+    const psk = config?.psk as string | undefined;
     this.autoReconnect = config?.autoReconnect !== false;
+
+    // Derive encryption key if PSK provided
+    if (psk) {
+      this._psk = psk;
+      this._encryptionKey = await deriveKey(psk);
+      this._encrypted = true;
+    }
 
     if (targetHost) {
       const url = `ws://${targetHost}:${targetPort || 81}`;
@@ -146,24 +161,7 @@ export class WiFiDirectTransport implements FireOneTransport {
       };
 
       ws.onmessage = (ev: MessageEvent) => {
-        if (ev.data instanceof ArrayBuffer) {
-          const data = new Uint8Array(ev.data);
-          this.rxBytes += data.length;
-          this.receiveCallbacks.forEach(cb => cb(data, this.id));
-        } else if (typeof ev.data === 'string') {
-          try {
-            const msg = JSON.parse(ev.data);
-            if (msg.type === 'pong') {
-              this.latencyMs = Math.round(performance.now() - (msg.t0 || 0));
-            } else if (msg.type === 'status') {
-              if (msg.rssi !== undefined) this._rssi = msg.rssi;
-            } else if (msg.type === 'fireone-frame' && msg.data) {
-              const bytes = Uint8Array.from(atob(msg.data), c => c.charCodeAt(0));
-              this.rxBytes += bytes.length;
-              this.receiveCallbacks.forEach(cb => cb(bytes, this.id));
-            }
-          } catch { /* non-JSON text ignored */ }
-        }
+        this.handleMessage(ev);
       };
 
       ws.onerror = () => {
@@ -185,11 +183,43 @@ export class WiFiDirectTransport implements FireOneTransport {
     });
   }
 
+  private async handleMessage(ev: MessageEvent) {
+    if (ev.data instanceof ArrayBuffer) {
+      let data = new Uint8Array(ev.data);
+      // Decrypt if encryption is active
+      if (this._encryptionKey) {
+        try {
+          data = await decrypt(this._encryptionKey, data);
+        } catch {
+          console.warn('[WiFiDirect] Decrypt failed — frame dropped');
+          return;
+        }
+      }
+      this.rxBytes += data.length;
+      this.receiveCallbacks.forEach(cb => cb(data, this.id));
+    } else if (typeof ev.data === 'string') {
+      try {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === 'pong') {
+          this.latencyMs = Math.round(performance.now() - (msg.t0 || 0));
+        } else if (msg.type === 'status') {
+          if (msg.rssi !== undefined) this._rssi = msg.rssi;
+        } else if (msg.type === 'fireone-frame' && msg.data) {
+          const bytes = Uint8Array.from(atob(msg.data), c => c.charCodeAt(0));
+          this.rxBytes += bytes.length;
+          this.receiveCallbacks.forEach(cb => cb(bytes, this.id));
+        }
+      } catch { /* non-JSON text ignored */ }
+    }
+  }
+
   async disconnect(): Promise<void> {
     this.autoReconnect = false;
     this.stopStatusPolling();
     if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
     if (this.ws) { this.ws.close(); this.ws = null; }
+    this._encryptionKey = null;
+    this._encrypted = false;
     this.setState('disconnected');
   }
 
@@ -198,7 +228,14 @@ export class WiFiDirectTransport implements FireOneTransport {
       throw new Error('Wi-Fi Direct não conectado');
     }
     const t0 = performance.now();
-    this.ws.send(frame.slice().buffer as ArrayBuffer);
+    let payload: ArrayBuffer;
+    if (this._encryptionKey) {
+      const encrypted = await encrypt(this._encryptionKey, frame);
+      payload = (encrypted as unknown as { buffer: ArrayBuffer }).buffer;
+    } else {
+      payload = frame.slice().buffer as ArrayBuffer;
+    }
+    this.ws.send(payload);
     this.latencyMs = Math.round(performance.now() - t0);
     this.txBytes += frame.length;
   }
@@ -251,7 +288,7 @@ export class WiFiDirectTransport implements FireOneTransport {
       try {
         const ws = new WebSocket(`ws://${ep.host}:${ep.port}`);
         const ok = await new Promise<boolean>((resolve) => {
-          const t = setTimeout(() => { ws.close(); resolve(false); }, 3000);
+          const t = setTimeout(() => { ws.close(); resolve(false); }, SCAN_TIMEOUT);
           ws.onopen = () => { clearTimeout(t); ws.close(); resolve(true); };
           ws.onerror = () => { clearTimeout(t); resolve(false); };
         });
