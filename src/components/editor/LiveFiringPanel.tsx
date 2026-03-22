@@ -916,6 +916,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           { key: 'ma3' as FXCMode, label: '🎛 MA3' },
           { key: 'field_map' as FXCMode, label: '🗺 Map' },
           { key: 'connections' as FXCMode, label: '🔌 Conn' },
+          { key: 'wifi_direct' as FXCMode, label: '📡 WFD' },
           { key: 'mobile_link' as FXCMode, label: '📡 Link' },
           { key: 'settings' as FXCMode, label: '⚙' },
         ]).map(m => (
