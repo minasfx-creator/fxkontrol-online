@@ -427,6 +427,8 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
     e.stopPropagation();
     useUndoStore.getState().checkpoint();
     setIsDragging(true);
+    // Freeze camera (reuse box-select-active pattern)
+    window.dispatchEvent(new CustomEvent('box-select-active', { detail: true }));
     const nativeEvent = e.nativeEvent || e;
     dragStartRef.current = {
       heading: position.heading,
