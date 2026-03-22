@@ -30,6 +30,9 @@ export default function RomanCandleEffect({
   angleOffset?: number;
   formulationId?: string;
 }) {
+  const pointsRef = useRef<THREE.Points>(null);
+  const trailLinesRef = useRef<THREE.LineSegments>(null);
+
   const chemistry = useMemo(() => {
     const fId = formulationId || autoMatchFormulation(color, 'candle', caliber);
     return fId ? getChemistryForRendering(fId) : null;

@@ -28,6 +28,8 @@ export default function WaterfallEffect({
 }) {
   const scaledWidth = width * (0.7 + caliber * 0.12);
   const SCALED_PARTICLE_COUNT = Math.min(800, Math.round(PARTICLE_COUNT * (0.7 + caliber * 0.12)));
+  const pointsRef = useRef<THREE.Points>(null);
+
   const chemistry = useMemo(() => {
     const fId = formulationId || autoMatchFormulation(color, 'waterfall', caliber);
     return fId ? getChemistryForRendering(fId) : null;

@@ -33,6 +33,9 @@ export default function FanEffect({
   const PARTICLES_PER_RAY = Math.min(50, Math.round(BASE_PARTICLES_PER_RAY * caliberScale));
   const TOTAL_PARTICLES = RAYS * PARTICLES_PER_RAY;
 
+  const pointsRef = useRef<THREE.Points>(null);
+  const linesRef = useRef<THREE.LineSegments>(null);
+
   const chemistry = useMemo(() => {
     const fId = formulationId || autoMatchFormulation(color, 'gerb', caliber);
     return fId ? getChemistryForRendering(fId) : null;
