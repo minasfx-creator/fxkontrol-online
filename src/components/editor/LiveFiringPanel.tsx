@@ -62,33 +62,22 @@ import { RISK_GROUP_LABELS, RISK_GROUP_COLORS, type RiskGroup } from '@/lib/pyro
 // ═══════════════════════════════════════════════════════════
 const MODE_CATEGORIES = [
   {
-    label: '🔥 FIRE', modes: [
+    label: '🔥 EXECUTION', modes: [
       { key: 'super_dmx' as FXCMode, label: 'FXK-DMX', icon: Zap },
-      { key: 'simple_dmx' as FXCMode, label: 'Simple', icon: Lightbulb },
-      { key: 'manual_fire' as FXCMode, label: 'Manual', icon: Hand },
       { key: 'pyro_fire' as FXCMode, label: 'FXK-PYRO', icon: Flame },
-      { key: 'check_slave' as FXCMode, label: 'Diagnostics', icon: Check },
     ],
   },
   {
-    label: '🎛 HARDWARE', modes: [
-      { key: 'controllers' as FXCMode, label: 'Controllers', icon: Cpu },
-      { key: 'pbus' as FXCMode, label: 'P-BUS', icon: Cable },
+    label: '📡 MONITORING', modes: [
+      { key: 'show_control' as FXCMode, label: 'SHOW CTRL', icon: Activity },
+      { key: 'dmx_monitor' as FXCMode, label: 'DMX MON', icon: Radio },
       { key: 'ma3' as FXCMode, label: 'FXK-LIGHT', icon: Gauge },
-      { key: 'wifi_direct' as FXCMode, label: 'WiFi Direct', icon: Wifi },
     ],
   },
   {
-    label: '🌐 NETWORK', modes: [
-      { key: 'artnet_modules' as FXCMode, label: 'FXK-NET', icon: Globe },
-      { key: 'connections' as FXCMode, label: 'Connections', icon: Plug },
-      { key: 'radio' as FXCMode, label: 'Radio', icon: Radio },
-      { key: 'field_map' as FXCMode, label: 'Field Map', icon: Map },
-    ],
-  },
-  {
-    label: '⚙ SYSTEM', modes: [
-      { key: 'mobile_link' as FXCMode, label: 'FXK-LINK', icon: Smartphone },
+    label: '🔧 HARDWARE', modes: [
+      { key: 'artnet_modules' as FXCMode, label: 'MODULE', icon: Globe },
+      { key: 'check_slave' as FXCMode, label: 'Diagnostics', icon: Check },
       { key: 'settings' as FXCMode, label: 'Settings', icon: Settings },
     ],
   },
