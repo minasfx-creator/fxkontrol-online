@@ -309,7 +309,7 @@ export default function ShellBurstRenderer({
   const initTimeRef = useRef<number>(0);
 
   // ── Smoke billboard system ──
-  const SMOKE_COUNT = 10;
+  const SMOKE_COUNT = 16;
   const smokeMeshRefs = useRef<(THREE.Mesh | null)[]>([]);
   const smokeSpawned = useRef(false);
   const smokeParticles = useRef<{ x: number; y: number; z: number; vx: number; vy: number; vz: number; age: number; maxAge: number; scale: number; seed: number }[]>([]);
