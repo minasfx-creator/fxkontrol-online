@@ -442,6 +442,16 @@ export default function PyroFireOnePanel({
               const igPos = (a % 32) + 1;
               fireIgniter(modAddr, igPos);
             });
+            // Log fire confirmation
+            const delta = next - cue.timecodeMs;
+            const status: 'OK' | 'LATE' | 'EARLY' = Math.abs(delta) < 50 ? 'OK' : delta > 0 ? 'LATE' : 'EARLY';
+            setFireLog(prev => [...prev, {
+              cueId: cue.cueNumber || cue.id.slice(0, 4),
+              expectedMs: cue.timecodeMs,
+              actualMs: next,
+              delta,
+              status,
+            }]);
           }
         });
         return next;
