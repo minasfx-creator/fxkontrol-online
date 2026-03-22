@@ -271,6 +271,28 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
   const handleColor = isDragging ? COLORS.handleActive : isHovered ? COLORS.handleHover : COLORS.handle;
   const handleSize = isDragging ? 0.22 : isHovered ? 0.2 : 0.15;
 
+  // Wind compensation ghost arrow
+  const wind = useProjectStore(s => s.wind);
+  const windCompGhost = useMemo(() => {
+    if (!wind.enabled || wind.speed < 0.5) return null;
+    const comp = calcWindCompensation(4, wind.speed, wind.direction, position.heading);
+    if (Math.abs(comp.headingOffset) < 0.5 && Math.abs(comp.pitchOffset) < 0.5) return null;
+    const compH = (position.heading + comp.headingOffset) * (Math.PI / 180);
+    const compP = Math.max(5, Math.min(85, (position.pitch || 85) + comp.pitchOffset)) * (Math.PI / 180);
+    const r = ARROW_LENGTH * 0.9;
+    const pts: [number, number, number][] = [];
+    const steps = 6;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      pts.push([
+        Math.sin(compH) * Math.cos(compP) * r * t,
+        Math.sin(compP) * r * t,
+        -Math.cos(compH) * Math.cos(compP) * r * t,
+      ]);
+    }
+    return { points: pts, drift: comp };
+  }, [wind, position.heading, position.pitch]);
+
   return (
     <group ref={ref} position={[position.x, position.y, position.z]}>
       {/* Heading compass ring on ground */}
@@ -281,6 +303,20 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
 
       {/* Launch direction arrow shaft */}
       <Line points={arrowShaftPoints} color={COLORS.arrow} lineWidth={2.5} transparent opacity={0.85} />
+
+      {/* Wind compensation ghost arrow */}
+      {windCompGhost && windCompGhost.points.length > 1 && (
+        <Line
+          points={windCompGhost.points}
+          color="#4CAF50"
+          lineWidth={1.5}
+          dashed
+          dashSize={0.15}
+          gapSize={0.1}
+          transparent
+          opacity={0.5}
+        />
+      )}
 
       {/* Ballistic trajectory preview */}
       {trajectoryPoints.length > 1 && (
@@ -340,7 +376,7 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
         </mesh>
       )}
 
-      {/* Finale 3D-style label: position name + H/P values */}
+      {/* Finale 3D-style label: position name + H/P values + wind indicator */}
       <Html
         position={[handlePos[0] * 1.15 + 0.4, handlePos[1] * 1.15 + 0.5, handlePos[2] * 1.15]}
         center
@@ -365,6 +401,9 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
         >
           <div style={{ fontWeight: 700, color: COLORS.labelValue, fontSize: '9px', marginBottom: '1px' }}>
             {position.name}
+            {position.section && (
+              <span style={{ marginLeft: '4px', fontSize: '8px', color: '#4FC3F7', opacity: 0.7 }}>§{position.section}</span>
+            )}
           </div>
           <div style={{ display: 'flex', gap: '6px' }}>
             <span>
@@ -376,6 +415,11 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
               <span style={{ color: COLORS.labelValue }}>{Math.round(position.pitch || 85)}°</span>
             </span>
           </div>
+          {windCompGhost && (
+            <div style={{ fontSize: '8px', color: '#4CAF50', opacity: 0.8, marginTop: '1px' }}>
+              ↻ drift {windCompGhost.drift.driftX}m × {windCompGhost.drift.driftZ}m
+            </div>
+          )}
         </div>
       </Html>
     </group>

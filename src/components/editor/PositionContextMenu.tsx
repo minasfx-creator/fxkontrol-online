@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 /**
  * Right-click context menu for 3D viewport positions.
  * Shows at cursor position with Finale 3D-style actions.
+ * Includes section assignment for show segmentation.
  */
 export default function PositionContextMenu() {
   const [menu, setMenu] = useState<{ x: number; y: number; posId: string } | null>(null);
@@ -109,7 +110,18 @@ export default function PositionContextMenu() {
     setMenu(null);
   }, [positions, selectMultiplePositions]);
 
+  const assignSection = useCallback((section: string) => {
+    if (!pos) return;
+    const targets = multiSelect ? selectedPositionIds : [pos.id];
+    targets.forEach(id => updatePosition(id, { section: section || undefined }));
+    toast.success(`Section → ${section || 'None'} (${targets.length})`);
+    setMenu(null);
+  }, [pos, multiSelect, selectedPositionIds, updatePosition]);
+
   if (!menu || !pos) return null;
+
+  // Collect unique sections from all positions
+  const existingSections = Array.from(new Set(positions.map(p => p.section).filter(Boolean) as string[])).sort();
 
   const items = [
     { label: multiSelect ? `Rename ${selectedPositionIds.length}...` : 'Rename...', action: renamePos },
@@ -127,14 +139,57 @@ export default function PositionContextMenu() {
   return (
     <div
       ref={menuRef}
-      className="fixed z-[9999] bg-surface-1/95 backdrop-blur-md border border-border/60 rounded-lg shadow-2xl py-1 min-w-[180px]"
+      className="fixed z-[9999] bg-surface-1/95 backdrop-blur-md border border-border/60 rounded-lg shadow-2xl py-1 min-w-[200px]"
       style={{ left: menu.x, top: menu.y }}
     >
       <div className="px-3 py-1.5 border-b border-border/40">
         <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider">
           {multiSelect ? `${selectedPositionIds.length} Positions` : pos.name}
         </span>
+        {pos.section && (
+          <span className="ml-2 text-[8px] bg-primary/15 text-primary px-1.5 py-0.5 rounded font-semibold">
+            §{pos.section}
+          </span>
+        )}
       </div>
+
+      {/* Section assignment sub-menu */}
+      <div className="px-3 py-1.5 border-b border-border/30">
+        <div className="text-[8px] text-muted-foreground/50 font-semibold uppercase tracking-wider mb-1">Section</div>
+        <div className="flex flex-wrap gap-1">
+          <button
+            onClick={() => assignSection('')}
+            className={`px-1.5 py-0.5 rounded text-[9px] transition-colors ${
+              !pos.section ? 'bg-primary/20 text-primary' : 'bg-surface-2 text-muted-foreground hover:bg-surface-2/80'
+            }`}
+          >
+            None
+          </button>
+          {['A', 'B', 'C', 'D', 'E', 'F'].map(s => (
+            <button
+              key={s}
+              onClick={() => assignSection(s)}
+              className={`px-1.5 py-0.5 rounded text-[9px] font-semibold transition-colors ${
+                pos.section === s ? 'bg-primary/20 text-primary' : 'bg-surface-2 text-muted-foreground hover:bg-surface-2/80'
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+          {existingSections.filter(s => !['A','B','C','D','E','F'].includes(s)).map(s => (
+            <button
+              key={s}
+              onClick={() => assignSection(s)}
+              className={`px-1.5 py-0.5 rounded text-[9px] font-semibold transition-colors ${
+                pos.section === s ? 'bg-primary/20 text-primary' : 'bg-surface-2 text-muted-foreground hover:bg-surface-2/80'
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {items.map((item, i) =>
         'divider' in item ? (
           <div key={i} className="my-1 border-t border-border/30" />
