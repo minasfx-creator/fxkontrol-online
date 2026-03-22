@@ -71,14 +71,12 @@ const MODE_CATEGORIES = [
     label: '📡 MONITORING', modes: [
       { key: 'show_control' as FXCMode, label: 'SHOW CTRL', icon: Activity },
       { key: 'dmx_monitor' as FXCMode, label: 'DMX MON', icon: Radio },
-      { key: 'ma3' as FXCMode, label: 'FXK-LIGHT', icon: Gauge },
+      { key: 'fxk_light' as FXCMode, label: 'FXK-LIGHT', icon: Gauge },
     ],
   },
   {
     label: '🔧 HARDWARE', modes: [
-      { key: 'artnet_modules' as FXCMode, label: 'MODULE', icon: Globe },
-      { key: 'check_slave' as FXCMode, label: 'Diagnostics', icon: Check },
-      { key: 'settings' as FXCMode, label: 'Settings', icon: Settings },
+      { key: 'module' as FXCMode, label: 'MODULE', icon: Globe },
     ],
   },
 ];
@@ -930,20 +928,22 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
             {dmxArm ? 'DMX ●' : 'DMX'}
           </button>
         </div>
-        <button
-          onMouseDown={() => setDeadmanHeld(true)}
-          onMouseUp={() => setDeadmanHeld(false)}
-          onMouseLeave={() => setDeadmanHeld(false)}
-          onTouchStart={(e) => { e.preventDefault(); setDeadmanHeld(true); }}
-          onTouchEnd={(e) => { e.preventDefault(); setDeadmanHeld(false); }}
-          className={cn(
-            "flex items-center justify-center rounded border-2 font-black uppercase transition-all gap-2",
-            fs && mob ? "w-full py-3 text-[10px]" : fs ? "w-16 py-3 text-[10px] shrink-0" : "w-10 py-1.5 text-[8px] shrink-0",
-            deadmanHeld ? "bg-green-600/30 border-green-500/60 text-green-400" : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/30"
-          )}>
-          <Hand className={cn(fs && mob ? "w-5 h-5" : fs ? "w-4 h-4" : "w-3 h-3")} />
-          {fs && mob && <span>DEADMAN</span>}
-        </button>
+        {mode !== 'pyro_fire' && (
+          <button
+            onMouseDown={() => setDeadmanHeld(true)}
+            onMouseUp={() => setDeadmanHeld(false)}
+            onMouseLeave={() => setDeadmanHeld(false)}
+            onTouchStart={(e) => { e.preventDefault(); setDeadmanHeld(true); }}
+            onTouchEnd={(e) => { e.preventDefault(); setDeadmanHeld(false); }}
+            className={cn(
+              "flex items-center justify-center rounded border-2 font-black uppercase transition-all gap-2",
+              fs && mob ? "w-full py-3 text-[10px]" : fs ? "w-16 py-3 text-[10px] shrink-0" : "w-10 py-1.5 text-[8px] shrink-0",
+              deadmanHeld ? "bg-green-600/30 border-green-500/60 text-green-400" : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/30"
+            )}>
+            <Hand className={cn(fs && mob ? "w-5 h-5" : fs ? "w-4 h-4" : "w-3 h-3")} />
+            {fs && mob && <span>DEADMAN</span>}
+          </button>
+        )}
       </div>
       {(pyroArm || dmxArm) && (
         <div className={cn(
@@ -1382,21 +1382,14 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
       case 'pyro_fire': return <PyroFireOnePanel fs={fs} fireChannel={fireChannel} channels={channels} pyroArm={pyroArm} dmxArm={dmxArm} handlePanic={handlePanic} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
       case 'check_slave': return <CheckSlavePanel fs={fs} pyroArm={pyroArm} />;
       case 'mobile_link': return <MobileLinkMode fs={fs} fireChannel={fireChannel} channels={channels} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
-      case 'controllers': return <VirtualControllerHub fs={fs} onSelectMode={(m) => setMode(m as FXCMode)} />;
-      case 'zk6200': return <VirtualZK6200 fs={fs} />;
-      case 'fxbutton': return <VirtualFXButton fs={fs} />;
-      case 'field_map': return <FieldMap2D fs={fs} />;
-      case 'pbus': return <PBusMonitorPanel />;
-      case 'connections': return <ConnectionManagerPanel fs={fs} />;
-      case 'radio': return <RadioControlPanel fs={fs} />;
-      case 'ma3': return <MA3ControlPanel fs={fs} />;
-      case 'wifi_direct': return <WiFiDirectControlPanel fs={fs} />;
-      case 'artnet_modules': return <FXKNetPanel fs={fs} />;
       case 'show_control': return <ShowControlPanel fs={fs} />;
-      case 'module': return <FXKNetPanel fs={fs} />;
+      case 'module':
+      case 'artnet_modules': return <FXKNetPanel fs={fs} />;
       case 'dmx_monitor': return <DMXMonitorPanel fs={fs} />;
-      case 'fxk_light': return <MA3ControlPanel fs={fs} />;
+      case 'fxk_light':
+      case 'ma3': return <MA3ControlPanel fs={fs} />;
       case 'drone_ops': return <DroneCommandPanel fs={fs} />;
+      case 'controllers': return <VirtualControllerHub fs={fs} onSelectMode={(m) => setMode(m as FXCMode)} />;
       case 'settings': return <SettingsPanel fs={fs} settings={settings} onSettingsChange={setSettings} relayConnected={relayConnected} relayUrl={relayUrl} onRelayUrlChange={setRelayUrl} onConnectRelay={connectRelay} onDisconnectRelay={disconnectRelay} />;
       default: return renderSimpleDmx(fs);
     }
