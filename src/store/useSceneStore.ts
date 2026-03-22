@@ -313,6 +313,11 @@ const DEFAULT_SETTINGS: SceneSettings = {
   smokeRenderQuality: 'low',
   ribbonTrails: false,
 
+  // UE5.7 defaults
+  motionBlurEnabled: false,
+  motionBlurIntensity: 0.5,
+  colorGradingPreset: 'neutral',
+
   // Environment v2 defaults
   skyEngineV2: false,
   cloudCoverage: 0.1,
