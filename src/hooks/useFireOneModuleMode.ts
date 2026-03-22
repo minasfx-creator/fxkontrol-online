@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 export interface UseFireOneModuleReturn {
   status: ModuleStatus | null;
   powered: boolean;
-  powerOn: () => void;
+  powerOn: (hardwareMode?: 'cds' | 'direct_relay') => void;
   powerOff: () => void;
   arm: () => boolean;
   disarm: () => void;
@@ -43,6 +43,7 @@ export interface UseFireOneModuleReturn {
   connectBLE: () => Promise<boolean>;
   connectUSB: () => Promise<boolean>;
   connectWS: (url?: string) => Promise<boolean>;
+  connectDirectRelay: () => Promise<boolean>;
   disconnectHardware: () => Promise<void>;
 }
 
