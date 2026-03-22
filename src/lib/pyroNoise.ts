@@ -79,3 +79,66 @@ export function combustionFlicker(
   const raw = 0.5 + mixed * 0.4 * intensity + spike * intensity;
   return Math.max(0.05, Math.min(1.5, raw));
 }
+
+/**
+ * Shared thermal color ramp: white-hot → saturated → ember → charcoal.
+ * Used across all pyro effects for consistent star cooling behavior.
+ * @param baseR/G/B - base effect color (0-1)
+ * @param lifeRatio - 0 = just born, 1 = dead
+ * @param hdrBoost - multiplier for initial white-hot phase (default 1.5)
+ * @returns {r, g, b} color values (may exceed 1.0 for HDR)
+ */
+export function thermalColorRamp(
+  baseR: number,
+  baseG: number,
+  baseB: number,
+  lifeRatio: number,
+  hdrBoost = 1.5,
+): { r: number; g: number; b: number } {
+  // Clamp lifeRatio
+  const t = Math.max(0, Math.min(1, lifeRatio));
+
+  if (t < 0.04) {
+    // White-hot birth phase
+    const p = t / 0.04;
+    return {
+      r: (1.4 + (1 - p) * 0.6) * hdrBoost,
+      g: (1.2 + (1 - p) * 0.3) * hdrBoost,
+      b: (0.85 + (1 - p) * 0.15) * hdrBoost,
+    };
+  }
+  if (t < 0.15) {
+    // White-hot → saturated
+    const p = (t - 0.04) / 0.11;
+    return {
+      r: 1.4 * hdrBoost * (1 - p) + baseR * 1.5 * p,
+      g: 1.2 * hdrBoost * (1 - p) + baseG * 1.5 * p,
+      b: 0.85 * hdrBoost * (1 - p) + baseB * 1.5 * p,
+    };
+  }
+  if (t < 0.55) {
+    // Saturated → base color
+    const p = (t - 0.15) / 0.4;
+    return {
+      r: baseR * 1.5 * (1 - p) + baseR * 1.2 * p,
+      g: baseG * 1.5 * (1 - p) + baseG * 1.2 * p,
+      b: baseB * 1.5 * (1 - p) + baseB * 1.2 * p,
+    };
+  }
+  if (t < 0.80) {
+    // Base → ember (warm orange-red)
+    const p = (t - 0.55) / 0.25;
+    return {
+      r: baseR * 1.2 * (1 - p) + (baseR * 0.5 + 0.25) * p,
+      g: baseG * 1.2 * (1 - p) + (baseG * 0.15 + 0.05) * p,
+      b: baseB * 1.2 * (1 - p) + (baseB * 0.05) * p,
+    };
+  }
+  // Ember → charcoal
+  const p = (t - 0.80) / 0.20;
+  return {
+    r: (baseR * 0.5 + 0.25) * (1 - p) + 0.12 * p,
+    g: (baseG * 0.15 + 0.05) * (1 - p) + 0.06 * p,
+    b: (baseB * 0.05) * (1 - p) + 0.02 * p,
+  };
+}

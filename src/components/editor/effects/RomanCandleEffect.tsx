@@ -2,13 +2,15 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
+import { combustionFlicker, temporalFlicker, thermalColorRamp } from '@/lib/pyroNoise';
 
 const STARS_PER_SHOT = 20;
 const TRAIL_POINTS_PER_SHOT = 12;
 
 /**
  * Roman Candle: Fires individual stars with ribbon-style comet trails.
- * Integrated with wind force and ribbon trail rendering.
+ * Integrated with wind, combustion flicker (main star), temporal flicker
+ * (sparks), and thermal color ramp.
  */
 export default function RomanCandleEffect({
   position,
@@ -37,9 +39,9 @@ export default function RomanCandleEffect({
   const trailColArr = useMemo(() => new Float32Array(totalTrailSegs * 3), [totalTrailSegs]);
 
   const shotSeeds = useMemo(() => {
-    const seeds: { vx: number; vy: number; vz: number; lt: number }[][] = [];
+    const seeds: { vx: number; vy: number; vz: number; lt: number; seed: number }[][] = [];
     for (let s = 0; s < shotCount; s++) {
-      const shot: { vx: number; vy: number; vz: number; lt: number }[] = [];
+      const shot: { vx: number; vy: number; vz: number; lt: number; seed: number }[] = [];
       const tiltAngle = (Math.random() - 0.5) * 0.12;
       const tiltDir = Math.random() * Math.PI * 2;
       for (let j = 0; j < STARS_PER_SHOT; j++) {
@@ -50,6 +52,7 @@ export default function RomanCandleEffect({
           vy: 16 + Math.random() * 6,
           vz: Math.sin(tiltAngle) * Math.sin(tiltDir) * (isMain ? 1.5 : 0) + (Math.random() - 0.5) * spread,
           lt: isMain ? 1.4 : 0.3 + Math.random() * 0.5,
+          seed: Math.random() * 999 + s * STARS_PER_SHOT + j,
         });
       }
       seeds.push(shot);
@@ -57,9 +60,10 @@ export default function RomanCandleEffect({
     return seeds;
   }, [shotCount]);
 
-  useFrame(() => {
+  useFrame(({ clock }) => {
     if (!pointsRef.current) return;
     const GRAVITY = -9.81;
+    const time = clock.getElapsedTime();
 
     // Wind
     const { wind } = useProjectStore.getState();
@@ -100,17 +104,22 @@ export default function RomanCandleEffect({
 
         const age = timeSinceFire / maxVisible;
         const fade = Math.max(0, 1 - age);
-        const sparkle = isMain
-          ? 0.85 + Math.sin(idx * 7 + progress * 30) * 0.15
-          : 0.5 + Math.sin(idx * 19 + progress * 60) * 0.5;
+        
+        // Main star: combustion flicker; sparks: temporal flicker
+        const flicker = isMain
+          ? combustionFlicker(seed.seed, time, 1.1)
+          : temporalFlicker(seed.seed, time, 0.55, 0.35, 0.30);
 
         const brightness = isMain ? 1.0 : 0.5;
-        const flashPhase = Math.max(0, 1 - timeSinceFire * 15);
-        colArr[idx * 3] = THREE.MathUtils.lerp(baseColor.r, 1.0, flashPhase) * fade * sparkle * brightness;
-        colArr[idx * 3 + 1] = THREE.MathUtils.lerp(baseColor.g, 0.9, flashPhase) * fade * sparkle * brightness;
-        colArr[idx * 3 + 2] = THREE.MathUtils.lerp(baseColor.b, 0.6, flashPhase) * fade * sparkle * brightness;
+        
+        // Thermal color ramp for natural cooling
+        const thermal = thermalColorRamp(baseColor.r, baseColor.g, baseColor.b, age, isMain ? 1.5 : 1.0);
+        
+        colArr[idx * 3] = thermal.r * fade * flicker * brightness;
+        colArr[idx * 3 + 1] = thermal.g * fade * flicker * brightness;
+        colArr[idx * 3 + 2] = thermal.b * fade * flicker * brightness;
 
-        // Ribbon trail for main star — generate line segments along past trajectory
+        // Ribbon trail for main star
         if (isMain && timeSinceFire > 0 && timeSinceFire < maxVisible) {
           for (let tp = 0; tp < TRAIL_POINTS_PER_SHOT && trailIdx < totalTrailSegs; tp++) {
             const tBack = Math.max(0, tAdj - tp * 0.04);
@@ -128,13 +137,17 @@ export default function RomanCandleEffect({
             trailPosArr[segIdx2 + 1] = Math.max(0, seed.vy * tBack2 + 0.5 * GRAVITY * tBack2 * tBack2);
             trailPosArr[segIdx2 + 2] = seed.vz * tBack2 * d2 + wZ * tBack2 * tBack2 * 0.5;
 
-            const trailFade = Math.max(0, 1 - tp / TRAIL_POINTS_PER_SHOT) * fade * 0.6;
-            trailColArr[segIdx] = baseColor.r * trailFade;
-            trailColArr[segIdx + 1] = baseColor.g * trailFade * 0.7;
-            trailColArr[segIdx + 2] = baseColor.b * trailFade * 0.4;
-            trailColArr[segIdx2] = baseColor.r * trailFade * 0.5;
-            trailColArr[segIdx2 + 1] = baseColor.g * trailFade * 0.3;
-            trailColArr[segIdx2 + 2] = baseColor.b * trailFade * 0.2;
+            // Trail uses thermal ramp too — brighter for main star trail segments
+            const trailAge = tp / TRAIL_POINTS_PER_SHOT;
+            const trailThermal = thermalColorRamp(baseColor.r, baseColor.g, baseColor.b, trailAge * 0.6 + age * 0.4, 1.2);
+            const trailFade = Math.max(0, 1 - tp / TRAIL_POINTS_PER_SHOT) * fade * 0.7;
+            
+            trailColArr[segIdx] = trailThermal.r * trailFade;
+            trailColArr[segIdx + 1] = trailThermal.g * trailFade * 0.7;
+            trailColArr[segIdx + 2] = trailThermal.b * trailFade * 0.4;
+            trailColArr[segIdx2] = trailThermal.r * trailFade * 0.5;
+            trailColArr[segIdx2 + 1] = trailThermal.g * trailFade * 0.3;
+            trailColArr[segIdx2 + 2] = trailThermal.b * trailFade * 0.2;
 
             trailIdx += 2;
           }
