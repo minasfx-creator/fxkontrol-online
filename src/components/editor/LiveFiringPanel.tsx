@@ -16,7 +16,7 @@ import {
   Shield, ShieldAlert, Gauge, Settings, FolderOpen, Wifi,
   Signal, Thermometer, Activity, Volume2, Eye, EyeOff,
   Maximize2, Minimize2, Battery, Hand, ChevronLeft, ChevronRight,
-  Cable
+  Cable, Globe, Map, Cpu, Smartphone, Plug
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
