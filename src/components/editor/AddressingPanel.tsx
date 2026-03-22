@@ -218,6 +218,7 @@ export default function AddressingPanel({ onClose }: { onClose: () => void }) {
                   <th className="px-1 py-0.5 text-left text-muted-foreground">P</th>
                   <th className="px-1 py-0.5 text-left text-muted-foreground">Time</th>
                   <th className="px-1 py-0.5 text-left text-muted-foreground">Effect</th>
+                  <th className="px-1 py-0.5 text-left text-muted-foreground">Pos</th>
                   {hardware.isConnected && <th className="px-1 py-0.5 text-left text-muted-foreground">Link</th>}
                 </tr>
               </thead>
