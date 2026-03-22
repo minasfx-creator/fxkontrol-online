@@ -406,17 +406,19 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
             </span>
           </div>
 
-          {/* Command Line */}
-          <div className="flex gap-1">
+          {/* Command Line — grandMA3 style with Cmd> prompt */}
+          <div className="flex gap-1 rounded-sm overflow-hidden" style={{ border: '1px solid hsl(220 5% 15%)', background: 'hsl(220 5% 5%)' }}>
+            <span className="flex items-center px-2 font-mono text-[9px] font-bold shrink-0" style={{ color: 'hsl(240 50% 60%)' }}>Cmd&gt;</span>
             <Input
               value={cmdInput}
               onChange={e => setCmdInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && sendCmd()}
-              placeholder="FXK-LIGHT Command (e.g. Go Seq 1)"
-              className="h-6 text-[9px] font-mono flex-1"
+              placeholder="Go Seq 1, Store Cue 1..."
+              className="h-6 text-[9px] font-mono flex-1 border-0 bg-transparent focus-visible:ring-0"
+              style={{ color: 'hsl(220 5% 75%)', caretColor: 'hsl(240 50% 60%)' }}
               disabled={oscState !== 'connected'}
             />
-            <Button size="sm" className="h-6 text-[8px] px-2" onClick={sendCmd} disabled={oscState !== 'connected'}>
+            <Button size="sm" className="h-6 text-[8px] px-2 rounded-none" onClick={sendCmd} disabled={oscState !== 'connected'}>
               Send
             </Button>
           </div>

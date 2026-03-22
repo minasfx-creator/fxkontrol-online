@@ -240,23 +240,32 @@ export default function DroneCommandPanel({ fs = false }: DroneCommandPanelProps
           </div>
         </div>
 
-        {/* Q4: Telemetry Feed */}
-        <div className="rounded border overflow-hidden flex flex-col" style={{ borderColor: 'hsl(165 20% 15%)', background: 'hsl(165 6% 7%)' }}>
+        {/* Q4: Telemetry Feed — military terminal green phosphor */}
+        <div className="rounded border overflow-hidden flex flex-col" style={{ borderColor: 'hsl(165 20% 15%)', background: 'hsl(0 0% 2%)' }}>
           <div className="relative flex-1 p-2">
-            <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2" style={{ borderColor: 'hsl(165 100% 42% / 0.3)' }} />
-            <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2" style={{ borderColor: 'hsl(165 100% 42% / 0.3)' }} />
-            <p className="text-[7px] font-mono font-bold uppercase tracking-[0.2em] mb-1" style={{ color: 'hsl(165 60% 45%)' }}>Telemetry Feed</p>
+            {/* CRT scanline overlay */}
+            <div className="absolute inset-0 pointer-events-none" style={{
+              backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0,255,100,0.02) 1px, rgba(0,255,100,0.02) 2px)',
+              backgroundSize: '100% 2px',
+            }} />
+            <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2" style={{ borderColor: 'hsl(120 80% 35% / 0.3)' }} />
+            <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2" style={{ borderColor: 'hsl(120 80% 35% / 0.3)' }} />
+            <p className="text-[7px] font-mono font-bold uppercase tracking-[0.2em] mb-1" style={{ color: 'hsl(120 80% 40%)' }}>Telemetry Feed</p>
             <ScrollArea className="h-full max-h-[100px]">
               <div className="space-y-0.5 font-mono text-[7px]">
-                {telemetry.map(t => (
-                  <div key={t.id} className="flex items-center gap-2 text-teal-300/60">
-                    <span className="text-teal-500/40 w-4">D{String(t.id).padStart(2, '0')}</span>
-                    <span>ALT:{t.alt.toFixed(0)}m</span>
-                    <span>SPD:{t.speed.toFixed(1)}m/s</span>
-                    <span>HDG:{t.heading}°</span>
-                    <span className={t.battery < 80 ? 'text-amber-400' : ''}>{t.battery.toFixed(0)}%</span>
-                  </div>
-                ))}
+                {telemetry.map(t => {
+                  const ts = new Date().toISOString().slice(11, 19);
+                  return (
+                    <div key={t.id} className="flex items-center gap-2" style={{ color: 'hsl(120 100% 45%)', textShadow: '0 0 4px hsl(120 100% 45% / 0.3)' }}>
+                      <span style={{ color: 'hsl(120 50% 30%)' }}>{ts}</span>
+                      <span className="w-4">D{String(t.id).padStart(2, '0')}</span>
+                      <span>ALT:{t.alt.toFixed(0)}m</span>
+                      <span>SPD:{t.speed.toFixed(1)}m/s</span>
+                      <span>HDG:{t.heading}°</span>
+                      <span className={t.battery < 80 ? '' : ''} style={{ color: t.battery < 80 ? 'hsl(40 90% 50%)' : undefined }}>{t.battery.toFixed(0)}%</span>
+                    </div>
+                  );
+                })}
               </div>
             </ScrollArea>
           </div>
