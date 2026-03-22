@@ -4,20 +4,37 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { ambientSound } from '@/lib/ambientSound';
-import minasfxLogo from '@/assets/minasfx-logo-white.png';
+import minasfxLogo from '@/assets/minasfx-logo-new.png';
+import fxkLogo from '@/assets/fxk-logo-new.png';
+
+const BOOT_LINES = [
+  'NEXUS AUTH v4.2 · SECURE CHANNEL',
+  'ENCRYPTION ............. AES-256',
+  'BIOMETRIC LOCK ......... STANDBY',
+  'STATUS ................. READY',
+];
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [bootPhase, setBootPhase] = useState<'booting' | 'ready'>('booting');
+  const [bootPhase, setBootPhase] = useState<'blackout' | 'boot' | 'ready'>('blackout');
+  const [visibleLines, setVisibleLines] = useState(0);
 
-  // Boot sequence
   useEffect(() => {
-    const t = setTimeout(() => setBootPhase('ready'), 1200);
-    return () => clearTimeout(t);
+    const t1 = setTimeout(() => setBootPhase('boot'), 200);
+    const t2 = setTimeout(() => setBootPhase('ready'), 1400);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
+
+  useEffect(() => {
+    if (bootPhase !== 'boot') return;
+    const timers = BOOT_LINES.map((_, i) =>
+      setTimeout(() => setVisibleLines(i + 1), 150 + i * 200)
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [bootPhase]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,85 +66,98 @@ export default function Auth() {
 
   return (
     <div className="h-screen w-screen flex items-center justify-center bg-background relative overflow-hidden br2049-rain">
-      {/* Holographic scanline overlay */}
-      <div className="absolute inset-0 animate-holographic-scan pointer-events-none z-[2]" />
-      
-      {/* Warm amber grid */}
-      <div className="absolute inset-0" style={{
-        backgroundImage: 'linear-gradient(hsl(32 100% 50% / 0.03) 1px, transparent 1px), linear-gradient(90deg, hsl(32 100% 50% / 0.03) 1px, transparent 1px)',
+      {/* Scanline sweep */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-[2]">
+        <div className="absolute w-full h-[2px] animate-scanline-sweep" style={{
+          background: 'linear-gradient(90deg, transparent 0%, hsl(32 100% 50% / 0.3) 50%, transparent 100%)',
+        }} />
+      </div>
+
+      {/* Grid */}
+      <div className="absolute inset-0 opacity-[0.025]" style={{
+        backgroundImage: 'linear-gradient(hsl(32 100% 50% / 0.6) 1px, transparent 1px), linear-gradient(90deg, hsl(32 100% 50% / 0.6) 1px, transparent 1px)',
         backgroundSize: '48px 48px',
       }} />
-      
+
       {/* Amber orbs */}
       <div className="absolute top-[-30%] left-[-10%] w-[60%] h-[60%] rounded-full blur-[120px] animate-auth-orb-1"
-        style={{ background: 'hsl(32 100% 50% / 0.08)' }} />
+        style={{ background: 'hsl(32 100% 50% / 0.07)' }} />
       <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full blur-[100px] animate-auth-orb-2"
-        style={{ background: 'hsl(38 100% 58% / 0.06)' }} />
-      <div className="absolute top-[40%] left-[60%] w-[30%] h-[30%] rounded-full blur-[80px]"
-        style={{ background: 'hsl(25 80% 40% / 0.05)' }} />
+        style={{ background: 'hsl(38 100% 58% / 0.05)' }} />
 
-      {/* Boot text */}
-      {bootPhase === 'booting' && (
-        <div className="absolute top-[30%] left-1/2 -translate-x-1/2 z-20">
-          <p className="text-[11px] font-mono-code tracking-[0.2em] uppercase animate-terminal-type" style={{ color: 'hsl(32 100% 50% / 0.7)' }}>
-            NEXUS TERMINAL v2.0 // INITIALIZING...
-          </p>
+      {/* Boot terminal overlay */}
+      {bootPhase === 'boot' && (
+        <div className="absolute top-[25%] left-1/2 -translate-x-1/2 z-20 w-72">
+          <div className="space-y-1">
+            {BOOT_LINES.slice(0, visibleLines).map((line, i) => (
+              <p key={i} className="font-mono text-[8px] tracking-wider" style={{
+                color: line.includes('READY') ? 'hsl(120 70% 45% / 0.7)' : 'hsl(32 100% 50% / 0.4)',
+              }}>
+                {'> '}{line}
+              </p>
+            ))}
+            <span className="inline-block w-1.5 h-2.5 animate-pulse" style={{ background: 'hsl(32 100% 50% / 0.5)' }} />
+          </div>
         </div>
       )}
 
       {/* Glass card */}
-      <div className={`relative z-10 w-full max-w-sm px-4 transition-all duration-700 ${bootPhase === 'booting' ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
-        <div className="rounded-2xl p-6 space-y-6 relative overflow-hidden animate-holo-materialize" style={{
-          background: 'hsl(220 18% 6% / 0.85)',
+      <div className={`relative z-10 w-full max-w-sm px-4 transition-all duration-[1000ms] ease-out ${
+        bootPhase === 'ready' ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-6'
+      }`}>
+        <div className="rounded-2xl p-6 space-y-5 relative overflow-hidden" style={{
+          background: 'hsl(220 18% 6% / 0.88)',
           backdropFilter: 'blur(24px) saturate(1.5)',
-          border: '1px solid hsl(32 100% 50% / 0.12)',
-          boxShadow: '0 0 40px hsl(32 100% 50% / 0.08), 0 8px 32px hsl(220 22% 3% / 0.6), inset 0 1px 0 hsl(32 100% 60% / 0.05)',
-          animationDelay: '0.3s',
+          border: '1px solid hsl(32 100% 50% / 0.1)',
+          boxShadow: '0 0 40px hsl(32 100% 50% / 0.06), 0 8px 32px hsl(220 22% 3% / 0.6), inset 0 1px 0 hsl(32 100% 60% / 0.04)',
         }}>
-          {/* Scanline inside card */}
-          <div className="absolute inset-0 animate-holographic-scan pointer-events-none opacity-50" />
-          
+          {/* Inner scanline */}
+          <div className="absolute inset-0 animate-holographic-scan pointer-events-none opacity-30" />
+
           <div className="text-center relative z-10">
-            <img src={minasfxLogo} alt="MinasFX Special FX Solutions" className="h-10 mx-auto mb-4 object-contain animate-fxk-stagger" style={{ filter: 'drop-shadow(0 0 12px hsl(32 100% 50% / 0.4))', animationDelay: '0.4s' }} />
-            <h1 className="text-xl font-bold text-foreground font-display tracking-tight">FX KONTROL</h1>
-            <p className="text-[10px] mt-1 font-mono-code tracking-[0.15em] uppercase" style={{ color: 'hsl(32 100% 50% / 0.6)' }}>
-              NEXUS AUTHENTICATION TERMINAL
+            {/* FXK Logo */}
+            <div className="flex justify-center mb-3">
+              <img
+                src={fxkLogo}
+                alt="FX Kontrol"
+                className="h-16 w-16 object-contain"
+                style={{ filter: 'drop-shadow(0 0 12px hsl(32 100% 50% / 0.3))' }}
+              />
+            </div>
+
+            <h1 className="text-lg font-bold text-foreground tracking-[0.15em] uppercase">FX KONTROL</h1>
+            <p className="text-[9px] mt-0.5 font-mono tracking-[0.15em] uppercase" style={{ color: 'hsl(32 100% 50% / 0.5)' }}>
+              NEXUS AUTHENTICATION
             </p>
-            <p className="text-sm text-muted-foreground mt-3">
+            <p className="text-xs text-muted-foreground mt-3">
               {isLogin ? 'Entre para acessar seus projetos' : 'Crie sua conta'}
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-3 relative z-10">
-            <div className="animate-fxk-stagger" style={{ animationDelay: '0.5s' }}>
-              <Input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="bg-[hsl(var(--surface-0)/0.6)] border-[hsl(32_100%_50%/0.15)] rounded-xl h-11 text-sm focus:border-[hsl(32_100%_50%/0.4)] focus:ring-1 focus:ring-[hsl(32_100%_50%/0.2)]"
-              />
-            </div>
-            <div className="animate-fxk-stagger" style={{ animationDelay: '0.55s' }}>
-              <Input
-                type="password"
-                placeholder="Senha"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                className="bg-[hsl(var(--surface-0)/0.6)] border-[hsl(32_100%_50%/0.15)] rounded-xl h-11 text-sm focus:border-[hsl(32_100%_50%/0.4)] focus:ring-1 focus:ring-[hsl(32_100%_50%/0.2)]"
-              />
-            </div>
-            <div className="animate-fxk-stagger" style={{ animationDelay: '0.6s' }}>
-              <Button type="submit" className="w-full h-11 rounded-xl font-semibold text-sm" style={{
-                background: 'linear-gradient(135deg, hsl(32 100% 50%), hsl(38 100% 55%))',
-                color: 'hsl(220 20% 3%)',
-              }} disabled={loading}>
-                {loading ? 'Aguarde...' : isLogin ? 'Entrar' : 'Cadastrar'}
-              </Button>
-            </div>
+            <Input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="bg-[hsl(var(--surface-0)/0.6)] border-[hsl(32_100%_50%/0.12)] rounded-xl h-10 text-sm focus:border-[hsl(32_100%_50%/0.35)] focus:ring-1 focus:ring-[hsl(32_100%_50%/0.15)]"
+            />
+            <Input
+              type="password"
+              placeholder="Senha"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              className="bg-[hsl(var(--surface-0)/0.6)] border-[hsl(32_100%_50%/0.12)] rounded-xl h-10 text-sm focus:border-[hsl(32_100%_50%/0.35)] focus:ring-1 focus:ring-[hsl(32_100%_50%/0.15)]"
+            />
+            <Button type="submit" className="w-full h-10 rounded-xl font-semibold text-sm" style={{
+              background: 'linear-gradient(135deg, hsl(32 100% 50%), hsl(38 100% 55%))',
+              color: 'hsl(220 20% 3%)',
+            }} disabled={loading}>
+              {loading ? 'Aguarde...' : isLogin ? 'Entrar' : 'Cadastrar'}
+            </Button>
           </form>
 
           <p className="text-center text-xs text-muted-foreground relative z-10">
@@ -142,9 +172,14 @@ export default function Auth() {
           </p>
         </div>
 
-        <p className="text-center text-[9px] text-muted-foreground/30 font-mono-code mt-4">
-          Powered by MinasFX Special FX Solutions
-        </p>
+        {/* MinasFX branding */}
+        <div className="flex justify-center mt-4">
+          <img
+            src={minasfxLogo}
+            alt="Minas FX"
+            className="h-6 object-contain opacity-25"
+          />
+        </div>
       </div>
     </div>
   );

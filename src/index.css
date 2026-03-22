@@ -950,3 +950,14 @@ body.night-mode {
     width: 40px !important;
   }
 }
+
+/* Cinematic scanline sweep animation */
+@keyframes scanline-sweep {
+  0% { top: -2px; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+.animate-scanline-sweep {
+  animation: scanline-sweep 3s linear infinite;
+}
