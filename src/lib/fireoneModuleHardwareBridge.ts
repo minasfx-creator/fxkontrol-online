@@ -45,13 +45,13 @@ export class FireOneHardwareBridge {
   private rxBytes = 0;
   private lastPing = 0;
 
-  // Transport handles
-  private bleDevice: BluetoothDevice | null = null;
-  private bleCharTx: BluetoothRemoteGATTCharacteristic | null = null;
-  private bleCharRx: BluetoothRemoteGATTCharacteristic | null = null;
-  private serialPort: SerialPort | null = null;
-  private serialReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
-  private serialWriter: WritableStreamDefaultWriter<Uint8Array> | null = null;
+  // Transport handles (use `any` for Web Bluetooth / WebSerial types not in default TS lib)
+  private bleDevice: any = null;
+  private bleCharTx: any = null;
+  private bleCharRx: any = null;
+  private serialPort: any = null;
+  private serialReader: any = null;
+  private serialWriter: any = null;
   private ws: WebSocket | null = null;
 
   private responseBuffer = '';
