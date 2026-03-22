@@ -38,11 +38,12 @@ const FILTER_CHIPS: { key: FilterType; label: string; icon: typeof Flame }[] = [
 const CALIBER_OPTIONS = [2, 3, 4, 5, 6, 8, 10, 12];
 
 /* ─── Finale 3D-style Table Row ─── */
-function EffectTableRow({ effect, index }: { effect: Effect; index: number }) {
+function EffectTableRow({ effect, index, usageCount }: { effect: Effect; index: number; usageCount: number }) {
   const { selectedEffectId, selectEffect, addTimelineItem, currentTime, positions, selectedPositionId, selectedPositionIds } = useProjectStore();
   const isSelected = selectedEffectId === effect.id;
   const isPyro = effect.type === 'firework';
   const vdl = useMemo(() => isPyro ? parseVDL(`${effect.caliber || 4}in ${effect.name}`) : null, [effect, isPyro]);
+  const [flashFeedback, setFlashFeedback] = useState(false);
 
   const handleAdd = useCallback(() => {
     const validType = isPyro || effect.type === 'sfx' ? 'pyro' : effect.type === 'drone' ? 'drone-pad' : null;
