@@ -50,6 +50,7 @@ import RadioControlPanel from './RadioControlPanel';
 import MA3ControlPanel from './MA3ControlPanel';
 import VirtualIFMx32QPanel from './live-firing/VirtualIFMx32QPanel';
 import WiFiDirectControlPanel from './live-firing/WiFiDirectControlPanel';
+import ArtNetModulePanel from './live-firing/ArtNetModulePanel';
 import { RISK_GROUP_LABELS, RISK_GROUP_COLORS, type RiskGroup } from '@/lib/pyroPhysics';
 
 // ═══════════════════════════════════════════════════════════
@@ -348,7 +349,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   }, [cues, channels, setChannels]);
 
   // ─── Swipe gesture for mobile mode switching / close ───
-  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'auto_fire', 'check_slave', 'controllers', 'pbus', 'field_map', 'connections', 'wifi_direct', 'radio', 'ma3', 'module', 'mobile_link', 'settings'];
+  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'auto_fire', 'check_slave', 'controllers', 'pbus', 'field_map', 'connections', 'wifi_direct', 'radio', 'ma3', 'module', 'artnet_modules', 'mobile_link', 'settings'];
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const swipeHandled = useRef(false);
 
@@ -917,6 +918,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           { key: 'field_map' as FXCMode, label: '🗺 Map' },
           { key: 'connections' as FXCMode, label: '🔌 Conn' },
           { key: 'wifi_direct' as FXCMode, label: '📡 WFD' },
+          { key: 'artnet_modules' as FXCMode, label: '🌐 ArtNet' },
           { key: 'mobile_link' as FXCMode, label: '📡 Link' },
           { key: 'settings' as FXCMode, label: '⚙' },
         ]).map(m => (
@@ -1258,6 +1260,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
       case 'ma3': return <MA3ControlPanel fs={fs} />;
       case 'module': return <VirtualIFMx32QPanel fs={fs} />;
       case 'wifi_direct': return <WiFiDirectControlPanel fs={fs} />;
+      case 'artnet_modules': return <ArtNetModulePanel />;
       case 'settings': return <SettingsPanel fs={fs} settings={settings} onSettingsChange={setSettings} relayConnected={relayConnected} relayUrl={relayUrl} onRelayUrlChange={setRelayUrl} onConnectRelay={connectRelay} onDisconnectRelay={disconnectRelay} />;
       default: return renderSimpleDmx(fs);
     }
