@@ -1019,26 +1019,14 @@ export default function ScriptWindow() {
                     </span>
                   </td>
 
-                  {/* Pan */}
+                  {/* Pan — click-to-edit */}
                   <td className="px-1 py-0.5">
-                    <input
-                      type="number" step="1"
-                      className="w-8 bg-transparent border-b border-transparent hover:border-border/40 focus:border-primary text-muted-foreground outline-none transition-colors"
-                      value={row.pan}
-                      onChange={(e) => updateTimelineItem(row.id, { pan: parseFloat(e.target.value) || 0 })}
-                      onClick={(e) => e.stopPropagation()}
-                    />
+                    {renderEditableCell(row.id, 'pan', row.pan, 'w-8', 'text-muted-foreground')}
                   </td>
 
-                  {/* Tilt */}
+                  {/* Tilt — click-to-edit */}
                   <td className="px-1 py-0.5">
-                    <input
-                      type="number" step="1"
-                      className="w-8 bg-transparent border-b border-transparent hover:border-border/40 focus:border-primary text-muted-foreground outline-none transition-colors"
-                      value={row.tilt}
-                      onChange={(e) => updateTimelineItem(row.id, { tilt: parseFloat(e.target.value) || 0 })}
-                      onClick={(e) => e.stopPropagation()}
-                    />
+                    {renderEditableCell(row.id, 'tilt', row.tilt, 'w-8', 'text-muted-foreground')}
                   </td>
 
                   {/* Duration */}
