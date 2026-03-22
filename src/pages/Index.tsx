@@ -78,6 +78,7 @@ import USBConnectionPanel from '@/components/editor/USBConnectionPanel';
 import VideoChoreoPanel from '@/components/editor/VideoChoreoPanel';
 import ShowvenEquipmentPanel from '@/components/editor/ShowvenEquipmentPanel';
 import GenerativeEffectsPanel from '@/components/editor/GenerativeEffectsPanel';
+import SmartScriptAssistant from '@/components/editor/SmartScriptAssistant';
 import CinematicIntro from '@/components/editor/CinematicIntro';
 import SetlistPanel from '@/components/editor/SetlistPanel';
 import RiderPanel from '@/components/editor/RiderPanel';
