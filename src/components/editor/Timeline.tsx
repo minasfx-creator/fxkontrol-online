@@ -157,6 +157,11 @@ function TimelineContextMenu({
   );
 }
 
+// Section color map
+const SECTION_COLORS: Record<string, string> = {
+  A: '#4CAF50', B: '#2196F3', C: '#FF9800', D: '#E91E63', E: '#9C27B0', F: '#00BCD4',
+};
+
 // --- Draggable Timeline Item ---
 const DraggableTimelineItem = React.forwardRef<HTMLButtonElement, {
   item: any;
@@ -168,8 +173,9 @@ const DraggableTimelineItem = React.forwardRef<HTMLButtonElement, {
   onDragStart: (e: React.MouseEvent, itemId: string) => void;
   onContextMenu: (e: React.MouseEvent, item: any) => void;
   onResize: (itemId: string, edge: 'left' | 'right', deltaTime: number) => void;
+  sectionColor?: string;
 }>(function DraggableTimelineItem({
-  item, effect, pixelsPerSecond, isSelected, isMultiSelected, onSelect, onDragStart, onContextMenu, onResize,
+  item, effect, pixelsPerSecond, isSelected, isMultiSelected, onSelect, onDragStart, onContextMenu, onResize, sectionColor,
 }, ref) {
   const pft = effect.type === 'firework' ? getPreFireTime(effect.name) : 0;
   const pftPx = pft * pixelsPerSecond;
@@ -242,6 +248,8 @@ const DraggableTimelineItem = React.forwardRef<HTMLButtonElement, {
             ? `linear-gradient(135deg, ${effect.color}28, ${effect.color}15)`
             : `${effect.color}12`,
           backdropFilter: 'blur(8px)',
+          borderLeftWidth: sectionColor ? '2px' : undefined,
+          borderLeftColor: sectionColor || undefined,
         }}
       >
         <GripVertical className="w-2 h-2 text-muted-foreground/15 group-hover:text-muted-foreground/30 mr-0.5 flex-shrink-0 transition-colors" />
