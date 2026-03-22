@@ -36,18 +36,59 @@ export default function ModuleScannerScreen({
 }: ModuleScannerScreenProps) {
   const [radarAngle, setRadarAngle] = useState(0);
   const [showScreen, setShowScreen] = useState(false);
+  const [autoDiscovery, setAutoDiscovery] = useState(false);
+  const [telemetryPulse, setTelemetryPulse] = useState(false);
+  const [lastScanTime, setLastScanTime] = useState<number | null>(null);
+  const [scanCycle, setScanCycle] = useState(0);
   const radarRef = useRef<number | null>(null);
+  const autoDiscoveryRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const telemetryRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Radar sweep animation when scanning
+  // Radar sweep animation — runs when scanning OR auto-discovery is active
+  const radarActive = scanning || autoDiscovery;
   useEffect(() => {
-    if (!scanning) { setRadarAngle(0); return; }
+    if (!radarActive) { setRadarAngle(0); return; }
+    const speed = autoDiscovery && !scanning ? 1.5 : 3;
     const animate = () => {
-      setRadarAngle(prev => (prev + 3) % 360);
+      setRadarAngle(prev => (prev + speed) % 360);
       radarRef.current = requestAnimationFrame(animate);
     };
     radarRef.current = requestAnimationFrame(animate);
     return () => { if (radarRef.current) cancelAnimationFrame(radarRef.current); };
-  }, [scanning]);
+  }, [radarActive, scanning, autoDiscovery]);
+
+  // Auto-discovery: trigger scan every 5 seconds
+  useEffect(() => {
+    if (!autoDiscovery) {
+      if (autoDiscoveryRef.current) clearInterval(autoDiscoveryRef.current);
+      return;
+    }
+    // Immediate first scan
+    onScan().then(() => {
+      setLastScanTime(Date.now());
+      setScanCycle(prev => prev + 1);
+    });
+    autoDiscoveryRef.current = setInterval(() => {
+      onScan().then(() => {
+        setLastScanTime(Date.now());
+        setScanCycle(prev => prev + 1);
+      });
+    }, 5000);
+    return () => { if (autoDiscoveryRef.current) clearInterval(autoDiscoveryRef.current); };
+  }, [autoDiscovery, onScan]);
+
+  // Telemetry pulse animation (heartbeat every 2s)
+  useEffect(() => {
+    if (!autoDiscovery) {
+      if (telemetryRef.current) clearInterval(telemetryRef.current);
+      return;
+    }
+    telemetryRef.current = setInterval(() => {
+      setTelemetryPulse(true);
+      setTimeout(() => setTelemetryPulse(false), 400);
+    }, 2000);
+    return () => { if (telemetryRef.current) clearInterval(telemetryRef.current); };
+  }, [autoDiscovery]);
 
   const onlineModules = modules.filter(m => m.connected);
   const armedCount = modules.filter(m => m.armed).length;
