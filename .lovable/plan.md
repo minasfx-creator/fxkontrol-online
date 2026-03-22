@@ -1,58 +1,40 @@
 
 
-# FXK Logo — Tactical Precision Identity Mark
+# Replace FXK Logo + Favicon with Tactical Logo
 
-## Design Philosophy: "Tactical Precision"
-A military/aerospace-inspired visual identity that communicates command-grade authority through geometric precision, targeting reticle motifs, and the FXK product family color system.
+## Overview
 
-## What Will Be Created
+Replace the current `fxk-logo.png` asset and favicon with the newly generated tactical FXK logo. Redesign the SplashScreen to match the military/tactical aesthetic already established across the platform.
 
-**Two deliverables:**
-1. **Design Philosophy** (`FXK_Logo_Design_Philosophy.md`) — already written
-2. **Logo Artwork** (`FXK_Logo.pdf` + `FXK_Logo.png`) — tactical mark on dark canvas
+## Steps
 
-## Logo Composition
+### 1. Replace logo asset file
+- Copy the generated `FXK_Logo.png` from `/mnt/documents/` to `src/assets/fxk-logo.png` (overwrite)
+- Copy it also to `public/favicon.png` (overwrite) for the favicon
 
-```text
-┌──────────────────────────────────┐
-│ ┌─                          ─┐  │  ← Corner brackets (tactical green)
-│                                  │
-│      FX KONTROL SYSTEM           │  ← Top label (JetBrains Mono, 6pt)
-│            N                     │  ← Cardinal marker
-│                                  │
-│       ╱‾‾‾‾‾‾‾‾‾╲              │  ← Outer targeting ring + tick marks
-│      ╱  ⬡ FXK ⬡  ╲             │  ← Hexagonal containment + monogram
-│      ╲   (dot)    ╱             │  ← Tactical green dot above
-│       ╲__________╱              │  ← Crosshair lines behind hex
-│                                  │
-│    W        ·        E           │  ← Cardinal markers
-│            S                     │
-│   ● PYRO  ● DMX  ● LIGHT ● DRONES │ ← Product line indicators
-│  PROFESSIONAL SHOW CONTROL       │  ← Subtitle
-│ └─                          ─┘  │
-│       BY MINASFX            V2.0 │
-└──────────────────────────────────┘
-```
+### 2. Redesign SplashScreen to tactical style
+**File:** `src/components/editor/SplashScreen.tsx`
 
-**Key elements:**
-- Deep space black background (`#080a0f`) with subtle 10mm grid
-- Outer targeting ring with 15° tick marks (green at cardinals, cyan at 45°)
-- Dashed inner ring
-- **Hexagonal containment** with tactical green stroke — houses "FXK" monogram
-- Corner brackets (military HUD aesthetic)
-- Product line color dots: Red (PYRO), Cyan (DMX), Violet (LIGHT), Teal (DRONES)
-- JetBrains Mono typography throughout
+- Replace the soft glassmorphism background with the tactical dark canvas (`#080a0f`) + tactical grid overlay (matching the platform's existing `.tactical-grid` aesthetic)
+- Replace the rounded logo container with a sharp-edged tactical frame — no `rounded-2xl`, use `rounded-sm` with tactical green border
+- Increase logo display size to `w-28 h-28` so the hexagonal detail is visible
+- Update typography to use `font-tech` (Rajdhani) for headers and `font-mono-code` (JetBrains Mono) for labels
+- Replace the cyan/orange color scheme with tactical green (`hsl(165 100% 42%)`) and amber accents
+- Add corner bracket decorations (military HUD style) around the central content
+- Add product line indicators below the logo: colored dots for PYRO (red), DMX (cyan), LIGHT (violet), DRONES (teal) — matching the logo itself
+- Update "Click to Start" button to tactical green with scanline overlay
+- Update version label to `v2.0 · FXK TACTICAL ENGINE`
+- Add subtle scanline animation overlay on the entire splash
 
-## Technical Approach
+### 3. Update Toolbar logo container
+**File:** `src/components/editor/Toolbar.tsx`
 
-1. Generate PDF using Python + ReportLab with registered fonts (BigShoulders-Bold for monogram, JetBrainsMono for labels)
-2. Convert PDF → PNG for universal use
-3. QA via visual inspection — check overlaps, readability, spacing
-4. Also generate a **clean icon-only** version (just the hex + FXK, no chrome) for use as favicon/app icon
+- No import change needed (same filename)
+- Adjust the logo `img` tag sizing if needed for the new square aspect ratio
 
-## Files Produced
-
-- `/mnt/documents/FXK_Logo_Design_Philosophy.md`
-- `/mnt/documents/FXK_Logo.pdf` — full tactical mark
-- `/mnt/documents/FXK_Logo.png` — PNG export
+## Files Affected
+1. **Copy:** `/mnt/documents/FXK_Logo.png` → `src/assets/fxk-logo.png`
+2. **Copy:** `/mnt/documents/FXK_Logo.png` → `public/favicon.png`
+3. **Edit:** `src/components/editor/SplashScreen.tsx` — full tactical redesign
+4. **Edit:** `index.html` — ensure favicon reference is correct (already `/favicon.png`)
 
