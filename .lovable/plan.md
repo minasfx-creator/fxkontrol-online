@@ -1,81 +1,76 @@
 
 
-# Correção, Refinamento e Implementação — Falhas Encontradas
+# Melhoramentos Identificados — Correções e Refinamentos
 
-## Falhas Críticas Identificadas
+## Falhas Encontradas
 
-### 1. E-STOP CMD Mismatch (SEGURANÇA)
-`hybridTransportRouter.ts` usa `ESTOP_CMD = 0x45` ('E'), mas `fireoneProtocol.ts` define `EMERGENCY_STOP = 0x58` ('X'). Isso significa que o router **nunca classifica um E-STOP real corretamente** — comandos de emergência seriam roteados como prioridade `normal` em vez de `broadcast`.
+### CRÍTICAS
 
-### 2. CellularTransport não implementado
-O plano aprovado para transporte via rede celular (4G/LTE/5G) nunca foi codificado. Não existe `CellularTransport` nem `TransportType = 'cellular'`.
+**1. TDMA slots de 1.8ms são impossíveis no browser**
+`setTimeout` tem resolução mínima de ~4ms em browsers. O `executeFrame()` usa `await new Promise(r => setTimeout(r, 1.8))` que na prática espera ~4-5ms por slot. Com 50 slots, o frame real leva ~200-250ms em vez de 100ms. Slots se sobrepõem com o próximo `setInterval(100ms)`.
 
-### 3. TDMA não implementado
-O plano aprovado para TDMA (Time Division Multiple Access) no `radioProtocol.ts` para eliminar colisões RF em 50+ módulos nunca foi codificado.
+**2. E-STOP via TDMA não é imediato**
+`queueEstop()` coloca o pacote na fila do slot 0, mas **espera o próximo frame** (até 100ms). Isso viola o requisito de < 2ms. E-STOP precisa de bypass imediato do scheduler.
 
-### 4. hybridTransportRouter não conhece 'cellular'
-O routing matrix não inclui o path celular como opção de supervisão/fallback.
+**3. Conflito de opcode: `PRIORITY_DISABLE = 0x70` vs `TDMA_SYNC = 0x70`**
+`fireoneProtocol.ts` define `PRIORITY_DISABLE = 0x70` e `radioProtocol.ts` define `TDMA_SYNC = 0x70`. Mesmo byte = ambiguidade no parser.
 
-### 5. Unused constants
-`radioProtocol.ts` declara `MAX_RETRIES`, `RETRY_BACKOFF_MS`, `ACK_TIMEOUT_MS` mas nunca os usa — sem retry real no protocolo.
+**4. CellularTransport ping loop vaza memória**
+`startPingLoop()` cria `setInterval` sem guardar referência. Em `disconnect()`, o interval continua rodando indefinidamente.
 
-### 6. `parseRadioResponse` silently drops corrupted frames
-CRC fail retorna `null` sem logging — frames corrompidos são invisíveis para debug.
+### MODERADAS
 
-### 7. StarlinkTransport.send() mede latência incorretamente
-Mede apenas o tempo de `ws.send()` (buffer local ~0ms), não o round-trip real.
+**5. RadioTransport.send() duplica lógica CRC**
+Reimplementa CRC16 e packet building inline em vez de usar `buildRadioPacket()` do `radioProtocol.ts`.
 
-## Plano de Implementação
+**6. WiFiTransport.send() ainda mede buffer time local**
+Mesmo bug que foi corrigido no Starlink — mede `performance.now()` ao redor de `ws.send()` que é ~0ms.
 
-### Arquivo 1: `src/lib/radioProtocol.ts` — TDMA Engine
-- Adicionar `RadioCmd.TDMA_SYNC = 0x70`, `TDMA_SLOT_ASSIGN = 0x71`
-- Implementar `TDMAScheduler` class:
-  - Frame de 100ms, 50 slots de 1.8ms, guard interval 10ms
-  - Slot 0 reservado para E-STOP broadcast (latência < 2ms)
-  - Slot assignment por endereço do módulo
-  - Sync beacon no guard interval para alinhamento de clock
-  - Queue de pacotes por slot com overflow handling
-- Adicionar retry com backoff usando as constantes existentes
-- Export `TDMAScheduler`, `TDMAConfig`, `TDMASlotAssignment`
+**7. `packetLossRate` calculado incorretamente**
+`TransportHealthMonitor` calcula `consecutiveFailures / latencyHistory.length` — não reflete taxa de perda real. Deveria rastrear success/fail ratio.
 
-### Arquivo 2: `src/lib/fireoneTransport.ts` — CellularTransport
-- Adicionar `'cellular'` ao `TransportType` union
-- Implementar `CellularTransport` class:
-  - WebSocket sobre rede de dados móvel via relay server
-  - Detecta tipo de conexão via `navigator.connection` API (4G/LTE/5G)
-  - Monitora qualidade: effectiveType, downlink, rtt
-  - Auto-reconnect com backoff exponencial
-  - Priority = 2.5 (entre Wi-Fi Direct e Radio)
-  - Health reporting: signal quality, network type
+**8. useRadioLink TDMA status nunca atualiza**
+Após `enableTDMA()`, o estado `tdmaStatus` nunca é re-polled. O UI mostra valores estáticos.
 
-### Arquivo 3: `src/lib/hybridTransportRouter.ts` — Correções + Cellular
-- **FIX CRITICAL**: Corrigir `ESTOP_CMD` de `0x45` para `0x58` (alinhado com `fireoneProtocol.ts`)
-- Adicionar `'cellular'` ao `RoutingPath` type
-- Integrar cellular como path de supervisão (junto com starlink)
-- Atualizar `getTransportsByPath()` para incluir cellular
-- Fix latência do StarlinkTransport: usar ping/pong RTT em vez de buffer time
+**9. StarlinkTransport calibrateBaseline race condition**
+Coleta latência com `setTimeout(2000)` após cada ping, mas o pong pode não ter chegado ainda.
 
-### Arquivo 4: `src/hooks/useRadioLink.ts` — Expor TDMA
-- Adicionar estado TDMA ao `RadioLinkState`
-- Expor `enableTDMA()`, `disableTDMA()`, `getTDMAStatus()`
-- Integrar TDMAScheduler com o sendRaw existente
+## Plano de Correção
+
+### Arquivo 1: `src/lib/radioProtocol.ts`
+- Mudar `TDMA_SYNC` para `0x74` e `TDMA_SLOT_ASSIGN` para `0x75` (evitar conflito com `PRIORITY_DISABLE`)
+- Refatorar `executeFrame()`: usar `performance.now()` busy-wait loop em vez de `setTimeout` para slots sub-4ms
+- Proteger contra frame overlap: flag `_executing` que bloqueia reentrada
+- Adicionar `sendEstopImmediate()` que bypassa o scheduler e envia direto via `sendFn` (latência real < 2ms)
+
+### Arquivo 2: `src/lib/fireoneTransport.ts`
+- **RadioTransport.send()**: substituir CRC inline por `wrapProtocolFrame()` importado
+- **CellularTransport**: guardar referência do ping interval, limpar em `disconnect()`
+- **WiFiTransport.send()**: remover medição de buffer time, usar ping/pong RTT (como Starlink)
+
+### Arquivo 3: `src/lib/hybridTransportRouter.ts`
+- **TransportHealthMonitor**: rastrear `totalSuccess` + `totalFailure` para cálculo real de packet loss
+- **StarlinkTransport.calibrateBaseline()**: usar Promise-based collection em vez de setTimeout race
+- **broadcastEstop()**: chamar `TDMAScheduler.sendEstopImmediate()` quando TDMA ativo
+
+### Arquivo 4: `src/hooks/useRadioLink.ts`
+- Adicionar polling interval (100ms) para `tdmaStatus` enquanto TDMA ativo
+- Limpar interval no `disableTDMA()` e unmount
 
 ## Detalhes Técnicos
 
 ```text
-TDMA Frame Structure (100ms):
-┌──────┬──────┬──────┬─────┬──────┬──────────┐
-│Slot 0│Slot 1│Slot 2│ ... │Slot49│Guard+Sync│
-│E-STOP│Mod 1 │Mod 2 │     │Mod49 │  Beacon  │
-│ 1.8ms│ 1.8ms│ 1.8ms│     │ 1.8ms│   10ms   │
-└──────┴──────┴──────┴─────┴──────┴──────────┘
+TDMA Timing Fix:
+  BEFORE: setTimeout(1.8ms) → real ~4-5ms → 50 slots = 200-250ms
+  AFTER:  performance.now() busy-wait → real ~1.8ms → 50 slots = 90ms
 
-CellularTransport Path:
-  Mobile (4G/5G) → WSS relay → Edge Function → Module
-  Classified as 'supervision' — E-STOP NEVER routes only via cellular
+E-STOP Bypass:
+  BEFORE: queueEstop() → wait up to 100ms for next frame
+  AFTER:  sendEstopImmediate() → direct sendFn() → latency < 2ms
 
-E-STOP CMD Fix:
-  BEFORE: ESTOP_CMD = 0x45 (WRONG — 'E' = não é E-STOP real)
-  AFTER:  ESTOP_CMD = 0x58 (CORRECT — 'X' = FireOneCmd.EMERGENCY_STOP)
+Opcode Conflict Fix:
+  PRIORITY_DISABLE = 0x70 (fireoneProtocol.ts — unchanged)
+  TDMA_SYNC        = 0x74 (was 0x70 — CHANGED)
+  TDMA_SLOT_ASSIGN = 0x75 (was 0x71 — CHANGED)
 ```
 
