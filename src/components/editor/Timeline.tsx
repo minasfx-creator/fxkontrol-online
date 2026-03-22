@@ -281,6 +281,35 @@ const DraggableTimelineItem = React.forwardRef<HTMLButtonElement, {
 
 DraggableTimelineItem.displayName = 'DraggableTimelineItem';
 
+// Track header context menu
+function TrackContextMenu({ x, y, trackIndex, onClose }: { x: number; y: number; trackIndex: number; onClose: () => void }) {
+  const { timelineItems, selectTimelineItem, toggleTimelineItemSelection, removeMultipleTimelineItems } = useProjectStore();
+  const trackItems = timelineItems.filter(i => i.trackIndex === trackIndex);
+
+  useEffect(() => {
+    const handler = () => onClose();
+    window.addEventListener('click', handler);
+    return () => window.removeEventListener('click', handler);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed z-[200] border border-border/30 rounded-xl shadow-2xl py-1 min-w-[160px] backdrop-blur-2xl"
+      style={{ top: y, left: x, background: 'hsl(var(--popover) / 0.97)' }}
+      onClick={e => e.stopPropagation()}
+    >
+      <button className="w-full text-left px-3 py-1.5 text-[10px] hover:bg-primary/8 transition-colors"
+        onClick={() => { trackItems.forEach(i => toggleTimelineItemSelection(i.id)); onClose(); }}>
+        Select All on Track ({trackItems.length})
+      </button>
+      <button className="w-full text-left px-3 py-1.5 text-[10px] text-destructive hover:bg-destructive/8 transition-colors"
+        onClick={() => { removeMultipleTimelineItems(trackItems.map(i => i.id)); onClose(); }}>
+        Delete All on Track
+      </button>
+    </div>
+  );
+}
+
 function TimelineTrackRow({
   label, trackIndex, pixelsPerSecond, color, duration, scrollRef,
 }: {
@@ -293,8 +322,18 @@ function TimelineTrackRow({
     positions, selectedPositionId, selectedPositionIds,
   } = useProjectStore();
   const [isDragOver, setIsDragOver] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const [trackCtxMenu, setTrackCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const items = timelineItems.filter((i) => i.trackIndex === trackIndex);
   const dragState = useRef<{ itemId: string; startX: number; startTime: number } | null>(null);
+
+  // Lookup section color for each item
+  const getItemSectionColor = useCallback((item: any) => {
+    if (!item.positionId) return undefined;
+    const pos = positions.find(p => p.id === item.positionId);
+    if (!pos?.section) return undefined;
+    return SECTION_COLORS[pos.section] || undefined;
+  }, [positions]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     const effectId = e.dataTransfer.types.includes('application/effect-id');
@@ -399,7 +438,6 @@ function TimelineTrackRow({
 
   // Marquee selection
   const handleMarqueeStart = useCallback((e: React.MouseEvent) => {
-    // Only start marquee on empty space (not on items)
     if ((e.target as HTMLElement).closest('button')) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -417,15 +455,13 @@ function TimelineTrackRow({
         const cx = me.clientX - rect.left;
         const minX = Math.min(prev.startX, cx);
         const maxX = Math.max(prev.startX, cx);
-        // Select items within marquee bounds
         items.forEach(item => {
           const effect = EFFECT_LIBRARY.find(ef => ef.id === item.effectId);
           if (!effect) return;
           const itemLeft = item.startTime * pixelsPerSecond;
           const itemRight = itemLeft + Math.max((item.durationOverride ?? effect.duration) * pixelsPerSecond, 28);
           if (itemLeft < maxX && itemRight > minX) {
-            if (!me.shiftKey) toggleTimelineItemSelection(item.id);
-            else toggleTimelineItemSelection(item.id);
+            toggleTimelineItemSelection(item.id);
           }
         });
         return null;
@@ -437,11 +473,26 @@ function TimelineTrackRow({
     window.addEventListener('mouseup', handleUp);
   }, [items, pixelsPerSecond, toggleTimelineItemSelection]);
 
+  const handleTrackHeaderContext = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setTrackCtxMenu({ x: e.clientX, y: e.clientY });
+  }, []);
+
   return (
     <div className="flex border-b border-white/[0.03]">
-      <div className="w-24 flex-shrink-0 flex items-center px-2.5 border-r border-white/[0.04]" style={{ background: 'hsl(var(--card))' }}>
+      <div
+        className="w-24 flex-shrink-0 flex items-center px-2.5 border-r border-white/[0.04] group cursor-pointer"
+        style={{ background: 'hsl(var(--card))' }}
+        onContextMenu={handleTrackHeaderContext}
+      >
         <div className="w-1.5 h-1.5 rounded-full mr-2 flex-shrink-0" style={{ backgroundColor: color, boxShadow: `0 0 4px ${color}55` }} />
         <span className="text-[9px] font-semibold text-muted-foreground/50 uppercase tracking-[0.08em]">{label}</span>
+        <span className="text-[7px] text-muted-foreground/25 ml-1 tabular-nums">{items.length > 0 ? `·${items.length}` : ''}</span>
+        <div className="ml-auto flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onClick={(e) => { e.stopPropagation(); setMuted(!muted); }} className="text-muted-foreground/30 hover:text-muted-foreground/60" title={muted ? 'Show' : 'Hide'}>
+            {muted ? <EyeOff className="w-2.5 h-2.5" /> : <Eye className="w-2.5 h-2.5" />}
+          </button>
+        </div>
       </div>
       <div
         ref={trackAreaRef}
@@ -463,7 +514,7 @@ function TimelineTrackRow({
             }}
           />
         )}
-        {items.map((item) => {
+        {!muted && items.map((item) => {
           const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
           if (!effect) return null;
           return (
@@ -475,6 +526,7 @@ function TimelineTrackRow({
               onDragStart={handleItemDragStart}
               onContextMenu={handleContextMenu}
               onResize={handleResize}
+              sectionColor={getItemSectionColor(item)}
             />
           );
         })}
@@ -484,6 +536,12 @@ function TimelineTrackRow({
         <TimelineContextMenu
           x={contextMenu.x} y={contextMenu.y} item={contextMenu.item}
           onClose={() => setContextMenu(null)}
+        />
+      )}
+      {trackCtxMenu && (
+        <TrackContextMenu
+          x={trackCtxMenu.x} y={trackCtxMenu.y} trackIndex={trackIndex}
+          onClose={() => setTrackCtxMenu(null)}
         />
       )}
     </div>
