@@ -58,6 +58,7 @@ const TYPE_COLORS: Record<string, string> = {
   remote: 'text-cyan-400',
   dmx: 'text-green-400',
   laser: 'text-purple-400',
+  module: 'text-orange-400',
 };
 
 const GROUP_META: Record<string, { label: string; color: string }> = {
