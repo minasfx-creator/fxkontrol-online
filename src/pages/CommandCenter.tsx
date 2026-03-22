@@ -1,6 +1,7 @@
 /**
- * CommandCenter — Standalone execution page separated from Editor
- * Apple glassmorphism design, no 3D viewport overhead
+ * CommandCenter — XL4 2.0 Execution Hub
+ * Intelligent routing: Fire modes get full chrome, Hardware/Network get direct rendering
+ * Each console has unique accent identity
  */
 import { useState, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -12,24 +13,48 @@ import { cn } from '@/lib/utils';
 import {
   Zap, Lightbulb, Hand, Flame, Timer, Check, Cpu, Cable,
   Gauge, Wifi, Globe, Plug, Radio, Map, Smartphone, Settings,
-  Shield, AlertTriangle, ChevronRight, AlertOctagon
+  Shield, ChevronRight, AlertOctagon
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import LiveFiringPanel from '@/components/editor/LiveFiringPanel';
 
+// ── Types ──
 type CommandMode =
   | 'super_dmx' | 'simple_dmx' | 'manual_fire' | 'pyro_fire' | 'auto_fire' | 'check_slave'
   | 'controllers' | 'pbus' | 'ma3' | 'module' | 'wifi_direct'
   | 'artnet_modules' | 'connections' | 'radio' | 'field_map'
   | 'mobile_link' | 'settings';
 
-interface ModeEntry {
-  key: CommandMode;
-  label: string;
-  icon: React.ElementType;
-}
+// Fire modes get full LiveFiringPanel chrome (ARM, CUE keys, PANIC)
+const FIRE_MODES: CommandMode[] = [
+  'super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'auto_fire', 'check_slave',
+];
 
+const isFireMode = (m: CommandMode) => FIRE_MODES.includes(m);
+
+// ── Console Accent Config ──
+const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: string; badge: string }> = {
+  super_dmx:   { color: 'hsl(210 90% 55%)', glow: 'hsl(210 90% 55% / 0.15)', label: 'SUPER DMX',   badge: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  simple_dmx:  { color: 'hsl(150 70% 45%)', glow: 'hsl(150 70% 45% / 0.15)', label: 'SIMPLE DMX',  badge: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+  manual_fire: { color: 'hsl(25 90% 55%)',  glow: 'hsl(25 90% 55% / 0.15)',  label: 'MANUAL FIRE', badge: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+  pyro_fire:   { color: 'hsl(0 80% 55%)',   glow: 'hsl(0 80% 55% / 0.15)',   label: 'PYRO XL4',    badge: 'bg-red-500/20 text-red-400 border-red-500/30' },
+  auto_fire:   { color: 'hsl(45 90% 55%)',  glow: 'hsl(45 90% 55% / 0.15)',  label: 'AUTO FIRE',   badge: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+  check_slave: { color: 'hsl(185 70% 50%)', glow: 'hsl(185 70% 50% / 0.15)', label: 'CHECK SLAVE', badge: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
+  controllers: { color: 'hsl(270 60% 55%)', glow: 'hsl(270 60% 55% / 0.12)', label: 'CONTROLLERS', badge: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+  pbus:        { color: 'hsl(35 80% 50%)',  glow: 'hsl(35 80% 50% / 0.12)',  label: 'P-BUS',       badge: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+  ma3:         { color: 'hsl(220 70% 55%)', glow: 'hsl(220 70% 55% / 0.12)', label: 'grandMA3',    badge: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
+  module:      { color: 'hsl(160 60% 45%)', glow: 'hsl(160 60% 45% / 0.12)', label: 'IFM x32Q',    badge: 'bg-teal-500/20 text-teal-400 border-teal-500/30' },
+  wifi_direct: { color: 'hsl(200 70% 50%)', glow: 'hsl(200 70% 50% / 0.12)', label: 'WiFi Direct', badge: 'bg-sky-500/20 text-sky-400 border-sky-500/30' },
+  artnet_modules: { color: 'hsl(280 60% 50%)', glow: 'hsl(280 60% 50% / 0.12)', label: 'Art-Net', badge: 'bg-violet-500/20 text-violet-400 border-violet-500/30' },
+  connections: { color: 'hsl(190 60% 50%)', glow: 'hsl(190 60% 50% / 0.12)', label: 'Connections', badge: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
+  radio:       { color: 'hsl(340 60% 55%)', glow: 'hsl(340 60% 55% / 0.12)', label: 'Radio',       badge: 'bg-pink-500/20 text-pink-400 border-pink-500/30' },
+  field_map:   { color: 'hsl(120 50% 45%)', glow: 'hsl(120 50% 45% / 0.12)', label: 'Field Map',   badge: 'bg-green-500/20 text-green-400 border-green-500/30' },
+  mobile_link: { color: 'hsl(250 50% 55%)', glow: 'hsl(250 50% 55% / 0.12)', label: 'Mobile Link', badge: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
+  settings:    { color: 'hsl(220 10% 55%)', glow: 'hsl(220 10% 55% / 0.12)', label: 'Settings',    badge: 'bg-muted/40 text-muted-foreground border-border/20' },
+};
+
+// ── Sidebar Sections ──
 const MODE_SECTIONS = [
   {
     label: 'FIRE CONTROL',
@@ -74,7 +99,6 @@ const MODE_SECTIONS = [
   },
 ];
 
-/* ── Mobile Category Tabs ── */
 const MOBILE_CATEGORIES = [
   { label: 'Fire', icon: Flame, section: 0 },
   { label: 'HW', icon: Cpu, section: 1 },
@@ -94,6 +118,8 @@ export default function CommandCenter() {
   const activeEffects = useLiveSfxStore(s => s.activeEffects);
   const isArmed = activeEffects.length > 0;
 
+  const accent = CONSOLE_ACCENTS[activeMode] ?? CONSOLE_ACCENTS.settings;
+
   const connectedCount = useMemo(() => {
     let c = 0;
     if (fireone.isConnected) c++;
@@ -106,46 +132,41 @@ export default function CommandCenter() {
     setSearchParams({ mode }, { replace: true });
   }, [setSearchParams]);
 
-  const currentModeLabel = useMemo(() => {
-    for (const section of MODE_SECTIONS) {
-      const found = section.modes.find(m => m.key === activeMode);
-      if (found) return found.label;
-    }
-    return activeMode;
-  }, [activeMode]);
-
-  // ── Mobile Layout ──
+  // ══════════════════════════════════════════════════════
+  // MOBILE LAYOUT
+  // ══════════════════════════════════════════════════════
   if (isMobile) {
     const categoryModes = MODE_SECTIONS[mobileCategory]?.modes ?? [];
 
     return (
       <div className="h-[100dvh] w-screen flex flex-col bg-background">
-        {/* ── Dynamic Island Status ── */}
+        {/* ── Dynamic Island ── */}
         <div className="shrink-0 px-3 pt-2 pb-1" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-          <div className={cn(
-            "flex items-center justify-between px-3 py-2 rounded-2xl border transition-all",
-            "bg-[hsl(var(--surface-1)/0.6)] backdrop-blur-xl",
-            isArmed
-              ? "border-destructive/40 shadow-[0_0_12px_hsl(var(--destructive)/0.2)]"
-              : "border-border/20"
-          )}>
-            {/* Connection status */}
+          <div
+            className={cn(
+              "flex items-center justify-between px-3 py-2 rounded-2xl border transition-all",
+              "backdrop-blur-xl",
+              isArmed
+                ? "border-destructive/40 shadow-[0_0_12px_hsl(var(--destructive)/0.2)]"
+                : "border-border/20"
+            )}
+            style={{ background: accent.glow }}
+          >
             <div className="flex items-center gap-2">
-              <div className={cn(
-                "h-2 w-2 rounded-full shrink-0",
-                connectedCount > 0 ? "bg-emerald-400 animate-pulse" : "bg-muted-foreground/30"
-              )} />
+              <div
+                className={cn("h-2.5 w-2.5 rounded-full shrink-0", connectedCount > 0 ? "animate-pulse" : "")}
+                style={{ backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.3)' }}
+              />
               <span className="text-[9px] font-bold text-foreground uppercase tracking-wider">
                 {connectedCount > 0 ? `${connectedCount} ONLINE` : 'OFFLINE'}
               </span>
             </div>
 
-            {/* Active mode label */}
-            <span className="text-[9px] font-mono font-semibold text-primary">
-              {currentModeLabel}
-            </span>
+            {/* Console badge */}
+            <Badge variant="outline" className={cn("text-[9px] h-5 px-2 font-black border", accent.badge)}>
+              {accent.label}
+            </Badge>
 
-            {/* ARMED badge */}
             <div className="flex items-center gap-1.5">
               {fireone.isConnected && (
                 <Badge variant="outline" className="text-[8px] h-4 px-1 border-red-500/30 text-red-400">FO</Badge>
@@ -160,26 +181,31 @@ export default function CommandCenter() {
           </div>
         </div>
 
-        {/* ── Quick Mode Pills ── */}
+        {/* ── Mode Pills ── */}
         <div className="shrink-0 px-3 py-1.5">
           <ScrollArea className="w-full">
             <div className="flex gap-1.5 pb-1">
               {categoryModes.map(mode => {
                 const isActive = activeMode === mode.key;
+                const mAccent = CONSOLE_ACCENTS[mode.key];
                 const Icon = mode.icon;
                 return (
                   <button
                     key={mode.key}
                     onClick={() => handleModeChange(mode.key)}
                     className={cn(
-                      "flex items-center gap-1.5 px-3 py-1.5 rounded-xl whitespace-nowrap transition-all",
-                      "text-[10px] font-semibold border",
+                      "flex items-center gap-1.5 px-3 py-2 rounded-xl whitespace-nowrap transition-all",
+                      "text-[10px] font-bold border min-h-[40px]",
                       isActive
-                        ? "bg-primary/15 text-primary border-primary/30"
-                        : "bg-[hsl(var(--surface-1)/0.4)] text-muted-foreground/60 border-border/10 active:scale-95"
+                        ? "border-opacity-40 text-foreground"
+                        : "border-border/10 text-muted-foreground/50 active:scale-95"
                     )}
+                    style={{
+                      background: isActive ? mAccent?.glow : 'hsl(220 10% 8% / 0.6)',
+                      borderColor: isActive ? mAccent?.color : undefined,
+                    }}
                   >
-                    <Icon className="w-3.5 h-3.5" />
+                    <Icon className="w-4 h-4" />
                     {mode.label}
                   </button>
                 );
@@ -188,12 +214,12 @@ export default function CommandCenter() {
           </ScrollArea>
         </div>
 
-        {/* ── Main Content ── */}
+        {/* ── Content ── */}
         <div className="flex-1 overflow-hidden">
           <LiveFiringPanel initialMode={activeMode} standalone />
         </div>
 
-        {/* ── Bottom Category Navigation ── */}
+        {/* ── Bottom Nav ── */}
         <div
           className="shrink-0 border-t border-border/15"
           style={{
@@ -210,18 +236,10 @@ export default function CommandCenter() {
                 <button
                   key={cat.label}
                   onClick={() => setMobileCategory(idx)}
-                  className={cn(
-                    "flex flex-col items-center gap-0.5 py-1 px-4 rounded-xl transition-all active:scale-90",
-                  )}
+                  className="flex flex-col items-center gap-0.5 py-1 px-4 rounded-xl transition-all active:scale-90"
                 >
-                  <Icon className={cn(
-                    "w-5 h-5 transition-colors",
-                    isActive ? "text-primary" : "text-muted-foreground/40"
-                  )} />
-                  <span className={cn(
-                    "text-[9px] font-semibold transition-colors",
-                    isActive ? "text-primary" : "text-muted-foreground/30"
-                  )}>
+                  <Icon className={cn("w-5 h-5 transition-colors", isActive ? "text-primary" : "text-muted-foreground/40")} />
+                  <span className={cn("text-[9px] font-semibold transition-colors", isActive ? "text-primary" : "text-muted-foreground/30")}>
                     {cat.label}
                   </span>
                 </button>
@@ -233,10 +251,12 @@ export default function CommandCenter() {
     );
   }
 
-  // ── Desktop Layout (unchanged) ──
+  // ══════════════════════════════════════════════════════
+  // DESKTOP LAYOUT
+  // ══════════════════════════════════════════════════════
   return (
     <div className="h-[calc(100vh-3rem)] flex overflow-hidden">
-      {/* ── Glass Sidebar ── */}
+      {/* ── Sidebar ── */}
       <div
         className={cn(
           "shrink-0 flex flex-col border-r border-border/20 transition-all duration-300",
@@ -247,25 +267,25 @@ export default function CommandCenter() {
           backdropFilter: 'blur(40px)',
         }}
       >
-        {/* Dynamic Island Status */}
+        {/* Dynamic Island */}
         <div className="px-3 pt-4 pb-3">
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className={cn(
               "w-full rounded-2xl border border-border/20 transition-all duration-300",
-              "bg-[hsl(var(--surface-1)/0.6)] backdrop-blur-xl",
-              "hover:border-primary/30 hover:bg-[hsl(var(--surface-2)/0.6)]",
+              "backdrop-blur-xl hover:border-primary/30",
               sidebarCollapsed ? "p-2" : "px-3 py-2"
             )}
+            style={{ background: accent.glow }}
           >
             {sidebarCollapsed ? (
               <div className="flex flex-col items-center gap-1">
-                <div className={cn("h-2 w-2 rounded-full", connectedCount > 0 ? "bg-emerald-400 animate-pulse" : "bg-muted-foreground/30")} />
+                <div className={cn("h-2 w-2 rounded-full")} style={{ backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.3)' }} />
                 <span className="text-[8px] font-mono text-muted-foreground">{connectedCount}</span>
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <div className={cn("h-2 w-2 rounded-full shrink-0", connectedCount > 0 ? "bg-emerald-400 animate-pulse" : "bg-muted-foreground/30")} />
+                <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.3)' }} />
                 <div className="flex-1 min-w-0">
                   <p className="text-[9px] font-bold text-foreground uppercase tracking-wider truncate">Command Center</p>
                   <p className="text-[8px] text-muted-foreground font-mono">{connectedCount} connected</p>
@@ -294,6 +314,7 @@ export default function CommandCenter() {
                 <div className="space-y-0.5">
                   {section.modes.map(mode => {
                     const isActive = activeMode === mode.key;
+                    const mAccent = CONSOLE_ACCENTS[mode.key];
                     return (
                       <button
                         key={mode.key}
@@ -302,9 +323,14 @@ export default function CommandCenter() {
                           "w-full flex items-center gap-2.5 rounded-xl transition-all duration-200",
                           sidebarCollapsed ? "justify-center p-2" : "px-2.5 py-2",
                           isActive
-                            ? "bg-primary/10 text-primary border border-primary/20"
+                            ? "text-foreground border"
                             : "text-muted-foreground/60 hover:bg-muted/20 hover:text-foreground/80 border border-transparent"
                         )}
+                        style={isActive ? {
+                          background: mAccent?.glow,
+                          borderColor: mAccent?.color + '33',
+                          color: mAccent?.color,
+                        } : undefined}
                         title={sidebarCollapsed ? mode.label : undefined}
                       >
                         <mode.icon className={cn("shrink-0", sidebarCollapsed ? "w-4 h-4" : "w-3.5 h-3.5")} />
@@ -312,7 +338,7 @@ export default function CommandCenter() {
                           <span className="text-[10px] font-semibold truncate">{mode.label}</span>
                         )}
                         {!sidebarCollapsed && isActive && (
-                          <div className="ml-auto h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />
+                          <div className="ml-auto h-1.5 w-1.5 rounded-full animate-pulse shrink-0" style={{ backgroundColor: mAccent?.color }} />
                         )}
                       </button>
                     );
@@ -326,9 +352,16 @@ export default function CommandCenter() {
         {/* Safety Footer */}
         {!sidebarCollapsed && (
           <div className="p-2 border-t border-border/10">
-            <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-destructive/5 border border-destructive/10">
+            <div className={cn(
+              "flex items-center gap-2 px-2 py-1.5 rounded-lg border",
+              isArmed
+                ? "bg-destructive/10 border-destructive/30"
+                : "bg-destructive/5 border-destructive/10"
+            )}>
               <Shield className="h-3 w-3 text-destructive/60 shrink-0" />
-              <span className="text-[8px] text-destructive/60 font-semibold">SAFETY LOCK ACTIVE</span>
+              <span className="text-[8px] text-destructive/60 font-semibold">
+                {isArmed ? `ARMED • ${activeEffects.length} ACTIVE` : 'SAFETY LOCK ACTIVE'}
+              </span>
             </div>
           </div>
         )}
@@ -336,14 +369,23 @@ export default function CommandCenter() {
 
       {/* ── Main Content ── */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Breadcrumb bar */}
+        {/* Breadcrumb bar with console identity */}
         <div
           className="h-10 shrink-0 flex items-center justify-between px-4 border-b border-border/15"
-          style={{ background: 'hsl(225 12% 7% / 0.8)', backdropFilter: 'blur(20px)' }}
+          style={{
+            background: `linear-gradient(90deg, ${accent.glow} 0%, hsl(225 12% 7% / 0.8) 40%)`,
+            backdropFilter: 'blur(20px)',
+          }}
         >
-          <div className="flex items-center gap-2">
-            <Zap className="h-3.5 w-3.5 text-primary" />
-            <span className="text-[10px] font-bold text-foreground uppercase tracking-wider">{currentModeLabel}</span>
+          <div className="flex items-center gap-3">
+            <Badge variant="outline" className={cn("text-[9px] h-5 px-2 font-black border", accent.badge)}>
+              {accent.label}
+            </Badge>
+            {isFireMode(activeMode) && (
+              <span className="text-[9px] text-muted-foreground/40 font-mono">
+                FIRE CONSOLE
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {isArmed && (
@@ -359,7 +401,7 @@ export default function CommandCenter() {
           </div>
         </div>
 
-        {/* LiveFiringPanel rendered standalone */}
+        {/* Content — LiveFiringPanel for all modes */}
         <div className="flex-1 overflow-hidden">
           <LiveFiringPanel initialMode={activeMode} standalone />
         </div>

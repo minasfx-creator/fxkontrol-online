@@ -183,7 +183,7 @@ export default function AutoFirePanel({ fs, pyroArm, dmxArm, onFireCue, onPriori
       {/* Timecode bar */}
       <div className={cn(
         "border-b border-border/15 font-mono",
-        fs ? "px-4 py-2 text-[9px]" : "px-2 py-1 text-[7px]"
+        fs ? "px-4 py-2 text-[9px]" : "px-2 py-1 text-[8px]"
       )} style={{ background: 'hsl(220 12% 7%)' }}>
         <div className="flex items-center gap-3 text-muted-foreground/40">
           <span>MID: <span className="text-purple-400/60">{midiTimecode}</span></span>
@@ -206,7 +206,7 @@ export default function AutoFirePanel({ fs, pyroArm, dmxArm, onFireCue, onPriori
             <button key={mode} onClick={() => setFireMode(mode)}
               className={cn(
                 "rounded font-bold uppercase transition-all border",
-                fs ? "px-2 py-1 text-[8px]" : "px-1.5 py-0.5 text-[6px]",
+                fs ? "px-2 py-1 text-[8px]" : "px-1.5 py-0.5 text-[8px]",
                 fireMode === mode
                   ? 'bg-primary/15 border-primary/40 text-primary'
                   : 'bg-surface-2/30 border-border/10 text-muted-foreground/30'
@@ -221,7 +221,7 @@ export default function AutoFirePanel({ fs, pyroArm, dmxArm, onFireCue, onPriori
             <button key={slot} onClick={() => setFileSlot(slot)}
               className={cn(
                 "rounded font-mono transition-all",
-                fs ? "w-5 h-5 text-[8px]" : "w-4 h-4 text-[6px]",
+                fs ? "w-5 h-5 text-[8px]" : "w-4 h-4 text-[8px]",
                 fileSlot === slot
                   ? 'bg-primary/20 text-primary border border-primary/40'
                   : 'bg-surface-2/20 text-muted-foreground/30 border border-border/5'
@@ -230,7 +230,7 @@ export default function AutoFirePanel({ fs, pyroArm, dmxArm, onFireCue, onPriori
             </button>
           ))}
         </div>
-        {isRunning && <span className={cn("px-1.5 py-0.5 rounded bg-red-600/20 text-red-400 font-bold animate-pulse", fs ? "text-[9px]" : "text-[7px]")}>LOCK</span>}
+        {isRunning && <span className={cn("px-1.5 py-0.5 rounded bg-red-600/20 text-red-400 font-bold animate-pulse", fs ? "text-[9px]" : "text-[8px]")}>LOCK</span>}
       </div>
 
       {/* UltraFire toggle + verify code */}
@@ -241,7 +241,7 @@ export default function AutoFirePanel({ fs, pyroArm, dmxArm, onFireCue, onPriori
         <button onClick={() => onUltraFireToggle?.(!ultraFireMode)}
           className={cn(
             "flex items-center gap-1 rounded font-bold uppercase transition-all border",
-            fs ? "px-2 py-1 text-[8px]" : "px-1.5 py-0.5 text-[6px]",
+            fs ? "px-2 py-1 text-[8px]" : "px-1.5 py-0.5 text-[8px]",
             ultraFireMode
               ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
               : 'bg-surface-2/30 border-border/10 text-muted-foreground/30'
@@ -255,14 +255,14 @@ export default function AutoFirePanel({ fs, pyroArm, dmxArm, onFireCue, onPriori
             value={verifyCode} onChange={e => setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
             className={cn(
               "bg-surface-2/20 border border-border/20 rounded font-mono text-foreground/60 placeholder:text-muted-foreground/20",
-              fs ? "w-20 px-2 py-1 text-[9px]" : "w-16 px-1.5 py-0.5 text-[7px]"
+              fs ? "w-20 px-2 py-1 text-[9px]" : "w-16 px-1.5 py-0.5 text-[8px]"
             )}
           />
         )}
 
         {/* Semi-auto event indicator */}
         {fireMode === 'semi-auto' && (
-          <div className={cn("flex items-center gap-1 ml-auto", fs ? "text-[9px]" : "text-[7px]")}>
+          <div className={cn("flex items-center gap-1 ml-auto", fs ? "text-[9px]" : "text-[8px]")}>
             <span className="text-muted-foreground/40">Event:</span>
             <span className="text-primary font-bold">{currentEvent}/{maxEvent}</span>
             <Button variant="ghost" size="icon" onClick={handleSemiAutoGo}
@@ -279,14 +279,14 @@ export default function AutoFirePanel({ fs, pyroArm, dmxArm, onFireCue, onPriori
         "flex items-center gap-0.5 border-b border-border/15 overflow-x-auto",
         fs ? "px-4 py-1.5" : "px-2 py-1"
       )} style={{ background: 'hsl(220 10% 6%)' }}>
-        <span className={cn("text-muted-foreground/30 font-bold mr-1 shrink-0", fs ? "text-[8px]" : "text-[6px]")}>PRI:</span>
+        <span className={cn("text-muted-foreground/30 font-bold mr-1 shrink-0", fs ? "text-[8px]" : "text-[8px]")}>PRI:</span>
         {Array.from({ length: FIREONE_PRIORITY_GROUPS }, (_, i) => i + 1).map(p => {
           const enabled = priorities?.get(p) ?? true;
           return (
             <button key={p} onClick={() => onPriorityToggle?.(p, !enabled)}
               className={cn(
                 "rounded font-mono transition-all shrink-0 flex items-center justify-center",
-                fs ? "w-5 h-5 text-[7px]" : "w-4 h-4 text-[5px]",
+                fs ? "w-5 h-5 text-[8px]" : "w-4 h-4 text-[8px]",
                 enabled
                   ? 'bg-green-600/20 text-green-400 border border-green-500/30'
                   : 'bg-red-600/20 text-red-400/50 border border-red-500/20'
@@ -305,7 +305,7 @@ export default function AutoFirePanel({ fs, pyroArm, dmxArm, onFireCue, onPriori
       )} style={{ background: 'hsl(220 12% 6%)' }}>
         <div className="flex items-center gap-2 mb-1">
           <Music className={cn(fs ? "w-3 h-3" : "w-2.5 h-2.5", "text-green-400/60")} />
-          <span className={cn("font-bold text-foreground/50 truncate", fs ? "text-[10px]" : "text-[7px]")}>{musicFile}</span>
+          <span className={cn("font-bold text-foreground/50 truncate", fs ? "text-[10px]" : "text-[8px]")}>{musicFile}</span>
         </div>
         <div className={cn("w-full rounded-full overflow-hidden", fs ? "h-3" : "h-1.5")} style={{ background: 'hsl(220 10% 12%)' }}>
           <div className="h-full rounded-full transition-all" style={{
@@ -335,7 +335,7 @@ export default function AutoFirePanel({ fs, pyroArm, dmxArm, onFireCue, onPriori
             <button key={src} onClick={() => setTriggerSource(src)}
               className={cn(
                 "rounded font-bold uppercase transition-all border",
-                fs ? "px-3 py-1.5 text-[10px]" : "px-2 py-1 text-[7px]",
+                fs ? "px-3 py-1.5 text-[10px]" : "px-2 py-1 text-[8px]",
                 triggerSource === src
                   ? src === 'midi' ? 'bg-purple-500/15 border-purple-500/40 text-purple-400'
                   : src === 'ltc' ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-400'
@@ -352,11 +352,11 @@ export default function AutoFirePanel({ fs, pyroArm, dmxArm, onFireCue, onPriori
             <RotateCcw className={cn(fs ? "w-4 h-4" : "w-3 h-3")} />
           </Button>
           <button onClick={() => setTimeOffset(prev => prev - 200)}
-            className={cn("rounded font-mono text-muted-foreground/40 hover:text-foreground/60 transition-colors", fs ? "px-2 py-1 text-[9px]" : "px-1.5 py-0.5 text-[7px]")}>
+            className={cn("rounded font-mono text-muted-foreground/40 hover:text-foreground/60 transition-colors", fs ? "px-2 py-1 text-[9px]" : "px-1.5 py-0.5 text-[8px]")}>
             -200ms
           </button>
           <button onClick={() => setTimeOffset(prev => prev + 200)}
-            className={cn("rounded font-mono text-muted-foreground/40 hover:text-foreground/60 transition-colors", fs ? "px-2 py-1 text-[9px]" : "px-1.5 py-0.5 text-[7px]")}>
+            className={cn("rounded font-mono text-muted-foreground/40 hover:text-foreground/60 transition-colors", fs ? "px-2 py-1 text-[9px]" : "px-1.5 py-0.5 text-[8px]")}>
             +200ms
           </button>
         </div>
@@ -364,7 +364,7 @@ export default function AutoFirePanel({ fs, pyroArm, dmxArm, onFireCue, onPriori
 
       {/* CUE list table */}
       <ScrollArea className="flex-1">
-        <div className={cn(fs ? "text-[10px]" : "text-[7px]")}>
+        <div className={cn(fs ? "text-[10px]" : "text-[8px]")}>
           {/* Header */}
           <div className={cn(
             "grid grid-cols-[2rem_2.5rem_minmax(0,1fr)_3rem_4rem_3rem_2rem_minmax(0,1fr)_2.5rem_2rem_2rem] items-center font-bold text-muted-foreground/30 uppercase border-b border-border/15",
@@ -381,7 +381,7 @@ export default function AutoFirePanel({ fs, pyroArm, dmxArm, onFireCue, onPriori
               <div key={cue.id}>
                 {isEventBoundary && (
                   <div className={cn("border-t-2 border-amber-500/30 flex items-center gap-1",
-                    fs ? "px-4 py-0.5 text-[8px]" : "px-2 py-0 text-[6px]"
+                    fs ? "px-4 py-0.5 text-[8px]" : "px-2 py-0 text-[8px]"
                   )} style={{ background: 'hsl(40 80% 10% / 0.3)' }}>
                     <SkipForward className="w-2.5 h-2.5 text-amber-400/60" />
                     <span className="text-amber-400/60 font-bold">EVENT {cue.eventNumber ?? 0}</span>
@@ -421,16 +421,16 @@ export default function AutoFirePanel({ fs, pyroArm, dmxArm, onFireCue, onPriori
       )} style={{ background: 'hsl(220 12% 6%)' }}>
         <input ref={fileInputRef} type="file" accept=".csv,.fir,.sem,.ses,.scl" onChange={handleFileImport} className="hidden" />
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()} className={cn(fs ? "text-[9px] h-7" : "text-[7px] h-5")}>
+          <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()} className={cn(fs ? "text-[9px] h-7" : "text-[8px] h-5")}>
             <Upload className={cn(fs ? "w-3 h-3" : "w-2.5 h-2.5", "mr-1")} /> Import
           </Button>
-          <Button variant="ghost" size="sm" onClick={handleExportCSV} className={cn(fs ? "text-[9px] h-7" : "text-[7px] h-5")}>
+          <Button variant="ghost" size="sm" onClick={handleExportCSV} className={cn(fs ? "text-[9px] h-7" : "text-[8px] h-5")}>
             <Download className={cn(fs ? "w-3 h-3" : "w-2.5 h-2.5", "mr-1")} /> CSV
           </Button>
-          <Button variant="ghost" size="sm" onClick={handleExportFlames} className={cn(fs ? "text-[9px] h-7" : "text-[7px] h-5")}>
+          <Button variant="ghost" size="sm" onClick={handleExportFlames} className={cn(fs ? "text-[9px] h-7" : "text-[8px] h-5")}>
             <Download className={cn(fs ? "w-3 h-3" : "w-2.5 h-2.5", "mr-1")} /> Flames
           </Button>
-          <Button variant="ghost" size="sm" className={cn(fs ? "text-[9px] h-7" : "text-[7px] h-5")}>
+          <Button variant="ghost" size="sm" className={cn(fs ? "text-[9px] h-7" : "text-[8px] h-5")}>
             <Trash2 className={cn(fs ? "w-3 h-3" : "w-2.5 h-2.5", "mr-1")} /> Delete
           </Button>
         </div>

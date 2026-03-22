@@ -61,8 +61,8 @@ export default function CheckSlavePanel({ fs, pyroArm }: CheckSlavePanelProps) {
         fs ? "px-4 py-2" : "px-2 py-1"
       )} style={{ background: 'hsl(220 10% 8%)' }}>
         <div className="flex items-center gap-2">
-          <span className={cn("font-bold text-muted-foreground/50 uppercase tracking-wider", fs ? "text-[10px]" : "text-[7px]")}>Check Slave</span>
-          <span className={cn("font-mono text-muted-foreground/30", fs ? "text-[9px]" : "text-[6px]")}>{sceneName}</span>
+          <span className={cn("font-bold text-muted-foreground/50 uppercase tracking-wider", fs ? "text-[10px]" : "text-[8px]")}>Check Slave</span>
+          <span className={cn("font-mono text-muted-foreground/30", fs ? "text-[9px]" : "text-[8px]")}>{sceneName}</span>
         </div>
         <Button variant="ghost" size="icon" onClick={handleScan} disabled={scanning}
           className={cn(fs ? "h-7 w-7" : "h-5 w-5")}>
@@ -79,7 +79,7 @@ export default function CheckSlavePanel({ fs, pyroArm }: CheckSlavePanelProps) {
           <button key={i} onClick={() => setSelectedSlave(i)}
             className={cn(
               "flex items-center gap-1 rounded border transition-all",
-              fs ? "px-3 py-2 text-[10px]" : "px-2 py-1 text-[7px]",
+              fs ? "px-3 py-2 text-[10px]" : "px-2 py-1 text-[8px]",
               selectedSlave === i
                 ? "bg-primary/15 border-primary/40 text-primary"
                 : slave.connected
@@ -96,7 +96,7 @@ export default function CheckSlavePanel({ fs, pyroArm }: CheckSlavePanelProps) {
       {currentSlave && (
         <div className={cn(
           "flex items-center gap-3 border-b border-border/15",
-          fs ? "px-4 py-2 text-[9px]" : "px-2 py-1 text-[7px]"
+          fs ? "px-4 py-2 text-[9px]" : "px-2 py-1 text-[8px]"
         )} style={{ background: 'hsl(220 10% 7%)' }}>
           <div className="flex items-center gap-1">
             <div className={cn("w-2 h-2 rounded-full", currentSlave.connected ? "bg-green-500" : "bg-red-500")} />
@@ -159,7 +159,7 @@ export default function CheckSlavePanel({ fs, pyroArm }: CheckSlavePanelProps) {
                 {ig.resistance !== undefined && ig.connected && (
                   <span className={cn(
                     "font-mono text-muted-foreground/30",
-                    fs ? "text-[8px]" : "text-[6px]"
+                    fs ? "text-[8px]" : "text-[8px]"
                   )}>
                     {ig.resistance.toFixed(1)}Ω
                   </span>
@@ -175,7 +175,7 @@ export default function CheckSlavePanel({ fs, pyroArm }: CheckSlavePanelProps) {
       {/* Legend */}
       <div className={cn(
         "flex items-center justify-center gap-4 border-t border-border/15",
-        fs ? "py-2 text-[9px]" : "py-1 text-[6px]"
+        fs ? "py-2 text-[9px]" : "py-1 text-[8px]"
       )} style={{ background: 'hsl(220 12% 6%)' }}>
         <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500" /><span className="text-muted-foreground/40">Connected</span></div>
         <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500/40" /><span className="text-muted-foreground/40">Missing</span></div>
