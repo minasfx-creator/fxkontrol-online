@@ -260,29 +260,34 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-7xl mx-auto pb-10">
-      {/* ── Hero Banner ──────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br from-[hsl(var(--surface-1))] via-[hsl(var(--surface-2))] to-[hsl(var(--surface-1))] p-6 md:p-8 mb-6 animate-fxk-fade-up">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(var(--primary)/0.08),transparent_60%)]" />
-        <div className="absolute top-4 right-4 opacity-[0.03]">
-          <Sparkles className="h-40 w-40" />
-        </div>
+      {/* ── Hero Banner — Premium ──────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/30 bg-gradient-to-br from-[hsl(var(--surface-1))] via-[hsl(var(--surface-2)/0.6)] to-[hsl(var(--surface-1))] p-6 md:p-8 mb-6 animate-fxk-fade-up">
+        {/* Ambient glow */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(var(--primary)/0.06),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,hsl(var(--fxk-violet)/0.04),transparent_50%)]" />
+        {/* Grid overlay */}
+        <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+        
         <div className="relative z-10 flex items-start justify-between">
           <div>
-            <p className="text-xs font-mono-code text-primary/80 tracking-widest uppercase mb-2">
-              ● FX KONTROL ONLINE
-            </p>
-            <h1 className="text-3xl md:text-4xl font-bold font-display tracking-tight text-foreground">
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_hsl(155_80%_42%/0.5)]" />
+              <p className="text-[10px] font-mono text-primary/70 tracking-[0.25em] uppercase font-semibold">
+                FX KONTROL ONLINE
+              </p>
+            </div>
+            <h1 className="text-3xl md:text-4xl font-bold font-display tracking-tight text-foreground leading-[1.1]">
               Bem-vindo, <span className="text-fxk-gradient">{userName}</span>
             </h1>
-            <p className="text-sm text-muted-foreground mt-2 max-w-lg">
-              Sua estação de controle para shows pirotécnicos, drones e efeitos especiais.
+            <p className="text-sm text-muted-foreground mt-2.5 max-w-lg font-tech leading-relaxed">
+              Plataforma inteligente para controle de shows pirotécnicos, drones e efeitos especiais.
             </p>
           </div>
           {lastProjectId && (
             <Button
               variant="outline"
               size="sm"
-              className="hidden md:flex gap-1.5 text-xs border-primary/20 text-primary hover:bg-primary/10"
+              className="hidden md:flex gap-1.5 text-xs border-primary/20 text-primary hover:bg-primary/10 rounded-xl"
               onClick={() => navigate('/editor')}
             >
               <ArrowRight className="h-3 w-3" />

@@ -295,60 +295,69 @@ export default function CommandCenter() {
   // ══════════════════════════════════════════════════════
   return (
     <div className="h-[calc(100vh-3rem)] flex overflow-hidden">
-      {/* ── Sidebar ── */}
+      {/* ── Sidebar — Premium Glassmorphism ── */}
       <div
         className={cn(
-          "shrink-0 flex flex-col border-r border-border/20 transition-all duration-300",
+          "shrink-0 flex flex-col border-r transition-all duration-300",
           sidebarCollapsed ? "w-14" : "w-56"
         )}
         style={{
-          background: 'linear-gradient(180deg, hsl(225 14% 7% / 0.95) 0%, hsl(225 12% 5% / 0.98) 100%)',
-          backdropFilter: 'blur(40px)',
+          background: 'linear-gradient(180deg, hsl(228 16% 6% / 0.97) 0%, hsl(228 18% 4% / 0.99) 100%)',
+          backdropFilter: 'blur(48px) saturate(1.8)',
+          borderColor: 'rgba(255,255,255,0.06)',
         }}
       >
-        {/* Dynamic Island */}
+        {/* Dynamic Island — Premium */}
         <div className="px-3 pt-4 pb-3">
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className={cn(
-              "w-full rounded-2xl border border-border/20 transition-all duration-300",
-              "backdrop-blur-xl hover:border-primary/30",
-              sidebarCollapsed ? "p-2" : "px-3 py-2"
+              "w-full rounded-2xl border transition-all duration-300",
+              "hover:border-primary/20",
+              sidebarCollapsed ? "p-2" : "px-3.5 py-2.5"
             )}
-            style={{ background: accent.glow }}
+            style={{
+              background: accent.glow,
+              borderColor: 'rgba(255,255,255,0.06)',
+              boxShadow: `0 2px 16px ${accent.glow}`,
+            }}
           >
             {sidebarCollapsed ? (
               <div className="flex flex-col items-center gap-1">
-                <div className={cn("h-2 w-2 rounded-full")} style={{ backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.3)' }} />
-                <span className="text-[8px] font-mono text-muted-foreground">{connectedCount}</span>
+                <div className="h-2 w-2 rounded-full" style={{ backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.3)' }} />
+                <span className="text-[7px] font-mono text-muted-foreground font-bold">{connectedCount}</span>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.3)' }} />
+              <div className="flex items-center gap-2.5">
+                <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.3)', boxShadow: connectedCount > 0 ? `0 0 8px ${accent.color}66` : 'none' }} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-[9px] font-bold text-foreground uppercase tracking-wider truncate">FXK Command</p>
-                  <p className="text-[8px] text-muted-foreground font-mono">{connectedCount} connected</p>
+                  <p className="text-[9px] font-bold text-foreground uppercase tracking-[0.15em] truncate font-tech">FXK Command</p>
+                  <p className="text-[8px] text-muted-foreground/60 font-mono">{connectedCount} connected</p>
                 </div>
                 {fireone.isConnected && (
-                  <Badge variant="outline" className="text-[8px] h-4 px-1 border-red-500/30 text-red-400 shrink-0">FO</Badge>
+                  <Badge variant="outline" className="text-[7px] h-4 px-1.5 border-red-500/20 text-red-400 shrink-0 font-mono">FO</Badge>
                 )}
                 {pbus.isConnected && (
-                  <Badge variant="outline" className="text-[8px] h-4 px-1 border-amber-500/30 text-amber-400 shrink-0">PB</Badge>
+                  <Badge variant="outline" className="text-[7px] h-4 px-1.5 border-amber-500/20 text-amber-400 shrink-0 font-mono">PB</Badge>
                 )}
               </div>
             )}
           </button>
         </div>
 
-        {/* Mode List */}
+        {/* Mode List — Premium spacing */}
         <ScrollArea className="flex-1 px-1.5">
-          <div className="space-y-3 pb-4">
+          <div className="space-y-4 pb-4">
             {MODE_SECTIONS.map(section => (
               <div key={section.label}>
                 {!sidebarCollapsed && (
-                  <p className={cn("text-[8px] font-bold uppercase tracking-[0.2em] px-2 mb-1", section.accent)}>
-                    {section.label}
-                  </p>
+                  <div className="flex items-center gap-2 px-2 mb-1.5">
+                    <div className="divider-glow flex-1" />
+                    <p className={cn("text-[7px] font-bold uppercase tracking-[0.25em] font-mono shrink-0", section.accent)}>
+                      {section.label}
+                    </p>
+                    <div className="divider-glow flex-1" />
+                  </div>
                 )}
                 <div className="space-y-0.5">
                   {section.modes.map(mode => {
@@ -360,24 +369,24 @@ export default function CommandCenter() {
                         onClick={() => handleModeChange(mode.key)}
                         className={cn(
                           "w-full flex items-center gap-2.5 rounded-xl transition-all duration-200",
-                          sidebarCollapsed ? "justify-center p-2" : "px-2.5 py-2",
+                          sidebarCollapsed ? "justify-center p-2" : "px-3 py-2",
                           isActive
                             ? "text-foreground border"
-                            : "text-muted-foreground/60 hover:bg-muted/20 hover:text-foreground/80 border border-transparent"
+                            : "text-muted-foreground/50 hover:bg-[rgba(255,255,255,0.03)] hover:text-foreground/70 border border-transparent"
                         )}
                         style={isActive ? {
                           background: mAccent?.glow,
-                          borderColor: mAccent?.color + '33',
-                          color: mAccent?.color,
+                          borderColor: mAccent?.color + '22',
+                          boxShadow: `0 2px 12px ${mAccent?.glow}`,
                         } : undefined}
                         title={sidebarCollapsed ? mode.label : undefined}
                       >
                         <mode.icon className={cn("shrink-0", sidebarCollapsed ? "w-4 h-4" : "w-3.5 h-3.5")} />
                         {!sidebarCollapsed && (
-                          <span className="text-[10px] font-semibold truncate">{mode.label}</span>
+                          <span className="text-[10px] font-semibold truncate font-tech">{mode.label}</span>
                         )}
                         {!sidebarCollapsed && isActive && (
-                          <div className="ml-auto h-1.5 w-1.5 rounded-full animate-pulse shrink-0" style={{ backgroundColor: mAccent?.color }} />
+                          <div className="ml-auto h-1.5 w-1.5 rounded-full animate-pulse shrink-0" style={{ backgroundColor: mAccent?.color, boxShadow: `0 0 6px ${mAccent?.color}` }} />
                         )}
                       </button>
                     );
@@ -388,18 +397,18 @@ export default function CommandCenter() {
           </div>
         </ScrollArea>
 
-        {/* Safety Footer */}
+        {/* Safety Footer — Premium */}
         {!sidebarCollapsed && (
-          <div className="p-2 border-t border-border/10">
+          <div className="p-2.5 border-t" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
             <div className={cn(
-              "flex items-center gap-2 px-2 py-1.5 rounded-lg border",
+              "flex items-center gap-2 px-2.5 py-2 rounded-xl border transition-all",
               isArmed
-                ? "bg-destructive/10 border-destructive/30"
-                : "bg-destructive/5 border-destructive/10"
+                ? "bg-destructive/10 border-destructive/25"
+                : "bg-[rgba(255,255,255,0.02)] border-destructive/8"
             )}>
-              <Shield className="h-3 w-3 text-destructive/60 shrink-0" />
-              <span className="text-[8px] text-destructive/60 font-semibold">
-                {isArmed ? `ARMED • ${activeEffects.length} ACTIVE` : 'SAFETY LOCK ACTIVE'}
+              <Shield className="h-3 w-3 text-destructive/50 shrink-0" />
+              <span className="text-[8px] text-destructive/50 font-semibold font-mono tracking-wider">
+                {isArmed ? `ARMED · ${activeEffects.length} ACTIVE` : 'SAFETY LOCK'}
               </span>
             </div>
           </div>
@@ -408,43 +417,45 @@ export default function CommandCenter() {
 
       {/* ── Main Content ── */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Breadcrumb bar with console identity */}
+        {/* Breadcrumb bar — Premium with glass */}
         <div
-          className="h-10 shrink-0 flex items-center justify-between px-4 border-b border-border/15"
+          className="h-11 shrink-0 flex items-center justify-between px-4 border-b"
           style={{
-            background: `linear-gradient(90deg, ${accent.glow} 0%, hsl(225 12% 7% / 0.8) 40%)`,
-            backdropFilter: 'blur(20px)',
+            background: `linear-gradient(90deg, ${accent.glow} 0%, hsl(228 14% 6% / 0.85) 50%)`,
+            backdropFilter: 'blur(24px)',
+            borderColor: 'rgba(255,255,255,0.04)',
           }}
         >
           <div className="flex items-center gap-3">
-            <Badge variant="outline" className={cn("text-[9px] h-5 px-2 font-black border", accent.badge)}>
+            <Badge variant="outline" className={cn("text-[8px] h-5 px-2.5 font-black border font-mono tracking-wider", accent.badge)}>
               {accent.label}
             </Badge>
-            <span className="text-[9px] text-muted-foreground/40 font-mono">
+            <div className="h-3 w-[1px] bg-border/20" />
+            <span className="text-[9px] text-muted-foreground/35 font-mono tracking-wider">
               {isFireMode(activeMode) ? 'FIRE CONSOLE' : 'DIRECT PANEL'}
             </span>
           </div>
           <div className="flex items-center gap-2">
             {isArmed && (
-              <Badge variant="destructive" className="text-[8px] h-5 animate-pulse">
-                ARMED • {activeEffects.length}
+              <Badge variant="destructive" className="text-[8px] h-5 animate-pulse font-mono">
+                ARMED · {activeEffects.length}
               </Badge>
             )}
             {connectedCount > 0 && (
-              <Badge variant="outline" className="text-[8px] h-5 border-emerald-500/20 text-emerald-400">
+              <Badge variant="outline" className="text-[8px] h-5 border-emerald-500/15 text-emerald-400 font-mono">
                 {connectedCount} ONLINE
               </Badge>
             )}
           </div>
         </div>
 
-        {/* Content — Fire modes get LiveFiringPanel, others render directly */}
+        {/* Content */}
         <div className="flex-1 overflow-hidden">
           {isFireMode(activeMode) ? (
             <LiveFiringPanel initialMode={activeMode} standalone />
           ) : (
             <ScrollArea className="h-full">
-              <div className="h-full" style={{ background: 'hsl(220 15% 6%)' }}>
+              <div className="h-full" style={{ background: 'hsl(228 16% 5%)' }}>
                 {renderDirectPanel(activeMode)}
               </div>
             </ScrollArea>
