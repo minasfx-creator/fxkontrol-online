@@ -19,7 +19,7 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export type BridgeTransport = 'ble' | 'usb' | 'websocket' | 'none';
+export type BridgeTransport = 'ble' | 'usb' | 'websocket' | 'direct_relay' | 'none';
 
 export interface BridgeStatus {
   transport: BridgeTransport;
