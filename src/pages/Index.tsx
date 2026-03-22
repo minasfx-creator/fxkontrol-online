@@ -560,7 +560,7 @@ function Index() {
                     </Suspense>
                   </CanvasErrorBoundary>
                   <BoxSelectOverlay />
-                  {/* Drop zone visual overlay */}
+                  <SelectionModeBar />
                   {isDragOver && (
                     <div className="absolute inset-0 z-50 pointer-events-none flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded-md backdrop-blur-[2px] transition-all">
                       <div className="flex flex-col items-center gap-2 text-primary">
