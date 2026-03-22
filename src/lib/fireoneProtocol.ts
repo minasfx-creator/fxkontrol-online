@@ -668,7 +668,33 @@ export class FireOneController {
     return wd.id;
   }
 
-  // ─── Disconnect all ───
+  /** Connect a Starlink satellite transport for remote supervision */
+  async connectStarlink(relayUrl?: string): Promise<string> {
+    const starlink = new StarlinkTransport();
+    this.transportManager.addTransport(starlink);
+    await starlink.connect({ relayUrl });
+    return starlink.id;
+  }
+
+  /**
+   * Enable Hybrid Mode: Radio for E-STOP/fire + Starlink for sync.
+   * Requires at least one radio and one Wi-Fi/Starlink transport connected.
+   */
+  enableHybridMode(config?: Partial<HybridRouterConfig>): HybridTransportRouter {
+    this.hybridRouter = getHybridRouter(config);
+    this._hybridMode = true;
+    return this.hybridRouter;
+  }
+
+  disableHybridMode(): void {
+    this.hybridRouter?.destroy();
+    this.hybridRouter = null;
+    this._hybridMode = false;
+  }
+
+  get isHybridMode(): boolean { return this._hybridMode; }
+  get hybridSummary() { return this.hybridRouter?.summary ?? null; }
+
   async disconnect(): Promise<void> {
     this.transportManager.stopHeartbeat();
     await this.transportManager.disconnectAll();
