@@ -920,11 +920,13 @@ export default function ScriptWindow() {
         <table className="w-full text-[9px] font-mono-code border-collapse min-w-[600px]">
           <thead className="sticky top-0 bg-surface-1 z-10">
             <tr className="border-b border-border/40">
-              <th className="px-0.5 py-1 w-6 text-center text-muted-foreground/50 font-medium">#</th>
+              <th className="px-0.5 py-1 w-6 text-center text-muted-foreground/50 font-medium">Cue</th>
               <th className="px-1 py-1 w-5"></th>
               <SortableHeader label="Event Time" field="eventTime" current={sortField} dir={sortDir} onSort={toggleSort} />
               <SortableHeader label="Effect Time" field="effectTime" current={sortField} dir={sortDir} onSort={toggleSort} />
               <th className="px-1 py-1 text-left text-muted-foreground font-medium">PFT</th>
+              <th className="px-1 py-1 text-left text-muted-foreground font-medium w-8">Size</th>
+              <th className="px-1 py-1 text-left text-muted-foreground font-medium w-10">Type</th>
               <SortableHeader label="Description" field="description" current={sortField} dir={sortDir} onSort={toggleSort} />
               <SortableHeader label="Position" field="position" current={sortField} dir={sortDir} onSort={toggleSort} />
               <th className="px-1 py-1 text-left text-muted-foreground font-medium">Pan°</th>
