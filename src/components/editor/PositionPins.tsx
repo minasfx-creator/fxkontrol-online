@@ -148,9 +148,24 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
   const hasSavedCheckpoint = useRef(false);
   const _posVec = useRef(new THREE.Vector3());
 
-  const linkedEffects = timelineItems.filter(
-    t => t.positionId === position.id || t.positionIds?.includes(position.id)
-  ).length;
+  const linkedItemIds = useMemo(() =>
+    timelineItems.filter(t => t.positionId === position.id || t.positionIds?.includes(position.id)).map(t => t.id),
+    [timelineItems, position.id]
+  );
+  const linkedEffects = linkedItemIds.length;
+
+  // Check if this position's linked events are highlighted from the timeline
+  const hasLinkedGlow = useMemo(() =>
+    linkedItemIds.some(id => linkedTimelineItemIds.includes(id)),
+    [linkedItemIds, linkedTimelineItemIds]
+  );
+
+  // FireOne module badge
+  const addresses = useAddressingStore(s => s.addresses);
+  const moduleBadge = useMemo(() => {
+    const addr = addresses.find(a => linkedItemIds.includes(a.timelineItemId));
+    return addr ? `M${addr.module}` : null;
+  }, [addresses, linkedItemIds]);
 
   useFrame(({ clock, camera: cam }) => {
     if (glowRef.current && isSelected) {
