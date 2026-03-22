@@ -629,6 +629,20 @@ export class FireOneModuleEmulator {
 
   private startCharging(): void {
     this.charging = true;
+
+    // In direct_relay mode, instantly set all channels to max (no CDS charge needed)
+    if (this.hardwareMode === 'direct_relay') {
+      this.igniters.forEach(ig => {
+        if (!ig.fired) {
+          ig.cdsVoltage = CDS_TARGET_VOLTAGE;
+          ig.cdsCharging = false;
+        }
+      });
+      this.charging = false;
+      this.emitStatus();
+      return;
+    }
+
     this.chargeInterval = setInterval(() => {
       let allCharged = true;
       this.igniters.forEach(ig => {
