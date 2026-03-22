@@ -29,7 +29,7 @@ import {
 // ═══════════════════════════════════════════════════════════
 
 /** FireOne command bytes that map to safety-critical operations */
-const ESTOP_CMD = 0x45;   // 'E' — Emergency Stop
+const ESTOP_CMD = 0x58;   // 'X' — Emergency Stop (FireOneCmd.EMERGENCY_STOP)
 const ARM_CMD = 0x41;     // 'A' — Arm module
 const FIRE_CMD = 0x46;    // 'F' — Fire cue
 const DISARM_CMD = 0x44;  // 'D' — Disarm module
