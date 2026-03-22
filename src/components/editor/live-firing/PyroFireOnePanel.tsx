@@ -1107,7 +1107,7 @@ export default function PyroFireOnePanel({
           <div className={cn("text-center text-amber-400/50 font-bold uppercase mb-2",
             sz === 'xl' ? "text-sm py-2" : sz === 'fs' ? "text-[10px]" : "text-[8px]"
           )}>
-            {!masterKeyOn ? 'Turn Master Key ON' : !deadmanHeld ? 'Hold DEADMAN to fire' : 'ARM system to fire'}
+            {!masterKeyOn ? 'Turn Master Key ON' : 'ARM system to fire'}
           </div>
         )}
         <div className={cn("grid", cols, sz === 'xl' ? "gap-2" : sz === 'fs' ? "gap-1.5" : "gap-1")}>
