@@ -428,16 +428,18 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
               <Pause className="w-3 h-3" /> PAUSE
             </button>
           </div>
-          {/* BLACKOUT — Full width prominent key */}
+          {/* BLACKOUT — Full width prominent key with warning stripe */}
           <button onClick={() => sendMacro('BlackOut', 'Blackout')} disabled={oscState !== 'connected'}
             className={cn(
               "w-full flex items-center justify-center gap-2 rounded-sm border-2 font-black uppercase tracking-[0.2em] transition-all min-h-[44px]",
               oscState === 'connected'
-                ? "border-amber-500/40 bg-amber-500/5 text-amber-400 hover:bg-amber-500/15 active:scale-[0.98]"
+                ? "border-amber-500/40 text-amber-400 hover:bg-amber-500/15 active:scale-[0.98]"
                 : "border-border/10 text-muted-foreground/20"
             )} style={{
               boxShadow: oscState === 'connected' ? 'inset 0 2px 4px rgba(0,0,0,0.4)' : 'none',
-              background: oscState === 'connected' ? 'linear-gradient(180deg, hsl(40 20% 8%) 0%, hsl(40 10% 4%) 100%)' : undefined,
+              background: oscState === 'connected'
+                ? 'repeating-linear-gradient(135deg, hsl(40 20% 8%) 0px, hsl(40 20% 8%) 4px, hsl(40 10% 4%) 4px, hsl(40 10% 4%) 8px)'
+                : undefined,
             }}>
             <Moon className="w-4 h-4" /> BLACKOUT
           </button>
