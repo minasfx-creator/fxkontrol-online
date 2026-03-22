@@ -581,13 +581,13 @@ export default function PyroFireOnePanel({
         {hardware.isConnected ? (
           <button onClick={handleHardwareDisconnect}
             className={cn("rounded border font-bold uppercase transition-all",
-              sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[6px]",
+              sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[8px]",
               "bg-red-600/10 border-red-500/20 text-red-400/70"
             )}>DISCONNECT</button>
         ) : (
           <button onClick={handleHardwareConnect}
             className={cn("rounded border font-bold uppercase transition-all",
-              sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[6px]",
+              sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[8px]",
               "bg-green-600/10 border-green-500/20 text-green-400/70 hover:bg-green-600/15"
             )}>CONNECT RS-485</button>
         )}
@@ -596,7 +596,7 @@ export default function PyroFireOnePanel({
         {hardware.isConnected && (
           <button onClick={handleScan} disabled={hardware.scanning}
             className={cn("rounded border font-bold uppercase transition-all",
-              sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[6px]",
+              sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[8px]",
               hardware.scanning
                 ? "bg-cyan-600/10 border-cyan-500/20 text-cyan-400/70 animate-pulse"
                 : "bg-cyan-600/10 border-cyan-500/15 text-cyan-400/50 hover:text-cyan-400/70"
@@ -609,7 +609,7 @@ export default function PyroFireOnePanel({
         {/* ARTNET LINK */}
         <button onClick={handleArtnetLink} disabled={artnetLinking}
           className={cn("rounded border font-bold uppercase transition-all",
-            sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[6px]",
+            sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[8px]",
             artnetLinking
               ? "bg-violet-600/15 border-violet-500/30 text-violet-400/80 animate-pulse"
               : artnetLinkedModules.size > 0
@@ -623,14 +623,14 @@ export default function PyroFireOnePanel({
         {/* Import / Export */}
         <button onClick={() => fileInputRef.current?.click()}
           className={cn("rounded border font-bold uppercase transition-all",
-            sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[6px]",
+            sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[8px]",
             "bg-amber-600/10 border-amber-500/15 text-amber-400/50 hover:text-amber-400/70"
           )}>
           <Upload className={cn(sz === 'xl' ? "w-3 h-3 inline mr-1" : "w-2 h-2 inline mr-0.5")} />CSV
         </button>
         <button onClick={handleExportCSV}
           className={cn("rounded border font-bold uppercase transition-all",
-            sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[6px]",
+            sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[8px]",
             "border-border/10 text-muted-foreground/30 hover:text-muted-foreground/50"
           )}>
           <Download className={cn(sz === 'xl' ? "w-3 h-3 inline mr-1" : "w-2 h-2 inline mr-0.5")} />CSV
@@ -718,12 +718,12 @@ export default function PyroFireOnePanel({
       <div className="flex items-center gap-1.5">
         <button onClick={() => armAll(true)} disabled={!masterKeyOn}
           className={cn("rounded border font-bold uppercase transition-all",
-            sz === 'xl' ? "px-4 py-2.5 text-[11px]" : sz === 'fs' ? "px-3 py-1.5 text-[9px]" : "px-2 py-1 text-[7px]",
+            sz === 'xl' ? "px-4 py-2.5 text-[11px]" : sz === 'fs' ? "px-3 py-1.5 text-[9px]" : "px-2 py-1 text-[8px]",
             masterKeyOn ? "bg-red-600/15 border-red-500/30 text-red-400/80" : "border-border/10 text-muted-foreground/20"
           )}>ARM ALL</button>
         <button onClick={() => armAll(false)} disabled={!masterKeyOn}
           className={cn("rounded border font-bold uppercase transition-all",
-            sz === 'xl' ? "px-4 py-2.5 text-[11px]" : sz === 'fs' ? "px-3 py-1.5 text-[9px]" : "px-2 py-1 text-[7px]",
+            sz === 'xl' ? "px-4 py-2.5 text-[11px]" : sz === 'fs' ? "px-3 py-1.5 text-[9px]" : "px-2 py-1 text-[8px]",
             masterKeyOn ? "bg-green-600/10 border-green-500/30 text-green-400/80" : "border-border/10 text-muted-foreground/20"
           )}>DISARM ALL</button>
       </div>
@@ -758,7 +758,7 @@ export default function PyroFireOnePanel({
         <button key={m.key} onClick={() => setPyroMode(m.key)}
           className={cn(
             "flex-1 font-bold uppercase tracking-wider transition-all border-b-2",
-            sz === 'xl' ? "py-3 text-sm" : sz === 'fs' ? "py-2 text-[10px]" : "py-1.5 text-[7px]",
+            sz === 'xl' ? "py-3 text-sm" : sz === 'fs' ? "py-2 text-[10px]" : "py-1.5 text-[8px]",
             pyroMode === m.key ? "text-red-400/80 border-red-500/60" : "text-muted-foreground/30 border-transparent"
           )}>{m.label}</button>
       ))}
@@ -778,7 +778,7 @@ export default function PyroFireOnePanel({
             <button onClick={() => setSelectedModule(m.address)}
               className={cn(
                 "rounded border font-mono font-bold shrink-0 transition-all flex items-center gap-1",
-                sz === 'xl' ? "px-3.5 py-2 text-xs" : sz === 'fs' ? "px-2.5 py-1.5 text-[9px]" : "px-2 py-1 text-[7px]",
+                sz === 'xl' ? "px-3.5 py-2 text-xs" : sz === 'fs' ? "px-2.5 py-1.5 text-[9px]" : "px-2 py-1 text-[8px]",
                 selectedModule === m.address
                   ? m.armed ? "bg-red-600/20 border-red-500/40 text-red-400" : "bg-primary/15 border-primary/40 text-primary"
                   : m.armed ? "bg-red-600/10 border-red-800/20 text-red-400/50"
@@ -845,7 +845,7 @@ export default function PyroFireOnePanel({
           const badge = connectionModeBadge(currentModule.connectionMode);
           return (
             <span className={cn("rounded border font-bold uppercase font-mono",
-              sz === 'xl' ? "px-2 py-0.5 text-[8px]" : "px-1.5 py-0.5 text-[5px]",
+              sz === 'xl' ? "px-2 py-0.5 text-[8px]" : "px-1.5 py-0.5 text-[8px]",
               badge.cls
             )}>{badge.text}</span>
           );
@@ -880,7 +880,7 @@ export default function PyroFireOnePanel({
         </div>
         <button onClick={() => armModule(currentModule.address, !currentModule.armed)} disabled={!masterKeyOn}
           className={cn("ml-auto rounded border font-bold uppercase transition-all",
-            sz === 'xl' ? "px-4 py-2 text-xs" : sz === 'fs' ? "px-2.5 py-1 text-[8px]" : "px-2 py-0.5 text-[6px]",
+            sz === 'xl' ? "px-4 py-2 text-xs" : sz === 'fs' ? "px-2.5 py-1 text-[8px]" : "px-2 py-0.5 text-[8px]",
             currentModule.armed ? "bg-red-600/20 border-red-500/40 text-red-400" : masterKeyOn ? "border-border/20 text-muted-foreground/50" : "border-border/10 text-muted-foreground/15"
           )}>
           {currentModule.armed ? '● ARMED' : 'ARM'}
@@ -996,7 +996,7 @@ export default function PyroFireOnePanel({
             {stepCues.map((cue, i) => (
               <div key={cue.id} className={cn(
                 "flex items-center gap-2 rounded border transition-colors",
-                sz === 'xl' ? "px-4 py-2 text-xs" : sz === 'fs' ? "px-3 py-1.5 text-[9px]" : "px-2 py-1 text-[7px]",
+                sz === 'xl' ? "px-4 py-2 text-xs" : sz === 'fs' ? "px-3 py-1.5 text-[9px]" : "px-2 py-1 text-[8px]",
                 i === stepIndex ? "bg-red-600/10 border-red-500/20 text-foreground/80" :
                 i < stepIndex ? "border-border/5 text-muted-foreground/20" :
                 "border-border/10 text-muted-foreground/40"
@@ -1058,7 +1058,7 @@ export default function PyroFireOnePanel({
               return (
                 <div key={cue.id} className={cn(
                   "flex items-center gap-2 rounded border",
-                  sz === 'xl' ? "px-4 py-2 text-xs" : sz === 'fs' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[7px]",
+                  sz === 'xl' ? "px-4 py-2 text-xs" : sz === 'fs' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[8px]",
                   fired ? "border-border/5 text-muted-foreground/20" :
                   tcTimeMs >= cue.timecodeMs - 2000 ? "border-amber-500/20 bg-amber-600/5 text-amber-400/70" :
                   "border-border/10 text-muted-foreground/40"
@@ -1087,7 +1087,7 @@ export default function PyroFireOnePanel({
           </span>
           <button onClick={runContinuityTest} disabled={!currentModule.connected}
             className={cn("rounded border font-bold uppercase transition-all flex items-center gap-1",
-              sz === 'xl' ? "px-4 py-2 text-xs" : sz === 'fs' ? "px-3 py-1.5 text-[9px]" : "px-2 py-1 text-[7px]",
+              sz === 'xl' ? "px-4 py-2 text-xs" : sz === 'fs' ? "px-3 py-1.5 text-[9px]" : "px-2 py-1 text-[8px]",
               currentModule.connected ? "bg-cyan-600/15 border-cyan-500/30 text-cyan-400" : "border-border/10 text-muted-foreground/15"
             )}>
             <Search className={cn(sz === 'xl' ? "w-4 h-4" : "w-3 h-3")} /> TEST
