@@ -689,10 +689,18 @@ export default function PyroFireOnePanel({
               <div key={c.label} className={cn(
                 "rounded border font-mono text-center",
                 sz === 'xl' ? "px-3 py-1.5 min-w-[52px]" : sz === 'fs' ? "px-2 py-1 min-w-[40px]" : "px-1.5 py-0.5 min-w-[32px]"
-              )} style={{ background: 'hsl(0 10% 4%)', borderColor: 'hsl(0 20% 15%)' }}>
+              )} style={{
+                background: 'hsl(0 10% 4%)',
+                borderColor: 'hsl(0 20% 15%)',
+                boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.5)',
+              }}>
                 <div className={cn("font-bold", c.color,
                   sz === 'xl' ? "text-sm" : sz === 'fs' ? "text-[10px]" : "text-[9px]"
-                )}>{c.value}</div>
+                )} style={{
+                  textShadow: c.label === 'MOD' ? '0 0 8px hsl(120 80% 40% / 0.5)' :
+                    c.label === 'IG' ? '0 0 8px hsl(180 80% 40% / 0.4)' :
+                    c.label === 'FIRE' && c.value > 0 ? '0 0 8px hsl(0 80% 50% / 0.5)' : 'none',
+                }}>{c.value}</div>
                 <div className={cn("text-muted-foreground/25 uppercase",
                   sz === 'xl' ? "text-[7px]" : "text-[6px]"
                 )}>{c.label}</div>
