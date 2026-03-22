@@ -7,13 +7,15 @@
  * 3. WebSocket → ESP32 Wi-Fi server
  * 
  * ESP32 Firmware Protocol:
- *   FIRE:pin:durationMs\n     → fires igniter
+ *   FIRE:pin:durationMs\n     → fires igniter (responds "OK:FIRE:pin\n")
+ *   BATCH:mask:durationMs\n   → fire multiple via bitmask
  *   GPIO:pin:HIGH|LOW\n       → set GPIO
  *   CONT:pin\n                → read continuity (responds "CONT:pin:ohms\n")
+ *   CDS:pin\n                 → read cap voltage (responds "CDS:pin:volts\n")
  *   STATUS\n                  → responds "BAT:voltage;PINS:mask\n"
+ *   HEARTBEAT\n               → responds "PONG\n"
+ *   VERSION\n                 → responds "VER:x.y.z\n"
  *   ESTOP\n                   → emergency stop all
- * 
- * Minimal ESP32 Arduino sketch (see comments at bottom)
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -37,15 +39,19 @@ const BLE_SERVICE_UUID = '0000ffe0-0000-1000-8000-00805f9b34fb';
 const BLE_CHAR_TX_UUID = '0000ffe1-0000-1000-8000-00805f9b34fb';
 const BLE_CHAR_RX_UUID = '0000ffe2-0000-1000-8000-00805f9b34fb';
 
+const HEARTBEAT_INTERVAL = 5000;
+const FIRE_CONFIRM_TIMEOUT = 2000;
+
 export class FireOneHardwareBridge {
   private transport: BridgeTransport = 'none';
   private connected = false;
   private deviceName = '';
+  private firmwareVersion = '';
+  private batteryVoltage?: number;
   private txBytes = 0;
   private rxBytes = 0;
   private lastPing = 0;
 
-  // Transport handles (use `any` for Web Bluetooth / WebSerial types not in default TS lib)
   private bleDevice: any = null;
   private bleCharTx: any = null;
   private bleCharRx: any = null;
@@ -57,6 +63,7 @@ export class FireOneHardwareBridge {
   private responseBuffer = '';
   private pendingResolves: Map<string, (value: string) => void> = new Map();
   private onEvent: BridgeEventHandler | null = null;
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(eventHandler?: BridgeEventHandler) {
     this.onEvent = eventHandler ?? null;
@@ -64,7 +71,6 @@ export class FireOneHardwareBridge {
 
   // ─── Connection Methods ──────────────────────────────
 
-  /** Connect via Web Bluetooth BLE */
   async connectBLE(): Promise<boolean> {
     try {
       const nav = navigator as any;
@@ -80,7 +86,6 @@ export class FireOneHardwareBridge {
       this.bleCharTx = await service.getCharacteristic(BLE_CHAR_TX_UUID);
       this.bleCharRx = await service.getCharacteristic(BLE_CHAR_RX_UUID);
 
-      // Listen for responses
       await this.bleCharRx.startNotifications();
       this.bleCharRx.addEventListener('characteristicvaluechanged', (event: any) => {
         const value = new TextDecoder().decode(event.target.value.buffer);
@@ -94,7 +99,7 @@ export class FireOneHardwareBridge {
       this.connected = true;
       this.deviceName = device.name || 'ESP32-FXK';
       this.lastPing = Date.now();
-      this.onEvent?.('connected', { transport: 'ble', device: this.deviceName });
+      this.onConnect();
       return true;
     } catch (err) {
       console.warn('[HardwareBridge] BLE connect failed:', err);
@@ -102,7 +107,6 @@ export class FireOneHardwareBridge {
     }
   }
 
-  /** Connect via WebSerial USB */
   async connectUSB(baudRate = 115200): Promise<boolean> {
     try {
       if (!('serial' in navigator)) throw new Error('WebSerial not supported');
@@ -119,10 +123,8 @@ export class FireOneHardwareBridge {
       this.deviceName = 'ESP32-USB';
       this.lastPing = Date.now();
 
-      // Start reading serial data
       this.readSerialLoop();
-
-      this.onEvent?.('connected', { transport: 'usb', device: this.deviceName });
+      this.onConnect();
       return true;
     } catch (err) {
       console.warn('[HardwareBridge] USB connect failed:', err);
@@ -130,7 +132,6 @@ export class FireOneHardwareBridge {
     }
   }
 
-  /** Connect via WebSocket to ESP32 Wi-Fi server */
   async connectWebSocket(url = 'ws://192.168.4.1:81'): Promise<boolean> {
     return new Promise((resolve) => {
       try {
@@ -148,7 +149,7 @@ export class FireOneHardwareBridge {
           this.connected = true;
           this.deviceName = `ESP32-WS(${url})`;
           this.lastPing = Date.now();
-          this.onEvent?.('connected', { transport: 'websocket', device: this.deviceName });
+          this.onConnect();
           resolve(true);
         };
 
@@ -171,8 +172,8 @@ export class FireOneHardwareBridge {
     });
   }
 
-  /** Disconnect from hardware */
   async disconnect(): Promise<void> {
+    this.stopHeartbeat();
     if (this.bleDevice?.gatt?.connected) {
       this.bleDevice.gatt.disconnect();
     }
@@ -197,10 +198,16 @@ export class FireOneHardwareBridge {
 
   // ─── Command Methods ─────────────────────────────────
 
-  /** Fire a single igniter pin */
+  /** Fire a single igniter pin — waits for hardware confirmation */
   async fire(pin: number, durationMs: number): Promise<boolean> {
-    const cmd = `FIRE:${pin}:${durationMs}\n`;
-    return this.sendCommand(cmd);
+    const key = `OK:FIRE:${pin}`;
+    return this.sendAndWaitConfirm(`FIRE:${pin}:${durationMs}\n`, key);
+  }
+
+  /** Fire multiple pins via bitmask — hardware-level group fire */
+  async fireBatch(mask: number, durationMs: number): Promise<boolean> {
+    const maskHex = (mask >>> 0).toString(16).padStart(8, '0');
+    return this.sendAndWaitConfirm(`BATCH:${maskHex}:${durationMs}\n`, 'OK:BATCH');
   }
 
   /** Emergency stop */
@@ -217,8 +224,24 @@ export class FireOneHardwareBridge {
         resolve(parts.length >= 3 ? parseFloat(parts[2]) : 0);
       });
       this.sendCommand(`CONT:${pin}\n`);
+      setTimeout(() => {
+        if (this.pendingResolves.has(key)) {
+          this.pendingResolves.delete(key);
+          resolve(0);
+        }
+      }, 2000);
+    });
+  }
 
-      // Timeout after 2s
+  /** Read CDS capacitor voltage */
+  async readCdsVoltage(pin: number): Promise<number> {
+    const key = `CDS:${pin}`;
+    return new Promise<number>((resolve) => {
+      this.pendingResolves.set(key, (val) => {
+        const parts = val.split(':');
+        resolve(parts.length >= 3 ? parseFloat(parts[2]) : 0);
+      });
+      this.sendCommand(`CDS:${pin}\n`);
       setTimeout(() => {
         if (this.pendingResolves.has(key)) {
           this.pendingResolves.delete(key);
@@ -244,6 +267,8 @@ export class FireOneHardwareBridge {
       transport: this.transport,
       connected: this.connected,
       deviceName: this.deviceName,
+      batteryVoltage: this.batteryVoltage,
+      firmwareVersion: this.firmwareVersion,
       lastPing: this.lastPing,
       txBytes: this.txBytes,
       rxBytes: this.rxBytes,
@@ -251,6 +276,58 @@ export class FireOneHardwareBridge {
   }
 
   // ─── Private ──────────────────────────────────────────
+
+  private onConnect(): void {
+    this.onEvent?.('connected', { transport: this.transport, device: this.deviceName });
+    // Query firmware version
+    this.sendCommand('VERSION\n');
+    // Start heartbeat
+    this.startHeartbeat();
+  }
+
+  private startHeartbeat(): void {
+    this.stopHeartbeat();
+    this.heartbeatTimer = setInterval(async () => {
+      if (!this.connected) return;
+      const key = 'PONG';
+      const responded = await new Promise<boolean>((resolve) => {
+        this.pendingResolves.set(key, () => resolve(true));
+        this.sendCommand('HEARTBEAT\n');
+        setTimeout(() => {
+          if (this.pendingResolves.has(key)) {
+            this.pendingResolves.delete(key);
+            resolve(false);
+          }
+        }, 3000);
+      });
+      if (!responded && this.connected) {
+        console.warn('[HardwareBridge] Heartbeat timeout — disconnecting');
+        this.handleDisconnect();
+        this.onEvent?.('heartbeat_timeout', null);
+      }
+    }, HEARTBEAT_INTERVAL);
+  }
+
+  private stopHeartbeat(): void {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+  }
+
+  /** Send a command and wait for a specific confirmation response */
+  private async sendAndWaitConfirm(cmd: string, confirmKey: string): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      this.pendingResolves.set(confirmKey, () => resolve(true));
+      this.sendCommand(cmd);
+      setTimeout(() => {
+        if (this.pendingResolves.has(confirmKey)) {
+          this.pendingResolves.delete(confirmKey);
+          resolve(false); // Hardware didn't confirm in time
+        }
+      }, FIRE_CONFIRM_TIMEOUT);
+    });
+  }
 
   private async sendCommand(cmd: string): Promise<boolean> {
     const bytes = new TextEncoder().encode(cmd);
@@ -290,7 +367,6 @@ export class FireOneHardwareBridge {
     this.lastPing = Date.now();
     this.responseBuffer += data;
 
-    // Process complete lines
     const lines = this.responseBuffer.split('\n');
     this.responseBuffer = lines.pop() || '';
 
@@ -298,9 +374,21 @@ export class FireOneHardwareBridge {
       const trimmed = line.trim();
       if (!trimmed) continue;
 
-      // Check if it matches a pending resolve
+      // Parse firmware version
+      if (trimmed.startsWith('VER:')) {
+        this.firmwareVersion = trimmed.substring(4);
+        this.onEvent?.('firmware_version', this.firmwareVersion);
+        continue;
+      }
+
+      // Parse battery voltage from STATUS response
+      if (trimmed.startsWith('BAT:')) {
+        this.batteryVoltage = parseFloat(trimmed.substring(4));
+      }
+
+      // Check pending resolves
       for (const [key, resolver] of this.pendingResolves) {
-        if (trimmed.startsWith(key)) {
+        if (trimmed.startsWith(key) || trimmed === key) {
           resolver(trimmed);
           this.pendingResolves.delete(key);
           break;
@@ -314,6 +402,7 @@ export class FireOneHardwareBridge {
   private handleDisconnect(): void {
     this.connected = false;
     this.transport = 'none';
+    this.stopHeartbeat();
     this.onEvent?.('disconnected', null);
   }
 
@@ -334,65 +423,112 @@ export class FireOneHardwareBridge {
 }
 
 /**
- * ─── ESP32 Arduino Firmware Reference ────────────────────────
+ * ─── ESP32-S3 Arduino Firmware Reference ────────────────────
  * 
- * Minimal sketch for ESP32 + ULN2803 to receive commands:
+ * Hardware: ESP32-S3 + 4x 74HC595 + 4x ULN2803A + CDS
  * 
  * ```cpp
  * #include <WiFi.h>
  * #include <WebSocketsServer.h>
+ * #include <BLEDevice.h>
  * 
- * // Pin mapping: GPIO 2-33 → ULN2803 inputs → relay/igniter outputs
- * const int IGNITER_PINS[32] = {
- *   2, 4, 5, 12, 13, 14, 15, 16,   // Bank A (ULN2803 #1)
- *   17, 18, 19, 21, 22, 23, 25, 26, // Bank B (ULN2803 #2)
- *   27, 32, 33, 34, 35, 36, 39, 0,  // Bank C (ULN2803 #3)
- *   1, 3, 6, 7, 8, 9, 10, 11        // Bank D (ULN2803 #4)
- * };
+ * // Shift register pins
+ * #define SR_DATA  11  // SER (DS)
+ * #define SR_CLOCK 12  // SRCLK (SH_CP)
+ * #define SR_LATCH 13  // RCLK (ST_CP)
  * 
+ * // Continuity MUX pins (2x CD4051)
+ * #define MUX_A    4
+ * #define MUX_B    5
+ * #define MUX_C    6
+ * #define MUX_SEL  7   // selects CD4051 #1 vs #2
+ * #define MUX_ADC  1   // ADC input
+ * 
+ * // CDS control
+ * #define CDS_CHARGE_EN 14  // master charge enable
+ * 
+ * uint32_t outputMask = 0;
  * WebSocketsServer ws(81);
  * 
- * void setup() {
- *   Serial.begin(115200);
- *   for (int i = 0; i < 32; i++) {
- *     pinMode(IGNITER_PINS[i], OUTPUT);
- *     digitalWrite(IGNITER_PINS[i], LOW);
+ * void shiftOut32(uint32_t mask) {
+ *   digitalWrite(SR_LATCH, LOW);
+ *   for (int i = 31; i >= 0; i--) {
+ *     digitalWrite(SR_DATA, (mask >> i) & 1);
+ *     digitalWrite(SR_CLOCK, HIGH);
+ *     delayMicroseconds(1);
+ *     digitalWrite(SR_CLOCK, LOW);
  *   }
- *   WiFi.softAP("FXK-ESP32", "fireworks");
- *   ws.begin();
- *   ws.onEvent(wsEvent);
+ *   digitalWrite(SR_LATCH, HIGH);
  * }
  * 
- * void loop() {
- *   ws.loop();
- *   // Also handle Serial commands
- *   if (Serial.available()) {
- *     String cmd = Serial.readStringUntil('\n');
- *     processCommand(cmd, -1);
- *   }
+ * void firePin(int pin, int durMs) {
+ *   if (pin < 0 || pin > 31 || durMs < 20 || durMs > 1000) return;
+ *   outputMask |= (1UL << pin);
+ *   shiftOut32(outputMask);
+ *   delay(durMs);
+ *   outputMask &= ~(1UL << pin);
+ *   shiftOut32(outputMask);
+ * }
+ * 
+ * void fireBatch(uint32_t mask, int durMs) {
+ *   outputMask |= mask;
+ *   shiftOut32(outputMask);
+ *   delay(durMs);
+ *   outputMask &= ~mask;
+ *   shiftOut32(outputMask);
+ * }
+ * 
+ * float readContinuity(int pin) {
+ *   // Select MUX channel
+ *   int ch = pin % 16;
+ *   digitalWrite(MUX_SEL, pin >= 16 ? HIGH : LOW);
+ *   digitalWrite(MUX_A, ch & 1);
+ *   digitalWrite(MUX_B, (ch >> 1) & 1);
+ *   digitalWrite(MUX_C, (ch >> 2) & 1);
+ *   delayMicroseconds(100);
+ *   int adc = analogRead(MUX_ADC);
+ *   return adc > 0 ? (3.3 / (adc / 4095.0) - 1.0) * 10.0 : 0;
+ * }
+ * 
+ * void eStopAll() {
+ *   outputMask = 0;
+ *   shiftOut32(0);
+ *   digitalWrite(CDS_CHARGE_EN, LOW);
  * }
  * 
  * void processCommand(String cmd, int clientNum) {
+ *   cmd.trim();
  *   if (cmd.startsWith("FIRE:")) {
- *     int pin = cmd.substring(5, cmd.indexOf(':', 5)).toInt();
- *     int dur = cmd.substring(cmd.lastIndexOf(':') + 1).toInt();
- *     if (pin >= 0 && pin < 32 && dur >= 20 && dur <= 1000) {
- *       digitalWrite(IGNITER_PINS[pin], HIGH);
- *       delay(dur);
- *       digitalWrite(IGNITER_PINS[pin], LOW);
- *       respond("OK:FIRE:" + String(pin), clientNum);
- *     }
+ *     int c1 = cmd.indexOf(':', 5);
+ *     int pin = cmd.substring(5, c1).toInt();
+ *     int dur = cmd.substring(c1 + 1).toInt();
+ *     firePin(pin, dur);
+ *     respond("OK:FIRE:" + String(pin), clientNum);
+ *   } else if (cmd.startsWith("BATCH:")) {
+ *     int c1 = cmd.indexOf(':', 6);
+ *     uint32_t mask = strtoul(cmd.substring(6, c1).c_str(), NULL, 16);
+ *     int dur = cmd.substring(c1 + 1).toInt();
+ *     fireBatch(mask, dur);
+ *     respond("OK:BATCH", clientNum);
  *   } else if (cmd.startsWith("ESTOP")) {
- *     for (int i = 0; i < 32; i++) digitalWrite(IGNITER_PINS[i], LOW);
+ *     eStopAll();
  *     respond("OK:ESTOP", clientNum);
  *   } else if (cmd.startsWith("CONT:")) {
  *     int pin = cmd.substring(5).toInt();
- *     int adc = analogRead(IGNITER_PINS[pin]); // ADC for continuity
- *     float ohms = adc > 0 ? (3.3 / (adc / 4095.0) - 1.0) * 10.0 : 0;
+ *     float ohms = readContinuity(pin);
  *     respond("CONT:" + String(pin) + ":" + String(ohms, 1), clientNum);
+ *   } else if (cmd.startsWith("CDS:")) {
+ *     int pin = cmd.substring(4).toInt();
+ *     // Read CDS voltage via ADC (separate MUX or inline divider)
+ *     float volts = analogRead(MUX_ADC) / 4095.0 * 12.0;
+ *     respond("CDS:" + String(pin) + ":" + String(volts, 1), clientNum);
  *   } else if (cmd == "STATUS") {
- *     float bat = analogRead(A0) / 4095.0 * 16.5; // voltage divider
+ *     float bat = analogRead(A0) / 4095.0 * 16.5;
  *     respond("BAT:" + String(bat, 1), clientNum);
+ *   } else if (cmd == "HEARTBEAT") {
+ *     respond("PONG", clientNum);
+ *   } else if (cmd == "VERSION") {
+ *     respond("VER:1.0.0", clientNum);
  *   }
  * }
  * 
@@ -401,9 +537,25 @@ export class FireOneHardwareBridge {
  *   Serial.println(msg);
  * }
  * 
- * void wsEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
- *   if (type == WStype_TEXT) {
- *     processCommand(String((char*)payload), num);
+ * void setup() {
+ *   Serial.begin(115200);
+ *   pinMode(SR_DATA, OUTPUT);
+ *   pinMode(SR_CLOCK, OUTPUT);
+ *   pinMode(SR_LATCH, OUTPUT);
+ *   pinMode(CDS_CHARGE_EN, OUTPUT);
+ *   shiftOut32(0); // all off
+ *   WiFi.softAP("FXK-ESP32", "fireworks");
+ *   ws.begin();
+ *   ws.onEvent([](uint8_t num, WStype_t type, uint8_t *payload, size_t len) {
+ *     if (type == WStype_TEXT) processCommand(String((char*)payload), num);
+ *   });
+ * }
+ * 
+ * void loop() {
+ *   ws.loop();
+ *   if (Serial.available()) {
+ *     String cmd = Serial.readStringUntil('\n');
+ *     processCommand(cmd, -1);
  *   }
  * }
  * ```
