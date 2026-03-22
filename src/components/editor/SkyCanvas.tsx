@@ -1105,10 +1105,15 @@ function VolumetricCloudLayer() {
     });
     cloudRef.current = cloud;
     scene.add(cloud.mesh);
+
+    // Expose cloud system globally for NiagaraVFXController explosion flash
+    (window as any).__volumetricCloudSystem = cloud;
+
     return () => {
       scene.remove(cloud.mesh);
       cloud.mesh.geometry.dispose();
       (cloud.mesh.material as THREE.ShaderMaterial).dispose();
+      delete (window as any).__volumetricCloudSystem;
     };
   }, [scene]);
 
