@@ -101,6 +101,7 @@ export interface TransportHealth {
 class TransportHealthMonitor {
   private healthMap = new Map<string, TransportHealth>();
   private latencyHistory = new Map<string, number[]>();
+  private successFailHistory = new Map<string, { success: number; fail: number }>();
   private readonly MAX_HISTORY = 100;
 
   update(transportId: string, type: TransportType, state: TransportState, latencyMs: number, success: boolean, isSatellite = false): TransportHealth {
@@ -113,18 +114,23 @@ class TransportHealthMonitor {
       };
       this.healthMap.set(transportId, h);
       this.latencyHistory.set(transportId, []);
+      this.successFailHistory.set(transportId, { success: 0, fail: 0 });
     }
 
     h.state = state;
     h.latencyMs = latencyMs;
     h.isSatellite = isSatellite;
 
+    // Track success/fail for real packet loss calculation
+    const sf = this.successFailHistory.get(transportId)!;
     if (success) {
       h.lastSuccessMs = Date.now();
       h.consecutiveFailures = 0;
+      sf.success++;
     } else {
       h.lastFailureMs = Date.now();
       h.consecutiveFailures++;
+      sf.fail++;
     }
 
     // Track latency history for P95
@@ -136,10 +142,9 @@ class TransportHealthMonitor {
       h.latencyP95 = sorted[Math.floor(sorted.length * 0.95)] || latencyMs;
     }
 
-    // Packet loss estimation
-    const total = history.length;
-    const failures = h.consecutiveFailures;
-    h.packetLossRate = total > 0 ? Math.min(failures / total, 1) : 0;
+    // Real packet loss: fail / (success + fail)
+    const total = sf.success + sf.fail;
+    h.packetLossRate = total > 0 ? sf.fail / total : 0;
 
     // Health assessment
     h.isHealthy = state === 'connected' && h.consecutiveFailures < 3 && h.packetLossRate < 0.1;
@@ -162,6 +167,7 @@ class TransportHealthMonitor {
   remove(transportId: string): void {
     this.healthMap.delete(transportId);
     this.latencyHistory.delete(transportId);
+    this.successFailHistory.delete(transportId);
   }
 
   get allHealth(): TransportHealth[] {
