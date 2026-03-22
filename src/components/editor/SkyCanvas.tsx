@@ -894,16 +894,42 @@ function TimelineEffects() {
           );
         }
 
-        // ── Real break height with angle offset (Finale 3D standard) ──
+        // ── Compose Position H/P/R + Effect Pan/Tilt/Spin (Finale 3D standard) ──
         const isShell = pt === 'shell' || pt === 'single_shot';
         const realBreakHeight = getBreakHeight(caliber) * effectScale;
-        const pitchRad = (launchPitch || 85) * (Math.PI / 180);
-        const headingRad = (launchHeading || 0) * (Math.PI / 180);
+        
+        // Position-level orientation: Pitch(X) → Roll(Z) → Heading(Y)
+        const posHeadingRad = (launchHeading || 0) * (Math.PI / 180);
+        const posPitchRad = (launchPitch || 85) * (Math.PI / 180);
+        
+        // Effect-level orientation: Pan(Y) → Tilt(X) → Spin(Y)
+        const effPan = (item.pan ?? 90) * (Math.PI / 180);
+        const effTilt = (item.tilt ?? 0) * (Math.PI / 180);
+        
+        // Compose: Position quaternion * Effect quaternion
+        const posQuat = new THREE.Quaternion().setFromEuler(
+          new THREE.Euler(0, -posHeadingRad, 0, 'YZX')
+        );
+        const launchDir = new THREE.Vector3(0, 1, 0);
+        // Apply position pitch to launch direction
+        const pitchAxis = new THREE.Vector3(1, 0, 0);
+        pitchAxis.applyQuaternion(posQuat);
+        const pitchQuat = new THREE.Quaternion().setFromAxisAngle(pitchAxis, -(Math.PI / 2 - posPitchRad));
+        posQuat.multiply(pitchQuat);
+        
+        // Apply effect Pan/Tilt
+        const effQuat = new THREE.Quaternion().setFromEuler(
+          new THREE.Euler(effTilt, effPan - Math.PI / 2, 0, 'YXZ')
+        );
+        
+        const finalQuat = posQuat.clone().multiply(effQuat);
+        launchDir.set(0, 1, 0).applyQuaternion(finalQuat).normalize();
+        
         const burstPos: [number, number, number] = isShell
           ? [
-              pos[0] + Math.sin(headingRad) * Math.cos(pitchRad) * realBreakHeight,
-              pos[1] + Math.sin(pitchRad) * realBreakHeight,
-              pos[2] - Math.cos(headingRad) * Math.cos(pitchRad) * realBreakHeight,
+              pos[0] + launchDir.x * realBreakHeight,
+              pos[1] + launchDir.y * realBreakHeight,
+              pos[2] + launchDir.z * realBreakHeight,
             ]
           : pos;
 
