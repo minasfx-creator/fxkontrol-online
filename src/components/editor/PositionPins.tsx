@@ -223,7 +223,7 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
     }
 
     if (!selectedPositionIds.includes(position.id)) {
-      selectPosition(position.id);
+      selectPositionAndLinkedEvents(position.id);
     }
 
     // If positions are locked, only allow selection, not dragging
