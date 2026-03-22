@@ -1,92 +1,125 @@
 
 
-# Niagara Full Integration — VDL → Emitter Physics Pipeline
+# IFMx-i32Q Virtual Module — Réplica Funcional + Hardware DIY
 
-## Problem
+## Resposta sobre Hardware
 
-The `niagaraProfile` from VDL parsing (starCount, lifetime, velocity, drag, gravityScale, sparkleRate, fadeProfile) is stored on each effect but **never consumed by NiagaraVFXController**. The controller uses hardcoded `createSparkEmitterTemplate(caliber, color)` that ignores the VDL-derived physics. This means a "4in Gold Kamuro" and a "4in Blue Peony" get identical particle physics — wrong.
-
-Additionally, per-type behavior (willow drooping, crossette splitting, mine ground-up, comet single-star) is not differentiated in the Niagara system — only the legacy `FireworkBurst` component in SkyCanvas handles pattern variation, but that's the old CPU path.
-
-## Architecture Change
+**Sim, é possível transformar seu celular em um módulo IFMx-i32Q virtual.** O hardware mínimo necessário:
 
 ```text
-VDL "4in Gold Kamuro"
-  → parseVDL() → niagaraProfile { starCount:600, lifetime:3.5, drag:0.985, gravityScale:0.7, fadeProfile:'ember' }
-  → NiagaraVFXController reads effect.niagaraProfile
-  → createSparkEmitterTemplate(caliber, color, niagaraProfile)  ← NEW signature
-  → Emitter init overrides: lifetime, velocity, drag, gravityScale from profile
-  → Emitter update overrides: fadeProfile controls colorOverLife curve shape
+┌──────────────────────────────────────────────────────┐
+│                SMARTPHONE (FX KONTROL)               │
+│   Roda o Virtual IFMx-i32Q Module                    │
+│   Comunica via WebSocket (Wi-Fi) com o Controller    │
+└──────────────────┬───────────────────────────────────┘
+                   │ Wi-Fi / USB-C OTG
+┌──────────────────▼───────────────────────────────────┐
+│           ESP32 + Relay Board (Hardware)              │
+│  ┌─────────┐  ┌──────────┐  ┌──────────┐            │
+│  │ ESP32   │──│ ULN2803  │──│ 32x Relé │── Igniters │
+│  │ (Wi-Fi) │  │ (Driver) │  │ 5V/12V   │            │
+│  └─────────┘  └──────────┘  └──────────┘            │
+│  ┌──────────┐  ┌───────────┐                         │
+│  │ Battery  │  │ CDS Cap   │  Capacitor discharge    │
+│  │ 12V LiPo │  │ 470µF x32 │  for e-match ignition  │
+│  └──────────┘  └───────────┘                         │
+└──────────────────────────────────────────────────────┘
+```
+
+**Lista de componentes (~$25-40):**
+- ESP32 DevKit ($5) — Wi-Fi + BLE + USB
+- ULN2803 x4 ou placa de 32 relés ($10-15)
+- Capacitores 470µF 25V x32 ($5) — CDS (Capacitive Discharge System)
+- Bateria LiPo 3S 12V ($8)
+- Bornes de conexão para e-matches
+
+**Alternativa mais simples (~$15):** ESP32 + 4x ULN2803 (sem relé, disparo direto por transistor Darlington). Funciona para e-matches de baixa corrente.
+
+**Só com celular?** Sem hardware externo o celular pode atuar como módulo virtual para **simulação e teste**, mas para disparo real precisa do circuito de potência (relé/transistor + capacitor).
+
+## Architecture
+
+```text
+FX KONTROL (Controller/Master)
+    │
+    ├── Wi-Fi Transport (WebSocket)
+    │   └── Celular rodando VirtualIFMx32Q component
+    │       ├── Recebe: ARM, FIRE, CONTINUITY, STATUS
+    │       ├── Responde: ACK, igniter status, battery
+    │       └── Se conectado a ESP32 via USB/BLE:
+    │           └── Roteia FIRE → GPIO → Relé → E-match
+    │
+    └── Serial Transport (RS-485)
+        └── Módulo IFMx-i32Q real (compatível)
 ```
 
 ## Changes
 
-### 1. `NiagaraVFXController.tsx` — Apply niagaraProfile to emitter templates
+### 1. `src/lib/fireoneModuleEmulator.ts` (NEW) — IFMx-i32Q Protocol Emulator
 
-**Modify `createSparkEmitterTemplate`** to accept optional `niagaraProfile` and `pattern`:
-- `starCount` → override `sparkCount` (clamped to budget)
-- `lifetime` → override `init.lifetime` range
-- `velocity` → scale `breakSpeed` multiplier
-- `drag` → override `update.drag`
-- `gravityScale` → override `update.gravityScale`
-- `fadeProfile` → switch colorOverLife curve shape (linear=even fade, exponential=fast burn, ember=slow glow)
-- `sparkleRate` → add randomized brightness flicker in colorOverLife
+Core engine that turns the browser into a field module:
 
-**Add pattern-specific emitter variants**:
-- `willow/kamuro`: high drag (0.98+), low gravity (0.5-0.7), long lifetime, downward-heavy velocity bias
-- `crossette`: spawn 4 sub-bursts at spark death via sub-emitter with right-angle velocity
-- `mine`: velocity bias upward only (no downward component), fast burn
-- `comet`: single large star with ribbon trail, high velocity stretch
-- `palm`: asymmetric velocity (strong upward, wide horizontal), heavy gravity for drooping
-- `horsetail`: extreme lifetime, very high drag, low gravity — hangs in air
-- `strobe`: add blink module (opacity oscillation in update)
-- `ring`: spawn on torus shape instead of sphere
-- `dahlia`: fewer stars, higher velocity, longer trails
+- **Module state machine**: `IDLE → SAFE_SENSE → READY → ARMED → FIRING`
+- **Protocol handler**: Parses incoming FireOneController frames (STX/CMD/PAYLOAD/ETX), responds with proper ACK/NAK/status
+- **32 igniter channels**: Each with continuity state, resistance simulation, fired flag
+- **CDS emulation**: Capacitor charge tracking per channel (real i32Q uses capacitive discharge)
+- **Safe-Sense sequence**: 3-second power-up safety check (per manual)
+- **Command handling**: ARM, DISARM, FIRE (with duration clamping 20-1000ms), CONTINUITY, STATUS, E-STOP, IDENTIFY
+- **Hardware bridge interface**: `onFire(pin, durationMs)` callback for routing to real GPIO via ESP32
 
-**Read `effect.niagaraProfile`** when spawning burst systems (line ~356-376):
-```typescript
-const niagaraProfile = effect.niagaraProfile;
-const sparkEmitter = createSparkEmitterTemplate(caliber, burstColor, pattern, niagaraProfile);
-```
+### 2. `src/lib/fireoneModuleHardwareBridge.ts` (NEW) — ESP32/GPIO Bridge
 
-### 2. `NiagaraVFXController.tsx` — Pattern-specific spawn shapes + force modules
+Bridge between virtual module and physical hardware:
 
-Map VDL patterns to Niagara spawn shapes:
-- `ring` → `{ type: 'torus', radius: caliber*3, tubeRadius: 0.5 }`
-- `crossette` → sphere surface + sub-emitter on death with 4-way split
-- `palm` → cone spawn `{ type: 'cone', coneAngle: 25° }` + point attractor below
-- `fan` → limited arc spawn
+- **Web Bluetooth BLE** connection to ESP32 (characteristic-based GPIO control)
+- **WebSerial USB** connection to ESP32 (serial commands: `FIRE:pin:duration\n`)
+- **WebSocket** connection to ESP32 running local server
+- Simple protocol: `GPIO_SET pin HIGH/LOW`, `FIRE pin durationMs`, `READ_CONTINUITY pin`
+- ESP32 firmware spec (documented in comments): Arduino sketch that listens for serial/BLE commands and drives ULN2803 outputs
+- Continuity readback: ESP32 measures resistance via ADC and reports back
 
-Add force modules per pattern:
-- `willow/kamuro` → point attractor pulling down gently
-- `horsetail` → extreme drag (0.99), minimal gravity
-- `tourbillion` → vortex force module for spinning
+### 3. `src/components/editor/live-firing/VirtualIFMx32QPanel.tsx` (NEW) — Full Module Replica UI
 
-### 3. `vdlParser.ts` — Expand auto-matching for all effect types
+Visual replica of the physical IFMx-i32Q front panel:
 
-Currently `autoMatchNiagaraPreset` only matches by color+type for a few presets. Expand to ensure ALL VDL types get a `niagaraProfile` even without a named preset — generate profile from type physics:
+- **Touch-sensitive LCD display** (address 01-99) with up/down buttons
+- **32 igniter grid** (4x8 layout matching the Centronics 36-pin connector pinout)
+- **Status LEDs**: F.P (Fire Power), COM (Communication), ON (Power), RF (Wireless), CHG (Charging)
+- **Battery voltage** display, **signal strength** bar
+- **Connection indicator**: wired (2-Wire) vs wireless vs hardware bridge
+- **CDS charge status** per channel (capacitor charge animation)
+- **ARM/DISARM** visual state with red/green border
+- **Fire feedback**: Channel flashes amber on fire with duration indicator
+- **Hardware bridge status**: Shows if ESP32 is connected and which pins have real hardware
 
-Add `generateNiagaraProfileFromType(type, caliber)` function that creates a profile based on pyrotechnic reality:
-- `willow`: starCount=300, lifetime=4.5, velocity=30, drag=0.985, gravityScale=0.6, fadeProfile='ember'
-- `crossette`: starCount=100, lifetime=1.8, velocity=50, drag=0.95, gravityScale=1.2, fadeProfile='linear'
-- `mine`: starCount=200, lifetime=1.5, velocity=60, drag=0.92, gravityScale=0.8, fadeProfile='linear'
-- `comet`: starCount=50, lifetime=3.0, velocity=45, drag=0.98, gravityScale=0.9, fadeProfile='ember'
-- `palm`: starCount=250, lifetime=3.0, velocity=40, drag=0.97, gravityScale=1.3, fadeProfile='exponential'
-- `horsetail`: starCount=400, lifetime=6.0, velocity=25, drag=0.995, gravityScale=0.4, fadeProfile='ember'
-- `strobe`: starCount=150, lifetime=2.5, velocity=35, drag=0.96, gravityScale=1.0, fadeProfile='linear' + sparkleRate=8
-- (etc for all ~25 types)
+### 4. `src/hooks/useFireOneModuleMode.ts` (NEW) — Module Mode Hook
 
-This ensures every VDL description automatically gets physics-correct Niagara behavior.
+React hook that switches the app from Controller mode to Module mode:
 
-### 4. `niagaraColorPresets.ts` — Add presets for missing effect types
+- Creates `FireOneModuleEmulator` instance
+- Connects to controller via Wi-Fi transport (WebSocket) as a "slave"
+- Registers with controller's module discovery (responds to IDENTIFY)
+- Manages hardware bridge lifecycle (BLE/USB/WebSocket to ESP32)
+- Exposes: `moduleAddress`, `armed`, `igniters[]`, `batteryVoltage`, `cdsCharge`, `hardwareBridgeConnected`
+- Provides `setAddress()`, `connectHardware()`, `disconnectHardware()`
 
-Add presets for: `crossette`, `mine`, `comet`, `palm`, `horsetail`, `strobe`, `dahlia`, `ring`, `fan`, `waterfall`, `salute` — each with calibrated particleProfile and autoMatchTypes.
+### 5. `src/components/editor/LiveFiringPanel.tsx` — Add Module Mode entry
+
+Add a new FXCMode entry `'module'` that renders VirtualIFMx32QPanel. Accessible from VirtualControllerHub as "IFMx-i32Q Module (Virtual)".
+
+### 6. `src/components/editor/VirtualControllerHub.tsx` — Add module card
+
+Add new card: `{ id: 'ifmx-i32q-module', name: 'IFMx-i32Q Module', type: 'module', description: 'Turn this device into a virtual field module' }`.
 
 ## Files Summary
 
 | File | Change |
 |------|--------|
-| `src/components/editor/NiagaraVFXController.tsx` | Refactor emitter templates to consume niagaraProfile + pattern; add pattern-specific spawn shapes and force modules |
-| `src/lib/vdlParser.ts` | Add `generateNiagaraProfileFromType()` fallback so all effects get a profile |
-| `src/lib/niagaraColorPresets.ts` | Add ~12 new presets for missing effect types |
+| `src/lib/fireoneModuleEmulator.ts` | NEW — Protocol emulator with 32-ch state machine |
+| `src/lib/fireoneModuleHardwareBridge.ts` | NEW — ESP32 bridge (BLE/USB/WebSocket) |
+| `src/components/editor/live-firing/VirtualIFMx32QPanel.tsx` | NEW — Full module replica UI |
+| `src/hooks/useFireOneModuleMode.ts` | NEW — Module mode React hook |
+| `src/components/editor/LiveFiringPanel.tsx` | Add 'module' mode routing |
+| `src/components/editor/VirtualControllerHub.tsx` | Add IFMx-i32Q module card |
+| `src/components/editor/live-firing/types.ts` | Add 'module' to FXCMode |
 
