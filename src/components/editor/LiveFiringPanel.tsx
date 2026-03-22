@@ -108,8 +108,8 @@ function MobileModeTabs({ mode, onModeChange }: { mode: FXCMode; onModeChange: (
         {[
           { key: 'super_dmx' as FXCMode, label: 'DMX', icon: Zap },
           { key: 'pyro_fire' as FXCMode, label: 'Pyro', icon: Flame },
-          { key: 'artnet_modules' as FXCMode, label: 'ArtNet', icon: Globe },
-          { key: 'field_map' as FXCMode, label: 'Map', icon: Map },
+          { key: 'show_control' as FXCMode, label: 'Show', icon: Activity },
+          { key: 'artnet_modules' as FXCMode, label: 'Module', icon: Globe },
         ].map(q => (
           <button
             key={q.key}
