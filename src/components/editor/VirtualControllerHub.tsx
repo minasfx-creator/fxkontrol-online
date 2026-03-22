@@ -14,13 +14,13 @@ import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-type ConnectionType = 'usb' | 'artnet' | 'wireless' | 'pbus' | 'serial' | 'radio' | 'sim';
+type ConnectionType = 'usb' | 'artnet' | 'wireless' | 'pbus' | 'serial' | 'radio' | 'sim' | 'ble';
 
 interface ControllerCard {
   id: string;
   name: string;
   manufacturer: string;
-  type: 'firing' | 'sfx' | 'remote' | 'dmx' | 'laser';
+  type: 'firing' | 'sfx' | 'remote' | 'dmx' | 'laser' | 'module';
   connectionTypes: ConnectionType[];
   channels: number;
   description: string;
@@ -38,6 +38,7 @@ const CONTROLLERS: ControllerCard[] = [
   { id: 'maiman', name: 'Maiman 30W', manufacturer: 'Showven', type: 'laser', connectionTypes: ['artnet'], channels: 14, description: '30W RGB laser · ILDA + DMX · IP54', group: 'showven' },
   { id: 'dmx-splitter8', name: 'DMX Splitter 8', manufacturer: 'Showven', type: 'dmx', connectionTypes: ['usb'], channels: 8, description: '1→8 DMX512 splitter · Opto-isolated', group: 'infrastructure' },
   { id: 'dmx-relay-r12', name: 'DMX Relay R12', manufacturer: 'Showven', type: 'dmx', connectionTypes: ['usb', 'artnet'], channels: 12, description: '12-channel DMX relay · 10A/channel', group: 'infrastructure' },
+  { id: 'ifmx-i32q-module', name: 'IFMx-i32Q Module', manufacturer: 'FireOne', type: 'module', connectionTypes: ['wireless', 'ble', 'usb'], channels: 32, description: 'Virtual field module · 32 igniters · CDS · ESP32 bridge', panelMode: 'module', group: 'fireone' },
 ];
 
 const CONNECTION_ICONS: Record<ConnectionType, typeof Usb> = {
@@ -48,6 +49,7 @@ const CONNECTION_ICONS: Record<ConnectionType, typeof Usb> = {
   serial: Cpu,
   radio: Radio,
   sim: Sparkles,
+  ble: Radio,
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -56,6 +58,7 @@ const TYPE_COLORS: Record<string, string> = {
   remote: 'text-cyan-400',
   dmx: 'text-green-400',
   laser: 'text-purple-400',
+  module: 'text-orange-400',
 };
 
 const GROUP_META: Record<string, { label: string; color: string }> = {

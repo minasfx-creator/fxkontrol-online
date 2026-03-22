@@ -48,6 +48,7 @@ import ConnectionManagerPanel from './ConnectionManagerPanel';
 import PBusMonitorPanel from './live-firing/PBusMonitorPanel';
 import RadioControlPanel from './RadioControlPanel';
 import MA3ControlPanel from './MA3ControlPanel';
+import VirtualIFMx32QPanel from './live-firing/VirtualIFMx32QPanel';
 import { RISK_GROUP_LABELS, RISK_GROUP_COLORS, type RiskGroup } from '@/lib/pyroPhysics';
 
 // ═══════════════════════════════════════════════════════════
@@ -346,7 +347,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   }, [cues, channels, setChannels]);
 
   // ─── Swipe gesture for mobile mode switching / close ───
-  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'auto_fire', 'check_slave', 'controllers', 'pbus', 'field_map', 'connections', 'radio', 'ma3', 'mobile_link', 'settings'];
+  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'auto_fire', 'check_slave', 'controllers', 'pbus', 'field_map', 'connections', 'radio', 'ma3', 'module', 'mobile_link', 'settings'];
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const swipeHandled = useRef(false);
 
@@ -1253,6 +1254,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
       case 'connections': return <ConnectionManagerPanel fs={fs} />;
       case 'radio': return <RadioControlPanel fs={fs} />;
       case 'ma3': return <MA3ControlPanel fs={fs} />;
+      case 'module': return <VirtualIFMx32QPanel fs={fs} />;
       case 'settings': return <SettingsPanel fs={fs} settings={settings} onSettingsChange={setSettings} relayConnected={relayConnected} relayUrl={relayUrl} onRelayUrlChange={setRelayUrl} onConnectRelay={connectRelay} onDisconnectRelay={disconnectRelay} />;
       default: return renderSimpleDmx(fs);
     }
