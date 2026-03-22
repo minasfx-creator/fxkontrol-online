@@ -37,7 +37,7 @@ type CommandMode =
   | 'super_dmx' | 'simple_dmx' | 'manual_fire' | 'pyro_fire' | 'auto_fire' | 'check_slave'
   | 'controllers' | 'pbus' | 'ma3' | 'module' | 'wifi_direct'
   | 'artnet_modules' | 'connections' | 'radio' | 'field_map'
-  | 'mobile_link' | 'settings';
+  | 'mobile_link' | 'settings' | 'drone_ops';
 
 // Fire modes get full LiveFiringPanel chrome (ARM, CUE keys, PANIC)
 const FIRE_MODES: CommandMode[] = [
