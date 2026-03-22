@@ -183,6 +183,7 @@ function Index() {
   const [showPositionEditor, setShowPositionEditor] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab | null>(null);
+  const [smartScriptOpen, setSmartScriptOpen] = useState(false);
   const [mobilePanelHeight, setMobilePanelHeight] = useState<'collapsed' | 'half' | 'full'>('collapsed');
   const [isDragOver, setIsDragOver] = useState(false);
   const [remoteMode, setRemoteMode] = useState<'cloud' | 'wifi-auto'>('cloud');
