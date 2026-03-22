@@ -13,6 +13,7 @@ import Training from "./pages/Training";
 import NotFound from "./pages/NotFound";
 import PCBViewer from "./pages/PCBViewer";
 import DevicePairing from "./pages/DevicePairing";
+import CommandCenter from "./pages/CommandCenter";
 import ShowTestSimulator from "./pages/ShowTestSimulator";
 
 const queryClient = new QueryClient();
@@ -52,6 +53,7 @@ function App() {
                 <Route path="/training" element={<Training />} />
                 <Route path="/pcb-viewer" element={<PCBViewer />} />
                 <Route path="/pairing" element={<DevicePairing />} />
+                <Route path="/command" element={<CommandCenter />} />
                 <Route path="/show-test" element={<ShowTestSimulator />} />
               </Route>
               <Route path="*" element={<NotFound />} />

@@ -10,7 +10,8 @@ import {
   Radio, Cpu, Cable, Activity, Heart, MessageCircle, Share2,
   TrendingUp, TrendingDown, Minus, Circle, Bookmark,
   Shield, Smartphone, Play, Palette, Wand2, Layers,
-  Timer, Crosshair, Volume2, Lightbulb, Pencil, LayoutTemplate
+  Timer, Crosshair, Volume2, Lightbulb, Pencil, LayoutTemplate,
+  Wifi, Globe, Gauge, Hand, Usb
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import CinematicIntro from '@/components/editor/CinematicIntro';
@@ -79,12 +80,12 @@ interface HubTool {
 }
 
 const SHOW_COMMANDER_TOOLS: HubTool[] = [
-  { label: 'Show Commander', icon: Target, panel: 'showcommander' },
-  { label: 'Live SFX', icon: Flame, panel: 'livefiring' },
-  { label: 'Show Control', icon: Play, panel: 'showcontrol' },
-  { label: 'Fleet', icon: Cpu, panel: 'fleet' },
-  { label: 'SMPTE', icon: Timer, panel: 'smpte' },
-  { label: 'Safety', icon: Shield, panel: 'safetycheck' },
+  { label: 'Super DMX', icon: Zap, panel: 'super_dmx' },
+  { label: 'Pyro XL4', icon: Flame, panel: 'pyro_fire' },
+  { label: 'Auto Fire', icon: Timer, panel: 'auto_fire' },
+  { label: 'Manual Fire', icon: Hand, panel: 'manual_fire' },
+  { label: 'Mobile Link', icon: Smartphone, panel: 'mobile_link' },
+  { label: 'Safety', icon: Shield, panel: 'check_slave' },
 ];
 
 const MASTER_EDITOR_TOOLS: HubTool[] = [
@@ -142,7 +143,7 @@ function FeedCard({ item }: { item: NewsItem }) {
 
 /* ── Hub Card Component ──────────────────────────────── */
 function HubCard({
-  title, subtitle, badge, tools, accentClass, borderClass, badgeBg, navigate, delay = '0s'
+  title, subtitle, badge, tools, accentClass, borderClass, badgeBg, navigate, delay = '0s', commandRoute = false
 }: {
   title: string;
   subtitle: string;
@@ -153,10 +154,13 @@ function HubCard({
   badgeBg: string;
   navigate: (path: string) => void;
   delay?: string;
+  commandRoute?: boolean;
 }) {
   const baseDelay = parseFloat(delay);
   const goToTool = (panel: string) => {
-    if (panel) {
+    if (commandRoute) {
+      navigate(panel ? `/command?mode=${panel}` : '/command');
+    } else if (panel) {
       navigate(`/editor?panel=${panel}`);
     } else {
       navigate('/editor');
@@ -305,6 +309,7 @@ export default function Dashboard() {
             borderClass="border-accent/20 hover:border-accent/40 transition-colors"
             badgeBg="bg-accent/15 text-accent"
             navigate={navigate}
+            commandRoute
             delay="0.1s"
           />
 
@@ -346,24 +351,38 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* System Status */}
-          <Card className="bg-card border-border/50 animate-fxk-stagger" style={{ animationDelay: '0.3s' }}>
+          {/* Hardware Controllers */}
+          <Card className="bg-card border-border/50 animate-fxk-stagger overflow-hidden" style={{ animationDelay: '0.3s' }}>
             <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Activity className="h-3.5 w-3.5 text-primary" />
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider font-display">Sistema</span>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Cpu className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider font-display">Hardware</span>
+                </div>
+                <button
+                  onClick={() => navigate('/command?mode=controllers')}
+                  className="text-[9px] text-primary hover:text-primary/80 font-semibold transition-colors"
+                >
+                  Ver todos →
+                </button>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { label: 'OSC', icon: Cable },
-                  { label: 'sACN', icon: Activity },
-                  { label: 'FireOne', icon: Zap },
-                  { label: 'PBUS', icon: Radio },
-                ].map((sys) => (
-                  <div key={sys.label} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-[hsl(var(--surface-0)/0.5)] border border-border/10">
-                    <div className="status-dot-offline" />
-                    <p className="text-[9px] font-semibold text-muted-foreground/70">{sys.label}</p>
-                  </div>
+                  { label: 'FireOne XL4+', icon: Zap, mode: 'pyro_fire', color: 'text-red-400', border: 'border-red-500/15' },
+                  { label: 'ZK6200', icon: Gauge, mode: 'super_dmx', color: 'text-amber-400', border: 'border-amber-500/15' },
+                  { label: 'Art-Net', icon: Globe, mode: 'artnet_modules', color: 'text-primary', border: 'border-primary/15' },
+                  { label: 'IFM x32Q', icon: Cpu, mode: 'module', color: 'text-orange-400', border: 'border-orange-500/15' },
+                  { label: 'P-BUS', icon: Cable, mode: 'pbus', color: 'text-amber-400', border: 'border-amber-500/15' },
+                  { label: 'Radio', icon: Radio, mode: 'radio', color: 'text-cyan-400', border: 'border-cyan-500/15' },
+                ].map((hw) => (
+                  <button
+                    key={hw.label}
+                    onClick={() => navigate(`/command?mode=${hw.mode}`)}
+                    className={`flex items-center gap-2 px-2.5 py-2 rounded-xl bg-[hsl(var(--surface-0)/0.5)] border ${hw.border} hover:bg-muted/20 transition-all active:scale-[0.97] text-left`}
+                  >
+                    <hw.icon className={`h-3.5 w-3.5 ${hw.color} shrink-0`} />
+                    <span className="text-[9px] font-semibold text-foreground/70 truncate">{hw.label}</span>
+                  </button>
                 ))}
               </div>
             </CardContent>
