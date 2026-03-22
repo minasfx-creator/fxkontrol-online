@@ -1,133 +1,69 @@
 
 
-# FireOne Multi-Transport Communication Engine
+# UE5.7 Render Pipeline — Final Integration Pass
 
 ## Current State
 
-The system already has a solid `FireOneController` class (`fireoneProtocol.ts`) with full protocol support: ARM/FIRE/DISARM, UltraFire download, Priority Disable, IFMx-i32Q DMX output, wireless RSSI polling, and preset firing. The hook `useFireOneHardware.ts` bridges this to React with radio fallback via `useRadioLink`.
+The `render_ultra` engine is already 90%+ complete with UE5.7 parity:
+- Niagara emitter system with GPU instancing, sub-emitters, force modules ✅
+- Volumetric clouds, sky atmosphere v2, water (Gerstner), terrain PBR (triplanar) ✅
+- Explosion-reactive clouds/fog, dynamic burst lights, adaptive exposure ✅
+- SSR, SSAO, DOF, Bloom (3-layer), Heat Distortion, Sharpening ✅
+- Ribbon trails, flipbook animation, soft particles, velocity stretching ✅
+- Ground decals, GI probes, lens flares, Niagara fluids ✅
 
-**However, the controller is locked to a single transport: WebSerial (wired RS-485).** To act as a true virtual XLII+ controller, it needs a **multi-transport abstraction** that routes commands through whichever path is available — Cable, Radio, Wi-Fi (WebSocket to local relay), or Art-Net (for IFMx-i32Q DMX ports).
+## Remaining Gaps vs UE5.7
 
-## Gap Analysis
-
-| Transport | Status | What's Missing |
-|-----------|--------|----------------|
-| **RS-485 Cable** | Working | Single transport, no abstraction layer |
-| **Radio (CC1101/SX1276)** | Partial | `useRadioLink` wraps frames but `FireOneController` doesn't use it natively — hook has ad-hoc fallback code |
-| **Wi-Fi** | Missing | XLII+ manual documents Wi-Fi operation via wireless transceivers; no WebSocket/HTTP relay to local network XLII+ |
-| **Art-Net** | Partial | `artnet-bridge` edge function exists but only for DMX universes, not FireOne protocol frames. IFMx-i32Q has built-in DMX but no Art-Net bridge for the RS-485 commands |
-
-## Architecture
-
-```text
-┌─────────────────────────────────────────────────┐
-│           FireOneController (singleton)          │
-│  ┌───────────────────────────────────────────┐   │
-│  │        FireOneTransportManager            │   │
-│  │   ┌─────────┐ ┌─────────┐ ┌───────────┐  │   │
-│  │   │ Serial  │ │  Radio  │ │   WiFi    │  │   │
-│  │   │ RS-485  │ │ CC1101  │ │ WebSocket │  │   │
-│  │   └─────────┘ └─────────┘ └───────────┘  │   │
-│  │   ┌─────────┐ ┌─────────────────────────┐ │   │
-│  │   │ Art-Net │ │ Priority Router         │ │   │
-│  │   │ DMX Out │ │ Cable > WiFi > Radio    │ │   │
-│  │   └─────────┘ └─────────────────────────┘ │   │
-│  └───────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────┘
-```
+| Gap | Impact |
+|-----|--------|
+| No **Motion Blur** (per-object velocity-based) | Fast-moving sparks/shells look static |
+| **God Rays** faked via bloom, not proper radial blur | No volumetric light shaft directionality |
+| No **Color LUT** presets | No cinematic grading (Day-for-Night, Golden Hour) |
+| **GI probes** not wired to burst events | GI system exists but only driven by SkyCanvas, not VFX controller |
+| **Ground decals** not triggered by bursts | `spawnScorchMark` imported but never called on impact |
 
 ## Changes
 
-### 1. `src/lib/fireoneTransport.ts` (NEW) — Transport Abstraction Layer
+### 1. `PostProcessing.tsx` — Add Motion Blur + God Rays + Color LUT
 
-Create a `FireOneTransport` interface and implementations for each path:
+**Motion Blur**: Custom `Effect` class using velocity-based screen-space blur. Uses per-pixel motion vector estimation from frame delta to simulate UE5's `MotionBlurAmount`. Controlled by `settings.motionBlurEnabled` and `settings.motionBlurIntensity`.
 
-```typescript
-interface FireOneTransport {
-  id: string;
-  type: 'serial' | 'radio' | 'wifi' | 'artnet';
-  priority: number; // lower = preferred (serial=1, wifi=2, radio=3)
-  connected: boolean;
-  latencyMs: number;
-  connect(): Promise<void>;
-  disconnect(): Promise<void>;
-  send(frame: Uint8Array): Promise<void>;
-  onReceive(callback: (data: Uint8Array) => void): void;
-}
-```
+**God Rays (Radial Blur)**: Replace the fake bloom Layer 3 with a proper radial blur `Effect` that samples toward a configurable sun/explosion source point. This produces directional light shafts instead of uniform bloom glow.
 
-**Implementations:**
-- `SerialTransport` — wraps existing WebSerial logic from `FireOneController.connect()`
-- `RadioTransport` — wraps `radioProtocol.ts` `wrapProtocolFrame()`, uses `useRadioLink` dongle connection
-- `WiFiTransport` — WebSocket client connecting to a local relay (Node.js/Python on field laptop that bridges WebSocket↔RS-485)
-- `ArtNetTransport` — for IFMx-i32Q DMX output only, routes `DMX_OUT` commands via Art-Net bridge
+**Color LUT**: Add a `ColorGradingEffect` with 6 presets: `neutral`, `day-for-night`, `golden-hour`, `cool-blue-night`, `warm-sunset`, `high-contrast`. Uses a 3D color transform in the fragment shader (no texture needed). Controlled by `settings.colorGradingPreset`.
 
-**Transport Manager:**
-- `FireOneTransportManager` holds all transports, auto-selects best by priority
-- E-STOP sends on ALL transports simultaneously (per XLII+ safety standard)
-- Auto-fallback: if primary transport fails, seamlessly switch to next
-- Heartbeat on all active transports
+### 2. `useSceneStore.ts` — Add settings for new effects
 
-### 2. `src/lib/fireoneProtocol.ts` — Refactor Controller to use TransportManager
+Add to `SceneSettings`:
+- `motionBlurEnabled: boolean` (default `false`)
+- `motionBlurIntensity: number` (default `0.5`)
+- `colorGradingPreset: string` (default `'neutral'`)
 
-- Extract serial connect/disconnect/send/read logic into `SerialTransport`
-- Replace `this.conn` with `TransportManager` instance
-- `send()` delegates to manager's best transport
-- `emergencyStop()` broadcasts on ALL transports
-- Read loop runs on each transport independently, all feed into same `processIncoming()`
-- Add `getTransportStatus()` method returning all transport states
+### 3. `SceneEditorPanel.tsx` — UI controls for new effects
 
-### 3. `src/lib/fireoneWiFiRelay.ts` (NEW) — Wi-Fi Transport
+Add controls in the Post-Processing section:
+- Motion Blur toggle + intensity slider
+- Color Grading preset dropdown
+- God Rays toggle already exists — will now use the real radial blur
 
-Per XLII+ manual: wireless operation uses FHSS transceivers. Our virtual equivalent uses WebSocket to a local relay:
+### 4. `NiagaraVFXController.tsx` — Wire GI probes + ground decals
 
-- `WiFiRelayTransport` connects to `ws://<relay-ip>:9485` (configurable)
-- Relay protocol: JSON envelope `{ type: 'fireone-frame', data: base64(frame) }` or binary WebSocket frames
-- Auto-discovery via mDNS-style broadcast (relay announces itself)
-- Reconnect with exponential backoff
-- Latency measurement via ping/pong
+On burst spawn:
+- Call `GlobalIlluminationSystem.addExplosionProbe(burstPos, burstColor, caliber * 1.5)` via window ref
+- Call `spawnScorchMark(burstPos, caliber * 2)` for ground impact marks
+- Call `spawnLightSplash(burstPos, burstColor, caliber * 3)` for temporary light decals
 
-### 4. `src/lib/fireoneArtNetBridge.ts` (NEW) — Art-Net DMX for IFMx-i32Q
+### 5. `SkyCanvas.tsx` — Expose GI system globally
 
-IFMx-i32Q modules have built-in DMX output ports. This transport:
-- Routes only `DMX_OUT` commands via Art-Net (not firing commands)
-- Uses existing `artnet4Engine.ts` packet builders
-- Sends via `artnet-bridge` edge function or direct UDP (when local relay available)
-- Maps module address to Art-Net universe (module N → universe N)
+Expose `GlobalIlluminationSystem` instance via `window.__giSystem` so NiagaraVFXController can register explosion probes directly.
 
-### 5. `src/hooks/useFireOneHardware.ts` — Expose transport layer
-
-- Remove ad-hoc radio fallback code (now handled by TransportManager)
-- Add `transports` state: array of `{ id, type, connected, latencyMs, priority }`
-- Add `addTransport(type, config)` / `removeTransport(id)` methods
-- Add `connectWiFi(relayIp)` convenience method
-- Add `connectArtNet(targetIp)` convenience method
-- `connectionPath` becomes multi-path: can have Cable+WiFi+Radio simultaneously
-
-### 6. `src/components/editor/ConnectionManagerPanel.tsx` — Multi-Transport UI
-
-Update FireOne connection entry to show multiple transports:
-- Each transport as a sub-row with status indicator (green/yellow/red)
-- "Add Wi-Fi Relay" button → prompts for relay IP
-- "Add Art-Net Bridge" → prompts for Art-Net node IP
-- Priority ordering visible (drag to reorder)
-- E-STOP indicator showing "broadcasts on N transports"
-
-### 7. DMX Relay R12 + Splitter 8 Integration
-
-Add Showven DMX Relay R12 as a recognized device in the SFX channel system:
-- 12 output channels, safety channel (CH-S), threshold 100-255 = ON
-- Auto-configure DMX address when detected via Art-Net discovery
-- Splitter 8 is transparent (no protocol changes needed)
-
-## Files Summary
+## Files
 
 | File | Change |
 |------|--------|
-| `src/lib/fireoneTransport.ts` | NEW — Transport interface + SerialTransport + RadioTransport + TransportManager |
-| `src/lib/fireoneWiFiRelay.ts` | NEW — WiFi WebSocket transport for local relay |
-| `src/lib/fireoneArtNetBridge.ts` | NEW — Art-Net bridge for IFMx-i32Q DMX output |
-| `src/lib/fireoneProtocol.ts` | Refactor FireOneController to use TransportManager |
-| `src/hooks/useFireOneHardware.ts` | Remove ad-hoc fallback, expose multi-transport API |
-| `src/components/editor/ConnectionManagerPanel.tsx` | Multi-transport UI per FireOne connection |
+| `src/components/editor/PostProcessing.tsx` | Motion Blur effect, Radial God Rays effect, Color LUT effect |
+| `src/store/useSceneStore.ts` | Add motionBlur, colorGrading settings |
+| `src/components/editor/SceneEditorPanel.tsx` | UI for motion blur + color grading |
+| `src/components/editor/NiagaraVFXController.tsx` | Wire GI probes + ground decals on burst |
+| `src/components/editor/SkyCanvas.tsx` | Expose GI system globally |
 
