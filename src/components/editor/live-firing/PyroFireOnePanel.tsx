@@ -13,7 +13,7 @@ import {
   ChevronLeft, ChevronRight, RotateCcw, Play, Square, SkipForward,
   CheckCircle2, XCircle, Clock, Activity, Battery, Signal,
   Lock, Unlock, Search, Download, Upload, Maximize2, Minimize2, X,
-  Wifi, WifiOff, Usb, ScanLine, Info
+  Wifi, WifiOff, Usb, ScanLine, Info, Globe
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -28,6 +28,7 @@ import { formatTimecode } from './constants';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { parseFireOneCSV, parseFireOneFIR, exportFireOneCSV, downloadFile, autoDetectAndParse } from '@/lib/fireoneScriptParser';
 import type { WirelessConnectionMode } from '@/lib/fireoneProtocol';
+import { artnetModuleService } from '@/services/artnetModuleService';
 
 interface PyroFireOnePanelProps {
   fs: boolean;
