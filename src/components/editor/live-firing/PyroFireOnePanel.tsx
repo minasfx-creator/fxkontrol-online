@@ -639,63 +639,138 @@ export default function PyroFireOnePanel({
     </div>
   );
 
-  // ── Render: Header ──
-  const renderHeader = () => (
-    <div className={cn(
-      "border-b border-border/15 flex items-center justify-between",
-      sz === 'xl' ? "px-6 py-3" : sz === 'fs' ? "px-4 py-2" : "px-2 py-1"
-    )} style={{ background: 'hsl(0 20% 7%)' }}>
-      <div className="flex items-center gap-3">
-        <span className={cn("font-black tracking-wider",
-          sz === 'xl' ? "text-sm text-red-400" : sz === 'fs' ? "text-xs text-red-400/80" : "text-[8px] text-red-400/80"
-        )}>🔥 FXK-PYRO</span>
-        <span className={cn("font-mono text-muted-foreground/30",
-          sz === 'xl' ? "text-xs" : sz === 'fs' ? "text-[9px]" : "text-[8px]"
-        )}>{connectedCount} MOD · {totalIgniters} IG · {firedCount} FIRED</span>
+  // ── Render: Header — XL4+ 2.0 Identity ──
+  const renderHeader = () => {
+    // Output group indicators (A=1-8, B=9-16, C=17-24, D=25-32)
+    const outputGroups = ['A', 'B', 'C', 'D'].map((label, gi) => {
+      const groupMods = modules.filter(m => m.address >= gi * 8 + 1 && m.address <= (gi + 1) * 8);
+      const groupConnected = groupMods.filter(m => m.connected).length;
+      const groupArmed = groupMods.filter(m => m.armed).length;
+      return { label, connected: groupConnected, armed: groupArmed, total: groupMods.length };
+    });
+
+    return (
+      <div className={cn(
+        "border-b flex flex-col",
+      )} style={{ background: 'linear-gradient(180deg, hsl(0 15% 8%) 0%, hsl(0 12% 5%) 100%)' }}>
+        {/* Top branding stripe */}
+        <div className={cn(
+          "flex items-center justify-between",
+          sz === 'xl' ? "px-6 py-2.5" : sz === 'fs' ? "px-4 py-2" : "px-2 py-1"
+        )} style={{ borderBottom: '2px solid hsl(0 70% 35%)' }}>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <div className={cn(
+                "rounded flex items-center justify-center font-black",
+                sz === 'xl' ? "w-8 h-8 text-sm" : "w-6 h-6 text-[10px]"
+              )} style={{ background: 'linear-gradient(135deg, hsl(0 80% 45%), hsl(0 70% 30%))', color: 'white' }}>
+                F1
+              </div>
+              <div>
+                <div className={cn("font-black tracking-[0.2em] text-red-400",
+                  sz === 'xl' ? "text-sm" : sz === 'fs' ? "text-xs" : "text-[9px]"
+                )}>FXK-PYRO</div>
+                <div className={cn("font-mono tracking-wider",
+                  sz === 'xl' ? "text-[9px]" : "text-[7px]",
+                  "text-red-400/40"
+                )}>XL4+ 2.0 · IFMx-i32Q</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* LCD-style counters */}
+            {[
+              { label: 'MOD', value: connectedCount, color: 'text-green-400' },
+              { label: 'IG', value: totalIgniters, color: 'text-cyan-400' },
+              { label: 'FIRE', value: firedCount, color: firedCount > 0 ? 'text-red-400' : 'text-muted-foreground/30' },
+              ...(misfireCount > 0 ? [{ label: 'FAIL', value: misfireCount, color: 'text-red-500 animate-pulse' }] : []),
+            ].map(c => (
+              <div key={c.label} className={cn(
+                "rounded border font-mono text-center",
+                sz === 'xl' ? "px-3 py-1.5 min-w-[52px]" : sz === 'fs' ? "px-2 py-1 min-w-[40px]" : "px-1.5 py-0.5 min-w-[32px]"
+              )} style={{ background: 'hsl(0 10% 4%)', borderColor: 'hsl(0 20% 15%)' }}>
+                <div className={cn("font-bold", c.color,
+                  sz === 'xl' ? "text-sm" : sz === 'fs' ? "text-[10px]" : "text-[9px]"
+                )}>{c.value}</div>
+                <div className={cn("text-muted-foreground/25 uppercase",
+                  sz === 'xl' ? "text-[7px]" : "text-[6px]"
+                )}>{c.label}</div>
+              </div>
+            ))}
+
+            {/* SIM/LIVE + Fullscreen */}
+            <div className="flex items-center gap-1.5">
+              <span className={cn("font-mono font-bold",
+                sz === 'xl' ? "text-[10px]" : "text-[8px]",
+                simMode ? "text-amber-400/70" : "text-green-400/70"
+              )}>{simMode ? 'SIM' : 'LIVE'}</span>
+              <Switch checked={!simMode} onCheckedChange={(v) => {
+                if (v && !hardware.isConnected) { toast.error('Connect to RS-485 hardware first'); return; }
+                setSimMode(!v);
+              }} className="scale-75" />
+            </div>
+            <button onClick={() => setPyroFullscreen(!pyroFullscreen)}
+              className="text-muted-foreground/40 hover:text-foreground transition-colors rounded p-1">
+              {pyroFullscreen
+                ? <Minimize2 className={cn(sz === 'xl' ? "w-5 h-5" : "w-3 h-3")} />
+                : <Maximize2 className={cn(sz === 'xl' ? "w-5 h-5" : sz === 'fs' ? "w-4 h-4" : "w-3 h-3")} />
+              }
+            </button>
+          </div>
+        </div>
+
+        {/* Output Group Indicators (A/B/C/D) */}
+        <div className={cn(
+          "flex items-center gap-1",
+          sz === 'xl' ? "px-6 py-1.5" : sz === 'fs' ? "px-4 py-1" : "px-2 py-0.5"
+        )} style={{ background: 'hsl(0 10% 4%)' }}>
+          {outputGroups.map(g => (
+            <div key={g.label} className={cn(
+              "flex items-center gap-1.5 rounded border font-mono",
+              sz === 'xl' ? "px-3 py-1 text-[9px]" : sz === 'fs' ? "px-2 py-0.5 text-[8px]" : "px-1.5 py-0.5 text-[7px]",
+              g.armed > 0 ? "border-red-500/30 bg-red-500/5" : "border-border/10 bg-transparent"
+            )}>
+              <span className={cn("font-black",
+                g.armed > 0 ? "text-red-400" : g.connected > 0 ? "text-foreground/50" : "text-muted-foreground/15"
+              )}>OUT-{g.label}</span>
+              <div className="flex gap-0.5">
+                {Array.from({ length: Math.max(1, g.total) }, (_, i) => (
+                  <div key={i} className={cn(
+                    "rounded-full",
+                    sz === 'xl' ? "w-2 h-2" : "w-1.5 h-1.5",
+                    i < g.armed ? "bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.5)]" :
+                    i < g.connected ? "bg-green-500 shadow-[0_0_3px_rgba(34,197,94,0.3)]" :
+                    "bg-muted-foreground/10"
+                  )} />
+                ))}
+              </div>
+            </div>
+          ))}
+          <div className="flex-1" />
+          {/* Art-Net + UDP status LEDs */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <div className={cn("rounded-full", artNetConnected ? "bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.5)]" : "bg-muted-foreground/20",
+                sz === 'xl' ? "w-2.5 h-2.5" : "w-1.5 h-1.5"
+              )} />
+              <span className={cn("font-mono", artNetConnected ? "text-green-500/70" : "text-muted-foreground/30",
+                sz === 'xl' ? "text-[10px]" : "text-[8px]"
+              )}>DMX</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className={cn("rounded-full", relayConnected ? "bg-cyan-400 shadow-[0_0_6px_rgba(0,220,255,0.5)]" : "bg-muted-foreground/20",
+                sz === 'xl' ? "w-2.5 h-2.5" : "w-1.5 h-1.5"
+              )} />
+              <span className={cn("font-mono", relayConnected ? "text-cyan-400/70" : "text-muted-foreground/30",
+                sz === 'xl' ? "text-[10px]" : "text-[8px]"
+              )}>UDP</span>
+            </div>
+          </div>
+        </div>
       </div>
-      <div className="flex items-center gap-3">
-        {/* Art-Net status */}
-        <div className="flex items-center gap-1">
-          <div className={cn("rounded-full", artNetConnected ? "bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.5)]" : "bg-muted-foreground/20",
-            sz === 'xl' ? "w-2.5 h-2.5" : "w-1.5 h-1.5"
-          )} />
-          <span className={cn("font-mono", artNetConnected ? "text-green-500/70" : "text-muted-foreground/30",
-            sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[8px]" : "text-[8px]"
-          )}>DMX</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className={cn("rounded-full", relayConnected ? "bg-cyan-400 shadow-[0_0_6px_rgba(0,220,255,0.5)]" : "bg-muted-foreground/20",
-            sz === 'xl' ? "w-2.5 h-2.5" : "w-1.5 h-1.5"
-          )} />
-          <span className={cn("font-mono", relayConnected ? "text-cyan-400/70" : "text-muted-foreground/30",
-            sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[8px]" : "text-[8px]"
-          )}>UDP</span>
-        </div>
-        {/* SIM/LIVE */}
-        <div className="flex items-center gap-1.5">
-          <span className={cn("font-mono font-bold",
-            sz === 'xl' ? "text-[10px]" : sz === 'fs' ? "text-[8px]" : "text-[8px]",
-            simMode ? "text-amber-400/70" : "text-green-400/70"
-          )}>{simMode ? 'SIM' : 'LIVE'}</span>
-          <Switch checked={!simMode} onCheckedChange={(v) => {
-            if (v && !hardware.isConnected) {
-              toast.error('Connect to RS-485 hardware first');
-              return;
-            }
-            setSimMode(!v);
-          }} className="scale-75" />
-        </div>
-        {/* Fullscreen toggle */}
-        <button onClick={() => setPyroFullscreen(!pyroFullscreen)}
-          className="text-muted-foreground/40 hover:text-foreground transition-colors rounded p-1">
-          {pyroFullscreen
-            ? <Minimize2 className={cn(sz === 'xl' ? "w-5 h-5" : "w-3 h-3")} />
-            : <Maximize2 className={cn(sz === 'xl' ? "w-5 h-5" : sz === 'fs' ? "w-4 h-4" : "w-3 h-3")} />
-          }
-        </button>
-      </div>
-    </div>
-  );
+    );
+  };
 
   // ── Render: Master Key + ARM controls ──
   const renderMasterArm = () => (
@@ -703,26 +778,29 @@ export default function PyroFireOnePanel({
       "border-b flex items-center gap-3",
       sz === 'xl' ? (mob ? "px-4 py-2.5 flex-wrap" : "px-6 py-3") : sz === 'fs' ? "px-4 py-2" : "px-2 py-1",
       masterKeyOn ? "border-red-800/30" : "border-border/15"
-    )} style={{ background: masterKeyOn ? 'hsl(0 30% 8%)' : 'hsl(220 12% 7%)' }}>
+    )} style={{ background: masterKeyOn ? 'hsl(0 30% 8%)' : 'hsl(0 10% 6%)' }}>
       <button onClick={() => { setMasterKeyOn(!masterKeyOn); haptics[masterKeyOn ? 'disarm' : 'arm'](); }}
         className={cn(
-          "flex items-center gap-2 rounded border-2 font-black uppercase transition-all",
+          "flex items-center gap-2 rounded border-2 font-black uppercase transition-all min-w-[64px]",
           sz === 'xl' ? (mob ? "px-5 py-3 text-xs flex-1" : "px-6 py-3 text-sm") : sz === 'fs' ? "px-4 py-2 text-[10px]" : "px-3 py-1.5 text-[8px]",
           masterKeyOn
             ? "bg-red-600/20 border-red-500/50 text-red-400"
-            : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/40"
-        )}>
-        {masterKeyOn ? <Unlock className={cn(sz === 'xl' ? "w-5 h-5" : "w-3 h-3")} /> : <Lock className={cn(sz === 'xl' ? "w-5 h-5" : "w-3 h-3")} />}
+            : "bg-[hsl(0_8%_10%)] border-border/20 text-muted-foreground/40"
+        )} style={masterKeyOn ? {
+          boxShadow: 'inset 0 0 12px rgba(255,50,30,0.1)',
+          transition: 'transform 0.3s ease',
+        } : { transition: 'transform 0.3s ease' }}>
+        {masterKeyOn ? <Unlock className={cn(sz === 'xl' ? "w-5 h-5" : "w-3 h-3")} style={{ transform: 'rotate(45deg)' }} /> : <Lock className={cn(sz === 'xl' ? "w-5 h-5" : "w-3 h-3")} />}
         MASTER KEY {masterKeyOn ? 'ON' : 'OFF'}
       </button>
       <div className="flex items-center gap-1.5">
         <button onClick={() => armAll(true)} disabled={!masterKeyOn}
-          className={cn("rounded border font-bold uppercase transition-all",
+          className={cn("rounded border font-bold uppercase transition-all min-h-[48px]",
             sz === 'xl' ? "px-4 py-2.5 text-[11px]" : sz === 'fs' ? "px-3 py-1.5 text-[9px]" : "px-2 py-1 text-[8px]",
             masterKeyOn ? "bg-red-600/15 border-red-500/30 text-red-400/80" : "border-border/10 text-muted-foreground/20"
           )}>ARM ALL</button>
         <button onClick={() => armAll(false)} disabled={!masterKeyOn}
-          className={cn("rounded border font-bold uppercase transition-all",
+          className={cn("rounded border font-bold uppercase transition-all min-h-[48px]",
             sz === 'xl' ? "px-4 py-2.5 text-[11px]" : sz === 'fs' ? "px-3 py-1.5 text-[9px]" : "px-2 py-1 text-[8px]",
             masterKeyOn ? "bg-green-600/10 border-green-500/30 text-green-400/80" : "border-border/10 text-muted-foreground/20"
           )}>DISARM ALL</button>
@@ -739,28 +817,39 @@ export default function PyroFireOnePanel({
     (firedCount > 0 || misfireCount > 0) ? (
       <div className={cn("flex items-center gap-3 border-b border-border/10",
         sz === 'xl' ? "px-6 py-1.5" : sz === 'fs' ? "px-4 py-1" : "px-2 py-0.5"
-      )} style={{ background: 'hsl(220 10% 6%)' }}>
+      )} style={{ background: 'hsl(0 8% 5%)' }}>
         <span className={cn("font-mono text-green-400/70", sz === 'xl' ? "text-xs" : sz === 'fs' ? "text-[9px]" : "text-[8px]")}>✓ {firedCount} fired</span>
         {misfireCount > 0 && <span className={cn("font-mono text-red-400 font-bold animate-pulse", sz === 'xl' ? "text-xs" : sz === 'fs' ? "text-[9px]" : "text-[8px]")}>⚠ {misfireCount} misfire</span>}
       </div>
     ) : null
   );
 
-  // ── Render: Mode tabs ──
+  // ── Render: Mode tabs — XL4+ Membrane Button Style ──
   const renderModeTabs = () => (
-    <div className={cn("flex border-b border-border/15")} style={{ background: 'hsl(220 10% 7%)' }}>
+    <div className={cn("flex border-b gap-0.5",
+      sz === 'xl' ? "px-4 py-1.5" : sz === 'fs' ? "px-3 py-1" : "px-2 py-0.5"
+    )} style={{ background: 'hsl(0 8% 5%)', borderColor: 'hsl(0 15% 12%)' }}>
       {([
-        { key: 'manual' as PyroMode, label: 'Manual' },
-        { key: 'step' as PyroMode, label: 'Step' },
-        { key: 'timecode' as PyroMode, label: 'Timecode' },
-        { key: 'test' as PyroMode, label: 'Test' },
+        { key: 'manual' as PyroMode, label: 'MANUAL', sub: 'Direct' },
+        { key: 'step' as PyroMode, label: 'STEP', sub: 'Sequential' },
+        { key: 'timecode' as PyroMode, label: 'TIMECODE', sub: 'LTC/GPS' },
+        { key: 'test' as PyroMode, label: 'TEST', sub: 'Continuity' },
       ]).map(m => (
         <button key={m.key} onClick={() => setPyroMode(m.key)}
           className={cn(
-            "flex-1 font-bold uppercase tracking-wider transition-all border-b-2",
-            sz === 'xl' ? "py-3 text-sm" : sz === 'fs' ? "py-2 text-[10px]" : "py-1.5 text-[8px]",
-            pyroMode === m.key ? "text-red-400/80 border-red-500/60" : "text-muted-foreground/30 border-transparent"
-          )}>{m.label}</button>
+            "flex-1 font-mono font-black uppercase tracking-[0.15em] transition-all rounded-sm border-2 min-h-[48px]",
+            sz === 'xl' ? "py-3 text-[11px]" : sz === 'fs' ? "py-2 text-[9px]" : "py-1.5 text-[8px]",
+            pyroMode === m.key
+              ? "text-red-300 border-red-500/50 bg-red-500/10"
+              : "text-muted-foreground/30 border-transparent bg-transparent hover:bg-red-500/5 hover:border-red-500/15"
+          )} style={pyroMode === m.key ? {
+            boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.4), 0 0 8px hsl(0 70% 40% / 0.15)',
+          } : {
+            boxShadow: 'inset 0 -1px 0 rgba(255,255,255,0.03), inset 0 1px 2px rgba(0,0,0,0.3)',
+          }}>
+          <div>{m.label}</div>
+          {sz !== 'sm' && <div className={cn("font-normal text-muted-foreground/20", sz === 'xl' ? "text-[7px]" : "text-[6px]")}>{m.sub}</div>}
+        </button>
       ))}
     </div>
   );
@@ -769,7 +858,7 @@ export default function PyroFireOnePanel({
   const renderModuleSelector = () => (
     <div className={cn("flex items-center gap-1.5 border-b border-border/10 overflow-x-auto scrollbar-thin",
       sz === 'xl' ? "px-5 py-2" : sz === 'fs' ? "px-3 py-1.5" : "px-2 py-1"
-    )} style={{ background: 'hsl(220 12% 6%)' }}>
+    )} style={{ background: 'hsl(0 8% 5%)' }}>
       {modules.map(m => {
         const ModeIcon = connectionModeIcon(m.connectionMode);
         const isLinked = artnetLinkedModules.has(m.address);
@@ -777,12 +866,12 @@ export default function PyroFireOnePanel({
           <div key={m.address} className="flex items-center gap-0.5 shrink-0">
             <button onClick={() => setSelectedModule(m.address)}
               className={cn(
-                "rounded border font-mono font-bold shrink-0 transition-all flex items-center gap-1",
+                "rounded border font-mono font-bold shrink-0 transition-all flex items-center gap-1 min-h-[48px]",
                 sz === 'xl' ? "px-3.5 py-2 text-xs" : sz === 'fs' ? "px-2.5 py-1.5 text-[9px]" : "px-2 py-1 text-[8px]",
                 selectedModule === m.address
                   ? m.armed ? "bg-red-600/20 border-red-500/40 text-red-400" : "bg-primary/15 border-primary/40 text-primary"
                   : m.armed ? "bg-red-600/10 border-red-800/20 text-red-400/50"
-                  : m.connected ? "bg-[hsl(220_10%_10%)] border-border/15 text-foreground/50" : "bg-[hsl(220_10%_7%)] border-border/5 text-muted-foreground/15"
+                  : m.connected ? "bg-[hsl(0_8%_10%)] border-border/15 text-foreground/50" : "bg-[hsl(0_8%_6%)] border-border/5 text-muted-foreground/15"
               )}>
               <ModeIcon className={cn(
                 sz === 'xl' ? "w-3 h-3" : "w-2 h-2",
@@ -817,7 +906,7 @@ export default function PyroFireOnePanel({
               >
                 <Globe className={cn(sz === 'xl' ? "w-4 h-4" : "w-3 h-3")} />
                 {isLinked && artnetLatencies.has(m.address) && (
-                  <span className={cn("font-mono text-violet-300", sz === 'xl' ? "text-[8px]" : "text-[8px]")}>{artnetLatencies.get(m.address)}ms</span>
+                  <span className={cn("font-mono text-violet-300", "text-[8px]")}>{artnetLatencies.get(m.address)}ms</span>
                 )}
               </button>
             )}

@@ -589,15 +589,25 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
   const quickList = mode === 'full-show' ? SHOW_THEMES : QUICK_PROMPTS;
 
   return (
-    <div className="h-full flex flex-col bg-surface-0 border-l border-border">
-      {/* Header */}
-      <div className="flex items-center justify-between p-2 border-b border-border bg-surface-1">
-        <div className="flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-primary" />
-          <span className="text-[10px] font-bold font-mono-code text-foreground tracking-wider uppercase">
-            SwarmGPT
-          </span>
-          <span className="text-[8px] bg-primary/20 text-primary px-1 py-0.5 rounded font-mono-code">v6</span>
+    <div className="h-full flex flex-col border-l" style={{ background: 'hsl(165 8% 4%)', borderColor: 'hsl(165 20% 15%)' }}>
+      {/* Header — SWARM OPS 2.0 */}
+      <div className="flex items-center justify-between p-2" style={{
+        background: 'linear-gradient(135deg, hsl(165 15% 7%) 0%, hsl(165 8% 4%) 100%)',
+        borderBottom: '2px solid hsl(165 80% 30%)',
+      }}>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded flex items-center justify-center font-black text-white text-[8px]"
+            style={{ background: 'linear-gradient(135deg, hsl(165 100% 42%), hsl(165 80% 28%))' }}>
+            SW
+          </div>
+          <div>
+            <span className="text-[10px] font-black tracking-[0.2em] uppercase" style={{ color: 'hsl(165 80% 55%)' }}>
+              FXK-DRONES
+            </span>
+            <div className="text-[7px] font-mono tracking-wider" style={{ color: 'hsl(165 30% 35%)' }}>
+              SWARM OPS 2.0 · AI FORMATION
+            </div>
+          </div>
         </div>
         <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
           <X className="w-3.5 h-3.5" />
