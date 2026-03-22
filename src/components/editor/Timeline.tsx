@@ -458,31 +458,41 @@ function TimelineTrackRow({
       setMarquee(prev => prev ? { ...prev, currentX: cx, currentY: cy } : null);
     };
     const handleUp = (me: MouseEvent) => {
-      setMarquee(prev => {
-        if (!prev) return null;
-        const cx = me.clientX - rect.left;
-        const minX = Math.min(prev.startX, cx);
-        const maxX = Math.max(prev.startX, cx);
-        const selectedIds: string[] = [];
-        const linkedPosIds = new Set<string>();
-        items.forEach(item => {
-          const effect = EFFECT_LIBRARY.find(ef => ef.id === item.effectId);
-          if (!effect) return;
-          const itemLeft = item.startTime * pixelsPerSecond;
-          const itemRight = itemLeft + Math.max((item.durationOverride ?? effect.duration) * pixelsPerSecond, 28);
-          if (itemLeft < maxX && itemRight > minX) {
-            toggleTimelineItemSelection(item.id);
-            selectedIds.push(item.id);
-            if (item.positionId) linkedPosIds.add(item.positionId);
-            item.positionIds?.forEach(pid => linkedPosIds.add(pid));
-          }
-        });
-        // Sync linked positions to viewport
-        if (linkedPosIds.size > 0) {
-          useProjectStore.getState().selectMultiplePositionsAndLinkedEvents(Array.from(linkedPosIds));
+      const cx = me.clientX - rect.left;
+      setMarquee(null);
+      
+      const minX = Math.min(x, cx);
+      const maxX = Math.max(x, cx);
+      if (Math.abs(maxX - minX) < 4) {
+        window.removeEventListener('mousemove', handleMove);
+        window.removeEventListener('mouseup', handleUp);
+        return;
+      }
+
+      // Collect all items within the marquee
+      const selectedIds: string[] = [];
+      const linkedPosIds = new Set<string>();
+      items.forEach(item => {
+        const effect = EFFECT_LIBRARY.find(ef => ef.id === item.effectId);
+        if (!effect) return;
+        const itemLeft = item.startTime * pixelsPerSecond;
+        const itemRight = itemLeft + Math.max((item.durationOverride ?? effect.duration) * pixelsPerSecond, 28);
+        if (itemLeft < maxX && itemRight > minX) {
+          selectedIds.push(item.id);
+          if (item.positionId) linkedPosIds.add(item.positionId);
+          item.positionIds?.forEach(pid => linkedPosIds.add(pid));
         }
-        return null;
       });
+
+      // Batch select all items at once
+      const store = useProjectStore.getState();
+      selectedIds.forEach(id => toggleTimelineItemSelection(id));
+
+      // Sync linked positions to viewport with glow
+      if (linkedPosIds.size > 0) {
+        store.selectMultiplePositionsAndLinkedEvents(Array.from(linkedPosIds));
+      }
+
       window.removeEventListener('mousemove', handleMove);
       window.removeEventListener('mouseup', handleUp);
     };

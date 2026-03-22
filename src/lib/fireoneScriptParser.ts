@@ -388,6 +388,64 @@ export function parseSCL(text: string): AutoFireCue[] {
   return cues;
 }
 
+// ═══════════════════════════════════════════════════════════
+// FIR EXPORTER (pipe-delimited for Finale 3D / FireOne)
+// ═══════════════════════════════════════════════════════════
+
+export interface FIRExportItem {
+  launchTimeMs: number;
+  slat: number;
+  cue: number;
+  description: string;
+  productNumber: string;
+  size: string;
+  positionName: string;
+  event: number;
+}
+
+/** Export items to pipe-delimited FIR format */
+export function exportFireOneFIR(items: FIRExportItem[]): string {
+  const header = '# FIR Export — FX KONTROL → FireOne/Finale 3D';
+  const rows = items
+    .sort((a, b) => a.launchTimeMs - b.launchTimeMs)
+    .map(item =>
+      [item.launchTimeMs, item.slat, item.cue, item.description, item.productNumber, item.size, item.positionName, item.event].join('|')
+    );
+  return [header, ...rows].join('\n');
+}
+
+/**
+ * Convenience: build FIR export data from project + addressing stores.
+ * Import this where you have access to the stores.
+ */
+export function buildFIRExportItems(
+  timelineItems: Array<{ id: string; effectId: string; startTime: number; positionId?: string; positionName?: string; section?: string }>,
+  effects: Array<{ id: string; name: string; caliber?: number; partType?: string; vdl?: string }>,
+  addresses: Array<{ timelineItemId: string; module: number; slat: number; pin: number }>,
+  positions: Array<{ id: string; name: string }>,
+): FIRExportItem[] {
+  return timelineItems.map(item => {
+    const effect = effects.find(e => e.id === item.effectId);
+    const addr = addresses.find(a => a.timelineItemId === item.id);
+    const pos = item.positionId ? positions.find(p => p.id === item.positionId) : null;
+
+    // Use addressing store for slat/cue, fall back to flat index
+    const slat = addr ? addr.module : 1;
+    const cue = addr ? addr.pin : 1;
+
+    return {
+      launchTimeMs: Math.round(item.startTime * 1000),
+      slat,
+      cue,
+      description: effect?.name || '',
+      productNumber: effect?.vdl || effect?.partType || '',
+      size: effect?.caliber ? `${effect.caliber}"` : '',
+      positionName: pos?.name || item.positionName || '',
+      event: 0,
+    };
+  });
+}
+
 /** Auto-detect format from file content and parse */
 export function autoDetectAndParse(text: string, filename: string): { cues: AutoFireCue[]; source: string } {
   const lower = filename.toLowerCase();

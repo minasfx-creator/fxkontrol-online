@@ -465,9 +465,9 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
         </group>
       )}
 
-      {/* Linked glow ring — pulses when events are selected from timeline */}
-      {hasLinkedGlow && !isSelected && (
-        <LinkedGlowRing color={position.type === 'pyro' ? '#FF8A65' : '#4FC3F7'} />
+      {/* Linked glow ring — pulses when events are selected from timeline (visible even when selected) */}
+      {hasLinkedGlow && (
+        <LinkedGlowRing color={position.type === 'pyro' ? '#FF6B35' : '#00B4D8'} />
       )}
 
       {/* Hover ring */}
