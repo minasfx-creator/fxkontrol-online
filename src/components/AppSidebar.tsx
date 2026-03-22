@@ -54,7 +54,7 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar collapsible={isMobile ? 'offcanvas' : 'icon'} className={`border-r border-border bg-[hsl(var(--surface-0))] ${collapsed ? 'sidebar-collapsed' : ''}`}>
+    <Sidebar collapsible={isMobile ? 'offcanvas' : 'icon'} className={`glass-sidebar ${collapsed ? 'sidebar-collapsed' : ''}`}>
       <SidebarContent>
         {/* Brand with MinasFX logo */}
         <div className={`px-3 pt-4 pb-2 ${collapsed ? 'flex justify-center' : ''} animate-holo-materialize`}>
