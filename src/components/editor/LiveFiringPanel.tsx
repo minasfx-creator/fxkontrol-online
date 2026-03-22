@@ -913,15 +913,30 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
 
   const renderSceneModeBar = (fs: boolean) => (
     <div className={cn("flex items-center border-b border-border/15", fs && mob ? "flex-col" : "")} style={{ background: 'hsl(220 10% 7%)' }}>
-      {/* Scenes */}
+      {/* Scenes — styled as backlit console buttons */}
       <div className={cn("flex", fs && mob ? "w-full border-b border-border/10" : "")}>
         {[0, 1, 2, 3].map(s => (
           <button key={s} onClick={() => setActiveScene(s)} disabled={pyroArm}
             className={cn(
-              "font-bold uppercase tracking-wider transition-all border-b-2",
+              "font-bold uppercase tracking-wider transition-all",
               fs && mob ? "flex-1 px-3 py-2.5 text-[10px]" : fs ? "px-5 py-2.5 text-xs" : "px-2.5 py-1.5 text-[8px]",
-              activeScene === s ? "text-primary border-primary bg-primary/5" : "text-muted-foreground/30 border-transparent hover:text-muted-foreground/60"
-            )}>S{s}</button>
+            )}
+            style={{
+              /* Console button cap: raised 3D effect */
+              background: activeScene === s
+                ? isDmxMode ? 'hsl(200 20% 14%)' : 'hsl(220 15% 14%)'
+                : 'hsl(220 10% 8%)',
+              color: activeScene === s
+                ? isDmxMode ? 'hsl(200 80% 60%)' : 'hsl(var(--primary))'
+                : 'hsl(220 5% 30%)',
+              borderBottom: activeScene === s
+                ? `2px solid ${isDmxMode ? 'hsl(200 80% 48%)' : 'hsl(var(--primary))'}`
+                : '2px solid transparent',
+              borderRadius: '4px 4px 0 0',
+              boxShadow: activeScene === s
+                ? `0 2px 8px ${isDmxMode ? 'hsl(200 80% 48% / 0.2)' : 'hsl(var(--primary) / 0.2)'}`
+                : 'inset 0 1px 2px rgba(0,0,0,0.3)',
+            }}>S{s}</button>
         ))}
       </div>
       {!mob && <div className="flex-1" />}
