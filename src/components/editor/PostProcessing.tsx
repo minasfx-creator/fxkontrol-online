@@ -228,10 +228,10 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 class GodRaysEffect extends Effect {
   constructor({ intensity = 0.5 }: { intensity?: number } = {}) {
     super('GodRaysEffect', GOD_RAYS_FRAGMENT, {
-      uniforms: new Map([
+      uniforms: new Map<string, Uniform<number | Vector2>>([
         ['intensity', new Uniform(intensity)],
         ['lightPos', new Uniform(new Vector2(0.5, 0.8))],
-      ]),
+      ]) as Map<string, Uniform>,
     });
   }
 
