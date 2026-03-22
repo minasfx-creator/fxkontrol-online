@@ -7,7 +7,6 @@ import {
   Rocket, Globe, Wifi, Radio, Zap, CheckCircle2, XCircle, 
   ArrowLeft, Shield, Activity, Timer
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { runShowTest, VenueResult, TransportType, TransportMetrics } from '@/services/showTestEngine';
 
 const TRANSPORT_LABELS: Record<TransportType, { label: string; icon: React.ReactNode; color: string }> = {
@@ -211,7 +210,6 @@ function ComparisonTable({ venues }: { venues: VenueResult[] }) {
 }
 
 export default function ShowTestSimulator() {
-  const navigate = useNavigate();
   const [venues, setVenues] = useState<VenueResult[]>([]);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<{ startedAt: string; completedAt: string | null; edgeFunctionAlive: boolean } | null>(null);
@@ -225,12 +223,9 @@ export default function ShowTestSimulator() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background p-4 space-y-6 max-w-7xl mx-auto">
+    <div className="bg-background space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Rocket className="w-6 h-6 text-primary" />
