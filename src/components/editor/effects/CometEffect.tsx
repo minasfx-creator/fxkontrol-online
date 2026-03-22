@@ -97,6 +97,7 @@ export default function CometEffect({
   // Spark GPU buffers
   const sparkPosBuffer = useMemo(() => new Float32Array(SPARK_COUNT * 3), []);
   const sparkColBuffer = useMemo(() => new Float32Array(SPARK_COUNT * 3), []);
+  const sparkSizeBuffer = useMemo(() => new Float32Array(SPARK_COUNT), []);
 
   // Smoke wake seeds
   const smokeWakeSeeds = useMemo(() => {
