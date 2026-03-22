@@ -26,6 +26,8 @@ interface SettingsPanelProps {
 
 export default function SettingsPanel({ fs, settings, onSettingsChange, relayConnected, relayUrl, onRelayUrlChange, onConnectRelay, onDisconnectRelay }: SettingsPanelProps) {
   const [local, setLocal] = useState<FXCSettings>({ ...settings });
+  const displayBacklight = useDisplayStore(s => s.backlight);
+  const setDisplayBacklight = useDisplayStore(s => s.setBacklight);
 
   const update = (patch: Partial<FXCSettings>) => setLocal(prev => ({ ...prev, ...patch }));
 
