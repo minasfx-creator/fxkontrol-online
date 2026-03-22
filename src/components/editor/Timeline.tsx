@@ -828,6 +828,24 @@ function GenerativeTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: nu
   );
 }
 
+// ── Collapsible Track Group ──
+function CollapsibleTrackGroup({ label, defaultOpen = true, children }: { label: string; defaultOpen?: boolean; children: React.ReactNode }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div>
+      <div
+        className="flex items-center px-2.5 py-1 cursor-pointer border-b border-white/[0.03] select-none"
+        style={{ background: 'hsl(var(--card) / 0.8)' }}
+        onClick={() => setOpen(!open)}
+      >
+        {open ? <ChevronDown className="w-2.5 h-2.5 text-muted-foreground/40 mr-1.5" /> : <ChevronRight className="w-2.5 h-2.5 text-muted-foreground/40 mr-1.5" />}
+        <span className="text-[8px] font-bold text-muted-foreground/35 uppercase tracking-[0.12em]">{label}</span>
+      </div>
+      {open && children}
+    </div>
+  );
+}
+
 const MIN_PPS = 4;
 const MAX_PPS = 80;
 
