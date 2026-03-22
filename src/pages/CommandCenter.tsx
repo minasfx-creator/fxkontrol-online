@@ -420,11 +420,9 @@ export default function CommandCenter() {
             <Badge variant="outline" className={cn("text-[9px] h-5 px-2 font-black border", accent.badge)}>
               {accent.label}
             </Badge>
-            {isFireMode(activeMode) && (
-              <span className="text-[9px] text-muted-foreground/40 font-mono">
-                FIRE CONSOLE
-              </span>
-            )}
+            <span className="text-[9px] text-muted-foreground/40 font-mono">
+              {isFireMode(activeMode) ? 'FIRE CONSOLE' : 'DIRECT PANEL'}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             {isArmed && (
