@@ -78,8 +78,7 @@ const MODE_SECTIONS = [
       { key: 'simple_dmx' as CommandMode, label: 'Simple DMX', icon: Lightbulb },
       { key: 'manual_fire' as CommandMode, label: 'Manual', icon: Hand },
       { key: 'pyro_fire' as CommandMode, label: 'FXK-PYRO', icon: Flame },
-      { key: 'auto_fire' as CommandMode, label: 'Auto Fire', icon: Timer },
-      { key: 'check_slave' as CommandMode, label: 'Check', icon: Check },
+      { key: 'check_slave' as CommandMode, label: 'DIAGNOSTICS', icon: Check },
     ],
   },
   {
@@ -89,7 +88,6 @@ const MODE_SECTIONS = [
       { key: 'controllers' as CommandMode, label: 'Controllers', icon: Cpu },
       { key: 'pbus' as CommandMode, label: 'P-BUS', icon: Cable },
       { key: 'ma3' as CommandMode, label: 'FXK-LIGHT', icon: Gauge },
-      { key: 'module' as CommandMode, label: 'FXK Module', icon: Cpu },
       { key: 'wifi_direct' as CommandMode, label: 'WiFi Direct', icon: Wifi },
       { key: 'drone_ops' as CommandMode, label: 'FXK-DRONES', icon: Layers },
     ],
