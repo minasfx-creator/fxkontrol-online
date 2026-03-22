@@ -30,13 +30,20 @@ import { parseFireOneCSV, parseFireOneFIR, exportFireOneCSV, downloadFile, autoD
 import type { WirelessConnectionMode } from '@/lib/fireoneProtocol';
 import { artnetModuleService } from '@/services/artnetModuleService';
 
+interface FireLogEntry {
+  cueId: string;
+  expectedMs: number;
+  actualMs: number;
+  delta: number;
+  status: 'OK' | 'LATE' | 'EARLY';
+}
+
 interface PyroFireOnePanelProps {
   fs: boolean;
   fireChannel: (id: string) => void;
   channels: SFXChannel[];
   pyroArm: boolean;
   dmxArm: boolean;
-  deadmanHeld: boolean;
   handlePanic: () => void;
   artNetConnected: boolean;
   relayConnected: boolean;
