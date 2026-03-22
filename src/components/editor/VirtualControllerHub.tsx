@@ -38,7 +38,7 @@ const CONTROLLERS: ControllerCard[] = [
   { id: 'maiman', name: 'Maiman 30W', manufacturer: 'Showven', type: 'laser', connectionTypes: ['artnet'], channels: 14, description: '30W RGB laser · ILDA + DMX · IP54', group: 'showven' },
   { id: 'dmx-splitter8', name: 'DMX Splitter 8', manufacturer: 'Showven', type: 'dmx', connectionTypes: ['usb'], channels: 8, description: '1→8 DMX512 splitter · Opto-isolated', group: 'infrastructure' },
   { id: 'dmx-relay-r12', name: 'DMX Relay R12', manufacturer: 'Showven', type: 'dmx', connectionTypes: ['usb', 'artnet'], channels: 12, description: '12-channel DMX relay · 10A/channel', group: 'infrastructure' },
-  { id: 'ifmx-i32q-module', name: 'IFMx-i32Q Module', manufacturer: 'FireOne', type: 'module', connectionTypes: ['wireless', 'ble', 'usb'], channels: 32, description: 'Virtual field module · 32 igniters · CDS · ESP32 bridge', panelMode: 'module', group: 'fireone' },
+  { id: 'ifmx-i32q-module', name: 'IFMx-i32Q Module', manufacturer: 'FireOne', type: 'module', connectionTypes: ['wireless', 'ble', 'usb', 'wifi_direct'], channels: 32, description: 'Virtual field module · 32 igniters · CDS · ESP32 bridge', panelMode: 'module', group: 'fireone' },
 ];
 
 const CONNECTION_ICONS: Record<ConnectionType, typeof Usb> = {
