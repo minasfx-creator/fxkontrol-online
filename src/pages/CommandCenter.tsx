@@ -129,21 +129,24 @@ export default function CommandCenter() {
   }, [fireone.isConnected, pbus.isConnected, pbus.deviceCount]);
 
   const handleModeChange = useCallback((mode: CommandMode) => {
-    if (mode === activeMode) return;
+    if (mode === activeMode || bootConsole) return;
     ambientSound.play('boot');
-    setSwapPhase('out');
-    setSwapFlash(false);
+    // Start boot sequence overlay
+    setBootConsole(mode);
+  }, [activeMode, bootConsole]);
+
+  const handleBootComplete = useCallback(() => {
+    if (!bootConsole) return;
+    setActiveMode(bootConsole);
+    setSearchParams({ mode: bootConsole }, { replace: true });
+    setSwapPhase('in');
+    setSwapFlash(true);
+    setBootConsole(null);
     setTimeout(() => {
-      setActiveMode(mode);
-      setSearchParams({ mode }, { replace: true });
-      setSwapPhase('in');
-      setSwapFlash(true);
-      setTimeout(() => {
-        setSwapPhase('idle');
-        setSwapFlash(false);
-      }, 550);
-    }, 250);
-  }, [setSearchParams, activeMode]);
+      setSwapPhase('idle');
+      setSwapFlash(false);
+    }, 400);
+  }, [bootConsole, setSearchParams]);
 
   // Direct-render for non-fire modes
   const renderDirectPanel = useCallback((mode: CommandMode) => {
