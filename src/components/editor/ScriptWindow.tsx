@@ -954,7 +954,9 @@ export default function ScriptWindow() {
                     row.chainRef && !isSelected && "border-l-2",
                     isDraggingFill && fillAnchorId === row.id && "bg-primary/20",
                   )}
-                  style={row.chainRef && !isSelected ? { borderLeftColor: chainColor } : undefined}
+                  style={{
+                    ...(row.chainRef && !isSelected ? { borderLeftColor: chainColor } : {}),
+                  }}
                   onClick={(e) => toggleSelect(row.id, e)}
                 >
                   {/* Row number */}

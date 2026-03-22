@@ -488,7 +488,7 @@ export default function PositionWindow({ onClose }: PositionWindowProps) {
                         </div>
                       </div>
 
-                      {/* Expanded: linked effects */}
+                      {/* Expanded: linked effects with cost sum + focus button */}
                       {isExpanded && linkedItems.length > 0 && (
                         <div className="bg-surface-0/30 border-l-2 border-primary/20 ml-5">
                           {linkedItems.map(item => {
@@ -498,12 +498,31 @@ export default function PositionWindow({ onClose }: PositionWindowProps) {
                               <div key={item.id} className="flex items-center gap-2 px-3 py-1 text-[9px] text-muted-foreground/60 hover:bg-muted/10">
                                 <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: effect.color }} />
                                 <span className="font-medium text-foreground/60 truncate">{effect.name}</span>
+                                <span className="font-mono-code tabular-nums text-success/50">${effect.cost}</span>
                                 <span className="font-mono-code tabular-nums ml-auto">{item.startTime.toFixed(1)}s</span>
                                 {item.pan !== undefined && <span className="font-mono-code tabular-nums text-accent/40">H{item.pan}°</span>}
                                 {item.tilt !== undefined && <span className="font-mono-code tabular-nums text-accent/40">P{item.tilt}°</span>}
                               </div>
                             );
                           })}
+                          {/* Summary row */}
+                          <div className="flex items-center gap-2 px-3 py-1.5 text-[8px] border-t border-border/10 text-muted-foreground/40">
+                            <span className="font-bold">{linkedItems.length} effects</span>
+                            <span className="text-success/60 font-mono-code font-bold">
+                              ${linkedItems.reduce((s, i) => { const e = EFFECT_LIBRARY.find(ef => ef.id === i.effectId); return s + (e?.cost || 0); }, 0).toFixed(0)}
+                            </span>
+                            <button
+                              className="ml-auto flex items-center gap-1 text-primary/60 hover:text-primary transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                selectPosition(pos.id);
+                                window.dispatchEvent(new CustomEvent('focus-position-3d', { detail: { posId: pos.id } }));
+                              }}
+                            >
+                              <Crosshair className="w-3 h-3" />
+                              <span className="text-[8px] font-semibold">Focus 3D</span>
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>

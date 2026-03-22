@@ -458,9 +458,31 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       {!isMobile && (
         <div className="flex items-center gap-0.5">
           <DropdownMenu
+            label="Edit"
+            icon={Command}
+            items={[
+              { label: 'Select All (Ctrl+A)', icon: BoxSelect, onClick: () => {
+                const store = useProjectStore.getState();
+                store.timelineItems.forEach(i => store.toggleTimelineItemSelection(i.id));
+              }},
+              { label: 'Duplicate (Ctrl+D)', icon: Copy, onClick: () => {
+                const store = useProjectStore.getState();
+                const ids = store.selectedTimelineItemIds.length > 0 ? store.selectedTimelineItemIds : store.selectedTimelineItemId ? [store.selectedTimelineItemId] : [];
+                if (ids.length > 0) store.duplicateTimelineItems(ids);
+              }},
+              { label: 'Delete (Del)', icon: Trash2, onClick: () => {
+                const store = useProjectStore.getState();
+                if (store.selectedTimelineItemIds.length > 0) store.removeMultipleTimelineItems(store.selectedTimelineItemIds);
+                else if (store.selectedTimelineItemId) store.removeTimelineItem(store.selectedTimelineItemId);
+              }},
+            ]}
+          />
+          <DropdownMenu
             label="Show"
             icon={Film}
             items={[
+              { label: 'Play / Pause (Space)', icon: Film, onClick: () => { const s = useProjectStore.getState(); s.setPlaying(!s.isPlaying); } },
+              { label: 'Rewind', icon: SkipBack, onClick: () => useProjectStore.getState().setCurrentTime(0) },
               { label: 'Show Settings', icon: Cog, onClick: () => onOpenPanel?.('showsettings') },
               { label: 'Show Summary', icon: FileBarChart, onClick: () => onOpenPanel?.('summary') },
               { label: 'VDL Calibration', icon: Gauge, onClick: () => onOpenPanel?.('calibration') },
@@ -475,7 +497,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
             label="View"
             icon={Eye}
             items={[
-              { label: 'Position Window', icon: MapPin, onClick: () => onOpenPanel?.('positions') },
+              { label: 'Position Window (V)', icon: MapPin, onClick: () => onOpenPanel?.('positions') },
               { label: 'Properties', icon: Cog, onClick: () => onOpenPanel?.('properties') },
               { label: 'Script Editor', icon: Film, onClick: () => onOpenPanel?.('script') },
               { label: 'Groups', icon: Users, onClick: () => onOpenPanel?.('groups') },
