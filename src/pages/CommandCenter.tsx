@@ -127,6 +127,7 @@ export default function CommandCenter() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialMode = (searchParams.get('mode') as CommandMode) || 'super_dmx';
   const [activeMode, setActiveMode] = useState<CommandMode>(initialMode);
+  const [swapPhase, setSwapPhase] = useState<'idle' | 'out' | 'in'>('idle');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileCategory, setMobileCategory] = useState(0);
   const isMobile = useIsMobile();
@@ -145,9 +146,16 @@ export default function CommandCenter() {
   }, [fireone.isConnected, pbus.isConnected, pbus.deviceCount]);
 
   const handleModeChange = useCallback((mode: CommandMode) => {
-    setActiveMode(mode);
-    setSearchParams({ mode }, { replace: true });
-  }, [setSearchParams]);
+    if (mode === activeMode) return;
+    ambientSound.play('boot');
+    setSwapPhase('out');
+    setTimeout(() => {
+      setActiveMode(mode);
+      setSearchParams({ mode }, { replace: true });
+      setSwapPhase('in');
+      setTimeout(() => setSwapPhase('idle'), 300);
+    }, 200);
+  }, [setSearchParams, activeMode]);
 
   // ── Direct-render for non-fire modes (no ARM/CUE/PANIC chrome) ──
   const renderDirectPanel = useCallback((mode: CommandMode) => {
