@@ -144,7 +144,7 @@ export default function Agenda() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground font-display">Agenda de Eventos</h1>
+        <h1 className="text-2xl font-bold text-foreground font-display" style={{ textShadow: '0 0 12px hsl(32 100% 50% / 0.15)' }}>Agenda de Eventos</h1>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="gap-1.5">

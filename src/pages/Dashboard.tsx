@@ -475,8 +475,8 @@ export default function Dashboard() {
             ))}
           </div>
           <div className="flex items-center gap-2 mb-3">
-            <Circle className="h-2 w-2 fill-emerald-400 text-emerald-400 animate-pulse" />
-            <span className="text-[9px] font-mono-code text-muted-foreground tracking-widest uppercase">
+            <Circle className="h-2 w-2 fill-current animate-pulse" style={{ color: 'hsl(32 100% 50%)' }} />
+            <span className="text-[9px] font-mono-code text-muted-foreground tracking-widest uppercase" style={{ color: 'hsl(32 100% 50% / 0.5)' }}>
               Industry Feed · {filteredNews.length} posts
             </span>
           </div>
