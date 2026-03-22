@@ -88,8 +88,11 @@ export default function VirtualControllerHub({ fs = false, onSelectMode, onClose
   }, []);
 
   const grouped = useMemo(() => {
-    const groups: Record<string, ControllerCard[]> = { fireone: [], showven: [], infrastructure: [] };
-    CONTROLLERS.forEach(c => groups[c.group].push(c));
+    const groups: Record<string, ControllerCard[]> = { fireone: [], showven: [], drones: [], infrastructure: [] };
+    CONTROLLERS.forEach(c => {
+      if (!groups[c.group]) groups[c.group] = [];
+      groups[c.group].push(c);
+    });
     return groups;
   }, []);
 
