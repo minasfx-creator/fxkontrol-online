@@ -1,7 +1,7 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
-import { Messenger } from '@/components/Messenger';
+import { FXKAssistant } from '@/components/FXKAssistant';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PanelLeftClose, PanelLeft, AlertOctagon } from 'lucide-react';
 import minasfxLogo from '@/assets/minasfx-logo-white.png';
