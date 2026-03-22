@@ -347,7 +347,7 @@ export default function ArtNetModulePanel() {
                 onDisconnect={() => artnetModuleService.disconnectModule(module.id)}
                 onArm={() => artnetModuleService.armModule(module.id)}
                 onDisarm={() => artnetModuleService.disarmModule(module.id)}
-                onRemove={() => artnetModuleService.removeModule(module.id)}
+                onRemove={() => { artnetModuleService.removeModule(module.id); deleteModule(module.id); }}
                 onFire={(ch) => artnetModuleService.fireChannel(module.id, ch)}
               />
             ))
