@@ -264,6 +264,10 @@ export default function CommandCenter() {
           </div>
         </div>
       </div>
+      {bootConsole && (
+        <ConsoleBootSequence consoleKey={bootConsole} label={CONSOLE_ACCENTS[bootConsole]?.label ?? ''} subtitle={CONSOLE_ACCENTS[bootConsole]?.subtitle ?? ''} accentColor={CONSOLE_ACCENTS[bootConsole]?.color ?? 'hsl(32 100% 50%)'} onComplete={handleBootComplete} />
+      )}
+    </div>
     );
   }
 
