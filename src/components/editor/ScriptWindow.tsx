@@ -998,13 +998,32 @@ export default function ScriptWindow() {
                     )}
                   </td>
 
-                  {/* Description */}
+                  {/* Description with caliber badge + type icon */}
                   <td className="px-1 py-0.5">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1">
+                      {/* Section color stripe */}
+                      {(() => {
+                        const pos = positions.find(p => p.name === row.position);
+                        const sec = pos?.section;
+                        const sColors: Record<string, string> = { A: '#4CAF50', B: '#2196F3', C: '#FF9800', D: '#E91E63', E: '#9C27B0', F: '#00BCD4' };
+                        return <div className="w-[3px] h-4 rounded-full flex-shrink-0" style={{ backgroundColor: sec ? sColors[sec] || '#555' : 'hsl(var(--muted) / 0.2)' }} />;
+                      })()}
                       <div
                         className="w-2.5 h-2.5 rounded-full flex-shrink-0 ring-1 ring-white/10"
                         style={{ backgroundColor: row.color }}
                       />
+                      {/* Caliber badge for pyro */}
+                      {row.type === 'firework' && (
+                        <span className="text-[7px] font-bold px-1 py-0.5 rounded bg-accent/15 text-accent tabular-nums flex-shrink-0">
+                          {(() => { const m = row.description.match(/(\d+)(?:in|")/); return m ? `${m[1]}"` : '4"'; })()}
+                        </span>
+                      )}
+                      {/* Type icon */}
+                      {row.category && (
+                        <span className="text-[8px] flex-shrink-0 opacity-50">
+                          {row.category === 'mines' ? '💥' : row.category === 'roman_candles' ? '🕯️' : row.category === 'cakes_batteries' ? '📦' : row.category === 'waterfalls' ? '💧' : row.type === 'firework' ? '🎆' : ''}
+                        </span>
+                      )}
                       <span className="text-foreground truncate max-w-[120px] font-medium">
                         {row.description}
                         {collapsed && chainCount > 1 && (
