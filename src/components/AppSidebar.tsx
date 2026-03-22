@@ -3,6 +3,7 @@ import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAdminRole } from '@/hooks/useAdminRole';
 import { useState } from 'react';
 import { ambientSound } from '@/lib/ambientSound';
 import {
