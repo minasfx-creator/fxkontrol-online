@@ -107,6 +107,9 @@ export default function BoxSelectOverlay() {
       const store = useProjectStore.getState();
       if (store.editorMode !== 'select') return;
 
+      // Only activate box select when lasso tool is ON
+      if (!isLassoActive()) return;
+
       // Only start on canvas area (not UI overlays)
       const target = e.target as HTMLElement;
       if (target !== canvas && !canvas.contains(target)) return;
