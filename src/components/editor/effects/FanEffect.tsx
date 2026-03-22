@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
 import { temporalFlicker, thermalColorRamp } from '@/lib/pyroNoise';
+import { getChemistryForRendering, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
 
 const BASE_RAYS = 9;
 const BASE_PARTICLES_PER_RAY = 30;
