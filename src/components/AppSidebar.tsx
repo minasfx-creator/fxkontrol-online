@@ -57,7 +57,7 @@ export function AppSidebar() {
         </div>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/60 px-3">
+          <SidebarGroupLabel className="text-[9px] uppercase tracking-[0.2em] px-3" style={{ color: 'hsl(32 100% 50% / 0.4)' }}>
             {!collapsed && 'Módulos'}
           </SidebarGroupLabel>
           <SidebarGroupContent>
