@@ -64,8 +64,7 @@ const MODE_CATEGORIES = [
       { key: 'simple_dmx' as FXCMode, label: 'Simple', icon: Lightbulb },
       { key: 'manual_fire' as FXCMode, label: 'Manual', icon: Hand },
       { key: 'pyro_fire' as FXCMode, label: 'FXK-PYRO', icon: Flame },
-      { key: 'auto_fire' as FXCMode, label: 'Auto Fire', icon: Timer },
-      { key: 'check_slave' as FXCMode, label: 'Check', icon: Check },
+      { key: 'check_slave' as FXCMode, label: 'Diagnostics', icon: Check },
     ],
   },
   {
@@ -73,13 +72,12 @@ const MODE_CATEGORIES = [
       { key: 'controllers' as FXCMode, label: 'Controllers', icon: Cpu },
       { key: 'pbus' as FXCMode, label: 'P-BUS', icon: Cable },
       { key: 'ma3' as FXCMode, label: 'FXK-LIGHT', icon: Gauge },
-      { key: 'module' as FXCMode, label: 'FXK Module', icon: Cpu },
       { key: 'wifi_direct' as FXCMode, label: 'WiFi Direct', icon: Wifi },
     ],
   },
   {
     label: '🌐 NETWORK', modes: [
-      { key: 'artnet_modules' as FXCMode, label: 'Art-Net', icon: Globe },
+      { key: 'artnet_modules' as FXCMode, label: 'FXK-NET', icon: Globe },
       { key: 'connections' as FXCMode, label: 'Connections', icon: Plug },
       { key: 'radio' as FXCMode, label: 'Radio', icon: Radio },
       { key: 'field_map' as FXCMode, label: 'Field Map', icon: Map },
