@@ -4,7 +4,7 @@
  */
 import { useCallback, useRef } from 'react';
 import { haptics } from '@/lib/haptics';
-import { Clock, Sparkles, MapPin, Hexagon, MoreHorizontal, Cable, Cpu, Map, Radio, Smartphone } from 'lucide-react';
+import { Clock, Sparkles, MapPin, Hexagon, MoreHorizontal, Cable, Cpu, Map, Radio, Smartphone, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PanelId } from '@/components/editor/PanelTabBar';
 
@@ -103,7 +103,7 @@ export default function MobileTabBar({
               onTouchEnd={handleLongPressEnd}
               onTouchCancel={handleLongPressEnd}
               className={cn(
-                "flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-200",
+                "relative flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-200",
                 "active:scale-90"
               )}
             >
@@ -121,6 +121,11 @@ export default function MobileTabBar({
               )}>
                 {label}
               </span>
+              {/* Live FX active indicator */}
+              {key === 'livefx' && isActive && (
+                <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 animate-pulse" 
+                  style={{ boxShadow: '0 0 4px rgba(239,68,68,0.6)' }} />
+              )}
             </button>
           );
         })}

@@ -16,7 +16,7 @@ import {
   Shield, ShieldAlert, Gauge, Settings, FolderOpen, Wifi,
   Signal, Thermometer, Activity, Volume2, Eye, EyeOff,
   Maximize2, Minimize2, Battery, Hand, ChevronLeft, ChevronRight,
-  Cable
+  Cable, Globe, Map, Cpu, Smartphone, Plug
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,6 +52,115 @@ import VirtualIFMx32QPanel from './live-firing/VirtualIFMx32QPanel';
 import WiFiDirectControlPanel from './live-firing/WiFiDirectControlPanel';
 import ArtNetModulePanel from './live-firing/ArtNetModulePanel';
 import { RISK_GROUP_LABELS, RISK_GROUP_COLORS, type RiskGroup } from '@/lib/pyroPhysics';
+
+// ═══════════════════════════════════════════════════════════
+// MOBILE MODE TABS — Categorized grid for mobile Live FX
+// ═══════════════════════════════════════════════════════════
+const MODE_CATEGORIES = [
+  {
+    label: '🔥 FIRE', modes: [
+      { key: 'super_dmx' as FXCMode, label: 'Super DMX', icon: Zap },
+      { key: 'simple_dmx' as FXCMode, label: 'Simple', icon: Lightbulb },
+      { key: 'manual_fire' as FXCMode, label: 'Manual', icon: Hand },
+      { key: 'pyro_fire' as FXCMode, label: 'Pyro XL4', icon: Flame },
+      { key: 'auto_fire' as FXCMode, label: 'Auto Fire', icon: Timer },
+      { key: 'check_slave' as FXCMode, label: 'Check', icon: Check },
+    ],
+  },
+  {
+    label: '🎛 HARDWARE', modes: [
+      { key: 'controllers' as FXCMode, label: 'Controllers', icon: Cpu },
+      { key: 'pbus' as FXCMode, label: 'P-BUS', icon: Cable },
+      { key: 'ma3' as FXCMode, label: 'MA3', icon: Gauge },
+      { key: 'module' as FXCMode, label: 'IFM x32Q', icon: Cpu },
+      { key: 'wifi_direct' as FXCMode, label: 'WiFi Direct', icon: Wifi },
+    ],
+  },
+  {
+    label: '🌐 NETWORK', modes: [
+      { key: 'artnet_modules' as FXCMode, label: 'Art-Net', icon: Globe },
+      { key: 'connections' as FXCMode, label: 'Connections', icon: Plug },
+      { key: 'radio' as FXCMode, label: 'Radio', icon: Radio },
+      { key: 'field_map' as FXCMode, label: 'Field Map', icon: Map },
+    ],
+  },
+  {
+    label: '⚙ SYSTEM', modes: [
+      { key: 'mobile_link' as FXCMode, label: 'Mobile Link', icon: Smartphone },
+      { key: 'settings' as FXCMode, label: 'Settings', icon: Settings },
+    ],
+  },
+];
+
+function MobileModeTabs({ mode, onModeChange }: { mode: FXCMode; onModeChange: (m: FXCMode) => void }) {
+  const [expanded, setExpanded] = useState(true);
+  const currentCategory = MODE_CATEGORIES.find(c => c.modes.some(m => m.key === mode));
+  const currentMode = MODE_CATEGORIES.flatMap(c => c.modes).find(m => m.key === mode);
+
+  if (!expanded) {
+    return (
+      <button
+        onClick={() => setExpanded(true)}
+        className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60"
+        style={{ background: 'hsl(220 10% 7%)' }}
+      >
+        <ChevronDown className="w-3 h-3" />
+        {currentCategory?.label} › {currentMode?.label}
+      </button>
+    );
+  }
+
+  return (
+    <div className="px-2 py-2 space-y-2" style={{ background: 'hsl(220 10% 6%)' }}>
+      {/* Quick access bar */}
+      <div className="flex gap-1.5">
+        {[
+          { key: 'super_dmx' as FXCMode, label: 'DMX', icon: Zap },
+          { key: 'pyro_fire' as FXCMode, label: 'Pyro', icon: Flame },
+          { key: 'artnet_modules' as FXCMode, label: 'ArtNet', icon: Globe },
+          { key: 'field_map' as FXCMode, label: 'Map', icon: Map },
+        ].map(q => (
+          <button
+            key={q.key}
+            onClick={() => { onModeChange(q.key); setExpanded(false); }}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-1.5 rounded-lg border-2 py-2.5 font-bold uppercase text-[9px] tracking-wider transition-all min-h-[44px]",
+              mode === q.key
+                ? "border-primary/50 bg-primary/10 text-primary"
+                : "border-border/15 bg-[hsl(220_10%_10%)] text-muted-foreground/40"
+            )}
+          >
+            <q.icon className="w-4 h-4" />
+            {q.label}
+          </button>
+        ))}
+      </div>
+      {/* Categories grid */}
+      {MODE_CATEGORIES.map(cat => (
+        <div key={cat.label}>
+          <div className="text-[8px] font-bold uppercase tracking-[0.2em] text-muted-foreground/30 mb-1 px-1">{cat.label}</div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {cat.modes.map(m => (
+              <button
+                key={m.key}
+                onClick={() => { onModeChange(m.key); setExpanded(false); }}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-1 rounded-lg border py-3 transition-all min-h-[56px]",
+                  mode === m.key
+                    ? "border-primary/40 bg-primary/10 text-primary"
+                    : "border-border/10 bg-[hsl(220_10%_9%)] text-muted-foreground/40 active:bg-[hsl(220_10%_14%)]"
+                )}
+              >
+                <m.icon className="w-5 h-5" />
+                <span className="text-[8px] font-bold uppercase tracking-wider">{m.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 // ═══════════════════════════════════════════════════════════
 // LOCKOUT PANEL — Finale 3D Risk Group Lockout System
@@ -900,36 +1009,37 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
         ))}
       </div>
       {!mob && <div className="flex-1" />}
-      {/* Mode tabs — horizontally scrollable on mobile */}
-      <div className={cn("flex overflow-x-auto scrollbar-thin scrollbar-thumb-border/30 scrollbar-track-transparent", fs && mob ? "w-full pb-1" : fs ? "pr-3 gap-0.5" : "pr-1")}>
-        {([
-          // DMX modes
-          { key: 'super_dmx' as FXCMode, label: 'Super' },
-          { key: 'simple_dmx' as FXCMode, label: 'Simple' },
-          { key: 'manual_fire' as FXCMode, label: 'Manual' },
-          // Fire modes
-          { key: 'pyro_fire' as FXCMode, label: '🔥 Pyro' },
-          { key: 'auto_fire' as FXCMode, label: 'Auto' },
-          { key: 'check_slave' as FXCMode, label: 'Check' },
-          // Hardware
-          { key: 'controllers' as FXCMode, label: '🎛 HW' },
-          { key: 'pbus' as FXCMode, label: '📡 PBUS' },
-          { key: 'ma3' as FXCMode, label: '🎛 MA3' },
-          { key: 'field_map' as FXCMode, label: '🗺 Map' },
-          { key: 'connections' as FXCMode, label: '🔌 Conn' },
-          { key: 'wifi_direct' as FXCMode, label: '📡 WFD' },
-          { key: 'artnet_modules' as FXCMode, label: '🌐 ArtNet' },
-          { key: 'mobile_link' as FXCMode, label: '📡 Link' },
-          { key: 'settings' as FXCMode, label: '⚙' },
-        ]).map(m => (
-          <button key={m.key} onClick={() => { setMode(m.key); setShowDeviceLib(false); }}
-            className={cn(
-              "font-bold uppercase tracking-wider transition-all whitespace-nowrap shrink-0",
-              fs && mob ? "px-3 py-2.5 text-[10px]" : fs ? "px-3 py-2.5 text-[9px]" : "px-1.5 py-1.5 text-[6px]",
-              mode === m.key ? "text-foreground/80" : "text-muted-foreground/25 hover:text-muted-foreground/50"
-            )}>{m.label}</button>
-        ))}
-      </div>
+      {/* Mode tabs — categorized grid on mobile, scrollable on desktop */}
+      {fs && mob ? (
+        <MobileModeTabs mode={mode} onModeChange={(m) => { setMode(m); setShowDeviceLib(false); }} />
+      ) : (
+        <div className={cn("flex overflow-x-auto scrollbar-thin scrollbar-thumb-border/30 scrollbar-track-transparent", fs ? "pr-3 gap-0.5" : "pr-1")}>
+          {([
+            { key: 'super_dmx' as FXCMode, label: 'Super' },
+            { key: 'simple_dmx' as FXCMode, label: 'Simple' },
+            { key: 'manual_fire' as FXCMode, label: 'Manual' },
+            { key: 'pyro_fire' as FXCMode, label: '🔥 Pyro' },
+            { key: 'auto_fire' as FXCMode, label: 'Auto' },
+            { key: 'check_slave' as FXCMode, label: 'Check' },
+            { key: 'controllers' as FXCMode, label: '🎛 HW' },
+            { key: 'pbus' as FXCMode, label: '📡 PBUS' },
+            { key: 'ma3' as FXCMode, label: '🎛 MA3' },
+            { key: 'field_map' as FXCMode, label: '🗺 Map' },
+            { key: 'connections' as FXCMode, label: '🔌 Conn' },
+            { key: 'wifi_direct' as FXCMode, label: '📡 WFD' },
+            { key: 'artnet_modules' as FXCMode, label: '🌐 ArtNet' },
+            { key: 'mobile_link' as FXCMode, label: '📡 Link' },
+            { key: 'settings' as FXCMode, label: '⚙' },
+          ]).map(m => (
+            <button key={m.key} onClick={() => { setMode(m.key); setShowDeviceLib(false); }}
+              className={cn(
+                "font-bold uppercase tracking-wider transition-all whitespace-nowrap shrink-0",
+                fs ? "px-3 py-2.5 text-[9px]" : "px-1.5 py-1.5 text-[6px]",
+                mode === m.key ? "text-foreground/80" : "text-muted-foreground/25 hover:text-muted-foreground/50"
+              )}>{m.label}</button>
+          ))}
+        </div>
+      )}
     </div>
   );
 

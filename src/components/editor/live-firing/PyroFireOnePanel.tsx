@@ -110,6 +110,25 @@ export default function PyroFireOnePanel({
   const [pyroFullscreen, setPyroFullscreen] = useState(false);
   const [artnetLinking, setArtnetLinking] = useState(false);
   const [artnetLinkedModules, setArtnetLinkedModules] = useState<Set<number>>(new Set());
+  const [artnetLatencies, setArtnetLatencies] = useState<Map<number, number>>(new Map());
+
+  // Simulate latency polling for linked modules
+  useEffect(() => {
+    if (artnetLinkedModules.size === 0) return;
+    const iv = setInterval(() => {
+      setArtnetLatencies(prev => {
+        const next = new Map(prev);
+        artnetLinkedModules.forEach(addr => {
+          const mod = modules.find(m => m.address === addr);
+          const base = mod?.connectionMode === 'wireless' ? 8 : 2;
+          const jitter = Math.random() * 6;
+          next.set(addr, Math.round(base + jitter));
+        });
+        return next;
+      });
+    }, 2000);
+    return () => clearInterval(iv);
+  }, [artnetLinkedModules, modules]);
 
   // Step mode
   const [stepIndex, setStepIndex] = useState(0);
@@ -773,9 +792,14 @@ export default function PyroFireOnePanel({
               FM-{String(m.address).padStart(2, '0')}
               {m.armed && <span className="ml-0.5 text-red-400">●</span>}
               {isLinked && (
-                <Globe className={cn(sz === 'xl' ? "w-2.5 h-2.5" : "w-2 h-2", "text-violet-400")} />
+                <>
+                  <Globe className={cn(sz === 'xl' ? "w-2.5 h-2.5" : "w-2 h-2", "text-violet-400")} />
+                  {artnetLatencies.has(m.address) && (
+                    <span className="text-[6px] font-mono text-violet-300">{artnetLatencies.get(m.address)}ms</span>
+                  )}
+                </>
               )}
-              {m.connectionMode === 'wireless' && m.rssiDbm !== undefined && (
+              {m.connectionMode === 'wireless' && m.rssiDbm !== undefined && !isLinked && (
                 <span className={cn("text-[5px]", rssiColor(m.rssiDbm))}>{m.rssiDbm}dB</span>
               )}
             </button>
@@ -783,15 +807,18 @@ export default function PyroFireOnePanel({
               <button
                 onClick={() => handleModuleArtnetLink(m.address)}
                 className={cn(
-                  "rounded border shrink-0 transition-all",
-                  sz === 'xl' ? "p-1.5" : "p-0.5",
+                  "rounded border shrink-0 transition-all flex items-center gap-0.5",
+                  sz === 'xl' ? "p-2 min-w-[44px] min-h-[44px] justify-center" : "p-1 min-w-[32px] min-h-[32px] justify-center",
                   isLinked
                     ? "bg-violet-600/15 border-violet-500/30 text-violet-400"
                     : "border-border/10 text-muted-foreground/30 hover:text-violet-400/60 hover:border-violet-500/20"
                 )}
                 title={`ArtNet Link FM-${String(m.address).padStart(2, '0')}`}
               >
-                <Globe className={cn(sz === 'xl' ? "w-3 h-3" : "w-2 h-2")} />
+                <Globe className={cn(sz === 'xl' ? "w-4 h-4" : "w-3 h-3")} />
+                {isLinked && artnetLatencies.has(m.address) && (
+                  <span className={cn("font-mono text-violet-300", sz === 'xl' ? "text-[8px]" : "text-[6px]")}>{artnetLatencies.get(m.address)}ms</span>
+                )}
               </button>
             )}
           </div>

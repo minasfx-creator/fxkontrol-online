@@ -95,7 +95,10 @@ function ModuleCard({ module, connectionState, masterArmed, isClone, onConnect, 
         <div className="flex items-center gap-2">
           <ConnectionBadge state={connectionState} />
           {module.latencyMs !== null && isOnline && (
-            <span className="text-[9px] font-mono text-muted-foreground">{module.latencyMs}ms</span>
+            <span className="flex items-center gap-0.5 text-[9px] font-mono text-violet-300">
+              <Globe className="w-3 h-3 text-violet-400" />
+              {module.latencyMs}ms
+            </span>
           )}
         </div>
       </div>
