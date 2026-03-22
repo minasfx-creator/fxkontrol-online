@@ -587,24 +587,69 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
         );
       })()}
 
-      {/* Draggable handle */}
-      <mesh
-        ref={handleRef}
-        position={handlePos}
-        onPointerDown={onPointerDown}
-        onPointerOver={() => { setIsHovered(true); (gl.domElement as HTMLElement).style.cursor = 'grab'; }}
-        onPointerOut={() => { setIsHovered(false); if (!isDragging) (gl.domElement as HTMLElement).style.cursor = ''; }}
-      >
-        <sphereGeometry args={[handleSize, 12, 12]} />
-        <meshBasicMaterial color={handleColor} transparent opacity={isDragging ? 1.0 : 0.7} />
-      </mesh>
-
-      {(isDragging || isHovered) && (
-        <mesh position={handlePos}>
-          <ringGeometry args={[handleSize + 0.05, handleSize + 0.12, 16]} />
-          <meshBasicMaterial color={COLORS.handleActive} transparent opacity={0.3} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
+      {/* Draggable grab handle — large hit area with visual feedback */}
+      <group position={handlePos}>
+        {/* Invisible large hit sphere for easy grabbing */}
+        <mesh
+          ref={handleRef}
+          onPointerDown={onPointerDown}
+          onPointerOver={() => { setIsHovered(true); (gl.domElement as HTMLElement).style.cursor = 'grab'; }}
+          onPointerOut={() => { setIsHovered(false); if (!isDragging) (gl.domElement as HTMLElement).style.cursor = ''; }}
+        >
+          <sphereGeometry args={[0.5, 12, 12]} />
+          <meshBasicMaterial visible={false} />
         </mesh>
-      )}
+
+        {/* Visible handle — red ring (Finale style) */}
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[handleSize, handleSize * 0.3, 8, 16]} />
+          <meshBasicMaterial
+            color={handleColor}
+            transparent
+            opacity={isDragging ? 1.0 : isHovered ? 0.9 : 0.7}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+
+        {/* Center dot */}
+        <mesh>
+          <sphereGeometry args={[handleSize * 0.25, 8, 8]} />
+          <meshBasicMaterial color={handleColor} transparent opacity={isDragging ? 1.0 : 0.8} />
+        </mesh>
+
+        {/* Glow pulse on hover/drag */}
+        {(isDragging || isHovered) && (
+          <>
+            <mesh rotation={[Math.PI / 2, 0, 0]}>
+              <torusGeometry args={[handleSize + 0.08, 0.04, 8, 16]} />
+              <meshBasicMaterial color={handleColor} transparent opacity={0.25} blending={THREE.AdditiveBlending} />
+            </mesh>
+            {/* Cross-hair lines */}
+            <line>
+              <bufferGeometry>
+                <bufferAttribute
+                  attach="attributes-position"
+                  count={2}
+                  array={new Float32Array([-0.4, 0, 0, 0.4, 0, 0])}
+                  itemSize={3}
+                />
+              </bufferGeometry>
+              <lineBasicMaterial color={handleColor} transparent opacity={0.3} />
+            </line>
+            <line>
+              <bufferGeometry>
+                <bufferAttribute
+                  attach="attributes-position"
+                  count={2}
+                  array={new Float32Array([0, -0.4, 0, 0, 0.4, 0])}
+                  itemSize={3}
+                />
+              </bufferGeometry>
+              <lineBasicMaterial color={handleColor} transparent opacity={0.3} />
+            </line>
+          </>
+        )}
+      </group>
 
       {/* Finale 3D-style label with inline editable H/P/R */}
       <Html
