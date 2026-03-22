@@ -427,7 +427,13 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
     e.stopPropagation();
     useUndoStore.getState().checkpoint();
     setIsDragging(true);
-    dragStartRef.current = { heading: position.heading, pitch: position.pitch || 85 };
+    const nativeEvent = e.nativeEvent || e;
+    dragStartRef.current = {
+      heading: position.heading,
+      pitch: position.pitch || 85,
+      mouseX: nativeEvent.clientX ?? 0,
+      mouseY: nativeEvent.clientY ?? 0,
+    };
     if (batchMode && selectedIds) {
       const store = useProjectStore.getState();
       const map = new Map<string, { heading: number; pitch: number }>();
