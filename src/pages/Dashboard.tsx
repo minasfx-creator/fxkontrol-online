@@ -263,38 +263,45 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-7xl mx-auto pb-10">
-      {/* ── Hero Banner — Premium ──────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/30 bg-gradient-to-br from-[hsl(var(--surface-1))] via-[hsl(var(--surface-2)/0.6)] to-[hsl(var(--surface-1))] p-6 md:p-8 mb-6 animate-fxk-fade-up">
-        {/* Ambient glow */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(var(--primary)/0.06),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,hsl(var(--fxk-violet)/0.04),transparent_50%)]" />
-        {/* Grid overlay */}
-        <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+      {/* ── Hero Banner — Tactical Command ──── */}
+      <div className="relative overflow-hidden rounded border border-primary/15 bg-surface-1 p-5 md:p-7 mb-5 animate-fxk-fade-up">
+        {/* Tactical grid overlay */}
+        <div className="absolute inset-0 tactical-grid" />
+        <div className="absolute inset-0 tactical-scanline" />
+        {/* Corner accents */}
+        <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-primary/30" />
+        <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-primary/30" />
+        <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-primary/30" />
+        <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-primary/30" />
         
         <div className="relative z-10 flex items-start justify-between">
           <div>
-            <div className="flex items-center gap-2.5 mb-3">
-              <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_hsl(155_80%_42%/0.5)]" />
-              <p className="text-[10px] font-mono text-primary/70 tracking-[0.25em] uppercase font-semibold">
-                FX KONTROL ONLINE
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-2 w-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_hsl(var(--primary)/0.5)]" />
+              <p className="text-[10px] font-mono text-primary tracking-[0.3em] uppercase font-bold">
+                SYS::ONLINE
+              </p>
+              <div className="h-[1px] w-12 bg-primary/20" />
+              <p className="text-[9px] font-mono text-muted-foreground/50 tracking-wider">
+                FX KONTROL v2.0
               </p>
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold font-display tracking-tight text-foreground leading-[1.1]">
-              Bem-vindo, <span className="text-fxk-gradient">{userName}</span>
+            <h1 className="text-2xl md:text-3xl font-bold font-display tracking-[0.04em] text-foreground uppercase leading-[1.1]">
+              Operador: <span className="text-fxk-gradient">{userName}</span>
             </h1>
-            <p className="text-sm text-muted-foreground mt-2.5 max-w-lg font-tech leading-relaxed">
-              Plataforma inteligente para controle de shows pirotécnicos, drones e efeitos especiais.
+            <p className="text-xs text-muted-foreground/60 mt-2 max-w-lg font-mono tracking-wider uppercase">
+              TACTICAL CONTROL PLATFORM // PYRO · DMX · DRONES · SFX
             </p>
           </div>
           {lastProjectId && (
             <Button
               variant="outline"
               size="sm"
-              className="hidden md:flex gap-1.5 text-xs border-primary/20 text-primary hover:bg-primary/10 rounded-xl"
+              className="hidden md:flex gap-1.5 text-[10px] font-mono tracking-wider border-primary/20 text-primary hover:bg-primary/10 rounded uppercase"
               onClick={() => navigate('/editor')}
             >
               <ArrowRight className="h-3 w-3" />
-              Retomar sessão
+              RESUME
             </Button>
           )}
         </div>
