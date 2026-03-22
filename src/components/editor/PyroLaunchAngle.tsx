@@ -348,9 +348,9 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
     return { points: pts, apexPoint, lastPoint, apexIdx: safeApex };
   }, [heading, pitch, realCaliber, useFullScale, effectScale]);
 
-  // Handle at the END of the trajectory (Finale 3D style — grab burst point)
+  // Handle at the APEX of the trajectory (burst point — Finale 3D style)
   const handlePos = useMemo((): [number, number, number] => {
-    return trajectoryData.lastPoint as [number, number, number];
+    return trajectoryData.apexPoint as [number, number, number];
   }, [trajectoryData]);
 
   const arrowShaftPoints = useMemo((): [number, number, number][] => {
