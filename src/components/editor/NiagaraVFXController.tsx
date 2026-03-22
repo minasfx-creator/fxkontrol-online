@@ -33,6 +33,7 @@ import { createSmokeSoftMaterial } from '@/render_ultra/fireworks/softParticleSh
 import { RibbonTrail } from '@/render_ultra/fireworks/ribbonTrailRenderer';
 import { HeatHazeEmitter } from '@/render_ultra/fireworks/heatDistortion';
 import { createFluidGrid, advectFluid, applyWindForce, type FluidGrid } from '@/render_ultra/fireworks/niagaraFluids';
+import { InstancedParticleRenderer, createSparkInstancedRenderer, createSmokeInstancedRenderer } from '@/render_ultra/fireworks/instancedParticleRenderer';
 
 // ── Emitter Templates ───────────────────────────────────────────────
 
