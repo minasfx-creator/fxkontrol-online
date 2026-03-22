@@ -469,9 +469,6 @@ function Index() {
           onPanelHeightChange={setMobilePanelHeight}
         />
 
-        {showPositionEditor && selectedPositionId && (
-          <PositionPopupEditor onClose={() => setShowPositionEditor(false)} />
-        )}
         <PositionContextMenu />
       </div>
     );
