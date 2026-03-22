@@ -587,6 +587,20 @@ export default function PyroFireOnePanel({
           </button>
         )}
 
+        {/* ARTNET LINK */}
+        <button onClick={handleArtnetLink} disabled={artnetLinking}
+          className={cn("rounded border font-bold uppercase transition-all",
+            sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[6px]",
+            artnetLinking
+              ? "bg-violet-600/15 border-violet-500/30 text-violet-400/80 animate-pulse"
+              : artnetLinkedModules.size > 0
+                ? "bg-violet-600/15 border-violet-500/25 text-violet-400/70"
+                : "bg-violet-600/10 border-violet-500/15 text-violet-400/50 hover:text-violet-400/70"
+          )}>
+          <Globe className={cn(sz === 'xl' ? "w-3 h-3 inline mr-1" : "w-2 h-2 inline mr-0.5")} />
+          {artnetLinking ? 'LINKING...' : artnetLinkedModules.size > 0 ? `ARTNET ✓${artnetLinkedModules.size}` : 'ARTNET LINK'}
+        </button>
+
         {/* Import / Export */}
         <button onClick={() => fileInputRef.current?.click()}
           className={cn("rounded border font-bold uppercase transition-all",
