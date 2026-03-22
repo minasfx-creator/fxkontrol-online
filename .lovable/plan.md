@@ -1,64 +1,87 @@
 
 
-# Plan: Continue Finale 3D UI/UX Integration — Phase 5
+# Plan: Finale 3D Selection Modes — Positions & Events + UX Refinements
 
 ## Summary
 
-Building on the existing implementation (Position Window, Timeline tracks, ScriptWindow inline editing, angle gizmo), this phase addresses the remaining Finale 3D workflow patterns: collapsible track groups, section color-coding on timeline items, track header improvements, ScriptWindow VDL column with caliber badge, and global status bar refinements.
+Looking at the screenshot, Finale 3D shows a **unified selection system** where selecting positions in the 3D viewport automatically highlights their linked events in the timeline (and vice versa). The screenshot shows "1 Pyro ⚡ 14 fx" in the status bar — selecting 1 position reveals all 14 linked effects. This bidirectional selection binding is the core feature to implement, along with Finale-style selection mode buttons in both the viewport and timeline.
 
 ## Changes
 
-### 1. `src/components/editor/Timeline.tsx` — Section Color-Coded Left Borders on Items
+### 1. Bidirectional Selection Binding (Store)
 
-In `DraggableTimelineItem`, look up the item's `positionId` → position → `section` and apply a colored 2px left border:
-- Section A = `#4CAF50`, B = `#2196F3`, C = `#FF9800`, D = `#E91E63`, E = `#9C27B0`, F = `#00BCD4`
-- No section = transparent (current behavior)
+**`src/store/useProjectStore.ts`**
 
-### 2. `src/components/editor/Timeline.tsx` — Collapsible Track Groups
+Add a `selectionMode` state: `'positions'` | `'events'` | `'both'` (default `'both'`).
 
-Wrap PYRO/DRONE/LIGHT tracks in a collapsible group header "FIRING SYSTEMS" with a chevron toggle. Same for Formation/DroneFX/Waypoints → "CHOREOGRAPHY" group. Matches Finale 3D track organization.
+Add two derived-action helpers:
+- `selectPositionAndLinkedEvents(positionId)` — selects a position AND auto-selects all timeline items linked to it
+- `selectTimelineItemAndLinkedPosition(itemId)` — selects a timeline item AND highlights its linked position in the viewport
+- `selectMultiplePositionsAndLinkedEvents(ids)` — batch version for multi-select
 
-### 3. `src/components/editor/Timeline.tsx` — Track Header Improvements
+### 2. Selection Mode Toggle Bar (Viewport)
 
-- Add item count badge on each track label (e.g., "PYRO SYS · 12")
-- Add mute/solo toggle icons on track headers (eye icon to show/hide items in 3D, headphone icon placeholder)
-- Right-click on track label → "Select All on Track", "Delete All on Track"
+**`src/components/editor/SelectionModeBar.tsx`** — NEW
 
-### 4. `src/components/editor/ScriptWindow.tsx` — VDL Description + Caliber Badge
+A floating bar in the viewport (matching screenshot's icon row) with toggle buttons:
+- **Select Positions** — click selects positions only
+- **Select Events** — click selects timeline items only  
+- **Select Both** — selects position + linked events (Finale default)
+- **Lasso** — activates box/lasso selection
+- **Select by Section** — dropdown to select all positions in a section (A-F)
 
-- Show caliber badge (e.g., `4"`) before description for firework items
-- Show color swatch from VDL parsing next to description
-- Add "Type" mini-icon column (shell/mine/cake/candle icon) before description
+Icons match Finale 3D: position pin, lightning bolt, link icon, lasso, grid.
 
-### 5. `src/components/editor/ScriptWindow.tsx` — Row Color Stripe by Section
+### 3. Timeline Selection Sync
 
-- Add a 3px left color stripe on each row matching the position's section color (same palette as timeline borders)
-- When no section assigned, show neutral gray stripe
+**`src/components/editor/Timeline.tsx`**
 
-### 6. `src/components/editor/EffectLibrary.tsx` — Finale-Style Category Badges
+- When a position is selected in the viewport, auto-highlight all timeline items linked to that position (yellow outline glow)
+- When a timeline item is clicked, auto-select its linked position in the 3D viewport
+- Show "linked selection" indicator: dashed border on items that are selected via position linkage (vs direct click)
+- Update `handleItemSelect` to call `selectTimelineItemAndLinkedPosition`
 
-- Show part type badge (SHELL, MINE, CAKE, etc.) on each effect in both list and table views
-- Show caliber prominently: `4"` badge in accent color for fireworks
+### 4. Viewport Selection Sync  
 
-### 7. `src/components/editor/PositionWindow.tsx` — Linked Effects Expandable
+**`src/components/editor/SelectionStatusBar.tsx`**
 
-- Click expand arrow on a position row → shows linked timeline items inline (effect name, time, angles)
-- Shows total effect count and cost sum per position
-- Add "Focus in 3D" button that dispatches camera focus event
+- Update to use bidirectional selection — show both selected positions AND their linked event count
+- When events are selected in timeline, highlight corresponding positions in viewport
+- Add selection mode indicator text (e.g., "Mode: Both" or "Mode: Positions Only")
 
-### 8. `src/components/editor/Toolbar.tsx` — Finale 3D Menu Bar Polish
+### 5. AlignmentTools Enhancement
 
-- Add "Edit" menu: Select All (Ctrl+A), Duplicate (Ctrl+D), Delete (Del)
-- Add "Show" menu: Play (Space), Stop, Rewind, Set Duration
-- Ensure "View" menu lists all panel shortcuts
+**`src/components/editor/AlignmentTools.tsx`**
+
+- Add Finale-style selection filter icons at the start of the toolbar (matching screenshot):
+  - Filter: Pyro only, Drone only, Light only, All
+  - These filter which selected items are affected by alignment operations
+- Show selection count with type breakdown: "3 Pyro · 2 Drone"
+
+### 6. BoxSelectOverlay — Support Both Modes
+
+**`src/components/editor/BoxSelectOverlay.tsx`**
+
+- In "both" mode, box selection selects positions AND their linked timeline items
+- In "events" mode, box selection on viewport selects timeline items at those positions
+- Dispatch linked selections after box select completes
+
+### 7. Timeline Marquee → Position Sync
+
+**`src/components/editor/Timeline.tsx`**
+
+- When marquee-selecting timeline items, auto-highlight their linked positions in the 3D viewport
+- Show position markers flash/pulse when their events are selected via timeline marquee
 
 ## Files
 
 | File | Change |
 |------|--------|
-| `src/components/editor/Timeline.tsx` | Section color borders, collapsible track groups, track header badges/mute, track context menu |
-| `src/components/editor/ScriptWindow.tsx` | VDL caliber badge, type icons, section color stripe |
-| `src/components/editor/EffectLibrary.tsx` | Part type + caliber badges |
-| `src/components/editor/PositionWindow.tsx` | Expandable linked effects, cost sum, focus button |
-| `src/components/editor/Toolbar.tsx` | Edit menu, Show menu polish |
+| `src/store/useProjectStore.ts` | Add `selectionMode`, bidirectional selection actions |
+| `src/components/editor/SelectionModeBar.tsx` | NEW — Finale-style selection mode toggle bar |
+| `src/components/editor/Timeline.tsx` | Bidirectional selection sync, linked item highlighting |
+| `src/components/editor/SelectionStatusBar.tsx` | Show selection mode, bidirectional counts |
+| `src/components/editor/AlignmentTools.tsx` | Selection filter icons, type breakdown |
+| `src/components/editor/BoxSelectOverlay.tsx` | Support bidirectional box selection |
+| `src/pages/Index.tsx` | Mount SelectionModeBar in viewport area |
 
