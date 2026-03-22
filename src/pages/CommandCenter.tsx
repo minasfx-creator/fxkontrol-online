@@ -533,33 +533,38 @@ export default function CommandCenter() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Breadcrumb */}
+        {/* Breadcrumb — Apple frosted glass bar */}
         <div
-          className="h-10 shrink-0 flex items-center justify-between px-4 border-b"
+          className="h-11 shrink-0 flex items-center justify-between px-5 border-b relative overflow-hidden"
           style={{
-            background: `linear-gradient(90deg, ${accent.glow} 0%, hsl(220 22% 3% / 0.9) 40%)`,
-            borderColor: 'hsl(var(--primary) / 0.05)',
+            background: `linear-gradient(90deg, ${accent.glow} 0%, hsl(220 22% 3% / 0.95) 50%)`,
+            borderColor: 'hsl(var(--primary) / 0.04)',
+            backdropFilter: 'blur(32px) saturate(1.3)',
           }}
         >
-          <div className="flex items-center gap-2.5">
+          {/* Ambient accent line */}
+          <div className="absolute bottom-0 left-0 right-0 h-[1px]" style={{
+            background: `linear-gradient(90deg, ${accent.color}20, transparent 50%)`,
+          }} />
+          <div className="flex items-center gap-3">
             {(() => { const L = CONSOLE_LOGOS[activeMode]; return L ? <L size={24} active /> : null; })()}
-            <Badge variant="outline" className={cn("text-[7px] h-4.5 px-2 font-black border font-mono tracking-[0.15em] rounded-sm", accent.badge)}>
+            <Badge variant="outline" className={cn("text-[7px] h-5 px-2.5 font-black border font-mono tracking-[0.15em] rounded-md", accent.badge)}>
               {accent.label}
             </Badge>
-            <div className="h-3 w-[1px]" style={{ background: 'hsl(var(--primary) / 0.1)' }} />
-            <span className="text-[7px] text-muted-foreground/25 font-mono tracking-[0.15em]">
+            <div className="h-3.5 w-[1px] rounded-full" style={{ background: 'hsl(var(--primary) / 0.08)' }} />
+            <span className="text-[7px] text-muted-foreground/20 font-mono tracking-[0.15em]">
               {accent.subtitle}
             </span>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-[9px] font-mono font-bold" style={{ color: 'hsl(32 100% 55%)', textShadow: '0 0 8px hsl(32 100% 50% / 0.25)' }}>{missionClock}</span>
             {isArmed && (
-              <Badge variant="destructive" className="text-[7px] h-4.5 animate-pulse font-mono tracking-wider rounded-sm">
+              <Badge variant="destructive" className="text-[7px] h-5 animate-pulse font-mono tracking-wider rounded-md">
                 ARMED // {activeEffects.length}
               </Badge>
             )}
             {connectedCount > 0 && (
-              <Badge variant="outline" className="text-[7px] h-4.5 border-primary/12 text-primary font-mono tracking-wider rounded-sm">
+              <Badge variant="outline" className="text-[7px] h-5 border-primary/10 text-primary/70 font-mono tracking-wider rounded-md">
                 {connectedCount} ONLINE
               </Badge>
             )}
