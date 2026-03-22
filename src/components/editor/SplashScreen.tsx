@@ -1,5 +1,5 @@
 import { useState, useEffect, forwardRef } from 'react';
-import fxkLogo from '@/assets/fxk-logo-new.png';
+import fxkLogo from '@/assets/fxk-logo-tactical.png';
 import { cn } from '@/lib/utils';
 import { ambientSound } from '@/lib/ambientSound';
 
