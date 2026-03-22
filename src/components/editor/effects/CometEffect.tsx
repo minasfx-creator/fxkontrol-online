@@ -101,10 +101,11 @@ export default function CometEffect({
 
   // Smoke wake seeds
   const smokeWakeSeeds = useMemo(() => {
-    const s = new Float32Array(SMOKE_WAKE_COUNT * 2); // spawnProgress, seed
+    const s = new Float32Array(SMOKE_WAKE_COUNT * 3); // spawnProgress, seed, turbAmp
     for (let i = 0; i < SMOKE_WAKE_COUNT; i++) {
-      s[i * 2] = (i / SMOKE_WAKE_COUNT) * 0.9 + 0.03;
-      s[i * 2 + 1] = Math.random() * 999 + i;
+      s[i * 3] = (i / SMOKE_WAKE_COUNT) * 0.9 + 0.03;
+      s[i * 3 + 1] = Math.random() * 999 + i;
+      s[i * 3 + 2] = 0.04 + Math.random() * 0.08; // per-particle turbulence amplitude
     }
     return s;
   }, []);
