@@ -52,6 +52,9 @@ import MA3ControlPanel from './MA3ControlPanel';
 import VirtualIFMx32QPanel from './live-firing/VirtualIFMx32QPanel';
 import WiFiDirectControlPanel from './live-firing/WiFiDirectControlPanel';
 import ArtNetModulePanel from './live-firing/ArtNetModulePanel';
+import ShowControlPanel from './ShowControlPanel';
+import DMXMonitorPanel from './DMXMonitorPanel';
+import DroneCommandPanel from './DroneCommandPanel';
 import { RISK_GROUP_LABELS, RISK_GROUP_COLORS, type RiskGroup } from '@/lib/pyroPhysics';
 
 // ═══════════════════════════════════════════════════════════
