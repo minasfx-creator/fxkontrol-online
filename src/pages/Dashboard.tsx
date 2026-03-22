@@ -144,7 +144,7 @@ function FeedCard({ item }: { item: NewsItem }) {
   );
 }
 
-/* ── Hub Card Component — Premium Glassmorphism ──── */
+/* ── Hub Card Component — Tactical ──── */
 function HubCard({
   title, subtitle, badge, tools, accentClass, borderClass, badgeBg, navigate, delay = '0s', commandRoute = false
 }: {
@@ -171,34 +171,34 @@ function HubCard({
   };
 
   return (
-    <div className={`glass-card-elevated overflow-hidden animate-fxk-stagger group/hub`} style={{ animationDelay: delay }}>
-      {/* Hub Header — premium gradient with shimmer */}
-      <div className={`px-4 py-3.5 border-b border-border/20 bg-gradient-to-r ${accentClass} relative overflow-hidden`}>
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[rgba(255,255,255,0.02)] to-transparent opacity-0 group-hover/hub:opacity-100 transition-opacity duration-700" style={{ backgroundSize: '200% 100%', animation: 'fxk-shimmer 3s linear infinite' }} />
+    <div className={`glass-card-elevated overflow-hidden animate-fxk-stagger group/hub tactical-border-l`} style={{ animationDelay: delay }}>
+      {/* Hub Header — tactical with warning stripe accent */}
+      <div className={`px-4 py-3 border-b border-border/30 bg-gradient-to-r ${accentClass} relative overflow-hidden`}>
+        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
         <div className="flex items-center justify-between relative z-10">
           <div>
-            <h2 className="text-sm font-bold font-display text-foreground tracking-tight">{title}</h2>
-            <p className="text-[10px] text-muted-foreground/70 mt-0.5 font-tech tracking-wide">{subtitle}</p>
+            <h2 className="text-sm font-bold font-display text-foreground tracking-[0.05em] uppercase">{title}</h2>
+            <p className="text-[9px] text-muted-foreground/60 mt-0.5 font-mono tracking-wider uppercase">{subtitle}</p>
           </div>
-          <span className={`text-[7px] font-bold font-mono tracking-[0.2em] uppercase px-2.5 py-1 rounded-full ${badgeBg} border border-current/10`}>
+          <span className={`text-[7px] font-bold font-mono tracking-[0.2em] uppercase px-2 py-0.5 rounded-sm ${badgeBg} border border-current/15`}>
             {badge}
           </span>
         </div>
       </div>
 
-      {/* Tool Grid — refined with hover states */}
+      {/* Tool Grid — tactical buttons */}
       <div className="p-3 grid grid-cols-3 gap-1.5">
         {tools.map((tool, i) => (
           <button
             key={tool.label}
             onClick={() => goToTool(tool.panel)}
-            className="group flex flex-col items-center gap-1.5 p-2.5 rounded-xl transition-all duration-200 hover:bg-[rgba(255,255,255,0.04)] active:scale-[0.95] border border-transparent hover:border-[rgba(255,255,255,0.06)] animate-fxk-stagger"
+            className="group flex flex-col items-center gap-1.5 p-2.5 rounded transition-all duration-150 hover:bg-primary/5 active:scale-[0.96] border border-transparent hover:border-primary/10 animate-fxk-stagger"
             style={{ animationDelay: `${baseDelay + 0.05 * i}s` }}
           >
-            <div className="h-9 w-9 rounded-xl bg-[rgba(255,255,255,0.04)] flex items-center justify-center group-hover:bg-[rgba(255,255,255,0.08)] group-hover:scale-110 transition-all duration-200 group-hover:shadow-[0_0_12px_rgba(0,200,255,0.08)]">
-              <tool.icon className="h-4 w-4 text-foreground/60 group-hover:text-foreground transition-colors" />
+            <div className="h-9 w-9 rounded bg-surface-2/80 flex items-center justify-center group-hover:bg-primary/10 group-hover:scale-105 transition-all duration-150 border border-border/30 group-hover:border-primary/20">
+              <tool.icon className="h-4 w-4 text-foreground/50 group-hover:text-primary transition-colors" />
             </div>
-            <span className="text-[9px] font-semibold text-muted-foreground group-hover:text-foreground text-center leading-tight transition-colors font-tech">
+            <span className="text-[8px] font-bold text-muted-foreground group-hover:text-foreground text-center leading-tight transition-colors font-mono tracking-wider uppercase">
               {tool.label}
             </span>
           </button>
