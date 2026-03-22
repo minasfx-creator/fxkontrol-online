@@ -1,6 +1,6 @@
 /**
- * ConsoleBootSequence — Military terminal boot-up animation
- * Plays when switching consoles: scanlines, text crawl, system checks, logo reveal.
+ * ConsoleBootSequence — Apple × BR2049 Military Boot-Up
+ * MacBook Pro-inspired reveal with holographic amber overlay.
  */
 import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
@@ -15,46 +15,50 @@ interface ConsoleBootSequenceProps {
 }
 
 const BOOT_LINES = [
-  'BIOS CHECK .............. OK',
-  'MEMORY ALLOC ............ OK',
-  'SECURE HANDSHAKE ........ OK',
-  'DMX PROTOCOL INIT ....... OK',
-  'FIELD BUS SCAN .......... OK',
-  'TELEMETRY LINK .......... OK',
-  'RENDER PIPELINE ......... OK',
-  'SYSTEM READY',
+  { text: 'BIOS CHECK', status: 'OK' },
+  { text: 'SECURE HANDSHAKE', status: 'OK' },
+  { text: 'PROTOCOL INIT', status: 'OK' },
+  { text: 'FIELD BUS SCAN', status: 'OK' },
+  { text: 'TELEMETRY LINK', status: 'OK' },
+  { text: 'RENDER PIPELINE', status: 'OK' },
 ];
 
 export default function ConsoleBootSequence({ consoleKey, label, subtitle, accentColor, onComplete }: ConsoleBootSequenceProps) {
-  const [phase, setPhase] = useState<'scanline' | 'text' | 'logo' | 'out'>('scanline');
+  const [phase, setPhase] = useState<'sweep' | 'text' | 'logo' | 'out'>('sweep');
   const [visibleLines, setVisibleLines] = useState(0);
-  const [logoVisible, setLogoVisible] = useState(false);
+  const [logoReveal, setLogoReveal] = useState(false);
+  const [progressWidth, setProgressWidth] = useState(0);
   const timerRef = useRef<number[]>([]);
 
   useEffect(() => {
     const t = timerRef.current;
+    const LINE_DELAY = 65;
+    const SWEEP_DUR = 350;
 
-    // Phase 1: scanline flash (300ms)
-    t.push(window.setTimeout(() => setPhase('text'), 300));
+    // Phase 1: sweep (350ms)
+    t.push(window.setTimeout(() => setPhase('text'), SWEEP_DUR));
 
-    // Phase 2: text crawl — each line appears every 80ms
+    // Phase 2: text lines + progress bar
     BOOT_LINES.forEach((_, i) => {
-      t.push(window.setTimeout(() => setVisibleLines(i + 1), 300 + (i + 1) * 80));
+      t.push(window.setTimeout(() => {
+        setVisibleLines(i + 1);
+        setProgressWidth(((i + 1) / BOOT_LINES.length) * 100);
+      }, SWEEP_DUR + (i + 1) * LINE_DELAY));
     });
 
-    const textEnd = 300 + BOOT_LINES.length * 80 + 200;
+    const textEnd = SWEEP_DUR + BOOT_LINES.length * LINE_DELAY + 150;
 
-    // Phase 3: logo reveal
+    // Phase 3: logo reveal with Apple spring
     t.push(window.setTimeout(() => {
       setPhase('logo');
-      setLogoVisible(true);
+      setLogoReveal(true);
     }, textEnd));
 
-    // Phase 4: fade out
-    t.push(window.setTimeout(() => setPhase('out'), textEnd + 600));
+    // Phase 4: out
+    t.push(window.setTimeout(() => setPhase('out'), textEnd + 550));
 
     // Complete
-    t.push(window.setTimeout(() => onComplete(), textEnd + 1000));
+    t.push(window.setTimeout(() => onComplete(), textEnd + 900));
 
     return () => t.forEach(clearTimeout);
   }, [onComplete]);
@@ -64,126 +68,120 @@ export default function ConsoleBootSequence({ consoleKey, label, subtitle, accen
   return (
     <div
       className={cn(
-        "fixed inset-0 z-[200] flex items-center justify-center pointer-events-none transition-opacity duration-400",
-        phase === 'out' ? 'opacity-0' : 'opacity-100'
+        "fixed inset-0 z-[200] flex items-center justify-center transition-all pointer-events-none",
+        phase === 'out' ? 'opacity-0 scale-[1.02]' : 'opacity-100 scale-100'
       )}
-      style={{ background: 'hsl(220 22% 2% / 0.97)' }}
+      style={{
+        background: 'hsl(220 22% 2% / 0.97)',
+        transitionDuration: phase === 'out' ? '400ms' : '0ms',
+        transitionTimingFunction: 'cubic-bezier(0.32, 0, 0.67, 0)',
+      }}
     >
-      {/* CRT scanlines */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.06]"
-        style={{
-          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, hsl(0 0% 100% / 0.08) 2px, hsl(0 0% 100% / 0.08) 4px)',
-        }}
-      />
+      {/* Subtle noise texture */}
+      <div className="absolute inset-0 opacity-[0.03]" style={{
+        backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, hsl(0 0% 100% / 0.06) 2px, hsl(0 0% 100% / 0.06) 4px)',
+      }} />
 
-      {/* Horizontal sweep line */}
-      {phase === 'scanline' && (
-        <div
-          className="absolute left-0 right-0 h-[2px] z-10"
-          style={{
-            background: `linear-gradient(90deg, transparent, ${accentColor}, transparent)`,
-            boxShadow: `0 0 30px 8px ${accentColor}40`,
-            animation: 'boot-sweep 0.3s linear forwards',
-          }}
-        />
-      )}
-
-      {/* Corner brackets */}
-      <div className="absolute inset-6 pointer-events-none">
-        <div className="absolute top-0 left-0 w-6 h-6 border-t border-l" style={{ borderColor: accentColor + '40' }} />
-        <div className="absolute top-0 right-0 w-6 h-6 border-t border-r" style={{ borderColor: accentColor + '40' }} />
-        <div className="absolute bottom-0 left-0 w-6 h-6 border-b border-l" style={{ borderColor: accentColor + '40' }} />
-        <div className="absolute bottom-0 right-0 w-6 h-6 border-b border-r" style={{ borderColor: accentColor + '40' }} />
-      </div>
-
-      {/* Boot text crawl */}
-      {(phase === 'text' || phase === 'logo' || phase === 'out') && (
-        <div className={cn(
-          "absolute top-8 left-8 transition-opacity duration-300",
-          phase === 'logo' || phase === 'out' ? 'opacity-20' : 'opacity-100'
-        )}>
-          <p className="text-[8px] font-mono tracking-[0.3em] uppercase mb-2" style={{ color: accentColor + '60' }}>
-            ── SYS.BOOT // {label} ──
-          </p>
-          {BOOT_LINES.slice(0, visibleLines).map((line, i) => {
-            const isLast = i === visibleLines - 1;
-            const isReady = line === 'SYSTEM READY';
-            return (
-              <p
-                key={i}
-                className={cn(
-                  "text-[9px] font-mono tracking-wider leading-5",
-                  isLast && 'animate-pulse'
-                )}
-                style={{
-                  color: isReady ? accentColor : 'hsl(0 0% 40%)',
-                  textShadow: isReady ? `0 0 8px ${accentColor}60` : 'none',
-                }}
-              >
-                {isReady ? `█ ${line}` : `› ${line}`}
-              </p>
-            );
-          })}
+      {/* Horizontal light sweep — MacBook lid-open */}
+      {phase === 'sweep' && (
+        <div className="absolute inset-0 overflow-hidden">
+          <div
+            className="absolute top-0 bottom-0 w-[3px]"
+            style={{
+              background: `linear-gradient(to bottom, transparent 10%, ${accentColor} 50%, transparent 90%)`,
+              boxShadow: `0 0 60px 20px ${accentColor}30, 0 0 120px 40px ${accentColor}10`,
+              animation: 'boot-lid-sweep 0.35s cubic-bezier(0.25, 0.1, 0.25, 1) forwards',
+            }}
+          />
         </div>
       )}
 
-      {/* Center logo + label reveal */}
+      {/* Corner accents — minimal */}
+      <div className="absolute inset-5 pointer-events-none">
+        {[['top-0 left-0', 'border-t border-l'], ['top-0 right-0', 'border-t border-r'],
+          ['bottom-0 left-0', 'border-b border-l'], ['bottom-0 right-0', 'border-b border-r']].map(([pos, brd], i) => (
+          <div key={i} className={`absolute ${pos} w-5 h-5 ${brd} transition-opacity duration-500`}
+            style={{ borderColor: accentColor + '25', opacity: phase === 'out' ? 0 : 0.6 }} />
+        ))}
+      </div>
+
+      {/* Boot text — top-left terminal */}
+      {(phase === 'text' || phase === 'logo' || phase === 'out') && (
+        <div className={cn(
+          "absolute top-7 left-7 transition-all duration-500",
+          phase === 'logo' || phase === 'out' ? 'opacity-15 translate-y-[-4px]' : 'opacity-80'
+        )}>
+          <p className="text-[7px] font-mono tracking-[0.4em] uppercase mb-2.5 opacity-40" style={{ color: accentColor }}>
+            SYS.BOOT // {label}
+          </p>
+          {BOOT_LINES.slice(0, visibleLines).map((line, i) => (
+            <div key={i} className="flex items-center gap-2 leading-[18px]">
+              <span className="text-[8px] font-mono tracking-wide" style={{ color: 'hsl(0 0% 30%)' }}>
+                › {line.text}
+              </span>
+              <span className="text-[7px] font-mono font-bold" style={{ color: 'hsl(120 70% 45%)', textShadow: '0 0 4px hsl(120 70% 45% / 0.3)' }}>
+                {line.status}
+              </span>
+            </div>
+          ))}
+          {/* Progress bar */}
+          <div className="mt-3 w-32 h-[2px] rounded-full overflow-hidden" style={{ background: 'hsl(0 0% 12%)' }}>
+            <div className="h-full rounded-full transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+              style={{ width: `${progressWidth}%`, background: accentColor, boxShadow: `0 0 8px ${accentColor}40` }} />
+          </div>
+        </div>
+      )}
+
+      {/* Center logo — Apple spring reveal */}
       <div className={cn(
-        "flex flex-col items-center gap-4 transition-all duration-500",
-        logoVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-90 translate-y-4'
-      )}>
-        {/* Logo glow ring */}
-        <div
-          className="w-20 h-20 rounded-lg flex items-center justify-center relative"
+        "flex flex-col items-center gap-5 transition-all",
+        logoReveal ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-[0.92] translate-y-6'
+      )} style={{
+        transitionDuration: '600ms',
+        transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+      }}>
+        {/* Logo container — frosted glass */}
+        <div className="w-20 h-20 rounded-2xl flex items-center justify-center relative"
           style={{
-            background: `linear-gradient(135deg, ${accentColor}15, transparent)`,
-            border: `1px solid ${accentColor}30`,
-            boxShadow: `0 0 40px ${accentColor}15, inset 0 0 20px ${accentColor}05`,
+            background: `linear-gradient(135deg, ${accentColor}10, hsl(220 22% 6% / 0.8))`,
+            border: `1px solid ${accentColor}20`,
+            boxShadow: `0 8px 40px ${accentColor}12, 0 0 0 1px ${accentColor}06, inset 0 1px 0 hsl(0 0% 100% / 0.04)`,
+            backdropFilter: 'blur(20px)',
           }}
         >
-          {/* Crosshair ticks */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-px" style={{ background: accentColor + '50' }} />
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3 h-px" style={{ background: accentColor + '50' }} />
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-3 w-px" style={{ background: accentColor + '50' }} />
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 h-3 w-px" style={{ background: accentColor + '50' }} />
-
-          {Logo ? <Logo size={48} active /> : (
-            <span className="text-2xl font-black font-mono" style={{ color: accentColor }}>{label[0]}</span>
+          {Logo ? <Logo size={44} active /> : (
+            <span className="text-3xl font-black font-mono" style={{ color: accentColor }}>{label[0]}</span>
           )}
         </div>
 
-        <h1
-          className="text-2xl font-black tracking-[0.4em] uppercase font-mono"
-          style={{ color: accentColor, textShadow: `0 0 20px ${accentColor}40` }}
-        >
+        <h1 className="text-2xl font-black tracking-[0.35em] uppercase font-mono"
+          style={{ color: accentColor, textShadow: `0 0 30px ${accentColor}30` }}>
           {label}
         </h1>
 
-        <div className="flex items-center gap-2 w-40">
-          <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, transparent, ${accentColor}30)` }} />
-          <div className="w-1 h-1 rotate-45" style={{ border: `1px solid ${accentColor}40` }} />
-          <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${accentColor}30, transparent)` }} />
-        </div>
+        {/* Divider — Apple thin line */}
+        <div className="w-16 h-[1px] rounded-full" style={{
+          background: `linear-gradient(90deg, transparent, ${accentColor}35, transparent)`,
+        }} />
 
-        <p className="text-[9px] font-mono tracking-[0.25em] uppercase" style={{ color: accentColor + '50' }}>
+        <p className="text-[8px] font-mono tracking-[0.3em] uppercase opacity-40" style={{ color: accentColor }}>
           {subtitle}
         </p>
       </div>
 
-      {/* Version stamp */}
-      <div className="absolute bottom-8 right-8">
-        <p className="text-[7px] font-mono tracking-[0.2em] uppercase" style={{ color: accentColor + '25' }}>
+      {/* Version — bottom right */}
+      <div className="absolute bottom-6 right-7">
+        <p className="text-[6px] font-mono tracking-[0.25em] uppercase opacity-20" style={{ color: accentColor }}>
           FXK ENGINE v2.0
         </p>
       </div>
 
       <style>{`
-        @keyframes boot-sweep {
-          0% { top: 0; opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { top: 100%; opacity: 0; }
+        @keyframes boot-lid-sweep {
+          0% { left: -3px; opacity: 0; }
+          15% { opacity: 1; }
+          85% { opacity: 0.8; }
+          100% { left: 100%; opacity: 0; }
         }
       `}</style>
     </div>
