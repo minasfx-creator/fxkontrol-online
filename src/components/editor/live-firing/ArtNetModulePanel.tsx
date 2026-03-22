@@ -161,6 +161,8 @@ function ModuleCard({ module, connectionState, masterArmed, onConnect, onDisconn
 }
 
 export default function ArtNetModulePanel() {
+  const projectId = useProjectStore(s => s.projectId);
+  const { saveModule, deleteModule } = useArtNetModulePersistence(projectId);
   const [controller, setController] = useState<ArtNetControllerConfig | null>(null);
   const [moduleStates, setModuleStates] = useState<Map<string, ModuleConnectionState>>(new Map());
   const [showAddModule, setShowAddModule] = useState(false);
