@@ -3305,7 +3305,9 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   }, [isSelectMode]);
 
 
+  if (flyMode) return null;
 
+  return (
     <OrbitControls
       ref={controlsRef}
       enableDamping
