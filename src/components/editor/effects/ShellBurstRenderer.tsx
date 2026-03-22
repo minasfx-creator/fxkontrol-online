@@ -687,8 +687,7 @@ export default function ShellBurstRenderer({
         if (fluidGrid && mesh.material) {
           const worldX = (position as number[])[0] + sp.x;
           const worldZ = (position as number[])[2] + sp.z;
-          const { readDensityAt } = require('@/render_ultra/fireworks/niagaraFluids');
-          const density = readDensityAt(fluidGrid, worldX, worldZ);
+          const density = readDensityAt(fluidGrid as FluidGrid, worldX, worldZ);
           const fluidBoost = 1 + density * 0.4;
           (mesh.material as any).uniforms.uSmokeOpacity.value = smokeUniforms.uSmokeOpacity.value * fluidBoost;
         }
