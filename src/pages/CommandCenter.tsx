@@ -145,6 +145,24 @@ export default function CommandCenter() {
     setSearchParams({ mode }, { replace: true });
   }, [setSearchParams]);
 
+  // ── Direct-render for non-fire modes (no ARM/CUE/PANIC chrome) ──
+  const renderDirectPanel = useCallback((mode: CommandMode) => {
+    switch (mode) {
+      case 'controllers': return <VirtualControllerHub fs onSelectMode={(m) => handleModeChange(m as CommandMode)} />;
+      case 'pbus': return <PBusMonitorPanel />;
+      case 'ma3': return <MA3ControlPanel fs />;
+      case 'module': return <VirtualIFMx32QPanel fs />;
+      case 'wifi_direct': return <WiFiDirectControlPanel fs />;
+      case 'artnet_modules': return <ArtNetModulePanel fs />;
+      case 'connections': return <ConnectionManagerPanel fs />;
+      case 'radio': return <RadioControlPanel fs />;
+      case 'field_map': return <FieldMap2D fs />;
+      case 'mobile_link': return <MobileLinkMode fs fireChannel={() => {}} channels={[]} artNetConnected={false} relayConnected={false} />;
+      case 'settings': return <SettingsPanel fs settings={{ language: 'pt', wirelessDmxEnabled: false, wirelessDmxId: 1, globalSafetyChannel: 0, globalSafetyValue: 0, pyroArmRequired: true, deleteConfirm: true, backlight: 80, tcpPort: 8000, artNetIp: '2.0.0.1', artNetPort: 6454, networkIp: '192.168.1.100', networkMask: '255.255.255.0', networkGateway: '192.168.1.1' }} onSettingsChange={() => {}} relayConnected={false} relayUrl="" onRelayUrlChange={() => {}} onConnectRelay={() => {}} onDisconnectRelay={() => {}} />;
+      default: return null;
+    }
+  }, [handleModeChange]);
+
   // ══════════════════════════════════════════════════════
   // MOBILE LAYOUT
   // ══════════════════════════════════════════════════════
