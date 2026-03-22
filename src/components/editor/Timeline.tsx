@@ -296,7 +296,7 @@ function TimelineTrackRow({
   }, []);
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
-    if (!e.dataTransfer.types.includes('application/effect-id') || trackIndex === 2) return;
+    if (!e.dataTransfer.types.includes('application/effect-id')) return;
     e.preventDefault();
     setIsDragOver(true);
   }, [trackIndex]);
