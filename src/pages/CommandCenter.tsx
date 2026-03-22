@@ -19,6 +19,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import LiveFiringPanel from '@/components/editor/LiveFiringPanel';
 import { CONSOLE_LOGOS } from '@/components/editor/ConsoleLogos';
+import ConsoleBootSequence from '@/components/editor/ConsoleBootSequence';
 
 // Direct-render components
 import MA3ControlPanel from '@/components/editor/MA3ControlPanel';
@@ -93,6 +94,7 @@ export default function CommandCenter() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileCategory, setMobileCategory] = useState(0);
   const [isLandscape, setIsLandscape] = useState(false);
+  const [bootConsole, setBootConsole] = useState<CommandMode | null>(null);
   const isMobile = useIsMobile();
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();
@@ -127,21 +129,24 @@ export default function CommandCenter() {
   }, [fireone.isConnected, pbus.isConnected, pbus.deviceCount]);
 
   const handleModeChange = useCallback((mode: CommandMode) => {
-    if (mode === activeMode) return;
+    if (mode === activeMode || bootConsole) return;
     ambientSound.play('boot');
-    setSwapPhase('out');
-    setSwapFlash(false);
+    // Start boot sequence overlay
+    setBootConsole(mode);
+  }, [activeMode, bootConsole]);
+
+  const handleBootComplete = useCallback(() => {
+    if (!bootConsole) return;
+    setActiveMode(bootConsole);
+    setSearchParams({ mode: bootConsole }, { replace: true });
+    setSwapPhase('in');
+    setSwapFlash(true);
+    setBootConsole(null);
     setTimeout(() => {
-      setActiveMode(mode);
-      setSearchParams({ mode }, { replace: true });
-      setSwapPhase('in');
-      setSwapFlash(true);
-      setTimeout(() => {
-        setSwapPhase('idle');
-        setSwapFlash(false);
-      }, 550);
-    }, 250);
-  }, [setSearchParams, activeMode]);
+      setSwapPhase('idle');
+      setSwapFlash(false);
+    }, 400);
+  }, [bootConsole, setSearchParams]);
 
   // Direct-render for non-fire modes
   const renderDirectPanel = useCallback((mode: CommandMode) => {
@@ -179,6 +184,7 @@ export default function CommandCenter() {
   if (isMobile && isLandscape) {
     const ActiveLogo = CONSOLE_LOGOS[activeMode];
     return (
+      <>
       <div className="h-[100dvh] w-screen flex flex-col bg-background overflow-hidden">
         {/* Top HUD bar — 32px */}
         <div className="landscape-hud-bar shrink-0 h-8 flex items-center justify-between px-2 relative z-20"
@@ -259,6 +265,10 @@ export default function CommandCenter() {
           </div>
         </div>
       </div>
+      {bootConsole && (
+        <ConsoleBootSequence consoleKey={bootConsole} label={CONSOLE_ACCENTS[bootConsole]?.label ?? ''} subtitle={CONSOLE_ACCENTS[bootConsole]?.subtitle ?? ''} accentColor={CONSOLE_ACCENTS[bootConsole]?.color ?? 'hsl(32 100% 50%)'} onComplete={handleBootComplete} />
+      )}
+      </>
     );
   }
 
@@ -267,6 +277,7 @@ export default function CommandCenter() {
   // ══════════════════════════════════════════════
   if (isMobile) {
     return (
+      <>
       <div className="h-[100dvh] w-screen flex flex-col bg-background">
         {/* HUD */}
         <div className="shrink-0 px-2 pt-1.5 pb-1" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
@@ -365,6 +376,10 @@ export default function CommandCenter() {
           </nav>
         </div>
       </div>
+      {bootConsole && (
+        <ConsoleBootSequence consoleKey={bootConsole} label={CONSOLE_ACCENTS[bootConsole]?.label ?? ''} subtitle={CONSOLE_ACCENTS[bootConsole]?.subtitle ?? ''} accentColor={CONSOLE_ACCENTS[bootConsole]?.color ?? 'hsl(32 100% 50%)'} onComplete={handleBootComplete} />
+      )}
+      </>
     );
   }
 
@@ -526,6 +541,16 @@ export default function CommandCenter() {
           )}
         </div>
       </div>
+      {/* Boot Sequence Overlay */}
+      {bootConsole && (
+        <ConsoleBootSequence
+          consoleKey={bootConsole}
+          label={CONSOLE_ACCENTS[bootConsole]?.label ?? ''}
+          subtitle={CONSOLE_ACCENTS[bootConsole]?.subtitle ?? ''}
+          accentColor={CONSOLE_ACCENTS[bootConsole]?.color ?? 'hsl(32 100% 50%)'}
+          onComplete={handleBootComplete}
+        />
+      )}
     </div>
   );
 }
