@@ -259,6 +259,18 @@ export function useFireOneHardware() {
     }
   }, [controller, transportManager]);
 
+  const connectWiFiDirect = useCallback(async (targetHost?: string) => {
+    try {
+      setState(prev => ({ ...prev, connectionError: null }));
+      const id = await controller.connectWiFiDirect(targetHost);
+      setState(prev => ({ ...prev, transports: transportManager.allTransports }));
+      return id;
+    } catch (err: any) {
+      setState(prev => ({ ...prev, connectionError: err.message }));
+      throw err;
+    }
+  }, [controller, transportManager]);
+
   const connectArtNet = useCallback(async (targetIp = '2.0.0.1') => {
     try {
       setState(prev => ({ ...prev, connectionError: null }));
