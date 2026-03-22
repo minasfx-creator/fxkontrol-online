@@ -667,10 +667,15 @@ export class FireOneController {
     this.modules.clear();
   }
 
-  // ─── Send raw frame ───
+  // ─── Send raw frame — routes via TransportManager ───
   async send(data: Uint8Array): Promise<void> {
+    if (this.transportManager.isConnected) {
+      await this.transportManager.send(data);
+      return;
+    }
+    // Legacy fallback to direct conn
     if (!this.conn?.writer || !this.conn.connected) {
-      throw new Error('Não conectado ao hardware FireOne');
+      throw new Error('Nenhum transporte FireOne conectado');
     }
     await this.conn.writer.write(data);
   }
