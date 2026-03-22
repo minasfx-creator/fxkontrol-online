@@ -105,13 +105,13 @@ export default function MobileTabBar({
               onTouchEnd={handleLongPressEnd}
               onTouchCancel={handleLongPressEnd}
               className={cn(
-                "relative flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-200",
+                "relative flex flex-col items-center justify-center py-2 px-3 rounded-xl transition-all duration-200 min-h-[52px] min-w-[48px]",
                 "active:scale-90"
               )}
             >
               <div className="relative">
                 <Icon className={cn(
-                  "w-5 h-5 transition-colors duration-200",
+                  "w-6 h-6 transition-colors duration-200",
                   isActive
                     ? accent ? "text-accent" : "text-primary"
                     : "text-[hsl(var(--muted-foreground)/0.6)]"
