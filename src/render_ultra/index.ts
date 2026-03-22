@@ -119,9 +119,6 @@ export type { FluidGrid, FluidConfig } from './fireworks/niagaraFluids';
 export { InstancedParticleRenderer, createSparkInstancedRenderer, createSmokeInstancedRenderer } from './fireworks/instancedParticleRenderer';
 export type { InstancedParticleConfig } from './fireworks/instancedParticleRenderer';
 
-// Water v2
-export type { WaterConfig } from './environment/waterRendering';
-
 // Fog v2
 export type { FogConfig } from './environment/volumetricFog';
 
