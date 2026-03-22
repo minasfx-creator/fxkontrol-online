@@ -1,40 +1,113 @@
 
 
-# Replace FXK Logo + Favicon with Tactical Logo
+# FXK Platform — Gaps & Refinements for Real Show Operations
 
-## Overview
+## Real-World Gaps Identified
 
-Replace the current `fxk-logo.png` asset and favicon with the newly generated tactical FXK logo. Redesign the SplashScreen to match the military/tactical aesthetic already established across the platform.
+After analyzing the full codebase against real show site conditions, here are the critical gaps:
 
-## Steps
+### 1. **Backlight / Readability in Dark Environments**
+Show sites are always dark — operators work with headlamps off to avoid blinding performers/audience. Current issues:
+- Text at `text-muted-foreground/20`, `/25`, `/30`, `/35`, `/40` is **unreadable** outdoors at night
+- Active tab indicators use tiny 1-2px dots that disappear in peripheral vision
+- Borders at `/05`, `/06`, `/08` provide zero visual separation on dark screens with glare
+- The backlight slider in Settings only stores a value but **doesn't actually adjust anything** — it's decorative
 
-### 1. Replace logo asset file
-- Copy the generated `FXK_Logo.png` from `/mnt/documents/` to `src/assets/fxk-logo.png` (overwrite)
-- Copy it also to `public/favicon.png` (overwrite) for the favicon
+### 2. **Touch Targets Too Small for Gloved Hands**
+Pyro operators often wear work gloves. Current issues:
+- Command Center mode buttons: `min-h-[36px]` — too small with gloves
+- Mobile bottom nav buttons: `py-1.5 px-3` — barely 32px
+- PanelTabBar items: `px-2.5 py-1.5` — ~28px height
+- Need minimum **48px** touch targets for mission-critical buttons
 
-### 2. Redesign SplashScreen to tactical style
-**File:** `src/components/editor/SplashScreen.tsx`
+### 3. **No Ambient Light Adaptation**
+- No "night mode" / "show mode" that maximizes contrast
+- No option to dim non-essential UI (news feed, stats) during live show
+- The backlight setting should actually control a CSS opacity/brightness filter on the whole UI
 
-- Replace the soft glassmorphism background with the tactical dark canvas (`#080a0f`) + tactical grid overlay (matching the platform's existing `.tactical-grid` aesthetic)
-- Replace the rounded logo container with a sharp-edged tactical frame — no `rounded-2xl`, use `rounded-sm` with tactical green border
-- Increase logo display size to `w-28 h-28` so the hexagonal detail is visible
-- Update typography to use `font-tech` (Rajdhani) for headers and `font-mono-code` (JetBrains Mono) for labels
-- Replace the cyan/orange color scheme with tactical green (`hsl(165 100% 42%)`) and amber accents
-- Add corner bracket decorations (military HUD style) around the central content
-- Add product line indicators below the logo: colored dots for PYRO (red), DMX (cyan), LIGHT (violet), DRONES (teal) — matching the logo itself
-- Update "Click to Start" button to tactical green with scanline overlay
-- Update version label to `v2.0 · FXK TACTICAL ENGINE`
-- Add subtle scanline animation overlay on the entire splash
+### 4. **Critical Status Visibility**
+- ARMED state: only a tiny badge — needs to be an unmissable full-width bar
+- Connection loss: no persistent warning — just a dot changing color
+- No audio/haptic feedback on ARM/DISARM state changes
 
-### 3. Update Toolbar logo container
-**File:** `src/components/editor/Toolbar.tsx`
+### 5. **Dashboard Noise During Show Day**
+- Instagram-style news feed occupies the center column — irrelevant on show day
+- No "Show Day" mode that surfaces only: next event countdown, hardware status, quick-launch to Command Center
 
-- No import change needed (same filename)
-- Adjust the logo `img` tag sizing if needed for the new square aspect ratio
+### 6. **Missing Emergency Access**
+- PANIC button only exists inside LiveFiringPanel — needs to be globally accessible when armed
+- No quick-return to Command Center from any screen when armed
 
-## Files Affected
-1. **Copy:** `/mnt/documents/FXK_Logo.png` → `src/assets/fxk-logo.png`
-2. **Copy:** `/mnt/documents/FXK_Logo.png` → `public/favicon.png`
-3. **Edit:** `src/components/editor/SplashScreen.tsx` — full tactical redesign
-4. **Edit:** `index.html` — ensure favicon reference is correct (already `/favicon.png`)
+## Plan
+
+### Step 1: Fix Contrast & Readability (index.css + components)
+
+**index.css changes:**
+- Raise all `muted-foreground` minimum from `/20` → `/50` in interactive elements
+- Add new utility classes:
+  - `.high-contrast` — forces minimum brightness on all text children
+  - `.night-mode` — CSS class on `<body>` that applies `filter: brightness(var(--ui-brightness))` controlled by backlight slider
+- Increase border opacity minimums from `/05` → `/12`
+
+**Component changes across all files:**
+- Replace all `text-muted-foreground/20`, `/25`, `/30` with minimum `/50` for interactive elements
+- Replace `/35`, `/40` with minimum `/55` for labels
+- Keep `/20`-`/30` only for truly decorative elements (grid lines, scanlines)
+
+### Step 2: Enlarge Touch Targets for Show Operations
+
+**CommandCenter.tsx:**
+- Mobile mode pills: `min-h-[36px]` → `min-h-[48px]`
+- Bottom nav buttons: add `min-h-[48px] min-w-[48px]`
+- Desktop sidebar buttons: `py-1.5` → `py-2.5`
+
+**MobileTabBar.tsx:**
+- Tab buttons: enforce `min-h-[52px]` with larger icons (`w-6 h-6`)
+
+### Step 3: Make Backlight Slider Functional
+
+**MainLayout.tsx:**
+- Read backlight value from a global store/localStorage
+- Apply `filter: brightness(${backlight}%)` on the main app container
+- Default: 80% (comfortable for dark sites)
+
+**New: `src/store/useDisplayStore.ts`**
+- Stores `backlight` (10-100), `nightMode` (bool), `showMode` (bool)
+- Persists to localStorage
+
+### Step 4: Global ARMED Banner
+
+**MainLayout.tsx:**
+- When any effects are armed (read from `useLiveSfxStore`), render a persistent top bar:
+  - Full-width, `bg-destructive/90`, pulsing, with text "⚠ SYSTEM ARMED — X CHANNELS HOT"
+  - Click navigates to Command Center
+  - Cannot be dismissed while armed
+
+### Step 5: Show Day Dashboard Mode
+
+**Dashboard.tsx:**
+- Detect if there's an event today (`daysUntilNext === 0`)
+- Auto-switch to a simplified "Show Day" layout:
+  - Full-width countdown timer to event start
+  - Hardware status grid (connected/disconnected per device type)
+  - Single large "ENTER COMMAND MODE" button
+  - Hide news feed, stats, project list
+- Manual toggle: "Show Day Mode" switch in hero banner
+
+### Step 6: Global Emergency FAB
+
+**MainLayout.tsx:**
+- When armed, show a floating PANIC button (bottom-right, 64x64, red, pulsing)
+- Fires all-stop on `useLiveSfxStore`
+- Visible on ALL pages, not just Command Center
+
+## Files Modified
+
+1. `src/index.css` — contrast utilities, night mode, touch target classes
+2. `src/store/useDisplayStore.ts` — new store for display settings
+3. `src/layouts/MainLayout.tsx` — backlight filter, ARMED banner, PANIC FAB
+4. `src/pages/CommandCenter.tsx` — touch target sizes, contrast fixes
+5. `src/pages/Dashboard.tsx` — Show Day mode, contrast fixes
+6. `src/components/editor/MobileTabBar.tsx` — larger touch targets
+7. `src/components/editor/live-firing/SettingsPanel.tsx` — wire backlight to real store
 
