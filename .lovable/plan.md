@@ -1,76 +1,67 @@
 
 
-# Plan: Timeline & Angles UX Improvements — Finale 3D Style
+# Plan: Position Window + Finale 3D UX Refinements
 
 ## Summary
 
-Based on Finale 3D Episode 4 (Timeline & Angles) and PyroJam 2023 Design Template workflows, the timeline and angle editing need several UX refinements: right-click context menus on cues, timeline item resize handles, angle indicators on timeline bars, marquee selection, and improved angle gizmo feedback.
+Create a dedicated **Position Window** (Finale 3D's "Position Window") as a new panel, and refine existing UX elements to match Finale 3D's workflow patterns more closely.
 
 ## Changes
 
-### 1. `src/components/editor/Timeline.tsx` — Right-Click Context Menu on Cues
+### 1. `src/components/editor/PositionWindow.tsx` — NEW: Finale-Style Position Window
 
-Add `onContextMenu` handler to `DraggableTimelineItem`:
-- **Set Time...** — opens inline time input at click position
-- **Set Angle...** — selects the item and enters angle-edit mode, focusing the 3D gizmo on its position
-- **Duplicate** (Ctrl+D)
-- **Delete** (Del)
-- **Assign to Position →** submenu listing pyro positions
-- **Add to Chain** / **Break Chain**
-- **Copy / Cut / Paste at Playhead**
+A spreadsheet-style panel listing all positions with their linked effects, matching Finale 3D's Position Window:
 
-Render a small floating `<div>` context menu positioned at mouse coordinates, dismissed on click-outside or Escape.
+**Columns**: `#` | `Name` | `Type` (pyro/drone/light) | `X` | `Y` | `Z` | `Heading` | `Pitch` | `Effects Count` | `Section`
 
-### 2. `src/components/editor/Timeline.tsx` — Resize Handles on Timeline Items
+**Features**:
+- Click-to-edit cells for Name, X/Y/Z, Heading, Pitch, Section (inline editing like ScriptWindow)
+- Row selection highlights position in 3D viewport (`selectPosition`)
+- Multi-select rows with Shift+Click / Ctrl+Click for batch operations
+- Right-click context menu: Duplicate, Delete, Assign Section, Add Effect Here
+- Color-coded type indicators (orange=pyro, blue=drone, yellow=light)
+- Expandable rows showing linked effects with their times and angles
+- Sort by any column header click
+- Filter by type (Pyro/Drone/Light tabs at top)
+- Footer showing total counts per type
+- "Add Position" button with type selector dropdown
+- Tab/Enter keyboard navigation between editable cells
+- Batch position editing: select multiple, edit X → applies delta to all
 
-Add left and right edge drag handles to `DraggableTimelineItem`:
-- **Right edge**: drag to change effect duration (updates `updateTimelineItem` with custom duration override)
-- **Left edge**: drag to change start time (slip edit)
-- Handles appear as 3px hover zones on edges, cursor changes to `col-resize`
-- Minimum width constraint of 20px
+### 2. `src/pages/Index.tsx` — Register Position Window Panel
 
-### 3. `src/components/editor/Timeline.tsx` — Angle Indicator on Timeline Bars
+- Add `'positions'` to `PanelId` type
+- Add `PositionWindow` to `renderPanelContent()`
+- Import the new component
 
-For firework items, show a small angle arrow indicator inside the timeline bar:
-- A tiny SVG arrow (8×8px) rotated to match the item's `pan` angle
-- Color-coded: blue for heading-dominated, orange for steep pitch
-- Only visible when bar width > 40px
+### 3. `src/components/editor/PanelTabBar.tsx` — Add Positions Entry
 
-### 4. `src/components/editor/Timeline.tsx` — Marquee/Lasso Selection
+- Add `{ id: 'positions', label: 'Position Window', icon: MapPin }` to the "Posições" section
+- Assign shortcut key `'V'` (matches Finale convention)
 
-Add rubber-band selection on the timeline track area:
-- On mousedown (not on an item), start drawing a selection rectangle
-- On mousemove, highlight items whose bounds intersect the rectangle
-- On mouseup, select all intersected items (add to selection if Shift held)
-- Visual: semi-transparent blue rectangle with dashed border
+### 4. `src/components/editor/Timeline.tsx` — Finale UX Polish
 
-### 5. `src/components/editor/PyroLaunchAngle.tsx` — Angle Snap & Grid Feedback
+- Show position name label on timeline items (small text below effect name) when linked
+- Color-code timeline item borders by position section (if assigned)
+- Add "Position:" prefix in tooltip hover on timeline items
 
-- Add angle snapping: hold Shift while dragging to snap heading to 5° increments and pitch to 5° increments
-- Show snap grid lines on the heading compass when Shift is held (every 15°)
-- Add a subtle "angle changed" toast/HUD showing delta (e.g. "ΔH +15° ΔP -3°") during drag, positioned near the handle
+### 5. `src/components/editor/EffectLibrary.tsx` — Finale UX Polish
 
-### 6. `src/components/editor/ScriptWindow.tsx` — Position Assignment Column
+- In table view, show position assignment count next to each effect
+- Double-click effect with position selected → auto-link and add to timeline (already partially works, refine feedback)
 
-Make the Position column editable:
-- Click on position name → dropdown of available pyro positions
-- Selecting a position updates `positionId`, `positionName`, and `position.x/y/z` from the position data
-- Shows "UNASSIGNED" in red italic when no position linked
-- Batch-assignable: when multiple rows selected, assigning a position applies to all
+### 6. `src/components/editor/Toolbar.tsx` — Add Position Window Quick Access
 
-### 7. `src/store/useProjectStore.ts` — Duration Override Support
-
-Add optional `durationOverride` field to `TimelineItem`:
-- When set, used instead of `effect.duration` for rendering width
-- Enables timeline resize to persist
-- Update all references that read `effect.duration` to check `item.durationOverride ?? effect.duration`
+- Add a "Position Window" button in the View menu dropdown for quick toggle
 
 ## Files
 
 | File | Change |
 |------|--------|
-| `src/components/editor/Timeline.tsx` | Context menu, resize handles, angle indicators, marquee selection |
-| `src/components/editor/PyroLaunchAngle.tsx` | Shift-snap to 5° grid, snap grid visualization, delta HUD |
-| `src/components/editor/ScriptWindow.tsx` | Editable position column with dropdown |
-| `src/store/useProjectStore.ts` | Add `durationOverride` to TimelineItem type |
+| `src/components/editor/PositionWindow.tsx` | NEW — Full spreadsheet-style position manager |
+| `src/pages/Index.tsx` | Register 'positions' panel |
+| `src/components/editor/PanelTabBar.tsx` | Add 'positions' entry with MapPin icon |
+| `src/components/editor/Timeline.tsx` | Show position name labels on items |
+| `src/components/editor/EffectLibrary.tsx` | Show position assignment count in table view |
+| `src/components/editor/Toolbar.tsx` | Add Position Window to View menu |
 
