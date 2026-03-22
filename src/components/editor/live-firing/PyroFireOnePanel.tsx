@@ -770,22 +770,20 @@ export default function PyroFireOnePanel({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* LCD-style counters — green phosphor on black */}
+            {/* LCD-style counters — amber/red on black (BR2049) */}
             {[
-              { label: 'MOD', value: connectedCount, color: 'hsl(120 100% 45%)' },
-              { label: 'IG', value: totalIgniters, color: 'hsl(120 100% 45%)' },
-              { label: 'FIRE', value: firedCount, color: firedCount > 0 ? 'hsl(0 80% 50%)' : 'hsl(120 100% 45%)' },
+              { label: 'MOD', value: connectedCount, color: 'hsl(32 100% 50%)' },
+              { label: 'IG', value: totalIgniters, color: 'hsl(32 100% 50%)' },
+              { label: 'FIRE', value: firedCount, color: firedCount > 0 ? 'hsl(0 80% 50%)' : 'hsl(32 100% 50%)' },
               ...(misfireCount > 0 ? [{ label: 'FAIL', value: misfireCount, color: 'hsl(0 80% 50%)' }] : []),
             ].map(c => (
               <div key={c.label} className={cn(
                 "rounded-sm font-mono text-center",
                 sz === 'xl' ? "px-3 py-1.5 min-w-[52px]" : sz === 'fs' ? "px-2 py-1 min-w-[40px]" : "px-1.5 py-0.5 min-w-[32px]"
               )} style={{
-                background: 'hsl(120 5% 4%)',
-                border: '1px solid hsl(120 10% 12%)',
+                background: 'hsl(220 20% 3%)',
+                border: '1px solid hsl(32 100% 50% / 0.12)',
                 boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.6)',
-                backgroundImage: 'repeating-linear-gradient(0deg, transparent 0px, transparent 1px, hsl(120 5% 6%) 1px, hsl(120 5% 6%) 2px)',
-                backgroundSize: '100% 2px',
               }}>
                 <div className={cn("font-bold",
                   sz === 'xl' ? "text-sm" : sz === 'fs' ? "text-[10px]" : "text-[9px]"
@@ -796,9 +794,23 @@ export default function PyroFireOnePanel({
                 }}>{c.value}</div>
                 <div className={cn("uppercase",
                   sz === 'xl' ? "text-[7px]" : "text-[6px]"
-                )} style={{ color: 'hsl(120 30% 25%)' }}>{c.label}</div>
+                )} style={{ color: 'hsl(32 100% 50% / 0.3)' }}>{c.label}</div>
               </div>
             ))}
+
+            {/* Mission clock */}
+            <div className={cn(
+              "rounded-sm font-mono text-center",
+              sz === 'xl' ? "px-3 py-1.5" : sz === 'fs' ? "px-2 py-1" : "px-1.5 py-0.5"
+            )} style={{
+              background: 'hsl(220 20% 3%)',
+              border: '1px solid hsl(32 100% 50% / 0.08)',
+            }}>
+              <div className={cn("font-bold",
+                sz === 'xl' ? "text-sm" : sz === 'fs' ? "text-[10px]" : "text-[9px]"
+              )} style={{ color: 'hsl(32 100% 50%)', textShadow: '0 0 6px hsl(32 100% 50% / 0.3)' }}>{missionClock}</div>
+              <div className={cn("uppercase", sz === 'xl' ? "text-[7px]" : "text-[6px]")} style={{ color: 'hsl(32 100% 50% / 0.25)' }}>CLOCK</div>
+            </div>
 
             {/* SIM/LIVE + Fullscreen */}
             <div className="flex items-center gap-1.5">
