@@ -14,6 +14,86 @@ export type Database = {
   }
   public: {
     Tables: {
+      artnet_modules: {
+        Row: {
+          channel_count: number
+          created_at: string
+          dmx_channel_count: number
+          dmx_net: number
+          dmx_start_address: number
+          dmx_subnet: number
+          dmx_universe: number
+          gps_lat: number | null
+          gps_lng: number | null
+          id: string
+          ip: string
+          label: string | null
+          module_address: number
+          name: string
+          port: number
+          project_id: string
+          relay_server_url: string | null
+          relay_token: string | null
+          sort_order: number
+          transport: string
+          updated_at: string
+        }
+        Insert: {
+          channel_count?: number
+          created_at?: string
+          dmx_channel_count?: number
+          dmx_net?: number
+          dmx_start_address?: number
+          dmx_subnet?: number
+          dmx_universe?: number
+          gps_lat?: number | null
+          gps_lng?: number | null
+          id?: string
+          ip?: string
+          label?: string | null
+          module_address?: number
+          name?: string
+          port?: number
+          project_id: string
+          relay_server_url?: string | null
+          relay_token?: string | null
+          sort_order?: number
+          transport?: string
+          updated_at?: string
+        }
+        Update: {
+          channel_count?: number
+          created_at?: string
+          dmx_channel_count?: number
+          dmx_net?: number
+          dmx_start_address?: number
+          dmx_subnet?: number
+          dmx_universe?: number
+          gps_lat?: number | null
+          gps_lng?: number | null
+          id?: string
+          ip?: string
+          label?: string | null
+          module_address?: number
+          name?: string
+          port?: number
+          project_id?: string
+          relay_server_url?: string | null
+          relay_token?: string | null
+          sort_order?: number
+          transport?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artnet_modules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       budgets: {
         Row: {
           created_at: string
