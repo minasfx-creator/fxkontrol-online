@@ -452,10 +452,18 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
       );
       raycaster.setFromCamera(mouse, camera);
       const origin = new THREE.Vector3(position.x, position.y, position.z);
-      const ray = raycaster.ray;
-      const closest = new THREE.Vector3();
-      ray.closestPointToPoint(origin, closest);
-      const dir = closest.sub(origin).normalize();
+
+      // Use sphere intersection for smoother, more intuitive angle control
+      const sphere = new THREE.Sphere(origin, 50);
+      const intersectPt = new THREE.Vector3();
+      const hit = raycaster.ray.intersectSphere(sphere, intersectPt);
+      const dir = hit
+        ? intersectPt.sub(origin).normalize()
+        : (() => {
+            const fallback = new THREE.Vector3();
+            raycaster.ray.closestPointToPoint(origin, fallback);
+            return fallback.sub(origin).normalize();
+          })();
 
       let newHeading = Math.atan2(dir.x, -dir.z) * (180 / Math.PI);
       let newPitch = Math.max(-180, Math.min(180, Math.asin(Math.max(-1, Math.min(1, dir.y))) * (180 / Math.PI)));
