@@ -14,7 +14,7 @@ export type PartType = 'shell' | 'comet' | 'mine' | 'cake' | 'candle' | 'fan' | 
 export interface Effect {
   id: string;
   name: string;
-  category: 'morteiros' | 'peonias' | 'drones' | 'formacoes' | 'sfx' | 'lasers' | 'iluminacao' | 'mines' | 'roman_candles' | 'waterfalls' | 'cakes_batteries';
+  category: string;
   type: 'firework' | 'drone' | 'sfx' | 'laser' | 'light';
   color: string;
   duration: number;
