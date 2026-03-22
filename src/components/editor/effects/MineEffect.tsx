@@ -1,7 +1,7 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { attackReleaseEnvelope, temporalFlicker, combustionFlicker, hash01 } from '@/lib/pyroNoise';
+import { attackReleaseEnvelope, temporalFlicker, combustionFlicker, hash01, thermalColorRamp } from '@/lib/pyroNoise';
 import { getThreeBlending } from '@/lib/niagaraBlenderRules';
 import { useProjectStore } from '@/store/useProjectStore';
 import { readDensityAt, injectDensity, injectVelocity, type FluidGrid } from '@/render_ultra/fireworks/niagaraFluids';
