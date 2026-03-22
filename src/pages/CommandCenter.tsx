@@ -19,6 +19,19 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import LiveFiringPanel from '@/components/editor/LiveFiringPanel';
 
+// Direct-render components for non-fire modes (no ARM/CUE/PANIC chrome)
+import VirtualControllerHub from '@/components/editor/VirtualControllerHub';
+import PBusMonitorPanel from '@/components/editor/live-firing/PBusMonitorPanel';
+import MA3ControlPanel from '@/components/editor/MA3ControlPanel';
+import VirtualIFMx32QPanel from '@/components/editor/live-firing/VirtualIFMx32QPanel';
+import WiFiDirectControlPanel from '@/components/editor/live-firing/WiFiDirectControlPanel';
+import ArtNetModulePanel from '@/components/editor/live-firing/ArtNetModulePanel';
+import ConnectionManagerPanel from '@/components/editor/ConnectionManagerPanel';
+import RadioControlPanel from '@/components/editor/RadioControlPanel';
+import FieldMap2D from '@/components/editor/FieldMap2D';
+import MobileLinkMode from '@/components/editor/live-firing/MobileLinkMode';
+import SettingsPanel from '@/components/editor/live-firing/SettingsPanel';
+
 // ── Types ──
 type CommandMode =
   | 'super_dmx' | 'simple_dmx' | 'manual_fire' | 'pyro_fire' | 'auto_fire' | 'check_slave'
@@ -132,6 +145,24 @@ export default function CommandCenter() {
     setSearchParams({ mode }, { replace: true });
   }, [setSearchParams]);
 
+  // ── Direct-render for non-fire modes (no ARM/CUE/PANIC chrome) ──
+  const renderDirectPanel = useCallback((mode: CommandMode) => {
+    switch (mode) {
+      case 'controllers': return <VirtualControllerHub fs onSelectMode={(m) => handleModeChange(m as CommandMode)} />;
+      case 'pbus': return <PBusMonitorPanel />;
+      case 'ma3': return <MA3ControlPanel fs />;
+      case 'module': return <VirtualIFMx32QPanel fs />;
+      case 'wifi_direct': return <WiFiDirectControlPanel fs />;
+      case 'artnet_modules': return <ArtNetModulePanel fs />;
+      case 'connections': return <ConnectionManagerPanel fs />;
+      case 'radio': return <RadioControlPanel fs />;
+      case 'field_map': return <FieldMap2D fs />;
+      case 'mobile_link': return <MobileLinkMode fs fireChannel={() => {}} channels={[]} artNetConnected={false} relayConnected={false} />;
+      case 'settings': return <SettingsPanel fs settings={{ language: 'pt', wirelessDmxEnabled: false, wirelessDmxId: 1, globalSafetyChannel: 0, globalSafetyValue: 0, pyroArmRequired: true, deleteConfirm: true, backlight: 80, tcpPort: 8000, artNetIp: '2.0.0.1', artNetPort: 6454, networkIp: '192.168.1.100', networkMask: '255.255.255.0', networkGateway: '192.168.1.1' }} onSettingsChange={() => {}} relayConnected={false} relayUrl="" onRelayUrlChange={() => {}} onConnectRelay={() => {}} onDisconnectRelay={() => {}} />;
+      default: return null;
+    }
+  }, [handleModeChange]);
+
   // ══════════════════════════════════════════════════════
   // MOBILE LAYOUT
   // ══════════════════════════════════════════════════════
@@ -216,7 +247,15 @@ export default function CommandCenter() {
 
         {/* ── Content ── */}
         <div className="flex-1 overflow-hidden">
-          <LiveFiringPanel initialMode={activeMode} standalone />
+          {isFireMode(activeMode) ? (
+            <LiveFiringPanel initialMode={activeMode} standalone />
+          ) : (
+            <ScrollArea className="h-full">
+              <div className="h-full" style={{ background: 'hsl(220 15% 6%)' }}>
+                {renderDirectPanel(activeMode)}
+              </div>
+            </ScrollArea>
+          )}
         </div>
 
         {/* ── Bottom Nav ── */}
@@ -381,11 +420,9 @@ export default function CommandCenter() {
             <Badge variant="outline" className={cn("text-[9px] h-5 px-2 font-black border", accent.badge)}>
               {accent.label}
             </Badge>
-            {isFireMode(activeMode) && (
-              <span className="text-[9px] text-muted-foreground/40 font-mono">
-                FIRE CONSOLE
-              </span>
-            )}
+            <span className="text-[9px] text-muted-foreground/40 font-mono">
+              {isFireMode(activeMode) ? 'FIRE CONSOLE' : 'DIRECT PANEL'}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             {isArmed && (
@@ -401,9 +438,17 @@ export default function CommandCenter() {
           </div>
         </div>
 
-        {/* Content — LiveFiringPanel for all modes */}
+        {/* Content — Fire modes get LiveFiringPanel, others render directly */}
         <div className="flex-1 overflow-hidden">
-          <LiveFiringPanel initialMode={activeMode} standalone />
+          {isFireMode(activeMode) ? (
+            <LiveFiringPanel initialMode={activeMode} standalone />
+          ) : (
+            <ScrollArea className="h-full">
+              <div className="h-full" style={{ background: 'hsl(220 15% 6%)' }}>
+                {renderDirectPanel(activeMode)}
+              </div>
+            </ScrollArea>
+          )}
         </div>
       </div>
     </div>
