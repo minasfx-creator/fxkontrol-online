@@ -1129,6 +1129,26 @@ export default function ScriptWindow() {
                     {renderEditableCell(row.id, 'tilt', row.tilt, 'w-8', 'text-muted-foreground')}
                   </td>
 
+                  {/* Spin — click-to-edit */}
+                  <td className="px-1 py-0.5">
+                    {renderEditableCell(row.id, 'spin', row.spin, 'w-8', 'text-muted-foreground')}
+                  </td>
+
+                  {/* Angles* ASCII art — read-only */}
+                  <td className="px-1 py-0.5 text-center">
+                    <span className="text-muted-foreground font-mono text-[10px]">{row.anglesArt}</span>
+                  </td>
+
+                  {/* Derived Pitch — read-only */}
+                  <td className="px-1 py-0.5">
+                    <span className="text-muted-foreground/60 text-[9px] font-mono">{row.derivedPitch}°</span>
+                  </td>
+
+                  {/* Derived Roll — read-only */}
+                  <td className="px-1 py-0.5">
+                    <span className="text-muted-foreground/60 text-[9px] font-mono">{row.derivedRoll}°</span>
+                  </td>
+
                   {/* Duration */}
                   <td className="px-1 py-0.5 text-muted-foreground">{row.duration}s</td>
 
