@@ -457,6 +457,7 @@ export class HybridTransportRouter {
     return [
       ...this.health.getHealthyByType('wifi_direct'),
       ...this.health.getHealthyByType('wifi'),
+      ...this.health.getHealthyByType('cellular'),
     ].length > 0;
   }
 
