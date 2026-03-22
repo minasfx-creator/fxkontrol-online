@@ -541,9 +541,10 @@ export default function CommandCenter() {
         <div
           className="h-11 shrink-0 flex items-center justify-between px-5 border-b relative overflow-hidden"
           style={{
-            background: `linear-gradient(90deg, ${accent.glow} 0%, hsl(220 22% 3% / 0.95) 50%)`,
-            borderColor: 'hsl(var(--primary) / 0.04)',
-            backdropFilter: 'blur(32px) saturate(1.3)',
+            background: 'rgba(8, 10, 14, 0.88)',
+            backdropFilter: 'blur(48px) saturate(1.8)',
+            WebkitBackdropFilter: 'blur(48px) saturate(1.8)',
+            borderColor: 'rgba(255, 255, 255, 0.04)',
           }}
         >
           {/* Ambient accent line */}
