@@ -364,11 +364,11 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
       )}
 
       <Tabs defaultValue="osc" className="flex-1 flex flex-col">
-        <TabsList className="h-7">
-          <TabsTrigger value="osc" className="text-[9px] h-5">OSC Control</TabsTrigger>
-          <TabsTrigger value="sacn" className="text-[9px] h-5">sACN Bridge</TabsTrigger>
-          <TabsTrigger value="mvr" className="text-[9px] h-5">MVR-xchange</TabsTrigger>
-          <TabsTrigger value="monitor" className="text-[9px] h-5">Monitor</TabsTrigger>
+        <TabsList className="h-8 rounded-sm" style={{ background: 'hsl(240 12% 10%)', border: '1px solid hsl(240 15% 15%)' }}>
+          <TabsTrigger value="osc" className="text-[9px] h-6 font-mono font-bold data-[state=active]:text-indigo-300 data-[state=active]:shadow-[0_0_8px_hsl(240_50%_50%_/_0.2)]">OSC Control</TabsTrigger>
+          <TabsTrigger value="sacn" className="text-[9px] h-6 font-mono font-bold data-[state=active]:text-indigo-300 data-[state=active]:shadow-[0_0_8px_hsl(240_50%_50%_/_0.2)]">sACN Bridge</TabsTrigger>
+          <TabsTrigger value="mvr" className="text-[9px] h-6 font-mono font-bold data-[state=active]:text-indigo-300 data-[state=active]:shadow-[0_0_8px_hsl(240_50%_50%_/_0.2)]">MVR-xchange</TabsTrigger>
+          <TabsTrigger value="monitor" className="text-[9px] h-6 font-mono font-bold data-[state=active]:text-indigo-300 data-[state=active]:shadow-[0_0_8px_hsl(240_50%_50%_/_0.2)]">Monitor</TabsTrigger>
         </TabsList>
 
         {/* ═══ OSC Tab ═══ */}
