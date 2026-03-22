@@ -155,12 +155,117 @@ export default function CommandCenter() {
     }
   }, []);
 
+  // All modes for current mobile category
+  const allMobileModes = MODE_SECTIONS[mobileCategory]?.modes ?? MODE_SECTIONS[0].modes;
+  const allModes = MODE_SECTIONS.flatMap(s => s.modes);
+
+  // Mission clock
+  const [missionClock, setMissionClock] = useState('00:00:00');
+  useEffect(() => {
+    const start = Date.now();
+    const iv = setInterval(() => {
+      const e = Date.now() - start;
+      const h = Math.floor(e / 3600000);
+      const m = Math.floor((e % 3600000) / 60000);
+      const s = Math.floor((e % 60000) / 1000);
+      setMissionClock(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
+    }, 1000);
+    return () => clearInterval(iv);
+  }, []);
+
   // ══════════════════════════════════════════════
-  // MOBILE LAYOUT
+  // MOBILE LANDSCAPE — Game-style HUD
+  // ══════════════════════════════════════════════
+  if (isMobile && isLandscape) {
+    const ActiveLogo = CONSOLE_LOGOS[activeMode];
+    return (
+      <div className="h-[100dvh] w-screen flex flex-col bg-background overflow-hidden">
+        {/* Top HUD bar — 32px */}
+        <div className="landscape-hud-bar shrink-0 h-8 flex items-center justify-between px-2 relative z-20"
+          style={{
+            background: 'hsl(220 22% 3% / 0.95)',
+            borderBottom: `1px solid ${accent.color}20`,
+            paddingTop: 'env(safe-area-inset-top)',
+          }}>
+          {/* Accent glow line */}
+          <div className="absolute top-0 left-0 right-0 h-[2px]" style={{
+            background: `linear-gradient(90deg, transparent, ${accent.color}60, transparent)`,
+          }} />
+          <div className="flex items-center gap-2">
+            {ActiveLogo && <ActiveLogo size={22} active />}
+            <span className="text-[9px] font-black font-mono tracking-[0.2em]" style={{ color: accent.color }}>{accent.label}</span>
+            <span className="text-[6px] font-mono text-muted-foreground/25 tracking-wider hidden sm:inline">{accent.subtitle}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            {isArmed && <Badge variant="destructive" className="text-[6px] h-4 px-1.5 animate-pulse font-mono rounded-sm">ARMED</Badge>}
+            <div className="flex items-center gap-1">
+              <div className="h-1.5 w-1.5 rounded-full" style={{
+                backgroundColor: connectedCount > 0 ? 'hsl(120 70% 45%)' : 'hsl(220 10% 25%)',
+                boxShadow: connectedCount > 0 ? '0 0 4px hsl(120 70% 45%)' : 'none',
+              }} />
+              <span className="text-[7px] font-mono text-muted-foreground/40">{connectedCount > 0 ? `${connectedCount}` : '—'}</span>
+            </div>
+            <span className="text-[8px] font-mono font-bold" style={{ color: 'hsl(32 100% 55%)', textShadow: '0 0 6px hsl(32 100% 50% / 0.3)' }}>{missionClock}</span>
+          </div>
+        </div>
+
+        <div className="flex-1 flex min-h-0">
+          {/* Left nav rail — 44px */}
+          <div className="landscape-nav-rail shrink-0 w-11 flex flex-col items-center py-1.5 gap-0.5 z-20"
+            style={{
+              background: 'hsl(220 22% 3% / 0.95)',
+              borderRight: '1px solid hsl(var(--primary) / 0.06)',
+              paddingLeft: 'env(safe-area-inset-left)',
+            }}>
+            {allModes.map(mode => {
+              const isActive = activeMode === mode.key;
+              const mAccent = CONSOLE_ACCENTS[mode.key];
+              const Logo = CONSOLE_LOGOS[mode.key];
+              return (
+                <button
+                  key={mode.key}
+                  onClick={() => handleModeChange(mode.key)}
+                  className={cn(
+                    "w-9 h-9 flex items-center justify-center rounded-sm transition-all relative active:scale-90",
+                    isActive ? "console-logo-glow" : "opacity-40 hover:opacity-70"
+                  )}
+                  style={isActive ? { background: mAccent?.glow, boxShadow: `0 0 8px ${mAccent?.color}30` } : undefined}
+                  title={mode.label}
+                >
+                  {Logo ? <Logo size={24} active={isActive} /> : <mode.icon className="w-4 h-4" />}
+                  {isActive && <div className="absolute left-0 top-1 bottom-1 w-[2px] rounded-r" style={{ backgroundColor: mAccent?.color }} />}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Main content — fills remaining */}
+          <div className={cn(
+            "flex-1 overflow-hidden holo-swap-container relative",
+            swapPhase === 'out' ? 'swap-out' : swapPhase === 'in' ? 'swap-in' : '',
+            swapFlash && 'swap-flash'
+          )}>
+            {/* HUD corner brackets */}
+            <div className="pyro-hud-corner absolute top-1 left-1 w-4 h-4 border-t-2 border-l-2 z-10 pointer-events-none" style={{ borderColor: `${accent.color}30` }} />
+            <div className="pyro-hud-corner absolute top-1 right-1 w-4 h-4 border-t-2 border-r-2 z-10 pointer-events-none" style={{ borderColor: `${accent.color}30` }} />
+            <div className="pyro-hud-corner absolute bottom-1 left-1 w-4 h-4 border-b-2 border-l-2 z-10 pointer-events-none" style={{ borderColor: `${accent.color}30` }} />
+            <div className="pyro-hud-corner absolute bottom-1 right-1 w-4 h-4 border-b-2 border-r-2 z-10 pointer-events-none" style={{ borderColor: `${accent.color}30` }} />
+
+            {isFireMode(activeMode) ? (
+              <LiveFiringPanel initialMode={activeMode} standalone />
+            ) : (
+              <div className="h-full surface-0">{renderDirectPanel(activeMode)}</div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════
+  // MOBILE PORTRAIT
   // ══════════════════════════════════════════════
   if (isMobile) {
-    const allMobileModes = MODE_SECTIONS[mobileCategory]?.modes ?? MODE_SECTIONS[0].modes;
-
     return (
       <div className="h-[100dvh] w-screen flex flex-col bg-background">
         {/* HUD */}
@@ -173,10 +278,7 @@ export default function CommandCenter() {
             style={{ background: 'hsl(220 22% 3% / 0.95)', backdropFilter: 'blur(24px)' }}
           >
             <div className="flex items-center gap-2">
-              <div
-                className={cn("h-2 w-2 shrink-0", connectedCount > 0 ? "animate-pulse" : "")}
-                style={{ backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.2)', boxShadow: connectedCount > 0 ? `0 0 6px ${accent.color}` : 'none' }}
-              />
+              {(() => { const L = CONSOLE_LOGOS[activeMode]; return L ? <L size={20} active /> : null; })()}
               <span className="text-[8px] font-bold text-foreground font-mono tracking-[0.15em]">
                 {connectedCount > 0 ? `${connectedCount} LINK` : 'NO LINK'}
               </span>
@@ -185,6 +287,7 @@ export default function CommandCenter() {
               {accent.label}
             </Badge>
             <div className="flex items-center gap-1">
+              <span className="text-[7px] font-mono" style={{ color: 'hsl(32 100% 50% / 0.5)' }}>{missionClock}</span>
               {isArmed && <Badge variant="destructive" className="text-[6px] h-3.5 px-1 animate-pulse font-mono rounded-sm">ARM</Badge>}
             </div>
           </div>
@@ -197,7 +300,7 @@ export default function CommandCenter() {
               {allMobileModes.map(mode => {
                 const isActive = activeMode === mode.key;
                 const mAccent = CONSOLE_ACCENTS[mode.key];
-                const Icon = mode.icon;
+                const Logo = CONSOLE_LOGOS[mode.key];
                 return (
                   <button
                     key={mode.key}
@@ -212,7 +315,7 @@ export default function CommandCenter() {
                       borderColor: isActive ? mAccent?.color + '33' : undefined,
                     }}
                   >
-                    <Icon className="w-3.5 h-3.5" />
+                    {Logo ? <Logo size={18} active={isActive} /> : <mode.icon className="w-3.5 h-3.5" />}
                     {mode.label}
                   </button>
                 );
