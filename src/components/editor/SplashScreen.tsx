@@ -7,7 +7,14 @@ interface SplashScreenProps {
   showVideoBackground?: boolean;
 }
 
-const SplashScreen = forwardRef<HTMLDivElement, SplashScreenProps>(function SplashScreen({ onStart, showVideoBackground = false }, ref) {
+const PRODUCT_LINES = [
+  { label: 'PYRO', color: 'hsl(0 85% 55%)' },
+  { label: 'DMX', color: 'hsl(195 100% 50%)' },
+  { label: 'LIGHT', color: 'hsl(260 80% 65%)' },
+  { label: 'DRONES', color: 'hsl(165 100% 42%)' },
+];
+
+const SplashScreen = forwardRef<HTMLDivElement, SplashScreenProps>(function SplashScreen({ onStart }, ref) {
   const [phase, setPhase] = useState<'intro' | 'ready' | 'exit'>('intro');
 
   useEffect(() => {
@@ -27,94 +34,141 @@ const SplashScreen = forwardRef<HTMLDivElement, SplashScreenProps>(function Spla
         "fixed inset-0 z-50 flex items-center justify-center transition-all duration-600 ease-out cursor-pointer",
         phase === 'exit' ? 'opacity-0 scale-[1.03] pointer-events-none' : 'opacity-100 scale-100'
       )}
-      style={{ background: 'hsl(225 14% 4%)' }}
+      style={{ background: '#080a0f' }}
       onClick={phase === 'ready' ? handleStart : undefined}
     >
-      {/* Ambient background */}
+      {/* Tactical grid overlay */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div
-          className="absolute inset-0 opacity-[0.025]"
+          className="absolute inset-0 opacity-[0.04]"
           style={{
             backgroundImage: `
-              linear-gradient(hsl(195 100% 50% / 0.5) 1px, transparent 1px),
-              linear-gradient(90deg, hsl(195 100% 50% / 0.5) 1px, transparent 1px)
+              linear-gradient(hsl(165 100% 42% / 0.6) 1px, transparent 1px),
+              linear-gradient(90deg, hsl(165 100% 42% / 0.6) 1px, transparent 1px)
             `,
-            backgroundSize: '80px 80px',
+            backgroundSize: '40px 40px',
           }}
         />
+        {/* Scanline overlay */}
         <div
-          className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full"
+          className="absolute inset-0 opacity-[0.03]"
           style={{
-            background: 'radial-gradient(circle, hsl(195 100% 50% / 0.06), transparent 70%)',
-            filter: 'blur(60px)',
+            backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, hsl(165 100% 42% / 0.15) 2px, hsl(165 100% 42% / 0.15) 4px)',
           }}
         />
+        {/* Center glow */}
         <div
-          className="absolute bottom-1/4 right-1/3 w-[400px] h-[400px] rounded-full"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full"
           style={{
-            background: 'radial-gradient(circle, hsl(18 100% 55% / 0.04), transparent 70%)',
+            background: 'radial-gradient(circle, hsl(165 100% 42% / 0.06), transparent 70%)',
             filter: 'blur(80px)',
           }}
         />
-        <div
-          className="absolute top-0 left-0 right-0 h-32"
-          style={{ background: 'linear-gradient(to bottom, hsl(225 14% 3%), transparent)' }}
-        />
-        <div
-          className="absolute bottom-0 left-0 right-0 h-32"
-          style={{ background: 'linear-gradient(to top, hsl(225 14% 3%), transparent)' }}
-        />
       </div>
 
+      {/* Corner brackets — military HUD */}
+      <div className="absolute inset-8 pointer-events-none">
+        {/* Top-left */}
+        <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2" style={{ borderColor: 'hsl(165 100% 42% / 0.4)' }} />
+        {/* Top-right */}
+        <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2" style={{ borderColor: 'hsl(165 100% 42% / 0.4)' }} />
+        {/* Bottom-left */}
+        <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2" style={{ borderColor: 'hsl(165 100% 42% / 0.4)' }} />
+        {/* Bottom-right */}
+        <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2" style={{ borderColor: 'hsl(165 100% 42% / 0.4)' }} />
+      </div>
+
+      {/* Corner labels */}
+      <div className="absolute top-10 left-12 font-tactical text-[9px] tracking-[0.3em] uppercase" style={{ color: 'hsl(165 100% 42% / 0.3)' }}>
+        SYS.INIT
+      </div>
+      <div className="absolute top-10 right-12 font-tactical text-[9px] tracking-[0.3em] uppercase" style={{ color: 'hsl(165 100% 42% / 0.3)' }}>
+        MINAS FX
+      </div>
+      <div className="absolute bottom-10 left-12 font-tactical text-[9px] tracking-[0.3em] uppercase" style={{ color: 'hsl(165 100% 42% / 0.3)' }}>
+        SECURE
+      </div>
+      <div className="absolute bottom-10 right-12 font-tactical text-[9px] tracking-[0.3em] uppercase" style={{ color: 'hsl(165 100% 42% / 0.3)' }}>
+        v2.0
+      </div>
+
+      {/* Main content */}
       <div
         className={cn(
-          "relative flex flex-col items-center gap-10 transition-all duration-700 ease-out",
+          "relative flex flex-col items-center gap-8 transition-all duration-700 ease-out",
           phase === 'intro' ? 'opacity-0 translate-y-8 scale-95' : 'opacity-100 translate-y-0 scale-100'
         )}
       >
-        {/* Logo */}
-        <div className="flex flex-col items-center gap-4">
+        {/* Logo in tactical frame */}
+        <div className="flex flex-col items-center gap-5">
           <div
-            className="w-20 h-20 flex items-center justify-center rounded-2xl"
+            className="w-32 h-32 flex items-center justify-center rounded-sm relative"
             style={{
-              background: 'linear-gradient(135deg, hsl(195 100% 50% / 0.1), hsl(18 100% 55% / 0.08))',
-              boxShadow: '0 0 60px hsl(195 100% 50% / 0.15), inset 0 1px 0 hsl(195 100% 80% / 0.1)',
-              border: '1px solid hsl(195 100% 50% / 0.12)',
+              border: '1px solid hsl(165 100% 42% / 0.25)',
+              background: 'linear-gradient(135deg, hsl(165 100% 42% / 0.05), transparent)',
+              boxShadow: '0 0 60px hsl(165 100% 42% / 0.08), inset 0 0 30px hsl(165 100% 42% / 0.03)',
             }}
           >
-            <img src={fxkLogo} alt="FX Kontrol" className="w-14 h-14 object-contain drop-shadow-[0_0_24px_hsl(195_100%_50%/0.35)]" />
+            {/* Crosshair marks on frame */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-4 h-px" style={{ background: 'hsl(165 100% 42% / 0.4)' }} />
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-px" style={{ background: 'hsl(165 100% 42% / 0.4)' }} />
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-px" style={{ background: 'hsl(165 100% 42% / 0.4)' }} />
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-px" style={{ background: 'hsl(165 100% 42% / 0.4)' }} />
+
+            <img
+              src={fxkLogo}
+              alt="FX Kontrol"
+              className="w-28 h-28 object-contain"
+              style={{ filter: 'drop-shadow(0 0 20px hsl(165 100% 42% / 0.3))' }}
+            />
           </div>
-          <h1 className="text-3xl font-extrabold tracking-[0.35em] uppercase font-display text-fxk-gradient">
+
+          <h1
+            className="text-3xl font-extrabold tracking-[0.35em] uppercase font-display"
+            style={{ color: 'hsl(165 100% 42%)' }}
+          >
             FX KONTROL
           </h1>
-          <p className="text-[10px] text-muted-foreground/60 tracking-[0.25em] uppercase font-display">
-            Show Design Platform · Minas FX
+
+          <p className="font-tactical text-[10px] tracking-[0.25em] uppercase" style={{ color: 'hsl(45 90% 55% / 0.5)' }}>
+            Professional Show Control System
           </p>
         </div>
 
-        {/* Divider */}
-        <div
-          className="w-32 h-px"
-          style={{ background: 'linear-gradient(90deg, transparent, hsl(195 100% 50% / 0.3), transparent)' }}
-        />
-
-        {/* Pulsing START */}
-        <div className="flex flex-col items-center gap-3">
-          <div
-            className="px-12 py-3.5 text-sm font-bold tracking-[0.25em] uppercase font-display rounded-lg transition-all duration-500 animate-pulse"
-            style={{
-              background: 'linear-gradient(135deg, hsl(195 100% 50% / 0.15), hsl(18 100% 55% / 0.1))',
-              border: '1px solid hsl(195 100% 50% / 0.2)',
-              color: 'hsl(195 100% 70%)',
-              boxShadow: '0 0 40px hsl(195 100% 50% / 0.15)',
-            }}
-          >
-            Click to Start
-          </div>
+        {/* Tactical divider */}
+        <div className="flex items-center gap-2 w-64">
+          <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, transparent, hsl(165 100% 42% / 0.3))' }} />
+          <div className="w-1.5 h-1.5 rotate-45" style={{ border: '1px solid hsl(165 100% 42% / 0.4)' }} />
+          <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, hsl(165 100% 42% / 0.3), transparent)' }} />
         </div>
 
-        <p className="text-[9px] text-muted-foreground/30 font-mono tracking-wider">
-          v2.0 · FX KONTROL ENGINE
+        {/* Product line indicators */}
+        <div className="flex items-center gap-5">
+          {PRODUCT_LINES.map((p) => (
+            <div key={p.label} className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full" style={{ background: p.color, boxShadow: `0 0 6px ${p.color}` }} />
+              <span className="font-tactical text-[8px] tracking-[0.2em] uppercase" style={{ color: 'hsl(0 0% 45%)' }}>
+                {p.label}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Start button */}
+        <div
+          className="px-14 py-3 text-sm font-bold tracking-[0.3em] uppercase font-tactical rounded-sm transition-all duration-500 animate-pulse"
+          style={{
+            background: 'hsl(165 100% 42% / 0.1)',
+            border: '1px solid hsl(165 100% 42% / 0.3)',
+            color: 'hsl(165 100% 60%)',
+            boxShadow: '0 0 30px hsl(165 100% 42% / 0.1)',
+          }}
+        >
+          ▶ INITIALIZE
+        </div>
+
+        <p className="font-tactical text-[8px] tracking-[0.2em] uppercase" style={{ color: 'hsl(0 0% 25%)' }}>
+          v2.0 · FXK TACTICAL ENGINE
         </p>
       </div>
     </div>
