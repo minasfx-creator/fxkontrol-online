@@ -230,6 +230,11 @@ function Index() {
         if (e.key === '2') useProjectStore.getState().setSelectionMode('events');
         if (e.key === '3') useProjectStore.getState().setSelectionMode('both');
       }
+      // Ctrl+Shift+A → Smart Script Assistant
+      if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+        e.preventDefault();
+        setSmartScriptOpen(prev => !prev);
+      }
       if (e.key === 'i' && !e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
         const store = useProjectStore.getState();
         if (store.isPlaying || store.currentTime > 0) {
