@@ -423,7 +423,31 @@ export default function EffectLibrary() {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createVdl, setCreateVdl] = useState('');
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const { addTimelineItem, currentTime, positions } = useProjectStore();
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // C-key quick search (Finale 3D behavior)
+  useEffect(() => {
+    const handler = () => {
+      searchInputRef.current?.focus();
+      searchInputRef.current?.select();
+    };
+    window.addEventListener('focus-effect-search', handler);
+    return () => window.removeEventListener('focus-effect-search', handler);
+  }, []);
+
+  // Ctrl+Enter inserts selected effect at playhead
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!searchInputRef.current || document.activeElement !== searchInputRef.current) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIndex(i => i + 1); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIndex(i => Math.max(0, i - 1)); }
+      if (e.key === 'Escape') { setSearch(''); searchInputRef.current?.blur(); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   const toggleCategory = (key: string) => {
     setOpenCategories((prev) => {
