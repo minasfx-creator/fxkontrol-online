@@ -313,8 +313,9 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
   const [isDragging, setIsDragging] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [dragAxis, setDragAxis] = useState<'all' | 'heading' | 'pitch' | 'roll' | 'up-vector'>('all');
-  const dragStartRef = useRef<{ heading: number; pitch: number } | null>(null);
+  const dragStartRef = useRef<{ heading: number; pitch: number; mouseX: number; mouseY: number } | null>(null);
   const batchStartRef = useRef<Map<string, { heading: number; pitch: number }>>(new Map());
+  const [axisDominance, setAxisDominance] = useState<{ h: number; p: number }>({ h: 1, p: 1 });
   const handleRef = useRef<THREE.Mesh>(null);
   const { camera, raycaster, gl } = useThree();
 
@@ -426,7 +427,13 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
     e.stopPropagation();
     useUndoStore.getState().checkpoint();
     setIsDragging(true);
-    dragStartRef.current = { heading: position.heading, pitch: position.pitch || 85 };
+    const nativeEvent = e.nativeEvent || e;
+    dragStartRef.current = {
+      heading: position.heading,
+      pitch: position.pitch || 85,
+      mouseX: nativeEvent.clientX ?? 0,
+      mouseY: nativeEvent.clientY ?? 0,
+    };
     if (batchMode && selectedIds) {
       const store = useProjectStore.getState();
       const map = new Map<string, { heading: number; pitch: number }>();
@@ -445,28 +452,32 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
   useEffect(() => {
     if (!isDragging) return;
     const handleMove = (e: PointerEvent) => {
+      if (!dragStartRef.current) return;
       const rect = gl.domElement.getBoundingClientRect();
-      const mouse = new THREE.Vector2(
-        ((e.clientX - rect.left) / rect.width) * 2 - 1,
-        -((e.clientY - rect.top) / rect.height) * 2 + 1
-      );
-      raycaster.setFromCamera(mouse, camera);
-      const origin = new THREE.Vector3(position.x, position.y, position.z);
 
-      // Use sphere intersection for smoother, more intuitive angle control
-      const sphere = new THREE.Sphere(origin, 50);
-      const intersectPt = new THREE.Vector3();
-      const hit = raycaster.ray.intersectSphere(sphere, intersectPt);
-      const dir = hit
-        ? intersectPt.sub(origin).normalize()
-        : (() => {
-            const fallback = new THREE.Vector3();
-            raycaster.ray.closestPointToPoint(origin, fallback);
-            return fallback.sub(origin).normalize();
-          })();
+      // ── Camera-aware axis weighting ──
+      const camDir = camera.getWorldDirection(new THREE.Vector3());
+      const frontWeight = Math.abs(camDir.z); // looking along Z = front view
+      const sideWeight = Math.abs(camDir.x);  // looking along X = side view
+      const topWeight = Math.abs(camDir.y);    // looking down Y = top view
 
-      let newHeading = Math.atan2(dir.x, -dir.z) * (180 / Math.PI);
-      let newPitch = Math.max(-180, Math.min(180, Math.asin(Math.max(-1, Math.min(1, dir.y))) * (180 / Math.PI)));
+      // Heading: strong from front/top, weak from side
+      const hSensitivity = Math.max(frontWeight, topWeight);
+      // Pitch: strong from front/side, weak from top
+      const pSensitivity = 1 - topWeight * 0.8;
+
+      setAxisDominance({ h: hSensitivity, p: pSensitivity });
+
+      // ── Delta-based drag (screen pixels → degrees) ──
+      const scale = 0.35; // degrees per pixel
+      const deltaX = e.clientX - dragStartRef.current.mouseX;
+      const deltaY = -(e.clientY - dragStartRef.current.mouseY); // invert Y
+
+      let newHeading = dragStartRef.current.heading + deltaX * hSensitivity * scale;
+      let newPitch = dragStartRef.current.pitch + deltaY * pSensitivity * scale;
+
+      // Clamp pitch
+      newPitch = Math.max(-180, Math.min(180, newPitch));
 
       // Shift-snap to 5° increments
       if (e.shiftKey) {
@@ -474,22 +485,19 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
         newPitch = Math.round(newPitch / 5) * 5;
       }
 
-      // Axis constraints
+      // Axis constraints (from context menu or keyboard)
       if (dragAxis === 'heading' || dragAxis === 'up-vector') newPitch = position.pitch || 85;
       if (dragAxis === 'pitch') newHeading = position.heading;
       if (dragAxis === 'roll') {
-        // Roll: compute from mouse position relative to launch axis
         newHeading = position.heading;
         newPitch = position.pitch || 85;
       }
 
       // Compute delta for HUD
-      if (dragStartRef.current) {
-        setAngleDelta({
-          h: Math.round(newHeading - dragStartRef.current.heading),
-          p: Math.round(newPitch - dragStartRef.current.pitch),
-        });
-      }
+      setAngleDelta({
+        h: Math.round(newHeading - dragStartRef.current.heading),
+        p: Math.round(newPitch - dragStartRef.current.pitch),
+      });
 
       if (batchMode && selectedIds && dragStartRef.current) {
         const dHeading = newHeading - dragStartRef.current.heading;
@@ -510,6 +518,7 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
     const handleUp = () => {
       setIsDragging(false);
       setAngleDelta(null);
+      setAxisDominance({ h: 1, p: 1 });
       dragStartRef.current = null;
       batchStartRef.current.clear();
       (gl.domElement as HTMLElement).style.cursor = '';
@@ -522,11 +531,20 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
     };
   }, [isDragging, position, updatePosition, camera, raycaster, gl, batchMode, selectedIds, dragAxis]);
 
-  const handleColor = isDragging ? '#FFD54F' : isHovered ? '#81D4FA' : '#FF6B35';
+  // Camera-aware handle color: blue=heading dominant, orange=pitch dominant, blend for mixed
+  const handleColor = useMemo(() => {
+    if (!isDragging) return isHovered ? '#81D4FA' : '#FF6B35';
+    if (axisDominance.h > 0.7 && axisDominance.p < 0.4) return COLORS.headingArc; // blue = heading
+    if (axisDominance.p > 0.7 && axisDominance.h < 0.4) return COLORS.pitchArc;   // orange = pitch
+    return '#FFD54F'; // yellow = both
+  }, [isDragging, isHovered, axisDominance]);
   const handleSize = isDragging ? 0.35 : isHovered ? 0.3 : 0.25;
 
   // Axis color indicator during drag
-  const axisIndicatorColor = dragAxis === 'heading' ? COLORS.headingArc : dragAxis === 'pitch' ? COLORS.pitchArc : dragAxis === 'roll' ? COLORS.rollArc : null;
+  const axisIndicatorColor = isDragging
+    ? (dragAxis === 'heading' ? COLORS.headingArc : dragAxis === 'pitch' ? COLORS.pitchArc : dragAxis === 'roll' ? COLORS.rollArc
+      : (axisDominance.h > axisDominance.p * 1.5 ? COLORS.headingArc : axisDominance.p > axisDominance.h * 1.5 ? COLORS.pitchArc : null))
+    : null;
 
   const wind = useProjectStore(s => s.wind);
   const windCompGhost = useMemo(() => {
@@ -722,10 +740,22 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
               ↻ drift {windCompGhost.drift.driftX}m × {windCompGhost.drift.driftZ}m
             </div>
           )}
-          {/* Delta HUD during drag */}
+          {/* Delta HUD + axis dominance indicator during drag */}
           {isDragging && angleDelta && (
-            <div style={{ fontSize: '9px', color: COLORS.handleActive, fontWeight: 700, marginTop: '2px', letterSpacing: '0.5px' }}>
-              ΔH {angleDelta.h > 0 ? '+' : ''}{angleDelta.h}° · ΔP {angleDelta.p > 0 ? '+' : ''}{angleDelta.p}°
+            <div style={{ marginTop: '2px' }}>
+              <div style={{ fontSize: '9px', color: handleColor, fontWeight: 700, letterSpacing: '0.5px' }}>
+                ΔH {angleDelta.h > 0 ? '+' : ''}{angleDelta.h}° · ΔP {angleDelta.p > 0 ? '+' : ''}{angleDelta.p}°
+              </div>
+              <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.5)', marginTop: '1px', letterSpacing: '1px' }}>
+                <span style={{ color: COLORS.headingArc }}>H</span>{' '}
+                {Array.from({ length: 5 }, (_, i) => (
+                  <span key={i} style={{ color: i / 5 < axisDominance.h ? COLORS.headingArc : 'rgba(255,255,255,0.15)' }}>●</span>
+                ))}{' '}
+                {Array.from({ length: 5 }, (_, i) => (
+                  <span key={i} style={{ color: i / 5 < axisDominance.p ? COLORS.pitchArc : 'rgba(255,255,255,0.15)' }}>●</span>
+                ))}{' '}
+                <span style={{ color: COLORS.pitchArc }}>P</span>
+              </div>
             </div>
           )}
         </div>

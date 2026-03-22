@@ -155,7 +155,12 @@ export default function EffectEditor({ initialVDL = '', onClose, realFormulation
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">Caliber</Label>
-            <span className="text-xs font-mono-code text-foreground">{params.caliber}" ({params.caliberMM}mm)</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono-code text-foreground">{params.caliber}" ({params.caliberMM}mm)</span>
+              <span className="text-[9px] text-primary font-mono-code">
+                ≈{Math.round(params.caliber * 25.4 * 2.8)}m burst
+              </span>
+            </div>
           </div>
           <Slider
             value={[params.caliber]}
@@ -165,6 +170,33 @@ export default function EffectEditor({ initialVDL = '', onClose, realFormulation
           />
           <div className="flex justify-between text-[9px] text-muted-foreground">
             <span>1"</span><span>6"</span><span>12"</span>
+          </div>
+        </div>
+
+        {/* Quick Angle Presets (Finale 3D) */}
+        <div className="space-y-1.5">
+          <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">Pitch Presets</Label>
+          <div className="flex flex-wrap gap-1">
+            {[
+              { label: '45°', value: 45, hint: 'Comet/Fan' },
+              { label: '60°', value: 60, hint: 'Cake' },
+              { label: '75°', value: 75, hint: 'Angled Shell' },
+              { label: '85°', value: 85, hint: 'Shell' },
+              { label: '90°', value: 90, hint: 'Mine/Vertical' },
+            ].map(preset => (
+              <Badge
+                key={preset.value}
+                variant="outline"
+                className={cn(
+                  "text-[9px] cursor-pointer",
+                  "hover:bg-primary/10 transition-colors"
+                )}
+                onClick={() => updateParam('height', preset.value)}
+                title={preset.hint}
+              >
+                {preset.label}
+              </Badge>
+            ))}
           </div>
         </div>
 
