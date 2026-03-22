@@ -162,6 +162,7 @@ export default function CommandCenter() {
       case 'field_map': return <FieldMap2D fs />;
       case 'mobile_link': return <MobileLinkMode fs fireChannel={() => {}} channels={[]} artNetConnected={false} relayConnected={false} />;
       case 'settings': return <SettingsPanel fs settings={{ language: 'pt', wirelessDmxEnabled: false, wirelessDmxId: 1, globalSafetyChannel: 0, globalSafetyValue: 0, pyroArmRequired: true, deleteConfirm: true, backlight: 80, tcpPort: 8000, artNetIp: '2.0.0.1', artNetPort: 6454, networkIp: '192.168.1.100', networkMask: '255.255.255.0', networkGateway: '192.168.1.1' }} onSettingsChange={() => {}} relayConnected={false} relayUrl="" onRelayUrlChange={() => {}} onConnectRelay={() => {}} onDisconnectRelay={() => {}} />;
+      case 'drone_ops': return <DroneCommandPanel fs />;
       default: return null;
     }
   }, [handleModeChange]);
