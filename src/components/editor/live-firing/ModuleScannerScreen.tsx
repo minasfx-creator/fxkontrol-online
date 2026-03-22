@@ -555,7 +555,9 @@ export default function ModuleScannerScreen({
                     : 0}%
                 </span>
                 <span className="ml-auto text-muted-foreground/20">
-                  TAP MODULE → FIRE CONSOLE
+                  {autoDiscovery
+                    ? `AUTO-DISCOVERY ● CYCLE #${scanCycle}`
+                    : 'TAP MODULE → FIRE CONSOLE'}
                 </span>
               </div>
             </div>
