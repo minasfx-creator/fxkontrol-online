@@ -960,11 +960,11 @@ export default function PyroFireOnePanel({
     ) : null
   );
 
-  // ── Render: Mode tabs — XL4+ Physical Membrane Keypad ──
+  // ── Render: Mode tabs — BR2049 segmented control with amber underline ──
   const renderModeTabs = () => (
-    <div className={cn("flex border-b gap-0.5",
-      sz === 'xl' ? "px-4 py-1.5" : sz === 'fs' ? "px-3 py-1" : "px-2 py-0.5"
-    )} style={{ background: 'hsl(0 0% 10%)', borderColor: 'hsl(0 0% 15%)' }}>
+    <div className={cn("flex border-b gap-0",
+      sz === 'xl' ? "px-4" : sz === 'fs' ? "px-3" : "px-2"
+    )} style={{ background: 'hsl(220 18% 5%)', borderColor: 'hsl(var(--primary) / 0.1)' }}>
       {([
         { key: 'manual' as PyroMode, label: 'MANUAL', sub: 'Direct' },
         { key: 'step' as PyroMode, label: 'STEP', sub: 'Sequential' },
@@ -973,25 +973,21 @@ export default function PyroFireOnePanel({
       ]).map(m => (
         <button key={m.key} onClick={() => setPyroMode(m.key)}
           className={cn(
-            "flex-1 font-mono font-black uppercase tracking-[0.15em] transition-all min-h-[48px]",
+            "flex-1 font-mono font-black uppercase tracking-[0.12em] transition-all relative",
             sz === 'xl' ? "py-3 text-[11px]" : sz === 'fs' ? "py-2 text-[9px]" : "py-1.5 text-[8px]",
             pyroMode === m.key
-              ? "text-white/90"
-              : "text-white/30 hover:text-white/50"
-          )} style={{
-            /* Membrane button: flat gray with embossed double-border */
-            background: pyroMode === m.key ? 'hsl(0 0% 22%)' : 'hsl(0 0% 18%)',
-            border: pyroMode === m.key
-              ? '2px solid hsl(0 0% 30%)'
-              : '1px solid hsl(0 0% 12%)',
-            borderRadius: '2px',
-            /* Physical membrane emboss: outer dark, inner light highlight */
-            boxShadow: pyroMode === m.key
-              ? 'inset 0 1px 0 hsl(0 0% 28%), inset 0 -1px 0 hsl(0 0% 10%), 0 0 8px hsl(0 70% 40% / 0.2)'
-              : 'inset 0 1px 0 hsl(0 0% 22%), inset 0 -1px 0 hsl(0 0% 8%), 0 1px 2px rgba(0,0,0,0.3)',
-          }}>
+              ? "text-primary"
+              : "text-muted-foreground/30 hover:text-muted-foreground/50"
+          )}>
           <div>{m.label}</div>
-          {sz !== 'sm' && <div className="font-normal text-[6px]" style={{ color: pyroMode === m.key ? 'hsl(0 0% 50%)' : 'hsl(0 0% 30%)' }}>{m.sub}</div>}
+          {sz !== 'sm' && <div className="font-normal text-[6px]" style={{ color: pyroMode === m.key ? 'hsl(var(--primary) / 0.5)' : 'hsl(var(--muted-foreground) / 0.2)' }}>{m.sub}</div>}
+          {/* Amber underline indicator */}
+          {pyroMode === m.key && (
+            <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full" style={{
+              background: 'hsl(var(--primary))',
+              boxShadow: '0 0 8px hsl(var(--primary) / 0.4)',
+            }} />
+          )}
         </button>
       ))}
     </div>
