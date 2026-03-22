@@ -117,6 +117,110 @@ export default function ScriptWindow() {
   const [fillDragCount, setFillDragCount] = useState(0);
   const tableRef = useRef<HTMLDivElement>(null);
 
+  // ─── Inline cell editing state (Finale 3D style) ─────────────────
+  const [editingCell, setEditingCell] = useState<{ rowId: string; field: string } | null>(null);
+  const [editDraft, setEditDraft] = useState('');
+  const editInputRef = useRef<HTMLInputElement>(null);
+
+  // Editable fields in order for Tab navigation
+  const EDITABLE_FIELDS = ['eventTime', 'pan', 'tilt', 'notes'] as const;
+  
+  // Navigation intent resolved after rows are computed
+  const [editNavIntent, setEditNavIntent] = useState<{ dir: 'next-cell' | 'next-row'; fromRowId: string; fromField: string } | null>(null);
+
+  const startEditing = useCallback((rowId: string, field: string, currentValue: string | number) => {
+    setEditingCell({ rowId, field });
+    setEditDraft(String(currentValue));
+    setTimeout(() => editInputRef.current?.select(), 0);
+  }, []);
+
+  const commitEdit = useCallback((moveDir?: 'next-cell' | 'next-row' | 'cancel') => {
+    if (!editingCell) return;
+    const { rowId, field } = editingCell;
+
+    if (moveDir !== 'cancel') {
+      const value = editDraft;
+      // Apply to all selected rows if batch
+      const targetIds = selectedIds.size > 1 && selectedIds.has(rowId)
+        ? Array.from(selectedIds) : [rowId];
+
+      targetIds.forEach(id => {
+        switch (field) {
+          case 'eventTime':
+            updateTimelineItem(id, { startTime: parseFloat(value) || 0 });
+            break;
+          case 'pan':
+            updateTimelineItem(id, { pan: parseFloat(value) || 0 });
+            break;
+          case 'tilt':
+            updateTimelineItem(id, { tilt: parseFloat(value) || 0 });
+            break;
+          case 'notes':
+            updateTimelineItem(id, { notes: value });
+            break;
+        }
+      });
+    }
+
+    // For next-cell / next-row, we defer to after rows are available
+    // by storing intent and resolving in an effect
+    if (moveDir === 'next-cell' || moveDir === 'next-row') {
+      setEditNavIntent({ dir: moveDir, fromRowId: rowId, fromField: field });
+    }
+
+    setEditingCell(null);
+  }, [editingCell, editDraft, selectedIds, updateTimelineItem]);
+
+  const handleCellKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      commitEdit(e.shiftKey ? 'cancel' : 'next-cell');
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      commitEdit('next-row');
+    } else if (e.key === 'Escape') {
+      commitEdit('cancel');
+    }
+  }, [commitEdit]);
+
+  // Render an inline editable cell
+  const renderEditableCell = (rowId: string, field: string, value: string | number, width: string, extraClass?: string) => {
+    const isEditing = editingCell?.rowId === rowId && editingCell?.field === field;
+    const isBatchTarget = selectedIds.size > 1 && selectedIds.has(rowId);
+
+    if (isEditing) {
+      return (
+        <input
+          ref={editInputRef}
+          type={field === 'notes' ? 'text' : 'number'}
+          step={field === 'eventTime' ? '0.001' : '1'}
+          className={cn(
+            "bg-primary/10 border border-primary/50 text-foreground outline-none rounded-sm px-0.5 transition-colors",
+            isBatchTarget && "ring-1 ring-accent/40",
+            width
+          )}
+          value={editDraft}
+          onChange={e => setEditDraft(e.target.value)}
+          onBlur={() => commitEdit()}
+          onKeyDown={handleCellKeyDown}
+          autoFocus
+        />
+      );
+    }
+
+    return (
+      <span
+        className={cn(
+          "cursor-text border-b border-transparent hover:border-border/40 transition-colors inline-block",
+          width, extraClass
+        )}
+        onClick={e => { e.stopPropagation(); startEditing(rowId, field, value); }}
+      >
+        {field === 'eventTime' ? String(value) : String(value)}
+      </span>
+    );
+  };
+
   // ─── Undo/Redo system ───────────────────────────────────────────
   const undoStack = useRef<TimelineItem[][]>([]);
   const redoStack = useRef<TimelineItem[][]>([]);
@@ -190,7 +294,39 @@ export default function ScriptWindow() {
     return sorted;
   }, [timelineItems, positions, filterText, sortField, sortDir]);
 
-  // Group by chain for collapse
+  // Resolve Tab/Enter navigation after rows are available
+  useEffect(() => {
+    if (!editNavIntent) return;
+    const { dir, fromRowId, fromField } = editNavIntent;
+    setEditNavIntent(null);
+
+    if (dir === 'next-cell') {
+      const idx = EDITABLE_FIELDS.indexOf(fromField as any);
+      if (idx >= 0 && idx < EDITABLE_FIELDS.length - 1) {
+        const nextField = EDITABLE_FIELDS[idx + 1];
+        const row = rows.find(r => r.id === fromRowId);
+        if (row) {
+          const val = nextField === 'eventTime' ? row.eventTime
+            : nextField === 'pan' ? row.pan
+            : nextField === 'tilt' ? row.tilt
+            : row.notes;
+          startEditing(fromRowId, nextField, val);
+        }
+      }
+    } else if (dir === 'next-row') {
+      const rowIdx = rows.findIndex(r => r.id === fromRowId);
+      if (rowIdx >= 0 && rowIdx < rows.length - 1) {
+        const nextRow = rows[rowIdx + 1];
+        const val = fromField === 'eventTime' ? nextRow.eventTime
+          : fromField === 'pan' ? nextRow.pan
+          : fromField === 'tilt' ? nextRow.tilt
+          : nextRow.notes;
+        startEditing(nextRow.id, fromField, val);
+      }
+    }
+  }, [editNavIntent, rows, startEditing]);
+
+
   const chainGroups = useMemo(() => {
     const groups = new Map<string, typeof rows>();
     for (const row of rows) {
@@ -838,15 +974,9 @@ export default function ScriptWindow() {
                     )}
                   </td>
 
-                  {/* Event Time */}
+                  {/* Event Time — click-to-edit with Tab/Enter */}
                   <td className="px-1 py-0.5">
-                    <input
-                      type="number" step="0.001" min="0"
-                      className="w-16 bg-transparent border-b border-transparent hover:border-border/40 focus:border-primary text-foreground outline-none transition-colors"
-                      value={row.eventTime}
-                      onChange={(e) => updateTimelineItem(row.id, { startTime: parseFloat(e.target.value) || 0 })}
-                      onClick={(e) => e.stopPropagation()}
-                    />
+                    {renderEditableCell(row.id, 'eventTime', row.eventTime, 'w-16', 'text-foreground')}
                   </td>
 
                   {/* Effect Time */}
@@ -889,26 +1019,14 @@ export default function ScriptWindow() {
                     </span>
                   </td>
 
-                  {/* Pan */}
+                  {/* Pan — click-to-edit */}
                   <td className="px-1 py-0.5">
-                    <input
-                      type="number" step="1"
-                      className="w-8 bg-transparent border-b border-transparent hover:border-border/40 focus:border-primary text-muted-foreground outline-none transition-colors"
-                      value={row.pan}
-                      onChange={(e) => updateTimelineItem(row.id, { pan: parseFloat(e.target.value) || 0 })}
-                      onClick={(e) => e.stopPropagation()}
-                    />
+                    {renderEditableCell(row.id, 'pan', row.pan, 'w-8', 'text-muted-foreground')}
                   </td>
 
-                  {/* Tilt */}
+                  {/* Tilt — click-to-edit */}
                   <td className="px-1 py-0.5">
-                    <input
-                      type="number" step="1"
-                      className="w-8 bg-transparent border-b border-transparent hover:border-border/40 focus:border-primary text-muted-foreground outline-none transition-colors"
-                      value={row.tilt}
-                      onChange={(e) => updateTimelineItem(row.id, { tilt: parseFloat(e.target.value) || 0 })}
-                      onClick={(e) => e.stopPropagation()}
-                    />
+                    {renderEditableCell(row.id, 'tilt', row.tilt, 'w-8', 'text-muted-foreground')}
                   </td>
 
                   {/* Duration */}
@@ -931,15 +1049,9 @@ export default function ScriptWindow() {
                     )}
                   </td>
 
-                  {/* Notes */}
+                  {/* Notes — click-to-edit */}
                   <td className="px-1 py-0.5">
-                    <input
-                      className="w-full bg-transparent border-b border-transparent hover:border-border/30 focus:border-primary text-muted-foreground outline-none text-[8px] transition-colors"
-                      placeholder="…"
-                      value={row.notes}
-                      onChange={(e) => updateTimelineItem(row.id, { notes: e.target.value })}
-                      onClick={(e) => e.stopPropagation()}
-                    />
+                    {renderEditableCell(row.id, 'notes', row.notes, 'w-full', 'text-muted-foreground text-[8px]')}
                   </td>
 
                   {/* Actions */}

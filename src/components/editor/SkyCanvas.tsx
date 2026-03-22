@@ -133,7 +133,7 @@ class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
 // Camera presets calibrated for real-world firework heights (55m-300m break heights)
 // Audience distance: typically 100-300m from launch site (NFPA 1123)
 const CAMERA_PRESETS = [
-  { id: 'free', label: 'Free', icon: Eye, position: [0, 2, 2200] as [number, number, number], target: [0, 300, 0] as [number, number, number] },
+  { id: 'free', label: 'Free', icon: Eye, position: [0, 1.7, 100] as [number, number, number], target: [0, 50, 0] as [number, number, number] },
   { id: 'satellite', label: 'Top', icon: Plane, position: [0, 6000, 0.1] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
   { id: 'audience', label: 'Plateia', icon: Users, position: [0, 1.7, 2500] as [number, number, number], target: [0, 300, 0] as [number, number, number] },
   { id: 'front', label: 'Front', icon: Users, position: [0, 1.7, 3000] as [number, number, number], target: [0, 400, 0] as [number, number, number] },
@@ -3134,7 +3134,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   }, [camera]);
 
   // Intro: cinematic positions
-  const introStartPos = useRef(new THREE.Vector3(0, 2500, 0.01));
+  const introStartPos = useRef(new THREE.Vector3(0, 300, 100));
   const introStartLook = useRef(new THREE.Vector3(0, 0, 0));
   const introDuration = useRef({ hold: 2.5, sweep: 4.0 });
 
@@ -3575,7 +3575,7 @@ export default function SkyCanvas() {
   const recoveringContextRef = useRef(false);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const environment = useSceneStore(st => st.environment);
-  const [showDebugOverlay, setShowDebugOverlay] = useState(true);
+  const [showDebugOverlay, setShowDebugOverlay] = useState(false);
 
   // Exit fly mode when pointer lock is lost (ESC)
   useEffect(() => {
