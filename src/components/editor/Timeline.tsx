@@ -66,6 +66,97 @@ const TimeRuler = React.forwardRef<HTMLDivElement, { duration: number; pixelsPer
   return <div className="relative h-5 border-b border-border/5">{marks}</div>;
 });
 
+// --- Context Menu for Timeline Items ---
+function TimelineContextMenu({
+  x, y, item, onClose,
+}: {
+  x: number; y: number; item: any; onClose: () => void;
+}) {
+  const {
+    removeTimelineItem, duplicateTimelineItems, selectTimelineItem,
+    updateTimelineItem, positions, setEditorMode, currentTime,
+    addTimelineItem, selectedTimelineItemIds,
+  } = useProjectStore();
+
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose();
+    };
+    const handleEscape = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => { document.removeEventListener('mousedown', handleClickOutside); document.removeEventListener('keydown', handleEscape); };
+  }, [onClose]);
+
+  const pyroPositions = positions.filter(p => p.type === 'pyro');
+  const [showPositions, setShowPositions] = useState(false);
+
+  return (
+    <div
+      ref={menuRef}
+      className="fixed z-[100] min-w-[180px] rounded-md border border-border/60 bg-popover/95 p-1 text-popover-foreground shadow-lg backdrop-blur-sm"
+      style={{ left: x, top: y }}
+    >
+      <button className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-[10px] hover:bg-accent/50 transition-colors"
+        onClick={() => { const t = prompt('Set time (seconds):', String(item.startTime)); if (t !== null) updateTimelineItem(item.id, { startTime: parseFloat(t) || 0 }); onClose(); }}>
+        <Clock className="h-3 w-3 text-muted-foreground" /> Set Time…
+      </button>
+      <button className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-[10px] hover:bg-accent/50 transition-colors"
+        onClick={() => { selectTimelineItem(item.id); setEditorMode('adjust-angles'); onClose(); }}>
+        <Crosshair className="h-3 w-3 text-muted-foreground" /> Set Angle…
+      </button>
+      <div className="h-px bg-border/30 my-0.5" />
+      <button className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-[10px] hover:bg-accent/50 transition-colors"
+        onClick={() => { duplicateTimelineItems([item.id]); onClose(); }}>
+        <Copy className="h-3 w-3 text-muted-foreground" /> Duplicate <span className="ml-auto text-muted-foreground/50 text-[8px]">Ctrl+D</span>
+      </button>
+      <button className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-[10px] hover:bg-accent/50 transition-colors"
+        onClick={() => { removeTimelineItem(item.id); onClose(); }}>
+        <Trash2 className="h-3 w-3 text-destructive/70" /> Delete <span className="ml-auto text-muted-foreground/50 text-[8px]">Del</span>
+      </button>
+      <div className="h-px bg-border/30 my-0.5" />
+      <div className="relative">
+        <button className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-[10px] hover:bg-accent/50 transition-colors"
+          onClick={() => setShowPositions(!showPositions)}>
+          <Move className="h-3 w-3 text-muted-foreground" /> Assign to Position <ChevronRight className="h-3 w-3 ml-auto text-muted-foreground/50" />
+        </button>
+        {showPositions && pyroPositions.length > 0 && (
+          <div className="absolute left-full top-0 ml-1 min-w-[120px] rounded-md border border-border/60 bg-popover/95 p-1 shadow-lg backdrop-blur-sm max-h-[200px] overflow-y-auto">
+            {pyroPositions.map(pos => (
+              <button key={pos.id}
+                className="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-[9px] hover:bg-accent/50 transition-colors"
+                onClick={() => {
+                  updateTimelineItem(item.id, { positionId: pos.id, positionName: pos.name, position: { x: pos.x, y: pos.y, z: pos.z } });
+                  onClose();
+                }}>
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: pos.color }} />
+                {pos.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="h-px bg-border/30 my-0.5" />
+      <button className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-[10px] hover:bg-accent/50 transition-colors"
+        onClick={() => {
+          const ids = selectedTimelineItemIds.length > 1 ? selectedTimelineItemIds : [item.id];
+          useProjectStore.getState().combineAsChain(ids);
+          onClose();
+        }}>
+        <Link2 className="h-3 w-3 text-muted-foreground" /> Add to Chain
+      </button>
+      {item.chainRef && (
+        <button className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-[10px] hover:bg-accent/50 transition-colors"
+          onClick={() => { useProjectStore.getState().breakChain(item.chainRef); onClose(); }}>
+          <Unlink className="h-3 w-3 text-muted-foreground" /> Break Chain
+        </button>
+      )}
+    </div>
+  );
+}
+
 // --- Draggable Timeline Item ---
 const DraggableTimelineItem = React.forwardRef<HTMLButtonElement, {
   item: any;
@@ -75,12 +166,48 @@ const DraggableTimelineItem = React.forwardRef<HTMLButtonElement, {
   isMultiSelected: boolean;
   onSelect: (e: React.MouseEvent) => void;
   onDragStart: (e: React.MouseEvent, itemId: string) => void;
+  onContextMenu: (e: React.MouseEvent, item: any) => void;
+  onResize: (itemId: string, edge: 'left' | 'right', deltaTime: number) => void;
 }>(function DraggableTimelineItem({
-  item, effect, pixelsPerSecond, isSelected, isMultiSelected, onSelect, onDragStart,
+  item, effect, pixelsPerSecond, isSelected, isMultiSelected, onSelect, onDragStart, onContextMenu, onResize,
 }, ref) {
   const pft = effect.type === 'firework' ? getPreFireTime(effect.name) : 0;
   const pftPx = pft * pixelsPerSecond;
-  const widthPx = Math.max(effect.duration * pixelsPerSecond, 28);
+  const effectDuration = item.durationOverride ?? effect.duration;
+  const widthPx = Math.max(effectDuration * pixelsPerSecond, 28);
+  const [resizing, setResizing] = useState<'left' | 'right' | null>(null);
+
+  const handleResizeStart = useCallback((e: React.MouseEvent, edge: 'left' | 'right') => {
+    e.stopPropagation();
+    e.preventDefault();
+    setResizing(edge);
+    const startX = e.clientX;
+    const startTime = item.startTime;
+    const startDuration = effectDuration;
+
+    const handleMove = (me: MouseEvent) => {
+      const dx = me.clientX - startX;
+      const dt = dx / pixelsPerSecond;
+      if (edge === 'right') {
+        const newDur = Math.max(0.2, startDuration + dt);
+        onResize(item.id, 'right', newDur);
+      } else {
+        const newStart = Math.max(0, startTime + dt);
+        onResize(item.id, 'left', newStart);
+      }
+    };
+    const handleUp = () => {
+      setResizing(null);
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+    };
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+  }, [item, pixelsPerSecond, effectDuration, onResize]);
+
+  // Angle indicator
+  const pan = item.pan ?? 0;
+  const showAngle = widthPx > 40 && effect.type === 'firework';
 
   return (
     <div className="absolute top-0.5" style={{ left: `${item.startTime * pixelsPerSecond}px` }}>
@@ -91,10 +218,16 @@ const DraggableTimelineItem = React.forwardRef<HTMLButtonElement, {
           title={`Pre-Fire: ${pft.toFixed(1)}s`}
         />
       )}
+      {/* Left resize handle */}
+      <div
+        className="absolute top-0 left-0 w-[3px] h-7 cursor-col-resize z-20 hover:bg-primary/30 transition-colors"
+        onMouseDown={(e) => handleResizeStart(e, 'left')}
+      />
       <button
         ref={ref}
         onClick={onSelect}
-        onMouseDown={(e) => { if (e.button === 0) onDragStart(e, item.id); }}
+        onMouseDown={(e) => { if (e.button === 0 && !resizing) onDragStart(e, item.id); }}
+        onContextMenu={(e) => { e.preventDefault(); onContextMenu(e, item); }}
         className={cn(
           "h-7 rounded-md flex items-center px-1.5 text-[9px] font-medium transition-all cursor-grab active:cursor-grabbing border group",
           isSelected
@@ -113,13 +246,27 @@ const DraggableTimelineItem = React.forwardRef<HTMLButtonElement, {
       >
         <GripVertical className="w-2 h-2 text-muted-foreground/15 group-hover:text-muted-foreground/30 mr-0.5 flex-shrink-0 transition-colors" />
         <div className="w-[3px] h-4 rounded-full mr-1.5 flex-shrink-0" style={{ backgroundColor: effect.color, boxShadow: `0 0 6px ${effect.color}55` }} />
-        <div className="flex flex-col items-start min-w-0 overflow-hidden">
+        <div className="flex flex-col items-start min-w-0 overflow-hidden flex-1">
           <span className="truncate text-foreground/75 leading-tight text-[9px]">{effect.name}</span>
           {item.positionName && (
             <span className="truncate text-[7px] text-muted-foreground/40 leading-tight">📍 {item.positionName}</span>
           )}
         </div>
+        {/* Angle indicator */}
+        {showAngle && (
+          <svg width="8" height="8" viewBox="0 0 8 8" className="flex-shrink-0 ml-0.5 opacity-60">
+            <line x1="4" y1="4" x2={4 + 3 * Math.sin(pan * Math.PI / 180)} y2={4 - 3 * Math.cos(pan * Math.PI / 180)}
+              stroke={Math.abs(pan) > 45 ? '#4FC3F7' : '#FF8A65'} strokeWidth="1.5" strokeLinecap="round" />
+            <circle cx="4" cy="4" r="1" fill={Math.abs(pan) > 45 ? '#4FC3F7' : '#FF8A65'} opacity="0.5" />
+          </svg>
+        )}
       </button>
+      {/* Right resize handle */}
+      <div
+        className="absolute top-0 right-0 w-[3px] h-7 cursor-col-resize z-20 hover:bg-primary/30 transition-colors"
+        style={{ left: `${widthPx - 3}px` }}
+        onMouseDown={(e) => handleResizeStart(e, 'right')}
+      />
     </div>
   );
 });
