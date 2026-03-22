@@ -65,6 +65,7 @@ const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: stri
   field_map:   { color: 'hsl(120 70% 38%)', glow: 'hsl(120 70% 38% / 0.08)', label: 'FIELD MAP',   badge: 'bg-green-500/15 text-green-400 border-green-500/20' },
   mobile_link: { color: 'hsl(240 50% 52%)', glow: 'hsl(240 50% 52% / 0.08)', label: 'FXK-LINK', badge: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/20' },
   settings:    { color: 'hsl(200 8% 50%)', glow: 'hsl(200 8% 50% / 0.06)', label: 'SETTINGS',    badge: 'bg-muted/30 text-muted-foreground border-border/15' },
+  drone_ops:   { color: 'hsl(165 100% 42%)', glow: 'hsl(165 100% 42% / 0.08)', label: 'FXK-DRONES', badge: 'bg-teal-500/15 text-teal-400 border-teal-500/20' },
 };
 
 // ── Sidebar Sections ──
