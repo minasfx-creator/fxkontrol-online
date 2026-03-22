@@ -294,7 +294,39 @@ export default function ScriptWindow() {
     return sorted;
   }, [timelineItems, positions, filterText, sortField, sortDir]);
 
-  // Group by chain for collapse
+  // Resolve Tab/Enter navigation after rows are available
+  useEffect(() => {
+    if (!editNavIntent) return;
+    const { dir, fromRowId, fromField } = editNavIntent;
+    setEditNavIntent(null);
+
+    if (dir === 'next-cell') {
+      const idx = EDITABLE_FIELDS.indexOf(fromField as any);
+      if (idx >= 0 && idx < EDITABLE_FIELDS.length - 1) {
+        const nextField = EDITABLE_FIELDS[idx + 1];
+        const row = rows.find(r => r.id === fromRowId);
+        if (row) {
+          const val = nextField === 'eventTime' ? row.eventTime
+            : nextField === 'pan' ? row.pan
+            : nextField === 'tilt' ? row.tilt
+            : row.notes;
+          startEditing(fromRowId, nextField, val);
+        }
+      }
+    } else if (dir === 'next-row') {
+      const rowIdx = rows.findIndex(r => r.id === fromRowId);
+      if (rowIdx >= 0 && rowIdx < rows.length - 1) {
+        const nextRow = rows[rowIdx + 1];
+        const val = fromField === 'eventTime' ? nextRow.eventTime
+          : fromField === 'pan' ? nextRow.pan
+          : fromField === 'tilt' ? nextRow.tilt
+          : nextRow.notes;
+        startEditing(nextRow.id, fromField, val);
+      }
+    }
+  }, [editNavIntent, rows, startEditing]);
+
+
   const chainGroups = useMemo(() => {
     const groups = new Map<string, typeof rows>();
     for (const row of rows) {
