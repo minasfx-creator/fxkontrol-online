@@ -1,104 +1,82 @@
 
 
-# Reorganização Inteligente de Menus, Real-time Show Control, Persistência DMX Log & Refine AI UX
+# FXK-PYRO — Eliminar Deadman (PC), Mobile Hold-to-Fire, Module Scanner, Fire Confirmation & Layout BR2049
 
-## 1. Reorganizar Menus por Função
+## Resumo
 
-### `src/pages/CommandCenter.tsx`
-Reorganizar `MODE_SECTIONS` em 3 grupos lógicos com ícones e labels claros:
+Três blocos de mudanças no PyroFireOnePanel:
+1. **Eliminar Deadman no PC** — firing direto com Master Key + ARM (sem hold)
+2. **Mobile Hold-to-Fire** — cada igniter requer 300ms press-and-hold para segurança (substitui deadman)
+3. **Module Scanner, Fire Confirmation Log, Layout futurístico** — conforme plano anterior aprovado
 
-```text
-┌─ EXECUTION (Disparo/Controle ao vivo) ──┐
-│  FXK-PYRO   — Disparo pirotécnico        │
-│  FXK-DMX    — Efeitos especiais DMX       │
-├─ MONITORING (Supervisão em tempo real) ──┤
-│  SHOW CTRL  — Overview macro 4 sistemas   │
-│  DMX MONITOR — Log de sinais DMX          │
-│  FXK-LIGHT  — grandMA3 iluminação         │
-│  FXK-DRONE  — Comando de drones           │
-├─ HARDWARE (Configuração de campo) ───────┤
-│  MODULE     — Controle módulo campo       │
-└──────────────────────────────────────────┘
-```
+## Mudanças
 
-- EXECUTION agrupa os dois consoles de disparo direto (fire modes)
-- MONITORING agrupa tudo que é visualização/acompanhamento em tempo real
-- HARDWARE agrupa configuração de equipamento físico
-- Atualizar `MOBILE_CATEGORIES` para refletir os 3 grupos
-- Ícones: `Flame` para Execution, `Activity` para Monitoring, `Cpu` para Hardware
+### 1. `src/components/editor/live-firing/PyroFireOnePanel.tsx`
 
-### `src/components/editor/LiveFiringPanel.tsx`
-Simplificar `MODE_CATEGORIES` para alinhar com a nova estrutura de 7 modos (remover modos obsoletos como `simple_dmx`, `manual_fire`, `check_slave`, `controllers`, `pbus`, `wifi_direct`, `connections`, `radio`, `field_map`, `mobile_link`).
+#### A. Eliminar Deadman (PC)
+- Alterar `canFire`: no PC → `masterKeyOn && (pyroArm || dmxArm)` (sem deadmanHeld)
+- No mobile → `masterKeyOn && (pyroArm || dmxArm)` também (segurança via hold-to-fire por igniter)
+- Remover `renderDeadman()` inteiramente
+- Remover referência a `deadmanHeld` da prop interface e do uso interno
+- Remover `renderDeadman()` do fullscreen layout (linha 1430)
+- Atualizar mensagem de "Hold DEADMAN to fire" para "ARM system to fire"
 
-### `src/components/editor/live-firing/types.ts`
-Reduzir `FXCMode` para os 7 modos reais + `settings`:
-```typescript
-export type FXCMode = 'super_dmx' | 'pyro_fire' | 'fxk_light' | 'drone_ops' | 'show_control' | 'module' | 'dmx_monitor' | 'settings';
-```
+#### B. Mobile Hold-to-Fire (igniters)
+- No `renderIgniterGrid()`: para mobile, substituir `onTouchStart` imediato por **hold-to-fire** com 300ms:
+  - `onTouchStart` → inicia timer 300ms + progress ring visual (SVG circle com stroke-dashoffset animado)
+  - `onTouchEnd` / `onTouchCancel` → cancela se < 300ms
+  - Visual: anel de progresso âmbar ao redor do botão durante hold, flash verde ao completar
+- No PC: manter click imediato (`onMouseDown`) sem mudança
+- Adicionar state `holdingIgniter: { moduleAddr: number; pos: number } | null` e `holdProgress: number`
 
-## 2. Real-time Show Control Panel
+#### C. Module Scanner & Active Monitor
+- Adicionar `renderModuleMonitor()` como sub-seção no renderModuleSelector ou como tab lateral no fullscreen:
+  - Cada módulo: battery SVG arc gauge, signal bars (5), temperature, packet loss
+  - **SCAN** button com animação sweep (CSS `pyro-scan-sweep`)
+  - Summary bar: `ONLINE: 4/6 · ARMED: 2 · SIGNAL: OK`
+  - Módulos color-coded: green=healthy, amber=degraded, red=armed, dark=offline
+- Auto-refresh telemetria a cada 2s com pulse animation
 
-### `src/components/editor/ShowControlPanel.tsx`
-- Adicionar `useEffect` com `supabase.channel('show-telemetry')` para escutar eventos real-time dos 4 sistemas via Realtime subscriptions
-- Subscrever `postgres_changes` na tabela `artnet_modules` para detectar módulos online/offline
-- Adicionar sparkline com dados reais: acumular últimos 20 data points de atividade por sistema em `useRef`
-- Adicionar indicadores de latência por sistema (ms desde último pacote recebido)
-- Mover de random sparkline data para dados reais do `useSfxChannelStore` com buffer circular de 20 amostras atualizado a cada 500ms
+#### D. Fire Confirmation & Timecode Log
+- Adicionar `fireLog` state: `{ cueId: string; expectedMs: number; actualMs: number; delta: number; status: 'OK'|'LATE'|'EARLY' }[]`
+- No timecode mode, ao disparar: registrar `actualMs = tcTimeMs`, `delta = actualMs - expectedMs`
+- Renderizar log abaixo da cue list com color-coding: green (±50ms), amber (±200ms), red (>200ms)
+- No manual mode: toast de confirmação com module/igniter/timestamp
 
-## 3. Persistência do Log DMX
+#### E. Layout Futurístico BR2049
+- **Header**: âmbar accent line (2px glow), LCD counters âmbar/vermelho (não mais verde), mission clock HH:MM:SS, subtitle "NEXUS FIELD CONTROLLER"
+- **Igniter grid**: group headers (A:1-8, B:9-16, C:17-24, D:25-32), fired igniters com diagonal strikethrough pattern, armed igniters com red glow border
+- **Mode tabs**: segmented control com sliding amber underline
+- **PANIC**: warning stripes (diagonal yellow/black), pulsing red glow when armed
+- **Connection bar**: consolidar em single-line com dot indicators: `● RS-485 ● DMX ● UDP ● ARTNET(4) | SIM | TX:1240 RX:890`
+- **Corner brackets**: HUD overlay nos cantos do content area
+- **Scanlines**: amber-tinted
 
-### Nova tabela: `dmx_logs`
-```sql
-CREATE TABLE public.dmx_logs (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id uuid NOT NULL,
-  session_id text NOT NULL,
-  timestamp timestamptz NOT NULL DEFAULT now(),
-  source text NOT NULL DEFAULT 'Art-Net',
-  protocol text NOT NULL DEFAULT 'Art-Net',
-  universe integer NOT NULL DEFAULT 0,
-  channel_data jsonb NOT NULL DEFAULT '[]',
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-ALTER TABLE public.dmx_logs ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users manage own dmx logs" ON public.dmx_logs FOR ALL TO authenticated USING (is_project_owner(project_id)) WITH CHECK (is_project_owner(project_id));
-CREATE INDEX idx_dmx_logs_project_session ON public.dmx_logs(project_id, session_id);
-```
+### 2. `src/components/editor/LiveFiringPanel.tsx`
 
-### `src/components/editor/DMXMonitorPanel.tsx`
-- Adicionar botão "SAVE LOG" que faz batch insert dos packetLog na tabela `dmx_logs`
-- Adicionar botão "LOAD HISTORY" que carrega logs salvos de sessões anteriores
-- Gerar `sessionId` único por mount (uuid)
-- Auto-save a cada 100 pacotes ou 30 segundos (o que vier primeiro)
-- Adicionar toggle "AUTO-SAVE" no header com estado persistido em localStorage
+- Remover `deadmanHeld` da prop passada ao PyroFireOnePanel
+- Manter deadman no LiveFiringPanel ARM bar para outros modos (super_dmx) mas **não** passar para PyroFireOnePanel
+- Atualizar a linha que renderiza PyroFireOnePanel removendo `deadmanHeld={deadmanHeld}`
 
-## 4. Refinar UX do Assistente AI (Joi)
+### 3. `src/index.css` — Animações
 
-### `src/components/FXKAssistant.tsx`
-- **Respostas contextuais**: Detectar `window.location` para mostrar presets relevantes ao modo atual (se Command Center → presets de disparo; se Editor → presets de design)
-- **Histórico de sessão**: Salvar últimas 10 mensagens em `localStorage` e restaurar ao reabrir
-- **Feedback de qualidade**: Adicionar botões 👍/👎 sutis em cada resposta da AI
-- **Modo expandido**: Adicionar botão de expand para full-width (de 360px para 560px) com transição suave
-- **Auto-scroll melhorado**: Scroll só quando user está no bottom (detectar scroll position)
-- **Input multiline**: Trocar `<input>` por `<textarea>` com auto-resize (max 4 linhas), Enter envia, Shift+Enter nova linha
-- **Indicador de conexão**: Dot no header mostrando se a edge function está acessível (ping no mount)
-- **Limpeza de conversa**: Botão "CLEAR" no header para resetar mensagens
-- **Animação de entrada refinada**: Presets aparecem com stagger delay (50ms cada)
-- **Timestamp sutil**: Mostrar hora em cada mensagem (HH:MM)
+- `@keyframes pyro-scan-sweep`: varredura horizontal
+- `@keyframes hold-ring`: stroke-dashoffset 100→0 em 300ms
+- `.pyro-fire-confirmed`: flash verde
+- `.pyro-fire-late`: pulse âmbar
+- `.pyro-grid-group-header`: label de grupo com accent âmbar
+- `.pyro-hud-corner`: corner brackets táticos
 
 ## Arquivos
 
-1. `src/components/editor/live-firing/types.ts` — Limpar FXCMode
-2. `src/pages/CommandCenter.tsx` — Reorganizar menus por função
-3. `src/components/editor/LiveFiringPanel.tsx` — Simplificar MODE_CATEGORIES
-4. `src/components/editor/ShowControlPanel.tsx` — Real-time com dados reais
-5. `src/components/editor/DMXMonitorPanel.tsx` — Persistência + auto-save
-6. `src/components/FXKAssistant.tsx` — UX refinements
-7. Migration SQL — Tabela `dmx_logs`
+1. `src/components/editor/live-firing/PyroFireOnePanel.tsx` — Overhaul completo
+2. `src/components/editor/LiveFiringPanel.tsx` — Remover deadmanHeld da prop
+3. `src/index.css` — Animações de suporte
 
 ## Notas Técnicas
-- Tabela `dmx_logs` usa `jsonb` para channel_data (flexível para diferentes formatos de pacote)
-- Auto-save usa debounce para evitar writes excessivos
-- Realtime no ShowControl usa canais existentes do Supabase
-- Nenhuma nova dependência
+- Sem mudanças no banco de dados
+- Sem novas dependências
+- Fire confirmation log em component state (não persistido)
+- Hold-to-fire usa `setTimeout` + `requestAnimationFrame` para progress ring
+- Deadman permanece no LiveFiringPanel para o modo super_dmx — só removido do PyroFireOnePanel
 
