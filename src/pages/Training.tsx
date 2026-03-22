@@ -302,7 +302,7 @@ export default function Training() {
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Hero */}
       <div className="relative overflow-hidden rounded-xl border bg-gradient-to-br from-[hsl(var(--surface-1))] via-[hsl(var(--surface-2))] to-[hsl(var(--surface-1))] p-6 animate-fxk-fade-up" style={{ borderColor: 'hsl(32 100% 50% / 0.15)' }}>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,hsl(var(--fxk-violet)/0.08),transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,hsl(32_100%_50%/0.06),transparent_60%)]" />
         <div className="absolute top-4 right-6 opacity-[0.04]"><Gamepad2 className="h-32 w-32" /></div>
         <div className="relative z-10 flex items-start justify-between">
           <div>
