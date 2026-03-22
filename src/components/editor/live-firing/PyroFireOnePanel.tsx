@@ -13,7 +13,7 @@ import {
   ChevronLeft, ChevronRight, RotateCcw, Play, Square, SkipForward,
   CheckCircle2, XCircle, Clock, Activity, Battery, Signal,
   Lock, Unlock, Search, Download, Upload, Maximize2, Minimize2, X,
-  Wifi, WifiOff, Usb, ScanLine, Info
+  Wifi, WifiOff, Usb, ScanLine, Info, Globe
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -28,6 +28,7 @@ import { formatTimecode } from './constants';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { parseFireOneCSV, parseFireOneFIR, exportFireOneCSV, downloadFile, autoDetectAndParse } from '@/lib/fireoneScriptParser';
 import type { WirelessConnectionMode } from '@/lib/fireoneProtocol';
+import { artnetModuleService } from '@/services/artnetModuleService';
 
 interface PyroFireOnePanelProps {
   fs: boolean;
@@ -107,6 +108,8 @@ export default function PyroFireOnePanel({
   const [masterKeyOn, setMasterKeyOn] = useState(false);
   const [simMode, setSimMode] = useState(true);
   const [pyroFullscreen, setPyroFullscreen] = useState(false);
+  const [artnetLinking, setArtnetLinking] = useState(false);
+  const [artnetLinkedModules, setArtnetLinkedModules] = useState<Set<number>>(new Set());
 
   // Step mode
   const [stepIndex, setStepIndex] = useState(0);
@@ -384,6 +387,85 @@ export default function PyroFireOnePanel({
     }, 1200);
   }, [currentModule, selectedModule, modules, simMode, hardware]);
 
+  // ── ArtNet Link: discover and connect Art-Net modules ──
+  const handleArtnetLink = useCallback(async () => {
+    setArtnetLinking(true);
+    toast.info('ARTNET LINK: Scanning for Art-Net modules...');
+    try {
+      // Init controller if needed
+      let ctrl = artnetModuleService.getController();
+      if (!ctrl) {
+        ctrl = artnetModuleService.initController({ name: 'XL4+ ARTNET BRIDGE' });
+      }
+      // Discover via ArtPoll
+      await artnetModuleService.discoverModules();
+      // For each XL4 field module, register in Art-Net service if not already
+      const registered = new Set<number>();
+      for (const m of modules) {
+        if (!m.connected) continue;
+        const existing = ctrl.modules.find(am => am.moduleAddress === m.address);
+        if (!existing) {
+          artnetModuleService.addModule({
+            name: `FM-${String(m.address).padStart(2, '0')}`,
+            moduleAddress: m.address,
+            ip: '192.168.1.' + (100 + m.address),
+            transport: 'lan',
+            channelCount: 32,
+            dmxStartAddress: (m.address - 1) * 32 + 1,
+            label: `XL4 Module ${m.address}`,
+          });
+        }
+        registered.add(m.address);
+      }
+      // Connect all registered modules
+      await artnetModuleService.connectAllModules();
+      setArtnetLinkedModules(registered);
+      toast.success(`ARTNET LINK: ${registered.size} modules linked via Art-Net`);
+    } catch (err: any) {
+      toast.error(`ARTNET LINK failed: ${err.message}`);
+    } finally {
+      setArtnetLinking(false);
+    }
+  }, [modules]);
+
+  const handleModuleArtnetLink = useCallback(async (moduleAddr: number) => {
+    try {
+      let ctrl = artnetModuleService.getController();
+      if (!ctrl) {
+        ctrl = artnetModuleService.initController({ name: 'XL4+ ARTNET BRIDGE' });
+      }
+      const existing = ctrl.modules.find(am => am.moduleAddress === moduleAddr);
+      if (existing) {
+        // Already registered — toggle connect/disconnect
+        const state = artnetModuleService.getModuleState(existing.id);
+        if (state === 'connected') {
+          artnetModuleService.disconnectModule(existing.id);
+          setArtnetLinkedModules(prev => { const n = new Set(prev); n.delete(moduleAddr); return n; });
+          toast.info(`FM-${String(moduleAddr).padStart(2, '0')}: Art-Net unlinked`);
+        } else {
+          await artnetModuleService.connectModule(existing.id);
+          setArtnetLinkedModules(prev => new Set(prev).add(moduleAddr));
+          toast.success(`FM-${String(moduleAddr).padStart(2, '0')}: Art-Net linked`);
+        }
+      } else {
+        const mod = artnetModuleService.addModule({
+          name: `FM-${String(moduleAddr).padStart(2, '0')}`,
+          moduleAddress: moduleAddr,
+          ip: '192.168.1.' + (100 + moduleAddr),
+          transport: 'lan',
+          channelCount: 32,
+          dmxStartAddress: (moduleAddr - 1) * 32 + 1,
+          label: `XL4 Module ${moduleAddr}`,
+        });
+        await artnetModuleService.connectModule(mod.id);
+        setArtnetLinkedModules(prev => new Set(prev).add(moduleAddr));
+        toast.success(`FM-${String(moduleAddr).padStart(2, '0')}: Art-Net linked`);
+      }
+    } catch (err: any) {
+      toast.error(`Art-Net link failed: ${err.message}`);
+    }
+  }, []);
+
   const connectedCount = modules.filter(m => m.connected).length;
   const armedModCount = modules.filter(m => m.armed).length;
   const totalIgniters = modules.reduce((sum, m) => sum + m.igniters.filter(i => i.connected && !i.fired).length, 0);
@@ -504,6 +586,20 @@ export default function PyroFireOnePanel({
             {hardware.scanning ? 'SCANNING...' : 'SCAN'}
           </button>
         )}
+
+        {/* ARTNET LINK */}
+        <button onClick={handleArtnetLink} disabled={artnetLinking}
+          className={cn("rounded border font-bold uppercase transition-all",
+            sz === 'xl' ? "px-3 py-1 text-[9px]" : "px-2 py-0.5 text-[6px]",
+            artnetLinking
+              ? "bg-violet-600/15 border-violet-500/30 text-violet-400/80 animate-pulse"
+              : artnetLinkedModules.size > 0
+                ? "bg-violet-600/15 border-violet-500/25 text-violet-400/70"
+                : "bg-violet-600/10 border-violet-500/15 text-violet-400/50 hover:text-violet-400/70"
+          )}>
+          <Globe className={cn(sz === 'xl' ? "w-3 h-3 inline mr-1" : "w-2 h-2 inline mr-0.5")} />
+          {artnetLinking ? 'LINKING...' : artnetLinkedModules.size > 0 ? `ARTNET ✓${artnetLinkedModules.size}` : 'ARTNET LINK'}
+        </button>
 
         {/* Import / Export */}
         <button onClick={() => fileInputRef.current?.click()}
@@ -657,27 +753,48 @@ export default function PyroFireOnePanel({
     )} style={{ background: 'hsl(220 12% 6%)' }}>
       {modules.map(m => {
         const ModeIcon = connectionModeIcon(m.connectionMode);
+        const isLinked = artnetLinkedModules.has(m.address);
         return (
-          <button key={m.address} onClick={() => setSelectedModule(m.address)}
-            className={cn(
-              "rounded border font-mono font-bold shrink-0 transition-all flex items-center gap-1",
-              sz === 'xl' ? "px-3.5 py-2 text-xs" : sz === 'fs' ? "px-2.5 py-1.5 text-[9px]" : "px-2 py-1 text-[7px]",
-              selectedModule === m.address
-                ? m.armed ? "bg-red-600/20 border-red-500/40 text-red-400" : "bg-primary/15 border-primary/40 text-primary"
-                : m.armed ? "bg-red-600/10 border-red-800/20 text-red-400/50"
-                : m.connected ? "bg-[hsl(220_10%_10%)] border-border/15 text-foreground/50" : "bg-[hsl(220_10%_7%)] border-border/5 text-muted-foreground/15"
-            )}>
-            <ModeIcon className={cn(
-              sz === 'xl' ? "w-3 h-3" : "w-2 h-2",
-              m.connectionMode === 'wireless' ? rssiColor(m.rssiDbm) :
-              m.connectionMode === 'fallback' ? "text-amber-400 animate-pulse" : "text-green-400/40"
-            )} />
-            FM-{String(m.address).padStart(2, '0')}
-            {m.armed && <span className="ml-0.5 text-red-400">●</span>}
-            {m.connectionMode === 'wireless' && m.rssiDbm !== undefined && (
-              <span className={cn("text-[5px]", rssiColor(m.rssiDbm))}>{m.rssiDbm}dB</span>
+          <div key={m.address} className="flex items-center gap-0.5 shrink-0">
+            <button onClick={() => setSelectedModule(m.address)}
+              className={cn(
+                "rounded border font-mono font-bold shrink-0 transition-all flex items-center gap-1",
+                sz === 'xl' ? "px-3.5 py-2 text-xs" : sz === 'fs' ? "px-2.5 py-1.5 text-[9px]" : "px-2 py-1 text-[7px]",
+                selectedModule === m.address
+                  ? m.armed ? "bg-red-600/20 border-red-500/40 text-red-400" : "bg-primary/15 border-primary/40 text-primary"
+                  : m.armed ? "bg-red-600/10 border-red-800/20 text-red-400/50"
+                  : m.connected ? "bg-[hsl(220_10%_10%)] border-border/15 text-foreground/50" : "bg-[hsl(220_10%_7%)] border-border/5 text-muted-foreground/15"
+              )}>
+              <ModeIcon className={cn(
+                sz === 'xl' ? "w-3 h-3" : "w-2 h-2",
+                m.connectionMode === 'wireless' ? rssiColor(m.rssiDbm) :
+                m.connectionMode === 'fallback' ? "text-amber-400 animate-pulse" : "text-green-400/40"
+              )} />
+              FM-{String(m.address).padStart(2, '0')}
+              {m.armed && <span className="ml-0.5 text-red-400">●</span>}
+              {isLinked && (
+                <Globe className={cn(sz === 'xl' ? "w-2.5 h-2.5" : "w-2 h-2", "text-violet-400")} />
+              )}
+              {m.connectionMode === 'wireless' && m.rssiDbm !== undefined && (
+                <span className={cn("text-[5px]", rssiColor(m.rssiDbm))}>{m.rssiDbm}dB</span>
+              )}
+            </button>
+            {m.connected && (
+              <button
+                onClick={() => handleModuleArtnetLink(m.address)}
+                className={cn(
+                  "rounded border shrink-0 transition-all",
+                  sz === 'xl' ? "p-1.5" : "p-0.5",
+                  isLinked
+                    ? "bg-violet-600/15 border-violet-500/30 text-violet-400"
+                    : "border-border/10 text-muted-foreground/30 hover:text-violet-400/60 hover:border-violet-500/20"
+                )}
+                title={`ArtNet Link FM-${String(m.address).padStart(2, '0')}`}
+              >
+                <Globe className={cn(sz === 'xl' ? "w-3 h-3" : "w-2 h-2")} />
+              </button>
             )}
-          </button>
+          </div>
         );
       })}
       <button onClick={importPyroCues}
