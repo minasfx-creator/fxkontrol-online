@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect, useMemo, forwardRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
-import { Html } from '@react-three/drei';
+import { Html, Line } from '@react-three/drei';
 import { useProjectStore, type Position, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
 import { useUndoStore } from '@/store/useUndoStore';
@@ -443,13 +443,20 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
           <meshBasicMaterial visible={false} />
         </mesh>
         {position.type === 'pyro' ? (
-          <group rotation={[0, -position.heading * (Math.PI / 180), 0]}>
+          <group rotation={[
+            (position.pitch || 85) * (Math.PI / 180) - Math.PI / 2,
+            -position.heading * (Math.PI / 180),
+            (position.roll || 0) * (Math.PI / 180),
+          ]} /* Finale Euler: Pitch(X) → Roll(Z) → Heading(Y) order YZX */>
             <MortarTubeIcon color={color} emissiveIntensity={emissiveIntensity} isSelected={isSelected} />
           </group>
         ) : (
           <DronePadIcon color={color} emissiveIntensity={emissiveIntensity} isSelected={isSelected} />
         )}
       </group>
+
+      {/* Always-on direction line — Finale 3D style */}
+      <DirectionLine position={position} color={color} isSelected={isSelected} isHovered={isHovered} />
 
       {/* Selection ring */}
       {isSelected && (
@@ -486,14 +493,6 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
           </div>
         </Html>
       )}
-
-      {/* Direction arrow */}
-      <group rotation={[0, -position.heading * (Math.PI / 180), 0]}>
-        <mesh position={[0, 0.1, -0.7]} rotation={[-Math.PI / 2, 0, 0]}>
-          <coneGeometry args={[0.08, 0.25, 4]} />
-          <meshBasicMaterial color={color} transparent opacity={0.5} />
-        </mesh>
-      </group>
 
       {/* Clickable Label Plate — visible on hover/select only */}
       {showLabel && (
@@ -546,6 +545,44 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
   );
 });
 Pin.displayName = 'Pin';
+
+/** Always-on direction line — shows launch vector from H/P/R Euler rotation */
+function DirectionLine({ position, color, isSelected, isHovered }: { position: Position; color: string; isSelected: boolean; isHovered: boolean }) {
+  const linePoints = useMemo((): [number, number, number][] => {
+    if (position.type !== 'pyro') return [];
+    const hRad = position.heading * (Math.PI / 180);
+    const pRad = (position.pitch || 85) * (Math.PI / 180);
+    const length = isSelected ? 3 : 2;
+    const dx = Math.sin(hRad) * Math.cos(pRad) * length;
+    const dy = Math.sin(pRad) * length;
+    const dz = -Math.cos(hRad) * Math.cos(pRad) * length;
+    return [[0, 0.15, 0], [dx, dy + 0.15, dz]];
+  }, [position.heading, position.pitch, position.type, isSelected]);
+
+  if (linePoints.length < 2) return null;
+
+  const opacity = isSelected ? 0.7 : isHovered ? 0.3 : 0.15;
+  const lineWidth = isSelected ? 2.5 : isHovered ? 1.5 : 1;
+
+  return (
+    <>
+      <Line points={linePoints} color={isSelected ? color : '#aaaaaa'} lineWidth={lineWidth} transparent opacity={opacity} />
+      {/* Small arrowhead at tip */}
+      {(() => {
+        const tip = linePoints[1];
+        const dir = new THREE.Vector3(tip[0], tip[1] - 0.15, tip[2]).normalize();
+        const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+        const e = new THREE.Euler().setFromQuaternion(q);
+        return (
+          <mesh position={tip} rotation={[e.x, e.y, e.z]}>
+            <coneGeometry args={[0.06, 0.18, 4]} />
+            <meshBasicMaterial color={isSelected ? color : '#aaaaaa'} transparent opacity={opacity} />
+          </mesh>
+        );
+      })()}
+    </>
+  );
+}
 
 /** Ground plane for placing new pins — continuous mode */
 function GroundClickPlane() {

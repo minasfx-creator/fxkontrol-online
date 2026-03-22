@@ -260,7 +260,7 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
   const { updatePosition } = useProjectStore();
   const [isDragging, setIsDragging] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [dragAxis, setDragAxis] = useState<'all' | 'heading' | 'pitch' | 'roll'>('all');
+  const [dragAxis, setDragAxis] = useState<'all' | 'heading' | 'pitch' | 'roll' | 'up-vector'>('all');
   const dragStartRef = useRef<{ heading: number; pitch: number } | null>(null);
   const batchStartRef = useRef<Map<string, { heading: number; pitch: number }>>(new Map());
   const handleRef = useRef<THREE.Mesh>(null);
@@ -396,8 +396,13 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
       }
 
       // Axis constraints
-      if (dragAxis === 'heading') newPitch = position.pitch || 85;
+      if (dragAxis === 'heading' || dragAxis === 'up-vector') newPitch = position.pitch || 85;
       if (dragAxis === 'pitch') newHeading = position.heading;
+      if (dragAxis === 'roll') {
+        // Roll: compute from mouse position relative to launch axis
+        newHeading = position.heading;
+        newPitch = position.pitch || 85;
+      }
 
       // Compute delta for HUD
       if (dragStartRef.current) {
@@ -484,8 +489,16 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
         <Line points={windCompGhost.points} color="#4CAF50" lineWidth={1.5} dashed dashSize={0.15} gapSize={0.1} transparent opacity={0.5} />
       )}
 
+      {/* Trajectory — solid line with burst marker (Finale 3D style) */}
       {trajectoryPoints.length > 1 && (
-        <Line points={trajectoryPoints} color={COLORS.trajectory} lineWidth={1} dashed dashSize={0.25} gapSize={0.12} transparent opacity={0.4} />
+        <>
+          <Line points={trajectoryPoints} color={COLORS.trajectory} lineWidth={2} transparent opacity={0.6} />
+          {/* Burst point marker at apex */}
+          <mesh position={trajectoryData.apexPoint as [number, number, number]}>
+            <octahedronGeometry args={[0.1, 0]} />
+            <meshBasicMaterial color={COLORS.trajectory} transparent opacity={0.8} />
+          </mesh>
+        </>
       )}
 
       {/* Arrow cone tip at end of shaft */}

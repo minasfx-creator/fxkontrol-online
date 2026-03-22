@@ -53,6 +53,7 @@ function computeScriptRow(item: TimelineItem, positions: ReturnType<typeof usePr
     posHeading,
     pan: item.pan ?? (effect.type === 'firework' ? 90 : 0),
     tilt: item.tilt ?? 0,
+    spin: item.spin ?? 0,
     x: item.position.x,
     y: item.position.y,
     z: item.position.z,
@@ -61,6 +62,18 @@ function computeScriptRow(item: TimelineItem, positions: ReturnType<typeof usePr
     notes: item.notes || '',
     isChain: !!item.chainRef,
     effectId: item.effectId,
+    // Derived read-only columns (Finale: Pitch/Roll derived from Pan+Tilt)
+    derivedPitch: Math.round(Math.cos((item.pan ?? 90) * Math.PI / 180) * (item.tilt ?? 0)),
+    derivedRoll: Math.round(Math.sin((item.pan ?? 90) * Math.PI / 180) * (item.tilt ?? 0)),
+    // Angles* ASCII art
+    anglesArt: (() => {
+      const p = item.pan ?? 90;
+      const t = item.tilt ?? 0;
+      if (Math.abs(t) < 2) return '|';
+      if (p < 45) return '/';
+      if (p > 135) return '\\';
+      return '|';
+    })(),
   };
 }
 
@@ -124,7 +137,7 @@ export default function ScriptWindow() {
   const [posDropdown, setPosDropdown] = useState<{ rowId: string } | null>(null);
 
   // Editable fields in order for Tab navigation
-  const EDITABLE_FIELDS = ['eventTime', 'position', 'pan', 'tilt', 'notes'] as const;
+  const EDITABLE_FIELDS = ['eventTime', 'position', 'pan', 'tilt', 'spin', 'notes'] as const;
   
   // Navigation intent resolved after rows are computed
   const [editNavIntent, setEditNavIntent] = useState<{ dir: 'next-cell' | 'next-row'; fromRowId: string; fromField: string } | null>(null);
@@ -155,6 +168,9 @@ export default function ScriptWindow() {
             break;
           case 'tilt':
             updateTimelineItem(id, { tilt: parseFloat(value) || 0 });
+            break;
+          case 'spin':
+            updateTimelineItem(id, { spin: parseFloat(value) || 0 });
             break;
           case 'notes':
             updateTimelineItem(id, { notes: value });
@@ -313,6 +329,7 @@ export default function ScriptWindow() {
             const val = nextField === 'eventTime' ? row.eventTime
               : nextField === 'pan' ? row.pan
               : nextField === 'tilt' ? row.tilt
+              : nextField === 'spin' ? row.spin
               : row.notes;
             startEditing(fromRowId, nextField, val);
           }
@@ -325,6 +342,7 @@ export default function ScriptWindow() {
         const val = fromField === 'eventTime' ? nextRow.eventTime
           : fromField === 'pan' ? nextRow.pan
           : fromField === 'tilt' ? nextRow.tilt
+          : fromField === 'spin' ? nextRow.spin
           : nextRow.notes;
         startEditing(nextRow.id, fromField, val);
       }
@@ -931,6 +949,10 @@ export default function ScriptWindow() {
               <SortableHeader label="Position" field="position" current={sortField} dir={sortDir} onSort={toggleSort} />
               <th className="px-1 py-1 text-left text-muted-foreground font-medium">Pan°</th>
               <th className="px-1 py-1 text-left text-muted-foreground font-medium">Tilt°</th>
+              <th className="px-1 py-1 text-left text-muted-foreground font-medium">Spin°</th>
+              <th className="px-1 py-1 text-left text-muted-foreground font-medium w-6" title="Angles ASCII art">∠*</th>
+              <th className="px-1 py-1 text-left text-muted-foreground font-medium w-8" title="Derived Pitch (read-only)">dP</th>
+              <th className="px-1 py-1 text-left text-muted-foreground font-medium w-8" title="Derived Roll (read-only)">dR</th>
               <SortableHeader label="Dur" field="duration" current={sortField} dir={sortDir} onSort={toggleSort} />
               <SortableHeader label="$" field="cost" current={sortField} dir={sortDir} onSort={toggleSort} />
               <th className="px-1 py-1 text-left text-muted-foreground font-medium">Chain</th>
@@ -1105,6 +1127,26 @@ export default function ScriptWindow() {
                   {/* Tilt — click-to-edit */}
                   <td className="px-1 py-0.5">
                     {renderEditableCell(row.id, 'tilt', row.tilt, 'w-8', 'text-muted-foreground')}
+                  </td>
+
+                  {/* Spin — click-to-edit */}
+                  <td className="px-1 py-0.5">
+                    {renderEditableCell(row.id, 'spin', row.spin, 'w-8', 'text-muted-foreground')}
+                  </td>
+
+                  {/* Angles* ASCII art — read-only */}
+                  <td className="px-1 py-0.5 text-center">
+                    <span className="text-muted-foreground font-mono text-[10px]">{row.anglesArt}</span>
+                  </td>
+
+                  {/* Derived Pitch — read-only */}
+                  <td className="px-1 py-0.5">
+                    <span className="text-muted-foreground/60 text-[9px] font-mono">{row.derivedPitch}°</span>
+                  </td>
+
+                  {/* Derived Roll — read-only */}
+                  <td className="px-1 py-0.5">
+                    <span className="text-muted-foreground/60 text-[9px] font-mono">{row.derivedRoll}°</span>
                   </td>
 
                   {/* Duration */}
