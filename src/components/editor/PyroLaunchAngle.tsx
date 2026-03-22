@@ -396,8 +396,13 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
       }
 
       // Axis constraints
-      if (dragAxis === 'heading') newPitch = position.pitch || 85;
+      if (dragAxis === 'heading' || dragAxis === 'up-vector') newPitch = position.pitch || 85;
       if (dragAxis === 'pitch') newHeading = position.heading;
+      if (dragAxis === 'roll') {
+        // Roll: compute from mouse position relative to launch axis
+        newHeading = position.heading;
+        newPitch = position.pitch || 85;
+      }
 
       // Compute delta for HUD
       if (dragStartRef.current) {
