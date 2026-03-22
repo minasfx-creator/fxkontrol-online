@@ -129,6 +129,14 @@ function EffectTableRow({ effect, index, usageCount }: { effect: Effect; index: 
       <td className="px-1 py-[5px] w-5">
         <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: effect.color, boxShadow: `0 0 6px ${effect.color}44` }} />
       </td>
+      {/* Part type badge */}
+      <td className="px-1 py-[5px] w-10">
+        {isPyro && (
+          <span className="text-[7px] font-bold px-1 py-0.5 rounded bg-accent/12 text-accent uppercase tracking-wider">
+            {effect.category === 'mines' ? 'MINE' : effect.category === 'roman_candles' ? 'RC' : effect.category === 'cakes_batteries' ? 'CAKE' : effect.category === 'waterfalls' ? 'FALL' : 'SHELL'}
+          </span>
+        )}
+      </td>
       {/* Effect name */}
       <td className="px-1.5 py-[5px] font-medium text-foreground truncate max-w-[120px]">
         <span>{effect.name}</span>
