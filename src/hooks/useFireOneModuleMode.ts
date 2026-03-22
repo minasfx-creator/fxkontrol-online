@@ -235,6 +235,6 @@ export function useFireOneModuleMode(): UseFireOneModuleReturn {
     loadAutoScript, startAutoFire, stopAutoFire,
     downloadUltraScript, setUltraSlot, startUltraFire, stopUltraFire,
     setPreset, firePreset, clearPreset,
-    bridgeStatus, connectBLE, connectUSB, connectWS, disconnectHardware,
+    bridgeStatus, connectBLE, connectUSB, connectWS, connectDirectRelay, disconnectHardware,
   };
 }
