@@ -492,8 +492,8 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
     window.dispatchEvent(new CustomEvent('box-select-active', { detail: true }));
     const nativeEvent = e.nativeEvent || e;
     dragStartRef.current = {
-      heading: position.heading,
-      pitch: position.pitch || 85,
+      heading: effectiveHeading,
+      pitch: effectivePitch,
       mouseX: nativeEvent.clientX ?? 0,
       mouseY: nativeEvent.clientY ?? 0,
     };
