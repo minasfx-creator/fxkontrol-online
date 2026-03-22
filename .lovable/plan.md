@@ -1,99 +1,93 @@
 
 
-# FXK Platform — Refine & Add More Style Per Platform
+# FXK Platform — Console Heritage Visual Identity
 
-## Current State
+## Concept
+"Remember the past, transmit the future" — each platform's UI draws visual DNA directly from the real hardware console that inspired it, then evolves it with modern digital aesthetics.
 
-Each platform already has basic branding (color accents, headers, badges). But the styling is still shallow — same card shapes, same fader components, same grid layouts across all platforms. Each platform needs deeper visual character that operators recognize instantly in the dark.
+## 1. PyroFireOnePanel — FireOne XL4+ Heritage
 
-## Changes
+The real XL4+ has: green LCD screen, membrane keypad with labeled function keys, LED status indicators, 4 output ports with individual LEDs, key switch, industrial gray/black housing.
 
-### 1. PyroFireOnePanel.tsx — Deepen XL4+ 2.0 Military Identity
+**Visual changes:**
+- **LCD Display Area**: Replace digital counters with a simulated green-on-black LCD panel (monospace font, `hsl(120 100% 45%)` on `hsl(120 5% 4%)`). Show MOD/IG/FIRE/STATUS in segmented-display style with subtle pixel grid texture behind text
+- **Membrane Keypad Grid**: Mode tabs styled as physical membrane buttons — flat gray surface (`hsl(0 0% 18%`), slight emboss (double border: outer dark, inner light highlight), ALL-CAPS labels in the XL4+ style with thin white text on dark
+- **4 Output Port LEDs**: Replace output group boxes with a row of 4 physical-looking circular LED indicators (glass dome effect with radial gradient, red/green states) labeled OUTPUT A-D
+- **Key Switch**: Replace toggle with a circular key-switch graphic — CSS circle with a key slot line that rotates 45° on ARM, silver metallic gradient border
+- **Panel Housing**: Add subtle brushed-metal texture header bar (horizontal linear gradient noise), rounded industrial corners, and a thin yellow "caution stripe" below the header (like physical panel labeling)
+- **Status Bar**: Bottom bar styled like XL4+ front panel labels — embossed text on dark background, connection status as physical LEDs (red/green glass dots)
 
-- Add scanline overlay effect to the entire panel background (subtle horizontal lines, 2px spacing, 3% opacity)
-- Master Key button: add CSS keyframe glow pulsing red when ON (`box-shadow` breathing animation), key icon rotation from 0° to 45° on toggle
-- Output Group indicators (A/B/C/D): add warning-stripe pattern border when any module in group is armed (diagonal red/dark stripes)
-- Igniter grid cells: add inner shadow and beveled edge effect (like physical membrane buttons), fired cells get a burn mark gradient (dark center radiating orange fade)
-- Mode tabs: add embossed texture (double border technique — outer dark, inner highlight, like physical membrane overlay keys)
-- Add a subtle red gradient vignette at edges of the panel (darker red corners, fading to transparent center)
-- LCD counters (MOD, IG, FIRE): add LCD-style green-on-black font effect with subtle text-shadow glow, and a faint "digit shadow" background pattern
-- Connection bar: add pulsing green dot animation for active RS-485 link with data activity sparkle
+## 2. LiveFiringPanel — Showven FX Commander Heritage
 
-### 2. LiveFiringPanel.tsx — FXCommander 2.0 Console Identity
+The real FX Commander has: 10.1" touchscreen, scene buttons (S0-S3), CUE key matrix, fader controls, professional dark enclosure, cyan/blue UI theme.
 
-- DMX mode status bar: add horizontal gradient stripe below header (cyan glow bar, 2px height, animated shimmer left-to-right)
-- CUE key grid: when in `super_dmx`, add effect-type color-coded section dividers — group keys by their assigned SFX type with a thin colored header bar above each group
-- Scene tabs (S0-S3): style as illuminated console buttons — active scene gets bright underline glow + elevated shadow, inactive gets recessed inset look
-- Simple DMX channel list: add alternating row tinting with very subtle cyan stripe on even rows
-- ARM bar: platform-specific styling — DMX modes get cyan border glow when armed, Fire modes get red border glow
-- PANIC button: add danger-stripe CSS pattern behind text (diagonal amber/black stripes) visible only when system is armed
-- Add a thin "console rail" decorative element below mode tabs — horizontal line with small notch marks (like a physical mixing console's fader rail marking)
+**Visual changes:**
+- **Scene Buttons (S0-S3)**: Style as backlit console buttons — active scene gets bright cyan underline glow + slightly raised shadow, inactive gets dark recessed look with thin border. Square shape with rounded corners matching physical button caps
+- **CUE Key Matrix**: Each key styled as a physical illuminated button — slight 3D raise effect (gradient top-light to bottom-dark), rounded square shape, active keys glow with their effect-type color (fire=red, CO2=blue, sparks=amber)
+- **Fader Bank (Simple DMX)**: Vertical fader tracks with physical groove look — dark inset channel with a lighter knob/cap indicator showing current position. Channel numbers in metal-embossed style below each fader
+- **Console Housing Frame**: Add a thin dark bezel border around the entire panel (2px `hsl(200 5% 12%)`) with subtle corner radius, simulating the physical console enclosure
+- **Touch Screen Header**: "FX COMMANDER 2.0" in the Showven style — clean sans-serif, cyan accent line, professional dark background
+- **Mode Tabs**: Style as physical console function buttons (like the real FXC's top row) — flat dark buttons with thin top accent line in cyan when active
 
-### 3. MA3ControlPanel.tsx — LIGHTDESK 2.0 Theater Console
+## 3. MA3ControlPanel — grandMA3 Heritage
 
-- Executor faders: active faders (value > 0) get violet glow border (`border-indigo-500/40`), background tint (`bg-indigo-500/8`), and box-shadow (`0 0 12px hsl(240 50% 52% / 0.15)`)
-- Add Grand Master fader: full-width separated fader after the 8-fader grid, with "GM" label, larger height (h-16), violet accent top stripe, maps to executor page 201
-- Fader tracks: add gradient fill — bottom-to-top fill color changes from dark to indigo as value increases
-- GO button: add theater-style pulsing glow when OSC is connected (violet pulse `animate-pulse-glow`)
-- Cue list: active cue gets a bright violet left-border accent (4px solid indigo), next cue gets a subtle dimmed preview highlight
-- Tab triggers: add theatrical curtain gradient — violet-to-transparent gradient on active tab background
-- BLACKOUT button: add alternating amber/black diagonal stripe pattern (CSS repeating-linear-gradient) as background texture
-- Connection port LEDs: add subtle pulse animation on connected ports
+The real grandMA3 has: vertical motorized faders with LCD scribble strips, encoder wheels, large GO button, command input, dark professional housing, blue/white UI theme on screens.
 
-### 4. DroneCommandPanel.tsx — NEW: SWARM OPS 2.0 Mission Control
+**Visual changes:**
+- **Executor Faders**: Style fader bank to resemble grandMA3 physical faders — each fader gets a "scribble strip" label area below (dark box with label text), fader track as a physical groove (dark inset with lighter fill), active faders get the MA-style blue/white glow
+- **Grand Master**: Larger, isolated fader with "GRAND MASTER" engraved-style text, physical metal-look border, separated by a visual divider line (like the real console's GM section)
+- **GO Button**: Large, physical-looking button with the MA3's characteristic rounded rectangle shape, prominent drop shadow, pulsing blue glow when connected (like the real GO key backlight)
+- **Command Line**: Style input as the MA3 command line — dark background, monospace font, blue cursor blink, "Cmd>" prompt prefix
+- **Encoder Section**: Add visual encoder wheel indicators next to faders (circular CSS elements with tick marks) — decorative but reinforcing the grandMA3 identity
+- **Console Frame**: Dark anthracite housing color (`hsl(220 5% 8%)`), with the MA3's characteristic silver/gray accent trim lines
 
-Create `src/components/editor/DroneCommandPanel.tsx`:
+## 4. DroneCommandPanel — DJI FlightHub / Military Drone HUD Heritage
 
-- Header: "FXK-DRONES · SWARM OPS 2.0" with teal accent stripe and mission timer
-- Background: dark teal tint (`hsl(165 8% 5%)`) with HUD grid overlay (CSS grid pattern using repeating-linear-gradient, teal lines at 5% opacity)
-- 4-quadrant grid layout using CSS grid `grid-cols-2 grid-rows-2`:
-  1. FLEET STATUS: drone count, simulated battery bar (teal fill), GPS lock count, signal bars — reads `droneFormations` from `useProjectStore`
-  2. FORMATION PREVIEW: SVG dots on dark canvas showing current formation positions as teal circles
-  3. MISSION TIMELINE: horizontal list of formation names as teal cards with arrows between them
-  4. TELEMETRY FEED: monospace scrolling text showing simulated altitude/speed/heading data
-- Launch bar at bottom: pre-flight checklist indicators (GPS ✓, BATTERY ✓, GEOFENCE ✓, SAFETY ✓, CLEARANCE ✓) as inline badges, two-step ARM → LAUNCH button with state machine
-- HUD corner brackets decorative elements (CSS borders on corners only)
-- All text monospace, uppercase, teal accent throughout
+Inspired by: DJI FlightHub 2 virtual cockpit, military drone GCS (Ground Control Station), NASA mission control.
 
-### 5. SwarmGPTPanel.tsx — SWARM OPS Branding Refinement
+**Visual changes:**
+- **Primary Flight Display**: Replace simple SVG with a proper HUD-style artificial horizon overlay — compass rose ring around formation preview, altitude/speed tape indicators on sides
+- **Telemetry Feed**: Style as military terminal — green phosphor text on black (`hsl(120 100% 45%)` on pure black), CRT scanline overlay, data lines prefixed with timestamps
+- **Fleet Status**: Reorganize as a mission control "systems panel" — each subsystem (GPS, COMMS, BATTERY, THERMAL) gets its own status card with analog-style gauge indicators
+- **Launch Bar**: Style as a physical missile/rocket launch console — flip-up safety cover visual (CSS transform reveal animation) over the LAUNCH button, red striped warning border
+- **Mission Timeline**: Style as a flight plan strip — horizontal cards connected by flight path lines, active waypoint highlighted with beacon pulse
+- **Map Grid**: Add coordinate grid labels (A1-J10 style) around formation preview, compass cardinal points (N/S/E/W), range rings
 
-- Add "SWARM OPS 2.0" header bar with teal accent stripe (matching DroneCommandPanel)
-- Prompt textarea: teal border (`border-teal-500/30`), label "MISSION BRIEF" above
-- Quick prompt cards: teal-tinted borders, aerospace-style labels (all-caps monospace)
-- Generation progress: "COMPUTING TRAJECTORIES..." with teal spinner, trajectory path animation CSS
-- Mini preview canvas: add teal-tinted grid background and coordinate axis markers
+## 5. SwarmGPTPanel — Aerospace Mission Planning Heritage
 
-### 6. CommandCenter.tsx — Wire drone_ops + Platform Sidebar Tinting
+- Add mission planning aesthetic — prompt area styled as "MISSION BRIEFING" terminal with green monospace text
+- Quick prompts styled as aerospace mission cards with classification-level border styles
+- Progress indicator as "TRAJECTORY COMPUTATION" with orbital path animation
 
-- Add `'drone_ops'` to `CommandMode` type
-- Add to `CONSOLE_ACCENTS`: `drone_ops: { color: 'hsl(165 100% 42%)', glow: 'hsl(165 100% 42% / 0.08)', label: 'FXK-DRONES', badge: 'bg-teal-500/15 text-teal-400 border-teal-500/20' }`
-- Add to HARDWARE section in `MODE_SECTIONS`: `{ key: 'drone_ops', label: 'FXK-DRONES', icon: Layers }`
-- Add `case 'drone_ops': return <DroneCommandPanel fs />` in `renderDirectPanel`
-- Sidebar left border: when active mode is pyro → thin red left glow bar, dmx → cyan, ma3 → indigo, drone_ops → teal (CSS border-left with matching accent color + box-shadow glow)
+## 6. CommandCenter — Platform-Aware Console Chrome
 
-### 7. VirtualControllerHub.tsx — Branded Card Groups
+- Sidebar left border glows in platform color when mode is active
+- Platform logo/icon in sidebar header area changes per active mode
+- Add subtle "console power-on" transition when switching platforms (brief screen flash + fade-in)
 
-- Add `'drones'` group to types and `GROUP_META`: `{ label: 'FXK Drone Systems', color: 'text-teal-400' }`
-- Add drone controller card: `{ id: 'fxk-swarm', name: 'FXK-SWARM', manufacturer: 'FXK', type: 'module', connectionTypes: ['wifi_direct', 'radio'], channels: 500, description: 'Swarm controller · 500 drones · GPS+RTK', panelMode: 'drone_ops', group: 'drones' }`
-- Card borders by group: `fireone → border-red-500/20`, `showven → border-amber-500/20`, `drones → border-teal-500/20`, `infrastructure → border-border/15`
-- Add platform subtitle per card (small text below name): "XL4+ 2.0", "SWARM OPS 2.0", etc.
-- Group headers: add thin colored top-border accent matching group color
+## 7. VirtualControllerHub — Hardware Catalog Cards
+
+- Each card gets a miniature product photo placeholder silhouette (CSS shape of the real hardware)
+- Product generation badges: "GEN 1" for legacy references, "2.0" for current
+- Connection type indicators as physical port icons (DB9 for RS-485, RJ45 for Ethernet, antenna for wireless)
 
 ## Files
 
-1. `src/components/editor/live-firing/PyroFireOnePanel.tsx` — military depth styling
-2. `src/components/editor/LiveFiringPanel.tsx` — console identity depth
-3. `src/components/editor/MA3ControlPanel.tsx` — theater fader glow + Grand Master
-4. `src/components/editor/DroneCommandPanel.tsx` — **NEW** mission control
-5. `src/components/editor/SwarmGPTPanel.tsx` — aerospace branding
-6. `src/pages/CommandCenter.tsx` — drone_ops mode + sidebar tinting
-7. `src/components/editor/VirtualControllerHub.tsx` — branded cards + drones group
+1. `src/components/editor/live-firing/PyroFireOnePanel.tsx` — XL4+ LCD + membrane + key switch
+2. `src/components/editor/LiveFiringPanel.tsx` — FX Commander console buttons + faders
+3. `src/components/editor/MA3ControlPanel.tsx` — grandMA3 scribble strips + encoder wheels + GO key
+4. `src/components/editor/DroneCommandPanel.tsx` — Military GCS HUD + flight displays
+5. `src/components/editor/SwarmGPTPanel.tsx` — Aerospace mission planning terminal
+6. `src/pages/CommandCenter.tsx` — Platform-aware console chrome
+7. `src/components/editor/VirtualControllerHub.tsx` — Hardware catalog with product silhouettes
 
 ## Technical Notes
 
-- No new dependencies
+- No new dependencies — all CSS/Tailwind styling
 - No database changes
-- All touch targets 48px+ minimum
-- All text `/50` minimum opacity for interactive elements
-- DroneCommandPanel reads from existing `useProjectStore`
+- Console heritage effects use CSS only (gradients, shadows, borders, animations)
+- All touch targets maintain 48px+ minimum
+- All interactive text maintains `/50` minimum opacity
+- LCD/CRT effects use `text-shadow` and `background-image` patterns
+- Physical button effects use `box-shadow` inset/outset combinations
 
