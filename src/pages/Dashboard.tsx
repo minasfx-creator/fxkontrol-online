@@ -10,7 +10,8 @@ import {
   Radio, Cpu, Cable, Activity, Heart, MessageCircle, Share2,
   TrendingUp, TrendingDown, Minus, Circle, Bookmark,
   Shield, Smartphone, Play, Palette, Wand2, Layers,
-  Timer, Crosshair, Volume2, Lightbulb, Pencil, LayoutTemplate
+  Timer, Crosshair, Volume2, Lightbulb, Pencil, LayoutTemplate,
+  Wifi, Globe, Gauge, Hand, Usb
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import CinematicIntro from '@/components/editor/CinematicIntro';
