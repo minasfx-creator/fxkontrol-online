@@ -43,9 +43,12 @@ export default function DockBar() {
   const dockRef = useRef<HTMLDivElement>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  const allItems = isAdmin
-    ? [...DOCK_ITEMS, { icon: Shield, label: 'Admin', path: '/admin', accent: 'hsl(270 60% 50%)' }]
-    : DOCK_ITEMS;
+  const allItems = [
+    ...DOCK_MAIN,
+    ...DOCK_SYSTEM,
+    ...(isAdmin ? [{ icon: Shield, label: 'Admin', path: '/admin', accent: 'hsl(270 60% 50%)' } as DockItem] : []),
+  ];
+  const separatorIndex = DOCK_MAIN.length; // separator between main and system
 
   const handleClick = useCallback((path: string) => {
     ambientSound.play('click');
