@@ -393,7 +393,8 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
   const [showMode, setShowMode] = useState(false);
   const showModeTapRef = useRef<number>(0);
   const sequenceRef = useRef(0);
-  const fireTimers = useRef<globalThis.Map<string, NodeJS.Timeout>>(new (globalThis.Map)());
+  type TimerMap = Map<string, ReturnType<typeof setTimeout>>;
+  const fireTimers = useRef<TimerMap>(new Map());
   const relayWs = useRef<WebSocket | null>(null);
 
   // ─── WebSocket Relay connection ───
