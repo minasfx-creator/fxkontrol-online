@@ -92,11 +92,30 @@ export default function CommandCenter() {
   const [swapFlash, setSwapFlash] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileCategory, setMobileCategory] = useState(0);
+  const [isLandscape, setIsLandscape] = useState(false);
   const isMobile = useIsMobile();
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();
   const activeEffects = useLiveSfxStore(s => s.activeEffects);
   const isArmed = activeEffects.length > 0;
+
+  // Landscape detection
+  useEffect(() => {
+    const mql = window.matchMedia('(orientation: landscape)');
+    const onChange = () => setIsLandscape(mql.matches);
+    onChange();
+    mql.addEventListener('change', onChange);
+    // Try to lock orientation on mobile
+    if (isMobile && screen.orientation?.lock) {
+      screen.orientation.lock('landscape').catch(() => {});
+    }
+    return () => {
+      mql.removeEventListener('change', onChange);
+      if (isMobile && screen.orientation?.unlock) {
+        screen.orientation.unlock();
+      }
+    };
+  }, [isMobile]);
 
   const accent = CONSOLE_ACCENTS[activeMode] ?? CONSOLE_ACCENTS.show_control;
 
