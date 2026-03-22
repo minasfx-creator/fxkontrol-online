@@ -25,7 +25,8 @@ interface ControllerCard {
   channels: number;
   description: string;
   panelMode?: string;
-  group: 'fireone' | 'showven' | 'infrastructure';
+  group: 'fireone' | 'showven' | 'infrastructure' | 'drones';
+  platformLabel?: string;
 }
 
 const CONTROLLERS: ControllerCard[] = [
