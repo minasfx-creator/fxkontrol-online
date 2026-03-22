@@ -1388,7 +1388,6 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
         );
       case 'simple_dmx': return renderSimpleDmx(fs);
       case 'manual_fire': return renderManualFire(fs);
-      case 'auto_fire': return <AutoFirePanel fs={fs} pyroArm={pyroArm} dmxArm={dmxArm} />;
       case 'pyro_fire': return <PyroFireOnePanel fs={fs} fireChannel={fireChannel} channels={channels} pyroArm={pyroArm} dmxArm={dmxArm} deadmanHeld={deadmanHeld} handlePanic={handlePanic} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
       case 'check_slave': return <CheckSlavePanel fs={fs} pyroArm={pyroArm} />;
       case 'mobile_link': return <MobileLinkMode fs={fs} fireChannel={fireChannel} channels={channels} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
@@ -1400,9 +1399,8 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
       case 'connections': return <ConnectionManagerPanel fs={fs} />;
       case 'radio': return <RadioControlPanel fs={fs} />;
       case 'ma3': return <MA3ControlPanel fs={fs} />;
-      case 'module': return <VirtualIFMx32QPanel fs={fs} />;
       case 'wifi_direct': return <WiFiDirectControlPanel fs={fs} />;
-      case 'artnet_modules': return <ArtNetModulePanel fs={fs} />;
+      case 'artnet_modules': return <FXKNetPanel fs={fs} />;
       case 'settings': return <SettingsPanel fs={fs} settings={settings} onSettingsChange={setSettings} relayConnected={relayConnected} relayUrl={relayUrl} onRelayUrlChange={setRelayUrl} onConnectRelay={connectRelay} onDisconnectRelay={disconnectRelay} />;
       default: return renderSimpleDmx(fs);
     }
