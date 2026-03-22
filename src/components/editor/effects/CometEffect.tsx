@@ -12,7 +12,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { getMortarVelocity, GRAVITY } from '@/lib/pyroPhysics';
 import { getThreeBlending } from '@/lib/niagaraBlenderRules';
-import { combustionFlicker, hash01 } from '@/lib/pyroNoise';
+import { combustionFlicker, hash01, thermalColorRamp } from '@/lib/pyroNoise';
 import { RibbonTrail } from '@/render_ultra/fireworks/ribbonTrailRenderer';
 import { useProjectStore } from '@/store/useProjectStore';
 
