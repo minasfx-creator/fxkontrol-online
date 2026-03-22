@@ -222,6 +222,12 @@ function Index() {
       if (e.key === '?' && e.shiftKey) {
         setShowShortcuts(prev => !prev);
       }
+      // Selection mode shortcuts
+      if (!e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        if (e.key === '1') useProjectStore.getState().setSelectionMode('positions');
+        if (e.key === '2') useProjectStore.getState().setSelectionMode('events');
+        if (e.key === '3') useProjectStore.getState().setSelectionMode('both');
+      }
       if (e.key === 'i' && !e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
         const store = useProjectStore.getState();
         if (store.isPlaying || store.currentTime > 0) {
