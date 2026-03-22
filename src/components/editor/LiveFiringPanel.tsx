@@ -765,21 +765,8 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
     }
   }, [isMobile]);
 
-  // Sync browser Fullscreen API with isFullscreen state
-  useEffect(() => {
-    if (isFullscreen) {
-      const timer = setTimeout(() => {
-        if (!document.fullscreenElement) {
-          document.documentElement.requestFullscreen?.().catch(() => {});
-        }
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-
-    if (document.fullscreenElement) {
-      document.exitFullscreen?.().catch(() => {});
-    }
-  }, [isFullscreen]);
+  // Fullscreen API removed — CSS `fixed inset-0` handles visual fullscreen
+  // User can manually enter browser fullscreen via the maximize button
 
   // Lock body scroll while mobile commander is fullscreen (prevents cropped controls)
   useEffect(() => {
