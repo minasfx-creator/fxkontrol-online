@@ -179,7 +179,7 @@ function RollArc({ heading, pitch, roll }: { heading: number; pitch: number; rol
 /**
  * HeadingCompassArc
  */
-function HeadingCompass({ heading }: { heading: number }) {
+function HeadingCompass({ heading, shiftHeld }: { heading: number; shiftHeld?: boolean }) {
   const compassCircle = useMemo(() => {
     const pts: [number, number, number][] = [];
     const r = HEADING_ARC_RADIUS;
@@ -189,6 +189,21 @@ function HeadingCompass({ heading }: { heading: number }) {
     }
     return pts;
   }, []);
+
+  // Snap grid lines every 15° when Shift held
+  const snapGridLines = useMemo(() => {
+    if (!shiftHeld) return null;
+    const lines: [number, number, number][][] = [];
+    const r = HEADING_ARC_RADIUS;
+    for (let deg = 0; deg < 360; deg += 15) {
+      const rad = deg * (Math.PI / 180);
+      lines.push([
+        [Math.sin(rad) * r * 0.8, 0.02, -Math.cos(rad) * r * 0.8],
+        [Math.sin(rad) * r * 1.1, 0.02, -Math.cos(rad) * r * 1.1],
+      ]);
+    }
+    return lines;
+  }, [shiftHeld]);
 
   const headingTick = useMemo(() => {
     const hRad = heading * (Math.PI / 180);
@@ -222,6 +237,9 @@ function HeadingCompass({ heading }: { heading: number }) {
   return (
     <group>
       <Line points={compassCircle} color={COLORS.grid} lineWidth={0.8} transparent opacity={0.15} />
+      {snapGridLines && snapGridLines.map((pts, i) => (
+        <Line key={i} points={pts} color={COLORS.grid} lineWidth={0.5} transparent opacity={0.25} />
+      ))}
       <Line points={northTick} color="#EF5350" lineWidth={2} transparent opacity={0.5} />
       <Line points={headingTick} color={COLORS.headingArc} lineWidth={2.5} transparent opacity={0.8} />
       {headingArc.length >= 2 && (
