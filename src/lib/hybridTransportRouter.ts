@@ -709,6 +709,7 @@ export class CellularTransport implements FireOneTransport {
   private receiveCallbacks: Array<(data: Uint8Array, id: string) => void> = [];
   private stateCallbacks: Array<(id: string, state: TransportState, error?: string) => void> = [];
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private _pingInterval: ReturnType<typeof setInterval> | null = null;
   private reconnectAttempts = 0;
   private _networkInfo: { effectiveType: string; downlink: number; rtt: number } = {
     effectiveType: 'unknown', downlink: 0, rtt: 0,
