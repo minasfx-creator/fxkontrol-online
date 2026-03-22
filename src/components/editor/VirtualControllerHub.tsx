@@ -3,7 +3,7 @@
  * Grouped by manufacturer with live telemetry from hardware hooks.
  */
 import { useState, useCallback, useMemo } from 'react';
-import { Cpu, Wifi, WifiOff, Usb, Radio, Zap, Battery, Signal, ChevronRight, ChevronDown, Sparkles, Cable } from 'lucide-react';
+import { Cpu, Wifi, WifiOff, Usb, Radio, Zap, Battery, Signal, ChevronRight, ChevronDown, Sparkles, Cable, Antenna } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -14,7 +14,7 @@ import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-type ConnectionType = 'usb' | 'artnet' | 'wireless' | 'pbus' | 'serial' | 'radio' | 'sim' | 'ble';
+type ConnectionType = 'usb' | 'artnet' | 'wireless' | 'pbus' | 'serial' | 'radio' | 'sim' | 'ble' | 'wifi_direct';
 
 interface ControllerCard {
   id: string;
@@ -29,7 +29,7 @@ interface ControllerCard {
 }
 
 const CONTROLLERS: ControllerCard[] = [
-  { id: 'fireone-xl4', name: 'FireOne XL4+', manufacturer: 'FireOne', type: 'firing', connectionTypes: ['usb', 'serial', 'radio'], channels: 32, description: 'IFMx-i32Q field modules · RS-485 · 32 igniters/module', panelMode: 'pyro_fire', group: 'fireone' },
+  { id: 'fireone-xl4', name: 'FireOne XL4+', manufacturer: 'FireOne', type: 'firing', connectionTypes: ['usb', 'serial', 'radio', 'wifi_direct'], channels: 32, description: 'IFMx-i32Q field modules · RS-485 · 32 igniters/module', panelMode: 'pyro_fire', group: 'fireone' },
   { id: 'zk6200', name: 'ZK6200', manufacturer: 'Showven', type: 'sfx', connectionTypes: ['usb', 'artnet', 'wireless'], channels: 20, description: 'Host controller · 20 zones · DMX + LTC', panelMode: 'zk6200', group: 'showven' },
   { id: 'zk6300', name: 'ZK6300', manufacturer: 'Showven', type: 'sfx', connectionTypes: ['usb', 'artnet', 'wireless'], channels: 30, description: 'Host controller · 30 zones · DMX + LTC', panelMode: 'zk6200', group: 'showven' },
   { id: 'pyroslave-c16', name: 'PyroSlave C16', manufacturer: 'Showven', type: 'firing', connectionTypes: ['pbus', 'wireless', 'radio'], channels: 16, description: 'Wireless slave · 16 cues · Dual-band 433/868M', panelMode: 'pbus', group: 'showven' },
@@ -38,7 +38,7 @@ const CONTROLLERS: ControllerCard[] = [
   { id: 'maiman', name: 'Maiman 30W', manufacturer: 'Showven', type: 'laser', connectionTypes: ['artnet'], channels: 14, description: '30W RGB laser · ILDA + DMX · IP54', group: 'showven' },
   { id: 'dmx-splitter8', name: 'DMX Splitter 8', manufacturer: 'Showven', type: 'dmx', connectionTypes: ['usb'], channels: 8, description: '1→8 DMX512 splitter · Opto-isolated', group: 'infrastructure' },
   { id: 'dmx-relay-r12', name: 'DMX Relay R12', manufacturer: 'Showven', type: 'dmx', connectionTypes: ['usb', 'artnet'], channels: 12, description: '12-channel DMX relay · 10A/channel', group: 'infrastructure' },
-  { id: 'ifmx-i32q-module', name: 'IFMx-i32Q Module', manufacturer: 'FireOne', type: 'module', connectionTypes: ['wireless', 'ble', 'usb'], channels: 32, description: 'Virtual field module · 32 igniters · CDS · ESP32 bridge', panelMode: 'module', group: 'fireone' },
+  { id: 'ifmx-i32q-module', name: 'IFMx-i32Q Module', manufacturer: 'FireOne', type: 'module', connectionTypes: ['wireless', 'ble', 'usb', 'wifi_direct'], channels: 32, description: 'Virtual field module · 32 igniters · CDS · ESP32 bridge', panelMode: 'module', group: 'fireone' },
 ];
 
 const CONNECTION_ICONS: Record<ConnectionType, typeof Usb> = {
@@ -50,6 +50,7 @@ const CONNECTION_ICONS: Record<ConnectionType, typeof Usb> = {
   radio: Radio,
   sim: Sparkles,
   ble: Radio,
+  wifi_direct: Antenna,
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -128,6 +129,11 @@ export default function VirtualControllerHub({ fs = false, onSelectMode, onClose
           toast.success(`FireOne XL4+ conectado via RS-485`);
           return;
         }
+      }
+      if (connType === 'wifi_direct') {
+        await fireone.connectWiFiDirect();
+        toast.success(`${card.name}: Wi-Fi Direct conectado`);
+        return;
       }
       if (connType === 'pbus') {
         await pbus.connect();

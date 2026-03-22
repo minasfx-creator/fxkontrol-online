@@ -4,7 +4,7 @@
  * Plus PBUS, Bluetooth, Art-Net, USB-C DMX
  */
 import { useState, useCallback } from 'react';
-import { Wifi, WifiOff, Radio, RefreshCw, Plus, X, Activity, Cable, Globe, Zap } from 'lucide-react';
+import { Wifi, WifiOff, Radio, RefreshCw, Plus, X, Activity, Cable, Globe, Zap, Antenna } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -27,6 +27,7 @@ const TRANSPORT_ICONS: Record<TransportType, typeof Cable> = {
   serial: Cable,
   radio: Radio,
   wifi: Globe,
+  wifi_direct: Antenna,
   artnet: Zap,
 };
 
@@ -34,6 +35,7 @@ const TRANSPORT_LABELS: Record<TransportType, string> = {
   serial: 'RS-485 Cable',
   radio: 'Radio RF',
   wifi: 'Wi-Fi Relay',
+  wifi_direct: 'Wi-Fi Direct',
   artnet: 'Art-Net DMX',
 };
 

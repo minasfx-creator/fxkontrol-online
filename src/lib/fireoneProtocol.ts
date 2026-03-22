@@ -575,6 +575,7 @@ import {
   type TransportStatus,
   type TransportType,
 } from '@/lib/fireoneTransport';
+import { WiFiDirectTransport } from '@/lib/fireoneWifiDirectTransport';
 
 export class FireOneController {
   private conn: FireOneConnection | null = null;
@@ -654,6 +655,14 @@ export class FireOneController {
   /** Remove a transport by ID */
   removeTransport(id: string): void {
     this.transportManager.removeTransport(id);
+  }
+
+  /** Connect a Wi-Fi Direct transport (auto-discovery via mDNS) */
+  async connectWiFiDirect(targetHost?: string): Promise<string> {
+    const wd = new WiFiDirectTransport();
+    this.transportManager.addTransport(wd);
+    await wd.connect({ targetHost });
+    return wd.id;
   }
 
   // ─── Disconnect all ───

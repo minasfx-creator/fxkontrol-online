@@ -295,9 +295,18 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
           )}
 
           {/* Hardware Bridge Status */}
+          {bridgeStatus?.connected && bridgeStatus.transport === 'wifi_direct' && (
+            <div className="rounded-lg border-2 border-red-500/40 bg-red-950/20 p-1.5 flex items-center gap-2 animate-pulse">
+              <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
+              <span className="text-[8px] text-red-300 font-black uppercase">MODO REAL — Hardware Físico Conectado</span>
+              <Badge className="ml-auto text-[6px] h-3 px-1 bg-red-600/80 border-transparent">REAL</Badge>
+            </div>
+          )}
           <div className={cn(
             "rounded-lg border p-2 space-y-1.5",
-            bridgeStatus?.connected ? "border-emerald-500/30 bg-emerald-950/10" : "border-border/15 bg-card/20"
+            bridgeStatus?.connected && bridgeStatus.transport === 'wifi_direct'
+              ? "border-red-500/30 bg-red-950/10 shadow-[0_0_15px_rgba(239,68,68,0.1)]"
+              : bridgeStatus?.connected ? "border-emerald-500/30 bg-emerald-950/10" : "border-border/15 bg-card/20"
           )}>
             <div className="flex items-center justify-between">
               <span className="text-[9px] font-bold uppercase text-muted-foreground/60">Hardware Bridge</span>
