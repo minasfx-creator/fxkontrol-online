@@ -117,6 +117,27 @@ export default function ScriptingToolsPanel({ onClose }: { onClose: () => void }
         toast.success(`${totalCopies} flights criados a partir de ${selectedItems.length} items`);
         break;
       }
+      case 'wind-comp': {
+        const wind = useProjectStore.getState().wind;
+        if (!wind.enabled || wind.speed < 0.5) {
+          toast.error('Ative o vento nas configurações');
+          break;
+        }
+        let updated = 0;
+        selectedItems.forEach(item => {
+          const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+          if (!effect || effect.type !== 'firework') return;
+          const caliber = effect.caliber || 4;
+          const comp = calcWindCompensation(caliber, wind.speed, wind.direction, item.pan ?? 90);
+          updateTimelineItem(item.id, {
+            pan: (item.pan ?? 90) + comp.headingOffset,
+            tilt: (item.tilt ?? 0) + comp.pitchOffset,
+          });
+          updated++;
+        });
+        toast.success(`Wind compensation applied to ${updated} items (${wind.speed}m/s)`);
+        break;
+      }
     }
   };
 
