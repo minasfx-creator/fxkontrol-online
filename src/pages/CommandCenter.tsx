@@ -366,7 +366,7 @@ export default function CommandCenter() {
                         onClick={() => handleModeChange(mode.key)}
                         className={cn(
                           "w-full flex items-center gap-2 rounded-sm transition-all duration-150",
-                          sidebarCollapsed ? "justify-center p-2" : "px-2.5 py-1.5",
+                          sidebarCollapsed ? "justify-center p-2.5" : "px-2.5 py-2.5 min-h-[40px]",
                           isActive
                             ? "text-foreground border-l-2"
                             : "text-muted-foreground/40 hover:bg-primary/3 hover:text-foreground/60 border-l-2 border-transparent"
