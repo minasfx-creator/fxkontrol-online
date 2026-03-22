@@ -1,56 +1,34 @@
 
 
-# Revisão, Correção e Implantação — Wi-Fi Direct + AES-128
+# Firmware ESP32 Gateway com AES-128-GCM — FXK_XL4_Gateway_Firmware.ino
 
-## Gaps Encontrados na Revisão
+## Objetivo
 
-### Gap 1: `wifi_direct` ausente do menu de navegação
-`LiveFiringPanel.tsx` linha 351 — `SWIPE_MODES` **não inclui** `wifi_direct`.
-Linhas 904-921 — os tabs de modo **não listam** `wifi_direct`. O usuário não consegue acessar o painel pelo menu.
+Gerar firmware completo para ESP32 que atua como bridge transparente WebSocket ↔ RS-485, com suporte a descriptografia AES-128-GCM dos frames recebidos do app FX Kontrol.
 
-### Gap 2: AES-128 não implementado
-`src/lib/fireoneAesCrypto.ts` **não existe**. Nenhuma criptografia nos frames enviados via Wi-Fi Direct.
+## Funcionalidades do Firmware
 
-### Gap 3: `connectWiFiDirect` no protocolo não suporta PSK
-`fireoneProtocol.ts` linha 661 — `connectWiFiDirect(targetHost?)` não aceita `psk` para criptografia.
+1. **Wi-Fi AP**: SSID `FXK-XL4` / senha `fireworks32`
+2. **mDNS**: `fxk-xl4.local` para auto-discovery
+3. **WebSocket server** porta 81 (binary mode)
+4. **AES-128-GCM decrypt**: mesma derivação PBKDF2 do `fireoneAesCrypto.ts` (salt `FireOne-WFD-AES128`, 100k iterações, SHA-256)
+5. **UART bridge**: TX/RX → RS-485 transceiver → barramento XL4
+6. **Bidirecional**: WS binary (decrypt) → UART TX; UART RX → WS binary (encrypt)
+7. **Safety watchdog**: 10s sem heartbeat → desabilita UART TX
+8. **STATUS response**: RSSI cliente, uptime, UART health, encryption status
+9. **Heartbeat**: responde `pong` com timestamp para cálculo de latência
 
-### Gap 4: Scan timeout muito curto
-`scanDevices()` usa timeout de 3s (linha 254), mas o `DISCOVERY_TIMEOUT` da classe é 8s. Inconsistência — em campo, 3s pode falhar.
+## Especificações Técnicas
 
-## Plano de Correção e Implantação
+- Plataforma: ESP32-S3 (Arduino framework)
+- Bibliotecas: `WiFi.h`, `WebSocketsServer.h`, `ESPmDNS.h`, `mbedtls/gcm.h` (nativa no ESP32)
+- PSK hardcoded (configurável via `#define`) — mesma chave usada no app
+- Wire format idêntico ao `fireoneAesCrypto.ts`: `[12-byte IV][ciphertext + 16-byte GCM tag]`
+- Derivação de chave via PBKDF2-SHA256 no boot (uma vez)
 
-### 1. `src/components/editor/LiveFiringPanel.tsx`
-- Adicionar `'wifi_direct'` ao array `SWIPE_MODES` (linha 351)
-- Adicionar `{ key: 'wifi_direct', label: '📡 WFD' }` ao array de mode tabs (após `connections`, ~linha 918)
+## Arquivo Gerado
 
-### 2. `src/lib/fireoneAesCrypto.ts` — NOVO
-Utilitário AES-128-GCM usando Web Crypto API nativa:
-- `deriveKey(psk: string)`: PBKDF2 → AES-128 key
-- `encrypt(key, data: Uint8Array)`: retorna `Uint8Array` (12-byte IV + ciphertext + tag)
-- `decrypt(key, packed: Uint8Array)`: extrai IV, decifra, verifica tag
-- Zero dependências externas
-
-### 3. `src/lib/fireoneWifiDirectTransport.ts` — Integrar AES
-- Adicionar campo `encryptionKey?: CryptoKey`
-- No `connect(config)`: se `config.psk` presente, derivar key via `deriveKey()`
-- No `send()`: se key ativa, encriptar frame antes de enviar
-- No `onmessage` (binary): se key ativa, decriptar antes de notificar callbacks
-- Scan timeout: aumentar de 3s para 5s no `scanDevices()`
-- Backward compatible: sem PSK = sem criptografia
-
-### 4. `src/hooks/useFireOneHardware.ts` — PSK no connectWiFiDirect
-- `connectWiFiDirect(targetHost?: string, psk?: string)` — repassa PSK para o transporte
-
-### 5. `src/lib/fireoneProtocol.ts` — PSK no controller
-- `connectWiFiDirect(targetHost?: string, psk?: string)` — passa `{ targetHost, psk }` ao `connect()`
-
-## Arquivos
-
-| Arquivo | Mudança |
-|---------|---------|
-| `src/components/editor/LiveFiringPanel.tsx` | Add `wifi_direct` ao SWIPE_MODES + mode tabs |
-| `src/lib/fireoneAesCrypto.ts` | NOVO — AES-128-GCM via Web Crypto API |
-| `src/lib/fireoneWifiDirectTransport.ts` | Integrar AES encrypt/decrypt + fix scan timeout |
-| `src/hooks/useFireOneHardware.ts` | Add PSK param ao connectWiFiDirect |
-| `src/lib/fireoneProtocol.ts` | Add PSK param ao connectWiFiDirect |
+| Arquivo | Descrição |
+|---------|-----------|
+| `/mnt/documents/FXK_XL4_Gateway_Firmware.ino` | Firmware completo Arduino IDE ready |
 
