@@ -25,7 +25,7 @@ import {
   onEmitterEvent, warmupSystem, createEmitterFromTemplate,
   type NiagaraSystem, type NiagaraEmitter, type NiagaraParticle,
 } from '@/render_ultra/fireworks/niagaraEmitterSystem';
-import { createCollision, createWind, createPointAttractor } from '@/render_ultra/fireworks/niagaraForceModules';
+import { createCollision, createWind, createPointAttractor, createVortex } from '@/render_ultra/fireworks/niagaraForceModules';
 import { getBreakHeight, getBreakSpeed } from '@/lib/pyroPhysics';
 import { thermalColor, getCompound, type ChemicalCompound } from '@/render_ultra/fireworks/particleChemistry';
 import { clampNiagaraHDR, getNiagaraBudgets } from '@/lib/niagaraBlenderRules';
@@ -37,56 +37,231 @@ import { InstancedParticleRenderer, createSparkInstancedRenderer, createSmokeIns
 import { GlobalIlluminationSystem } from '@/render_ultra/lighting/globalIllumination';
 import { spawnScorchMark, spawnLightSplash, updateDecals } from '@/render_ultra/environment/groundDecals';
 
+// ── Niagara Profile Type ─────────────────────────────────────────────
+
+interface NiagaraProfile {
+  starCount: number;
+  lifetime: number;
+  velocity: number;
+  drag: number;
+  gravityScale: number;
+  sparkleRate: number;
+  glowIntensity: number;
+  fadeProfile: 'linear' | 'exponential' | 'ember';
+}
+
+// ── Color-over-life curves by fade profile ──────────────────────────
+
+function buildColorOverLife(color: THREE.Color, fadeProfile: string, sparkleRate: number) {
+  const base: Array<{ t: number; color: THREE.Color }> = [];
+
+  switch (fadeProfile) {
+    case 'ember':
+      // Slow warm glow — stays bright longer, fades to deep orange
+      base.push(
+        { t: 0, color: new THREE.Color(1.5, 1.2, 0.5) },
+        { t: 0.2, color: color.clone().multiplyScalar(1.1) },
+        { t: 0.5, color: color.clone().multiplyScalar(0.8) },
+        { t: 0.75, color: new THREE.Color(0.6, 0.2, 0.02) },
+        { t: 1, color: new THREE.Color(0.1, 0.03, 0.0) },
+      );
+      break;
+    case 'linear':
+      // Even fade — uniform brightness decay
+      base.push(
+        { t: 0, color: new THREE.Color(1.5, 1.2, 0.5) },
+        { t: 0.25, color: color.clone() },
+        { t: 0.5, color: color.clone().multiplyScalar(0.6) },
+        { t: 0.75, color: color.clone().multiplyScalar(0.3) },
+        { t: 1, color: new THREE.Color(0.05, 0.02, 0.01) },
+      );
+      break;
+    case 'exponential':
+    default:
+      // Fast initial burn, rapid decay
+      base.push(
+        { t: 0, color: new THREE.Color(1.5, 1.2, 0.5) },
+        { t: 0.15, color: color.clone() },
+        { t: 0.4, color: color.clone().multiplyScalar(0.5) },
+        { t: 0.7, color: color.clone().multiplyScalar(0.15) },
+        { t: 1, color: new THREE.Color(0.08, 0.02, 0.01) },
+      );
+      break;
+  }
+
+  return base;
+}
+
+// ── Pattern-specific spawn shape mapping ────────────────────────────
+
+function getSpawnShapeForPattern(pattern: string, caliber: number) {
+  switch (pattern) {
+    case 'ring':
+      return { type: 'torus' as const, radius: caliber * 3, innerRadius: 0.5, surfaceOnly: true };
+    case 'mine':
+      return { type: 'cone' as const, radius: caliber * 0.5, coneAngle: Math.PI / 12, height: caliber * 2, surfaceOnly: false };
+    case 'fan':
+      return { type: 'cone' as const, radius: caliber * 0.5, coneAngle: Math.PI / 4, height: caliber * 1.5, surfaceOnly: true };
+    case 'palm':
+    case 'coconut':
+      return { type: 'cone' as const, radius: caliber * 0.5, coneAngle: Math.PI / 7, height: caliber * 2, surfaceOnly: true };
+    default:
+      return { type: 'sphere' as const, radius: caliber * 0.5, surfaceOnly: true };
+  }
+}
+
+// ── Pattern-specific velocity bias ──────────────────────────────────
+
+function applyPatternVelocityBias(
+  velMin: THREE.Vector3, velMax: THREE.Vector3,
+  pattern: string, breakSpd: number
+) {
+  switch (pattern) {
+    case 'mine':
+      // Upward only — no downward component
+      velMin.set(-breakSpd * 0.3, breakSpd * 0.4, -breakSpd * 0.3);
+      velMax.set(breakSpd * 0.3, breakSpd * 1.2, breakSpd * 0.3);
+      break;
+    case 'palm':
+    case 'coconut':
+      // Strong upward, wide horizontal, heavy droop from gravity
+      velMin.set(-breakSpd * 0.7, breakSpd * 0.2, -breakSpd * 0.7);
+      velMax.set(breakSpd * 0.7, breakSpd * 0.9, breakSpd * 0.7);
+      break;
+    case 'willow':
+    case 'kamuro':
+    case 'horsetail':
+      // Downward-heavy bias, low velocity
+      velMin.set(-breakSpd * 0.5, -breakSpd * 0.2, -breakSpd * 0.5);
+      velMax.set(breakSpd * 0.5, breakSpd * 0.6, breakSpd * 0.5);
+      break;
+    case 'comet':
+      // Single direction, high velocity
+      velMin.set(-breakSpd * 0.05, breakSpd * 0.8, -breakSpd * 0.05);
+      velMax.set(breakSpd * 0.05, breakSpd * 1.2, breakSpd * 0.05);
+      break;
+    case 'fan':
+      // Wide horizontal spread, limited vertical
+      velMin.set(-breakSpd * 0.8, breakSpd * 0.1, -breakSpd * 0.2);
+      velMax.set(breakSpd * 0.8, breakSpd * 0.5, breakSpd * 0.2);
+      break;
+    default:
+      // Standard spherical burst
+      velMin.set(-breakSpd * 0.6, -breakSpd * 0.3, -breakSpd * 0.6);
+      velMax.set(breakSpd * 0.6, breakSpd * 0.8, breakSpd * 0.6);
+      break;
+  }
+}
+
 // ── Emitter Templates ───────────────────────────────────────────────
 
-function createSparkEmitterTemplate(caliber: number, color: THREE.Color): NiagaraEmitter {
+function createSparkEmitterTemplate(
+  caliber: number,
+  color: THREE.Color,
+  pattern?: string,
+  niagaraProfile?: NiagaraProfile,
+): NiagaraEmitter {
   const breakSpd = getBreakSpeed(caliber);
-  const sparkCount = Math.min(100, Math.round(caliber * 12));
+  const pat = pattern || '';
 
-  const emitter = createEmitter({
-    id: `spark-burst-${Date.now()}-${Math.random()}`,
-    name: 'Burst Sparks',
-    maxParticles: sparkCount,
-    spawn: { rate: 0, burstCount: sparkCount, burstInterval: 0, burstDelay: 0 },
-    init: {
-      lifetime: [0.6, 1.8 * (caliber / 6)],
-      size: [0.3, 0.8],
-      velocity: {
-        min: new THREE.Vector3(-breakSpd * 0.6, -breakSpd * 0.3, -breakSpd * 0.6),
-        max: new THREE.Vector3(breakSpd * 0.6, breakSpd * 0.8, breakSpd * 0.6),
-      },
-      color: color.clone(),
-      spawnShape: { type: 'sphere', radius: caliber * 0.5, surfaceOnly: true },
-    },
-    update: [{
-      drag: 0.06,
-      gravityScale: 1.0,
-      curlNoiseStrength: 0,
-      curlNoiseScale: 0,
-      colorOverLife: [
-        { t: 0, color: new THREE.Color(1.5, 1.2, 0.5) },
-        { t: 0.3, color: color.clone() },
-        { t: 0.7, color: color.clone().multiplyScalar(0.4) },
-        { t: 1, color: new THREE.Color(0.15, 0.05, 0.02) },
-      ],
-      sizeOverLife: [
+  // Apply niagaraProfile overrides or use defaults
+  const sparkCount = niagaraProfile
+    ? Math.min(500, niagaraProfile.starCount)
+    : Math.min(100, Math.round(caliber * 12));
+
+  const lifetime: [number, number] = niagaraProfile
+    ? [niagaraProfile.lifetime * 0.4, niagaraProfile.lifetime]
+    : [0.6, 1.8 * (caliber / 6)];
+
+  const velocityScale = niagaraProfile ? niagaraProfile.velocity / 42 : 1;
+  const drag = niagaraProfile ? (1 - niagaraProfile.drag) * 2 : 0.06;
+  const gravityScale = niagaraProfile ? niagaraProfile.gravityScale : 1.0;
+  const fadeProfile = niagaraProfile ? niagaraProfile.fadeProfile : 'exponential';
+  const sparkleRate = niagaraProfile ? niagaraProfile.sparkleRate : 0;
+
+  const velMin = new THREE.Vector3();
+  const velMax = new THREE.Vector3();
+  applyPatternVelocityBias(velMin, velMax, pat, breakSpd * velocityScale);
+
+  const spawnShape = getSpawnShapeForPattern(pat, caliber);
+
+  // Build color over life based on fade profile
+  const colorOverLife = buildColorOverLife(color, fadeProfile, sparkleRate);
+
+  // Size curve — strobe uses blink pattern
+  const sizeOverLife = pat === 'strobe'
+    ? [
+        { t: 0, value: 1.2 },
+        { t: 0.15, value: 0.1 },
+        { t: 0.3, value: 1.0 },
+        { t: 0.45, value: 0.1 },
+        { t: 0.6, value: 0.8 },
+        { t: 0.75, value: 0.1 },
+        { t: 0.9, value: 0.5 },
+        { t: 1, value: 0 },
+      ]
+    : [
         { t: 0, value: 1.2 },
         { t: 0.5, value: 0.8 },
         { t: 1, value: 0 },
-      ],
-      rotationRate: 0,
-    }],
-    render: {
-      mode: 'gpu-sprite',
-      blendMode: 'additive',
-      velocityStretch: true,
-      stretchScale: 0.4,
-    },
-    forceModules: [
-      createCollision('ground', { planeY: 0, restitution: 0.2, friction: 0.6, maxBounces: 2 }),
-    ],
-    // Sub-emitter: spawn small embers when sparks die
-    subEmitters: [{
+      ];
+
+  // Force modules per pattern
+  const forceModules: any[] = [
+    createCollision('ground', { planeY: 0, restitution: 0.2, friction: 0.6, maxBounces: 2 }),
+  ];
+
+  if (pat === 'willow' || pat === 'kamuro' || pat === 'horsetail') {
+    forceModules.push(createPointAttractor('droop-attractor', {
+      position: new THREE.Vector3(0, -50, 0),
+      strength: pat === 'horsetail' ? 0.5 : 1.5,
+      radius: 200,
+    }));
+  }
+
+  if (pat === 'tourbillion') {
+    forceModules.push(createVortex('spin-vortex', {
+      axis: new THREE.Vector3(0, 1, 0),
+      strength: 15,
+      radius: caliber * 5,
+    }));
+  }
+
+  // Sub-emitters: crossette gets 4-way split on death
+  const subEmitters: any[] = [];
+
+  if (pat === 'crossette') {
+    subEmitters.push({
+      triggerEvent: 'particle-death',
+      emitterTemplate: createEmitter({
+        id: `sub-crossette-${Date.now()}`,
+        name: 'Crossette Split',
+        maxParticles: 16,
+        spawn: { rate: 0, burstCount: 4, burstInterval: 0, burstDelay: 0 },
+        init: {
+          lifetime: [0.6, 1.2],
+          size: [0.3, 0.6],
+          velocity: {
+            min: new THREE.Vector3(-breakSpd * 0.4, -breakSpd * 0.4, -breakSpd * 0.4),
+            max: new THREE.Vector3(breakSpd * 0.4, breakSpd * 0.4, breakSpd * 0.4),
+          },
+          color: color.clone(),
+        },
+        update: [{
+          drag: 0.08, gravityScale: 1.0,
+          curlNoiseStrength: 0, curlNoiseScale: 0,
+          colorOverLife: buildColorOverLife(color, 'linear', 0),
+          sizeOverLife: [{ t: 0, value: 1 }, { t: 1, value: 0 }],
+          rotationRate: 0,
+        }],
+        render: { mode: 'gpu-sprite', blendMode: 'additive', velocityStretch: true, stretchScale: 0.3 },
+      }),
+      maxInstances: 16,
+      inheritVelocity: 0.3,
+    });
+  } else {
+    // Default: small ember sub-emitter on death
+    subEmitters.push({
       triggerEvent: 'particle-death',
       emitterTemplate: createEmitter({
         id: `sub-ember-${Date.now()}`,
@@ -104,7 +279,38 @@ function createSparkEmitterTemplate(caliber: number, color: THREE.Color): Niagar
       }),
       maxInstances: 8,
       inheritVelocity: 0.15,
+    });
+  }
+
+  const emitter = createEmitter({
+    id: `spark-burst-${Date.now()}-${Math.random()}`,
+    name: 'Burst Sparks',
+    maxParticles: sparkCount,
+    spawn: { rate: 0, burstCount: sparkCount, burstInterval: 0, burstDelay: 0 },
+    init: {
+      lifetime,
+      size: [0.3, 0.8],
+      velocity: { min: velMin, max: velMax },
+      color: color.clone(),
+      spawnShape,
+    },
+    update: [{
+      drag,
+      gravityScale,
+      curlNoiseStrength: 0,
+      curlNoiseScale: 0,
+      colorOverLife,
+      sizeOverLife,
+      rotationRate: 0,
     }],
+    render: {
+      mode: 'gpu-sprite',
+      blendMode: 'additive',
+      velocityStretch: true,
+      stretchScale: pat === 'comet' ? 0.8 : 0.4,
+    },
+    forceModules,
+    subEmitters,
   });
 
   return emitter;
@@ -368,10 +574,11 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
               item.position.z
             );
             const burstColor = new THREE.Color(effect.color);
-            const pattern = (effect as any).burstPattern || '';
+            const pattern = (effect as any).burstPattern || (effect as any).pattern || '';
+            const niagaraProfile = (effect as any).niagaraProfile as NiagaraProfile | undefined;
 
-            // Create composable NiagaraSystem with multiple emitters
-            const sparkEmitter = createSparkEmitterTemplate(caliber, burstColor);
+            // Create composable NiagaraSystem with multiple emitters — driven by VDL niagaraProfile
+            const sparkEmitter = createSparkEmitterTemplate(caliber, burstColor, pattern, niagaraProfile);
             const smokeEmitter = environment.disableSmoke ? null : createSmokeEmitterTemplate(caliber);
             const emberEmitter = createEmberEmitterTemplate(caliber, burstColor);
 

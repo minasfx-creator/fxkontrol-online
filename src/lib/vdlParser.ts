@@ -758,14 +758,75 @@ export function parseVDL(input: string): VDLResult {
     }
   }
 
+  // 3. Fallback: generate physics-correct profile from type if still no profile
+  if (!result.niagaraProfile && result.type) {
+    result.niagaraProfile = generateNiagaraProfileFromType(result.type, result.caliber);
+  }
+
   result.valid = foundType || result.isChain || result.type === 'cake' || result.colorNames.length > 0 || calMatch !== null || calMmMatch !== null;
 
   return result;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// VDL String Generator
+// Niagara Profile Generator — Physics-correct fallback per effect type
 // ═══════════════════════════════════════════════════════════════════════
+
+type NiagaraProfileData = NonNullable<VDLResult['niagaraProfile']>;
+
+const NIAGARA_TYPE_PHYSICS: Record<string, NiagaraProfileData> = {
+  peony:         { starCount: 350, lifetime: 1.8, velocity: 42, drag: 0.96,  gravityScale: 1.0,  sparkleRate: 0.2, glowIntensity: 2.2, fadeProfile: 'exponential' },
+  chrysanthemum: { starCount: 400, lifetime: 2.5, velocity: 40, drag: 0.97,  gravityScale: 1.0,  sparkleRate: 0.25, glowIntensity: 2.4, fadeProfile: 'exponential' },
+  dahlia:        { starCount: 80,  lifetime: 1.2, velocity: 55, drag: 0.94,  gravityScale: 1.1,  sparkleRate: 0.15, glowIntensity: 2.6, fadeProfile: 'exponential' },
+  willow:        { starCount: 300, lifetime: 4.5, velocity: 30, drag: 0.985, gravityScale: 0.6,  sparkleRate: 0.3, glowIntensity: 2.0, fadeProfile: 'ember' },
+  palm:          { starCount: 250, lifetime: 3.0, velocity: 40, drag: 0.97,  gravityScale: 1.3,  sparkleRate: 0.1, glowIntensity: 2.4, fadeProfile: 'exponential' },
+  coconut:       { starCount: 200, lifetime: 3.5, velocity: 35, drag: 0.975, gravityScale: 1.4,  sparkleRate: 0.1, glowIntensity: 2.2, fadeProfile: 'exponential' },
+  brocade:       { starCount: 500, lifetime: 3.2, velocity: 32, drag: 0.98,  gravityScale: 0.7,  sparkleRate: 0.5, glowIntensity: 2.6, fadeProfile: 'ember' },
+  kamuro:        { starCount: 600, lifetime: 3.5, velocity: 35, drag: 0.985, gravityScale: 0.7,  sparkleRate: 0.6, glowIntensity: 2.8, fadeProfile: 'ember' },
+  horsetail:     { starCount: 400, lifetime: 6.0, velocity: 25, drag: 0.995, gravityScale: 0.4,  sparkleRate: 0.5, glowIntensity: 2.0, fadeProfile: 'ember' },
+  crossette:     { starCount: 100, lifetime: 1.8, velocity: 50, drag: 0.95,  gravityScale: 1.2,  sparkleRate: 0.15, glowIntensity: 2.8, fadeProfile: 'linear' },
+  ring:          { starCount: 80,  lifetime: 1.8, velocity: 28, drag: 0.96,  gravityScale: 1.0,  sparkleRate: 0.1, glowIntensity: 2.2, fadeProfile: 'linear' },
+  salute:        { starCount: 20,  lifetime: 0.3, velocity: 80, drag: 0.9,   gravityScale: 0.5,  sparkleRate: 0.0, glowIntensity: 5.0, fadeProfile: 'exponential' },
+  mine:          { starCount: 200, lifetime: 1.5, velocity: 60, drag: 0.92,  gravityScale: 0.8,  sparkleRate: 0.2, glowIntensity: 3.0, fadeProfile: 'linear' },
+  comet:         { starCount: 50,  lifetime: 3.0, velocity: 45, drag: 0.98,  gravityScale: 0.9,  sparkleRate: 0.4, glowIntensity: 3.2, fadeProfile: 'ember' },
+  fountain:      { starCount: 350, lifetime: 8.0, velocity: 12, drag: 0.94,  gravityScale: 1.2,  sparkleRate: 0.3, glowIntensity: 2.0, fadeProfile: 'linear' },
+  gerb:          { starCount: 250, lifetime: 5.0, velocity: 14, drag: 0.95,  gravityScale: 1.1,  sparkleRate: 0.2, glowIntensity: 2.2, fadeProfile: 'linear' },
+  waterfall:     { starCount: 500, lifetime: 15.0, velocity: 3, drag: 0.99,  gravityScale: 1.5,  sparkleRate: 0.6, glowIntensity: 2.8, fadeProfile: 'ember' },
+  fan:           { starCount: 60,  lifetime: 2.5, velocity: 28, drag: 0.96,  gravityScale: 1.0,  sparkleRate: 0.2, glowIntensity: 2.4, fadeProfile: 'linear' },
+  tourbillion:   { starCount: 18,  lifetime: 3.5, velocity: 14, drag: 0.96,  gravityScale: 0.3,  sparkleRate: 0.4, glowIntensity: 2.6, fadeProfile: 'ember' },
+  spinner:       { starCount: 30,  lifetime: 4.0, velocity: 8,  drag: 0.95,  gravityScale: 0.0,  sparkleRate: 0.3, glowIntensity: 2.0, fadeProfile: 'linear' },
+  strobe:        { starCount: 150, lifetime: 2.5, velocity: 35, drag: 0.96,  gravityScale: 1.0,  sparkleRate: 8.0, glowIntensity: 4.0, fadeProfile: 'linear' },
+  flare:         { starCount: 1,   lifetime: 5.0, velocity: 2,  drag: 0.99,  gravityScale: 0.8,  sparkleRate: 0.0, glowIntensity: 3.0, fadeProfile: 'ember' },
+  roman:         { starCount: 10,  lifetime: 1.8, velocity: 28, drag: 0.96,  gravityScale: 1.0,  sparkleRate: 0.2, glowIntensity: 2.4, fadeProfile: 'exponential' },
+  candle:        { starCount: 10,  lifetime: 1.8, velocity: 28, drag: 0.96,  gravityScale: 1.0,  sparkleRate: 0.2, glowIntensity: 2.4, fadeProfile: 'exponential' },
+  cake:          { starCount: 80,  lifetime: 1.6, velocity: 24, drag: 0.96,  gravityScale: 1.0,  sparkleRate: 0.2, glowIntensity: 2.2, fadeProfile: 'exponential' },
+  shell:         { starCount: 350, lifetime: 1.8, velocity: 42, drag: 0.96,  gravityScale: 1.0,  sparkleRate: 0.2, glowIntensity: 2.2, fadeProfile: 'exponential' },
+  ghost:         { starCount: 120, lifetime: 2.5, velocity: 26, drag: 0.97,  gravityScale: 0.9,  sparkleRate: 0.1, glowIntensity: 1.8, fadeProfile: 'exponential' },
+  bombette:      { starCount: 40,  lifetime: 1.4, velocity: 20, drag: 0.95,  gravityScale: 1.0,  sparkleRate: 0.1, glowIntensity: 2.0, fadeProfile: 'exponential' },
+  rocket:        { starCount: 100, lifetime: 2.0, velocity: 30, drag: 0.96,  gravityScale: 1.0,  sparkleRate: 0.3, glowIntensity: 2.4, fadeProfile: 'exponential' },
+  flame:         { starCount: 30,  lifetime: 3.0, velocity: 5,  drag: 0.98,  gravityScale: -0.2, sparkleRate: 0.0, glowIntensity: 2.0, fadeProfile: 'linear' },
+  cryo:          { starCount: 100, lifetime: 3.0, velocity: 8,  drag: 0.97,  gravityScale: 0.3,  sparkleRate: 0.0, glowIntensity: 1.5, fadeProfile: 'linear' },
+  confetti:      { starCount: 200, lifetime: 3.0, velocity: 10, drag: 0.92,  gravityScale: 0.8,  sparkleRate: 0.0, glowIntensity: 1.0, fadeProfile: 'linear' },
+};
+
+/**
+ * Generate a physics-correct Niagara profile from VDL type and caliber.
+ * Caliber scales velocity and starCount proportionally.
+ */
+export function generateNiagaraProfileFromType(type: string, caliber: number): NiagaraProfileData | undefined {
+  const base = NIAGARA_TYPE_PHYSICS[type];
+  if (!base) return undefined;
+
+  const caliberScale = caliber / 4; // 4" is reference caliber
+  return {
+    ...base,
+    starCount: Math.round(base.starCount * Math.max(0.5, Math.min(caliberScale, 2.5))),
+    velocity: base.velocity * Math.max(0.7, Math.min(caliberScale * 0.8 + 0.2, 1.8)),
+    lifetime: base.lifetime * Math.max(0.8, Math.min(caliberScale * 0.3 + 0.7, 1.5)),
+  };
+}
+
+
 export function toVDL(params: Partial<VDLResult>): string {
   const parts: string[] = [];
   if (params.caliber) parts.push(`${params.caliber}in`);
