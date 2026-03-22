@@ -30,7 +30,7 @@ export default function PCBViewer() {
   }, []);
 
   return (
-    <div className="h-screen w-screen bg-background relative overflow-hidden">
+    <div className="h-full w-full bg-background relative overflow-hidden" style={{ minHeight: 'calc(100vh - 5rem)' }}>
       {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-3 bg-gradient-to-b from-background/90 to-transparent">
         <div className="flex items-center gap-3">

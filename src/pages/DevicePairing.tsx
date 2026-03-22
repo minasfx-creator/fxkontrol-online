@@ -88,19 +88,14 @@ export default function DevicePairing() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background">
       {/* Header */}
-      <div className="border-b border-border/30 bg-card/50 backdrop-blur-xl sticky top-0 z-10">
-        <div className="max-w-lg mx-auto flex items-center gap-3 p-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-sm font-bold">Pareamento FXK-M1</h1>
-            <p className="text-[10px] text-muted-foreground font-mono">NFC Tap-to-Pair · BLE 5.0</p>
-          </div>
-          <div className={`w-2 h-2 rounded-full ${moduleState.connected ? 'bg-emerald-400 animate-pulse' : 'bg-muted-foreground/30'}`} />
+      <div className="max-w-lg mx-auto flex items-center gap-3 pb-4">
+        <div className="flex-1">
+          <h1 className="text-sm font-bold">Pareamento FXK-M1</h1>
+          <p className="text-[10px] text-muted-foreground font-mono">NFC Tap-to-Pair · BLE 5.0</p>
         </div>
+        <div className={`w-2 h-2 rounded-full ${moduleState.connected ? 'bg-emerald-400 animate-pulse' : 'bg-muted-foreground/30'}`} />
       </div>
 
       <div className="max-w-lg mx-auto p-4 space-y-4">

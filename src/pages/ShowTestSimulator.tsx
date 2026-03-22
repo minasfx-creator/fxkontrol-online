@@ -225,12 +225,9 @@ export default function ShowTestSimulator() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background p-4 space-y-6 max-w-7xl mx-auto">
+    <div className="bg-background space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Rocket className="w-6 h-6 text-primary" />
