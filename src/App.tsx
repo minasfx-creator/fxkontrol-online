@@ -50,6 +50,7 @@ function App() {
                 <Route path="/agenda" element={<Agenda />} />
                 <Route path="/training" element={<Training />} />
                 <Route path="/pcb-viewer" element={<PCBViewer />} />
+                <Route path="/pairing" element={<DevicePairing />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
