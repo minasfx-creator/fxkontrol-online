@@ -458,7 +458,7 @@ export default function CommandCenter() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden">
+        <div className={`flex-1 overflow-hidden transition-all duration-200 ${swapPhase === 'out' ? 'swap-out' : swapPhase === 'in' ? 'swap-in' : ''}`}>
           {isFireMode(activeMode) ? (
             <LiveFiringPanel initialMode={activeMode} standalone />
           ) : (
