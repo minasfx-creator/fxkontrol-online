@@ -803,6 +803,7 @@ export class CellularTransport implements FireOneTransport {
 
   async disconnect(): Promise<void> {
     if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
+    if (this._pingInterval) { clearInterval(this._pingInterval); this._pingInterval = null; }
     if (this.ws) { this.ws.close(); this.ws = null; }
     this.setState('disconnected');
   }
