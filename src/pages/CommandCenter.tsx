@@ -133,10 +133,7 @@ export default function CommandCenter() {
   // MOBILE LAYOUT
   // ══════════════════════════════════════════════
   if (isMobile) {
-    // For mobile, combine SHOW CONTROL + TOOLS into one group
-    const allMobileModes = mobileCategory === 0
-      ? MODE_SECTIONS[0].modes
-      : [...MODE_SECTIONS[1].modes, ...MODE_SECTIONS[2].modes];
+    const allMobileModes = MODE_SECTIONS[mobileCategory]?.modes ?? MODE_SECTIONS[0].modes;
 
     return (
       <div className="h-[100dvh] w-screen flex flex-col bg-background">

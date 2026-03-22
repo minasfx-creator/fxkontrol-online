@@ -1382,21 +1382,14 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
       case 'pyro_fire': return <PyroFireOnePanel fs={fs} fireChannel={fireChannel} channels={channels} pyroArm={pyroArm} dmxArm={dmxArm} handlePanic={handlePanic} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
       case 'check_slave': return <CheckSlavePanel fs={fs} pyroArm={pyroArm} />;
       case 'mobile_link': return <MobileLinkMode fs={fs} fireChannel={fireChannel} channels={channels} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
-      case 'controllers': return <VirtualControllerHub fs={fs} onSelectMode={(m) => setMode(m as FXCMode)} />;
-      case 'zk6200': return <VirtualZK6200 fs={fs} />;
-      case 'fxbutton': return <VirtualFXButton fs={fs} />;
-      case 'field_map': return <FieldMap2D fs={fs} />;
-      case 'pbus': return <PBusMonitorPanel />;
-      case 'connections': return <ConnectionManagerPanel fs={fs} />;
-      case 'radio': return <RadioControlPanel fs={fs} />;
-      case 'ma3': return <MA3ControlPanel fs={fs} />;
-      case 'wifi_direct': return <WiFiDirectControlPanel fs={fs} />;
-      case 'artnet_modules': return <FXKNetPanel fs={fs} />;
       case 'show_control': return <ShowControlPanel fs={fs} />;
-      case 'module': return <FXKNetPanel fs={fs} />;
+      case 'module':
+      case 'artnet_modules': return <FXKNetPanel fs={fs} />;
       case 'dmx_monitor': return <DMXMonitorPanel fs={fs} />;
-      case 'fxk_light': return <MA3ControlPanel fs={fs} />;
+      case 'fxk_light':
+      case 'ma3': return <MA3ControlPanel fs={fs} />;
       case 'drone_ops': return <DroneCommandPanel fs={fs} />;
+      case 'controllers': return <VirtualControllerHub fs={fs} onSelectMode={(m) => setMode(m as FXCMode)} />;
       case 'settings': return <SettingsPanel fs={fs} settings={settings} onSettingsChange={setSettings} relayConnected={relayConnected} relayUrl={relayUrl} onRelayUrlChange={setRelayUrl} onConnectRelay={connectRelay} onDisconnectRelay={disconnectRelay} />;
       default: return renderSimpleDmx(fs);
     }
