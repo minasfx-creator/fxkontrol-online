@@ -165,7 +165,8 @@ export default function VirtualControllerHub({ fs = false, onSelectMode, onClose
           "hover:border-primary/30 active:scale-[0.97]",
           status.live
             ? "border-primary/20 bg-primary/5"
-            : "border-border/15 bg-card/30",
+            : GROUP_META[card.group]?.borderColor || "border-border/15",
+          !status.live && "bg-card/30",
           isMobile ? "p-4 min-h-[56px]" : fs ? "p-3" : "p-2"
         )}
       >
