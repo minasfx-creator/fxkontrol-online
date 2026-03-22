@@ -144,7 +144,7 @@ export default function ShowControlPanel({ fs = false }: { fs?: boolean; onClose
         setEventLog(prev => [{
           id: `rt-${Date.now()}`, system: 'DMX', color: 'hsl(200 80% 48%)',
           message: `MODULE ${mod?.name || '?'} ${payload.eventType.toUpperCase()} @ ${mod?.ip || '?'}`,
-          timestamp: Date.now(), severity: 'info',
+          timestamp: Date.now(), severity: 'info' as const,
         }, ...prev].slice(0, 50));
         setLastLatency(prev => ({ ...prev, DMX: Date.now() }));
       }).subscribe();
