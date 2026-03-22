@@ -6,13 +6,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
-  Clapperboard, CalendarDays, GraduationCap, Plus, FolderOpen,
+  Clapperboard, CalendarDays, Plus, FolderOpen,
   Zap, Rocket, Flame, Target, Clock, ArrowRight, Sparkles,
-  Radio, Cpu, Cable, Activity, Heart, MessageCircle, Share2,
+  Radio, Cpu, Activity, Heart, MessageCircle, Share2,
   TrendingUp, TrendingDown, Minus, Circle, Bookmark,
-  Shield, Smartphone, Play, Palette, Wand2, Layers,
-  Timer, Crosshair, Volume2, Lightbulb, Pencil, LayoutTemplate,
-  Wifi, Globe, Gauge, Hand, Usb
+  Smartphone, Wand2, Layers,
+  Lightbulb, Pencil, LayoutTemplate,
+  Gauge
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import CinematicIntro from '@/components/editor/CinematicIntro';
