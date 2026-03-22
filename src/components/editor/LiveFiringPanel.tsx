@@ -348,7 +348,7 @@ function DeviceRow({
 // ═══════════════════════════════════════════════════════════
 // MAIN PANEL
 // ═══════════════════════════════════════════════════════════
-export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
+export default function LiveFiringPanel({ onClose, initialMode, standalone }: { onClose?: () => void; initialMode?: string; standalone?: boolean }) {
   const isMobile = useIsMobile();
   const { isPlaying, currentTime, setPlaying, positions } = useProjectStore();
   const { channels, setChannels: setStoreChannels, updateChannels } = useSfxChannelStore();
