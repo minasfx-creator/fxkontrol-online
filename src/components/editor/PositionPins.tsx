@@ -262,7 +262,7 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
         if (p) otherStartPositions.current.set(id, { x: p.x, z: p.z });
       }
     });
-  }, [editorMode, position, selectPosition, togglePositionSelection, selectedPositionIds, gl, camera, raycaster, onRightClick]);
+  }, [editorMode, position, selectPositionAndLinkedEvents, togglePositionSelection, selectedPositionIds, gl, camera, raycaster, onRightClick]);
 
   useEffect(() => {
     if (!isDragging) return;
