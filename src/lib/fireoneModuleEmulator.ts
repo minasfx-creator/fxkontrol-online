@@ -149,6 +149,7 @@ export class FireOneModuleEmulator {
   private onStateChange: ((state: ModuleState) => void) | null;
   private onStatusUpdate: ((status: ModuleStatus) => void) | null;
   private simulateHardware: boolean;
+  private hardwareMode: HardwareMode;
 
   constructor(config: ModuleEmulatorConfig = {}) {
     this.address = config.address ?? 1;
