@@ -1,4 +1,4 @@
-import { LayoutDashboard, Clapperboard, CalendarDays, LogOut, Gamepad2, Crosshair, Volume2, VolumeX, Cpu, Bluetooth, Rocket } from 'lucide-react';
+import { LayoutDashboard, Clapperboard, CalendarDays, LogOut, Gamepad2, Crosshair, Volume2, VolumeX, Cpu, Bluetooth, Rocket, Settings, Shield } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
