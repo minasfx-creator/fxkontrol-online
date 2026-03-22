@@ -1,6 +1,7 @@
 import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { hash01 } from '@/lib/pyroNoise';
 import {
   createShellBurst,
   createGlitterTrailParticle,
@@ -20,6 +21,7 @@ import {
 import { useSceneStore } from '@/store/useSceneStore';
 import { getThreeBlending, getMaxEnergy, GROUND_LIGHT_SCALE } from '@/lib/niagaraBlenderRules';
 import { getRealFormulation, formulationToCompound } from '@/render_ultra/fireworks/particleChemistry';
+import { readDensityAt, type FluidGrid } from '@/render_ultra/fireworks/niagaraFluids';
 
 // ── Custom GPU Shaders (Skybrush-grade thermal rendering) ───────────
 
@@ -308,7 +310,7 @@ export default function ShellBurstRenderer({
   const initTimeRef = useRef<number>(0);
 
   // ── Smoke billboard system ──
-  const SMOKE_COUNT = 10;
+  const SMOKE_COUNT = 16;
   const smokeMeshRefs = useRef<(THREE.Mesh | null)[]>([]);
   const smokeSpawned = useRef(false);
   const smokeParticles = useRef<{ x: number; y: number; z: number; vx: number; vy: number; vz: number; age: number; maxAge: number; scale: number; seed: number }[]>([]);
@@ -631,6 +633,9 @@ export default function ShellBurstRenderer({
         const theta = Math.random() * Math.PI * 2;
         const phi = Math.acos(2 * Math.random() - 1);
         const r = burstSpread * 0.15;
+        const seedVal = Math.random();
+        // Warm vs cool gray based on seed (hot burst = warm, cold sparks = cool)
+        const isWarm = seedVal > 0.4;
         sp.push({
           x: Math.sin(phi) * Math.cos(theta) * r,
           y: Math.cos(phi) * r + burstSpread * 0.1,
@@ -639,34 +644,53 @@ export default function ShellBurstRenderer({
           vy: 0.2 + Math.random() * 0.3,
           vz: Math.sin(phi) * Math.sin(theta) * 0.3 + windVec[2] * 0.1,
           age: 0,
-          maxAge: 3 + Math.random() * 4,
-          scale: 2 + Math.random() * 3,
-          seed: Math.random(),
+          maxAge: 3 + Math.random() * 5,
+          scale: 2 + Math.random() * 3.5,
+          seed: seedVal,
         });
       }
       smokeParticles.current = sp;
     }
 
-    // Step smoke particles and update meshes
+    // Step smoke particles with turbulence drift and fluid grid modulation
     smokeUniforms.uTime.value = time;
     smokeUniforms.uSmokeColor.value.copy(baseColor);
-    smokeUniforms.uSmokeOpacity.value = sceneSettings.smokeRenderQuality === 'high' ? 0.06 : 0.03;
+    smokeUniforms.uSmokeOpacity.value = sceneSettings.smokeRenderQuality === 'high' ? 0.07 : 0.035;
+
+    // Read fluid density for smoke modulation if available
+    const fluidGrid = (window as any).__niagaraFluidGrid;
+    
     for (let i = 0; i < smokeParticles.current.length; i++) {
       const sp = smokeParticles.current[i];
       sp.age += dt;
-      // Buoyancy + wind drift + turbulent displacement
-      sp.x += sp.vx * dt + Math.sin(time * 0.5 + sp.seed * 10) * 0.02;
+      
+      // Turbulence drift using hash01 seeded per particle for non-uniform expansion
+      const turbSeed = hash01(sp.seed * 127 + i);
+      const turbFreqX = 0.3 + turbSeed * 0.4;
+      const turbFreqZ = 0.25 + turbSeed * 0.35;
+      const turbAmp = 0.02 + turbSeed * 0.03;
+      
+      sp.x += sp.vx * dt + Math.sin(time * turbFreqX + sp.seed * 10) * turbAmp;
       sp.y += sp.vy * dt;
-      sp.z += sp.vz * dt + Math.cos(time * 0.4 + sp.seed * 7) * 0.02;
-      sp.vy *= 0.995; // slow deceleration
+      sp.z += sp.vz * dt + Math.cos(time * turbFreqZ + sp.seed * 7) * turbAmp;
+      sp.vy *= 0.994;
       
       const mesh = smokeMeshRefs.current[i];
       if (mesh) {
         mesh.position.set(sp.x, sp.y, sp.z);
         const lifeRatio = sp.age / sp.maxAge;
-        const expansion = sp.scale * (0.5 + lifeRatio * 3.0);
+        const expansion = sp.scale * (0.5 + lifeRatio * 3.5);
         mesh.scale.setScalar(expansion);
         mesh.visible = sp.age < sp.maxAge;
+        
+        // Modulate opacity by fluid grid density if available
+        if (fluidGrid && mesh.material) {
+          const worldX = (position as number[])[0] + sp.x;
+          const worldZ = (position as number[])[2] + sp.z;
+          const density = readDensityAt(fluidGrid as FluidGrid, worldX, worldZ);
+          const fluidBoost = 1 + density * 0.4;
+          (mesh.material as any).uniforms.uSmokeOpacity.value = smokeUniforms.uSmokeOpacity.value * fluidBoost;
+        }
       }
     }
   });
