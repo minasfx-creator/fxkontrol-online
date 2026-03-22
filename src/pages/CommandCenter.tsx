@@ -276,8 +276,8 @@ export default function CommandCenter() {
                   onClick={() => setMobileCategory(idx)}
                   className="flex flex-col items-center gap-0.5 py-2 px-4 min-h-[48px] min-w-[48px] transition-all active:scale-90"
                 >
-                  <Icon className={cn("w-5 h-5 transition-colors", isActive ? "text-primary" : "text-muted-foreground/25")} style={isActive ? { filter: 'drop-shadow(0 0 4px hsl(var(--primary) / 0.5))' } : undefined} />
-                  <span className={cn("text-[7px] font-bold font-mono tracking-[0.15em] transition-colors uppercase", isActive ? "text-primary" : "text-muted-foreground/20")}>
+                  <Icon className={cn("w-5.5 h-5.5 transition-colors", isActive ? "text-primary" : "text-muted-foreground/40")} style={isActive ? { filter: 'drop-shadow(0 0 4px hsl(var(--primary) / 0.5))' } : undefined} />
+                  <span className={cn("text-[8px] font-bold font-mono tracking-[0.15em] transition-colors uppercase", isActive ? "text-primary" : "text-muted-foreground/35")}>
                     {cat.label}
                   </span>
                 </button>
