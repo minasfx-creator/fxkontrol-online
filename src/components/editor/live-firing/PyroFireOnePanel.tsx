@@ -729,13 +729,18 @@ export default function PyroFireOnePanel({
       <div className={cn(
         "border-b flex flex-col",
       )} style={{ background: 'linear-gradient(180deg, hsl(0 5% 12%) 0%, hsl(0 5% 8%) 100%)' }}>
-        {/* Brushed-metal header bar */}
+        {/* Amber accent line at top — BR2049 */}
+        <div className="h-[2px]" style={{
+          background: 'linear-gradient(90deg, transparent, hsl(32 100% 50% / 0.6), hsl(38 100% 58% / 0.8), hsl(32 100% 50% / 0.6), transparent)',
+          boxShadow: '0 0 8px hsl(32 100% 50% / 0.3)',
+        }} />
+        {/* Dark glass header bar — BR2049 */}
         <div className={cn(
           "flex items-center justify-between",
           sz === 'xl' ? "px-6 py-2.5" : sz === 'fs' ? "px-4 py-2" : "px-2 py-1"
         )} style={{
-          borderBottom: '2px solid hsl(0 70% 35%)',
-          backgroundImage: 'repeating-linear-gradient(90deg, hsl(0 0% 14%) 0px, hsl(0 0% 16%) 1px, hsl(0 0% 13%) 2px, hsl(0 0% 15%) 3px)',
+          background: 'linear-gradient(180deg, hsl(220 18% 7% / 0.95) 0%, hsl(220 20% 4% / 0.98) 100%)',
+          borderBottom: '1px solid hsl(32 100% 50% / 0.15)',
         }}>
           <div className="flex items-center gap-3">
             {/* Key switch graphic */}
