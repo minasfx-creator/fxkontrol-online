@@ -1,11 +1,13 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Search, ChevronDown, ChevronRight, Flame, Sparkles, Radio, Shapes, Wand2, Zap, Lightbulb, Droplets, Bomb, CandlestickChart as Candle, Waves, Box, GripVertical, Clock, MapPin, Ruler, List, LayoutGrid, Hash } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, Flame, Sparkles, Radio, Shapes, Wand2, Zap, Lightbulb, Droplets, Bomb, CandlestickChart as Candle, Waves, Box, GripVertical, Clock, MapPin, Ruler, List, LayoutGrid, Hash, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { EFFECT_LIBRARY, useProjectStore, type Effect } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
-import { parseVDL } from '@/lib/vdlParser';
+import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 const CATEGORIES = [
   { key: 'morteiros' as const, label: 'Shells', icon: Flame, accent: 'hsl(15, 95%, 55%)' },
