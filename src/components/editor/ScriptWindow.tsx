@@ -1298,31 +1298,35 @@ export default function ScriptWindow() {
                     </td>
                   )}
 
-                  {/* Notes — click-to-edit */}
-                  <td className="px-1 py-0.5">
-                    {renderEditableCell(row.id, 'notes', row.notes, 'w-full', 'text-muted-foreground text-[8px]')}
-                  </td>
+                  {/* Notes */}
+                  {isColVisible('notes') && (
+                    <td className="px-1 py-0.5">
+                      {renderEditableCell(row.id, 'notes', row.notes, 'w-full', 'text-muted-foreground text-[8px]')}
+                    </td>
+                  )}
 
                   {/* Actions */}
-                  <td className="px-0.5 py-0.5 text-center">
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        className="text-destructive/40 hover:text-destructive"
-                        onClick={(e) => { e.stopPropagation(); removeTimelineItem(row.id); }}
-                      >
-                        <Trash2 className="h-2.5 w-2.5" />
-                      </button>
-                      {isSelected && (
+                  {isColVisible('actions') && (
+                    <td className="px-0.5 py-0.5 text-center">
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
-                          className="text-primary/40 hover:text-primary cursor-s-resize"
-                          title="Drag down to fill"
-                          onMouseDown={(e) => handleFillDragStart(row.id, e)}
+                          className="text-destructive/40 hover:text-destructive"
+                          onClick={(e) => { e.stopPropagation(); removeTimelineItem(row.id); }}
                         >
-                          <GripVertical className="h-2.5 w-2.5" />
+                          <Trash2 className="h-2.5 w-2.5" />
                         </button>
-                      )}
-                    </div>
-                  </td>
+                        {isSelected && (
+                          <button
+                            className="text-primary/40 hover:text-primary cursor-s-resize"
+                            title="Drag down to fill"
+                            onMouseDown={(e) => handleFillDragStart(row.id, e)}
+                          >
+                            <GripVertical className="h-2.5 w-2.5" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               );
             })}
