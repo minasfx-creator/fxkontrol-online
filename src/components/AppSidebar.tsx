@@ -1,4 +1,4 @@
-import { LayoutDashboard, Clapperboard, CalendarDays, GraduationCap, LogOut, Gamepad2 } from 'lucide-react';
+import { LayoutDashboard, Clapperboard, CalendarDays, GraduationCap, LogOut, Gamepad2, Crosshair } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
