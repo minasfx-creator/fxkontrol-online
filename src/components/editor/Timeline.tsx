@@ -169,13 +169,14 @@ const DraggableTimelineItem = React.forwardRef<HTMLButtonElement, {
   pixelsPerSecond: number;
   isSelected: boolean;
   isMultiSelected: boolean;
+  isLinkedHighlight?: boolean;
   onSelect: (e: React.MouseEvent) => void;
   onDragStart: (e: React.MouseEvent, itemId: string) => void;
   onContextMenu: (e: React.MouseEvent, item: any) => void;
   onResize: (itemId: string, edge: 'left' | 'right', deltaTime: number) => void;
   sectionColor?: string;
 }>(function DraggableTimelineItem({
-  item, effect, pixelsPerSecond, isSelected, isMultiSelected, onSelect, onDragStart, onContextMenu, onResize, sectionColor,
+  item, effect, pixelsPerSecond, isSelected, isMultiSelected, isLinkedHighlight, onSelect, onDragStart, onContextMenu, onResize, sectionColor,
 }, ref) {
   const pft = effect.type === 'firework' ? getPreFireTime(effect.name) : 0;
   const pftPx = pft * pixelsPerSecond;
