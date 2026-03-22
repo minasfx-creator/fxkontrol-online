@@ -50,6 +50,7 @@ const CONNECTION_ICONS: Record<ConnectionType, typeof Usb> = {
   radio: Radio,
   sim: Sparkles,
   ble: Radio,
+  wifi_direct: Antenna,
 };
 
 const TYPE_COLORS: Record<string, string> = {
