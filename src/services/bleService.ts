@@ -91,13 +91,13 @@ class BLEService {
   }
 
   async connect(deviceNameFilter?: string): Promise<boolean> {
-    if (!this.isSupported) return false;
+    if (!(navigator as any).bluetooth) return false;
     try {
-      const filters: BluetoothLEScanFilter[] = deviceNameFilter
+      const filters: any[] = deviceNameFilter
         ? [{ name: deviceNameFilter }]
         : [{ namePrefix: 'FXK-M1' }];
 
-      this.device = await navigator.bluetooth.requestDevice({
+      this.device = await (navigator as any).bluetooth.requestDevice({
         filters,
         optionalServices: [FXK_SERVICE_UUID],
       });
