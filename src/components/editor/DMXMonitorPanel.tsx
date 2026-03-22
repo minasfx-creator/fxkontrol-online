@@ -1,14 +1,17 @@
 /**
  * DMXMonitorPanel — 512-Channel DMX Signal Monitor & Command Logger
  * Real-time DMX values visualization + protocol packet log
- * BR2049 terminal diagnostic aesthetic
+ * BR2049 terminal diagnostic aesthetic + persistence via dmx_logs table
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { Activity, Trash2, Download, Filter, Radio } from 'lucide-react';
+import { Activity, Trash2, Download, Filter, Radio, Save, History, ToggleLeft, ToggleRight } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { useSfxChannelStore } from '@/store/useSfxChannelStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface DMXPacketLog {
   id: string;
@@ -59,8 +62,18 @@ export default function DMXMonitorPanel({ fs = false }: { fs?: boolean }) {
   const [dmxValues, setDmxValues] = useState<number[]>(new Array(512).fill(0));
   const [pps, setPps] = useState(0);
   const [filterChannel, setFilterChannel] = useState('');
+  const [autoSave, setAutoSave] = useState(() => localStorage.getItem('dmx-autosave') === 'true');
+  const [saving, setSaving] = useState(false);
   const packetCountRef = useRef(0);
   const changedChannels = useRef(new Set<number>());
+  const sessionId = useRef(`ses-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
+  const autoSaveCountRef = useRef(0);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Persist autoSave toggle
+  useEffect(() => {
+    localStorage.setItem('dmx-autosave', autoSave ? 'true' : 'false');
+  }, [autoSave]);
 
   // Simulate DMX values from channel store
   useEffect(() => {
@@ -85,6 +98,7 @@ export default function DMXMonitorPanel({ fs = false }: { fs?: boolean }) {
 
     if (changed.length > 0) {
       packetCountRef.current++;
+      autoSaveCountRef.current++;
       setPacketLog(prev => [{
         id: `pkt-${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
@@ -94,7 +108,6 @@ export default function DMXMonitorPanel({ fs = false }: { fs?: boolean }) {
         channels: changed,
       }, ...prev].slice(0, 200));
 
-      // Clear highlights after 500ms
       setTimeout(() => changedChannels.current.clear(), 500);
     }
 
@@ -108,6 +121,79 @@ export default function DMXMonitorPanel({ fs = false }: { fs?: boolean }) {
       packetCountRef.current = 0;
     }, 1000);
     return () => clearInterval(iv);
+  }, []);
+
+  // Auto-save: every 100 packets or 30s
+  useEffect(() => {
+    if (!autoSave) return;
+    const iv = setInterval(() => {
+      if (autoSaveCountRef.current > 0 && packetLog.length > 0) {
+        saveLog();
+        autoSaveCountRef.current = 0;
+      }
+    }, 30000);
+    return () => clearInterval(iv);
+  }, [autoSave, packetLog]);
+
+  useEffect(() => {
+    if (autoSave && autoSaveCountRef.current >= 100) {
+      saveLog();
+      autoSaveCountRef.current = 0;
+    }
+  }, [packetLog, autoSave]);
+
+  const saveLog = useCallback(async () => {
+    const projectId = useProjectStore.getState().projectId;
+    if (!projectId || packetLog.length === 0) return;
+    setSaving(true);
+    try {
+      const rows = packetLog.slice(0, 100).map(p => ({
+        project_id: projectId,
+        session_id: sessionId.current,
+        timestamp: new Date(p.timestamp).toISOString(),
+        source: p.source,
+        protocol: p.protocol,
+        universe: p.universe,
+        channel_data: p.channels,
+      }));
+      const { error } = await supabase.from('dmx_logs').insert(rows);
+      if (error) throw error;
+      toast.success(`${rows.length} log entries saved`);
+    } catch (e: any) {
+      toast.error(`Save failed: ${e.message}`);
+    } finally {
+      setSaving(false);
+    }
+  }, [packetLog]);
+
+  const loadHistory = useCallback(async () => {
+    const projectId = useProjectStore.getState().projectId;
+    if (!projectId) return;
+    try {
+      const { data, error } = await supabase
+        .from('dmx_logs')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('timestamp', { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      if (data && data.length > 0) {
+        const loaded: DMXPacketLog[] = data.map((d: any) => ({
+          id: d.id,
+          timestamp: new Date(d.timestamp).getTime(),
+          source: d.source,
+          protocol: d.protocol,
+          universe: d.universe,
+          channels: d.channel_data as any,
+        }));
+        setPacketLog(prev => [...loaded, ...prev].slice(0, 400));
+        toast.success(`${data.length} history entries loaded`);
+      } else {
+        toast.info('No history found');
+      }
+    } catch (e: any) {
+      toast.error(`Load failed: ${e.message}`);
+    }
   }, []);
 
   const clearLog = useCallback(() => setPacketLog([]), []);
@@ -157,7 +243,6 @@ export default function DMXMonitorPanel({ fs = false }: { fs?: boolean }) {
         className="shrink-0 px-3 py-2 flex items-center gap-2 border-b flex-wrap"
         style={{ borderColor: 'hsl(120 70% 42% / 0.06)', background: 'hsl(220 10% 5%)' }}
       >
-        {/* Universe selector */}
         <div className="flex items-center gap-1">
           <span className="text-[7px] font-mono text-muted-foreground/30">UNI</span>
           <select
@@ -171,7 +256,6 @@ export default function DMXMonitorPanel({ fs = false }: { fs?: boolean }) {
           </select>
         </div>
 
-        {/* Source filter */}
         <div className="flex gap-[2px]">
           {SOURCES.map(s => (
             <button
@@ -191,7 +275,23 @@ export default function DMXMonitorPanel({ fs = false }: { fs?: boolean }) {
 
         <div className="flex-1" />
 
-        {/* Actions */}
+        {/* Auto-save toggle */}
+        <button
+          onClick={() => setAutoSave(!autoSave)}
+          className={cn("flex items-center gap-1 text-[7px] font-mono font-bold px-2 py-0.5 rounded transition-all",
+            autoSave ? "text-amber-400" : "text-muted-foreground/30"
+          )}
+        >
+          {autoSave ? <ToggleRight className="w-3 h-3" /> : <ToggleLeft className="w-3 h-3" />}
+          AUTO
+        </button>
+
+        <Button variant="ghost" size="sm" onClick={saveLog} disabled={saving || packetLog.length === 0} className="h-5 px-2 text-[7px] font-mono text-muted-foreground/40">
+          <Save className="w-3 h-3 mr-1" />{saving ? '...' : 'SAVE'}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={loadHistory} className="h-5 px-2 text-[7px] font-mono text-muted-foreground/40">
+          <History className="w-3 h-3 mr-1" />HISTORY
+        </Button>
         <Button variant="ghost" size="sm" onClick={clearLog} className="h-5 px-2 text-[7px] font-mono text-muted-foreground/40">
           <Trash2 className="w-3 h-3 mr-1" />CLEAR
         </Button>
@@ -209,7 +309,6 @@ export default function DMXMonitorPanel({ fs = false }: { fs?: boolean }) {
           </span>
         </div>
         <ChannelGrid values={dmxValues} highlight={changedChannels.current} />
-        {/* Channel number ruler */}
         <div className="flex justify-between mt-0.5 px-[1px]">
           {[1, 64, 128, 192, 256, 320, 384, 448, 512].map(n => (
             <span key={n} className="text-[5px] font-mono text-muted-foreground/20">{n}</span>

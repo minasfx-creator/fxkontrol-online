@@ -2,12 +2,14 @@
  * ShowControlPanel — Macro Mission Overview
  * Real-time monitoring of all 4 systems: PYRO, DMX, LIGHT, DRONE
  * BR2049 holographic command center aesthetic
+ * Now with Supabase Realtime for Art-Net module telemetry
  */
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { Flame, Zap, Gauge, Layers, Activity, Radio, Shield } from 'lucide-react';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useSfxChannelStore } from '@/store/useSfxChannelStore';
+import { supabase } from '@/integrations/supabase/client';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface EventLog {
@@ -69,24 +71,76 @@ export default function ShowControlPanel({ fs = false, onClose }: ShowControlPan
   const channels = useSfxChannelStore(s => s.channels);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [eventLog, setEventLog] = useState<EventLog[]>([]);
+  const [modulesOnline, setModulesOnline] = useState(0);
+  const [lastLatency, setLastLatency] = useState<Record<string, number>>({});
   const startRef = useRef(Date.now());
   const prevEffectCountRef = useRef(0);
+  const sparklineBuffers = useRef<Record<string, number[]>>({
+    PYRO: new Array(20).fill(0),
+    DMX: new Array(20).fill(0),
+    LIGHT: new Array(20).fill(0),
+    DRONE: new Array(20).fill(0),
+  });
 
+  // Elapsed timer
   useEffect(() => {
     const iv = setInterval(() => setElapsedMs(Date.now() - startRef.current), 100);
     return () => clearInterval(iv);
   }, []);
 
+  // Realtime: subscribe to artnet_modules changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('show-telemetry')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'artnet_modules' },
+        (payload) => {
+          const mod = payload.new as any;
+          const eventType = payload.eventType;
+          setEventLog(prev => [{
+            id: `rt-${Date.now()}`,
+            system: 'DMX',
+            color: 'hsl(200 80% 48%)',
+            message: `MODULE ${mod?.name || 'UNKNOWN'} ${eventType.toUpperCase()} @ ${mod?.ip || '?'}`,
+            timestamp: Date.now(),
+          }, ...prev].slice(0, 50));
+          setLastLatency(prev => ({ ...prev, DMX: Date.now() }));
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  // Sparkline data from real store — update every 500ms
+  useEffect(() => {
+    const iv = setInterval(() => {
+      const ch = useSfxChannelStore.getState().channels;
+      const pyroActive = ch.filter(c => ['flame', 'spark', 'confetti', 'streamer'].includes(c.type) && c.firing).length;
+      const dmxActive = ch.filter(c => ['co2', 'cryo', 'haze', 'fog', 'snow', 'bubble'].includes(c.type) && c.firing).length;
+
+      sparklineBuffers.current.PYRO = [...sparklineBuffers.current.PYRO.slice(1), pyroActive * 20];
+      sparklineBuffers.current.DMX = [...sparklineBuffers.current.DMX.slice(1), dmxActive * 20];
+      sparklineBuffers.current.LIGHT = [...sparklineBuffers.current.LIGHT.slice(1), Math.random() * 5];
+      sparklineBuffers.current.DRONE = [...sparklineBuffers.current.DRONE.slice(1), Math.random() * 3];
+    }, 500);
+    return () => clearInterval(iv);
+  }, []);
+
+  // Track new effects → log
   useEffect(() => {
     if (activeEffects.length > prevEffectCountRef.current) {
       const newEffect = activeEffects[activeEffects.length - 1];
+      const sys = newEffect?.type === 'flame' ? 'PYRO' : 'DMX';
       setEventLog(prev => [{
         id: `log-${Date.now()}`,
-        system: newEffect?.type === 'flame' ? 'PYRO' : 'DMX',
-        color: newEffect?.type === 'flame' ? 'hsl(0 85% 48%)' : 'hsl(200 80% 48%)',
+        system: sys,
+        color: sys === 'PYRO' ? 'hsl(0 85% 48%)' : 'hsl(200 80% 48%)',
         message: `FIRE ${newEffect?.type?.toUpperCase()} @ ${newEffect?.intensity ?? 255}`,
         timestamp: Date.now(),
       }, ...prev].slice(0, 50));
+      setLastLatency(prev => ({ ...prev, [sys]: Date.now() }));
     }
     prevEffectCountRef.current = activeEffects.length;
   }, [activeEffects]);
@@ -103,16 +157,19 @@ export default function ShowControlPanel({ fs = false, onClose }: ShowControlPan
       const ch = isP ? pyroChannels : isD ? dmxChannels : [];
       const active = isP ? firingPyro : isD ? firingDmx : 0;
       const armed = ch.some(c => c.armed);
+      const lat = lastLatency[sys.code];
+      const latencyMs = lat ? Date.now() - lat : null;
       return {
         ...sys,
         status: (armed ? 'ARMED' : ch.length > 0 ? 'ONLINE' : 'STANDBY') as 'ARMED' | 'ONLINE' | 'STANDBY',
         channels: ch.length,
         activeCount: active,
         lastCommand: active > 0 ? 'FIRING' : 'IDLE',
-        activity: Array.from({ length: 20 }, () => Math.random() * (active > 0 ? 80 : ch.length > 0 ? 15 : 2)),
+        activity: sparklineBuffers.current[sys.code] || new Array(20).fill(0),
+        latencyMs,
       };
     });
-  }, [channels, activeEffects]);
+  }, [channels, activeEffects, lastLatency]);
 
   const totalArmed = channels.filter(c => c.armed).length;
   const totalFiring = channels.filter(c => c.firing).length;
@@ -177,6 +234,7 @@ export default function ShowControlPanel({ fs = false, onClose }: ShowControlPan
                   { label: 'CHANNELS', value: sys.channels },
                   { label: 'ACTIVE', value: sys.activeCount, highlight: sys.activeCount > 0 },
                   { label: 'STATE', value: sys.lastCommand },
+                  ...(sys.latencyMs !== null ? [{ label: 'LATENCY', value: `${Math.min(sys.latencyMs!, 9999)}ms` }] : []),
                 ].map(row => (
                   <div key={row.label} className="flex items-center justify-between">
                     <span className="text-[7px] font-mono text-muted-foreground/30">{row.label}</span>
