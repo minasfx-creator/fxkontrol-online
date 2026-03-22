@@ -132,8 +132,12 @@ export default function CommandCenter() {
   const handleModeChange = useCallback((mode: CommandMode) => {
     if (mode === activeMode || bootConsole) return;
     ambientSound.play('boot');
-    // Start boot sequence overlay
-    setBootConsole(mode);
+    // Swap-out current content, then boot new console
+    setSwapPhase('out');
+    setTimeout(() => {
+      setSwapPhase('idle');
+      setBootConsole(mode);
+    }, 250);
   }, [activeMode, bootConsole]);
 
   const handleBootComplete = useCallback(() => {

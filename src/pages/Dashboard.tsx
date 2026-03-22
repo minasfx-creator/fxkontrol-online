@@ -440,7 +440,7 @@ export default function Dashboard() {
                   <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider font-display">Hardware</span>
                 </div>
                 <button
-                  onClick={() => navigate('/command?mode=controllers')}
+                  onClick={() => navigate('/command?mode=module')}
                   className="text-[9px] text-primary hover:text-primary/80 font-semibold transition-colors"
                 >
                   Ver todos →
