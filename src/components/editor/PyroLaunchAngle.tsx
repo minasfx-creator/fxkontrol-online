@@ -282,15 +282,11 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
   // Get real caliber from linked effects
   const timelineItems = useProjectStore(s => s.timelineItems);
   const realCaliber = useMemo(() => {
-    const linked = timelineItems.filter(t => t.positionId === position.id || (t as any).positionIds?.includes(position.id));
+    const linked = timelineItems.filter(t => t.positionId === position.id || t.positionIds?.includes(position.id));
     let cal = 4;
     for (const item of linked) {
-      const eff = (window as any).__EFFECT_LIBRARY?.find?.((e: any) => e.id === item.effectId);
-      // Fallback: import from store
-      const { default: store } = { default: useProjectStore.getState() };
-      const lib = (store as any).effectLibrary || [];
-      const found = lib.find?.((e: any) => e.id === item.effectId);
-      if (found?.caliber && found.caliber > cal) cal = found.caliber;
+      const eff = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      if (eff?.caliber && eff.caliber > cal) cal = eff.caliber;
     }
     return cal;
   }, [timelineItems, position.id]);
