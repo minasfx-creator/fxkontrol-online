@@ -1,60 +1,97 @@
 
 
-# Plan: Enhanced Glow Effect + FIR Export + Selection Flow Fixes
+# Refined Plan: Finale 3D Identical Angle System — Gaps Identified & Fixed
 
-## Summary
+## Gaps Found in Current Plan
 
-Three deliverables: (1) more visible pulse/particle burst on positions when selected via timeline marquee, (2) FIR export with full module/slat/pin mapping from addressing store, (3) verify and fix bidirectional selection flow.
+After cross-referencing the Finale 3D documentation (coordinate system, script columns, video reference) against the existing code, these gaps exist:
 
-## Changes
+### Gap 1: Euler Rotation Order is WRONG
+The Finale docs specify: **Pitch (X) → Roll (Z) → Heading (Y)** (Table 1 in docs). The current `PositionPins.tsx` applies only `rotation={[0, -heading * PI/180, 0]}` — it ignores pitch and roll for the mortar icon orientation entirely. The `PyroLaunchAngle.tsx` gizmo computes direction correctly but the *actual 3D model* doesn't rotate with pitch/roll. This is a critical fidelity gap.
 
-### 1. `src/components/editor/PositionPins.tsx` — Enhanced Linked Glow with Particle Burst
+### Gap 2: Pan/Tilt/Spin vs Heading/Pitch/Roll Confusion
+The Finale docs are explicit: **Heading/Pitch/Roll are POSITION-level** (rack orientation), while **Pan/Tilt/Spin are EFFECT-level** (relative to position). Pan/Tilt/Spin use a DIFFERENT Euler convention: Pan(Y) → Tilt(X-after-Pan) → Spin(Y-after-Tilt). The plan mentions this but doesn't specify the correct composition math. The `SkyCanvas.tsx` (4106 lines) needs to compose: `Position(H/P/R) * Effect(Pan/Tilt/Spin)` for each rendered effect.
 
-Replace the subtle `LinkedGlowRing` with a more dramatic visual:
-- Increase ring size (1.2→1.8 outer) and opacity (0.45→0.7)
-- Add a second expanding ring that fades out (scale 1→3 over 2s, opacity 0.6→0) for a "shockwave" effect
-- Add 8 small particle spheres orbiting the position (useFrame rotation) with additive blending
-- Color: orange for pyro (#FF6B35), cyan for drone (#00B4D8)
-- The effect activates when `hasLinkedGlow` is true (events selected from timeline)
+### Gap 3: No Always-On Direction Line
+Currently the direction arrow (cone at line 491-496 of PositionPins.tsx) is always visible but it's just a small cone. Finale shows a **long thin line** from every position indicating launch direction at all times. The plan mentions this but it needs to be more specific: the line should use the FULL Euler rotation to show the actual launch vector, not just heading.
 
-### 2. `src/lib/fireoneScriptParser.ts` — Add `exportFireOneFIR()` Function
+### Gap 4: "Rotate (around position's up vector)" Missing
+The Finale docs describe a 4th rotation mode for wall-mounted positions. The current context menu only has H/P/R. Need to add "Rotate (around up vector)" which rotates around the position's local Y-axis after all rotations are applied.
 
-New export function that generates pipe-delimited `.fir` format:
-- Format: `LaunchTimeMS|Slat|Cue|Description|ProductNumber|Size|Position|Event`
-- Accept timeline items + addressing store data + positions as parameters
-- Map each timeline item to its assigned module/slat/pin from the addressing store
-- Include position name in the Position column
-- Fall back to flat index calculation if no addressing entry exists
-- Add to `autoDetectAndParse` awareness
+### Gap 5: "Move on axis..." Missing  
+Finale's right-click menu includes "Move on axis..." which shows 3 colored arrows (local XYZ) for dragging positions along their local frame. Not in current plan.
 
-### 3. `src/lib/fireoneScriptParser.ts` — Add `exportFireOneFIRFromProject()` Helper
+### Gap 6: Rotation Wheel Visual Missing
+The plan says "right-click rotation wheel" but current implementation just uses free-drag on the handle sphere. Finale shows an actual **circular wheel** on the ground plane (for heading) or vertical plane (for pitch) with the position's arrow draggable around it. Current `HeadingCompass` is close but the draggable interaction is on the handle, not on the compass ring itself.
 
-Convenience function that pulls data from stores:
-```typescript
-export function exportFireOneFIRFromProject(): string
+### Gap 7: Angles* Column in Script Window
+Finale has an `Angles*` column that shows ASCII art angle indicators like `\|/` for groups. Not in ScriptWindow currently.
+
+### Gap 8: Pitch/Roll Read-Only Derived Columns
+In Finale, `Pitch` and `Roll` in the script are READ-ONLY fields derived from Pan/Tilt. They show the forward/back and side-to-side components. The plan has Pan/Tilt/Spin as editable (correct) but doesn't mention the derived Pitch/Roll display columns.
+
+---
+
+## Updated Changes
+
+### 1. `src/components/editor/PositionPins.tsx` — Fix Euler Rotation + Always-On Line
+
+**Rotation fix**: Apply full Finale Euler order to mortar icon: Pitch(X) → Roll(Z) → Heading(Y).
 ```
-- Reads `useProjectStore` timeline items, positions, effects
-- Reads `useAddressingStore` addresses
-- Calls `exportFireOneFIR()` with mapped data
-- Returns the complete .fir file string
+<group rotation={[pitch * PI/180, -heading * PI/180, roll * PI/180]} euler order="YZX">
+```
 
-### 4. `src/components/editor/Timeline.tsx` — Fix Marquee → Position Sync Timing
+**Always-on direction line**: Add a `<Line>` from `[0,0,0]` to `[dx, dy, dz]` computed from full H/P/R Euler rotation applied to the up vector `[0, 1, 0]`. Length 2 units unselected (opacity 0.15), 3 units selected (opacity 0.7), colored by type.
 
-Current marquee `handleUp` calls `toggleTimelineItemSelection` then `selectMultiplePositionsAndLinkedEvents`. The toggle may interfere with the linked state. Fix:
-- Collect all selected item IDs first
-- Clear existing selection, then batch-set all selected items
-- Then sync linked positions
-- This ensures clean bidirectional state
+### 2. `src/components/editor/PyroLaunchAngle.tsx` — Rotation Wheel + Solid Trajectory
 
-### 5. `src/components/editor/PositionPins.tsx` — Also Show Glow When `isSelected` + Has Linked Items
+**Rotation wheel**: Make the `HeadingCompass` ring itself draggable (not just the handle). When in heading-constrained mode, clicking/dragging on the compass ring rotates heading. Add similar vertical ring for pitch mode.
 
-Currently `hasLinkedGlow && !isSelected` hides the glow when position is directly selected. Change to show enhanced glow in both cases (selected positions with linked events get the particle burst too, just with the selection ring underneath).
+**Solid trajectory**: Change trajectory `Line` from `dashed` to solid, increase lineWidth to 2, add gradient opacity. Add burst point marker (small diamond mesh) at `trajectoryData.apexPoint`.
+
+**"Around up vector" mode**: Add 4th drag axis mode `'up-vector'` — computes the position's local up vector after H/P/R rotations and constrains drag around that axis.
+
+### 3. `src/components/editor/PositionContextMenu.tsx` — Add Missing Menu Items
+
+Add these Finale right-click items:
+- "Rotate (around up vector)" — emits axis mode `'up-vector'`
+- "Move on axis..." — emits a new mode that shows 3 colored arrows for local XYZ translation
+- Separator before rotation commands for clearer grouping
+
+### 4. `src/store/useProjectStore.ts` — Verify Pan/Tilt/Spin
+
+Already has `pan`, `tilt`, `spin` on `TimelineItem` (lines 68-70). No store change needed.
+
+### 5. `src/components/editor/ScriptWindow.tsx` — Pan/Tilt/Spin + Angles* Columns
+
+Add editable columns:
+- **Pan** — editable, default 90 for shells, 0 for DMX (per Finale docs: "shells typically have Pan of 90")
+- **Tilt** — editable, default 0
+- **Spin** — editable, default 0
+- **Angles*** — read-only, ASCII art `\|/` representation of angles for grouped items
+- **Pitch** (derived) — read-only, computed from Pan+Tilt
+- **Roll** (derived) — read-only, computed from Pan+Tilt
+
+### 6. `src/components/editor/SkyCanvas.tsx` — Compose Effect Orientation
+
+When rendering effects, compute final world orientation:
+1. Position rotation: Pitch(X) → Roll(Z) → Heading(Y)
+2. Effect rotation: Pan(Y) → Tilt(X-rotated-by-Pan) → Spin(Y-rotated)
+3. Final = Position quaternion × Effect quaternion
+
+Apply to effect group transform in the rendering loop.
+
+### 7. `src/components/editor/PositionPins.tsx` — Enhanced Glow (from previous plan)
+
+Keep the LinkedGlowRing with shockwave + particles (already implemented). Ensure it shows when `hasLinkedGlow` is true regardless of `isSelected` state.
 
 ## Files
 
 | File | Change |
 |------|--------|
-| `src/components/editor/PositionPins.tsx` | Enhanced glow ring with particles, fix glow visibility |
-| `src/lib/fireoneScriptParser.ts` | Add `exportFireOneFIR()` and `exportFireOneFIRFromProject()` |
-| `src/components/editor/Timeline.tsx` | Fix marquee selection sync timing |
+| `src/components/editor/PositionPins.tsx` | Fix Euler order, always-on direction line, glow visibility |
+| `src/components/editor/PyroLaunchAngle.tsx` | Draggable rotation wheel, solid trajectory, burst marker, up-vector mode |
+| `src/components/editor/PositionContextMenu.tsx` | Add "Rotate (around up vector)", "Move on axis..." |
+| `src/components/editor/ScriptWindow.tsx` | Pan/Tilt/Spin editable cols, Angles* ASCII art col |
+| `src/components/editor/SkyCanvas.tsx` | Compose Position H/P/R + Effect P/T/S for rendering |
 
