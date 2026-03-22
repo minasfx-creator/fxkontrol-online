@@ -414,8 +414,13 @@ function TimelineTrackRow({
 
   const handleItemSelect = useCallback((e: React.MouseEvent, itemId: string) => {
     e.stopPropagation();
-    if (e.shiftKey || e.ctrlKey || e.metaKey) { toggleTimelineItemSelection(itemId); } else { selectTimelineItem(itemId); }
-  }, [selectTimelineItem, toggleTimelineItemSelection]);
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      toggleTimelineItemSelection(itemId);
+    } else {
+      // Bidirectional: select item and linked position
+      useProjectStore.getState().selectTimelineItemAndLinkedPosition(itemId);
+    }
+  }, [toggleTimelineItemSelection]);
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; item: any } | null>(null);
 
