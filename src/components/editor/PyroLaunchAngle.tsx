@@ -783,6 +783,38 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
               />
             )}
           </div>
+          {/* Pitch presets */}
+          <div style={{ display: 'flex', gap: '2px', marginTop: '3px', flexWrap: 'wrap' }}>
+            {[15, 30, 45, 60, 75, 80, 85, 90].map(deg => {
+              const isActive = Math.round(position.pitch || 85) === deg;
+              return (
+                <button
+                  key={deg}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (batchMode && selectedIds) {
+                      selectedIds.forEach(id => updatePosition(id, { pitch: deg }));
+                    } else {
+                      updatePosition(position.id, { pitch: deg });
+                    }
+                  }}
+                  style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: '7px',
+                    padding: '1px 3px',
+                    background: isActive ? 'rgba(255,138,101,0.25)' : 'rgba(255,255,255,0.05)',
+                    border: `1px solid ${isActive ? COLORS.pitchArc : 'rgba(255,255,255,0.12)'}`,
+                    borderRadius: '2px',
+                    color: isActive ? COLORS.pitchArc : 'rgba(255,255,255,0.5)',
+                    cursor: 'pointer',
+                    lineHeight: '1.2',
+                  }}
+                >
+                  {deg}°
+                </button>
+              );
+            })}
+          </div>
           {windCompGhost && (
             <div style={{ fontSize: '8px', color: '#4CAF50', opacity: 0.8, marginTop: '1px' }}>
               ↻ drift {windCompGhost.drift.driftX}m × {windCompGhost.drift.driftZ}m
