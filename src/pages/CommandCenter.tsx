@@ -277,6 +277,7 @@ export default function CommandCenter() {
   // ══════════════════════════════════════════════
   if (isMobile) {
     return (
+      <>
       <div className="h-[100dvh] w-screen flex flex-col bg-background">
         {/* HUD */}
         <div className="shrink-0 px-2 pt-1.5 pb-1" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
@@ -375,6 +376,10 @@ export default function CommandCenter() {
           </nav>
         </div>
       </div>
+      {bootConsole && (
+        <ConsoleBootSequence consoleKey={bootConsole} label={CONSOLE_ACCENTS[bootConsole]?.label ?? ''} subtitle={CONSOLE_ACCENTS[bootConsole]?.subtitle ?? ''} accentColor={CONSOLE_ACCENTS[bootConsole]?.color ?? 'hsl(32 100% 50%)'} onComplete={handleBootComplete} />
+      )}
+      </>
     );
   }
 
