@@ -1049,15 +1049,9 @@ export default function ScriptWindow() {
                     )}
                   </td>
 
-                  {/* Notes */}
+                  {/* Notes — click-to-edit */}
                   <td className="px-1 py-0.5">
-                    <input
-                      className="w-full bg-transparent border-b border-transparent hover:border-border/30 focus:border-primary text-muted-foreground outline-none text-[8px] transition-colors"
-                      placeholder="…"
-                      value={row.notes}
-                      onChange={(e) => updateTimelineItem(row.id, { notes: e.target.value })}
-                      onClick={(e) => e.stopPropagation()}
-                    />
+                    {renderEditableCell(row.id, 'notes', row.notes, 'w-full', 'text-muted-foreground text-[8px]')}
                   </td>
 
                   {/* Actions */}
