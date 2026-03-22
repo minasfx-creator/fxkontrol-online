@@ -72,6 +72,17 @@ const TYPE_ICONS: Record<string, string> = {
   pyro: '🎆', drone: '🤖', sfx: '🔥', mixed: '🎯',
 };
 
+/* ── Console Launcher Cards ─────────────────────────── */
+const CONSOLE_CARDS = [
+  { key: 'pyro_fire', label: 'FXK-PYRO', subtitle: 'FIRE CONTROL', color: 'hsl(0 85% 48%)', glow: 'hsl(0 85% 48% / 0.08)', icon: Flame },
+  { key: 'super_dmx', label: 'FXK-DMX', subtitle: 'SFX CONSOLE', color: 'hsl(200 80% 48%)', glow: 'hsl(200 80% 48% / 0.08)', icon: Zap },
+  { key: 'show_control', label: 'SHOW CTRL', subtitle: 'MISSION CONTROL', color: 'hsl(32 100% 50%)', glow: 'hsl(32 100% 50% / 0.08)', icon: Activity },
+  { key: 'fxk_light', label: 'FXK-LIGHT', subtitle: 'LIGHTING', color: 'hsl(240 50% 52%)', glow: 'hsl(240 50% 52% / 0.06)', icon: Lightbulb },
+  { key: 'drone_ops', label: 'FXK-DRONE', subtitle: 'SWARM OPS', color: 'hsl(165 100% 42%)', glow: 'hsl(165 100% 42% / 0.06)', icon: Layers },
+  { key: 'module', label: 'MODULE', subtitle: 'HARDWARE', color: 'hsl(270 60% 50%)', glow: 'hsl(270 60% 50% / 0.06)', icon: Cpu },
+  { key: 'dmx_monitor', label: 'DMX MON', subtitle: 'ANALYZER', color: 'hsl(120 70% 42%)', glow: 'hsl(120 70% 42% / 0.06)', icon: Radio },
+];
+
 /* ── Hub Tool Definitions ───────────────────────────── */
 interface HubTool {
   label: string;
@@ -80,12 +91,12 @@ interface HubTool {
 }
 
 const SHOW_COMMANDER_TOOLS: HubTool[] = [
-  { label: 'Super DMX', icon: Zap, panel: 'super_dmx' },
+  { label: 'FXK-DMX', icon: Zap, panel: 'super_dmx' },
   { label: 'FXK-PYRO', icon: Flame, panel: 'pyro_fire' },
-  { label: 'Auto Fire', icon: Timer, panel: 'auto_fire' },
-  { label: 'Manual Fire', icon: Hand, panel: 'manual_fire' },
+  { label: 'Show Ctrl', icon: Activity, panel: 'show_control' },
+  { label: 'DMX Mon', icon: Radio, panel: 'dmx_monitor' },
   { label: 'FXK-LINK', icon: Smartphone, panel: 'mobile_link' },
-  { label: 'Safety', icon: Shield, panel: 'check_slave' },
+  { label: 'Module', icon: Cpu, panel: 'module' },
 ];
 
 const MASTER_EDITOR_TOOLS: HubTool[] = [
