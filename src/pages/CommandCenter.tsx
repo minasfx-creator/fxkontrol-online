@@ -1,8 +1,9 @@
 /**
  * CommandCenter — FXK 2.0 Execution Hub
  * 7 focused consoles: 4 main + Show Control + Module + DMX Monitor
+ * Landscape mobile: game-style HUD with side rail + top bar
  */
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ambientSound } from '@/lib/ambientSound';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -12,11 +13,12 @@ import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { cn } from '@/lib/utils';
 import {
   Zap, Flame, Gauge, Layers, Activity, Cpu, Radio,
-  Shield, Map
+  Shield, Map, Menu
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import LiveFiringPanel from '@/components/editor/LiveFiringPanel';
+import { CONSOLE_LOGOS } from '@/components/editor/ConsoleLogos';
 
 // Direct-render components
 import MA3ControlPanel from '@/components/editor/MA3ControlPanel';
@@ -24,7 +26,6 @@ import DroneCommandPanel from '@/components/editor/DroneCommandPanel';
 import ShowControlPanel from '@/components/editor/ShowControlPanel';
 import FXKNetPanel from '@/components/editor/live-firing/FXKNetPanel';
 import DMXMonitorPanel from '@/components/editor/DMXMonitorPanel';
-
 // ── Types ──
 type CommandMode =
   | 'pyro_fire' | 'super_dmx' | 'fxk_light' | 'drone_ops'
