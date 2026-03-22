@@ -34,6 +34,8 @@ import { RibbonTrail } from '@/render_ultra/fireworks/ribbonTrailRenderer';
 import { HeatHazeEmitter } from '@/render_ultra/fireworks/heatDistortion';
 import { createFluidGrid, advectFluid, applyWindForce, type FluidGrid } from '@/render_ultra/fireworks/niagaraFluids';
 import { InstancedParticleRenderer, createSparkInstancedRenderer, createSmokeInstancedRenderer } from '@/render_ultra/fireworks/instancedParticleRenderer';
+import { GlobalIlluminationSystem } from '@/render_ultra/lighting/globalIllumination';
+import { spawnScorchMark, spawnLightSplash, updateDecals } from '@/render_ultra/environment/groundDecals';
 
 // ── Emitter Templates ───────────────────────────────────────────────
 
