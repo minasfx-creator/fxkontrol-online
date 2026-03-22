@@ -1036,15 +1036,17 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
             { key: 'pyro_fire' as FXCMode, label: '🔥 Pyro' },
             { key: 'auto_fire' as FXCMode, label: 'Auto' },
             { key: 'check_slave' as FXCMode, label: 'Check' },
-            { key: 'controllers' as FXCMode, label: '🎛 HW' },
-            { key: 'pbus' as FXCMode, label: '📡 PBUS' },
-            { key: 'ma3' as FXCMode, label: '🎛 MA3' },
-            { key: 'field_map' as FXCMode, label: '🗺 Map' },
-            { key: 'connections' as FXCMode, label: '🔌 Conn' },
-            { key: 'wifi_direct' as FXCMode, label: '📡 WFD' },
-            { key: 'artnet_modules' as FXCMode, label: '🌐 ArtNet' },
-            { key: 'mobile_link' as FXCMode, label: '📡 Link' },
-            { key: 'settings' as FXCMode, label: '⚙' },
+            ...(!standalone ? [
+              { key: 'controllers' as FXCMode, label: '🎛 HW' },
+              { key: 'pbus' as FXCMode, label: '📡 PBUS' },
+              { key: 'ma3' as FXCMode, label: '🎛 MA3' },
+              { key: 'field_map' as FXCMode, label: '🗺 Map' },
+              { key: 'connections' as FXCMode, label: '🔌 Conn' },
+              { key: 'wifi_direct' as FXCMode, label: '📡 WFD' },
+              { key: 'artnet_modules' as FXCMode, label: '🌐 ArtNet' },
+              { key: 'mobile_link' as FXCMode, label: '📡 Link' },
+              { key: 'settings' as FXCMode, label: '⚙' },
+            ] : []),
           ]).map(m => (
             <button key={m.key} onClick={() => { setMode(m.key); setShowDeviceLib(false); }}
               className={cn(

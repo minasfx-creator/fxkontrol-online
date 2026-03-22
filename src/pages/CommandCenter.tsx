@@ -393,7 +393,7 @@ export default function CommandCenter() {
   // DESKTOP LAYOUT
   // ══════════════════════════════════════════════
   return (
-    <div className="h-[calc(100vh-3rem)] flex overflow-hidden">
+    <div className="h-full flex overflow-hidden pb-14">
       {/* Sidebar — Apple glassmorphism dock */}
       <div
         className={cn(
