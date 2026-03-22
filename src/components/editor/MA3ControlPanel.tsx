@@ -414,7 +414,10 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
                 oscState === 'connected'
                   ? "border-indigo-500/50 bg-indigo-500/15 text-indigo-300 hover:bg-indigo-500/25 active:scale-[0.97]"
                   : "border-border/10 bg-transparent text-muted-foreground/20"
-              )} style={{ boxShadow: oscState === 'connected' ? 'inset 0 2px 4px rgba(0,0,0,0.3), 0 0 12px hsl(240 50% 50% / 0.1)' : 'inset 0 1px 2px rgba(0,0,0,0.3)' }}>
+              )} style={{
+                boxShadow: oscState === 'connected' ? 'inset 0 2px 4px rgba(0,0,0,0.3), 0 0 16px hsl(240 50% 50% / 0.15)' : 'inset 0 1px 2px rgba(0,0,0,0.3)',
+                animation: oscState === 'connected' ? 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite' : undefined,
+              }}>
               <Play className="w-4 h-4" /> GO
             </button>
             <button onClick={() => sendMacro('Go- Seq 1', 'Go-')} disabled={oscState !== 'connected'}
