@@ -53,6 +53,7 @@ function computeScriptRow(item: TimelineItem, positions: ReturnType<typeof usePr
     posHeading,
     pan: item.pan ?? (effect.type === 'firework' ? 90 : 0),
     tilt: item.tilt ?? 0,
+    spin: item.spin ?? 0,
     x: item.position.x,
     y: item.position.y,
     z: item.position.z,
@@ -61,6 +62,18 @@ function computeScriptRow(item: TimelineItem, positions: ReturnType<typeof usePr
     notes: item.notes || '',
     isChain: !!item.chainRef,
     effectId: item.effectId,
+    // Derived read-only columns (Finale: Pitch/Roll derived from Pan+Tilt)
+    derivedPitch: Math.round(Math.cos((item.pan ?? 90) * Math.PI / 180) * (item.tilt ?? 0)),
+    derivedRoll: Math.round(Math.sin((item.pan ?? 90) * Math.PI / 180) * (item.tilt ?? 0)),
+    // Angles* ASCII art
+    anglesArt: (() => {
+      const p = item.pan ?? 90;
+      const t = item.tilt ?? 0;
+      if (Math.abs(t) < 2) return '|';
+      if (p < 45) return '/';
+      if (p > 135) return '\\';
+      return '|';
+    })(),
   };
 }
 
