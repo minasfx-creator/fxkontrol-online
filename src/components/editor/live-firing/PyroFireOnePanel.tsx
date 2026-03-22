@@ -771,6 +771,89 @@ export default function PyroFireOnePanel({
       </div>
     );
   };
+
+  // ── Render: Master Key + ARM controls ──
+  const renderMasterArm = () => (
+    <div className={cn(
+      "border-b flex items-center gap-3",
+      sz === 'xl' ? (mob ? "px-4 py-2.5 flex-wrap" : "px-6 py-3") : sz === 'fs' ? "px-4 py-2" : "px-2 py-1",
+      masterKeyOn ? "border-red-800/30" : "border-border/15"
+    )} style={{ background: masterKeyOn ? 'hsl(0 30% 8%)' : 'hsl(0 10% 6%)' }}>
+      <button onClick={() => { setMasterKeyOn(!masterKeyOn); haptics[masterKeyOn ? 'disarm' : 'arm'](); }}
+        className={cn(
+          "flex items-center gap-2 rounded border-2 font-black uppercase transition-all min-w-[64px]",
+          sz === 'xl' ? (mob ? "px-5 py-3 text-xs flex-1" : "px-6 py-3 text-sm") : sz === 'fs' ? "px-4 py-2 text-[10px]" : "px-3 py-1.5 text-[8px]",
+          masterKeyOn
+            ? "bg-red-600/20 border-red-500/50 text-red-400"
+            : "bg-[hsl(0_8%_10%)] border-border/20 text-muted-foreground/40"
+        )} style={masterKeyOn ? {
+          boxShadow: 'inset 0 0 12px rgba(255,50,30,0.1)',
+          transition: 'transform 0.3s ease',
+        } : { transition: 'transform 0.3s ease' }}>
+        {masterKeyOn ? <Unlock className={cn(sz === 'xl' ? "w-5 h-5" : "w-3 h-3")} style={{ transform: 'rotate(45deg)' }} /> : <Lock className={cn(sz === 'xl' ? "w-5 h-5" : "w-3 h-3")} />}
+        MASTER KEY {masterKeyOn ? 'ON' : 'OFF'}
+      </button>
+      <div className="flex items-center gap-1.5">
+        <button onClick={() => armAll(true)} disabled={!masterKeyOn}
+          className={cn("rounded border font-bold uppercase transition-all min-h-[48px]",
+            sz === 'xl' ? "px-4 py-2.5 text-[11px]" : sz === 'fs' ? "px-3 py-1.5 text-[9px]" : "px-2 py-1 text-[8px]",
+            masterKeyOn ? "bg-red-600/15 border-red-500/30 text-red-400/80" : "border-border/10 text-muted-foreground/20"
+          )}>ARM ALL</button>
+        <button onClick={() => armAll(false)} disabled={!masterKeyOn}
+          className={cn("rounded border font-bold uppercase transition-all min-h-[48px]",
+            sz === 'xl' ? "px-4 py-2.5 text-[11px]" : sz === 'fs' ? "px-3 py-1.5 text-[9px]" : "px-2 py-1 text-[8px]",
+            masterKeyOn ? "bg-green-600/10 border-green-500/30 text-green-400/80" : "border-border/10 text-muted-foreground/20"
+          )}>DISARM ALL</button>
+      </div>
+      <span className={cn("font-mono ml-auto",
+        sz === 'xl' ? "text-xs" : sz === 'fs' ? "text-[9px]" : "text-[8px]",
+        armedModCount > 0 ? "text-red-400 font-bold" : "text-muted-foreground/30"
+      )}>{armedModCount}/{connectedCount} ARMED</span>
+    </div>
+  );
+
+  // ── Render: Status strip ──
+  const renderStatusStrip = () => (
+    (firedCount > 0 || misfireCount > 0) ? (
+      <div className={cn("flex items-center gap-3 border-b border-border/10",
+        sz === 'xl' ? "px-6 py-1.5" : sz === 'fs' ? "px-4 py-1" : "px-2 py-0.5"
+      )} style={{ background: 'hsl(0 8% 5%)' }}>
+        <span className={cn("font-mono text-green-400/70", sz === 'xl' ? "text-xs" : sz === 'fs' ? "text-[9px]" : "text-[8px]")}>✓ {firedCount} fired</span>
+        {misfireCount > 0 && <span className={cn("font-mono text-red-400 font-bold animate-pulse", sz === 'xl' ? "text-xs" : sz === 'fs' ? "text-[9px]" : "text-[8px]")}>⚠ {misfireCount} misfire</span>}
+      </div>
+    ) : null
+  );
+
+  // ── Render: Mode tabs — XL4+ Membrane Button Style ──
+  const renderModeTabs = () => (
+    <div className={cn("flex border-b gap-0.5",
+      sz === 'xl' ? "px-4 py-1.5" : sz === 'fs' ? "px-3 py-1" : "px-2 py-0.5"
+    )} style={{ background: 'hsl(0 8% 5%)', borderColor: 'hsl(0 15% 12%)' }}>
+      {([
+        { key: 'manual' as PyroMode, label: 'MANUAL', sub: 'Direct' },
+        { key: 'step' as PyroMode, label: 'STEP', sub: 'Sequential' },
+        { key: 'timecode' as PyroMode, label: 'TIMECODE', sub: 'LTC/GPS' },
+        { key: 'test' as PyroMode, label: 'TEST', sub: 'Continuity' },
+      ]).map(m => (
+        <button key={m.key} onClick={() => setPyroMode(m.key)}
+          className={cn(
+            "flex-1 font-mono font-black uppercase tracking-[0.15em] transition-all rounded-sm border-2 min-h-[48px]",
+            sz === 'xl' ? "py-3 text-[11px]" : sz === 'fs' ? "py-2 text-[9px]" : "py-1.5 text-[8px]",
+            pyroMode === m.key
+              ? "text-red-300 border-red-500/50 bg-red-500/10"
+              : "text-muted-foreground/30 border-transparent bg-transparent hover:bg-red-500/5 hover:border-red-500/15"
+          )} style={pyroMode === m.key ? {
+            boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.4), 0 0 8px hsl(0 70% 40% / 0.15)',
+          } : {
+            boxShadow: 'inset 0 -1px 0 rgba(255,255,255,0.03), inset 0 1px 2px rgba(0,0,0,0.3)',
+          }}>
+          <div>{m.label}</div>
+          {sz !== 'sm' && <div className={cn("font-normal text-muted-foreground/20", sz === 'xl' ? "text-[7px]" : "text-[6px]")}>{m.sub}</div>}
+        </button>
+      ))}
+    </div>
+  );
+
   // ── Render: Module selector ──
   const renderModuleSelector = () => (
     <div className={cn("flex items-center gap-1.5 border-b border-border/10 overflow-x-auto scrollbar-thin",
