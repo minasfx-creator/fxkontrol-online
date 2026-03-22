@@ -446,7 +446,7 @@ export default function PyroFireOnePanel({
             const delta = next - cue.timecodeMs;
             const status: 'OK' | 'LATE' | 'EARLY' = Math.abs(delta) < 50 ? 'OK' : delta > 0 ? 'LATE' : 'EARLY';
             setFireLog(prev => [...prev, {
-              cueId: cue.cueNumber || cue.id.slice(0, 4),
+              cueId: String(cue.cueNumber || cue.id.slice(0, 4)),
               expectedMs: cue.timecodeMs,
               actualMs: next,
               delta,
