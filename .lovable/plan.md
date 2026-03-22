@@ -1,108 +1,136 @@
 
 
-# Refine All Platform — Blade Runner 2049 Style
+# BR2049 Platform Upgrade — Opening Animations, Smart Swaps, MacBook Menus & Ambient Sound
 
-## Concept
+## Overview
 
-Apply a unified Blade Runner 2049 visual identity across the entire platform: amber/orange holographic warmth, rain-streaked translucency, monospace terminal aesthetics, atmospheric depth. Every page and structural component gets the BR2049 treatment while preserving full functionality.
+Four major enhancements to deepen the Blade Runner 2049 immersion: (1) cinematic opening animations on every console/page, (2) intelligent swap transitions between panels, (3) macOS-style menus in the sidebar, and (4) ambient sound engine with synthesized hum and navigation bleeps.
 
-## Changes
+## 1. Opening Animations on Consoles & Pages
 
-### 1. `src/index.css` — Global BR2049 Palette Shift
+### `src/index.css` — New keyframes
 
-- Shift primary accent from cyan (`165 100% 42%`) to amber (`32 100% 50%`)
-- Add warm amber tint to `--ring`, `--sidebar-primary`, `--sidebar-ring`
-- Keep destructive red and success green untouched (safety-critical)
-- Add new CSS utilities:
-  - `.br2049-rain` — subtle vertical rain-streak overlay (CSS pseudo-element, 2% opacity amber lines falling)
-  - `.br2049-vignette` — radial amber vignette at edges
-  - `.br2049-dust` — floating dust particles via CSS animation
-  - `@keyframes rain-fall` — vertical line fall (8s loop)
-  - `@keyframes dust-float` — horizontal drift (12s loop)
-- Update existing `--gradient-brand` to amber→orange→warm-gold
-- Update `.glass-hud`, `.glass-dock`, `.glass-sheet` borders to amber tint (`hsl(32 100% 50% / 0.06)`)
-- Update scrollbar thumb to amber accent
+Add boot-sequence animations:
+- `@keyframes console-boot`: staged reveal — horizontal line scan (0-30%), grid materialize (30-60%), content fade-in (60-100%)
+- `@keyframes terminal-type`: typewriter cursor effect for headers
+- `@keyframes holo-materialize`: scale(0.96) + blur(8px) → scale(1) + blur(0) with amber glow flash at 40%
+- `.animate-console-boot`, `.animate-holo-materialize`, `.animate-terminal-type` utility classes
 
-### 2. `src/pages/Auth.tsx` — BR2049 Login Terminal
+### `src/pages/Dashboard.tsx`
 
-- Replace orb colors: cyan→amber, accent→warm orange, violet→deep amber
-- Background grid: warmer tone (`hsl(32 100% 50% / 0.03)`)
-- Glass card border glow → amber (`hsl(32 100% 50% / 0.15)`)
-- Add holographic scanline overlay behind the card
-- Title subtitle: "NEXUS AUTHENTICATION TERMINAL" in JetBrains Mono
-- Input fields: amber focus ring, terminal-style borders
-- Submit button: amber gradient background
-- Add rain-streak overlay to the background
+- Wrap hero banner in `animate-holo-materialize` with 0.1s delay
+- Each HubCard gets staggered `animate-console-boot` (already has stagger, enhance with new boot effect)
+- Feed cards get `animate-holo-materialize` with incremental delays
 
-### 3. `src/layouts/MainLayout.tsx` — BR2049 Chrome
+### `src/pages/CommandCenter.tsx`
 
-- Header: amber status dot (replace emerald), add subtle holographic scanline in header bar
-- "FX KONTROL" label → amber color with text-shadow glow
-- Footer status bar: amber accent for status indicators
-- Add `.br2049-vignette` overlay to the main container
-- ARMED banner: keep red (safety) but add amber-tinted scan overlay
+- On mode change (`handleModeChange`): add a `transitioning` state (true for 300ms) that applies a CSS class to the content area
+- Content area gets `animate-console-boot` on each mode swap (key prop forces remount)
+- Sidebar mode buttons: add `animate-holo-materialize` on first render
+- Breadcrumb bar: typewriter-style label animation on mode change
 
-### 4. `src/components/AppSidebar.tsx` — BR2049 Navigation
+### `src/pages/Auth.tsx`
 
-- Active nav item: amber glow instead of primary/cyan (`bg-amber-500/10 text-amber-400`)
-- Active dot: amber with amber glow shadow
-- Brand header: add warm amber underline accent
-- Section labels: amber-tinted color
-- User avatar ring: amber instead of primary
-- Logout hover: keep destructive red
+- Card entrance: `animate-holo-materialize` with 0.3s delay
+- Input fields: staggered `animate-fxk-stagger` (0.4s, 0.5s)
+- Button: `animate-fxk-stagger` at 0.6s
+- Add boot text sequence above card: "NEXUS TERMINAL v2.0 // INITIALIZING..." that types out then fades
 
-### 5. `src/pages/Dashboard.tsx` — BR2049 Mission Briefing
+### `src/components/editor/SplashScreen.tsx`
 
-- Card backgrounds: add subtle amber border-left accent on hover
-- News feed cards: amber category highlights
-- Quick-access tool grid: amber hover glow on cards
-- Stats numbers: amber color for key metrics
-- Section headers: JetBrains Mono, amber left-border accent, "MISSION BRIEFING" / "INTEL FEED" / "ARSENAL" labels
-- Add rain-streak overlay behind dashboard content
+- Migrate colors from cyan (`hsl(165...)`) to amber (`hsl(32...)`) to match BR2049 palette
+- Corner brackets, grid, glow, product line indicators all amber-tinted
+- INITIALIZE button: amber styling
 
-### 6. `src/pages/CommandCenter.tsx` — BR2049 Tactical Console
+## 2. Smart Swap Transitions
 
-- Sidebar status header: amber glow ring around status dot
-- Section labels: amber tint on section dividers
-- Mode buttons: amber highlight for active state (non-fire modes)
-- Console frame: add amber scan line in header area
-- Mobile bottom nav: amber accent for active tab
+### `src/pages/CommandCenter.tsx`
 
-### 7. `src/pages/Agenda.tsx` — BR2049 Mission Calendar
+- Add `prevMode` state alongside `activeMode`
+- On mode change: set `swapPhase` to `'out'`, after 200ms set new mode + `'in'`, after 400ms set `'idle'`
+- Content wrapper applies:
+  - `out`: `opacity-0 scale-[0.97] translate-x-[-8px]` (slides left + fades)
+  - `in`: `opacity-0 scale-[0.97] translate-x-[8px]` → animates to neutral via CSS transition
+  - `idle`: normal state
+- This creates a directional swap feel without unmounting (uses CSS transitions, not React AnimatePresence)
 
-- Calendar date highlights: amber accent for selected/today
-- Event cards: amber left-border for upcoming events
-- Status badges: keep functional colors but add amber glass background
-- "+" button: amber accent
+### `src/layouts/MainLayout.tsx`
 
-### 8. `src/pages/Training.tsx` — BR2049 Simulation Terminal
+- Add route-change detection via `useLocation().pathname`
+- On pathname change: flash a horizontal amber scanline across the content area (200ms CSS animation)
+- Content area (`<Outlet />`) wrapper: apply `animate-holo-materialize` keyed by pathname
 
-- Module cards: amber hover glow
-- Progress bars: amber fill
-- Section headers: "SIMULATION PROTOCOLS" in tactical mono font
-- Achievement badges: amber accent outline
+## 3. MacBook Pro-Style Menus
 
-### 9. `src/components/FXKAssistant.tsx` — Already BR2049 ✓
+### `src/components/AppSidebar.tsx`
 
-Already implements amber holographic identity — no changes needed.
+- Redesign nav items as a macOS-style dock:
+  - Rounded pill shape with frosted glass background on hover
+  - Active item: filled pill with amber glow, icon slightly scales up (1.1x)
+  - Hover tooltip (non-collapsed): subtle description popover with glass background, arrow pointer
+  - Group separator: thin amber gradient line with diamond marker (existing pattern)
+- Add "quick actions" row at bottom (above user): small icon-only buttons for Search, Notifications, Theme — macOS menu bar style
+- Collapsed state: icons get macOS dock magnification effect on hover (scale 1.15 with smooth transition)
+- Footer user card: macOS-style avatar with ring glow + online status dot
 
-## Files (in priority order)
+### `src/pages/CommandCenter.tsx` sidebar
 
-1. `src/index.css` — Global palette + new BR2049 utilities
-2. `src/pages/Auth.tsx` — Login terminal
-3. `src/layouts/MainLayout.tsx` — App chrome
-4. `src/components/AppSidebar.tsx` — Navigation
-5. `src/pages/Dashboard.tsx` — Dashboard
-6. `src/pages/CommandCenter.tsx` — Command center
-7. `src/pages/Agenda.tsx` — Calendar
-8. `src/pages/Training.tsx` — Training
+- Mode list items: add macOS-style hover state — subtle inset shadow + scale(1.02) + glass background reveal
+- Active mode: left accent bar slides in with spring animation (CSS transition)
+- Section headers: small amber diamond bullet instead of plain line
+
+## 4. Ambient Sound Engine — BR2049 Hum & Bleeps
+
+### NEW: `src/lib/ambientSound.ts`
+
+Create a singleton `AmbientSoundEngine` using Web Audio API:
+- **Base hum**: OscillatorNode (sawtooth, 55Hz) + GainNode (volume 0.015) + BiquadFilterNode (lowpass 200Hz). Starts on first user interaction.
+- **Navigation bleep**: Short sine tone (880Hz, 40ms decay) triggered on route change. Gain envelope: attack 5ms, decay 40ms.
+- **Click feedback**: Higher sine (1200Hz, 20ms) for button interactions.
+- **Console boot**: Descending sweep (2000Hz → 200Hz, 300ms) when opening a new console/mode.
+- **Error tone**: Two-tone discord (440Hz + 466Hz, 100ms) for toast errors.
+- Master volume control (default 0.3), mute toggle, stored in localStorage.
+- `play(sound: 'nav' | 'click' | 'boot' | 'error')` method
+- `startHum()` / `stopHum()` for background drone
+- Auto-resume on AudioContext unlock (mobile)
+
+### `src/layouts/MainLayout.tsx`
+
+- Import `ambientSound` singleton
+- On route change (`useEffect` with `location.pathname`): `ambientSound.play('nav')`
+- On first render: `ambientSound.startHum()` (guarded by user gesture via click listener)
+- Add small volume control in footer status bar: speaker icon + mute toggle (8px tactical style)
+
+### `src/pages/CommandCenter.tsx`
+
+- On mode change: `ambientSound.play('boot')`
+
+### `src/components/AppSidebar.tsx`
+
+- Nav item click: `ambientSound.play('click')`
+
+### `src/pages/Auth.tsx`
+
+- On successful login: `ambientSound.play('boot')`
+- On error: `ambientSound.play('error')`
+
+## Files (priority order)
+
+1. `src/lib/ambientSound.ts` — **NEW** Web Audio ambient engine
+2. `src/index.css` — New boot/materialize/type keyframes
+3. `src/components/editor/SplashScreen.tsx` — Amber palette migration
+4. `src/components/AppSidebar.tsx` — MacBook dock-style menus
+5. `src/layouts/MainLayout.tsx` — Route transitions + sound integration + volume control
+6. `src/pages/Auth.tsx` — Boot sequence + sound hooks
+7. `src/pages/Dashboard.tsx` — Console boot animations
+8. `src/pages/CommandCenter.tsx` — Smart swaps + boot animations + sound
 
 ## Technical Notes
 
-- Pure CSS/Tailwind changes — no new dependencies
+- All sound via Web Audio API (no audio files, no external deps)
+- Sound respects user gesture requirement (AudioContext.resume on click)
+- Volume persisted in localStorage (`fxk-ambient-volume`, `fxk-ambient-muted`)
+- CSS transitions for swaps (no framer-motion dependency)
+- SplashScreen cyan→amber migration aligns with global BR2049 palette
 - No database changes
-- Safety-critical colors (red ARM, green SUCCESS) preserved unchanged
-- All text opacity minimums maintained (8px desktop, 9px mobile)
-- Touch targets 48px+ preserved
-- Rain/dust effects use CSS `::before`/`::after` pseudo-elements with `pointer-events: none`
 
