@@ -1,57 +1,56 @@
 
 
-# Simulação Real de Show — 50 Módulos × 12 min × 3 Transportes
+# Simulação Condições Adversas — Starlink + XL4 Real vs Virtual
 
-## O que será feito
+## Objetivo
 
-Script Python que simula um show pirotécnico completo com parâmetros realistas e gera relatório PDF + JSON com análise comparativa dos 3 transportes.
+Script Python que simula o mesmo show (50 módulos, 420 cues, 12 min) sob **condições adversas severas** e compara os resultados com os **specs reais do XL4 XLII+** e módulos IFMx-i32Q.
 
-## Parâmetros da Simulação
+## Condições Adversas Simuladas
 
-- **1 Mobile** atuando como XL4 Virtual (controller)
-- **50 módulos** de campo (1600 ignitores)
-- **~420 cues** em 4 fases: Opening → Build → Climax → Finale (barrage)
-- **12 minutos** de show
-- **3 transportes simultâneos**: Art-Net (UDP), Wi-Fi Direct (WS + AES-128-GCM), Radio (CC1101 433MHz)
+| Condição | Efeito no Transporte |
+|----------|---------------------|
+| **Vento forte (40 km/h + rajadas 60 km/h)** | +30% jitter em RF, +15% packet loss rádio 433MHz |
+| **Chuva forte (>25mm/h)** | Degradação Starlink: +80ms latência, +5% packet loss, handoff 4× mais frequente |
+| **Interferência RF (50 módulos simultâneos)** | Colisões no canal 433MHz: +40% packet loss, +20ms latência base no rádio |
+| **Temperatura ambiente 38°C** | Drift de clock: +2ms jitter nos módulos |
 
-## Métricas Analisadas
+## Comparação XL4 Real vs Virtual
 
-| Métrica | Descrição |
-|---------|-----------|
-| Confiabilidade | % de disparos entregues com sucesso |
-| Latência | min/avg/median/P95/P99/max por transporte |
-| Jitter (σ) | Variação de latência |
-| Throughput | kbps efetivo durante o show |
-| Burst handling | Performance em barragens densas (finale) |
-| E-STOP | Tempo de resposta de emergência |
-| AES overhead | Custo da criptografia por disparo |
-| Retry rate | Taxa de reenvio por perda de pacote |
+Baseado nos specs reais extraídos do código (`fireoneProtocol.ts`):
 
-## Perfil Realista dos Transportes
+| Parâmetro | XL4 XLII+ Real | XL4 Virtual (App) |
+|-----------|----------------|-------------------|
+| Max módulos | 40 (2×20 outputs) | 50 (software) |
+| Baud rate RS-485 | 9600 8N1 | 9600 8N1 (idêntico) |
+| Fire duration | 20–1000ms | 20–1000ms (clamped) |
+| E-STOP | Broadcast 0x58 hardwired | 0x45 multi-path |
+| Protocolo | [STX][ADDR][CMD][PAYLOAD][CHK][ETX] | Idêntico |
+| UltraFire | 8 fire file slots | Suportado |
+| Priority groups | 16 | 16 |
+| Transporte | Cabo RS-485 only | RS-485 + Radio + Wi-Fi + Starlink |
 
-```text
-                Art-Net      Wi-Fi Direct    Radio 433MHz
-Latência base   2.5ms        8.0ms           15.0ms
-Jitter          ±1.2ms       ±4.5ms          ±8.0ms
-Packet loss     0.05%        0.30%           1.20%
-Max FPS         44           30              10
-Criptografia    Não          AES-128-GCM     Não
-Alcance         100m (cabo)  50m (P2P)       800m (campo)
-MTU             530 bytes    1400 bytes      61 bytes
-```
+## Métricas do Relatório
 
-## Artefatos Gerados
+- Confiabilidade por transporte (normal vs adverso)
+- Latência P95/P99 comparada com limites NFPA 1123
+- E-STOP worst-case sob interferência RF
+- Taxa de retry e pacotes perdidos irrecuperáveis
+- Veredicto: qual cenário passa/reprova para operação real
+- Recomendação operacional para shows em condições adversas
+
+## Artefatos
 
 | Arquivo | Conteúdo |
 |---------|----------|
-| `FXK_Show_Simulation_Report.pdf` | Relatório completo com tabelas, recomendações e veredicto |
-| `FXK_Show_Simulation_Report.json` | Dados brutos para análise posterior |
+| `FXK_Adverse_Simulation_Report.pdf` | Relatório comparativo completo com tabelas e veredicto |
+| `FXK_Adverse_Simulation.json` | Dados brutos |
 
 ## Implementação
 
-1. Script Python gera cue list realística com distribuição por fase
-2. Simula cada transporte com modelo de latência/jitter/perda/burst
-3. Analisa resultados estatísticos (P95, P99, σ, confiabilidade)
-4. Gera PDF formatado com tabelas comparativas e recomendações operacionais
-5. Veredicto final de aprovação/reprovação por norma NFPA 1123
+1. Script Python com perfis de transporte degradados (vento/chuva/RF)
+2. Modelo de colisão RF para 50 módulos simultâneos no canal 433MHz
+3. Modelo de degradação Starlink por chuva (baseado em dados públicos de atenuação Ka-band)
+4. Tabela comparativa XL4 Real vs Virtual com specs do `fireoneProtocol.ts`
+5. Veredicto NFPA 1123 por cenário (normal vs adverso)
 
