@@ -288,35 +288,60 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
   };
 
   return (
-    <div className={cn("flex flex-col h-full", fs ? "p-3" : "p-2")} style={{ background: 'hsl(220 15% 6%)' }}>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-2">
-        <div>
-          <h3 className={cn("font-black uppercase tracking-wider text-foreground", fs ? "text-sm" : "text-[10px]")}>
-            FXK-LIGHT
-          </h3>
-          <p className={cn("text-muted-foreground/50", fs ? "text-[10px]" : "text-[8px]")}>
-            OSC · sACN · MVR-xchange
-          </p>
-        </div>
-        <div className="flex items-center gap-1">
-          <Badge variant="outline" className={cn("text-[8px] h-4 px-1", stateColor(oscState))}>
-            OSC {oscState === 'connected' ? '●' : '○'}
-          </Badge>
-          <Badge variant="outline" className={cn("text-[8px] h-4 px-1", stateColor(sacnState))}>
-            sACN {sacnState === 'connected' ? '●' : '○'}
-          </Badge>
-          <Badge variant="outline" className={cn("text-[8px] h-4 px-1", stateColor(mvrState))}>
-            MVR {mvrState === 'connected' ? '●' : '○'}
-          </Badge>
-          {bridgeEnabled && (
-            <Badge variant="outline" className="text-[8px] h-4 px-1 text-amber-400 border-amber-500/30">
-              BRIDGE ●
-            </Badge>
-          )}
-          <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => setShowSettings(s => !s)}>
-            <Settings className="w-3 h-3" />
-          </Button>
+    <div className={cn("flex flex-col h-full", fs ? "p-3" : "p-2")} style={{ background: 'hsl(240 12% 5%)' }}>
+      {/* Header — LIGHTDESK 2.0 Identity */}
+      <div className="mb-2 rounded-lg overflow-hidden" style={{ border: '1px solid hsl(240 30% 20%)' }}>
+        <div className="flex items-center justify-between px-3 py-2" style={{
+          background: 'linear-gradient(135deg, hsl(240 20% 8%) 0%, hsl(240 15% 6%) 100%)',
+          borderBottom: '2px solid hsl(240 50% 40%)',
+        }}>
+          <div className="flex items-center gap-2.5">
+            <div className={cn("rounded flex items-center justify-center font-black text-white",
+              fs ? "w-8 h-8 text-[10px]" : "w-6 h-6 text-[8px]"
+            )} style={{ background: 'linear-gradient(135deg, hsl(240 50% 52%), hsl(260 40% 35%))' }}>
+              LT
+            </div>
+            <div>
+              <h3 className={cn("font-black uppercase tracking-[0.2em]", fs ? "text-sm" : "text-[10px]")} style={{ color: 'hsl(240 70% 72%)' }}>
+                FXK-LIGHT
+              </h3>
+              <p className={cn("font-mono tracking-wider", fs ? "text-[9px]" : "text-[7px]")} style={{ color: 'hsl(240 30% 45%)' }}>
+                LIGHTDESK 2.0 · OSC · sACN · MVR
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {/* Console Port LEDs */}
+            {[
+              { label: 'OSC', state: oscState, activeColor: 'hsl(140 70% 45%)' },
+              { label: 'sACN', state: sacnState, activeColor: 'hsl(140 70% 45%)' },
+              { label: 'MVR', state: mvrState, activeColor: 'hsl(140 70% 45%)' },
+            ].map(port => (
+              <div key={port.label} className="flex items-center gap-1 rounded px-1.5 py-0.5"
+                style={{ background: 'hsl(240 10% 8%)', border: '1px solid hsl(240 15% 15%)' }}>
+                <div className={cn("rounded-full w-2 h-2 transition-colors")}
+                  style={{
+                    backgroundColor: port.state === 'connected' ? port.activeColor :
+                      port.state === 'connecting' || port.state === 'discovering' ? 'hsl(40 90% 50%)' :
+                      port.state === 'error' ? 'hsl(0 80% 50%)' : 'hsl(240 5% 20%)',
+                    boxShadow: port.state === 'connected' ? `0 0 6px ${port.activeColor}` : 'none',
+                  }} />
+                <span className={cn("font-mono font-bold uppercase", stateColor(port.state),
+                  fs ? "text-[7px]" : "text-[6px]"
+                )}>{port.label}</span>
+              </div>
+            ))}
+            {bridgeEnabled && (
+              <div className="flex items-center gap-1 rounded px-1.5 py-0.5"
+                style={{ background: 'hsl(40 20% 8%)', border: '1px solid hsl(40 30% 20%)' }}>
+                <div className="rounded-full w-2 h-2 bg-amber-400 animate-pulse" style={{ boxShadow: '0 0 6px hsl(40 90% 50%)' }} />
+                <span className="font-mono font-bold text-amber-400 text-[6px]">BRG</span>
+              </div>
+            )}
+            <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => setShowSettings(s => !s)}>
+              <Settings className="w-3 h-3" />
+            </Button>
+          </div>
         </div>
       </div>
 
