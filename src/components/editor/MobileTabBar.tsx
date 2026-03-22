@@ -111,7 +111,7 @@ export default function MobileTabBar({
             >
               <div className="relative">
                 <Icon className={cn(
-                  "w-5 h-5 transition-colors duration-200",
+                  "w-6 h-6 transition-colors duration-200",
                   isActive
                     ? accent ? "text-accent" : "text-primary"
                     : "text-[hsl(var(--muted-foreground)/0.6)]"

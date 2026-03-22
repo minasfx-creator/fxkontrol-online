@@ -11,6 +11,7 @@ import { Save, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import type { FXCSettings } from './types';
 import { DEFAULT_SETTINGS } from './constants';
+import { useDisplayStore } from '@/store/useDisplayStore';
 
 interface SettingsPanelProps {
   fs: boolean;
