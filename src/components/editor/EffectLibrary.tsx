@@ -96,6 +96,8 @@ function EffectTableRow({ effect, index, usageCount }: { effect: Effect; index: 
     if (isPyro && targetIds.length > 0) {
       useProjectStore.getState().setEditorMode('adjust-angles');
     }
+    setFlashFeedback(true);
+    setTimeout(() => setFlashFeedback(false), 800);
   }, [effect, currentTime, positions, selectedPositionId, selectedPositionIds, addTimelineItem, isPyro]);
 
   const handleDragStart = useCallback((e: React.DragEvent) => {
