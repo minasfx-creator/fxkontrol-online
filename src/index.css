@@ -69,7 +69,7 @@
     --fxk-amber: 38 100% 50%;
 
     /* Tactical gradients */
-    --gradient-brand: linear-gradient(135deg, hsl(165 100% 42%), hsl(200 80% 48%), hsl(240 50% 52%));
+    --gradient-brand: linear-gradient(135deg, hsl(32 100% 50%), hsl(38 100% 58%), hsl(45 100% 50%));
     --gradient-fire: linear-gradient(135deg, hsl(0 85% 48%), hsl(32 100% 50%), hsl(45 100% 50%));
     --gradient-tactical: linear-gradient(180deg, hsl(220 18% 7% / 0.9), hsl(220 22% 3% / 0.98));
 
