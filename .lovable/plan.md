@@ -1,65 +1,52 @@
 
 
-# FXK Complete Manual v6 — Bilingual Edition with Real Assets
+# UI/UX Revision — Command Center + DockBar + Fullscreen
 
-## Overview
+## Issues Identified
 
-Generate two comprehensive PDF manuals (Portuguese + English) incorporating actual MinasFX/FXK logos and all existing technical illustrations from the project assets. The manuals will use the Tactical Dark aesthetic with high-visibility Amber/Cyan accents.
+1. **DockBar hidden on Command page**: MainLayout line 49-50 explicitly excludes `/command` with `!isCommand`, so neither desktop nor mobile dock renders there.
 
-## Available Assets (Already in Project)
+2. **Old console tabs still visible**: Inside `LiveFiringPanel.tsx`, the desktop tab bar (line 1032-1048) shows 15 legacy tabs (Simple DMX, Manual Fire, Check Slave, Controllers, PBUS, MA3, Map, Connections, WiFi Direct, ArtNet, Mobile Link, Settings). These are internal sub-modes that should not appear when the panel runs inside CommandCenter's 7-console architecture — they duplicate functionality now handled by separate console panels (MA3ControlPanel, DroneCommandPanel, FXKNetPanel, etc.).
 
-- **Logos:** `fxk-logo-tactical.png`, `minasfx-logo-tactical.png`
-- **Schemas:** 4 technical diagrams (transport-modes, artnet-topology, firing-modes, wiring)
-- **Consoles:** 7 console illustration files
-- **Setups:** 5 setup layout images (stadium, beach, indoor, fullprod, wireless)
-- **Hardware:** module-exploded, module-capabilities, hardware-connection
-- **Screens:** 4 UI mockup screenshots (pyro, dmx, show-control, module)
-- **Other:** topology-basic, comparison-chart, preflight-check, test-preflight
+3. **Fullscreen conflict**: CommandCenter renders inside MainLayout's `<main>` which applies `overflow-auto p-4 md:p-6` padding. The Command page tries to be fullscreen with `h-[calc(100vh-3rem)]` but the padding and overflow from MainLayout break this.
 
-## Implementation
+## Changes
 
-### Step 1: Generate Additional Console Screenshots (3 missing)
-Generate AI mockup screenshots for Light Console, Drone Console, and DMX Monitor to complete the 7-console set.
+### 1. Show DockBar on Command page (MainLayout.tsx)
 
-### Step 2: Render Console Logo Icons
-Generate 7 small logo icon images from the SVG definitions in ConsoleLogos.tsx for embedding in the PDF.
+Remove the `!isCommand` exclusion from `showDock` and `showMobileDock`. The Command page already handles its own bottom nav on mobile, so we conditionally show the DockBar only on desktop for Command, and let mobile Command keep its own category nav.
 
-### Step 3: Build Portuguese Manual (`FXK_Manual_Completo_v6_PT.pdf`)
+```
+const showDock = !isEditor && !isMobile;
+const showMobileDock = !isEditor && !isCommand && isMobile;
+```
 
-18+ page PDF via reportlab with this structure:
+Also make the `<main>` tag remove padding for `/command` (same as it does for `/editor`):
 
-| Section | Assets Used |
-|---------|------------|
-| Cover | fxk-logo-tactical, minasfx-logo-tactical |
-| TOC | — |
-| 1. Visão Geral | topology-basic, 7 console logos |
-| 2. Hardware | module-exploded, module-capabilities, schema-wiring |
-| 3. Modos de Operação | schema-firing-modes |
-| 4. Esquemas de Conexão | schema-transport-modes, schema-artnet-topology, hardware-connection |
-| 5. Consoles (7 sections) | Each with logo + screenshot + feature list |
-| 6. Configurações de Setup | setup-stadium, setup-beach, setup-indoor, setup-fullprod, setup-wireless |
-| 7. Testes e Validação | preflight-check, test-preflight |
-| 8. Matriz Comparativa | comparison-chart |
-| 9. Segurança e Conformidade | — |
-| Apêndice | DMX addressing table |
+```
+<main className={`${(isEditor || isCommand) ? 'flex-1 min-h-0' : 'flex-1 overflow-auto p-4 md:p-6'} relative`}
+```
 
-### Step 4: Build English Manual (`FXK_Complete_Manual_v6_EN.pdf`)
-Same structure, fully translated content.
+### 2. Clean up LiveFiringPanel desktop tabs when in standalone mode
 
-### Step 5: QA
-Convert both PDFs to images via pdftoppm and visually inspect all pages for layout issues.
+When `standalone` prop is true (used by CommandCenter), hide the legacy sub-mode tabs and only show the firing-relevant tabs: `super_dmx`, `simple_dmx`, `manual_fire`, `pyro_fire`, `auto_fire`. Remove the hardware/connection tabs that are now separate consoles in the CommandCenter architecture.
 
-## Design Specs
+In `LiveFiringPanel.tsx`, filter the desktop tab list when `standalone` is true to show only:
+- Super DMX, Simple DMX, Manual Fire, Pyro Fire, Auto Fire, Check Slave
 
-- **Background:** Navy #0A1628
-- **Primary accent:** Amber #FF8C00
-- **Secondary accent:** Cyan #00D4FF
-- **Console sections:** Each uses its own accent color (Red for Pyro, Blue for DMX, etc.)
-- **Typography:** Helvetica Bold for headers, Regular for body, high contrast white text
-- **Full-width images** with figure numbers and captions
+### 3. Fix CommandCenter desktop height
 
-## Output
+Change `h-[calc(100vh-3rem)]` to `h-full` since the parent `<main>` now handles the fullscreen layout with `flex-1 min-h-0`.
 
-- `/mnt/documents/FXK_Manual_Completo_v6_PT.pdf`
-- `/mnt/documents/FXK_Complete_Manual_v6_EN.pdf`
+### 4. Adjust DockBar z-index on Command page
+
+The CommandCenter has a sidebar at z-index default — ensure the DockBar's `z-40` doesn't conflict. Add `pb-14` (dock height padding) to the CommandCenter desktop layout so content doesn't hide behind the dock.
+
+## Files Modified
+
+| File | Change |
+|------|--------|
+| `src/layouts/MainLayout.tsx` | Show dock on Command, remove padding for Command page |
+| `src/pages/CommandCenter.tsx` | Change height from calc to h-full, add bottom padding for dock |
+| `src/components/editor/LiveFiringPanel.tsx` | Filter legacy tabs when `standalone` is true |
 
