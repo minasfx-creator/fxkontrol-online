@@ -52,6 +52,9 @@ import MA3ControlPanel from './MA3ControlPanel';
 import VirtualIFMx32QPanel from './live-firing/VirtualIFMx32QPanel';
 import WiFiDirectControlPanel from './live-firing/WiFiDirectControlPanel';
 import ArtNetModulePanel from './live-firing/ArtNetModulePanel';
+import ShowControlPanel from './ShowControlPanel';
+import DMXMonitorPanel from './DMXMonitorPanel';
+import DroneCommandPanel from './DroneCommandPanel';
 import { RISK_GROUP_LABELS, RISK_GROUP_COLORS, type RiskGroup } from '@/lib/pyroPhysics';
 
 // ═══════════════════════════════════════════════════════════
@@ -1400,6 +1403,11 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
       case 'ma3': return <MA3ControlPanel fs={fs} />;
       case 'wifi_direct': return <WiFiDirectControlPanel fs={fs} />;
       case 'artnet_modules': return <FXKNetPanel fs={fs} />;
+      case 'show_control': return <ShowControlPanel fs={fs} />;
+      case 'module': return <FXKNetPanel fs={fs} />;
+      case 'dmx_monitor': return <DMXMonitorPanel fs={fs} />;
+      case 'fxk_light': return <MA3ControlPanel fs={fs} />;
+      case 'drone_ops': return <DroneCommandPanel fs={fs} />;
       case 'settings': return <SettingsPanel fs={fs} settings={settings} onSettingsChange={setSettings} relayConnected={relayConnected} relayUrl={relayUrl} onRelayUrlChange={setRelayUrl} onConnectRelay={connectRelay} onDisconnectRelay={disconnectRelay} />;
       default: return renderSimpleDmx(fs);
     }
