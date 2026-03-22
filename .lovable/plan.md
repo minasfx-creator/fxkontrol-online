@@ -1,48 +1,64 @@
 
 
-# ArtNet Link por Módulo + Latência Visual + Refinamento Mobile Live FX
+# Refinamentos e Correção de Falhas — FXcommander Live FX
 
-## O que será feito
+## Problemas Identificados
 
-### 1. Botão ARTNET LINK individual em cada módulo (PyroFireOnePanel)
-O botão já existe na `renderModuleSelector()` (linhas 782-796). Cada módulo conectado já tem um botão Globe que chama `handleModuleArtnetLink`. O que falta:
-- Adicionar indicação de **latência em ms** ao lado do ícone Globe quando linkado
-- Melhorar visibilidade do botão (atualmente muito pequeno em mobile)
+### 1. Tipografia Ilegível (Crítico — UX)
+125+ ocorrências de `text-[5px]` e `text-[6px]` em `LiveFiringPanel.tsx`. Texto de 5-6px é impossível de ler em qualquer dispositivo. Minimum legível: `text-[8px]` em desktop panel, `text-[10px]` em mobile/fullscreen.
 
-**Mudanças em `PyroFireOnePanel.tsx`**:
-- Adicionar estado `artnetLatencies` (`Map<number, number>`) que simula/mede ping por módulo
-- Após link, iniciar polling de latência simulada (3-50ms range baseado no transporte)
-- Exibir `Xms` ao lado do Globe em cada módulo linkado no seletor
-- Aumentar tamanho do botão Globe individual em mobile (`p-2` ao invés de `p-0.5`)
+**Arquivos**: `LiveFiringPanel.tsx` (125 ocorrências)
 
-### 2. Botão ARTNET LINK no ArtNetModulePanel (por módulo)
-**Mudanças em `ArtNetModulePanel.tsx`**:
-- Adicionar botão "LINK" em cada `ModuleCard` que chama `connectModule`/`disconnectModule`
-- Exibir latência simulada ao lado do badge de conexão quando online
-- Badge visual: Globe violeta + `Xms` quando linkado
+### 2. Redundância de Layout Mobile
+O bloco `if (mob)` (linhas 1413-1430) e o bloco `if (isFullscreen)` (linhas 1382-1408) renderizam conteúdo quase idêntico. Como `isMobile` já seta `isFullscreen = true` no `useEffect`, o bloco `if (mob)` é código morto na prática (o `isFullscreen` sempre é true quando `mob` é true). Deve ser removido para evitar confusão.
 
-### 3. Refinamento total do painel Live FX no mobile
+### 3. `globalThis.Map` Workaround Frágil
+Linhas 396 e 521 usam `globalThis.Map` para contornar um shadowing de tipo. Isso indica que existe algum tipo `Map` importado ou declarado que conflita. A solução correta é identificar e renomear o tipo conflitante, ou usar type assertion.
 
-O painel Live FX (LiveFiringPanel) no mobile ocupa tela inteira mas a navegação entre modos é difícil — são 15+ abas numa barra horizontal scrollável com texto tiny.
+### 4. MobileModeTabs — Labels `text-[8px]` Ilegíveis
+O grid de modos mobile (linha 155) usa `text-[8px]` nos labels e `text-[8px]` nos headers de categoria (linha 141). Touch targets de 56px estão OK, mas labels precisam ser maiores.
 
-**Mudanças em `LiveFiringPanel.tsx`**:
-- **Reorganizar modos em categorias** com seções visuais claras:
-  - 🔥 **FIRE**: Super DMX, Simple, Manual, Pyro, Auto, Check
-  - 🎛 **HARDWARE**: Controllers, PBUS, MA3, IFM, WFD
-  - 🌐 **NETWORK**: ArtNet, Connections, Radio, Map
-  - ⚙ **SYSTEM**: Mobile Link, Settings
-- **Grid de ícones em mobile** ao invés de tabs horizontais scrolláveis — 2 colunas, ícones grandes (44px touch targets), labels claros
-- **Swipe entre categorias** mantido
-- **Quick-access bar** fixa no topo com os 4 modos mais usados (Super DMX, Pyro, ArtNet, Map)
-- **Breadcrumb** mostrando categoria > modo atual
+### 5. Swipe Interfere com Scroll
+O swipe handler (linhas 460-500) na raiz do painel captura gestos horizontais com threshold de 60px, o que pode conflitar com scroll horizontal dentro de painéis filhos (sliders, scroll areas).
 
-### 4. Melhorar MobileTabBar
-- Adicionar badge de status no ícone Live FX (número de efeitos ativos)
-- Garantir que o painel abre em fullscreen por padrão no mobile
+### 6. `ArtNetModulePanel` não Recebe `fs` prop
+Na linha 1373, `<ArtNetModulePanel />` é renderizado sem a prop `fs`, então ele não adapta layout entre panel e fullscreen mode.
 
-## Arquivos afetados
-1. **Editar**: `src/components/editor/live-firing/PyroFireOnePanel.tsx` — latência por módulo, botões maiores
-2. **Editar**: `src/components/editor/live-firing/ArtNetModulePanel.tsx` — botão LINK + latência em cada card
-3. **Editar**: `src/components/editor/LiveFiringPanel.tsx` — reorganizar navegação mobile com grid categorizado
-4. **Editar**: `src/components/editor/MobileTabBar.tsx` — badge de status no Live FX
+### 7. `relay_server_url` Não Persiste
+O campo `relay_server_url` existe na tabela DB mas `configToDb` no hook de persistence não o mapeia — módulos WAN/Relay perdem a URL do relay entre sessões.
+
+### 8. `addModule` Gera IDs Novos Sempre
+Quando `useArtNetModulePersistence` carrega módulos do DB e chama `addModule(dbToConfig(row))`, o `addModule` gera um novo `id` em vez de usar o `id` do banco. Isso causa duplicatas se o módulo já existir com ID diferente.
+
+## Plano de Correção
+
+### Correção 1 — Tipografia Mínima
+Em `LiveFiringPanel.tsx`, substituir todas as ocorrências de `text-[5px]` por `text-[8px]` e `text-[6px]` por `text-[8px]` no contexto panel (não-fullscreen). Em contexto mobile/fullscreen, garantir mínimo `text-[9px]`.
+
+### Correção 2 — Remover Bloco `if (mob)` Redundante
+Remover linhas 1413-1430 (`if (mob)` block). O `useEffect` já força `isFullscreen = true` em mobile.
+
+### Correção 3 — Map Type Fix
+Substituir `globalThis.Map` por `new Map` com type assertion explícita, ou adicionar alias `type MapType = typeof Map` se necessário.
+
+### Correção 4 — Mobile Mode Labels
+Aumentar labels de `text-[8px]` para `text-[10px]` e headers de categoria de `text-[8px]` para `text-[9px]` em `MobileModeTabs`.
+
+### Correção 5 — Swipe Guard
+Adicionar check: ignorar swipe se o touch start foi dentro de um `ScrollArea`, `Slider`, ou input interativo.
+
+### Correção 6 — Pass `fs` to ArtNetModulePanel
+Adicionar prop `fs` ao componente `ArtNetModulePanel` e passá-lo na chamada (linha 1373).
+
+### Correção 7 — Persistir `relay_server_url`
+Adicionar mapeamento de `relayServerUrl` ↔ `relay_server_url` em `configToDb` e `dbToConfig` no `useArtNetModulePersistence.ts`.
+
+### Correção 8 — Preservar IDs do DB
+No `addModule` do service, se `config.id` for fornecido, usar esse ID em vez de gerar novo. Já existe lógica similar para `moduleAddress`.
+
+## Arquivos Afetados
+1. **Editar**: `src/components/editor/LiveFiringPanel.tsx` — tipografia, remover bloco morto, swipe guard, Map fix
+2. **Editar**: `src/hooks/useArtNetModulePersistence.ts` — mapear relay_server_url
+3. **Editar**: `src/services/artnetModuleService.ts` — preservar ID fornecido em addModule
+4. **Editar**: `src/components/editor/live-firing/ArtNetModulePanel.tsx` — aceitar prop `fs`
 
