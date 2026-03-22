@@ -4,7 +4,7 @@
  */
 import { useCallback, useRef } from 'react';
 import { haptics } from '@/lib/haptics';
-import { Clock, Sparkles, MapPin, Hexagon, MoreHorizontal, Cable, Cpu, Map, Radio, Smartphone } from 'lucide-react';
+import { Clock, Sparkles, MapPin, Hexagon, MoreHorizontal, Cable, Cpu, Map, Radio, Smartphone, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PanelId } from '@/components/editor/PanelTabBar';
 
