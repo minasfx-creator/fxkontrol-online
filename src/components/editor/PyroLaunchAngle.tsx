@@ -251,6 +251,57 @@ function HeadingCompass({ heading, shiftHeld }: { heading: number; shiftHeld?: b
 }
 
 /**
+ * Burst Indicator — animated starburst at the burst point (end of trajectory).
+ * Pulsating diamond core with radiating spike lines.
+ */
+function BurstIndicator({ position: pos, color }: { position: [number, number, number]; color: string }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const materialRef = useRef<THREE.MeshBasicMaterial>(null);
+
+  useFrame((state) => {
+    if (!groupRef.current || !materialRef.current) return;
+    const t = state.clock.getElapsedTime();
+    const pulse = 1.0 + Math.sin(t * 3) * 0.25;
+    groupRef.current.scale.setScalar(pulse);
+    materialRef.current.opacity = 0.6 + Math.sin(t * 4) * 0.3;
+    groupRef.current.rotation.y = t * 0.5;
+  });
+
+  const spikeLines = useMemo(() => {
+    const lines: [number, number, number][][] = [];
+    const spikeCount = 8;
+    const innerR = 0.06;
+    const outerR = 0.25;
+    for (let i = 0; i < spikeCount; i++) {
+      const angle = (i / spikeCount) * Math.PI * 2;
+      const cx = Math.cos(angle);
+      const sy = Math.sin(angle);
+      lines.push([
+        [cx * innerR, sy * innerR, 0],
+        [cx * outerR, sy * outerR, 0],
+      ]);
+    }
+    return lines;
+  }, []);
+
+  return (
+    <group ref={groupRef} position={pos}>
+      <mesh>
+        <octahedronGeometry args={[0.08, 0]} />
+        <meshBasicMaterial ref={materialRef} color={color} transparent opacity={0.8} blending={THREE.AdditiveBlending} />
+      </mesh>
+      <mesh>
+        <ringGeometry args={[0.1, 0.18, 8]} />
+        <meshBasicMaterial color={color} transparent opacity={0.3} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
+      </mesh>
+      {spikeLines.map((pts, i) => (
+        <Line key={i} points={pts} color={color} lineWidth={1.5} transparent opacity={0.5} />
+      ))}
+    </group>
+  );
+}
+
+/**
  * LaunchAngleGizmo: Finale 3D-style heading/pitch/roll editing with inline editable inputs.
  */
 const LaunchAngleGizmo = forwardRef<THREE.Group, {
