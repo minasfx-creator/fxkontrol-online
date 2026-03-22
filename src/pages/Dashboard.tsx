@@ -262,9 +262,10 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto pb-10">
-      {/* ── Hero Banner — Tactical Command ──── */}
-      <div className="relative overflow-hidden rounded border border-primary/15 bg-surface-1 p-5 md:p-7 mb-5 animate-fxk-fade-up">
+    <div className="max-w-7xl mx-auto pb-10 relative br2049-rain">
+      {/* ── Hero Banner — BR2049 Tactical Command ──── */}
+      <div className="relative overflow-hidden rounded border bg-surface-1 p-5 md:p-7 mb-5 animate-fxk-fade-up"
+        style={{ borderColor: 'hsl(32 100% 50% / 0.15)' }}>
         {/* Tactical grid overlay */}
         <div className="absolute inset-0 tactical-grid" />
         <div className="absolute inset-0 tactical-scanline" />
