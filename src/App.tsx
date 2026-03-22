@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import Agenda from "./pages/Agenda";
 import Training from "./pages/Training";
 import NotFound from "./pages/NotFound";
+import PCBViewer from "./pages/PCBViewer";
 
 const queryClient = new QueryClient();
 
