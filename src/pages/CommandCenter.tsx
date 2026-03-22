@@ -35,14 +35,14 @@ const FIRE_MODES: CommandMode[] = ['pyro_fire', 'super_dmx'];
 const isFireMode = (m: CommandMode) => FIRE_MODES.includes(m);
 
 // ── Console Accent Config ──
-const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: string; badge: string }> = {
-  pyro_fire:    { color: 'hsl(0 85% 48%)',    glow: 'hsl(0 85% 48% / 0.1)',    label: 'FXK-PYRO',    badge: 'bg-red-500/15 text-red-400 border-red-500/20' },
-  super_dmx:    { color: 'hsl(200 80% 48%)',   glow: 'hsl(200 80% 48% / 0.1)',   label: 'FXK-DMX',     badge: 'bg-blue-500/15 text-blue-400 border-blue-500/20' },
-  fxk_light:    { color: 'hsl(240 50% 52%)',   glow: 'hsl(240 50% 52% / 0.08)',  label: 'FXK-LIGHT',   badge: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/20' },
-  drone_ops:    { color: 'hsl(165 100% 42%)',  glow: 'hsl(165 100% 42% / 0.08)', label: 'FXK-DRONE',   badge: 'bg-teal-500/15 text-teal-400 border-teal-500/20' },
-  show_control: { color: 'hsl(32 100% 50%)',   glow: 'hsl(32 100% 50% / 0.08)',  label: 'SHOW CTRL',   badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20' },
-  module:       { color: 'hsl(270 60% 50%)',   glow: 'hsl(270 60% 50% / 0.08)',  label: 'MODULE',      badge: 'bg-violet-500/15 text-violet-400 border-violet-500/20' },
-  dmx_monitor:  { color: 'hsl(120 70% 42%)',   glow: 'hsl(120 70% 42% / 0.08)',  label: 'DMX MONITOR', badge: 'bg-green-500/15 text-green-400 border-green-500/20' },
+const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: string; badge: string; subtitle: string }> = {
+  pyro_fire:    { color: 'hsl(0 85% 48%)',    glow: 'hsl(0 85% 48% / 0.1)',    label: 'FXK-PYRO',    badge: 'bg-red-500/15 text-red-400 border-red-500/20', subtitle: 'PYROTECHNIC FIRE CONTROL' },
+  super_dmx:    { color: 'hsl(200 80% 48%)',   glow: 'hsl(200 80% 48% / 0.1)',   label: 'FXK-DMX',     badge: 'bg-blue-500/15 text-blue-400 border-blue-500/20', subtitle: 'SPECIAL EFFECTS CONSOLE' },
+  fxk_light:    { color: 'hsl(240 50% 52%)',   glow: 'hsl(240 50% 52% / 0.08)',  label: 'FXK-LIGHT',   badge: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/20', subtitle: 'LIGHTING MANAGEMENT' },
+  drone_ops:    { color: 'hsl(165 100% 42%)',  glow: 'hsl(165 100% 42% / 0.08)', label: 'FXK-DRONE',   badge: 'bg-teal-500/15 text-teal-400 border-teal-500/20', subtitle: 'SWARM OPERATIONS' },
+  show_control: { color: 'hsl(32 100% 50%)',   glow: 'hsl(32 100% 50% / 0.08)',  label: 'SHOW CTRL',   badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'MISSION CONTROL OVERVIEW' },
+  module:       { color: 'hsl(270 60% 50%)',   glow: 'hsl(270 60% 50% / 0.08)',  label: 'MODULE',      badge: 'bg-violet-500/15 text-violet-400 border-violet-500/20', subtitle: 'FIELD HARDWARE CTRL' },
+  dmx_monitor:  { color: 'hsl(120 70% 42%)',   glow: 'hsl(120 70% 42% / 0.08)',  label: 'DMX MONITOR', badge: 'bg-green-500/15 text-green-400 border-green-500/20', subtitle: 'PROTOCOL ANALYZER' },
 };
 
 // ── Sidebar Sections ──
@@ -361,8 +361,8 @@ export default function CommandCenter() {
               {accent.label}
             </Badge>
             <div className="h-3 w-[1px]" style={{ background: 'hsl(var(--primary) / 0.1)' }} />
-            <span className="text-[8px] text-muted-foreground/30 font-mono tracking-[0.2em]">
-              {isFireMode(activeMode) ? 'FIRE CONTROL' : 'SYS PANEL'}
+            <span className="text-[7px] text-muted-foreground/25 font-mono tracking-[0.15em]">
+              {accent.subtitle}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
