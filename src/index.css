@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,91 +6,94 @@
 
 @layer base {
   :root {
-    /* FX KONTROL Identity — cinematic deep space with electric precision */
-    --background: 228 15% 6%;
-    --foreground: 210 25% 95%;
+    /* FX KONTROL — Tactical Command Interface */
+    --background: 220 20% 4%;
+    --foreground: 180 8% 88%;
 
-    --card: 228 13% 8%;
-    --card-foreground: 210 25% 95%;
+    --card: 220 18% 6%;
+    --card-foreground: 180 8% 88%;
 
-    --popover: 228 12% 10%;
-    --popover-foreground: 210 25% 95%;
+    --popover: 220 16% 8%;
+    --popover-foreground: 180 8% 88%;
 
-    --primary: 195 100% 50%;
-    --primary-foreground: 228 20% 4%;
+    --primary: 165 100% 42%;
+    --primary-foreground: 220 20% 3%;
 
-    --secondary: 228 10% 13%;
-    --secondary-foreground: 210 18% 80%;
+    --secondary: 220 14% 10%;
+    --secondary-foreground: 180 10% 72%;
 
-    --muted: 228 10% 15%;
-    --muted-foreground: 220 12% 48%;
+    --muted: 220 12% 12%;
+    --muted-foreground: 200 8% 42%;
 
-    --accent: 18 100% 55%;
+    --accent: 32 100% 50%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 80% 50%;
+    --destructive: 0 85% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 228 12% 13%;
-    --input: 228 10% 15%;
-    --ring: 195 100% 50%;
+    --border: 220 15% 10%;
+    --input: 220 14% 12%;
+    --ring: 165 100% 42%;
 
-    --radius: 0.625rem;
+    --radius: 0.25rem;
 
-    /* Surface hierarchy — 5 refined levels for depth */
-    --surface-0: 228 16% 4%;
-    --surface-1: 228 14% 7%;
-    --surface-2: 228 12% 10%;
-    --surface-3: 228 10% 14%;
-    --surface-4: 228 9% 18%;
+    /* Surface hierarchy — military depth */
+    --surface-0: 220 22% 3%;
+    --surface-1: 220 20% 5%;
+    --surface-2: 220 18% 7%;
+    --surface-3: 220 15% 10%;
+    --surface-4: 220 12% 14%;
 
-    /* FXK accent palette — electric & precise */
-    --electric: 195 100% 50%;
-    --electric-glow: 195 100% 64%;
-    --safety: 18 100% 55%;
-    --safety-glow: 24 100% 62%;
-    --success: 155 80% 42%;
+    /* Tactical palette */
+    --electric: 165 100% 42%;
+    --electric-glow: 165 100% 55%;
+    --safety: 32 100% 50%;
+    --safety-glow: 38 100% 58%;
+    --success: 120 70% 38%;
     --success-foreground: 0 0% 100%;
-    --warning: 42 95% 52%;
-    --timeline-bg: 228 16% 3%;
-    --timeline-track: 228 12% 8%;
+    --warning: 45 100% 50%;
+    --timeline-bg: 220 22% 2%;
+    --timeline-track: 220 18% 6%;
 
-    /* FXK product line colors */
-    --fxk-cyan: 195 100% 50%;
-    --fxk-orange: 18 100% 55%;
-    --fxk-gold: 42 95% 52%;
-    --fxk-violet: 270 70% 55%;
-    --fxk-magenta: 330 85% 55%;
-    --fxk-red: 0 80% 55%;
-    --fxk-blue: 210 90% 55%;
-    --fxk-green: 150 70% 45%;
-    --fxk-indigo: 250 60% 60%;
+    /* FXK tactical product colors */
+    --fxk-cyan: 165 100% 42%;
+    --fxk-orange: 32 100% 50%;
+    --fxk-gold: 45 100% 50%;
+    --fxk-violet: 270 60% 50%;
+    --fxk-magenta: 340 80% 50%;
+    --fxk-red: 0 85% 48%;
+    --fxk-blue: 200 80% 48%;
+    --fxk-green: 120 70% 38%;
+    --fxk-indigo: 240 50% 52%;
+    --fxk-phosphor: 120 100% 45%;
+    --fxk-amber: 38 100% 50%;
 
-    /* Premium gradients */
-    --gradient-brand: linear-gradient(135deg, hsl(195 100% 50%), hsl(210 90% 55%), hsl(250 60% 60%));
-    --gradient-fire: linear-gradient(135deg, hsl(0 80% 55%), hsl(18 100% 55%), hsl(42 95% 52%));
-    --gradient-glass: linear-gradient(180deg, hsl(228 14% 10% / 0.8), hsl(228 16% 6% / 0.95));
+    /* Tactical gradients */
+    --gradient-brand: linear-gradient(135deg, hsl(165 100% 42%), hsl(200 80% 48%), hsl(240 50% 52%));
+    --gradient-fire: linear-gradient(135deg, hsl(0 85% 48%), hsl(32 100% 50%), hsl(45 100% 50%));
+    --gradient-tactical: linear-gradient(180deg, hsl(220 18% 7% / 0.9), hsl(220 22% 3% / 0.98));
 
-    /* Premium shadows */
-    --shadow-sm: 0 1px 2px hsl(228 20% 2% / 0.6);
-    --shadow-md: 0 4px 16px hsl(228 20% 2% / 0.5), 0 1px 3px hsl(228 20% 2% / 0.3);
-    --shadow-lg: 0 8px 32px hsl(228 20% 2% / 0.6), 0 2px 8px hsl(228 20% 2% / 0.4);
-    --shadow-glow: 0 0 24px hsl(195 100% 50% / 0.15), 0 0 60px hsl(195 100% 50% / 0.06);
+    /* Hard shadows — military */
+    --shadow-sm: 0 1px 2px hsl(220 30% 1% / 0.8);
+    --shadow-md: 0 2px 8px hsl(220 30% 1% / 0.7), 0 1px 2px hsl(220 30% 1% / 0.5);
+    --shadow-lg: 0 4px 16px hsl(220 30% 1% / 0.8), 0 1px 4px hsl(220 30% 1% / 0.6);
+    --shadow-glow: 0 0 16px hsl(165 100% 42% / 0.2), 0 0 48px hsl(165 100% 42% / 0.06);
+    --shadow-danger: 0 0 16px hsl(0 85% 48% / 0.25), 0 0 48px hsl(0 85% 48% / 0.08);
 
-    --sidebar-background: 228 15% 5%;
-    --sidebar-foreground: 210 18% 78%;
-    --sidebar-primary: 195 100% 50%;
-    --sidebar-primary-foreground: 228 20% 4%;
-    --sidebar-accent: 228 10% 13%;
-    --sidebar-accent-foreground: 210 25% 92%;
-    --sidebar-border: 228 12% 11%;
-    --sidebar-ring: 195 100% 50%;
+    --sidebar-background: 220 22% 3%;
+    --sidebar-foreground: 180 8% 68%;
+    --sidebar-primary: 165 100% 42%;
+    --sidebar-primary-foreground: 220 20% 3%;
+    --sidebar-accent: 220 14% 10%;
+    --sidebar-accent-foreground: 180 8% 85%;
+    --sidebar-border: 220 15% 8%;
+    --sidebar-ring: 165 100% 42%;
 
-    /* Glass effect tokens — refined */
-    --glass-bg: 228 14% 8% / 0.78;
-    --glass-border: 228 10% 22% / 0.35;
-    --glass-shine: 195 100% 80% / 0.04;
-    --glass-frosted: 228 12% 6% / 0.85;
+    /* Glass — tactical frosted */
+    --glass-bg: 220 18% 6% / 0.85;
+    --glass-border: 220 12% 18% / 0.4;
+    --glass-shine: 165 100% 60% / 0.03;
+    --glass-frosted: 220 20% 4% / 0.92;
   }
 }
 
