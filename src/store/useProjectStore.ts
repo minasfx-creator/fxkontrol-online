@@ -165,6 +165,9 @@ export interface WindSettings {
 
 export interface ProjectState {
   projectName: string;
+  activeLockouts: string[];  // Risk groups currently locked out from firing
+  setActiveLockouts: (lockouts: string[]) => void;
+  toggleLockout: (riskGroup: string) => void;
   isPlaying: boolean;
   currentTime: number;
   duration: number;
