@@ -103,37 +103,40 @@ function FeedCard({ item }: { item: NewsItem }) {
   const [saved, setSaved] = useState(false);
 
   return (
-    <div className="bg-card border border-border/40 rounded-2xl overflow-hidden group">
-      <div className="flex items-center gap-2.5 px-4 py-3">
-        <div className="h-8 w-8 rounded-full bg-muted/50 flex items-center justify-center text-sm">
+    <div className="bg-card border border-border/50 rounded overflow-hidden group relative">
+      {/* Scanline overlay */}
+      <div className="absolute inset-0 tactical-scanline z-10" />
+      <div className="flex items-center gap-2.5 px-3 py-2.5 border-b border-border/30 relative z-20">
+        <div className="h-7 w-7 rounded bg-muted/30 flex items-center justify-center text-sm border border-border/30">
           {item.avatar}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-foreground truncate">{item.source}</p>
-          <p className="text-[9px] text-muted-foreground font-mono-code">{item.time}</p>
+          <p className="text-xs font-bold text-foreground truncate font-display tracking-wide">{item.source}</p>
+          <p className="text-[9px] text-muted-foreground font-mono">{item.time}</p>
         </div>
         {item.sentiment === 'positive' && <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />}
         {item.sentiment === 'negative' && <TrendingDown className="h-3.5 w-3.5 text-red-400" />}
         {item.sentiment === 'neutral' && <Minus className="h-3.5 w-3.5 text-muted-foreground" />}
       </div>
       <div className="relative aspect-[4/3] overflow-hidden">
-        <img src={item.image} alt={item.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" loading="lazy" />
+        <img src={item.image} alt={item.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03] brightness-[0.85]" loading="lazy" />
+        <div className="absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent" />
       </div>
-      <div className="px-4 pt-3 pb-1 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="px-3 pt-2.5 pb-1 flex items-center justify-between relative z-20">
+        <div className="flex items-center gap-3">
           <button onClick={() => setLiked(!liked)} className="active:scale-90 transition-transform">
-            <Heart className={`h-5 w-5 ${liked ? 'fill-red-500 text-red-500' : 'text-foreground/70 hover:text-foreground'} transition-colors`} />
+            <Heart className={`h-4.5 w-4.5 ${liked ? 'fill-red-500 text-red-500' : 'text-foreground/60 hover:text-foreground'} transition-colors`} />
           </button>
-          <MessageCircle className="h-5 w-5 text-foreground/70 hover:text-foreground cursor-pointer transition-colors" />
-          <Share2 className="h-5 w-5 text-foreground/70 hover:text-foreground cursor-pointer transition-colors" />
+          <MessageCircle className="h-4.5 w-4.5 text-foreground/60 hover:text-foreground cursor-pointer transition-colors" />
+          <Share2 className="h-4.5 w-4.5 text-foreground/60 hover:text-foreground cursor-pointer transition-colors" />
         </div>
         <button onClick={() => setSaved(!saved)} className="active:scale-90 transition-transform">
-          <Bookmark className={`h-5 w-5 ${saved ? 'fill-foreground text-foreground' : 'text-foreground/70 hover:text-foreground'} transition-colors`} />
+          <Bookmark className={`h-4.5 w-4.5 ${saved ? 'fill-foreground text-foreground' : 'text-foreground/60 hover:text-foreground'} transition-colors`} />
         </button>
       </div>
-      <div className="px-4 pb-4 pt-1">
-        <p className="text-xs leading-relaxed text-foreground/90">
-          <span className="font-semibold mr-1">{item.source}</span>
+      <div className="px-3 pb-3 pt-1 relative z-20">
+        <p className="text-[11px] leading-relaxed text-foreground/85 font-tech">
+          <span className="font-bold mr-1 text-primary/80">{item.source}</span>
           {item.title}
         </p>
       </div>
