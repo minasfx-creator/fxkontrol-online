@@ -795,10 +795,12 @@ export default function PyroFireOnePanel({
             ? "bg-red-600/20 border-red-500/50 text-red-400"
             : "bg-[hsl(0_8%_10%)] border-border/20 text-muted-foreground/40"
         )} style={masterKeyOn ? {
-          boxShadow: 'inset 0 0 12px rgba(255,50,30,0.1)',
-          transition: 'transform 0.3s ease',
-        } : { transition: 'transform 0.3s ease' }}>
-        {masterKeyOn ? <Unlock className={cn(sz === 'xl' ? "w-5 h-5" : "w-3 h-3")} style={{ transform: 'rotate(45deg)' }} /> : <Lock className={cn(sz === 'xl' ? "w-5 h-5" : "w-3 h-3")} />}
+          boxShadow: 'inset 0 0 12px rgba(255,50,30,0.1), 0 0 20px rgba(255,50,30,0.15)',
+          animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        } : {}}>
+        {masterKeyOn
+          ? <Unlock className={cn(sz === 'xl' ? "w-5 h-5" : "w-3 h-3")} style={{ transform: 'rotate(45deg)', transition: 'transform 0.3s ease' }} />
+          : <Lock className={cn(sz === 'xl' ? "w-5 h-5" : "w-3 h-3")} style={{ transform: 'rotate(0deg)', transition: 'transform 0.3s ease' }} />}
         MASTER KEY {masterKeyOn ? 'ON' : 'OFF'}
       </button>
       <div className="flex items-center gap-1.5">
