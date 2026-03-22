@@ -97,6 +97,7 @@ export interface Position {
   pitch: number;
   roll: number;
   color: string;
+  section?: string;      // Show section for semi-auto firing segmentation (Finale 3D)
 }
 
 export interface BezierHandle {
