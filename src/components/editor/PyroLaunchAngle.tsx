@@ -740,10 +740,22 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
               ↻ drift {windCompGhost.drift.driftX}m × {windCompGhost.drift.driftZ}m
             </div>
           )}
-          {/* Delta HUD during drag */}
+          {/* Delta HUD + axis dominance indicator during drag */}
           {isDragging && angleDelta && (
-            <div style={{ fontSize: '9px', color: COLORS.handleActive, fontWeight: 700, marginTop: '2px', letterSpacing: '0.5px' }}>
-              ΔH {angleDelta.h > 0 ? '+' : ''}{angleDelta.h}° · ΔP {angleDelta.p > 0 ? '+' : ''}{angleDelta.p}°
+            <div style={{ marginTop: '2px' }}>
+              <div style={{ fontSize: '9px', color: handleColor, fontWeight: 700, letterSpacing: '0.5px' }}>
+                ΔH {angleDelta.h > 0 ? '+' : ''}{angleDelta.h}° · ΔP {angleDelta.p > 0 ? '+' : ''}{angleDelta.p}°
+              </div>
+              <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.5)', marginTop: '1px', letterSpacing: '1px' }}>
+                <span style={{ color: COLORS.headingArc }}>H</span>{' '}
+                {Array.from({ length: 5 }, (_, i) => (
+                  <span key={i} style={{ color: i / 5 < axisDominance.h ? COLORS.headingArc : 'rgba(255,255,255,0.15)' }}>●</span>
+                ))}{' '}
+                {Array.from({ length: 5 }, (_, i) => (
+                  <span key={i} style={{ color: i / 5 < axisDominance.p ? COLORS.pitchArc : 'rgba(255,255,255,0.15)' }}>●</span>
+                ))}{' '}
+                <span style={{ color: COLORS.pitchArc }}>P</span>
+              </div>
             </div>
           )}
         </div>
