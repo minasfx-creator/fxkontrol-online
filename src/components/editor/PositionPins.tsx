@@ -443,13 +443,20 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
           <meshBasicMaterial visible={false} />
         </mesh>
         {position.type === 'pyro' ? (
-          <group rotation={[0, -position.heading * (Math.PI / 180), 0]}>
+          <group rotation={[
+            (position.pitch || 85) * (Math.PI / 180) - Math.PI / 2,
+            -position.heading * (Math.PI / 180),
+            (position.roll || 0) * (Math.PI / 180),
+          ]} /* Finale Euler: Pitch(X) → Roll(Z) → Heading(Y) order YZX */>
             <MortarTubeIcon color={color} emissiveIntensity={emissiveIntensity} isSelected={isSelected} />
           </group>
         ) : (
           <DronePadIcon color={color} emissiveIntensity={emissiveIntensity} isSelected={isSelected} />
         )}
       </group>
+
+      {/* Always-on direction line — Finale 3D style */}
+      <DirectionLine position={position} color={color} isSelected={isSelected} isHovered={isHovered} />
 
       {/* Selection ring */}
       {isSelected && (
@@ -486,14 +493,6 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
           </div>
         </Html>
       )}
-
-      {/* Direction arrow */}
-      <group rotation={[0, -position.heading * (Math.PI / 180), 0]}>
-        <mesh position={[0, 0.1, -0.7]} rotation={[-Math.PI / 2, 0, 0]}>
-          <coneGeometry args={[0.08, 0.25, 4]} />
-          <meshBasicMaterial color={color} transparent opacity={0.5} />
-        </mesh>
-      </group>
 
       {/* Clickable Label Plate — visible on hover/select only */}
       {showLabel && (
