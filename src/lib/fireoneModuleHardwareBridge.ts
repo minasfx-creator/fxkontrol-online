@@ -19,7 +19,7 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export type BridgeTransport = 'ble' | 'usb' | 'websocket' | 'none';
+export type BridgeTransport = 'ble' | 'usb' | 'websocket' | 'direct_relay' | 'none';
 
 export interface BridgeStatus {
   transport: BridgeTransport;
@@ -128,6 +128,36 @@ export class FireOneHardwareBridge {
       return true;
     } catch (err) {
       console.warn('[HardwareBridge] USB connect failed:', err);
+      return false;
+    }
+  }
+
+  /**
+   * Connect via USB-C OTG → CH340/CP2102 → Arduino Nano → 32-relay board.
+   * Simplified protocol: RELAY:pin:ON/OFF\n  or  FIRE:pin:durationMs\n
+   * Arduino Nano firmware reads serial and drives relay outputs.
+   */
+  async connectDirectRelay(baudRate = 115200): Promise<boolean> {
+    try {
+      if (!('serial' in navigator)) throw new Error('WebSerial not supported');
+
+      const port = await (navigator as any).serial.requestPort();
+      await port.open({ baudRate });
+
+      this.serialPort = port;
+      this.serialReader = port.readable!.getReader();
+      this.serialWriter = port.writable!.getWriter();
+
+      this.transport = 'direct_relay';
+      this.connected = true;
+      this.deviceName = 'DirectRelay-USB';
+      this.lastPing = Date.now();
+
+      this.readSerialLoop();
+      this.onConnect();
+      return true;
+    } catch (err) {
+      console.warn('[HardwareBridge] Direct Relay connect failed:', err);
       return false;
     }
   }

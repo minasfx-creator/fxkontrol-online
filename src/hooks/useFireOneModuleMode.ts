@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 export interface UseFireOneModuleReturn {
   status: ModuleStatus | null;
   powered: boolean;
-  powerOn: () => void;
+  powerOn: (hardwareMode?: 'cds' | 'direct_relay') => void;
   powerOff: () => void;
   arm: () => boolean;
   disarm: () => void;
@@ -43,6 +43,7 @@ export interface UseFireOneModuleReturn {
   connectBLE: () => Promise<boolean>;
   connectUSB: () => Promise<boolean>;
   connectWS: (url?: string) => Promise<boolean>;
+  connectDirectRelay: () => Promise<boolean>;
   disconnectHardware: () => Promise<void>;
 }
 
@@ -89,11 +90,13 @@ export function useFireOneModuleMode(): UseFireOneModuleReturn {
     return () => clearInterval(interval);
   }, []);
 
-  const powerOn = useCallback(() => {
+  const powerOn = useCallback((hardwareMode: 'cds' | 'direct_relay' = 'cds') => {
     const bridge = bridgeRef.current;
     const bridgeConnected = bridge?.getStatus().connected ?? false;
+    const isDirectRelay = hardwareMode === 'direct_relay' || bridge?.getStatus().transport === 'direct_relay';
     const emu = new FireOneModuleEmulator({
       simulateHardware: !bridgeConnected,
+      hardwareMode: isDirectRelay ? 'direct_relay' : hardwareMode,
       onFire: bridgeConnected && bridge ? (pin, dur) => bridge.fire(pin, dur) : undefined,
       onContinuityRead: bridgeConnected && bridge ? (pin) => bridge.readContinuity(pin) : undefined,
       onStateChange: (_state: ModuleState) => {},
@@ -213,6 +216,12 @@ export function useFireOneModuleMode(): UseFireOneModuleReturn {
     return ok;
   }, []);
 
+  const connectDirectRelay = useCallback(async () => {
+    const ok = await (bridgeRef.current?.connectDirectRelay() ?? false);
+    setBridgeStatus(bridgeRef.current?.getStatus() ?? null);
+    return ok;
+  }, []);
+
   const disconnectHardware = useCallback(async () => {
     await bridgeRef.current?.disconnect();
     setBridgeStatus(bridgeRef.current?.getStatus() ?? null);
@@ -226,6 +235,6 @@ export function useFireOneModuleMode(): UseFireOneModuleReturn {
     loadAutoScript, startAutoFire, stopAutoFire,
     downloadUltraScript, setUltraSlot, startUltraFire, stopUltraFire,
     setPreset, firePreset, clearPreset,
-    bridgeStatus, connectBLE, connectUSB, connectWS, disconnectHardware,
+    bridgeStatus, connectBLE, connectUSB, connectWS, connectDirectRelay, disconnectHardware,
   };
 }

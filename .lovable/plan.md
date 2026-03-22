@@ -1,83 +1,36 @@
 
 
-# Simplificação Hardware: Celular + Bateria 12V + Placa 32 Relés + Adaptador USB-C OTG
+# IFMx-i32Q — Setup Simplificado: Celular + Bateria 12V + Placa 32 Relés
 
-## Conceito Simplificado
-
-O sistema atual assume ESP32 + Shift Registers + ULN2803 + MOSFETs + Capacitores — componentes demais. O usuário quer o setup mais simples possível:
+## Arquitetura Atual
 
 ```text
-┌──────────────┐    USB-C OTG     ┌────────────────────┐    12V    ┌──────────┐
-│  CELULAR     │ ──────────────── │ Placa 32ch Relé    │ ◄─────── │ Bateria  │
-│  (FX Kontrol)│   Adaptador     │ (ex: SainSmart)    │          │ 12V 7Ah  │
-│              │   USB→Serial    │ IN1-IN32 → Relé    │──── E-matches
-└──────────────┘                 │ COM → 12V+         │
-                                 │ NO → Ignitor       │
-                                 └────────────────────┘
+CELULAR (FX Kontrol) → USB-C OTG → CH340 → Arduino Nano → 4x 74HC595 → Placa 32 Relés → Bateria 12V → E-matches
 ```
 
-**Diferença chave:** Sem ESP32. O celular conecta DIRETO via USB-C OTG + adaptador USB-Serial (CH340/CP2102) à placa de 32 relés. O adaptador USB-Serial custa ~$2 e o celular envia comandos seriais direto.
+## Hardware Mode: `direct_relay`
+- Sem CDS (capacitive discharge) — relé fecha circuito direto da bateria 12V ao ignitor
+- Canais ficam "carregados" instantaneamente (sem simulação de carga)
+- Protocolo serial: `FIRE:pin:ms\n` → `OK:FIRE:pin\n`
 
-**Componentes ($15-20 total):**
-- Placa 32 canais relé (~$10) — já tem optoisoladores
-- Adaptador USB-C OTG ($1)  
-- Conversor USB-Serial CH340 ($2)
-- Bateria 12V 7Ah selada ($5-8) — ou LiPo 3S
+## Componentes (~$15-20)
+- Placa 32ch Relé ($10)
+- USB-C OTG ($1)
+- CH340 USB-Serial ($2)
+- Arduino Nano ($3)
+- Bateria 12V 7Ah ($5-8)
 
-## Mudanças
+## Bugs Corrigidos
+- ✅ Pin 31 bitshift overflow (`>>> 0`)
+- ✅ E-STOP lockout 3s
+- ✅ fireGroup sequencial (2ms stagger)
+- ✅ Bridge reconnection após powerOn
+- ✅ bridgeStatus polling 1s
 
-### 1. `fireoneModuleHardwareBridge.ts` — Adicionar modo "Direct Serial Relay"
+## Modos de Disparo Implementados
+- ✅ Manual, Semi-Auto, Auto (Timecode), UltraFire, Preset
 
-Novo método `connectDirectRelay()` que usa WebSerial para falar direto com CH340/CP2102 sem precisar de ESP32 firmware. O celular controla os pinos do conversor serial diretamente:
-- Protocolo simplificado: enviar bytes que representam estado dos 32 relés
-- Usar DTR/RTS toggling do serial para controle básico, ou protocolo de 4 bytes (header + pin + state + checksum)
-- Sem necessidade de firmware — o adaptador USB-Serial apenas roteia sinais
+## Conexões Disponíveis
+- BLE, USB (ESP32), Wi-Fi (WebSocket), **Direct Relay (USB OTG)**
 
-**Alternativa realista:** Como CH340 só tem 2 pinos de controle (DTR/RTS), precisamos de um Arduino Nano ($3) como intermediário simples entre USB e os 32 relés. O firmware é trivial (~20 linhas).
-
-### 2. `fireoneModuleEmulator.ts` — Remover dependência de CDS
-
-- Substituir lógica CDS (capacitive discharge) por "direct relay" mode
-- Quando `hardwareMode === 'direct_relay'`: sem simulação de carga de capacitor, disparo é instantâneo via relé
-- Bateria 12V alimenta diretamente os relés → ignitor (sem CDS intermediário)
-- Simplificar `IgniterChannel` para não exigir `cdsVoltage` no modo direto
-
-### 3. `VirtualIFMx32QPanel.tsx` — Atualizar aba Hardware
-
-- Novo esquemático simplificado mostrando: Celular → USB-C OTG → CH340 → Arduino Nano → Placa 32 Relés → Bateria 12V
-- Lista de componentes atualizada (~$15-20)
-- Diagrama de fiação simples
-- Instruções passo-a-passo de montagem
-- Firmware Arduino Nano (20 linhas) embutido no painel
-
-### 4. `useFireOneModuleMode.ts` — Adicionar `connectDirectRelay()`
-
-Expor novo método de conexão direta ao relé board via USB OTG.
-
-## Arquitetura Final
-
-```text
-CELULAR (FX Kontrol app)
-  │ USB-C OTG
-  ▼
-Adaptador USB-Serial (CH340)
-  │ TX/RX (115200 baud)
-  ▼
-Arduino Nano ($3) — firmware 20 linhas
-  │ Digital pins D2-D9 + A0-A5 (via shift register 74HC595 x4)
-  │ OU: 2x MCP23017 (I2C GPIO expander = 32 pins com 2 chips)
-  ▼
-Placa 32 Relés (5V logic, 12V switching)
-  │ COM ← Bateria 12V+
-  │ NO → E-match → GND bateria
-  ▼
-DISPARO REAL
-```
-
-| Arquivo | Mudança |
-|---------|---------|
-| `src/lib/fireoneModuleHardwareBridge.ts` | Add `connectDirectRelay()`, simplified serial protocol |
-| `src/lib/fireoneModuleEmulator.ts` | Add `direct_relay` hardware mode, bypass CDS |
-| `src/components/editor/live-firing/VirtualIFMx32QPanel.tsx` | Updated hardware tab with simplified schematic + Arduino Nano firmware |
-| `src/hooks/useFireOneModuleMode.ts` | Expose `connectDirectRelay()` |
 

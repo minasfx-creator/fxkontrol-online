@@ -99,6 +99,8 @@ const FIRE_GROUP_STAGGER_MS = 2;
 export type HardwareFireCallback = (pin: number, durationMs: number) => Promise<boolean>;
 export type ContinuityReadCallback = (pin: number) => Promise<number>;
 
+export type HardwareMode = 'cds' | 'direct_relay';
+
 export interface ModuleEmulatorConfig {
   address?: number;
   onFire?: HardwareFireCallback;
@@ -106,6 +108,7 @@ export interface ModuleEmulatorConfig {
   onStateChange?: (state: ModuleState) => void;
   onStatusUpdate?: (status: ModuleStatus) => void;
   simulateHardware?: boolean;
+  hardwareMode?: HardwareMode;
 }
 
 export class FireOneModuleEmulator {
@@ -146,6 +149,7 @@ export class FireOneModuleEmulator {
   private onStateChange: ((state: ModuleState) => void) | null;
   private onStatusUpdate: ((status: ModuleStatus) => void) | null;
   private simulateHardware: boolean;
+  private hardwareMode: HardwareMode;
 
   constructor(config: ModuleEmulatorConfig = {}) {
     this.address = config.address ?? 1;
@@ -154,6 +158,7 @@ export class FireOneModuleEmulator {
     this.onStateChange = config.onStateChange ?? null;
     this.onStatusUpdate = config.onStatusUpdate ?? null;
     this.simulateHardware = config.simulateHardware ?? true;
+    this.hardwareMode = config.hardwareMode ?? 'cds';
 
     // Initialize 32 igniter channels
     for (let i = 0; i < 32; i++) {
@@ -272,7 +277,8 @@ export class FireOneModuleEmulator {
     const ig = this.igniters[pin];
 
     if (ig.fired) return false;
-    if (ig.cdsVoltage < CDS_MIN_FIRE_VOLTAGE) return false;
+    // In direct_relay mode, skip CDS voltage check — relay fires directly from battery
+    if (this.hardwareMode === 'cds' && ig.cdsVoltage < CDS_MIN_FIRE_VOLTAGE) return false;
 
     this.setState('firing');
 
@@ -623,6 +629,20 @@ export class FireOneModuleEmulator {
 
   private startCharging(): void {
     this.charging = true;
+
+    // In direct_relay mode, instantly set all channels to max (no CDS charge needed)
+    if (this.hardwareMode === 'direct_relay') {
+      this.igniters.forEach(ig => {
+        if (!ig.fired) {
+          ig.cdsVoltage = CDS_TARGET_VOLTAGE;
+          ig.cdsCharging = false;
+        }
+      });
+      this.charging = false;
+      this.emitStatus();
+      return;
+    }
+
     this.chargeInterval = setInterval(() => {
       let allCharged = true;
       this.igniters.forEach(ig => {
