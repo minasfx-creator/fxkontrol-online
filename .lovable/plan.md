@@ -1,69 +1,127 @@
 
 
-# PCB Layout FXK-M1 — Design Philosophy + Technical PDF
+# Melhorias UI/UX + Motor de Renderização Químico-Realista
 
-## Design Philosophy: "Copper Topology"
+## Resumo
 
-Extending the existing "Circuit Cartography" aesthetic into the physical domain of PCB fabrication — where copper pours become terrain maps, silk screen becomes cartographic annotation, and drill holes become coordinate markers in a landscape of engineered precision.
+Quatro frentes de trabalho: (1) menus maximizáveis fullscreen, (2) ScriptWindow com colunas redimensionáveis, (3) correção do VDL generator (mine gerando morteiros), (4) integração química completa em todos os renderers de efeitos.
 
-Will create `FXK_M1_PCB_Philosophy.md` with 4-6 paragraphs covering the visual language of fabrication drawings: copper layers as topographic surfaces, component footprints as architectural floor plans, via arrays as constellation maps.
+---
 
-## PDF Content: Single A3 landscape page (or 4 pages)
+## 1. Menus Maximizáveis Fullscreen
 
-### Page 1 — Top Layer: Component Placement
-- Board outline: 180mm × 120mm with M3 mounting holes at corners
-- All major components placed with reference designators:
-  - U1: ESP32-S3-WROOM-1 (center-left)
-  - U2-U5: 74HC595 shift register chain (top row)
-  - Q1-Q32: IRLZ44N MOSFETs in 4×8 grid (right half)
-  - U6: CC1101 radio module (top-left, isolated)
-  - U7-U8: CD74HC4067 MUX (bottom-left, near ADC)
-  - U9: TP4056 charger + U10: AMS1117-3.3 (bottom edge)
-  - J1: USB-C connector, J2: Smartphone dock connector
-  - TB1-TB4: Terminal blocks (32 channels, right edge)
-- Silk screen layer: white outlines, ref designators, pin-1 markers
-- Keep-out zones: antenna clearance (CC1101), high-current isolation
+**Problema**: Apenas o PyroFireOnePanel tem modo fullscreen. Os demais painéis usam DetachablePanel (pop-out para janela separada) mas não têm maximização inline.
 
-### Page 2 — Bottom Layer: Ground Plane + Routing
-- Solid copper ground pour with thermal relief on ground pads
-- Signal traces:
-  - SPI bus (ESP32 → CC1101, ESP32 → 74HC595 chain): 0.25mm, green
-  - ADC lines (MUX → ESP32): 0.2mm, cyan, guarded
-  - Gate drive (595 → MOSFETs): 0.3mm, amber
-  - Power rails (3.3V, 5V, VBAT): 0.5mm-1.0mm, red
-  - E-STOP signal: 0.4mm, crimson, priority routing
-- Via stitching around RF section
-- Analog/digital ground split with single-point bridge
+**Solução**: Criar um wrapper `FullscreenablePanel` que qualquer painel pode usar.
 
-### Page 3 — Drill Chart + Board Dimensions
-- Full dimensioned drawing with:
-  - Overall dimensions, mounting hole positions
-  - Drill table: hole sizes, quantities, plated/non-plated
-  - Layer stackup: 2-layer FR4, 1.6mm, 1oz copper, HASL finish
-  - Minimum trace/space: 0.2mm/0.2mm
-  - Board edge clearance markers
+- Botão Maximize2 no header de cada painel
+- Ao clicar, renderiza o conteúdo como portal fixo sobre toda a viewport (`fixed inset-0 z-50`)
+- ESC ou botão Minimize2 para sair
+- Body scroll lock quando ativo
+- Aplicar em: ScriptWindow, EffectLibrary, VDLPreviewPanel, GenerativeEffectsPanel, Timeline, PropertiesPanel, e todos os painéis do editor
 
-### Page 4 — Assembly Guide + Fabrication Notes
-- Component BOM cross-reference
-- Soldering order (SMD first, then through-hole)
-- Test points: TP1-TP8 locations
-- Fabrication specifications table
-- Gerber file naming convention
+**Arquivo**: `src/components/editor/FullscreenablePanel.tsx` (novo)
+**Edições**: Cada painel principal envolto com `<FullscreenablePanel>`
 
-## Visual Approach
-- Dark substrate (#0A0C10) representing bare FR4
-- Copper traces in characteristic amber/gold
-- Silk screen in white
-- Solder mask openings in lighter shade
-- Ground pour as subtle crosshatch pattern
-- Grid overlay at 2.54mm pitch (standard 0.1" grid)
-- Chamfered title blocks per "Circuit Cartography" philosophy
+---
 
-## Process
-1. Create `FXK_M1_PCB_Philosophy.md`
-2. Build Python script with reportlab for 4-page A3 PDF
-3. Render board outline, components as accurate footprints, trace routing
-4. Convert to images for QA
-5. Fix any overlaps or readability issues
-6. Deliver final PDF
+## 2. ScriptWindow — Colunas e Células Customizáveis
+
+**Problema**: Colunas com largura fixa via classes CSS, sem redimensionamento pelo usuário.
+
+**Solução**:
+- Estado `columnWidths` com larguras iniciais para cada coluna (Cue, Event Time, Effect Time, PFT, Size, Type, Description, Position, Pan, Tilt, Spin, ∠*, dP, dR, Dur, $, Chain, Notes)
+- Drag handle entre headers para redimensionar colunas (mousedown → mousemove → mouseup)
+- Persistência via localStorage
+- Menu de contexto no header para show/hide colunas
+- Células com double-click para editar inline (já existe parcialmente, expandir para Description e outros campos)
+
+**Arquivo**: `src/components/editor/ScriptWindow.tsx` (editar)
+
+---
+
+## 3. Correção VDL: Mine Gerando Morteiros
+
+**Problema**: O `vdlToEffect` em `vdlParser.ts` linha 931 classifica como `category: 'morteiros'` quando `caliber >= 4`, independente do `partType`. Uma Mine de 6" é categorizada como morteiro.
+
+**Solução**:
+- Corrigir `vdlToEffect` para usar `partType` na decisão de category:
+  - `partType === 'mine'` → category `'mines'`
+  - `partType === 'gerb'` → category `'gerbs'`
+  - `partType === 'cake'` → category `'cakes_batteries'`
+  - `partType === 'waterfall'` → category `'waterfalls'`
+  - Shells: manter lógica por calibre
+- Verificar que `TimelineEffects` no SkyCanvas roteia corretamente `pt === 'mine'` para `MineEffect` (já funciona na linha 948)
+- Corrigir o SmartScriptAssistant para enviar `partType` correto ao criar itens via IA
+
+**Arquivo**: `src/lib/vdlParser.ts` (editar `vdlToEffect`)
+
+---
+
+## 4. Motor Químico-Realista em Todos os Renderers
+
+**Problema**: Apenas `ShellBurstRenderer` usa `getRealFormulation` e `particleChemistry`. Os demais renderers (MineEffect, GerbEffect, CometEffect, WaterfallEffect, CakeEffect, FanEffect, RomanCandleEffect, etc.) usam cores planas sem física química.
+
+**Solução**: Integrar o sistema de química (`particleChemistry.ts`) em cada renderer:
+
+### 4a. Propagação de formulationId
+- `vdlToEffect` deve derivar `formulationId` automaticamente baseado em cor + tipo + calibre
+- Lookup na tabela `REAL_FORMULATIONS` por matching (cor + tipo)
+- Propagar via `effect.formulationId` no `TimelineEffects`
+
+### 4b. Integração nos Renderers
+Para cada renderer, adicionar:
+- Prop `formulationId?: string`
+- `getRealFormulation(formulationId)` → dados químicos reais
+- `thermalColorRamp` para transições white-hot → saturated → ember → charcoal
+- Temperatura de combustão do composto influencia brilho e duração
+- Tipo de faísca (titanium → bright white sparks, charcoal → orange trails)
+
+**Renderers a atualizar**:
+| Renderer | Integração |
+|---|---|
+| `MineEffect` | Column jet usa temperatura do compound, spray stars usam cor química real, drip sparks usam charcoal/titanium do compound |
+| `GerbEffect` | Temperatura do compound → intensidade da chama, tipo de faísca (Ti/Fe/Al) |
+| `CometEffect` | Trail color do compound, velocidade de queima |
+| `WaterfallEffect` | Charcoal chemistry → cor amber/gold real, burn rate |
+| `CakeEffect` | Per-shot compound variation |
+| `FanEffect` | Compound por shot no leque |
+| `RomanCandleEffect` | Compound por estrela |
+| `SparkShower` | Titanium vs iron vs aluminum spark behavior |
+
+### 4c. Auto-Matching Químico
+Criar função `autoMatchFormulation(color: string, type: string, caliber: number): string | undefined` em `particleChemistry.ts`:
+- Mapeia cor VDL → compostos químicos (Red → Strontium Carbonate, Blue → Copper Oxide, Green → Barium Chlorate, etc.)
+- Se não houver formulação exata, gera perfil químico derivado usando a enciclopédia de compostos existente
+- Retorna `formulationId` ou gera um perfil inline
+
+---
+
+## Detalhes Técnicos
+
+### Arquivos Criados
+1. `src/components/editor/FullscreenablePanel.tsx` — wrapper fullscreen
+
+### Arquivos Editados
+1. `src/lib/vdlParser.ts` — fix category em `vdlToEffect`, adicionar `autoMatchFormulation`
+2. `src/components/editor/ScriptWindow.tsx` — colunas redimensionáveis + show/hide
+3. `src/components/editor/effects/MineEffect.tsx` — integrar chemistry
+4. `src/components/editor/effects/GerbEffect.tsx` — integrar chemistry
+5. `src/components/editor/effects/CometEffect.tsx` — integrar chemistry
+6. `src/components/editor/effects/WaterfallEffect.tsx` — integrar chemistry
+7. `src/components/editor/effects/CakeEffect.tsx` — integrar chemistry
+8. `src/components/editor/effects/FanEffect.tsx` — integrar chemistry
+9. `src/components/editor/effects/RomanCandleEffect.tsx` — integrar chemistry
+10. `src/components/editor/effects/SparkShower.tsx` — integrar chemistry
+11. `src/components/editor/SkyCanvas.tsx` — propagar `formulationId` nos renders
+12. `src/render_ultra/fireworks/particleChemistry.ts` — adicionar `autoMatchFormulation`
+13. Painéis principais — envolver com FullscreenablePanel
+
+### Ordem de Execução
+1. FullscreenablePanel (wrapper reutilizável)
+2. Fix VDL category (mine ≠ morteiro)
+3. ScriptWindow colunas redimensionáveis
+4. `autoMatchFormulation` na particleChemistry
+5. Integrar chemistry nos 8 renderers
+6. Propagar formulationId no SkyCanvas
 
