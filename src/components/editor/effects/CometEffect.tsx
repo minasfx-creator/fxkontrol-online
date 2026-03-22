@@ -243,8 +243,9 @@ export default function CometEffect({
       const sCol = smokeColBuffer;
 
       for (let i = 0; i < SMOKE_WAKE_COUNT; i++) {
-        const spawnProg = smokeWakeSeeds[i * 2];
-        const seed = smokeWakeSeeds[i * 2 + 1];
+        const spawnProg = smokeWakeSeeds[i * 3];
+        const seed = smokeWakeSeeds[i * 3 + 1];
+        const turbAmp = smokeWakeSeeds[i * 3 + 2];
 
         if (progress < spawnProg) {
           sPos[i * 3 + 1] = -1000;
@@ -260,14 +261,14 @@ export default function CometEffect({
         }
 
         const spawnPos = getHeadPos(spawnProg);
-        const turbX = Math.sin(time * 0.2 + seed * 3.7) * 0.08;
-        const turbZ = Math.cos(time * 0.15 + seed * 5.1) * 0.06;
+        const turbX = Math.sin(time * 0.2 + seed * 3.7) * turbAmp;
+        const turbZ = Math.cos(time * 0.15 + seed * 5.1) * turbAmp * 0.8;
 
         sPos[i * 3] = spawnPos.headX + turbX + windX * smokeAge * 0.5;
         sPos[i * 3 + 1] = spawnPos.headY + smokeAge * 0.15;
         sPos[i * 3 + 2] = spawnPos.headZ + turbZ + windZ * smokeAge * 0.5;
 
-        const smokeFade = Math.max(0, 1 - smokeAge / 1.5) * 0.05;
+        const smokeFade = Math.max(0, 1 - smokeAge / 1.5) * 0.09;
         sCol[i * 3] = 0.3 * smokeFade;
         sCol[i * 3 + 1] = 0.25 * smokeFade;
         sCol[i * 3 + 2] = 0.2 * smokeFade;
