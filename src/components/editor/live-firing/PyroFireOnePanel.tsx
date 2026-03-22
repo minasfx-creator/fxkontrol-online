@@ -108,6 +108,8 @@ export default function PyroFireOnePanel({
   const [masterKeyOn, setMasterKeyOn] = useState(false);
   const [simMode, setSimMode] = useState(true);
   const [pyroFullscreen, setPyroFullscreen] = useState(false);
+  const [artnetLinking, setArtnetLinking] = useState(false);
+  const [artnetLinkedModules, setArtnetLinkedModules] = useState<Set<number>>(new Set());
 
   // Step mode
   const [stepIndex, setStepIndex] = useState(0);
