@@ -21,6 +21,8 @@ import {
   type ModuleTransport,
   type ModuleConnectionState,
 } from '@/services/artnetModuleService';
+import { useArtNetModulePersistence } from '@/hooks/useArtNetModulePersistence';
+import { useProjectStore } from '@/store/useProjectStore';
 
 function ConnectionBadge({ state }: { state: ModuleConnectionState }) {
   const config: Record<ModuleConnectionState, { color: string; label: string; icon: React.ReactNode }> = {
@@ -159,6 +161,8 @@ function ModuleCard({ module, connectionState, masterArmed, onConnect, onDisconn
 }
 
 export default function ArtNetModulePanel() {
+  const projectId = useProjectStore(s => s.projectId);
+  const { saveModule, deleteModule } = useArtNetModulePersistence(projectId);
   const [controller, setController] = useState<ArtNetControllerConfig | null>(null);
   const [moduleStates, setModuleStates] = useState<Map<string, ModuleConnectionState>>(new Map());
   const [showAddModule, setShowAddModule] = useState(false);
@@ -208,9 +212,10 @@ export default function ArtNetModulePanel() {
       channelCount: parseInt(newModule.channels) || 32,
       label: newModule.label,
     });
+    saveModule(m, controller?.modules.length || 0);
     setShowAddModule(false);
     setNewModule({ name: '', ip: '192.168.1.100', port: '6454', transport: 'lan', universe: '0', subnet: '0', net: '0', startAddr: '1', channels: '32', label: '', relayUrl: '' });
-  }, [newModule, controller]);
+  }, [newModule, controller, saveModule]);
 
   const handleMasterArm = useCallback(() => {
     if (!controller) return;
@@ -342,7 +347,7 @@ export default function ArtNetModulePanel() {
                 onDisconnect={() => artnetModuleService.disconnectModule(module.id)}
                 onArm={() => artnetModuleService.armModule(module.id)}
                 onDisarm={() => artnetModuleService.disarmModule(module.id)}
-                onRemove={() => artnetModuleService.removeModule(module.id)}
+                onRemove={() => { artnetModuleService.removeModule(module.id); deleteModule(module.id); }}
                 onFire={(ch) => artnetModuleService.fireChannel(module.id, ch)}
               />
             ))
