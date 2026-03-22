@@ -29,6 +29,7 @@ const TRANSPORT_ICONS: Record<TransportType, typeof Cable> = {
   wifi: Globe,
   wifi_direct: Antenna,
   artnet: Zap,
+  cellular: Globe,
 };
 
 const TRANSPORT_LABELS: Record<TransportType, string> = {
@@ -37,6 +38,7 @@ const TRANSPORT_LABELS: Record<TransportType, string> = {
   wifi: 'Wi-Fi Relay',
   wifi_direct: 'Wi-Fi Direct',
   artnet: 'Art-Net DMX',
+  cellular: 'Cellular 4G/5G',
 };
 
 function TransportRow({ t, onRemove, fs }: { t: TransportStatus; onRemove: (id: string) => void; fs: boolean }) {
