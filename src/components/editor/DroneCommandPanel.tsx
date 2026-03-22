@@ -100,6 +100,24 @@ export default function DroneCommandPanel({ fs = false }: DroneCommandPanelProps
     return `${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
   };
 
+  // Wind simulation
+  const [windDir, setWindDir] = useState(225);
+  const [windSpeed, setWindSpeed] = useState(4.2);
+  const [formationLock, setFormationLock] = useState(false);
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setWindDir(d => (d + (Math.random() - 0.5) * 10 + 360) % 360);
+      setWindSpeed(s => Math.max(0, Math.min(15, s + (Math.random() - 0.5) * 1.5)));
+      setFormationLock(launchState === 'airborne' && Math.random() > 0.15);
+    }, 2000);
+    return () => clearInterval(iv);
+  }, [launchState]);
+
+  const avgAlt = useMemo(() => {
+    if (telemetry.length === 0) return 0;
+    return Math.round(telemetry.reduce((a, t) => a + t.alt, 0) / telemetry.length);
+  }, [telemetry]);
+
   return (
     <div
       className={cn("flex flex-col h-full overflow-hidden", fs ? "p-3" : "p-2")}
@@ -136,9 +154,58 @@ export default function DroneCommandPanel({ fs = false }: DroneCommandPanelProps
             <Badge variant="outline" className="text-[7px] h-4 px-1.5 font-mono border-teal-500/20 text-teal-400">
               T+ {formatTime(missionTimer)}
             </Badge>
+            {/* Formation Lock indicator */}
+            <div className={cn("flex items-center gap-1 px-1.5 py-0.5 rounded text-[6px] font-mono font-bold",
+              formationLock ? "text-teal-300 bg-teal-500/15 border border-teal-500/30" : "text-muted-foreground/20"
+            )}>
+              <Crosshair className="w-2.5 h-2.5" />
+              {formationLock ? 'LOCK' : '—'}
+            </div>
             <div className={cn("h-2 w-2 rounded-full", launchState === 'airborne' ? 'bg-teal-400 animate-pulse' : launchState === 'armed' ? 'bg-amber-400 animate-pulse' : 'bg-muted-foreground/20')}
               style={{ boxShadow: launchState === 'airborne' ? '0 0 8px hsl(165 100% 42%)' : 'none' }} />
           </div>
+        </div>
+      </div>
+
+      {/* Altitude Tape + Wind Vector bar */}
+      <div className="shrink-0 mb-1.5 flex gap-1.5">
+        {/* Altitude Tape */}
+        <div className="flex-1 rounded border p-2" style={{ borderColor: 'hsl(165 20% 15%)', background: 'hsl(165 6% 7%)' }}>
+          <p className="text-[6px] font-mono font-bold tracking-[0.2em] mb-1" style={{ color: 'hsl(165 60% 45%)' }}>ALTITUDE · AVG</p>
+          <div className="flex items-end gap-2">
+            <span className="text-xl font-black font-mono" style={{ color: 'hsl(165 100% 55%)', textShadow: '0 0 8px hsl(165 100% 42% / 0.3)' }}>{avgAlt}</span>
+            <span className="text-[8px] font-mono text-muted-foreground/40 pb-1">m AGL</span>
+            {/* Vertical tape */}
+            <div className="ml-auto flex flex-col items-center gap-[1px]">
+              {[100, 80, 60, 40, 20, 0].map(alt => (
+                <div key={alt} className="flex items-center gap-1">
+                  <span className="text-[5px] font-mono text-muted-foreground/20 w-5 text-right">{alt}</span>
+                  <div className="w-6 h-[2px] rounded" style={{
+                    backgroundColor: avgAlt >= alt ? 'hsl(165 100% 42%)' : 'hsl(165 10% 12%)',
+                    opacity: avgAlt >= alt ? 0.7 : 0.3,
+                  }} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Wind Vector */}
+        <div className="w-20 rounded border p-2 flex flex-col items-center" style={{ borderColor: 'hsl(165 20% 15%)', background: 'hsl(165 6% 7%)' }}>
+          <p className="text-[6px] font-mono font-bold tracking-[0.2em] mb-1" style={{ color: 'hsl(165 60% 45%)' }}>WIND</p>
+          <svg width="44" height="44" viewBox="-22 -22 44 44">
+            {/* Compass rose */}
+            <circle cx="0" cy="0" r="18" stroke="hsl(165 100% 42% / 0.12)" fill="none" strokeWidth="0.5" />
+            {['N', 'E', 'S', 'W'].map((d, i) => (
+              <text key={d} x={[0, 16, 0, -16][i]} y={[-16, 1, 18, 1][i]}
+                textAnchor="middle" fill="hsl(165 100% 42%)" fontSize="4" fontFamily="monospace" opacity={0.4}>{d}</text>
+            ))}
+            {/* Wind arrow */}
+            <line x1="0" y1="0" x2={Math.sin(windDir * Math.PI / 180) * 14} y2={-Math.cos(windDir * Math.PI / 180) * 14}
+              stroke="hsl(165 100% 55%)" strokeWidth="1.5" strokeLinecap="round" />
+            <circle cx="0" cy="0" r="2" fill="hsl(165 100% 42%)" />
+          </svg>
+          <span className="text-[7px] font-mono font-bold mt-0.5" style={{ color: 'hsl(165 100% 55%)' }}>{windSpeed.toFixed(1)} m/s</span>
         </div>
       </div>
 

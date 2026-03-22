@@ -1,16 +1,74 @@
 /**
  * FXKNetPanel — Unified Art-Net Network + Module Control
  * Fuses ArtNetModulePanel (network discovery) + VirtualIFMx32QPanel (field module)
- * BR2049 holographic aesthetics
+ * BR2049 holographic aesthetics + network topology + firmware + signal quality
  */
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { Globe, Cpu } from 'lucide-react';
+import { Globe, Cpu, Signal, Wifi } from 'lucide-react';
 import ArtNetModulePanel from './ArtNetModulePanel';
 import VirtualIFMx32QPanel from './VirtualIFMx32QPanel';
 
 interface FXKNetPanelProps {
   fs?: boolean;
+}
+
+/* Simple network topology mini-map */
+function TopologyMinimap({ moduleCount }: { moduleCount: number }) {
+  const nodes = useMemo(() => {
+    return Array.from({ length: Math.min(moduleCount || 4, 8) }, (_, i) => ({
+      id: i,
+      x: 20 + (i % 4) * 30,
+      y: i < 4 ? 15 : 40,
+      signal: 60 + Math.random() * 40,
+      fw: `1.${3 + (i % 3)}.${i}`,
+    }));
+  }, [moduleCount]);
+
+  return (
+    <div className="shrink-0 px-3 py-2 border-b" style={{ borderColor: 'hsl(270 60% 50% / 0.08)', background: 'hsl(220 12% 4%)' }}>
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[7px] font-mono font-bold tracking-[0.2em]" style={{ color: 'hsl(270 60% 55%)' }}>NETWORK TOPOLOGY</span>
+        <div className="flex items-center gap-2">
+          <span className="text-[6px] font-mono text-muted-foreground/25">{nodes.length} NODES</span>
+        </div>
+      </div>
+      <div className="flex gap-3">
+        {/* Topology SVG */}
+        <svg width="140" height="55" viewBox="0 0 140 55" className="shrink-0">
+          {/* Hub */}
+          <rect x="62" y="22" width="16" height="12" rx="2" fill="hsl(270 60% 50% / 0.2)" stroke="hsl(270 60% 50%)" strokeWidth="0.8" />
+          <text x="70" y="30" textAnchor="middle" fill="hsl(270 60% 55%)" fontSize="5" fontFamily="monospace">HUB</text>
+          {/* Connections */}
+          {nodes.map(n => (
+            <g key={n.id}>
+              <line x1="70" y1="28" x2={n.x} y2={n.y} stroke="hsl(270 60% 50% / 0.2)" strokeWidth="0.5" strokeDasharray="2 1" />
+              <circle cx={n.x} cy={n.y} r="4" fill="none" stroke={n.signal > 80 ? 'hsl(120 70% 42%)' : n.signal > 50 ? 'hsl(32 100% 50%)' : 'hsl(0 85% 48%)'} strokeWidth="0.8" />
+              <circle cx={n.x} cy={n.y} r="1.5" fill={n.signal > 80 ? 'hsl(120 70% 42%)' : 'hsl(32 100% 50%)'} />
+            </g>
+          ))}
+        </svg>
+        {/* Signal quality + firmware list */}
+        <div className="flex-1 space-y-0.5 overflow-hidden">
+          {nodes.slice(0, 4).map(n => (
+            <div key={n.id} className="flex items-center gap-1.5">
+              <span className="text-[6px] font-mono text-muted-foreground/30 w-6">M{n.id + 1}</span>
+              <div className="flex gap-[1px]">
+                {[1, 2, 3, 4, 5].map(b => (
+                  <div key={b} className="w-[3px] rounded-sm" style={{
+                    height: 2 + b * 1.5,
+                    backgroundColor: (n.signal / 20) >= b ? 'hsl(270 60% 55%)' : 'hsl(220 10% 12%)',
+                  }} />
+                ))}
+              </div>
+              <span className="text-[5px] font-mono" style={{ color: 'hsl(270 40% 40%)' }}>v{n.fw}</span>
+              <span className="text-[5px] font-mono" style={{ color: n.signal > 80 ? 'hsl(120 70% 45%)' : 'hsl(32 100% 50%)' }}>{Math.round(n.signal)}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function FXKNetPanel({ fs = false }: FXKNetPanelProps) {
@@ -65,6 +123,9 @@ export default function FXKNetPanel({ fs = false }: FXKNetPanelProps) {
           background: 'linear-gradient(90deg, transparent 10%, hsl(32 100% 50% / 0.08) 50%, transparent 90%)',
         }}
       />
+
+      {/* Network topology minimap */}
+      <TopologyMinimap moduleCount={6} />
 
       {/* Content */}
       <div className="flex-1 overflow-hidden animate-console-boot">

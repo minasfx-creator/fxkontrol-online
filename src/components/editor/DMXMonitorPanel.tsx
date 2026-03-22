@@ -223,6 +223,25 @@ export default function DMXMonitorPanel({ fs = false }: { fs?: boolean }) {
     return { active, maxVal, avgVal };
   }, [dmxValues]);
 
+  // Channel change rate tracking
+  const [changeRateHistory, setChangeRateHistory] = useState<number[]>(new Array(20).fill(0));
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setChangeRateHistory(prev => [...prev.slice(1), pps]);
+    }, 1000);
+    return () => clearInterval(iv);
+  }, [pps]);
+
+  // Protocol distribution (simulated)
+  const protocolMix = useMemo(() => {
+    const artnet = Math.floor(stats.active * 0.6);
+    const sacn = Math.floor(stats.active * 0.25);
+    const internal = stats.active - artnet - sacn;
+    return { artnet, sacn, internal };
+  }, [stats.active]);
+
+  const bandwidthPct = useMemo(() => Math.round((stats.active / 512) * 100), [stats.active]);
+
   return (
     <div className="flex flex-col h-full select-none" style={{ background: 'hsl(220 15% 4%)' }}>
       {/* Scanlines */}
@@ -243,6 +262,18 @@ export default function DMXMonitorPanel({ fs = false }: { fs?: boolean }) {
           </div>
         </div>
         <div className="flex items-center gap-4">
+          {/* Universe bandwidth meter */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[6px] font-mono text-muted-foreground/25">BW</span>
+            <div className="w-16 h-2 rounded-full overflow-hidden" style={{ background: 'hsl(220 10% 8%)' }}>
+              <div className="h-full rounded-full transition-all duration-300" style={{
+                width: `${bandwidthPct}%`,
+                background: bandwidthPct > 80 ? 'hsl(0 85% 48%)' : bandwidthPct > 50 ? 'hsl(32 100% 50%)' : 'hsl(120 70% 50%)',
+                boxShadow: bandwidthPct > 50 ? `0 0 4px ${bandwidthPct > 80 ? 'hsl(0 85% 48%)' : 'hsl(32 100% 50%)'}` : 'none',
+              }} />
+            </div>
+            <span className="text-[7px] font-mono font-bold" style={{ color: bandwidthPct > 80 ? 'hsl(0 85% 55%)' : 'hsl(120 70% 50%)' }}>{bandwidthPct}%</span>
+          </div>
           {/* Live indicators */}
           <div className="flex items-center gap-1 px-2 py-0.5 rounded" style={{ background: pps > 0 ? 'hsl(120 70% 42% / 0.1)' : 'transparent', border: `1px solid ${pps > 0 ? 'hsl(120 70% 42% / 0.2)' : 'transparent'}` }}>
             <Radio className="w-3 h-3" style={{ color: pps > 0 ? 'hsl(120 70% 50%)' : 'hsl(220 10% 25%)' }} />
@@ -258,13 +289,59 @@ export default function DMXMonitorPanel({ fs = false }: { fs?: boolean }) {
         </div>
       </div>
 
-      {/* Stats bar + waveform */}
+      {/* Stats bar + waveform + Protocol mix + Change rate */}
       <div className="shrink-0 px-3 py-2 border-b flex items-center gap-4 relative z-10" style={{ borderColor: 'hsl(120 70% 42% / 0.06)', background: 'hsl(220 12% 5%)' }}>
         <div className="flex-1 space-y-1">
           <SignalBar value={stats.active} max={512} color="hsl(120 70% 50%)" label="ACT" />
           <SignalBar value={stats.maxVal} max={255} color="hsl(32 100% 55%)" label="MAX" />
           <SignalBar value={stats.avgVal} max={255} color="hsl(200 80% 50%)" label="AVG" />
         </div>
+
+        {/* Protocol Mix mini-pie */}
+        <div className="shrink-0 flex flex-col items-center gap-0.5">
+          <svg width="36" height="36" viewBox="0 0 36 36">
+            {(() => {
+              const total = protocolMix.artnet + protocolMix.sacn + protocolMix.internal || 1;
+              const a1 = (protocolMix.artnet / total) * 360;
+              const a2 = (protocolMix.sacn / total) * 360;
+              const toArc = (start: number, end: number, color: string) => {
+                const r = 14;
+                const s = (start - 90) * Math.PI / 180;
+                const e = (end - 90) * Math.PI / 180;
+                const large = end - start > 180 ? 1 : 0;
+                return <path d={`M18 18 L${18 + r * Math.cos(s)} ${18 + r * Math.sin(s)} A${r} ${r} 0 ${large} 1 ${18 + r * Math.cos(e)} ${18 + r * Math.sin(e)} Z`}
+                  fill={color} opacity={0.6} />;
+              };
+              return <>
+                {toArc(0, a1, 'hsl(120 70% 42%)')}
+                {toArc(a1, a1 + a2, 'hsl(200 80% 48%)')}
+                {toArc(a1 + a2, 360, 'hsl(32 100% 50%)')}
+              </>;
+            })()}
+            <circle cx="18" cy="18" r="8" fill="hsl(220 12% 5%)" />
+          </svg>
+          <div className="flex gap-1.5">
+            {[{ l: 'AN', c: 'hsl(120 70% 42%)' }, { l: 'sA', c: 'hsl(200 80% 48%)' }, { l: 'INT', c: 'hsl(32 100% 50%)' }].map(p => (
+              <span key={p.l} className="text-[5px] font-mono font-bold" style={{ color: p.c }}>{p.l}</span>
+            ))}
+          </div>
+        </div>
+
+        {/* Change rate sparkline */}
+        <div className="shrink-0 flex flex-col items-center gap-0.5">
+          <div className="flex items-end gap-[1px]" style={{ height: 28 }}>
+            {changeRateHistory.map((v, i) => {
+              const max = Math.max(...changeRateHistory, 1);
+              return <div key={i} className="w-[3px] rounded-t-sm transition-all duration-300" style={{
+                height: `${(v / max) * 100}%`,
+                backgroundColor: v > 0 ? 'hsl(120 70% 50%)' : 'hsl(220 10% 10%)',
+                opacity: 0.3 + (i / changeRateHistory.length) * 0.7,
+              }} />;
+            })}
+          </div>
+          <span className="text-[5px] font-mono text-muted-foreground/25">Δ RATE</span>
+        </div>
+
         <div className="shrink-0 p-1.5 rounded border" style={{ background: 'hsl(220 10% 4%)', borderColor: 'hsl(120 70% 42% / 0.1)' }}>
           <Waveform data={waveformData} color="hsl(120 70% 50%)" width={140} height={28} />
           <span className="text-[5px] font-mono text-muted-foreground/20 block text-center mt-0.5">
