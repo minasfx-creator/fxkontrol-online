@@ -717,11 +717,22 @@ export default function PyroLaunchAngles() {
   const positions = useProjectStore(s => s.positions);
   const selectedIds = useProjectStore(s => s.selectedPositionIds);
   const editorMode = useProjectStore(s => s.editorMode);
+  const timelineItems = useProjectStore(s => s.timelineItems);
   const pyroPositions = positions.filter(p => p.type === 'pyro');
   const isAngleMode = editorMode === 'adjust-angles';
-  const visiblePositions = isAngleMode
-    ? (selectedIds.length > 0 ? pyroPositions.filter(p => selectedIds.includes(p.id)) : pyroPositions)
-    : pyroPositions.filter(p => selectedIds.includes(p.id));
+  
+  // Auto-show trajectory for selected positions with effects (even in select mode)
+  const visiblePositions = useMemo(() => {
+    if (isAngleMode) {
+      return selectedIds.length > 0 ? pyroPositions.filter(p => selectedIds.includes(p.id)) : pyroPositions;
+    }
+    // In select mode: show for selected positions that have linked effects
+    return pyroPositions.filter(p => {
+      if (!selectedIds.includes(p.id)) return false;
+      return timelineItems.some(t => t.positionId === p.id || t.positionIds?.includes(p.id));
+    });
+  }, [isAngleMode, selectedIds, pyroPositions, timelineItems]);
+  
   const selectedPyroPositions = pyroPositions.filter(p => selectedIds.includes(p.id));
   const isBatch = selectedIds.length > 1;
 
