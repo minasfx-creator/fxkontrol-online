@@ -556,3 +556,26 @@
 }
 .animate-ios-spring-up { animation: ios-spring-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .animate-ios-spring-scale { animation: ios-spring-scale 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+/* ===== Night Mode / Show Mode ===== */
+body.night-mode {
+  --muted-foreground: 200 8% 52%;
+}
+
+/* High-contrast utility — raises minimum text opacity */
+.high-contrast * {
+  --tw-text-opacity: 1;
+}
+
+/* Touch target enforcement for mission-critical UI */
+.touch-target-lg {
+  min-width: 48px;
+  min-height: 48px;
+}
+
+/* Armed banner pulse */
+@keyframes armed-banner-pulse {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+.armed-banner-pulse { animation: armed-banner-pulse 1s ease-in-out infinite; }

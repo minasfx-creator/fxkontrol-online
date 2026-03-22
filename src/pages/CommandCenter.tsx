@@ -369,7 +369,7 @@ export default function CommandCenter() {
                           sidebarCollapsed ? "justify-center p-2.5" : "px-2.5 py-2.5 min-h-[40px]",
                           isActive
                             ? "text-foreground border-l-2"
-                            : "text-muted-foreground/40 hover:bg-primary/3 hover:text-foreground/60 border-l-2 border-transparent"
+                            : "text-muted-foreground/50 hover:bg-primary/3 hover:text-foreground/60 border-l-2 border-transparent"
                         )}
                         style={isActive ? {
                           background: mAccent?.glow,

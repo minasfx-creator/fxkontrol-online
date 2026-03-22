@@ -161,9 +161,12 @@ export default function SettingsPanel({ fs, settings, onSettingsChange, relayCon
       <div className={sectionCn} style={{ background: 'hsl(220 12% 7%)' }}>
         <div className="flex items-center justify-between">
           <span className={labelCn}>Backlight</span>
-          <span className={cn("font-mono text-muted-foreground/40", fs ? "text-[9px]" : "text-[8px]")}>{local.backlight}%</span>
+          <span className={cn("font-mono text-muted-foreground/60", fs ? "text-[9px]" : "text-[8px]")}>{displayBacklight}%</span>
         </div>
-        <Slider value={[local.backlight]} min={10} max={100} step={5} onValueChange={([v]) => update({ backlight: v })} className="mt-1.5" />
+        <Slider value={[displayBacklight]} min={10} max={100} step={5} onValueChange={([v]) => {
+          setDisplayBacklight(v);
+          update({ backlight: v });
+        }} className="mt-1.5" />
       </div>
 
       {/* Action buttons */}
