@@ -636,6 +636,7 @@ export default function ShellBurstRenderer({
         const seedVal = Math.random();
         // Warm vs cool gray based on seed (hot burst = warm, cold sparks = cool)
         const isWarm = seedVal > 0.4;
+        const turbSeedVal = hash01(seedVal * 127 + i);
         sp.push({
           x: Math.sin(phi) * Math.cos(theta) * r,
           y: Math.cos(phi) * r + burstSpread * 0.1,
