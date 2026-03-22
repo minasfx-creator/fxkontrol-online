@@ -19,6 +19,19 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import LiveFiringPanel from '@/components/editor/LiveFiringPanel';
 
+// Direct-render components for non-fire modes (no ARM/CUE/PANIC chrome)
+import VirtualControllerHub from '@/components/editor/VirtualControllerHub';
+import PBusMonitorPanel from '@/components/editor/live-firing/PBusMonitorPanel';
+import MA3ControlPanel from '@/components/editor/MA3ControlPanel';
+import VirtualIFMx32QPanel from '@/components/editor/live-firing/VirtualIFMx32QPanel';
+import WiFiDirectControlPanel from '@/components/editor/live-firing/WiFiDirectControlPanel';
+import ArtNetModulePanel from '@/components/editor/live-firing/ArtNetModulePanel';
+import ConnectionManagerPanel from '@/components/editor/ConnectionManagerPanel';
+import RadioControlPanel from '@/components/editor/RadioControlPanel';
+import FieldMap2D from '@/components/editor/FieldMap2D';
+import MobileLinkMode from '@/components/editor/live-firing/MobileLinkMode';
+import SettingsPanel from '@/components/editor/live-firing/SettingsPanel';
+
 // ── Types ──
 type CommandMode =
   | 'super_dmx' | 'simple_dmx' | 'manual_fire' | 'pyro_fire' | 'auto_fire' | 'check_slave'
