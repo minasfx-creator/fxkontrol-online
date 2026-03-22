@@ -208,36 +208,16 @@ export class RadioTransport implements FireOneTransport {
     this.setState('disconnected');
   }
 
-  /** Wraps FireOne frame in radio packet before sending */
+  /** Wraps FireOne frame in radio packet before sending (delegates to radioProtocol) */
   async send(frame: Uint8Array): Promise<void> {
     if (!this.writer || this.state !== 'connected') throw new Error('Rádio não conectado');
-    // Wrap in radio protocol: SYNC + LEN + DEST(broadcast) + SRC(0) + SEQ + CMD(DATA=0x10) + payload + CRC
-    const SYNC = 0xD5;
-    const destAddr = frame[1] ?? 0xFF; // module addr from FireOne frame
-    const len = 4 + frame.length;
-    const radioFrame = new Uint8Array(1 + 1 + len + 2);
-    radioFrame[0] = SYNC;
-    radioFrame[1] = len;
-    radioFrame[2] = destAddr;
-    radioFrame[3] = 0x00; // src
-    radioFrame[4] = this.seq++ & 0xFF;
-    radioFrame[5] = 0x10; // DATA cmd
-    radioFrame.set(frame, 6);
-    // CRC16-CCITT
-    let crc = 0xFFFF;
-    const crcData = radioFrame.subarray(1, 6 + frame.length);
-    for (let i = 0; i < crcData.length; i++) {
-      crc ^= crcData[i] << 8;
-      for (let j = 0; j < 8; j++) crc = crc & 0x8000 ? (crc << 1) ^ 0x1021 : crc << 1;
-      crc &= 0xFFFF;
-    }
-    radioFrame[radioFrame.length - 2] = (crc >> 8) & 0xFF;
-    radioFrame[radioFrame.length - 1] = crc & 0xFF;
+    const { wrapProtocolFrame } = await import('@/lib/radioProtocol');
+    const destAddr = frame[1] ?? 0xFF;
+    const radioFrame = wrapProtocolFrame(destAddr, 0x00, this.seq++ & 0xFF, frame);
 
-    const t0 = performance.now();
     await this.writer.write(radioFrame);
-    this.latencyMs = Math.round(performance.now() - t0);
     this.txBytes += radioFrame.length;
+    // latencyMs not measured here — buffer write ≈ 0ms, not real RTT
   }
 
   private async startReading() {
@@ -355,11 +335,10 @@ export class WiFiTransport implements FireOneTransport {
 
   async send(frame: Uint8Array): Promise<void> {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) throw new Error('Wi-Fi relay não conectado');
-    const t0 = performance.now();
     // Send as binary for lowest latency
     this.ws.send(frame.slice().buffer as ArrayBuffer);
-    this.latencyMs = Math.round(performance.now() - t0);
     this.txBytes += frame.length;
+    // latencyMs updated via ping/pong in onmessage — not measured here (buffer write ≈ 0ms)
   }
 
   private measureLatency() {

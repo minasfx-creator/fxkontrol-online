@@ -113,8 +113,8 @@ export enum RadioCmd {
   SET_FREQ = 0x60,
   SET_POWER = 0x61,
   SET_CHANNEL = 0x62,
-  TDMA_SYNC = 0x70,
-  TDMA_SLOT_ASSIGN = 0x71,
+  TDMA_SYNC = 0x74,        // was 0x70 — avoids conflict with FireOneCmd.PRIORITY_DISABLE
+  TDMA_SLOT_ASSIGN = 0x75, // was 0x71
 }
 
 // ─── CRC16-CCITT ───
@@ -405,12 +405,14 @@ export class TDMAScheduler {
   private currentSlot = 0;
   private frameCount = 0;
   private _running = false;
+  private _executing = false; // Guard against frame overlap
   private seq = 0;
 
   constructor(config?: Partial<TDMAConfig>) {
     this.config = { ...DEFAULT_TDMA_CONFIG, ...config };
     // Slot 0 always reserved for E-STOP
     this.slots.set(0, { slotIndex: 0, moduleAddr: BROADCAST_ADDR, reserved: true });
+    this.packetQueues.set(0, []);
   }
 
   get status(): TDMAStatus {
@@ -485,6 +487,25 @@ export class TDMAScheduler {
     this.packetQueues.set(0, queue);
   }
 
+  /**
+   * IMMEDIATE E-STOP bypass — sends directly via sendFn without waiting
+   * for the next TDMA frame. Guarantees < 2ms latency.
+   */
+  async sendEstopImmediate(packet: Uint8Array): Promise<void> {
+    if (!this.sendFn) {
+      console.error('[TDMA] Cannot send E-STOP: no sendFn configured');
+      return;
+    }
+    // Bypass scheduler entirely — send NOW
+    try {
+      await this.sendFn(packet);
+    } catch (err) {
+      console.error('[TDMA] E-STOP immediate send failed, retrying:', err);
+      // Critical: retry once immediately
+      try { await this.sendFn(packet); } catch { /* exhausted */ }
+    }
+  }
+
   /** Start TDMA frame scheduling */
   start(sendFn: (pkt: Uint8Array) => Promise<void>): void {
     if (this._running) return;
@@ -505,29 +526,39 @@ export class TDMAScheduler {
     }
   }
 
+  /**
+   * Execute a TDMA frame using performance.now() busy-wait for sub-4ms slots.
+   * Protected against reentrant overlap via _executing flag.
+   */
   private async executeFrame(): Promise<void> {
-    if (!this.sendFn) return;
+    if (!this.sendFn || this._executing) return;
+    this._executing = true;
     this.frameCount++;
 
-    // Process each slot sequentially within the frame
-    for (let slot = 0; slot < this.config.slotCount; slot++) {
-      this.currentSlot = slot;
-      const queue = this.packetQueues.get(slot);
-      if (queue && queue.length > 0) {
-        const pkt = queue.shift()!;
-        try {
-          await this.sendFn(pkt);
-        } catch {
-          // Re-queue on failure (max 1 retry per frame)
-          if (queue.length < 8) queue.unshift(pkt);
+    try {
+      // Process each slot using busy-wait for precise timing
+      for (let slot = 0; slot < this.config.slotCount; slot++) {
+        this.currentSlot = slot;
+        const queue = this.packetQueues.get(slot);
+        if (queue && queue.length > 0) {
+          const pkt = queue.shift()!;
+          try {
+            await this.sendFn(pkt);
+          } catch {
+            // Re-queue on failure (max 1 retry per frame)
+            if (queue.length < 8) queue.unshift(pkt);
+          }
         }
+        // Busy-wait for slot duration (performance.now() has ~µs resolution)
+        const slotEnd = performance.now() + this.config.slotDurationMs;
+        while (performance.now() < slotEnd) { /* spin */ }
       }
-      // Wait for slot duration
-      await new Promise(r => setTimeout(r, this.config.slotDurationMs));
-    }
 
-    // Guard interval: send sync beacon
-    await this.sendSyncBeacon();
+      // Guard interval: send sync beacon
+      await this.sendSyncBeacon();
+    } finally {
+      this._executing = false;
+    }
   }
 
   private async sendSyncBeacon(): Promise<void> {

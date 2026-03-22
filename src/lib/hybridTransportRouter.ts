@@ -101,6 +101,7 @@ export interface TransportHealth {
 class TransportHealthMonitor {
   private healthMap = new Map<string, TransportHealth>();
   private latencyHistory = new Map<string, number[]>();
+  private successFailHistory = new Map<string, { success: number; fail: number }>();
   private readonly MAX_HISTORY = 100;
 
   update(transportId: string, type: TransportType, state: TransportState, latencyMs: number, success: boolean, isSatellite = false): TransportHealth {
@@ -113,18 +114,23 @@ class TransportHealthMonitor {
       };
       this.healthMap.set(transportId, h);
       this.latencyHistory.set(transportId, []);
+      this.successFailHistory.set(transportId, { success: 0, fail: 0 });
     }
 
     h.state = state;
     h.latencyMs = latencyMs;
     h.isSatellite = isSatellite;
 
+    // Track success/fail for real packet loss calculation
+    const sf = this.successFailHistory.get(transportId)!;
     if (success) {
       h.lastSuccessMs = Date.now();
       h.consecutiveFailures = 0;
+      sf.success++;
     } else {
       h.lastFailureMs = Date.now();
       h.consecutiveFailures++;
+      sf.fail++;
     }
 
     // Track latency history for P95
@@ -136,10 +142,9 @@ class TransportHealthMonitor {
       h.latencyP95 = sorted[Math.floor(sorted.length * 0.95)] || latencyMs;
     }
 
-    // Packet loss estimation
-    const total = history.length;
-    const failures = h.consecutiveFailures;
-    h.packetLossRate = total > 0 ? Math.min(failures / total, 1) : 0;
+    // Real packet loss: fail / (success + fail)
+    const total = sf.success + sf.fail;
+    h.packetLossRate = total > 0 ? sf.fail / total : 0;
 
     // Health assessment
     h.isHealthy = state === 'connected' && h.consecutiveFailures < 3 && h.packetLossRate < 0.1;
@@ -162,6 +167,7 @@ class TransportHealthMonitor {
   remove(transportId: string): void {
     this.healthMap.delete(transportId);
     this.latencyHistory.delete(transportId);
+    this.successFailHistory.delete(transportId);
   }
 
   get allHealth(): TransportHealth[] {
@@ -623,24 +629,52 @@ export class StarlinkTransport implements FireOneTransport {
     // latencyMs is updated by pong handler in onmessage — not measured here
   }
 
+  /**
+   * Calibrate baseline latency using Promise-based ping/pong collection.
+   * Avoids race condition of setTimeout-based collection.
+   */
   private calibrateBaseline(): void {
-    // Send 5 pings to establish baseline latency
-    let count = 0;
     const latencies: number[] = [];
+    let pingsLeft = 5;
+
+    // Temporarily intercept pong to collect calibration data
+    const originalOnMessage = this.ws?.onmessage;
+    const collectPong = (ev: MessageEvent) => {
+      // Call original handler first
+      if (originalOnMessage) originalOnMessage.call(this.ws, ev);
+
+      if (typeof ev.data === 'string') {
+        try {
+          const msg = JSON.parse(ev.data);
+          if (msg.type === 'pong' && pingsLeft > 0) {
+            latencies.push(Math.round(performance.now() - (msg.t0 || 0)));
+            pingsLeft--;
+            if (pingsLeft <= 0) {
+              // Restore original handler and compute median
+              if (this.ws) this.ws.onmessage = originalOnMessage!;
+              if (latencies.length > 0) {
+                this.latencyBaseline = latencies.sort((a, b) => a - b)[Math.floor(latencies.length / 2)];
+              }
+            }
+          }
+        } catch { /* ignore */ }
+      }
+    };
+
+    if (this.ws) {
+      this.ws.onmessage = collectPong as any;
+    }
+
+    // Send 5 pings at 500ms intervals
+    let sent = 0;
     const interval = setInterval(() => {
-      if (!this.ws || this.ws.readyState !== WebSocket.OPEN || count >= 5) {
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN || sent >= 5) {
         clearInterval(interval);
-        if (latencies.length > 0) {
-          this.latencyBaseline = latencies.sort((a, b) => a - b)[Math.floor(latencies.length / 2)];
-        }
         return;
       }
-      const t0 = performance.now();
-      this.ws.send(JSON.stringify({ type: 'ping', t0 }));
-      count++;
-      // Collect via onmessage handler above
-      setTimeout(() => { latencies.push(this.latencyMs); }, 2000);
-    }, 1000);
+      this.ws.send(JSON.stringify({ type: 'ping', t0: performance.now() }));
+      sent++;
+    }, 500);
   }
 
   private attemptReconnect(): void {
@@ -675,6 +709,7 @@ export class CellularTransport implements FireOneTransport {
   private receiveCallbacks: Array<(data: Uint8Array, id: string) => void> = [];
   private stateCallbacks: Array<(id: string, state: TransportState, error?: string) => void> = [];
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private _pingInterval: ReturnType<typeof setInterval> | null = null;
   private reconnectAttempts = 0;
   private _networkInfo: { effectiveType: string; downlink: number; rtt: number } = {
     effectiveType: 'unknown', downlink: 0, rtt: 0,
@@ -769,6 +804,7 @@ export class CellularTransport implements FireOneTransport {
 
   async disconnect(): Promise<void> {
     if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
+    if (this._pingInterval) { clearInterval(this._pingInterval); this._pingInterval = null; }
     if (this.ws) { this.ws.close(); this.ws = null; }
     this.setState('disconnected');
   }
@@ -783,9 +819,10 @@ export class CellularTransport implements FireOneTransport {
   }
 
   private startPingLoop(): void {
-    const interval = setInterval(() => {
+    if (this._pingInterval) clearInterval(this._pingInterval);
+    this._pingInterval = setInterval(() => {
       if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-        clearInterval(interval);
+        if (this._pingInterval) { clearInterval(this._pingInterval); this._pingInterval = null; }
         return;
       }
       this.ws.send(JSON.stringify({ type: 'ping', t0: performance.now() }));

@@ -302,6 +302,8 @@ export function useRadioLink() {
     setLinkState(prev => ({ ...prev, rangeTestActive: false }));
   }, []);
 
+  const tdmaPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const enableTDMA = useCallback(async (config?: Partial<TDMAConfig>) => {
     const scheduler = new TDMAScheduler(config);
     tdmaRef.current = scheduler;
@@ -310,9 +312,18 @@ export function useRadioLink() {
     if (addrs.length > 0) scheduler.assignModules(addrs);
     scheduler.start(sendRaw);
     setLinkState(prev => ({ ...prev, tdmaStatus: scheduler.status }));
+
+    // Start polling TDMA status every 100ms for real-time UI updates
+    if (tdmaPollRef.current) clearInterval(tdmaPollRef.current);
+    tdmaPollRef.current = setInterval(() => {
+      if (tdmaRef.current) {
+        setLinkState(prev => ({ ...prev, tdmaStatus: tdmaRef.current!.status }));
+      }
+    }, 100);
   }, [linkState.devices, sendRaw]);
 
   const disableTDMA = useCallback(() => {
+    if (tdmaPollRef.current) { clearInterval(tdmaPollRef.current); tdmaPollRef.current = null; }
     if (tdmaRef.current) {
       tdmaRef.current.stop();
       tdmaRef.current.reset();
@@ -330,6 +341,7 @@ export function useRadioLink() {
     return () => {
       readLoopRef.current = false;
       if (rangeTestIntervalRef.current) clearInterval(rangeTestIntervalRef.current);
+      if (tdmaPollRef.current) clearInterval(tdmaPollRef.current);
       tdmaRef.current?.stop();
     };
   }, []);
