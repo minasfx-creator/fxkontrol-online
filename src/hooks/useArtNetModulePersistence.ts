@@ -69,6 +69,8 @@ function configToDb(mod: ArtNetModuleConfig, projectId: string, sortOrder: numbe
     gps_lat: mod.gpsLat ?? null,
     gps_lng: mod.gpsLng ?? null,
     sort_order: sortOrder,
+    clone_of: mod.cloneOf || null,
+    redundancy_mode: mod.redundancyMode || 'failover',
   };
 }
 
