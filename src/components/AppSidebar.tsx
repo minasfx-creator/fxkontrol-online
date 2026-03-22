@@ -161,8 +161,8 @@ export function AppSidebar() {
                         <NavLink
                           to={item.url}
                           onClick={handleNavClick}
-                          className={`dock-item gap-3 rounded-xl mx-1 transition-all duration-200 ${
-                            active ? 'shadow-[inset_0_0_0_1px_hsl(32_100%_50%/0.15)]' : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+                          className={`dock-item gap-3 rounded-2xl mx-1 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                            active ? 'shadow-[inset_0_0_0_1px_hsl(32_100%_50%/0.15)] bg-white/[0.04]' : 'text-muted-foreground hover:bg-white/[0.03] hover:text-foreground'
                           }`}
                           style={active ? { background: 'hsl(32 100% 50% / 0.1)', color: 'hsl(32 100% 50%)' } : undefined}
                           activeClassName=""
