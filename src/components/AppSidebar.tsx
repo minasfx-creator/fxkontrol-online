@@ -39,6 +39,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const isMobile = useIsMobile();
+  const { isAdmin } = useAdminRole();
   const [soundMuted, setSoundMuted] = useState(ambientSound.muted);
 
   const initials = user?.email?.slice(0, 2).toUpperCase() ?? 'FX';
