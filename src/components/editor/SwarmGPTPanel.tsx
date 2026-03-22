@@ -628,9 +628,10 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
             key={id}
             onClick={() => setMode(id)}
             className={cn(
-              "flex-1 flex items-center justify-center gap-1 py-1.5 text-[8px] font-semibold uppercase transition-colors",
-              mode === id ? "text-primary border-b-2 border-primary bg-primary/5" : "text-muted-foreground hover:text-foreground"
+              "flex-1 flex items-center justify-center gap-1 py-1.5 text-[8px] font-bold uppercase tracking-wider transition-colors font-mono",
+              mode === id ? "border-b-2 bg-teal-500/8" : "text-muted-foreground hover:text-foreground"
             )}
+            style={mode === id ? { color: 'hsl(165 80% 55%)', borderColor: 'hsl(165 100% 42%)' } : undefined}
           >
             <Icon className="w-3 h-3" />
             {label}
