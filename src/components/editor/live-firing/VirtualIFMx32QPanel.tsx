@@ -310,11 +310,12 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
                   : 'DESCONECTADO'}
               </Badge>
             </div>
-            <div className="flex gap-1">
+            <div className="flex gap-1 flex-wrap">
               {[
                 { label: 'BLE', icon: Radio, action: module.connectBLE },
                 { label: 'USB', icon: Usb, action: module.connectUSB },
                 { label: 'Wi-Fi', icon: Wifi, action: () => module.connectWS() },
+                { label: 'RELAY', icon: Zap, action: module.connectDirectRelay },
               ].map(btn => (
                 <button
                   key={btn.label}
@@ -322,7 +323,8 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
                   className={cn(
                     "flex-1 rounded px-2 py-1 flex items-center justify-center gap-1 transition-colors",
                     "bg-muted/10 hover:bg-muted/20 text-muted-foreground/50 hover:text-foreground/70",
-                    "text-[8px] uppercase font-bold border border-border/10"
+                    "text-[8px] uppercase font-bold border border-border/10",
+                    btn.label === 'RELAY' && bridgeStatus?.transport === 'direct_relay' && bridgeStatus.connected && "border-amber-500/40 bg-amber-950/20 text-amber-400"
                   )}
                 >
                   <btn.icon className="w-3 h-3" />
