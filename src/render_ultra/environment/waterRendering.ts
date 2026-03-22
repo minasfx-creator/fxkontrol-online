@@ -1,7 +1,7 @@
 /**
- * FX KONTROL · Water Rendering System
- * UE5.7-inspired reflective water with Gerstner waves, Fresnel,
- * specular highlights, and firework explosion reflections.
+ * FX KONTROL · Water Rendering System v2
+ * UE5.7-inspired: Gerstner waves, Fresnel, specular, explosion reflections,
+ * subsurface scattering approximation, and caustic patterns.
  */
 
 import * as THREE from 'three';
@@ -11,7 +11,7 @@ const WATER_VERTEX = `
   uniform float uWaveAmplitude;
   uniform float uWaveFrequency;
   uniform vec2 uWindDir;
-  
+
   varying vec2 vUv;
   varying vec3 vWorldPos;
   varying vec3 vNormal;
@@ -23,30 +23,24 @@ const WATER_VERTEX = `
     float s = sin(phase);
     float c = cos(phase);
     float q = steepness / (freq * amp);
-    return vec3(
-      q * amp * dir.x * c,
-      amp * s,
-      q * amp * dir.y * c
-    );
+    return vec3(q * amp * dir.x * c, amp * s, q * amp * dir.y * c);
   }
 
   void main() {
     vUv = uv;
     vec3 pos = position;
-    
-    // Sum multiple Gerstner waves for natural water surface
+
     vec3 wave1 = gerstnerWave(pos, uWaveAmplitude, uWaveFrequency, 1.2, normalize(uWindDir), 0.5);
     vec3 wave2 = gerstnerWave(pos, uWaveAmplitude * 0.5, uWaveFrequency * 1.8, 0.8, normalize(uWindDir + vec2(0.3, 0.2)), 0.3);
     vec3 wave3 = gerstnerWave(pos, uWaveAmplitude * 0.25, uWaveFrequency * 3.1, 1.5, normalize(uWindDir + vec2(-0.5, 0.7)), 0.2);
-    
+
     pos += wave1 + wave2 + wave3;
     vWaveHeight = pos.y;
-    
-    // Approximate normal from wave derivatives
+
     vec3 tangent = vec3(1.0, wave1.y * uWaveFrequency * cos(uTime), 0.0);
     vec3 bitangent = vec3(0.0, wave2.y * uWaveFrequency * 0.8, 1.0);
     vNormal = normalize(cross(bitangent, tangent));
-    
+
     vec4 wp = modelMatrix * vec4(pos, 1.0);
     vWorldPos = wp.xyz;
     gl_Position = projectionMatrix * viewMatrix * wp;
@@ -63,12 +57,15 @@ const WATER_FRAGMENT = `
   uniform float uSpecularIntensity;
   uniform vec3 uSunDirection;
   uniform float uDistortionScale;
-  
+  uniform float uSSS;            // subsurface scattering intensity
+  uniform vec3 uSSSColor;        // subsurface scattering color
+  uniform float uCausticIntensity;
+
   // Explosion reflections
   uniform vec3 uExplosionColor;
   uniform float uExplosionIntensity;
-  uniform vec3 uExplosionPos;  // world position of burst
-  
+  uniform vec3 uExplosionPos;
+
   varying vec2 vUv;
   varying vec3 vWorldPos;
   varying vec3 vNormal;
@@ -89,10 +86,24 @@ const WATER_FRAGMENT = `
     );
   }
 
+  // ─── Caustic pattern ───
+  float caustic(vec2 uv) {
+    float c = 0.0;
+    float scale = 1.0;
+    for (int i = 0; i < 3; i++) {
+      vec2 p = uv * scale + vec2(uTime * 0.03 * scale, uTime * 0.02 * scale);
+      float n = noise(p * 8.0);
+      // Sharp caustic lines
+      c += pow(abs(sin(n * 6.28318 + uTime * 0.5)), 8.0) / scale;
+      scale *= 2.0;
+    }
+    return c * 0.33;
+  }
+
   void main() {
     vec3 viewDir = normalize(cameraPosition - vWorldPos);
     vec3 normal = normalize(vNormal);
-    
+
     // Small-scale noise distortion (ripples)
     vec2 distortion = vec2(
       noise(vUv * uDistortionScale + uTime * 0.05),
@@ -100,44 +111,53 @@ const WATER_FRAGMENT = `
     ) * 0.02 - 0.01;
     normal.xz += distortion;
     normal = normalize(normal);
-    
+
     // ─── Fresnel ───
     float fresnel = pow(1.0 - max(dot(viewDir, normal), 0.0), uFresnelPower);
     fresnel = clamp(fresnel, 0.02, 0.98);
-    
+
     // ─── Water color ───
-    // Depth-based color blend
     float depthFade = smoothstep(0.0, 50.0, length(vWorldPos.xz));
     vec3 waterCol = mix(uWaterColor, uDeepColor, depthFade);
-    
+
+    // ─── Subsurface Scattering approximation ───
+    if (uSSS > 0.0) {
+      float sssAmount = pow(max(dot(viewDir, -normalize(uSunDirection)), 0.0), 3.0);
+      sssAmount *= (1.0 - fresnel) * uSSS;
+      // Thin water areas let light through (wave peaks)
+      float thinness = smoothstep(-0.2, 0.5, vWaveHeight);
+      waterCol += uSSSColor * sssAmount * thinness;
+    }
+
+    // ─── Caustic pattern overlay ───
+    if (uCausticIntensity > 0.0) {
+      float c = caustic(vWorldPos.xz * 0.01);
+      waterCol += vec3(c) * uCausticIntensity * (1.0 - fresnel) * 0.3;
+    }
+
     // ─── Specular (sun reflection) ───
     vec3 halfDir = normalize(uSunDirection + viewDir);
     float spec = pow(max(dot(normal, halfDir), 0.0), 128.0) * uSpecularIntensity;
     vec3 specular = uSpecularColor * spec;
-    
+
     // ─── Explosion reflections ───
     vec3 explosionRefl = vec3(0.0);
     if (uExplosionIntensity > 0.01) {
       vec3 toExplosion = normalize(uExplosionPos - vWorldPos);
-      // Mirror the explosion direction about the normal
       vec3 reflDir = reflect(-toExplosion, vec3(0.0, 1.0, 0.0));
-      float reflFactor = max(dot(viewDir, reflDir), 0.0);
-      reflFactor = pow(reflFactor, 2.0);
-      
-      // Distance falloff from explosion
+      float reflFactor = pow(max(dot(viewDir, reflDir), 0.0), 2.0);
       float dist = length(vWorldPos.xz - uExplosionPos.xz);
       float distFade2 = exp(-dist * dist / 50000.0);
-      
       explosionRefl = uExplosionColor * uExplosionIntensity * reflFactor * distFade2 * fresnel;
     }
-    
+
     // ─── Composite ───
     vec3 finalColor = waterCol * (1.0 - fresnel) + specular + explosionRefl;
-    
+
     // Edge distance fade
     float edge = length(vUv - 0.5) * 2.0;
     float edgeFade = 1.0 - smoothstep(0.7, 1.0, edge);
-    
+
     gl_FragColor = vec4(finalColor, uOpacity * edgeFade);
   }
 `;
@@ -154,6 +174,9 @@ export interface WaterConfig {
   specularIntensity: number;
   distortionScale: number;
   segments: number;
+  sssIntensity: number;        // subsurface scattering
+  sssColor: THREE.Color;
+  causticIntensity: number;    // caustic pattern
 }
 
 const DEFAULT_WATER: WaterConfig = {
@@ -168,6 +191,9 @@ const DEFAULT_WATER: WaterConfig = {
   specularIntensity: 0.8,
   distortionScale: 20,
   segments: 64,
+  sssIntensity: 0.4,
+  sssColor: new THREE.Color(0.0, 0.15, 0.12),
+  causticIntensity: 0.5,
 };
 
 export function createWaterSystem(config?: Partial<WaterConfig>) {
@@ -190,6 +216,9 @@ export function createWaterSystem(config?: Partial<WaterConfig>) {
       uSpecularIntensity: { value: cfg.specularIntensity },
       uSunDirection: { value: new THREE.Vector3(0.3, 0.8, 0.5).normalize() },
       uDistortionScale: { value: cfg.distortionScale },
+      uSSS: { value: cfg.sssIntensity },
+      uSSSColor: { value: cfg.sssColor.clone() },
+      uCausticIntensity: { value: cfg.causticIntensity },
       uExplosionColor: { value: new THREE.Color(0, 0, 0) },
       uExplosionIntensity: { value: 0 },
       uExplosionPos: { value: new THREE.Vector3(0, 100, 0) },
@@ -207,11 +236,9 @@ export function createWaterSystem(config?: Partial<WaterConfig>) {
     mesh,
     update(time: number) {
       material.uniforms.uTime.value = time;
-      // Decay explosion reflection
       const u = material.uniforms.uExplosionIntensity;
       if (u.value > 0.01) u.value *= 0.95;
     },
-    /** Flash water reflections from firework burst */
     flashExplosion(position: THREE.Vector3, color: THREE.Color, intensity: number) {
       material.uniforms.uExplosionPos.value.copy(position);
       material.uniforms.uExplosionColor.value.copy(color);
@@ -221,13 +248,15 @@ export function createWaterSystem(config?: Partial<WaterConfig>) {
     setWindDirection(x: number, z: number) { material.uniforms.uWindDir.value.set(x, z); },
     setSunDirection(dir: THREE.Vector3) { material.uniforms.uSunDirection.value.copy(dir).normalize(); },
     setOpacity(v: number) { material.uniforms.uOpacity.value = v; },
+    setSSS(v: number) { material.uniforms.uSSS.value = v; },
+    setCausticIntensity(v: number) { material.uniforms.uCausticIntensity.value = v; },
   };
 }
 
 /** Water presets for venue types */
 export const WATER_PRESETS = {
-  lake: { waveAmplitude: 0.2, waveFrequency: 0.1, opacity: 0.9 },
-  river: { waveAmplitude: 0.5, waveFrequency: 0.25, opacity: 0.8, windDirection: [1, 0] as [number, number] },
-  ocean: { waveAmplitude: 1.2, waveFrequency: 0.08, opacity: 0.95 },
-  puddle: { waveAmplitude: 0.05, waveFrequency: 0.5, opacity: 0.7, size: 30 },
+  lake: { waveAmplitude: 0.2, waveFrequency: 0.1, opacity: 0.9, sssIntensity: 0.3, causticIntensity: 0.4 },
+  river: { waveAmplitude: 0.5, waveFrequency: 0.25, opacity: 0.8, windDirection: [1, 0] as [number, number], sssIntensity: 0.5, causticIntensity: 0.6 },
+  ocean: { waveAmplitude: 1.2, waveFrequency: 0.08, opacity: 0.95, sssIntensity: 0.6, causticIntensity: 0.3 },
+  puddle: { waveAmplitude: 0.05, waveFrequency: 0.5, opacity: 0.7, size: 30, sssIntensity: 0.1, causticIntensity: 0.8 },
 } as const;
