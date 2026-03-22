@@ -1,88 +1,59 @@
 
 
-# Plan: Finale 3D Angles, Racks, Positions & Timeline Refinements
+# Plan: PyroJam 2026 Realism — Mines, Comets & Global Refinements
 
 ## Summary
 
-Based on the Finale 3D documentation for pan/tilt/spin (effects), heading/pitch/roll (positions/racks), rack layout workflows, and position/timeline interactions, the following gaps and refinements are needed.
-
-## Key Findings from Finale 3D Docs
-
-1. **Effects use pan/tilt/spin** (moving-head light model), **positions use heading/pitch/roll** (mortar rack model). These are distinct coordinate systems. The codebase has `pan/tilt/spin` on `TimelineItem` but doesn't use them in the gizmo or apply the Euler rotation order correctly.
-
-2. **Position rotation modes**: Finale offers separate right-click commands for Rotate (heading), Rotate (pitch), Rotate (roll), and Rotate (around position's up vector). Currently only heading is editable via gizmo; pitch is clamped 5-85 and roll is stored but never exposed.
-
-3. **Rack layout is a visual CAD-like top-down view** with drag-and-drop of effects into tubes, rack clustering, and constraint-based addressing. Current `RackVisualEditor` is a single-rack SVG view — lacks the multi-rack layout workspace.
-
-4. **Inline H/P labels need to be editable inputs** (approved in previous plan but not yet implemented).
-
-5. **Gizmo needs separate rotation modes** matching Finale's right-click workflow: heading wheel, pitch arc, roll rotation — selectable from context menu.
+Referencing PyroJam 2026 "Trip Through China" footage: mines show a tight **column jet** phase before the wide spray, comets have dense **incandescent trails** with smoke wake, and all effects show combustion irregularity and organic color transitions. This plan upgrades MineEffect and CometEffect to multi-phase physics, adds a combustion noise function, and refines the ShellBurstRenderer smoke system.
 
 ## Changes
 
-### 1. `src/components/editor/PyroLaunchAngle.tsx` — Inline Editable H/P/R + Rotation Modes
+### 1. `src/lib/pyroNoise.ts` — Add `combustionFlicker()`
 
-**Inline numeric inputs**: Replace the `pointer-events-none` H/P labels (lines 386-423) with interactive inputs:
-- Remove `pointer-events-none` from the container div
-- Replace `{Math.round(position.heading)}°` with `<input type="number" step={1} value={heading} onBlur={commit} />` (40px wide, monospace, transparent background matching current style)
-- Same for Pitch
-- Add Roll input (currently hidden)
-- On Enter or blur: commit value via `updatePosition`
-- On focus: `e.target.select()` for quick overwrite
+New function with sharper, higher-frequency noise than `temporalFlicker` — models chemical combustion spikes with 5 overlapping sine waves and a burst probability component. Used by Mine column, Comet head, and muzzle flashes.
 
-**Add rotation mode indicators**: When dragging, show which axis is being edited (H blue, P orange, R green) with a subtle axis highlight.
+### 2. `src/components/editor/effects/MineEffect.tsx` — Multi-Phase Mine
 
-**Expand pitch range**: Change from `Math.max(5, Math.min(85, ...))` to `Math.max(-180, Math.min(180, ...))` per Finale 3D spec (Table 2: pitch range is -180° to +180°). This allows forward/backward tilt.
+**Replace uniform cone spray with 3 particle classes** (using the same pre-allocated buffer, differentiated by index ranges):
 
-**Roll support in gizmo**: Add a RollArc visualization (green) when roll ≠ 0, similar to PitchArc but around Z-axis.
+- **Column particles** (0–20% of count): Narrow cone (5–15° from vertical), high velocity (1.5× base), short lifetime (0.3–0.6s), white-hot → base color. These form the initial jet visible in the first 15% of progress.
 
-### 2. `src/components/editor/PositionContextMenu.tsx` — Finale Rotation Commands
+- **Spray particles** (20–85% of count): Wide hemisphere (30–80°), standard velocity with ±40% lifetime jitter per particle. Individual star sizes vary 0.5×–2× base. These are the main colored stars.
 
-Add Finale 3D-style rotation commands to context menu:
-- **Rotate (heading)** — enters angle mode focused on heading axis
-- **Rotate (pitch)** — enters angle mode focused on pitch axis  
-- **Rotate (roll)** — enters angle mode focused on roll axis
-- **Rotate (around up vector)** — for wall-mounted positions
-- **Move on axis...** — shows XYZ axis arrows for local-frame movement
+- **Drip particles** (85–100% of count): Low upward velocity (3–6 m/s), high drag (0.08), fall back to ground as charcoal/titanium sparks. Orange→red→dark ember color ramp. Persist longer than spray.
 
-Emit a custom event `angle-mode-axis` with the selected axis so `PyroLaunchAngle` can constrain drag to that axis only.
+**Ground smoke plume**: Add a second `<points>` cloud (40 particles, large size 1.5–4m, low opacity 0.04–0.08, normal blending, gray color) expanding radially from base. Driven by fluid grid density if available. Appears at progress 0.03, fades by 0.7.
 
-### 3. `src/components/editor/PositionContextMenu.tsx` — Unified Menu (Merge PopupEditor)
+**Star size variation**: `pointsMaterial` replaced with `ShaderMaterial` supporting per-particle size via a `size` buffer attribute (Float32Array). Column particles get 0.6× size, spray gets 0.8–1.8× randomized, drips get 1.2× with ember glow.
 
-Merge `PositionPopupEditor` properties into the context menu as inline sections:
-- **Quick Props**: X/Y/Z coordinate fields, H/P/R sliders+inputs (compact row)
-- **Linked Effects**: collapsible list with unlink buttons
-- Remove the separate `PositionPopupEditor` component call from `Index.tsx`
+**Muzzle flash upgrade**: Use `combustionFlicker` for the initial flash sphere opacity to create irregular ignition pulse instead of smooth linear fade.
 
-### 4. `src/store/useProjectStore.ts` — Pan/Tilt/Spin Euler Order
+### 3. `src/components/editor/effects/CometEffect.tsx` — Dense GPU Trail + Smoke Wake
 
-The `TimelineItem` already has `pan/tilt/spin` fields. Add a helper function `effectWorldOrientation(position, timelineItem)` that computes the world rotation by combining:
-1. Position heading/pitch/roll (R1=pitch×X, R2=roll×Z, R3=heading×Y)
-2. Effect pan/tilt/spin (R1=spin×Y, R2=tilt×X, R3=pan×Y)
+**GPU spark cloud** (replace 30 mesh-based sparks): Single `<points>` with 120 pre-allocated particles. Each spark has: detach time, lateral spread angle, drag, initial velocity inherited from comet head at detach moment. Zero-GC Float32Array buffers for position, color, opacity. Sparks fall with gravity + drag, fade orange→red→charcoal.
 
-This ensures effects placed on rotated positions shoot in the correct world direction.
+**Wider ribbon trail**: Increase `maxPoints` 64→96, `baseWidth` scaling 1.5×, add brightness multiplier for inner core glow (white-hot center fading to base color at edges using the ribbon's existing opacity/color system).
 
-### 5. `src/components/editor/RackVisualEditor.tsx` — Multi-Rack Layout Workspace
+**Smoke wake**: Secondary `<points>` cloud (30 particles, size 0.8–2m, opacity 0.03–0.06, normal blending, gray `#665544`). Particles spawn along the trajectory path every ~3% progress increment, drift slowly with wind, expand, and fade over 1.5s.
 
-Add a **Rack Layout View** mode (activated from Racks panel):
-- Top-down canvas showing all racks at a position as draggable rectangles
-- Rack snapping: racks near each other form "clusters"
-- Drag-and-drop effects (red circles) from an unassigned pile into rack tubes
-- Pin number display in tubes when addressed
-- Links: "Add racks for show", "Re-address", "Delete racks"
+**Combustion head**: Replace static sin-wave pulse (`Math.sin(progress * 40) * 0.15`) with `combustionFlicker()` for organic size/brightness pulsation. Add a colored halo ring (base color, 0.1 opacity, 2× head size) around the white core.
 
-### 6. `src/components/editor/PopupEditors.tsx` — Cleanup
+**Ignition flare**: First 3% of progress: bright expanding sphere (0.4→2m radius) with combustionFlicker-modulated opacity, screen blending. More aggressive than current 5% muzzle flash.
 
-Remove `PositionPopupEditor` and old `PositionContextMenu` exports. Keep `ShortcutsOverlay`. Update `Index.tsx` imports.
+### 4. `src/components/editor/effects/ShellBurstRenderer.tsx` — Smoke Billboard Refinement
+
+Refine the existing `smokeParticles` system (line 314):
+- Increase `SMOKE_COUNT` 10→16 for denser post-burst smoke
+- Add turbulence drift using `hash01` seeded per smoke particle for non-uniform expansion
+- Smoke color varies per particle: warm gray (#776655) for hot bursts, cool gray (#667788) for cold sparks
+- Smoke opacity modulated by `readDensityAt` from fluid grid when available
 
 ## Files
 
 | File | Change |
 |------|--------|
-| `src/components/editor/PyroLaunchAngle.tsx` | Inline editable H/P/R inputs, roll arc, expanded pitch range, axis-constrained drag |
-| `src/components/editor/PositionContextMenu.tsx` | Finale rotation commands, merged properties panel, linked effects list |
-| `src/components/editor/PopupEditors.tsx` | Remove PositionPopupEditor and old PositionContextMenu |
-| `src/pages/Index.tsx` | Remove PositionPopupEditor usage |
-| `src/store/useProjectStore.ts` | Add `effectWorldOrientation()` helper |
-| `src/components/editor/RackVisualEditor.tsx` | Multi-rack layout workspace mode |
+| `src/lib/pyroNoise.ts` | Add `combustionFlicker()` |
+| `src/components/editor/effects/MineEffect.tsx` | Multi-phase column/spray/drip, ground smoke, per-particle size shader, combustion flash |
+| `src/components/editor/effects/CometEffect.tsx` | GPU spark cloud, wider ribbon, smoke wake, combustion head, ignition flare |
+| `src/components/editor/effects/ShellBurstRenderer.tsx` | Denser smoke with turbulence and fluid grid modulation |
 
