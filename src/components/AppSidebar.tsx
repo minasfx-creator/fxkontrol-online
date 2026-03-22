@@ -93,10 +93,10 @@ export function AppSidebar() {
                           to={item.url}
                           end={item.url === '/'}
                           onClick={handleNavClick}
-                          className={`dock-item gap-3 rounded-xl mx-1 transition-all duration-200 ${
+                          className={`dock-item gap-3 rounded-2xl mx-1 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
                             isActive 
-                              ? 'shadow-[inset_0_0_0_1px_hsl(32_100%_50%/0.15)]' 
-                              : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground hover:shadow-[inset_0_1px_4px_hsl(220_30%_1%/0.3)]'
+                              ? 'shadow-[inset_0_0_0_1px_hsl(32_100%_50%/0.15)] bg-white/[0.04]' 
+                              : 'text-muted-foreground hover:bg-white/[0.03] hover:text-foreground'
                           }`}
                           style={{
                             ...(isActive ? { background: 'hsl(32 100% 50% / 0.1)', color: 'hsl(32 100% 50%)' } : undefined),
