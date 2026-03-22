@@ -918,6 +918,7 @@ export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
           { key: 'field_map' as FXCMode, label: '🗺 Map' },
           { key: 'connections' as FXCMode, label: '🔌 Conn' },
           { key: 'wifi_direct' as FXCMode, label: '📡 WFD' },
+          { key: 'artnet_modules' as FXCMode, label: '🌐 ArtNet' },
           { key: 'mobile_link' as FXCMode, label: '📡 Link' },
           { key: 'settings' as FXCMode, label: '⚙' },
         ]).map(m => (
