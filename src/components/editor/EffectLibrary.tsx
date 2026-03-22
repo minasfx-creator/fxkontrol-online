@@ -510,8 +510,6 @@ export default function EffectLibrary() {
         {viewMode === 'table' ? (
           /* ─── Finale 3D Table View ─── */
           <EffectTableView effects={filteredEffects} />
-            </table>
-          </div>
         ) : (
           /* ─── Card/List View (default) ─── */
           <div className="py-1 px-1">
