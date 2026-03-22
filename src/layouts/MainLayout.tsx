@@ -160,7 +160,7 @@ export default function MainLayout() {
               </span>
             </div>
             <button
-              onClick={() => window.location.href = '/editor'}
+              onClick={() => navigate('/editor')}
               className="text-[8px] font-mono-code px-2 py-0.5 rounded transition-colors"
               style={{ color: 'hsl(32 100% 50% / 0.6)' }}
             >
