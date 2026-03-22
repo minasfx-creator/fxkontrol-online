@@ -1,127 +1,69 @@
 
 
-# Melhorias UI/UX + Motor de Renderização Químico-Realista
+# Teste de Detonação: 50 Módulos × 3 Venues × 3 Transportes
 
-## Resumo
+## Objetivo
+Criar uma página de **Show Test Simulator** que executa testes simulados de disparo com 50 módulos FXK-M1 em 3 venues (Copacabana, Vitória, Liuyang/China), medindo performance real de cada transporte (LAN, WAN, Relay) e sistema híbrido. Gera relatório visual com métricas de latência, throughput, jitter, E-STOP response time e packet loss.
 
-Quatro frentes de trabalho: (1) menus maximizáveis fullscreen, (2) ScriptWindow com colunas redimensionáveis, (3) correção do VDL generator (mine gerando morteiros), (4) integração química completa em todos os renderers de efeitos.
+## Venues de Teste
+| Venue | GPS | Distância do Servidor | Cenário |
+|---|---|---|---|
+| Copacabana, RJ | -22.97, -43.18 | ~20ms (Brasil) | Réveillon — 50 módulos em 2km de praia |
+| Vitória, ES | -20.32, -40.29 | ~25ms (Brasil) | Show portuário — 50 módulos em área compacta |
+| Liuyang, China | 28.15, 113.63 | ~280ms (intercontinental) | Fábrica de fogos — teste extremo WAN |
 
----
+## Simulação por Transporte
+Para cada venue, simula 50 módulos com show de 420 cues em 12 minutos:
+- **LAN (UDP Art-Net)**: Latência base ~3ms, jitter ~0.5ms
+- **WAN (Direct IP)**: Latência proporcional à distância + overhead TLS
+- **Relay (WebSocket)**: Latência WAN + overhead relay (~15ms)
+- **Híbrido**: 30 módulos LAN + 15 WAN + 5 Relay — calcula média ponderada
 
-## 1. Menus Maximizáveis Fullscreen
+## Métricas Coletadas
+- Latência média/min/max/p95/p99
+- Jitter (desvio padrão)
+- Throughput (packets/sec)
+- Packet loss rate
+- E-STOP response time
+- Sync accuracy (δt entre primeiro e último módulo)
+- Compliance NFPA 1123 (E-STOP < 50ms)
 
-**Problema**: Apenas o PyroFireOnePanel tem modo fullscreen. Os demais painéis usam DetachablePanel (pop-out para janela separada) mas não têm maximização inline.
+## Implementação
 
-**Solução**: Criar um wrapper `FullscreenablePanel` que qualquer painel pode usar.
+### 1. Criar `src/pages/ShowTestSimulator.tsx`
+- Página fullscreen com dashboard de resultados
+- Botão "DETONAR SHOW" que inicia simulação
+- Cards por venue com barra de progresso
+- Tabela comparativa final dos transportes
+- Gráficos de latência (sparklines) usando divs estilizados
 
-- Botão Maximize2 no header de cada painel
-- Ao clicar, renderiza o conteúdo como portal fixo sobre toda a viewport (`fixed inset-0 z-50`)
-- ESC ou botão Minimize2 para sair
-- Body scroll lock quando ativo
-- Aplicar em: ScriptWindow, EffectLibrary, VDLPreviewPanel, GenerativeEffectsPanel, Timeline, PropertiesPanel, e todos os painéis do editor
+### 2. Criar `src/services/showTestEngine.ts`
+- Motor de simulação que gera 50 módulos por venue
+- Dispara chamadas reais ao `artnet-bridge` edge function (action: 'send') para medir latência real do edge function
+- Adiciona latência simulada de rede por cenário geográfico
+- Calcula todas as métricas estatísticas
+- Gera timeline de eventos (420 cues distribuídos em 12 min)
 
-**Arquivo**: `src/components/editor/FullscreenablePanel.tsx` (novo)
-**Edições**: Cada painel principal envolto com `<FullscreenablePanel>`
+### 3. Estrutura do Resultado
+```text
+┌─────────────────────────────────────────────────────┐
+│  SHOW TEST REPORT — 50 MODULES × 3 VENUES          │
+├──────────┬─────────┬──────────┬──────────┬──────────┤
+│ Venue    │ LAN     │ WAN      │ RELAY    │ HYBRID   │
+├──────────┼─────────┼──────────┼──────────┼──────────┤
+│ COPA     │ 3.2ms   │ 22.1ms   │ 38.4ms   │ 12.5ms   │
+│ VITÓRIA  │ 3.1ms   │ 26.3ms   │ 41.7ms   │ 14.2ms   │
+│ LIUYANG  │ 3.0ms   │ 283.5ms  │ 298.1ms  │ 95.3ms   │
+├──────────┼─────────┼──────────┼──────────┼──────────┤
+│ E-STOP   │ <5ms    │ <30ms    │ <45ms    │ <15ms    │
+│ NFPA1123 │ ✅ PASS │ ✅ PASS  │ ✅ PASS  │ ✅ PASS  │
+└──────────┴─────────┴──────────┴──────────┴──────────┘
+```
 
----
+### 4. Adicionar rota `/show-test` no App.tsx
 
-## 2. ScriptWindow — Colunas e Células Customizáveis
-
-**Problema**: Colunas com largura fixa via classes CSS, sem redimensionamento pelo usuário.
-
-**Solução**:
-- Estado `columnWidths` com larguras iniciais para cada coluna (Cue, Event Time, Effect Time, PFT, Size, Type, Description, Position, Pan, Tilt, Spin, ∠*, dP, dR, Dur, $, Chain, Notes)
-- Drag handle entre headers para redimensionar colunas (mousedown → mousemove → mouseup)
-- Persistência via localStorage
-- Menu de contexto no header para show/hide colunas
-- Células com double-click para editar inline (já existe parcialmente, expandir para Description e outros campos)
-
-**Arquivo**: `src/components/editor/ScriptWindow.tsx` (editar)
-
----
-
-## 3. Correção VDL: Mine Gerando Morteiros
-
-**Problema**: O `vdlToEffect` em `vdlParser.ts` linha 931 classifica como `category: 'morteiros'` quando `caliber >= 4`, independente do `partType`. Uma Mine de 6" é categorizada como morteiro.
-
-**Solução**:
-- Corrigir `vdlToEffect` para usar `partType` na decisão de category:
-  - `partType === 'mine'` → category `'mines'`
-  - `partType === 'gerb'` → category `'gerbs'`
-  - `partType === 'cake'` → category `'cakes_batteries'`
-  - `partType === 'waterfall'` → category `'waterfalls'`
-  - Shells: manter lógica por calibre
-- Verificar que `TimelineEffects` no SkyCanvas roteia corretamente `pt === 'mine'` para `MineEffect` (já funciona na linha 948)
-- Corrigir o SmartScriptAssistant para enviar `partType` correto ao criar itens via IA
-
-**Arquivo**: `src/lib/vdlParser.ts` (editar `vdlToEffect`)
-
----
-
-## 4. Motor Químico-Realista em Todos os Renderers
-
-**Problema**: Apenas `ShellBurstRenderer` usa `getRealFormulation` e `particleChemistry`. Os demais renderers (MineEffect, GerbEffect, CometEffect, WaterfallEffect, CakeEffect, FanEffect, RomanCandleEffect, etc.) usam cores planas sem física química.
-
-**Solução**: Integrar o sistema de química (`particleChemistry.ts`) em cada renderer:
-
-### 4a. Propagação de formulationId
-- `vdlToEffect` deve derivar `formulationId` automaticamente baseado em cor + tipo + calibre
-- Lookup na tabela `REAL_FORMULATIONS` por matching (cor + tipo)
-- Propagar via `effect.formulationId` no `TimelineEffects`
-
-### 4b. Integração nos Renderers
-Para cada renderer, adicionar:
-- Prop `formulationId?: string`
-- `getRealFormulation(formulationId)` → dados químicos reais
-- `thermalColorRamp` para transições white-hot → saturated → ember → charcoal
-- Temperatura de combustão do composto influencia brilho e duração
-- Tipo de faísca (titanium → bright white sparks, charcoal → orange trails)
-
-**Renderers a atualizar**:
-| Renderer | Integração |
-|---|---|
-| `MineEffect` | Column jet usa temperatura do compound, spray stars usam cor química real, drip sparks usam charcoal/titanium do compound |
-| `GerbEffect` | Temperatura do compound → intensidade da chama, tipo de faísca (Ti/Fe/Al) |
-| `CometEffect` | Trail color do compound, velocidade de queima |
-| `WaterfallEffect` | Charcoal chemistry → cor amber/gold real, burn rate |
-| `CakeEffect` | Per-shot compound variation |
-| `FanEffect` | Compound por shot no leque |
-| `RomanCandleEffect` | Compound por estrela |
-| `SparkShower` | Titanium vs iron vs aluminum spark behavior |
-
-### 4c. Auto-Matching Químico
-Criar função `autoMatchFormulation(color: string, type: string, caliber: number): string | undefined` em `particleChemistry.ts`:
-- Mapeia cor VDL → compostos químicos (Red → Strontium Carbonate, Blue → Copper Oxide, Green → Barium Chlorate, etc.)
-- Se não houver formulação exata, gera perfil químico derivado usando a enciclopédia de compostos existente
-- Retorna `formulationId` ou gera um perfil inline
-
----
-
-## Detalhes Técnicos
-
-### Arquivos Criados
-1. `src/components/editor/FullscreenablePanel.tsx` — wrapper fullscreen
-
-### Arquivos Editados
-1. `src/lib/vdlParser.ts` — fix category em `vdlToEffect`, adicionar `autoMatchFormulation`
-2. `src/components/editor/ScriptWindow.tsx` — colunas redimensionáveis + show/hide
-3. `src/components/editor/effects/MineEffect.tsx` — integrar chemistry
-4. `src/components/editor/effects/GerbEffect.tsx` — integrar chemistry
-5. `src/components/editor/effects/CometEffect.tsx` — integrar chemistry
-6. `src/components/editor/effects/WaterfallEffect.tsx` — integrar chemistry
-7. `src/components/editor/effects/CakeEffect.tsx` — integrar chemistry
-8. `src/components/editor/effects/FanEffect.tsx` — integrar chemistry
-9. `src/components/editor/effects/RomanCandleEffect.tsx` — integrar chemistry
-10. `src/components/editor/effects/SparkShower.tsx` — integrar chemistry
-11. `src/components/editor/SkyCanvas.tsx` — propagar `formulationId` nos renders
-12. `src/render_ultra/fireworks/particleChemistry.ts` — adicionar `autoMatchFormulation`
-13. Painéis principais — envolver com FullscreenablePanel
-
-### Ordem de Execução
-1. FullscreenablePanel (wrapper reutilizável)
-2. Fix VDL category (mine ≠ morteiro)
-3. ScriptWindow colunas redimensionáveis
-4. `autoMatchFormulation` na particleChemistry
-5. Integrar chemistry nos 8 renderers
-6. Propagar formulationId no SkyCanvas
+## Arquivos
+1. **Novo**: `src/services/showTestEngine.ts` — motor de simulação + métricas
+2. **Novo**: `src/pages/ShowTestSimulator.tsx` — UI do dashboard de teste
+3. **Editar**: `src/App.tsx` — adicionar rota `/show-test`
 
