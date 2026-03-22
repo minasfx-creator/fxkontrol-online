@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { useProjectStore, type Position, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { useUndoStore } from '@/store/useUndoStore';
 import { calcWindCompensation, getBreakHeight, getMortarVelocity, getLiftTime } from '@/lib/pyroPhysics';
+import { useSceneStore } from '@/store/useSceneStore';
 
 const ARROW_LENGTH = 3.5;
 const PITCH_ARC_RADIUS = 2.2;
@@ -291,6 +292,11 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
     return cal;
   }, [timelineItems, position.id]);
 
+  // Check if we're in select mode (show full-scale trajectory) vs adjust-angles (gizmo scale)
+  const editorMode = useProjectStore(s => s.editorMode);
+  const effectScale = useSceneStore(s => s.settings.effectScale);
+  const useFullScale = editorMode !== 'adjust-angles';
+
   // Compute physics-based trajectory using caliber-derived parameters
   const trajectoryData = useMemo(() => {
     const caliber = realCaliber;
@@ -311,8 +317,8 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
     let apexY = 0;
     let apexIdx = 0;
 
-    // Scale factor for gizmo display (real meters → gizmo units)
-    const scale = ARROW_LENGTH / getBreakHeight(caliber);
+    // In select mode: 1:1 real scale (meters). In adjust-angles: gizmo scale.
+    const scale = useFullScale ? effectScale : (ARROW_LENGTH / getBreakHeight(caliber));
 
     for (let t = 0; t < maxT; t += dt) {
       pts.push([px * scale, py * scale, pz * scale]);
@@ -333,13 +339,14 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
 
     // Clamp apex index
     const safeApex = Math.min(apexIdx, pts.length - 1);
-    const apexPoint = pts[safeApex] || [0, ARROW_LENGTH, 0];
+    const defaultApex: [number, number, number] = [0, useFullScale ? getBreakHeight(caliber) * effectScale : ARROW_LENGTH, 0];
+    const apexPoint = pts[safeApex] || defaultApex;
 
     // Also compute the last point (end of trajectory)
     const lastPoint = pts[pts.length - 1] || apexPoint;
 
     return { points: pts, apexPoint, lastPoint, apexIdx: safeApex };
-  }, [heading, pitch]);
+  }, [heading, pitch, realCaliber, useFullScale, effectScale]);
 
   // Handle at the END of the trajectory (Finale 3D style — grab burst point)
   const handlePos = useMemo((): [number, number, number] => {
