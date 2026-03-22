@@ -223,8 +223,8 @@ export default function CommandCenter() {
                     key={mode.key}
                     onClick={() => handleModeChange(mode.key)}
                     className={cn(
-                      "flex items-center gap-1.5 px-2.5 py-1.5 whitespace-nowrap transition-all",
-                      "text-[9px] font-bold border min-h-[36px] font-mono tracking-wider uppercase rounded-sm",
+                      "flex items-center gap-1.5 px-3 py-2.5 whitespace-nowrap transition-all",
+                      "text-[10px] font-bold border min-h-[48px] font-mono tracking-wider uppercase rounded-sm",
                       isActive
                         ? "text-foreground"
                         : "border-border/10 text-muted-foreground/35 active:scale-95"
