@@ -251,29 +251,36 @@ function HeadingCompass({ heading, shiftHeld }: { heading: number; shiftHeld?: b
 }
 
 /**
- * Burst Indicator — animated starburst at the burst point (end of trajectory).
- * Pulsating diamond core with radiating spike lines.
+ * Burst Indicator — enhanced starburst at burst point with shockwave rings.
+ * 12 alternating spikes + cross-spikes + caliber/height label.
  */
-function BurstIndicator({ position: pos, color }: { position: [number, number, number]; color: string }) {
+function BurstIndicator({ position: pos, color, caliber, breakHeight }: {
+  position: [number, number, number];
+  color: string;
+  caliber?: number;
+  breakHeight?: number;
+}) {
   const groupRef = useRef<THREE.Group>(null);
   const materialRef = useRef<THREE.MeshBasicMaterial>(null);
+  const outerRingRef = useRef<THREE.MeshBasicMaterial>(null);
 
   useFrame((state) => {
     if (!groupRef.current || !materialRef.current) return;
     const t = state.clock.getElapsedTime();
-    const pulse = 1.0 + Math.sin(t * 3) * 0.25;
+    const pulse = 1.0 + Math.sin(t * 3) * 0.35;
     groupRef.current.scale.setScalar(pulse);
-    materialRef.current.opacity = 0.6 + Math.sin(t * 4) * 0.3;
+    materialRef.current.opacity = 0.7 + Math.sin(t * 4) * 0.3;
+    if (outerRingRef.current) outerRingRef.current.opacity = 0.12 + Math.sin(t * 2.5) * 0.08;
     groupRef.current.rotation.y = t * 0.5;
   });
 
   const spikeLines = useMemo(() => {
     const lines: [number, number, number][][] = [];
-    const spikeCount = 8;
+    const spikeCount = 12;
     const innerR = 0.06;
-    const outerR = 0.25;
     for (let i = 0; i < spikeCount; i++) {
       const angle = (i / spikeCount) * Math.PI * 2;
+      const outerR = i % 2 === 0 ? 0.28 : 0.18;
       const cx = Math.cos(angle);
       const sy = Math.sin(angle);
       lines.push([
@@ -281,22 +288,59 @@ function BurstIndicator({ position: pos, color }: { position: [number, number, n
         [cx * outerR, sy * outerR, 0],
       ]);
     }
+    // 4 diagonal cross-spikes at 45° offset
+    for (let i = 0; i < 4; i++) {
+      const angle = (i / 4) * Math.PI * 2 + Math.PI / 4;
+      const cx = Math.cos(angle);
+      const sy = Math.sin(angle);
+      lines.push([
+        [cx * 0.04, sy * 0.04, 0],
+        [cx * 0.35, sy * 0.35, 0],
+      ]);
+    }
     return lines;
   }, []);
+
+  const cal = caliber || 4;
+  const bh = breakHeight ? Math.round(breakHeight) : null;
 
   return (
     <group ref={groupRef} position={pos}>
       <mesh>
-        <octahedronGeometry args={[0.08, 0]} />
-        <meshBasicMaterial ref={materialRef} color={color} transparent opacity={0.8} blending={THREE.AdditiveBlending} />
+        <octahedronGeometry args={[0.09, 0]} />
+        <meshBasicMaterial ref={materialRef} color={color} transparent opacity={0.9} blending={THREE.AdditiveBlending} />
       </mesh>
       <mesh>
-        <ringGeometry args={[0.1, 0.18, 8]} />
-        <meshBasicMaterial color={color} transparent opacity={0.3} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
+        <ringGeometry args={[0.1, 0.18, 12]} />
+        <meshBasicMaterial color={color} transparent opacity={0.35} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
       </mesh>
-      {spikeLines.map((pts, i) => (
-        <Line key={i} points={pts} color={color} lineWidth={1.5} transparent opacity={0.5} />
+      <mesh>
+        <ringGeometry args={[0.3, 0.38, 16]} />
+        <meshBasicMaterial ref={outerRingRef} color={color} transparent opacity={0.15} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
+      </mesh>
+      {spikeLines.slice(0, 12).map((pts, i) => (
+        <Line key={i} points={pts} color={color} lineWidth={i % 2 === 0 ? 2 : 1.2} transparent opacity={i % 2 === 0 ? 0.6 : 0.35} />
       ))}
+      {spikeLines.slice(12).map((pts, i) => (
+        <Line key={`cross-${i}`} points={pts} color={color} lineWidth={1} transparent opacity={0.25} />
+      ))}
+      {(cal || bh) && (
+        <Html position={[0.45, 0, 0]} center distanceFactor={10}>
+          <div style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: '8px',
+            color: color,
+            background: 'rgba(0,0,0,0.7)',
+            padding: '1px 4px',
+            borderRadius: '2px',
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+            opacity: 0.8,
+          }}>
+            {cal}″{bh ? ` · ${bh}m` : ''}
+          </div>
+        </Html>
+      )}
     </group>
   );
 }
@@ -427,6 +471,8 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
     e.stopPropagation();
     useUndoStore.getState().checkpoint();
     setIsDragging(true);
+    // Freeze camera (reuse box-select-active pattern)
+    window.dispatchEvent(new CustomEvent('box-select-active', { detail: true }));
     const nativeEvent = e.nativeEvent || e;
     dragStartRef.current = {
       heading: position.heading,
@@ -522,6 +568,8 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
       dragStartRef.current = null;
       batchStartRef.current.clear();
       (gl.domElement as HTMLElement).style.cursor = '';
+      // Re-enable camera
+      window.dispatchEvent(new CustomEvent('box-select-active', { detail: false }));
     };
     window.addEventListener('pointermove', handleMove);
     window.addEventListener('pointerup', handleUp);
@@ -591,7 +639,7 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
         <>
           <Line points={trajectoryPoints} color={COLORS.trajectory} lineWidth={2} transparent opacity={0.6} />
           {/* Burst indicator — animated starburst at apex */}
-          <BurstIndicator position={trajectoryData.apexPoint as [number, number, number]} color={COLORS.trajectory} />
+          <BurstIndicator position={trajectoryData.apexPoint as [number, number, number]} color={COLORS.trajectory} caliber={realCaliber} breakHeight={getBreakHeight(realCaliber)} />
         </>
       )}
 
@@ -734,6 +782,38 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
                 max={180}
               />
             )}
+          </div>
+          {/* Pitch presets */}
+          <div style={{ display: 'flex', gap: '2px', marginTop: '3px', flexWrap: 'wrap' }}>
+            {[15, 30, 45, 60, 75, 80, 85, 90].map(deg => {
+              const isActive = Math.round(position.pitch || 85) === deg;
+              return (
+                <button
+                  key={deg}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (batchMode && selectedIds) {
+                      selectedIds.forEach(id => updatePosition(id, { pitch: deg }));
+                    } else {
+                      updatePosition(position.id, { pitch: deg });
+                    }
+                  }}
+                  style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: '7px',
+                    padding: '1px 3px',
+                    background: isActive ? 'rgba(255,138,101,0.25)' : 'rgba(255,255,255,0.05)',
+                    border: `1px solid ${isActive ? COLORS.pitchArc : 'rgba(255,255,255,0.12)'}`,
+                    borderRadius: '2px',
+                    color: isActive ? COLORS.pitchArc : 'rgba(255,255,255,0.5)',
+                    cursor: 'pointer',
+                    lineHeight: '1.2',
+                  }}
+                >
+                  {deg}°
+                </button>
+              );
+            })}
           </div>
           {windCompGhost && (
             <div style={{ fontSize: '8px', color: '#4CAF50', opacity: 0.8, marginTop: '1px' }}>
