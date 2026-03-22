@@ -391,21 +391,19 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
     return () => window.removeEventListener('angle-mode-axis' as any, handler as any);
   }, []);
 
-  const heading = position.heading * (Math.PI / 180);
-  // Expanded pitch range: -180 to 180 per Finale 3D spec
-  const pitch = Math.max(-180, Math.min(180, position.pitch || 85)) * (Math.PI / 180);
+  // Use effective (cue-level) angles for gizmo display
+  const heading = effectiveHeading * (Math.PI / 180);
+  const pitch = Math.max(-180, Math.min(180, effectivePitch)) * (Math.PI / 180);
 
   // Get real caliber from linked effects
-  const timelineItems = useProjectStore(s => s.timelineItems);
   const realCaliber = useMemo(() => {
-    const linked = timelineItems.filter(t => t.positionId === position.id || t.positionIds?.includes(position.id));
     let cal = 4;
-    for (const item of linked) {
+    for (const item of linkedCues) {
       const eff = EFFECT_LIBRARY.find(e => e.id === item.effectId);
       if (eff?.caliber && eff.caliber > cal) cal = eff.caliber;
     }
     return cal;
-  }, [timelineItems, position.id]);
+  }, [linkedCues]);
 
   // Check if we're in select mode (show full-scale trajectory) vs adjust-angles (gizmo scale)
   const editorMode = useProjectStore(s => s.editorMode);
