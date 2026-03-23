@@ -453,8 +453,8 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
 
       {/* Layer 1: Core catch — always active (low cost) */}
       <Bloom
-        intensity={str * 0.048 * bloomMul}
-        luminanceThreshold={3.5}
+        intensity={str * 0.065 * bloomMul}
+        luminanceThreshold={2.8}
         luminanceSmoothing={0.05}
         kernelSize={KernelSize.MEDIUM}
         mipmapBlur
@@ -463,8 +463,8 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
       {/* Layer 2: Star halos — only during pyro activity */}
       {hasBursts && (
         <Bloom
-          intensity={str * 0.024 * bloomMul}
-          luminanceThreshold={4.0}
+          intensity={str * 0.035 * bloomMul}
+          luminanceThreshold={3.5}
           luminanceSmoothing={0.2}
           kernelSize={KernelSize.LARGE}
           mipmapBlur

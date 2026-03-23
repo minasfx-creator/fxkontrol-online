@@ -30,7 +30,7 @@ interface ControllerCard {
 }
 
 const CONTROLLERS: ControllerCard[] = [
-  { id: 'fireone-xl4', name: 'FXK-PYRO', manufacturer: 'FXK', type: 'firing', connectionTypes: ['usb', 'serial', 'radio', 'wifi_direct'], channels: 32, description: 'IFMx-i32Q field modules · RS-485 · 32 igniters/module', panelMode: 'pyro_fire', group: 'fireone', platformLabel: 'XL4+ 2.0' },
+  { id: 'fireone-xl4', name: 'FXK-PYRO', manufacturer: 'FXK', type: 'firing', connectionTypes: ['usb', 'serial', 'radio', 'wifi_direct'], channels: 32, description: 'IFMx-i32Q field modules · RS-485 · 32 igniters/module', panelMode: 'pyro_fire', group: 'fireone', platformLabel: 'FXK-PYRO 2.0' },
   { id: 'zk6200', name: 'ZK6200', manufacturer: 'Showven', type: 'sfx', connectionTypes: ['usb', 'artnet', 'wireless'], channels: 20, description: 'Host controller · 20 zones · DMX + LTC', panelMode: 'zk6200', group: 'showven' },
   { id: 'zk6300', name: 'ZK6300', manufacturer: 'Showven', type: 'sfx', connectionTypes: ['usb', 'artnet', 'wireless'], channels: 30, description: 'Host controller · 30 zones · DMX + LTC', panelMode: 'zk6200', group: 'showven' },
   { id: 'pyroslave-c16', name: 'PyroSlave C16', manufacturer: 'Showven', type: 'firing', connectionTypes: ['pbus', 'wireless', 'radio'], channels: 16, description: 'Wireless slave · 16 cues · Dual-band 433/868M', panelMode: 'pbus', group: 'showven' },
@@ -39,7 +39,7 @@ const CONTROLLERS: ControllerCard[] = [
   { id: 'maiman', name: 'Maiman 30W', manufacturer: 'Showven', type: 'laser', connectionTypes: ['artnet'], channels: 14, description: '30W RGB laser · ILDA + DMX · IP54', group: 'showven' },
   { id: 'dmx-splitter8', name: 'DMX Splitter 8', manufacturer: 'Showven', type: 'dmx', connectionTypes: ['usb'], channels: 8, description: '1→8 DMX512 splitter · Opto-isolated', group: 'infrastructure' },
   { id: 'dmx-relay-r12', name: 'DMX Relay R12', manufacturer: 'Showven', type: 'dmx', connectionTypes: ['usb', 'artnet'], channels: 12, description: '12-channel DMX relay · 10A/channel', group: 'infrastructure' },
-  { id: 'ifmx-i32q-module', name: 'FXK-PYRO Module', manufacturer: 'FXK', type: 'module', connectionTypes: ['wireless', 'ble', 'usb', 'wifi_direct'], channels: 32, description: 'Virtual field module · 32 igniters · CDS · ESP32 bridge', panelMode: 'module', group: 'fireone', platformLabel: 'XL4+ 2.0' },
+  { id: 'ifmx-i32q-module', name: 'FXK-PYRO Module', manufacturer: 'FXK', type: 'module', connectionTypes: ['wireless', 'ble', 'usb', 'wifi_direct'], channels: 32, description: 'Virtual field module · 32 igniters · CDS · ESP32 bridge', panelMode: 'module', group: 'fireone', platformLabel: 'FXK-PYRO 2.0' },
   { id: 'fxk-swarm', name: 'FXK-SWARM', manufacturer: 'FXK', type: 'module', connectionTypes: ['wifi_direct', 'radio'], channels: 500, description: 'Swarm controller · 500 drones · GPS+RTK', panelMode: 'drone_ops', group: 'drones', platformLabel: 'SWARM OPS 2.0' },
 ];
 

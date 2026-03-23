@@ -1425,7 +1425,7 @@ export default function SkyCanvas() {
   }, [gpsOrigin.lat, gpsOrigin.lng]);
 
   return (
-    <div className="w-full h-full relative bg-[#030308]" data-sky-canvas style={{ cursor: cursorStyle }}>
+    <div className="w-full h-full relative bg-black" data-sky-canvas style={{ cursor: cursorStyle }}>
       <WebGLErrorBoundary>
       <Canvas
         key={canvasInstanceKey}
@@ -1433,14 +1433,14 @@ export default function SkyCanvas() {
         gl={{
           antialias: !isMobile,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.3,
+          toneMappingExposure: 1.5,
           powerPreference: 'high-performance',
           alpha: false,
           stencil: false,
           logarithmicDepthBuffer: true,
           outputColorSpace: THREE.SRGBColorSpace,
         }}
-        dpr={isMobile ? [1, 1.5] : [1, 2]}
+        dpr={isMobile ? [1, 1.5] : [1.5, 2]}
         performance={{ min: 0.5 }}
         onCreated={({ gl }) => {
           const canvas = gl.domElement;
@@ -1464,7 +1464,7 @@ export default function SkyCanvas() {
           canvas.addEventListener('webglcontextlost', handleContextLost as EventListener);
           canvas.addEventListener('webglcontextrestored', handleContextRestored as EventListener);
         }}>
-        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.5} far={250000} />
+        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.5} far={500000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook || flyMode} flyMode={flyMode} />
         {flyMode && <FlyControls onSpeedChange={flySpeedCb} />}
 
