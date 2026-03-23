@@ -30,7 +30,7 @@ interface ControllerCard {
 }
 
 const CONTROLLERS: ControllerCard[] = [
-  { id: 'fireone-xl4', name: 'FXK-PYRO', manufacturer: 'FXK', type: 'firing', connectionTypes: ['usb', 'serial', 'radio', 'wifi_direct'], channels: 32, description: 'IFMx-i32Q field modules · RS-485 · 32 igniters/module', panelMode: 'pyro_fire', group: 'fireone', platformLabel: 'XL4+ 2.0' },
+  { id: 'fireone-xl4', name: 'FXK-PYRO', manufacturer: 'FXK', type: 'firing', connectionTypes: ['usb', 'serial', 'radio', 'wifi_direct'], channels: 32, description: 'IFMx-i32Q field modules · RS-485 · 32 igniters/module', panelMode: 'pyro_fire', group: 'fireone', platformLabel: 'FXK-PYRO 2.0' },
   { id: 'zk6200', name: 'ZK6200', manufacturer: 'Showven', type: 'sfx', connectionTypes: ['usb', 'artnet', 'wireless'], channels: 20, description: 'Host controller · 20 zones · DMX + LTC', panelMode: 'zk6200', group: 'showven' },
   { id: 'zk6300', name: 'ZK6300', manufacturer: 'Showven', type: 'sfx', connectionTypes: ['usb', 'artnet', 'wireless'], channels: 30, description: 'Host controller · 30 zones · DMX + LTC', panelMode: 'zk6200', group: 'showven' },
   { id: 'pyroslave-c16', name: 'PyroSlave C16', manufacturer: 'Showven', type: 'firing', connectionTypes: ['pbus', 'wireless', 'radio'], channels: 16, description: 'Wireless slave · 16 cues · Dual-band 433/868M', panelMode: 'pbus', group: 'showven' },
