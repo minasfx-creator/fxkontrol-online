@@ -85,6 +85,49 @@ import { clampNiagaraHDR, getNiagaraBudgets, setAdaptivePipelineState } from '@/
 let _activeBurstCount = 0;
 export function getActiveBurstCount() { return _activeBurstCount; }
 
+// ═══ ActiveBurstScanner — centralized per-frame timeline scan ═══
+// GI, LensFlare, and Exposure all read from this instead of scanning independently
+interface ActiveBurstScanResult {
+  freshBursts: { x: number; y: number; z: number; color: string; caliber: number; effectId: string }[];
+  activeBursts: number;
+  luminance: number;
+}
+let _activeBurstScan: ActiveBurstScanResult | null = null;
+
+function runActiveBurstScan() {
+  const { timelineItems, currentTime } = useProjectStore.getState();
+  const freshBursts: ActiveBurstScanResult['freshBursts'] = [];
+  let activeBursts = 0;
+  let luminance = 0;
+
+  for (let i = 0; i < timelineItems.length; i++) {
+    const item = timelineItems[i];
+    const elapsed = currentTime - item.startTime;
+    if (elapsed < 0 || elapsed > 2.0) continue;
+
+    activeBursts++;
+    luminance += elapsed < 0.5 ? 3.0 : 0.5;
+
+    // Fresh burst: within 50ms of ignition
+    if (elapsed < 0.05) {
+      const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      if (effect && effect.type === 'firework') {
+        freshBursts.push({
+          x: item.position.x,
+          y: item.position.y,
+          z: item.position.z,
+          color: effect.color,
+          caliber: effect.caliber || 4,
+          effectId: effect.id,
+        });
+      }
+    }
+  }
+
+  _activeBurstScan = { freshBursts, activeBursts, luminance };
+  return _activeBurstScan;
+}
+
 // ═══ PyroChem: map hex colors → real chemical compounds ═══
 function hexToCompound(hexColor: string): ChemicalCompound {
   const c = new THREE.Color(hexColor);
@@ -2117,11 +2160,12 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
 // --- Concrete / urban ground ---
 function ConcreteGround({ brightness }: { brightness: number }) {
   const b = brightness * 0.5;
+  const groundColor = useMemo(() => new THREE.Color(0.07 * b, 0.07 * b, 0.075 * b), [b]);
   return (
     <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
       <planeGeometry args={[100000, 100000]} />
       <meshStandardMaterial
-        color={new THREE.Color(0.07 * b, 0.07 * b, 0.075 * b)}
+        color={groundColor}
         roughness={0.92}
         metalness={0.12}
       />
@@ -2140,29 +2184,25 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
 
   useFrame(({ gl }, delta) => {
     const state = exposureRef.current;
-    const { timelineItems, currentTime } = useProjectStore.getState();
-    let luminance = 0;
-    let activeBursts = 0;
+    
+    // ═══ Centralized burst scan — ONE scan per frame for all controllers ═══
+    const scan = runActiveBurstScan();
+    let { activeBursts, luminance } = scan;
+    
     _scatterAccum.setRGB(0, 0, 0);
     let scatterMax = 0;
 
-    // Niagara rule: evaluate only near-active bursts to keep adaptation stable and cheap.
+    // Sky scatter needs finer time window, so we do a lightweight pass on fresh bursts
+    const { timelineItems, currentTime } = useProjectStore.getState();
     for (let i = 0; i < timelineItems.length; i++) {
       const item = timelineItems[i];
       const elapsed = currentTime - item.startTime;
-      if (elapsed < 0 || elapsed > 2.0) continue;
-
-      activeBursts++;
-      luminance += elapsed < 0.5 ? 3.0 : 0.5;
-
-      // Sky scatter accumulation — reuse color objects
-      if (elapsed < 0.3) {
-        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
-        if (effect && effect.type === 'firework') {
-          const intensity = 0.4 * (1 - elapsed / 0.3);
-          _scatterAccum.add(_tmpColor.set(effect.color).multiplyScalar(Math.min(intensity * 0.3, 0.15)));
-          scatterMax = Math.max(scatterMax, intensity);
-        }
+      if (elapsed < 0 || elapsed > 0.3) continue;
+      const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      if (effect && effect.type === 'firework') {
+        const intensity = 0.4 * (1 - elapsed / 0.3);
+        _scatterAccum.add(_tmpColor.set(effect.color).multiplyScalar(Math.min(intensity * 0.3, 0.15)));
+        scatterMax = Math.max(scatterMax, intensity);
       }
     }
 
@@ -2220,6 +2260,8 @@ const DebugFeed = React.forwardRef<THREE.Group, {}>(function DebugFeed(_props, _
   const { gl, camera } = useThree();
   const frameCount = useRef(0);
   const lastTime = useRef(performance.now());
+  // Pre-allocated — eliminates per-frame GC pressure
+  const _origin = useMemo(() => new THREE.Vector3(0, 100, 0), []);
 
   useFrame(() => {
     frameCount.current++;
@@ -2230,9 +2272,7 @@ const DebugFeed = React.forwardRef<THREE.Group, {}>(function DebugFeed(_props, _
       lastTime.current = now;
       const info = gl.info.render;
       setDebugRendererInfo(fps, info.calls, info.triangles);
-      const origin = new THREE.Vector3(0, 100, 0);
-      const dist = Math.round(camera.position.distanceTo(origin));
-      const lod = calculateLOD(camera.position, origin);
+      const dist = Math.round(camera.position.distanceTo(_origin));
       // ═══ Adaptive LOD: feed FPS into auto-scaling ═══
       const adaptiveTier = updateAdaptiveLOD(fps);
       setDebugLOD(adaptiveTier, dist);
@@ -2246,10 +2286,11 @@ const DebugFeed = React.forwardRef<THREE.Group, {}>(function DebugFeed(_props, _
 const GlobalIlluminationController = React.forwardRef<THREE.Group, {}>(function GlobalIlluminationController(_props, _ref) {
   const giRef = useRef<GlobalIlluminationSystem | null>(null);
   const { scene } = useThree();
+  // Pre-allocated vector — reused every frame to avoid GC pressure
+  const _probePos = useMemo(() => new THREE.Vector3(), []);
 
   useEffect(() => {
     giRef.current = new GlobalIlluminationSystem(scene);
-    // Expose GI system globally for NiagaraVFXController to register probes
     (window as any).__giSystem = giRef.current;
     return () => {
       delete (window as any).__giSystem;
@@ -2261,23 +2302,17 @@ const GlobalIlluminationController = React.forwardRef<THREE.Group, {}>(function 
     if (!giRef.current) return;
     const gi = giRef.current;
 
-    // Check for fresh explosions to register as light probes
-    const { timelineItems, currentTime } = useProjectStore.getState();
-    for (const item of timelineItems) {
-      const elapsed = currentTime - item.startTime;
-      // Register probe only on the frame the burst begins (within 0.05s window)
-      if (elapsed >= 0 && elapsed < 0.05) {
-        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
-        if (effect && effect.type === 'firework') {
-          const compound = hexToCompound(effect.color);
-          const pos = new THREE.Vector3(item.position.x, item.position.y, item.position.z);
-          // Use chemical compound color for physically accurate GI bounce
-          gi.addExplosionProbe(
-            pos,
-            compound.color.clone(),
-            compound.emissionIntensity * 0.6
-          );
-        }
+    // Use centralized ActiveBurstScanner results instead of re-scanning timeline
+    const scan = _activeBurstScan;
+    if (scan) {
+      for (const burst of scan.freshBursts) {
+        const compound = hexToCompound(burst.color);
+        _probePos.set(burst.x, burst.y, burst.z);
+        gi.addExplosionProbe(
+          _probePos,
+          compound.color.clone(),
+          compound.emissionIntensity * 0.6
+        );
       }
     }
 
@@ -2294,6 +2329,9 @@ const LensFlareController = React.forwardRef<THREE.Group, {}>(function LensFlare
   const spritesRef = useRef<THREE.Sprite[]>([]);
   const poolIdx = useRef(0);
   const { scene } = useThree();
+  // Pre-allocated — reused every frame
+  const _flarePos = useMemo(() => new THREE.Vector3(), []);
+  const _flareColor = useMemo(() => new THREE.Color(), []);
 
   useEffect(() => {
     const pool: THREE.Sprite[] = [];
@@ -2313,26 +2351,21 @@ const LensFlareController = React.forwardRef<THREE.Group, {}>(function LensFlare
     const sprites = spritesRef.current;
     if (sprites.length === 0) return;
 
-    // Decay all active flares
     for (const sprite of sprites) {
       decayLensFlare(sprite, delta, 3);
     }
 
-    // Flash flares for fresh bursts
-    const { timelineItems, currentTime } = useProjectStore.getState();
-    for (const item of timelineItems) {
-      const elapsed = currentTime - item.startTime;
-      if (elapsed >= 0 && elapsed < 0.03) {
-        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
-        if (effect && effect.type === 'firework') {
-          const caliber = effect.caliber || 4;
-          const breakH = getBreakHeight(caliber);
-          const pos = new THREE.Vector3(item.position.x, item.position.y + breakH, item.position.z);
-          const caliberScale = caliber / 6; // 6" as reference
-          const sprite = sprites[poolIdx.current % sprites.length];
-          flashLensFlare(sprite, pos, Math.min(1, 0.5 * caliberScale), new THREE.Color(effect.color));
-          poolIdx.current++;
-        }
+    // Use centralized ActiveBurstScanner results instead of re-scanning timeline
+    const scan = _activeBurstScan;
+    if (scan) {
+      for (const burst of scan.freshBursts) {
+        const caliber = burst.caliber;
+        const breakH = getBreakHeight(caliber);
+        _flarePos.set(burst.x, burst.y + breakH, burst.z);
+        const caliberScale = caliber / 6;
+        const sprite = sprites[poolIdx.current % sprites.length];
+        flashLensFlare(sprite, _flarePos, Math.min(1, 0.5 * caliberScale), _flareColor.set(burst.color));
+        poolIdx.current++;
       }
     }
   });
