@@ -488,7 +488,18 @@ function Index() {
           {mobileTab === 'timeline' && <Timeline />}
           {mobileTab === 'assets' && <EffectLibrary />}
           {mobileTab === 'properties' && <PropertiesPanel />}
-          {mobileTab === 'more' && <MobileMoreMenu onSelectPanel={handleMobileOpenPanel} />}
+          {mobileTab === 'more' && (
+            <UnifiedPanelMenu
+              activePanel={activePanel}
+              onSelectPanel={(id) => {
+                handleMobileOpenPanel(id);
+                setMobileTab(null);
+                setMobilePanelHeight('full');
+              }}
+              variant="sheet"
+              onDismiss={handleDismissPanel}
+            />
+          )}
           {/* Panel-based tabs (livefx, controllers, remote, fieldmap) */}
           {mobileTab && !['timeline', 'assets', 'properties', 'more'].includes(mobileTab) && activePanel && (
             <div className="h-full overflow-y-auto">{renderPanelContent()}</div>
