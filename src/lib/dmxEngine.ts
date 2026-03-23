@@ -103,6 +103,16 @@ export const DMX_ATTRIBUTE_LIBRARY: Record<string, DMXAttributeDefinition> = {
   // ── Control ──
   Control:          { name: 'Control',          category: 'control', channelCount: 1, defaultValue: 0, minValue: 0, maxValue: 255, description: 'Fixture reset/lamp control' },
   FanSpeed:         { name: 'FanSpeed',         category: 'control', channelCount: 1, defaultValue: 0, minValue: 0, maxValue: 255, description: 'Cooling fan speed' },
+
+  // ── Pyro / SFX (from UE5 DMXPrevis config) ──
+  Burst:            { name: 'Burst',            category: 'effects', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Pyro burst trigger' },
+  Launch:           { name: 'Launch',           category: 'effects', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Pyro launch trigger' },
+  Velocity:         { name: 'Velocity',         category: 'effects', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Launch velocity (0-255)' },
+  Angle:            { name: 'Angle',            category: 'effects', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Launch angle (0-180°)' },
+  NumBeams:         { name: 'NumBeams',         category: 'effects', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Number of beams/stars' },
+  X:                { name: 'X',                category: 'position', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Position X' },
+  Y:                { name: 'Y',                category: 'position', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Position Y' },
+  Z:                { name: 'Z',                category: 'position', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Position Z' },
 };
 
 /**
@@ -111,7 +121,7 @@ export const DMX_ATTRIBUTE_LIBRARY: Record<string, DMXAttributeDefinition> = {
 export interface DMXFixtureProfile {
   name: string;
   manufacturer: string;
-  category: 'moving-head' | 'led-bar' | 'strobe' | 'laser' | 'sfx' | 'drone' | 'wash' | 'spot' | 'beam' | 'matrix' | 'toner' | 'audience';
+  category: 'moving-head' | 'moving-mirror' | 'led-bar' | 'strobe' | 'laser' | 'sfx' | 'drone' | 'wash' | 'spot' | 'beam' | 'matrix' | 'toner' | 'audience';
   attributes: string[];   // keys from DMX_ATTRIBUTE_LIBRARY
   channelCount: number;
 }
@@ -273,6 +283,29 @@ export const DMX_FIXTURE_PROFILES: Record<string, DMXFixtureProfile> = {
     attributes: ['Dimmer', 'DimmerFine', 'Red', 'Green', 'Blue', 'White', 'CTO', 'Zoom', 'ZoomFine', 'Strobe'],
     channelCount: 10,
   },
+  // ── UE5 Pyro / Firework DMX Profiles ──
+  'sfx-pyro-dmx': {
+    name: 'SFX Pyro DMX',
+    manufacturer: 'FXK',
+    category: 'sfx',
+    attributes: ['Dimmer', 'Burst', 'Launch', 'Velocity', 'Angle', 'NumBeams', 'Red', 'Green', 'Blue'],
+    channelCount: 9,
+  },
+  'sfx-firework-dmx': {
+    name: 'SFX Firework DMX',
+    manufacturer: 'FXK',
+    category: 'sfx',
+    attributes: ['Dimmer', 'Launch', 'Burst', 'Velocity', 'Angle', 'NumBeams', 'Red', 'Green', 'Blue', 'X', 'Y', 'Z'],
+    channelCount: 12,
+  },
+  // ── Moving Mirror ──
+  'moving-mirror': {
+    name: 'Moving Mirror',
+    manufacturer: 'Generic',
+    category: 'moving-mirror',
+    attributes: ['Pan', 'PanFine', 'Tilt', 'TiltFine', 'Dimmer', 'Strobe', 'ColorWheel', 'Gobo1', 'Focus', 'Control'],
+    channelCount: 10,
+  },
 };
 
 // ── UE5 Blueprint → Profile Mapping ──
@@ -294,8 +327,8 @@ export const UE5_BLUEPRINT_MAP: Record<string, string> = {
   'BP_StaticMatrix_v2': 'led-matrix-panel',
   'BP_Strobe1_v3': 'strobe-high-power',
   'BP_Sphere': 'generic-rgbw',
-  'BP_Firework_v2': 'drone-led',
-  'BP_Pyro_v4': 'sfx-flame',
+  'BP_Firework_v2': 'sfx-firework-dmx',
+  'BP_Pyro_v4': 'sfx-pyro-dmx',
   'BP_Laser_Extended': 'generic-rgb',
   'DMXLib_v4': 'generic-rgbw',
 };
