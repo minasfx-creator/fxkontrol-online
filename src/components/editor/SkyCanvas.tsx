@@ -756,6 +756,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   const targetPos = useRef(new THREE.Vector3(...targetPosition));
   const targetLook = useRef(new THREE.Vector3(...targetLookAt));
   const animating = useRef(false);
+  const focusAnimating = useRef(false);
   const initialized = useRef(false);
   const lastPresetKey = useRef('');
   const introPhase = useRef<'hold' | 'sweep' | 'done'>(__cameraIntroPlayed ? 'done' : 'hold');
