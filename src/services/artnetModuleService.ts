@@ -67,6 +67,29 @@ export interface FireCommand {
   intensity?: number;
 }
 
+export interface PacketStats {
+  sent: number;
+  acked: number;
+  lost: number;
+  lossRate: number;        // 0-1
+  avgLatencyMs: number;
+  lastSentAt: number;
+}
+
+export interface ModuleHealth {
+  moduleId: string;
+  state: ModuleConnectionState;
+  packetStats: PacketStats;
+  reconnectAttempts: number;
+  lastHeartbeatAt: number;
+  stale: boolean;           // no heartbeat > STALE_THRESHOLD_MS
+}
+
+const STALE_THRESHOLD_MS = 15_000;
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_BASE_DELAY_MS = 2_000;
+const LATENCY_WINDOW = 20;
+
 type ModuleEventType = 'module-connected' | 'module-disconnected' | 'module-heartbeat' | 'module-fired' | 'module-error' | 'controller-update';
 type ModuleEventListener = (type: ModuleEventType, data: any) => void;
 
