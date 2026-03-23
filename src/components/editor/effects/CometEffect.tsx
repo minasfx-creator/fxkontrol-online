@@ -318,9 +318,9 @@ export default function CometEffect({
       {/* GPU spark cloud */}
       <points ref={sparkPointsRef} frustumCulled={false}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(SPARK_COUNT * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(SPARK_COUNT * 3), 3]} />
-          <bufferAttribute attach="attributes-size" args={[new Float32Array(SPARK_COUNT), 1]} />
+          <bufferAttribute attach="attributes-position" args={[sparkPosBuffer, 3]} />
+          <bufferAttribute attach="attributes-color" args={[sparkColBuffer, 3]} />
+          <bufferAttribute attach="attributes-size" args={[sparkSizeBuffer, 1]} />
         </bufferGeometry>
         <shaderMaterial
           vertexShader={`
