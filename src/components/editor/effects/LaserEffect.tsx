@@ -115,7 +115,7 @@ export default function LaserEffect({
 
       // Inner glow
       const glow1 = beamGroup.children[1] as THREE.Mesh;
-      if (glow1) (glow1.material as THREE.MeshBasicMaterial).opacity = 0.2 * finalOpacity;
+      if (glow1) (glow1.material as THREE.MeshBasicMaterial).opacity = 0.28 * finalOpacity;
 
       // Outer glow
       const glow2 = beamGroup.children[2] as THREE.Mesh;
