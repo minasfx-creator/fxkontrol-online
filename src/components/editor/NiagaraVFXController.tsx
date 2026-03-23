@@ -408,7 +408,7 @@ function createEmberEmitterTemplate(caliber: number, color: THREE.Color): Niagar
 
 // ── Stylized Fire Presets — NS_Stylized_Fire UE5 reference ──────────
 
-type StylizedFirePreset = 'stylized-fire-01' | 'stylized-fire-02' | 'stylized-fire-radial-01' | 'stylized-fire-radial-02' | 'stylized-fire-large-01';
+type StylizedFirePreset = 'stylized-fire-01' | 'stylized-fire-02' | 'stylized-fire-radial-01' | 'stylized-fire-radial-02' | 'stylized-fire-large-01' | 'stylized-fire-01-ethereal' | 'stylized-fire-02-ethereal' | 'stylized-fire-radial-01-ethereal' | 'stylized-fire-radial-02-ethereal';
 type StylizedFireMode = 'infinite' | 'once';
 
 interface StylizedFireConfig {
