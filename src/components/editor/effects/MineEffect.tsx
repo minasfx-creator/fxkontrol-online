@@ -369,9 +369,9 @@ export default function MineEffect({
       {/* Main particles with per-particle size shader */}
       <points ref={pointsRef} frustumCulled={false}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(count * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(count * 3), 3]} />
-          <bufferAttribute attach="attributes-size" args={[new Float32Array(count), 1]} />
+          <bufferAttribute attach="attributes-position" args={[posRef, 3]} />
+          <bufferAttribute attach="attributes-color" args={[colRef, 3]} />
+          <bufferAttribute attach="attributes-size" args={[sizeRef, 1]} />
         </bufferGeometry>
         <shaderMaterial
           vertexShader={sizeVertexShader}
