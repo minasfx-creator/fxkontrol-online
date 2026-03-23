@@ -1498,8 +1498,8 @@ export default function SkyCanvas() {
           const handleContextRestored = () => {
             console.log('[FXK] WebGL context restored');
             recoveringContextRef.current = false;
-            _starMaterialInstance?.dispose();
-            _starMaterialInstance = null;
+            // _starMaterialInstance now lives in FireworkRenderer
+
           };
 
           canvas.addEventListener('webglcontextlost', handleContextLost as EventListener);
