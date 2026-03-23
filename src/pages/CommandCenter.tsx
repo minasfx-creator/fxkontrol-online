@@ -264,11 +264,13 @@ export default function CommandCenter() {
             <div className="pyro-hud-corner absolute bottom-1 left-1 w-4 h-4 border-b-2 border-l-2 z-10 pointer-events-none" style={{ borderColor: `${accent.color}30` }} />
             <div className="pyro-hud-corner absolute bottom-1 right-1 w-4 h-4 border-b-2 border-r-2 z-10 pointer-events-none" style={{ borderColor: `${accent.color}30` }} />
 
-            {isFireMode(activeMode) ? (
-              <LiveFiringPanel initialMode={activeMode} standalone />
-            ) : (
-              <div className="h-full surface-0">{renderDirectPanel(activeMode)}</div>
-            )}
+            <FullscreenablePanel title={accent.label}>
+              {isFireMode(activeMode) ? (
+                <LiveFiringPanel initialMode={activeMode} standalone />
+              ) : (
+                <div className="h-full surface-0">{renderDirectPanel(activeMode)}</div>
+              )}
+            </FullscreenablePanel>
           </div>
         </div>
       </div>
