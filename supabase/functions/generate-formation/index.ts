@@ -2238,17 +2238,18 @@ INSTRUCTIONS:
 
       console.log(`AI designed show "${raw.showName}" with ${raw.formations?.length || 0} formations (model=${usedModel})`);
 
-      // Phase 2: Server generates ALL points using mathematical recipes
-      const formations = (raw.formations || []).map((f: any, idx: number) => {
+      // Phase 2: Parallel shape generation → sequential transition optimization
+      const rawFormations = raw.formations || [];
+      
+      // Step A: Generate all shapes in parallel (no dependencies)
+      const shapeResults = rawFormations.map((f: any) => {
         const shapeName = f.formationName || f.shapeDescription || 'circle';
         const shapeType = inferShapeType(shapeName);
         const sf = count > 1000 ? 3.0 : count > 500 ? 2.5 : 2.2;
         const radius = Math.max(12, Math.sqrt(count) * sf);
         
-        // Build shape params — pass textContent if it's a text formation
         const shapeParams: Record<string, number | string> = { radius };
         if (shapeType === 'text') {
-          // Extract text from textContent field, or from formationName like 'Text "2027"'
           const textMatch = shapeName.match(/[Tt]ext\s*"?([^"]+)"?/);
           shapeParams.text = f.textContent || (textMatch ? textMatch[1].trim() : shapeName.replace(/text/i, '').trim()) || 'A';
         }
@@ -2264,15 +2265,21 @@ INSTRUCTIONS:
           z: Math.round((p.z - cz) * 100) / 100,
         }));
 
-        // Optimize transition from previous formation
-        if (idx > 0) {
-          const prevPts = (raw.formations[idx - 1]._serverPoints || []);
-          if (prevPts.length === points.length && count <= 1000) {
-            points = optimizeTransitionOrder(prevPts, points);
-          }
+        return { shapeName, shapeType, shapeParams, points };
+      });
+
+      // Step B: Sequential transition optimization (Hungarian-lite with swap refinement)
+      for (let idx = 1; idx < shapeResults.length; idx++) {
+        const prev = shapeResults[idx - 1].points;
+        const curr = shapeResults[idx].points;
+        if (prev.length === curr.length && count <= 2000) {
+          shapeResults[idx].points = optimizeTransitionOrder(prev, curr);
         }
-        
-        f._serverPoints = points;
+      }
+
+      // Step C: Build final output
+      const formations = rawFormations.map((f: any, idx: number) => {
+        const { shapeName, shapeType, shapeParams, points } = shapeResults[idx];
 
         console.log(`  Formation ${idx + 1}: "${shapeName}" → ${shapeType}${shapeType === 'text' ? ` "${shapeParams.text}"` : ''}, ${points.length} pts, h=${f.height}m, color=${f.color}`);
         
