@@ -110,45 +110,6 @@ let _activeBurstScan_local: ActiveBurstScanResult | null = null;
 
 // lumaTonemapScale REMOVED — PostProcessing ACES Filmic is the single tonemap pass
 
-// FX KONTROL — Show Design Platform Renderer
-class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  state = { hasError: false };
-  static getDerivedStateFromError() { return { hasError: true }; }
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    console.warn('WebGL unavailable:', error.message);
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="w-full h-full flex flex-col items-center justify-center bg-surface-0 gap-3 p-8 text-center">
-          <AlertTriangle className="w-10 h-10 text-yellow-500" />
-          <h3 className="text-sm font-semibold text-foreground">3D Engine Unavailable</h3>
-          <p className="text-xs text-muted-foreground max-w-md">
-            WebGL could not be initialized. Try enabling hardware acceleration or use a different browser.
-          </p>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-// Camera presets calibrated for real-world firework heights (55m-300m break heights)
-// Audience distance: typically 100-300m from launch site (NFPA 1123)
-const CAMERA_PRESETS = [
-  { id: 'free', label: 'Free', icon: Eye, position: [0, 1.7, 100] as [number, number, number], target: [0, 50, 0] as [number, number, number] },
-  { id: 'satellite', label: 'Top', icon: Plane, position: [0, 6000, 0.1] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
-  { id: 'audience', label: 'Plateia', icon: Users, position: [0, 1.7, 2500] as [number, number, number], target: [0, 300, 0] as [number, number, number] },
-  { id: 'front', label: 'Front', icon: Users, position: [0, 1.7, 3000] as [number, number, number], target: [0, 400, 0] as [number, number, number] },
-  { id: 'side', label: 'Side', icon: Video, position: [3000, 250, 0] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
-  { id: 'back', label: 'Back', icon: Video, position: [0, 250, -2000] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
-  { id: 'aerial', label: 'Aerial 45°', icon: Plane, position: [0, 3000, 3000] as [number, number, number], target: [0, 300, 0] as [number, number, number] },
-  { id: 'closeup', label: 'Close-up', icon: Camera, position: [150, 200, 750] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
-  { id: 'cinematic', label: 'Cinema', icon: Video, position: [-750, 2, 2250] as [number, number, number], target: [0, 400, 0] as [number, number, number] },
-  { id: 'drone-follow', label: 'Drone POV', icon: Eye, position: [125, 900, 300] as [number, number, number], target: [0, 600, 0] as [number, number, number] },
-  { id: 'vip', label: 'VIP Box', icon: Users, position: [500, 1.7, 2000] as [number, number, number], target: [0, 300, 0] as [number, number, number] },
-] as const;
-
 // --- Playback clock ---
 const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref) {
   const { isPlaying, currentTime, duration, setCurrentTime, setPlaying, playbackSpeed } = useProjectStore();
@@ -166,21 +127,11 @@ const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref)
   return null;
 });
 
-// --- Particle system ---
-const GRAVITY = -9.81; // Real-world gravity for accurate ballistics
-
-// Module-level refs shared between SkyGradient / AdaptiveExposure / fireworks
+// Module-level refs — local aliases for backward compat within this file
 let _skyScatterUniforms: { uExplosionScatter: { value: THREE.Color }; uScatterIntensity: { value: number } } | null = null;
 let _adaptiveExposure = 1.2;
-
-function getWindForce(): [number, number, number] {
-  const { wind } = useProjectStore.getState();
-  if (!wind.enabled) return [0, 0, 0];
-  const rad = (wind.direction * Math.PI) / 180;
-  const gust = 1 + (Math.sin(performance.now() * 0.001) * 0.5 + 0.5) * wind.gustStrength;
-  const s = wind.speed * gust * 0.15;
-  return [Math.sin(rad) * s, 0, Math.cos(rad) * s];
-}
+let _activeBurstScan: ActiveBurstScanResult | null = null;
+let _activeBurstCount = 0;
 
 // ═══════════════════════════════════════════════════════════════════════
 // Niagara-inspired star sprite shaders
