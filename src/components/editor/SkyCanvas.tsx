@@ -1506,8 +1506,11 @@ export default function SkyCanvas() {
         {!isMobile && <DelayedMount delay={2500}><WeatherEffects /></DelayedMount>}
 
         <StageGround satelliteTexture={satelliteTexture} />
+        <FinaleAxesHelper />
+        <DoubleClickFocus />
         <SiteModelRenderer />
         <PositionPins />
+        <PyroLaunchAngles />
         <PyroLaunchAngles />
         {!isMobile && <Rack3DView />}
         <TrajectoryPaths />
