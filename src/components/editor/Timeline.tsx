@@ -177,8 +177,8 @@ const SECTION_COLORS: Record<string, string> = {
   A: '#4CAF50', B: '#2196F3', C: '#FF9800', D: '#E91E63', E: '#9C27B0', F: '#00BCD4',
 };
 
-// --- Draggable Timeline Item ---
-const DraggableTimelineItem = React.forwardRef<HTMLButtonElement, {
+// --- Draggable Timeline Item (memoized to avoid re-renders during scroll) ---
+const DraggableTimelineItem = React.memo(React.forwardRef<HTMLButtonElement, {
   item: any;
   effect: any;
   pixelsPerSecond: number;
