@@ -3,6 +3,17 @@
  */
 export { WeatherEffects } from './WeatherSystem';
 export {
+  SkyAtmosphereV2Layer,
+  VolumetricCloudLayer,
+  WaterLayer,
+  GroundDecalManager,
+  TimeOfDayController,
+  SceneFog,
+  SceneStars,
+  SceneStarsWired,
+  EnvironmentV2Switcher,
+} from './SkyEnvironment';
+export {
   getActiveBurstCount,
   getActiveBurstScan,
   runActiveBurstScan,
