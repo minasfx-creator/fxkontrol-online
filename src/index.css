@@ -761,10 +761,11 @@ body.night-mode {
     90deg,
     transparent,
     transparent 120px,
-    hsl(32 100% 50% / 0.015) 120px,
-    hsl(32 100% 50% / 0.015) 121px
+    hsl(32 100% 50% / 0.012) 120px,
+    hsl(32 100% 50% / 0.012) 121px
   );
-  background-size: 100% 200vh;
+  background-size: 121px 100%;
+  will-change: transform;
   animation: rain-fall 8s linear infinite;
 }
 
