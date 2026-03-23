@@ -2939,58 +2939,8 @@ function SceneStarsWired() {
   return <Stars radius={100000} depth={40000} count={Math.round(15000 * density * mult)} factor={6 * mult} saturation={0.2} fade speed={0.03} />;
 }
 
-function WeatherEffects() {
-  const weather = useSceneStore(st => st.settings.weather);
-  const rainIntensity = useSceneStore(st => st.settings.rainIntensity);
-  const pointsRef = useRef<THREE.Points>(null);
-
-  const rainData = useMemo(() => {
-    if (weather !== 'light-rain' && weather !== 'heavy-rain' && weather !== 'snow') return null;
-    const count = weather === 'heavy-rain' ? 3000 : weather === 'snow' ? 1500 : 1000;
-    const positions = new Float32Array(count * 3);
-    const velocities = new Float32Array(count);
-    for (let i = 0; i < count; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 4000;
-      positions[i * 3 + 1] = Math.random() * 200;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 4000;
-      velocities[i] = weather === 'snow' ? 1 + Math.random() * 2 : 15 + Math.random() * 25;
-    }
-    return { count, positions, velocities };
-  }, [weather]);
-
-  useFrame(() => {
-    if (!pointsRef.current || !rainData) return;
-    const posAttr = pointsRef.current.geometry.getAttribute('position') as THREE.BufferAttribute;
-    const arr = posAttr.array as Float32Array;
-    for (let i = 0; i < rainData.count; i++) {
-      arr[i * 3 + 1] -= rainData.velocities[i] * 0.016 * rainIntensity;
-      if (arr[i * 3 + 1] < 0) {
-        arr[i * 3 + 1] = 160 + Math.random() * 40;
-        arr[i * 3] = (Math.random() - 0.5) * 4000;
-        arr[i * 3 + 2] = (Math.random() - 0.5) * 4000;
-      }
-    }
-    posAttr.needsUpdate = true;
-  });
-
-  if (!rainData) return null;
-
-  return (
-    <points ref={pointsRef}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[rainData.positions, 3]} />
-      </bufferGeometry>
-      <pointsMaterial
-        size={weather === 'snow' ? 0.15 : 0.04}
-        color={weather === 'snow' ? '#e8e8ff' : '#aabbcc'}
-        transparent
-        opacity={rainIntensity * 0.6}
-        depthWrite={false}
-        sizeAttenuation
-      />
-    </points>
-  );
-}
+// WeatherEffects extracted to skycanvas/WeatherSystem.tsx
+import { WeatherEffects } from './skycanvas/WeatherSystem';
 
 // Session-level flag: intro only plays once per browser session
 let __cameraIntroPlayed = false;
