@@ -816,7 +816,7 @@ function SFXStageEnvironment() {
 
       {/* ═══ Floating Orb Props — BP_Sphere/M_Orb reference ═══ */}
       {[-8, 0, 8].map((x, i) => (
-        <group key={`orb-${i}`} position={[x, stageHeight + 4 + Math.sin(i * 1.5) * 0.3, 2]}>
+        <group key={`orb-${i}`} ref={el => { orbRefs.current[i] = el; }} position={[x, stageHeight + 4 + Math.sin(i * 1.5) * 0.3, 2]}>
           <mesh>
             <sphereGeometry args={[0.8, 24, 24]} />
             <meshStandardMaterial
