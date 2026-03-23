@@ -334,6 +334,18 @@ function TimelineTrackRow({
   label: string; trackIndex: number; pixelsPerSecond: number; color: string; duration: number;
   scrollRef: React.RefObject<HTMLDivElement>;
 }) {
+  // Track scroll position for item virtualization
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [viewportWidth, setViewportWidth] = useState(1200);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => { setScrollLeft(el.scrollLeft); setViewportWidth(el.clientWidth); };
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    return () => el.removeEventListener('scroll', update);
+  }, [scrollRef]);
   const { 
     timelineItems, selectedTimelineItemId, selectTimelineItem, addTimelineItem, 
     bpm, snapToBeat, updateTimelineItem, selectedTimelineItemIds, toggleTimelineItemSelection,
