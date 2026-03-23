@@ -12,6 +12,7 @@ import {
   Shield, ShieldAlert, Radio, Signal, Battery, MapPin,
   Navigation, Activity, Layers, ChevronRight, Crosshair
 } from 'lucide-react';
+import BLEDeviceScanner from '@/components/editor/BLEDeviceScanner';
 
 interface DroneCommandPanelProps {
   fs?: boolean;
