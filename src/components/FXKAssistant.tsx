@@ -26,7 +26,7 @@ const PRESETS_EDITOR = [
   { label: 'DESIGN', icon: Zap, prompt: 'Me ajude a criar um design de show com efeitos visuais impressionantes.' },
   { label: 'TIMELINE', icon: Activity, prompt: 'Preciso organizar a timeline do show com transições suaves.' },
   { label: 'SAFETY', icon: ShieldCheck, prompt: 'Verifique a segurança das posições configuradas no meu show.' },
-  { label: 'EXPORT', icon: Terminal, prompt: 'Como exportar meu projeto para diferentes formatos de firing system?' },
+  { label: 'EXPORT', icon: Sparkles, prompt: 'Como exportar meu projeto para diferentes formatos de firing system?' },
 ];
 
 function getContextPresets() {
