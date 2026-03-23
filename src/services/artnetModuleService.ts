@@ -246,8 +246,12 @@ class ArtNetModuleService {
     }
 
     this.moduleStates.set(module.id, 'connected');
+    this.resetPacketStats(module.id);
+    this.reconnectAttempts.set(module.id, 0);
+    this.lastHeartbeatAt.set(module.id, Date.now());
     this.updateModule(module.id, { lastSeen: Date.now(), latencyMs: latency });
     this.startHeartbeat(module.id);
+    this.startStaleCheck();
     this.emit('module-connected', { moduleId: module.id, latencyMs: latency });
     return true;
   }
