@@ -3,9 +3,10 @@
  * Eliminates discrete intensity steps; provides smooth fades, pan/tilt, and chase curves.
  * Inspired by Depence R3 / grandMA3 curve editors.
  */
-import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { Spline, Plus, Trash2, Play, Pause, Copy, Download, Layers } from 'lucide-react';
+import { Spline, Plus, Trash2, Copy, Download, Layers } from 'lucide-react';
+import { useProjectStore } from '@/store/useProjectStore';
 
 // ═══ Types ═══
 export interface BezierPoint {
