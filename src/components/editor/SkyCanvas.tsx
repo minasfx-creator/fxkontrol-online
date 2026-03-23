@@ -2183,29 +2183,25 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
 
   useFrame(({ gl }, delta) => {
     const state = exposureRef.current;
-    const { timelineItems, currentTime } = useProjectStore.getState();
-    let luminance = 0;
-    let activeBursts = 0;
+    
+    // ═══ Centralized burst scan — ONE scan per frame for all controllers ═══
+    const scan = runActiveBurstScan();
+    let { activeBursts, luminance } = scan;
+    
     _scatterAccum.setRGB(0, 0, 0);
     let scatterMax = 0;
 
-    // Niagara rule: evaluate only near-active bursts to keep adaptation stable and cheap.
+    // Sky scatter needs finer time window, so we do a lightweight pass on fresh bursts
+    const { timelineItems, currentTime } = useProjectStore.getState();
     for (let i = 0; i < timelineItems.length; i++) {
       const item = timelineItems[i];
       const elapsed = currentTime - item.startTime;
-      if (elapsed < 0 || elapsed > 2.0) continue;
-
-      activeBursts++;
-      luminance += elapsed < 0.5 ? 3.0 : 0.5;
-
-      // Sky scatter accumulation — reuse color objects
-      if (elapsed < 0.3) {
-        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
-        if (effect && effect.type === 'firework') {
-          const intensity = 0.4 * (1 - elapsed / 0.3);
-          _scatterAccum.add(_tmpColor.set(effect.color).multiplyScalar(Math.min(intensity * 0.3, 0.15)));
-          scatterMax = Math.max(scatterMax, intensity);
-        }
+      if (elapsed < 0 || elapsed > 0.3) continue;
+      const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      if (effect && effect.type === 'firework') {
+        const intensity = 0.4 * (1 - elapsed / 0.3);
+        _scatterAccum.add(_tmpColor.set(effect.color).multiplyScalar(Math.min(intensity * 0.3, 0.15)));
+        scatterMax = Math.max(scatterMax, intensity);
       }
     }
 
