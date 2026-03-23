@@ -571,6 +571,14 @@ function TimelineTrackRow({
         {!muted && items.map((item) => {
           const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
           if (!effect) return null;
+          // Virtualize: skip items outside visible scroll range
+          const effectDuration = item.durationOverride ?? effect.duration;
+          const itemLeftPx = item.startTime * pixelsPerSecond;
+          const itemRightPx = itemLeftPx + Math.max(effectDuration * pixelsPerSecond, 28);
+          const visibleLeft = scrollLeft - 96 - 200; // account for label column + buffer
+          const visibleRight = scrollLeft - 96 + viewportWidth + 200;
+          if (itemRightPx < visibleLeft || itemLeftPx > visibleRight) return null;
+
           const linkedIds = useProjectStore.getState().linkedTimelineItemIds;
           const isLinked = linkedIds.includes(item.id);
           return (
