@@ -216,6 +216,7 @@ async function callAI(
   toolChoice: any,
   temperature: number = 0.1,
   maxRetries: number = 2,
+  reasoning?: { effort: string },
 ): Promise<any> {
   let lastError: any;
   
