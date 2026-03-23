@@ -17,7 +17,7 @@ const MAX_HISTORY = 10;
 
 const PRESETS_COMMAND = [
   { label: 'DIAGNÓSTICO', icon: Activity, prompt: 'Execute um diagnóstico completo do sistema FXK — módulos, DMX, canais ativos, status de segurança.' },
-  { label: 'SCRIPT', icon: Terminal, prompt: 'Preciso de ajuda criando um script de show pirotécnico.' },
+  { label: 'SCRIPT', icon: Sparkles, prompt: 'Preciso de ajuda criando um script de show pirotécnico.' },
   { label: 'SAFETY', icon: ShieldCheck, prompt: 'Quais são os protocolos de segurança NFPA que devo seguir para este show?' },
   { label: 'STATUS', icon: Zap, prompt: 'Qual o status atual do show — timeline, posições configuradas e módulos online?' },
 ];
