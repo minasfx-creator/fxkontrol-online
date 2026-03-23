@@ -4,7 +4,7 @@
  * Landscape mobile: game-style HUD with side rail + top bar
  */
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { ambientSound } from '@/lib/ambientSound';
 import FullscreenablePanel from '@/components/editor/FullscreenablePanel';
 import { useIsMobile } from '@/hooks/use-mobile';
