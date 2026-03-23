@@ -2063,11 +2063,16 @@ function processFormationResult(
   return processed;
 }
 
-// ── Model selection ─────────────────────────────────────────
+// ── Model selection (v9.0 — reasoning-enhanced) ────────────
 
-function selectModels(mode: string, count: number, isFullShow: boolean): { primary: string; fallback: string } {
+function selectModels(mode: string, count: number, isFullShow: boolean): { primary: string; fallback: string; reasoning?: { effort: string } } {
   if (isFullShow) {
-    return { primary: "google/gemini-3-flash-preview", fallback: "google/gemini-2.5-flash" };
+    // Full shows benefit from reasoning for narrative arc design
+    return {
+      primary: "google/gemini-3-flash-preview",
+      fallback: "google/gemini-2.5-flash",
+      reasoning: { effort: "medium" },
+    };
   }
   if (mode === "image") {
     return { primary: "google/gemini-2.5-pro", fallback: "google/gemini-3-flash-preview" };
