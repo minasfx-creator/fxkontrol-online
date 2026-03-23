@@ -109,8 +109,8 @@ export default function LaserEffect({
       const core = beamGroup.children[0] as THREE.Mesh;
       if (core) {
         const mat = core.material as THREE.MeshBasicMaterial;
-        mat.opacity = 0.7 * finalOpacity;
-        mat.color.copy(baseColor).multiplyScalar(2.5); // HDR push
+        mat.opacity = 0.85 * finalOpacity;
+        mat.color.copy(baseColor).multiplyScalar(3.0); // HDR push - extended
       }
 
       // Inner glow
