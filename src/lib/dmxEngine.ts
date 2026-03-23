@@ -113,6 +113,11 @@ export const DMX_ATTRIBUTE_LIBRARY: Record<string, DMXAttributeDefinition> = {
   X:                { name: 'X',                category: 'position', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Position X' },
   Y:                { name: 'Y',                category: 'position', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Position Y' },
   Z:                { name: 'Z',                category: 'position', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Position Z' },
+
+  // ── Water Fountain (from DMXLib_WaterFountain) ──
+  WaterPressure:    { name: 'WaterPressure',    category: 'effects', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Water pump pressure' },
+  WaterHeight:      { name: 'WaterHeight',      category: 'effects', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Fountain jet height' },
+  WaterSpread:      { name: 'WaterSpread',      category: 'effects', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Spray spread angle' },
 };
 
 /**
