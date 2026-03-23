@@ -131,6 +131,7 @@ export default function FXKNetPanel({ fs = false }: FXKNetPanelProps) {
         {activeTab === 'module' && <VirtualIFMx32QPanel fs={fs} />}
         {activeTab === 'dmx-io' && <DMXIOPanel fs={fs} />}
         {activeTab === 'pixel-map' && <PixelMappingPanel fs={fs} />}
+        {activeTab === 'bezier' && <DMXBezierEditor fs={fs} />}
       </div>
     </div>
   );

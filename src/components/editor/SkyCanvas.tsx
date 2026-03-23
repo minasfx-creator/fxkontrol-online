@@ -312,6 +312,14 @@ function EnvironmentV2Switcher() {
       {waterEnabled && <WaterLayer />}
       {decalsEnabled && <GroundDecalManager />}
       {timeOfDayEnabled && <TimeOfDayController />}
+      {/* Volumetric God Rays — ray marched light scattering */}
+      <VolumetricGodRays
+        lightPosition={[0, 800, -500]}
+        lightColor="#ffeedd"
+        intensity={0.8}
+        samples={48}
+        enabled={true}
+      />
     </>
   );
 }
