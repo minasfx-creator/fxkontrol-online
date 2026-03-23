@@ -90,7 +90,7 @@ const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_BASE_DELAY_MS = 2_000;
 const LATENCY_WINDOW = 20;
 
-type ModuleEventType = 'module-connected' | 'module-disconnected' | 'module-heartbeat' | 'module-fired' | 'module-error' | 'controller-update';
+type ModuleEventType = 'module-connected' | 'module-disconnected' | 'module-heartbeat' | 'module-fired' | 'module-error' | 'controller-update' | 'module-reconnecting' | 'module-stale' | 'module-packet-loss';
 type ModuleEventListener = (type: ModuleEventType, data: any) => void;
 
 class ArtNetModuleService {
@@ -100,6 +100,14 @@ class ArtNetModuleService {
   private wsConnections = new Map<string, WebSocket>();
   private moduleStates = new Map<string, ModuleConnectionState>();
   private sequenceCounters = new Map<string, number>();
+
+  // ─── Resilience tracking ────────────────────────
+  private packetStats = new Map<string, PacketStats>();
+  private reconnectAttempts = new Map<string, number>();
+  private reconnectTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+  private lastHeartbeatAt = new Map<string, number>();
+  private latencyWindows = new Map<string, number[]>();
+  private staleCheckInterval: ReturnType<typeof setInterval> | null = null;
 
   subscribe(fn: ModuleEventListener): () => void {
     this.listeners.add(fn);
