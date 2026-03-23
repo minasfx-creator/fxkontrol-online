@@ -1264,6 +1264,8 @@ function CameraBookmarkSaver() {
 }
 
 export default function SkyCanvas() {
+  // Professional keybindings (Finale 3D)
+  useKeybindings();
   const editorMode = useProjectStore((s) => s.editorMode);
   const droneFormations = useProjectStore((s) => s.droneFormations);
   const gpsOrigin = useProjectStore((s) => s.gpsOrigin);
