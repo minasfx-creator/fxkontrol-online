@@ -98,6 +98,14 @@ import {
   GRAVITY,
   _posQuat, _effQuat, _pitchQuat, _posEuler, _effEuler, _launchDir, _pitchAxis,
   type ActiveBurstScanResult,
+  // ═══ Extracted modules ═══
+  Moon,
+  AtmosphericParticles,
+  StageGround,
+  FireworkBurst,
+  TimelineEffects,
+  LiveSFXEffects,
+  estimateFireworkStarCost,
 } from './skycanvas';
 
 // Re-export for external consumers
