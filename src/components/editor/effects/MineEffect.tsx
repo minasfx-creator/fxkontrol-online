@@ -136,9 +136,9 @@ export default function MineEffect({
     if (!pointsRef.current) return;
 
     const geo = pointsRef.current.geometry;
-    const posArr = posRef.current;
-    const colArr = colRef.current;
-    const sizeArr = sizeRef.current;
+    const posArr = posRef;
+    const colArr = colRef;
+    const sizeArr = sizeRef;
     const t = progress * 2.5;
     const GRAV = -9.81;
     const time = clock.getElapsedTime();
