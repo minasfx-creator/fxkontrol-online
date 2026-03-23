@@ -17,7 +17,7 @@ const stored = (key: string, fallback: any) => {
 };
 
 export const useDisplayStore = create<DisplayState>((set) => ({
-  backlight: stored('fxk-backlight', 80),
+  backlight: stored('fxk-backlight', 100),
   nightMode: stored('fxk-nightmode', false),
   showMode: stored('fxk-showmode', false),
   setBacklight: (v) => {

@@ -408,7 +408,7 @@ export default function CommandCenter() {
           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
           <nav
-            className="pointer-events-auto mx-3 mb-2 rounded-2xl px-1 py-1 flex items-center justify-around"
+            className="pointer-events-auto mx-2 mb-1 rounded-2xl px-1 py-1 flex items-center justify-around"
             style={{
               background: 'hsl(220 22% 3% / 0.9)',
               backdropFilter: 'blur(32px) saturate(1.8)',
