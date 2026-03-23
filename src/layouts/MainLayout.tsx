@@ -131,7 +131,11 @@ export default function MainLayout() {
             }}
           >
             <div className="absolute inset-0 animate-holographic-scan pointer-events-none opacity-20" />
-            <SidebarToggleButton />
+            {isMobile ? (
+              <MobileSidebarTrigger />
+            ) : (
+              <SidebarToggleButton />
+            )}
             <div className="ml-3 flex items-center gap-2 relative z-10">
               <div className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: 'hsl(32 100% 50%)', boxShadow: '0 0 6px hsl(32 100% 50% / 0.5)' }} />
               <span className="text-[10px] font-mono tracking-widest uppercase" style={{ color: 'hsl(32 100% 50% / 0.8)', textShadow: '0 0 8px hsl(32 100% 50% / 0.3)' }}>
