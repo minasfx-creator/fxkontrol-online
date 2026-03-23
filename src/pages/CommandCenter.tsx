@@ -4,7 +4,7 @@
  * Landscape mobile: game-style HUD with side rail + top bar
  */
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { ambientSound } from '@/lib/ambientSound';
 import FullscreenablePanel from '@/components/editor/FullscreenablePanel';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -14,7 +14,7 @@ import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { cn } from '@/lib/utils';
 import {
   Zap, Flame, Gauge, Layers, Activity, Cpu, Radio,
-  Shield, Map, Menu, Maximize, AlertOctagon
+  Shield, Map, Menu, Maximize, AlertOctagon, Target
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -88,6 +88,7 @@ const MOBILE_CATEGORIES = [
 ];
 
 export default function CommandCenter() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialMode = (searchParams.get('mode') as CommandMode) || 'show_control';
   const [activeMode, setActiveMode] = useState<CommandMode>(initialMode);
@@ -387,6 +388,20 @@ export default function CommandCenter() {
                   </button>
                 );
               })}
+              {/* Field Test Quick Access */}
+              <button
+                onClick={() => navigate('/field-test')}
+                className="ff-loadout-card shrink-0"
+                style={{
+                  '--ff-accent': 'hsl(0 85% 48%)',
+                  '--ff-accent-glow': 'hsl(0 85% 48% / 0.1)',
+                } as React.CSSProperties}
+              >
+                <Target className="w-5 h-5" style={{ color: 'hsl(0 85% 48%)' }} />
+                <span className="text-[7px] font-mono font-bold tracking-wider uppercase mt-0.5 text-muted-foreground/40">
+                  FIELD TEST
+                </span>
+              </button>
             </div>
           </ScrollArea>
         </div>
