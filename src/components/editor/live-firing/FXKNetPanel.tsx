@@ -125,7 +125,7 @@ export default function FXKNetPanel({ fs = false }: FXKNetPanelProps) {
       />
 
       {/* Network topology minimap — only on network/module tabs */}
-      {(activeTab === 'network' || activeTab === 'module') && <TopologyMinimap moduleCount={6} />}
+      {(activeTab === 'network' || activeTab === 'module' || activeTab === 'ma3') && <TopologyMinimap moduleCount={6} />}
 
       {/* Content */}
       <div className="flex-1 overflow-hidden animate-console-boot">
