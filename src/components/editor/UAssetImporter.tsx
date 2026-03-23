@@ -25,7 +25,7 @@ interface UAssetImporterProps {
   initialFile?: File | null;
 }
 
-const ASSET_TYPE_ICON: Record<UAssetType, React.ElementType> = {
+const ASSET_TYPE_ICON: Partial<Record<UAssetType, React.ElementType>> = {
   blueprint_fixture: Lightbulb,
   blueprint_pyro: Flame,
   blueprint_sfx: Sparkles,
@@ -37,10 +37,17 @@ const ASSET_TYPE_ICON: Record<UAssetType, React.ElementType> = {
   curve_table: BarChart3,
   texture: Image,
   dmx_library: Settings,
+  static_mesh: FileCode,
+  skeletal_mesh: FileCode,
+  level_sequence: FileCode,
+  particle_system: Sparkles,
+  data_table: BarChart3,
+  template_pack: FileCode,
+  widget_blueprint: FileCode,
   unknown: FileCode,
 };
 
-const ASSET_TYPE_LABEL: Record<UAssetType, string> = {
+const ASSET_TYPE_LABEL: Partial<Record<UAssetType, string>> = {
   blueprint_fixture: 'Fixture',
   blueprint_pyro: 'Pyro',
   blueprint_sfx: 'SFX',
@@ -52,6 +59,13 @@ const ASSET_TYPE_LABEL: Record<UAssetType, string> = {
   curve_table: 'Curve Table',
   texture: 'Texture',
   dmx_library: 'DMX Library',
+  static_mesh: 'Static Mesh',
+  skeletal_mesh: 'Skeletal Mesh',
+  level_sequence: 'Sequence',
+  widget_blueprint: 'Widget',
+  data_table: 'Data Table',
+  particle_system: 'Particles',
+  template_pack: 'Template',
   unknown: 'Unknown',
 };
 
