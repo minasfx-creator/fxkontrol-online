@@ -2218,7 +2218,8 @@ INSTRUCTIONS:
       };
 
       try {
-        raw = await callAI(LOVABLE_API_KEY, primary, messages, [structureTool], { type: "function", function: { name: "design_show_structure" } }, 0.3, 1);
+        const { reasoning: modelReasoning } = selectModels("full-show", count, true);
+        raw = await callAI(LOVABLE_API_KEY, primary, messages, [structureTool], { type: "function", function: { name: "design_show_structure" } }, 0.3, 1, modelReasoning);
       } catch (e: any) {
         if (e.status === 402) return returnLocalFallbackShow(e.message || "Créditos esgotados.");
         if (e.status === 429) throw e;
