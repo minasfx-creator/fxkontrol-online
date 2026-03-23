@@ -670,6 +670,10 @@ function SFXStageEnvironment() {
         mat.color.setHSL(hue, 0.7, 0.06);
       }
     });
+    // Orb bobbing animation
+    orbRefs.current.forEach((orb, i) => {
+      if (orb) orb.position.y = stageHeight + 4 + Math.sin(t * 0.8 + i * 2.1) * 0.5;
+    });
   });
 
   const trussColor = '#1a1a1a';
