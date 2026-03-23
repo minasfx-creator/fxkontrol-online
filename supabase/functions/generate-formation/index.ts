@@ -336,7 +336,7 @@ function buildLocalFullShowFallback(prompt: string, count: number) {
       const radius = Math.max(15, Math.sqrt(count) * sf);
       const rawPoints = generateShapePoints(item.shape, count, { radius, turns: 4, layers: 5, amplitude: radius * 0.4, wavelength: radius * 1.0 });
       let points = processFormationResult(rawPoints, count, previousPoints);
-      if (previousPoints && previousPoints.length === points.length && count <= 1000) {
+      if (previousPoints && previousPoints.length === points.length && count <= 2000) {
         points = optimizeTransitionOrder(previousPoints, points);
       }
       previousPoints = points;
