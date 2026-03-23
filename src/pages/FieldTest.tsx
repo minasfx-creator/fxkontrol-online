@@ -6,12 +6,14 @@ import { Input } from '@/components/ui/input';
 import {
   Wifi, Globe, Bluetooth, Radio, Zap, Shield, Target,
   ArrowLeft, CheckCircle2, XCircle, Flame, AlertTriangle,
-  Activity, Copy, Smartphone, Maximize
+  Activity, Copy, Smartphone, Maximize, Search, Loader2,
+  Signal, Battery, BatteryFull
 } from 'lucide-react';
 import {
   fieldTestEngine, generateSessionCode,
   type DeviceRole, type TestTransport, type FieldTestSession, type TestLog
 } from '@/services/fieldTestService';
+import { isWebBluetoothAvailable, type ScannedBLEDevice } from '@/services/bleFieldTransport';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { haptics } from '@/lib/haptics';
