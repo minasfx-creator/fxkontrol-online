@@ -11,6 +11,7 @@ import { Grid } from '@react-three/drei';
 import * as THREE from 'three';
 import { useSceneStore } from '@/store/useSceneStore';
 import { createVolumetricFogPlane } from '@/render_ultra/environment/volumetricFog';
+import CrowdSystem from './CrowdSystem';
 
 // ═══════════════════════════════════════════════════════════════════════
 // Moon

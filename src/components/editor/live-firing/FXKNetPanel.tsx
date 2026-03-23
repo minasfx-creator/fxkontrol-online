@@ -1,13 +1,14 @@
 /**
- * FXKNetPanel — Unified Art-Net Network + Module Control
- * Fuses ArtNetModulePanel (network discovery) + VirtualIFMx32QPanel (field module)
+ * FXKNetPanel — Unified Art-Net Network + Module Control + DMX I/O + Pixel Mapping
  * BR2049 holographic aesthetics + network topology + firmware + signal quality
  */
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { Globe, Cpu, Signal, Wifi } from 'lucide-react';
+import { Globe, Cpu, ArrowLeftRight, Grid3X3 } from 'lucide-react';
 import ArtNetModulePanel from './ArtNetModulePanel';
 import VirtualIFMx32QPanel from './VirtualIFMx32QPanel';
+import DMXIOPanel from './DMXIOPanel';
+import PixelMappingPanel from './PixelMappingPanel';
 
 interface FXKNetPanelProps {
   fs?: boolean;
@@ -34,12 +35,9 @@ function TopologyMinimap({ moduleCount }: { moduleCount: number }) {
         </div>
       </div>
       <div className="flex gap-3">
-        {/* Topology SVG */}
         <svg width="140" height="55" viewBox="0 0 140 55" className="shrink-0">
-          {/* Hub */}
           <rect x="62" y="22" width="16" height="12" rx="2" fill="hsl(270 60% 50% / 0.2)" stroke="hsl(270 60% 50%)" strokeWidth="0.8" />
           <text x="70" y="30" textAnchor="middle" fill="hsl(270 60% 55%)" fontSize="5" fontFamily="monospace">HUB</text>
-          {/* Connections */}
           {nodes.map(n => (
             <g key={n.id}>
               <line x1="70" y1="28" x2={n.x} y2={n.y} stroke="hsl(270 60% 50% / 0.2)" strokeWidth="0.5" strokeDasharray="2 1" />
@@ -48,7 +46,6 @@ function TopologyMinimap({ moduleCount }: { moduleCount: number }) {
             </g>
           ))}
         </svg>
-        {/* Signal quality + firmware list */}
         <div className="flex-1 space-y-0.5 overflow-hidden">
           {nodes.slice(0, 4).map(n => (
             <div key={n.id} className="flex items-center gap-1.5">
@@ -71,44 +68,45 @@ function TopologyMinimap({ moduleCount }: { moduleCount: number }) {
   );
 }
 
+type TabKey = 'network' | 'module' | 'dmx-io' | 'pixel-map';
+
 export default function FXKNetPanel({ fs = false }: FXKNetPanelProps) {
-  const [activeTab, setActiveTab] = useState<'network' | 'module'>('network');
+  const [activeTab, setActiveTab] = useState<TabKey>('network');
+
+  const tabs: { key: TabKey; label: string; icon: typeof Globe; sub: string }[] = [
+    { key: 'network', label: 'NET', icon: Globe, sub: 'ART-NET' },
+    { key: 'module', label: 'MOD', icon: Cpu, sub: 'FIELD' },
+    { key: 'dmx-io', label: 'I/O', icon: ArrowLeftRight, sub: 'DMX' },
+    { key: 'pixel-map', label: 'PXL', icon: Grid3X3, sub: 'MAP' },
+  ];
 
   return (
     <div className="flex flex-col h-full">
-      {/* Tab Header — BR2049 */}
+      {/* Tab Header */}
       <div
         className="shrink-0 flex border-b"
-        style={{
-          background: 'hsl(220 12% 5%)',
-          borderColor: 'hsl(32 100% 50% / 0.1)',
-        }}
+        style={{ background: 'hsl(220 12% 5%)', borderColor: 'hsl(32 100% 50% / 0.1)' }}
       >
-        {[
-          { key: 'network' as const, label: 'NETWORK', icon: Globe, sub: 'ART-NET DISCOVERY' },
-          { key: 'module' as const, label: 'MODULE', icon: Cpu, sub: 'FIELD CONTROL' },
-        ].map(tab => {
+        {tabs.map(tab => {
           const isActive = activeTab === tab.key;
           return (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={cn(
-                "flex-1 flex items-center justify-center gap-2 py-2.5 transition-all relative",
-                "text-[9px] font-mono font-bold tracking-[0.2em] uppercase",
+                "flex-1 flex items-center justify-center gap-1.5 py-2 transition-all relative",
+                "text-[8px] font-mono font-bold tracking-[0.15em] uppercase",
                 isActive
                   ? "text-[hsl(32_100%_65%)]"
                   : "text-muted-foreground/40 hover:text-muted-foreground/60"
               )}
             >
-              <tab.icon className={cn("w-3.5 h-3.5", isActive && "drop-shadow-[0_0_4px_hsl(32_100%_50%/0.5)]")} />
+              <tab.icon className={cn("w-3 h-3", isActive && "drop-shadow-[0_0_4px_hsl(32_100%_50%/0.5)]")} />
               <span>{tab.label}</span>
               {isActive && (
                 <div
                   className="absolute bottom-0 left-[15%] right-[15%] h-[2px]"
-                  style={{
-                    background: 'linear-gradient(90deg, transparent, hsl(32 100% 50% / 0.6), transparent)',
-                  }}
+                  style={{ background: 'linear-gradient(90deg, transparent, hsl(32 100% 50% / 0.6), transparent)' }}
                 />
               )}
             </button>
@@ -119,21 +117,18 @@ export default function FXKNetPanel({ fs = false }: FXKNetPanelProps) {
       {/* Holographic scanline */}
       <div
         className="h-[1px] shrink-0"
-        style={{
-          background: 'linear-gradient(90deg, transparent 10%, hsl(32 100% 50% / 0.08) 50%, transparent 90%)',
-        }}
+        style={{ background: 'linear-gradient(90deg, transparent 10%, hsl(32 100% 50% / 0.08) 50%, transparent 90%)' }}
       />
 
-      {/* Network topology minimap */}
-      <TopologyMinimap moduleCount={6} />
+      {/* Network topology minimap — only on network/module tabs */}
+      {(activeTab === 'network' || activeTab === 'module') && <TopologyMinimap moduleCount={6} />}
 
       {/* Content */}
       <div className="flex-1 overflow-hidden animate-console-boot">
-        {activeTab === 'network' ? (
-          <ArtNetModulePanel fs={fs} />
-        ) : (
-          <VirtualIFMx32QPanel fs={fs} />
-        )}
+        {activeTab === 'network' && <ArtNetModulePanel fs={fs} />}
+        {activeTab === 'module' && <VirtualIFMx32QPanel fs={fs} />}
+        {activeTab === 'dmx-io' && <DMXIOPanel fs={fs} />}
+        {activeTab === 'pixel-map' && <PixelMappingPanel fs={fs} />}
       </div>
     </div>
   );
