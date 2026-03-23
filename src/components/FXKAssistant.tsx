@@ -302,11 +302,12 @@ export function FXKAssistant() {
   return (
     <div
       className={cn(
-        "fixed bottom-5 right-5 z-50 h-[560px] rounded-xl flex flex-col overflow-hidden fxk-panel transition-all duration-300",
-        closing ? "animate-holo-dissolve" : "animate-holo-materialize"
+        "fixed z-[60] rounded-xl flex flex-col overflow-hidden fxk-panel transition-all duration-300",
+        closing ? "animate-holo-dissolve" : "animate-holo-materialize",
+        isMobile ? "inset-3 bottom-20" : "bottom-5 right-5 h-[560px]"
       )}
       style={{
-        width: panelWidth,
+        width: isMobile ? undefined : panelWidth,
         background: 'hsl(220 22% 4% / 0.96)',
         border: '1px solid hsl(32 100% 50% / 0.2)',
         boxShadow: '0 0 50px hsl(32 100% 50% / 0.12), 0 20px 80px hsl(0 0% 0% / 0.7)',
