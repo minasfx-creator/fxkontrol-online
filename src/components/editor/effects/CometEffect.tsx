@@ -353,8 +353,8 @@ export default function CometEffect({
       {/* Smoke wake cloud */}
       <points ref={smokePointsRef} frustumCulled={false}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(SMOKE_WAKE_COUNT * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(SMOKE_WAKE_COUNT * 3), 3]} />
+          <bufferAttribute attach="attributes-position" args={[smokePosBuffer, 3]} />
+          <bufferAttribute attach="attributes-color" args={[smokeColBuffer, 3]} />
         </bufferGeometry>
         <pointsMaterial
           size={1.5 + caliber * 0.4}

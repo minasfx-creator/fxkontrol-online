@@ -66,10 +66,19 @@ export default function WheelEffect({
       }
     }
 
-    sparkHistory.current = sparkHistory.current
-      .map(s => ({ ...s, age: s.age + dt, y: s.y - 2 * dt * s.age }))
-      .filter(s => s.age < 0.6)
-      .slice(-MAX_PARTICLES);
+    // Mutate in-place to avoid GC pressure from .map() spread
+    const hist = sparkHistory.current;
+    let writeIdx = 0;
+    for (let h = 0; h < hist.length; h++) {
+      const s = hist[h];
+      s.age += dt;
+      s.y -= 2 * dt * (s.age - dt); // use pre-update age
+      if (s.age < 0.6) {
+        hist[writeIdx++] = s;
+      }
+    }
+    hist.length = Math.min(writeIdx, MAX_PARTICLES);
+    sparkHistory.current = hist;
 
     const count = Math.min(sparkHistory.current.length, MAX_PARTICLES);
     for (let i = 0; i < count; i++) {

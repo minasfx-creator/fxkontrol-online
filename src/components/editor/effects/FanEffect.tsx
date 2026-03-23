@@ -138,15 +138,15 @@ export default function FanEffect({
       )}
       <lineSegments ref={linesRef}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(RAYS * 2 * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(RAYS * 2 * 3), 3]} />
+          <bufferAttribute attach="attributes-position" args={[linePos.current, 3]} />
+          <bufferAttribute attach="attributes-color" args={[lineCol.current, 3]} />
         </bufferGeometry>
         <lineBasicMaterial vertexColors transparent opacity={0.6} depthWrite={false} blending={THREE.AdditiveBlending} />
       </lineSegments>
       <points ref={pointsRef}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(TOTAL_PARTICLES * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(TOTAL_PARTICLES * 3), 3]} />
+          <bufferAttribute attach="attributes-position" args={[posArr.current, 3]} />
+          <bufferAttribute attach="attributes-color" args={[colArr.current, 3]} />
         </bufferGeometry>
         <pointsMaterial size={0.14} vertexColors transparent opacity={0.95} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
