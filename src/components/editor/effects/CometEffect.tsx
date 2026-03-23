@@ -278,10 +278,10 @@ export default function CometEffect({
       }
 
       const smokeGeo = smokePointsRef.current.geometry;
-      smokeGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3));
-      smokeGeo.setAttribute('color', new THREE.BufferAttribute(sCol, 3));
-      smokeGeo.attributes.position.needsUpdate = true;
-      smokeGeo.attributes.color.needsUpdate = true;
+      const smPosAttr = smokeGeo.getAttribute('position') as THREE.BufferAttribute;
+      const smColAttr = smokeGeo.getAttribute('color') as THREE.BufferAttribute;
+      if (smPosAttr) smPosAttr.needsUpdate = true;
+      if (smColAttr) smColAttr.needsUpdate = true;
     }
 
     lastProgressRef.current = progress;
