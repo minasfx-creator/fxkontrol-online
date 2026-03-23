@@ -110,7 +110,7 @@ function runActiveBurstScan() {
 
     // Fresh burst: within 50ms of ignition
     if (elapsed < 0.05) {
-      const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      const effect = getEffectById(item.effectId);
       if (effect && effect.type === 'firework') {
         freshBursts.push({
           x: item.position.x,
@@ -128,25 +128,52 @@ function runActiveBurstScan() {
   return _activeBurstScan;
 }
 
-// ═══ PyroChem: map hex colors → real chemical compounds ═══
+// ═══ PyroChem: map hex colors → real chemical compounds (cached) ═══
+const _hexToCompoundCache = new Map<string, ChemicalCompound>();
+const _hexTempColor = new THREE.Color();
+const _hexTempHSL = { h: 0, s: 0, l: 0 };
+
 function hexToCompound(hexColor: string): ChemicalCompound {
-  const c = new THREE.Color(hexColor);
-  const hsl = { h: 0, s: 0, l: 0 };
-  c.getHSL(hsl);
-  const h = hsl.h * 360;
+  const cached = _hexToCompoundCache.get(hexColor);
+  if (cached) return cached;
   
-  // Map hue ranges to real pyrotechnic compounds
-  if (hsl.l > 0.85) return getCompound('magnesium');     // White/silver → Magnalium
-  if (hsl.l > 0.7 && hsl.s < 0.2) return getCompound('titanium'); // Bright white → Titanium
-  if (h >= 0 && h < 30) return getCompound('strontium');   // Red → Strontium Carbonate
-  if (h >= 30 && h < 55) return getCompound('iron');        // Orange → Iron filings
-  if (h >= 55 && h < 75) return getCompound('sodium');      // Yellow → Sodium Oxalate
-  if (h >= 75 && h < 170) return getCompound('barium');     // Green → Barium Chlorate
-  if (h >= 170 && h < 260) return getCompound('copper');    // Blue → Copper Acetoarsenite
-  if (h >= 260 && h < 310) return getCompound('strontium'); // Purple → Strontium + Copper mix
-  if (h >= 310 && h < 345) return getCompound('strontium'); // Magenta/Pink → Strontium
-  return getCompound('charcoal');                            // Fallback → Charcoal streamer
+  _hexTempColor.set(hexColor);
+  _hexTempColor.getHSL(_hexTempHSL);
+  const h = _hexTempHSL.h * 360;
+  
+  let result: ChemicalCompound;
+  if (_hexTempHSL.l > 0.85) result = getCompound('magnesium');
+  else if (_hexTempHSL.l > 0.7 && _hexTempHSL.s < 0.2) result = getCompound('titanium');
+  else if (h >= 0 && h < 30) result = getCompound('strontium');
+  else if (h >= 30 && h < 55) result = getCompound('iron');
+  else if (h >= 55 && h < 75) result = getCompound('sodium');
+  else if (h >= 75 && h < 170) result = getCompound('barium');
+  else if (h >= 170 && h < 260) result = getCompound('copper');
+  else if (h >= 260 && h < 310) result = getCompound('strontium');
+  else if (h >= 310 && h < 345) result = getCompound('strontium');
+  else result = getCompound('charcoal');
+  
+  _hexToCompoundCache.set(hexColor, result);
+  return result;
 }
+
+// ═══ EFFECT_LIBRARY indexed Map for O(1) lookups in hot paths ═══
+let _effectLibraryMap: Map<string, (typeof EFFECT_LIBRARY)[number]> | null = null;
+function getEffectById(id: string): (typeof EFFECT_LIBRARY)[number] | undefined {
+  if (!_effectLibraryMap || _effectLibraryMap.size !== EFFECT_LIBRARY.length) {
+    _effectLibraryMap = new Map(EFFECT_LIBRARY.map(e => [e.id, e]));
+  }
+  return _effectLibraryMap.get(id);
+}
+
+// ═══ Pre-allocated math objects for quaternion composition in render loop ═══
+const _posQuat = new THREE.Quaternion();
+const _effQuat = new THREE.Quaternion();
+const _pitchQuat = new THREE.Quaternion();
+const _posEuler = new THREE.Euler();
+const _effEuler = new THREE.Euler();
+const _launchDir = new THREE.Vector3();
+const _pitchAxis = new THREE.Vector3();
 
 // lumaTonemapScale REMOVED — PostProcessing ACES Filmic is the single tonemap pass
 
@@ -780,7 +807,7 @@ function TimelineEffects() {
     const humidityFactor = 1 - sceneSettings.humidity * 0.3; // humidity shortens burn time
 
     return timelineItems.map((item) => {
-      let effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+      let effect = getEffectById(item.effectId);
 
       // Fallback para itens VDL dinâmicos criados no editor/quick add
       if (!effect && item.effectId.startsWith('vdl-')) {
@@ -950,30 +977,27 @@ function TimelineEffects() {
         const effPan = (item.pan ?? 90) * (Math.PI / 180);
         const effTilt = (item.tilt ?? 0) * (Math.PI / 180);
         
-        // Compose: Position quaternion * Effect quaternion
-        const posQuat = new THREE.Quaternion().setFromEuler(
-          new THREE.Euler(0, -posHeadingRad, 0, 'YZX')
-        );
-        const launchDir = new THREE.Vector3(0, 1, 0);
+        // Compose: Position quaternion * Effect quaternion (pre-allocated objects)
+        _posEuler.set(0, -posHeadingRad, 0, 'YZX');
+        _posQuat.setFromEuler(_posEuler);
+        _launchDir.set(0, 1, 0);
         // Apply position pitch to launch direction
-        const pitchAxis = new THREE.Vector3(1, 0, 0);
-        pitchAxis.applyQuaternion(posQuat);
-        const pitchQuat = new THREE.Quaternion().setFromAxisAngle(pitchAxis, -(Math.PI / 2 - posPitchRad));
-        posQuat.multiply(pitchQuat);
+        _pitchAxis.set(1, 0, 0).applyQuaternion(_posQuat);
+        _pitchQuat.setFromAxisAngle(_pitchAxis, -(Math.PI / 2 - posPitchRad));
+        _posQuat.multiply(_pitchQuat);
         
         // Apply effect Pan/Tilt
-        const effQuat = new THREE.Quaternion().setFromEuler(
-          new THREE.Euler(effTilt, effPan - Math.PI / 2, 0, 'YXZ')
-        );
+        _effEuler.set(effTilt, effPan - Math.PI / 2, 0, 'YXZ');
+        _effQuat.setFromEuler(_effEuler);
         
-        const finalQuat = posQuat.clone().multiply(effQuat);
-        launchDir.set(0, 1, 0).applyQuaternion(finalQuat).normalize();
+        _posQuat.multiply(_effQuat);
+        _launchDir.set(0, 1, 0).applyQuaternion(_posQuat).normalize();
         
         const burstPos: [number, number, number] = isShell
           ? [
-              pos[0] + launchDir.x * realBreakHeight,
-              pos[1] + launchDir.y * realBreakHeight,
-              pos[2] + launchDir.z * realBreakHeight,
+              pos[0] + _launchDir.x * realBreakHeight,
+              pos[1] + _launchDir.y * realBreakHeight,
+              pos[2] + _launchDir.z * realBreakHeight,
             ]
           : pos;
 
@@ -2198,7 +2222,7 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
       const item = timelineItems[i];
       const elapsed = currentTime - item.startTime;
       if (elapsed < 0 || elapsed > 0.3) continue;
-      const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      const effect = getEffectById(item.effectId);
       if (effect && effect.type === 'firework') {
         const intensity = 0.4 * (1 - elapsed / 0.3);
         _scatterAccum.add(_tmpColor.set(effect.color).multiplyScalar(Math.min(intensity * 0.3, 0.15)));
@@ -2398,7 +2422,7 @@ const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflec
     for (const item of timelineItems) {
       const elapsed = currentTime - item.startTime;
       if (elapsed >= 0 && elapsed < 0.3) {
-        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+        const effect = getEffectById(item.effectId);
         if (effect && effect.type === 'firework') {
           _reusableColor.set(effect.color);
           flashIntensity = Math.max(flashIntensity, 1.0 * (1 - elapsed / 0.3));
