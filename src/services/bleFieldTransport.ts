@@ -25,7 +25,7 @@ export const RSP = {
 } as const;
 
 export interface ScannedBLEDevice {
-  device: BluetoothDevice;
+  device: any; // BluetoothDevice
   name: string;
   id: string;
   rssi: number;
