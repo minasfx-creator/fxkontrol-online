@@ -645,8 +645,9 @@ function SFXStageEnvironment() {
   const ledWallRef = useRef<THREE.Mesh>(null);
   const ledSideRefs = useRef<(THREE.Mesh | null)[]>([]);
   const orbRefs = useRef<(THREE.Group | null)[]>([]);
+  const dmxPointLightRefs = useRef<(THREE.PointLight | null)[]>([]);
 
-  const orbBaseY = 1.2 + 4; // stageHeight + 4
+  const orbBaseY = 1.2 + 4;
 
   useFrame((_, delta) => {
     timeRef.current += delta;
@@ -672,9 +673,15 @@ function SFXStageEnvironment() {
         mat.color.setHSL(hue, 0.7, 0.06);
       }
     });
-    // Orb bobbing animation
     orbRefs.current.forEach((orb, i) => {
       if (orb) orb.position.y = orbBaseY + Math.sin(t * 0.8 + i * 2.1) * 0.5;
+    });
+    // DMX Point Light hue rotation
+    dmxPointLightRefs.current.forEach((light, i) => {
+      if (light) {
+        const hue = (t * 0.05 + i * 0.25) % 1;
+        light.color.setHSL(hue, 0.7, 0.5);
+      }
     });
   });
 
