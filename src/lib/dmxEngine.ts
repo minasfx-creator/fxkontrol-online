@@ -718,3 +718,80 @@ export function patchGMA2Fixtures(
 
   return universes.sort((a, b) => a.id - b.id);
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// DMX Send/Receive Bridge — BP_DMX_Send_Receive
+// Bidirectional DMX I/O controller for Art-Net/sACN
+// ═══════════════════════════════════════════════════════════════════════
+
+export interface DMXIOConfig {
+  universeId: number;
+  mode: 'send' | 'receive' | 'duplex';
+  protocol: 'artnet' | 'sacn';
+  priority: number;
+}
+
+export class DMXSendReceive {
+  private sendBuffers = new Map<number, Uint8Array>();
+  private receiveBuffers = new Map<number, Uint8Array>();
+  private configs = new Map<number, DMXIOConfig>();
+  private sendQueue: { universeId: number; data: Uint8Array }[] = [];
+
+  configureDMXIO(configs: DMXIOConfig[]): void {
+    this.configs.clear();
+    for (const cfg of configs) {
+      this.configs.set(cfg.universeId, cfg);
+      if (!this.sendBuffers.has(cfg.universeId)) {
+        this.sendBuffers.set(cfg.universeId, new Uint8Array(512));
+      }
+      if (!this.receiveBuffers.has(cfg.universeId)) {
+        this.receiveBuffers.set(cfg.universeId, new Uint8Array(512));
+      }
+    }
+  }
+
+  getConfig(universeId: number): DMXIOConfig | undefined {
+    return this.configs.get(universeId);
+  }
+
+  getAllConfigs(): DMXIOConfig[] {
+    return Array.from(this.configs.values());
+  }
+
+  sendUniverse(universeId: number, channels: Uint8Array): void {
+    const cfg = this.configs.get(universeId);
+    if (!cfg || cfg.mode === 'receive') return;
+    const buffer = this.sendBuffers.get(universeId);
+    if (buffer) {
+      buffer.set(channels.subarray(0, 512));
+      this.sendQueue.push({ universeId, data: new Uint8Array(buffer) });
+    }
+  }
+
+  receiveUniverse(universeId: number): Uint8Array {
+    return this.receiveBuffers.get(universeId) ?? new Uint8Array(512);
+  }
+
+  feedReceive(universeId: number, data: Uint8Array): void {
+    const cfg = this.configs.get(universeId);
+    if (!cfg || cfg.mode === 'send') return;
+    const buffer = this.receiveBuffers.get(universeId);
+    if (buffer) buffer.set(data.subarray(0, 512));
+  }
+
+  drainSendQueue(): { universeId: number; data: Uint8Array }[] {
+    const queue = [...this.sendQueue];
+    this.sendQueue = [];
+    return queue;
+  }
+
+  canReceive(universeId: number): boolean {
+    const cfg = this.configs.get(universeId);
+    return !!cfg && (cfg.mode === 'receive' || cfg.mode === 'duplex');
+  }
+
+  canSend(universeId: number): boolean {
+    const cfg = this.configs.get(universeId);
+    return !!cfg && (cfg.mode === 'send' || cfg.mode === 'duplex');
+  }
+}
