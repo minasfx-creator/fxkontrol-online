@@ -80,21 +80,33 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
 
   const handleTestCDS = async () => {
     setCdsTesting(true);
-    try {
-      await fieldTestEngine.bleTestCDS();
-      // Poll CDS status after a short delay for the module to respond
+    if (cdsSimMode) {
+      // Simulation: random channels with staggered reveal
       setTimeout(() => {
-        const status = fieldTestEngine.bleCdsStatus;
-        setCdsStatus([...status]);
+        const simulated = Array(32).fill(false).map(() => Math.random() > 0.35);
+        setCdsStatus(simulated);
         setCdsLastTest(Date.now());
         setCdsTesting(false);
-        const active = status.filter(Boolean).length;
-        toast.success(`CDS: ${active}/32 ignitores detectados`);
+        const active = simulated.filter(Boolean).length;
+        toast.success(`⚡ SIM CDS: ${active}/32 ignitores detectados`);
         haptics.success();
-      }, 800);
-    } catch (err: any) {
-      setCdsTesting(false);
-      toast.error(err.message || 'Erro no teste CDS');
+      }, 600);
+    } else {
+      try {
+        await fieldTestEngine.bleTestCDS();
+        setTimeout(() => {
+          const status = fieldTestEngine.bleCdsStatus;
+          setCdsStatus([...status]);
+          setCdsLastTest(Date.now());
+          setCdsTesting(false);
+          const active = status.filter(Boolean).length;
+          toast.success(`CDS: ${active}/32 ignitores detectados`);
+          haptics.success();
+        }, 800);
+      } catch (err: any) {
+        setCdsTesting(false);
+        toast.error(err.message || 'Erro no teste CDS');
+      }
     }
   };
 
