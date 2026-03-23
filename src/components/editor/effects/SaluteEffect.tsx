@@ -189,13 +189,13 @@ export default function SaluteEffect({
     if (progress < 0.25 && progress > 0) {
       const shakeMag = 0.025 * intensity * (1 - progress / 0.25) * caliber * 0.5 * shakeMultiplier;
       const freq = 30 + caliber * 5;
-      const newOffset = new THREE.Vector3(
+      _shakeTemp.set(
         Math.sin(time * freq) * shakeMag,
         Math.cos(time * freq * 1.3) * shakeMag * 0.7,
         Math.sin(time * freq * 0.8) * shakeMag * 0.5
       );
-      camera.position.add(newOffset.sub(shakeOffset.current));
-      shakeOffset.current.copy(newOffset);
+      camera.position.add(_shakeTemp.sub(shakeOffset.current));
+      shakeOffset.current.copy(_shakeTemp.add(shakeOffset.current)); // restore after sub
     } else if (shakeOffset.current.lengthSq() > 0.0001) {
       camera.position.sub(shakeOffset.current);
       shakeOffset.current.set(0, 0, 0);
