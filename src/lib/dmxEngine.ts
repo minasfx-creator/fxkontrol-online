@@ -103,6 +103,16 @@ export const DMX_ATTRIBUTE_LIBRARY: Record<string, DMXAttributeDefinition> = {
   // ── Control ──
   Control:          { name: 'Control',          category: 'control', channelCount: 1, defaultValue: 0, minValue: 0, maxValue: 255, description: 'Fixture reset/lamp control' },
   FanSpeed:         { name: 'FanSpeed',         category: 'control', channelCount: 1, defaultValue: 0, minValue: 0, maxValue: 255, description: 'Cooling fan speed' },
+
+  // ── Pyro / SFX (from UE5 DMXPrevis config) ──
+  Burst:            { name: 'Burst',            category: 'effects', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Pyro burst trigger' },
+  Launch:           { name: 'Launch',           category: 'effects', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Pyro launch trigger' },
+  Velocity:         { name: 'Velocity',         category: 'effects', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Launch velocity (0-255)' },
+  Angle:            { name: 'Angle',            category: 'effects', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Launch angle (0-180°)' },
+  NumBeams:         { name: 'NumBeams',         category: 'effects', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Number of beams/stars' },
+  X:                { name: 'X',                category: 'position', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Position X' },
+  Y:                { name: 'Y',                category: 'position', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Position Y' },
+  Z:                { name: 'Z',                category: 'position', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Position Z' },
 };
 
 /**
