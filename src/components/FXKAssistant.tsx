@@ -253,20 +253,24 @@ export function FXKAssistant() {
     }
   }, [input, send]);
 
-  const panelWidth = expanded ? 560 : 360;
+  const panelWidth = isMobile ? undefined : (expanded ? 560 : 360);
 
   // Bubble
   if (!open) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-50 h-14 w-14 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 fxk-bubble touch-target-lg"
+        className={cn(
+          "fixed z-[60] h-14 w-14 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 fxk-bubble touch-target-lg joi-bubble-shimmer",
+          isMobile ? "bottom-20 right-3" : "bottom-5 right-5"
+        )}
         style={{
           background: 'radial-gradient(circle at 30% 30%, hsl(32 100% 55%), hsl(32 100% 40%))',
           boxShadow: '0 0 30px hsl(32 100% 50% / 0.4), 0 0 60px hsl(32 100% 50% / 0.15), inset 0 1px 0 hsl(32 100% 70% / 0.3)',
+          willChange: 'transform',
         }}
       >
-        <Terminal className="h-6 w-6 text-black" />
+        <Sparkles className="h-6 w-6 text-black" />
         <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full animate-amber-pulse" style={{ background: 'hsl(32 100% 50%)' }} />
       </button>
     );
