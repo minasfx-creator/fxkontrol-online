@@ -543,6 +543,7 @@ class ArtNetModuleService {
   private handleModuleMessage(moduleId: string, msg: any) {
     if (msg.action === 'pong') {
       const latency = msg.t ? Date.now() - msg.t : null;
+      if (latency !== null) this.trackPacketAck(moduleId, latency);
       this.updateModule(moduleId, {
         lastSeen: Date.now(),
         latencyMs: latency,
