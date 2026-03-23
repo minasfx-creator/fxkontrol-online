@@ -572,10 +572,114 @@ class ArtNetModuleService {
     return [];
   }
 
+  // ─── Resilience: packet stats ─────────────────────
+  private resetPacketStats(moduleId: string) {
+    this.packetStats.set(moduleId, { sent: 0, acked: 0, lost: 0, lossRate: 0, avgLatencyMs: 0, lastSentAt: 0 });
+    this.latencyWindows.set(moduleId, []);
+  }
+
+  trackPacketSent(moduleId: string) {
+    const stats = this.packetStats.get(moduleId);
+    if (stats) {
+      stats.sent++;
+      stats.lastSentAt = Date.now();
+    }
+  }
+
+  trackPacketAck(moduleId: string, latencyMs: number) {
+    const stats = this.packetStats.get(moduleId);
+    if (stats) {
+      stats.acked++;
+      stats.lost = Math.max(0, stats.sent - stats.acked);
+      stats.lossRate = stats.sent > 0 ? stats.lost / stats.sent : 0;
+    }
+    // Rolling latency window
+    const win = this.latencyWindows.get(moduleId) || [];
+    win.push(latencyMs);
+    if (win.length > LATENCY_WINDOW) win.shift();
+    this.latencyWindows.set(moduleId, win);
+    if (stats) {
+      stats.avgLatencyMs = Math.round(win.reduce((a, b) => a + b, 0) / win.length);
+    }
+    this.lastHeartbeatAt.set(moduleId, Date.now());
+
+    // Emit packet-loss warning if loss > 5%
+    if (stats && stats.lossRate > 0.05 && stats.sent > 10) {
+      this.emit('module-packet-loss', { moduleId, lossRate: stats.lossRate, lost: stats.lost, sent: stats.sent });
+    }
+  }
+
+  // ─── Resilience: auto-reconnect ─────────────────
+  private scheduleReconnect(moduleId: string) {
+    const module = this.controller?.modules.find(m => m.id === moduleId);
+    if (!module?.enabled) return;
+
+    const attempts = (this.reconnectAttempts.get(moduleId) || 0);
+    if (attempts >= MAX_RECONNECT_ATTEMPTS) {
+      this.emit('module-error', { moduleId, error: `Max reconnect attempts (${MAX_RECONNECT_ATTEMPTS}) reached` });
+      return;
+    }
+
+    const delay = RECONNECT_BASE_DELAY_MS * Math.pow(2, attempts);
+    this.reconnectAttempts.set(moduleId, attempts + 1);
+    this.emit('module-reconnecting', { moduleId, attempt: attempts + 1, maxAttempts: MAX_RECONNECT_ATTEMPTS, delayMs: delay });
+
+    const timeout = setTimeout(() => {
+      this.reconnectTimeouts.delete(moduleId);
+      this.connectModule(moduleId);
+    }, delay);
+    this.reconnectTimeouts.set(moduleId, timeout);
+  }
+
+  cancelReconnect(moduleId: string) {
+    const t = this.reconnectTimeouts.get(moduleId);
+    if (t) { clearTimeout(t); this.reconnectTimeouts.delete(moduleId); }
+    this.reconnectAttempts.set(moduleId, 0);
+  }
+
+  // ─── Resilience: stale module detection ─────────
+  private startStaleCheck() {
+    if (this.staleCheckInterval) return;
+    this.staleCheckInterval = setInterval(() => {
+      const now = Date.now();
+      for (const [moduleId, lastAt] of this.lastHeartbeatAt) {
+        if (this.moduleStates.get(moduleId) !== 'connected') continue;
+        if (now - lastAt > STALE_THRESHOLD_MS) {
+          this.emit('module-stale', { moduleId, silentMs: now - lastAt });
+        }
+      }
+    }, 5_000);
+  }
+
+  // ─── Health summary API ─────────────────────────
+  getModuleHealth(moduleId: string): ModuleHealth {
+    const now = Date.now();
+    const lastHb = this.lastHeartbeatAt.get(moduleId) || 0;
+    return {
+      moduleId,
+      state: this.moduleStates.get(moduleId) || 'disconnected',
+      packetStats: this.packetStats.get(moduleId) || { sent: 0, acked: 0, lost: 0, lossRate: 0, avgLatencyMs: 0, lastSentAt: 0 },
+      reconnectAttempts: this.reconnectAttempts.get(moduleId) || 0,
+      lastHeartbeatAt: lastHb,
+      stale: lastHb > 0 && (now - lastHb) > STALE_THRESHOLD_MS,
+    };
+  }
+
+  getAllModuleHealth(): ModuleHealth[] {
+    return (this.controller?.modules || []).map(m => this.getModuleHealth(m.id));
+  }
+
   // ─── Cleanup ─────────────────────────────────────
   destroy() {
     this.disconnectAllModules();
     this.listeners.clear();
+    if (this.staleCheckInterval) { clearInterval(this.staleCheckInterval); this.staleCheckInterval = null; }
+    for (const t of this.reconnectTimeouts.values()) clearTimeout(t);
+    this.reconnectTimeouts.clear();
+    this.packetStats.clear();
+    this.latencyWindows.clear();
+    this.reconnectAttempts.clear();
+    this.lastHeartbeatAt.clear();
   }
 }
 
