@@ -388,6 +388,20 @@ export default function CommandCenter() {
                   </button>
                 );
               })}
+              {/* Field Test Quick Access */}
+              <button
+                onClick={() => navigate('/field-test')}
+                className="ff-loadout-card shrink-0"
+                style={{
+                  '--ff-accent': 'hsl(0 85% 48%)',
+                  '--ff-accent-glow': 'hsl(0 85% 48% / 0.1)',
+                } as React.CSSProperties}
+              >
+                <Target className="w-5 h-5" style={{ color: 'hsl(0 85% 48%)' }} />
+                <span className="text-[7px] font-mono font-bold tracking-wider uppercase mt-0.5 text-muted-foreground/40">
+                  FIELD TEST
+                </span>
+              </button>
             </div>
           </ScrollArea>
         </div>
