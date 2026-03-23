@@ -1,54 +1,62 @@
 
 
-## Plan: Remove Black Frame + Rebrand + Maximum Realism Refinement
+## Plan: Refine 3D World Using UE5 Blueprint References
 
-Based on the uploaded UE5 DMX reference image (dark venue, purple volumetric beams, dome structure, atmospheric haze) and project files, here are the targeted changes to push the 3D engine closer to UE5.7 fidelity.
+The uploaded UE5 assets provide architectural reference for 5 systems: **Firework** (BP_Firework_v2), **Laser** (BP_Laser_Extended), **Pyro** (BP_Pyro_v4), **Orb/Sphere** (BP_Sphere + M_Orb materials), **DMX control** (DMXSetter), and **Render Settings** (WBP_RenderSettings). These are binary UE5 Blueprints — not importable — but they indicate the user wants these systems refined toward UE5-grade fidelity.
 
 ---
 
-### 1. Remove Viewport Black Frame
+### 1. Enhanced Laser Effect — Extended Beams + Volumetric Haze
+
+**File: `src/components/editor/effects/LaserEffect.tsx`**
+
+Matching `BP_Laser_Extended` intent — wider, more dramatic beams:
+- Increase default `beamLength` from 90 → 140 for all patterns (not just single)
+- Add **volumetric cone** at source: large transparent cone with additive blending behind each beam fan to simulate atmospheric scatter
+- Increase beam core opacity (inner plane) from current values by ~30%
+- Add a **source orb glow**: emissive sphere at position origin (0.15 radius, beam color, opacity 0.9) for visible projector lens
+
+### 2. Add Orb/Sphere Stage Prop — New Effect Type
+
+**File: `src/components/editor/skycanvas/GroundSystem.tsx`** (SFXStageEnvironment)
+
+Based on `BP_Sphere` + `M_Orb`/`MI_Orb` — a glowing kinetic orb prop on stage:
+- Add 3 floating orb meshes at center-stage, spaced along X axis
+- Each orb: `sphereGeometry` (radius 0.8), `meshStandardMaterial` with emissive purple/blue (`#4400ff`), `emissiveIntensity: 1.5`, metalness 0.95, roughness 0.05
+- Subtle vertical bobbing animation via `useFrame` (sin wave, ±0.5m)
+- `pointLight` per orb for ambient bleed (distance 8, intensity 0.8)
+
+### 3. Pyro v4 Refinement — Brighter Flame Base
+
+**File: `src/components/editor/skycanvas/GroundSystem.tsx`** (SFXStageEnvironment)
+
+Based on `BP_Pyro_v4` — add pyro pot fixtures along stage front:
+- 5 pyro pots along stage edge (evenly spaced along X, at `stageHeight + 0.1`)
+- Each: small cylinder housing (dark metal), tiny red LED status dot
+- These serve as visual anchor points for the existing `FlameEffect` instances from the timeline
+
+### 4. DMX Setter Visual Indicator
+
+**File: `src/components/editor/skycanvas/GroundSystem.tsx`** (SFXStageEnvironment)
+
+Based on `DMXSetter` — add a small DMX control rack prop backstage:
+- Position behind LED wall (`z = -stageD/2 - 2`)
+- Small box geometry rack with green LED status indicators
+- Subtle blue wireframe overlay to indicate "DMX active"
+
+### 5. Render Settings Push
 
 **File: `src/components/editor/SkyCanvas.tsx`**
-- Line 1428: Change `bg-[#030308]` → `bg-black` to eliminate the off-black tint that reads as a visible frame border
 
-### 2. Rebrand XL4+ 2.0 → FXK-PYRO 2.0
-
-**File: `src/components/editor/VirtualControllerHub.tsx`**
-- Line 33: `platformLabel: 'XL4+ 2.0'` → `'FXK-PYRO 2.0'`
-- Line 42: `platformLabel: 'XL4+ 2.0'` → `'FXK-PYRO 2.0'`
-
-### 3. Push Render Defaults to Maximum Realism
-
-**File: `src/components/editor/SkyCanvas.tsx`**
-- `toneMappingExposure`: 1.3 → 1.5 (richer HDR, closer to UE5 ACES response)
-- Desktop DPR: `[1, 2]` → `[1.5, 2]` (sharper at all zoom levels)
-- Camera `far`: 250000 → 500000 (full pyro visibility at extreme range)
-
-### 4. Enhance SFX Stage Environment (match UE5 reference)
-
-**File: `src/components/editor/skycanvas/GroundSystem.tsx`** — `SFXStageEnvironment` component
-
-The UE5 reference shows dramatically more volumetric atmosphere and brighter beam cones. Changes:
-
-- **Moving head beam cones**: Increase cone opacity from 0.03 → 0.06, add a second inner cone (narrower, brighter) for realistic beam core/falloff separation
-- **Beam lens glow**: Add emissive sphere at each moving head source (like the StageEnvironment3D component already does) for visible light source dots
-- **Atmospheric haze volume**: Add a large semi-transparent box with additive blending (like `AtmosphereHaze` in StageEnvironment3D) centered at stage height — this is what makes beams visible in the UE5 reference
-- **Purple/magenta ambient**: Increase the existing `#1a0028` ambient and `#220044` directional intensities to create the rich purple wash visible in the reference
-- **LED wall emissive boost**: Change LED wall panel from `meshBasicMaterial color="#110022"` to use `emissive="#110022" emissiveIntensity={0.4}` for visible glow bleed
-- **Ceiling rigging**: Add subtle downward-facing fill lights from the rigging grid to simulate the UE5 reference's overhead wash
-
-### 5. Boost Post-Processing for Cinematic Glow
-
-**File: `src/components/editor/PostProcessing.tsx`**
-- Core bloom Layer 1: Increase intensity multiplier from 0.048 → 0.065 (more visible glow on light sources)
-- Lower `luminanceThreshold` from 3.5 → 2.8 (catch more of the purple/magenta light spill)
-- Star halos Layer 2: Increase from 0.024 → 0.035 for heavier halos around moving head beams
+Based on `WBP_RenderSettings` — ensure max quality defaults are active:
+- Confirm `toneMappingExposure: 1.5` and DPR `[1.5, 2]` are applied (done in previous iteration)
+- Add `flat: false` to Canvas if not present for proper shading interpolation
 
 ---
 
 ### Technical Notes
-- The .uasset files (Niagara particles, terrain, venue maps) are UE5 binary and cannot be imported into WebGL — they serve as visual reference only
-- All changes maintain Zero-GC principles (no new allocations per frame)
-- The atmospheric haze volume uses additive blending with depthWrite=false for GPU efficiency
-- Heavy effects (SSAO, SSR, DOF) remain disabled by default per existing stability strategy
+- All `.uasset` files are UE5 binary — used as design reference only
+- Orb animation uses shared `useFrame` with no per-frame allocations (reuses Vector3)
+- New stage props are static meshes — negligible GPU cost
+- Laser changes are parameter adjustments, no new geometry types
 
