@@ -1517,7 +1517,7 @@ export default function SkyCanvas() {
         <SiteModelRenderer />
         <PositionPins />
         <PyroLaunchAngles />
-        <PyroLaunchAngles />
+        <PositionTransformGizmo />
         {!isMobile && <Rack3DView />}
         <TrajectoryPaths />
         <DroneChoreography />
