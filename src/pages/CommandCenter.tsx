@@ -94,10 +94,15 @@ export default function CommandCenter() {
   const [swapPhase, setSwapPhase] = useState<'idle' | 'out' | 'in'>('idle');
   const [swapFlash, setSwapFlash] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [mobileCategory, setMobileCategory] = useState(0);
+  // Derive initial category from initialMode
+  const initialCategoryIndex = useMemo(() => {
+    const idx = MODE_SECTIONS.findIndex(s => s.modes.some(m => m.key === initialMode));
+    return idx >= 0 ? idx : 0;
+  }, [initialMode]);
+  const [mobileCategory, setMobileCategory] = useState(initialCategoryIndex);
   const [isLandscape, setIsLandscape] = useState(false);
-  const [bootConsole, setBootConsole] = useState<CommandMode | null>(initialMode);
-  const [initialBootDone, setInitialBootDone] = useState(false);
+  const [bootConsole, setBootConsole] = useState<CommandMode | null>(null);
+  const [initialBootDone, setInitialBootDone] = useState(true);
   const isMobile = useIsMobile();
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();
