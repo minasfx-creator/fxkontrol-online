@@ -202,8 +202,8 @@ class BLEFieldTransport {
    * Handle response notifications (ACK, STATUS)
    */
   private handleRspNotification = (event: Event) => {
-    const target = event.target as BluetoothRemoteGATTCharacteristic;
-    const value = target.value;
+    const target = event.target as any;
+    const value = target.value as DataView;
     if (!value || value.byteLength < 1) return;
 
     const opcode = value.getUint8(0);
