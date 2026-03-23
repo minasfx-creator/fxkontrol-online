@@ -1,7 +1,7 @@
 /**
- * DockBar — macOS-style application dock with glassmorphism,
- * magnification on hover, and active indicators.
- * Fixed at the bottom of the viewport (non-editor pages).
+ * DockBar — macOS-style application dock with 3D perspective tilt,
+ * glassmorphism, magnification on hover, and active indicators.
+ * Inspired by MacBook Pro dock with rotational depth effect.
  */
 import React, { useCallback, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -42,13 +42,14 @@ export default function DockBar() {
   const { isAdmin } = useAdminRole();
   const dockRef = useRef<HTMLDivElement>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [tilt, setTilt] = useState({ rotateX: 0, rotateY: 0 });
 
   const allItems = [
     ...DOCK_MAIN,
     ...DOCK_SYSTEM,
     ...(isAdmin ? [{ icon: Shield, label: 'Admin', path: '/admin', accent: 'hsl(270 60% 50%)' } as DockItem] : []),
   ];
-  const separatorIndex = DOCK_MAIN.length; // separator between main and system
+  const separatorIndex = DOCK_MAIN.length;
 
   const handleClick = useCallback((path: string) => {
     ambientSound.play('click');
@@ -56,33 +57,64 @@ export default function DockBar() {
     navigate(path);
   }, [navigate]);
 
+  // 3D perspective tilt based on mouse position over dock
+  const handleDockMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!dockRef.current) return;
+    const rect = dockRef.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;  // 0..1
+    const y = (e.clientY - rect.top) / rect.height;   // 0..1
+    setTilt({
+      rotateX: (0.5 - y) * 8,  // subtle vertical tilt
+      rotateY: (x - 0.5) * 6,  // horizontal rotation following cursor
+    });
+  }, []);
+
+  const handleDockMouseLeave = useCallback(() => {
+    setHoveredIndex(null);
+    setTilt({ rotateX: 0, rotateY: 0 });
+  }, []);
+
   const getScale = (index: number) => {
     if (hoveredIndex === null) return 1;
     const dist = Math.abs(index - hoveredIndex);
-    if (dist === 0) return 1.4;
-    if (dist === 1) return 1.15;
-    if (dist === 2) return 1.05;
+    if (dist === 0) return 1.45;
+    if (dist === 1) return 1.18;
+    if (dist === 2) return 1.06;
     return 1;
   };
 
   const getTranslateY = (index: number) => {
     if (hoveredIndex === null) return 0;
     const dist = Math.abs(index - hoveredIndex);
-    if (dist === 0) return -10;
-    if (dist === 1) return -4;
+    if (dist === 0) return -12;
+    if (dist === 1) return -5;
     if (dist === 2) return -1;
     return 0;
   };
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-2 pointer-events-none"
-      style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
+      style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))', perspective: '800px' }}>
       <TooltipProvider delayDuration={200}>
         <div
           ref={dockRef}
-          className="pointer-events-auto glass-dock rounded-2xl px-2 py-1.5 flex items-end gap-0.5"
-          onMouseLeave={() => setHoveredIndex(null)}
+          className="pointer-events-auto dock-3d-glass rounded-2xl px-2.5 py-1.5 flex items-end gap-0.5"
+          onMouseMove={handleDockMouseMove}
+          onMouseLeave={handleDockMouseLeave}
+          style={{
+            transform: `rotateX(${tilt.rotateX}deg) rotateY(${tilt.rotateY}deg)`,
+            transition: hoveredIndex !== null
+              ? 'transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)'
+              : 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+            transformStyle: 'preserve-3d',
+          }}
         >
+          {/* Ambient reflection layer */}
+          <div className="absolute inset-0 rounded-2xl pointer-events-none overflow-hidden">
+            <div className="absolute inset-0 dock-reflection" />
+            <div className="absolute inset-0 dock-scanline" />
+          </div>
+
           {allItems.map((item, i) => {
             const isActive = item.path === '/'
               ? location.pathname === '/'
@@ -94,7 +126,6 @@ export default function DockBar() {
 
             return (
               <React.Fragment key={item.path}>
-                {/* Separator between main and system */}
                 {i === separatorIndex && (
                   <div className="w-[1px] h-6 mx-0.5 rounded-full self-center" style={{ background: 'hsl(var(--primary) / 0.1)' }} />
                 )}
@@ -106,10 +137,10 @@ export default function DockBar() {
                       className={cn(
                         "relative flex flex-col items-center justify-center w-11 h-11 rounded-xl transition-all",
                         "active:scale-90",
-                        isActive ? "bg-white/[0.06]" : "hover:bg-white/[0.04]"
+                        isActive ? "dock-item-active" : "hover:bg-white/[0.04]"
                       )}
                       style={{
-                        transform: `scale(${scale}) translateY(${translateY}px)`,
+                        transform: `scale(${scale}) translateY(${translateY}px) translateZ(${hoveredIndex === i ? 8 : 0}px)`,
                         transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease',
                       }}
                     >
