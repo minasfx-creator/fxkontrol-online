@@ -747,6 +747,9 @@ const DEFAULT_ENVIRONMENT: EnvironmentState = {
   showRulers: false,
   showPositionLabels: true,
   cameraBookmarks: [],
+  showAxesHelper: true,
+  positionTransformMode: 'translate',
+  gridSnapResolution: 1,
 };
 
 export const useSceneStore = create<SceneSettingsState>((set) => ({
