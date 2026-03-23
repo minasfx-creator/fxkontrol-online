@@ -671,6 +671,10 @@ export interface EnvironmentState {
   showRulers: boolean;           // ShowSim: vertical/horizontal rulers toggle
   showPositionLabels: boolean;   // Toggle position name labels in viewport
   cameraBookmarks: CameraBookmark[];
+  // ═══ Finale 3D Viewport Tools ═══
+  showAxesHelper: boolean;       // XYZ color-coded axes at origin
+  positionTransformMode: 'translate' | 'rotate' | 'scale';  // Gizmo mode for position pins
+  gridSnapResolution: number;    // Snap grid cell size in meters (0.1 – 10)
 }
 
 export interface CameraBookmark {
