@@ -3,11 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
 import {
   Wifi, Globe, Bluetooth, Radio, Zap, Shield, Target,
   ArrowLeft, CheckCircle2, XCircle, Flame, AlertTriangle,
   Activity, Copy, Smartphone, Maximize, Search, Loader2,
-  Signal, Battery, BatteryFull
+  Signal, Battery, Play, Square, FileText, Lightbulb,
+  BarChart3, RefreshCw, Download
 } from 'lucide-react';
 import {
   fieldTestEngine, generateSessionCode,
@@ -26,12 +28,12 @@ const TRANSPORTS: { id: TestTransport; label: string; desc: string; icon: React.
   { id: 'ble', label: 'Bluetooth BLE', desc: 'Pareamento direto', icon: <Bluetooth className="w-5 h-5" />, color: 'text-purple-400' },
 ];
 
-// ─── BLE Scanner Component ────────────────────────
+// ─── Enhanced BLE Scanner with multi-device list ──
 function BLEScanner({ onConnected }: { onConnected: () => void }) {
   const [scanning, setScanning] = useState(false);
-  const [scannedDevice, setScannedDevice] = useState<ScannedBLEDevice | null>(null);
-  const [connecting, setConnecting] = useState(false);
-  const [connected, setConnected] = useState(false);
+  const [devices, setDevices] = useState<ScannedBLEDevice[]>([]);
+  const [connectingId, setConnectingId] = useState<string | null>(null);
+  const [connectedId, setConnectedId] = useState<string | null>(null);
   const bleAvailable = isWebBluetoothAvailable();
 
   const handleScan = async () => {
@@ -39,26 +41,29 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
     try {
       const device = await fieldTestEngine.bleScan();
       if (device) {
-        setScannedDevice(device);
+        setDevices(prev => {
+          const exists = prev.find(d => d.id === device.id);
+          if (exists) return prev.map(d => d.id === device.id ? device : d);
+          return [...prev, device];
+        });
         toast.success(`Encontrado: ${device.name}`);
-      } else {
-        toast.info('Nenhum dispositivo selecionado');
       }
     } catch (err: any) {
-      toast.error(err.message || 'Erro ao escanear');
+      if (!err.message?.includes('cancelled')) {
+        toast.error(err.message || 'Erro ao escanear');
+      }
     }
     setScanning(false);
   };
 
-  const handleConnect = async () => {
-    if (!scannedDevice) return;
-    setConnecting(true);
+  const handleConnect = async (device: ScannedBLEDevice) => {
+    setConnectingId(device.id);
     try {
-      const ok = await fieldTestEngine.bleConnect(scannedDevice);
+      const ok = await fieldTestEngine.bleConnect(device);
       if (ok) {
-        setConnected(true);
+        setConnectedId(device.id);
         haptics.success();
-        toast.success(`Conectado a ${scannedDevice.name}`);
+        toast.success(`Conectado a ${device.name}`);
         onConnected();
       } else {
         toast.error('Falha na conexão GATT');
@@ -66,7 +71,22 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
     } catch (err: any) {
       toast.error(err.message || 'Erro na conexão');
     }
-    setConnecting(false);
+    setConnectingId(null);
+  };
+
+  const getDeviceType = (name: string): { label: string; color: string } => {
+    const n = name.toLowerCase();
+    if (n.includes('ctrl') || n.includes('controller')) return { label: 'CTRL', color: 'bg-blue-600' };
+    if (n.includes('m1') || n.includes('module')) return { label: 'MOD', color: 'bg-amber-600' };
+    if (n.includes('relay')) return { label: 'RLY', color: 'bg-purple-600' };
+    return { label: 'DEV', color: 'bg-muted' };
+  };
+
+  const getRssiStrength = (rssi: number): { bars: number; color: string } => {
+    if (rssi > -50) return { bars: 4, color: 'text-green-400' };
+    if (rssi > -65) return { bars: 3, color: 'text-green-400' };
+    if (rssi > -80) return { bars: 2, color: 'text-amber-400' };
+    return { bars: 1, color: 'text-red-400' };
   };
 
   if (!bleAvailable) {
@@ -81,65 +101,109 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
 
   return (
     <div className="space-y-3">
-      {/* Scan Button */}
-      <Button
-        variant="outline"
-        className="w-full h-12 gap-2 border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
-        onClick={handleScan}
-        disabled={scanning}
-      >
-        {scanning ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          <Search className="w-4 h-4" />
+      {/* Scan Controls */}
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          className="flex-1 h-11 gap-2 border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+          onClick={handleScan}
+          disabled={scanning}
+        >
+          {scanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+          {scanning ? 'Escaneando...' : 'Escanear Módulos'}
+        </Button>
+        {devices.length > 0 && (
+          <Button variant="outline" size="icon" className="h-11 w-11 border-purple-500/30 text-purple-400"
+            onClick={() => { setDevices([]); setConnectedId(null); }}>
+            <RefreshCw className="w-4 h-4" />
+          </Button>
         )}
-        {scanning ? 'Escaneando...' : 'Escanear Módulos BLE'}
-      </Button>
+      </div>
 
-      {/* Scanned Device */}
-      {scannedDevice && (
-        <div className={cn(
-          "rounded-lg border p-3 flex items-center gap-3",
-          connected
-            ? "border-green-500/40 bg-green-500/5"
-            : "border-purple-500/30 bg-purple-500/5"
-        )}>
-          <div className={cn(
-            "w-10 h-10 rounded-lg flex items-center justify-center",
-            connected ? "bg-green-500/20" : "bg-purple-500/20"
-          )}>
-            <Bluetooth className={cn("w-5 h-5", connected ? "text-green-400" : "text-purple-400")} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold font-mono text-foreground truncate">{scannedDevice.name}</p>
-            <div className="flex items-center gap-2 mt-0.5">
-              <Badge variant="outline" className="text-[8px] h-4 px-1">
-                <Signal className="w-2.5 h-2.5 mr-0.5" />
-                {scannedDevice.rssi}dBm
-              </Badge>
-              {connected && (
-                <Badge className="text-[8px] h-4 px-1.5 bg-green-600 text-white">
-                  <CheckCircle2 className="w-2.5 h-2.5 mr-0.5" /> CONECTADO
-                </Badge>
-              )}
-            </div>
-          </div>
-          {!connected && (
-            <Button
-              size="sm"
-              className="bg-purple-600 hover:bg-purple-500 text-white h-8 px-3 text-xs"
-              onClick={handleConnect}
-              disabled={connecting}
-            >
-              {connecting ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Conectar'}
-            </Button>
-          )}
+      {/* Device Count */}
+      {devices.length > 0 && (
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+            {devices.length} dispositivo{devices.length > 1 ? 's' : ''} encontrado{devices.length > 1 ? 's' : ''}
+          </span>
+          <Badge variant="outline" className="text-[8px] h-4 border-purple-500/30 text-purple-400">
+            <Bluetooth className="w-2.5 h-2.5 mr-0.5" /> BLE SCAN
+          </Badge>
         </div>
       )}
 
-      <p className="text-[9px] text-muted-foreground text-center">
-        Selecione um módulo FXK no picker do navegador para parear via GATT
-      </p>
+      {/* Device List */}
+      <div className="space-y-2 max-h-48 overflow-y-auto">
+        {devices.map(device => {
+          const isConnected = connectedId === device.id;
+          const isConnecting = connectingId === device.id;
+          const devType = getDeviceType(device.name);
+          const signal = getRssiStrength(device.rssi);
+
+          return (
+            <div key={device.id} className={cn(
+              "rounded-lg border p-3 flex items-center gap-3 transition-all",
+              isConnected
+                ? "border-green-500/40 bg-green-500/5"
+                : "border-purple-500/20 bg-purple-500/5 hover:border-purple-500/40"
+            )}>
+              {/* Device Icon & Type */}
+              <div className="relative">
+                <div className={cn(
+                  "w-10 h-10 rounded-lg flex items-center justify-center",
+                  isConnected ? "bg-green-500/20" : "bg-purple-500/20"
+                )}>
+                  <Bluetooth className={cn("w-5 h-5", isConnected ? "text-green-400" : "text-purple-400")} />
+                </div>
+                <span className={cn("absolute -bottom-1 -right-1 text-[7px] font-bold px-1 rounded text-white", devType.color)}>
+                  {devType.label}
+                </span>
+              </div>
+
+              {/* Device Info */}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold font-mono text-foreground truncate">{device.name}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  {/* Signal Strength Bars */}
+                  <div className="flex items-end gap-[2px] h-3">
+                    {[1, 2, 3, 4].map(bar => (
+                      <div key={bar} className={cn(
+                        "w-[3px] rounded-sm transition-all",
+                        bar <= signal.bars ? signal.color.replace('text-', 'bg-') : 'bg-muted-foreground/20'
+                      )} style={{ height: `${bar * 25}%` }} />
+                    ))}
+                  </div>
+                  <span className="text-[9px] font-mono text-muted-foreground">{device.rssi}dBm</span>
+
+                  {isConnected && (
+                    <Badge className="text-[7px] h-3.5 px-1.5 bg-green-600 text-white">
+                      <CheckCircle2 className="w-2 h-2 mr-0.5" /> ONLINE
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              {/* Connect Button */}
+              {!isConnected && (
+                <Button
+                  size="sm"
+                  className="bg-purple-600 hover:bg-purple-500 text-white h-8 px-3 text-xs"
+                  onClick={() => handleConnect(device)}
+                  disabled={isConnecting || connectedId !== null}
+                >
+                  {isConnecting ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Conectar'}
+                </Button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {devices.length === 0 && (
+        <p className="text-[9px] text-muted-foreground text-center">
+          Pressione "Escanear" para detectar módulos FXK e controladoras BLE próximos
+        </p>
+      )}
     </div>
   );
 }
@@ -212,15 +276,15 @@ function SetupScreen({ onStart }: { onStart: (code: string, role: DeviceRole, tr
         </div>
       </div>
 
-      {/* BLE Scanner — shown when BLE transport selected */}
+      {/* BLE Scanner */}
       {isBLE && role === 'controller' && (
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">3. Escanear Módulo BLE</p>
+          <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">3. Escanear Módulos BLE</p>
           <BLEScanner onConnected={() => setBleReady(true)} />
         </div>
       )}
 
-      {/* Session Code — shown for non-BLE transports */}
+      {/* Session Code — non-BLE */}
       {!isBLE && (
         <div className="space-y-2">
           <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">3. Código da sessão</p>
@@ -294,10 +358,143 @@ function LogEntry({ log }: { log: TestLog }) {
   );
 }
 
+// ─── Diagnostics & Suggestions Panel ──────────────
+function DiagnosticsPanel({ session }: { session: FieldTestSession }) {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [benchmarkChannels, setBenchmarkChannels] = useState(16);
+  const [benchmarkRunning, setBenchmarkRunning] = useState(false);
+
+  useEffect(() => {
+    setSuggestions(fieldTestEngine.getSuggestions());
+  }, [session.stats.firesSent, session.stats.acksReceived]);
+
+  const handleBenchmark = async () => {
+    if (!session.armed) {
+      toast.error('Arme o sistema antes do benchmark');
+      return;
+    }
+    setBenchmarkRunning(true);
+    haptics.tap();
+    await fieldTestEngine.runBenchmark(benchmarkChannels);
+    setBenchmarkRunning(false);
+    haptics.success();
+    toast.success('Benchmark completo!');
+  };
+
+  const handleExportReport = () => {
+    const report = fieldTestEngine.generateReport();
+    navigator.clipboard?.writeText(report);
+    toast.success('Relatório copiado para clipboard!');
+    haptics.tap();
+  };
+
+  return (
+    <div className="space-y-3 px-3 pb-3">
+      {/* Benchmark */}
+      <div className="rounded-lg border border-border/30 bg-card/30 p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <BarChart3 className="w-3.5 h-3.5 text-amber-400" />
+            <span className="text-[10px] font-mono font-bold text-foreground uppercase">Auto Benchmark</span>
+          </div>
+          <Badge variant="outline" className="text-[8px] h-4 px-1.5 font-mono">
+            {benchmarkChannels}ch
+          </Badge>
+        </div>
+        <div className="flex gap-2">
+          <div className="flex gap-1">
+            {[8, 16, 24, 32].map(n => (
+              <button key={n}
+                className={cn(
+                  "text-[9px] font-mono px-2 py-1 rounded border transition-all",
+                  benchmarkChannels === n
+                    ? "border-amber-500/50 bg-amber-500/10 text-amber-400"
+                    : "border-border/30 text-muted-foreground hover:border-border/60"
+                )}
+                onClick={() => setBenchmarkChannels(n)}
+              >{n}ch</button>
+            ))}
+          </div>
+          <Button
+            size="sm"
+            className={cn("h-7 px-3 text-[10px] font-mono gap-1", benchmarkRunning ? "bg-red-600" : "bg-amber-600 hover:bg-amber-500")}
+            onClick={benchmarkRunning ? () => fieldTestEngine.stopBenchmark() : handleBenchmark}
+            disabled={!session.armed && !benchmarkRunning}
+          >
+            {benchmarkRunning ? <><Square className="w-3 h-3" /> PARAR</> : <><Play className="w-3 h-3" /> RUN</>}
+          </Button>
+        </div>
+        {benchmarkRunning && (
+          <Progress value={(session.stats.firesSent / benchmarkChannels) * 100} className="h-1.5" />
+        )}
+      </div>
+
+      {/* Stats Summary */}
+      {session.stats.firesSent > 0 && (
+        <div className="rounded-lg border border-border/30 bg-card/30 p-3">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Activity className="w-3.5 h-3.5 text-blue-400" />
+            <span className="text-[10px] font-mono font-bold text-foreground uppercase">Métricas de Rede</span>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { label: 'AVG', value: `${session.stats.avgLatency}ms`, color: 'text-amber-400' },
+              { label: 'P95', value: `${session.stats.p95Latency}ms`, color: 'text-amber-400' },
+              { label: 'MIN', value: `${session.stats.minLatency}ms`, color: 'text-green-400' },
+              { label: 'MAX', value: `${session.stats.maxLatency}ms`, color: 'text-red-400' },
+            ].map(m => (
+              <div key={m.label} className="text-center">
+                <div className={cn("text-sm font-mono font-black", m.color)}>{m.value}</div>
+                <div className="text-[8px] font-mono text-muted-foreground">{m.label}</div>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between mt-2 pt-2 border-t border-border/20">
+            <span className="text-[9px] font-mono text-muted-foreground">
+              FIRE: <span className="text-foreground">{session.stats.firesSent}</span> · ACK: <span className="text-green-400">{session.stats.acksReceived}</span>
+            </span>
+            <span className={cn("text-[9px] font-mono font-bold", session.stats.packetLoss > 1 ? 'text-red-400' : 'text-green-400')}>
+              LOSS: {session.stats.packetLoss}%
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Smart Suggestions */}
+      {suggestions.length > 0 && (
+        <div className="rounded-lg border border-border/30 bg-card/30 p-3 space-y-1.5">
+          <div className="flex items-center gap-1.5">
+            <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
+            <span className="text-[10px] font-mono font-bold text-foreground uppercase">Recomendações</span>
+          </div>
+          {suggestions.map((tip, i) => (
+            <div key={i} className="text-[10px] font-mono text-muted-foreground leading-relaxed pl-1 border-l-2 border-amber-500/20 ml-1">
+              {tip}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Export Report */}
+      {session.stats.firesSent > 0 && (
+        <Button
+          variant="outline"
+          className="w-full h-9 gap-2 text-xs font-mono border-border/30"
+          onClick={handleExportReport}
+        >
+          <FileText className="w-3.5 h-3.5" />
+          Copiar Relatório de Teste
+        </Button>
+      )}
+    </div>
+  );
+}
+
 // ─── FireOne XL4 Landscape Controller Console ─────
 function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; onStop: () => void }) {
   const channels = Array.from({ length: 32 }, (_, i) => i + 1);
   const [lastFired, setLastFired] = useState<number | null>(null);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
 
   const handleFire = useCallback((ch: number) => {
     fieldTestEngine.fire(ch);
@@ -352,7 +549,6 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
           )}
         </div>
         <div className="flex items-center gap-2">
-          {/* Stats inline */}
           {session.stats.firesSent > 0 && (
             <div className="flex items-center gap-3 text-[8px] font-mono">
               <span className="text-muted-foreground/50">AVG:<span className="text-amber-400 font-bold ml-0.5">{session.stats.avgLatency}ms</span></span>
@@ -360,11 +556,22 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
               <span className="text-muted-foreground/50">LOSS:<span className={cn("font-bold ml-0.5", session.stats.packetLoss > 1 ? 'text-red-400' : 'text-green-400')}>{session.stats.packetLoss}%</span></span>
             </div>
           )}
+          <button onClick={() => setShowDiagnostics(!showDiagnostics)}
+            className={cn("text-[8px] font-mono px-1.5 py-0.5 rounded", showDiagnostics ? "bg-amber-500/20 text-amber-400" : "text-muted-foreground/40 hover:text-muted-foreground")}>
+            <BarChart3 className="w-3 h-3" />
+          </button>
           <button onClick={onStop} className="text-[8px] font-mono text-muted-foreground/40 hover:text-muted-foreground px-1">
             EXIT
           </button>
         </div>
       </div>
+
+      {/* Diagnostics Drawer */}
+      {showDiagnostics && (
+        <div className="shrink-0 max-h-64 overflow-y-auto" style={{ background: 'hsl(220 20% 5%)', borderBottom: '1px solid hsl(0 0% 100% / 0.05)' }}>
+          <DiagnosticsPanel session={session} />
+        </div>
+      )}
 
       {/* ═══ Main XL4 Panel ═══ */}
       <div className="flex-1 flex min-h-0">
@@ -375,7 +582,6 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
             background: 'linear-gradient(180deg, hsl(220 18% 7%), hsl(220 18% 5%))',
             borderRight: '1px solid hsl(0 0% 100% / 0.04)',
           }}>
-          {/* ARM Key */}
           <button
             onClick={handleArm}
             disabled={!session.peerConnected}
@@ -390,7 +596,6 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
             {session.armed ? 'DISARM' : 'ARM'}
           </button>
 
-          {/* E-STOP */}
           <button
             onClick={handleEStop}
             className="w-12 h-12 rounded-lg bg-red-700 hover:bg-red-600 border-2 border-red-500/50 text-white font-mono font-black text-[8px] active:scale-90 transition-all shadow-[0_0_12px_hsl(0_70%_50%/0.3)]"
@@ -399,7 +604,6 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
             E-STOP
           </button>
 
-          {/* Fullscreen */}
           <button
             onClick={() => {
               if (document.fullscreenElement) document.exitFullscreen();
@@ -411,9 +615,8 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
           </button>
         </div>
 
-        {/* Fire Grid — XL4 Style */}
+        {/* Fire Grid */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Channel Grid */}
           <div className="flex-1 p-2 overflow-hidden">
             <div className="grid grid-cols-8 grid-rows-4 gap-1 h-full">
               {channels.map(ch => {
@@ -483,7 +686,6 @@ function ModuleConsole({ session, onStop }: { session: FieldTestSession; onStop:
   const [lastFireLatency, setLastFireLatency] = useState<number | null>(null);
   const [flashActive, setFlashActive] = useState(false);
 
-  // Watch for new fire events and trigger haptics
   useEffect(() => {
     const fireLog = session.logs.find(l => l.type === 'fire' && l.channel !== undefined);
     if (fireLog && fireLog.channel !== undefined) {
@@ -491,27 +693,21 @@ function ModuleConsole({ session, onStop }: { session: FieldTestSession; onStop:
         setLastFireChannel(fireLog.channel);
         setLastFireLatency(fireLog.latencyMs ?? null);
         setFlashActive(true);
-        // Trigger haptic feedback on fire receive
         haptics.fire();
         setTimeout(() => setFlashActive(false), 400);
       }
     }
   }, [session.logs.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Haptics on arm/disarm changes
   useEffect(() => {
-    if (session.armed) {
-      haptics.arm();
-    } else {
-      haptics.disarm();
-    }
+    if (session.armed) haptics.arm();
+    else haptics.disarm();
   }, [session.armed]);
 
   return (
     <div className="h-[100dvh] w-screen flex flex-col overflow-hidden"
       style={{ background: 'hsl(220 25% 4%)' }}>
 
-      {/* Header */}
       <div className="shrink-0 flex items-center justify-between px-4 h-10"
         style={{
           background: 'linear-gradient(180deg, hsl(220 20% 8%), hsl(220 20% 5%))',
@@ -535,10 +731,7 @@ function ModuleConsole({ session, onStop }: { session: FieldTestSession; onStop:
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6">
-
-        {/* Armed Status */}
         <div className={cn(
           "w-full max-w-sm rounded-xl border-2 p-6 flex flex-col items-center gap-2 transition-all",
           session.armed
@@ -553,7 +746,6 @@ function ModuleConsole({ session, onStop }: { session: FieldTestSession; onStop:
           </span>
         </div>
 
-        {/* Last Fire Visual — big center display */}
         <div className={cn(
           "w-full max-w-sm rounded-xl border-2 p-8 flex flex-col items-center gap-2 transition-all",
           flashActive
@@ -583,7 +775,6 @@ function ModuleConsole({ session, onStop }: { session: FieldTestSession; onStop:
           )}
         </div>
 
-        {/* E-STOP */}
         <Button
           className="w-full max-w-sm h-14 font-bold text-sm bg-destructive hover:bg-destructive/80 text-destructive-foreground"
           onClick={() => { fieldTestEngine.eStop(); haptics.panic(); }}
@@ -593,7 +784,6 @@ function ModuleConsole({ session, onStop }: { session: FieldTestSession; onStop:
         </Button>
       </div>
 
-      {/* Bottom Log */}
       <div className="shrink-0 max-h-32 overflow-y-auto px-4 py-2"
         style={{
           background: 'hsl(220 20% 4%)',
@@ -630,19 +820,16 @@ export default function FieldTest() {
     toast.info('Sessão encerrada');
   }, []);
 
-  // Controller in landscape fullscreen XL4 mode
   if (session?.role === 'controller') {
     return <XL4ControllerConsole session={session} onStop={handleStop} />;
   }
 
-  // Module fullscreen
   if (session?.role === 'module') {
     return <ModuleConsole session={session} onStop={handleStop} />;
   }
 
   return (
     <div className="bg-background min-h-screen">
-      {/* Top bar */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border/30">
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>
           <ArrowLeft className="w-4 h-4" />
@@ -650,8 +837,6 @@ export default function FieldTest() {
         <Target className="w-4 h-4 text-destructive" />
         <span className="text-sm font-bold text-foreground">FIELD TEST</span>
       </div>
-
-      {/* Setup */}
       <SetupScreen onStart={handleStart} />
     </div>
   );
