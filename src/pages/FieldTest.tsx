@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import {
   Wifi, Globe, Bluetooth, Radio, Zap, Shield, Target,
   ArrowLeft, CheckCircle2, XCircle, Flame, AlertTriangle,
-  Activity, Copy, Smartphone
+  Activity, Copy, Smartphone, Maximize
 } from 'lucide-react';
 import {
   fieldTestEngine, generateSessionCode,
@@ -14,6 +14,8 @@ import {
 } from '@/services/fieldTestService';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { haptics } from '@/lib/haptics';
+import { cn } from '@/lib/utils';
 
 // ─── Transport Config ─────────────────────────────
 const TRANSPORTS: { id: TestTransport; label: string; desc: string; icon: React.ReactNode; color: string }[] = [
@@ -47,7 +49,7 @@ function SetupScreen({ onStart }: { onStart: (code: string, role: DeviceRole, tr
           <Button
             variant={role === 'controller' ? 'default' : 'outline'}
             className={`h-20 flex-col gap-1 ${role === 'controller' ? 'ring-2 ring-primary' : ''}`}
-            onClick={() => setRole('controller')}
+            onClick={() => { setRole('controller'); haptics.tap(); }}
           >
             <Radio className="w-6 h-6" />
             <span className="text-xs font-bold">CONTROLADORA</span>
@@ -56,7 +58,7 @@ function SetupScreen({ onStart }: { onStart: (code: string, role: DeviceRole, tr
           <Button
             variant={role === 'module' ? 'default' : 'outline'}
             className={`h-20 flex-col gap-1 ${role === 'module' ? 'ring-2 ring-primary' : ''}`}
-            onClick={() => setRole('module')}
+            onClick={() => { setRole('module'); haptics.tap(); }}
           >
             <Smartphone className="w-6 h-6" />
             <span className="text-xs font-bold">MÓDULO</span>
@@ -74,7 +76,7 @@ function SetupScreen({ onStart }: { onStart: (code: string, role: DeviceRole, tr
               key={t.id}
               variant={transport === t.id ? 'default' : 'outline'}
               className={`w-full justify-start h-12 gap-3 ${transport === t.id ? 'ring-2 ring-primary' : ''}`}
-              onClick={() => setTransport(t.id)}
+              onClick={() => { setTransport(t.id); haptics.select(); }}
             >
               <span className={t.color}>{t.icon}</span>
               <div className="text-left">
@@ -147,191 +149,308 @@ function LogEntry({ log }: { log: TestLog }) {
   );
 }
 
-// ─── Controller Console ───────────────────────────
-function ControllerConsole({ session, onStop }: { session: FieldTestSession; onStop: () => void }) {
-  const channels = Array.from({ length: 16 }, (_, i) => i + 1);
+// ─── FireOne XL4 Landscape Controller Console ─────
+function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; onStop: () => void }) {
+  const channels = Array.from({ length: 32 }, (_, i) => i + 1);
+  const [lastFired, setLastFired] = useState<number | null>(null);
+
+  const handleFire = useCallback((ch: number) => {
+    fieldTestEngine.fire(ch);
+    haptics.fire();
+    setLastFired(ch);
+    setTimeout(() => setLastFired(null), 300);
+  }, []);
+
+  const handleArm = useCallback(() => {
+    if (session.armed) {
+      fieldTestEngine.disarm();
+      haptics.disarm();
+    } else {
+      fieldTestEngine.arm();
+      haptics.arm();
+    }
+  }, [session.armed]);
+
+  const handleEStop = useCallback(() => {
+    fieldTestEngine.eStop();
+    haptics.panic();
+  }, []);
 
   return (
-    <div className="space-y-3 p-3">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="h-[100dvh] w-screen flex flex-col overflow-hidden"
+      style={{ background: 'hsl(220 25% 4%)' }}>
+
+      {/* ═══ XL4 Top Bar ═══ */}
+      <div className="shrink-0 flex items-center justify-between px-3 h-8"
+        style={{
+          background: 'linear-gradient(180deg, hsl(220 20% 10%), hsl(220 20% 6%))',
+          borderBottom: '1px solid hsl(0 0% 100% / 0.05)',
+        }}>
         <div className="flex items-center gap-2">
-          <Radio className="w-4 h-4 text-primary" />
-          <span className="text-sm font-bold text-foreground">CONTROLADORA</span>
-          <Badge variant="outline" className="text-[9px]">{session.code}</Badge>
+          <div className="flex items-center gap-1.5">
+            <div className={cn("w-2 h-2 rounded-full", session.peerConnected ? "bg-green-500" : "bg-red-500")}
+              style={{ boxShadow: session.peerConnected ? '0 0 6px hsl(120 70% 50%)' : '0 0 6px hsl(0 70% 50%)' }} />
+            <span className="text-[8px] font-mono font-bold text-muted-foreground/60">
+              {session.peerConnected ? 'MODULE ONLINE' : 'WAITING'}
+            </span>
+          </div>
+          <Badge variant="outline" className="text-[7px] h-4 px-1.5 font-mono border-amber-500/30 text-amber-400">
+            {session.code}
+          </Badge>
+          <Badge variant="outline" className="text-[7px] h-4 px-1.5 font-mono border-blue-500/30 text-blue-400">
+            {session.transport.toUpperCase()}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Stats inline */}
+          {session.stats.firesSent > 0 && (
+            <div className="flex items-center gap-3 text-[8px] font-mono">
+              <span className="text-muted-foreground/50">AVG:<span className="text-amber-400 font-bold ml-0.5">{session.stats.avgLatency}ms</span></span>
+              <span className="text-muted-foreground/50">P95:<span className="text-amber-400 font-bold ml-0.5">{session.stats.p95Latency}ms</span></span>
+              <span className="text-muted-foreground/50">LOSS:<span className={cn("font-bold ml-0.5", session.stats.packetLoss > 1 ? 'text-red-400' : 'text-green-400')}>{session.stats.packetLoss}%</span></span>
+            </div>
+          )}
+          <button onClick={onStop} className="text-[8px] font-mono text-muted-foreground/40 hover:text-muted-foreground px-1">
+            EXIT
+          </button>
+        </div>
+      </div>
+
+      {/* ═══ Main XL4 Panel ═══ */}
+      <div className="flex-1 flex min-h-0">
+
+        {/* Left Control Strip */}
+        <div className="w-16 shrink-0 flex flex-col items-center justify-center gap-2 py-2"
+          style={{
+            background: 'linear-gradient(180deg, hsl(220 18% 7%), hsl(220 18% 5%))',
+            borderRight: '1px solid hsl(0 0% 100% / 0.04)',
+          }}>
+          {/* ARM Key */}
+          <button
+            onClick={handleArm}
+            disabled={!session.peerConnected}
+            className={cn(
+              "w-12 h-12 rounded-lg font-mono font-black text-[9px] tracking-wider border-2 transition-all active:scale-95",
+              session.armed
+                ? "bg-amber-600 border-amber-500 text-white shadow-[0_0_20px_hsl(32_100%_50%/0.4)]"
+                : "bg-amber-600/10 border-amber-600/30 text-amber-400/60"
+            )}
+          >
+            <Shield className="w-4 h-4 mx-auto mb-0.5" />
+            {session.armed ? 'DISARM' : 'ARM'}
+          </button>
+
+          {/* E-STOP */}
+          <button
+            onClick={handleEStop}
+            className="w-12 h-12 rounded-lg bg-red-700 hover:bg-red-600 border-2 border-red-500/50 text-white font-mono font-black text-[8px] active:scale-90 transition-all shadow-[0_0_12px_hsl(0_70%_50%/0.3)]"
+          >
+            <AlertTriangle className="w-4 h-4 mx-auto mb-0.5" />
+            E-STOP
+          </button>
+
+          {/* Fullscreen */}
+          <button
+            onClick={() => {
+              if (document.fullscreenElement) document.exitFullscreen();
+              else document.documentElement.requestFullscreen?.();
+            }}
+            className="w-8 h-8 rounded-md bg-muted/20 border border-border/20 flex items-center justify-center mt-auto"
+          >
+            <Maximize className="w-3 h-3 text-muted-foreground/50" />
+          </button>
+        </div>
+
+        {/* Fire Grid — XL4 Style */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Channel Grid */}
+          <div className="flex-1 p-2 overflow-hidden">
+            <div className="grid grid-cols-8 grid-rows-4 gap-1 h-full">
+              {channels.map(ch => {
+                const isFiring = lastFired === ch;
+                return (
+                  <button
+                    key={ch}
+                    disabled={!session.armed || !session.peerConnected}
+                    onClick={() => handleFire(ch)}
+                    className={cn(
+                      "relative rounded-md font-mono font-black text-sm transition-all active:scale-90",
+                      "border flex flex-col items-center justify-center",
+                      session.armed
+                        ? isFiring
+                          ? "bg-orange-500 border-orange-400 text-white scale-95"
+                          : "bg-red-900/40 border-red-700/40 text-red-300 hover:bg-red-800/60 hover:border-red-600/60"
+                        : "bg-muted/10 border-border/20 text-muted-foreground/20"
+                    )}
+                    style={isFiring ? {
+                      boxShadow: '0 0 20px hsl(25 100% 50% / 0.6), inset 0 0 10px hsl(25 100% 60% / 0.3)',
+                    } : session.armed ? {
+                      boxShadow: '0 2px 8px hsl(0 0% 0% / 0.3), inset 0 1px 0 hsl(0 0% 100% / 0.02)',
+                    } : undefined}
+                  >
+                    <span className="text-[10px] opacity-40 leading-none">CH</span>
+                    <span className="leading-none">{String(ch).padStart(2, '0')}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Bottom Status Strip */}
+          <div className="shrink-0 h-6 flex items-center px-3 gap-4 text-[8px] font-mono"
+            style={{
+              background: 'hsl(220 20% 5%)',
+              borderTop: '1px solid hsl(0 0% 100% / 0.03)',
+            }}>
+            <span className="text-muted-foreground/40">SENT:<span className="text-foreground/60 ml-0.5">{session.stats.firesSent}</span></span>
+            <span className="text-muted-foreground/40">ACK:<span className="text-green-400 ml-0.5">{session.stats.acksReceived}</span></span>
+            <span className="text-muted-foreground/40">MIN:<span className="text-foreground/60 ml-0.5">{session.stats.minLatency}ms</span></span>
+            <span className="text-muted-foreground/40">MAX:<span className="text-foreground/60 ml-0.5">{session.stats.maxLatency}ms</span></span>
+          </div>
+        </div>
+
+        {/* Right Log Panel */}
+        <div className="w-44 shrink-0 flex flex-col"
+          style={{
+            background: 'hsl(220 18% 5%)',
+            borderLeft: '1px solid hsl(0 0% 100% / 0.04)',
+          }}>
+          <div className="h-5 flex items-center px-2 border-b border-border/10">
+            <span className="text-[7px] font-mono font-bold text-muted-foreground/40 tracking-wider">EVENT LOG</span>
+          </div>
+          <div className="flex-1 overflow-y-auto px-1.5 py-1">
+            {session.logs.slice(0, 50).map(l => <LogEntry key={l.id} log={l} />)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Module Console (with Haptics) ───────────────
+function ModuleConsole({ session, onStop }: { session: FieldTestSession; onStop: () => void }) {
+  const [lastFireChannel, setLastFireChannel] = useState<number | null>(null);
+  const [lastFireLatency, setLastFireLatency] = useState<number | null>(null);
+  const [flashActive, setFlashActive] = useState(false);
+
+  // Watch for new fire events and trigger haptics
+  useEffect(() => {
+    const fireLog = session.logs.find(l => l.type === 'fire' && l.channel !== undefined);
+    if (fireLog && fireLog.channel !== undefined) {
+      if (lastFireChannel !== fireLog.channel || fireLog.timestamp > (Date.now() - 500)) {
+        setLastFireChannel(fireLog.channel);
+        setLastFireLatency(fireLog.latencyMs ?? null);
+        setFlashActive(true);
+        // Trigger haptic feedback on fire receive
+        haptics.fire();
+        setTimeout(() => setFlashActive(false), 400);
+      }
+    }
+  }, [session.logs.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Haptics on arm/disarm changes
+  useEffect(() => {
+    if (session.armed) {
+      haptics.arm();
+    } else {
+      haptics.disarm();
+    }
+  }, [session.armed]);
+
+  return (
+    <div className="h-[100dvh] w-screen flex flex-col overflow-hidden"
+      style={{ background: 'hsl(220 25% 4%)' }}>
+
+      {/* Header */}
+      <div className="shrink-0 flex items-center justify-between px-4 h-10"
+        style={{
+          background: 'linear-gradient(180deg, hsl(220 20% 8%), hsl(220 20% 5%))',
+          borderBottom: '1px solid hsl(0 0% 100% / 0.05)',
+        }}>
+        <div className="flex items-center gap-2">
+          <Smartphone className="w-4 h-4 text-primary" />
+          <span className="text-sm font-bold text-foreground font-mono">MÓDULO RECEPTOR</span>
+          <Badge variant="outline" className="text-[8px] font-mono">{session.code}</Badge>
         </div>
         <div className="flex items-center gap-2">
           <Badge
             variant={session.peerConnected ? 'outline' : 'secondary'}
-            className={`text-[9px] ${session.peerConnected ? 'border-green-500/50 text-green-400' : 'text-muted-foreground'}`}
+            className={cn("text-[8px]", session.peerConnected ? 'border-green-500/50 text-green-400' : 'text-muted-foreground')}
           >
-            {session.peerConnected ? '● MÓDULO ONLINE' : '○ AGUARDANDO'}
+            {session.peerConnected ? '● CTRL ONLINE' : '○ AGUARDANDO'}
           </Badge>
-          <Button variant="ghost" size="sm" onClick={onStop} className="h-6 px-2 text-xs">
+          <Button variant="ghost" size="sm" onClick={onStop} className="h-7 px-2 text-xs">
             <XCircle className="w-3 h-3 mr-1" /> Sair
           </Button>
         </div>
       </div>
 
-      {/* ARM / DISARM / E-STOP */}
-      <div className="grid grid-cols-3 gap-2">
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6">
+
+        {/* Armed Status */}
+        <div className={cn(
+          "w-full max-w-sm rounded-xl border-2 p-6 flex flex-col items-center gap-2 transition-all",
+          session.armed
+            ? "border-amber-500/50 bg-amber-500/5"
+            : "border-border/30 bg-card/30"
+        )}>
+          <Shield className={cn("w-12 h-12", session.armed ? "text-amber-400" : "text-muted-foreground/30")} />
+          <span className={cn("text-xl font-black font-mono tracking-wider",
+            session.armed ? "text-amber-400" : "text-muted-foreground/30"
+          )}>
+            {session.armed ? 'ARMED' : 'DISARMED'}
+          </span>
+        </div>
+
+        {/* Last Fire Visual — big center display */}
+        <div className={cn(
+          "w-full max-w-sm rounded-xl border-2 p-8 flex flex-col items-center gap-2 transition-all",
+          flashActive
+            ? "border-orange-500/80 bg-orange-500/10"
+            : lastFireChannel !== null
+              ? "border-destructive/30 bg-destructive/5"
+              : "border-border/20 bg-card/20"
+        )}
+        style={flashActive ? {
+          boxShadow: '0 0 40px hsl(25 100% 50% / 0.3), inset 0 0 20px hsl(25 100% 50% / 0.1)',
+        } : undefined}>
+          {lastFireChannel !== null ? (
+            <>
+              <Flame className={cn("w-10 h-10", flashActive ? "text-orange-400 animate-pulse" : "text-destructive/60")} />
+              <span className="text-4xl font-mono font-black text-destructive">
+                CH-{String(lastFireChannel).padStart(2, '0')}
+              </span>
+              {lastFireLatency !== null && (
+                <span className="text-sm font-mono text-muted-foreground">{lastFireLatency}ms</span>
+              )}
+            </>
+          ) : (
+            <>
+              <Activity className="w-8 h-8 text-muted-foreground/20" />
+              <span className="text-sm font-mono text-muted-foreground/30">AGUARDANDO DISPARO</span>
+            </>
+          )}
+        </div>
+
+        {/* E-STOP */}
         <Button
-          className={`h-14 font-bold text-sm ${session.armed
-            ? 'bg-amber-600 hover:bg-amber-700 text-white'
-            : 'bg-amber-600/20 hover:bg-amber-600/40 text-amber-400 border border-amber-600/50'
-          }`}
-          onClick={() => session.armed ? fieldTestEngine.disarm() : fieldTestEngine.arm()}
-          disabled={!session.peerConnected}
-        >
-          <Shield className="w-5 h-5 mr-1" />
-          {session.armed ? 'DISARM' : 'ARM'}
-        </Button>
-        <Button
-          className="h-14 font-bold text-sm bg-destructive hover:bg-destructive/80 text-destructive-foreground col-span-2"
-          onClick={() => fieldTestEngine.eStop()}
+          className="w-full max-w-sm h-14 font-bold text-sm bg-destructive hover:bg-destructive/80 text-destructive-foreground"
+          onClick={() => { fieldTestEngine.eStop(); haptics.panic(); }}
         >
           <AlertTriangle className="w-5 h-5 mr-1" />
           E-STOP
         </Button>
       </div>
 
-      {/* Fire Grid */}
-      <Card className="bg-card/50 border-border/50">
-        <CardHeader className="py-2 px-3">
-          <CardTitle className="text-xs text-muted-foreground flex items-center gap-1">
-            <Flame className="w-3 h-3" /> CANAIS DE DISPARO
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-3 pb-3">
-          <div className="grid grid-cols-4 gap-2">
-            {channels.map(ch => (
-              <Button
-                key={ch}
-                disabled={!session.armed || !session.peerConnected}
-                className={`h-12 font-mono font-bold text-sm ${
-                  session.armed
-                    ? 'bg-destructive/80 hover:bg-destructive text-destructive-foreground active:scale-95'
-                    : 'bg-muted text-muted-foreground'
-                } transition-transform`}
-                onClick={() => fieldTestEngine.fire(ch)}
-              >
-                {String(ch).padStart(2, '0')}
-              </Button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Stats */}
-      {session.stats.firesSent > 0 && (
-        <Card className="bg-card/50 border-border/50">
-          <CardHeader className="py-2 px-3">
-            <CardTitle className="text-xs text-muted-foreground flex items-center gap-1">
-              <Activity className="w-3 h-3" /> ESTATÍSTICAS
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-3 pb-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs font-mono">
-            <div className="flex justify-between"><span className="text-muted-foreground">Enviados</span><span className="font-bold">{session.stats.firesSent}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">ACKs</span><span className="font-bold text-green-400">{session.stats.acksReceived}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Latência Avg</span><span className="font-bold">{session.stats.avgLatency}ms</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Min</span><span className="font-bold">{session.stats.minLatency}ms</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Max</span><span className="font-bold">{session.stats.maxLatency}ms</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">P95</span><span className="font-bold">{session.stats.p95Latency}ms</span></div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Packet Loss</span>
-              <span className={`font-bold ${session.stats.packetLoss > 1 ? 'text-destructive' : 'text-green-400'}`}>
-                {session.stats.packetLoss}%
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Log */}
-      <Card className="bg-card/50 border-border/50">
-        <CardHeader className="py-2 px-3">
-          <CardTitle className="text-xs text-muted-foreground">LOG</CardTitle>
-        </CardHeader>
-        <CardContent className="px-3 pb-3 max-h-48 overflow-y-auto">
-          {session.logs.map(l => <LogEntry key={l.id} log={l} />)}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-// ─── Module Console ───────────────────────────────
-function ModuleConsole({ session, onStop }: { session: FieldTestSession; onStop: () => void }) {
-  // Find last fire received
-  const lastFire = session.logs.find(l => l.type === 'fire' && l.channel !== undefined);
-
-  return (
-    <div className="space-y-3 p-3">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Smartphone className="w-4 h-4 text-primary" />
-          <span className="text-sm font-bold text-foreground">MÓDULO RECEPTOR</span>
-          <Badge variant="outline" className="text-[9px]">{session.code}</Badge>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge
-            variant={session.peerConnected ? 'outline' : 'secondary'}
-            className={`text-[9px] ${session.peerConnected ? 'border-green-500/50 text-green-400' : 'text-muted-foreground'}`}
-          >
-            {session.peerConnected ? '● CTRL ONLINE' : '○ AGUARDANDO'}
-          </Badge>
-          <Button variant="ghost" size="sm" onClick={onStop} className="h-6 px-2 text-xs">
-            <XCircle className="w-3 h-3 mr-1" /> Sair
-          </Button>
-        </div>
+      {/* Bottom Log */}
+      <div className="shrink-0 max-h-32 overflow-y-auto px-4 py-2"
+        style={{
+          background: 'hsl(220 20% 4%)',
+          borderTop: '1px solid hsl(0 0% 100% / 0.04)',
+        }}>
+        {session.logs.slice(0, 20).map(l => <LogEntry key={l.id} log={l} />)}
       </div>
-
-      {/* Status */}
-      <Card className={`border-2 transition-colors ${
-        session.armed ? 'border-amber-500/50 bg-amber-500/5' : 'border-border/50 bg-card/50'
-      }`}>
-        <CardContent className="py-6 flex flex-col items-center gap-2">
-          <Shield className={`w-10 h-10 ${session.armed ? 'text-amber-400' : 'text-muted-foreground'}`} />
-          <span className={`text-lg font-bold ${session.armed ? 'text-amber-400' : 'text-muted-foreground'}`}>
-            {session.armed ? 'ARMED' : 'DISARMED'}
-          </span>
-        </CardContent>
-      </Card>
-
-      {/* Last Fire Visual */}
-      {lastFire && (
-        <Card className="border-destructive/50 bg-destructive/5 animate-pulse">
-          <CardContent className="py-4 flex flex-col items-center gap-1">
-            <Flame className="w-8 h-8 text-destructive" />
-            <span className="text-2xl font-mono font-bold text-destructive">
-              CH-{String(lastFire.channel).padStart(2, '0')}
-            </span>
-            {lastFire.latencyMs !== undefined && (
-              <span className="text-sm font-mono text-muted-foreground">{lastFire.latencyMs}ms</span>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* E-STOP */}
-      <Button
-        className="w-full h-14 font-bold text-sm bg-destructive hover:bg-destructive/80 text-destructive-foreground"
-        onClick={() => fieldTestEngine.eStop()}
-      >
-        <AlertTriangle className="w-5 h-5 mr-1" />
-        E-STOP
-      </Button>
-
-      {/* Log */}
-      <Card className="bg-card/50 border-border/50">
-        <CardHeader className="py-2 px-3">
-          <CardTitle className="text-xs text-muted-foreground">LOG</CardTitle>
-        </CardHeader>
-        <CardContent className="px-3 pb-3 max-h-60 overflow-y-auto">
-          {session.logs.map(l => <LogEntry key={l.id} log={l} />)}
-        </CardContent>
-      </Card>
     </div>
   );
 }
@@ -348,14 +467,28 @@ export default function FieldTest() {
 
   const handleStart = useCallback(async (code: string, role: DeviceRole, transport: TestTransport) => {
     const ok = await fieldTestEngine.start(code, role, transport);
-    if (ok) toast.success(`Sessão iniciada como ${role.toUpperCase()}`);
-    else toast.error('Falha ao iniciar sessão');
+    if (ok) {
+      haptics.success();
+      toast.success(`Sessão iniciada como ${role.toUpperCase()}`);
+    } else {
+      toast.error('Falha ao iniciar sessão');
+    }
   }, []);
 
   const handleStop = useCallback(async () => {
     await fieldTestEngine.stop();
     toast.info('Sessão encerrada');
   }, []);
+
+  // Controller in landscape fullscreen XL4 mode
+  if (session?.role === 'controller') {
+    return <XL4ControllerConsole session={session} onStop={handleStop} />;
+  }
+
+  // Module fullscreen
+  if (session?.role === 'module') {
+    return <ModuleConsole session={session} onStop={handleStop} />;
+  }
 
   return (
     <div className="bg-background min-h-screen">
@@ -366,21 +499,10 @@ export default function FieldTest() {
         </Button>
         <Target className="w-4 h-4 text-destructive" />
         <span className="text-sm font-bold text-foreground">FIELD TEST</span>
-        {session?.connected && (
-          <Badge variant="outline" className="ml-auto text-[9px] border-green-500/50 text-green-400">
-            <CheckCircle2 className="w-3 h-3 mr-1" /> CONNECTED
-          </Badge>
-        )}
       </div>
 
-      {/* Content */}
-      {!session ? (
-        <SetupScreen onStart={handleStart} />
-      ) : session.role === 'controller' ? (
-        <ControllerConsole session={session} onStop={handleStop} />
-      ) : (
-        <ModuleConsole session={session} onStop={handleStop} />
-      )}
+      {/* Setup */}
+      <SetupScreen onStart={handleStart} />
     </div>
   );
 }
