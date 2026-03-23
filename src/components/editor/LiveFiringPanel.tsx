@@ -78,6 +78,7 @@ const MODE_CATEGORIES = [
   {
     label: '🔧 HARDWARE', modes: [
       { key: 'module' as FXCMode, label: 'MODULE', icon: Globe },
+      { key: 'ble_scan' as FXCMode, label: 'BLE SCAN', icon: Signal },
     ],
   },
 ];
