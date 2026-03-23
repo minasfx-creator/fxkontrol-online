@@ -515,9 +515,17 @@ const STYLIZED_FIRE_PROFILES: Record<StylizedFirePreset, {
 function createStylizedFireEmitter(config: StylizedFireConfig): NiagaraEmitter {
   const profile = STYLIZED_FIRE_PROFILES[config.preset];
   const scale = config.scale ?? 1;
-  const baseColor = config.color ?? new THREE.Color(1, 0.5, 0.05);
+  const isEthereal = config.preset.includes('ethereal');
+  const baseColor = config.color ?? (isEthereal ? new THREE.Color(0.1, 0.8, 1.0) : new THREE.Color(1, 0.5, 0.05));
 
-  const fireColorOverLife = [
+  const fireColorOverLife = isEthereal ? [
+    { t: 0, color: new THREE.Color(1.5, 1.5, 2.0) },
+    { t: 0.15, color: new THREE.Color(0.2, 1.2, 1.8) },
+    { t: 0.35, color: new THREE.Color(0.4, 0.3, 1.5) },
+    { t: 0.55, color: new THREE.Color(0.3, 0.05, 0.8) },
+    { t: 0.75, color: new THREE.Color(0.1, 0.02, 0.3) },
+    { t: 1, color: new THREE.Color(0.02, 0.01, 0.05) },
+  ] : [
     { t: 0, color: new THREE.Color(1.5, 1.3, 0.3) },
     { t: 0.15, color: baseColor.clone().multiplyScalar(1.8) },
     { t: 0.35, color: baseColor.clone() },
