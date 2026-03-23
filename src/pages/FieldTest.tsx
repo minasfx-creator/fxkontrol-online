@@ -684,6 +684,9 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
           <Badge variant="outline" className="text-[7px] h-4 px-1.5 font-mono border-blue-500/30 text-blue-400">
             {session.transport.toUpperCase()}
           </Badge>
+          <Badge variant="outline" className="text-[7px] h-4 px-1.5 font-mono border-primary/30 text-primary">
+            MOD TARGET
+          </Badge>
           {session.transport === 'ble' && (
             <Badge variant="outline" className="text-[7px] h-4 px-1.5 font-mono border-purple-500/30 text-purple-400">
               <Bluetooth className="w-2.5 h-2.5 mr-0.5" /> GATT
