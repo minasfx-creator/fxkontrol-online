@@ -2160,11 +2160,12 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
 // --- Concrete / urban ground ---
 function ConcreteGround({ brightness }: { brightness: number }) {
   const b = brightness * 0.5;
+  const groundColor = useMemo(() => new THREE.Color(0.07 * b, 0.07 * b, 0.075 * b), [b]);
   return (
     <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
       <planeGeometry args={[100000, 100000]} />
       <meshStandardMaterial
-        color={new THREE.Color(0.07 * b, 0.07 * b, 0.075 * b)}
+        color={groundColor}
         roughness={0.92}
         metalness={0.12}
       />
