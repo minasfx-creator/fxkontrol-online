@@ -782,15 +782,26 @@ function SFXStageEnvironment() {
           const beamColor = beamColors[i % beamColors.length];
           return (
             <group key={`mh-beam-${i}`} position={pos} userData={{ isMovingHead: true }}>
+              {/* Lens glow sphere */}
+              <mesh position={[0, -0.18, 0]}>
+                <sphereGeometry args={[0.1, 12, 12]} />
+                <meshBasicMaterial color={beamColor} transparent opacity={0.95} />
+              </mesh>
               <mesh position={[0, -0.22, 0]}>
-                <circleGeometry args={[0.12, 16]} />
+                <circleGeometry args={[0.14, 16]} />
                 <meshBasicMaterial color={beamColor} transparent opacity={0.9} />
               </mesh>
-              <mesh position={[0, -4, 0]}>
-                <coneGeometry args={[2.5, 8, 16, 1, true]} />
-                <meshBasicMaterial color={beamColor} transparent opacity={0.03} side={THREE.DoubleSide} depthWrite={false} />
+              {/* Outer beam cone — volumetric spread */}
+              <mesh position={[0, -5, 0]}>
+                <coneGeometry args={[3.0, 10, 16, 1, true]} />
+                <meshBasicMaterial color={beamColor} transparent opacity={0.06} side={THREE.DoubleSide} depthWrite={false} blending={THREE.AdditiveBlending} />
               </mesh>
-              <pointLight color={beamColor} intensity={0.8} distance={20} decay={2} />
+              {/* Inner beam core — tight hot center */}
+              <mesh position={[0, -4.5, 0]}>
+                <coneGeometry args={[0.8, 9, 12, 1, true]} />
+                <meshBasicMaterial color={beamColor} transparent opacity={0.12} side={THREE.DoubleSide} depthWrite={false} blending={THREE.AdditiveBlending} />
+              </mesh>
+              <pointLight color={beamColor} intensity={1.2} distance={25} decay={2} />
             </group>
           );
         })}
@@ -798,12 +809,23 @@ function SFXStageEnvironment() {
 
       <InstancedSFXMarkers stageW={stageW} stageD={stageD} stageHeight={stageHeight} />
 
-      <ambientLight color="#1a0028" intensity={0.08} />
-      <directionalLight position={[0, 10, 15]} color="#220044" intensity={0.15} />
-      <pointLight position={[0, riggingY, -stageD / 2]} color="#4400aa" intensity={1.5} distance={40} decay={2} />
-      <pointLight position={[0, riggingY - 1, stageD / 2]} color="#330066" intensity={0.6} distance={30} decay={2} />
-      <pointLight position={[-stageW / 2, 6, 0]} color="#220044" intensity={0.4} distance={25} decay={2} />
-      <pointLight position={[stageW / 2, 6, 0]} color="#220044" intensity={0.4} distance={25} decay={2} />
+      {/* Atmospheric haze volume — makes beams visible like UE5 */}
+      <mesh position={[0, riggingY / 2 + stageHeight, 0]}>
+        <boxGeometry args={[stageW + 10, riggingY + 4, stageD + 20]} />
+        <meshBasicMaterial color="#220033" transparent opacity={0.015} side={THREE.BackSide} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </mesh>
+
+      {/* Overhead fill lights from rigging */}
+      {[-12, 0, 12].map((x, i) => (
+        <pointLight key={`fill-${i}`} position={[x, riggingY - 1, 0]} color="#1a0033" intensity={0.6} distance={18} decay={2} />
+      ))}
+
+      <ambientLight color="#1a0028" intensity={0.15} />
+      <directionalLight position={[0, 10, 15]} color="#220044" intensity={0.3} />
+      <pointLight position={[0, riggingY, -stageD / 2]} color="#4400aa" intensity={2.5} distance={50} decay={2} />
+      <pointLight position={[0, riggingY - 1, stageD / 2]} color="#330066" intensity={1.0} distance={35} decay={2} />
+      <pointLight position={[-stageW / 2, 6, 0]} color="#220044" intensity={0.8} distance={30} decay={2} />
+      <pointLight position={[stageW / 2, 6, 0]} color="#220044" intensity={0.8} distance={30} decay={2} />
 
       <mesh position={[0, -0.03, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[100000, 100000]} />
