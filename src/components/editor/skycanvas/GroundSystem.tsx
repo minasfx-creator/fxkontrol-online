@@ -1031,9 +1031,7 @@ export function StageGround({ satelliteTexture }: { satelliteTexture: string | n
       {satelliteTexture && <SatelliteOverlay textureUrl={satelliteTexture} />}
       {sc.groundFogIntensity > 0 && <GroundFog />}
 
-      {sc.showGrid && (
-        <FinaleGrid />
-      )}
+      {sc.showGrid && <FinaleGridHelper />}
 
       <FloorLogo />
 
