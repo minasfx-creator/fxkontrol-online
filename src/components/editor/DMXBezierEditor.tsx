@@ -309,10 +309,15 @@ export default function DMXBezierEditor({ fs = false }: { fs?: boolean }) {
           DMX BÉZIER EDITOR
         </span>
         <div className="flex-1" />
-        <button onClick={() => setIsPlaying(!isPlaying)}
-          className="p-1 rounded hover:bg-white/5 text-muted-foreground/60 hover:text-foreground transition-colors">
-          {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-        </button>
+        {/* Master clock indicator */}
+        <span className={cn(
+          "text-[6px] font-mono tracking-wider px-1.5 py-0.5 rounded",
+          isPlaying
+            ? "bg-green-500/10 text-green-400"
+            : "bg-muted/10 text-muted-foreground/40"
+        )}>
+          {isPlaying ? '● SYNC' : '○ IDLE'}
+        </span>
         <button onClick={addCurve}
           className="p-1 rounded hover:bg-white/5 text-muted-foreground/60 hover:text-foreground transition-colors">
           <Plus className="w-3 h-3" />
