@@ -78,6 +78,8 @@ import { createVolumetricFogPlane } from '@/render_ultra/environment/volumetricF
 import { createReflectionPlane } from '@/render_ultra/environment/reflections';
 // ═══ LOD System — distance-based quality scaling + adaptive FPS ═══
 import { useLOD, calculateLOD, useSceneLOD, updateAdaptiveLOD, getAdaptiveTier, type LODFactors } from '@/hooks/useLOD';
+import VolumetricGodRays from './skycanvas/VolumetricGodRays';
+import VolumetricSmoke from './effects/VolumetricSmoke';
 // ═══ AAA Engine: Frustum Culling + Object Pooling ═══
 import { isInFrustum } from '@/lib/spatialCuller';
 import { resetPools } from '@/lib/geometryPool';
