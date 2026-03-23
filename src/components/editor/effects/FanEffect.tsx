@@ -119,16 +119,16 @@ export default function FanEffect({
     }
 
     const pGeo = pointsRef.current.geometry;
-    pGeo.setAttribute('position', new THREE.BufferAttribute(p, 3));
-    pGeo.setAttribute('color', new THREE.BufferAttribute(c, 3));
-    pGeo.attributes.position.needsUpdate = true;
-    pGeo.attributes.color.needsUpdate = true;
+    const pPosAttr = pGeo.getAttribute('position') as THREE.BufferAttribute;
+    const pColAttr = pGeo.getAttribute('color') as THREE.BufferAttribute;
+    if (pPosAttr) pPosAttr.needsUpdate = true;
+    if (pColAttr) pColAttr.needsUpdate = true;
 
     const lGeo = linesRef.current.geometry;
-    lGeo.setAttribute('position', new THREE.BufferAttribute(lp, 3));
-    lGeo.setAttribute('color', new THREE.BufferAttribute(lc, 3));
-    lGeo.attributes.position.needsUpdate = true;
-    lGeo.attributes.color.needsUpdate = true;
+    const lPosAttr = lGeo.getAttribute('position') as THREE.BufferAttribute;
+    const lColAttr = lGeo.getAttribute('color') as THREE.BufferAttribute;
+    if (lPosAttr) lPosAttr.needsUpdate = true;
+    if (lColAttr) lColAttr.needsUpdate = true;
   });
 
   return (
@@ -138,15 +138,15 @@ export default function FanEffect({
       )}
       <lineSegments ref={linesRef}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(RAYS * 2 * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(RAYS * 2 * 3), 3]} />
+          <bufferAttribute attach="attributes-position" args={[linePos.current, 3]} />
+          <bufferAttribute attach="attributes-color" args={[lineCol.current, 3]} />
         </bufferGeometry>
         <lineBasicMaterial vertexColors transparent opacity={0.6} depthWrite={false} blending={THREE.AdditiveBlending} />
       </lineSegments>
       <points ref={pointsRef}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(TOTAL_PARTICLES * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(TOTAL_PARTICLES * 3), 3]} />
+          <bufferAttribute attach="attributes-position" args={[posArr.current, 3]} />
+          <bufferAttribute attach="attributes-color" args={[colArr.current, 3]} />
         </bufferGeometry>
         <pointsMaterial size={0.14} vertexColors transparent opacity={0.95} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>

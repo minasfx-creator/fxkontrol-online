@@ -40,16 +40,15 @@ export default function TourbillonEffect({
   const ribbonCol = useMemo(() => new Float32Array(RIBBON_SEGMENTS * 2 * 3), []);
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
 
-  const headPos = useMemo(() => {
+  // Pre-allocated vector to avoid per-frame THREE.Vector3 creation
+  const headPosRef = useRef(new THREE.Vector3());
+  const headPos = headPosRef.current;
+  {
     const t = progress;
     const angle = t * rotationSpeed * Math.PI * 2;
     const r = spiralRadius * (1 - t * 0.3);
-    return new THREE.Vector3(
-      Math.cos(angle) * r,
-      t * height,
-      Math.sin(angle) * r,
-    );
-  }, [progress, rotationSpeed, spiralRadius, height]);
+    headPos.set(Math.cos(angle) * r, t * height, Math.sin(angle) * r);
+  }
 
   useFrame(() => {
     if (!trailRef.current || progress <= 0 || progress > 1) return;

@@ -38,6 +38,7 @@ const DEFAULT_POINTS: [number, number][] = (() => {
 })();
 
 const DUMMY = new THREE.Object3D();
+const _tmpColor = new THREE.Color();
 
 export default function SetPieceEffect({
   position,
@@ -91,7 +92,8 @@ export default function SetPieceEffect({
         // Color: alternate between primary and secondary
         const c = altColor && i % 2 === 1 ? altColor : baseColor;
         const emissiveBoost = localProgress < 0.15 ? 2 : 1;
-        meshRef.current.setColorAt(i, c.clone().multiplyScalar(emissiveBoost));
+        _tmpColor.copy(c).multiplyScalar(emissiveBoost);
+        meshRef.current.setColorAt(i, _tmpColor);
       }
 
       DUMMY.updateMatrix();

@@ -20,6 +20,10 @@ import { getChemistryForRendering, autoMatchFormulation } from '@/render_ultra/f
 const SPARK_COUNT = 120;
 const SMOKE_WAKE_COUNT = 50;
 
+// Pre-allocated objects for zero-GC per-frame
+const _worldPos = new THREE.Vector3();
+const _ribbonColor = new THREE.Color();
+
 export default function CometEffect({
   position,
   color,
@@ -141,7 +145,7 @@ export default function CometEffect({
 
     // ── Ribbon trail ──
     if (ribbonRef.current && progress > 0.01 && progress < 0.95) {
-      const worldPos = new THREE.Vector3(
+      _worldPos.set(
         position[0] + headX,
         position[1] + headY,
         position[2] + headZ
@@ -150,13 +154,13 @@ export default function CometEffect({
       const headHeat = Math.max(0, 1 - progress * 0.5);
       // Inner core glow: brighter white-hot at center
       const coreBoost = 1.0 + headHeat * 0.8;
-      const ribbonColor = new THREE.Color(
+      _ribbonColor.setRGB(
         THREE.MathUtils.lerp(baseColor.r, 1.0, headHeat * 0.6) * coreBoost,
         THREE.MathUtils.lerp(baseColor.g, 0.95, headHeat * 0.5) * coreBoost,
         THREE.MathUtils.lerp(baseColor.b, 0.7, headHeat * 0.35) * coreBoost,
       );
 
-      ribbonRef.current.addPoint(worldPos, ribbonColor, headHeat);
+      ribbonRef.current.addPoint(_worldPos, _ribbonColor, headHeat);
       const camPos = camera instanceof THREE.PerspectiveCamera ? camera.position : undefined;
       ribbonRef.current.update(delta, camPos);
     }
@@ -232,12 +236,12 @@ export default function CometEffect({
       }
 
       const sparkGeo = sparkPointsRef.current.geometry;
-      sparkGeo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
-      sparkGeo.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
-      sparkGeo.setAttribute('size', new THREE.BufferAttribute(sizeArr, 1));
-      sparkGeo.attributes.position.needsUpdate = true;
-      sparkGeo.attributes.color.needsUpdate = true;
-      sparkGeo.attributes.size.needsUpdate = true;
+      const sPosAttr = sparkGeo.getAttribute('position') as THREE.BufferAttribute;
+      const sColAttr = sparkGeo.getAttribute('color') as THREE.BufferAttribute;
+      const sSizeAttr = sparkGeo.getAttribute('size') as THREE.BufferAttribute;
+      if (sPosAttr) sPosAttr.needsUpdate = true;
+      if (sColAttr) sColAttr.needsUpdate = true;
+      if (sSizeAttr) sSizeAttr.needsUpdate = true;
     }
 
     // ── Smoke wake ──
@@ -278,10 +282,10 @@ export default function CometEffect({
       }
 
       const smokeGeo = smokePointsRef.current.geometry;
-      smokeGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3));
-      smokeGeo.setAttribute('color', new THREE.BufferAttribute(sCol, 3));
-      smokeGeo.attributes.position.needsUpdate = true;
-      smokeGeo.attributes.color.needsUpdate = true;
+      const smPosAttr = smokeGeo.getAttribute('position') as THREE.BufferAttribute;
+      const smColAttr = smokeGeo.getAttribute('color') as THREE.BufferAttribute;
+      if (smPosAttr) smPosAttr.needsUpdate = true;
+      if (smColAttr) smColAttr.needsUpdate = true;
     }
 
     lastProgressRef.current = progress;
@@ -314,9 +318,9 @@ export default function CometEffect({
       {/* GPU spark cloud */}
       <points ref={sparkPointsRef} frustumCulled={false}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(SPARK_COUNT * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(SPARK_COUNT * 3), 3]} />
-          <bufferAttribute attach="attributes-size" args={[new Float32Array(SPARK_COUNT), 1]} />
+          <bufferAttribute attach="attributes-position" args={[sparkPosBuffer, 3]} />
+          <bufferAttribute attach="attributes-color" args={[sparkColBuffer, 3]} />
+          <bufferAttribute attach="attributes-size" args={[sparkSizeBuffer, 1]} />
         </bufferGeometry>
         <shaderMaterial
           vertexShader={`
@@ -349,8 +353,8 @@ export default function CometEffect({
       {/* Smoke wake cloud */}
       <points ref={smokePointsRef} frustumCulled={false}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(SMOKE_WAKE_COUNT * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(SMOKE_WAKE_COUNT * 3), 3]} />
+          <bufferAttribute attach="attributes-position" args={[smokePosBuffer, 3]} />
+          <bufferAttribute attach="attributes-color" args={[smokeColBuffer, 3]} />
         </bufferGeometry>
         <pointsMaterial
           size={1.5 + caliber * 0.4}
