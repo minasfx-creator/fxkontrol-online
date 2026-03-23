@@ -4,12 +4,13 @@
  */
 import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { Globe, Cpu, ArrowLeftRight, Grid3X3, Spline } from 'lucide-react';
+import { Globe, Cpu, ArrowLeftRight, Grid3X3, Spline, Radio } from 'lucide-react';
 import ArtNetModulePanel from './ArtNetModulePanel';
 import VirtualIFMx32QPanel from './VirtualIFMx32QPanel';
 import DMXIOPanel from './DMXIOPanel';
 import PixelMappingPanel from './PixelMappingPanel';
 import DMXBezierEditor from '../DMXBezierEditor';
+import MA3NetworkPanel from './MA3NetworkPanel';
 
 interface FXKNetPanelProps {
   fs?: boolean;
