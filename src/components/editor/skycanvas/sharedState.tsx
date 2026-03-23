@@ -155,8 +155,8 @@ export const CAMERA_PRESETS = [
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
-export class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  state = { hasError: false };
+export class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; retryKey: number }> {
+  state = { hasError: false, retryKey: 0 };
   static getDerivedStateFromError() { return { hasError: true }; }
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.warn('WebGL unavailable:', error.message);
@@ -170,6 +170,12 @@ export class WebGLErrorBoundary extends Component<{ children: ReactNode }, { has
           <p className="text-xs text-muted-foreground max-w-md">
             WebGL could not be initialized. Try enabling hardware acceleration or use a different browser.
           </p>
+          <button
+            onClick={() => this.setState(s => ({ hasError: false, retryKey: s.retryKey + 1 }))}
+            className="mt-2 px-4 py-2 rounded-lg text-xs font-mono uppercase tracking-wider bg-card/80 backdrop-blur-md border border-border/30 text-muted-foreground hover:text-foreground hover:bg-card/90 transition-all"
+          >
+            ↻ Retry
+          </button>
         </div>
       );
     }

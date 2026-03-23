@@ -657,6 +657,13 @@ function SceneStarsWired() {
 // WeatherEffects extracted to skycanvas/WeatherSystem.tsx
 import { WeatherEffects } from './skycanvas/WeatherSystem';
 
+// Delayed mount wrapper — lets base renderer stabilize before heavy VFX
+function DelayedMount({ delay = 2000, children }: { delay?: number; children: ReactNode }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setReady(true), delay); return () => clearTimeout(t); }, [delay]);
+  return ready ? <>{children}</> : null;
+}
+
 // Session-level flag: intro only plays once per browser session
 let __cameraIntroPlayed = false;
 
@@ -1466,7 +1473,9 @@ export default function SkyCanvas() {
         {!environment.disableLighting && <GlobalIlluminationController />}
         <GroundReflections />
         {!environment.disableLighting && <LensFlareController />}
-        <NiagaraVFXController />
+        <DelayedMount delay={2000}>
+          <NiagaraVFXController />
+        </DelayedMount>
 
         <EnvironmentV2Switcher />
 
@@ -1474,7 +1483,7 @@ export default function SkyCanvas() {
         <SceneStarsWired />
         {!isMobile && !environment.lowQualityMode && <AtmosphericParticles />}
         <SceneFog />
-        {!isMobile && <WeatherEffects />}
+        {!isMobile && <DelayedMount delay={2500}><WeatherEffects /></DelayedMount>}
 
         <StageGround satelliteTexture={satelliteTexture} />
         <SiteModelRenderer />
@@ -1489,7 +1498,7 @@ export default function SkyCanvas() {
         <LiveSFXEffects />
         <LaserPreviewBeams />
         <StageFixtures />
-        {!isMobile && <AudioSpectrumVisualizer />}
+        {!isMobile && <DelayedMount delay={3000}><AudioSpectrumVisualizer /></DelayedMount>}
         <PlaybackClock />
         {!isMobile && <CameraAnimator />}
         {!isMobile && <CameraPathPreview />}
