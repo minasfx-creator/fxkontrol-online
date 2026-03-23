@@ -746,12 +746,12 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
 
   useEffect(() => { return () => { fireTimers.current.forEach(timer => clearTimeout(timer)); }; }, []);
 
-  // Auto-fullscreen on mobile
+  // Auto-fullscreen on mobile (but NOT when embedded in Command Center standalone mode)
   useEffect(() => {
-    if (isMobile) {
+    if (isMobile && !standalone) {
       setIsFullscreen(true);
     }
-  }, [isMobile]);
+  }, [isMobile, standalone]);
 
   // Fullscreen API removed — CSS `fixed inset-0` handles visual fullscreen
   // User can manually enter browser fullscreen via the maximize button
