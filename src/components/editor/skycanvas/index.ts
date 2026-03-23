@@ -30,14 +30,3 @@ export {
   _posQuat, _effQuat, _pitchQuat, _posEuler, _effEuler, _launchDir, _pitchAxis,
 } from './sharedState';
 export type { ActiveBurstScanResult } from './sharedState';
-export {
-  Moon,
-  AtmosphericParticles,
-  StageGround,
-} from './GroundSystem';
-export {
-  FireworkBurst,
-  TimelineEffects,
-  LiveSFXEffects,
-  estimateFireworkStarCost,
-} from './FireworkRenderer';
