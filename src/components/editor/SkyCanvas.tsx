@@ -14,6 +14,7 @@ import AlignmentTools from './AlignmentTools';
 import CameraAnimator, { CameraPathPreview } from './CameraAnimator';
 import { FinaleAxesHelper, DoubleClickFocus, FinaleToolbar } from './FinaleViewportTools';
 import { StressTestFireworks, StressTestButton } from './effects/GPUFireworkStressTest';
+import PostExplosionSmokeManager from './effects/PostExplosionSmokeManager';
 import PositionTransformGizmo from './PositionTransformGizmo';
 import KeybindingCheatSheet, { KeybindingTrigger } from './KeybindingCheatSheet';
 import { useKeybindings } from '@/hooks/useKeybindings';
