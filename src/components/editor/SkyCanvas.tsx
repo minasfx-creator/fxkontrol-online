@@ -144,8 +144,6 @@ let _activeBurstCount = 0;
 // FireworkBurst, LightPoint, estimateFireworkStarCost, TimelineEffects, LiveSFXEffects
 // → Extracted to skycanvas/FireworkRenderer.tsx
 
-// Module-level burst count — read from TimelineEffects static property
-let _activeBurstCount = 0;
 // ========================================================================
 // ═══ ENVIRONMENT V2 — UE5.7 Virtual Worlds ═══
 // Sky Atmosphere V2, Volumetric Clouds, Water, Ground Decals, Time-of-Day
