@@ -257,7 +257,7 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
       )}
 
       {/* ─── CDS Continuity Visual Grid ─── */}
-      {connectedId && (
+      {(connectedId || cdsSimMode) && (
         <div className="mt-4 space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
