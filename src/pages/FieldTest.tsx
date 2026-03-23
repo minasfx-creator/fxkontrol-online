@@ -6,12 +6,14 @@ import { Input } from '@/components/ui/input';
 import {
   Wifi, Globe, Bluetooth, Radio, Zap, Shield, Target,
   ArrowLeft, CheckCircle2, XCircle, Flame, AlertTriangle,
-  Activity, Copy, Smartphone, Maximize
+  Activity, Copy, Smartphone, Maximize, Search, Loader2,
+  Signal, Battery, BatteryFull
 } from 'lucide-react';
 import {
   fieldTestEngine, generateSessionCode,
   type DeviceRole, type TestTransport, type FieldTestSession, type TestLog
 } from '@/services/fieldTestService';
+import { isWebBluetoothAvailable, type ScannedBLEDevice } from '@/services/bleFieldTransport';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { haptics } from '@/lib/haptics';
@@ -24,11 +26,133 @@ const TRANSPORTS: { id: TestTransport; label: string; desc: string; icon: React.
   { id: 'ble', label: 'Bluetooth BLE', desc: 'Pareamento direto', icon: <Bluetooth className="w-5 h-5" />, color: 'text-purple-400' },
 ];
 
+// ─── BLE Scanner Component ────────────────────────
+function BLEScanner({ onConnected }: { onConnected: () => void }) {
+  const [scanning, setScanning] = useState(false);
+  const [scannedDevice, setScannedDevice] = useState<ScannedBLEDevice | null>(null);
+  const [connecting, setConnecting] = useState(false);
+  const [connected, setConnected] = useState(false);
+  const bleAvailable = isWebBluetoothAvailable();
+
+  const handleScan = async () => {
+    setScanning(true);
+    try {
+      const device = await fieldTestEngine.bleScan();
+      if (device) {
+        setScannedDevice(device);
+        toast.success(`Encontrado: ${device.name}`);
+      } else {
+        toast.info('Nenhum dispositivo selecionado');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao escanear');
+    }
+    setScanning(false);
+  };
+
+  const handleConnect = async () => {
+    if (!scannedDevice) return;
+    setConnecting(true);
+    try {
+      const ok = await fieldTestEngine.bleConnect(scannedDevice);
+      if (ok) {
+        setConnected(true);
+        haptics.success();
+        toast.success(`Conectado a ${scannedDevice.name}`);
+        onConnected();
+      } else {
+        toast.error('Falha na conexão GATT');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Erro na conexão');
+    }
+    setConnecting(false);
+  };
+
+  if (!bleAvailable) {
+    return (
+      <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-center">
+        <Bluetooth className="w-5 h-5 text-destructive mx-auto mb-1" />
+        <p className="text-xs text-destructive font-mono">Web Bluetooth não disponível</p>
+        <p className="text-[10px] text-muted-foreground mt-1">Use Chrome/Edge em desktop ou Android</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Scan Button */}
+      <Button
+        variant="outline"
+        className="w-full h-12 gap-2 border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+        onClick={handleScan}
+        disabled={scanning}
+      >
+        {scanning ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <Search className="w-4 h-4" />
+        )}
+        {scanning ? 'Escaneando...' : 'Escanear Módulos BLE'}
+      </Button>
+
+      {/* Scanned Device */}
+      {scannedDevice && (
+        <div className={cn(
+          "rounded-lg border p-3 flex items-center gap-3",
+          connected
+            ? "border-green-500/40 bg-green-500/5"
+            : "border-purple-500/30 bg-purple-500/5"
+        )}>
+          <div className={cn(
+            "w-10 h-10 rounded-lg flex items-center justify-center",
+            connected ? "bg-green-500/20" : "bg-purple-500/20"
+          )}>
+            <Bluetooth className={cn("w-5 h-5", connected ? "text-green-400" : "text-purple-400")} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold font-mono text-foreground truncate">{scannedDevice.name}</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <Badge variant="outline" className="text-[8px] h-4 px-1">
+                <Signal className="w-2.5 h-2.5 mr-0.5" />
+                {scannedDevice.rssi}dBm
+              </Badge>
+              {connected && (
+                <Badge className="text-[8px] h-4 px-1.5 bg-green-600 text-white">
+                  <CheckCircle2 className="w-2.5 h-2.5 mr-0.5" /> CONECTADO
+                </Badge>
+              )}
+            </div>
+          </div>
+          {!connected && (
+            <Button
+              size="sm"
+              className="bg-purple-600 hover:bg-purple-500 text-white h-8 px-3 text-xs"
+              onClick={handleConnect}
+              disabled={connecting}
+            >
+              {connecting ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Conectar'}
+            </Button>
+          )}
+        </div>
+      )}
+
+      <p className="text-[9px] text-muted-foreground text-center">
+        Selecione um módulo FXK no picker do navegador para parear via GATT
+      </p>
+    </div>
+  );
+}
+
 // ─── Setup Screen ─────────────────────────────────
 function SetupScreen({ onStart }: { onStart: (code: string, role: DeviceRole, transport: TestTransport) => void }) {
   const [role, setRole] = useState<DeviceRole | null>(null);
   const [transport, setTransport] = useState<TestTransport | null>(null);
   const [code, setCode] = useState(generateSessionCode());
+  const [bleReady, setBleReady] = useState(false);
+
+  const isBLE = transport === 'ble';
+  const canStart = role && transport && (isBLE ? bleReady : code.length >= 4);
 
   return (
     <div className="space-y-6 p-4 max-w-lg mx-auto">
@@ -88,31 +212,52 @@ function SetupScreen({ onStart }: { onStart: (code: string, role: DeviceRole, tr
         </div>
       </div>
 
-      {/* Session Code */}
-      <div className="space-y-2">
-        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">3. Código da sessão</p>
-        <div className="flex gap-2">
-          <Input
-            value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
-            className="font-mono text-lg tracking-[0.3em] text-center uppercase"
-            maxLength={6}
-          />
-          <Button variant="outline" size="icon" onClick={() => {
-            navigator.clipboard?.writeText(code);
-            toast.success('Código copiado!');
-          }}>
-            <Copy className="w-4 h-4" />
-          </Button>
+      {/* BLE Scanner — shown when BLE transport selected */}
+      {isBLE && role === 'controller' && (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">3. Escanear Módulo BLE</p>
+          <BLEScanner onConnected={() => setBleReady(true)} />
         </div>
-        <p className="text-[10px] text-muted-foreground text-center">
-          Ambos os devices devem usar o mesmo código
-        </p>
-      </div>
+      )}
+
+      {/* Session Code — shown for non-BLE transports */}
+      {!isBLE && (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">3. Código da sessão</p>
+          <div className="flex gap-2">
+            <Input
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              className="font-mono text-lg tracking-[0.3em] text-center uppercase"
+              maxLength={6}
+            />
+            <Button variant="outline" size="icon" onClick={() => {
+              navigator.clipboard?.writeText(code);
+              toast.success('Código copiado!');
+            }}>
+              <Copy className="w-4 h-4" />
+            </Button>
+          </div>
+          <p className="text-[10px] text-muted-foreground text-center">
+            Ambos os devices devem usar o mesmo código
+          </p>
+        </div>
+      )}
+
+      {/* BLE Module role info */}
+      {isBLE && role === 'module' && (
+        <div className="rounded-lg border border-purple-500/20 bg-purple-500/5 p-4 text-center">
+          <Bluetooth className="w-8 h-8 text-purple-400 mx-auto mb-2" />
+          <p className="text-xs text-muted-foreground">
+            No modo BLE, o módulo receptor é o <strong>hardware FXK-M1</strong>.
+            <br />Para teste phone-to-phone, use Wi-Fi LAN ou Internet WAN.
+          </p>
+        </div>
+      )}
 
       {/* Start */}
       <Button
-        disabled={!role || !transport || code.length < 4}
+        disabled={!canStart}
         className="w-full h-14 text-lg font-bold bg-destructive hover:bg-destructive/90 text-destructive-foreground"
         onClick={() => onStart(code, role!, transport!)}
       >
@@ -200,6 +345,11 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
           <Badge variant="outline" className="text-[7px] h-4 px-1.5 font-mono border-blue-500/30 text-blue-400">
             {session.transport.toUpperCase()}
           </Badge>
+          {session.transport === 'ble' && (
+            <Badge variant="outline" className="text-[7px] h-4 px-1.5 font-mono border-purple-500/30 text-purple-400">
+              <Bluetooth className="w-2.5 h-2.5 mr-0.5" /> GATT
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {/* Stats inline */}

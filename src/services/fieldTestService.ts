@@ -4,6 +4,7 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import { bleFieldTransport, isWebBluetoothAvailable } from './bleFieldTransport';
 
 export type DeviceRole = 'controller' | 'module';
 export type TestTransport = 'realtime-lan' | 'realtime-wan' | 'ble';
@@ -133,8 +134,45 @@ class FieldTestEngine {
     this.log('info', `Session ${code} · ${role.toUpperCase()} · ${transport}`);
 
     if (transport === 'ble') {
+      if (!isWebBluetoothAvailable()) {
+        this.log('error', 'Web Bluetooth não disponível neste navegador');
+        this.emit();
+        return false;
+      }
+
+      // BLE: Controller connects to hardware module via GATT
+      // Setup callbacks
+      bleFieldTransport.setCallbacks({
+        onAck: (channel, latencyMs) => {
+          if (!this.session || this.session.role !== 'controller') return;
+          this.session.stats.acksReceived++;
+          this.session.stats.latencies.push(latencyMs);
+          const computed = computeStats(this.session.stats.latencies);
+          Object.assign(this.session.stats, computed);
+          this.session.stats.packetLoss = +(
+            ((this.session.stats.firesSent - this.session.stats.acksReceived) / Math.max(1, this.session.stats.firesSent)) * 100
+          ).toFixed(1);
+          this.log('ack', `✅ BLE ACK CH-${String(channel).padStart(2, '0')} · ${latencyMs}ms`, { latencyMs, channel });
+          this.emit();
+        },
+        onStatus: () => {
+          this.emit();
+        },
+        onDisconnect: () => {
+          if (this.session) {
+            this.session.peerConnected = false;
+            this.log('error', '⚠️ BLE device disconnected');
+            this.emit();
+          }
+        },
+        onLog: (msg) => {
+          this.log('info', msg);
+          this.emit();
+        },
+      });
+
       this.session.connected = true;
-      this.log('info', 'BLE mode — use native Bluetooth pairing');
+      this.log('info', 'BLE mode — use Scanner to connect to module');
       this.emit();
       return true;
     }
@@ -190,12 +228,36 @@ class FieldTestEngine {
     return true;
   }
 
+  // ─── BLE Scanner Integration ────────────────────
+  async bleScan() {
+    const scanned = await bleFieldTransport.scan();
+    return scanned;
+  }
+
+  async bleConnect(scanned: any): Promise<boolean> {
+    const ok = await bleFieldTransport.connect(scanned);
+    if (ok && this.session) {
+      this.session.peerConnected = true;
+      this.log('info', `✅ BLE connected to ${scanned.name}`);
+      this.emit();
+    }
+    return ok;
+  }
+
+  get bleModuleStatus() {
+    return bleFieldTransport.moduleStatus;
+  }
+
   // ─── Commands (Controller) ───────────────────────
   async arm() {
     if (!this.session || this.session.role !== 'controller') return;
     this.session.armed = true;
     this.log('arm', '🔑 ARMED');
-    this.channel?.send({ type: 'broadcast', event: 'arm', payload: {} });
+    if (this.session.transport === 'ble') {
+      try { await bleFieldTransport.arm(); } catch (e: any) { this.log('error', e.message); }
+    } else {
+      this.channel?.send({ type: 'broadcast', event: 'arm', payload: {} });
+    }
     this.emit();
   }
 
@@ -203,25 +265,32 @@ class FieldTestEngine {
     if (!this.session || this.session.role !== 'controller') return;
     this.session.armed = false;
     this.log('disarm', '🔒 DISARMED');
-    this.channel?.send({ type: 'broadcast', event: 'disarm', payload: {} });
+    if (this.session.transport === 'ble') {
+      try { await bleFieldTransport.disarm(); } catch (e: any) { this.log('error', e.message); }
+    } else {
+      this.channel?.send({ type: 'broadcast', event: 'disarm', payload: {} });
+    }
     this.emit();
   }
 
   async fire(channel: number) {
     if (!this.session || this.session.role !== 'controller' || !this.session.armed) return;
 
-    const evt: FireEvent = {
-      id: genId(),
-      channel,
-      timestamp: Date.now(),
-      transport: this.session.transport,
-      source: 'controller',
-    };
-
     this.session.stats.firesSent++;
     this.log('fire', `🔥 FIRE CH-${String(channel).padStart(2, '0')}`, { channel });
 
-    this.channel?.send({ type: 'broadcast', event: 'fire', payload: evt });
+    if (this.session.transport === 'ble') {
+      try { await bleFieldTransport.fire(channel); } catch (e: any) { this.log('error', e.message); }
+    } else {
+      const evt: FireEvent = {
+        id: genId(),
+        channel,
+        timestamp: Date.now(),
+        transport: this.session.transport,
+        source: 'controller',
+      };
+      this.channel?.send({ type: 'broadcast', event: 'fire', payload: evt });
+    }
     this.emit();
   }
 
@@ -229,7 +298,11 @@ class FieldTestEngine {
     if (!this.session) return;
     this.session.armed = false;
     this.log('estop', '🚨 E-STOP');
-    this.channel?.send({ type: 'broadcast', event: 'estop', payload: {} });
+    if (this.session.transport === 'ble') {
+      try { await bleFieldTransport.eStop(); } catch (e: any) { this.log('error', e.message); }
+    } else {
+      this.channel?.send({ type: 'broadcast', event: 'estop', payload: {} });
+    }
     this.emit();
   }
 
@@ -300,6 +373,10 @@ class FieldTestEngine {
     if (this.channel) {
       await this.channel.unsubscribe();
       this.channel = null;
+    }
+    // Disconnect BLE if active
+    if (bleFieldTransport.connected) {
+      await bleFieldTransport.disconnect();
     }
     this.session = null;
     this.emit();
