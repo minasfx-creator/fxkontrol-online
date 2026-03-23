@@ -177,7 +177,7 @@ function Index() {
   const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activePanel, setActivePanel] = useState<PanelId | null>('properties');
-  const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'globe' | 'editor'>('globe');
+  const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'globe' | 'editor'>('cinematic');
   const [showLocation, setShowLocation] = useState<{ name: string; lat: number; lng: number } | null>(null);
   const [showPositionEditor, setShowPositionEditor] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);

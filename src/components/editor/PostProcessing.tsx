@@ -387,7 +387,7 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
   const hasHeavyBursts = activeBurstCount > 3;
 
   return (
-    <EffectComposer multisampling={0}>
+    <EffectComposer multisampling={0} enableNormalPass={s.ssaoEnabled}>
       <SMAA />
 
       {/* ═══ Screen Space Reflections (UE5 r.SSR.Temporal) ═══ */}

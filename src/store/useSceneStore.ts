@@ -292,17 +292,17 @@ const DEFAULT_SETTINGS: SceneSettings = {
   exposureCompensation: 0,
 
   // ═══ AAA Post-Processing — all enabled by default ═══
-  ssaoEnabled: true,
+  ssaoEnabled: false,
   ssaoIntensity: 0.7,
-  dofEnabled: true,
+  dofEnabled: false,
   dofFocusDistance: 150,
   dofBokehScale: 3.0,
-  godRaysEnabled: true,
+  godRaysEnabled: false,
   colorBrightness: 0,
   colorContrast: 0.05,
   colorSaturation: 0.05,
 
-  ssrEnabled: true,
+  ssrEnabled: false,
   ssrIntensity: 0.6,
   ssrThickness: 10,
   sharpenEnabled: true,
@@ -311,12 +311,12 @@ const DEFAULT_SETTINGS: SceneSettings = {
   contactShadowsOpacity: 0.6,
   contactShadowsBlur: 2.5,
 
-  heatDistortionEnabled: true,
+  heatDistortionEnabled: false,
   smokeRenderQuality: 'high',
   ribbonTrails: true,
 
   // UE5.7 defaults — cinematic motion
-  motionBlurEnabled: true,
+  motionBlurEnabled: false,
   motionBlurIntensity: 0.35,
   colorGradingPreset: 'neutral',
 
