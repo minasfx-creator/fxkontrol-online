@@ -270,6 +270,9 @@ export default function CommandCenter() {
               )}
             </FullscreenablePanel>
 
+            {/* ═══ Tactical Minimap (bottom-left) ═══ */}
+            <TacticalMinimap accentColor={accent.color} width={100} height={80} />
+
             {/* ═══ FF Quick-Action Bar (floating, bottom-right) ═══ */}
             <div className="ff-quick-actions">
               {/* E-STOP */}

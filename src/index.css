@@ -1344,6 +1344,37 @@ body.night-mode {
   box-shadow: 0 0 6px hsl(var(--primary) / 0.6);
 }
 
+/* Tactical minimap container */
+.ff-tactical-minimap {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  z-index: 30;
+  border-radius: 8px;
+  border: 1px solid hsl(var(--primary) / 0.15);
+  background: hsl(220 22% 3% / 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  overflow: hidden;
+}
+
+/* Weapon drop animations for console swap */
+@keyframes weapon-drop-in {
+  0% { opacity: 0; transform: translateY(-30px) scale(0.96); }
+  60% { opacity: 1; transform: translateY(4px) scale(1.01); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes weapon-drop-out {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: translateY(-15px) scale(0.95); }
+}
+.holo-swap-container .swap-out {
+  animation: weapon-drop-out 0.2s ease-in forwards !important;
+}
+.holo-swap-container .swap-in {
+  animation: weapon-drop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
+}
+
 /* Orientation-specific overrides */
 @media (orientation: landscape) and (max-height: 500px) {
   .ff-top-hud { height: 22px !important; }
