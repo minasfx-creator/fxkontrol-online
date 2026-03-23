@@ -995,9 +995,9 @@ function TimelineEffects() {
         
         const burstPos: [number, number, number] = isShell
           ? [
-              pos[0] + launchDir.x * realBreakHeight,
-              pos[1] + launchDir.y * realBreakHeight,
-              pos[2] + launchDir.z * realBreakHeight,
+              pos[0] + _launchDir.x * realBreakHeight,
+              pos[1] + _launchDir.y * realBreakHeight,
+              pos[2] + _launchDir.z * realBreakHeight,
             ]
           : pos;
 
