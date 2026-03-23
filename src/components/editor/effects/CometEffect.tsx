@@ -20,6 +20,10 @@ import { getChemistryForRendering, autoMatchFormulation } from '@/render_ultra/f
 const SPARK_COUNT = 120;
 const SMOKE_WAKE_COUNT = 50;
 
+// Pre-allocated objects for zero-GC per-frame
+const _worldPos = new THREE.Vector3();
+const _ribbonColor = new THREE.Color();
+
 export default function CometEffect({
   position,
   color,
