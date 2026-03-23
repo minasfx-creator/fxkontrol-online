@@ -106,6 +106,13 @@ import {
   TimelineEffects,
   LiveSFXEffects,
   estimateFireworkStarCost,
+  // ═══ LightingSystem ═══
+  AdaptiveExposureController,
+  ContactShadowsLayer,
+  DebugFeed,
+  GlobalIlluminationController,
+  LensFlareController,
+  GroundReflections,
 } from './skycanvas';
 
 // Re-export for external consumers
