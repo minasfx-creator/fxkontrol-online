@@ -523,6 +523,7 @@ class ArtNetModuleService {
         });
         const latency = Math.round(performance.now() - start);
         if (!error) {
+          this.trackPacketAck(moduleId, latency);
           this.updateModule(moduleId, { lastSeen: Date.now(), latencyMs: latency });
           this.emit('module-heartbeat', { moduleId, latencyMs: latency, timestamp: Date.now() });
         } else {
