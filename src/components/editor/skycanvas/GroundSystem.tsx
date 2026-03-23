@@ -714,7 +714,7 @@ function SFXStageEnvironment() {
 
       <mesh ref={ledWallRef} position={[0, trussH / 2 + stageHeight, -stageD / 2 - 0.3]}>
         <boxGeometry args={[stageW - 2, trussH, 0.3]} />
-        <meshBasicMaterial color="#110022" />
+        <meshStandardMaterial color="#110022" emissive="#110022" emissiveIntensity={0.4} />
       </mesh>
       <mesh position={[0, trussH / 2 + stageHeight, -stageD / 2 - 0.5]}>
         <boxGeometry args={[stageW + 2, trussH + 1.5, 0.15]} />
