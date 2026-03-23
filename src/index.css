@@ -723,6 +723,16 @@ body.night-mode {
   pointer-events: none;
 }
 
+/* Joi bubble shimmer */
+@keyframes joi-shimmer {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 30px hsl(32 100% 50% / 0.4); }
+  50% { transform: scale(1.05); box-shadow: 0 0 40px hsl(32 100% 50% / 0.55), 0 0 80px hsl(32 100% 50% / 0.2); }
+}
+.joi-bubble-shimmer {
+  animation: joi-shimmer 3s ease-in-out infinite;
+  will-change: transform;
+}
+
 /* ===== BR2049 Scanline Sweep ===== */
 @keyframes scanlineSweep {
   0% { transform: translateY(-100%); }

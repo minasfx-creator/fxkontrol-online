@@ -4,9 +4,10 @@
  * Enhanced: textarea, session history, feedback, expand, timestamps, clear, context presets
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Terminal, Maximize2, Trash2, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type Msg = { role: 'user' | 'assistant'; content: string; ts?: number; feedback?: 'up' | 'down' };
 
@@ -16,7 +17,7 @@ const MAX_HISTORY = 10;
 
 const PRESETS_COMMAND = [
   { label: 'DIAGNÓSTICO', icon: Activity, prompt: 'Execute um diagnóstico completo do sistema FXK — módulos, DMX, canais ativos, status de segurança.' },
-  { label: 'SCRIPT', icon: Terminal, prompt: 'Preciso de ajuda criando um script de show pirotécnico.' },
+  { label: 'SCRIPT', icon: Sparkles, prompt: 'Preciso de ajuda criando um script de show pirotécnico.' },
   { label: 'SAFETY', icon: ShieldCheck, prompt: 'Quais são os protocolos de segurança NFPA que devo seguir para este show?' },
   { label: 'STATUS', icon: Zap, prompt: 'Qual o status atual do show — timeline, posições configuradas e módulos online?' },
 ];
@@ -25,7 +26,7 @@ const PRESETS_EDITOR = [
   { label: 'DESIGN', icon: Zap, prompt: 'Me ajude a criar um design de show com efeitos visuais impressionantes.' },
   { label: 'TIMELINE', icon: Activity, prompt: 'Preciso organizar a timeline do show com transições suaves.' },
   { label: 'SAFETY', icon: ShieldCheck, prompt: 'Verifique a segurança das posições configuradas no meu show.' },
-  { label: 'EXPORT', icon: Terminal, prompt: 'Como exportar meu projeto para diferentes formatos de firing system?' },
+  { label: 'EXPORT', icon: Sparkles, prompt: 'Como exportar meu projeto para diferentes formatos de firing system?' },
 ];
 
 function getContextPresets() {
@@ -145,6 +146,7 @@ function formatTime(ts?: number) {
 }
 
 export function FXKAssistant() {
+  const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -251,20 +253,24 @@ export function FXKAssistant() {
     }
   }, [input, send]);
 
-  const panelWidth = expanded ? 560 : 360;
+  const panelWidth = isMobile ? undefined : (expanded ? 560 : 360);
 
   // Bubble
   if (!open) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-50 h-14 w-14 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 fxk-bubble touch-target-lg"
+        className={cn(
+          "fixed z-[60] h-14 w-14 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 fxk-bubble touch-target-lg joi-bubble-shimmer",
+          isMobile ? "bottom-20 right-3" : "bottom-5 right-5"
+        )}
         style={{
           background: 'radial-gradient(circle at 30% 30%, hsl(32 100% 55%), hsl(32 100% 40%))',
           boxShadow: '0 0 30px hsl(32 100% 50% / 0.4), 0 0 60px hsl(32 100% 50% / 0.15), inset 0 1px 0 hsl(32 100% 70% / 0.3)',
+          willChange: 'transform',
         }}
       >
-        <Terminal className="h-6 w-6 text-black" />
+        <Sparkles className="h-6 w-6 text-black" />
         <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full animate-amber-pulse" style={{ background: 'hsl(32 100% 50%)' }} />
       </button>
     );
@@ -275,7 +281,10 @@ export function FXKAssistant() {
     return (
       <div
         onClick={() => setMinimized(false)}
-        className="fixed bottom-5 right-5 z-50 w-56 cursor-pointer rounded-lg border px-3 py-2 flex items-center gap-2"
+        className={cn(
+          "fixed z-[60] w-56 cursor-pointer rounded-lg border px-3 py-2 flex items-center gap-2",
+          isMobile ? "bottom-20 right-3" : "bottom-5 right-5"
+        )}
         style={{
           background: 'hsl(220 22% 5% / 0.92)',
           borderColor: 'hsl(32 100% 50% / 0.3)',
@@ -284,7 +293,7 @@ export function FXKAssistant() {
       >
         <VoiceWave active={loading} />
         <span className="text-[10px] font-mono tracking-[0.2em] uppercase" style={{ color: 'hsl(32 100% 60%)' }}>
-          FXK-AI · NEXUS
+          JOI · NEXUS
         </span>
       </div>
     );
@@ -293,11 +302,12 @@ export function FXKAssistant() {
   return (
     <div
       className={cn(
-        "fixed bottom-5 right-5 z-50 h-[560px] rounded-xl flex flex-col overflow-hidden fxk-panel transition-all duration-300",
-        closing ? "animate-holo-dissolve" : "animate-holo-materialize"
+        "fixed z-[60] rounded-xl flex flex-col overflow-hidden fxk-panel transition-all duration-300",
+        closing ? "animate-holo-dissolve" : "animate-holo-materialize",
+        isMobile ? "inset-3 bottom-20" : "bottom-5 right-5 h-[560px]"
       )}
       style={{
-        width: panelWidth,
+        width: isMobile ? undefined : panelWidth,
         background: 'hsl(220 22% 4% / 0.96)',
         border: '1px solid hsl(32 100% 50% / 0.2)',
         boxShadow: '0 0 50px hsl(32 100% 50% / 0.12), 0 20px 80px hsl(0 0% 0% / 0.7)',
@@ -326,7 +336,7 @@ export function FXKAssistant() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] font-mono font-bold tracking-[0.25em] uppercase" style={{ color: 'hsl(32 100% 60%)' }}>
-              FXK-AI · NEXUS
+              JOI · NEXUS
             </span>
             {/* Connection indicator */}
             <div className={cn("w-1.5 h-1.5 rounded-full",
@@ -334,7 +344,7 @@ export function FXKAssistant() {
             )} style={{ boxShadow: connectionOk === true ? '0 0 4px hsl(120 70% 50%)' : 'none' }} />
           </div>
           <span className="text-[7px] font-mono tracking-[0.15em] uppercase" style={{ color: 'hsl(32 100% 50% / 0.4)' }}>
-            {loading ? 'PROCESSING...' : 'HOLOGRAPHIC INTERFACE'}
+            {loading ? 'PROCESSING...' : 'HOLOGRAPHIC COMPANION'}
           </span>
         </div>
 
@@ -364,7 +374,7 @@ export function FXKAssistant() {
                 boxShadow: '0 0 30px hsl(32 100% 50% / 0.08)',
               }}
             >
-              <Terminal className="h-7 w-7" style={{ color: 'hsl(32 100% 50% / 0.5)' }} />
+              <Sparkles className="h-7 w-7" style={{ color: 'hsl(32 100% 50% / 0.5)' }} />
             </div>
             <p className="text-[8px] font-mono tracking-[0.2em] uppercase text-center" style={{ color: 'hsl(32 100% 50% / 0.45)' }}>
               NEXUS ONLINE · AWAITING INPUT
