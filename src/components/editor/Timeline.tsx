@@ -24,11 +24,19 @@ function snapTimeToBeat(time: number, bpm: number | null, snapEnabled: boolean, 
   return Math.abs(time - nearestBeat) < threshold ? nearestBeat : time;
 }
 
-const BeatGrid = React.forwardRef<HTMLDivElement, { duration: number; pixelsPerSecond: number; bpm: number | null }>(function BeatGrid({ duration, pixelsPerSecond, bpm }, _ref) {
+const BeatGrid = React.forwardRef<HTMLDivElement, { duration: number; pixelsPerSecond: number; bpm: number | null; scrollLeft?: number; viewportWidth?: number }>(function BeatGrid({ duration, pixelsPerSecond, bpm, scrollLeft = 0, viewportWidth = 1200 }, _ref) {
   if (!bpm) return null;
   const beatInterval = 60 / bpm;
+
+  // Virtualize: only render lines visible in the scroll viewport + buffer
+  const buffer = 200; // px
+  const startTime = Math.max(0, (scrollLeft - buffer) / pixelsPerSecond);
+  const endTime = Math.min(duration, (scrollLeft + viewportWidth + buffer) / pixelsPerSecond);
+  const firstBeat = Math.floor(startTime / beatInterval) * beatInterval;
+
   const lines = [];
-  for (let t = 0; t < duration; t += beatInterval) {
+  for (let t = firstBeat; t < endTime; t += beatInterval) {
+    if (t < 0) continue;
     const isMeasure = Math.round(t / beatInterval) % 4 === 0;
     lines.push(
       <div
@@ -45,8 +53,7 @@ const BeatGrid = React.forwardRef<HTMLDivElement, { duration: number; pixelsPerS
   return <>{lines}</>;
 });
 
-const TimeRuler = React.forwardRef<HTMLDivElement, { duration: number; pixelsPerSecond: number }>(function TimeRuler({ duration, pixelsPerSecond }, _ref) {
-  const marks = [];
+const TimeRuler = React.forwardRef<HTMLDivElement, { duration: number; pixelsPerSecond: number; scrollLeft?: number; viewportWidth?: number }>(function TimeRuler({ duration, pixelsPerSecond, scrollLeft = 0, viewportWidth = 1200 }, _ref) {
   let step: number;
   if (pixelsPerSecond >= 40) step = 1;
   else if (pixelsPerSecond >= 15) step = 2;
@@ -54,7 +61,15 @@ const TimeRuler = React.forwardRef<HTMLDivElement, { duration: number; pixelsPer
   else step = 10;
   const labelStep = step <= 2 ? 5 : 10;
 
-  for (let i = 0; i <= duration; i += step) {
+  // Virtualize: only render marks visible in the scroll viewport + buffer
+  const buffer = 100; // px
+  const startTime = Math.max(0, (scrollLeft - buffer) / pixelsPerSecond);
+  const endTime = Math.min(duration, (scrollLeft + viewportWidth + buffer) / pixelsPerSecond);
+  const firstMark = Math.floor(startTime / step) * step;
+
+  const marks = [];
+  for (let i = firstMark; i <= endTime; i += step) {
+    if (i < 0) continue;
     const isMajor = i % labelStep === 0;
     marks.push(
       <div key={i} className="absolute top-0 flex flex-col items-center" style={{ left: `${i * pixelsPerSecond}px` }}>
