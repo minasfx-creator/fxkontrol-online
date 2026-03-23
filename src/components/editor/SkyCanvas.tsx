@@ -110,7 +110,7 @@ function runActiveBurstScan() {
 
     // Fresh burst: within 50ms of ignition
     if (elapsed < 0.05) {
-      const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      const effect = getEffectById(item.effectId);
       if (effect && effect.type === 'firework') {
         freshBursts.push({
           x: item.position.x,
@@ -807,7 +807,7 @@ function TimelineEffects() {
     const humidityFactor = 1 - sceneSettings.humidity * 0.3; // humidity shortens burn time
 
     return timelineItems.map((item) => {
-      let effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+      let effect = getEffectById(item.effectId);
 
       // Fallback para itens VDL dinâmicos criados no editor/quick add
       if (!effect && item.effectId.startsWith('vdl-')) {
@@ -2225,7 +2225,7 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
       const item = timelineItems[i];
       const elapsed = currentTime - item.startTime;
       if (elapsed < 0 || elapsed > 0.3) continue;
-      const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      const effect = getEffectById(item.effectId);
       if (effect && effect.type === 'firework') {
         const intensity = 0.4 * (1 - elapsed / 0.3);
         _scatterAccum.add(_tmpColor.set(effect.color).multiplyScalar(Math.min(intensity * 0.3, 0.15)));
@@ -2425,7 +2425,7 @@ const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflec
     for (const item of timelineItems) {
       const elapsed = currentTime - item.startTime;
       if (elapsed >= 0 && elapsed < 0.3) {
-        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+        const effect = getEffectById(item.effectId);
         if (effect && effect.type === 'firework') {
           _reusableColor.set(effect.color);
           flashIntensity = Math.max(flashIntensity, 1.0 * (1 - elapsed / 0.3));
