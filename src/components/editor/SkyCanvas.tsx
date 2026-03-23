@@ -85,6 +85,49 @@ import { clampNiagaraHDR, getNiagaraBudgets, setAdaptivePipelineState } from '@/
 let _activeBurstCount = 0;
 export function getActiveBurstCount() { return _activeBurstCount; }
 
+// ═══ ActiveBurstScanner — centralized per-frame timeline scan ═══
+// GI, LensFlare, and Exposure all read from this instead of scanning independently
+interface ActiveBurstScanResult {
+  freshBursts: { x: number; y: number; z: number; color: string; caliber: number; effectId: string }[];
+  activeBursts: number;
+  luminance: number;
+}
+let _activeBurstScan: ActiveBurstScanResult | null = null;
+
+function runActiveBurstScan() {
+  const { timelineItems, currentTime } = useProjectStore.getState();
+  const freshBursts: ActiveBurstScanResult['freshBursts'] = [];
+  let activeBursts = 0;
+  let luminance = 0;
+
+  for (let i = 0; i < timelineItems.length; i++) {
+    const item = timelineItems[i];
+    const elapsed = currentTime - item.startTime;
+    if (elapsed < 0 || elapsed > 2.0) continue;
+
+    activeBursts++;
+    luminance += elapsed < 0.5 ? 3.0 : 0.5;
+
+    // Fresh burst: within 50ms of ignition
+    if (elapsed < 0.05) {
+      const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      if (effect && effect.type === 'firework') {
+        freshBursts.push({
+          x: item.position.x,
+          y: item.position.y,
+          z: item.position.z,
+          color: effect.color,
+          caliber: effect.caliber || 4,
+          effectId: effect.id,
+        });
+      }
+    }
+  }
+
+  _activeBurstScan = { freshBursts, activeBursts, luminance };
+  return _activeBurstScan;
+}
+
 // ═══ PyroChem: map hex colors → real chemical compounds ═══
 function hexToCompound(hexColor: string): ChemicalCompound {
   const c = new THREE.Color(hexColor);
