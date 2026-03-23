@@ -346,6 +346,7 @@ class ArtNetModuleService {
   async sendDMX(moduleId: string, channels: number[]): Promise<boolean> {
     const module = this.controller?.modules.find(m => m.id === moduleId);
     if (!module || this.moduleStates.get(moduleId) !== 'connected') return false;
+    this.trackPacketSent(moduleId);
 
     const seq = (this.sequenceCounters.get(moduleId) || 0) + 1;
     this.sequenceCounters.set(moduleId, seq > 255 ? 1 : seq);
