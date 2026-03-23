@@ -1530,6 +1530,7 @@ export default function SkyCanvas() {
         <CameraBookmarkSaver />
         <ContactShadowsLayer />
         <PostProcessing activeBurstCount={_activeBurstCount} />
+        <StressTestFireworks />
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
         <DebugFeed />
