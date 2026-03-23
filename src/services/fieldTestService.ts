@@ -4,6 +4,7 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import { bleFieldTransport, isWebBluetoothAvailable } from './bleFieldTransport';
 
 export type DeviceRole = 'controller' | 'module';
 export type TestTransport = 'realtime-lan' | 'realtime-wan' | 'ble';
