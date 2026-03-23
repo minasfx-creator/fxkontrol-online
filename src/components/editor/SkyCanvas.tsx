@@ -1787,6 +1787,11 @@ export default function SkyCanvas() {
 
       {/* ═══ Finale 3D Viewport Tools ═══ */}
       {!isMobile && <FinaleToolbar />}
+      {!isMobile && (
+        <div className="absolute bottom-20 left-3 z-40">
+          <StressTestButton />
+        </div>
+      )}
 
       {/* ═══ Viewport Playback Controls ═══ */}
       <ViewportPlaybackControls />
