@@ -2246,10 +2246,11 @@ const DebugFeed = React.forwardRef<THREE.Group, {}>(function DebugFeed(_props, _
 const GlobalIlluminationController = React.forwardRef<THREE.Group, {}>(function GlobalIlluminationController(_props, _ref) {
   const giRef = useRef<GlobalIlluminationSystem | null>(null);
   const { scene } = useThree();
+  // Pre-allocated vector — reused every frame to avoid GC pressure
+  const _probePos = useMemo(() => new THREE.Vector3(), []);
 
   useEffect(() => {
     giRef.current = new GlobalIlluminationSystem(scene);
-    // Expose GI system globally for NiagaraVFXController to register probes
     (window as any).__giSystem = giRef.current;
     return () => {
       delete (window as any).__giSystem;
@@ -2261,23 +2262,17 @@ const GlobalIlluminationController = React.forwardRef<THREE.Group, {}>(function 
     if (!giRef.current) return;
     const gi = giRef.current;
 
-    // Check for fresh explosions to register as light probes
-    const { timelineItems, currentTime } = useProjectStore.getState();
-    for (const item of timelineItems) {
-      const elapsed = currentTime - item.startTime;
-      // Register probe only on the frame the burst begins (within 0.05s window)
-      if (elapsed >= 0 && elapsed < 0.05) {
-        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
-        if (effect && effect.type === 'firework') {
-          const compound = hexToCompound(effect.color);
-          const pos = new THREE.Vector3(item.position.x, item.position.y, item.position.z);
-          // Use chemical compound color for physically accurate GI bounce
-          gi.addExplosionProbe(
-            pos,
-            compound.color.clone(),
-            compound.emissionIntensity * 0.6
-          );
-        }
+    // Use centralized ActiveBurstScanner results instead of re-scanning timeline
+    const scan = _activeBurstScan;
+    if (scan) {
+      for (const burst of scan.freshBursts) {
+        const compound = hexToCompound(burst.color);
+        _probePos.set(burst.x, burst.y, burst.z);
+        gi.addExplosionProbe(
+          _probePos,
+          compound.color.clone(),
+          compound.emissionIntensity * 0.6
+        );
       }
     }
 
