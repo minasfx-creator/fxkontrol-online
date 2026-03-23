@@ -42,15 +42,15 @@ export default function MineEffect({
   const count = useMemo(() => Math.min(600, Math.round(200 + caliber * caliber * 14)), [caliber]);
   const pointsRef = useRef<THREE.Points>(null);
   const smokePointsRef = useRef<THREE.Points>(null);
-  const posRef = useRef(new Float32Array(count * 3));
-  const colRef = useRef(new Float32Array(count * 3));
-  const sizeRef = useRef(new Float32Array(count));
+  const posRef = useMemo(() => new Float32Array(count * 3), [count]);
+  const colRef = useMemo(() => new Float32Array(count * 3), [count]);
+  const sizeRef = useMemo(() => new Float32Array(count), [count]);
   const injectedRef = useRef(false);
 
   // Smoke buffers (zero-GC)
-  const smokePosRef = useRef(new Float32Array(SMOKE_COUNT * 3));
-  const smokeColRef = useRef(new Float32Array(SMOKE_COUNT * 3));
-  const smokeSizeRef = useRef(new Float32Array(SMOKE_COUNT));
+  const smokePosRef = useMemo(() => new Float32Array(SMOKE_COUNT * 3), []);
+  const smokeColRef = useMemo(() => new Float32Array(SMOKE_COUNT * 3), []);
+  const smokeSizeRef = useMemo(() => new Float32Array(SMOKE_COUNT), []);
 
   // Chemistry-enhanced color: use formulation if available, else auto-match by color+type
   const chemistry = useMemo(() => {
