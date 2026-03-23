@@ -216,7 +216,7 @@ export default function LaserEffect({
             <planeGeometry args={[0.6, beamLength]} />
             <meshBasicMaterial
               color={color}
-              transparent opacity={0.025}
+              transparent opacity={0.04}
               blending={screenBlend.blending}
               blendEquation={screenBlend.blendEquation}
               blendSrc={screenBlend.blendSrc as any}
