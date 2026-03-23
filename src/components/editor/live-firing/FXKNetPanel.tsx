@@ -130,6 +130,7 @@ export default function FXKNetPanel({ fs = false }: FXKNetPanelProps) {
       {/* Content */}
       <div className="flex-1 overflow-hidden animate-console-boot">
         {activeTab === 'network' && <ArtNetModulePanel fs={fs} />}
+        {activeTab === 'ma3' && <MA3NetworkPanel fs={fs} />}
         {activeTab === 'module' && <VirtualIFMx32QPanel fs={fs} />}
         {activeTab === 'dmx-io' && <DMXIOPanel fs={fs} />}
         {activeTab === 'pixel-map' && <PixelMappingPanel fs={fs} />}
