@@ -1392,6 +1392,12 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
       case 'manual_fire': return renderManualFire(fs);
       case 'pyro_fire': return <PyroFireOnePanel fs={fs} fireChannel={fireChannel} channels={channels} pyroArm={pyroArm} dmxArm={dmxArm} handlePanic={handlePanic} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
       case 'check_slave': return <CheckSlavePanel fs={fs} pyroArm={pyroArm} />;
+      case 'ble_scan': return (
+        <div className={cn("flex flex-col gap-3 h-full overflow-y-auto", fs ? "p-3" : "p-2")}>
+          <BLEDeviceScanner context="pyro" />
+          <BLEDeviceScanner context="dmx" compact />
+        </div>
+      );
       case 'mobile_link': return <MobileLinkMode fs={fs} fireChannel={fireChannel} channels={channels} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
       case 'show_control': return <ShowControlPanel fs={fs} />;
       case 'module':
