@@ -112,6 +112,7 @@ export default function SaluteEffect({
   const heatHazeRef = useRef<THREE.Points>(null);
   const { camera } = useThree();
   const shakeOffset = useRef(new THREE.Vector3());
+  const _shakeTemp = useMemo(() => new THREE.Vector3(), []);
   const fluidInjectedRef = useRef(false);
 
   const materialType = useMemo(() => getMaterialType('salute'), []);
