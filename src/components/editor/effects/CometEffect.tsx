@@ -232,12 +232,12 @@ export default function CometEffect({
       }
 
       const sparkGeo = sparkPointsRef.current.geometry;
-      sparkGeo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
-      sparkGeo.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
-      sparkGeo.setAttribute('size', new THREE.BufferAttribute(sizeArr, 1));
-      sparkGeo.attributes.position.needsUpdate = true;
-      sparkGeo.attributes.color.needsUpdate = true;
-      sparkGeo.attributes.size.needsUpdate = true;
+      const sPosAttr = sparkGeo.getAttribute('position') as THREE.BufferAttribute;
+      const sColAttr = sparkGeo.getAttribute('color') as THREE.BufferAttribute;
+      const sSizeAttr = sparkGeo.getAttribute('size') as THREE.BufferAttribute;
+      if (sPosAttr) sPosAttr.needsUpdate = true;
+      if (sColAttr) sColAttr.needsUpdate = true;
+      if (sSizeAttr) sSizeAttr.needsUpdate = true;
     }
 
     // ── Smoke wake ──
