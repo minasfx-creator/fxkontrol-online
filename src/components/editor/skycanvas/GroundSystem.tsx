@@ -1031,34 +1031,39 @@ export function StageGround({ satelliteTexture }: { satelliteTexture: string | n
       {satelliteTexture && <SatelliteOverlay textureUrl={satelliteTexture} />}
       {sc.groundFogIntensity > 0 && <GroundFog />}
 
-      {sc.showGrid && (
-        <>
-          <Grid
-            position={[0, 0.01, 0]}
-            args={[1000, 1000]}
-            cellSize={2}
-            cellThickness={0.15}
-            cellColor="#15152a"
-            sectionSize={10}
-            sectionThickness={0.4}
-            sectionColor="#1a1a2e"
-            fadeDistance={4000}
-            infiniteGrid
-          />
-          <Grid
-            position={[0, 0.015, 0]}
-            args={[10000, 10000]}
-            cellSize={50}
-            cellThickness={0.6}
-            cellColor="#1a1a2e"
-            sectionSize={100}
-            sectionThickness={0.8}
-            sectionColor="#22223a"
-            fadeDistance={7500}
-            infiniteGrid
-          />
-        </>
-      )}
+      {sc.showGrid && (() => {
+        const snap = useSceneStore.getState().environment.gridSnapResolution;
+        const cellSize = snap;
+        const sectionSize = snap * 10;
+        return (
+          <>
+            <Grid
+              position={[0, 0.01, 0]}
+              args={[1000, 1000]}
+              cellSize={cellSize}
+              cellThickness={0.15}
+              cellColor="#15152a"
+              sectionSize={sectionSize}
+              sectionThickness={0.4}
+              sectionColor="#1a1a2e"
+              fadeDistance={4000}
+              infiniteGrid
+            />
+            <Grid
+              position={[0, 0.015, 0]}
+              args={[10000, 10000]}
+              cellSize={sectionSize * 5}
+              cellThickness={0.6}
+              cellColor="#1a1a2e"
+              sectionSize={sectionSize * 10}
+              sectionThickness={0.8}
+              sectionColor="#22223a"
+              fadeDistance={7500}
+              infiniteGrid
+            />
+          </>
+        );
+      })()}
 
       <FloorLogo />
 

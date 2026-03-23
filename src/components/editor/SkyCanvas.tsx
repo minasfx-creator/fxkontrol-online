@@ -12,6 +12,7 @@ import PostProcessing from './PostProcessing';
 import { BoxSelectR3F } from './BoxSelectOverlay';
 import AlignmentTools from './AlignmentTools';
 import CameraAnimator, { CameraPathPreview } from './CameraAnimator';
+import { FinaleAxesHelper, DoubleClickFocus, FinaleToolbar } from './FinaleViewportTools';
 import ViewportRulers from './ViewportRulers';
 import TrajectoryPaths from './TrajectoryPaths';
 import DroneChoreography from './DroneChoreography';
@@ -755,6 +756,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   const targetPos = useRef(new THREE.Vector3(...targetPosition));
   const targetLook = useRef(new THREE.Vector3(...targetLookAt));
   const animating = useRef(false);
+  const focusAnimating = useRef(false);
   const initialized = useRef(false);
   const lastPresetKey = useRef('');
   const introPhase = useRef<'hold' | 'sweep' | 'done'>(__cameraIntroPlayed ? 'done' : 'hold');
@@ -881,15 +883,16 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     }
 
     // Normal preset animation — smooth Apple-style easing
-    if (!animating.current || !controlsRef.current || freeLook) {
+    if (!animating.current && !focusAnimating.current || !controlsRef.current || freeLook) {
       clampToWorldBounds();
       return;
     }
-    camera.position.lerp(targetPos.current, 0.06);
-    controlsRef.current.target.lerp(targetLook.current, 0.06);
+    camera.position.lerp(targetPos.current, focusAnimating.current ? 0.08 : 0.06);
+    controlsRef.current.target.lerp(targetLook.current, focusAnimating.current ? 0.08 : 0.06);
     controlsRef.current.update();
     if (camera.position.distanceTo(targetPos.current) < 0.1) {
       animating.current = false;
+      focusAnimating.current = false;
     }
     clampToWorldBounds();
   });
@@ -906,6 +909,23 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     window.addEventListener('box-select-active' as any, handler as any);
     return () => window.removeEventListener('box-select-active' as any, handler as any);
   }, []);
+
+  // Double-click focus: fly camera to a 3D point
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { x, y, z } = (e as CustomEvent).detail;
+      if (controlsRef.current) {
+        targetLook.current.set(x, y, z);
+        // Position camera slightly offset from the focus point
+        const camDir = new THREE.Vector3().subVectors(camera.position, controlsRef.current.target).normalize();
+        const dist = Math.max(20, camera.position.distanceTo(controlsRef.current.target) * 0.5);
+        targetPos.current.set(x + camDir.x * dist, Math.max(y + 5, y + camDir.y * dist), z + camDir.z * dist);
+        focusAnimating.current = true;
+      }
+    };
+    window.addEventListener('focus-camera-on-point', handler);
+    return () => window.removeEventListener('focus-camera-on-point', handler);
+  }, [camera]);
 
   // In select mode: disable left-mouse orbit so box-select works exclusively
   const editorMode = useProjectStore(s => s.editorMode);
@@ -1486,8 +1506,11 @@ export default function SkyCanvas() {
         {!isMobile && <DelayedMount delay={2500}><WeatherEffects /></DelayedMount>}
 
         <StageGround satelliteTexture={satelliteTexture} />
+        <FinaleAxesHelper />
+        <DoubleClickFocus />
         <SiteModelRenderer />
         <PositionPins />
+        <PyroLaunchAngles />
         <PyroLaunchAngles />
         {!isMobile && <Rack3DView />}
         <TrajectoryPaths />
@@ -1759,6 +1782,9 @@ export default function SkyCanvas() {
       {!isMobile && <ViewportTerminal />}
       <SelectionStatusBar />
       {!isMobile && <AlignmentTools />}
+
+      {/* ═══ Finale 3D Viewport Tools ═══ */}
+      {!isMobile && <FinaleToolbar />}
 
       {/* ═══ Viewport Playback Controls ═══ */}
       <ViewportPlaybackControls />
