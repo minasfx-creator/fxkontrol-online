@@ -369,40 +369,42 @@ export default function Dashboard() {
           <div className="h-[1px] flex-1" style={{ background: 'hsl(32 100% 50% / 0.1)' }} />
           <span className="text-[8px] font-mono text-muted-foreground/30 tracking-wider">TAP TO ENTER</span>
         </div>
-        <div className={cn("grid gap-2", isMobile ? "grid-cols-2" : "grid-cols-7")}>
+        <div className={cn("grid gap-2", isMobile ? "grid-cols-4" : "grid-cols-7")}>
           {CONSOLE_CARDS.map((console, i) => {
             const Icon = console.icon;
             return (
               <button
                 key={console.key}
                 onClick={() => navigate(`/command?mode=${console.key}`)}
-                className="group relative overflow-hidden rounded-2xl border p-3 text-left transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-[1.06] active:scale-[0.95] animate-fxk-stagger"
+                className="group relative overflow-hidden rounded-lg border p-2.5 text-center transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-[1.08] active:scale-[0.95] animate-fxk-stagger"
                 style={{
                   animationDelay: `${0.1 + i * 0.04}s`,
-                  borderColor: `${console.color}15`,
-                  background: `rgba(8, 10, 14, 0.7)`,
+                  borderColor: `${console.color}20`,
+                  background: `rgba(8, 10, 14, 0.8)`,
                   backdropFilter: 'blur(24px) saturate(1.4)',
                 }}
               >
                 {/* Accent top bar */}
                 <div className="absolute top-0 left-0 right-0 h-[2px]" style={{
-                  background: `linear-gradient(90deg, transparent, ${console.color}60, transparent)`,
+                  background: `linear-gradient(90deg, transparent, ${console.color}70, transparent)`,
                 }} />
                 {/* Corner brackets */}
-                <div className="absolute top-0.5 left-0.5 w-2 h-2 border-t border-l pointer-events-none" style={{ borderColor: `${console.color}25` }} />
-                <div className="absolute top-0.5 right-0.5 w-2 h-2 border-t border-r pointer-events-none" style={{ borderColor: `${console.color}25` }} />
+                <div className="absolute top-0.5 left-0.5 w-2 h-2 border-t border-l pointer-events-none" style={{ borderColor: `${console.color}30` }} />
+                <div className="absolute bottom-0.5 right-0.5 w-2 h-2 border-b border-r pointer-events-none" style={{ borderColor: `${console.color}15` }} />
                 
-                <div className="flex flex-col items-center gap-1.5">
-                  <div className="h-10 w-10 rounded-lg flex items-center justify-center transition-all group-hover:scale-110"
+                <div className="flex flex-col items-center gap-1">
+                  <div className="h-8 w-8 md:h-10 md:w-10 rounded-lg flex items-center justify-center transition-all group-hover:scale-110"
                     style={{ background: `${console.color}12`, border: `1px solid ${console.color}20` }}>
-                    <Icon className="w-5 h-5" style={{ color: console.color }} />
+                    <Icon className="w-4 h-4 md:w-5 md:h-5" style={{ color: console.color }} />
                   </div>
-                  <span className="text-[9px] font-mono font-bold tracking-[0.1em] text-foreground/70 group-hover:text-foreground transition-colors">
+                  <span className="text-[8px] md:text-[9px] font-mono font-bold tracking-[0.08em] text-foreground/70 group-hover:text-foreground transition-colors leading-tight">
                     {console.label}
                   </span>
-                  <span className="text-[7px] font-mono text-muted-foreground/30 tracking-wider">
-                    {console.subtitle}
-                  </span>
+                  {!isMobile && (
+                    <span className="text-[7px] font-mono text-muted-foreground/30 tracking-wider">
+                      {console.subtitle}
+                    </span>
+                  )}
                 </div>
 
                 {/* Hover glow */}
