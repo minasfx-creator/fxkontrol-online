@@ -328,40 +328,39 @@ export default function CommandCenter() {
   if (isMobile) {
     return (
       <>
-      <div className="h-[100dvh] w-screen flex flex-col bg-background">
-        {/* ═══ Military Briefing Bar — compact, scanline overlay ═══ */}
-        <div className="shrink-0 px-2 pt-1.5 pb-1 relative" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-          <div
-            className={cn(
-              "flex items-center justify-between px-3 py-1.5 rounded border transition-all relative overflow-hidden",
-              isArmed ? "border-destructive/30" : "border-primary/10"
-            )}
-            style={{ background: 'hsl(220 22% 2% / 0.95)', backdropFilter: 'blur(32px) saturate(1.8)' }}
-          >
-            {/* Scanline on bar */}
-            <div className="absolute inset-0 pointer-events-none opacity-[0.06]" style={{
-              backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.04) 1px, rgba(255,255,255,0.04) 2px)',
-            }} />
-            <div className="flex items-center gap-2 relative z-10">
-              {(() => { const L = CONSOLE_LOGOS[activeMode]; return L ? <L size={16} active /> : null; })()}
-              <div className="ff-signal-bars">
-                <div className={cn("bar", connectedCount >= 1 && "active")} />
-                <div className={cn("bar", connectedCount >= 2 && "active")} />
-                <div className={cn("bar", connectedCount >= 3 && "active")} />
-              </div>
+      <div className="h-[100dvh] w-screen flex flex-col bg-background overflow-hidden">
+        {/* ═══ Military Briefing Bar — edge-to-edge, no frame ═══ */}
+        <div
+          className={cn(
+            "shrink-0 flex items-center justify-between px-3 py-1 relative overflow-hidden",
+            isArmed ? "border-b border-destructive/20" : "border-b border-border/10"
+          )}
+          style={{
+            paddingTop: 'env(safe-area-inset-top)',
+            background: 'hsl(220 22% 3% / 0.95)',
+            backdropFilter: 'blur(32px) saturate(1.8)',
+            WebkitBackdropFilter: 'blur(32px) saturate(1.8)',
+          }}
+        >
+          <div className="flex items-center gap-2">
+            {(() => { const L = CONSOLE_LOGOS[activeMode]; return L ? <L size={16} active /> : null; })()}
+            <div className="ff-signal-bars">
+              <div className={cn("bar", connectedCount >= 1 && "active")} />
+              <div className={cn("bar", connectedCount >= 2 && "active")} />
+              <div className={cn("bar", connectedCount >= 3 && "active")} />
             </div>
-            <Badge variant="outline" className={cn("text-[7px] h-4 px-2 font-black border font-mono tracking-[0.15em] rounded-sm relative z-10", accent.badge)}>
-              {accent.label}
-            </Badge>
-            <div className="flex items-center gap-1.5 relative z-10">
-              <span className="text-[8px] font-mono font-bold tabular-nums" style={{ color: 'hsl(32 100% 55%)', textShadow: '0 0 4px hsl(32 100% 50% / 0.3)' }}>{missionClock}</span>
-              {isArmed && <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" style={{ boxShadow: '0 0 6px hsl(var(--destructive))' }} />}
-            </div>
+          </div>
+          <Badge variant="outline" className={cn("text-[7px] h-4 px-2 font-black border font-mono tracking-[0.15em] rounded-sm", accent.badge)}>
+            {accent.label}
+          </Badge>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[8px] font-mono font-bold tabular-nums" style={{ color: 'hsl(32 100% 55%)', textShadow: '0 0 4px hsl(32 100% 50% / 0.3)' }}>{missionClock}</span>
+            {isArmed && <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" style={{ boxShadow: '0 0 6px hsl(var(--destructive))' }} />}
           </div>
         </div>
 
-        {/* ═══ Loadout Cards — weapon-style selector ═══ */}
-        <div className="shrink-0 px-2 py-1">
+        {/* ═══ Loadout Cards — weapon-style selector, edge-to-edge ═══ */}
+        <div className="shrink-0 px-1.5 py-0.5">
           <ScrollArea className="w-full">
             <div className="flex gap-1.5 pb-1">
               {allMobileModes.map(mode => {
@@ -392,8 +391,8 @@ export default function CommandCenter() {
           </ScrollArea>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-hidden" style={{ paddingBottom: '72px' }}>
+        {/* Content — full bleed */}
+        <div className="flex-1 overflow-hidden min-h-0" style={{ paddingBottom: '64px' }}>
           {isFireMode(activeMode) ? (
             <LiveFiringPanel initialMode={activeMode} standalone />
           ) : (
@@ -409,7 +408,7 @@ export default function CommandCenter() {
           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
           <nav
-            className="pointer-events-auto mx-3 mb-2 rounded-2xl px-1 py-1 flex items-center justify-around"
+            className="pointer-events-auto mx-2 mb-1 rounded-2xl px-1 py-1 flex items-center justify-around"
             style={{
               background: 'hsl(220 22% 3% / 0.9)',
               backdropFilter: 'blur(32px) saturate(1.8)',
