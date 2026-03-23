@@ -171,7 +171,7 @@ export default function LaserEffect({
             <cylinderGeometry args={[0.004, 0.018, beamLength, 4]} />
             <meshBasicMaterial
               color={color}
-              transparent opacity={0.55}
+              transparent opacity={0.7}
               blending={hardLightBlend.blending}
               blendEquation={hardLightBlend.blendEquation}
               blendSrc={hardLightBlend.blendSrc as any}
