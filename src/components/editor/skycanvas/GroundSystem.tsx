@@ -880,6 +880,34 @@ function SFXStageEnvironment() {
         </mesh>
       </group>
 
+      {/* ═══ DMX Point Lights — BP_DMXPointLight reference ═══ */}
+      {[
+        [-(stageW / 2 - 2), riggingY - 0.5, -(stageD / 2 - 2)],
+        [stageW / 2 - 2, riggingY - 0.5, -(stageD / 2 - 2)],
+        [-(stageW / 2 - 2), riggingY - 0.5, stageD / 2 - 2],
+        [stageW / 2 - 2, riggingY - 0.5, stageD / 2 - 2],
+      ].map((pos, i) => (
+        <group key={`dmx-pl-${i}`} position={pos as [number, number, number]}>
+          <mesh>
+            <sphereGeometry args={[0.12, 12, 12]} />
+            <meshStandardMaterial
+              color="#222222"
+              emissive="#ffffff"
+              emissiveIntensity={0.6}
+              metalness={0.9}
+              roughness={Math.max(0.02, 0.1)}
+            />
+          </mesh>
+          <pointLight
+            ref={el => { dmxPointLightRefs.current[i] = el; }}
+            color="#ffffff"
+            intensity={1.2}
+            distance={20}
+            decay={2}
+          />
+        </group>
+      ))}
+
       {/* Atmospheric haze volume — makes beams visible like UE5 */}
       <mesh position={[0, riggingY / 2 + stageHeight, 0]}>
         <boxGeometry args={[stageW + 10, riggingY + 4, stageD + 20]} />

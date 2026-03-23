@@ -250,6 +250,20 @@ export function createWaterSystem(config?: Partial<WaterConfig>) {
     setOpacity(v: number) { material.uniforms.uOpacity.value = v; },
     setSSS(v: number) { material.uniforms.uSSS.value = v; },
     setCausticIntensity(v: number) { material.uniforms.uCausticIntensity.value = v; },
+    /** Fountain light phase sync — modulates caustics and SSS rhythmically */
+    setFountainPhase(phase: number) {
+      material.uniforms.uCausticIntensity.value = 0.3 + Math.sin(phase * Math.PI * 2) * 0.35 + 0.35;
+      material.uniforms.uSSS.value = 0.1 + Math.sin(phase * Math.PI * 2 + 0.5) * 0.2 + 0.2;
+    },
+    /** DMX-driven water tint color change */
+    setWaterTint(color: THREE.Color) {
+      material.uniforms.uWaterColor.value.copy(color);
+    },
+    /** Toggle between calm pool and active fountain */
+    setFountainActive(active: boolean) {
+      material.uniforms.uWaveAmplitude.value = active ? 0.8 : 0.03;
+      material.uniforms.uWaveFrequency.value = active ? 0.25 : 0.6;
+    },
   };
 }
 
@@ -259,4 +273,15 @@ export const WATER_PRESETS = {
   river: { waveAmplitude: 0.5, waveFrequency: 0.25, opacity: 0.8, windDirection: [1, 0] as [number, number], sssIntensity: 0.5, causticIntensity: 0.6 },
   ocean: { waveAmplitude: 1.2, waveFrequency: 0.08, opacity: 0.95, sssIntensity: 0.6, causticIntensity: 0.3 },
   puddle: { waveAmplitude: 0.05, waveFrequency: 0.5, opacity: 0.7, size: 30, sssIntensity: 0.1, causticIntensity: 0.8 },
+  pool: {
+    waveAmplitude: 0.03,
+    waveFrequency: 0.6,
+    opacity: 0.75,
+    size: 80,
+    sssIntensity: 0.15,
+    causticIntensity: 1.0,
+    waterColor: new THREE.Color(0.01, 0.08, 0.1),
+    deepColor: new THREE.Color(0.005, 0.04, 0.06),
+    sssColor: new THREE.Color(0.0, 0.1, 0.12),
+  },
 } as const;
