@@ -1,79 +1,85 @@
 
 
-## Plan: UE5 DMX Previs Config Alignment — Pyro DMX Attributes + Render Parity
+## Plan: Replicate UE5 Blueprint Systems — DMX Send/Receive, Point Lights, Scene Capture, Fountain Lights, Pixel Mapping Manager
 
-The uploaded UE5 project files (DefaultEngine.ini from "DMX Previs" by Moment Factory/Epic Games) reveal specific configurations not yet mapped into the FXK engine. The `.show.gz` is a binary show file that cannot be parsed.
-
----
-
-### Key Findings from UE5 Config
-
-From `DefaultEngine.ini` DMXProtocolSettings:
-- **20 universes** input/output (already supported)
-- **SendingRefreshRate = 44** (already default in `DMXShow.fps`)
-- **Fixture categories**: Static, Matrix/Pixel Bar, Moving Head, Moving Mirror, Strobe, Other
-- **DMX Attributes include pyro-specific**: `Burst`, `Launch`, `Velocity`, `Angle`, `NumBeams`, `X`, `Y`, `Z` — **these are MISSING from the attribute library**
-
-From renderer settings:
-- `r.MinRoughnessOverride=0.02` — enforce minimum roughness on all materials
-- `r.DefaultFeature.AutoExposure=False` — verify auto-exposure off by default
-- `r.GenerateMeshDistanceFields=True` — not applicable to WebGL but confirms SDF intent
+The 5 uploaded UE5 blueprints map to concrete systems missing or incomplete in the FXK codebase. All are binary — used as architectural reference.
 
 ---
 
-### Changes
+### 1. DMX Send/Receive Bridge (`src/lib/dmxEngine.ts`)
 
-#### 1. Add Missing Pyro DMX Attributes (`src/lib/dmxEngine.ts`)
+**From `BP_DMX_Send_Receive`** — bidirectional DMX I/O controller.
 
-Add 8 pyro/SFX attributes from UE5 config to `DMX_ATTRIBUTE_LIBRARY` after the Control section:
+Currently the engine only has universe buffers and fixture patching. Add a `DMXSendReceive` controller class:
 
-```
-Burst:     { category: 'effects', description: 'Pyro burst trigger' }
-Launch:    { category: 'effects', description: 'Pyro launch trigger' }
-Velocity:  { category: 'effects', description: 'Launch velocity (0-255)' }
-Angle:     { category: 'effects', description: 'Launch angle (0-180°)' }
-NumBeams:  { category: 'effects', description: 'Number of beams/stars' }
-X:         { category: 'position', description: 'Position X' }
-Y:         { category: 'position', description: 'Position Y' }
-Z:         { category: 'position', description: 'Position Z' }
-```
+- `sendUniverse(universeId, channels: Uint8Array)`: serializes 512-byte buffer to Art-Net packet format (header + universe + data), queues for network output
+- `receiveUniverse(universeId): Uint8Array`: returns the latest received buffer for a universe (for external console input)
+- `mode: 'send' | 'receive' | 'duplex'` per universe — matches UE5's bidirectional config
+- Add `DMXIOConfig` interface: `{ universeId, mode, protocol: 'artnet' | 'sacn', priority: number }`
+- Add `configureDMXIO(configs: DMXIOConfig[])` to set up all universes at once
+- Update `UE5_BLUEPRINT_MAP`: `'BP_DMX_Send_Receive': 'generic-rgbw'`
 
-#### 2. Add Pyro Fixture Profile (`src/lib/dmxEngine.ts`)
+### 2. DMX Point Light Fixture (`src/lib/dmxEngine.ts` + `src/components/editor/skycanvas/GroundSystem.tsx`)
 
-Add a `'sfx-pyro-dmx'` profile to `DMX_FIXTURE_PROFILES`:
-- Attributes: `['Dimmer', 'Burst', 'Launch', 'Velocity', 'Angle', 'NumBeams', 'Red', 'Green', 'Blue']`
-- channelCount: 9
-- Category: `'sfx'`
+**From `BP_DMXPointLight`** — a DMX-controlled point light (not moving head, not spot — omnidirectional).
 
-Update `UE5_BLUEPRINT_MAP` entry for `BP_Pyro_v4` from `'sfx-flame'` to `'sfx-pyro-dmx'`.
+**DMX Engine:**
+- Add `'dmx-point-light'` fixture profile: attributes `['Dimmer', 'Red', 'Green', 'Blue', 'White', 'CTO']`, channelCount 6, category `'wash'`
+- Update `UE5_BLUEPRINT_MAP`: `'BP_DMXPointLight': 'dmx-point-light'`
 
-Add `'sfx-firework-dmx'` profile:
-- Attributes: `['Dimmer', 'Launch', 'Burst', 'Velocity', 'Angle', 'NumBeams', 'Red', 'Green', 'Blue', 'X', 'Y', 'Z']`
-- channelCount: 12
+**3D Stage (GroundSystem.tsx — SFXStageEnvironment):**
+- Add 4 DMX point light props at truss corners (small emissive sphere + `pointLight` with distance 20, intensity 1.2)
+- Color driven by a slow hue rotation via `useFrame` to demonstrate DMX-controlled ambient wash
 
-Update `BP_Firework_v2` mapping from `'drone-led'` to `'sfx-firework-dmx'`.
+### 3. Downsample Scene Capture (`src/components/editor/PostProcessing.tsx`)
 
-#### 3. Add "Moving Mirror" Fixture Category (`src/lib/dmxEngine.ts`)
+**From `BP_DownSampleSceneCapture`** — a render-to-texture system that captures the scene at reduced resolution for bloom/blur feedback.
 
-The UE5 config lists "Moving Mirror" as a fixture category. Add `'moving-mirror'` to the `DMXFixtureProfile.category` union type and create a profile:
-- `'moving-mirror'`: attributes `['Pan', 'PanFine', 'Tilt', 'TiltFine', 'Dimmer', 'Strobe', 'ColorWheel', 'Gobo1', 'Focus', 'Control']`, channelCount 10
+Add a `DownSampleBlurEffect` to the post-processing pipeline:
+- Custom postprocessing `Effect` subclass with a 4-tap box blur fragment shader
+- Two sequential passes at half and quarter resolution
+- Uniforms: `intensity` (default 0.15), `radius` (default 2.0 pixels)
+- Gated by bloom strength > 0.5 to avoid cost when bloom is minimal
+- Insert after the existing Bloom layers in `EffectComposer`
 
-#### 4. Enforce Minimum Roughness (`src/components/editor/skycanvas/GroundSystem.tsx`)
+### 4. Fountain Light System (`src/render_ultra/environment/waterRendering.ts`)
 
-From `r.MinRoughnessOverride=0.02` — ensure all `meshStandardMaterial` instances in the stage environment use `roughness={Math.max(0.02, value)}`. Apply to:
-- Orb spheres (currently 0.05 — OK)
-- Pyro pot housing
-- DMX rack prop
-- Any material with roughness below 0.02
+**From `BP_FountainLight`** — underwater/surface lights synchronized to water fountain jets.
 
-#### 5. Verify AutoExposure Default (`src/store/useSceneStore.ts`)
+Add to the water system:
+- `pool` preset in `WATER_PRESETS`: `waveAmplitude: 0.03`, `waveFrequency: 0.6`, `opacity: 0.75`, `causticIntensity: 1.0`, `sssIntensity: 0.15`, teal tint, `size: 80`
+- New methods on the water system return object:
+  - `setFountainPhase(phase: number)`: modulates `uCausticIntensity` sinusoidally (0.3-1.0) and `uSSS` (0.1-0.5) for synchronized pulsing
+  - `setWaterTint(color: THREE.Color)`: updates `uWaterColor` for DMX-driven color changes
+  - `setFountainActive(active: boolean)`: toggles wave amplitude between calm pool (0.03) and active fountain (0.8)
 
-Confirm `exposureCompensation` defaults to `0` and that no adaptive auto-exposure is active by default — matching `r.DefaultFeature.AutoExposure=False`. (Currently correct.)
+### 5. Pixel Mapping Manager (`src/lib/pixelMapper.ts`)
+
+**From `BP_PixelMappingManager`** — advanced pixel mapping with matrix/snake topologies and DMX output routing.
+
+Extend the pixel mapper:
+- Add `'matrix'` and `'snake'` to `Topology` union type
+- Add to `PixelMapConfig`: `groupSize?: number` (LED bar pixel grouping), `startCorner?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'`
+- Implement `matrix` topology: standard left-to-right, top-to-bottom scan
+- Implement `snake` topology: serpentine/zigzag (odd rows reverse direction)
+- Add `mapFixturesToDMXOutput()` function: returns `{ universe: number, startChannel: number, pixelIndex: number }[]` for direct Art-Net/sACN patching
+- Add `PixelMappingManager` class with `addGroup(name, fixtures, config)`, `getMapping(groupName)`, `getAllMappings()` for managing multiple pixel map groups (e.g., separate maps for LED wall, floor, truss bars)
 
 ---
+
+### Files Modified
+| File | Changes |
+|------|---------|
+| `src/lib/dmxEngine.ts` | DMXSendReceive class, DMXIOConfig, point-light profile, blueprint map entries |
+| `src/lib/pixelMapper.ts` | matrix/snake topologies, groupSize, startCorner, DMX output mapping, PixelMappingManager class |
+| `src/render_ultra/environment/waterRendering.ts` | pool preset, fountain light methods |
+| `src/components/editor/PostProcessing.tsx` | DownSampleBlurEffect |
+| `src/components/editor/skycanvas/GroundSystem.tsx` | DMX point light props at truss corners |
 
 ### Technical Notes
-- The `.show.gz` file is a binary Moment Factory show format — not parseable
-- All changes are additive — no existing profiles or attributes are modified
-- The pyro DMX attributes enable future DMX-triggered pyro firing from external consoles (e.g., MA3, ChamSys)
+- DMXSendReceive is a virtual controller — actual network I/O goes through existing Art-Net/sACN bridges
+- Snake topology uses `row % 2 === 1` to reverse column order — standard in MA3/Resolume
+- Pool preset is additive to existing `WATER_PRESETS`
+- Downsample blur reuses postprocessing lib pipeline — no new render targets
+- All changes are additive — no existing functionality modified
 
