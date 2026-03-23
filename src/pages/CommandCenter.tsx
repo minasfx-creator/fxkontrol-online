@@ -359,8 +359,8 @@ export default function CommandCenter() {
           </div>
         </div>
 
-        {/* ═══ Loadout Cards — weapon-style selector ═══ */}
-        <div className="shrink-0 px-2 py-1">
+        {/* ═══ Loadout Cards — weapon-style selector, edge-to-edge ═══ */}
+        <div className="shrink-0 px-1.5 py-0.5">
           <ScrollArea className="w-full">
             <div className="flex gap-1.5 pb-1">
               {allMobileModes.map(mode => {
