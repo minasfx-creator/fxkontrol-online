@@ -3,7 +3,7 @@ import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { FXKAssistant } from '@/components/FXKAssistant';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { PanelLeftClose, PanelLeft, AlertOctagon } from 'lucide-react';
+import { PanelLeftClose, PanelLeft, AlertOctagon, Menu } from 'lucide-react';
 import minasfxLogo from '@/assets/minasfx-logo-white.png';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useDisplayStore } from '@/store/useDisplayStore';
