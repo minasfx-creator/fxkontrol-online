@@ -1,75 +1,84 @@
 
 
-## Audit: Gaps & Refinements — Blade Runner 2049 Fidelity
+## Plan: Mobile Console — Free Fire Game HUD + BR2049 Military
 
-### Issues Identified
+### What the user wants
+Mobile consoles styled like **Free Fire** (battle royale mobile game): fullscreen landscape HUD with transparent overlays, compact weapon-style quick-select, minimap-like telemetry, health/ammo bar patterns — all fused with the existing **Blade Runner 2049 military** aesthetic.
 
-**GAP 1: Cinematic Intro Never Triggers on /editor**
-- `Index.tsx` line 180: `appPhase` defaults to `'globe'`, skipping the `'cinematic'` phase entirely
-- The intro only works on Dashboard (`/`) via `sessionStorage` — and only once per session
-- User wants: intro every time they enter `/editor`
+### Current State
+- Landscape mobile already exists (lines 191-281) with nav rail + top bar
+- Portrait mobile exists (lines 287-402) with floating dock
+- Both work but feel like "generic dashboard" — not game-like
 
-**GAP 2: 3D Engine Crashes (WebGL Context Lost)**
-- `useSceneStore.ts` defaults: `ssaoEnabled: true`, `ssrEnabled: true`, `motionBlurEnabled: true` — all enabled simultaneously
-- `PostProcessing.tsx` line 390: `<EffectComposer multisampling={0}>` with no `enableNormalPass` — SSAO requires a NormalPass internally, causing the error chain
-- Combined load (SSR + SSAO + DOF + Motion Blur + Heat Distortion + God Rays + Sharpen + Color Grading) is too heavy for most GPUs on initial load
+### Changes
 
-**GAP 3: Command Center Consoles Look "Old"**
-- Desktop layout (line 408-621) has solid glassmorphism sidebar + breadcrumb, but the main content area lacks per-console visual identity (no header color bars, no ambient glow, no HUD corner brackets like landscape mode has)
-- The desktop layout is missing the HUD corner brackets that landscape mobile already has
-- No "rain" or ambient particles for BR2049 atmosphere
+#### File: `src/pages/CommandCenter.tsx`
 
-**GAP 4: Floating Footer Missing on Desktop**
-- Desktop Command Center has no floating dock — `DockBar` only renders inside `MainLayout`, but Command Center renders fullscreen (`h-full flex overflow-hidden pb-14` — just padding for the DockBar from MainLayout)
-- The user explicitly wants the floating footer in Command Center
+**Landscape Mobile (Free Fire HUD Overhaul):**
+1. **Top HUD bar → Ultra-compact game bar** (24px): Kill the current plain bar. Replace with translucent strip showing:
+   - Left: Console logo + label (small)
+   - Center: Mission clock in amber LCD style + ARM status as a pulsing red dot (not a badge)
+   - Right: Connection count as signal bars (not text) + miniature battery/signal icons
 
----
+2. **Left nav rail → Weapon wheel style**: Replace plain icon buttons with circular/hexagonal console selector buttons with:
+   - Active console: bright accent ring + glow pulse (like selected weapon in Free Fire)
+   - Inactive: dim, ghosted, no labels
+   - Reduce width from 44px to 40px
+   - Add thin vertical accent line on active (weapon slot indicator)
 
-### Plan
+3. **Content area**: Add semi-transparent tactical grid overlay (like Free Fire's map grid) with accent-colored gridlines at 5% opacity. Keep HUD corner brackets but make them thicker (3px) and add subtle animation (slow pulse on accent color).
 
-#### Step 1: Enable Cinematic Intro on /editor (every entry)
-**File: `src/pages/Index.tsx`**
-- Change line 180: `useState('globe')` → `useState('cinematic')`
-- This triggers: CinematicIntro → SplashScreen → GlobeSelector → Editor
-- The CSS fallback boot sequence will play since no .mp4 files exist
+4. **Quick-action bar (NEW)**: Add a floating horizontal bar at bottom-right (like Free Fire's action buttons) with:
+   - E-STOP button (red, circular, large, pulsing border)
+   - ARM/SAFE toggle (compact, high contrast)
+   - Fullscreen toggle
+   - Semi-transparent glass background, rounded-2xl
 
-#### Step 2: Fix 3D Engine Stability
-**File: `src/store/useSceneStore.ts`**
-- Change defaults to safe values:
-  - `ssaoEnabled: false` (line 295)
-  - `ssrEnabled: false` (line 305)
-  - `motionBlurEnabled: false` (line 319)
-  - `heatDistortionEnabled: false` (line 314)
-  - `godRaysEnabled: false` (line 300)
-  - `dofEnabled: false` (line 297)
-- Keep bloom, vignette, chromatic aberration, sharpen — these are lightweight
+**Portrait Mobile (Game Lobby Style):**
+5. **Floating dock → Game-style tab bar**: Make the bottom nav more aggressive:
+   - Hexagonal icon containers instead of plain circles
+   - Active category: bright glow ring + accent color fill
+   - Background: darker (3% lightness), more transparent blur
+   - Add subtle "ammo counter" style badge showing number of consoles in each category
 
-**File: `src/components/editor/PostProcessing.tsx`**
-- Add `enableNormalPass` prop to `<EffectComposer>` when SSAO is enabled
-- Wrap SSAO in error-safe conditional
+6. **Console selector cards → Weapon loadout cards**: Replace horizontal scroll buttons with taller cards (64px) showing:
+   - Console logo prominent (24px)
+   - Label below in mono uppercase
+   - Active: full accent border glow + corner brackets
+   - Inactive: ghosted with thin border
 
-#### Step 3: Refresh Command Center — Desktop BR2049 Identity
-**File: `src/pages/CommandCenter.tsx`**
-- Add HUD corner brackets to desktop content area (matching landscape mobile)
-- Add ambient accent glow line under breadcrumb
-- Add subtle scanline overlay to content area for BR2049 atmosphere
-- Add per-console ambient glow background in the content area
-- Ensure the existing floating dock in mobile portrait is properly styled
+7. **Top HUD → Military briefing bar**: More compact, add scanline overlay to the bar itself
 
-#### Step 4: Enhance BR2049 Atmosphere
-**File: `src/pages/CommandCenter.tsx`**
-- Add CSS rain particle overlay (subtle, low opacity) to the desktop sidebar
-- Add CRT noise texture overlay to the main content area
-- Add horizontal scanline sweep animation (reuse from SplashScreen)
+#### File: `src/index.css`
 
-#### Step 5: Build Verification
+8. **New CSS classes**:
+   - `.ff-weapon-slot` — hexagonal/rounded selector with glow ring states
+   - `.ff-hud-grid` — tactical grid overlay (repeating linear gradient)
+   - `.ff-action-ring` — circular action button with pulsing border
+   - `.ff-signal-bars` — mini signal strength indicator (3 bars)
+   - Enhance `.landscape-hud-bar` and `.landscape-nav-rail` with darker, more transparent backgrounds
+   - Add `@keyframes weapon-select-pulse` for active console glow animation
+
+#### Fullscreen enforcement
+9. In `CommandCenter.tsx`, add a `useEffect` that calls `document.documentElement.requestFullscreen()` on mobile landscape mount (with try/catch), and exits fullscreen on unmount
+
+### Visual Reference (Free Fire mapping)
+```text
+┌──────────────────────────────────────────────┐
+│ [LOGO] FXK-PYRO    T+00:12:45  ●ARM  ▮▮▮ │  ← Top HUD (24px, translucent)
+├────┬─────────────────────────────────────────┤
+│ ◯  │                                         │
+│ ◉  │   [ MAIN CONSOLE CONTENT ]              │  ← Content + grid overlay
+│ ◯  │                                         │
+│ ◯  │       ┌─────────────────┐               │
+│ ◯  │       │  tactical grid  │               │
+│ ◯  │       └─────────────────┘               │
+│ ◯  │                          [⊘] [ARM] [⛶] │  ← Quick-action bar (floating)
+└────┴─────────────────────────────────────────┘
+  ↑ Weapon wheel (40px)
+```
+
+### Build verification
 - TypeScript build check for 0 errors
-
----
-
-### Technical Notes
-
-- The SSAO crash is the root cause of the "3D engine doesn't work" issue. The `@react-three/postprocessing` SSAO effect internally creates a NormalPass, but with `multisampling={0}` and the current effect chain, it fails to initialize properly on many GPUs
-- Disabling heavy post-processing by default (users can opt-in via Scene Settings) eliminates the crash while maintaining visual quality through bloom + vignette + tone mapping
-- The intro flow change is a single-line fix that unlocks the full cinematic boot sequence every time
+- Test on mobile viewport (landscape + portrait)
 
