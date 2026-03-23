@@ -81,155 +81,34 @@ import { GeoToolsScene, GeoToolClickHandler } from './GeoToolsR3F';
 import { RenderDebugToggle, RenderDebugPanel, setDebugExposure, setDebugBurstLoad, setDebugLOD, setDebugRendererInfo } from './RenderDebugOverlay';
 import { clampNiagaraHDR, getNiagaraBudgets, setAdaptivePipelineState } from '@/lib/niagaraBlenderRules';
 
-// ═══ Module-level active burst counter for conditional PostProcessing ═══
-let _activeBurstCount = 0;
-export function getActiveBurstCount() { return _activeBurstCount; }
+// ═══ Shared state imported from skycanvas module ═══
+import {
+  getActiveBurstCount as _getActiveBurstCount,
+  runActiveBurstScan,
+  getActiveBurstScan,
+  hexToCompound,
+  getEffectById,
+  getWindForce,
+  getAdaptiveExposure,
+  setAdaptiveExposureValue,
+  getSkyScatterUniforms,
+  setSkyScatterUniforms,
+  CAMERA_PRESETS,
+  WebGLErrorBoundary,
+  GRAVITY,
+  _posQuat, _effQuat, _pitchQuat, _posEuler, _effEuler, _launchDir, _pitchAxis,
+  type ActiveBurstScanResult,
+} from './skycanvas';
 
-// ═══ ActiveBurstScanner — centralized per-frame timeline scan ═══
-// GI, LensFlare, Exposure, and Reflections all read from this instead of scanning independently
-interface ActiveBurstScanResult {
-  freshBursts: { x: number; y: number; z: number; color: string; caliber: number; effectId: string }[];
-  activeBursts: number;
-  luminance: number;
-  // Scatter data for sky color bleeding
-  scatterColors: { color: string; intensity: number }[];
-  scatterMax: number;
-}
-let _activeBurstScan: ActiveBurstScanResult | null = null;
+// Re-export for external consumers
+export function getActiveBurstCount() { return _getActiveBurstCount(); }
 
-function runActiveBurstScan() {
-  const { timelineItems, currentTime } = useProjectStore.getState();
-  const freshBursts: ActiveBurstScanResult['freshBursts'] = [];
-  const scatterColors: ActiveBurstScanResult['scatterColors'] = [];
-  let activeBursts = 0;
-  let luminance = 0;
-  let scatterMax = 0;
-
-  for (let i = 0; i < timelineItems.length; i++) {
-    const item = timelineItems[i];
-    const elapsed = currentTime - item.startTime;
-    if (elapsed < 0 || elapsed > 2.0) continue;
-
-    activeBursts++;
-    luminance += elapsed < 0.5 ? 3.0 : 0.5;
-
-    // Fresh burst: within 50ms of ignition
-    if (elapsed < 0.05) {
-      const effect = getEffectById(item.effectId);
-      if (effect && effect.type === 'firework') {
-        freshBursts.push({
-          x: item.position.x,
-          y: item.position.y,
-          z: item.position.z,
-          color: effect.color,
-          caliber: effect.caliber || 4,
-          effectId: effect.id,
-        });
-      }
-    }
-
-    // Scatter window: 0-300ms for sky color bleeding
-    if (elapsed < 0.3) {
-      const effect = getEffectById(item.effectId);
-      if (effect && effect.type === 'firework') {
-        const intensity = 0.4 * (1 - elapsed / 0.3);
-        scatterColors.push({ color: effect.color, intensity });
-        scatterMax = Math.max(scatterMax, intensity);
-      }
-    }
-  }
-
-  _activeBurstScan = { freshBursts, activeBursts, luminance, scatterColors, scatterMax };
-  return _activeBurstScan;
-}
-
-// ═══ PyroChem: map hex colors → real chemical compounds (cached) ═══
-const _hexToCompoundCache = new Map<string, ChemicalCompound>();
-const _hexTempColor = new THREE.Color();
-const _hexTempHSL = { h: 0, s: 0, l: 0 };
-
-function hexToCompound(hexColor: string): ChemicalCompound {
-  const cached = _hexToCompoundCache.get(hexColor);
-  if (cached) return cached;
-  
-  _hexTempColor.set(hexColor);
-  _hexTempColor.getHSL(_hexTempHSL);
-  const h = _hexTempHSL.h * 360;
-  
-  let result: ChemicalCompound;
-  if (_hexTempHSL.l > 0.85) result = getCompound('magnesium');
-  else if (_hexTempHSL.l > 0.7 && _hexTempHSL.s < 0.2) result = getCompound('titanium');
-  else if (h >= 0 && h < 30) result = getCompound('strontium');
-  else if (h >= 30 && h < 55) result = getCompound('iron');
-  else if (h >= 55 && h < 75) result = getCompound('sodium');
-  else if (h >= 75 && h < 170) result = getCompound('barium');
-  else if (h >= 170 && h < 260) result = getCompound('copper');
-  else if (h >= 260 && h < 310) result = getCompound('strontium');
-  else if (h >= 310 && h < 345) result = getCompound('strontium');
-  else result = getCompound('charcoal');
-  
-  _hexToCompoundCache.set(hexColor, result);
-  return result;
-}
-
-// ═══ EFFECT_LIBRARY indexed Map for O(1) lookups in hot paths ═══
-let _effectLibraryMap: Map<string, (typeof EFFECT_LIBRARY)[number]> | null = null;
-function getEffectById(id: string): (typeof EFFECT_LIBRARY)[number] | undefined {
-  if (!_effectLibraryMap || _effectLibraryMap.size !== EFFECT_LIBRARY.length) {
-    _effectLibraryMap = new Map(EFFECT_LIBRARY.map(e => [e.id, e]));
-  }
-  return _effectLibraryMap.get(id);
-}
-
-// ═══ Pre-allocated math objects for quaternion composition in render loop ═══
-const _posQuat = new THREE.Quaternion();
-const _effQuat = new THREE.Quaternion();
-const _pitchQuat = new THREE.Quaternion();
-const _posEuler = new THREE.Euler();
-const _effEuler = new THREE.Euler();
-const _launchDir = new THREE.Vector3();
-const _pitchAxis = new THREE.Vector3();
+// Module-level refs shared between SkyGradient / AdaptiveExposure / fireworks
+let _skyScatterUniforms_local: { uExplosionScatter: { value: THREE.Color }; uScatterIntensity: { value: number } } | null = null;
+let _adaptiveExposure_local = 1.2;
+let _activeBurstScan_local: ActiveBurstScanResult | null = null;
 
 // lumaTonemapScale REMOVED — PostProcessing ACES Filmic is the single tonemap pass
-
-// FX KONTROL — Show Design Platform Renderer
-class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  state = { hasError: false };
-  static getDerivedStateFromError() { return { hasError: true }; }
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    console.warn('WebGL unavailable:', error.message);
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="w-full h-full flex flex-col items-center justify-center bg-surface-0 gap-3 p-8 text-center">
-          <AlertTriangle className="w-10 h-10 text-yellow-500" />
-          <h3 className="text-sm font-semibold text-foreground">3D Engine Unavailable</h3>
-          <p className="text-xs text-muted-foreground max-w-md">
-            WebGL could not be initialized. Try enabling hardware acceleration or use a different browser.
-          </p>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-// Camera presets calibrated for real-world firework heights (55m-300m break heights)
-// Audience distance: typically 100-300m from launch site (NFPA 1123)
-const CAMERA_PRESETS = [
-  { id: 'free', label: 'Free', icon: Eye, position: [0, 1.7, 100] as [number, number, number], target: [0, 50, 0] as [number, number, number] },
-  { id: 'satellite', label: 'Top', icon: Plane, position: [0, 6000, 0.1] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
-  { id: 'audience', label: 'Plateia', icon: Users, position: [0, 1.7, 2500] as [number, number, number], target: [0, 300, 0] as [number, number, number] },
-  { id: 'front', label: 'Front', icon: Users, position: [0, 1.7, 3000] as [number, number, number], target: [0, 400, 0] as [number, number, number] },
-  { id: 'side', label: 'Side', icon: Video, position: [3000, 250, 0] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
-  { id: 'back', label: 'Back', icon: Video, position: [0, 250, -2000] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
-  { id: 'aerial', label: 'Aerial 45°', icon: Plane, position: [0, 3000, 3000] as [number, number, number], target: [0, 300, 0] as [number, number, number] },
-  { id: 'closeup', label: 'Close-up', icon: Camera, position: [150, 200, 750] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
-  { id: 'cinematic', label: 'Cinema', icon: Video, position: [-750, 2, 2250] as [number, number, number], target: [0, 400, 0] as [number, number, number] },
-  { id: 'drone-follow', label: 'Drone POV', icon: Eye, position: [125, 900, 300] as [number, number, number], target: [0, 600, 0] as [number, number, number] },
-  { id: 'vip', label: 'VIP Box', icon: Users, position: [500, 1.7, 2000] as [number, number, number], target: [0, 300, 0] as [number, number, number] },
-] as const;
 
 // --- Playback clock ---
 const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref) {
@@ -248,21 +127,11 @@ const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref)
   return null;
 });
 
-// --- Particle system ---
-const GRAVITY = -9.81; // Real-world gravity for accurate ballistics
-
-// Module-level refs shared between SkyGradient / AdaptiveExposure / fireworks
+// Module-level refs — local aliases for backward compat within this file
 let _skyScatterUniforms: { uExplosionScatter: { value: THREE.Color }; uScatterIntensity: { value: number } } | null = null;
 let _adaptiveExposure = 1.2;
-
-function getWindForce(): [number, number, number] {
-  const { wind } = useProjectStore.getState();
-  if (!wind.enabled) return [0, 0, 0];
-  const rad = (wind.direction * Math.PI) / 180;
-  const gust = 1 + (Math.sin(performance.now() * 0.001) * 0.5 + 0.5) * wind.gustStrength;
-  const s = wind.speed * gust * 0.15;
-  return [Math.sin(rad) * s, 0, Math.cos(rad) * s];
-}
+let _activeBurstScan: ActiveBurstScanResult | null = null;
+let _activeBurstCount = 0;
 
 // ═══════════════════════════════════════════════════════════════════════
 // Niagara-inspired star sprite shaders
@@ -3070,58 +2939,8 @@ function SceneStarsWired() {
   return <Stars radius={100000} depth={40000} count={Math.round(15000 * density * mult)} factor={6 * mult} saturation={0.2} fade speed={0.03} />;
 }
 
-function WeatherEffects() {
-  const weather = useSceneStore(st => st.settings.weather);
-  const rainIntensity = useSceneStore(st => st.settings.rainIntensity);
-  const pointsRef = useRef<THREE.Points>(null);
-
-  const rainData = useMemo(() => {
-    if (weather !== 'light-rain' && weather !== 'heavy-rain' && weather !== 'snow') return null;
-    const count = weather === 'heavy-rain' ? 3000 : weather === 'snow' ? 1500 : 1000;
-    const positions = new Float32Array(count * 3);
-    const velocities = new Float32Array(count);
-    for (let i = 0; i < count; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 4000;
-      positions[i * 3 + 1] = Math.random() * 200;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 4000;
-      velocities[i] = weather === 'snow' ? 1 + Math.random() * 2 : 15 + Math.random() * 25;
-    }
-    return { count, positions, velocities };
-  }, [weather]);
-
-  useFrame(() => {
-    if (!pointsRef.current || !rainData) return;
-    const posAttr = pointsRef.current.geometry.getAttribute('position') as THREE.BufferAttribute;
-    const arr = posAttr.array as Float32Array;
-    for (let i = 0; i < rainData.count; i++) {
-      arr[i * 3 + 1] -= rainData.velocities[i] * 0.016 * rainIntensity;
-      if (arr[i * 3 + 1] < 0) {
-        arr[i * 3 + 1] = 160 + Math.random() * 40;
-        arr[i * 3] = (Math.random() - 0.5) * 4000;
-        arr[i * 3 + 2] = (Math.random() - 0.5) * 4000;
-      }
-    }
-    posAttr.needsUpdate = true;
-  });
-
-  if (!rainData) return null;
-
-  return (
-    <points ref={pointsRef}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[rainData.positions, 3]} />
-      </bufferGeometry>
-      <pointsMaterial
-        size={weather === 'snow' ? 0.15 : 0.04}
-        color={weather === 'snow' ? '#e8e8ff' : '#aabbcc'}
-        transparent
-        opacity={rainIntensity * 0.6}
-        depthWrite={false}
-        sizeAttenuation
-      />
-    </points>
-  );
-}
+// WeatherEffects extracted to skycanvas/WeatherSystem.tsx
+import { WeatherEffects } from './skycanvas/WeatherSystem';
 
 // Session-level flag: intro only plays once per browser session
 let __cameraIntroPlayed = false;
