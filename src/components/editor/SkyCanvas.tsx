@@ -1473,7 +1473,9 @@ export default function SkyCanvas() {
         {!environment.disableLighting && <GlobalIlluminationController />}
         <GroundReflections />
         {!environment.disableLighting && <LensFlareController />}
-        <NiagaraVFXController />
+        <DelayedMount delay={2000}>
+          <NiagaraVFXController />
+        </DelayedMount>
 
         <EnvironmentV2Switcher />
 
@@ -1481,7 +1483,7 @@ export default function SkyCanvas() {
         <SceneStarsWired />
         {!isMobile && !environment.lowQualityMode && <AtmosphericParticles />}
         <SceneFog />
-        {!isMobile && <WeatherEffects />}
+        {!isMobile && <DelayedMount delay={2500}><WeatherEffects /></DelayedMount>}
 
         <StageGround satelliteTexture={satelliteTexture} />
         <SiteModelRenderer />
