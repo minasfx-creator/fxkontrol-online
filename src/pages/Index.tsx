@@ -106,7 +106,7 @@ import SelectionModeBar from '@/components/editor/SelectionModeBar';
 import PositionContextMenu from '@/components/editor/PositionContextMenu';
 import MobileTabBar, { type MobileTab } from '@/components/editor/MobileTabBar';
 import MobileFloatingPanel from '@/components/editor/MobileFloatingPanel';
-import MobileMoreMenu from '@/components/editor/MobileMoreMenu';
+import UnifiedPanelMenu from '@/components/editor/UnifiedPanelMenu';
 import MobileHUD from '@/components/editor/MobileHUD';
 import MobileQuickActions from '@/components/editor/MobileQuickActions';
 import {
@@ -488,7 +488,18 @@ function Index() {
           {mobileTab === 'timeline' && <Timeline />}
           {mobileTab === 'assets' && <EffectLibrary />}
           {mobileTab === 'properties' && <PropertiesPanel />}
-          {mobileTab === 'more' && <MobileMoreMenu onSelectPanel={handleMobileOpenPanel} />}
+          {mobileTab === 'more' && (
+            <UnifiedPanelMenu
+              activePanel={activePanel}
+              onSelectPanel={(id) => {
+                handleMobileOpenPanel(id);
+                setMobileTab(null);
+                setMobilePanelHeight('full');
+              }}
+              variant="sheet"
+              onDismiss={handleDismissPanel}
+            />
+          )}
           {/* Panel-based tabs (livefx, controllers, remote, fieldmap) */}
           {mobileTab && !['timeline', 'assets', 'properties', 'more'].includes(mobileTab) && activePanel && (
             <div className="h-full overflow-y-auto">{renderPanelContent()}</div>

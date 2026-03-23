@@ -1,10 +1,11 @@
 /**
- * MobileTabBar — Apple-style tab bar with magnification effect
- * Frosted glass, smooth spring transitions, dock magnification.
+ * MobileTabBar — Unified dock bar for mobile editor.
+ * Shows essential quick-access tabs + "All Panels" button.
+ * Uses the same PANEL_SECTIONS source as desktop PanelTabBar.
  */
 import { useCallback, useRef, useState } from 'react';
 import { haptics } from '@/lib/haptics';
-import { Clock, Sparkles, MapPin, Hexagon, MoreHorizontal, Cable, Cpu, Map, Radio, Smartphone, Zap } from 'lucide-react';
+import { Sparkles, Cpu, Smartphone, Map, LayoutGrid, Route, MapPin, Cable } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import type { PanelId } from '@/components/editor/PanelTabBar';
@@ -19,12 +20,12 @@ interface MobileTabBarProps {
   onPanelHeightChange: (h: 'collapsed' | 'half' | 'full') => void;
 }
 
-const TABS: { key: MobileTab; icon: typeof Clock; label: string; panelId?: PanelId; accent?: boolean }[] = [
+const TABS: { key: MobileTab; icon: typeof Route; label: string; panelId?: PanelId; accent?: boolean }[] = [
   { key: 'livefx', icon: Sparkles, label: 'Live FX', panelId: 'livefiring', accent: true },
   { key: 'controllers', icon: Cpu, label: 'Control', panelId: 'controllers' },
   { key: 'remote', icon: Smartphone, label: 'Remote', panelId: 'remotecontrol' },
   { key: 'fieldmap', icon: Map, label: 'Map', panelId: 'fieldmap' },
-  { key: 'more', icon: MoreHorizontal, label: 'More' },
+  { key: 'more', icon: LayoutGrid, label: 'Painéis' },
 ];
 
 export default function MobileTabBar({
@@ -39,6 +40,7 @@ export default function MobileTabBar({
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const handleTabClick = useCallback((tab: MobileTab) => {
+    haptics.tap();
     const tabDef = TABS.find(t => t.key === tab);
 
     if (tabDef?.panelId) {
@@ -57,18 +59,17 @@ export default function MobileTabBar({
       return;
     }
 
+    // "More" / "Painéis" button
     if (activeTab === tab) {
-      if (panelHeight === 'half') {
-        onPanelHeightChange('full');
-      } else if (panelHeight === 'full') {
+      if (panelHeight === 'full') {
         onTabChange(null);
         onPanelHeightChange('collapsed');
       } else {
-        onPanelHeightChange('half');
+        onPanelHeightChange('full');
       }
     } else {
       onTabChange(tab);
-      onPanelHeightChange(tab === 'more' ? 'full' : 'half');
+      onPanelHeightChange('full');
     }
   }, [activeTab, panelHeight, onTabChange, onPanelHeightChange, onOpenPanel]);
 
@@ -93,15 +94,15 @@ export default function MobileTabBar({
   const getScale = (index: number) => {
     if (hoveredIndex === null) return 1;
     const dist = Math.abs(index - hoveredIndex);
-    if (dist === 0) return 1.25;
-    if (dist === 1) return 1.1;
+    if (dist === 0) return 1.2;
+    if (dist === 1) return 1.08;
     return 1;
   };
 
   const getTranslateY = (index: number) => {
     if (hoveredIndex === null) return 0;
     const dist = Math.abs(index - hoveredIndex);
-    if (dist === 0) return -6;
+    if (dist === 0) return -5;
     if (dist === 1) return -2;
     return 0;
   };
@@ -151,11 +152,10 @@ export default function MobileTabBar({
                   "w-6 h-6 transition-colors duration-200",
                   isActive
                     ? accent ? "text-accent" : "text-primary"
-                    : "text-[hsl(var(--muted-foreground)/0.6)]"
+                    : "text-muted-foreground/60"
                 )}
                   style={isActive ? { filter: `drop-shadow(0 0 6px ${accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))'})` } : undefined}
                 />
-                {/* Active effects count badge */}
                 {key === 'livefx' && activeEffectsCount > 0 && (
                   <span className="absolute -top-1.5 -right-2 min-w-[14px] h-[14px] rounded-full bg-destructive text-destructive-foreground text-[8px] font-bold flex items-center justify-center px-0.5"
                     style={{ boxShadow: '0 0 6px hsl(var(--destructive) / 0.5)' }}>
@@ -167,12 +167,11 @@ export default function MobileTabBar({
                 "text-[9px] font-semibold mt-0.5 transition-colors duration-200",
                 isActive
                   ? accent ? "text-accent" : "text-primary"
-                  : "text-[hsl(var(--muted-foreground)/0.4)]"
+                  : "text-muted-foreground/40"
               )}>
                 {label}
               </span>
 
-              {/* Active indicator dot — macOS style */}
               {isActive && (
                 <div className="absolute -bottom-0.5 w-1 h-1 rounded-full"
                   style={{
