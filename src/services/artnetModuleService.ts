@@ -67,7 +67,30 @@ export interface FireCommand {
   intensity?: number;
 }
 
-type ModuleEventType = 'module-connected' | 'module-disconnected' | 'module-heartbeat' | 'module-fired' | 'module-error' | 'controller-update';
+export interface PacketStats {
+  sent: number;
+  acked: number;
+  lost: number;
+  lossRate: number;        // 0-1
+  avgLatencyMs: number;
+  lastSentAt: number;
+}
+
+export interface ModuleHealth {
+  moduleId: string;
+  state: ModuleConnectionState;
+  packetStats: PacketStats;
+  reconnectAttempts: number;
+  lastHeartbeatAt: number;
+  stale: boolean;           // no heartbeat > STALE_THRESHOLD_MS
+}
+
+const STALE_THRESHOLD_MS = 15_000;
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_BASE_DELAY_MS = 2_000;
+const LATENCY_WINDOW = 20;
+
+type ModuleEventType = 'module-connected' | 'module-disconnected' | 'module-heartbeat' | 'module-fired' | 'module-error' | 'controller-update' | 'module-reconnecting' | 'module-stale' | 'module-packet-loss';
 type ModuleEventListener = (type: ModuleEventType, data: any) => void;
 
 class ArtNetModuleService {
@@ -77,6 +100,14 @@ class ArtNetModuleService {
   private wsConnections = new Map<string, WebSocket>();
   private moduleStates = new Map<string, ModuleConnectionState>();
   private sequenceCounters = new Map<string, number>();
+
+  // ─── Resilience tracking ────────────────────────
+  private packetStats = new Map<string, PacketStats>();
+  private reconnectAttempts = new Map<string, number>();
+  private reconnectTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+  private lastHeartbeatAt = new Map<string, number>();
+  private latencyWindows = new Map<string, number[]>();
+  private staleCheckInterval: ReturnType<typeof setInterval> | null = null;
 
   subscribe(fn: ModuleEventListener): () => void {
     this.listeners.add(fn);
@@ -215,8 +246,12 @@ class ArtNetModuleService {
     }
 
     this.moduleStates.set(module.id, 'connected');
+    this.resetPacketStats(module.id);
+    this.reconnectAttempts.set(module.id, 0);
+    this.lastHeartbeatAt.set(module.id, Date.now());
     this.updateModule(module.id, { lastSeen: Date.now(), latencyMs: latency });
     this.startHeartbeat(module.id);
+    this.startStaleCheck();
     this.emit('module-connected', { moduleId: module.id, latencyMs: latency });
     return true;
   }
@@ -238,8 +273,12 @@ class ArtNetModuleService {
           clearTimeout(timeout);
           this.wsConnections.set(module.id, ws);
           this.moduleStates.set(module.id, 'connected');
+          this.resetPacketStats(module.id);
+          this.reconnectAttempts.set(module.id, 0);
+          this.lastHeartbeatAt.set(module.id, Date.now());
           this.updateModule(module.id, { lastSeen: Date.now() });
           this.startHeartbeat(module.id);
+          this.startStaleCheck();
           this.emit('module-connected', { moduleId: module.id });
 
           // Send auth if WAN
@@ -264,6 +303,8 @@ class ArtNetModuleService {
           this.moduleStates.set(module.id, 'disconnected');
           this.stopHeartbeat(module.id);
           this.emit('module-disconnected', { moduleId: module.id });
+          // Auto-reconnect with exponential backoff
+          this.scheduleReconnect(module.id);
         };
 
         ws.onmessage = (event) => {
@@ -280,6 +321,7 @@ class ArtNetModuleService {
   }
 
   disconnectModule(moduleId: string) {
+    this.cancelReconnect(moduleId);
     this.stopHeartbeat(moduleId);
     const ws = this.wsConnections.get(moduleId);
     if (ws) {
@@ -305,6 +347,7 @@ class ArtNetModuleService {
   async sendDMX(moduleId: string, channels: number[]): Promise<boolean> {
     const module = this.controller?.modules.find(m => m.id === moduleId);
     if (!module || this.moduleStates.get(moduleId) !== 'connected') return false;
+    this.trackPacketSent(moduleId);
 
     const seq = (this.sequenceCounters.get(moduleId) || 0) + 1;
     this.sequenceCounters.set(moduleId, seq > 255 ? 1 : seq);
@@ -468,6 +511,7 @@ class ArtNetModuleService {
       const ws = this.wsConnections.get(moduleId);
       if (ws && ws.readyState === WebSocket.OPEN) {
         const pingTime = Date.now();
+        this.trackPacketSent(moduleId);
         ws.send(JSON.stringify({ action: 'ping', moduleAddress: module.moduleAddress, t: pingTime }));
       } else {
         // LAN heartbeat via edge function
@@ -480,6 +524,7 @@ class ArtNetModuleService {
         });
         const latency = Math.round(performance.now() - start);
         if (!error) {
+          this.trackPacketAck(moduleId, latency);
           this.updateModule(moduleId, { lastSeen: Date.now(), latencyMs: latency });
           this.emit('module-heartbeat', { moduleId, latencyMs: latency, timestamp: Date.now() });
         } else {
@@ -499,6 +544,7 @@ class ArtNetModuleService {
   private handleModuleMessage(moduleId: string, msg: any) {
     if (msg.action === 'pong') {
       const latency = msg.t ? Date.now() - msg.t : null;
+      if (latency !== null) this.trackPacketAck(moduleId, latency);
       this.updateModule(moduleId, {
         lastSeen: Date.now(),
         latencyMs: latency,
@@ -531,10 +577,114 @@ class ArtNetModuleService {
     return [];
   }
 
+  // ─── Resilience: packet stats ─────────────────────
+  private resetPacketStats(moduleId: string) {
+    this.packetStats.set(moduleId, { sent: 0, acked: 0, lost: 0, lossRate: 0, avgLatencyMs: 0, lastSentAt: 0 });
+    this.latencyWindows.set(moduleId, []);
+  }
+
+  trackPacketSent(moduleId: string) {
+    const stats = this.packetStats.get(moduleId);
+    if (stats) {
+      stats.sent++;
+      stats.lastSentAt = Date.now();
+    }
+  }
+
+  trackPacketAck(moduleId: string, latencyMs: number) {
+    const stats = this.packetStats.get(moduleId);
+    if (stats) {
+      stats.acked++;
+      stats.lost = Math.max(0, stats.sent - stats.acked);
+      stats.lossRate = stats.sent > 0 ? stats.lost / stats.sent : 0;
+    }
+    // Rolling latency window
+    const win = this.latencyWindows.get(moduleId) || [];
+    win.push(latencyMs);
+    if (win.length > LATENCY_WINDOW) win.shift();
+    this.latencyWindows.set(moduleId, win);
+    if (stats) {
+      stats.avgLatencyMs = Math.round(win.reduce((a, b) => a + b, 0) / win.length);
+    }
+    this.lastHeartbeatAt.set(moduleId, Date.now());
+
+    // Emit packet-loss warning if loss > 5%
+    if (stats && stats.lossRate > 0.05 && stats.sent > 10) {
+      this.emit('module-packet-loss', { moduleId, lossRate: stats.lossRate, lost: stats.lost, sent: stats.sent });
+    }
+  }
+
+  // ─── Resilience: auto-reconnect ─────────────────
+  private scheduleReconnect(moduleId: string) {
+    const module = this.controller?.modules.find(m => m.id === moduleId);
+    if (!module?.enabled) return;
+
+    const attempts = (this.reconnectAttempts.get(moduleId) || 0);
+    if (attempts >= MAX_RECONNECT_ATTEMPTS) {
+      this.emit('module-error', { moduleId, error: `Max reconnect attempts (${MAX_RECONNECT_ATTEMPTS}) reached` });
+      return;
+    }
+
+    const delay = RECONNECT_BASE_DELAY_MS * Math.pow(2, attempts);
+    this.reconnectAttempts.set(moduleId, attempts + 1);
+    this.emit('module-reconnecting', { moduleId, attempt: attempts + 1, maxAttempts: MAX_RECONNECT_ATTEMPTS, delayMs: delay });
+
+    const timeout = setTimeout(() => {
+      this.reconnectTimeouts.delete(moduleId);
+      this.connectModule(moduleId);
+    }, delay);
+    this.reconnectTimeouts.set(moduleId, timeout);
+  }
+
+  cancelReconnect(moduleId: string) {
+    const t = this.reconnectTimeouts.get(moduleId);
+    if (t) { clearTimeout(t); this.reconnectTimeouts.delete(moduleId); }
+    this.reconnectAttempts.set(moduleId, 0);
+  }
+
+  // ─── Resilience: stale module detection ─────────
+  private startStaleCheck() {
+    if (this.staleCheckInterval) return;
+    this.staleCheckInterval = setInterval(() => {
+      const now = Date.now();
+      for (const [moduleId, lastAt] of this.lastHeartbeatAt) {
+        if (this.moduleStates.get(moduleId) !== 'connected') continue;
+        if (now - lastAt > STALE_THRESHOLD_MS) {
+          this.emit('module-stale', { moduleId, silentMs: now - lastAt });
+        }
+      }
+    }, 5_000);
+  }
+
+  // ─── Health summary API ─────────────────────────
+  getModuleHealth(moduleId: string): ModuleHealth {
+    const now = Date.now();
+    const lastHb = this.lastHeartbeatAt.get(moduleId) || 0;
+    return {
+      moduleId,
+      state: this.moduleStates.get(moduleId) || 'disconnected',
+      packetStats: this.packetStats.get(moduleId) || { sent: 0, acked: 0, lost: 0, lossRate: 0, avgLatencyMs: 0, lastSentAt: 0 },
+      reconnectAttempts: this.reconnectAttempts.get(moduleId) || 0,
+      lastHeartbeatAt: lastHb,
+      stale: lastHb > 0 && (now - lastHb) > STALE_THRESHOLD_MS,
+    };
+  }
+
+  getAllModuleHealth(): ModuleHealth[] {
+    return (this.controller?.modules || []).map(m => this.getModuleHealth(m.id));
+  }
+
   // ─── Cleanup ─────────────────────────────────────
   destroy() {
     this.disconnectAllModules();
     this.listeners.clear();
+    if (this.staleCheckInterval) { clearInterval(this.staleCheckInterval); this.staleCheckInterval = null; }
+    for (const t of this.reconnectTimeouts.values()) clearTimeout(t);
+    this.reconnectTimeouts.clear();
+    this.packetStats.clear();
+    this.latencyWindows.clear();
+    this.reconnectAttempts.clear();
+    this.lastHeartbeatAt.clear();
   }
 }
 
