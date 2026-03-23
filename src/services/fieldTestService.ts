@@ -364,8 +364,89 @@ class FieldTestEngine {
     this.emit();
   }
 
+  // ─── Benchmark Mode ─────────────────────────────
+  private _benchmarkRunning = false;
+  get benchmarkRunning() { return this._benchmarkRunning; }
+
+  async runBenchmark(channelCount: number = 16, intervalMs: number = 600): Promise<void> {
+    if (!this.session || this.session.role !== 'controller' || !this.session.armed) return;
+    this._benchmarkRunning = true;
+    this.log('info', `📊 BENCHMARK START — ${channelCount} channels @ ${intervalMs}ms`);
+    this.emit();
+
+    for (let ch = 1; ch <= channelCount; ch++) {
+      if (!this._benchmarkRunning || !this.session?.armed) break;
+      await this.fire(ch);
+      await new Promise(r => setTimeout(r, intervalMs));
+    }
+
+    this._benchmarkRunning = false;
+    this.log('info', `📊 BENCHMARK COMPLETE — ${this.session?.stats.firesSent ?? 0} fires, ${this.session?.stats.acksReceived ?? 0} acks`);
+    this.emit();
+  }
+
+  stopBenchmark() {
+    this._benchmarkRunning = false;
+  }
+
+  // ─── Test Report ───────────────────────────────
+  generateReport(): string {
+    if (!this.session) return '';
+    const s = this.session;
+    const lines = [
+      `╔═══════════════════════════════════╗`,
+      `║   FXK FIELD TEST REPORT           ║`,
+      `╚═══════════════════════════════════╝`,
+      ``,
+      `Session: ${s.code}`,
+      `Role: ${s.role.toUpperCase()}`,
+      `Transport: ${s.transport.toUpperCase()}`,
+      `Date: ${new Date().toISOString()}`,
+      ``,
+      `── Performance ──────────────────────`,
+      `Fires Sent:    ${s.stats.firesSent}`,
+      `ACKs Received: ${s.stats.acksReceived}`,
+      `Packet Loss:   ${s.stats.packetLoss}%`,
+      `Avg Latency:   ${s.stats.avgLatency}ms`,
+      `Min Latency:   ${s.stats.minLatency}ms`,
+      `Max Latency:   ${s.stats.maxLatency}ms`,
+      `P95 Latency:   ${s.stats.p95Latency}ms`,
+      ``,
+      `── Event Log (last 30) ─────────────`,
+      ...s.logs.slice(0, 30).map(l =>
+        `${new Date(l.timestamp).toLocaleTimeString('pt-BR', { hour12: false })} [${l.type.toUpperCase().padEnd(6)}] ${l.message}`
+      ),
+    ];
+    return lines.join('\n');
+  }
+
+  // ─── Smart Suggestions ─────────────────────────
+  getSuggestions(): string[] {
+    if (!this.session) return [];
+    const s = this.session.stats;
+    const tips: string[] = [];
+
+    if (s.firesSent === 0) {
+      tips.push('💡 Arme o sistema e dispare para começar a coleta de métricas');
+      return tips;
+    }
+    if (s.packetLoss > 2) tips.push('⚠️ Perda de pacotes >2% — aproxime os dispositivos ou troque de transporte');
+    if (s.packetLoss > 5) tips.push('🚨 Perda crítica >5% — verifique a conexão ou use Wi-Fi LAN');
+    if (s.avgLatency > 150) tips.push('⚠️ Latência média alta — considere Wi-Fi LAN para menor atraso');
+    if (s.avgLatency > 300) tips.push('🚨 Latência >300ms — conexão inadequada para disparos em tempo real');
+    if (s.p95Latency > 200 && s.avgLatency < 100) tips.push('📊 P95 alto com média baixa — possíveis picos esporádicos na rede');
+    if (this.session.transport === 'realtime-wan' && s.avgLatency < 80) tips.push('✅ Latência WAN excelente — conexão estável');
+    if (this.session.transport === 'realtime-lan' && s.avgLatency > 100) tips.push('⚠️ Latência LAN alta — verifique congestionamento de rede');
+    if (this.session.transport === 'ble' && s.avgLatency > 60) tips.push('⚠️ Latência BLE alta — aproxime os dispositivos (<5m)');
+    if (s.packetLoss === 0 && s.avgLatency < 50) tips.push('✅ Performance excelente — sistema pronto para operação');
+    if (s.firesSent >= 10 && s.acksReceived === s.firesSent) tips.push('✅ 100% de confiabilidade — nenhum pacote perdido');
+
+    return tips.length > 0 ? tips : ['💡 Execute mais disparos para gerar recomendações'];
+  }
+
   // ─── Stop ───────────────────────────────────────
   async stop() {
+    this._benchmarkRunning = false;
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
       this.heartbeatInterval = null;
@@ -374,7 +455,6 @@ class FieldTestEngine {
       await this.channel.unsubscribe();
       this.channel = null;
     }
-    // Disconnect BLE if active
     if (bleFieldTransport.connected) {
       await bleFieldTransport.disconnect();
     }
