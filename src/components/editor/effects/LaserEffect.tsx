@@ -24,7 +24,7 @@ export default function LaserEffect({
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
-  const beamLength = pattern === 'single' ? 140 : pattern === 'tunnel' || pattern === 'cone' ? 70 : 90;
+  const beamLength = pattern === 'single' ? 160 : pattern === 'tunnel' || pattern === 'cone' ? 100 : 140;
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
