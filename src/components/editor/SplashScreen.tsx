@@ -237,7 +237,6 @@ const SplashScreen = forwardRef<HTMLDivElement, SplashScreenProps>(function Spla
               border: '1px solid hsl(32 100% 50% / 0.2)',
               color: 'hsl(32 100% 55%)',
               boxShadow: '0 0 30px hsl(32 100% 50% / 0.06)',
-              focusVisibleRingColor: 'hsl(32 100% 50% / 0.4)',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = 'hsl(32 100% 50% / 0.12)';
