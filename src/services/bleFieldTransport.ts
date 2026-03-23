@@ -227,8 +227,8 @@ class BLEFieldTransport {
    * Handle CDS (continuity) notifications
    */
   private handleCdsNotification = (event: Event) => {
-    const target = event.target as BluetoothRemoteGATTCharacteristic;
-    const value = target.value;
+    const target = event.target as any;
+    const value = target.value as DataView;
     if (!value) return;
 
     const cds: boolean[] = [];
