@@ -311,6 +311,22 @@ export const DMX_FIXTURE_PROFILES: Record<string, DMXFixtureProfile> = {
     attributes: ['Pan', 'PanFine', 'Tilt', 'TiltFine', 'Dimmer', 'Strobe', 'ColorWheel', 'Gobo1', 'Focus', 'Control'],
     channelCount: 10,
   },
+  // ── DMX Point Light (from BP_DMXPointLight) ──
+  'dmx-point-light': {
+    name: 'DMX Point Light',
+    manufacturer: 'Generic',
+    category: 'wash',
+    attributes: ['Dimmer', 'Red', 'Green', 'Blue', 'White', 'CTO'],
+    channelCount: 6,
+  },
+  // ── Water Fountain (from DMXLib_WaterFountain) ──
+  'sfx-water-fountain': {
+    name: 'SFX Water Fountain',
+    manufacturer: 'FXK',
+    category: 'sfx',
+    attributes: ['Dimmer', 'WaterPressure', 'WaterHeight', 'WaterSpread', 'Red', 'Green', 'Blue', 'EffectWheel', 'EffectSpeed'],
+    channelCount: 9,
+  },
 };
 
 // ── UE5 Blueprint → Profile Mapping ──
@@ -336,6 +352,16 @@ export const UE5_BLUEPRINT_MAP: Record<string, string> = {
   'BP_Pyro_v4': 'sfx-pyro-dmx',
   'BP_Laser_Extended': 'generic-rgb',
   'DMXLib_v4': 'generic-rgbw',
+  // ── From BP uploads ──
+  'BP_DMX_Send_Receive': 'generic-rgbw',
+  'BP_DMXPointLight': 'dmx-point-light',
+  'BP_FountainLight': 'sfx-water-fountain',
+  'BP_PixelMappingManager': 'led-matrix-panel',
+  'BP_DownSampleSceneCapture': 'generic-rgbw',
+  'DMXLib_Fixtures': 'generic-rgbw',
+  'DMXLib_PixelMapping': 'led-matrix-panel',
+  'DMXLib_WaterFountain': 'sfx-water-fountain',
+  'DMXPM_PixelMap': 'led-matrix-panel',
 };
 
 // ── Strobe Curve Tables ──
