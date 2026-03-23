@@ -2289,6 +2289,9 @@ const LensFlareController = React.forwardRef<THREE.Group, {}>(function LensFlare
   const spritesRef = useRef<THREE.Sprite[]>([]);
   const poolIdx = useRef(0);
   const { scene } = useThree();
+  // Pre-allocated — reused every frame
+  const _flarePos = useMemo(() => new THREE.Vector3(), []);
+  const _flareColor = useMemo(() => new THREE.Color(), []);
 
   useEffect(() => {
     const pool: THREE.Sprite[] = [];
@@ -2308,26 +2311,21 @@ const LensFlareController = React.forwardRef<THREE.Group, {}>(function LensFlare
     const sprites = spritesRef.current;
     if (sprites.length === 0) return;
 
-    // Decay all active flares
     for (const sprite of sprites) {
       decayLensFlare(sprite, delta, 3);
     }
 
-    // Flash flares for fresh bursts
-    const { timelineItems, currentTime } = useProjectStore.getState();
-    for (const item of timelineItems) {
-      const elapsed = currentTime - item.startTime;
-      if (elapsed >= 0 && elapsed < 0.03) {
-        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
-        if (effect && effect.type === 'firework') {
-          const caliber = effect.caliber || 4;
-          const breakH = getBreakHeight(caliber);
-          const pos = new THREE.Vector3(item.position.x, item.position.y + breakH, item.position.z);
-          const caliberScale = caliber / 6; // 6" as reference
-          const sprite = sprites[poolIdx.current % sprites.length];
-          flashLensFlare(sprite, pos, Math.min(1, 0.5 * caliberScale), new THREE.Color(effect.color));
-          poolIdx.current++;
-        }
+    // Use centralized ActiveBurstScanner results instead of re-scanning timeline
+    const scan = _activeBurstScan;
+    if (scan) {
+      for (const burst of scan.freshBursts) {
+        const caliber = burst.caliber;
+        const breakH = getBreakHeight(caliber);
+        _flarePos.set(burst.x, burst.y + breakH, burst.z);
+        const caliberScale = caliber / 6;
+        const sprite = sprites[poolIdx.current % sprites.length];
+        flashLensFlare(sprite, _flarePos, Math.min(1, 0.5 * caliberScale), _flareColor.set(burst.color));
+        poolIdx.current++;
       }
     }
   });
