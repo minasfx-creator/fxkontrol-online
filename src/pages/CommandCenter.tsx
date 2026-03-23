@@ -199,43 +199,32 @@ export default function CommandCenter() {
     return (
       <>
       <div className="h-[100dvh] w-screen flex flex-col bg-background overflow-hidden">
-        {/* Top HUD bar — 32px */}
-        <div className="landscape-hud-bar shrink-0 h-8 flex items-center justify-between px-2 relative z-20"
-          style={{
-            background: 'hsl(220 22% 3% / 0.95)',
-            borderBottom: `1px solid ${accent.color}20`,
-            paddingTop: 'env(safe-area-inset-top)',
-          }}>
+        {/* ═══ FF Top HUD — 24px ultra-compact ═══ */}
+        <div className="ff-top-hud shrink-0 px-2 relative z-20"
+          style={{ paddingTop: 'env(safe-area-inset-top)' }}>
           {/* Accent glow line */}
           <div className="absolute top-0 left-0 right-0 h-[2px]" style={{
             background: `linear-gradient(90deg, transparent, ${accent.color}60, transparent)`,
           }} />
-          <div className="flex items-center gap-2">
-            {ActiveLogo && <ActiveLogo size={22} active />}
-            <span className="text-[9px] font-black font-mono tracking-[0.2em]" style={{ color: accent.color }}>{accent.label}</span>
-            <span className="text-[6px] font-mono text-muted-foreground/25 tracking-wider hidden sm:inline">{accent.subtitle}</span>
+          <div className="flex items-center gap-1.5">
+            {ActiveLogo && <ActiveLogo size={16} active />}
+            <span className="text-[7px] font-black tracking-[0.2em]" style={{ color: accent.color }}>{accent.label}</span>
           </div>
-          <div className="flex items-center gap-3">
-            {isArmed && <Badge variant="destructive" className="text-[6px] h-4 px-1.5 animate-pulse font-mono rounded-sm">ARMED</Badge>}
-            <div className="flex items-center gap-1">
-              <div className="h-1.5 w-1.5 rounded-full" style={{
-                backgroundColor: connectedCount > 0 ? 'hsl(120 70% 45%)' : 'hsl(220 10% 25%)',
-                boxShadow: connectedCount > 0 ? '0 0 4px hsl(120 70% 45%)' : 'none',
-              }} />
-              <span className="text-[7px] font-mono text-muted-foreground/40">{connectedCount > 0 ? `${connectedCount}` : '—'}</span>
+          <div className="flex items-center gap-2">
+            {isArmed && <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" style={{ boxShadow: '0 0 6px hsl(var(--destructive))' }} />}
+            <span className="text-[8px] font-bold tabular-nums" style={{ color: 'hsl(32 100% 55%)', textShadow: '0 0 6px hsl(32 100% 50% / 0.3)' }}>{missionClock}</span>
+            {/* Signal bars */}
+            <div className="ff-signal-bars">
+              <div className={cn("bar", connectedCount >= 1 && "active")} />
+              <div className={cn("bar", connectedCount >= 2 && "active")} />
+              <div className={cn("bar", connectedCount >= 3 && "active")} />
             </div>
-            <span className="text-[8px] font-mono font-bold" style={{ color: 'hsl(32 100% 55%)', textShadow: '0 0 6px hsl(32 100% 50% / 0.3)' }}>{missionClock}</span>
           </div>
         </div>
 
         <div className="flex-1 flex min-h-0">
-          {/* Left nav rail — 44px */}
-          <div className="landscape-nav-rail shrink-0 w-11 flex flex-col items-center py-1.5 gap-0.5 z-20"
-            style={{
-              background: 'hsl(220 22% 3% / 0.95)',
-              borderRight: '1px solid hsl(var(--primary) / 0.06)',
-              paddingLeft: 'env(safe-area-inset-left)',
-            }}>
+          {/* ═══ FF Weapon Rail — 40px ═══ */}
+          <div className="ff-weapon-rail shrink-0 z-20" style={{ paddingLeft: 'env(safe-area-inset-left)' }}>
             {allModes.map(mode => {
               const isActive = activeMode === mode.key;
               const mAccent = CONSOLE_ACCENTS[mode.key];
@@ -244,31 +233,33 @@ export default function CommandCenter() {
                 <button
                   key={mode.key}
                   onClick={() => handleModeChange(mode.key)}
-                  className={cn(
-                    "w-9 h-9 flex items-center justify-center rounded-sm transition-all relative active:scale-90",
-                    isActive ? "console-logo-glow" : "opacity-40 hover:opacity-70"
-                  )}
-                  style={isActive ? { background: mAccent?.glow, boxShadow: `0 0 8px ${mAccent?.color}30` } : undefined}
+                  className={cn("ff-weapon-slot w-[32px] h-[32px]", isActive && "active")}
+                  style={{
+                    '--ff-accent': mAccent?.color,
+                    '--ff-accent-glow': mAccent?.glow,
+                  } as React.CSSProperties}
                   title={mode.label}
                 >
-                  {Logo ? <Logo size={24} active={isActive} /> : <mode.icon className="w-4 h-4" />}
-                  {isActive && <div className="absolute left-0 top-1 bottom-1 w-[2px] rounded-r" style={{ backgroundColor: mAccent?.color }} />}
+                  {Logo ? <Logo size={18} active={isActive} /> : <mode.icon className="w-3.5 h-3.5" style={{ color: isActive ? mAccent?.color : 'hsl(var(--muted-foreground) / 0.3)' }} />}
                 </button>
               );
             })}
           </div>
 
-          {/* Main content — fills remaining */}
+          {/* ═══ Content Area + Grid Overlay ═══ */}
           <div className={cn(
             "flex-1 overflow-hidden holo-swap-container relative",
             swapPhase === 'out' ? 'swap-out' : swapPhase === 'in' ? 'swap-in' : '',
             swapFlash && 'swap-flash'
           )}>
-            {/* HUD corner brackets */}
-            <div className="pyro-hud-corner absolute top-1 left-1 w-4 h-4 border-t-2 border-l-2 z-10 pointer-events-none" style={{ borderColor: `${accent.color}30` }} />
-            <div className="pyro-hud-corner absolute top-1 right-1 w-4 h-4 border-t-2 border-r-2 z-10 pointer-events-none" style={{ borderColor: `${accent.color}30` }} />
-            <div className="pyro-hud-corner absolute bottom-1 left-1 w-4 h-4 border-b-2 border-l-2 z-10 pointer-events-none" style={{ borderColor: `${accent.color}30` }} />
-            <div className="pyro-hud-corner absolute bottom-1 right-1 w-4 h-4 border-b-2 border-r-2 z-10 pointer-events-none" style={{ borderColor: `${accent.color}30` }} />
+            {/* Tactical grid */}
+            <div className="ff-hud-grid" style={{ '--ff-grid-color': `${accent.color}08` } as React.CSSProperties} />
+
+            {/* HUD brackets — 3px, pulsing */}
+            <div className="ff-hud-bracket top-1 left-1 w-5 h-5 border-t-[3px] border-l-[3px]" style={{ borderColor: `${accent.color}40` }} />
+            <div className="ff-hud-bracket top-1 right-1 w-5 h-5 border-t-[3px] border-r-[3px]" style={{ borderColor: `${accent.color}40` }} />
+            <div className="ff-hud-bracket bottom-1 left-1 w-5 h-5 border-b-[3px] border-l-[3px]" style={{ borderColor: `${accent.color}40` }} />
+            <div className="ff-hud-bracket bottom-1 right-1 w-5 h-5 border-b-[3px] border-r-[3px]" style={{ borderColor: `${accent.color}40` }} />
 
             <FullscreenablePanel title={accent.label}>
               {isFireMode(activeMode) ? (
@@ -277,6 +268,38 @@ export default function CommandCenter() {
                 <div className="h-full surface-0">{renderDirectPanel(activeMode)}</div>
               )}
             </FullscreenablePanel>
+
+            {/* ═══ FF Quick-Action Bar (floating, bottom-right) ═══ */}
+            <div className="ff-quick-actions">
+              {/* E-STOP */}
+              <button
+                onClick={() => { useLiveSfxStore.getState().clearAll(); }}
+                className="ff-action-ring w-10 h-10"
+              >
+                <AlertOctagon className="w-4 h-4 text-destructive" />
+              </button>
+              {/* ARM/SAFE */}
+              <button
+                className={cn(
+                  "h-7 px-2.5 rounded-full text-[7px] font-black font-mono tracking-wider border transition-all",
+                  isArmed
+                    ? "bg-destructive/20 border-destructive/40 text-destructive"
+                    : "bg-muted/40 border-border/20 text-muted-foreground/50"
+                )}
+              >
+                {isArmed ? 'ARMED' : 'SAFE'}
+              </button>
+              {/* Fullscreen */}
+              <button
+                onClick={() => {
+                  if (document.fullscreenElement) { document.exitFullscreen(); }
+                  else { document.documentElement.requestFullscreen?.(); }
+                }}
+                className="w-7 h-7 flex items-center justify-center rounded-full bg-muted/30 border border-border/20"
+              >
+                <Maximize className="w-3 h-3 text-muted-foreground/60" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
