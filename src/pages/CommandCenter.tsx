@@ -585,13 +585,15 @@ export default function CommandCenter() {
           swapPhase === 'out' ? 'swap-out' : swapPhase === 'in' ? 'swap-in' : '',
           swapFlash && 'swap-flash'
         )}>
-          {isFireMode(activeMode) ? (
-            <LiveFiringPanel initialMode={activeMode} standalone />
-          ) : (
-            <ScrollArea className="h-full">
-              <div className="h-full surface-0">{renderDirectPanel(activeMode)}</div>
-            </ScrollArea>
-          )}
+          <FullscreenablePanel title={accent.label}>
+            {isFireMode(activeMode) ? (
+              <LiveFiringPanel initialMode={activeMode} standalone />
+            ) : (
+              <ScrollArea className="h-full">
+                <div className="h-full surface-0">{renderDirectPanel(activeMode)}</div>
+              </ScrollArea>
+            )}
+          </FullscreenablePanel>
         </div>
       </div>
       {/* Boot Sequence Overlay */}
