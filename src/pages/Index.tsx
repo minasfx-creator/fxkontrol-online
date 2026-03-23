@@ -106,7 +106,7 @@ import SelectionModeBar from '@/components/editor/SelectionModeBar';
 import PositionContextMenu from '@/components/editor/PositionContextMenu';
 import MobileTabBar, { type MobileTab } from '@/components/editor/MobileTabBar';
 import MobileFloatingPanel from '@/components/editor/MobileFloatingPanel';
-import MobileMoreMenu from '@/components/editor/MobileMoreMenu';
+import UnifiedPanelMenu from '@/components/editor/UnifiedPanelMenu';
 import MobileHUD from '@/components/editor/MobileHUD';
 import MobileQuickActions from '@/components/editor/MobileQuickActions';
 import {
