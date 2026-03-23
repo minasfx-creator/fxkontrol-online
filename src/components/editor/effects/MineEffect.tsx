@@ -386,8 +386,8 @@ export default function MineEffect({
       {progress > 0.03 && progress < 0.7 && (
         <points ref={smokePointsRef} frustumCulled={false}>
           <bufferGeometry>
-            <bufferAttribute attach="attributes-position" args={[new Float32Array(SMOKE_COUNT * 3), 3]} />
-            <bufferAttribute attach="attributes-color" args={[new Float32Array(SMOKE_COUNT * 3), 3]} />
+            <bufferAttribute attach="attributes-position" args={[smokePosRef, 3]} />
+            <bufferAttribute attach="attributes-color" args={[smokeColRef, 3]} />
           </bufferGeometry>
           <shaderMaterial
             vertexShader={sizeVertexShader.replace('size *', '3.0 *')}
