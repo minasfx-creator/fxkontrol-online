@@ -867,6 +867,13 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
         <TabsContent value="monitor" className="flex-1 flex flex-col mt-1">
           <SACNMonitorPanel compact />
         </TabsContent>
+
+        {/* ═══ BLE Devices Tab ═══ */}
+        <TabsContent value="ble" className="flex-1 flex flex-col mt-1">
+          <ScrollArea className="flex-1">
+            <BLEDeviceScanner context="light" compact />
+          </ScrollArea>
+        </TabsContent>
       </Tabs>
     </div>
   );
