@@ -5,6 +5,9 @@ import { useProjectStore } from '@/store/useProjectStore';
 
 const FLAKES = 260;
 
+/**
+ * SnowMachineEffect — Zero-GC: pre-allocated buffer, no setAttribute per frame.
+ */
 export default function SnowMachineEffect({
   position,
   progress,
@@ -17,7 +20,7 @@ export default function SnowMachineEffect({
   height?: number;
 }) {
   const pointsRef = useRef<THREE.Points>(null);
-  const posRef = useRef(new Float32Array(FLAKES * 3));
+  const posArr = useMemo(() => new Float32Array(FLAKES * 3), []);
 
   const seeds = useMemo(() => {
     return Array.from({ length: FLAKES }, () => ({
@@ -33,7 +36,6 @@ export default function SnowMachineEffect({
   useFrame(({ clock }) => {
     if (!pointsRef.current) return;
     const t = clock.getElapsedTime();
-    const pos = posRef.current;
     const { wind } = useProjectStore.getState();
     const wr = (wind.direction * Math.PI) / 180;
     const windX = wind.enabled ? Math.sin(wr) * wind.speed * 0.06 : 0;
@@ -45,24 +47,23 @@ export default function SnowMachineEffect({
       const s = seeds[i];
       const idx = i * 3;
       const fallY = (s.y - (t * s.fall) % (height + 1));
-      pos[idx] = s.x + Math.sin(t * s.swing + s.phase) * 0.45 + windX * t * 5;
-      pos[idx + 1] = fallY < -0.2 ? height : fallY;
-      pos[idx + 2] = s.z + Math.cos(t * s.swing * 0.85 + s.phase) * 0.35 + windZ * t * 5;
+      posArr[idx] = s.x + Math.sin(t * s.swing + s.phase) * 0.45 + windX * t * 5;
+      posArr[idx + 1] = fallY < -0.2 ? height : fallY;
+      posArr[idx + 2] = s.z + Math.cos(t * s.swing * 0.85 + s.phase) * 0.35 + windZ * t * 5;
     }
 
     const material = pointsRef.current.material as THREE.PointsMaterial;
     material.opacity = 0.72 * Math.max(0, envelope);
 
-    const geometry = pointsRef.current.geometry;
-    geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geometry.attributes.position.needsUpdate = true;
+    const posAttr = pointsRef.current.geometry.getAttribute('position') as THREE.BufferAttribute;
+    if (posAttr) posAttr.needsUpdate = true;
   });
 
   return (
     <group position={position}>
       <points ref={pointsRef}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(FLAKES * 3), 3]} />
+          <bufferAttribute attach="attributes-position" args={[posArr, 3]} />
         </bufferGeometry>
         <pointsMaterial
           color="#f4f7ff"

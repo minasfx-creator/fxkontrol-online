@@ -42,15 +42,15 @@ export default function MineEffect({
   const count = useMemo(() => Math.min(600, Math.round(200 + caliber * caliber * 14)), [caliber]);
   const pointsRef = useRef<THREE.Points>(null);
   const smokePointsRef = useRef<THREE.Points>(null);
-  const posRef = useRef(new Float32Array(count * 3));
-  const colRef = useRef(new Float32Array(count * 3));
-  const sizeRef = useRef(new Float32Array(count));
+  const posRef = useMemo(() => new Float32Array(count * 3), [count]);
+  const colRef = useMemo(() => new Float32Array(count * 3), [count]);
+  const sizeRef = useMemo(() => new Float32Array(count), [count]);
   const injectedRef = useRef(false);
 
   // Smoke buffers (zero-GC)
-  const smokePosRef = useRef(new Float32Array(SMOKE_COUNT * 3));
-  const smokeColRef = useRef(new Float32Array(SMOKE_COUNT * 3));
-  const smokeSizeRef = useRef(new Float32Array(SMOKE_COUNT));
+  const smokePosRef = useMemo(() => new Float32Array(SMOKE_COUNT * 3), []);
+  const smokeColRef = useMemo(() => new Float32Array(SMOKE_COUNT * 3), []);
+  const smokeSizeRef = useMemo(() => new Float32Array(SMOKE_COUNT), []);
 
   // Chemistry-enhanced color: use formulation if available, else auto-match by color+type
   const chemistry = useMemo(() => {
@@ -136,9 +136,9 @@ export default function MineEffect({
     if (!pointsRef.current) return;
 
     const geo = pointsRef.current.geometry;
-    const posArr = posRef.current;
-    const colArr = colRef.current;
-    const sizeArr = sizeRef.current;
+    const posArr = posRef;
+    const colArr = colRef;
+    const sizeArr = sizeRef;
     const t = progress * 2.5;
     const GRAV = -9.81;
     const time = clock.getElapsedTime();
@@ -244,18 +244,18 @@ export default function MineEffect({
       sizeArr[i] = basePointSize * particleSizes[i];
     }
 
-    geo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
-    geo.setAttribute('size', new THREE.BufferAttribute(sizeArr, 1));
-    geo.attributes.position.needsUpdate = true;
-    geo.attributes.color.needsUpdate = true;
-    geo.attributes.size.needsUpdate = true;
+    const posAttr = geo.getAttribute('position') as THREE.BufferAttribute;
+    const colAttr = geo.getAttribute('color') as THREE.BufferAttribute;
+    const szAttr = geo.getAttribute('size') as THREE.BufferAttribute;
+    if (posAttr) posAttr.needsUpdate = true;
+    if (colAttr) colAttr.needsUpdate = true;
+    if (szAttr) szAttr.needsUpdate = true;
 
     // ── Ground smoke plume ──
     if (smokePointsRef.current && progress > 0.03 && progress < 0.7) {
-      const smokePosArr = smokePosRef.current;
-      const smokeColArr = smokeColRef.current;
-      const smokeSizeArr = smokeSizeRef.current;
+      const smokePosArr = smokePosRef;
+      const smokeColArr = smokeColRef;
+      const smokeSizeArr = smokeSizeRef;
       const smokeAge = (progress - 0.03) / 0.67;
 
       for (let i = 0; i < SMOKE_COUNT; i++) {
@@ -284,10 +284,10 @@ export default function MineEffect({
       }
 
       const smokeGeo = smokePointsRef.current.geometry;
-      smokeGeo.setAttribute('position', new THREE.BufferAttribute(smokePosArr, 3));
-      smokeGeo.setAttribute('color', new THREE.BufferAttribute(smokeColArr, 3));
-      smokeGeo.attributes.position.needsUpdate = true;
-      smokeGeo.attributes.color.needsUpdate = true;
+      const sPosAttr = smokeGeo.getAttribute('position') as THREE.BufferAttribute;
+      const sColAttr = smokeGeo.getAttribute('color') as THREE.BufferAttribute;
+      if (sPosAttr) sPosAttr.needsUpdate = true;
+      if (sColAttr) sColAttr.needsUpdate = true;
     }
   });
 
@@ -369,9 +369,9 @@ export default function MineEffect({
       {/* Main particles with per-particle size shader */}
       <points ref={pointsRef} frustumCulled={false}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(count * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(count * 3), 3]} />
-          <bufferAttribute attach="attributes-size" args={[new Float32Array(count), 1]} />
+          <bufferAttribute attach="attributes-position" args={[posRef, 3]} />
+          <bufferAttribute attach="attributes-color" args={[colRef, 3]} />
+          <bufferAttribute attach="attributes-size" args={[sizeRef, 1]} />
         </bufferGeometry>
         <shaderMaterial
           vertexShader={sizeVertexShader}
@@ -386,8 +386,8 @@ export default function MineEffect({
       {progress > 0.03 && progress < 0.7 && (
         <points ref={smokePointsRef} frustumCulled={false}>
           <bufferGeometry>
-            <bufferAttribute attach="attributes-position" args={[new Float32Array(SMOKE_COUNT * 3), 3]} />
-            <bufferAttribute attach="attributes-color" args={[new Float32Array(SMOKE_COUNT * 3), 3]} />
+            <bufferAttribute attach="attributes-position" args={[smokePosRef, 3]} />
+            <bufferAttribute attach="attributes-color" args={[smokeColRef, 3]} />
           </bufferGeometry>
           <shaderMaterial
             vertexShader={sizeVertexShader.replace('size *', '3.0 *')}
