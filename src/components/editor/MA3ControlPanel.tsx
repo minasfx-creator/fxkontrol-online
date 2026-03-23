@@ -386,6 +386,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
           <TabsTrigger value="sacn" className="text-[9px] h-6 font-mono font-bold data-[state=active]:text-indigo-300 data-[state=active]:shadow-[0_0_8px_hsl(240_50%_50%_/_0.2)]">sACN Bridge</TabsTrigger>
           <TabsTrigger value="mvr" className="text-[9px] h-6 font-mono font-bold data-[state=active]:text-indigo-300 data-[state=active]:shadow-[0_0_8px_hsl(240_50%_50%_/_0.2)]">MVR-xchange</TabsTrigger>
           <TabsTrigger value="monitor" className="text-[9px] h-6 font-mono font-bold data-[state=active]:text-indigo-300 data-[state=active]:shadow-[0_0_8px_hsl(240_50%_50%_/_0.2)]">Monitor</TabsTrigger>
+          <TabsTrigger value="ble" className="text-[9px] h-6 font-mono font-bold data-[state=active]:text-indigo-300 data-[state=active]:shadow-[0_0_8px_hsl(240_50%_50%_/_0.2)]">BLE</TabsTrigger>
         </TabsList>
 
         {/* ═══ OSC Tab ═══ */}
