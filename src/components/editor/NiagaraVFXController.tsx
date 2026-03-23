@@ -408,7 +408,7 @@ function createEmberEmitterTemplate(caliber: number, color: THREE.Color): Niagar
 
 // ── Stylized Fire Presets — NS_Stylized_Fire UE5 reference ──────────
 
-type StylizedFirePreset = 'stylized-fire-01' | 'stylized-fire-02' | 'stylized-fire-radial-01' | 'stylized-fire-radial-02' | 'stylized-fire-large-01';
+type StylizedFirePreset = 'stylized-fire-01' | 'stylized-fire-02' | 'stylized-fire-radial-01' | 'stylized-fire-radial-02' | 'stylized-fire-large-01' | 'stylized-fire-01-ethereal' | 'stylized-fire-02-ethereal' | 'stylized-fire-radial-01-ethereal' | 'stylized-fire-radial-02-ethereal';
 type StylizedFireMode = 'infinite' | 'once';
 
 interface StylizedFireConfig {
@@ -473,14 +473,59 @@ const STYLIZED_FIRE_PROFILES: Record<StylizedFirePreset, {
     gravityScale: -0.4,
     drag: 0.4,
   },
+  // ── Ethereal Variants — cold cyan/purple supernatural fire ──
+  'stylized-fire-01-ethereal': {
+    particleCount: 60,
+    lifetime: [0.5, 1.5],
+    velocity: { min: new THREE.Vector3(-0.8, 2, -0.8), max: new THREE.Vector3(0.8, 6, 0.8) },
+    size: [0.3, 0.8],
+    spawnRadius: 0.5,
+    gravityScale: -0.45,
+    drag: 0.4,
+  },
+  'stylized-fire-02-ethereal': {
+    particleCount: 80,
+    lifetime: [0.4, 1.2],
+    velocity: { min: new THREE.Vector3(-1.2, 1.5, -1.2), max: new THREE.Vector3(1.2, 5, 1.2) },
+    size: [0.4, 1.0],
+    spawnRadius: 0.8,
+    gravityScale: -0.35,
+    drag: 0.5,
+  },
+  'stylized-fire-radial-01-ethereal': {
+    particleCount: 120,
+    lifetime: [0.25, 1.0],
+    velocity: { min: new THREE.Vector3(-4, 0.5, -4), max: new THREE.Vector3(4, 5, 4) },
+    size: [0.5, 1.5],
+    spawnRadius: 0.3,
+    gravityScale: -0.15,
+    drag: 0.7,
+  },
+  'stylized-fire-radial-02-ethereal': {
+    particleCount: 150,
+    lifetime: [0.2, 0.75],
+    velocity: { min: new THREE.Vector3(-6, 1, -6), max: new THREE.Vector3(6, 8, 6) },
+    size: [0.6, 2.0],
+    spawnRadius: 0.2,
+    gravityScale: -0.08,
+    drag: 0.9,
+  },
 };
 
 function createStylizedFireEmitter(config: StylizedFireConfig): NiagaraEmitter {
   const profile = STYLIZED_FIRE_PROFILES[config.preset];
   const scale = config.scale ?? 1;
-  const baseColor = config.color ?? new THREE.Color(1, 0.5, 0.05);
+  const isEthereal = config.preset.includes('ethereal');
+  const baseColor = config.color ?? (isEthereal ? new THREE.Color(0.1, 0.8, 1.0) : new THREE.Color(1, 0.5, 0.05));
 
-  const fireColorOverLife = [
+  const fireColorOverLife = isEthereal ? [
+    { t: 0, color: new THREE.Color(1.5, 1.5, 2.0) },
+    { t: 0.15, color: new THREE.Color(0.2, 1.2, 1.8) },
+    { t: 0.35, color: new THREE.Color(0.4, 0.3, 1.5) },
+    { t: 0.55, color: new THREE.Color(0.3, 0.05, 0.8) },
+    { t: 0.75, color: new THREE.Color(0.1, 0.02, 0.3) },
+    { t: 1, color: new THREE.Color(0.02, 0.01, 0.05) },
+  ] : [
     { t: 0, color: new THREE.Color(1.5, 1.3, 0.3) },
     { t: 0.15, color: baseColor.clone().multiplyScalar(1.8) },
     { t: 0.35, color: baseColor.clone() },
@@ -509,8 +554,8 @@ function createStylizedFireEmitter(config: StylizedFireConfig): NiagaraEmitter {
     update: [{
       drag: profile.drag,
       gravityScale: profile.gravityScale,
-      curlNoiseStrength: 3 * scale,
-      curlNoiseScale: 0.1,
+      curlNoiseStrength: (isEthereal ? 4.5 : 3) * scale,
+      curlNoiseScale: isEthereal ? 0.08 : 0.1,
       colorOverLife: fireColorOverLife,
       sizeOverLife: [
         { t: 0, value: 0.3 },
