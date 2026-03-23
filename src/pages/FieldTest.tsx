@@ -37,6 +37,7 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
   const [cdsStatus, setCdsStatus] = useState<boolean[]>(Array(32).fill(false));
   const [cdsTesting, setCdsTesting] = useState(false);
   const [cdsLastTest, setCdsLastTest] = useState<number | null>(null);
+  const [cdsSimMode, setCdsSimMode] = useState(false);
   const bleAvailable = isWebBluetoothAvailable();
 
   const handleScan = async () => {
