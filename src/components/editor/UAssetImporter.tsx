@@ -129,14 +129,19 @@ export default function UAssetImporter({ open, onOpenChange, initialFile = null 
       const h = result.heuristic;
       const aType = result.assetType;
 
-      // Auto-save to library
-      const tags: string[] = [aType as string, h.suggestedCategory as string];
+      // Auto-save to library with semantic tags
+      const tags: string[] = [
+        aType as string,
+        ...(result.semanticTags || []),
+      ];
       if (result.suggestedFixtureProfile) tags.push(result.suggestedFixtureProfile);
+      // Deduplicate
+      const uniqueTags = [...new Set(tags)];
       saveToLibrary(file, {
         name: h.suggestedName,
         source: 'ue5-uasset',
         file_format: 'uasset',
-        tags,
+        tags: uniqueTags,
       });
 
       if (aType === 'blueprint_fixture') {
