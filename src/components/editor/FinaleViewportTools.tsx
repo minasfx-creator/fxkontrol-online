@@ -97,12 +97,10 @@ export function DoubleClickFocus() {
         const intersects = raycaster.intersectObjects(scene.children, true);
         for (const hit of intersects) {
           // Skip huge ground planes
-          if (hit.object.geometry) {
-            const geo = hit.object.geometry;
-            if (geo instanceof THREE.PlaneGeometry) {
-              const params = geo.parameters;
-              if (params.width > 500 || params.height > 500) continue;
-            }
+          const mesh = hit.object as THREE.Mesh;
+          if (mesh.geometry && mesh.geometry instanceof THREE.PlaneGeometry) {
+            const params = mesh.geometry.parameters;
+            if (params.width > 500 || params.height > 500) continue;
           }
 
           _intersection.copy(hit.point);
