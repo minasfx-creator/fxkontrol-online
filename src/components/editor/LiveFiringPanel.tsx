@@ -1436,7 +1436,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   // (mob block removed — useEffect already sets isFullscreen=true on mobile)
 
   return (
-    <div className="h-full flex flex-col overflow-hidden select-none" style={{ minWidth: 300, maxWidth: 380, background: 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 5%) 100%)' }}>
+    <div className={cn("h-full flex flex-col overflow-hidden select-none", standalone && "ff-standalone-panel")} style={{ minWidth: standalone ? undefined : 300, maxWidth: standalone ? undefined : 380, background: standalone ? 'transparent' : 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 5%) 100%)' }}>
       {renderStatusBar(false)}
       {renderArmBar(false)}
       {renderCueKeys(false)}
