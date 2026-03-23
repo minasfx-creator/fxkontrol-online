@@ -4,9 +4,10 @@
  * Enhanced: textarea, session history, feedback, expand, timestamps, clear, context presets
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Terminal, Maximize2, Trash2, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type Msg = { role: 'user' | 'assistant'; content: string; ts?: number; feedback?: 'up' | 'down' };
 
