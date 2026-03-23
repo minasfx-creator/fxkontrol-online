@@ -103,20 +103,26 @@ export default function CommandCenter() {
   const activeEffects = useLiveSfxStore(s => s.activeEffects);
   const isArmed = activeEffects.length > 0;
 
-  // Landscape detection
+  // Landscape detection + fullscreen
   useEffect(() => {
     const mql = window.matchMedia('(orientation: landscape)');
     const onChange = () => setIsLandscape(mql.matches);
     onChange();
     mql.addEventListener('change', onChange);
-    // Try to lock orientation on mobile
     if (isMobile && screen.orientation?.lock) {
       screen.orientation.lock('landscape').catch(() => {});
+    }
+    // Fullscreen on landscape mobile
+    if (isMobile && mql.matches) {
+      try { document.documentElement.requestFullscreen?.(); } catch {}
     }
     return () => {
       mql.removeEventListener('change', onChange);
       if (isMobile && screen.orientation?.unlock) {
         screen.orientation.unlock();
+      }
+      if (document.fullscreenElement) {
+        try { document.exitFullscreen?.(); } catch {}
       }
     };
   }, [isMobile]);
