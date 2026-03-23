@@ -284,10 +284,10 @@ export default function MineEffect({
       }
 
       const smokeGeo = smokePointsRef.current.geometry;
-      smokeGeo.setAttribute('position', new THREE.BufferAttribute(smokePosArr, 3));
-      smokeGeo.setAttribute('color', new THREE.BufferAttribute(smokeColArr, 3));
-      smokeGeo.attributes.position.needsUpdate = true;
-      smokeGeo.attributes.color.needsUpdate = true;
+      const sPosAttr = smokeGeo.getAttribute('position') as THREE.BufferAttribute;
+      const sColAttr = smokeGeo.getAttribute('color') as THREE.BufferAttribute;
+      if (sPosAttr) sPosAttr.needsUpdate = true;
+      if (sColAttr) sColAttr.needsUpdate = true;
     }
   });
 
