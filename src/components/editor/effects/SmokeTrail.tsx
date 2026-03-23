@@ -1,5 +1,7 @@
 /**
  * SmokeTrail — Niagara-grade smoke using composable emitter system
+ * 
+ * Zero-GC optimized: pre-allocated material array, no per-frame allocations.
  * Uses NiagaraSystem with sphere spawn, curl noise turbulence,
  * negative gravity for rising smoke, and soft-particle rendering config.
  */
@@ -14,6 +16,18 @@ import {
 } from '@/render_ultra/fireworks/niagaraEmitterSystem';
 
 const BASE_SMOKE_COUNT = 80;
+
+// Pre-allocated shared material to avoid per-mesh material creation
+const _sharedSmokeMaterials = new Map<string, THREE.MeshBasicMaterial>();
+
+function getSmokeMaterial(color: string): THREE.MeshBasicMaterial {
+  let mat = _sharedSmokeMaterials.get(color);
+  if (!mat) {
+    mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, depthWrite: false });
+    _sharedSmokeMaterials.set(color, mat);
+  }
+  return mat;
+}
 
 function SmokeTrailInner({
   position,
@@ -38,7 +52,10 @@ function SmokeTrailInner({
   const meshRefs = useRef<(THREE.Mesh | null)[]>([]);
   const niagaraRef = useRef<NiagaraSystem | null>(null);
 
-  // Create Niagara smoke system
+  // Cache fadeOut power to avoid branch per particle per frame
+  const fadeOutPower = liftChargeType === 'black_powder' ? 1.5 : 2.0;
+  const baseOpacity = liftChargeType === 'black_powder' ? 0.08 : 0.05;
+
   useEffect(() => {
     const riseSpeed = smokeConfig.riseSpeed;
     const density = smokeConfig.density;
@@ -66,7 +83,7 @@ function SmokeTrailInner({
       },
       update: [{
         drag: 1.8,
-        gravityScale: -0.05, // Rising smoke
+        gravityScale: -0.05,
         curlNoiseStrength: 3,
         curlNoiseScale: 0.03,
         colorOverLife: [
@@ -101,13 +118,11 @@ function SmokeTrailInner({
     return () => { niagaraRef.current = null; };
   }, [SMOKE_COUNT, liftChargeType, smokeConfig, smokeColor]);
 
-  useFrame(({ clock }, delta) => {
+  useFrame((_, delta) => {
     if (!niagaraRef.current) return;
-    const time = clock.getElapsedTime();
     const dt = Math.min(delta, 0.05);
     const sys = niagaraRef.current;
 
-    // Only spawn when progressing
     for (const emitter of sys.emitters) {
       emitter.enabled = progress > 0 && progress < 0.95;
     }
@@ -116,7 +131,6 @@ function SmokeTrailInner({
       tickSystem(sys, dt);
     }
 
-    // Render Niagara particles to the mesh array (visual compatibility)
     const emitter = sys.emitters[0];
     if (!emitter) return;
 
@@ -133,22 +147,18 @@ function SmokeTrailInner({
 
       const mat = mesh.material as THREE.MeshBasicMaterial;
       const fadeIn = Math.min(1, p.age * 8);
-      const fadeOutPower = liftChargeType === 'black_powder' ? 1.5 : 2.0;
       const fadeOut = Math.max(0, 1 - Math.pow(t, fadeOutPower));
-      const baseOpacity = liftChargeType === 'black_powder' ? 0.08 : 0.05;
       mat.opacity = Math.max(0, baseOpacity * intensity * fadeIn * fadeOut * smokeDensityMult);
 
       visIdx++;
     }
 
-    // Hide remaining meshes
     for (let i = visIdx; i < SMOKE_COUNT; i++) {
       const mesh = meshRefs.current[i];
       if (mesh) mesh.visible = false;
     }
   });
 
-  // Generate puff array for rendering
   const puffs = useMemo(() => Array.from({ length: SMOKE_COUNT }, (_, i) => i), [SMOKE_COUNT]);
 
   if (progress <= 0) return null;

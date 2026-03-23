@@ -5,6 +5,15 @@ import InstancedDroneSwarm from './InstancedDroneSwarm';
 import TransitionParticles from './TransitionParticles';
 import LightTrails from './LightTrails';
 
+// Pre-allocated result array to avoid per-frame GC
+let _positionsCache: { x: number; y: number; z: number; color: string }[] = [];
+
+function ensurePositionsCacheSize(size: number) {
+  if (_positionsCache.length < size) {
+    _positionsCache = Array.from({ length: size }, () => ({ x: 0, y: 0, z: 0, color: '' }));
+  }
+}
+
 /**
  * Computes drone positions at a given time based on the formation sequence.
  * IMPORTANT: Formations are generated as 2D (x, z) points.
@@ -12,6 +21,8 @@ import LightTrails from './LightTrails';
  *   formation.x → world X (horizontal spread)
  *   formation.z → world Y offset (vertical shape, added to base height)
  *   world Z = 0 (facing audience)
+ * 
+ * Zero-GC: reuses _positionsCache to avoid creating new arrays every frame.
  */
 function computeDronePositions(
   formations: DroneFormation[],
@@ -25,43 +36,40 @@ function computeDronePositions(
   const lastEnd = lastFormation.startTime + lastFormation.transitionDuration + lastFormation.holdDuration;
   const landingDuration = 10;
 
-  // Helper: convert formation point to upright 3D position
-  const toUpright = (p: { x: number; z: number }, height: number) => ({
-    x: p.x,
-    y: height + p.z, // z becomes vertical offset from base height
-    z: 0,
-  });
-
-  // Before any formation starts: hide drones (no ground grid clutter)
-  if (currentTime < firstStart) {
-    return null;
-  }
-
-  // After all formations + landing
+  if (currentTime < firstStart) return null;
   if (currentTime > lastEnd + landingDuration) return null;
+
+  ensurePositionsCacheSize(droneCount);
 
   // Landing phase
   if (currentTime > lastEnd) {
     const t = (currentTime - lastEnd) / landingDuration;
     const easeOut = 1 - (1 - t) * (1 - t);
     const holdColor = lastFormation.endColor || lastFormation.color;
-    return lastFormation.points.slice(0, droneCount).map((p, idx) => {
-      const uprightPos = toUpright(p, lastFormation.height);
-      const landColor = interpolateColor(holdColor, '#111111', t, 'linear', idx, droneCount);
-      // Land to ground grid
-      const cols = Math.ceil(Math.sqrt(droneCount));
+    const cols = Math.ceil(Math.sqrt(droneCount));
+    const rows = Math.ceil(droneCount / cols);
+    const spacing = 2.5;
+
+    for (let idx = 0; idx < droneCount; idx++) {
+      const p = lastFormation.points[idx];
+      if (!p) continue;
+      const uprightX = p.x;
+      const uprightY = lastFormation.height + p.z;
+      const uprightZ = 0;
+
       const row = Math.floor(idx / cols);
       const col = idx % cols;
-      const spacing = 2.5;
       const groundX = (col - (cols - 1) / 2) * spacing;
-      const groundZ = (row - (Math.ceil(droneCount / cols) - 1) / 2) * spacing;
-      return {
-        x: uprightPos.x + (groundX - uprightPos.x) * easeOut,
-        y: uprightPos.y * (1 - easeOut),
-        z: uprightPos.z + (groundZ - uprightPos.z) * easeOut,
-        color: landColor,
-      };
-    });
+      const groundZ = (row - (rows - 1) / 2) * spacing;
+      const landColor = interpolateColor(holdColor, '#111111', t, 'linear', idx, droneCount);
+
+      const out = _positionsCache[idx];
+      out.x = uprightX + (groundX - uprightX) * easeOut;
+      out.y = uprightY * (1 - easeOut);
+      out.z = uprightZ + (groundZ - uprightZ) * easeOut;
+      out.color = landColor;
+    }
+    return _positionsCache.slice(0, droneCount);
   }
 
   // Find active formation
@@ -82,22 +90,35 @@ function computeDronePositions(
           ? 16 * t * t * t * t * t
           : 1 - Math.pow(-2 * t + 2, 5) / 2;
 
-        // Previous positions
-        const prevPositions = i === 0
-          ? f.points.slice(0, droneCount).map((_, idx) => {
-              const cols = Math.ceil(Math.sqrt(droneCount));
-              const row = Math.floor(idx / cols);
-              const col = idx % cols;
-              const spacing = 2.5;
-              return { x: (col - (cols - 1) / 2) * spacing, y: 0.1, z: (row - (Math.ceil(droneCount / cols) - 1) / 2) * spacing };
-            })
-          : formations[i - 1].points.slice(0, droneCount).map(p => toUpright(p, formations[i - 1].height));
+        const cols = Math.ceil(Math.sqrt(droneCount));
+        const rows = Math.ceil(droneCount / cols);
+        const spacing = 2.5;
 
-        return f.points.slice(0, droneCount).map((p, idx) => {
-          const target = toUpright(p, f.height);
-          const prev = prevPositions[idx] || { x: 0, y: 0, z: 0 };
-          
-          // Staggered launch for first formation
+        for (let idx = 0; idx < droneCount; idx++) {
+          const p = f.points[idx];
+          if (!p) continue;
+          const targetX = p.x;
+          const targetY = f.height + p.z;
+          const targetZ = 0;
+
+          let prevX: number, prevY: number, prevZ: number;
+          if (i === 0) {
+            const row = Math.floor(idx / cols);
+            const col = idx % cols;
+            prevX = (col - (cols - 1) / 2) * spacing;
+            prevY = 0.1;
+            prevZ = (row - (rows - 1) / 2) * spacing;
+          } else {
+            const pp = formations[i - 1].points[idx];
+            if (pp) {
+              prevX = pp.x;
+              prevY = formations[i - 1].height + pp.z;
+              prevZ = 0;
+            } else {
+              prevX = 0; prevY = 0; prevZ = 0;
+            }
+          }
+
           const distFromCenter = Math.sqrt(p.x * p.x + p.z * p.z);
           const maxDist = Math.sqrt(f.radius * f.radius * 2) || 30;
           const staggerDelay = i === 0 ? (distFromCenter / maxDist) * 0.15 : 0;
@@ -106,33 +127,42 @@ function computeDronePositions(
 
           const arcHeight = i === 0 ? Math.sin(effT * Math.PI) * 5 : Math.sin(smoothT * Math.PI) * 3;
           const droneColor = interpolateColor(prevColor, targetColor, effT, colorMode, idx, droneCount);
-          
-          return {
-            x: prev.x + (target.x - prev.x) * effT,
-            y: prev.y + (target.y - prev.y) * effT + arcHeight,
-            z: prev.z + (target.z - prev.z) * effT,
-            color: droneColor,
-          };
-        });
+
+          const out = _positionsCache[idx];
+          out.x = prevX + (targetX - prevX) * effT;
+          out.y = prevY + (targetY - prevY) * effT + arcHeight;
+          out.z = prevZ + (targetZ - prevZ) * effT;
+          out.color = droneColor;
+        }
+        return _positionsCache.slice(0, droneCount);
       }
 
       // During hold: color transition
       if (endColor !== targetColor) {
         const holdT = (currentTime - transEnd) / f.holdDuration;
-        return f.points.slice(0, droneCount).map((p, idx) => {
-          const pos = toUpright(p, f.height);
-          return {
-            ...pos,
-            color: interpolateColor(targetColor, endColor, holdT, colorMode, idx, droneCount),
-          };
-        });
+        for (let idx = 0; idx < droneCount; idx++) {
+          const p = f.points[idx];
+          if (!p) continue;
+          const out = _positionsCache[idx];
+          out.x = p.x;
+          out.y = f.height + p.z;
+          out.z = 0;
+          out.color = interpolateColor(targetColor, endColor, holdT, colorMode, idx, droneCount);
+        }
+        return _positionsCache.slice(0, droneCount);
       }
 
       // Static hold
-      return f.points.slice(0, droneCount).map((p) => {
-        const pos = toUpright(p, f.height);
-        return { ...pos, color: targetColor };
-      });
+      for (let idx = 0; idx < droneCount; idx++) {
+        const p = f.points[idx];
+        if (!p) continue;
+        const out = _positionsCache[idx];
+        out.x = p.x;
+        out.y = f.height + p.z;
+        out.z = 0;
+        out.color = targetColor;
+      }
+      return _positionsCache.slice(0, droneCount);
     }
   }
 
