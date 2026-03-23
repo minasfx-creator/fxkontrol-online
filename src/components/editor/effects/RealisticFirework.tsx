@@ -12,6 +12,7 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { spawnPostExplosionSmoke } from './PostExplosionSmokeManager';
 
 // ═══════════════════════════════════════════════════════════════════════
 // GPU Vertex Shader — computes position from initial velocity + time
@@ -381,11 +382,13 @@ export default function RealisticFirework({
 
     materialRef.current.uniforms.uTime.value = elapsed;
 
-    // Auto-complete after lifetime expires
+    // Auto-complete after lifetime expires — spawn post-explosion smoke
     if (elapsed > lifetime * 1.2 && !completedRef.current) {
       completedRef.current = true;
       if (pointsRef.current) pointsRef.current.visible = false;
       releaseGeometry(geometry);
+      // Spawn volumetric smoke at burst endpoint
+      spawnPostExplosionSmoke(position, caliber, color);
       onComplete?.();
     }
   });
