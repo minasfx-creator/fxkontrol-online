@@ -1120,8 +1120,8 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
           <div className="flex">
             <div className="w-24 flex-shrink-0" />
             <div className="flex-1 relative">
-              <TimeRuler duration={duration} pixelsPerSecond={pixelsPerSecond} />
-              <BeatGrid duration={duration} pixelsPerSecond={pixelsPerSecond} bpm={bpm} />
+              <TimeRuler duration={duration} pixelsPerSecond={pixelsPerSecond} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
+              <BeatGrid duration={duration} pixelsPerSecond={pixelsPerSecond} bpm={bpm} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
               {/* Playhead */}
               <div className="absolute top-0 bottom-0 w-px z-20 pointer-events-none" style={{ left: `${currentTime * pixelsPerSecond}px` }}>
                 <div className="w-2 h-2 bg-primary rounded-full -translate-x-[3px] -translate-y-px shadow-[0_0_8px_hsl(var(--primary)/0.4)]" />
