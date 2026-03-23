@@ -34,6 +34,9 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
   const [devices, setDevices] = useState<ScannedBLEDevice[]>([]);
   const [connectingId, setConnectingId] = useState<string | null>(null);
   const [connectedId, setConnectedId] = useState<string | null>(null);
+  const [cdsStatus, setCdsStatus] = useState<boolean[]>(Array(32).fill(false));
+  const [cdsTesting, setCdsTesting] = useState(false);
+  const [cdsLastTest, setCdsLastTest] = useState<number | null>(null);
   const bleAvailable = isWebBluetoothAvailable();
 
   const handleScan = async () => {
@@ -74,6 +77,39 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
     setConnectingId(null);
   };
 
+  const handleTestCDS = async () => {
+    setCdsTesting(true);
+    try {
+      await fieldTestEngine.bleTestCDS();
+      // Poll CDS status after a short delay for the module to respond
+      setTimeout(() => {
+        const status = fieldTestEngine.bleCdsStatus;
+        setCdsStatus([...status]);
+        setCdsLastTest(Date.now());
+        setCdsTesting(false);
+        const active = status.filter(Boolean).length;
+        toast.success(`CDS: ${active}/32 ignitores detectados`);
+        haptics.success();
+      }, 800);
+    } catch (err: any) {
+      setCdsTesting(false);
+      toast.error(err.message || 'Erro no teste CDS');
+    }
+  };
+
+  // Auto-update CDS from module status changes
+  useEffect(() => {
+    if (!connectedId) return;
+    const interval = setInterval(() => {
+      const status = fieldTestEngine.bleCdsStatus;
+      setCdsStatus(prev => {
+        const changed = prev.some((v, i) => v !== status[i]);
+        return changed ? [...status] : prev;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [connectedId]);
+
   const getDeviceType = (name: string): { label: string; color: string } => {
     const n = name.toLowerCase();
     if (n.includes('ctrl') || n.includes('controller')) return { label: 'CTRL', color: 'bg-blue-600' };
@@ -98,6 +134,8 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
       </div>
     );
   }
+
+  const activeChannels = cdsStatus.filter(Boolean).length;
 
   return (
     <div className="space-y-3">
@@ -203,6 +241,82 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
         <p className="text-[9px] text-muted-foreground text-center">
           Pressione "Escanear" para detectar módulos FXK e controladoras BLE próximos
         </p>
+      )}
+
+      {/* ─── CDS Continuity Visual Grid ─── */}
+      {connectedId && (
+        <div className="mt-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-amber-400" />
+              <span className="text-xs font-black font-mono uppercase tracking-wider text-foreground">
+                Continuidade (CDS)
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className={cn(
+                "text-[8px] h-4 px-1.5 font-mono",
+                activeChannels > 0 ? "border-green-500/40 text-green-400" : "border-muted-foreground/30 text-muted-foreground"
+              )}>
+                {activeChannels}/32 OK
+              </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-[10px] gap-1 border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                onClick={handleTestCDS}
+                disabled={cdsTesting}
+              >
+                {cdsTesting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                {cdsTesting ? 'Testando...' : 'Testar CDS'}
+              </Button>
+            </div>
+          </div>
+
+          {/* 32-channel grid: 8 columns × 4 rows */}
+          <div className="grid grid-cols-8 gap-1">
+            {cdsStatus.map((active, idx) => (
+              <div
+                key={idx}
+                className={cn(
+                  "relative aspect-square rounded flex flex-col items-center justify-center border transition-all",
+                  active
+                    ? "bg-green-500/20 border-green-500/50 shadow-[0_0_6px_rgba(34,197,94,0.3)]"
+                    : "bg-muted/10 border-border/30"
+                )}
+              >
+                <span className={cn(
+                  "text-[9px] font-mono font-bold leading-none",
+                  active ? "text-green-400" : "text-muted-foreground/40"
+                )}>
+                  {String(idx + 1).padStart(2, '0')}
+                </span>
+                {active && (
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-400 mt-0.5 animate-pulse" />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* CDS Legend */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-green-400" />
+                <span className="text-[8px] text-muted-foreground">Ignitor OK</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-muted-foreground/20" />
+                <span className="text-[8px] text-muted-foreground">Sem Ignitor</span>
+              </div>
+            </div>
+            {cdsLastTest && (
+              <span className="text-[8px] text-muted-foreground font-mono">
+                {new Date(cdsLastTest).toLocaleTimeString('pt-BR', { hour12: false })}
+              </span>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
