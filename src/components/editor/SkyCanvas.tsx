@@ -977,24 +977,21 @@ function TimelineEffects() {
         const effPan = (item.pan ?? 90) * (Math.PI / 180);
         const effTilt = (item.tilt ?? 0) * (Math.PI / 180);
         
-        // Compose: Position quaternion * Effect quaternion
-        const posQuat = new THREE.Quaternion().setFromEuler(
-          new THREE.Euler(0, -posHeadingRad, 0, 'YZX')
-        );
-        const launchDir = new THREE.Vector3(0, 1, 0);
+        // Compose: Position quaternion * Effect quaternion (pre-allocated objects)
+        _posEuler.set(0, -posHeadingRad, 0, 'YZX');
+        _posQuat.setFromEuler(_posEuler);
+        _launchDir.set(0, 1, 0);
         // Apply position pitch to launch direction
-        const pitchAxis = new THREE.Vector3(1, 0, 0);
-        pitchAxis.applyQuaternion(posQuat);
-        const pitchQuat = new THREE.Quaternion().setFromAxisAngle(pitchAxis, -(Math.PI / 2 - posPitchRad));
-        posQuat.multiply(pitchQuat);
+        _pitchAxis.set(1, 0, 0).applyQuaternion(_posQuat);
+        _pitchQuat.setFromAxisAngle(_pitchAxis, -(Math.PI / 2 - posPitchRad));
+        _posQuat.multiply(_pitchQuat);
         
         // Apply effect Pan/Tilt
-        const effQuat = new THREE.Quaternion().setFromEuler(
-          new THREE.Euler(effTilt, effPan - Math.PI / 2, 0, 'YXZ')
-        );
+        _effEuler.set(effTilt, effPan - Math.PI / 2, 0, 'YXZ');
+        _effQuat.setFromEuler(_effEuler);
         
-        const finalQuat = posQuat.clone().multiply(effQuat);
-        launchDir.set(0, 1, 0).applyQuaternion(finalQuat).normalize();
+        _posQuat.multiply(_effQuat);
+        _launchDir.set(0, 1, 0).applyQuaternion(_posQuat).normalize();
         
         const burstPos: [number, number, number] = isShell
           ? [
