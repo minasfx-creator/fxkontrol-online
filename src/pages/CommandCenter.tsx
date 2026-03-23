@@ -388,7 +388,7 @@ export default function CommandCenter() {
                   </button>
                 );
               })}
-              {/* Field Test Quick Access */}
+              {/* Field Test Quick Access — always visible */}
               <button
                 onClick={() => navigate('/field-test')}
                 className="ff-loadout-card shrink-0"
@@ -402,6 +402,25 @@ export default function CommandCenter() {
                   FIELD TEST
                 </span>
               </button>
+              {/* Pyro Module shortcut — always visible */}
+              {mobileCategory !== 0 && (
+                <button
+                  onClick={() => {
+                    setMobileCategory(0);
+                    handleModeChange('pyro_fire' as CommandMode);
+                  }}
+                  className="ff-loadout-card shrink-0"
+                  style={{
+                    '--ff-accent': 'hsl(0 85% 48%)',
+                    '--ff-accent-glow': 'hsl(0 85% 48% / 0.1)',
+                  } as React.CSSProperties}
+                >
+                  <Flame className="w-5 h-5" style={{ color: 'hsl(0 85% 48% / 0.5)' }} />
+                  <span className="text-[7px] font-mono font-bold tracking-wider uppercase mt-0.5 text-muted-foreground/40">
+                    FXK-PYRO
+                  </span>
+                </button>
+              )}
             </div>
           </ScrollArea>
         </div>
