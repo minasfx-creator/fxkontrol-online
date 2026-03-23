@@ -86,19 +86,24 @@ let _activeBurstCount = 0;
 export function getActiveBurstCount() { return _activeBurstCount; }
 
 // ═══ ActiveBurstScanner — centralized per-frame timeline scan ═══
-// GI, LensFlare, and Exposure all read from this instead of scanning independently
+// GI, LensFlare, Exposure, and Reflections all read from this instead of scanning independently
 interface ActiveBurstScanResult {
   freshBursts: { x: number; y: number; z: number; color: string; caliber: number; effectId: string }[];
   activeBursts: number;
   luminance: number;
+  // Scatter data for sky color bleeding
+  scatterColors: { color: string; intensity: number }[];
+  scatterMax: number;
 }
 let _activeBurstScan: ActiveBurstScanResult | null = null;
 
 function runActiveBurstScan() {
   const { timelineItems, currentTime } = useProjectStore.getState();
   const freshBursts: ActiveBurstScanResult['freshBursts'] = [];
+  const scatterColors: ActiveBurstScanResult['scatterColors'] = [];
   let activeBursts = 0;
   let luminance = 0;
+  let scatterMax = 0;
 
   for (let i = 0; i < timelineItems.length; i++) {
     const item = timelineItems[i];
@@ -122,9 +127,19 @@ function runActiveBurstScan() {
         });
       }
     }
+
+    // Scatter window: 0-300ms for sky color bleeding
+    if (elapsed < 0.3) {
+      const effect = getEffectById(item.effectId);
+      if (effect && effect.type === 'firework') {
+        const intensity = 0.4 * (1 - elapsed / 0.3);
+        scatterColors.push({ color: effect.color, intensity });
+        scatterMax = Math.max(scatterMax, intensity);
+      }
+    }
   }
 
-  _activeBurstScan = { freshBursts, activeBursts, luminance };
+  _activeBurstScan = { freshBursts, activeBursts, luminance, scatterColors, scatterMax };
   return _activeBurstScan;
 }
 
