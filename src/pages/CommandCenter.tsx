@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import LiveFiringPanel from '@/components/editor/LiveFiringPanel';
 import { CONSOLE_LOGOS } from '@/components/editor/ConsoleLogos';
 import ConsoleBootSequence from '@/components/editor/ConsoleBootSequence';
+import TacticalMinimap from '@/components/editor/TacticalMinimap';
 
 // Direct-render components
 import MA3ControlPanel from '@/components/editor/MA3ControlPanel';
