@@ -222,20 +222,23 @@ async function callAI(
   
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetch(GATEWAY, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
+        const body: any = {
           model, 
           messages, 
           tools, 
           tool_choice: toolChoice, 
           temperature: temperature + (attempt * 0.03),
-        }),
-      });
+        };
+        if (reasoning) body.reasoning = reasoning;
+        
+        const response = await fetch(GATEWAY, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        });
 
       if (!response.ok) {
         const t = await response.text();
