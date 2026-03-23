@@ -931,6 +931,9 @@ function SFXStageEnvironment() {
         <planeGeometry args={[100000, 100000]} />
         <meshStandardMaterial color="#030305" roughness={0.95} metalness={0} />
       </mesh>
+
+      {/* Procedural audience — FOH area */}
+      <CrowdSystem />
     </group>
   );
 }

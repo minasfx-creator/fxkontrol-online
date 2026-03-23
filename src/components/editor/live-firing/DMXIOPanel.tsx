@@ -212,7 +212,9 @@ export default function DMXIOPanel({ fs = false }: { fs?: boolean }) {
             )}
             style={{
               background: selectedUni === u.id ? 'hsl(270, 60%, 50%, 0.06)' : 'transparent',
-              ringColor: selectedUni === u.id ? 'hsl(270, 60%, 50%, 0.2)' : undefined,
+              outlineColor: selectedUni === u.id ? 'hsl(270, 60%, 50%, 0.2)' : undefined,
+              outlineWidth: selectedUni === u.id ? '1px' : undefined,
+              outlineStyle: selectedUni === u.id ? 'solid' : undefined,
             }}
           >
             {/* Activity dot */}
