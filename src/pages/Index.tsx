@@ -320,7 +320,19 @@ function Index() {
   }
 
   if (appPhase === 'globe') {
-    return <GlobeSelector onLocationSelected={handleLocationSelected} />;
+    return (
+      <div className="relative w-full h-full">
+        <GlobeSelector onLocationSelected={handleLocationSelected} />
+        <button
+          onClick={() => {
+            handleLocationSelected({ name: 'Default', lat: 0, lng: 0 });
+          }}
+          className="absolute bottom-6 right-6 z-50 px-4 py-2 rounded-lg text-xs font-mono uppercase tracking-wider bg-card/80 backdrop-blur-md border border-border/30 text-muted-foreground hover:text-foreground hover:bg-card/90 transition-all"
+        >
+          SKIP →
+        </button>
+      </div>
+    );
   }
 
   const renderPanelContent = () => {
