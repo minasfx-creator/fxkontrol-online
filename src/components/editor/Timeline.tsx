@@ -903,6 +903,8 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
   } = useProjectStore();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [pixelsPerSecond, setPixelsPerSecond] = useState(12);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [viewportWidth, setViewportWidth] = useState(1200);
 
   const totalCost = useMemo(() => {
     return timelineItems.reduce((sum, item) => {
