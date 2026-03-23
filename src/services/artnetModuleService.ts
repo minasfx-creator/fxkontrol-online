@@ -273,8 +273,12 @@ class ArtNetModuleService {
           clearTimeout(timeout);
           this.wsConnections.set(module.id, ws);
           this.moduleStates.set(module.id, 'connected');
+          this.resetPacketStats(module.id);
+          this.reconnectAttempts.set(module.id, 0);
+          this.lastHeartbeatAt.set(module.id, Date.now());
           this.updateModule(module.id, { lastSeen: Date.now() });
           this.startHeartbeat(module.id);
+          this.startStaleCheck();
           this.emit('module-connected', { moduleId: module.id });
 
           // Send auth if WAN
@@ -299,6 +303,8 @@ class ArtNetModuleService {
           this.moduleStates.set(module.id, 'disconnected');
           this.stopHeartbeat(module.id);
           this.emit('module-disconnected', { moduleId: module.id });
+          // Auto-reconnect with exponential backoff
+          this.scheduleReconnect(module.id);
         };
 
         ws.onmessage = (event) => {
