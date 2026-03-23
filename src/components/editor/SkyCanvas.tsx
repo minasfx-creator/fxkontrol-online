@@ -1425,7 +1425,7 @@ export default function SkyCanvas() {
   }, [gpsOrigin.lat, gpsOrigin.lng]);
 
   return (
-    <div className="w-full h-full relative bg-[#030308]" data-sky-canvas style={{ cursor: cursorStyle }}>
+    <div className="w-full h-full relative bg-black" data-sky-canvas style={{ cursor: cursorStyle }}>
       <WebGLErrorBoundary>
       <Canvas
         key={canvasInstanceKey}
