@@ -253,9 +253,9 @@ export default function MineEffect({
 
     // ── Ground smoke plume ──
     if (smokePointsRef.current && progress > 0.03 && progress < 0.7) {
-      const smokePosArr = smokePosRef.current;
-      const smokeColArr = smokeColRef.current;
-      const smokeSizeArr = smokeSizeRef.current;
+      const smokePosArr = smokePosRef;
+      const smokeColArr = smokeColRef;
+      const smokeSizeArr = smokeSizeRef;
       const smokeAge = (progress - 0.03) / 0.67;
 
       for (let i = 0; i < SMOKE_COUNT; i++) {
