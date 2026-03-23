@@ -150,7 +150,7 @@ export interface UltraFireState {
   downloadProgress: number; // 0–100
 }
 
-export type FXCMode = 'super_dmx' | 'pyro_fire' | 'fxk_light' | 'drone_ops' | 'show_control' | 'module' | 'dmx_monitor' | 'settings' | 'simple_dmx' | 'manual_fire' | 'check_slave' | 'artnet_modules' | 'controllers' | 'pbus' | 'field_map' | 'connections' | 'wifi_direct' | 'radio' | 'ma3' | 'mobile_link' | 'zk6200' | 'fxbutton' | 'noise_info' | 'file';
+export type FXCMode = 'super_dmx' | 'pyro_fire' | 'fxk_light' | 'drone_ops' | 'show_control' | 'module' | 'dmx_monitor' | 'settings' | 'simple_dmx' | 'manual_fire' | 'check_slave' | 'artnet_modules' | 'controllers' | 'pbus' | 'field_map' | 'connections' | 'wifi_direct' | 'radio' | 'ma3' | 'mobile_link' | 'zk6200' | 'fxbutton' | 'noise_info' | 'file' | 'ble_scan';
 
 export interface FXCSettings {
   language: string;

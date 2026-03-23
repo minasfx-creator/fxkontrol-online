@@ -55,6 +55,7 @@ import ArtNetModulePanel from './live-firing/ArtNetModulePanel';
 import ShowControlPanel from './ShowControlPanel';
 import DMXMonitorPanel from './DMXMonitorPanel';
 import DroneCommandPanel from './DroneCommandPanel';
+import BLEDeviceScanner from './BLEDeviceScanner';
 import { RISK_GROUP_LABELS, RISK_GROUP_COLORS, type RiskGroup } from '@/lib/pyroPhysics';
 
 // ═══════════════════════════════════════════════════════════
@@ -77,6 +78,7 @@ const MODE_CATEGORIES = [
   {
     label: '🔧 HARDWARE', modes: [
       { key: 'module' as FXCMode, label: 'MODULE', icon: Globe },
+      { key: 'ble_scan' as FXCMode, label: 'BLE SCAN', icon: Signal },
     ],
   },
 ];
@@ -447,7 +449,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   }, [cues, channels, setChannels]);
 
   // ─── Swipe gesture for mobile mode switching / close ───
-  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'check_slave', 'controllers', 'pbus', 'field_map', 'connections', 'wifi_direct', 'radio', 'ma3', 'artnet_modules', 'mobile_link', 'settings'];
+  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'check_slave', 'ble_scan', 'controllers', 'pbus', 'field_map', 'connections', 'wifi_direct', 'radio', 'ma3', 'artnet_modules', 'mobile_link', 'settings'];
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const swipeHandled = useRef(false);
 
@@ -1036,6 +1038,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
                 { key: 'manual_fire' as FXCMode, label: 'Manual' },
                 { key: 'auto_fire' as FXCMode, label: 'Auto' },
                 { key: 'check_slave' as FXCMode, label: 'Check' },
+                { key: 'ble_scan' as FXCMode, label: '📡 BLE' },
                 { key: 'settings' as FXCMode, label: '⚙' },
               ]
             : [
@@ -1045,6 +1048,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
                 { key: 'pyro_fire' as FXCMode, label: '🔥 Pyro' },
                 { key: 'auto_fire' as FXCMode, label: 'Auto' },
                 { key: 'check_slave' as FXCMode, label: 'Check' },
+                { key: 'ble_scan' as FXCMode, label: '📡 BLE' },
                 { key: 'controllers' as FXCMode, label: '🎛 HW' },
                 { key: 'pbus' as FXCMode, label: '📡 PBUS' },
                 { key: 'ma3' as FXCMode, label: '🎛 MA3' },
@@ -1391,6 +1395,12 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
       case 'manual_fire': return renderManualFire(fs);
       case 'pyro_fire': return <PyroFireOnePanel fs={fs} fireChannel={fireChannel} channels={channels} pyroArm={pyroArm} dmxArm={dmxArm} handlePanic={handlePanic} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
       case 'check_slave': return <CheckSlavePanel fs={fs} pyroArm={pyroArm} />;
+      case 'ble_scan': return (
+        <div className={cn("flex flex-col gap-3 h-full overflow-y-auto", fs ? "p-3" : "p-2")}>
+          <BLEDeviceScanner context="pyro" />
+          <BLEDeviceScanner context="dmx" compact />
+        </div>
+      );
       case 'mobile_link': return <MobileLinkMode fs={fs} fireChannel={fireChannel} channels={channels} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
       case 'show_control': return <ShowControlPanel fs={fs} />;
       case 'module':
