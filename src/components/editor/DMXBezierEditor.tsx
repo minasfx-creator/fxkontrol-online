@@ -396,7 +396,7 @@ export default function DMXBezierEditor({ fs = false }: { fs?: boolean }) {
         ))}
         <div className="flex-1" />
         <span className="text-[7px] font-mono text-muted-foreground/30 self-center">
-          T: {(playheadTime * 100).toFixed(0)}%
+          T: {currentTime.toFixed(1)}s · {(playheadTime * 100).toFixed(0)}%
         </span>
       </div>
     </div>
