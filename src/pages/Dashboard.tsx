@@ -275,47 +275,86 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-7xl mx-auto pb-10 relative br2049-rain">
-      {/* ── Hero Banner — BR2049 Tactical Command ──── */}
-      <div className="relative overflow-hidden rounded border bg-surface-1 p-5 md:p-7 mb-5 animate-fxk-fade-up"
+      {/* ── Hero Banner — Military Cyberpunk HUD ──── */}
+      <div className="relative overflow-hidden rounded border bg-surface-1 mb-5 animate-fxk-fade-up"
         style={{ borderColor: 'hsl(32 100% 50% / 0.15)' }}>
-        {/* Tactical grid overlay */}
+        {/* Tactical grid + scanline overlays */}
         <div className="absolute inset-0 tactical-grid" />
         <div className="absolute inset-0 tactical-scanline" />
-        {/* Corner accents — amber */}
-        <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2" style={{ borderColor: 'hsl(32 100% 50% / 0.3)' }} />
-        <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2" style={{ borderColor: 'hsl(32 100% 50% / 0.3)' }} />
-        <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2" style={{ borderColor: 'hsl(32 100% 50% / 0.3)' }} />
-        <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2" style={{ borderColor: 'hsl(32 100% 50% / 0.3)' }} />
+        {/* Ambient glow */}
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: 'radial-gradient(ellipse 80% 60% at 20% 40%, hsl(32 100% 50% / 0.04), transparent 70%)'
+        }} />
+
+        {/* Corner brackets — tactical frame */}
+        <div className="absolute top-0 left-0 w-10 h-10 border-t-2 border-l-2" style={{ borderColor: 'hsl(32 100% 50% / 0.4)' }} />
+        <div className="absolute top-0 right-0 w-10 h-10 border-t-2 border-r-2" style={{ borderColor: 'hsl(32 100% 50% / 0.4)' }} />
+        <div className="absolute bottom-0 left-0 w-10 h-10 border-b-2 border-l-2" style={{ borderColor: 'hsl(32 100% 50% / 0.2)' }} />
+        <div className="absolute bottom-0 right-0 w-10 h-10 border-b-2 border-r-2" style={{ borderColor: 'hsl(32 100% 50% / 0.2)' }} />
+
+        {/* Top accent bar */}
+        <div className="absolute top-0 left-0 right-0 h-[2px]" style={{
+          background: 'linear-gradient(90deg, hsl(32 100% 50% / 0.6), hsl(32 100% 50% / 0.1) 30%, hsl(32 100% 50% / 0.1) 70%, hsl(32 100% 50% / 0.6))'
+        }} />
         
-        <div className="relative z-10 flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="h-2 w-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_hsl(var(--primary)/0.5)]" />
-              <p className="text-[10px] font-mono text-primary tracking-[0.3em] uppercase font-bold">
-                SYS::ONLINE
-              </p>
-              <div className="h-[1px] w-12 bg-primary/20" />
-              <p className="text-[9px] font-mono text-muted-foreground/50 tracking-wider">
-                FX KONTROL v2.0
+        <div className="p-5 md:p-7 relative z-10">
+          <div className="flex items-start justify-between">
+            <div>
+              {/* Status line */}
+              <div className="flex items-center gap-2 mb-1">
+                <div className="h-2 w-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_hsl(var(--primary)/0.5)]" />
+                <p className="text-[10px] font-mono text-primary tracking-[0.3em] uppercase font-bold">
+                  SYS::ONLINE
+                </p>
+                <div className="h-[1px] w-8 bg-primary/20" />
+                <p className="text-[8px] font-mono text-muted-foreground/40 tracking-wider">
+                  FXK v2.0 // {new Date().toLocaleDateString('pt-BR')}
+                </p>
+              </div>
+              
+              {/* Telemetry readouts */}
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-[8px] font-mono-code text-muted-foreground/30 tracking-wider">PROJ: {projects.length}</span>
+                <span className="text-[8px] font-mono-code text-muted-foreground/30">|</span>
+                <span className="text-[8px] font-mono-code text-muted-foreground/30 tracking-wider">EVT: {events.length}</span>
+                <span className="text-[8px] font-mono-code text-muted-foreground/30">|</span>
+                <span className="text-[8px] font-mono-code text-muted-foreground/30 tracking-wider">T: {totalMinutes}min</span>
+              </div>
+
+              <h1 className="text-xl md:text-3xl font-bold font-display tracking-[0.04em] text-foreground uppercase leading-[1.1]">
+                Operador: <span className="text-fxk-gradient">{userName}</span>
+              </h1>
+              <p className="text-[10px] text-muted-foreground/50 mt-2 max-w-lg font-mono tracking-[0.2em] uppercase">
+                TACTICAL CONTROL PLATFORM // PYRO · DMX · DRONES · SFX
               </p>
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold font-display tracking-[0.04em] text-foreground uppercase leading-[1.1]">
-              Operador: <span className="text-fxk-gradient">{userName}</span>
-            </h1>
-            <p className="text-xs text-muted-foreground/60 mt-2 max-w-lg font-mono tracking-wider uppercase">
-              TACTICAL CONTROL PLATFORM // PYRO · DMX · DRONES · SFX
-            </p>
+            {lastProjectId && !isMobile && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="hidden md:flex gap-1.5 text-[10px] font-mono tracking-wider border-primary/20 text-primary hover:bg-primary/10 rounded uppercase"
+                onClick={() => navigate('/editor')}
+              >
+                <ArrowRight className="h-3 w-3" />
+                RESUME
+              </Button>
+            )}
           </div>
-          {lastProjectId && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="hidden md:flex gap-1.5 text-[10px] font-mono tracking-wider border-primary/20 text-primary hover:bg-primary/10 rounded uppercase"
-              onClick={() => navigate('/editor')}
-            >
-              <ArrowRight className="h-3 w-3" />
-              RESUME
-            </Button>
+
+          {/* Next event tactical readout */}
+          {nextEvent && (
+            <div className="mt-4 flex items-center gap-3 px-3 py-2 rounded bg-surface-0/50 border border-border/20 max-w-md">
+              <div className="h-2 w-2 rounded-full animate-pulse" style={{ background: daysUntilNext !== null && daysUntilNext <= 3 ? 'hsl(0 85% 48%)' : 'hsl(32 100% 50%)', boxShadow: `0 0 6px ${daysUntilNext !== null && daysUntilNext <= 3 ? 'hsl(0 85% 48% / 0.5)' : 'hsl(32 100% 50% / 0.5)'}` }} />
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] font-mono-code text-muted-foreground/40 tracking-wider uppercase">PRÓX. MISSÃO</p>
+                <p className="text-xs font-bold text-foreground truncate">{nextEvent.name}</p>
+              </div>
+              {daysUntilNext !== null && (
+                <span className={cn("text-[10px] font-mono-code font-bold px-2 py-0.5 rounded", daysUntilNext <= 3 ? 'bg-destructive/15 text-destructive' : 'bg-primary/10 text-primary')}>
+                  {daysUntilNext === 0 ? 'HOJE' : `T-${daysUntilNext}d`}
+                </span>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -330,40 +369,42 @@ export default function Dashboard() {
           <div className="h-[1px] flex-1" style={{ background: 'hsl(32 100% 50% / 0.1)' }} />
           <span className="text-[8px] font-mono text-muted-foreground/30 tracking-wider">TAP TO ENTER</span>
         </div>
-        <div className={cn("grid gap-2", isMobile ? "grid-cols-2" : "grid-cols-7")}>
+        <div className={cn("grid gap-2", isMobile ? "grid-cols-4" : "grid-cols-7")}>
           {CONSOLE_CARDS.map((console, i) => {
             const Icon = console.icon;
             return (
               <button
                 key={console.key}
                 onClick={() => navigate(`/command?mode=${console.key}`)}
-                className="group relative overflow-hidden rounded-2xl border p-3 text-left transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-[1.06] active:scale-[0.95] animate-fxk-stagger"
+                className="group relative overflow-hidden rounded-lg border p-2.5 text-center transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-[1.08] active:scale-[0.95] animate-fxk-stagger"
                 style={{
                   animationDelay: `${0.1 + i * 0.04}s`,
-                  borderColor: `${console.color}15`,
-                  background: `rgba(8, 10, 14, 0.7)`,
+                  borderColor: `${console.color}20`,
+                  background: `rgba(8, 10, 14, 0.8)`,
                   backdropFilter: 'blur(24px) saturate(1.4)',
                 }}
               >
                 {/* Accent top bar */}
                 <div className="absolute top-0 left-0 right-0 h-[2px]" style={{
-                  background: `linear-gradient(90deg, transparent, ${console.color}60, transparent)`,
+                  background: `linear-gradient(90deg, transparent, ${console.color}70, transparent)`,
                 }} />
                 {/* Corner brackets */}
-                <div className="absolute top-0.5 left-0.5 w-2 h-2 border-t border-l pointer-events-none" style={{ borderColor: `${console.color}25` }} />
-                <div className="absolute top-0.5 right-0.5 w-2 h-2 border-t border-r pointer-events-none" style={{ borderColor: `${console.color}25` }} />
+                <div className="absolute top-0.5 left-0.5 w-2 h-2 border-t border-l pointer-events-none" style={{ borderColor: `${console.color}30` }} />
+                <div className="absolute bottom-0.5 right-0.5 w-2 h-2 border-b border-r pointer-events-none" style={{ borderColor: `${console.color}15` }} />
                 
-                <div className="flex flex-col items-center gap-1.5">
-                  <div className="h-10 w-10 rounded-lg flex items-center justify-center transition-all group-hover:scale-110"
+                <div className="flex flex-col items-center gap-1">
+                  <div className="h-8 w-8 md:h-10 md:w-10 rounded-lg flex items-center justify-center transition-all group-hover:scale-110"
                     style={{ background: `${console.color}12`, border: `1px solid ${console.color}20` }}>
-                    <Icon className="w-5 h-5" style={{ color: console.color }} />
+                    <Icon className="w-4 h-4 md:w-5 md:h-5" style={{ color: console.color }} />
                   </div>
-                  <span className="text-[9px] font-mono font-bold tracking-[0.1em] text-foreground/70 group-hover:text-foreground transition-colors">
+                  <span className="text-[8px] md:text-[9px] font-mono font-bold tracking-[0.08em] text-foreground/70 group-hover:text-foreground transition-colors leading-tight">
                     {console.label}
                   </span>
-                  <span className="text-[7px] font-mono text-muted-foreground/30 tracking-wider">
-                    {console.subtitle}
-                  </span>
+                  {!isMobile && (
+                    <span className="text-[7px] font-mono text-muted-foreground/30 tracking-wider">
+                      {console.subtitle}
+                    </span>
+                  )}
                 </div>
 
                 {/* Hover glow */}

@@ -3,7 +3,7 @@ import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { FXKAssistant } from '@/components/FXKAssistant';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { PanelLeftClose, PanelLeft, AlertOctagon } from 'lucide-react';
+import { PanelLeftClose, PanelLeft, AlertOctagon, Menu } from 'lucide-react';
 import minasfxLogo from '@/assets/minasfx-logo-white.png';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useDisplayStore } from '@/store/useDisplayStore';
@@ -22,6 +22,19 @@ function SidebarToggleButton() {
       title={collapsed ? 'Expandir menu' : 'Recolher menu'}
     >
       {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+    </button>
+  );
+}
+
+function MobileSidebarTrigger() {
+  const { toggleSidebar } = useSidebar();
+  return (
+    <button
+      onClick={toggleSidebar}
+      className="flex items-center justify-center h-8 w-8 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all active:scale-90"
+      title="Menu"
+    >
+      <Menu className="h-4.5 w-4.5" />
     </button>
   );
 }
@@ -99,7 +112,8 @@ export default function MainLayout() {
         className="min-h-screen flex w-full bg-background br2049-vignette"
         style={{ filter: `brightness(${backlight / 100})` }}
       >
-        {!isMobile && <AppSidebar />}
+        {/* Sidebar — renders on all sizes, offcanvas on mobile */}
+        <AppSidebar />
 
         <div className="flex-1 flex flex-col min-w-0">
           {/* ARMED Banner */}
@@ -130,7 +144,11 @@ export default function MainLayout() {
             }}
           >
             <div className="absolute inset-0 animate-holographic-scan pointer-events-none opacity-20" />
-            <SidebarToggleButton />
+            {isMobile ? (
+              <MobileSidebarTrigger />
+            ) : (
+              <SidebarToggleButton />
+            )}
             <div className="ml-3 flex items-center gap-2 relative z-10">
               <div className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: 'hsl(32 100% 50%)', boxShadow: '0 0 6px hsl(32 100% 50% / 0.5)' }} />
               <span className="text-[10px] font-mono tracking-widest uppercase" style={{ color: 'hsl(32 100% 50% / 0.8)', textShadow: '0 0 8px hsl(32 100% 50% / 0.3)' }}>
