@@ -134,8 +134,45 @@ class FieldTestEngine {
     this.log('info', `Session ${code} · ${role.toUpperCase()} · ${transport}`);
 
     if (transport === 'ble') {
+      if (!isWebBluetoothAvailable()) {
+        this.log('error', 'Web Bluetooth não disponível neste navegador');
+        this.emit();
+        return false;
+      }
+
+      // BLE: Controller connects to hardware module via GATT
+      // Setup callbacks
+      bleFieldTransport.setCallbacks({
+        onAck: (channel, latencyMs) => {
+          if (!this.session || this.session.role !== 'controller') return;
+          this.session.stats.acksReceived++;
+          this.session.stats.latencies.push(latencyMs);
+          const computed = computeStats(this.session.stats.latencies);
+          Object.assign(this.session.stats, computed);
+          this.session.stats.packetLoss = +(
+            ((this.session.stats.firesSent - this.session.stats.acksReceived) / Math.max(1, this.session.stats.firesSent)) * 100
+          ).toFixed(1);
+          this.log('ack', `✅ BLE ACK CH-${String(channel).padStart(2, '0')} · ${latencyMs}ms`, { latencyMs, channel });
+          this.emit();
+        },
+        onStatus: () => {
+          this.emit();
+        },
+        onDisconnect: () => {
+          if (this.session) {
+            this.session.peerConnected = false;
+            this.log('error', '⚠️ BLE device disconnected');
+            this.emit();
+          }
+        },
+        onLog: (msg) => {
+          this.log('info', msg);
+          this.emit();
+        },
+      });
+
       this.session.connected = true;
-      this.log('info', 'BLE mode — use native Bluetooth pairing');
+      this.log('info', 'BLE mode — use Scanner to connect to module');
       this.emit();
       return true;
     }
@@ -189,6 +226,26 @@ class FieldTestEngine {
 
     this.emit();
     return true;
+  }
+
+  // ─── BLE Scanner Integration ────────────────────
+  async bleScan() {
+    const scanned = await bleFieldTransport.scan();
+    return scanned;
+  }
+
+  async bleConnect(scanned: any): Promise<boolean> {
+    const ok = await bleFieldTransport.connect(scanned);
+    if (ok && this.session) {
+      this.session.peerConnected = true;
+      this.log('info', `✅ BLE connected to ${scanned.name}`);
+      this.emit();
+    }
+    return ok;
+  }
+
+  get bleModuleStatus() {
+    return bleFieldTransport.moduleStatus;
   }
 
   // ─── Commands (Controller) ───────────────────────
