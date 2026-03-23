@@ -283,6 +283,29 @@ export const DMX_FIXTURE_PROFILES: Record<string, DMXFixtureProfile> = {
     attributes: ['Dimmer', 'DimmerFine', 'Red', 'Green', 'Blue', 'White', 'CTO', 'Zoom', 'ZoomFine', 'Strobe'],
     channelCount: 10,
   },
+  // ── UE5 Pyro / Firework DMX Profiles ──
+  'sfx-pyro-dmx': {
+    name: 'SFX Pyro DMX',
+    manufacturer: 'FXK',
+    category: 'sfx',
+    attributes: ['Dimmer', 'Burst', 'Launch', 'Velocity', 'Angle', 'NumBeams', 'Red', 'Green', 'Blue'],
+    channelCount: 9,
+  },
+  'sfx-firework-dmx': {
+    name: 'SFX Firework DMX',
+    manufacturer: 'FXK',
+    category: 'sfx',
+    attributes: ['Dimmer', 'Launch', 'Burst', 'Velocity', 'Angle', 'NumBeams', 'Red', 'Green', 'Blue', 'X', 'Y', 'Z'],
+    channelCount: 12,
+  },
+  // ── Moving Mirror ──
+  'moving-mirror': {
+    name: 'Moving Mirror',
+    manufacturer: 'Generic',
+    category: 'moving-mirror',
+    attributes: ['Pan', 'PanFine', 'Tilt', 'TiltFine', 'Dimmer', 'Strobe', 'ColorWheel', 'Gobo1', 'Focus', 'Control'],
+    channelCount: 10,
+  },
 };
 
 // ── UE5 Blueprint → Profile Mapping ──
