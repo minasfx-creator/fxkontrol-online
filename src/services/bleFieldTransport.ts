@@ -100,7 +100,7 @@ class BLEFieldTransport {
     try {
       this.log('🔍 Scanning BLE devices...');
       const nav = navigator as any;
-      const device: BluetoothDevice = await nav.bluetooth.requestDevice({
+      const device: any = await nav.bluetooth.requestDevice({
         filters: [
           { namePrefix: 'FXK' },
           { services: [FT_SERVICE_UUID] },
