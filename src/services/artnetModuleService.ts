@@ -510,6 +510,7 @@ class ArtNetModuleService {
       const ws = this.wsConnections.get(moduleId);
       if (ws && ws.readyState === WebSocket.OPEN) {
         const pingTime = Date.now();
+        this.trackPacketSent(moduleId);
         ws.send(JSON.stringify({ action: 'ping', moduleAddress: module.moduleAddress, t: pingTime }));
       } else {
         // LAN heartbeat via edge function
