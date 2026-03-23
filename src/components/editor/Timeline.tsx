@@ -295,7 +295,7 @@ const DraggableTimelineItem = React.memo(React.forwardRef<HTMLButtonElement, {
       />
     </div>
   );
-});
+}));
 
 DraggableTimelineItem.displayName = 'DraggableTimelineItem';
 
