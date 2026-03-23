@@ -146,6 +146,7 @@ function formatTime(ts?: number) {
 }
 
 export function FXKAssistant() {
+  const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [closing, setClosing] = useState(false);
