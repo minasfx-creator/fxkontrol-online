@@ -355,17 +355,21 @@ export default function CommandCenter() {
           )}
         </div>
 
-        {/* Bottom Nav */}
+        {/* Floating Bottom Nav — glass dock style */}
         <div
-          className="shrink-0"
-          style={{
-            paddingBottom: 'env(safe-area-inset-bottom)',
-            background: 'hsl(220 22% 3% / 0.95)',
-            backdropFilter: 'blur(32px)',
-            borderTop: '1px solid hsl(var(--primary) / 0.08)',
-          }}
+          className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
-          <nav className="flex items-center justify-around py-1.5">
+          <nav
+            className="pointer-events-auto mx-3 mb-2 rounded-2xl px-2 py-1.5 flex items-center justify-around"
+            style={{
+              background: 'hsl(220 22% 4% / 0.85)',
+              backdropFilter: 'blur(32px) saturate(1.6)',
+              WebkitBackdropFilter: 'blur(32px) saturate(1.6)',
+              border: '1px solid hsl(var(--primary) / 0.08)',
+              boxShadow: '0 8px 32px hsl(0 0% 0% / 0.4)',
+            }}
+          >
             {MOBILE_CATEGORIES.map((cat, idx) => {
               const isActive = mobileCategory === idx;
               const Icon = cat.icon;
@@ -373,12 +377,18 @@ export default function CommandCenter() {
                 <button
                   key={cat.label}
                   onClick={() => setMobileCategory(idx)}
-                  className="flex flex-col items-center gap-0.5 py-2 px-4 min-h-[48px] min-w-[48px] transition-all active:scale-90"
+                  className="relative flex flex-col items-center gap-0.5 py-2 px-4 min-h-[48px] min-w-[48px] transition-all active:scale-90"
                 >
                   <Icon className={cn("w-5.5 h-5.5 transition-colors", isActive ? "text-primary" : "text-muted-foreground/40")} style={isActive ? { filter: 'drop-shadow(0 0 4px hsl(var(--primary) / 0.5))' } : undefined} />
                   <span className={cn("text-[8px] font-bold font-mono tracking-[0.15em] transition-colors uppercase", isActive ? "text-primary" : "text-muted-foreground/35")}>
                     {cat.label}
                   </span>
+                  {isActive && (
+                    <div className="absolute -bottom-0.5 w-1 h-1 rounded-full" style={{
+                      background: 'hsl(var(--primary))',
+                      boxShadow: '0 0 4px hsl(var(--primary))',
+                    }} />
+                  )}
                 </button>
               );
             })}
