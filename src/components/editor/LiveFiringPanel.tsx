@@ -1046,6 +1046,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
                 { key: 'pyro_fire' as FXCMode, label: '🔥 Pyro' },
                 { key: 'auto_fire' as FXCMode, label: 'Auto' },
                 { key: 'check_slave' as FXCMode, label: 'Check' },
+                { key: 'ble_scan' as FXCMode, label: '📡 BLE' },
                 { key: 'controllers' as FXCMode, label: '🎛 HW' },
                 { key: 'pbus' as FXCMode, label: '📡 PBUS' },
                 { key: 'ma3' as FXCMode, label: '🎛 MA3' },
