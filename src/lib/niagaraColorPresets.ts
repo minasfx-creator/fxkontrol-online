@@ -749,6 +749,57 @@ export const NIAGARA_COLOR_PRESETS: NiagaraColorPreset[] = [
     autoMatchColors: ['ethereal', 'arcane'],
     autoMatchTypes: ['dahlia', 'palm'],
   },
+  // ── Environment VFX Presets — Lightning, Fog, Weather ──
+  {
+    id: 'niagara-lightning',
+    name: 'Niagara Lightning Strike',
+    source: 'VT_Lightning.uasset',
+    primary: '#CCDDFF',
+    secondary: '#4466FF',
+    tertiary: '#2233AA',
+    gradient: ['#FFFFFF', '#DDEEFF', '#CCDDFF', '#4466FF', '#112244'],
+    shaderUniforms: {
+      uColor: [0.8, 0.87, 1.0],
+      uColor2: [0.27, 0.4, 1.0],
+      uGlowIntensity: 5.0,
+      uFadeProfile: 'exponential' as const,
+    },
+    particleProfile: {
+      starCount: 20,
+      lifetime: 0.15,
+      velocity: 120,
+      drag: 0.9,
+      gravityScale: 0.0,
+      sparkleRate: 0.0,
+    },
+    autoMatchColors: ['lightning', 'electric', 'thunder'],
+    autoMatchTypes: ['salute', 'strobe'],
+  },
+  {
+    id: 'niagara-fog-sheet',
+    name: 'Niagara Fog Sheet',
+    source: 'T_EV_FogSheet_CloudTex_02.uasset',
+    primary: '#AABBCC',
+    secondary: '#778899',
+    tertiary: '#445566',
+    gradient: ['#FFFFFF', '#CCDDEE', '#AABBCC', '#778899', '#223344'],
+    shaderUniforms: {
+      uColor: [0.67, 0.73, 0.8],
+      uColor2: [0.47, 0.53, 0.6],
+      uGlowIntensity: 1.2,
+      uFadeProfile: 'linear' as const,
+    },
+    particleProfile: {
+      starCount: 30,
+      lifetime: 8.0,
+      velocity: 2,
+      drag: 0.995,
+      gravityScale: 0.0,
+      sparkleRate: 0.0,
+    },
+    autoMatchColors: ['fog', 'mist', 'haze', 'cloud'],
+    autoMatchTypes: ['waterfall'],
+  },
 ];
 
 /**
