@@ -1783,6 +1783,9 @@ export default function SkyCanvas() {
       <SelectionStatusBar />
       {!isMobile && <AlignmentTools />}
 
+      {/* ═══ Finale 3D Viewport Tools ═══ */}
+      {!isMobile && <FinaleToolbar />}
+
       {/* ═══ Viewport Playback Controls ═══ */}
       <ViewportPlaybackControls />
 
