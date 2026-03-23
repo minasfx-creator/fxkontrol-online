@@ -1433,7 +1433,7 @@ export default function SkyCanvas() {
         gl={{
           antialias: !isMobile,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.3,
+          toneMappingExposure: 1.5,
           powerPreference: 'high-performance',
           alpha: false,
           stencil: false,
