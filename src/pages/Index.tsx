@@ -327,9 +327,29 @@ function Index() {
           onClick={() => {
             handleLocationSelected({ name: 'Default', lat: 0, lng: 0 });
           }}
-          className="absolute bottom-6 right-6 z-50 px-4 py-2 rounded-lg text-xs font-mono uppercase tracking-wider bg-card/80 backdrop-blur-md border border-border/30 text-muted-foreground hover:text-foreground hover:bg-card/90 transition-all"
+          className="absolute bottom-6 right-6 z-50 group flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs font-mono uppercase tracking-[0.2em] transition-all duration-300 cursor-pointer focus:outline-none"
+          style={{
+            background: 'hsl(220 20% 8% / 0.7)',
+            backdropFilter: 'blur(12px) saturate(1.5)',
+            border: '1px solid hsl(32 100% 50% / 0.15)',
+            color: 'hsl(32 100% 55% / 0.7)',
+            boxShadow: '0 4px 20px hsl(0 0% 0% / 0.3)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = 'hsl(32 100% 50% / 0.3)';
+            e.currentTarget.style.color = 'hsl(32 100% 55%)';
+            e.currentTarget.style.transform = 'translateY(-1px)';
+            e.currentTarget.style.boxShadow = '0 6px 25px hsl(0 0% 0% / 0.4), 0 0 20px hsl(32 100% 50% / 0.08)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'hsl(32 100% 50% / 0.15)';
+            e.currentTarget.style.color = 'hsl(32 100% 55% / 0.7)';
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 20px hsl(0 0% 0% / 0.3)';
+          }}
         >
-          SKIP →
+          SKIP
+          <span className="text-[10px] opacity-60 group-hover:opacity-90 transition-opacity">→</span>
         </button>
       </div>
     );

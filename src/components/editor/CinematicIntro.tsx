@@ -336,49 +336,52 @@ const CinematicIntro = React.forwardRef<HTMLDivElement, CinematicIntroProps>(fun
       {isStartPhase && (
         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center">
           <div className="absolute inset-0 pointer-events-none" style={{
-            background: `radial-gradient(ellipse 60% 50% at 50% 45%, hsl(32 100% 50% / 0.04) 0%, transparent 70%),
-              linear-gradient(to bottom, hsl(225 14% 3% / 0.6) 0%, hsl(225 14% 3% / 0.3) 40%, hsl(225 14% 3% / 0.6) 100%)`
+            background: `radial-gradient(ellipse 55% 45% at 50% 45%, hsl(32 100% 50% / 0.03) 0%, transparent 70%),
+              linear-gradient(to bottom, hsl(225 14% 3% / 0.7) 0%, hsl(225 14% 3% / 0.25) 40%, hsl(225 14% 3% / 0.7) 100%)`
           }} />
           <div className={cn(
-            "relative flex flex-col items-center gap-10 transition-all duration-1000 ease-out",
-            startVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-95'
-          )}>
+            "relative flex flex-col items-center gap-10 transition-all ease-out",
+            startVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-[0.94]'
+          )} style={{ transitionDuration: '1200ms', transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)' }}>
             <div className="flex flex-col items-center gap-3">
               <div className="w-16 h-16 rounded-xl flex items-center justify-center"
                 style={{
-                  background: 'linear-gradient(135deg, hsl(32 100% 50% / 0.1), hsl(18 100% 55% / 0.1))',
-                  boxShadow: '0 0 40px hsl(32 100% 50% / 0.15)'
+                  background: 'linear-gradient(145deg, hsl(32 100% 50% / 0.08), hsl(18 100% 55% / 0.06))',
+                  border: '1px solid hsl(32 100% 50% / 0.12)',
+                  boxShadow: '0 0 50px hsl(32 100% 50% / 0.1)',
                 }}>
                 <img alt="FX Kontrol" className="w-10 h-10 object-contain"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                   src="/lovable-uploads/d126a5cd-edaa-41ee-bcc5-484a1774dee4.png" />
               </div>
-              <h1 className="font-extrabold tracking-[0.35em] uppercase text-white/90 font-display text-4xl">
+              <h1 className="font-extrabold tracking-[0.4em] uppercase text-white/90 font-display text-4xl"
+                style={{ textShadow: '0 2px 20px hsl(0 0% 0% / 0.6)' }}>
                 FX KONTROL
               </h1>
-              <p className="text-[10px] text-white/30 tracking-[0.3em] uppercase font-display">
+              <p className="text-[9px] text-white/25 tracking-[0.3em] uppercase font-display">
                 Show Design Platform
               </p>
             </div>
-            <div className="w-24 h-px" style={{ background: 'linear-gradient(90deg, transparent, hsl(32 100% 50% / 0.4), transparent)' }} />
+            <div className="w-24 h-px" style={{ background: 'linear-gradient(90deg, transparent, hsl(32 100% 50% / 0.3), transparent)' }} />
             <button
               onClick={handleStart}
               className={cn(
-                "group relative px-16 py-5 rounded-lg border transition-all duration-500 cursor-pointer",
-                "border-white/10 bg-white/[0.03] backdrop-blur-md",
-                "hover:bg-white/[0.08] hover:border-white/20",
+                "group relative px-16 py-5 rounded-lg border transition-all duration-500 cursor-pointer focus:outline-none",
+                "border-white/8 bg-white/[0.025] backdrop-blur-md",
+                "hover:bg-white/[0.07] hover:border-white/15 hover:-translate-y-0.5",
+                "active:scale-[0.97]",
                 startGlowPulse && "animate-[fxk-btn-glow_3s_ease-in-out_infinite]"
               )}
             >
               <div className="absolute -inset-px rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-700"
-                style={{ background: 'linear-gradient(135deg, hsl(32 100% 50% / 0.15), hsl(18 100% 55% / 0.1))' }} />
+                style={{ background: 'linear-gradient(135deg, hsl(32 100% 50% / 0.12), hsl(18 100% 55% / 0.08))' }} />
               <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                style={{ boxShadow: '0 0 60px 15px hsl(32 100% 50% / 0.12), inset 0 0 30px hsl(32 100% 50% / 0.04)' }} />
-              <span className="relative text-xl font-bold tracking-[0.5em] uppercase text-white/80 group-hover:text-white transition-colors duration-300 font-display">
+                style={{ boxShadow: '0 0 60px 15px hsl(32 100% 50% / 0.1), inset 0 0 30px hsl(32 100% 50% / 0.03)' }} />
+              <span className="relative text-xl font-bold tracking-[0.5em] uppercase text-white/75 group-hover:text-white/95 transition-colors duration-300 font-display">
                 START
               </span>
             </button>
-            <span className="text-[9px] text-white/20 tracking-[0.3em] uppercase font-display">
+            <span className="text-[8px] text-white/15 tracking-[0.3em] uppercase font-display">
               Press Enter or Click
             </span>
           </div>
@@ -387,11 +390,11 @@ const CinematicIntro = React.forwardRef<HTMLDivElement, CinematicIntroProps>(fun
 
       {/* Skip hint */}
       {canSkip && phase !== 'fade-out' && !isStartPhase && (
-        <div className="absolute bottom-6 right-6 z-50 flex items-center gap-2"
-          style={{ animation: 'fxk-fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
-          <span className="text-[10px] text-white/30 uppercase tracking-[0.25em] font-display font-medium">Pular</span>
-          <div className="w-7 h-7 rounded-md border border-white/15 flex items-center justify-center backdrop-blur-sm bg-white/5">
-            <span className="text-[9px] text-white/30 font-bold font-mono">ESC</span>
+        <div className="absolute bottom-6 right-6 z-50 flex items-center gap-2 transition-all duration-500"
+          style={{ animation: 'fxk-fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+          <span className="text-[9px] text-white/20 uppercase tracking-[0.25em] font-display font-medium">Pular</span>
+          <div className="w-7 h-7 rounded-md border border-white/10 flex items-center justify-center backdrop-blur-sm bg-white/[0.03] hover:bg-white/[0.06] transition-colors">
+            <span className="text-[8px] text-white/25 font-bold font-mono">ESC</span>
           </div>
         </div>
       )}
