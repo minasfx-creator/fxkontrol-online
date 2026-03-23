@@ -1,67 +1,46 @@
 
 
-## Plan: Crowd System + DMX I/O Panel + Pixel Mapping UI
+## Plan: Adicionar Presets Ethereal ao NiagaraVFXController
 
-Three new systems: procedural audience in the 3D viewport, DMX Send/Receive visualization in the Art-Net panel, and a Pixel Mapping Manager UI panel.
+### O que será feito
 
----
+Adicionar 4 novos presets de fogo etéreo com paleta fria (cyan/purple/white) e glow sobrenatural, espelhando os assets UE5 Ethereal uploadados.
 
-### 1. Procedural Crowd System (3D Viewport)
+### Mudanças
 
-**New file: `src/components/editor/skycanvas/CrowdSystem.tsx`**
+**Arquivo: `src/components/editor/NiagaraVFXController.tsx`**
 
-Instanced human silhouettes in the FOH (audience) area using `THREE.InstancedMesh`:
+1. **Expandir o tipo `StylizedFirePreset`** (linha 411) para incluir:
+   - `'stylized-fire-01-ethereal'`
+   - `'stylized-fire-02-ethereal'`  
+   - `'stylized-fire-radial-01-ethereal'`
+   - `'stylized-fire-radial-02-ethereal'`
 
-- **Geometry**: Simplified human shape — capsule body (cylinder + sphere head) baked into a single `BufferGeometry` via merging, or use a flat billboard plane with silhouette shape via alpha
-- **Count**: ~200 audience figures, arranged in a semicircular/grid pattern in the FOH zone (`z > stageD/2 + 5`, spread across `x: -35 to 35`)
-- **Variation**: Random height (1.6-1.9m), slight X/Z jitter, random subtle color tint (dark clothing tones)
-- **Animation**: Subtle idle sway via `useFrame` — sinusoidal Y-axis rotation (±3°) at different phases per instance
-- **Performance**: Single `InstancedMesh` call, ~200 instances, frustum culled
-- **Integration**: Add `<CrowdSystem />` inside `SFXStageEnvironment` in `GroundSystem.tsx`, positioned in the audience floor area
+2. **Adicionar 4 entradas no `STYLIZED_FIRE_PROFILES`** (após linha 475) — mesma física dos presets base correspondentes, mas com ajustes etéreos:
+   - Lifetime ligeiramente maior (+20%) para sensação flutuante
+   - Drag reduzido para partículas mais leves
+   - GravityScale mais negativo (partículas sobem mais)
 
-### 2. DMX Send/Receive Visualization Panel
+3. **Modificar `createStylizedFireEmitter`** (linha 478-520):
+   - Detectar se o preset contém `'ethereal'` no nome
+   - Se ethereal: usar **paleta de cores fria** no `colorOverLife`:
+     - `t:0` → branco brilhante (1.5, 1.5, 2.0)
+     - `t:0.15` → cyan intenso (0.2, 1.2, 1.8)
+     - `t:0.35` → azul-roxo (0.4, 0.3, 1.5)
+     - `t:0.55` → purple escuro (0.3, 0.05, 0.8)
+     - `t:0.75` → índigo (0.1, 0.02, 0.3)
+     - `t:1` → preto-azulado (0.02, 0.01, 0.05)
+   - Aumentar `curlNoiseStrength` em 50% para movimento mais orgânico/mágico
+   - Usar cor base padrão cyan `(0.1, 0.8, 1.0)` em vez de laranja quando ethereal e sem cor custom
 
-**New file: `src/components/editor/live-firing/DMXIOPanel.tsx`**
+4. **Adicionar ao `niagaraColorPresets.ts`** 4 novos presets correspondentes com `autoMatchColors: ['ethereal', 'magic', 'spirit']` para integração com o SuperVDL
 
-A new tab in `FXKNetPanel` showing DMX I/O status per universe:
+### Presets Ethereal — Perfis Físicos
 
-- **Universe list**: Show all configured universes with mode badge (`SEND` / `RECV` / `DUPLEX`), protocol badge (`ART-NET` / `sACN`), priority number
-- **Activity indicators**: Animated dot per universe — green pulse when data flowing, gray when idle. Simulated via `setInterval` toggling
-- **Buffer visualization**: Mini 512-channel bar graph (like a spectrum analyzer) for the selected universe, showing send buffer (top, cyan) and receive buffer (bottom, amber)
-- **Stats row**: Packets/sec, last activity timestamp, buffer utilization %
-- **Add universe config**: Simple form to add/configure DMX I/O universes (universe ID, mode select, protocol select)
-
-**Integration in `FXKNetPanel.tsx`**: Add a third tab `'dmx-io'` with label `DMX I/O` and icon `ArrowLeftRight`
-
-### 3. Pixel Mapping Manager UI Panel
-
-**New file: `src/components/editor/live-firing/PixelMappingPanel.tsx`**
-
-Interactive UI for managing pixel mapping groups:
-
-- **Group list**: Shows all pixel mapping groups with name, topology, dimensions, pixel count
-- **Add group form**: Name input, topology select (`grid`/`snake`/`matrix`/`circle`/`custom`), columns/rows inputs, groupSize input, startCorner select
-- **Grid preview**: SVG visualization of the pixel map — colored dots on a grid showing the mapping order (numbered). Snake topology shows zigzag arrows, matrix shows L→R scan
-- **DMX output table**: For selected group, show the DMX patching (universe, start channel, pixel index) in a compact table
-- **Delete group**: Remove button per group
-
-**Integration in `FXKNetPanel.tsx`**: Add a fourth tab `'pixel-map'` with label `PIXEL MAP` and icon `Grid3x3`
-
----
-
-### Files Modified/Created
-
-| File | Action |
-|------|--------|
-| `src/components/editor/skycanvas/CrowdSystem.tsx` | **New** — InstancedMesh crowd |
-| `src/components/editor/skycanvas/GroundSystem.tsx` | Add `<CrowdSystem />` to SFXStageEnvironment |
-| `src/components/editor/live-firing/DMXIOPanel.tsx` | **New** — DMX I/O visualization |
-| `src/components/editor/live-firing/PixelMappingPanel.tsx` | **New** — Pixel mapping UI |
-| `src/components/editor/live-firing/FXKNetPanel.tsx` | Add 2 new tabs (DMX I/O, Pixel Map) |
-
-### Technical Notes
-- Crowd uses billboard planes (not 3D meshes) for minimal GPU cost — single draw call
-- DMX I/O panel reads from the existing `DMXSendReceive` class in `dmxEngine.ts`
-- Pixel mapping panel instantiates `PixelMappingManager` from `pixelMapper.ts` — all logic already exists
-- All new panels follow BR2049 dark industrial theme consistent with existing FXKNetPanel styling
+| Preset | Particles | Lifetime | SpawnRadius | GravityScale | Drag |
+|--------|-----------|----------|-------------|--------------|------|
+| fire-01-ethereal | 60 | [0.5, 1.5] | 0.5 | -0.45 | 0.4 |
+| fire-02-ethereal | 80 | [0.4, 1.2] | 0.8 | -0.35 | 0.5 |
+| radial-01-ethereal | 120 | [0.25, 1.0] | 0.3 | -0.15 | 0.7 |
+| radial-02-ethereal | 150 | [0.2, 0.75] | 0.2 | -0.08 | 0.9 |
 
