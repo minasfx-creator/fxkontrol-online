@@ -374,6 +374,10 @@ class FieldTestEngine {
       await this.channel.unsubscribe();
       this.channel = null;
     }
+    // Disconnect BLE if active
+    if (bleFieldTransport.connected) {
+      await bleFieldTransport.disconnect();
+    }
     this.session = null;
     this.emit();
   }
