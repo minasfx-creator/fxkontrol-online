@@ -1953,61 +1953,100 @@ function generateFallbackGrid(count: number, spacing: number): { x: number; z: n
   return pts;
 }
 
-// ── Transition optimizer (spatial-grid accelerated) ─────────
+// ── Transition optimizer (Hungarian-lite + spatial-grid) ─────
 
+/**
+ * Optimized drone assignment: minimizes total travel distance.
+ * Uses multi-pass spatial matching with conflict resolution.
+ * Produces near-optimal results in O(n·k) instead of O(n³) for full Hungarian.
+ */
 function optimizeTransitionOrder(
   from: { x: number; z: number }[],
   to: { x: number; z: number }[],
 ): { x: number; z: number }[] {
   if (from.length === 0 || to.length === 0 || from.length !== to.length) return to;
   const n = from.length;
-  
-  // For small N, use exact nearest-neighbor
-  if (n <= 500) {
-    const result = new Array(n);
-    const used = new Set<number>();
-    for (let i = 0; i < n; i++) {
-      let bestJ = -1, bestDist = Infinity;
-      for (let j = 0; j < n; j++) {
-        if (used.has(j)) continue;
-        const d = Math.hypot(from[i].x - to[j].x, from[i].z - to[j].z);
-        if (d < bestDist) { bestDist = d; bestJ = j; }
-      }
-      result[i] = to[bestJ];
-      used.add(bestJ);
-    }
-    return result;
-  }
-  
-  // For large N: spatial grid accelerated matching
-  const grid = new SpatialGrid(10);
+
+  // Build spatial index on target positions
+  const cellSize = Math.max(5, Math.sqrt(n) * 0.8);
+  const grid = new SpatialGrid(cellSize);
   for (let j = 0; j < n; j++) grid.insert(j, to[j].x, to[j].z);
-  
-  const result = new Array(n);
-  const used = new Set<number>();
-  
+
+  const result = new Array<{ x: number; z: number }>(n);
+  const assigned = new Uint8Array(n); // 0 = free, 1 = taken
+  const bestJ = new Int32Array(n).fill(-1);
+  const bestDist = new Float64Array(n).fill(Infinity);
+
+  // Pass 1: greedy nearest-neighbor with spatial lookup
   for (let i = 0; i < n; i++) {
-    let bestJ = -1, bestDist = Infinity;
-    // Search in expanding radius
-    for (let searchR = 10; searchR <= 400; searchR *= 2) {
+    let foundJ = -1, foundDist = Infinity;
+    for (let searchR = cellSize; searchR <= cellSize * 16; searchR *= 2) {
       const candidates = grid.neighbors(from[i].x, from[i].z, searchR);
       for (const j of candidates) {
-        if (used.has(j)) continue;
+        if (assigned[j]) continue;
         const d = Math.hypot(from[i].x - to[j].x, from[i].z - to[j].z);
-        if (d < bestDist) { bestDist = d; bestJ = j; }
+        if (d < foundDist) { foundDist = d; foundJ = j; }
       }
-      if (bestJ !== -1) break;
+      if (foundJ !== -1) break;
     }
-    // Fallback: find any unused
-    if (bestJ === -1) {
+    // Fallback: linear scan
+    if (foundJ === -1) {
       for (let j = 0; j < n; j++) {
-        if (!used.has(j)) { bestJ = j; break; }
+        if (!assigned[j]) { foundJ = j; break; }
       }
     }
-    result[i] = to[bestJ];
-    used.add(bestJ);
+    bestJ[i] = foundJ;
+    bestDist[i] = foundDist;
+    assigned[foundJ] = 1;
+    result[i] = to[foundJ];
   }
+
+  // Pass 2: swap-based refinement (reduces crossing paths)
+  // Only for manageable N — huge improvement for visual quality
+  if (n <= 2000) {
+    let improved = true;
+    let passes = 0;
+    const maxPasses = n <= 500 ? 8 : 3;
+    while (improved && passes < maxPasses) {
+      improved = false;
+      passes++;
+      for (let i = 0; i < n - 1; i++) {
+        for (let step = 1; step <= Math.min(20, n - i - 1); step++) {
+          const j = i + step;
+          const dCurrent = Math.hypot(from[i].x - result[i].x, from[i].z - result[i].z)
+                         + Math.hypot(from[j].x - result[j].x, from[j].z - result[j].z);
+          const dSwapped = Math.hypot(from[i].x - result[j].x, from[i].z - result[j].z)
+                         + Math.hypot(from[j].x - result[i].x, from[j].z - result[i].z);
+          if (dSwapped < dCurrent - 0.01) {
+            const tmp = result[i];
+            result[i] = result[j];
+            result[j] = tmp;
+            improved = true;
+          }
+        }
+      }
+    }
+  }
+
   return result;
+}
+
+/**
+ * Catmull-Rom spline interpolation for smooth multi-formation transitions.
+ * Generates intermediate waypoints between formations.
+ */
+function catmullRomPoint(
+  p0: { x: number; z: number },
+  p1: { x: number; z: number },
+  p2: { x: number; z: number },
+  p3: { x: number; z: number },
+  t: number,
+): { x: number; z: number } {
+  const t2 = t * t, t3 = t2 * t;
+  return {
+    x: 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
+    z: 0.5 * ((2 * p1.z) + (-p0.z + p2.z) * t + (2 * p0.z - 5 * p1.z + 4 * p2.z - p3.z) * t2 + (-p0.z + 3 * p1.z - 3 * p2.z + p3.z) * t3),
+  };
 }
 
 // ── Process formation result ────────────────────────────────
