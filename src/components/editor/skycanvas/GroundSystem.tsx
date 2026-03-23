@@ -11,6 +11,7 @@ import { Grid } from '@react-three/drei';
 import * as THREE from 'three';
 import { useSceneStore } from '@/store/useSceneStore';
 import { createVolumetricFogPlane } from '@/render_ultra/environment/volumetricFog';
+import CrowdSystem from './CrowdSystem';
 
 // ═══════════════════════════════════════════════════════════════════════
 // Moon
@@ -930,6 +931,9 @@ function SFXStageEnvironment() {
         <planeGeometry args={[100000, 100000]} />
         <meshStandardMaterial color="#030305" roughness={0.95} metalness={0} />
       </mesh>
+
+      {/* Procedural audience — FOH area */}
+      <CrowdSystem />
     </group>
   );
 }
