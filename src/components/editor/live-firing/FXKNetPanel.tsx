@@ -1,14 +1,15 @@
 /**
- * FXKNetPanel — Unified Art-Net Network + Module Control + DMX I/O + Pixel Mapping
+ * FXKNetPanel — Unified Art-Net Network + Module Control + DMX I/O + Pixel Mapping + Bézier Curves
  * BR2049 holographic aesthetics + network topology + firmware + signal quality
  */
 import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { Globe, Cpu, ArrowLeftRight, Grid3X3 } from 'lucide-react';
+import { Globe, Cpu, ArrowLeftRight, Grid3X3, Spline } from 'lucide-react';
 import ArtNetModulePanel from './ArtNetModulePanel';
 import VirtualIFMx32QPanel from './VirtualIFMx32QPanel';
 import DMXIOPanel from './DMXIOPanel';
 import PixelMappingPanel from './PixelMappingPanel';
+import DMXBezierEditor from '../DMXBezierEditor';
 
 interface FXKNetPanelProps {
   fs?: boolean;
@@ -68,7 +69,7 @@ function TopologyMinimap({ moduleCount }: { moduleCount: number }) {
   );
 }
 
-type TabKey = 'network' | 'module' | 'dmx-io' | 'pixel-map';
+type TabKey = 'network' | 'module' | 'dmx-io' | 'pixel-map' | 'bezier';
 
 export default function FXKNetPanel({ fs = false }: FXKNetPanelProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('network');
@@ -78,6 +79,7 @@ export default function FXKNetPanel({ fs = false }: FXKNetPanelProps) {
     { key: 'module', label: 'MOD', icon: Cpu, sub: 'FIELD' },
     { key: 'dmx-io', label: 'I/O', icon: ArrowLeftRight, sub: 'DMX' },
     { key: 'pixel-map', label: 'PXL', icon: Grid3X3, sub: 'MAP' },
+    { key: 'bezier', label: 'CRV', icon: Spline, sub: 'BÉZIER' },
   ];
 
   return (
@@ -129,6 +131,7 @@ export default function FXKNetPanel({ fs = false }: FXKNetPanelProps) {
         {activeTab === 'module' && <VirtualIFMx32QPanel fs={fs} />}
         {activeTab === 'dmx-io' && <DMXIOPanel fs={fs} />}
         {activeTab === 'pixel-map' && <PixelMappingPanel fs={fs} />}
+        {activeTab === 'bezier' && <DMXBezierEditor fs={fs} />}
       </div>
     </div>
   );
