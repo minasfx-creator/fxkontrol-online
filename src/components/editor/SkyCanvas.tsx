@@ -1547,6 +1547,7 @@ export default function SkyCanvas() {
         <ContactShadowsLayer />
         <PostProcessing activeBurstCount={_activeBurstCount} />
         <StressTestFireworks />
+        <PostExplosionSmokeManager />
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
         <DebugFeed />
