@@ -1,44 +1,40 @@
 
 
-## Plan: Fix 3D Engine + Weapon-Drop Animation
+## Plan: Refine Joi Holographic Assistant
 
-### Findings from Investigation
+### Issues Found
 
-The 3D engine (WebGL/Three.js) **is actually working** — the globe renders fine, the SkyCanvas code is structurally sound, and heavy post-processing effects are already disabled by default. The user may be experiencing the issue on their device specifically, or the problem is that the intro sequence makes it hard to reach the editor viewport.
-
-The real missing piece is the **weapon-drop animation** for console swaps — the CSS classes `swap-in`, `swap-out`, `swap-flash` are referenced in `CommandCenter.tsx` (lines 252-254) but **never defined in `index.css`**. This means console transitions have zero visual feedback.
+1. **Mobile overlap**: Bubble fixed at `bottom-5 right-5` overlaps the Free Fire mobile dock and Command Center HUD
+2. **No mobile responsiveness**: Panel is fixed 360/560px width — clips off-screen on small phones
+3. **Missing "Joi" identity**: Header says "FXK-AI · NEXUS" but lacks the holographic avatar personality the user wants (referencing BR2049 Joi)
+4. **No mobile fullscreen mode**: On mobile, the chat panel should expand to near-fullscreen for usability
 
 ### Changes
 
-#### 1. Add Missing Weapon-Drop CSS Animations (`src/index.css`)
+#### File: `src/components/FXKAssistant.tsx`
 
-Define the swap animation classes that `CommandCenter.tsx` already references:
-- `.swap-out` — weapon-drop-out: scale down + translate up + fade (200ms)
-- `.swap-in` — weapon-drop-in: drop from above with spring bounce overshoot (400ms, cubic-bezier)  
-- `.swap-flash` — brief white flash overlay on swap-in
+**Mobile positioning fix:**
+- Bubble: mobile → `bottom-20 right-3` (above dock), desktop → keep `bottom-5 right-5`
+- Minimized bar: same mobile offset
 
-```
-@keyframes weapon-drop-out {
-  0% { opacity: 1; transform: scale(1) translateY(0); }
-  100% { opacity: 0; transform: scale(0.95) translateY(-15px); }
-}
-@keyframes weapon-drop-in {
-  0% { opacity: 0; transform: scale(0.96) translateY(-30px); }
-  60% { transform: scale(1.01) translateY(4px); }
-  100% { opacity: 1; transform: scale(1) translateY(0); }
-}
-```
+**Mobile panel adaptation:**
+- On mobile: panel becomes `fixed inset-3 bottom-20` (near-fullscreen, above dock)
+- On desktop: keep current fixed bottom-right positioning
+- Use `useIsMobile()` hook for detection
 
-#### 2. Harden 3D Engine Recovery (`src/components/editor/SkyCanvas.tsx`)
+**Joi identity enhancement:**
+- Rename header from "FXK-AI · NEXUS" to "JOI · NEXUS"
+- Add subtitle "HOLOGRAPHIC COMPANION" 
+- Replace Terminal icon in bubble with Sparkles icon (more Joi-like)
+- Add a subtle amber holographic shimmer to the avatar circle when idle
 
-- Wrap the entire `<Canvas>` children in a try/catch error boundary that shows a "Retry" button instead of a blank screen
-- Add a 2-second delay before mounting heavy components (NiagaraVFX, WeatherEffects, AudioSpectrum) to let the base renderer stabilize first
-- Ensure the `WebGLErrorBoundary` includes a retry mechanism (re-increment `canvasInstanceKey`)
+**Polish:**
+- Add `will-change: transform` to bubble for smoother hover animation
+- Ensure panel z-index is above Command Center HUD elements (z-50 → z-[60])
 
-#### 3. Add Skip-to-Editor Shortcut
-
-- In the globe phase, add a visible "SKIP" button so users can jump directly to the editor without selecting a venue (for testing/dev)
+#### File: `src/index.css`
+- Add `.joi-bubble-shimmer` keyframe: subtle scale pulse (1.0 → 1.05) with glow intensity change, 3s infinite
 
 ### Build verification
-- TypeScript build check for 0 errors
+- TypeScript check for 0 errors
 
