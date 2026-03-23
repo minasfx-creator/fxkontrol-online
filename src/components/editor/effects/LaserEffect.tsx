@@ -123,7 +123,7 @@ export default function LaserEffect({
 
       // Wide atmospheric glow
       const atmo = beamGroup.children[3] as THREE.Mesh;
-      if (atmo) (atmo.material as THREE.MeshBasicMaterial).opacity = 0.04 * finalOpacity;
+      if (atmo) (atmo.material as THREE.MeshBasicMaterial).opacity = 0.06 * finalOpacity;
     }
 
     // Source halo — intensified HDR emitter
