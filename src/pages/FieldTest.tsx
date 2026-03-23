@@ -632,27 +632,253 @@ function DiagnosticsPanel({ session }: { session: FieldTestSession }) {
   );
 }
 
+// ─── Module Scanner Types ─────────────────────────
+interface DiscoveredModule {
+  id: string;
+  name: string;
+  moduleNumber: number;
+  rssi: number;
+  channels: number;
+  status: 'online' | 'armed' | 'offline';
+  lastSeen: number;
+}
+
+// ─── Module Scanner Panel ─────────────────────────
+function ModuleScannerPanel({
+  modules,
+  scanning,
+  selectedModuleId,
+  onScan,
+  onSelect,
+}: {
+  modules: DiscoveredModule[];
+  scanning: boolean;
+  selectedModuleId: string | null;
+  onScan: () => void;
+  onSelect: (mod: DiscoveredModule) => void;
+}) {
+  const getRssi = (rssi: number) => {
+    if (rssi > -50) return { bars: 4, color: 'text-green-400' };
+    if (rssi > -65) return { bars: 3, color: 'text-green-400' };
+    if (rssi > -80) return { bars: 2, color: 'text-amber-400' };
+    return { bars: 1, color: 'text-red-400' };
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between px-2 py-1.5"
+        style={{ borderBottom: '1px solid hsl(0 0% 100% / 0.05)' }}>
+        <div className="flex items-center gap-1.5">
+          <Search className="w-3 h-3 text-purple-400" />
+          <span className="text-[8px] font-mono font-bold text-muted-foreground/60 tracking-wider uppercase">Module Scanner</span>
+        </div>
+        <button
+          onClick={onScan}
+          disabled={scanning}
+          className={cn(
+            "flex items-center gap-1 px-2 py-0.5 rounded text-[8px] font-mono font-bold transition-all",
+            scanning
+              ? "bg-purple-500/20 text-purple-400"
+              : "bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 active:scale-95"
+          )}
+        >
+          {scanning ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Search className="w-2.5 h-2.5" />}
+          {scanning ? 'SCAN...' : 'SCAN'}
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-1.5 py-1 space-y-1">
+        {modules.length === 0 && !scanning && (
+          <div className="flex flex-col items-center justify-center h-full text-center px-2">
+            <Radio className="w-6 h-6 text-muted-foreground/20 mb-1" />
+            <p className="text-[8px] font-mono text-muted-foreground/30">
+              Pressione SCAN para detectar módulos na rede
+            </p>
+          </div>
+        )}
+
+        {scanning && modules.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-full">
+            <Loader2 className="w-5 h-5 text-purple-400 animate-spin mb-1" />
+            <p className="text-[8px] font-mono text-purple-400/60">Escaneando...</p>
+          </div>
+        )}
+
+        {modules.map(mod => {
+          const isSelected = selectedModuleId === mod.id;
+          const signal = getRssi(mod.rssi);
+          return (
+            <button
+              key={mod.id}
+              onClick={() => onSelect(mod)}
+              className={cn(
+                "w-full rounded-md border p-2 flex items-center gap-2 transition-all text-left active:scale-[0.97]",
+                isSelected
+                  ? "border-primary/50 bg-primary/10 ring-1 ring-primary/30"
+                  : "border-border/20 bg-muted/5 hover:border-border/40"
+              )}
+            >
+              {/* Module icon */}
+              <div className={cn(
+                "w-8 h-8 rounded flex items-center justify-center shrink-0",
+                isSelected ? "bg-primary/20" : "bg-muted/10"
+              )}>
+                <span className={cn("text-[10px] font-mono font-black", isSelected ? "text-primary" : "text-muted-foreground/50")}>
+                  {String(mod.moduleNumber).padStart(2, '0')}
+                </span>
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1">
+                  <span className="text-[9px] font-mono font-bold text-foreground/80 truncate">{mod.name}</span>
+                  <div className={cn(
+                    "w-1.5 h-1.5 rounded-full shrink-0",
+                    mod.status === 'armed' ? "bg-amber-400" : mod.status === 'online' ? "bg-green-400" : "bg-red-400"
+                  )} />
+                </div>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  {/* RSSI bars */}
+                  <div className="flex items-end gap-[1px] h-2">
+                    {[1, 2, 3, 4].map(bar => (
+                      <div key={bar} className={cn(
+                        "w-[2px] rounded-sm",
+                        bar <= signal.bars ? signal.color.replace('text-', 'bg-') : 'bg-muted-foreground/10'
+                      )} style={{ height: `${bar * 25}%` }} />
+                    ))}
+                  </div>
+                  <span className="text-[7px] font-mono text-muted-foreground/40">{mod.channels}ch</span>
+                </div>
+              </div>
+
+              {isSelected && (
+                <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {modules.length > 0 && (
+        <div className="px-2 py-1 text-[7px] font-mono text-muted-foreground/30 text-center"
+          style={{ borderTop: '1px solid hsl(0 0% 100% / 0.03)' }}>
+          {modules.length} módulo{modules.length > 1 ? 's' : ''} · Toque para selecionar
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── FireOne XL4 Landscape Controller Console ─────
 function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; onStop: () => void }) {
   const channels = Array.from({ length: 32 }, (_, i) => i + 1);
   const [lastFired, setLastFired] = useState<number | null>(null);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [showScanner, setShowScanner] = useState(true);
+  const [scanningModules, setScanningModules] = useState(false);
+  const [discoveredModules, setDiscoveredModules] = useState<DiscoveredModule[]>([]);
+  const [selectedModule, setSelectedModule] = useState<DiscoveredModule | null>(null);
+  const [channelResults, setChannelResults] = useState<Record<number, { status: 'idle' | 'fired' | 'ack'; latencyMs?: number }>>(
+    Object.fromEntries(channels.map(ch => [ch, { status: 'idle' as const }]))
+  );
+  const [fireAllRunning, setFireAllRunning] = useState(false);
+
+  // Simulate module scan (BLE or Realtime discovery)
+  const handleScanModules = useCallback(async () => {
+    setScanningModules(true);
+    haptics.tap();
+
+    if (session.transport === 'ble') {
+      try {
+        const device = await fieldTestEngine.bleScan();
+        if (device) {
+          const mod: DiscoveredModule = {
+            id: device.id,
+            name: device.name,
+            moduleNumber: discoveredModules.length + 1,
+            rssi: device.rssi,
+            channels: 32,
+            status: 'online',
+            lastSeen: Date.now(),
+          };
+          setDiscoveredModules(prev => {
+            const exists = prev.find(m => m.id === mod.id);
+            if (exists) return prev.map(m => m.id === mod.id ? mod : m);
+            return [...prev, mod];
+          });
+          toast.success(`Módulo encontrado: ${device.name}`);
+        }
+      } catch (e: any) {
+        if (!e.message?.includes('cancelled')) toast.error(e.message);
+      }
+    } else {
+      // Realtime: simulate discovery via session peer presence
+      await new Promise(r => setTimeout(r, 800));
+      if (session.peerConnected) {
+        const mod: DiscoveredModule = {
+          id: `rt-${session.code}-${Date.now()}`,
+          name: `FXK-M1 [${session.code}]`,
+          moduleNumber: discoveredModules.length + 1,
+          rssi: session.transport === 'realtime-lan' ? -45 : -72,
+          channels: 32,
+          status: 'online',
+          lastSeen: Date.now(),
+        };
+        setDiscoveredModules(prev => {
+          const hasPeer = prev.some(m => m.name.includes(session.code));
+          if (hasPeer) return prev;
+          return [...prev, mod];
+        });
+        toast.success('Módulo peer detectado');
+      } else {
+        toast.info('Nenhum módulo online — aguardando peer');
+      }
+    }
+    setScanningModules(false);
+  }, [session, discoveredModules.length]);
+
+  // Auto-scan on mount if peer connected
+  useEffect(() => {
+    if (session.peerConnected && discoveredModules.length === 0) {
+      handleScanModules();
+    }
+  }, [session.peerConnected]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSelectModule = useCallback((mod: DiscoveredModule) => {
+    setSelectedModule(mod);
+    haptics.select();
+    setChannelResults(Object.fromEntries(channels.map(ch => [ch, { status: 'idle' as const }])));
+    toast.success(`Módulo ${String(mod.moduleNumber).padStart(2, '0')} selecionado`);
+  }, [channels]);
 
   const handleFire = useCallback((ch: number) => {
+    if (!selectedModule) {
+      toast.error('Selecione um módulo primeiro');
+      return;
+    }
     fieldTestEngine.fire(ch);
     haptics.fire();
     setLastFired(ch);
+    setChannelResults(prev => ({ ...prev, [ch]: { status: 'fired' } }));
     setTimeout(() => setLastFired(null), 300);
-  }, []);
+  }, [selectedModule]);
+
+  // Track ACKs from session logs
+  useEffect(() => {
+    const ackLog = session.logs.find(l => l.type === 'ack' && l.latencyMs !== undefined);
+    if (ackLog) {
+      const fireLog = session.logs.find(l => l.type === 'fire' && l.channel !== undefined);
+      if (fireLog?.channel) {
+        setChannelResults(prev => ({
+          ...prev,
+          [fireLog.channel!]: { status: 'ack', latencyMs: ackLog.latencyMs },
+        }));
+      }
+    }
+  }, [session.stats.acksReceived]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleArm = useCallback(() => {
-    if (session.armed) {
-      fieldTestEngine.disarm();
-      haptics.disarm();
-    } else {
-      fieldTestEngine.arm();
-      haptics.arm();
-    }
+    if (session.armed) { fieldTestEngine.disarm(); haptics.disarm(); }
+    else { fieldTestEngine.arm(); haptics.arm(); }
   }, [session.armed]);
 
   const handleEStop = useCallback(() => {
@@ -660,12 +886,36 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
     haptics.panic();
   }, []);
 
+  // Fire All Channels sequentially
+  const handleFireAll = useCallback(async () => {
+    if (!selectedModule || !session.armed) return;
+    setFireAllRunning(true);
+    haptics.tap();
+    for (let ch = 1; ch <= 32; ch++) {
+      if (!session.armed) break;
+      await fieldTestEngine.fire(ch);
+      setChannelResults(prev => ({ ...prev, [ch]: { status: 'fired' } }));
+      await new Promise(r => setTimeout(r, 500));
+    }
+    setFireAllRunning(false);
+    haptics.success();
+    toast.success('Sequência completa — todos os canais disparados');
+  }, [selectedModule, session.armed]);
+
+  const handleResetChannels = useCallback(() => {
+    setChannelResults(Object.fromEntries(channels.map(ch => [ch, { status: 'idle' as const }])));
+    toast.success('Canais resetados');
+  }, [channels]);
+
+  const firedCount = Object.values(channelResults).filter(r => r.status !== 'idle').length;
+  const ackCount = Object.values(channelResults).filter(r => r.status === 'ack').length;
+
   return (
     <div className="h-[100dvh] w-screen flex flex-col overflow-hidden"
       style={{ background: 'hsl(220 25% 4%)' }}>
 
       {/* ═══ XL4 Top Bar ═══ */}
-      <div className="shrink-0 flex items-center justify-between px-3 h-8"
+      <div className="shrink-0 flex items-center justify-between px-3 h-9"
         style={{
           background: 'linear-gradient(180deg, hsl(220 20% 10%), hsl(220 20% 6%))',
           borderBottom: '1px solid hsl(0 0% 100% / 0.05)',
@@ -675,7 +925,7 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
             <div className={cn("w-2 h-2 rounded-full", session.peerConnected ? "bg-green-500" : "bg-red-500")}
               style={{ boxShadow: session.peerConnected ? '0 0 6px hsl(120 70% 50%)' : '0 0 6px hsl(0 70% 50%)' }} />
             <span className="text-[8px] font-mono font-bold text-muted-foreground/60">
-              {session.peerConnected ? 'MODULE ONLINE' : 'WAITING'}
+              {session.peerConnected ? 'PEER ONLINE' : 'WAITING'}
             </span>
           </div>
           <Badge variant="outline" className="text-[7px] h-4 px-1.5 font-mono border-amber-500/30 text-amber-400">
@@ -684,9 +934,11 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
           <Badge variant="outline" className="text-[7px] h-4 px-1.5 font-mono border-blue-500/30 text-blue-400">
             {session.transport.toUpperCase()}
           </Badge>
-          <Badge variant="outline" className="text-[7px] h-4 px-1.5 font-mono border-primary/30 text-primary">
-            MOD TARGET
-          </Badge>
+          {selectedModule && (
+            <Badge variant="outline" className="text-[7px] h-4 px-1.5 font-mono border-primary/30 text-primary">
+              MOD {String(selectedModule.moduleNumber).padStart(2, '0')} · {selectedModule.name}
+            </Badge>
+          )}
           {session.transport === 'ble' && (
             <Badge variant="outline" className="text-[7px] h-4 px-1.5 font-mono border-purple-500/30 text-purple-400">
               <Bluetooth className="w-2.5 h-2.5 mr-0.5" /> GATT
@@ -697,10 +949,13 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
           {session.stats.firesSent > 0 && (
             <div className="flex items-center gap-3 text-[8px] font-mono">
               <span className="text-muted-foreground/50">AVG:<span className="text-amber-400 font-bold ml-0.5">{session.stats.avgLatency}ms</span></span>
-              <span className="text-muted-foreground/50">P95:<span className="text-amber-400 font-bold ml-0.5">{session.stats.p95Latency}ms</span></span>
               <span className="text-muted-foreground/50">LOSS:<span className={cn("font-bold ml-0.5", session.stats.packetLoss > 1 ? 'text-red-400' : 'text-green-400')}>{session.stats.packetLoss}%</span></span>
             </div>
           )}
+          <button onClick={() => setShowScanner(!showScanner)}
+            className={cn("text-[8px] font-mono px-1.5 py-0.5 rounded", showScanner ? "bg-purple-500/20 text-purple-400" : "text-muted-foreground/40 hover:text-muted-foreground")}>
+            <Search className="w-3 h-3" />
+          </button>
           <button onClick={() => setShowDiagnostics(!showDiagnostics)}
             className={cn("text-[8px] font-mono px-1.5 py-0.5 rounded", showDiagnostics ? "bg-amber-500/20 text-amber-400" : "text-muted-foreground/40 hover:text-muted-foreground")}>
             <BarChart3 className="w-3 h-3" />
@@ -718,35 +973,57 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
         </div>
       )}
 
-      {/* ═══ Main XL4 Panel ═══ */}
+      {/* ═══ Main Panel ═══ */}
       <div className="flex-1 flex min-h-0">
 
         {/* Left Control Strip */}
-        <div className="w-16 shrink-0 flex flex-col items-center justify-center gap-2 py-2"
+        <div className="w-14 shrink-0 flex flex-col items-center justify-center gap-2 py-2"
           style={{
             background: 'linear-gradient(180deg, hsl(220 18% 7%), hsl(220 18% 5%))',
             borderRight: '1px solid hsl(0 0% 100% / 0.04)',
           }}>
           <button
             onClick={handleArm}
-            disabled={!session.peerConnected}
+            disabled={!selectedModule}
             className={cn(
-              "w-12 h-12 rounded-lg font-mono font-black text-[9px] tracking-wider border-2 transition-all active:scale-95",
+              "w-11 h-11 rounded-lg font-mono font-black text-[8px] tracking-wider border-2 transition-all active:scale-95",
               session.armed
                 ? "bg-amber-600 border-amber-500 text-white shadow-[0_0_20px_hsl(32_100%_50%/0.4)]"
                 : "bg-amber-600/10 border-amber-600/30 text-amber-400/60"
             )}
           >
-            <Shield className="w-4 h-4 mx-auto mb-0.5" />
+            <Shield className="w-3.5 h-3.5 mx-auto mb-0.5" />
             {session.armed ? 'DISARM' : 'ARM'}
           </button>
 
           <button
             onClick={handleEStop}
-            className="w-12 h-12 rounded-lg bg-red-700 hover:bg-red-600 border-2 border-red-500/50 text-white font-mono font-black text-[8px] active:scale-90 transition-all shadow-[0_0_12px_hsl(0_70%_50%/0.3)]"
+            className="w-11 h-11 rounded-lg bg-red-700 hover:bg-red-600 border-2 border-red-500/50 text-white font-mono font-black text-[7px] active:scale-90 transition-all shadow-[0_0_12px_hsl(0_70%_50%/0.3)]"
           >
-            <AlertTriangle className="w-4 h-4 mx-auto mb-0.5" />
+            <AlertTriangle className="w-3.5 h-3.5 mx-auto mb-0.5" />
             E-STOP
+          </button>
+
+          {/* Fire All */}
+          <button
+            onClick={fireAllRunning ? () => setFireAllRunning(false) : handleFireAll}
+            disabled={!session.armed || !selectedModule}
+            className={cn(
+              "w-11 h-11 rounded-lg font-mono font-black text-[7px] border-2 transition-all active:scale-95",
+              fireAllRunning
+                ? "bg-orange-600 border-orange-500 text-white animate-pulse"
+                : session.armed && selectedModule
+                  ? "bg-orange-600/20 border-orange-500/30 text-orange-400 hover:bg-orange-600/40"
+                  : "bg-muted/5 border-border/15 text-muted-foreground/20"
+            )}
+          >
+            {fireAllRunning ? <Square className="w-3 h-3 mx-auto mb-0.5" /> : <Zap className="w-3.5 h-3.5 mx-auto mb-0.5" />}
+            {fireAllRunning ? 'STOP' : 'ALL'}
+          </button>
+
+          <button onClick={handleResetChannels}
+            className="w-8 h-8 rounded-md bg-muted/10 border border-border/15 flex items-center justify-center mt-auto">
+            <RefreshCw className="w-3 h-3 text-muted-foreground/40" />
           </button>
 
           <button
@@ -754,47 +1031,95 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
               if (document.fullscreenElement) document.exitFullscreen();
               else document.documentElement.requestFullscreen?.();
             }}
-            className="w-8 h-8 rounded-md bg-muted/20 border border-border/20 flex items-center justify-center mt-auto"
+            className="w-8 h-8 rounded-md bg-muted/10 border border-border/15 flex items-center justify-center"
           >
-            <Maximize className="w-3 h-3 text-muted-foreground/50" />
+            <Maximize className="w-3 h-3 text-muted-foreground/40" />
           </button>
         </div>
 
-        {/* Fire Grid */}
+        {/* Fire Grid — Center */}
         <div className="flex-1 flex flex-col min-w-0">
+          {/* Module target indicator */}
+          {selectedModule ? (
+            <div className="shrink-0 flex items-center justify-between px-3 py-1"
+              style={{ background: 'hsl(220 20% 6%)', borderBottom: '1px solid hsl(0 0% 100% / 0.04)' }}>
+              <div className="flex items-center gap-2">
+                <Target className="w-3 h-3 text-primary" />
+                <span className="text-[9px] font-mono font-bold text-foreground/80">
+                  MOD {String(selectedModule.moduleNumber).padStart(2, '0')}
+                </span>
+                <span className="text-[8px] font-mono text-muted-foreground/40">
+                  ADDR 0x{(selectedModule.moduleNumber - 1).toString(16).toUpperCase().padStart(2, '0')}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[8px] font-mono text-muted-foreground/40">
+                  <span className="text-amber-400">{firedCount}</span> FIRE · <span className="text-green-400">{ackCount}</span> ACK
+                </span>
+                <Progress value={(ackCount / 32) * 100} className="h-1 w-16" />
+              </div>
+            </div>
+          ) : (
+            <div className="shrink-0 flex items-center justify-center px-3 py-2"
+              style={{ background: 'hsl(220 20% 6%)', borderBottom: '1px solid hsl(0 0% 100% / 0.04)' }}>
+              <span className="text-[9px] font-mono text-muted-foreground/30">
+                ← Escaneie e selecione um módulo para disparar
+              </span>
+            </div>
+          )}
+
           <div className="flex-1 p-2 overflow-hidden">
             <div className="grid grid-cols-8 grid-rows-4 gap-1 h-full">
               {channels.map(ch => {
+                const result = channelResults[ch];
                 const isFiring = lastFired === ch;
+                const isAck = result.status === 'ack';
+                const isFired = result.status === 'fired';
                 return (
                   <button
                     key={ch}
-                    disabled={!session.armed || !session.peerConnected}
+                    disabled={!session.armed || !selectedModule}
                     onClick={() => handleFire(ch)}
                     className={cn(
                       "relative rounded-md font-mono font-black text-sm transition-all active:scale-90",
                       "border flex flex-col items-center justify-center",
-                      session.armed
-                        ? isFiring
-                          ? "bg-orange-500 border-orange-400 text-white scale-95"
-                          : "bg-red-900/40 border-red-700/40 text-red-300 hover:bg-red-800/60 hover:border-red-600/60"
-                        : "bg-muted/10 border-border/20 text-muted-foreground/20"
+                      isFiring
+                        ? "bg-orange-500 border-orange-400 text-white scale-95"
+                        : isAck
+                          ? "bg-green-900/30 border-green-600/40 text-green-300"
+                          : isFired
+                            ? "bg-orange-900/20 border-orange-700/30 text-orange-300 animate-pulse"
+                            : session.armed && selectedModule
+                              ? "bg-red-900/40 border-red-700/40 text-red-300 hover:bg-red-800/60 hover:border-red-600/60"
+                              : "bg-muted/10 border-border/20 text-muted-foreground/20"
                     )}
                     style={isFiring ? {
                       boxShadow: '0 0 20px hsl(25 100% 50% / 0.6), inset 0 0 10px hsl(25 100% 60% / 0.3)',
-                    } : session.armed ? {
+                    } : isAck ? {
+                      boxShadow: '0 0 8px hsl(120 70% 40% / 0.2)',
+                    } : session.armed && selectedModule ? {
                       boxShadow: '0 2px 8px hsl(0 0% 0% / 0.3), inset 0 1px 0 hsl(0 0% 100% / 0.02)',
                     } : undefined}
                   >
                     <span className="text-[10px] opacity-40 leading-none">CH</span>
                     <span className="leading-none">{String(ch).padStart(2, '0')}</span>
+                    {/* ACK latency badge */}
+                    {isAck && result.latencyMs !== undefined && (
+                      <span className="absolute -top-1 -right-1 text-[6px] font-mono bg-green-600 text-white px-1 rounded-full leading-tight">
+                        {result.latencyMs}ms
+                      </span>
+                    )}
+                    {/* ACK check */}
+                    {isAck && (
+                      <CheckCircle2 className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 text-green-400" />
+                    )}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Bottom Status Strip */}
+          {/* Bottom Status */}
           <div className="shrink-0 h-6 flex items-center px-3 gap-4 text-[8px] font-mono"
             style={{
               background: 'hsl(220 20% 5%)',
@@ -804,21 +1129,38 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
             <span className="text-muted-foreground/40">ACK:<span className="text-green-400 ml-0.5">{session.stats.acksReceived}</span></span>
             <span className="text-muted-foreground/40">MIN:<span className="text-foreground/60 ml-0.5">{session.stats.minLatency}ms</span></span>
             <span className="text-muted-foreground/40">MAX:<span className="text-foreground/60 ml-0.5">{session.stats.maxLatency}ms</span></span>
+            {selectedModule && (
+              <span className="text-muted-foreground/40 ml-auto">
+                TARGET: <span className="text-primary">{selectedModule.name}</span>
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Right Log Panel */}
-        <div className="w-44 shrink-0 flex flex-col"
+        {/* Right Panel: Scanner or Log */}
+        <div className={cn("shrink-0 flex flex-col", showScanner ? "w-48" : "w-40")}
           style={{
             background: 'hsl(220 18% 5%)',
             borderLeft: '1px solid hsl(0 0% 100% / 0.04)',
           }}>
-          <div className="h-5 flex items-center px-2 border-b border-border/10">
-            <span className="text-[7px] font-mono font-bold text-muted-foreground/40 tracking-wider">EVENT LOG</span>
-          </div>
-          <div className="flex-1 overflow-y-auto px-1.5 py-1">
-            {session.logs.slice(0, 50).map(l => <LogEntry key={l.id} log={l} />)}
-          </div>
+          {showScanner ? (
+            <ModuleScannerPanel
+              modules={discoveredModules}
+              scanning={scanningModules}
+              selectedModuleId={selectedModule?.id ?? null}
+              onScan={handleScanModules}
+              onSelect={handleSelectModule}
+            />
+          ) : (
+            <>
+              <div className="h-5 flex items-center px-2 border-b border-border/10">
+                <span className="text-[7px] font-mono font-bold text-muted-foreground/40 tracking-wider">EVENT LOG</span>
+              </div>
+              <div className="flex-1 overflow-y-auto px-1.5 py-1">
+                {session.logs.slice(0, 50).map(l => <LogEntry key={l.id} log={l} />)}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
