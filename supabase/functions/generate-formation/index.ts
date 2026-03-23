@@ -448,7 +448,7 @@ function buildLocalFullShowFallback(prompt: string, count: number) {
     });
 
     let points = processFormationResult(rawPoints, count, previousPoints);
-    if (previousPoints && previousPoints.length === points.length && count <= 1000) {
+    if (previousPoints && previousPoints.length === points.length && count <= 2000) {
       points = optimizeTransitionOrder(previousPoints, points);
     }
     previousPoints = points;
