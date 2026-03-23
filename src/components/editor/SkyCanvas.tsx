@@ -106,6 +106,13 @@ import {
   TimelineEffects,
   LiveSFXEffects,
   estimateFireworkStarCost,
+  // ═══ LightingSystem ═══
+  AdaptiveExposureController,
+  ContactShadowsLayer,
+  DebugFeed,
+  GlobalIlluminationController,
+  LensFlareController,
+  GroundReflections,
 } from './skycanvas';
 
 // Re-export for external consumers
@@ -562,61 +569,8 @@ function SkyGradient() {
   );
 }
 
-// --- Volumetric Moon — Blender-calibrated celestial position ---
-// Moon, SatelliteOverlay, GrassGround, AtmosphericParticles, FloorLogo
+// Moon, SatelliteOverlay, GrassGround, AtmosphericParticles, FloorLogo, TreelineSilhouette
 // → Extracted to skycanvas/GroundSystem.tsx
-
-  const instancedRef = useRef<THREE.InstancedMesh>(null);
-  
-  const { treeData, totalCount } = useMemo(() => {
-    const result: { x: number; z: number; h: number; w: number; layer: number }[] = [];
-    for (let layer = 0; layer < 6; layer++) {
-      const count = 120 - layer * 15;
-      const baseDist = 4000 + layer * 1500;
-      for (let i = 0; i < count; i++) {
-        const angle = (i / count) * Math.PI * 2 + layer * 0.05;
-        const dist = baseDist + Math.random() * 300;
-        result.push({
-          x: Math.cos(angle) * dist,
-          z: Math.sin(angle) * dist,
-          h: 30 + Math.random() * 110 + layer * 25,
-          w: 25 + Math.random() * 50,
-          layer,
-        });
-      }
-    }
-    return { treeData: result, totalCount: result.length };
-  }, []);
-
-  useEffect(() => {
-    if (!instancedRef.current) return;
-    const mesh = instancedRef.current;
-    const dummy = new THREE.Object3D();
-    const color = new THREE.Color();
-    
-    for (let i = 0; i < totalCount; i++) {
-      const t = treeData[i];
-      dummy.position.set(t.x, t.h * 0.5, t.z);
-      dummy.rotation.set(0, Math.atan2(t.x, t.z), 0);
-      dummy.scale.set(t.w, t.h, 1);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-      
-      const brightness = 0.03 + t.layer * 0.015;
-      color.setRGB(brightness, brightness + 0.02, brightness);
-      mesh.setColorAt(i, color);
-    }
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  }, [treeData, totalCount]);
-
-  return (
-    <instancedMesh ref={instancedRef} args={[undefined, undefined, totalCount]} frustumCulled={false}>
-      <planeGeometry args={[1, 1]} />
-      <meshBasicMaterial transparent opacity={0.75} side={THREE.DoubleSide} vertexColors />
-    </instancedMesh>
-  );
-}
 
 // LaunchSites removed — positions are now user-created via toolbar
 
@@ -1498,8 +1452,6 @@ export default function SkyCanvas() {
           const handleContextRestored = () => {
             console.log('[FXK] WebGL context restored');
             recoveringContextRef.current = false;
-            _starMaterialInstance?.dispose();
-            _starMaterialInstance = null;
           };
 
           canvas.addEventListener('webglcontextlost', handleContextLost as EventListener);
