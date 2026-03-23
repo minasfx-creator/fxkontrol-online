@@ -1404,9 +1404,14 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
     const fullscreenContent = (
       <div
         {...swipeProps}
-        className="fixed inset-x-0 top-0 z-[9999] flex h-[100dvh] w-screen flex-col select-none"
+        className={cn(
+          "fixed inset-x-0 top-0 z-[9999] flex h-[100dvh] w-screen flex-col select-none",
+          standalone && "ff-standalone-panel"
+        )}
         style={{
-          background: 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 4%) 100%)',
+          background: standalone
+            ? 'hsl(220 22% 3% / 0.95)'
+            : 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 4%) 100%)',
           paddingBottom: mob ? 'max(env(safe-area-inset-bottom), 8px)' : undefined,
         }}
       >
