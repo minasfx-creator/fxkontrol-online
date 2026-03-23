@@ -1556,6 +1556,7 @@ export default function SkyCanvas() {
         />
       </Canvas>
       </WebGLErrorBoundary>
+      <KeybindingCheatSheet />
 
       {/* ═══ Google Earth Geo Tools UI ═══ */}
       {!isMobile && (
