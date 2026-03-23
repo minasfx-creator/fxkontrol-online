@@ -1498,7 +1498,7 @@ export default function SkyCanvas() {
         <LiveSFXEffects />
         <LaserPreviewBeams />
         <StageFixtures />
-        {!isMobile && <AudioSpectrumVisualizer />}
+        {!isMobile && <DelayedMount delay={3000}><AudioSpectrumVisualizer /></DelayedMount>}
         <PlaybackClock />
         {!isMobile && <CameraAnimator />}
         {!isMobile && <CameraPathPreview />}
