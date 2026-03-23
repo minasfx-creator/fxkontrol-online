@@ -65,7 +65,7 @@ export default function Auth() {
   };
 
   return (
-    <div className="h-screen w-screen flex items-center justify-center bg-background relative overflow-hidden br2049-rain">
+    <div className="min-h-[100dvh] w-full flex items-center justify-center bg-background relative overflow-hidden br2049-rain">
       {/* Scanline sweep */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-[2]">
         <div className="absolute w-full h-[2px] animate-scanline-sweep" style={{
