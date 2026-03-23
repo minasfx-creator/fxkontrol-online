@@ -177,8 +177,8 @@ const SECTION_COLORS: Record<string, string> = {
   A: '#4CAF50', B: '#2196F3', C: '#FF9800', D: '#E91E63', E: '#9C27B0', F: '#00BCD4',
 };
 
-// --- Draggable Timeline Item ---
-const DraggableTimelineItem = React.forwardRef<HTMLButtonElement, {
+// --- Draggable Timeline Item (memoized to avoid re-renders during scroll) ---
+const DraggableTimelineItem = React.memo(React.forwardRef<HTMLButtonElement, {
   item: any;
   effect: any;
   pixelsPerSecond: number;
@@ -295,7 +295,7 @@ const DraggableTimelineItem = React.forwardRef<HTMLButtonElement, {
       />
     </div>
   );
-});
+}));
 
 DraggableTimelineItem.displayName = 'DraggableTimelineItem';
 
@@ -334,6 +334,18 @@ function TimelineTrackRow({
   label: string; trackIndex: number; pixelsPerSecond: number; color: string; duration: number;
   scrollRef: React.RefObject<HTMLDivElement>;
 }) {
+  // Track scroll position for item virtualization
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [viewportWidth, setViewportWidth] = useState(1200);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => { setScrollLeft(el.scrollLeft); setViewportWidth(el.clientWidth); };
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    return () => el.removeEventListener('scroll', update);
+  }, [scrollRef]);
   const { 
     timelineItems, selectedTimelineItemId, selectTimelineItem, addTimelineItem, 
     bpm, snapToBeat, updateTimelineItem, selectedTimelineItemIds, toggleTimelineItemSelection,
@@ -559,6 +571,14 @@ function TimelineTrackRow({
         {!muted && items.map((item) => {
           const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
           if (!effect) return null;
+          // Virtualize: skip items outside visible scroll range
+          const effectDuration = item.durationOverride ?? effect.duration;
+          const itemLeftPx = item.startTime * pixelsPerSecond;
+          const itemRightPx = itemLeftPx + Math.max(effectDuration * pixelsPerSecond, 28);
+          const visibleLeft = scrollLeft - 96 - 200; // account for label column + buffer
+          const visibleRight = scrollLeft - 96 + viewportWidth + 200;
+          if (itemRightPx < visibleLeft || itemLeftPx > visibleRight) return null;
+
           const linkedIds = useProjectStore.getState().linkedTimelineItemIds;
           const isLinked = linkedIds.includes(item.id);
           return (

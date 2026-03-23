@@ -86,19 +86,24 @@ let _activeBurstCount = 0;
 export function getActiveBurstCount() { return _activeBurstCount; }
 
 // ═══ ActiveBurstScanner — centralized per-frame timeline scan ═══
-// GI, LensFlare, and Exposure all read from this instead of scanning independently
+// GI, LensFlare, Exposure, and Reflections all read from this instead of scanning independently
 interface ActiveBurstScanResult {
   freshBursts: { x: number; y: number; z: number; color: string; caliber: number; effectId: string }[];
   activeBursts: number;
   luminance: number;
+  // Scatter data for sky color bleeding
+  scatterColors: { color: string; intensity: number }[];
+  scatterMax: number;
 }
 let _activeBurstScan: ActiveBurstScanResult | null = null;
 
 function runActiveBurstScan() {
   const { timelineItems, currentTime } = useProjectStore.getState();
   const freshBursts: ActiveBurstScanResult['freshBursts'] = [];
+  const scatterColors: ActiveBurstScanResult['scatterColors'] = [];
   let activeBursts = 0;
   let luminance = 0;
+  let scatterMax = 0;
 
   for (let i = 0; i < timelineItems.length; i++) {
     const item = timelineItems[i];
@@ -122,9 +127,19 @@ function runActiveBurstScan() {
         });
       }
     }
+
+    // Scatter window: 0-300ms for sky color bleeding
+    if (elapsed < 0.3) {
+      const effect = getEffectById(item.effectId);
+      if (effect && effect.type === 'firework') {
+        const intensity = 0.4 * (1 - elapsed / 0.3);
+        scatterColors.push({ color: effect.color, intensity });
+        scatterMax = Math.max(scatterMax, intensity);
+      }
+    }
   }
 
-  _activeBurstScan = { freshBursts, activeBursts, luminance };
+  _activeBurstScan = { freshBursts, activeBursts, luminance, scatterColors, scatterMax };
   return _activeBurstScan;
 }
 
@@ -2211,23 +2226,13 @@ const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function Ad
     
     // ═══ Centralized burst scan — ONE scan per frame for all controllers ═══
     const scan = runActiveBurstScan();
-    let { activeBursts, luminance } = scan;
+    let { activeBursts, luminance, scatterColors, scatterMax } = scan;
     
     _scatterAccum.setRGB(0, 0, 0);
-    let scatterMax = 0;
 
-    // Sky scatter needs finer time window, so we do a lightweight pass on fresh bursts
-    const { timelineItems, currentTime } = useProjectStore.getState();
-    for (let i = 0; i < timelineItems.length; i++) {
-      const item = timelineItems[i];
-      const elapsed = currentTime - item.startTime;
-      if (elapsed < 0 || elapsed > 0.3) continue;
-      const effect = getEffectById(item.effectId);
-      if (effect && effect.type === 'firework') {
-        const intensity = 0.4 * (1 - elapsed / 0.3);
-        _scatterAccum.add(_tmpColor.set(effect.color).multiplyScalar(Math.min(intensity * 0.3, 0.15)));
-        scatterMax = Math.max(scatterMax, intensity);
-      }
+    // Use pre-computed scatter data from centralized scanner
+    for (const sc of scatterColors) {
+      _scatterAccum.add(_tmpColor.set(sc.color).multiplyScalar(Math.min(sc.intensity * 0.3, 0.15)));
     }
 
     const burstLoad = THREE.MathUtils.clamp(activeBursts / 6, 0, 1);
@@ -2414,19 +2419,15 @@ const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflec
     const u = uniformsRef.current;
     u.uTime.value = clock.getElapsedTime();
 
-    // Check for active explosions to flash reflections
-    const { timelineItems, currentTime } = useProjectStore.getState();
+    // Use centralized ActiveBurstScanner for reflection flashes
+    const scan = _activeBurstScan;
     let flashIntensity = 0;
     const _reusableColor = u.uReflectionColor.value;
 
-    for (const item of timelineItems) {
-      const elapsed = currentTime - item.startTime;
-      if (elapsed >= 0 && elapsed < 0.3) {
-        const effect = getEffectById(item.effectId);
-        if (effect && effect.type === 'firework') {
-          _reusableColor.set(effect.color);
-          flashIntensity = Math.max(flashIntensity, 1.0 * (1 - elapsed / 0.3));
-        }
+    if (scan && scan.freshBursts.length > 0) {
+      for (const burst of scan.freshBursts) {
+        _reusableColor.set(burst.color);
+        flashIntensity = 1.0;
       }
     }
 
