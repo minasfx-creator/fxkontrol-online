@@ -248,6 +248,14 @@ class FieldTestEngine {
     return bleFieldTransport.moduleStatus;
   }
 
+  async bleTestCDS(): Promise<void> {
+    await bleFieldTransport.testCDS();
+  }
+
+  get bleCdsStatus(): boolean[] {
+    return bleFieldTransport.moduleStatus.cdsStatus;
+  }
+
   // ─── Commands (Controller) ───────────────────────
   async arm() {
     if (!this.session || this.session.role !== 'controller') return;
