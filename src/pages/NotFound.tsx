@@ -11,7 +11,7 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background relative overflow-hidden">
+    <div className="flex min-h-[100dvh] items-center justify-center bg-background relative overflow-hidden">
       {/* Tactical grid */}
       <div className="absolute inset-0 opacity-[0.02]" style={{
         backgroundImage: 'linear-gradient(hsl(32 100% 50% / 0.5) 1px, transparent 1px), linear-gradient(90deg, hsl(32 100% 50% / 0.5) 1px, transparent 1px)',
