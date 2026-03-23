@@ -119,16 +119,16 @@ export default function FanEffect({
     }
 
     const pGeo = pointsRef.current.geometry;
-    pGeo.setAttribute('position', new THREE.BufferAttribute(p, 3));
-    pGeo.setAttribute('color', new THREE.BufferAttribute(c, 3));
-    pGeo.attributes.position.needsUpdate = true;
-    pGeo.attributes.color.needsUpdate = true;
+    const pPosAttr = pGeo.getAttribute('position') as THREE.BufferAttribute;
+    const pColAttr = pGeo.getAttribute('color') as THREE.BufferAttribute;
+    if (pPosAttr) pPosAttr.needsUpdate = true;
+    if (pColAttr) pColAttr.needsUpdate = true;
 
     const lGeo = linesRef.current.geometry;
-    lGeo.setAttribute('position', new THREE.BufferAttribute(lp, 3));
-    lGeo.setAttribute('color', new THREE.BufferAttribute(lc, 3));
-    lGeo.attributes.position.needsUpdate = true;
-    lGeo.attributes.color.needsUpdate = true;
+    const lPosAttr = lGeo.getAttribute('position') as THREE.BufferAttribute;
+    const lColAttr = lGeo.getAttribute('color') as THREE.BufferAttribute;
+    if (lPosAttr) lPosAttr.needsUpdate = true;
+    if (lColAttr) lColAttr.needsUpdate = true;
   });
 
   return (
