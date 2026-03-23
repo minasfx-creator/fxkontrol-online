@@ -156,7 +156,7 @@ export default function CometEffect({
         THREE.MathUtils.lerp(baseColor.b, 0.7, headHeat * 0.35) * coreBoost,
       );
 
-      ribbonRef.current.addPoint(worldPos, ribbonColor, headHeat);
+      ribbonRef.current.addPoint(_worldPos, _ribbonColor, headHeat);
       const camPos = camera instanceof THREE.PerspectiveCamera ? camera.position : undefined;
       ribbonRef.current.update(delta, camPos);
     }
