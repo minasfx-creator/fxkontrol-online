@@ -141,7 +141,7 @@ export default function CometEffect({
 
     // ── Ribbon trail ──
     if (ribbonRef.current && progress > 0.01 && progress < 0.95) {
-      const worldPos = new THREE.Vector3(
+      _worldPos.set(
         position[0] + headX,
         position[1] + headY,
         position[2] + headZ
@@ -150,7 +150,7 @@ export default function CometEffect({
       const headHeat = Math.max(0, 1 - progress * 0.5);
       // Inner core glow: brighter white-hot at center
       const coreBoost = 1.0 + headHeat * 0.8;
-      const ribbonColor = new THREE.Color(
+      _ribbonColor.setRGB(
         THREE.MathUtils.lerp(baseColor.r, 1.0, headHeat * 0.6) * coreBoost,
         THREE.MathUtils.lerp(baseColor.g, 0.95, headHeat * 0.5) * coreBoost,
         THREE.MathUtils.lerp(baseColor.b, 0.7, headHeat * 0.35) * coreBoost,
