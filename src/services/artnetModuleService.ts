@@ -321,6 +321,7 @@ class ArtNetModuleService {
   }
 
   disconnectModule(moduleId: string) {
+    this.cancelReconnect(moduleId);
     this.stopHeartbeat(moduleId);
     const ws = this.wsConnections.get(moduleId);
     if (ws) {
