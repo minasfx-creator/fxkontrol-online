@@ -99,7 +99,8 @@ export default function MainLayout() {
         className="min-h-screen flex w-full bg-background br2049-vignette"
         style={{ filter: `brightness(${backlight / 100})` }}
       >
-        {!isMobile && <AppSidebar />}
+        {/* Sidebar — renders on all sizes, offcanvas on mobile */}
+        <AppSidebar />
 
         <div className="flex-1 flex flex-col min-w-0">
           {/* ARMED Banner */}
