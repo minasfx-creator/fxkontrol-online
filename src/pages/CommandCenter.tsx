@@ -391,8 +391,8 @@ export default function CommandCenter() {
           </ScrollArea>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-hidden" style={{ paddingBottom: '72px' }}>
+        {/* Content — full bleed */}
+        <div className="flex-1 overflow-hidden min-h-0" style={{ paddingBottom: '64px' }}>
           {isFireMode(activeMode) ? (
             <LiveFiringPanel initialMode={activeMode} standalone />
           ) : (
