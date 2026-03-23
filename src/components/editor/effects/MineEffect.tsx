@@ -244,12 +244,12 @@ export default function MineEffect({
       sizeArr[i] = basePointSize * particleSizes[i];
     }
 
-    geo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
-    geo.setAttribute('size', new THREE.BufferAttribute(sizeArr, 1));
-    geo.attributes.position.needsUpdate = true;
-    geo.attributes.color.needsUpdate = true;
-    geo.attributes.size.needsUpdate = true;
+    const posAttr = geo.getAttribute('position') as THREE.BufferAttribute;
+    const colAttr = geo.getAttribute('color') as THREE.BufferAttribute;
+    const szAttr = geo.getAttribute('size') as THREE.BufferAttribute;
+    if (posAttr) posAttr.needsUpdate = true;
+    if (colAttr) colAttr.needsUpdate = true;
+    if (szAttr) szAttr.needsUpdate = true;
 
     // ── Ground smoke plume ──
     if (smokePointsRef.current && progress > 0.03 && progress < 0.7) {
