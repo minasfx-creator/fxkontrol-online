@@ -554,8 +554,8 @@ function createStylizedFireEmitter(config: StylizedFireConfig): NiagaraEmitter {
     update: [{
       drag: profile.drag,
       gravityScale: profile.gravityScale,
-      curlNoiseStrength: 3 * scale,
-      curlNoiseScale: 0.1,
+      curlNoiseStrength: (isEthereal ? 4.5 : 3) * scale,
+      curlNoiseScale: isEthereal ? 0.08 : 0.1,
       colorOverLife: fireColorOverLife,
       sizeOverLife: [
         { t: 0, value: 0.3 },
