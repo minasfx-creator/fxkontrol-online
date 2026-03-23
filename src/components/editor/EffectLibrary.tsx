@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import CakeBuilder from './CakeBuilder';
 import { Search, ChevronDown, ChevronRight, Flame, Sparkles, Radio, Shapes, Wand2, Zap, Lightbulb, Droplets, Bomb, CandlestickChart as Candle, Waves, Box, GripVertical, Clock, MapPin, Ruler, List, LayoutGrid, Hash, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
@@ -619,6 +620,11 @@ export default function EffectLibrary() {
           </div>
         )}
       </ScrollArea>
+
+      {/* Cake Builder */}
+      <div className="px-3 py-2 border-t border-border/10">
+        <CakeBuilder />
+      </div>
 
       {/* VDL Quick Add */}
       <div className="px-3 py-2 border-t border-border/10">

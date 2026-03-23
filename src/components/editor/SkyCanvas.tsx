@@ -14,6 +14,9 @@ import AlignmentTools from './AlignmentTools';
 import CameraAnimator, { CameraPathPreview } from './CameraAnimator';
 import { FinaleAxesHelper, DoubleClickFocus, FinaleToolbar } from './FinaleViewportTools';
 import { StressTestFireworks, StressTestButton } from './effects/GPUFireworkStressTest';
+import PositionTransformGizmo from './PositionTransformGizmo';
+import KeybindingCheatSheet, { KeybindingTrigger } from './KeybindingCheatSheet';
+import { useKeybindings } from '@/hooks/useKeybindings';
 import ViewportRulers from './ViewportRulers';
 import TrajectoryPaths from './TrajectoryPaths';
 import DroneChoreography from './DroneChoreography';
@@ -1261,6 +1264,8 @@ function CameraBookmarkSaver() {
 }
 
 export default function SkyCanvas() {
+  // Professional keybindings (Finale 3D)
+  useKeybindings();
   const editorMode = useProjectStore((s) => s.editorMode);
   const droneFormations = useProjectStore((s) => s.droneFormations);
   const gpsOrigin = useProjectStore((s) => s.gpsOrigin);
@@ -1512,7 +1517,7 @@ export default function SkyCanvas() {
         <SiteModelRenderer />
         <PositionPins />
         <PyroLaunchAngles />
-        <PyroLaunchAngles />
+        <PositionTransformGizmo />
         {!isMobile && <Rack3DView />}
         <TrajectoryPaths />
         <DroneChoreography />
@@ -1551,6 +1556,7 @@ export default function SkyCanvas() {
         />
       </Canvas>
       </WebGLErrorBoundary>
+      <KeybindingCheatSheet />
 
       {/* ═══ Google Earth Geo Tools UI ═══ */}
       {!isMobile && (
