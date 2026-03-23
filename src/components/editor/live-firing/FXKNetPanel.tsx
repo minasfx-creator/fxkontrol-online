@@ -69,7 +69,7 @@ function TopologyMinimap({ moduleCount }: { moduleCount: number }) {
   );
 }
 
-type TabKey = 'network' | 'module' | 'dmx-io' | 'pixel-map';
+type TabKey = 'network' | 'module' | 'dmx-io' | 'pixel-map' | 'bezier';
 
 export default function FXKNetPanel({ fs = false }: FXKNetPanelProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('network');
@@ -79,6 +79,7 @@ export default function FXKNetPanel({ fs = false }: FXKNetPanelProps) {
     { key: 'module', label: 'MOD', icon: Cpu, sub: 'FIELD' },
     { key: 'dmx-io', label: 'I/O', icon: ArrowLeftRight, sub: 'DMX' },
     { key: 'pixel-map', label: 'PXL', icon: Grid3X3, sub: 'MAP' },
+    { key: 'bezier', label: 'CRV', icon: Spline, sub: 'BÉZIER' },
   ];
 
   return (
