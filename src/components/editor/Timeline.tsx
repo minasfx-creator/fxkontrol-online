@@ -915,6 +915,21 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
 
   const selectionCount = selectedTimelineItemIds.length + (selectedTimelineItemId && !selectedTimelineItemIds.includes(selectedTimelineItemId) ? 1 : 0);
 
+  // Track scroll position for virtualized BeatGrid/TimeRuler
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const updateScroll = () => {
+      setScrollLeft(el.scrollLeft);
+      setViewportWidth(el.clientWidth);
+    };
+    updateScroll();
+    el.addEventListener('scroll', updateScroll, { passive: true });
+    const ro = new ResizeObserver(updateScroll);
+    ro.observe(el);
+    return () => { el.removeEventListener('scroll', updateScroll); ro.disconnect(); };
+  }, []);
+
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
