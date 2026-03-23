@@ -253,7 +253,11 @@ class FieldTestEngine {
     if (!this.session || this.session.role !== 'controller') return;
     this.session.armed = true;
     this.log('arm', '🔑 ARMED');
-    this.channel?.send({ type: 'broadcast', event: 'arm', payload: {} });
+    if (this.session.transport === 'ble') {
+      try { await bleFieldTransport.arm(); } catch (e: any) { this.log('error', e.message); }
+    } else {
+      this.channel?.send({ type: 'broadcast', event: 'arm', payload: {} });
+    }
     this.emit();
   }
 
@@ -261,25 +265,32 @@ class FieldTestEngine {
     if (!this.session || this.session.role !== 'controller') return;
     this.session.armed = false;
     this.log('disarm', '🔒 DISARMED');
-    this.channel?.send({ type: 'broadcast', event: 'disarm', payload: {} });
+    if (this.session.transport === 'ble') {
+      try { await bleFieldTransport.disarm(); } catch (e: any) { this.log('error', e.message); }
+    } else {
+      this.channel?.send({ type: 'broadcast', event: 'disarm', payload: {} });
+    }
     this.emit();
   }
 
   async fire(channel: number) {
     if (!this.session || this.session.role !== 'controller' || !this.session.armed) return;
 
-    const evt: FireEvent = {
-      id: genId(),
-      channel,
-      timestamp: Date.now(),
-      transport: this.session.transport,
-      source: 'controller',
-    };
-
     this.session.stats.firesSent++;
     this.log('fire', `🔥 FIRE CH-${String(channel).padStart(2, '0')}`, { channel });
 
-    this.channel?.send({ type: 'broadcast', event: 'fire', payload: evt });
+    if (this.session.transport === 'ble') {
+      try { await bleFieldTransport.fire(channel); } catch (e: any) { this.log('error', e.message); }
+    } else {
+      const evt: FireEvent = {
+        id: genId(),
+        channel,
+        timestamp: Date.now(),
+        transport: this.session.transport,
+        source: 'controller',
+      };
+      this.channel?.send({ type: 'broadcast', event: 'fire', payload: evt });
+    }
     this.emit();
   }
 
@@ -287,7 +298,11 @@ class FieldTestEngine {
     if (!this.session) return;
     this.session.armed = false;
     this.log('estop', '🚨 E-STOP');
-    this.channel?.send({ type: 'broadcast', event: 'estop', payload: {} });
+    if (this.session.transport === 'ble') {
+      try { await bleFieldTransport.eStop(); } catch (e: any) { this.log('error', e.message); }
+    } else {
+      this.channel?.send({ type: 'broadcast', event: 'estop', payload: {} });
+    }
     this.emit();
   }
 
