@@ -2414,19 +2414,15 @@ const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflec
     const u = uniformsRef.current;
     u.uTime.value = clock.getElapsedTime();
 
-    // Check for active explosions to flash reflections
-    const { timelineItems, currentTime } = useProjectStore.getState();
+    // Use centralized ActiveBurstScanner for reflection flashes
+    const scan = _activeBurstScan;
     let flashIntensity = 0;
     const _reusableColor = u.uReflectionColor.value;
 
-    for (const item of timelineItems) {
-      const elapsed = currentTime - item.startTime;
-      if (elapsed >= 0 && elapsed < 0.3) {
-        const effect = getEffectById(item.effectId);
-        if (effect && effect.type === 'firework') {
-          _reusableColor.set(effect.color);
-          flashIntensity = Math.max(flashIntensity, 1.0 * (1 - elapsed / 0.3));
-        }
+    if (scan && scan.freshBursts.length > 0) {
+      for (const burst of scan.freshBursts) {
+        _reusableColor.set(burst.color);
+        flashIntensity = 1.0;
       }
     }
 
