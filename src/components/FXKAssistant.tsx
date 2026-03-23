@@ -374,7 +374,7 @@ export function FXKAssistant() {
                 boxShadow: '0 0 30px hsl(32 100% 50% / 0.08)',
               }}
             >
-              <Terminal className="h-7 w-7" style={{ color: 'hsl(32 100% 50% / 0.5)' }} />
+              <Sparkles className="h-7 w-7" style={{ color: 'hsl(32 100% 50% / 0.5)' }} />
             </div>
             <p className="text-[8px] font-mono tracking-[0.2em] uppercase text-center" style={{ color: 'hsl(32 100% 50% / 0.45)' }}>
               NEXUS ONLINE · AWAITING INPUT
