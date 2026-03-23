@@ -13,6 +13,7 @@ import { BoxSelectR3F } from './BoxSelectOverlay';
 import AlignmentTools from './AlignmentTools';
 import CameraAnimator, { CameraPathPreview } from './CameraAnimator';
 import { FinaleAxesHelper, DoubleClickFocus, FinaleToolbar } from './FinaleViewportTools';
+import { StressTestFireworks, StressTestButton } from './effects/GPUFireworkStressTest';
 import ViewportRulers from './ViewportRulers';
 import TrajectoryPaths from './TrajectoryPaths';
 import DroneChoreography from './DroneChoreography';
@@ -1529,6 +1530,7 @@ export default function SkyCanvas() {
         <CameraBookmarkSaver />
         <ContactShadowsLayer />
         <PostProcessing activeBurstCount={_activeBurstCount} />
+        <StressTestFireworks />
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
         <DebugFeed />
@@ -1785,6 +1787,11 @@ export default function SkyCanvas() {
 
       {/* ═══ Finale 3D Viewport Tools ═══ */}
       {!isMobile && <FinaleToolbar />}
+      {!isMobile && (
+        <div className="absolute bottom-20 left-3 z-40">
+          <StressTestButton />
+        </div>
+      )}
 
       {/* ═══ Viewport Playback Controls ═══ */}
       <ViewportPlaybackControls />
