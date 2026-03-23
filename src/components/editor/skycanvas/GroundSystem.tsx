@@ -809,6 +809,63 @@ function SFXStageEnvironment() {
 
       <InstancedSFXMarkers stageW={stageW} stageD={stageD} stageHeight={stageHeight} />
 
+      {/* ═══ Floating Orb Props — BP_Sphere/M_Orb reference ═══ */}
+      {[-8, 0, 8].map((x, i) => (
+        <group key={`orb-${i}`} position={[x, stageHeight + 4 + Math.sin(i * 1.5) * 0.3, 2]}>
+          <mesh>
+            <sphereGeometry args={[0.8, 24, 24]} />
+            <meshStandardMaterial
+              color="#110033"
+              emissive="#4400ff"
+              emissiveIntensity={1.5}
+              metalness={0.95}
+              roughness={0.05}
+            />
+          </mesh>
+          <mesh>
+            <sphereGeometry args={[1.2, 16, 16]} />
+            <meshBasicMaterial color="#4400ff" transparent opacity={0.08} blending={THREE.AdditiveBlending} depthWrite={false} />
+          </mesh>
+          <pointLight color="#4400ff" intensity={0.8} distance={8} decay={2} />
+        </group>
+      ))}
+
+      {/* ═══ Pyro Pot Fixtures — BP_Pyro_v4 reference ═══ */}
+      {[-16, -8, 0, 8, 16].map((x, i) => (
+        <group key={`pyro-pot-${i}`} position={[x, stageHeight + 0.1, stageD / 2 - 0.5]}>
+          <mesh>
+            <cylinderGeometry args={[0.15, 0.2, 0.35, 8]} />
+            <meshStandardMaterial color="#1a1a1a" metalness={0.85} roughness={0.2} />
+          </mesh>
+          <mesh position={[0.08, 0.12, 0.08]}>
+            <sphereGeometry args={[0.03, 6, 6]} />
+            <meshBasicMaterial color="#ff2200" />
+          </mesh>
+          <mesh position={[0, 0.2, 0]}>
+            <cylinderGeometry args={[0.04, 0.06, 0.08, 6]} />
+            <meshStandardMaterial color="#333333" metalness={0.9} roughness={0.15} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* ═══ DMX Control Rack — DMXSetter reference ═══ */}
+      <group position={[stageW / 2 - 4, stageHeight + 0.9, -stageD / 2 - 2]}>
+        <mesh>
+          <boxGeometry args={[0.6, 1.8, 0.5]} />
+          <meshStandardMaterial color="#0a0a0a" metalness={0.9} roughness={0.15} />
+        </mesh>
+        {[0.5, 0.2, -0.1, -0.4].map((y, i) => (
+          <mesh key={`dmx-led-${i}`} position={[0.31, y, 0]}>
+            <sphereGeometry args={[0.02, 6, 6]} />
+            <meshBasicMaterial color={i === 0 ? '#00ff44' : '#00cc33'} />
+          </mesh>
+        ))}
+        <mesh>
+          <boxGeometry args={[0.65, 1.85, 0.55]} />
+          <meshBasicMaterial color="#0044aa" transparent opacity={0.04} wireframe />
+        </mesh>
+      </group>
+
       {/* Atmospheric haze volume — makes beams visible like UE5 */}
       <mesh position={[0, riggingY / 2 + stageHeight, 0]}>
         <boxGeometry args={[stageW + 10, riggingY + 4, stageD + 20]} />
