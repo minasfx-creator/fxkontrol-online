@@ -19,20 +19,29 @@ import {
 } from '@/lib/hcaSafetyLayer';
 import { cn } from '@/lib/utils';
 
+// ── NFPA-compliant high-contrast color scheme ──
 const ESCALATION_COLORS: Record<EscalationLevel, string> = {
-  nominal: 'text-green-400',
-  advisory: 'text-blue-400',
-  caution: 'text-yellow-400',
-  warning: 'text-orange-400',
-  abort: 'text-red-500',
+  nominal: 'text-emerald-300',
+  advisory: 'text-sky-300',
+  caution: 'text-amber-300',
+  warning: 'text-orange-300',
+  abort: 'text-red-400 font-black',
 };
 
 const ESCALATION_BG: Record<EscalationLevel, string> = {
-  nominal: 'bg-green-500/10 border-green-500/30',
-  advisory: 'bg-blue-500/10 border-blue-500/30',
-  caution: 'bg-yellow-500/10 border-yellow-500/30',
-  warning: 'bg-orange-500/10 border-orange-500/30',
-  abort: 'bg-red-500/10 border-red-500/30',
+  nominal: 'bg-emerald-500/15 border-emerald-400/50',
+  advisory: 'bg-sky-500/15 border-sky-400/50',
+  caution: 'bg-amber-500/20 border-amber-400/60',
+  warning: 'bg-orange-500/25 border-orange-400/70',
+  abort: 'bg-red-500/30 border-red-500/80 ring-1 ring-red-500/50',
+};
+
+const ESCALATION_ICONS: Record<EscalationLevel, string> = {
+  nominal: '✅',
+  advisory: 'ℹ️',
+  caution: '⚠️',
+  warning: '🔶',
+  abort: '🛑',
 };
 
 export default function SafetyPanel() {
