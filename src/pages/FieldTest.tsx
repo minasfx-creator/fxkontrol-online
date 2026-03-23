@@ -971,7 +971,7 @@ export default function FieldTest() {
   }
 
   return (
-    <div className="bg-background min-h-screen">
+    <div className="bg-background min-h-[100dvh]">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border/30">
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>
           <ArrowLeft className="w-4 h-4" />

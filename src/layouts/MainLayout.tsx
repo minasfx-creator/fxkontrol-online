@@ -109,7 +109,7 @@ export default function MainLayout() {
   return (
     <SidebarProvider defaultOpen={!isMobile}>
       <div
-        className="min-h-screen flex w-full bg-background br2049-vignette"
+        className="min-h-[100dvh] flex w-full bg-background br2049-vignette"
         style={{ filter: `brightness(${backlight / 100})` }}
       >
         {/* Sidebar — renders on all sizes, offcanvas on mobile */}

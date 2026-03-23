@@ -761,10 +761,11 @@ body.night-mode {
     90deg,
     transparent,
     transparent 120px,
-    hsl(32 100% 50% / 0.015) 120px,
-    hsl(32 100% 50% / 0.015) 121px
+    hsl(32 100% 50% / 0.012) 120px,
+    hsl(32 100% 50% / 0.012) 121px
   );
-  background-size: 100% 200vh;
+  background-size: 121px 100%;
+  will-change: transform;
   animation: rain-fall 8s linear infinite;
 }
 
@@ -773,8 +774,8 @@ body.night-mode {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 50;
-  background: radial-gradient(ellipse at center, transparent 50%, hsl(20 30% 3% / 0.4) 100%);
+  z-index: 0;
+  background: radial-gradient(ellipse at center, transparent 55%, hsl(20 30% 3% / 0.35) 100%);
 }
 
 /* ===== BR2049 Console Boot Animations ===== */
