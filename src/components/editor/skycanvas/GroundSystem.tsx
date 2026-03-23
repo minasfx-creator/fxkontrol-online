@@ -12,6 +12,7 @@ import * as THREE from 'three';
 import { useSceneStore } from '@/store/useSceneStore';
 import { createVolumetricFogPlane } from '@/render_ultra/environment/volumetricFog';
 import CrowdSystem from './CrowdSystem';
+import StageFlameJets from './StageFlameJets';
 
 // ═══════════════════════════════════════════════════════════════════════
 // Moon
@@ -934,6 +935,9 @@ function SFXStageEnvironment() {
 
       {/* Procedural audience — FOH area */}
       <CrowdSystem />
+
+      {/* Stylized flame jets — BP_FountainLight / NS_Stylized_Fire reference */}
+      <StageFlameJets />
     </group>
   );
 }

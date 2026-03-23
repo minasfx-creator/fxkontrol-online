@@ -406,6 +406,134 @@ function createEmberEmitterTemplate(caliber: number, color: THREE.Color): Niagar
   });
 }
 
+// ── Stylized Fire Presets — NS_Stylized_Fire UE5 reference ──────────
+
+type StylizedFirePreset = 'stylized-fire-01' | 'stylized-fire-02' | 'stylized-fire-radial-01' | 'stylized-fire-radial-02' | 'stylized-fire-large-01';
+type StylizedFireMode = 'infinite' | 'once';
+
+interface StylizedFireConfig {
+  preset: StylizedFirePreset;
+  mode: StylizedFireMode;
+  position: THREE.Vector3;
+  scale?: number;
+  color?: THREE.Color;
+}
+
+const STYLIZED_FIRE_PROFILES: Record<StylizedFirePreset, {
+  particleCount: number;
+  lifetime: [number, number];
+  velocity: { min: THREE.Vector3; max: THREE.Vector3 };
+  size: [number, number];
+  spawnRadius: number;
+  gravityScale: number;
+  drag: number;
+}> = {
+  'stylized-fire-01': {
+    particleCount: 60,
+    lifetime: [0.4, 1.2],
+    velocity: { min: new THREE.Vector3(-0.8, 2, -0.8), max: new THREE.Vector3(0.8, 6, 0.8) },
+    size: [0.3, 0.8],
+    spawnRadius: 0.5,
+    gravityScale: -0.3,
+    drag: 0.5,
+  },
+  'stylized-fire-02': {
+    particleCount: 80,
+    lifetime: [0.3, 1.0],
+    velocity: { min: new THREE.Vector3(-1.2, 1.5, -1.2), max: new THREE.Vector3(1.2, 5, 1.2) },
+    size: [0.4, 1.0],
+    spawnRadius: 0.8,
+    gravityScale: -0.25,
+    drag: 0.6,
+  },
+  'stylized-fire-radial-01': {
+    particleCount: 120,
+    lifetime: [0.2, 0.8],
+    velocity: { min: new THREE.Vector3(-4, 0.5, -4), max: new THREE.Vector3(4, 5, 4) },
+    size: [0.5, 1.5],
+    spawnRadius: 0.3,
+    gravityScale: -0.1,
+    drag: 0.8,
+  },
+  'stylized-fire-radial-02': {
+    particleCount: 150,
+    lifetime: [0.15, 0.6],
+    velocity: { min: new THREE.Vector3(-6, 1, -6), max: new THREE.Vector3(6, 8, 6) },
+    size: [0.6, 2.0],
+    spawnRadius: 0.2,
+    gravityScale: -0.05,
+    drag: 1.0,
+  },
+  'stylized-fire-large-01': {
+    particleCount: 100,
+    lifetime: [0.5, 1.8],
+    velocity: { min: new THREE.Vector3(-1.5, 3, -1.5), max: new THREE.Vector3(1.5, 10, 1.5) },
+    size: [0.8, 2.5],
+    spawnRadius: 1.2,
+    gravityScale: -0.4,
+    drag: 0.4,
+  },
+};
+
+function createStylizedFireEmitter(config: StylizedFireConfig): NiagaraEmitter {
+  const profile = STYLIZED_FIRE_PROFILES[config.preset];
+  const scale = config.scale ?? 1;
+  const baseColor = config.color ?? new THREE.Color(1, 0.5, 0.05);
+
+  const fireColorOverLife = [
+    { t: 0, color: new THREE.Color(1.5, 1.3, 0.3) },
+    { t: 0.15, color: baseColor.clone().multiplyScalar(1.8) },
+    { t: 0.35, color: baseColor.clone() },
+    { t: 0.55, color: new THREE.Color(0.9, 0.2, 0.02) },
+    { t: 0.75, color: new THREE.Color(0.3, 0.05, 0.01) },
+    { t: 1, color: new THREE.Color(0.05, 0.01, 0.0) },
+  ];
+
+  return createEmitter({
+    id: `stylized-fire-${config.preset}-${Date.now()}-${Math.random()}`,
+    name: `Stylized Fire ${config.preset}`,
+    maxParticles: Math.round(profile.particleCount * scale),
+    spawn: config.mode === 'infinite'
+      ? { rate: profile.particleCount * 2, burstCount: 0, burstInterval: 0, burstDelay: 0 }
+      : { rate: 0, burstCount: profile.particleCount, burstInterval: 0, burstDelay: 0 },
+    init: {
+      lifetime: profile.lifetime,
+      size: [profile.size[0] * scale, profile.size[1] * scale],
+      velocity: {
+        min: profile.velocity.min.clone().multiplyScalar(scale),
+        max: profile.velocity.max.clone().multiplyScalar(scale),
+      },
+      color: baseColor,
+      spawnShape: { type: 'sphere', radius: profile.spawnRadius * scale, surfaceOnly: false },
+    },
+    update: [{
+      drag: profile.drag,
+      gravityScale: profile.gravityScale,
+      curlNoiseStrength: 3 * scale,
+      curlNoiseScale: 0.1,
+      colorOverLife: fireColorOverLife,
+      sizeOverLife: [
+        { t: 0, value: 0.3 },
+        { t: 0.15, value: 1.0 },
+        { t: 0.5, value: 0.7 },
+        { t: 0.8, value: 0.3 },
+        { t: 1, value: 0 },
+      ],
+      rotationRate: 1.5,
+    }],
+    render: {
+      mode: 'gpu-sprite',
+      blendMode: 'additive',
+      softParticles: true,
+      softRange: 0.5,
+    },
+  });
+}
+
+// Expose for stage flame jets
+export { createStylizedFireEmitter, STYLIZED_FIRE_PROFILES };
+export type { StylizedFireConfig, StylizedFirePreset, StylizedFireMode };
+
 // ── Active VFX System Pool ──────────────────────────────────────────
 
 interface ActiveVFXSystem {
