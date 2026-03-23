@@ -234,29 +234,19 @@ export default function DMXBezierEditor({ fs = false }: { fs?: boolean }) {
     createDefaultCurve(2, 0),
   ]);
   const [activeCurveId, setActiveCurveId] = useState<string | null>(curves[0]?.id ?? null);
-  const [playheadTime, setPlayheadTime] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<CurvePreset>('ease-in-out');
-  const animRef = useRef<number>(0);
-  const lastTimeRef = useRef(performance.now());
+  const [sequenceDuration] = useState(10); // seconds — base loop duration
 
-  // Playback loop
-  useEffect(() => {
-    if (!isPlaying) return;
-    lastTimeRef.current = performance.now();
-    const tick = () => {
-      const now = performance.now();
-      const dt = (now - lastTimeRef.current) / 1000;
-      lastTimeRef.current = now;
-      setPlayheadTime(t => {
-        const next = t + dt * 0.25; // 4s full cycle
-        return next >= 1 ? 0 : next;
-      });
-      animRef.current = requestAnimationFrame(tick);
-    };
-    animRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(animRef.current);
-  }, [isPlaying]);
+  // Master Clock sync — consume global playhead
+  const currentTime = useProjectStore(s => s.currentTime);
+  const duration = useProjectStore(s => s.duration);
+  const isPlaying = useProjectStore(s => s.isPlaying);
+
+  // Normalize global time to 0–1 range using sequence duration (looping)
+  const playheadTime = useMemo(() => {
+    const effectiveDuration = Math.min(sequenceDuration, duration || sequenceDuration);
+    return (currentTime % effectiveDuration) / effectiveDuration;
+  }, [currentTime, sequenceDuration, duration]);
 
   const handlePointMove = useCallback((curveId: string, pointIdx: number, time: number, value: number) => {
     setCurves(prev => prev.map(c => {
