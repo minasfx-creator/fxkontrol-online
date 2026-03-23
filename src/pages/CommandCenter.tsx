@@ -88,6 +88,7 @@ const MOBILE_CATEGORIES = [
 ];
 
 export default function CommandCenter() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialMode = (searchParams.get('mode') as CommandMode) || 'show_control';
   const [activeMode, setActiveMode] = useState<CommandMode>(initialMode);
