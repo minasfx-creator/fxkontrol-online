@@ -336,7 +336,7 @@ export function FXKAssistant() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] font-mono font-bold tracking-[0.25em] uppercase" style={{ color: 'hsl(32 100% 60%)' }}>
-              FXK-AI · NEXUS
+              JOI · NEXUS
             </span>
             {/* Connection indicator */}
             <div className={cn("w-1.5 h-1.5 rounded-full",
@@ -344,7 +344,7 @@ export function FXKAssistant() {
             )} style={{ boxShadow: connectionOk === true ? '0 0 4px hsl(120 70% 50%)' : 'none' }} />
           </div>
           <span className="text-[7px] font-mono tracking-[0.15em] uppercase" style={{ color: 'hsl(32 100% 50% / 0.4)' }}>
-            {loading ? 'PROCESSING...' : 'HOLOGRAPHIC INTERFACE'}
+            {loading ? 'PROCESSING...' : 'HOLOGRAPHIC COMPANION'}
           </span>
         </div>
 
