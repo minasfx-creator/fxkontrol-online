@@ -1,6 +1,9 @@
 /**
  * LightingSystem — Adaptive exposure, GI, lens flares, ground reflections,
  * contact shadows, and debug feed. Extracted from SkyCanvas.
+ * 
+ * Zero-GC: All per-frame allocations eliminated. Pre-allocated vectors/colors
+ * are reused via module-level singletons and useRef/useMemo.
  */
 import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
@@ -16,16 +19,22 @@ import { setAdaptivePipelineState } from '@/lib/niagaraBlenderRules';
 import { updateAdaptiveLOD } from '@/hooks/useLOD';
 import {
   hexToCompound,
+  getEffectById,
   getActiveBurstScan,
   getSkyScatterUniforms,
   setAdaptiveExposureValue,
 } from './sharedState';
 
-// These setters are imported from SkyCanvas's RenderDebugOverlay
 import { setDebugExposure, setDebugBurstLoad, setDebugLOD, setDebugRendererInfo } from '../RenderDebugOverlay';
+
+// ═══ Module-level singletons — Zero-GC reusable objects ═══
+const _flarePos = new THREE.Vector3();
+const _flareColor = new THREE.Color();
+const _giProbeColor = new THREE.Color();
 
 // ═══════════════════════════════════════════════════════════════════════
 // AdaptiveExposureController
+// Uses getEffectById() for O(1) lookups instead of EFFECT_LIBRARY.find()
 // ═══════════════════════════════════════════════════════════════════════
 export const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function AdaptiveExposureController(_props, _ref) {
   const exposureRef = useRef(createExposureController());
@@ -49,7 +58,7 @@ export const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(func
       luminance += elapsed < 0.5 ? 3.0 : 0.5;
 
       if (elapsed < 0.3) {
-        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+        const effect = getEffectById(item.effectId);
         if (effect && effect.type === 'firework') {
           const intensity = 0.4 * (1 - elapsed / 0.3);
           _scatterAccum.add(_tmpColor.set(effect.color).multiplyScalar(Math.min(intensity * 0.3, 0.15)));
@@ -89,7 +98,7 @@ export const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(func
 });
 
 // ═══════════════════════════════════════════════════════════════════════
-// ContactShadowsLayer
+// ContactShadowsLayer — no per-frame work, already clean
 // ═══════════════════════════════════════════════════════════════════════
 export function ContactShadowsLayer() {
   const s = useSceneStore(st => st.settings);
@@ -108,7 +117,7 @@ export function ContactShadowsLayer() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// DebugFeed — FPS counter, draw calls, adaptive LOD
+// DebugFeed — FPS counter, draw calls, adaptive LOD (already zero-GC)
 // ═══════════════════════════════════════════════════════════════════════
 export const DebugFeed = React.forwardRef<THREE.Group, {}>(function DebugFeed(_props, _ref) {
   const { gl, camera } = useThree();
@@ -135,6 +144,7 @@ export const DebugFeed = React.forwardRef<THREE.Group, {}>(function DebugFeed(_p
 
 // ═══════════════════════════════════════════════════════════════════════
 // GlobalIlluminationController — explosion-driven GI probes
+// Zero-GC: reuses _giProbeColor instead of compound.color.clone()
 // ═══════════════════════════════════════════════════════════════════════
 export const GlobalIlluminationController = React.forwardRef<THREE.Group, {}>(function GlobalIlluminationController(_props, _ref) {
   const giRef = useRef<GlobalIlluminationSystem | null>(null);
@@ -158,9 +168,10 @@ export const GlobalIlluminationController = React.forwardRef<THREE.Group, {}>(fu
       for (const burst of scan.freshBursts) {
         const compound = hexToCompound(burst.color);
         _probePos.set(burst.x, burst.y, burst.z);
+        _giProbeColor.copy(compound.color);
         gi.addExplosionProbe(
           _probePos,
-          compound.color.clone(),
+          _giProbeColor,
           compound.emissionIntensity * 0.6
         );
       }
@@ -173,6 +184,7 @@ export const GlobalIlluminationController = React.forwardRef<THREE.Group, {}>(fu
 
 // ═══════════════════════════════════════════════════════════════════════
 // LensFlareController — cinematic optics on bright bursts
+// Zero-GC: reuses _flarePos/_flareColor singletons, uses getEffectById() O(1)
 // ═══════════════════════════════════════════════════════════════════════
 export const LensFlareController = React.forwardRef<THREE.Group, {}>(function LensFlareController(_props, _ref) {
   const spritesRef = useRef<THREE.Sprite[]>([]);
@@ -202,17 +214,19 @@ export const LensFlareController = React.forwardRef<THREE.Group, {}>(function Le
     }
 
     const { timelineItems, currentTime } = useProjectStore.getState();
-    for (const item of timelineItems) {
+    for (let i = 0; i < timelineItems.length; i++) {
+      const item = timelineItems[i];
       const elapsed = currentTime - item.startTime;
       if (elapsed >= 0 && elapsed < 0.03) {
-        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+        const effect = getEffectById(item.effectId);
         if (effect && effect.type === 'firework') {
           const caliber = effect.caliber || 4;
           const breakH = getBreakHeight(caliber);
-          const pos = new THREE.Vector3(item.position.x, item.position.y + breakH, item.position.z);
+          _flarePos.set(item.position.x, item.position.y + breakH, item.position.z);
           const caliberScale = caliber / 6;
           const sprite = sprites[poolIdx.current % sprites.length];
-          flashLensFlare(sprite, pos, Math.min(1, 0.5 * caliberScale), new THREE.Color(effect.color));
+          _flareColor.set(effect.color);
+          flashLensFlare(sprite, _flarePos, Math.min(1, 0.5 * caliberScale), _flareColor);
           poolIdx.current++;
         }
       }
@@ -224,6 +238,7 @@ export const LensFlareController = React.forwardRef<THREE.Group, {}>(function Le
 
 // ═══════════════════════════════════════════════════════════════════════
 // GroundReflections — wet-floor reflections from explosions
+// Zero-GC: uses getEffectById() O(1), reuses uniform color in-place
 // ═══════════════════════════════════════════════════════════════════════
 export const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflections(_props, _ref) {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -243,10 +258,11 @@ export const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function Groun
     let flashIntensity = 0;
     const _reusableColor = u.uReflectionColor.value;
 
-    for (const item of timelineItems) {
+    for (let i = 0; i < timelineItems.length; i++) {
+      const item = timelineItems[i];
       const elapsed = currentTime - item.startTime;
       if (elapsed >= 0 && elapsed < 0.3) {
-        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+        const effect = getEffectById(item.effectId);
         if (effect && effect.type === 'firework') {
           _reusableColor.set(effect.color);
           flashIntensity = Math.max(flashIntensity, 1.0 * (1 - elapsed / 0.3));
