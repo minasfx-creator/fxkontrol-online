@@ -24,7 +24,7 @@ export default function LaserEffect({
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
-  const beamLength = pattern === 'single' ? 140 : pattern === 'tunnel' || pattern === 'cone' ? 70 : 90;
+  const beamLength = pattern === 'single' ? 160 : pattern === 'tunnel' || pattern === 'cone' ? 100 : 140;
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
@@ -109,21 +109,21 @@ export default function LaserEffect({
       const core = beamGroup.children[0] as THREE.Mesh;
       if (core) {
         const mat = core.material as THREE.MeshBasicMaterial;
-        mat.opacity = 0.7 * finalOpacity;
-        mat.color.copy(baseColor).multiplyScalar(2.5); // HDR push
+        mat.opacity = 0.85 * finalOpacity;
+        mat.color.copy(baseColor).multiplyScalar(3.0); // HDR push - extended
       }
 
       // Inner glow
       const glow1 = beamGroup.children[1] as THREE.Mesh;
-      if (glow1) (glow1.material as THREE.MeshBasicMaterial).opacity = 0.2 * finalOpacity;
+      if (glow1) (glow1.material as THREE.MeshBasicMaterial).opacity = 0.28 * finalOpacity;
 
       // Outer glow
       const glow2 = beamGroup.children[2] as THREE.Mesh;
-      if (glow2) (glow2.material as THREE.MeshBasicMaterial).opacity = 0.09 * finalOpacity;
+      if (glow2) (glow2.material as THREE.MeshBasicMaterial).opacity = 0.13 * finalOpacity;
 
       // Wide atmospheric glow
       const atmo = beamGroup.children[3] as THREE.Mesh;
-      if (atmo) (atmo.material as THREE.MeshBasicMaterial).opacity = 0.04 * finalOpacity;
+      if (atmo) (atmo.material as THREE.MeshBasicMaterial).opacity = 0.06 * finalOpacity;
     }
 
     // Source halo — intensified HDR emitter
@@ -171,7 +171,7 @@ export default function LaserEffect({
             <cylinderGeometry args={[0.004, 0.018, beamLength, 4]} />
             <meshBasicMaterial
               color={color}
-              transparent opacity={0.55}
+              transparent opacity={0.7}
               blending={hardLightBlend.blending}
               blendEquation={hardLightBlend.blendEquation}
               blendSrc={hardLightBlend.blendSrc as any}
@@ -186,7 +186,7 @@ export default function LaserEffect({
             <planeGeometry args={[0.2, beamLength]} />
             <meshBasicMaterial
               color={color}
-              transparent opacity={0.15}
+              transparent opacity={0.22}
               blending={screenBlend.blending}
               blendEquation={screenBlend.blendEquation}
               blendSrc={screenBlend.blendSrc as any}
@@ -201,7 +201,7 @@ export default function LaserEffect({
             <planeGeometry args={[0.2, beamLength]} />
             <meshBasicMaterial
               color={color}
-              transparent opacity={0.06}
+              transparent opacity={0.10}
               blending={screenBlend.blending}
               blendEquation={screenBlend.blendEquation}
               blendSrc={screenBlend.blendSrc as any}
@@ -216,7 +216,7 @@ export default function LaserEffect({
             <planeGeometry args={[0.6, beamLength]} />
             <meshBasicMaterial
               color={color}
-              transparent opacity={0.025}
+              transparent opacity={0.04}
               blending={screenBlend.blending}
               blendEquation={screenBlend.blendEquation}
               blendSrc={screenBlend.blendSrc as any}
