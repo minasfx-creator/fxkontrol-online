@@ -145,6 +145,9 @@ export default function CommandCenter() {
   const handleModeChange = useCallback((mode: CommandMode) => {
     if (mode === activeMode || bootConsole) return;
     ambientSound.play('boot');
+    // Sync mobile category to target mode's section
+    const sectionIdx = MODE_SECTIONS.findIndex(s => s.modes.some(m => m.key === mode));
+    if (sectionIdx >= 0) setMobileCategory(sectionIdx);
     // Swap-out current content, then boot new console
     setSwapPhase('out');
     setTimeout(() => {
