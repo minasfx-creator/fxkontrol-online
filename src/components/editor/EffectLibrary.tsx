@@ -621,6 +621,11 @@ export default function EffectLibrary() {
         )}
       </ScrollArea>
 
+      {/* Cake Builder */}
+      <div className="px-3 py-2 border-t border-border/10">
+        <CakeBuilder />
+      </div>
+
       {/* VDL Quick Add */}
       <div className="px-3 py-2 border-t border-border/10">
         <div className="flex items-center gap-1.5 mb-1.5">
