@@ -327,8 +327,8 @@ export const UE5_BLUEPRINT_MAP: Record<string, string> = {
   'BP_StaticMatrix_v2': 'led-matrix-panel',
   'BP_Strobe1_v3': 'strobe-high-power',
   'BP_Sphere': 'generic-rgbw',
-  'BP_Firework_v2': 'drone-led',
-  'BP_Pyro_v4': 'sfx-flame',
+  'BP_Firework_v2': 'sfx-firework-dmx',
+  'BP_Pyro_v4': 'sfx-pyro-dmx',
   'BP_Laser_Extended': 'generic-rgb',
   'DMXLib_v4': 'generic-rgbw',
 };
