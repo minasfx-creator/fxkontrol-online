@@ -281,7 +281,10 @@ export function FXKAssistant() {
     return (
       <div
         onClick={() => setMinimized(false)}
-        className="fixed bottom-5 right-5 z-50 w-56 cursor-pointer rounded-lg border px-3 py-2 flex items-center gap-2"
+        className={cn(
+          "fixed z-[60] w-56 cursor-pointer rounded-lg border px-3 py-2 flex items-center gap-2",
+          isMobile ? "bottom-20 right-3" : "bottom-5 right-5"
+        )}
         style={{
           background: 'hsl(220 22% 5% / 0.92)',
           borderColor: 'hsl(32 100% 50% / 0.3)',
@@ -290,7 +293,7 @@ export function FXKAssistant() {
       >
         <VoiceWave active={loading} />
         <span className="text-[10px] font-mono tracking-[0.2em] uppercase" style={{ color: 'hsl(32 100% 60%)' }}>
-          FXK-AI · NEXUS
+          JOI · NEXUS
         </span>
       </div>
     );
