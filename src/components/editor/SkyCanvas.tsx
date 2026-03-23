@@ -1440,7 +1440,7 @@ export default function SkyCanvas() {
           logarithmicDepthBuffer: true,
           outputColorSpace: THREE.SRGBColorSpace,
         }}
-        dpr={isMobile ? [1, 1.5] : [1, 2]}
+        dpr={isMobile ? [1, 1.5] : [1.5, 2]}
         performance={{ min: 0.5 }}
         onCreated={({ gl }) => {
           const canvas = gl.domElement;
