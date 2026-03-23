@@ -341,6 +341,47 @@ class ColorGradingEffect extends Effect {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// DownSample Blur Effect — BP_DownSampleSceneCapture (optimized glow)
+// ═══════════════════════════════════════════════════════════════════════
+
+const DOWNSAMPLE_BLUR_FRAGMENT = `
+uniform float intensity;
+uniform float radius;
+
+void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+  vec2 texelSize = 1.0 / resolution * radius;
+  
+  vec4 sum = inputColor;
+  sum += texture2D(inputBuffer, uv + vec2(-texelSize.x, -texelSize.y));
+  sum += texture2D(inputBuffer, uv + vec2( texelSize.x, -texelSize.y));
+  sum += texture2D(inputBuffer, uv + vec2(-texelSize.x,  texelSize.y));
+  sum += texture2D(inputBuffer, uv + vec2( texelSize.x,  texelSize.y));
+  
+  vec2 texel2 = texelSize * 2.0;
+  sum += texture2D(inputBuffer, uv + vec2(-texel2.x, 0.0)) * 0.5;
+  sum += texture2D(inputBuffer, uv + vec2( texel2.x, 0.0)) * 0.5;
+  sum += texture2D(inputBuffer, uv + vec2(0.0, -texel2.y)) * 0.5;
+  sum += texture2D(inputBuffer, uv + vec2(0.0,  texel2.y)) * 0.5;
+  
+  vec4 blurred = sum / 7.0;
+  outputColor = mix(inputColor, blurred, intensity);
+}
+`;
+
+class DownSampleBlurEffect extends Effect {
+  constructor({ intensity = 0.15, radius = 2.0 }: { intensity?: number; radius?: number } = {}) {
+    super('DownSampleBlurEffect', DOWNSAMPLE_BLUR_FRAGMENT, {
+      uniforms: new Map([
+        ['intensity', new Uniform(intensity)],
+        ['radius', new Uniform(radius)],
+      ]),
+    });
+  }
+  set intensity(value: number) { (this.uniforms.get('intensity') as Uniform).value = value; }
+  set radius(value: number) { (this.uniforms.get('radius') as Uniform).value = value; }
+}
+
 // ═══ Wrapper Components ═══
 
 const Sharpen = forwardRef<SharpenEffect, { strength?: number }>(function Sharpen({ strength = 0.1 }, ref) {
@@ -370,6 +411,12 @@ const GodRays = forwardRef<GodRaysEffect, { intensity?: number }>(function GodRa
 const ColorGrading = forwardRef<ColorGradingEffect, { preset?: ColorGradingPreset }>(function ColorGrading({ preset = 'neutral' }, ref) {
   const effect = useMemo(() => new ColorGradingEffect({ preset }), []);
   useMemo(() => { effect.preset = preset; }, [effect, preset]);
+  return <primitive ref={ref} object={effect} />;
+});
+
+const DownSampleBlur = forwardRef<DownSampleBlurEffect, { intensity?: number }>(function DownSampleBlur({ intensity = 0.15 }, ref) {
+  const effect = useMemo(() => new DownSampleBlurEffect({ intensity }), []);
+  useMemo(() => { effect.intensity = intensity; }, [effect, intensity]);
   return <primitive ref={ref} object={effect} />;
 });
 
@@ -483,6 +530,11 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
           mipmapBlur
         />
       ))}
+
+      {/* ═══ Downsample Blur — BP_DownSampleSceneCapture ═══ */}
+      {str > 0.5 && (
+        <DownSampleBlur intensity={0.15} />
+      )}
 
       {/* ═══ Heat Distortion — UE5 Niagara Heat Haze ═══ */}
       {s.heatDistortionEnabled && hasBursts && (

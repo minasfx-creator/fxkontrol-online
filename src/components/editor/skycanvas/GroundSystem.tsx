@@ -645,8 +645,9 @@ function SFXStageEnvironment() {
   const ledWallRef = useRef<THREE.Mesh>(null);
   const ledSideRefs = useRef<(THREE.Mesh | null)[]>([]);
   const orbRefs = useRef<(THREE.Group | null)[]>([]);
+  const dmxPointLightRefs = useRef<(THREE.PointLight | null)[]>([]);
 
-  const orbBaseY = 1.2 + 4; // stageHeight + 4
+  const orbBaseY = 1.2 + 4;
 
   useFrame((_, delta) => {
     timeRef.current += delta;
@@ -672,9 +673,15 @@ function SFXStageEnvironment() {
         mat.color.setHSL(hue, 0.7, 0.06);
       }
     });
-    // Orb bobbing animation
     orbRefs.current.forEach((orb, i) => {
       if (orb) orb.position.y = orbBaseY + Math.sin(t * 0.8 + i * 2.1) * 0.5;
+    });
+    // DMX Point Light hue rotation
+    dmxPointLightRefs.current.forEach((light, i) => {
+      if (light) {
+        const hue = (t * 0.05 + i * 0.25) % 1;
+        light.color.setHSL(hue, 0.7, 0.5);
+      }
     });
   });
 
@@ -872,6 +879,34 @@ function SFXStageEnvironment() {
           <meshBasicMaterial color="#0044aa" transparent opacity={0.04} wireframe />
         </mesh>
       </group>
+
+      {/* ═══ DMX Point Lights — BP_DMXPointLight reference ═══ */}
+      {[
+        [-(stageW / 2 - 2), riggingY - 0.5, -(stageD / 2 - 2)],
+        [stageW / 2 - 2, riggingY - 0.5, -(stageD / 2 - 2)],
+        [-(stageW / 2 - 2), riggingY - 0.5, stageD / 2 - 2],
+        [stageW / 2 - 2, riggingY - 0.5, stageD / 2 - 2],
+      ].map((pos, i) => (
+        <group key={`dmx-pl-${i}`} position={pos as [number, number, number]}>
+          <mesh>
+            <sphereGeometry args={[0.12, 12, 12]} />
+            <meshStandardMaterial
+              color="#222222"
+              emissive="#ffffff"
+              emissiveIntensity={0.6}
+              metalness={0.9}
+              roughness={Math.max(0.02, 0.1)}
+            />
+          </mesh>
+          <pointLight
+            ref={el => { dmxPointLightRefs.current[i] = el; }}
+            color="#ffffff"
+            intensity={1.2}
+            distance={20}
+            decay={2}
+          />
+        </group>
+      ))}
 
       {/* Atmospheric haze volume — makes beams visible like UE5 */}
       <mesh position={[0, riggingY / 2 + stageHeight, 0]}>

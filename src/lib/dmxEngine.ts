@@ -113,6 +113,11 @@ export const DMX_ATTRIBUTE_LIBRARY: Record<string, DMXAttributeDefinition> = {
   X:                { name: 'X',                category: 'position', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Position X' },
   Y:                { name: 'Y',                category: 'position', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Position Y' },
   Z:                { name: 'Z',                category: 'position', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Position Z' },
+
+  // ── Water Fountain (from DMXLib_WaterFountain) ──
+  WaterPressure:    { name: 'WaterPressure',    category: 'effects', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Water pump pressure' },
+  WaterHeight:      { name: 'WaterHeight',      category: 'effects', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Fountain jet height' },
+  WaterSpread:      { name: 'WaterSpread',      category: 'effects', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Spray spread angle' },
 };
 
 /**
@@ -306,6 +311,22 @@ export const DMX_FIXTURE_PROFILES: Record<string, DMXFixtureProfile> = {
     attributes: ['Pan', 'PanFine', 'Tilt', 'TiltFine', 'Dimmer', 'Strobe', 'ColorWheel', 'Gobo1', 'Focus', 'Control'],
     channelCount: 10,
   },
+  // ── DMX Point Light (from BP_DMXPointLight) ──
+  'dmx-point-light': {
+    name: 'DMX Point Light',
+    manufacturer: 'Generic',
+    category: 'wash',
+    attributes: ['Dimmer', 'Red', 'Green', 'Blue', 'White', 'CTO'],
+    channelCount: 6,
+  },
+  // ── Water Fountain (from DMXLib_WaterFountain) ──
+  'sfx-water-fountain': {
+    name: 'SFX Water Fountain',
+    manufacturer: 'FXK',
+    category: 'sfx',
+    attributes: ['Dimmer', 'WaterPressure', 'WaterHeight', 'WaterSpread', 'Red', 'Green', 'Blue', 'EffectWheel', 'EffectSpeed'],
+    channelCount: 9,
+  },
 };
 
 // ── UE5 Blueprint → Profile Mapping ──
@@ -331,6 +352,16 @@ export const UE5_BLUEPRINT_MAP: Record<string, string> = {
   'BP_Pyro_v4': 'sfx-pyro-dmx',
   'BP_Laser_Extended': 'generic-rgb',
   'DMXLib_v4': 'generic-rgbw',
+  // ── From BP uploads ──
+  'BP_DMX_Send_Receive': 'generic-rgbw',
+  'BP_DMXPointLight': 'dmx-point-light',
+  'BP_FountainLight': 'sfx-water-fountain',
+  'BP_PixelMappingManager': 'led-matrix-panel',
+  'BP_DownSampleSceneCapture': 'generic-rgbw',
+  'DMXLib_Fixtures': 'generic-rgbw',
+  'DMXLib_PixelMapping': 'led-matrix-panel',
+  'DMXLib_WaterFountain': 'sfx-water-fountain',
+  'DMXPM_PixelMap': 'led-matrix-panel',
 };
 
 // ── Strobe Curve Tables ──
@@ -686,4 +717,81 @@ export function patchGMA2Fixtures(
   }
 
   return universes.sort((a, b) => a.id - b.id);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// DMX Send/Receive Bridge — BP_DMX_Send_Receive
+// Bidirectional DMX I/O controller for Art-Net/sACN
+// ═══════════════════════════════════════════════════════════════════════
+
+export interface DMXIOConfig {
+  universeId: number;
+  mode: 'send' | 'receive' | 'duplex';
+  protocol: 'artnet' | 'sacn';
+  priority: number;
+}
+
+export class DMXSendReceive {
+  private sendBuffers = new Map<number, Uint8Array>();
+  private receiveBuffers = new Map<number, Uint8Array>();
+  private configs = new Map<number, DMXIOConfig>();
+  private sendQueue: { universeId: number; data: Uint8Array }[] = [];
+
+  configureDMXIO(configs: DMXIOConfig[]): void {
+    this.configs.clear();
+    for (const cfg of configs) {
+      this.configs.set(cfg.universeId, cfg);
+      if (!this.sendBuffers.has(cfg.universeId)) {
+        this.sendBuffers.set(cfg.universeId, new Uint8Array(512));
+      }
+      if (!this.receiveBuffers.has(cfg.universeId)) {
+        this.receiveBuffers.set(cfg.universeId, new Uint8Array(512));
+      }
+    }
+  }
+
+  getConfig(universeId: number): DMXIOConfig | undefined {
+    return this.configs.get(universeId);
+  }
+
+  getAllConfigs(): DMXIOConfig[] {
+    return Array.from(this.configs.values());
+  }
+
+  sendUniverse(universeId: number, channels: Uint8Array): void {
+    const cfg = this.configs.get(universeId);
+    if (!cfg || cfg.mode === 'receive') return;
+    const buffer = this.sendBuffers.get(universeId);
+    if (buffer) {
+      buffer.set(channels.subarray(0, 512));
+      this.sendQueue.push({ universeId, data: new Uint8Array(buffer) });
+    }
+  }
+
+  receiveUniverse(universeId: number): Uint8Array {
+    return this.receiveBuffers.get(universeId) ?? new Uint8Array(512);
+  }
+
+  feedReceive(universeId: number, data: Uint8Array): void {
+    const cfg = this.configs.get(universeId);
+    if (!cfg || cfg.mode === 'send') return;
+    const buffer = this.receiveBuffers.get(universeId);
+    if (buffer) buffer.set(data.subarray(0, 512));
+  }
+
+  drainSendQueue(): { universeId: number; data: Uint8Array }[] {
+    const queue = [...this.sendQueue];
+    this.sendQueue = [];
+    return queue;
+  }
+
+  canReceive(universeId: number): boolean {
+    const cfg = this.configs.get(universeId);
+    return !!cfg && (cfg.mode === 'receive' || cfg.mode === 'duplex');
+  }
+
+  canSend(universeId: number): boolean {
+    const cfg = this.configs.get(universeId);
+    return !!cfg && (cfg.mode === 'send' || cfg.mode === 'duplex');
+  }
 }
