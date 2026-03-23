@@ -26,6 +26,19 @@ function SidebarToggleButton() {
   );
 }
 
+function MobileSidebarTrigger() {
+  const { toggleSidebar } = useSidebar();
+  return (
+    <button
+      onClick={toggleSidebar}
+      className="flex items-center justify-center h-8 w-8 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all active:scale-90"
+      title="Menu"
+    >
+      <Menu className="h-4.5 w-4.5" />
+    </button>
+  );
+}
+
 export default function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
