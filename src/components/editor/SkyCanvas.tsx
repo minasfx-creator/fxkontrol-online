@@ -909,6 +909,23 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     return () => window.removeEventListener('box-select-active' as any, handler as any);
   }, []);
 
+  // Double-click focus: fly camera to a 3D point
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { x, y, z } = (e as CustomEvent).detail;
+      if (controlsRef.current) {
+        targetLook.current.set(x, y, z);
+        // Position camera slightly offset from the focus point
+        const camDir = new THREE.Vector3().subVectors(camera.position, controlsRef.current.target).normalize();
+        const dist = Math.max(20, camera.position.distanceTo(controlsRef.current.target) * 0.5);
+        targetPos.current.set(x + camDir.x * dist, Math.max(y + 5, y + camDir.y * dist), z + camDir.z * dist);
+        focusAnimating.current = true;
+      }
+    };
+    window.addEventListener('focus-camera-on-point', handler);
+    return () => window.removeEventListener('focus-camera-on-point', handler);
+  }, [camera]);
+
   // In select mode: disable left-mouse orbit so box-select works exclusively
   const editorMode = useProjectStore(s => s.editorMode);
   const isSelectMode = editorMode === 'select';
