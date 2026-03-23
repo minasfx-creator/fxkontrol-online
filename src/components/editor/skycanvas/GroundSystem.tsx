@@ -644,6 +644,7 @@ function SFXStageEnvironment() {
   const lightsRef = useRef<THREE.Group>(null);
   const ledWallRef = useRef<THREE.Mesh>(null);
   const ledSideRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const orbRefs = useRef<(THREE.Group | null)[]>([]);
 
   useFrame((_, delta) => {
     timeRef.current += delta;
