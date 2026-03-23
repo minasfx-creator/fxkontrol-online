@@ -883,15 +883,16 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     }
 
     // Normal preset animation — smooth Apple-style easing
-    if (!animating.current || !controlsRef.current || freeLook) {
+    if (!animating.current && !focusAnimating.current || !controlsRef.current || freeLook) {
       clampToWorldBounds();
       return;
     }
-    camera.position.lerp(targetPos.current, 0.06);
-    controlsRef.current.target.lerp(targetLook.current, 0.06);
+    camera.position.lerp(targetPos.current, focusAnimating.current ? 0.08 : 0.06);
+    controlsRef.current.target.lerp(targetLook.current, focusAnimating.current ? 0.08 : 0.06);
     controlsRef.current.update();
     if (camera.position.distanceTo(targetPos.current) < 0.1) {
       animating.current = false;
+      focusAnimating.current = false;
     }
     clampToWorldBounds();
   });
