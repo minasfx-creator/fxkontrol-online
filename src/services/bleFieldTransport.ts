@@ -50,11 +50,11 @@ export function isWebBluetoothAvailable(): boolean {
 }
 
 class BLEFieldTransport {
-  private device: BluetoothDevice | null = null;
-  private server: BluetoothRemoteGATTServer | null = null;
-  private cmdChar: BluetoothRemoteGATTCharacteristic | null = null;
-  private rspChar: BluetoothRemoteGATTCharacteristic | null = null;
-  private cdsChar: BluetoothRemoteGATTCharacteristic | null = null;
+  private device: any = null;
+  private server: any = null;
+  private cmdChar: any = null;
+  private rspChar: any = null;
+  private cdsChar: any = null;
 
   private onAck: AckCallback | null = null;
   private onStatus: StatusCallback | null = null;
