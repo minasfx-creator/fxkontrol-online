@@ -2220,6 +2220,8 @@ const DebugFeed = React.forwardRef<THREE.Group, {}>(function DebugFeed(_props, _
   const { gl, camera } = useThree();
   const frameCount = useRef(0);
   const lastTime = useRef(performance.now());
+  // Pre-allocated — eliminates per-frame GC pressure
+  const _origin = useMemo(() => new THREE.Vector3(0, 100, 0), []);
 
   useFrame(() => {
     frameCount.current++;
@@ -2230,9 +2232,7 @@ const DebugFeed = React.forwardRef<THREE.Group, {}>(function DebugFeed(_props, _
       lastTime.current = now;
       const info = gl.info.render;
       setDebugRendererInfo(fps, info.calls, info.triangles);
-      const origin = new THREE.Vector3(0, 100, 0);
-      const dist = Math.round(camera.position.distanceTo(origin));
-      const lod = calculateLOD(camera.position, origin);
+      const dist = Math.round(camera.position.distanceTo(_origin));
       // ═══ Adaptive LOD: feed FPS into auto-scaling ═══
       const adaptiveTier = updateAdaptiveLOD(fps);
       setDebugLOD(adaptiveTier, dist);
