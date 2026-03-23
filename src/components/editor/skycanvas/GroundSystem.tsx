@@ -646,6 +646,8 @@ function SFXStageEnvironment() {
   const ledSideRefs = useRef<(THREE.Mesh | null)[]>([]);
   const orbRefs = useRef<(THREE.Group | null)[]>([]);
 
+  const orbBaseY = 1.2 + 4; // stageHeight + 4
+
   useFrame((_, delta) => {
     timeRef.current += delta;
     const t = timeRef.current;
