@@ -382,11 +382,13 @@ export default function RealisticFirework({
 
     materialRef.current.uniforms.uTime.value = elapsed;
 
-    // Auto-complete after lifetime expires
+    // Auto-complete after lifetime expires — spawn post-explosion smoke
     if (elapsed > lifetime * 1.2 && !completedRef.current) {
       completedRef.current = true;
       if (pointsRef.current) pointsRef.current.visible = false;
       releaseGeometry(geometry);
+      // Spawn volumetric smoke at burst endpoint
+      spawnPostExplosionSmoke(position, caliber, color);
       onComplete?.();
     }
   });
