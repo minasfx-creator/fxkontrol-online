@@ -154,21 +154,25 @@ export default function SafetyPanel() {
 
         {expandedSections.has('hca') && showHCA && hcaResult && (
           <div className="px-2 pb-2 space-y-1.5">
-            {/* Escalation level indicator */}
+            {/* Escalation level indicator — NFPA high contrast */}
             <div className={cn(
-              "rounded-sm p-1.5 border text-[10px]",
-              ESCALATION_BG[hcaResult.escalation]
+              "rounded-md p-2 border-2 text-[11px]",
+              ESCALATION_BG[hcaResult.escalation],
+              hcaResult.escalation === 'abort' && "animate-pulse"
             )}>
-              <div className="flex items-center gap-1.5">
-                <Activity className="h-3 w-3" />
-                <span className={cn("font-semibold uppercase", ESCALATION_COLORS[hcaResult.escalation])}>
+              <div className="flex items-center gap-2">
+                <span className="text-base">{ESCALATION_ICONS[hcaResult.escalation]}</span>
+                <Activity className="h-3.5 w-3.5" />
+                <span className={cn("font-black uppercase tracking-wide", ESCALATION_COLORS[hcaResult.escalation])}>
                   {failsafeAction?.label}
                 </span>
                 {!failsafeAction?.automatic && (
-                  <span className="ml-auto text-[8px] text-destructive font-semibold">⚠ OPERATOR CONFIRM</span>
+                  <span className="ml-auto text-[10px] text-red-400 font-black bg-red-500/20 px-2 py-0.5 rounded animate-pulse">
+                    ⚠ OPERATOR CONFIRM
+                  </span>
                 )}
               </div>
-              <p className="text-[9px] text-muted-foreground mt-0.5">{failsafeAction?.description}</p>
+              <p className="text-[10px] text-muted-foreground mt-1 leading-snug">{failsafeAction?.description}</p>
             </div>
 
             {/* Failsafe escalation ladder */}
