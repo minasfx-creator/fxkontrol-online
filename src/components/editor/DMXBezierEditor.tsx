@@ -3,9 +3,10 @@
  * Eliminates discrete intensity steps; provides smooth fades, pan/tilt, and chase curves.
  * Inspired by Depence R3 / grandMA3 curve editors.
  */
-import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { Spline, Plus, Trash2, Play, Pause, Copy, Download, Layers } from 'lucide-react';
+import { Spline, Plus, Trash2, Copy, Download, Layers } from 'lucide-react';
+import { useProjectStore } from '@/store/useProjectStore';
 
 // ═══ Types ═══
 export interface BezierPoint {
@@ -233,29 +234,19 @@ export default function DMXBezierEditor({ fs = false }: { fs?: boolean }) {
     createDefaultCurve(2, 0),
   ]);
   const [activeCurveId, setActiveCurveId] = useState<string | null>(curves[0]?.id ?? null);
-  const [playheadTime, setPlayheadTime] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<CurvePreset>('ease-in-out');
-  const animRef = useRef<number>(0);
-  const lastTimeRef = useRef(performance.now());
+  const [sequenceDuration] = useState(10); // seconds — base loop duration
 
-  // Playback loop
-  useEffect(() => {
-    if (!isPlaying) return;
-    lastTimeRef.current = performance.now();
-    const tick = () => {
-      const now = performance.now();
-      const dt = (now - lastTimeRef.current) / 1000;
-      lastTimeRef.current = now;
-      setPlayheadTime(t => {
-        const next = t + dt * 0.25; // 4s full cycle
-        return next >= 1 ? 0 : next;
-      });
-      animRef.current = requestAnimationFrame(tick);
-    };
-    animRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(animRef.current);
-  }, [isPlaying]);
+  // Master Clock sync — consume global playhead
+  const currentTime = useProjectStore(s => s.currentTime);
+  const duration = useProjectStore(s => s.duration);
+  const isPlaying = useProjectStore(s => s.isPlaying);
+
+  // Normalize global time to 0–1 range using sequence duration (looping)
+  const playheadTime = useMemo(() => {
+    const effectiveDuration = Math.min(sequenceDuration, duration || sequenceDuration);
+    return (currentTime % effectiveDuration) / effectiveDuration;
+  }, [currentTime, sequenceDuration, duration]);
 
   const handlePointMove = useCallback((curveId: string, pointIdx: number, time: number, value: number) => {
     setCurves(prev => prev.map(c => {
@@ -318,10 +309,15 @@ export default function DMXBezierEditor({ fs = false }: { fs?: boolean }) {
           DMX BÉZIER EDITOR
         </span>
         <div className="flex-1" />
-        <button onClick={() => setIsPlaying(!isPlaying)}
-          className="p-1 rounded hover:bg-white/5 text-muted-foreground/60 hover:text-foreground transition-colors">
-          {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-        </button>
+        {/* Master clock indicator */}
+        <span className={cn(
+          "text-[6px] font-mono tracking-wider px-1.5 py-0.5 rounded",
+          isPlaying
+            ? "bg-green-500/10 text-green-400"
+            : "bg-muted/10 text-muted-foreground/40"
+        )}>
+          {isPlaying ? '● SYNC' : '○ IDLE'}
+        </span>
         <button onClick={addCurve}
           className="p-1 rounded hover:bg-white/5 text-muted-foreground/60 hover:text-foreground transition-colors">
           <Plus className="w-3 h-3" />
@@ -400,7 +396,7 @@ export default function DMXBezierEditor({ fs = false }: { fs?: boolean }) {
         ))}
         <div className="flex-1" />
         <span className="text-[7px] font-mono text-muted-foreground/30 self-center">
-          T: {(playheadTime * 100).toFixed(0)}%
+          T: {currentTime.toFixed(1)}s · {(playheadTime * 100).toFixed(0)}%
         </span>
       </div>
     </div>
