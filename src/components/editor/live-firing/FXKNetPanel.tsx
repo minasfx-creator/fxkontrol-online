@@ -1,14 +1,15 @@
 /**
- * FXKNetPanel — Unified Art-Net Network + Module Control + DMX I/O + Pixel Mapping
+ * FXKNetPanel — Unified Art-Net Network + Module Control + DMX I/O + Pixel Mapping + Bézier Curves
  * BR2049 holographic aesthetics + network topology + firmware + signal quality
  */
 import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { Globe, Cpu, ArrowLeftRight, Grid3X3 } from 'lucide-react';
+import { Globe, Cpu, ArrowLeftRight, Grid3X3, Spline } from 'lucide-react';
 import ArtNetModulePanel from './ArtNetModulePanel';
 import VirtualIFMx32QPanel from './VirtualIFMx32QPanel';
 import DMXIOPanel from './DMXIOPanel';
 import PixelMappingPanel from './PixelMappingPanel';
+import DMXBezierEditor from '../DMXBezierEditor';
 
 interface FXKNetPanelProps {
   fs?: boolean;
