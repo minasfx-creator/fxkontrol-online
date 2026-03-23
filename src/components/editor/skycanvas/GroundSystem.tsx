@@ -935,6 +935,9 @@ function SFXStageEnvironment() {
 
       {/* Procedural audience — FOH area */}
       <CrowdSystem />
+
+      {/* Stylized flame jets — BP_FountainLight / NS_Stylized_Fire reference */}
+      <StageFlameJets />
     </group>
   );
 }
