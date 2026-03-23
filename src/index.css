@@ -1121,14 +1121,235 @@ body.night-mode {
   background: hsl(32 100% 50% / 0.04);
 }
 
+/* ══════════════════════════════════════════════
+   FREE FIRE Game HUD — Tactical Mobile Styles
+   ══════════════════════════════════════════════ */
+
+/* Weapon slot — circular selector with glow ring */
+.ff-weapon-slot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid hsl(var(--muted-foreground) / 0.15);
+  background: hsl(var(--surface-0) / 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ff-weapon-slot.active {
+  border-color: var(--ff-accent, hsl(var(--primary)));
+  box-shadow: 0 0 12px var(--ff-accent, hsl(var(--primary) / 0.4)),
+              inset 0 0 8px var(--ff-accent-glow, hsl(var(--primary) / 0.1));
+  animation: weapon-select-pulse 2s ease-in-out infinite;
+}
+.ff-weapon-slot.active::after {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 15%;
+  bottom: 15%;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--ff-accent, hsl(var(--primary)));
+  box-shadow: 0 0 6px var(--ff-accent, hsl(var(--primary)));
+}
+
+@keyframes weapon-select-pulse {
+  0%, 100% { box-shadow: 0 0 8px var(--ff-accent, hsl(var(--primary) / 0.3)), inset 0 0 6px var(--ff-accent-glow, hsl(var(--primary) / 0.05)); }
+  50% { box-shadow: 0 0 18px var(--ff-accent, hsl(var(--primary) / 0.5)), inset 0 0 12px var(--ff-accent-glow, hsl(var(--primary) / 0.12)); }
+}
+
+/* Tactical grid overlay */
+.ff-hud-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 39px, var(--ff-grid-color, hsl(var(--primary) / 0.04)) 39px, var(--ff-grid-color, hsl(var(--primary) / 0.04)) 40px),
+    repeating-linear-gradient(90deg, transparent, transparent 39px, var(--ff-grid-color, hsl(var(--primary) / 0.04)) 39px, var(--ff-grid-color, hsl(var(--primary) / 0.04)) 40px);
+  mix-blend-mode: screen;
+}
+
+/* Action ring — circular button with pulsing border */
+.ff-action-ring {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid hsl(var(--destructive) / 0.6);
+  background: hsl(var(--destructive) / 0.15);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  animation: action-ring-pulse 1.5s ease-in-out infinite;
+  transition: transform 0.15s;
+}
+.ff-action-ring:active {
+  transform: scale(0.88);
+}
+@keyframes action-ring-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--destructive) / 0.3); }
+  50% { box-shadow: 0 0 0 6px hsl(var(--destructive) / 0); }
+}
+
+/* Signal bars — mini 3-bar indicator */
+.ff-signal-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 10px;
+}
+.ff-signal-bars .bar {
+  width: 2px;
+  border-radius: 1px;
+  background: hsl(var(--muted-foreground) / 0.2);
+  transition: background 0.3s, height 0.3s;
+}
+.ff-signal-bars .bar.active {
+  background: hsl(var(--success));
+  box-shadow: 0 0 3px hsl(var(--success) / 0.5);
+}
+.ff-signal-bars .bar:nth-child(1) { height: 3px; }
+.ff-signal-bars .bar:nth-child(2) { height: 6px; }
+.ff-signal-bars .bar:nth-child(3) { height: 10px; }
+
+/* HUD bracket pulse (thicker for game HUD) */
+@keyframes hud-bracket-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+.ff-hud-bracket {
+  position: absolute;
+  pointer-events: none;
+  z-index: 10;
+  transition: border-color 0.3s;
+  animation: hud-bracket-pulse 3s ease-in-out infinite;
+}
+
+/* Game HUD top bar — ultra compact */
+.ff-top-hud {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: hsl(220 22% 2% / 0.92);
+  backdrop-filter: blur(32px) saturate(1.8);
+  -webkit-backdrop-filter: blur(32px) saturate(1.8);
+  border-bottom: 1px solid hsl(var(--primary) / 0.08);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Weapon rail — darker, narrower */
+.ff-weapon-rail {
+  width: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 0;
+  background: hsl(220 22% 2% / 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-right: 1px solid hsl(var(--primary) / 0.04);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.ff-weapon-rail::-webkit-scrollbar { display: none; }
+
+/* Quick action floating bar */
+.ff-quick-actions {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 16px;
+  background: hsl(220 22% 3% / 0.85);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  border: 1px solid hsl(var(--primary) / 0.06);
+  box-shadow: 0 4px 16px hsl(0 0% 0% / 0.5);
+}
+
+/* Portrait game lobby card */
+.ff-loadout-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+  height: 64px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid hsl(var(--muted-foreground) / 0.1);
+  background: hsl(220 18% 5% / 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ff-loadout-card.active {
+  border-color: var(--ff-accent, hsl(var(--primary) / 0.4));
+  background: var(--ff-accent-glow, hsl(var(--primary) / 0.08));
+  box-shadow: 0 0 16px var(--ff-accent-glow, hsl(var(--primary) / 0.1)),
+              inset 0 0 12px var(--ff-accent-glow, hsl(var(--primary) / 0.04));
+}
+.ff-loadout-card.active::before,
+.ff-loadout-card.active::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  pointer-events: none;
+}
+.ff-loadout-card.active::before {
+  top: 2px; left: 2px;
+  border-top: 2px solid var(--ff-accent, hsl(var(--primary)));
+  border-left: 2px solid var(--ff-accent, hsl(var(--primary)));
+}
+.ff-loadout-card.active::after {
+  bottom: 2px; right: 2px;
+  border-bottom: 2px solid var(--ff-accent, hsl(var(--primary)));
+  border-right: 2px solid var(--ff-accent, hsl(var(--primary)));
+}
+
+/* Portrait hex category button */
+.ff-hex-category {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 16px;
+  min-height: 48px;
+  min-width: 48px;
+  transition: all 0.2s;
+}
+.ff-hex-category.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 2px;
+  border-radius: 1px;
+  background: hsl(var(--primary));
+  box-shadow: 0 0 6px hsl(var(--primary) / 0.6);
+}
+
 /* Orientation-specific overrides */
 @media (orientation: landscape) and (max-height: 500px) {
-  .landscape-hud-bar {
-    height: 28px !important;
-  }
-  .landscape-nav-rail {
-    width: 40px !important;
-  }
+  .ff-top-hud { height: 22px !important; }
+  .ff-weapon-rail { width: 36px !important; }
+  .landscape-hud-bar { height: 28px !important; }
+  .landscape-nav-rail { width: 40px !important; }
 }
 
 /* Cinematic scanline sweep animation */
