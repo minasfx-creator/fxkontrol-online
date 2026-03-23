@@ -822,21 +822,38 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
   );
 }
 
-// ─── Module Console (with Haptics) ───────────────
+// ─── Module Console (with Haptics + Module Selector + 32ch Grid) ───
 function ModuleConsole({ session, onStop }: { session: FieldTestSession; onStop: () => void }) {
+  const [moduleNumber, setModuleNumber] = useState(1);
+  const [channelStates, setChannelStates] = useState<Array<'idle' | 'fired' | 'ack'>>(Array(32).fill('idle'));
   const [lastFireChannel, setLastFireChannel] = useState<number | null>(null);
   const [lastFireLatency, setLastFireLatency] = useState<number | null>(null);
   const [flashActive, setFlashActive] = useState(false);
 
+  // Track fired channels from logs
   useEffect(() => {
     const fireLog = session.logs.find(l => l.type === 'fire' && l.channel !== undefined);
     if (fireLog && fireLog.channel !== undefined) {
       if (lastFireChannel !== fireLog.channel || fireLog.timestamp > (Date.now() - 500)) {
-        setLastFireChannel(fireLog.channel);
+        const ch = fireLog.channel;
+        setLastFireChannel(ch);
         setLastFireLatency(fireLog.latencyMs ?? null);
         setFlashActive(true);
         haptics.fire();
-        setTimeout(() => setFlashActive(false), 400);
+        // Mark channel as fired
+        setChannelStates(prev => {
+          const next = [...prev];
+          if (ch >= 1 && ch <= 32) next[ch - 1] = 'fired';
+          return next;
+        });
+        setTimeout(() => {
+          setFlashActive(false);
+          setChannelStates(prev => {
+            const next = [...prev];
+            if (ch >= 1 && ch <= 32) next[ch - 1] = 'ack';
+            return next;
+          });
+        }, 400);
       }
     }
   }, [session.logs.length]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -846,79 +863,197 @@ function ModuleConsole({ session, onStop }: { session: FieldTestSession; onStop:
     else haptics.disarm();
   }, [session.armed]);
 
+  const handleResetChannels = () => {
+    setChannelStates(Array(32).fill('idle'));
+    setLastFireChannel(null);
+    toast.success('Canais resetados');
+  };
+
+  const firedCount = channelStates.filter(s => s !== 'idle').length;
+
   return (
     <div className="h-[100dvh] w-screen flex flex-col overflow-hidden"
       style={{ background: 'hsl(220 25% 4%)' }}>
 
-      <div className="shrink-0 flex items-center justify-between px-4 h-10"
+      {/* ═══ Header ═══ */}
+      <div className="shrink-0 flex items-center justify-between px-3 h-10"
         style={{
           background: 'linear-gradient(180deg, hsl(220 20% 8%), hsl(220 20% 5%))',
           borderBottom: '1px solid hsl(0 0% 100% / 0.05)',
         }}>
         <div className="flex items-center gap-2">
           <Smartphone className="w-4 h-4 text-primary" />
-          <span className="text-sm font-bold text-foreground font-mono">MÓDULO RECEPTOR</span>
-          <Badge variant="outline" className="text-[8px] font-mono">{session.code}</Badge>
+          <span className="text-xs font-bold text-foreground font-mono tracking-wide">MÓDULO RECEPTOR</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          <Badge variant="outline" className="text-[8px] font-mono border-amber-500/30 text-amber-400">{session.code}</Badge>
           <Badge
             variant={session.peerConnected ? 'outline' : 'secondary'}
             className={cn("text-[8px]", session.peerConnected ? 'border-green-500/50 text-green-400' : 'text-muted-foreground')}
           >
-            {session.peerConnected ? '● CTRL ONLINE' : '○ AGUARDANDO'}
+            {session.peerConnected ? '● CTRL' : '○ WAIT'}
           </Badge>
-          <Button variant="ghost" size="sm" onClick={onStop} className="h-7 px-2 text-xs">
-            <XCircle className="w-3 h-3 mr-1" /> Sair
+          <Button variant="ghost" size="sm" onClick={onStop} className="h-7 px-2 text-xs text-muted-foreground">
+            <XCircle className="w-3 h-3" />
           </Button>
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6">
+      {/* ═══ Module Selector + Status ═══ */}
+      <div className="shrink-0 px-3 py-2 flex items-center gap-3"
+        style={{ background: 'hsl(220 20% 6%)', borderBottom: '1px solid hsl(0 0% 100% / 0.04)' }}>
+        {/* Module Number Selector */}
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] font-mono text-muted-foreground/60 uppercase">MOD#</span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setModuleNumber(n => Math.max(1, n - 1))}
+              className="w-7 h-7 rounded border border-border/30 bg-muted/10 text-foreground/60 font-mono text-sm font-bold hover:bg-muted/20 active:scale-95 transition-all"
+            >−</button>
+            <div className="w-12 h-7 rounded border border-primary/30 bg-primary/5 flex items-center justify-center">
+              <span className="text-sm font-mono font-black text-primary">{String(moduleNumber).padStart(2, '0')}</span>
+            </div>
+            <button
+              onClick={() => setModuleNumber(n => Math.min(99, n + 1))}
+              className="w-7 h-7 rounded border border-border/30 bg-muted/10 text-foreground/60 font-mono text-sm font-bold hover:bg-muted/20 active:scale-95 transition-all"
+            >+</button>
+          </div>
+        </div>
+
+        {/* Module Address Hex */}
+        <Badge variant="outline" className="text-[8px] font-mono border-primary/20 text-primary/70 h-5">
+          ADDR 0x{(moduleNumber - 1).toString(16).toUpperCase().padStart(2, '0')}
+        </Badge>
+
+        {/* Armed Status */}
         <div className={cn(
-          "w-full max-w-sm rounded-xl border-2 p-6 flex flex-col items-center gap-2 transition-all",
+          "flex items-center gap-1 px-2 py-1 rounded text-[9px] font-mono font-bold border",
           session.armed
-            ? "border-amber-500/50 bg-amber-500/5"
-            : "border-border/30 bg-card/30"
+            ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
+            : "bg-muted/5 border-border/20 text-muted-foreground/40"
         )}>
-          <Shield className={cn("w-12 h-12", session.armed ? "text-amber-400" : "text-muted-foreground/30")} />
-          <span className={cn("text-xl font-black font-mono tracking-wider",
-            session.armed ? "text-amber-400" : "text-muted-foreground/30"
-          )}>
-            {session.armed ? 'ARMED' : 'DISARMED'}
+          <Shield className="w-3 h-3" />
+          {session.armed ? 'ARMED' : 'SAFE'}
+        </div>
+
+        {/* Stats */}
+        <div className="ml-auto flex items-center gap-2">
+          <span className="text-[8px] font-mono text-muted-foreground/50">
+            {firedCount}/32 <span className="text-amber-400">FIRED</span>
+          </span>
+          <button onClick={handleResetChannels}
+            className="text-[8px] font-mono text-muted-foreground/30 hover:text-muted-foreground px-1">
+            <RefreshCw className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+
+      {/* ═══ 32-Channel Grid ═══ */}
+      <div className="flex-1 flex flex-col min-h-0 px-3 py-2">
+        <div className="grid grid-cols-8 grid-rows-4 gap-1.5 flex-1">
+          {channelStates.map((state, idx) => {
+            const ch = idx + 1;
+            const isFiring = flashActive && lastFireChannel === ch;
+            return (
+              <div
+                key={idx}
+                className={cn(
+                  "relative rounded-lg border-2 flex flex-col items-center justify-center transition-all",
+                  state === 'fired' || isFiring
+                    ? "border-orange-500/80 bg-orange-500/15"
+                    : state === 'ack'
+                      ? "border-green-500/40 bg-green-500/8"
+                      : session.armed
+                        ? "border-red-800/30 bg-red-900/10"
+                        : "border-border/15 bg-muted/5"
+                )}
+                style={isFiring ? {
+                  boxShadow: '0 0 16px hsl(25 100% 50% / 0.5), inset 0 0 8px hsl(25 100% 60% / 0.2)',
+                } : state === 'ack' ? {
+                  boxShadow: '0 0 8px hsl(120 70% 40% / 0.15)',
+                } : undefined}
+              >
+                {/* Channel Number */}
+                <span className={cn(
+                  "text-[8px] font-mono leading-none",
+                  state === 'idle' ? "text-muted-foreground/30" : "text-muted-foreground/60"
+                )}>CH</span>
+                <span className={cn(
+                  "text-base font-mono font-black leading-none",
+                  isFiring ? "text-orange-400"
+                    : state === 'ack' ? "text-green-400"
+                      : state === 'fired' ? "text-orange-300"
+                        : session.armed ? "text-red-400/40" : "text-muted-foreground/20"
+                )}>{String(ch).padStart(2, '0')}</span>
+
+                {/* Status indicator */}
+                {state !== 'idle' && (
+                  <div className={cn(
+                    "w-2 h-2 rounded-full mt-0.5",
+                    isFiring ? "bg-orange-400 animate-pulse"
+                      : state === 'ack' ? "bg-green-400"
+                        : "bg-orange-400 animate-pulse"
+                  )} />
+                )}
+
+                {/* Latency badge on last fired */}
+                {state === 'ack' && lastFireChannel === ch && lastFireLatency !== null && (
+                  <span className="absolute -top-1 -right-1 text-[6px] font-mono bg-green-600 text-white px-1 rounded-full">
+                    {lastFireLatency}ms
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Legend */}
+        <div className="flex items-center justify-between mt-2">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
+              <span className="text-[8px] text-muted-foreground font-mono">Disparando</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-green-400" />
+              <span className="text-[8px] text-muted-foreground font-mono">Confirmado</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded border border-border/30" />
+              <span className="text-[8px] text-muted-foreground font-mono">Idle</span>
+            </div>
+          </div>
+          <span className="text-[8px] font-mono text-muted-foreground/40">
+            MOD {String(moduleNumber).padStart(2, '0')} · 32CH
           </span>
         </div>
+      </div>
 
-        <div className={cn(
-          "w-full max-w-sm rounded-xl border-2 p-8 flex flex-col items-center gap-2 transition-all",
-          flashActive
-            ? "border-orange-500/80 bg-orange-500/10"
-            : lastFireChannel !== null
-              ? "border-destructive/30 bg-destructive/5"
+      {/* ═══ E-STOP + Last Fire ═══ */}
+      <div className="shrink-0 px-3 pb-3 space-y-2">
+        {/* Last fire summary */}
+        {lastFireChannel !== null && (
+          <div className={cn(
+            "rounded-lg border px-3 py-2 flex items-center gap-3 transition-all",
+            flashActive
+              ? "border-orange-500/60 bg-orange-500/10"
               : "border-border/20 bg-card/20"
+          )}>
+            <Flame className={cn("w-5 h-5 shrink-0", flashActive ? "text-orange-400 animate-pulse" : "text-destructive/50")} />
+            <div className="flex-1 min-w-0">
+              <span className="text-lg font-mono font-black text-foreground">CH-{String(lastFireChannel).padStart(2, '0')}</span>
+              <span className="text-[9px] font-mono text-muted-foreground/50 ml-2">MOD {String(moduleNumber).padStart(2, '0')}</span>
+            </div>
+            {lastFireLatency !== null && (
+              <Badge variant="outline" className="text-xs font-mono border-amber-500/30 text-amber-400">
+                {lastFireLatency}ms
+              </Badge>
+            )}
+          </div>
         )}
-        style={flashActive ? {
-          boxShadow: '0 0 40px hsl(25 100% 50% / 0.3), inset 0 0 20px hsl(25 100% 50% / 0.1)',
-        } : undefined}>
-          {lastFireChannel !== null ? (
-            <>
-              <Flame className={cn("w-10 h-10", flashActive ? "text-orange-400 animate-pulse" : "text-destructive/60")} />
-              <span className="text-4xl font-mono font-black text-destructive">
-                CH-{String(lastFireChannel).padStart(2, '0')}
-              </span>
-              {lastFireLatency !== null && (
-                <span className="text-sm font-mono text-muted-foreground">{lastFireLatency}ms</span>
-              )}
-            </>
-          ) : (
-            <>
-              <Activity className="w-8 h-8 text-muted-foreground/20" />
-              <span className="text-sm font-mono text-muted-foreground/30">AGUARDANDO DISPARO</span>
-            </>
-          )}
-        </div>
 
         <Button
-          className="w-full max-w-sm h-14 font-bold text-sm bg-destructive hover:bg-destructive/80 text-destructive-foreground"
+          className="w-full h-12 font-bold text-sm bg-destructive hover:bg-destructive/80 text-destructive-foreground"
           onClick={() => { fieldTestEngine.eStop(); haptics.panic(); }}
         >
           <AlertTriangle className="w-5 h-5 mr-1" />
@@ -926,12 +1061,13 @@ function ModuleConsole({ session, onStop }: { session: FieldTestSession; onStop:
         </Button>
       </div>
 
-      <div className="shrink-0 max-h-32 overflow-y-auto px-4 py-2"
+      {/* ═══ Event Log ═══ */}
+      <div className="shrink-0 max-h-24 overflow-y-auto px-3 py-1"
         style={{
           background: 'hsl(220 20% 4%)',
           borderTop: '1px solid hsl(0 0% 100% / 0.04)',
         }}>
-        {session.logs.slice(0, 20).map(l => <LogEntry key={l.id} log={l} />)}
+        {session.logs.slice(0, 15).map(l => <LogEntry key={l.id} log={l} />)}
       </div>
     </div>
   );
