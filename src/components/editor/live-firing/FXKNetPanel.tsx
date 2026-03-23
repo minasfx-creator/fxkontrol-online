@@ -4,12 +4,13 @@
  */
 import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { Globe, Cpu, ArrowLeftRight, Grid3X3, Spline } from 'lucide-react';
+import { Globe, Cpu, ArrowLeftRight, Grid3X3, Spline, Radio } from 'lucide-react';
 import ArtNetModulePanel from './ArtNetModulePanel';
 import VirtualIFMx32QPanel from './VirtualIFMx32QPanel';
 import DMXIOPanel from './DMXIOPanel';
 import PixelMappingPanel from './PixelMappingPanel';
 import DMXBezierEditor from '../DMXBezierEditor';
+import MA3NetworkPanel from './MA3NetworkPanel';
 
 interface FXKNetPanelProps {
   fs?: boolean;
@@ -69,13 +70,14 @@ function TopologyMinimap({ moduleCount }: { moduleCount: number }) {
   );
 }
 
-type TabKey = 'network' | 'module' | 'dmx-io' | 'pixel-map' | 'bezier';
+type TabKey = 'network' | 'ma3' | 'module' | 'dmx-io' | 'pixel-map' | 'bezier';
 
 export default function FXKNetPanel({ fs = false }: FXKNetPanelProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('network');
 
   const tabs: { key: TabKey; label: string; icon: typeof Globe; sub: string }[] = [
     { key: 'network', label: 'NET', icon: Globe, sub: 'ART-NET' },
+    { key: 'ma3', label: 'MA3', icon: Radio, sub: 'NODE' },
     { key: 'module', label: 'MOD', icon: Cpu, sub: 'FIELD' },
     { key: 'dmx-io', label: 'I/O', icon: ArrowLeftRight, sub: 'DMX' },
     { key: 'pixel-map', label: 'PXL', icon: Grid3X3, sub: 'MAP' },
@@ -123,11 +125,12 @@ export default function FXKNetPanel({ fs = false }: FXKNetPanelProps) {
       />
 
       {/* Network topology minimap — only on network/module tabs */}
-      {(activeTab === 'network' || activeTab === 'module') && <TopologyMinimap moduleCount={6} />}
+      {(activeTab === 'network' || activeTab === 'module' || activeTab === 'ma3') && <TopologyMinimap moduleCount={6} />}
 
       {/* Content */}
       <div className="flex-1 overflow-hidden animate-console-boot">
         {activeTab === 'network' && <ArtNetModulePanel fs={fs} />}
+        {activeTab === 'ma3' && <MA3NetworkPanel fs={fs} />}
         {activeTab === 'module' && <VirtualIFMx32QPanel fs={fs} />}
         {activeTab === 'dmx-io' && <DMXIOPanel fs={fs} />}
         {activeTab === 'pixel-map' && <PixelMappingPanel fs={fs} />}
