@@ -239,6 +239,10 @@ function CakeShot({
 
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
 
+  // Pre-allocate burst buffers (zero-GC)
+  const burstPositions = useMemo(() => new Float32Array(PARTICLES_PER_SHOT * 3), [PARTICLES_PER_SHOT]);
+  const burstColors = useMemo(() => new Float32Array(PARTICLES_PER_SHOT * 3), [PARTICLES_PER_SHOT]);
+
   if (progress <= 0 || progress > 1) return null;
 
   const liftFraction = 0.25;
@@ -278,8 +282,8 @@ function CakeShot({
 
   const burstProgress = (progress - liftFraction) / (1 - liftFraction);
   const t = burstProgress * starLife;
-  const positions = new Float32Array(PARTICLES_PER_SHOT * 3);
-  const colors = new Float32Array(PARTICLES_PER_SHOT * 3);
+  const positions = burstPositions;
+  const colors = burstColors;
   const drag = 0.03 + caliber * 0.005;
   // Burst center position accounts for angle
   const burstCenterX = Math.sin(angle) * breakH * 0.7;
