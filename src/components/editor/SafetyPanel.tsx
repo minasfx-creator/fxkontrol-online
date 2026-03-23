@@ -19,20 +19,29 @@ import {
 } from '@/lib/hcaSafetyLayer';
 import { cn } from '@/lib/utils';
 
+// ── NFPA-compliant high-contrast color scheme ──
 const ESCALATION_COLORS: Record<EscalationLevel, string> = {
-  nominal: 'text-green-400',
-  advisory: 'text-blue-400',
-  caution: 'text-yellow-400',
-  warning: 'text-orange-400',
-  abort: 'text-red-500',
+  nominal: 'text-emerald-300',
+  advisory: 'text-sky-300',
+  caution: 'text-amber-300',
+  warning: 'text-orange-300',
+  abort: 'text-red-400 font-black',
 };
 
 const ESCALATION_BG: Record<EscalationLevel, string> = {
-  nominal: 'bg-green-500/10 border-green-500/30',
-  advisory: 'bg-blue-500/10 border-blue-500/30',
-  caution: 'bg-yellow-500/10 border-yellow-500/30',
-  warning: 'bg-orange-500/10 border-orange-500/30',
-  abort: 'bg-red-500/10 border-red-500/30',
+  nominal: 'bg-emerald-500/15 border-emerald-400/50',
+  advisory: 'bg-sky-500/15 border-sky-400/50',
+  caution: 'bg-amber-500/20 border-amber-400/60',
+  warning: 'bg-orange-500/25 border-orange-400/70',
+  abort: 'bg-red-500/30 border-red-500/80 ring-1 ring-red-500/50',
+};
+
+const ESCALATION_ICONS: Record<EscalationLevel, string> = {
+  nominal: '✅',
+  advisory: 'ℹ️',
+  caution: '⚠️',
+  warning: '🔶',
+  abort: '🛑',
 };
 
 export default function SafetyPanel() {
@@ -74,28 +83,36 @@ export default function SafetyPanel() {
 
   return (
     <div className="space-y-2">
-      {/* Header with status indicator */}
-      <div className="flex items-center gap-2">
-        <Shield className="h-3.5 w-3.5 text-primary" />
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">Safety</h3>
-        {warnings.length === 0 && (!hcaResult || hcaResult.valid) ? (
-          <span className="ml-auto flex items-center gap-1 text-[10px] text-green-400 font-mono-code">
-            <CheckCircle className="h-3 w-3" /> Clear
-          </span>
-        ) : (
-          <span className="ml-auto flex items-center gap-1.5 text-[10px] font-mono-code">
-            {criticalCount > 0 && (
-              <span className="text-destructive flex items-center gap-0.5">
-                <AlertOctagon className="h-3 w-3" /> {criticalCount}
-              </span>
-            )}
-            {warningCount > 0 && (
-              <span className="text-yellow-400 flex items-center gap-0.5">
-                <AlertTriangle className="h-3 w-3" /> {warningCount}
-              </span>
-            )}
-          </span>
-        )}
+      {/* NFPA Header — high contrast ARM/SAFE indicator */}
+      <div className={cn(
+        "flex items-center gap-2 p-2 rounded-md border-2 transition-colors",
+        criticalCount > 0
+          ? "border-red-500 bg-red-500/20 animate-pulse"
+          : warningCount > 0
+          ? "border-amber-500/60 bg-amber-500/10"
+          : "border-emerald-500/40 bg-emerald-500/10"
+      )}>
+        <Shield className={cn("h-4 w-4", criticalCount > 0 ? "text-red-400" : "text-emerald-400")} />
+        <h3 className="text-xs font-black uppercase tracking-widest text-foreground">
+          {criticalCount > 0 ? '⚠ UNSAFE' : 'SAFE'}
+        </h3>
+        <span className="ml-auto flex items-center gap-2 text-[11px] font-mono font-bold">
+          {criticalCount > 0 && (
+            <span className="text-red-400 flex items-center gap-1 bg-red-500/20 px-1.5 py-0.5 rounded">
+              <AlertOctagon className="h-3.5 w-3.5" /> {criticalCount} CRIT
+            </span>
+          )}
+          {warningCount > 0 && (
+            <span className="text-amber-300 flex items-center gap-1 bg-amber-500/15 px-1.5 py-0.5 rounded">
+              <AlertTriangle className="h-3.5 w-3.5" /> {warningCount} WARN
+            </span>
+          )}
+          {warnings.length === 0 && (!hcaResult || hcaResult.valid) && (
+            <span className="text-emerald-400 flex items-center gap-1">
+              <CheckCircle className="h-3.5 w-3.5" /> CLEAR
+            </span>
+          )}
+        </span>
       </div>
 
       {/* Quick safety stats */}
@@ -137,21 +154,25 @@ export default function SafetyPanel() {
 
         {expandedSections.has('hca') && showHCA && hcaResult && (
           <div className="px-2 pb-2 space-y-1.5">
-            {/* Escalation level indicator */}
+            {/* Escalation level indicator — NFPA high contrast */}
             <div className={cn(
-              "rounded-sm p-1.5 border text-[10px]",
-              ESCALATION_BG[hcaResult.escalation]
+              "rounded-md p-2 border-2 text-[11px]",
+              ESCALATION_BG[hcaResult.escalation],
+              hcaResult.escalation === 'abort' && "animate-pulse"
             )}>
-              <div className="flex items-center gap-1.5">
-                <Activity className="h-3 w-3" />
-                <span className={cn("font-semibold uppercase", ESCALATION_COLORS[hcaResult.escalation])}>
+              <div className="flex items-center gap-2">
+                <span className="text-base">{ESCALATION_ICONS[hcaResult.escalation]}</span>
+                <Activity className="h-3.5 w-3.5" />
+                <span className={cn("font-black uppercase tracking-wide", ESCALATION_COLORS[hcaResult.escalation])}>
                   {failsafeAction?.label}
                 </span>
                 {!failsafeAction?.automatic && (
-                  <span className="ml-auto text-[8px] text-destructive font-semibold">⚠ OPERATOR CONFIRM</span>
+                  <span className="ml-auto text-[10px] text-red-400 font-black bg-red-500/20 px-2 py-0.5 rounded animate-pulse">
+                    ⚠ OPERATOR CONFIRM
+                  </span>
                 )}
               </div>
-              <p className="text-[9px] text-muted-foreground mt-0.5">{failsafeAction?.description}</p>
+              <p className="text-[10px] text-muted-foreground mt-1 leading-snug">{failsafeAction?.description}</p>
             </div>
 
             {/* Failsafe escalation ladder */}

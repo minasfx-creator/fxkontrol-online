@@ -1,7 +1,6 @@
 /**
- * SMPTE / LTC Timecode Engine — Legacy re-export shim.
- * All logic has been modularized into src/lib/smpte/*.
- * This file exists for backward compatibility.
+ * SMPTE Module — unified re-export for backward compatibility.
+ * All sub-modules are tree-shakeable.
  */
 
 export {
@@ -13,14 +12,14 @@ export {
   formatTimecode,
   parseTimecode,
   copyTimecode,
-} from './smpte/timecodeCore';
+} from './timecodeCore';
 
 export {
   type LTCSignal,
   type MTCQuarterFrame,
   encodeTimecodeToLTC,
   generateMTCQuarterFrames,
-} from './smpte/ltcEncoder';
+} from './ltcEncoder';
 
 export {
   type SMPTESyncState,
@@ -28,9 +27,4 @@ export {
   updateSyncState,
   updateSyncStateInPlace,
   calculateDrift,
-} from './smpte/syncEngine';
-
-// Legacy compat — simulateSyncJitter
-export function simulateSyncJitter(): number {
-  return (Math.random() - 0.5) * 1.0;
-}
+} from './syncEngine';
