@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import BLEDeviceScanner from '@/components/editor/BLEDeviceScanner';
 import {
   getOSCClient,
   buildMA3Command,
@@ -386,6 +387,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
           <TabsTrigger value="sacn" className="text-[9px] h-6 font-mono font-bold data-[state=active]:text-indigo-300 data-[state=active]:shadow-[0_0_8px_hsl(240_50%_50%_/_0.2)]">sACN Bridge</TabsTrigger>
           <TabsTrigger value="mvr" className="text-[9px] h-6 font-mono font-bold data-[state=active]:text-indigo-300 data-[state=active]:shadow-[0_0_8px_hsl(240_50%_50%_/_0.2)]">MVR-xchange</TabsTrigger>
           <TabsTrigger value="monitor" className="text-[9px] h-6 font-mono font-bold data-[state=active]:text-indigo-300 data-[state=active]:shadow-[0_0_8px_hsl(240_50%_50%_/_0.2)]">Monitor</TabsTrigger>
+          <TabsTrigger value="ble" className="text-[9px] h-6 font-mono font-bold data-[state=active]:text-indigo-300 data-[state=active]:shadow-[0_0_8px_hsl(240_50%_50%_/_0.2)]">BLE</TabsTrigger>
         </TabsList>
 
         {/* ═══ OSC Tab ═══ */}
@@ -865,6 +867,13 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
         {/* ═══ Monitor Tab ═══ */}
         <TabsContent value="monitor" className="flex-1 flex flex-col mt-1">
           <SACNMonitorPanel compact />
+        </TabsContent>
+
+        {/* ═══ BLE Devices Tab ═══ */}
+        <TabsContent value="ble" className="flex-1 flex flex-col mt-1">
+          <ScrollArea className="flex-1">
+            <BLEDeviceScanner context="light" compact />
+          </ScrollArea>
         </TabsContent>
       </Tabs>
     </div>

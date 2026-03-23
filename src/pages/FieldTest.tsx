@@ -37,6 +37,7 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
   const [cdsStatus, setCdsStatus] = useState<boolean[]>(Array(32).fill(false));
   const [cdsTesting, setCdsTesting] = useState(false);
   const [cdsLastTest, setCdsLastTest] = useState<number | null>(null);
+  const [cdsSimMode, setCdsSimMode] = useState(false);
   const bleAvailable = isWebBluetoothAvailable();
 
   const handleScan = async () => {
@@ -79,21 +80,33 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
 
   const handleTestCDS = async () => {
     setCdsTesting(true);
-    try {
-      await fieldTestEngine.bleTestCDS();
-      // Poll CDS status after a short delay for the module to respond
+    if (cdsSimMode) {
+      // Simulation: random channels with staggered reveal
       setTimeout(() => {
-        const status = fieldTestEngine.bleCdsStatus;
-        setCdsStatus([...status]);
+        const simulated = Array(32).fill(false).map(() => Math.random() > 0.35);
+        setCdsStatus(simulated);
         setCdsLastTest(Date.now());
         setCdsTesting(false);
-        const active = status.filter(Boolean).length;
-        toast.success(`CDS: ${active}/32 ignitores detectados`);
+        const active = simulated.filter(Boolean).length;
+        toast.success(`⚡ SIM CDS: ${active}/32 ignitores detectados`);
         haptics.success();
-      }, 800);
-    } catch (err: any) {
-      setCdsTesting(false);
-      toast.error(err.message || 'Erro no teste CDS');
+      }, 600);
+    } else {
+      try {
+        await fieldTestEngine.bleTestCDS();
+        setTimeout(() => {
+          const status = fieldTestEngine.bleCdsStatus;
+          setCdsStatus([...status]);
+          setCdsLastTest(Date.now());
+          setCdsTesting(false);
+          const active = status.filter(Boolean).length;
+          toast.success(`CDS: ${active}/32 ignitores detectados`);
+          haptics.success();
+        }, 800);
+      } catch (err: any) {
+        setCdsTesting(false);
+        toast.error(err.message || 'Erro no teste CDS');
+      }
     }
   };
 
@@ -244,7 +257,7 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
       )}
 
       {/* ─── CDS Continuity Visual Grid ─── */}
-      {connectedId && (
+      {(connectedId || cdsSimMode) && (
         <div className="mt-4 space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -253,7 +266,22 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
                 Continuidade (CDS)
               </span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              {/* Sim toggle */}
+              <button
+                className={cn(
+                  "text-[7px] px-1.5 py-0.5 rounded font-mono uppercase border",
+                  cdsSimMode
+                    ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                    : "text-muted-foreground border-border/30"
+                )}
+                onClick={() => {
+                  setCdsSimMode(!cdsSimMode);
+                  if (!cdsSimMode) setCdsStatus(Array(32).fill(false));
+                }}
+              >
+                {cdsSimMode ? '⚡ SIM' : '📡 HW'}
+              </button>
               <Badge variant="outline" className={cn(
                 "text-[8px] h-4 px-1.5 font-mono",
                 activeChannels > 0 ? "border-green-500/40 text-green-400" : "border-muted-foreground/30 text-muted-foreground"

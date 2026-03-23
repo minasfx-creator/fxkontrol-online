@@ -12,6 +12,7 @@ import {
   Shield, ShieldAlert, Radio, Signal, Battery, MapPin,
   Navigation, Activity, Layers, ChevronRight, Crosshair
 } from 'lucide-react';
+import BLEDeviceScanner from '@/components/editor/BLEDeviceScanner';
 
 interface DroneCommandPanelProps {
   fs?: boolean;
@@ -413,6 +414,11 @@ export default function DroneCommandPanel({ fs = false }: DroneCommandPanelProps
               </>
             )}
           </div>
+        </div>
+
+        {/* ── BLE Fleet Scanner ── */}
+        <div className="mt-2 rounded border p-2" style={{ borderColor: 'hsl(165 40% 18%)', background: 'hsl(165 8% 6%)' }}>
+          <BLEDeviceScanner context="drones" compact />
         </div>
       </div>
     </div>
