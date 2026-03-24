@@ -1,42 +1,69 @@
 
 
-## Google Places API Integration in GeoLocationSetup
+## Refatoração UI/UX Industrial — Glassmorphism & Viewport Limpo
 
-### What
-Add live Google Places autocomplete search to GeoLocationSetup so users can find any address worldwide, not just preset cities. Typed queries hit a new edge function that proxies Google Places API, and results appear alongside the existing presets.
+### Resumo
+Limpar a viewport 3D de botões redundantes, consolidar camera presets num dropdown, condicionar ground/grid ao Google 3D Tiles, e reorganizar overlays para maximizar a imersão.
 
-### Architecture
+---
 
-```text
-User types "Torre Eiffel"
-  → GeoLocationSetup (debounced 400ms)
-    → Edge Function: google-places-search
-      → Google Places Text Search API (New)
-        ← results with name, lat, lng, formatted_address
-      ← JSON response
-    ← Show results in list below presets
+### 1. Camera Presets → Dropdown Único (SkyCanvas.tsx)
+
+**Problema**: Desktop renderiza 6+ botões de câmera inline (Look, Fly, Free, 1st Person, Plateia, Aerial) na linha 1811-2003, ocupando espaço visual sobre o viewport.
+
+**Solução**: Substituir os botões inline por um único dropdown `🎥 Camera Views` no canto superior esquerdo do viewport, mantendo Look e Fly como toggles separados (são controles de modo, não presets).
+
+- Linhas 1877-1893: Envolver os `CAMERA_PRESETS.map(...)` num dropdown colapsável idêntico ao que já existe para mobile (linhas 1843-1876)
+- Mover os botões de Lock, Rulers, Bookmark, Fullscreen, Download Satellite e Presentation para um mini-dock vertical `right-3 top-3` dentro do viewport
+- Resultado: a faixa superior do viewport fica com apenas 3 elementos (Look, Fly, Camera Dropdown)
+
+### 2. Suprimir Ground/Grid quando Google Earth ativo (SkyCanvas.tsx)
+
+**Já implementado**: Linha 1727 — `{!google3DTilesEnabled && <StageGround .../>}`. O ground já é condicional. Se o utilizador vê o cubo roxo, é porque `google3DTilesEnabled` pode estar a falhar na inicialização dos tiles (erro 403 nos logs). O terreno e grid já são suprimidos quando os tiles estão ativos.
+
+**Ação adicional**: Adicionar uma `hemisphereLight` e `ambientLight` com intensidade mínima (0.3) para iluminar os 3D Tiles do Google quando carregados, pois o HDR rig é otimizado para a cena de fogos e pode deixar os tiles escuros.
+
+### 3. Ocultar StressTest e ViewportTerminal por Padrão (SkyCanvas.tsx)
+
+**Problema**: `StressTestButton` (linha 2028-2031) e `ViewportTerminal` (linha 2021) ficam sempre visíveis.
+
+**Solução**: 
+- Mover ambos para renderização condicional, ativados apenas via `Ctrl+Shift+D`
+- Usar um estado `showDebugTools` que já existe parcialmente (`showDebugOverlay`)
+
+### 4. Viewport Overlay Tools → Mini-Dock Vertical (SkyCanvas.tsx)
+
+**Problema**: Botões utilitários (Lock, Rulers, Bookmark, Fullscreen, Satellite, Presentation, RenderDebug) espalhados horizontalmente na linha superior.
+
+**Solução**: Agrupar num cluster vertical translúcido no canto superior direito do viewport:
+```
+right-3 top-3 flex flex-col gap-1 bg-black/40 backdrop-blur-sm 
+border border-white/5 rounded-xl p-1
 ```
 
-### Changes
+### 5. PerformanceHUD do SkyCanvas → Oculto por Padrão
 
-**1. New Edge Function: `supabase/functions/google-places-search/index.ts`**
-- Accepts `{ query: string }` POST body
-- Uses `GOOGLE_MAPS_API_KEY` (already configured) to call Google Places API (Text Search)
-- URL: `https://places.googleapis.com/v1/places:searchText`
-- Returns array of `{ name, lat, lng, formattedAddress }` (max 5 results)
-- Full CORS headers
+**Problema**: O SkyCanvas tem o seu próprio `PerformanceHUD` (linha 2020) que duplica o HUD do `Index.tsx`.
 
-**2. Update `src/components/editor/GeoLocationSetup.tsx`**
-- Add state: `apiResults` (array), `searching` (boolean)
-- Add debounced effect: when `search` changes and length >= 3, call the edge function via `supabase.functions.invoke('google-places-search', { body: { query: search } })`
-- Display API results in a separate section below presets, with a `Globe` icon and formatted address subtitle
-- Clicking an API result calls the same `handleSelect` logic (fly-to + store update)
-- Show a subtle "Searching..." loader while fetching
-- If no presets match AND no API results, show "No results found"
+**Solução**: Condicionar à flag `showDebugOverlay` que já existe, em vez de renderizar sempre.
 
-### Files Changed
-| File | Action |
-|------|--------|
-| `supabase/functions/google-places-search/index.ts` | **CREATE** — proxy edge function |
-| `src/components/editor/GeoLocationSetup.tsx` | **EDIT** — add API search integration |
+### 6. Bottom Info Box → Oculto por Padrão
+
+**Problema**: O box de info "FX KONTROL v2.0" (linhas 2051-2058) no canto inferior direito ocupa espaço visual.
+
+**Solução**: Só mostrar quando `showDebugOverlay` está ativo.
+
+---
+
+### Ficheiros Alterados
+
+| Ficheiro | Ação |
+|----------|------|
+| `src/components/editor/SkyCanvas.tsx` | Consolidar camera presets em dropdown, agrupar tools em mini-dock, ocultar debug tools |
+
+### Impacto
+- Viewport 3D ganha ~80% mais espaço visual livre
+- Camera presets acessíveis mas não intrusivos
+- Debug tools escondidos até `Ctrl+Shift+D`
+- Iluminação melhorada para Google Earth tiles
 
