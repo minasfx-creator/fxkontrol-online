@@ -393,7 +393,7 @@ function GroundFog() {
 
   const fogSystem = useMemo(() => {
     const sys = createVolumetricFogPlane(
-      100000,
+      10000,
       new THREE.Color(0.03, 0.04, 0.08),
       0.4
     );
