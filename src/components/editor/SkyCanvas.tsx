@@ -1812,19 +1812,21 @@ export default function SkyCanvas() {
           <NiagaraVFXController />
         </DelayedMount>
 
-        <EnvironmentV2Switcher />
+        {/* ═══ Synthetic sky/atmosphere — suppressed in Digital Twin mode ═══ */}
+        {!google3DTilesEnabled && <EnvironmentV2Switcher />}
 
-        <Moon />
-        <SceneStarsWired />
-        {!isMobile && !environment.lowQualityMode && <AtmosphericParticles />}
-        <SceneFog />
-        {!isMobile && <DelayedMount delay={2500}><WeatherEffects /></DelayedMount>}
+        {!google3DTilesEnabled && <Moon />}
+        {!google3DTilesEnabled && <SceneStarsWired />}
+        {!google3DTilesEnabled && !isMobile && !environment.lowQualityMode && <AtmosphericParticles />}
+        {!google3DTilesEnabled && <SceneFog />}
+        {!google3DTilesEnabled && !isMobile && <DelayedMount delay={2500}><WeatherEffects /></DelayedMount>}
 
+        {/* ═══ Ground / Terrain ═══ */}
         {!google3DTilesEnabled && <StageGround satelliteTexture={satelliteTexture} />}
         {google3DTilesEnabled && <GoogleTilesLayer />}
         {google3DTilesEnabled && <GeoCameraController />}
         <GoogleEarthLighting />
-        <FinaleAxesHelper />
+        {!google3DTilesEnabled && <FinaleAxesHelper />}
         <DoubleClickFocus />
         <SiteModelRenderer />
         <PositionPins />
@@ -1839,14 +1841,14 @@ export default function SkyCanvas() {
         <TimelineEffects />
         <LiveSFXEffects />
         <LaserPreviewBeams />
-        <StageFixtures />
-        {!isMobile && <DelayedMount delay={3000}><AudioSpectrumVisualizer /></DelayedMount>}
+        {!google3DTilesEnabled && <StageFixtures />}
+        {!google3DTilesEnabled && !isMobile && <DelayedMount delay={3000}><AudioSpectrumVisualizer /></DelayedMount>}
         <PlaybackClock />
         {!isMobile && <CameraAnimator />}
         {!isMobile && <CameraPathPreview />}
-        <ViewportRulers />
+        {!google3DTilesEnabled && <ViewportRulers />}
         <CameraBookmarkSaver />
-        <ContactShadowsLayer />
+        {!google3DTilesEnabled && <ContactShadowsLayer />}
         <PostProcessing activeBurstCount={_activeBurstCount} />
         <StressTestFireworks />
         <PostExplosionSmokeManager />
