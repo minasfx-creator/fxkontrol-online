@@ -1866,7 +1866,18 @@ export default function SkyCanvas() {
           </button>
         )}
 
-        {/* Debug overlay toggle */}
+        {/* 🎬 Presentation Mode */}
+        {!isMobile && (
+          <button
+            onClick={() => useSceneStore.getState().updateSettings({ presentationMode: true })}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+            title="Modo Apresentação Cliente"
+          >
+            <Film className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Apresentação</span>
+          </button>
+        )}
+
         {!isMobile && (
           <RenderDebugToggle show={showDebugOverlay} onToggle={() => setShowDebugOverlay(v => !v)} />
         )}
