@@ -603,6 +603,7 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel }: ShowCommand
               DRIFT ±{Math.abs(engine.injectedDrift).toFixed(0)}ms
             </Badge>
           )}
+          <FieldModeToggle />
         </div>
 
         <SystemHealthBar subsystems={subsystems} />
