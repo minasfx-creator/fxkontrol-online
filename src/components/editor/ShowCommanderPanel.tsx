@@ -8,8 +8,10 @@ import {
   Zap, Shield, Radio, Activity, Clock, AlertTriangle, ChevronDown, ChevronRight,
   Play, Pause, Square, Volume2, Eye, EyeOff, Lock, Unlock, Flame, Sparkles,
   Plane, Lightbulb, Cable, Signal, Battery, Cpu, Timer, BarChart3, Layers,
-  Target, Crosshair, MonitorPlay, Gauge, CircuitBoard, Power, Wifi, WifiOff
+  Target, Crosshair, MonitorPlay, Gauge, CircuitBoard, Power, Wifi, WifiOff,
+  Magnet, FlaskConical, Link2, LinkBreak
 } from 'lucide-react';
+import { useShowCommanderEngine } from '@/hooks/useShowCommanderEngine';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
