@@ -900,7 +900,7 @@ function SFXStageEnvironment() {
             <sphereGeometry args={[0.06, 8, 8]} />
             <meshBasicMaterial color="#00ff44" />
           </mesh>
-          <pointLight color="#00ff44" intensity={0.3} distance={3} decay={2} />
+          {/* Removed pointLight — emissive glow is sufficient */}
         </group>
       ))}
 
@@ -945,7 +945,7 @@ function SFXStageEnvironment() {
                 <coneGeometry args={[0.8, 9, 12, 1, true]} />
                 <meshBasicMaterial color={beamColor} transparent opacity={0.12} side={THREE.DoubleSide} depthWrite={false} blending={THREE.AdditiveBlending} />
               </mesh>
-              <pointLight color={beamColor} intensity={1.2} distance={25} decay={2} />
+              {/* Removed per-beam pointLight — emissive cones provide visual effect without GPU cost */}
             </group>
           );
         })}
