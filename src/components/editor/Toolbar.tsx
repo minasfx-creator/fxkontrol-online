@@ -543,6 +543,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
             label="Location"
             icon={MapPinned}
             items={[
+              { label: 'Geo-Location Setup', icon: Navigation, onClick: () => window.dispatchEvent(new Event('open-geo-setup')) },
               { label: 'Google Maps', icon: Globe, onClick: () => onOpenPanel?.('maps') },
               { label: 'Site Layout', icon: Map, onClick: () => onOpenPanel?.('sitelayout') },
             ]}
