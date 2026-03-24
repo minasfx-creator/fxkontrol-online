@@ -619,7 +619,7 @@ function Index() {
                     } catch { /* ignore */ }
                   }}
                 >
-                  {!showViewportGlobe ? (
+                  {!showViewportGlobe && canvasReady ? (
                     <>
                       <CanvasErrorBoundary>
                         <Suspense fallback={<CanvasLoader />}>
