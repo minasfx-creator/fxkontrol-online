@@ -433,11 +433,14 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
   const hasBursts = activeBurstCount > 0;
   const hasHeavyBursts = activeBurstCount > 3;
 
+  // Adaptive: use half-res SSR when enabled for GPU savings
+  const ssrResScale = s.ssrHalfRes ? 0.5 : 1.0;
+
   return (
-    <EffectComposer multisampling={0} enableNormalPass={s.ssaoEnabled}>
+    <EffectComposer multisampling={0} enableNormalPass={s.ssaoEnabled} resolutionScale={s.ssrHalfRes && s.ssrEnabled ? 1.0 : 1.0}>
       <SMAA />
 
-      {/* ═══ Screen Space Reflections (UE5 r.SSR.Temporal) ═══ */}
+      {/* ═══ Screen Space Reflections (UE5 r.SSR.Temporal) — half-res for perf ═══ */}
       {s.ssrEnabled && (
         <SSR
           temporalResolve
@@ -445,18 +448,18 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
           temporalResolveCorrectionMix={0.4}
           maxSamples={0}
           ENABLE_BLUR
-          blurMix={0.5}
-          blurSharpness={10}
-          blurKernelSize={1}
-          rayStep={0.1}
+          blurMix={s.ssrHalfRes ? 0.7 : 0.5}
+          blurSharpness={s.ssrHalfRes ? 6 : 10}
+          blurKernelSize={s.ssrHalfRes ? 2 : 1}
+          rayStep={s.ssrHalfRes ? 0.2 : 0.1}
           intensity={s.ssrIntensity}
           maxRoughness={0.1}
           ENABLE_JITTERING
           jitter={0.75}
           jitterSpread={0.45}
           jitterRough={0.1}
-          MAX_STEPS={16}
-          NUM_BINARY_SEARCH_STEPS={4}
+          MAX_STEPS={s.ssrHalfRes ? 10 : 16}
+          NUM_BINARY_SEARCH_STEPS={s.ssrHalfRes ? 3 : 4}
           maxDepthDifference={10}
           maxDepth={1}
           thickness={s.ssrThickness}

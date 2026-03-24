@@ -238,6 +238,13 @@ export interface SceneSettings {
   geoAnchorAlt: number;
   tideOffset: number;             // -2 to 2 meters dynamic tide adjustment
   fieldViewMode: boolean;         // high-contrast outdoor UI
+
+  // ═══ Ultra-Smooth Rendering ═══
+  adaptiveQualityEnabled: boolean;  // auto-adjust quality based on FPS
+  smoothFramePacing: boolean;       // weighted delta-time averaging
+  gpuParticlePhysics: boolean;      // GPGPU ballistic vertex shader
+  frustumCullingBursts: boolean;    // skip off-screen burst processing
+  ssrHalfRes: boolean;              // render SSR at 0.5x resolution
 }
 
 const DEFAULT_SETTINGS: SceneSettings = {
@@ -348,6 +355,13 @@ const DEFAULT_SETTINGS: SceneSettings = {
   geoAnchorAlt: 0,
   tideOffset: 0,
   fieldViewMode: false,
+
+  // Ultra-Smooth Rendering defaults
+  adaptiveQualityEnabled: true,
+  smoothFramePacing: true,
+  gpuParticlePhysics: true,
+  frustumCullingBursts: true,
+  ssrHalfRes: true,
 };
 
 export const SCENE_PRESETS: Record<string, { name: string; description: string; settings: Partial<SceneSettings> }> = {
