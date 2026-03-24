@@ -26,12 +26,14 @@ import {
   globalClock,
   globalSync,
   multiSiteSync,
+  frameSyncEngine,
   type DiagnosticReport,
   type DiagnosticCheck,
   type CheckStatus,
   type ValidationReport,
   type ClockSyncState,
   type SiteInfo,
+  type FrameSyncState,
 } from '@/core/reliability';
 
 // ── Status Icon ─────────────────────────────────────────────────────
