@@ -34,6 +34,7 @@ export function ExplosionGlowSystem() {
     const pool: PooledLight[] = [];
     for (let i = 0; i < POOL_SIZE; i++) {
       const light = new THREE.PointLight(0xffffff, 0, LIGHT_DISTANCE);
+      light.castShadow = false;
       light.visible = false;
       group.add(light);
       pool.push({ light, active: false, age: 0, maxAge: 0.5 });
