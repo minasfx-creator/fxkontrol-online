@@ -1345,16 +1345,19 @@ function GrassGround() {
   return (
     <>
       {/* Far terrain — Google Earth satellite style */}
-      <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[4000, 4000, 4, 4]} />
+      <mesh ref={meshRef} position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[50000, 50000, 4, 4]} />
         <shaderMaterial
           uniforms={uniforms}
           vertexShader={terrainVertexShader}
           fragmentShader={terrainFragmentShader}
+          polygonOffset
+          polygonOffsetFactor={1}
+          polygonOffsetUnits={1}
         />
       </mesh>
       {/* Near-stage grass with mowing pattern */}
-      <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <mesh ref={nearMeshRef} position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[120, 64]} />
         <shaderMaterial
           uniforms={uniforms}
