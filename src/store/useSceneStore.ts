@@ -239,6 +239,7 @@ export interface SceneSettings {
   tideOffset: number;             // -2 to 2 meters dynamic tide adjustment
   fieldViewMode: boolean;         // high-contrast outdoor UI
   google3DTilesEnabled: boolean;   // Google Photorealistic 3D Tiles digital twin
+  presentationMode: boolean;       // Client presentation fullscreen mode
 
   // ═══ Ultra-Smooth Rendering ═══
   adaptiveQualityEnabled: boolean;  // auto-adjust quality based on FPS
@@ -357,6 +358,7 @@ const DEFAULT_SETTINGS: SceneSettings = {
   tideOffset: 0,
   fieldViewMode: false,
   google3DTilesEnabled: false,
+  presentationMode: false,
 
   // Ultra-Smooth Rendering defaults
   adaptiveQualityEnabled: true,

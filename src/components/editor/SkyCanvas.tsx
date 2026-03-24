@@ -88,6 +88,8 @@ import { isInFrustum } from '@/lib/spatialCuller';
 import { resetPools } from '@/lib/geometryPool';
 import ViewportGeoTools, { type GeoToolMode, type GeoMarker, type GeoRulerPoint, type GeoPath } from './ViewportGeoTools';
 import GoogleTilesLayer from '@/core/geo/GoogleTilesEngine';
+import GeoCameraController from '@/core/geo/GeoCameraController';
+import ClientPresentationMode from './ClientPresentationMode';
 import { GeoToolsScene, GeoToolClickHandler } from './GeoToolsR3F';
 import { RenderDebugToggle, RenderDebugPanel, setDebugExposure, setDebugBurstLoad, setDebugLOD, setDebugRendererInfo } from './RenderDebugOverlay';
 import { clampNiagaraHDR, getNiagaraBudgets, setAdaptivePipelineState } from '@/lib/niagaraBlenderRules';
@@ -1445,6 +1447,7 @@ export default function SkyCanvas() {
   const environment = useSceneStore(st => st.environment);
   const google3DTilesEnabled = useSceneStore(st => st.settings.google3DTilesEnabled);
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
+  const presentationMode = useSceneStore(st => st.settings.presentationMode);
 
   // Exit fly mode when pointer lock is lost (ESC)
   useEffect(() => {
@@ -1675,6 +1678,7 @@ export default function SkyCanvas() {
 
         {!google3DTilesEnabled && <StageGround satelliteTexture={satelliteTexture} />}
         {google3DTilesEnabled && <GoogleTilesLayer />}
+        {google3DTilesEnabled && <GeoCameraController />}
         <FinaleAxesHelper />
         <DoubleClickFocus />
         <SiteModelRenderer />
@@ -1862,7 +1866,18 @@ export default function SkyCanvas() {
           </button>
         )}
 
-        {/* Debug overlay toggle */}
+        {/* 🎬 Presentation Mode */}
+        {!isMobile && (
+          <button
+            onClick={() => useSceneStore.getState().updateSettings({ presentationMode: true })}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+            title="Modo Apresentação Cliente"
+          >
+            <Film className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Apresentação</span>
+          </button>
+        )}
+
         {!isMobile && (
           <RenderDebugToggle show={showDebugOverlay} onToggle={() => setShowDebugOverlay(v => !v)} />
         )}
@@ -1993,6 +2008,12 @@ export default function SkyCanvas() {
           <div>{flyMode ? '✈ Fly Mode' : freeLook ? '🔓 Free Look ON' : '🔒 Preset Lock'}</div>
         </div>
       )}
+
+      {/* Client Presentation Mode */}
+      <ClientPresentationMode
+        active={presentationMode}
+        onExit={() => useSceneStore.getState().updateSettings({ presentationMode: false })}
+      />
     </div>
   );
 }
