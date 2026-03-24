@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Shield, Activity, AlertTriangle, CheckCircle2, XCircle, RefreshCw, Download, Cpu, Wifi, Clock, Zap, Heart, Radio, Crosshair, Play } from 'lucide-react';
+import { Shield, Activity, AlertTriangle, CheckCircle2, XCircle, RefreshCw, Download, Cpu, Wifi, Clock, Zap, Heart, Radio, Crosshair, Play, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
