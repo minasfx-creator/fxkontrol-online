@@ -125,18 +125,22 @@ function ThreatLevel({ level }: { level: 0 | 1 | 2 | 3 }) {
 export default function ShowControlPanel({ fs = false }: { fs?: boolean; onClose?: () => void }) {
   const activeEffects = useLiveSfxStore(s => s.activeEffects);
   const channels = useSfxChannelStore(s => s.channels);
-  const [elapsedMs, setElapsedMs] = useState(0);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const isPlaying = useProjectStore(s => s.isPlaying);
+  const smpteMode = useSMPTEStore(s => s.mode);
+  const smpteFrameRate = useSMPTEStore(s => s.frameRate);
+  const [frameSyncState, setFrameSyncState] = useState<FrameSyncState | null>(null);
   const [eventLog, setEventLog] = useState<EventLog[]>([]);
   const [lastLatency, setLastLatency] = useState<Record<string, number>>({});
-  const startRef = useRef(Date.now());
   const prevEffectCountRef = useRef(0);
   const sparklineBuffers = useRef<Record<string, number[]>>({
     PYRO: new Array(20).fill(0), DMX: new Array(20).fill(0),
     LIGHT: new Array(20).fill(0), DRONE: new Array(20).fill(0),
   });
 
+  // Poll frameSyncEngine at 10Hz
   useEffect(() => {
-    const iv = setInterval(() => setElapsedMs(Date.now() - startRef.current), 100);
+    const iv = setInterval(() => setFrameSyncState(frameSyncEngine.getState()), 100);
     return () => clearInterval(iv);
   }, []);
 
