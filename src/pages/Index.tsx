@@ -292,9 +292,6 @@ function Index() {
     setActivePanel((prev) => (prev === id ? null : id));
   }, []);
 
-  const handleSplashStart = useCallback(() => {
-    setAppPhase('globe');
-  }, []);
 
   const handleLocationSelected = useCallback((location: { name: string; lat: number; lng: number }) => {
     setShowLocation(location);
