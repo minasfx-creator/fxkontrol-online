@@ -4,6 +4,7 @@
  * Fix de Performance WebGL / Contexto único.
  */
 import { useState, useCallback, useMemo } from 'react';
+import { triggerFlyTo } from '@/core/geo/GeoCameraController';
 import { Search, X, MapPin, Navigation } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -65,7 +66,16 @@ export default function GeoLocationSetup({ onClose }: GeoLocationSetupProps) {
       heading: 0,
       altitude: 0,
     });
-    onClose();
+    // Fly-to suave com easing — transição cinematográfica
+    triggerFlyTo({
+      lat: city.lat,
+      lng: city.lng,
+      alt: 300,
+      duration: 3,
+      pitch: 45,
+    });
+    // Delay para o usuário ver o início da animação
+    setTimeout(onClose, 500);
   }, [updateSettings, onClose]);
 
   return (
