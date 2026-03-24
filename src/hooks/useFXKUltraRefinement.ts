@@ -90,14 +90,10 @@ export function useFXKUltraRefinement() {
       store.updateEnvironment({ lowQualityMode: shouldBeLowQ });
     }
 
-    // Sync post-processing toggles via scene settings
-    const settings = store.settings;
-    if (settings.bloomEnabled !== budget.bloom) {
-      store.updateSettings({ bloomEnabled: budget.bloom });
-    }
-    // SSR is a "heavy shader" effect
-    if (settings.ssrEnabled !== budget.heavyShaders) {
-      store.updateSettings({ ssrEnabled: budget.heavyShaders });
+    // Sync bloom strength based on budget
+    const targetBloom = budget.bloom ? store.settings.bloomStrength : 0.2;
+    if (Math.abs(store.settings.bloomStrength - targetBloom) > 0.05) {
+      store.updateSettings({ bloomStrength: targetBloom });
     }
   }, []);
 
