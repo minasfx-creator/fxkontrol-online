@@ -432,7 +432,7 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
 
   return (
     <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <planeGeometry args={[100000, 100000, 1, 1]} />
+      <planeGeometry args={[10000, 10000, 1, 1]} />
       <shaderMaterial
         uniforms={uniforms}
         vertexShader={`
