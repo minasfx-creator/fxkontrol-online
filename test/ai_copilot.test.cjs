@@ -3,11 +3,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { AICoPilot } = require('../modules/ai/AICoPilot');
-const { AIDecisionEngine } = require('../modules/ai/AIDecisionEngine');
-const { FXKAssistant } = require('../modules/ai/FXKAssistant');
-const { getAssistantOrbVisual } = require('../modules/ai/AssistantOrb');
-const { DEFAULT_AI_CONTROLS, updateAIControlState } = require('../modules/ai/AIControls');
+const { AICoPilot } = require('../modules/ai/AICoPilot.cjs');
+const { AIDecisionEngine } = require('../modules/ai/AIDecisionEngine.cjs');
+const { FXKAssistant } = require('../modules/ai/FXKAssistant.cjs');
+const { getAssistantOrbVisual } = require('../modules/ai/AssistantOrb.cjs');
+const { DEFAULT_AI_CONTROLS, updateAIControlState } = require('../modules/ai/AIControls.cjs');
 
 const baseState = {
   position: { x: 0, y: 0, z: 10 },

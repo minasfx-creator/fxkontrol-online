@@ -5,7 +5,7 @@
  * Modes: MANUAL (no override), ASSISTED (smooth + safety), AI_CONTROL (full auto).
  */
 
-const { AIDecisionEngine } = require('./AIDecisionEngine');
+const { AIDecisionEngine } = require('./AIDecisionEngine.cjs');
 
 class AICoPilot {
   constructor(mode = 'ASSISTED') {
