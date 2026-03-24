@@ -355,6 +355,13 @@ const DEFAULT_SETTINGS: SceneSettings = {
   geoAnchorAlt: 0,
   tideOffset: 0,
   fieldViewMode: false,
+
+  // Ultra-Smooth Rendering defaults
+  adaptiveQualityEnabled: true,
+  smoothFramePacing: true,
+  gpuParticlePhysics: true,
+  frustumCullingBursts: true,
+  ssrHalfRes: true,
 };
 
 export const SCENE_PRESETS: Record<string, { name: string; description: string; settings: Partial<SceneSettings> }> = {
