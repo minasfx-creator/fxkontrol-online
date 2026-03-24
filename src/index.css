@@ -769,14 +769,7 @@ body.night-mode {
   animation: rain-fall 8s linear infinite;
 }
 
-.br2049-vignette::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background: radial-gradient(ellipse at center, transparent 55%, hsl(20 30% 3% / 0.35) 100%);
-}
+/* .br2049-vignette disabled */
 
 /* ===== BR2049 Console Boot Animations ===== */
 @keyframes console-boot {
