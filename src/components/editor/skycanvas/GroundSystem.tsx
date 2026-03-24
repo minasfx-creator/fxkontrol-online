@@ -1113,13 +1113,14 @@ function TreelineSilhouette() {
 // ═══════════════════════════════════════════════════════════════════════
 export function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) {
   const sc = useSceneStore(st => st.settings);
+  const gridSnapResolution = useSceneStore(s => s.environment.gridSnapResolution);
 
   const renderGround = () => {
     switch (sc.groundStyle) {
       case 'flat-black':
         return (
       <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-            <planeGeometry args={[100000, 100000]} />
+            <planeGeometry args={[10000, 10000]} />
             <meshStandardMaterial color="#050505" roughness={0.95} metalness={0} />
           </mesh>
         );
