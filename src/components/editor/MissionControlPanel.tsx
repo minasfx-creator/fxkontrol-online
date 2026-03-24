@@ -348,6 +348,46 @@ export function MissionControlPanel() {
         </div>
       </div>
 
+      {/* Multi-Site Sync */}
+      {multiSites.length > 0 && (
+        <div className="p-2 rounded border border-border/50 bg-card/30 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground">
+              <Wifi className="w-3 h-3" /> MULTI-SITE SYNC
+            </div>
+            {multiSiteLocal && (
+              <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 text-[8px] h-4">LOCAL MODE</Badge>
+            )}
+          </div>
+          <div className="space-y-1">
+            {multiSites.map(site => (
+              <div key={site.siteId} className="flex items-center gap-2 text-[10px]">
+                <span className={`w-1.5 h-1.5 rounded-full ${
+                  site.status === 'synced' ? 'bg-green-400' :
+                  site.status === 'degraded' ? 'bg-yellow-400' :
+                  site.status === 'local' ? 'bg-blue-400' :
+                  'bg-red-400'
+                }`} />
+                <span className="text-foreground truncate flex-1">{site.name}</span>
+                <span className="font-mono text-muted-foreground">{site.latencyMs.toFixed(0)}ms</span>
+                <span className={`font-mono ${Math.abs(site.offsetMs) > 5 ? 'text-yellow-400' : 'text-muted-foreground'}`}>
+                  {site.offsetMs > 0 ? '+' : ''}{site.offsetMs.toFixed(1)}
+                </span>
+                <Badge variant="outline" className={`text-[8px] h-4 ${
+                  site.status === 'synced' ? 'text-green-400 border-green-500/30' :
+                  site.status === 'degraded' ? 'text-yellow-400 border-yellow-500/30' :
+                  site.status === 'local' ? 'text-blue-400 border-blue-500/30' :
+                  'text-red-400 border-red-500/30'
+                }`}>
+                  {site.status.toUpperCase()}
+                </Badge>
+                {site.isHost && <Badge className="bg-primary/20 text-primary border-primary/30 text-[8px] h-4">HOST</Badge>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* BlackBox Controls */}
       <div className="flex gap-1.5">
         <Button size="sm" variant={bbRecording ? 'destructive' : 'outline'} className="h-7 text-[10px] flex-1" onClick={toggleBlackBox}>
