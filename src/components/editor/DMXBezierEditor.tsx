@@ -161,16 +161,38 @@ function CurveCanvas({
         <text key={`ht-${v}`} x={4} y={y - 2} fill="hsl(220, 10%, 30%)" fontSize={7} fontFamily="monospace">{v}</text>
       );
     }
-    // Vertical (time)
-    for (let t = 0; t <= 1; t += 0.1) {
-      const x = t * width;
-      lines.push(
-        <line key={`v-${t}`} x1={x} y1={0} x2={x} y2={height}
-          stroke="hsl(220, 10%, 15%)" strokeWidth={0.5} />
-      );
+    // Beat grid or time grid
+    if (snapEnabled && snapInterval > 0) {
+      const totalBeats = Math.round(1 / snapInterval);
+      for (let b = 0; b <= totalBeats; b++) {
+        const t = b * snapInterval;
+        const x = t * width;
+        const isBar = b % 4 === 0;
+        lines.push(
+          <line key={`beat-${b}`} x1={x} y1={0} x2={x} y2={height}
+            stroke={isBar ? 'hsl(32, 100%, 50%)' : 'hsl(32, 80%, 35%)'}
+            strokeWidth={isBar ? 0.8 : 0.3}
+            strokeDasharray={isBar ? undefined : '1 2'} />
+        );
+        if (isBar) {
+          lines.push(
+            <text key={`bt-${b}`} x={x + 2} y={height - 2} fill="hsl(32, 80%, 40%)" fontSize={5} fontFamily="monospace">
+              {b / 4 + 1}
+            </text>
+          );
+        }
+      }
+    } else {
+      for (let t = 0; t <= 1; t += 0.1) {
+        const x = t * width;
+        lines.push(
+          <line key={`v-${t}`} x1={x} y1={0} x2={x} y2={height}
+            stroke="hsl(220, 10%, 15%)" strokeWidth={0.5} />
+        );
+      }
     }
     return lines;
-  }, [width, height]);
+  }, [width, height, snapEnabled, snapInterval]);
 
   return (
     <svg
