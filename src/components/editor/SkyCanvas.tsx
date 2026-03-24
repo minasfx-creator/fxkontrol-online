@@ -95,7 +95,8 @@ import {
   reportCrash, isInCooldown, recordContextLoss,
   watchdogTick, pushFrameMetrics, startMetricsReporting, stopMetricsReporting,
 } from '@/lib/hardening';
-
+// ═══ FXK Ultra Refinement — Adaptive Quality + Render Stability ═══
+import { useFXKUltraRefinement } from '@/hooks/useFXKUltraRefinement';
 // ═══ Shared state imported from skycanvas module ═══
 import {
   getActiveBurstCount as _getActiveBurstCount,
@@ -230,6 +231,16 @@ function HardeningWatchdog() {
     watchdogTick(fps);
   });
 
+  return null;
+}
+
+/**
+ * FXKQualityController — runs FXK Ultra Refinement adaptive quality + stability
+ * inside the R3F Canvas context. Automatically adjusts bloom, SSR, lowQualityMode
+ * based on real-time frame metrics.
+ */
+function FXKQualityController() {
+  useFXKUltraRefinement();
   return null;
 }
 
@@ -1619,6 +1630,7 @@ export default function SkyCanvas() {
         {flyMode && <FlyControls onSpeedChange={flySpeedCb} />}
 
         <HardeningWatchdog />
+        <FXKQualityController />
         <SceneLighting />
         <AdaptiveExposureController />
         {!environment.disableLighting && <GlobalIlluminationController />}
