@@ -15,7 +15,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { TilesRenderer } from '3d-tiles-renderer';
 import {
   GoogleCloudAuthPlugin,
-  TileCompressionPlugin,
   TilesFadePlugin,
   UpdateOnChangePlugin,
   UnloadTilesPlugin,
