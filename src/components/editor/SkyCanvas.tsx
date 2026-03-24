@@ -1509,11 +1509,25 @@ export default function SkyCanvas() {
     }
   }, [gpsOrigin.lat, gpsOrigin.lng]);
 
+  // Force R3F to re-measure when resizable panels change size
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      // Dispatch a window resize event so R3F's Canvas re-measures
+      window.dispatchEvent(new Event('resize'));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
-    <div className="w-full h-full relative bg-black" data-sky-canvas style={{ cursor: cursorStyle }}>
+    <div ref={containerRef} className="w-full h-full relative bg-black" data-sky-canvas style={{ cursor: cursorStyle }}>
       <WebGLErrorBoundary>
       <Canvas
         key={canvasInstanceKey}
+        resize={{ debounce: 50, scroll: false }}
         shadows
         gl={{
           antialias: !isMobile,
