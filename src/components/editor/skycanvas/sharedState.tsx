@@ -140,21 +140,21 @@ import { Camera, Eye, Video, Plane, Users, Crosshair, UserRound, Grid3x3, Car } 
 export const CAMERA_PRESETS = [
   { id: 'free', label: 'Free', icon: Eye, position: [0, 1.7, 100] as [number, number, number], target: [0, 50, 0] as [number, number, number] },
   // ── UE5-inspired modes ──
-  { id: 'first-person', label: '1st Person', icon: Crosshair, position: [0, 1.7, 800] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
-  { id: 'third-person', label: '3rd Person', icon: UserRound, position: [0, 3.5, 1200] as [number, number, number], target: [0, 1.5, 1190] as [number, number, number] },
+  { id: 'first-person', label: '1st Person', icon: Crosshair, position: [0, 6, 800] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
+  { id: 'third-person', label: '3rd Person', icon: UserRound, position: [0, 8, 1200] as [number, number, number], target: [0, 6, 1190] as [number, number, number] },
   { id: 'top-down', label: 'Top Down', icon: Grid3x3, position: [0, 4000, 0.1] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
   { id: 'vehicle', label: 'Flythrough', icon: Car, position: [-2000, 50, 3000] as [number, number, number], target: [0, 200, 0] as [number, number, number] },
   // ── Classic presets ──
   { id: 'satellite', label: 'Satellite', icon: Plane, position: [0, 6000, 0.1] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
-  { id: 'audience', label: 'Plateia', icon: Users, position: [0, 1.7, 2500] as [number, number, number], target: [0, 300, 0] as [number, number, number] },
-  { id: 'front', label: 'Front', icon: Users, position: [0, 1.7, 3000] as [number, number, number], target: [0, 400, 0] as [number, number, number] },
+  { id: 'audience', label: 'Plateia', icon: Users, position: [0, 6, 2500] as [number, number, number], target: [0, 300, 0] as [number, number, number] },
+  { id: 'front', label: 'Front', icon: Users, position: [0, 6, 3000] as [number, number, number], target: [0, 400, 0] as [number, number, number] },
   { id: 'side', label: 'Side', icon: Video, position: [3000, 250, 0] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
   { id: 'back', label: 'Back', icon: Video, position: [0, 250, -2000] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
   { id: 'aerial', label: 'Aerial 45°', icon: Plane, position: [0, 3000, 3000] as [number, number, number], target: [0, 300, 0] as [number, number, number] },
   { id: 'closeup', label: 'Close-up', icon: Camera, position: [150, 200, 750] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
-  { id: 'cinematic', label: 'Cinema', icon: Video, position: [-750, 2, 2250] as [number, number, number], target: [0, 400, 0] as [number, number, number] },
+  { id: 'cinematic', label: 'Cinema', icon: Video, position: [-750, 8, 2250] as [number, number, number], target: [0, 400, 0] as [number, number, number] },
   { id: 'drone-follow', label: 'Drone POV', icon: Eye, position: [125, 900, 300] as [number, number, number], target: [0, 600, 0] as [number, number, number] },
-  { id: 'vip', label: 'VIP Box', icon: Users, position: [500, 1.7, 2000] as [number, number, number], target: [0, 300, 0] as [number, number, number] },
+  { id: 'vip', label: 'VIP Box', icon: Users, position: [500, 6, 2000] as [number, number, number], target: [0, 300, 0] as [number, number, number] },
 ] as const;
 
 // ═══ WebGL Error Boundary ═══

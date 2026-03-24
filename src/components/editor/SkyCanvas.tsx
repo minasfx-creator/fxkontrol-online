@@ -89,6 +89,7 @@ import { resetPools } from '@/lib/geometryPool';
 import ViewportGeoTools, { type GeoToolMode, type GeoMarker, type GeoRulerPoint, type GeoPath } from './ViewportGeoTools';
 import GoogleTilesLayer from '@/core/geo/GoogleTilesEngine';
 import GeoCameraController from '@/core/geo/GeoCameraController';
+import { isFlyingTo } from '@/core/camera/geoCamera';
 import ClientPresentationMode from './ClientPresentationMode';
 import { GeoToolsScene, GeoToolClickHandler } from './GeoToolsR3F';
 import { RenderDebugToggle, RenderDebugPanel, setDebugExposure, setDebugBurstLoad, setDebugLOD, setDebugRendererInfo } from './RenderDebugOverlay';
@@ -927,12 +928,16 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   const WORLD_HALF_EXTENT = 250000;
   const CAMERA_MIN_Y = 5;
   const CAMERA_MAX_Y = 40000;
-  const _lastValidY = useRef(300);
+  const _lastValidY = useRef(-1); // -1 = uninitialized, will sync on first frame
   const _wasClampedLastFrame = useRef(false);
+  const _wasDropClampedLastFrame = useRef(false);
 
   const clampToWorldBounds = useCallback(() => {
     const controls = controlsRef.current;
     if (!controls) return;
+
+    // Skip clamping during flyTo transitions
+    if (isFlyingTo()) return;
 
     const tx = THREE.MathUtils.clamp(controls.target.x, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
     const ty = THREE.MathUtils.clamp(controls.target.y, 0, 50000);
@@ -940,18 +945,34 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
 
     let cy = THREE.MathUtils.clamp(camera.position.y, CAMERA_MIN_Y, CAMERA_MAX_Y);
 
-    // Prevent sudden altitude drops (max 50m per frame)
-    const yDelta = cy - _lastValidY.current;
-    if (yDelta < -50) {
-      cy = _lastValidY.current - 50;
-      console.warn('[Camera] altitude drop clamped');
+    // Initialize _lastValidY from actual camera position on first frame
+    if (_lastValidY.current < 0) {
+      _lastValidY.current = cy;
     }
 
-    // Altitude-dependent damping near ground
-    if (cy < 20) {
-      const dampFactor = Math.max(0.3, cy / 20);
-      const dampedY = _lastValidY.current + (cy - _lastValidY.current) * dampFactor;
-      cy = Math.max(CAMERA_MIN_Y, dampedY);
+    // Detect teleport/large transition (preset switch, etc.) — reset baseline
+    const absDelta = Math.abs(cy - _lastValidY.current);
+    if (absDelta > 500) {
+      _lastValidY.current = cy; // accept the teleport
+    } else {
+      // Prevent sudden altitude drops (max 50m per frame) — manual nav only
+      const yDelta = cy - _lastValidY.current;
+      if (yDelta < -50) {
+        cy = _lastValidY.current - 50;
+        if (!_wasDropClampedLastFrame.current) {
+          console.warn('[Camera] altitude drop clamped');
+          _wasDropClampedLastFrame.current = true;
+        }
+      } else {
+        _wasDropClampedLastFrame.current = false;
+      }
+
+      // Altitude-dependent damping near ground
+      if (cy < 20) {
+        const dampFactor = Math.max(0.3, cy / 20);
+        const dampedY = _lastValidY.current + (cy - _lastValidY.current) * dampFactor;
+        cy = Math.max(CAMERA_MIN_Y, dampedY);
+      }
     }
 
     if (cy < CAMERA_MIN_Y + 1 && !_wasClampedLastFrame.current) {
