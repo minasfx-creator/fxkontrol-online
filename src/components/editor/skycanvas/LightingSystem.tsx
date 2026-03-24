@@ -241,6 +241,7 @@ export const LensFlareController = React.forwardRef<THREE.Group, {}>(function Le
 // Zero-GC: uses getEffectById() O(1), reuses uniform color in-place
 // ═══════════════════════════════════════════════════════════════════════
 export const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflections(_props, _ref) {
+  const groundStyle = useSceneStore(st => st.settings.groundStyle);
   const meshRef = useRef<THREE.Mesh>(null);
   const uniformsRef = useRef({
     uWetness: { value: 0.3 },
