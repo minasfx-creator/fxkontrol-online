@@ -151,7 +151,7 @@ class FXKEngine {
       ticks: this._tickCount,
       timeline: timelineEngine.getState(),
       environment: this._config.environment ? environmentEngine.getState() : null,
-      cluster: this._config.cluster ? clusterSync.getStatus() : null,
+      cluster: this._config.cluster ? clusterSync.getState() : null,
       unreal: this._config.unreal ? unrealBridge.getState() : null,
       scaler: autoScaler.getState(),
     };
