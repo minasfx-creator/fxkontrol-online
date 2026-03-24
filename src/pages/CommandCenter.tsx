@@ -182,6 +182,7 @@ export default function CommandCenter() {
       case 'show_control': return <ShowControlPanel fs />;
       case 'module': return <FXKNetPanel fs />;
       case 'dmx_monitor': return <DMXMonitorPanel fs />;
+      case 'field_test': return <FieldTestDesktop />;
       default: return null;
     }
   }, []);
