@@ -1,0 +1,54 @@
+policy_version: 1
+owner: platform-render
+
+security:
+  csp_enforced: true
+  allow_unsafe_eval: false
+  allow_inline_script: false
+  allowed_asset_domains:
+    - assets.example.com
+  require_asset_integrity_hash: true
+
+asset_gates:
+  max_asset_mb: 40
+  max_triangles: 800000
+  max_meshes: 500
+  max_materials_per_mesh: 8
+  max_texture_dim: 4096
+  allowed_texture_formats: ["ktx2", "png", "jpg", "webp"]
+  allowed_gltf_extensions:
+    - KHR_texture_basisu
+    - KHR_mesh_quantization
+    - EXT_meshopt_compression
+
+runtime:
+  target_frame_ms: 16.6
+  watchdog_over_budget_frames: 120
+  max_draw_calls: 1500
+  max_visible_triangles: 1200000
+  dynamic_resolution: true
+  fallback_order: ["webgpu", "webgl2", "static_preview"]
+
+memory:
+  max_gpu_memory_mb: 1024
+  max_scene_nodes: 10000
+  cache_strategy: lru_ttl
+  cache_ttl_seconds: 900
+
+observability:
+  metrics:
+    - fps_p50
+    - fps_p95
+    - frame_time_p95
+    - frame_time_p99
+    - draw_calls_p95
+    - visible_triangles_p95
+    - context_loss_rate
+    - crash_free_sessions
+  auto_mitigation:
+    slo_breach_minutes: 5
+    reduce_quality_profile: true
+
+release:
+  block_if_frame_time_p95_regression_percent_gt: 10
+  require_canary: true

@@ -1,75 +1,40 @@
 'use strict';
 
-/**
- * FXKAssistant — non-intrusive state messages, voice feedback, and orb visuals.
- */
+const { buildHologramFrame, getHologramUXTokens } = require('./HologramAssistantUX.cjs');
 
 class FXKAssistant {
   constructor() {
     this.voiceEnabled = false;
-    this.lastState = null;
   }
 
-  setVoiceEnabled(v) {
-    this.voiceEnabled = !!v;
+  setVoiceEnabled(enabled) {
+    this.voiceEnabled = !!enabled;
   }
 
-  /**
-   * Update assistant with current operational context.
-   * @param {object} ctx - { mode, riskDetected, signalQuality, windMps, dropComing }
-   * @returns {{ state, hudMessage, voiceMessage, priority, orbColor, orbOpacity }}
-   */
-  update(ctx) {
-    const { mode, riskDetected, signalQuality, windMps, dropComing } = ctx;
+  update(context) {
+    const hologram = buildHologramFrame({
+      riskDetected: context.riskDetected,
+      cinematic: context.mode === 'CINEMATIC' || !!context.dropComing,
+      signalQuality: context.signalQuality,
+      windMps: context.windMps,
+    });
 
-    let result;
+    const stateByMood = {
+      ALERT: 'ALERT',
+      CINEMATIC: 'CINEMATIC',
+      FOCUS: 'GUIDING',
+      CALM: 'IDLE',
+    };
 
-    if (riskDetected) {
-      result = {
-        state: 'ALERT',
-        hudMessage: 'Risk detected — AI safety override active',
-        voiceMessage: this.voiceEnabled ? 'Safety override active.' : '',
-        priority: 'high',
-        orbColor: '#FF8A3D',
-        orbOpacity: 0.75,
-      };
-    } else if (mode === 'CINEMATIC' || dropComing) {
-      result = {
-        state: 'CINEMATIC',
-        hudMessage: 'Trajectory optimized for cinematic framing',
-        voiceMessage: this.voiceEnabled ? 'Cinematic trajectory locked.' : '',
-        priority: 'low',
-        orbColor: '#36D1FF',
-        orbOpacity: 0.6,
-      };
-    } else if (windMps > 8) {
-      result = {
-        state: 'GUIDING',
-        hudMessage: 'Wind compensation active',
-        voiceMessage: this.voiceEnabled ? 'Compensating wind.' : '',
-        priority: 'medium',
-        orbColor: '#60E0FF',
-        orbOpacity: 0.62,
-      };
-    } else {
-      result = {
-        state: 'IDLE',
-        hudMessage: signalQuality < 0.4 ? 'Signal unstable' : 'Signal stable',
-        voiceMessage: this.voiceEnabled ? 'System stable.' : '',
-        priority: 'low',
-        orbColor: '#55C8FF',
-        orbOpacity: 0.58,
-      };
-    }
-
-    // Signal advisory appended
-    if (signalQuality < 0.5 && result.state !== 'IDLE') {
-      result.hudMessage += ' | Signal degraded';
-      if (result.priority === 'low') result.priority = 'medium';
-    }
-
-    this.lastState = result.state;
-    return result;
+    return {
+      state: stateByMood[hologram.mood],
+      hudMessage: hologram.title,
+      voiceMessage: this.voiceEnabled ? hologram.voiceHint : undefined,
+      orbColor: hologram.theme.core,
+      orbOpacity: hologram.theme.opacity,
+      hologram,
+      uxTokens: getHologramUXTokens(),
+    };
   }
 }
 
