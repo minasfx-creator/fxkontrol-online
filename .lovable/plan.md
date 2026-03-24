@@ -1,57 +1,45 @@
 
 
-## Refatoração UI/UX Industrial — Glassmorphism & Viewport Limpo
+## Blindagem da Branch — 4 Otimizações Críticas
 
-### Resumo
-Limpar a viewport 3D de botões redundantes, consolidar camera presets num dropdown, condicionar ground/grid ao Google 3D Tiles, e reorganizar overlays para maximizar a imersão.
+### Diagnóstico Rápido
+
+Após auditoria do código, o estado real é:
+
+| Issue | Status Atual | Ação Necessária |
+|-------|-------------|-----------------|
+| 1. Cache API Google | **SEM cache** — cada chamada individual (`reverseGeocode`, `getElevation`) faz um fetch separado | Adicionar cache in-memory + deduplicação |
+| 2. InstancedMesh Drones | **JÁ IMPLEMENTADO** — `InstancedDroneSwarm.tsx` usa InstancedMesh com LOD tri-tier | Nenhuma |
+| 3. Audio Sync | **JÁ IMPLEMENTADO** — `DeterministicClock` com drift correction + `timecodeProvider` com fallback chain (LTC→SMPTE→Audio→perf) | Nenhuma |
+| 4. Playhead Re-renders | **PROBLEMA REAL** — `Timeline.tsx` e `DMXBezierEditor.tsx` subscrevem `currentTime` via React state, causando re-renders a 60Hz | Migrar playhead para DOM direto via `useRef` |
+
+Apenas os itens **1** e **4** precisam de implementação. Os itens 2 e 3 já estão resolvidos com engenharia de qualidade.
 
 ---
 
-### 1. Camera Presets → Dropdown Único (SkyCanvas.tsx)
+### Mudança 1: Cache + Deduplicação para Google Geo API
 
-**Problema**: Desktop renderiza 6+ botões de câmera inline (Look, Fly, Free, 1st Person, Plateia, Aerial) na linha 1811-2003, ocupando espaço visual sobre o viewport.
+**Ficheiro:** `src/services/googleGeoIntelligence.ts`
 
-**Solução**: Substituir os botões inline por um único dropdown `🎥 Camera Views` no canto superior esquerdo do viewport, mantendo Look e Fly como toggles separados (são controles de modo, não presets).
+- Adicionar um `Map<string, { data, timestamp }>` como cache in-memory com TTL de 5 minutos
+- Chave do cache: `${lat.toFixed(4)},${lng.toFixed(4)}` (precisão ~11m, suficiente para evitar duplicatas)
+- As funções individuais (`reverseGeocode`, `getTimeZoneOffset`, `getElevation`) passam a ler do cache antes de fazer fetch
+- Adicionar deduplicação de requests em voo (se já há um fetch para as mesmas coordenadas, retorna a mesma Promise)
+- Resultado: mesmas coordenadas nunca geram mais de 1 chamada à API num intervalo de 5 minutos
 
-- Linhas 1877-1893: Envolver os `CAMERA_PRESETS.map(...)` num dropdown colapsável idêntico ao que já existe para mobile (linhas 1843-1876)
-- Mover os botões de Lock, Rulers, Bookmark, Fullscreen, Download Satellite e Presentation para um mini-dock vertical `right-3 top-3` dentro do viewport
-- Resultado: a faixa superior do viewport fica com apenas 3 elementos (Look, Fly, Camera Dropdown)
+### Mudança 2: Playhead DOM-Direto (Zero Re-renders)
 
-### 2. Suprimir Ground/Grid quando Google Earth ativo (SkyCanvas.tsx)
+**Ficheiro:** `src/components/editor/Timeline.tsx`
 
-**Já implementado**: Linha 1727 — `{!google3DTilesEnabled && <StageGround .../>}`. O ground já é condicional. Se o utilizador vê o cubo roxo, é porque `google3DTilesEnabled` pode estar a falhar na inicialização dos tiles (erro 403 nos logs). O terreno e grid já são suprimidos quando os tiles estão ativos.
+- Extrair o playhead (linha vertical + indicator) para um sub-componente `PlayheadIndicator` que usa `useProjectStore.subscribe` (Zustand transient subscription)
+- Em vez de causar re-render React, atualizar `ref.current.style.transform = translateX(...)` diretamente no DOM
+- O componente Timeline principal deixa de subscrever `currentTime` para rendering — apenas para clicks/seeks
+- Mesma abordagem para `PyroTimelineTrack.tsx` (playhead indicator dentro de cada track)
 
-**Ação adicional**: Adicionar uma `hemisphereLight` e `ambientLight` com intensidade mínima (0.3) para iluminar os 3D Tiles do Google quando carregados, pois o HDR rig é otimizado para a cena de fogos e pode deixar os tiles escuros.
+**Ficheiro:** `src/components/editor/DMXBezierEditor.tsx`
 
-### 3. Ocultar StressTest e ViewportTerminal por Padrão (SkyCanvas.tsx)
-
-**Problema**: `StressTestButton` (linha 2028-2031) e `ViewportTerminal` (linha 2021) ficam sempre visíveis.
-
-**Solução**: 
-- Mover ambos para renderização condicional, ativados apenas via `Ctrl+Shift+D`
-- Usar um estado `showDebugTools` que já existe parcialmente (`showDebugOverlay`)
-
-### 4. Viewport Overlay Tools → Mini-Dock Vertical (SkyCanvas.tsx)
-
-**Problema**: Botões utilitários (Lock, Rulers, Bookmark, Fullscreen, Satellite, Presentation, RenderDebug) espalhados horizontalmente na linha superior.
-
-**Solução**: Agrupar num cluster vertical translúcido no canto superior direito do viewport:
-```
-right-3 top-3 flex flex-col gap-1 bg-black/40 backdrop-blur-sm 
-border border-white/5 rounded-xl p-1
-```
-
-### 5. PerformanceHUD do SkyCanvas → Oculto por Padrão
-
-**Problema**: O SkyCanvas tem o seu próprio `PerformanceHUD` (linha 2020) que duplica o HUD do `Index.tsx`.
-
-**Solução**: Condicionar à flag `showDebugOverlay` que já existe, em vez de renderizar sempre.
-
-### 6. Bottom Info Box → Oculto por Padrão
-
-**Problema**: O box de info "FX KONTROL v2.0" (linhas 2051-2058) no canto inferior direito ocupa espaço visual.
-
-**Solução**: Só mostrar quando `showDebugOverlay` está ativo.
+- O `playheadTime` já é derivado de `currentTime` — isolar a linha SVG do playhead num sub-componente com subscription transiente
+- Os valores DMX calculados (`evaluateCurve`) continuam a precisar de re-render, mas podem ser throttled a 10Hz em vez de 60Hz
 
 ---
 
@@ -59,11 +47,12 @@ border border-white/5 rounded-xl p-1
 
 | Ficheiro | Ação |
 |----------|------|
-| `src/components/editor/SkyCanvas.tsx` | Consolidar camera presets em dropdown, agrupar tools em mini-dock, ocultar debug tools |
+| `src/services/googleGeoIntelligence.ts` | Cache in-memory + request deduplication |
+| `src/components/editor/Timeline.tsx` | Playhead via DOM direto (transient subscribe) |
+| `src/components/editor/PyroTimelineTrack.tsx` | Playhead indicator via ref |
+| `src/components/editor/DMXBezierEditor.tsx` | Throttle DMX evaluation + playhead isolation |
 
 ### Impacto
-- Viewport 3D ganha ~80% mais espaço visual livre
-- Camera presets acessíveis mas não intrusivos
-- Debug tools escondidos até `Ctrl+Shift+D`
-- Iluminação melhorada para Google Earth tiles
+- **Custo Google**: De potencialmente centenas de chamadas para ~1 por localização a cada 5 min
+- **Performance UI**: Timeline e painéis laterais param de re-renderizar a 60Hz durante playback — apenas o playhead se move via manipulação DOM directa
 
