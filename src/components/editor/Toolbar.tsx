@@ -689,6 +689,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       <UE5MapImporter open={ue5MapOpen} onOpenChange={(v) => { setUe5MapOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'ue5map' || droppedFile?.type === 'heightmap' ? droppedFile.file : null} />
       <TwinmotionImporter open={twinmotionOpen} onOpenChange={(v) => { setTwinmotionOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'twinmotion' ? droppedFile.file : null} />
       <FullscreenCommandMenu open={commandMenuOpen} onClose={() => setCommandMenuOpen(false)} onOpenPanel={(id) => onOpenPanel?.(id)} />
+      <ExportModal open={exportModalOpen} onOpenChange={setExportModalOpen} />
 
       <div className="flex-1" />
 
