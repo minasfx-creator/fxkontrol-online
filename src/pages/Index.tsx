@@ -619,15 +619,6 @@ function Index() {
                       <SkyCanvas />
                     </Suspense>
                   </CanvasErrorBoundary>
-                  {showViewportGlobe && (
-                    <GlobeSelector
-                      mode="embedded"
-                      onLocationSelected={handleLocationSelected}
-                      onSkip={() => {
-                        handleLocationSelected({ name: 'Default', lat: 0, lng: 0 });
-                      }}
-                    />
-                  )}
                   <BoxSelectOverlay />
                   <SelectionModeBar />
                   {isDragOver && (
