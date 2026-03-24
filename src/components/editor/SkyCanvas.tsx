@@ -1999,11 +1999,11 @@ export default function SkyCanvas() {
           powerPreference: 'high-performance',
           alpha: false,
           stencil: false,
-          logarithmicDepthBuffer: true,
+          logarithmicDepthBuffer: false,
         }}
         dpr={[1, 2]}
       >
-        <PerspectiveCamera makeDefault position={preset.position} fov={55} near={0.5} far={5000} />
+        <PerspectiveCamera makeDefault position={preset.position} fov={55} near={1.0} far={5000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook} />
 
         <SceneLighting />
