@@ -806,13 +806,7 @@ function SFXStageEnvironment() {
     orbRefs.current.forEach((orb, i) => {
       if (orb) orb.position.y = orbBaseY + Math.sin(t * 0.8 + i * 2.1) * 0.5;
     });
-    // DMX Point Light hue rotation
-    dmxPointLightRefs.current.forEach((light, i) => {
-      if (light) {
-        const hue = (t * 0.05 + i * 0.25) % 1;
-        light.color.setHSL(hue, 0.7, 0.5);
-      }
-    });
+    // DMX Point Lights removed — no longer animated
   });
 
   const trussColor = '#1a1a1a';
