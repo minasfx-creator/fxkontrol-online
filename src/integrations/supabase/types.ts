@@ -14,6 +14,264 @@ export type Database = {
   }
   public: {
     Tables: {
+      artnet_modules: {
+        Row: {
+          channel_count: number
+          clone_of: string | null
+          created_at: string
+          dmx_channel_count: number
+          dmx_net: number
+          dmx_start_address: number
+          dmx_subnet: number
+          dmx_universe: number
+          gps_lat: number | null
+          gps_lng: number | null
+          id: string
+          ip: string
+          label: string | null
+          module_address: number
+          name: string
+          port: number
+          project_id: string
+          redundancy_mode: string
+          relay_server_url: string | null
+          relay_token: string | null
+          sort_order: number
+          transport: string
+          updated_at: string
+        }
+        Insert: {
+          channel_count?: number
+          clone_of?: string | null
+          created_at?: string
+          dmx_channel_count?: number
+          dmx_net?: number
+          dmx_start_address?: number
+          dmx_subnet?: number
+          dmx_universe?: number
+          gps_lat?: number | null
+          gps_lng?: number | null
+          id?: string
+          ip?: string
+          label?: string | null
+          module_address?: number
+          name?: string
+          port?: number
+          project_id: string
+          redundancy_mode?: string
+          relay_server_url?: string | null
+          relay_token?: string | null
+          sort_order?: number
+          transport?: string
+          updated_at?: string
+        }
+        Update: {
+          channel_count?: number
+          clone_of?: string | null
+          created_at?: string
+          dmx_channel_count?: number
+          dmx_net?: number
+          dmx_start_address?: number
+          dmx_subnet?: number
+          dmx_universe?: number
+          gps_lat?: number | null
+          gps_lng?: number | null
+          id?: string
+          ip?: string
+          label?: string | null
+          module_address?: number
+          name?: string
+          port?: number
+          project_id?: string
+          redundancy_mode?: string
+          relay_server_url?: string | null
+          relay_token?: string | null
+          sort_order?: number
+          transport?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artnet_modules_clone_of_fkey"
+            columns: ["clone_of"]
+            isOneToOne: false
+            referencedRelation: "artnet_modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "artnet_modules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      budgets: {
+        Row: {
+          created_at: string
+          currency: string
+          event_id: string | null
+          id: string
+          line_items: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          event_id?: string | null
+          id?: string
+          line_items?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          event_id?: string | null
+          id?: string
+          line_items?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budgets_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dmx_logs: {
+        Row: {
+          channel_data: Json
+          created_at: string
+          id: string
+          project_id: string
+          protocol: string
+          session_id: string
+          source: string
+          timestamp: string
+          universe: number
+        }
+        Insert: {
+          channel_data?: Json
+          created_at?: string
+          id?: string
+          project_id: string
+          protocol?: string
+          session_id: string
+          source?: string
+          timestamp?: string
+          universe?: number
+        }
+        Update: {
+          channel_data?: Json
+          created_at?: string
+          id?: string
+          project_id?: string
+          protocol?: string
+          session_id?: string
+          source?: string
+          timestamp?: string
+          universe?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dmx_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          client_name: string | null
+          created_at: string
+          event_date: string | null
+          event_time: string | null
+          event_type: string | null
+          id: string
+          location: string | null
+          name: string
+          notes: string | null
+          project_id: string | null
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_name?: string | null
+          created_at?: string
+          event_date?: string | null
+          event_time?: string | null
+          event_type?: string | null
+          id?: string
+          location?: string | null
+          name: string
+          notes?: string | null
+          project_id?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_name?: string | null
+          created_at?: string
+          event_date?: string | null
+          event_time?: string | null
+          event_type?: string | null
+          id?: string
+          location?: string | null
+          name?: string
+          notes?: string | null
+          project_id?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      layout_presets: {
+        Row: {
+          category_overrides: Json
+          created_at: string
+          id: string
+          name: string
+          preset_base: string
+          user_id: string
+        }
+        Insert: {
+          category_overrides?: Json
+          created_at?: string
+          id?: string
+          name: string
+          preset_base?: string
+          user_id: string
+        }
+        Update: {
+          category_overrides?: Json
+          created_at?: string
+          id?: string
+          name?: string
+          preset_base?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       positions: {
         Row: {
           color: string
@@ -70,6 +328,42 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          company: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          phone: string | null
+          role_title: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          company?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          phone?: string | null
+          role_title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          company?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          phone?: string | null
+          role_title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       projects: {
         Row: {
           audio_url: string | null
@@ -106,14 +400,186 @@ export type Database = {
         }
         Relationships: []
       }
+      rider_templates: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          sections: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string
+          sections?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          sections?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      setlists: {
+        Row: {
+          created_at: string
+          id: string
+          project_id: string
+          tracks: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          project_id: string
+          tracks?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          project_id?: string
+          tracks?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "setlists_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      show_settings: {
+        Row: {
+          channel_count: number | null
+          client_name: string | null
+          created_at: string
+          fallout_radius: number | null
+          firing_system: string | null
+          fleet_size: number | null
+          geofence_radius: number | null
+          gps_alt: number | null
+          gps_lat: number | null
+          gps_lng: number | null
+          humidity: number | null
+          id: string
+          led_fps: number | null
+          license_number: string | null
+          max_altitude: number | null
+          max_velocity: number | null
+          module_count: number | null
+          nfpa_category: string | null
+          notes: string | null
+          project_id: string
+          protocol: string | null
+          safety_radius: number | null
+          show_date: string | null
+          start_method: string | null
+          temperature: number | null
+          timezone: string | null
+          updated_at: string
+          venue_name: string | null
+          wind_direction: number | null
+          wind_speed: number | null
+        }
+        Insert: {
+          channel_count?: number | null
+          client_name?: string | null
+          created_at?: string
+          fallout_radius?: number | null
+          firing_system?: string | null
+          fleet_size?: number | null
+          geofence_radius?: number | null
+          gps_alt?: number | null
+          gps_lat?: number | null
+          gps_lng?: number | null
+          humidity?: number | null
+          id?: string
+          led_fps?: number | null
+          license_number?: string | null
+          max_altitude?: number | null
+          max_velocity?: number | null
+          module_count?: number | null
+          nfpa_category?: string | null
+          notes?: string | null
+          project_id: string
+          protocol?: string | null
+          safety_radius?: number | null
+          show_date?: string | null
+          start_method?: string | null
+          temperature?: number | null
+          timezone?: string | null
+          updated_at?: string
+          venue_name?: string | null
+          wind_direction?: number | null
+          wind_speed?: number | null
+        }
+        Update: {
+          channel_count?: number | null
+          client_name?: string | null
+          created_at?: string
+          fallout_radius?: number | null
+          firing_system?: string | null
+          fleet_size?: number | null
+          geofence_radius?: number | null
+          gps_alt?: number | null
+          gps_lat?: number | null
+          gps_lng?: number | null
+          humidity?: number | null
+          id?: string
+          led_fps?: number | null
+          license_number?: string | null
+          max_altitude?: number | null
+          max_velocity?: number | null
+          module_count?: number | null
+          nfpa_category?: string | null
+          notes?: string | null
+          project_id?: string
+          protocol?: string | null
+          safety_radius?: number | null
+          show_date?: string | null
+          start_method?: string | null
+          temperature?: number | null
+          timezone?: string | null
+          updated_at?: string
+          venue_name?: string | null
+          wind_direction?: number | null
+          wind_speed?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "show_settings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       timeline_items: {
         Row: {
           created_at: string
           effect_id: string
           id: string
+          notes: string | null
           pos_x: number
           pos_y: number
           pos_z: number
+          position_id: string | null
+          position_name: string | null
           project_id: string
           start_time: number
           track_index: number
@@ -122,9 +588,12 @@ export type Database = {
           created_at?: string
           effect_id: string
           id?: string
+          notes?: string | null
           pos_x?: number
           pos_y?: number
           pos_z?: number
+          position_id?: string | null
+          position_name?: string | null
           project_id: string
           start_time?: number
           track_index?: number
@@ -133,9 +602,12 @@ export type Database = {
           created_at?: string
           effect_id?: string
           id?: string
+          notes?: string | null
           pos_x?: number
           pos_y?: number
           pos_z?: number
+          position_id?: string | null
+          position_name?: string | null
           project_id?: string
           start_time?: number
           track_index?: number
@@ -189,6 +661,63 @@ export type Database = {
           },
         ]
       }
+      user_library_assets: {
+        Row: {
+          created_at: string
+          file_format: string
+          file_path: string
+          file_size: number | null
+          id: string
+          name: string
+          source: string
+          tags: string[] | null
+          thumbnail_base64: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_format?: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          name: string
+          source?: string
+          tags?: string[] | null
+          thumbnail_base64?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_format?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          name?: string
+          source?: string
+          tags?: string[] | null
+          thumbnail_base64?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       waypoints: {
         Row: {
           created_at: string
@@ -235,10 +764,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       is_project_owner: { Args: { p_project_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -365,6 +901,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const

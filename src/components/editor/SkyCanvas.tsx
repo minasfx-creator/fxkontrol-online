@@ -1120,6 +1120,7 @@ function Moon() {
 
 // --- Satellite texture ground overlay (real Google Maps imagery) ---
 function SatelliteOverlay({ textureUrl }: { textureUrl: string | null }) {
+  const meshRef = useRef<THREE.Mesh>(null);
   const texture = useMemo(() => {
     if (!textureUrl) return null;
     const loader = new THREE.TextureLoader();
@@ -1132,8 +1133,14 @@ function SatelliteOverlay({ textureUrl }: { textureUrl: string | null }) {
 
   if (!texture) return null;
 
+  useFrame(({ camera }) => {
+    if (!meshRef.current) return;
+    meshRef.current.position.x = camera.position.x;
+    meshRef.current.position.z = camera.position.z;
+  });
+
   return (
-    <mesh position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+    <mesh ref={meshRef} position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
       <planeGeometry args={[300, 300]} />
       <meshBasicMaterial map={texture} transparent={false} />
     </mesh>
@@ -1142,6 +1149,8 @@ function SatelliteOverlay({ textureUrl }: { textureUrl: string | null }) {
 
 // --- Google Earth-style satellite terrain ground ---
 function GrassGround() {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const nearMeshRef = useRef<THREE.Mesh>(null);
   const uniforms = useMemo(() => ({
     time: { value: 0 },
     moonDir: { value: new THREE.Vector3(0.5, 0.7, -0.5).normalize() },
@@ -1151,6 +1160,15 @@ function GrassGround() {
   useFrame(({ clock, camera }) => {
     uniforms.time.value = clock.getElapsedTime();
     uniforms.camPos.value.copy(camera.position);
+    // Follow camera XZ to prevent edge visibility
+    if (meshRef.current) {
+      meshRef.current.position.x = camera.position.x;
+      meshRef.current.position.z = camera.position.z;
+    }
+    if (nearMeshRef.current) {
+      nearMeshRef.current.position.x = camera.position.x;
+      nearMeshRef.current.position.z = camera.position.z;
+    }
   });
 
   const terrainVertexShader = `
@@ -1327,16 +1345,19 @@ function GrassGround() {
   return (
     <>
       {/* Far terrain — Google Earth satellite style */}
-      <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[4000, 4000, 4, 4]} />
+      <mesh ref={meshRef} position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[50000, 50000, 4, 4]} />
         <shaderMaterial
           uniforms={uniforms}
           vertexShader={terrainVertexShader}
           fragmentShader={terrainFragmentShader}
+          polygonOffset
+          polygonOffsetFactor={1}
+          polygonOffsetUnits={1}
         />
       </mesh>
       {/* Near-stage grass with mowing pattern */}
-      <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <mesh ref={nearMeshRef} position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[120, 64]} />
         <shaderMaterial
           uniforms={uniforms}
@@ -1471,18 +1492,26 @@ function GroundFog() {
 
 // --- Finale 3D dark professional ground ---
 function FinaleDarkGround({ brightness }: { brightness: number }) {
-  const b = brightness * 0.4; // darker base
+  const b = brightness * 0.4;
+  const meshRef = useRef<THREE.Mesh>(null);
+  useFrame(({ camera }) => {
+    if (!meshRef.current) return;
+    meshRef.current.position.x = camera.position.x;
+    meshRef.current.position.z = camera.position.z;
+  });
   return (
     <>
-      <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[4000, 4000]} />
+      <mesh ref={meshRef} position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[50000, 50000]} />
         <meshStandardMaterial
           color={new THREE.Color(0.02 * b, 0.035 * b, 0.02 * b)}
           roughness={0.92}
           metalness={0.05}
+          polygonOffset
+          polygonOffsetFactor={1}
+          polygonOffsetUnits={1}
         />
       </mesh>
-      {/* Near-field slightly lighter for depth */}
       <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[120, 64]} />
         <meshStandardMaterial
@@ -1498,14 +1527,23 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
 // --- Concrete / urban ground ---
 function ConcreteGround({ brightness }: { brightness: number }) {
   const b = brightness * 0.5;
+  const meshRef = useRef<THREE.Mesh>(null);
+  useFrame(({ camera }) => {
+    if (!meshRef.current) return;
+    meshRef.current.position.x = camera.position.x;
+    meshRef.current.position.z = camera.position.z;
+  });
   return (
     <>
-      <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[4000, 4000]} />
+      <mesh ref={meshRef} position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[50000, 50000]} />
         <meshStandardMaterial
           color={new THREE.Color(0.06 * b, 0.06 * b, 0.065 * b)}
           roughness={0.95}
           metalness={0.1}
+          polygonOffset
+          polygonOffsetFactor={1}
+          polygonOffsetUnits={1}
         />
       </mesh>
       <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
@@ -1527,9 +1565,9 @@ function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) 
     switch (sc.groundStyle) {
       case 'flat-black':
         return (
-          <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-            <planeGeometry args={[4000, 4000]} />
-            <meshStandardMaterial color="#050505" roughness={0.95} metalness={0} />
+          <mesh position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <planeGeometry args={[50000, 50000]} />
+            <meshStandardMaterial color="#050505" roughness={0.95} metalness={0} polygonOffset polygonOffsetFactor={1} polygonOffsetUnits={1} />
           </mesh>
         );
       case 'concrete':
@@ -1782,6 +1820,9 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
   const targetPos = useRef(new THREE.Vector3(...targetPosition));
   const targetLook = useRef(new THREE.Vector3(...targetLookAt));
   const animating = useRef(false);
+  const _lastValidY = useRef(300);
+  const CAMERA_MIN_Y = 5;
+  const CAMERA_MAX_Y = 5000;
 
   useEffect(() => {
     if (freeLook) {
@@ -1794,11 +1835,39 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
   }, [targetPosition, targetLookAt, freeLook]);
 
   useFrame(() => {
-    if (!animating.current || !controlsRef.current || freeLook) return;
-    camera.position.lerp(targetPos.current, 0.04);
-    controlsRef.current.target.lerp(targetLook.current, 0.04);
-    controlsRef.current.update();
-    if (camera.position.distanceTo(targetPos.current) < 0.05) animating.current = false;
+    if (!controlsRef.current) return;
+
+    // Always clamp camera altitude
+    let cy = THREE.MathUtils.clamp(camera.position.y, CAMERA_MIN_Y, CAMERA_MAX_Y);
+
+    // Prevent sudden altitude drops (max 50m per frame)
+    const yDelta = cy - _lastValidY.current;
+    if (yDelta < -50) {
+      cy = _lastValidY.current - 50;
+    }
+
+    // Altitude-dependent damping near ground
+    if (cy < 20) {
+      const dampFactor = Math.max(0.3, cy / 20);
+      const dampedY = _lastValidY.current + (cy - _lastValidY.current) * dampFactor;
+      cy = Math.max(CAMERA_MIN_Y, dampedY);
+    }
+
+    if (Math.abs(cy - camera.position.y) > 0.01) {
+      camera.position.y = cy;
+    }
+    _lastValidY.current = cy;
+
+    // Clamp target
+    controlsRef.current.target.y = Math.max(0, controlsRef.current.target.y);
+
+    // Preset animation
+    if (animating.current && !freeLook) {
+      camera.position.lerp(targetPos.current, 0.04);
+      controlsRef.current.target.lerp(targetLook.current, 0.04);
+      controlsRef.current.update();
+      if (camera.position.distanceTo(targetPos.current) < 0.05) animating.current = false;
+    }
   });
 
   return (
@@ -1809,7 +1878,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
       rotateSpeed={0.6}
       panSpeed={0.8}
       zoomSpeed={1.2}
-      maxPolarAngle={Math.PI * 0.48}
+      maxPolarAngle={Math.PI * 0.75}
       minDistance={2}
       maxDistance={2000}
       enablePan
@@ -1930,11 +1999,11 @@ export default function SkyCanvas() {
           powerPreference: 'high-performance',
           alpha: false,
           stencil: false,
-          logarithmicDepthBuffer: true,
+          logarithmicDepthBuffer: false,
         }}
         dpr={[1, 2]}
       >
-        <PerspectiveCamera makeDefault position={preset.position} fov={55} near={0.5} far={5000} />
+        <PerspectiveCamera makeDefault position={preset.position} fov={55} near={1.0} far={5000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook} />
 
         <SceneLighting />
