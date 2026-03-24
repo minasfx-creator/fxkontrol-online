@@ -3,7 +3,7 @@
  * Shows pyro cues as colored bars grouped by formation, synchronized with the main timeline.
  * Each bar represents a timeline item (pyro effect) with color-coded category indicators.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { useProjectStore, EFFECT_LIBRARY, type TimelineItem, type Effect } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
 import { Flame, ChevronDown, ChevronRight } from 'lucide-react';
