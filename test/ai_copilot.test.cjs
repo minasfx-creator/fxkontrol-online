@@ -41,9 +41,25 @@ test('AICoPilot aplica override em risco quando não está MANUAL', () => {
 
   assert.equal(out.overrideActive, true);
   assert.ok(out.smoothedInput.pitch < 1);
+  assert.ok(out.decision, 'should return decision object');
+  assert.ok(out.suggestedCameraTarget, 'should return suggestedCameraTarget');
 });
 
-test('FXKAssistant retorna mensagens não intrusivas de estado', () => {
+test('AICoPilot CINEMATIC mode dampens input extra', () => {
+  const copilot = new AICoPilot('CINEMATIC');
+  const out = copilot.processInput(
+    { pitch: 1, roll: 1, yaw: 1, throttle: 1 },
+    baseState,
+    [],
+    { mode: 'CINEMATIC' },
+  );
+
+  assert.equal(out.overrideActive, false);
+  assert.ok(out.smoothedInput.pitch < 0.8, 'CINEMATIC should dampen pitch');
+  assert.ok(out.smoothedInput.yaw < 0.7, 'CINEMATIC should dampen yaw');
+});
+
+test('FXKAssistant retorna mensagens não intrusivas de estado com orb visuals', () => {
   const assistant = new FXKAssistant();
   assistant.setVoiceEnabled(true);
 
@@ -51,6 +67,15 @@ test('FXKAssistant retorna mensagens não intrusivas de estado', () => {
   assert.equal(out.state, 'CINEMATIC');
   assert.match(out.hudMessage, /cinematic/i);
   assert.equal(typeof out.voiceMessage, 'string');
+  assert.equal(typeof out.orbColor, 'string');
+  assert.equal(typeof out.orbOpacity, 'number');
+});
+
+test('FXKAssistant GUIDING state for high wind', () => {
+  const assistant = new FXKAssistant();
+  const out = assistant.update({ mode: 'TRANSIT', riskDetected: false, signalQuality: 0.9, windMps: 12, dropComing: false });
+  assert.equal(out.state, 'GUIDING');
+  assert.match(out.hudMessage, /wind/i);
 });
 
 test('AssistantOrb muda preset por estado', () => {
