@@ -1,46 +1,29 @@
 
 
-## Plan: FXK Ultra Hardening — Execution & Time Layer
+## Assessment: No Changes Needed
 
-Most of the reliability infrastructure already exists (`/core/reliability/` has 8 engines). This plan adds the **missing execution layer** — the bridge between simulation and real-world output — plus the deterministic clock and state buffer systems.
+The "starter kit" code you shared is a **simplified version** of what already exists in the FXK codebase. Every module listed is already implemented at a **higher level of sophistication**:
 
-### What already exists (no duplication)
-- `lockstepEngine.ts`, `predictiveEngine.ts`, `realityEngine.ts`, `emergencySystem.ts` — all built
-- `autoScaler.ts`, `selfDiagnostic.ts`, `blackBoxRecorder.ts`, `seededRandom.ts` — all built
-- `fixedTimestep.ts` — accumulator pattern at 60Hz
-- `safetyEngine.ts` — collision/geofence validation
-- `MissionControlPanel.tsx` — health dashboard UI
+| Starter Code | Already Exists (More Advanced) |
+|---|---|
+| `DeterministicClock` (basic `performance.now`) | `src/core/time/deterministicClock.ts` — drift correction, audio/SMPTE sync, pre-allocated callback array, monotonic guard |
+| `LockstepEngine` (simple array loop) | `src/core/reliability/lockstepEngine.ts` — priority-sorted, fixed 60Hz timestep, per-subsystem perf tracking, enable/disable |
+| `ExecutionBridge` (2 systems) | `src/core/execution/executionBridge.ts` — pyro + drone + DMX, pre-fire compensation, BlackBox logging, arm/disarm |
+| `PyroEngine` (console.log) | `src/core/execution/pyroExecutor.ts` — pre-fire delay, FieldBus dispatch, offline buffer (256 cues), flush-on-reconnect |
+| `DroneEngine` (console.log) | `src/core/execution/droneExecutor.ts` — WGS84→MAVLink, RTH fail-safe, geofence, FieldBus integration |
+| `GeoEngine` (flat-earth approx) | `src/core/geo/geoEngine.worker.ts` — Float64 ECEF/ENU, proper WGS84 ellipsoid math, Web Worker isolation |
+| `StateBuffer` (basic swap) | `src/core/state/stateBuffer.ts` — `structuredClone`, `copyFrontToBack`, swap counter diagnostics |
+| `AutoScaler` (console.log) | `src/core/reliability/autoScaler.ts` — 5 quality tiers, rolling FPS average, particle/bloom/shadow degradation |
 
-### New modules to create
+**Replacing these with the starter code would be a regression.** The existing implementations already cover every feature described, plus fail-safes, logging, and real transport integration.
 
-| # | File | Purpose |
-|---|------|---------|
-| 1 | `src/core/time/deterministicClock.ts` | High-res clock with drift correction, audio/timecode sync, `onTick()` callbacks |
-| 2 | `src/core/state/stateBuffer.ts` | Double-buffer pattern: simulation writes to back buffer, render reads front, `swap()` each frame |
-| 3 | `src/core/execution/executionBridge.ts` | Timeline → real commands dispatcher. Calls pyro/drone/dmx subsystems on each tick with pre-fire compensation |
-| 4 | `src/core/network/fieldBus.ts` | Multi-transport abstraction (WiFi primary, RS-485 backup, relay fallback) with heartbeat and auto-failover |
-| 5 | `src/core/validation/simulationValidator.ts` | Fast-forward simulation at 100x to detect collisions, timing errors, and overflow before show start |
-| 6 | `src/core/execution/pyroExecutor.ts` | Deterministic pyro fire engine with pre-fire delay compensation and local buffer fail-safe |
-| 7 | `src/core/execution/droneExecutor.ts` | Deterministic drone waypoint sender with WGS84→MAVLink conversion and RTH fail-safe |
+### Recommended Next Step
 
-### Modified files
+Instead of rebuilding what exists, the highest-value work is **wiring the existing engines together** into the live render loop and UI. Specifically:
 
-| File | Change |
-|------|--------|
-| `src/core/reliability/index.ts` | Re-export new modules for unified import |
-| `src/components/editor/MissionControlPanel.tsx` | Add Validation Engine results section and FieldBus status indicators |
+1. **Connect DeterministicClock → LockstepEngine → ExecutionBridge** in the SkyCanvas render loop (currently these exist as standalone singletons)
+2. **Wire FieldBus status into MissionControlPanel** for live transport health monitoring
+3. **Connect AutoScaler to useSceneStore** so quality tier changes actually drive particle density, bloom, and shadow settings in real-time
 
-### Technical details
-
-**DeterministicClock**: Wraps `performance.now()` with continuous drift correction against an external reference (audio context `currentTime` or SMPTE timecode). Maintains a monotonic simulation clock that never jumps backward. Exposes `getTime()`, `getDelta()`, `onTick(cb)`.
-
-**StateBuffer**: Generic `StateBuffer<T>` class. Simulation writes to `back`, render reads from `front`. `swap()` is called once per frame after simulation completes. Prevents partial-state reads during rendering.
-
-**ExecutionBridge**: Single `tick(simTime)` method that iterates the timeline, applies pre-fire compensation (`cue.time - preFireDelay`), and dispatches to PyroExecutor/DroneExecutor/DMX. Uses `blackbox.record()` for every command sent.
-
-**FieldBus**: Abstract transport layer. Each transport (wifi/rs485/relay) implements `send()/receive()/isAlive()`. The bus routes commands through the primary channel, switches to backup within 500ms if heartbeat fails, logs all transitions to BlackBox.
-
-**SimulationValidator**: Takes the full timeline + trajectories, runs `simulate()` at 100x speed using the same deterministic engines, collects all collision warnings, timing violations, and geofence breaches. Returns a `ValidationReport` with pass/fail per cue.
-
-**PyroExecutor / DroneExecutor**: Stateless command dispatchers. Given a cue + simTime, they compute whether to fire and emit the command. PyroExecutor applies pre-fire delay. DroneExecutor converts local coords to WGS84 via existing `localToGeo()`. Both have offline fallback: if `fieldBus.isAlive() === false`, they buffer commands locally and execute from the local timeline.
+This integration work would make the existing industrial-grade engines operational rather than dormant.
 
