@@ -131,6 +131,19 @@ export function MissionControlPanel() {
     return () => { unsub(); clearInterval(poll); };
   }, []);
 
+  // Track multi-site state
+  useEffect(() => {
+    const unsub = multiSiteSync.onStateChange(() => {
+      setMultiSites(multiSiteSync.getAllSites());
+      setMultiSiteLocal(multiSiteSync.isLocalMode());
+    });
+    const poll = setInterval(() => {
+      setMultiSites(multiSiteSync.getAllSites());
+      setMultiSiteLocal(multiSiteSync.isLocalMode());
+    }, 2000);
+    return () => { unsub(); clearInterval(poll); };
+  }, []);
+
   const runDiagnostics = useCallback(async () => {
     setRunning(true);
     const r = await diagnostic.runFullCheck();
