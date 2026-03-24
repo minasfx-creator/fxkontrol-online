@@ -22,7 +22,7 @@ interface ClientPresentationModeProps {
 export default function ClientPresentationMode({ active, onExit }: ClientPresentationModeProps) {
   const [showControls, setShowControls] = useState(true);
 
-  const projectName = useProjectStore((s) => s.name);
+  const projectName = useProjectStore((s) => s.projectName);
   const isPlaying = useProjectStore((s) => s.isPlaying);
   const currentTime = useProjectStore((s) => s.currentTime);
   const duration = useProjectStore((s) => s.duration);
