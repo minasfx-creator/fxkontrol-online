@@ -250,11 +250,8 @@ export default function PyroTimelineTrack({
               );
             })}
 
-            {/* Playhead indicator within this row */}
-            <div
-              className="absolute top-0 bottom-0 w-px bg-primary/40 pointer-events-none z-30"
-              style={{ left: `${currentTime * pixelsPerSecond}px` }}
-            />
+            {/* Playhead — DOM-direct (zero re-renders) */}
+            <PyroPlayheadIndicator pixelsPerSecond={pixelsPerSecond} />
           </div>
         </div>
       ))}
