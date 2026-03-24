@@ -616,13 +616,21 @@ function Index() {
                     } catch { /* ignore */ }
                   }}
                 >
-                  <CanvasErrorBoundary>
-                    <Suspense fallback={<CanvasLoader />}>
-                      <SkyCanvas />
-                    </Suspense>
-                  </CanvasErrorBoundary>
-                  <BoxSelectOverlay />
-                  <SelectionModeBar />
+                  {!showViewportGlobe ? (
+                    <>
+                      <CanvasErrorBoundary>
+                        <Suspense fallback={<CanvasLoader />}>
+                          <SkyCanvas />
+                        </Suspense>
+                      </CanvasErrorBoundary>
+                      <BoxSelectOverlay />
+                      <SelectionModeBar />
+                    </>
+                  ) : (
+                    <div className="flex-1 w-full h-full bg-surface-0 flex items-center justify-center">
+                      <CanvasLoader />
+                    </div>
+                  )}
                   {isDragOver && (
                     <div className="absolute inset-0 z-50 pointer-events-none flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded-md backdrop-blur-[2px] transition-all">
                       <div className="flex flex-col items-center gap-2 text-primary">

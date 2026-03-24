@@ -154,7 +154,7 @@ export const CAMERA_PRESETS = [
   { id: 'closeup', label: 'Close-up', icon: Camera, position: [150, 200, 750] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
   { id: 'cinematic', label: 'Cinema', icon: Video, position: [-750, 8, 2250] as [number, number, number], target: [0, 400, 0] as [number, number, number] },
   { id: 'drone-follow', label: 'Drone POV', icon: Eye, position: [125, 900, 300] as [number, number, number], target: [0, 600, 0] as [number, number, number] },
-  { id: 'vip', label: 'VIP Box', icon: Users, position: [500, 1.7, 2000] as [number, number, number], target: [0, 300, 0] as [number, number, number] },
+  { id: 'vip', label: 'VIP Box', icon: Users, position: [500, 6, 2000] as [number, number, number], target: [0, 300, 0] as [number, number, number] },
 ] as const;
 
 // ═══ WebGL Error Boundary ═══
