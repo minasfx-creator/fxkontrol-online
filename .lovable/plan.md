@@ -1,118 +1,71 @@
 
 
-# Google Earth 3D Tiles Integration — FXK Digital Twin
+# GeoCameraController + Client Presentation Mode
 
-## Overview
+## Three Features in One Delivery
 
-Transform the FXK viewport from a flat satellite overlay into a full **Google Photorealistic 3D Tiles** digital twin, where clients see their fireworks show in the real-world venue with buildings, terrain, and water.
+### 1. GeoCameraController — Cinematic FlyTo with Google Earth
 
-## What Already Exists
+The existing `geoCamera.ts` already has `flyTo()` with Bezier arcs. What's missing is a **R3F component** that connects it to the scene when Google 3D Tiles are active, with preset cinematic routes.
 
-| Component | Status |
-|---|---|
-| GeoEngine Worker (WGS84→ECEF→ENU→Local) | Done |
-| FloatingOrigin engine | Done |
-| GeoCamera flyTo system | Done |
-| Sun position engine | Done |
-| GeoHUD telemetry | Done |
-| GeoSearchPanel (presets) | Done |
-| Satellite 2D overlay (Static Maps) | Done |
-| `get-maps-key` edge function | Done |
-| `GOOGLE_MAPS_API_KEY` secret | Configured |
+**New file: `src/core/geo/GeoCameraController.tsx`**
+- R3F component using `useFrame` to call `updateFlyTo()`
+- Exposes `flyToLocation(lat, lng, alt, opts)` via a Zustand action or ref
+- Preset cinematic locations (Angra dos Reis, Copacabana, custom GPS from scene)
+- `orbitAround(target, radius, speed)` — smooth circular orbit for presentation mode
+- Auto-enables when `google3DTilesEnabled` is active
 
-## What Needs to Be Built
+**Modify: `src/components/editor/SkyCanvas.tsx`**
+- Mount `<GeoCameraController />` inside Canvas when Google 3D Tiles enabled
+- Add "Fly To" dropdown in viewport toolbar with preset locations + current GPS anchor
 
-### Step 1: Install `3d-tiles-renderer` (v0.4.x)
+### 2. Google Earth Toggle Verification
 
-Add `3d-tiles-renderer` to package.json. This NASA JPL library has native Three.js and R3F support, handles Google Photorealistic Tiles out of the box, and manages tile LOD, loading, and disposal internally.
+**Modify: `src/components/editor/SceneEditorPanel.tsx`**
+- When toggling Google Earth ON, also auto-set `floatingOriginEnabled: true` (already done)
+- Add visual feedback: loading spinner while tiles initialize, success indicator when first tiles render
+- Show tile count from GeoHUD in the panel
 
-### Step 2: Create `src/core/geo/GoogleTilesEngine.tsx`
+### 3. Client Presentation Mode — Fullscreen Cinematic
 
-R3F component that:
-- Fetches the Google Maps API key from the `get-maps-key` edge function on mount
-- Creates a `TilesRenderer` with `GoogleCloudAuthPlugin` using that key
-- Adds `TileCompressionPlugin` (KTX2/Draco), `TilesFadePlugin` (smooth pop-in), `UpdateOnChangePlugin`, and `UnloadTilesPlugin` (VRAM management)
-- Positions the tileset using the existing `geoToLocalSync` to convert the scene's geo anchor to the tileset's coordinate system
-- Applies an ENU rotation matrix so tiles align with the FXK local coordinate system (X=East, Y=Up, Z=-North)
-- Updates the `GeoHUD` data (tilesLoaded, vramPressure) each frame via `updateGeoHUD()`
+**New file: `src/components/editor/ClientPresentationMode.tsx`**
+- Full-screen overlay (portal to body) that hides ALL editor UI
+- Shows only: 3D viewport + show name watermark + time counter
+- Auto-starts a cinematic camera sequence:
+  1. Wide establishing shot (high altitude orbit)
+  2. Swoops down to show area
+  3. Locks onto launch zone as timeline plays
+  4. Returns to wide orbit during finale
+- Uses existing `CameraAnimator` keyframe system internally, generating keyframes from GPS anchor
+- ESC or click to exit
+- Play/pause timeline automatically on enter/exit
 
-```text
-Architecture:
-┌─────────────────────────┐
-│  SkyCanvas              │
-│  ├─ <GoogleTilesLayer/> │  ← new R3F component
-│  │   ├─ TilesRenderer   │
-│  │   ├─ Auth Plugin      │
-│  │   └─ VRAM Manager    │
-│  ├─ <StageGround/>      │  ← hidden when tiles active
-│  ├─ <FireworkBurst/>    │
-│  └─ ... existing scene  │
-└─────────────────────────┘
-```
+**New file: `src/core/camera/cinematicSequencer.ts`**
+- `generateCinematicKeyframes(lat, lng, duration)` — creates a 4-phase camera path
+- Phase 1 (0-15%): High orbit establishing shot
+- Phase 2 (15-25%): Swoop descent to venue
+- Phase 3 (25-85%): Slow orbit at show altitude, following action
+- Phase 4 (85-100%): Pull back to wide shot for finale
 
-### Step 3: Coordinate Alignment (Critical)
+**Modify: `src/components/editor/SkyCanvas.tsx`**
+- Add presentation mode state
+- Button in viewport toolbar: 🎬 "Apresentação" — enters presentation mode
+- When active, force Google Earth ON + fullscreen + auto-play
 
-Google 3D Tiles use a WGS84 ellipsoidal coordinate system. The tileset root has a `transform` matrix in ECEF. To align with FXK's local ENU frame:
-
-1. Compute ECEF position of the geo anchor using existing `geoToECEF()`
-2. Build a 4x4 matrix that translates ECEF origin to anchor, then rotates from ECEF to ENU
-3. Apply as `tilesRenderer.group.matrixWorld`
-4. When floating origin recenters, update this matrix — no jitter
-
-This reuses the existing `floatingOriginEngine.ts` and `geoEngine.worker.ts` math without modification.
-
-### Step 4: Toggle in Scene Settings & StageGround
-
-- Add `google3DTilesEnabled: boolean` to `SceneSettings` in `useSceneStore.ts`
-- When enabled, hide the flat `StageGround` (concrete/grass) and show `<GoogleTilesLayer/>`
-- Add a toggle in `SceneEditorPanel.tsx` next to the existing Floating Origin toggle
-
-### Step 5: Terrain Height Query (Snap to Terrain)
-
-Create `getTerrainHeight(lat, lng)` using raycasting against the tiles mesh group:
-- Cast a ray downward from (lat,lng, +1000m) onto the tiles geometry
-- Return intersection Y as ground height
-- Used by barges, launch points, and drones for ground-lock
-
-### Step 6: VRAM & Performance Management
-
-- Set `tilesRenderer.errorTarget` (screen-space error) based on the existing Adaptive Quality Controller tier:
-  - Ultra: SSE 4 → maximum detail
-  - High: SSE 8
-  - Medium: SSE 16
-  - Low: SSE 32 → fast on weak GPUs
-- Set `maxCacheBytes` and `maxVisibleBytes` to cap VRAM (default 512MB visible, 1GB cache)
-- Feed tile stats into GeoHUD via `updateGeoHUD({ tilesLoaded, vramPressure })`
-
-### Step 7: UI — Toggle Button
-
-Add a "Google Earth" toggle button in the viewport toolbar (next to existing "Cenário Real" satellite button). When clicked:
-- Enables `google3DTilesEnabled` + `floatingOriginEnabled`
-- Triggers `flyTo` to the current geo anchor at 500m altitude
-- Shows toast: "Digital Twin carregado"
-
-## Files Changed
+### Files Changed
 
 | File | Action |
 |---|---|
-| `package.json` | Add `3d-tiles-renderer` dependency |
-| `src/core/geo/GoogleTilesEngine.tsx` | **New** — R3F component for 3D Tiles |
-| `src/core/geo/terrainQuery.ts` | **New** — raycast terrain height |
-| `src/store/useSceneStore.ts` | Add `google3DTilesEnabled` setting |
-| `src/components/editor/SkyCanvas.tsx` | Mount `<GoogleTilesLayer/>`, hide ground when active |
-| `src/components/editor/SceneEditorPanel.tsx` | Add toggle for Google 3D Tiles |
+| `src/core/geo/GeoCameraController.tsx` | **New** — R3F flyTo controller |
+| `src/core/camera/cinematicSequencer.ts` | **New** — auto-generate cinematic keyframes |
+| `src/components/editor/ClientPresentationMode.tsx` | **New** — fullscreen presentation overlay |
+| `src/components/editor/SkyCanvas.tsx` | Mount GeoCameraController + presentation mode trigger |
+| `src/store/useSceneStore.ts` | Add `presentationMode: boolean` setting |
 
-## What is NOT Changed
+### What is NOT Changed
 
-- Lockstep / ExecutionBridge / DeterministicClock — untouched
-- Existing coordinate system — reused as-is
-- FloatingOrigin engine — reused, not modified
-- GeoCamera — already handles flyTo, no changes needed
-- Sun position system — already works, tiles receive scene lighting
-
-## Constraints
-
-- `3d-tiles-renderer` v0.4.x supports `@react-three/fiber` ^8 (our version)
-- Google Maps API key is already provisioned via `get-maps-key` edge function
-- The **Map Tiles API** must be enabled in the Google Cloud project (separate from Static Maps API). If not enabled, tiles will return 403 — the user will need to enable it in their Google Cloud Console.
+- Existing `geoCamera.ts` flyTo system — reused as-is
+- `CameraAnimator.tsx` — reused for keyframe playback
+- `GoogleTilesEngine.tsx` — no modifications
+- Lockstep / ExecutionBridge / timeline engine — untouched
 
