@@ -323,7 +323,7 @@ function Index() {
   }
 
   if (appPhase === 'splash') {
-    return <SplashScreen onStart={handleSplashStart} showVideoBackground />;
+    return <SplashScreen onStart={() => setAppPhase('editor')} showVideoBackground />;
   }
 
   if (appPhase === 'globe') {
