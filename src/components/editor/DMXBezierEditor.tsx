@@ -236,7 +236,7 @@ export default function DMXBezierEditor({ fs = false }: { fs?: boolean }) {
   ]);
   const [activeCurveId, setActiveCurveId] = useState<string | null>(curves[0]?.id ?? null);
   const [selectedPreset, setSelectedPreset] = useState<CurvePreset>('ease-in-out');
-  const [sequenceDuration] = useState(10); // seconds — base loop duration
+  const [sequenceDuration, setSequenceDuration] = useState(10);
 
   // Master Clock sync — consume global playhead
   const currentTime = useProjectStore(s => s.currentTime);
@@ -344,6 +344,33 @@ export default function DMXBezierEditor({ fs = false }: { fs?: boolean }) {
           DMX BÉZIER EDITOR
         </span>
         <div className="flex-1" />
+        {/* Loop duration control */}
+        <div className="flex items-center gap-1">
+          <span className="text-[5px] font-mono text-muted-foreground/30 tracking-wider">LOOP</span>
+          <div className="flex items-center rounded overflow-hidden" style={{ background: 'hsl(220 10% 8%)' }}>
+            {[1, 2, 5, 10, 30, 60].map(v => (
+              <button key={v} onClick={() => setSequenceDuration(v)}
+                className={cn(
+                  "px-1 py-0.5 text-[6px] font-mono font-bold transition-all",
+                  sequenceDuration === v
+                    ? "text-[hsl(32,100%,60%)]" 
+                    : "text-muted-foreground/25 hover:text-muted-foreground/50"
+                )}
+                style={sequenceDuration === v ? { background: 'hsl(32 100% 50% / 0.08)' } : undefined}>
+                {v}
+              </button>
+            ))}
+          </div>
+          <input
+            type="number"
+            value={sequenceDuration}
+            onChange={e => setSequenceDuration(Math.max(0.1, Math.min(600, parseFloat(e.target.value) || 10)))}
+            min={0.1} max={600} step={0.1}
+            className="w-8 text-[7px] font-mono font-bold text-center rounded border-0 outline-none text-[hsl(32,100%,60%)]"
+            style={{ background: 'hsl(220 10% 8%)' }}
+          />
+          <span className="text-[5px] font-mono text-muted-foreground/25">s</span>
+        </div>
         {/* Master clock indicator */}
         <span className={cn(
           "text-[6px] font-mono tracking-wider px-1.5 py-0.5 rounded",
