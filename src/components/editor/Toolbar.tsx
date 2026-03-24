@@ -551,6 +551,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
             label="Export"
             icon={Download}
             items={[
+              { label: 'Export Manager...', icon: FileBarChart, onClick: () => setExportModalOpen(true) },
               { label: '.vviz (Finale 3D)', icon: FileJson, onClick: handleExportVVIZ },
               { label: '.skyc (SkyCreator)', icon: Download, onClick: handleExportSkyc },
               { label: 'Firing CSV (Cobra/FireTEK)', icon: Download, onClick: handleExportFiringCSV },
