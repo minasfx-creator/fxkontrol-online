@@ -101,6 +101,8 @@ function CurveCanvas({
   onPointMove,
   width = 600,
   height = 200,
+  snapEnabled = false,
+  snapInterval = 0,
 }: {
   curves: DMXCurve[];
   activeCurveId: string | null;
@@ -109,6 +111,8 @@ function CurveCanvas({
   onPointMove: (curveId: string, pointIdx: number, time: number, value: number) => void;
   width?: number;
   height?: number;
+  snapEnabled?: boolean;
+  snapInterval?: number;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [dragging, setDragging] = useState<{ curveId: string; pointIdx: number } | null>(null);
