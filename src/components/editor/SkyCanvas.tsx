@@ -1672,7 +1672,8 @@ export default function SkyCanvas() {
         <SceneFog />
         {!isMobile && <DelayedMount delay={2500}><WeatherEffects /></DelayedMount>}
 
-        <StageGround satelliteTexture={satelliteTexture} />
+        {!settings.google3DTilesEnabled && <StageGround satelliteTexture={satelliteTexture} />}
+        {settings.google3DTilesEnabled && <GoogleTilesLayer />}
         <FinaleAxesHelper />
         <DoubleClickFocus />
         <SiteModelRenderer />

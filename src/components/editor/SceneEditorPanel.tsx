@@ -259,6 +259,16 @@ export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
             <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-wider">Geo Engine</span>
             <GeoSearchPanel />
             <div className="flex items-center justify-between">
+              <span className="text-[9px] text-muted-foreground flex items-center gap-1"><Globe className="h-3 w-3" /> Google Earth 3D</span>
+              <Switch
+                checked={settings.google3DTilesEnabled}
+                onCheckedChange={v => {
+                  updateSettings({ google3DTilesEnabled: v, floatingOriginEnabled: v || settings.floatingOriginEnabled });
+                  if (v) toast.success('Digital Twin carregado');
+                }}
+              />
+            </div>
+            <div className="flex items-center justify-between">
               <span className="text-[9px] text-muted-foreground">Floating Origin</span>
               <Switch
                 checked={settings.floatingOriginEnabled}
