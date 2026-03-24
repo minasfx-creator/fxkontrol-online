@@ -699,6 +699,38 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel }: ShowCommand
               <SafetyChecklist />
               <TerrainCollisionAlert hasCollision={false} minClearance={Infinity} />
 
+              {/* Terrain Safety Scan */}
+              <div className="space-y-2">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/50 px-1">
+                  Varredura de Terreno
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full h-10 text-[10px] font-bold border-amber-500/20 text-amber-400 hover:bg-amber-500/10"
+                  onClick={() => {
+                    // Scan all timeline positions against terrain
+                    const { timelineItems } = useProjectStore.getState();
+                    const trajectory: TrajectoryPoint[] = timelineItems.map(item => ({
+                      x: item.pos_x,
+                      y: item.pos_y,
+                      z: item.pos_z,
+                    }));
+                    const interpolated = interpolateTrajectory(trajectory, 5);
+                    const result = checkTrajectoryCollision(interpolated, null, 15);
+                    if (result.hasCollision) {
+                      toast.error(`🚨 TERRAIN COLLISION — ${result.collisionIndex} pontos inseguros (clearance: ${result.minClearance.toFixed(1)}m)`);
+                    } else {
+                      toast.success(`✅ Trajetória segura — clearance mínimo: ${result.minClearance === Infinity ? '∞' : result.minClearance.toFixed(1) + 'm'}`);
+                    }
+                  }}
+                >
+                  <Target className="w-3.5 h-3.5 mr-1.5" />
+                  RUN SAFETY CHECK
+                </Button>
+              </div>
+
+
               {/* MAVLink Flight Plan Export */}
               <div className="space-y-2">
                 <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/50 px-1">
