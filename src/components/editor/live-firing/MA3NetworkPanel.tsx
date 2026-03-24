@@ -322,6 +322,13 @@ export default function MA3NetworkPanel({ fs = false }: MA3NetworkPanelProps) {
             onClick={handleSync}
             disabled={!state.connected}
           />
+          <TactileButton
+            label={isSimulating ? 'STOP SIM' : 'SIMULATE'}
+            icon={Activity}
+            variant="simulate"
+            onClick={() => setIsSimulating(s => !s)}
+            pulse={isSimulating}
+          />
           <div className="flex-1" />
           {state.artSyncActive && (
             <div className="flex items-center gap-1">
