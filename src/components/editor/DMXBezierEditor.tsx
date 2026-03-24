@@ -298,6 +298,40 @@ export default function DMXBezierEditor({ fs = false }: { fs?: boolean }) {
     }));
   }, [curves, playheadTime]);
 
+  // ═══ DMX Signal Routing → MA3 Node ═══
+  useEffect(() => {
+    if (!isPlaying || curves.length === 0) return;
+
+    const node = getMA3Node();
+    const nodeState = node.getState();
+
+    // Group curves by universe
+    const universeMap = new Map<number, { channel: number; value: number }[]>();
+    for (const c of curves) {
+      const val = Math.round(Math.max(0, Math.min(255, evaluateCurve(c, playheadTime))));
+      if (!universeMap.has(c.universe)) universeMap.set(c.universe, []);
+      universeMap.get(c.universe)!.push({ channel: c.channel, value: val });
+    }
+
+    // Send DMX per universe
+    universeMap.forEach((channels, universeIdx) => {
+      // Get existing buffer or create scratch
+      const existing = node.getUniverseBuffer(universeIdx);
+      const buffer = existing ? new Uint8Array(existing) : new Uint8Array(512);
+
+      for (const ch of channels) {
+        if (ch.channel >= 1 && ch.channel <= 512) {
+          buffer[ch.channel - 1] = ch.value;
+        }
+      }
+
+      // Transmit if node is connected
+      if (nodeState.connected) {
+        node.sendDMX(universeIdx, buffer);
+      }
+    });
+  }, [curves, playheadTime, isPlaying]);
+
   const activeCurve = curves.find(c => c.id === activeCurveId);
 
   return (
