@@ -1,57 +1,63 @@
 
 
-## Audit: Bugs Found Across the Platform
+## Viewport Crash — Root Cause & Fix
 
-### BUG 1 (Critical): Timeline Play Does Not Advance Time
+### Problem
 
-**Root cause**: `DeterministicClock.tick()` is never called in a loop. In `SkyCanvas.tsx` (line 179-187), the code calls `deterministicClock.start()` and registers an `onTick` callback that feeds the lockstep engine. However, **nothing ever calls `deterministicClock.tick()`** — there is no `requestAnimationFrame` loop or R3F `useFrame` hook driving it.
+Two bugs in the context-loss recovery flow cause the viewport to crash and never recover:
 
-The `onTick` callback at line 183 is registered to fire when `tick()` is called, but `tick()` itself is never invoked. So `lockstep.tick()` never runs, the `playback` subsystem never advances `currentTime`, and the timeline stays frozen.
+1. **`recoveringContextRef` never resets on remount**: When context is lost, the code sets `recoveringContextRef.current = true`, then remounts the Canvas via `setCanvasInstanceKey(prev + 1)`. The old canvas is destroyed, so `webglcontextrestored` never fires on it, meaning `recoveringContextRef` stays `true` forever. Any subsequent context loss is silently swallowed (line 1606: `if (recoveringContextRef.current) return`).
 
-**Fix**: Add a R3F `useFrame` hook inside `PlaybackClock` that calls `deterministicClock.tick()` every frame:
+2. **Event listeners leak on every remount**: `onCreated` adds `webglcontextlost` and `webglcontextrestored` listeners but never removes them. Each remount adds a new pair to the new canvas, while old listeners become orphaned. After 2+ context losses the accumulated state becomes corrupted.
+
+### Fix (1 file: `SkyCanvas.tsx`)
+
+**A) Reset `recoveringContextRef` when the new Canvas mounts**
+
+Inside the `onCreated` callback, immediately reset the flag so the new canvas instance can handle future context losses:
 
 ```typescript
-// Inside PlaybackClock, after the registration useEffect:
-useFrame(() => {
-  deterministicClock.tick();
-});
+onCreated={({ gl }) => {
+  recoveringContextRef.current = false; // ← ADD THIS LINE
+  const canvas = gl.domElement;
+  // ... rest of handler
 ```
 
-This connects the R3F render loop to the deterministic clock, which then fires callbacks, which feed the lockstep, which advances playback.
+**B) Clean up event listeners on unmount**
 
----
+Store listener references and return a cleanup from a `useEffect` tied to `canvasInstanceKey`, or move listener registration into a child component that uses `useThree` + `useEffect` with proper cleanup. The cleanest approach: extract context-loss handling into a small R3F child component:
 
-### BUG 2 (Warning): `<button>` nested inside `<button>` in SafetyPanel
+```typescript
+function ContextLossGuard() {
+  const { gl } = useThree();
+  useEffect(() => {
+    const canvas = gl.domElement;
+    const onLost = (e: Event) => {
+      e.preventDefault();
+      recordContextLoss();
+      const shouldRecover = reportCrash();
+      if (!shouldRecover || isInCooldown()) return;
+      recoveringContextRef.current = true;
+      resetPools();
+      setCanvasInstanceKey(prev => prev + 1);
+    };
+    const onRestored = () => { recoveringContextRef.current = false; };
+    canvas.addEventListener('webglcontextlost', onLost);
+    canvas.addEventListener('webglcontextrestored', onRestored);
+    return () => {
+      canvas.removeEventListener('webglcontextlost', onLost);
+      canvas.removeEventListener('webglcontextrestored', onRestored);
+    };
+  }, [gl]);
+  return null;
+}
+```
 
-**Root cause**: `SafetyPanel.tsx` line 135-153 — a `<Switch>` component (which renders a `<button>`) is placed inside a `<button>` element. This is invalid HTML and triggers a React DOM nesting warning.
+This ensures listeners are cleaned up automatically when the Canvas remounts.
 
-**Fix**: Change the outer `<button>` to a `<div role="button" tabIndex={0}>` or restructure so the Switch is outside the clickable button area.
-
----
-
-### BUG 3 (Warning): ResizablePanel sizes don't sum to 100%
-
-**Root cause**: `Index.tsx` line 549/555/638 — panel `defaultSize` values are `14 + 60 + 20 = 94%` (when a side panel is active). The library expects them to total 100%.
-
-**Fix**: Adjust to `14 + 66 + 20 = 100%` or use dynamic calculation.
-
----
-
-### BUG 4 (Minor): WebGL Context Loss on mount
-
-Console shows `THREE.WebGLRenderer: Context Lost` at startup. The hardening/recovery code handles this, but context loss on initial mount suggests the canvas is being mounted, then immediately remounted (likely from React StrictMode or the `canvasInstanceKey` state). This is cosmetic but wastes a render cycle.
-
----
-
-### Changes Summary
+### Changes
 
 | File | Change |
 |---|---|
-| `src/components/editor/SkyCanvas.tsx` | Add `useFrame(() => deterministicClock.tick())` inside `PlaybackClock` |
-| `src/components/editor/SafetyPanel.tsx` | Change outer `<button>` wrapping Switch to `<div role="button">` |
-| `src/pages/Index.tsx` | Fix panel defaultSize values to sum to 100% |
-
-### Technical Detail
-
-The playback fix is the critical one. The architecture is correct (DeterministicClock -> onTick callbacks -> LockstepEngine -> subsystems), but the pump is missing. Adding a single `useFrame` call connects R3F's render loop to the entire deterministic pipeline.
+| `src/components/editor/SkyCanvas.tsx` | Extract context-loss listeners from `onCreated` into a `ContextLossGuard` R3F child component with proper `useEffect` cleanup; reset `recoveringContextRef` on mount |
 
