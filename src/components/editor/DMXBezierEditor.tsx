@@ -268,11 +268,17 @@ export default function DMXBezierEditor({ fs = false }: { fs?: boolean }) {
   const [activeCurveId, setActiveCurveId] = useState<string | null>(curves[0]?.id ?? null);
   const [selectedPreset, setSelectedPreset] = useState<CurvePreset>('ease-in-out');
   const [sequenceDuration, setSequenceDuration] = useState(10);
+  const [isSnapEnabled, setIsSnapEnabled] = useState(false);
 
   // Master Clock sync — consume global playhead
   const currentTime = useProjectStore(s => s.currentTime);
   const duration = useProjectStore(s => s.duration);
   const isPlaying = useProjectStore(s => s.isPlaying);
+  const bpm = useProjectStore(s => s.bpm) || 128;
+
+  // Beat grid math
+  const totalBeats = useMemo(() => sequenceDuration * (bpm / 60), [sequenceDuration, bpm]);
+  const snapInterval = useMemo(() => totalBeats > 0 ? 1 / totalBeats : 0, [totalBeats]);
 
   // Normalize global time to 0–1 range using sequence duration (looping)
   const playheadTime = useMemo(() => {
