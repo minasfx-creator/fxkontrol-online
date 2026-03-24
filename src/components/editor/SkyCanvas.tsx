@@ -1807,8 +1807,8 @@ export default function SkyCanvas() {
         />
       )}
 
-      {/* Camera presets & controls */}
-      <div className="absolute top-3 left-3 flex items-center gap-1 flex-wrap max-w-[calc(100%-24px)]">
+      {/* Camera presets & controls — compact top-left */}
+      <div className="absolute top-3 left-3 flex items-center gap-1 z-20">
         {/* Free look toggle */}
         <button
           onClick={() => { setFreeLook(!freeLook); if (flyMode) setFlyMode(false); }}
@@ -1839,168 +1839,136 @@ export default function SkyCanvas() {
           <span className="hidden sm:inline">Fly</span>
         </button>
 
-        {/* Mobile: camera dropdown; Desktop: inline buttons */}
-        {isMobile ? (
-          <div className="relative">
-            <button
-              onClick={() => setCameraMenuOpen(!cameraMenuOpen)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md bg-card/80 text-muted-foreground border-border/20"
-            >
-              <Camera className="w-3.5 h-3.5" />
-              <span>{preset.label}</span>
-              <ChevronDown className={cn("w-3 h-3 transition-transform", cameraMenuOpen && "rotate-180")} />
-            </button>
-            {cameraMenuOpen && (
-              <>
-                <div className="fixed inset-0 z-30" onClick={() => setCameraMenuOpen(false)} />
-                <div className="absolute top-full left-0 mt-1 z-40 bg-card/95 backdrop-blur-xl border border-border/20 rounded-xl shadow-2xl shadow-black/60 py-1 min-w-[140px]">
-                  {CAMERA_PRESETS.map(({ id, label, icon: Icon }) => (
-                    <button
-                      key={id}
-                      onClick={() => { setActivePreset(id); setFreeLook(false); setCameraMenuOpen(false); }}
-                      className={cn(
-                        "w-full text-left px-3 py-2 text-[11px] font-medium flex items-center gap-2 rounded-lg mx-0.5 transition-all",
-                        activePreset === id && !freeLook
-                          ? "text-primary bg-primary/10"
-                          : "text-muted-foreground hover:text-foreground hover:bg-surface-1/60"
-                      )}
-                      style={{ width: 'calc(100% - 4px)' }}
-                    >
-                      <Icon className="w-3.5 h-3.5" />
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        ) : (
-          CAMERA_PRESETS.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => { setActivePreset(id); setFreeLook(false); }}
-              className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
-                activePreset === id && !freeLook
-                  ? "bg-primary/15 text-primary border-primary/25 shadow-lg shadow-primary/10"
-                  : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
-              )}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{label}</span>
-            </button>
-          ))
-        )}
-
-        {/* Download satellite scenery */}
-        {!isMobile && (
+        {/* 🎥 Camera Views dropdown — unified for desktop & mobile */}
+        <div className="relative">
           <button
-            onClick={handleDownloadScenery}
-            disabled={downloadingScenery}
-            className={cn(
-              "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
-              satelliteTexture
-                ? "bg-success/15 text-success border-success/25"
-                : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
-            )}
-            title="Download real satellite scenery from Google Maps"
-          >
-            {downloadingScenery ? (
-              <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Globe className="w-3.5 h-3.5" />
-            )}
-            <span className="hidden sm:inline">{satelliteTexture ? 'Satélite ✓' : 'Cenário Real'}</span>
-          </button>
-        )}
-
-        {/* 🎬 Presentation Mode */}
-        {!isMobile && (
-          <button
-            onClick={() => useSceneStore.getState().updateSettings({ presentationMode: true })}
+            onClick={() => setCameraMenuOpen(!cameraMenuOpen)}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
-            title="Modo Apresentação Cliente"
           >
-            <Film className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Apresentação</span>
+            <Camera className="w-3.5 h-3.5" />
+            <span>{preset.label}</span>
+            <ChevronDown className={cn("w-3 h-3 transition-transform", cameraMenuOpen && "rotate-180")} />
           </button>
-        )}
+          {cameraMenuOpen && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setCameraMenuOpen(false)} />
+              <div className="absolute top-full left-0 mt-1 z-40 bg-card/95 backdrop-blur-xl border border-border/20 rounded-xl shadow-2xl shadow-black/60 py-1 min-w-[140px]">
+                {CAMERA_PRESETS.map(({ id, label, icon: Icon }) => (
+                  <button
+                    key={id}
+                    onClick={() => { setActivePreset(id); setFreeLook(false); setCameraMenuOpen(false); }}
+                    className={cn(
+                      "w-full text-left px-3 py-2 text-[11px] font-medium flex items-center gap-2 rounded-lg mx-0.5 transition-all",
+                      activePreset === id && !freeLook
+                        ? "text-primary bg-primary/10"
+                        : "text-muted-foreground hover:text-foreground hover:bg-surface-1/60"
+                    )}
+                    style={{ width: 'calc(100% - 4px)' }}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
 
-        {!isMobile && (
+      {/* ═══ Mini-Dock — utility tools (top-right glassmorphism cluster) ═══ */}
+      {!isMobile && (
+        <div className="absolute right-3 top-3 flex flex-col gap-1 bg-card/40 backdrop-blur-sm border border-border/10 rounded-xl p-1 z-20">
+          {/* Render Debug */}
           <RenderDebugToggle show={showDebugOverlay} onToggle={() => setShowDebugOverlay(v => !v)} />
-        )}
 
-        {/* Lock Positions toggle */}
-        {!isMobile && (
+          {/* Lock Positions */}
           <button
             onClick={() => {
               const env = useSceneStore.getState().environment;
               useSceneStore.getState().updateEnvironment({ lockPositions: !env.lockPositions });
             }}
             className={cn(
-              "flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
+              "w-7 h-7 rounded-md flex items-center justify-center transition-all border",
               useSceneStore.getState().environment.lockPositions
-                ? "bg-warning/20 text-warning border-warning/30"
-                : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+                ? "bg-warning/20 border-warning/40 text-warning"
+                : "bg-surface-1/80 border-border/30 text-muted-foreground hover:text-foreground hover:border-border/60"
             )}
-            title="Lock/Unlock Positions (Finale 3D)"
+            title="Lock/Unlock Positions"
           >
-            <Lock className="w-3.5 h-3.5" />
+            <Lock className="h-3.5 w-3.5" />
           </button>
-        )}
 
-        {/* Rulers toggle */}
-        {!isMobile && (
+          {/* Rulers */}
           <button
             onClick={() => {
               const env = useSceneStore.getState().environment;
               useSceneStore.getState().updateEnvironment({ showRulers: !env.showRulers });
             }}
             className={cn(
-              "flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
+              "w-7 h-7 rounded-md flex items-center justify-center transition-all border",
               useSceneStore.getState().environment.showRulers
-                ? "bg-primary/15 text-primary border-primary/25"
-                : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+                ? "bg-primary/20 border-primary/40 text-primary"
+                : "bg-surface-1/80 border-border/30 text-muted-foreground hover:text-foreground hover:border-border/60"
             )}
-            title="Show Rulers (ShowSim)"
+            title="Show Rulers"
           >
-            <Ruler className="w-3.5 h-3.5" />
+            <Ruler className="h-3.5 w-3.5" />
           </button>
-        )}
 
-        {/* Save Camera Bookmark */}
-        {!isMobile && (
+          {/* Bookmark */}
           <button
             onClick={() => {
-              const cam = document.querySelector('canvas')?.closest('[data-sky-canvas]');
-              // Get camera state from Three.js
               const id = `bm-${Date.now()}`;
               const name = `View ${useSceneStore.getState().environment.cameraBookmarks.length + 1}`;
-              // We'll use a custom event to get camera position
               window.dispatchEvent(new CustomEvent('save-camera-bookmark', { detail: { id, name } }));
             }}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+            className="w-7 h-7 rounded-md flex items-center justify-center transition-all border bg-surface-1/80 border-border/30 text-muted-foreground hover:text-foreground hover:border-border/60"
             title="Save Camera Bookmark"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <Bookmark className="w-3.5 h-3.5" />
+            <Bookmark className="h-3.5 w-3.5" />
           </button>
-        )}
 
-        {/* Fullscreen toggle */}
-        {!isMobile && (
+          {/* Download satellite */}
+          <button
+            onClick={handleDownloadScenery}
+            disabled={downloadingScenery}
+            className={cn(
+              "w-7 h-7 rounded-md flex items-center justify-center transition-all border",
+              satelliteTexture
+                ? "bg-success/20 border-success/40 text-success"
+                : "bg-surface-1/80 border-border/30 text-muted-foreground hover:text-foreground hover:border-border/60"
+            )}
+            title="Download satellite scenery"
+          >
+            {downloadingScenery ? (
+              <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Globe className="h-3.5 w-3.5" />
+            )}
+          </button>
+
+          {/* Presentation */}
+          <button
+            onClick={() => useSceneStore.getState().updateSettings({ presentationMode: true })}
+            className="w-7 h-7 rounded-md flex items-center justify-center transition-all border bg-surface-1/80 border-border/30 text-muted-foreground hover:text-foreground hover:border-border/60"
+            title="Presentation Mode"
+          >
+            <Film className="h-3.5 w-3.5" />
+          </button>
+
+          {/* Fullscreen */}
           <button
             onClick={() => {
               const el = document.querySelector('[data-sky-canvas]') as HTMLElement;
               if (!el) return;
               document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen();
             }}
-            className="bg-card/80 text-muted-foreground border border-border/20 hover:text-foreground hover:bg-card/90 px-2.5 py-1.5 rounded-xl transition-all backdrop-blur-md"
+            className="w-7 h-7 rounded-md flex items-center justify-center transition-all border bg-surface-1/80 border-border/30 text-muted-foreground hover:text-foreground hover:border-border/60"
           >
-            {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
+            {isFullscreen ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Camera Bookmarks bar */}
       <CameraBookmarksBar setActivePreset={setActivePreset} setFreeLook={setFreeLook} />
@@ -2017,14 +1985,15 @@ export default function SkyCanvas() {
       {/* AI CoPilot Overlay */}
       <AICoPilotOverlay />
 
-      {!isMobile && <PerformanceHUD statsRef={perfStatsRef} droneCount={droneCount} />}
-      {!isMobile && <ViewportTerminal />}
+      {/* ═══ Debug tools — hidden by default, toggle with Ctrl+Shift+D ═══ */}
+      {!isMobile && showDebugOverlay && <PerformanceHUD statsRef={perfStatsRef} droneCount={droneCount} />}
+      {!isMobile && showDebugOverlay && <ViewportTerminal />}
       <SelectionStatusBar />
       {!isMobile && <AlignmentTools />}
 
       {/* ═══ Finale 3D Viewport Tools ═══ */}
       {!isMobile && <FinaleToolbar />}
-      {!isMobile && (
+      {!isMobile && showDebugOverlay && (
         <div className="absolute bottom-20 left-3 z-40">
           <StressTestButton />
         </div>
@@ -2047,8 +2016,8 @@ export default function SkyCanvas() {
         </div>
       )}
 
-      {/* Bottom info — hidden on mobile to avoid tab bar overlap */}
-      {!isMobile && (
+      {/* Bottom info — only visible in debug mode */}
+      {!isMobile && showDebugOverlay && (
         <div className="absolute bottom-3 right-3 text-[9px] font-mono-code text-muted-foreground/60 bg-card/70 backdrop-blur-md px-3 py-2 rounded-xl border border-border/15 space-y-0.5">
           <div className="text-[8px] text-muted-foreground/40 tracking-wider font-display">FX KONTROL v2.0 · Minas FX</div>
           <div>{flyMode ? 'WASD: Move · Mouse: Look · Q/E: Up/Down' : 'Orbit: LMB · Pan: MMB · Zoom: Scroll'}</div>
