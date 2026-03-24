@@ -5,7 +5,7 @@
  * All transitions logged to BlackBox.
  */
 
-import { blackbox } from '@/core/reliability';
+import { blackbox } from '@/core/reliability/blackBoxRecorder';
 
 export interface TransportMessage {
   type: 'pyro' | 'drone' | 'dmx' | 'heartbeat' | 'estop';

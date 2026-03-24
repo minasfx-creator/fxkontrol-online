@@ -5,7 +5,7 @@
  * Offline fallback: buffers commands if fieldBus is down.
  */
 
-import { blackbox } from '@/core/reliability';
+import { blackbox } from '@/core/reliability/blackBoxRecorder';
 import { type FieldBus, type TransportMessage, fieldBus as defaultBus } from '@/core/network/fieldBus';
 
 export interface PyroCue {

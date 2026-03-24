@@ -7,7 +7,7 @@
  * Returns a ValidationReport with pass/fail per cue.
  */
 
-import { blackbox } from '@/core/reliability';
+import { blackbox } from '@/core/reliability/blackBoxRecorder';
 
 export interface ValidationCue {
   id: string;
