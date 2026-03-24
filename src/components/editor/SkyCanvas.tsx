@@ -138,6 +138,7 @@ let _activeBurstScan_local: ActiveBurstScanResult | null = null;
 import { deterministicClock } from '@/core/time/deterministicClock';
 import { lockstep } from '@/core/reliability/lockstepEngine';
 import { executionBridge } from '@/core/execution/executionBridge';
+import { frameSyncEngine } from '@/core/sync/frameSyncEngine';
 
 const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref) {
   const { isPlaying, currentTime, duration, setCurrentTime, setPlaying, playbackSpeed } = useProjectStore();
