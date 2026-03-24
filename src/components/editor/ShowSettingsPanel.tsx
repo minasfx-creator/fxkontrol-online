@@ -494,6 +494,9 @@ export default function ShowSettingsPanel({ onClose }: ShowSettingsProps) {
           {/* ── Environment Settings (ShowSim + Finale 3D) ───── */}
           <EnvironmentSettingsSection />
 
+          {/* ── Unreal Engine Bridge ─────────────────────────── */}
+          <UnrealBridgeSection />
+
           {/* ── Notes ────────────────────────────────────────── */}
           <SettingsSection title="Notes" icon={FileText} defaultOpen={false}>
             <textarea
