@@ -120,6 +120,13 @@ export function MissionControlPanel() {
     return () => cancelAnimationFrame(raf);
   }, []);
 
+  // Track global clock sync state
+  useEffect(() => {
+    const unsub = globalClock.onStatusChange(setClockSync);
+    const poll = setInterval(() => setClockSync(globalClock.getState()), 1000);
+    return () => { unsub(); clearInterval(poll); };
+  }, []);
+
   const runDiagnostics = useCallback(async () => {
     setRunning(true);
     const r = await diagnostic.runFullCheck();
