@@ -8,7 +8,8 @@ import { useProjectStore, EFFECT_LIBRARY, type TimelineItem } from '@/store/useP
 import * as THREE from 'three';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { Cake, ChevronDown, ChevronUp, Sparkles, Plus } from 'lucide-react';
+import { Cake, ChevronDown, ChevronUp, Sparkles, Plus, Type } from 'lucide-react';
+import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
 
 export type CakePattern = 'straight' | 'fan' | 'v-shape' | 'w-shape' | 'z-sweep' | 'fan-sweep';
 
