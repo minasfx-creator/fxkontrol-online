@@ -305,6 +305,8 @@ function Index() {
       heading: 0,
       altitude: 0,
     });
+    // Force release any stuck selection/control state
+    window.dispatchEvent(new CustomEvent('box-select-active', { detail: false }));
     setAppPhase('editor');
     setShowViewportGlobe(false);
   }, []);
