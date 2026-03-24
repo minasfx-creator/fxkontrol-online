@@ -638,7 +638,7 @@ function ConcreteGround({ brightness }: { brightness: number }) {
   const groundColor = useMemo(() => new THREE.Color(0.07 * b, 0.07 * b, 0.075 * b), [b]);
   return (
     <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <planeGeometry args={[100000, 100000]} />
+      <planeGeometry args={[10000, 10000]} />
       <meshStandardMaterial
         color={groundColor}
         roughness={0.92}
