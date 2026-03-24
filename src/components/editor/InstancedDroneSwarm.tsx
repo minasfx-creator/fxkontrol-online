@@ -1,6 +1,9 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { createDroneMaterials } from '@/render_ultra/drones/droneMaterials';
+import { getNavLights } from '@/render_ultra/drones/droneLights';
+import useGenerativeStore from '@/store/useGenerativeStore';
 
 const _dummy = new THREE.Object3D();
 const _color = new THREE.Color();
@@ -41,56 +44,57 @@ export default function InstancedDroneSwarm({
   const ledGeo = useMemo(() => new THREE.SphereGeometry(0.04, 12, 12), []);
   const rotorGeo = useMemo(() => new THREE.CircleGeometry(0.09, 20), []);
   const glowGeo = useMemo(() => new THREE.RingGeometry(0.35, 0.5, 24), []);
-  const haloGeo = useMemo(() => new THREE.SphereGeometry(0.14, 8, 8), []);
+  const haloGeo = useMemo(() => new THREE.SphereGeometry(0.07, 8, 8), []);
   const navGeo = useMemo(() => new THREE.SphereGeometry(0.012, 6, 6), []);
 
-  // PBR body — carbon fiber with enhanced metallic sheen
-  const bodyMat = useMemo(() => new THREE.MeshStandardMaterial({
-    color: '#080818',
-    metalness: 0.95,
-    roughness: 0.08,
-    envMapIntensity: 0.6,
-  }), []);
+  // ═══ PBR Materials from render_ultra — carbon fiber calibrated ═══
+  const pbrMaterials = useMemo(() => createDroneMaterials(), []);
 
-  // LED — ultra-bright HDR emissive with bloom catch
+  // Body — carbon fiber (metalness 0.3, roughness 0.6, envMapIntensity 0.8)
+  const bodyMat = useMemo(() => pbrMaterials.body, [pbrMaterials]);
+
+  // LED — solid color dot, no glow spill
   const ledMat = useMemo(() => new THREE.MeshStandardMaterial({
-    color: '#ffffff',
+    color: '#222222',
     emissive: '#ffffff',
-    emissiveIntensity: 14,
-    toneMapped: false,
+    emissiveIntensity: 0.008,
+    toneMapped: true,
     metalness: 0.0,
-    roughness: 0.05,
+    roughness: 0.7,
   }), []);
 
-  // Rotor disc
-  const rotorMat = useMemo(() => new THREE.MeshBasicMaterial({
-    transparent: true,
-    opacity: 0.06,
-    side: THREE.DoubleSide,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-  }), []);
+  // Rotor disc — NO additive blending, just subtle transparent
+  const rotorMat = useMemo(() => {
+    const m = new THREE.MeshBasicMaterial({
+      color: '#888888',
+      transparent: true,
+      opacity: 0.006,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    return m;
+  }, []);
 
-  // Selection glow
+  // Selection glow — NO additive
   const glowMat = useMemo(() => new THREE.MeshBasicMaterial({
     transparent: true,
-    opacity: 0.5,
+    opacity: 0.096,
     side: THREE.DoubleSide,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
   }), []);
 
-  // LED volumetric halo — enhanced glow radius
+  // LED halo — disabled (opacity near zero, no additive)
   const haloMat = useMemo(() => new THREE.MeshBasicMaterial({
     transparent: true,
-    opacity: 0.16,
+    opacity: 0.0016,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
   }), []);
 
   // Nav lights
   const navMat = useMemo(() => new THREE.MeshBasicMaterial({
-    toneMapped: false,
+    toneMapped: true,
+    transparent: true,
+    opacity: 0.12,
   }), []);
 
   const armOffsets: [number, number, number][] = useMemo(() => [
@@ -100,17 +104,26 @@ export default function InstancedDroneSwarm({
     [0.3, 0.05, -0.3],
   ], []);
 
+  // Nav light colors from render_ultra droneLights module — calibrated HDR
+  const navLightsCfg = useMemo(() => getNavLights(), []);
   const navColors = useMemo(() => [
-    new THREE.Color('#00ff44'),
-    new THREE.Color('#00ff44'),
-    new THREE.Color('#ff2200'),
-    new THREE.Color('#ff2200'),
-  ], []);
+    new THREE.Color(navLightsCfg.front.color),
+    new THREE.Color(navLightsCfg.front.color),
+    new THREE.Color(navLightsCfg.rear.color),
+    new THREE.Color(navLightsCfg.rear.color),
+  ], [navLightsCfg]);
 
   useFrame((_, delta) => {
     if (!bodyRef.current || !ledRef.current || !rotorRef.current) return;
 
     rotorAngle.current += delta * 35;
+
+    // Tick generative engine
+    const genStore = useGenerativeStore.getState();
+    if (genStore.enabled) {
+      genStore.tick(delta, count);
+    }
+    const genColors = genStore.enabled ? genStore.outputColors : null;
 
     const body = bodyRef.current;
     const led = ledRef.current;
@@ -122,6 +135,7 @@ export default function InstancedDroneSwarm({
 
     for (let i = 0; i < count; i++) {
       const p = positions[i];
+      const ledColor = (genColors && genColors[i]) ? genColors[i] : p.color;
       const s = scale;
       const hover = Math.sin(t + p.x * 2 + p.z) * 0.015;
 
@@ -137,16 +151,16 @@ export default function InstancedDroneSwarm({
       _dummy.scale.setScalar(s);
       _dummy.updateMatrix();
       led.setMatrixAt(i, _dummy.matrix);
-      _color.set(p.color);
+      _color.set(ledColor);
       led.setColorAt(i, _color);
 
       // LED halo
       if (halo) {
         _dummy.position.set(p.x, p.y + 0.06 * s + hover, p.z);
-        _dummy.scale.setScalar(s * 1.8);
+        _dummy.scale.setScalar(s * 1.0);
         _dummy.updateMatrix();
         halo.setMatrixAt(i, _dummy.matrix);
-        _color.set(p.color);
+        _color.set(ledColor);
         halo.setColorAt(i, _color);
       }
 
@@ -163,7 +177,7 @@ export default function InstancedDroneSwarm({
         _dummy.rotation.set(-Math.PI / 2, rotorAngle.current + r * 1.57, 0);
         _dummy.updateMatrix();
         rotor.setMatrixAt(idx, _dummy.matrix);
-        _color.set(p.color);
+        _color.set(ledColor);
         rotor.setColorAt(idx, _color);
 
         // Nav light

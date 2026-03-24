@@ -1,755 +1,1466 @@
 /**
- * Live SFX Firing Module
- * Manual trigger console for CO2 jets, fire machines, confetti/streamers,
- * and DMX-controlled fixtures with scene programmer.
+ * FXK-PYRO Digital Console — Complete recreation + enhancements
+ * 
+ * Modes: Super DMX · Simple DMX · Manual Fire · Auto Fire · Check Slave · Settings
+ * Features: 4 Scenes, 128 CUEs/scene, Lock/Tap keys, Deadman, PANIC, Device Library,
+ *           RDMX monitoring, Safety channels, Art-Net bridge, CUE grouping
  */
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { haptics } from '@/lib/haptics';
+import { createPortal } from 'react-dom';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Flame, Wind, Sparkles, Zap, Play, Square, Plus, Trash2,
-  AlertTriangle, Check, Radio, Lightbulb, ChevronDown, ChevronRight,
-  RotateCcw, Save, Upload, Lock, Unlock, Timer, MapPinned
+  AlertTriangle, Check, Radio, Lightbulb, ChevronDown,
+  RotateCcw, Save, Upload, Lock, Unlock, Timer, Power,
+  Shield, ShieldAlert, Gauge, Settings, FolderOpen, Wifi,
+  Signal, Thermometer, Activity, Volume2, Eye, EyeOff,
+  Maximize2, Minimize2, Battery, Hand, ChevronLeft, ChevronRight,
+  Cable, Globe, Map, Cpu, Smartphone, Plug
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
+import { useSfxChannelStore } from '@/store/useSfxChannelStore';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
+import { usePBusHardware } from '@/hooks/usePBusHardware';
 
-// ─── Types ───
-interface SFXChannel {
-  id: string;
-  name: string;
-  type: 'co2' | 'flame' | 'confetti' | 'streamer' | 'cryo' | 'haze' | 'spark' | 'custom';
-  dmxUniverse: number;
-  dmxAddress: number;
-  dmxChannels: number; // how many DMX channels this device uses
-  armed: boolean;
-  firing: boolean;
-  duration: number; // burst duration in ms
-  intensity: number; // 0-255
-  color: string;
-  locked: boolean;
-  positionId?: string; // linked pyro position for 3D visualization
-}
+import type { SFXChannel, CueEntry, FXCMode, FXCSettings, DeviceLibEntry } from './live-firing/types';
+import { FIRING_RULES, SFX_TYPES, DEFAULT_CHANNELS, DEFAULT_SETTINGS, CUES_PER_PAGE, formatTimecode, SHOWVEN_LIBRARY } from './live-firing/constants';
+import AutoFirePanel from './live-firing/AutoFirePanel';
+import CheckSlavePanel from './live-firing/CheckSlavePanel';
+import FXKNetPanel from './live-firing/FXKNetPanel';
+import SettingsPanel from './live-firing/SettingsPanel';
+import DeviceLibraryPanel from './live-firing/DeviceLibraryPanel';
+import MobileLinkMode from './live-firing/MobileLinkMode';
+import PyroFireOnePanel from './live-firing/PyroFireOnePanel';
+import VirtualControllerHub from './VirtualControllerHub';
+import VirtualZK6200 from './VirtualZK6200';
+import VirtualFXButton from './VirtualFXButton';
+import FieldMap2D from './FieldMap2D';
+import ConnectionManagerPanel from './ConnectionManagerPanel';
+import PBusMonitorPanel from './live-firing/PBusMonitorPanel';
+import RadioControlPanel from './RadioControlPanel';
+import MA3ControlPanel from './MA3ControlPanel';
+import VirtualIFMx32QPanel from './live-firing/VirtualIFMx32QPanel';
+import WiFiDirectControlPanel from './live-firing/WiFiDirectControlPanel';
+import ArtNetModulePanel from './live-firing/ArtNetModulePanel';
+import ShowControlPanel from './ShowControlPanel';
+import DMXMonitorPanel from './DMXMonitorPanel';
+import DroneCommandPanel from './DroneCommandPanel';
+import BLEDeviceScanner from './BLEDeviceScanner';
+import { RISK_GROUP_LABELS, RISK_GROUP_COLORS, type RiskGroup } from '@/lib/pyroPhysics';
 
-interface DMXScene {
-  id: string;
-  name: string;
-  channels: { channelId: string; intensity: number }[];
-}
-
-interface DMXCue {
-  id: string;
-  sceneId: string;
-  time: number; // seconds from show start
-  fadeIn: number; // ms
-  hold: number; // ms
-  fadeOut: number; // ms
-}
-
-const SFX_TYPES: { key: SFXChannel['type']; label: string; icon: typeof Flame; color: string }[] = [
-  { key: 'co2', label: 'CO₂ Jet', icon: Wind, color: 'hsl(200, 80%, 60%)' },
-  { key: 'flame', label: 'Fire Machine', icon: Flame, color: 'hsl(15, 95%, 55%)' },
-  { key: 'confetti', label: 'Confetti', icon: Sparkles, color: 'hsl(45, 90%, 55%)' },
-  { key: 'streamer', label: 'Streamer', icon: Sparkles, color: 'hsl(280, 70%, 60%)' },
-  { key: 'cryo', label: 'Cryo Jet', icon: Wind, color: 'hsl(190, 90%, 70%)' },
-  { key: 'haze', label: 'Haze', icon: Wind, color: 'hsl(0, 0%, 65%)' },
-  { key: 'spark', label: 'Spark Machine', icon: Zap, color: 'hsl(40, 95%, 55%)' },
-  { key: 'custom', label: 'Custom DMX', icon: Lightbulb, color: 'hsl(var(--primary))' },
+// ═══════════════════════════════════════════════════════════
+// MOBILE MODE TABS — Categorized grid for mobile Live FX
+// ═══════════════════════════════════════════════════════════
+const MODE_CATEGORIES = [
+  {
+    label: '🔥 EXECUTION', modes: [
+      { key: 'super_dmx' as FXCMode, label: 'FXK-DMX', icon: Zap },
+      { key: 'pyro_fire' as FXCMode, label: 'FXK-PYRO', icon: Flame },
+    ],
+  },
+  {
+    label: '📡 MONITORING', modes: [
+      { key: 'show_control' as FXCMode, label: 'SHOW CTRL', icon: Activity },
+      { key: 'dmx_monitor' as FXCMode, label: 'DMX MON', icon: Radio },
+      { key: 'fxk_light' as FXCMode, label: 'FXK-LIGHT', icon: Gauge },
+    ],
+  },
+  {
+    label: '🔧 HARDWARE', modes: [
+      { key: 'module' as FXCMode, label: 'MODULE', icon: Globe },
+      { key: 'ble_scan' as FXCMode, label: 'BLE SCAN', icon: Signal },
+    ],
+  },
 ];
 
-const DEFAULT_CHANNELS: SFXChannel[] = [
-  { id: 'sfx-1', name: 'CO₂ Left', type: 'co2', dmxUniverse: 1, dmxAddress: 1, dmxChannels: 2, armed: false, firing: false, duration: 500, intensity: 255, color: '#4DCFFF', locked: false },
-  { id: 'sfx-2', name: 'CO₂ Right', type: 'co2', dmxUniverse: 1, dmxAddress: 3, dmxChannels: 2, armed: false, firing: false, duration: 500, intensity: 255, color: '#4DCFFF', locked: false },
-  { id: 'sfx-3', name: 'Flame Center', type: 'flame', dmxUniverse: 1, dmxAddress: 5, dmxChannels: 3, armed: false, firing: false, duration: 800, intensity: 200, color: '#FF6622', locked: false },
-  { id: 'sfx-4', name: 'Confetti L', type: 'confetti', dmxUniverse: 1, dmxAddress: 8, dmxChannels: 1, armed: false, firing: false, duration: 2000, intensity: 255, color: '#FFD700', locked: false },
-  { id: 'sfx-5', name: 'Confetti R', type: 'confetti', dmxUniverse: 1, dmxAddress: 9, dmxChannels: 1, armed: false, firing: false, duration: 2000, intensity: 255, color: '#FFD700', locked: false },
-  { id: 'sfx-6', name: 'Streamer Blast', type: 'streamer', dmxUniverse: 1, dmxAddress: 10, dmxChannels: 1, armed: false, firing: false, duration: 1500, intensity: 255, color: '#AA55FF', locked: false },
-];
+function MobileModeTabs({ mode, onModeChange }: { mode: FXCMode; onModeChange: (m: FXCMode) => void }) {
+  const [expanded, setExpanded] = useState(true);
+  const currentCategory = MODE_CATEGORIES.find(c => c.modes.some(m => m.key === mode));
+  const currentMode = MODE_CATEGORIES.flatMap(c => c.modes).find(m => m.key === mode);
 
-// ─── Fire Button Component ───
-function FireButton({ channel, onFire, onStop }: { channel: SFXChannel; onFire: (id: string) => void; onStop: (id: string) => void }) {
-  const sfxType = SFX_TYPES.find(t => t.key === channel.type);
-  const Icon = sfxType?.icon || Zap;
+  if (!expanded) {
+    return (
+      <button
+        onClick={() => setExpanded(true)}
+        className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60"
+        style={{ background: 'hsl(220 10% 7%)' }}
+      >
+        <ChevronDown className="w-3 h-3" />
+        {currentCategory?.label} › {currentMode?.label}
+      </button>
+    );
+  }
 
   return (
-    <div className={cn(
-      "relative rounded-lg border p-2 transition-all",
-      channel.armed ? "border-destructive/50 bg-destructive/5" : "border-border/50 bg-card/50",
-      channel.firing && "ring-2 ring-destructive animate-pulse",
-      channel.locked && "opacity-50 pointer-events-none"
-    )}>
-      {/* Channel name + type */}
-      <div className="flex items-center gap-1.5 mb-1.5">
-        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: sfxType?.color }} />
-        <span className="text-[10px] font-bold truncate flex-1">{channel.name}</span>
-        <span className="text-[8px] font-mono text-muted-foreground">U{channel.dmxUniverse}.{channel.dmxAddress}</span>
+    <div className="px-2 py-2 space-y-2" style={{ background: 'hsl(220 10% 6%)' }}>
+      {/* Quick access bar */}
+      <div className="flex gap-1.5">
+        {[
+          { key: 'super_dmx' as FXCMode, label: 'DMX', icon: Zap },
+          { key: 'pyro_fire' as FXCMode, label: 'Pyro', icon: Flame },
+          { key: 'show_control' as FXCMode, label: 'Show', icon: Activity },
+          { key: 'artnet_modules' as FXCMode, label: 'Module', icon: Globe },
+        ].map(q => (
+          <button
+            key={q.key}
+            onClick={() => { onModeChange(q.key); setExpanded(false); }}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-1.5 rounded-lg border-2 py-2.5 font-bold uppercase text-[9px] tracking-wider transition-all min-h-[44px]",
+              mode === q.key
+                ? "border-primary/50 bg-primary/10 text-primary"
+                : "border-border/15 bg-[hsl(220_10%_10%)] text-muted-foreground/40"
+            )}
+          >
+            <q.icon className="w-4 h-4" />
+            {q.label}
+          </button>
+        ))}
       </div>
-
-      {/* Fire button */}
-      <button
-        onMouseDown={() => channel.armed && onFire(channel.id)}
-        onMouseUp={() => onStop(channel.id)}
-        onMouseLeave={() => channel.firing && onStop(channel.id)}
-        onTouchStart={() => channel.armed && onFire(channel.id)}
-        onTouchEnd={() => onStop(channel.id)}
-        disabled={!channel.armed || channel.locked}
-        className={cn(
-          "w-full h-10 rounded-md flex items-center justify-center gap-1.5 font-bold text-[11px] uppercase tracking-wider transition-all select-none",
-          channel.armed
-            ? channel.firing
-              ? "bg-destructive text-destructive-foreground shadow-[0_0_20px_hsl(0,80%,50%,0.4)] scale-95"
-              : "bg-destructive/80 text-destructive-foreground hover:bg-destructive active:scale-95"
-            : "bg-muted text-muted-foreground cursor-not-allowed"
-        )}
-      >
-        <Icon className="w-4 h-4" />
-        {channel.firing ? 'FIRING!' : channel.armed ? 'FIRE' : 'DISARMED'}
-      </button>
-
-      {/* Intensity bar */}
-      <div className="mt-1.5 h-1 rounded-full bg-muted overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all"
-          style={{
-            width: `${(channel.intensity / 255) * 100}%`,
-            backgroundColor: sfxType?.color,
-            opacity: channel.firing ? 1 : 0.5,
-          }}
-        />
-      </div>
-
-      {/* Duration label */}
-      <div className="flex items-center justify-between mt-1">
-        <span className="text-[8px] text-muted-foreground font-mono">{channel.duration}ms</span>
-        <span className="text-[8px] text-muted-foreground font-mono">{Math.round(channel.intensity / 2.55)}%</span>
-      </div>
+      {/* Categories grid */}
+      {MODE_CATEGORIES.map(cat => (
+        <div key={cat.label}>
+          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/30 mb-1 px-1">{cat.label}</div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {cat.modes.map(m => (
+              <button
+                key={m.key}
+                onClick={() => { onModeChange(m.key); setExpanded(false); }}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-1 rounded-lg border py-3 transition-all min-h-[56px]",
+                  mode === m.key
+                    ? "border-primary/40 bg-primary/10 text-primary"
+                    : "border-border/10 bg-[hsl(220_10%_9%)] text-muted-foreground/40 active:bg-[hsl(220_10%_14%)]"
+                )}
+              >
+                <m.icon className="w-5 h-5" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">{m.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
 
-// ─── Main Panel ───
-export default function LiveFiringPanel({ onClose }: { onClose: () => void }) {
-  const { isPlaying, currentTime, setPlaying, positions } = useProjectStore();
-  const [channels, setChannels] = useState<SFXChannel[]>(DEFAULT_CHANNELS);
-  const [scenes, setScenes] = useState<DMXScene[]>([]);
-  const [cues, setCues] = useState<DMXCue[]>([]);
-  const [masterArm, setMasterArm] = useState(false);
-  const [showConfig, setShowConfig] = useState(false);
-  const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
-  const [newSceneName, setNewSceneName] = useState('');
-  const [section, setSection] = useState<'triggers' | 'programmer' | 'cues'>('triggers');
-  const [artNetConnected, setArtNetConnected] = useState(false);
-  const [artNetIp, setArtNetIp] = useState('255.255.255.255');
-  const [artNetPort, setArtNetPort] = useState(6454);
-  const [syncEnabled, setSyncEnabled] = useState(true);
-  const [cueRunning, setCueRunning] = useState(false);
-  const [activeCueId, setActiveCueId] = useState<string | null>(null);
-  const sequenceRef = useRef(0);
-  const fireTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
-  const firedCuesRef = useRef<Set<string>>(new Set());
+// ═══════════════════════════════════════════════════════════
+// LOCKOUT PANEL — Finale 3D Risk Group Lockout System
+// ═══════════════════════════════════════════════════════════
+function LockoutPanel({ fs, mob }: { fs: boolean; mob: boolean }) {
+  const { activeLockouts, toggleLockout } = useProjectStore();
+  const groups: RiskGroup[] = ['A', 'B', 'C', 'D', 'E'];
 
-  // Build DMX universe buffer from channels and send via Art-Net edge function
-  const sendArtNetPacket = useCallback(async (currentChannels: SFXChannel[]) => {
-    // Group channels by universe
-    const universeMap = new Map<number, number[]>();
-    for (const ch of currentChannels) {
-      if (!universeMap.has(ch.dmxUniverse)) {
-        universeMap.set(ch.dmxUniverse, new Array(512).fill(0));
+  return (
+    <div className={cn("border-t border-border/15", fs && mob ? "px-3 py-1.5" : fs ? "px-4 py-2" : "px-2 py-1")} style={{ background: 'hsl(220 12% 7%)' }}>
+      <div className={cn("flex items-center gap-2 mb-1", fs ? "text-[9px]" : "text-[8px]")}>
+        <Shield className={cn(fs ? "w-3.5 h-3.5" : "w-2.5 h-2.5", "text-amber-400/60")} />
+        <span className="font-bold text-muted-foreground/50 uppercase tracking-wider">Lockout Groups</span>
+      </div>
+      <div className={cn("flex gap-1", fs && mob ? "flex-wrap" : "")}>
+        {groups.map(g => {
+          const locked = activeLockouts.includes(g);
+          return (
+            <button
+              key={g}
+              onClick={() => toggleLockout(g)}
+              className={cn(
+                "flex-1 rounded border-2 font-bold uppercase transition-all flex flex-col items-center",
+                fs && mob ? "py-2 text-[9px] min-w-[60px]" : fs ? "py-1.5 text-[10px]" : "py-1 text-[10px]",
+                locked
+                  ? "border-red-500/60 bg-red-500/15 text-red-400"
+                  : "border-border/20 bg-[hsl(220_10%_10%)] text-muted-foreground/40 hover:border-border/40"
+              )}
+            >
+              <span className="font-black" style={{ color: locked ? undefined : RISK_GROUP_COLORS[g] }}>{g}</span>
+              <span className={cn("font-normal", fs ? "text-[10px]" : "text-[10px]")}>
+                {locked ? '🔒' : RISK_GROUP_LABELS[g].split(' ')[0]}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {activeLockouts.length > 0 && (
+        <div className={cn("text-center font-bold text-red-400/70 uppercase mt-1", fs ? "text-[10px]" : "text-[10px]")}>
+          ⛔ {activeLockouts.length} group{activeLockouts.length > 1 ? 's' : ''} locked out
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// CUE KEY — hardware key replica with Lock/Tap mode
+// ═══════════════════════════════════════════════════════════
+function CueKey({
+  index, cue, firing, onPress, onRelease, onLongPress, pyroArmed, dmxArmed, fs, mobile,
+}: {
+  index: number; cue?: CueEntry; firing: boolean;
+  onPress: () => void; onRelease: () => void; onLongPress: () => void;
+  pyroArmed: boolean; dmxArmed: boolean; fs: boolean; mobile?: boolean;
+}) {
+  const isArmed = pyroArmed || dmxArmed;
+  const hasAssignment = !!cue;
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLocked = cue?.keyMode === 'lock';
+  const isBig = fs && mobile;
+
+  const handleDown = () => {
+    onPress();
+    longPressTimer.current = setTimeout(() => { onLongPress(); }, 800);
+  };
+  const handleUp = () => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    onRelease();
+  };
+
+  return (
+    <button
+      onMouseDown={handleDown}
+      onMouseUp={handleUp}
+      onMouseLeave={() => { if (longPressTimer.current) clearTimeout(longPressTimer.current); if (firing && !isLocked) onRelease(); }}
+      onTouchStart={(e) => { e.preventDefault(); handleDown(); }}
+      onTouchEnd={(e) => { e.preventDefault(); handleUp(); }}
+      disabled={!isArmed || !hasAssignment}
+      className={cn(
+        "relative flex flex-col items-center justify-center rounded-md transition-all select-none border-2",
+        isBig ? "min-h-[72px] rounded-xl" : fs ? "min-h-[100px] rounded-lg" : "min-h-[52px]",
+        firing
+          ? "bg-red-600 border-red-400 scale-[0.96]"
+          : isArmed && hasAssignment
+            ? "bg-[hsl(220_12%_12%)] border-border/50 hover:bg-[hsl(220_12%_16%)] active:scale-[0.96] active:bg-red-700/80 cursor-pointer"
+            : hasAssignment
+              ? "bg-[hsl(220_10%_10%)] border-border/20"
+              : "bg-[hsl(220_10%_7%)] border-border/10"
+      )}
+      style={firing ? { boxShadow: '0 0 20px rgba(255,60,30,0.5)' } : undefined}
+    >
+      <div className={cn(
+        "absolute rounded-full",
+        isBig ? "w-2.5 h-2.5 top-1.5 left-1.5" : fs ? "w-3 h-3 top-1.5 left-1.5" : "w-1.5 h-1.5 top-0.5 left-0.5",
+        firing ? "bg-red-400" : isArmed && hasAssignment ? "bg-green-500" : "bg-muted-foreground/20"
+      )} style={firing ? { boxShadow: '0 0 6px #ff4444' } : isArmed && hasAssignment ? { boxShadow: '0 0 4px #22cc44' } : undefined} />
+
+      {isLocked && (
+        <Lock className={cn(
+          "absolute text-amber-400/50",
+          isBig ? "w-3 h-3 top-1.5 right-1.5" : fs ? "w-3 h-3 top-1.5 right-1.5" : "w-2 h-2 top-0.5 right-0.5"
+        )} />
+      )}
+
+      <span className={cn(
+        "font-mono font-bold",
+        isBig ? "text-[9px] mb-0.5" : fs ? "text-xs mb-1" : "text-[8px]",
+        firing ? "text-white" : "text-muted-foreground/50"
+      )}>KEY{index + 1}</span>
+
+      {cue ? (
+        <>
+          <span className={cn(
+            "font-black uppercase tracking-wide leading-tight text-center px-0.5 truncate w-full",
+            isBig ? "text-[10px]" : fs ? "text-sm" : "text-[10px]",
+            firing ? "text-white" : "text-foreground/80"
+          )} style={{ color: firing ? undefined : cue.keyColor }}>
+            {cue.keyLabel || cue.effect}
+          </span>
+          <span className={cn(
+            "font-mono",
+            isBig ? "text-[8px] mt-0.5" : fs ? "text-[10px] mt-0.5" : "text-[10px]",
+            firing ? "text-red-200" : "text-muted-foreground/40"
+          )}>
+            {cue.deviceIds.length}dev · {FIRING_RULES.find(r => r.key === cue.firingRule)?.label}
+          </span>
+        </>
+      ) : (
+        <span className={cn(isBig ? "text-xs" : fs ? "text-sm" : "text-[8px]", "text-muted-foreground/20")}>—</span>
+      )}
+    </button>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// DEVICE TABLE ROW
+// ═══════════════════════════════════════════════════════════
+function DeviceRow({
+  channel, index, selected, onSelect, dmxArmed, fs,
+}: {
+  channel: SFXChannel; index: number; selected: boolean;
+  onSelect: () => void; dmxArmed: boolean; fs: boolean;
+}) {
+  const sfxType = SFX_TYPES.find(t => t.key === channel.type);
+  const hasSafety = channel.safetyChannel !== undefined;
+
+  return (
+    <button onClick={onSelect}
+      className={cn(
+        "w-full flex items-center gap-1 border-b border-border/10 transition-all text-left",
+        fs ? "px-2.5 py-1.5 gap-2" : "px-1.5 py-1 gap-1",
+        selected ? "bg-primary/15 border-primary/20" :
+        dmxArmed && channel.enabled && hasSafety && channel.firing ? "bg-red-600/15" :
+        dmxArmed && channel.enabled && hasSafety ? "bg-[hsl(210_80%_25%_/_0.2)]" :
+        dmxArmed && channel.enabled ? "bg-[hsl(220_10%_12%)] hover:bg-[hsl(220_10%_15%)]" :
+        "hover:bg-[hsl(220_10%_10%)]",
+        !channel.enabled && "opacity-40"
+      )}>
+      <span className={cn("font-mono text-muted-foreground/40 text-right shrink-0", fs ? "text-[10px] w-4" : "text-[8px] w-3")}>{index + 1}</span>
+      <div className={cn("rounded-sm shrink-0", fs ? "w-2 h-7" : "w-1.5 h-6")} style={{ backgroundColor: sfxType?.color || '#888' }} />
+      <div className="flex-1 min-w-0">
+        <div className={cn("font-bold uppercase truncate leading-tight", fs ? "text-[10px]" : "text-[10px]", selected ? "text-primary" : "text-foreground/80")}>
+          {channel.name}
+        </div>
+        <div className={cn("font-mono text-muted-foreground/40 leading-tight", fs ? "text-[10px]" : "text-[10px]")}>
+          {sfxType?.label} · U{channel.dmxUniverse}.{String(channel.dmxAddress).padStart(3, '0')}
+        </div>
+      </div>
+      <div className="flex flex-col items-end gap-0.5 shrink-0">
+        {channel.temperature !== undefined && (
+          <span className={cn("font-mono", fs ? "text-[10px]" : "text-[10px]", channel.temperature > 600 ? "text-red-400" : "text-green-400/70")}>
+            {channel.temperature}°
+          </span>
+        )}
+        {channel.pressure !== undefined && (
+          <span className={cn("font-mono text-cyan-400/70", fs ? "text-[10px]" : "text-[10px]")}>{channel.pressure}bar</span>
+        )}
+      </div>
+      {channel.firing && <div className={cn("rounded-full bg-red-500 animate-pulse shrink-0", fs ? "w-2.5 h-2.5" : "w-2 h-2")} />}
+    </button>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// MAIN PANEL
+// ═══════════════════════════════════════════════════════════
+export default function LiveFiringPanel({ onClose, initialMode, standalone }: { onClose?: () => void; initialMode?: string; standalone?: boolean }) {
+  const isMobile = useIsMobile();
+  const { isPlaying, currentTime, setPlaying, positions } = useProjectStore();
+  const { channels, setChannels: setStoreChannels, updateChannels } = useSfxChannelStore();
+  const fireone = useFireOneHardware();
+  const pbus = usePBusHardware();
+  const setChannels = useCallback((updaterOrValue: SFXChannel[] | ((prev: SFXChannel[]) => SFXChannel[])) => {
+    if (typeof updaterOrValue === 'function') {
+      updateChannels(updaterOrValue);
+    } else {
+      setStoreChannels(updaterOrValue);
+    }
+  }, [updateChannels, setStoreChannels]);
+  const [cues, setCues] = useState<CueEntry[]>([]);
+  const [activeScene, setActiveScene] = useState(0);
+  const [pyroArm, setPyroArm] = useState(false);
+  const [dmxArm, setDmxArm] = useState(false);
+  const [deadmanHeld, setDeadmanHeld] = useState(false);
+  const [selectedDevices, setSelectedDevices] = useState<Set<string>>(new Set());
+  const [mode, setMode] = useState<FXCMode>((initialMode as FXCMode) || 'super_dmx');
+  const [artNetConnected, setArtNetConnected] = useState(false);
+  const [firingKeys, setFiringKeys] = useState<Set<number>>(new Set());
+  const [lockedKeys, setLockedKeys] = useState<Set<number>>(new Set());
+  const [editingCue, setEditingCue] = useState<number | null>(null);
+  const [cueEffect, setCueEffect] = useState('Height 10');
+  const [cueFiringRule, setCueFiringRule] = useState<CueEntry['firingRule']>('sync');
+  const [cueDuration, setCueDuration] = useState(2.0);
+  const [cueTriggerDelay, setCueTriggerDelay] = useState(0);
+  const [cueRepeatPeriod, setCueRepeatPeriod] = useState(1.0);
+  const [cueRepeatCount, setCueRepeatCount] = useState(1);
+  const [cueGroupRepeat, setCueGroupRepeat] = useState(1);
+  const [cueKeyLabel, setCueKeyLabel] = useState('');
+  const [cueKeyMode, setCueKeyMode] = useState<'tap' | 'lock'>('tap');
+  const [isFullscreen, setIsFullscreen] = useState(isMobile);
+  const [cuePage, setCuePage] = useState(0);
+  const [showDeviceLib, setShowDeviceLib] = useState(false);
+  const [settings, setSettings] = useState<FXCSettings>(DEFAULT_SETTINGS);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [firingStartTime, setFiringStartTime] = useState<number | null>(null);
+  const [batteryVoltage] = useState(11.82);
+  const [relayConnected, setRelayConnected] = useState(false);
+  const [relayUrl, setRelayUrl] = useState('ws://localhost:9001');
+  const [showMode, setShowMode] = useState(false);
+  const showModeTapRef = useRef<number>(0);
+  const sequenceRef = useRef(0);
+  const fireTimers = useRef(new globalThis.Map<string, ReturnType<typeof setTimeout>>());
+  const relayWs = useRef<WebSocket | null>(null);
+
+  // ─── WebSocket Relay connection ───
+  const connectRelay = useCallback(() => {
+    if (relayWs.current?.readyState === WebSocket.OPEN) return;
+    try {
+      const ws = new WebSocket(relayUrl);
+      ws.onopen = () => { setRelayConnected(true); toast.success('🔌 Relay UDP conectado'); };
+      ws.onclose = () => { setRelayConnected(false); relayWs.current = null; };
+      ws.onerror = () => { setRelayConnected(false); toast.error('Falha ao conectar relay'); };
+      ws.onmessage = (e) => {
+        try { const msg = JSON.parse(e.data); if (msg.error) console.warn('[Relay]', msg.error); } catch {}
+      };
+      relayWs.current = ws;
+    } catch { toast.error('URL do relay inválida'); }
+  }, [relayUrl]);
+
+  const disconnectRelay = useCallback(() => {
+    relayWs.current?.close();
+    relayWs.current = null;
+    setRelayConnected(false);
+  }, []);
+
+  // Cleanup relay on unmount
+  useEffect(() => { return () => { relayWs.current?.close(); }; }, []);
+
+  // ─── Remote LiveFX relay listener ───
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail) return;
+      const { type, scene, cueIndex, channelId, field, value, armed } = detail;
+      if (type === 'fire-cue' && typeof cueIndex === 'number') {
+        if (typeof scene === 'number') setActiveScene(scene);
+        const cue = cues[cueIndex];
+        if (cue) {
+          const ch = channels.find(c => c.type === cue.effect);
+          if (ch) {
+            useLiveSfxStore.getState().fireEffect({
+              id: `remote-${Date.now()}`,
+              type: ch.type as any,
+              position: [0, 0, 0],
+              color: ch.color,
+              intensity: ch.intensity,
+              startedAt: performance.now(),
+              duration: ch.duration,
+            });
+          }
+        }
+      } else if (type === 'scene-change' && typeof scene === 'number') {
+        setActiveScene(scene);
+      } else if (type === 'arm' && typeof armed === 'boolean') {
+        setPyroArm(armed);
+      } else if (type === 'channel-adjust' && channelId && field) {
+        setChannels((prev: SFXChannel[]) =>
+          prev.map((c: SFXChannel) => c.id === channelId ? { ...c, [field]: value } : c)
+        );
       }
-      const buf = universeMap.get(ch.dmxUniverse)!;
-      const baseAddr = ch.dmxAddress - 1; // 0-indexed
-      // Set intensity on all DMX channels for this fixture
-      const val = ch.firing ? ch.intensity : 0;
-      for (let i = 0; i < ch.dmxChannels; i++) {
-        if (baseAddr + i < 512) buf[baseAddr + i] = val;
-      }
+    };
+    window.addEventListener('remote-livefx', handler);
+    return () => window.removeEventListener('remote-livefx', handler);
+  }, [cues, channels, setChannels]);
+
+  // ─── Swipe gesture for mobile mode switching / close ───
+  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'check_slave', 'ble_scan', 'controllers', 'pbus', 'field_map', 'connections', 'wifi_direct', 'radio', 'ma3', 'artnet_modules', 'mobile_link', 'settings'];
+  const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  const swipeHandled = useRef(false);
+
+  const handleSwipeStart = useCallback((e: React.TouchEvent) => {
+    // Guard: ignore swipe if started inside interactive elements
+    const target = e.target as HTMLElement;
+    if (target.closest('[role="slider"], input, textarea, [data-radix-scroll-area-viewport], .scroll-area')) {
+      touchRef.current = null;
+      return;
+    }
+    const touch = e.touches[0];
+    touchRef.current = { x: touch.clientX, y: touch.clientY, t: Date.now() };
+    swipeHandled.current = false;
+  }, []);
+
+  const handleSwipeEnd = useCallback((e: React.TouchEvent) => {
+    if (!touchRef.current || swipeHandled.current) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - touchRef.current.x;
+    const dy = touch.clientY - touchRef.current.y;
+    const dt = Date.now() - touchRef.current.t;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+
+    // Swipe down to close — threshold 80px, mostly vertical
+    if (dy > 80 && absDy > absDx * 1.5 && dt < 500) {
+      swipeHandled.current = true;
+      onClose();
+      return;
     }
 
+    // Swipe left/right to change mode — threshold 60px, mostly horizontal
+    if (absDx > 60 && absDx > absDy * 1.5 && dt < 400) {
+      swipeHandled.current = true;
+      const currentIdx = SWIPE_MODES.indexOf(mode);
+      if (dx < 0 && currentIdx < SWIPE_MODES.length - 1) {
+        setMode(SWIPE_MODES[currentIdx + 1]);
+        setShowDeviceLib(false);
+      } else if (dx > 0 && currentIdx > 0) {
+        setMode(SWIPE_MODES[currentIdx - 1]);
+        setShowDeviceLib(false);
+      }
+    }
+    touchRef.current = null;
+  }, [mode, onClose]);
+
+  const swipeProps = isMobile ? {
+    onTouchStart: handleSwipeStart,
+    onTouchEnd: handleSwipeEnd,
+  } : {};
+
+  const sceneCues = useMemo(() => cues.filter(c => (c as any).sceneIndex === undefined || (c as any).sceneIndex === activeScene), [cues, activeScene]);
+  const pageStart = cuePage * CUES_PER_PAGE;
+  const pageEnd = pageStart + CUES_PER_PAGE;
+  const pageCues = sceneCues.slice(0, 128); // Max 128
+
+  // Timer for elapsed display
+  useEffect(() => {
+    if (!firingStartTime) return;
+    const iv = setInterval(() => setElapsedMs(Date.now() - firingStartTime), 100);
+    return () => clearInterval(iv);
+  }, [firingStartTime]);
+
+  // ─── Art-Net Bridge ───
+  const sendArtNetPacket = useCallback(async (currentChannels: SFXChannel[]) => {
+    const universeMap = new globalThis.Map<number, number[]>();
+    for (const ch of currentChannels) {
+      if (!universeMap.has(ch.dmxUniverse)) universeMap.set(ch.dmxUniverse, new Array(512).fill(0));
+      const buf = universeMap.get(ch.dmxUniverse)!;
+      const baseAddr = ch.dmxAddress - 1;
+      const val = ch.firing ? ch.intensity : 0;
+      for (let i = 0; i < ch.dmxChannels; i++) { if (baseAddr + i < 512) buf[baseAddr + i] = val; }
+    }
     const universes = Array.from(universeMap.entries()).map(([uniId, buf]) => ({
-      universe: uniId % 16,
-      subnet: Math.floor(uniId / 16) % 16,
-      net: Math.floor(uniId / 256),
-      channels: buf,
-      sequence: (sequenceRef.current++) & 0xFF,
+      universe: uniId % 16, subnet: Math.floor(uniId / 16) % 16, net: Math.floor(uniId / 256),
+      channels: buf, sequence: (sequenceRef.current++) & 0xFF,
     }));
 
+    // Send via WebSocket relay (real UDP Art-Net) if connected
+    if (relayWs.current?.readyState === WebSocket.OPEN) {
+      try {
+        relayWs.current.send(JSON.stringify({ action: 'dmx-batch', universes }));
+      } catch (e) { console.warn('[Relay] WS send error', e); }
+    }
+
+    // Also send via edge function (for logging/diagnostics)
     try {
       const { data, error } = await supabase.functions.invoke('artnet-bridge', {
-        body: { action: 'send', universes, targetIp: artNetIp, targetPort: artNetPort },
+        body: { action: 'send', universes, targetIp: settings.artNetIp, targetPort: settings.artNetPort },
       });
       if (error) throw error;
       setArtNetConnected(true);
       return data;
-    } catch (e: any) {
-      setArtNetConnected(false);
-      console.error('Art-Net send failed:', e);
-    }
-  }, [artNetIp, artNetPort]);
+    } catch { setArtNetConnected(false); }
+  }, [settings.artNetIp, settings.artNetPort]);
 
-  // Master arm toggles all channels
-  const handleMasterArm = useCallback((armed: boolean) => {
-    setMasterArm(armed);
-    setChannels(prev => prev.map(ch => ({ ...ch, armed: ch.locked ? false : armed })));
+  // ─── ARM controls ───
+  const handlePyroArm = useCallback((armed: boolean) => {
+    setPyroArm(armed);
     if (armed) {
-      toast.warning('⚠️ SYSTEM ARMED — All channels ready to fire', { duration: 3000 });
+      toast.warning('⚠️ PYRO ARMED — LIVE SYSTEM', { duration: 3000 });
+      if (fireone.isConnected) fireone.armAll().catch(() => {});
+      if (pbus.isConnected) pbus.armAll().catch(() => {});
     } else {
-      toast.info('System disarmed');
+      toast.info('Pyro disarmed');
+      setLockedKeys(new Set());
+      if (fireone.isConnected) fireone.disarmAll().catch(() => {});
+      if (pbus.isConnected) pbus.disarmAll().catch(() => {});
     }
+  }, [fireone, pbus]);
+
+  const handleDmxArm = useCallback((armed: boolean) => {
+    setDmxArm(armed);
+    setChannels(prev => prev.map(ch => ({ ...ch, armed: ch.locked ? false : armed })));
+    if (armed) toast.warning('DMX ARMED', { duration: 2000 });
+    else { toast.info('DMX disarmed'); setLockedKeys(new Set()); }
   }, []);
 
-  // Fire a channel — send DMX packet with intensity ON + 3D visualization
-  const handleFire = useCallback((id: string) => {
-    setChannels(prev => {
-      const updated = prev.map(ch => ch.id === id ? { ...ch, firing: true } : ch);
-      // Send Art-Net packet with updated state
-      sendArtNetPacket(updated);
-      return updated;
-    });
+  const handlePanic = useCallback(() => {
+    // Strong haptic burst for PANIC
+    haptics.panic();
+    setChannels(prev => { const updated = prev.map(ch => ({ ...ch, firing: false })); sendArtNetPacket(updated); return updated; });
+    fireTimers.current.forEach(t => clearTimeout(t));
+    fireTimers.current.clear();
+    setFiringKeys(new Set());
+    setLockedKeys(new Set());
+    setPyroArm(false);
+    setDmxArm(false);
+    setDeadmanHeld(false);
+    setFiringStartTime(null);
+    // E-STOP all connected hardware
+    if (fireone.isConnected) fireone.emergencyStop().catch(() => {});
+    if (pbus.isConnected) pbus.emergencyStop().catch(() => {});
+    toast.error('🚨 PANIC — ALL STOP', { duration: 5000 });
+  }, [sendArtNetPacket, fireone, pbus]);
 
+  // ─── Fire logic ───
+  const fireChannel = useCallback((id: string) => {
+    // Haptic feedback on mobile
+    haptics.fire();
+    setChannels(prev => { const updated = prev.map(ch => ch.id === id ? { ...ch, firing: true } : ch); sendArtNetPacket(updated); return updated; });
     const ch = channels.find(c => c.id === id);
     if (ch) {
-      toast(`🔥 FIRED: ${ch.name}`, { description: `DMX U${ch.dmxUniverse}.${ch.dmxAddress} @ ${ch.intensity}/255 → Art-Net` });
+      // Route to bound hardware
+      if (ch.hardwareBinding) {
+        const { system, address, pin } = ch.hardwareBinding;
+        if (system === 'fireone' && fireone.isConnected) {
+          fireone.fireIgniter(address, pin).catch(() => {});
+        } else if ((system === 'pbus' || system === 'radio') && pbus.isConnected) {
+          pbus.fireCue(address, pin, ch.duration).catch(() => {});
+        }
+      }
 
-      // Resolve 3D position from linked pyro position, or fallback to spread layout
       let pos3d: [number, number, number];
       if (ch.positionId) {
         const linkedPos = positions.find(p => p.id === ch.positionId);
-        if (linkedPos) {
-          pos3d = [linkedPos.x, linkedPos.y, linkedPos.z];
-        } else {
-          const idx = channels.indexOf(ch);
-          pos3d = [(idx - (channels.length - 1) / 2) * 8, 0, 0];
-        }
+        pos3d = linkedPos ? [linkedPos.x, linkedPos.y, linkedPos.z] : [(channels.indexOf(ch) - (channels.length - 1) / 2) * 8, 0, 0];
       } else {
-        const idx = channels.indexOf(ch);
-        pos3d = [(idx - (channels.length - 1) / 2) * 8, 0, 0];
+        pos3d = [(channels.indexOf(ch) - (channels.length - 1) / 2) * 8, 0, 0];
       }
-
-      useLiveSfxStore.getState().fireEffect({
-        id: ch.id,
-        type: ch.type,
-        position: pos3d,
-        color: ch.color,
-        intensity: ch.intensity,
-        startedAt: performance.now(),
-        duration: ch.duration,
-      });
-    }
-
-    // Auto-stop after duration
-    const channel = channels.find(c => c.id === id);
-    if (channel) {
+      useLiveSfxStore.getState().fireEffect({ id: ch.id, type: ch.type as any, position: pos3d, color: ch.color, intensity: ch.intensity, startedAt: performance.now(), duration: ch.duration });
+      if (!firingStartTime) setFiringStartTime(Date.now());
       const timer = setTimeout(() => {
-        setChannels(prev => {
-          const updated = prev.map(ch => ch.id === id ? { ...ch, firing: false } : ch);
-          sendArtNetPacket(updated);
-          return updated;
-        });
+        setChannels(prev => { const updated = prev.map(c => c.id === id ? { ...c, firing: false } : c); sendArtNetPacket(updated); return updated; });
         fireTimers.current.delete(id);
-      }, channel.duration);
+      }, ch.duration);
       fireTimers.current.set(id, timer);
     }
-  }, [channels, sendArtNetPacket]);
+  }, [channels, sendArtNetPacket, positions, firingStartTime, fireone, pbus]);
 
-  // Stop firing — send DMX packet with intensity OFF
-  const handleStop = useCallback((id: string) => {
+  const stopChannel = useCallback((id: string) => {
     const timer = fireTimers.current.get(id);
-    if (timer) {
-      clearTimeout(timer);
-      fireTimers.current.delete(id);
-    }
-    setChannels(prev => {
-      const updated = prev.map(ch => ch.id === id ? { ...ch, firing: false } : ch);
-      sendArtNetPacket(updated);
-      return updated;
-    });
+    if (timer) { clearTimeout(timer); fireTimers.current.delete(id); }
+    setChannels(prev => { const updated = prev.map(ch => ch.id === id ? { ...ch, firing: false } : ch); sendArtNetPacket(updated); return updated; });
   }, [sendArtNetPacket]);
 
-  // Add new channel
+  // ─── CUE Key firing with Lock/Tap + firing rules ───
+  const fireCueKey = useCallback((keyIndex: number) => {
+    const cue = pageCues.find(c => c.keyIndex === keyIndex + pageStart);
+    if (!cue) return;
+    if (!dmxArm && !pyroArm) return;
+    // Haptic feedback for CUE fire
+    haptics.tap();
+
+    // Lock mode toggle
+    if (cue.keyMode === 'lock') {
+      if (lockedKeys.has(keyIndex)) {
+        setLockedKeys(prev => { const n = new Set(prev); n.delete(keyIndex); return n; });
+        cue.deviceIds.forEach(id => stopChannel(id));
+        setFiringKeys(prev => { const n = new Set(prev); n.delete(keyIndex); return n; });
+        return;
+      }
+      setLockedKeys(prev => new Set(prev).add(keyIndex));
+    }
+
+    setFiringKeys(prev => new Set(prev).add(keyIndex));
+    const deviceChans = channels.filter(ch => cue.deviceIds.includes(ch.id) && ch.enabled);
+    const sortedDevices = [...deviceChans];
+
+    if (cue.firingRule === 'rtl') sortedDevices.reverse();
+    if (cue.firingRule === 'sides') {
+      const mid = Math.floor(sortedDevices.length / 2);
+      const left = sortedDevices.slice(0, mid);
+      const right = sortedDevices.slice(mid).reverse();
+      sortedDevices.length = 0;
+      for (let i = 0; i < Math.max(left.length, right.length); i++) {
+        if (i < left.length) sortedDevices.push(left[i]);
+        if (i < right.length) sortedDevices.push(right[i]);
+      }
+    }
+    if (cue.firingRule === 'middle') {
+      const mid = Math.floor(sortedDevices.length / 2);
+      const reordered: SFXChannel[] = [];
+      for (let i = 0; i < Math.ceil(sortedDevices.length / 2); i++) {
+        if (mid + i < sortedDevices.length) reordered.push(sortedDevices[mid + i]);
+        if (mid - 1 - i >= 0) reordered.push(sortedDevices[mid - 1 - i]);
+      }
+      sortedDevices.length = 0;
+      sortedDevices.push(...reordered);
+    }
+
+    // Handle repeat
+    for (let rep = 0; rep < cue.repeatCount; rep++) {
+      sortedDevices.forEach((ch, i) => {
+        const delay = (cue.firingRule === 'sync' ? 0 : i * cue.triggerDelay * 1000) + rep * cue.repeatPeriod * 1000;
+        setTimeout(() => fireChannel(ch.id), delay);
+      });
+    }
+  }, [pageCues, pageStart, channels, dmxArm, pyroArm, lockedKeys, fireChannel, stopChannel]);
+
+  const stopCueKey = useCallback((keyIndex: number) => {
+    const cue = pageCues.find(c => c.keyIndex === keyIndex + pageStart);
+    if (!cue) return;
+    if (cue.keyMode === 'lock') return; // Lock mode handles on next press
+    cue.deviceIds.forEach(id => stopChannel(id));
+    setFiringKeys(prev => { const n = new Set(prev); n.delete(keyIndex); return n; });
+  }, [pageCues, pageStart, stopChannel]);
+
+  const toggleKeyMode = useCallback((keyIndex: number) => {
+    setCues(prev => prev.map(c =>
+      c.keyIndex === keyIndex + pageStart
+        ? { ...c, keyMode: c.keyMode === 'tap' ? 'lock' : 'tap' }
+        : c
+    ));
+    const currentCue = pageCues.find(c => c.keyIndex === keyIndex + pageStart);
+    toast.info(`KEY${keyIndex + 1}: ${currentCue?.keyMode === 'tap' ? 'Lock' : 'Tap'} Mode`);
+  }, [pageCues, pageStart]);
+
+  // ─── Add CUE ───
+  const addCue = useCallback(() => {
+    if (selectedDevices.size === 0 || editingCue === null) return;
+    const newCue: CueEntry = {
+      id: `cue-${Date.now()}`, deviceIds: [...selectedDevices], effect: cueEffect,
+      firingRule: cueFiringRule, duration: cueDuration, triggerDelay: cueTriggerDelay,
+      repeatPeriod: cueRepeatPeriod, repeatCount: cueRepeatCount, cueGroupRepeat: cueGroupRepeat,
+      keyIndex: editingCue + pageStart, keyLabel: cueKeyLabel || cueEffect,
+      keyColor: channels.find(ch => selectedDevices.has(ch.id))
+        ? SFX_TYPES.find(t => t.key === channels.find(ch => selectedDevices.has(ch.id))?.type)?.color || '#fff' : '#fff',
+      keyMode: cueKeyMode,
+    };
+    setCues(prev => [...prev.filter(c => c.keyIndex !== editingCue + pageStart), newCue]);
+    setEditingCue(null);
+    setSelectedDevices(new Set());
+    toast.success(`CUE KEY${editingCue + 1} programmed`);
+  }, [selectedDevices, editingCue, cueEffect, cueFiringRule, cueDuration, cueTriggerDelay, cueRepeatPeriod, cueRepeatCount, cueGroupRepeat, cueKeyLabel, cueKeyMode, channels, pageStart]);
+
+  // ─── Add device from library ───
+  const addDeviceFromLib = useCallback((entry: DeviceLibEntry, startAddress: number, count: number) => {
+    const sfxType = SFX_TYPES.find(t => t.label.toUpperCase().includes(entry.name.split(' ')[0].toUpperCase()));
+    setChannels(prev => {
+      const newDevices: SFXChannel[] = Array.from({ length: count }, (_, i) => ({
+        id: `sfx-${Date.now()}-${i}`, name: `${entry.name} ${prev.length + i + 1}`,
+        type: sfxType?.key || 'custom', dmxUniverse: 1,
+        dmxAddress: startAddress + i * entry.dmxChannels, dmxChannels: entry.dmxChannels,
+        armed: dmxArm, firing: false, duration: (entry.effects[0]?.duration || 1) * 1000,
+        intensity: 200, color: sfxType?.color || '#fff', locked: false, enabled: true,
+        manufacturer: entry.manufacturer,
+        safetyChannel: entry.safetyChannel, safetyValue: entry.safetyValue,
+      }));
+      return [...prev, ...newDevices];
+    });
+    setShowDeviceLib(false);
+  }, [dmxArm]);
+
+  // ─── Add channel quick ───
   const addChannel = useCallback((type: SFXChannel['type']) => {
     const sfxType = SFX_TYPES.find(t => t.key === type);
     const maxAddr = Math.max(0, ...channels.map(c => c.dmxAddress + c.dmxChannels));
-    const newCh: SFXChannel = {
-      id: `sfx-${Date.now()}`,
-      name: `${sfxType?.label || 'Device'} ${channels.length + 1}`,
-      type,
-      dmxUniverse: 1,
-      dmxAddress: maxAddr || 1,
-      dmxChannels: type === 'flame' ? 3 : type === 'co2' ? 2 : 1,
-      armed: masterArm,
-      firing: false,
-      duration: type === 'flame' ? 800 : type === 'confetti' ? 2000 : 500,
-      intensity: 255,
-      color: sfxType?.color || '#fff',
-      locked: false,
-    };
-    setChannels(prev => [...prev, newCh]);
-  }, [channels, masterArm]);
+    setChannels(prev => [...prev, {
+      id: `sfx-${Date.now()}`, name: `${sfxType?.label || 'CH'} ${prev.length + 1}`, type,
+      dmxUniverse: 1, dmxAddress: maxAddr || 1, dmxChannels: sfxType?.defaultChannels || 2,
+      armed: dmxArm, firing: false, duration: sfxType?.defaultDuration || 1000,
+      intensity: 200, color: sfxType?.color || '#fff', locked: false, enabled: true,
+    }]);
+  }, [channels, dmxArm]);
 
-  // Update channel property
-  const updateChannel = useCallback((id: string, updates: Partial<SFXChannel>) => {
-    setChannels(prev => prev.map(ch => ch.id === id ? { ...ch, ...updates } : ch));
-  }, []);
+  useEffect(() => { return () => { fireTimers.current.forEach(timer => clearTimeout(timer)); }; }, []);
 
-  // Delete channel
-  const deleteChannel = useCallback((id: string) => {
-    setChannels(prev => prev.filter(ch => ch.id !== id));
-  }, []);
-
-  // Save current intensities as a scene
-  const saveScene = useCallback(() => {
-    if (!newSceneName.trim()) return;
-    const scene: DMXScene = {
-      id: `scene-${Date.now()}`,
-      name: newSceneName,
-      channels: channels.map(ch => ({ channelId: ch.id, intensity: ch.intensity })),
-    };
-    setScenes(prev => [...prev, scene]);
-    setNewSceneName('');
-    toast.success(`Scene "${scene.name}" saved`);
-  }, [newSceneName, channels]);
-
-  // Recall a scene
-  const recallScene = useCallback((sceneId: string) => {
-    const scene = scenes.find(s => s.id === sceneId);
-    if (!scene) return;
-    setChannels(prev => prev.map(ch => {
-      const saved = scene.channels.find(sc => sc.channelId === ch.id);
-      return saved ? { ...ch, intensity: saved.intensity } : ch;
-    }));
-    toast.info(`Scene "${scene.name}" recalled`);
-  }, [scenes]);
-
-  // Fire all armed
-  const fireAll = useCallback(() => {
-    channels.filter(ch => ch.armed && !ch.locked).forEach(ch => handleFire(ch.id));
-  }, [channels, handleFire]);
-
-  // Cleanup on unmount
+  // Auto-fullscreen on mobile (but NOT when embedded in Command Center standalone mode)
   useEffect(() => {
+    if (isMobile && !standalone) {
+      setIsFullscreen(true);
+    }
+  }, [isMobile, standalone]);
+
+  // Fullscreen API removed — CSS `fixed inset-0` handles visual fullscreen
+  // User can manually enter browser fullscreen via the maximize button
+
+  // Lock body scroll while mobile commander is fullscreen (prevents cropped controls)
+  useEffect(() => {
+    if (!(isMobile && isFullscreen)) return;
+
+    const prevOverflow = document.body.style.overflow;
+    const prevOverscroll = document.body.style.overscrollBehavior;
+    document.body.style.overflow = 'hidden';
+    document.body.style.overscrollBehavior = 'none';
+
     return () => {
-      fireTimers.current.forEach(timer => clearTimeout(timer));
+      document.body.style.overflow = prevOverflow;
+      document.body.style.overscrollBehavior = prevOverscroll;
     };
-  }, []);
+  }, [isMobile, isFullscreen]);
 
-  // Reset fired cues when playback restarts or time rewinds
+  // Listen for native fullscreen exit (e.g. system gesture) to sync state
   useEffect(() => {
-    if (!isPlaying) {
-      firedCuesRef.current.clear();
-      setCueRunning(false);
-      setActiveCueId(null);
-    }
-  }, [isPlaying]);
-
-  // ── Timeline sync: fire cues automatically during playback ──
-  useEffect(() => {
-    if (!syncEnabled || !isPlaying || !masterArm || cues.length === 0) return;
-
-    setCueRunning(true);
-
-    for (const cue of cues) {
-      if (firedCuesRef.current.has(cue.id)) continue;
-
-      const scene = scenes.find(s => s.id === cue.sceneId);
-      if (!scene) continue;
-
-      // Check if current time has crossed the cue trigger point
-      const cueTotalDuration = (cue.fadeIn + cue.hold + cue.fadeOut) / 1000;
-      if (currentTime >= cue.time && currentTime < cue.time + cueTotalDuration) {
-        firedCuesRef.current.add(cue.id);
-        setActiveCueId(cue.id);
-
-        // Apply scene intensities to channels and fire
-        setChannels(prev => {
-          const updated = prev.map(ch => {
-            const sceneCh = scene.channels.find(sc => sc.channelId === ch.id);
-            if (!sceneCh || ch.locked) return ch;
-
-            // Calculate fade envelope
-            const elapsed = (currentTime - cue.time) * 1000; // ms
-            let envelope = 1;
-            if (elapsed < cue.fadeIn) {
-              envelope = elapsed / cue.fadeIn;
-            } else if (elapsed > cue.fadeIn + cue.hold) {
-              const fadeElapsed = elapsed - cue.fadeIn - cue.hold;
-              envelope = Math.max(0, 1 - fadeElapsed / cue.fadeOut);
-            }
-
-            return {
-              ...ch,
-              intensity: Math.round(sceneCh.intensity * envelope),
-              firing: true,
-            };
-          });
-          sendArtNetPacket(updated);
-          return updated;
-        });
-
-        // Schedule stop after full cue duration
-        const remaining = (cue.time + cueTotalDuration - currentTime) * 1000;
-        setTimeout(() => {
-          setChannels(prev => {
-            const updated = prev.map(ch => {
-              const sceneCh = scene.channels.find(sc => sc.channelId === ch.id);
-              if (!sceneCh) return ch;
-              return { ...ch, firing: false };
-            });
-            sendArtNetPacket(updated);
-            return updated;
-          });
-          setActiveCueId(null);
-        }, Math.max(50, remaining));
-
-        toast(`📋 CUE: ${scene.name}`, {
-          description: `T=${cue.time.toFixed(1)}s · Fade ${cue.fadeIn}ms → Hold ${cue.hold}ms → Out ${cue.fadeOut}ms`,
-        });
+    const onFsChange = () => {
+      if (!document.fullscreenElement && isFullscreen) {
+        setIsFullscreen(false);
       }
-    }
-  }, [currentTime, isPlaying, syncEnabled, masterArm, cues, scenes, sendArtNetPacket]);
+    };
+    document.addEventListener('fullscreenchange', onFsChange);
+    return () => document.removeEventListener('fullscreenchange', onFsChange);
+  }, [isFullscreen]);
 
   const armedCount = channels.filter(c => c.armed).length;
   const firingCount = channels.filter(c => c.firing).length;
-  const selected = selectedChannel ? channels.find(c => c.id === selectedChannel) : null;
+  const enabledCount = channels.filter(c => c.enabled).length;
 
-  return (
-    <div className="h-full flex flex-col bg-card border-r border-border overflow-hidden">
-      {/* Header */}
-      <div className="px-3 py-2 border-b border-border">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <Zap className="w-4 h-4 text-destructive" />
-            <h2 className="text-[10px] font-bold uppercase tracking-[0.15em]">Live SFX Console</h2>
+  // ═══════════════════════════════════════════════════════════
+  // RENDER FUNCTIONS
+  // ═══════════════════════════════════════════════════════════
+
+  const mob = isMobile; // shorthand
+
+  // Platform-aware branding
+  const isDmxMode = mode === 'super_dmx' || mode === 'simple_dmx';
+  const isFireMode = mode === 'pyro_fire' || mode === 'manual_fire';
+  const platformAccent = isDmxMode
+    ? { name: 'FXK-DMX', sub: 'FXCOMMANDER 2.0', color: 'hsl(200 80% 48%)', textClass: 'text-cyan-400', bgGrad: 'linear-gradient(135deg, hsl(200 80% 48%), hsl(200 60% 30%))' }
+    : { name: 'FXK-PYRO', sub: 'XL4+ 2.0', color: 'hsl(0 85% 48%)', textClass: 'text-red-400', bgGrad: 'linear-gradient(135deg, hsl(0 80% 45%), hsl(0 70% 30%))' };
+
+  const renderStatusBar = (fs: boolean) => (
+    <div>
+      <div className={cn("flex items-center justify-between border-b-2", fs && mob ? "px-3 py-2" : fs ? "px-6 py-3" : "px-2 py-1.5")}
+        style={{
+          borderColor: isDmxMode ? 'hsl(200 40% 20%)' : 'hsl(0 40% 20%)',
+          background: isDmxMode
+            ? 'hsl(200 10% 7%)'
+            : 'hsl(0 5% 8%)',
+          /* FX Commander: thin dark bezel enclosure border */
+          ...(isDmxMode ? {
+            borderLeft: '2px solid hsl(200 5% 12%)',
+            borderRight: '2px solid hsl(200 5% 12%)',
+            borderTop: '2px solid hsl(200 5% 12%)',
+          } : {}),
+        }}>
+        <div className="flex items-center gap-2">
+          <div className={cn("rounded flex items-center justify-center cursor-pointer font-black text-white",
+            fs && mob ? "w-6 h-6 text-[9px]" : fs ? "w-8 h-8 text-[10px]" : "w-5 h-5 text-[7px]"
+          )} style={{
+            background: platformAccent.bgGrad,
+            /* Physical console button 3D effect */
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15), 0 2px 4px rgba(0,0,0,0.4)',
+          }}
+            onClick={() => {
+              const now = Date.now();
+              if (now - showModeTapRef.current < 400) {
+                setShowMode(prev => !prev);
+                haptics.showMode(!showMode);
+                toast.info(showMode ? '🔓 Show Mode OFF' : '🔒 SHOW MODE — Live Operation', { duration: 2000 });
+                showModeTapRef.current = 0;
+              } else {
+                showModeTapRef.current = now;
+              }
+            }}>
+            {isDmxMode ? 'FX' : 'F1'}
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xs">✕</button>
-        </div>
-
-        {/* Master arm */}
-        <div className={cn(
-          "flex items-center justify-between p-2 rounded-lg border transition-all",
-          masterArm ? "border-destructive/50 bg-destructive/10" : "border-border/50 bg-muted/30"
-        )}>
-          <div className="flex items-center gap-2">
-            <AlertTriangle className={cn("w-4 h-4", masterArm ? "text-destructive" : "text-muted-foreground")} />
-            <span className={cn("text-[11px] font-bold uppercase tracking-wider", masterArm ? "text-destructive" : "text-muted-foreground")}>
-              {masterArm ? 'SYSTEM ARMED' : 'SYSTEM SAFE'}
-            </span>
+          <div>
+            <div className={cn("font-black tracking-[0.12em]",
+              fs && mob ? "text-xs" : fs ? "text-base" : "text-[10px]"
+            )} style={{ color: isDmxMode ? 'hsl(200 80% 60%)' : 'hsl(0 0% 85%)' }}>{platformAccent.name}</div>
+            <div className={cn("font-mono tracking-wider",
+              fs && mob ? "text-[9px]" : fs ? "text-[9px]" : "text-[10px]",
+              showMode ? "text-red-400/60" : ""
+            )} style={{ color: showMode ? undefined : isDmxMode ? 'hsl(200 30% 35%)' : 'hsl(0 0% 40%)' }}>
+              {showMode ? '● SHOW MODE' : platformAccent.sub}
+            </div>
           </div>
-          <Switch checked={masterArm} onCheckedChange={handleMasterArm} />
         </div>
-
-        {/* Status */}
-        <div className="flex items-center gap-3 mt-1.5">
-          <span className="text-[9px] font-mono text-muted-foreground">{channels.length} devices</span>
-          <span className="text-[9px] font-mono text-accent">{armedCount} armed</span>
-          {firingCount > 0 && (
-            <span className="text-[9px] font-mono text-destructive animate-pulse">🔥 {firingCount} firing</span>
+        <div className="flex items-center gap-2">
+          <span className={cn("font-mono text-foreground/40", fs && mob ? "text-[10px]" : fs ? "text-sm" : "text-[10px]")}>
+            {formatTimecode(elapsedMs)}
+          </span>
+          {!(fs && mob) && (
+            <div className="flex items-center gap-1">
+              <Battery className={cn(batteryVoltage > 11 ? "text-green-400/60" : "text-amber-400", fs ? "w-4 h-4" : "w-2.5 h-2.5")} />
+              <span className={cn("font-mono text-muted-foreground/40", fs ? "text-[9px]" : "text-[10px]")}>{batteryVoltage.toFixed(2)}V</span>
+            </div>
           )}
-          {syncEnabled && (
-            <span className={cn("text-[9px] font-mono", isPlaying ? "text-primary animate-pulse" : "text-muted-foreground")}>
-              🔗 {isPlaying ? 'SYNCED' : 'SYNC ON'}
-            </span>
-          )}
-        </div>
-
-        {/* Timeline Sync Toggle */}
-        <div className="flex items-center justify-between mt-1.5 px-1 py-1 rounded bg-muted/20 border border-border/30">
+          {/* Physical console port LED indicators */}
           <div className="flex items-center gap-1.5">
-            <Radio className={cn("w-3 h-3", syncEnabled ? "text-primary" : "text-muted-foreground")} />
-            <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Timeline Sync</span>
+            {[
+              { label: 'DMX', active: artNetConnected, color: 'hsl(120 70% 45%)' },
+              { label: 'UDP', active: relayConnected, color: 'hsl(180 70% 50%)' },
+            ].map(led => (
+              <div key={led.label} className="flex items-center gap-0.5">
+                <div className={cn("rounded-full", fs ? "w-2 h-2" : "w-1.5 h-1.5")} style={{
+                  background: led.active
+                    ? `radial-gradient(circle at 40% 35%, ${led.color}, hsl(120 40% 20%) 80%)`
+                    : 'radial-gradient(circle at 40% 35%, hsl(0 0% 22%), hsl(0 0% 10%))',
+                  boxShadow: led.active ? `0 0 6px ${led.color}` : 'none',
+                }} />
+                <span className={cn("font-mono", led.active ? "text-green-500/70" : "text-muted-foreground/30",
+                  fs && mob ? "text-[8px]" : fs ? "text-[8px]" : "text-[10px]"
+                )}>{led.label}</span>
+              </div>
+            ))}
           </div>
-          <Switch checked={syncEnabled} onCheckedChange={setSyncEnabled} />
+          <div className="flex items-center gap-1">
+            <Signal className={cn(pyroArm ? "text-red-500" : "text-muted-foreground/20", fs && mob ? "w-3.5 h-3.5" : fs ? "w-4 h-4" : "w-2.5 h-2.5")} />
+          </div>
+          <button onClick={() => setIsFullscreen(!isFullscreen)} className="text-muted-foreground/40 hover:text-foreground transition-colors rounded p-1">
+            {isFullscreen ? <Minimize2 className={cn(fs && mob ? "w-5 h-5" : fs ? "w-4 h-4" : "w-3 h-3")} /> : <Maximize2 className={cn(fs ? "w-4 h-4" : "w-3 h-3")} />}
+          </button>
+          {!isFullscreen && <button onClick={onClose} className="text-muted-foreground/30 hover:text-foreground p-0.5 rounded transition-colors text-xs ml-1">✕</button>}
         </div>
+      </div>
+      {/* FX Commander accent shimmer bar — animated */}
+      <div className="h-[2px] w-full relative overflow-hidden" style={{
+        background: isDmxMode
+          ? 'linear-gradient(90deg, transparent 0%, hsl(200 80% 48% / 0.6) 30%, hsl(200 80% 48% / 0.1) 100%)'
+          : 'linear-gradient(90deg, transparent 0%, hsl(0 70% 45% / 0.4) 30%, hsl(0 70% 45% / 0.05) 100%)',
+      }}>
+        {isDmxMode && <div className="absolute inset-0" style={{
+          background: 'linear-gradient(90deg, transparent 0%, hsl(200 90% 60% / 0.3) 50%, transparent 100%)',
+          animation: 'shimmer 3s ease-in-out infinite',
+          backgroundSize: '200% 100%',
+        }} />}
+      </div>
+    </div>
+  );
 
-        {/* Section tabs */}
-        <div className="flex gap-1 mt-2">
-          {(['triggers', 'programmer', 'cues'] as const).map(s => (
-            <button
-              key={s}
-              onClick={() => setSection(s)}
+  const renderArmBar = (fs: boolean) => (
+    <>
+      <div className={cn(
+        "border-b transition-colors",
+        fs && mob ? "px-3 py-2 flex flex-col gap-2" : "flex items-center gap-3",
+        !fs || !mob ? (fs ? "px-6 py-2.5" : "px-2 py-1") : "",
+        (pyroArm || dmxArm) ? "border-red-800/30" : "border-border/15"
+      )} style={{ background: (pyroArm || dmxArm) ? 'hsl(0 40% 8%)' : 'hsl(220 12% 7%)' }}>
+        <div className={cn(fs && mob ? "flex gap-2" : "contents")}>
+          <button onClick={() => handlePyroArm(!pyroArm)}
+            className={cn(
+              "flex items-center justify-center gap-2 rounded border-2 font-black uppercase transition-all",
+              fs && mob ? "flex-1 py-3.5 text-[11px] tracking-[0.15em]" : fs ? "flex-1 py-3 text-sm tracking-[0.2em]" : "flex-1 py-1.5 text-[9px] tracking-[0.15em]",
+              pyroArm ? "bg-red-600/20 border-red-500/60 text-red-400" : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/40 hover:border-border/40"
+            )} style={pyroArm ? { boxShadow: 'inset 0 0 12px rgba(255,50,30,0.1)' } : undefined}>
+            <Shield className={cn(fs && mob ? "w-4 h-4" : fs ? "w-5 h-5" : "w-3 h-3")} />
+            {pyroArm ? 'PYRO ●' : 'PYRO'}
+          </button>
+          <button onClick={() => handleDmxArm(!dmxArm)}
+            className={cn(
+              "flex items-center justify-center gap-2 rounded border-2 font-black uppercase transition-all",
+              fs && mob ? "flex-1 py-3.5 text-[11px] tracking-[0.15em]" : fs ? "flex-1 py-3 text-sm tracking-[0.2em]" : "flex-1 py-1.5 text-[9px] tracking-[0.15em]",
+              dmxArm ? "bg-amber-600/20 border-amber-500/60 text-amber-400" : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/40 hover:border-border/40"
+            )} style={dmxArm ? { boxShadow: 'inset 0 0 12px rgba(255,180,30,0.1)' } : undefined}>
+            <Radio className={cn(fs && mob ? "w-4 h-4" : fs ? "w-5 h-5" : "w-3 h-3")} />
+            {dmxArm ? 'DMX ●' : 'DMX'}
+          </button>
+        </div>
+        {mode !== 'pyro_fire' && (
+          <button
+            onMouseDown={() => setDeadmanHeld(true)}
+            onMouseUp={() => setDeadmanHeld(false)}
+            onMouseLeave={() => setDeadmanHeld(false)}
+            onTouchStart={(e) => { e.preventDefault(); setDeadmanHeld(true); }}
+            onTouchEnd={(e) => { e.preventDefault(); setDeadmanHeld(false); }}
+            className={cn(
+              "flex items-center justify-center rounded border-2 font-black uppercase transition-all gap-2",
+              fs && mob ? "w-full py-3 text-[10px]" : fs ? "w-16 py-3 text-[10px] shrink-0" : "w-10 py-1.5 text-[8px] shrink-0",
+              deadmanHeld ? "bg-green-600/30 border-green-500/60 text-green-400" : "bg-[hsl(220_10%_10%)] border-border/20 text-muted-foreground/30"
+            )}>
+            <Hand className={cn(fs && mob ? "w-5 h-5" : fs ? "w-4 h-4" : "w-3 h-3")} />
+            {fs && mob && <span>DEADMAN</span>}
+          </button>
+        )}
+      </div>
+      {(pyroArm || dmxArm) && (
+        <div className={cn(
+          "text-center font-black uppercase animate-pulse",
+          fs && mob ? "px-3 py-1 text-[10px] tracking-[0.25em]" : fs ? "px-4 py-1.5 text-xs tracking-[0.3em]" : "px-2 py-0.5 text-[10px] tracking-[0.25em]",
+          pyroArm && dmxArm ? "text-red-400" : pyroArm ? "text-red-400" : "text-amber-400"
+        )} style={{ background: pyroArm ? 'hsl(0 50% 8%)' : 'hsl(40 40% 8%)' }}>
+          {pyroArm && dmxArm ? '⚠ DMX + PYRO ARMED ⚠' : pyroArm ? '⚠ PYRO ARMED ⚠' : 'DMX ARMED'}
+        </div>
+      )}
+      {(pyroArm) && (
+        <LockoutPanel fs={fs} mob={mob} />
+      )}
+    </>
+  );
+
+  const renderCueKeys = (fs: boolean) => (
+    <div className={cn("border-b border-border/15", fs && mob ? "px-2 py-2" : fs ? "px-6 py-4" : "px-1.5 py-1.5")} style={{ background: 'hsl(220 12% 6%)' }}>
+      <div className={cn("flex items-center justify-between", fs && mob ? "mb-1.5" : fs ? "mb-2" : "mb-0.5")}>
+        <div className="flex items-center gap-1">
+          <button onClick={() => setCuePage(Math.max(0, cuePage - 1))} disabled={cuePage === 0}
+            className={cn("rounded text-muted-foreground/30 hover:text-foreground/60 disabled:opacity-20 transition-colors", fs && mob ? "p-1.5" : fs ? "p-1" : "p-0.5")}>
+            <ChevronLeft className={cn(fs ? "w-4 h-4" : "w-3 h-3")} />
+          </button>
+          <span className={cn("font-mono text-muted-foreground/40", fs && mob ? "text-[10px]" : fs ? "text-[9px]" : "text-[10px]")}>
+            {cuePage * CUES_PER_PAGE + 1}-{Math.min((cuePage + 1) * CUES_PER_PAGE, 128)}
+          </span>
+          <button onClick={() => setCuePage(Math.min(15, cuePage + 1))}
+            className={cn("rounded text-muted-foreground/30 hover:text-foreground/60 transition-colors", fs && mob ? "p-1.5" : fs ? "p-1" : "p-0.5")}>
+            <ChevronRight className={cn(fs ? "w-4 h-4" : "w-3 h-3")} />
+          </button>
+        </div>
+        <span className={cn("font-mono text-muted-foreground/20", fs && mob ? "text-[9px]" : fs ? "text-[10px]" : "text-[10px]")}>
+          Page {cuePage + 1}/16
+        </span>
+      </div>
+      <div className={cn("grid", fs && mob ? "grid-cols-4 gap-1.5" : fs ? "grid-cols-8 gap-2" : "grid-cols-8 gap-0.5")}>
+        {Array.from({ length: CUES_PER_PAGE }).map((_, i) => {
+          const globalIndex = i + pageStart;
+          const cue = pageCues.find(c => c.keyIndex === globalIndex);
+          return (
+            <CueKey key={i} index={i} cue={cue} firing={firingKeys.has(i)}
+              onPress={() => fireCueKey(i)} onRelease={() => stopCueKey(i)}
+              onLongPress={() => toggleKeyMode(i)}
+              pyroArmed={pyroArm} dmxArmed={dmxArm} fs={fs} mobile={mob} />
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const renderSceneModeBar = (fs: boolean) => (
+    <div className={cn("flex items-center border-b border-border/15", fs && mob ? "flex-col" : "")} style={{ background: 'hsl(220 10% 7%)' }}>
+      {/* Scenes — styled as backlit console buttons */}
+      <div className={cn("flex", fs && mob ? "w-full border-b border-border/10" : "")}>
+        {[0, 1, 2, 3].map(s => (
+          <button key={s} onClick={() => setActiveScene(s)} disabled={pyroArm}
+            className={cn(
+              "font-bold uppercase tracking-wider transition-all",
+              fs && mob ? "flex-1 px-3 py-2.5 text-[10px]" : fs ? "px-5 py-2.5 text-xs" : "px-2.5 py-1.5 text-[8px]",
+            )}
+            style={{
+              /* Console button cap: raised 3D effect */
+              background: activeScene === s
+                ? isDmxMode ? 'hsl(200 20% 14%)' : 'hsl(220 15% 14%)'
+                : 'hsl(220 10% 8%)',
+              color: activeScene === s
+                ? isDmxMode ? 'hsl(200 80% 60%)' : 'hsl(var(--primary))'
+                : 'hsl(220 5% 30%)',
+              borderBottom: activeScene === s
+                ? `2px solid ${isDmxMode ? 'hsl(200 80% 48%)' : 'hsl(var(--primary))'}`
+                : '2px solid transparent',
+              borderRadius: '4px 4px 0 0',
+              boxShadow: activeScene === s
+                ? `0 2px 8px ${isDmxMode ? 'hsl(200 80% 48% / 0.2)' : 'hsl(var(--primary) / 0.2)'}`
+                : 'inset 0 1px 2px rgba(0,0,0,0.3)',
+            }}>S{s}</button>
+        ))}
+      </div>
+      {!mob && <div className="flex-1" />}
+      {/* Mode tabs — sub-operation tabs only when standalone (CommandCenter handles console switching) */}
+      {fs && mob && !standalone ? (
+        <MobileModeTabs mode={mode} onModeChange={(m) => { setMode(m); setShowDeviceLib(false); }} />
+      ) : (
+        <div className={cn("flex overflow-x-auto scrollbar-thin scrollbar-thumb-border/30 scrollbar-track-transparent", fs ? "pr-3 gap-0.5" : "pr-1")}>
+          {(standalone
+            ? [
+                // Standalone (CommandCenter): only sub-operation tabs — no duplicate consoles
+                { key: 'simple_dmx' as FXCMode, label: 'Simple' },
+                { key: 'manual_fire' as FXCMode, label: 'Manual' },
+                { key: 'auto_fire' as FXCMode, label: 'Auto' },
+                { key: 'check_slave' as FXCMode, label: 'Check' },
+                { key: 'ble_scan' as FXCMode, label: '📡 BLE' },
+                { key: 'settings' as FXCMode, label: '⚙' },
+              ]
+            : [
+                { key: 'super_dmx' as FXCMode, label: 'Super' },
+                { key: 'simple_dmx' as FXCMode, label: 'Simple' },
+                { key: 'manual_fire' as FXCMode, label: 'Manual' },
+                { key: 'pyro_fire' as FXCMode, label: '🔥 Pyro' },
+                { key: 'auto_fire' as FXCMode, label: 'Auto' },
+                { key: 'check_slave' as FXCMode, label: 'Check' },
+                { key: 'ble_scan' as FXCMode, label: '📡 BLE' },
+                { key: 'controllers' as FXCMode, label: '🎛 HW' },
+                { key: 'pbus' as FXCMode, label: '📡 PBUS' },
+                { key: 'ma3' as FXCMode, label: '🎛 MA3' },
+                { key: 'field_map' as FXCMode, label: '🗺 Map' },
+                { key: 'connections' as FXCMode, label: '🔌 Conn' },
+                { key: 'wifi_direct' as FXCMode, label: '📡 WFD' },
+                { key: 'artnet_modules' as FXCMode, label: '🌐 ArtNet' },
+                { key: 'mobile_link' as FXCMode, label: '📡 Link' },
+                { key: 'settings' as FXCMode, label: '⚙' },
+              ]
+          ).map(m => (
+            <button key={m.key} onClick={() => { setMode(m.key); setShowDeviceLib(false); }}
               className={cn(
-                "flex-1 py-1 text-[9px] font-bold uppercase tracking-wider rounded transition-all",
-                section === s ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {s === 'triggers' ? '🎯 Triggers' : s === 'programmer' ? '🎛️ DMX Prog' : '📋 Cues'}
+                "font-bold uppercase tracking-wider transition-all whitespace-nowrap shrink-0",
+                fs ? "px-3 py-2.5 text-[9px]" : "px-1.5 py-1.5 text-[10px]",
+                mode === m.key ? "text-foreground/80" : "text-muted-foreground/25 hover:text-muted-foreground/50"
+              )}>{m.label}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderPanic = (fs: boolean) => (
+    <div className="border-t-2 border-border/20" style={{ background: 'hsl(220 12% 6%)' }}>
+      <div className={cn(fs && mob ? "px-3 py-2" : fs ? "px-6 py-3" : "px-2 py-1.5")}>
+        <button onClick={handlePanic}
+          className={cn(
+            "w-full rounded-lg font-black uppercase transition-all",
+            "text-white/90",
+            "hover:brightness-110 active:scale-[0.97]",
+            "border-2 border-red-600/50",
+            "flex items-center justify-center gap-2",
+            fs && mob ? "h-14 text-base tracking-[0.25em]" : fs ? "h-16 text-lg tracking-[0.3em]" : "h-10 text-[11px] tracking-[0.25em]"
+          )} style={{
+            /* Danger stripe pattern when armed */
+            background: (pyroArm || dmxArm)
+              ? 'repeating-linear-gradient(135deg, hsl(40 90% 35%) 0px, hsl(40 90% 35%) 5px, hsl(0 0% 8%) 5px, hsl(0 0% 8%) 10px)'
+              : 'linear-gradient(180deg, hsl(0 70% 35%) 0%, hsl(0 60% 22%) 100%)',
+            boxShadow: (pyroArm || dmxArm)
+              ? 'inset 0 1px 0 rgba(255,255,255,0.1), 0 0 16px rgba(255,60,30,0.3)'
+              : 'inset 0 1px 0 rgba(255,255,255,0.1)',
+          }}>
+          <AlertTriangle className={cn(fs && mob ? "w-5 h-5" : fs ? "w-6 h-6" : "w-4 h-4")} />
+          PANIC
+        </button>
+      </div>
+      <div className={cn("flex items-center justify-between border-t border-border/10", fs && mob ? "px-3 py-1.5" : fs ? "px-6 py-2" : "px-2 py-1")}>
+        <div className="flex items-center gap-2">
+          <span className={cn("font-mono text-muted-foreground/30", fs && mob ? "text-[10px]" : fs ? "text-[9px]" : "text-[10px]")}>{channels.length}CH · {armedCount}RDY</span>
+          {firingCount > 0 && <span className={cn("font-mono text-red-400 font-bold animate-pulse", fs ? "text-[9px]" : "text-[10px]")}>🔥 {firingCount}</span>}
+        </div>
+        <div className="flex items-center gap-1.5">
+          {fireone.isConnected && <span className={cn("font-mono text-[10px]", fs ? "text-[10px]" : "")}>
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 mr-0.5" />F1
+          </span>}
+          {pbus.isConnected && <span className={cn("font-mono text-[10px]", fs ? "text-[10px]" : "")}>
+            <span className={cn("inline-block w-1.5 h-1.5 rounded-full mr-0.5", pbus.connectionPath === 'radio' ? "bg-amber-400" : "bg-green-500")} />PB
+          </span>}
+          <span className={cn("font-mono", fs && mob ? "text-[9px]" : fs ? "text-[9px]" : "text-[10px]", artNetConnected ? "text-green-500/60" : "text-muted-foreground/20")}>
+            {artNetConnected ? '● Art-Net' : '○ Off'}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderDeviceList = (fs: boolean) => (
+    <div className="border-b border-border/15">
+      <div className={cn("flex items-center justify-between", fs ? "px-4 py-2" : "px-2 py-1")} style={{ background: 'hsl(220 10% 9%)' }}>
+        <span className={cn("font-bold text-muted-foreground/50 uppercase tracking-wider", fs ? "text-[10px]" : "text-[8px]")}>Device List</span>
+        <div className="flex items-center gap-2">
+          <span className={cn("font-mono text-muted-foreground/30", fs ? "text-[9px]" : "text-[8px]")}>{enabledCount}/{channels.length}</span>
+          {firingCount > 0 && <span className={cn("font-mono text-red-400 font-bold animate-pulse", fs ? "text-[9px]" : "text-[8px]")}>🔥 {firingCount}</span>}
+        </div>
+      </div>
+      <div className={cn("overflow-y-auto", fs ? "max-h-[300px]" : "max-h-[140px]")}>
+        {channels.map((ch, i) => (
+          <DeviceRow key={ch.id} channel={ch} index={i} selected={selectedDevices.has(ch.id)} fs={fs}
+            onSelect={() => setSelectedDevices(prev => { const n = new Set(prev); if (n.has(ch.id)) n.delete(ch.id); else n.add(ch.id); return n; })} dmxArmed={dmxArm} />
+        ))}
+      </div>
+      <div className={cn("flex gap-1 flex-wrap border-t border-border/10", fs ? "px-3 py-1.5" : "px-1.5 py-1")} style={{ background: 'hsl(220 12% 7%)' }}>
+        {[
+          { label: 'All', fn: () => setSelectedDevices(new Set(channels.map(c => c.id))) },
+          { label: 'Even', fn: () => setSelectedDevices(new Set(channels.filter((_, i) => i % 2 === 1).map(c => c.id))) },
+          { label: 'Odd', fn: () => setSelectedDevices(new Set(channels.filter((_, i) => i % 2 === 0).map(c => c.id))) },
+          { label: 'Same', fn: () => { const sel = [...selectedDevices]; const first = channels.find(c => sel.includes(c.id)); if (first) setSelectedDevices(new Set(channels.filter(c => c.type === first.type).map(c => c.id))); } },
+          { label: 'Clear', fn: () => setSelectedDevices(new Set()) },
+          { label: 'Add Device', fn: () => setShowDeviceLib(true) },
+          { label: 'Delete', fn: () => { setChannels(prev => prev.filter(c => !selectedDevices.has(c.id))); setSelectedDevices(new Set()); } },
+          { label: 'Enable', fn: () => setChannels(prev => prev.map(c => selectedDevices.has(c.id) ? { ...c, enabled: !c.enabled } : c)) },
+        ].map(b => (
+          <button key={b.label} onClick={b.fn} className={cn(
+            "rounded text-muted-foreground/50 hover:text-foreground/70 transition-colors",
+            fs ? "text-[10px] px-2.5 py-1" : "text-[10px] px-1.5 py-0.5",
+            b.label === 'Add Device' ? "bg-primary/10 text-primary/70" : "bg-[hsl(220_10%_12%)]"
+          )}>{b.label}</button>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderCueSetting = (fs: boolean) => (
+    <div className={cn("space-y-2", fs ? "p-4" : "p-2")}>
+      <div className="flex items-center justify-between">
+        <span className={cn("font-bold text-muted-foreground/50 uppercase tracking-wider", fs ? "text-[10px]" : "text-[10px]")}>CUE Setting</span>
+        <span className={cn("font-mono text-primary/50", fs ? "text-[9px]" : "text-[8px]")}>{selectedDevices.size} selected</span>
+      </div>
+      {/* Key selector */}
+      <div className={cn("grid grid-cols-8", fs ? "gap-1.5" : "gap-0.5")}>
+        {Array.from({ length: CUES_PER_PAGE }).map((_, i) => (
+          <button key={i} onClick={() => setEditingCue(editingCue === i ? null : i)}
+            className={cn(
+              "rounded font-bold transition-all border",
+              fs ? "py-2 text-xs" : "py-1 text-[8px]",
+              editingCue === i ? "bg-primary/15 border-primary/40 text-primary"
+                : pageCues.find(c => c.keyIndex === i + pageStart) ? "bg-[hsl(220_12%_14%)] border-border/20 text-foreground/50"
+                : "bg-[hsl(220_10%_8%)] border-border/10 text-muted-foreground/30"
+            )}>K{i + 1}</button>
+        ))}
+      </div>
+      {editingCue !== null && (
+        <div className={cn("space-y-2 rounded-md border border-primary/20 bg-primary/5", fs ? "p-4" : "p-2")}>
+          <div className="flex gap-1.5">
+            <Input value={cueEffect} onChange={e => setCueEffect(e.target.value)} placeholder="Effect name..."
+              className={cn("flex-1 bg-background/60 border-border/20", fs ? "h-8 text-xs" : "h-5 text-[10px]")} />
+            <Input value={cueKeyLabel} onChange={e => setCueKeyLabel(e.target.value)} placeholder="Key label"
+              className={cn("bg-background/60 border-border/20", fs ? "h-8 text-xs w-24" : "h-5 text-[10px] w-16")} />
+          </div>
+          {/* Firing rules */}
+          <div className="flex gap-1">
+            {FIRING_RULES.map(rule => (
+              <button key={rule.key} onClick={() => setCueFiringRule(rule.key)}
+                className={cn(
+                  "flex-1 rounded font-bold transition-all border",
+                  fs ? "py-2 text-sm" : "py-1 text-[10px]",
+                  cueFiringRule === rule.key ? "bg-primary/15 border-primary/40 text-primary"
+                    : "bg-[hsl(220_10%_10%)] border-border/10 text-muted-foreground/40 hover:text-muted-foreground/70"
+                )}>{rule.label}</button>
+            ))}
+          </div>
+          {/* Parameters — matches real FXK-PYRO layout */}
+          <div className="grid grid-cols-2 gap-1.5">
+            {[
+              { label: 'Duration(s)', value: cueDuration, set: setCueDuration },
+              { label: 'Trigger Delay(s)', value: cueTriggerDelay, set: setCueTriggerDelay },
+              { label: 'Repeat Period(s)', value: cueRepeatPeriod, set: setCueRepeatPeriod },
+              { label: 'Repeat Counts', value: cueRepeatCount, set: setCueRepeatCount },
+            ].map(p => (
+              <div key={p.label}>
+                <label className={cn("text-muted-foreground/40 uppercase block", fs ? "text-[10px]" : "text-[10px]")}>{p.label}</label>
+                <Input type="number" value={p.value} onChange={e => p.set(Number(e.target.value))} step={p.label.includes('Count') ? 1 : 0.1}
+                  className={cn("bg-background/60 border-border/20 font-mono", fs ? "h-8 text-xs" : "h-5 text-[10px]")} />
+              </div>
+            ))}
+          </div>
+          {/* CUE Group Repeat */}
+          <div className="flex items-center gap-2">
+            <label className={cn("text-muted-foreground/40 uppercase", fs ? "text-[10px]" : "text-[10px]")}>CUE Group Repeat:</label>
+            <Input type="number" value={cueGroupRepeat} onChange={e => setCueGroupRepeat(Number(e.target.value))} min={1}
+              className={cn("bg-background/60 border-border/20 font-mono w-16", fs ? "h-7 text-xs" : "h-5 text-[10px]")} />
+          </div>
+          {/* Key mode */}
+          <div className="flex items-center gap-2">
+            <label className={cn("text-muted-foreground/40 uppercase", fs ? "text-[10px]" : "text-[10px]")}>Key Mode:</label>
+            <button onClick={() => setCueKeyMode(cueKeyMode === 'tap' ? 'lock' : 'tap')}
+              className={cn(
+                "rounded border font-bold flex items-center gap-1 transition-all",
+                fs ? "px-3 py-1 text-[10px]" : "px-2 py-0.5 text-[8px]",
+                cueKeyMode === 'lock' ? "bg-amber-500/15 border-amber-500/40 text-amber-400" : "bg-[hsl(220_10%_12%)] border-border/15 text-muted-foreground/50"
+              )}>
+              {cueKeyMode === 'lock' ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+              {cueKeyMode === 'lock' ? 'LOCK' : 'TAP'}
+            </button>
+          </div>
+          <Button size={fs ? "default" : "sm"} onClick={addCue} disabled={selectedDevices.size === 0}
+            className={cn("w-full font-bold uppercase tracking-wider", fs ? "h-10 text-sm" : "h-6 text-[10px]")}>
+            <Check className={cn(fs ? "w-4 h-4" : "w-3 h-3", "mr-1")} /> OK — Assign to KEY{editingCue + 1}
+          </Button>
+        </div>
+      )}
+      {/* Quick add device */}
+      <div className="pt-1 border-t border-border/10">
+        <span className={cn("font-bold text-muted-foreground/30 uppercase tracking-wider mb-1 block", fs ? "text-[9px]" : "text-[8px]")}>Quick Add</span>
+        <div className={cn("grid grid-cols-4", fs ? "gap-1.5" : "gap-0.5")}>
+          {SFX_TYPES.slice(0, 8).map(t => (
+            <button key={t.key} onClick={() => addChannel(t.key)}
+              className={cn(
+                "flex flex-col items-center rounded bg-[hsl(220_10%_8%)] hover:bg-[hsl(220_10%_12%)] active:scale-95 transition-all border border-border/5",
+                fs ? "gap-1 py-3" : "gap-0.5 py-1.5"
+              )}>
+              <t.icon className={cn(fs ? "w-5 h-5" : "w-3 h-3")} style={{ color: t.color }} />
+              <span className={cn("font-bold uppercase text-muted-foreground/40", fs ? "text-[8px]" : "text-[10px]")}>{t.label}</span>
             </button>
           ))}
         </div>
       </div>
+    </div>
+  );
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-2">
-        {/* ── TRIGGERS ── */}
-        {section === 'triggers' && (
-          <>
-            {/* Fire All button */}
-            {masterArm && (
-              <button
-                onClick={fireAll}
-                className="w-full py-2.5 rounded-lg bg-destructive text-destructive-foreground font-bold text-xs uppercase tracking-widest hover:shadow-[0_0_30px_hsl(0,80%,50%,0.4)] active:scale-95 transition-all"
+  const renderSimpleDmx = (fs: boolean) => (
+    <div className={cn("space-y-1", fs ? "p-4" : "p-2")}>
+      <div className="flex items-center justify-between px-1 mb-1">
+        <span className={cn("font-bold text-muted-foreground/40 uppercase tracking-wider", fs ? "text-[9px]" : "text-[8px]")}>
+          DMX Output — {channels.length} channels
+        </span>
+        <button onClick={() => setChannels(prev => prev.map(c => ({ ...c, intensity: 0 })))}
+          className={cn("text-muted-foreground/30 hover:text-foreground/60 font-bold uppercase", fs ? "text-[10px]" : "text-[10px]")}>Clear All</button>
+      </div>
+      {channels.map((ch, i) => {
+        const sfxType = SFX_TYPES.find(t => t.key === ch.type);
+        return (
+          <div key={ch.id} className={cn("flex items-center gap-1.5 rounded border border-border/5", fs ? "px-3 py-2" : "px-1.5 py-1")} style={{ background: 'hsl(220 10% 8%)' }}>
+            <span className={cn("font-mono text-muted-foreground/30 text-right", fs ? "text-[9px] w-5" : "text-[8px] w-4")}>{String(i + 1).padStart(2, '0')}</span>
+            <div className={cn("rounded-full shrink-0", fs ? "w-2.5 h-2.5" : "w-1.5 h-1.5")} style={{ backgroundColor: sfxType?.color }} />
+            <span className={cn("font-bold flex-1 truncate text-foreground/70", fs ? "text-xs" : "text-[10px]")}>{ch.name}</span>
+            <Slider value={[ch.intensity]} min={0} max={255} step={1} onValueChange={([v]) => setChannels(prev => prev.map(c => c.id === ch.id ? { ...c, intensity: v } : c))} className={cn(fs ? "w-28" : "w-16")} />
+            <span className={cn("font-mono text-muted-foreground/50 text-right", fs ? "text-[9px] w-10" : "text-[8px] w-8")}>{ch.intensity}/{Math.round(ch.intensity / 255 * 100)}%</span>
+            <button onClick={() => setChannels(prev => prev.map(c => c.id === ch.id ? { ...c, enabled: !c.enabled } : c))} className="p-0.5">
+              {ch.enabled ? <Eye className={cn(fs ? "w-4 h-4" : "w-2.5 h-2.5", "text-green-500/60")} /> : <EyeOff className={cn(fs ? "w-4 h-4" : "w-2.5 h-2.5", "text-muted-foreground/20")} />}
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const renderManualFire = (fs: boolean) => {
+    const isMobileFire = fs && mob;
+    return (
+      <div className={cn("space-y-2", isMobileFire ? "p-3" : fs ? "p-4" : "p-2")}>
+        <div className="flex items-center justify-between px-1">
+          <span className={cn("font-bold text-muted-foreground/40 uppercase tracking-wider", isMobileFire ? "text-[10px]" : fs ? "text-[9px]" : "text-[8px]")}>
+            Pyro Manual Fire
+          </span>
+          <span className={cn("font-mono text-foreground/40", isMobileFire ? "text-sm" : fs ? "text-xs" : "text-[10px]")}>{formatTimecode(elapsedMs)}</span>
+        </div>
+        {(dmxArm || pyroArm) && (
+          <button
+            onMouseDown={() => { if (deadmanHeld || !settings.pyroArmRequired) channels.filter(ch => ch.enabled).forEach(ch => fireChannel(ch.id)); }}
+            onMouseUp={() => channels.forEach(ch => stopChannel(ch.id))}
+            onTouchStart={(e) => { e.preventDefault(); if (deadmanHeld || !settings.pyroArmRequired) channels.filter(ch => ch.enabled).forEach(ch => fireChannel(ch.id)); }}
+            onTouchEnd={(e) => { e.preventDefault(); channels.forEach(ch => stopChannel(ch.id)); }}
+            disabled={settings.pyroArmRequired && !deadmanHeld}
+            className={cn(
+              "w-full rounded-xl font-black uppercase transition-all border-2",
+              isMobileFire ? "py-5 text-lg tracking-[0.3em]" : fs ? "py-5 text-base tracking-[0.3em]" : "py-3 text-[12px] tracking-[0.3em]",
+              deadmanHeld || !settings.pyroArmRequired
+                ? "bg-gradient-to-b from-red-600 via-red-700 to-red-800 text-white border-red-500/40 hover:from-red-500"
+                : "bg-[hsl(220_10%_10%)] text-muted-foreground/20 border-border/10"
+            )} style={deadmanHeld ? { boxShadow: '0 0 24px rgba(239,68,68,0.3)' } : undefined}>
+            ⚡ FIRE ALL ({enabledCount})
+          </button>
+        )}
+        {settings.pyroArmRequired && !deadmanHeld && (pyroArm || dmxArm) && (
+          <div className={cn("text-center text-amber-400/50 font-bold uppercase", isMobileFire ? "text-xs" : fs ? "text-[10px]" : "text-[8px]")}>
+            Hold DEADMAN to enable firing
+          </div>
+        )}
+        {/* 2 cols on mobile, 4 on desktop — bigger touch targets on mobile */}
+        <div className={cn("grid gap-2", isMobileFire ? "grid-cols-2 gap-3" : fs ? "grid-cols-4 gap-1.5" : "grid-cols-2 gap-1.5")}>
+          {channels.map((ch, i) => {
+            const sfxType = SFX_TYPES.find(t => t.key === ch.type);
+            const canFire = (dmxArm || pyroArm) && ch.enabled && (deadmanHeld || !settings.pyroArmRequired);
+            return (
+              <button key={ch.id}
+                onMouseDown={() => canFire && fireChannel(ch.id)}
+                onMouseUp={() => stopChannel(ch.id)}
+                onMouseLeave={() => ch.firing && stopChannel(ch.id)}
+                onTouchStart={(e) => { e.preventDefault(); if (canFire) fireChannel(ch.id); }}
+                onTouchEnd={(e) => { e.preventDefault(); stopChannel(ch.id); }}
+                disabled={!canFire && !ch.firing}
+                className={cn(
+                  "relative flex flex-col items-center justify-center rounded-xl border-2 transition-all select-none",
+                  isMobileFire ? "min-h-[96px] py-4 rounded-2xl" : fs ? "py-5" : "py-3",
+                  ch.firing
+                    ? "bg-red-600/30 border-red-400 scale-[0.95] manual-fire-haptic"
+                    : canFire
+                      ? "bg-[hsl(220_10%_12%)] border-border/30 hover:bg-[hsl(220_10%_16%)] active:scale-[0.93] active:bg-red-700/40"
+                      : "bg-[hsl(220_10%_8%)] border-border/10 opacity-40"
+                )}
+                style={ch.firing ? {
+                  boxShadow: '0 0 20px rgba(255,60,30,0.4), inset 0 0 16px rgba(255,60,30,0.15)',
+                } : undefined}
               >
-                ⚡ FIRE ALL ARMED ({armedCount})
-              </button>
-            )}
-
-            {/* Channel grid */}
-            <div className="grid grid-cols-2 gap-1.5">
-              {channels.map(ch => (
-                <FireButton
-                  key={ch.id}
-                  channel={ch}
-                  onFire={handleFire}
-                  onStop={handleStop}
-                />
-              ))}
-            </div>
-
-            {/* Add device */}
-            <div className="pt-2 border-t border-border/30">
-              <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Add Device</p>
-              <div className="grid grid-cols-4 gap-1">
-                {SFX_TYPES.map(t => (
-                  <button
-                    key={t.key}
-                    onClick={() => addChannel(t.key)}
-                    className="flex flex-col items-center gap-0.5 p-1.5 rounded-md bg-muted/30 hover:bg-muted/60 active:scale-95 transition-all"
-                  >
-                    <t.icon className="w-3.5 h-3.5" style={{ color: t.color }} />
-                    <span className="text-[7px] font-bold uppercase truncate w-full text-center text-muted-foreground">{t.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* ── DMX PROGRAMMER ── */}
-        {section === 'programmer' && (
-          <>
-            <p className="text-[9px] text-muted-foreground">Adjust intensity per channel and save as scene.</p>
-
-            {channels.map(ch => {
-              const sfxType = SFX_TYPES.find(t => t.key === ch.type);
-              return (
-                <div key={ch.id} className="space-y-1 p-1.5 rounded-md bg-muted/20 border border-border/30">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: sfxType?.color }} />
-                    <span className="text-[10px] font-medium flex-1 truncate">{ch.name}</span>
-                    <Slider
-                      value={[ch.intensity]}
-                      min={0}
-                      max={255}
-                      step={1}
-                      onValueChange={([v]) => updateChannel(ch.id, { intensity: v })}
-                      className="w-24"
-                    />
-                    <span className="text-[9px] font-mono text-muted-foreground w-8 text-right">{ch.intensity}</span>
-                    <button
-                      onClick={() => updateChannel(ch.id, { locked: !ch.locked })}
-                      className="p-0.5 text-muted-foreground hover:text-foreground"
-                    >
-                      {ch.locked ? <Lock className="w-3 h-3 text-destructive" /> : <Unlock className="w-3 h-3" />}
-                    </button>
-                  </div>
-                  {/* Position link */}
-                  <div className="flex items-center gap-1.5 pl-4">
-                    <MapPinned className="w-3 h-3 text-muted-foreground" />
-                    <Select
-                      value={ch.positionId || '__none__'}
-                      onValueChange={(v) => updateChannel(ch.id, { positionId: v === '__none__' ? undefined : v })}
-                    >
-                      <SelectTrigger className="h-5 text-[9px] flex-1 border-border/30 bg-transparent">
-                        <SelectValue placeholder="No position" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">
-                          <span className="text-muted-foreground">Auto (spread)</span>
-                        </SelectItem>
-                        {positions.map(p => (
-                          <SelectItem key={p.id} value={p.id}>
-                            <span className="flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: p.color }} />
-                              {p.name} <span className="text-muted-foreground ml-1">({p.x.toFixed(1)}, {p.z.toFixed(1)})</span>
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Scene controls */}
-            <div className="pt-2 border-t border-border/30 space-y-1.5">
-              <div className="flex gap-1.5">
-                <Input
-                  placeholder="Scene name..."
-                  value={newSceneName}
-                  onChange={e => setNewSceneName(e.target.value)}
-                  className="h-7 text-[10px] flex-1"
-                />
-                <Button size="sm" variant="outline" className="h-7 text-[9px]" onClick={saveScene} disabled={!newSceneName.trim()}>
-                  <Save className="w-3 h-3 mr-1" /> Save
-                </Button>
-              </div>
-
-              {scenes.length > 0 && (
-                <div className="space-y-1">
-                  <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Saved Scenes</p>
-                  {scenes.map(scene => (
-                    <button
-                      key={scene.id}
-                      onClick={() => recallScene(scene.id)}
-                      className="w-full flex items-center gap-2 p-1.5 rounded-md bg-muted/20 hover:bg-muted/40 transition-all text-left"
-                    >
-                      <Play className="w-3 h-3 text-primary" />
-                      <span className="text-[10px] font-medium">{scene.name}</span>
-                      <span className="text-[8px] text-muted-foreground ml-auto">{scene.channels.length} ch</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* ── CUES ── */}
-        {section === 'cues' && (
-          <>
-            <p className="text-[9px] text-muted-foreground mb-2">Program timed DMX cue sequences for automated playback.</p>
-
-            {scenes.length === 0 ? (
-              <div className="text-center py-6">
-                <Lightbulb className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-                <p className="text-[10px] text-muted-foreground">Save scenes in the DMX Programmer first</p>
-              </div>
-            ) : (
-              <>
-                {/* Add cue */}
-                <div className="flex gap-1.5 items-center">
-                  <Select onValueChange={(sceneId) => {
-                    const cue: DMXCue = {
-                      id: `cue-${Date.now()}`,
-                      sceneId,
-                      time: cues.length * 5,
-                      fadeIn: 500,
-                      hold: 2000,
-                      fadeOut: 1000,
-                    };
-                    setCues(prev => [...prev, cue].sort((a, b) => a.time - b.time));
-                  }}>
-                    <SelectTrigger className="h-7 text-[10px] flex-1">
-                      <SelectValue placeholder="Add cue from scene..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {scenes.map(s => (
-                        <SelectItem key={s.id} value={s.id} className="text-[10px]">{s.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Cue list */}
-                <div className="space-y-1 mt-2">
-                  {cues.map((cue, i) => {
-                    const scene = scenes.find(s => s.id === cue.sceneId);
-                    return (
-                      <div key={cue.id} className="flex items-center gap-2 p-1.5 rounded-md bg-muted/20 border border-border/30">
-                        <span className="text-[9px] font-mono text-primary w-5">{String(i + 1).padStart(2, '0')}</span>
-                        <Timer className="w-3 h-3 text-muted-foreground" />
-                        <Input
-                          type="number"
-                          value={cue.time}
-                          onChange={e => {
-                            const t = parseFloat(e.target.value) || 0;
-                            setCues(prev => prev.map(c => c.id === cue.id ? { ...c, time: t } : c).sort((a, b) => a.time - b.time));
-                          }}
-                          className="h-6 w-14 text-[9px] font-mono"
-                          step={0.1}
-                        />
-                        <span className="text-[10px] flex-1 truncate">{scene?.name || '?'}</span>
-                        <span className="text-[8px] text-muted-foreground font-mono">
-                          F{cue.fadeIn}ms H{cue.hold}ms O{cue.fadeOut}ms
-                        </span>
-                        <button onClick={() => setCues(prev => prev.filter(c => c.id !== cue.id))} className="text-muted-foreground hover:text-destructive">
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {cues.length > 0 && (
-                  <div className="space-y-1 mt-2">
-                    {activeCueId && (
-                      <div className="flex items-center gap-1.5 p-1.5 rounded bg-primary/10 border border-primary/30 animate-pulse">
-                        <Radio className="w-3 h-3 text-primary" />
-                        <span className="text-[9px] font-bold text-primary">
-                          ACTIVE: {scenes.find(s => s.id === cues.find(c => c.id === activeCueId)?.sceneId)?.name}
-                        </span>
-                      </div>
-                    )}
-                    <Button
-                      size="sm"
-                      className="w-full h-8 text-[10px]"
-                      variant={isPlaying ? "destructive" : "outline"}
-                      onClick={() => {
-                        if (isPlaying) {
-                          setPlaying(false);
-                        } else {
-                          if (!masterArm) handleMasterArm(true);
-                          setSyncEnabled(true);
-                          firedCuesRef.current.clear();
-                          setPlaying(true);
-                          toast.info('▶ Playback started — SFX cues synced to timeline');
-                        }
-                      }}
-                    >
-                      {isPlaying ? (
-                        <><Square className="w-3 h-3 mr-1.5" /> Stop Sequence</>
-                      ) : (
-                        <><Play className="w-3 h-3 mr-1.5" /> Run Cue Sequence ({cues.length} cues)</>
-                      )}
-                    </Button>
+                {/* Haptic ripple overlay when firing */}
+                {ch.firing && (
+                  <div className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none">
+                    <div className="absolute inset-0 animate-manual-fire-pulse bg-gradient-radial from-red-500/20 to-transparent" />
+                    <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-red-400 to-transparent animate-pulse" />
                   </div>
                 )}
-              </>
-            )}
-          </>
-        )}
+                <span className={cn(
+                  "absolute font-mono text-muted-foreground/30",
+                  isMobileFire ? "text-[10px] top-1.5 left-2.5" : fs ? "text-[10px] top-0.5 left-1" : "text-[10px] top-0.5 left-1"
+                )}>{String(i + 1).padStart(2, '0')}</span>
+                {sfxType && <sfxType.icon className={cn(
+                  isMobileFire ? "w-8 h-8 mb-1" : fs ? "w-6 h-6 mb-0.5" : "w-4 h-4 mb-0.5",
+                  ch.firing && "animate-pulse"
+                )} style={{ color: ch.firing ? '#ff4444' : sfxType.color }} />}
+                <span className={cn(
+                  "font-bold uppercase truncate w-full text-center px-1",
+                  isMobileFire ? "text-sm" : fs ? "text-xs" : "text-[10px]",
+                  ch.firing ? "text-red-300" : "text-foreground/70"
+                )}>
+                  {ch.name}
+                </span>
+                <span className={cn(
+                  "font-mono text-muted-foreground/30",
+                  isMobileFire ? "text-[10px] mt-0.5" : fs ? "text-[10px]" : "text-[10px]"
+                )}>{ch.duration}ms</span>
+                {/* Firing indicator bar */}
+                {ch.firing && (
+                  <div className={cn(
+                    "absolute bottom-0 left-0 right-0 bg-gradient-to-r from-red-600 via-orange-500 to-red-600 animate-pulse",
+                    isMobileFire ? "h-1 rounded-b-2xl" : "h-0.5 rounded-b-xl"
+                  )} />
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
+    );
+  };
 
-      {/* Footer — Art-Net config */}
-      <div className="px-3 py-1.5 border-t border-border/50 space-y-1">
-        <div className="flex items-center gap-1.5">
-          <Input
-            value={artNetIp}
-            onChange={e => setArtNetIp(e.target.value)}
-            className="h-5 text-[8px] font-mono bg-muted/30 border-border/50 flex-1"
-            placeholder="Art-Net IP"
-          />
-          <Input
-            type="number"
-            value={artNetPort}
-            onChange={e => setArtNetPort(Number(e.target.value))}
-            className="h-5 text-[8px] font-mono bg-muted/30 border-border/50 w-14"
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-[8px] text-muted-foreground font-mono">DMX OUT → Art-Net Edge Function</span>
-          <div className="flex items-center gap-1">
-            <div className={cn("w-1.5 h-1.5 rounded-full", artNetConnected ? "bg-green-500" : masterArm ? "bg-destructive animate-pulse" : "bg-muted-foreground")} />
-            <span className="text-[8px] font-mono text-muted-foreground">{artNetConnected ? 'CONNECTED' : masterArm ? 'LIVE' : 'SAFE'}</span>
+  // ─── Mode content router ───
+  const renderModeContent = (fs: boolean) => {
+    if (showDeviceLib) {
+      return <DeviceLibraryPanel fs={fs} channels={channels} onAddDevice={addDeviceFromLib} onBack={() => setShowDeviceLib(false)} />;
+    }
+    switch (mode) {
+      case 'super_dmx':
+        return fs ? (
+          <div className="flex h-full">
+            <div className="w-1/2 border-r border-border/15 flex flex-col">{renderDeviceList(true)}</div>
+            <div className="w-1/2 flex flex-col overflow-y-auto">{renderCueSetting(true)}</div>
           </div>
+        ) : (
+          <div className="flex flex-col">{renderDeviceList(false)}{renderCueSetting(false)}</div>
+        );
+      case 'simple_dmx': return renderSimpleDmx(fs);
+      case 'manual_fire': return renderManualFire(fs);
+      case 'pyro_fire': return <PyroFireOnePanel fs={fs} fireChannel={fireChannel} channels={channels} pyroArm={pyroArm} dmxArm={dmxArm} handlePanic={handlePanic} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
+      case 'check_slave': return <CheckSlavePanel fs={fs} pyroArm={pyroArm} />;
+      case 'ble_scan': return (
+        <div className={cn("flex flex-col gap-3 h-full overflow-y-auto", fs ? "p-3" : "p-2")}>
+          <BLEDeviceScanner context="pyro" />
+          <BLEDeviceScanner context="dmx" compact />
         </div>
+      );
+      case 'mobile_link': return <MobileLinkMode fs={fs} fireChannel={fireChannel} channels={channels} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
+      case 'show_control': return <ShowControlPanel fs={fs} />;
+      case 'module':
+      case 'artnet_modules': return <FXKNetPanel fs={fs} />;
+      case 'dmx_monitor': return <DMXMonitorPanel fs={fs} />;
+      case 'fxk_light':
+      case 'ma3': return <MA3ControlPanel fs={fs} />;
+      case 'drone_ops': return <DroneCommandPanel fs={fs} />;
+      case 'controllers': return <VirtualControllerHub fs={fs} onSelectMode={(m) => setMode(m as FXCMode)} />;
+      case 'settings': return <SettingsPanel fs={fs} settings={settings} onSettingsChange={setSettings} relayConnected={relayConnected} relayUrl={relayUrl} onRelayUrlChange={setRelayUrl} onConnectRelay={connectRelay} onDisconnectRelay={disconnectRelay} />;
+      default: return renderSimpleDmx(fs);
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════
+  // FULLSCREEN LAYOUT
+  // ═══════════════════════════════════════════════════════════
+  if (isFullscreen) {
+    const fullscreenContent = (
+      <div
+        {...swipeProps}
+        className={cn(
+          "fixed inset-x-0 top-0 z-[9999] flex h-[100dvh] w-screen flex-col select-none",
+          standalone && "ff-standalone-panel"
+        )}
+        style={{
+          background: standalone
+            ? 'hsl(220 22% 3% / 0.95)'
+            : 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 4%) 100%)',
+          paddingBottom: mob ? 'max(env(safe-area-inset-bottom), 8px)' : undefined,
+        }}
+      >
+        {renderStatusBar(true)}
+        {!showMode && renderArmBar(true)}
+        {renderCueKeys(true)}
+        {!showMode && renderSceneModeBar(true)}
+        {showMode ? (
+          <ScrollArea className="flex-1">
+            <MobileLinkMode fs={true} fireChannel={fireChannel} channels={channels} artNetConnected={artNetConnected} relayConnected={relayConnected} />
+          </ScrollArea>
+        ) : (
+          <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
+        )}
+        {renderPanic(true)}
       </div>
+    );
+
+    return mob ? createPortal(fullscreenContent, document.body) : fullscreenContent;
+  }
+
+  // (mob block removed — useEffect already sets isFullscreen=true on mobile)
+
+  return (
+    <div className={cn("h-full flex flex-col overflow-hidden select-none", standalone && "ff-standalone-panel")} style={{ minWidth: standalone ? undefined : 300, maxWidth: standalone ? undefined : 380, background: standalone ? 'transparent' : 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 5%) 100%)' }}>
+      {renderStatusBar(false)}
+      {renderArmBar(false)}
+      {renderCueKeys(false)}
+      {renderSceneModeBar(false)}
+      <ScrollArea className="flex-1">{renderModeContent(false)}</ScrollArea>
+      {renderPanic(false)}
     </div>
   );
 }

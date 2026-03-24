@@ -1,204 +1,75 @@
-# Finale 3D Feature Replication — Incremental Plan
 
-## Phase 1: Script Window + Chains (CURRENT)
-- Full Script Window with Finale 3D columns (Event Time, Effect Time, Prefire, Position, Address, Pan/Tilt, Duration, Description, Cost, Chain Ref, Chain Gap, etc.)
-- Chain effects system (combine shells into chains, chain gaps, chain duration calculations)
-- Script row grouping and collapsing
-- Sort/filter expressions
 
-## Phase 2: VDL + Effect Editor (DONE ✅)
-- VDL parser (src/lib/vdlParser.ts) — parses "3in Red Peony w/ tail" into structured params
-- VDL colors: 20 named colors (red, gold, silver, titanium, brocade, etc.)
-- VDL types: 25 effect types (peony, chrysanthemum, willow, kamuro, comet, mine, fan, etc.)
-- VDL modifiers: tail, glitter, strobe, crackle, pistol, twinkle, whistle, report
-- VDL caliber scaling: height, spread, duration, star count, cost auto-calculated
-- Effect Editor panel with sliders: caliber, height, spread angle, star count, duration
-- Color picker grid with 20 VDL colors
-- Modifier toggle badges
-- VDL Quick Add input in Effect Library sidebar (Enter to add)
-- toVDL() reverse generator from params
+# Fix Camera Altitude, Terrain Fallback, and Ground Flickering
 
-## Phase 3: Camera Animation + Wind (DONE ✅)
-- Camera keyframe system with Catmull-Rom spline interpolation (position, lookAt, FOV)
-- Camera path 3D preview (cyan spline + octahedron markers at keyframes)
-- CameraAnimator component driving camera during playback
-- Wind simulation: direction (0-360°), speed (0-15 m/s), gust strength (0-100%)
-- Wind affects all particle physics (firework bursts drift with wind)
-- WindCameraPanel UI with sliders + keyframe list
-- Toolbar toggle button for Wind & Camera panel
+## Root Causes Identified
 
-## Phase 4: Reports + Rack Management (DONE ✅)
-- PDF report generation via printable HTML: Safety Distance (NFPA 1123), Wiring Script, Chain Specs, Pinboard Cue Sheet
-- Report engine (src/lib/reportEngine.ts) with open-in-window + download
-- Rack store (src/store/useRackStore.ts) with types: circle, tiltable, fan, variable-tube
-- Rack Manager panel with SVG visual layout diagrams
-- Tube generation per rack type with angle/heading distribution
-- Labels generation (printable HTML labels per tube)
-- Toolbar buttons for Reports (📄) and Racks (📦)
+1. **Camera sinks to ground**: `CAMERA_MIN_Y = 1` (1 meter) is far too low. OrbitControls `maxPolarAngle = 0.85π` allows near-horizontal views that orbit below terrain surface. No terrain-aware altitude clamping exists.
 
-## Phase 5: Advanced Addressing (DONE ✅)
-- Addressing store (src/store/useAddressingStore.ts) with Module/Slat/Pin assignment
-- 6 pre-configured module specs (Cobra 18R2/R3, FireOne 32, PyroDigital 32, Galaxis G2, Custom)
-- Auto-assign algorithm respecting locked addresses and occupied slots
-- Virtual slats via splitter boxes (expandable pin count per physical pin)
-- Multiple firing systems / universes with independent module specs
-- Rack-based addressing (assigns by rack tube order)
-- Lock/unlock individual addresses to preserve during re-assignment
-- Sort by time, module, position, or rack
-- AddressingPanel UI with 4 tabs: Addresses, Modules, Splitters, Systems
-- Toolbar button (⚡ Cpu icon) for Addressing panel toggle
+2. **Brown terrain flickering**: The `GrassGround` shader blends `brownEarth`, `dryField`, and parcel colors at close range. When Google 3D Tiles are loading, both `StageGround` (line 1686) and `GoogleTilesLayer` (line 1687) can render simultaneously during transition, causing z-fighting between the flat ground plane at Y=-0.02 and incoming 3D tiles.
 
-## Phase 6: Inventory Management (DONE ✅)
-- Inventory store (src/store/useInventoryStore.ts) with on-hand, allocated, remaining tracking
-- Cost summaries with markup multiplier per show
-- CSV import with VDL auto-detection for effect matching
-- InventoryPanel UI with 3 tabs: Stock, Costs, Import
-- Low-stock warnings with visual indicators
-- Toolbar button ($) for Inventory panel toggle
+3. **Z-fighting/depth issues**: `near=0.5` with `far=500000` creates massive depth range. Even with `logarithmicDepthBuffer`, ground surfaces at similar Y values fight for depth priority.
 
-## Phase 7: Additional Exports (DONE ✅)
-- 40+ firing system formats (Galaxis, FireOne, Pyrodigital, etc.)
-- DMX fixture support
-- Video export (WebM recording with TC burn-in, configurable resolution)
-- SMPTE/LTC timecode synchronization (Master/Slave/Freerun, external TC via WebSocket)
-- Sound level charts (dB SPL analysis, A/C weighting, Leq, exceedance tracking)
+---
 
-## Phase 8: Scripting Power Tools (DONE ✅)
-- Randomize timing/positions
-- Make into sequence (auto-distribute across positions)
-- Make into fan (auto-angle distribution)
-- Spread out based on durations
-- Reverse order, Quantize to grid
-- Keyboard shortcuts (Space, S, Delete, Ctrl+D, Ctrl+A, i, e, ?)
+## Changes
 
-## Phase 9: Advanced Drone Physics (DONE ✅)
-- PID Controller engine (src/lib/pidController.ts) — 5-axis PID with Kp/Ki/Kd tuning
-- PID presets: DJI Matrice 600, Show Drone 250g, Custom
-- Realistic tilt/roll/pitch from acceleration, drag model, wind forces
-- PIDPanel UI with per-axis gain sliders, test flight simulator, visual stats
-- DMX512/Art-Net engine (src/lib/dmxEngine.ts) — virtual fixture patching, universes, keyframes
-- Auto-patch drones as RGBW fixtures across DMX universes
-- DMX keyframe interpolation and Art-Net CSV export
-- DMXPanel UI with universe grid, fixture selector, keyframe controls
-- Battery discharge model (src/lib/batteryModel.ts) — LiPo simulation with temp derating
-- RTL safety margin alerts (30% reserve), voltage sag under load
-- Battery presets: 2S/4S/6S configurations
-- BatteryPanel UI with visual battery bar, real-time simulation, flight condition sliders
+### 1. Camera Altitude Lock — `SkyCanvas.tsx` CameraController
 
-## Phase 10: MAVLink Protocol Bridge (DONE ✅)
-- MAVLink 2.0 virtual protocol engine (src/lib/mavlinkProtocol.ts)
-- Message types: HEARTBEAT, ATTITUDE, GPS_RAW_INT, VFR_HUD, SYS_STATUS, LOCAL_POSITION_NED
-- Telemetry state per drone with full flight data (position, velocity, attitude, battery, GPS)
-- Base64 encoding for WebSocket/SSE transport as described in research paper
-- MAVLink store (src/store/useMAVLinkStore.ts) for multi-drone telemetry management
-- Edge function bridge (supabase/functions/mavlink-bridge) — validates telemetry, processes commands
-- Bridge validates: battery levels, excessive tilt, GPS fix, speed limits
-- Command relay: ARM, DISARM, TAKEOFF, LAND, RTL, GUIDED, SET_MODE, REBOOT
-- MAVLinkPanel UI with connection status, telemetry HUD, command buttons, message log
-- Auto-stream: Boids simulation → MAVLink telemetry in real-time
-- Coordinate conversion: Y-up (sim) → NED (MAVLink) automatic
+**In `clampToWorldBounds` (line 928-949):**
+- Raise `CAMERA_MIN_Y` from `1` to `5`
+- Add dynamic terrain-aware minimum: if Google 3D Tiles enabled, enforce minimum altitude of 5m above anchor altitude
+- Add damping when camera approaches minimum altitude (soft floor instead of hard clamp)
+- Log `[Camera] altitude clamped` when correction occurs
 
-## Phase 11: Advanced Music Sync (DONE ✅)
-- Music-Reactive Engine (src/lib/musicReactiveEngine.ts) — real-time intensity modulation from audio analysis
-- Onset-driven cue placement: auto-place pyrotechnic cues on beats, onsets, or energy peaks
-- Cue placement modes: Beats, Onsets, Peaks, Combined with configurable beat divisor (1/2/4/8)
-- Onset type filtering: kick, snare, hi-hat, transient — selective cue triggers
-- Distribution options: cycle effects and positions across generated cues
-- Sensitivity & min-interval controls for fine-tuning cue density
-- Preview system: visualize generated cues on waveform before applying
-- getReactiveState() — per-frame intensity/bass/mid/high for real-time visual modulation
-- ONSET_EFFECT_MAP — suggested effect categories per onset type (kick→morteiros, snare→peonias, etc.)
-- Synesthesia panel: 2-tab UI (Auto Cues + Formations) with full parameter controls
+**In OrbitControls (line 1124-1138):**
+- Change `maxPolarAngle` from `Math.PI * 0.85` to `Math.PI * 0.75` — prevents camera from orbiting too close to horizontal/below ground
+- Change `minDistance` from `0.5` to `2` — prevents zooming into ground
 
-## Phase 12: AR Overlay & Sharing (DONE ✅)
-- AR/Hybrid overlay engine (src/lib/arOverlayEngine.ts) — composite simulated effects over real venue photos
-- Perspective calibration: horizon line, vanishing point, FOV estimate, effect scale, rotation offset
-- Blend modes: Screen, Additive, Normal, Overlay with configurable opacity
-- Calibration grid and horizon line visual guides
-- worldToImagePosition() — maps 3D world coords to 2D image positions via single-point perspective
-- AROverlayPanel UI with venue photo upload, calibration sliders, blend controls
-- Show Preview Sharing (ShowSharePanel) — generate shareable read-only preview links
-- Access controls: public/private, password protection, expiry (1h/24h/7d/30d/never)
-- Content visibility toggles: timeline, positions, comments, watermark
+### 2. Remove Ground Suction — `GeoCameraController.tsx`
 
-## Phase 13: Collaboration, Particles & Versioning (DONE ✅)
-- Multi-user collaboration engine (src/lib/collaborationEngine.ts) — Supabase Realtime presence + broadcast
-- Real-time cursor sharing, presence tracking, edit broadcasting with last-writer-wins conflict resolution
-- CollaborationPanel UI with room codes, online user list, activity log
-- Custom Particle Editor (ParticleEditorPanel) — granular particle system designer
-- 6 built-in presets (Peony, Willow, Crackle, Waterfall, Smoke, Comet)
-- Full parameter control: emission, physics (speed/gravity/drag/turbulence), appearance (colors/shape/blend/trail)
-- Live 2D canvas preview with real-time particle simulation
-- Show Versioning (VersioningPanel) — named snapshots with diff comparison and restore
-- Snapshot save/restore with position and cue count tracking
+- In orbit mode (line 103-113), clamp `camera.position.y` to minimum 5m after computing orbit position
+- During flyTo animation, clamp intermediate positions to never go below minimum altitude
 
-## Phase 14: Collision, Weather & Approval (DONE ✅)
-- Advanced drone formation collision detection (src/lib/collisionDetector.ts)
-  - Spatial grid acceleration for O(n) average collision checks
-  - Checks hold phases and transition phases (interpolated smoothstep)
-  - Min distance over time chart, severity classification (warning/critical)
-  - CollisionPanel UI with detail list, seekable collisions, sample rate control
-- Weather API integration (src/lib/weatherService.ts) — Open-Meteo (free, no API key)
-  - Current conditions + 24h hourly forecast
-  - Flight risk analyzer: wind, gusts, precipitation, visibility, temperature, thunderstorm
-  - Risk levels: Safe/Caution/Warning/Grounded with score 0-100
-  - Auto-apply wind to simulation, WeatherPanel UI with live data
-- Client approval workflow (ClientApprovalPanel)
-  - Approval statuses: Draft → Pending Review → Changes Requested / Approved
-  - Threaded comments with resolve/reject per comment, reply system, filtering
+### 3. Terrain Fallback Control — `SkyCanvas.tsx` + `GroundSystem.tsx`
 
-## Phase 15: Trajectory Optimization, Collision Avoidance & Templates (DONE ✅)
-- Trajectory Optimizer Engine (src/lib/trajectoryOptimizer.ts)
-  - Catmull-Rom spline path smoothing with configurable alpha
-  - Velocity clamping with time redistribution
-  - Acceleration and jerk constraint checking
-  - Separation checking between drone pairs with spatial grid acceleration
-  - Full optimization pipeline: smooth → clamp → validate → report
-- Real-time Collision Avoidance (src/lib/collisionAvoidance.ts)
-  - Potential field method with spatial grid for O(n) neighbor detection
-  - Configurable: min separation, detection radius, avoidance strength, vertical bias
-  - Damped deflections with max deflection clamping (smooth, no jitter)
-  - CollisionAvoidanceOverlay — real-time warning lines between close drones in viewport
-- Trajectory Optimizer Panel (TrajectoryOptimizerPanel.tsx)
-  - Constraint sliders: max velocity, acceleration, min separation, smoothing
-  - Analyze button with violation report: velocity, acceleration, separation
-  - Stats: total distance, peak velocity, computation time
-- Show Templates System (src/lib/showTemplates.ts + ShowTemplatesPanel.tsx)
-  - Save/load reusable show templates with formations and scene settings
-  - 8 categories: countdown, celebration, logo, abstract, patriotic, holiday, sports, custom
-  - Import/export as JSON files
-  - Browse with category filter, load into current show
+**In `SkyCanvas.tsx` (line 1686):**
+- When Google 3D Tiles are enabled AND tiles are initializing, hide the `StageGround` component entirely rather than showing it alongside tiles
+- Currently both render: `{!google3DTilesEnabled && <StageGround />}` + `{google3DTilesEnabled && <GoogleTilesLayer />}`. This is correct but the issue is during tile loading there's nothing visible — add a simple dark ground plane as ultra-minimal fallback only when tiles haven't loaded yet
 
-## Phase 16: i18n, Telemetry & Flight Logs (DONE ✅)
-- Multi-language i18n system (src/lib/i18n.ts)
-  - 3 languages: PT-BR, EN, ES with 100+ translation keys
-  - Zustand store with localStorage persistence
-  - useT() hook for reactive translations
-  - LanguageSwitcher component in toolbar with flag dropdown
-- Telemetry Dashboard (TelemetryDashboard.tsx)
-  - Fleet grid view with color-coded drone status (battery, alerts)
-  - Detail view per drone: battery bar, navigation stats, signal strength, alerts
-  - Simulated telemetry from MAVLink store + formation data
-  - Live fleet overview: drone count, avg battery, alert count
-- Flight Log Recorder (FlightLogPanel.tsx)
-  - Real-time recording at 5Hz during playback
-  - Session management: start/stop, multiple sessions, deletion
-  - CSV export with time, droneID, position, battery, speed
-  - Entry table with last 50 data points
+**In `GoogleTilesEngine.tsx`:**
+- Track tile load state (has any root tile loaded)
+- Expose a `tilesReady` signal
+- Until tiles are ready, keep a minimal non-flickering dark plane visible
 
-## Phase 17: Marketplace, Path Planner, Detachable Panels, Spectrum (DONE ✅)
-- Template Marketplace — browse/download/publish cloud templates with ratings, categories, search
-- Formation Path Planner with Obstacle Avoidance (A* 3D grid + Catmull-Rom smoothing)
-  - Obstacle types: sphere, box, cylinder with configurable position/size
-  - PathPlannerPanel UI with obstacle editor, plan execution, and results display
-- Detachable Panel System — pop out any panel into a separate browser window via React portal
-  - Reattach button to bring panel back, auto-cleanup on window close
-- Real-time Audio Spectrum Visualizer — 64-bar InstancedMesh in 3D viewport
-  - Web Audio API AnalyserNode, frequency-to-color mapping (cyan→magenta→gold)
-  - Smoothed animation synced to playback state
+### 4. Depth Fix — `SkyCanvas.tsx` Canvas config
 
-## Phase 18: Next
-- Laser show integration (ILDA format export)
-- Multi-show scheduling (show playlists with cross-fades)
-- Advanced geofencing with no-fly zone import (KML/GeoJSON)
-- Live drone telemetry dashboard with GPS map overlay
+**Line 1662:**
+- Change `near` from `0.5` to `1.0`
+- Keep `logarithmicDepthBuffer: true` (essential for this scale)
+
+**In `GroundSystem.tsx` GrassGround (line 261):**
+- Add `polygonOffset`, `polygonOffsetFactor={1}`, `polygonOffsetUnits={1}` to the ground shader material to push it behind 3D tiles in depth buffer
+- Change ground Y position from `-0.02` to `-0.05` for more separation
+
+### 5. Camera Speed Control — `SkyCanvas.tsx` CameraController
+
+- In `clampToWorldBounds`, add altitude-dependent damping: when camera Y < 20m, multiply movement speed by `Math.max(0.3, camera.position.y / 20)`
+- Prevent sudden altitude drops by clamping maximum Y-change per frame to 50m
+
+### 6. Safe Mode Failsafe — `GoogleTilesEngine.tsx`
+
+- If TilesRenderer throws during update, catch error, freeze last valid camera position, log `[Terrain] fallback blocked`
+- Never show brown fallback plane — prefer black/transparent over incorrect terrain
+
+---
+
+## Files Modified
+
+| File | Change |
+|------|--------|
+| `src/components/editor/SkyCanvas.tsx` | Raise CAMERA_MIN_Y to 5, maxPolarAngle to 0.75π, minDistance to 2, near to 1.0, add altitude damping and per-frame Y-delta clamp, add tilesReady-aware ground visibility |
+| `src/core/geo/GeoCameraController.tsx` | Clamp Y in orbit mode, clamp flyTo intermediates |
+| `src/core/geo/GoogleTilesEngine.tsx` | Add tilesReady state, wrap update() in try/catch, expose loading signal |
+| `src/components/editor/skycanvas/GroundSystem.tsx` | Add polygonOffset to GrassGround material, lower Y position to -0.05 |
+

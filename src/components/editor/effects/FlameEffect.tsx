@@ -1,152 +1,426 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { getThreeBlending } from '@/lib/niagaraBlenderRules';
 
-const PARTICLE_COUNT = 200;
+const PARTICLE_COUNT = 400;
+const EMBER_COUNT = 80;
+const HEAT_DISTORTION_COUNT = 24;
+
+// ── Niagara-grade Flame Vertex Shader ───────────────────────────────
+const FLAME_VERTEX = `
+  attribute float aLife;
+  attribute float aMaxLife;
+  attribute float aSeed;
+  
+  varying float vLife;
+  varying float vMaxLife;
+  varying float vSeed;
+  varying float vSize;
+  
+  uniform float uTime;
+  
+  void main() {
+    vLife = aLife;
+    vMaxLife = aMaxLife;
+    vSeed = aSeed;
+    
+    float lifeRatio = clamp(aLife / aMaxLife, 0.0, 1.0);
+    
+    float sizeOverLife = lifeRatio < 0.15 
+      ? lifeRatio / 0.15 
+      : 1.0 - pow((lifeRatio - 0.15) / 0.85, 0.6);
+    vSize = sizeOverLife;
+    
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    gl_PointSize = sizeOverLife * 18.0 * (300.0 / -mvPosition.z);
+    gl_PointSize = clamp(gl_PointSize, 1.0, 48.0);
+    gl_Position = projectionMatrix * mvPosition;
+  }
+`;
+
+const FLAME_FRAGMENT = `
+  varying float vLife;
+  varying float vMaxLife;
+  varying float vSeed;
+  varying float vSize;
+  
+  uniform float uTime;
+  uniform float uIntensity;
+  
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+  }
+  
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float a = hash(i);
+    float b = hash(i + vec2(1.0, 0.0));
+    float c = hash(i + vec2(0.0, 1.0));
+    float d = hash(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+  }
+  
+  float fbm(vec2 p) {
+    float v = 0.0;
+    float a = 0.5;
+    for (int i = 0; i < 3; i++) {
+      v += a * noise(p);
+      p *= 2.0;
+      a *= 0.5;
+    }
+    return v;
+  }
+  
+  void main() {
+    float lifeRatio = clamp(vLife / vMaxLife, 0.0, 1.0);
+    vec2 uv = gl_PointCoord;
+    float dist = length(uv - vec2(0.5));
+    
+    float turb = fbm(uv * 4.0 + vec2(vSeed * 10.0, -uTime * 2.0)) * 0.3;
+    float shape = smoothstep(0.5 + turb, 0.1, dist);
+    
+    if (shape < 0.01) discard;
+    
+    vec3 col;
+    if (lifeRatio < 0.08) {
+      col = mix(vec3(0.15, 0.3, 1.0), vec3(1.0, 0.95, 0.85), lifeRatio / 0.08);
+    } else if (lifeRatio < 0.2) {
+      float t = (lifeRatio - 0.08) / 0.12;
+      col = mix(vec3(1.0, 0.95, 0.85), vec3(1.3, 1.1, 0.2), t);
+    } else if (lifeRatio < 0.5) {
+      float t = (lifeRatio - 0.2) / 0.3;
+      col = mix(vec3(1.3, 1.1, 0.2), vec3(1.1, 0.5, 0.05), t);
+    } else if (lifeRatio < 0.8) {
+      float t = (lifeRatio - 0.5) / 0.3;
+      col = mix(vec3(1.1, 0.5, 0.05), vec3(0.6, 0.15, 0.02), t);
+    } else {
+      float t = (lifeRatio - 0.8) / 0.2;
+      col = mix(vec3(0.6, 0.15, 0.02), vec3(0.1, 0.03, 0.01), t);
+    }
+    
+    float flicker = 0.7 + 0.3 * sin(uTime * 15.0 + vSeed * 50.0);
+    
+    float fadeIn = smoothstep(0.0, 0.05, lifeRatio);
+    float fadeOut = 1.0 - pow(lifeRatio, 1.5);
+    float alpha = shape * fadeIn * fadeOut * flicker * uIntensity;
+    
+    gl_FragColor = vec4(col * shape, alpha);
+  }
+`;
+
+// ── Heat Distortion Shader (replaces basic cylinder) ────────────────
+const HEAT_VERTEX = `
+  attribute float aHeatIntensity;
+  attribute float aHeatSize;
+  
+  varying float vHeatIntensity;
+  varying vec4 vViewPos;
+  
+  void main() {
+    vHeatIntensity = aHeatIntensity;
+    vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+    vViewPos = mvPos;
+    gl_Position = projectionMatrix * mvPos;
+    gl_PointSize = aHeatSize * (300.0 / -mvPos.z);
+    gl_PointSize = clamp(gl_PointSize, 1.0, 80.0);
+  }
+`;
+
+const HEAT_FRAGMENT = `
+  uniform float uTime;
+  
+  varying float vHeatIntensity;
+  varying vec4 vViewPos;
+  
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+  }
+  
+  void main() {
+    float d = length(gl_PointCoord - 0.5) * 2.0;
+    float circleFade = 1.0 - smoothstep(0.0, 1.0, d);
+    
+    if (circleFade < 0.01) discard;
+    
+    float shimmer = 0.5 + 0.5 * sin(uTime * 8.0 + gl_PointCoord.x * 20.0 + gl_PointCoord.y * 15.0);
+    float alpha = circleFade * vHeatIntensity * shimmer * 0.04;
+    
+    vec3 col = vec3(1.0, 0.95, 0.9);
+    gl_FragColor = vec4(col, alpha);
+  }
+`;
 
 /**
- * Finale-grade Flame Projector / Fireball Effect
- * Supports: Flamaniac, G-Flame, Wave Flamer, LPG fire systems
- * - Realistic combustion gradient: blue base → white core → yellow → orange → red tip → smoke
- * - Turbulent flame shape with multi-frequency noise
- * - Heat shimmer via particle jitter
- * - Volumetric inner glow column
- * - Ground illumination
+ * Niagara-grade Flame Projector / Fireball Effect
+ * Custom GLSL shaders with procedural noise, thermal color model, ember layer, heat distortion particles.
  */
 export default function FlameEffect({
   position,
   color,
   progress,
   height = 8,
+  preset,
 }: {
   position: [number, number, number];
   color: string;
   progress: number;
   height?: number;
+  preset?: { id: string; maxHeightM: number; nozzles: number; colorCount: number };
 }) {
+  const effectiveHeight = preset ? Math.min(height, preset.maxHeightM) : height;
   const pointsRef = useRef<THREE.Points>(null);
+  const emberRef = useRef<THREE.Points>(null);
+  const heatRef = useRef<THREE.Points>(null);
+
+  const nozzleCount = preset?.nozzles ?? 1;
 
   const seeds = useMemo(() => {
-    const s: { angle: number; speed: number; spread: number; lt: number; phase: number; turbulence: number }[] = [];
+    const s: { angle: number; speed: number; spread: number; lt: number; phase: number; turbulence: number; seed: number }[] = [];
     for (let i = 0; i < PARTICLE_COUNT; i++) {
+      const nozzle = i % nozzleCount;
+      const nozzleAngle = nozzleCount > 1 ? (nozzle / nozzleCount) * Math.PI * 2 : Math.random() * Math.PI * 2;
       s.push({
-        angle: Math.random() * Math.PI * 2,
-        speed: height * (0.35 + Math.random() * 0.65),
+        angle: nozzleAngle + (Math.random() - 0.5) * 0.3,
+        speed: effectiveHeight * (0.35 + Math.random() * 0.65),
         spread: 0.05 + Math.random() * 0.12,
-        lt: 0.15 + Math.random() * 0.3,
+        lt: 0.12 + Math.random() * 0.28,
         phase: Math.random() * Math.PI * 2,
         turbulence: 0.5 + Math.random() * 1.5,
+        seed: Math.random(),
       });
     }
     return s;
-  }, [height]);
+  }, [effectiveHeight, nozzleCount]);
+
+  const emberSeeds = useMemo(() => {
+    const s: { angle: number; speed: number; lt: number; phase: number; drift: number; seed: number }[] = [];
+    for (let i = 0; i < EMBER_COUNT; i++) {
+      s.push({
+        angle: Math.random() * Math.PI * 2,
+        speed: effectiveHeight * (0.15 + Math.random() * 0.35),
+        lt: 0.8 + Math.random() * 2.0,
+        phase: Math.random() * Math.PI * 2,
+        drift: (Math.random() - 0.5) * 0.6,
+        seed: Math.random(),
+      });
+    }
+    return s;
+  }, [effectiveHeight]);
+
+  // Heat distortion particle seeds
+  const heatSeeds = useMemo(() => {
+    const s: { angle: number; speed: number; lt: number; phase: number }[] = [];
+    for (let i = 0; i < HEAT_DISTORTION_COUNT; i++) {
+      s.push({
+        angle: Math.random() * Math.PI * 2,
+        speed: effectiveHeight * (0.2 + Math.random() * 0.4),
+        lt: 1.5 + Math.random() * 2.0,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+    return s;
+  }, [effectiveHeight]);
+
+  const posBuffer = useMemo(() => new Float32Array(PARTICLE_COUNT * 3), []);
+  const lifeBuffer = useMemo(() => new Float32Array(PARTICLE_COUNT), []);
+  const maxLifeBuffer = useMemo(() => new Float32Array(PARTICLE_COUNT), []);
+  const seedBuffer = useMemo(() => {
+    const buf = new Float32Array(PARTICLE_COUNT);
+    for (let i = 0; i < PARTICLE_COUNT; i++) buf[i] = Math.random();
+    return buf;
+  }, []);
+
+  const emberPosBuffer = useMemo(() => new Float32Array(EMBER_COUNT * 3), []);
+  const emberColBuffer = useMemo(() => new Float32Array(EMBER_COUNT * 3), []);
+
+  const heatPosBuffer = useMemo(() => new Float32Array(HEAT_DISTORTION_COUNT * 3), []);
+  const heatIntensityBuffer = useMemo(() => new Float32Array(HEAT_DISTORTION_COUNT), []);
+  const heatSizeBuffer = useMemo(() => new Float32Array(HEAT_DISTORTION_COUNT), []);
+
+  const uniforms = useMemo(() => ({
+    uTime: { value: 0 },
+    uIntensity: { value: 1 },
+  }), []);
+
+  const heatUniforms = useMemo(() => ({
+    uTime: { value: 0 },
+  }), []);
 
   useFrame(({ clock }) => {
     if (!pointsRef.current) return;
-    const posArr = new Float32Array(PARTICLE_COUNT * 3);
-    const colArr = new Float32Array(PARTICLE_COUNT * 3);
     const time = clock.getElapsedTime();
 
-    // Realistic ignition: fast ramp-up, fast ramp-down
-    const intensity = progress < 0.08 ? Math.pow(progress / 0.08, 0.3) :
-                      progress > 0.88 ? Math.pow((1 - progress) / 0.12, 0.5) : 1;
+    const intensity = progress < 0.08
+      ? Math.pow(progress / 0.08, 0.3)
+      : progress > 0.88
+        ? Math.pow((1 - progress) / 0.12, 0.5)
+        : 1;
+
+    uniforms.uTime.value = time;
+    uniforms.uIntensity.value = intensity;
+    heatUniforms.uTime.value = time;
 
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       const seed = seeds[i];
       const cycleTime = ((time * 4 + seed.phase) % seed.lt) / seed.lt;
+      const i3 = i * 3;
 
       if (cycleTime > intensity) {
-        posArr[i * 3] = 0; posArr[i * 3 + 1] = -100; posArr[i * 3 + 2] = 0;
-        colArr[i * 3] = 0; colArr[i * 3 + 1] = 0; colArr[i * 3 + 2] = 0;
+        posBuffer[i3] = 0; posBuffer[i3 + 1] = -100; posBuffer[i3 + 2] = 0;
+        lifeBuffer[i] = 0; maxLifeBuffer[i] = 1;
         continue;
       }
 
       const t = cycleTime * seed.lt;
-      // Turbulent flame: multi-frequency noise displaces particles
       const turbX = Math.sin(time * 6 + i * 0.7) * seed.turbulence * 0.15 * t;
       const turbZ = Math.cos(time * 5 + i * 1.1) * seed.turbulence * 0.12 * t;
       const turbY = Math.sin(time * 8 + i * 2.3) * 0.2 * t;
-      
-      posArr[i * 3] = Math.cos(seed.angle) * seed.spread * t * height * 0.4 + turbX;
-      posArr[i * 3 + 1] = seed.speed * t + turbY;
-      posArr[i * 3 + 2] = Math.sin(seed.angle) * seed.spread * t * height * 0.4 + turbZ;
 
-      const fade = Math.max(0, 1 - cycleTime) * intensity;
-      const h = cycleTime; // normalized height in flame
-      
-      // Realistic combustion gradient
-      let r: number, g: number, b: number;
-      if (h < 0.1) {
-        // Blue base (gas combustion zone)
-        r = 0.15; g = 0.3; b = 1.0;
-      } else if (h < 0.25) {
-        // White-hot core (peak temperature ~1200°C)
-        const t2 = (h - 0.1) / 0.15;
-        r = THREE.MathUtils.lerp(0.15, 1.3, t2);
-        g = THREE.MathUtils.lerp(0.3, 1.1, t2);
-        b = THREE.MathUtils.lerp(1.0, 0.85, t2);
-      } else if (h < 0.5) {
-        // Bright yellow
-        const t2 = (h - 0.25) / 0.25;
-        r = THREE.MathUtils.lerp(1.3, 1.2, t2);
-        g = THREE.MathUtils.lerp(1.1, 0.75, t2);
-        b = THREE.MathUtils.lerp(0.85, 0.1, t2);
-      } else if (h < 0.75) {
-        // Orange
-        const t2 = (h - 0.5) / 0.25;
-        r = THREE.MathUtils.lerp(1.2, 0.9, t2);
-        g = THREE.MathUtils.lerp(0.75, 0.3, t2);
-        b = THREE.MathUtils.lerp(0.1, 0.02, t2);
-      } else {
-        // Red tip → smoke
-        const t2 = (h - 0.75) / 0.25;
-        r = THREE.MathUtils.lerp(0.9, 0.2, t2);
-        g = THREE.MathUtils.lerp(0.3, 0.08, t2);
-        b = THREE.MathUtils.lerp(0.02, 0.01, t2);
-      }
-      
-      // Flame flicker — makes it look alive
-      const flicker = 0.7 + Math.sin(time * 15 + i * 3) * 0.15 + Math.sin(time * 25 + i * 7) * 0.1 + Math.random() * 0.05;
-      
-      colArr[i * 3] = r * fade * flicker;
-      colArr[i * 3 + 1] = g * fade * flicker;
-      colArr[i * 3 + 2] = b * fade * flicker;
+      posBuffer[i3] = Math.cos(seed.angle) * seed.spread * t * effectiveHeight * 0.4 + turbX;
+      posBuffer[i3 + 1] = seed.speed * t + turbY;
+      posBuffer[i3 + 2] = Math.sin(seed.angle) * seed.spread * t * effectiveHeight * 0.4 + turbZ;
+
+      lifeBuffer[i] = cycleTime * seed.lt;
+      maxLifeBuffer[i] = seed.lt;
     }
 
     const geo = pointsRef.current.geometry;
-    geo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
-    geo.attributes.position.needsUpdate = true;
-    geo.attributes.color.needsUpdate = true;
+    ['position', 'aLife', 'aMaxLife'].forEach(attr => {
+      const a = geo.getAttribute(attr) as THREE.BufferAttribute;
+      if (a) a.needsUpdate = true;
+    });
+
+    // Ember particles
+    if (emberRef.current && intensity > 0.3) {
+      for (let i = 0; i < EMBER_COUNT; i++) {
+        const seed = emberSeeds[i];
+        const cycleTime = ((time * 1.5 + seed.phase) % seed.lt) / seed.lt;
+        const i3 = i * 3;
+        const t2 = cycleTime * seed.lt;
+
+        const drag = Math.exp(-0.3 * t2);
+        emberPosBuffer[i3] = Math.cos(seed.angle) * 0.2 + seed.drift * t2 + Math.sin(time * 3 + i) * 0.1 * t2;
+        emberPosBuffer[i3 + 1] = effectiveHeight * 0.5 + seed.speed * t2 * 0.5 * drag;
+        emberPosBuffer[i3 + 2] = Math.sin(seed.angle) * 0.2 + Math.cos(time * 2.5 + i * 0.7) * 0.05 * t2;
+
+        const fade = Math.max(0, 1 - cycleTime) * intensity * 0.9;
+        const emberLife = cycleTime;
+        if (emberLife < 0.3) {
+          emberColBuffer[i3] = 1.2 * fade;
+          emberColBuffer[i3 + 1] = 0.7 * fade;
+          emberColBuffer[i3 + 2] = 0.15 * fade;
+        } else {
+          const t3 = (emberLife - 0.3) / 0.7;
+          emberColBuffer[i3] = (1.2 - t3 * 0.8) * fade;
+          emberColBuffer[i3 + 1] = (0.7 - t3 * 0.55) * fade;
+          emberColBuffer[i3 + 2] = (0.15 - t3 * 0.1) * fade;
+        }
+      }
+
+      const eGeo = emberRef.current.geometry;
+      const ePosAttr = eGeo.getAttribute('position') as THREE.BufferAttribute;
+      const eColAttr = eGeo.getAttribute('color') as THREE.BufferAttribute;
+      if (ePosAttr) ePosAttr.needsUpdate = true;
+      if (eColAttr) eColAttr.needsUpdate = true;
+    }
+
+    // Heat distortion particles (replaces basic cylinder mesh)
+    if (heatRef.current && intensity > 0.2) {
+      for (let i = 0; i < HEAT_DISTORTION_COUNT; i++) {
+        const seed = heatSeeds[i];
+        const cycleTime = ((time * 0.8 + seed.phase) % seed.lt) / seed.lt;
+        const i3 = i * 3;
+
+        const hY = effectiveHeight * 0.3 + seed.speed * cycleTime * seed.lt * 0.3;
+        heatPosBuffer[i3] = Math.cos(seed.angle) * 0.5 * cycleTime + Math.sin(time * 2 + i) * 0.15;
+        heatPosBuffer[i3 + 1] = hY;
+        heatPosBuffer[i3 + 2] = Math.sin(seed.angle) * 0.5 * cycleTime + Math.cos(time * 1.5 + i) * 0.12;
+
+        const hFade = Math.max(0, 1 - cycleTime) * intensity;
+        heatIntensityBuffer[i] = hFade;
+        heatSizeBuffer[i] = 20 + cycleTime * 40;
+      }
+
+      const hGeo = heatRef.current.geometry;
+      const hPos = hGeo.getAttribute('position') as THREE.BufferAttribute;
+      const hInt = hGeo.getAttribute('aHeatIntensity') as THREE.BufferAttribute;
+      const hSz = hGeo.getAttribute('aHeatSize') as THREE.BufferAttribute;
+      if (hPos) hPos.needsUpdate = true;
+      if (hInt) hInt.needsUpdate = true;
+      if (hSz) hSz.needsUpdate = true;
+    }
   });
 
   const isActive = progress > 0.03 && progress < 0.92;
+  const screenBlend = useMemo(() => getThreeBlending('screen'), []);
 
   return (
     <group position={position}>
-      <points ref={pointsRef}>
+      {/* Flame particles — custom GLSL shader */}
+      <points ref={pointsRef} frustumCulled={false}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(PARTICLE_COUNT * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(PARTICLE_COUNT * 3), 3]} />
+          <bufferAttribute attach="attributes-position" args={[posBuffer, 3]} />
+          <bufferAttribute attach="attributes-aLife" args={[lifeBuffer, 1]} />
+          <bufferAttribute attach="attributes-aMaxLife" args={[maxLifeBuffer, 1]} />
+          <bufferAttribute attach="attributes-aSeed" args={[seedBuffer, 1]} />
         </bufferGeometry>
-        <pointsMaterial size={0.22} vertexColors transparent opacity={0.88} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        <shaderMaterial
+          vertexShader={FLAME_VERTEX}
+          fragmentShader={FLAME_FRAGMENT}
+          uniforms={uniforms}
+          transparent
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
       </points>
+
+      {/* Ember particles */}
+      {isActive && (
+        <points ref={emberRef} frustumCulled={false}>
+          <bufferGeometry>
+            <bufferAttribute attach="attributes-position" args={[emberPosBuffer, 3]} />
+            <bufferAttribute attach="attributes-color" args={[emberColBuffer, 3]} />
+          </bufferGeometry>
+          <pointsMaterial size={0.035} vertexColors transparent opacity={0.95} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        </points>
+      )}
+
+      {/* Heat distortion particles — replaces basic cylinder */}
+      {isActive && (
+        <points ref={heatRef} frustumCulled={false} renderOrder={999}>
+          <bufferGeometry>
+            <bufferAttribute attach="attributes-position" args={[heatPosBuffer, 3]} />
+            <bufferAttribute attach="attributes-aHeatIntensity" args={[heatIntensityBuffer, 1]} />
+            <bufferAttribute attach="attributes-aHeatSize" args={[heatSizeBuffer, 1]} />
+          </bufferGeometry>
+          <shaderMaterial
+            vertexShader={HEAT_VERTEX}
+            fragmentShader={HEAT_FRAGMENT}
+            uniforms={heatUniforms}
+            transparent
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+          />
+        </points>
+      )}
+
       {/* Volumetric inner glow column */}
       {isActive && (
         <>
           <mesh position={[0, height * 0.25, 0]}>
             <cylinderGeometry args={[0.08, 0.25, height * 0.5, 8]} />
-            <meshBasicMaterial color="#FF8800" transparent opacity={0.1} blending={THREE.AdditiveBlending} />
+            <meshBasicMaterial color="#FF8800" transparent opacity={0.1} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} />
           </mesh>
-          {/* Blue base glow */}
           <mesh position={[0, 0.15, 0]}>
             <sphereGeometry args={[0.2, 8, 8]} />
-            <meshBasicMaterial color="#4488FF" transparent opacity={0.3} blending={THREE.AdditiveBlending} />
+            <meshBasicMaterial color="#4488FF" transparent opacity={0.3} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} />
           </mesh>
-          {/* Ground illumination */}
           <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <circleGeometry args={[1.5 + height * 0.2, 16]} />
-            <meshBasicMaterial color="#FF6600" transparent opacity={0.06} blending={THREE.AdditiveBlending} side={THREE.DoubleSide} />
+            <meshBasicMaterial color="#FF6600" transparent opacity={0.06} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} side={THREE.DoubleSide} />
           </mesh>
         </>
       )}

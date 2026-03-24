@@ -1,14 +1,18 @@
-import { useEffect, useState } from 'react';
-import { X, Clock, Radio, Play, Square, RotateCcw, Zap, Volume2, VolumeX, Link2, Unlink2, Timer, Wifi, WifiOff, ArrowDownToLine, Gauge, Satellite } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { X, Clock, Radio, Play, Square, RotateCcw, Zap, Volume2, VolumeX, Link2, Unlink2, Timer, Wifi, WifiOff, ArrowDownToLine, Gauge, Satellite, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useSMPTEStore, type ChaseMode } from '@/store/useSMPTEStore';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
+import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { formatTimecode, encodeTimecodeToLTC, generateMTCQuarterFrames, secondsToTimecode, type SMPTEFrameRate } from '@/lib/smpteEngine';
+import { getOSCClient, buildMA3TimecodeSync, buildMA3TimecodeTransport } from '@/lib/oscEngine';
 
 interface SMPTEPanelProps {
   onClose: () => void;
@@ -17,8 +21,16 @@ interface SMPTEPanelProps {
 export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
   const store = useSMPTEStore();
   const { currentTime, isPlaying } = useProjectStore();
+  const hardware = useFireOneHardware();
+  const pbus = usePBusHardware();
   const [startTcInput, setStartTcInput] = useState('01:00:00:00');
   const [wsUrlInput, setWsUrlInput] = useState(store.wsUrl);
+  const [syncToFireOne, setSyncToFireOne] = useState(false);
+  const [syncToPBus, setSyncToPBus] = useState(false);
+  const [syncToMA3, setSyncToMA3] = useState(false);
+  const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pbusSyncRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const ma3SyncRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Derive display TC
   const offsetTime = currentTime + store.startTimecodeSeconds;
@@ -35,6 +47,48 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
   }, [store.startTimecodeSeconds, store.frameRate]);
 
   const handleStartTcBlur = () => store.setStartTimecode(startTcInput);
+
+  // FireOne timecode sync
+  useEffect(() => {
+    if (!syncToFireOne || !hardware.isConnected || !store.running) {
+      if (syncIntervalRef.current) { clearInterval(syncIntervalRef.current); syncIntervalRef.current = null; }
+      return;
+    }
+    syncIntervalRef.current = setInterval(() => {
+      const ms = Math.round((currentTime + store.startTimecodeSeconds) * 1000);
+      hardware.syncTimecode(ms).catch(() => {});
+    }, 100); // sync every 100ms
+    return () => { if (syncIntervalRef.current) clearInterval(syncIntervalRef.current); };
+  }, [syncToFireOne, hardware.isConnected, store.running, currentTime, store.startTimecodeSeconds]);
+
+  // PBUS timecode sync
+  useEffect(() => {
+    if (!syncToPBus || !pbus.isConnected || !store.running) {
+      if (pbusSyncRef.current) { clearInterval(pbusSyncRef.current); pbusSyncRef.current = null; }
+      return;
+    }
+    pbusSyncRef.current = setInterval(() => {
+      // PBUS devices receive timecode via requestCueStatus which updates internal clock
+      pbus.devices.forEach((_, addr) => {
+        pbus.requestCueStatus(addr).catch(() => {});
+      });
+    }, 200); // sync every 200ms for PBUS
+    return () => { if (pbusSyncRef.current) clearInterval(pbusSyncRef.current); };
+  }, [syncToPBus, pbus.isConnected, store.running, pbus]);
+
+  // MA3 timecode sync via OSC
+  useEffect(() => {
+    if (!syncToMA3 || !store.running) {
+      if (ma3SyncRef.current) { clearInterval(ma3SyncRef.current); ma3SyncRef.current = null; }
+      return;
+    }
+    const oscClient = getOSCClient();
+    ma3SyncRef.current = setInterval(() => {
+      const t = secondsToTimecode(currentTime + store.startTimecodeSeconds, store.frameRate, store.frameRate === 29.97);
+      oscClient.send(buildMA3TimecodeSync(t.hours, t.minutes, t.seconds, t.frames));
+    }, 100); // 10Hz sync
+    return () => { if (ma3SyncRef.current) clearInterval(ma3SyncRef.current); };
+  }, [syncToMA3, store.running, currentTime, store.startTimecodeSeconds, store.frameRate]);
 
   const statusColor = {
     disconnected: 'bg-muted-foreground',
@@ -190,6 +244,81 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
                 <div className="bg-surface-0 rounded px-1 py-0.5 border border-border/30">
                   {`{"type":"transport","command":"play"|"stop"|"locate"}`}
                 </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* FireOne Timecode Sync */}
+        <div className={cn(
+          "rounded border p-2 space-y-1",
+          syncToFireOne && hardware.isConnected ? "bg-green-500/5 border-green-500/30" : "bg-surface-0 border-border"
+        )}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Zap className={cn("w-3.5 h-3.5", syncToFireOne && hardware.isConnected ? "text-green-400" : "text-muted-foreground")} />
+              <Label className="text-[10px] font-mono-code text-foreground font-bold">SYNC TO FIREONE</Label>
+            </div>
+            <Switch checked={syncToFireOne} onCheckedChange={setSyncToFireOne} className="scale-75" />
+          </div>
+          {syncToFireOne && (
+            <div className="flex items-center gap-1.5">
+              <div className={cn("w-2 h-2 rounded-full", hardware.isConnected ? "bg-green-400 animate-pulse" : "bg-yellow-400")} />
+              <span className="text-[9px] font-mono-code text-muted-foreground">
+                {hardware.isConnected
+                  ? `${hardware.modules.size} módulo(s) recebendo TC`
+                  : 'Hardware não conectado'}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* PBUS Timecode Sync */}
+        <div className={cn(
+          "rounded border p-2 space-y-1",
+          syncToPBus && pbus.isConnected ? "bg-amber-500/5 border-amber-500/30" : "bg-surface-0 border-border"
+        )}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Radio className={cn("w-3.5 h-3.5", syncToPBus && pbus.isConnected ? "text-amber-400" : "text-muted-foreground")} />
+              <Label className="text-[10px] font-mono-code text-foreground font-bold">SYNC TO PBUS</Label>
+            </div>
+            <Switch checked={syncToPBus} onCheckedChange={setSyncToPBus} className="scale-75" />
+          </div>
+          {syncToPBus && (
+            <div className="flex items-center gap-1.5">
+              <div className={cn("w-2 h-2 rounded-full", pbus.isConnected ? "bg-amber-400 animate-pulse" : "bg-yellow-400")} />
+              <span className="text-[9px] font-mono-code text-muted-foreground">
+                {pbus.isConnected
+                  ? `${pbus.deviceCount} dispositivo(s) recebendo TC`
+                  : 'PBUS não conectado'}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* MA3 Timecode Sync via OSC */}
+        <div className={cn(
+          "rounded border p-2 space-y-1",
+          syncToMA3 ? "bg-blue-500/5 border-blue-500/30" : "bg-surface-0 border-border"
+        )}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Monitor className={cn("w-3.5 h-3.5", syncToMA3 ? "text-blue-400" : "text-muted-foreground")} />
+              <Label className="text-[10px] font-mono-code text-foreground font-bold">SYNC TO MA3</Label>
+            </div>
+            <Switch checked={syncToMA3} onCheckedChange={setSyncToMA3} className="scale-75" />
+          </div>
+          {syncToMA3 && (
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5">
+                <div className={cn("w-2 h-2 rounded-full", store.running ? "bg-blue-400 animate-pulse" : "bg-muted-foreground")} />
+                <span className="text-[9px] font-mono-code text-muted-foreground">
+                  {store.running ? 'Sending TC via OSC @ 10Hz' : 'Aguardando playback'}
+                </span>
+              </div>
+              <div className="text-[7px] font-mono-code text-muted-foreground/50">
+                OSC → SetUserVar "tc" → MA3 macros podem ler o timecode
               </div>
             </div>
           )}

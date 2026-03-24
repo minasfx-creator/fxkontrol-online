@@ -1,140 +1,203 @@
-import { useRef, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
-import * as THREE from 'three';
-
-const PARTICLE_COUNT = 350;
-
 /**
- * Finale-grade Gerb / Fountain / Cold Spark Effect
- * - Ultra-narrow emission cone (< 8° real gerb spec)
- * - White-hot base → golden mid → colored tip → charcoal fallback
- * - Individual spark flicker with thermal variation
- * - Gravity parabolic falloff with air drag
- * - Intensity ramp-up/down matching real ignition/burnout
- * - Ground-level spark scatter at base
+ * GerbEffect — Niagara-grade Gerb/Fountain using composable emitter system
+ * Uses NiagaraSystem with cone spawn, collision module, and wind force.
  */
+
+import { useRef, useMemo, useEffect } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
+import * as THREE from 'three';
+import { getThreeBlending } from '@/lib/niagaraBlenderRules';
+import { getGerbParticleCount, getParticleSize } from '@/lib/pyroPhysics';
+import {
+  createEmitter, createSystem, tickSystem, getSystemParticleCount,
+  type NiagaraSystem,
+} from '@/render_ultra/fireworks/niagaraEmitterSystem';
+import { createCollision, createWind } from '@/render_ultra/fireworks/niagaraForceModules';
+import { clampNiagaraHDR } from '@/lib/niagaraBlenderRules';
+
+const MAX_GERB_PARTICLES = 700;
+
 export default function GerbEffect({
   position,
   color,
   progress,
   height = 5,
+  caliber = 3,
+  coldSpark = false,
+  formulationId,
 }: {
   position: [number, number, number];
   color: string;
   progress: number;
   height?: number;
+  caliber?: number;
+  coldSpark?: boolean;
+  formulationId?: string;
 }) {
-  const pointsRef = useRef<THREE.Points>(null);
+  const { scene } = useThree();
+  const scaledHeight = height * (0.6 + caliber * 0.15);
+  const SCALED_PARTICLE_COUNT = Math.min(MAX_GERB_PARTICLES, getGerbParticleCount(caliber));
+  const particleVisualSize = getParticleSize(caliber) * 0.04;
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
+  const pointsRef = useRef<THREE.Points>(null);
 
-  const seeds = useMemo(() => {
-    const s: { angle: number; speed: number; spread: number; lt: number; phase: number; size: number }[] = [];
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
-      s.push({
-        angle: Math.random() * Math.PI * 2,
-        speed: height * (0.65 + Math.random() * 0.7),
-        spread: 0.02 + Math.random() * 0.06, // ultra-narrow cone
-        lt: 0.4 + Math.random() * 0.7,
-        phase: Math.random() * Math.PI * 2,
-        size: 0.5 + Math.random() * 1.0,
-      });
-    }
-    return s;
-  }, [height]);
+  // Pre-allocate buffers
+  const posArr = useMemo(() => new Float32Array(SCALED_PARTICLE_COUNT * 3), [SCALED_PARTICLE_COUNT]);
+  const colArr = useMemo(() => new Float32Array(SCALED_PARTICLE_COUNT * 3), [SCALED_PARTICLE_COUNT]);
 
-  useFrame(({ clock }) => {
-    if (!pointsRef.current) return;
-    const posArr = new Float32Array(PARTICLE_COUNT * 3);
-    const colArr = new Float32Array(PARTICLE_COUNT * 3);
+  // Create Niagara system for the gerb
+  const niagaraSystemRef = useRef<NiagaraSystem | null>(null);
+
+  useEffect(() => {
+    const spraySpeed = scaledHeight * 1.5;
+    const emitter = createEmitter({
+      id: `gerb-main-${Date.now()}`,
+      name: 'Gerb Spray',
+      maxParticles: SCALED_PARTICLE_COUNT,
+      spawn: {
+        rate: SCALED_PARTICLE_COUNT * 2,
+        burstCount: 0,
+        burstInterval: 0,
+        burstDelay: 0,
+      },
+      init: {
+        lifetime: [0.4, 1.1],
+        size: [0.3, 1.0],
+        velocity: {
+          min: new THREE.Vector3(-spraySpeed * 0.06, spraySpeed * 0.65, -spraySpeed * 0.06),
+          max: new THREE.Vector3(spraySpeed * 0.06, spraySpeed * 1.0, spraySpeed * 0.06),
+        },
+        color: baseColor.clone(),
+        spawnShape: { type: 'cone', radius: 0.08, coneAngle: 8 * Math.PI / 180 },
+      },
+      update: [{
+        drag: 0.08,
+        gravityScale: 1.0,
+        curlNoiseStrength: 0,
+        curlNoiseScale: 0,
+        colorOverLife: [
+          { t: 0, color: new THREE.Color(1.2, 0.95, 0.35) },
+          { t: 0.3, color: baseColor.clone() },
+          { t: 0.7, color: baseColor.clone().multiplyScalar(0.4) },
+          { t: 1, color: new THREE.Color(0.15, 0.06, 0.02) },
+        ],
+        sizeOverLife: [
+          { t: 0, value: 1.0 },
+          { t: 0.5, value: 0.7 },
+          { t: 1, value: 0 },
+        ],
+        rotationRate: 0,
+      }],
+      render: {
+        mode: 'gpu-sprite',
+        blendMode: 'additive',
+        velocityStretch: true,
+        stretchScale: 0.2,
+      },
+      forceModules: [
+        createCollision('ground-bounce', { planeY: 0, restitution: 0.3, friction: 0.5, maxBounces: 2 }),
+      ],
+    });
+
+    const sys = createSystem({
+      id: `gerb-system-${Date.now()}`,
+      name: 'Gerb',
+      emitters: [emitter],
+      maxParticleBudget: SCALED_PARTICLE_COUNT,
+      scalabilityGroup: 'high',
+    });
+    niagaraSystemRef.current = sys;
+
+    return () => {
+      niagaraSystemRef.current = null;
+    };
+  }, [scaledHeight, SCALED_PARTICLE_COUNT, baseColor]);
+
+  useFrame(({ clock }, delta) => {
+    if (!pointsRef.current || !niagaraSystemRef.current) return;
+    const sys = niagaraSystemRef.current;
     const time = clock.getElapsedTime();
-    const GRAVITY = -9.81;
+    const dt = Math.min(delta, 0.05);
 
-    // Realistic ignition/burnout ramp
+    // Control spawn rate based on progress
     const intensity = progress < 0.03 ? Math.pow(progress / 0.03, 0.5) :
                       progress > 0.92 ? Math.pow((1 - progress) / 0.08, 2) : 1;
 
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
-      const seed = seeds[i];
-      const cycleTime = ((time * 2.5 + seed.phase) % seed.lt) / seed.lt;
+    // Enable/disable spawn based on progress
+    for (const emitter of sys.emitters) {
+      emitter.enabled = progress > 0.02 && progress < 0.95;
+      emitter.spawnModule.rate = SCALED_PARTICLE_COUNT * 2 * intensity;
+    }
 
-      if (cycleTime > intensity) {
-        posArr[i * 3] = 0; posArr[i * 3 + 1] = -100; posArr[i * 3 + 2] = 0;
-        colArr[i * 3] = 0; colArr[i * 3 + 1] = 0; colArr[i * 3 + 2] = 0;
-        continue;
+    tickSystem(sys, dt);
+
+    // Write Niagara particles to buffers
+    let idx = 0;
+    for (const emitter of sys.emitters) {
+      for (const p of emitter.particles) {
+        if (!p.alive || idx >= SCALED_PARTICLE_COUNT) continue;
+        const t = p.age / p.lifetime;
+
+        posArr[idx * 3] = p.position.x;
+        posArr[idx * 3 + 1] = p.position.y;
+        posArr[idx * 3 + 2] = p.position.z;
+
+        // Flicker
+        const flicker = 0.5
+          + Math.sin(idx * 31 + time * 50) * 0.18
+          + Math.sin(idx * 7 + time * 85) * 0.15
+          + (Math.random() > 0.96 ? 0.4 : 0);
+
+        const fade = Math.max(0, 1 - t) * intensity;
+        colArr[idx * 3] = p.color.r * fade * flicker;
+        colArr[idx * 3 + 1] = p.color.g * fade * flicker;
+        colArr[idx * 3 + 2] = p.color.b * fade * flicker;
+
+        idx++;
       }
+    }
 
-      const t = cycleTime * seed.lt;
-      const drag = Math.exp(-0.08 * t);
-      // Narrow spray with gravity + drag
-      posArr[i * 3] = Math.cos(seed.angle) * seed.spread * height * t * drag;
-      posArr[i * 3 + 1] = Math.max(0, seed.speed * t * drag + 0.5 * GRAVITY * t * t * 0.15);
-      posArr[i * 3 + 2] = Math.sin(seed.angle) * seed.spread * height * t * drag;
-
-      const fade = Math.max(0, 1 - cycleTime * 0.8) * intensity;
-      const heightRatio = cycleTime;
-      
-      // Multi-frequency flicker for organic spark shimmer
-      const flicker = 0.5
-        + Math.sin(i * 31 + time * 50) * 0.18
-        + Math.sin(i * 7 + time * 85) * 0.15
-        + Math.sin(i * 53 + time * 120) * 0.1
-        + (Math.random() > 0.96 ? 0.4 : 0);
-      
-      // Thermal gradient: white-hot core → golden → colored → charcoal
-      const thermalPhase = Math.pow(heightRatio, 0.5);
-      let r = THREE.MathUtils.lerp(1.2, baseColor.r, thermalPhase * 0.75);
-      let g = THREE.MathUtils.lerp(0.95, baseColor.g, thermalPhase * 0.85);
-      let b = THREE.MathUtils.lerp(0.35, baseColor.b, thermalPhase * 0.92);
-      
-      // Late-life charcoal
-      if (heightRatio > 0.7) {
-        const charcoal = (heightRatio - 0.7) / 0.3;
-        r = THREE.MathUtils.lerp(r, 0.15, charcoal * 0.5);
-        g = THREE.MathUtils.lerp(g, 0.06, charcoal * 0.6);
-        b = THREE.MathUtils.lerp(b, 0.02, charcoal * 0.7);
-      }
-      
-      colArr[i * 3] = r * fade * flicker;
-      colArr[i * 3 + 1] = g * fade * flicker;
-      colArr[i * 3 + 2] = b * fade * flicker;
+    // Zero remaining
+    for (let i = idx; i < SCALED_PARTICLE_COUNT; i++) {
+      posArr[i * 3 + 1] = -100;
+      colArr[i * 3] = 0; colArr[i * 3 + 1] = 0; colArr[i * 3 + 2] = 0;
     }
 
     const geo = pointsRef.current.geometry;
-    geo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
-    geo.attributes.position.needsUpdate = true;
-    geo.attributes.color.needsUpdate = true;
+    const posAttr = geo.getAttribute('position') as THREE.BufferAttribute;
+    const colAttr = geo.getAttribute('color') as THREE.BufferAttribute;
+    if (posAttr) posAttr.needsUpdate = true;
+    if (colAttr) colAttr.needsUpdate = true;
   });
 
   const isActive = progress > 0.02 && progress < 0.95;
+  const screenBlend = useMemo(() => getThreeBlending('screen'), []);
 
   return (
     <group position={position}>
-      {/* Hot emission point glow */}
       {isActive && (
         <>
           <mesh position={[0, 0.06, 0]}>
             <sphereGeometry args={[0.12, 8, 8]} />
-            <meshBasicMaterial color="#FFDD55" transparent opacity={0.45} blending={THREE.AdditiveBlending} />
+            <meshBasicMaterial color="#FFDD55" transparent opacity={0.45} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} />
           </mesh>
-          {/* Inner white core */}
           <mesh position={[0, 0.08, 0]}>
             <sphereGeometry args={[0.06, 6, 6]} />
-            <meshBasicMaterial color="#FFFFF0" transparent opacity={0.6} blending={THREE.AdditiveBlending} />
+            <meshBasicMaterial color="#FFFFF0" transparent opacity={0.6} blending={THREE.AdditiveBlending} depthWrite={false} />
           </mesh>
-          {/* Ground scatter light */}
           <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <circleGeometry args={[0.8 + height * 0.12, 16]} />
-            <meshBasicMaterial color={color} transparent opacity={0.04} blending={THREE.AdditiveBlending} />
+            <circleGeometry args={[0.8 + scaledHeight * 0.12, 16]} />
+            <meshBasicMaterial color={color} transparent opacity={0.04} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} />
           </mesh>
         </>
       )}
+      {/* Niagara-driven spark particles */}
       <points ref={pointsRef}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(PARTICLE_COUNT * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(PARTICLE_COUNT * 3), 3]} />
+          <bufferAttribute attach="attributes-position" args={[posArr, 3]} />
+          <bufferAttribute attach="attributes-color" args={[colArr, 3]} />
         </bufferGeometry>
-        <pointsMaterial size={0.06} vertexColors transparent opacity={0.95} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        <pointsMaterial size={particleVisualSize} vertexColors transparent opacity={0.95} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
     </group>
   );

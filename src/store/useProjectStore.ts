@@ -1,12 +1,20 @@
 import { create } from 'zustand';
 import { materializeFormation as materialize } from '@/lib/formationMaterializer';
+import type { VideoChoreoResult } from '@/lib/videoChoreoEngine';
+
+export interface DepthLayer {
+  label: string;
+  layer: 'foreground' | 'midground' | 'background';
+  heightMultiplier: number;
+  boundingBox?: { x: number; y: number; w: number; h: number };
+}
 
 export type PartType = 'shell' | 'comet' | 'mine' | 'cake' | 'candle' | 'fan' | 'gerb' | 'flame' | 'sfx' | 'light' | 'laser' | 'drone' | 'formation' | 'single_shot' | 'ground' | 'rocket' | 'waterfall' | 'strobe' | 'set_piece';
 
 export interface Effect {
   id: string;
   name: string;
-  category: 'morteiros' | 'peonias' | 'drones' | 'formacoes' | 'sfx' | 'lasers' | 'iluminacao' | 'mines' | 'roman_candles' | 'waterfalls' | 'cakes_batteries';
+  category: string;
   type: 'firework' | 'drone' | 'sfx' | 'laser' | 'light';
   color: string;
   duration: number;
@@ -23,8 +31,33 @@ export interface Effect {
   vdl?: string;                 // Visual Description Language string
   pattern?: string;             // Burst pattern: peony, willow, palm, kamuro, crossette
   shotCount?: number;           // For cakes/roman candles: number of shots
-  laserPattern?: 'fan' | 'harp' | 'tunnel' | 'cone' | 'single'; // For lasers
+  laserPattern?: 'fan' | 'harp' | 'tunnel' | 'cone' | 'single' | 'wave' | 'grid'; // For lasers
   beamType?: 'spot' | 'wash' | 'beam'; // For moving heads
+  beamCount?: number;                  // Number of beams (lasers)
+  lockoutDefault?: string;      // Risk group for lockout system (e.g. "A", "B", "C", "D")
+  // ── VDL rendering metadata ──────────────────────────────────
+  angleOffset?: number;         // R45, L30 etc. in degrees (+ = right)
+  trailType?: string;           // none, comet, glitter, brocade, charcoal, smoke
+  noTrail?: boolean;            // "No Trail" modifier
+  hasPistil?: boolean;          // w/ Pistil
+  pistilColor?: string;         // Pistil color hex
+  colorTransition?: string;     // none, to, changing, alternating
+  secondaryColor?: string;      // Secondary color from VDL (& or w/)
+  firingPattern?: string;       // Z-Shape, Fan, X-Shape, W-Shape, etc.
+  impliesTrail?: boolean;       // Color implies trail (Silver, Gold, Charcoal)
+  // ── Niagara particle profile (SuperVDL fusion) ──
+  niagaraProfile?: {
+    starCount: number;
+    lifetime: number;
+    velocity: number;
+    drag: number;
+    gravityScale: number;
+    sparkleRate: number;
+    glowIntensity: number;
+    fadeProfile: 'linear' | 'exponential' | 'ember';
+  };
+  niagaraPresetId?: string;     // matched Niagara preset ID
+  formulationId?: string;       // Chemical formulation ID for realistic rendering
 }
 
 export interface TimelineItem {
@@ -35,16 +68,31 @@ export interface TimelineItem {
   position: { x: number; y: number; z: number };
   pan?: number;
   tilt?: number;
+  spin?: number;
   chainRef?: string;
   chainGap?: number;
+  chainRow?: number;
   positionName?: string;
   notes?: string;
+  flightCount?: number;
+  hazard?: string;
+  rack?: number;
+  tube?: number;
+  section?: string;
+  universe?: string;
+  customField?: string;
+  durationOverride?: number;  // Manual duration override from timeline resize
   // ── Finale 3D position linking ──
-  positionId?: string;         // Linked pyro position ID (single)
-  positionIds?: string[];      // Linked to multiple positions (fires simultaneously)
+  positionId?: string;
+  positionIds?: string[];
+  // ── Per-cue launch angle overrides (Finale 3D) ──
+  // When set, these override the position's base heading/pitch for this specific cue.
+  // New cues inherit position defaults. Gizmo edits go here, not on position.
+  cueHeading?: number;
+  cuePitch?: number;
 }
 
-export type PositionType = 'pyro' | 'drone-pad';
+export type PositionType = 'pyro' | 'drone-pad' | 'light';
 
 export interface Position {
   id: string;
@@ -57,6 +105,7 @@ export interface Position {
   pitch: number;
   roll: number;
   color: string;
+  section?: string;      // Show section for semi-auto firing segmentation (Finale 3D)
 }
 
 export interface BezierHandle {
@@ -81,7 +130,8 @@ export interface Trajectory {
   name: string;
 }
 
-export type EditorMode = 'select' | 'add-pyro' | 'add-drone' | 'add-waypoint';
+export type EditorMode = 'select' | 'add-pyro' | 'add-drone' | 'add-waypoint' | 'adjust-angles';
+export type SelectionMode = 'positions' | 'events' | 'both';
 
 export interface DroneFormation {
   id: string;
@@ -98,6 +148,13 @@ export interface DroneFormation {
   endColor?: string;
   colorTransition?: 'instant' | 'linear' | 'pulse' | 'rainbow' | 'wave' | 'rgb_cycle' | 'cascade' | 'sparkle';
   points: { x: number; z: number }[];
+}
+
+export interface CueMarker {
+  id: string;
+  time: number;       // seconds
+  label: string;
+  color: string;      // HSL string
 }
 
 export interface CameraKeyframe {
@@ -117,6 +174,9 @@ export interface WindSettings {
 
 export interface ProjectState {
   projectName: string;
+  activeLockouts: string[];  // Risk groups currently locked out from firing
+  setActiveLockouts: (lockouts: string[]) => void;
+  toggleLockout: (riskGroup: string) => void;
   isPlaying: boolean;
   currentTime: number;
   duration: number;
@@ -128,6 +188,8 @@ export interface ProjectState {
   selectedPositionId: string | null;
   selectedPositionIds: string[];
   editorMode: EditorMode;
+  selectionMode: SelectionMode;
+  linkedTimelineItemIds: string[]; // Timeline items highlighted via position selection
   trajectories: Trajectory[];
   selectedTrajectoryId: string | null;
   selectedWaypointId: string | null;
@@ -146,6 +208,9 @@ export interface ProjectState {
   selectedFormationId: string | null;
   selectedTrajectoryIds: string[];
   showFormations: boolean;
+  cueMarkers: CueMarker[];
+  videoChoreoResult: VideoChoreoResult | null;
+  depthLayers: DepthLayer[];
   gpsOrigin: { lat: number; lng: number; heading: number; altitude: number };
   setGpsOrigin: (origin: { lat: number; lng: number; heading: number; altitude: number }) => void;
 
@@ -169,6 +234,10 @@ export interface ProjectState {
   togglePositionSelection: (id: string) => void;
   selectMultiplePositions: (ids: string[]) => void;
   setEditorMode: (mode: EditorMode) => void;
+  setSelectionMode: (mode: SelectionMode) => void;
+  selectPositionAndLinkedEvents: (positionId: string) => void;
+  selectMultiplePositionsAndLinkedEvents: (ids: string[]) => void;
+  selectTimelineItemAndLinkedPosition: (itemId: string) => void;
   addTrajectory: (traj: Trajectory) => void;
   updateTrajectory: (id: string, updates: Partial<Omit<Trajectory, 'id'>>) => void;
   removeTrajectory: (id: string) => void;
@@ -207,6 +276,12 @@ export interface ProjectState {
   duplicateDroneFormation: (id: string) => void;
   clearAllFormations: () => void;
   recalculateFormationTimings: () => void;
+  addCueMarker: (marker: CueMarker) => void;
+  removeCueMarker: (id: string) => void;
+  updateCueMarker: (id: string, updates: Partial<Omit<CueMarker, 'id'>>) => void;
+  clearCueMarkers: () => void;
+  setVideoChoreoResult: (result: VideoChoreoResult | null) => void;
+  setDepthLayers: (layers: DepthLayer[]) => void;
 }
 
 export const EFFECT_LIBRARY: Effect[] = [
@@ -221,12 +296,25 @@ export const EFFECT_LIBRARY: Effect[] = [
   { id: 'shell-04', name: 'Crossette 4"', category: 'morteiros', type: 'firework', color: '#FF4500', duration: 3, cost: 22, icon: '✖️', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'crossette', safetyDistance: 100 },
   { id: 'shell-05', name: 'Horsetail 6"', category: 'morteiros', type: 'firework', color: '#FFB347', duration: 6, cost: 38, icon: '🐴', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'willow', safetyDistance: 175 },
   { id: 'shell-06', name: 'Spider 5"', category: 'morteiros', type: 'firework', color: '#00FF7F', duration: 3.5, cost: 26, icon: '🕸️', partType: 'shell', caliber: 5, heightMeters: 100, prefire: 2.5, pattern: 'crossette', safetyDistance: 140 },
-  { id: 'shell-07', name: 'Ring Shell 4"', category: 'morteiros', type: 'firework', color: '#00BFFF', duration: 3, cost: 24, icon: '💍', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'peony', safetyDistance: 100 },
+  { id: 'shell-07', name: 'Ring Shell 4"', category: 'morteiros', type: 'firework', color: '#00BFFF', duration: 3, cost: 24, icon: '💍', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'ring', safetyDistance: 100 },
   { id: 'shell-08', name: 'Nishiki Kamuro 8"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 7, cost: 65, icon: '🏆', partType: 'shell', caliber: 8, heightMeters: 160, prefire: 4.0, pattern: 'kamuro', safetyDistance: 210 },
+  // ── Large caliber shells (8", 10", 12") ──
+  { id: 'shell-09', name: 'Peony 8"', category: 'morteiros', type: 'firework', color: '#FF0000', duration: 6, cost: 55, icon: '🔴', partType: 'shell', caliber: 8, heightMeters: 160, prefire: 4.0, pattern: 'peony', safetyDistance: 210 },
+  { id: 'shell-10', name: 'Chrysanthemum 10"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 8, cost: 120, icon: '🌟', partType: 'shell', caliber: 10, heightMeters: 200, prefire: 5.0, pattern: 'chrysanthemum', safetyDistance: 280 },
+  { id: 'shell-11', name: 'Willow 10"', category: 'morteiros', type: 'firework', color: '#FFA500', duration: 10, cost: 130, icon: '🌾', partType: 'shell', caliber: 10, heightMeters: 200, prefire: 5.0, pattern: 'willow', safetyDistance: 280 },
+  { id: 'shell-12', name: 'Grand Peony 12"', category: 'morteiros', type: 'firework', color: '#FF1493', duration: 9, cost: 200, icon: '💎', partType: 'shell', caliber: 12, heightMeters: 250, prefire: 6.0, pattern: 'peony', safetyDistance: 350 },
+  { id: 'shell-13', name: 'Kamuro 12"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 12, cost: 220, icon: '👑', partType: 'shell', caliber: 12, heightMeters: 250, prefire: 6.0, pattern: 'kamuro', safetyDistance: 350 },
+  { id: 'shell-14', name: 'Palm 8"', category: 'morteiros', type: 'firework', color: '#FF6347', duration: 6.5, cost: 60, icon: '🌴', partType: 'shell', caliber: 8, heightMeters: 160, prefire: 4.0, pattern: 'palm', safetyDistance: 210 },
+  // ── Specialty burst patterns ──
+  { id: 'shell-15', name: 'Heart Shell 4"', category: 'morteiros', type: 'firework', color: '#FF69B4', duration: 3, cost: 30, icon: '❤️', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'heart', safetyDistance: 100 },
+  { id: 'shell-16', name: 'Smiley Shell 5"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 3.5, cost: 35, icon: '😊', partType: 'shell', caliber: 5, heightMeters: 100, prefire: 2.5, pattern: 'peony', safetyDistance: 140 },
+  { id: 'shell-17', name: 'Dahlia 6"', category: 'morteiros', type: 'firework', color: '#DA70D6', duration: 5, cost: 38, icon: '🌸', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'dahlia', safetyDistance: 175 },
+  { id: 'shell-18', name: 'Strobe Shell 4"', category: 'morteiros', type: 'firework', color: '#FFFFFF', duration: 4, cost: 22, icon: '⚡', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'strobe', safetyDistance: 100 },
+  { id: 'shell-19', name: 'Multi-Break 6"', category: 'morteiros', type: 'firework', color: '#FF4500', duration: 6, cost: 45, icon: '💥', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'peony', safetyDistance: 175, numDevices: 3 },
+  { id: 'shell-20', name: 'Tourbillion 3"', category: 'morteiros', type: 'firework', color: '#00FFFF', duration: 4, cost: 18, icon: '🌀', partType: 'shell', caliber: 3, heightMeters: 60, prefire: 1.5, pattern: 'crossette', safetyDistance: 70 },
   { id: 'mburst-01', name: 'Triple Burst 3"', category: 'morteiros', type: 'firework', color: '#FF6347', duration: 3.5, cost: 22, icon: '🎆', partType: 'shell', caliber: 3, heightMeters: 60, prefire: 1.5 },
   { id: 'mburst-02', name: 'Penta Burst 5"', category: 'morteiros', type: 'firework', color: '#9400D3', duration: 5, cost: 40, icon: '💥', partType: 'shell', caliber: 5, heightMeters: 100, prefire: 2.5 },
-  { id: 'shock-01', name: 'Ground Shockwave', category: 'morteiros', type: 'firework', color: '#FF4500', duration: 1.5, cost: 18, icon: '💢', partType: 'ground' },
-  { id: 'shock-02', name: 'Aerial Shockwave', category: 'morteiros', type: 'firework', color: '#FFFFFF', duration: 2, cost: 25, icon: '🔆', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0 },
+  // Removed non-real effects: Ground/Aerial Shockwave, Signal Flares (not standard pyro show devices)
   { id: 'fan-01', name: 'Fan Spread 90°', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 2, cost: 15, icon: '🪭', partType: 'fan', caliber: 3, heightMeters: 60, prefire: 1.5 },
   { id: 'fan-02', name: 'Wide Fan 180°', category: 'morteiros', type: 'firework', color: '#00FF7F', duration: 2.5, cost: 20, icon: '🌈', partType: 'fan', caliber: 3, heightMeters: 60, prefire: 1.5 },
 
@@ -241,8 +329,6 @@ export const EFFECT_LIBRARY: Effect[] = [
   { id: 'peon-08', name: 'Falling Leaves', category: 'peonias', type: 'firework', color: '#FF8C00', duration: 4, cost: 16, icon: '🍂', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'willow' },
   { id: 'comet-01', name: 'Rising Comet', category: 'peonias', type: 'firework', color: '#00FFFF', duration: 1.5, cost: 6, icon: '☄️', partType: 'comet', caliber: 2, heightMeters: 50, prefire: 0.8 },
   { id: 'comet-02', name: 'Falling Comet Trail', category: 'peonias', type: 'firework', color: '#FFA07A', duration: 2, cost: 8, icon: '🌠', partType: 'comet', caliber: 2, heightMeters: 50, prefire: 0.8 },
-  { id: 'flare-01', name: 'Red Signal Flare', category: 'peonias', type: 'firework', color: '#FF0000', duration: 5, cost: 4, icon: '🔥', partType: 'single_shot', caliber: 1, heightMeters: 30 },
-  { id: 'flare-02', name: 'White Magnesium Flare', category: 'peonias', type: 'firework', color: '#FFFAFA', duration: 6, cost: 5, icon: '💡', partType: 'single_shot', caliber: 1, heightMeters: 30 },
 
   // ── Mines ──────────────────────────────────────────────────
   { id: 'mine-01', name: 'Silver Mine', category: 'mines', type: 'firework', color: '#C0C0C0', duration: 1.5, cost: 8, icon: '⛏️', partType: 'mine', caliber: 3, heightMeters: 30, safetyDistance: 25 },
@@ -297,6 +383,12 @@ export const EFFECT_LIBRARY: Effect[] = [
   { id: 'laser-06', name: 'Sky Laser 40W', category: 'lasers', type: 'laser', color: '#00FFFF', duration: 60, cost: 200, icon: '🏔️', partType: 'laser', laserPattern: 'single' },
   { id: 'laser-07', name: 'Laser Harp', category: 'lasers', type: 'laser', color: '#00FF00', duration: 30, cost: 90, icon: '🎵', partType: 'laser', laserPattern: 'harp' },
   { id: 'laser-08', name: 'Laser Tunnel', category: 'lasers', type: 'laser', color: '#FF00FF', duration: 20, cost: 70, icon: '🕳️', partType: 'laser', laserPattern: 'tunnel' },
+  { id: 'laser-09', name: 'Laser Wave x12', category: 'lasers', type: 'laser', color: '#00FFFF', duration: 30, cost: 95, icon: '🌊', partType: 'laser', laserPattern: 'wave' },
+  { id: 'laser-10', name: 'Laser Grid 4×4', category: 'lasers', type: 'laser', color: '#FF8800', duration: 30, cost: 110, icon: '📐', partType: 'laser', laserPattern: 'grid' },
+  { id: 'laser-11', name: 'RGB Laser Wall 20W', category: 'lasers', type: 'laser', color: '#FFFFFF', duration: 60, cost: 150, icon: '🧱', partType: 'laser', laserPattern: 'harp', beamCount: 16 },
+  { id: 'laser-12', name: 'Laser Vortex Cone', category: 'lasers', type: 'laser', color: '#00FF88', duration: 30, cost: 85, icon: '🌀', partType: 'laser', laserPattern: 'cone' },
+  { id: 'laser-13', name: 'UV Laser 405nm', category: 'lasers', type: 'laser', color: '#8800FF', duration: 30, cost: 65, icon: '🟣', partType: 'laser', laserPattern: 'single' },
+  { id: 'laser-14', name: 'Yellow Laser 577nm', category: 'lasers', type: 'laser', color: '#FFDD00', duration: 30, cost: 75, icon: '🟡', partType: 'laser', laserPattern: 'single' },
 
   // ── Iluminação ────────────────────────────────────────────
   { id: 'light-01', name: 'Moving Head Spot 300W', category: 'iluminacao', type: 'light', color: '#FFFFFF', duration: 60, cost: 30, icon: '🔦', partType: 'light', beamType: 'spot' },
@@ -329,11 +421,23 @@ export const EFFECT_LIBRARY: Effect[] = [
   { id: 'form-06', name: 'Galaxy Spiral', category: 'formacoes', type: 'drone', color: '#9B30FF', duration: 20, cost: 65, icon: '🌌', partType: 'formation' },
   { id: 'form-07', name: 'Phoenix Wings', category: 'formacoes', type: 'drone', color: '#FF4500', duration: 20, cost: 70, icon: '🦅', partType: 'formation' },
   { id: 'form-08', name: 'Countdown 3-2-1', category: 'formacoes', type: 'drone', color: '#FFFFFF', duration: 12, cost: 40, icon: '🔟', partType: 'formation' },
+
+  // ── Niagara-Inspired Effects (UE5 Particle Systems) ───────
+  { id: 'niagara-01', name: 'Ns Blue Peony 5"', category: 'morteiros', type: 'firework', color: '#0066FF', duration: 3.5, cost: 28, icon: '🔵', partType: 'shell', caliber: 5, heightMeters: 100, prefire: 2.5, pattern: 'peony', safetyDistance: 140 },
+  { id: 'niagara-02', name: 'Ns Gold Kamuro 6"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 5.0, cost: 38, icon: '🌟', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'kamuro', safetyDistance: 175 },
+  { id: 'niagara-03', name: 'Ns Pink Multi-Break 4"', category: 'morteiros', type: 'firework', color: '#FF69B4', duration: 3.0, cost: 32, icon: '💖', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'crossette', safetyDistance: 100, numDevices: 3 },
 ];
 
 export const useProjectStore = create<ProjectState>((set) => ({
   projectName: 'Untitled Show',
   isPlaying: false,
+  activeLockouts: [],
+  setActiveLockouts: (lockouts) => set({ activeLockouts: lockouts }),
+  toggleLockout: (riskGroup) => set((s) => ({
+    activeLockouts: s.activeLockouts.includes(riskGroup)
+      ? s.activeLockouts.filter(r => r !== riskGroup)
+      : [...s.activeLockouts, riskGroup],
+  })),
   currentTime: 0,
   duration: 120,
   timelineItems: [],
@@ -344,10 +448,12 @@ export const useProjectStore = create<ProjectState>((set) => ({
   selectedPositionId: null,
   selectedPositionIds: [],
   editorMode: 'select',
+  selectionMode: 'both',
+  linkedTimelineItemIds: [],
   trajectories: [],
   selectedTrajectoryId: null,
   selectedWaypointId: null,
-  showTrajectories: false,
+  showTrajectories: true,
   drawHeight: 10,
   waypointUndoStack: [],
   audioUrl: null,
@@ -362,6 +468,9 @@ export const useProjectStore = create<ProjectState>((set) => ({
   selectedFormationId: null,
   selectedTrajectoryIds: [],
   showFormations: true,
+  cueMarkers: [],
+  videoChoreoResult: null,
+  depthLayers: [],
   gpsOrigin: { lat: -23.5505, lng: -46.6333, heading: 0, altitude: 0 },
   setGpsOrigin: (origin) => set({ gpsOrigin: origin }),
 
@@ -369,15 +478,37 @@ export const useProjectStore = create<ProjectState>((set) => ({
   setCurrentTime: (time) => set({ currentTime: time }),
   setDuration: (duration) => set({ duration }),
   addTimelineItem: (item) => set((s) => ({ timelineItems: [...s.timelineItems, item] })),
-  removeTimelineItem: (id) => set((s) => ({ 
-    timelineItems: s.timelineItems.filter((i) => i.id !== id),
-    selectedTimelineItemId: s.selectedTimelineItemId === id ? null : s.selectedTimelineItemId,
-  })),
-  removeMultipleTimelineItems: (ids) => set((s) => ({
-    timelineItems: s.timelineItems.filter((i) => !ids.includes(i.id)),
-    selectedTimelineItemId: ids.includes(s.selectedTimelineItemId || '') ? null : s.selectedTimelineItemId,
-    selectedTimelineItemIds: [],
-  })),
+  removeTimelineItem: (id) => set((s) => {
+    const removed = s.timelineItems.find(i => i.id === id);
+    const nextTimeline = s.timelineItems.filter(i => i.id !== id);
+    // Auto-clean orphaned positions
+    let nextPositions = s.positions;
+    if (removed?.positionId) {
+      const stillReferenced = nextTimeline.some(i => i.positionId === removed.positionId);
+      if (!stillReferenced) {
+        nextPositions = s.positions.filter(p => p.id !== removed.positionId);
+      }
+    }
+    return {
+      timelineItems: nextTimeline,
+      positions: nextPositions,
+      selectedTimelineItemId: s.selectedTimelineItemId === id ? null : s.selectedTimelineItemId,
+    };
+  }),
+  removeMultipleTimelineItems: (ids) => set((s) => {
+    const removedItems = s.timelineItems.filter(i => ids.includes(i.id));
+    const nextTimeline = s.timelineItems.filter(i => !ids.includes(i.id));
+    // Auto-clean orphaned positions
+    const posIdsToCheck = [...new Set(removedItems.map(i => i.positionId).filter(Boolean))] as string[];
+    const orphanedIds = posIdsToCheck.filter(pId => !nextTimeline.some(i => i.positionId === pId));
+    const nextPositions = orphanedIds.length > 0 ? s.positions.filter(p => !orphanedIds.includes(p.id)) : s.positions;
+    return {
+      timelineItems: nextTimeline,
+      positions: nextPositions,
+      selectedTimelineItemId: ids.includes(s.selectedTimelineItemId || '') ? null : s.selectedTimelineItemId,
+      selectedTimelineItemIds: [],
+    };
+  }),
   updateTimelineItem: (id, updates) => set((s) => ({
     timelineItems: s.timelineItems.map((i) => i.id === id ? { ...i, ...updates } : i),
   })),
@@ -420,6 +551,41 @@ export const useProjectStore = create<ProjectState>((set) => ({
   }),
   selectMultiplePositions: (ids) => set({ selectedPositionIds: ids, selectedPositionId: ids[ids.length - 1] ?? null }),
   setEditorMode: (mode) => set({ editorMode: mode }),
+  setSelectionMode: (mode) => set({ selectionMode: mode }),
+  selectPositionAndLinkedEvents: (positionId) => set((s) => {
+    const linkedItems = s.selectionMode !== 'positions'
+      ? s.timelineItems.filter(i => i.positionId === positionId || i.positionIds?.includes(positionId)).map(i => i.id)
+      : [];
+    return {
+      selectedPositionId: positionId,
+      selectedPositionIds: [positionId],
+      linkedTimelineItemIds: linkedItems,
+    };
+  }),
+  selectMultiplePositionsAndLinkedEvents: (ids) => set((s) => {
+    const linkedItems = s.selectionMode !== 'positions'
+      ? s.timelineItems.filter(i => ids.includes(i.positionId || '') || i.positionIds?.some(pid => ids.includes(pid))).map(i => i.id)
+      : [];
+    return {
+      selectedPositionIds: ids,
+      selectedPositionId: ids[ids.length - 1] ?? null,
+      linkedTimelineItemIds: linkedItems,
+    };
+  }),
+  selectTimelineItemAndLinkedPosition: (itemId) => set((s) => {
+    const item = s.timelineItems.find(i => i.id === itemId);
+    if (!item) return { selectedTimelineItemId: itemId, selectedTimelineItemIds: [] };
+    const posIds = s.selectionMode !== 'events'
+      ? [item.positionId, ...(item.positionIds || [])].filter(Boolean) as string[]
+      : [];
+    return {
+      selectedTimelineItemId: itemId,
+      selectedTimelineItemIds: [],
+      selectedPositionIds: posIds,
+      selectedPositionId: posIds[0] ?? s.selectedPositionId,
+      linkedTimelineItemIds: [],
+    };
+  }),
 
   addTrajectory: (traj) => set((s) => ({ trajectories: [...s.trajectories, traj] })),
   updateTrajectory: (id, updates) => set((s) => ({
@@ -623,4 +789,66 @@ export const useProjectStore = create<ProjectState>((set) => ({
     });
     return { droneFormations: updated };
   }),
+
+  addCueMarker: (marker) => set((s) => ({ cueMarkers: [...s.cueMarkers, marker].sort((a, b) => a.time - b.time) })),
+  removeCueMarker: (id) => set((s) => ({ cueMarkers: s.cueMarkers.filter((c) => c.id !== id) })),
+  updateCueMarker: (id, updates) => set((s) => ({
+    cueMarkers: s.cueMarkers.map((c) => c.id === id ? { ...c, ...updates } : c),
+  })),
+  clearCueMarkers: () => set({ cueMarkers: [] }),
+  setVideoChoreoResult: (result) => set({ videoChoreoResult: result }),
+  setDepthLayers: (layers) => set({ depthLayers: layers }),
 }));
+
+/**
+ * effectWorldOrientation: Computes world Euler rotation by combining
+ * Position (heading/pitch/roll) with Effect (pan/tilt/spin).
+ * Position: R = RotY(heading) × RotX(pitch) × RotZ(roll)  — Mortar rack model
+ * Effect:   R = RotY(pan) × RotX(tilt) × RotY(spin)       — Moving-head model
+ * Returns combined Euler angles (in degrees) for the effect's world orientation.
+ */
+export function effectWorldOrientation(
+  position: Position,
+  item: { pan?: number; tilt?: number; spin?: number }
+): { heading: number; pitch: number; roll: number } {
+  const toRad = (d: number) => (d || 0) * Math.PI / 180;
+  const toDeg = (r: number) => r * 180 / Math.PI;
+
+  // Position quaternion: YXZ order (heading × pitch × roll)
+  const euler1 = { x: toRad(position.pitch), y: toRad(position.heading), z: toRad(position.roll) };
+  const cy1 = Math.cos(euler1.y / 2), sy1 = Math.sin(euler1.y / 2);
+  const cx1 = Math.cos(euler1.x / 2), sx1 = Math.sin(euler1.x / 2);
+  const cz1 = Math.cos(euler1.z / 2), sz1 = Math.sin(euler1.z / 2);
+
+  // YXZ quaternion
+  const qw1 = cy1 * cx1 * cz1 + sy1 * sx1 * sz1;
+  const qx1 = cy1 * sx1 * cz1 + sy1 * cx1 * sz1;
+  const qy1 = sy1 * cx1 * cz1 - cy1 * sx1 * sz1;
+  const qz1 = cy1 * cx1 * sz1 - sy1 * sx1 * cz1;
+
+  // Effect pan/tilt/spin — simplified: treat as additional YXZ
+  const pan = toRad(item.pan || 0);
+  const tilt = toRad(item.tilt || 0);
+  const spin = toRad(item.spin || 0);
+  const cy2 = Math.cos((pan + spin) / 2), sy2 = Math.sin((pan + spin) / 2);
+  const cx2 = Math.cos(tilt / 2), sx2 = Math.sin(tilt / 2);
+
+  const qw2 = cy2 * cx2;
+  const qx2 = cy2 * sx2;
+  const qy2 = sy2 * cx2;
+  const qz2 = -sy2 * sx2;
+
+  // Multiply q1 × q2
+  const w = qw1 * qw2 - qx1 * qx2 - qy1 * qy2 - qz1 * qz2;
+  const x = qw1 * qx2 + qx1 * qw2 + qy1 * qz2 - qz1 * qy2;
+  const y = qw1 * qy2 - qx1 * qz2 + qy1 * qw2 + qz1 * qx2;
+  const z = qw1 * qz2 + qx1 * qy2 - qy1 * qx2 + qz1 * qw2;
+
+  // Extract YXZ Euler from quaternion
+  const sinP = 2 * (w * x - y * z);
+  const outPitch = toDeg(Math.asin(Math.max(-1, Math.min(1, sinP))));
+  const outHeading = toDeg(Math.atan2(2 * (w * y + x * z), 1 - 2 * (x * x + y * y)));
+  const outRoll = toDeg(Math.atan2(2 * (w * z + x * y), 1 - 2 * (x * x + z * z)));
+
+  return { heading: outHeading, pitch: outPitch, roll: outRoll };
+}

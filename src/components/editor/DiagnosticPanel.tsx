@@ -1,7 +1,10 @@
 import { useState, useCallback } from 'react';
-import { X, ShieldCheck, AlertTriangle, CheckCircle2, Play, Loader2, Download } from 'lucide-react';
+import { X, ShieldCheck, AlertTriangle, CheckCircle2, Play, Loader2, Download, Wifi, Usb, Radio, Cable } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
+import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { pushLog } from './ViewportTerminal';
 import { cn } from '@/lib/utils';
 import { getSafetyDistance } from '@/lib/pyroPhysics';
@@ -24,10 +27,182 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
   const timelineItems = useProjectStore((s) => s.timelineItems);
   const duration = useProjectStore((s) => s.duration);
 
+  const hardware = useFireOneHardware();
+  const pbusHw = usePBusHardware();
+
   const runDiagnostic = useCallback(async () => {
     setRunning(true);
     pushLog('E2E DIAGNOSTIC SCAN INITIATED', 'diag');
     const checks: DiagResult[] = [];
+
+    // ── FireOne Hardware Checks ──────────────────────────
+    if (hardware.isConnected) {
+      // FireOne Link
+      checks.push({
+        id: 'fireone-link',
+        label: 'FireOne RS-485 Link',
+        status: 'pass',
+        detail: `Conexão ativa — TX: ${hardware.txBytes}B / RX: ${hardware.rxBytes}B`,
+      });
+
+      // Module Discovery
+      const moduleCount = hardware.modules.size;
+      checks.push({
+        id: 'fireone-modules',
+        label: 'FireOne Module Discovery',
+        status: moduleCount > 0 ? 'pass' : 'warn',
+        detail: moduleCount > 0 ? `${moduleCount} módulo(s) IFMx-i32Q descobertos` : 'Nenhum módulo no barramento',
+        suggestion: moduleCount === 0 ? 'Execute SCAN no painel PyroFireOne para descobrir módulos' : undefined,
+      });
+
+      // Battery Check
+      let lowBattModules = 0;
+      hardware.modules.forEach(m => {
+        if (m.batteryVoltage !== undefined && m.batteryVoltage < 11.0) lowBattModules++;
+      });
+      checks.push({
+        id: 'fireone-battery',
+        label: 'FireOne Battery Check',
+        status: lowBattModules === 0 ? 'pass' : 'fail',
+        detail: lowBattModules === 0 ? 'Todas as baterias OK (>11.0V)' : `${lowBattModules} módulo(s) com bateria baixa (<11.0V)`,
+        suggestion: lowBattModules > 0 ? 'Substitua ou recarregue baterias dos módulos antes do show' : undefined,
+      });
+
+      // Continuity Summary
+      let goodIgniters = 0, openIgniters = 0, shortIgniters = 0;
+      hardware.modules.forEach(m => {
+        if (m.igniters) {
+          m.igniters.forEach(ig => {
+            if (ig.resistance > 0.5 && ig.resistance < 50) goodIgniters++;
+            else if (ig.resistance >= 50 || ig.resistance === 0) openIgniters++;
+            else shortIgniters++;
+          });
+        }
+      });
+      const totalIgniters = goodIgniters + openIgniters + shortIgniters;
+      checks.push({
+        id: 'fireone-continuity',
+        label: 'FireOne Continuity',
+        status: openIgniters === 0 && shortIgniters === 0 ? 'pass' : openIgniters > 0 ? 'warn' : 'fail',
+        detail: totalIgniters > 0
+          ? `${goodIgniters} OK, ${openIgniters} abertos, ${shortIgniters} curtos (${totalIgniters} total)`
+          : 'Nenhum teste de continuidade executado',
+        suggestion: openIgniters > 0 ? 'Verifique conexões dos ignitores com circuito aberto' : shortIgniters > 0 ? 'Verifique ignitores em curto-circuito' : undefined,
+      });
+
+      // Wireless Signal
+      let weakSignalModules = 0;
+      hardware.modules.forEach(m => {
+        if ((m.connectionMode === 'wireless' || m.connectionMode === 'fallback') && m.rssiDbm !== undefined && m.rssiDbm < -75) {
+          weakSignalModules++;
+        }
+      });
+      const wirelessCount = hardware.wirelessModuleCount;
+      if (wirelessCount > 0) {
+        checks.push({
+          id: 'fireone-wireless',
+          label: 'FireOne Wireless Signal',
+          status: weakSignalModules === 0 ? 'pass' : 'warn',
+          detail: weakSignalModules === 0
+            ? `${wirelessCount} módulo(s) wireless com sinal OK`
+            : `${weakSignalModules} módulo(s) com RSSI fraco (<-75dBm)`,
+          suggestion: weakSignalModules > 0 ? 'Reposicione módulos ou antenas para melhorar sinal' : undefined,
+        });
+      }
+
+      // Firmware Version
+      const firmwareVersions = new Set<string>();
+      hardware.modules.forEach(m => {
+        if (m.firmwareVersion) firmwareVersions.add(m.firmwareVersion);
+      });
+      if (firmwareVersions.size > 0) {
+        checks.push({
+          id: 'fireone-firmware',
+          label: 'FireOne Firmware',
+          status: firmwareVersions.size <= 1 ? 'pass' : 'warn',
+          detail: firmwareVersions.size <= 1
+            ? `Firmware uniforme: ${[...firmwareVersions][0] || 'N/A'}`
+            : `${firmwareVersions.size} versões diferentes: ${[...firmwareVersions].join(', ')}`,
+          suggestion: firmwareVersions.size > 1 ? 'Atualize todos os módulos para a mesma versão de firmware' : undefined,
+        });
+      }
+    } else {
+      // SIM mode warning
+      checks.push({
+        id: 'fireone-link',
+        label: 'FireOne Hardware',
+        status: 'warn',
+        detail: 'Modo SIM — hardware não conectado',
+        suggestion: 'Conecte via RS-485 no painel PyroFireOne para diagnóstico real',
+      });
+    }
+
+    // ── PBUS / Showven Hardware Checks ──────────────────────
+    if (pbusHw.isConnected) {
+      checks.push({
+        id: 'pbus-link',
+        label: 'PBUS Link',
+        status: 'pass',
+        detail: `Conexão ativa — ${pbusHw.deviceCount} dispositivos · TX: ${pbusHw.txBytes}B / RX: ${pbusHw.rxBytes}B`,
+      });
+
+      // Battery check (<3.3V)
+      let lowBattPbus = 0;
+      pbusHw.devices.forEach(d => {
+        if (d.batteryV < 3.3) lowBattPbus++;
+      });
+      checks.push({
+        id: 'pbus-battery',
+        label: 'PBUS Battery Check',
+        status: lowBattPbus === 0 ? 'pass' : 'fail',
+        detail: lowBattPbus === 0 ? 'Todas as baterias PBUS OK (>3.3V)' : `${lowBattPbus} dispositivo(s) com bateria baixa (<3.3V)`,
+        suggestion: lowBattPbus > 0 ? 'Recarregue dispositivos PyroSlave antes do show' : undefined,
+      });
+
+      // Dual-band signal quality
+      let weakPbus = 0;
+      pbusHw.devices.forEach(d => {
+        const best = Math.max(d.rssi433, d.rssi868);
+        if (best < -80) weakPbus++;
+      });
+      if (pbusHw.deviceCount > 0) {
+        checks.push({
+          id: 'pbus-signal',
+          label: 'PBUS Dual-Band Signal',
+          status: weakPbus === 0 ? 'pass' : 'warn',
+          detail: weakPbus === 0
+            ? `${pbusHw.deviceCount} dispositivo(s) com sinal OK · Banda ideal: ${pbusHw.bestBand}`
+            : `${weakPbus} dispositivo(s) com sinal fraco (<-80dBm)`,
+          suggestion: weakPbus > 0 ? 'Reposicione dispositivos ou troque a banda de rádio' : undefined,
+        });
+      }
+
+      // Cue continuity summary
+      let goodCues = 0, openCues = 0;
+      pbusHw.devices.forEach(d => {
+        d.cueStates.forEach(c => {
+          if (c.connected) goodCues++;
+          else openCues++;
+        });
+      });
+      if (goodCues + openCues > 0) {
+        checks.push({
+          id: 'pbus-continuity',
+          label: 'PBUS Cue Continuity',
+          status: openCues === 0 ? 'pass' : 'warn',
+          detail: `${goodCues} cues OK, ${openCues} abertos (${goodCues + openCues} total)`,
+          suggestion: openCues > 0 ? 'Verifique conexões dos ignitores nos slots PBUS com circuito aberto' : undefined,
+        });
+      }
+    } else {
+      checks.push({
+        id: 'pbus-link',
+        label: 'PBUS Hardware',
+        status: 'warn',
+        detail: 'Modo SIM — PBUS não conectado',
+        suggestion: 'Conecte via serial no Connection Manager para diagnóstico real',
+      });
+    }
 
     // 1. Fleet check
     const totalDrones = droneFormations.reduce((sum, f) => sum + f.droneCount, 0);
@@ -109,7 +284,7 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
       suggestion: orphanTrajectories.length > 0 ? 'Adicione waypoints às trajetórias incompletas' : undefined,
     });
 
-    // 8. Unlinked timeline items — effects not bound to any position
+    // 8. Unlinked timeline items
     const unlinkedItems = timelineItems.filter(item => {
       const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
       if (!effect || effect.type === 'drone') return false;
@@ -135,7 +310,6 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
         const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
         if (effect?.caliber) {
           const safeDist = getSafetyDistance(effect.caliber);
-          // Check distance to audience area (z > 0 = front)
           const distToAudience = Math.abs(pos.z);
           if (distToAudience < safeDist * 0.5) safetyViolations++;
         }
@@ -180,7 +354,7 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
       `E2E SCAN COMPLETE: ${failures} falhas, ${warnings} avisos, ${passes} OK`,
       failures > 0 ? 'error' : warnings > 0 ? 'warn' : 'success'
     );
-  }, [droneFormations, positions, trajectories, timelineItems, duration]);
+  }, [droneFormations, positions, trajectories, timelineItems, duration, hardware, pbusHw]);
 
   const exportReport = useCallback(() => {
     if (results.length === 0) return;
@@ -188,6 +362,7 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
       '═══ E2E DIAGNOSTIC REPORT ═══',
       `Date: ${new Date().toISOString()}`,
       `Positions: ${positions.length} | Timeline: ${timelineItems.length} | Formations: ${droneFormations.length}`,
+      `FireOne: ${hardware.isConnected ? `Connected (${hardware.modules.size} modules)` : 'Not connected (SIM mode)'}`,
       '',
       ...results.map(r => `[${r.status.toUpperCase()}] ${r.label}: ${r.detail}${r.suggestion ? ` → ${r.suggestion}` : ''}`),
       '',
@@ -200,7 +375,7 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
     a.download = `diagnostic-report-${Date.now()}.txt`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [results, positions, timelineItems, droneFormations]);
+  }, [results, positions, timelineItems, droneFormations, hardware]);
 
   const statusIcon = (s: DiagResult['status']) => {
     switch (s) {
@@ -223,6 +398,16 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
           <span className="text-[10px] font-bold font-mono-code text-foreground tracking-wider uppercase">
             E2E Diagnostic
           </span>
+          {hardware.isConnected && (
+            <Badge variant="outline" className="text-[7px] px-1 py-0 border-green-500/40 text-green-400 ml-1">
+              <Radio className="h-2 w-2 mr-0.5" /> FO
+            </Badge>
+          )}
+          {pbusHw.isConnected && (
+            <Badge variant="outline" className="text-[7px] px-1 py-0 border-amber-500/40 text-amber-400 ml-1">
+              <Cable className="h-2 w-2 mr-0.5" /> PB
+            </Badge>
+          )}
         </div>
         <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
           <X className="w-3.5 h-3.5" />

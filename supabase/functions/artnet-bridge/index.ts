@@ -135,6 +135,54 @@ serve(async (req: Request) => {
       });
     }
 
+    // Art-Net 4: ArtPoll
+    if (action === 'poll') {
+      const ARTNET_HDR = new TextEncoder().encode('Art-Net\0');
+      const packet = new Uint8Array(14);
+      packet.set(ARTNET_HDR, 0);
+      packet[8] = 0x00; packet[9] = 0x20; // OpPoll LE
+      packet[10] = 0; packet[11] = 14; // version
+      packet[12] = 0x02; packet[13] = 0; // flags
+      const b64 = btoa(String.fromCharCode(...packet));
+      return new Response(JSON.stringify({
+        success: true, type: 'ArtPoll', packetSize: 14, binary: b64,
+        target: { ip: targetIp || '255.255.255.255', port: targetPort || 6454, protocol: 'UDP' },
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // Art-Net 4: ArtSync
+    if (action === 'sync') {
+      const ARTNET_HDR = new TextEncoder().encode('Art-Net\0');
+      const packet = new Uint8Array(14);
+      packet.set(ARTNET_HDR, 0);
+      packet[8] = 0x00; packet[9] = 0x52; // OpSync LE
+      packet[10] = 0; packet[11] = 14;
+      const b64 = btoa(String.fromCharCode(...packet));
+      return new Response(JSON.stringify({
+        success: true, type: 'ArtSync', packetSize: 14, binary: b64,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // Art-Net 4: ArtRdm
+    if (action === 'rdm' as any) {
+      const { rdmData, universe: rdmUniverse, subnet: rdmSubnet, net: rdmNet } = body as any;
+      const ARTNET_HDR = new TextEncoder().encode('Art-Net\0');
+      const rdmBytes = rdmData ? Uint8Array.from(atob(rdmData), c => c.charCodeAt(0)) : new Uint8Array(0);
+      const packet = new Uint8Array(24 + rdmBytes.length);
+      packet.set(ARTNET_HDR, 0);
+      packet[8] = 0x00; packet[9] = 0x83; // OpRdm LE
+      packet[10] = 0; packet[11] = 14;
+      packet[12] = 0x01; // RdmVer
+      const subUni = ((rdmSubnet || 0) & 0x0F) << 4 | ((rdmUniverse || 0) & 0x0F);
+      packet[21] = subUni;
+      packet[22] = (rdmNet || 0) & 0x7F;
+      packet.set(rdmBytes, 24);
+      const b64 = btoa(String.fromCharCode(...packet));
+      return new Response(JSON.stringify({
+        success: true, type: 'ArtRdm', packetSize: packet.length, binary: b64,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     if (allErrors.length > 0) {
       return new Response(JSON.stringify({ error: 'Validation failed', details: allErrors }), {
         status: 400,

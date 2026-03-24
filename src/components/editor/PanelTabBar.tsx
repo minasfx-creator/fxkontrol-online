@@ -1,115 +1,190 @@
-import { Route, Wind, FileText, Package, Cpu, DollarSign, Spline, Sliders, Settings2, Bug, Gauge, Lightbulb, Battery, Radio, Clock, Globe, ShieldCheck, Tag, Sparkles, Music, Download, StickyNote, Video, Box, Image, ShoppingBag, Shield, Wand2, Eye, Warehouse, Link2, Users, ChevronDown, ChevronRight, FileBarChart, Volume2, Camera, Share2, Atom, History, Cloud, Zap, Navigation, FolderOpen, Activity, Map, Cog, MessageSquare, Factory } from 'lucide-react';
+import { Route, Wind, FileText, Package, Cpu, DollarSign, Spline, Sliders, Settings2, Bug, Gauge, Lightbulb, Battery, Radio, Clock, Globe, ShieldCheck, Tag, Sparkles, Music, Download, StickyNote, Video, Box, ShoppingBag, Shield, Wand2, Eye, Warehouse, Link2, Users, FileBarChart, Volume2, Camera, Share2, Atom, History, Cloud, Zap, Navigation, FolderOpen, Activity, Map, Cog, MessageSquare, Factory, Film, Grid3x3, ArrowRightLeft, Radar, Timer, Crosshair, BookOpen, FlaskConical, BarChart3, Layers, CircuitBoard, Plane, Wrench, ScanLine, Orbit, MapPin, Waypoints, Cable, Play, ListMusic, FileSignature, Wallet, MonitorPlay, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
+import { Search, Star } from 'lucide-react';
 
-export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | 'inventory' | 'waypoints' | 'effects' | 'properties' | 'boids' | 'pid' | 'dmx' | 'battery' | 'mavlink' | 'smpte' | 'maps' | 'diagnostic' | 'logistics' | 'swarmgpt' | 'synesthesia' | 'firing' | 'labels' | 'video' | 'models' | 'background' | 'suppliers' | 'safety' | 'scripting' | 'audience' | 'indoor' | 'chains' | 'groups' | 'summary' | 'scene' | 'soundlevel' | 'aroverlay' | 'share' | 'collab' | 'particles' | 'versioning' | 'weather' | 'collisions' | 'approval' | 'trajectory' | 'templates' | 'telemetry' | 'flightlog' | 'pathplanner' | 'marketplace' | 'sitelayout' | 'showsettings' | 'calibration' | 'livefiring';
+export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | 'inventory' | 'waypoints' | 'effects' | 'properties' | 'positions' | 'boids' | 'pid' | 'dmx' | 'battery' | 'mavlink' | 'smpte' | 'maps' | 'diagnostic' | 'logistics' | 'swarmgpt' | 'synesthesia' | 'firing' | 'labels' | 'video' | 'models' | 'safety' | 'scripting' | 'audience' | 'indoor' | 'chains' | 'groups' | 'scene' | 'soundlevel' | 'aroverlay' | 'share' | 'particles' | 'versioning' | 'weather' | 'collisions' | 'approval' | 'trajectory' | 'templates' | 'telemetry' | 'flightlog' | 'marketplace' | 'sitelayout' | 'showsettings' | 'calibration' | 'livefiring' | 'fleet' | 'geofence' | 'storyboard' | 'showcontrol' | 'inspector' | 'lightprogram' | 'safetycheck' | 'takeoffgrid' | 'transitions' | 'lasercontrol' | 'suppliers' | 'usb' | 'videochoreo' | 'showven' | 'generative' | 'sitemodels' | 'setlist' | 'rider' | 'budget' | 'showpreview' | 'mobilelink' | 'linkmonitor' | 'controllers' | 'fieldmap' | 'connections' | 'radio' | 'ma3' | 'sacnmonitor' | 'showcommander' | 'bluetooth' | 'nfc' | 'remotecontrol' | 'dmxoutput';
 
-const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId; label: string; icon: typeof Route; shortcut?: string }[] }[] = [
+export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId; label: string; icon: typeof Route; shortcut?: string }[] }[] = [
   {
-    title: 'Editor',
-    icon: Settings2,
+    title: '★ Comando',
+    icon: Target,
     items: [
-      { id: 'properties', label: 'Properties', icon: Settings2, shortcut: 'P' },
-      { id: 'effects', label: 'Effect Editor', icon: Sliders, shortcut: 'E' },
-      { id: 'script', label: 'Script Editor', icon: Route, shortcut: 'S' },
-      { id: 'waypoints', label: 'Waypoints', icon: Spline, shortcut: 'W' },
-      { id: 'chains', label: 'Chains', icon: Link2, shortcut: 'C' },
-      { id: 'groups', label: 'Groups', icon: Users, shortcut: 'G' },
+      { id: 'showcommander', label: 'Show Commander', icon: Target, shortcut: 'Q' },
     ],
   },
   {
-    title: 'Show Design',
+    title: 'Posições',
+    icon: MapPin,
+    items: [
+      { id: 'positions', label: 'Position Window', icon: MapPin, shortcut: 'V' },
+      { id: 'properties', label: 'Propriedades', icon: Settings2, shortcut: 'P' },
+      { id: 'waypoints', label: 'Waypoints', icon: Spline, shortcut: 'W' },
+      { id: 'groups', label: 'Grupos', icon: Users, shortcut: 'G' },
+      { id: 'chains', label: 'Chains', icon: Link2, shortcut: 'C' },
+      { id: 'labels', label: 'Etiquetas', icon: StickyNote },
+      { id: 'sitelayout', label: 'Layout do Site', icon: Map },
+      { id: 'sitemodels', label: 'Site Models', icon: Box },
+    ],
+  },
+  {
+    title: 'Script',
+    icon: Route,
+    items: [
+      { id: 'script', label: 'Script Editor', icon: Route, shortcut: 'S' },
+      { id: 'effects', label: 'Efeitos', icon: Sliders, shortcut: 'E' },
+      { id: 'scripting', label: 'Scripting Tools', icon: Wand2, shortcut: 'T' },
+      { id: 'calibration', label: 'Calibração VDL', icon: FlaskConical },
+    ],
+  },
+  {
+    title: 'Coreografia',
     icon: Sparkles,
     items: [
       { id: 'swarmgpt', label: 'SwarmGPT AI', icon: Sparkles, shortcut: 'A' },
+      { id: 'videochoreo', label: 'Video Choreo', icon: Video },
       { id: 'synesthesia', label: 'Audio Sync', icon: Music, shortcut: 'Y' },
-      { id: 'scripting', label: 'Scripting', icon: Wand2, shortcut: 'T' },
-      { id: 'safety', label: 'Safety NFPA', icon: Shield, shortcut: 'F' },
-      { id: 'collisions', label: 'Collisions', icon: Zap },
-      { id: 'trajectory', label: 'Trajectory Opt', icon: Navigation },
-      { id: 'pathplanner', label: 'Path Planner', icon: Route },
       { id: 'templates', label: 'Templates', icon: FolderOpen },
-      { id: 'marketplace', label: 'Marketplace', icon: Globe },
-      { id: 'calibration', label: 'VDL Calibration', icon: Factory },
+      { id: 'storyboard', label: 'Storyboard', icon: Film },
+      { id: 'trajectory', label: 'Trajetórias', icon: Navigation },
+      { id: 'transitions', label: 'Transições', icon: ArrowRightLeft },
+      { id: 'collisions', label: 'Colisões', icon: Crosshair },
+      { id: 'boids', label: 'Boids', icon: Orbit },
+    ],
+  },
+  {
+    title: 'Conexões',
+    icon: Cable,
+    items: [
+      { id: 'usb', label: 'USB Connect', icon: Cpu },
+      { id: 'dmx', label: 'DMX512', icon: ScanLine },
+      { id: 'dmxoutput', label: 'DMX Output', icon: Cable },
+      { id: 'bluetooth', label: 'Bluetooth BLE', icon: Radio },
+      { id: 'nfc', label: 'NFC Pair', icon: Zap },
+      { id: 'smpte', label: 'SMPTE/LTC', icon: Timer },
+      { id: 'mavlink', label: 'MAVLink', icon: Radio },
+      { id: 'lasercontrol', label: 'Laser Control', icon: Zap },
+      { id: 'livefiring', label: 'Live SFX', icon: Sparkles },
+      { id: 'mobilelink', label: 'Mobile Link', icon: Cable },
+      { id: 'linkmonitor', label: 'Link Monitor', icon: MonitorPlay },
+      { id: 'remotecontrol', label: 'Remote Control', icon: Play },
+      { id: 'ma3', label: 'grandMA3', icon: Sliders },
+      { id: 'sacnmonitor', label: 'sACN Monitor', icon: Activity },
+      { id: 'diagnostic', label: 'Diagnóstico', icon: Bug, shortcut: 'D' },
+    ],
+  },
+  {
+    title: 'Drone',
+    icon: Plane,
+    items: [
+      { id: 'fleet', label: 'Frota', icon: Radar },
+      { id: 'showcontrol', label: 'Show Control', icon: CircuitBoard },
+      { id: 'takeoffgrid', label: 'Grid Decolagem', icon: Grid3x3 },
+      { id: 'lightprogram', label: 'LED Program', icon: Lightbulb },
+      { id: 'safetycheck', label: 'Safety Check', icon: ShieldCheck },
+      { id: 'pid', label: 'PID Tuning', icon: Gauge },
+      { id: 'battery', label: 'Bateria', icon: Battery },
+      { id: 'indoor', label: 'Indoor Sim', icon: Warehouse },
+      { id: 'telemetry', label: 'Telemetria', icon: Activity },
+      { id: 'flightlog', label: 'Flight Log', icon: BookOpen },
+      { id: 'geofence', label: 'Geofence', icon: Layers },
+      { id: 'inspector', label: 'Inspetor', icon: Eye },
     ],
   },
   {
     title: 'Hardware',
     icon: Package,
     items: [
+      { id: 'controllers', label: 'Controladores', icon: Cpu },
+      { id: 'connections', label: 'Conexões HW', icon: Cable },
+      { id: 'radio', label: 'Rádio USB', icon: Radio },
+      { id: 'fieldmap', label: 'Field Map', icon: Map },
       { id: 'racks', label: 'Racks', icon: Package },
-      { id: 'addressing', label: 'Addressing', icon: Cpu },
-      { id: 'inventory', label: 'Inventory', icon: DollarSign },
-      { id: 'labels', label: 'Labels', icon: StickyNote },
-      { id: 'suppliers', label: 'Suppliers', icon: ShoppingBag },
+      { id: 'addressing', label: 'Endereçamento', icon: Cpu },
+      { id: 'inventory', label: 'Inventário', icon: DollarSign },
+      { id: 'suppliers', label: 'Fornecedores', icon: ShoppingBag },
+      { id: 'showven', label: 'Showven™', icon: Sparkles },
+      { id: 'logistics', label: 'Logística', icon: Tag },
     ],
   },
   {
-    title: 'Export & Media',
-    icon: Download,
+    title: 'Produção',
+    icon: ListMusic,
     items: [
-      { id: 'firing', label: 'Firing Export', icon: Download, shortcut: 'X' },
-      { id: 'video', label: 'Recorder', icon: Video, shortcut: 'V' },
-      { id: 'reports', label: 'Reports', icon: FileText },
-      { id: 'models', label: '3D Models', icon: Box },
+      { id: 'setlist', label: 'Setlist', icon: ListMusic },
+      { id: 'rider', label: 'Technical Rider', icon: FileSignature },
+      { id: 'budget', label: 'Budget', icon: Wallet },
+      { id: 'showpreview', label: 'Preview & Share', icon: MonitorPlay },
+    ],
+  },
+  {
+    title: 'Relatórios',
+    icon: BarChart3,
+    items: [
+      { id: 'reports', label: 'Relatórios', icon: BarChart3 },
+      { id: 'firing', label: 'Export Disparo', icon: Download, shortcut: 'X' },
+      { id: 'video', label: 'Gravação', icon: Video, shortcut: 'V' },
+      { id: 'share', label: 'Compartilhar', icon: Share2 },
       { id: 'aroverlay', label: 'AR Overlay', icon: Camera },
-      { id: 'share', label: 'Share', icon: Share2 },
+      { id: 'approval', label: 'Aprovação', icon: MessageSquare },
+      { id: 'models', label: 'Modelos 3D', icon: Box },
     ],
   },
   {
-    title: 'Drone',
-    icon: Bug,
-    items: [
-      { id: 'boids', label: 'Boids', icon: Bug },
-      { id: 'pid', label: 'PID', icon: Gauge },
-      { id: 'battery', label: 'Battery', icon: Battery },
-      { id: 'mavlink', label: 'MAVLink', icon: Radio },
-      { id: 'indoor', label: 'Indoor Sim', icon: Warehouse },
-      { id: 'telemetry', label: 'Telemetry', icon: Activity },
-      { id: 'flightlog', label: 'Flight Log', icon: FileText },
-    ],
-  },
-  {
-    title: 'Integration',
+    title: 'Cena',
     icon: Globe,
     items: [
-      { id: 'dmx', label: 'DMX512', icon: Lightbulb },
-      { id: 'smpte', label: 'SMPTE/LTC', icon: Clock },
-      { id: 'livefiring', label: 'Live SFX', icon: Zap },
-      { id: 'diagnostic', label: 'Diagnostic', icon: ShieldCheck, shortcut: 'D' },
-      { id: 'logistics', label: 'Logistics', icon: Tag },
-      { id: 'wind', label: 'Wind/Cam', icon: Wind },
+      { id: 'scene', label: 'Editor de Cena', icon: Cog, shortcut: 'N' },
+      { id: 'wind', label: 'Vento/Câmera', icon: Wind },
+      { id: 'maps', label: 'Google Maps', icon: Globe },
+      { id: 'weather', label: 'Clima', icon: Cloud },
+      { id: 'soundlevel', label: 'Nível Sonoro', icon: Volume2 },
+      { id: 'particles', label: 'Partículas', icon: Atom },
+      { id: 'audience', label: 'Audiência', icon: FileBarChart },
+      { id: 'safety', label: 'Segurança NFPA', icon: Shield, shortcut: 'F' },
+      { id: 'showsettings', label: 'Config. Show', icon: Settings2 },
+      { id: 'versioning', label: 'Versões', icon: History },
     ],
   },
 ];
-
-// Flatten all items with section index for dock effect
-function flattenItems(sections: typeof PANEL_SECTIONS) {
-  const items: { id: PanelId; label: string; icon: typeof Route; shortcut?: string; sectionIdx: number; type: 'item' }[] = [];
-  sections.forEach((section, si) => {
-    section.items.forEach(item => {
-      items.push({ ...item, sectionIdx: si, type: 'item' });
-    });
-  });
-  return items;
-}
 
 interface PanelTabBarProps {
   activePanel: PanelId | null;
   onTogglePanel: (id: PanelId) => void;
 }
 
-/**
- * macOS Dock-style magnification effect for the sidebar icons.
- * When the mouse hovers over an icon, it scales up and neighbors scale proportionally.
- */
 export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarProps) {
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [mouseY, setMouseY] = useState<number | null>(null);
+  const buttonRefs = useRef<Record<number, HTMLButtonElement | null>>({});
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [favorites, setFavorites] = useState<PanelId[]>(() => {
+    try { return JSON.parse(localStorage.getItem('fxk-panel-favorites') || '[]'); } catch { return []; }
+  });
+
+  const toggleFavorite = useCallback((id: PanelId) => {
+    setFavorites(prev => {
+      const next = prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id];
+      localStorage.setItem('fxk-panel-favorites', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const allItems = useMemo(() => PANEL_SECTIONS.flatMap(s => s.items), []);
+  const favoriteItems = useMemo(() => allItems.filter(i => favorites.includes(i.id)), [allItems, favorites]);
+
+  const filteredSections = useMemo(() => {
+    if (!searchQuery.trim()) return PANEL_SECTIONS;
+    const q = searchQuery.toLowerCase();
+    return PANEL_SECTIONS.map(s => ({
+      ...s,
+      items: s.items.filter(i => i.label.toLowerCase().includes(q) || i.id.toLowerCase().includes(q)),
+    })).filter(s => s.items.length > 0);
+  }, [searchQuery]);
 
   const toggleSection = (title: string) => {
     setCollapsedSections(prev => {
@@ -128,43 +203,70 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
 
   const handleMouseLeave = useCallback(() => {
     setMouseY(null);
-    setHoveredIndex(null);
   }, []);
 
-  // Calculate scale for each button based on distance from mouse
-  const getScale = (buttonIndex: number, buttonRefs: Map<number, HTMLButtonElement>) => {
-    if (mouseY === null) return 1;
-    const btn = buttonRefs.get(buttonIndex);
-    if (!btn || !containerRef.current) return 1;
-    const containerRect = containerRef.current.getBoundingClientRect();
-    const btnRect = btn.getBoundingClientRect();
-    const btnCenter = btnRect.top + btnRect.height / 2 - containerRect.top;
-    const distance = Math.abs(mouseY - btnCenter);
-    const maxDist = 80; // pixels of influence
-    const maxScale = 1.5;
-    const minScale = 1;
-    if (distance > maxDist) return minScale;
-    const t = 1 - distance / maxDist;
-    // Smooth cosine curve like macOS dock
-    const scale = minScale + (maxScale - minScale) * (Math.cos((1 - t) * Math.PI) + 1) / 2;
-    return scale;
-  };
-
-  // We track button refs for position calculation
-  const buttonRefs = useRef<Record<number, HTMLButtonElement | null>>({});
   let globalIdx = 0;
 
   return (
-    <TooltipProvider delayDuration={300}>
-      <div className="w-[52px] flex-shrink-0 bg-card/80 backdrop-blur-md border-l border-border/40 flex flex-col">
+    <TooltipProvider delayDuration={200}>
+      <div className="w-[52px] flex-shrink-0 border-l border-border/10 flex flex-col" style={{ background: 'hsl(var(--card))' }}>
+        {/* Search toggle */}
+        <div className="flex items-center justify-center py-1.5 border-b border-border/8">
+          <button
+            onClick={() => setSearchOpen(!searchOpen)}
+            className={cn("w-8 h-8 flex items-center justify-center rounded-lg transition-colors", searchOpen ? "bg-primary/12 text-primary" : "text-muted-foreground/40 hover:text-muted-foreground/70")}
+          >
+            <Search className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        {searchOpen && (
+          <div className="px-1.5 py-1.5 border-b border-border/8">
+            <input
+              type="text"
+              placeholder="..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              autoFocus
+              className="w-full h-7 px-1.5 text-[9px] rounded-lg bg-surface-0/60 border border-border/20 text-foreground placeholder:text-muted-foreground/30 outline-none focus:border-primary/30"
+            />
+          </div>
+        )}
+
+        {/* Favorites */}
+        {favoriteItems.length > 0 && !searchQuery && (
+          <div className="flex flex-col items-center gap-[2px] py-1.5 border-b border-primary/10">
+            {favoriteItems.map(({ id, label, icon: Icon }) => (
+              <Tooltip key={id}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => onTogglePanel(id)}
+                    className={cn(
+                      "w-9 h-9 flex items-center justify-center rounded-xl relative transition-colors duration-150",
+                      activePanel === id
+                        ? "bg-primary/12 text-primary shadow-[0_0_12px_hsl(var(--primary)/0.15)]"
+                        : "text-[hsl(var(--fxk-gold))] hover:text-foreground hover:bg-surface-1/40"
+                    )}
+                  >
+                    {activePanel === id && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 bg-primary rounded-r" />}
+                    <Icon className="w-4 h-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="left" className="text-[11px] font-semibold bg-popover border-border/15 rounded-xl px-3 py-1.5">
+                  ★ {label}
+                </TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
+        )}
+
         <ScrollArea className="flex-1">
           <div
             ref={containerRef}
-            className="flex flex-col items-center py-1.5 gap-0"
+            className="flex flex-col items-center py-2 gap-0"
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
           >
-            {PANEL_SECTIONS.map((section, si) => {
+            {filteredSections.map((section, si) => {
               const isCollapsed = collapsedSections.has(section.title);
               const hasActive = section.items.some(i => i.id === activePanel);
               const SectionIcon = section.icon;
@@ -177,30 +279,29 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
                       <button
                         onClick={() => toggleSection(section.title)}
                         className={cn(
-                          "w-full flex items-center justify-center py-1.5 transition-colors relative group",
+                          "w-full flex items-center justify-center py-2.5 transition-all relative group",
                           hasActive
                             ? "text-primary"
-                            : "text-muted-foreground/50 hover:text-muted-foreground"
+                            : "text-muted-foreground/40 hover:text-muted-foreground/70"
                         )}
                       >
                         {hasActive && (
-                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r" />
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-5 bg-primary rounded-r shadow-[0_0_6px_hsl(var(--primary)/0.4)]" />
                         )}
                         <div className="flex flex-col items-center gap-0.5">
                           <SectionIcon className="w-3.5 h-3.5 transition-transform group-hover:scale-110" />
-                          <span className="text-[6px] font-bold tracking-widest uppercase leading-none opacity-60">{section.title.split(' ')[0]}</span>
-                          <span className="text-[6px] text-muted-foreground/40">{isCollapsed ? '▸' : '▾'}</span>
+                          <span className="text-[7px] font-bold tracking-[0.12em] uppercase leading-none opacity-60 font-display">{section.title}</span>
                         </div>
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent side="left" className="text-[10px] font-medium">
+                    <TooltipContent side="left" className="text-[11px] font-semibold bg-popover border-border/20 rounded-xl px-3 py-1.5">
                       {section.title}
                     </TooltipContent>
                   </Tooltip>
 
                   {/* Section items with dock magnification */}
                   {!isCollapsed && (
-                    <div className="flex flex-col items-center gap-[2px] pb-1">
+                    <div className="flex flex-col items-center gap-[2px] pb-1.5">
                       {section.items.map(({ id, label, icon: Icon, shortcut }) => {
                         const isActive = activePanel === id;
                         const currentIdx = globalIdx++;
@@ -214,10 +315,10 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
                           const btnRect = btn.getBoundingClientRect();
                           const btnCenter = btnRect.top + btnRect.height / 2 - containerRect.top;
                           const distance = Math.abs(mouseY - btnCenter);
-                          const maxDist = 70;
+                          const maxDist = 55;
                           if (distance < maxDist) {
                             const t = 1 - distance / maxDist;
-                            scale = 1 + 0.45 * (Math.cos((1 - t) * Math.PI) + 1) / 2;
+                            scale = 1 + 0.35 * (Math.cos((1 - t) * Math.PI) + 1) / 2;
                           }
                         }
 
@@ -231,24 +332,32 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
                                 onClick={() => onTogglePanel(id)}
                                 style={{
                                   transform: `scale(${scale})`,
-                                  transition: 'transform 0.15s cubic-bezier(0.25, 0.1, 0.25, 1)',
+                                  transition: 'transform 0.12s cubic-bezier(0.25, 0.1, 0.25, 1)',
                                   zIndex: scale > 1.1 ? 10 : 1,
                                 }}
                                 className={cn(
-                                  "w-9 h-9 flex items-center justify-center rounded-lg relative",
+                                  "w-9 h-9 flex items-center justify-center rounded-xl relative transition-colors duration-150",
                                   isActive
-                                    ? "bg-primary/20 text-primary shadow-sm shadow-primary/20"
-                                    : "text-muted-foreground/60 hover:text-foreground hover:bg-muted/30"
+                                    ? "bg-primary/12 text-primary shadow-[0_0_12px_hsl(var(--primary)/0.15)]"
+                                    : "text-muted-foreground/45 hover:text-foreground hover:bg-surface-1/40"
                                 )}
                               >
                                 {isActive && (
                                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 bg-primary rounded-r" />
                                 )}
-                                <Icon className="w-[18px] h-[18px]" />
+                                <Icon className="w-4 h-4" />
                               </button>
                             </TooltipTrigger>
-                            <TooltipContent side="left" className="text-[10px] font-medium" sideOffset={scale > 1.1 ? 12 : 6}>
-                              {label}{shortcut ? ` (${shortcut})` : ''}
+                            <TooltipContent side="left" className="text-[11px] font-semibold bg-popover border-border/15 rounded-xl px-3 py-1.5" sideOffset={scale > 1.1 ? 10 : 6}>
+                              <div className="flex items-center gap-2">
+                                <span>{label}{shortcut ? ` (${shortcut})` : ''}</span>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); toggleFavorite(id); }}
+                                  className={cn("w-3 h-3 transition-colors", favorites.includes(id) ? "text-[hsl(var(--fxk-gold))]" : "text-muted-foreground/30 hover:text-[hsl(var(--fxk-gold))]")}
+                                >
+                                  <Star className="w-3 h-3" fill={favorites.includes(id) ? 'currentColor' : 'none'} />
+                                </button>
+                              </div>
                             </TooltipContent>
                           </Tooltip>
                         );
@@ -257,8 +366,8 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
                   )}
 
                   {/* Divider */}
-                  {si < PANEL_SECTIONS.length - 1 && (
-                    <div className="mx-3 border-t border-border/20 my-1" />
+                  {si < filteredSections.length - 1 && (
+                    <div className="mx-3 border-t border-border/8 my-1.5" />
                   )}
                 </div>
               );

@@ -87,6 +87,9 @@ export function useProjectPersistence() {
             pos_x: item.position.x,
             pos_y: item.position.y,
             pos_z: item.position.z,
+            position_id: (item as any).positionId || null,
+            position_name: (item as any).positionName || null,
+            notes: (item as any).notes || null,
           }));
           const { error } = await supabase.from('timeline_items').insert(tlRows);
           if (error) console.warn('Timeline save error:', error.message);
@@ -159,6 +162,9 @@ export function useProjectPersistence() {
             startTime: item.start_time,
             trackIndex: item.track_index,
             position: { x: item.pos_x, y: item.pos_y, z: item.pos_z },
+            positionId: (item as any).position_id || undefined,
+            positionName: (item as any).position_name || undefined,
+            notes: (item as any).notes || undefined,
           });
         }
       }

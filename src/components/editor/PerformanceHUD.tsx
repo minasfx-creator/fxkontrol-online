@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, forwardRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Activity } from 'lucide-react';
 
@@ -6,7 +6,7 @@ import { Activity } from 'lucide-react';
  * In-scene stats collector — runs inside <Canvas>.
  * Pushes stats to a shared ref that the HTML overlay reads.
  */
-export function PerfCollector({ statsRef }: { statsRef: React.MutableRefObject<PerfStats> }) {
+export const PerfCollector = forwardRef<any, { statsRef: React.MutableRefObject<PerfStats> }>(function PerfCollector({ statsRef }, _ref) {
   const { gl } = useThree();
   const frames = useRef(0);
   const lastTime = useRef(performance.now());
@@ -32,7 +32,7 @@ export function PerfCollector({ statsRef }: { statsRef: React.MutableRefObject<P
   });
 
   return null;
-}
+});
 
 export interface PerfStats {
   fps: number;
@@ -89,7 +89,7 @@ export function PerformanceHUD({
       {visible && (
         <div className="absolute top-10 right-3 bg-surface-0/90 backdrop-blur-sm border border-border/60 rounded-sm p-2 font-mono text-[10px] leading-relaxed min-w-[140px] select-none pointer-events-none">
           <div className="flex items-center gap-1.5 mb-1 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-            <Activity className="w-3 h-3" /> Zenith Prime
+            <Activity className="w-3 h-3" /> FX Kontrol
           </div>
           <div className="space-y-0.5">
             <Row label="FPS" value={stats.fps} className={fpsColor} />

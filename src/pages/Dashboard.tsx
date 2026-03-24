@@ -1,0 +1,694 @@
+import { useEffect, useState, useCallback } from 'react';
+import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import {
+  Clapperboard, CalendarDays, Plus, FolderOpen,
+  Zap, Rocket, Flame, Target, Clock, ArrowRight, Sparkles,
+  Radio, Cpu, Activity, Heart, MessageCircle, Share2,
+  TrendingUp, TrendingDown, Minus, Circle, Bookmark,
+  Smartphone, Wand2, Layers,
+  Lightbulb, Pencil, LayoutTemplate,
+  Gauge
+} from 'lucide-react';
+import { format, differenceInDays } from 'date-fns';
+import CinematicIntro from '@/components/editor/CinematicIntro';
+import { useIsMobile } from '@/hooks/use-mobile';
+
+/* ── Types ──────────────────────────────────────────── */
+interface Project {
+  id: string;
+  name: string;
+  updated_at: string;
+  duration: number;
+}
+
+interface Event {
+  id: string;
+  name: string;
+  event_date: string | null;
+  status: string;
+  event_type: string;
+  client_name: string;
+}
+
+interface NewsItem {
+  id: number;
+  title: string;
+  category: 'pyro' | 'drones' | 'sfx' | 'lighting' | 'festivals';
+  sentiment: 'positive' | 'negative' | 'neutral';
+  time: string;
+  image: string;
+  source: string;
+  avatar: string;
+}
+
+/* ── Constants ──────────────────────────────────────── */
+const MOCK_NEWS: NewsItem[] = [
+  { id: 1, title: 'Drone shows superam fogos em 35% dos eventos corporativos na Europa', category: 'drones', sentiment: 'positive', time: '2min', image: 'https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=600&h=600&fit=crop', source: 'DroneWorld', avatar: '🤖' },
+  { id: 2, title: 'NFPA atualiza norma 1123 para pirotecnia de proximidade', category: 'pyro', sentiment: 'neutral', time: '15min', image: 'https://images.unsplash.com/photo-1498931299472-f7a63a5a1cfa?w=600&h=600&fit=crop', source: 'PyroNews', avatar: '🎆' },
+  { id: 3, title: 'Showven lança novo SparkularFall 2 com controle DMX integrado', category: 'sfx', sentiment: 'positive', time: '28min', image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=600&fit=crop', source: 'SFX Today', avatar: '🔥' },
+  { id: 4, title: 'Rock in Rio 2026 confirma 40 shows com drones sincronizados', category: 'festivals', sentiment: 'positive', time: '45min', image: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600&h=600&fit=crop', source: 'Festival Mag', avatar: '🎪' },
+  { id: 5, title: 'Escassez global de lítio pode afetar baterias de drones em 2027', category: 'drones', sentiment: 'negative', time: '1h', image: 'https://images.unsplash.com/photo-1527977966376-1c8408f9f108?w=600&h=600&fit=crop', source: 'TechBrief', avatar: '🤖' },
+  { id: 6, title: 'Moving heads Ayrton Perseo ganha prêmio LDI Innovation', category: 'lighting', sentiment: 'positive', time: '2h', image: 'https://images.unsplash.com/photo-1504509546545-e000b4a62425?w=600&h=600&fit=crop', source: 'LDI Weekly', avatar: '💡' },
+  { id: 7, title: 'Novo protocolo Art-Net 5 promete latência sub-1ms', category: 'lighting', sentiment: 'positive', time: '3h', image: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=600&h=600&fit=crop', source: 'ProLight', avatar: '💡' },
+  { id: 8, title: 'FAA restringe voos de drones em 12 novos aeroportos dos EUA', category: 'drones', sentiment: 'negative', time: '4h', image: 'https://images.unsplash.com/photo-1506947411487-a56738b4ccd4?w=600&h=600&fit=crop', source: 'AviationPost', avatar: '🤖' },
+  { id: 9, title: 'Galaxis lança módulo de disparo com 64 canais e GPS integrado', category: 'pyro', sentiment: 'positive', time: '5h', image: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600&h=600&fit=crop', source: 'FireTech', avatar: '🎆' },
+  { id: 10, title: 'Coachella 2026 bate recorde com 1.200 drones em show de encerramento', category: 'festivals', sentiment: 'positive', time: '6h', image: 'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=600&h=600&fit=crop', source: 'Festival Mag', avatar: '🎪' },
+];
+
+const CATEGORY_FILTERS: Array<{ key: NewsItem['category'] | 'all'; label: string; emoji: string }> = [
+  { key: 'all', label: 'Tudo', emoji: '🌐' },
+  { key: 'pyro', label: 'Pyro', emoji: '🎆' },
+  { key: 'drones', label: 'FXK-DRONES', emoji: '🤖' },
+  { key: 'sfx', label: 'SFX', emoji: '🔥' },
+  { key: 'lighting', label: 'Light', emoji: '💡' },
+  { key: 'festivals', label: 'Festivals', emoji: '🎪' },
+];
+
+const TYPE_ICONS: Record<string, string> = {
+  pyro: '🎆', drone: '🤖', sfx: '🔥', mixed: '🎯',
+};
+
+/* ── Console Launcher Cards ─────────────────────────── */
+const CONSOLE_CARDS = [
+  { key: 'pyro_fire', label: 'FXK-PYRO', subtitle: 'FIRE CONTROL', color: 'hsl(0 85% 48%)', glow: 'hsl(0 85% 48% / 0.08)', icon: Flame },
+  { key: 'super_dmx', label: 'FXK-DMX', subtitle: 'SFX CONSOLE', color: 'hsl(200 80% 48%)', glow: 'hsl(200 80% 48% / 0.08)', icon: Zap },
+  { key: 'show_control', label: 'SHOW CTRL', subtitle: 'MISSION CONTROL', color: 'hsl(32 100% 50%)', glow: 'hsl(32 100% 50% / 0.08)', icon: Activity },
+  { key: 'fxk_light', label: 'FXK-LIGHT', subtitle: 'LIGHTING', color: 'hsl(240 50% 52%)', glow: 'hsl(240 50% 52% / 0.06)', icon: Lightbulb },
+  { key: 'drone_ops', label: 'FXK-DRONE', subtitle: 'SWARM OPS', color: 'hsl(165 100% 42%)', glow: 'hsl(165 100% 42% / 0.06)', icon: Layers },
+  { key: 'module', label: 'MODULE', subtitle: 'HARDWARE', color: 'hsl(270 60% 50%)', glow: 'hsl(270 60% 50% / 0.06)', icon: Cpu },
+  { key: 'dmx_monitor', label: 'DMX MON', subtitle: 'ANALYZER', color: 'hsl(120 70% 42%)', glow: 'hsl(120 70% 42% / 0.06)', icon: Radio },
+];
+
+/* ── Hub Tool Definitions ───────────────────────────── */
+interface HubTool {
+  label: string;
+  icon: React.ElementType;
+  panel: string;
+}
+
+const SHOW_COMMANDER_TOOLS: HubTool[] = [
+  { label: 'FXK-DMX', icon: Zap, panel: 'super_dmx' },
+  { label: 'FXK-PYRO', icon: Flame, panel: 'pyro_fire' },
+  { label: 'Show Ctrl', icon: Activity, panel: 'show_control' },
+  { label: 'DMX Mon', icon: Radio, panel: 'dmx_monitor' },
+  { label: 'FXK-LIGHT', icon: Lightbulb, panel: 'fxk_light' },
+  { label: 'Module', icon: Cpu, panel: 'module' },
+];
+
+const MASTER_EDITOR_TOOLS: HubTool[] = [
+  { label: 'Script Editor', icon: Pencil, panel: 'script' },
+  { label: 'Efeitos', icon: Wand2, panel: 'effects' },
+  { label: 'SwarmGPT AI', icon: Sparkles, panel: 'swarmgpt' },
+  { label: 'Storyboard', icon: Layers, panel: 'storyboard' },
+  { label: 'Timeline', icon: Clapperboard, panel: '' },
+  { label: 'Templates', icon: LayoutTemplate, panel: 'templates' },
+];
+
+/* ── Feed Card (Instagram-style) ─────────────────────── */
+function FeedCard({ item }: { item: NewsItem }) {
+  const [liked, setLiked] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  return (
+    <div className="bg-card border border-border/50 rounded overflow-hidden group relative">
+      {/* Scanline overlay */}
+      <div className="absolute inset-0 tactical-scanline z-10" />
+      <div className="flex items-center gap-2.5 px-3 py-2.5 border-b border-border/30 relative z-20">
+        <div className="h-7 w-7 rounded bg-muted/30 flex items-center justify-center text-sm border border-border/30">
+          {item.avatar}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-bold text-foreground truncate font-display tracking-wide">{item.source}</p>
+          <p className="text-[9px] text-muted-foreground font-mono">{item.time}</p>
+        </div>
+        {item.sentiment === 'positive' && <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />}
+        {item.sentiment === 'negative' && <TrendingDown className="h-3.5 w-3.5 text-red-400" />}
+        {item.sentiment === 'neutral' && <Minus className="h-3.5 w-3.5 text-muted-foreground" />}
+      </div>
+      <div className="relative aspect-[4/3] overflow-hidden">
+        <img src={item.image} alt={item.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03] brightness-[0.85]" loading="lazy" />
+        <div className="absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent" />
+      </div>
+      <div className="px-3 pt-2.5 pb-1 flex items-center justify-between relative z-20">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setLiked(!liked)} className="active:scale-90 transition-transform">
+            <Heart className={`h-4.5 w-4.5 ${liked ? 'fill-red-500 text-red-500' : 'text-foreground/60 hover:text-foreground'} transition-colors`} />
+          </button>
+          <MessageCircle className="h-4.5 w-4.5 text-foreground/60 hover:text-foreground cursor-pointer transition-colors" />
+          <Share2 className="h-4.5 w-4.5 text-foreground/60 hover:text-foreground cursor-pointer transition-colors" />
+        </div>
+        <button onClick={() => setSaved(!saved)} className="active:scale-90 transition-transform">
+          <Bookmark className={`h-4.5 w-4.5 ${saved ? 'fill-foreground text-foreground' : 'text-foreground/60 hover:text-foreground'} transition-colors`} />
+        </button>
+      </div>
+      <div className="px-3 pb-3 pt-1 relative z-20">
+        <p className="text-[11px] leading-relaxed text-foreground/85 font-tech">
+          <span className="font-bold mr-1 text-primary/80">{item.source}</span>
+          {item.title}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ── Hub Card Component — Tactical ──── */
+function HubCard({
+  title, subtitle, badge, tools, accentClass, borderClass, badgeBg, navigate, delay = '0s', commandRoute = false
+}: {
+  title: string;
+  subtitle: string;
+  badge: string;
+  tools: HubTool[];
+  accentClass: string;
+  borderClass: string;
+  badgeBg: string;
+  navigate: (path: string) => void;
+  delay?: string;
+  commandRoute?: boolean;
+}) {
+  const baseDelay = parseFloat(delay);
+  const goToTool = (panel: string) => {
+    if (commandRoute) {
+      navigate(panel ? `/command?mode=${panel}` : '/command');
+    } else if (panel) {
+      navigate(`/editor?panel=${panel}`);
+    } else {
+      navigate('/editor');
+    }
+  };
+
+  return (
+    <div className={`glass-card-elevated overflow-hidden animate-fxk-stagger group/hub tactical-border-l`} style={{ animationDelay: delay }}>
+      {/* Hub Header — tactical with warning stripe accent */}
+      <div className={`px-4 py-3 border-b border-border/30 bg-gradient-to-r ${accentClass} relative overflow-hidden`}>
+        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
+        <div className="flex items-center justify-between relative z-10">
+          <div>
+            <h2 className="text-sm font-bold font-display text-foreground tracking-[0.05em] uppercase">{title}</h2>
+            <p className="text-[9px] text-muted-foreground/60 mt-0.5 font-mono tracking-wider uppercase">{subtitle}</p>
+          </div>
+          <span className={`text-[7px] font-bold font-mono tracking-[0.2em] uppercase px-2 py-0.5 rounded-sm ${badgeBg} border border-current/15`}>
+            {badge}
+          </span>
+        </div>
+      </div>
+
+      {/* Tool Grid — tactical buttons */}
+      <div className="p-3 grid grid-cols-3 gap-1.5">
+        {tools.map((tool, i) => (
+          <button
+            key={tool.label}
+            onClick={() => goToTool(tool.panel)}
+            className="group flex flex-col items-center gap-1.5 p-2.5 rounded transition-all duration-150 hover:bg-primary/5 active:scale-[0.96] border border-transparent hover:border-primary/10 animate-fxk-stagger"
+            style={{ animationDelay: `${baseDelay + 0.05 * i}s` }}
+          >
+            <div className="h-9 w-9 rounded bg-surface-2/80 flex items-center justify-center group-hover:bg-primary/10 group-hover:scale-105 transition-all duration-150 border border-border/30 group-hover:border-primary/20">
+              <tool.icon className="h-4 w-4 text-foreground/50 group-hover:text-primary transition-colors" />
+            </div>
+            <span className="text-[8px] font-bold text-muted-foreground group-hover:text-foreground text-center leading-tight transition-colors font-mono tracking-wider uppercase">
+              {tool.label}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Dashboard ───────────────────────────────────────── */
+export default function Dashboard() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [showIntro, setShowIntro] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const seen = sessionStorage.getItem('fxk-intro-seen');
+    return !seen;
+  });
+  const [feedFilter, setFeedFilter] = useState<NewsItem['category'] | 'all'>('all');
+
+  const handleIntroComplete = useCallback(() => {
+    setShowIntro(false);
+    sessionStorage.setItem('fxk-intro-seen', '1');
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('projects')
+      .select('id, name, updated_at, duration')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+      .limit(6)
+      .then(({ data }) => setProjects(data ?? []));
+
+    supabase
+      .from('events')
+      .select('id, name, event_date, status, event_type, client_name')
+      .eq('user_id', user.id)
+      .gte('event_date', new Date().toISOString().split('T')[0])
+      .order('event_date', { ascending: true })
+      .limit(4)
+      .then(({ data }) => setEvents(data ?? []));
+  }, [user]);
+
+  const totalMinutes = Math.round(projects.reduce((s, p) => s + p.duration, 0) / 60);
+  const userName = user?.email?.split('@')[0] ?? 'Operator';
+  const lastProjectId = typeof window !== 'undefined' ? localStorage.getItem('fxk-last-project') : null;
+  const nextEvent = events[0];
+  const daysUntilNext = nextEvent?.event_date
+    ? differenceInDays(new Date(nextEvent.event_date), new Date())
+    : null;
+
+  const filteredNews = feedFilter === 'all' ? MOCK_NEWS : MOCK_NEWS.filter(n => n.category === feedFilter);
+
+  if (showIntro) {
+    return <CinematicIntro onComplete={handleIntroComplete} />;
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto pb-10 relative br2049-rain">
+      {/* ── Hero Banner — Military Cyberpunk HUD ──── */}
+      <div className="relative overflow-hidden rounded border bg-surface-1 mb-5 animate-fxk-fade-up"
+        style={{ borderColor: 'hsl(32 100% 50% / 0.15)' }}>
+        {/* Tactical grid + scanline overlays */}
+        <div className="absolute inset-0 tactical-grid" />
+        <div className="absolute inset-0 tactical-scanline" />
+        {/* Ambient glow */}
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: 'radial-gradient(ellipse 80% 60% at 20% 40%, hsl(32 100% 50% / 0.04), transparent 70%)'
+        }} />
+
+        {/* Corner brackets — tactical frame */}
+        <div className="absolute top-0 left-0 w-10 h-10 border-t-2 border-l-2" style={{ borderColor: 'hsl(32 100% 50% / 0.4)' }} />
+        <div className="absolute top-0 right-0 w-10 h-10 border-t-2 border-r-2" style={{ borderColor: 'hsl(32 100% 50% / 0.4)' }} />
+        <div className="absolute bottom-0 left-0 w-10 h-10 border-b-2 border-l-2" style={{ borderColor: 'hsl(32 100% 50% / 0.2)' }} />
+        <div className="absolute bottom-0 right-0 w-10 h-10 border-b-2 border-r-2" style={{ borderColor: 'hsl(32 100% 50% / 0.2)' }} />
+
+        {/* Top accent bar */}
+        <div className="absolute top-0 left-0 right-0 h-[2px]" style={{
+          background: 'linear-gradient(90deg, hsl(32 100% 50% / 0.6), hsl(32 100% 50% / 0.1) 30%, hsl(32 100% 50% / 0.1) 70%, hsl(32 100% 50% / 0.6))'
+        }} />
+        
+        <div className="p-5 md:p-7 relative z-10">
+          <div className="flex items-start justify-between">
+            <div>
+              {/* Status line */}
+              <div className="flex items-center gap-2 mb-1">
+                <div className="h-2 w-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_hsl(var(--primary)/0.5)]" />
+                <p className="text-[10px] font-mono text-primary tracking-[0.3em] uppercase font-bold">
+                  SYS::ONLINE
+                </p>
+                <div className="h-[1px] w-8 bg-primary/20" />
+                <p className="text-[8px] font-mono text-muted-foreground/40 tracking-wider">
+                  FXK v2.0 // {new Date().toLocaleDateString('pt-BR')}
+                </p>
+              </div>
+              
+              {/* Telemetry readouts */}
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-[8px] font-mono-code text-muted-foreground/30 tracking-wider">PROJ: {projects.length}</span>
+                <span className="text-[8px] font-mono-code text-muted-foreground/30">|</span>
+                <span className="text-[8px] font-mono-code text-muted-foreground/30 tracking-wider">EVT: {events.length}</span>
+                <span className="text-[8px] font-mono-code text-muted-foreground/30">|</span>
+                <span className="text-[8px] font-mono-code text-muted-foreground/30 tracking-wider">T: {totalMinutes}min</span>
+              </div>
+
+              <h1 className="text-xl md:text-3xl font-bold font-display tracking-[0.04em] text-foreground uppercase leading-[1.1]">
+                Operador: <span className="text-fxk-gradient">{userName}</span>
+              </h1>
+              <p className="text-[10px] text-muted-foreground/50 mt-2 max-w-lg font-mono tracking-[0.2em] uppercase">
+                TACTICAL CONTROL PLATFORM // PYRO · DMX · DRONES · SFX
+              </p>
+            </div>
+            {lastProjectId && !isMobile && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="hidden md:flex gap-1.5 text-[10px] font-mono tracking-wider border-primary/20 text-primary hover:bg-primary/10 rounded uppercase"
+                onClick={() => navigate('/editor')}
+              >
+                <ArrowRight className="h-3 w-3" />
+                RESUME
+              </Button>
+            )}
+          </div>
+
+          {/* Next event tactical readout */}
+          {nextEvent && (
+            <div className="mt-4 flex items-center gap-3 px-3 py-2 rounded bg-surface-0/50 border border-border/20 max-w-md">
+              <div className="h-2 w-2 rounded-full animate-pulse" style={{ background: daysUntilNext !== null && daysUntilNext <= 3 ? 'hsl(0 85% 48%)' : 'hsl(32 100% 50%)', boxShadow: `0 0 6px ${daysUntilNext !== null && daysUntilNext <= 3 ? 'hsl(0 85% 48% / 0.5)' : 'hsl(32 100% 50% / 0.5)'}` }} />
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] font-mono-code text-muted-foreground/40 tracking-wider uppercase">PRÓX. MISSÃO</p>
+                <p className="text-xs font-bold text-foreground truncate">{nextEvent.name}</p>
+              </div>
+              {daysUntilNext !== null && (
+                <span className={cn("text-[10px] font-mono-code font-bold px-2 py-0.5 rounded", daysUntilNext <= 3 ? 'bg-destructive/15 text-destructive' : 'bg-primary/10 text-primary')}>
+                  {daysUntilNext === 0 ? 'HOJE' : `T-${daysUntilNext}d`}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── CONSOLE LAUNCHER — Click to open fullscreen landscape ──── */}
+      <div className="mb-6 animate-fxk-stagger" style={{ animationDelay: '0.08s' }}>
+        <div className="flex items-center gap-2 mb-3">
+          <div className="h-[1px] w-4" style={{ background: 'hsl(32 100% 50% / 0.3)' }} />
+          <span className="text-[9px] font-mono font-bold tracking-[0.3em] uppercase" style={{ color: 'hsl(32 100% 50% / 0.6)' }}>
+            COMMAND CONSOLES
+          </span>
+          <div className="h-[1px] flex-1" style={{ background: 'hsl(32 100% 50% / 0.1)' }} />
+          <span className="text-[8px] font-mono text-muted-foreground/30 tracking-wider">TAP TO ENTER</span>
+        </div>
+        <div className={cn("grid gap-2", isMobile ? "grid-cols-4" : "grid-cols-7")}>
+          {CONSOLE_CARDS.map((console, i) => {
+            const Icon = console.icon;
+            return (
+              <button
+                key={console.key}
+                onClick={() => navigate(`/command?mode=${console.key}`)}
+                className="group relative overflow-hidden rounded-lg border p-2.5 text-center transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-[1.08] active:scale-[0.95] animate-fxk-stagger"
+                style={{
+                  animationDelay: `${0.1 + i * 0.04}s`,
+                  borderColor: `${console.color}20`,
+                  background: `rgba(8, 10, 14, 0.8)`,
+                  backdropFilter: 'blur(24px) saturate(1.4)',
+                }}
+              >
+                {/* Accent top bar */}
+                <div className="absolute top-0 left-0 right-0 h-[2px]" style={{
+                  background: `linear-gradient(90deg, transparent, ${console.color}70, transparent)`,
+                }} />
+                {/* Corner brackets */}
+                <div className="absolute top-0.5 left-0.5 w-2 h-2 border-t border-l pointer-events-none" style={{ borderColor: `${console.color}30` }} />
+                <div className="absolute bottom-0.5 right-0.5 w-2 h-2 border-b border-r pointer-events-none" style={{ borderColor: `${console.color}15` }} />
+                
+                <div className="flex flex-col items-center gap-1">
+                  <div className="h-8 w-8 md:h-10 md:w-10 rounded-lg flex items-center justify-center transition-all group-hover:scale-110"
+                    style={{ background: `${console.color}12`, border: `1px solid ${console.color}20` }}>
+                    <Icon className="w-4 h-4 md:w-5 md:h-5" style={{ color: console.color }} />
+                  </div>
+                  <span className="text-[8px] md:text-[9px] font-mono font-bold tracking-[0.08em] text-foreground/70 group-hover:text-foreground transition-colors leading-tight">
+                    {console.label}
+                  </span>
+                  {!isMobile && (
+                    <span className="text-[7px] font-mono text-muted-foreground/30 tracking-wider">
+                      {console.subtitle}
+                    </span>
+                  )}
+                </div>
+
+                {/* Hover glow */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                  style={{ boxShadow: `inset 0 0 20px ${console.color}10, 0 0 15px ${console.color}08` }} />
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Main Grid: Left (ops) + Center (feed) + Right ─ */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px_1fr] gap-6">
+
+        {/* ─ Left Column ─ */}
+        <div className="space-y-4 order-2 lg:order-1">
+          {/* FXK-PYRO Hub */}
+          <HubCard
+            title="FXK-PYRO Hub"
+            subtitle="Execução e controle ao vivo"
+            badge="LIVE"
+            tools={SHOW_COMMANDER_TOOLS}
+            accentClass="from-accent/5 to-transparent"
+            borderClass="border-accent/20 hover:border-accent/40 transition-colors"
+            badgeBg="bg-accent/15 text-accent"
+            navigate={navigate}
+            commandRoute
+            delay="0.1s"
+          />
+
+          {/* Mobile Command Launcher */}
+          <div className="space-y-2 animate-fxk-stagger" style={{ animationDelay: '0.2s' }}>
+            <button
+              onClick={() => navigate('/editor?panel=remotecontrol')}
+              className="w-full group relative overflow-hidden rounded-xl border border-accent/20 bg-gradient-to-r from-accent/5 via-card to-primary/5 p-4 text-left transition-all duration-300 hover:border-accent/40 hover:shadow-[0_0_20px_hsl(var(--accent)/0.1)] active:scale-[0.98]"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0 group-hover:bg-accent/20 transition-colors">
+                  <Smartphone className="h-5 w-5 text-accent" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-bold font-display text-foreground">Mobile Command</p>
+                    <div className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse-glow" />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Controle remoto Master/Slave para qualquer dispositivo
+                  </p>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-accent transition-colors shrink-0" />
+              </div>
+            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => navigate('/editor?panel=remotecontrol&mode=wifi')}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-accent/20 bg-accent/5 text-[9px] font-semibold text-accent hover:bg-accent/10 transition-colors active:scale-95"
+              >
+                📶 WiFi
+              </button>
+              <button
+                onClick={() => navigate('/editor?panel=remotecontrol&mode=cloud')}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/20 bg-primary/5 text-[9px] font-semibold text-primary hover:bg-primary/10 transition-colors active:scale-95"
+              >
+                ☁️ Cloud
+              </button>
+            </div>
+          </div>
+
+          {/* Hardware Controllers */}
+          <Card className="bg-card border-border/50 animate-fxk-stagger overflow-hidden" style={{ animationDelay: '0.3s' }}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Cpu className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider font-display">Hardware</span>
+                </div>
+                <button
+                  onClick={() => navigate('/command?mode=module')}
+                  className="text-[9px] text-primary hover:text-primary/80 font-semibold transition-colors"
+                >
+                  Ver todos →
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: 'FXK-PYRO', icon: Zap, mode: 'pyro_fire', color: 'text-red-400', border: 'border-red-500/15' },
+                  { label: 'FXK-DMX', icon: Gauge, mode: 'super_dmx', color: 'text-amber-400', border: 'border-amber-500/15' },
+                  { label: 'FXK-LIGHT', icon: Lightbulb, mode: 'fxk_light', color: 'text-indigo-400', border: 'border-indigo-500/15' },
+                  { label: 'MODULE', icon: Cpu, mode: 'module', color: 'text-violet-400', border: 'border-violet-500/15' },
+                  { label: 'FXK-DRONE', icon: Layers, mode: 'drone_ops', color: 'text-teal-400', border: 'border-teal-500/15' },
+                  { label: 'DMX Monitor', icon: Radio, mode: 'dmx_monitor', color: 'text-green-400', border: 'border-green-500/15' },
+                ].map((hw) => (
+                  <button
+                    key={hw.label}
+                    onClick={() => navigate(`/command?mode=${hw.mode}`)}
+                    className={`flex items-center gap-2 px-2.5 py-2 rounded-xl bg-[hsl(var(--surface-0)/0.5)] border ${hw.border} hover:bg-muted/20 transition-all active:scale-[0.97] text-left min-h-[48px]`}
+                  >
+                    <hw.icon className={`h-3.5 w-3.5 ${hw.color} shrink-0`} />
+                    <span className="text-[9px] font-semibold text-foreground/70 truncate">{hw.label}</span>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Events */}
+          <Card className="bg-card border-border/50 animate-fxk-stagger" style={{ animationDelay: '0.35s' }}>
+            <div className="p-3 pb-1 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Flame className="h-3.5 w-3.5 text-accent" />
+                <span className="text-xs font-semibold text-foreground">Eventos</span>
+              </div>
+              <Button variant="ghost" size="sm" className="text-[10px] h-5 text-muted-foreground" onClick={() => navigate('/agenda')}>
+                Agenda
+              </Button>
+            </div>
+            <CardContent className="pt-0 pb-2 space-y-0.5">
+              {events.length === 0 && (
+                <div className="py-6 text-center">
+                  <CalendarDays className="h-6 w-6 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-[10px] text-muted-foreground">Nenhum evento.</p>
+                  <Button variant="outline" size="sm" className="mt-2 text-[10px] h-7" onClick={() => navigate('/agenda')}>
+                    <Plus className="h-3 w-3 mr-1" /> Criar
+                  </Button>
+                </div>
+              )}
+              {events.map((e) => {
+                const daysLeft = e.event_date ? differenceInDays(new Date(e.event_date), new Date()) : null;
+                return (
+                  <div
+                    key={e.id}
+                    className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/30 cursor-pointer transition-colors group"
+                    onClick={() => navigate('/agenda')}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="h-7 w-7 rounded-md bg-accent/10 flex items-center justify-center text-sm shrink-0">
+                        {TYPE_ICONS[e.event_type] ?? '🎯'}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-foreground truncate group-hover:text-accent transition-colors">{e.name}</p>
+                        <p className="text-[9px] text-muted-foreground font-mono-code">
+                          {e.event_date ? format(new Date(e.event_date), 'dd/MM') : '—'} · {e.client_name || '—'}
+                        </p>
+                      </div>
+                    </div>
+                    {daysLeft !== null && daysLeft >= 0 && (
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono-code font-bold shrink-0 ${daysLeft <= 3 ? 'bg-accent/15 text-accent' : 'bg-muted text-muted-foreground'}`}>
+                        {daysLeft === 0 ? 'HOJE' : `${daysLeft}d`}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ─ Center Column: Instagram Feed ─ */}
+        <div className="order-1 lg:order-2 animate-fxk-stagger" style={{ animationDelay: '0.15s' }}>
+          <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1 scrollbar-none">
+            {CATEGORY_FILTERS.map(f => (
+              <button
+                key={f.key}
+                onClick={() => setFeedFilter(f.key)}
+                className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all duration-200 shrink-0 active:scale-[0.95] ${
+                  feedFilter === f.key
+                    ? 'bg-primary/15 ring-1 ring-primary/30'
+                    : 'bg-card border border-border/30 hover:border-primary/20'
+                }`}
+              >
+                <span className="text-base">{f.emoji}</span>
+                <span className={`text-[9px] font-semibold ${feedFilter === f.key ? 'text-primary' : 'text-muted-foreground'}`}>
+                  {f.label}
+                </span>
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 mb-3">
+            <Circle className="h-2 w-2 fill-current animate-pulse" style={{ color: 'hsl(32 100% 50%)' }} />
+            <span className="text-[9px] font-mono-code text-muted-foreground tracking-widest uppercase" style={{ color: 'hsl(32 100% 50% / 0.5)' }}>
+              Industry Feed · {filteredNews.length} posts
+            </span>
+          </div>
+          <div className="space-y-4">
+            {filteredNews.map((item, i) => (
+              <div key={item.id} className="animate-fxk-stagger" style={{ animationDelay: `${0.2 + i * 0.08}s` }}>
+                <FeedCard item={item} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ─ Right Column ─ */}
+        <div className="space-y-4 order-3">
+          {/* Master Editor Hub */}
+          <HubCard
+            title="Master Editor"
+            subtitle="Design, script e coreografia"
+            badge="DESIGN"
+            tools={MASTER_EDITOR_TOOLS}
+            accentClass="from-primary/5 to-transparent"
+            borderClass="border-primary/20 hover:border-primary/40 transition-colors"
+            badgeBg="bg-primary/15 text-primary"
+            navigate={navigate}
+            delay="0.2s"
+          />
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { value: projects.length, label: 'Projetos', icon: FolderOpen, color: 'text-primary' },
+              { value: events.length, label: 'Eventos', icon: Target, color: 'text-accent' },
+              { value: totalMinutes, label: 'Min. Show', icon: Clock, color: 'text-[hsl(var(--fxk-gold))]' },
+              { value: daysUntilNext !== null ? `${daysUntilNext}d` : '—', label: 'Próx. Evento', icon: CalendarDays, color: daysUntilNext !== null && daysUntilNext <= 3 ? 'text-accent' : 'text-primary' },
+            ].map((stat, i) => (
+              <Card key={stat.label} className="bg-card border-border/50 hover:border-primary/20 transition-colors animate-fxk-stagger" style={{ animationDelay: `${0.3 + i * 0.08}s` }}>
+                <CardContent className="p-3 flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-lg bg-muted/50 flex items-center justify-center shrink-0">
+                    <stat.icon className={`h-3.5 w-3.5 ${stat.color}`} />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold font-display text-foreground leading-none">{stat.value}</p>
+                    <p className="text-[9px] text-muted-foreground mt-0.5">{stat.label}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Recent Projects */}
+          <Card className="bg-card border-border/50 animate-fxk-stagger" style={{ animationDelay: '0.5s' }}>
+            <div className="p-3 pb-1 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FolderOpen className="h-3.5 w-3.5 text-primary" />
+                <span className="text-xs font-semibold text-foreground">Projetos</span>
+              </div>
+              <Button variant="ghost" size="sm" className="text-[10px] h-5 text-muted-foreground" onClick={() => navigate('/editor')}>
+                Todos
+              </Button>
+            </div>
+            <CardContent className="pt-0 pb-2 space-y-0.5">
+              {projects.length === 0 && (
+                <div className="py-6 text-center">
+                  <Rocket className="h-6 w-6 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-[10px] text-muted-foreground">Nenhum projeto.</p>
+                  <Button variant="outline" size="sm" className="mt-2 text-[10px] h-7" onClick={() => navigate('/editor')}>
+                    <Plus className="h-3 w-3 mr-1" /> Criar
+                  </Button>
+                </div>
+              )}
+              {projects.slice(0, 4).map((p) => (
+                <div
+                  key={p.id}
+                  className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/30 cursor-pointer transition-colors group"
+                  onClick={() => { localStorage.setItem('fxk-last-project', p.id); navigate('/editor'); }}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                      <Clapperboard className="h-3 w-3 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate group-hover:text-primary transition-colors">{p.name}</p>
+                      <p className="text-[9px] text-muted-foreground font-mono-code">
+                        {format(new Date(p.updated_at), 'dd/MM HH:mm')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Enter Editor CTA */}
+          <button
+            onClick={() => navigate('/editor')}
+            className="w-full group relative overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-accent/5 p-4 text-center transition-all duration-300 hover:border-primary/40 hover:shadow-[0_0_30px_hsl(var(--primary)/0.1)] active:scale-[0.98] animate-fxk-stagger"
+            style={{ animationDelay: '0.6s' }}
+          >
+            <Zap className="h-5 w-5 text-primary mx-auto mb-2 group-hover:scale-110 transition-transform" />
+            <p className="text-sm font-bold font-display text-foreground">Abrir Editor</p>
+            <p className="text-[9px] text-muted-foreground mt-0.5">Show Design Platform</p>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

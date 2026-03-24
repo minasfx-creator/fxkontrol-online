@@ -1,73 +1,70 @@
-# Welcome to your Lovable project
+# FX KONTROL — Drone & Fireworks Show Platform
 
-## Project info
+> **by Minas FX** · Next-Generation Autonomous Simulation & Show Design
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+---
 
-## How can I edit this code?
+## Architecture
 
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    FX KONTROL PLATFORM                       │
+│                       by Minas FX                            │
+├─────────────────────────────────────────────────────────────┤
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐   │
+│  │  Web Studio   │  │  GPU Engine   │  │  Show Orchestrator│  │
+│  │  React/Three  │  │  WebGL/WebGPU │  │  State Machine    │  │
+│  └──────┬───────┘  └──────┬───────┘  └────────┬─────────┘   │
+│  ┌──────┴──────────────────┴────────────────────┴──────────┐ │
+│  │              Flockwave Protocol (JSON-RPC)               │ │
+│  └──────┬──────────────────┬────────────────────┬──────────┘ │
+│  ┌──────┴───────┐  ┌──────┴───────┐  ┌────────┴─────────┐   │
+│  │  Swarm Core   │  │  Physics Sim  │  │  AI Choreography │  │
+│  │  (Rust/WASM)  │  │  (C++/WASM)   │  │  (Gemini/GPT)    │  │
+│  └──────────────┘  └──────────────┘  └──────────────────┘   │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐   │
+│  │  MAVLink Ctrl │  │  Digital Twin │  │  Kubernetes Mesh  │  │
+│  │  PX4/ArduPilot│  │  Terrain/Wind │  │  Distributed Sim  │  │
+│  └──────────────┘  └──────────────┘  └──────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-**Edit a file directly in GitHub**
+## Project Structure
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```
+fx-kontrol/
+├── frontend/               # Web Studio (this repo — React/Three.js)
+│   ├── src/components/     # 80+ editor panels, GPU effects
+│   ├── src/lib/            # Flockwave, physics, AI engines
+│   └── supabase/functions/ # Edge functions (MAVLink, Art-Net, SMPTE)
+├── swarm-core-rust/        # [Planned] WASM swarm engine
+├── physics-engine-cpp/     # [Planned] WASM physics
+├── ai/                     # Show generator, autonomy
+├── drone-control/mavlink/  # Hardware bridge (PX4/ArduPilot)
+├── simulation/             # Digital twin, WebGPU compute
+├── cluster/kubernetes/     # Distributed simulation
+└── tools/                  # Terrain importer, show exporter
+```
 
-**Use GitHub Codespaces**
+## Capabilities
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- **3D Viewport**: Three.js with bloom, ACES, 10K instanced drones
+- **GPU Particles**: HDR fireworks with thermal transitions, wind physics
+- **Show Control**: Flockwave v2 state machine, fleet management, geofence
+- **AI**: SwarmGPT formations, music-reactive choreography
+- **Export**: .skyc, .vviz, .kmz, CSV (Cobra/FireOne/Galaxis)
 
-## What technologies are used for this project?
+## Capacity: 10K drones, 100K GPU particles, SMPTE sync, MAVLink bridge
 
-This project is built with:
+## Getting Started
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```bash
+npm install && npm run dev
+```
 
-## How can I deploy this project?
+## About Minas FX
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+Brazilian technology company specializing in drone shows & pyrotechnics choreography.
+FX KONTROL is our flagship show design platform.
 
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+© 2024-2026 Minas FX. All rights reserved.

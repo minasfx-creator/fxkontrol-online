@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { X, Sparkles, Loader2, Wand2, Film, Send, Music, RotateCw, Layers, RefreshCw, Eye, Trash2, Copy, ChevronDown, ChevronRight, GripVertical, ArrowUp, ArrowDown, Image, Upload, Zap } from 'lucide-react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { X, Sparkles, Loader2, Wand2, Film, Send, Music, Layers, RefreshCw, Eye, Trash2, ChevronDown, ChevronRight, Image, Upload, Video, Grid3X3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -8,8 +8,18 @@ import { useProjectStore, type DroneFormation } from '@/store/useProjectStore';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import {
+  extractVideoFrames, extractGifFrames, framesToChoreography,
+  isGifFile, isVideoFile, type ExtractedFrame, type FrameFormation,
+} from '@/lib/videoToFormation';
+import {
+  generateFormation,
+  FORMATION_PRESETS,
+  type FormationType,
+  type FormationConfig,
+} from '@/lib/formations';
 
-type Mode = 'single' | 'full-show' | 'trajectory' | 'music-sync' | 'image';
+type Mode = 'presets' | 'single' | 'full-show' | 'music-sync' | 'image' | 'video';
 
 const QUICK_PROMPTS = [
   { emoji: '🌀', label: 'Vórtex Cibernético', prompt: 'vortex cibernético com espirais logarítmicas' },
@@ -146,6 +156,21 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
+  // Video/GIF state
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  const [videoFrames, setVideoFrames] = useState<ExtractedFrame[]>([]);
+  const [videoFps, setVideoFps] = useState(4);
+  const [videoThreshold, setVideoThreshold] = useState(128);
+  const [videoInvert, setVideoInvert] = useState(false);
+  const [videoTransitionDur, setVideoTransitionDur] = useState(5);
+  const [videoHoldDur, setVideoHoldDur] = useState(3);
+  const [videoDetectionMode, setVideoDetectionMode] = useState<'threshold' | 'edge' | 'adaptive'>('threshold');
+  const [videoBlurRadius, setVideoBlurRadius] = useState(0);
+  const [videoContrast, setVideoContrast] = useState(1);
+  const [videoEdgeSensitivity, setVideoEdgeSensitivity] = useState(50);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+
   const addDroneFormation = useProjectStore((s) => s.addDroneFormation);
   const addTimelineItem = useProjectStore((s) => s.addTimelineItem);
   const droneFormations = useProjectStore((s) => s.droneFormations);
@@ -222,6 +247,112 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
       setLoadingPhase('');
     }
   }, [imageBase64, prompt, droneCount, droneFormations, addDroneFormation, setCurrentTime]);
+
+  // ── Video/GIF Handlers ──────────────────────────────────────
+
+  const handleVideoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!isVideoFile(file) && !isGifFile(file)) {
+      toast.error('Formato não suportado', { description: 'Use MP4, WebM, MOV ou GIF' });
+      return;
+    }
+    setVideoFile(file);
+    setVideoPreviewUrl(URL.createObjectURL(file));
+    setMode('video');
+    setVideoFrames([]);
+
+    setLoading(true);
+    try {
+      const extractor = isGifFile(file) ? extractGifFrames : extractVideoFrames;
+      const frames = await extractor(file, {
+        fps: videoFps,
+        maxFrames: 60,
+        resolution: 128,
+        onProgress: (p, phase) => {
+          setProgress(Math.round(p * 100));
+          setLoadingPhase(phase);
+        },
+      });
+      setVideoFrames(frames);
+      toast.success(`${frames.length} frames extraídos`, { description: `${isGifFile(file) ? 'GIF' : 'Vídeo'} processado` });
+    } catch (err: any) {
+      toast.error('Erro ao extrair frames', { description: err.message });
+    } finally {
+      setLoading(false);
+      setLoadingPhase('');
+      setProgress(0);
+    }
+    if (videoInputRef.current) videoInputRef.current.value = '';
+  }, [videoFps]);
+
+  const generateFromVideo = useCallback(async () => {
+    if (videoFrames.length === 0) return;
+    setLoading(true);
+    setLoadingPhase('Convertendo frames em formações...');
+
+    try {
+      const choreography = await framesToChoreography(videoFrames, {
+        droneCount,
+        radius: Math.max(15, Math.sqrt(droneCount) * 2.2),
+        threshold: videoThreshold,
+        invertDetection: videoInvert,
+        detectionMode: videoDetectionMode,
+        blurRadius: videoBlurRadius,
+        contrastBoost: videoContrast,
+        edgeSensitivity: videoEdgeSensitivity,
+        holdDuration: videoHoldDur,
+        transitionDuration: videoTransitionDur,
+        height: 30,
+        color: '#00E5FF',
+        onProgress: (p) => {
+          setProgress(Math.round(p * 100));
+          setLoadingPhase(`Gerando formação ${Math.round(p * videoFrames.length)}/${videoFrames.length}`);
+        },
+      });
+
+      let time = droneFormations.length > 0
+        ? droneFormations[droneFormations.length - 1].startTime + droneFormations[droneFormations.length - 1].transitionDuration + droneFormations[droneFormations.length - 1].holdDuration
+        : 0;
+
+      for (const ff of choreography) {
+        addDroneFormation({
+          id: `vid-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+          formationType: 'video-traced',
+          droneCount,
+          height: 30,
+          radius: 20,
+          spacing: 2,
+          rotation: 0,
+          startTime: time,
+          transitionDuration: videoTransitionDur,
+          holdDuration: videoHoldDur,
+          color: '#00E5FF',
+          points: ff.points,
+        });
+        time += videoTransitionDur + videoHoldDur;
+      }
+
+      setCurrentTime(0);
+      setLastGeneratedPoints(choreography[0]?.points || []);
+      const totalDur = choreography.length * (videoTransitionDur + videoHoldDur);
+      setHistory(prev => [{
+        prompt: `🎬 ${videoFile?.name || 'Video'}`,
+        result: `${choreography.length} formações · ${droneCount} drones · ${totalDur.toFixed(0)}s`,
+        time: new Date().toLocaleTimeString(),
+        points: choreography[0]?.points || [],
+      }, ...prev.slice(0, 9)]);
+      toast.success(`Coreografia gerada do vídeo!`, {
+        description: `${choreography.length} formações · ${totalDur.toFixed(0)}s de show`,
+      });
+    } catch (err: any) {
+      toast.error('Erro ao gerar coreografia', { description: err.message });
+    } finally {
+      setLoading(false);
+      setLoadingPhase('');
+      setProgress(0);
+    }
+  }, [videoFrames, droneCount, videoThreshold, videoInvert, videoHoldDur, videoTransitionDur, videoDetectionMode, videoBlurRadius, videoContrast, videoEdgeSensitivity, droneFormations, addDroneFormation, setCurrentTime, videoFile]);
 
   const generateSingle = useCallback(async () => {
     if (!prompt.trim()) return;
@@ -444,6 +575,7 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
     if (mode === 'full-show') generateFullShow();
     else if (mode === 'music-sync') generateMusicSync();
     else if (mode === 'image') generateFromImage();
+    else if (mode === 'video') generateFromVideo();
     else generateSingle();
   };
 
@@ -454,18 +586,28 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const quickList = mode === 'full-show' ? SHOW_THEMES : mode === 'trajectory' ? TRAJECTORY_PRESETS : QUICK_PROMPTS;
+  const quickList = mode === 'full-show' ? SHOW_THEMES : QUICK_PROMPTS;
 
   return (
-    <div className="h-full flex flex-col bg-surface-0 border-l border-border">
-      {/* Header */}
-      <div className="flex items-center justify-between p-2 border-b border-border bg-surface-1">
-        <div className="flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-primary" />
-          <span className="text-[10px] font-bold font-mono-code text-foreground tracking-wider uppercase">
-            SwarmGPT
-          </span>
-          <span className="text-[8px] bg-primary/20 text-primary px-1 py-0.5 rounded font-mono-code">v6</span>
+    <div className="h-full flex flex-col border-l" style={{ background: 'hsl(165 8% 4%)', borderColor: 'hsl(165 20% 15%)' }}>
+      {/* Header — SWARM OPS 2.0 */}
+      <div className="flex items-center justify-between p-2" style={{
+        background: 'linear-gradient(135deg, hsl(165 15% 7%) 0%, hsl(165 8% 4%) 100%)',
+        borderBottom: '2px solid hsl(165 80% 30%)',
+      }}>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded flex items-center justify-center font-black text-white text-[8px]"
+            style={{ background: 'linear-gradient(135deg, hsl(165 100% 42%), hsl(165 80% 28%))' }}>
+            SW
+          </div>
+          <div>
+            <span className="text-[10px] font-black tracking-[0.2em] uppercase" style={{ color: 'hsl(165 80% 55%)' }}>
+              FXK-DRONES
+            </span>
+            <div className="text-[7px] font-mono tracking-wider" style={{ color: 'hsl(165 30% 35%)' }}>
+              SWARM OPS 2.0 · AI FORMATION
+            </div>
+          </div>
         </div>
         <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
           <X className="w-3.5 h-3.5" />
@@ -475,19 +617,21 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
       {/* Mode tabs */}
       <div className="flex border-b border-border">
         {([
-          { id: 'single' as Mode, label: 'Formação', icon: Wand2 },
+          { id: 'presets' as Mode, label: 'Presets', icon: Grid3X3 },
+          { id: 'single' as Mode, label: 'IA', icon: Wand2 },
           { id: 'full-show' as Mode, label: 'Show', icon: Film },
           { id: 'image' as Mode, label: 'Imagem', icon: Image },
+          { id: 'video' as Mode, label: 'Vídeo', icon: Video },
           { id: 'music-sync' as Mode, label: 'Music', icon: Music },
-          { id: 'trajectory' as Mode, label: 'Motion', icon: RotateCw },
         ]).map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setMode(id)}
             className={cn(
-              "flex-1 flex items-center justify-center gap-1 py-1.5 text-[8px] font-semibold uppercase transition-colors",
-              mode === id ? "text-primary border-b-2 border-primary bg-primary/5" : "text-muted-foreground hover:text-foreground"
+              "flex-1 flex items-center justify-center gap-1 py-1.5 text-[8px] font-bold uppercase tracking-wider transition-colors font-mono",
+              mode === id ? "border-b-2 bg-teal-500/8" : "text-muted-foreground hover:text-foreground"
             )}
+            style={mode === id ? { color: 'hsl(165 80% 55%)', borderColor: 'hsl(165 100% 42%)' } : undefined}
           >
             <Icon className="w-3 h-3" />
             {label}
@@ -504,6 +648,54 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
           </div>
           <Slider value={[droneCount]} onValueChange={([v]) => setDroneCount(v)} min={50} max={2000} step={10} />
         </div>
+
+        {/* ── Presets mode: geometric shapes ────────────────── */}
+        {mode === 'presets' && (
+          <div className="space-y-2">
+            <span className="text-[9px] text-muted-foreground font-semibold uppercase">Formas Geométricas</span>
+            <div className="grid grid-cols-2 gap-1">
+              {FORMATION_PRESETS.map((preset) => (
+                <button
+                  key={preset.type}
+                  onClick={() => {
+                    const config: FormationConfig = { type: preset.type, count: droneCount, radius: Math.max(10, Math.sqrt(droneCount) * 1.5), spacing: 2, rotation: 0 };
+                    const pts = generateFormation(config);
+                    const lastTime = droneFormations.length > 0
+                      ? droneFormations[droneFormations.length - 1].startTime + droneFormations[droneFormations.length - 1].transitionDuration + droneFormations[droneFormations.length - 1].holdDuration
+                      : 0;
+                    addDroneFormation({
+                      id: `preset-${Date.now()}`,
+                      formationType: preset.type,
+                      droneCount,
+                      height: 30,
+                      radius: config.radius,
+                      spacing: 2,
+                      rotation: 0,
+                      startTime: lastTime,
+                      transitionDuration: 12,
+                      holdDuration: 15,
+                      color: '#00E5FF',
+                      points: pts.map(p => ({ x: p.x, z: p.z })),
+                    });
+                    setCurrentTime(lastTime);
+                    setLastGeneratedPoints(pts);
+                    toast.success(`${preset.label} adicionada`, { description: `${pts.length} drones` });
+                  }}
+                  className={cn(
+                    "flex items-center gap-1.5 px-2 py-1.5 rounded-sm text-[9px] text-left transition-colors border",
+                    "border-border/50 bg-surface-2 hover:bg-surface-3 text-foreground hover:border-primary/30"
+                  )}
+                >
+                  <span className="text-sm">{preset.icon}</span>
+                  <span className="truncate">{preset.label}</span>
+                </button>
+              ))}
+            </div>
+            <p className="text-[8px] text-muted-foreground">
+              💡 Para parâmetros detalhados (raio, rotação, cor), use o Formation Builder (botão + na toolbar).
+            </p>
+          </div>
+        )}
 
         {/* Music sync options */}
         {mode === 'music-sync' && (
@@ -564,10 +756,163 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
+        {/* Video/GIF upload section */}
+        {mode === 'video' && (
+          <div className="space-y-2 p-2 rounded-sm border border-primary/20 bg-primary/5">
+            <div className="flex items-center gap-1">
+              <Video className="w-3 h-3 text-primary" />
+              <span className="text-[9px] font-semibold text-primary uppercase">Vídeo/GIF → Coreografia</span>
+            </div>
+            <input ref={videoInputRef} type="file" accept="video/*,image/gif" onChange={handleVideoUpload} className="hidden" />
+            
+            {videoPreviewUrl && videoFile ? (
+              <div className="relative">
+                {isGifFile(videoFile) ? (
+                  <img src={videoPreviewUrl} alt="GIF Preview" className="w-full h-28 object-contain rounded border border-border/30 bg-black/50" />
+                ) : (
+                  <video src={videoPreviewUrl} className="w-full h-28 object-contain rounded border border-border/30 bg-black/50" muted loop autoPlay playsInline />
+                )}
+                <button
+                  onClick={() => { setVideoFile(null); setVideoPreviewUrl(null); setVideoFrames([]); }}
+                  className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/60 flex items-center justify-center text-white/80 hover:text-white"
+                >
+                  <X className="w-2.5 h-2.5" />
+                </button>
+                <div className="absolute bottom-1 left-1 bg-black/70 px-1.5 py-0.5 rounded text-[7px] text-white/80 font-mono">
+                  {videoFrames.length} frames
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => videoInputRef.current?.click()}
+                className="w-full h-24 rounded border-2 border-dashed border-primary/30 flex flex-col items-center justify-center gap-1 hover:border-primary/50 transition-colors"
+              >
+                <Video className="w-5 h-5 text-primary/50" />
+                <span className="text-[8px] text-primary/70">Envie um vídeo ou GIF</span>
+                <span className="text-[7px] text-muted-foreground">MP4, WebM, MOV, GIF — cada frame vira uma formação</span>
+              </button>
+            )}
+
+            {/* Frame thumbnails */}
+            {videoFrames.length > 0 && (
+              <div className="space-y-1">
+                <span className="text-[8px] text-muted-foreground font-semibold">Frames Extraídos ({videoFrames.length})</span>
+                <div className="flex gap-0.5 overflow-x-auto pb-1">
+                  {videoFrames.slice(0, 20).map((f, i) => (
+                    <img key={i} src={f.thumbnail} alt={`Frame ${i}`} className="w-8 h-8 rounded-sm border border-border/30 flex-shrink-0 object-cover" />
+                  ))}
+                  {videoFrames.length > 20 && (
+                    <div className="w-8 h-8 rounded-sm border border-border/30 flex-shrink-0 flex items-center justify-center bg-surface-2 text-[7px] text-muted-foreground">
+                      +{videoFrames.length - 20}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Settings */}
+            <div className="space-y-1.5">
+              {/* Detection mode selector */}
+              <div className="space-y-1">
+                <span className="text-[8px] text-muted-foreground font-semibold">Modo de Detecção</span>
+                <div className="grid grid-cols-3 gap-0.5">
+                  {([
+                    { id: 'threshold' as const, label: 'Threshold', emoji: '◐' },
+                    { id: 'edge' as const, label: 'Bordas', emoji: '▢' },
+                    { id: 'adaptive' as const, label: 'Adaptativo', emoji: '◑' },
+                  ]).map(m => (
+                    <button
+                      key={m.id}
+                      onClick={() => setVideoDetectionMode(m.id)}
+                      className={cn(
+                        "text-[7px] py-1 rounded border transition-colors",
+                        videoDetectionMode === m.id
+                          ? "border-primary/40 bg-primary/10 text-primary"
+                          : "border-border/50 bg-surface-2 text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {m.emoji} {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] text-muted-foreground">FPS extração</span>
+                <span className="text-[9px] font-mono-code text-foreground">{videoFps}</span>
+              </div>
+              <Slider value={[videoFps]} onValueChange={([v]) => setVideoFps(v)} min={1} max={15} step={1} />
+
+              {/* Blur */}
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] text-muted-foreground">Blur (suavização)</span>
+                <span className="text-[9px] font-mono-code text-foreground">{videoBlurRadius}px</span>
+              </div>
+              <Slider value={[videoBlurRadius]} onValueChange={([v]) => setVideoBlurRadius(v)} min={0} max={8} step={1} />
+
+              {/* Contrast */}
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] text-muted-foreground">Contraste</span>
+                <span className="text-[9px] font-mono-code text-foreground">{videoContrast.toFixed(1)}x</span>
+              </div>
+              <Slider value={[videoContrast]} onValueChange={([v]) => setVideoContrast(v)} min={0.5} max={4} step={0.1} />
+
+              {/* Mode-specific controls */}
+              {videoDetectionMode === 'threshold' && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[8px] text-muted-foreground">Threshold (brilho)</span>
+                    <span className="text-[9px] font-mono-code text-foreground">{videoThreshold}</span>
+                  </div>
+                  <Slider value={[videoThreshold]} onValueChange={([v]) => setVideoThreshold(v)} min={30} max={230} step={5} />
+                </>
+              )}
+
+              {videoDetectionMode === 'edge' && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[8px] text-muted-foreground">Sensibilidade bordas</span>
+                    <span className="text-[9px] font-mono-code text-foreground">{videoEdgeSensitivity}%</span>
+                  </div>
+                  <Slider value={[videoEdgeSensitivity]} onValueChange={([v]) => setVideoEdgeSensitivity(v)} min={5} max={100} step={5} />
+                </>
+              )}
+
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] text-muted-foreground">Transição (s)</span>
+                <span className="text-[9px] font-mono-code text-foreground">{videoTransitionDur}s</span>
+              </div>
+              <Slider value={[videoTransitionDur]} onValueChange={([v]) => setVideoTransitionDur(v)} min={1} max={20} step={0.5} />
+
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] text-muted-foreground">Hold (s)</span>
+                <span className="text-[9px] font-mono-code text-foreground">{videoHoldDur}s</span>
+              </div>
+              <Slider value={[videoHoldDur]} onValueChange={([v]) => setVideoHoldDur(v)} min={1} max={15} step={0.5} />
+
+              {videoDetectionMode !== 'adaptive' && (
+                <button
+                  onClick={() => setVideoInvert(!videoInvert)}
+                  className={cn(
+                    "w-full text-[8px] py-1 rounded border transition-colors",
+                    videoInvert ? "border-primary/40 bg-primary/10 text-primary" : "border-border/50 bg-surface-2 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {videoInvert ? '✓ Detectar pixels claros' : 'Detectar pixels escuros'}
+                </button>
+              )}
+            </div>
+
+            <p className="text-[7px] text-muted-foreground">
+              <strong>Threshold:</strong> corte por brilho · <strong>Bordas:</strong> detecta contornos (Sobel) · <strong>Adaptativo:</strong> auto-ajuste local
+            </p>
+          </div>
+        )}
+
         {/* Quick prompts */}
-        <div className="space-y-1">
-          <span className="text-[9px] text-muted-foreground font-semibold uppercase">
-            {mode === 'full-show' ? 'Temas de Show' : mode === 'trajectory' ? 'Movimentos' : mode === 'music-sync' ? 'Estilos Musicais' : 'Prompts Rápidos'}
+        {mode !== 'video' && mode !== 'presets' && <div className="space-y-1">
+          <span className="text-[9px] font-mono font-bold uppercase tracking-[0.15em]" style={{ color: 'hsl(165 50% 45%)' }}>
+            {mode === 'full-show' ? 'MISSION THEMES' : mode === 'music-sync' ? 'SYNC PROFILES' : 'QUICK DEPLOY'}
           </span>
           <div className="grid grid-cols-2 gap-1">
             {quickList.map((q) => (
@@ -576,56 +921,60 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
                 onClick={() => setPrompt(q.prompt)}
                 disabled={loading}
                 className={cn(
-                  "flex items-center gap-1 px-1.5 py-1 rounded-sm text-[8px] text-left transition-colors border",
+                  "flex items-center gap-1 px-1.5 py-1 rounded-sm text-[8px] text-left transition-colors border font-mono",
                   prompt === q.prompt
-                    ? "border-primary/40 bg-primary/10 text-primary"
-                    : "border-border/50 bg-surface-2 hover:bg-surface-3 text-muted-foreground hover:text-foreground"
+                    ? "border-teal-500/40 bg-teal-500/10 text-teal-300"
+                    : "border-teal-500/10 bg-surface-2 hover:bg-surface-3 text-muted-foreground hover:text-foreground hover:border-teal-500/20"
                 )}
               >
                 <span className="text-sm">{q.emoji}</span>
-                <span className="truncate">{q.label}</span>
+                <span className="truncate uppercase tracking-wider">{q.label}</span>
               </button>
             ))}
           </div>
-        </div>
+        </div>}
 
         {/* Prompt input */}
-        <Textarea
-          placeholder={
-            mode === 'full-show' ? "Descreva o tema do show completo..."
-            : mode === 'music-sync' ? "Descreva o estilo visual sincronizado com a música..."
-            : mode === 'trajectory' ? "Descreva o padrão de movimento..."
-            : mode === 'image' ? "(Opcional) Descreva o que extrair da imagem..."
-            : "Descreva a formação..."
-          }
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !loading) {
-              e.preventDefault();
-              handleGenerate();
+        {mode !== 'video' && mode !== 'presets' && <div className="space-y-1">
+          <span className="text-[7px] font-mono font-bold uppercase tracking-[0.2em]" style={{ color: 'hsl(165 50% 40%)' }}>MISSION BRIEF</span>
+          <Textarea
+            placeholder={
+              mode === 'full-show' ? "Descreva o tema do show completo..."
+              : mode === 'music-sync' ? "Descreva o estilo visual sincronizado com a música..."
+              : mode === 'image' ? "(Opcional) Descreva o que extrair da imagem..."
+              : "Descreva a formação..."
             }
-          }}
-          className="h-16 text-[10px] bg-surface-2 border-border resize-none"
-        />
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !loading) {
+                e.preventDefault();
+                handleGenerate();
+              }
+            }}
+            className="h-16 text-[10px] bg-surface-2 resize-none font-mono"
+            style={{ borderColor: 'hsl(165 30% 20%)' }}
+          />
+        </div>}
 
         {/* Generate + Preview buttons */}
-        <div className="flex gap-1">
+        {mode !== 'presets' && <div className="flex gap-1">
           <Button
             onClick={handleGenerate}
-            disabled={loading || (mode !== 'image' && !prompt.trim()) || (mode === 'image' && !imageBase64)}
-            className="flex-1 h-8 text-[10px] gap-1"
+            disabled={loading || (mode === 'video' ? videoFrames.length === 0 : mode === 'image' ? !imageBase64 : !prompt.trim())}
+            className="flex-1 h-8 text-[10px] gap-1 font-mono font-bold uppercase tracking-wider"
             size="sm"
+            style={{ background: loading ? 'hsl(165 30% 15%)' : 'hsl(165 50% 25%)', color: 'hsl(165 100% 80%)' }}
           >
             {loading ? (
               <>
-                <Loader2 className="w-3 h-3 animate-spin" />
-                {loadingPhase}
+                <Loader2 className="w-3 h-3 animate-spin" style={{ color: 'hsl(165 100% 50%)' }} />
+                COMPUTING TRAJECTORIES...
               </>
             ) : (
               <>
                 <Send className="w-3 h-3" />
-                {mode === 'full-show' ? 'Gerar Show' : mode === 'music-sync' ? 'Music Sync' : mode === 'trajectory' ? 'Gerar Motion' : mode === 'image' ? '📷 Gerar da Imagem' : 'Gerar'} ({droneCount})
+                {mode === 'full-show' ? 'DEPLOY SHOW' : mode === 'music-sync' ? 'SYNC DEPLOY' : mode === 'image' ? 'IMAGE TRACE' : mode === 'video' ? 'VIDEO TRACE' : 'DEPLOY'} ({droneCount})
               </>
             )}
           </Button>
@@ -640,8 +989,8 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
               <Eye className="w-3 h-3" />
             </Button>
           )}
-        </div>
-        <p className="text-[8px] text-muted-foreground">Ctrl+Enter para gerar</p>
+        </div>}
+        {mode !== 'presets' && <p className="text-[8px] text-muted-foreground">Ctrl+Enter para gerar</p>}
 
         {/* 2D Preview of last generation */}
         {lastGeneratedPoints.length > 0 && (
@@ -741,18 +1090,12 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
                         {/* Actions */}
                         <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                           {idx > 0 && (
-                            <button onClick={(e) => { e.stopPropagation(); reorderDroneFormation(idx, idx - 1); }} className="text-muted-foreground hover:text-primary">
-                              <ArrowUp className="w-2.5 h-2.5" />
-                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); reorderDroneFormation(idx, idx - 1); }} className="text-muted-foreground hover:text-primary text-[8px]">↑</button>
                           )}
                           {idx < droneFormations.length - 1 && (
-                            <button onClick={(e) => { e.stopPropagation(); reorderDroneFormation(idx, idx + 1); }} className="text-muted-foreground hover:text-primary">
-                              <ArrowDown className="w-2.5 h-2.5" />
-                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); reorderDroneFormation(idx, idx + 1); }} className="text-muted-foreground hover:text-primary text-[8px]">↓</button>
                           )}
-                          <button onClick={(e) => { e.stopPropagation(); duplicateDroneFormation(f.id); }} className="text-muted-foreground hover:text-primary">
-                            <Copy className="w-2.5 h-2.5" />
-                          </button>
+                          <button onClick={(e) => { e.stopPropagation(); duplicateDroneFormation(f.id); }} className="text-muted-foreground hover:text-primary text-[8px]">📋</button>
                           <button onClick={(e) => { e.stopPropagation(); removeDroneFormation(f.id); }} className="text-muted-foreground hover:text-destructive">
                             <Trash2 className="w-2.5 h-2.5" />
                           </button>

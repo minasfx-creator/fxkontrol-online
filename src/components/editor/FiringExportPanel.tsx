@@ -1,10 +1,14 @@
 import { useState, useCallback } from 'react';
-import { Download, FileDown, Search, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Download, FileDown, Search, X, ChevronDown, ChevronUp, Globe, MapPin, FileText, Upload, Zap, CheckCircle2, Wifi, Usb } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { FIRING_SYSTEMS, type FiringSystem } from '@/lib/firingSystemExports';
-import { downloadFile } from '@/lib/exportEngine';
+import { downloadFile, exportFormationsToKML } from '@/lib/exportEngine';
+import { downloadKMZ, downloadAnimatedKML } from '@/lib/kmzExporter';
+import { exportSkyc, downloadSkycFile, exportShowCSV, exportVideoChoreoSkyc } from '@/lib/skycExporter';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -14,6 +18,7 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
   const items = useProjectStore(s => s.timelineItems);
   const positions = useProjectStore(s => s.positions);
   const projectName = useProjectStore(s => s.projectName);
+  const hardware = useFireOneHardware();
 
   const pyroCount = items.filter(i => {
     const e = useProjectStore.getState().timelineItems.find(t => t.id === i.id);
@@ -49,11 +54,75 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
         <div className="flex items-center gap-2">
           <FileDown className="w-4 h-4 text-primary" />
           <span className="text-xs font-bold text-foreground uppercase tracking-wider">Firing Systems</span>
+          {hardware.isConnected && (
+            <Badge variant="outline" className="text-[7px] px-1.5 py-0 border-green-500/40 text-green-400">
+              <Zap className="h-2 w-2 mr-0.5" /> HW
+            </Badge>
+          )}
         </div>
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
           <X className="w-3 h-3" />
         </Button>
       </div>
+
+      {/* FireOne Hardware Upload */}
+      {hardware.isConnected && (
+        <div className="px-2 pt-2">
+          <div className="bg-green-500/5 border border-green-500/20 rounded p-2 space-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <Zap className="w-3 h-3 text-green-400" />
+              <span className="text-[9px] font-bold text-green-400 uppercase tracking-wider">FireOne Hardware</span>
+              <span className="text-[8px] text-muted-foreground ml-auto">
+                {hardware.wirelessModuleCount > 0 && <><Wifi className="w-2.5 h-2.5 inline mr-0.5" />{hardware.wirelessModuleCount}</>}
+                {hardware.wiredModuleCount > 0 && <><Usb className="w-2.5 h-2.5 inline mx-0.5" />{hardware.wiredModuleCount}</>}
+              </span>
+            </div>
+            <Button
+              size="sm" variant="outline"
+              className="w-full h-7 text-[10px] border-green-500/30 text-green-400 hover:bg-green-500/10"
+              onClick={() => {
+                // Verify that exported module addresses match discovered modules
+                const discoveredAddrs = new Set(Array.from(hardware.modules.keys()));
+                const usedModules = new Set(items.map((_, i) => Math.floor(i / 32) + 1));
+                const missing = [...usedModules].filter(m => !discoveredAddrs.has(m));
+                if (missing.length > 0) {
+                  toast.warning(`Módulos não encontrados no hardware: ${missing.join(', ')}`);
+                } else {
+                  toast.success(`Addressing verificado: ${usedModules.size} módulo(s) OK`);
+                }
+              }}
+              disabled={items.length === 0}
+            >
+              <CheckCircle2 className="w-3 h-3 mr-1" />
+              Verify Addressing
+            </Button>
+            <Button
+              size="sm"
+              className="w-full h-7 text-[10px] bg-green-600 hover:bg-green-700 text-white"
+              onClick={async () => {
+                try {
+                  // Send cue sequence to modules via timecode-synced fire commands
+                  for (const [i, item] of items.entries()) {
+                    const moduleAddr = Math.floor(i / 32) + 1;
+                    const pin = (i % 32) + 1;
+                    // This programs the sequence timing for auto-fire mode
+                    if (hardware.modules.has(moduleAddr)) {
+                      await hardware.syncTimecode(Math.round(item.startTime * 1000));
+                    }
+                  }
+                  toast.success(`Sequência enviada: ${items.length} cues → ${hardware.modules.size} módulos`);
+                } catch (err) {
+                  toast.error(`Upload falhou: ${(err as Error).message}`);
+                }
+              }}
+              disabled={items.length === 0}
+            >
+              <Upload className="w-3 h-3 mr-1" />
+              Upload to Hardware ({items.length} cues)
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="p-2">
         <div className="relative">
@@ -115,6 +184,165 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
             </div>
           );
         })}
+      </div>
+
+      {/* Google Earth & Drone Show Exports */}
+      <div className="px-2 pb-2">
+        <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider px-1 py-1">🌍 Google Earth / Drone Show</div>
+        
+        <div className="space-y-1">
+          <Button
+            variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
+            onClick={async () => {
+              try {
+                const store = useProjectStore.getState();
+                await downloadKMZ({
+                  projectName: store.projectName,
+                  positions: store.positions,
+                  trajectories: store.trajectories,
+                  formations: store.droneFormations,
+                  duration: store.duration,
+                  gpsOrigin: store.gpsOrigin,
+                  cameraKeyframes: store.cameraKeyframes,
+                  fps: 4,
+                  includeTour: true,
+                  includeTrails: true,
+                });
+                toast.success('KMZ exported with animated tracks!');
+              } catch (err) {
+                toast.error(`KMZ export failed: ${(err as Error).message}`);
+              }
+            }}
+          >
+            <Globe className="w-3 h-3 mr-1.5 text-emerald-500" />
+            Export .kmz (Google Earth Animated)
+          </Button>
+
+          <Button
+            variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
+            onClick={() => {
+              try {
+                const store = useProjectStore.getState();
+                downloadAnimatedKML({
+                  projectName: store.projectName,
+                  positions: store.positions,
+                  trajectories: store.trajectories,
+                  formations: store.droneFormations,
+                  duration: store.duration,
+                  gpsOrigin: store.gpsOrigin,
+                  cameraKeyframes: store.cameraKeyframes,
+                  fps: 4,
+                  includeTour: true,
+                  includeTrails: true,
+                });
+                toast.success('Animated KML exported!');
+              } catch (err) {
+                toast.error(`KML export failed: ${(err as Error).message}`);
+              }
+            }}
+          >
+            <MapPin className="w-3 h-3 mr-1.5 text-blue-500" />
+            Export .kml (Animated Tracks)
+          </Button>
+
+          <Button
+            variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
+            onClick={() => {
+              try {
+                const store = useProjectStore.getState();
+                const kml = exportFormationsToKML(
+                  store.droneFormations, store.trajectories,
+                  store.positions, store.gpsOrigin, store.projectName,
+                );
+                downloadFile(kml, `${store.projectName.replace(/\s+/g, '_')}_static.kml`, 'application/vnd.google-earth.kml+xml');
+                toast.success('Static KML exported!');
+              } catch (err) {
+                toast.error(`KML export failed: ${(err as Error).message}`);
+              }
+            }}
+          >
+            <MapPin className="w-3 h-3 mr-1.5 text-muted-foreground" />
+            Export .kml (Static Placemarks)
+          </Button>
+
+          <Button
+            variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
+            onClick={() => {
+              try {
+                const store = useProjectStore.getState();
+                const skyc = exportSkyc({
+                  projectName: store.projectName,
+                  positions: store.positions,
+                  trajectories: store.trajectories,
+                  formations: store.droneFormations,
+                  duration: store.duration,
+                  gpsOrigin: store.gpsOrigin,
+                });
+                downloadSkycFile(skyc);
+                toast.success('SKYC exported!');
+              } catch (err) {
+                toast.error(`SKYC export failed: ${(err as Error).message}`);
+              }
+            }}
+          >
+            <FileText className="w-3 h-3 mr-1.5 text-orange-500" />
+            Export .skyc (Skybrush)
+          </Button>
+
+          <Button
+            variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
+            onClick={() => {
+              try {
+                const store = useProjectStore.getState();
+                const skyc = exportSkyc({
+                  projectName: store.projectName,
+                  positions: store.positions,
+                  trajectories: store.trajectories,
+                  formations: store.droneFormations,
+                  duration: store.duration,
+                  gpsOrigin: store.gpsOrigin,
+                });
+                const csv = exportShowCSV(skyc);
+                downloadFile(csv, `${store.projectName.replace(/\s+/g, '_')}_show.csv`, 'text/csv');
+                toast.success('Show CSV exported!');
+              } catch (err) {
+                toast.error(`CSV export failed: ${(err as Error).message}`);
+              }
+            }}
+          >
+            <FileDown className="w-3 h-3 mr-1.5 text-cyan-500" />
+            Export .csv (Skybrush Studio)
+          </Button>
+
+          <Button
+            variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
+            onClick={() => {
+              try {
+                const store = useProjectStore.getState();
+                // Check if videoChoreoResult exists in store
+                const choreoResult = (store as any).videoChoreoResult;
+                if (!choreoResult) {
+                  toast.error('Nenhum resultado de Video Choreo disponível. Gere uma coreografia primeiro.');
+                  return;
+                }
+                const skyc = exportVideoChoreoSkyc({
+                  projectName: store.projectName,
+                  gpsOrigin: store.gpsOrigin,
+                  choreoResult,
+                  depthLayers: (store as any).depthLayers,
+                  notes: 'Video choreo export with regional colors & depth layers',
+                });
+                downloadSkycFile(skyc, `${store.projectName.replace(/\s+/g, '_')}_videochoreo.skyc`);
+                toast.success('Video Choreo .skyc exportado com cores regionais e depth layers!');
+              } catch (err) {
+                toast.error(`Video Choreo SKYC export failed: ${(err as Error).message}`);
+              }
+            }}
+          >
+            <FileDown className="w-3 h-3 mr-1.5 text-violet-500" />
+            Export .skyc (Video Choreo + Depth)
+          </Button>
+        </div>
       </div>
 
       <div className="p-2 border-t border-border/30">

@@ -1,12 +1,25 @@
+import React, { useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useProjectStore, CameraKeyframe } from '@/store/useProjectStore';
-import { useRef } from 'react';
+import { useSceneStore, type CameraInterpMode } from '@/store/useSceneStore';
 import * as THREE from 'three';
 
 /**
  * Catmull-Rom spline interpolation for camera keyframes.
+ * 4 interpolation modes from ShowSim 3D: Linear, Accelerated, Decelerated, Acc/Dec
  * Runs inside the R3F render loop—smoothly animates position, lookAt, FOV.
  */
+
+// ═══ ShowSim-style interpolation easing functions ═══
+function applyInterpolationMode(t: number, mode: CameraInterpMode): number {
+  switch (mode) {
+    case 'linear': return t;
+    case 'accelerated': return t * t; // ease-in (quadratic)
+    case 'decelerated': return 1 - (1 - t) * (1 - t); // ease-out (quadratic)
+    case 'acc-dec': return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; // ease-in-out
+    default: return t;
+  }
+}
 
 function catmullRom(p0: number, p1: number, p2: number, p3: number, t: number): number {
   const t2 = t * t;
@@ -70,7 +83,7 @@ function interpolateFov(kfs: CameraKeyframe[], time: number): number {
   return catmullRom(p0, p1, p2, p3, t);
 }
 
-export default function CameraAnimator() {
+const CameraAnimator = React.forwardRef<any>(function CameraAnimator(_props, _ref) {
   const { camera } = useThree();
   const lookAtTarget = useRef(new THREE.Vector3());
 
@@ -93,7 +106,9 @@ export default function CameraAnimator() {
   });
 
   return null;
-}
+});
+
+export default CameraAnimator;
 
 /** Visualize the camera path as a 3D spline in the scene */
 export function CameraPathPreview() {

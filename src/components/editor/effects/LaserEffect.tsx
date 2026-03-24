@@ -1,11 +1,14 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { getThreeBlending } from '@/lib/niagaraBlenderRules';
 
 /**
- * Laser Effect: ILDA-style laser beams with scanning patterns.
- * Supports fan, harp, tunnel, cone, and single beam modes.
+ * LaserFX Pro — Ultra-volumetric ILDA-style laser beams.
+ * Enhanced with wider glow planes, brighter cores, atmospheric cone,
+ * and source halo for concert-grade volumetric look.
  */
+
 export default function LaserEffect({
   position,
   color,
@@ -16,19 +19,12 @@ export default function LaserEffect({
   position: [number, number, number];
   color: string;
   progress: number;
-  pattern?: 'fan' | 'harp' | 'tunnel' | 'cone' | 'single';
+  pattern?: 'fan' | 'harp' | 'tunnel' | 'cone' | 'single' | 'wave' | 'grid';
   beamCount?: number;
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
-
-  const beamGeos = useMemo(() => {
-    const geos: { dir: THREE.Vector3; offset: THREE.Vector3 }[] = [];
-    for (let i = 0; i < beamCount; i++) {
-      geos.push({ dir: new THREE.Vector3(), offset: new THREE.Vector3() });
-    }
-    return geos;
-  }, [beamCount]);
+  const beamLength = pattern === 'single' ? 160 : pattern === 'tunnel' || pattern === 'cone' ? 100 : 140;
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
@@ -36,65 +32,259 @@ export default function LaserEffect({
     const intensity = progress < 0.05 ? progress / 0.05 : progress > 0.9 ? (1 - progress) / 0.1 : 1;
 
     const children = groupRef.current.children;
-    for (let i = 0; i < beamCount; i++) {
-      const beam = children[i] as THREE.Mesh;
-      if (!beam) continue;
+    const totalBeams = pattern === 'grid' ? beamCount * beamCount : beamCount;
 
-      let angle: number, tilt: number, ox = 0;
+    for (let idx = 0; idx < totalBeams; idx++) {
+      const beamGroup = children[idx] as THREE.Group;
+      if (!beamGroup || beamGroup.children.length < 3) continue;
+
+      let beamIntensity = 1;
 
       switch (pattern) {
-        case 'fan':
-          angle = ((i / beamCount) - 0.5) * Math.PI * 0.7 + Math.sin(time * 0.3) * 0.1;
-          beam.position.set(0, 0, 0);
-          beam.rotation.set(0, 0, angle);
+        case 'fan': {
+          const t = beamCount === 1 ? 0 : (idx / (beamCount - 1)) - 0.5;
+          const angle = t * Math.PI * 0.75 + Math.sin(time * 0.4) * 0.06;
+          beamGroup.position.set(0, 0, 0);
+          beamGroup.rotation.set(0, 0, angle);
+          beamIntensity = 1 - Math.abs(t) * 0.2;
           break;
-        case 'harp':
-          ox = ((i / beamCount) - 0.5) * 6;
-          beam.position.set(ox, 0, 0);
-          beam.rotation.set(0, 0, 0);
+        }
+        case 'harp': {
+          const ox = ((idx / beamCount) - 0.5) * 10;
+          beamGroup.position.set(ox, 0, 0);
+          beamGroup.rotation.set(0, 0, Math.sin(time * 0.6 + idx * 0.4) * 0.02);
           break;
-        case 'tunnel':
-          angle = (i / beamCount) * Math.PI * 2 + time * 1.5;
-          tilt = 0.25;
-          beam.position.set(0, 0, 0);
-          beam.rotation.set(Math.cos(angle) * tilt, 0, Math.sin(angle) * tilt);
+        }
+        case 'tunnel': {
+          const angle = (idx / beamCount) * Math.PI * 2 + time * 1.2;
+          const tilt = 0.25 + Math.sin(time * 0.6) * 0.06;
+          beamGroup.position.set(0, 0, 0);
+          beamGroup.rotation.set(Math.cos(angle) * tilt, 0, Math.sin(angle) * tilt);
+          beamIntensity = 0.75 + Math.sin(angle * 2 + time * 1.5) * 0.25;
           break;
-        case 'cone':
-          angle = (i / beamCount) * Math.PI * 2 + time * 0.5;
-          tilt = 0.3 + Math.sin(time * 2 + i) * 0.1;
-          beam.position.set(0, 0, 0);
-          beam.rotation.set(Math.cos(angle) * tilt, 0, Math.sin(angle) * tilt);
+        }
+        case 'cone': {
+          const angle = (idx / beamCount) * Math.PI * 2 + time * 0.7;
+          const tilt = 0.35 + Math.sin(time * 1.5 + idx) * 0.1;
+          beamGroup.position.set(0, 0, 0);
+          beamGroup.rotation.set(Math.cos(angle) * tilt, 0, Math.sin(angle) * tilt);
           break;
-        default:
-          beam.position.set(0, 0, 0);
-          beam.rotation.set(Math.sin(time) * 0.2, 0, Math.cos(time * 0.7) * 0.15);
+        }
+        case 'wave': {
+          const phase = (idx / beamCount) * Math.PI * 2;
+          const waveAngle = Math.sin(time * 1.2 + phase) * 0.4;
+          const ox = ((idx / beamCount) - 0.5) * 10;
+          beamGroup.position.set(ox, 0, 0);
+          beamGroup.rotation.set(0, 0, waveAngle);
+          beamIntensity = 0.6 + Math.sin(phase + time * 2.5) * 0.4;
+          break;
+        }
+        case 'grid': {
+          const cols = beamCount;
+          const row = Math.floor(idx / cols);
+          const col = idx % cols;
+          const spacing = 1.8;
+          const ox = (col - (cols - 1) / 2) * spacing;
+          const oz = (row - (cols - 1) / 2) * spacing;
+          const pulse = Math.sin(time * 2.5 + col * 0.6 + row * 0.8) * 0.5 + 0.5;
+          beamGroup.position.set(ox, 0, oz);
+          beamGroup.rotation.set(0, 0, 0);
+          beamIntensity = pulse;
+          break;
+        }
+        default: {
+          beamGroup.position.set(0, 0, 0);
+          beamGroup.rotation.set(
+            Math.sin(time * 0.6) * 0.18,
+            0,
+            Math.cos(time * 0.4) * 0.15,
+          );
+          break;
+        }
       }
 
-      const mat = beam.material as THREE.MeshBasicMaterial;
-      mat.opacity = 0.15 * intensity;
+      const finalOpacity = intensity * beamIntensity;
+
+      // Core — ultra-bright thin beam (pushes above 1.0 for HDR bloom catch)
+      const core = beamGroup.children[0] as THREE.Mesh;
+      if (core) {
+        const mat = core.material as THREE.MeshBasicMaterial;
+        mat.opacity = 0.85 * finalOpacity;
+        mat.color.copy(baseColor).multiplyScalar(3.0); // HDR push - extended
+      }
+
+      // Inner glow
+      const glow1 = beamGroup.children[1] as THREE.Mesh;
+      if (glow1) (glow1.material as THREE.MeshBasicMaterial).opacity = 0.28 * finalOpacity;
+
+      // Outer glow
+      const glow2 = beamGroup.children[2] as THREE.Mesh;
+      if (glow2) (glow2.material as THREE.MeshBasicMaterial).opacity = 0.13 * finalOpacity;
+
+      // Wide atmospheric glow
+      const atmo = beamGroup.children[3] as THREE.Mesh;
+      if (atmo) (atmo.material as THREE.MeshBasicMaterial).opacity = 0.06 * finalOpacity;
+    }
+
+    // Source halo — intensified HDR emitter
+    const haloIdx = totalBeams;
+    const halo = children[haloIdx] as THREE.Mesh;
+    if (halo) {
+      const mat = halo.material as THREE.MeshBasicMaterial;
+      mat.opacity = 0.85 * intensity;
+      mat.color.copy(baseColor).multiplyScalar(3.0); // Strong HDR for bloom
+      const sc = 1.5 + Math.sin(time * 5) * 0.2;
+      halo.scale.setScalar(sc);
+    }
+
+    // Outer halo
+    const outerHalo = children[haloIdx + 1] as THREE.Mesh;
+    if (outerHalo) {
+      (outerHalo.material as THREE.MeshBasicMaterial).opacity = 0.12 * intensity;
+    }
+
+    // Ground scatter
+    const scatter = children[haloIdx + 2] as THREE.Mesh;
+    if (scatter) {
+      (scatter.material as THREE.MeshBasicMaterial).opacity = 0.08 * intensity;
+    }
+
+    // Atmospheric cone
+    const cone = children[haloIdx + 3] as THREE.Mesh;
+    if (cone) {
+      (cone.material as THREE.MeshBasicMaterial).opacity = 0.025 * intensity;
+      cone.rotation.y = time * 0.1;
     }
   });
 
-  const beamLength = 80;
+  const totalBeams = pattern === 'grid' ? beamCount * beamCount : beamCount;
+  const hardLightBlend = useMemo(() => getThreeBlending('hard-light'), []);
+  const screenBlend = useMemo(() => getThreeBlending('screen'), []);
 
   return (
     <group position={position} ref={groupRef}>
-      {Array.from({ length: beamCount }).map((_, i) => (
-        <mesh key={i}>
-          <cylinderGeometry args={[0.008, 0.015, beamLength, 4]} />
-          <meshBasicMaterial
-            color={color}
-            transparent
-            opacity={0.15}
-            blending={THREE.AdditiveBlending}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
+      {/* Beam array */}
+      {Array.from({ length: totalBeams }).map((_, i) => (
+        <group key={i}>
+          {/* Core beam — Hard Light (laser-grade) */}
+          <mesh position={[0, beamLength / 2, 0]}>
+            <cylinderGeometry args={[0.004, 0.018, beamLength, 4]} />
+            <meshBasicMaterial
+              color={color}
+              transparent opacity={0.7}
+              blending={hardLightBlend.blending}
+              blendEquation={hardLightBlend.blendEquation}
+              blendSrc={hardLightBlend.blendSrc as any}
+              blendDst={hardLightBlend.blendDst as any}
+              side={THREE.DoubleSide}
+              depthWrite={false}
+              toneMapped={false}
+            />
+          </mesh>
+          {/* Inner glow plane — Screen (haze) */}
+          <mesh position={[0, beamLength / 2, 0]}>
+            <planeGeometry args={[0.2, beamLength]} />
+            <meshBasicMaterial
+              color={color}
+              transparent opacity={0.22}
+              blending={screenBlend.blending}
+              blendEquation={screenBlend.blendEquation}
+              blendSrc={screenBlend.blendSrc as any}
+              blendDst={screenBlend.blendDst as any}
+              side={THREE.DoubleSide}
+              depthWrite={false}
+              toneMapped={false}
+            />
+          </mesh>
+          {/* Outer glow plane — Screen */}
+          <mesh position={[0, beamLength / 2, 0]} rotation={[0, Math.PI / 2, 0]}>
+            <planeGeometry args={[0.2, beamLength]} />
+            <meshBasicMaterial
+              color={color}
+              transparent opacity={0.10}
+              blending={screenBlend.blending}
+              blendEquation={screenBlend.blendEquation}
+              blendSrc={screenBlend.blendSrc as any}
+              blendDst={screenBlend.blendDst as any}
+              side={THREE.DoubleSide}
+              depthWrite={false}
+              toneMapped={false}
+            />
+          </mesh>
+          {/* Wide atmospheric scatter — Screen */}
+          <mesh position={[0, beamLength / 2, 0]} rotation={[0, Math.PI / 4, 0]}>
+            <planeGeometry args={[0.6, beamLength]} />
+            <meshBasicMaterial
+              color={color}
+              transparent opacity={0.04}
+              blending={screenBlend.blending}
+              blendEquation={screenBlend.blendEquation}
+              blendSrc={screenBlend.blendSrc as any}
+              blendDst={screenBlend.blendDst as any}
+              side={THREE.DoubleSide}
+              depthWrite={false}
+              toneMapped={false}
+            />
+          </mesh>
+        </group>
       ))}
-      {/* Source glow */}
+
+      {/* Source halo — Screen */}
       <mesh>
-        <sphereGeometry args={[0.1, 8, 8]} />
-        <meshBasicMaterial color={color} transparent opacity={0.4 * (progress > 0.05 && progress < 0.9 ? 1 : 0)} blending={THREE.AdditiveBlending} />
+        <sphereGeometry args={[0.25, 16, 16]} />
+        <meshBasicMaterial
+          color={color}
+          transparent opacity={0.85}
+          blending={screenBlend.blending}
+          blendEquation={screenBlend.blendEquation}
+          blendSrc={screenBlend.blendSrc as any}
+          blendDst={screenBlend.blendDst as any}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+      {/* Secondary outer halo — Screen */}
+      <mesh>
+        <sphereGeometry args={[0.6, 12, 12]} />
+        <meshBasicMaterial
+          color={color}
+          transparent opacity={0.12}
+          blending={screenBlend.blending}
+          blendEquation={screenBlend.blendEquation}
+          blendSrc={screenBlend.blendSrc as any}
+          blendDst={screenBlend.blendDst as any}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+
+      {/* Ground scatter disc — Screen */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -position[1] + 0.05, 0]}>
+        <circleGeometry args={[4, 32]} />
+        <meshBasicMaterial
+          color={color}
+          transparent opacity={0.06}
+          blending={screenBlend.blending}
+          blendEquation={screenBlend.blendEquation}
+          blendSrc={screenBlend.blendSrc as any}
+          blendDst={screenBlend.blendDst as any}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* Atmospheric cone — Screen */}
+      <mesh position={[0, beamLength * 0.4, 0]}>
+        <coneGeometry args={[beamLength * 0.12, beamLength * 0.8, 16, 1, true]} />
+        <meshBasicMaterial
+          color={color}
+          transparent opacity={0.018}
+          blending={screenBlend.blending}
+          blendEquation={screenBlend.blendEquation}
+          blendSrc={screenBlend.blendSrc as any}
+          blendDst={screenBlend.blendDst as any}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
       </mesh>
     </group>
   );

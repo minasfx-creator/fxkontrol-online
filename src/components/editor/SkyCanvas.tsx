@@ -1,8 +1,8 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Stars, Grid, PerspectiveCamera } from '@react-three/drei';
+import { OrbitControls, Stars, Grid, PerspectiveCamera, ContactShadows } from '@react-three/drei';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
-import { useRef, useMemo, useEffect, useState, useCallback, Component, ErrorInfo, ReactNode } from 'react';
+import React, { useRef, useMemo, useEffect, useState, useCallback, Component, ErrorInfo, ReactNode } from 'react';
 import { PerfCollector, PerformanceHUD, type PerfStats } from './PerformanceHUD';
 import ViewportTerminal, { pushLog } from './ViewportTerminal';
 import * as THREE from 'three';
@@ -12,17 +12,29 @@ import PostProcessing from './PostProcessing';
 import { BoxSelectR3F } from './BoxSelectOverlay';
 import AlignmentTools from './AlignmentTools';
 import CameraAnimator, { CameraPathPreview } from './CameraAnimator';
+import { FinaleAxesHelper, DoubleClickFocus, FinaleToolbar } from './FinaleViewportTools';
+import { StressTestFireworks, StressTestButton } from './effects/GPUFireworkStressTest';
+import PostExplosionSmokeManager from './effects/PostExplosionSmokeManager';
+import PositionTransformGizmo from './PositionTransformGizmo';
+import KeybindingCheatSheet, { KeybindingTrigger } from './KeybindingCheatSheet';
+import { useKeybindings } from '@/hooks/useKeybindings';
+import ViewportRulers from './ViewportRulers';
 import TrajectoryPaths from './TrajectoryPaths';
 import DroneChoreography from './DroneChoreography';
 import Rack3DView from './Rack3DView';
 import BoidsVisualizer from './BoidsVisualizer';
 import CollisionAvoidanceOverlay from './CollisionAvoidanceOverlay';
+import PyroSafetyZones from './skycanvas/PyroSafetyZones';
 import AudioSpectrumVisualizer from './AudioSpectrumVisualizer';
+import LaserPreviewBeams from './LaserPreviewBeams';
 import { DEFAULT_AVOIDANCE } from '@/lib/collisionAvoidance';
 import QuadcopterModel from './QuadcopterModel';
-import GeofenceVisual from './GeofenceVisual';
-import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Globe, Download, ScanEye, Cog, Paintbrush, MapPinned, Film } from 'lucide-react';
+// GeofenceVisual removed — green squares issue
+import SiteModelRenderer from './SiteModelRenderer';
+import StageFixtures from './StageFixtures';
+import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Globe, Download, ScanEye, Cog, Paintbrush, MapPinned, Film, ChevronDown, Plus, Lock, Ruler, Bookmark, Trash2, Navigation } from 'lucide-react';
 import SelectionStatusBar from './SelectionStatusBar';
+import AICoPilotOverlay from './AICoPilotOverlay';
 import { cn } from '@/lib/utils';
 import {
   CometEffect,
@@ -48,775 +60,438 @@ import {
   SnowMachineEffect,
   BubbleMachineEffect,
 } from './effects';
-import { getLiftTime, getBreakHeight, getBreakSpeed } from '@/lib/pyroPhysics';
+import { getLiftTime, getBreakHeight, getBreakSpeed, getTypedPrefire, getTypedDuration, getStarLifetime, type FinalePartType } from '@/lib/pyroPhysics';
 import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
 import { temporalFlicker } from '@/lib/pyroNoise';
 // MiniMap removed per user request
+import NiagaraVFXController from './NiagaraVFXController';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
+// ═══ render_ultra integrations — Blender/Cycles-grade tech ═══
+import { createExposureController, updateExposure, flashEvent } from '@/render_ultra/postprocessing/exposure';
+import { getCompound, thermalColor, autoMatchFormulation, type ChemicalCompound } from '@/render_ultra/fireworks/particleChemistry';
+import { GlobalIlluminationSystem } from '@/render_ultra/lighting/globalIllumination';
+// SmokeSystem removed — handled by NiagaraVFXController
+import { createLensFlareSprite, flashLensFlare, decayLensFlare } from '@/render_ultra/postprocessing/lensFlare';
+import { getBurstConfig, type BurstPattern } from '@/render_ultra/fireworks/burstSimulation';
+// sparkTrailsGPU removed — handled by NiagaraVFXController
+import { createHDRLightingRig } from '@/render_ultra/lighting/hdrLighting';
+import { createVolumetricFogPlane } from '@/render_ultra/environment/volumetricFog';
+import { createReflectionPlane } from '@/render_ultra/environment/reflections';
+// ═══ LOD System — distance-based quality scaling + adaptive FPS ═══
+import { useLOD, calculateLOD, useSceneLOD, updateAdaptiveLOD, getAdaptiveTier, type LODFactors } from '@/hooks/useLOD';
+import VolumetricGodRays from './skycanvas/VolumetricGodRays';
+import VolumetricSmoke from './effects/VolumetricSmoke';
+// ═══ AAA Engine: Frustum Culling + Object Pooling ═══
+import { isInFrustum } from '@/lib/spatialCuller';
+import { resetPools } from '@/lib/geometryPool';
+import ViewportGeoTools, { type GeoToolMode, type GeoMarker, type GeoRulerPoint, type GeoPath } from './ViewportGeoTools';
+import GoogleTilesLayer from '@/core/geo/GoogleTilesEngine';
+import GeoCameraController from '@/core/geo/GeoCameraController';
+import ClientPresentationMode from './ClientPresentationMode';
+import { GeoToolsScene, GeoToolClickHandler } from './GeoToolsR3F';
+import { RenderDebugToggle, RenderDebugPanel, setDebugExposure, setDebugBurstLoad, setDebugLOD, setDebugRendererInfo } from './RenderDebugOverlay';
+import { clampNiagaraHDR, getNiagaraBudgets, setAdaptivePipelineState } from '@/lib/niagaraBlenderRules';
+// ═══ Hardening Engine ═══
+import {
+  reportCrash, isInCooldown, recordContextLoss,
+  watchdogTick, pushFrameMetrics, startMetricsReporting, stopMetricsReporting,
+} from '@/lib/hardening';
+// ═══ FXK Ultra Refinement — Adaptive Quality + Render Stability ═══
+import { useFXKUltraRefinement } from '@/hooks/useFXKUltraRefinement';
+// ═══ Shared state imported from skycanvas module ═══
+import {
+  getActiveBurstCount as _getActiveBurstCount,
+  runActiveBurstScan,
+  getActiveBurstScan,
+  hexToCompound,
+  getEffectById,
+  getWindForce,
+  getAdaptiveExposure,
+  setAdaptiveExposureValue,
+  getSkyScatterUniforms,
+  setSkyScatterUniforms,
+  CAMERA_PRESETS,
+  WebGLErrorBoundary,
+  GRAVITY,
+  _posQuat, _effQuat, _pitchQuat, _posEuler, _effEuler, _launchDir, _pitchAxis,
+  type ActiveBurstScanResult,
+  // ═══ Extracted modules ═══
+  Moon,
+  AtmosphericParticles,
+  StageGround,
+  FireworkBurst,
+  TimelineEffects,
+  LiveSFXEffects,
+  estimateFireworkStarCost,
+  // ═══ LightingSystem ═══
+  AdaptiveExposureController,
+  ContactShadowsLayer,
+  DebugFeed,
+  GlobalIlluminationController,
+  LensFlareController,
+  GroundReflections,
+} from './skycanvas';
 
-// AEROSWARM NEXUS — Zenith Prime v1.1 Renderer
-class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  state = { hasError: false };
-  static getDerivedStateFromError() { return { hasError: true }; }
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    console.warn('WebGL unavailable:', error.message);
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="w-full h-full flex flex-col items-center justify-center bg-surface-0 gap-3 p-8 text-center">
-          <AlertTriangle className="w-10 h-10 text-yellow-500" />
-          <h3 className="text-sm font-semibold text-foreground">3D Engine Unavailable</h3>
-          <p className="text-xs text-muted-foreground max-w-md">
-            WebGL could not be initialized. Try enabling hardware acceleration or use a different browser.
-          </p>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
+// Re-export for external consumers
+export function getActiveBurstCount() { return _getActiveBurstCount(); }
 
-// Camera presets calibrated for real-world firework heights (55m-300m break heights)
-// Audience distance: typically 100-300m from launch site (NFPA 1123)
-const CAMERA_PRESETS = [
-  { id: 'free', label: 'Free', icon: Eye, position: [0, 15, 200] as [number, number, number], target: [0, 80, 0] as [number, number, number] },
-  { id: 'satellite', label: 'Top', icon: Plane, position: [0, 500, 0.1] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
-  { id: 'audience', label: 'Plateia', icon: Users, position: [0, 2, 250] as [number, number, number], target: [0, 80, 0] as [number, number, number] },
-  { id: 'front', label: 'Front', icon: Users, position: [0, 5, 300] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
-  { id: 'side', label: 'Side', icon: Video, position: [300, 30, 0] as [number, number, number], target: [0, 80, 0] as [number, number, number] },
-  { id: 'back', label: 'Back', icon: Video, position: [0, 30, -200] as [number, number, number], target: [0, 80, 0] as [number, number, number] },
-  { id: 'aerial', label: 'Aerial 45°', icon: Plane, position: [0, 300, 300] as [number, number, number], target: [0, 50, 0] as [number, number, number] },
-  { id: 'closeup', label: 'Close-up', icon: Camera, position: [20, 30, 80] as [number, number, number], target: [0, 80, 0] as [number, number, number] },
-  { id: 'cinematic', label: 'Cinema', icon: Video, position: [-80, 8, 220] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
-  { id: 'drone-follow', label: 'Drone POV', icon: Eye, position: [15, 120, 40] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
-  { id: 'vip', label: 'VIP Box', icon: Users, position: [60, 5, 200] as [number, number, number], target: [0, 80, 0] as [number, number, number] },
-] as const;
+// Module-level refs shared between SkyGradient / AdaptiveExposure / fireworks
+let _skyScatterUniforms_local: { uExplosionScatter: { value: THREE.Color }; uScatterIntensity: { value: number } } | null = null;
+let _adaptiveExposure_local = 1.2;
+let _activeBurstScan_local: ActiveBurstScanResult | null = null;
 
-// --- Playback clock ---
-function PlaybackClock() {
+// lumaTonemapScale REMOVED — PostProcessing ACES Filmic is the single tonemap pass
+
+// --- Playback clock (wired through DeterministicClock → LockstepEngine → ExecutionBridge) ---
+import { deterministicClock } from '@/core/time/deterministicClock';
+import { lockstep } from '@/core/reliability/lockstepEngine';
+import { executionBridge } from '@/core/execution/executionBridge';
+import { frameSyncEngine } from '@/core/sync/frameSyncEngine';
+
+const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref) {
   const { isPlaying, currentTime, duration, setCurrentTime, setPlaying, playbackSpeed } = useProjectStore();
-  const prevTime = useRef(performance.now());
+  const registeredRef = useRef(false);
 
+  // Pump the deterministic clock every R3F frame
   useFrame(() => {
-    const now = performance.now();
-    if (isPlaying) {
-      const delta = ((now - prevTime.current) / 1000) * playbackSpeed;
-      const next = currentTime + delta;
-      if (next >= duration) { setCurrentTime(duration); setPlaying(false); } else { setCurrentTime(next); }
-    }
-    prevTime.current = now;
+    deterministicClock.tick();
   });
+
+  // Register playback as a lockstep subsystem (once)
+  useEffect(() => {
+    if (registeredRef.current) return;
+    registeredRef.current = true;
+
+    // Playback advancement — runs at fixed 60Hz via lockstep
+    lockstep.register('playback', (_simTime: number, dt: number) => {
+      const store = useProjectStore.getState();
+      if (!store.isPlaying) return;
+      const delta = dt * store.playbackSpeed;
+      const next = store.currentTime + delta;
+      if (next >= store.duration) {
+        store.setCurrentTime(store.duration);
+        store.setPlaying(false);
+      } else {
+        store.setCurrentTime(next);
+      }
+    }, 10); // High priority — playback clock runs first
+
+    // ExecutionBridge ticks after playback
+    lockstep.register('executionBridge', (simTime: number, _dt: number) => {
+      executionBridge.tick(simTime);
+    }, 50); // Lower priority — fires after playback updates
+
+    // Start the deterministic clock and lockstep
+    deterministicClock.start();
+    lockstep.start();
+
+    // Wire clock → frameSyncEngine → lockstep: frame-aligned time feeds lockstep
+    deterministicClock.onTick((time: number, delta: number) => {
+      // Align the accumulated time to frame boundaries before feeding lockstep
+      const alignedDelta = frameSyncEngine.getSyncedTimeSec(time + delta) - frameSyncEngine.getSyncedTimeSec(time);
+      lockstep.tick(Math.max(0, alignedDelta));
+    });
+
+    return () => {
+      lockstep.unregister('playback');
+      lockstep.unregister('executionBridge');
+      deterministicClock.pause();
+      lockstep.stop();
+      registeredRef.current = false;
+    };
+  }, []);
+
+  // Sync deterministic clock when user scrubs timeline
+  useEffect(() => {
+    if (!isPlaying) {
+      deterministicClock.setTime(currentTime);
+    }
+  }, [currentTime, isPlaying]);
+
+  return null;
+});
+/**
+ * HardeningWatchdog — feeds FPS/renderer metrics to the hardening engine each frame.
+ * Runs inside the R3F Canvas context.
+ */
+function HardeningWatchdog() {
+  const { gl } = useThree();
+  const frameRef = useRef(0);
+
+  // Start metrics console reporting on mount
+  useEffect(() => {
+    startMetricsReporting(60); // Log every 60s
+    return () => stopMetricsReporting();
+  }, []);
+
+  useFrame((_state, delta) => {
+    frameRef.current++;
+    // Sample at ~10Hz (every 6 frames at 60fps)
+    if (frameRef.current % 6 !== 0) return;
+
+    const fps = delta > 0 ? 1 / delta : 60;
+    const frameTimeMs = delta * 1000;
+    const info = gl.info.render;
+
+    pushFrameMetrics(fps, frameTimeMs, info.calls, info.triangles);
+    watchdogTick(fps);
+  });
+
   return null;
 }
 
-// --- Particle system ---
-const GRAVITY = -9.81; // Real-world gravity for accurate ballistics
-
-function getWindForce(): [number, number, number] {
-  const { wind } = useProjectStore.getState();
-  if (!wind.enabled) return [0, 0, 0];
-  const rad = (wind.direction * Math.PI) / 180;
-  const gust = 1 + (Math.sin(performance.now() * 0.001) * 0.5 + 0.5) * wind.gustStrength;
-  const s = wind.speed * gust * 0.15;
-  return [Math.sin(rad) * s, 0, Math.cos(rad) * s];
+/**
+ * FXKQualityController — runs FXK Ultra Refinement adaptive quality + stability
+ * inside the R3F Canvas context. Automatically adjusts bloom, SSR, lowQualityMode
+ * based on real-time frame metrics.
+ */
+function FXKQualityController() {
+  useFXKUltraRefinement();
+  return null;
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// Finale 3D-grade star sprite vertex/fragment shaders
-// Renders each star as a soft gaussian glow disc with HDR bloom trigger,
-// exactly matching Finale's GPU particle rendering pipeline.
-// ═══════════════════════════════════════════════════════════════════════
-const STAR_VERTEX_SHADER = `
-  attribute float aSize;
-  attribute float aLife;
-  varying vec3 vColor;
-  varying float vLife;
-  varying float vSize;
-  void main() {
-    vColor = color;
-    vLife = aLife;
-    vSize = aSize;
-    vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-    // Increased multiplier for real-world scale (stars at 50-300m distance from camera)
-    gl_PointSize = aSize * (1800.0 / -mvPos.z);
-    gl_PointSize = clamp(gl_PointSize, 1.5, 200.0);
-    gl_Position = projectionMatrix * mvPos;
-  }
-`;
-
-const STAR_FRAGMENT_SHADER = `
-  varying vec3 vColor;
-  varying float vLife;
-  varying float vSize;
-  void main() {
-    vec2 uv = gl_PointCoord - 0.5;
-    float dist = length(uv);
-    
-    // Multi-layer glow architecture for maximum HDR bloom catch
-    float core = smoothstep(0.06, 0.0, dist);   // ultra-bright white-hot center
-    float inner = exp(-dist * dist * 28.0);       // tight inner glow
-    float glow = exp(-dist * dist * 10.0);        // medium gaussian halo
-    float bloom = exp(-dist * dist * 3.0);        // wide soft bloom trigger
-    float scatter = exp(-dist * dist * 1.2);      // ultra-wide atmospheric scatter
-    
-    float alpha = core * 2.0 + inner * 1.0 + glow * 0.6 + bloom * 0.2 + scatter * 0.05;
-    
-    // HDR color pipeline — core pushes well above 1.0 for bloom
-    vec3 whiteHot = vec3(1.6, 1.5, 1.2);
-    vec3 col = vColor * (inner * 1.8 + glow * 1.2) + whiteHot * core * 3.5;
-    col += vColor * bloom * 0.5;
-    col += vColor * scatter * 0.15;
-    
-    // Extra HDR boost for young stars (low life = just born)
-    float youth = max(0.0, 1.0 - vLife * 3.0);
-    col += whiteHot * youth * 2.0;
-    
-    gl_FragColor = vec4(col, alpha * (1.0 - smoothstep(0.46, 0.5, dist)));
-  }
-`;
-
-// ═══════════════════════════════════════════════════════════════════════
-// Finale-grade FireworkBurst with:
-// - Custom star sprite shader (gaussian glow discs)
-// - Euler integration with quadratic drag (not simplified formula)
-// - HDR color pipeline: white-hot → saturated → ember → charcoal
-// - Falling charcoal debris after star burnout
-// - Persistent smoke volume at burst location
-// - Caliber-proportional everything
-// ═══════════════════════════════════════════════════════════════════════
-function FireworkBurst({ 
-  position, color, progress, caliber = 4, pattern = 'peony' 
-}: { 
-  position: [number, number, number]; color: string; progress: number; 
-  caliber?: number; pattern?: string;
+/**
+ * ContextLossGuard — handles WebGL context loss/restore with proper cleanup.
+ */
+function ContextLossGuard({ recoveringRef, onRemount }: {
+  recoveringRef: React.MutableRefObject<boolean>;
+  onRemount: () => void;
 }) {
-  const pointsRef = useRef<THREE.Points>(null);
-  const trailRef = useRef<THREE.LineSegments>(null);
-  const debrisRef = useRef<THREE.Points>(null);
-  
-  // Finale caliber scaling: star count proportional to shell volume
-  const STAR_COUNT = useMemo(() => Math.min(2500, Math.round(120 + caliber * caliber * 28)), [caliber]);
-  const TRAIL_LENGTH = useMemo(() => Math.min(28, 14 + Math.floor(caliber * 1.8)), [caliber]);
-  const DEBRIS_COUNT = useMemo(() => Math.min(600, Math.round(STAR_COUNT * 0.4)), [STAR_COUNT]);
-  
-  // Real break speed from pyroPhysics — caliber proportional (m/s)
-  const breakSpeed = useMemo(() => getBreakSpeed(caliber), [caliber]);
-  
-  // Star lifetime per Finale — depends on pattern and caliber
-  const starLife = useMemo(() => {
-    const base = 1.0 + caliber * 0.38;
-    if (pattern === 'willow' || pattern === 'kamuro') return base * 3.0;
-    if (pattern === 'palm' || pattern === 'brocade') return base * 2.0;
-    if (pattern === 'chrysanthemum') return base * 1.4;
-    if (pattern === 'dahlia') return base * 0.55;
-    return base;
-  }, [caliber, pattern]);
-  
-  const baseColor = useMemo(() => new THREE.Color(color), [color]);
-  const emberColor = useMemo(() => {
-    const c = new THREE.Color(color);
-    return new THREE.Color().setHSL(
-      Math.min(c.getHSL({ h: 0, s: 0, l: 0 }).h, 0.06),
-      0.85,
-      0.12
-    );
-  }, [color]);
-  
-  const { velocities, lifetimes, twinklePhases, debrisVelocities, sparkleSeeds, debrisSparkleSeeds } = useMemo(() => {
-    const v = new Float32Array(STAR_COUNT * 3);
-    const l = new Float32Array(STAR_COUNT);
-    const tp = new Float32Array(STAR_COUNT);
-    const sparkle = new Float32Array(STAR_COUNT);
-    const dv = new Float32Array(DEBRIS_COUNT * 3);
-    const debrisSparkle = new Float32Array(DEBRIS_COUNT);
+  const { gl } = useThree();
 
-    for (let i = 0; i < STAR_COUNT; i++) {
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
-      let vx: number, vy: number, vz: number;
-      let life = starLife * (0.6 + Math.random() * 0.4);
-      const speedVar = 0.55 + Math.random() * 0.45;
-      tp[i] = Math.random() * Math.PI * 2;
-      sparkle[i] = Math.random() * 999 + i;
+  useEffect(() => {
+    const canvas = gl.domElement;
 
-      // Spherical coords: x = sin(phi)*cos(theta), y = cos(phi) [UP], z = sin(phi)*sin(theta)
-      const sx = Math.sin(phi) * Math.cos(theta);
-      const sy = Math.cos(phi);
-      const sz = Math.sin(phi) * Math.sin(theta);
+    const onLost = (e: Event) => {
+      e.preventDefault();
+      if (recoveringRef.current) return;
 
-      switch (pattern) {
-        case 'willow':
-          vx = sx * breakSpeed * 0.42 * speedVar;
-          vy = sy * breakSpeed * 0.42 * speedVar;
-          vz = sz * breakSpeed * 0.42 * speedVar;
-          life = starLife * (1.3 + Math.random() * 1.4);
-          break;
-        case 'palm':
-          vx = sx * breakSpeed * 0.52 * speedVar;
-          vy = Math.abs(sy) * breakSpeed * 0.85 + breakSpeed * 0.45;
-          vz = sz * breakSpeed * 0.52 * speedVar;
-          life = starLife * (1.1 + Math.random() * 0.6);
-          break;
-        case 'chrysanthemum':
-          vx = sx * breakSpeed * speedVar;
-          vy = sy * breakSpeed * 0.93 * speedVar;
-          vz = sz * breakSpeed * speedVar;
-          life = starLife * (0.85 + Math.random() * 0.3);
-          break;
-        case 'kamuro':
-          vx = sx * breakSpeed * 0.35 * speedVar;
-          vy = sy * breakSpeed * 0.35 * speedVar + 1.2;
-          vz = sz * breakSpeed * 0.35 * speedVar;
-          life = starLife * (1.8 + Math.random() * 1.8);
-          break;
-        case 'ring':
-          vx = Math.cos(theta) * breakSpeed * speedVar;
-          vy = (Math.random() - 0.5) * breakSpeed * 0.08;
-          vz = Math.sin(theta) * breakSpeed * speedVar;
-          break;
-        case 'dahlia':
-          vx = sx * breakSpeed * 1.25 * speedVar;
-          vy = sy * breakSpeed * 1.18 * speedVar;
-          vz = sz * breakSpeed * 1.25 * speedVar;
-          life = starLife * (0.35 + Math.random() * 0.25);
-          break;
-        case 'brocade':
-          vx = sx * breakSpeed * 0.58 * speedVar;
-          vy = sy * breakSpeed * 0.58 * speedVar;
-          vz = sz * breakSpeed * 0.58 * speedVar;
-          life = starLife * (1.3 + Math.random() * 1.0);
-          break;
-        case 'crossette': {
-          const arm = i % 6;
-          const armTheta = (arm / 6) * Math.PI * 2;
-          const armPhi = Math.PI * 0.45;
-          const jitter = 0.12;
-          vx = Math.sin(armPhi) * Math.cos(armTheta + (Math.random() - 0.5) * jitter) * breakSpeed * 0.82;
-          vy = Math.cos(armPhi + (Math.random() - 0.5) * jitter) * breakSpeed * 0.82;
-          vz = Math.sin(armPhi) * Math.sin(armTheta + (Math.random() - 0.5) * jitter) * breakSpeed * 0.82;
-          break;
-        }
-        default: // peony
-          vx = sx * breakSpeed * speedVar;
-          vy = sy * breakSpeed * speedVar * 0.9 + 0.6;
-          vz = sz * breakSpeed * speedVar;
-          break;
+      recordContextLoss();
+      const shouldRecover = reportCrash();
+      if (!shouldRecover || isInCooldown()) {
+        console.error('[FXK] WebGL context lost — in cooldown, suppressing remount');
+        return;
       }
 
-      v[i * 3] = vx;
-      v[i * 3 + 1] = vy;
-      v[i * 3 + 2] = vz;
-      l[i] = life;
-    }
-
-    for (let i = 0; i < DEBRIS_COUNT; i++) {
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
-      const spd = breakSpeed * (0.15 + Math.random() * 0.35);
-      dv[i * 3] = Math.sin(phi) * Math.cos(theta) * spd;
-      dv[i * 3 + 1] = Math.cos(phi) * spd * 0.5 - 1;
-      dv[i * 3 + 2] = Math.sin(phi) * Math.sin(theta) * spd;
-      debrisSparkle[i] = Math.random() * 999 + i * 7;
-    }
-
-    return {
-      velocities: v,
-      lifetimes: l,
-      twinklePhases: tp,
-      debrisVelocities: dv,
-      sparkleSeeds: sparkle,
-      debrisSparkleSeeds: debrisSparkle,
+      recoveringRef.current = true;
+      console.warn('[FXK] WebGL context lost — remounting renderer');
+      resetPools();
+      onRemount();
     };
-  }, [STAR_COUNT, DEBRIS_COUNT, breakSpeed, starLife, pattern]);
 
-  // Pre-allocate typed arrays for per-frame updates
-  const positionsRef = useRef(new Float32Array(STAR_COUNT * 3));
-  const colorsRef = useRef(new Float32Array(STAR_COUNT * 3));
-  const sizesRef = useRef(new Float32Array(STAR_COUNT));
-  const livesRef = useRef(new Float32Array(STAR_COUNT));
-  const trailVertCount = STAR_COUNT * TRAIL_LENGTH * 2;
-  const trailPosRef = useRef(new Float32Array(trailVertCount * 3));
-  const trailColRef = useRef(new Float32Array(trailVertCount * 3));
-  const debrisPosRef = useRef(new Float32Array(DEBRIS_COUNT * 3));
-  const debrisColRef = useRef(new Float32Array(DEBRIS_COUNT * 3));
+    const onRestored = () => {
+      console.log('[FXK] WebGL context restored');
+      recoveringRef.current = false;
+    };
 
-  // Custom shader material for star sprites
-  const starMaterial = useMemo(() => {
-    return new THREE.ShaderMaterial({
-      vertexShader: STAR_VERTEX_SHADER,
-      fragmentShader: STAR_FRAGMENT_SHADER,
-      vertexColors: true,
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
+    canvas.addEventListener('webglcontextlost', onLost as EventListener);
+    canvas.addEventListener('webglcontextrestored', onRestored as EventListener);
+    return () => {
+      canvas.removeEventListener('webglcontextlost', onLost as EventListener);
+      canvas.removeEventListener('webglcontextrestored', onRestored as EventListener);
+    };
+  }, [gl, recoveringRef, onRemount]);
+
+  return null;
+}
+
+// Module-level refs — local aliases for backward compat within this file
+let _skyScatterUniforms: { uExplosionScatter: { value: THREE.Color }; uScatterIntensity: { value: number } } | null = null;
+let _adaptiveExposure = 1.2;
+let _activeBurstScan: ActiveBurstScanResult | null = null;
+let _activeBurstCount = 0;
+
+// FireworkBurst, LightPoint, estimateFireworkStarCost, TimelineEffects, LiveSFXEffects
+// → Extracted to skycanvas/FireworkRenderer.tsx
+
+// ========================================================================
+// ═══ ENVIRONMENT V2 — UE5.7 Virtual Worlds ═══
+// Sky Atmosphere V2, Volumetric Clouds, Water, Ground Decals, Time-of-Day
+// ========================================================================
+import {
+  createSkyAtmosphereV2,
+  createVolumetricCloudLayer, CLOUD_PRESETS,
+  createWaterSystem, WATER_PRESETS,
+  evaluateTimeOfDay,
+  createDecalSystem, spawnScorchMark, spawnLightSplash, updateDecals, clearDecals,
+} from '@/render_ultra';
+
+function SkyAtmosphereV2Layer() {
+  const meshRef = useRef<THREE.Mesh | null>(null);
+  const skySystemRef = useRef<ReturnType<typeof createSkyAtmosphereV2> | null>(null);
+  const { scene } = useThree();
+  const timeOfDay = useSceneStore(st => st.settings.timeOfDay);
+  const timeOfDayEnabled = useSceneStore(st => st.settings.timeOfDayEnabled);
+
+  useEffect(() => {
+    const system = createSkyAtmosphereV2(90000);
+    skySystemRef.current = system;
+    scene.add(system.mesh);
+    return () => {
+      scene.remove(system.mesh);
+      system.mesh.geometry.dispose();
+      (system.mesh.material as THREE.ShaderMaterial).dispose();
+    };
+  }, [scene]);
+
+  useFrame(({ camera }) => {
+    const sys = skySystemRef.current;
+    if (!sys) return;
+    sys.mesh.position.copy(camera.position);
+
+    if (timeOfDayEnabled) {
+      const tod = evaluateTimeOfDay(timeOfDay);
+      sys.setSunDirection(tod.sunDirection);
+      sys.setSunIntensity(tod.sunIntensity);
+      sys.setMoonDirection(tod.moonDirection);
+      sys.setStarBrightness(tod.starBrightness);
+      sys.setTimeOfDay(tod.skyZenith, tod.skyHorizon, tod.skyNight);
+    }
+  });
+
+  return null;
+}
+
+function VolumetricCloudLayer() {
+  const cloudRef = useRef<ReturnType<typeof createVolumetricCloudLayer> | null>(null);
+  const { scene } = useThree();
+  const cloudCoverage = useSceneStore(st => st.settings.cloudCoverage);
+  const cloudDensity = useSceneStore(st => st.settings.cloudDensity);
+  const cloudWindSpeed = useSceneStore(st => st.settings.cloudWindSpeed);
+
+  useEffect(() => {
+    const cloud = createVolumetricCloudLayer({
+      coverage: cloudCoverage,
+      density: cloudDensity,
+      windSpeed: cloudWindSpeed,
     });
-  }, []);
+    cloudRef.current = cloud;
+    scene.add(cloud.mesh);
+
+    // Expose cloud system globally for NiagaraVFXController explosion flash
+    (window as any).__volumetricCloudSystem = cloud;
+
+    return () => {
+      scene.remove(cloud.mesh);
+      cloud.mesh.geometry.dispose();
+      (cloud.mesh.material as THREE.ShaderMaterial).dispose();
+      delete (window as any).__volumetricCloudSystem;
+    };
+  }, [scene]);
+
+  useEffect(() => {
+    const c = cloudRef.current;
+    if (!c) return;
+    c.setCoverage(cloudCoverage);
+    c.setDensity(cloudDensity);
+    c.setWindSpeed(cloudWindSpeed);
+  }, [cloudCoverage, cloudDensity, cloudWindSpeed]);
 
   useFrame(({ clock }) => {
-    if (!pointsRef.current || !trailRef.current) return;
-    const pos = positionsRef.current;
-    const cols = colorsRef.current;
-    const sizes = sizesRef.current;
-    const lives = livesRef.current;
-    const tPos = trailPosRef.current;
-    const tCol = trailColRef.current;
-    const t = progress * (starLife * 0.88);
-    const trailDt = 0.035;
-    const w = getWindForce();
-    const time = clock.getElapsedTime();
-    
-    // Finale drag model: exponential decay, heavier for denser patterns
-    const dragCoeff = 0.04 + caliber * 0.005;
-    const isTrailingPattern = pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade' || pattern === 'palm';
-    
-    // Particle size: proportional to caliber — much larger for real-world scale visibility
-    const baseSize = 0.5 + caliber * 0.35;
-    
-    // Helper: proper analytical position for exponential drag
-    // With drag a = -k*v, velocity v(t) = v0 * e^(-k*t)
-    // Position x(t) = v0 * (1 - e^(-k*t)) / k
-    const dragPos = (v0: number, t: number, k: number) => {
-      if (k < 0.001) return v0 * t;
-      return v0 * (1 - Math.exp(-k * t)) / k;
-    };
-
-    for (let i = 0; i < STAR_COUNT; i++) {
-      const vx = velocities[i * 3], vy = velocities[i * 3 + 1], vz = velocities[i * 3 + 2];
-      const lt = lifetimes[i];
-      // Age each star individually: star dies when t >= lt
-      const starAge = Math.min(1, t / lt);
-      const fade = Math.max(0, 1 - starAge);
-      const fadeSquared = fade * fade;
-      const fadeCubed = fadeSquared * fade;
-      // Proper analytical integration with exponential drag + real gravity + wind
-      const px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
-      const py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * t * t;
-      const pz = dragPos(vz, t, dragCoeff) + w[2] * t * t * 0.3;
-      pos[i * 3] = px; pos[i * 3 + 1] = py; pos[i * 3 + 2] = pz;
-
-      // === Finale HDR Color Pipeline ===
-      // Phase 1: White-hot flash (0-3% progress) — Finale's "Contrast 1.5" effect
-      const flashIntensity = Math.max(0, 1 - progress * 33);
-      // Phase 2: Full saturated color (3-45%)
-      // Phase 3: Ember→charcoal (45-100%)
-      const emberPhase = Math.max(0, (progress - 0.4) / 0.6);
-      
-      // Per-star stochastic twinkle — Finale's signature shimmer
-      let twinkle: number;
-      if (isTrailingPattern) {
-        twinkle = 0.75 + Math.sin(twinklePhases[i] + progress * 12) * 0.25;
-      } else {
-        twinkle = temporalFlicker(sparkleSeeds[i], time, 0.62, 0.34, 0.38);
-      }
-      
-      // White-hot → saturated color
-      let r = THREE.MathUtils.lerp(baseColor.r, 1.4, flashIntensity);
-      let g = THREE.MathUtils.lerp(baseColor.g, 1.2, flashIntensity);
-      let b = THREE.MathUtils.lerp(baseColor.b, 0.9, flashIntensity);
-      
-      // Ember phase: gradual thermal decay
-      if (emberPhase > 0) {
-        const ep = emberPhase * emberPhase;
-        r = THREE.MathUtils.lerp(r, emberColor.r, ep * 0.75);
-        g = THREE.MathUtils.lerp(g, emberColor.g, ep * 0.85);
-        b = THREE.MathUtils.lerp(b, emberColor.b, ep * 0.92);
-      }
-      
-      // HDR boost: push well above 1.0 for aggressive bloom catch
-      const hdrBoost = 1.8 + flashIntensity * 5.0 + (1 - emberPhase) * 0.8;
-      
-      cols[i * 3] = r * fadeCubed * twinkle * hdrBoost;
-      cols[i * 3 + 1] = g * fadeCubed * twinkle * hdrBoost;
-      cols[i * 3 + 2] = b * fadeCubed * twinkle * hdrBoost;
-      
-      // Dynamic star size: larger when young, shrinks as it dies — with HDR size boost
-      sizes[i] = baseSize * (0.6 + fadeSquared * 0.4) * (1 + flashIntensity * 2.5);
-      lives[i] = starAge;
-
-      // Star trails — Finale's thermal gradient: white-hot → colored → dim
-      for (let s = 0; s < TRAIL_LENGTH; s++) {
-        const t0 = Math.max(0, t - s * trailDt);
-        const t1 = Math.max(0, t - (s + 1) * trailDt);
-        const base2 = (i * TRAIL_LENGTH + s) * 6;
-        tPos[base2] = dragPos(vx, t0, dragCoeff) + w[0] * t0 * t0 * 0.3;
-        tPos[base2 + 1] = dragPos(vy, t0, dragCoeff) + 0.5 * GRAVITY * t0 * t0;
-        tPos[base2 + 2] = dragPos(vz, t0, dragCoeff) + w[2] * t0 * t0 * 0.3;
-        tPos[base2 + 3] = dragPos(vx, t1, dragCoeff) + w[0] * t1 * t1 * 0.3;
-        tPos[base2 + 4] = dragPos(vy, t1, dragCoeff) + 0.5 * GRAVITY * t1 * t1;
-        tPos[base2 + 5] = dragPos(vz, t1, dragCoeff) + w[2] * t1 * t1 * 0.3;
-        
-        const segFrac = s / TRAIL_LENGTH;
-        const segFade = fadeCubed * Math.pow(1 - segFrac, 2.5) * 0.7;
-        const endFade = fadeCubed * Math.pow(1 - (s + 1) / TRAIL_LENGTH, 2.5) * 0.7;
-        
-        // Finale trail thermal: white center → warm gold → colored → faint
-        const trailWarmth = Math.pow(segFrac, 0.4);
-        tCol[base2] = THREE.MathUtils.lerp(1.2, r * 0.7, trailWarmth) * segFade;
-        tCol[base2 + 1] = THREE.MathUtils.lerp(0.8, g * 0.4, trailWarmth) * segFade;
-        tCol[base2 + 2] = THREE.MathUtils.lerp(0.35, b * 0.15, trailWarmth) * segFade;
-        tCol[base2 + 3] = THREE.MathUtils.lerp(1.2, r * 0.7, trailWarmth) * endFade;
-        tCol[base2 + 4] = THREE.MathUtils.lerp(0.8, g * 0.4, trailWarmth) * endFade;
-        tCol[base2 + 5] = THREE.MathUtils.lerp(0.35, b * 0.15, trailWarmth) * endFade;
-      }
-    }
-
-    // === Update star geometry — reuse existing buffer attributes ===
-    const pGeo = pointsRef.current.geometry;
-    const posAttr = pGeo.getAttribute('position') as THREE.BufferAttribute;
-    const colAttr = pGeo.getAttribute('color') as THREE.BufferAttribute;
-    const sizeAttr = pGeo.getAttribute('aSize') as THREE.BufferAttribute;
-    const lifeAttr = pGeo.getAttribute('aLife') as THREE.BufferAttribute;
-    if (posAttr) { posAttr.array = pos; posAttr.needsUpdate = true; }
-    if (colAttr) { colAttr.array = cols; colAttr.needsUpdate = true; }
-    if (sizeAttr) { sizeAttr.array = sizes; sizeAttr.needsUpdate = true; }
-    if (lifeAttr) { lifeAttr.array = lives; lifeAttr.needsUpdate = true; }
-
-    const lGeo = trailRef.current.geometry;
-    const tPosAttr = lGeo.getAttribute('position') as THREE.BufferAttribute;
-    const tColAttr = lGeo.getAttribute('color') as THREE.BufferAttribute;
-    if (tPosAttr) { tPosAttr.array = tPos; tPosAttr.needsUpdate = true; }
-    if (tColAttr) { tColAttr.array = tCol; tColAttr.needsUpdate = true; }
-    
-    // === Falling charcoal debris — Finale's signature burnt-out embers ===
-    if (debrisRef.current && progress > 0.25) {
-      const dPos = debrisPosRef.current;
-      const dCol = debrisColRef.current;
-      const debrisAge = (progress - 0.25) / 0.75;
-      
-      for (let i = 0; i < DEBRIS_COUNT; i++) {
-        const dvx = debrisVelocities[i * 3];
-        const dvy = debrisVelocities[i * 3 + 1];
-        const dvz = debrisVelocities[i * 3 + 2];
-        const dt = debrisAge * starLife * 0.7;
-        const dK = 0.02;
-        
-        dPos[i * 3] = dragPos(dvx, dt, dK) + w[0] * dt * dt * 0.4;
-        dPos[i * 3 + 1] = dragPos(dvy, dt, dK) + 0.5 * GRAVITY * dt * dt;
-        dPos[i * 3 + 2] = dragPos(dvz, dt, dK) + w[2] * dt * dt * 0.4;
-        
-        // Dark charcoal com cintilação determinística
-        const debrisFade = Math.max(0, 1 - debrisAge * 1.3);
-        const flicker = temporalFlicker(debrisSparkleSeeds[i], time, 0.12, 0.18, 0.22);
-        dCol[i * 3] = (0.15 + flicker * 0.8) * debrisFade;
-        dCol[i * 3 + 1] = (0.06 + flicker * 0.25) * debrisFade;
-        dCol[i * 3 + 2] = 0.02 * debrisFade;
-      }
-      
-      const dGeo = debrisRef.current.geometry;
-      const dPosAttr = dGeo.getAttribute('position') as THREE.BufferAttribute;
-      const dColAttr = dGeo.getAttribute('color') as THREE.BufferAttribute;
-      if (dPosAttr) { dPosAttr.array = dPos; dPosAttr.needsUpdate = true; }
-      if (dColAttr) { dColAttr.array = dCol; dColAttr.needsUpdate = true; }
-    }
+    cloudRef.current?.update(clock.getElapsedTime());
   });
 
-  // Break flash: Finale multi-layer flash system
-  // Flash size proportional to caliber — real-world scale
-  const flashSize = 3 + caliber * 4.0;
-
-  return (
-    <group position={position}>
-      {/* ═══ Finale Star Sprites — custom shader gaussian glow ═══ */}
-      <points ref={pointsRef} material={starMaterial}>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(STAR_COUNT * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(STAR_COUNT * 3), 3]} />
-          <bufferAttribute attach="attributes-aSize" args={[new Float32Array(STAR_COUNT), 1]} />
-          <bufferAttribute attach="attributes-aLife" args={[new Float32Array(STAR_COUNT), 1]} />
-        </bufferGeometry>
-      </points>
-      
-      {/* ═══ Star trails — dense thermal gradient lines ═══ */}
-      <lineSegments ref={trailRef}>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array(trailVertCount * 3), 3]} />
-          <bufferAttribute attach="attributes-color" args={[new Float32Array(trailVertCount * 3), 3]} />
-        </bufferGeometry>
-        <lineBasicMaterial vertexColors transparent opacity={0.9} depthWrite={false} blending={THREE.AdditiveBlending} linewidth={3} />
-      </lineSegments>
-      
-      {/* ═══ Falling charcoal debris — Finale post-burnout embers ═══ */}
-      {progress > 0.25 && (
-        <points ref={debrisRef}>
-          <bufferGeometry>
-            <bufferAttribute attach="attributes-position" args={[new Float32Array(DEBRIS_COUNT * 3), 3]} />
-            <bufferAttribute attach="attributes-color" args={[new Float32Array(DEBRIS_COUNT * 3), 3]} />
-          </bufferGeometry>
-          <pointsMaterial size={0.15} vertexColors transparent opacity={0.7} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
-        </points>
-      )}
-      
-      {/* ═══ BREAK FLASH — Finale 4-layer system ═══ */}
-      {/* Layer 1: Inner white-hot core — ultra HDR for maximum bloom */}
-      {progress < 0.06 && (
-        <mesh>
-          <sphereGeometry args={[flashSize * 0.4 * (1 + progress * 10), 16, 16]} />
-          <meshBasicMaterial color="#FFFFF0" transparent opacity={1.0 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} />
-        </mesh>
-      )}
-      {/* Layer 2: Hot colored flash — primary bloom source */}
-      {progress < 0.15 && (
-        <mesh>
-          <sphereGeometry args={[flashSize * (1 + progress * 15), 24, 24]} />
-          <meshBasicMaterial color={color} transparent opacity={0.7 * Math.pow(1 - progress / 0.15, 2)} blending={THREE.AdditiveBlending} />
-        </mesh>
-      )}
-      {/* Layer 3: Expanding shockwave ring */}
-      {progress > 0.003 && progress < 0.15 && (
-        <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[
-            progress * flashSize * 12,
-            progress * flashSize * 12 + 0.8 + caliber * 0.18,
-            64
-          ]} />
-          <meshBasicMaterial color={color} transparent opacity={0.15 * Math.pow(1 - progress / 0.15, 1.5)} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
-        </mesh>
-      )}
-      {/* Layer 4: Wide atmospheric halo — sky illumination */}
-      {progress < 0.7 && progress > 0.003 && (
-        <mesh>
-          <sphereGeometry args={[caliber * 6 + progress * caliber * 20, 16, 16]} />
-          <meshBasicMaterial color={color} transparent opacity={0.05 * (1 - progress / 0.7)} blending={THREE.AdditiveBlending} />
-        </mesh>
-      )}
-      {/* Layer 5: Ground illumination sphere — lights up terrain */}
-      {progress < 0.4 && (
-        <mesh position={[0, -position[1] * 0.3, 0]}>
-          <sphereGeometry args={[caliber * 12 + progress * caliber * 30, 12, 12]} />
-          <meshBasicMaterial color={color} transparent opacity={0.015 * (1 - progress / 0.4)} blending={THREE.AdditiveBlending} />
-        </mesh>
-      )}
-    </group>
-  );
+  return null;
 }
 
-function LightPoint({ position, color }: { position: [number, number, number]; color: string }) {
-  return <QuadcopterModel position={position} color={color} />;
+function WaterLayer() {
+  const waterRef = useRef<ReturnType<typeof createWaterSystem> | null>(null);
+  const { scene } = useThree();
+  const waterLevel = useSceneStore(st => st.settings.waterLevel);
+  const waterPreset = useSceneStore(st => st.settings.waterPreset);
+
+  useEffect(() => {
+    const presetCfg = WATER_PRESETS[waterPreset] || {};
+    const water = createWaterSystem(presetCfg);
+    waterRef.current = water;
+    water.mesh.position.y = waterLevel;
+    scene.add(water.mesh);
+    return () => {
+      scene.remove(water.mesh);
+      water.mesh.geometry.dispose();
+      (water.mesh.material as THREE.ShaderMaterial).dispose();
+    };
+  }, [scene, waterPreset]);
+
+  useEffect(() => {
+    if (waterRef.current) waterRef.current.mesh.position.y = waterLevel;
+  }, [waterLevel]);
+
+  useFrame(({ clock }) => {
+    waterRef.current?.update(clock.getElapsedTime());
+  });
+
+  return null;
 }
 
-function TimelineEffects() {
-  const { timelineItems, currentTime, positions } = useProjectStore();
-  const sceneSettings = useSceneStore(st => st.settings);
-  const activeEffects = useMemo(() => {
-    const effectScale = sceneSettings.effectScale;
-    const weatherDampening = sceneSettings.weather === 'heavy-rain' ? 0.6 :
-      sceneSettings.weather === 'light-rain' ? 0.8 :
-      sceneSettings.weather === 'fog' ? 0.7 : 1.0;
-    const humidityFactor = 1 - sceneSettings.humidity * 0.3; // humidity shortens burn time
+function GroundDecalManager() {
+  const { scene } = useThree();
 
-    return timelineItems.map((item) => {
-      let effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+  useEffect(() => {
+    const group = createDecalSystem();
+    scene.add(group);
+    return () => {
+      scene.remove(group);
+      clearDecals();
+    };
+  }, [scene]);
 
-      // Fallback para itens VDL dinâmicos criados no editor/quick add
-      if (!effect && item.effectId.startsWith('vdl-')) {
-        const vdlText = item.notes?.match(/VDL:\s*([^|]+)/i)?.[1]?.trim();
-        if (vdlText) {
-          const parsed = parseVDL(vdlText);
-          if (parsed.valid) {
-            effect = {
-              ...vdlToEffect(parsed),
-              id: item.effectId,
-              icon: '🎆',
-              type: 'firework',
-              partType: parsed.partType as (typeof EFFECT_LIBRARY)[number]['partType'],
-              duration: Math.max(0.8, parsed.duration),
-            } as (typeof EFFECT_LIBRARY)[number];
-          }
-        }
-      }
+  useFrame(({ clock }) => {
+    updateDecals(clock.getDelta());
+  });
 
-      if (!effect) return null;
+  return null;
+}
 
-      // ── Resolve position from linked pyropoint ──
-      let resolvedPos = item.position;
-      let launchHeading = 0;
-      let launchPitch = 85; // default vertical
-      if (item.positionId) {
-        const linkedPos = positions.find(p => p.id === item.positionId);
-        if (linkedPos) {
-          resolvedPos = { x: linkedPos.x, y: linkedPos.y, z: linkedPos.z };
-          launchHeading = linkedPos.heading || 0;
-          launchPitch = linkedPos.pitch || 85;
-        }
-      }
-
-      // ── Real physics: caliber-based heights ──
-      const caliber = effect.caliber || 4;
-      const isShellType = effect.partType === 'shell' || effect.partType === 'single_shot' || effect.type === 'firework';
-      const prefireDuration = isShellType ? (effect.prefire || getLiftTime(caliber)) : 0;
-      // Weather affects duration: rain shortens, humidity shortens
-      const weatherDuration = effect.duration * weatherDampening * humidityFactor;
-      const totalDuration = prefireDuration + weatherDuration;
-
-      if (currentTime < item.startTime || currentTime > item.startTime + totalDuration) return null;
-      const elapsed = currentTime - item.startTime;
-
-      const inPrefire = isShellType && elapsed < prefireDuration;
-      const prefireProgress = prefireDuration > 0 ? Math.min(1, elapsed / prefireDuration) : 0;
-      const burstProgress = prefireDuration > 0
-        ? Math.max(0, (elapsed - prefireDuration) / weatherDuration)
-        : elapsed / weatherDuration;
-
-      return { item, effect, progress: burstProgress, inPrefire, prefireProgress, caliber, prefireDuration, resolvedPos, effectScale, effectBrightness: sceneSettings.effectBrightness, launchHeading, launchPitch };
-    }).filter(Boolean) as {
-      item: typeof timelineItems[0];
-      effect: typeof EFFECT_LIBRARY[0];
-      progress: number;
-      inPrefire: boolean;
-      prefireProgress: number;
-      caliber: number;
-      prefireDuration: number;
-      resolvedPos: { x: number; y: number; z: number };
-      effectScale: number;
-      effectBrightness: number;
-      launchHeading: number;
-      launchPitch: number;
-    }[];
-  }, [timelineItems, currentTime, positions, sceneSettings.effectScale, sceneSettings.weather, sceneSettings.humidity, sceneSettings.effectBrightness]);
+/** Switcher: renders sky engine + optional cloud/water/decal/ToD layers based on store settings */
+function EnvironmentV2Switcher() {
+  const skyEngineV2 = useSceneStore(st => st.settings.skyEngineV2);
+  const cloudCoverage = useSceneStore(st => st.settings.cloudCoverage);
+  const waterEnabled = useSceneStore(st => st.settings.waterEnabled);
+  const decalsEnabled = useSceneStore(st => st.settings.decalsEnabled);
+  const timeOfDayEnabled = useSceneStore(st => st.settings.timeOfDayEnabled);
 
   return (
     <>
-      {activeEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale, effectBrightness, launchHeading, launchPitch }) => {
-        const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
-        const eid = effect.id;
-        const pt = effect.partType;
-
-        // ── PREFIRE PHASE: show comet trail rising from mortar ──
-        if (inPrefire) {
-          return (
-            <PrefireShell
-              key={`prefire-${item.id}`}
-              position={pos}
-              color={effect.color}
-              progress={prefireProgress}
-              caliber={caliber}
-              heading={launchHeading}
-              pitch={launchPitch}
-            />
-          );
-        }
-
-        // ── Real break height with angle offset (Finale 3D standard) ──
-        const isShell = pt === 'shell' || pt === 'single_shot';
-        const realBreakHeight = getBreakHeight(caliber) * effectScale;
-        const pitchRad = (launchPitch || 85) * (Math.PI / 180);
-        const headingRad = (launchHeading || 0) * (Math.PI / 180);
-        // Angled burst position: shell travels along launch angle
-        const burstPos: [number, number, number] = isShell
-          ? [
-              pos[0] + Math.sin(headingRad) * Math.cos(pitchRad) * realBreakHeight,
-              pos[1] + Math.sin(pitchRad) * realBreakHeight,
-              pos[2] - Math.cos(headingRad) * Math.cos(pitchRad) * realBreakHeight,
-            ]
-          : pos;
-
-        // Heights from effect library, scaled by scene
-        const scaledHeight = (effect.heightMeters || 4) * effectScale;
-
-        if (pt === 'mine') return (
-          <group key={item.id}>
-            <MineEffect position={pos} color={effect.color} progress={progress} />
-            <SmokeTrail position={pos} progress={progress} intensity={0.5} />
-          </group>
-        );
-        if (pt === 'candle') return <RomanCandleEffect key={item.id} position={pos} color={effect.color} progress={progress} shotCount={effect.shotCount || 8} />;
-        if (pt === 'waterfall') return <WaterfallEffect key={item.id} position={pos} color={effect.color} progress={progress} width={scaledHeight} />;
-        if (pt === 'gerb') return <GerbEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight} />;
-        if (pt === 'flame') return <FlameEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight} />;
-        if (pt === 'cake') return <CakeEffect key={item.id} position={pos} color={effect.color} progress={progress} shotCount={effect.shotCount || 25} />;
-        if (pt === 'laser') return <LaserEffect key={item.id} position={pos} color={effect.color} progress={progress} pattern={effect.laserPattern || 'fan'} />;
-        if (pt === 'light' && effect.beamType) return <MovingHeadEffect key={item.id} position={pos} color={effect.color} progress={progress} beamType={effect.beamType} />;
-
-        // ── SFX special routing ──
-        if (eid === 'sfx-01') return <CryoJetEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight || 6} />;
-        if (eid === 'sfx-02') return <CryoJetEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight || 8} horizontal />;
-        if (eid === 'sfx-06' || eid === 'sfx-07') return <ConfettiEffect key={item.id} position={pos} color={effect.color} progress={progress} />;
-        if (eid === 'sfx-08') return <FogMachineEffect key={item.id} position={pos} color={effect.color} progress={progress} spread={8 + (scaledHeight || 4)} />;
-        if (eid === 'sfx-09') return <HazeMachineEffect key={item.id} position={pos} color={effect.color} progress={progress} radius={16 + (scaledHeight || 4)} />;
-        if (eid === 'sfx-10') return <SnowMachineEffect key={item.id} position={pos} progress={progress} width={6 + (scaledHeight || 4)} height={Math.max(6, (scaledHeight || 8) * 1.2)} />;
-        if (eid === 'sfx-11') return <BubbleMachineEffect key={item.id} position={pos} color={effect.color} progress={progress} spread={6 + (scaledHeight || 3)} />;
-
-        // ── Legacy effect ID routing ──
-        if (eid.startsWith('comet-')) return <CometEffect key={item.id} position={pos} color={effect.color} progress={progress} direction={eid === 'comet-02' ? 'down' : 'up'} />;
-        if (eid.startsWith('shock-')) return <ShockwaveEffect key={item.id} position={burstPos} color={effect.color} progress={progress} />;
-        if (eid.startsWith('mburst-')) return <MultiBurstEffect key={item.id} position={burstPos} color={effect.color} progress={progress} burstCount={eid === 'mburst-02' ? 5 : 3} />;
-        if (eid.startsWith('fan-')) return <FanEffect key={item.id} position={pos} color={effect.color} progress={progress} spreadAngle={eid === 'fan-02' ? 180 : 90} />;
-
-        // ── Default: firework burst at break height with smoke + embers ──
-        if (effect.type === 'firework') return (
-          <group key={item.id}>
-            <FireworkBurst 
-              position={burstPos} 
-              color={effect.color} 
-              progress={progress} 
-              caliber={caliber}
-              pattern={effect.pattern || 'peony'}
-            />
-            <SmokeTrail position={burstPos} progress={progress} intensity={caliber * 0.4} />
-            <EmberParticles position={pos} color={effect.color} progress={progress} spreadRadius={caliber * 3} startHeight={realBreakHeight * 0.8} />
-            {caliber >= 4 && <SparkShower position={pos} color={effect.color} progress={progress} height={realBreakHeight * 0.7} spread={caliber * 2} />}
-          </group>
-        );
-        return <LightPoint key={item.id} position={pos} color={effect.color} />;
-      })}
+      {skyEngineV2 ? <SkyAtmosphereV2Layer /> : <SkyGradient />}
+      {cloudCoverage > 0.05 && <VolumetricCloudLayer />}
+      {waterEnabled && <WaterLayer />}
+      {decalsEnabled && <GroundDecalManager />}
+      {timeOfDayEnabled && <TimeOfDayController />}
+      {/* Volumetric God Rays — ray marched light scattering */}
+      <VolumetricGodRays
+        lightPosition={[0, 800, -500]}
+        lightColor="#ffeedd"
+        intensity={0.8}
+        samples={48}
+        enabled={true}
+      />
     </>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// Live SFX 3D — renders effects fired from the Live SFX Console
-// ═══════════════════════════════════════════════════════════════════════
-function LiveSFXEffects() {
-  const activeEffects = useLiveSfxStore((s) => s.activeEffects);
-  const stopEffect = useLiveSfxStore((s) => s.stopEffect);
-  const frameRef = useRef(0);
+function TimeOfDayController() {
+  const timeOfDay = useSceneStore(st => st.settings.timeOfDay);
+  const { scene } = useThree();
 
   useFrame(() => {
-    if (activeEffects.length === 0) return;
-    frameRef.current++;
-    // Clean up expired effects (only check every 10 frames to avoid store churn)
-    if (frameRef.current % 10 === 0) {
-      const now = performance.now();
-      for (const fx of activeEffects) {
-        if (now - fx.startedAt > fx.duration) {
-          stopEffect(fx.id);
-        }
-      }
+    const tod = evaluateTimeOfDay(timeOfDay);
+    // Update scene ambient/fog based on time-of-day
+    if (scene.fog && scene.fog instanceof THREE.FogExp2) {
+      scene.fog.color.copy(tod.fogColor);
     }
+    // Update ambient lights
+    scene.traverse(obj => {
+      if (obj instanceof THREE.AmbientLight) {
+        obj.color.copy(tod.ambientColor);
+        obj.intensity = tod.ambientIntensity * 2;
+      }
+    });
   });
 
-  return (
-    <>
-      {activeEffects.map((fx) => {
-        const elapsed = (performance.now() - fx.startedAt) / fx.duration;
-        const progress = Math.min(1, Math.max(0, elapsed));
-        if (progress >= 1) return null;
-
-        const pos = fx.position;
-        const intensityScale = fx.intensity / 255;
-
-        switch (fx.type) {
-          case 'co2':
-          case 'cryo':
-            return <group key={fx.id}><CryoJetEffect position={pos} color={fx.color} progress={progress} height={6 * intensityScale + 2} /></group>;
-          case 'flame':
-            return <group key={fx.id}><FlameEffect position={pos} color={fx.color} progress={progress} height={8 * intensityScale + 2} /></group>;
-          case 'confetti':
-          case 'streamer':
-            return <group key={fx.id}><ConfettiEffect position={pos} color={fx.color} progress={progress} /></group>;
-          case 'haze':
-            return <group key={fx.id}><HazeMachineEffect position={pos} color={fx.color} progress={progress} radius={12} /></group>;
-          case 'spark':
-            return <group key={fx.id}><SparkShower position={pos} color={fx.color} progress={progress} height={6 * intensityScale + 2} spread={3} /></group>;
-          default:
-            return <group key={fx.id}><GerbEffect position={pos} color={fx.color} progress={progress} height={4 * intensityScale + 1} /></group>;
-        }
-      })}
-    </>
-  );
+  return null;
 }
 
 // ========================================================================
@@ -826,27 +501,56 @@ function SkyGradient() {
   const skyBrightness = useSceneStore(st => st.settings.skyBrightness);
   const horizonGlow = useSceneStore(st => st.settings.horizonGlow);
   const starDensity = useSceneStore(st => st.settings.starDensity);
+  const groundStyle = useSceneStore(st => st.settings.groundStyle);
+  const skyRef = useRef<THREE.Mesh>(null);
+
+  const skyRotation = useSceneStore(st => st.environment.skyRotation);
+
+  // Dynamic ground tint based on groundStyle — eliminates sky/ground seam
+  const groundTint = useMemo(() => {
+    switch (groundStyle) {
+      case 'finale-dark': return new THREE.Vector3(0.003, 0.004, 0.008);
+      case 'flat-black':  return new THREE.Vector3(0.001, 0.001, 0.001);
+      case 'google-earth': return new THREE.Vector3(0.005, 0.008, 0.004);
+      case 'concrete':    return new THREE.Vector3(0.006, 0.006, 0.007);
+      case 'sfx-stage':   return new THREE.Vector3(0.002, 0.001, 0.004);
+      default:            return new THREE.Vector3(0.005, 0.005, 0.015);
+    }
+  }, [groundStyle]);
 
   const uniforms = useMemo(() => ({
     uSkyBrightness: { value: skyBrightness },
     uHorizonGlow: { value: horizonGlow },
     uStarDensity: { value: starDensity },
     uTime: { value: 0 },
+    uExplosionScatter: { value: new THREE.Color(0, 0, 0) },
+    uScatterIntensity: { value: 0 },
+    uSkyRotation: { value: 0 },
+    uGroundTint: { value: groundTint },
   }), []);
 
   useEffect(() => {
     uniforms.uSkyBrightness.value = skyBrightness;
     uniforms.uHorizonGlow.value = horizonGlow;
     uniforms.uStarDensity.value = starDensity;
-  }, [skyBrightness, horizonGlow, starDensity]);
+    uniforms.uSkyRotation.value = skyRotation * Math.PI / 180;
+    uniforms.uGroundTint.value = groundTint;
+  }, [skyBrightness, horizonGlow, starDensity, skyRotation, groundTint]);
 
-  useFrame(({ clock }) => {
+  // Expose scatter uniforms for AdaptiveExposureController
+  useEffect(() => {
+    _skyScatterUniforms = { uExplosionScatter: uniforms.uExplosionScatter, uScatterIntensity: uniforms.uScatterIntensity };
+    return () => { _skyScatterUniforms = null; };
+  }, []);
+
+  useFrame(({ clock, camera }) => {
     uniforms.uTime.value = clock.getElapsedTime();
+    if (skyRef.current) skyRef.current.position.copy(camera.position);
   });
 
   return (
-    <mesh>
-      <sphereGeometry args={[500, 64, 64]} />
+    <mesh ref={skyRef} renderOrder={-1000}>
+      <sphereGeometry args={[90000, 32, 16]} />
       <shaderMaterial
         side={THREE.BackSide}
         uniforms={uniforms}
@@ -863,6 +567,10 @@ function SkyGradient() {
           uniform float uHorizonGlow;
           uniform float uStarDensity;
           uniform float uTime;
+          uniform vec3 uExplosionScatter;
+          uniform float uScatterIntensity;
+          uniform float uSkyRotation;
+          uniform vec3 uGroundTint;
           varying vec3 vWorldPosition;
           
           float hash21(vec2 p) {
@@ -924,18 +632,22 @@ function SkyGradient() {
           }
           
           void main() {
-            vec3 dir = normalize(vWorldPosition);
+            vec3 dir = normalize(vWorldPosition - cameraPosition);
+            // Apply sky rotation around Y axis
+            float cosR = cos(uSkyRotation);
+            float sinR = sin(uSkyRotation);
+            dir = vec3(dir.x * cosR - dir.z * sinR, dir.y, dir.x * sinR + dir.z * cosR);
             float h = dir.y;
             
-            // Enhanced atmosphere with more depth layers
-            vec3 space     = vec3(0.003, 0.005, 0.02);
-            vec3 zenith    = vec3(0.008, 0.012, 0.05);
-            vec3 upperSky  = vec3(0.015, 0.028, 0.10);
-            vec3 midSky    = vec3(0.035, 0.055, 0.16);
-            vec3 lowSky    = vec3(0.055, 0.08, 0.20);
-            vec3 horizon   = vec3(0.12, 0.14, 0.22);
-            vec3 haze      = vec3(0.16, 0.15, 0.18);
-            vec3 ground    = vec3(0.008, 0.012, 0.02);
+            // Deep cinematic space — rich midnight blues to warm horizon
+            vec3 space     = vec3(0.001, 0.002, 0.012);
+            vec3 zenith    = vec3(0.004, 0.008, 0.04);
+            vec3 upperSky  = vec3(0.008, 0.018, 0.07);
+            vec3 midSky    = vec3(0.02, 0.035, 0.12);
+            vec3 lowSky    = vec3(0.04, 0.05, 0.14);
+            vec3 horizon   = vec3(0.08, 0.06, 0.12);
+            vec3 haze      = vec3(0.12, 0.08, 0.10);
+            vec3 ground    = uGroundTint;
             
             vec3 color;
             if (h > 0.7) {
@@ -946,57 +658,68 @@ function SkyGradient() {
               color = mix(lowSky, midSky, smoothstep(0.15, 0.4, h));
             } else if (h > 0.02) {
               color = mix(horizon, lowSky, smoothstep(0.02, 0.15, h));
-            } else if (h > -0.02) {
-              color = mix(haze, horizon, smoothstep(-0.02, 0.02, h));
+            } else if (h > -0.05) {
+              color = mix(haze, horizon, smoothstep(-0.05, 0.02, h));
             } else {
-              color = mix(ground, haze, smoothstep(-0.15, -0.02, h));
+              color = mix(ground, haze, smoothstep(-0.35, -0.05, h));
             }
             
-            // Atmospheric glow band
-            float hGlow = exp(-h * h * 80.0);
-            color += vec3(0.18, 0.14, 0.08) * hGlow * uHorizonGlow;
+            // Warm amber horizon glow — cinematic sunset afterglow
+            float hGlow = exp(-h * h * 50.0);
+            color += vec3(0.22, 0.10, 0.04) * hGlow * uHorizonGlow;
             
-            // Blue atmospheric scatter ring
-            float blueRing = exp(-(h - 0.03) * (h - 0.03) * 60.0);
-            color += vec3(0.04, 0.06, 0.12) * blueRing * 0.35;
+            // Cool cyan counter-glow opposite side
+            float cyanGlow = exp(-(h - 0.05) * (h - 0.05) * 80.0);
+            color += vec3(0.02, 0.06, 0.10) * cyanGlow * 0.4;
             
-            // Enhanced Milky Way with structure
+            // Aurora borealis band
+            float auroraAngle = dir.x * 0.3 + dir.z * 0.95;
+            float auroraBand = exp(-pow(auroraAngle - 0.2, 2.0) * 12.0) * smoothstep(0.2, 0.6, h);
+            float auroraWave = sin(dir.x * 8.0 + uTime * 0.3) * 0.5 + 0.5;
+            float auroraDetail = fbm3(dir.xz * 20.0 + uTime * 0.05);
+            vec3 auroraColor = mix(vec3(0.01, 0.08, 0.04), vec3(0.03, 0.04, 0.10), auroraWave);
+            color += auroraColor * auroraBand * auroraDetail * 0.35;
+            
+            // Enhanced Milky Way with deep structure
             float milkyAngle = dir.x * 0.6 + dir.z * 0.8;
             float milkyBand = exp(-pow(milkyAngle - dir.y * 0.5, 2.0) * 6.0);
             float milkyDetail = fbm3(dir.xz * 30.0) * 0.6 + 0.4;
             float milkyDust = fbm3(dir.xz * 60.0 + 100.0);
-            vec3 milkyColor = mix(vec3(0.02, 0.025, 0.05), vec3(0.04, 0.03, 0.05), milkyDust);
-            color += milkyColor * milkyBand * milkyDetail * smoothstep(0.15, 0.5, h) * 0.8;
+            vec3 milkyColor = mix(vec3(0.015, 0.02, 0.045), vec3(0.035, 0.025, 0.045), milkyDust);
+            color += milkyColor * milkyBand * milkyDetail * smoothstep(0.15, 0.5, h) * 1.0;
             
-            // Dark dust lanes in Milky Way
+            // Dark dust lanes
             float dustLane = smoothstep(0.45, 0.55, fbm3(dir.xz * 20.0 + 50.0));
             color -= vec3(0.01) * milkyBand * dustLane * smoothstep(0.2, 0.5, h);
             
-            // Subtle nebula color patches
+            // Nebula patches — purple and teal
             float nebula1 = fbm3(dir.xz * 15.0 + vec2(200.0, 0.0));
             float nebula2 = fbm3(dir.xz * 12.0 + vec2(0.0, 300.0));
-            color += vec3(0.015, 0.005, 0.02) * smoothstep(0.6, 0.8, nebula1) * milkyBand * 0.5;
-            color += vec3(0.005, 0.01, 0.025) * smoothstep(0.55, 0.75, nebula2) * smoothstep(0.3, 0.6, h) * 0.4;
+            color += vec3(0.025, 0.008, 0.035) * smoothstep(0.6, 0.8, nebula1) * milkyBand * 0.6;
+            color += vec3(0.008, 0.018, 0.035) * smoothstep(0.55, 0.75, nebula2) * smoothstep(0.3, 0.6, h) * 0.5;
             
-            // Procedural cloud wisps near horizon
-            float cloudUV1 = fbm3(dir.xz * 4.0 + uTime * 0.01);
-            float cloudUV2 = fbm3(dir.xz * 8.0 - uTime * 0.008 + 50.0);
+            // Wispy clouds near horizon
+            float cloudUV1 = fbm3(dir.xz * 4.0 + uTime * 0.008);
+            float cloudUV2 = fbm3(dir.xz * 8.0 - uTime * 0.006 + 50.0);
             float cloudMask = smoothstep(0.0, 0.12, h) * smoothstep(0.25, 0.08, h);
             float clouds = smoothstep(0.45, 0.7, cloudUV1 * 0.6 + cloudUV2 * 0.4) * cloudMask;
-            color += vec3(0.06, 0.07, 0.10) * clouds * 0.4;
+            color += vec3(0.04, 0.04, 0.06) * clouds * 0.3;
             
-            // Stars with color variation
+            // Stars with color temperature variation
             float stars = starField(dir);
             float starHue = hash21(dir.xz * 50.0);
-            vec3 starColor = starHue < 0.3 ? vec3(0.7, 0.8, 1.0) :
-                             starHue < 0.6 ? vec3(1.0, 0.95, 0.85) :
-                             starHue < 0.85 ? vec3(1.0, 0.85, 0.7) :
-                             vec3(1.0, 0.6, 0.5);
-            color += starColor * stars * 0.8 * uStarDensity;
+            vec3 starColor = starHue < 0.25 ? vec3(0.6, 0.75, 1.0) :
+                             starHue < 0.5 ? vec3(1.0, 0.95, 0.85) :
+                             starHue < 0.75 ? vec3(1.0, 0.80, 0.65) :
+                             vec3(1.0, 0.55, 0.45);
+            color += starColor * stars * 0.9 * uStarDensity;
             
             // Shooting stars
             float shooting = shootingStar(dir);
-            color += vec3(0.9, 0.95, 1.0) * shooting * uStarDensity;
+            color += vec3(0.85, 0.92, 1.0) * shooting * uStarDensity;
+            
+            // ═══ Explosion sky scatter — atmosphere reflects burst colors ═══
+            color += uExplosionScatter * uScatterIntensity * exp(-abs(h) * 3.0);
             
             color *= uSkyBrightness;
             color = max(color, vec3(0.0));
@@ -1009,711 +732,8 @@ function SkyGradient() {
   );
 }
 
-// --- Volumetric Moon with crater detail ---
-function Moon() {
-  return (
-    <group position={[60, 55, -80]}>
-      {/* Moon body with procedural surface */}
-      <mesh>
-        <sphereGeometry args={[3.5, 64, 64]} />
-        <shaderMaterial
-          vertexShader={`
-            varying vec3 vNormal;
-            varying vec3 vPosition;
-            varying vec2 vUv;
-            void main() {
-              vNormal = normalize(normalMatrix * normal);
-              vPosition = position;
-              vUv = uv;
-              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-            }
-          `}
-          fragmentShader={`
-            varying vec3 vNormal;
-            varying vec3 vPosition;
-            varying vec2 vUv;
-            
-            float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-            float noise(vec2 p) {
-              vec2 i = floor(p); vec2 f = fract(p);
-              f = f * f * (3.0 - 2.0 * f);
-              return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
-                         mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
-            }
-            
-            void main() {
-              vec3 n = normalize(vNormal);
-              vec3 lightDir = normalize(vec3(0.3, 0.2, -1.0));
-              
-              // Base moon color with warmth
-              vec3 moonBase = vec3(0.85, 0.82, 0.75);
-              
-              // Crater detail using procedural noise
-              float craters = noise(vPosition.xy * 3.0) * 0.3 + 
-                              noise(vPosition.xz * 5.0) * 0.2 +
-                              noise(vPosition.yz * 8.0) * 0.1;
-              
-              // Maria (dark patches)
-              float maria = smoothstep(0.4, 0.6, noise(vPosition.xz * 1.5 + 10.0));
-              moonBase = mix(moonBase, vec3(0.55, 0.52, 0.48), maria * 0.3);
-              
-              // Lighting
-              float diffuse = max(dot(n, lightDir), 0.0) * 0.6 + 0.4;
-              float rim = pow(1.0 - max(dot(n, vec3(0, 0, 1)), 0.0), 3.0);
-              
-              vec3 color = moonBase * (1.0 - craters * 0.2) * diffuse;
-              color += vec3(0.15, 0.18, 0.25) * rim * 0.3; // Blue rim light
-              
-              gl_FragColor = vec4(color, 1.0);
-            }
-          `}
-        />
-      </mesh>
-      {/* Inner glow — HDR for bloom catch */}
-      <mesh>
-        <sphereGeometry args={[3.7, 32, 32]} />
-        <meshBasicMaterial color="#d0c8a8" transparent opacity={0.15} blending={THREE.AdditiveBlending} />
-      </mesh>
-      {/* Inner core glow */}
-      <mesh>
-        <sphereGeometry args={[3.55, 24, 24]} />
-        <meshBasicMaterial color="#ffe8c0" transparent opacity={0.06} blending={THREE.AdditiveBlending} />
-      </mesh>
-      {/* Outer volumetric halo */}
-      <mesh>
-        <sphereGeometry args={[6, 32, 32]} />
-        <shaderMaterial
-          transparent
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-          vertexShader={`
-            varying vec3 vNormal;
-            void main() {
-              vNormal = normalize(normalMatrix * normal);
-              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-            }
-          `}
-          fragmentShader={`
-            varying vec3 vNormal;
-            void main() {
-              float intensity = pow(0.6 - dot(vNormal, vec3(0, 0, 1.0)), 3.0);
-              vec3 color = vec3(0.3, 0.35, 0.5) * intensity;
-              gl_FragColor = vec4(color, intensity * 0.15);
-            }
-          `}
-        />
-      </mesh>
-      {/* Wide atmospheric scatter */}
-      <mesh>
-        <sphereGeometry args={[14, 16, 16]} />
-        <meshBasicMaterial color="#506080" transparent opacity={0.02} blending={THREE.AdditiveBlending} />
-      </mesh>
-      {/* Ultra-wide corona */}
-      <mesh>
-        <sphereGeometry args={[22, 12, 12]} />
-        <meshBasicMaterial color="#405070" transparent opacity={0.008} blending={THREE.AdditiveBlending} />
-      </mesh>
-      <pointLight color="#8899bb" intensity={0.35} distance={350} decay={1} />
-    </group>
-  );
-}
-
-// --- Satellite texture ground overlay (real Google Maps imagery) ---
-function SatelliteOverlay({ textureUrl }: { textureUrl: string | null }) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const texture = useMemo(() => {
-    if (!textureUrl) return null;
-    const loader = new THREE.TextureLoader();
-    const tex = loader.load(textureUrl);
-    tex.minFilter = THREE.LinearFilter;
-    tex.magFilter = THREE.LinearFilter;
-    tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
-  }, [textureUrl]);
-
-  if (!texture) return null;
-
-  useFrame(({ camera }) => {
-    if (!meshRef.current) return;
-    meshRef.current.position.x = camera.position.x;
-    meshRef.current.position.z = camera.position.z;
-  });
-
-  return (
-    <mesh ref={meshRef} position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[300, 300]} />
-      <meshBasicMaterial map={texture} transparent={false} />
-    </mesh>
-  );
-}
-
-// --- Google Earth-style satellite terrain ground ---
-function GrassGround() {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const nearMeshRef = useRef<THREE.Mesh>(null);
-  const uniforms = useMemo(() => ({
-    time: { value: 0 },
-    moonDir: { value: new THREE.Vector3(0.5, 0.7, -0.5).normalize() },
-    camPos: { value: new THREE.Vector3() },
-  }), []);
-
-  useFrame(({ clock, camera }) => {
-    uniforms.time.value = clock.getElapsedTime();
-    uniforms.camPos.value.copy(camera.position);
-    // Follow camera XZ to prevent edge visibility
-    if (meshRef.current) {
-      meshRef.current.position.x = camera.position.x;
-      meshRef.current.position.z = camera.position.z;
-    }
-    if (nearMeshRef.current) {
-      nearMeshRef.current.position.x = camera.position.x;
-      nearMeshRef.current.position.z = camera.position.z;
-    }
-  });
-
-  const terrainVertexShader = `
-    varying vec2 vUv;
-    varying vec3 vWorldPos;
-    varying vec3 vNormal;
-    varying vec3 vViewDir;
-    uniform vec3 camPos;
-    void main() {
-      vUv = uv;
-      vNormal = normalize(normalMatrix * normal);
-      vec4 wp = modelMatrix * vec4(position, 1.0);
-      vWorldPos = wp.xyz;
-      vViewDir = normalize(camPos - wp.xyz);
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-  `;
-
-  const terrainFragmentShader = `
-    uniform float time;
-    uniform vec3 moonDir;
-    uniform vec3 camPos;
-    varying vec2 vUv;
-    varying vec3 vWorldPos;
-    varying vec3 vNormal;
-    varying vec3 vViewDir;
-
-    float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-    float noise(vec2 p) {
-      vec2 i = floor(p); vec2 f = fract(p);
-      f = f * f * (3.0 - 2.0 * f);
-      return mix(mix(hash(i), hash(i + vec2(1,0)), f.x),
-                 mix(hash(i + vec2(0,1)), hash(i + vec2(1,1)), f.x), f.y);
-    }
-    float fbm(vec2 p) {
-      float v = 0.0; float a = 0.5;
-      for (int i = 0; i < 6; i++) { v += a * noise(p); p *= 2.1; a *= 0.48; }
-      return v;
-    }
-    float voronoi(vec2 p) {
-      vec2 n = floor(p); vec2 f = fract(p);
-      float md = 8.0;
-      for (int j = -1; j <= 1; j++) {
-        for (int i = -1; i <= 1; i++) {
-          vec2 g = vec2(float(i), float(j));
-          vec2 o = vec2(hash(n + g), hash(n + g + 42.0));
-          vec2 r = g + o - f;
-          md = min(md, dot(r, r));
-        }
-      }
-      return sqrt(md);
-    }
-
-    void main() {
-      vec2 worldUV = vWorldPos.xz;
-      
-      // Multi-scale terrain
-      float large = fbm(worldUV * 0.008);
-      float medium = fbm(worldUV * 0.03 + 50.0);
-      float fine = fbm(worldUV * 0.15 + 100.0);
-      float micro = noise(worldUV * 1.5);
-      float roads = voronoi(worldUV * 0.015);
-      float parcels = voronoi(worldUV * 0.04);
-      
-      // Google Earth satellite palette
-      vec3 darkForest  = vec3(0.04, 0.09, 0.03);
-      vec3 forest      = vec3(0.06, 0.14, 0.04);
-      vec3 farmGreen   = vec3(0.10, 0.20, 0.06);
-      vec3 fieldGreen  = vec3(0.14, 0.25, 0.08);
-      vec3 dryField    = vec3(0.18, 0.17, 0.08);
-      vec3 brownEarth  = vec3(0.14, 0.10, 0.05);
-      vec3 roadGrey    = vec3(0.12, 0.11, 0.10);
-      vec3 urbanGrey   = vec3(0.10, 0.09, 0.08);
-      
-      // Base terrain blending — agricultural patchwork
-      vec3 color = mix(darkForest, forest, smoothstep(0.3, 0.6, large));
-      color = mix(color, farmGreen, smoothstep(0.4, 0.65, medium) * 0.7);
-      color = mix(color, fieldGreen, smoothstep(0.5, 0.75, fine) * 0.5);
-      
-      // Agricultural parcels (rectangular patches)
-      float parcelEdge = smoothstep(0.05, 0.08, parcels);
-      vec3 parcelColor = mix(dryField, farmGreen, step(0.5, hash(floor(worldUV * 0.04))));
-      parcelColor = mix(parcelColor, fieldGreen, step(0.7, hash(floor(worldUV * 0.04) + 10.0)));
-      color = mix(brownEarth * 0.8, mix(color, parcelColor, 0.4), parcelEdge);
-      
-      // Roads — thin dark lines along Voronoi edges
-      float roadMask = smoothstep(0.02, 0.04, roads);
-      color = mix(roadGrey, color, roadMask);
-      
-      // Sparse built-up areas
-      float urbanMask = smoothstep(0.7, 0.85, fbm(worldUV * 0.02 + 300.0));
-      color = mix(color, urbanGrey, urbanMask * 0.3);
-      
-      // Wind ripples on vegetation
-      float windWave = sin(worldUV.x * 0.3 + time * 0.4) * cos(worldUV.y * 0.2 + time * 0.3);
-      color += vec3(0.008, 0.015, 0.004) * windWave * 0.3;
-
-      // Moonlight lighting
-      float NdotL = max(dot(vNormal, moonDir), 0.0);
-      float subsurface = max(dot(-vNormal, moonDir), 0.0) * 0.06;
-      float ambient = 0.22;
-      color *= (NdotL * 0.5 + subsurface + ambient);
-
-      // Specular — wet areas
-      vec3 halfDir = normalize(moonDir + vViewDir);
-      float spec = pow(max(dot(vNormal, halfDir), 0.0), 28.0);
-      float wetness = smoothstep(0.6, 0.8, fine) * (1.0 - urbanMask);
-      color += vec3(0.03, 0.05, 0.08) * spec * wetness * 0.3;
-
-      // Distance atmosphere — Google Earth blue haze
-      float dist = length(worldUV) * 0.0015;
-      float fogFactor = smoothstep(0.0, 1.0, dist);
-      vec3 atmosphereColor = vec3(0.08, 0.10, 0.18);
-      color = mix(color, atmosphereColor, fogFactor * 0.7);
-      color *= 1.0 - fogFactor * 0.25;
-
-      gl_FragColor = vec4(color, 1.0);
-    }
-  `;
-
-  // Near-field terrain (performance area) with detailed grass
-  const nearFieldFragment = `
-    uniform float time;
-    uniform vec3 moonDir;
-    uniform vec3 camPos;
-    varying vec2 vUv;
-    varying vec3 vWorldPos;
-    varying vec3 vNormal;
-    varying vec3 vViewDir;
-
-    float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-    float noise(vec2 p) {
-      vec2 i = floor(p); vec2 f = fract(p);
-      f = f * f * (3.0 - 2.0 * f);
-      return mix(mix(hash(i), hash(i + vec2(1,0)), f.x),
-                 mix(hash(i + vec2(0,1)), hash(i + vec2(1,1)), f.x), f.y);
-    }
-    float fbm(vec2 p) {
-      float v = 0.0; float a = 0.5;
-      for (int i = 0; i < 5; i++) { v += a * noise(p); p *= 2.1; a *= 0.5; }
-      return v;
-    }
-
-    void main() {
-      vec2 worldUV = vWorldPos.xz;
-      float large = fbm(worldUV * 0.03);
-      float fine = noise(worldUV * 5.0);
-
-      vec3 grassA = vec3(0.06, 0.16, 0.04);
-      vec3 grassB = vec3(0.10, 0.22, 0.06);
-      vec3 color = mix(grassA, grassB, smoothstep(0.3, 0.7, large));
-      color += vec3(0.01, 0.025, 0.005) * fine * 0.2;
-
-      // Diamond mowing pattern
-      float stripes = sin(worldUV.x * 1.5) * 0.5 + 0.5;
-      float crossStripes = sin(worldUV.y * 1.5 + 0.785) * 0.5 + 0.5;
-      color = mix(color, color * 1.1, stripes * crossStripes * 0.12);
-
-      float NdotL = max(dot(vNormal, moonDir), 0.0);
-      color *= (NdotL * 0.55 + 0.25);
-
-      vec3 halfDir = normalize(moonDir + vViewDir);
-      float spec = pow(max(dot(vNormal, halfDir), 0.0), 24.0);
-      color += vec3(0.03, 0.05, 0.08) * spec * 0.3;
-
-      float edgeDist = length(vWorldPos.xz) / 120.0;
-      float edgeFade = smoothstep(0.8, 1.0, edgeDist);
-      color = mix(color, vec3(0.05, 0.12, 0.03), edgeFade);
-
-      gl_FragColor = vec4(color, 1.0);
-    }
-  `;
-
-  return (
-    <>
-      {/* Far terrain — Google Earth satellite style */}
-      <mesh ref={meshRef} position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[50000, 50000, 4, 4]} />
-        <shaderMaterial
-          uniforms={uniforms}
-          vertexShader={terrainVertexShader}
-          fragmentShader={terrainFragmentShader}
-          polygonOffset
-          polygonOffsetFactor={1}
-          polygonOffsetUnits={1}
-        />
-      </mesh>
-      {/* Near-stage grass with mowing pattern */}
-      <mesh ref={nearMeshRef} position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[120, 64]} />
-        <shaderMaterial
-          uniforms={uniforms}
-          vertexShader={terrainVertexShader}
-          fragmentShader={nearFieldFragment}
-          transparent={false}
-        />
-      </mesh>
-    </>
-  );
-}
-
-// --- Atmospheric dust particles floating in the air ---
-function AtmosphericParticles() {
-  const pointsRef = useRef<THREE.Points>(null);
-  const count = 500;
-  
-  const { positions: posData, sizes, velocities: velData } = useMemo(() => {
-    const pos = new Float32Array(count * 3);
-    const sz = new Float32Array(count);
-    const vel = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 400;
-      pos[i * 3 + 1] = Math.random() * 60 + 0.5;
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 400;
-      sz[i] = 0.02 + Math.random() * 0.08;
-      vel[i * 3] = (Math.random() - 0.5) * 0.01;
-      vel[i * 3 + 1] = (Math.random() - 0.5) * 0.005;
-      vel[i * 3 + 2] = (Math.random() - 0.5) * 0.01;
-    }
-    return { positions: pos, sizes: sz, velocities: vel };
-  }, []);
-
-  useFrame(({ clock, camera }) => {
-    if (!pointsRef.current) return;
-    const t = clock.getElapsedTime();
-    const posAttr = pointsRef.current.geometry.getAttribute('position') as THREE.BufferAttribute;
-    const arr = posAttr.array as Float32Array;
-    const camX = camera.position.x, camZ = camera.position.z;
-    for (let i = 0; i < count; i++) {
-      arr[i * 3] += Math.sin(t * 0.08 + i * 0.5) * 0.004 + velData[i * 3];
-      arr[i * 3 + 1] += Math.sin(t * 0.12 + i * 0.3) * 0.003 + velData[i * 3 + 1];
-      arr[i * 3 + 2] += Math.cos(t * 0.07 + i * 0.7) * 0.004 + velData[i * 3 + 2];
-      // Recycle particles that drift too far from camera
-      const dx = arr[i * 3] - camX, dz = arr[i * 3 + 2] - camZ;
-      if (dx * dx + dz * dz > 40000) {
-        arr[i * 3] = camX + (Math.random() - 0.5) * 200;
-        arr[i * 3 + 2] = camZ + (Math.random() - 0.5) * 200;
-      }
-    }
-    posAttr.needsUpdate = true;
-  });
-
-  return (
-    <points ref={pointsRef}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[posData, 3]} />
-      </bufferGeometry>
-      <pointsMaterial
-        size={0.07}
-        color="#8899cc"
-        transparent
-        opacity={0.18}
-        depthWrite={false}
-        blending={THREE.AdditiveBlending}
-        sizeAttenuation
-      />
-    </points>
-  );
-}
-
-// --- Ground fog layer ---
-function GroundFog() {
-  const fogRef = useRef<THREE.Mesh>(null);
-  const uniforms = useMemo(() => ({
-    time: { value: 0 },
-  }), []);
-
-  useFrame(({ clock }) => {
-    uniforms.time.value = clock.getElapsedTime();
-  });
-
-  return (
-    <mesh ref={fogRef} position={[0, 0.3, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[500, 500, 1, 1]} />
-      <shaderMaterial
-        transparent
-        depthWrite={false}
-        blending={THREE.AdditiveBlending}
-        uniforms={uniforms}
-        vertexShader={`
-          varying vec2 vUv;
-          varying vec3 vWorldPos;
-          void main() {
-            vUv = uv;
-            vec4 wp = modelMatrix * vec4(position, 1.0);
-            vWorldPos = wp.xyz;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          }
-        `}
-        fragmentShader={`
-          uniform float time;
-          varying vec2 vUv;
-          varying vec3 vWorldPos;
-          
-          float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-          float noise(vec2 p) {
-            vec2 i = floor(p); vec2 f = fract(p);
-            f = f * f * (3.0 - 2.0 * f);
-            return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
-                       mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
-          }
-          
-          void main() {
-            vec2 uv = vWorldPos.xz * 0.01;
-            float n1 = noise(uv * 3.0 + time * 0.02);
-            float n2 = noise(uv * 6.0 - time * 0.015);
-            float fog = n1 * 0.6 + n2 * 0.4;
-            
-            // Fade at edges
-            float dist = length(vWorldPos.xz) * 0.01;
-            float edgeFade = 1.0 - smoothstep(0.5, 1.0, dist);
-            
-            float alpha = fog * 0.04 * edgeFade;
-            gl_FragColor = vec4(0.15, 0.18, 0.25, alpha);
-          }
-        `}
-      />
-    </mesh>
-  );
-}
-
-// --- Finale 3D dark professional ground ---
-function FinaleDarkGround({ brightness }: { brightness: number }) {
-  const b = brightness * 0.4;
-  const meshRef = useRef<THREE.Mesh>(null);
-  useFrame(({ camera }) => {
-    if (!meshRef.current) return;
-    meshRef.current.position.x = camera.position.x;
-    meshRef.current.position.z = camera.position.z;
-  });
-  return (
-    <>
-      <mesh ref={meshRef} position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[50000, 50000]} />
-        <meshStandardMaterial
-          color={new THREE.Color(0.02 * b, 0.035 * b, 0.02 * b)}
-          roughness={0.92}
-          metalness={0.05}
-          polygonOffset
-          polygonOffsetFactor={1}
-          polygonOffsetUnits={1}
-        />
-      </mesh>
-      <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[120, 64]} />
-        <meshStandardMaterial
-          color={new THREE.Color(0.03 * b, 0.05 * b, 0.03 * b)}
-          roughness={0.88}
-          metalness={0.08}
-        />
-      </mesh>
-    </>
-  );
-}
-
-// --- Concrete / urban ground ---
-function ConcreteGround({ brightness }: { brightness: number }) {
-  const b = brightness * 0.5;
-  const meshRef = useRef<THREE.Mesh>(null);
-  useFrame(({ camera }) => {
-    if (!meshRef.current) return;
-    meshRef.current.position.x = camera.position.x;
-    meshRef.current.position.z = camera.position.z;
-  });
-  return (
-    <>
-      <mesh ref={meshRef} position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[50000, 50000]} />
-        <meshStandardMaterial
-          color={new THREE.Color(0.06 * b, 0.06 * b, 0.065 * b)}
-          roughness={0.95}
-          metalness={0.1}
-          polygonOffset
-          polygonOffsetFactor={1}
-          polygonOffsetUnits={1}
-        />
-      </mesh>
-      <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[150, 64]} />
-        <meshStandardMaterial
-          color={new THREE.Color(0.08 * b, 0.08 * b, 0.085 * b)}
-          roughness={0.9}
-          metalness={0.15}
-        />
-      </mesh>
-    </>
-  );
-}
-
-function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) {
-  const sc = useSceneStore(st => st.settings);
-
-  const renderGround = () => {
-    switch (sc.groundStyle) {
-      case 'flat-black':
-        return (
-          <mesh position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-            <planeGeometry args={[50000, 50000]} />
-            <meshStandardMaterial color="#050505" roughness={0.95} metalness={0} polygonOffset polygonOffsetFactor={1} polygonOffsetUnits={1} />
-          </mesh>
-        );
-      case 'concrete':
-        return <ConcreteGround brightness={sc.groundBrightness} />;
-      case 'finale-dark':
-        return <FinaleDarkGround brightness={sc.groundBrightness} />;
-      case 'google-earth':
-      default:
-        return <GrassGround />;
-    }
-  };
-
-  return (
-    <group>
-      {renderGround()}
-      {satelliteTexture && <SatelliteOverlay textureUrl={satelliteTexture} />}
-      {sc.groundFogIntensity > 0 && <GroundFog />}
-
-      {/* Operational grid */}
-      {sc.showGrid && (
-        <>
-          <Grid
-            position={[0, 0.01, 0]}
-            args={[1000, 1000]}
-            cellSize={2}
-            cellThickness={0.15}
-            cellColor={sc.gridColor}
-            sectionSize={10}
-            sectionThickness={0.4}
-            sectionColor="#2a4a2a"
-            fadeDistance={350}
-            infiniteGrid
-          />
-          <Grid
-            position={[0, 0.015, 0]}
-            args={[1000, 1000]}
-            cellSize={50}
-            cellThickness={0.6}
-            cellColor="#2a4a2a"
-            sectionSize={100}
-            sectionThickness={0.8}
-            sectionColor="#3a5a3a"
-            fadeDistance={600}
-            infiniteGrid
-          />
-        </>
-      )}
-
-      {/* Origin marker */}
-      {sc.showOriginMarker && (
-        <>
-          <mesh position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[0.15, 6]} />
-            <meshBasicMaterial color="#5a8a5a" transparent opacity={0.3} />
-          </mesh>
-          <mesh position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[6, 0.15]} />
-            <meshBasicMaterial color="#5a8a5a" transparent opacity={0.3} />
-          </mesh>
-        </>
-      )}
-
-      {/* Scale reference poles — real height markers matching firework break heights */}
-      {sc.showScalePoles && [-80, -40, 0, 40, 80].map((x) => (
-        <group key={`pole-${x}`} position={[x, 0, -60]}>
-          {/* Tall reference pole (100m) */}
-          <mesh position={[0, 50, 0]} castShadow>
-            <cylinderGeometry args={[0.08, 0.1, 100, 8]} />
-            <meshStandardMaterial color="#555555" metalness={0.7} roughness={0.25} />
-          </mesh>
-          {/* Height markers every 25m */}
-          {[25, 50, 75, 100].map((h) => (
-            <group key={h}>
-              <mesh position={[0, h, 0]}>
-                <boxGeometry args={[0.5, 0.05, 0.5]} />
-                <meshBasicMaterial color={h === 50 ? '#ffaa00' : h === 100 ? '#ff4444' : '#888888'} transparent opacity={0.5} />
-              </mesh>
-              {/* Height label billboard */}
-              <mesh position={[1.2, h, 0]}>
-                <planeGeometry args={[2, 0.6]} />
-                <meshBasicMaterial color={h === 100 ? '#ff4444' : '#666666'} transparent opacity={0.25} />
-              </mesh>
-            </group>
-          ))}
-          <mesh position={[0, 100.3, 0]}>
-            <sphereGeometry args={[0.15, 8, 8]} />
-            <meshBasicMaterial color="#ff4444" />
-          </mesh>
-          <mesh position={[0, 0.1, 0]}>
-            <cylinderGeometry args={[0.35, 0.45, 0.2, 8]} />
-            <meshStandardMaterial color="#444444" metalness={0.6} roughness={0.3} />
-          </mesh>
-        </group>
-      ))}
-
-      {/* Horizon treeline */}
-      {sc.showTreeline && <TreelineSilhouette />}
-    </group>
-  );
-}
-
-// --- Layered tree silhouettes with depth ---
-function TreelineSilhouette() {
-  const trees = useMemo(() => {
-    const result: { x: number; z: number; h: number; w: number; layer: number }[] = [];
-    // 6 depth layers — expanded world
-    for (let layer = 0; layer < 6; layer++) {
-      const count = 120 - layer * 15;
-      const baseDist = 300 + layer * 120;
-      for (let i = 0; i < count; i++) {
-        const angle = (i / count) * Math.PI * 2 + layer * 0.05;
-        const dist = baseDist + Math.random() * 60;
-        result.push({
-          x: Math.cos(angle) * dist,
-          z: Math.sin(angle) * dist,
-          h: 6 + Math.random() * 22 + layer * 5,
-          w: 5 + Math.random() * 10,
-          layer,
-        });
-      }
-    }
-    return result;
-  }, []);
-
-  return (
-    <group>
-      {trees.map((t, i) => {
-        // Darker and more transparent for distant layers
-        const brightness = 0.03 + t.layer * 0.015;
-        const opacity = 0.9 - t.layer * 0.15;
-        return (
-          <mesh key={i} position={[t.x, t.h * 0.5, t.z]}
-            rotation={[0, Math.atan2(t.x, t.z), 0]}>
-            <planeGeometry args={[t.w, t.h]} />
-            <meshBasicMaterial
-              color={new THREE.Color(brightness, brightness + 0.02, brightness)}
-              transparent
-              opacity={opacity}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-        );
-      })}
-    </group>
-  );
-}
+// Moon, SatelliteOverlay, GrassGround, AtmosphericParticles, FloorLogo, TreelineSilhouette
+// → Extracted to skycanvas/GroundSystem.tsx
 
 // LaunchSites removed — positions are now user-created via toolbar
 
@@ -1722,28 +742,56 @@ function TreelineSilhouette() {
 const SHADOW_MAP_SIZES: Record<string, number> = { low: 1024, medium: 2048, high: 4096, ultra: 8192 };
 
 function SceneLighting() {
+  const { scene } = useThree();
   const s = useSceneStore(st => st.settings);
   const shadowSize = SHADOW_MAP_SIZES[s.shadowQuality] || 4096;
+  const rigRef = useRef<ReturnType<typeof createHDRLightingRig> | null>(null);
+
+  useEffect(() => {
+    const rig = createHDRLightingRig({
+      moonIntensity: s.moonIntensity,
+      moonColor: new THREE.Color(s.moonColor),
+      ambientIntensity: s.ambientIntensity,
+      ambientColor: new THREE.Color(0.29, 0.38, 0.5),
+      fillIntensity: 0.35,
+      rimIntensity: 0.55,
+    });
+    rigRef.current = rig;
+
+    // Configure shadow map from store settings
+    rig.moon.shadow.mapSize.set(shadowSize, shadowSize);
+    rig.moon.castShadow = s.shadowsEnabled;
+    rig.moon.shadow.bias = -0.00003;
+    rig.moon.shadow.normalBias = 0.02;
+    rig.moon.shadow.camera.far = 25000;
+
+    scene.add(rig.group);
+
+    // Expose HDR rig globally for NiagaraVFXController burst lights
+    (window as any).__hdrLightingRig = rig;
+
+    return () => {
+      scene.remove(rig.group);
+      delete (window as any).__hdrLightingRig;
+    };
+  }, [scene]);
+
+  // Reactively sync store settings to rig
+  useEffect(() => {
+    const rig = rigRef.current;
+    if (!rig) return;
+    rig.updateMoonIntensity(s.moonIntensity);
+    rig.updateAmbient(s.ambientIntensity);
+    rig.moon.color.set(s.moonColor);
+    rig.moon.castShadow = s.shadowsEnabled;
+    rig.moon.shadow.mapSize.set(shadowSize, shadowSize);
+  }, [s.moonIntensity, s.ambientIntensity, s.moonColor, s.shadowsEnabled, shadowSize]);
 
   return (
     <>
-      <ambientLight intensity={s.ambientIntensity} color="#506880" />
-      <directionalLight
-        position={[60, 55, -80]}
-        intensity={s.moonIntensity}
-        color={s.moonColor}
-        castShadow={s.shadowsEnabled}
-        shadow-mapSize={[shadowSize, shadowSize]}
-        shadow-camera-far={500}
-        shadow-camera-left={-150}
-        shadow-camera-right={150}
-        shadow-camera-top={150}
-        shadow-camera-bottom={-150}
-        shadow-bias={-0.00005}
-      />
-      <hemisphereLight args={['#152050', '#0c1a0a', 0.12]} />
-      <directionalLight position={[-40, 20, 60]} intensity={s.rimLightIntensity * 0.2} color="#4466aa" />
-      <directionalLight position={[0, -10, 30]} intensity={s.fillLightIntensity * 0.1} color="#1a2a1a" />
+      {/* Subtle backfill for depth separation — complements HDR rig */}
+      <directionalLight position={[-60, 25, 70]} intensity={s.rimLightIntensity * 0.15} color="#3355aa" />
+      <directionalLight position={[0, -8, 40]} intensity={s.fillLightIntensity * 0.08} color="#182218" />
     </>
   );
 }
@@ -1757,93 +805,145 @@ function SceneFog() {
 function SceneStars() {
   const density = useSceneStore(st => st.settings.starDensity);
   if (density <= 0.05) return null;
-  return <Stars radius={450} depth={200} count={Math.round(10000 * density)} factor={5} saturation={0.2} fade speed={0.03} />;
+  return <Stars radius={100000} depth={40000} count={Math.round(15000 * density)} factor={6} saturation={0.2} fade speed={0.03} />;
 }
 
-function WeatherEffects() {
-  const weather = useSceneStore(st => st.settings.weather);
-  const rainIntensity = useSceneStore(st => st.settings.rainIntensity);
-  const pointsRef = useRef<THREE.Points>(null);
+/** SceneStars with lowQualityMode support — reduces count & factor by 50% */
+function SceneStarsWired() {
+  const density = useSceneStore(st => st.settings.starDensity);
+  const lowQ = useSceneStore(st => st.environment.lowQualityMode);
+  if (density <= 0.05) return null;
+  const mult = lowQ ? 0.5 : 1.0;
+  return <Stars radius={100000} depth={40000} count={Math.round(15000 * density * mult)} factor={6 * mult} saturation={0.2} fade speed={0.03} />;
+}
 
-  const rainData = useMemo(() => {
-    if (weather !== 'light-rain' && weather !== 'heavy-rain' && weather !== 'snow') return null;
-    const count = weather === 'heavy-rain' ? 3000 : weather === 'snow' ? 1500 : 1000;
-    const positions = new Float32Array(count * 3);
-    const velocities = new Float32Array(count);
-    for (let i = 0; i < count; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 300;
-      positions[i * 3 + 1] = Math.random() * 100;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 300;
-      velocities[i] = weather === 'snow' ? 1 + Math.random() * 2 : 15 + Math.random() * 25;
-    }
-    return { count, positions, velocities };
-  }, [weather]);
+// WeatherEffects extracted to skycanvas/WeatherSystem.tsx
+import { WeatherEffects } from './skycanvas/WeatherSystem';
 
-  useFrame(() => {
-    if (!pointsRef.current || !rainData) return;
-    const posAttr = pointsRef.current.geometry.getAttribute('position') as THREE.BufferAttribute;
-    const arr = posAttr.array as Float32Array;
-    for (let i = 0; i < rainData.count; i++) {
-      arr[i * 3 + 1] -= rainData.velocities[i] * 0.016 * rainIntensity;
-      if (arr[i * 3 + 1] < 0) {
-        arr[i * 3 + 1] = 80 + Math.random() * 20;
-        arr[i * 3] = (Math.random() - 0.5) * 300;
-        arr[i * 3 + 2] = (Math.random() - 0.5) * 300;
-      }
-    }
-    posAttr.needsUpdate = true;
+// Delayed mount wrapper — lets base renderer stabilize before heavy VFX
+function DelayedMount({ delay = 2000, children }: { delay?: number; children: ReactNode }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setReady(true), delay); return () => clearTimeout(t); }, [delay]);
+  return ready ? <>{children}</> : null;
+}
+
+// Session-level flag: intro only plays once per browser session
+let __cameraIntroPlayed = false;
+
+// --- Camera controller with persistent state + cinematic intro ---
+// Apple-smooth easing: cubic bezier for uniform camera movement
+function easeInOutCubic(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+/** FlyControls — WASD + mouse pointer-lock first-person camera */
+function FlyControls({ onSpeedChange }: { onSpeedChange?: (speed: number) => void }) {
+  const { camera, gl } = useThree();
+  const keys = useRef<Record<string, boolean>>({});
+  const euler = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
+  const speed = useRef(15);
+  const locked = useRef(false);
+  const SENSITIVITY = 0.002;
+
+  useEffect(() => {
+    const canvas = gl.domElement;
+
+    const onPointerLockChange = () => {
+      locked.current = document.pointerLockElement === canvas;
+    };
+    const onMouseMove = (e: MouseEvent) => {
+      if (!locked.current) return;
+      euler.current.setFromQuaternion(camera.quaternion);
+      euler.current.y -= e.movementX * SENSITIVITY;
+      euler.current.x -= e.movementY * SENSITIVITY;
+      euler.current.x = THREE.MathUtils.clamp(euler.current.x, -Math.PI * 0.49, Math.PI * 0.49);
+      camera.quaternion.setFromEuler(euler.current);
+    };
+    const onKeyDown = (e: KeyboardEvent) => { keys.current[e.code] = true; };
+    const onKeyUp = (e: KeyboardEvent) => { keys.current[e.code] = false; };
+    const onWheel = (e: WheelEvent) => {
+      if (!locked.current) return;
+      e.preventDefault();
+      speed.current = THREE.MathUtils.clamp(speed.current * (e.deltaY > 0 ? 0.85 : 1.18), 1, 500);
+      onSpeedChange?.(speed.current);
+    };
+
+    canvas.requestPointerLock();
+    document.addEventListener('pointerlockchange', onPointerLockChange);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+
+    return () => {
+      document.removeEventListener('pointerlockchange', onPointerLockChange);
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('keyup', onKeyUp);
+      canvas.removeEventListener('wheel', onWheel);
+      if (document.pointerLockElement === canvas) document.exitPointerLock();
+      keys.current = {};
+    };
+  }, [camera, gl, onSpeedChange]);
+
+  const dir = useRef(new THREE.Vector3());
+  const right = useRef(new THREE.Vector3());
+
+  useFrame((_, delta) => {
+    if (!locked.current) return;
+    const k = keys.current;
+    const sprint = k['ShiftLeft'] || k['ShiftRight'] ? 3 : 1;
+    const move = speed.current * sprint * delta;
+
+    camera.getWorldDirection(dir.current);
+    right.current.crossVectors(dir.current, camera.up).normalize();
+
+    if (k['KeyW'] || k['ArrowUp']) camera.position.addScaledVector(dir.current, move);
+    if (k['KeyS'] || k['ArrowDown']) camera.position.addScaledVector(dir.current, -move);
+    if (k['KeyA'] || k['ArrowLeft']) camera.position.addScaledVector(right.current, -move);
+    if (k['KeyD'] || k['ArrowRight']) camera.position.addScaledVector(right.current, move);
+    if (k['KeyE'] || k['Space']) camera.position.y += move;
+    if (k['KeyQ']) camera.position.y -= move;
+
+    // Clamp
+    camera.position.y = Math.max(0.5, camera.position.y);
   });
 
-  if (!rainData) return null;
-
-  return (
-    <points ref={pointsRef}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[rainData.positions, 3]} />
-      </bufferGeometry>
-      <pointsMaterial
-        size={weather === 'snow' ? 0.15 : 0.04}
-        color={weather === 'snow' ? '#e8e8ff' : '#aabbcc'}
-        transparent
-        opacity={rainIntensity * 0.6}
-        depthWrite={false}
-        sizeAttenuation
-      />
-    </points>
-  );
+  return null;
 }
 
-// --- Camera controller ---
-function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPosition: [number, number, number]; targetLookAt: [number, number, number]; freeLook: boolean }) {
+function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: { targetPosition: [number, number, number]; targetLookAt: [number, number, number]; freeLook: boolean; flyMode: boolean }) {
   const { camera } = useThree();
   const controlsRef = useRef<any>(null);
   const targetPos = useRef(new THREE.Vector3(...targetPosition));
   const targetLook = useRef(new THREE.Vector3(...targetLookAt));
   const animating = useRef(false);
-  const _lastValidY = useRef(300);
+  const focusAnimating = useRef(false);
+  const initialized = useRef(false);
+  const lastPresetKey = useRef('');
+  const introPhase = useRef<'hold' | 'sweep' | 'done'>(__cameraIntroPlayed ? 'done' : 'hold');
+  const introTimer = useRef(0);
+
+  const WORLD_HALF_EXTENT = 80000;
   const CAMERA_MIN_Y = 5;
-  const CAMERA_MAX_Y = 5000;
+  const CAMERA_MAX_Y = 75000;
+  const _lastValidY = useRef(300);
 
-  useEffect(() => {
-    if (freeLook) {
-      animating.current = false;
-      return;
-    }
-    targetPos.current.set(...targetPosition);
-    targetLook.current.set(...targetLookAt);
-    animating.current = true;
-  }, [targetPosition, targetLookAt, freeLook]);
+  const clampToWorldBounds = useCallback(() => {
+    const controls = controlsRef.current;
+    if (!controls) return;
 
-  useFrame(() => {
-    if (!controlsRef.current) return;
+    const tx = THREE.MathUtils.clamp(controls.target.x, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
+    const ty = THREE.MathUtils.clamp(controls.target.y, 0, 50000);
+    const tz = THREE.MathUtils.clamp(controls.target.z, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
 
-    // Always clamp camera altitude
     let cy = THREE.MathUtils.clamp(camera.position.y, CAMERA_MIN_Y, CAMERA_MAX_Y);
 
     // Prevent sudden altitude drops (max 50m per frame)
     const yDelta = cy - _lastValidY.current;
     if (yDelta < -50) {
       cy = _lastValidY.current - 50;
+      console.warn('[Camera] altitude drop clamped');
     }
 
     // Altitude-dependent damping near ground
@@ -1853,36 +953,288 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
       cy = Math.max(CAMERA_MIN_Y, dampedY);
     }
 
-    if (Math.abs(cy - camera.position.y) > 0.01) {
-      camera.position.y = cy;
+    if (cy < CAMERA_MIN_Y + 1) {
+      console.warn('[Camera] altitude clamped to safe floor');
     }
+
     _lastValidY.current = cy;
 
-    // Clamp target
-    controlsRef.current.target.y = Math.max(0, controlsRef.current.target.y);
+    const cx = THREE.MathUtils.clamp(camera.position.x, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
+    const cz = THREE.MathUtils.clamp(camera.position.z, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
 
-    // Preset animation
-    if (animating.current && !freeLook) {
-      camera.position.lerp(targetPos.current, 0.04);
-      controlsRef.current.target.lerp(targetLook.current, 0.04);
-      controlsRef.current.update();
-      if (camera.position.distanceTo(targetPos.current) < 0.05) animating.current = false;
+    const targetChanged = tx !== controls.target.x || ty !== controls.target.y || tz !== controls.target.z;
+    const cameraChanged = cx !== camera.position.x || cy !== camera.position.y || cz !== camera.position.z;
+
+    if (targetChanged) controls.target.set(tx, ty, tz);
+    if (cameraChanged) camera.position.set(cx, cy, cz);
+    if (targetChanged || cameraChanged) controls.update();
+  }, [camera]);
+
+  // ── Zero-GC: Pre-allocated vectors for intro animation ──
+  const introStartPos = useRef(new THREE.Vector3(0, 300, 100));
+  const introStartLook = useRef(new THREE.Vector3(0, 0, 0));
+  const introDuration = useRef({ hold: 2.5, sweep: 4.0 });
+  const _sweepDefaultPos = useRef(new THREE.Vector3());
+  const _sweepDefaultLook = useRef(new THREE.Vector3());
+  const _sweepStartPos = useRef(new THREE.Vector3(0, 2300, 3));
+  const _sweepCurrentTarget = useRef(new THREE.Vector3());
+
+  useEffect(() => {
+    if (__cameraIntroPlayed) {
+      camera.position.set(...targetPosition);
+      if (controlsRef.current) {
+        controlsRef.current.target.set(...targetLookAt);
+        controlsRef.current.update();
+      }
+      introPhase.current = 'done';
+      return;
+    }
+    camera.position.copy(introStartPos.current);
+    camera.lookAt(introStartLook.current);
+    introPhase.current = 'hold';
+    introTimer.current = 0;
+  }, []);
+
+  const presetKey = `${targetPosition.join(',')}_${targetLookAt.join(',')}`;
+  
+  useEffect(() => {
+    if (freeLook) { animating.current = false; return; }
+    if (!initialized.current) {
+      initialized.current = true;
+      lastPresetKey.current = presetKey;
+      return;
+    }
+    if (presetKey === lastPresetKey.current) return;
+    lastPresetKey.current = presetKey;
+    targetPos.current.set(...targetPosition);
+    targetLook.current.set(...targetLookAt);
+    animating.current = true;
+  }, [presetKey, freeLook]);
+
+  useFrame((_, delta) => {
+    if (introPhase.current !== 'done') {
+      introTimer.current += delta;
+      
+      if (introPhase.current === 'hold') {
+        const holdT = Math.min(1, introTimer.current / introDuration.current.hold);
+        const eased = easeInOutCubic(holdT);
+        const orbitRadius = 3;
+        const orbitSpeed = 0.15;
+        camera.position.set(
+          Math.sin(introTimer.current * orbitSpeed) * orbitRadius,
+          2500 - eased * 200,
+          Math.cos(introTimer.current * orbitSpeed) * orbitRadius + 0.01
+        );
+        camera.lookAt(0, 0, 0);
+        if (controlsRef.current) {
+          controlsRef.current.target.set(0, 0, 0);
+          controlsRef.current.update();
+        }
+        if (introTimer.current >= introDuration.current.hold) {
+          introPhase.current = 'sweep';
+          introTimer.current = 0;
+        }
+      } else if (introPhase.current === 'sweep') {
+        const sweepT = Math.min(1, introTimer.current / introDuration.current.sweep);
+        const eased = easeInOutCubic(sweepT);
+        
+        // Zero-GC: reuse pre-allocated vectors instead of creating new ones per frame
+        _sweepDefaultPos.current.set(targetPosition[0], targetPosition[1], targetPosition[2]);
+        _sweepDefaultLook.current.set(targetLookAt[0], targetLookAt[1], targetLookAt[2]);
+        
+        camera.position.lerpVectors(_sweepStartPos.current, _sweepDefaultPos.current, eased);
+        
+        if (controlsRef.current) {
+          _sweepCurrentTarget.current.lerpVectors(introStartLook.current, _sweepDefaultLook.current, eased);
+          controlsRef.current.target.copy(_sweepCurrentTarget.current);
+          controlsRef.current.update();
+        }
+        
+        if (sweepT >= 1) {
+          introPhase.current = 'done';
+          __cameraIntroPlayed = true;
+          camera.position.copy(_sweepDefaultPos.current);
+          if (controlsRef.current) {
+            controlsRef.current.target.copy(_sweepDefaultLook.current);
+            controlsRef.current.update();
+          }
+          animating.current = false;
+        }
+      }
+      clampToWorldBounds();
+      return;
+    }
+
+    // Normal preset animation — fix operator precedence bug
+    if ((!animating.current && !focusAnimating.current) || !controlsRef.current || freeLook) {
+      clampToWorldBounds();
+      return;
+    }
+    camera.position.lerp(targetPos.current, focusAnimating.current ? 0.08 : 0.06);
+    controlsRef.current.target.lerp(targetLook.current, focusAnimating.current ? 0.08 : 0.06);
+    controlsRef.current.update();
+    if (camera.position.distanceTo(targetPos.current) < 0.1) {
+      animating.current = false;
+      focusAnimating.current = false;
+    }
+    clampToWorldBounds();
+  });
+
+  const sensitivityScale = 0.7; // 30% less sensitivity
+
+  // Broadcast OrbitControls ref to GeoCameraController via custom event
+  useEffect(() => {
+    if (controlsRef.current) {
+      window.dispatchEvent(new CustomEvent('r3f-controls-ready', { detail: { controls: controlsRef.current } }));
     }
   });
+
+  // Disable OrbitControls while box-select is active
+  useEffect(() => {
+    const handler = (e: CustomEvent) => {
+      if (controlsRef.current) {
+        controlsRef.current.enabled = !e.detail;
+      }
+    };
+    window.addEventListener('box-select-active' as any, handler as any);
+    return () => window.removeEventListener('box-select-active' as any, handler as any);
+  }, []);
+
+  // Double-click focus: fly camera to a 3D point
+  useEffect(() => {
+    const _focusCamDir = new THREE.Vector3();
+    const handler = (e: Event) => {
+      const { x, y, z } = (e as CustomEvent).detail;
+      if (controlsRef.current) {
+        targetLook.current.set(x, y, z);
+        // Zero-GC: reuse pre-allocated vector
+        _focusCamDir.subVectors(camera.position, controlsRef.current.target).normalize();
+        const dist = Math.max(20, camera.position.distanceTo(controlsRef.current.target) * 0.5);
+        targetPos.current.set(x + _focusCamDir.x * dist, Math.max(y + 5, y + _focusCamDir.y * dist), z + _focusCamDir.z * dist);
+        focusAnimating.current = true;
+      }
+    };
+    window.addEventListener('focus-camera-on-point', handler);
+    return () => window.removeEventListener('focus-camera-on-point', handler);
+  }, [camera]);
+
+  // In select mode: disable left-mouse orbit so box-select works exclusively
+  const editorMode = useProjectStore(s => s.editorMode);
+  const isSelectMode = editorMode === 'select';
+
+  // Update mouse buttons when mode changes
+  useEffect(() => {
+    if (!controlsRef.current) return;
+    if (isSelectMode) {
+      controlsRef.current.mouseButtons = {
+        LEFT: -1,
+        MIDDLE: THREE.MOUSE.ROTATE,
+        RIGHT: THREE.MOUSE.PAN,
+      };
+    } else {
+      controlsRef.current.mouseButtons = {
+        LEFT: THREE.MOUSE.ROTATE,
+        MIDDLE: THREE.MOUSE.DOLLY,
+        RIGHT: THREE.MOUSE.PAN,
+      };
+    }
+  }, [isSelectMode]);
+
+
+  if (flyMode) return null;
 
   return (
     <OrbitControls
       ref={controlsRef}
       enableDamping
-      dampingFactor={0.08}
-      rotateSpeed={0.6}
-      panSpeed={0.8}
-      zoomSpeed={1.2}
+      dampingFactor={0.06}
+      rotateSpeed={0.6 * sensitivityScale}
+      panSpeed={0.8 * sensitivityScale}
+      zoomSpeed={1.2 * sensitivityScale}
+      minPolarAngle={Math.PI * 0.05}
       maxPolarAngle={Math.PI * 0.75}
       minDistance={2}
-      maxDistance={2000}
+      maxDistance={90000}
       enablePan
     />
+  );
+}
+
+/** Viewport playback controls — always visible at bottom center of 3D viewport */
+function ViewportPlaybackControls() {
+  const { isPlaying, setPlaying, currentTime, setCurrentTime, duration, playbackSpeed } = useProjectStore();
+
+  const formatTime = (t: number) => {
+    const m = Math.floor(t / 60);
+    const s = Math.floor(t % 60);
+    const f = Math.floor((t % 1) * 30);
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}:${String(f).padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="absolute bottom-14 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5">
+      {/* Rewind */}
+      <button
+        onClick={() => { setCurrentTime(0); setPlaying(false); }}
+        className="bg-card/85 backdrop-blur-xl border border-border/25 text-muted-foreground hover:text-foreground hover:bg-card/95 w-8 h-8 rounded-lg flex items-center justify-center transition-all shadow-lg"
+        title="Rewind (Home)"
+      >
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M1 1h2v10H1V1zm3 5l6 5V1L4 6z"/></svg>
+      </button>
+
+      {/* Play/Pause */}
+      <button
+        onClick={() => setPlaying(!isPlaying)}
+        className={cn(
+          "backdrop-blur-xl border w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-lg",
+          isPlaying
+            ? "bg-primary/20 text-primary border-primary/30 shadow-primary/15"
+            : "bg-card/85 text-foreground border-border/25 hover:bg-card/95"
+        )}
+        title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
+      >
+        {isPlaying ? (
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="2" y="1" width="3.5" height="12" rx="0.5"/><rect x="8.5" y="1" width="3.5" height="12" rx="0.5"/></svg>
+        ) : (
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3 1.5v11l9.5-5.5L3 1.5z"/></svg>
+        )}
+      </button>
+
+      {/* Stop */}
+      <button
+        onClick={() => { setCurrentTime(0); setPlaying(false); }}
+        className="bg-card/85 backdrop-blur-xl border border-border/25 text-muted-foreground hover:text-destructive hover:bg-card/95 w-8 h-8 rounded-lg flex items-center justify-center transition-all shadow-lg"
+        title="Stop"
+      >
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect x="1.5" y="1.5" width="9" height="9" rx="1"/></svg>
+      </button>
+
+      {/* Time display */}
+      <div className="bg-card/85 backdrop-blur-xl border border-border/25 px-3 h-8 rounded-lg flex items-center gap-2 shadow-lg">
+        <span className="text-[10px] font-mono-code text-foreground tracking-wider">{formatTime(currentTime)}</span>
+        <span className="text-[9px] text-muted-foreground/60">/</span>
+        <span className="text-[10px] font-mono-code text-muted-foreground">{formatTime(duration)}</span>
+        {playbackSpeed !== 1 && (
+          <span className="text-[8px] font-mono-code text-primary ml-1">{playbackSpeed}×</span>
+        )}
+      </div>
+
+      {/* Progress mini-bar */}
+      <div className="bg-card/85 backdrop-blur-xl border border-border/25 w-24 h-8 rounded-lg flex items-center px-2 shadow-lg cursor-pointer"
+        onClick={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const pct = Math.max(0, Math.min(1, (e.clientX - rect.left - 8) / (rect.width - 16)));
+          setCurrentTime(pct * duration);
+        }}
+      >
+        <div className="relative w-full h-1 bg-border/30 rounded-full overflow-hidden">
+          <div
+            className="absolute top-0 left-0 h-full bg-primary rounded-full transition-all"
+            style={{ width: `${(currentTime / duration) * 100}%` }}
+          />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1931,19 +1283,307 @@ function FullscreenEditMenu() {
   );
 }
 
+/** Site Model Transform Toolbar — Move/Rotate/Scale gizmo mode switcher */
+function SiteModelTransformToolbar() {
+  const selectedId = useSceneStore((s) => s.selectedSiteModelId);
+  const mode = useSceneStore((s) => s.siteModelTransformMode);
+  const setMode = useSceneStore((s) => s.setSiteModelTransformMode);
+  const selectModel = useSceneStore((s) => s.selectSiteModel);
+  const snap = useSceneStore((s) => s.transformSnap);
+  const setSnap = useSceneStore((s) => s.setTransformSnap);
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedId) {
+        selectModel(null);
+      }
+      if (selectedId) {
+        if (e.key === 'g' || e.key === 'G') setMode('translate');
+        if (e.key === 'r' || e.key === 'R') setMode('rotate');
+        if (e.key === 's' || e.key === 'S') setMode('scale');
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [selectedId, selectModel, setMode]);
+
+  if (!selectedId) return null;
+
+  const modes = [
+    { key: 'translate' as const, label: 'Move', icon: '⊞', shortcut: 'G' },
+    { key: 'rotate' as const, label: 'Rotate', icon: '↻', shortcut: 'R' },
+    { key: 'scale' as const, label: 'Scale', icon: '⤢', shortcut: 'S' },
+  ];
+
+  const snapLabel = mode === 'translate' ? `${snap.translateSnap}m` : mode === 'rotate' ? `${snap.rotateSnap}°` : `${snap.scaleSnap}x`;
+
+  return (
+    <div className="absolute top-14 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 bg-card/90 backdrop-blur-xl border border-border/30 rounded-xl px-2 py-1.5 shadow-lg">
+      <span className="text-[9px] text-muted-foreground font-mono mr-1">MODEL</span>
+      {modes.map((m) => (
+        <button
+          key={m.key}
+          onClick={() => setMode(m.key)}
+          className={cn(
+            'px-2.5 py-1 rounded-lg text-[10px] font-medium transition-all',
+            mode === m.key
+              ? 'bg-primary text-primary-foreground shadow-sm'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+          )}
+          title={`${m.label} (${m.shortcut})`}
+        >
+          {m.icon} {m.label}
+        </button>
+      ))}
+      <div className="w-px h-4 bg-border/40 mx-1" />
+      <button
+        onClick={() => setSnap({ enabled: !snap.enabled })}
+        className={cn(
+          'px-2 py-1 rounded-lg text-[10px] font-medium transition-all flex items-center gap-1',
+          snap.enabled
+            ? 'bg-accent text-accent-foreground'
+            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+        )}
+        title={`Snap: ${snap.enabled ? 'ON' : 'OFF'} (${snapLabel})`}
+      >
+        ⊡ Snap {snap.enabled && <span className="text-[9px] opacity-70">{snapLabel}</span>}
+      </button>
+      {snap.enabled && (
+        <>
+          <input
+            type="number"
+            className="w-12 bg-muted/60 border border-border/30 rounded px-1 py-0.5 text-[10px] text-foreground text-center"
+            value={mode === 'translate' ? snap.translateSnap : mode === 'rotate' ? snap.rotateSnap : snap.scaleSnap}
+            min={mode === 'scale' ? 0.01 : 1}
+            step={mode === 'translate' ? 0.5 : mode === 'rotate' ? 5 : 0.05}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value);
+              if (isNaN(v) || v <= 0) return;
+              if (mode === 'translate') setSnap({ translateSnap: v });
+              else if (mode === 'rotate') setSnap({ rotateSnap: v });
+              else setSnap({ scaleSnap: v });
+            }}
+            title={mode === 'translate' ? 'Snap distance (m)' : mode === 'rotate' ? 'Snap angle (°)' : 'Snap scale step'}
+          />
+        </>
+      )}
+      <div className="w-px h-4 bg-border/40 mx-1" />
+      <button
+        onClick={() => selectModel(null)}
+        className="px-2 py-1 rounded-lg text-[10px] text-muted-foreground hover:bg-destructive/20 hover:text-destructive transition-all"
+        title="Deselect (Esc)"
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+
+/** Camera Bookmarks bar — Finale 3D custom camera shortcuts */
+function CameraBookmarksBar({ setActivePreset, setFreeLook }: { setActivePreset: (id: string) => void; setFreeLook: (v: boolean) => void }) {
+  const bookmarks = useSceneStore(st => st.environment.cameraBookmarks);
+  const removeCameraBookmark = useSceneStore(st => st.removeCameraBookmark);
+
+  if (bookmarks.length === 0) return null;
+
+  return (
+    <div className="absolute top-14 left-3 flex items-center gap-1 flex-wrap max-w-[calc(100%-24px)]">
+      {bookmarks.map(bm => (
+        <div key={bm.id} className="group relative">
+          <button
+            onClick={() => {
+              // Apply bookmark by dispatching a preset change event
+              window.dispatchEvent(new CustomEvent('apply-camera-bookmark', { detail: bm }));
+              setFreeLook(true);
+            }}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-semibold transition-all border backdrop-blur-md bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+          >
+            <Bookmark className="w-3 h-3 text-primary/60" />
+            {bm.name}
+          </button>
+          <button
+            onClick={() => removeCameraBookmark(bm.id)}
+            className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <Trash2 className="w-2.5 h-2.5" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Bookmark save handler — listens for save events and grabs camera state */
+function CameraBookmarkSaver() {
+  const { camera } = useThree();
+  const addCameraBookmark = useSceneStore(st => st.addCameraBookmark);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      addCameraBookmark({
+        id: detail.id,
+        name: detail.name,
+        position: [camera.position.x, camera.position.y, camera.position.z],
+        target: [0, 0, 0], // Will be captured from OrbitControls target
+        fov: (camera as THREE.PerspectiveCamera).fov,
+      });
+    };
+    window.addEventListener('save-camera-bookmark', handler);
+    return () => window.removeEventListener('save-camera-bookmark', handler);
+  }, [camera, addCameraBookmark]);
+
+  // Apply bookmark handler
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const bm = (e as CustomEvent).detail;
+      camera.position.set(bm.position[0], bm.position[1], bm.position[2]);
+      if ((camera as THREE.PerspectiveCamera).fov !== bm.fov) {
+        (camera as THREE.PerspectiveCamera).fov = bm.fov;
+        (camera as THREE.PerspectiveCamera).updateProjectionMatrix();
+      }
+    };
+    window.addEventListener('apply-camera-bookmark', handler);
+    return () => window.removeEventListener('apply-camera-bookmark', handler);
+  }, [camera]);
+
+  return null;
+}
+
 export default function SkyCanvas() {
+  // Professional keybindings (Finale 3D)
+  useKeybindings();
   const editorMode = useProjectStore((s) => s.editorMode);
   const droneFormations = useProjectStore((s) => s.droneFormations);
   const gpsOrigin = useProjectStore((s) => s.gpsOrigin);
-  const cursorStyle = editorMode !== 'select' ? 'crosshair' : 'default';
+  // cursorStyle moved below geoTool declaration
   const [activePreset, setActivePreset] = useState('free');
   const [freeLook, setFreeLook] = useState(false);
+  const [flyMode, setFlyMode] = useState(false);
+  const [flySpeed, setFlySpeed] = useState(15);
+  const flySpeedCb = useCallback((s: number) => setFlySpeed(Math.round(s)), []);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [cameraMenuOpen, setCameraMenuOpen] = useState(false);
   const preset = CAMERA_PRESETS.find((p) => p.id === activePreset) || CAMERA_PRESETS[0];
   const perfStatsRef = useRef<PerfStats>({ fps: 0, drawCalls: 0, triangles: 0, geometries: 0, textures: 0 });
   const droneCount = droneFormations.length > 0 ? droneFormations[0].droneCount : 0;
   const [satelliteTexture, setSatelliteTexture] = useState<string | null>(null);
   const [downloadingScenery, setDownloadingScenery] = useState(false);
+  const [canvasInstanceKey, setCanvasInstanceKey] = useState(0);
+  const recoveringContextRef = useRef(false);
+  const handleContextRemount = useCallback(() => setCanvasInstanceKey(prev => prev + 1), []);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const environment = useSceneStore(st => st.environment);
+  const google3DTilesEnabled = useSceneStore(st => st.settings.google3DTilesEnabled);
+  const [showDebugOverlay, setShowDebugOverlay] = useState(false);
+  const presentationMode = useSceneStore(st => st.settings.presentationMode);
+
+  // Exit fly mode when pointer lock is lost (ESC)
+  useEffect(() => {
+    const onLockChange = () => {
+      if (!document.pointerLockElement && flyMode) setFlyMode(false);
+    };
+    document.addEventListener('pointerlockchange', onLockChange);
+    return () => document.removeEventListener('pointerlockchange', onLockChange);
+  }, [flyMode]);
+
+  // ═══ Google Earth-style Geo Tools state ═══
+  const [geoTool, setGeoTool] = useState<GeoToolMode>('none');
+  const [geoMarkers, setGeoMarkers] = useState<GeoMarker[]>([]);
+  const [geoRulers, setGeoRulers] = useState<GeoRulerPoint[]>([]);
+  const [geoPaths, setGeoPaths] = useState<GeoPath[]>([]);
+  const [activeRulerPoints, setActiveRulerPoints] = useState<[number, number, number][]>([]);
+  const [activePathPoints, setActivePathPoints] = useState<[number, number, number][]>([]);
+  const geoMarkerColorIdx = useRef(0);
+  const geoPathColorIdx = useRef(0);
+  const MARKER_COLORS = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ec4899'];
+  const cursorStyle = geoTool !== 'none' ? 'crosshair' : editorMode !== 'select' ? 'crosshair' : 'default';
+
+  const handlePlaceMarker = useCallback((pos: [number, number, number]) => {
+    const color = MARKER_COLORS[geoMarkerColorIdx.current % MARKER_COLORS.length];
+    geoMarkerColorIdx.current++;
+    const marker: GeoMarker = {
+      id: `gm-${Date.now()}`,
+      name: `Marcador ${geoMarkers.length + 1}`,
+      position: pos,
+      color,
+      visible: true,
+    };
+    setGeoMarkers(prev => [...prev, marker]);
+    setGeoTool('none');
+    toast.success(`Marcador adicionado`);
+  }, [geoMarkers.length]);
+
+  const handlePlaceRulerPoint = useCallback((pos: [number, number, number]) => {
+    setActiveRulerPoints(prev => [...prev, pos]);
+  }, []);
+
+  const handleFinishRuler = useCallback(() => {
+    if (activeRulerPoints.length < 2) return;
+    let total = 0;
+    for (let i = 0; i < activeRulerPoints.length - 1; i++) {
+      const [x1, y1, z1] = activeRulerPoints[i];
+      const [x2, y2, z2] = activeRulerPoints[i + 1];
+      total += Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2);
+    }
+    const ruler: GeoRulerPoint = {
+      id: `gr-${Date.now()}`,
+      points: [...activeRulerPoints],
+      totalDistance: total,
+      visible: true,
+      label: `Medição ${geoRulers.length + 1}`,
+    };
+    setGeoRulers(prev => [...prev, ruler]);
+    setActiveRulerPoints([]);
+    setGeoTool('none');
+    toast.success(`Medição: ${total.toFixed(1)}m`);
+  }, [activeRulerPoints, geoRulers.length]);
+
+  const handlePlacePathPoint = useCallback((pos: [number, number, number]) => {
+    setActivePathPoints(prev => [...prev, pos]);
+  }, []);
+
+  const handleFinishPath = useCallback(() => {
+    if (activePathPoints.length < 2) return;
+    const colors = ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ec4899', '#06b6d4'];
+    const color = colors[geoPathColorIdx.current % colors.length];
+    geoPathColorIdx.current++;
+    const path: GeoPath = {
+      id: `gp-${Date.now()}`,
+      name: geoTool === 'polygon' ? `Polígono ${geoPaths.length + 1}` : `Caminho ${geoPaths.length + 1}`,
+      points: [...activePathPoints],
+      color,
+      visible: true,
+      closed: geoTool === 'polygon',
+    };
+    setGeoPaths(prev => [...prev, path]);
+    setActivePathPoints([]);
+    setGeoTool('none');
+    toast.success(`${path.closed ? 'Polígono' : 'Caminho'} criado com ${path.points.length} pontos`);
+  }, [activePathPoints, geoPaths.length, geoTool]);
+
+  // Build active (in-progress) ruler/path for live preview
+  const activeRuler: GeoRulerPoint | null = activeRulerPoints.length >= 2 ? {
+    id: 'active-ruler',
+    points: activeRulerPoints,
+    totalDistance: activeRulerPoints.reduce((sum, p, i, arr) => {
+      if (i === 0) return 0;
+      const [x1, y1, z1] = arr[i - 1];
+      const [x2, y2, z2] = p;
+      return sum + Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2);
+    }, 0),
+    visible: true,
+    label: 'Medindo...',
+  } : null;
+
+  const activePath: GeoPath | null = activePathPoints.length >= 2 ? {
+    id: 'active-path',
+    name: 'Traçando...',
+    points: activePathPoints,
+    color: '#ffffff',
+    visible: true,
+    closed: false,
+  } : null;
 
   // Track fullscreen state
   useEffect(() => {
@@ -1951,6 +1591,19 @@ export default function SkyCanvas() {
     document.addEventListener('fullscreenchange', handler);
     return () => document.removeEventListener('fullscreenchange', handler);
   }, []);
+
+  // ESC cancels geo tool
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && geoTool !== 'none') {
+        setGeoTool('none');
+        setActiveRulerPoints([]);
+        setActivePathPoints([]);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [geoTool]);
 
   const handleDownloadScenery = useCallback(async () => {
     setDownloadingScenery(true);
@@ -1987,136 +1640,409 @@ export default function SkyCanvas() {
     }
   }, [gpsOrigin.lat, gpsOrigin.lng]);
 
+  // Force R3F to re-measure when resizable panels change size (debounced)
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const ro = new ResizeObserver(() => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+      }, 150);
+    });
+    ro.observe(el);
+    return () => {
+      if (timer) clearTimeout(timer);
+      ro.disconnect();
+    };
+  }, []);
+
   return (
-    <div className="w-full h-full relative bg-[#030308]" data-sky-canvas style={{ cursor: cursorStyle }}>
+    <div ref={containerRef} className="w-full h-full relative bg-black" data-sky-canvas style={{ cursor: cursorStyle }}>
       <WebGLErrorBoundary>
       <Canvas
+        key={canvasInstanceKey}
+        resize={{ debounce: 50, scroll: false }}
         shadows
         gl={{
-          antialias: false,
+          antialias: !isMobile,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.4,
+          toneMappingExposure: 1.5,
           powerPreference: 'high-performance',
           alpha: false,
           stencil: false,
-          logarithmicDepthBuffer: false,
+          logarithmicDepthBuffer: true,
+          outputColorSpace: THREE.SRGBColorSpace,
         }}
-        dpr={[1, 2]}
-      >
-        <PerspectiveCamera makeDefault position={preset.position} fov={55} near={1.0} far={5000} />
-        <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook} />
+        dpr={isMobile ? [1, 1.5] : [1.5, 2]}
+        performance={{ min: 0.5 }}
+        onCreated={() => {
+          recoveringContextRef.current = false;
+        }}>
+        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={1.0} far={500000} />
+        <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook || flyMode} flyMode={flyMode} />
+        {flyMode && <FlyControls onSpeedChange={flySpeedCb} />}
 
+        <ContextLossGuard recoveringRef={recoveringContextRef} onRemount={handleContextRemount} />
+        <HardeningWatchdog />
+        <FXKQualityController />
         <SceneLighting />
+        <AdaptiveExposureController />
+        {!environment.disableLighting && <GlobalIlluminationController />}
+        <GroundReflections />
+        {!environment.disableLighting && <LensFlareController />}
+        <DelayedMount delay={2000}>
+          <NiagaraVFXController />
+        </DelayedMount>
 
-        <SkyGradient />
+        <EnvironmentV2Switcher />
+
         <Moon />
-        <SceneStars />
-        <AtmosphericParticles />
+        <SceneStarsWired />
+        {!isMobile && !environment.lowQualityMode && <AtmosphericParticles />}
         <SceneFog />
-        <WeatherEffects />
+        {!isMobile && <DelayedMount delay={2500}><WeatherEffects /></DelayedMount>}
 
-        <StageGround satelliteTexture={satelliteTexture} />
-        {/* LaunchSites removed — user creates positions via toolbar */}
+        {!google3DTilesEnabled && <StageGround satelliteTexture={satelliteTexture} />}
+        {google3DTilesEnabled && <GoogleTilesLayer />}
+        {google3DTilesEnabled && <GeoCameraController />}
+        <FinaleAxesHelper />
+        <DoubleClickFocus />
+        <SiteModelRenderer />
         <PositionPins />
         <PyroLaunchAngles />
-        <Rack3DView />
+        <PositionTransformGizmo />
+        {!isMobile && <Rack3DView />}
         <TrajectoryPaths />
+        <PyroSafetyZones />
         <DroneChoreography />
-        <BoidsVisualizer />
-        <CollisionAvoidanceOverlay config={DEFAULT_AVOIDANCE} />
+        {!isMobile && <BoidsVisualizer />}
+        {!isMobile && <CollisionAvoidanceOverlay config={DEFAULT_AVOIDANCE} />}
         <TimelineEffects />
         <LiveSFXEffects />
-        <AudioSpectrumVisualizer />
-        <GeofenceVisual />
+        <LaserPreviewBeams />
+        <StageFixtures />
+        {!isMobile && <DelayedMount delay={3000}><AudioSpectrumVisualizer /></DelayedMount>}
         <PlaybackClock />
-        <CameraAnimator />
-        <CameraPathPreview />
-        <PostProcessing />
+        {!isMobile && <CameraAnimator />}
+        {!isMobile && <CameraPathPreview />}
+        <ViewportRulers />
+        <CameraBookmarkSaver />
+        <ContactShadowsLayer />
+        <PostProcessing activeBurstCount={_activeBurstCount} />
+        <StressTestFireworks />
+        <PostExplosionSmokeManager />
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
+        <DebugFeed />
+
+        {/* ═══ Google Earth Geo Tools ═══ */}
+        <GeoToolsScene
+          markers={geoMarkers}
+          rulers={[...geoRulers, ...(activeRuler ? [activeRuler] : [])]}
+          paths={[...geoPaths, ...(activePath ? [activePath] : [])]}
+        />
+        <GeoToolClickHandler
+          activeTool={geoTool}
+          onPlaceMarker={handlePlaceMarker}
+          onPlaceRulerPoint={handlePlaceRulerPoint}
+          onPlacePathPoint={handlePlacePathPoint}
+          onFinishRuler={handleFinishRuler}
+          onFinishPath={handleFinishPath}
+        />
       </Canvas>
       </WebGLErrorBoundary>
+      <KeybindingCheatSheet />
+
+      {/* ═══ Google Earth Geo Tools UI ═══ */}
+      {!isMobile && (
+        <ViewportGeoTools
+          activeTool={geoTool}
+          onToolChange={(tool) => {
+            setGeoTool(tool);
+            if (tool === 'none') {
+              // finalize any in-progress drawing
+              if (activeRulerPoints.length >= 2) handleFinishRuler();
+              if (activePathPoints.length >= 2) handleFinishPath();
+              setActiveRulerPoints([]);
+              setActivePathPoints([]);
+            }
+          }}
+          markers={geoMarkers}
+          rulers={geoRulers}
+          paths={geoPaths}
+          onClearMarkers={() => setGeoMarkers([])}
+          onClearRulers={() => setGeoRulers([])}
+          onClearPaths={() => setGeoPaths([])}
+          onToggleMarkerVisibility={(id) => setGeoMarkers(prev => prev.map(m => m.id === id ? { ...m, visible: !m.visible } : m))}
+          onToggleRulerVisibility={(id) => setGeoRulers(prev => prev.map(r => r.id === id ? { ...r, visible: !r.visible } : r))}
+          onTogglePathVisibility={(id) => setGeoPaths(prev => prev.map(p => p.id === id ? { ...p, visible: !p.visible } : p))}
+          onDeleteMarker={(id) => setGeoMarkers(prev => prev.filter(m => m.id !== id))}
+          onDeleteRuler={(id) => setGeoRulers(prev => prev.filter(r => r.id !== id))}
+          onDeletePath={(id) => setGeoPaths(prev => prev.filter(p => p.id !== id))}
+          onUpdateMarker={(id, updates) => setGeoMarkers(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m))}
+          onUpdateRuler={(id, updates) => setGeoRulers(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r))}
+          onUpdatePath={(id, updates) => setGeoPaths(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p))}
+        />
+      )}
 
       {/* Camera presets & controls */}
-      <div className="absolute top-3 left-3 flex items-center gap-1 flex-wrap">
+      <div className="absolute top-3 left-3 flex items-center gap-1 flex-wrap max-w-[calc(100%-24px)]">
         {/* Free look toggle */}
         <button
-          onClick={() => setFreeLook(!freeLook)}
+          onClick={() => { setFreeLook(!freeLook); if (flyMode) setFlyMode(false); }}
           className={cn(
-            "flex items-center gap-1 px-2 py-1 rounded-sm text-[10px] font-mono-code transition-all border",
-            freeLook
-              ? "bg-warning/20 text-warning border-warning/40"
-              : "bg-surface-1/80 text-muted-foreground border-border/50 hover:text-foreground hover:bg-surface-2/80"
+            "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
+            freeLook && !flyMode
+              ? "bg-warning/20 text-warning border-warning/30 shadow-lg shadow-warning/10"
+              : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
           )}
-          title="Free Look — camera stays where you leave it"
+          title="Free Look"
         >
-          <ScanEye className="w-3 h-3" />
+          <ScanEye className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Look</span>
         </button>
 
-        {CAMERA_PRESETS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => { setActivePreset(id); setFreeLook(false); }}
-            className={cn(
-              "flex items-center gap-1 px-2 py-1 rounded-sm text-[10px] font-mono-code transition-all border",
-              activePreset === id && !freeLook
-                ? "bg-primary/20 text-primary border-primary/40 glow-electric"
-                : "bg-surface-1/80 text-muted-foreground border-border/50 hover:text-foreground hover:bg-surface-2/80"
+        {/* Fly mode toggle */}
+        <button
+          onClick={() => { setFlyMode(!flyMode); if (!flyMode) setFreeLook(false); }}
+          className={cn(
+            "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
+            flyMode
+              ? "bg-accent/20 text-accent-foreground border-accent/30 shadow-lg shadow-accent/10"
+              : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+          )}
+          title="Fly Mode (WASD + Mouse)"
+        >
+          <Navigation className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Fly</span>
+        </button>
+
+        {/* Mobile: camera dropdown; Desktop: inline buttons */}
+        {isMobile ? (
+          <div className="relative">
+            <button
+              onClick={() => setCameraMenuOpen(!cameraMenuOpen)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md bg-card/80 text-muted-foreground border-border/20"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>{preset.label}</span>
+              <ChevronDown className={cn("w-3 h-3 transition-transform", cameraMenuOpen && "rotate-180")} />
+            </button>
+            {cameraMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setCameraMenuOpen(false)} />
+                <div className="absolute top-full left-0 mt-1 z-40 bg-card/95 backdrop-blur-xl border border-border/20 rounded-xl shadow-2xl shadow-black/60 py-1 min-w-[140px]">
+                  {CAMERA_PRESETS.map(({ id, label, icon: Icon }) => (
+                    <button
+                      key={id}
+                      onClick={() => { setActivePreset(id); setFreeLook(false); setCameraMenuOpen(false); }}
+                      className={cn(
+                        "w-full text-left px-3 py-2 text-[11px] font-medium flex items-center gap-2 rounded-lg mx-0.5 transition-all",
+                        activePreset === id && !freeLook
+                          ? "text-primary bg-primary/10"
+                          : "text-muted-foreground hover:text-foreground hover:bg-surface-1/60"
+                      )}
+                      style={{ width: 'calc(100% - 4px)' }}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
-          >
-            <Icon className="w-3 h-3" />
-            <span className="hidden sm:inline">{label}</span>
-          </button>
-        ))}
+          </div>
+        ) : (
+          CAMERA_PRESETS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => { setActivePreset(id); setFreeLook(false); }}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
+                activePreset === id && !freeLook
+                  ? "bg-primary/15 text-primary border-primary/25 shadow-lg shadow-primary/10"
+                  : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+              )}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{label}</span>
+            </button>
+          ))
+        )}
 
         {/* Download satellite scenery */}
-        <button
-          onClick={handleDownloadScenery}
-          disabled={downloadingScenery}
-          className={cn(
-            "flex items-center gap-1 px-2 py-1 rounded-sm text-[10px] font-mono-code transition-all border",
-            satelliteTexture
-              ? "bg-success/20 text-success border-success/40"
-              : "bg-surface-1/80 text-muted-foreground border-border/50 hover:text-foreground hover:bg-surface-2/80"
-          )}
-          title="Download real satellite scenery from Google Maps"
-        >
-          {downloadingScenery ? (
-            <div className="w-3 h-3 border border-primary border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <Globe className="w-3 h-3" />
-          )}
-          <span className="hidden sm:inline">{satelliteTexture ? 'Satélite ✓' : 'Cenário Real'}</span>
-        </button>
+        {!isMobile && (
+          <button
+            onClick={handleDownloadScenery}
+            disabled={downloadingScenery}
+            className={cn(
+              "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
+              satelliteTexture
+                ? "bg-success/15 text-success border-success/25"
+                : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+            )}
+            title="Download real satellite scenery from Google Maps"
+          >
+            {downloadingScenery ? (
+              <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Globe className="w-3.5 h-3.5" />
+            )}
+            <span className="hidden sm:inline">{satelliteTexture ? 'Satélite ✓' : 'Cenário Real'}</span>
+          </button>
+        )}
+
+        {/* 🎬 Presentation Mode */}
+        {!isMobile && (
+          <button
+            onClick={() => useSceneStore.getState().updateSettings({ presentationMode: true })}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+            title="Modo Apresentação Cliente"
+          >
+            <Film className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Apresentação</span>
+          </button>
+        )}
+
+        {!isMobile && (
+          <RenderDebugToggle show={showDebugOverlay} onToggle={() => setShowDebugOverlay(v => !v)} />
+        )}
+
+        {/* Lock Positions toggle */}
+        {!isMobile && (
+          <button
+            onClick={() => {
+              const env = useSceneStore.getState().environment;
+              useSceneStore.getState().updateEnvironment({ lockPositions: !env.lockPositions });
+            }}
+            className={cn(
+              "flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
+              useSceneStore.getState().environment.lockPositions
+                ? "bg-warning/20 text-warning border-warning/30"
+                : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+            )}
+            title="Lock/Unlock Positions (Finale 3D)"
+          >
+            <Lock className="w-3.5 h-3.5" />
+          </button>
+        )}
+
+        {/* Rulers toggle */}
+        {!isMobile && (
+          <button
+            onClick={() => {
+              const env = useSceneStore.getState().environment;
+              useSceneStore.getState().updateEnvironment({ showRulers: !env.showRulers });
+            }}
+            className={cn(
+              "flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
+              useSceneStore.getState().environment.showRulers
+                ? "bg-primary/15 text-primary border-primary/25"
+                : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+            )}
+            title="Show Rulers (ShowSim)"
+          >
+            <Ruler className="w-3.5 h-3.5" />
+          </button>
+        )}
+
+        {/* Save Camera Bookmark */}
+        {!isMobile && (
+          <button
+            onClick={() => {
+              const cam = document.querySelector('canvas')?.closest('[data-sky-canvas]');
+              // Get camera state from Three.js
+              const id = `bm-${Date.now()}`;
+              const name = `View ${useSceneStore.getState().environment.cameraBookmarks.length + 1}`;
+              // We'll use a custom event to get camera position
+              window.dispatchEvent(new CustomEvent('save-camera-bookmark', { detail: { id, name } }));
+            }}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+            title="Save Camera Bookmark"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <Bookmark className="w-3.5 h-3.5" />
+          </button>
+        )}
 
         {/* Fullscreen toggle */}
-        <button
-          onClick={() => {
-            const el = document.querySelector('[data-sky-canvas]') as HTMLElement;
-            if (!el) return;
-            document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen();
-          }}
-          className="bg-surface-1/80 text-muted-foreground border border-border/50 hover:text-foreground hover:bg-surface-2/80 px-2 py-1 rounded-sm transition-all"
-        >
-          {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
-        </button>
+        {!isMobile && (
+          <button
+            onClick={() => {
+              const el = document.querySelector('[data-sky-canvas]') as HTMLElement;
+              if (!el) return;
+              document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen();
+            }}
+            className="bg-card/80 text-muted-foreground border border-border/20 hover:text-foreground hover:bg-card/90 px-2.5 py-1.5 rounded-xl transition-all backdrop-blur-md"
+          >
+            {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
+          </button>
+        )}
       </div>
+
+      {/* Camera Bookmarks bar */}
+      <CameraBookmarksBar setActivePreset={setActivePreset} setFreeLook={setFreeLook} />
+
+      {/* Site Model Transform Toolbar */}
+      <SiteModelTransformToolbar />
+
+      {/* Debug overlay toggle + panel */}
+      {!isMobile && showDebugOverlay && <RenderDebugPanel />}
 
       {/* Fullscreen floating edit menu */}
       {isFullscreen && <FullscreenEditMenu />}
 
-      <PerformanceHUD statsRef={perfStatsRef} droneCount={droneCount} />
-      <ViewportTerminal />
-      <SelectionStatusBar />
-      <AlignmentTools />
+      {/* AI CoPilot Overlay */}
+      <AICoPilotOverlay />
 
-      <div className="absolute bottom-3 right-3 text-[9px] font-mono-code text-muted-foreground/60 bg-surface-1/60 backdrop-blur-sm px-2 py-1 rounded border border-border/30 space-y-0.5">
-        <div className="text-[8px] text-muted-foreground/40 tracking-wider">ZENITH PRIME v1.1</div>
-        <div>Orbit: LMB · Pan: MMB · Zoom: Scroll</div>
-        <div>Box: Alt+Drag · Multi: Shift+Click · Edit: Dbl-Click</div>
-        <div>{freeLook ? '🔓 Free Look ON' : '🔒 Preset Lock'}</div>
-      </div>
+      {!isMobile && <PerformanceHUD statsRef={perfStatsRef} droneCount={droneCount} />}
+      {!isMobile && <ViewportTerminal />}
+      <SelectionStatusBar />
+      {!isMobile && <AlignmentTools />}
+
+      {/* ═══ Finale 3D Viewport Tools ═══ */}
+      {!isMobile && <FinaleToolbar />}
+      {!isMobile && (
+        <div className="absolute bottom-20 left-3 z-40">
+          <StressTestButton />
+        </div>
+      )}
+
+      {/* ═══ Viewport Playback Controls ═══ */}
+      <ViewportPlaybackControls />
+
+      {/* Fly mode HUD */}
+      {flyMode && (
+        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-40 bg-card/85 backdrop-blur-xl border border-border/25 rounded-xl px-4 py-2 font-mono text-[10px] text-muted-foreground space-y-0.5 select-none pointer-events-none">
+          <div className="text-center text-[9px] font-semibold uppercase tracking-wider text-accent-foreground mb-1">✈ Fly Mode</div>
+          <div className="flex gap-4">
+            <span>WASD Move</span>
+            <span>Q/E Up/Down</span>
+            <span>Shift Sprint</span>
+            <span>Scroll Speed</span>
+          </div>
+          <div className="text-center text-foreground font-semibold">{flySpeed} m/s</div>
+        </div>
+      )}
+
+      {/* Bottom info — hidden on mobile to avoid tab bar overlap */}
+      {!isMobile && (
+        <div className="absolute bottom-3 right-3 text-[9px] font-mono-code text-muted-foreground/60 bg-card/70 backdrop-blur-md px-3 py-2 rounded-xl border border-border/15 space-y-0.5">
+          <div className="text-[8px] text-muted-foreground/40 tracking-wider font-display">FX KONTROL v2.0 · Minas FX</div>
+          <div>{flyMode ? 'WASD: Move · Mouse: Look · Q/E: Up/Down' : 'Orbit: LMB · Pan: MMB · Zoom: Scroll'}</div>
+          <div>Box: Alt+Drag · Multi: Shift+Click · Edit: Dbl-Click</div>
+          <div>{flyMode ? '✈ Fly Mode' : freeLook ? '🔓 Free Look ON' : '🔒 Preset Lock'}</div>
+        </div>
+      )}
+
+      {/* Client Presentation Mode */}
+      <ClientPresentationMode
+        active={presentationMode}
+        onExit={() => useSceneStore.getState().updateSettings({ presentationMode: false })}
+      />
     </div>
   );
 }

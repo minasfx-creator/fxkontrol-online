@@ -1,11 +1,15 @@
-import { lazy, Suspense, useState, useCallback, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useCallback, useEffect, Component, type ReactNode, type ErrorInfo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useUndoStore } from '@/store/useUndoStore';
 import { useUndoKeyboard } from '@/hooks/useUndoKeyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
+import { Upload } from 'lucide-react';
 import Toolbar from '@/components/editor/Toolbar';
 import SplashScreen from '@/components/editor/SplashScreen';
+import CrashRecoveryBanner from '@/components/editor/CrashRecoveryBanner';
+import StockAlertsBadge from '@/components/editor/StockAlertsBadge';
 import GlobeSelector from '@/components/editor/GlobeSelector';
 import EffectLibrary from '@/components/editor/EffectLibrary';
 import AudienceAnalyzerPanel from '@/components/editor/AudienceAnalyzerPanel';
@@ -36,17 +40,17 @@ import FiringExportPanel from '@/components/editor/FiringExportPanel';
 import LabelsPanel from '@/components/editor/LabelsPanel';
 import VideoRecorderPanel from '@/components/editor/VideoRecorderPanel';
 import ModelImportPanel from '@/components/editor/ModelImportPanel';
-import BackgroundPanel from '@/components/editor/BackgroundPanel';
+
 import SupplierCatalogPanel from '@/components/editor/SupplierCatalogPanel';
 import SafetyPanel from '@/components/editor/SafetyPanel';
 import ChainEditorPanel from '@/components/editor/ChainEditorPanel';
 import PositionGroupsPanel from '@/components/editor/PositionGroupsPanel';
-import ShowSummaryPanel from '@/components/editor/ShowSummaryPanel';
+
 import SceneEditorPanel from '@/components/editor/SceneEditorPanel';
 import SoundLevelPanel from '@/components/editor/SoundLevelPanel';
 import AROverlayPanel from '@/components/editor/AROverlayPanel';
 import ShowSharePanel from '@/components/editor/ShowSharePanel';
-import CollaborationPanel from '@/components/editor/CollaborationPanel';
+
 import ParticleEditorPanel from '@/components/editor/ParticleEditorPanel';
 import VersioningPanel from '@/components/editor/VersioningPanel';
 import WeatherPanel from '@/components/editor/WeatherPanel';
@@ -56,21 +60,96 @@ import TrajectoryOptimizerPanel from '@/components/editor/TrajectoryOptimizerPan
 import ShowTemplatesPanel from '@/components/editor/ShowTemplatesPanel';
 import TelemetryDashboard from '@/components/editor/TelemetryDashboard';
 import FlightLogPanel from '@/components/editor/FlightLogPanel';
-import PathPlannerPanel from '@/components/editor/PathPlannerPanel';
+
 import TemplateMarketplace from '@/components/editor/TemplateMarketplace';
 import SiteLayoutPanel from '@/components/editor/SiteLayoutPanel';
 import ShowSettingsPanel from '@/components/editor/ShowSettingsPanel';
 import ManufacturerCalibrationPanel from '@/components/editor/ManufacturerCalibrationPanel';
 import LiveFiringPanel from '@/components/editor/LiveFiringPanel';
+import FleetManagementPanel from '@/components/editor/FleetManagementPanel';
+import GeofencePanel from '@/components/editor/GeofencePanel';
+import StoryboardPanel from '@/components/editor/StoryboardPanel';
+import ShowControlPanel from '@/components/editor/ShowControlPanel';
+import ShowInspectorPanel from '@/components/editor/ShowInspectorPanel';
+import LightProgramPanel from '@/components/editor/LightProgramPanel';
+import SafetyCheckPanel from '@/components/editor/SafetyCheckPanel';
+import TakeoffGridPanel from '@/components/editor/TakeoffGridPanel';
+import TransitionPlannerPanel from '@/components/editor/TransitionPlannerPanel';
+import LaserControlPanel from '@/components/editor/LaserControlPanel';
+import USBConnectionPanel from '@/components/editor/USBConnectionPanel';
+import VideoChoreoPanel from '@/components/editor/VideoChoreoPanel';
+import ShowvenEquipmentPanel from '@/components/editor/ShowvenEquipmentPanel';
+import GenerativeEffectsPanel from '@/components/editor/GenerativeEffectsPanel';
+import SmartScriptAssistant from '@/components/editor/SmartScriptAssistant';
+import CinematicIntro from '@/components/editor/CinematicIntro';
+import SetlistPanel from '@/components/editor/SetlistPanel';
+import RiderPanel from '@/components/editor/RiderPanel';
+import BudgetPanel from '@/components/editor/BudgetPanel';
+import ShowPreviewPanel from '@/components/editor/ShowPreviewPanel';
+import MobileLinkPanel from '@/components/editor/MobileLinkPanel';
+import MobileLinkMonitor from '@/components/editor/MobileLinkMonitor';
+import SiteModelsPanel from '@/components/editor/SiteModelsPanel';
+import VirtualControllerHub from '@/components/editor/VirtualControllerHub';
+import FieldMap2D from '@/components/editor/FieldMap2D';
+import ShowCommanderPanel from '@/components/editor/ShowCommanderPanel';
+import PositionWindow from '@/components/editor/PositionWindow';
+import BluetoothPanel from '@/components/editor/BluetoothPanel';
+import NFCPairPanel from '@/components/editor/NFCPairPanel';
+import DMXOutputPanel from '@/components/editor/DMXOutputPanel';
+import RemoteControlPanel from '@/components/editor/RemoteControlPanel';
+import ConnectionManagerPanel from '@/components/editor/ConnectionManagerPanel';
+import RadioControlPanel from '@/components/editor/RadioControlPanel';
+import MA3ControlPanel from '@/components/editor/MA3ControlPanel';
+import SACNMonitorPanel from '@/components/editor/SACNMonitorPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
-import { PositionPopupEditor, ShortcutsOverlay } from '@/components/editor/PopupEditors';
+import { ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
+import SelectionModeBar from '@/components/editor/SelectionModeBar';
 import PositionContextMenu from '@/components/editor/PositionContextMenu';
 import MobileTabBar, { type MobileTab } from '@/components/editor/MobileTabBar';
 import MobileFloatingPanel from '@/components/editor/MobileFloatingPanel';
-import MobileMoreMenu from '@/components/editor/MobileMoreMenu';
+import UnifiedPanelMenu from '@/components/editor/UnifiedPanelMenu';
+import MobileHUD from '@/components/editor/MobileHUD';
+import MobileQuickActions from '@/components/editor/MobileQuickActions';
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from '@/components/ui/resizable';
 
-const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
+const SkyCanvas = lazy(() =>
+  import('@/components/editor/SkyCanvas').catch((err) => {
+    console.error('[FXK] SkyCanvas chunk failed:', err);
+    const Fallback = () => (
+      <div className="w-full h-full flex flex-col items-center justify-center bg-surface-0 gap-3 p-8 text-center">
+        <p className="text-sm font-semibold text-foreground">3D Engine Unavailable</p>
+        <p className="text-xs text-muted-foreground">Could not load the renderer module.</p>
+        <button className="text-xs text-primary underline" onClick={() => window.location.reload()}>Reload</button>
+      </div>
+    );
+    return { default: Fallback };
+  })
+);
+
+class CanvasErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.warn('[FXK] Canvas failed to load:', error.message);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center bg-surface-0 gap-3 p-8 text-center">
+          <p className="text-sm font-semibold text-foreground">3D Engine Error</p>
+          <p className="text-xs text-muted-foreground">WebGL context could not be initialized.</p>
+          <button className="text-xs text-primary underline" onClick={() => { this.setState({ hasError: false }); window.location.reload(); }}>Reload</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function CanvasLoader() {
   return (
@@ -83,81 +162,55 @@ function CanvasLoader() {
   );
 }
 
-const PANEL_WIDTHS: Record<PanelId, string> = {
-  script: 'w-[400px]',
-  wind: 'w-56',
-  reports: 'w-60',
-  racks: 'w-56',
-  addressing: 'w-60',
-  inventory: 'w-64',
-  waypoints: 'w-64',
-  effects: 'w-56',
-  properties: 'w-56',
-  boids: 'w-64',
-  pid: 'w-64',
-  dmx: 'w-64',
-  battery: 'w-64',
-  mavlink: 'w-72',
-  smpte: 'w-64',
-  maps: 'w-80',
-  diagnostic: 'w-64',
-  logistics: 'w-64',
-  swarmgpt: 'w-72',
-  synesthesia: 'w-64',
-  firing: 'w-72',
-  labels: 'w-64',
-  video: 'w-64',
-  models: 'w-64',
-  background: 'w-64',
-  suppliers: 'w-72',
-  safety: 'w-64',
-  scripting: 'w-64',
-  audience: 'w-64',
-  indoor: 'w-72',
-  chains: 'w-72',
-  groups: 'w-56',
-  summary: 'w-64',
-  scene: 'w-64',
-  soundlevel: 'w-64',
-  aroverlay: 'w-64',
-  share: 'w-64',
-  collab: 'w-64',
-  particles: 'w-64',
-  versioning: 'w-64',
-  weather: 'w-64',
-  collisions: 'w-64',
-  approval: 'w-72',
-  trajectory: 'w-64',
-  templates: 'w-72',
-  telemetry: 'w-64',
-  flightlog: 'w-64',
-  pathplanner: 'w-64',
-  marketplace: 'w-72',
-  sitelayout: 'w-72',
-  showsettings: 'w-64',
-  calibration: 'w-72',
-  livefiring: 'w-72',
-};
+const SUPPORTED_DROP_EXTENSIONS = ['mvr', 'csv', 'json', 'vviz', 'uasset', 'umap', 'copy', 't3d', 'png', 'jpg', 'jpeg', 'tif', 'tiff', 'bmp', 'udatasmith', 'ds', 'fbx', 'obj', 'gltf', 'glb', 'skp', 'ifc', '3ds', 'dae', 'dwg'];
 
-export default function Index() {
+function getDropType(ext: string): 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset' | 'ue5map' | 'heightmap' | 'twinmotion' {
+  if (ext === 'mvr') return 'mvr';
+  if (ext === 'csv') return 'csv';
+  if (ext === 'vviz') return 'vviz';
+  if (ext === 'uasset' || ext === 'umap') return 'uasset';
+  if (['png', 'jpg', 'jpeg', 'tif', 'tiff', 'bmp'].includes(ext)) return 'heightmap';
+  if (ext === 't3d') return 'ue5map';
+  if (['udatasmith', 'ds', 'fbx', 'obj', 'gltf', 'glb', 'skp', 'ifc', '3ds', 'dae', 'dwg', 'c4d', 'rvt'].includes(ext)) return 'twinmotion';
+  return 'ue5json';
+}
+
+function Index() {
   const isMobile = useIsMobile();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activePanel, setActivePanel] = useState<PanelId | null>('properties');
-  const [appPhase, setAppPhase] = useState<'splash' | 'globe' | 'editor'>('splash');
-  const [fleetSize, setFleetSize] = useState(500);
-  const [pyroPositions, setPyroPositions] = useState(24);
+  const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'globe' | 'editor'>('cinematic');
   const [showLocation, setShowLocation] = useState<{ name: string; lat: number; lng: number } | null>(null);
   const [showPositionEditor, setShowPositionEditor] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab | null>(null);
+  const [smartScriptOpen, setSmartScriptOpen] = useState(false);
   const [mobilePanelHeight, setMobilePanelHeight] = useState<'collapsed' | 'half' | 'full'>('collapsed');
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [remoteMode, setRemoteMode] = useState<'cloud' | 'wifi-auto'>('cloud');
   const selectedPositionId = useProjectStore(s => s.selectedPositionId);
 
-  // Undo/Redo keyboard shortcuts
   useUndoKeyboard();
 
-  // Open popup editor on double-click a position (via global keyboard shortcut or 3D double-click)
+  // Deep-link: auto-open panel from ?panel= query param (used by Dashboard hubs)
   useEffect(() => {
-    const dblClickHandler = (e: Event) => {
+    const panelParam = searchParams.get('panel');
+    const modeParam = searchParams.get('mode');
+    if (panelParam) {
+      setActivePanel(panelParam as PanelId);
+      if (modeParam === 'wifi') setRemoteMode('wifi-auto');
+      else if (modeParam === 'cloud') setRemoteMode('cloud');
+      setSearchParams({}, { replace: true });
+      setAppPhase('editor');
+      if (window.innerWidth < 768) {
+        setMobileTab(null);
+        setMobilePanelHeight('full');
+      }
+    }
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    const dblClickHandler = () => {
       setShowPositionEditor(true);
     };
     window.addEventListener('position-double-click', dblClickHandler);
@@ -172,7 +225,17 @@ export default function Index() {
       if (e.key === '?' && e.shiftKey) {
         setShowShortcuts(prev => !prev);
       }
-      // Insert empty cue at current time (Finale 3D "i" key)
+      // Selection mode shortcuts
+      if (!e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        if (e.key === '1') useProjectStore.getState().setSelectionMode('positions');
+        if (e.key === '2') useProjectStore.getState().setSelectionMode('events');
+        if (e.key === '3') useProjectStore.getState().setSelectionMode('both');
+      }
+      // Ctrl+Shift+A → Smart Script Assistant
+      if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+        e.preventDefault();
+        setSmartScriptOpen(prev => !prev);
+      }
       if (e.key === 'i' && !e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
         const store = useProjectStore.getState();
         if (store.isPlaying || store.currentTime > 0) {
@@ -188,7 +251,6 @@ export default function Index() {
           toast.success(`Cue inserted at ${store.currentTime.toFixed(2)}s`);
         }
       }
-      // Select all positions (Ctrl+A)
       if (e.key === 'a' && (e.ctrlKey || e.metaKey) && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
         e.preventDefault();
         const store = useProjectStore.getState();
@@ -230,9 +292,7 @@ export default function Index() {
     setActivePanel((prev) => (prev === id ? null : id));
   }, []);
 
-  const handleSplashStart = useCallback((size: number, pyroPos: number) => {
-    setFleetSize(size);
-    setPyroPositions(pyroPos);
+  const handleSplashStart = useCallback(() => {
     setAppPhase('globe');
   }, []);
 
@@ -250,22 +310,58 @@ export default function Index() {
   const handleMobileOpenPanel = useCallback((id: PanelId) => {
     setActivePanel(id);
     setMobileTab(null);
-    setMobilePanelHeight('half');
+    setMobilePanelHeight(id === 'effects' ? 'full' : 'half');
   }, []);
 
+  if (appPhase === 'cinematic') {
+    return <CinematicIntro onComplete={() => setAppPhase('splash')} />;
+  }
+
   if (appPhase === 'splash') {
-    return <SplashScreen onStart={handleSplashStart} />;
+    return <SplashScreen onStart={handleSplashStart} showVideoBackground />;
   }
 
   if (appPhase === 'globe') {
-    return <GlobeSelector onLocationSelected={handleLocationSelected} />;
+    return (
+      <div className="relative w-full h-full">
+        <GlobeSelector onLocationSelected={handleLocationSelected} />
+        <button
+          onClick={() => {
+            handleLocationSelected({ name: 'Default', lat: 0, lng: 0 });
+          }}
+          className="absolute bottom-6 right-6 z-50 group flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs font-mono uppercase tracking-[0.2em] transition-all duration-300 cursor-pointer focus:outline-none"
+          style={{
+            background: 'hsl(220 20% 8% / 0.7)',
+            backdropFilter: 'blur(12px) saturate(1.5)',
+            border: '1px solid hsl(32 100% 50% / 0.15)',
+            color: 'hsl(32 100% 55% / 0.7)',
+            boxShadow: '0 4px 20px hsl(0 0% 0% / 0.3)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = 'hsl(32 100% 50% / 0.3)';
+            e.currentTarget.style.color = 'hsl(32 100% 55%)';
+            e.currentTarget.style.transform = 'translateY(-1px)';
+            e.currentTarget.style.boxShadow = '0 6px 25px hsl(0 0% 0% / 0.4), 0 0 20px hsl(32 100% 50% / 0.08)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'hsl(32 100% 50% / 0.15)';
+            e.currentTarget.style.color = 'hsl(32 100% 55% / 0.7)';
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 20px hsl(0 0% 0% / 0.3)';
+          }}
+        >
+          SKIP
+          <span className="text-[10px] opacity-60 group-hover:opacity-90 transition-opacity">→</span>
+        </button>
+      </div>
+    );
   }
 
-  const renderPanel = () => {
+  const renderPanelContent = () => {
     if (!activePanel) return null;
-    const width = PANEL_WIDTHS[activePanel];
     return (
-      <div className={width}>
+      <>
+        {activePanel === 'positions' && <PositionWindow onClose={() => setActivePanel(null)} />}
         {activePanel === 'properties' && <PropertiesPanel />}
         {activePanel === 'script' && <ScriptWindow />}
         {activePanel === 'waypoints' && <WaypointEditor onClose={() => setActivePanel(null)} />}
@@ -290,7 +386,6 @@ export default function Index() {
         {activePanel === 'labels' && <LabelsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'video' && <VideoRecorderPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'models' && <ModelImportPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'background' && <BackgroundPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'suppliers' && <SupplierCatalogPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'safety' && <SafetyPanel />}
         {activePanel === 'scripting' && <ScriptingToolsPanel onClose={() => setActivePanel(null)} />}
@@ -298,12 +393,10 @@ export default function Index() {
         {activePanel === 'indoor' && <IndoorSimPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'chains' && <ChainEditorPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'groups' && <PositionGroupsPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'summary' && <ShowSummaryPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'scene' && <SceneEditorPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'soundlevel' && <SoundLevelPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'aroverlay' && <AROverlayPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'share' && <ShowSharePanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'collab' && <CollaborationPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'particles' && <ParticleEditorPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'versioning' && <VersioningPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'weather' && <WeatherPanel onClose={() => setActivePanel(null)} />}
@@ -313,48 +406,121 @@ export default function Index() {
         {activePanel === 'templates' && <ShowTemplatesPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'telemetry' && <TelemetryDashboard onClose={() => setActivePanel(null)} />}
         {activePanel === 'flightlog' && <FlightLogPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'pathplanner' && <PathPlannerPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'marketplace' && <TemplateMarketplace onClose={() => setActivePanel(null)} />}
         {activePanel === 'sitelayout' && <SiteLayoutPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'showsettings' && <ShowSettingsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'calibration' && <ManufacturerCalibrationPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'livefiring' && <LiveFiringPanel onClose={() => setActivePanel(null)} />}
-      </div>
+        {activePanel === 'fleet' && <FleetManagementPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'geofence' && <GeofencePanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'storyboard' && <StoryboardPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'showcontrol' && <ShowControlPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'inspector' && <ShowInspectorPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'lightprogram' && <LightProgramPanel />}
+        {activePanel === 'safetycheck' && <SafetyCheckPanel />}
+        {activePanel === 'takeoffgrid' && <TakeoffGridPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'transitions' && <TransitionPlannerPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'lasercontrol' && <LaserControlPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'usb' && <USBConnectionPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'videochoreo' && <VideoChoreoPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'showven' && <ShowvenEquipmentPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'generative' && <GenerativeEffectsPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'sitemodels' && <SiteModelsPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'setlist' && <SetlistPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'rider' && <RiderPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'budget' && <BudgetPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'showpreview' && <ShowPreviewPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'mobilelink' && <MobileLinkPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'linkmonitor' && <MobileLinkMonitor onClose={() => setActivePanel(null)} />}
+        {activePanel === 'showcommander' && <ShowCommanderPanel onClose={() => setActivePanel(null)} onOpenPanel={(id) => setActivePanel(id as PanelId)} />}
+        {activePanel === 'bluetooth' && <BluetoothPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'nfc' && <NFCPairPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'dmxoutput' && <DMXOutputPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'remotecontrol' && (
+          <RemoteControlPanel onClose={() => setActivePanel(null)} initialMode={remoteMode} />
+        )}
+        {activePanel === 'controllers' && <VirtualControllerHub onClose={() => setActivePanel(null)} />}
+        {activePanel === 'fieldmap' && <FieldMap2D onClose={() => setActivePanel(null)} />}
+        {activePanel === 'connections' && <ConnectionManagerPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'radio' && <RadioControlPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'ma3' && <MA3ControlPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'sacnmonitor' && <SACNMonitorPanel onClose={() => setActivePanel(null)} />}
+      </>
     );
   };
 
-
-  // Mobile layout
+  // Mobile layout — Full-screen 3D with transparent HUD overlays
   if (isMobile) {
-    return (
-      <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
-        {/* Compact toolbar for mobile */}
-        <Toolbar onOpenPanel={(id) => handleTogglePanel(id as PanelId)} />
+    const handleDismissPanel = () => {
+      setMobileTab(null);
+      setMobilePanelHeight('collapsed');
+    };
 
-        {/* Full viewport */}
-        <div className="flex-1 min-w-0 relative">
-          <Suspense fallback={<CanvasLoader />}>
-            <SkyCanvas />
-          </Suspense>
+    return (
+      <div className="h-[100dvh] w-screen relative overflow-hidden bg-background">
+        {/* Full-screen 3D Canvas */}
+        <div className="absolute inset-0">
+          <CanvasErrorBoundary>
+            <Suspense fallback={<CanvasLoader />}>
+              <SkyCanvas />
+            </Suspense>
+          </CanvasErrorBoundary>
           <BoxSelectOverlay />
         </div>
 
-        {/* Mobile floating panel */}
-        <MobileFloatingPanel activeTab={mobileTab} height={mobilePanelHeight}>
+        {/* HUD Top Bar */}
+        <MobileHUD
+          onOpenPanel={handleMobileOpenPanel}
+          onMenuOpen={() => {
+            setMobileTab('more');
+            setMobilePanelHeight('full');
+          }}
+        />
+
+        {/* Quick Actions (left FABs) */}
+        <MobileQuickActions />
+
+        {/* Floating Panel (tabs content) */}
+        <MobileFloatingPanel
+          activeTab={mobileTab}
+          height={mobilePanelHeight}
+          onHeightChange={setMobilePanelHeight}
+          onDismiss={handleDismissPanel}
+        >
           {mobileTab === 'timeline' && <Timeline />}
           {mobileTab === 'assets' && <EffectLibrary />}
           {mobileTab === 'properties' && <PropertiesPanel />}
-          {mobileTab === 'more' && <MobileMoreMenu onSelectPanel={handleMobileOpenPanel} />}
+          {mobileTab === 'more' && (
+            <UnifiedPanelMenu
+              activePanel={activePanel}
+              onSelectPanel={(id) => {
+                handleMobileOpenPanel(id);
+                setMobileTab(null);
+                setMobilePanelHeight('full');
+              }}
+              variant="sheet"
+              onDismiss={handleDismissPanel}
+            />
+          )}
+          {/* Panel-based tabs (livefx, controllers, remote, fieldmap) */}
+          {mobileTab && !['timeline', 'assets', 'properties', 'more'].includes(mobileTab) && activePanel && (
+            <div className="h-full overflow-y-auto">{renderPanelContent()}</div>
+          )}
         </MobileFloatingPanel>
 
-        {/* Floating panel for "more" panels opened from grid */}
+        {/* Panel content from More menu or direct panel open */}
         {activePanel && mobileTab === null && mobilePanelHeight !== 'collapsed' && (
-          <MobileFloatingPanel activeTab={'more' as MobileTab} height={mobilePanelHeight}>
-            {renderPanel()}
+          <MobileFloatingPanel
+            activeTab={'more' as MobileTab}
+            height={mobilePanelHeight}
+            onHeightChange={setMobilePanelHeight}
+            onDismiss={handleDismissPanel}
+          >
+            <div className="h-full overflow-y-auto">{renderPanelContent()}</div>
           </MobileFloatingPanel>
         )}
 
-        {/* Mobile tab bar */}
+        {/* Glass Dock */}
         <MobileTabBar
           activeTab={mobileTab}
           onTabChange={setMobileTab}
@@ -363,60 +529,143 @@ export default function Index() {
           onPanelHeightChange={setMobilePanelHeight}
         />
 
-        {/* Floating pop-up editors */}
-        {showPositionEditor && selectedPositionId && (
-          <PositionPopupEditor onClose={() => setShowPositionEditor(false)} />
-        )}
         <PositionContextMenu />
       </div>
     );
   }
 
-  // Desktop layout
+  // Desktop layout — fully resizable with react-resizable-panels
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
-      {/* Top toolbar */}
+    <div className="h-[100dvh] w-full flex flex-col overflow-hidden bg-background">
+      <CrashRecoveryBanner />
       <Toolbar onOpenPanel={(id) => handleTogglePanel(id as PanelId)} />
 
-      {/* Main editor area */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left sidebar - Effect Library */}
-        <div className="w-52 flex-shrink-0">
-          <EffectLibrary />
-        </div>
+      <ResizablePanelGroup direction="vertical" className="flex-1">
+        {/* Top section: sidebar + viewport + panel */}
+        <ResizablePanel defaultSize={75} minSize={40}>
+          <div className="relative h-full">
+            <ResizablePanelGroup direction="horizontal" className="pr-[52px]">
+              {/* Left sidebar - Effect Library */}
+              <ResizablePanel defaultSize={14} minSize={8} maxSize={30} collapsible collapsedSize={0}>
+                <EffectLibrary />
+              </ResizablePanel>
+              <ResizableHandle withHandle />
 
-        {/* Center viewport */}
-        <div className="flex-1 min-w-0 relative">
-          <Suspense fallback={<CanvasLoader />}>
-            <SkyCanvas />
-          </Suspense>
-          <BoxSelectOverlay />
-        </div>
+              {/* Center viewport */}
+              <ResizablePanel defaultSize={activePanel ? 66 : 86} minSize={30}>
+                <div
+                  className="h-full w-full relative"
+                  onDragOver={(e) => {
+                    if (e.dataTransfer.types.includes('application/showven-equipment')) {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'copy';
+                      return;
+                    }
+                    if (e.dataTransfer.types.includes('Files')) {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'copy';
+                      setIsDragOver(true);
+                    }
+                  }}
+                  onDragLeave={(e) => {
+                    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                    setIsDragOver(false);
+                  }}
+                  onDrop={(e) => {
+                    setIsDragOver(false);
+                    if (e.dataTransfer.files?.length > 0) {
+                      const file = e.dataTransfer.files[0];
+                      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+                      if (SUPPORTED_DROP_EXTENSIONS.includes(ext)) {
+                        e.preventDefault();
+                        const type = getDropType(ext);
+                        window.dispatchEvent(new CustomEvent('viewport-file-drop', { detail: { file, type } }));
+                        toast.info(`📂 ${file.name} dropped — opening importer...`);
+                        return;
+                      }
+                    }
+                    // Handle showven equipment drag
+                    const raw = e.dataTransfer.getData('application/showven-equipment');
+                    if (!raw) return;
+                    e.preventDefault();
+                    try {
+                      const data = JSON.parse(raw) as { id: string; category: string; effectType: string; name: string };
+                      if (!data.effectType) return;
+                      const store = useProjectStore.getState();
+                      useUndoStore.getState().checkpoint();
+                      const posId = `pos-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+                      const offset = store.positions.length * 2;
+                      store.addPosition({
+                        id: posId, name: data.name,
+                        x: offset, y: 0, z: 0, type: 'pyro',
+                        color: '#ff8800', heading: 0, pitch: 0, roll: 0,
+                      });
+                      store.addTimelineItem({
+                        id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                        effectId: data.effectType,
+                        startTime: store.currentTime,
+                        trackIndex: 0,
+                        position: { x: offset, y: 0, z: 0 },
+                        notes: `Showven ${data.name}`,
+                      });
+                      toast.success(`${data.name} dropped na cena`);
+                    } catch { /* ignore */ }
+                  }}
+                >
+                  <CanvasErrorBoundary>
+                    <Suspense fallback={<CanvasLoader />}>
+                      <SkyCanvas />
+                    </Suspense>
+                  </CanvasErrorBoundary>
+                  <BoxSelectOverlay />
+                  <SelectionModeBar />
+                  {isDragOver && (
+                    <div className="absolute inset-0 z-50 pointer-events-none flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded-md backdrop-blur-[2px] transition-all">
+                      <div className="flex flex-col items-center gap-2 text-primary">
+                        <Upload className="h-10 w-10 animate-bounce" />
+                        <p className="text-sm font-semibold">Solte o arquivo para importar</p>
+                        <p className="text-[10px] text-muted-foreground">.mvr · .csv · .json · .vviz · .uasset</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </ResizablePanel>
 
-        {/* Right: active panel + icon tab bar */}
-        <div className="flex flex-shrink-0">
-          {renderPanel()}
-          <PanelTabBar activePanel={activePanel} onTogglePanel={handleTogglePanel} />
-        </div>
-      </div>
+              {/* Right panel (if active) */}
+              {activePanel && (
+                <>
+                  <ResizableHandle withHandle />
+                  <ResizablePanel defaultSize={20} minSize={12} maxSize={40} collapsible collapsedSize={0}>
+                    <div className="h-full overflow-y-auto" style={{ background: 'hsl(var(--card))' }}>
+                      {renderPanelContent()}
+                    </div>
+                  </ResizablePanel>
+                </>
+              )}
+            </ResizablePanelGroup>
 
-      {/* Bottom timeline */}
-      <div className="h-40 flex-shrink-0">
-        <Timeline />
-      </div>
+            <div className="absolute inset-y-0 right-0">
+              <PanelTabBar activePanel={activePanel} onTogglePanel={handleTogglePanel} />
+            </div>
+          </div>
+        </ResizablePanel>
 
-      {/* Floating pop-up editors */}
-      {showPositionEditor && selectedPositionId && (
-        <PositionPopupEditor onClose={() => setShowPositionEditor(false)} />
-      )}
+        <ResizableHandle withHandle />
 
-      {/* Shortcuts overlay */}
+        {/* Bottom timeline */}
+        <ResizablePanel defaultSize={25} minSize={8} maxSize={50} collapsible collapsedSize={0}>
+          <Timeline />
+        </ResizablePanel>
+      </ResizablePanelGroup>
+
+      {/* Position properties now unified in PositionContextMenu */}
       {showShortcuts && (
         <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />
       )}
-
-      {/* Context menu */}
       <PositionContextMenu />
+      <SmartScriptAssistant open={smartScriptOpen} onClose={() => setSmartScriptOpen(false)} />
     </div>
   );
 }
+
+export default Index;

@@ -1,14 +1,16 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
-
-// Reuse the FireworkBurst from SkyCanvas but with staggered timing
-// Import it as a lazy inline to avoid circular deps - we'll define a mini burst here
+import { useProjectStore } from '@/store/useProjectStore';
 
 const PARTICLE_COUNT = 60;
 const GRAVITY = -4;
 
-function particlePos(vx: number, vy: number, vz: number, t: number): [number, number, number] {
-  return [vx * t * 0.5, vy * t * 0.5 + 0.5 * GRAVITY * t * t * 0.25, vz * t * 0.5];
+function particlePos(vx: number, vy: number, vz: number, t: number, windX: number, windZ: number): [number, number, number] {
+  return [
+    vx * t * 0.5 + windX * t * t * 0.3,
+    vy * t * 0.5 + 0.5 * GRAVITY * t * t * 0.25,
+    vz * t * 0.5 + windZ * t * t * 0.3,
+  ];
 }
 
 function MiniBurst({
@@ -40,11 +42,20 @@ function MiniBurst({
 
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
 
+  const { positions, colors } = useMemo(() => ({
+    positions: new Float32Array(PARTICLE_COUNT * 3),
+    colors: new Float32Array(PARTICLE_COUNT * 3),
+  }), []);
+
   if (progress <= 0 || progress > 1) return null;
 
+  // Read wind
+  const { wind } = useProjectStore.getState();
+  const windRad = (wind.direction * Math.PI) / 180;
+  const windX = wind.enabled ? Math.sin(windRad) * wind.speed * 0.03 : 0;
+  const windZ = wind.enabled ? Math.cos(windRad) * wind.speed * 0.03 : 0;
+
   const t = progress * 2.5;
-  const positions = new Float32Array(PARTICLE_COUNT * 3);
-  const colors = new Float32Array(PARTICLE_COUNT * 3);
 
   for (let i = 0; i < PARTICLE_COUNT; i++) {
     const vx = velocities[i * 3];
@@ -52,9 +63,9 @@ function MiniBurst({
     const vz = velocities[i * 3 + 2];
     const fade = Math.max(0, 1 - progress / lifetimes[i]);
 
-    const [hx, hy, hz] = particlePos(vx, vy, vz, t);
+    const [hx, hy, hz] = particlePos(vx, vy, vz, t, windX, windZ);
     positions[i * 3] = hx;
-    positions[i * 3 + 1] = hy;
+    positions[i * 3 + 1] = Math.max(0, hy); // Ground collision
     positions[i * 3 + 2] = hz;
 
     colors[i * 3] = baseColor.r * fade;
@@ -64,7 +75,6 @@ function MiniBurst({
 
   return (
     <group position={offset}>
-      {/* Glow handled by bloom — no pointLight to avoid uniform overflow */}
       <points>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[positions, 3]} />
@@ -86,27 +96,31 @@ function MiniBurst({
 
 /**
  * MultiBurst: Multiple sequential explosions at staggered times and offset positions.
+ * Integrated with wind force module.
  */
 export default function MultiBurstEffect({
   position,
   color,
   progress,
   burstCount = 3,
+  caliber = 3,
 }: {
   position: [number, number, number];
   color: string;
   progress: number;
   burstCount?: number;
+  caliber?: number;
 }) {
+  const burstScale = 0.7 + caliber * 0.12;
   const bursts = useMemo(() => {
     const b: { offset: [number, number, number]; delay: number; seed: number }[] = [];
     for (let i = 0; i < burstCount; i++) {
       const angle = (i / burstCount) * Math.PI * 2;
-      const r = 1.5 + i * 0.8;
+      const r = (1.5 + i * 0.8) * burstScale;
       b.push({
         offset: [
           Math.cos(angle) * r,
-          (i - burstCount / 2) * 1.2,
+          (i - burstCount / 2) * 1.2 * burstScale,
           Math.sin(angle) * r,
         ] as [number, number, number],
         delay: i * 0.18,

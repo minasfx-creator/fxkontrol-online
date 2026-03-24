@@ -58,34 +58,33 @@ export default function QuadcopterModel({
         <meshStandardMaterial color="#1a1a2e" metalness={0.5} roughness={0.6} />
       </mesh>
 
-      {/* Main RGB LED on top — HDR emissive */}
+      {/* Main RGB LED on top */}
       <mesh position={[0, 0.06, 0]}>
         <sphereGeometry args={[0.04, 12, 12]} />
         <meshStandardMaterial
           color={color}
           emissive={color}
-          emissiveIntensity={10}
-          toneMapped={false}
+          emissiveIntensity={0.16}
+          toneMapped={true}
           metalness={0}
-          roughness={0.1}
+          roughness={0.3}
         />
       </mesh>
-      {/* LED volumetric halo */}
+      {/* Minimal halo — no additive */}
       <mesh position={[0, 0.06, 0]}>
-        <sphereGeometry args={[0.12, 8, 8]} />
+        <sphereGeometry args={[0.05, 8, 8]} />
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={0.12}
+          opacity={0.003}
           depthWrite={false}
-          blending={THREE.AdditiveBlending}
         />
       </mesh>
       <pointLight
         color={color}
-        intensity={selected ? 5 : 2}
-        distance={selected ? 8 : 4}
-        decay={2}
+          intensity={selected ? 0.19 : 0.064}
+          distance={selected ? 0.48 : 0.24}
+          decay={3}
         position={[0, 0.06, 0]}
       />
 
@@ -119,16 +118,15 @@ export default function QuadcopterModel({
             position={[armPos[0], 0.05, armPos[2]]}
             ref={(el) => { if (el) rotorsRef.current[i] = el; }}
           >
-            {/* Blade disc effect — motion blur */}
+            {/* Blade disc — no additive */}
             <mesh rotation={[-Math.PI / 2, 0, 0]}>
               <circleGeometry args={[0.09, 24]} />
               <meshBasicMaterial
-                color={color}
+                color="#666666"
                 transparent
-                opacity={0.06}
+                opacity={0.03}
                 side={THREE.DoubleSide}
                 depthWrite={false}
-                blending={THREE.AdditiveBlending}
               />
             </mesh>
             {/* Blade tips ring */}
@@ -143,15 +141,14 @@ export default function QuadcopterModel({
             <sphereGeometry args={[0.012, 6, 6]} />
             <meshBasicMaterial color={navColors[i]} toneMapped={false} />
           </mesh>
-          {/* Nav light glow */}
+          {/* Nav light glow — no additive */}
           <mesh position={[armPos[0], -0.01, armPos[2]]}>
-            <sphereGeometry args={[0.03, 6, 6]} />
+            <sphereGeometry args={[0.025, 6, 6]} />
             <meshBasicMaterial
               color={navColors[i]}
               transparent
-              opacity={0.08}
+              opacity={0.04}
               depthWrite={false}
-              blending={THREE.AdditiveBlending}
             />
           </mesh>
         </group>
@@ -165,16 +162,15 @@ export default function QuadcopterModel({
         </mesh>
       ))}
 
-      {/* Selection glow ring */}
+      {/* Selection ring — no additive */}
       {selected && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.06, 0]}>
           <ringGeometry args={[0.35, 0.5, 32]} />
           <meshBasicMaterial
             color={color}
             transparent
-            opacity={0.5}
+            opacity={0.25}
             depthWrite={false}
-            blending={THREE.AdditiveBlending}
           />
         </mesh>
       )}

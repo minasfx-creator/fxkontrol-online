@@ -9,6 +9,8 @@ export default function SelectionStatusBar() {
     selectedPositionIds, positions, timelineItems, editorMode,
     updatePosition, selectMultiplePositions,
     trajectories, selectedTrajectoryIds, batchOffsetWaypoints,
+    selectionMode, linkedTimelineItemIds,
+    selectMultiplePositionsAndLinkedEvents,
   } = useProjectStore();
   const [showBatchTools, setShowBatchTools] = useState(false);
 
@@ -24,8 +26,8 @@ export default function SelectionStatusBar() {
   // Select all drones
   const selectAllDrones = useCallback(() => {
     const droneIds = positions.filter(p => p.type === 'drone-pad').map(p => p.id);
-    selectMultiplePositions(droneIds);
-  }, [positions, selectMultiplePositions]);
+    selectMultiplePositionsAndLinkedEvents(droneIds);
+  }, [positions, selectMultiplePositionsAndLinkedEvents]);
 
   // Batch move selected positions
   const batchMove = useCallback((dx: number, dy: number, dz: number) => {
@@ -132,6 +134,12 @@ export default function SelectionStatusBar() {
         <span className="flex items-center gap-1 text-foreground">
           <Zap className="w-3 h-3" />
           {linkedEffectCount} fx
+          {linkedTimelineItemIds.length > 0 && linkedTimelineItemIds.length !== linkedEffectCount && (
+            <span className="text-accent text-[8px]">({linkedTimelineItemIds.length} linked)</span>
+          )}
+        </span>
+        <span className="text-[7px] text-muted-foreground/30 ml-1">
+          {selectionMode === 'both' ? '🔗' : selectionMode === 'positions' ? '📍' : '⚡'}
         </span>
         <div className="flex-1" />
         <button

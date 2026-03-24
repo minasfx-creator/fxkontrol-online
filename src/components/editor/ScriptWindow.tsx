@@ -53,6 +53,7 @@ function computeScriptRow(item: TimelineItem, positions: ReturnType<typeof usePr
     posHeading,
     pan: item.pan ?? (effect.type === 'firework' ? 90 : 0),
     tilt: item.tilt ?? 0,
+    spin: item.spin ?? 0,
     x: item.position.x,
     y: item.position.y,
     z: item.position.z,
@@ -61,6 +62,18 @@ function computeScriptRow(item: TimelineItem, positions: ReturnType<typeof usePr
     notes: item.notes || '',
     isChain: !!item.chainRef,
     effectId: item.effectId,
+    // Derived read-only columns (Finale: Pitch/Roll derived from Pan+Tilt)
+    derivedPitch: Math.round(Math.cos((item.pan ?? 90) * Math.PI / 180) * (item.tilt ?? 0)),
+    derivedRoll: Math.round(Math.sin((item.pan ?? 90) * Math.PI / 180) * (item.tilt ?? 0)),
+    // Angles* ASCII art
+    anglesArt: (() => {
+      const p = item.pan ?? 90;
+      const t = item.tilt ?? 0;
+      if (Math.abs(t) < 2) return '|';
+      if (p < 45) return '/';
+      if (p > 135) return '\\';
+      return '|';
+    })(),
   };
 }
 
@@ -116,6 +129,190 @@ export default function ScriptWindow() {
   const [isDraggingFill, setIsDraggingFill] = useState(false);
   const [fillDragCount, setFillDragCount] = useState(0);
   const tableRef = useRef<HTMLDivElement>(null);
+
+  // ─── Resizable columns state ─────────────────────────────────────
+  const COLUMN_KEYS = ['cue', 'icon', 'eventTime', 'effectTime', 'pft', 'size', 'type', 'description', 'position', 'pan', 'tilt', 'spin', 'angles', 'dP', 'dR', 'dur', 'cost', 'chain', 'notes', 'actions'] as const;
+  type ColumnKey = typeof COLUMN_KEYS[number];
+
+  const DEFAULT_WIDTHS: Record<ColumnKey, number> = {
+    cue: 30, icon: 24, eventTime: 72, effectTime: 72, pft: 44, size: 36,
+    type: 48, description: 160, position: 80, pan: 36, tilt: 36, spin: 36,
+    angles: 28, dP: 36, dR: 36, dur: 36, cost: 36, chain: 48, notes: 100, actions: 36,
+  };
+
+  const [columnWidths, setColumnWidths] = useState<Record<ColumnKey, number>>(() => {
+    try {
+      const saved = localStorage.getItem('fxk-script-col-widths');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { ...DEFAULT_WIDTHS };
+  });
+
+  const [hiddenColumns, setHiddenColumns] = useState<Set<ColumnKey>>(() => {
+    try {
+      const saved = localStorage.getItem('fxk-script-hidden-cols');
+      if (saved) return new Set(JSON.parse(saved));
+    } catch {}
+    return new Set<ColumnKey>();
+  });
+
+  // Persist column widths
+  useEffect(() => {
+    localStorage.setItem('fxk-script-col-widths', JSON.stringify(columnWidths));
+  }, [columnWidths]);
+
+  useEffect(() => {
+    localStorage.setItem('fxk-script-hidden-cols', JSON.stringify([...hiddenColumns]));
+  }, [hiddenColumns]);
+
+  // Column resize drag handler
+  const resizingCol = useRef<{ key: ColumnKey; startX: number; startW: number } | null>(null);
+
+  const handleResizeStart = useCallback((key: ColumnKey, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    resizingCol.current = { key, startX: e.clientX, startW: columnWidths[key] };
+
+    const handleMove = (me: MouseEvent) => {
+      if (!resizingCol.current) return;
+      const delta = me.clientX - resizingCol.current.startX;
+      const newW = Math.max(20, resizingCol.current.startW + delta);
+      setColumnWidths(prev => ({ ...prev, [resizingCol.current!.key]: newW }));
+    };
+
+    const handleUp = () => {
+      resizingCol.current = null;
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleUp);
+      document.body.style.cursor = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleUp);
+  }, [columnWidths]);
+
+  const toggleColumnVisibility = useCallback((key: ColumnKey) => {
+    setHiddenColumns(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const [showColumnMenu, setShowColumnMenu] = useState(false);
+
+  const isColVisible = (key: ColumnKey) => !hiddenColumns.has(key);
+  const colW = (key: ColumnKey) => isColVisible(key) ? columnWidths[key] : 0;
+
+  // ─── Inline cell editing state (Finale 3D style) ─────────────────
+  const [editingCell, setEditingCell] = useState<{ rowId: string; field: string } | null>(null);
+  const [editDraft, setEditDraft] = useState('');
+  const editInputRef = useRef<HTMLInputElement>(null);
+  const [posDropdown, setPosDropdown] = useState<{ rowId: string } | null>(null);
+
+  // Editable fields in order for Tab navigation
+  const EDITABLE_FIELDS = ['eventTime', 'position', 'pan', 'tilt', 'spin', 'notes'] as const;
+  
+  // Navigation intent resolved after rows are computed
+  const [editNavIntent, setEditNavIntent] = useState<{ dir: 'next-cell' | 'next-row'; fromRowId: string; fromField: string } | null>(null);
+
+  const startEditing = useCallback((rowId: string, field: string, currentValue: string | number) => {
+    setEditingCell({ rowId, field });
+    setEditDraft(String(currentValue));
+    setTimeout(() => editInputRef.current?.select(), 0);
+  }, []);
+
+  const commitEdit = useCallback((moveDir?: 'next-cell' | 'next-row' | 'cancel') => {
+    if (!editingCell) return;
+    const { rowId, field } = editingCell;
+
+    if (moveDir !== 'cancel') {
+      const value = editDraft;
+      // Apply to all selected rows if batch
+      const targetIds = selectedIds.size > 1 && selectedIds.has(rowId)
+        ? Array.from(selectedIds) : [rowId];
+
+      targetIds.forEach(id => {
+        switch (field) {
+          case 'eventTime':
+            updateTimelineItem(id, { startTime: parseFloat(value) || 0 });
+            break;
+          case 'pan':
+            updateTimelineItem(id, { pan: parseFloat(value) || 0 });
+            break;
+          case 'tilt':
+            updateTimelineItem(id, { tilt: parseFloat(value) || 0 });
+            break;
+          case 'spin':
+            updateTimelineItem(id, { spin: parseFloat(value) || 0 });
+            break;
+          case 'notes':
+            updateTimelineItem(id, { notes: value });
+            break;
+        }
+      });
+    }
+
+    // For next-cell / next-row, we defer to after rows are available
+    // by storing intent and resolving in an effect
+    if (moveDir === 'next-cell' || moveDir === 'next-row') {
+      setEditNavIntent({ dir: moveDir, fromRowId: rowId, fromField: field });
+    }
+
+    setEditingCell(null);
+  }, [editingCell, editDraft, selectedIds, updateTimelineItem]);
+
+  const handleCellKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      commitEdit(e.shiftKey ? 'cancel' : 'next-cell');
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      commitEdit('next-row');
+    } else if (e.key === 'Escape') {
+      commitEdit('cancel');
+    }
+  }, [commitEdit]);
+
+  // Render an inline editable cell
+  const renderEditableCell = (rowId: string, field: string, value: string | number, width: string, extraClass?: string) => {
+    const isEditing = editingCell?.rowId === rowId && editingCell?.field === field;
+    const isBatchTarget = selectedIds.size > 1 && selectedIds.has(rowId);
+
+    if (isEditing) {
+      return (
+        <input
+          ref={editInputRef}
+          type={field === 'notes' ? 'text' : 'number'}
+          step={field === 'eventTime' ? '0.001' : '1'}
+          className={cn(
+            "bg-primary/10 border border-primary/50 text-foreground outline-none rounded-sm px-0.5 transition-colors",
+            isBatchTarget && "ring-1 ring-accent/40",
+            width
+          )}
+          value={editDraft}
+          onChange={e => setEditDraft(e.target.value)}
+          onBlur={() => commitEdit()}
+          onKeyDown={handleCellKeyDown}
+          autoFocus
+        />
+      );
+    }
+
+    return (
+      <span
+        className={cn(
+          "cursor-text border-b border-transparent hover:border-border/40 transition-colors inline-block",
+          width, extraClass
+        )}
+        onClick={e => { e.stopPropagation(); startEditing(rowId, field, value); }}
+      >
+        {field === 'eventTime' ? String(value) : String(value)}
+      </span>
+    );
+  };
 
   // ─── Undo/Redo system ───────────────────────────────────────────
   const undoStack = useRef<TimelineItem[][]>([]);
@@ -190,7 +387,45 @@ export default function ScriptWindow() {
     return sorted;
   }, [timelineItems, positions, filterText, sortField, sortDir]);
 
-  // Group by chain for collapse
+  // Resolve Tab/Enter navigation after rows are available
+  useEffect(() => {
+    if (!editNavIntent) return;
+    const { dir, fromRowId, fromField } = editNavIntent;
+    setEditNavIntent(null);
+
+    if (dir === 'next-cell') {
+      const idx = EDITABLE_FIELDS.indexOf(fromField as any);
+      if (idx >= 0 && idx < EDITABLE_FIELDS.length - 1) {
+        const nextField = EDITABLE_FIELDS[idx + 1];
+        const row = rows.find(r => r.id === fromRowId);
+        if (row) {
+          if (nextField === 'position') {
+            setPosDropdown({ rowId: fromRowId });
+          } else {
+            const val = nextField === 'eventTime' ? row.eventTime
+              : nextField === 'pan' ? row.pan
+              : nextField === 'tilt' ? row.tilt
+              : nextField === 'spin' ? row.spin
+              : row.notes;
+            startEditing(fromRowId, nextField, val);
+          }
+        }
+      }
+    } else if (dir === 'next-row') {
+      const rowIdx = rows.findIndex(r => r.id === fromRowId);
+      if (rowIdx >= 0 && rowIdx < rows.length - 1) {
+        const nextRow = rows[rowIdx + 1];
+        const val = fromField === 'eventTime' ? nextRow.eventTime
+          : fromField === 'pan' ? nextRow.pan
+          : fromField === 'tilt' ? nextRow.tilt
+          : fromField === 'spin' ? nextRow.spin
+          : nextRow.notes;
+        startEditing(nextRow.id, fromField, val);
+      }
+    }
+  }, [editNavIntent, rows, startEditing]);
+
+
   const chainGroups = useMemo(() => {
     const groups = new Map<string, typeof rows>();
     for (const row of rows) {
@@ -662,6 +897,43 @@ export default function ScriptWindow() {
             📋{clipboard.length}
           </span>
         )}
+
+        {/* Column visibility toggle */}
+        <div className="relative ml-auto">
+          <button
+            onClick={() => setShowColumnMenu(!showColumnMenu)}
+            className="text-[9px] px-1.5 py-0.5 rounded bg-surface-2 text-muted-foreground hover:text-foreground transition-colors"
+            title="Show/hide columns"
+          >
+            Cols ▾
+          </button>
+          {showColumnMenu && (
+            <div className="absolute right-0 top-full mt-1 z-50 min-w-[140px] max-h-[240px] overflow-y-auto rounded-md border border-border/60 bg-popover/95 p-1 shadow-lg backdrop-blur-sm">
+              {COLUMN_KEYS.filter(k => k !== 'cue' && k !== 'actions').map(key => (
+                <label
+                  key={key}
+                  className="flex items-center gap-1.5 px-2 py-0.5 text-[9px] hover:bg-accent/30 rounded cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={isColVisible(key)}
+                    onChange={() => toggleColumnVisibility(key)}
+                    className="w-3 h-3"
+                  />
+                  <span className="capitalize">{key}</span>
+                </label>
+              ))}
+              <div className="border-t border-border/30 mt-1 pt-1">
+                <button
+                  onClick={() => { setColumnWidths({ ...DEFAULT_WIDTHS }); setHiddenColumns(new Set()); }}
+                  className="text-[8px] text-primary px-2 py-0.5 w-full text-left hover:bg-accent/30 rounded"
+                >
+                  Reset All
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Fill Handle Dialog */}
@@ -776,23 +1048,59 @@ export default function ScriptWindow() {
 
       {/* Table */}
       <div className="flex-1 overflow-auto" ref={tableRef}>
-        <table className="w-full text-[9px] font-mono-code border-collapse min-w-[600px]">
+        <table className="text-[9px] font-mono-code border-collapse" style={{ minWidth: '600px', tableLayout: 'fixed', width: Object.entries(columnWidths).filter(([k]) => isColVisible(k as ColumnKey)).reduce((s, [, w]) => s + w, 0) }}>
+          <colgroup>
+            {COLUMN_KEYS.map(key => isColVisible(key) ? <col key={key} style={{ width: columnWidths[key] }} /> : null)}
+          </colgroup>
           <thead className="sticky top-0 bg-surface-1 z-10">
             <tr className="border-b border-border/40">
-              <th className="px-0.5 py-1 w-6 text-center text-muted-foreground/50 font-medium">#</th>
-              <th className="px-1 py-1 w-5"></th>
-              <SortableHeader label="Event Time" field="eventTime" current={sortField} dir={sortDir} onSort={toggleSort} />
-              <SortableHeader label="Effect Time" field="effectTime" current={sortField} dir={sortDir} onSort={toggleSort} />
-              <th className="px-1 py-1 text-left text-muted-foreground font-medium">PFT</th>
-              <SortableHeader label="Description" field="description" current={sortField} dir={sortDir} onSort={toggleSort} />
-              <SortableHeader label="Position" field="position" current={sortField} dir={sortDir} onSort={toggleSort} />
-              <th className="px-1 py-1 text-left text-muted-foreground font-medium">Pan°</th>
-              <th className="px-1 py-1 text-left text-muted-foreground font-medium">Tilt°</th>
-              <SortableHeader label="Dur" field="duration" current={sortField} dir={sortDir} onSort={toggleSort} />
-              <SortableHeader label="$" field="cost" current={sortField} dir={sortDir} onSort={toggleSort} />
-              <th className="px-1 py-1 text-left text-muted-foreground font-medium">Chain</th>
-              <th className="px-1 py-1 text-left text-muted-foreground font-medium">Notes</th>
-              <th className="px-1 py-1 w-8"></th>
+              {([
+                { key: 'cue' as ColumnKey, label: 'Cue', sortable: false },
+                { key: 'icon' as ColumnKey, label: '', sortable: false },
+                { key: 'eventTime' as ColumnKey, label: 'Event Time', sortable: true, field: 'eventTime' as SortField },
+                { key: 'effectTime' as ColumnKey, label: 'Effect Time', sortable: true, field: 'effectTime' as SortField },
+                { key: 'pft' as ColumnKey, label: 'PFT', sortable: false },
+                { key: 'size' as ColumnKey, label: 'Size', sortable: false },
+                { key: 'type' as ColumnKey, label: 'Type', sortable: false },
+                { key: 'description' as ColumnKey, label: 'Description', sortable: true, field: 'description' as SortField },
+                { key: 'position' as ColumnKey, label: 'Position', sortable: true, field: 'position' as SortField },
+                { key: 'pan' as ColumnKey, label: 'Pan°', sortable: false },
+                { key: 'tilt' as ColumnKey, label: 'Tilt°', sortable: false },
+                { key: 'spin' as ColumnKey, label: 'Spin°', sortable: false },
+                { key: 'angles' as ColumnKey, label: '∠*', sortable: false },
+                { key: 'dP' as ColumnKey, label: 'dP', sortable: false },
+                { key: 'dR' as ColumnKey, label: 'dR', sortable: false },
+                { key: 'dur' as ColumnKey, label: 'Dur', sortable: true, field: 'duration' as SortField },
+                { key: 'cost' as ColumnKey, label: '$', sortable: true, field: 'cost' as SortField },
+                { key: 'chain' as ColumnKey, label: 'Chain', sortable: false },
+                { key: 'notes' as ColumnKey, label: 'Notes', sortable: false },
+                { key: 'actions' as ColumnKey, label: '', sortable: false },
+              ] as const).filter(col => isColVisible(col.key)).map(col => (
+                <th
+                  key={col.key}
+                  className="px-1 py-1 text-left text-muted-foreground font-medium relative select-none"
+                  style={{ width: columnWidths[col.key] }}
+                >
+                  {col.sortable && col.field ? (
+                    <span
+                      className={cn("cursor-pointer hover:text-foreground transition-colors", sortField === col.field && "text-primary")}
+                      onClick={() => toggleSort(col.field!)}
+                    >
+                      {col.label}
+                      {sortField === col.field && (
+                        <ArrowUpDown className="inline h-2.5 w-2.5 ml-0.5" />
+                      )}
+                    </span>
+                  ) : (
+                    col.label
+                  )}
+                  {/* Resize handle */}
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/40 transition-colors"
+                    onMouseDown={(e) => handleResizeStart(col.key, e)}
+                  />
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -813,155 +1121,212 @@ export default function ScriptWindow() {
                     row.chainRef && !isSelected && "border-l-2",
                     isDraggingFill && fillAnchorId === row.id && "bg-primary/20",
                   )}
-                  style={row.chainRef && !isSelected ? { borderLeftColor: chainColor } : undefined}
+                  style={{
+                    ...(row.chainRef && !isSelected ? { borderLeftColor: chainColor } : {}),
+                  }}
                   onClick={(e) => toggleSelect(row.id, e)}
                 >
-                  {/* Row number */}
-                  <td className="px-0.5 py-0.5 text-center text-muted-foreground/40 text-[8px]">
-                    {rowIdx + 1}
-                  </td>
+                  {/* Cue number */}
+                  {isColVisible('cue') && (
+                    <td className="px-0.5 py-0.5 text-center text-muted-foreground/40 text-[8px] font-bold">
+                      Q{rowIdx + 1}
+                    </td>
+                  )}
 
                   {/* Chain collapse / icon */}
-                  <td className="px-0.5 py-0.5 text-center">
-                    {isChainHead && chainCount > 1 ? (
-                      <button
-                        className="text-muted-foreground hover:text-foreground"
-                        onClick={(e) => { e.stopPropagation(); toggleChainCollapse(row.chainRef!); }}
-                      >
-                        {collapsed
-                          ? <ChevronRight className="h-3 w-3" />
-                          : <ChevronDown className="h-3 w-3" />
-                        }
-                      </button>
-                    ) : (
-                      <span className="text-[8px]">{row.icon}</span>
-                    )}
-                  </td>
+                  {isColVisible('icon') && (
+                    <td className="px-0.5 py-0.5 text-center">
+                      {isChainHead && chainCount > 1 ? (
+                        <button
+                          className="text-muted-foreground hover:text-foreground"
+                          onClick={(e) => { e.stopPropagation(); toggleChainCollapse(row.chainRef!); }}
+                        >
+                          {collapsed
+                            ? <ChevronRight className="h-3 w-3" />
+                            : <ChevronDown className="h-3 w-3" />
+                          }
+                        </button>
+                      ) : (
+                        <span className="text-[8px]">{row.icon}</span>
+                      )}
+                    </td>
+                  )}
 
                   {/* Event Time */}
-                  <td className="px-1 py-0.5">
-                    <input
-                      type="number" step="0.001" min="0"
-                      className="w-16 bg-transparent border-b border-transparent hover:border-border/40 focus:border-primary text-foreground outline-none transition-colors"
-                      value={row.eventTime}
-                      onChange={(e) => updateTimelineItem(row.id, { startTime: parseFloat(e.target.value) || 0 })}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </td>
+                  {isColVisible('eventTime') && (
+                    <td className="px-1 py-0.5">
+                      {renderEditableCell(row.id, 'eventTime', row.eventTime, 'w-full', 'text-foreground')}
+                    </td>
+                  )}
 
                   {/* Effect Time */}
-                  <td className="px-1 py-0.5 text-primary/80">
-                    {formatTime(row.effectTime)}
-                  </td>
+                  {isColVisible('effectTime') && (
+                    <td className="px-1 py-0.5 text-primary/80">
+                      {formatTime(row.effectTime)}
+                    </td>
+                  )}
 
                   {/* Prefire */}
-                  <td className="px-1 py-0.5">
-                    {row.prefire > 0 ? (
-                      <span className="text-warning">{row.prefire.toFixed(1)}s</span>
-                    ) : (
-                      <span className="text-muted-foreground/30">—</span>
-                    )}
-                  </td>
+                  {isColVisible('pft') && (
+                    <td className="px-1 py-0.5">
+                      {row.prefire > 0 ? (
+                        <span className="text-warning">{row.prefire.toFixed(1)}s</span>
+                      ) : (
+                        <span className="text-muted-foreground/30">—</span>
+                      )}
+                    </td>
+                  )}
+
+                  {/* Size */}
+                  {isColVisible('size') && (
+                    <td className="px-1 py-0.5">
+                      {row.type === 'firework' ? (
+                        <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-accent/15 text-accent tabular-nums">
+                          {(() => { const m = row.description.match(/(\d+)(?:in|")/); return m ? `${m[1]}"` : '4"'; })()}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground/30">—</span>
+                      )}
+                    </td>
+                  )}
+
+                  {/* Type */}
+                  {isColVisible('type') && (
+                    <td className="px-1 py-0.5">
+                      <span className="text-[7px] font-bold px-1 py-0.5 rounded bg-muted/20 text-muted-foreground uppercase">
+                        {row.category === 'mines' ? 'MINE' : row.category === 'roman_candles' ? 'RC' : row.category === 'cakes_batteries' ? 'CAKE' : row.category === 'waterfalls' ? 'FALL' : row.type === 'firework' ? 'SHELL' : row.type === 'drone' ? 'DRN' : row.type?.slice(0, 3).toUpperCase() || '—'}
+                      </span>
+                    </td>
+                  )}
 
                   {/* Description */}
-                  <td className="px-1 py-0.5">
-                    <div className="flex items-center gap-1.5">
-                      <div
-                        className="w-2.5 h-2.5 rounded-full flex-shrink-0 ring-1 ring-white/10"
-                        style={{ backgroundColor: row.color }}
-                      />
-                      <span className="text-foreground truncate max-w-[120px] font-medium">
-                        {row.description}
-                        {collapsed && chainCount > 1 && (
-                          <span className="text-muted-foreground ml-1 font-normal">×{chainCount}</span>
+                  {isColVisible('description') && (
+                    <td className="px-1 py-0.5">
+                      <div className="flex items-center gap-1 overflow-hidden">
+                        {(() => {
+                          const pos = positions.find(p => p.name === row.position);
+                          const sec = pos?.section;
+                          const sColors: Record<string, string> = { A: '#4CAF50', B: '#2196F3', C: '#FF9800', D: '#E91E63', E: '#9C27B0', F: '#00BCD4' };
+                          return <div className="w-[3px] h-4 rounded-full flex-shrink-0" style={{ backgroundColor: sec ? sColors[sec] || '#555' : 'hsl(var(--muted) / 0.2)' }} />;
+                        })()}
+                        <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 ring-1 ring-white/10" style={{ backgroundColor: row.color }} />
+                        {row.type === 'firework' && (
+                          <span className="text-[7px] font-bold px-1 py-0.5 rounded bg-accent/15 text-accent tabular-nums flex-shrink-0">
+                            {(() => { const m = row.description.match(/(\d+)(?:in|")/); return m ? `${m[1]}"` : '4"'; })()}
+                          </span>
                         )}
-                      </span>
-                    </div>
-                  </td>
+                        {row.category && (
+                          <span className="text-[8px] flex-shrink-0 opacity-50">
+                            {row.category === 'mines' ? '💥' : row.category === 'roman_candles' ? '🕯️' : row.category === 'cakes_batteries' ? '📦' : row.category === 'waterfalls' ? '💧' : row.type === 'firework' ? '🎆' : ''}
+                          </span>
+                        )}
+                        <span className="text-foreground truncate font-medium">
+                          {row.description}
+                          {collapsed && chainCount > 1 && (
+                            <span className="text-muted-foreground ml-1 font-normal">×{chainCount}</span>
+                          )}
+                        </span>
+                      </div>
+                    </td>
+                  )}
 
                   {/* Position */}
-                  <td className="px-1 py-0.5">
-                    <span className={cn(
-                      "truncate max-w-[60px] block",
-                      row.position === 'UNASSIGNED' ? "text-destructive/60 italic" : "text-muted-foreground"
-                    )}>
-                      {row.position}
-                    </span>
-                  </td>
-
-                  {/* Pan */}
-                  <td className="px-1 py-0.5">
-                    <input
-                      type="number" step="1"
-                      className="w-8 bg-transparent border-b border-transparent hover:border-border/40 focus:border-primary text-muted-foreground outline-none transition-colors"
-                      value={row.pan}
-                      onChange={(e) => updateTimelineItem(row.id, { pan: parseFloat(e.target.value) || 0 })}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </td>
-
-                  {/* Tilt */}
-                  <td className="px-1 py-0.5">
-                    <input
-                      type="number" step="1"
-                      className="w-8 bg-transparent border-b border-transparent hover:border-border/40 focus:border-primary text-muted-foreground outline-none transition-colors"
-                      value={row.tilt}
-                      onChange={(e) => updateTimelineItem(row.id, { tilt: parseFloat(e.target.value) || 0 })}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </td>
-
-                  {/* Duration */}
-                  <td className="px-1 py-0.5 text-muted-foreground">{row.duration}s</td>
-
-                  {/* Cost */}
-                  <td className="px-1 py-0.5 text-success">${row.cost}</td>
-
-                  {/* Chain */}
-                  <td className="px-1 py-0.5">
-                    {row.chainRef ? (
-                      <div className="flex items-center gap-0.5">
-                        <Link2 className="h-2.5 w-2.5" style={{ color: chainColor }} />
-                        {row.chainGap != null && row.chainGap > 0 && (
-                          <span className="text-[8px] text-muted-foreground">{row.chainGap}ms</span>
+                  {isColVisible('position') && (
+                    <td className="px-1 py-0.5 relative">
+                      <span
+                        className={cn(
+                          "truncate block cursor-pointer border-b border-transparent hover:border-border/40 transition-colors",
+                          row.position === 'UNASSIGNED' ? "text-destructive/60 italic" : "text-muted-foreground"
                         )}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground/20">—</span>
-                    )}
-                  </td>
+                        onClick={(e) => { e.stopPropagation(); setPosDropdown(posDropdown?.rowId === row.id ? null : { rowId: row.id }); }}
+                      >
+                        {row.position}
+                      </span>
+                      {posDropdown?.rowId === row.id && (
+                        <div className="absolute z-50 top-full left-0 mt-0.5 min-w-[120px] max-h-[160px] overflow-y-auto rounded-md border border-border/60 bg-popover/95 p-0.5 shadow-lg backdrop-blur-sm">
+                          {positions.filter(p => p.type === 'pyro').map(pos => (
+                            <button
+                              key={pos.id}
+                              className="flex w-full items-center gap-1.5 rounded-sm px-2 py-1 text-[9px] hover:bg-accent/50 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const targetIds = selectedIds.size > 1 && selectedIds.has(row.id)
+                                  ? Array.from(selectedIds) : [row.id];
+                                targetIds.forEach(id => {
+                                  updateTimelineItem(id, {
+                                    positionId: pos.id,
+                                    positionName: pos.name,
+                                    position: { x: pos.x, y: pos.y, z: pos.z },
+                                  });
+                                });
+                                setPosDropdown(null);
+                              }}
+                            >
+                              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: pos.color }} />
+                              <span className="truncate">{pos.name}</span>
+                            </button>
+                          ))}
+                          {positions.filter(p => p.type === 'pyro').length === 0 && (
+                            <div className="px-2 py-1 text-[8px] text-muted-foreground/50 italic">No positions</div>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  )}
+
+                  {isColVisible('pan') && <td className="px-1 py-0.5">{renderEditableCell(row.id, 'pan', row.pan, 'w-full', 'text-muted-foreground')}</td>}
+                  {isColVisible('tilt') && <td className="px-1 py-0.5">{renderEditableCell(row.id, 'tilt', row.tilt, 'w-full', 'text-muted-foreground')}</td>}
+                  {isColVisible('spin') && <td className="px-1 py-0.5">{renderEditableCell(row.id, 'spin', row.spin, 'w-full', 'text-muted-foreground')}</td>}
+                  {isColVisible('angles') && <td className="px-1 py-0.5 text-center"><span className="text-muted-foreground font-mono text-[10px]">{row.anglesArt}</span></td>}
+                  {isColVisible('dP') && <td className="px-1 py-0.5"><span className="text-muted-foreground/60 text-[9px] font-mono">{row.derivedPitch}°</span></td>}
+                  {isColVisible('dR') && <td className="px-1 py-0.5"><span className="text-muted-foreground/60 text-[9px] font-mono">{row.derivedRoll}°</span></td>}
+                  {isColVisible('dur') && <td className="px-1 py-0.5 text-muted-foreground">{row.duration}s</td>}
+                  {isColVisible('cost') && <td className="px-1 py-0.5 text-success">${row.cost}</td>}
+
+                  {isColVisible('chain') && (
+                    <td className="px-1 py-0.5">
+                      {row.chainRef ? (
+                        <div className="flex items-center gap-0.5">
+                          <Link2 className="h-2.5 w-2.5" style={{ color: chainColor }} />
+                          {row.chainGap != null && row.chainGap > 0 && (
+                            <span className="text-[8px] text-muted-foreground">{row.chainGap}ms</span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground/20">—</span>
+                      )}
+                    </td>
+                  )}
 
                   {/* Notes */}
-                  <td className="px-1 py-0.5">
-                    <input
-                      className="w-full bg-transparent border-b border-transparent hover:border-border/30 focus:border-primary text-muted-foreground outline-none text-[8px] transition-colors"
-                      placeholder="…"
-                      value={row.notes}
-                      onChange={(e) => updateTimelineItem(row.id, { notes: e.target.value })}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </td>
+                  {isColVisible('notes') && (
+                    <td className="px-1 py-0.5">
+                      {renderEditableCell(row.id, 'notes', row.notes, 'w-full', 'text-muted-foreground text-[8px]')}
+                    </td>
+                  )}
 
                   {/* Actions */}
-                  <td className="px-0.5 py-0.5 text-center">
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        className="text-destructive/40 hover:text-destructive"
-                        onClick={(e) => { e.stopPropagation(); removeTimelineItem(row.id); }}
-                      >
-                        <Trash2 className="h-2.5 w-2.5" />
-                      </button>
-                      {isSelected && (
+                  {isColVisible('actions') && (
+                    <td className="px-0.5 py-0.5 text-center">
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
-                          className="text-primary/40 hover:text-primary cursor-s-resize"
-                          title="Drag down to fill"
-                          onMouseDown={(e) => handleFillDragStart(row.id, e)}
+                          className="text-destructive/40 hover:text-destructive"
+                          onClick={(e) => { e.stopPropagation(); removeTimelineItem(row.id); }}
                         >
-                          <GripVertical className="h-2.5 w-2.5" />
+                          <Trash2 className="h-2.5 w-2.5" />
                         </button>
-                      )}
-                    </div>
-                  </td>
+                        {isSelected && (
+                          <button
+                            className="text-primary/40 hover:text-primary cursor-s-resize"
+                            title="Drag down to fill"
+                            onMouseDown={(e) => handleFillDragStart(row.id, e)}
+                          >
+                            <GripVertical className="h-2.5 w-2.5" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               );
             })}
@@ -970,7 +1335,7 @@ export default function ScriptWindow() {
             {isDraggingFill && fillDragCount > 0 && (
               Array.from({ length: fillDragCount }).map((_, i) => (
                 <tr key={`fill-preview-${i}`} className="border-b border-primary/20 bg-primary/5 pointer-events-none">
-                  <td colSpan={14} className="px-2 py-0.5 text-[9px] text-primary/60 font-mono-code">
+                  <td colSpan={16} className="px-2 py-0.5 text-[9px] text-primary/60 font-mono-code">
                     + Copy {i + 1}
                   </td>
                 </tr>

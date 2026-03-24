@@ -1,0 +1,355 @@
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { MapPin, Ruler, Route, Trash2, Eye, EyeOff, ChevronDown, Plus, SquareDot, Download, Globe, Pencil } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { downloadGeoToolsKML, downloadGeoToolsKMZ } from '@/lib/geoToolsKmlExporter';
+import { useProjectStore } from '@/store/useProjectStore';
+import { toast } from 'sonner';
+
+export type GeoToolMode = 'none' | 'marker' | 'ruler' | 'path' | 'polygon';
+
+export interface GeoMarker {
+  id: string;
+  name: string;
+  position: [number, number, number];
+  color: string;
+  visible: boolean;
+}
+
+export interface GeoRulerPoint {
+  id: string;
+  points: [number, number, number][];
+  totalDistance: number;
+  visible: boolean;
+  label: string;
+}
+
+export interface GeoPath {
+  id: string;
+  name: string;
+  points: [number, number, number][];
+  color: string;
+  visible: boolean;
+  closed: boolean;
+}
+
+interface ViewportGeoToolsProps {
+  activeTool: GeoToolMode;
+  onToolChange: (tool: GeoToolMode) => void;
+  markers: GeoMarker[];
+  rulers: GeoRulerPoint[];
+  paths: GeoPath[];
+  onClearMarkers: () => void;
+  onClearRulers: () => void;
+  onClearPaths: () => void;
+  onToggleMarkerVisibility: (id: string) => void;
+  onToggleRulerVisibility: (id: string) => void;
+  onTogglePathVisibility: (id: string) => void;
+  onDeleteMarker: (id: string) => void;
+  onDeleteRuler: (id: string) => void;
+  onDeletePath: (id: string) => void;
+  onUpdateMarker?: (id: string, updates: Partial<GeoMarker>) => void;
+  onUpdateRuler?: (id: string, updates: Partial<GeoRulerPoint>) => void;
+  onUpdatePath?: (id: string, updates: Partial<GeoPath>) => void;
+}
+
+const TOOL_BUTTONS: { id: GeoToolMode; icon: React.ElementType; label: string; tip: string }[] = [
+  { id: 'marker', icon: MapPin, label: 'Marcador', tip: 'Clique no viewport para adicionar um marcador' },
+  { id: 'ruler', icon: Ruler, label: 'Régua', tip: 'Clique para medir distâncias entre pontos' },
+  { id: 'path', icon: Route, label: 'Caminho', tip: 'Clique para traçar um caminho livre' },
+  { id: 'polygon', icon: SquareDot, label: 'Polígono', tip: 'Clique para desenhar uma área fechada' },
+];
+
+const EDIT_COLORS = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ec4899', '#06b6d4', '#ffffff'];
+
+// ═══ Inline name editor ═══
+function InlineName({ value, onCommit }: { value: string; onCommit: (v: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) {
+      setDraft(value);
+      setTimeout(() => inputRef.current?.select(), 0);
+    }
+  }, [editing, value]);
+
+  if (!editing) {
+    return (
+      <span
+        className="text-[10px] text-foreground flex-1 truncate cursor-pointer hover:text-primary transition-colors"
+        onDoubleClick={() => setEditing(true)}
+        title="Duplo-clique para editar"
+      >
+        {value}
+      </span>
+    );
+  }
+
+  return (
+    <input
+      ref={inputRef}
+      value={draft}
+      onChange={e => setDraft(e.target.value)}
+      onBlur={() => { onCommit(draft || value); setEditing(false); }}
+      onKeyDown={e => {
+        if (e.key === 'Enter') { onCommit(draft || value); setEditing(false); }
+        if (e.key === 'Escape') setEditing(false);
+      }}
+      className="text-[10px] text-foreground flex-1 min-w-0 bg-surface-1/60 border border-primary/30 rounded px-1 py-0 outline-none focus:border-primary"
+      autoFocus
+    />
+  );
+}
+
+// ═══ Color picker dot ═══
+function ColorDot({ color, onChange }: { color: string; onChange: (c: string) => void }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        className="w-2.5 h-2.5 rounded-full flex-shrink-0 ring-1 ring-border/20 hover:ring-primary/50 transition-all cursor-pointer"
+        style={{ background: color }}
+        onDoubleClick={() => setOpen(!open)}
+        title="Duplo-clique para mudar a cor"
+      />
+      {open && (
+        <>
+          <div className="fixed inset-0 z-50" onClick={() => setOpen(false)} />
+          <div className="absolute top-full left-0 mt-1 z-50 bg-card/95 backdrop-blur-xl border border-border/20 rounded-xl shadow-2xl p-1.5 flex gap-1 flex-wrap w-[100px]">
+            {EDIT_COLORS.map(c => (
+              <button
+                key={c}
+                onClick={() => { onChange(c); setOpen(false); }}
+                className={cn(
+                  "w-4 h-4 rounded-full ring-1 transition-all hover:scale-125",
+                  c === color ? "ring-primary ring-2" : "ring-border/20"
+                )}
+                style={{ background: c }}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function ViewportGeoTools({
+  activeTool,
+  onToolChange,
+  markers,
+  rulers,
+  paths,
+  onClearMarkers,
+  onClearRulers,
+  onClearPaths,
+  onToggleMarkerVisibility,
+  onToggleRulerVisibility,
+  onTogglePathVisibility,
+  onDeleteMarker,
+  onDeleteRuler,
+  onDeletePath,
+  onUpdateMarker,
+  onUpdateRuler,
+  onUpdatePath,
+}: ViewportGeoToolsProps) {
+  const [expanded, setExpanded] = useState(false);
+
+  const totalItems = markers.length + rulers.length + paths.length;
+
+  return (
+    <div className="absolute top-3 right-14 z-30 flex flex-col items-end gap-1.5">
+      {/* Toggle button */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className={cn(
+          "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
+          expanded || activeTool !== 'none'
+            ? "bg-primary/15 text-primary border-primary/25 shadow-lg shadow-primary/10"
+            : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+        )}
+        title="Google Earth Tools"
+      >
+        <MapPin className="w-3.5 h-3.5" />
+        <span className="hidden sm:inline">Geo Tools</span>
+        {totalItems > 0 && (
+          <span className="ml-0.5 bg-primary/20 text-primary text-[8px] font-bold px-1.5 py-0.5 rounded-full">{totalItems}</span>
+        )}
+        <ChevronDown className={cn("w-3 h-3 transition-transform", expanded && "rotate-180")} />
+      </button>
+
+      {/* Expanded panel */}
+      {expanded && (
+        <div
+          className="border border-border/20 rounded-2xl shadow-2xl shadow-black/60 backdrop-blur-2xl min-w-[240px] overflow-hidden"
+          style={{ background: 'hsl(var(--card) / 0.95)' }}
+        >
+          {/* Tool buttons */}
+          <div className="p-2 border-b border-border/15">
+            <div className="text-[9px] font-display uppercase tracking-wider text-muted-foreground/50 px-1.5 mb-1.5">
+              Ferramentas
+            </div>
+            <div className="grid grid-cols-4 gap-1">
+              {TOOL_BUTTONS.map(({ id, icon: Icon, label, tip }) => (
+                <button
+                  key={id}
+                  onClick={() => onToolChange(activeTool === id ? 'none' : id)}
+                  className={cn(
+                    "flex flex-col items-center gap-0.5 px-1.5 py-2 rounded-xl text-[9px] font-medium transition-all",
+                    activeTool === id
+                      ? "bg-primary/15 text-primary shadow-inner"
+                      : "text-muted-foreground hover:text-foreground hover:bg-surface-1/60"
+                  )}
+                  title={tip}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Active tool hint */}
+          {activeTool !== 'none' && (
+            <div className="px-3 py-2 border-b border-border/15 bg-primary/5">
+              <div className="text-[10px] text-primary font-medium">
+                {TOOL_BUTTONS.find(t => t.id === activeTool)?.tip}
+              </div>
+              <div className="text-[9px] text-muted-foreground mt-0.5">
+                {activeTool === 'ruler' && 'Duplo-clique para finalizar a medição'}
+                {activeTool === 'path' && 'Duplo-clique para finalizar o caminho'}
+                {activeTool === 'polygon' && 'Duplo-clique para fechar o polígono'}
+                {activeTool === 'marker' && 'ESC para cancelar'}
+              </div>
+            </div>
+          )}
+
+          {/* Items list */}
+          <div className="max-h-[280px] overflow-y-auto">
+            {/* Markers */}
+            {markers.length > 0 && (
+              <div className="p-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[9px] font-display uppercase tracking-wider text-muted-foreground/50 px-1.5">
+                    Marcadores ({markers.length})
+                  </span>
+                  <button onClick={onClearMarkers} className="text-[9px] text-destructive/60 hover:text-destructive px-1.5" title="Limpar todos">
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+                {markers.map(m => (
+                  <div key={m.id} className="flex items-center gap-1.5 px-1.5 py-1 rounded-lg hover:bg-surface-1/40 group">
+                    <ColorDot color={m.color} onChange={c => onUpdateMarker?.(m.id, { color: c })} />
+                    <InlineName value={m.name} onCommit={name => onUpdateMarker?.(m.id, { name })} />
+                    <span className="text-[8px] text-muted-foreground/50 font-mono-code">
+                      {m.position[0].toFixed(1)}, {m.position[2].toFixed(1)}
+                    </span>
+                    <button onClick={() => onToggleMarkerVisibility(m.id)} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      {m.visible ? <Eye className="w-3 h-3 text-muted-foreground" /> : <EyeOff className="w-3 h-3 text-muted-foreground/40" />}
+                    </button>
+                    <button onClick={() => onDeleteMarker(m.id)} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Trash2 className="w-3 h-3 text-destructive/50 hover:text-destructive" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Rulers */}
+            {rulers.length > 0 && (
+              <div className="p-2 border-t border-border/10">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[9px] font-display uppercase tracking-wider text-muted-foreground/50 px-1.5">
+                    Medições ({rulers.length})
+                  </span>
+                  <button onClick={onClearRulers} className="text-[9px] text-destructive/60 hover:text-destructive px-1.5" title="Limpar todos">
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+                {rulers.map(r => (
+                  <div key={r.id} className="flex items-center gap-1.5 px-1.5 py-1 rounded-lg hover:bg-surface-1/40 group">
+                    <Ruler className="w-3 h-3 text-warning flex-shrink-0" />
+                    <InlineName value={r.label} onCommit={label => onUpdateRuler?.(r.id, { label })} />
+                    <span className="text-[9px] text-warning font-mono-code font-bold">{r.totalDistance.toFixed(1)}m</span>
+                    <button onClick={() => onToggleRulerVisibility(r.id)} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      {r.visible ? <Eye className="w-3 h-3 text-muted-foreground" /> : <EyeOff className="w-3 h-3 text-muted-foreground/40" />}
+                    </button>
+                    <button onClick={() => onDeleteRuler(r.id)} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Trash2 className="w-3 h-3 text-destructive/50 hover:text-destructive" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Paths */}
+            {paths.length > 0 && (
+              <div className="p-2 border-t border-border/10">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[9px] font-display uppercase tracking-wider text-muted-foreground/50 px-1.5">
+                    Caminhos ({paths.length})
+                  </span>
+                  <button onClick={onClearPaths} className="text-[9px] text-destructive/60 hover:text-destructive px-1.5" title="Limpar todos">
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+                {paths.map(p => (
+                  <div key={p.id} className="flex items-center gap-1.5 px-1.5 py-1 rounded-lg hover:bg-surface-1/40 group">
+                    <ColorDot color={p.color} onChange={c => onUpdatePath?.(p.id, { color: c })} />
+                    <InlineName value={p.name} onCommit={name => onUpdatePath?.(p.id, { name })} />
+                    <span className="text-[8px] text-muted-foreground/50 font-mono-code">{p.points.length} pts</span>
+                    <button onClick={() => onTogglePathVisibility(p.id)} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      {p.visible ? <Eye className="w-3 h-3 text-muted-foreground" /> : <EyeOff className="w-3 h-3 text-muted-foreground/40" />}
+                    </button>
+                    <button onClick={() => onDeletePath(p.id)} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Trash2 className="w-3 h-3 text-destructive/50 hover:text-destructive" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {totalItems === 0 && (
+              <div className="p-4 text-center">
+                <p className="text-[10px] text-muted-foreground/50">Nenhum item ainda</p>
+                <p className="text-[9px] text-muted-foreground/30 mt-0.5">Selecione uma ferramenta e clique no viewport</p>
+              </div>
+            )}
+          </div>
+
+          {/* Export buttons */}
+          {totalItems > 0 && (
+            <div className="p-2 border-t border-border/15 flex gap-1">
+              <button
+                onClick={() => {
+                  const gpsOrigin = useProjectStore.getState().gpsOrigin;
+                  downloadGeoToolsKML({ markers, rulers, paths, gpsOrigin, projectName: 'FX Kontrol Geo Tools' });
+                  toast.success('KML exportado com sucesso!');
+                }}
+                className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[9px] font-semibold bg-surface-1/60 text-muted-foreground hover:text-foreground hover:bg-surface-1 transition-all"
+                title="Exportar como KML (texto)"
+              >
+                <Download className="w-3 h-3" />
+                KML
+              </button>
+              <button
+                onClick={async () => {
+                  const gpsOrigin = useProjectStore.getState().gpsOrigin;
+                  await downloadGeoToolsKMZ({ markers, rulers, paths, gpsOrigin, projectName: 'FX Kontrol Geo Tools' });
+                  toast.success('KMZ exportado com sucesso!');
+                }}
+                className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[9px] font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-all"
+                title="Exportar como KMZ (compactado, Google Earth)"
+              >
+                <Globe className="w-3 h-3" />
+                KMZ
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

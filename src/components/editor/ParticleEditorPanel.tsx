@@ -34,7 +34,7 @@ interface ParticleParams {
   fadeOut: number;           // 0-1
   rotationSpeed: number;    // deg/s
   shape: 'point' | 'circle' | 'star' | 'spark' | 'smoke';
-  blendMode: 'additive' | 'normal' | 'screen';
+  blendMode: 'additive' | 'normal' | 'multiply' | 'screen' | 'overlay' | 'soft-light' | 'hard-light';
   trail: boolean;
   trailLength: number;
   bounce: boolean;
@@ -153,7 +153,16 @@ export default function ParticleEditorPanel({ onClose }: { onClose: () => void }
           t > (1 - params.fadeOut) ? (1 - t) / params.fadeOut : 1;
         const sz = params.size + (params.sizeEnd - params.size) * t;
 
-        ctx.globalCompositeOperation = params.blendMode === 'additive' ? 'lighter' : 'source-over';
+        const blendMap: Record<string, GlobalCompositeOperation> = {
+          'additive': 'lighter',
+          'normal': 'source-over',
+          'multiply': 'multiply',
+          'screen': 'screen',
+          'overlay': 'overlay',
+          'soft-light': 'soft-light',
+          'hard-light': 'hard-light',
+        };
+        ctx.globalCompositeOperation = blendMap[params.blendMode] || 'source-over';
         ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
         ctx.fillStyle = params.colorStart;
         ctx.beginPath();
@@ -357,7 +366,11 @@ export default function ParticleEditorPanel({ onClose }: { onClose: () => void }
               <SelectContent>
                 <SelectItem value="additive">Additive (Glow)</SelectItem>
                 <SelectItem value="normal">Normal</SelectItem>
+                <SelectItem value="multiply">Multiply</SelectItem>
                 <SelectItem value="screen">Screen</SelectItem>
+                <SelectItem value="overlay">Overlay</SelectItem>
+                <SelectItem value="soft-light">Soft Light</SelectItem>
+                <SelectItem value="hard-light">Hard Light</SelectItem>
               </SelectContent>
             </Select>
           </div>

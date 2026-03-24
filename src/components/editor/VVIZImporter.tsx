@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Upload, FileJson, X, Check, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,18 +10,20 @@ import {
 } from '@/components/ui/dialog';
 import { useProjectStore } from '@/store/useProjectStore';
 import { importVVIZ, type VVIZImportResult } from '@/lib/vvizImporter';
+import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { toast } from 'sonner';
 
-export default function VVIZImporter({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export default function VVIZImporter({ open, onOpenChange, initialFile = null }: { open: boolean; onOpenChange: (v: boolean) => void; initialFile?: File | null }) {
   const { addPosition, addTrajectory, setProjectName, setDuration } = useProjectStore();
   const [result, setResult] = useState<VVIZImportResult | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [currentFile, setCurrentFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { saveToLibrary } = useMyLibrary();
 
-  const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const parseFile = useCallback((file: File) => {
     setFileName(file.name);
+    setCurrentFile(file);
     const reader = new FileReader();
     reader.onload = () => {
       const text = reader.result as string;
@@ -33,6 +35,16 @@ export default function VVIZImporter({ open, onOpenChange }: { open: boolean; on
     };
     reader.readAsText(file);
   }, []);
+
+  useEffect(() => {
+    if (initialFile && open) parseFile(initialFile);
+  }, [initialFile, open, parseFile]);
+
+  const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    parseFile(file);
+  }, [parseFile]);
 
   const handleImport = useCallback(() => {
     if (!result) return;
@@ -56,10 +68,17 @@ export default function VVIZImporter({ open, onOpenChange }: { open: boolean; on
     }
 
     toast.success(`Importado: ${result.droneCount} drones, ${result.trajectories.length} trajetórias`);
+
+    // Auto-save to library
+    if (currentFile) {
+      saveToLibrary(currentFile, { name: fileName || 'VVIZ Import', source: 'vviz', file_format: 'vviz', tags: ['show', 'vviz'] });
+    }
+
     onOpenChange(false);
     setResult(null);
     setFileName(null);
-  }, [result, addPosition, addTrajectory, setProjectName, setDuration, onOpenChange]);
+    setCurrentFile(null);
+  }, [result, addPosition, addTrajectory, setProjectName, setDuration, onOpenChange, currentFile, fileName, saveToLibrary]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

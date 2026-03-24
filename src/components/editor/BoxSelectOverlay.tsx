@@ -1,12 +1,12 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
-import { useThree, useFrame } from '@react-three/fiber';
+import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { isLassoActive } from './SelectionModeBar';
 
 /**
  * R3F-aware box selection — projects all positions to screen space
  * and selects those within the drawn rectangle.
- * Activated by Alt+Drag on the viewport.
  */
 export function BoxSelectR3F() {
   const { camera } = useThree();
@@ -17,7 +17,6 @@ export function BoxSelectR3F() {
       if (editorMode !== 'select') return;
       const { left, right, top, bottom, canvasWidth, canvasHeight } = e.detail;
 
-      // Convert pixel rect to NDC (-1 to 1)
       const ndcLeft = (left / canvasWidth) * 2 - 1;
       const ndcRight = (right / canvasWidth) * 2 - 1;
       const ndcTop = -(top / canvasHeight) * 2 + 1;
@@ -38,14 +37,19 @@ export function BoxSelectR3F() {
         if (
           projected.x >= minNdcX && projected.x <= maxNdcX &&
           projected.y >= minNdcY && projected.y <= maxNdcY &&
-          projected.z > 0 && projected.z < 1 // in front of camera
+          projected.z > 0 && projected.z < 1
         ) {
           selected.push(pos.id);
         }
       });
 
       if (selected.length > 0) {
-        selectMultiplePositions(selected);
+        const store = useProjectStore.getState();
+        if (store.selectionMode === 'both') {
+          store.selectMultiplePositionsAndLinkedEvents(selected);
+        } else {
+          selectMultiplePositions(selected);
+        }
       }
     };
 
@@ -58,45 +62,121 @@ export function BoxSelectR3F() {
 
 /**
  * HTML overlay that draws the selection rectangle.
- * Dispatches a custom event with rect data when released.
+ * Click+Drag on empty canvas area — 8px dead-zone before activating.
+ * Dispatches box-select-active to disable OrbitControls during drag.
  */
 export default function BoxSelectOverlay() {
   const [isSelecting, setIsSelecting] = useState(false);
   const [rect, setRect] = useState({ x1: 0, y1: 0, x2: 0, y2: 0 });
+  const pendingRef = useRef<{ x: number; y: number; active: boolean }>({ x: 0, y: 0, active: false });
   const selectingRef = useRef(false);
   const rectRef = useRef({ x1: 0, y1: 0, x2: 0, y2: 0 });
+  const canvasRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    const canvas = document.querySelector('[data-sky-canvas]') as HTMLElement;
-    if (!canvas) return;
+    // Use MutationObserver to wait for canvas element to appear
+    const findCanvas = () => document.querySelector('[data-sky-canvas]') as HTMLElement | null;
+
+    const setup = (canvas: HTMLElement) => {
+      canvasRef.current = canvas;
+    };
+
+    const existing = findCanvas();
+    if (existing) {
+      setup(existing);
+    } else {
+      const observer = new MutationObserver(() => {
+        const el = findCanvas();
+        if (el) {
+          setup(el);
+          observer.disconnect();
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      return () => observer.disconnect();
+    }
+  }, []);
+
+  useEffect(() => {
+    const DEAD_ZONE = 8;
 
     const onDown = (e: MouseEvent) => {
-      if (!e.shiftKey) return;
-      e.preventDefault();
-      e.stopPropagation();
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      if (e.button !== 0) return;
+      const store = useProjectStore.getState();
+      if (store.editorMode !== 'select') return;
+
+      // Only activate box select when lasso tool is ON
+      if (!isLassoActive()) return;
+
+      // Only start on canvas area (not UI overlays)
+      const target = e.target as HTMLElement;
+      if (target !== canvas && !canvas.contains(target)) return;
+
+      // Alt+click = orbit camera (standard 3D convention)
+      if (e.altKey) return;
+
       const r = canvas.getBoundingClientRect();
       const x = e.clientX - r.left;
       const y = e.clientY - r.top;
-      const newRect = { x1: x, y1: y, x2: x, y2: y };
-      rectRef.current = newRect;
-      setRect(newRect);
-      selectingRef.current = true;
-      setIsSelecting(true);
+
+      pendingRef.current = { x, y, active: true };
+
+      // Immediately disable OrbitControls to prevent any rotation
+      window.dispatchEvent(new CustomEvent('box-select-active', { detail: true }));
     };
 
     const onMove = (e: MouseEvent) => {
-      if (!selectingRef.current) return;
-      const r = canvas.getBoundingClientRect();
-      const updated = {
-        ...rectRef.current,
-        x2: e.clientX - r.left,
-        y2: e.clientY - r.top,
-      };
-      rectRef.current = updated;
-      setRect(updated);
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      if (selectingRef.current) {
+        const r = canvas.getBoundingClientRect();
+        const updated = {
+          ...rectRef.current,
+          x2: e.clientX - r.left,
+          y2: e.clientY - r.top,
+        };
+        rectRef.current = updated;
+        setRect(updated);
+        return;
+      }
+
+      if (pendingRef.current.active) {
+        const r = canvas.getBoundingClientRect();
+        const cx = e.clientX - r.left;
+        const cy = e.clientY - r.top;
+        const dx = cx - pendingRef.current.x;
+        const dy = cy - pendingRef.current.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist >= DEAD_ZONE) {
+          const x = pendingRef.current.x;
+          const y = pendingRef.current.y;
+          const newRect = { x1: x, y1: y, x2: cx, y2: cy };
+          rectRef.current = newRect;
+          setRect(newRect);
+          selectingRef.current = true;
+          setIsSelecting(true);
+          pendingRef.current.active = false;
+
+          // Clear previous selection unless Shift is held (additive)
+          if (!e.shiftKey) {
+            const store = useProjectStore.getState();
+            store.selectMultiplePositions([]);
+          }
+        }
+      }
     };
 
     const onUp = () => {
+      const wasPending = pendingRef.current.active;
+      pendingRef.current.active = false;
+
+      // Re-enable OrbitControls
+      window.dispatchEvent(new CustomEvent('box-select-active', { detail: false }));
+
       if (!selectingRef.current) return;
       selectingRef.current = false;
       setIsSelecting(false);
@@ -107,10 +187,9 @@ export default function BoxSelectOverlay() {
       const top = Math.min(r.y1, r.y2);
       const bottom = Math.max(r.y1, r.y2);
 
-      // Skip tiny selections (clicks)
       if (right - left < 8 && bottom - top < 8) return;
 
-      const canvasEl = document.querySelector('[data-sky-canvas]') as HTMLElement;
+      const canvasEl = canvasRef.current;
       if (!canvasEl) return;
       const cr = canvasEl.getBoundingClientRect();
 
@@ -123,11 +202,11 @@ export default function BoxSelectOverlay() {
       }));
     };
 
-    canvas.addEventListener('mousedown', onDown);
+    window.addEventListener('mousedown', onDown, true);
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
     return () => {
-      canvas.removeEventListener('mousedown', onDown);
+      window.removeEventListener('mousedown', onDown, true);
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
