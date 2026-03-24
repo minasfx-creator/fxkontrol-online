@@ -1492,18 +1492,26 @@ function GroundFog() {
 
 // --- Finale 3D dark professional ground ---
 function FinaleDarkGround({ brightness }: { brightness: number }) {
-  const b = brightness * 0.4; // darker base
+  const b = brightness * 0.4;
+  const meshRef = useRef<THREE.Mesh>(null);
+  useFrame(({ camera }) => {
+    if (!meshRef.current) return;
+    meshRef.current.position.x = camera.position.x;
+    meshRef.current.position.z = camera.position.z;
+  });
   return (
     <>
-      <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[4000, 4000]} />
+      <mesh ref={meshRef} position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[50000, 50000]} />
         <meshStandardMaterial
           color={new THREE.Color(0.02 * b, 0.035 * b, 0.02 * b)}
           roughness={0.92}
           metalness={0.05}
+          polygonOffset
+          polygonOffsetFactor={1}
+          polygonOffsetUnits={1}
         />
       </mesh>
-      {/* Near-field slightly lighter for depth */}
       <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[120, 64]} />
         <meshStandardMaterial
