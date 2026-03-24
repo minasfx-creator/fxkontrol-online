@@ -127,6 +127,9 @@ export default function ShowControlPanel({ fs = false }: { fs?: boolean; onClose
   const channels = useSfxChannelStore(s => s.channels);
   const currentTime = useProjectStore(s => s.currentTime);
   const isPlaying = useProjectStore(s => s.isPlaying);
+  const duration = useProjectStore(s => s.duration);
+  const setPlaying = useProjectStore(s => s.setPlaying);
+  const setCurrentTime = useProjectStore(s => s.setCurrentTime);
   const smpteMode = useSMPTEStore(s => s.mode);
   const smpteFrameRate = useSMPTEStore(s => s.frameRate);
   const [frameSyncState, setFrameSyncState] = useState<FrameSyncState | null>(null);
