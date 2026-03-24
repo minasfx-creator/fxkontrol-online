@@ -94,6 +94,7 @@ export default function GeoCameraController() {
     // Update flyTo animation
     if (isFlyingTo()) {
       updateFlyTo(camera, controlsRef.current);
+      // Suppress CameraController lerp by keeping controls.enabled false
       return;
     }
 
@@ -107,6 +108,8 @@ export default function GeoCameraController() {
         os.center.z + Math.cos(os.angle) * os.radius,
       );
       camera.lookAt(os.center);
+      // Keep OrbitControls disabled during orbit
+      if (controlsRef.current) controlsRef.current.enabled = false;
     }
   });
 
