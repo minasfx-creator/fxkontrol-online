@@ -94,8 +94,12 @@ import { clampNiagaraHDR, getNiagaraBudgets, setAdaptivePipelineState } from '@/
 import {
   reportCrash, isInCooldown, recordContextLoss,
   watchdogTick, pushFrameMetrics, startMetricsReporting, stopMetricsReporting,
+import {
+  reportCrash, isInCooldown, recordContextLoss,
+  watchdogTick, pushFrameMetrics, startMetricsReporting, stopMetricsReporting,
 } from '@/lib/hardening';
-
+// ═══ FXK Ultra Refinement — Adaptive Quality + Render Stability ═══
+import { useFXKUltraRefinement } from '@/hooks/useFXKUltraRefinement';
 // ═══ Shared state imported from skycanvas module ═══
 import {
   getActiveBurstCount as _getActiveBurstCount,
