@@ -209,11 +209,23 @@ export default function CakeBuilder() {
       ? { x: pos.x, y: (pos as any).y ?? 0, z: (pos as any).z ?? 0 }
       : { x: 0, y: 0, z: 0 };
 
-    const cues = generateCakeCues(config, currentTime, basePos);
-    cues.forEach(cue => addTimelineItem(cue));
+    // If VDL mode, use VDL-derived effect ID and embed VDL in notes
+    const finalConfig = useVDL && vdlResult
+      ? { ...config, effectId: `vdl-${Date.now()}` }
+      : config;
 
-    toast.success(`🎂 ${config.name}: ${cues.length} cues geradas (${config.pattern})`);
-  }, [config, currentTime, selectedPosition, addTimelineItem]);
+    const cues = generateCakeCues(finalConfig, currentTime, basePos);
+
+    // Enrich cues with VDL metadata
+    if (useVDL && vdlResult) {
+      cues.forEach(cue => {
+        cue.notes = `VDL: ${vdlInput} | ${cue.notes || ''}`;
+      });
+    }
+
+    cues.forEach(cue => addTimelineItem(cue));
+    toast.success(`🎂 ${config.name}: ${cues.length} cues geradas (${config.pattern})${useVDL ? ' [VDL]' : ''}`);
+  }, [config, currentTime, selectedPosition, addTimelineItem, useVDL, vdlResult, vdlInput]);
 
   if (!expanded) {
     return (
