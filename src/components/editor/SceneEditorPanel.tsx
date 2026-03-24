@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import GeoSearchPanel from './GeoSearchPanel';
 
-type SectionId = 'quick' | 'presets' | 'sky' | 'ground' | 'weather' | 'effects' | 'pyro' | 'lighting' | 'post' | 'background';
+type SectionId = 'quick' | 'presets' | 'sky' | 'ground' | 'weather' | 'effects' | 'pyro' | 'lighting' | 'post' | 'background' | 'performance';
 
 function Section({ title, icon: Icon, children, id, open, onToggle }: { title: string; icon: any; children: React.ReactNode; id: SectionId; open: boolean; onToggle: () => void }) {
   return (
