@@ -63,6 +63,7 @@ export default function GoogleTilesLayer() {
   const tilesRef = useRef<TilesRenderer | null>(null);
   const groupRef = useRef<THREE.Group>(new THREE.Group());
   const [apiKey, setApiKey] = useState<string | null>(null);
+  const [tilesReady, setTilesReady] = useState(false);
 
   const anchorLat = useSceneStore((s) => s.settings.geoAnchorLat);
   const anchorLon = useSceneStore((s) => s.settings.geoAnchorLon);
@@ -149,15 +150,23 @@ export default function GoogleTilesLayer() {
     const tiles = tilesRef.current;
     if (!tiles || !enabled) return;
 
-    tiles.setCamera(camera);
-    tiles.setResolutionFromRenderer(camera, gl);
-    tiles.update();
+    try {
+      tiles.setCamera(camera);
+      tiles.setResolutionFromRenderer(camera, gl);
+      tiles.update();
 
-    const root = tiles.root;
-    if (root) {
-      let visibleCount = 0;
-      tiles.group.traverse(() => { visibleCount++; });
-      updateGeoHUD({ tilesLoaded: visibleCount });
+      const root = tiles.root;
+      if (root) {
+        let visibleCount = 0;
+        tiles.group.traverse(() => { visibleCount++; });
+        updateGeoHUD({ tilesLoaded: visibleCount });
+        if (!tilesReady && visibleCount > 5) {
+          setTilesReady(true);
+          console.log('[Terrain] tiles ready, fallback blocked');
+        }
+      }
+    } catch (err) {
+      console.warn('[Terrain] update error caught, fallback blocked:', err);
     }
   });
 

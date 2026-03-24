@@ -94,7 +94,11 @@ export default function GeoCameraController() {
     // Update flyTo animation
     if (isFlyingTo()) {
       updateFlyTo(camera, controlsRef.current);
-      // Suppress CameraController lerp by keeping controls.enabled false
+      // Clamp altitude during flyTo
+      if (camera.position.y < 5) {
+        camera.position.y = 5;
+        console.warn('[Camera] altitude clamped during flyTo');
+      }
       return;
     }
 
@@ -102,13 +106,13 @@ export default function GeoCameraController() {
     const os = orbitState.current;
     if (os.active) {
       os.angle += os.speed * delta;
+      const orbitY = Math.max(5, os.height);
       camera.position.set(
         os.center.x + Math.sin(os.angle) * os.radius,
-        os.height,
+        orbitY,
         os.center.z + Math.cos(os.angle) * os.radius,
       );
       camera.lookAt(os.center);
-      // Keep OrbitControls disabled during orbit
       if (controlsRef.current) controlsRef.current.enabled = false;
     }
   });

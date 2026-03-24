@@ -925,8 +925,9 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   const introTimer = useRef(0);
 
   const WORLD_HALF_EXTENT = 80000;
-  const CAMERA_MIN_Y = 1;
+  const CAMERA_MIN_Y = 5;
   const CAMERA_MAX_Y = 75000;
+  const _lastValidY = useRef(300);
 
   const clampToWorldBounds = useCallback(() => {
     const controls = controlsRef.current;
@@ -936,8 +937,29 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     const ty = THREE.MathUtils.clamp(controls.target.y, 0, 50000);
     const tz = THREE.MathUtils.clamp(controls.target.z, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
 
+    let cy = THREE.MathUtils.clamp(camera.position.y, CAMERA_MIN_Y, CAMERA_MAX_Y);
+
+    // Prevent sudden altitude drops (max 50m per frame)
+    const yDelta = cy - _lastValidY.current;
+    if (yDelta < -50) {
+      cy = _lastValidY.current - 50;
+      console.warn('[Camera] altitude drop clamped');
+    }
+
+    // Altitude-dependent damping near ground
+    if (cy < 20) {
+      const dampFactor = Math.max(0.3, cy / 20);
+      const dampedY = _lastValidY.current + (cy - _lastValidY.current) * dampFactor;
+      cy = Math.max(CAMERA_MIN_Y, dampedY);
+    }
+
+    if (cy < CAMERA_MIN_Y + 1) {
+      console.warn('[Camera] altitude clamped to safe floor');
+    }
+
+    _lastValidY.current = cy;
+
     const cx = THREE.MathUtils.clamp(camera.position.x, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
-    const cy = THREE.MathUtils.clamp(camera.position.y, CAMERA_MIN_Y, CAMERA_MAX_Y);
     const cz = THREE.MathUtils.clamp(camera.position.z, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
 
     const targetChanged = tx !== controls.target.x || ty !== controls.target.y || tz !== controls.target.z;
@@ -1130,8 +1152,8 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
       panSpeed={0.8 * sensitivityScale}
       zoomSpeed={1.2 * sensitivityScale}
       minPolarAngle={Math.PI * 0.05}
-      maxPolarAngle={Math.PI * 0.85}
-      minDistance={0.5}
+      maxPolarAngle={Math.PI * 0.75}
+      minDistance={2}
       maxDistance={90000}
       enablePan
     />
@@ -1659,7 +1681,7 @@ export default function SkyCanvas() {
         onCreated={() => {
           recoveringContextRef.current = false;
         }}>
-        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.5} far={500000} />
+        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={1.0} far={500000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook || flyMode} flyMode={flyMode} />
         {flyMode && <FlyControls onSpeedChange={flySpeedCb} />}
 
