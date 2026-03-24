@@ -1,73 +1,42 @@
 
 
-## Limpeza de Technical Debt + Blindagem WebGL para Google Earth 3D
+## Google Places API Integration in GeoLocationSetup
 
-### Resumo
-Remoção de código morto, correção de anti-patterns React, otimização de geometria e blindagem de profundidade para escala global.
+### What
+Add live Google Places autocomplete search to GeoLocationSetup so users can find any address worldwide, not just preset cities. Typed queries hit a new edge function that proxies Google Places API, and results appear alongside the existing presets.
 
----
+### Architecture
 
-### 1. Deletar GlobeSelector.tsx
-- **Arquivo**: `src/components/editor/GlobeSelector.tsx` — deletar inteiramente (868 linhas de código morto, sem imports ativos)
-
-### 2. Limpeza de lógica morta em Index.tsx
-**Arquivo**: `src/pages/Index.tsx`
-
-- **Linha 182**: Remover `'globe'` da union type → `'cinematic' | 'splash' | 'editor'`
-- **Linha 183**: Remover estado `showLocation` (nunca lido)
-- **Linhas 296-298**: Remover `handleSplashStart` callback
-- **Linha 301**: Remover `setShowLocation(location)` de dentro de `handleLocationSelected`
-- **Linha 331**: Alterar `SplashScreen onStart` para ir direto ao editor: `onStart={() => setAppPhase('editor')}`
-- **Linhas 334-336**: Remover bloco `if (appPhase === 'globe') { setAppPhase('editor'); }` — anti-pattern de state update durante render
-
-### 3. Correção do anti-pattern getState() no GroundSystem.tsx
-**Arquivo**: `src/components/editor/skycanvas/GroundSystem.tsx`
-
-- **Linhas 1146-1178**: O Grid usa uma IIFE com `useSceneStore.getState()` dentro do JSX — viola as regras de hooks do React
-- **Correção**: Extrair o valor no topo do componente `StageGround`:
-  ```typescript
-  const gridSnapResolution = useSceneStore(s => s.environment.gridSnapResolution);
-  ```
-  E usar `gridSnapResolution` diretamente no JSX em vez da IIFE
-
-### 4. Redução de geometrias de 100k → 10k
-**Arquivo**: `src/components/editor/skycanvas/GroundSystem.tsx`
-
-Substituir `args={[100000, 100000]}` por `args={[10000, 10000]}` nas seguintes linhas:
-- Linha 262 (GrassGround)
-- Linha 435 (FinaleDarkGround)
-- Linha 623 (SyntheticGrassGround)
-- Linha 641 (ConcreteGround)
-- Linha 1042 (SFX floor)
-- Linha 1122 (flat-black)
-- Linha 396: `createVolumetricFogPlane(100000)` → `createVolumetricFogPlane(10000)`
-
-### 5. Blindagem de Profundidade para Escala Global
-**Arquivo**: `src/components/editor/SkyCanvas.tsx`
-
-- **Linha 1695**: Alterar `logarithmicDepthBuffer: false` → `logarithmicDepthBuffer: true`
-  - Elimina z-fighting quando a câmera está a quilômetros do terreno Google Earth
-- **Linha 1703**: Alterar camera `near={1.0} far={30000}` → `near={0.1} far={50000}`
-  - Suporta visualização de drones próximos (0.1m) até horizonte distante (50km)
-
-### 6. TilesRenderer Cleanup — JÁ IMPLEMENTADO ✓
-O `useEffect` em `GoogleTilesEngine.tsx` (linha 122-127) já possui cleanup correto:
-```typescript
-return () => {
-  tiles.dispose();
-  scene.remove(group);
-  tilesRef.current = null;
-};
+```text
+User types "Torre Eiffel"
+  → GeoLocationSetup (debounced 400ms)
+    → Edge Function: google-places-search
+      → Google Places Text Search API (New)
+        ← results with name, lat, lng, formatted_address
+      ← JSON response
+    ← Show results in list below presets
 ```
-Nenhuma ação necessária aqui.
 
----
+### Changes
 
-### Arquivos Alterados
-| Arquivo | Ação |
-|---------|------|
-| `src/components/editor/GlobeSelector.tsx` | **DELETAR** |
-| `src/pages/Index.tsx` | Remover código morto |
-| `src/components/editor/skycanvas/GroundSystem.tsx` | Fix getState() + reduzir geometrias |
-| `src/components/editor/SkyCanvas.tsx` | logarithmicDepthBuffer + camera far |
+**1. New Edge Function: `supabase/functions/google-places-search/index.ts`**
+- Accepts `{ query: string }` POST body
+- Uses `GOOGLE_MAPS_API_KEY` (already configured) to call Google Places API (Text Search)
+- URL: `https://places.googleapis.com/v1/places:searchText`
+- Returns array of `{ name, lat, lng, formattedAddress }` (max 5 results)
+- Full CORS headers
+
+**2. Update `src/components/editor/GeoLocationSetup.tsx`**
+- Add state: `apiResults` (array), `searching` (boolean)
+- Add debounced effect: when `search` changes and length >= 3, call the edge function via `supabase.functions.invoke('google-places-search', { body: { query: search } })`
+- Display API results in a separate section below presets, with a `Globe` icon and formatted address subtitle
+- Clicking an API result calls the same `handleSelect` logic (fly-to + store update)
+- Show a subtle "Searching..." loader while fetching
+- If no presets match AND no API results, show "No results found"
+
+### Files Changed
+| File | Action |
+|------|--------|
+| `supabase/functions/google-places-search/index.ts` | **CREATE** — proxy edge function |
+| `src/components/editor/GeoLocationSetup.tsx` | **EDIT** — add API search integration |
 
