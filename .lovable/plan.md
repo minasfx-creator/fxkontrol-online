@@ -1,77 +1,65 @@
 
 
-## Plan: Ultra Hardening — Geo-Engine, Ground Safety, Water Reflections, Field UI & MAVLink Export
+## Plan: Ultra Hardening — Geo-Spatial Precision Integration
 
-This plan implements the 5 requested systems, scoped to what's achievable in a React/Three.js browser application.
+Most of the foundational engines already exist (`floatingOriginEngine.ts`, `terrainCollisionEngine.ts`, `mavlinkFlightPlanExporter.ts`). This plan wires them into the live scene and adds the missing systems: explosion glow lighting, occlusion culling, geo-search panel, and interactive terrain coordinate picking.
 
 ---
 
-### 1. Floating Origin & High-Precision Geo Engine
+### 1. Geo-Search & Place Dropper Panel
 
-**New file: `src/lib/floatingOriginEngine.ts`**
-- ECEF (Earth-Centered, Earth-Fixed) conversion functions using WGS84 ellipsoid constants (already in `skybrushCoordinates.ts`)
-- `FloatingOrigin` class that stores the anchor point in Float64 (`number` in JS is already Float64) and computes camera-relative offsets before sending to GPU as Float32
-- Functions: `ecefFromGeo()`, `localFromEcef()`, `updateOrigin()` — rebase origin when camera moves >1km to prevent jitter
-- Extends existing `GeoOrigin` interface from `skybrushCoordinates.ts`
+**New file: `src/components/editor/GeoSearchPanel.tsx`**
+- Search bar with Google Places Autocomplete (text input with preset locations: Angra dos Reis, Copacabana, etc.)
+- On selection, updates `geoAnchorLat/Lon/Alt` in `useSceneStore`
+- "Drop on Terrain" mode: click on 3D ground to set barge/drone home GPS coords
+- Shows current anchor position in DMS format
+- Compact panel design matching SceneEditorPanel style
 
-**Modified: `src/store/useSceneStore.ts`**
-- Add `geoAnchor: GeoOrigin` field to store state (default: Angra dos Reis coords `-23.007, -44.318, alt 0`)
-- Add `floatingOriginEnabled: boolean` toggle
-- Add `setGeoAnchor(anchor)` action
+**Modified: `src/components/editor/SceneEditorPanel.tsx`**
+- Add GeoSearchPanel inline within the Ground section, below the Floating Origin controls
+
+### 2. Wire Floating Origin to Scene Rendering
 
 **Modified: `src/components/editor/skycanvas/GroundSystem.tsx`**
-- When `floatingOriginEnabled`, offset ground/grid positions by the camera-relative delta from the floating origin engine
+- When `floatingOriginEnabled`, create a `FloatingOrigin` instance from the store anchor
+- Offset the ground plane and grid by the camera-relative delta each frame
+- Pass offset to terrain mesh position
 
-### 2. Ground-Lock & Tile Collision Safety
+**Modified: `src/components/editor/skycanvas/SkyEnvironment.tsx`**
+- Apply floating origin offset to water plane position
 
-**New file: `src/lib/terrainCollisionEngine.ts`**
-- `AnchorRay`: downward raycast from launch positions to snap Y to terrain height (using existing `TerrainRenderer` mesh or heightmap data from `useSceneStore.terrain`)
-- `TrajectoryCollisionCheck`: given a parabolic trajectory (array of 3D points), test intersection against terrain heightmap. Returns collision point + distance if found
-- `checkDroneTrajectory()`: iterate waypoints against heightmap, flag any point where altitude < terrain height + safety margin (15m default)
-
-**Modified: `src/components/editor/ShowCommanderPanel.tsx`**
-- Add `TERRAIN COLLISION` alert badge when collision engine detects intersection
-- Alert renders as red pulsing overlay near E-Stop area — always visible
-
-### 3. Dynamic Tide & Water Reflections (Angra Edition)
-
-**Modified: `src/store/useSceneStore.ts`**
-- `waterLevel` already exists (-5 to 5m). Add `tideOffset: number` (default 0) for dynamic adjustment
-- Add `ssrEnabled` toggle is already present — ensure it's wired to water surface
-
-**Modified: `src/components/editor/skycanvas/SkyEnvironment.tsx` (WaterLayer)**
-- Connect `waterLevel + tideOffset` to the water plane Y position
-- Add stencil write to the water plane so terrain below waterLevel is masked (prevents "sea inside islands")
-- Enable SSR pass parameters from `useSceneStore` for pyro reflections on water
-
-**New component in SkyEnvironment: `TideControl`**
-- Slider UI in scene settings panel to adjust tide level in real-time
-
-### 4. Field View Mode (High Contrast UI)
-
-**New file: `src/components/editor/FieldViewMode.tsx`**
-- High-contrast overlay mode for Show Commander: white background, black text, neon indicators
-- Toggle via button in ShowCommanderPanel header
-- When active: overrides panel CSS with `bg-white text-black` theme
-- Battery/Signal indicators use neon green (#00FF66) / neon red (#FF3366) / neon amber (#FFAA00)
-- Large-format telemetry numbers (48px+) for outdoor readability
+### 3. Terrain Collision → Show Commander Integration
 
 **Modified: `src/components/editor/ShowCommanderPanel.tsx`**
-- Add "Field Mode" toggle button in header bar
-- When active, wrap panel content with FieldViewMode provider that applies high-contrast styles
+- Wire `TerrainCollisionAlert` with real collision data from `checkTrajectoryCollision()` using timeline cue positions against loaded terrain heightmap
+- Add scan button "Run Safety Check" that evaluates all drone/pyro trajectories
+- Display collision count badge on Safety tab
 
-### 5. MAVLink Flight Plan Exporter
+### 4. Explosion Glow Dynamic Lighting
 
-**New file: `src/lib/mavlinkFlightPlanExporter.ts`**
-- `exportFlightPlan(droneWaypoints, geoOrigin)` → JSON structure compatible with ArduPilot/DJI
-- Converts local XYZ waypoints to Lat/Lon/Alt_Relative using existing `localToGeo()` from `skybrushCoordinates.ts`
-- Output format: array of `{ seq, command: MAV_CMD_NAV_WAYPOINT, lat, lng, alt_relative, hold_time, acceptance_radius }`
-- Includes mission header with home position, takeoff command, RTL
-- `downloadFlightPlan()` utility to trigger `.waypoints` file download
+**New file: `src/components/editor/skycanvas/ExplosionGlowSystem.tsx`**
+- Pool of reusable `PointLight` instances (max 8 concurrent)
+- On burst detection (from `ActiveBurstScanner`), spawn a short-lived point light at burst position
+- Light color matches burst compound color, intensity decays over ~0.5s
+- Lights illuminate terrain mesh and water surface naturally via Three.js
+- Zero-GC: pre-allocated light pool, no creation/destruction per frame
 
-**Modified: `src/components/editor/ShowCommanderPanel.tsx`**
-- Add "Export MAVLink" button in the drone subsystem tab
-- Opens modal showing flight plan preview (waypoint table) + download button
+**Modified: `src/components/editor/skycanvas/index.ts`**
+- Export `ExplosionGlowSystem`
+
+### 5. Depth-Based Occlusion Culling
+
+**Modified: `src/components/editor/skycanvas/GroundSystem.tsx`**
+- Set `renderOrder` on terrain mesh to ensure depth buffer is written before particle rendering
+- Enable `depthWrite: true` on terrain material so Three.js naturally occludes objects behind hills
+- This leverages the GPU depth buffer — no custom raycasting needed for visual occlusion
+
+### 6. Tide-Sync Water Stencil
+
+**Already partially implemented in `SkyEnvironment.tsx`** — verify stencil mask is active:
+- Water plane writes stencil ref=1
+- Terrain below water level reads stencil to clip (prevents sea inside islands)
+- `tideOffset` slider already in SceneEditorPanel; confirm it drives `waterLevel + tideOffset`
 
 ---
 
@@ -79,12 +67,17 @@ This plan implements the 5 requested systems, scoped to what's achievable in a R
 
 | Action | File |
 |--------|------|
-| Create | `src/lib/floatingOriginEngine.ts` |
-| Create | `src/lib/terrainCollisionEngine.ts` |
-| Create | `src/lib/mavlinkFlightPlanExporter.ts` |
-| Create | `src/components/editor/FieldViewMode.tsx` |
-| Modify | `src/store/useSceneStore.ts` |
-| Modify | `src/components/editor/skycanvas/GroundSystem.tsx` |
-| Modify | `src/components/editor/skycanvas/SkyEnvironment.tsx` |
+| Create | `src/components/editor/GeoSearchPanel.tsx` |
+| Create | `src/components/editor/skycanvas/ExplosionGlowSystem.tsx` |
+| Modify | `src/components/editor/SceneEditorPanel.tsx` |
 | Modify | `src/components/editor/ShowCommanderPanel.tsx` |
+| Modify | `src/components/editor/skycanvas/GroundSystem.tsx` |
+| Modify | `src/components/editor/skycanvas/index.ts` |
+
+### Technical Notes
+
+- **Explosion Glow**: Uses a pre-allocated pool of 8 `THREE.PointLight` objects recycled via LRU. Reads from `getActiveBurstScan()` (already in sharedState) so no new per-frame allocations.
+- **Occlusion**: Pure GPU depth-buffer approach — no CPU raycasting. Terrain renders first (`renderOrder: -1`), particles render after, GPU discards fragments behind terrain automatically.
+- **Geo-Search**: Uses preset location database (no Google API key required). Locations include Angra dos Reis, Copacabana, Marina da Glória, and custom lat/lon input.
+- **Floating Origin wiring**: The engine is stateless per-call (`getLocalOffset`), so it integrates cleanly into `useFrame` loops without state management overhead.
 
