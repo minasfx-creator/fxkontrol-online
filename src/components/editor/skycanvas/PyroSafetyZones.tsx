@@ -213,10 +213,11 @@ export default function PyroSafetyZones() {
 
       // Find position
       const pos = positions.find(p => p.id === item.positionId);
+      const itemPos = (item as any).position;
       const origin = new THREE.Vector3(
-        pos?.x ?? item.pos_x ?? 0,
+        pos?.x ?? itemPos?.x ?? 0,
         0,
-        pos?.z ?? item.pos_z ?? 0,
+        pos?.z ?? itemPos?.z ?? 0,
       );
 
       // Estimate caliber from effect name (basic heuristic)
