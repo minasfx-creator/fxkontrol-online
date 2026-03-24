@@ -1019,6 +1019,8 @@ export function StageGround({ satelliteTexture }: { satelliteTexture: string | n
         return <FinaleDarkGround brightness={sc.groundBrightness} />;
       case 'sfx-stage':
         return <SFXStageEnvironment />;
+      case 'synthetic-grass':
+        return <SyntheticGrassGround brightness={sc.groundBrightness} />;
       case 'google-earth':
       default:
         return <GrassGround />;
