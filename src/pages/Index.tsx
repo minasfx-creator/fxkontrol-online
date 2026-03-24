@@ -10,7 +10,7 @@ import Toolbar from '@/components/editor/Toolbar';
 import SplashScreen from '@/components/editor/SplashScreen';
 import CrashRecoveryBanner from '@/components/editor/CrashRecoveryBanner';
 import StockAlertsBadge from '@/components/editor/StockAlertsBadge';
-import GlobeSelector from '@/components/editor/GlobeSelector';
+import GeoLocationSetup from '@/components/editor/GeoLocationSetup';
 import EffectLibrary from '@/components/editor/EffectLibrary';
 import AudienceAnalyzerPanel from '@/components/editor/AudienceAnalyzerPanel';
 import IndoorSimPanel from '@/components/editor/IndoorSimPanel';
@@ -181,8 +181,7 @@ function Index() {
   const [activePanel, setActivePanel] = useState<PanelId | null>('properties');
   const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'globe' | 'editor'>('editor');
   const [showLocation, setShowLocation] = useState<{ name: string; lat: number; lng: number } | null>(null);
-  const [showViewportGlobe, setShowViewportGlobe] = useState(true);
-  const [canvasReady, setCanvasReady] = useState(false);
+  const [showGeoSetup, setShowGeoSetup] = useState(true);
   const [showPositionEditor, setShowPositionEditor] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab | null>(null);
@@ -306,12 +305,9 @@ function Index() {
       heading: 0,
       altitude: 0,
     });
-    // Force release any stuck selection/control state
     window.dispatchEvent(new CustomEvent('box-select-active', { detail: false }));
     setAppPhase('editor');
-    // Unmount globe first, then mount SkyCanvas after 100ms delay to avoid WebGL context contention
-    setShowViewportGlobe(false);
-    setTimeout(() => setCanvasReady(true), 100);
+    setShowGeoSetup(false);
   }, []);
 
   const handleMobileOpenPanel = useCallback((id: PanelId) => {
@@ -329,39 +325,7 @@ function Index() {
   }
 
   if (appPhase === 'globe') {
-    return (
-      <div className="relative w-full h-full">
-        <GlobeSelector onLocationSelected={handleLocationSelected} />
-        <button
-          onClick={() => {
-            handleLocationSelected({ name: 'Default', lat: 0, lng: 0 });
-          }}
-          className="absolute bottom-6 right-6 z-50 group flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs font-mono uppercase tracking-[0.2em] transition-all duration-300 cursor-pointer focus:outline-none"
-          style={{
-            background: 'hsl(220 20% 8% / 0.7)',
-            backdropFilter: 'blur(12px) saturate(1.5)',
-            border: '1px solid hsl(32 100% 50% / 0.15)',
-            color: 'hsl(32 100% 55% / 0.7)',
-            boxShadow: '0 4px 20px hsl(0 0% 0% / 0.3)',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'hsl(32 100% 50% / 0.3)';
-            e.currentTarget.style.color = 'hsl(32 100% 55%)';
-            e.currentTarget.style.transform = 'translateY(-1px)';
-            e.currentTarget.style.boxShadow = '0 6px 25px hsl(0 0% 0% / 0.4), 0 0 20px hsl(32 100% 50% / 0.08)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'hsl(32 100% 50% / 0.15)';
-            e.currentTarget.style.color = 'hsl(32 100% 55% / 0.7)';
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 4px 20px hsl(0 0% 0% / 0.3)';
-          }}
-        >
-          SKIP
-          <span className="text-[10px] opacity-60 group-hover:opacity-90 transition-opacity">→</span>
-        </button>
-      </div>
-    );
+    setAppPhase('editor');
   }
 
   const renderPanelContent = () => {
@@ -619,21 +583,13 @@ function Index() {
                     } catch { /* ignore */ }
                   }}
                 >
-                  {!showViewportGlobe && canvasReady ? (
-                    <>
-                      <CanvasErrorBoundary>
-                        <Suspense fallback={<CanvasLoader />}>
-                          <SkyCanvas />
-                        </Suspense>
-                      </CanvasErrorBoundary>
-                      <BoxSelectOverlay />
-                      <SelectionModeBar />
-                    </>
-                  ) : (
-                    <div className="flex-1 w-full h-full bg-surface-0 flex items-center justify-center">
-                      <CanvasLoader />
-                    </div>
-                  )}
+                  <CanvasErrorBoundary>
+                    <Suspense fallback={<CanvasLoader />}>
+                      <SkyCanvas />
+                    </Suspense>
+                  </CanvasErrorBoundary>
+                  <BoxSelectOverlay />
+                  <SelectionModeBar />
                   {isDragOver && (
                     <div className="absolute inset-0 z-50 pointer-events-none flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded-md backdrop-blur-[2px] transition-all">
                       <div className="flex flex-col items-center gap-2 text-primary">
@@ -679,16 +635,8 @@ function Index() {
       )}
       <PositionContextMenu />
       <SmartScriptAssistant open={smartScriptOpen} onClose={() => setSmartScriptOpen(false)} />
-      {showViewportGlobe && (
-        <div className="absolute inset-0 z-[100]">
-          <GlobeSelector
-            mode="embedded"
-            onLocationSelected={handleLocationSelected}
-            onSkip={() => {
-              handleLocationSelected({ name: 'Default', lat: 0, lng: 0 });
-            }}
-          />
-        </div>
+      {showGeoSetup && (
+        <GeoLocationSetup onClose={() => setShowGeoSetup(false)} />
       )}
     </div>
   );
