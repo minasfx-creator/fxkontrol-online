@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, Cloud, Wind, Droplets, Eye, Thermometer, Gauge, RefreshCw, AlertTriangle, CheckCircle, CloudRain, Sun, Moon, Loader2, ArrowUp } from 'lucide-react';
+import { X, Cloud, Wind, Droplets, Eye, Thermometer, Gauge, RefreshCw, AlertTriangle, CheckCircle, CloudRain, Sun, Moon, Loader2, ArrowUp, Waves, Atom } from 'lucide-react';
+import { environmentEngine } from '@/core/environment/environmentEngine';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useProjectStore } from '@/store/useProjectStore';
