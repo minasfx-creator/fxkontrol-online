@@ -421,6 +421,9 @@ export default function ShowControlPanel({ fs = false }: { fs?: boolean; onClose
         })}
       </div>
 
+      {/* AI CoPilot Panel */}
+      <AICoPilotPanel />
+
       {/* Event Log */}
       <div className="shrink-0 border-t relative z-10" style={{ borderColor: 'hsl(32 100% 50% / 0.08)' }}>
         <div className="px-3 py-1.5 flex items-center justify-between" style={{ background: 'hsl(220 12% 5%)' }}>

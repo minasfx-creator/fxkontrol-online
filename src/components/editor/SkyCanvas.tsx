@@ -1913,6 +1913,9 @@ export default function SkyCanvas() {
       {/* Fullscreen floating edit menu */}
       {isFullscreen && <FullscreenEditMenu />}
 
+      {/* AI CoPilot Overlay */}
+      <AICoPilotOverlay />
+
       {!isMobile && <PerformanceHUD statsRef={perfStatsRef} droneCount={droneCount} />}
       {!isMobile && <ViewportTerminal />}
       <SelectionStatusBar />
