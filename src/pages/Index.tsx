@@ -310,6 +310,13 @@ function Index() {
     setShowGeoSetup(false);
   }, []);
 
+  // Reabre GeoLocationSetup via evento do Toolbar
+  useEffect(() => {
+    const handler = () => setShowGeoSetup(true);
+    window.addEventListener('open-geo-setup', handler);
+    return () => window.removeEventListener('open-geo-setup', handler);
+  }, []);
+
   const handleMobileOpenPanel = useCallback((id: PanelId) => {
     setActivePanel(id);
     setMobileTab(null);
