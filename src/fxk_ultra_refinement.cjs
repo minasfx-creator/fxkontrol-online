@@ -1,9 +1,9 @@
 'use strict';
 
-const { RenderStabilityController } = require('./render_stability');
-const { AdaptiveQualitySystem } = require('./performance_system');
-const { ThemeEngine } = require('./theme_engine');
-const { AnimationEngine } = require('./animation_engine');
+const { RenderStabilityController } = require('./render_stability.cjs');
+const { AdaptiveQualitySystem } = require('./performance_system.cjs');
+const { ThemeEngine } = require('./theme_engine.cjs');
+const { AnimationEngine } = require('./animation_engine.cjs');
 
 /**
  * Orquestra refinamentos visuais sem tocar no core determinístico.

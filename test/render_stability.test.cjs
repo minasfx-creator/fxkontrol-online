@@ -7,7 +7,7 @@ const {
   FrameHealthMonitor,
   RenderStabilityController,
   validateAsset,
-} = require('../src/render_stability');
+} = require('../src/render_stability.cjs');
 
 test('FrameHealthMonitor aciona degrade após streak', () => {
   const monitor = new FrameHealthMonitor({ overBudgetFramesBeforeDegrade: 3, targetFrameMs: 10 });

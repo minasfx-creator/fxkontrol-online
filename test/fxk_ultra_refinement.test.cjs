@@ -3,10 +3,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { AdaptiveQualitySystem } = require('../src/performance_system');
-const { ThemeEngine } = require('../src/theme_engine');
-const { AnimationEngine } = require('../src/animation_engine');
-const { FXKUltraRefinement, useAnimation, usePerformance, useTheme } = require('../src/fxk_ultra_refinement');
+const { AdaptiveQualitySystem } = require('../src/performance_system.cjs');
+const { ThemeEngine } = require('../src/theme_engine.cjs');
+const { AnimationEngine } = require('../src/animation_engine.cjs');
+const { FXKUltraRefinement, useAnimation, usePerformance, useTheme } = require('../src/fxk_ultra_refinement.cjs');
 
 test('AdaptiveQualitySystem reduz efeitos sob pressão', () => {
   const q = new AdaptiveQualitySystem();
