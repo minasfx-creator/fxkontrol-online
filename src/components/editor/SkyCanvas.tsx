@@ -2008,6 +2008,12 @@ export default function SkyCanvas() {
           <div>{flyMode ? '✈ Fly Mode' : freeLook ? '🔓 Free Look ON' : '🔒 Preset Lock'}</div>
         </div>
       )}
+
+      {/* Client Presentation Mode */}
+      <ClientPresentationMode
+        active={presentationMode}
+        onExit={() => useSceneStore.getState().updateSettings({ presentationMode: false })}
+      />
     </div>
   );
 }
