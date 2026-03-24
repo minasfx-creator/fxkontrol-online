@@ -62,6 +62,14 @@ class ExecutionBridge {
 
   isArmed(): boolean { return this._armed; }
 
+  /** Set the active site ID for latency compensation. */
+  setSiteId(siteId: string | null): void {
+    this._activeSiteId = siteId;
+    blackbox.record('state', `ExecutionBridge: site=${siteId ?? 'none'}`);
+  }
+
+  getSiteId(): string | null { return this._activeSiteId; }
+
   /**
    * Tick the bridge at current simulation time.
    * Dispatches any cues whose adjusted time has been reached.
