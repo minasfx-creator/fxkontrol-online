@@ -509,9 +509,28 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel }: ShowCommand
   const pbus = usePBusHardware();
   const subsystems = useSubsystems(fireone, pbus);
   const [activeTab, setActiveTab] = useState('overview');
+  const engine = useShowCommanderEngine();
 
   return (
     <div className="h-full flex flex-col bg-background/95">
+      {/* Link Lost Overlay */}
+      {engine.linkStatus === 'lost' && (
+        <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 pointer-events-auto">
+          <Unlink className="w-10 h-10 text-destructive animate-pulse" />
+          <span className="text-sm font-black text-destructive uppercase tracking-wider">
+            LINK PERDIDO
+          </span>
+          <span className="text-[10px] text-muted-foreground">Reconexão automática a cada 500ms...</span>
+          <Button
+            variant="destructive"
+            className="h-14 w-48 font-black text-sm mt-2"
+            onClick={() => toast.error('🚨 E-STOP — Todos os sistemas halted')}
+          >
+            <AlertTriangle className="w-5 h-5 mr-2" /> E-STOP
+          </Button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="shrink-0 px-3 pt-3 pb-2 border-b border-border/10">
         <div className="flex items-center justify-between mb-2">
@@ -532,6 +551,52 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel }: ShowCommand
             <Button variant="ghost" size="sm" onClick={onClose} className="h-6 w-6 p-0 text-muted-foreground/30">
               ✕
             </Button>
+          )}
+        </div>
+
+        {/* ─── Commander Control Bar ─────────────────────────────── */}
+        <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+          {/* LOCK / UNLOCK */}
+          <Button
+            size="sm"
+            variant={engine.isLocked ? 'destructive' : 'outline'}
+            className={cn("h-7 text-[9px] font-bold px-2", engine.isLocked && "animate-pulse")}
+            onClick={engine.isLocked ? engine.unlockState : engine.lockState}
+          >
+            {engine.isLocked ? <Lock className="w-3 h-3 mr-1" /> : <Unlock className="w-3 h-3 mr-1" />}
+            {engine.isLocked ? 'LOCKED' : 'LOCK'}
+          </Button>
+
+          {/* DRY RUN */}
+          <Button
+            size="sm"
+            variant={engine.isDryRun ? 'secondary' : 'outline'}
+            className={cn(
+              "h-7 text-[9px] font-bold px-2",
+              engine.isDryRun && "border-amber-500/30 text-amber-400"
+            )}
+            onClick={engine.toggleDryRun}
+          >
+            <FlaskConical className="w-3 h-3 mr-1" />
+            {engine.isDryRun ? 'DRY RUN ●' : 'DRY RUN'}
+          </Button>
+
+          {/* Link Status */}
+          <div className={cn(
+            "flex items-center gap-1 px-2 h-7 rounded-md border text-[9px] font-mono-code",
+            engine.linkStatus === 'stable' && "border-green-500/20 text-green-400",
+            engine.linkStatus === 'degraded' && "border-amber-500/20 text-amber-400",
+            engine.linkStatus === 'lost' && "border-destructive/30 text-destructive animate-pulse",
+          )}>
+            {engine.linkStatus === 'stable' ? <Link2 className="w-3 h-3" /> : <Unlink className="w-3 h-3" />}
+            <span>{engine.rtt}ms</span>
+          </div>
+
+          {/* Drift Test indicator */}
+          {engine.driftTestActive && (
+            <Badge variant="outline" className="text-[8px] h-6 px-1.5 border-purple-500/30 text-purple-400 animate-pulse">
+              DRIFT ±{Math.abs(engine.injectedDrift).toFixed(0)}ms
+            </Badge>
           )}
         </div>
 
@@ -559,6 +624,20 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel }: ShowCommand
           <div className="p-3 space-y-3">
             <TabsContent value="overview" className="mt-0 space-y-3">
               <MasterTransport />
+
+              {/* DRY RUN Banner */}
+              {engine.isDryRun && (
+                <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2 flex items-center gap-2">
+                  <FlaskConical className="w-4 h-4 text-amber-400" />
+                  <div>
+                    <span className="text-[10px] font-bold text-amber-400">MODO DRY RUN</span>
+                    <p className="text-[8px] text-muted-foreground/50">
+                      Ensaio virtual — Hardware DMX/Art-Net bloqueado
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <SubsystemStrip subsystems={subsystems} />
               <TelemetryMini fireone={fireone} pbus={pbus} />
               <ConnectionsOverview />
@@ -632,7 +711,10 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel }: ShowCommand
                       variant="outline"
                       size="sm"
                       className="h-10 text-[10px] font-bold border-amber-500/20 text-amber-400 hover:bg-amber-500/10"
-                      onClick={() => toast.warning('DISARM ALL — Todos os sistemas desarmados')}
+                      onClick={() => {
+                        engine.disarm();
+                        toast.warning('DISARM ALL — Todos os sistemas desarmados');
+                      }}
                     >
                       <Shield className="w-3.5 h-3.5 mr-1" />
                       DISARM ALL
@@ -648,6 +730,14 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel }: ShowCommand
                     </Button>
                   </div>
                 </div>
+              </div>
+
+              {/* Debug Drift info */}
+              <div className="rounded-lg border border-border/10 bg-card/20 p-2 space-y-1">
+                <span className="text-[8px] font-bold text-muted-foreground/40 uppercase">Debug (Alt+Shift+D)</span>
+                <p className="text-[8px] text-muted-foreground/30">
+                  Timecode Drift Test — injeta ±15ms no Master Clock
+                </p>
               </div>
             </TabsContent>
           </div>
