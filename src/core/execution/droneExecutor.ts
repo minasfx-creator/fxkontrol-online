@@ -5,7 +5,7 @@
  * RTH fail-safe if signal is lost.
  */
 
-import { blackbox } from '@/core/reliability';
+import { blackbox } from '@/core/reliability/blackBoxRecorder';
 import { type FieldBus, type TransportMessage, fieldBus as defaultBus } from '@/core/network/fieldBus';
 
 export interface DroneWaypoint {

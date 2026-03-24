@@ -6,7 +6,7 @@
  * Every command is logged to BlackBox.
  */
 
-import { blackbox } from '@/core/reliability';
+import { blackbox } from '@/core/reliability/blackBoxRecorder';
 import { pyroExecutor, type PyroCue } from './pyroExecutor';
 import { droneExecutor, type DroneWaypoint } from './droneExecutor';
 import { fieldBus } from '@/core/network/fieldBus';
