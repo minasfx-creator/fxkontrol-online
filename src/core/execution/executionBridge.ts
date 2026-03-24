@@ -73,6 +73,7 @@ class ExecutionBridge {
   /**
    * Tick the bridge at current simulation time.
    * Dispatches any cues whose adjusted time has been reached.
+   * When a siteId is set, fire times are adjusted via LatencyCompensator.
    */
   tick(simTime: number): void {
     if (!this._armed) return;
@@ -82,37 +83,46 @@ class ExecutionBridge {
       const cue = this._cues[i];
       if (cue.fired) continue;
 
+      // Compute latency-compensated fire time when site is active
+      const adjustedCueTime = this._activeSiteId
+        ? latencyCompensator.getAdjustedFireTime(cue.time, this._activeSiteId).adjusted
+        : cue.time;
+
       switch (cue.type) {
         case 'pyro': {
           const pyroCue = cue.data as PyroCue;
-          if (pyroExecutor.shouldFire(pyroCue, simTime)) {
+          // Use adjusted time for shouldFire check when site is set
+          const fireCheck = this._activeSiteId
+            ? simTime >= adjustedCueTime
+            : pyroExecutor.shouldFire(pyroCue, simTime);
+          if (fireCheck) {
             pyroExecutor.fire(pyroCue, fieldBus);
             cue.fired = true;
             this._stats.firedCues++;
             this._stats.pendingCues--;
-            blackbox.record('fire', `PYRO ${cue.id} @ ${simTime.toFixed(3)}s`, { cueId: cue.id });
+            blackbox.record('fire', `PYRO ${cue.id} @ ${simTime.toFixed(3)}s (adj: ${adjustedCueTime.toFixed(3)}s)`, { cueId: cue.id });
           }
           break;
         }
         case 'drone': {
           const wp = cue.data as DroneWaypoint;
-          if (simTime >= wp.time) {
+          if (simTime >= adjustedCueTime) {
             droneExecutor.sendWaypoint(wp, fieldBus);
             cue.fired = true;
             this._stats.firedCues++;
             this._stats.pendingCues--;
-            blackbox.record('drone', `DRONE WP ${cue.id} @ ${simTime.toFixed(3)}s`, { cueId: cue.id });
+            blackbox.record('drone', `DRONE WP ${cue.id} @ ${simTime.toFixed(3)}s (adj: ${adjustedCueTime.toFixed(3)}s)`, { cueId: cue.id });
           }
           break;
         }
         case 'dmx': {
-          if (simTime >= cue.time) {
+          if (simTime >= adjustedCueTime) {
             const cmd = cue.data as DmxCommand;
             fieldBus.send({ type: 'dmx', payload: cmd });
             cue.fired = true;
             this._stats.firedCues++;
             this._stats.pendingCues--;
-            blackbox.record('cmd', `DMX U${cmd.universe} CH${cmd.channel}=${cmd.value}`, { cueId: cue.id });
+            blackbox.record('cmd', `DMX U${cmd.universe} CH${cmd.channel}=${cmd.value} (adj: ${adjustedCueTime.toFixed(3)}s)`, { cueId: cue.id });
           }
           break;
         }
