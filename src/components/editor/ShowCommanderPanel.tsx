@@ -712,9 +712,9 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel }: ShowCommand
                     // Scan all timeline positions against terrain
                     const { timelineItems } = useProjectStore.getState();
                     const trajectory: TrajectoryPoint[] = timelineItems.map(item => ({
-                      x: item.pos_x,
-                      y: item.pos_y,
-                      z: item.pos_z,
+                      x: item.position.x,
+                      y: item.position.y,
+                      z: item.position.z,
                     }));
                     const interpolated = interpolateTrajectory(trajectory, 5);
                     const result = checkTrajectoryCollision(interpolated, null, 15);
