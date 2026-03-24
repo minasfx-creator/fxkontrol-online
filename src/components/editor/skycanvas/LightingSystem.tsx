@@ -107,10 +107,10 @@ export function ContactShadowsLayer() {
     <ContactShadows
       position={[0, 0.01, 0]}
       opacity={s.contactShadowsOpacity}
-      scale={200}
+      scale={80}
       blur={s.contactShadowsBlur}
       far={50}
-      resolution={512}
+      resolution={256}
       color="#000000"
     />
   );
