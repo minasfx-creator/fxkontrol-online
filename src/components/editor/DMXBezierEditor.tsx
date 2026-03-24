@@ -490,6 +490,8 @@ export default function DMXBezierEditor({ fs = false }: { fs?: boolean }) {
           onPointMove={handlePointMove}
           width={fs ? 900 : 560}
           height={fs ? 300 : 180}
+          snapEnabled={isSnapEnabled}
+          snapInterval={snapInterval}
         />
       </div>
 
