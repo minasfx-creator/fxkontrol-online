@@ -666,6 +666,17 @@ function Index() {
       )}
       <PositionContextMenu />
       <SmartScriptAssistant open={smartScriptOpen} onClose={() => setSmartScriptOpen(false)} />
+      {showViewportGlobe && (
+        <div className="absolute inset-0 z-[100]">
+          <GlobeSelector
+            mode="embedded"
+            onLocationSelected={handleLocationSelected}
+            onSkip={() => {
+              handleLocationSelected({ name: 'Default', lat: 0, lng: 0 });
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
