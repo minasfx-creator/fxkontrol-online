@@ -29,10 +29,11 @@ import DroneCommandPanel from '@/components/editor/DroneCommandPanel';
 import ShowControlPanel from '@/components/editor/ShowControlPanel';
 import FXKNetPanel from '@/components/editor/live-firing/FXKNetPanel';
 import DMXMonitorPanel from '@/components/editor/DMXMonitorPanel';
+import FieldTestDesktop from '@/components/editor/FieldTestDesktop';
 // ── Types ──
 type CommandMode =
   | 'pyro_fire' | 'super_dmx' | 'fxk_light' | 'drone_ops'
-  | 'show_control' | 'module' | 'dmx_monitor';
+  | 'show_control' | 'module' | 'dmx_monitor' | 'field_test';
 
 // Fire modes get full LiveFiringPanel chrome (ARM, CUE keys, PANIC)
 const FIRE_MODES: CommandMode[] = ['pyro_fire', 'super_dmx'];
