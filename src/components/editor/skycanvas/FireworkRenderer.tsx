@@ -139,7 +139,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
   
   const lod = useLOD(position);
   const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
-  const { particleDensity, hdrMultiplier, effectBrightness } = useSceneStore(st => st.settings);
+  const { particleDensity, hdrMultiplier, effectBrightness, gpuParticlePhysics, frustumCullingBursts } = useSceneStore(st => st.settings);
 
   const STAR_COUNT = useMemo(() => {
     const densityScale = THREE.MathUtils.clamp(particleDensity, 0.5, 2.0);
@@ -263,8 +263,19 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     };
   }, []);
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, camera }) => {
     if (!pointsRef.current || !trailRef.current) return;
+
+    // Frustum culling: skip if burst center is off-screen
+    if (frustumCullingBursts) {
+      const frustum = new THREE.Frustum();
+      const projScreenMatrix = new THREE.Matrix4();
+      projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      frustum.setFromProjectionMatrix(projScreenMatrix);
+      const burstSphere = new THREE.Sphere(new THREE.Vector3(position[0], position[1], position[2]), caliber * 5);
+      if (!frustum.intersectsSphere(burstSphere)) return;
+    }
+
     const pos = particleBuffers.positions;
     const cols = particleBuffers.colors;
     const sizes = particleBuffers.sizes;

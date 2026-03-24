@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Sun, Moon, Cloud, CloudRain, Wind, Eye, Thermometer, Droplets, Sparkles, Monitor, Paintbrush, TreePine, Grid3x3, RotateCw, Layers, Zap, Image, Upload, Trash2, X, Mountain, Cloudy, Snowflake, CloudFog, Flame, Compass } from 'lucide-react';
+import { Sun, Moon, Cloud, CloudRain, Wind, Eye, Thermometer, Droplets, Sparkles, Monitor, Paintbrush, TreePine, Grid3x3, RotateCw, Layers, Zap, Image, Upload, Trash2, X, Mountain, Cloudy, Snowflake, CloudFog, Flame, Compass, Cpu, Gauge } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import GeoSearchPanel from './GeoSearchPanel';
 
-type SectionId = 'quick' | 'presets' | 'sky' | 'ground' | 'weather' | 'effects' | 'pyro' | 'lighting' | 'post' | 'background';
+type SectionId = 'quick' | 'presets' | 'sky' | 'ground' | 'weather' | 'effects' | 'pyro' | 'lighting' | 'post' | 'background' | 'performance';
 
 function Section({ title, icon: Icon, children, id, open, onToggle }: { title: string; icon: any; children: React.ReactNode; id: SectionId; open: boolean; onToggle: () => void }) {
   return (
@@ -556,6 +556,70 @@ export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
             <SliderRow label="Brightness" value={settings.colorBrightness + 0.5} onChange={v => updateSettings({ colorBrightness: v - 0.5 })} />
             <SliderRow label="Contrast" value={settings.colorContrast + 0.5} onChange={v => updateSettings({ colorContrast: v - 0.5 })} />
             <SliderRow label="Saturation" value={settings.colorSaturation + 0.5} onChange={v => updateSettings({ colorSaturation: v - 0.5 })} />
+          </div>
+        </Section>
+
+        {/* ═══ PERFORMANCE / GPU ═══ */}
+        <Section title="Performance & GPU" icon={Gauge} id="performance" open={openSections.has('performance')} onToggle={() => toggleSection('performance')}>
+          <div className="space-y-2">
+            <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-wider">Ultra-Smooth Rendering</span>
+
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <span className="text-[9px] text-muted-foreground font-medium">Adaptive Quality</span>
+                <p className="text-[7px] text-muted-foreground/60">Auto-adjusts quality based on FPS</p>
+              </div>
+              <Switch checked={settings.adaptiveQualityEnabled} onCheckedChange={v => updateSettings({ adaptiveQualityEnabled: v })} className="scale-[0.65]" />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <span className="text-[9px] text-muted-foreground font-medium">Smooth Frame Pacing</span>
+                <p className="text-[7px] text-muted-foreground/60">Weighted delta-time (10-frame avg)</p>
+              </div>
+              <Switch checked={settings.smoothFramePacing} onCheckedChange={v => updateSettings({ smoothFramePacing: v })} className="scale-[0.65]" />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <span className="text-[9px] text-muted-foreground font-medium">GPU Particle Physics</span>
+                <p className="text-[7px] text-muted-foreground/60">GPGPU ballistic vertex shader</p>
+              </div>
+              <Switch checked={settings.gpuParticlePhysics} onCheckedChange={v => updateSettings({ gpuParticlePhysics: v })} className="scale-[0.65]" />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <span className="text-[9px] text-muted-foreground font-medium">Frustum Culling (Bursts)</span>
+                <p className="text-[7px] text-muted-foreground/60">Skip off-screen burst processing</p>
+              </div>
+              <Switch checked={settings.frustumCullingBursts} onCheckedChange={v => updateSettings({ frustumCullingBursts: v })} className="scale-[0.65]" />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <span className="text-[9px] text-muted-foreground font-medium">SSR Half Resolution</span>
+                <p className="text-[7px] text-muted-foreground/60">Render reflections at 0.5× res</p>
+              </div>
+              <Switch checked={settings.ssrHalfRes} onCheckedChange={v => updateSettings({ ssrHalfRes: v })} className="scale-[0.65]" />
+            </div>
+          </div>
+
+          {/* Status indicator */}
+          <div className="mt-2 p-2 bg-muted/15 rounded border border-border/10 space-y-1">
+            <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-wider">Engine Status</span>
+            {[
+              { label: 'Adaptive Quality', active: settings.adaptiveQualityEnabled },
+              { label: 'Frame Pacing', active: settings.smoothFramePacing },
+              { label: 'GPU Physics', active: settings.gpuParticlePhysics },
+              { label: 'Frustum Cull', active: settings.frustumCullingBursts },
+              { label: 'SSR ½×', active: settings.ssrHalfRes },
+            ].map(item => (
+              <div key={item.label} className="flex items-center gap-1.5">
+                <div className={cn("w-1.5 h-1.5 rounded-full", item.active ? "bg-green-400 animate-pulse" : "bg-muted-foreground/30")} />
+                <span className={cn("text-[8px] font-mono", item.active ? "text-green-400" : "text-muted-foreground/50")}>{item.label}</span>
+              </div>
+            ))}
           </div>
         </Section>
 
