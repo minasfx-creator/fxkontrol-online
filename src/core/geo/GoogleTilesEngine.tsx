@@ -16,14 +16,14 @@ import { geoToECEF } from '@/lib/floatingOriginEngine';
 import { supabase } from '@/integrations/supabase/client';
 
 // 3d-tiles-renderer imports
+import { TilesRenderer } from '3d-tiles-renderer';
 import {
-  TilesRenderer,
   GoogleCloudAuthPlugin,
   TileCompressionPlugin,
   TilesFadePlugin,
   UpdateOnChangePlugin,
   UnloadTilesPlugin,
-} from '3d-tiles-renderer';
+} from '3d-tiles-renderer/plugins';
 
 // ── ECEF→ENU rotation matrix for a given lat/lon anchor ─────────────
 function buildECEFtoENUMatrix(lat: number, lon: number): THREE.Matrix4 {
