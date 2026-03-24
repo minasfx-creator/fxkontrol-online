@@ -13,6 +13,7 @@ import { useSMPTEStore } from '@/store/useSMPTEStore';
 import { frameSyncEngine, type FrameSyncState } from '@/core/sync/frameSyncEngine';
 import { supabase } from '@/integrations/supabase/client';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import AICoPilotPanel from './AICoPilotPanel';
 
 interface EventLog {
   id: string;
