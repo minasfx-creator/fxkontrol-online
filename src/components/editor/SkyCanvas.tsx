@@ -954,8 +954,11 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
       cy = Math.max(CAMERA_MIN_Y, dampedY);
     }
 
-    if (cy < CAMERA_MIN_Y + 1) {
+    if (cy < CAMERA_MIN_Y + 1 && !_wasClampedLastFrame.current) {
       console.warn('[Camera] altitude clamped to safe floor');
+      _wasClampedLastFrame.current = true;
+    } else if (cy > CAMERA_MIN_Y + 1) {
+      _wasClampedLastFrame.current = false;
     }
 
     _lastValidY.current = cy;
