@@ -84,11 +84,12 @@ function HeartbeatLine({ active, color }: { active: boolean; color: string }) {
   );
 }
 
-function TimecodeDisplay({ ms }: { ms: number }) {
-  const h = Math.floor(ms / 3600000);
-  const m = Math.floor((ms % 3600000) / 60000);
-  const s = Math.floor((ms % 60000) / 1000);
-  const f = Math.floor((ms % 1000) / (1000 / 30));
+function TimecodeDisplay({ seconds, fps }: { seconds: number; fps: number }) {
+  const totalMs = seconds * 1000;
+  const h = Math.floor(totalMs / 3600000);
+  const m = Math.floor((totalMs % 3600000) / 60000);
+  const s = Math.floor((totalMs % 60000) / 1000);
+  const f = Math.floor((totalMs % 1000) / (1000 / fps));
   return (
     <div className="font-mono font-black text-center select-none">
       <div className="flex items-center justify-center gap-1">
