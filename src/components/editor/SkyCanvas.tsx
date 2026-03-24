@@ -1806,7 +1806,7 @@ export default function SkyCanvas() {
         <GeoTimeOfDaySync />
         <AdaptiveExposureController />
         {!environment.disableLighting && <GlobalIlluminationController />}
-        <GroundReflections />
+        {!google3DTilesEnabled && <GroundReflections />}
         {!environment.disableLighting && <LensFlareController />}
         <DelayedMount delay={2000}>
           <NiagaraVFXController />
