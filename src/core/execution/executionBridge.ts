@@ -36,6 +36,7 @@ export interface BridgeStats {
 class ExecutionBridge {
   private _cues: TimelineCue[] = [];
   private _armed = false;
+  private _activeSiteId: string | null = null;
   private _stats: BridgeStats = { totalCues: 0, firedCues: 0, pendingCues: 0, lastTickTime: 0 };
 
   /** Load timeline cues for execution. Resets fired state. */
