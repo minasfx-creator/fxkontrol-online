@@ -305,12 +305,9 @@ function Index() {
       heading: 0,
       altitude: 0,
     });
-    // Force release any stuck selection/control state
     window.dispatchEvent(new CustomEvent('box-select-active', { detail: false }));
     setAppPhase('editor');
-    // Unmount globe first, then mount SkyCanvas after 100ms delay to avoid WebGL context contention
-    setShowViewportGlobe(false);
-    setTimeout(() => setCanvasReady(true), 100);
+    setShowGeoSetup(false);
   }, []);
 
   const handleMobileOpenPanel = useCallback((id: PanelId) => {
