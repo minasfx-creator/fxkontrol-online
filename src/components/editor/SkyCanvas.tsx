@@ -249,6 +249,51 @@ function FXKQualityController() {
   return null;
 }
 
+/**
+ * ContextLossGuard — handles WebGL context loss/restore with proper cleanup.
+ */
+function ContextLossGuard({ recoveringRef, onRemount }: {
+  recoveringRef: React.MutableRefObject<boolean>;
+  onRemount: () => void;
+}) {
+  const { gl } = useThree();
+
+  useEffect(() => {
+    const canvas = gl.domElement;
+
+    const onLost = (e: Event) => {
+      e.preventDefault();
+      if (recoveringRef.current) return;
+
+      recordContextLoss();
+      const shouldRecover = reportCrash();
+      if (!shouldRecover || isInCooldown()) {
+        console.error('[FXK] WebGL context lost — in cooldown, suppressing remount');
+        return;
+      }
+
+      recoveringRef.current = true;
+      console.warn('[FXK] WebGL context lost — remounting renderer');
+      resetPools();
+      onRemount();
+    };
+
+    const onRestored = () => {
+      console.log('[FXK] WebGL context restored');
+      recoveringRef.current = false;
+    };
+
+    canvas.addEventListener('webglcontextlost', onLost as EventListener);
+    canvas.addEventListener('webglcontextrestored', onRestored as EventListener);
+    return () => {
+      canvas.removeEventListener('webglcontextlost', onLost as EventListener);
+      canvas.removeEventListener('webglcontextrestored', onRestored as EventListener);
+    };
+  }, [gl, recoveringRef, onRemount]);
+
+  return null;
+}
+
 // Module-level refs — local aliases for backward compat within this file
 let _skyScatterUniforms: { uExplosionScatter: { value: THREE.Color }; uScatterIntensity: { value: number } } | null = null;
 let _adaptiveExposure = 1.2;
