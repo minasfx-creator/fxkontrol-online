@@ -172,9 +172,11 @@ const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref)
     deterministicClock.start();
     lockstep.start();
 
-    // Wire clock → lockstep: each clock tick feeds the lockstep engine
-    deterministicClock.onTick((_time: number, delta: number) => {
-      lockstep.tick(delta);
+    // Wire clock → frameSyncEngine → lockstep: frame-aligned time feeds lockstep
+    deterministicClock.onTick((time: number, delta: number) => {
+      // Align the accumulated time to frame boundaries before feeding lockstep
+      const alignedDelta = frameSyncEngine.getSyncedTimeSec(time + delta) - frameSyncEngine.getSyncedTimeSec(time);
+      lockstep.tick(Math.max(0, alignedDelta));
     });
 
     return () => {
