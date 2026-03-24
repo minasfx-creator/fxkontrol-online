@@ -468,7 +468,6 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
           USE_MRT
           USE_ROUGHNESSMAP
           USE_NORMALMAP
-          resolutionScale={ssrResScale}
         />
       )}
 
