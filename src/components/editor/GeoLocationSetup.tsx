@@ -104,7 +104,8 @@ export default function GeoLocationSetup({ onClose }: GeoLocationSetupProps) {
       floatingOriginEnabled: true,
       google3DTilesEnabled: true,
     });
-    useProjectStore.getState().setGpsOrigin({
+    const store = useProjectStore.getState();
+    store.setGpsOrigin({
       lat: city.lat,
       lng: city.lng,
       heading: 0,
@@ -117,6 +118,19 @@ export default function GeoLocationSetup({ onClose }: GeoLocationSetupProps) {
       duration: 3,
       pitch: 45,
     });
+
+    // Fire & forget: fetch geo intelligence in background
+    fetchGeoIntelligence(city.lat, city.lng).then((intel) => {
+      useProjectStore.getState().setGeoIntelligence({
+        locationName: intel.locationShortName || intel.locationName || city.name || null,
+        timeZoneId: intel.timeZoneId || null,
+        timeZoneOffset: intel.totalOffset ?? null,
+        terrainElevation: intel.elevation ?? null,
+        staticMapUrl: intel.staticMapUrl || null,
+      });
+      console.log('[GeoIntel] Intelligence loaded:', intel);
+    });
+
     setTimeout(onClose, 500);
   }, [updateSettings, onClose]);
 
