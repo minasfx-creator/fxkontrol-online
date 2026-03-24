@@ -104,6 +104,8 @@ export function MissionControlPanel() {
   const [running, setRunning] = useState(false);
   const [bbRecording, setBbRecording] = useState(blackbox.isRecording());
   const [clockSync, setClockSync] = useState<ClockSyncState>(globalClock.getState());
+  const [multiSites, setMultiSites] = useState<SiteInfo[]>(multiSiteSync.getAllSites());
+  const [multiSiteLocal, setMultiSiteLocal] = useState(multiSiteSync.isLocalMode());
   const fpsRef = useRef(0);
 
   // Track FPS
