@@ -138,6 +138,7 @@ let _activeBurstScan_local: ActiveBurstScanResult | null = null;
 import { deterministicClock } from '@/core/time/deterministicClock';
 import { lockstep } from '@/core/reliability/lockstepEngine';
 import { executionBridge } from '@/core/execution/executionBridge';
+import { frameSyncEngine } from '@/core/sync/frameSyncEngine';
 
 const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref) {
   const { isPlaying, currentTime, duration, setCurrentTime, setPlaying, playbackSpeed } = useProjectStore();
@@ -171,9 +172,11 @@ const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref)
     deterministicClock.start();
     lockstep.start();
 
-    // Wire clock → lockstep: each clock tick feeds the lockstep engine
-    deterministicClock.onTick((_time: number, delta: number) => {
-      lockstep.tick(delta);
+    // Wire clock → frameSyncEngine → lockstep: frame-aligned time feeds lockstep
+    deterministicClock.onTick((time: number, delta: number) => {
+      // Align the accumulated time to frame boundaries before feeding lockstep
+      const alignedDelta = frameSyncEngine.getSyncedTimeSec(time + delta) - frameSyncEngine.getSyncedTimeSec(time);
+      lockstep.tick(Math.max(0, alignedDelta));
     });
 
     return () => {
