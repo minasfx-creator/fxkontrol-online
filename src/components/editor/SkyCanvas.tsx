@@ -234,6 +234,16 @@ function HardeningWatchdog() {
   return null;
 }
 
+/**
+ * FXKQualityController — runs FXK Ultra Refinement adaptive quality + stability
+ * inside the R3F Canvas context. Automatically adjusts bloom, SSR, lowQualityMode
+ * based on real-time frame metrics.
+ */
+function FXKQualityController() {
+  useFXKUltraRefinement();
+  return null;
+}
+
 // Module-level refs — local aliases for backward compat within this file
 let _skyScatterUniforms: { uExplosionScatter: { value: THREE.Color }; uScatterIntensity: { value: number } } | null = null;
 let _adaptiveExposure = 1.2;
