@@ -29,3 +29,8 @@ export { globalSync, type GlobalSyncState, type SyncOperator, type OperatorPermi
 export { multiSiteSync, type SiteInfo, type SiteStatus, type MultiSiteState, type ConsistencyResult } from '@/core/sync/multiSiteSyncEngine';
 export { latencyCompensator, type SiteLatencyProfile, type CompensatedTime } from '@/core/sync/latencyCompensator';
 export { multiSiteValidator, type MultiSiteValidationReport, type SiteValidationResult, type ValidationSiteConfig, type SiteValidationStatus } from '@/core/sync/multiSiteValidator';
+
+// ── Frame Sync Layer (v8.0 — Broadcast Level) ────────────────────
+export { timecodeProvider, type TimecodeSource, type TimecodeState } from '@/core/time/timecodeProvider';
+export { frameTimeService, type FrameTimeState } from '@/core/time/frameTimeService';
+export { frameSyncEngine, type FrameSyncState, type FrameSyncStatus } from '@/core/sync/frameSyncEngine';
