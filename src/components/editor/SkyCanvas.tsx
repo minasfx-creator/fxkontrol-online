@@ -826,6 +826,48 @@ function GeoTimeOfDaySync() {
   return null;
 }
 
+/**
+ * GoogleEarthLighting — adds hemisphere + ambient light specifically for
+ * illuminating Google 3D Tiles which appear dark under the HDR moonlight rig.
+ * Also renders a drei <Sky /> as atmospheric backdrop while tiles load.
+ */
+function GoogleEarthLighting() {
+  const google3DTilesEnabled = useSceneStore(st => st.settings.google3DTilesEnabled);
+  const timeOfDay = useSceneStore(st => st.settings.timeOfDay);
+  
+  if (!google3DTilesEnabled) return null;
+  
+  // Compute sun position from timeOfDay (0-24h)
+  const sunPos = useMemo(() => {
+    const angle = ((timeOfDay - 6) / 12) * Math.PI; // 6h=horizon, 12h=zenith, 18h=horizon
+    const y = Math.sin(angle) * 100;
+    const x = Math.cos(angle) * 100;
+    return [x, Math.max(y, -20), 50] as [number, number, number];
+  }, [timeOfDay]);
+  
+  const isNight = timeOfDay >= 20 || timeOfDay <= 5;
+  
+  return (
+    <>
+      {/* Atmospheric sky backdrop — visible while Google Earth tiles load */}
+      {!isNight && <Sky sunPosition={sunPos} turbidity={8} rayleigh={2} mieCoefficient={0.005} mieDirectionalG={0.8} />}
+      {/* Hemisphere light: sky blue + ground warm — fills Google Earth geometry */}
+      <hemisphereLight args={[0x87ceeb, 0x362d1f, isNight ? 0.08 : 0.4]} />
+      {/* Ambient fill — prevents completely dark tiles */}
+      <ambientLight intensity={isNight ? 0.05 : 0.3} color={isNight ? 0x1a1a3a : 0xffffff} />
+      {/* Directional sunlight matching sky position */}
+      {!isNight && (
+        <directionalLight 
+          position={sunPos} 
+          intensity={0.6} 
+          color={0xffeedd} 
+          castShadow={false}
+        />
+      )}
+    </>
+  );
+}
+
 function SceneFog() {
   const s = useSceneStore(st => st.settings);
   if (s.fogDensity <= 0) return null;
