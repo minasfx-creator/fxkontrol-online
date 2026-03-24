@@ -1,29 +1,50 @@
 
 
-## Assessment: No Changes Needed
+## Plan: Field Test Desktop Integration
 
-The "starter kit" code you shared is a **simplified version** of what already exists in the FXK codebase. Every module listed is already implemented at a **higher level of sophistication**:
+### Problem
+Field Test only appears as a navigation card in the mobile Command Center layout. The desktop sidebar has no entry for it, making it inaccessible on PC.
 
-| Starter Code | Already Exists (More Advanced) |
-|---|---|
-| `DeterministicClock` (basic `performance.now`) | `src/core/time/deterministicClock.ts` — drift correction, audio/SMPTE sync, pre-allocated callback array, monotonic guard |
-| `LockstepEngine` (simple array loop) | `src/core/reliability/lockstepEngine.ts` — priority-sorted, fixed 60Hz timestep, per-subsystem perf tracking, enable/disable |
-| `ExecutionBridge` (2 systems) | `src/core/execution/executionBridge.ts` — pyro + drone + DMX, pre-fire compensation, BlackBox logging, arm/disarm |
-| `PyroEngine` (console.log) | `src/core/execution/pyroExecutor.ts` — pre-fire delay, FieldBus dispatch, offline buffer (256 cues), flush-on-reconnect |
-| `DroneEngine` (console.log) | `src/core/execution/droneExecutor.ts` — WGS84→MAVLink, RTH fail-safe, geofence, FieldBus integration |
-| `GeoEngine` (flat-earth approx) | `src/core/geo/geoEngine.worker.ts` — Float64 ECEF/ENU, proper WGS84 ellipsoid math, Web Worker isolation |
-| `StateBuffer` (basic swap) | `src/core/state/stateBuffer.ts` — `structuredClone`, `copyFrontToBack`, swap counter diagnostics |
-| `AutoScaler` (console.log) | `src/core/reliability/autoScaler.ts` — 5 quality tiers, rolling FPS average, particle/bloom/shadow degradation |
+### Solution
+Two changes:
 
-**Replacing these with the starter code would be a regression.** The existing implementations already cover every feature described, plus fail-safes, logging, and real transport integration.
+1. **Add "FIELD TEST" to the desktop sidebar** as a new entry in the HARDWARE section of `MODE_SECTIONS`, making it a proper console mode instead of just a separate route.
 
-### Recommended Next Step
+2. **Create a desktop-optimized Field Test layout** — the current `FieldTest.tsx` is designed for mobile (portrait setup, small touch targets). The desktop version will use the available screen space with a multi-panel layout:
 
-Instead of rebuilding what exists, the highest-value work is **wiring the existing engines together** into the live render loop and UI. Specifically:
+### Desktop Field Test Layout
 
-1. **Connect DeterministicClock → LockstepEngine → ExecutionBridge** in the SkyCanvas render loop (currently these exist as standalone singletons)
-2. **Wire FieldBus status into MissionControlPanel** for live transport health monitoring
-3. **Connect AutoScaler to useSceneStore** so quality tier changes actually drive particle density, bloom, and shadow settings in real-time
+```text
+┌─────────────────────────────────────────────────────────┐
+│  FIELD TEST — FXK DIAGNOSTIC CONSOLE          [status]  │
+├────────────┬──────────────────────┬─────────────────────┤
+│            │                      │                     │
+│  SETUP     │   32-CH FIRE GRID    │  TELEMETRY &        │
+│  ─────     │   (8×4, large)       │  DIAGNOSTICS        │
+│  Role      │                      │  ─────────────      │
+│  Transport │   Click-to-fire      │  Latency chart      │
+│  Session   │   with ACK badges    │  Loss rate           │
+│  BLE Scan  │   and latency ms     │  Session stats      │
+│            │                      │  Event log          │
+│  MODULE    │                      │  Benchmark          │
+│  SELECTOR  │                      │  Report export      │
+│  (sidebar) │                      │                     │
+├────────────┴──────────────────────┴─────────────────────┤
+│  ARM │ DISARM │ E-STOP │ FIRE ALL │ RESET │ CDS TEST    │
+└─────────────────────────────────────────────────────────┘
+```
 
-This integration work would make the existing industrial-grade engines operational rather than dormant.
+### Files to modify
+
+| File | Change |
+|------|--------|
+| `src/pages/CommandCenter.tsx` | Add `field_test` to `CommandMode` type, `CONSOLE_ACCENTS`, and `MODE_SECTIONS[HARDWARE]`. Add `renderDirectPanel` case that renders inline `FieldTestDesktop`. |
+| `src/pages/FieldTest.tsx` | Extract a new `FieldTestDesktop` component with a wide multi-panel layout optimized for mouse interaction and large screens. Keep the existing mobile page as-is for the `/field-test` route. |
+
+### Technical details
+
+- **`FieldTestDesktop`**: A 3-column layout component using the same `fieldTestEngine` service. Left panel: setup/config + module scanner. Center: 32-ch fire grid with larger buttons and hover states (not just touch). Right: real-time diagnostics with latency histogram, session stats table, and scrollable event log.
+- The setup flow (role/transport/code) will be inline in the left panel rather than a full-page takeover.
+- Desktop buttons get hover effects, keyboard shortcuts (number keys 1-9 for channels, Space for ARM toggle, Escape for E-STOP).
+- CDS continuity test grid rendered at full size in the center panel when in test mode.
 
