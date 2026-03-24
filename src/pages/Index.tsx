@@ -552,7 +552,7 @@ function Index() {
               <ResizableHandle withHandle />
 
               {/* Center viewport */}
-              <ResizablePanel defaultSize={activePanel ? 60 : 80} minSize={30}>
+              <ResizablePanel defaultSize={activePanel ? 66 : 86} minSize={30}>
                 <div
                   className="h-full w-full relative"
                   onDragOver={(e) => {

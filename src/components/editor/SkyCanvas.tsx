@@ -151,6 +151,11 @@ const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref)
   const { isPlaying, currentTime, duration, setCurrentTime, setPlaying, playbackSpeed } = useProjectStore();
   const registeredRef = useRef(false);
 
+  // Pump the deterministic clock every R3F frame
+  useFrame(() => {
+    deterministicClock.tick();
+  });
+
   // Register playback as a lockstep subsystem (once)
   useEffect(() => {
     if (registeredRef.current) return;
