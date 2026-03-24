@@ -4,6 +4,7 @@
  * Auto-fetches geo intelligence (geocoding, timezone, elevation) on selection.
  */
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { triggerFlyTo } from '@/core/geo/GeoCameraController';
 import { fetchGeoIntelligence } from '@/services/googleGeoIntelligence';
 import { Search, X, MapPin, Navigation, Globe, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
