@@ -245,15 +245,15 @@ const DEFAULT_SETTINGS: SceneSettings = {
   fogFar: 300000,
   horizonGlow: 0.5,
 
-  groundStyle: 'finale-dark',
-  groundBrightness: 1.0,
+  groundStyle: 'synthetic-grass',
+  groundBrightness: 1.5,
   gridOpacity: 0.6,
   gridColor: '#1a1a2e',
   showGrid: true,
   showOriginMarker: true,
   showScalePoles: false,
   showTreeline: false,
-  groundFogIntensity: 0.7,
+  groundFogIntensity: 0.2,
 
   weather: 'clear',
   rainIntensity: 0,
