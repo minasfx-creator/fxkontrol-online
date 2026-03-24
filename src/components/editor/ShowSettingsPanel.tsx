@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { unrealBridge } from '@/core/sync/unrealBridge';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
 import { Input } from '@/components/ui/input';
