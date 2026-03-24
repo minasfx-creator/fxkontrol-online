@@ -236,7 +236,7 @@ export default function DMXBezierEditor({ fs = false }: { fs?: boolean }) {
   ]);
   const [activeCurveId, setActiveCurveId] = useState<string | null>(curves[0]?.id ?? null);
   const [selectedPreset, setSelectedPreset] = useState<CurvePreset>('ease-in-out');
-  const [sequenceDuration] = useState(10); // seconds — base loop duration
+  const [sequenceDuration, setSequenceDuration] = useState(10);
 
   // Master Clock sync — consume global playhead
   const currentTime = useProjectStore(s => s.currentTime);
