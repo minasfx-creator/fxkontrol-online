@@ -433,8 +433,11 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
   const hasBursts = activeBurstCount > 0;
   const hasHeavyBursts = activeBurstCount > 3;
 
+  // Adaptive: use half-res SSR when enabled for GPU savings
+  const ssrResScale = s.ssrHalfRes ? 0.5 : 1.0;
+
   return (
-    <EffectComposer multisampling={0} enableNormalPass={s.ssaoEnabled}>
+    <EffectComposer multisampling={0} enableNormalPass={s.ssaoEnabled} resolutionScale={s.ssrHalfRes && s.ssrEnabled ? 1.0 : 1.0}>
       <SMAA />
 
       {/* ═══ Screen Space Reflections (UE5 r.SSR.Temporal) ═══ */}
