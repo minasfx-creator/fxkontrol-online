@@ -948,14 +948,17 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     if (targetChanged || cameraChanged) controls.update();
   }, [camera]);
 
-  // Intro: cinematic positions
+  // ── Zero-GC: Pre-allocated vectors for intro animation ──
   const introStartPos = useRef(new THREE.Vector3(0, 300, 100));
   const introStartLook = useRef(new THREE.Vector3(0, 0, 0));
   const introDuration = useRef({ hold: 2.5, sweep: 4.0 });
+  const _sweepDefaultPos = useRef(new THREE.Vector3());
+  const _sweepDefaultLook = useRef(new THREE.Vector3());
+  const _sweepStartPos = useRef(new THREE.Vector3(0, 2300, 3));
+  const _sweepCurrentTarget = useRef(new THREE.Vector3());
 
   useEffect(() => {
     if (__cameraIntroPlayed) {
-      // Skip intro — go straight to default position
       camera.position.set(...targetPosition);
       if (controlsRef.current) {
         controlsRef.current.target.set(...targetLookAt);
@@ -991,14 +994,13 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
       introTimer.current += delta;
       
       if (introPhase.current === 'hold') {
-        // Gentle top-down hold with very subtle orbital drift
         const holdT = Math.min(1, introTimer.current / introDuration.current.hold);
         const eased = easeInOutCubic(holdT);
         const orbitRadius = 3;
         const orbitSpeed = 0.15;
         camera.position.set(
           Math.sin(introTimer.current * orbitSpeed) * orbitRadius,
-          2500 - eased * 200, // very gentle descent during hold
+          2500 - eased * 200,
           Math.cos(introTimer.current * orbitSpeed) * orbitRadius + 0.01
         );
         camera.lookAt(0, 0, 0);
@@ -1008,33 +1010,30 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
         }
         if (introTimer.current >= introDuration.current.hold) {
           introPhase.current = 'sweep';
-          introTimer.current = 0; // reset timer for sweep phase
+          introTimer.current = 0;
         }
       } else if (introPhase.current === 'sweep') {
-        // Smooth cinematic sweep to default position — uniform eased motion
         const sweepT = Math.min(1, introTimer.current / introDuration.current.sweep);
         const eased = easeInOutCubic(sweepT);
         
-        const defaultPos = new THREE.Vector3(...targetPosition);
-        const defaultLook = new THREE.Vector3(...targetLookAt);
+        // Zero-GC: reuse pre-allocated vectors instead of creating new ones per frame
+        _sweepDefaultPos.current.set(targetPosition[0], targetPosition[1], targetPosition[2]);
+        _sweepDefaultLook.current.set(targetLookAt[0], targetLookAt[1], targetLookAt[2]);
         
-        // Interpolate position with easing — uniform speed curve
-        const sweepStartPos = new THREE.Vector3(0, 2300, 3);
-        camera.position.lerpVectors(sweepStartPos, defaultPos, eased);
+        camera.position.lerpVectors(_sweepStartPos.current, _sweepDefaultPos.current, eased);
         
-        // Interpolate look target
         if (controlsRef.current) {
-          const currentTarget = new THREE.Vector3().lerpVectors(introStartLook.current, defaultLook, eased);
-          controlsRef.current.target.copy(currentTarget);
+          _sweepCurrentTarget.current.lerpVectors(introStartLook.current, _sweepDefaultLook.current, eased);
+          controlsRef.current.target.copy(_sweepCurrentTarget.current);
           controlsRef.current.update();
         }
         
         if (sweepT >= 1) {
           introPhase.current = 'done';
-          __cameraIntroPlayed = true; // Mark intro as played for this session
-          camera.position.copy(defaultPos);
+          __cameraIntroPlayed = true;
+          camera.position.copy(_sweepDefaultPos.current);
           if (controlsRef.current) {
-            controlsRef.current.target.copy(defaultLook);
+            controlsRef.current.target.copy(_sweepDefaultLook.current);
             controlsRef.current.update();
           }
           animating.current = false;
@@ -1044,8 +1043,8 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
       return;
     }
 
-    // Normal preset animation — smooth Apple-style easing
-    if (!animating.current && !focusAnimating.current || !controlsRef.current || freeLook) {
+    // Normal preset animation — fix operator precedence bug
+    if ((!animating.current && !focusAnimating.current) || !controlsRef.current || freeLook) {
       clampToWorldBounds();
       return;
     }
@@ -1074,14 +1073,15 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
 
   // Double-click focus: fly camera to a 3D point
   useEffect(() => {
+    const _focusCamDir = new THREE.Vector3();
     const handler = (e: Event) => {
       const { x, y, z } = (e as CustomEvent).detail;
       if (controlsRef.current) {
         targetLook.current.set(x, y, z);
-        // Position camera slightly offset from the focus point
-        const camDir = new THREE.Vector3().subVectors(camera.position, controlsRef.current.target).normalize();
+        // Zero-GC: reuse pre-allocated vector
+        _focusCamDir.subVectors(camera.position, controlsRef.current.target).normalize();
         const dist = Math.max(20, camera.position.distanceTo(controlsRef.current.target) * 0.5);
-        targetPos.current.set(x + camDir.x * dist, Math.max(y + 5, y + camDir.y * dist), z + camDir.z * dist);
+        targetPos.current.set(x + _focusCamDir.x * dist, Math.max(y + 5, y + _focusCamDir.y * dist), z + _focusCamDir.z * dist);
         focusAnimating.current = true;
       }
     };
