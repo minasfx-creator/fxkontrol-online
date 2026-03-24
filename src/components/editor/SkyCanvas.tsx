@@ -249,6 +249,51 @@ function FXKQualityController() {
   return null;
 }
 
+/**
+ * ContextLossGuard — handles WebGL context loss/restore with proper cleanup.
+ */
+function ContextLossGuard({ recoveringRef, onRemount }: {
+  recoveringRef: React.MutableRefObject<boolean>;
+  onRemount: () => void;
+}) {
+  const { gl } = useThree();
+
+  useEffect(() => {
+    const canvas = gl.domElement;
+
+    const onLost = (e: Event) => {
+      e.preventDefault();
+      if (recoveringRef.current) return;
+
+      recordContextLoss();
+      const shouldRecover = reportCrash();
+      if (!shouldRecover || isInCooldown()) {
+        console.error('[FXK] WebGL context lost — in cooldown, suppressing remount');
+        return;
+      }
+
+      recoveringRef.current = true;
+      console.warn('[FXK] WebGL context lost — remounting renderer');
+      resetPools();
+      onRemount();
+    };
+
+    const onRestored = () => {
+      console.log('[FXK] WebGL context restored');
+      recoveringRef.current = false;
+    };
+
+    canvas.addEventListener('webglcontextlost', onLost as EventListener);
+    canvas.addEventListener('webglcontextrestored', onRestored as EventListener);
+    return () => {
+      canvas.removeEventListener('webglcontextlost', onLost as EventListener);
+      canvas.removeEventListener('webglcontextrestored', onRestored as EventListener);
+    };
+  }, [gl, recoveringRef, onRemount]);
+
+  return null;
+}
+
 // Module-level refs — local aliases for backward compat within this file
 let _skyScatterUniforms: { uExplosionScatter: { value: THREE.Color }; uScatterIntensity: { value: number } } | null = null;
 let _adaptiveExposure = 1.2;
@@ -1394,6 +1439,7 @@ export default function SkyCanvas() {
   const [downloadingScenery, setDownloadingScenery] = useState(false);
   const [canvasInstanceKey, setCanvasInstanceKey] = useState(0);
   const recoveringContextRef = useRef(false);
+  const handleContextRemount = useCallback(() => setCanvasInstanceKey(prev => prev + 1), []);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const environment = useSceneStore(st => st.environment);
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
@@ -1598,42 +1644,14 @@ export default function SkyCanvas() {
         }}
         dpr={isMobile ? [1, 1.5] : [1.5, 2]}
         performance={{ min: 0.5 }}
-        onCreated={({ gl }) => {
-          const canvas = gl.domElement;
-
-          const handleContextLost = (e: Event) => {
-            e.preventDefault();
-            if (recoveringContextRef.current) return;
-
-            // Hardening: record context loss for observability
-            recordContextLoss();
-
-            // Hardening: crash-loop protection — skip recovery if in cooldown
-            const shouldRecover = reportCrash();
-            if (!shouldRecover || isInCooldown()) {
-              console.error('[FXK] WebGL context lost — in cooldown, suppressing remount');
-              return;
-            }
-
-            recoveringContextRef.current = true;
-            console.warn('[FXK] WebGL context lost — remounting renderer');
-
-            resetPools(); // Clear geometry/buffer pools on context loss
-            setCanvasInstanceKey((prev) => prev + 1);
-          };
-
-          const handleContextRestored = () => {
-            console.log('[FXK] WebGL context restored');
-            recoveringContextRef.current = false;
-          };
-
-          canvas.addEventListener('webglcontextlost', handleContextLost as EventListener);
-          canvas.addEventListener('webglcontextrestored', handleContextRestored as EventListener);
+        onCreated={() => {
+          recoveringContextRef.current = false;
         }}>
         <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.5} far={500000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook || flyMode} flyMode={flyMode} />
         {flyMode && <FlyControls onSpeedChange={flySpeedCb} />}
 
+        <ContextLossGuard recoveringRef={recoveringContextRef} onRemount={handleContextRemount} />
         <HardeningWatchdog />
         <FXKQualityController />
         <SceneLighting />
