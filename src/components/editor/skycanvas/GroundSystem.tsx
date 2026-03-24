@@ -1039,7 +1039,7 @@ function SFXStageEnvironment() {
       <pointLight position={[stageW / 3, 6, 0]} color="#220044" intensity={1.2} distance={40} decay={2} />
 
       <mesh position={[0, -0.03, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[100000, 100000]} />
+        <planeGeometry args={[10000, 10000]} />
         <meshStandardMaterial color="#030305" roughness={0.95} metalness={0} />
       </mesh>
 
