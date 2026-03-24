@@ -41,6 +41,10 @@ class AutoScaler {
   private cooldownFrames = 60;     // Wait 1s after tier change
   private listeners = new Set<(state: ScaleState) => void>();
   private locked = false;
+  private pixelRatio = 1.0;
+  private stableTime = 0;         // seconds at current tier
+  private lastTierChange = 0;     // timestamp
+  private restoreDelay = 10_000;  // 10s stable before restore
 
   /** Feed a frame's FPS. Auto-adjusts tier. */
   tick(fps: number): ScaleState {
