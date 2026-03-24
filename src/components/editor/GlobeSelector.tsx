@@ -663,6 +663,11 @@ export default function GlobeSelector({ onLocationSelected, mode = 'fullscreen',
         </div>
 
         <div className="flex items-center gap-2">
+          {isEmbedded && onSkip && (
+            <Button variant="ghost" size="sm" onClick={onSkip} className="h-8 text-[10px] font-mono-code">
+              Pular
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
