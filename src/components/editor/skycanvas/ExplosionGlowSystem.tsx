@@ -92,11 +92,10 @@ export function ExplosionGlowSystem() {
           bestSlot.light.intensity = MAX_INTENSITY;
           bestSlot.light.position.set(burst.x, burst.y, burst.z);
 
-          // Parse burst color
-          const color = new THREE.Color(burst.color || '#ffaa44');
+          // Parse burst color — zero-GC: reuse light's own color object
+          bestSlot.light.color.set(burst.color || '#ffaa44');
           // Warm shift for realism
-          color.lerp(new THREE.Color('#ffcc88'), 0.3);
-          bestSlot.light.color.copy(color);
+          bestSlot.light.color.lerp(_warmShift, 0.3);
         }
       }
     }
