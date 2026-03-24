@@ -183,6 +183,48 @@ function EnvironmentSettingsSection() {
   );
 }
 
+/* ── Unreal Engine Bridge Section ────────────────────────── */
+function UnrealBridgeSection() {
+  const [endpoint, setEndpoint] = useState('ws://localhost:8765');
+  const [connected, setConnected] = useState(false);
+
+  const toggleConnection = useCallback(() => {
+    if (connected) {
+      unrealBridge.disconnect();
+      setConnected(false);
+    } else {
+      unrealBridge.connect(endpoint);
+      setConnected(true);
+    }
+  }, [connected, endpoint]);
+
+  const state = unrealBridge.getState();
+
+  return (
+    <SettingsSection title="Unreal Engine Bridge" icon={Cpu} defaultOpen={false}>
+      <Field label="Endpoint" value={endpoint} onChange={setEndpoint} placeholder="ws://localhost:8765" mono />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className={cn("w-2 h-2 rounded-full", connected ? "bg-green-500" : "bg-muted-foreground/30")} />
+          <span className="text-[10px] text-foreground font-medium">
+            {connected ? 'Connected' : 'Disconnected'}
+          </span>
+        </div>
+        <Button variant="outline" size="sm" className="h-6 text-[9px]" onClick={toggleConnection}>
+          {connected ? 'Disconnect' : 'Connect'}
+        </Button>
+      </div>
+      {connected && (
+        <div className="space-y-0.5 text-[8px] font-mono text-muted-foreground/50">
+          <div>Frames sent: {state.framesSent}</div>
+          <div>Latency: {state.latencyMs.toFixed(0)}ms</div>
+          <div>Buffered: {state.bufferedFrames}</div>
+        </div>
+      )}
+    </SettingsSection>
+  );
+}
+
 export default function ShowSettingsPanel({ onClose }: ShowSettingsProps) {
   const { duration, gpsOrigin, projectName } = useProjectStore();
 
