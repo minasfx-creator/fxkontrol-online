@@ -29,10 +29,11 @@ import DroneCommandPanel from '@/components/editor/DroneCommandPanel';
 import ShowControlPanel from '@/components/editor/ShowControlPanel';
 import FXKNetPanel from '@/components/editor/live-firing/FXKNetPanel';
 import DMXMonitorPanel from '@/components/editor/DMXMonitorPanel';
+import FieldTestDesktop from '@/components/editor/FieldTestDesktop';
 // ── Types ──
 type CommandMode =
   | 'pyro_fire' | 'super_dmx' | 'fxk_light' | 'drone_ops'
-  | 'show_control' | 'module' | 'dmx_monitor';
+  | 'show_control' | 'module' | 'dmx_monitor' | 'field_test';
 
 // Fire modes get full LiveFiringPanel chrome (ARM, CUE keys, PANIC)
 const FIRE_MODES: CommandMode[] = ['pyro_fire', 'super_dmx'];
@@ -47,6 +48,7 @@ const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: stri
   show_control: { color: 'hsl(32 100% 50%)',   glow: 'hsl(32 100% 50% / 0.08)',  label: 'SHOW CTRL',   badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'MISSION CONTROL OVERVIEW' },
   module:       { color: 'hsl(270 60% 50%)',   glow: 'hsl(270 60% 50% / 0.08)',  label: 'MODULE',      badge: 'bg-violet-500/15 text-violet-400 border-violet-500/20', subtitle: 'FIELD HARDWARE CTRL' },
   dmx_monitor:  { color: 'hsl(120 70% 42%)',   glow: 'hsl(120 70% 42% / 0.08)',  label: 'DMX MONITOR', badge: 'bg-green-500/15 text-green-400 border-green-500/20', subtitle: 'PROTOCOL ANALYZER' },
+  field_test:   { color: 'hsl(0 80% 55%)',     glow: 'hsl(0 80% 55% / 0.1)',    label: 'FIELD TEST',  badge: 'bg-red-500/15 text-red-400 border-red-500/20', subtitle: 'DIAGNOSTIC FIRE TEST' },
 };
 
 // ── Sidebar Sections ──
@@ -77,6 +79,7 @@ const MODE_SECTIONS = [
     icon: Cpu,
     modes: [
       { key: 'module' as CommandMode, label: 'MODULE', icon: Cpu },
+      { key: 'field_test' as CommandMode, label: 'FIELD TEST', icon: Target },
     ],
   },
 ];
@@ -179,6 +182,7 @@ export default function CommandCenter() {
       case 'show_control': return <ShowControlPanel fs />;
       case 'module': return <FXKNetPanel fs />;
       case 'dmx_monitor': return <DMXMonitorPanel fs />;
+      case 'field_test': return <FieldTestDesktop />;
       default: return null;
     }
   }, []);
