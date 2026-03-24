@@ -906,7 +906,7 @@ function FlyControls({ onSpeedChange }: { onSpeedChange?: (speed: number) => voi
     if (k['KeyQ']) camera.position.y -= move;
 
     // Clamp
-    camera.position.y = Math.max(0.5, camera.position.y);
+    camera.position.y = Math.max(5, camera.position.y);
   });
 
   return null;
@@ -924,10 +924,11 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   const introPhase = useRef<'hold' | 'sweep' | 'done'>(__cameraIntroPlayed ? 'done' : 'hold');
   const introTimer = useRef(0);
 
-  const WORLD_HALF_EXTENT = 80000;
+  const WORLD_HALF_EXTENT = 250000;
   const CAMERA_MIN_Y = 5;
-  const CAMERA_MAX_Y = 75000;
+  const CAMERA_MAX_Y = 40000;
   const _lastValidY = useRef(300);
+  const _wasClampedLastFrame = useRef(false);
 
   const clampToWorldBounds = useCallback(() => {
     const controls = controlsRef.current;
@@ -953,8 +954,11 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
       cy = Math.max(CAMERA_MIN_Y, dampedY);
     }
 
-    if (cy < CAMERA_MIN_Y + 1) {
+    if (cy < CAMERA_MIN_Y + 1 && !_wasClampedLastFrame.current) {
       console.warn('[Camera] altitude clamped to safe floor');
+      _wasClampedLastFrame.current = true;
+    } else if (cy > CAMERA_MIN_Y + 1) {
+      _wasClampedLastFrame.current = false;
     }
 
     _lastValidY.current = cy;
@@ -1673,7 +1677,7 @@ export default function SkyCanvas() {
           powerPreference: 'high-performance',
           alpha: false,
           stencil: false,
-          logarithmicDepthBuffer: true,
+          logarithmicDepthBuffer: false,
           outputColorSpace: THREE.SRGBColorSpace,
         }}
         dpr={isMobile ? [1, 1.5] : [1.5, 2]}
@@ -1681,7 +1685,7 @@ export default function SkyCanvas() {
         onCreated={() => {
           recoveringContextRef.current = false;
         }}>
-        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={1.0} far={500000} />
+        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={1.0} far={30000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook || flyMode} flyMode={flyMode} />
         {flyMode && <FlyControls onSpeedChange={flySpeedCb} />}
 
