@@ -5,7 +5,7 @@
  */
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { Spline, Plus, Trash2, Copy, Download, Layers } from 'lucide-react';
+import { Spline, Plus, Trash2, Copy, Download, Layers, Magnet } from 'lucide-react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { getMA3Node } from '@/lib/grandMA3Node';
 
@@ -101,6 +101,8 @@ function CurveCanvas({
   onPointMove,
   width = 600,
   height = 200,
+  snapEnabled = false,
+  snapInterval = 0,
 }: {
   curves: DMXCurve[];
   activeCurveId: string | null;
@@ -109,6 +111,8 @@ function CurveCanvas({
   onPointMove: (curveId: string, pointIdx: number, time: number, value: number) => void;
   width?: number;
   height?: number;
+  snapEnabled?: boolean;
+  snapInterval?: number;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [dragging, setDragging] = useState<{ curveId: string; pointIdx: number } | null>(null);
@@ -132,9 +136,14 @@ function CurveCanvas({
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!dragging || !svgRef.current) return;
     const rect = svgRef.current.getBoundingClientRect();
-    const { time, value } = fromSVG(e.clientX - rect.left, e.clientY - rect.top);
+    let { time, value } = fromSVG(e.clientX - rect.left, e.clientY - rect.top);
+    // Snap-to-beat quantization
+    if (snapEnabled && snapInterval > 0) {
+      time = Math.round(time / snapInterval) * snapInterval;
+      time = Math.max(0, Math.min(1, time));
+    }
     onPointMove(dragging.curveId, dragging.pointIdx, time, value);
-  }, [dragging, fromSVG, onPointMove]);
+  }, [dragging, fromSVG, onPointMove, snapEnabled, snapInterval]);
 
   const handleMouseUp = useCallback(() => setDragging(null), []);
 
@@ -152,16 +161,38 @@ function CurveCanvas({
         <text key={`ht-${v}`} x={4} y={y - 2} fill="hsl(220, 10%, 30%)" fontSize={7} fontFamily="monospace">{v}</text>
       );
     }
-    // Vertical (time)
-    for (let t = 0; t <= 1; t += 0.1) {
-      const x = t * width;
-      lines.push(
-        <line key={`v-${t}`} x1={x} y1={0} x2={x} y2={height}
-          stroke="hsl(220, 10%, 15%)" strokeWidth={0.5} />
-      );
+    // Beat grid or time grid
+    if (snapEnabled && snapInterval > 0) {
+      const totalBeats = Math.round(1 / snapInterval);
+      for (let b = 0; b <= totalBeats; b++) {
+        const t = b * snapInterval;
+        const x = t * width;
+        const isBar = b % 4 === 0;
+        lines.push(
+          <line key={`beat-${b}`} x1={x} y1={0} x2={x} y2={height}
+            stroke={isBar ? 'hsl(32, 100%, 50%)' : 'hsl(32, 80%, 35%)'}
+            strokeWidth={isBar ? 0.8 : 0.3}
+            strokeDasharray={isBar ? undefined : '1 2'} />
+        );
+        if (isBar) {
+          lines.push(
+            <text key={`bt-${b}`} x={x + 2} y={height - 2} fill="hsl(32, 80%, 40%)" fontSize={5} fontFamily="monospace">
+              {b / 4 + 1}
+            </text>
+          );
+        }
+      }
+    } else {
+      for (let t = 0; t <= 1; t += 0.1) {
+        const x = t * width;
+        lines.push(
+          <line key={`v-${t}`} x1={x} y1={0} x2={x} y2={height}
+            stroke="hsl(220, 10%, 15%)" strokeWidth={0.5} />
+        );
+      }
     }
     return lines;
-  }, [width, height]);
+  }, [width, height, snapEnabled, snapInterval]);
 
   return (
     <svg
@@ -237,11 +268,17 @@ export default function DMXBezierEditor({ fs = false }: { fs?: boolean }) {
   const [activeCurveId, setActiveCurveId] = useState<string | null>(curves[0]?.id ?? null);
   const [selectedPreset, setSelectedPreset] = useState<CurvePreset>('ease-in-out');
   const [sequenceDuration, setSequenceDuration] = useState(10);
+  const [isSnapEnabled, setIsSnapEnabled] = useState(false);
 
   // Master Clock sync — consume global playhead
   const currentTime = useProjectStore(s => s.currentTime);
   const duration = useProjectStore(s => s.duration);
   const isPlaying = useProjectStore(s => s.isPlaying);
+  const bpm = useProjectStore(s => s.bpm) || 128;
+
+  // Beat grid math
+  const totalBeats = useMemo(() => sequenceDuration * (bpm / 60), [sequenceDuration, bpm]);
+  const snapInterval = useMemo(() => totalBeats > 0 ? 1 / totalBeats : 0, [totalBeats]);
 
   // Normalize global time to 0–1 range using sequence duration (looping)
   const playheadTime = useMemo(() => {
@@ -371,6 +408,25 @@ export default function DMXBezierEditor({ fs = false }: { fs?: boolean }) {
           />
           <span className="text-[5px] font-mono text-muted-foreground/25">s</span>
         </div>
+        {/* BPM display */}
+        <div className="flex items-center gap-0.5 px-1 py-0.5 rounded" style={{ background: 'hsl(220 10% 8%)' }}>
+          <span className="text-[5px] font-mono text-muted-foreground/30">BPM</span>
+          <span className="text-[7px] font-mono font-bold text-[hsl(270,60%,55%)]">{bpm}</span>
+        </div>
+        {/* Snap toggle */}
+        <button
+          onClick={() => setIsSnapEnabled(s => !s)}
+          className={cn(
+            "flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[6px] font-mono font-bold tracking-wider transition-all border",
+            isSnapEnabled
+              ? "border-[hsl(32,100%,50%/0.4)] text-[hsl(32,100%,60%)]"
+              : "border-border/20 text-muted-foreground/30 hover:text-muted-foreground/50"
+          )}
+          style={{ background: isSnapEnabled ? 'hsl(32 100% 50% / 0.08)' : 'transparent' }}
+        >
+          <Magnet className="w-2.5 h-2.5" />
+          SNAP
+        </button>
         {/* Master clock indicator */}
         <span className={cn(
           "text-[6px] font-mono tracking-wider px-1.5 py-0.5 rounded",
@@ -434,6 +490,8 @@ export default function DMXBezierEditor({ fs = false }: { fs?: boolean }) {
           onPointMove={handlePointMove}
           width={fs ? 900 : 560}
           height={fs ? 300 : 180}
+          snapEnabled={isSnapEnabled}
+          snapInterval={snapInterval}
         />
       </div>
 
