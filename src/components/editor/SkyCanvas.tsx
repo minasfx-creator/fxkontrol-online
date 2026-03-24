@@ -856,7 +856,7 @@ function GoogleEarthLighting() {
       {/* Hemisphere light: sky blue + ground warm — fills Google Earth geometry */}
       <hemisphereLight args={[0x87ceeb, 0x362d1f, isNight ? 0.08 : 0.4]} />
       {/* Ambient fill — prevents completely dark tiles */}
-      <ambientLight intensity={isNight ? 0.12 : 0.3} color={isNight ? 0x1a1a3a : 0xffffff} />
+      <ambientLight intensity={isNight ? 0.15 : 0.3} color={isNight ? '#1a2b4c' : '#ffffff'} />
       {/* Directional sunlight matching sky position */}
       {!isNight && (
         <directionalLight 
