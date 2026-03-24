@@ -5,9 +5,12 @@
  */
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { Flame, Zap, Gauge, Layers, Activity, Radio, Shield, AlertTriangle, Clock, Wifi, Thermometer, Eye } from 'lucide-react';
+import { Flame, Zap, Gauge, Layers, Activity, Radio, Shield, AlertTriangle, Clock, Wifi, Thermometer, Eye, Play, Square, Lock, Unlock } from 'lucide-react';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useSfxChannelStore } from '@/store/useSfxChannelStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { useSMPTEStore } from '@/store/useSMPTEStore';
+import { frameSyncEngine, type FrameSyncState } from '@/core/sync/frameSyncEngine';
 import { supabase } from '@/integrations/supabase/client';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -81,11 +84,12 @@ function HeartbeatLine({ active, color }: { active: boolean; color: string }) {
   );
 }
 
-function TimecodeDisplay({ ms }: { ms: number }) {
-  const h = Math.floor(ms / 3600000);
-  const m = Math.floor((ms % 3600000) / 60000);
-  const s = Math.floor((ms % 60000) / 1000);
-  const f = Math.floor((ms % 1000) / (1000 / 30));
+function TimecodeDisplay({ seconds, fps }: { seconds: number; fps: number }) {
+  const totalMs = seconds * 1000;
+  const h = Math.floor(totalMs / 3600000);
+  const m = Math.floor((totalMs % 3600000) / 60000);
+  const s = Math.floor((totalMs % 60000) / 1000);
+  const f = Math.floor((totalMs % 1000) / (1000 / fps));
   return (
     <div className="font-mono font-black text-center select-none">
       <div className="flex items-center justify-center gap-1">
@@ -121,18 +125,22 @@ function ThreatLevel({ level }: { level: 0 | 1 | 2 | 3 }) {
 export default function ShowControlPanel({ fs = false }: { fs?: boolean; onClose?: () => void }) {
   const activeEffects = useLiveSfxStore(s => s.activeEffects);
   const channels = useSfxChannelStore(s => s.channels);
-  const [elapsedMs, setElapsedMs] = useState(0);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const isPlaying = useProjectStore(s => s.isPlaying);
+  const smpteMode = useSMPTEStore(s => s.mode);
+  const smpteFrameRate = useSMPTEStore(s => s.frameRate);
+  const [frameSyncState, setFrameSyncState] = useState<FrameSyncState | null>(null);
   const [eventLog, setEventLog] = useState<EventLog[]>([]);
   const [lastLatency, setLastLatency] = useState<Record<string, number>>({});
-  const startRef = useRef(Date.now());
   const prevEffectCountRef = useRef(0);
   const sparklineBuffers = useRef<Record<string, number[]>>({
     PYRO: new Array(20).fill(0), DMX: new Array(20).fill(0),
     LIGHT: new Array(20).fill(0), DRONE: new Array(20).fill(0),
   });
 
+  // Poll frameSyncEngine at 10Hz
   useEffect(() => {
-    const iv = setInterval(() => setElapsedMs(Date.now() - startRef.current), 100);
+    const iv = setInterval(() => setFrameSyncState(frameSyncEngine.getState()), 100);
     return () => clearInterval(iv);
   }, []);
 
@@ -235,16 +243,71 @@ export default function ShowControlPanel({ fs = false }: { fs?: boolean; onClose
         </div>
       </div>
 
-      {/* Mission Clock + Global Gauges */}
-      <div className="shrink-0 py-3 px-4 border-b flex items-center justify-between relative z-10" style={{ borderColor: 'hsl(32 100% 50% / 0.06)', background: 'linear-gradient(180deg, hsl(32 100% 50% / 0.02) 0%, transparent 100%)' }}>
-        <div className="flex items-center gap-3">
-          <CircularGauge value={totalArmed} max={channels.length || 1} color="hsl(0 85% 48%)" label="ARMED" />
-          <CircularGauge value={totalFiring} max={Math.max(totalArmed, 1)} color="hsl(32 100% 55%)" label="FIRING" />
+      {/* Timeline Master + Timecode Player Status */}
+      <div className="shrink-0 border-b relative z-10" style={{ borderColor: 'hsl(32 100% 50% / 0.06)', background: 'linear-gradient(180deg, hsl(32 100% 50% / 0.02) 0%, transparent 100%)' }}>
+        {/* Transport + Timecode + Sync Status */}
+        <div className="px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {/* Transport indicator */}
+            <div className="flex items-center gap-1.5">
+              {isPlaying ? (
+                <Play className="w-3.5 h-3.5 fill-current" style={{ color: 'hsl(120 70% 45%)' }} />
+              ) : (
+                <Square className="w-3 h-3 fill-current" style={{ color: 'hsl(0 60% 50%)' }} />
+              )}
+              <span className={cn("text-[8px] font-mono font-black tracking-[0.2em]",
+                isPlaying ? "text-green-400" : "text-red-400/60"
+              )}>{isPlaying ? 'PLAY' : 'STOP'}</span>
+            </div>
+            {/* Sync source + mode */}
+            <div className="flex items-center gap-1">
+              <span className="text-[6px] font-mono tracking-wider text-muted-foreground/30">SRC</span>
+              <span className="text-[7px] font-mono font-bold" style={{ color: 'hsl(200 80% 55%)' }}>
+                {frameSyncState?.source || smpteMode.toUpperCase()}
+              </span>
+            </div>
+          </div>
+
+          {/* Center: Timecode */}
+          <TimecodeDisplay seconds={currentTime} fps={frameSyncState?.fps || smpteFrameRate} />
+
+          <div className="flex items-center gap-3">
+            {/* FPS */}
+            <span className="text-[8px] font-mono font-bold text-muted-foreground/50">
+              {frameSyncState?.fps || smpteFrameRate}fps
+            </span>
+            {/* Lock status */}
+            <div className="flex items-center gap-1">
+              {frameSyncState?.status === 'locked' ? (
+                <Lock className="w-3 h-3" style={{ color: 'hsl(120 70% 45%)' }} />
+              ) : (
+                <Unlock className="w-3 h-3" style={{ color: 'hsl(45 100% 50%)' }} />
+              )}
+              <span className={cn("text-[7px] font-mono font-bold tracking-wider",
+                frameSyncState?.status === 'locked' ? "text-green-400" :
+                frameSyncState?.status === 'drifting' ? "text-yellow-400" : "text-muted-foreground/40"
+              )}>{(frameSyncState?.status || 'FREERUN').toUpperCase()}</span>
+            </div>
+            {/* Drift */}
+            <span className={cn("text-[8px] font-mono font-bold",
+              Math.abs(frameSyncState?.driftMs || 0) < 2 ? "text-green-400/60" :
+              Math.abs(frameSyncState?.driftMs || 0) < 5 ? "text-yellow-400/60" : "text-red-400/60"
+            )}>
+              {(frameSyncState?.driftMs ?? 0) >= 0 ? '+' : ''}{(frameSyncState?.driftMs ?? 0).toFixed(1)}ms
+            </span>
+          </div>
         </div>
-        <TimecodeDisplay ms={elapsedMs} />
-        <div className="flex items-center gap-3">
-          <CircularGauge value={channels.filter(c => c.enabled).length} max={channels.length || 1} color="hsl(120 70% 45%)" label="ONLINE" />
-          <CircularGauge value={4} max={4} color="hsl(200 80% 50%)" label="SYSTEMS" />
+
+        {/* Gauges row */}
+        <div className="px-4 pb-2 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <CircularGauge value={totalArmed} max={channels.length || 1} color="hsl(0 85% 48%)" label="ARMED" />
+            <CircularGauge value={totalFiring} max={Math.max(totalArmed, 1)} color="hsl(32 100% 55%)" label="FIRING" />
+          </div>
+          <div className="flex items-center gap-3">
+            <CircularGauge value={channels.filter(c => c.enabled).length} max={channels.length || 1} color="hsl(120 70% 45%)" label="ONLINE" />
+            <CircularGauge value={4} max={4} color="hsl(200 80% 50%)" label="SYSTEMS" />
+          </div>
         </div>
       </div>
 
