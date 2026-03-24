@@ -1120,6 +1120,7 @@ function Moon() {
 
 // --- Satellite texture ground overlay (real Google Maps imagery) ---
 function SatelliteOverlay({ textureUrl }: { textureUrl: string | null }) {
+  const meshRef = useRef<THREE.Mesh>(null);
   const texture = useMemo(() => {
     if (!textureUrl) return null;
     const loader = new THREE.TextureLoader();
@@ -1132,8 +1133,14 @@ function SatelliteOverlay({ textureUrl }: { textureUrl: string | null }) {
 
   if (!texture) return null;
 
+  useFrame(({ camera }) => {
+    if (!meshRef.current) return;
+    meshRef.current.position.x = camera.position.x;
+    meshRef.current.position.z = camera.position.z;
+  });
+
   return (
-    <mesh position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+    <mesh ref={meshRef} position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
       <planeGeometry args={[300, 300]} />
       <meshBasicMaterial map={texture} transparent={false} />
     </mesh>
