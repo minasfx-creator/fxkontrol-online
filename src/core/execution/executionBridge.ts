@@ -7,6 +7,7 @@
  */
 
 import { blackbox } from '@/core/reliability/blackBoxRecorder';
+import { latencyCompensator } from '@/core/sync/latencyCompensator';
 import { pyroExecutor, type PyroCue } from './pyroExecutor';
 import { droneExecutor, type DroneWaypoint } from './droneExecutor';
 import { fieldBus } from '@/core/network/fieldBus';
