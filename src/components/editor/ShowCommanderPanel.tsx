@@ -12,6 +12,7 @@ import {
   Magnet, FlaskConical, Link2, Unlink
 } from 'lucide-react';
 import { useShowCommanderEngine } from '@/hooks/useShowCommanderEngine';
+import PerformanceMonitor from '@/components/editor/PerformanceMonitor';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -731,6 +732,9 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel }: ShowCommand
                   </div>
                 </div>
               </div>
+
+              {/* Performance Monitor */}
+              <PerformanceMonitor />
 
               {/* Debug Drift info */}
               <div className="rounded-lg border border-border/10 bg-card/20 p-2 space-y-1">

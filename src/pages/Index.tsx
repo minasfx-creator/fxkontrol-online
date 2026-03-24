@@ -8,6 +8,8 @@ import { toast } from 'sonner';
 import { Upload } from 'lucide-react';
 import Toolbar from '@/components/editor/Toolbar';
 import SplashScreen from '@/components/editor/SplashScreen';
+import CrashRecoveryBanner from '@/components/editor/CrashRecoveryBanner';
+import StockAlertsBadge from '@/components/editor/StockAlertsBadge';
 import GlobeSelector from '@/components/editor/GlobeSelector';
 import EffectLibrary from '@/components/editor/EffectLibrary';
 import AudienceAnalyzerPanel from '@/components/editor/AudienceAnalyzerPanel';
@@ -535,6 +537,7 @@ function Index() {
   // Desktop layout — fully resizable with react-resizable-panels
   return (
     <div className="h-[100dvh] w-full flex flex-col overflow-hidden bg-background">
+      <CrashRecoveryBanner />
       <Toolbar onOpenPanel={(id) => handleTogglePanel(id as PanelId)} />
 
       <ResizablePanelGroup direction="vertical" className="flex-1">
