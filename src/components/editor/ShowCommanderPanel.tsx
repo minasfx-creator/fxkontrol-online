@@ -515,6 +515,8 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel }: ShowCommand
   const engine = useShowCommanderEngine();
 
   return (
+    <FieldViewProvider>
+    <FieldViewWrapper>
     <div className="h-full flex flex-col bg-background/95">
       {/* Link Lost Overlay */}
       {engine.linkStatus === 'lost' && (
