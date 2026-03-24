@@ -214,6 +214,18 @@ interface ToolbarProps {
   onOpenPanel?: (id: string) => void;
 }
 
+/* ── Location Display (from Geo Intelligence) ──────────────── */
+function LocationDisplay() {
+  const locationName = useProjectStore(s => s.locationName);
+  if (!locationName) return null;
+  return (
+    <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/30 border border-white/5">
+      <MapPin className="w-2.5 h-2.5 text-primary" />
+      <span className="text-[9px] font-mono text-zinc-400 truncate max-w-[180px]">{locationName}</span>
+    </div>
+  );
+}
+
 export default function Toolbar({ onOpenPanel }: ToolbarProps) {
   const { projectName, timelineItems, positions, editorMode, setEditorMode, duration, trajectories, droneFormations, gpsOrigin } = useProjectStore();
   const { canUndo, canRedo, undo, redo } = useUndoStore();
@@ -415,7 +427,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
         </>
       )}
 
-      {/* ─── CENTER: Project Name ────────────── */}
+      {/* ─── CENTER: Project Name + Location ────────────── */}
       <div className="flex-1 flex justify-center">
         <div className="flex items-center gap-2">
           <span className="text-sm text-zinc-400 font-medium truncate max-w-[200px]">{projectName}</span>
@@ -424,6 +436,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
             <span className="text-zinc-700">·</span>
             <span>{positions.length} pos</span>
           </div>
+          <LocationDisplay />
         </div>
       </div>
 

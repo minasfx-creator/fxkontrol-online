@@ -212,7 +212,19 @@ export interface ProjectState {
   videoChoreoResult: VideoChoreoResult | null;
   depthLayers: DepthLayer[];
   gpsOrigin: { lat: number; lng: number; heading: number; altitude: number };
+  locationName: string | null;
+  timeZoneId: string | null;
+  timeZoneOffset: number | null;   // total offset in seconds from UTC
+  terrainElevation: number | null; // meters
+  staticMapUrl: string | null;
   setGpsOrigin: (origin: { lat: number; lng: number; heading: number; altitude: number }) => void;
+  setGeoIntelligence: (data: {
+    locationName?: string | null;
+    timeZoneId?: string | null;
+    timeZoneOffset?: number | null;
+    terrainElevation?: number | null;
+    staticMapUrl?: string | null;
+  }) => void;
 
   setPlaying: (playing: boolean) => void;
   setCurrentTime: (time: number) => void;
@@ -472,7 +484,19 @@ export const useProjectStore = create<ProjectState>((set) => ({
   videoChoreoResult: null,
   depthLayers: [],
   gpsOrigin: { lat: -23.5505, lng: -46.6333, heading: 0, altitude: 0 },
+  locationName: null,
+  timeZoneId: null,
+  timeZoneOffset: null,
+  terrainElevation: null,
+  staticMapUrl: null,
   setGpsOrigin: (origin) => set({ gpsOrigin: origin }),
+  setGeoIntelligence: (data) => set({
+    ...(data.locationName !== undefined && { locationName: data.locationName }),
+    ...(data.timeZoneId !== undefined && { timeZoneId: data.timeZoneId }),
+    ...(data.timeZoneOffset !== undefined && { timeZoneOffset: data.timeZoneOffset }),
+    ...(data.terrainElevation !== undefined && { terrainElevation: data.terrainElevation }),
+    ...(data.staticMapUrl !== undefined && { staticMapUrl: data.staticMapUrl }),
+  }),
 
   setPlaying: (playing) => set({ isPlaying: playing }),
   setCurrentTime: (time) => set({ currentTime: time }),
