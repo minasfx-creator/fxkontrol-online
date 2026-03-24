@@ -212,7 +212,19 @@ export interface ProjectState {
   videoChoreoResult: VideoChoreoResult | null;
   depthLayers: DepthLayer[];
   gpsOrigin: { lat: number; lng: number; heading: number; altitude: number };
+  locationName: string | null;
+  timeZoneId: string | null;
+  timeZoneOffset: number | null;   // total offset in seconds from UTC
+  terrainElevation: number | null; // meters
+  staticMapUrl: string | null;
   setGpsOrigin: (origin: { lat: number; lng: number; heading: number; altitude: number }) => void;
+  setGeoIntelligence: (data: {
+    locationName?: string | null;
+    timeZoneId?: string | null;
+    timeZoneOffset?: number | null;
+    terrainElevation?: number | null;
+    staticMapUrl?: string | null;
+  }) => void;
 
   setPlaying: (playing: boolean) => void;
   setCurrentTime: (time: number) => void;
