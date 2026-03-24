@@ -214,6 +214,18 @@ interface ToolbarProps {
   onOpenPanel?: (id: string) => void;
 }
 
+/* ── Location Display (from Geo Intelligence) ──────────────── */
+function LocationDisplay() {
+  const locationName = useProjectStore(s => s.locationName);
+  if (!locationName) return null;
+  return (
+    <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/30 border border-white/5">
+      <MapPin className="w-2.5 h-2.5 text-primary" />
+      <span className="text-[9px] font-mono text-zinc-400 truncate max-w-[180px]">{locationName}</span>
+    </div>
+  );
+}
+
 export default function Toolbar({ onOpenPanel }: ToolbarProps) {
   const { projectName, timelineItems, positions, editorMode, setEditorMode, duration, trajectories, droneFormations, gpsOrigin } = useProjectStore();
   const { canUndo, canRedo, undo, redo } = useUndoStore();
