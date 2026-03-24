@@ -1439,6 +1439,7 @@ export default function SkyCanvas() {
   const [downloadingScenery, setDownloadingScenery] = useState(false);
   const [canvasInstanceKey, setCanvasInstanceKey] = useState(0);
   const recoveringContextRef = useRef(false);
+  const handleContextRemount = useCallback(() => setCanvasInstanceKey(prev => prev + 1), []);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const environment = useSceneStore(st => st.environment);
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
