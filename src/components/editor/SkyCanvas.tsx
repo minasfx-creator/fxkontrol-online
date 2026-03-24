@@ -1527,14 +1527,23 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
 // --- Concrete / urban ground ---
 function ConcreteGround({ brightness }: { brightness: number }) {
   const b = brightness * 0.5;
+  const meshRef = useRef<THREE.Mesh>(null);
+  useFrame(({ camera }) => {
+    if (!meshRef.current) return;
+    meshRef.current.position.x = camera.position.x;
+    meshRef.current.position.z = camera.position.z;
+  });
   return (
     <>
-      <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[4000, 4000]} />
+      <mesh ref={meshRef} position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[50000, 50000]} />
         <meshStandardMaterial
           color={new THREE.Color(0.06 * b, 0.06 * b, 0.065 * b)}
           roughness={0.95}
           metalness={0.1}
+          polygonOffset
+          polygonOffsetFactor={1}
+          polygonOffsetUnits={1}
         />
       </mesh>
       <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
