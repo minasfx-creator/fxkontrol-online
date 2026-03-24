@@ -1152,8 +1152,8 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
       panSpeed={0.8 * sensitivityScale}
       zoomSpeed={1.2 * sensitivityScale}
       minPolarAngle={Math.PI * 0.05}
-      maxPolarAngle={Math.PI * 0.85}
-      minDistance={0.5}
+      maxPolarAngle={Math.PI * 0.75}
+      minDistance={2}
       maxDistance={90000}
       enablePan
     />
