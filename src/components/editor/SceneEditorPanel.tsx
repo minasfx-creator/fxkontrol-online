@@ -226,11 +226,13 @@ export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
             <Select value={settings.groundStyle} onValueChange={v => updateSettings({ groundStyle: v as GroundStyle })}>
               <SelectTrigger className="h-7 text-[10px] mt-1"><SelectValue /></SelectTrigger>
               <SelectContent>
+                <SelectItem value="synthetic-grass" className="text-[10px]">🌿 Synthetic Grass (Camo)</SelectItem>
                 <SelectItem value="finale-dark" className="text-[10px]">Finale Dark</SelectItem>
                 <SelectItem value="google-earth" className="text-[10px]">Google Earth</SelectItem>
                 <SelectItem value="flat-black" className="text-[10px]">Flat Black</SelectItem>
                 <SelectItem value="concrete" className="text-[10px]">Concrete</SelectItem>
                 <SelectItem value="sfx-stage" className="text-[10px]">🎭 SFX Stage</SelectItem>
+                <SelectItem value="custom" className="text-[10px]">🎨 Custom</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -249,6 +251,72 @@ export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Geo-Engine Controls */}
+          <div className="pt-2 border-t border-border/10 space-y-2">
+            <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-wider">Geo Engine</span>
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] text-muted-foreground">Floating Origin</span>
+              <Switch
+                checked={settings.floatingOriginEnabled}
+                onCheckedChange={v => updateSettings({ floatingOriginEnabled: v })}
+              />
+            </div>
+            {settings.floatingOriginEnabled && (
+              <>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <div>
+                    <span className="text-[8px] text-muted-foreground">Latitude</span>
+                    <input
+                      type="number"
+                      step="0.001"
+                      value={settings.geoAnchorLat}
+                      onChange={e => updateSettings({ geoAnchorLat: parseFloat(e.target.value) || 0 })}
+                      className="w-full h-7 text-[10px] px-2 rounded-md border border-border/20 bg-muted/10 text-foreground tabular-nums"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[8px] text-muted-foreground">Longitude</span>
+                    <input
+                      type="number"
+                      step="0.001"
+                      value={settings.geoAnchorLon}
+                      onChange={e => updateSettings({ geoAnchorLon: parseFloat(e.target.value) || 0 })}
+                      className="w-full h-7 text-[10px] px-2 rounded-md border border-border/20 bg-muted/10 text-foreground tabular-nums"
+                    />
+                  </div>
+                </div>
+                <SliderRow label="Altitude MSL" value={settings.geoAnchorAlt} onChange={v => updateSettings({ geoAnchorAlt: v })} min={-10} max={500} step={1} unit=" m" />
+              </>
+            )}
+          </div>
+
+          {/* Tide Control */}
+          {settings.waterEnabled && (
+            <div className="pt-2 border-t border-border/10">
+              <SliderRow label="Tide Offset" value={settings.tideOffset} onChange={v => updateSettings({ tideOffset: v })} min={-2} max={2} step={0.1} unit=" m" />
+            </div>
+          )}
+
+          {/* Toggles */}
+          <div className="space-y-1.5 pt-2 border-t border-border/10">
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] text-muted-foreground">Show Grid</span>
+              <Switch checked={settings.showGrid} onCheckedChange={v => updateSettings({ showGrid: v })} />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] text-muted-foreground">Origin Marker</span>
+              <Switch checked={settings.showOriginMarker} onCheckedChange={v => updateSettings({ showOriginMarker: v })} />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] text-muted-foreground">Scale Poles</span>
+              <Switch checked={settings.showScalePoles} onCheckedChange={v => updateSettings({ showScalePoles: v })} />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] text-muted-foreground">Treeline</span>
+              <Switch checked={settings.showTreeline} onCheckedChange={v => updateSettings({ showTreeline: v })} />
+            </div>
           </div>
         </Section>
 
