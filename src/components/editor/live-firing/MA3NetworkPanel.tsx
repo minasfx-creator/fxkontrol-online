@@ -123,6 +123,7 @@ function TactileButton({ label, onClick, variant = 'default', disabled = false, 
       className={cn(
         "flex items-center gap-1 px-2 py-1 rounded border text-[7px] font-mono font-bold uppercase tracking-wider transition-all",
         "disabled:opacity-30 disabled:cursor-not-allowed",
+        pulse && "animate-pulse",
         variantStyles[variant],
       )}
       style={{ background: 'hsl(220 12% 8%)' }}
