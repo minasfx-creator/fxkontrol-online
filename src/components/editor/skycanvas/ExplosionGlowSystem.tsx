@@ -12,6 +12,7 @@ const POOL_SIZE = 4;
 const DECAY_RATE = 2.0; // intensity per second
 const MAX_INTENSITY = 3.0;
 const LIGHT_DISTANCE = 500;
+const _warmShift = new THREE.Color('#ffcc88'); // Pre-allocated for zero-GC
 
 interface PooledLight {
   light: THREE.PointLight;

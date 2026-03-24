@@ -955,10 +955,10 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     if (absDelta > 500) {
       _lastValidY.current = cy; // accept the teleport
     } else {
-      // Prevent sudden altitude drops (max 50m per frame) — manual nav only
+      // Prevent sudden altitude drops (max 200m per frame) — manual nav only
       const yDelta = cy - _lastValidY.current;
-      if (yDelta < -50) {
-        cy = _lastValidY.current - 50;
+      if (yDelta < -200) {
+        cy = _lastValidY.current - 200;
         if (!_wasDropClampedLastFrame.current) {
           console.warn('[Camera] altitude drop clamped');
           _wasDropClampedLastFrame.current = true;
@@ -966,13 +966,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
       } else {
         _wasDropClampedLastFrame.current = false;
       }
-
-      // Altitude-dependent damping near ground
-      if (cy < 20) {
-        const dampFactor = Math.max(0.3, cy / 20);
-        const dampedY = _lastValidY.current + (cy - _lastValidY.current) * dampFactor;
-        cy = Math.max(CAMERA_MIN_Y, dampedY);
-      }
+      // NOTE: altitude-dependent damping removed — it created a feedback loop near ground
     }
 
     if (cy < CAMERA_MIN_Y + 1 && !_wasClampedLastFrame.current) {
