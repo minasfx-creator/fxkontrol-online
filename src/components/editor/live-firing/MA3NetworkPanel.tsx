@@ -100,18 +100,20 @@ function Sparkline({ data, width = 60, height = 16, color = 'hsl(120 70% 45%)' }
 }
 
 // ═══ Tactile Button ═══
-function TactileButton({ label, onClick, variant = 'default', disabled = false, icon: Icon }: {
+function TactileButton({ label, onClick, variant = 'default', disabled = false, icon: Icon, pulse = false }: {
   label: string;
   onClick: () => void;
-  variant?: 'default' | 'connect' | 'disconnect' | 'sync';
+  variant?: 'default' | 'connect' | 'disconnect' | 'sync' | 'simulate';
   disabled?: boolean;
   icon?: React.ElementType;
+  pulse?: boolean;
 }) {
   const variantStyles = {
     default: 'border-border/30 text-muted-foreground/60 hover:text-foreground hover:bg-white/5',
     connect: 'border-[hsl(120_70%_45%/0.3)] text-[hsl(120_70%_50%)] hover:bg-[hsl(120_70%_45%/0.1)]',
     disconnect: 'border-[hsl(0_85%_48%/0.3)] text-[hsl(0_85%_55%)] hover:bg-[hsl(0_85%_48%/0.1)]',
     sync: 'border-[hsl(190_80%_50%/0.3)] text-[hsl(190_80%_55%)] hover:bg-[hsl(190_80%_50%/0.1)]',
+    simulate: 'border-[hsl(32_100%_50%/0.3)] text-[hsl(32_100%_60%)] hover:bg-[hsl(32_100%_50%/0.1)]',
   };
 
   return (
@@ -121,6 +123,7 @@ function TactileButton({ label, onClick, variant = 'default', disabled = false, 
       className={cn(
         "flex items-center gap-1 px-2 py-1 rounded border text-[7px] font-mono font-bold uppercase tracking-wider transition-all",
         "disabled:opacity-30 disabled:cursor-not-allowed",
+        pulse && "animate-pulse",
         variantStyles[variant],
       )}
       style={{ background: 'hsl(220 12% 8%)' }}
@@ -201,6 +204,27 @@ interface MA3NetworkPanelProps {
 export default function MA3NetworkPanel({ fs = false }: MA3NetworkPanelProps) {
   const { node, state, ppsHistory } = useMA3NodeState();
   const [relayUrl, setRelayUrl] = useState(node.getConfig().relayUrl);
+  const [isSimulating, setIsSimulating] = useState(false);
+
+  // ═══ DMX Traffic Simulator ═══
+  useEffect(() => {
+    if (!isSimulating) return;
+    const simBuffer = new Uint8Array(512);
+
+    const interval = setInterval(() => {
+      const t = Date.now() / 1000;
+      // Generate synthetic sine-wave patterns across 4 universes
+      for (let uIdx = 0; uIdx < Math.min(4, state.universes.length); uIdx++) {
+        for (let ch = 0; ch < 512; ch++) {
+          const phase = (uIdx * 0.7) + (ch * 0.02);
+          simBuffer[ch] = Math.floor(((Math.sin(t * (3 + uIdx) + phase) + 1) / 2) * 255);
+        }
+        node.simulateInput(uIdx, new Uint8Array(simBuffer));
+      }
+    }, 30); // ~33 PPS
+
+    return () => clearInterval(interval);
+  }, [isSimulating, node, state.universes.length]);
 
   const handleConnect = useCallback(() => {
     node.updateConfig({ relayUrl });
@@ -297,6 +321,13 @@ export default function MA3NetworkPanel({ fs = false }: MA3NetworkPanelProps) {
             variant="sync"
             onClick={handleSync}
             disabled={!state.connected}
+          />
+          <TactileButton
+            label={isSimulating ? 'STOP SIM' : 'SIMULATE'}
+            icon={Activity}
+            variant="simulate"
+            onClick={() => setIsSimulating(s => !s)}
+            pulse={isSimulating}
           />
           <div className="flex-1" />
           {state.artSyncActive && (
