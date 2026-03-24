@@ -115,9 +115,9 @@ export default function ClientPresentationMode({ active, onExit }: ClientPresent
 
   const togglePlayback = useCallback(() => {
     if (isPlaying) {
-      useProjectStore.getState().pause();
+      useProjectStore.getState().setPlaying(false);
     } else {
-      useProjectStore.getState().play();
+      useProjectStore.getState().setPlaying(true);
     }
   }, [isPlaying]);
 
