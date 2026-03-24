@@ -11,6 +11,7 @@ export { emergency, type EmergencyLevel, type EmergencyState } from './emergency
 export { diagnostic, feedDiagnosticFps, type DiagnosticReport, type DiagnosticCheck, type CheckStatus } from './selfDiagnostic';
 export { blackbox, type BlackBoxEntry } from './blackBoxRecorder';
 export { autoScaler, type QualityTier, type ScaleState } from './autoScaler';
+export { autoHeal, type SubsystemId, type HealStatus, type SubsystemHealth, type HealEvent } from './autoHealEngine';
 
 // ── Execution & Time Layer (v5.0) ──────────────────────────────────
 export { deterministicClock, type ClockState } from '@/core/time/deterministicClock';

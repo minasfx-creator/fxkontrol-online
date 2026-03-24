@@ -19,10 +19,12 @@ export {
   setFrameBudget,
   getFrameBudget,
   checkFrameBudget,
+  scanSceneTransforms,
   type RenderAPI,
   type DegradationLevel,
   type FrameBudget,
   type FrameBudgetCheck,
+  type TransformScanResult,
 } from './runtimeSafety';
 
 export {

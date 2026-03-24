@@ -207,6 +207,42 @@ export default function WeatherPanel({ onClose }: { onClose: () => void }) {
               Aplicar Vento à Simulação
             </Button>
 
+            {/* Tide & Atmosphere from Environment Engine */}
+            <div className="space-y-1">
+              <span className="text-[9px] text-muted-foreground font-semibold uppercase">Maré & Atmosfera</span>
+              <div className="grid grid-cols-2 gap-1">
+                <div className="flex items-center gap-1 p-1.5 rounded-sm bg-surface-2 border border-border/50">
+                  <Waves className="w-3 h-3 text-blue-400" />
+                  <div>
+                    <p className="text-[10px] font-mono-code text-foreground">
+                      {environmentEngine.getState().tideLevel.toFixed(2)}m
+                    </p>
+                    <p className="text-[7px] text-muted-foreground">
+                      Maré {environmentEngine.getState().tideDirection === 'rising' ? '↑' : environmentEngine.getState().tideDirection === 'falling' ? '↓' : '—'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 p-1.5 rounded-sm bg-surface-2 border border-border/50">
+                  <Atom className="w-3 h-3 text-purple-400" />
+                  <div>
+                    <p className="text-[10px] font-mono-code text-foreground">
+                      {environmentEngine.getState().atmosphericDensity.toFixed(3)}
+                    </p>
+                    <p className="text-[7px] text-muted-foreground">kg/m³ Dens.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 p-1.5 rounded-sm bg-surface-2 border border-border/50">
+                <Eye className="w-3 h-3 text-green-400" />
+                <div>
+                  <p className="text-[10px] font-mono-code text-foreground">
+                    {environmentEngine.getState().visibility.toFixed(1)} km
+                  </p>
+                  <p className="text-[7px] text-muted-foreground">Visibilidade</p>
+                </div>
+              </div>
+            </div>
+
             {/* Hourly forecast toggle */}
             <button
               onClick={() => setShowHourly(!showHourly)}
