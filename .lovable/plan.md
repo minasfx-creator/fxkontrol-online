@@ -1,150 +1,75 @@
 
 
-# FXK Ultra Engine Platform — Full System Build Plan
+# Fix Camera Altitude, Terrain Fallback, and Ground Flickering
 
-## Overview
+## Root Causes Identified
 
-This plan adds 6 major subsystems to the existing FXK architecture, leveraging what already exists (FieldBus, MultiSiteSync, FixedTimestep, RuntimeSafety, WeatherService, SunSystem) and extending them into a distributed, self-optimizing, real-world simulation engine.
+1. **Camera sinks to ground**: `CAMERA_MIN_Y = 1` (1 meter) is far too low. OrbitControls `maxPolarAngle = 0.85π` allows near-horizontal views that orbit below terrain surface. No terrain-aware altitude clamping exists.
 
----
+2. **Brown terrain flickering**: The `GrassGround` shader blends `brownEarth`, `dryField`, and parcel colors at close range. When Google 3D Tiles are loading, both `StageGround` (line 1686) and `GoogleTilesLayer` (line 1687) can render simultaneously during transition, causing z-fighting between the flat ground plane at Y=-0.02 and incoming 3D tiles.
 
-## Phase 1: Cluster Sync (Master/Client Mode)
-
-**New file**: `src/core/sync/clusterSyncEngine.ts`
-
-- Master node broadcasts camera, time, physics state, qualityLevel at 30-60 FPS via BroadcastChannel (same-machine tabs) + WebSocket (cross-machine)
-- Client nodes receive state, interpolate (lerp) toward target — never snap
-- Packet loss fallback: hold last valid state, smooth correction on reconnect
-- Desync detection via frame-counter divergence; auto-resync from master
-- Integrates with existing `globalSyncEngine.ts` for role management
-
-**New file**: `src/core/sync/clusterSyncHook.ts`
-- `useClusterSync()` hook consumed by SkyCanvas `useFrame` loop
-- If role=client: override camera/time from master state
-- If role=master: broadcast current state each frame
-
-**UI**: Add Master/Client toggle to existing `ConnectionManagerPanel.tsx`
+3. **Z-fighting/depth issues**: `near=0.5` with `far=500000` creates massive depth range. Even with `logarithmicDepthBuffer`, ground surfaces at similar Y values fight for depth priority.
 
 ---
 
-## Phase 2: Live Environment System (Weather + Tide)
+## Changes
 
-**New file**: `src/core/environment/environmentEngine.ts`
+### 1. Camera Altitude Lock — `SkyCanvas.tsx` CameraController
 
-- Wraps existing `fetchWeather()` from `weatherService.ts`
-- Adds tide data fetch (Open-Meteo marine API for Angra dos Reis default coords)
-- Unified state: `{ wind, humidity, pressure, visibility, tideLevel, seaState }`
-- Auto-refresh every 30s with smooth interpolation between samples
-- Fallback to last known state if API fails
+**In `clampToWorldBounds` (line 928-949):**
+- Raise `CAMERA_MIN_Y` from `1` to `5`
+- Add dynamic terrain-aware minimum: if Google 3D Tiles enabled, enforce minimum altitude of 5m above anchor altitude
+- Add damping when camera approaches minimum altitude (soft floor instead of hard clamp)
+- Log `[Camera] altitude clamped` when correction occurs
 
-**Modify**: `src/components/editor/SkyCanvas.tsx`
-- Feed environment state into: fog density, water plane Y-offset (tide), wind vector for smoke/particles
-- Connect wind to existing `useProjectStore.wind` so drone trajectories and pyro spread react automatically
+**In OrbitControls (line 1124-1138):**
+- Change `maxPolarAngle` from `Math.PI * 0.85` to `Math.PI * 0.75` — prevents camera from orbiting too close to horizontal/below ground
+- Change `minDistance` from `0.5` to `2` — prevents zooming into ground
 
-**Modify**: `src/components/editor/WeatherPanel.tsx`
-- Add tide display (current level, trend arrow)
-- Add atmosphere density readout
+### 2. Remove Ground Suction — `GeoCameraController.tsx`
 
----
+- In orbit mode (line 103-113), clamp `camera.position.y` to minimum 5m after computing orbit position
+- During flyTo animation, clamp intermediate positions to never go below minimum altitude
 
-## Phase 3: Enhanced Ballistic Physics
+### 3. Terrain Fallback Control — `SkyCanvas.tsx` + `GroundSystem.tsx`
 
-**Modify**: `src/lib/pyroPhysics.ts`
-- Add wind influence to shell trajectory: `velocity += windVector * dt`
-- Add air drag: `velocity *= (1 - dragCoeff * dt)`
-- Add fuse timing variance: `± random * fuseVariance`
-- Add explosion altitude variance: `breakHeight * (1 ± 0.03)`
+**In `SkyCanvas.tsx` (line 1686):**
+- When Google 3D Tiles are enabled AND tiles are initializing, hide the `StageGround` component entirely rather than showing it alongside tiles
+- Currently both render: `{!google3DTilesEnabled && <StageGround />}` + `{google3DTilesEnabled && <GoogleTilesLayer />}`. This is correct but the issue is during tile loading there's nothing visible — add a simple dark ground plane as ultra-minimal fallback only when tiles haven't loaded yet
 
-**New file**: `src/core/drones/dronePhysicsEngine.ts`
-- Max speed / acceleration limits per drone model
-- Wind drift compensation (PID already exists in BoidsPanel)
-- Inertia model: smooth direction changes, no instant snaps
-- Scale: 1 unit = 1 meter (already in place)
-- Validates impossible movements and clamps
+**In `GoogleTilesEngine.tsx`:**
+- Track tile load state (has any root tile loaded)
+- Expose a `tilesReady` signal
+- Until tiles are ready, keep a minimal non-flickering dark plane visible
 
----
+### 4. Depth Fix — `SkyCanvas.tsx` Canvas config
 
-## Phase 4: Unreal Engine Live Bridge
+**Line 1662:**
+- Change `near` from `0.5` to `1.0`
+- Keep `logarithmicDepthBuffer: true` (essential for this scale)
 
-**New file**: `src/core/sync/unrealBridge.ts`
+**In `GroundSystem.tsx` GrassGround (line 261):**
+- Add `polygonOffset`, `polygonOffsetFactor={1}`, `polygonOffsetUnits={1}` to the ground shader material to push it behind 3D tiles in depth buffer
+- Change ground Y position from `-0.02` to `-0.05` for more separation
 
-- WebSocket client connecting to configurable Unreal listener endpoint
-- Streams at 60 FPS: `{ camera: {pos, rot, fov}, timeline: {t, playing}, events: [] }`
-- Frame buffering (3-frame buffer) to absorb jitter
-- Auto-reconnect with exponential backoff
-- Connection state exposed via singleton
+### 5. Camera Speed Control — `SkyCanvas.tsx` CameraController
 
-**UI**: Add Unreal Sync toggle + endpoint config to `ShowSettingsPanel.tsx`
+- In `clampToWorldBounds`, add altitude-dependent damping: when camera Y < 20m, multiply movement speed by `Math.max(0.3, camera.position.y / 20)`
+- Prevent sudden altitude drops by clamping maximum Y-change per frame to 50m
 
----
+### 6. Safe Mode Failsafe — `GoogleTilesEngine.tsx`
 
-## Phase 5: Self-Evolving AI Core
-
-**New file**: `src/core/performance/aiOptimizer.ts`
-
-- Monitors: FPS (p95/p99), error rate, tile load time, camera stability, network latency
-- Pattern detection: sliding window (60s) identifies repeated drops, heavy scenes, unstable zones
-- Learns best config profiles: `{ highSpeed, cinematic, denseGeometry, lowDevice }`
-- Stored in localStorage as learned presets
-- Auto-applies matching profile when similar scenario detected
-- Adjustable: LOD bias, camera damping, tile cache size, render quality tier
-
-**Integration**: Called from existing `AdaptiveQualitySystem` / `autoScaler.ts`
+- If TilesRenderer throws during update, catch error, freeze last valid camera position, log `[Terrain] fallback blocked`
+- Never show brown fallback plane — prefer black/transparent over incorrect terrain
 
 ---
 
-## Phase 6: Runtime Safety + Auto-Heal
+## Files Modified
 
-**Modify**: `src/lib/hardening/runtimeSafety.ts`
-- Add NaN/undefined/invalid transform scanner (runs every 60 frames)
-- Auto-fix: reset corrupted values to last valid snapshot
-- Remove corrupted scene objects with logged warning
-
-**New file**: `src/core/reliability/autoHealEngine.ts`
-- Wraps any subsystem failure in detect → isolate → fix → re-test loop
-- Max 3 retry attempts per failure type
-- If all retries fail: graceful degradation (disable subsystem, log, continue)
-- Never crash — always degrade
-
-**Modify**: `src/components/editor/SkyCanvas.tsx`
-- Wire auto-heal into the `useFrame` loop via lightweight health check
-- Feed diagnostic results to existing `DiagnosticPanel`
-
----
-
-## Phase 7: Performance Governor
-
-**Modify**: `src/core/performance/memoryManager.ts` + `autoScaler.ts`
-- FPS drop response: reduce pixelRatio → reduce tile detail → reduce post-FX (staged)
-- When stable for 10s: gradually restore one tier at a time
-- Priority order: stability > smoothness > quality
-- Log all transitions to BlackBox
-
----
-
-## Files Created (5 new)
-1. `src/core/sync/clusterSyncEngine.ts`
-2. `src/core/sync/clusterSyncHook.ts`
-3. `src/core/environment/environmentEngine.ts`
-4. `src/core/drones/dronePhysicsEngine.ts`
-5. `src/core/sync/unrealBridge.ts`
-6. `src/core/performance/aiOptimizer.ts`
-7. `src/core/reliability/autoHealEngine.ts`
-
-## Files Modified (6 existing)
-1. `src/components/editor/SkyCanvas.tsx` — wire cluster sync, environment, auto-heal
-2. `src/components/editor/WeatherPanel.tsx` — tide + atmosphere
-3. `src/lib/pyroPhysics.ts` — wind/drag/variance
-4. `src/lib/hardening/runtimeSafety.ts` — NaN scanner
-5. `src/components/editor/ConnectionManagerPanel.tsx` — cluster UI
-6. `src/components/editor/ShowSettingsPanel.tsx` — Unreal bridge UI
-
-## Implementation Order
-1. Auto-Heal + Runtime Safety (foundation — prevents crashes during development)
-2. Environment Engine (independent, high value)
-3. Enhanced Ballistic Physics (depends on environment wind)
-4. Cluster Sync (complex, builds on existing sync layer)
-5. Unreal Bridge (independent WebSocket bridge)
-6. AI Optimizer (observes everything, built last)
-7. Performance Governor enhancements (integrates with AI optimizer)
+| File | Change |
+|------|--------|
+| `src/components/editor/SkyCanvas.tsx` | Raise CAMERA_MIN_Y to 5, maxPolarAngle to 0.75π, minDistance to 2, near to 1.0, add altitude damping and per-frame Y-delta clamp, add tilesReady-aware ground visibility |
+| `src/core/geo/GeoCameraController.tsx` | Clamp Y in orbit mode, clamp flyTo intermediates |
+| `src/core/geo/GoogleTilesEngine.tsx` | Add tilesReady state, wrap update() in try/catch, expose loading signal |
+| `src/components/editor/skycanvas/GroundSystem.tsx` | Add polygonOffset to GrassGround material, lower Y position to -0.05 |
 
