@@ -259,7 +259,7 @@ function GrassGround() {
 
   return (
     <mesh position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <planeGeometry args={[100000, 100000, 1, 1]} />
+      <planeGeometry args={[10000, 10000, 1, 1]} />
       <shaderMaterial
         uniforms={uniforms}
         vertexShader={TERRAIN_VERTEX}
@@ -393,7 +393,7 @@ function GroundFog() {
 
   const fogSystem = useMemo(() => {
     const sys = createVolumetricFogPlane(
-      100000,
+      10000,
       new THREE.Color(0.03, 0.04, 0.08),
       0.4
     );
@@ -432,7 +432,7 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
 
   return (
     <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <planeGeometry args={[100000, 100000, 1, 1]} />
+      <planeGeometry args={[10000, 10000, 1, 1]} />
       <shaderMaterial
         uniforms={uniforms}
         vertexShader={`
@@ -620,7 +620,7 @@ function SyntheticGrassGround({ brightness }: { brightness: number }) {
 
   return (
     <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <planeGeometry args={[100000, 100000, 1, 1]} />
+      <planeGeometry args={[10000, 10000, 1, 1]} />
       <shaderMaterial
         uniforms={uniforms}
         vertexShader={SYNTHETIC_GRASS_VERTEX}
@@ -638,7 +638,7 @@ function ConcreteGround({ brightness }: { brightness: number }) {
   const groundColor = useMemo(() => new THREE.Color(0.07 * b, 0.07 * b, 0.075 * b), [b]);
   return (
     <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <planeGeometry args={[100000, 100000]} />
+      <planeGeometry args={[10000, 10000]} />
       <meshStandardMaterial
         color={groundColor}
         roughness={0.92}
@@ -1039,7 +1039,7 @@ function SFXStageEnvironment() {
       <pointLight position={[stageW / 3, 6, 0]} color="#220044" intensity={1.2} distance={40} decay={2} />
 
       <mesh position={[0, -0.03, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[100000, 100000]} />
+        <planeGeometry args={[10000, 10000]} />
         <meshStandardMaterial color="#030305" roughness={0.95} metalness={0} />
       </mesh>
 
@@ -1113,13 +1113,14 @@ function TreelineSilhouette() {
 // ═══════════════════════════════════════════════════════════════════════
 export function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) {
   const sc = useSceneStore(st => st.settings);
+  const gridSnapResolution = useSceneStore(s => s.environment.gridSnapResolution);
 
   const renderGround = () => {
     switch (sc.groundStyle) {
       case 'flat-black':
         return (
       <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-            <planeGeometry args={[100000, 100000]} />
+            <planeGeometry args={[10000, 10000]} />
             <meshStandardMaterial color="#050505" roughness={0.95} metalness={0} />
           </mesh>
         );
@@ -1144,9 +1145,8 @@ export function StageGround({ satelliteTexture }: { satelliteTexture: string | n
       {sc.groundFogIntensity > 0 && <GroundFog />}
 
       {sc.showGrid && (() => {
-        const snap = useSceneStore.getState().environment.gridSnapResolution;
-        const cellSize = snap;
-        const sectionSize = snap * 10;
+        const cellSize = gridSnapResolution;
+        const sectionSize = gridSnapResolution * 10;
         return (
           <>
             <Grid
