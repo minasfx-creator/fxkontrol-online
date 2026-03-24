@@ -849,8 +849,9 @@ function GoogleEarthLighting() {
   
   return (
     <>
-      {/* Night: deep blue sky backdrop instead of absolute black */}
+      {/* Night: deep blue sky backdrop + stars */}
       {isNight && <color attach="background" args={['#0a0e1a']} />}
+      {isNight && <Stars radius={80000} depth={30000} count={8000} factor={5} saturation={0.15} fade speed={0.02} />}
       {/* Atmospheric sky backdrop — visible while Google Earth tiles load */}
       {!isNight && <Sky sunPosition={sunPos} turbidity={8} rayleigh={2} mieCoefficient={0.005} mieDirectionalG={0.8} />}
       {/* Hemisphere light: sky blue + ground warm — fills Google Earth geometry */}
