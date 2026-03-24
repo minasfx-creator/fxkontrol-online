@@ -5,7 +5,7 @@
  */
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { Flame, Zap, Gauge, Layers, Activity, Radio, Shield, AlertTriangle, Clock, Wifi, Thermometer, Eye, Play, Square, Lock, Unlock } from 'lucide-react';
+import { Flame, Zap, Gauge, Layers, Activity, Radio, Shield, AlertTriangle, Clock, Wifi, Thermometer, Eye, Play, Square, Lock, Unlock, SkipBack, SkipForward } from 'lucide-react';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useSfxChannelStore } from '@/store/useSfxChannelStore';
 import { useProjectStore } from '@/store/useProjectStore';
