@@ -906,7 +906,7 @@ function FlyControls({ onSpeedChange }: { onSpeedChange?: (speed: number) => voi
     if (k['KeyQ']) camera.position.y -= move;
 
     // Clamp
-    camera.position.y = Math.max(0.5, camera.position.y);
+    camera.position.y = Math.max(5, camera.position.y);
   });
 
   return null;
