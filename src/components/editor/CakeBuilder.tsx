@@ -336,18 +336,61 @@ export default function CakeBuilder() {
           </div>
         </div>
 
-        {/* Effect selector */}
+        {/* Effect source: Library or VDL */}
         <div>
-          <label className="text-[9px] text-muted-foreground/60 font-mono uppercase">Efeito Base</label>
-          <select
-            value={config.effectId}
-            onChange={e => setConfig(c => ({ ...c, effectId: e.target.value }))}
-            className="w-full bg-muted/30 border border-border/20 rounded-lg px-2 py-1.5 text-xs text-foreground mt-0.5"
-          >
-            {pyroEffects.map(e => (
-              <option key={e.id} value={e.id}>{e.icon} {e.name}</option>
-            ))}
-          </select>
+          <div className="flex items-center gap-2 mb-1">
+            <label className="text-[9px] text-muted-foreground/60 font-mono uppercase">Efeito</label>
+            <button
+              onClick={() => setUseVDL(v => !v)}
+              className={cn(
+                "flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[7px] font-mono font-bold tracking-wider border transition-all",
+                useVDL
+                  ? "border-primary/30 text-primary bg-primary/10"
+                  : "border-border/20 text-muted-foreground/40 hover:text-muted-foreground/60"
+              )}
+            >
+              <Type className="w-2.5 h-2.5" />
+              VDL
+            </button>
+          </div>
+
+          {useVDL ? (
+            <div className="space-y-1">
+              <input
+                value={vdlInput}
+                onChange={e => setVdlInput(e.target.value)}
+                className="w-full bg-muted/30 border border-border/20 rounded-lg px-2.5 py-1.5 text-xs text-foreground font-mono placeholder:text-muted-foreground/30"
+                placeholder="ex: 100mm Red Peony w/ Silver Tail"
+              />
+              {vdlResult && (
+                <div className="flex flex-wrap gap-1 px-1">
+                  <span className="text-[7px] font-mono px-1 py-0.5 rounded bg-primary/10 text-primary">{vdlResult.caliberMM}mm</span>
+                  {vdlResult.colorNames.map((c, i) => (
+                    <span key={i} className="text-[7px] font-mono px-1 py-0.5 rounded" style={{
+                      backgroundColor: vdlResult.colors[i] + '20',
+                      color: vdlResult.colors[i],
+                    }}>{c}</span>
+                  ))}
+                  <span className="text-[7px] font-mono px-1 py-0.5 rounded bg-muted/20 text-muted-foreground/60">{vdlResult.typeName}</span>
+                  {vdlResult.impliesTrail && <span className="text-[7px] font-mono px-1 py-0.5 rounded bg-amber-500/10 text-amber-400">trail</span>}
+                  {vdlResult.firingPattern && <span className="text-[7px] font-mono px-1 py-0.5 rounded bg-cyan-500/10 text-cyan-400">{vdlResult.firingPattern}</span>}
+                </div>
+              )}
+              {vdlInput && !vdlResult && (
+                <span className="text-[7px] font-mono text-red-400/60 px-1">VDL inválido</span>
+              )}
+            </div>
+          ) : (
+            <select
+              value={config.effectId}
+              onChange={e => setConfig(c => ({ ...c, effectId: e.target.value }))}
+              className="w-full bg-muted/30 border border-border/20 rounded-lg px-2 py-1.5 text-xs text-foreground mt-0.5"
+            >
+              {pyroEffects.map(e => (
+                <option key={e.id} value={e.id}>{e.icon} {e.name}</option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Position selector */}
