@@ -99,13 +99,13 @@ export default function GoogleTilesLayer() {
     const tiles = new TilesRenderer();
 
     tiles.registerPlugin(new GoogleCloudAuthPlugin({ apiToken: apiKey }));
-    tiles.registerPlugin(new TileCompressionPlugin());
+    // TileCompressionPlugin removed — crashes with 'content' undefined in v0.4
     tiles.registerPlugin(new TilesFadePlugin());
     tiles.registerPlugin(new UpdateOnChangePlugin());
     tiles.registerPlugin(new UnloadTilesPlugin());
 
     tiles.errorTarget = SSE_TIERS.high;
-    tiles.errorThreshold = 40;
+    // errorThreshold removed — deprecated in 3d-tiles-renderer v0.4
 
     const group = groupRef.current;
     group.name = 'GoogleTilesGroup';
