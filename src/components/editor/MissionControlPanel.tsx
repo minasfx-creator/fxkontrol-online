@@ -147,6 +147,12 @@ export function MissionControlPanel() {
     return () => { unsub(); clearInterval(poll); };
   }, []);
 
+  // Track frame sync state
+  useEffect(() => {
+    const poll = setInterval(() => setFrameSyncState(frameSyncEngine.getState()), 500);
+    return () => clearInterval(poll);
+  }, []);
+
   const runDiagnostics = useCallback(async () => {
     setRunning(true);
     const r = await diagnostic.runFullCheck();
