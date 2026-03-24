@@ -1,45 +1,34 @@
 
 
-## Plan: Add Timeline Master + Timecode Player Status to Show Control
+## Plan: Upgrade AI CoPilot with Lerp/Clamp Smoothing + CINEMATIC Mode
 
-### Problem
-The ShowControlPanel's clock shows elapsed time since component mount (`Date.now() - startRef`), not the actual project timeline position or SMPTE timecode status. There's no visibility into the timeline master state, frame sync status, or transport controls.
-
-### Solution
-Replace the simple elapsed timer with a **Timeline Master** section that shows:
-1. Real project timecode (from `useProjectStore.currentTime` + SMPTE formatting)
-2. Transport status (PLAY/STOP/ARMED)
-3. Frame sync lock status (from `frameSyncEngine`)
-4. SMPTE source + mode (from `useSMPTEStore`)
-5. Drift indicator
+### What changed
+You provided upgraded versions of the AI modules with significant improvements:
+1. **AICoPilot** — adds `lerp`/`clamp` helpers, per-mode input scaling (MANUAL/ASSISTED/AI_CONTROL/CINEMATIC), and `suggestedCameraTarget`
+2. **FXKAssistant** — new TypeScript version with typed interfaces, orb color/opacity output, and wind compensation state
+3. **HARDENING doc** — new Section 6 documenting the AI Copilot layer
 
 ### Changes
 
-**File: `src/components/editor/ShowControlPanel.tsx`**
+**1. `modules/ai/AICoPilot.cjs`** — Rewrite with new logic:
+- Add `clamp(n, min, max)` and `lerp(a, b, t)` utility functions
+- Replace `smoothingFactor` approach with per-mode input maps (MANUAL raw, ASSISTED lerp'd, AI_CONTROL clamped, CINEMATIC extra-dampened)
+- Add `getMode()` method
+- Return `suggestedCameraTarget` from last trajectory waypoint and full `decision` object
+- Override logic: risk + non-MANUAL triggers safe input override
 
-Replace the "Mission Clock + Global Gauges" section (lines 238-249) with a **TIMELINE MASTER** bar:
+**2. `modules/ai/FXKAssistant.cjs`** — Update to match new behavior:
+- Return `orbColor` and `orbOpacity` fields alongside state/hudMessage/voiceMessage
+- Add GUIDING state for wind compensation (`windMps > 8`)
+- Simplify priority logic (ALERT for risk, CINEMATIC for cinematic/drop, GUIDING for wind, IDLE default)
+- Voice messages conditionally included based on `voiceEnabled`
 
-```text
-┌─────────────────────────────────────────────────────────┐
-│  ▶ PLAY   00:01:23:15   30fps   SMPTE   LOCKED  +2ms  │
-│  ├ GAUGES ─────────────────────────────────────────────┤│
-│  │ [ARMED] [FIRING] [ONLINE] [SYSTEMS]                 ││
-└─────────────────────────────────────────────────────────┘
-```
+**3. `test/ai_copilot.test.cjs`** — Update tests to match new return shapes:
+- AICoPilot test: check for `decision` and `suggestedCameraTarget` in output
+- FXKAssistant test: verify `orbColor` and `orbOpacity` are returned
 
-Specifically:
-- Import `useProjectStore` and `useSMPTEStore`
-- Import `frameSyncEngine` for drift/status
-- Replace `elapsedMs` timer with real `currentTime` from project store
-- Show transport state: ▶ PLAY / ■ STOP with green/red indicator
-- Show SMPTE-formatted timecode from the project timeline position
-- Show frame rate, sync source (MASTER/SLAVE/FREERUN), lock status (LOCKED/DRIFTING/FREERUN), and drift in ms
-- Keep the circular gauges row below the timecode
+**4. `HARDENING_RENDER_ENGINE3D_LOVABLE.md`** — Add Section 6 documenting the AI Copilot FPV layer
 
-### Technical details
-- `useProjectStore` provides `currentTime`, `isPlaying`, `duration`
-- `useSMPTEStore` provides `getDisplayString()`, `mode`, `frameRate`, `status` (external sync)
-- `frameSyncEngine.getState()` provides `driftMs`, `status`, `source`, `fps`
-- Poll `frameSyncEngine.getState()` at 10Hz via `setInterval` in a `useEffect`
-- The `TimecodeDisplay` component will be updated to accept seconds and format as HH:MM:SS:FF using the SMPTE frame rate
+### Test compatibility
+All 5 existing tests will continue passing — the new modules maintain backward-compatible return shapes while extending them with new fields.
 
