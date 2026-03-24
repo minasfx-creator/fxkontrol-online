@@ -306,6 +306,7 @@ function Index() {
       altitude: 0,
     });
     setAppPhase('editor');
+    setShowViewportGlobe(false);
   }, []);
 
   const handleMobileOpenPanel = useCallback((id: PanelId) => {
