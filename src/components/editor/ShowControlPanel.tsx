@@ -13,6 +13,7 @@ import { useSMPTEStore } from '@/store/useSMPTEStore';
 import { frameSyncEngine, type FrameSyncState } from '@/core/sync/frameSyncEngine';
 import { supabase } from '@/integrations/supabase/client';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import AICoPilotPanel from './AICoPilotPanel';
 
 interface EventLog {
   id: string;
@@ -419,6 +420,9 @@ export default function ShowControlPanel({ fs = false }: { fs?: boolean; onClose
           );
         })}
       </div>
+
+      {/* AI CoPilot Panel */}
+      <AICoPilotPanel />
 
       {/* Event Log */}
       <div className="shrink-0 border-t relative z-10" style={{ borderColor: 'hsl(32 100% 50% / 0.08)' }}>
