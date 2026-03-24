@@ -34,6 +34,7 @@ import SiteModelRenderer from './SiteModelRenderer';
 import StageFixtures from './StageFixtures';
 import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Globe, Download, ScanEye, Cog, Paintbrush, MapPinned, Film, ChevronDown, Plus, Lock, Ruler, Bookmark, Trash2, Navigation } from 'lucide-react';
 import SelectionStatusBar from './SelectionStatusBar';
+import AICoPilotOverlay from './AICoPilotOverlay';
 import { cn } from '@/lib/utils';
 import {
   CometEffect,
