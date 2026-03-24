@@ -136,9 +136,14 @@ function CurveCanvas({
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!dragging || !svgRef.current) return;
     const rect = svgRef.current.getBoundingClientRect();
-    const { time, value } = fromSVG(e.clientX - rect.left, e.clientY - rect.top);
+    let { time, value } = fromSVG(e.clientX - rect.left, e.clientY - rect.top);
+    // Snap-to-beat quantization
+    if (snapEnabled && snapInterval > 0) {
+      time = Math.round(time / snapInterval) * snapInterval;
+      time = Math.max(0, Math.min(1, time));
+    }
     onPointMove(dragging.curveId, dragging.pointIdx, time, value);
-  }, [dragging, fromSVG, onPointMove]);
+  }, [dragging, fromSVG, onPointMove, snapEnabled, snapInterval]);
 
   const handleMouseUp = useCallback(() => setDragging(null), []);
 
