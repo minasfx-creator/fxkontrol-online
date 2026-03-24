@@ -112,9 +112,10 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
     <div className={cn("flex flex-col gap-2", fs ? "p-4" : "p-2")}>
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full grid grid-cols-3 h-7">
+        <TabsList className="w-full grid grid-cols-4 h-7">
           <TabsTrigger value="module" className="text-[9px] h-6"><Cpu className="w-3 h-3 mr-1" />Módulo</TabsTrigger>
           <TabsTrigger value="modes" className="text-[9px] h-6"><Zap className="w-3 h-3 mr-1" />Modos</TabsTrigger>
+          <TabsTrigger value="diagnostics" className="text-[9px] h-6"><Signal className="w-3 h-3 mr-1" />RF/Diag</TabsTrigger>
           <TabsTrigger value="hardware" className="text-[9px] h-6"><Wrench className="w-3 h-3 mr-1" />Hardware</TabsTrigger>
         </TabsList>
 
