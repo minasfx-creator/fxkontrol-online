@@ -202,6 +202,35 @@ const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref)
 
   return null;
 });
+/**
+ * HardeningWatchdog — feeds FPS/renderer metrics to the hardening engine each frame.
+ * Runs inside the R3F Canvas context.
+ */
+function HardeningWatchdog() {
+  const { gl } = useThree();
+  const frameRef = useRef(0);
+
+  // Start metrics console reporting on mount
+  useEffect(() => {
+    startMetricsReporting(60); // Log every 60s
+    return () => stopMetricsReporting();
+  }, []);
+
+  useFrame((_state, delta) => {
+    frameRef.current++;
+    // Sample at ~10Hz (every 6 frames at 60fps)
+    if (frameRef.current % 6 !== 0) return;
+
+    const fps = delta > 0 ? 1 / delta : 60;
+    const frameTimeMs = delta * 1000;
+    const info = gl.info.render;
+
+    pushFrameMetrics(fps, frameTimeMs, info.calls, info.triangles);
+    watchdogTick(fps);
+  });
+
+  return null;
+}
 
 // Module-level refs — local aliases for backward compat within this file
 let _skyScatterUniforms: { uExplosionScatter: { value: THREE.Color }; uScatterIntensity: { value: number } } | null = null;
