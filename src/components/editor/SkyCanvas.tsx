@@ -87,6 +87,7 @@ import VolumetricSmoke from './effects/VolumetricSmoke';
 import { isInFrustum } from '@/lib/spatialCuller';
 import { resetPools } from '@/lib/geometryPool';
 import ViewportGeoTools, { type GeoToolMode, type GeoMarker, type GeoRulerPoint, type GeoPath } from './ViewportGeoTools';
+import GoogleTilesLayer from '@/core/geo/GoogleTilesEngine';
 import { GeoToolsScene, GeoToolClickHandler } from './GeoToolsR3F';
 import { RenderDebugToggle, RenderDebugPanel, setDebugExposure, setDebugBurstLoad, setDebugLOD, setDebugRendererInfo } from './RenderDebugOverlay';
 import { clampNiagaraHDR, getNiagaraBudgets, setAdaptivePipelineState } from '@/lib/niagaraBlenderRules';
@@ -1442,6 +1443,7 @@ export default function SkyCanvas() {
   const handleContextRemount = useCallback(() => setCanvasInstanceKey(prev => prev + 1), []);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const environment = useSceneStore(st => st.environment);
+  const google3DTilesEnabled = useSceneStore(st => st.settings.google3DTilesEnabled);
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
 
   // Exit fly mode when pointer lock is lost (ESC)
@@ -1671,7 +1673,8 @@ export default function SkyCanvas() {
         <SceneFog />
         {!isMobile && <DelayedMount delay={2500}><WeatherEffects /></DelayedMount>}
 
-        <StageGround satelliteTexture={satelliteTexture} />
+        {!google3DTilesEnabled && <StageGround satelliteTexture={satelliteTexture} />}
+        {google3DTilesEnabled && <GoogleTilesLayer />}
         <FinaleAxesHelper />
         <DoubleClickFocus />
         <SiteModelRenderer />

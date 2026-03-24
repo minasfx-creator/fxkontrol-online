@@ -238,6 +238,7 @@ export interface SceneSettings {
   geoAnchorAlt: number;
   tideOffset: number;             // -2 to 2 meters dynamic tide adjustment
   fieldViewMode: boolean;         // high-contrast outdoor UI
+  google3DTilesEnabled: boolean;   // Google Photorealistic 3D Tiles digital twin
 
   // ═══ Ultra-Smooth Rendering ═══
   adaptiveQualityEnabled: boolean;  // auto-adjust quality based on FPS
@@ -355,6 +356,7 @@ const DEFAULT_SETTINGS: SceneSettings = {
   geoAnchorAlt: 0,
   tideOffset: 0,
   fieldViewMode: false,
+  google3DTilesEnabled: false,
 
   // Ultra-Smooth Rendering defaults
   adaptiveQualityEnabled: true,

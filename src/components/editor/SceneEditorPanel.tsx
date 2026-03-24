@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Sun, Moon, Cloud, CloudRain, Wind, Eye, Thermometer, Droplets, Sparkles, Monitor, Paintbrush, TreePine, Grid3x3, RotateCw, Layers, Zap, Image, Upload, Trash2, X, Mountain, Cloudy, Snowflake, CloudFog, Flame, Compass, Cpu, Gauge } from 'lucide-react';
+import { Sun, Moon, Cloud, CloudRain, Wind, Eye, Thermometer, Droplets, Sparkles, Monitor, Paintbrush, TreePine, Grid3x3, RotateCw, Layers, Zap, Image, Upload, Trash2, X, Mountain, Cloudy, Snowflake, CloudFog, Flame, Compass, Cpu, Gauge, Globe } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -258,6 +258,16 @@ export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
           <div className="pt-2 border-t border-border/10 space-y-2">
             <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-wider">Geo Engine</span>
             <GeoSearchPanel />
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] text-muted-foreground flex items-center gap-1"><Globe className="h-3 w-3" /> Google Earth 3D</span>
+              <Switch
+                checked={settings.google3DTilesEnabled}
+                onCheckedChange={v => {
+                  updateSettings({ google3DTilesEnabled: v, floatingOriginEnabled: v || settings.floatingOriginEnabled });
+                  if (v) toast.success('Digital Twin carregado');
+                }}
+              />
+            </div>
             <div className="flex items-center justify-between">
               <span className="text-[9px] text-muted-foreground">Floating Origin</span>
               <Switch
