@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Stars, Grid, PerspectiveCamera, ContactShadows } from '@react-three/drei';
+import { OrbitControls, Stars, Grid, PerspectiveCamera, ContactShadows, Sky } from '@react-three/drei';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
 import React, { useRef, useMemo, useEffect, useState, useCallback, Component, ErrorInfo, ReactNode } from 'react';
@@ -826,6 +826,48 @@ function GeoTimeOfDaySync() {
   return null;
 }
 
+/**
+ * GoogleEarthLighting — adds hemisphere + ambient light specifically for
+ * illuminating Google 3D Tiles which appear dark under the HDR moonlight rig.
+ * Also renders a drei <Sky /> as atmospheric backdrop while tiles load.
+ */
+function GoogleEarthLighting() {
+  const google3DTilesEnabled = useSceneStore(st => st.settings.google3DTilesEnabled);
+  const timeOfDay = useSceneStore(st => st.settings.timeOfDay);
+  
+  // Compute sun position from timeOfDay (0-24h)
+  const sunPos = useMemo(() => {
+    const angle = ((timeOfDay - 6) / 12) * Math.PI;
+    const y = Math.sin(angle) * 100;
+    const x = Math.cos(angle) * 100;
+    return [x, Math.max(y, -20), 50] as [number, number, number];
+  }, [timeOfDay]);
+  
+  const isNight = timeOfDay >= 20 || timeOfDay <= 5;
+  
+  if (!google3DTilesEnabled) return null;
+  
+  return (
+    <>
+      {/* Atmospheric sky backdrop — visible while Google Earth tiles load */}
+      {!isNight && <Sky sunPosition={sunPos} turbidity={8} rayleigh={2} mieCoefficient={0.005} mieDirectionalG={0.8} />}
+      {/* Hemisphere light: sky blue + ground warm — fills Google Earth geometry */}
+      <hemisphereLight args={[0x87ceeb, 0x362d1f, isNight ? 0.08 : 0.4]} />
+      {/* Ambient fill — prevents completely dark tiles */}
+      <ambientLight intensity={isNight ? 0.05 : 0.3} color={isNight ? 0x1a1a3a : 0xffffff} />
+      {/* Directional sunlight matching sky position */}
+      {!isNight && (
+        <directionalLight 
+          position={sunPos} 
+          intensity={0.6} 
+          color={0xffeedd} 
+          castShadow={false}
+        />
+      )}
+    </>
+  );
+}
+
 function SceneFog() {
   const s = useSceneStore(st => st.settings);
   if (s.fogDensity <= 0) return null;
@@ -1535,6 +1577,18 @@ export default function SkyCanvas() {
     return () => document.removeEventListener('pointerlockchange', onLockChange);
   }, [flyMode]);
 
+  // Ctrl+Shift+D — toggle debug overlay
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+        e.preventDefault();
+        setShowDebugOverlay(v => !v);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   // ═══ Google Earth-style Geo Tools state ═══
   const [geoTool, setGeoTool] = useState<GeoToolMode>('none');
   const [geoMarkers, setGeoMarkers] = useState<GeoMarker[]>([]);
@@ -1757,6 +1811,7 @@ export default function SkyCanvas() {
         {!google3DTilesEnabled && <StageGround satelliteTexture={satelliteTexture} />}
         {google3DTilesEnabled && <GoogleTilesLayer />}
         {google3DTilesEnabled && <GeoCameraController />}
+        <GoogleEarthLighting />
         <FinaleAxesHelper />
         <DoubleClickFocus />
         <SiteModelRenderer />
