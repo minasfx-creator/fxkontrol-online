@@ -9,7 +9,7 @@ import {
   Play, Pause, Square, Volume2, Eye, EyeOff, Lock, Unlock, Flame, Sparkles,
   Plane, Lightbulb, Cable, Signal, Battery, Cpu, Timer, BarChart3, Layers,
   Target, Crosshair, MonitorPlay, Gauge, CircuitBoard, Power, Wifi, WifiOff,
-  Magnet, FlaskConical, Link2, LinkBreak
+  Magnet, FlaskConical, Link2, Unlink
 } from 'lucide-react';
 import { useShowCommanderEngine } from '@/hooks/useShowCommanderEngine';
 import { Badge } from '@/components/ui/badge';
