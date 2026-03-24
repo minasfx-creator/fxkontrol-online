@@ -1577,6 +1577,18 @@ export default function SkyCanvas() {
     return () => document.removeEventListener('pointerlockchange', onLockChange);
   }, [flyMode]);
 
+  // Ctrl+Shift+D — toggle debug overlay
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+        e.preventDefault();
+        setShowDebugOverlay(v => !v);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   // ═══ Google Earth-style Geo Tools state ═══
   const [geoTool, setGeoTool] = useState<GeoToolMode>('none');
   const [geoMarkers, setGeoMarkers] = useState<GeoMarker[]>([]);
