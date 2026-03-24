@@ -1,35 +1,75 @@
 
+Objetivo: eliminar o crash do viewport e corrigir o “sugado para o chão / sem conseguir mexer” no fluxo Globe embutido.
 
-# Apply Camera/Terrain Stabilization Fixes
+Diagnóstico (confirmado no código atual):
+- Do I know what the issue is? Sim.
+- O crash não é mais por Canvas aninhado; agora é por duas cenas WebGL pesadas ativas ao mesmo tempo:
+  - `SkyCanvas` fica montado no editor
+  - `GlobeSelector` (com outro `<Canvas>`) fica por cima até confirmar local
+- O “sugado para o chão” vem da lógica de clamp no `SkyCanvas`:
+  - limiter de queda (`yDelta < -50`) pode forçar descida contínua em transições
+  - `_lastValidY` inicial fixo (300) + presets baixos cria comportamento agressivo
+  - alguns presets iniciam abaixo do piso mínimo (ex.: `1.7m`), ativando clamp logo ao entrar
+- “Sem conseguir mexer” pode ocorrer por `OrbitControls.enabled` ficar em estado bloqueado após transição/evento.
 
-## Issues Found in Current Code
+Plano de implementação:
+1) Garantir 1 único WebGL ativo no onboarding (fix principal de crash)
+- Arquivo: `src/pages/Index.tsx`
+- Quando `showViewportGlobe === true`, NÃO montar `SkyCanvas` ainda (nem overlays dependentes dele).
+- Renderizar apenas uma superfície leve (placeholder/loader) no centro e manter o `GlobeSelector` overlay.
+- Após `onLocationSelected`/`onSkip`, montar `SkyCanvas` e overlays normalmente.
+- Resultado: elimina disputa de contexto GPU durante seleção de cidade.
 
-1. **Log spam**: `[Camera] altitude clamped to safe floor` fires every frame when camera Y < 6 — floods console, degrades performance
-2. **FlyControls inconsistency**: Line 909 clamps camera Y at `0.5` instead of `5` — bypasses the CAMERA_MIN_Y safety
-3. **Depth buffer**: `logarithmicDepthBuffer: true` with `far=500000` creates precision issues causing z-fighting on ground surfaces. Should use standard depth with reduced far plane
-4. **WORLD_HALF_EXTENT**: Currently 80,000 but should be 250,000 to match the geo-scale system
+2) Endurecer transição de controles ao sair do Globe
+- Arquivo: `src/pages/Index.tsx`
+- Em `handleLocationSelected`, além de ocultar o globe:
+  - forçar evento de liberação de controle (`box-select-active = false`) para evitar estado “travado”.
+- Resultado: evita entrar no editor com câmera desabilitada.
 
-## Changes
+3) Corrigir clamp vertical para não “puxar” câmera
+- Arquivo: `src/components/editor/SkyCanvas.tsx`
+- Ajustar `clampToWorldBounds`:
+  - inicializar `_lastValidY` com a altura real da câmera no primeiro frame útil (em vez de fixo).
+  - detectar “teleporte/transição grande” e resetar baseline do clamp.
+  - aplicar limiter de queda apenas em navegação manual (não durante transições/cinemática).
+  - manter log de clamp com rising-edge (sem spam por frame) também para `altitude drop clamped`.
+- Resultado: para o efeito de descida forçada e melhora a controlabilidade.
 
-### 1. Fix log spam — `SkyCanvas.tsx` clampToWorldBounds (~line 956)
-- Only log altitude clamp warning once per transition (not every frame)
-- Add a ref `_wasClampedLastFrame` to track state, log only on rising edge
+4) Alinhar presets com piso de segurança
+- Arquivo: `src/components/editor/skycanvas/sharedState.tsx`
+- Subir presets que começam abaixo de `CAMERA_MIN_Y` (ex.: 1.7/2m) para valores seguros.
+- Resultado: evita clamp imediato ao trocar preset/entrar no editor.
 
-### 2. Fix FlyControls Y clamp — `SkyCanvas.tsx` (~line 909)
-- Change `Math.max(0.5, camera.position.y)` to `Math.max(5, camera.position.y)`
+5) Validação funcional (fim-a-fim)
+- Fluxo alvo:
+  1. abrir `/editor`
+  2. selecionar cidade no globe embutido
+  3. confirmar local
+  4. editor carregar sem “THREE.WebGLRenderer: Context Lost”
+  5. câmera responder (pan/zoom/orbit/fly) sem ser arrastada para `Y=5`
+- Verificar console sem spam de:
+  - `[Camera] altitude drop clamped`
+  - `[Camera] altitude clamped to safe floor`
+  - `Context Lost` recorrente
 
-### 3. Depth buffer optimization — `SkyCanvas.tsx` (~line 1676-1684)
-- Set `logarithmicDepthBuffer: false`
-- Change `far` from `500000` to `30000`
-- Keep `near` at `1.0`
+Arquivos que serão alterados:
+- `src/pages/Index.tsx`
+- `src/components/editor/SkyCanvas.tsx`
+- `src/components/editor/skycanvas/sharedState.tsx`
 
-### 4. Expand world bounds — `SkyCanvas.tsx` (~line 927)
-- Change `WORLD_HALF_EXTENT` from `80000` to `250000`
-- Change `CAMERA_MAX_Y` from `75000` to `40000` (more reasonable ceiling)
+Detalhes técnicos (resumo de arquitetura):
+```text
+ANTES
+Index (editor)
+ ├─ SkyCanvas (Canvas A, pesado)
+ └─ GlobeSelector overlay (Canvas B, pesado)
+=> risco alto de context loss
 
-## Files Modified
-
-| File | Change |
-|------|--------|
-| `src/components/editor/SkyCanvas.tsx` | Fix log spam, FlyControls Y clamp, depth buffer config, world bounds |
-
+DEPOIS
+Index (editor com globe aberto)
+ ├─ Placeholder leve (sem Canvas A)
+ └─ GlobeSelector (Canvas único)
+Confirmou local:
+ ├─ SkyCanvas (Canvas único)
+ └─ GlobeSelector desmontado
+```
