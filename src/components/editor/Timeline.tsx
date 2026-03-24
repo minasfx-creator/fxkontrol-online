@@ -980,7 +980,7 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.key === ' ') { e.preventDefault(); setPlaying(!isPlaying); }
+      // Space play/pause handled globally by useKeybindings — do NOT duplicate here
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (selectedTimelineItemIds.length > 0) { removeMultipleTimelineItems(selectedTimelineItemIds); }
         else if (selectedTimelineItemId) { removeTimelineItem(selectedTimelineItemId); }
