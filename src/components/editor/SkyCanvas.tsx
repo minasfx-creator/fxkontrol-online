@@ -1692,7 +1692,7 @@ export default function SkyCanvas() {
           powerPreference: 'high-performance',
           alpha: false,
           stencil: false,
-          logarithmicDepthBuffer: false,
+          logarithmicDepthBuffer: true,
           outputColorSpace: THREE.SRGBColorSpace,
         }}
         dpr={isMobile ? [1, 1.5] : [1.5, 2]}
