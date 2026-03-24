@@ -552,9 +552,11 @@ function ZoomProgress({ phase }: { phase: string }) {
 // ─── Main component ───
 interface GlobeSelectorProps {
   onLocationSelected: (location: { name: string; lat: number; lng: number }) => void;
+  mode?: 'fullscreen' | 'embedded';
+  onSkip?: () => void;
 }
 
-export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps) {
+export default function GlobeSelector({ onLocationSelected, mode = 'fullscreen', onSkip }: GlobeSelectorProps) {
   const [search, setSearch] = useState('');
   const [selectedCity, setSelectedCity] = useState<typeof CITIES[0] | null>(null);
   const [freePin, setFreePin] = useState<{ lat: number; lng: number } | null>(null);
