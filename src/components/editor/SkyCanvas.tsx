@@ -1820,6 +1820,9 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
   const targetPos = useRef(new THREE.Vector3(...targetPosition));
   const targetLook = useRef(new THREE.Vector3(...targetLookAt));
   const animating = useRef(false);
+  const _lastValidY = useRef(300);
+  const CAMERA_MIN_Y = 5;
+  const CAMERA_MAX_Y = 5000;
 
   useEffect(() => {
     if (freeLook) {
@@ -1832,11 +1835,39 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
   }, [targetPosition, targetLookAt, freeLook]);
 
   useFrame(() => {
-    if (!animating.current || !controlsRef.current || freeLook) return;
-    camera.position.lerp(targetPos.current, 0.04);
-    controlsRef.current.target.lerp(targetLook.current, 0.04);
-    controlsRef.current.update();
-    if (camera.position.distanceTo(targetPos.current) < 0.05) animating.current = false;
+    if (!controlsRef.current) return;
+
+    // Always clamp camera altitude
+    let cy = THREE.MathUtils.clamp(camera.position.y, CAMERA_MIN_Y, CAMERA_MAX_Y);
+
+    // Prevent sudden altitude drops (max 50m per frame)
+    const yDelta = cy - _lastValidY.current;
+    if (yDelta < -50) {
+      cy = _lastValidY.current - 50;
+    }
+
+    // Altitude-dependent damping near ground
+    if (cy < 20) {
+      const dampFactor = Math.max(0.3, cy / 20);
+      const dampedY = _lastValidY.current + (cy - _lastValidY.current) * dampFactor;
+      cy = Math.max(CAMERA_MIN_Y, dampedY);
+    }
+
+    if (Math.abs(cy - camera.position.y) > 0.01) {
+      camera.position.y = cy;
+    }
+    _lastValidY.current = cy;
+
+    // Clamp target
+    controlsRef.current.target.y = Math.max(0, controlsRef.current.target.y);
+
+    // Preset animation
+    if (animating.current && !freeLook) {
+      camera.position.lerp(targetPos.current, 0.04);
+      controlsRef.current.target.lerp(targetLook.current, 0.04);
+      controlsRef.current.update();
+      if (camera.position.distanceTo(targetPos.current) < 0.05) animating.current = false;
+    }
   });
 
   return (
@@ -1847,7 +1878,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook }: { targetPo
       rotateSpeed={0.6}
       panSpeed={0.8}
       zoomSpeed={1.2}
-      maxPolarAngle={Math.PI * 0.48}
+      maxPolarAngle={Math.PI * 0.75}
       minDistance={2}
       maxDistance={2000}
       enablePan
