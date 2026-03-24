@@ -90,12 +90,13 @@ export default function ClientPresentationMode({ active, onExit }: ClientPresent
       settings.geoAnchorAlt,
     );
 
-    useProjectStore.getState().setCameraKeyframes(keyframes);
+    // Set keyframes directly on the store
+    useProjectStore.setState({ cameraKeyframes: keyframes });
     useProjectStore.getState().setCameraAnimationEnabled(true);
 
     // Start playback
     if (!useProjectStore.getState().isPlaying) {
-      useProjectStore.getState().play();
+      useProjectStore.getState().setPlaying(true);
     }
 
     // Start orbit as fallback
