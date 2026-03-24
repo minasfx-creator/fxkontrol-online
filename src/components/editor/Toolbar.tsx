@@ -27,6 +27,7 @@ import { ConvertToFanDialog, ConvertToSequenceDialog } from './ScriptingDialogs'
 import { exportVVIZ, exportFiringCSV, exportSkyc, downloadFile } from '@/lib/exportEngine';
 import LanguageSwitcher from './LanguageSwitcher';
 import FullscreenCommandMenu from './FullscreenCommandMenu';
+import ExportModal from './ExportModal';
 
 function TimecodeDisplay() {
   const { currentTime, isPlaying } = useProjectStore();
