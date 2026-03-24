@@ -6,7 +6,7 @@
  */
 
 import { blackbox } from '@/core/reliability';
-import type { FieldBus, TransportMessage } from '@/core/network/fieldBus';
+import { type FieldBus, type TransportMessage, fieldBus as defaultBus } from '@/core/network/fieldBus';
 
 export interface DroneWaypoint {
   droneId: string;

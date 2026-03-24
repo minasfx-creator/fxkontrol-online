@@ -33,7 +33,7 @@ export interface FieldBusState {
 const HEARTBEAT_TIMEOUT = 2000;   // 2s no heartbeat → switch
 const FAILOVER_CHECK_MS = 500;
 
-class FieldBus {
+export class FieldBus {
   private _transports: Transport[] = [];
   private _activeIdx = 0;
   private _failoverCount = 0;
