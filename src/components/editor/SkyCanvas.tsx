@@ -1073,14 +1073,15 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
 
   // Double-click focus: fly camera to a 3D point
   useEffect(() => {
+    const _focusCamDir = new THREE.Vector3();
     const handler = (e: Event) => {
       const { x, y, z } = (e as CustomEvent).detail;
       if (controlsRef.current) {
         targetLook.current.set(x, y, z);
-        // Position camera slightly offset from the focus point
-        const camDir = new THREE.Vector3().subVectors(camera.position, controlsRef.current.target).normalize();
+        // Zero-GC: reuse pre-allocated vector
+        _focusCamDir.subVectors(camera.position, controlsRef.current.target).normalize();
         const dist = Math.max(20, camera.position.distanceTo(controlsRef.current.target) * 0.5);
-        targetPos.current.set(x + camDir.x * dist, Math.max(y + 5, y + camDir.y * dist), z + camDir.z * dist);
+        targetPos.current.set(x + _focusCamDir.x * dist, Math.max(y + 5, y + _focusCamDir.y * dist), z + _focusCamDir.z * dist);
         focusAnimating.current = true;
       }
     };
