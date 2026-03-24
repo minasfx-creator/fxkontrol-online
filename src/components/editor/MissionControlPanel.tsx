@@ -25,11 +25,13 @@ import {
   deterministicClock,
   globalClock,
   globalSync,
+  multiSiteSync,
   type DiagnosticReport,
   type DiagnosticCheck,
   type CheckStatus,
   type ValidationReport,
   type ClockSyncState,
+  type SiteInfo,
 } from '@/core/reliability';
 
 // ── Status Icon ─────────────────────────────────────────────────────

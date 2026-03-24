@@ -24,3 +24,8 @@ export { droneExecutor, type DroneWaypoint } from '@/core/execution/droneExecuto
 // ── Global Sync Layer (v6.0) ───────────────────────────────────────
 export { globalClock, type SyncRole, type ClockSyncState } from '@/core/sync/globalClockAdapter';
 export { globalSync, type GlobalSyncState, type SyncOperator, type OperatorPermission } from '@/core/sync/globalSyncEngine';
+
+// ── Multi-Site Sync Layer (v7.0) ──────────────────────────────────
+export { multiSiteSync, type SiteInfo, type SiteStatus, type MultiSiteState, type ConsistencyResult } from '@/core/sync/multiSiteSyncEngine';
+export { latencyCompensator, type SiteLatencyProfile, type CompensatedTime } from '@/core/sync/latencyCompensator';
+export { multiSiteValidator, type MultiSiteValidationReport, type SiteValidationResult, type ValidationSiteConfig, type SiteValidationStatus } from '@/core/sync/multiSiteValidator';
