@@ -27,6 +27,7 @@ import { ConvertToFanDialog, ConvertToSequenceDialog } from './ScriptingDialogs'
 import { exportVVIZ, exportFiringCSV, exportSkyc, downloadFile } from '@/lib/exportEngine';
 import LanguageSwitcher from './LanguageSwitcher';
 import FullscreenCommandMenu from './FullscreenCommandMenu';
+import ExportModal from './ExportModal';
 
 function TimecodeDisplay() {
   const { currentTime, isPlaying } = useProjectStore();
@@ -342,6 +343,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
   const [droppedFile, setDroppedFile] = useState<{ file: File; type: 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset' | 'ue5map' | 'heightmap' | 'twinmotion' } | null>(null);
   const [saving, setSaving] = useState(false);
   const [commandMenuOpen, setCommandMenuOpen] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   // Listen for viewport file drop events
   useEffect(() => {
@@ -549,6 +551,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
             label="Export"
             icon={Download}
             items={[
+              { label: 'Export Manager...', icon: FileBarChart, onClick: () => setExportModalOpen(true) },
               { label: '.vviz (Finale 3D)', icon: FileJson, onClick: handleExportVVIZ },
               { label: '.skyc (SkyCreator)', icon: Download, onClick: handleExportSkyc },
               { label: 'Firing CSV (Cobra/FireTEK)', icon: Download, onClick: handleExportFiringCSV },
@@ -686,6 +689,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
       <UE5MapImporter open={ue5MapOpen} onOpenChange={(v) => { setUe5MapOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'ue5map' || droppedFile?.type === 'heightmap' ? droppedFile.file : null} />
       <TwinmotionImporter open={twinmotionOpen} onOpenChange={(v) => { setTwinmotionOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'twinmotion' ? droppedFile.file : null} />
       <FullscreenCommandMenu open={commandMenuOpen} onClose={() => setCommandMenuOpen(false)} onOpenPanel={(id) => onOpenPanel?.(id)} />
+      <ExportModal open={exportModalOpen} onOpenChange={setExportModalOpen} />
 
       <div className="flex-1" />
 
