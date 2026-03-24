@@ -1,34 +1,57 @@
 
 
-## Plan: Upgrade AI CoPilot with Lerp/Clamp Smoothing + CINEMATIC Mode
+## Audit: Bugs Found Across the Platform
 
-### What changed
-You provided upgraded versions of the AI modules with significant improvements:
-1. **AICoPilot** — adds `lerp`/`clamp` helpers, per-mode input scaling (MANUAL/ASSISTED/AI_CONTROL/CINEMATIC), and `suggestedCameraTarget`
-2. **FXKAssistant** — new TypeScript version with typed interfaces, orb color/opacity output, and wind compensation state
-3. **HARDENING doc** — new Section 6 documenting the AI Copilot layer
+### BUG 1 (Critical): Timeline Play Does Not Advance Time
 
-### Changes
+**Root cause**: `DeterministicClock.tick()` is never called in a loop. In `SkyCanvas.tsx` (line 179-187), the code calls `deterministicClock.start()` and registers an `onTick` callback that feeds the lockstep engine. However, **nothing ever calls `deterministicClock.tick()`** — there is no `requestAnimationFrame` loop or R3F `useFrame` hook driving it.
 
-**1. `modules/ai/AICoPilot.cjs`** — Rewrite with new logic:
-- Add `clamp(n, min, max)` and `lerp(a, b, t)` utility functions
-- Replace `smoothingFactor` approach with per-mode input maps (MANUAL raw, ASSISTED lerp'd, AI_CONTROL clamped, CINEMATIC extra-dampened)
-- Add `getMode()` method
-- Return `suggestedCameraTarget` from last trajectory waypoint and full `decision` object
-- Override logic: risk + non-MANUAL triggers safe input override
+The `onTick` callback at line 183 is registered to fire when `tick()` is called, but `tick()` itself is never invoked. So `lockstep.tick()` never runs, the `playback` subsystem never advances `currentTime`, and the timeline stays frozen.
 
-**2. `modules/ai/FXKAssistant.cjs`** — Update to match new behavior:
-- Return `orbColor` and `orbOpacity` fields alongside state/hudMessage/voiceMessage
-- Add GUIDING state for wind compensation (`windMps > 8`)
-- Simplify priority logic (ALERT for risk, CINEMATIC for cinematic/drop, GUIDING for wind, IDLE default)
-- Voice messages conditionally included based on `voiceEnabled`
+**Fix**: Add a R3F `useFrame` hook inside `PlaybackClock` that calls `deterministicClock.tick()` every frame:
 
-**3. `test/ai_copilot.test.cjs`** — Update tests to match new return shapes:
-- AICoPilot test: check for `decision` and `suggestedCameraTarget` in output
-- FXKAssistant test: verify `orbColor` and `orbOpacity` are returned
+```typescript
+// Inside PlaybackClock, after the registration useEffect:
+useFrame(() => {
+  deterministicClock.tick();
+});
+```
 
-**4. `HARDENING_RENDER_ENGINE3D_LOVABLE.md`** — Add Section 6 documenting the AI Copilot FPV layer
+This connects the R3F render loop to the deterministic clock, which then fires callbacks, which feed the lockstep, which advances playback.
 
-### Test compatibility
-All 5 existing tests will continue passing — the new modules maintain backward-compatible return shapes while extending them with new fields.
+---
+
+### BUG 2 (Warning): `<button>` nested inside `<button>` in SafetyPanel
+
+**Root cause**: `SafetyPanel.tsx` line 135-153 — a `<Switch>` component (which renders a `<button>`) is placed inside a `<button>` element. This is invalid HTML and triggers a React DOM nesting warning.
+
+**Fix**: Change the outer `<button>` to a `<div role="button" tabIndex={0}>` or restructure so the Switch is outside the clickable button area.
+
+---
+
+### BUG 3 (Warning): ResizablePanel sizes don't sum to 100%
+
+**Root cause**: `Index.tsx` line 549/555/638 — panel `defaultSize` values are `14 + 60 + 20 = 94%` (when a side panel is active). The library expects them to total 100%.
+
+**Fix**: Adjust to `14 + 66 + 20 = 100%` or use dynamic calculation.
+
+---
+
+### BUG 4 (Minor): WebGL Context Loss on mount
+
+Console shows `THREE.WebGLRenderer: Context Lost` at startup. The hardening/recovery code handles this, but context loss on initial mount suggests the canvas is being mounted, then immediately remounted (likely from React StrictMode or the `canvasInstanceKey` state). This is cosmetic but wastes a render cycle.
+
+---
+
+### Changes Summary
+
+| File | Change |
+|---|---|
+| `src/components/editor/SkyCanvas.tsx` | Add `useFrame(() => deterministicClock.tick())` inside `PlaybackClock` |
+| `src/components/editor/SafetyPanel.tsx` | Change outer `<button>` wrapping Switch to `<div role="button">` |
+| `src/pages/Index.tsx` | Fix panel defaultSize values to sum to 100% |
+
+### Technical Detail
+
+The playback fix is the critical one. The architecture is correct (DeterministicClock -> onTick callbacks -> LockstepEngine -> subsystems), but the pump is missing. Adding a single `useFrame` call connects R3F's render loop to the entire deterministic pipeline.
 
