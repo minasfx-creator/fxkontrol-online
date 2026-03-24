@@ -835,17 +835,17 @@ function GoogleEarthLighting() {
   const google3DTilesEnabled = useSceneStore(st => st.settings.google3DTilesEnabled);
   const timeOfDay = useSceneStore(st => st.settings.timeOfDay);
   
-  if (!google3DTilesEnabled) return null;
-  
   // Compute sun position from timeOfDay (0-24h)
   const sunPos = useMemo(() => {
-    const angle = ((timeOfDay - 6) / 12) * Math.PI; // 6h=horizon, 12h=zenith, 18h=horizon
+    const angle = ((timeOfDay - 6) / 12) * Math.PI;
     const y = Math.sin(angle) * 100;
     const x = Math.cos(angle) * 100;
     return [x, Math.max(y, -20), 50] as [number, number, number];
   }, [timeOfDay]);
   
   const isNight = timeOfDay >= 20 || timeOfDay <= 5;
+  
+  if (!google3DTilesEnabled) return null;
   
   return (
     <>
