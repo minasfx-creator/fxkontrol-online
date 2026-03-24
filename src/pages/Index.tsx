@@ -8,6 +8,8 @@ import { toast } from 'sonner';
 import { Upload } from 'lucide-react';
 import Toolbar from '@/components/editor/Toolbar';
 import SplashScreen from '@/components/editor/SplashScreen';
+import CrashRecoveryBanner from '@/components/editor/CrashRecoveryBanner';
+import StockAlertsBadge from '@/components/editor/StockAlertsBadge';
 import GlobeSelector from '@/components/editor/GlobeSelector';
 import EffectLibrary from '@/components/editor/EffectLibrary';
 import AudienceAnalyzerPanel from '@/components/editor/AudienceAnalyzerPanel';
