@@ -797,7 +797,36 @@ function SceneLighting() {
   );
 }
 
-function SceneFog() {
+/**
+ * GeoTimeOfDaySync — Reads timezone offset from the project store
+ * and automatically sets the scene's timeOfDay based on showtime (20:00 default)
+ * adjusted by the real timezone, so the sun/sky reflects actual conditions.
+ */
+function GeoTimeOfDaySync() {
+  const timeZoneOffset = useProjectStore(s => s.timeZoneOffset);
+  const { updateSettings } = useSceneStore();
+  const appliedRef = useRef(false);
+
+  useEffect(() => {
+    if (timeZoneOffset == null || appliedRef.current) return;
+    appliedRef.current = true;
+
+    // Compute local showtime hour (default: 20:00 local)
+    const showHourLocal = 20;
+    
+    // Enable time-of-day and set it to showtime
+    updateSettings({
+      timeOfDay: showHourLocal,
+      timeOfDayEnabled: true,
+    });
+    
+    console.log(`[GeoSync] TimeOfDay set to ${showHourLocal}h (TZ offset: ${timeZoneOffset}s)`);
+  }, [timeZoneOffset, updateSettings]);
+
+  return null;
+}
+
+
   const s = useSceneStore(st => st.settings);
   if (s.fogDensity <= 0) return null;
   return <fog attach="fog" args={[s.fogColor, s.fogNear, s.fogFar / Math.max(s.fogDensity, 0.1)]} />;
