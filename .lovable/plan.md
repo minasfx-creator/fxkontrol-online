@@ -1,50 +1,36 @@
 
 
-## Plan: Field Test Desktop Integration
+## Plan: Fix White Screen Crash on /editor
 
 ### Problem
-Field Test only appears as a navigation card in the mobile Command Center layout. The desktop sidebar has no entry for it, making it inaccessible on PC.
+The editor page renders a blank white screen. Network requests show the user is authenticated and data loads successfully, but the React tree crashes before rendering. No console errors are captured.
 
-### Solution
-Two changes:
+### Root Cause
+Circular dependency in module initialization:
+- `src/core/execution/executionBridge.ts` imports `blackbox` from `@/core/reliability/index.ts`
+- `@/core/reliability/index.ts` re-exports from `executionBridge.ts`
 
-1. **Add "FIELD TEST" to the desktop sidebar** as a new entry in the HARDWARE section of `MODE_SECTIONS`, making it a proper console mode instead of just a separate route.
+This circular import can cause `blackbox` to be `undefined` at module initialization time, crashing the `ExecutionBridge` constructor or its first usage.
 
-2. **Create a desktop-optimized Field Test layout** — the current `FieldTest.tsx` is designed for mobile (portrait setup, small touch targets). The desktop version will use the available screen space with a multi-panel layout:
+### Fix
 
-### Desktop Field Test Layout
+**File: `src/core/execution/executionBridge.ts`**
+- Change `import { blackbox } from '@/core/reliability'` to the direct path: `import { blackbox } from '@/core/reliability/blackBoxRecorder'`
 
-```text
-┌─────────────────────────────────────────────────────────┐
-│  FIELD TEST — FXK DIAGNOSTIC CONSOLE          [status]  │
-├────────────┬──────────────────────┬─────────────────────┤
-│            │                      │                     │
-│  SETUP     │   32-CH FIRE GRID    │  TELEMETRY &        │
-│  ─────     │   (8×4, large)       │  DIAGNOSTICS        │
-│  Role      │                      │  ─────────────      │
-│  Transport │   Click-to-fire      │  Latency chart      │
-│  Session   │   with ACK badges    │  Loss rate           │
-│  BLE Scan  │   and latency ms     │  Session stats      │
-│            │                      │  Event log          │
-│  MODULE    │                      │  Benchmark          │
-│  SELECTOR  │                      │  Report export      │
-│  (sidebar) │                      │                     │
-├────────────┴──────────────────────┴─────────────────────┤
-│  ARM │ DISARM │ E-STOP │ FIRE ALL │ RESET │ CDS TEST    │
-└─────────────────────────────────────────────────────────┘
-```
+**File: `src/core/execution/pyroExecutor.ts`** (check if same pattern)
+- If it imports from `@/core/reliability`, change to direct path.
 
-### Files to modify
+**File: `src/core/execution/droneExecutor.ts`** (check if same pattern)
+- Same fix if applicable.
 
-| File | Change |
-|------|--------|
-| `src/pages/CommandCenter.tsx` | Add `field_test` to `CommandMode` type, `CONSOLE_ACCENTS`, and `MODE_SECTIONS[HARDWARE]`. Add `renderDirectPanel` case that renders inline `FieldTestDesktop`. |
-| `src/pages/FieldTest.tsx` | Extract a new `FieldTestDesktop` component with a wide multi-panel layout optimized for mouse interaction and large screens. Keep the existing mobile page as-is for the `/field-test` route. |
+**File: `src/core/network/fieldBus.ts`** (check if same pattern)
+- Same fix if applicable.
+
+**File: `src/core/validation/simulationValidator.ts`** (check if same pattern)
+- Same fix if applicable.
+
+This breaks the circular dependency chain while keeping all functionality identical.
 
 ### Technical details
-
-- **`FieldTestDesktop`**: A 3-column layout component using the same `fieldTestEngine` service. Left panel: setup/config + module scanner. Center: 32-ch fire grid with larger buttons and hover states (not just touch). Right: real-time diagnostics with latency histogram, session stats table, and scrollable event log.
-- The setup flow (role/transport/code) will be inline in the left panel rather than a full-page takeover.
-- Desktop buttons get hover effects, keyboard shortcuts (number keys 1-9 for channels, Space for ARM toggle, Escape for E-STOP).
-- CDS continuity test grid rendered at full size in the center panel when in test mode.
+ES module circular dependencies work with live bindings for named exports, but if a module's top-level code runs before its dependency has finished initializing (e.g., calling `new Class()` at module scope that references a not-yet-initialized import), it can fail silently. Changing to direct imports eliminates the cycle entirely.
 
