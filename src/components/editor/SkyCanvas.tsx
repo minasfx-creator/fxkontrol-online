@@ -89,6 +89,11 @@ import ViewportGeoTools, { type GeoToolMode, type GeoMarker, type GeoRulerPoint,
 import { GeoToolsScene, GeoToolClickHandler } from './GeoToolsR3F';
 import { RenderDebugToggle, RenderDebugPanel, setDebugExposure, setDebugBurstLoad, setDebugLOD, setDebugRendererInfo } from './RenderDebugOverlay';
 import { clampNiagaraHDR, getNiagaraBudgets, setAdaptivePipelineState } from '@/lib/niagaraBlenderRules';
+// ═══ Hardening Engine ═══
+import {
+  reportCrash, isInCooldown, recordContextLoss,
+  watchdogTick, pushFrameMetrics, startMetricsReporting, stopMetricsReporting,
+} from '@/lib/hardening';
 
 // ═══ Shared state imported from skycanvas module ═══
 import {
