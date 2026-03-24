@@ -182,6 +182,7 @@ function Index() {
   const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'globe' | 'editor'>('editor');
   const [showLocation, setShowLocation] = useState<{ name: string; lat: number; lng: number } | null>(null);
   const [showViewportGlobe, setShowViewportGlobe] = useState(true);
+  const [canvasReady, setCanvasReady] = useState(false);
   const [showPositionEditor, setShowPositionEditor] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab | null>(null);
@@ -308,7 +309,9 @@ function Index() {
     // Force release any stuck selection/control state
     window.dispatchEvent(new CustomEvent('box-select-active', { detail: false }));
     setAppPhase('editor');
+    // Unmount globe first, then mount SkyCanvas after 100ms delay to avoid WebGL context contention
     setShowViewportGlobe(false);
+    setTimeout(() => setCanvasReady(true), 100);
   }, []);
 
   const handleMobileOpenPanel = useCallback((id: PanelId) => {
@@ -616,7 +619,7 @@ function Index() {
                     } catch { /* ignore */ }
                   }}
                 >
-                  {!showViewportGlobe ? (
+                  {!showViewportGlobe && canvasReady ? (
                     <>
                       <CanvasErrorBoundary>
                         <Suspense fallback={<CanvasLoader />}>
