@@ -635,6 +635,7 @@ export default function GlobeSelector({ onLocationSelected, mode = 'fullscreen',
       : null;
 
   const autoRotate = !selectedCity && !freePin && phase === 'browse';
+  const isEmbedded = mode === 'embedded';
 
   return (
     <div className={cn(
