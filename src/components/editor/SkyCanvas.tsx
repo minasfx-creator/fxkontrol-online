@@ -134,20 +134,64 @@ let _activeBurstScan_local: ActiveBurstScanResult | null = null;
 
 // lumaTonemapScale REMOVED — PostProcessing ACES Filmic is the single tonemap pass
 
-// --- Playback clock ---
+// --- Playback clock (wired through DeterministicClock → LockstepEngine → ExecutionBridge) ---
+import { deterministicClock } from '@/core/time/deterministicClock';
+import { lockstep } from '@/core/reliability/lockstepEngine';
+import { executionBridge } from '@/core/execution/executionBridge';
+
 const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref) {
   const { isPlaying, currentTime, duration, setCurrentTime, setPlaying, playbackSpeed } = useProjectStore();
-  const prevTime = useRef(performance.now());
+  const registeredRef = useRef(false);
 
-  useFrame(() => {
-    const now = performance.now();
-    if (isPlaying) {
-      const delta = ((now - prevTime.current) / 1000) * playbackSpeed;
-      const next = currentTime + delta;
-      if (next >= duration) { setCurrentTime(duration); setPlaying(false); } else { setCurrentTime(next); }
+  // Register playback as a lockstep subsystem (once)
+  useEffect(() => {
+    if (registeredRef.current) return;
+    registeredRef.current = true;
+
+    // Playback advancement — runs at fixed 60Hz via lockstep
+    lockstep.register('playback', (_simTime: number, dt: number) => {
+      const store = useProjectStore.getState();
+      if (!store.isPlaying) return;
+      const delta = dt * store.playbackSpeed;
+      const next = store.currentTime + delta;
+      if (next >= store.duration) {
+        store.setCurrentTime(store.duration);
+        store.setPlaying(false);
+      } else {
+        store.setCurrentTime(next);
+      }
+    }, 10); // High priority — playback clock runs first
+
+    // ExecutionBridge ticks after playback
+    lockstep.register('executionBridge', (simTime: number, _dt: number) => {
+      executionBridge.tick(simTime);
+    }, 50); // Lower priority — fires after playback updates
+
+    // Start the deterministic clock and lockstep
+    deterministicClock.start();
+    lockstep.start();
+
+    // Wire clock → lockstep: each clock tick feeds the lockstep engine
+    deterministicClock.onTick((_time: number, delta: number) => {
+      lockstep.tick(delta);
+    });
+
+    return () => {
+      lockstep.unregister('playback');
+      lockstep.unregister('executionBridge');
+      deterministicClock.pause();
+      lockstep.stop();
+      registeredRef.current = false;
+    };
+  }, []);
+
+  // Sync deterministic clock when user scrubs timeline
+  useEffect(() => {
+    if (!isPlaying) {
+      deterministicClock.setTime(currentTime);
     }
-    prevTime.current = now;
-  });
+  }, [currentTime, isPlaying]);
+
   return null;
 });
 
