@@ -821,6 +821,16 @@ export default function GlobeSelector({ onLocationSelected, mode = 'fullscreen',
               <Crosshair className="w-3.5 h-3.5 mr-2" />
               Confirmar Local
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const earthUrl = `https://earth.google.com/web/@${activeLocation.lat},${activeLocation.lng},1500a,35d,1y,0h,0t,0r`;
+                window.open(earthUrl, '_blank', 'noopener,noreferrer');
+              }}
+              className="h-10 px-4 text-[10px] uppercase tracking-[0.12em]"
+            >
+              Google Earth
+            </Button>
           </div>
         )}
 
