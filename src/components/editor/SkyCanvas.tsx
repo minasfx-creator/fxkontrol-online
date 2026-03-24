@@ -1677,6 +1677,7 @@ export default function SkyCanvas() {
 
         {!google3DTilesEnabled && <StageGround satelliteTexture={satelliteTexture} />}
         {google3DTilesEnabled && <GoogleTilesLayer />}
+        {google3DTilesEnabled && <GeoCameraController />}
         <FinaleAxesHelper />
         <DoubleClickFocus />
         <SiteModelRenderer />
