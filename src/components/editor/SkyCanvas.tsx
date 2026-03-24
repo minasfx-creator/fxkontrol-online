@@ -924,10 +924,11 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   const introPhase = useRef<'hold' | 'sweep' | 'done'>(__cameraIntroPlayed ? 'done' : 'hold');
   const introTimer = useRef(0);
 
-  const WORLD_HALF_EXTENT = 80000;
+  const WORLD_HALF_EXTENT = 250000;
   const CAMERA_MIN_Y = 5;
-  const CAMERA_MAX_Y = 75000;
+  const CAMERA_MAX_Y = 40000;
   const _lastValidY = useRef(300);
+  const _wasClampedLastFrame = useRef(false);
 
   const clampToWorldBounds = useCallback(() => {
     const controls = controlsRef.current;
