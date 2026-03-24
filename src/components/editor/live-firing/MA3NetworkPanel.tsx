@@ -204,6 +204,27 @@ interface MA3NetworkPanelProps {
 export default function MA3NetworkPanel({ fs = false }: MA3NetworkPanelProps) {
   const { node, state, ppsHistory } = useMA3NodeState();
   const [relayUrl, setRelayUrl] = useState(node.getConfig().relayUrl);
+  const [isSimulating, setIsSimulating] = useState(false);
+
+  // ═══ DMX Traffic Simulator ═══
+  useEffect(() => {
+    if (!isSimulating) return;
+    const simBuffer = new Uint8Array(512);
+
+    const interval = setInterval(() => {
+      const t = Date.now() / 1000;
+      // Generate synthetic sine-wave patterns across 4 universes
+      for (let uIdx = 0; uIdx < Math.min(4, state.universes.length); uIdx++) {
+        for (let ch = 0; ch < 512; ch++) {
+          const phase = (uIdx * 0.7) + (ch * 0.02);
+          simBuffer[ch] = Math.floor(((Math.sin(t * (3 + uIdx) + phase) + 1) / 2) * 255);
+        }
+        node.simulateInput(uIdx, new Uint8Array(simBuffer));
+      }
+    }, 30); // ~33 PPS
+
+    return () => clearInterval(interval);
+  }, [isSimulating, node, state.universes.length]);
 
   const handleConnect = useCallback(() => {
     node.updateConfig({ relayUrl });
