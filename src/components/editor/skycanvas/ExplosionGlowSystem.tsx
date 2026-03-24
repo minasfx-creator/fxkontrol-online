@@ -8,7 +8,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { getActiveBurstScan } from './sharedState';
 
-const POOL_SIZE = 8;
+const POOL_SIZE = 4;
 const DECAY_RATE = 2.0; // intensity per second
 const MAX_INTENSITY = 3.0;
 const LIGHT_DISTANCE = 500;
