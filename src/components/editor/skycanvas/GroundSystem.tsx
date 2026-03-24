@@ -538,50 +538,61 @@ const SYNTHETIC_GRASS_FRAGMENT = `
                mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
   }
 
+  float fbm(vec2 p) {
+    float v = 0.0; float a = 0.5;
+    for (int i = 0; i < 5; i++) {
+      v += a * noise(p);
+      p = p * 2.03 + vec2(1.7, 3.1);
+      a *= 0.5;
+    }
+    return v;
+  }
+
   void main() {
     vec2 wuv = vWorldPos.xz;
     float distFromCenter = length(wuv);
 
-    // Base synthetic turf green
-    vec3 turfA = vec3(0.08, 0.32, 0.06);
-    vec3 turfB = vec3(0.06, 0.26, 0.04);
+    // Military camo palette
+    vec3 darkOlive  = vec3(0.176, 0.227, 0.118);  // #2d3a1e
+    vec3 mossGreen  = vec3(0.231, 0.290, 0.165);  // #3b4a2a
+    vec3 earthBrown = vec3(0.290, 0.235, 0.157);  // #4a3c28
+    vec3 darkKhaki  = vec3(0.353, 0.329, 0.204);  // #5a5434
+    vec3 deepGreen  = vec3(0.118, 0.165, 0.082);  // #1e2a15
 
-    // Fiber-like fine grain
-    float fiber = noise(wuv * 8.0) * 0.5 + noise(wuv * 32.0) * 0.3 + noise(wuv * 80.0) * 0.2;
-    vec3 color = mix(turfA, turfB, fiber);
+    // Layered noise for organic camo blotches
+    float n1 = fbm(wuv * 0.08);
+    float n2 = fbm(wuv * 0.15 + vec2(42.0, 17.0));
+    float n3 = fbm(wuv * 0.35 + vec2(-13.0, 88.0));
+    float n4 = noise(wuv * 0.5 + vec2(7.0, -23.0));
 
-    // Mowing stripe pattern (alternating bright/dark bands)
-    float stripeFreq = 0.15;
-    float stripe = sin(wuv.x * stripeFreq) * 0.5 + 0.5;
-    stripe = smoothstep(0.35, 0.65, stripe);
-    color = mix(color * 0.92, color * 1.08, stripe);
+    // Blend camo layers with irregular transitions
+    vec3 color = deepGreen;
+    color = mix(color, darkOlive,  smoothstep(0.35, 0.55, n1));
+    color = mix(color, mossGreen,  smoothstep(0.40, 0.60, n2));
+    color = mix(color, earthBrown, smoothstep(0.50, 0.65, n3));
+    color = mix(color, darkKhaki,  smoothstep(0.55, 0.70, n4) * 0.5);
 
-    // Cross-stripe subtle pattern
-    float crossStripe = sin(wuv.y * stripeFreq * 0.7 + 0.785) * 0.5 + 0.5;
-    crossStripe = smoothstep(0.4, 0.6, crossStripe);
-    color = mix(color * 0.97, color * 1.03, crossStripe * 0.3);
-
-    // Micro variation for realism
-    float micro = noise(wuv * 120.0);
-    color += vec3(0.005, 0.01, 0.003) * (micro - 0.5);
+    // Fiber micro-noise for ground texture realism
+    float micro = noise(wuv * 60.0) * 0.4 + noise(wuv * 120.0) * 0.3 + noise(wuv * 200.0) * 0.2;
+    color += vec3(0.008, 0.012, 0.005) * (micro - 0.4);
 
     // Apply brightness
     color *= brightness;
 
-    // Simple directional lighting
+    // Simple directional lighting (military matte)
     vec3 lightDir = normalize(vec3(0.3, 0.8, 0.5));
     float NdotL = max(dot(vNormal, lightDir), 0.0);
-    color *= (NdotL * 0.5 + 0.5);
+    color *= (NdotL * 0.4 + 0.6);
 
-    // Specular sheen (synthetic turf is slightly shiny)
+    // Muted specular (matte finish, not shiny)
     vec3 halfDir = normalize(lightDir + vViewDir);
-    float spec = pow(max(dot(vNormal, halfDir), 0.0), 20.0);
-    color += vec3(0.02, 0.04, 0.01) * spec;
+    float spec = pow(max(dot(vNormal, halfDir), 0.0), 40.0);
+    color += vec3(0.008, 0.012, 0.006) * spec;
 
     // Distance fade to horizon
     float dist = distFromCenter * 0.00004;
     float fogFactor = smoothstep(0.0, 1.0, dist);
-    vec3 horizonColor = vec3(0.02, 0.04, 0.03);
+    vec3 horizonColor = vec3(0.04, 0.05, 0.03);
     color = mix(color, horizonColor, fogFactor);
 
     gl_FragColor = vec4(color, 1.0);
