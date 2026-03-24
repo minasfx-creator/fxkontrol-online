@@ -79,6 +79,7 @@ const MODE_SECTIONS = [
     icon: Cpu,
     modes: [
       { key: 'module' as CommandMode, label: 'MODULE', icon: Cpu },
+      { key: 'field_test' as CommandMode, label: 'FIELD TEST', icon: Target },
     ],
   },
 ];
