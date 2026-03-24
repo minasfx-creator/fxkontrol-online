@@ -107,10 +107,10 @@ export function ContactShadowsLayer() {
     <ContactShadows
       position={[0, 0.01, 0]}
       opacity={s.contactShadowsOpacity}
-      scale={200}
+      scale={80}
       blur={s.contactShadowsBlur}
       far={50}
-      resolution={512}
+      resolution={256}
       color="#000000"
     />
   );
@@ -279,7 +279,7 @@ export const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function Groun
 
   return (
     <mesh ref={meshRef} position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[100000, 100000]} />
+      <planeGeometry args={[10000, 10000]} />
       <shaderMaterial
         transparent
         depthWrite={false}

@@ -8,10 +8,11 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { getActiveBurstScan } from './sharedState';
 
-const POOL_SIZE = 8;
+const POOL_SIZE = 4;
 const DECAY_RATE = 2.0; // intensity per second
 const MAX_INTENSITY = 3.0;
 const LIGHT_DISTANCE = 500;
+const _warmShift = new THREE.Color('#ffcc88'); // Pre-allocated for zero-GC
 
 interface PooledLight {
   light: THREE.PointLight;
@@ -34,6 +35,7 @@ export function ExplosionGlowSystem() {
     const pool: PooledLight[] = [];
     for (let i = 0; i < POOL_SIZE; i++) {
       const light = new THREE.PointLight(0xffffff, 0, LIGHT_DISTANCE);
+      light.castShadow = false;
       light.visible = false;
       group.add(light);
       pool.push({ light, active: false, age: 0, maxAge: 0.5 });
@@ -91,11 +93,10 @@ export function ExplosionGlowSystem() {
           bestSlot.light.intensity = MAX_INTENSITY;
           bestSlot.light.position.set(burst.x, burst.y, burst.z);
 
-          // Parse burst color
-          const color = new THREE.Color(burst.color || '#ffaa44');
+          // Parse burst color — zero-GC: reuse light's own color object
+          bestSlot.light.color.set(burst.color || '#ffaa44');
           // Warm shift for realism
-          color.lerp(new THREE.Color('#ffcc88'), 0.3);
-          bestSlot.light.color.copy(color);
+          bestSlot.light.color.lerp(_warmShift, 0.3);
         }
       }
     }
