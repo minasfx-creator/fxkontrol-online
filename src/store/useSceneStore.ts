@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { ViewTransform } from '@/lib/niagaraBlenderRules';
 import type { TerrainData, TerrainConfig } from '@/lib/heightmapToTerrain';
 
-export type GroundStyle = 'finale-dark' | 'google-earth' | 'flat-black' | 'concrete' | 'sfx-stage' | 'custom';
+export type GroundStyle = 'finale-dark' | 'google-earth' | 'flat-black' | 'concrete' | 'sfx-stage' | 'synthetic-grass' | 'custom';
 export type SkyPreset = 'night-clear' | 'night-cloudy' | 'dusk' | 'overcast' | 'foggy' | 'custom';
 export type WeatherCondition = 'clear' | 'light-rain' | 'heavy-rain' | 'snow' | 'fog' | 'haze' | 'wind-only';
 export type QualityPreset = 'realistic' | 'show' | 'performance';
@@ -234,26 +234,26 @@ export interface SceneSettings {
 
 const DEFAULT_SETTINGS: SceneSettings = {
   skyPreset: 'night-clear',
-  ambientIntensity: 0.04,
-  moonIntensity: 0.45,
+  ambientIntensity: 0.12,
+  moonIntensity: 0.7,
   moonColor: '#8899cc',
   skyBrightness: 1.0,
   starDensity: 1.0,
-  fogDensity: 0.4,
-  fogColor: '#080e1a',
+  fogDensity: 0.15,
+  fogColor: '#101828',
   fogNear: 25000,
   fogFar: 300000,
   horizonGlow: 0.5,
 
-  groundStyle: 'finale-dark',
-  groundBrightness: 1.0,
+  groundStyle: 'synthetic-grass',
+  groundBrightness: 1.5,
   gridOpacity: 0.6,
   gridColor: '#1a1a2e',
   showGrid: true,
   showOriginMarker: true,
   showScalePoles: false,
   showTreeline: false,
-  groundFogIntensity: 0.7,
+  groundFogIntensity: 0.2,
 
   weather: 'clear',
   rainIntensity: 0,
@@ -284,8 +284,8 @@ const DEFAULT_SETTINGS: SceneSettings = {
   rimLightIntensity: 0.55,
   fillLightIntensity: 0.35,
 
-  vignetteEnabled: true,
-  vignetteIntensity: 0.3,
+  vignetteEnabled: false,
+  vignetteIntensity: 0,
   chromaticAberration: true,
   filmGrain: 0.035,
   viewTransform: 'aces-filmic' as ViewTransform,

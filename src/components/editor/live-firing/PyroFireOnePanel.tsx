@@ -1606,20 +1606,11 @@ export default function PyroFireOnePanel({
   // ═══════════════════════════════════════════════════════════
   return (
     <div className="flex flex-col h-full relative overflow-hidden" style={{ background: 'hsl(220 18% 4%)' }}>
-      {/* Amber scanline overlay — BR2049 */}
-      <div className="absolute inset-0 pointer-events-none z-10" style={{
-        backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, hsl(32 100% 50% / 0.012) 2px, hsl(32 100% 50% / 0.012) 4px)',
-        backgroundSize: '100% 4px',
-      }} />
       {/* HUD corner brackets */}
       <div className="absolute top-1 left-1 w-4 h-4 pointer-events-none z-10 border-l-2 border-t-2" style={{ borderColor: 'hsl(var(--primary) / 0.2)' }} />
       <div className="absolute top-1 right-1 w-4 h-4 pointer-events-none z-10 border-r-2 border-t-2" style={{ borderColor: 'hsl(var(--primary) / 0.2)' }} />
       <div className="absolute bottom-1 left-1 w-4 h-4 pointer-events-none z-10 border-l-2 border-b-2" style={{ borderColor: 'hsl(var(--primary) / 0.2)' }} />
       <div className="absolute bottom-1 right-1 w-4 h-4 pointer-events-none z-10 border-r-2 border-b-2" style={{ borderColor: 'hsl(var(--primary) / 0.2)' }} />
-      {/* Vignette */}
-      <div className="absolute inset-0 pointer-events-none z-10" style={{
-        background: 'radial-gradient(ellipse at center, transparent 55%, hsl(220 20% 2% / 0.5) 100%)',
-      }} />
       {renderFileInput()}
       {renderHeader()}
       {renderConnectionBar()}
