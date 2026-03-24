@@ -326,9 +326,6 @@ function Index() {
     return <SplashScreen onStart={() => setAppPhase('editor')} showVideoBackground />;
   }
 
-  if (appPhase === 'globe') {
-    setAppPhase('editor');
-  }
 
   const renderPanelContent = () => {
     if (!activePanel) return null;

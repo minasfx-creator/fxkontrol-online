@@ -1145,9 +1145,8 @@ export function StageGround({ satelliteTexture }: { satelliteTexture: string | n
       {sc.groundFogIntensity > 0 && <GroundFog />}
 
       {sc.showGrid && (() => {
-        const snap = useSceneStore.getState().environment.gridSnapResolution;
-        const cellSize = snap;
-        const sectionSize = snap * 10;
+        const cellSize = gridSnapResolution;
+        const sectionSize = gridSnapResolution * 10;
         return (
           <>
             <Grid
