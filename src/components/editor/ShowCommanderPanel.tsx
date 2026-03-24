@@ -9,10 +9,12 @@ import {
   Play, Pause, Square, Volume2, Eye, EyeOff, Lock, Unlock, Flame, Sparkles,
   Plane, Lightbulb, Cable, Signal, Battery, Cpu, Timer, BarChart3, Layers,
   Target, Crosshair, MonitorPlay, Gauge, CircuitBoard, Power, Wifi, WifiOff,
-  Magnet, FlaskConical, Link2, Unlink
+  Magnet, FlaskConical, Link2, Unlink, Download, Sun
 } from 'lucide-react';
 import { useShowCommanderEngine } from '@/hooks/useShowCommanderEngine';
 import PerformanceMonitor from '@/components/editor/PerformanceMonitor';
+import { FieldViewProvider, FieldModeToggle, FieldViewWrapper, TerrainCollisionAlert } from '@/components/editor/FieldViewMode';
+import { downloadFlightPlan, exportFlightPlan, DEFAULT_FLIGHT_CONFIG } from '@/lib/mavlinkFlightPlanExporter';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -513,6 +515,8 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel }: ShowCommand
   const engine = useShowCommanderEngine();
 
   return (
+    <FieldViewProvider>
+    <FieldViewWrapper>
     <div className="h-full flex flex-col bg-background/95">
       {/* Link Lost Overlay */}
       {engine.linkStatus === 'lost' && (
@@ -599,6 +603,7 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel }: ShowCommand
               DRIFT ±{Math.abs(engine.injectedDrift).toFixed(0)}ms
             </Badge>
           )}
+          <FieldModeToggle />
         </div>
 
         <SystemHealthBar subsystems={subsystems} />
@@ -691,7 +696,40 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel }: ShowCommand
 
             <TabsContent value="safety" className="mt-0 space-y-3">
               <SafetyChecklist />
-              <TelemetryMini fireone={fireone} pbus={pbus} />
+              <TerrainCollisionAlert hasCollision={false} minClearance={Infinity} />
+
+              {/* MAVLink Flight Plan Export */}
+              <div className="space-y-2">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/50 px-1">
+                  Exportação de Voo
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full h-10 text-[10px] font-bold border-sky-500/20 text-sky-400 hover:bg-sky-500/10"
+                  onClick={() => {
+                    const plan = exportFlightPlan([], { ...DEFAULT_FLIGHT_CONFIG });
+                    downloadFlightPlan(plan, 'waypoints');
+                    toast.success('✈ Plano de voo MAVLink exportado');
+                  }}
+                >
+                  <Download className="w-3.5 h-3.5 mr-1.5" />
+                  EXPORT MAVLINK (.waypoints)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full h-10 text-[10px] font-bold border-sky-500/20 text-sky-400 hover:bg-sky-500/10"
+                  onClick={() => {
+                    const plan = exportFlightPlan([], { ...DEFAULT_FLIGHT_CONFIG });
+                    downloadFlightPlan(plan, 'json');
+                    toast.success('✈ Plano de voo JSON (DJI) exportado');
+                  }}
+                >
+                  <Download className="w-3.5 h-3.5 mr-1.5" />
+                  EXPORT JSON (DJI)
+                </Button>
+              </div>
 
               {/* Emergency controls */}
               <div className="space-y-2">
@@ -748,5 +786,7 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel }: ShowCommand
         </ScrollArea>
       </Tabs>
     </div>
+    </FieldViewWrapper>
+    </FieldViewProvider>
   );
 }

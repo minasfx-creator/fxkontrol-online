@@ -230,6 +230,14 @@ export interface SceneSettings {
   timeOfDayEnabled: boolean;
   decalsEnabled: boolean;
   niagaraFluidsEnabled: boolean;  // GPU fluid advection for smoke
+
+  // ═══ Ultra Hardening — Geo Engine ═══
+  floatingOriginEnabled: boolean;
+  geoAnchorLat: number;
+  geoAnchorLon: number;
+  geoAnchorAlt: number;
+  tideOffset: number;             // -2 to 2 meters dynamic tide adjustment
+  fieldViewMode: boolean;         // high-contrast outdoor UI
 }
 
 const DEFAULT_SETTINGS: SceneSettings = {
@@ -332,6 +340,14 @@ const DEFAULT_SETTINGS: SceneSettings = {
   timeOfDayEnabled: false,
   decalsEnabled: true,
   niagaraFluidsEnabled: false,
+
+  // Ultra Hardening defaults
+  floatingOriginEnabled: false,
+  geoAnchorLat: -23.007,
+  geoAnchorLon: -44.318,
+  geoAnchorAlt: 0,
+  tideOffset: 0,
+  fieldViewMode: false,
 };
 
 export const SCENE_PRESETS: Record<string, { name: string; description: string; settings: Partial<SceneSettings> }> = {
