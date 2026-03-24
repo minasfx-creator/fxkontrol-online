@@ -1,36 +1,50 @@
 
 
-## Plan: Fix White Screen Crash on /editor
+## Plan: Multi-Site Global Sync Layer
 
-### Problem
-The editor page renders a blank white screen. Network requests show the user is authenticated and data loads successfully, but the React tree crashes before rendering. No console errors are captured.
+### Assessment
 
-### Root Cause
-Circular dependency in module initialization:
-- `src/core/execution/executionBridge.ts` imports `blackbox` from `@/core/reliability/index.ts`
-- `@/core/reliability/index.ts` re-exports from `executionBridge.ts`
+The existing `globalClockAdapter.ts` and `globalSyncEngine.ts` already handle single-session multi-operator sync (clock offset, ping/pong, host authority, presence, state snapshots). What's **missing** for multi-site (multi-city) operation:
 
-This circular import can cause `blackbox` to be `undefined` at module initialization time, crashing the `ExecutionBridge` constructor or its first usage.
+1. **Site-level grouping** — each physical location is a "site" with its own local execution, all coordinated by a global host
+2. **Latency-compensated execution** — adjusting pyro/drone fire times based on per-site measured latency
+3. **State hash consistency** — detecting divergence between sites and triggering reconciliation
+4. **Graceful local fallback** — if WAN drops, a site continues executing from its local timeline without stopping the show
 
-### Fix
+### New modules (3 files, no existing files modified except index.ts and MissionControlPanel)
 
-**File: `src/core/execution/executionBridge.ts`**
-- Change `import { blackbox } from '@/core/reliability'` to the direct path: `import { blackbox } from '@/core/reliability/blackBoxRecorder'`
+| # | File | Purpose |
+|---|------|---------|
+| 1 | `src/core/sync/multiSiteSyncEngine.ts` | Site registry, site-level state hashing, cross-site reconciliation, local fallback mode |
+| 2 | `src/core/sync/latencyCompensator.ts` | Per-site latency tracking + execution time adjustment for pyro/drone cues |
+| 3 | `src/core/sync/multiSiteValidator.ts` | Pre-show validation: simulates all sites at 100x, checks cross-site timing alignment |
 
-**File: `src/core/execution/pyroExecutor.ts`** (check if same pattern)
-- If it imports from `@/core/reliability`, change to direct path.
+### Modified files
 
-**File: `src/core/execution/droneExecutor.ts`** (check if same pattern)
-- Same fix if applicable.
-
-**File: `src/core/network/fieldBus.ts`** (check if same pattern)
-- Same fix if applicable.
-
-**File: `src/core/validation/simulationValidator.ts`** (check if same pattern)
-- Same fix if applicable.
-
-This breaks the circular dependency chain while keeping all functionality identical.
+| File | Change |
+|------|--------|
+| `src/core/reliability/index.ts` | Add exports for the 3 new modules |
+| `src/components/editor/MissionControlPanel.tsx` | Add "MULTI-SITE" section showing per-site latency, offset, status, and consistency hash |
 
 ### Technical details
-ES module circular dependencies work with live bindings for named exports, but if a module's top-level code runs before its dependency has finished initializing (e.g., calling `new Class()` at module scope that references a not-yet-initialized import), it can fail silently. Changing to direct imports eliminates the cycle entirely.
+
+**MultiSiteSyncEngine**: Wraps `globalSync` without modifying it. Adds:
+- `SiteInfo` registry (siteId, name, latency, offset, stateHash, status)
+- `registerSite()` / `removeSite()` for site management
+- `computeStateHash()` using a fast FNV-1a hash of serialized critical state
+- `checkConsistency()` comparing local hash vs host hash — if mismatch, requests full state sync
+- `enterLocalMode()` — freezes offset, continues local execution when WAN drops
+- `exitLocalMode()` — gradual re-sync when connection restores
+
+**LatencyCompensator**: Maintains a per-site rolling window of RTT samples (last 20). Exposes:
+- `getCompensation(siteId)` — returns half the median RTT for that site
+- `getAdjustedFireTime(cueTime, siteId)` — `cueTime - compensation - hardwareDelay`
+- Used by ExecutionBridge tick handler to adjust dispatch timing per-site
+
+**MultiSiteValidator**: Takes timeline + site configs, runs deterministic simulation checking:
+- Max cross-site time divergence (must be <10ms)
+- Cues that would fire outside their safety window due to latency
+- Returns `MultiSiteValidationReport` with pass/fail per site
+
+**MissionControlPanel addition**: New collapsible "MULTI-SITE SYNC" section showing a table of connected sites with columns: Site Name, Latency (ms), Offset (ms), Hash Match (✓/✗), Status badge (SYNCED/DEGRADED/LOCAL).
 
