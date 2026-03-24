@@ -1,18 +1,17 @@
 /**
- * GeoLocationSetup — Overlay HTML leve para seleção de local.
- * Substitui o GlobeSelector pesado (Canvas 3D separado).
- * Fix de Performance WebGL / Contexto único.
+ * GeoLocationSetup — Overlay HTML para seleção de local.
+ * Integra Google Places API para busca global de endereços.
  */
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { triggerFlyTo } from '@/core/geo/GeoCameraController';
-import { Search, X, MapPin, Navigation } from 'lucide-react';
+import { Search, X, MapPin, Navigation, Globe, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useSceneStore } from '@/store/useSceneStore';
 import { useProjectStore } from '@/store/useProjectStore';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
-// Reutiliza a base de cidades do GlobeSelector
 const CITIES = [
   { name: 'São Paulo, Brasil', lat: -23.5505, lng: -46.6333, icon: '🇧🇷' },
   { name: 'Rio de Janeiro, Brasil', lat: -22.9068, lng: -43.1729, icon: '🇧🇷' },
@@ -36,13 +35,23 @@ const CITIES = [
   { name: 'Seoul, South Korea', lat: 37.5665, lng: 126.978, icon: '🇰🇷' },
 ];
 
+interface PlaceResult {
+  name: string;
+  lat: number;
+  lng: number;
+  formattedAddress: string;
+}
+
 interface GeoLocationSetupProps {
   onClose: () => void;
 }
 
 export default function GeoLocationSetup({ onClose }: GeoLocationSetupProps) {
   const [search, setSearch] = useState('');
+  const [apiResults, setApiResults] = useState<PlaceResult[]>([]);
+  const [searching, setSearching] = useState(false);
   const { updateSettings, settings } = useSceneStore();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return CITIES;
@@ -50,8 +59,42 @@ export default function GeoLocationSetup({ onClose }: GeoLocationSetupProps) {
     return CITIES.filter(c => c.name.toLowerCase().includes(q));
   }, [search]);
 
-  const handleSelect = useCallback((city: typeof CITIES[0]) => {
-    // Atualiza anchor do geo-engine
+  // Debounced Google Places search
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (search.trim().length < 3) {
+      setApiResults([]);
+      setSearching(false);
+      return;
+    }
+
+    setSearching(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('google-places-search', {
+          body: { query: search.trim() },
+        });
+        if (error) {
+          console.warn('Places search error:', error);
+          setApiResults([]);
+        } else {
+          setApiResults(data?.results || []);
+        }
+      } catch (e) {
+        console.warn('Places search failed:', e);
+        setApiResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 400);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [search]);
+
+  const handleSelect = useCallback((city: { lat: number; lng: number; name?: string }) => {
     updateSettings({
       geoAnchorLat: city.lat,
       geoAnchorLon: city.lng,
@@ -59,14 +102,12 @@ export default function GeoLocationSetup({ onClose }: GeoLocationSetupProps) {
       floatingOriginEnabled: true,
       google3DTilesEnabled: true,
     });
-    // Atualiza GPS origin no project store
     useProjectStore.getState().setGpsOrigin({
       lat: city.lat,
       lng: city.lng,
       heading: 0,
       altitude: 0,
     });
-    // Fly-to suave com easing — transição cinematográfica
     triggerFlyTo({
       lat: city.lat,
       lng: city.lng,
@@ -74,9 +115,11 @@ export default function GeoLocationSetup({ onClose }: GeoLocationSetupProps) {
       duration: 3,
       pitch: 45,
     });
-    // Delay para o usuário ver o início da animação
     setTimeout(onClose, 500);
   }, [updateSettings, onClose]);
+
+  const hasSearch = search.trim().length > 0;
+  const noResults = hasSearch && filtered.length === 0 && apiResults.length === 0 && !searching;
 
   return (
     <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 w-[380px] max-w-[90vw]">
@@ -110,12 +153,14 @@ export default function GeoLocationSetup({ onClose }: GeoLocationSetupProps) {
             <Input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search Location (Google Earth) | Angra dos Reis, RJ, Brazil"
-              className="h-8 text-[11px] pl-8 bg-muted/10 border-border/20 placeholder:text-muted-foreground/40"
+              placeholder="Search any address worldwide..."
+              className="h-8 text-[11px] pl-8 pr-8 bg-muted/10 border-border/20 placeholder:text-muted-foreground/40"
               autoFocus
             />
+            {searching && (
+              <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-primary animate-spin" />
+            )}
           </div>
-          {/* Coordenadas atuais */}
           <div className="flex items-center gap-1.5 mt-1.5 px-1">
             <MapPin className="w-2.5 h-2.5 text-primary/60" />
             <span className="text-[9px] font-mono text-muted-foreground/60">
@@ -124,37 +169,77 @@ export default function GeoLocationSetup({ onClose }: GeoLocationSetupProps) {
           </div>
         </div>
 
-        {/* Lista de cidades */}
-        <div className="max-h-[280px] overflow-y-auto px-2 pb-2">
-          {filtered.map(city => (
-            <button
-              key={city.name}
-              onClick={() => handleSelect(city)}
-              className={cn(
-                "w-full text-left flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all",
-                "hover:bg-primary/10 border border-transparent hover:border-primary/20",
-                settings.geoAnchorLat === city.lat && settings.geoAnchorLon === city.lng
-                  ? "bg-primary/15 border-primary/30"
-                  : ""
+        {/* City presets + API results */}
+        <div className="max-h-[320px] overflow-y-auto px-2 pb-2">
+          {/* Preset cities */}
+          {filtered.length > 0 && (
+            <>
+              {hasSearch && apiResults.length > 0 && (
+                <div className="px-2 pt-1 pb-0.5">
+                  <span className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground/50">Presets</span>
+                </div>
               )}
-            >
-              <span className="text-base">{city.icon}</span>
-              <div className="flex-1 min-w-0">
-                <div className="text-[11px] font-semibold text-foreground truncate">{city.name}</div>
-                <div className="text-[9px] font-mono text-muted-foreground/50">
-                  {city.lat.toFixed(4)}, {city.lng.toFixed(4)}
+              {filtered.map(city => (
+                <button
+                  key={city.name}
+                  onClick={() => handleSelect(city)}
+                  className={cn(
+                    "w-full text-left flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all",
+                    "hover:bg-primary/10 border border-transparent hover:border-primary/20",
+                    settings.geoAnchorLat === city.lat && settings.geoAnchorLon === city.lng
+                      ? "bg-primary/15 border-primary/30"
+                      : ""
+                  )}
+                >
+                  <span className="text-base">{city.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11px] font-semibold text-foreground truncate">{city.name}</div>
+                    <div className="text-[9px] font-mono text-muted-foreground/50">
+                      {city.lat.toFixed(4)}, {city.lng.toFixed(4)}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </>
+          )}
+
+          {/* Google Places results */}
+          {apiResults.length > 0 && (
+            <>
+              <div className="px-2 pt-2 pb-0.5">
+                <div className="flex items-center gap-1">
+                  <Globe className="w-2.5 h-2.5 text-primary/60" />
+                  <span className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground/50">Google Places</span>
                 </div>
               </div>
-            </button>
-          ))}
-          {filtered.length === 0 && (
+              {apiResults.map((place, i) => (
+                <button
+                  key={`${place.lat}-${place.lng}-${i}`}
+                  onClick={() => handleSelect(place)}
+                  className={cn(
+                    "w-full text-left flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all",
+                    "hover:bg-primary/10 border border-transparent hover:border-primary/20"
+                  )}
+                >
+                  <Globe className="w-4 h-4 text-primary/70 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11px] font-semibold text-foreground truncate">{place.name}</div>
+                    <div className="text-[9px] text-muted-foreground/50 truncate">{place.formattedAddress}</div>
+                  </div>
+                </button>
+              ))}
+            </>
+          )}
+
+          {/* No results */}
+          {noResults && (
             <div className="text-center py-6">
               <span className="text-[10px] text-muted-foreground/40">Nenhum local encontrado</span>
             </div>
           )}
         </div>
 
-        {/* Footer — Skip */}
+        {/* Footer */}
         <div className="px-4 py-2.5 border-t border-border/20 flex justify-end">
           <Button
             variant="ghost"
