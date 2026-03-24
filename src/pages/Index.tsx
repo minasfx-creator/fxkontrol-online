@@ -181,8 +181,7 @@ function Index() {
   const [activePanel, setActivePanel] = useState<PanelId | null>('properties');
   const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'globe' | 'editor'>('editor');
   const [showLocation, setShowLocation] = useState<{ name: string; lat: number; lng: number } | null>(null);
-  const [showViewportGlobe, setShowViewportGlobe] = useState(true);
-  const [canvasReady, setCanvasReady] = useState(false);
+  const [showGeoSetup, setShowGeoSetup] = useState(true);
   const [showPositionEditor, setShowPositionEditor] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab | null>(null);
