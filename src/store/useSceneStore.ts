@@ -234,8 +234,8 @@ export interface SceneSettings {
 
 const DEFAULT_SETTINGS: SceneSettings = {
   skyPreset: 'night-clear',
-  ambientIntensity: 0.04,
-  moonIntensity: 0.45,
+  ambientIntensity: 0.12,
+  moonIntensity: 0.7,
   moonColor: '#8899cc',
   skyBrightness: 1.0,
   starDensity: 1.0,
