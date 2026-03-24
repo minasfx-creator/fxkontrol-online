@@ -1527,6 +1527,7 @@ export default function SkyCanvas() {
       <WebGLErrorBoundary>
       <Canvas
         key={canvasInstanceKey}
+        resize={{ debounce: 50, scroll: false }}
         shadows
         gl={{
           antialias: !isMobile,
