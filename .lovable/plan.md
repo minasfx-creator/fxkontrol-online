@@ -1,83 +1,46 @@
 
 
-## Plan: Ultra Hardening — Geo-Spatial Precision Integration
+## Plan: FXK Ultra Hardening — Execution & Time Layer
 
-Most of the foundational engines already exist (`floatingOriginEngine.ts`, `terrainCollisionEngine.ts`, `mavlinkFlightPlanExporter.ts`). This plan wires them into the live scene and adds the missing systems: explosion glow lighting, occlusion culling, geo-search panel, and interactive terrain coordinate picking.
+Most of the reliability infrastructure already exists (`/core/reliability/` has 8 engines). This plan adds the **missing execution layer** — the bridge between simulation and real-world output — plus the deterministic clock and state buffer systems.
 
----
+### What already exists (no duplication)
+- `lockstepEngine.ts`, `predictiveEngine.ts`, `realityEngine.ts`, `emergencySystem.ts` — all built
+- `autoScaler.ts`, `selfDiagnostic.ts`, `blackBoxRecorder.ts`, `seededRandom.ts` — all built
+- `fixedTimestep.ts` — accumulator pattern at 60Hz
+- `safetyEngine.ts` — collision/geofence validation
+- `MissionControlPanel.tsx` — health dashboard UI
 
-### 1. Geo-Search & Place Dropper Panel
+### New modules to create
 
-**New file: `src/components/editor/GeoSearchPanel.tsx`**
-- Search bar with Google Places Autocomplete (text input with preset locations: Angra dos Reis, Copacabana, etc.)
-- On selection, updates `geoAnchorLat/Lon/Alt` in `useSceneStore`
-- "Drop on Terrain" mode: click on 3D ground to set barge/drone home GPS coords
-- Shows current anchor position in DMS format
-- Compact panel design matching SceneEditorPanel style
+| # | File | Purpose |
+|---|------|---------|
+| 1 | `src/core/time/deterministicClock.ts` | High-res clock with drift correction, audio/timecode sync, `onTick()` callbacks |
+| 2 | `src/core/state/stateBuffer.ts` | Double-buffer pattern: simulation writes to back buffer, render reads front, `swap()` each frame |
+| 3 | `src/core/execution/executionBridge.ts` | Timeline → real commands dispatcher. Calls pyro/drone/dmx subsystems on each tick with pre-fire compensation |
+| 4 | `src/core/network/fieldBus.ts` | Multi-transport abstraction (WiFi primary, RS-485 backup, relay fallback) with heartbeat and auto-failover |
+| 5 | `src/core/validation/simulationValidator.ts` | Fast-forward simulation at 100x to detect collisions, timing errors, and overflow before show start |
+| 6 | `src/core/execution/pyroExecutor.ts` | Deterministic pyro fire engine with pre-fire delay compensation and local buffer fail-safe |
+| 7 | `src/core/execution/droneExecutor.ts` | Deterministic drone waypoint sender with WGS84→MAVLink conversion and RTH fail-safe |
 
-**Modified: `src/components/editor/SceneEditorPanel.tsx`**
-- Add GeoSearchPanel inline within the Ground section, below the Floating Origin controls
+### Modified files
 
-### 2. Wire Floating Origin to Scene Rendering
+| File | Change |
+|------|--------|
+| `src/core/reliability/index.ts` | Re-export new modules for unified import |
+| `src/components/editor/MissionControlPanel.tsx` | Add Validation Engine results section and FieldBus status indicators |
 
-**Modified: `src/components/editor/skycanvas/GroundSystem.tsx`**
-- When `floatingOriginEnabled`, create a `FloatingOrigin` instance from the store anchor
-- Offset the ground plane and grid by the camera-relative delta each frame
-- Pass offset to terrain mesh position
+### Technical details
 
-**Modified: `src/components/editor/skycanvas/SkyEnvironment.tsx`**
-- Apply floating origin offset to water plane position
+**DeterministicClock**: Wraps `performance.now()` with continuous drift correction against an external reference (audio context `currentTime` or SMPTE timecode). Maintains a monotonic simulation clock that never jumps backward. Exposes `getTime()`, `getDelta()`, `onTick(cb)`.
 
-### 3. Terrain Collision → Show Commander Integration
+**StateBuffer**: Generic `StateBuffer<T>` class. Simulation writes to `back`, render reads from `front`. `swap()` is called once per frame after simulation completes. Prevents partial-state reads during rendering.
 
-**Modified: `src/components/editor/ShowCommanderPanel.tsx`**
-- Wire `TerrainCollisionAlert` with real collision data from `checkTrajectoryCollision()` using timeline cue positions against loaded terrain heightmap
-- Add scan button "Run Safety Check" that evaluates all drone/pyro trajectories
-- Display collision count badge on Safety tab
+**ExecutionBridge**: Single `tick(simTime)` method that iterates the timeline, applies pre-fire compensation (`cue.time - preFireDelay`), and dispatches to PyroExecutor/DroneExecutor/DMX. Uses `blackbox.record()` for every command sent.
 
-### 4. Explosion Glow Dynamic Lighting
+**FieldBus**: Abstract transport layer. Each transport (wifi/rs485/relay) implements `send()/receive()/isAlive()`. The bus routes commands through the primary channel, switches to backup within 500ms if heartbeat fails, logs all transitions to BlackBox.
 
-**New file: `src/components/editor/skycanvas/ExplosionGlowSystem.tsx`**
-- Pool of reusable `PointLight` instances (max 8 concurrent)
-- On burst detection (from `ActiveBurstScanner`), spawn a short-lived point light at burst position
-- Light color matches burst compound color, intensity decays over ~0.5s
-- Lights illuminate terrain mesh and water surface naturally via Three.js
-- Zero-GC: pre-allocated light pool, no creation/destruction per frame
+**SimulationValidator**: Takes the full timeline + trajectories, runs `simulate()` at 100x speed using the same deterministic engines, collects all collision warnings, timing violations, and geofence breaches. Returns a `ValidationReport` with pass/fail per cue.
 
-**Modified: `src/components/editor/skycanvas/index.ts`**
-- Export `ExplosionGlowSystem`
-
-### 5. Depth-Based Occlusion Culling
-
-**Modified: `src/components/editor/skycanvas/GroundSystem.tsx`**
-- Set `renderOrder` on terrain mesh to ensure depth buffer is written before particle rendering
-- Enable `depthWrite: true` on terrain material so Three.js naturally occludes objects behind hills
-- This leverages the GPU depth buffer — no custom raycasting needed for visual occlusion
-
-### 6. Tide-Sync Water Stencil
-
-**Already partially implemented in `SkyEnvironment.tsx`** — verify stencil mask is active:
-- Water plane writes stencil ref=1
-- Terrain below water level reads stencil to clip (prevents sea inside islands)
-- `tideOffset` slider already in SceneEditorPanel; confirm it drives `waterLevel + tideOffset`
-
----
-
-### Files Summary
-
-| Action | File |
-|--------|------|
-| Create | `src/components/editor/GeoSearchPanel.tsx` |
-| Create | `src/components/editor/skycanvas/ExplosionGlowSystem.tsx` |
-| Modify | `src/components/editor/SceneEditorPanel.tsx` |
-| Modify | `src/components/editor/ShowCommanderPanel.tsx` |
-| Modify | `src/components/editor/skycanvas/GroundSystem.tsx` |
-| Modify | `src/components/editor/skycanvas/index.ts` |
-
-### Technical Notes
-
-- **Explosion Glow**: Uses a pre-allocated pool of 8 `THREE.PointLight` objects recycled via LRU. Reads from `getActiveBurstScan()` (already in sharedState) so no new per-frame allocations.
-- **Occlusion**: Pure GPU depth-buffer approach — no CPU raycasting. Terrain renders first (`renderOrder: -1`), particles render after, GPU discards fragments behind terrain automatically.
-- **Geo-Search**: Uses preset location database (no Google API key required). Locations include Angra dos Reis, Copacabana, Marina da Glória, and custom lat/lon input.
-- **Floating Origin wiring**: The engine is stateless per-call (`getLocalOffset`), so it integrates cleanly into `useFrame` loops without state management overhead.
+**PyroExecutor / DroneExecutor**: Stateless command dispatchers. Given a cue + simTime, they compute whether to fire and emit the command. PyroExecutor applies pre-fire delay. DroneExecutor converts local coords to WGS84 via existing `localToGeo()`. Both have offline fallback: if `fieldBus.isAlive() === false`, they buffer commands locally and execute from the local timeline.
 
