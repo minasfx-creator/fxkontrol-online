@@ -173,13 +173,13 @@ export default function GoogleTilesLayer() {
     tiles.update();
 
     // Feed stats to GeoHUD
-    const stats = tiles.stats;
-    if (stats) {
+    const root = tiles.root;
+    if (root) {
+      // Count visible tiles from the group hierarchy
+      let visibleCount = 0;
+      tiles.group.traverse(() => { visibleCount++; });
       updateGeoHUD({
-        tilesLoaded: stats.visibleTiles || 0,
-        vramPressure: stats.usedGPUMemory
-          ? stats.usedGPUMemory / (512 * 1024 * 1024)
-          : 0,
+        tilesLoaded: visibleCount,
       });
     }
   });

@@ -356,6 +356,7 @@ const DEFAULT_SETTINGS: SceneSettings = {
   geoAnchorAlt: 0,
   tideOffset: 0,
   fieldViewMode: false,
+  google3DTilesEnabled: false,
 
   // Ultra-Smooth Rendering defaults
   adaptiveQualityEnabled: true,
