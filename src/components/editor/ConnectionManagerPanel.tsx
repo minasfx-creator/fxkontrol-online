@@ -4,7 +4,8 @@
  * Plus PBUS, Bluetooth, Art-Net, USB-C DMX
  */
 import { useState, useCallback } from 'react';
-import { Wifi, WifiOff, Radio, RefreshCw, Plus, X, Activity, Cable, Globe, Zap, Antenna } from 'lucide-react';
+import { Wifi, WifiOff, Radio, RefreshCw, Plus, X, Activity, Cable, Globe, Zap, Antenna, Monitor, MonitorPlay } from 'lucide-react';
+import { clusterSync, type ClusterRole } from '@/core/sync/clusterSyncEngine';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -345,6 +346,43 @@ export default function ConnectionManagerPanel({ fs = false, onClose }: Connecti
           ))}
         </div>
       </ScrollArea>
+
+      {/* ── Cluster Sync Section ────────────────────────────── */}
+      <div className={cn("border-t border-border/10 pt-2 space-y-1.5", fs ? "px-3" : "px-2")}>
+        <div className="flex items-center gap-1.5">
+          <Monitor className="w-3 h-3 text-primary" />
+          <span className="text-[9px] font-bold text-foreground uppercase tracking-wider">Cluster Sync</span>
+          <Badge variant="outline" className={cn(
+            "ml-auto text-[7px] h-4",
+            clusterSync.isConnected() ? "border-green-500/30 text-green-400" : "border-muted-foreground/20 text-muted-foreground/40"
+          )}>
+            {clusterSync.getRole().toUpperCase()}
+          </Badge>
+        </div>
+        <div className="flex gap-1">
+          {(['standalone', 'master', 'client'] as ClusterRole[]).map(role => (
+            <Button
+              key={role}
+              variant={clusterSync.getRole() === role ? 'default' : 'outline'}
+              size="sm"
+              className="h-5 text-[7px] flex-1 px-1"
+              onClick={() => {
+                if (role === 'standalone') { clusterSync.stop(); }
+                else { clusterSync.start(role); }
+                toast.success(`Cluster: ${role.toUpperCase()}`);
+              }}
+            >
+              {role === 'master' ? <MonitorPlay className="w-2.5 h-2.5 mr-0.5" /> : null}
+              {role.charAt(0).toUpperCase() + role.slice(1)}
+            </Button>
+          ))}
+        </div>
+        {clusterSync.getRole() !== 'standalone' && (
+          <div className="text-[7px] font-mono text-muted-foreground/40">
+            Seq: {clusterSync.getState().masterSeq} | Latency: {clusterSync.getState().latencyMs.toFixed(0)}ms
+          </div>
+        )}
+      </div>
 
       {/* Quick info */}
       <div className={cn("flex items-center justify-between text-muted-foreground/30 border-t border-border/10 pt-2", "text-[8px]")}>

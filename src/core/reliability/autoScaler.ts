@@ -41,6 +41,10 @@ class AutoScaler {
   private cooldownFrames = 60;     // Wait 1s after tier change
   private listeners = new Set<(state: ScaleState) => void>();
   private locked = false;
+  private pixelRatio = 1.0;
+  private stableTime = 0;         // seconds at current tier
+  private lastTierChange = 0;     // timestamp
+  private restoreDelay = 10_000;  // 10s stable before restore
 
   /** Feed a frame's FPS. Auto-adjusts tier. */
   tick(fps: number): ScaleState {
@@ -55,14 +59,35 @@ class AutoScaler {
     const avgFps = this.fpsBuffer.reduce((a, b) => a + b, 0) / this.fpsBuffer.length;
     const idx = TIER_ORDER.indexOf(this.currentTier);
 
+    // Performance Governor: staged degradation
     if (avgFps < this.downgradeThreshold && idx < TIER_ORDER.length - 1) {
-      this.currentTier = TIER_ORDER[idx + 1];
+      // Stage 1: reduce pixelRatio first
+      if (this.pixelRatio > 0.5) {
+        this.pixelRatio = Math.max(0.5, this.pixelRatio - 0.15);
+        console.log(`[AutoScaler] Governor: pixelRatio → ${this.pixelRatio.toFixed(2)}`);
+      } else {
+        // Stage 2: drop quality tier
+        this.currentTier = TIER_ORDER[idx + 1];
+        this.pixelRatio = 1.0; // reset for new tier
+        console.log(`[AutoScaler] Governor: tier → ${this.currentTier}`);
+      }
       this.stableFrames = 0;
+      this.lastTierChange = Date.now();
       this.notify();
     } else if (avgFps > this.upgradeThreshold && idx > 0) {
-      this.currentTier = TIER_ORDER[idx - 1];
-      this.stableFrames = 0;
-      this.notify();
+      // Gradual restore after sustained stability
+      if (Date.now() - this.lastTierChange > this.restoreDelay) {
+        if (this.pixelRatio < 1.0) {
+          this.pixelRatio = Math.min(1.0, this.pixelRatio + 0.1);
+          console.log(`[AutoScaler] Governor: restoring pixelRatio → ${this.pixelRatio.toFixed(2)}`);
+        } else {
+          this.currentTier = TIER_ORDER[idx - 1];
+          console.log(`[AutoScaler] Governor: restoring tier → ${this.currentTier}`);
+        }
+        this.stableFrames = 0;
+        this.lastTierChange = Date.now();
+        this.notify();
+      }
     }
 
     return this.getState();
@@ -76,10 +101,16 @@ class AutoScaler {
     return this.currentTier;
   }
 
+  /** Get current pixel ratio from governor */
+  getPixelRatio(): number {
+    return this.pixelRatio;
+  }
+
   /** Force a specific tier (manual override). */
   setTier(tier: QualityTier): void {
     this.currentTier = tier;
     this.stableFrames = 0;
+    this.lastTierChange = Date.now();
     this.notify();
   }
 
@@ -105,6 +136,9 @@ class AutoScaler {
     this.fpsBuffer = [];
     this.stableFrames = 0;
     this.locked = false;
+    this.pixelRatio = 1.0;
+    this.stableTime = 0;
+    this.lastTierChange = 0;
   }
 }
 

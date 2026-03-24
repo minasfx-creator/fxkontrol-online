@@ -225,3 +225,88 @@ export function checkFrameBudget(
     trianglesOk: triangles <= _frameBudget.maxTriangles,
   };
 }
+
+// ── NaN / Invalid Transform Scanner ─────────────────────────
+export interface TransformScanResult {
+  corrupted: number;
+  fixed: number;
+  removed: number;
+}
+
+const _lastValidPositions = new Map<number, { x: number; y: number; z: number }>();
+let _scanFrameCounter = 0;
+const SCAN_INTERVAL = 60; // scan every 60 frames
+
+/**
+ * Scan a Three.js scene for NaN/undefined/invalid transforms.
+ * Call from useFrame. Only runs every SCAN_INTERVAL frames.
+ * Auto-fixes corrupted values to last valid snapshot.
+ */
+export function scanSceneTransforms(scene: { traverse: (cb: (obj: any) => void) => void }): TransformScanResult | null {
+  _scanFrameCounter++;
+  if (_scanFrameCounter % SCAN_INTERVAL !== 0) return null;
+
+  let corrupted = 0;
+  let fixed = 0;
+  let removed = 0;
+
+  scene.traverse((obj: any) => {
+    if (!obj.position || !obj.rotation || !obj.scale) return;
+
+    const pos = obj.position;
+    const rot = obj.rotation;
+    const scl = obj.scale;
+
+    const isCorrupt =
+      !isFinite(pos.x) || !isFinite(pos.y) || !isFinite(pos.z) ||
+      !isFinite(rot.x) || !isFinite(rot.y) || !isFinite(rot.z) ||
+      !isFinite(scl.x) || !isFinite(scl.y) || !isFinite(scl.z) ||
+      scl.x === 0 || scl.y === 0 || scl.z === 0;
+
+    if (isCorrupt) {
+      corrupted++;
+      const lastValid = _lastValidPositions.get(obj.id);
+
+      if (lastValid) {
+        // Restore last valid position
+        if (!isFinite(pos.x) || !isFinite(pos.y) || !isFinite(pos.z)) {
+          pos.set(lastValid.x, lastValid.y, lastValid.z);
+          fixed++;
+        }
+      } else {
+        // Reset to origin
+        pos.set(0, 0, 0);
+        fixed++;
+      }
+
+      // Fix rotation
+      if (!isFinite(rot.x)) rot.x = 0;
+      if (!isFinite(rot.y)) rot.y = 0;
+      if (!isFinite(rot.z)) rot.z = 0;
+
+      // Fix scale
+      if (!isFinite(scl.x) || scl.x === 0) scl.x = 1;
+      if (!isFinite(scl.y) || scl.y === 0) scl.y = 1;
+      if (!isFinite(scl.z) || scl.z === 0) scl.z = 1;
+
+      console.warn(`[RuntimeSafety] Fixed corrupted transform on object ${obj.name || obj.id}`);
+    } else {
+      // Snapshot valid position
+      _lastValidPositions.set(obj.id, { x: pos.x, y: pos.y, z: pos.z });
+    }
+  });
+
+  // Prune stale snapshots (keep max 500)
+  if (_lastValidPositions.size > 500) {
+    const keys = [..._lastValidPositions.keys()];
+    for (let i = 0; i < keys.length - 500; i++) {
+      _lastValidPositions.delete(keys[i]);
+    }
+  }
+
+  if (corrupted > 0) {
+    console.warn(`[RuntimeSafety] Scan: ${corrupted} corrupted, ${fixed} fixed, ${removed} removed`);
+  }
+
+  return { corrupted, fixed, removed };
+}
