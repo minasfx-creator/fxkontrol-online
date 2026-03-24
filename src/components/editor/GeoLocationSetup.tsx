@@ -4,6 +4,7 @@
  * Fix de Performance WebGL / Contexto único.
  */
 import { useState, useCallback, useMemo } from 'react';
+import { triggerFlyTo } from '@/core/geo/GeoCameraController';
 import { Search, X, MapPin, Navigation } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
