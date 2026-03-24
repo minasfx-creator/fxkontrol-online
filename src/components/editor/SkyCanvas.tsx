@@ -89,6 +89,11 @@ import ViewportGeoTools, { type GeoToolMode, type GeoMarker, type GeoRulerPoint,
 import { GeoToolsScene, GeoToolClickHandler } from './GeoToolsR3F';
 import { RenderDebugToggle, RenderDebugPanel, setDebugExposure, setDebugBurstLoad, setDebugLOD, setDebugRendererInfo } from './RenderDebugOverlay';
 import { clampNiagaraHDR, getNiagaraBudgets, setAdaptivePipelineState } from '@/lib/niagaraBlenderRules';
+// ═══ Hardening Engine ═══
+import {
+  reportCrash, isInCooldown, recordContextLoss,
+  watchdogTick, pushFrameMetrics, startMetricsReporting, stopMetricsReporting,
+} from '@/lib/hardening';
 
 // ═══ Shared state imported from skycanvas module ═══
 import {
@@ -197,6 +202,35 @@ const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref)
 
   return null;
 });
+/**
+ * HardeningWatchdog — feeds FPS/renderer metrics to the hardening engine each frame.
+ * Runs inside the R3F Canvas context.
+ */
+function HardeningWatchdog() {
+  const { gl } = useThree();
+  const frameRef = useRef(0);
+
+  // Start metrics console reporting on mount
+  useEffect(() => {
+    startMetricsReporting(60); // Log every 60s
+    return () => stopMetricsReporting();
+  }, []);
+
+  useFrame((_state, delta) => {
+    frameRef.current++;
+    // Sample at ~10Hz (every 6 frames at 60fps)
+    if (frameRef.current % 6 !== 0) return;
+
+    const fps = delta > 0 ? 1 / delta : 60;
+    const frameTimeMs = delta * 1000;
+    const info = gl.info.render;
+
+    pushFrameMetrics(fps, frameTimeMs, info.calls, info.triangles);
+    watchdogTick(fps);
+  });
+
+  return null;
+}
 
 // Module-level refs — local aliases for backward compat within this file
 let _skyScatterUniforms: { uExplosionScatter: { value: THREE.Color }; uScatterIntensity: { value: number } } | null = null;
@@ -1553,9 +1587,19 @@ export default function SkyCanvas() {
           const handleContextLost = (e: Event) => {
             e.preventDefault();
             if (recoveringContextRef.current) return;
+
+            // Hardening: record context loss for observability
+            recordContextLoss();
+
+            // Hardening: crash-loop protection — skip recovery if in cooldown
+            const shouldRecover = reportCrash();
+            if (!shouldRecover || isInCooldown()) {
+              console.error('[FXK] WebGL context lost — in cooldown, suppressing remount');
+              return;
+            }
+
             recoveringContextRef.current = true;
             console.warn('[FXK] WebGL context lost — remounting renderer');
-            // _starMaterialInstance now lives in FireworkRenderer
 
             resetPools(); // Clear geometry/buffer pools on context loss
             setCanvasInstanceKey((prev) => prev + 1);
@@ -1573,6 +1617,7 @@ export default function SkyCanvas() {
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook || flyMode} flyMode={flyMode} />
         {flyMode && <FlyControls onSpeedChange={flySpeedCb} />}
 
+        <HardeningWatchdog />
         <SceneLighting />
         <AdaptiveExposureController />
         {!environment.disableLighting && <GlobalIlluminationController />}
