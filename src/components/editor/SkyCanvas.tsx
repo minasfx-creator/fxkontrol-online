@@ -1598,37 +1598,8 @@ export default function SkyCanvas() {
         }}
         dpr={isMobile ? [1, 1.5] : [1.5, 2]}
         performance={{ min: 0.5 }}
-        onCreated={({ gl }) => {
-          const canvas = gl.domElement;
-
-          const handleContextLost = (e: Event) => {
-            e.preventDefault();
-            if (recoveringContextRef.current) return;
-
-            // Hardening: record context loss for observability
-            recordContextLoss();
-
-            // Hardening: crash-loop protection — skip recovery if in cooldown
-            const shouldRecover = reportCrash();
-            if (!shouldRecover || isInCooldown()) {
-              console.error('[FXK] WebGL context lost — in cooldown, suppressing remount');
-              return;
-            }
-
-            recoveringContextRef.current = true;
-            console.warn('[FXK] WebGL context lost — remounting renderer');
-
-            resetPools(); // Clear geometry/buffer pools on context loss
-            setCanvasInstanceKey((prev) => prev + 1);
-          };
-
-          const handleContextRestored = () => {
-            console.log('[FXK] WebGL context restored');
-            recoveringContextRef.current = false;
-          };
-
-          canvas.addEventListener('webglcontextlost', handleContextLost as EventListener);
-          canvas.addEventListener('webglcontextrestored', handleContextRestored as EventListener);
+        onCreated={() => {
+          recoveringContextRef.current = false;
         }}>
         <PerspectiveCamera makeDefault position={preset.position} fov={50} near={0.5} far={500000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook || flyMode} flyMode={flyMode} />
