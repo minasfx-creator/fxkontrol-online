@@ -179,8 +179,9 @@ function Index() {
   const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activePanel, setActivePanel] = useState<PanelId | null>('properties');
-  const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'globe' | 'editor'>('cinematic');
+  const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'globe' | 'editor'>('editor');
   const [showLocation, setShowLocation] = useState<{ name: string; lat: number; lng: number } | null>(null);
+  const [showViewportGlobe, setShowViewportGlobe] = useState(true);
   const [showPositionEditor, setShowPositionEditor] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab | null>(null);
@@ -305,6 +306,7 @@ function Index() {
       altitude: 0,
     });
     setAppPhase('editor');
+    setShowViewportGlobe(false);
   }, []);
 
   const handleMobileOpenPanel = useCallback((id: PanelId) => {
@@ -617,6 +619,15 @@ function Index() {
                       <SkyCanvas />
                     </Suspense>
                   </CanvasErrorBoundary>
+                  {showViewportGlobe && (
+                    <GlobeSelector
+                      mode="embedded"
+                      onLocationSelected={handleLocationSelected}
+                      onSkip={() => {
+                        handleLocationSelected({ name: 'Default', lat: 0, lng: 0 });
+                      }}
+                    />
+                  )}
                   <BoxSelectOverlay />
                   <SelectionModeBar />
                   {isDragOver && (

@@ -552,9 +552,11 @@ function ZoomProgress({ phase }: { phase: string }) {
 // ─── Main component ───
 interface GlobeSelectorProps {
   onLocationSelected: (location: { name: string; lat: number; lng: number }) => void;
+  mode?: 'fullscreen' | 'embedded';
+  onSkip?: () => void;
 }
 
-export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps) {
+export default function GlobeSelector({ onLocationSelected, mode = 'fullscreen', onSkip }: GlobeSelectorProps) {
   const [search, setSearch] = useState('');
   const [selectedCity, setSelectedCity] = useState<typeof CITIES[0] | null>(null);
   const [freePin, setFreePin] = useState<{ lat: number; lng: number } | null>(null);
@@ -633,6 +635,7 @@ export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps
       : null;
 
   const autoRotate = !selectedCity && !freePin && phase === 'browse';
+  const isEmbedded = mode === 'embedded';
 
   return (
     <div className={cn(
@@ -660,6 +663,11 @@ export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps
         </div>
 
         <div className="flex items-center gap-2">
+          {isEmbedded && onSkip && (
+            <Button variant="ghost" size="sm" onClick={onSkip} className="h-8 text-[10px] font-mono-code">
+              Pular
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -812,6 +820,16 @@ export default function GlobeSelector({ onLocationSelected }: GlobeSelectorProps
             >
               <Crosshair className="w-3.5 h-3.5 mr-2" />
               Confirmar Local
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const earthUrl = `https://earth.google.com/web/@${activeLocation.lat},${activeLocation.lng},1500a,35d,1y,0h,0t,0r`;
+                window.open(earthUrl, '_blank', 'noopener,noreferrer');
+              }}
+              className="h-10 px-4 text-[10px] uppercase tracking-[0.12em]"
+            >
+              Google Earth
             </Button>
           </div>
         )}
