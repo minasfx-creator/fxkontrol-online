@@ -258,12 +258,15 @@ function GrassGround() {
   });
 
   return (
-    <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+    <mesh position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
       <planeGeometry args={[100000, 100000, 1, 1]} />
       <shaderMaterial
         uniforms={uniforms}
         vertexShader={TERRAIN_VERTEX}
         fragmentShader={UNIFIED_TERRAIN_FRAGMENT}
+        polygonOffset
+        polygonOffsetFactor={1}
+        polygonOffsetUnits={1}
       />
     </mesh>
   );

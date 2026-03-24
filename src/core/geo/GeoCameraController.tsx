@@ -94,7 +94,11 @@ export default function GeoCameraController() {
     // Update flyTo animation
     if (isFlyingTo()) {
       updateFlyTo(camera, controlsRef.current);
-      // Suppress CameraController lerp by keeping controls.enabled false
+      // Clamp altitude during flyTo
+      if (camera.position.y < 5) {
+        camera.position.y = 5;
+        console.warn('[Camera] altitude clamped during flyTo');
+      }
       return;
     }
 
