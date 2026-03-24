@@ -826,7 +826,7 @@ function GeoTimeOfDaySync() {
   return null;
 }
 
-
+function SceneFog() {
   const s = useSceneStore(st => st.settings);
   if (s.fogDensity <= 0) return null;
   return <fog attach="fog" args={[s.fogColor, s.fogNear, s.fogFar / Math.max(s.fogDensity, 0.1)]} />;
