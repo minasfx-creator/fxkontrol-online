@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { useFireOneModuleMode } from '@/hooks/useFireOneModuleMode';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { FiringMode } from '@/lib/fireoneModuleEmulator';
+import SignalDiagnosticsPanel from './SignalDiagnosticsPanel';
 
 interface VirtualIFMx32QProps {
   fs?: boolean;
