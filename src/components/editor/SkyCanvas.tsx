@@ -1558,9 +1558,19 @@ export default function SkyCanvas() {
           const handleContextLost = (e: Event) => {
             e.preventDefault();
             if (recoveringContextRef.current) return;
+
+            // Hardening: record context loss for observability
+            recordContextLoss();
+
+            // Hardening: crash-loop protection — skip recovery if in cooldown
+            const shouldRecover = reportCrash();
+            if (!shouldRecover || isInCooldown()) {
+              console.error('[FXK] WebGL context lost — in cooldown, suppressing remount');
+              return;
+            }
+
             recoveringContextRef.current = true;
             console.warn('[FXK] WebGL context lost — remounting renderer');
-            // _starMaterialInstance now lives in FireworkRenderer
 
             resetPools(); // Clear geometry/buffer pools on context loss
             setCanvasInstanceKey((prev) => prev + 1);
