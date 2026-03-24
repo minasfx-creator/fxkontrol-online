@@ -132,9 +132,12 @@ export default function SafetyPanel() {
 
       {/* HCA Status Panel */}
       <div className="bg-surface-2 rounded-sm overflow-hidden">
-        <button
-          className="w-full flex items-center gap-1.5 p-2 hover:bg-surface-3/50 transition-colors"
+        <div
+          role="button"
+          tabIndex={0}
+          className="w-full flex items-center gap-1.5 p-2 hover:bg-surface-3/50 transition-colors cursor-pointer"
           onClick={() => toggleSection('hca')}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSection('hca'); } }}
         >
           {expandedSections.has('hca') ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
           <Zap className="h-3 w-3 text-muted-foreground" />
