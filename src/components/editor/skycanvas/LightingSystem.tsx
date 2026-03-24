@@ -252,6 +252,12 @@ export const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function Groun
 
   useFrame(({ clock }) => {
     if (!meshRef.current) return;
+    // sfx-stage mode: skip reflection updates entirely (performance optimization)
+    if (groundStyle === 'sfx-stage') {
+      meshRef.current.visible = false;
+      return;
+    }
+    meshRef.current.visible = true;
     const u = uniformsRef.current;
     u.uTime.value = clock.getElapsedTime();
 
