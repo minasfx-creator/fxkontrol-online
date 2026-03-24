@@ -1737,6 +1737,7 @@ export default function SkyCanvas() {
         <HardeningWatchdog />
         <FXKQualityController />
         <SceneLighting />
+        <GeoTimeOfDaySync />
         <AdaptiveExposureController />
         {!environment.disableLighting && <GlobalIlluminationController />}
         <GroundReflections />
