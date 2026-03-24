@@ -287,6 +287,50 @@ export function MissionControlPanel() {
         </div>
       </div>
 
+      {/* Global Sync Status */}
+      <div className="p-2 rounded border border-border/50 bg-card/30 space-y-1">
+        <div className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground">
+          <Radio className="w-3 h-3" /> GLOBAL SYNC
+        </div>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Mode</span>
+            <span className="font-mono font-bold text-foreground uppercase">{clockSync.role}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Status</span>
+            <span className={`font-mono font-bold ${
+              clockSync.status === 'synced' ? 'text-green-400' :
+              clockSync.status === 'syncing' ? 'text-yellow-400' :
+              clockSync.status === 'degraded' ? 'text-red-400' :
+              'text-muted-foreground'
+            }`}>{clockSync.status.toUpperCase()}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Offset</span>
+            <span className={`font-mono ${Math.abs(clockSync.offset) > 5 ? 'text-yellow-400' : 'text-foreground'}`}>
+              {clockSync.offset > 0 ? '+' : ''}{clockSync.offset.toFixed(1)}ms
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Ping</span>
+            <span className={`font-mono ${clockSync.rtt > 50 ? 'text-yellow-400' : 'text-foreground'}`}>
+              {clockSync.rtt.toFixed(0)}ms
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Drift</span>
+            <span className={`font-mono ${Math.abs(clockSync.drift) > 3 ? 'text-red-400' : 'text-foreground'}`}>
+              {clockSync.drift.toFixed(1)}ms
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Samples</span>
+            <span className="font-mono text-foreground">{clockSync.sampleCount}</span>
+          </div>
+        </div>
+      </div>
+
       {/* BlackBox Controls */}
       <div className="flex gap-1.5">
         <Button size="sm" variant={bbRecording ? 'destructive' : 'outline'} className="h-7 text-[10px] flex-1" onClick={toggleBlackBox}>
