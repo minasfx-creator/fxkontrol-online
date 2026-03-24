@@ -82,14 +82,25 @@ Para manter estabilidade sem quebrar módulos críticos, o refinamento foi isola
 
 Camada adicionada em `modules/ai/` para assistência em tempo real, sem alterar core determinístico:
 
-- `AICoPilot.cjs`: suavização de input com `lerp`/`clamp`, correção de micro-erros, modos MANUAL/ASSISTED/AI_CONTROL/CINEMATIC, e `suggestedCameraTarget`.
-- `AIDecisionEngine.cjs`: cálculo de `safeTrajectory` com análise de risco (colisão, altitude, sinal, bateria).
-- `FXKAssistant.cjs`: assistente visual com estados IDLE/GUIDING/ALERT/CINEMATIC, `orbColor`/`orbOpacity`, e voz opcional.
-- `AssistantOrb.cjs`: identidade visual abstrata com glow/pulso por estado.
-- `AIControls.cjs`: estado de UI para `[AI COPILOT ON/OFF]`, `[ASSIST LEVEL]`, `[VOICE ON/OFF]`.
+- `AICoPilot.ts`: suavização de input (`lerp`), correção de micro-erros e override de segurança em risco real.
+- `AIDecisionEngine.ts`: cálculo de `safeTrajectory` com análise de risco (colisão, altitude, sinal, bateria).
+- `FXKAssistant.ts`: assistente visual elegante estilo JARVIS/Joy (texto HUD + voz opcional).
+- `AssistantOrb.ts`: identidade visual abstrata com glow/pulso por estado.
+- `AIControls.ts`: estado de UI para `[AI COPILOT ON/OFF]`, `[ASSIST LEVEL]`, `[VOICE ON/OFF]`.
 
 Regras aplicadas:
 
 - IA **não interfere** na execução automática do show.
 - Assistente é opcional e pode ser desativado.
 - Decisões focadas em segurança e UX, com baixa latência.
+
+## 7) Diretriz de identidade visual do assistente
+
+Para compliance de produto/IP, a presença visual deve ser **inspirada em assistentes holográficos premium**, porém com identidade própria FXK (sem clonagem literal de personagens).
+
+Princípios aplicados:
+
+- estética abstrata (orb + aura + HUD translúcido)
+- tom calmo, preciso e objetivo
+- informação contextual curta, com prioridade de segurança
+- UX opcional e não intrusiva
