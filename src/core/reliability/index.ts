@@ -20,3 +20,7 @@ export { fieldBus, type FieldBusState, type TransportId } from '@/core/network/f
 export { simulationValidator, type ValidationReport, type ValidationIssue, type ValidationCue } from '@/core/validation/simulationValidator';
 export { pyroExecutor, type PyroCue } from '@/core/execution/pyroExecutor';
 export { droneExecutor, type DroneWaypoint } from '@/core/execution/droneExecutor';
+
+// ── Global Sync Layer (v6.0) ───────────────────────────────────────
+export { globalClock, type SyncRole, type ClockSyncState } from '@/core/sync/globalClockAdapter';
+export { globalSync, type GlobalSyncState, type SyncOperator, type OperatorPermission } from '@/core/sync/globalSyncEngine';

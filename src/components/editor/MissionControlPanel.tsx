@@ -23,10 +23,13 @@ import {
   executionBridge,
   simulationValidator,
   deterministicClock,
+  globalClock,
+  globalSync,
   type DiagnosticReport,
   type DiagnosticCheck,
   type CheckStatus,
   type ValidationReport,
+  type ClockSyncState,
 } from '@/core/reliability';
 
 // ── Status Icon ─────────────────────────────────────────────────────
