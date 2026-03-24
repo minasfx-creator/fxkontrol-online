@@ -11,6 +11,7 @@ import { getTerrainPresets } from '@/render_ultra/environment/terrainPBR';
 import { useProjectStore } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import GeoSearchPanel from './GeoSearchPanel';
 
 type SectionId = 'quick' | 'presets' | 'sky' | 'ground' | 'weather' | 'effects' | 'pyro' | 'lighting' | 'post' | 'background';
 
@@ -256,6 +257,7 @@ export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
           {/* Geo-Engine Controls */}
           <div className="pt-2 border-t border-border/10 space-y-2">
             <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-wider">Geo Engine</span>
+            <GeoSearchPanel />
             <div className="flex items-center justify-between">
               <span className="text-[9px] text-muted-foreground">Floating Origin</span>
               <Switch

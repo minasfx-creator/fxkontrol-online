@@ -37,6 +37,9 @@ export { Moon, AtmosphericParticles, StageGround } from './GroundSystem';
 // ═══ FireworkRenderer — burst particles, timeline effects, live SFX ═══
 export { FireworkBurst, TimelineEffects, LiveSFXEffects, estimateFireworkStarCost } from './FireworkRenderer';
 
+// ═══ ExplosionGlowSystem — dynamic terrain/water illumination ═══
+export { ExplosionGlowSystem } from './ExplosionGlowSystem';
+
 // ═══ LightingSystem — exposure, GI, lens flares, reflections, debug ═══
 export {
   AdaptiveExposureController,
