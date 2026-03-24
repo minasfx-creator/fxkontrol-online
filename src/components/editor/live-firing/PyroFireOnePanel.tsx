@@ -1606,8 +1606,8 @@ export default function PyroFireOnePanel({
   // ═══════════════════════════════════════════════════════════
   return (
     <div className="flex flex-col h-full relative overflow-hidden" style={{ background: 'hsl(220 18% 4%)' }}>
-      {/* Amber scanline overlay — BR2049 */}
-      <div className="absolute inset-0 pointer-events-none z-10" style={{
+      {/* Amber scanline overlay — disabled for clean viewport */}
+      {false && <div className="absolute inset-0 pointer-events-none z-10" style={{
         backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, hsl(32 100% 50% / 0.012) 2px, hsl(32 100% 50% / 0.012) 4px)',
         backgroundSize: '100% 4px',
       }} />

@@ -503,6 +503,120 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// SyntheticGrassGround — vivid artificial turf
+// ═══════════════════════════════════════════════════════════════════════
+const SYNTHETIC_GRASS_VERTEX = `
+  varying vec2 vUv;
+  varying vec3 vWorldPos;
+  varying vec3 vNormal;
+  varying vec3 vViewDir;
+  uniform vec3 camPos;
+  void main() {
+    vUv = uv;
+    vNormal = normalize(normalMatrix * normal);
+    vec4 wp = modelMatrix * vec4(position, 1.0);
+    vWorldPos = wp.xyz;
+    vViewDir = normalize(camPos - wp.xyz);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const SYNTHETIC_GRASS_FRAGMENT = `
+  uniform float time;
+  uniform float brightness;
+  uniform vec3 camPos;
+  varying vec2 vUv;
+  varying vec3 vWorldPos;
+  varying vec3 vNormal;
+  varying vec3 vViewDir;
+
+  float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  float noise(vec2 p) {
+    vec2 i = floor(p); vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
+               mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+  }
+
+  void main() {
+    vec2 wuv = vWorldPos.xz;
+    float distFromCenter = length(wuv);
+
+    // Base synthetic turf green
+    vec3 turfA = vec3(0.08, 0.32, 0.06);
+    vec3 turfB = vec3(0.06, 0.26, 0.04);
+
+    // Fiber-like fine grain
+    float fiber = noise(wuv * 8.0) * 0.5 + noise(wuv * 32.0) * 0.3 + noise(wuv * 80.0) * 0.2;
+    vec3 color = mix(turfA, turfB, fiber);
+
+    // Mowing stripe pattern (alternating bright/dark bands)
+    float stripeFreq = 0.15;
+    float stripe = sin(wuv.x * stripeFreq) * 0.5 + 0.5;
+    stripe = smoothstep(0.35, 0.65, stripe);
+    color = mix(color * 0.92, color * 1.08, stripe);
+
+    // Cross-stripe subtle pattern
+    float crossStripe = sin(wuv.y * stripeFreq * 0.7 + 0.785) * 0.5 + 0.5;
+    crossStripe = smoothstep(0.4, 0.6, crossStripe);
+    color = mix(color * 0.97, color * 1.03, crossStripe * 0.3);
+
+    // Micro variation for realism
+    float micro = noise(wuv * 120.0);
+    color += vec3(0.005, 0.01, 0.003) * (micro - 0.5);
+
+    // Apply brightness
+    color *= brightness;
+
+    // Simple directional lighting
+    vec3 lightDir = normalize(vec3(0.3, 0.8, 0.5));
+    float NdotL = max(dot(vNormal, lightDir), 0.0);
+    color *= (NdotL * 0.5 + 0.5);
+
+    // Specular sheen (synthetic turf is slightly shiny)
+    vec3 halfDir = normalize(lightDir + vViewDir);
+    float spec = pow(max(dot(vNormal, halfDir), 0.0), 20.0);
+    color += vec3(0.02, 0.04, 0.01) * spec;
+
+    // Distance fade to horizon
+    float dist = distFromCenter * 0.00004;
+    float fogFactor = smoothstep(0.0, 1.0, dist);
+    vec3 horizonColor = vec3(0.02, 0.04, 0.03);
+    color = mix(color, horizonColor, fogFactor);
+
+    gl_FragColor = vec4(color, 1.0);
+  }
+`;
+
+function SyntheticGrassGround({ brightness }: { brightness: number }) {
+  const uniforms = useMemo(() => ({
+    time: { value: 0 },
+    brightness: { value: brightness },
+    camPos: { value: new THREE.Vector3() },
+  }), []);
+
+  useEffect(() => {
+    uniforms.brightness.value = brightness;
+  }, [brightness]);
+
+  useFrame(({ clock, camera }) => {
+    uniforms.time.value = clock.getElapsedTime();
+    uniforms.camPos.value.copy(camera.position);
+  });
+
+  return (
+    <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <planeGeometry args={[100000, 100000, 1, 1]} />
+      <shaderMaterial
+        uniforms={uniforms}
+        vertexShader={SYNTHETIC_GRASS_VERTEX}
+        fragmentShader={SYNTHETIC_GRASS_FRAGMENT}
+      />
+    </mesh>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // ConcreteGround
 // ═══════════════════════════════════════════════════════════════════════
 function ConcreteGround({ brightness }: { brightness: number }) {
