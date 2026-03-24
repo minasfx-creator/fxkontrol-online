@@ -415,7 +415,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
         </>
       )}
 
-      {/* ─── CENTER: Project Name ────────────── */}
+      {/* ─── CENTER: Project Name + Location ────────────── */}
       <div className="flex-1 flex justify-center">
         <div className="flex items-center gap-2">
           <span className="text-sm text-zinc-400 font-medium truncate max-w-[200px]">{projectName}</span>
@@ -424,6 +424,7 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
             <span className="text-zinc-700">·</span>
             <span>{positions.length} pos</span>
           </div>
+          <LocationDisplay />
         </div>
       </div>
 
