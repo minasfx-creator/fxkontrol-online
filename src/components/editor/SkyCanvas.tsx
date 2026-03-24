@@ -1149,6 +1149,8 @@ function SatelliteOverlay({ textureUrl }: { textureUrl: string | null }) {
 
 // --- Google Earth-style satellite terrain ground ---
 function GrassGround() {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const nearMeshRef = useRef<THREE.Mesh>(null);
   const uniforms = useMemo(() => ({
     time: { value: 0 },
     moonDir: { value: new THREE.Vector3(0.5, 0.7, -0.5).normalize() },
@@ -1158,6 +1160,15 @@ function GrassGround() {
   useFrame(({ clock, camera }) => {
     uniforms.time.value = clock.getElapsedTime();
     uniforms.camPos.value.copy(camera.position);
+    // Follow camera XZ to prevent edge visibility
+    if (meshRef.current) {
+      meshRef.current.position.x = camera.position.x;
+      meshRef.current.position.z = camera.position.z;
+    }
+    if (nearMeshRef.current) {
+      nearMeshRef.current.position.x = camera.position.x;
+      nearMeshRef.current.position.z = camera.position.z;
+    }
   });
 
   const terrainVertexShader = `
