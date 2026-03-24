@@ -294,7 +294,6 @@ function Index() {
 
 
   const handleLocationSelected = useCallback((location: { name: string; lat: number; lng: number }) => {
-    setShowLocation(location);
     useProjectStore.getState().setGpsOrigin({
       lat: location.lat,
       lng: location.lng,
