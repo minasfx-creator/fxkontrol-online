@@ -102,13 +102,13 @@ export default function GeoCameraController() {
     const os = orbitState.current;
     if (os.active) {
       os.angle += os.speed * delta;
+      const orbitY = Math.max(5, os.height);
       camera.position.set(
         os.center.x + Math.sin(os.angle) * os.radius,
-        os.height,
+        orbitY,
         os.center.z + Math.cos(os.angle) * os.radius,
       );
       camera.lookAt(os.center);
-      // Keep OrbitControls disabled during orbit
       if (controlsRef.current) controlsRef.current.enabled = false;
     }
   });
