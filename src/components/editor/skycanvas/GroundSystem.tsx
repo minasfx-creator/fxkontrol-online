@@ -1165,27 +1165,27 @@ export function StageGround({ satelliteTexture }: { satelliteTexture: string | n
         return (
           <>
             <Grid
-              position={[0, 0.01, 0]}
+              position={[0, 0.02, 0]}
               args={[1000, 1000]}
               cellSize={cellSize}
-              cellThickness={0.15}
-              cellColor="#15152a"
+              cellThickness={0.3}
+              cellColor="#1a2a12"
               sectionSize={sectionSize}
-              sectionThickness={0.4}
-              sectionColor="#1a1a2e"
-              fadeDistance={4000}
+              sectionThickness={0.6}
+              sectionColor="#2a3a1e"
+              fadeDistance={3000}
               infiniteGrid
             />
             <Grid
-              position={[0, 0.015, 0]}
+              position={[0, 0.025, 0]}
               args={[10000, 10000]}
               cellSize={sectionSize * 5}
-              cellThickness={0.6}
-              cellColor="#1a1a2e"
+              cellThickness={0.5}
+              cellColor="#2a3a1e"
               sectionSize={sectionSize * 10}
-              sectionThickness={0.8}
-              sectionColor="#22223a"
-              fadeDistance={7500}
+              sectionThickness={0.7}
+              sectionColor="#3a4a2e"
+              fadeDistance={5000}
               infiniteGrid
             />
           </>
