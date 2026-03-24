@@ -10,7 +10,7 @@ import Toolbar from '@/components/editor/Toolbar';
 import SplashScreen from '@/components/editor/SplashScreen';
 import CrashRecoveryBanner from '@/components/editor/CrashRecoveryBanner';
 import StockAlertsBadge from '@/components/editor/StockAlertsBadge';
-import GlobeSelector from '@/components/editor/GlobeSelector';
+import GeoLocationSetup from '@/components/editor/GeoLocationSetup';
 import EffectLibrary from '@/components/editor/EffectLibrary';
 import AudienceAnalyzerPanel from '@/components/editor/AudienceAnalyzerPanel';
 import IndoorSimPanel from '@/components/editor/IndoorSimPanel';

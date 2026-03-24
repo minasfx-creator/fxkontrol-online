@@ -351,13 +351,13 @@ const DEFAULT_SETTINGS: SceneSettings = {
   niagaraFluidsEnabled: false,
 
   // Ultra Hardening defaults
-  floatingOriginEnabled: false,
+  floatingOriginEnabled: true,
   geoAnchorLat: -23.007,
   geoAnchorLon: -44.318,
   geoAnchorAlt: 0,
   tideOffset: 0,
   fieldViewMode: false,
-  google3DTilesEnabled: false,
+  google3DTilesEnabled: true,
   presentationMode: false,
 
   // Ultra-Smooth Rendering defaults
