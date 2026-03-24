@@ -1685,7 +1685,7 @@ export default function SkyCanvas() {
         onCreated={() => {
           recoveringContextRef.current = false;
         }}>
-        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={1.0} far={500000} />
+        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={1.0} far={30000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook || flyMode} flyMode={flyMode} />
         {flyMode && <FlyControls onSpeedChange={flySpeedCb} />}
 
