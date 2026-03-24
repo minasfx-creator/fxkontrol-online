@@ -100,12 +100,13 @@ function Sparkline({ data, width = 60, height = 16, color = 'hsl(120 70% 45%)' }
 }
 
 // ═══ Tactile Button ═══
-function TactileButton({ label, onClick, variant = 'default', disabled = false, icon: Icon }: {
+function TactileButton({ label, onClick, variant = 'default', disabled = false, icon: Icon, pulse = false }: {
   label: string;
   onClick: () => void;
-  variant?: 'default' | 'connect' | 'disconnect' | 'sync';
+  variant?: 'default' | 'connect' | 'disconnect' | 'sync' | 'simulate';
   disabled?: boolean;
   icon?: React.ElementType;
+  pulse?: boolean;
 }) {
   const variantStyles = {
     default: 'border-border/30 text-muted-foreground/60 hover:text-foreground hover:bg-white/5',
