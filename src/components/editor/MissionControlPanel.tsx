@@ -397,7 +397,46 @@ export function MissionControlPanel() {
         </div>
       )}
 
-      {/* BlackBox Controls */}
+      {/* Frame Sync Status */}
+      <div className="p-2 rounded border border-border/50 bg-card/30 space-y-1">
+        <div className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground">
+          <Monitor className="w-3 h-3" /> FRAME SYNC
+        </div>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">FPS</span>
+            <span className="font-mono font-bold text-foreground">{frameSyncState.fps}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Frame</span>
+            <span className="font-mono text-foreground">{frameSyncState.currentFrame}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Drift</span>
+            <span className={`font-mono ${Math.abs(frameSyncState.driftMs) > 5 ? 'text-yellow-400' : 'text-foreground'}`}>
+              {frameSyncState.driftMs.toFixed(1)}ms
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Source</span>
+            <span className="font-mono text-foreground">{frameSyncState.source}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Status</span>
+            <span className={`font-mono font-bold ${
+              frameSyncState.status === 'locked' ? 'text-green-400' :
+              frameSyncState.status === 'drifting' ? 'text-yellow-400' :
+              'text-muted-foreground'
+            }`}>{frameSyncState.status.toUpperCase()}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Correction</span>
+            <span className="font-mono text-muted-foreground">{frameSyncState.correctionMs.toFixed(1)}ms</span>
+          </div>
+        </div>
+      </div>
+
+
       <div className="flex gap-1.5">
         <Button size="sm" variant={bbRecording ? 'destructive' : 'outline'} className="h-7 text-[10px] flex-1" onClick={toggleBlackBox}>
           {bbRecording ? '⏹ Stop Recording' : '⏺ Start BlackBox'}
