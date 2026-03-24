@@ -3,7 +3,7 @@
  * Shows pyro cues as colored bars grouped by formation, synchronized with the main timeline.
  * Each bar represents a timeline item (pyro effect) with color-coded category indicators.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { useProjectStore, EFFECT_LIBRARY, type TimelineItem, type Effect } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
 import { Flame, ChevronDown, ChevronRight } from 'lucide-react';
@@ -45,6 +45,22 @@ interface PyroFormationGroup {
   startTime: number;
   endTime: number;
   items: { item: TimelineItem; effect: Effect }[];
+}
+
+/** Pyro playhead — DOM-direct, zero re-renders */
+function PyroPlayheadIndicator({ pixelsPerSecond }: { pixelsPerSecond: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const initial = useProjectStore.getState().currentTime;
+    if (ref.current) ref.current.style.transform = `translateX(${initial * pixelsPerSecond}px)`;
+    const unsub = useProjectStore.subscribe((state) => {
+      if (ref.current) ref.current.style.transform = `translateX(${state.currentTime * pixelsPerSecond}px)`;
+    });
+    return unsub;
+  }, [pixelsPerSecond]);
+  return (
+    <div ref={ref} className="absolute top-0 bottom-0 w-px bg-primary/40 pointer-events-none z-30" style={{ transform: 'translateX(0px)' }} />
+  );
 }
 
 export default function PyroTimelineTrack({
@@ -250,11 +266,8 @@ export default function PyroTimelineTrack({
               );
             })}
 
-            {/* Playhead indicator within this row */}
-            <div
-              className="absolute top-0 bottom-0 w-px bg-primary/40 pointer-events-none z-30"
-              style={{ left: `${currentTime * pixelsPerSecond}px` }}
-            />
+            {/* Playhead — DOM-direct (zero re-renders) */}
+            <PyroPlayheadIndicator pixelsPerSecond={pixelsPerSecond} />
           </div>
         </div>
       ))}
