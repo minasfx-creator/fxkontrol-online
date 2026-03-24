@@ -139,7 +139,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
   
   const lod = useLOD(position);
   const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
-  const { particleDensity, hdrMultiplier, effectBrightness } = useSceneStore(st => st.settings);
+  const { particleDensity, hdrMultiplier, effectBrightness, gpuParticlePhysics, frustumCullingBursts } = useSceneStore(st => st.settings);
 
   const STAR_COUNT = useMemo(() => {
     const densityScale = THREE.MathUtils.clamp(particleDensity, 0.5, 2.0);
