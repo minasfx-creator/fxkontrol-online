@@ -408,6 +408,25 @@ export default function DMXBezierEditor({ fs = false }: { fs?: boolean }) {
           />
           <span className="text-[5px] font-mono text-muted-foreground/25">s</span>
         </div>
+        {/* BPM display */}
+        <div className="flex items-center gap-0.5 px-1 py-0.5 rounded" style={{ background: 'hsl(220 10% 8%)' }}>
+          <span className="text-[5px] font-mono text-muted-foreground/30">BPM</span>
+          <span className="text-[7px] font-mono font-bold text-[hsl(270,60%,55%)]">{bpm}</span>
+        </div>
+        {/* Snap toggle */}
+        <button
+          onClick={() => setIsSnapEnabled(s => !s)}
+          className={cn(
+            "flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[6px] font-mono font-bold tracking-wider transition-all border",
+            isSnapEnabled
+              ? "border-[hsl(32,100%,50%/0.4)] text-[hsl(32,100%,60%)]"
+              : "border-border/20 text-muted-foreground/30 hover:text-muted-foreground/50"
+          )}
+          style={{ background: isSnapEnabled ? 'hsl(32 100% 50% / 0.08)' : 'transparent' }}
+        >
+          <Magnet className="w-2.5 h-2.5" />
+          SNAP
+        </button>
         {/* Master clock indicator */}
         <span className={cn(
           "text-[6px] font-mono tracking-wider px-1.5 py-0.5 rounded",
