@@ -732,6 +732,9 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel }: ShowCommand
                 </div>
               </div>
 
+              {/* Performance Monitor */}
+              <PerformanceMonitor />
+
               {/* Debug Drift info */}
               <div className="rounded-lg border border-border/10 bg-card/20 p-2 space-y-1">
                 <span className="text-[8px] font-bold text-muted-foreground/40 uppercase">Debug (Alt+Shift+D)</span>

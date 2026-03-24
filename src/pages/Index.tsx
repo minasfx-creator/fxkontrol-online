@@ -537,6 +537,7 @@ function Index() {
   // Desktop layout — fully resizable with react-resizable-panels
   return (
     <div className="h-[100dvh] w-full flex flex-col overflow-hidden bg-background">
+      <CrashRecoveryBanner />
       <Toolbar onOpenPanel={(id) => handleTogglePanel(id as PanelId)} />
 
       <ResizablePanelGroup direction="vertical" className="flex-1">
