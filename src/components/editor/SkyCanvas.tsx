@@ -1060,6 +1060,13 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
 
   const sensitivityScale = 0.7; // 30% less sensitivity
 
+  // Broadcast OrbitControls ref to GeoCameraController via custom event
+  useEffect(() => {
+    if (controlsRef.current) {
+      window.dispatchEvent(new CustomEvent('r3f-controls-ready', { detail: { controls: controlsRef.current } }));
+    }
+  });
+
   // Disable OrbitControls while box-select is active
   useEffect(() => {
     const handler = (e: CustomEvent) => {
