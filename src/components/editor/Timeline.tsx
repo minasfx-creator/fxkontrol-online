@@ -911,20 +911,15 @@ function CollapsibleTrackGroup({ label, defaultOpen = true, children }: { label:
   );
 }
 
-/** Playhead rendered via direct DOM manipulation — subscribes to currentTime transiently (no React re-renders) */
+/** Playhead rendered via direct DOM manipulation — no React re-renders during playback */
 function PlayheadIndicator({ pixelsPerSecond }: { pixelsPerSecond: number }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    // Set initial position
     const initial = useProjectStore.getState().currentTime;
     if (ref.current) ref.current.style.transform = `translateX(${initial * pixelsPerSecond}px)`;
-    // Transient subscription — updates DOM directly, no setState
-    const unsub = useProjectStore.subscribe(
-      (state) => state.currentTime,
-      (time) => {
-        if (ref.current) ref.current.style.transform = `translateX(${time * pixelsPerSecond}px)`;
-      }
-    );
+    const unsub = useProjectStore.subscribe((state) => {
+      if (ref.current) ref.current.style.transform = `translateX(${state.currentTime * pixelsPerSecond}px)`;
+    });
     return unsub;
   }, [pixelsPerSecond]);
 

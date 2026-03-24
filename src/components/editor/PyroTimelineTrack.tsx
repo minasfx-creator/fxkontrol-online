@@ -47,6 +47,22 @@ interface PyroFormationGroup {
   items: { item: TimelineItem; effect: Effect }[];
 }
 
+/** Pyro playhead — DOM-direct, zero re-renders */
+function PyroPlayheadIndicator({ pixelsPerSecond }: { pixelsPerSecond: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const initial = useProjectStore.getState().currentTime;
+    if (ref.current) ref.current.style.transform = `translateX(${initial * pixelsPerSecond}px)`;
+    const unsub = useProjectStore.subscribe((state) => {
+      if (ref.current) ref.current.style.transform = `translateX(${state.currentTime * pixelsPerSecond}px)`;
+    });
+    return unsub;
+  }, [pixelsPerSecond]);
+  return (
+    <div ref={ref} className="absolute top-0 bottom-0 w-px bg-primary/40 pointer-events-none z-30" style={{ transform: 'translateX(0px)' }} />
+  );
+}
+
 export default function PyroTimelineTrack({
   pixelsPerSecond,
   duration,
