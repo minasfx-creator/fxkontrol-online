@@ -1630,6 +1630,7 @@ export default function SkyCanvas() {
         {flyMode && <FlyControls onSpeedChange={flySpeedCb} />}
 
         <HardeningWatchdog />
+        <FXKQualityController />
         <SceneLighting />
         <AdaptiveExposureController />
         {!environment.disableLighting && <GlobalIlluminationController />}
