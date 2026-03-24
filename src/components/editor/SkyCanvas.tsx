@@ -1588,6 +1588,7 @@ export default function SkyCanvas() {
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook || flyMode} flyMode={flyMode} />
         {flyMode && <FlyControls onSpeedChange={flySpeedCb} />}
 
+        <HardeningWatchdog />
         <SceneLighting />
         <AdaptiveExposureController />
         {!environment.disableLighting && <GlobalIlluminationController />}
