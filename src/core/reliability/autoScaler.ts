@@ -101,10 +101,16 @@ class AutoScaler {
     return this.currentTier;
   }
 
+  /** Get current pixel ratio from governor */
+  getPixelRatio(): number {
+    return this.pixelRatio;
+  }
+
   /** Force a specific tier (manual override). */
   setTier(tier: QualityTier): void {
     this.currentTier = tier;
     this.stableFrames = 0;
+    this.lastTierChange = Date.now();
     this.notify();
   }
 
@@ -130,6 +136,9 @@ class AutoScaler {
     this.fpsBuffer = [];
     this.stableFrames = 0;
     this.locked = false;
+    this.pixelRatio = 1.0;
+    this.stableTime = 0;
+    this.lastTierChange = 0;
   }
 }
 
