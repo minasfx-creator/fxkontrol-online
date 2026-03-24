@@ -113,6 +113,7 @@ function TactileButton({ label, onClick, variant = 'default', disabled = false, 
     connect: 'border-[hsl(120_70%_45%/0.3)] text-[hsl(120_70%_50%)] hover:bg-[hsl(120_70%_45%/0.1)]',
     disconnect: 'border-[hsl(0_85%_48%/0.3)] text-[hsl(0_85%_55%)] hover:bg-[hsl(0_85%_48%/0.1)]',
     sync: 'border-[hsl(190_80%_50%/0.3)] text-[hsl(190_80%_55%)] hover:bg-[hsl(190_80%_50%/0.1)]',
+    simulate: 'border-[hsl(32_100%_50%/0.3)] text-[hsl(32_100%_60%)] hover:bg-[hsl(32_100%_50%/0.1)]',
   };
 
   return (

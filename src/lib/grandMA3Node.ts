@@ -422,6 +422,17 @@ export class GrandMA3Node {
     }
   }
 
+  /** Simulate incoming DMX data (for stress testing without hardware) */
+  simulateInput(universeIdx: number, channels: Uint8Array): void {
+    const u = this.state.universes[universeIdx];
+    if (!u) return;
+    u.buffer.set(channels);
+    u.lastUpdate = performance.now();
+    u.active = true;
+    this.ppsCounters[universeIdx] = (this.ppsCounters[universeIdx] || 0) + 1;
+    this.emit('dmx-input', { universe: universeIdx, channels });
+  }
+
   updateConfig(partial: Partial<MA3NodeConfig>): void {
     Object.assign(this.config, partial);
     if (partial.nodeLabel) this.state.nodeLabel = partial.nodeLabel;
