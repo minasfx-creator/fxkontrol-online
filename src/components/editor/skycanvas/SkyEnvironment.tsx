@@ -100,23 +100,30 @@ export function WaterLayer() {
   const { scene } = useThree();
   const waterLevel = useSceneStore(st => st.settings.waterLevel);
   const waterPreset = useSceneStore(st => st.settings.waterPreset);
+  const tideOffset = useSceneStore(st => st.settings.tideOffset);
 
   useEffect(() => {
     const presetCfg = WATER_PRESETS[waterPreset] || {};
     const water = createWaterSystem(presetCfg);
     waterRef.current = water;
-    water.mesh.position.y = waterLevel;
+    water.mesh.position.y = waterLevel + tideOffset;
+    // Stencil write for water masking (prevents sea inside islands)
+    const mat = water.mesh.material as THREE.ShaderMaterial;
+    mat.stencilWrite = true;
+    mat.stencilRef = 1;
+    mat.stencilFunc = THREE.AlwaysStencilFunc;
+    mat.stencilZPass = THREE.ReplaceStencilOp;
     scene.add(water.mesh);
     return () => {
       scene.remove(water.mesh);
       water.mesh.geometry.dispose();
-      (water.mesh.material as THREE.ShaderMaterial).dispose();
+      mat.dispose();
     };
   }, [scene, waterPreset]);
 
   useEffect(() => {
-    if (waterRef.current) waterRef.current.mesh.position.y = waterLevel;
-  }, [waterLevel]);
+    if (waterRef.current) waterRef.current.mesh.position.y = waterLevel + tideOffset;
+  }, [waterLevel, tideOffset]);
 
   useFrame(({ clock }) => {
     waterRef.current?.update(clock.getElapsedTime());
