@@ -566,6 +566,11 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
           )}
         </TabsContent>
 
+        {/* ─── DIAGNOSTICS TAB ─── */}
+        <TabsContent value="diagnostics" className="mt-1">
+          <SignalDiagnosticsPanel />
+        </TabsContent>
+
         {/* ─── HARDWARE DESIGN TAB ─── */}
         <TabsContent value="hardware" className="mt-1 space-y-2">
           <div className="rounded-lg border border-border/20 p-3 space-y-3">
