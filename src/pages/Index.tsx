@@ -192,7 +192,7 @@ function PerformanceHUD() {
     <div className="absolute bottom-[calc(25vh+8px)] left-3 z-30 flex items-center gap-2 px-2 py-1 rounded-md bg-black/50 backdrop-blur-sm border border-white/5">
       <span className="text-[10px] font-mono text-zinc-400">{fps} <span className="text-zinc-600">FPS</span></span>
       <span className="text-zinc-700">·</span>
-      <span className="text-[10px] font-mono text-zinc-500">{(performance.memory as any)?.usedJSHeapSize ? `${Math.round((performance.memory as any).usedJSHeapSize / 1024 / 1024)}MB` : '--'}</span>
+      <span className="text-[10px] font-mono text-zinc-500">{(performance as any).memory?.usedJSHeapSize ? `${Math.round((performance as any).memory.usedJSHeapSize / 1024 / 1024)}MB` : '--'}</span>
     </div>
   );
 }
