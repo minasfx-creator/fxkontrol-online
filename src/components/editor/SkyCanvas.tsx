@@ -849,18 +849,29 @@ function GoogleEarthLighting() {
   
   return (
     <>
+      {/* Night: deep blue sky backdrop instead of absolute black */}
+      {isNight && <color attach="background" args={['#0a0e1a']} />}
       {/* Atmospheric sky backdrop — visible while Google Earth tiles load */}
       {!isNight && <Sky sunPosition={sunPos} turbidity={8} rayleigh={2} mieCoefficient={0.005} mieDirectionalG={0.8} />}
       {/* Hemisphere light: sky blue + ground warm — fills Google Earth geometry */}
       <hemisphereLight args={[0x87ceeb, 0x362d1f, isNight ? 0.08 : 0.4]} />
       {/* Ambient fill — prevents completely dark tiles */}
-      <ambientLight intensity={isNight ? 0.05 : 0.3} color={isNight ? 0x1a1a3a : 0xffffff} />
+      <ambientLight intensity={isNight ? 0.12 : 0.3} color={isNight ? 0x1a1a3a : 0xffffff} />
       {/* Directional sunlight matching sky position */}
       {!isNight && (
         <directionalLight 
           position={sunPos} 
           intensity={0.6} 
           color={0xffeedd} 
+          castShadow={false}
+        />
+      )}
+      {/* Moonlight for night scenes */}
+      {isNight && (
+        <directionalLight
+          position={[30, 60, -40]}
+          intensity={0.08}
+          color={0x8899bb}
           castShadow={false}
         />
       )}
