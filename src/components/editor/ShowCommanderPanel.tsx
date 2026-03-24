@@ -753,5 +753,7 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel }: ShowCommand
         </ScrollArea>
       </Tabs>
     </div>
+    </FieldViewWrapper>
+    </FieldViewProvider>
   );
 }
