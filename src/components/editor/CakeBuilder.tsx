@@ -161,6 +161,8 @@ export default function CakeBuilder() {
   const addTimelineItem = useProjectStore(s => s.addTimelineItem);
 
   const [expanded, setExpanded] = useState(false);
+  const [vdlInput, setVdlInput] = useState('');
+  const [useVDL, setUseVDL] = useState(false);
   const [config, setConfig] = useState<CakeConfig>({
     name: 'Custom Cake',
     caliber: 2,
@@ -171,6 +173,13 @@ export default function CakeBuilder() {
     effectId: 'cake-01',
     positionId: null,
   });
+
+  // Parse VDL in real-time
+  const vdlResult = useMemo(() => {
+    if (!useVDL || !vdlInput.trim()) return null;
+    const parsed = parseVDL(vdlInput);
+    return parsed.valid ? parsed : null;
+  }, [vdlInput, useVDL]);
 
   // Get pyro effects for selector
   const pyroEffects = useMemo(() =>
