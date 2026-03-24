@@ -340,6 +340,14 @@ const DEFAULT_SETTINGS: SceneSettings = {
   timeOfDayEnabled: false,
   decalsEnabled: true,
   niagaraFluidsEnabled: false,
+
+  // Ultra Hardening defaults
+  floatingOriginEnabled: false,
+  geoAnchorLat: -23.007,
+  geoAnchorLon: -44.318,
+  geoAnchorAlt: 0,
+  tideOffset: 0,
+  fieldViewMode: false,
 };
 
 export const SCENE_PRESETS: Record<string, { name: string; description: string; settings: Partial<SceneSettings> }> = {
