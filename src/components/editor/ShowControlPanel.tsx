@@ -243,16 +243,71 @@ export default function ShowControlPanel({ fs = false }: { fs?: boolean; onClose
         </div>
       </div>
 
-      {/* Mission Clock + Global Gauges */}
-      <div className="shrink-0 py-3 px-4 border-b flex items-center justify-between relative z-10" style={{ borderColor: 'hsl(32 100% 50% / 0.06)', background: 'linear-gradient(180deg, hsl(32 100% 50% / 0.02) 0%, transparent 100%)' }}>
-        <div className="flex items-center gap-3">
-          <CircularGauge value={totalArmed} max={channels.length || 1} color="hsl(0 85% 48%)" label="ARMED" />
-          <CircularGauge value={totalFiring} max={Math.max(totalArmed, 1)} color="hsl(32 100% 55%)" label="FIRING" />
+      {/* Timeline Master + Timecode Player Status */}
+      <div className="shrink-0 border-b relative z-10" style={{ borderColor: 'hsl(32 100% 50% / 0.06)', background: 'linear-gradient(180deg, hsl(32 100% 50% / 0.02) 0%, transparent 100%)' }}>
+        {/* Transport + Timecode + Sync Status */}
+        <div className="px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {/* Transport indicator */}
+            <div className="flex items-center gap-1.5">
+              {isPlaying ? (
+                <Play className="w-3.5 h-3.5 fill-current" style={{ color: 'hsl(120 70% 45%)' }} />
+              ) : (
+                <Square className="w-3 h-3 fill-current" style={{ color: 'hsl(0 60% 50%)' }} />
+              )}
+              <span className={cn("text-[8px] font-mono font-black tracking-[0.2em]",
+                isPlaying ? "text-green-400" : "text-red-400/60"
+              )}>{isPlaying ? 'PLAY' : 'STOP'}</span>
+            </div>
+            {/* Sync source + mode */}
+            <div className="flex items-center gap-1">
+              <span className="text-[6px] font-mono tracking-wider text-muted-foreground/30">SRC</span>
+              <span className="text-[7px] font-mono font-bold" style={{ color: 'hsl(200 80% 55%)' }}>
+                {frameSyncState?.source || smpteMode.toUpperCase()}
+              </span>
+            </div>
+          </div>
+
+          {/* Center: Timecode */}
+          <TimecodeDisplay seconds={currentTime} fps={frameSyncState?.fps || smpteFrameRate} />
+
+          <div className="flex items-center gap-3">
+            {/* FPS */}
+            <span className="text-[8px] font-mono font-bold text-muted-foreground/50">
+              {frameSyncState?.fps || smpteFrameRate}fps
+            </span>
+            {/* Lock status */}
+            <div className="flex items-center gap-1">
+              {frameSyncState?.status === 'locked' ? (
+                <Lock className="w-3 h-3" style={{ color: 'hsl(120 70% 45%)' }} />
+              ) : (
+                <Unlock className="w-3 h-3" style={{ color: 'hsl(45 100% 50%)' }} />
+              )}
+              <span className={cn("text-[7px] font-mono font-bold tracking-wider",
+                frameSyncState?.status === 'locked' ? "text-green-400" :
+                frameSyncState?.status === 'drifting' ? "text-yellow-400" : "text-muted-foreground/40"
+              )}>{(frameSyncState?.status || 'FREERUN').toUpperCase()}</span>
+            </div>
+            {/* Drift */}
+            <span className={cn("text-[8px] font-mono font-bold",
+              Math.abs(frameSyncState?.driftMs || 0) < 2 ? "text-green-400/60" :
+              Math.abs(frameSyncState?.driftMs || 0) < 5 ? "text-yellow-400/60" : "text-red-400/60"
+            )}>
+              {(frameSyncState?.driftMs ?? 0) >= 0 ? '+' : ''}{(frameSyncState?.driftMs ?? 0).toFixed(1)}ms
+            </span>
+          </div>
         </div>
-        <TimecodeDisplay ms={elapsedMs} />
-        <div className="flex items-center gap-3">
-          <CircularGauge value={channels.filter(c => c.enabled).length} max={channels.length || 1} color="hsl(120 70% 45%)" label="ONLINE" />
-          <CircularGauge value={4} max={4} color="hsl(200 80% 50%)" label="SYSTEMS" />
+
+        {/* Gauges row */}
+        <div className="px-4 pb-2 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <CircularGauge value={totalArmed} max={channels.length || 1} color="hsl(0 85% 48%)" label="ARMED" />
+            <CircularGauge value={totalFiring} max={Math.max(totalArmed, 1)} color="hsl(32 100% 55%)" label="FIRING" />
+          </div>
+          <div className="flex items-center gap-3">
+            <CircularGauge value={channels.filter(c => c.enabled).length} max={channels.length || 1} color="hsl(120 70% 45%)" label="ONLINE" />
+            <CircularGauge value={4} max={4} color="hsl(200 80% 50%)" label="SYSTEMS" />
+          </div>
         </div>
       </div>
 
