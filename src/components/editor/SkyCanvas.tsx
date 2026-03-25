@@ -36,7 +36,7 @@ import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Gl
 import SelectionStatusBar from './SelectionStatusBar';
 import AICoPilotOverlay from './AICoPilotOverlay';
 import TelemetryBar from './TelemetryBar';
-// MissionSetupOverlay removed — scene loads immediately
+import GoogleTilesLoadingOverlay from './GoogleTilesLoadingOverlay';
 import { cn } from '@/lib/utils';
 import {
   CometEffect,
@@ -1448,6 +1448,7 @@ export default function SkyCanvas() {
       </Canvas>
       </WebGLErrorBoundary>
       <TelemetryBar />
+      <GoogleTilesLoadingOverlay />
       <KeybindingCheatSheet />
 
       {/* ═══ Google Earth Geo Tools UI ═══ */}

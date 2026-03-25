@@ -57,6 +57,23 @@ const SSE_TIERS: Record<string, number> = {
 };
 
 // ── Main Component ──────────────────────────────────────────────────
+// ── Loading state broadcast for HUD overlay ─────────────────────────
+export type TilesLoadingState = 'idle' | 'fetching-key' | 'loading-tiles' | 'ready' | 'error';
+let _tilesLoadingState: TilesLoadingState = 'idle';
+let _tilesLoadedCount = 0;
+const _listeners = new Set<() => void>();
+
+export function getTilesLoadingState() { return _tilesLoadingState; }
+export function getTilesLoadedCount() { return _tilesLoadedCount; }
+export function subscribeTilesLoading(cb: () => void) {
+  _listeners.add(cb);
+  return () => { _listeners.delete(cb); };
+}
+function setLoadingState(s: TilesLoadingState, count = _tilesLoadedCount) {
+  _tilesLoadingState = s;
+  _tilesLoadedCount = count;
+  _listeners.forEach(cb => cb());
+}
 
 export default function GoogleTilesLayer() {
   const { scene, camera, gl } = useThree();
@@ -73,18 +90,22 @@ export default function GoogleTilesLayer() {
   // Fetch API key on mount
   useEffect(() => {
     if (apiKey) return;
+    setLoadingState('fetching-key');
     (async () => {
       try {
         console.log('[GoogleTiles] Fetching API key...');
         const { data, error } = await supabase.functions.invoke('get-maps-key');
         if (error || !data?.key) {
           console.warn('[GoogleTiles] Failed to fetch API key:', error);
+          setLoadingState('error');
           return;
         }
         console.log('[GoogleTiles] API key acquired');
         setApiKey(data.key);
+        setLoadingState('loading-tiles');
       } catch (err) {
         console.warn('[GoogleTiles] API key fetch error:', err);
+        setLoadingState('error');
       }
     })();
   }, [apiKey]);
@@ -160,6 +181,7 @@ export default function GoogleTilesLayer() {
         let visibleCount = 0;
         tiles.group.traverse(() => { visibleCount++; });
         updateGeoHUD({ tilesLoaded: visibleCount });
+        setLoadingState(visibleCount > 5 ? 'ready' : 'loading-tiles', visibleCount);
         if (!tilesReady && visibleCount > 5) {
           setTilesReady(true);
           console.log('[Terrain] tiles ready, fallback blocked');
