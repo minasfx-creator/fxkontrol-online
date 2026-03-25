@@ -387,6 +387,9 @@ export default function ShowSettingsPanel({ onClose }: ShowSettingsProps) {
             </div>
           </SettingsSection>
 
+          {/* ── Digital Twin — Radius & Saved Locations ──────── */}
+          <DigitalTwinSection />
+
           {/* ── Schedule ────────────────────────────────────── */}
           <SettingsSection title="Schedule" icon={Calendar}>
             <div className="grid grid-cols-2 gap-2.5">
