@@ -204,11 +204,15 @@ export default function GoogleTilesLayer() {
         tiles.group.traverse((c) => { if ((c as THREE.Mesh).visible !== false) visibleCount++; });
         updateGeoHUD({ tilesLoaded: visibleCount });
         setLoadingState(visibleCount > 2 ? 'ready' : 'loading-tiles', visibleCount);
-        if (!tilesReady && visibleCount > 2) {
-          setTilesReady(true);
-          // Progressive refinement: after initial load, increase detail
-          tiles.errorTarget = SSE_TIERS.high;
-          console.log('[Terrain] tiles ready, refining to high SSE');
+
+        // Progressive refinement: low → medium → high
+        if (refinementStage < REFINEMENT_STAGES.length) {
+          const stage = REFINEMENT_STAGES[refinementStage];
+          if (visibleCount > stage.threshold) {
+            tiles.errorTarget = stage.sse;
+            console.log(`[Terrain] refining to ${stage.label} SSE (${stage.sse}), tiles: ${visibleCount}`);
+            setRefinementStage(refinementStage + 1);
+          }
         }
       }
     } catch (err) {
