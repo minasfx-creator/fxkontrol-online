@@ -187,7 +187,7 @@ export default function GoogleTilesLayer() {
       tiles.setResolutionFromRenderer(camera, gl);
       tiles.update();
 
-      // Cull tiles outside the 5 km import radius from anchor (origin)
+      // Cull tiles outside the 2 km² radius (~800m) from anchor (origin)
       const origin = new THREE.Vector3(0, 0, 0);
       tiles.group.traverse((child) => {
         if (child instanceof THREE.Mesh && child.geometry?.boundingSphere) {
@@ -195,7 +195,7 @@ export default function GoogleTilesLayer() {
           child.getWorldPosition(center);
           groupRef.current.worldToLocal(center);
           const dist = center.distanceTo(origin);
-          child.visible = dist < sceneImportRadius;
+          child.visible = dist < TILE_RADIUS_METERS;
         }
       });
 
@@ -205,16 +205,6 @@ export default function GoogleTilesLayer() {
         tiles.group.traverse((c) => { if ((c as THREE.Mesh).visible !== false) visibleCount++; });
         updateGeoHUD({ tilesLoaded: visibleCount });
         setLoadingState(visibleCount > 2 ? 'ready' : 'loading-tiles', visibleCount);
-
-        // Progressive refinement: low → medium → high
-        if (refinementStage < REFINEMENT_STAGES.length) {
-          const stage = REFINEMENT_STAGES[refinementStage];
-          if (visibleCount > stage.threshold) {
-            tiles.errorTarget = stage.sse;
-            console.log(`[Terrain] refining to ${stage.label} SSE (${stage.sse}), tiles: ${visibleCount}`);
-            setRefinementStage(refinementStage + 1);
-          }
-        }
       }
     } catch (err) {
       console.warn('[Terrain] update error caught:', err);
