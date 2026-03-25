@@ -51,12 +51,18 @@ function buildECEFtoENUMatrix(lat: number, lon: number): THREE.Matrix4 {
 // ── SSE quality tiers ───────────────────────────────────────────────
 
 // ── SSE quality tiers ───────────────────────────────────────────────
-const SSE_TIERS: Record<string, number> = {
+const SSE_TIERS = {
   ultra: 4,
   high: 8,
   medium: 16,
   low: 32,
-};
+} as const;
+
+// Progressive refinement stages: low → medium → high
+const REFINEMENT_STAGES = [
+  { threshold: 2, sse: SSE_TIERS.medium, label: 'medium' },
+  { threshold: 15, sse: SSE_TIERS.high, label: 'high' },
+] as const;
 
 // ── Main Component ──────────────────────────────────────────────────
 // ── Loading state broadcast for HUD overlay ─────────────────────────
