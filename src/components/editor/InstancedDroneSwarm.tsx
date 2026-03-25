@@ -131,6 +131,7 @@ export default function InstancedDroneSwarm({
     const glow = glowRef.current;
     const halo = haloRef.current;
     const nav = navRef.current;
+    if (!body?.instanceMatrix || !led?.instanceMatrix || !rotor?.instanceMatrix) return;
     const t = Date.now() * 0.003;
 
     for (let i = 0; i < count; i++) {
