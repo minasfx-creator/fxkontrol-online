@@ -48,8 +48,7 @@ function buildECEFtoENUMatrix(lat: number, lon: number): THREE.Matrix4 {
   return m;
 }
 
-// ── Scene import radius (meters) ────────────────────────────────────
-const SCENE_IMPORT_RADIUS = 5000; // 5 km
+// ── SSE quality tiers ───────────────────────────────────────────────
 
 // ── SSE quality tiers ───────────────────────────────────────────────
 const SSE_TIERS: Record<string, number> = {
