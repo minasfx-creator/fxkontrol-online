@@ -5,21 +5,268 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useSceneStore, SCENE_PRESETS, QUALITY_PRESETS, type GroundStyle, type WeatherCondition, type QualityPreset, type ViewTransform, type GoogleTilesQuality } from '@/store/useSceneStore';
-...
-            <div>
-              <span className="text-[9px] text-muted-foreground">Qualidade Tiles 3D</span>
-              <Select
-                value={settings.googleTilesQuality}
-                onValueChange={v => updateSettings({ googleTilesQuality: v as GoogleTilesQuality })}
-              >
-                <SelectTrigger className="h-7 text-[10px] mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low" className="text-[10px]">Low (mais leve)</SelectItem>
-                  <SelectItem value="medium" className="text-[10px]">Medium</SelectItem>
-                  <SelectItem value="high" className="text-[10px]">High (mais detalhe)</SelectItem>
-                </SelectContent>
-              </Select>
+import { useSceneStore, SCENE_PRESETS, QUALITY_PRESETS, type GroundStyle, type WeatherCondition, type QualityPreset, type ViewTransform } from '@/store/useSceneStore';
+import { getAllViewTransforms } from '@/lib/niagaraBlenderRules';
+import { getTerrainPresets } from '@/render_ultra/environment/terrainPBR';
+import { useProjectStore } from '@/store/useProjectStore';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import GeoSearchPanel from './GeoSearchPanel';
+
+type SectionId = 'quick' | 'presets' | 'sky' | 'ground' | 'weather' | 'effects' | 'pyro' | 'lighting' | 'post' | 'background' | 'performance';
+
+function Section({ title, icon: Icon, children, id, open, onToggle }: { title: string; icon: any; children: React.ReactNode; id: SectionId; open: boolean; onToggle: () => void }) {
+  return (
+    <div className="border-b border-border/20">
+      <button onClick={onToggle} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-primary/5 transition-colors group">
+        <div className="w-5 h-5 rounded flex items-center justify-center bg-primary/10 group-hover:bg-primary/20 transition-colors">
+          <Icon className="h-3 w-3 text-primary" />
+        </div>
+        <span className="text-[10px] font-bold text-foreground uppercase tracking-widest flex-1 text-left">{title}</span>
+        <span className={cn("text-[8px] text-muted-foreground transition-transform", open && "rotate-90")}>▶</span>
+      </button>
+      {open && <div className="px-3 pb-3 space-y-2.5 animate-in slide-in-from-top-1 duration-150">{children}</div>}
+    </div>
+  );
+}
+
+function SliderRow({ label, value, onChange, min = 0, max = 1, step = 0.01, unit = '' }: {
+  label: string; value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number; unit?: string;
+}) {
+  return (
+    <div>
+      <div className="flex justify-between mb-1">
+        <span className="text-[9px] text-muted-foreground font-medium">{label}</span>
+        <span className="text-[9px] text-primary font-mono tabular-nums">{value.toFixed(step < 1 ? 2 : 0)}{unit}</span>
+      </div>
+      <Slider value={[value]} onValueChange={([v]) => onChange(v)} min={min} max={max} step={step} className="py-0.5" />
+    </div>
+  );
+}
+
+interface BgImage {
+  id: string;
+  name: string;
+  url: string;
+  opacity: number;
+  position: 'horizon' | 'skybox' | 'ground';
+}
+
+export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
+  const { settings, updateSettings, applyPreset, applyQualityPreset, qualityPreset, resetToDefault, terrainPreset, setTerrainPreset } = useSceneStore();
+  const { droneFormations, positions, showTrajectories, setShowTrajectories, showFormations, setShowFormations } = useProjectStore();
+  const [openSections, setOpenSections] = useState<Set<SectionId>>(new Set(['quick', 'presets']));
+  const [bgImages, setBgImages] = useState<BgImage[]>([]);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const toggleSection = (id: SectionId) => {
+    setOpenSections(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const handleBgImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setBgImages(prev => [...prev, { id: `bg-${Date.now()}`, name: file.name, url, opacity: 0.8, position: 'horizon' }]);
+    toast.success(`Background: ${file.name}`);
+    if (fileRef.current) fileRef.current.value = '';
+  }, []);
+
+  const WEATHER_ICONS: Record<WeatherCondition, typeof Sun> = {
+    'clear': Sun,
+    'haze': CloudFog,
+    'fog': CloudFog,
+    'light-rain': CloudRain,
+    'heavy-rain': CloudRain,
+    'snow': Snowflake,
+    'wind-only': Wind,
+  };
+
+  return (
+    <div className="h-full flex flex-col bg-card/95 backdrop-blur-sm border-l border-border/50">
+      {/* Header */}
+      <div className="px-3 py-2.5 border-b border-border/30 flex items-center gap-2 bg-card">
+        <div className="w-6 h-6 rounded-md bg-primary/15 flex items-center justify-center">
+          <Paintbrush className="h-3.5 w-3.5 text-primary" />
+        </div>
+        <div className="flex-1">
+          <h2 className="text-[11px] font-bold text-foreground uppercase tracking-widest">Scene Editor</h2>
+          <p className="text-[8px] text-muted-foreground">Environment & Rendering</p>
+        </div>
+        <button onClick={resetToDefault} className="text-[8px] text-muted-foreground hover:text-primary px-1.5 py-0.5 rounded hover:bg-primary/10 transition-colors">RESET</button>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground w-5 h-5 flex items-center justify-center rounded hover:bg-muted/30"><X className="w-3 h-3" /></button>
+      </div>
+
+      <ScrollArea className="flex-1">
+        {/* ═══ QUICK ACCESS ═══ */}
+        <Section title="Quick Controls" icon={Zap} id="quick" open={openSections.has('quick')} onToggle={() => toggleSection('quick')}>
+          <div className="space-y-2.5">
+            {/* Visibility toggles */}
+            <div className="space-y-1.5">
+              <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-wider">Visibility</span>
+              <div className="grid grid-cols-2 gap-1">
+                {[
+                  { label: 'Trajectories', checked: showTrajectories, onChange: setShowTrajectories },
+                  { label: 'Formations', checked: showFormations, onChange: setShowFormations },
+                  { label: 'Grid', checked: settings.showGrid, onChange: (v: boolean) => updateSettings({ showGrid: v }) },
+                  { label: 'Treeline', checked: settings.showTreeline, onChange: (v: boolean) => updateSettings({ showTreeline: v }) },
+                  { label: 'Origin', checked: settings.showOriginMarker, onChange: (v: boolean) => updateSettings({ showOriginMarker: v }) },
+                  { label: 'Scale Poles', checked: settings.showScalePoles, onChange: (v: boolean) => updateSettings({ showScalePoles: v }) },
+                ].map(item => (
+                  <div key={item.label} className="flex items-center justify-between px-2 py-1 bg-muted/20 rounded border border-border/10 hover:border-border/30 transition-colors">
+                    <span className="text-[8px] text-muted-foreground">{item.label}</span>
+                    <Switch checked={item.checked} onCheckedChange={item.onChange} className="scale-[0.55]" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Scene stats */}
+            <div className="bg-muted/15 rounded border border-border/10 p-2 space-y-1">
+              <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-wider">Stats</span>
+              {[
+                { label: 'Positions', value: positions.length, color: 'text-foreground' },
+                { label: 'Drones', value: positions.filter(p => p.type === 'drone-pad').length, color: 'text-primary' },
+                { label: 'Formations', value: droneFormations.length, color: 'text-foreground' },
+                { label: 'Duration', value: `${droneFormations.reduce((s, f) => s + f.transitionDuration + f.holdDuration, 0).toFixed(0)}s`, color: 'text-foreground' },
+              ].map(stat => (
+                <div key={stat.label} className="flex justify-between text-[9px] font-mono">
+                  <span className="text-muted-foreground">{stat.label}</span>
+                  <span className={stat.color}>{stat.value}</span>
+                </div>
+              ))}
+            </div>
+
+            <SliderRow label="Ambient" value={settings.ambientIntensity} onChange={v => updateSettings({ ambientIntensity: v })} max={0.5} />
+            <SliderRow label="Fog" value={settings.fogDensity} onChange={v => updateSettings({ fogDensity: v })} />
+          </div>
+        </Section>
+
+        {/* ═══ PRESETS ═══ */}
+        <Section title="Scene Presets" icon={Monitor} id="presets" open={openSections.has('presets')} onToggle={() => toggleSection('presets')}>
+          {/* ── Featured: SFX Stage ── */}
+          <button
+            onClick={() => applyPreset('sfx-stage')}
+            className={cn(
+              "w-full text-left p-3 rounded-lg border-2 transition-all group mb-2 relative overflow-hidden",
+              settings.groundStyle === 'sfx-stage'
+                ? "border-purple-500/60 bg-purple-500/10 shadow-[0_0_20px_hsl(270_80%_50%/0.15)]"
+                : "border-purple-500/20 hover:border-purple-500/50 hover:bg-purple-500/5"
+            )}
+          >
+            <div className="absolute top-0 right-0 px-2 py-0.5 bg-purple-500/20 rounded-bl-lg">
+              <span className="text-[7px] font-bold text-purple-400 uppercase tracking-wider">NEW</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-md bg-purple-500/15 flex items-center justify-center text-lg">🎭</div>
+              <div className="flex-1">
+                <div className="text-[10px] font-bold text-foreground group-hover:text-purple-400 transition-colors">SFX Stage (DMXPrevis)</div>
+                <div className="text-[8px] text-muted-foreground leading-tight mt-0.5">Indoor venue • Truss • Moving Heads • LED Walls • Fog • Laser Mounts</div>
+              </div>
+            </div>
+            {settings.groundStyle === 'sfx-stage' && (
+              <div className="mt-1.5 flex items-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                <span className="text-[7px] text-green-400 font-bold uppercase tracking-wider">Active</span>
+              </div>
+            )}
+          </button>
+
+          <div className="grid grid-cols-2 gap-1.5">
+            {Object.entries(SCENE_PRESETS).filter(([id]) => id !== 'sfx-stage').map(([id, preset]) => {
+              const isActive = (
+                (id === 'finale-night' && settings.groundStyle === 'finale-dark') ||
+                (id === 'depence-stage' && settings.groundStyle === 'concrete') ||
+                (id === 'studio-black' && settings.groundStyle === 'flat-black')
+              );
+              return (
+                <button
+                  key={id}
+                  onClick={() => applyPreset(id)}
+                  className={cn(
+                    "text-left p-2 rounded-md border transition-all group",
+                    isActive
+                      ? "border-primary/40 bg-primary/10"
+                      : "border-border/20 hover:border-primary/50 hover:bg-primary/5"
+                  )}
+                >
+                  <div className="text-[9px] font-bold text-foreground group-hover:text-primary transition-colors">{preset.name}</div>
+                  <div className="text-[7px] text-muted-foreground leading-tight mt-0.5">{preset.description}</div>
+                </button>
+              );
+            })}
+          </div>
+        </Section>
+
+        {/* ═══ SKY & ATMOSPHERE ═══ */}
+        <Section title="Sky & Atmosphere" icon={Moon} id="sky" open={openSections.has('sky')} onToggle={() => toggleSection('sky')}>
+          <SliderRow label="Ambient Light" value={settings.ambientIntensity} onChange={v => updateSettings({ ambientIntensity: v })} max={0.5} />
+          <SliderRow label="Moon Intensity" value={settings.moonIntensity} onChange={v => updateSettings({ moonIntensity: v })} max={2} />
+          <div>
+            <span className="text-[9px] text-muted-foreground font-medium">Moon Color</span>
+            <div className="flex items-center gap-2 mt-1">
+              <input type="color" value={settings.moonColor} onChange={e => updateSettings({ moonColor: e.target.value })} className="w-6 h-6 rounded border border-border/30 cursor-pointer" />
+              <span className="text-[8px] font-mono text-muted-foreground">{settings.moonColor}</span>
+            </div>
+          </div>
+          <SliderRow label="Sky Brightness" value={settings.skyBrightness} onChange={v => updateSettings({ skyBrightness: v })} max={2} />
+          <SliderRow label="Star Density" value={settings.starDensity} onChange={v => updateSettings({ starDensity: v })} max={2} />
+          <SliderRow label="Horizon Glow" value={settings.horizonGlow} onChange={v => updateSettings({ horizonGlow: v })} />
+          <SliderRow label="Fog Density" value={settings.fogDensity} onChange={v => updateSettings({ fogDensity: v })} />
+          <SliderRow label="Fog Far" value={settings.fogFar} onChange={v => updateSettings({ fogFar: v })} min={100} max={3000} step={50} />
+        </Section>
+
+        {/* ═══ GROUND ═══ */}
+        <Section title="Ground & Grid" icon={Grid3x3} id="ground" open={openSections.has('ground')} onToggle={() => toggleSection('ground')}>
+          <div>
+            <span className="text-[9px] text-muted-foreground font-medium">Ground Style</span>
+            <Select value={settings.groundStyle} onValueChange={v => updateSettings({ groundStyle: v as GroundStyle })}>
+              <SelectTrigger className="h-7 text-[10px] mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="synthetic-grass" className="text-[10px]">🌿 Synthetic Grass (Camo)</SelectItem>
+                <SelectItem value="finale-dark" className="text-[10px]">Finale Dark</SelectItem>
+                <SelectItem value="google-earth" className="text-[10px]">Google Earth</SelectItem>
+                <SelectItem value="flat-black" className="text-[10px]">Flat Black</SelectItem>
+                <SelectItem value="concrete" className="text-[10px]">Concrete</SelectItem>
+                <SelectItem value="sfx-stage" className="text-[10px]">🎭 SFX Stage</SelectItem>
+                <SelectItem value="custom" className="text-[10px]">🎨 Custom</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <SliderRow label="Ground Brightness" value={settings.groundBrightness} onChange={v => updateSettings({ groundBrightness: v })} max={2} />
+          <SliderRow label="Grid Opacity" value={settings.gridOpacity} onChange={v => updateSettings({ gridOpacity: v })} />
+          <SliderRow label="Ground Fog" value={settings.groundFogIntensity} onChange={v => updateSettings({ groundFogIntensity: v })} />
+
+          {/* Terrain PBR Preset — render_ultra material */}
+          <div>
+            <span className="text-[9px] text-muted-foreground font-medium">Terrain Material</span>
+            <Select value={terrainPreset} onValueChange={v => setTerrainPreset(v)}>
+              <SelectTrigger className="h-7 text-[10px] mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {getTerrainPresets().map(p => (
+                  <SelectItem key={p} value={p} className="text-[10px] capitalize">{p.replace('-', ' ')}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Geo-Engine Controls */}
+          <div className="pt-2 border-t border-border/10 space-y-2">
+            <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-wider">Geo Engine</span>
+            <GeoSearchPanel />
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] text-muted-foreground flex items-center gap-1"><Globe className="h-3 w-3" /> Google Earth 3D</span>
+              <Switch
+                checked={settings.google3DTilesEnabled}
+                onCheckedChange={v => {
+                  updateSettings({ google3DTilesEnabled: v, floatingOriginEnabled: v || settings.floatingOriginEnabled });
+                  if (v) toast.success('Digital Twin carregado');
+                }}
+              />
             </div>
             <div className="flex items-center justify-between">
               <span className="text-[9px] text-muted-foreground">Floating Origin</span>
