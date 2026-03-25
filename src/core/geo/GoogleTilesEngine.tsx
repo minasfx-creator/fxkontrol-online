@@ -129,7 +129,7 @@ export default function GoogleTilesLayer() {
     tiles.registerPlugin(new UnloadTilesPlugin());
 
     // Start with relaxed SSE for fast initial load, then refine progressively
-    tiles.errorTarget = SSE_TIERS.medium;
+    tiles.errorTarget = SSE_TIERS.low;
 
     const group = groupRef.current;
     group.name = 'GoogleTilesGroup';
