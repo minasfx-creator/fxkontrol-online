@@ -524,7 +524,7 @@ export default function ShowSettingsPanel({ onClose }: ShowSettingsProps) {
                 value={[duration]}
                 onValueChange={([v]) => useProjectStore.getState().setDuration(v)}
                 min={0}
-                max={600}
+                max={3600}
                 step={1}
                 className="w-full"
               />
