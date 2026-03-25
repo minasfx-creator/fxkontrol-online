@@ -530,7 +530,7 @@ export default function ShowSettingsPanel({ onClose }: ShowSettingsProps) {
               />
               <div className="flex justify-between mt-1">
                 <span className="text-[8px] text-muted-foreground/30 font-mono-code">0:00</span>
-                <span className="text-[8px] text-muted-foreground/30 font-mono-code">10:00</span>
+                <span className="text-[8px] text-muted-foreground/30 font-mono-code">60:00</span>
               </div>
             </div>
             <InfoRow label="Project" value={projectName} />

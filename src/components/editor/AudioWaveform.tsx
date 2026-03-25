@@ -178,8 +178,22 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
 
       const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
 
+      // Auto-adjust project duration to match audio length
+      const audioDuration = audioBuffer.duration;
+      if (audioDuration > 0) {
+        const store = useProjectStore.getState();
+        // Only extend — never shrink below current items
+        const maxItemEnd = store.timelineItems.reduce((max, item) => {
+          const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+          return Math.max(max, item.startTime + (effect?.duration ?? 3));
+        }, 0);
+        const newDuration = Math.max(audioDuration, maxItemEnd);
+        store.setDuration(Math.ceil(newDuration));
+      }
+
       const rawData = audioBuffer.getChannelData(0);
-      const samples = Math.floor(duration * pixelsPerSecond * 2);
+      const effectiveDuration = audioDuration > 0 ? Math.ceil(audioDuration) : duration;
+      const samples = Math.floor(effectiveDuration * pixelsPerSecond * 2);
       const blockSize = Math.floor(rawData.length / samples);
       const downsampled = new Float32Array(samples);
 
