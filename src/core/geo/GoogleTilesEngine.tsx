@@ -70,19 +70,35 @@ const TILE_RADIUS_METERS = 800;
 // ── Main Component ──────────────────────────────────────────────────
 // ── Loading state broadcast for HUD overlay ─────────────────────────
 export type TilesLoadingState = 'idle' | 'fetching-key' | 'loading-tiles' | 'ready' | 'error';
-let _tilesLoadingState: TilesLoadingState = 'idle';
-let _tilesLoadedCount = 0;
+
+export interface TilesDebugInfo {
+  state: TilesLoadingState;
+  count: number;
+  sse: number;
+  errorMsg: string | null;
+  anchorLat: number;
+  anchorLon: number;
+  anchorAlt: number;
+  groupVisible: boolean;
+  rendererActive: boolean;
+}
+
+let _tilesDebug: TilesDebugInfo = {
+  state: 'idle', count: 0, sse: 0, errorMsg: null,
+  anchorLat: 0, anchorLon: 0, anchorAlt: 0,
+  groupVisible: false, rendererActive: false,
+};
 const _listeners = new Set<() => void>();
 
-export function getTilesLoadingState() { return _tilesLoadingState; }
-export function getTilesLoadedCount() { return _tilesLoadedCount; }
+export function getTilesLoadingState() { return _tilesDebug.state; }
+export function getTilesLoadedCount() { return _tilesDebug.count; }
+export function getTilesDebugInfo() { return _tilesDebug; }
 export function subscribeTilesLoading(cb: () => void) {
   _listeners.add(cb);
   return () => { _listeners.delete(cb); };
 }
-function setLoadingState(s: TilesLoadingState, count = _tilesLoadedCount) {
-  _tilesLoadingState = s;
-  _tilesLoadedCount = count;
+function setLoadingState(s: TilesLoadingState, count = _tilesDebug.count, extra?: Partial<TilesDebugInfo>) {
+  _tilesDebug = { ..._tilesDebug, state: s, count, ...extra };
   _listeners.forEach(cb => cb());
 }
 
@@ -101,22 +117,23 @@ export default function GoogleTilesLayer() {
   // Fetch API key on mount
   useEffect(() => {
     if (apiKey) return;
-    setLoadingState('fetching-key');
+    setLoadingState('fetching-key', 0, { errorMsg: null });
     (async () => {
       try {
         console.log('[GoogleTiles] Fetching API key...');
         const { data, error } = await supabase.functions.invoke('get-maps-key');
         if (error || !data?.key) {
-          console.warn('[GoogleTiles] Failed to fetch API key:', error);
-          setLoadingState('error');
+          const msg = error?.message || 'No key returned';
+          console.warn('[GoogleTiles] Failed to fetch API key:', msg);
+          setLoadingState('error', 0, { errorMsg: `API key: ${msg}` });
           return;
         }
         console.log('[GoogleTiles] API key acquired');
         setApiKey(data.key);
-        setLoadingState('loading-tiles');
+        setLoadingState('loading-tiles', 0, { errorMsg: null });
       } catch (err) {
         console.warn('[GoogleTiles] API key fetch error:', err);
-        setLoadingState('error');
+        setLoadingState('error', 0, { errorMsg: `Fetch error: ${(err as Error).message}` });
       }
     })();
   }, [apiKey]);
@@ -210,7 +227,12 @@ export default function GoogleTilesLayer() {
         let visibleCount = 0;
         tiles.group.traverse((c) => { if ((c as THREE.Mesh).visible !== false) visibleCount++; });
         updateGeoHUD({ tilesLoaded: visibleCount });
-        setLoadingState(visibleCount > 2 ? 'ready' : 'loading-tiles', visibleCount);
+        setLoadingState(visibleCount > 2 ? 'ready' : 'loading-tiles', visibleCount, {
+          sse: tiles.errorTarget,
+          anchorLat, anchorLon, anchorAlt,
+          groupVisible: groupRef.current.visible,
+          rendererActive: true,
+        });
       }
     } catch (err) {
       console.warn('[Terrain] update error caught:', err);
