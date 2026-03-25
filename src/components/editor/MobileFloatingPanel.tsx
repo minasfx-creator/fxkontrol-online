@@ -68,6 +68,8 @@ export default function MobileFloatingPanel({
       style={{
         bottom: 'calc(64px + env(safe-area-inset-bottom))',
         transition: isDragging ? 'none' : 'height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        willChange: 'transform, height',
+        contain: 'layout style paint',
       }}
     >
       {/* Grab indicator — Apple style */}
@@ -89,7 +91,7 @@ export default function MobileFloatingPanel({
         </button>
       )}
 
-      {/* Content */}
+      {/* Content — only render children when panel is visible */}
       <div className="h-[calc(100%-36px)] overflow-y-auto overscroll-contain px-1 pb-2">
         {children}
       </div>
