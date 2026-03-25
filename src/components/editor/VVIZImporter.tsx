@@ -84,43 +84,48 @@ export default function VVIZImporter({ open, onOpenChange, initialFile = null }:
     setProgress(0);
     setProgressLabel(`Importando 0/${result.droneCount} drones...`);
 
-    // Animate progress visually during the batch import
-    const totalSteps = 20;
+    // Smooth progress animation — 25 steps over ~500ms
+    const totalSteps = 25;
     let step = 0;
     const interval = setInterval(() => {
       step++;
-      const pct = Math.min((step / totalSteps) * 90, 90);
-      const dronesProcessed = Math.round((pct / 90) * result.droneCount);
+      const pct = Math.min((step / totalSteps) * 95, 95);
+      const dronesProcessed = Math.min(Math.round((pct / 95) * result.droneCount), result.droneCount);
       setProgress(pct);
       setProgressLabel(`Importando ${dronesProcessed}/${result.droneCount} drones...`);
 
       if (step >= totalSteps) {
         clearInterval(interval);
 
-        // Execute the actual atomic import
-        batchImportVVIZ(result.positions, result.trajectories, result.projectName, result.duration);
+        // Defer the heavy batch operation to next frame so the 95% paint lands first
+        requestAnimationFrame(() => {
+          batchImportVVIZ(result.positions, result.trajectories, result.projectName, result.duration);
 
-        setProgress(100);
-        setProgressLabel(`${result.droneCount} drones importados ✓`);
-        setPhase('done');
+          // Let React flush the store update, then show completion
+          setTimeout(() => {
+            setProgress(100);
+            setProgressLabel(`${result.droneCount} drones importados ✓`);
+            setPhase('done');
 
-        toast.success(`Importado: ${result.droneCount} drones, ${result.trajectories.length} trajetórias`);
+            toast.success(`Importado: ${result.droneCount} drones, ${result.trajectories.length} trajetórias`);
 
-        // Auto-save to library
-        if (currentFile) {
-          saveToLibrary(currentFile, { name: fileName || 'VVIZ Import', source: 'vviz', file_format: 'vviz', tags: ['show', 'vviz'] });
-        }
+            // Auto-save to library
+            if (currentFile) {
+              saveToLibrary(currentFile, { name: fileName || 'VVIZ Import', source: 'vviz', file_format: 'vviz', tags: ['show', 'vviz'] });
+            }
 
-        setTimeout(() => {
-          onOpenChange(false);
-          setResult(null);
-          setFileName(null);
-          setCurrentFile(null);
-          setPhase('idle');
-          setProgress(0);
-        }, 800);
+            setTimeout(() => {
+              onOpenChange(false);
+              setResult(null);
+              setFileName(null);
+              setCurrentFile(null);
+              setPhase('idle');
+              setProgress(0);
+            }, 1000);
+          }, 50);
+        });
       }
-    }, 30);
+    }, 20);
   }, [result, batchImportVVIZ, onOpenChange, currentFile, fileName, saveToLibrary]);
 
   const isProcessing = phase === 'reading' || phase === 'parsing' || phase === 'importing';
