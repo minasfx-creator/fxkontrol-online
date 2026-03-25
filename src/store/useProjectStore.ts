@@ -251,6 +251,7 @@ export interface ProjectState {
   selectMultiplePositionsAndLinkedEvents: (ids: string[]) => void;
   selectTimelineItemAndLinkedPosition: (itemId: string) => void;
   addTrajectory: (traj: Trajectory) => void;
+  batchImportVVIZ: (positions: Position[], trajectories: Trajectory[], projectName?: string, duration?: number) => void;
   updateTrajectory: (id: string, updates: Partial<Omit<Trajectory, 'id'>>) => void;
   removeTrajectory: (id: string) => void;
   selectTrajectory: (id: string | null) => void;
@@ -612,6 +613,12 @@ export const useProjectStore = create<ProjectState>((set) => ({
   }),
 
   addTrajectory: (traj) => set((s) => ({ trajectories: [...s.trajectories, traj] })),
+  batchImportVVIZ: (positions, trajectories, projectName, duration) => set((s) => ({
+    positions: [...s.positions, ...positions],
+    trajectories: [...s.trajectories, ...trajectories],
+    ...(projectName && projectName !== 'Import Error' ? { projectName } : {}),
+    ...(duration && duration > 0 ? { duration } : {}),
+  })),
   updateTrajectory: (id, updates) => set((s) => ({
     trajectories: s.trajectories.map((t) => t.id === id ? { ...t, ...updates } : t),
   })),

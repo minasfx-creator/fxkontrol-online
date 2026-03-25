@@ -14,7 +14,7 @@ import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { toast } from 'sonner';
 
 export default function VVIZImporter({ open, onOpenChange, initialFile = null }: { open: boolean; onOpenChange: (v: boolean) => void; initialFile?: File | null }) {
-  const { addPosition, addTrajectory, setProjectName, setDuration } = useProjectStore();
+  const { batchImportVVIZ } = useProjectStore();
   const [result, setResult] = useState<VVIZImportResult | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [currentFile, setCurrentFile] = useState<File | null>(null);
@@ -49,23 +49,8 @@ export default function VVIZImporter({ open, onOpenChange, initialFile = null }:
   const handleImport = useCallback(() => {
     if (!result) return;
 
-    // Import positions
-    for (const pos of result.positions) {
-      addPosition(pos);
-    }
-
-    // Import trajectories
-    for (const traj of result.trajectories) {
-      addTrajectory(traj);
-    }
-
-    // Update project metadata
-    if (result.projectName && result.projectName !== 'Import Error') {
-      setProjectName(result.projectName);
-    }
-    if (result.duration > 0) {
-      setDuration(result.duration);
-    }
+    // Single atomic state update instead of 600+ individual calls
+    batchImportVVIZ(result.positions, result.trajectories, result.projectName, result.duration);
 
     toast.success(`Importado: ${result.droneCount} drones, ${result.trajectories.length} trajetórias`);
 
@@ -78,7 +63,7 @@ export default function VVIZImporter({ open, onOpenChange, initialFile = null }:
     setResult(null);
     setFileName(null);
     setCurrentFile(null);
-  }, [result, addPosition, addTrajectory, setProjectName, setDuration, onOpenChange, currentFile, fileName, saveToLibrary]);
+  }, [result, batchImportVVIZ, onOpenChange, currentFile, fileName, saveToLibrary]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
