@@ -268,6 +268,20 @@ export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
                 }}
               />
             </div>
+            <div>
+              <span className="text-[9px] text-muted-foreground">Qualidade Tiles 3D</span>
+              <Select
+                value={settings.googleTilesQuality}
+                onValueChange={v => updateSettings({ googleTilesQuality: v as GoogleTilesQuality })}
+              >
+                <SelectTrigger className="h-7 text-[10px] mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low" className="text-[10px]">Low (mais leve)</SelectItem>
+                  <SelectItem value="medium" className="text-[10px]">Medium</SelectItem>
+                  <SelectItem value="high" className="text-[10px]">High (mais detalhe)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex items-center justify-between">
               <span className="text-[9px] text-muted-foreground">Floating Origin</span>
               <Switch
