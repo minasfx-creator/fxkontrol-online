@@ -434,6 +434,16 @@ function Index() {
   // ═══ MOBILE LAYOUT ═══
   if (isMobile) {
     const handleDismissPanel = () => { setMobileTab(null); setMobilePanelHeight('collapsed'); };
+    if (operationMode === 'live') {
+      return (
+        <div className="h-[100dvh] w-screen relative overflow-hidden bg-zinc-950">
+          <div className="absolute inset-0">
+            <CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas /></Suspense></CanvasErrorBoundary>
+          </div>
+          <LiveModeOverlay />
+        </div>
+      );
+    }
     return (
       <div className="h-[100dvh] w-screen relative overflow-hidden bg-zinc-950">
         <div className="absolute inset-0">
