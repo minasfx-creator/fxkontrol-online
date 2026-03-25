@@ -1448,6 +1448,7 @@ export default function SkyCanvas() {
       </Canvas>
       </WebGLErrorBoundary>
       <TelemetryBar />
+      <GoogleTilesLoadingOverlay />
       <KeybindingCheatSheet />
 
       {/* ═══ Google Earth Geo Tools UI ═══ */}
