@@ -84,21 +84,21 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
         </div>
 
         {/* Center: Transport controls */}
-        <div className="pointer-events-auto flex items-center gap-1.5">
+        <div className="pointer-events-auto flex items-center gap-2">
           <button
-            onClick={() => setPlaying(!isPlaying)}
-            className="glass-button flex items-center justify-center w-10 h-10"
+            onClick={() => { haptics.tap(); setPlaying(!isPlaying); }}
+            className="glass-button flex items-center justify-center w-12 h-12 active:scale-90 transition-transform"
           >
             {isPlaying
-              ? <Pause className="w-4.5 h-4.5 text-foreground" />
-              : <Play className="w-4.5 h-4.5 text-foreground ml-0.5" />
+              ? <Pause className="w-5 h-5 text-foreground" />
+              : <Play className="w-5 h-5 text-foreground ml-0.5" />
             }
           </button>
           <button
-            onClick={() => { setPlaying(false); setCurrentTime(0); }}
-            className="glass-button flex items-center justify-center w-10 h-10"
+            onClick={() => { haptics.toggle(); setPlaying(false); setCurrentTime(0); }}
+            className="glass-button flex items-center justify-center w-12 h-12 active:scale-90 transition-transform"
           >
-            <Square className="w-3.5 h-3.5 text-muted-foreground" />
+            <Square className="w-4 h-4 text-muted-foreground" />
           </button>
         </div>
 
@@ -120,17 +120,17 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
           {isArmed && (
             <button
               onClick={handlePanic}
-              className="flex items-center justify-center w-9 h-9 rounded-full bg-destructive/80 armed-pulse active:scale-90 transition-transform"
+              className="flex items-center justify-center w-12 h-12 rounded-full bg-destructive/90 armed-pulse active:scale-90 transition-transform"
             >
-              <AlertOctagon className="w-4 h-4 text-destructive-foreground" />
+              <AlertOctagon className="w-5 h-5 text-destructive-foreground" />
             </button>
           )}
 
           <button
-            onClick={onMenuOpen}
-            className="glass-button flex items-center justify-center w-10 h-10"
+            onClick={() => { haptics.tap(); onMenuOpen(); }}
+            className="glass-button flex items-center justify-center w-12 h-12 active:scale-90 transition-transform"
           >
-            <Menu className="w-4 h-4 text-foreground" />
+            <Menu className="w-5 h-5 text-foreground" />
           </button>
         </div>
       </div>

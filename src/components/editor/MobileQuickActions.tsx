@@ -86,21 +86,22 @@ export default function MobileQuickActions() {
 
   return (
     <div className="fixed left-3 top-1/2 -translate-y-1/2 z-40 pointer-events-none">
-      <div className="flex flex-col gap-2 pointer-events-auto">
+      <div className="flex flex-col gap-2.5 pointer-events-auto">
         {actions.map(({ icon: Icon, label, onClick, variant }) => (
           <button
             key={label}
             onClick={onClick}
             className={cn(
-              "touch-target flex items-center justify-center w-11 h-11 rounded-[14px] glass-button transition-all",
+              "touch-target-lg flex flex-col items-center justify-center w-14 h-14 rounded-2xl glass-button transition-all active:scale-90",
               variant === 'active' && "bg-primary/15 border-primary/30 text-primary glow-active",
               variant === 'primary' && "bg-primary/12 border-primary/25 text-primary",
-              variant === 'danger' && "bg-destructive/12 border-destructive/25 text-destructive",
+              variant === 'danger' && "bg-destructive/15 border-destructive/30 text-destructive glow-danger",
               variant === 'default' && "text-foreground/70"
             )}
             title={label}
           >
             <Icon className="w-5 h-5" />
+            <span className="text-[8px] font-bold mt-0.5 uppercase tracking-wider opacity-70">{label}</span>
           </button>
         ))}
 
