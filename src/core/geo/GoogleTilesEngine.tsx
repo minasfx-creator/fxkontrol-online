@@ -91,7 +91,6 @@ export default function GoogleTilesLayer() {
   const tilesRef = useRef<TilesRenderer | null>(null);
   const groupRef = useRef<THREE.Group>(new THREE.Group());
   const [apiKey, setApiKey] = useState<string | null>(null);
-  const [refinementStage, setRefinementStage] = useState(0);
 
   const anchorLat = useSceneStore((s) => s.settings.geoAnchorLat);
   const anchorLon = useSceneStore((s) => s.settings.geoAnchorLon);
