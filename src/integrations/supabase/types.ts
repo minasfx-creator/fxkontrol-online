@@ -427,6 +427,39 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_locations: {
+        Row: {
+          alt: number
+          created_at: string
+          id: string
+          lat: number
+          lon: number
+          name: string
+          scene_radius: number
+          user_id: string
+        }
+        Insert: {
+          alt?: number
+          created_at?: string
+          id?: string
+          lat: number
+          lon: number
+          name: string
+          scene_radius?: number
+          user_id: string
+        }
+        Update: {
+          alt?: number
+          created_at?: string
+          id?: string
+          lat?: number
+          lon?: number
+          name?: string
+          scene_radius?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       setlists: {
         Row: {
           created_at: string

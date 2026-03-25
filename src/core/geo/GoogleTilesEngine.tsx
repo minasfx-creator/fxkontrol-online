@@ -48,8 +48,7 @@ function buildECEFtoENUMatrix(lat: number, lon: number): THREE.Matrix4 {
   return m;
 }
 
-// ── Scene import radius (meters) ────────────────────────────────────
-const SCENE_IMPORT_RADIUS = 5000; // 5 km
+// ── SSE quality tiers ───────────────────────────────────────────────
 
 // ── SSE quality tiers ───────────────────────────────────────────────
 const SSE_TIERS: Record<string, number> = {
@@ -89,6 +88,7 @@ export default function GoogleTilesLayer() {
   const anchorLon = useSceneStore((s) => s.settings.geoAnchorLon);
   const anchorAlt = useSceneStore((s) => s.settings.geoAnchorAlt);
   const enabled = useSceneStore((s) => s.settings.google3DTilesEnabled);
+  const sceneImportRadius = useSceneStore((s) => s.settings.sceneImportRadius);
 
   // Fetch API key on mount
   useEffect(() => {
@@ -187,7 +187,7 @@ export default function GoogleTilesLayer() {
           child.getWorldPosition(center);
           groupRef.current.worldToLocal(center);
           const dist = center.distanceTo(origin);
-          child.visible = dist < SCENE_IMPORT_RADIUS;
+          child.visible = dist < sceneImportRadius;
         }
       });
 

@@ -1,14 +1,15 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { unrealBridge } from '@/core/sync/unrealBridge';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
+import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { X, Cog, MapPin, Clock, Users, Radio, Shield, Save, Globe, Thermometer, Wind, ChevronDown, ChevronRight, Zap, Cpu, Navigation, FileText, Hash, Calendar, Building, Eye, EyeOff, Lock, Ruler, RotateCcw, Palette } from 'lucide-react';
+import { X, Cog, MapPin, Clock, Users, Radio, Shield, Save, Globe, Thermometer, Wind, ChevronDown, ChevronRight, Zap, Cpu, Navigation, FileText, Hash, Calendar, Building, Eye, EyeOff, Lock, Ruler, RotateCcw, Palette, Trash2, Star, Map } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -225,6 +226,175 @@ function UnrealBridgeSection() {
   );
 }
 
+/* ── Digital Twin — Scene Radius & Saved Locations ─────── */
+interface SavedLocation {
+  id: string;
+  name: string;
+  lat: number;
+  lon: number;
+  alt: number;
+  scene_radius: number;
+}
+
+function DigitalTwinSection() {
+  const { settings, updateSettings } = useSceneStore();
+  const [savedLocations, setSavedLocations] = useState<SavedLocation[]>([]);
+  const [saveName, setSaveName] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // Load saved locations
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('saved_locations')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (data) setSavedLocations(data as SavedLocation[]);
+    })();
+  }, []);
+
+  const handleSaveLocation = useCallback(async () => {
+    const name = saveName.trim() || `Location ${settings.geoAnchorLat.toFixed(2)}, ${settings.geoAnchorLon.toFixed(2)}`;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { toast.error('Login required'); return; }
+    setLoading(true);
+    const { data, error } = await supabase.from('saved_locations').insert({
+      user_id: user.id,
+      name,
+      lat: settings.geoAnchorLat,
+      lon: settings.geoAnchorLon,
+      alt: settings.geoAnchorAlt,
+      scene_radius: settings.sceneImportRadius,
+    }).select().single();
+    setLoading(false);
+    if (error) { toast.error('Failed to save'); return; }
+    if (data) setSavedLocations(prev => [data as SavedLocation, ...prev]);
+    setSaveName('');
+    toast.success(`"${name}" saved`);
+  }, [saveName, settings]);
+
+  const handleLoadLocation = useCallback((loc: SavedLocation) => {
+    updateSettings({
+      geoAnchorLat: Number(loc.lat),
+      geoAnchorLon: Number(loc.lon),
+      geoAnchorAlt: Number(loc.alt),
+      sceneImportRadius: Number(loc.scene_radius),
+      google3DTilesEnabled: true,
+      floatingOriginEnabled: true,
+    });
+    toast.success(`Loaded "${loc.name}"`);
+  }, [updateSettings]);
+
+  const handleDeleteLocation = useCallback(async (id: string) => {
+    await supabase.from('saved_locations').delete().eq('id', id);
+    setSavedLocations(prev => prev.filter(l => l.id !== id));
+    toast.success('Location removed');
+  }, []);
+
+  // Auto-save radius changes
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      // Radius is already in zustand store, just notify
+    }, 500);
+    return () => clearTimeout(timeout);
+  }, [settings.sceneImportRadius]);
+
+  return (
+    <SettingsSection title="Digital Twin" icon={Map} defaultOpen>
+      {/* Scene Import Radius */}
+      <div>
+        <label className="text-[10px] text-muted-foreground/70 font-semibold uppercase tracking-wider mb-1.5 block font-display flex items-center gap-1.5">
+          <Globe className="w-3 h-3" /> Scene Import Radius
+        </label>
+        <div className="flex items-center gap-3">
+          <Slider
+            value={[settings.sceneImportRadius]}
+            onValueChange={([v]) => updateSettings({ sceneImportRadius: v })}
+            min={1000}
+            max={20000}
+            step={500}
+            className="flex-1"
+          />
+          <span className="text-[10px] font-mono-code text-muted-foreground w-12 text-right tabular-nums">
+            {(settings.sceneImportRadius / 1000).toFixed(1)} km
+          </span>
+        </div>
+        <div className="flex justify-between mt-1">
+          <span className="text-[8px] text-muted-foreground/30 font-mono-code">1 km</span>
+          <span className="text-[8px] text-muted-foreground/30 font-mono-code">20 km</span>
+        </div>
+      </div>
+
+      {/* Current anchor info */}
+      <div className="rounded-xl bg-surface-0/50 p-3 border border-border/10 space-y-1">
+        <div className="flex items-center gap-1.5 mb-1">
+          <MapPin className="w-3 h-3 text-primary/50" />
+          <span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-wider font-display">Current Anchor</span>
+        </div>
+        <InfoRow label="Lat" value={settings.geoAnchorLat.toFixed(6) + '°'} accent />
+        <InfoRow label="Lon" value={settings.geoAnchorLon.toFixed(6) + '°'} accent />
+        <InfoRow label="Alt" value={settings.geoAnchorAlt.toFixed(1) + ' m'} />
+        <InfoRow label="Radius" value={(settings.sceneImportRadius / 1000).toFixed(1) + ' km'} accent />
+      </div>
+
+      {/* Save current location */}
+      <div className="space-y-2">
+        <label className="text-[10px] text-muted-foreground/70 font-semibold uppercase tracking-wider block font-display flex items-center gap-1.5">
+          <Star className="w-3 h-3" /> Save Location
+        </label>
+        <div className="flex gap-2">
+          <Input
+            value={saveName}
+            onChange={e => setSaveName(e.target.value)}
+            placeholder="Location name..."
+            className="h-8 text-[11px] bg-surface-0/60 border-border/15 rounded-lg flex-1"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-[9px] rounded-lg px-3"
+            onClick={handleSaveLocation}
+            disabled={loading}
+          >
+            <Save className="w-3 h-3 mr-1" /> Save
+          </Button>
+        </div>
+      </div>
+
+      {/* Saved locations list */}
+      {savedLocations.length > 0 && (
+        <div className="space-y-1.5">
+          <span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-wider font-display">Saved Places</span>
+          {savedLocations.map(loc => (
+            <div
+              key={loc.id}
+              className="flex items-center gap-2 px-2.5 py-2 rounded-lg border border-border/10 bg-surface-0/30 hover:bg-surface-0/60 transition-all group"
+            >
+              <button
+                onClick={() => handleLoadLocation(loc)}
+                className="flex-1 text-left min-w-0"
+              >
+                <div className="text-[11px] font-semibold text-foreground/90 truncate">{loc.name}</div>
+                <div className="text-[8px] font-mono-code text-muted-foreground/40">
+                  {Number(loc.lat).toFixed(4)}, {Number(loc.lon).toFixed(4)} · {(Number(loc.scene_radius) / 1000).toFixed(1)} km
+                </div>
+              </button>
+              <button
+                onClick={() => handleDeleteLocation(loc.id)}
+                className="opacity-0 group-hover:opacity-100 w-5 h-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-destructive transition-all"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </SettingsSection>
+  );
+}
+
 export default function ShowSettingsPanel({ onClose }: ShowSettingsProps) {
   const { duration, gpsOrigin, projectName } = useProjectStore();
 
@@ -385,6 +555,9 @@ export default function ShowSettingsPanel({ onClose }: ShowSettingsProps) {
               <InfoRow label="Altitude" value={`${(gpsOrigin.altitude || 0).toFixed(1)} m`} />
             </div>
           </SettingsSection>
+
+          {/* ── Digital Twin — Radius & Saved Locations ──────── */}
+          <DigitalTwinSection />
 
           {/* ── Schedule ────────────────────────────────────── */}
           <SettingsSection title="Schedule" icon={Calendar}>
