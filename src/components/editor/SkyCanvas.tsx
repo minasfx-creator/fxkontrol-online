@@ -1797,18 +1797,20 @@ export default function SkyCanvas() {
         </DelayedMount>
 
         {/* ═══ Synthetic sky/atmosphere — suppressed in Digital Twin mode ═══ */}
-        {!google3DTilesEnabled && <EnvironmentV2Switcher />}
+        {!google3DTilesEnabled && <EnvironmentV2SwitcherModule SkyGradientComponent={SkyGradientFallback} />}
 
         {!google3DTilesEnabled && <Moon />}
-        {!google3DTilesEnabled && <SceneStarsWired />}
+        {!google3DTilesEnabled && <SceneStarsWiredModule />}
         {!google3DTilesEnabled && !isMobile && !environment.lowQualityMode && <AtmosphericParticles />}
-        {!google3DTilesEnabled && <SceneFog />}
+        {!google3DTilesEnabled && <SceneFogModule />}
         {!google3DTilesEnabled && !isMobile && <DelayedMount delay={2500}><WeatherEffects /></DelayedMount>}
 
         {/* ═══ Ground / Terrain ═══ */}
         {!google3DTilesEnabled && <StageGround satelliteTexture={satelliteTexture} />}
         {google3DTilesEnabled && <GoogleTilesLayer />}
         {google3DTilesEnabled && <GeoCameraController />}
+        {/* Fallback grid visible while Google Earth tiles are loading */}
+        {google3DTilesEnabled && <Grid infiniteGrid fadeDistance={2000} fadeStrength={3} cellSize={10} sectionSize={100} cellColor="#1a1a2e" sectionColor="#2a2a4e" position={[0, -0.5, 0]} />}
         <GoogleEarthLighting />
         {!google3DTilesEnabled && <FinaleAxesHelper />}
         <DoubleClickFocus />
