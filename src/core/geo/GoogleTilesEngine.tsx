@@ -158,7 +158,13 @@ export default function GoogleTilesLayer() {
       scene.remove(group);
       tilesRef.current = null;
     };
-  }, [enabled, apiKey, scene, camera, gl]);
+  }, [enabled, apiKey, scene, camera, gl, googleTilesQuality]);
+
+  // Runtime quality change from settings
+  useEffect(() => {
+    if (!tilesRef.current || !enabled) return;
+    tilesRef.current.errorTarget = GOOGLE_TILE_QUALITY_TO_SSE[googleTilesQuality];
+  }, [googleTilesQuality, enabled]);
 
   // Update anchor position
   useEffect(() => {
