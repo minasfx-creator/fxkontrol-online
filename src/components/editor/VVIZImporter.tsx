@@ -90,7 +90,8 @@ export default function VVIZImporter({
     setProgressLabel('Lendo arquivo...');
 
     try {
-      const text = await file.text();
+      // Zero-copy: read as ArrayBuffer, transfer to worker (no main-thread string copy)
+      const buffer = await file.arrayBuffer();
       if (runId !== parseRunRef.current) return;
 
       setPhase('parsing');
@@ -103,6 +104,17 @@ export default function VVIZImporter({
         { type: 'module' }
       );
       workerRef.current = worker;
+
+      // Safety timeout: if worker hangs for 120s, abort
+      const safetyTimeout = setTimeout(() => {
+        if (runId !== parseRunRef.current) return;
+        setPhase('idle');
+        setProgress(0);
+        setProgressLabel('');
+        toast.error('Timeout: importação VVIZ demorou demais (>120s). Arquivo pode ser muito grande.');
+        worker.terminate();
+        workerRef.current = null;
+      }, 120_000);
 
       const colors = new Set<string>();
 
@@ -120,7 +132,6 @@ export default function VVIZImporter({
         }
 
         if (msg.type === 'drone') {
-          // Accumulate outside React state
           if (msg.pos) {
             accRef.current.positions.push(msg.pos);
             colors.add(msg.pos.color);
@@ -129,6 +140,7 @@ export default function VVIZImporter({
         }
 
         if (msg.type === 'complete') {
+          clearTimeout(safetyTimeout);
           setProgress(90);
           setProgressLabel(`${msg.droneCount} drones prontos para importar`);
           setPreviewData({
@@ -153,6 +165,7 @@ export default function VVIZImporter({
         }
 
         if (msg.type === 'error') {
+          clearTimeout(safetyTimeout);
           setPhase('idle');
           setProgress(0);
           setProgressLabel('');
@@ -164,6 +177,7 @@ export default function VVIZImporter({
 
       worker.onerror = () => {
         if (runId !== parseRunRef.current) return;
+        clearTimeout(safetyTimeout);
         setPhase('idle');
         setProgress(0);
         setProgressLabel('');
@@ -172,8 +186,8 @@ export default function VVIZImporter({
         workerRef.current = null;
       };
 
-      worker.postMessage({ type: 'parse', text, maxWaypoints: device.maxWaypoints });
-
+      // Transfer buffer (zero-copy, main thread releases memory immediately)
+      worker.postMessage({ type: 'parse', buffer, maxWaypoints: device.maxWaypoints }, [buffer]);
     } catch {
       if (runId !== parseRunRef.current) return;
       setPhase('idle');
