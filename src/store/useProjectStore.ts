@@ -622,14 +622,14 @@ export const useProjectStore = create<ProjectState>((set) => ({
     ...(duration && duration > 0 ? { duration } : {}),
   })),
   batchImportVVIZChunk: (positions, trajectories) => {
-    // True in-place mutation for O(1) — Zustand detects new ref from set()
-    const state = useProjectStore.getState();
-    const p = state.positions;
-    const t = state.trajectories;
-    for (let i = 0; i < positions.length; i++) p.push(positions[i]);
-    for (let i = 0; i < trajectories.length; i++) t.push(trajectories[i]);
-    // Create new array refs so React detects the change (shallow compare)
-    set({ positions: p, trajectories: t }, true);
+    // Mutate + new ref: push into copies for O(n_chunk) not O(n_total)
+    set((s) => {
+      const newP = [...s.positions];
+      const newT = [...s.trajectories];
+      for (let i = 0; i < positions.length; i++) newP.push(positions[i]);
+      for (let i = 0; i < trajectories.length; i++) newT.push(trajectories[i]);
+      return { positions: newP, trajectories: newT };
+    });
   },
   finalizeBatchImport: (projectName, duration) => set(() => ({
     ...(projectName && projectName !== 'Import Error' ? { projectName } : {}),
