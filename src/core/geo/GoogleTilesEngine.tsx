@@ -137,8 +137,8 @@ export default function GoogleTilesLayer() {
     // causing tiles to load only partially. Continuous updates are needed.
     tiles.registerPlugin(new UnloadTilesPlugin());
 
-    // Start with relaxed SSE for fast initial load, then refine progressively
-    tiles.errorTarget = SSE_TIERS.low;
+    // Initial quality from user settings (low/medium/high)
+    tiles.errorTarget = GOOGLE_TILE_QUALITY_TO_SSE[googleTilesQuality];
 
     const group = groupRef.current;
     group.name = 'GoogleTilesGroup';
