@@ -214,15 +214,21 @@ interface ToolbarProps {
   onOpenPanel?: (id: string) => void;
 }
 
-/* ── Location Display (from Geo Intelligence) ──────────────── */
+/* ── Location Display (clickable → opens Geo Setup) ──────────── */
 function LocationDisplay() {
   const locationName = useProjectStore(s => s.locationName);
-  if (!locationName) return null;
   return (
-    <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/30 border border-white/5">
-      <MapPin className="w-2.5 h-2.5 text-primary" />
-      <span className="text-[9px] font-mono text-zinc-400 truncate max-w-[180px]">{locationName}</span>
-    </div>
+    <button
+      onClick={() => window.dispatchEvent(new Event('open-geo-setup'))}
+      className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/30 border border-white/5 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer group"
+      title="Alterar localização"
+    >
+      <Navigation className="w-2.5 h-2.5 text-primary group-hover:text-primary" />
+      <span className="text-[9px] font-mono text-zinc-400 group-hover:text-zinc-200 truncate max-w-[180px]">
+        {locationName || 'Set Location'}
+      </span>
+      <ChevronDown className="w-2.5 h-2.5 text-zinc-600 group-hover:text-zinc-400" />
+    </button>
   );
 }
 
