@@ -1781,7 +1781,7 @@ export default function SkyCanvas() {
         resize={{ debounce: 50, scroll: false }}
         shadows
         gl={{
-          antialias: !isMobile,
+          antialias: true,
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.5,
           powerPreference: 'high-performance',
