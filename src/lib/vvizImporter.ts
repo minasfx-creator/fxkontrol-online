@@ -1,15 +1,17 @@
 /**
  * VVIZ Importer — Parses .vviz (Finale 3D) JSON files into project data.
  * Spec: https://finale3d.com/documentation/vviz-file-format/
- * Coordinate system: X (right), Y (up), Z (into screen) — same as our internal system.
  *
- * Performance-focused for large shows:
- *  - Single-pass traversal decoding (no temporary keyframe arrays)
- *  - Adaptive waypoint simplification for long choreographies
- *  - Async parsing with frequent yields to avoid UI freezes
+ * Memory-optimized for large shows (300+ drones, 10+ min):
+ *  - Releases raw JSON string before processing
+ *  - Nulls out processed performance data progressively
+ *  - Aggressive adaptive waypoint simplification
+ *  - Async parsing with yields to avoid UI freezes
  */
 
 import type { Position, Trajectory, Waypoint } from '@/store/useProjectStore';
+
+// ── Types ──────────────────────────────────────────────────────────
 
 interface VVIZTraversalSample {
   dx: number;
@@ -20,12 +22,8 @@ interface VVIZTraversalSample {
 }
 
 interface VVIZColorSample {
-  r?: number;
-  g?: number;
-  b?: number;
-  red?: number;
-  green?: number;
-  blue?: number;
+  r?: number; g?: number; b?: number;
+  red?: number; green?: number; blue?: number;
   frames?: number;
 }
 
@@ -86,6 +84,8 @@ export interface VVIZImportResult {
   stats?: VVIZImportStats;
 }
 
+// ── Helpers ────────────────────────────────────────────────────────
+
 let _idCounter = 0;
 function uid(prefix: string): string {
   return `${prefix}-${++_idCounter}-${(Math.random() * 0xffff) | 0}`;
@@ -103,51 +103,33 @@ function normalizeColorComponent(value: number | undefined): number {
   return Math.round(v);
 }
 
-/**
- * Extract representative LED color.
- * - Supports both 0..255 and 0..1 component ranges.
- * - Uses weighted average by frames for stable color in long choreographies.
- */
+// ── Color Extraction ───────────────────────────────────────────────
+
 function extractColor(payloads: VVIZPayload[]): string {
-  let weightedR = 0;
-  let weightedG = 0;
-  let weightedB = 0;
-  let totalWeight = 0;
-  let best = { r: 0, g: 180, b: 216 };
+  let bestR = 0, bestG = 180, bestB = 216;
   let bestBrightness = 0;
 
   for (const payload of payloads) {
     if (String((payload as { type?: string }).type || '').toLowerCase() !== 'light') continue;
+    const actions = (payload as VVIZLightPayload).payloadActions;
+    if (!actions) continue;
 
-    const actions = (payload as VVIZLightPayload).payloadActions || [];
     for (const action of actions) {
       const r = normalizeColorComponent(action.r ?? action.red);
       const g = normalizeColorComponent(action.g ?? action.green);
       const b = normalizeColorComponent(action.b ?? action.blue);
       const brightness = r + g + b;
-
-      if (brightness <= 3) continue;
-
-      const weight = Math.max(1, Math.round(action.frames ?? 1));
-      weightedR += r * weight;
-      weightedG += g * weight;
-      weightedB += b * weight;
-      totalWeight += weight;
-
       if (brightness > bestBrightness) {
         bestBrightness = brightness;
-        best = { r, g, b };
+        bestR = r; bestG = g; bestB = b;
       }
     }
   }
 
-  if (totalWeight > 0) {
-    return rgbToHex(weightedR / totalWeight, weightedG / totalWeight, weightedB / totalWeight);
-  }
-
-  if (bestBrightness > 0) return rgbToHex(best.r, best.g, best.b);
-  return '#00B4D8';
+  return bestBrightness > 0 ? rgbToHex(bestR, bestG, bestB) : '#00B4D8';
 }
+
+// ── Waypoint Simplification ────────────────────────────────────────
 
 interface SimplifyConfig {
   minTimeStep: number;
@@ -156,33 +138,25 @@ interface SimplifyConfig {
 }
 
 function getSimplifyConfig(sampleCount: number, defaultDt: number): SimplifyConfig {
+  // Ultra-aggressive for huge files to prevent OOM
+  if (sampleCount >= 20000) {
+    return { minTimeStep: Math.max(defaultDt * 8, 0.40), minDistanceSq: 0.30 * 0.30, maxGap: 1.50 };
+  }
   if (sampleCount >= 12000) {
-    return {
-      minTimeStep: Math.max(defaultDt * 5, 0.20),
-      minDistanceSq: 0.18 * 0.18,
-      maxGap: 0.90,
-    };
+    return { minTimeStep: Math.max(defaultDt * 6, 0.25), minDistanceSq: 0.20 * 0.20, maxGap: 1.00 };
   }
   if (sampleCount >= 4000) {
-    return {
-      minTimeStep: Math.max(defaultDt * 3, 0.12),
-      minDistanceSq: 0.10 * 0.10,
-      maxGap: 0.70,
-    };
+    return { minTimeStep: Math.max(defaultDt * 4, 0.15), minDistanceSq: 0.12 * 0.12, maxGap: 0.80 };
   }
   if (sampleCount >= 1500) {
-    return {
-      minTimeStep: Math.max(defaultDt * 2, 0.08),
-      minDistanceSq: 0.06 * 0.06,
-      maxGap: 0.60,
-    };
+    return { minTimeStep: Math.max(defaultDt * 2, 0.08), minDistanceSq: 0.06 * 0.06, maxGap: 0.60 };
   }
-  return {
-    minTimeStep: Math.max(defaultDt, 0.02),
-    minDistanceSq: 0.02 * 0.02,
-    maxGap: 0.45,
-  };
+  return { minTimeStep: Math.max(defaultDt, 0.03), minDistanceSq: 0.03 * 0.03, maxGap: 0.50 };
 }
+
+// Hard cap per trajectory to control memory
+const MAX_WAYPOINTS_PER_TRAJECTORY = 1500;
+const START_HOME_SKIP_SQ = 0.01 * 0.01;
 
 function downsampleWaypoints(waypoints: Waypoint[], limit: number): Waypoint[] {
   if (waypoints.length <= limit) return waypoints;
@@ -191,117 +165,18 @@ function downsampleWaypoints(waypoints: Waypoint[], limit: number): Waypoint[] {
   const sampled: Waypoint[] = [waypoints[0]];
   const lastIndex = waypoints.length - 1;
   const step = lastIndex / (limit - 1);
-  let prev = 0;
 
   for (let i = 1; i < limit - 1; i++) {
-    let idx = Math.round(i * step);
-    if (idx <= prev) idx = prev + 1;
-    if (idx >= lastIndex) idx = lastIndex - 1;
+    const idx = Math.min(Math.round(i * step), lastIndex - 1);
     sampled.push(waypoints[idx]);
-    prev = idx;
   }
-
   sampled.push(waypoints[lastIndex]);
   return sampled;
 }
 
-interface TraversalBuildResult {
-  waypoints: Waypoint[];
-  maxT: number;
-  inputSamples: number;
-  outputWaypoints: number;
-  simplified: boolean;
-}
+// ── Core Processing ────────────────────────────────────────────────
 
-const START_HOME_SKIP_SQ = 0.01 * 0.01;
-const MAX_WAYPOINTS_PER_TRAJECTORY = 3500;
-
-function buildWaypointsFromTraversal(
-  home: { x: number; y: number; z: number; h: number },
-  samples: VVIZTraversalSample[],
-  defaultRate: number,
-): TraversalBuildResult {
-  const inputSamples = samples.length;
-  if (inputSamples === 0) {
-    return { waypoints: [], maxT: 0, inputSamples: 0, outputWaypoints: 0, simplified: false };
-  }
-
-  const defaultDt = 1 / defaultRate;
-  const simplify = getSimplifyConfig(inputSamples, defaultDt);
-
-  let x = home.x;
-  let y = home.y;
-  let z = home.z;
-  let h = home.h;
-  let t = 0;
-
-  let hasStarted = false;
-  let lastAcceptedX = home.x;
-  let lastAcceptedY = home.y;
-  let lastAcceptedZ = home.z;
-  let lastAcceptedT = 0;
-
-  const waypoints: Waypoint[] = [];
-
-  for (let i = 0; i < inputSamples; i++) {
-    const s = samples[i];
-    const dt = s.dt ?? defaultDt;
-
-    x += s.dx;
-    y += s.dy;
-    z += s.dz;
-    h += s.dh ?? 0;
-    t += dt;
-
-    if (!hasStarted) {
-      const fromHomeSq = (x - home.x) ** 2 + (y - home.y) ** 2 + (z - home.z) ** 2;
-      if (fromHomeSq < START_HOME_SKIP_SQ && i < inputSamples - 1) continue;
-
-      waypoints.push({
-        id: uid('vw'),
-        position: { x, y, z },
-        time: t,
-      });
-
-      hasStarted = true;
-      lastAcceptedX = x;
-      lastAcceptedY = y;
-      lastAcceptedZ = z;
-      lastAcceptedT = t;
-      continue;
-    }
-
-    const dtSinceLast = t - lastAcceptedT;
-    const movedSq = (x - lastAcceptedX) ** 2 + (y - lastAcceptedY) ** 2 + (z - lastAcceptedZ) ** 2;
-    const isLast = i === inputSamples - 1;
-
-    if (isLast || dtSinceLast >= simplify.maxGap || (dtSinceLast >= simplify.minTimeStep && movedSq >= simplify.minDistanceSq)) {
-      waypoints.push({
-        id: uid('vw'),
-        position: { x, y, z },
-        time: t,
-      });
-
-      lastAcceptedX = x;
-      lastAcceptedY = y;
-      lastAcceptedZ = z;
-      lastAcceptedT = t;
-    }
-  }
-
-  const trimmed = downsampleWaypoints(waypoints, MAX_WAYPOINTS_PER_TRAJECTORY);
-  const simplified = trimmed.length < inputSamples;
-
-  return {
-    waypoints: trimmed,
-    maxT: t,
-    inputSamples,
-    outputWaypoints: trimmed.length,
-    simplified,
-  };
-}
-
-interface ProcessPerformanceResult {
+interface ProcessResult {
   pos: Position | null;
   traj: Trajectory | null;
   maxT: number;
@@ -311,107 +186,86 @@ interface ProcessPerformanceResult {
   simplified: boolean;
 }
 
-function processPerformance(perf: VVIZPerformance, index: number, defaultRate: number): ProcessPerformanceResult {
+function processPerformance(perf: VVIZPerformance, index: number, defaultRate: number): ProcessResult {
   const agent = perf.agentDescription;
-
   if (!agent) {
-    return {
-      pos: null,
-      traj: null,
-      maxT: 0,
-      error: `Performance ${perf.id}: sem agentDescription`,
-      inputSamples: 0,
-      outputWaypoints: 0,
-      simplified: false,
-    };
+    return { pos: null, traj: null, maxT: 0, error: `Performance ${perf.id}: sem agentDescription`, inputSamples: 0, outputWaypoints: 0, simplified: false };
   }
 
-  const home = {
-    x: agent.homeX || 0,
-    y: agent.homeY || 0,
-    z: agent.homeZ || 0,
-    h: agent.homeH || 0,
-  };
-
+  const home = { x: agent.homeX || 0, y: agent.homeY || 0, z: agent.homeZ || 0, h: agent.homeH || 0 };
   const color = extractColor(perf.payloadDescription || []);
   const posId = uid('vp');
 
   const pos: Position = {
-    id: posId,
-    name: `Drone ${index + 1}`,
-    type: 'drone-pad',
-    x: home.x,
-    y: home.y,
-    z: home.z,
-    heading: home.h,
-    pitch: 0,
-    roll: 0,
-    color,
+    id: posId, name: `Drone ${index + 1}`, type: 'drone-pad',
+    x: home.x, y: home.y, z: home.z,
+    heading: home.h, pitch: 0, roll: 0, color,
   };
 
-  const traversal = buildWaypointsFromTraversal(home, agent.agentTraversal || [], defaultRate);
+  const samples = agent.agentTraversal;
+  if (!samples || samples.length === 0) {
+    return { pos, traj: null, maxT: 0, error: null, inputSamples: 0, outputWaypoints: 0, simplified: false };
+  }
+
+  const inputSamples = samples.length;
+  const defaultDt = 1 / defaultRate;
+  const simplify = getSimplifyConfig(inputSamples, defaultDt);
+
+  let x = home.x, y = home.y, z = home.z, h = home.h, t = 0;
+  let hasStarted = false;
+  let lastX = home.x, lastY = home.y, lastZ = home.z, lastT = 0;
+
+  const waypoints: Waypoint[] = [];
+
+  for (let i = 0; i < inputSamples; i++) {
+    const s = samples[i];
+    const dt = s.dt ?? defaultDt;
+    x += s.dx; y += s.dy; z += s.dz; h += s.dh ?? 0; t += dt;
+
+    if (!hasStarted) {
+      const fromHomeSq = (x - home.x) ** 2 + (y - home.y) ** 2 + (z - home.z) ** 2;
+      if (fromHomeSq < START_HOME_SKIP_SQ && i < inputSamples - 1) continue;
+      waypoints.push({ id: uid('vw'), position: { x, y, z }, time: t });
+      hasStarted = true; lastX = x; lastY = y; lastZ = z; lastT = t;
+      continue;
+    }
+
+    const dtSince = t - lastT;
+    const movedSq = (x - lastX) ** 2 + (y - lastY) ** 2 + (z - lastZ) ** 2;
+    const isLast = i === inputSamples - 1;
+
+    if (isLast || dtSince >= simplify.maxGap || (dtSince >= simplify.minTimeStep && movedSq >= simplify.minDistanceSq)) {
+      waypoints.push({ id: uid('vw'), position: { x, y, z }, time: t });
+      lastX = x; lastY = y; lastZ = z; lastT = t;
+    }
+  }
+
+  const trimmed = downsampleWaypoints(waypoints, MAX_WAYPOINTS_PER_TRAJECTORY);
+
   let traj: Trajectory | null = null;
-
-  if (traversal.waypoints.length > 0) {
-    traj = {
-      id: uid('vt'),
-      positionId: posId,
-      name: `Traj ${index + 1}`,
-      waypoints: traversal.waypoints,
-    };
+  if (trimmed.length > 0) {
+    traj = { id: uid('vt'), positionId: posId, name: `Traj ${index + 1}`, waypoints: trimmed };
   }
 
   return {
-    pos,
-    traj,
-    maxT: traversal.maxT,
-    error: null,
-    inputSamples: traversal.inputSamples,
-    outputWaypoints: traversal.outputWaypoints,
-    simplified: traversal.simplified,
+    pos, traj, maxT: t, error: null,
+    inputSamples, outputWaypoints: trimmed.length, simplified: trimmed.length < inputSamples,
   };
 }
 
-function buildSummaryStats(
-  totalTraversalSamples: number,
-  totalWaypoints: number,
-  simplifiedTrajectories: number,
-): VVIZImportStats {
-  const compressionRatio = totalTraversalSamples > 0
-    ? 1 - (totalWaypoints / totalTraversalSamples)
-    : 0;
-
-  return {
-    totalTraversalSamples,
-    totalWaypoints,
-    simplifiedTrajectories,
-    compressionRatio,
-  };
-}
-
-function parseJsonInput(jsonString: string): { vviz: VVIZFile | null; error: string | null } {
-  try {
-    const parsed = JSON.parse(jsonString) as VVIZFile;
-    return { vviz: parsed, error: null };
-  } catch {
-    return { vviz: null, error: 'Arquivo VVIZ inválido — não é JSON válido.' };
-  }
-}
+// ── Public API ─────────────────────────────────────────────────────
 
 function invalidResult(message: string): VVIZImportResult {
-  return {
-    projectName: 'Import Error',
-    droneCount: 0,
-    duration: 0,
-    positions: [],
-    trajectories: [],
-    errors: [message],
-  };
+  return { projectName: 'Import Error', droneCount: 0, duration: 0, positions: [], trajectories: [], errors: [message] };
 }
 
 export function importVVIZ(jsonString: string): VVIZImportResult {
-  const { vviz, error } = parseJsonInput(jsonString);
-  if (!vviz) return invalidResult(error || 'Erro ao ler arquivo VVIZ.');
+  let vviz: VVIZFile;
+  try {
+    vviz = JSON.parse(jsonString) as VVIZFile;
+  } catch {
+    return invalidResult('Arquivo VVIZ inválido — não é JSON válido.');
+  }
 
   if (!Array.isArray(vviz.performances) || vviz.performances.length === 0) {
     return invalidResult('Arquivo VVIZ não contém "performances".');
@@ -421,48 +275,31 @@ export function importVVIZ(jsonString: string): VVIZImportResult {
   const defaultRate = vviz.defaultPositionRate || 2;
   const positions: Position[] = [];
   const trajectories: Trajectory[] = [];
-
-  let maxTime = 0;
-  let totalSamples = 0;
-  let totalWaypoints = 0;
-  let simplifiedTrajectories = 0;
+  let maxTime = 0, totalSamples = 0, totalWaypoints = 0, simplifiedCount = 0;
 
   for (let i = 0; i < vviz.performances.length; i++) {
     try {
       const result = processPerformance(vviz.performances[i], i, defaultRate);
-      if (result.error) {
-        errors.push(result.error);
-        continue;
-      }
-
+      if (result.error) { errors.push(result.error); continue; }
       if (result.pos) positions.push(result.pos);
       if (result.traj) trajectories.push(result.traj);
       if (result.maxT > maxTime) maxTime = result.maxT;
-
       totalSamples += result.inputSamples;
       totalWaypoints += result.outputWaypoints;
-      if (result.simplified) simplifiedTrajectories += 1;
+      if (result.simplified) simplifiedCount++;
     } catch {
       errors.push(`Performance ${vviz.performances[i]?.id ?? i}: falha durante parsing`);
     }
   }
 
-  const stats = buildSummaryStats(totalSamples, totalWaypoints, simplifiedTrajectories);
-
-  if (stats.compressionRatio > 0.35) {
-    errors.push(
-      `Otimização aplicada: ${Math.round(stats.compressionRatio * 100)}% menos pontos para manter fluidez (${stats.totalTraversalSamples.toLocaleString()} → ${stats.totalWaypoints.toLocaleString()}).`,
-    );
-  }
+  const compressionRatio = totalSamples > 0 ? 1 - (totalWaypoints / totalSamples) : 0;
 
   return {
     projectName: vviz.performanceName || 'VVIZ Import',
     droneCount: vviz.performances.length,
     duration: Math.ceil(maxTime) + 5,
-    positions,
-    trajectories,
-    errors,
-    stats,
+    positions, trajectories, errors,
+    stats: { totalTraversalSamples: totalSamples, totalWaypoints, simplifiedTrajectories: simplifiedCount, compressionRatio },
   };
 }
 
@@ -470,12 +307,22 @@ function yieldToMain(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
+/**
+ * Memory-optimized async VVIZ import.
+ * Key strategy: parse JSON once, then null-out each performance after processing
+ * so the GC can reclaim memory progressively.
+ */
 export async function importVVIZAsync(
   jsonString: string,
   onProgress?: (processedDrones: number, totalDrones: number, processedSamples: number, totalSamples: number) => void,
 ): Promise<VVIZImportResult> {
-  const { vviz, error } = parseJsonInput(jsonString);
-  if (!vviz) return invalidResult(error || 'Erro ao ler arquivo VVIZ.');
+  // Step 1: Parse JSON — after this, jsonString can be GC'd by the caller
+  let vviz: VVIZFile;
+  try {
+    vviz = JSON.parse(jsonString) as VVIZFile;
+  } catch {
+    return invalidResult('Arquivo VVIZ inválido — não é JSON válido.');
+  }
 
   if (!Array.isArray(vviz.performances) || vviz.performances.length === 0) {
     return invalidResult('Arquivo VVIZ não contém "performances".');
@@ -484,24 +331,22 @@ export async function importVVIZAsync(
   const errors: string[] = [];
   const defaultRate = vviz.defaultPositionRate || 2;
   const totalDrones = vviz.performances.length;
+  const perfs = vviz.performances;
 
+  // Pre-count total samples for progress (lightweight pass)
   let totalSamples = 0;
   for (let i = 0; i < totalDrones; i++) {
-    totalSamples += vviz.performances[i]?.agentDescription?.agentTraversal?.length || 0;
+    totalSamples += perfs[i]?.agentDescription?.agentTraversal?.length || 0;
   }
 
   const positions: Position[] = [];
   const trajectories: Trajectory[] = [];
-
-  let maxTime = 0;
-  let processedSamples = 0;
-  let parsedWaypoints = 0;
-  let simplifiedTrajectories = 0;
+  let maxTime = 0, processedSamples = 0, parsedWaypoints = 0, simplifiedCount = 0;
   let lastYieldTs = performance.now();
 
   for (let i = 0; i < totalDrones; i++) {
     try {
-      const result = processPerformance(vviz.performances[i], i, defaultRate);
+      const result = processPerformance(perfs[i], i, defaultRate);
       if (result.error) {
         errors.push(result.error);
       } else {
@@ -509,28 +354,34 @@ export async function importVVIZAsync(
         if (result.traj) trajectories.push(result.traj);
         if (result.maxT > maxTime) maxTime = result.maxT;
       }
-
       processedSamples += result.inputSamples;
       parsedWaypoints += result.outputWaypoints;
-      if (result.simplified) simplifiedTrajectories += 1;
+      if (result.simplified) simplifiedCount++;
     } catch {
-      errors.push(`Performance ${vviz.performances[i]?.id ?? i}: falha durante parsing`);
+      errors.push(`Performance ${perfs[i]?.id ?? i}: falha durante parsing`);
     }
+
+    // ★ KEY: Null out processed performance to free its traversal data
+    (perfs as any)[i] = null;
 
     onProgress?.(i + 1, totalDrones, processedSamples, totalSamples);
 
+    // Yield to main thread periodically
     const now = performance.now();
-    if (i < totalDrones - 1 && (now - lastYieldTs > 12 || i % 3 === 2)) {
+    if (i < totalDrones - 1 && (now - lastYieldTs > 8 || i % 2 === 1)) {
       await yieldToMain();
       lastYieldTs = performance.now();
     }
   }
 
-  const stats = buildSummaryStats(totalSamples, parsedWaypoints, simplifiedTrajectories);
+  // Release the parsed JSON structure
+  (vviz as any).performances = null;
 
-  if (stats.compressionRatio > 0.35) {
+  const compressionRatio = totalSamples > 0 ? 1 - (parsedWaypoints / totalSamples) : 0;
+
+  if (compressionRatio > 0.35) {
     errors.push(
-      `Otimização aplicada: ${Math.round(stats.compressionRatio * 100)}% menos pontos para manter fluidez (${stats.totalTraversalSamples.toLocaleString()} → ${stats.totalWaypoints.toLocaleString()}).`,
+      `Otimização aplicada: ${Math.round(compressionRatio * 100)}% menos pontos (${totalSamples.toLocaleString()} → ${parsedWaypoints.toLocaleString()}).`,
     );
   }
 
@@ -538,9 +389,7 @@ export async function importVVIZAsync(
     projectName: vviz.performanceName || 'VVIZ Import',
     droneCount: totalDrones,
     duration: Math.ceil(maxTime) + 5,
-    positions,
-    trajectories,
-    errors,
-    stats,
+    positions, trajectories, errors,
+    stats: { totalTraversalSamples: totalSamples, totalWaypoints: parsedWaypoints, simplifiedTrajectories: simplifiedCount, compressionRatio },
   };
 }
