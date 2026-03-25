@@ -3,7 +3,8 @@
  * Sends each drone individually via postMessage to avoid OOM on main thread.
  *
  * Protocol:
- *   Main → Worker: { type: 'parse', text: string, maxWaypoints?: number }
+ *   Main → Worker: { type: 'parse', buffer: ArrayBuffer, maxWaypoints?: number }
+ *                   OR { type: 'parse', text: string, maxWaypoints?: number } (legacy)
  *   Worker → Main: { type: 'progress', done, total, samples, totalSamples }
  *   Worker → Main: { type: 'drone', pos: Position, traj: Trajectory | null }
  *   Worker → Main: { type: 'complete', projectName, droneCount, duration, errors, stats }
@@ -54,25 +55,34 @@ function rgbToHex(r: number, g: number, b: number): string {
   return '#' + [clamp255(r), clamp255(g), clamp255(b)].map(v => v.toString(16).padStart(2, '0')).join('');
 }
 
+/** Finale 3D VVIZ uses integer 0-255 color values. No float normalization. */
 function normColor(value: number | undefined): number {
-  if (!Number.isFinite(value)) return 0;
-  const v = Number(value);
-  return v >= 0 && v <= 1 ? Math.round(v * 255) : Math.round(v);
+  if (value === undefined || value === null || !Number.isFinite(value)) return 0;
+  return clamp255(Number(value));
 }
 
+/**
+ * Extract dominant color weighted by frame duration.
+ * Colors with more frames (longer display time) win over brief flashes.
+ */
 function extractColor(payloads: VVIZPayload[]): string {
-  let bestR = 0, bestG = 180, bestB = 216, bestBright = 0;
+  let bestR = 0, bestG = 0, bestB = 0, bestWeight = 0;
   for (const p of payloads) {
     if (String(p.type || '').toLowerCase() !== 'light') continue;
     const actions = (p as VVIZLightPayload).payloadActions;
     if (!actions) continue;
     for (const a of actions) {
-      const r = normColor(a.r ?? a.red), g = normColor(a.g ?? a.green), b = normColor(a.b ?? a.blue);
-      const bright = r + g + b;
-      if (bright > bestBright) { bestBright = bright; bestR = r; bestG = g; bestB = b; }
+      const r = normColor(a.r ?? a.red);
+      const g = normColor(a.g ?? a.green);
+      const b = normColor(a.b ?? a.blue);
+      const brightness = r + g + b;
+      if (brightness < 10) continue; // skip near-black (off state)
+      const frames = Math.max(1, a.frames ?? 1);
+      const weight = brightness * frames;
+      if (weight > bestWeight) { bestWeight = weight; bestR = r; bestG = g; bestB = b; }
     }
   }
-  return bestBright > 0 ? rgbToHex(bestR, bestG, bestB) : '#00B4D8';
+  return bestWeight > 0 ? rgbToHex(bestR, bestG, bestB) : '#00B4D8';
 }
 
 // ── Simplification config ──────────────────────────────────────────
@@ -166,20 +176,36 @@ ctx.onmessage = (e: MessageEvent) => {
   if (e.data?.type !== 'parse') return;
 
   const maxWP = e.data.maxWaypoints || 1500;
-  let text: string | null = e.data.text;
-  let vviz: VVIZFile;
 
+  // Decode input: prefer ArrayBuffer (zero-copy), fallback to string (legacy)
+  let jsonText: string;
   try {
-    vviz = JSON.parse(text!) as VVIZFile;
-  } catch (err) {
+    if (e.data.buffer instanceof ArrayBuffer) {
+      jsonText = new TextDecoder().decode(e.data.buffer);
+      // Release buffer reference
+      e.data.buffer = null;
+    } else if (typeof e.data.text === 'string') {
+      jsonText = e.data.text;
+      e.data.text = null;
+    } else {
+      ctx.postMessage({ type: 'error', message: 'VVIZ: nenhum dado recebido pelo worker.' });
+      return;
+    }
+  } catch {
+    ctx.postMessage({ type: 'error', message: 'VVIZ: falha ao decodificar buffer.' });
+    return;
+  }
+
+  let vviz: VVIZFile;
+  try {
+    vviz = JSON.parse(jsonText) as VVIZFile;
+  } catch {
     ctx.postMessage({ type: 'error', message: 'Arquivo VVIZ inválido — não é JSON válido.' });
     return;
   }
 
-  // Release raw text immediately — critical for large files
-  text = null;
-  // @ts-ignore — hint GC
-  e.data.text = null;
+  // Release raw text immediately
+  jsonText = null!;
 
   if (!Array.isArray(vviz.performances) || vviz.performances.length === 0) {
     ctx.postMessage({ type: 'error', message: 'Arquivo VVIZ não contém "performances".' });
