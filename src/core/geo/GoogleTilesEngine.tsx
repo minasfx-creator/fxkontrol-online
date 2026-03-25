@@ -128,8 +128,8 @@ export default function GoogleTilesLayer() {
     tiles.registerPlugin(new UpdateOnChangePlugin());
     tiles.registerPlugin(new UnloadTilesPlugin());
 
-    tiles.errorTarget = SSE_TIERS.high;
-    // errorThreshold removed — deprecated in 3d-tiles-renderer v0.4
+    // Start with relaxed SSE for fast initial load, then refine progressively
+    tiles.errorTarget = SSE_TIERS.medium;
 
     const group = groupRef.current;
     group.name = 'GoogleTilesGroup';
@@ -196,10 +196,12 @@ export default function GoogleTilesLayer() {
         let visibleCount = 0;
         tiles.group.traverse((c) => { if ((c as THREE.Mesh).visible !== false) visibleCount++; });
         updateGeoHUD({ tilesLoaded: visibleCount });
-        setLoadingState(visibleCount > 5 ? 'ready' : 'loading-tiles', visibleCount);
-        if (!tilesReady && visibleCount > 5) {
+        setLoadingState(visibleCount > 2 ? 'ready' : 'loading-tiles', visibleCount);
+        if (!tilesReady && visibleCount > 2) {
           setTilesReady(true);
-          console.log('[Terrain] tiles ready, radius: 5 km');
+          // Progressive refinement: after initial load, increase detail
+          tiles.errorTarget = SSE_TIERS.high;
+          console.log('[Terrain] tiles ready, refining to high SSE');
         }
       }
     } catch (err) {
