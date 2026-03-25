@@ -1,36 +1,36 @@
 
 
-## Diagnóstico: Cubo Roxo e SpotLight
+## Fix: Remove old 3D world blocking and ensure Google Earth visibility
 
-### Resultado da Auditoria
+### Problem
+`google3DTilesEnabled` is `true` by default, which suppresses all synthetic sky, ground, fog, stars, and atmosphere. When Google Earth 3D Tiles fail to load (API key fetch failure, network issue, or library error), the viewport is completely black with no fallback.
 
-Após uma busca exaustiva em todos os ficheiros do projeto (SkyCanvas.tsx, GroundSystem.tsx, LightingSystem.tsx, e todos os componentes em `skycanvas/`), **não existe nenhum cubo de teste roxo (BoxGeometry isolado) nem SpotLight de debug** na cena 3D.
+### Solution
 
-O que provavelmente foi identificado como "cubo roxo" era o `SFXStageEnvironment` (em GroundSystem.tsx), que renderiza um palco completo com beams de luz em tons de roxo (`#8800ff`, `#cc00ff`). Este componente **já está suprimido** — na linha 1811 do SkyCanvas.tsx:
-```
-{!google3DTilesEnabled && <StageGround />}
-```
-Como `google3DTilesEnabled` é `true` por padrão, o palco roxo nunca é montado.
+**1. Add fallback sky/lighting when Google Earth is active** (`SkyCanvas.tsx`)
+- The `GoogleEarthLighting` component already exists and renders a `<Sky />` backdrop + hemisphere/ambient lights, but ONLY when `google3DTilesEnabled` is true. This is correct.
+- The issue is likely that the `MissionSetupOverlay` blocks the viewport before the scene even renders, AND the camera starts at a position that can't see the tiles.
 
-### Problema Real: Ecrã Completamente Preto
+**2. Remove MissionSetupOverlay gate** (`SkyCanvas.tsx`)
+- The `MissionSetupOverlay` blocks ALL viewport interaction until confirmed. Remove it so the scene loads immediately.
 
-O screenshot actual mostra um **ecrã 100% preto**. A causa:
+**3. Ensure camera far plane reaches Google Earth scale** (`SkyCanvas.tsx`)
+- Current `far={50000}` — increase to `500000` (500km) for Google Earth tile visibility at orbital distances.
 
-1. `google3DTilesEnabled = true` → `StageGround` desmontado (correcto)
-2. `GoogleTilesLayer` tenta carregar Google 3D Tiles mas pode falhar (403/API key)
-3. `timeOfDay` padrão = 20h → `isNight = true` → o componente `<Sky />` do `GoogleEarthLighting` **não é renderizado** de noite
-4. Sem Sky, sem Ground, sem Tiles carregados = ecrã preto
+**4. Add visible fallback ground when tiles haven't loaded** (`SkyCanvas.tsx`)
+- Show a simple ground plane or grid as fallback even when `google3DTilesEnabled` is true, so the user always sees something.
 
-### Solução Proposta
+**5. Clean up old synthetic world remnants**
+- Remove the duplicate `SkyAtmosphereV2Layer`, `VolumetricCloudLayer`, `WaterLayer`, `GroundDecalManager` definitions inside SkyCanvas.tsx (lines 324-476) — they duplicate the ones in `skycanvas/SkyEnvironment.tsx`.
+- Remove the duplicate `SkyGradient` shader (lines 503-736) that creates the old dark-sky world.
 
-| Ficheiro | Mudança |
-|----------|---------|
-| `src/components/editor/SkyCanvas.tsx` | No `GoogleEarthLighting`, renderizar um sky noturno mínimo quando `isNight = true` (fundo escuro azulado em vez de preto absoluto). Adicionar uma `ambientLight` de fallback com intensidade 0.15 para que, mesmo sem Google Tiles, a cena tenha profundidade visual |
+### Files to modify
+- **`src/components/editor/SkyCanvas.tsx`**: Remove MissionSetupOverlay, increase camera far, add fallback ground, clean duplicate components
+- **`src/core/geo/GoogleTilesEngine.tsx`**: Add error state + fallback notification when tiles fail
 
-Especificamente no `GoogleEarthLighting` (linhas 846-868):
-- Quando `isNight`, adicionar um `<color attach="background" args={['#0a0e1a']} />` para substituir o preto absoluto por um azul noturno
-- Aumentar ligeiramente a `ambientLight` noturna de 0.05 para 0.12
-- Isto garante que mesmo sem os Google Tiles carregados, o viewport não fica completamente negro
-
-**Impacto**: O viewport deixa de ser um buraco negro. Em vez disso, mostra um céu noturno atmosférico com as estrelas e a lua que já existem na cena, dando feedback visual imediato ao utilizador.
+### Technical details
+- Camera `far` increased from 50000 to 500000
+- Remove `missionConfirmed` state and `MissionSetupOverlay` render
+- Add a simple `<Grid>` or flat plane visible when `google3DTilesEnabled && !tilesReady`
+- Keep `GoogleEarthLighting` as-is (it already provides sky backdrop)
 
