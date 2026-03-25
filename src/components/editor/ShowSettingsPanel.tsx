@@ -489,7 +489,7 @@ export default function ShowSettingsPanel({ onClose }: ShowSettingsProps) {
                   <Input
                     type="number"
                     min={0}
-                    max={10}
+                    max={60}
                     value={Math.floor(duration / 60)}
                     onChange={e => {
                       const mins = Math.max(0, parseInt(e.target.value) || 0);
@@ -524,13 +524,13 @@ export default function ShowSettingsPanel({ onClose }: ShowSettingsProps) {
                 value={[duration]}
                 onValueChange={([v]) => useProjectStore.getState().setDuration(v)}
                 min={0}
-                max={600}
+                max={3600}
                 step={1}
                 className="w-full"
               />
               <div className="flex justify-between mt-1">
                 <span className="text-[8px] text-muted-foreground/30 font-mono-code">0:00</span>
-                <span className="text-[8px] text-muted-foreground/30 font-mono-code">10:00</span>
+                <span className="text-[8px] text-muted-foreground/30 font-mono-code">60:00</span>
               </div>
             </div>
             <InfoRow label="Project" value={projectName} />
