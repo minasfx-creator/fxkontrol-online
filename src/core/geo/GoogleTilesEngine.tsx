@@ -181,6 +181,7 @@ export default function GoogleTilesLayer() {
         let visibleCount = 0;
         tiles.group.traverse(() => { visibleCount++; });
         updateGeoHUD({ tilesLoaded: visibleCount });
+        setLoadingState(visibleCount > 5 ? 'ready' : 'loading-tiles', visibleCount);
         if (!tilesReady && visibleCount > 5) {
           setTilesReady(true);
           console.log('[Terrain] tiles ready, fallback blocked');
