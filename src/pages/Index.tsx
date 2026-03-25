@@ -106,6 +106,8 @@ import MobileFloatingPanel from '@/components/editor/MobileFloatingPanel';
 import UnifiedPanelMenu from '@/components/editor/UnifiedPanelMenu';
 import MobileHUD from '@/components/editor/MobileHUD';
 import MobileQuickActions from '@/components/editor/MobileQuickActions';
+import LiveModeOverlay from '@/components/editor/LiveModeOverlay';
+import { useDisplayStore } from '@/store/useDisplayStore';
 import StockAlertsBadge from '@/components/editor/StockAlertsBadge';
 import { X } from 'lucide-react';
 
@@ -239,7 +241,7 @@ function Index() {
   const [timelineCollapsed, setTimelineCollapsed] = useState(false);
   const [leftDockOpen, setLeftDockOpen] = useState<string | null>(null);
   const selectedPositionId = useProjectStore(s => s.selectedPositionId);
-
+  const operationMode = useDisplayStore(s => s.operationMode);
   useUndoKeyboard();
 
   // Deep-link: auto-open panel from ?panel= query param
