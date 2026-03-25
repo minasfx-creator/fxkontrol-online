@@ -36,7 +36,7 @@ import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Gl
 import SelectionStatusBar from './SelectionStatusBar';
 import AICoPilotOverlay from './AICoPilotOverlay';
 import TelemetryBar from './TelemetryBar';
-import MissionSetupOverlay from './MissionSetupOverlay';
+// MissionSetupOverlay removed — scene loads immediately
 import { cn } from '@/lib/utils';
 import {
   CometEffect,
