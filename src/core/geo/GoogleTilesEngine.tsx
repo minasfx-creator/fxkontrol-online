@@ -56,13 +56,14 @@ const SSE_TIERS = {
   high: 8,
   medium: 16,
   low: 32,
+  veryLow: 48,
 } as const;
 
-// Progressive refinement stages: low → medium → high
-const REFINEMENT_STAGES = [
-  { threshold: 2, sse: SSE_TIERS.medium, label: 'medium' },
-  { threshold: 15, sse: SSE_TIERS.high, label: 'high' },
-] as const;
+// Keep low 3D — no progressive refinement to higher quality
+const REFINEMENT_STAGES = [] as const;
+
+// 2 km² ≈ circle radius ~800m
+const TILE_RADIUS_METERS = 800;
 
 // ── Main Component ──────────────────────────────────────────────────
 // ── Loading state broadcast for HUD overlay ─────────────────────────
