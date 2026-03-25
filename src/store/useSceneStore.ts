@@ -359,6 +359,7 @@ const DEFAULT_SETTINGS: SceneSettings = {
   tideOffset: 0,
   fieldViewMode: false,
   google3DTilesEnabled: true,
+  sceneImportRadius: 5000,
   presentationMode: false,
 
   // Ultra-Smooth Rendering defaults

@@ -89,6 +89,7 @@ export default function GoogleTilesLayer() {
   const anchorLon = useSceneStore((s) => s.settings.geoAnchorLon);
   const anchorAlt = useSceneStore((s) => s.settings.geoAnchorAlt);
   const enabled = useSceneStore((s) => s.settings.google3DTilesEnabled);
+  const sceneImportRadius = useSceneStore((s) => s.settings.sceneImportRadius);
 
   // Fetch API key on mount
   useEffect(() => {
