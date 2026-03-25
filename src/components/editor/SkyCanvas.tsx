@@ -1837,7 +1837,7 @@ export default function SkyCanvas() {
         <PositionTransformGizmo />
         {!isMobile && <Rack3DView />}
         <TrajectoryPaths />
-        <PyroSafetyZones />
+        {!google3DTilesEnabled && <PyroSafetyZones />}
         <DroneChoreography />
         {!isMobile && <BoidsVisualizer />}
         {!isMobile && <CollisionAvoidanceOverlay config={DEFAULT_AVOIDANCE} />}
