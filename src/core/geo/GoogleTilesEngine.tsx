@@ -169,7 +169,7 @@ export default function GoogleTilesLayer() {
     groupRef.current.matrixWorldNeedsUpdate = true;
   }, [anchorLat, anchorLon, anchorAlt]);
 
-  // Per-frame update
+  // Per-frame update with 5 km radius culling
   useFrame(() => {
     const tiles = tilesRef.current;
     if (!tiles || !enabled) return;
@@ -179,19 +179,31 @@ export default function GoogleTilesLayer() {
       tiles.setResolutionFromRenderer(camera, gl);
       tiles.update();
 
+      // Cull tiles outside the 5 km import radius from anchor (origin)
+      const origin = new THREE.Vector3(0, 0, 0);
+      tiles.group.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.geometry?.boundingSphere) {
+          const center = new THREE.Vector3();
+          child.getWorldPosition(center);
+          groupRef.current.worldToLocal(center);
+          const dist = center.distanceTo(origin);
+          child.visible = dist < SCENE_IMPORT_RADIUS;
+        }
+      });
+
       const root = tiles.root;
       if (root) {
         let visibleCount = 0;
-        tiles.group.traverse(() => { visibleCount++; });
+        tiles.group.traverse((c) => { if ((c as THREE.Mesh).visible !== false) visibleCount++; });
         updateGeoHUD({ tilesLoaded: visibleCount });
         setLoadingState(visibleCount > 5 ? 'ready' : 'loading-tiles', visibleCount);
         if (!tilesReady && visibleCount > 5) {
           setTilesReady(true);
-          console.log('[Terrain] tiles ready, fallback blocked');
+          console.log('[Terrain] tiles ready, radius: 5 km');
         }
       }
     } catch (err) {
-      console.warn('[Terrain] update error caught, fallback blocked:', err);
+      console.warn('[Terrain] update error caught:', err);
     }
   });
 
