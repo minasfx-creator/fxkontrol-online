@@ -131,10 +131,7 @@ export default function GoogleTilesLayer() {
     const tiles = new TilesRenderer();
 
     tiles.registerPlugin(new GoogleCloudAuthPlugin({ apiToken: apiKey }));
-    // TileCompressionPlugin removed — crashes with 'content' undefined in v0.4
     tiles.registerPlugin(new TilesFadePlugin());
-    // NOTE: UpdateOnChangePlugin removed — it stops tile fetching when camera is idle,
-    // causing tiles to load only partially. Continuous updates are needed.
     tiles.registerPlugin(new UnloadTilesPlugin());
 
     // Initial quality from user settings (low/medium/high)
@@ -158,7 +155,9 @@ export default function GoogleTilesLayer() {
       scene.remove(group);
       tilesRef.current = null;
     };
-  }, [enabled, apiKey, scene, camera, gl, googleTilesQuality]);
+    // NOTE: googleTilesQuality intentionally excluded — handled by separate useEffect
+    // to avoid destroying/recreating the entire TilesRenderer on quality change
+  }, [enabled, apiKey, scene, camera, gl]);
 
   // Runtime quality change from settings
   useEffect(() => {
