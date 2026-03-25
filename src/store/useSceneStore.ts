@@ -239,6 +239,7 @@ export interface SceneSettings {
   tideOffset: number;             // -2 to 2 meters dynamic tide adjustment
   fieldViewMode: boolean;         // high-contrast outdoor UI
   google3DTilesEnabled: boolean;   // Google Photorealistic 3D Tiles digital twin
+  sceneImportRadius: number;       // 1000-20000 meters (1-20 km) tile loading radius
   presentationMode: boolean;       // Client presentation fullscreen mode
 
   // ═══ Ultra-Smooth Rendering ═══
