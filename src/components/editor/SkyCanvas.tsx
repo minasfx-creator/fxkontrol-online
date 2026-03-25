@@ -2134,6 +2134,9 @@ export default function SkyCanvas() {
         active={presentationMode}
         onExit={() => useSceneStore.getState().updateSettings({ presentationMode: false })}
       />
+
+      {/* Mission Setup Gate */}
+      {!missionConfirmed && <MissionSetupOverlay onConfirm={() => setMissionConfirmed(true)} />}
     </div>
   );
 }
