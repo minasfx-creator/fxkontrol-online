@@ -3,10 +3,11 @@
  * Clean, minimal, high-information density for show operators.
  */
 import { useState, useCallback, useMemo } from 'react';
-import { Play, Pause, Square, Menu, AlertOctagon, Zap, Wifi, Radio } from 'lucide-react';
+import { Play, Pause, Square, Menu, AlertOctagon, Zap, ShieldAlert, Radio } from 'lucide-react';
 import { haptics } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useDisplayStore } from '@/store/useDisplayStore';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { useSMPTEStore } from '@/store/useSMPTEStore';
@@ -83,26 +84,26 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
           )}
         </div>
 
-        {/* Center: Transport controls */}
+        {/* Center: Transport controls — 56px targets */}
         <div className="pointer-events-auto flex items-center gap-2">
           <button
             onClick={() => { haptics.tap(); setPlaying(!isPlaying); }}
-            className="glass-button flex items-center justify-center w-12 h-12 active:scale-90 transition-transform"
+            className="glass-button flex items-center justify-center w-14 h-14 active:scale-90 transition-transform"
           >
             {isPlaying
-              ? <Pause className="w-5 h-5 text-foreground" />
-              : <Play className="w-5 h-5 text-foreground ml-0.5" />
+              ? <Pause className="w-6 h-6 text-foreground" />
+              : <Play className="w-6 h-6 text-foreground ml-0.5" />
             }
           </button>
           <button
             onClick={() => { haptics.toggle(); setPlaying(false); setCurrentTime(0); }}
-            className="glass-button flex items-center justify-center w-12 h-12 active:scale-90 transition-transform"
+            className="glass-button flex items-center justify-center w-14 h-14 active:scale-90 transition-transform"
           >
-            <Square className="w-4 h-4 text-muted-foreground" />
+            <Square className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
 
-        {/* Right: Status + PANIC + Menu */}
+        {/* Right: LIVE mode + PANIC + Menu */}
         <div className="pointer-events-auto flex items-center gap-2">
           {/* Connection status */}
           <div className="flex items-center gap-1.5 mr-1">
@@ -116,21 +117,29 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
             )} />
           </div>
 
+          {/* LIVE mode toggle */}
+          <button
+            onClick={() => { haptics.showMode(true); useDisplayStore.getState().setOperationMode('live'); }}
+            className="glass-button flex items-center justify-center w-14 h-14 active:scale-90 transition-transform"
+          >
+            <ShieldAlert className="w-5 h-5 text-[hsl(var(--warning))]" />
+          </button>
+
           {/* PANIC — only when armed */}
           {isArmed && (
             <button
               onClick={handlePanic}
-              className="flex items-center justify-center w-12 h-12 rounded-full bg-destructive/90 armed-pulse active:scale-90 transition-transform"
+              className="flex items-center justify-center w-16 h-16 rounded-2xl bg-destructive/90 armed-pulse active:scale-90 transition-transform"
             >
-              <AlertOctagon className="w-5 h-5 text-destructive-foreground" />
+              <AlertOctagon className="w-6 h-6 text-destructive-foreground" />
             </button>
           )}
 
           <button
             onClick={() => { haptics.tap(); onMenuOpen(); }}
-            className="glass-button flex items-center justify-center w-12 h-12 active:scale-90 transition-transform"
+            className="glass-button flex items-center justify-center w-14 h-14 active:scale-90 transition-transform"
           >
-            <Menu className="w-5 h-5 text-foreground" />
+            <Menu className="w-6 h-6 text-foreground" />
           </button>
         </div>
       </div>

@@ -4,9 +4,11 @@ interface DisplayState {
   backlight: number;       // 10-100
   nightMode: boolean;
   showMode: boolean;
+  operationMode: 'design' | 'live';
   setBacklight: (v: number) => void;
   setNightMode: (v: boolean) => void;
   setShowMode: (v: boolean) => void;
+  setOperationMode: (v: 'design' | 'live') => void;
 }
 
 const stored = (key: string, fallback: any) => {
@@ -20,6 +22,7 @@ export const useDisplayStore = create<DisplayState>((set) => ({
   backlight: stored('fxk-backlight', 100),
   nightMode: stored('fxk-nightmode', false),
   showMode: stored('fxk-showmode', false),
+  operationMode: stored('fxk-opmode', 'design') as 'design' | 'live',
   setBacklight: (v) => {
     localStorage.setItem('fxk-backlight', JSON.stringify(v));
     set({ backlight: v });
@@ -31,5 +34,9 @@ export const useDisplayStore = create<DisplayState>((set) => ({
   setShowMode: (v) => {
     localStorage.setItem('fxk-showmode', JSON.stringify(v));
     set({ showMode: v });
+  },
+  setOperationMode: (v) => {
+    localStorage.setItem('fxk-opmode', JSON.stringify(v));
+    set({ operationMode: v });
   },
 }));

@@ -106,6 +106,8 @@ import MobileFloatingPanel from '@/components/editor/MobileFloatingPanel';
 import UnifiedPanelMenu from '@/components/editor/UnifiedPanelMenu';
 import MobileHUD from '@/components/editor/MobileHUD';
 import MobileQuickActions from '@/components/editor/MobileQuickActions';
+import LiveModeOverlay from '@/components/editor/LiveModeOverlay';
+import { useDisplayStore } from '@/store/useDisplayStore';
 import StockAlertsBadge from '@/components/editor/StockAlertsBadge';
 import { X } from 'lucide-react';
 
@@ -239,7 +241,7 @@ function Index() {
   const [timelineCollapsed, setTimelineCollapsed] = useState(false);
   const [leftDockOpen, setLeftDockOpen] = useState<string | null>(null);
   const selectedPositionId = useProjectStore(s => s.selectedPositionId);
-
+  const operationMode = useDisplayStore(s => s.operationMode);
   useUndoKeyboard();
 
   // Deep-link: auto-open panel from ?panel= query param
@@ -432,6 +434,16 @@ function Index() {
   // ═══ MOBILE LAYOUT ═══
   if (isMobile) {
     const handleDismissPanel = () => { setMobileTab(null); setMobilePanelHeight('collapsed'); };
+    if (operationMode === 'live') {
+      return (
+        <div className="h-[100dvh] w-screen relative overflow-hidden bg-zinc-950">
+          <div className="absolute inset-0">
+            <CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas /></Suspense></CanvasErrorBoundary>
+          </div>
+          <LiveModeOverlay />
+        </div>
+      );
+    }
     return (
       <div className="h-[100dvh] w-screen relative overflow-hidden bg-zinc-950">
         <div className="absolute inset-0">
