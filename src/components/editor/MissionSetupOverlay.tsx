@@ -14,11 +14,11 @@ interface MissionSetupOverlayProps {
 }
 
 export default function MissionSetupOverlay({ onConfirm }: MissionSetupOverlayProps) {
-  const projectName = useProjectStore(st => st.name);
+  const projectName = useProjectStore(st => st.projectName);
   const duration = useProjectStore(st => st.duration);
-  const cueCount = useProjectStore(st => st.items.length);
+  const cueCount = useProjectStore(st => st.timelineItems.length);
   const posCount = useProjectStore(st => st.positions.length);
-  const gpsOrigin = useSceneStore(st => st.settings.gpsOrigin);
+  const gpsOrigin = useProjectStore(st => st.gpsOrigin);
   const [confirming, setConfirming] = useState(false);
 
   const formatDuration = (s: number) => {
