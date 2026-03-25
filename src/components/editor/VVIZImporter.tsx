@@ -51,14 +51,16 @@ export default function VVIZImporter({
     setProgressLabel('Lendo arquivo...');
 
     try {
-      const text = await file.text();
+      // Read file text — will be released after JSON.parse inside importVVIZAsync
+      let text: string | null = await file.text();
       if (runId !== parseRunRef.current) return;
 
       setPhase('parsing');
       setProgress(10);
       setProgressLabel('Analisando performances...');
 
-      const parsed = await importVVIZAsync(text, (doneDrones, totalDrones, doneSamples, totalSamples) => {
+      // Pass text and immediately null the reference so GC can reclaim the raw string
+      const parsePromise = importVVIZAsync(text, (doneDrones, totalDrones, doneSamples, totalSamples) => {
         if (runId !== parseRunRef.current) return;
 
         const progressRatio = totalSamples > 0
