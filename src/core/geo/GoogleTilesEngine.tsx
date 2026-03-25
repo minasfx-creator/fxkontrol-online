@@ -90,18 +90,22 @@ export default function GoogleTilesLayer() {
   // Fetch API key on mount
   useEffect(() => {
     if (apiKey) return;
+    setLoadingState('fetching-key');
     (async () => {
       try {
         console.log('[GoogleTiles] Fetching API key...');
         const { data, error } = await supabase.functions.invoke('get-maps-key');
         if (error || !data?.key) {
           console.warn('[GoogleTiles] Failed to fetch API key:', error);
+          setLoadingState('error');
           return;
         }
         console.log('[GoogleTiles] API key acquired');
         setApiKey(data.key);
+        setLoadingState('loading-tiles');
       } catch (err) {
         console.warn('[GoogleTiles] API key fetch error:', err);
+        setLoadingState('error');
       }
     })();
   }, [apiKey]);
