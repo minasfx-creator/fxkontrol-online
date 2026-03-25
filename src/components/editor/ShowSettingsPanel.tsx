@@ -489,7 +489,7 @@ export default function ShowSettingsPanel({ onClose }: ShowSettingsProps) {
                   <Input
                     type="number"
                     min={0}
-                    max={10}
+                    max={60}
                     value={Math.floor(duration / 60)}
                     onChange={e => {
                       const mins = Math.max(0, parseInt(e.target.value) || 0);
