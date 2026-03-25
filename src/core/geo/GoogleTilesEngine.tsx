@@ -137,6 +137,9 @@ export default function GoogleTilesLayer() {
 
     // Start with relaxed SSE for fast initial load, then refine progressively
     tiles.errorTarget = SSE_TIERS.low;
+
+    const group = groupRef.current;
+    group.name = 'GoogleTilesGroup';
     tiles.setCamera(camera);
     tiles.setResolutionFromRenderer(camera, gl);
 
