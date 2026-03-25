@@ -1581,7 +1581,7 @@ export default function SkyCanvas() {
   const google3DTilesEnabled = useSceneStore(st => st.settings.google3DTilesEnabled);
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
   const presentationMode = useSceneStore(st => st.settings.presentationMode);
-  const [missionConfirmed, setMissionConfirmed] = useState(false);
+  // MissionSetupOverlay removed — scene loads immediately
 
   // Exit fly mode when pointer lock is lost (ESC)
   useEffect(() => {
