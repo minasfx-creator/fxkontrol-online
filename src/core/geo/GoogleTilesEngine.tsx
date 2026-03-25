@@ -187,7 +187,7 @@ export default function GoogleTilesLayer() {
           child.getWorldPosition(center);
           groupRef.current.worldToLocal(center);
           const dist = center.distanceTo(origin);
-          child.visible = dist < SCENE_IMPORT_RADIUS;
+          child.visible = dist < sceneImportRadius;
         }
       });
 
