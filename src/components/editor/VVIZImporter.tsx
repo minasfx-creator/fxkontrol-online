@@ -60,34 +60,11 @@ export default function VVIZImporter({
   ) => {
     const { positions, trajectories } = accRef.current;
     const store = useProjectStore.getState();
-    const totalChunks = Math.ceil(positions.length / CHUNK_SIZE);
 
-    for (let i = 0; i < totalChunks; i++) {
-      const posChunk = positions.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-      const trajChunk = trajectories.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-
-      startTransition(() => {
-        store.batchImportVVIZChunk(posChunk, trajChunk);
-      });
-
-      const pct = 95 + Math.round(((i + 1) / totalChunks) * 4);
-      setProgress(pct);
-      setProgressLabel(`Aplicando ${Math.min((i + 1) * CHUNK_SIZE, positions.length)}/${positions.length} drones...`);
-
-      // Yield to main thread between chunks
-      if (i < totalChunks - 1) {
-        await new Promise(r => {
-          if ('requestIdleCallback' in window) {
-            (window as any).requestIdleCallback(r, { timeout: 50 });
-          } else {
-            setTimeout(r, 16);
-          }
-        });
-      }
-    }
-
+    // Single atomic commit — avoids repeated array copies from chunked set() calls
+    // This is O(n) once instead of O(n*chunks)
     startTransition(() => {
-      store.finalizeBatchImport(projectName, duration);
+      store.batchImportVVIZ(positions, trajectories, projectName, duration);
     });
 
     // Cleanup accumulator
