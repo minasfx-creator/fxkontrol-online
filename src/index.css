@@ -670,15 +670,82 @@ body.night-mode {
   --muted-foreground: 200 8% 52%;
 }
 
+/* ===== Field / Outdoor High-Contrast Mode ===== */
+body.field-mode {
+  --background: 0 0% 100%;
+  --foreground: 0 0% 5%;
+  --card: 0 0% 97%;
+  --card-foreground: 0 0% 5%;
+  --muted: 0 0% 92%;
+  --muted-foreground: 0 0% 35%;
+  --primary: 32 100% 45%;
+  --primary-foreground: 0 0% 100%;
+  --destructive: 0 90% 45%;
+  --border: 0 0% 80%;
+  --surface-0: 0 0% 95%;
+  --surface-1: 0 0% 92%;
+}
+
 /* High-contrast utility — raises minimum text opacity */
 .high-contrast * {
   --tw-text-opacity: 1;
+}
+
+/* ===== Status Indicator System ===== */
+.status-ready {
+  color: hsl(var(--success));
+  text-shadow: 0 0 6px hsl(var(--success) / 0.5);
+}
+.status-live {
+  color: hsl(var(--destructive));
+  text-shadow: 0 0 8px hsl(var(--destructive) / 0.6);
+  animation: armed-pulse 1.2s ease-in-out infinite;
+}
+.status-warning {
+  color: hsl(var(--warning));
+  text-shadow: 0 0 6px hsl(var(--warning) / 0.5);
+}
+.status-error {
+  color: hsl(var(--destructive));
+  text-shadow: 0 0 8px hsl(var(--destructive) / 0.6);
+}
+
+/* Status badge variants — high visibility */
+.badge-ready {
+  background: hsl(var(--success) / 0.15);
+  color: hsl(var(--success));
+  border: 1px solid hsl(var(--success) / 0.3);
+  box-shadow: 0 0 8px hsl(var(--success) / 0.15);
+}
+.badge-warning {
+  background: hsl(var(--warning) / 0.15);
+  color: hsl(var(--warning));
+  border: 1px solid hsl(var(--warning) / 0.3);
+  box-shadow: 0 0 8px hsl(var(--warning) / 0.15);
+}
+.badge-error {
+  background: hsl(var(--destructive) / 0.15);
+  color: hsl(var(--destructive));
+  border: 1px solid hsl(var(--destructive) / 0.3);
+  box-shadow: 0 0 8px hsl(var(--destructive) / 0.15);
 }
 
 /* Touch target enforcement for mission-critical UI */
 .touch-target-lg {
   min-width: 48px;
   min-height: 48px;
+}
+.touch-target-xl {
+  min-width: 56px;
+  min-height: 56px;
+}
+
+/* Zero-dead-interaction: every button must have visible active state */
+.glass-button:active,
+.btn-tool:active,
+button:active {
+  transform: scale(0.94);
+  transition: transform 0.08s ease;
 }
 
 /* Armed banner pulse */

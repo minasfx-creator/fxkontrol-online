@@ -5,6 +5,7 @@
 import { useCallback } from 'react';
 import { MousePointer2, Plus, Undo2, Redo2, Trash2, Copy, Pencil, Compass } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { haptics } from '@/lib/haptics';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useUndoStore } from '@/store/useUndoStore';
 
@@ -14,16 +15,18 @@ export default function MobileQuickActions() {
   const setEditorMode = useProjectStore(s => s.setEditorMode);
   const hasSelection = selectedIds.length > 0;
 
-  const handleUndo = useCallback(() => { useUndoStore.getState().undo(); }, []);
-  const handleRedo = useCallback(() => { useUndoStore.getState().redo(); }, []);
+  const handleUndo = useCallback(() => { haptics.tap(); useUndoStore.getState().undo(); }, []);
+  const handleRedo = useCallback(() => { haptics.tap(); useUndoStore.getState().redo(); }, []);
 
   const handleDelete = useCallback(() => {
+    haptics.fire();
     const store = useProjectStore.getState();
     useUndoStore.getState().checkpoint();
     store.selectedPositionIds.forEach(id => store.removePosition(id));
   }, []);
 
   const handleDuplicate = useCallback(() => {
+    haptics.toggle();
     const store = useProjectStore.getState();
     useUndoStore.getState().checkpoint();
     const newIds: string[] = [];
@@ -39,6 +42,7 @@ export default function MobileQuickActions() {
   }, []);
 
   const handleAdd = useCallback(() => {
+    haptics.tap();
     const store = useProjectStore.getState();
     useUndoStore.getState().checkpoint();
     const id = `pos-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
@@ -52,6 +56,7 @@ export default function MobileQuickActions() {
   }, []);
 
   const handleToggleSelect = useCallback(() => {
+    haptics.select();
     setEditorMode(editorMode === 'select' ? 'add-pyro' : 'select');
   }, [editorMode, setEditorMode]);
 
@@ -60,6 +65,7 @@ export default function MobileQuickActions() {
   const angleVariant: ActionVariant = editorMode === 'adjust-angles' ? 'active' : 'default';
   
   const handleToggleAngles = useCallback(() => {
+    haptics.select();
     setEditorMode(editorMode === 'adjust-angles' ? 'select' : 'adjust-angles');
   }, [editorMode, setEditorMode]);
 
@@ -80,21 +86,22 @@ export default function MobileQuickActions() {
 
   return (
     <div className="fixed left-3 top-1/2 -translate-y-1/2 z-40 pointer-events-none">
-      <div className="flex flex-col gap-2 pointer-events-auto">
+      <div className="flex flex-col gap-2.5 pointer-events-auto">
         {actions.map(({ icon: Icon, label, onClick, variant }) => (
           <button
             key={label}
             onClick={onClick}
             className={cn(
-              "touch-target flex items-center justify-center w-11 h-11 rounded-[14px] glass-button transition-all",
+              "touch-target-lg flex flex-col items-center justify-center w-14 h-14 rounded-2xl glass-button transition-all active:scale-90",
               variant === 'active' && "bg-primary/15 border-primary/30 text-primary glow-active",
               variant === 'primary' && "bg-primary/12 border-primary/25 text-primary",
-              variant === 'danger' && "bg-destructive/12 border-destructive/25 text-destructive",
+              variant === 'danger' && "bg-destructive/15 border-destructive/30 text-destructive glow-danger",
               variant === 'default' && "text-foreground/70"
             )}
             title={label}
           >
             <Icon className="w-5 h-5" />
+            <span className="text-[8px] font-bold mt-0.5 uppercase tracking-wider opacity-70">{label}</span>
           </button>
         ))}
 
