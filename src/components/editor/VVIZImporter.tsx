@@ -72,6 +72,10 @@ export default function VVIZImporter({
         setProgressLabel(`Processando ${doneDrones}/${totalDrones} drones • ${formatCompact(doneSamples)}/${formatCompact(totalSamples)} pontos`);
       });
 
+      // Release raw text reference for GC
+      text = null;
+
+      const parsed = await parsePromise;
       if (runId !== parseRunRef.current) return;
 
       setResult(parsed);
