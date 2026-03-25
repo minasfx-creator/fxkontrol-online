@@ -191,10 +191,10 @@ const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref)
     lockstep.start();
 
     // Wire clock → frameSyncEngine → lockstep: frame-aligned time feeds lockstep
-    deterministicClock.onTick((time: number, delta: number) => {
-      // Align the accumulated time to frame boundaries before feeding lockstep
-      const alignedDelta = frameSyncEngine.getSyncedTimeSec(time + delta) - frameSyncEngine.getSyncedTimeSec(time);
-      lockstep.tick(Math.max(0, alignedDelta));
+    deterministicClock.onTick((_time: number, delta: number) => {
+      // Pass delta directly — deterministic clock already applies drift correction.
+      // Previous double-call to getSyncedTimeSec corrupted internal correction state.
+      lockstep.tick(delta);
     });
 
     return () => {
