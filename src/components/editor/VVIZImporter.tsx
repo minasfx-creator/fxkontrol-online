@@ -63,7 +63,7 @@ export default function VVIZImporter({ open, onOpenChange, initialFile = null }:
     setResult(null);
     setFileName(null);
     setCurrentFile(null);
-  }, [result, addPosition, addTrajectory, setProjectName, setDuration, onOpenChange, currentFile, fileName, saveToLibrary]);
+  }, [result, batchImportVVIZ, onOpenChange, currentFile, fileName, saveToLibrary]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
