@@ -10,15 +10,17 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { useProjectStore } from '@/store/useProjectStore';
-import type { VVIZImportResult } from '@/lib/vvizImporter';
 import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { toast } from 'sonner';
+import { getDeviceProfile } from '@/lib/deviceCapability';
 
 type ImportPhase = 'idle' | 'reading' | 'parsing' | 'importing' | 'done';
 
 function formatCompact(n: number): string {
   return new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 }).format(Math.max(0, n));
 }
+
+const CHUNK_SIZE = 40; // drones per store commit
 
 export default function VVIZImporter({
   open,
@@ -29,16 +31,20 @@ export default function VVIZImporter({
   onOpenChange: (v: boolean) => void;
   initialFile?: File | null;
 }) {
-  const { batchImportVVIZ } = useProjectStore();
-  const [result, setResult] = useState<VVIZImportResult | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [currentFile, setCurrentFile] = useState<File | null>(null);
   const [phase, setPhase] = useState<ImportPhase>('idle');
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState('');
+  const [previewData, setPreviewData] = useState<{
+    projectName: string; droneCount: number; duration: number;
+    errors: string[]; stats: any; colors: string[];
+  } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const parseRunRef = useRef(0);
   const workerRef = useRef<Worker | null>(null);
+  // Accumulator for streamed drones (outside React state to avoid re-renders)
+  const accRef = useRef<{ positions: any[]; trajectories: any[] }>({ positions: [], trajectories: [] });
   const { saveToLibrary } = useMyLibrary();
 
   // Cleanup worker on unmount
@@ -49,22 +55,64 @@ export default function VVIZImporter({
     };
   }, []);
 
+  const commitChunks = useCallback(async (
+    projectName: string, duration: number, droneCount: number
+  ) => {
+    const { positions, trajectories } = accRef.current;
+    const store = useProjectStore.getState();
+    const totalChunks = Math.ceil(positions.length / CHUNK_SIZE);
+
+    for (let i = 0; i < totalChunks; i++) {
+      const posChunk = positions.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+      const trajChunk = trajectories.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+
+      startTransition(() => {
+        store.batchImportVVIZChunk(posChunk, trajChunk);
+      });
+
+      const pct = 95 + Math.round(((i + 1) / totalChunks) * 4);
+      setProgress(pct);
+      setProgressLabel(`Aplicando ${Math.min((i + 1) * CHUNK_SIZE, positions.length)}/${positions.length} drones...`);
+
+      // Yield to main thread between chunks
+      if (i < totalChunks - 1) {
+        await new Promise(r => {
+          if ('requestIdleCallback' in window) {
+            (window as any).requestIdleCallback(r, { timeout: 50 });
+          } else {
+            setTimeout(r, 16);
+          }
+        });
+      }
+    }
+
+    startTransition(() => {
+      store.finalizeBatchImport(projectName, duration);
+    });
+
+    // Cleanup accumulator
+    accRef.current = { positions: [], trajectories: [] };
+
+    setProgress(100);
+    setProgressLabel(`${droneCount} drones importados ✓`);
+    setPhase('done');
+    toast.success(`Importado: ${droneCount} drones, ${trajectories.length} trajetórias`);
+  }, []);
+
   const parseFile = useCallback(async (file: File) => {
     const runId = ++parseRunRef.current;
-
-    // Terminate any previous worker
     workerRef.current?.terminate();
     workerRef.current = null;
+    accRef.current = { positions: [], trajectories: [] };
 
     setFileName(file.name);
     setCurrentFile(file);
-    setResult(null);
+    setPreviewData(null);
     setPhase('reading');
     setProgress(5);
     setProgressLabel('Lendo arquivo...');
 
     try {
-      // Read file text
       const text = await file.text();
       if (runId !== parseRunRef.current) return;
 
@@ -72,12 +120,14 @@ export default function VVIZImporter({
       setProgress(10);
       setProgressLabel('Iniciando Web Worker...');
 
-      // Create worker
+      const device = getDeviceProfile();
       const worker = new Worker(
         new URL('@/lib/vvizWorker.ts', import.meta.url),
         { type: 'module' }
       );
       workerRef.current = worker;
+
+      const colors = new Set<string>();
 
       worker.onmessage = (e: MessageEvent) => {
         if (runId !== parseRunRef.current) return;
@@ -87,23 +137,38 @@ export default function VVIZImporter({
           const ratio = msg.totalSamples > 0
             ? msg.samples / msg.totalSamples
             : msg.done / Math.max(1, msg.total);
-          const pct = 10 + Math.round(ratio * 85);
-          setProgress(Math.max(10, Math.min(95, pct)));
+          const pct = 10 + Math.round(ratio * 75);
+          setProgress(Math.max(10, Math.min(85, pct)));
           setProgressLabel(`Processando ${msg.done}/${msg.total} drones • ${formatCompact(msg.samples)}/${formatCompact(msg.totalSamples)} pontos`);
         }
 
-        if (msg.type === 'result') {
-          const parsed = msg.data as VVIZImportResult;
-          setResult(parsed);
-          setPhase('idle');
-          setProgress(95);
-          setProgressLabel(`${parsed.droneCount} drones prontos para importar`);
-
-          if (parsed.errors.length > 0) {
-            toast.warning(`${parsed.errors.length} aviso(s) durante análise`);
+        if (msg.type === 'drone') {
+          // Accumulate outside React state
+          if (msg.pos) {
+            accRef.current.positions.push(msg.pos);
+            colors.add(msg.pos.color);
           }
-          if ((parsed.stats?.compressionRatio || 0) > 0.35) {
-            toast.info(`Otimização automática aplicada (${Math.round((parsed.stats?.compressionRatio || 0) * 100)}% menos pontos)`);
+          if (msg.traj) accRef.current.trajectories.push(msg.traj);
+        }
+
+        if (msg.type === 'complete') {
+          setProgress(90);
+          setProgressLabel(`${msg.droneCount} drones prontos para importar`);
+          setPreviewData({
+            projectName: msg.projectName,
+            droneCount: msg.droneCount,
+            duration: msg.duration,
+            errors: msg.errors,
+            stats: msg.stats,
+            colors: [...colors].slice(0, 12),
+          });
+          setPhase('idle');
+
+          if (msg.errors.length > 0) {
+            toast.warning(`${msg.errors.length} aviso(s) durante análise`);
+          }
+          if ((msg.stats?.compressionRatio || 0) > 0.35) {
+            toast.info(`Otimização automática aplicada (${Math.round((msg.stats?.compressionRatio || 0) * 100)}% menos pontos)`);
           }
 
           worker.terminate();
@@ -130,8 +195,7 @@ export default function VVIZImporter({
         workerRef.current = null;
       };
 
-      // Send text to worker — worker gets its own copy, main thread can GC
-      worker.postMessage({ type: 'parse', text });
+      worker.postMessage({ type: 'parse', text, maxWaypoints: device.maxWaypoints });
 
     } catch {
       if (runId !== parseRunRef.current) return;
@@ -151,48 +215,40 @@ export default function VVIZImporter({
     if (file) parseFile(file);
   }, [parseFile]);
 
-  const handleImport = useCallback(() => {
-    if (!result) return;
+  const handleImport = useCallback(async () => {
+    if (!previewData) return;
 
     setPhase('importing');
-    setProgress(96);
-    setProgressLabel(`Aplicando ${result.droneCount} drones ao projeto...`);
+    setProgress(95);
+    setProgressLabel(`Aplicando ${previewData.droneCount} drones ao projeto...`);
 
-    requestAnimationFrame(() => {
-      startTransition(() => {
-        batchImportVVIZ(result.positions, result.trajectories, result.projectName, result.duration);
-      });
+    // Use requestAnimationFrame to let UI update first
+    requestAnimationFrame(async () => {
+      await commitChunks(previewData.projectName, previewData.duration, previewData.droneCount);
+
+      if (currentFile) {
+        saveToLibrary(currentFile, {
+          name: fileName || 'VVIZ Import',
+          source: 'vviz',
+          file_format: 'vviz',
+          tags: ['show', 'vviz'],
+        });
+      }
 
       setTimeout(() => {
-        setProgress(100);
-        setProgressLabel(`${result.droneCount} drones importados ✓`);
-        setPhase('done');
-
-        toast.success(`Importado: ${result.droneCount} drones, ${result.trajectories.length} trajetórias`);
-
-        if (currentFile) {
-          saveToLibrary(currentFile, {
-            name: fileName || 'VVIZ Import',
-            source: 'vviz',
-            file_format: 'vviz',
-            tags: ['show', 'vviz'],
-          });
-        }
-
-        setTimeout(() => {
-          onOpenChange(false);
-          setResult(null);
-          setFileName(null);
-          setCurrentFile(null);
-          setPhase('idle');
-          setProgress(0);
-          setProgressLabel('');
-        }, 1000);
-      }, 80);
+        onOpenChange(false);
+        setPreviewData(null);
+        setFileName(null);
+        setCurrentFile(null);
+        setPhase('idle');
+        setProgress(0);
+        setProgressLabel('');
+      }, 1000);
     });
-  }, [result, batchImportVVIZ, onOpenChange, currentFile, fileName, saveToLibrary]);
+  }, [previewData, commitChunks, onOpenChange, currentFile, fileName, saveToLibrary]);
 
   const isProcessing = phase === 'reading' || phase === 'parsing' || phase === 'importing';
+  const hasResult = previewData && accRef.current.positions.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={isProcessing ? undefined : onOpenChange}>
@@ -240,57 +296,57 @@ export default function VVIZImporter({
             </div>
           )}
 
-          {result && !isProcessing && phase !== 'done' && (
+          {hasResult && !isProcessing && phase !== 'done' && previewData && (
             <div className="bg-surface-2 rounded-sm p-2 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
                   Preview
                 </span>
                 <span className="text-[10px] font-mono-code text-foreground">
-                  {result.projectName}
+                  {previewData.projectName}
                 </span>
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="bg-surface-1 rounded-sm p-1.5">
-                  <p className="text-lg font-bold text-primary font-mono-code">{result.droneCount}</p>
+                  <p className="text-lg font-bold text-primary font-mono-code">{previewData.droneCount}</p>
                   <p className="text-[9px] text-muted-foreground">Drones</p>
                 </div>
                 <div className="bg-surface-1 rounded-sm p-1.5">
-                  <p className="text-lg font-bold text-electric font-mono-code">{result.trajectories.length}</p>
+                  <p className="text-lg font-bold text-electric font-mono-code">{accRef.current.trajectories.length}</p>
                   <p className="text-[9px] text-muted-foreground">Trajetórias</p>
                 </div>
                 <div className="bg-surface-1 rounded-sm p-1.5">
-                  <p className="text-lg font-bold text-safety font-mono-code">{result.duration}s</p>
+                  <p className="text-lg font-bold text-safety font-mono-code">{previewData.duration}s</p>
                   <p className="text-[9px] text-muted-foreground">Duração</p>
                 </div>
               </div>
 
-              {result.stats && (
+              {previewData.stats && (
                 <div className="bg-surface-1 rounded-sm p-1.5 flex items-center justify-between text-[9px] font-mono-code">
                   <span className="text-muted-foreground">Pontos:</span>
                   <span className="text-foreground">
-                    {result.stats.totalTraversalSamples.toLocaleString('pt-BR')} → {result.stats.totalWaypoints.toLocaleString('pt-BR')}
+                    {previewData.stats.totalTraversalSamples.toLocaleString('pt-BR')} → {previewData.stats.totalWaypoints.toLocaleString('pt-BR')}
                   </span>
                 </div>
               )}
 
-              {result.positions.length > 0 && (
+              {previewData.colors.length > 0 && (
                 <div className="flex items-center gap-1 flex-wrap">
                   <span className="text-[9px] text-muted-foreground mr-1">Cores:</span>
-                  {[...new Set(result.positions.map((p) => p.color))].slice(0, 12).map((c, i) => (
+                  {previewData.colors.map((c, i) => (
                     <div key={i} className="w-3 h-3 rounded-full border border-border/50" style={{ backgroundColor: c }} />
                   ))}
                 </div>
               )}
 
-              {result.errors.length > 0 && (
+              {previewData.errors.length > 0 && (
                 <div className="bg-destructive/10 border border-destructive/30 rounded-sm p-1.5">
                   <div className="flex items-center gap-1 text-destructive text-[10px] font-semibold mb-1">
                     <AlertTriangle className="h-3 w-3" />
-                    Avisos ({result.errors.length})
+                    Avisos ({previewData.errors.length})
                   </div>
-                  {result.errors.slice(0, 5).map((err, i) => (
+                  {previewData.errors.slice(0, 5).map((err, i) => (
                     <p key={i} className="text-[9px] text-destructive/80">{err}</p>
                   ))}
                 </div>
@@ -311,7 +367,7 @@ export default function VVIZImporter({
             <Button
               size="sm"
               onClick={handleImport}
-              disabled={!result || result.droneCount === 0 || isProcessing}
+              disabled={!hasResult || isProcessing}
               className="h-7 text-xs"
             >
               {isProcessing ? (
@@ -320,7 +376,7 @@ export default function VVIZImporter({
                 </>
               ) : (
                 <>
-                  <Check className="h-3 w-3 mr-1" /> Importar {result?.droneCount || 0} Drones
+                  <Check className="h-3 w-3 mr-1" /> Importar {previewData?.droneCount || 0} Drones
                 </>
               )}
             </Button>

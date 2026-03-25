@@ -1,11 +1,12 @@
 /**
- * VVIZ Web Worker — Runs heavy JSON parse + trajectory processing
- * off the main thread to prevent OOM and UI freezes.
+ * VVIZ Web Worker — Streaming architecture.
+ * Sends each drone individually via postMessage to avoid OOM on main thread.
  *
  * Protocol:
- *   Main → Worker: { type: 'parse', text: string }
+ *   Main → Worker: { type: 'parse', text: string, maxWaypoints?: number }
  *   Worker → Main: { type: 'progress', done, total, samples, totalSamples }
- *   Worker → Main: { type: 'result', data: VVIZImportResult }
+ *   Worker → Main: { type: 'drone', pos: Position, traj: Trajectory | null }
+ *   Worker → Main: { type: 'complete', projectName, droneCount, duration, errors, stats }
  *   Worker → Main: { type: 'error', message: string }
  */
 
@@ -38,13 +39,6 @@ interface VVIZFile {
   version: string; defaultPositionRate: number; defaultColorRate?: number;
   timeOffsetSecs?: number; performanceName?: string; coordinateFrame?: string;
   performances?: VVIZPerformance[];
-}
-
-interface ImportResult {
-  projectName: string; droneCount: number; duration: number;
-  positions: Position[]; trajectories: Trajectory[];
-  errors: string[];
-  stats?: { totalTraversalSamples: number; totalWaypoints: number; simplifiedTrajectories: number; compressionRatio: number };
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -93,7 +87,6 @@ function getSimplifyConfig(n: number, dt: number): SimplifyConfig {
   return { minTimeStep: Math.max(dt, 0.03), minDistanceSq: 0.0009, maxGap: 0.50 };
 }
 
-const MAX_WP = 1500;
 const HOME_SKIP_SQ = 0.0001;
 
 function downsample(wp: Waypoint[], limit: number): Waypoint[] {
@@ -109,7 +102,7 @@ function downsample(wp: Waypoint[], limit: number): Waypoint[] {
 
 // ── Process single performance ─────────────────────────────────────
 
-function processPerf(perf: VVIZPerformance, idx: number, rate: number) {
+function processPerf(perf: VVIZPerformance, idx: number, rate: number, maxWP: number) {
   const agent = perf.agentDescription;
   if (!agent) return null;
 
@@ -157,7 +150,7 @@ function processPerf(perf: VVIZPerformance, idx: number, rate: number) {
     }
   }
 
-  const trimmed = downsample(waypoints, MAX_WP);
+  const trimmed = downsample(waypoints, maxWP);
   const traj: Trajectory | null = trimmed.length > 0
     ? { id: uid('vt'), positionId: posId, name: `Traj ${idx + 1}`, waypoints: trimmed }
     : null;
@@ -172,6 +165,7 @@ const ctx = self as unknown as Worker;
 ctx.onmessage = (e: MessageEvent) => {
   if (e.data?.type !== 'parse') return;
 
+  const maxWP = e.data.maxWaypoints || 1500;
   let text: string | null = e.data.text;
   let vviz: VVIZFile;
 
@@ -201,17 +195,18 @@ ctx.onmessage = (e: MessageEvent) => {
     totalSamples += perfs[i]?.agentDescription?.agentTraversal?.length || 0;
   }
 
-  const positions: Position[] = [];
-  const trajectories: Trajectory[] = [];
   const errors: string[] = [];
-  let maxTime = 0, processedSamples = 0, totalWP = 0, simplified = 0;
+  let maxTime = 0, processedSamples = 0, totalWP = 0, simplified = 0, dronesSent = 0;
 
   for (let i = 0; i < total; i++) {
     try {
-      const r = processPerf(perfs[i], i, rate);
+      const r = processPerf(perfs[i], i, rate, maxWP);
       if (!r) { errors.push(`Performance ${perfs[i]?.id ?? i}: sem agentDescription`); continue; }
-      if (r.pos) positions.push(r.pos);
-      if (r.traj) trajectories.push(r.traj);
+      
+      // Stream each drone individually to main thread
+      ctx.postMessage({ type: 'drone', pos: r.pos, traj: r.traj });
+      dronesSent++;
+      
       if (r.maxT > maxTime) maxTime = r.maxT;
       processedSamples += r.inputSamples;
       totalWP += r.outputWaypoints;
@@ -238,11 +233,13 @@ ctx.onmessage = (e: MessageEvent) => {
     errors.push(`Otimização aplicada: ${Math.round(compressionRatio * 100)}% menos pontos (${totalSamples.toLocaleString()} → ${totalWP.toLocaleString()}).`);
   }
 
-  const result: ImportResult = {
-    projectName, droneCount: total, duration: Math.ceil(maxTime) + 5,
-    positions, trajectories, errors,
+  // Send completion — no position/trajectory data, just metadata
+  ctx.postMessage({
+    type: 'complete',
+    projectName,
+    droneCount: total,
+    duration: Math.ceil(maxTime) + 5,
+    errors,
     stats: { totalTraversalSamples: totalSamples, totalWaypoints: totalWP, simplifiedTrajectories: simplified, compressionRatio },
-  };
-
-  ctx.postMessage({ type: 'result', data: result });
+  });
 };

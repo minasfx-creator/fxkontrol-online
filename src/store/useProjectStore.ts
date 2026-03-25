@@ -252,6 +252,8 @@ export interface ProjectState {
   selectTimelineItemAndLinkedPosition: (itemId: string) => void;
   addTrajectory: (traj: Trajectory) => void;
   batchImportVVIZ: (positions: Position[], trajectories: Trajectory[], projectName?: string, duration?: number) => void;
+  batchImportVVIZChunk: (positions: Position[], trajectories: Trajectory[]) => void;
+  finalizeBatchImport: (projectName?: string, duration?: number) => void;
   updateTrajectory: (id: string, updates: Partial<Omit<Trajectory, 'id'>>) => void;
   removeTrajectory: (id: string) => void;
   selectTrajectory: (id: string | null) => void;
@@ -616,6 +618,18 @@ export const useProjectStore = create<ProjectState>((set) => ({
   batchImportVVIZ: (positions, trajectories, projectName, duration) => set((s) => ({
     positions: [...s.positions, ...positions],
     trajectories: [...s.trajectories, ...trajectories],
+    ...(projectName && projectName !== 'Import Error' ? { projectName } : {}),
+    ...(duration && duration > 0 ? { duration } : {}),
+  })),
+  batchImportVVIZChunk: (positions, trajectories) => set((s) => {
+    // Push-based: mutate arrays in place for O(1) instead of O(n) spread
+    const newPositions = s.positions.slice();
+    const newTrajectories = s.trajectories.slice();
+    for (let i = 0; i < positions.length; i++) newPositions.push(positions[i]);
+    for (let i = 0; i < trajectories.length; i++) newTrajectories.push(trajectories[i]);
+    return { positions: newPositions, trajectories: newTrajectories };
+  }),
+  finalizeBatchImport: (projectName, duration) => set(() => ({
     ...(projectName && projectName !== 'Import Error' ? { projectName } : {}),
     ...(duration && duration > 0 ? { duration } : {}),
   })),
