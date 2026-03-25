@@ -131,14 +131,12 @@ export default function GoogleTilesLayer() {
     tiles.registerPlugin(new GoogleCloudAuthPlugin({ apiToken: apiKey }));
     // TileCompressionPlugin removed — crashes with 'content' undefined in v0.4
     tiles.registerPlugin(new TilesFadePlugin());
-    tiles.registerPlugin(new UpdateOnChangePlugin());
+    // NOTE: UpdateOnChangePlugin removed — it stops tile fetching when camera is idle,
+    // causing tiles to load only partially. Continuous updates are needed.
     tiles.registerPlugin(new UnloadTilesPlugin());
 
     // Start with relaxed SSE for fast initial load, then refine progressively
     tiles.errorTarget = SSE_TIERS.low;
-
-    const group = groupRef.current;
-    group.name = 'GoogleTilesGroup';
     tiles.setCamera(camera);
     tiles.setResolutionFromRenderer(camera, gl);
 
