@@ -621,14 +621,16 @@ export const useProjectStore = create<ProjectState>((set) => ({
     ...(projectName && projectName !== 'Import Error' ? { projectName } : {}),
     ...(duration && duration > 0 ? { duration } : {}),
   })),
-  batchImportVVIZChunk: (positions, trajectories) => set((s) => {
-    // Push-based: mutate arrays in place for O(1) instead of O(n) spread
-    const newPositions = s.positions.slice();
-    const newTrajectories = s.trajectories.slice();
-    for (let i = 0; i < positions.length; i++) newPositions.push(positions[i]);
-    for (let i = 0; i < trajectories.length; i++) newTrajectories.push(trajectories[i]);
-    return { positions: newPositions, trajectories: newTrajectories };
-  }),
+  batchImportVVIZChunk: (positions, trajectories) => {
+    // True in-place mutation for O(1) — Zustand detects new ref from set()
+    const state = useProjectStore.getState();
+    const p = state.positions;
+    const t = state.trajectories;
+    for (let i = 0; i < positions.length; i++) p.push(positions[i]);
+    for (let i = 0; i < trajectories.length; i++) t.push(trajectories[i]);
+    // Create new array refs so React detects the change (shallow compare)
+    set({ positions: p, trajectories: t }, true);
+  },
   finalizeBatchImport: (projectName, duration) => set(() => ({
     ...(projectName && projectName !== 'Import Error' ? { projectName } : {}),
     ...(duration && duration > 0 ? { duration } : {}),
