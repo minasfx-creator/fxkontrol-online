@@ -67,6 +67,10 @@ const GOOGLE_TILE_QUALITY_TO_SSE = {
 // 2 km² ≈ circle radius ~800m
 const TILE_RADIUS_METERS = 800;
 
+// Reuse vectors/matrices to avoid per-frame allocations
+const ORIGIN = new THREE.Vector3(0, 0, 0);
+const TMP_WORLD = new THREE.Vector3();
+
 // ── Main Component ──────────────────────────────────────────────────
 // ── Loading state broadcast for HUD overlay ─────────────────────────
 export type TilesLoadingState = 'idle' | 'fetching-key' | 'loading-tiles' | 'ready' | 'error';
@@ -112,7 +116,27 @@ export default function GoogleTilesLayer() {
   const anchorLon = useSceneStore((s) => s.settings.geoAnchorLon);
   const anchorAlt = useSceneStore((s) => s.settings.geoAnchorAlt);
   const enabled = useSceneStore((s) => s.settings.google3DTilesEnabled);
+  const sceneImportRadius = useSceneStore((s) => s.settings.sceneImportRadius);
   const googleTilesQuality = useSceneStore((s) => s.settings.googleTilesQuality);
+  const lastDebugPublishRef = useRef(0);
+  const lastDebugSignatureRef = useRef('');
+
+  const applyAnchorTransform = useCallback(() => {
+    if (!tilesRef.current) return;
+
+    const anchorECEF = geoToECEF({ lat: anchorLat, lon: anchorLon, alt: anchorAlt });
+    const enuMatrix = buildECEFtoENUMatrix(anchorLat, anchorLon);
+
+    const translationMatrix = new THREE.Matrix4().makeTranslation(
+      -anchorECEF.x, -anchorECEF.y, -anchorECEF.z,
+    );
+
+    const finalMatrix = new THREE.Matrix4().multiplyMatrices(enuMatrix, translationMatrix);
+
+    groupRef.current.matrix.copy(finalMatrix);
+    groupRef.current.matrixAutoUpdate = false;
+    groupRef.current.matrixWorldNeedsUpdate = true;
+  }, [anchorLat, anchorLon, anchorAlt]);
 
   // Fetch API key on mount
   useEffect(() => {
@@ -164,6 +188,10 @@ export default function GoogleTilesLayer() {
 
     tilesRef.current = tiles;
 
+    // Critical: apply anchor transform immediately after renderer init.
+    // Without this, tiles may stay in ECEF space until anchor changes.
+    applyAnchorTransform();
+
     console.log('[GoogleTiles] Initialized successfully');
 
     return () => {
@@ -174,7 +202,7 @@ export default function GoogleTilesLayer() {
     };
     // NOTE: googleTilesQuality intentionally excluded — handled by separate useEffect
     // to avoid destroying/recreating the entire TilesRenderer on quality change
-  }, [enabled, apiKey, scene, camera, gl]);
+  }, [enabled, apiKey, scene, camera, gl, applyAnchorTransform]);
 
   // Runtime quality change from settings
   useEffect(() => {
@@ -184,21 +212,8 @@ export default function GoogleTilesLayer() {
 
   // Update anchor position
   useEffect(() => {
-    if (!tilesRef.current) return;
-
-    const anchorECEF = geoToECEF({ lat: anchorLat, lon: anchorLon, alt: anchorAlt });
-    const enuMatrix = buildECEFtoENUMatrix(anchorLat, anchorLon);
-
-    const translationMatrix = new THREE.Matrix4().makeTranslation(
-      -anchorECEF.x, -anchorECEF.y, -anchorECEF.z,
-    );
-
-    const finalMatrix = new THREE.Matrix4().multiplyMatrices(enuMatrix, translationMatrix);
-
-    groupRef.current.matrix.copy(finalMatrix);
-    groupRef.current.matrixAutoUpdate = false;
-    groupRef.current.matrixWorldNeedsUpdate = true;
-  }, [anchorLat, anchorLon, anchorAlt]);
+    applyAnchorTransform();
+  }, [applyAnchorTransform]);
 
   // Per-frame update with 5 km radius culling
   useFrame(() => {
@@ -210,29 +225,55 @@ export default function GoogleTilesLayer() {
       tiles.setResolutionFromRenderer(camera, gl);
       tiles.update();
 
-      // Cull tiles outside the 2 km² radius (~800m) from anchor (origin)
-      const origin = new THREE.Vector3(0, 0, 0);
+      // Cull tiles outside user-selected scene radius (with safe floor)
+      const cullRadius = Math.max(TILE_RADIUS_METERS, sceneImportRadius);
+      let visibleCount = 0;
+
       tiles.group.traverse((child) => {
-        if (child instanceof THREE.Mesh && child.geometry?.boundingSphere) {
-          const center = new THREE.Vector3();
-          child.getWorldPosition(center);
-          groupRef.current.worldToLocal(center);
-          const dist = center.distanceTo(origin);
-          child.visible = dist < TILE_RADIUS_METERS;
+        if (child instanceof THREE.Mesh) {
+          if (!child.geometry?.boundingSphere) {
+            child.geometry?.computeBoundingSphere();
+          }
+
+          child.getWorldPosition(TMP_WORLD);
+          groupRef.current.worldToLocal(TMP_WORLD);
+          const dist = TMP_WORLD.distanceTo(ORIGIN);
+          const isVisible = dist < cullRadius;
+          child.visible = isVisible;
+          if (isVisible) visibleCount++;
         }
       });
 
       const root = tiles.root;
       if (root) {
-        let visibleCount = 0;
-        tiles.group.traverse((c) => { if ((c as THREE.Mesh).visible !== false) visibleCount++; });
         updateGeoHUD({ tilesLoaded: visibleCount });
-        setLoadingState(visibleCount > 2 ? 'ready' : 'loading-tiles', visibleCount, {
-          sse: tiles.errorTarget,
-          anchorLat, anchorLon, anchorAlt,
-          groupVisible: groupRef.current.visible,
-          rendererActive: true,
-        });
+
+        // Throttle debug-state broadcast to reduce UI churn / potential stutter.
+        const now = performance.now();
+        if (now - lastDebugPublishRef.current > 250) {
+          lastDebugPublishRef.current = now;
+
+          const nextState: TilesLoadingState = visibleCount > 2 ? 'ready' : 'loading-tiles';
+          const signature = [
+            nextState,
+            visibleCount,
+            Math.round(tiles.errorTarget),
+            groupRef.current.visible ? 1 : 0,
+            anchorLat.toFixed(6),
+            anchorLon.toFixed(6),
+            anchorAlt.toFixed(1),
+          ].join('|');
+
+          if (signature !== lastDebugSignatureRef.current) {
+            lastDebugSignatureRef.current = signature;
+            setLoadingState(nextState, visibleCount, {
+              sse: tiles.errorTarget,
+              anchorLat, anchorLon, anchorAlt,
+              groupVisible: groupRef.current.visible,
+              rendererActive: true,
+            });
+          }
+        }
       }
     } catch (err) {
       console.warn('[Terrain] update error caught:', err);
