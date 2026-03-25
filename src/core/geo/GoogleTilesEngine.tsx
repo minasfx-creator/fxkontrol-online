@@ -4,7 +4,7 @@
  * aligns them with FXK's local ENU coordinate system via ECEF.
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useSceneStore } from '@/store/useSceneStore';
@@ -51,12 +51,18 @@ function buildECEFtoENUMatrix(lat: number, lon: number): THREE.Matrix4 {
 // ── SSE quality tiers ───────────────────────────────────────────────
 
 // ── SSE quality tiers ───────────────────────────────────────────────
-const SSE_TIERS: Record<string, number> = {
+const SSE_TIERS = {
   ultra: 4,
   high: 8,
   medium: 16,
   low: 32,
-};
+} as const;
+
+// Progressive refinement stages: low → medium → high
+const REFINEMENT_STAGES = [
+  { threshold: 2, sse: SSE_TIERS.medium, label: 'medium' },
+  { threshold: 15, sse: SSE_TIERS.high, label: 'high' },
+] as const;
 
 // ── Main Component ──────────────────────────────────────────────────
 // ── Loading state broadcast for HUD overlay ─────────────────────────
@@ -82,7 +88,7 @@ export default function GoogleTilesLayer() {
   const tilesRef = useRef<TilesRenderer | null>(null);
   const groupRef = useRef<THREE.Group>(new THREE.Group());
   const [apiKey, setApiKey] = useState<string | null>(null);
-  const [tilesReady, setTilesReady] = useState(false);
+  const [refinementStage, setRefinementStage] = useState(0);
 
   const anchorLat = useSceneStore((s) => s.settings.geoAnchorLat);
   const anchorLon = useSceneStore((s) => s.settings.geoAnchorLon);
@@ -125,7 +131,8 @@ export default function GoogleTilesLayer() {
     tiles.registerPlugin(new GoogleCloudAuthPlugin({ apiToken: apiKey }));
     // TileCompressionPlugin removed — crashes with 'content' undefined in v0.4
     tiles.registerPlugin(new TilesFadePlugin());
-    tiles.registerPlugin(new UpdateOnChangePlugin());
+    // NOTE: UpdateOnChangePlugin removed — it stops tile fetching when camera is idle,
+    // causing tiles to load only partially. Continuous updates are needed.
     tiles.registerPlugin(new UnloadTilesPlugin());
 
     // Start with relaxed SSE for fast initial load, then refine progressively
@@ -197,11 +204,15 @@ export default function GoogleTilesLayer() {
         tiles.group.traverse((c) => { if ((c as THREE.Mesh).visible !== false) visibleCount++; });
         updateGeoHUD({ tilesLoaded: visibleCount });
         setLoadingState(visibleCount > 2 ? 'ready' : 'loading-tiles', visibleCount);
-        if (!tilesReady && visibleCount > 2) {
-          setTilesReady(true);
-          // Progressive refinement: after initial load, increase detail
-          tiles.errorTarget = SSE_TIERS.high;
-          console.log('[Terrain] tiles ready, refining to high SSE');
+
+        // Progressive refinement: low → medium → high
+        if (refinementStage < REFINEMENT_STAGES.length) {
+          const stage = REFINEMENT_STAGES[refinementStage];
+          if (visibleCount > stage.threshold) {
+            tiles.errorTarget = stage.sse;
+            console.log(`[Terrain] refining to ${stage.label} SSE (${stage.sse}), tiles: ${visibleCount}`);
+            setRefinementStage(refinementStage + 1);
+          }
         }
       }
     } catch (err) {
