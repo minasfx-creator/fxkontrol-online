@@ -225,9 +225,8 @@ export default function GoogleTilesLayer() {
       tiles.setResolutionFromRenderer(camera, gl);
       tiles.update();
 
-      // Cull tiles outside user-selected scene radius (with safe floor)
-      const cullRadius = Math.max(TILE_RADIUS_METERS, sceneImportRadius);
       let visibleCount = 0;
+      const cullRadius = Math.max(TILE_RADIUS_METERS, sceneImportRadius);
 
       tiles.group.traverse((child) => {
         if (child instanceof THREE.Mesh) {
@@ -235,8 +234,8 @@ export default function GoogleTilesLayer() {
             child.geometry?.computeBoundingSphere();
           }
 
+          // World position is already in ENU space (near origin) — do NOT worldToLocal
           child.getWorldPosition(TMP_WORLD);
-          groupRef.current.worldToLocal(TMP_WORLD);
           const dist = TMP_WORLD.distanceTo(ORIGIN);
           const isVisible = dist < cullRadius;
           child.visible = isVisible;
