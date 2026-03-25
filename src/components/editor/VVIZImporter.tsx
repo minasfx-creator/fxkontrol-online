@@ -10,7 +10,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { useProjectStore } from '@/store/useProjectStore';
-import { importVVIZAsync, type VVIZImportResult } from '@/lib/vvizImporter';
+import type { VVIZImportResult } from '@/lib/vvizImporter';
 import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { toast } from 'sonner';
 
@@ -38,10 +38,23 @@ export default function VVIZImporter({
   const [progressLabel, setProgressLabel] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   const parseRunRef = useRef(0);
+  const workerRef = useRef<Worker | null>(null);
   const { saveToLibrary } = useMyLibrary();
+
+  // Cleanup worker on unmount
+  useEffect(() => {
+    return () => {
+      workerRef.current?.terminate();
+      workerRef.current = null;
+    };
+  }, []);
 
   const parseFile = useCallback(async (file: File) => {
     const runId = ++parseRunRef.current;
+
+    // Terminate any previous worker
+    workerRef.current?.terminate();
+    workerRef.current = null;
 
     setFileName(file.name);
     setCurrentFile(file);
@@ -51,51 +64,81 @@ export default function VVIZImporter({
     setProgressLabel('Lendo arquivo...');
 
     try {
-      // Read file text — will be released after JSON.parse inside importVVIZAsync
-      let text: string | null = await file.text();
+      // Read file text
+      const text = await file.text();
       if (runId !== parseRunRef.current) return;
 
       setPhase('parsing');
       setProgress(10);
-      setProgressLabel('Analisando performances...');
+      setProgressLabel('Iniciando Web Worker...');
 
-      // Pass text and immediately null the reference so GC can reclaim the raw string
-      const parsePromise = importVVIZAsync(text, (doneDrones, totalDrones, doneSamples, totalSamples) => {
+      // Create worker
+      const worker = new Worker(
+        new URL('@/lib/vvizWorker.ts', import.meta.url),
+        { type: 'module' }
+      );
+      workerRef.current = worker;
+
+      worker.onmessage = (e: MessageEvent) => {
         if (runId !== parseRunRef.current) return;
+        const msg = e.data;
 
-        const progressRatio = totalSamples > 0
-          ? doneSamples / totalSamples
-          : doneDrones / Math.max(1, totalDrones);
+        if (msg.type === 'progress') {
+          const ratio = msg.totalSamples > 0
+            ? msg.samples / msg.totalSamples
+            : msg.done / Math.max(1, msg.total);
+          const pct = 10 + Math.round(ratio * 85);
+          setProgress(Math.max(10, Math.min(95, pct)));
+          setProgressLabel(`Processando ${msg.done}/${msg.total} drones • ${formatCompact(msg.samples)}/${formatCompact(msg.totalSamples)} pontos`);
+        }
 
-        const pct = 10 + Math.round(progressRatio * 85);
-        setProgress(Math.max(10, Math.min(95, pct)));
-        setProgressLabel(`Processando ${doneDrones}/${totalDrones} drones • ${formatCompact(doneSamples)}/${formatCompact(totalSamples)} pontos`);
-      });
+        if (msg.type === 'result') {
+          const parsed = msg.data as VVIZImportResult;
+          setResult(parsed);
+          setPhase('idle');
+          setProgress(95);
+          setProgressLabel(`${parsed.droneCount} drones prontos para importar`);
 
-      // Release raw text reference for GC
-      text = null;
+          if (parsed.errors.length > 0) {
+            toast.warning(`${parsed.errors.length} aviso(s) durante análise`);
+          }
+          if ((parsed.stats?.compressionRatio || 0) > 0.35) {
+            toast.info(`Otimização automática aplicada (${Math.round((parsed.stats?.compressionRatio || 0) * 100)}% menos pontos)`);
+          }
 
-      const parsed = await parsePromise;
-      if (runId !== parseRunRef.current) return;
+          worker.terminate();
+          workerRef.current = null;
+        }
 
-      setResult(parsed);
-      setPhase('idle');
-      setProgress(95);
-      setProgressLabel(`${parsed.droneCount} drones prontos para importar`);
+        if (msg.type === 'error') {
+          setPhase('idle');
+          setProgress(0);
+          setProgressLabel('');
+          toast.error(msg.message || 'Falha ao analisar arquivo VVIZ');
+          worker.terminate();
+          workerRef.current = null;
+        }
+      };
 
-      if (parsed.errors.length > 0) {
-        toast.warning(`${parsed.errors.length} aviso(s) durante análise`);
-      }
+      worker.onerror = () => {
+        if (runId !== parseRunRef.current) return;
+        setPhase('idle');
+        setProgress(0);
+        setProgressLabel('');
+        toast.error('Erro no Web Worker ao processar VVIZ');
+        worker.terminate();
+        workerRef.current = null;
+      };
 
-      if ((parsed.stats?.compressionRatio || 0) > 0.35) {
-        toast.info(`Otimização automática aplicada (${Math.round((parsed.stats?.compressionRatio || 0) * 100)}% menos pontos)`);
-      }
+      // Send text to worker — worker gets its own copy, main thread can GC
+      worker.postMessage({ type: 'parse', text });
+
     } catch {
       if (runId !== parseRunRef.current) return;
       setPhase('idle');
       setProgress(0);
       setProgressLabel('');
-      toast.error('Falha ao ler/analisar arquivo VVIZ');
+      toast.error('Falha ao ler arquivo VVIZ');
     }
   }, []);
 
@@ -184,7 +227,7 @@ export default function VVIZImporter({
               </div>
               <Progress value={progress} className="h-1.5" />
               <div className="flex justify-between text-[9px] text-muted-foreground font-mono">
-                <span>{phase === 'reading' ? 'Leitura' : phase === 'parsing' ? 'Análise' : 'Importação'}</span>
+                <span>{phase === 'reading' ? 'Leitura' : phase === 'parsing' ? 'Web Worker' : 'Importação'}</span>
                 <span>{Math.round(progress)}%</span>
               </div>
             </div>
