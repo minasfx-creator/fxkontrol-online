@@ -6,7 +6,6 @@
 
 import { useState } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
-import { useSceneStore } from '@/store/useSceneStore';
 import { Shield, Play, MapPin, Clock, Zap } from 'lucide-react';
 
 interface MissionSetupOverlayProps {
