@@ -1,9 +1,13 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, startTransition } from 'react';
 import { Upload, FileJson, X, Check, AlertTriangle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { useProjectStore } from '@/store/useProjectStore';
 import { importVVIZAsync, type VVIZImportResult } from '@/lib/vvizImporter';
@@ -12,9 +16,19 @@ import { toast } from 'sonner';
 
 type ImportPhase = 'idle' | 'reading' | 'parsing' | 'importing' | 'done';
 
+function formatCompact(n: number): string {
+  return new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 }).format(Math.max(0, n));
+}
+
 export default function VVIZImporter({
-  open, onOpenChange, initialFile = null,
-}: { open: boolean; onOpenChange: (v: boolean) => void; initialFile?: File | null }) {
+  open,
+  onOpenChange,
+  initialFile = null,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  initialFile?: File | null;
+}) {
   const { batchImportVVIZ } = useProjectStore();
   const [result, setResult] = useState<VVIZImportResult | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -23,34 +37,59 @@ export default function VVIZImporter({
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const parseRunRef = useRef(0);
   const { saveToLibrary } = useMyLibrary();
 
   const parseFile = useCallback(async (file: File) => {
+    const runId = ++parseRunRef.current;
+
     setFileName(file.name);
     setCurrentFile(file);
+    setResult(null);
     setPhase('reading');
     setProgress(5);
     setProgressLabel('Lendo arquivo...');
 
-    const text = await file.text();
+    try {
+      const text = await file.text();
+      if (runId !== parseRunRef.current) return;
 
-    setPhase('parsing');
-    setProgress(10);
-    setProgressLabel('Analisando performances...');
+      setPhase('parsing');
+      setProgress(10);
+      setProgressLabel('Analisando performances...');
 
-    const parsed = await importVVIZAsync(text, (done, total) => {
-      const pct = 10 + Math.round((done / total) * 85);
-      setProgress(pct);
-      setProgressLabel(`Processando ${done}/${total} drones...`);
-    });
+      const parsed = await importVVIZAsync(text, (doneDrones, totalDrones, doneSamples, totalSamples) => {
+        if (runId !== parseRunRef.current) return;
 
-    setResult(parsed);
-    setPhase('idle');
-    setProgress(100);
-    setProgressLabel(`${parsed.droneCount} drones prontos`);
+        const progressRatio = totalSamples > 0
+          ? doneSamples / totalSamples
+          : doneDrones / Math.max(1, totalDrones);
 
-    if (parsed.errors.length > 0) {
-      toast.warning(`${parsed.errors.length} aviso(s) durante análise`);
+        const pct = 10 + Math.round(progressRatio * 85);
+        setProgress(Math.max(10, Math.min(95, pct)));
+        setProgressLabel(`Processando ${doneDrones}/${totalDrones} drones • ${formatCompact(doneSamples)}/${formatCompact(totalSamples)} pontos`);
+      });
+
+      if (runId !== parseRunRef.current) return;
+
+      setResult(parsed);
+      setPhase('idle');
+      setProgress(95);
+      setProgressLabel(`${parsed.droneCount} drones prontos para importar`);
+
+      if (parsed.errors.length > 0) {
+        toast.warning(`${parsed.errors.length} aviso(s) durante análise`);
+      }
+
+      if ((parsed.stats?.compressionRatio || 0) > 0.35) {
+        toast.info(`Otimização automática aplicada (${Math.round((parsed.stats?.compressionRatio || 0) * 100)}% menos pontos)`);
+      }
+    } catch {
+      if (runId !== parseRunRef.current) return;
+      setPhase('idle');
+      setProgress(0);
+      setProgressLabel('');
+      toast.error('Falha ao ler/analisar arquivo VVIZ');
     }
   }, []);
 
@@ -67,20 +106,28 @@ export default function VVIZImporter({
     if (!result) return;
 
     setPhase('importing');
-    setProgress(50);
+    setProgress(96);
     setProgressLabel(`Aplicando ${result.droneCount} drones ao projeto...`);
 
     requestAnimationFrame(() => {
-      batchImportVVIZ(result.positions, result.trajectories, result.projectName, result.duration);
+      startTransition(() => {
+        batchImportVVIZ(result.positions, result.trajectories, result.projectName, result.duration);
+      });
 
       setTimeout(() => {
         setProgress(100);
         setProgressLabel(`${result.droneCount} drones importados ✓`);
         setPhase('done');
+
         toast.success(`Importado: ${result.droneCount} drones, ${result.trajectories.length} trajetórias`);
 
         if (currentFile) {
-          saveToLibrary(currentFile, { name: fileName || 'VVIZ Import', source: 'vviz', file_format: 'vviz', tags: ['show', 'vviz'] });
+          saveToLibrary(currentFile, {
+            name: fileName || 'VVIZ Import',
+            source: 'vviz',
+            file_format: 'vviz',
+            tags: ['show', 'vviz'],
+          });
         }
 
         setTimeout(() => {
@@ -90,8 +137,9 @@ export default function VVIZImporter({
           setCurrentFile(null);
           setPhase('idle');
           setProgress(0);
-        }, 800);
-      }, 50);
+          setProgressLabel('');
+        }, 1000);
+      }, 80);
     });
   }, [result, batchImportVVIZ, onOpenChange, currentFile, fileName, saveToLibrary]);
 
@@ -111,7 +159,6 @@ export default function VVIZImporter({
         </DialogHeader>
 
         <div className="space-y-3">
-          {/* Drop zone */}
           <div
             className={`border-2 border-dashed border-border rounded-md p-6 text-center transition-colors ${isProcessing ? 'opacity-50 pointer-events-none' : 'cursor-pointer hover:border-primary/50'}`}
             onClick={() => !isProcessing && fileRef.current?.click()}
@@ -123,7 +170,6 @@ export default function VVIZImporter({
             <input ref={fileRef} type="file" accept=".vviz,.json" onChange={handleFile} className="hidden" />
           </div>
 
-          {/* Progress */}
           {isProcessing && (
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">
@@ -138,7 +184,6 @@ export default function VVIZImporter({
             </div>
           )}
 
-          {/* Done */}
           {phase === 'done' && (
             <div className="flex items-center gap-2 bg-primary/10 border border-primary/30 rounded-sm p-2">
               <Check className="h-3.5 w-3.5 text-primary" />
@@ -146,12 +191,15 @@ export default function VVIZImporter({
             </div>
           )}
 
-          {/* Preview */}
           {result && !isProcessing && phase !== 'done' && (
             <div className="bg-surface-2 rounded-sm p-2 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Preview</span>
-                <span className="text-[10px] font-mono-code text-foreground">{result.projectName}</span>
+                <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
+                  Preview
+                </span>
+                <span className="text-[10px] font-mono-code text-foreground">
+                  {result.projectName}
+                </span>
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-center">
@@ -169,17 +217,24 @@ export default function VVIZImporter({
                 </div>
               </div>
 
-              {/* Colors */}
+              {result.stats && (
+                <div className="bg-surface-1 rounded-sm p-1.5 flex items-center justify-between text-[9px] font-mono-code">
+                  <span className="text-muted-foreground">Pontos:</span>
+                  <span className="text-foreground">
+                    {result.stats.totalTraversalSamples.toLocaleString('pt-BR')} → {result.stats.totalWaypoints.toLocaleString('pt-BR')}
+                  </span>
+                </div>
+              )}
+
               {result.positions.length > 0 && (
                 <div className="flex items-center gap-1 flex-wrap">
                   <span className="text-[9px] text-muted-foreground mr-1">Cores:</span>
-                  {[...new Set(result.positions.map(p => p.color))].slice(0, 12).map((c, i) => (
+                  {[...new Set(result.positions.map((p) => p.color))].slice(0, 12).map((c, i) => (
                     <div key={i} className="w-3 h-3 rounded-full border border-border/50" style={{ backgroundColor: c }} />
                   ))}
                 </div>
               )}
 
-              {/* Warnings */}
               {result.errors.length > 0 && (
                 <div className="bg-destructive/10 border border-destructive/30 rounded-sm p-1.5">
                   <div className="flex items-center gap-1 text-destructive text-[10px] font-semibold mb-1">
@@ -194,16 +249,30 @@ export default function VVIZImporter({
             </div>
           )}
 
-          {/* Actions */}
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} disabled={isProcessing} className="h-7 text-xs">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+              disabled={isProcessing}
+              className="h-7 text-xs"
+            >
               <X className="h-3 w-3 mr-1" /> Cancelar
             </Button>
-            <Button size="sm" onClick={handleImport} disabled={!result || result.droneCount === 0 || isProcessing} className="h-7 text-xs">
+            <Button
+              size="sm"
+              onClick={handleImport}
+              disabled={!result || result.droneCount === 0 || isProcessing}
+              className="h-7 text-xs"
+            >
               {isProcessing ? (
-                <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Processando...</>
+                <>
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Processando...
+                </>
               ) : (
-                <><Check className="h-3 w-3 mr-1" /> Importar {result?.droneCount || 0} Drones</>
+                <>
+                  <Check className="h-3 w-3 mr-1" /> Importar {result?.droneCount || 0} Drones
+                </>
               )}
             </Button>
           </div>
