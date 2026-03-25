@@ -35,6 +35,8 @@ import StageFixtures from './StageFixtures';
 import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Globe, Download, ScanEye, Cog, Paintbrush, MapPinned, Film, ChevronDown, Plus, Lock, Ruler, Bookmark, Trash2, Navigation } from 'lucide-react';
 import SelectionStatusBar from './SelectionStatusBar';
 import AICoPilotOverlay from './AICoPilotOverlay';
+import TelemetryBar from './TelemetryBar';
+import MissionSetupOverlay from './MissionSetupOverlay';
 import { cn } from '@/lib/utils';
 import {
   CometEffect,
@@ -1579,6 +1581,7 @@ export default function SkyCanvas() {
   const google3DTilesEnabled = useSceneStore(st => st.settings.google3DTilesEnabled);
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
   const presentationMode = useSceneStore(st => st.settings.presentationMode);
+  const [missionConfirmed, setMissionConfirmed] = useState(false);
 
   // Exit fly mode when pointer lock is lost (ESC)
   useEffect(() => {
@@ -1781,7 +1784,7 @@ export default function SkyCanvas() {
         resize={{ debounce: 50, scroll: false }}
         shadows
         gl={{
-          antialias: !isMobile,
+          antialias: true,
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.5,
           powerPreference: 'high-performance',
@@ -1872,6 +1875,7 @@ export default function SkyCanvas() {
         />
       </Canvas>
       </WebGLErrorBoundary>
+      <TelemetryBar />
       <KeybindingCheatSheet />
 
       {/* ═══ Google Earth Geo Tools UI ═══ */}
@@ -2118,7 +2122,7 @@ export default function SkyCanvas() {
       {/* Bottom info — only visible in debug mode */}
       {!isMobile && showDebugOverlay && (
         <div className="absolute bottom-3 right-3 text-[9px] font-mono-code text-muted-foreground/60 bg-card/70 backdrop-blur-md px-3 py-2 rounded-xl border border-border/15 space-y-0.5">
-          <div className="text-[8px] text-muted-foreground/40 tracking-wider font-display">FX KONTROL v2.0 · Minas FX</div>
+          <div className="text-[8px] text-muted-foreground/40 tracking-wider font-display">FX KONTROL v3.2 · Minas FX</div>
           <div>{flyMode ? 'WASD: Move · Mouse: Look · Q/E: Up/Down' : 'Orbit: LMB · Pan: MMB · Zoom: Scroll'}</div>
           <div>Box: Alt+Drag · Multi: Shift+Click · Edit: Dbl-Click</div>
           <div>{flyMode ? '✈ Fly Mode' : freeLook ? '🔓 Free Look ON' : '🔒 Preset Lock'}</div>
@@ -2130,6 +2134,9 @@ export default function SkyCanvas() {
         active={presentationMode}
         onExit={() => useSceneStore.getState().updateSettings({ presentationMode: false })}
       />
+
+      {/* Mission Setup Gate */}
+      {!missionConfirmed && <MissionSetupOverlay onConfirm={() => setMissionConfirmed(true)} />}
     </div>
   );
 }
