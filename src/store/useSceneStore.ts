@@ -6,6 +6,7 @@ export type GroundStyle = 'finale-dark' | 'google-earth' | 'flat-black' | 'concr
 export type SkyPreset = 'night-clear' | 'night-cloudy' | 'dusk' | 'overcast' | 'foggy' | 'custom';
 export type WeatherCondition = 'clear' | 'light-rain' | 'heavy-rain' | 'snow' | 'fog' | 'haze' | 'wind-only';
 export type QualityPreset = 'realistic' | 'show' | 'performance';
+export type GoogleTilesQuality = 'low' | 'medium' | 'high';
 export type { ViewTransform };
 export const QUALITY_PRESETS: Record<QualityPreset, { name: string; description: string; settings: Partial<SceneSettings> }> = {
   realistic: {
