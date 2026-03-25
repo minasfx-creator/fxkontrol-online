@@ -226,20 +226,21 @@ export default function GoogleTilesLayer() {
       tiles.update();
 
       // Cull tiles outside user-selected scene radius (with safe floor)
-      const cullRadius = Math.max(TILE_RADIUS_METERS, sceneImportRadius);
       let visibleCount = 0;
+      let debuggedFirst = false;
 
       tiles.group.traverse((child) => {
         if (child instanceof THREE.Mesh) {
-          if (!child.geometry?.boundingSphere) {
-            child.geometry?.computeBoundingSphere();
-          }
+          child.visible = true;
+          visibleCount++;
 
-          child.getWorldPosition(TMP_WORLD);
-          const dist = TMP_WORLD.distanceTo(ORIGIN);
-          const isVisible = dist < cullRadius;
-          child.visible = isVisible;
-          if (isVisible) visibleCount++;
+          // Log first tile position once for debugging
+          if (!debuggedFirst) {
+            debuggedFirst = true;
+            child.getWorldPosition(TMP_WORLD);
+            console.log('[GoogleTiles] First tile world pos:', TMP_WORLD.x.toFixed(1), TMP_WORLD.y.toFixed(1), TMP_WORLD.z.toFixed(1),
+              '| camera:', camera.position.x.toFixed(1), camera.position.y.toFixed(1), camera.position.z.toFixed(1));
+          }
         }
       });
 
