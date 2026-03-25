@@ -4,7 +4,7 @@
  * aligns them with FXK's local ENU coordinate system via ECEF.
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useSceneStore } from '@/store/useSceneStore';
