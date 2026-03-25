@@ -57,6 +57,23 @@ const SSE_TIERS: Record<string, number> = {
 };
 
 // ── Main Component ──────────────────────────────────────────────────
+// ── Loading state broadcast for HUD overlay ─────────────────────────
+export type TilesLoadingState = 'idle' | 'fetching-key' | 'loading-tiles' | 'ready' | 'error';
+let _tilesLoadingState: TilesLoadingState = 'idle';
+let _tilesLoadedCount = 0;
+const _listeners = new Set<() => void>();
+
+export function getTilesLoadingState() { return _tilesLoadingState; }
+export function getTilesLoadedCount() { return _tilesLoadedCount; }
+export function subscribeTilesLoading(cb: () => void) {
+  _listeners.add(cb);
+  return () => { _listeners.delete(cb); };
+}
+function setLoadingState(s: TilesLoadingState, count = _tilesLoadedCount) {
+  _tilesLoadingState = s;
+  _tilesLoadedCount = count;
+  _listeners.forEach(cb => cb());
+}
 
 export default function GoogleTilesLayer() {
   const { scene, camera, gl } = useThree();
