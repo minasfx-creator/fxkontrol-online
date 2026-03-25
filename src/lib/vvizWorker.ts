@@ -171,13 +171,15 @@ ctx.onmessage = (e: MessageEvent) => {
 
   try {
     vviz = JSON.parse(text!) as VVIZFile;
-  } catch {
+  } catch (err) {
     ctx.postMessage({ type: 'error', message: 'Arquivo VVIZ inválido — não é JSON válido.' });
     return;
   }
 
-  // Release raw text immediately
+  // Release raw text immediately — critical for large files
   text = null;
+  // @ts-ignore — hint GC
+  e.data.text = null;
 
   if (!Array.isArray(vviz.performances) || vviz.performances.length === 0) {
     ctx.postMessage({ type: 'error', message: 'Arquivo VVIZ não contém "performances".' });

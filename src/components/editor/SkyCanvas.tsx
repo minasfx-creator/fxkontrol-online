@@ -1424,7 +1424,7 @@ export default function SkyCanvas() {
         {!google3DTilesEnabled && <ViewportRulers />}
         <CameraBookmarkSaver />
         {!google3DTilesEnabled && <ContactShadowsLayer />}
-        <PostProcessing activeBurstCount={_activeBurstCount} />
+        {!isMobile && <PostProcessing activeBurstCount={_activeBurstCount} />}
         <StressTestFireworks />
         <PostExplosionSmokeManager />
         <BoxSelectR3F />

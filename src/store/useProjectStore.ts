@@ -621,14 +621,16 @@ export const useProjectStore = create<ProjectState>((set) => ({
     ...(projectName && projectName !== 'Import Error' ? { projectName } : {}),
     ...(duration && duration > 0 ? { duration } : {}),
   })),
-  batchImportVVIZChunk: (positions, trajectories) => set((s) => {
-    // Push-based: mutate arrays in place for O(1) instead of O(n) spread
-    const newPositions = s.positions.slice();
-    const newTrajectories = s.trajectories.slice();
-    for (let i = 0; i < positions.length; i++) newPositions.push(positions[i]);
-    for (let i = 0; i < trajectories.length; i++) newTrajectories.push(trajectories[i]);
-    return { positions: newPositions, trajectories: newTrajectories };
-  }),
+  batchImportVVIZChunk: (positions, trajectories) => {
+    // Mutate + new ref: push into copies for O(n_chunk) not O(n_total)
+    set((s) => {
+      const newP = [...s.positions];
+      const newT = [...s.trajectories];
+      for (let i = 0; i < positions.length; i++) newP.push(positions[i]);
+      for (let i = 0; i < trajectories.length; i++) newT.push(trajectories[i]);
+      return { positions: newP, trajectories: newT };
+    });
+  },
   finalizeBatchImport: (projectName, duration) => set(() => ({
     ...(projectName && projectName !== 'Import Error' ? { projectName } : {}),
     ...(duration && duration > 0 ? { duration } : {}),
