@@ -236,7 +236,6 @@ export default function GoogleTilesLayer() {
           }
 
           child.getWorldPosition(TMP_WORLD);
-          groupRef.current.worldToLocal(TMP_WORLD);
           const dist = TMP_WORLD.distanceTo(ORIGIN);
           const isVisible = dist < cullRadius;
           child.visible = isVisible;
