@@ -362,6 +362,7 @@ const DEFAULT_SETTINGS: SceneSettings = {
   fieldViewMode: false,
   google3DTilesEnabled: true,
   sceneImportRadius: 5000,
+  googleTilesQuality: 'low',
   presentationMode: false,
 
   // Ultra-Smooth Rendering defaults
