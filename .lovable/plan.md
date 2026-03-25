@@ -1,61 +1,14 @@
 
 
-# Plano: Fix VVIZ — Gaps e Bugs Criticos
+# Plan: Mission-Critical UX Refinement
 
-## Bugs Encontrados
+## Current State
 
-### BUG 1: Main thread ainda carrega arquivo como string (OOM)
-**Arquivo:** `VVIZImporter.tsx` linha 93
-`file.text()` carrega o JSON inteiro como string na main thread (~100MB). Depois `postMessage({ text })` **copia** essa string para o worker (+100MB). Total: ~200MB na main thread antes do worker sequer começar.
+The platform has solid foundations: haptic feedback system, MobileHUD with transport controls, MobileQuickActions with touch targets, ShowCommanderPanel with ARM/SAFE logic, field-view high-contrast mode, and PANIC FAB. However, several gaps remain for real-world field operation.
 
-**Fix:** Usar `file.arrayBuffer()` + `Transferable` (zero-copy). Decodificar no worker com `TextDecoder`.
+## Gaps Identified
 
-### BUG 2: normColor trata valor 1 como float → vira 255
-**Arquivo:** `vvizWorker.ts` linha 57-61
-```
-v >= 0 && v <= 1 ? Math.round(v * 255) : Math.round(v)
-```
-Se o VVIZ usa inteiros 0-255, o valor `1` (azul escuro quase preto) é interpretado como float `1.0` → `255` (branco). Cores escuras ficam totalmente erradas.
-
-**Fix:** VVIZ do Finale 3D usa **inteiros 0-255**. Remover branch float. Apenas clamp 0-255.
-
-### BUG 3: extractColor pega cor mais brilhante, ignora duração
-**Arquivo:** `vvizWorker.ts` linhas 63-76
-Um flash branco de 1 frame ganha de uma cor azul com 500 frames. Resultado: cores não batem com o Finale.
-
-**Fix:** Ponderar pelo campo `frames` (duração acumulada). Cor dominante = maior `(r+g+b) * frames`.
-
-### BUG 4: Sem timeout de segurança no worker
-Se o worker crashar silenciosamente (OOM interno), a UI fica presa em "parsing" para sempre.
-
-**Fix:** Adicionar timeout de 120s com fallback de erro.
-
-### BUG 5: Worker protocol desatualizado
-O comentário diz `text: string` mas precisa aceitar `buffer: ArrayBuffer` também.
-
-## Plano de Execução
-
-### 1. `src/lib/vvizWorker.ts`
-- Aceitar `ArrayBuffer` via `e.data.buffer`, decodificar com `TextDecoder` (fallback para `e.data.text` para compatibilidade)
-- Fix `normColor`: remover branch float, tratar tudo como inteiro 0-255 com clamp
-- Fix `extractColor`: ponderar por `frames`, usar cor com maior peso acumulado
-- Atualizar comentário do protocol
-
-### 2. `src/components/editor/VVIZImporter.tsx`
-- Trocar `file.text()` por `file.arrayBuffer()`
-- Enviar via `worker.postMessage({ type: 'parse', buffer }, [buffer])` — zero-copy Transferable
-- Adicionar timeout de 120s que cancela o worker e mostra erro
-- Limpar timeout on success/error
-
-### Diagrama de memoria
-
-```text
-ANTES (bug):
-  Main: file.text() [100MB] → postMessage cópia [100MB] → Worker
-  Pico main thread: ~200MB
-
-DEPOIS (fix):
-  Main: file.arrayBuffer() [100MB] → Transferable [0 cópia] → Worker
-  Pico main thread: ~0MB (buffer transferido)
-```
-
+1. **No DESIGN/LIVE mode separation** — editor and live controls are mixed, no clear mode switch
+2. **Transport buttons too small on mobile** — 48px Play/Stop, should be 56-64px for stressed operators
+3. **No hold-to-confirm on critical actions** — START SHOW and E-STOP fire on single tap (accidental trigger risk)
+4. **No inline quick-adjust sliders** — editing requires opening panels, not contextual
