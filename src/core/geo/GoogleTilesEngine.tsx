@@ -56,11 +56,13 @@ const SSE_TIERS = {
   high: 8,
   medium: 16,
   low: 32,
-  veryLow: 48,
 } as const;
 
-// Keep low 3D — no progressive refinement to higher quality
-const REFINEMENT_STAGES = [] as const;
+const GOOGLE_TILE_QUALITY_TO_SSE = {
+  low: SSE_TIERS.low,
+  medium: SSE_TIERS.medium,
+  high: SSE_TIERS.high,
+} as const;
 
 // 2 km² ≈ circle radius ~800m
 const TILE_RADIUS_METERS = 800;
