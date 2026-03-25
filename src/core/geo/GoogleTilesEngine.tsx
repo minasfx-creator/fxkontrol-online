@@ -56,11 +56,13 @@ const SSE_TIERS = {
   high: 8,
   medium: 16,
   low: 32,
-  veryLow: 48,
 } as const;
 
-// Keep low 3D — no progressive refinement to higher quality
-const REFINEMENT_STAGES = [] as const;
+const GOOGLE_TILE_QUALITY_TO_SSE = {
+  low: SSE_TIERS.low,
+  medium: SSE_TIERS.medium,
+  high: SSE_TIERS.high,
+} as const;
 
 // 2 km² ≈ circle radius ~800m
 const TILE_RADIUS_METERS = 800;
@@ -89,13 +91,12 @@ export default function GoogleTilesLayer() {
   const tilesRef = useRef<TilesRenderer | null>(null);
   const groupRef = useRef<THREE.Group>(new THREE.Group());
   const [apiKey, setApiKey] = useState<string | null>(null);
-  const [refinementStage, setRefinementStage] = useState(0);
 
   const anchorLat = useSceneStore((s) => s.settings.geoAnchorLat);
   const anchorLon = useSceneStore((s) => s.settings.geoAnchorLon);
   const anchorAlt = useSceneStore((s) => s.settings.geoAnchorAlt);
   const enabled = useSceneStore((s) => s.settings.google3DTilesEnabled);
-  const sceneImportRadius = useSceneStore((s) => s.settings.sceneImportRadius);
+  const googleTilesQuality = useSceneStore((s) => s.settings.googleTilesQuality);
 
   // Fetch API key on mount
   useEffect(() => {
@@ -136,8 +137,8 @@ export default function GoogleTilesLayer() {
     // causing tiles to load only partially. Continuous updates are needed.
     tiles.registerPlugin(new UnloadTilesPlugin());
 
-    // Start with relaxed SSE for fast initial load, then refine progressively
-    tiles.errorTarget = SSE_TIERS.low;
+    // Initial quality from user settings (low/medium/high)
+    tiles.errorTarget = GOOGLE_TILE_QUALITY_TO_SSE[googleTilesQuality];
 
     const group = groupRef.current;
     group.name = 'GoogleTilesGroup';
@@ -157,7 +158,13 @@ export default function GoogleTilesLayer() {
       scene.remove(group);
       tilesRef.current = null;
     };
-  }, [enabled, apiKey, scene, camera, gl]);
+  }, [enabled, apiKey, scene, camera, gl, googleTilesQuality]);
+
+  // Runtime quality change from settings
+  useEffect(() => {
+    if (!tilesRef.current || !enabled) return;
+    tilesRef.current.errorTarget = GOOGLE_TILE_QUALITY_TO_SSE[googleTilesQuality];
+  }, [googleTilesQuality, enabled]);
 
   // Update anchor position
   useEffect(() => {

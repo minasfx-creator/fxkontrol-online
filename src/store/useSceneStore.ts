@@ -6,6 +6,7 @@ export type GroundStyle = 'finale-dark' | 'google-earth' | 'flat-black' | 'concr
 export type SkyPreset = 'night-clear' | 'night-cloudy' | 'dusk' | 'overcast' | 'foggy' | 'custom';
 export type WeatherCondition = 'clear' | 'light-rain' | 'heavy-rain' | 'snow' | 'fog' | 'haze' | 'wind-only';
 export type QualityPreset = 'realistic' | 'show' | 'performance';
+export type GoogleTilesQuality = 'low' | 'medium' | 'high';
 export type { ViewTransform };
 export const QUALITY_PRESETS: Record<QualityPreset, { name: string; description: string; settings: Partial<SceneSettings> }> = {
   realistic: {
@@ -240,6 +241,7 @@ export interface SceneSettings {
   fieldViewMode: boolean;         // high-contrast outdoor UI
   google3DTilesEnabled: boolean;   // Google Photorealistic 3D Tiles digital twin
   sceneImportRadius: number;       // 1000-20000 meters (1-20 km) tile loading radius
+  googleTilesQuality: GoogleTilesQuality; // low/medium/high quality target for tiles
   presentationMode: boolean;       // Client presentation fullscreen mode
 
   // ═══ Ultra-Smooth Rendering ═══
@@ -360,6 +362,7 @@ const DEFAULT_SETTINGS: SceneSettings = {
   fieldViewMode: false,
   google3DTilesEnabled: true,
   sceneImportRadius: 5000,
+  googleTilesQuality: 'low',
   presentationMode: false,
 
   // Ultra-Smooth Rendering defaults
