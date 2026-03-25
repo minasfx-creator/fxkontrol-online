@@ -1386,12 +1386,12 @@ export default function SkyCanvas() {
         </DelayedMount>
 
         {/* ═══ Synthetic sky/atmosphere — suppressed in Digital Twin mode ═══ */}
-        {!google3DTilesEnabled && <EnvironmentV2SwitcherModule SkyGradientComponent={SkyGradientFallback} />}
+        {!google3DTilesEnabled && <EnvironmentV2SwitcherClean SkyGradientComponent={SkyGradientFallback} />}
 
         {!google3DTilesEnabled && <Moon />}
-        {!google3DTilesEnabled && <SceneStarsWiredModule />}
+        {!google3DTilesEnabled && <SceneStarsWiredClean />}
         {!google3DTilesEnabled && !isMobile && !environment.lowQualityMode && <AtmosphericParticles />}
-        {!google3DTilesEnabled && <SceneFogModule />}
+        {!google3DTilesEnabled && <SceneFogClean />}
         {!google3DTilesEnabled && !isMobile && <DelayedMount delay={2500}><WeatherEffects /></DelayedMount>}
 
         {/* ═══ Ground / Terrain ═══ */}
