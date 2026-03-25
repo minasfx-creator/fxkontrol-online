@@ -128,8 +128,8 @@ export default function GoogleTilesLayer() {
     tiles.registerPlugin(new UpdateOnChangePlugin());
     tiles.registerPlugin(new UnloadTilesPlugin());
 
-    tiles.errorTarget = SSE_TIERS.high;
-    // errorThreshold removed — deprecated in 3d-tiles-renderer v0.4
+    // Start with relaxed SSE for fast initial load, then refine progressively
+    tiles.errorTarget = SSE_TIERS.medium;
 
     const group = groupRef.current;
     group.name = 'GoogleTilesGroup';
