@@ -882,26 +882,7 @@ function GoogleEarthLighting() {
   );
 }
 
-function SceneFog() {
-  const s = useSceneStore(st => st.settings);
-  if (s.fogDensity <= 0) return null;
-  return <fog attach="fog" args={[s.fogColor, s.fogNear, s.fogFar / Math.max(s.fogDensity, 0.1)]} />;
-}
-
-function SceneStars() {
-  const density = useSceneStore(st => st.settings.starDensity);
-  if (density <= 0.05) return null;
-  return <Stars radius={100000} depth={40000} count={Math.round(15000 * density)} factor={6} saturation={0.2} fade speed={0.03} />;
-}
-
-/** SceneStars with lowQualityMode support — reduces count & factor by 50% */
-function SceneStarsWired() {
-  const density = useSceneStore(st => st.settings.starDensity);
-  const lowQ = useSceneStore(st => st.environment.lowQualityMode);
-  if (density <= 0.05) return null;
-  const mult = lowQ ? 0.5 : 1.0;
-  return <Stars radius={100000} depth={40000} count={Math.round(15000 * density * mult)} factor={6 * mult} saturation={0.2} fade speed={0.03} />;
-}
+// SceneFog, SceneStars, SceneStarsWired — REMOVED duplicates, use skycanvas/SkyEnvironment.tsx
 
 // WeatherEffects extracted to skycanvas/WeatherSystem.tsx
 import { WeatherEffects } from './skycanvas/WeatherSystem';
