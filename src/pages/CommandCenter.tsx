@@ -3,7 +3,7 @@
  * 7 focused consoles: 4 main + Show Control + Module + DMX Monitor
  * Landscape mobile: game-style HUD with side rail + top bar
  */
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, lazy, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { ambientSound } from '@/lib/ambientSound';
 import FullscreenablePanel from '@/components/editor/FullscreenablePanel';
@@ -18,18 +18,29 @@ import {
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import LiveFiringPanel from '@/components/editor/LiveFiringPanel';
 import { CONSOLE_LOGOS } from '@/components/editor/ConsoleLogos';
 import ConsoleBootSequence from '@/components/editor/ConsoleBootSequence';
 import TacticalMinimap from '@/components/editor/TacticalMinimap';
 
-// Direct-render components
-import MA3ControlPanel from '@/components/editor/MA3ControlPanel';
-import DroneCommandPanel from '@/components/editor/DroneCommandPanel';
-import ShowControlPanel from '@/components/editor/ShowControlPanel';
-import FXKNetPanel from '@/components/editor/live-firing/FXKNetPanel';
-import DMXMonitorPanel from '@/components/editor/DMXMonitorPanel';
-import FieldTestDesktop from '@/components/editor/FieldTestDesktop';
+// Lazy-loaded heavy panels — code-split into separate chunks
+const LiveFiringPanel = lazy(() => import('@/components/editor/LiveFiringPanel'));
+const MA3ControlPanel = lazy(() => import('@/components/editor/MA3ControlPanel'));
+const DroneCommandPanel = lazy(() => import('@/components/editor/DroneCommandPanel'));
+const ShowControlPanel = lazy(() => import('@/components/editor/ShowControlPanel'));
+const FXKNetPanel = lazy(() => import('@/components/editor/live-firing/FXKNetPanel'));
+const DMXMonitorPanel = lazy(() => import('@/components/editor/DMXMonitorPanel'));
+const FieldTestDesktop = lazy(() => import('@/components/editor/FieldTestDesktop'));
+
+function PanelLoader() {
+  return (
+    <div className="flex-1 flex items-center justify-center bg-background/80">
+      <div className="flex flex-col items-center gap-2">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <span className="text-[9px] font-mono tracking-widest text-muted-foreground/50 uppercase">Loading Console</span>
+      </div>
+    </div>
+  );
+}
 // ── Types ──
 type CommandMode =
   | 'pyro_fire' | 'super_dmx' | 'fxk_light' | 'drone_ops'
