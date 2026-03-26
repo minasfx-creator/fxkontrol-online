@@ -56,6 +56,7 @@ import ShowControlPanel from './ShowControlPanel';
 import DMXMonitorPanel from './DMXMonitorPanel';
 import DroneCommandPanel from './DroneCommandPanel';
 import BLEDeviceScanner from './BLEDeviceScanner';
+import EasyConnectPanel from './EasyConnectPanel';
 import { RISK_GROUP_LABELS, RISK_GROUP_COLORS, type RiskGroup } from '@/lib/pyroPhysics';
 
 // ═══════════════════════════════════════════════════════════

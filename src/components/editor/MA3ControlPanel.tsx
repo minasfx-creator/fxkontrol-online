@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import BLEDeviceScanner from '@/components/editor/BLEDeviceScanner';
+import EasyConnectPanel from '@/components/editor/EasyConnectPanel';
 import {
   getOSCClient,
   buildMA3Command,
