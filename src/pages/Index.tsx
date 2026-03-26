@@ -203,7 +203,7 @@ function Index() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activePanel, setActivePanel] = useState<PanelId | null>(null);
   const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'editor'>('editor');
-  const [showGeoSetup, setShowGeoSetup] = useState(true);
+  const [showGeoSetup, setShowGeoSetup] = useState(false);
   const [showPositionEditor, setShowPositionEditor] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab | null>(null);
@@ -239,7 +239,7 @@ function Index() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [viewportMaximized]);
+  }, [viewportMaximized, activePanel]);
 
   // Deep-link: auto-open panel from ?panel= query param
   useEffect(() => {
@@ -541,8 +541,10 @@ function Index() {
       </div>
 
       {/* ─── Layer 1: Top Bar (z-50) ─────────────────── */}
-      <CrashRecoveryBanner />
-      <Toolbar onOpenPanel={(id) => handleTogglePanel(id as PanelId)} isMaximized={viewportMaximized} onToggleMaximize={() => setViewportMaximized(v => !v)} />
+      <div className="absolute top-0 left-0 right-0 z-50">
+        <CrashRecoveryBanner />
+        <Toolbar onOpenPanel={(id) => handleTogglePanel(id as PanelId)} isMaximized={viewportMaximized} onToggleMaximize={() => setViewportMaximized(v => !v)} />
+      </div>
 
       {/* ─── Layer 2: Right Dock (icon bar, z-40) ──── */}
       {!viewportMaximized && (
@@ -656,7 +658,7 @@ function Index() {
       </div>
 
       {/* ─── Layer 8: GeoLocationSetup (Top-Center) ── */}
-      {showGeoSetup && <GeoLocationSetup onClose={() => setShowGeoSetup(false)} />}
+      {showGeoSetup && !viewportMaximized && <GeoLocationSetup onClose={() => setShowGeoSetup(false)} />}
 
       {/* ─── Layer 8b: Viewport Transition Overlay ── */}
       <ViewportTransitionOverlay />
