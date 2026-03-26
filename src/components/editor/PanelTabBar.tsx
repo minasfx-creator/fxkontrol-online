@@ -58,6 +58,7 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
     title: 'Conexões',
     icon: Cable,
     items: [
+      { id: 'easyconnect', label: 'Easy Connect', icon: Zap, shortcut: 'E' },
       { id: 'usb', label: 'USB Connect', icon: Cpu },
       { id: 'dmx', label: 'DMX512', icon: ScanLine },
       { id: 'dmxoutput', label: 'DMX Output', icon: Cable },
