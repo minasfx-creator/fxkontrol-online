@@ -1433,8 +1433,8 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
           paddingBottom: mob ? 'max(env(safe-area-inset-bottom), 8px)' : undefined,
         }}
       >
-        {/* Skip outer chrome when pyro_fire standalone — PyroFireOnePanel owns the viewport */}
-        {standalone && mode === 'pyro_fire' ? (
+        {/* Skip outer chrome for self-contained sub-panels */}
+        {['pyro_fire', 'fxk_light', 'ma3', 'show_control', 'dmx_monitor', 'drone_ops'].includes(mode) ? (
           <>
             {renderSceneModeBar(true)}
             <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
@@ -1465,8 +1465,8 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
 
   return (
     <div className={cn("h-full flex flex-col overflow-hidden select-none", standalone && "ff-standalone-panel")} style={{ minWidth: standalone ? undefined : 300, maxWidth: standalone ? undefined : 380, background: standalone ? 'transparent' : 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 5%) 100%)' }}>
-      {/* Skip outer chrome when pyro_fire standalone */}
-      {standalone && mode === 'pyro_fire' ? (
+      {/* Skip outer chrome for self-contained sub-panels */}
+      {['pyro_fire', 'fxk_light', 'ma3', 'show_control', 'dmx_monitor', 'drone_ops'].includes(mode) ? (
         <>
           {renderSceneModeBar(false)}
           <ScrollArea className="flex-1">{renderModeContent(false)}</ScrollArea>
