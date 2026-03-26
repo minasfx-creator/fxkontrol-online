@@ -449,7 +449,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   }, [cues, channels, setChannels]);
 
   // ─── Swipe gesture for mobile mode switching / close ───
-  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'check_slave', 'ble_scan', 'controllers', 'pbus', 'field_map', 'connections', 'wifi_direct', 'radio', 'ma3', 'artnet_modules', 'mobile_link', 'settings'];
+  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'check_slave', 'ble_scan', 'controllers', 'pbus', 'field_map', 'connections', 'radio', 'ma3', 'artnet_modules', 'mobile_link', 'settings'];
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const swipeHandled = useRef(false);
 
@@ -1431,12 +1431,9 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
           paddingBottom: mob ? 'max(env(safe-area-inset-bottom), 8px)' : undefined,
         }}
       >
-        {/* Skip outer chrome for self-contained sub-panels */}
+        {/* Self-contained sub-panels: skip ALL outer chrome (scenes, tabs, arm, panic) */}
         {['pyro_fire', 'fxk_light', 'ma3', 'show_control', 'dmx_monitor', 'drone_ops'].includes(mode) ? (
-          <>
-            {renderSceneModeBar(true)}
-            <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
-          </>
+          <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
         ) : (
           <>
             {renderStatusBar(true)}
@@ -1463,12 +1460,9 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
 
   return (
     <div className={cn("h-full flex flex-col overflow-hidden select-none", standalone && "ff-standalone-panel")} style={{ minWidth: standalone ? undefined : 300, maxWidth: standalone ? undefined : 380, background: standalone ? 'transparent' : 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 5%) 100%)' }}>
-      {/* Skip outer chrome for self-contained sub-panels */}
+      {/* Self-contained sub-panels: skip ALL outer chrome */}
       {['pyro_fire', 'fxk_light', 'ma3', 'show_control', 'dmx_monitor', 'drone_ops'].includes(mode) ? (
-        <>
-          {renderSceneModeBar(false)}
-          <ScrollArea className="flex-1">{renderModeContent(false)}</ScrollArea>
-        </>
+        <ScrollArea className="flex-1">{renderModeContent(false)}</ScrollArea>
       ) : (
         <>
           {renderStatusBar(false)}
