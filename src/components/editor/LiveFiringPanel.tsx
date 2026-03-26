@@ -1393,7 +1393,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
         );
       case 'simple_dmx': return renderSimpleDmx(fs);
       case 'manual_fire': return renderManualFire(fs);
-      case 'pyro_fire': return <PyroFireOnePanel fs={fs} fireChannel={fireChannel} channels={channels} pyroArm={pyroArm} dmxArm={dmxArm} handlePanic={handlePanic} artNetConnected={artNetConnected} relayConnected={relayConnected} onArmChange={(armed) => { if (armed) handlePyroArm(); else { /* disarm handled by panic */ } }} />;
+      case 'pyro_fire': return <PyroFireOnePanel fs={fs} fireChannel={fireChannel} channels={channels} pyroArm={pyroArm} dmxArm={dmxArm} handlePanic={handlePanic} artNetConnected={artNetConnected} relayConnected={relayConnected} onArmChange={(armed) => handlePyroArm(armed)} />;
       case 'check_slave': return <CheckSlavePanel fs={fs} pyroArm={pyroArm} />;
       case 'ble_scan': return (
         <div className={cn("flex flex-col gap-3 h-full overflow-y-auto", fs ? "p-3" : "p-2")}>
