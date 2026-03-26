@@ -480,6 +480,20 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
 
         {!isMobile && (
           <>
+            {/* Maximize Viewport */}
+            <button
+              onClick={onToggleMaximize}
+              className={cn(
+                "h-7 w-7 flex items-center justify-center rounded-md transition-all",
+                isMaximized
+                  ? "bg-cyan-500/15 text-cyan-400 hover:bg-cyan-500/25"
+                  : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+              )}
+              title={isMaximized ? 'Restore UI (Esc)' : 'Maximize Viewport'}
+            >
+              {isMaximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+            </button>
+
             {/* Night Mode Toggle */}
             <NightModeToggle />
 
