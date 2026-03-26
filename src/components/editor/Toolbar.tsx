@@ -4,7 +4,7 @@
  * All editing tools moved to floating docks.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { Zap, Save, FolderOpen, Undo, Redo, Upload, FileJson, FilePlus, Download, ChevronDown, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store, Lightbulb, MonitorSpeaker, FileArchive, Mountain, Building2, Command, Copy, Trash2, SkipBack, Navigation, LogOut, MapPin, Target, MousePointer, Shapes, LayoutGrid, Shield, AlertTriangle, Moon, Sun } from 'lucide-react';
+import { Zap, Save, FolderOpen, Undo, Redo, Upload, FileJson, FilePlus, Download, ChevronDown, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store, Lightbulb, MonitorSpeaker, FileArchive, Mountain, Building2, Command, Copy, Trash2, SkipBack, Navigation, LogOut, MapPin, Target, MousePointer, Shapes, LayoutGrid, Shield, AlertTriangle, Moon, Sun, Maximize2, Minimize2 } from 'lucide-react';
 import fxkLogo from '@/assets/fxk-logo.png';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -238,6 +238,8 @@ function NightModeToggle() {
 
 interface ToolbarProps {
   onOpenPanel?: (id: string) => void;
+  isMaximized?: boolean;
+  onToggleMaximize?: () => void;
 }
 
 /* ── Location Display (clickable → opens Geo Setup) ──────────── */
@@ -258,7 +260,7 @@ function LocationDisplay() {
   );
 }
 
-export default function Toolbar({ onOpenPanel }: ToolbarProps) {
+export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: ToolbarProps) {
   const { projectName, timelineItems, positions, editorMode, setEditorMode, duration, trajectories, droneFormations, gpsOrigin } = useProjectStore();
   const { canUndo, canRedo, undo, redo } = useUndoStore();
   const { signOut } = useAuth();
@@ -478,6 +480,20 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
 
         {!isMobile && (
           <>
+            {/* Maximize Viewport */}
+            <button
+              onClick={onToggleMaximize}
+              className={cn(
+                "h-7 w-7 flex items-center justify-center rounded-md transition-all",
+                isMaximized
+                  ? "bg-cyan-500/15 text-cyan-400 hover:bg-cyan-500/25"
+                  : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+              )}
+              title={isMaximized ? 'Restore UI (Esc)' : 'Maximize Viewport'}
+            >
+              {isMaximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+            </button>
+
             {/* Night Mode Toggle */}
             <NightModeToggle />
 
