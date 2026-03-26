@@ -136,6 +136,20 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
             )} />
           </div>
 
+          {/* Night Mode toggle */}
+          <button
+            onClick={() => { haptics.tap(); setNightMode(!nightMode); }}
+            className={cn(
+              "glass-button flex items-center justify-center w-14 h-14 active:scale-90 transition-transform",
+              nightMode && "ring-1 ring-[hsl(190_100%_50%/0.4)]"
+            )}
+          >
+            {nightMode
+              ? <Sun className="w-5 h-5 text-[hsl(var(--warning))]" />
+              : <Moon className="w-5 h-5 text-[hsl(var(--muted-foreground))]" />
+            }
+          </button>
+
           {/* LIVE mode toggle */}
           <button
             onClick={() => { haptics.showMode(true); useDisplayStore.getState().setOperationMode('live'); }}
