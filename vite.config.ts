@@ -28,6 +28,7 @@ export default defineConfig(({ mode }) => ({
           'three-core': ['three'],
           'r3f': ['@react-three/fiber', '@react-three/drei'],
           'postprocessing': ['@react-three/postprocessing'],
+          'recharts': ['recharts'],
         },
       },
     },
