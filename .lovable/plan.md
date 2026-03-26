@@ -1,73 +1,43 @@
 
 
-# Plan: Fix Dual Console + Refine FXK-PYRO UX
+# Plan: Fix Viewport — Add Maximize Toggle
 
 ## Problem
 
-When `pyro_fire` mode is active in `LiveFiringPanel`, two complete console UIs stack:
-
-```text
-LiveFiringPanel chrome:
-  StatusBar (FXK-PYRO branding, timecode)
-  ArmBar (PYRO/DMX arm buttons)
-  CueKeys (128 cue grid)
-  SceneModeBar (S0-S3 + mode tabs)
-  ┌── PyroFireOnePanel ──────────────────┐
-  │  Header (FXK-PYRO branding, clock)   │  ← DUPLICATE
-  │  ConnectionBar (SIM/HW toggle)       │
-  │  MasterArm (master key, arm all)     │  ← DUPLICATE ARM
-  │  StatusStrip                         │
-  │  ModeTabs (manual/step/tc/test)      │
-  │  ModuleGrid (32 igniters)            │
-  │  PANIC                               │  ← DUPLICATE
-  └──────────────────────────────────────┘
-  PANIC                                    ← DUPLICATE
-```
-
-Result: duplicate branding, duplicate ARM controls, duplicate PANIC buttons, wasted vertical space.
+The 3D viewport has no way to maximize. The toolbar (top), left dock, right dock, and timeline (bottom at 25vh) all overlay the canvas, leaving the effective visible area small. There's no toggle to hide all chrome and reclaim the full viewport.
 
 ## Solution
 
-### 1. Skip outer chrome when `standalone && mode === 'pyro_fire'`
+### 1. Add `viewportMaximized` state to Index.tsx
 
-In `LiveFiringPanel.tsx`, when the panel is in standalone mode (CommandCenter) AND `mode === 'pyro_fire'`:
-- **Skip** `renderStatusBar`, `renderArmBar`, `renderCueKeys`, `renderPanic`
-- **Keep** `renderSceneModeBar` (contains mode-switch tabs for navigating away from pyro_fire)
-- Let `PyroFireOnePanel` own the full viewport with its own header, arm, and panic
+A boolean toggle that hides all overlay chrome (left dock, right dock, floating panels, timeline) when active. The canvas remains `absolute inset-0` — we just hide the UI layers on top.
 
-This applies to both fullscreen (lines 1436-1448) and inline (lines 1456-1464) renders.
+### 2. Add maximize button to toolbar
 
-### 2. Sync ARM state between consoles
+Add a `Maximize2` / `Minimize2` icon button in the Toolbar, next to the existing night mode toggle. When clicked, toggles `viewportMaximized`. Keyboard shortcut: `F` key (standard 3D viewport convention).
 
-Wire `PyroFireOnePanel`'s `masterKeyOn` toggle to also call the parent's `handlePyroArm` so the global ARMED banner in `MainLayout` stays in sync. Currently `masterKeyOn` is internal-only — the outer `pyroArm` drives the banner but inner panel doesn't update it.
+### 3. When `viewportMaximized` is true:
 
-### 3. PyroFireOnePanel panel mode: add PANIC when not fullscreen
+- Hide Layer 2 (Right Dock / PanelTabBar)
+- Hide Layer 3 (Floating Panel)
+- Hide Layer 4 (Left Dock)
+- Hide Layer 5 (PerformanceHUD)
+- Hide Layer 6 (ViewportNavControls) 
+- Collapse Layer 7 (Timeline) to `0px` height
+- Keep Toolbar visible but semi-transparent (so user can un-maximize)
 
-`PyroFireOnePanel` currently only renders `renderPanic()` in its dedicated fullscreen mode (line 1597). In panel mode (line 1607-1625), there's **no PANIC button** — it relies on the outer shell. After removing outer chrome, we need to add `renderPanic()` to the panel mode render too.
+### 4. Start timeline collapsed by default
 
-### 4. Desktop glass refinements
+Change `timelineCollapsed` initial state from `false` to `true` so viewport starts with maximum visible area.
 
-- Apply `glass-br2049` backdrop to the `PyroFireOnePanel` panel-mode container
-- Increase igniter grid cell size from 36px to 44px for confident clicking
-- Add subtle amber glow border on the active module in the sidebar list
+### 5. Keyboard shortcut
 
-### 5. CSS cleanup in index.css
-
-- Remove duplicate `body.night-mode` block (if still present around line 669)
-- Remove orphaned `/* .br2049-vignette disabled */` comment (line 985)
+Add `F` key listener to toggle maximize. `Escape` exits maximize mode.
 
 ## Files to Change
 
 | File | Changes |
 |------|---------|
-| `src/components/editor/LiveFiringPanel.tsx` | Skip outer chrome when `standalone && mode === 'pyro_fire'`; add PANIC sync |
-| `src/components/editor/live-firing/PyroFireOnePanel.tsx` | Add `renderPanic()` to panel mode; glass styling; larger igniter cells; emit ARM state up |
-| `src/index.css` | Remove duplicate night-mode block and orphan comments |
-
-## Impact
-
-- Eliminates visual confusion of "two consoles"
-- Recovers ~200px of vertical space on desktop
-- Single source of truth for ARM/PANIC
-- Cleaner, more professional appearance aligned with "built by operators" UX goal
+| `src/pages/Index.tsx` | Add `viewportMaximized` state; conditionally hide layers 2-7; default `timelineCollapsed` to `true`; add `F` key listener |
+| `src/components/editor/Toolbar.tsx` | Add maximize toggle button; accept `onToggleMaximize` + `isMaximized` props |
 
