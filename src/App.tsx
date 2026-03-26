@@ -50,23 +50,25 @@ function App() {
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <Routes>
-              <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
-              <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/editor" element={<Index />} />
-                <Route path="/agenda" element={<Agenda />} />
-                <Route path="/training" element={<Training />} />
-                <Route path="/pcb-viewer" element={<PCBViewer />} />
-                <Route path="/pairing" element={<DevicePairing />} />
-                <Route path="/command" element={<CommandCenter />} />
-                <Route path="/show-test" element={<ShowTestSimulator />} />
-                <Route path="/field-test" element={<FieldTest />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/admin" element={<Admin />} />
-              </Route>
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <Suspense fallback={<div className="min-h-[100dvh] w-full flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+              <Routes>
+                <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
+                <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/editor" element={<Index />} />
+                  <Route path="/agenda" element={<Agenda />} />
+                  <Route path="/training" element={<Training />} />
+                  <Route path="/pcb-viewer" element={<PCBViewer />} />
+                  <Route path="/pairing" element={<DevicePairing />} />
+                  <Route path="/command" element={<CommandCenter />} />
+                  <Route path="/show-test" element={<ShowTestSimulator />} />
+                  <Route path="/field-test" element={<FieldTest />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/admin" element={<Admin />} />
+                </Route>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>
