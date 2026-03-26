@@ -473,42 +473,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Hardware Controllers */}
-          <Card className="bg-card border-border/50 animate-fxk-stagger overflow-hidden" style={{ animationDelay: '0.3s' }}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Cpu className="h-3.5 w-3.5 text-primary" />
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider font-display">Hardware</span>
-                </div>
-                <button
-                  onClick={() => navigate('/command?mode=module')}
-                  className="text-[9px] text-primary hover:text-primary/80 font-semibold transition-colors"
-                >
-                  Ver todos →
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { label: 'FXK-PYRO', icon: Zap, mode: 'pyro_fire', color: 'text-red-400', border: 'border-red-500/15' },
-                  { label: 'FXK-DMX', icon: Gauge, mode: 'super_dmx', color: 'text-amber-400', border: 'border-amber-500/15' },
-                  { label: 'FXK-LIGHT', icon: Lightbulb, mode: 'fxk_light', color: 'text-indigo-400', border: 'border-indigo-500/15' },
-                  { label: 'MODULE', icon: Cpu, mode: 'module', color: 'text-violet-400', border: 'border-violet-500/15' },
-                  { label: 'FXK-DRONE', icon: Layers, mode: 'drone_ops', color: 'text-teal-400', border: 'border-teal-500/15' },
-                  { label: 'DMX Monitor', icon: Radio, mode: 'dmx_monitor', color: 'text-green-400', border: 'border-green-500/15' },
-                ].map((hw) => (
-                  <button
-                    key={hw.label}
-                    onClick={() => navigate(`/command?mode=${hw.mode}`)}
-                    className={`flex items-center gap-2 px-2.5 py-2 rounded-xl bg-[hsl(var(--surface-0)/0.5)] border ${hw.border} hover:bg-muted/20 transition-all active:scale-[0.97] text-left min-h-[48px]`}
-                  >
-                    <hw.icon className={`h-3.5 w-3.5 ${hw.color} shrink-0`} />
-                    <span className="text-[9px] font-semibold text-foreground/70 truncate">{hw.label}</span>
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          {/* Hardware section removed — consolidated into Console Launcher above */}
 
           {/* Events */}
           <Card className="bg-card border-border/50 animate-fxk-stagger" style={{ animationDelay: '0.35s' }}>
