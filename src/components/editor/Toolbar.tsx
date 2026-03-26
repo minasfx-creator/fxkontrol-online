@@ -57,7 +57,7 @@ function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => voi
       }
     };
     update();
-    const unsub = artnetModuleService.subscribe(() => update());
+    const unsub = artnetModuleService.subscribe((_type, _data) => update());
     return () => unsub();
   }, []);
 
