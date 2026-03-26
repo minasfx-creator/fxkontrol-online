@@ -95,66 +95,92 @@ export default function DockBar() {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-2 pointer-events-none"
+    <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pointer-events-none"
       style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))', perspective: '800px' }}>
       <TooltipProvider delayDuration={200}>
         <div
           ref={dockRef}
-          className="pointer-events-auto dock-3d-glass rounded-2xl px-2.5 py-1.5 flex items-end gap-0.5"
-          onMouseMove={handleDockMouseMove}
-          onMouseLeave={handleDockMouseLeave}
+          className={cn(
+            "pointer-events-auto dock-3d-glass rounded-2xl flex items-end",
+            isMobile ? "px-1 py-1.5 gap-0" : "px-2.5 py-1.5 gap-0.5"
+          )}
+          onMouseMove={isMobile ? undefined : handleDockMouseMove}
+          onMouseLeave={isMobile ? undefined : handleDockMouseLeave}
           style={{
-            transform: `rotateX(${tilt.rotateX}deg) rotateY(${tilt.rotateY}deg)`,
-            transition: hoveredIndex !== null
+            transform: isMobile ? undefined : `rotateX(${tilt.rotateX}deg) rotateY(${tilt.rotateY}deg)`,
+            transition: isMobile ? undefined : (hoveredIndex !== null
               ? 'transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)'
-              : 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
-            transformStyle: 'preserve-3d',
+              : 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)'),
+            transformStyle: isMobile ? undefined : 'preserve-3d',
           }}
         >
-          {/* Ambient reflection layer */}
-          <div className="absolute inset-0 rounded-2xl pointer-events-none overflow-hidden">
-            <div className="absolute inset-0 dock-reflection" />
-            <div className="absolute inset-0 dock-scanline" />
-          </div>
+          {/* Ambient reflection layer — desktop only */}
+          {!isMobile && (
+            <div className="absolute inset-0 rounded-2xl pointer-events-none overflow-hidden">
+              <div className="absolute inset-0 dock-reflection" />
+              <div className="absolute inset-0 dock-scanline" />
+            </div>
+          )}
 
           {allItems.map((item, i) => {
             const isActive = item.path === '/'
               ? location.pathname === '/'
               : location.pathname.startsWith(item.path);
-            const scale = getScale(i);
-            const translateY = getTranslateY(i);
+            const scale = isMobile ? 1 : getScale(i);
+            const translateY = isMobile ? 0 : getTranslateY(i);
             const Icon = item.icon;
             const accentColor = item.accent || 'hsl(var(--primary))';
 
             return (
               <React.Fragment key={item.path}>
                 {i === separatorIndex && (
-                  <div className="w-[1px] h-6 mx-0.5 rounded-full self-center" style={{ background: 'hsl(var(--primary) / 0.1)' }} />
+                  <div className={cn(
+                    "rounded-full self-center",
+                    isMobile ? "w-[1px] h-5 mx-0" : "w-[1px] h-6 mx-0.5"
+                  )} style={{ background: 'hsl(var(--primary) / 0.1)' }} />
                 )}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => handleClick(item.path)}
-                      onMouseEnter={() => setHoveredIndex(i)}
+                      onMouseEnter={isMobile ? undefined : () => setHoveredIndex(i)}
                       className={cn(
-                        "relative flex flex-col items-center justify-center w-11 h-11 rounded-xl transition-all",
+                        "relative flex flex-col items-center justify-center rounded-xl transition-all",
                         "active:scale-90",
+                        isMobile ? "w-12 h-14 gap-0.5" : "w-11 h-11",
                         isActive ? "dock-item-active" : "hover:bg-white/[0.04]"
                       )}
                       style={{
-                        transform: `scale(${scale}) translateY(${translateY}px) translateZ(${hoveredIndex === i ? 8 : 0}px)`,
-                        transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease',
+                        transform: isMobile ? undefined : `scale(${scale}) translateY(${translateY}px) translateZ(${hoveredIndex === i ? 8 : 0}px)`,
+                        transition: isMobile ? undefined : 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease',
                       }}
                     >
                       <Icon
-                        className="w-5 h-5 transition-colors duration-200"
+                        className={cn(
+                          "transition-colors duration-200",
+                          isMobile ? "w-5 h-5" : "w-5 h-5"
+                        )}
                         style={{
                           color: isActive ? accentColor : 'hsl(var(--muted-foreground) / 0.5)',
                           filter: isActive ? `drop-shadow(0 0 6px ${accentColor})` : 'none',
                         }}
                       />
+                      {/* Label — mobile only */}
+                      {isMobile && (
+                        <span
+                          className="text-[7px] font-bold tracking-wider leading-none truncate max-w-[40px]"
+                          style={{
+                            color: isActive ? accentColor : 'hsl(var(--muted-foreground) / 0.35)',
+                          }}
+                        >
+                          {item.label.length > 6 ? item.label.slice(0, 5) + '.' : item.label}
+                        </span>
+                      )}
                       {isActive && (
-                        <div className="absolute -bottom-0.5 w-1 h-1 rounded-full"
+                        <div className={cn(
+                          "absolute rounded-full",
+                          isMobile ? "-bottom-0 w-1 h-1" : "-bottom-0.5 w-1 h-1"
+                        )}
                           style={{
                             background: accentColor,
                             boxShadow: `0 0 4px ${accentColor}`,
@@ -163,13 +189,15 @@ export default function DockBar() {
                       )}
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent
-                    side="top"
-                    sideOffset={8}
-                    className="glass-menu px-3 py-1.5 text-[10px] font-semibold tracking-wider"
-                  >
-                    {item.label}
-                  </TooltipContent>
+                  {!isMobile && (
+                    <TooltipContent
+                      side="top"
+                      sideOffset={8}
+                      className="glass-menu px-3 py-1.5 text-[10px] font-semibold tracking-wider"
+                    >
+                      {item.label}
+                    </TooltipContent>
+                  )}
                 </Tooltip>
               </React.Fragment>
             );
