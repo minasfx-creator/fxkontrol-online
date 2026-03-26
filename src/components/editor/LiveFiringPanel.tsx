@@ -55,7 +55,6 @@ import ArtNetModulePanel from './live-firing/ArtNetModulePanel';
 import ShowControlPanel from './ShowControlPanel';
 import DMXMonitorPanel from './DMXMonitorPanel';
 import DroneCommandPanel from './DroneCommandPanel';
-import BLEDeviceScanner from './BLEDeviceScanner';
 import EasyConnectPanel from './EasyConnectPanel';
 import { RISK_GROUP_LABELS, RISK_GROUP_COLORS, type RiskGroup } from '@/lib/pyroPhysics';
 
@@ -64,22 +63,22 @@ import { RISK_GROUP_LABELS, RISK_GROUP_COLORS, type RiskGroup } from '@/lib/pyro
 // ═══════════════════════════════════════════════════════════
 const MODE_CATEGORIES = [
   {
-    label: '🔥 EXECUTION', modes: [
+    label: 'EXECUTION', modes: [
       { key: 'super_dmx' as FXCMode, label: 'FXK-DMX', icon: Zap },
       { key: 'pyro_fire' as FXCMode, label: 'FXK-PYRO', icon: Flame },
     ],
   },
   {
-    label: '📡 MONITORING', modes: [
+    label: 'MONITORING', modes: [
       { key: 'show_control' as FXCMode, label: 'SHOW CTRL', icon: Activity },
       { key: 'dmx_monitor' as FXCMode, label: 'DMX MON', icon: Radio },
       { key: 'fxk_light' as FXCMode, label: 'FXK-LIGHT', icon: Gauge },
     ],
   },
   {
-    label: '🔧 HARDWARE', modes: [
+    label: 'HARDWARE', modes: [
       { key: 'module' as FXCMode, label: 'MODULE', icon: Globe },
-      { key: 'ble_scan' as FXCMode, label: 'BLE SCAN', icon: Signal },
+      { key: 'ble_scan' as FXCMode, label: 'CONNECT', icon: Signal },
     ],
   },
 ];
