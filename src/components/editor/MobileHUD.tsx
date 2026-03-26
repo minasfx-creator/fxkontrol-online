@@ -3,7 +3,7 @@
  * Clean, minimal, high-information density for show operators.
  */
 import { useState, useCallback, useMemo } from 'react';
-import { Play, Pause, Square, Menu, AlertOctagon, Zap, ShieldAlert, MapPin } from 'lucide-react';
+import { Play, Pause, Square, Menu, AlertOctagon, Zap, ShieldAlert, MapPin, Moon, Sun } from 'lucide-react';
 import { haptics } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 import { useProjectStore } from '@/store/useProjectStore';
