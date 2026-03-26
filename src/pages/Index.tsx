@@ -5,7 +5,7 @@ import { useUndoStore } from '@/store/useUndoStore';
 import { useUndoKeyboard } from '@/hooks/useUndoKeyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
-import { Upload, ZoomIn, ZoomOut, Compass, Layers, ChevronDown } from 'lucide-react';
+import { Upload, ZoomIn, ZoomOut, Compass, Layers, ChevronDown, Sparkles, Paintbrush, Cog } from 'lucide-react';
 import { FXKAssistant } from '@/components/FXKAssistant';
 import Toolbar from '@/components/editor/Toolbar';
 import SplashScreen from '@/components/editor/SplashScreen';
@@ -172,40 +172,10 @@ function getDropType(ext: string): 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset'
   return 'ue5json';
 }
 
-/* ── Performance HUD (Bottom-Left) ───────────────────────────── */
-function PerformanceHUD() {
-  const [fps, setFps] = useState(60);
-  useEffect(() => {
-    let frames = 0;
-    let last = performance.now();
-    let raf: number;
-    const tick = () => {
-      frames++;
-      const now = performance.now();
-      if (now - last >= 1000) {
-        setFps(frames);
-        frames = 0;
-        last = now;
-      }
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, []);
-
-  return (
-    <div className="absolute bottom-[calc(25vh+8px)] left-3 z-30 flex items-center gap-2 px-2 py-1 rounded-md bg-black/50 backdrop-blur-sm border border-white/5">
-      <span className="text-[10px] font-mono text-zinc-400">{fps} <span className="text-zinc-600">FPS</span></span>
-      <span className="text-zinc-700">·</span>
-      <span className="text-[10px] font-mono text-zinc-500">{(performance as any).memory?.usedJSHeapSize ? `${Math.round((performance as any).memory.usedJSHeapSize / 1024 / 1024)}MB` : '--'}</span>
-    </div>
-  );
-}
-
 /* ── Nav Controls (Bottom-Right) ─────────────────────────────── */
-function ViewportNavControls() {
+function ViewportNavControls({ collapsed }: { collapsed?: boolean }) {
   return (
-    <div className="absolute bottom-[calc(25vh+8px)] right-3 z-30 flex flex-col gap-1">
+    <div className="absolute right-3 z-30 flex flex-col gap-1" style={{ bottom: collapsed ? '40px' : 'calc(25vh + 8px)', transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
       {[
         { icon: ZoomIn, title: 'Zoom In', action: () => window.dispatchEvent(new CustomEvent('viewport-zoom', { detail: 1 })) },
         { icon: ZoomOut, title: 'Zoom Out', action: () => window.dispatchEvent(new CustomEvent('viewport-zoom', { detail: -1 })) },
@@ -259,9 +229,9 @@ function Index() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLElement && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) return;
-      if (e.key === 'f' && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
-        // 'f' is already used in Toolbar for fan tool — only maximize when no panel is open
-        // We use a different approach: dispatch from toolbar button
+      if (e.key === 'f' && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey && !activePanel) {
+        e.preventDefault();
+        setViewportMaximized(v => !v);
       }
       if (e.key === 'Escape' && viewportMaximized) {
         setViewportMaximized(false);
@@ -611,19 +581,22 @@ function Index() {
       {!viewportMaximized && (
         <div className="absolute top-14 left-0 z-40 w-[44px] flex flex-col items-center py-2 gap-1" style={{ bottom: timelineCollapsed ? '32px' : '25vh', transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)', background: 'rgba(9, 9, 11, 0.50)', backdropFilter: 'blur(8px)', borderRight: '1px solid rgba(255,255,255,0.04)' }}>
           {[
-            { id: 'effects', icon: '🎆', label: 'Effects' },
-            { id: 'scene', icon: '🎨', label: 'Scene' },
-            { id: 'showsettings', icon: '⚙️', label: 'Settings' },
-          ].map(item => (
-            <button
-              key={item.id}
-              onClick={() => setLeftDockOpen(leftDockOpen === item.id ? null : item.id)}
-              title={item.label}
-              className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm transition-all ${leftDockOpen === item.id ? 'bg-white/10' : 'hover:bg-white/5'}`}
-            >
-              {item.icon}
-            </button>
-          ))}
+            { id: 'effects', icon: Sparkles, label: 'Effects' },
+            { id: 'scene', icon: Paintbrush, label: 'Scene' },
+            { id: 'showsettings', icon: Cog, label: 'Settings' },
+          ].map(item => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setLeftDockOpen(leftDockOpen === item.id ? null : item.id)}
+                title={item.label}
+                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${leftDockOpen === item.id ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'}`}
+              >
+                <Icon className="w-4 h-4" />
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -655,11 +628,8 @@ function Index() {
         </div>
       )}
 
-      {/* ─── Layer 5: Performance HUD (Bottom-Left) ── */}
-      {!viewportMaximized && <PerformanceHUD />}
-
       {/* ─── Layer 6: Nav Controls (Bottom-Right) ──── */}
-      {!viewportMaximized && <ViewportNavControls />}
+      {!viewportMaximized && <ViewportNavControls collapsed={timelineCollapsed} />}
 
       {/* ─── Layer 7: Timeline (Bottom, full width) ── */}
       <div
@@ -676,9 +646,10 @@ function Index() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
           <button
             onClick={() => setTimelineCollapsed(!timelineCollapsed)}
-            className="w-8 h-4 flex items-center justify-center rounded-t-lg bg-zinc-800 border border-white/10 border-b-0 text-zinc-400 hover:text-white transition-all"
+            className="w-11 h-5 flex items-center justify-center rounded-t-lg bg-zinc-800/90 border border-white/10 border-b-0 text-zinc-400 hover:text-white transition-all backdrop-blur-sm"
+            title={timelineCollapsed ? 'Expandir Timeline' : 'Recolher Timeline'}
           >
-            <ChevronDown className={`w-3 h-3 transition-transform ${timelineCollapsed ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${timelineCollapsed ? 'rotate-180' : ''}`} />
           </button>
         </div>
         {!timelineCollapsed && <Timeline />}

@@ -475,12 +475,15 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
       </div>
 
       {/* ─── RIGHT: Mission-Critical Controls ──── */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <TimecodeDisplay />
 
         {!isMobile && (
           <>
-            {/* Maximize Viewport */}
+            {/* ── Separator ── */}
+            <div className="w-px h-5 bg-white/[0.06]" />
+
+            {/* Viewport controls */}
             <button
               onClick={onToggleMaximize}
               className={cn(
@@ -489,21 +492,25 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
                   ? "bg-cyan-500/15 text-cyan-400 hover:bg-cyan-500/25"
                   : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
               )}
-              title={isMaximized ? 'Restore UI (Esc)' : 'Maximize Viewport'}
+              title={isMaximized ? 'Restore UI (Esc)' : 'Maximize Viewport (F)'}
             >
               {isMaximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
             </button>
-
-            {/* Night Mode Toggle */}
             <NightModeToggle />
 
-            {/* Command Center */}
+            {/* ── Separator ── */}
+            <div className="w-px h-5 bg-white/[0.06]" />
+
+            {/* Command */}
             <button onClick={() => setCommandMenuOpen(true)} className="h-7 px-2.5 flex items-center gap-1.5 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-all text-[10px] font-semibold uppercase tracking-wider" title="⌘K">
               <Command className="h-3 w-3" />
               <span>⌘K</span>
             </button>
 
-            {/* LIVE MODE */}
+            {/* ── Separator ── */}
+            <div className="w-px h-5 bg-white/[0.06]" />
+
+            {/* LIVE + ARM + E-STOP */}
             <button
               onClick={() => onOpenPanel?.('showcommander')}
               className="h-8 px-3 flex items-center gap-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 transition-all text-[10px] font-bold uppercase tracking-wider"
@@ -511,8 +518,6 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
               <Zap className="h-3.5 w-3.5" />
               LIVE
             </button>
-
-            {/* ARM */}
             <button
               onClick={() => onOpenPanel?.('livefiring')}
               className="h-8 px-3 flex items-center gap-1.5 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 transition-all text-[10px] font-bold uppercase tracking-wider"
@@ -520,18 +525,19 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
               <Shield className="h-3.5 w-3.5" />
               ARM
             </button>
-
-            {/* E-STOP */}
             <button
               onClick={() => {
                 useProjectStore.getState().setPlaying(false);
                 toast.error('🔴 EMERGENCY STOP');
               }}
-              className="h-9 px-4 flex items-center gap-1.5 rounded-lg bg-red-600 text-white hover:bg-red-500 shadow-[0_0_20px_rgba(220,38,38,0.3)] transition-all text-[11px] font-black uppercase tracking-wider animate-pulse-subtle"
+              className="h-9 px-4 flex items-center gap-1.5 rounded-xl bg-red-600 text-white hover:bg-red-500 shadow-[0_0_20px_rgba(220,38,38,0.3)] transition-all text-[11px] font-black uppercase tracking-wider"
             >
               <AlertTriangle className="h-4 w-4" />
               E-STOP
             </button>
+
+            {/* ── Separator ── */}
+            <div className="w-px h-5 bg-white/[0.06]" />
 
             {/* Hardware dots */}
             <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-black/30 border border-white/5">

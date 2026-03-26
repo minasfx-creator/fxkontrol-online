@@ -167,6 +167,7 @@ export function useKeybindings() {
 /** All keybindings for the cheat sheet */
 export const KEYBINDING_LIST = [
   { key: 'Space', action: 'Play / Pause', category: 'Playback' },
+  { key: 'F', action: 'Maximizar viewport', category: 'Viewport' },
   { key: 'W', action: 'Gizmo: Move', category: 'Transform' },
   { key: 'E', action: 'Gizmo: Rotate', category: 'Transform' },
   { key: 'R', action: 'Gizmo: Scale', category: 'Transform' },
