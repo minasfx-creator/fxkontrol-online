@@ -4,10 +4,11 @@
  * All editing tools moved to floating docks.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { Zap, Save, FolderOpen, Undo, Redo, Upload, FileJson, FilePlus, Download, ChevronDown, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store, Lightbulb, MonitorSpeaker, FileArchive, Mountain, Building2, Command, Copy, Trash2, SkipBack, Navigation, LogOut, MapPin, Target, MousePointer, Shapes, LayoutGrid, Shield, AlertTriangle } from 'lucide-react';
+import { Zap, Save, FolderOpen, Undo, Redo, Upload, FileJson, FilePlus, Download, ChevronDown, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store, Lightbulb, MonitorSpeaker, FileArchive, Mountain, Building2, Command, Copy, Trash2, SkipBack, Navigation, LogOut, MapPin, Target, MousePointer, Shapes, LayoutGrid, Shield, AlertTriangle, Moon, Sun } from 'lucide-react';
 import fxkLogo from '@/assets/fxk-logo.png';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useDisplayStore } from '@/store/useDisplayStore';
 import { useUndoStore } from '@/store/useUndoStore';
 import { useSMPTEStore } from '@/store/useSMPTEStore';
 import { useAuth } from '@/hooks/useAuth';
@@ -203,6 +204,31 @@ function BatchAddButton() {
         </div>
       )}
     </>
+  );
+}
+
+/* ── Night Mode Toggle ───────────────────────────────────────── */
+function NightModeToggle() {
+  const nightMode = useDisplayStore(s => s.nightMode);
+  const setNightMode = useDisplayStore(s => s.setNightMode);
+
+  useEffect(() => {
+    document.body.classList.toggle('night-mode', nightMode);
+  }, [nightMode]);
+
+  return (
+    <button
+      onClick={() => setNightMode(!nightMode)}
+      className={cn(
+        "h-7 w-7 flex items-center justify-center rounded-md transition-all",
+        nightMode
+          ? "bg-cyan-500/15 text-cyan-400 hover:bg-cyan-500/25"
+          : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+      )}
+      title={nightMode ? 'Day Mode' : 'Night Mode'}
+    >
+      {nightMode ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+    </button>
   );
 }
 
@@ -452,6 +478,9 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
 
         {!isMobile && (
           <>
+            {/* Night Mode Toggle */}
+            <NightModeToggle />
+
             {/* Command Center */}
             <button onClick={() => setCommandMenuOpen(true)} className="h-7 px-2.5 flex items-center gap-1.5 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-all text-[10px] font-semibold uppercase tracking-wider" title="⌘K">
               <Command className="h-3 w-3" />

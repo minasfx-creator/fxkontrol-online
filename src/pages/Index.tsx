@@ -558,15 +558,17 @@ function Index() {
       <Toolbar onOpenPanel={(id) => handleTogglePanel(id as PanelId)} />
 
       {/* ─── Layer 2: Right Dock (icon bar, z-40) ──── */}
-      <div className="absolute top-14 right-0 bottom-0 z-40">
+      <div className="absolute top-14 right-0 z-40" style={{ bottom: timelineCollapsed ? '32px' : '25vh', transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
         <PanelTabBar activePanel={activePanel} onTogglePanel={handleTogglePanel} />
       </div>
 
       {/* ─── Layer 3: Floating Panel (z-40) ─────────── */}
       {activePanel && (
         <div
-          className="absolute top-14 right-[52px] bottom-[25vh] z-40 w-[380px] max-w-[30vw]"
+          className="absolute top-14 right-[52px] z-40 w-[380px] max-w-[30vw]"
           style={{
+            bottom: timelineCollapsed ? '32px' : '25vh',
+            transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             background: 'rgba(9, 9, 11, 0.90)',
             backdropFilter: 'blur(16px) saturate(1.4)',
             borderLeft: '1px solid rgba(255,255,255,0.06)',
@@ -587,7 +589,7 @@ function Index() {
       )}
 
       {/* ─── Layer 4: Left Dock (z-40, icons only) ─── */}
-      <div className="absolute top-14 left-0 bottom-[25vh] z-40 w-[44px] flex flex-col items-center py-2 gap-1" style={{ background: 'rgba(9, 9, 11, 0.50)', backdropFilter: 'blur(8px)', borderRight: '1px solid rgba(255,255,255,0.04)' }}>
+      <div className="absolute top-14 left-0 z-40 w-[44px] flex flex-col items-center py-2 gap-1" style={{ bottom: timelineCollapsed ? '32px' : '25vh', transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)', background: 'rgba(9, 9, 11, 0.50)', backdropFilter: 'blur(8px)', borderRight: '1px solid rgba(255,255,255,0.04)' }}>
         {[
           { id: 'effects', icon: '🎆', label: 'Effects' },
           { id: 'scene', icon: '🎨', label: 'Scene' },
@@ -607,8 +609,10 @@ function Index() {
       {/* ─── Left Dock Floating Panel ──────────────── */}
       {leftDockOpen && (
         <div
-          className="absolute top-14 left-[44px] bottom-[25vh] z-40 w-[280px]"
+          className="absolute top-14 left-[44px] z-40 w-[280px]"
           style={{
+            bottom: timelineCollapsed ? '32px' : '25vh',
+            transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             background: 'rgba(9, 9, 11, 0.92)',
             backdropFilter: 'blur(16px) saturate(1.4)',
             borderRight: '1px solid rgba(255,255,255,0.06)',
