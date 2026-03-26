@@ -540,20 +540,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
             <div className="w-px h-5 bg-white/[0.06]" />
 
             {/* Hardware dots */}
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-black/30 border border-white/5">
-              <button onClick={() => onOpenPanel?.('livefiring')} className="flex items-center gap-0.5 group" title="FireOne">
-                <div className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
-                <span className="text-[7px] font-mono text-zinc-600 group-hover:text-zinc-400">FO</span>
-              </button>
-              <button onClick={() => onOpenPanel?.('connections')} className="flex items-center gap-0.5 group" title="PBUS">
-                <div className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
-                <span className="text-[7px] font-mono text-zinc-600 group-hover:text-zinc-400">PB</span>
-              </button>
-              <button onClick={() => onOpenPanel?.('ma3')} className="flex items-center gap-0.5 group" title="MA3">
-                <div className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
-                <span className="text-[7px] font-mono text-zinc-600 group-hover:text-zinc-400">MA</span>
-              </button>
-            </div>
+            <HardwareStatusDots onOpenPanel={onOpenPanel} />
           </>
         )}
 

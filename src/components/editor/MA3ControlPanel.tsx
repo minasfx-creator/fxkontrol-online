@@ -872,7 +872,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
         {/* ═══ BLE Devices Tab ═══ */}
         <TabsContent value="ble" className="flex-1 flex flex-col mt-1">
           <ScrollArea className="flex-1">
-            <BLEDeviceScanner context="light" compact />
+            <EasyConnectPanel context="light" compact />
           </ScrollArea>
         </TabsContent>
       </Tabs>
