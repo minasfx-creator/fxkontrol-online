@@ -369,14 +369,14 @@ export default function Dashboard() {
           <div className="h-[1px] flex-1" style={{ background: 'hsl(32 100% 50% / 0.1)' }} />
           <span className="text-[8px] font-mono text-muted-foreground/30 tracking-wider">TAP TO ENTER</span>
         </div>
-        <div className={cn("grid gap-2", isMobile ? "grid-cols-4" : "grid-cols-7")}>
+        <div className={cn("gap-2", isMobile ? "flex overflow-x-auto pb-2 scrollbar-none" : "grid grid-cols-7")}>
           {CONSOLE_CARDS.map((console, i) => {
             const Icon = console.icon;
             return (
               <button
                 key={console.key}
                 onClick={() => navigate(`/command?mode=${console.key}`)}
-                className="group relative overflow-hidden rounded-lg border p-2.5 text-center transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-[1.08] active:scale-[0.95] animate-fxk-stagger"
+                className={cn("group relative overflow-hidden rounded-lg border p-2.5 text-center transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-[1.08] active:scale-[0.95] animate-fxk-stagger", isMobile && "shrink-0 min-w-[72px]")}
                 style={{
                   animationDelay: `${0.1 + i * 0.04}s`,
                   borderColor: `${console.color}20`,
