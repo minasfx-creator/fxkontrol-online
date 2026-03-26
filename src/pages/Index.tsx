@@ -571,16 +571,17 @@ function Index() {
       </div>
 
       {/* ─── Layer 1: Top Bar (z-50) ─────────────────── */}
-      <CrashRecoveryBanner />
-      <Toolbar onOpenPanel={(id) => handleTogglePanel(id as PanelId)} />
+      <Toolbar onOpenPanel={(id) => handleTogglePanel(id as PanelId)} isMaximized={viewportMaximized} onToggleMaximize={() => setViewportMaximized(v => !v)} />
 
       {/* ─── Layer 2: Right Dock (icon bar, z-40) ──── */}
-      <div className="absolute top-14 right-0 z-40" style={{ bottom: timelineCollapsed ? '32px' : '25vh', transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
-        <PanelTabBar activePanel={activePanel} onTogglePanel={handleTogglePanel} />
-      </div>
+      {!viewportMaximized && (
+        <div className="absolute top-14 right-0 z-40" style={{ bottom: timelineCollapsed ? '32px' : '25vh', transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+          <PanelTabBar activePanel={activePanel} onTogglePanel={handleTogglePanel} />
+        </div>
+      )}
 
       {/* ─── Layer 3: Floating Panel (z-40) ─────────── */}
-      {activePanel && (
+      {activePanel && !viewportMaximized && (
         <div
           className="absolute top-14 right-[52px] z-40 w-[380px] max-w-[30vw]"
           style={{
@@ -606,25 +607,27 @@ function Index() {
       )}
 
       {/* ─── Layer 4: Left Dock (z-40, icons only) ─── */}
-      <div className="absolute top-14 left-0 z-40 w-[44px] flex flex-col items-center py-2 gap-1" style={{ bottom: timelineCollapsed ? '32px' : '25vh', transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)', background: 'rgba(9, 9, 11, 0.50)', backdropFilter: 'blur(8px)', borderRight: '1px solid rgba(255,255,255,0.04)' }}>
-        {[
-          { id: 'effects', icon: '🎆', label: 'Effects' },
-          { id: 'scene', icon: '🎨', label: 'Scene' },
-          { id: 'showsettings', icon: '⚙️', label: 'Settings' },
-        ].map(item => (
-          <button
-            key={item.id}
-            onClick={() => setLeftDockOpen(leftDockOpen === item.id ? null : item.id)}
-            title={item.label}
-            className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm transition-all ${leftDockOpen === item.id ? 'bg-white/10' : 'hover:bg-white/5'}`}
-          >
-            {item.icon}
-          </button>
-        ))}
-      </div>
+      {!viewportMaximized && (
+        <div className="absolute top-14 left-0 z-40 w-[44px] flex flex-col items-center py-2 gap-1" style={{ bottom: timelineCollapsed ? '32px' : '25vh', transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)', background: 'rgba(9, 9, 11, 0.50)', backdropFilter: 'blur(8px)', borderRight: '1px solid rgba(255,255,255,0.04)' }}>
+          {[
+            { id: 'effects', icon: '🎆', label: 'Effects' },
+            { id: 'scene', icon: '🎨', label: 'Scene' },
+            { id: 'showsettings', icon: '⚙️', label: 'Settings' },
+          ].map(item => (
+            <button
+              key={item.id}
+              onClick={() => setLeftDockOpen(leftDockOpen === item.id ? null : item.id)}
+              title={item.label}
+              className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm transition-all ${leftDockOpen === item.id ? 'bg-white/10' : 'hover:bg-white/5'}`}
+            >
+              {item.icon}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ─── Left Dock Floating Panel ──────────────── */}
-      {leftDockOpen && (
+      {leftDockOpen && !viewportMaximized && (
         <div
           className="absolute top-14 left-[44px] z-40 w-[280px]"
           style={{
@@ -652,20 +655,21 @@ function Index() {
       )}
 
       {/* ─── Layer 5: Performance HUD (Bottom-Left) ── */}
-      <PerformanceHUD />
+      {!viewportMaximized && <PerformanceHUD />}
 
       {/* ─── Layer 6: Nav Controls (Bottom-Right) ──── */}
-      <ViewportNavControls />
+      {!viewportMaximized && <ViewportNavControls />}
 
       {/* ─── Layer 7: Timeline (Bottom, full width) ── */}
       <div
         className="absolute bottom-0 left-0 right-0 z-30"
         style={{
-          height: timelineCollapsed ? '32px' : '25vh',
+          height: viewportMaximized ? '0px' : timelineCollapsed ? '32px' : '25vh',
           background: 'rgba(9, 9, 11, 0.90)',
           backdropFilter: 'blur(12px)',
-          borderTop: '1px solid rgba(255,255,255,0.06)',
+          borderTop: viewportMaximized ? 'none' : '1px solid rgba(255,255,255,0.06)',
           transition: 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          overflow: 'hidden',
         }}
       >
         <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
