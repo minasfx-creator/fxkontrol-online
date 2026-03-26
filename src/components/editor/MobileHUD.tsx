@@ -47,6 +47,8 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
   const usbConnected = useUSBDeviceStore(s => s.dmxDevices.length > 0);
   const smpteRunning = useSMPTEStore(s => s.running);
   const { settings } = useShowSettings();
+  const nightMode = useDisplayStore(s => s.nightMode);
+  const setNightMode = useDisplayStore(s => s.setNightMode);
 
   const openGeoSetup = useCallback(() => {
     haptics.tap();
