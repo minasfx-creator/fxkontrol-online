@@ -183,7 +183,7 @@ function LockoutPanel({ fs, mob }: { fs: boolean; mob: boolean }) {
             >
               <span className="font-black" style={{ color: locked ? undefined : RISK_GROUP_COLORS[g] }}>{g}</span>
               <span className={cn("font-normal", fs ? "text-[10px]" : "text-[10px]")}>
-                {locked ? '🔒' : RISK_GROUP_LABELS[g].split(' ')[0]}
+                {locked ? 'LOCKED' : RISK_GROUP_LABELS[g].split(' ')[0]}
               </span>
             </button>
           );
