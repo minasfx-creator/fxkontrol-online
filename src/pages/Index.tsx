@@ -10,6 +10,7 @@ import Toolbar from '@/components/editor/Toolbar';
 import SplashScreen from '@/components/editor/SplashScreen';
 import CrashRecoveryBanner from '@/components/editor/CrashRecoveryBanner';
 import GeoLocationSetup from '@/components/editor/GeoLocationSetup';
+import ViewportTransitionOverlay from '@/components/editor/ViewportTransitionOverlay';
 import EffectLibrary from '@/components/editor/EffectLibrary';
 import AudienceAnalyzerPanel from '@/components/editor/AudienceAnalyzerPanel';
 import IndoorSimPanel from '@/components/editor/IndoorSimPanel';
@@ -644,6 +645,9 @@ function Index() {
 
       {/* ─── Layer 8: GeoLocationSetup (Top-Center) ── */}
       {showGeoSetup && <GeoLocationSetup onClose={() => setShowGeoSetup(false)} />}
+
+      {/* ─── Layer 8b: Viewport Transition Overlay ── */}
+      <ViewportTransitionOverlay />
 
       {/* ─── Layer 9: Overlays & Modals ──────────────── */}
       {showShortcuts && <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />}
