@@ -102,31 +102,33 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
 
     // FireOne modules
     fireone.modules.forEach((mod, addr) => {
+      const isOnline = Date.now() - mod.lastSeen < 15000;
       list.push({
         id: `fo-${addr}`,
         name: `FM-${String(addr).padStart(2, '0')}`,
         transport: 'BLE',
-        status: mod.online ? 'online' : 'offline',
-        rssi: mod.rssi ?? null,
-        battery: mod.batteryV ?? null,
+        status: isOnline ? 'online' : 'offline',
+        rssi: mod.rssiDbm ?? null,
+        battery: mod.batteryVoltage ?? null,
         latencyMs: null,
         channels: 32,
-        cdsOk: mod.cdsOk ?? null,
+        cdsOk: mod.igniters?.some(ig => ig.continuityOk) ?? null,
         type: 'MOD',
       });
     });
 
     // PBUS devices
     pbus.devices.forEach((dev, addr) => {
+      const isOnline = Date.now() - dev.lastSeen < 15000;
       list.push({
         id: `pb-${addr}`,
-        name: dev.name || `PBUS-${addr}`,
+        name: `PBUS-${addr}`,
         transport: 'PBUS',
-        status: dev.online ? 'online' : 'offline',
+        status: isOnline ? 'online' : 'offline',
         rssi: null,
         battery: dev.batteryV ?? null,
         latencyMs: null,
-        channels: 16,
+        channels: dev.channels,
         cdsOk: null,
         type: 'SLV',
       });
