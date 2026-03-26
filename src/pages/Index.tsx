@@ -629,7 +629,7 @@ function Index() {
       )}
 
       {/* ─── Layer 6: Nav Controls (Bottom-Right) ──── */}
-      {!viewportMaximized && <ViewportNavControls />}
+      {!viewportMaximized && <ViewportNavControls collapsed={timelineCollapsed} />}
 
       {/* ─── Layer 7: Timeline (Bottom, full width) ── */}
       <div
