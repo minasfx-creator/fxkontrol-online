@@ -14,6 +14,7 @@ import {
   Settings, Shield,
 } from 'lucide-react';
 import { useAdminRole } from '@/hooks/useAdminRole';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 
 interface DockItem {
@@ -40,6 +41,7 @@ export default function DockBar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAdmin } = useAdminRole();
+  const isMobile = useIsMobile();
   const dockRef = useRef<HTMLDivElement>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [tilt, setTilt] = useState({ rotateX: 0, rotateY: 0 });
