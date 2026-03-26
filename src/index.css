@@ -867,6 +867,29 @@ button:active {
   will-change: transform;
 }
 
+/* Joi hologram avatar keyframes */
+@keyframes joi-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.25; }
+  50% { transform: scale(1.04); opacity: 0.4; }
+}
+@keyframes joi-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.08); opacity: 0.7; }
+}
+@keyframes joi-flicker {
+  0%, 100% { opacity: 0.8; }
+  30% { opacity: 0.75; }
+  50% { opacity: 0.85; }
+  70% { opacity: 0.7; }
+  90% { opacity: 0.82; }
+}
+@keyframes joi-scanline {
+  0% { top: -2px; opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.6; }
+  100% { top: 100%; opacity: 0; }
+}
+
 /* ===== BR2049 Scanline Sweep ===== */
 @keyframes scanlineSweep {
   0% { transform: translateY(-100%); }
