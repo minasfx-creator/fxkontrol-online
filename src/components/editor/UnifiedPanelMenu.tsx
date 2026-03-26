@@ -90,31 +90,35 @@ export default function UnifiedPanelMenu({
       "flex flex-col h-full",
       isSheet && "pb-safe",
     )}>
-      {/* Header */}
+      {/* Header — Apple-style search bar */}
       <div className={cn(
         "flex items-center gap-2 px-4 shrink-0",
-        isSheet ? "pt-2 pb-3" : "pt-3 pb-2",
+        isSheet ? "pt-3 pb-3" : "pt-3 pb-2",
       )}>
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/30" />
           <input
             type="text"
             placeholder="Buscar painel..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className={cn(
-              "w-full pl-10 pr-4 text-sm rounded-xl bg-muted/30 text-foreground placeholder:text-muted-foreground/40 outline-none border-0 transition-all",
-              "focus:ring-2 focus:ring-primary/20 focus:bg-muted/50",
-              isSheet ? "h-10" : "h-9",
+              "w-full pl-10 pr-4 text-sm rounded-2xl text-foreground placeholder:text-muted-foreground/35 outline-none border-0 transition-all",
+              "focus:ring-2 focus:ring-primary/15",
+              isSheet ? "h-11" : "h-9",
             )}
+            style={{
+              background: 'rgba(255, 255, 255, 0.04)',
+            }}
           />
         </div>
         {onDismiss && (
           <button
             onClick={onDismiss}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-muted/30 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all shrink-0"
+            className="w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground/50 hover:text-foreground transition-all shrink-0 active:scale-90"
+            style={{ background: 'rgba(255, 255, 255, 0.06)' }}
           >
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
