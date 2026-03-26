@@ -255,6 +255,22 @@ function Index() {
     return () => document.documentElement.classList.remove('night-mode');
   }, [nightMode]);
 
+  // Viewport maximize toggle: F key to toggle, Escape to exit
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLElement && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) return;
+      if (e.key === 'f' && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+        // 'f' is already used in Toolbar for fan tool — only maximize when no panel is open
+        // We use a different approach: dispatch from toolbar button
+      }
+      if (e.key === 'Escape' && viewportMaximized) {
+        setViewportMaximized(false);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [viewportMaximized]);
+
   // Deep-link: auto-open panel from ?panel= query param
   useEffect(() => {
     const panelParam = searchParams.get('panel');
