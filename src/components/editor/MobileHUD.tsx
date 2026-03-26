@@ -3,7 +3,7 @@
  * Clean, minimal, high-information density for show operators.
  */
 import { useState, useCallback, useMemo } from 'react';
-import { Play, Pause, Square, Menu, AlertOctagon, Zap, ShieldAlert, Radio } from 'lucide-react';
+import { Play, Pause, Square, Menu, AlertOctagon, Zap, ShieldAlert, MapPin } from 'lucide-react';
 import { haptics } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -41,11 +41,17 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
   const isPlaying = useProjectStore(s => s.isPlaying);
   const setPlaying = useProjectStore(s => s.setPlaying);
   const setCurrentTime = useProjectStore(s => s.setCurrentTime);
+  const gpsOrigin = useProjectStore(s => s.gpsOrigin);
   const activeEffects = useLiveSfxStore(s => s.activeEffects);
   const clearAll = useLiveSfxStore(s => s.clearAll);
   const usbConnected = useUSBDeviceStore(s => s.dmxDevices.length > 0);
   const smpteRunning = useSMPTEStore(s => s.running);
   const { settings } = useShowSettings();
+
+  const openGeoSetup = useCallback(() => {
+    haptics.tap();
+    window.dispatchEvent(new Event('open-geo-setup'));
+  }, []);
   const isArmed = activeEffects.length > 0;
 
   const countdown = useMemo(() => getCountdown(settings?.show_date ?? null), [settings?.show_date]);
@@ -59,6 +65,17 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+      {/* Location quick-access pill */}
+      <button
+        onClick={openGeoSetup}
+        className="pointer-events-auto absolute top-14 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[hsl(var(--surface-0)/0.85)] backdrop-blur-xl border border-[hsl(var(--border)/0.2)] shadow-lg active:scale-95 transition-transform"
+      >
+        <MapPin className="w-3.5 h-3.5 text-[hsl(var(--safety))]" />
+        <span className="text-[10px] font-mono text-[hsl(var(--foreground)/0.8)] tracking-tight">
+          {gpsOrigin.lat.toFixed(4)}°, {gpsOrigin.lng.toFixed(4)}°
+        </span>
+      </button>
+
       <div className="flex items-center justify-between px-3 pt-2 pb-1 mx-3 mt-1">
         {/* Left: Timecode pill (Dynamic Island style) */}
         <div className={cn(
