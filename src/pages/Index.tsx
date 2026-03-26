@@ -107,6 +107,7 @@ import UnifiedPanelMenu from '@/components/editor/UnifiedPanelMenu';
 import MobileHUD from '@/components/editor/MobileHUD';
 import MobileQuickActions from '@/components/editor/MobileQuickActions';
 import LiveModeOverlay from '@/components/editor/LiveModeOverlay';
+import MobileConsoleFullscreen from '@/components/editor/MobileConsoleFullscreen';
 import { useDisplayStore } from '@/store/useDisplayStore';
 import StockAlertsBadge from '@/components/editor/StockAlertsBadge';
 import { X } from 'lucide-react';
