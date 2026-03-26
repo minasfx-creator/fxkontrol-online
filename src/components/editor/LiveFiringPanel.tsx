@@ -1435,7 +1435,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
       >
         {/* Self-contained sub-panels: skip ALL outer chrome (scenes, tabs, arm, panic) */}
         {isSelfContainedMode(mode) ? (
-          <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
+          <div className="flex-1 min-h-0 overflow-hidden">{renderModeContent(true)}</div>
         ) : (
           <>
             {renderStatusBar(true)}
@@ -1464,7 +1464,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
     <div className={cn("h-full flex flex-col overflow-hidden select-none", standalone && "ff-standalone-panel")} style={{ minWidth: standalone ? undefined : 300, maxWidth: standalone ? undefined : 380, background: standalone ? 'transparent' : 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 5%) 100%)' }}>
       {/* Self-contained sub-panels: skip ALL outer chrome */}
       {isSelfContainedMode(mode) ? (
-        <div className="flex-1 overflow-auto">{renderModeContent(desktopFs)}</div>
+        <div className="flex-1 min-h-0 overflow-hidden">{renderModeContent(desktopFs)}</div>
       ) : (
         <>
           {renderStatusBar(desktopFs)}

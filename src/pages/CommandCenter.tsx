@@ -517,7 +517,7 @@ export default function CommandCenter() {
   const isNativeFireConsole = isFireMode(activeMode);
 
   return (
-    <div className="h-full flex overflow-hidden pb-14">
+    <div className={cn("h-full flex overflow-hidden", !isNativeFireConsole && "pb-14")}>
       {/* Sidebar — Apple glassmorphism dock */}
       <div
         className={cn(
