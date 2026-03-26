@@ -107,6 +107,7 @@ import UnifiedPanelMenu from '@/components/editor/UnifiedPanelMenu';
 import MobileHUD from '@/components/editor/MobileHUD';
 import MobileQuickActions from '@/components/editor/MobileQuickActions';
 import LiveModeOverlay from '@/components/editor/LiveModeOverlay';
+import MobileConsoleFullscreen from '@/components/editor/MobileConsoleFullscreen';
 import { useDisplayStore } from '@/store/useDisplayStore';
 import StockAlertsBadge from '@/components/editor/StockAlertsBadge';
 import { X } from 'lucide-react';
@@ -431,12 +432,21 @@ function Index() {
     );
   };
 
+  // Console panels that open fullscreen landscape on mobile
+  const CONSOLE_PANELS = new Set<PanelId>([
+    'livefiring', 'controllers', 'dmx', 'showcommander', 'showcontrol',
+    'dmxoutput', 'ma3', 'sacnmonitor', 'radio', 'remotecontrol',
+    'fleet', 'telemetry', 'diagnostic', 'fieldmap',
+  ]);
+
+  const isConsolePanel = activePanel && CONSOLE_PANELS.has(activePanel);
+
   // ═══ MOBILE LAYOUT ═══
   if (isMobile) {
     const handleDismissPanel = () => { setMobileTab(null); setMobilePanelHeight('collapsed'); };
     if (operationMode === 'live') {
       return (
-        <div className="h-[100dvh] w-screen relative overflow-hidden bg-zinc-950">
+        <div className="h-[100dvh] w-screen relative overflow-hidden bg-background">
           <div className="absolute inset-0">
             <CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas /></Suspense></CanvasErrorBoundary>
           </div>
@@ -445,7 +455,7 @@ function Index() {
       );
     }
     return (
-      <div className="h-[100dvh] w-screen relative overflow-hidden bg-zinc-950">
+      <div className="h-[100dvh] w-screen relative overflow-hidden bg-background">
         <div className="absolute inset-0">
           <CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas /></Suspense></CanvasErrorBoundary>
           <BoxSelectOverlay />
@@ -457,13 +467,26 @@ function Index() {
           {mobileTab === 'assets' && <EffectLibrary />}
           {mobileTab === 'properties' && <PropertiesPanel />}
           {mobileTab === 'more' && <UnifiedPanelMenu activePanel={activePanel} onSelectPanel={(id) => { handleMobileOpenPanel(id); setMobileTab(null); setMobilePanelHeight('full'); }} variant="sheet" onDismiss={handleDismissPanel} />}
-          {mobileTab && !['timeline', 'assets', 'properties', 'more'].includes(mobileTab) && activePanel && <div className="h-full overflow-y-auto">{renderPanelContent()}</div>}
+          {mobileTab && !['timeline', 'assets', 'properties', 'more'].includes(mobileTab) && activePanel && !isConsolePanel && <div className="h-full overflow-y-auto">{renderPanelContent()}</div>}
         </MobileFloatingPanel>
-        {activePanel && mobileTab === null && mobilePanelHeight !== 'collapsed' && (
+
+        {/* Regular panels in floating sheet */}
+        {activePanel && !isConsolePanel && mobileTab === null && mobilePanelHeight !== 'collapsed' && (
           <MobileFloatingPanel activeTab={'more' as MobileTab} height={mobilePanelHeight} onHeightChange={setMobilePanelHeight} onDismiss={handleDismissPanel}>
             <div className="h-full overflow-y-auto">{renderPanelContent()}</div>
           </MobileFloatingPanel>
         )}
+
+        {/* Console panels open fullscreen landscape */}
+        {isConsolePanel && (
+          <MobileConsoleFullscreen
+            title={activePanel}
+            onClose={() => { setActivePanel(null); setMobilePanelHeight('collapsed'); }}
+          >
+            {renderPanelContent()}
+          </MobileConsoleFullscreen>
+        )}
+
         <MobileTabBar activeTab={mobileTab} onTabChange={setMobileTab} onOpenPanel={(id) => handleTogglePanel(id as PanelId)} panelHeight={mobilePanelHeight} onPanelHeightChange={setMobilePanelHeight} />
         <PositionContextMenu />
       </div>
