@@ -173,9 +173,9 @@ function getDropType(ext: string): 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset'
 }
 
 /* ── Nav Controls (Bottom-Right) ─────────────────────────────── */
-function ViewportNavControls() {
+function ViewportNavControls({ collapsed }: { collapsed?: boolean }) {
   return (
-    <div className="absolute right-3 z-30 flex flex-col gap-1" style={{ bottom: timelineCollapsed ? '40px' : 'calc(25vh + 8px)', transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+    <div className="absolute right-3 z-30 flex flex-col gap-1" style={{ bottom: collapsed ? '40px' : 'calc(25vh + 8px)', transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
       {[
         { icon: ZoomIn, title: 'Zoom In', action: () => window.dispatchEvent(new CustomEvent('viewport-zoom', { detail: 1 })) },
         { icon: ZoomOut, title: 'Zoom Out', action: () => window.dispatchEvent(new CustomEvent('viewport-zoom', { detail: -1 })) },
