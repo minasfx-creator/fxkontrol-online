@@ -183,7 +183,7 @@ function LockoutPanel({ fs, mob }: { fs: boolean; mob: boolean }) {
             >
               <span className="font-black" style={{ color: locked ? undefined : RISK_GROUP_COLORS[g] }}>{g}</span>
               <span className={cn("font-normal", fs ? "text-[10px]" : "text-[10px]")}>
-                {locked ? '🔒' : RISK_GROUP_LABELS[g].split(' ')[0]}
+                {locked ? 'LOCKED' : RISK_GROUP_LABELS[g].split(' ')[0]}
               </span>
             </button>
           );
@@ -191,7 +191,7 @@ function LockoutPanel({ fs, mob }: { fs: boolean; mob: boolean }) {
       </div>
       {activeLockouts.length > 0 && (
         <div className={cn("text-center font-bold text-red-400/70 uppercase mt-1", fs ? "text-[10px]" : "text-[10px]")}>
-          ⛔ {activeLockouts.length} group{activeLockouts.length > 1 ? 's' : ''} locked out
+          {activeLockouts.length} GROUP{activeLockouts.length > 1 ? 'S' : ''} LOCKED OUT
         </div>
       )}
     </div>
@@ -449,7 +449,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   }, [cues, channels, setChannels]);
 
   // ─── Swipe gesture for mobile mode switching / close ───
-  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'check_slave', 'ble_scan', 'controllers', 'pbus', 'field_map', 'connections', 'wifi_direct', 'radio', 'ma3', 'artnet_modules', 'mobile_link', 'settings'];
+  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'check_slave', 'ble_scan', 'controllers', 'pbus', 'field_map', 'connections', 'radio', 'ma3', 'artnet_modules', 'mobile_link', 'settings'];
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const swipeHandled = useRef(false);
 
@@ -953,7 +953,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
           fs && mob ? "px-3 py-1 text-[10px] tracking-[0.25em]" : fs ? "px-4 py-1.5 text-xs tracking-[0.3em]" : "px-2 py-0.5 text-[10px] tracking-[0.25em]",
           pyroArm && dmxArm ? "text-red-400" : pyroArm ? "text-red-400" : "text-amber-400"
         )} style={{ background: pyroArm ? 'hsl(0 50% 8%)' : 'hsl(40 40% 8%)' }}>
-          {pyroArm && dmxArm ? '⚠ DMX + PYRO ARMED ⚠' : pyroArm ? '⚠ PYRO ARMED ⚠' : 'DMX ARMED'}
+          {pyroArm && dmxArm ? 'DMX + PYRO ARMED' : pyroArm ? 'PYRO ARMED' : 'DMX ARMED'}
         </div>
       )}
       {(pyroArm) && (
@@ -1098,7 +1098,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
       <div className={cn("flex items-center justify-between border-t border-border/10", fs && mob ? "px-3 py-1.5" : fs ? "px-6 py-2" : "px-2 py-1")}>
         <div className="flex items-center gap-2">
           <span className={cn("font-mono text-muted-foreground/30", fs && mob ? "text-[10px]" : fs ? "text-[9px]" : "text-[10px]")}>{channels.length}CH · {armedCount}RDY</span>
-          {firingCount > 0 && <span className={cn("font-mono text-red-400 font-bold animate-pulse", fs ? "text-[9px]" : "text-[10px]")}>🔥 {firingCount}</span>}
+          {firingCount > 0 && <span className={cn("font-mono text-red-400 font-bold animate-pulse", fs ? "text-[9px]" : "text-[10px]")}>FIRE {firingCount}</span>}
         </div>
         <div className="flex items-center gap-1.5">
           {fireone.isConnected && <span className={cn("font-mono text-[10px]", fs ? "text-[10px]" : "")}>
@@ -1121,7 +1121,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
         <span className={cn("font-bold text-muted-foreground/50 uppercase tracking-wider", fs ? "text-[10px]" : "text-[8px]")}>Device List</span>
         <div className="flex items-center gap-2">
           <span className={cn("font-mono text-muted-foreground/30", fs ? "text-[9px]" : "text-[8px]")}>{enabledCount}/{channels.length}</span>
-          {firingCount > 0 && <span className={cn("font-mono text-red-400 font-bold animate-pulse", fs ? "text-[9px]" : "text-[8px]")}>🔥 {firingCount}</span>}
+          {firingCount > 0 && <span className={cn("font-mono text-red-400 font-bold animate-pulse", fs ? "text-[9px]" : "text-[8px]")}>FIRE {firingCount}</span>}
         </div>
       </div>
       <div className={cn("overflow-y-auto", fs ? "max-h-[300px]" : "max-h-[140px]")}>
@@ -1431,12 +1431,9 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
           paddingBottom: mob ? 'max(env(safe-area-inset-bottom), 8px)' : undefined,
         }}
       >
-        {/* Skip outer chrome for self-contained sub-panels */}
+        {/* Self-contained sub-panels: skip ALL outer chrome (scenes, tabs, arm, panic) */}
         {['pyro_fire', 'fxk_light', 'ma3', 'show_control', 'dmx_monitor', 'drone_ops'].includes(mode) ? (
-          <>
-            {renderSceneModeBar(true)}
-            <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
-          </>
+          <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
         ) : (
           <>
             {renderStatusBar(true)}
@@ -1463,12 +1460,9 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
 
   return (
     <div className={cn("h-full flex flex-col overflow-hidden select-none", standalone && "ff-standalone-panel")} style={{ minWidth: standalone ? undefined : 300, maxWidth: standalone ? undefined : 380, background: standalone ? 'transparent' : 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 5%) 100%)' }}>
-      {/* Skip outer chrome for self-contained sub-panels */}
+      {/* Self-contained sub-panels: skip ALL outer chrome */}
       {['pyro_fire', 'fxk_light', 'ma3', 'show_control', 'dmx_monitor', 'drone_ops'].includes(mode) ? (
-        <>
-          {renderSceneModeBar(false)}
-          <ScrollArea className="flex-1">{renderModeContent(false)}</ScrollArea>
-        </>
+        <ScrollArea className="flex-1">{renderModeContent(false)}</ScrollArea>
       ) : (
         <>
           {renderStatusBar(false)}
