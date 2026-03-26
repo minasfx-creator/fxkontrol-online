@@ -424,6 +424,7 @@ function Index() {
         {activePanel === 'radio' && <RadioControlPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'ma3' && <MA3ControlPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'sacnmonitor' && <SACNMonitorPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'easyconnect' && <EasyConnectPanel onClose={() => setActivePanel(null)} />}
       </>
     );
   };
