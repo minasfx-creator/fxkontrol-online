@@ -1424,6 +1424,9 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   // ═══════════════════════════════════════════════════════════
   // FULLSCREEN LAYOUT
   // ═══════════════════════════════════════════════════════════
+  // Desktop standalone uses fs=true for full-size rendering
+  const desktopFs = standalone && !mob;
+
   if (isFullscreen) {
     const fullscreenContent = (
       <div
@@ -1470,15 +1473,15 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
     <div className={cn("h-full flex flex-col overflow-hidden select-none", standalone && "ff-standalone-panel")} style={{ minWidth: standalone ? undefined : 300, maxWidth: standalone ? undefined : 380, background: standalone ? 'transparent' : 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 5%) 100%)' }}>
       {/* Self-contained sub-panels: skip ALL outer chrome */}
       {isSelfContainedMode(mode) ? (
-        <ScrollArea className="flex-1">{renderModeContent(false)}</ScrollArea>
+        <div className="flex-1 overflow-auto">{renderModeContent(desktopFs)}</div>
       ) : (
         <>
-          {renderStatusBar(false)}
-          {renderArmBar(false)}
-          {renderCueKeys(false)}
-          {renderSceneModeBar(false)}
-          <ScrollArea className="flex-1">{renderModeContent(false)}</ScrollArea>
-          {renderPanic(false)}
+          {renderStatusBar(desktopFs)}
+          {renderArmBar(desktopFs)}
+          {renderCueKeys(desktopFs)}
+          {renderSceneModeBar(desktopFs)}
+          <ScrollArea className="flex-1">{renderModeContent(desktopFs)}</ScrollArea>
+          {renderPanic(desktopFs)}
         </>
       )}
     </div>
