@@ -275,13 +275,13 @@ export default function CommandCenter() {
             <div className="ff-hud-bracket bottom-1 left-1 w-5 h-5 border-b-[3px] border-l-[3px]" style={{ borderColor: `${accent.color}40` }} />
             <div className="ff-hud-bracket bottom-1 right-1 w-5 h-5 border-b-[3px] border-r-[3px]" style={{ borderColor: `${accent.color}40` }} />
 
-            <FullscreenablePanel title={accent.label}>
-              {isFireMode(activeMode) ? (
-                <LiveFiringPanel initialMode={activeMode} standalone />
-              ) : (
+            {isFireMode(activeMode) ? (
+              <LiveFiringPanel key={`mobile-landscape-${activeMode}`} initialMode={activeMode} standalone />
+            ) : (
+              <FullscreenablePanel title={accent.label}>
                 <div className="h-full surface-0">{renderDirectPanel(activeMode)}</div>
-              )}
-            </FullscreenablePanel>
+              </FullscreenablePanel>
+            )}
 
             {/* ═══ Tactical Minimap (bottom-left) ═══ */}
             <TacticalMinimap accentColor={accent.color} width={100} height={80} />
@@ -432,7 +432,7 @@ export default function CommandCenter() {
         {/* Content — full bleed */}
         <div className="flex-1 overflow-hidden min-h-0" style={{ paddingBottom: '64px' }}>
           {isFireMode(activeMode) ? (
-            <LiveFiringPanel initialMode={activeMode} standalone />
+            <LiveFiringPanel key={`mobile-portrait-${activeMode}`} initialMode={activeMode} standalone />
           ) : (
             <ScrollArea className="h-full">
               <div className="h-full surface-0">{renderDirectPanel(activeMode)}</div>
@@ -738,7 +738,7 @@ export default function CommandCenter() {
           )}
 
           {isNativeFireConsole ? (
-            <LiveFiringPanel initialMode={activeMode} standalone />
+            <LiveFiringPanel key={`desktop-${activeMode}`} initialMode={activeMode} standalone />
           ) : (
             <FullscreenablePanel title={accent.label}>
               <ScrollArea className="h-full">
