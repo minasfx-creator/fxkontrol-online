@@ -34,8 +34,80 @@ import { exportVVIZ, exportFiringCSV, exportSkyc, downloadFile } from '@/lib/exp
 import LanguageSwitcher from './LanguageSwitcher';
 import FullscreenCommandMenu from './FullscreenCommandMenu';
 import ExportModal from './ExportModal';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
+import { usePBusHardware } from '@/hooks/usePBusHardware';
+import { artnetModuleService } from '@/services/artnetModuleService';
 
-/* ── Timecode Display ───────────────────────────────────────────── */
+/* ── Hardware Status Dots (live feedback) ──────────────────────── */
+function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => void }) {
+  const fireone = useFireOneHardware();
+  const pbus = usePBusHardware();
+  const [artnetCount, setArtnetCount] = useState(0);
+  const [artnetConnected, setArtnetConnected] = useState(0);
+
+  useEffect(() => {
+    const update = () => {
+      const ctrl = artnetModuleService.getController();
+      if (ctrl) {
+        setArtnetCount(ctrl.modules.length);
+        setArtnetConnected(ctrl.modules.filter(m => artnetModuleService.getModuleState(m.id) === 'connected').length);
+      } else {
+        setArtnetCount(0);
+        setArtnetConnected(0);
+      }
+    };
+    update();
+    const unsub = artnetModuleService.subscribe(() => update());
+    return () => unsub();
+  }, []);
+
+  const foConnected = fireone.isConnected || fireone.modules.size > 0;
+  const foScanning = fireone.scanning;
+  const foCount = fireone.modules.size;
+
+  const pbConnected = pbus.isConnected || pbus.devices.size > 0;
+  const pbScanning = pbus.scanning;
+  const pbCount = pbus.devices.size;
+
+  const maConnected = artnetConnected > 0;
+
+  const getDotClass = (connected: boolean, scanning: boolean) => {
+    if (connected) return 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]';
+    if (scanning) return 'bg-amber-400 animate-pulse shadow-[0_0_6px_rgba(251,191,36,0.4)]';
+    return 'bg-zinc-700 border border-white/10';
+  };
+
+  const getTextClass = (connected: boolean, scanning: boolean) => {
+    if (connected) return 'text-emerald-400';
+    if (scanning) return 'text-amber-400';
+    return 'text-zinc-600';
+  };
+
+  return (
+    <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-black/30 border border-white/5">
+      <button onClick={() => onOpenPanel?.('easyconnect')} className="flex items-center gap-0.5 group" title="FireOne">
+        <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(foConnected, foScanning))} />
+        <span className={cn("text-[7px] font-mono group-hover:text-zinc-300 transition-colors", getTextClass(foConnected, foScanning))}>
+          FO{foCount > 0 && ` ${foCount}`}
+        </span>
+      </button>
+      <button onClick={() => onOpenPanel?.('easyconnect')} className="flex items-center gap-0.5 group" title="PBUS">
+        <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(pbConnected, pbScanning))} />
+        <span className={cn("text-[7px] font-mono group-hover:text-zinc-300 transition-colors", getTextClass(pbConnected, pbScanning))}>
+          PB{pbCount > 0 && ` ${pbCount}`}
+        </span>
+      </button>
+      <button onClick={() => onOpenPanel?.('easyconnect')} className="flex items-center gap-0.5 group" title="Art-Net/MA3">
+        <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(maConnected, false))} />
+        <span className={cn("text-[7px] font-mono group-hover:text-zinc-300 transition-colors", getTextClass(maConnected, false))}>
+          MA{artnetConnected > 0 && ` ${artnetConnected}`}
+        </span>
+      </button>
+    </div>
+  );
+}
+
+
 function TimecodeDisplay() {
   const { currentTime, isPlaying } = useProjectStore();
   const { frameRate, startTimecodeSeconds, locked, running } = useSMPTEStore();
