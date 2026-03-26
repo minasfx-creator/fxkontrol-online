@@ -499,6 +499,8 @@ export default function CommandCenter() {
   // ══════════════════════════════════════════════
   // DESKTOP LAYOUT
   // ══════════════════════════════════════════════
+  const isNativeFireConsole = isFireMode(activeMode);
+
   return (
     <div className="h-full flex overflow-hidden pb-14">
       {/* Sidebar — Apple glassmorphism dock */}
@@ -587,14 +589,12 @@ export default function CommandCenter() {
                         } : undefined}
                         title={sidebarCollapsed ? mode.label : undefined}
                       >
-                        {/* Active indicator — pill style */}
                         {isActive && (
                           <div className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full transition-all duration-500" style={{
                             backgroundColor: mAccent?.color,
                             boxShadow: `0 0 8px ${mAccent?.color}60`,
                           }} />
                         )}
-                        {/* Hover glow */}
                         {!isActive && (
                           <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                             style={{ background: `linear-gradient(135deg, ${mAccent?.glow}50, transparent)` }} />
@@ -656,56 +656,54 @@ export default function CommandCenter() {
           animation: 'scanlineSweep 8s linear infinite',
         }} />
 
-        {/* Breadcrumb — Apple frosted glass bar with HUD brackets */}
-        <div
-          className="h-12 shrink-0 flex items-center justify-between px-5 border-b relative overflow-hidden"
-          style={{
-            background: 'rgba(8, 10, 14, 0.92)',
-            backdropFilter: 'blur(48px) saturate(1.8)',
-            WebkitBackdropFilter: 'blur(48px) saturate(1.8)',
-            borderColor: 'rgba(255, 255, 255, 0.04)',
-          }}
-        >
-          {/* Ambient accent glow line */}
-          <div className="absolute bottom-0 left-0 right-0 h-[2px]" style={{
-            background: `linear-gradient(90deg, ${accent.color}40, ${accent.color}10 40%, transparent 70%)`,
-            boxShadow: `0 0 12px ${accent.color}15`,
-          }} />
-          {/* HUD corner brackets — top left */}
-          <div className="absolute top-1 left-2 w-4 h-4 pointer-events-none" style={{
-            borderLeft: `2px solid ${accent.color}30`,
-            borderTop: `2px solid ${accent.color}30`,
-          }} />
-          {/* HUD corner brackets — top right */}
-          <div className="absolute top-1 right-2 w-4 h-4 pointer-events-none" style={{
-            borderRight: `2px solid ${accent.color}30`,
-            borderTop: `2px solid ${accent.color}30`,
-          }} />
+        {!isNativeFireConsole && (
+          <div
+            className="h-12 shrink-0 flex items-center justify-between px-5 border-b relative overflow-hidden"
+            style={{
+              background: 'rgba(8, 10, 14, 0.92)',
+              backdropFilter: 'blur(48px) saturate(1.8)',
+              WebkitBackdropFilter: 'blur(48px) saturate(1.8)',
+              borderColor: 'rgba(255, 255, 255, 0.04)',
+            }}
+          >
+            <div className="absolute bottom-0 left-0 right-0 h-[2px]" style={{
+              background: `linear-gradient(90deg, ${accent.color}40, ${accent.color}10 40%, transparent 70%)`,
+              boxShadow: `0 0 12px ${accent.color}15`,
+            }} />
+            <div className="absolute top-1 left-2 w-4 h-4 pointer-events-none" style={{
+              borderLeft: `2px solid ${accent.color}30`,
+              borderTop: `2px solid ${accent.color}30`,
+            }} />
+            <div className="absolute top-1 right-2 w-4 h-4 pointer-events-none" style={{
+              borderRight: `2px solid ${accent.color}30`,
+              borderTop: `2px solid ${accent.color}30`,
+            }} />
 
-          <div className="flex items-center gap-3">
-            {(() => { const L = CONSOLE_LOGOS[activeMode]; return L ? <L size={26} active /> : null; })()}
-            <Badge variant="outline" className={cn("text-[7px] h-5 px-2.5 font-black border font-mono tracking-[0.15em] rounded-md", accent.badge)}>
-              {accent.label}
-            </Badge>
-            <div className="h-3.5 w-[1px] rounded-full" style={{ background: 'hsl(var(--primary) / 0.08)' }} />
-            <span className="text-[7px] text-muted-foreground/25 font-mono tracking-[0.15em]">
-              {accent.subtitle}
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-[9px] font-mono font-bold" style={{ color: 'hsl(32 100% 55%)', textShadow: '0 0 8px hsl(32 100% 50% / 0.25)' }}>{missionClock}</span>
-            {isArmed && (
-              <Badge variant="destructive" className="text-[7px] h-5 animate-pulse font-mono tracking-wider rounded-md">
-                ARMED // {activeEffects.length}
+            <div className="flex items-center gap-3">
+              {(() => { const L = CONSOLE_LOGOS[activeMode]; return L ? <L size={26} active /> : null; })()}
+              <Badge variant="outline" className={cn("text-[7px] h-5 px-2.5 font-black border font-mono tracking-[0.15em] rounded-md", accent.badge)}>
+                {accent.label}
               </Badge>
-            )}
-            {connectedCount > 0 && (
-              <Badge variant="outline" className="text-[7px] h-5 border-primary/10 text-primary/70 font-mono tracking-wider rounded-md">
-                {connectedCount} ONLINE
-              </Badge>
-            )}
+              <div className="h-3.5 w-[1px] rounded-full" style={{ background: 'hsl(var(--primary) / 0.08)' }} />
+              <span className="text-[7px] text-muted-foreground/25 font-mono tracking-[0.15em]">
+                {accent.subtitle}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-[9px] font-mono font-bold" style={{ color: 'hsl(32 100% 55%)', textShadow: '0 0 8px hsl(32 100% 50% / 0.25)' }}>{missionClock}</span>
+              {isArmed && (
+                <Badge variant="destructive" className="text-[7px] h-5 animate-pulse font-mono tracking-wider rounded-md">
+                  ARMED // {activeEffects.length}
+                </Badge>
+              )}
+              {connectedCount > 0 && (
+                <Badge variant="outline" className="text-[7px] h-5 border-primary/10 text-primary/70 font-mono tracking-wider rounded-md">
+                  {connectedCount} ONLINE
+                </Badge>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Content with ambient console glow */}
         <div
@@ -718,25 +716,28 @@ export default function CommandCenter() {
             background: `radial-gradient(ellipse at 20% 0%, ${accent.glow} 0%, transparent 60%)`,
           }}
         >
-          {/* HUD corner brackets — content area */}
-          <div className="absolute top-2 left-3 w-5 h-5 pointer-events-none z-[3]" style={{
-            borderLeft: `1px solid ${accent.color}18`,
-            borderTop: `1px solid ${accent.color}18`,
-          }} />
-          <div className="absolute top-2 right-3 w-5 h-5 pointer-events-none z-[3]" style={{
-            borderRight: `1px solid ${accent.color}18`,
-            borderTop: `1px solid ${accent.color}18`,
-          }} />
-          <div className="absolute bottom-2 left-3 w-5 h-5 pointer-events-none z-[3]" style={{
-            borderLeft: `1px solid ${accent.color}18`,
-            borderBottom: `1px solid ${accent.color}18`,
-          }} />
-          <div className="absolute bottom-2 right-3 w-5 h-5 pointer-events-none z-[3]" style={{
-            borderRight: `1px solid ${accent.color}18`,
-            borderBottom: `1px solid ${accent.color}18`,
-          }} />
+          {!isNativeFireConsole && (
+            <>
+              <div className="absolute top-2 left-3 w-5 h-5 pointer-events-none z-[3]" style={{
+                borderLeft: `1px solid ${accent.color}18`,
+                borderTop: `1px solid ${accent.color}18`,
+              }} />
+              <div className="absolute top-2 right-3 w-5 h-5 pointer-events-none z-[3]" style={{
+                borderRight: `1px solid ${accent.color}18`,
+                borderTop: `1px solid ${accent.color}18`,
+              }} />
+              <div className="absolute bottom-2 left-3 w-5 h-5 pointer-events-none z-[3]" style={{
+                borderLeft: `1px solid ${accent.color}18`,
+                borderBottom: `1px solid ${accent.color}18`,
+              }} />
+              <div className="absolute bottom-2 right-3 w-5 h-5 pointer-events-none z-[3]" style={{
+                borderRight: `1px solid ${accent.color}18`,
+                borderBottom: `1px solid ${accent.color}18`,
+              }} />
+            </>
+          )}
 
-          {isFireMode(activeMode) ? (
+          {isNativeFireConsole ? (
             <LiveFiringPanel initialMode={activeMode} standalone />
           ) : (
             <FullscreenablePanel title={accent.label}>
