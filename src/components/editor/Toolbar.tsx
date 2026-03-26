@@ -8,6 +8,7 @@ import { Zap, Save, FolderOpen, Undo, Redo, Upload, FileJson, FilePlus, Download
 import fxkLogo from '@/assets/fxk-logo.png';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useDisplayStore } from '@/store/useDisplayStore';
 import { useUndoStore } from '@/store/useUndoStore';
 import { useSMPTEStore } from '@/store/useSMPTEStore';
 import { useAuth } from '@/hooks/useAuth';
@@ -452,6 +453,9 @@ export default function Toolbar({ onOpenPanel }: ToolbarProps) {
 
         {!isMobile && (
           <>
+            {/* Night Mode Toggle */}
+            <NightModeToggle />
+
             {/* Command Center */}
             <button onClick={() => setCommandMenuOpen(true)} className="h-7 px-2.5 flex items-center gap-1.5 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-all text-[10px] font-semibold uppercase tracking-wider" title="⌘K">
               <Command className="h-3 w-3" />
