@@ -41,11 +41,17 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
   const isPlaying = useProjectStore(s => s.isPlaying);
   const setPlaying = useProjectStore(s => s.setPlaying);
   const setCurrentTime = useProjectStore(s => s.setCurrentTime);
+  const gpsOrigin = useProjectStore(s => s.gpsOrigin);
   const activeEffects = useLiveSfxStore(s => s.activeEffects);
   const clearAll = useLiveSfxStore(s => s.clearAll);
   const usbConnected = useUSBDeviceStore(s => s.dmxDevices.length > 0);
   const smpteRunning = useSMPTEStore(s => s.running);
   const { settings } = useShowSettings();
+
+  const openGeoSetup = useCallback(() => {
+    haptics.tap();
+    window.dispatchEvent(new Event('open-geo-setup'));
+  }, []);
   const isArmed = activeEffects.length > 0;
 
   const countdown = useMemo(() => getCountdown(settings?.show_date ?? null), [settings?.show_date]);
