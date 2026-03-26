@@ -532,42 +532,54 @@ export default function CommandCenter() {
         }}
       >
         {/* Status Header — frosted glass card */}
-        <div className="px-2.5 pt-3 pb-2">
-          <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className={cn(
-              "w-full rounded-lg border transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
-              "hover:border-primary/15 active:scale-[0.97]",
-              sidebarCollapsed ? "p-2.5" : "px-3.5 py-2.5"
-            )}
-            style={{
-              background: `linear-gradient(135deg, ${accent.glow}, hsl(220 22% 6% / 0.6))`,
-              borderColor: accent.color + '12',
-              boxShadow: `0 2px 12px ${accent.color}08, inset 0 1px 0 hsl(0 0% 100% / 0.03)`,
-            }}
-          >
-            {sidebarCollapsed ? (
-              <div className="flex flex-col items-center gap-1.5">
-                <div className="h-2 w-2 rounded-full transition-all duration-300" style={{
-                  backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.2)',
-                  boxShadow: connectedCount > 0 ? `0 0 8px ${accent.color}60` : 'none',
-                }} />
-                <span className="text-[7px] font-mono text-muted-foreground/60 font-bold">{connectedCount}</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2.5">
-                <div className="h-2.5 w-2.5 rounded-full shrink-0 transition-all duration-300" style={{
-                  backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.2)',
-                  boxShadow: connectedCount > 0 ? `0 0 10px ${accent.color}50` : 'none',
-                }} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-[8px] font-bold text-foreground/90 font-mono tracking-[0.2em] truncate">FXK COMMAND</p>
-                  <p className="text-[7px] text-muted-foreground/40 font-mono tracking-wider">{connectedCount} LINKS ACTIVE</p>
+        {isNativeFireConsole ? (
+          <div className="px-2.5 pt-3 pb-1.5">
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="w-full h-9 rounded-lg border border-border/10 bg-background/40 hover:border-primary/20 transition-all active:scale-[0.97] flex items-center justify-center"
+              title={sidebarCollapsed ? 'Expandir navegação' : 'Recolher navegação'}
+            >
+              <Menu className="w-4 h-4 text-muted-foreground/60" />
+            </button>
+          </div>
+        ) : (
+          <div className="px-2.5 pt-3 pb-2">
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className={cn(
+                "w-full rounded-lg border transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                "hover:border-primary/15 active:scale-[0.97]",
+                sidebarCollapsed ? "p-2.5" : "px-3.5 py-2.5"
+              )}
+              style={{
+                background: `linear-gradient(135deg, ${accent.glow}, hsl(220 22% 6% / 0.6))`,
+                borderColor: accent.color + '12',
+                boxShadow: `0 2px 12px ${accent.color}08, inset 0 1px 0 hsl(0 0% 100% / 0.03)`,
+              }}
+            >
+              {sidebarCollapsed ? (
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className="h-2 w-2 rounded-full transition-all duration-300" style={{
+                    backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.2)',
+                    boxShadow: connectedCount > 0 ? `0 0 8px ${accent.color}60` : 'none',
+                  }} />
+                  <span className="text-[7px] font-mono text-muted-foreground/60 font-bold">{connectedCount}</span>
                 </div>
-              </div>
-            )}
-          </button>
-        </div>
+              ) : (
+                <div className="flex items-center gap-2.5">
+                  <div className="h-2.5 w-2.5 rounded-full shrink-0 transition-all duration-300" style={{
+                    backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.2)',
+                    boxShadow: connectedCount > 0 ? `0 0 10px ${accent.color}50` : 'none',
+                  }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[8px] font-bold text-foreground/90 font-mono tracking-[0.2em] truncate">FXK COMMAND</p>
+                    <p className="text-[7px] text-muted-foreground/40 font-mono tracking-wider">{connectedCount} LINKS ACTIVE</p>
+                  </div>
+                </div>
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Mode List — Apple-style selection indicators */}
         <ScrollArea className="flex-1 px-1.5">
