@@ -97,41 +97,48 @@ export default function GeoLocationSetup({ onClose }: GeoLocationSetupProps) {
   }, [search]);
 
   const handleSelect = useCallback((city: { lat: number; lng: number; name?: string }) => {
-    updateSettings({
-      geoAnchorLat: city.lat,
-      geoAnchorLon: city.lng,
-      geoAnchorAlt: 0,
-      floatingOriginEnabled: true,
-      google3DTilesEnabled: true,
-    });
-    const store = useProjectStore.getState();
-    store.setGpsOrigin({
-      lat: city.lat,
-      lng: city.lng,
-      heading: 0,
-      altitude: 0,
-    });
-    triggerFlyTo({
-      lat: city.lat,
-      lng: city.lng,
-      alt: 300,
-      duration: 3,
-      pitch: 45,
-    });
+    // Dispatch viewport fade transition
+    window.dispatchEvent(new CustomEvent('viewport-transition', {
+      detail: { locationName: city.name || 'New Location', holdMs: 1200 },
+    }));
 
-    // Fire & forget: fetch geo intelligence in background
-    fetchGeoIntelligence(city.lat, city.lng).then((intel) => {
-      useProjectStore.getState().setGeoIntelligence({
-        locationName: intel.locationShortName || intel.locationName || city.name || null,
-        timeZoneId: intel.timeZoneId || null,
-        timeZoneOffset: intel.totalOffset ?? null,
-        terrainElevation: intel.elevation ?? null,
-        staticMapUrl: intel.staticMapUrl || null,
+    // Wait for fade-out before updating geo state
+    setTimeout(() => {
+      updateSettings({
+        geoAnchorLat: city.lat,
+        geoAnchorLon: city.lng,
+        geoAnchorAlt: 0,
+        floatingOriginEnabled: true,
+        google3DTilesEnabled: true,
       });
-      console.log('[GeoIntel] Intelligence loaded:', intel);
-    });
+      const store = useProjectStore.getState();
+      store.setGpsOrigin({
+        lat: city.lat,
+        lng: city.lng,
+        heading: 0,
+        altitude: 0,
+      });
+      triggerFlyTo({
+        lat: city.lat,
+        lng: city.lng,
+        alt: 300,
+        duration: 2.5,
+        pitch: 45,
+      });
 
-    setTimeout(onClose, 500);
+      // Fire & forget: fetch geo intelligence in background
+      fetchGeoIntelligence(city.lat, city.lng).then((intel) => {
+        useProjectStore.getState().setGeoIntelligence({
+          locationName: intel.locationShortName || intel.locationName || city.name || null,
+          timeZoneId: intel.timeZoneId || null,
+          timeZoneOffset: intel.totalOffset ?? null,
+          terrainElevation: intel.elevation ?? null,
+          staticMapUrl: intel.staticMapUrl || null,
+        });
+      });
+    }, 450); // After fade-out completes
+
+    setTimeout(onClose, 600);
   }, [updateSettings, onClose]);
 
   const hasSearch = search.trim().length > 0;
