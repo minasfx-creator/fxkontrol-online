@@ -245,7 +245,14 @@ function Index() {
   const [leftDockOpen, setLeftDockOpen] = useState<string | null>(null);
   const selectedPositionId = useProjectStore(s => s.selectedPositionId);
   const operationMode = useDisplayStore(s => s.operationMode);
+  const nightMode = useDisplayStore(s => s.nightMode);
   useUndoKeyboard();
+
+  // Apply night-mode class to root element
+  useEffect(() => {
+    document.documentElement.classList.toggle('night-mode', nightMode);
+    return () => document.documentElement.classList.remove('night-mode');
+  }, [nightMode]);
 
   // Deep-link: auto-open panel from ?panel= query param
   useEffect(() => {
