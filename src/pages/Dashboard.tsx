@@ -12,7 +12,6 @@ import {
   TrendingUp, TrendingDown, Minus, Circle, Bookmark,
   Smartphone, Wand2, Layers,
   Lightbulb, Pencil, LayoutTemplate,
-  Gauge
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import CinematicIntro from '@/components/editor/CinematicIntro';
@@ -369,14 +368,14 @@ export default function Dashboard() {
           <div className="h-[1px] flex-1" style={{ background: 'hsl(32 100% 50% / 0.1)' }} />
           <span className="text-[8px] font-mono text-muted-foreground/30 tracking-wider">TAP TO ENTER</span>
         </div>
-        <div className={cn("grid gap-2", isMobile ? "grid-cols-4" : "grid-cols-7")}>
+        <div className={cn("gap-2", isMobile ? "flex overflow-x-auto pb-2 scrollbar-none" : "grid grid-cols-7")}>
           {CONSOLE_CARDS.map((console, i) => {
             const Icon = console.icon;
             return (
               <button
                 key={console.key}
                 onClick={() => navigate(`/command?mode=${console.key}`)}
-                className="group relative overflow-hidden rounded-lg border p-2.5 text-center transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-[1.08] active:scale-[0.95] animate-fxk-stagger"
+                className={cn("group relative overflow-hidden rounded-lg border p-2.5 text-center transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-[1.08] active:scale-[0.95] animate-fxk-stagger", isMobile && "shrink-0 min-w-[72px]")}
                 style={{
                   animationDelay: `${0.1 + i * 0.04}s`,
                   borderColor: `${console.color}20`,
@@ -473,42 +472,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Hardware Controllers */}
-          <Card className="bg-card border-border/50 animate-fxk-stagger overflow-hidden" style={{ animationDelay: '0.3s' }}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Cpu className="h-3.5 w-3.5 text-primary" />
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider font-display">Hardware</span>
-                </div>
-                <button
-                  onClick={() => navigate('/command?mode=module')}
-                  className="text-[9px] text-primary hover:text-primary/80 font-semibold transition-colors"
-                >
-                  Ver todos →
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { label: 'FXK-PYRO', icon: Zap, mode: 'pyro_fire', color: 'text-red-400', border: 'border-red-500/15' },
-                  { label: 'FXK-DMX', icon: Gauge, mode: 'super_dmx', color: 'text-amber-400', border: 'border-amber-500/15' },
-                  { label: 'FXK-LIGHT', icon: Lightbulb, mode: 'fxk_light', color: 'text-indigo-400', border: 'border-indigo-500/15' },
-                  { label: 'MODULE', icon: Cpu, mode: 'module', color: 'text-violet-400', border: 'border-violet-500/15' },
-                  { label: 'FXK-DRONE', icon: Layers, mode: 'drone_ops', color: 'text-teal-400', border: 'border-teal-500/15' },
-                  { label: 'DMX Monitor', icon: Radio, mode: 'dmx_monitor', color: 'text-green-400', border: 'border-green-500/15' },
-                ].map((hw) => (
-                  <button
-                    key={hw.label}
-                    onClick={() => navigate(`/command?mode=${hw.mode}`)}
-                    className={`flex items-center gap-2 px-2.5 py-2 rounded-xl bg-[hsl(var(--surface-0)/0.5)] border ${hw.border} hover:bg-muted/20 transition-all active:scale-[0.97] text-left min-h-[48px]`}
-                  >
-                    <hw.icon className={`h-3.5 w-3.5 ${hw.color} shrink-0`} />
-                    <span className="text-[9px] font-semibold text-foreground/70 truncate">{hw.label}</span>
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          {/* Hardware section removed — consolidated into Console Launcher above */}
 
           {/* Events */}
           <Card className="bg-card border-border/50 animate-fxk-stagger" style={{ animationDelay: '0.35s' }}>
