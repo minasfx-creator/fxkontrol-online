@@ -571,6 +571,7 @@ function Index() {
       </div>
 
       {/* ─── Layer 1: Top Bar (z-50) ─────────────────── */}
+      <CrashRecoveryBanner />
       <Toolbar onOpenPanel={(id) => handleTogglePanel(id as PanelId)} isMaximized={viewportMaximized} onToggleMaximize={() => setViewportMaximized(v => !v)} />
 
       {/* ─── Layer 2: Right Dock (icon bar, z-40) ──── */}
