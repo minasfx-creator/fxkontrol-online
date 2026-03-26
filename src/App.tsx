@@ -4,20 +4,23 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { lazy, Suspense } from "react";
 import MainLayout from "@/layouts/MainLayout";
-import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
-import Agenda from "./pages/Agenda";
-import Training from "./pages/Training";
 import NotFound from "./pages/NotFound";
-import PCBViewer from "./pages/PCBViewer";
-import DevicePairing from "./pages/DevicePairing";
-import CommandCenter from "./pages/CommandCenter";
-import ShowTestSimulator from "./pages/ShowTestSimulator";
-import FieldTest from "./pages/FieldTest";
-import Settings from "./pages/Settings";
-import Admin from "./pages/Admin";
+
+// Lazy-loaded heavy pages
+const Index = lazy(() => import("./pages/Index"));
+const Agenda = lazy(() => import("./pages/Agenda"));
+const Training = lazy(() => import("./pages/Training"));
+const PCBViewer = lazy(() => import("./pages/PCBViewer"));
+const DevicePairing = lazy(() => import("./pages/DevicePairing"));
+const CommandCenter = lazy(() => import("./pages/CommandCenter"));
+const ShowTestSimulator = lazy(() => import("./pages/ShowTestSimulator"));
+const FieldTest = lazy(() => import("./pages/FieldTest"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Admin = lazy(() => import("./pages/Admin"));
 
 const queryClient = new QueryClient();
 
