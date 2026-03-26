@@ -48,6 +48,7 @@ interface PyroFireOnePanelProps {
   handlePanic: () => void;
   artNetConnected: boolean;
   relayConnected: boolean;
+  onArmChange?: (armed: boolean) => void;
 }
 
 type PyroMode = 'manual' | 'step' | 'timecode' | 'test';
@@ -1602,10 +1603,10 @@ export default function PyroFireOnePanel({
   }
 
   // ═══════════════════════════════════════════════════════════
-  // PANEL MODE (inside FX Commander) — with HUD corners
+  // PANEL MODE (inside FX Commander) — with HUD corners + glass
   // ═══════════════════════════════════════════════════════════
   return (
-    <div className="flex flex-col h-full relative overflow-hidden" style={{ background: 'hsl(220 18% 4%)' }}>
+    <div className="flex flex-col h-full relative overflow-hidden glass-br2049" style={{ background: 'hsl(220 18% 4%)' }}>
       {/* HUD corner brackets */}
       <div className="absolute top-1 left-1 w-4 h-4 pointer-events-none z-10 border-l-2 border-t-2" style={{ borderColor: 'hsl(var(--primary) / 0.2)' }} />
       <div className="absolute top-1 right-1 w-4 h-4 pointer-events-none z-10 border-r-2 border-t-2" style={{ borderColor: 'hsl(var(--primary) / 0.2)' }} />
@@ -1621,6 +1622,7 @@ export default function PyroFireOnePanel({
       {renderModuleInfo()}
       <ScrollArea className="flex-1">{renderModeContent()}</ScrollArea>
       {renderModuleScanner()}
+      {renderPanic()}
     </div>
   );
 }

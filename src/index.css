@@ -665,21 +665,7 @@
 .animate-ios-spring-up { animation: ios-spring-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .animate-ios-spring-scale { animation: ios-spring-scale 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
-/* ===== Night Mode — Tactical Low-Light ===== */
-body.night-mode {
-  --background: 0 0% 0%;
-  --foreground: 170 60% 70%;
-  --muted-foreground: 170 20% 45%;
-  --primary: 170 100% 42%;
-  --primary-foreground: 0 0% 0%;
-  --warning: 38 100% 50%;
-  --card: 0 0% 3%;
-  --surface-0: 0 0% 1%;
-  --surface-1: 0 0% 3%;
-  --surface-2: 0 0% 5%;
-  --glass-bg: 0 0% 0% / 0.95;
-  --glass-frosted: 0 0% 0% / 0.97;
-}
+/* Night Mode — consolidated in .night-mode block below (line ~909) */
 
 /* ===== Field / Outdoor High-Contrast Mode ===== */
 body.field-mode {
@@ -982,7 +968,7 @@ button:active {
   animation: rain-fall 8s linear infinite;
 }
 
-/* .br2049-vignette disabled */
+
 
 /* ===== BR2049 Console Boot Animations ===== */
 @keyframes console-boot {

@@ -1393,7 +1393,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
         );
       case 'simple_dmx': return renderSimpleDmx(fs);
       case 'manual_fire': return renderManualFire(fs);
-      case 'pyro_fire': return <PyroFireOnePanel fs={fs} fireChannel={fireChannel} channels={channels} pyroArm={pyroArm} dmxArm={dmxArm} handlePanic={handlePanic} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
+      case 'pyro_fire': return <PyroFireOnePanel fs={fs} fireChannel={fireChannel} channels={channels} pyroArm={pyroArm} dmxArm={dmxArm} handlePanic={handlePanic} artNetConnected={artNetConnected} relayConnected={relayConnected} onArmChange={(armed) => { if (armed) handlePyroArm(); else { /* disarm handled by panic */ } }} />;
       case 'check_slave': return <CheckSlavePanel fs={fs} pyroArm={pyroArm} />;
       case 'ble_scan': return (
         <div className={cn("flex flex-col gap-3 h-full overflow-y-auto", fs ? "p-3" : "p-2")}>
@@ -1433,18 +1433,28 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
           paddingBottom: mob ? 'max(env(safe-area-inset-bottom), 8px)' : undefined,
         }}
       >
-        {renderStatusBar(true)}
-        {!showMode && renderArmBar(true)}
-        {renderCueKeys(true)}
-        {!showMode && renderSceneModeBar(true)}
-        {showMode ? (
-          <ScrollArea className="flex-1">
-            <MobileLinkMode fs={true} fireChannel={fireChannel} channels={channels} artNetConnected={artNetConnected} relayConnected={relayConnected} />
-          </ScrollArea>
+        {/* Skip outer chrome when pyro_fire standalone — PyroFireOnePanel owns the viewport */}
+        {standalone && mode === 'pyro_fire' ? (
+          <>
+            {renderSceneModeBar(true)}
+            <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
+          </>
         ) : (
-          <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
+          <>
+            {renderStatusBar(true)}
+            {!showMode && renderArmBar(true)}
+            {renderCueKeys(true)}
+            {!showMode && renderSceneModeBar(true)}
+            {showMode ? (
+              <ScrollArea className="flex-1">
+                <MobileLinkMode fs={true} fireChannel={fireChannel} channels={channels} artNetConnected={artNetConnected} relayConnected={relayConnected} />
+              </ScrollArea>
+            ) : (
+              <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
+            )}
+            {renderPanic(true)}
+          </>
         )}
-        {renderPanic(true)}
       </div>
     );
 
@@ -1455,12 +1465,22 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
 
   return (
     <div className={cn("h-full flex flex-col overflow-hidden select-none", standalone && "ff-standalone-panel")} style={{ minWidth: standalone ? undefined : 300, maxWidth: standalone ? undefined : 380, background: standalone ? 'transparent' : 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 5%) 100%)' }}>
-      {renderStatusBar(false)}
-      {renderArmBar(false)}
-      {renderCueKeys(false)}
-      {renderSceneModeBar(false)}
-      <ScrollArea className="flex-1">{renderModeContent(false)}</ScrollArea>
-      {renderPanic(false)}
+      {/* Skip outer chrome when pyro_fire standalone */}
+      {standalone && mode === 'pyro_fire' ? (
+        <>
+          {renderSceneModeBar(false)}
+          <ScrollArea className="flex-1">{renderModeContent(false)}</ScrollArea>
+        </>
+      ) : (
+        <>
+          {renderStatusBar(false)}
+          {renderArmBar(false)}
+          {renderCueKeys(false)}
+          {renderSceneModeBar(false)}
+          <ScrollArea className="flex-1">{renderModeContent(false)}</ScrollArea>
+          {renderPanic(false)}
+        </>
+      )}
     </div>
   );
 }
