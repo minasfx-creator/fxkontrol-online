@@ -207,6 +207,31 @@ function BatchAddButton() {
   );
 }
 
+/* ── Night Mode Toggle ───────────────────────────────────────── */
+function NightModeToggle() {
+  const nightMode = useDisplayStore(s => s.nightMode);
+  const setNightMode = useDisplayStore(s => s.setNightMode);
+
+  useEffect(() => {
+    document.body.classList.toggle('night-mode', nightMode);
+  }, [nightMode]);
+
+  return (
+    <button
+      onClick={() => setNightMode(!nightMode)}
+      className={cn(
+        "h-7 w-7 flex items-center justify-center rounded-md transition-all",
+        nightMode
+          ? "bg-cyan-500/15 text-cyan-400 hover:bg-cyan-500/25"
+          : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+      )}
+      title={nightMode ? 'Day Mode' : 'Night Mode'}
+    >
+      {nightMode ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+    </button>
+  );
+}
+
 /* ══════════════════════════════════════════════════════════════════
    TOOLBAR — Minimal Mission-Control Top Bar
    ══════════════════════════════════════════════════════════════════ */
