@@ -3,7 +3,7 @@
  * Clean, minimal, high-information density for show operators.
  */
 import { useState, useCallback, useMemo } from 'react';
-import { Play, Pause, Square, Menu, AlertOctagon, Zap, ShieldAlert, MapPin } from 'lucide-react';
+import { Play, Pause, Square, Menu, AlertOctagon, Zap, ShieldAlert, MapPin, Moon, Sun } from 'lucide-react';
 import { haptics } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -47,6 +47,8 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
   const usbConnected = useUSBDeviceStore(s => s.dmxDevices.length > 0);
   const smpteRunning = useSMPTEStore(s => s.running);
   const { settings } = useShowSettings();
+  const nightMode = useDisplayStore(s => s.nightMode);
+  const setNightMode = useDisplayStore(s => s.setNightMode);
 
   const openGeoSetup = useCallback(() => {
     haptics.tap();
@@ -133,6 +135,20 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
               smpteRunning ? "bg-[hsl(var(--warning))]" : "bg-[hsl(var(--muted-foreground)/0.3)]"
             )} />
           </div>
+
+          {/* Night Mode toggle */}
+          <button
+            onClick={() => { haptics.tap(); setNightMode(!nightMode); }}
+            className={cn(
+              "glass-button flex items-center justify-center w-14 h-14 active:scale-90 transition-transform",
+              nightMode && "ring-1 ring-[hsl(190_100%_50%/0.4)]"
+            )}
+          >
+            {nightMode
+              ? <Sun className="w-5 h-5 text-[hsl(var(--warning))]" />
+              : <Moon className="w-5 h-5 text-[hsl(var(--muted-foreground))]" />
+            }
+          </button>
 
           {/* LIVE mode toggle */}
           <button

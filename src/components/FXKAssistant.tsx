@@ -323,7 +323,7 @@ export function FXKAssistant() {
 
       {/* Header */}
       <div className="relative z-10 flex items-center gap-2.5 px-3 py-3 shrink-0" style={{ borderBottom: '1px solid hsl(32 100% 50% / 0.12)' }}>
-        <JoiHologramAvatar size="sm" state={loading ? 'active' : 'idle'} />
+        <JoiHologramAvatar size="sm" state={loading ? 'active' : 'idle'} animate />
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
@@ -358,7 +358,7 @@ export function FXKAssistant() {
       <div ref={scrollRef} onScroll={handleScroll} className="relative z-10 flex-1 overflow-y-auto px-3 py-2 space-y-3 scrollbar-thin">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-4 opacity-80">
-            <JoiHologramAvatar size="lg" state="idle" />
+            <JoiHologramAvatar size="lg" state="idle" animate />
             <p className="text-[8px] font-mono tracking-[0.2em] uppercase text-center" style={{ color: 'hsl(32 100% 50% / 0.45)' }}>
               NEXUS ONLINE · AWAITING INPUT
             </p>

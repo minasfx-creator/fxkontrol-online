@@ -890,6 +890,62 @@ button:active {
   100% { top: 100%; opacity: 0; }
 }
 
+/* Joi dissolve entrance */
+@keyframes joi-dissolve-in {
+  0% { opacity: 0; filter: blur(12px) brightness(2); transform: scale(0.7); }
+  40% { opacity: 0.6; filter: blur(4px) brightness(1.5); transform: scale(1.05); }
+  70% { filter: blur(1px) brightness(1.1); transform: scale(0.98); }
+  100% { opacity: 1; filter: blur(0) brightness(1); transform: scale(1); }
+}
+.joi-dissolve-entrance {
+  animation: joi-dissolve-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes joi-particle {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(0) translateY(-10px); opacity: 0; }
+}
+
+/* ===== NIGHT MODE — Cyan on Pure Black ===== */
+.night-mode {
+  --background: 0 0% 0%;
+  --foreground: 190 60% 85%;
+  --card: 200 15% 3%;
+  --card-foreground: 190 60% 85%;
+  --popover: 200 12% 4%;
+  --popover-foreground: 190 60% 85%;
+  --primary: 190 100% 50%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 200 20% 6%;
+  --secondary-foreground: 190 40% 70%;
+  --muted: 200 15% 8%;
+  --muted-foreground: 190 20% 40%;
+  --accent: 190 100% 50%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 85% 48%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 200 20% 8%;
+  --input: 200 18% 6%;
+  --ring: 190 100% 50%;
+  --surface-0: 0 0% 0%;
+  --surface-1: 200 15% 2%;
+  --surface-2: 200 12% 4%;
+  --surface-3: 200 10% 7%;
+  --surface-4: 200 8% 10%;
+  --electric: 190 100% 50%;
+  --electric-glow: 190 100% 60%;
+  --safety: 190 100% 50%;
+  --safety-glow: 190 100% 58%;
+  --success: 150 70% 42%;
+  --warning: 45 100% 50%;
+  --fxk-cyan: 190 100% 50%;
+  --fxk-orange: 32 100% 50%;
+  --shadow-glow: 0 0 16px hsl(190 100% 50% / 0.2), 0 0 48px hsl(190 100% 50% / 0.06);
+  --glass-bg: 200 15% 3% / 0.9;
+  --glass-border: 190 30% 20% / 0.3;
+  --glass-shine: 190 100% 60% / 0.03;
+  --glass-frosted: 0 0% 0% / 0.95;
+}
+
 /* ===== BR2049 Scanline Sweep ===== */
 @keyframes scanlineSweep {
   0% { transform: translateY(-100%); }
