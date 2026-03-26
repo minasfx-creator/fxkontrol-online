@@ -12,7 +12,6 @@ import {
   TrendingUp, TrendingDown, Minus, Circle, Bookmark,
   Smartphone, Wand2, Layers,
   Lightbulb, Pencil, LayoutTemplate,
-  Gauge
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import CinematicIntro from '@/components/editor/CinematicIntro';
