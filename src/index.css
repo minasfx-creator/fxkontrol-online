@@ -35,7 +35,7 @@
     --input: 220 14% 12%;
     --ring: 32 100% 50%;
 
-    --radius: 0.25rem;
+    --radius: 0.75rem;
 
     /* Surface hierarchy — military depth */
     --surface-0: 220 22% 3%;
@@ -515,18 +515,18 @@
 .glass-card {
   background: rgba(255, 255, 255, 0.025);
   border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
+  border-radius: 16px;
 }
 .glass-card-elevated {
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 16px;
+  border-radius: 20px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 .glass-button {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 10px;
+  border-radius: 14px;
   transition: background 0.2s ease, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .glass-button:hover {
@@ -534,7 +534,7 @@
 }
 .glass-button:active {
   background: rgba(255, 255, 255, 0.12);
-  transform: scale(0.96);
+  transform: scale(0.94);
 }
 
 /* ── Apple Menu Glass ── */
@@ -597,11 +597,11 @@
   background: hsl(var(--primary) / 0.12);
 }
 
-/* Status pill — tactical */
+/* Status pill — Apple Dynamic Island style */
 .status-pill {
-  background: rgba(0, 0, 0, 0.92);
-  border-radius: 2px;
-  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.88);
+  border-radius: 22px;
+  padding: 6px 14px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -609,35 +609,35 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   font-family: 'JetBrains Mono', monospace;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
-/* Tactical segmented control */
+/* Segmented control — Apple style */
 .segmented-control {
   display: flex;
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 2px;
+  border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  padding: 2px;
-  gap: 1px;
+  padding: 3px;
+  gap: 2px;
 }
 .segmented-control button {
   flex: 1;
   padding: 6px 10px;
-  border-radius: 2px;
+  border-radius: 10px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   color: hsl(var(--muted-foreground));
-  transition: all 0.15s ease;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  font-family: 'JetBrains Mono', monospace;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  letter-spacing: 0.03em;
+  font-family: 'Rajdhani', sans-serif;
 }
 .segmented-control button.active {
   background: hsl(var(--primary) / 0.15);
   color: hsl(var(--primary));
-  box-shadow: 0 0 8px hsl(var(--primary) / 0.15);
+  box-shadow: 0 0 12px hsl(var(--primary) / 0.12);
 }
 
 /* Tactical spring animations */
@@ -765,6 +765,62 @@ button:active {
   50% { opacity: 1; }
 }
 .armed-banner-pulse { animation: armed-banner-pulse 1s ease-in-out infinite; }
+
+/* ===== Blade Runner 2049 Atmospheric Effects ===== */
+@keyframes br2049-ambient-drift {
+  0%, 100% { opacity: 0.4; transform: translateX(0) translateY(0); }
+  33% { opacity: 0.6; transform: translateX(10px) translateY(-5px); }
+  66% { opacity: 0.3; transform: translateX(-8px) translateY(3px); }
+}
+.br2049-atmosphere {
+  position: relative;
+}
+.br2049-atmosphere::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 80% 60% at 50% 80%,
+    hsl(32 100% 50% / 0.04) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  animation: br2049-ambient-drift 20s ease-in-out infinite;
+}
+
+/* Apple × BR2049 glass with warm inner glow */
+.glass-br2049 {
+  background: rgba(8, 10, 16, 0.88);
+  backdrop-filter: blur(48px) saturate(1.8);
+  -webkit-backdrop-filter: blur(48px) saturate(1.8);
+  border: 1px solid rgba(255, 165, 40, 0.06);
+  border-radius: 20px;
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.7),
+    0 2px 8px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 200, 100, 0.03),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* Warm amber scan line overlay — BR2049 signature */
+.br2049-scanline {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 3px,
+    rgba(255, 160, 40, 0.006) 3px,
+    rgba(255, 160, 40, 0.006) 6px
+  );
+  pointer-events: none;
+}
+
+/* Neon edge glow for critical panels */
+.neon-edge-amber {
+  box-shadow: 0 0 1px rgba(255, 165, 0, 0.4), 0 0 20px rgba(255, 165, 0, 0.06);
+}
+.neon-edge-cyan {
+  box-shadow: 0 0 1px rgba(0, 200, 230, 0.4), 0 0 20px rgba(0, 200, 230, 0.06);
+}
 
 /* ===== FXK-AI Holographic Effects ===== */
 @keyframes holographic-scan {
