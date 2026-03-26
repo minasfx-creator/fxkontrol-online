@@ -736,15 +736,15 @@ export default function CommandCenter() {
             borderBottom: `1px solid ${accent.color}18`,
           }} />
 
-          <FullscreenablePanel title={accent.label}>
-            {isFireMode(activeMode) ? (
-              <LiveFiringPanel initialMode={activeMode} standalone />
-            ) : (
+          {isFireMode(activeMode) ? (
+            <LiveFiringPanel initialMode={activeMode} standalone />
+          ) : (
+            <FullscreenablePanel title={accent.label}>
               <ScrollArea className="h-full">
                 <div className="h-full surface-0">{renderDirectPanel(activeMode)}</div>
               </ScrollArea>
-            )}
-          </FullscreenablePanel>
+            </FullscreenablePanel>
+          )}
         </div>
       </div>
       {/* Boot Sequence Overlay */}
