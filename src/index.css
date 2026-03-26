@@ -766,6 +766,62 @@ button:active {
 }
 .armed-banner-pulse { animation: armed-banner-pulse 1s ease-in-out infinite; }
 
+/* ===== Blade Runner 2049 Atmospheric Effects ===== */
+@keyframes br2049-ambient-drift {
+  0%, 100% { opacity: 0.4; transform: translateX(0) translateY(0); }
+  33% { opacity: 0.6; transform: translateX(10px) translateY(-5px); }
+  66% { opacity: 0.3; transform: translateX(-8px) translateY(3px); }
+}
+.br2049-atmosphere {
+  position: relative;
+}
+.br2049-atmosphere::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 80% 60% at 50% 80%,
+    hsl(32 100% 50% / 0.04) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  animation: br2049-ambient-drift 20s ease-in-out infinite;
+}
+
+/* Apple × BR2049 glass with warm inner glow */
+.glass-br2049 {
+  background: rgba(8, 10, 16, 0.88);
+  backdrop-filter: blur(48px) saturate(1.8);
+  -webkit-backdrop-filter: blur(48px) saturate(1.8);
+  border: 1px solid rgba(255, 165, 40, 0.06);
+  border-radius: 20px;
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.7),
+    0 2px 8px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 200, 100, 0.03),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* Warm amber scan line overlay — BR2049 signature */
+.br2049-scanline {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 3px,
+    rgba(255, 160, 40, 0.006) 3px,
+    rgba(255, 160, 40, 0.006) 6px
+  );
+  pointer-events: none;
+}
+
+/* Neon edge glow for critical panels */
+.neon-edge-amber {
+  box-shadow: 0 0 1px rgba(255, 165, 0, 0.4), 0 0 20px rgba(255, 165, 0, 0.06);
+}
+.neon-edge-cyan {
+  box-shadow: 0 0 1px rgba(0, 200, 230, 0.4), 0 0 20px rgba(0, 200, 230, 0.06);
+}
+
 /* ===== FXK-AI Holographic Effects ===== */
 @keyframes holographic-scan {
   0% { background-position: 0 -100%; }
