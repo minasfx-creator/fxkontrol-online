@@ -1,68 +1,73 @@
 
 
-# Plan: Bug Hunt + UX Refinement
+# Plan: Fix Dual Console + Refine FXK-PYRO UX
 
-## Bugs Found
+## Problem
 
-### BUG 1: `br2049-atmosphere` class never applied
-The CSS class exists in `index.css` but is never used in any `.tsx` file. The previous plan to add it to viewport containers was never executed.
+When `pyro_fire` mode is active in `LiveFiringPanel`, two complete console UIs stack:
 
-### BUG 2: `JoiHologramAvatar` never created
-The approved plan to create a Joi hologram avatar component was never implemented. `FXKAssistant` still uses the basic `VoiceWave` circles.
+```text
+LiveFiringPanel chrome:
+  StatusBar (FXK-PYRO branding, timecode)
+  ArmBar (PYRO/DMX arm buttons)
+  CueKeys (128 cue grid)
+  SceneModeBar (S0-S3 + mode tabs)
+  ┌── PyroFireOnePanel ──────────────────┐
+  │  Header (FXK-PYRO branding, clock)   │  ← DUPLICATE
+  │  ConnectionBar (SIM/HW toggle)       │
+  │  MasterArm (master key, arm all)     │  ← DUPLICATE ARM
+  │  StatusStrip                         │
+  │  ModeTabs (manual/step/tc/test)      │
+  │  ModuleGrid (32 igniters)            │
+  │  PANIC                               │  ← DUPLICATE
+  └──────────────────────────────────────┘
+  PANIC                                    ← DUPLICATE
+```
 
-### BUG 3: FXKAssistant not rendered on Index page
-`FXKAssistant` is only rendered inside `MainLayout.tsx` (sidebar layout). The main editor `Index.tsx` never mounts it, so users in the editor have no assistant access.
+Result: duplicate branding, duplicate ARM controls, duplicate PANIC buttons, wasted vertical space.
 
-### BUG 4: ViewportTransitionOverlay starts invisible — no fade-IN on mount
-When `phase` starts as `'idle'`, the component returns `null`. On first `fade-out`, it jumps from nothing to `opacity-100 bg-black` with no initial rendered state to transition FROM. The CSS `transition-opacity` has no effect because the element is being mounted, not transitioning.
+## Solution
 
-### BUG 5: MobileHUD GPS pill overlaps Dynamic Island / notch
-The GPS pill is positioned at `top-14` (56px) with `absolute` inside a `fixed` container. On devices with tall notches (iPhone 14 Pro+), this overlaps the HUD transport controls at `pt-2 pb-1`.
+### 1. Skip outer chrome when `standalone && mode === 'pyro_fire'`
 
-### BUG 6: LiveModeOverlay E-STOP fires on single tap — no hold-to-confirm
-The E-STOP button (line 157-165) uses `onClick` for immediate firing. The plan specified hold-to-confirm for ALL critical actions, but E-STOP was left as a single-tap. While quick E-STOP is arguably correct for safety, it contradicts the accidental-trigger protection.
+In `LiveFiringPanel.tsx`, when the panel is in standalone mode (CommandCenter) AND `mode === 'pyro_fire'`:
+- **Skip** `renderStatusBar`, `renderArmBar`, `renderCueKeys`, `renderPanic`
+- **Keep** `renderSceneModeBar` (contains mode-switch tabs for navigating away from pyro_fire)
+- Let `PyroFireOnePanel` own the full viewport with its own header, arm, and panic
 
-### BUG 7: MobileConsoleFullscreen missing `onTouchMove` handler
-The swipe-to-dismiss only checks `onTouchEnd` delta. Without `onTouchMove`, there's no visual drag feedback (no rubber-band effect like `MobileFloatingPanel` has).
+This applies to both fullscreen (lines 1436-1448) and inline (lines 1456-1464) renders.
 
-### BUG 8: Desktop panel lacks close button
-The floating panel at line 558-571 of `Index.tsx` has no close button. Users must click the same panel tab again to close — not discoverable.
+### 2. Sync ARM state between consoles
 
-## UX Refinements
+Wire `PyroFireOnePanel`'s `masterKeyOn` toggle to also call the parent's `handlePyroArm` so the global ARMED banner in `MainLayout` stays in sync. Currently `masterKeyOn` is internal-only — the outer `pyroArm` drives the banner but inner panel doesn't update it.
 
-### REF 1: Add `br2049-atmosphere` to viewport containers
-Apply the warm amber glow to the 3 viewport wrapper divs (mobile live, mobile editor, desktop).
+### 3. PyroFireOnePanel panel mode: add PANIC when not fullscreen
 
-### REF 2: Create `JoiHologramAvatar` component
-CSS-only holographic woman silhouette with amber/cyan glow, scanline sweep, and idle/active states. Replace `VoiceWave` in `FXKAssistant` header and empty state.
+`PyroFireOnePanel` currently only renders `renderPanic()` in its dedicated fullscreen mode (line 1597). In panel mode (line 1607-1625), there's **no PANIC button** — it relies on the outer shell. After removing outer chrome, we need to add `renderPanic()` to the panel mode render too.
 
-### REF 3: Mount `FXKAssistant` in `Index.tsx`
-Add the assistant bubble to the editor layout so it's accessible in all modes.
+### 4. Desktop glass refinements
 
-### REF 4: Fix ViewportTransitionOverlay mount animation
-Render the overlay always (with `opacity-0 pointer-events-none`) and toggle opacity via state, so CSS transitions work properly.
+- Apply `glass-br2049` backdrop to the `PyroFireOnePanel` panel-mode container
+- Increase igniter grid cell size from 36px to 44px for confident clicking
+- Add subtle amber glow border on the active module in the sidebar list
 
-### REF 5: Fix GPS pill position
-Move it below the HUD bar, use `top-[72px]` or make it relative to the HUD container instead of absolute.
+### 5. CSS cleanup in index.css
 
-### REF 6: Add visual drag feedback to MobileConsoleFullscreen
-Add `onTouchMove` handler with `dragOffset` state and rubber-band transform, matching `MobileFloatingPanel` pattern.
-
-### REF 7: Add close button to desktop floating panel
-Add an X button in the top-right corner of the floating panel.
-
-### REF 8: Improve FXKAssistant mobile positioning
-The bubble sits at `bottom-20` which may conflict with `MobileTabBar`. Adjust to sit above the tab bar safely.
+- Remove duplicate `body.night-mode` block (if still present around line 669)
+- Remove orphaned `/* .br2049-vignette disabled */` comment (line 985)
 
 ## Files to Change
 
 | File | Changes |
 |------|---------|
-| `src/components/JoiHologramAvatar.tsx` | New — CSS hologram silhouette component |
-| `src/components/FXKAssistant.tsx` | Replace VoiceWave with JoiHologramAvatar, fix mobile z-index |
-| `src/pages/Index.tsx` | Add `br2049-atmosphere` to viewports, mount `FXKAssistant`, add panel close button |
-| `src/components/editor/ViewportTransitionOverlay.tsx` | Fix mount animation (always-render pattern) |
-| `src/components/editor/MobileHUD.tsx` | Fix GPS pill position overlap |
-| `src/components/editor/MobileConsoleFullscreen.tsx` | Add drag feedback on swipe |
-| `src/index.css` | Add `@keyframes hologram-flicker`, hologram silhouette styles |
+| `src/components/editor/LiveFiringPanel.tsx` | Skip outer chrome when `standalone && mode === 'pyro_fire'`; add PANIC sync |
+| `src/components/editor/live-firing/PyroFireOnePanel.tsx` | Add `renderPanic()` to panel mode; glass styling; larger igniter cells; emit ARM state up |
+| `src/index.css` | Remove duplicate night-mode block and orphan comments |
+
+## Impact
+
+- Eliminates visual confusion of "two consoles"
+- Recovers ~200px of vertical space on desktop
+- Single source of truth for ARM/PANIC
+- Cleaner, more professional appearance aligned with "built by operators" UX goal
 
