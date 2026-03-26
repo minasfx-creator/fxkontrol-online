@@ -101,7 +101,7 @@ function createSimModule(addr: number, connected: boolean, wireless = false): Fi
 }
 
 export default function PyroFireOnePanel({
-  fs, fireChannel, channels, pyroArm, dmxArm, handlePanic, artNetConnected, relayConnected,
+  fs, fireChannel, channels, pyroArm, dmxArm, handlePanic, artNetConnected, relayConnected, onArmChange,
 }: PyroFireOnePanelProps) {
   const isMobile = useIsMobile();
   const hardware = useFireOneHardware();
@@ -915,7 +915,7 @@ export default function PyroFireOnePanel({
       sz === 'xl' ? (mob ? "px-4 py-2.5 flex-wrap" : "px-6 py-3") : sz === 'fs' ? "px-4 py-2" : "px-2 py-1",
       masterKeyOn ? "border-red-800/30" : "border-border/15"
     )} style={{ background: masterKeyOn ? 'hsl(0 30% 8%)' : 'hsl(0 10% 6%)' }}>
-      <button onClick={() => { setMasterKeyOn(!masterKeyOn); haptics[masterKeyOn ? 'disarm' : 'arm'](); }}
+      <button onClick={() => { setMasterKeyOn(!masterKeyOn); haptics[masterKeyOn ? 'disarm' : 'arm'](); onArmChange?.(!masterKeyOn); }}
         className={cn(
           "flex items-center gap-2 rounded border-2 font-black uppercase transition-all min-w-[64px]",
           sz === 'xl' ? (mob ? "px-5 py-3 text-xs flex-1" : "px-6 py-3 text-sm") : sz === 'fs' ? "px-4 py-2 text-[10px]" : "px-3 py-1.5 text-[8px]",
