@@ -448,7 +448,7 @@ function Index() {
     if (operationMode === 'live') {
       return (
         <div className="h-[100dvh] w-screen relative overflow-hidden bg-background">
-          <div className="absolute inset-0">
+          <div className="absolute inset-0 br2049-atmosphere">
             <CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas /></Suspense></CanvasErrorBoundary>
           </div>
           <LiveModeOverlay />
@@ -499,7 +499,7 @@ function Index() {
     <div className="h-[100dvh] w-screen relative overflow-hidden bg-zinc-950">
       {/* ─── Layer 0: Full-screen 3D Canvas ────────────── */}
       <div
-        className="absolute inset-0 z-0"
+        className="absolute inset-0 z-0 br2049-atmosphere"
         onDragOver={(e) => {
           if (e.dataTransfer.types.includes('application/showven-equipment')) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; return; }
           if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; setIsDragOver(true); }
@@ -565,6 +565,13 @@ function Index() {
             borderBottom: '1px solid rgba(255,255,255,0.04)',
           }}
         >
+          {/* Close button */}
+          <button
+            onClick={() => setActivePanel(null)}
+            className="absolute top-2 right-2 z-10 w-6 h-6 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+          >
+            <X className="w-3 h-3 text-muted-foreground" />
+          </button>
           <div className="h-full overflow-y-auto">
             {renderPanelContent()}
           </div>
@@ -653,6 +660,9 @@ function Index() {
       {showShortcuts && <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />}
       <PositionContextMenu />
       <SmartScriptAssistant open={smartScriptOpen} onClose={() => setSmartScriptOpen(false)} />
+
+      {/* ─── Layer 10: AI Assistant ──────────────────── */}
+      <FXKAssistant />
     </div>
   );
 }

@@ -37,22 +37,21 @@ export default function ViewportTransitionOverlay() {
     return () => window.removeEventListener('viewport-transition', handleTransition);
   }, [handleTransition]);
 
-  if (phase === 'idle') return null;
-
   return (
     <div
       className={cn(
-        "absolute inset-0 z-[60] pointer-events-none flex items-center justify-center",
-        "transition-opacity duration-[400ms] ease-in-out",
-        phase === 'fade-out' && "opacity-100 bg-black",
-        phase === 'hold' && "opacity-100 bg-black",
-        phase === 'fade-in' && "opacity-0 bg-black",
+        "fixed inset-0 z-[100] flex items-center justify-center bg-black",
+        "transition-opacity duration-[600ms] ease-in-out",
+        phase === 'idle' ? "opacity-0 pointer-events-none" : "",
+        phase === 'fade-out' && "opacity-100 pointer-events-auto",
+        phase === 'hold' && "opacity-100 pointer-events-auto",
+        phase === 'fade-in' && "opacity-0 pointer-events-none",
       )}
     >
       {label && (phase === 'hold' || phase === 'fade-out') && (
-        <div className="flex flex-col items-center gap-2 animate-fade-in">
-          <div className="w-1 h-1 rounded-full bg-primary animate-pulse" />
-          <span className="text-xs font-mono tracking-[0.2em] uppercase text-primary/80">
+        <div className="flex flex-col items-center gap-3 animate-fade-in">
+          <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+          <span className="text-xs font-mono tracking-[0.25em] uppercase" style={{ color: 'hsl(32 100% 50% / 0.7)' }}>
             {label}
           </span>
         </div>

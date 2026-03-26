@@ -65,10 +65,10 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-      {/* Location quick-access pill */}
+      {/* Location quick-access pill — positioned below HUD bar */}
       <button
         onClick={openGeoSetup}
-        className="pointer-events-auto absolute top-14 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[hsl(var(--surface-0)/0.85)] backdrop-blur-xl border border-[hsl(var(--border)/0.2)] shadow-lg active:scale-95 transition-transform"
+        className="pointer-events-auto absolute top-[72px] left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[hsl(var(--surface-0)/0.85)] backdrop-blur-xl border border-[hsl(var(--border)/0.2)] shadow-lg active:scale-95 transition-transform"
       >
         <MapPin className="w-3.5 h-3.5 text-[hsl(var(--safety))]" />
         <span className="text-[10px] font-mono text-[hsl(var(--foreground)/0.8)] tracking-tight">
