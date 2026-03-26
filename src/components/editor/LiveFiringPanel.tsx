@@ -83,6 +83,9 @@ const MODE_CATEGORIES = [
   },
 ];
 
+const SELF_CONTAINED_PANEL_MODES: FXCMode[] = ['pyro_fire', 'fxk_light', 'ma3', 'show_control', 'dmx_monitor', 'drone_ops'];
+const isSelfContainedMode = (mode: FXCMode) => SELF_CONTAINED_PANEL_MODES.includes(mode);
+
 function MobileModeTabs({ mode, onModeChange }: { mode: FXCMode; onModeChange: (m: FXCMode) => void }) {
   const [expanded, setExpanded] = useState(true);
   const currentCategory = MODE_CATEGORIES.find(c => c.modes.some(m => m.key === mode));
@@ -386,6 +389,11 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   const sequenceRef = useRef(0);
   const fireTimers = useRef(new globalThis.Map<string, ReturnType<typeof setTimeout>>());
   const relayWs = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    if (!initialMode) return;
+    setMode(initialMode as FXCMode);
+  }, [initialMode]);
 
   // ─── WebSocket Relay connection ───
   const connectRelay = useCallback(() => {
@@ -1432,7 +1440,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
         }}
       >
         {/* Self-contained sub-panels: skip ALL outer chrome (scenes, tabs, arm, panic) */}
-        {['pyro_fire', 'fxk_light', 'ma3', 'show_control', 'dmx_monitor', 'drone_ops'].includes(mode) ? (
+        {isSelfContainedMode(mode) ? (
           <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
         ) : (
           <>
@@ -1461,7 +1469,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   return (
     <div className={cn("h-full flex flex-col overflow-hidden select-none", standalone && "ff-standalone-panel")} style={{ minWidth: standalone ? undefined : 300, maxWidth: standalone ? undefined : 380, background: standalone ? 'transparent' : 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 5%) 100%)' }}>
       {/* Self-contained sub-panels: skip ALL outer chrome */}
-      {['pyro_fire', 'fxk_light', 'ma3', 'show_control', 'dmx_monitor', 'drone_ops'].includes(mode) ? (
+      {isSelfContainedMode(mode) ? (
         <ScrollArea className="flex-1">{renderModeContent(false)}</ScrollArea>
       ) : (
         <>
