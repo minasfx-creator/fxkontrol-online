@@ -516,8 +516,133 @@ export default function CommandCenter() {
           borderRight: '1px solid rgba(255, 255, 255, 0.04)',
         }}
       >
-...
-        {/* Main Content */}
+        {/* Status Header — frosted glass card */}
+        <div className="px-2.5 pt-3 pb-2">
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className={cn(
+              "w-full rounded-lg border transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
+              "hover:border-primary/15 active:scale-[0.97]",
+              sidebarCollapsed ? "p-2.5" : "px-3.5 py-2.5"
+            )}
+            style={{
+              background: `linear-gradient(135deg, ${accent.glow}, hsl(220 22% 6% / 0.6))`,
+              borderColor: accent.color + '12',
+              boxShadow: `0 2px 12px ${accent.color}08, inset 0 1px 0 hsl(0 0% 100% / 0.03)`,
+            }}
+          >
+            {sidebarCollapsed ? (
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="h-2 w-2 rounded-full transition-all duration-300" style={{
+                  backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.2)',
+                  boxShadow: connectedCount > 0 ? `0 0 8px ${accent.color}60` : 'none',
+                }} />
+                <span className="text-[7px] font-mono text-muted-foreground/60 font-bold">{connectedCount}</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2.5">
+                <div className="h-2.5 w-2.5 rounded-full shrink-0 transition-all duration-300" style={{
+                  backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.2)',
+                  boxShadow: connectedCount > 0 ? `0 0 10px ${accent.color}50` : 'none',
+                }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[8px] font-bold text-foreground/90 font-mono tracking-[0.2em] truncate">FXK COMMAND</p>
+                  <p className="text-[7px] text-muted-foreground/40 font-mono tracking-wider">{connectedCount} LINKS ACTIVE</p>
+                </div>
+              </div>
+            )}
+          </button>
+        </div>
+
+        {/* Mode List — Apple-style selection indicators */}
+        <ScrollArea className="flex-1 px-1.5">
+          <div className="space-y-4 pb-3">
+            {MODE_SECTIONS.map(section => (
+              <div key={section.label}>
+                {!sidebarCollapsed && (
+                  <div className="flex items-center gap-2 px-2.5 mb-1.5">
+                    <p className={cn("text-[7px] font-bold tracking-[0.3em] font-mono shrink-0 opacity-60", section.accent)}>
+                      {section.label}
+                    </p>
+                    <div className="h-[1px] flex-1" style={{ background: 'linear-gradient(90deg, hsl(var(--primary) / 0.08), transparent)' }} />
+                  </div>
+                )}
+                <div className="space-y-0.5">
+                  {section.modes.map(mode => {
+                    const isActive = activeMode === mode.key;
+                    const mAccent = CONSOLE_ACCENTS[mode.key];
+                    const Logo = CONSOLE_LOGOS[mode.key];
+                    return (
+                      <button
+                        key={mode.key}
+                        onClick={() => handleModeChange(mode.key)}
+                        className={cn(
+                          "w-full flex items-center gap-2.5 rounded-lg transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] relative group",
+                          sidebarCollapsed ? "justify-center p-2.5" : "px-3 py-2.5 min-h-[42px]",
+                          isActive
+                            ? "text-foreground"
+                            : "text-muted-foreground/40 hover:text-foreground/60 active:scale-[0.97]"
+                        )}
+                        style={isActive ? {
+                          background: `linear-gradient(135deg, ${mAccent?.glow}, ${mAccent?.color}05)`,
+                          boxShadow: `0 0 20px ${mAccent?.color}08, inset 0 1px 0 hsl(0 0% 100% / 0.03)`,
+                        } : undefined}
+                        title={sidebarCollapsed ? mode.label : undefined}
+                      >
+                        {isActive && (
+                          <div className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full transition-all duration-500" style={{
+                            backgroundColor: mAccent?.color,
+                            boxShadow: `0 0 8px ${mAccent?.color}60`,
+                          }} />
+                        )}
+                        {!isActive && (
+                          <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                            style={{ background: `linear-gradient(135deg, ${mAccent?.glow}50, transparent)` }} />
+                        )}
+                        <div className="relative z-10 flex items-center gap-2.5 w-full">
+                          {Logo
+                            ? <Logo size={sidebarCollapsed ? 24 : 20} active={isActive} />
+                            : <mode.icon className={cn("shrink-0", sidebarCollapsed ? "w-5 h-5" : "w-4 h-4")} />
+                          }
+                          {!sidebarCollapsed && (
+                            <span className="text-[9px] font-bold truncate font-mono tracking-wider uppercase">{mode.label}</span>
+                          )}
+                          {!sidebarCollapsed && isActive && (
+                            <div className="ml-auto h-1.5 w-1.5 rounded-full animate-pulse shrink-0" style={{
+                              backgroundColor: mAccent?.color,
+                              boxShadow: `0 0 6px ${mAccent?.color}`,
+                            }} />
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+
+        {/* Safety Footer — frosted glass */}
+        {!sidebarCollapsed && (
+          <div className="p-2.5 border-t" style={{ borderColor: 'hsl(var(--destructive) / 0.06)' }}>
+            <div className={cn(
+              "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-300",
+              isArmed ? "danger-stripe border-destructive/20" : "border-destructive/6"
+            )} style={{
+              background: isArmed ? 'hsl(var(--destructive) / 0.06)' : 'hsl(var(--destructive) / 0.02)',
+              backdropFilter: 'blur(12px)',
+            }}>
+              <Shield className="h-3 w-3 text-destructive/40 shrink-0" />
+              <span className="text-[7px] text-destructive/50 font-bold font-mono tracking-[0.15em]">
+                {isArmed ? `ARMED // ${activeEffects.length} HOT` : 'SAFETY INTERLOCK'}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 relative">
         {/* BR2049 Scanline overlay */}
         <div className="absolute inset-0 pointer-events-none z-[1] opacity-[0.03]" style={{
