@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import BLEDeviceScanner from '@/components/editor/BLEDeviceScanner';
+import EasyConnectPanel from '@/components/editor/EasyConnectPanel';
 import {
   getOSCClient,
   buildMA3Command,
@@ -872,7 +873,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
         {/* ═══ BLE Devices Tab ═══ */}
         <TabsContent value="ble" className="flex-1 flex flex-col mt-1">
           <ScrollArea className="flex-1">
-            <BLEDeviceScanner context="light" compact />
+            <EasyConnectPanel context="light" compact />
           </ScrollArea>
         </TabsContent>
       </Tabs>

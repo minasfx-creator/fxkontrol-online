@@ -98,6 +98,7 @@ import ConnectionManagerPanel from '@/components/editor/ConnectionManagerPanel';
 import RadioControlPanel from '@/components/editor/RadioControlPanel';
 import MA3ControlPanel from '@/components/editor/MA3ControlPanel';
 import SACNMonitorPanel from '@/components/editor/SACNMonitorPanel';
+import EasyConnectPanel from '@/components/editor/EasyConnectPanel';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { ShortcutsOverlay } from '@/components/editor/PopupEditors';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
@@ -424,6 +425,7 @@ function Index() {
         {activePanel === 'radio' && <RadioControlPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'ma3' && <MA3ControlPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'sacnmonitor' && <SACNMonitorPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'easyconnect' && <EasyConnectPanel onClose={() => setActivePanel(null)} />}
       </>
     );
   };

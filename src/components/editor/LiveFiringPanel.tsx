@@ -56,6 +56,7 @@ import ShowControlPanel from './ShowControlPanel';
 import DMXMonitorPanel from './DMXMonitorPanel';
 import DroneCommandPanel from './DroneCommandPanel';
 import BLEDeviceScanner from './BLEDeviceScanner';
+import EasyConnectPanel from './EasyConnectPanel';
 import { RISK_GROUP_LABELS, RISK_GROUP_COLORS, type RiskGroup } from '@/lib/pyroPhysics';
 
 // ═══════════════════════════════════════════════════════════
@@ -1397,8 +1398,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
       case 'check_slave': return <CheckSlavePanel fs={fs} pyroArm={pyroArm} />;
       case 'ble_scan': return (
         <div className={cn("flex flex-col gap-3 h-full overflow-y-auto", fs ? "p-3" : "p-2")}>
-          <BLEDeviceScanner context="pyro" />
-          <BLEDeviceScanner context="dmx" compact />
+          <EasyConnectPanel context="pyro" />
         </div>
       );
       case 'mobile_link': return <MobileLinkMode fs={fs} fireChannel={fireChannel} channels={channels} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
