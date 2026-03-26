@@ -55,7 +55,6 @@ import ArtNetModulePanel from './live-firing/ArtNetModulePanel';
 import ShowControlPanel from './ShowControlPanel';
 import DMXMonitorPanel from './DMXMonitorPanel';
 import DroneCommandPanel from './DroneCommandPanel';
-import BLEDeviceScanner from './BLEDeviceScanner';
 import EasyConnectPanel from './EasyConnectPanel';
 import { RISK_GROUP_LABELS, RISK_GROUP_COLORS, type RiskGroup } from '@/lib/pyroPhysics';
 
@@ -64,22 +63,22 @@ import { RISK_GROUP_LABELS, RISK_GROUP_COLORS, type RiskGroup } from '@/lib/pyro
 // ═══════════════════════════════════════════════════════════
 const MODE_CATEGORIES = [
   {
-    label: '🔥 EXECUTION', modes: [
+    label: 'EXECUTION', modes: [
       { key: 'super_dmx' as FXCMode, label: 'FXK-DMX', icon: Zap },
       { key: 'pyro_fire' as FXCMode, label: 'FXK-PYRO', icon: Flame },
     ],
   },
   {
-    label: '📡 MONITORING', modes: [
+    label: 'MONITORING', modes: [
       { key: 'show_control' as FXCMode, label: 'SHOW CTRL', icon: Activity },
       { key: 'dmx_monitor' as FXCMode, label: 'DMX MON', icon: Radio },
       { key: 'fxk_light' as FXCMode, label: 'FXK-LIGHT', icon: Gauge },
     ],
   },
   {
-    label: '🔧 HARDWARE', modes: [
+    label: 'HARDWARE', modes: [
       { key: 'module' as FXCMode, label: 'MODULE', icon: Globe },
-      { key: 'ble_scan' as FXCMode, label: 'BLE SCAN', icon: Signal },
+      { key: 'ble_scan' as FXCMode, label: 'CONNECT', icon: Signal },
     ],
   },
 ];
@@ -1039,26 +1038,25 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
                 { key: 'manual_fire' as FXCMode, label: 'Manual' },
                 { key: 'auto_fire' as FXCMode, label: 'Auto' },
                 { key: 'check_slave' as FXCMode, label: 'Check' },
-                { key: 'ble_scan' as FXCMode, label: '📡 BLE' },
-                { key: 'settings' as FXCMode, label: '⚙' },
+                { key: 'ble_scan' as FXCMode, label: 'BLE' },
+                { key: 'settings' as FXCMode, label: 'Settings' },
               ]
             : [
                 { key: 'super_dmx' as FXCMode, label: 'Super' },
                 { key: 'simple_dmx' as FXCMode, label: 'Simple' },
                 { key: 'manual_fire' as FXCMode, label: 'Manual' },
-                { key: 'pyro_fire' as FXCMode, label: '🔥 Pyro' },
+                { key: 'pyro_fire' as FXCMode, label: 'Pyro' },
                 { key: 'auto_fire' as FXCMode, label: 'Auto' },
                 { key: 'check_slave' as FXCMode, label: 'Check' },
-                { key: 'ble_scan' as FXCMode, label: '📡 BLE' },
-                { key: 'controllers' as FXCMode, label: '🎛 HW' },
-                { key: 'pbus' as FXCMode, label: '📡 PBUS' },
-                { key: 'ma3' as FXCMode, label: '🎛 MA3' },
-                { key: 'field_map' as FXCMode, label: '🗺 Map' },
-                { key: 'connections' as FXCMode, label: '🔌 Conn' },
-                { key: 'wifi_direct' as FXCMode, label: '📡 WFD' },
-                { key: 'artnet_modules' as FXCMode, label: '🌐 ArtNet' },
-                { key: 'mobile_link' as FXCMode, label: '📡 Link' },
-                { key: 'settings' as FXCMode, label: '⚙' },
+                { key: 'ble_scan' as FXCMode, label: 'BLE' },
+                { key: 'controllers' as FXCMode, label: 'HW' },
+                { key: 'pbus' as FXCMode, label: 'PBUS' },
+                { key: 'ma3' as FXCMode, label: 'MA3' },
+                { key: 'field_map' as FXCMode, label: 'Map' },
+                { key: 'connections' as FXCMode, label: 'Conn' },
+                { key: 'artnet_modules' as FXCMode, label: 'ArtNet' },
+                { key: 'mobile_link' as FXCMode, label: 'Link' },
+                { key: 'settings' as FXCMode, label: 'Settings' },
               ]
           ).map(m => (
             <button key={m.key} onClick={() => { setMode(m.key); setShowDeviceLib(false); }}
@@ -1433,8 +1431,8 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
           paddingBottom: mob ? 'max(env(safe-area-inset-bottom), 8px)' : undefined,
         }}
       >
-        {/* Skip outer chrome when pyro_fire standalone — PyroFireOnePanel owns the viewport */}
-        {standalone && mode === 'pyro_fire' ? (
+        {/* Skip outer chrome for self-contained sub-panels */}
+        {['pyro_fire', 'fxk_light', 'ma3', 'show_control', 'dmx_monitor', 'drone_ops'].includes(mode) ? (
           <>
             {renderSceneModeBar(true)}
             <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
@@ -1465,8 +1463,8 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
 
   return (
     <div className={cn("h-full flex flex-col overflow-hidden select-none", standalone && "ff-standalone-panel")} style={{ minWidth: standalone ? undefined : 300, maxWidth: standalone ? undefined : 380, background: standalone ? 'transparent' : 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 5%) 100%)' }}>
-      {/* Skip outer chrome when pyro_fire standalone */}
-      {standalone && mode === 'pyro_fire' ? (
+      {/* Skip outer chrome for self-contained sub-panels */}
+      {['pyro_fire', 'fxk_light', 'ma3', 'show_control', 'dmx_monitor', 'drone_ops'].includes(mode) ? (
         <>
           {renderSceneModeBar(false)}
           <ScrollArea className="flex-1">{renderModeContent(false)}</ScrollArea>
