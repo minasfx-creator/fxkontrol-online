@@ -103,6 +103,7 @@ import {
 } from '@/lib/hardening';
 // ═══ FXK Ultra Refinement — Adaptive Quality + Render Stability ═══
 import { useFXKUltraRefinement } from '@/hooks/useFXKUltraRefinement';
+import { getDeviceProfile } from '@/lib/deviceCapability';
 // ═══ Shared state (lightweight, no components) ═══
 import {
   getActiveBurstCount as _getActiveBurstCount,
