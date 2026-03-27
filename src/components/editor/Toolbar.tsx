@@ -49,7 +49,7 @@ function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => voi
   const pbus = usePBusHardware();
   const [artnetCount, setArtnetCount] = useState(0);
   const [artnetConnected, setArtnetConnected] = useState(0);
-  const [hwPanelOpen, setHwPanelOpen] = useState(false);
+  
   const isMobile = useIsMobile();
 
   useEffect(() => {
