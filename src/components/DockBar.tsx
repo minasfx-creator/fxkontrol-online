@@ -144,7 +144,11 @@ export default function DockBar() {
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => handleClick(item.path)}
-                      onMouseEnter={isMobile ? undefined : () => setHoveredIndex(i)}
+                      onMouseEnter={isMobile ? undefined : () => {
+                        setHoveredIndex(i);
+                        prefetchRoute(item.path);
+                      }}
+                      onTouchStart={() => prefetchRoute(item.path)}
                       className={cn(
                         "relative flex flex-col items-center justify-center rounded-xl transition-all",
                         "active:scale-90",
