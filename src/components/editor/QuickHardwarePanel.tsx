@@ -366,198 +366,174 @@ export default function QuickHardwarePanel({ open, onClose, fs }: QuickHardwareP
 
   // ── Shared renderers ──
   function renderDeviceList() {
-    return (<>
-          {(['ble', 'usb', 'artnet', 'pbus', 'radio', 'wifi'] as TransportGroup[]).map(transport => {
-            const devs = grouped.get(transport);
-            if (!devs || devs.length === 0) return null;
-            const meta = TRANSPORT_META[transport];
-            const Icon = meta.icon;
-            const isExpanded = expandedGroups.has(transport);
+    return (
+      <>
+        {(['ble', 'usb', 'artnet', 'pbus', 'radio', 'wifi'] as TransportGroup[]).map(transport => {
+          const devs = grouped.get(transport);
+          if (!devs || devs.length === 0) return null;
+          const meta = TRANSPORT_META[transport];
+          const Icon = meta.icon;
+          const isExpanded = expandedGroups.has(transport);
 
-            return (
-              <div key={transport} className="rounded-xl border border-[hsl(var(--border)/0.15)] overflow-hidden">
-                {/* Group header */}
-                <button
-                  onClick={() => toggleGroup(transport)}
-                  className="w-full flex items-center justify-between px-3 py-2.5 active:bg-[hsl(var(--muted)/0.1)] transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <Icon className="w-4 h-4" style={{ color: meta.color }} />
-                    <span className="text-[11px] font-bold text-foreground">{meta.label}</span>
-                    <Badge variant="secondary" className="text-[8px] px-1.5 py-0 h-4 font-mono">
-                      {devs.filter(d => d.status === 'online').length}/{devs.length}
-                    </Badge>
-                  </div>
-                  {isExpanded
-                    ? <ChevronDown className="w-4 h-4 text-[hsl(var(--muted-foreground)/0.5)]" />
-                    : <ChevronRight className="w-4 h-4 text-[hsl(var(--muted-foreground)/0.5)]" />
-                  }
-                </button>
+          return (
+            <div key={transport} className="rounded-xl border border-[hsl(var(--border)/0.15)] overflow-hidden">
+              <button
+                onClick={() => toggleGroup(transport)}
+                className="w-full flex items-center justify-between px-3 py-2.5 active:bg-[hsl(var(--muted)/0.1)] transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Icon className="w-4 h-4" style={{ color: meta.color }} />
+                  <span className="text-[11px] font-bold text-foreground">{meta.label}</span>
+                  <Badge variant="secondary" className="text-[8px] px-1.5 py-0 h-4 font-mono">
+                    {devs.filter(d => d.status === 'online').length}/{devs.length}
+                  </Badge>
+                </div>
+                {isExpanded
+                  ? <ChevronDown className="w-4 h-4 text-[hsl(var(--muted-foreground)/0.5)]" />
+                  : <ChevronRight className="w-4 h-4 text-[hsl(var(--muted-foreground)/0.5)]" />
+                }
+              </button>
 
-                {/* Devices */}
-                {isExpanded && (
-                  <div className="px-2 pb-2 space-y-1">
-                    {devs.map(device => (
-                      <div
-                        key={device.id}
-                        className={cn(
-                          "flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors",
-                          device.status === 'online'
-                            ? "bg-[hsl(var(--success)/0.06)]"
-                            : device.status === 'connecting'
-                            ? "bg-[hsl(var(--warning)/0.06)]"
-                            : "bg-[hsl(var(--muted)/0.08)]"
-                        )}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          {/* Status dot */}
-                          <div className={cn(
-                            "w-2 h-2 rounded-full shrink-0",
-                            device.status === 'online' && "bg-[hsl(var(--success))]",
-                            device.status === 'connecting' && "bg-[hsl(var(--warning))] animate-pulse",
-                            device.status === 'offline' && "bg-[hsl(var(--muted-foreground)/0.3)]",
-                          )} />
-
-                          <div className="min-w-0">
-                            <p className="text-[10px] font-semibold text-foreground truncate">{device.name}</p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              {device.latencyMs !== undefined && (
-                                <span className="text-[8px] font-mono text-[hsl(var(--muted-foreground))]">
-                                  {device.latencyMs}ms
-                                </span>
-                              )}
-                              {device.channelCount !== undefined && (
-                                <span className="text-[8px] font-mono text-[hsl(var(--muted-foreground))]">
-                                  {device.channelCount}ch
-                                </span>
-                              )}
-                              {device.label && (
-                                <Badge
-                                  variant="outline"
-                                  className={cn(
-                                    "text-[7px] px-1 py-0 h-3.5 font-mono",
-                                    device.label === 'ARMED'
-                                      ? "border-[hsl(var(--destructive)/0.5)] text-[hsl(var(--destructive))]"
-                                      : "border-[hsl(var(--success)/0.5)] text-[hsl(var(--success))]"
-                                  )}
-                                >
-                                  {device.label}
-                                </Badge>
-                              )}
-                            </div>
+              {isExpanded && (
+                <div className="px-2 pb-2 space-y-1">
+                  {devs.map(device => (
+                    <div
+                      key={device.id}
+                      className={cn(
+                        "flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors",
+                        device.status === 'online'
+                          ? "bg-[hsl(var(--success)/0.06)]"
+                          : device.status === 'connecting'
+                          ? "bg-[hsl(var(--warning)/0.06)]"
+                          : "bg-[hsl(var(--muted)/0.08)]"
+                      )}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={cn(
+                          "w-2 h-2 rounded-full shrink-0",
+                          device.status === 'online' && "bg-[hsl(var(--success))]",
+                          device.status === 'connecting' && "bg-[hsl(var(--warning))] animate-pulse",
+                          device.status === 'offline' && "bg-[hsl(var(--muted-foreground)/0.3)]",
+                        )} />
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold text-foreground truncate">{device.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {device.latencyMs !== undefined && (
+                              <span className="text-[8px] font-mono text-[hsl(var(--muted-foreground))]">{device.latencyMs}ms</span>
+                            )}
+                            {device.channelCount !== undefined && (
+                              <span className="text-[8px] font-mono text-[hsl(var(--muted-foreground))]">{device.channelCount}ch</span>
+                            )}
+                            {device.label && (
+                              <Badge variant="outline" className={cn(
+                                "text-[7px] px-1 py-0 h-3.5 font-mono",
+                                device.label === 'ARMED'
+                                  ? "border-[hsl(var(--destructive)/0.5)] text-[hsl(var(--destructive))]"
+                                  : "border-[hsl(var(--success)/0.5)] text-[hsl(var(--success))]"
+                              )}>
+                                {device.label}
+                              </Badge>
+                            )}
                           </div>
                         </div>
-
-                        {/* Telemetry + Actions */}
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <RSSIBars rssi={device.rssi} />
-                          <BatteryIcon level={device.battery} />
-
-                          {/* ARM/DISARM button for FireOne & PBUS */}
-                          {device.source && (device.source === 'fireone' || device.source === 'pbus') && device.addr !== undefined && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleArmToggle(device); }}
-                              className={cn(
-                                "ml-1 flex items-center justify-center w-8 h-8 rounded-lg transition-all active:scale-90",
-                                device.armed
-                                  ? "bg-[hsl(var(--destructive)/0.15)] text-[hsl(var(--destructive))]"
-                                  : "bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]"
-                              )}
-                              title={device.armed ? 'Disarm' : 'Arm'}
-                            >
-                              {device.armed
-                                ? <ShieldAlert className="w-3.5 h-3.5" />
-                                : <Shield className="w-3.5 h-3.5" />
-                              }
-                            </button>
-                          )}
-                        </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          {totalDevices === 0 && (
-            <div className="flex flex-col items-center justify-center py-12 gap-2">
-              <Cpu className="w-8 h-8 text-[hsl(var(--muted-foreground)/0.3)]" />
-              <p className="text-[11px] text-[hsl(var(--muted-foreground))]">Nenhum hardware detectado</p>
-              <p className="text-[9px] text-[hsl(var(--muted-foreground)/0.6)]">Ative o modo SIM ou conecte um dispositivo</p>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <RSSIBars rssi={device.rssi} />
+                        <BatteryIcon level={device.battery} />
+                        {device.source && (device.source === 'fireone' || device.source === 'pbus') && device.addr !== undefined && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleArmToggle(device); }}
+                            className={cn(
+                              "ml-1 flex items-center justify-center w-8 h-8 rounded-lg transition-all active:scale-90",
+                              device.armed
+                                ? "bg-[hsl(var(--destructive)/0.15)] text-[hsl(var(--destructive))]"
+                                : "bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]"
+                            )}
+                            title={device.armed ? 'Disarm' : 'Arm'}
+                          >
+                            {device.armed ? <ShieldAlert className="w-3.5 h-3.5" /> : <Shield className="w-3.5 h-3.5" />}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
+          );
+        })}
+
+        {totalDevices === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 gap-2">
+            <Cpu className="w-8 h-8 text-[hsl(var(--muted-foreground)/0.3)]" />
+            <p className="text-[11px] text-[hsl(var(--muted-foreground))]">Nenhum hardware detectado</p>
+            <p className="text-[9px] text-[hsl(var(--muted-foreground)/0.6)]">Ative o modo SIM ou conecte um dispositivo</p>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  function renderFooterActions() {
+    return (
+      <div className="flex flex-col gap-2 px-4 pt-2 pb-3 border-t border-[hsl(var(--border)/0.1)]">
+        <div className="flex gap-2">
+          <button
+            onClick={async () => {
+              haptics.tap();
+              try {
+                if (fireone.isConnected) await fireone.disconnect();
+                else await fireone.connect();
+              } catch { /* ignore */ }
+            }}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 h-11 rounded-xl font-bold text-[10px] transition-all active:scale-95",
+              fireone.isConnected
+                ? "bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))] border border-[hsl(var(--success)/0.3)]"
+                : "bg-[hsl(var(--muted)/0.2)] text-foreground border border-[hsl(var(--border)/0.3)]"
+            )}
+          >
+            <Usb className="w-3.5 h-3.5" />
+            {fireone.isConnected ? 'DISCONNECT' : 'CONNECT'}
+          </button>
+          <button
+            onClick={handleScanAll}
+            disabled={scanning}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 h-11 rounded-xl font-bold text-[10px] transition-all active:scale-95",
+              scanning
+                ? "bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))]"
+                : "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
+            )}
+          >
+            <Search className={cn("w-3.5 h-3.5", scanning && "animate-spin")} />
+            {scanning ? 'SCANNING...' : 'SCAN ALL'}
+          </button>
         </div>
-
-        {/* Footer Actions */}
-        <div className="flex flex-col gap-2 px-4 pt-2 pb-3 border-t border-[hsl(var(--border)/0.1)]">
-          {/* Row 1: Connect + Scan */}
-          <div className="flex gap-2">
-            <button
-              onClick={async () => {
-                haptics.tap();
-                try {
-                  if (fireone.isConnected) await fireone.disconnect();
-                  else await fireone.connect();
-                } catch { /* ignore */ }
-              }}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-2 h-11 rounded-xl font-bold text-[10px] transition-all active:scale-95",
-                fireone.isConnected
-                  ? "bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))] border border-[hsl(var(--success)/0.3)]"
-                  : "bg-[hsl(var(--muted)/0.2)] text-foreground border border-[hsl(var(--border)/0.3)]"
-              )}
-            >
-              <Usb className="w-3.5 h-3.5" />
-              {fireone.isConnected ? 'DISCONNECT' : 'CONNECT'}
-            </button>
-            <button
-              onClick={handleScanAll}
-              disabled={scanning}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-2 h-11 rounded-xl font-bold text-[10px] transition-all active:scale-95",
-                scanning
-                  ? "bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))]"
-                  : "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
-              )}
-            >
-              <Search className={cn("w-3.5 h-3.5", scanning && "animate-spin")} />
-              {scanning ? 'SCANNING...' : 'SCAN ALL'}
-            </button>
-          </div>
-
-          {/* Row 2: Arm All / Disarm All / Test All */}
-          <div className="flex gap-2">
-            <button
-              onClick={async () => {
-                haptics.tap();
-                await Promise.allSettled([fireone.armAll?.(), pbus.armAll?.()]);
-              }}
-              className="flex-1 flex items-center justify-center gap-1.5 h-11 rounded-xl bg-[hsl(var(--destructive)/0.12)] text-[hsl(var(--destructive))] font-bold text-[10px] active:scale-95 transition-transform border border-[hsl(var(--destructive)/0.2)]"
-            >
-              <ShieldAlert className="w-3.5 h-3.5" />
-              ARM ALL
-            </button>
-            <button
-              onClick={async () => {
-                haptics.tap();
-                await Promise.allSettled([fireone.disarmAll?.(), pbus.disarmAll?.()]);
-              }}
-              className="flex-1 flex items-center justify-center gap-1.5 h-11 rounded-xl bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))] font-bold text-[10px] active:scale-95 transition-transform border border-[hsl(var(--success)/0.2)]"
-            >
-              <Shield className="w-3.5 h-3.5" />
-              DISARM ALL
-            </button>
-            <button
-              onClick={() => { haptics.tap(); }}
-              className="flex-1 flex items-center justify-center gap-1.5 h-11 rounded-xl border border-[hsl(var(--border)/0.3)] bg-[hsl(var(--surface-0)/0.5)] font-bold text-[10px] text-foreground active:scale-95 transition-transform"
-            >
-              <Zap className="w-3.5 h-3.5 text-[hsl(var(--warning))]" />
-              TEST ALL
-            </button>
-          </div>
+        <div className="flex gap-2">
+          <button
+            onClick={async () => { haptics.tap(); await Promise.allSettled([fireone.armAll?.(), pbus.armAll?.()]); }}
+            className="flex-1 flex items-center justify-center gap-1.5 h-11 rounded-xl bg-[hsl(var(--destructive)/0.12)] text-[hsl(var(--destructive))] font-bold text-[10px] active:scale-95 transition-transform border border-[hsl(var(--destructive)/0.2)]"
+          >
+            <ShieldAlert className="w-3.5 h-3.5" />
+            ARM ALL
+          </button>
+          <button
+            onClick={async () => { haptics.tap(); await Promise.allSettled([fireone.disarmAll?.(), pbus.disarmAll?.()]); }}
+            className="flex-1 flex items-center justify-center gap-1.5 h-11 rounded-xl bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))] font-bold text-[10px] active:scale-95 transition-transform border border-[hsl(var(--success)/0.2)]"
+          >
+            <Shield className="w-3.5 h-3.5" />
+            DISARM ALL
+          </button>
+          <button
+            onClick={() => { haptics.tap(); }}
+            className="flex-1 flex items-center justify-center gap-1.5 h-11 rounded-xl border border-[hsl(var(--border)/0.3)] bg-[hsl(var(--surface-0)/0.5)] font-bold text-[10px] text-foreground active:scale-95 transition-transform"
+          >
+            <Zap className="w-3.5 h-3.5 text-[hsl(var(--warning))]" />
+            TEST ALL
+          </button>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
 }
