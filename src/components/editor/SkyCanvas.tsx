@@ -1363,13 +1363,13 @@ export default function SkyCanvas() {
         resize={{ debounce: 50, scroll: false }}
         shadows
         gl={{
-          antialias: true,
+          antialias: !isLowTierMobile,
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.5,
-          powerPreference: 'high-performance',
+          powerPreference: isLowTierMobile ? 'default' : 'high-performance',
           alpha: false,
           stencil: false,
-          logarithmicDepthBuffer: true,
+          logarithmicDepthBuffer: !isLowTierMobile,
           outputColorSpace: THREE.SRGBColorSpace,
         }}
         dpr={isLowTierMobile ? [1, 1] : isMobile ? [1, 1.25] : [1.5, 2]}
