@@ -61,11 +61,13 @@ function BatteryIcon({ level }: { level?: number }) {
 }
 
 interface QuickHardwarePanelProps {
-  open: boolean;
-  onClose: () => void;
+  open?: boolean;
+  onClose?: () => void;
+  /** Render as full-screen embedded panel (no overlay/sheet) */
+  fs?: boolean;
 }
 
-export default function QuickHardwarePanel({ open, onClose }: QuickHardwarePanelProps) {
+export default function QuickHardwarePanel({ open, onClose, fs }: QuickHardwarePanelProps) {
   const [simMode, setSimMode] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<TransportGroup>>(new Set(['ble', 'usb', 'artnet', 'pbus', 'radio']));
   const [scanning, setScanning] = useState(false);
@@ -197,8 +199,81 @@ export default function QuickHardwarePanel({ open, onClose }: QuickHardwarePanel
     setScanning(false);
   }, [fireone, pbus]);
 
-  if (!open) return null;
+  if (!fs && !open) return null;
 
+  // ── Embedded fullscreen mode (Command Center) ──
+  if (fs) {
+    return (
+      <div className="flex flex-col h-full bg-background overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[hsl(var(--border)/0.15)]">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-[hsl(var(--primary)/0.15)]">
+              <Cpu className="w-5 h-5 text-[hsl(var(--primary))]" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-foreground tracking-tight">Hardware Connect</h2>
+              <p className="text-[10px] text-[hsl(var(--muted-foreground))] font-mono">
+                {totalOnline}/{totalDevices} online • {devices.filter(d => d.armed).length} armed
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { haptics.tap(); setSimMode(!simMode); }}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[9px] font-bold tracking-wider transition-colors",
+                simMode
+                  ? "bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]"
+                  : "bg-[hsl(var(--muted)/0.3)] text-[hsl(var(--muted-foreground))]"
+              )}
+            >
+              {simMode ? <ToggleRight className="w-3.5 h-3.5" /> : <ToggleLeft className="w-3.5 h-3.5" />}
+              SIM
+            </button>
+          </div>
+        </div>
+
+        {/* Transport Summary Bar */}
+        <div className="flex gap-1.5 px-4 py-2 overflow-x-auto scrollbar-none border-b border-[hsl(var(--border)/0.08)]">
+          {(['ble', 'usb', 'artnet', 'pbus', 'radio', 'wifi'] as TransportGroup[]).map(t => {
+            const meta = TRANSPORT_META[t];
+            const count = grouped.get(t)?.length || 0;
+            const onlineCount = grouped.get(t)?.filter(d => d.status === 'online').length || 0;
+            const Icon = meta.icon;
+            return (
+              <button
+                key={t}
+                onClick={() => toggleGroup(t)}
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all shrink-0 active:scale-95",
+                  count > 0
+                    ? "border-[hsl(var(--border)/0.3)] bg-[hsl(var(--surface-0)/0.5)]"
+                    : "border-transparent bg-[hsl(var(--muted)/0.15)] opacity-50"
+                )}
+              >
+                <Icon className="w-3 h-3" style={{ color: meta.color }} />
+                <span className="text-[9px] font-bold text-foreground">{count}</span>
+                {onlineCount > 0 && (
+                  <div className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--success))]" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Device List — scrollable */}
+        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5">
+          {renderDeviceList()}
+        </div>
+
+        {/* Footer Actions */}
+        {renderFooterActions()}
+      </div>
+    );
+  }
+
+  // ── Bottom sheet overlay mode (legacy) ──
   return (
     <div className="fixed inset-0 z-[60] flex flex-col justify-end" onClick={onClose}>
       {/* Backdrop */}
@@ -280,6 +355,18 @@ export default function QuickHardwarePanel({ open, onClose }: QuickHardwarePanel
 
         {/* Device List */}
         <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1.5">
+          {renderDeviceList()}
+        </div>
+
+        {/* Footer Actions */}
+        {renderFooterActions()}
+      </div>
+    </div>
+  );
+
+  // ── Shared renderers ──
+  function renderDeviceList() {
+    return (<>
           {(['ble', 'usb', 'artnet', 'pbus', 'radio', 'wifi'] as TransportGroup[]).map(transport => {
             const devs = grouped.get(transport);
             if (!devs || devs.length === 0) return null;
