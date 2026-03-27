@@ -2,7 +2,8 @@
  * MobileHUD — Apple Dynamic Island–inspired top bar
  * Clean, minimal, high-information density for show operators.
  */
-import { useState, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useState, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Play, Pause, Square, Menu, AlertOctagon, Zap, ShieldAlert, MapPin, Moon, Sun, Radio } from 'lucide-react';
 import { haptics } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
@@ -13,8 +14,6 @@ import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { useSMPTEStore } from '@/store/useSMPTEStore';
 import { useShowSettings } from '@/hooks/useShowSettings';
 import type { PanelId } from '@/components/editor/PanelTabBar';
-
-const QuickHardwarePanel = lazy(() => import('@/components/editor/QuickHardwarePanel'));
 
 interface MobileHUDProps {
   onOpenPanel: (id: PanelId) => void;
@@ -39,6 +38,7 @@ function getCountdown(showDate: string | null): string | null {
 }
 
 export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
+  const navigate = useNavigate();
   const currentTime = useProjectStore(s => s.currentTime);
   const isPlaying = useProjectStore(s => s.isPlaying);
   const setPlaying = useProjectStore(s => s.setPlaying);
@@ -57,7 +57,6 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
     window.dispatchEvent(new Event('open-geo-setup'));
   }, []);
   const isArmed = activeEffects.length > 0;
-  const [hwPanelOpen, setHwPanelOpen] = useState(false);
   const countdown = useMemo(() => getCountdown(settings?.show_date ?? null), [settings?.show_date]);
 
   const handlePanic = useCallback(() => {
@@ -128,7 +127,7 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
         <div className="pointer-events-auto flex items-center gap-2">
           {/* Hardware quick-access */}
           <button
-            onClick={() => { haptics.tap(); setHwPanelOpen(true); }}
+            onClick={() => { haptics.tap(); navigate('/command?mode=hardware'); }}
             className={cn(
               "glass-button relative flex items-center justify-center w-14 h-14 active:scale-90 transition-transform",
               (usbConnected || smpteRunning) && "ring-1 ring-[hsl(var(--success)/0.4)]"
@@ -180,10 +179,9 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
           </button>
         </div>
       </div>
-      {/* QuickHardwarePanel overlay */}
-      <Suspense fallback={null}>
-        <QuickHardwarePanel open={hwPanelOpen} onClose={() => setHwPanelOpen(false)} />
-      </Suspense>
+    </div>
+  );
+}
     </div>
   );
 }
