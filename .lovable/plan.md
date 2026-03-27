@@ -1,53 +1,50 @@
 
+Objetivo: eliminar o bug de “editor abre só uma parte” (desktop/mobile) tornando o layout do `/editor` deterministicamente full-area dentro do container disponível do app.
 
-## Quick Hardware Connect — Mobile-First Module
+1) Isolar a causa no encadeamento de layout
+- Revisar o fluxo `MainLayout -> main -> wrapper de transição -> Index`.
+- Confirmar dois pontos frágeis já visíveis no código:
+  - `useIsMobile()` inicia como `undefined` (vira `false`), renderizando branch desktop no primeiro frame em mobile.
+  - O `/editor` depende de `h-full` em cadeia + wrapper com key/animação de rota, o que pode gerar clipping/intermitência em telas específicas.
 
-The existing EasyConnectPanel is buried deep in the panel menu system. This plan creates a quick-access hardware overview directly from the MobileHUD, showing all available hardware and their transmission modes at a glance.
+2) Corrigir a base de detecção mobile (evitar render errado no primeiro paint)
+- Arquivo: `src/hooks/use-mobile.tsx`
+- Ajustar `useIsMobile` para iniciar com valor síncrono (`window.innerWidth < 768`) em vez de `undefined`.
+- Usar `matchMedia(...).matches` no listener para manter estado consistente.
+- Resultado esperado: mobile não renderiza desktop layout no frame inicial.
 
-### What Gets Built
+3) Fortalecer o container do editor no MainLayout
+- Arquivo: `src/layouts/MainLayout.tsx`
+- Para `/editor` e `/command`, garantir `main` com `relative flex-1 min-h-0 overflow-hidden`.
+- Evitar que o wrapper de transição (dissolve/materialize com `key={displayedPath}`) interfira no editor imersivo; manter transição para páginas comuns e usar render direto para editor/command.
+- Preservar padding/docks apenas onde aplicável (não editor/command).
 
-A new **QuickHardwarePanel** component — a compact, mobile-optimized overlay that shows:
-- All detected/simulated hardware grouped by **transport type** (BLE, USB, Art-Net, PBUS, WiFi, Radio)
-- Status indicators (online/offline/connecting) with signal bars and battery
-- Transport mode badges with color coding per protocol
-- One-tap SCAN ALL and per-device connect/test actions
-- Accessible via a new **hardware button** on the MobileHUD (replacing the small status dots)
+4) Tornar o Index independente de “height chain” frágil
+- Arquivo: `src/pages/Index.tsx`
+- Trocar raiz do editor para estratégia de preenchimento absoluto (`absolute inset-0`) dentro do `main` relativo.
+- Aplicar `min-h-0`/`overflow-hidden` nos wrappers que hospedam canvas e painéis para impedir corte vertical.
+- Manter timeline/painéis absolutos sem alterar comportamento funcional (apenas robustez de dimensionamento).
 
-### Architecture
+5) Ajuste mobile complementar do painel flutuante (se necessário para corte percebido)
+- Arquivo: `src/components/editor/MobileFloatingPanel.tsx`
+- Substituir altura fixa `88dvh/50dvh` por limite calculado com safe-area e barra inferior (`calc(...)`) para não ultrapassar viewport útil.
+- Garantir que conteúdo interno continue scrollável sem empurrar/cortar canvas.
 
-```text
-MobileHUD
-  └─ [New HW button] ──► QuickHardwarePanel (sheet overlay)
-       ├─ Transport Summary Bar (BLE: 2, USB: 1, ArtNet: 3...)
-       ├─ Device List (grouped by transport)
-       │    ├─ Device card: name, status dot, RSSI bars, battery, latency
-       │    └─ Connect/Test button per device
-       └─ Footer: SCAN ALL + TEST ALL
-```
+6) Validação (incluindo teste end-to-end obrigatório)
+- Desktop:
+  - Abrir `/editor` direto e via Dashboard.
+  - Confirmar canvas ocupando toda a área disponível do editor (sem cortar topo/rodapé/lateral).
+  - Testar com painel direito aberto, timeline colapsada/expandida e modo maximize.
+- Mobile:
+  - Abrir `/editor` em largura de telefone.
+  - Confirmar ausência de flash de layout desktop e canvas totalmente visível.
+  - Testar abertura/arraste/fechamento de painel flutuante sem clipping.
+- Regressão:
+  - Verificar `/command` e `/dashboard` sem quebra visual.
+  - Verificar que transições de página continuam nas rotas não imersivas.
 
-### Files to Create/Modify
-
-1. **`src/components/editor/QuickHardwarePanel.tsx`** (NEW)
-   - Compact mobile-first hardware overview
-   - Reuses the same hooks as EasyConnectPanel (`useFireOneHardware`, `usePBusHardware`, `useUSBDeviceStore`, `artnetModuleService`)
-   - Adds transport grouping with collapsible sections
-   - Transport summary bar at top showing count per protocol
-   - Includes radio devices from `useUSBDeviceStore` filtered by type
-   - SIM mode toggle for demo/field operation
-   - Large 48px touch targets for all interactive elements
-
-2. **`src/components/editor/MobileHUD.tsx`** (MODIFY)
-   - Add a hardware status button (antenna/radio icon) that opens QuickHardwarePanel
-   - Replace the tiny 1.5px status dots with a proper touch target
-   - Show aggregate online count badge on the button
-
-3. **`src/pages/Index.tsx`** (MODIFY)
-   - Add `quickhw` as a new panel option or handle it as a MobileHUD-local sheet
-   - Wire up the panel opening from MobileHUD
-
-### Key Design Decisions
-- **Mobile-first**: Full-width bottom sheet with 48px min touch targets
-- **Grouped by transport**: Each transport type (BLE/USB/ArtNet/PBUS/WiFi/Radio) gets a collapsible section header showing protocol name + device count
-- **Instant access**: One tap from MobileHUD — no menu diving
-- **Reuses existing infrastructure**: Same hooks, stores, and artnet service — no new data layer needed
-
+Detalhes técnicos (resumo de arquivos)
+- `src/hooks/use-mobile.tsx`: inicialização e listener robustos.
+- `src/layouts/MainLayout.tsx`: container imersivo e bypass de transição para editor/command.
+- `src/pages/Index.tsx`: raiz absoluta (`inset-0`) + `min-h-0/overflow-hidden`.
+- `src/components/editor/MobileFloatingPanel.tsx` (opcional mas recomendado): altura adaptativa com safe-area.
