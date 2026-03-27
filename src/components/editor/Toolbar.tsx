@@ -386,19 +386,22 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
     else toast.error('Erro ao salvar');
   }, [saveProject]);
 
-  const handleExportVVIZ = useCallback(() => {
+  const handleExportVVIZ = useCallback(async () => {
+    const { exportVVIZ, downloadFile } = await getExportEngine();
     const content = exportVVIZ(projectName, duration, timelineItems, positions, trajectories, droneFormations);
     downloadFile(content, `${projectName.replace(/\s+/g, '_')}.vviz`, 'application/json');
     toast.success('VVIZ exportado!');
   }, [projectName, duration, timelineItems, positions, trajectories, droneFormations]);
 
-  const handleExportSkyc = useCallback(() => {
+  const handleExportSkyc = useCallback(async () => {
+    const { exportSkyc, downloadFile } = await getExportEngine();
     const content = exportSkyc(projectName, duration, timelineItems, positions, trajectories, droneFormations, gpsOrigin);
     downloadFile(content, `${projectName.replace(/\s+/g, '_')}.skyc`, 'application/json');
     toast.success('SkyCreator .skyc exportado!');
   }, [projectName, duration, timelineItems, positions, trajectories, droneFormations, gpsOrigin]);
 
-  const handleExportFiringCSV = useCallback(() => {
+  const handleExportFiringCSV = useCallback(async () => {
+    const { exportFiringCSV, downloadFile } = await getExportEngine();
     const content = exportFiringCSV(timelineItems, positions);
     downloadFile(content, `${projectName.replace(/\s+/g, '_')}_firing.csv`, 'text/csv');
     toast.success('Firing CSV exportado!');
