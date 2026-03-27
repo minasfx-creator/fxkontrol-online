@@ -103,6 +103,7 @@ import {
 } from '@/lib/hardening';
 // ═══ FXK Ultra Refinement — Adaptive Quality + Render Stability ═══
 import { useFXKUltraRefinement } from '@/hooks/useFXKUltraRefinement';
+import { getDeviceProfile } from '@/lib/deviceCapability';
 // ═══ Shared state (lightweight, no components) ═══
 import {
   getActiveBurstCount as _getActiveBurstCount,
@@ -1153,6 +1154,8 @@ export default function SkyCanvas() {
   const recoveringContextRef = useRef(false);
   const handleContextRemount = useCallback(() => setCanvasInstanceKey(prev => prev + 1), []);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const deviceProfile = useMemo(() => getDeviceProfile(), []);
+  const isLowTierMobile = isMobile && deviceProfile.tier !== 'high';
   const environment = useSceneStore(st => st.environment);
   const google3DTilesEnabled = useSceneStore(st => st.settings.google3DTilesEnabled);
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
@@ -1360,17 +1363,17 @@ export default function SkyCanvas() {
         resize={{ debounce: 50, scroll: false }}
         shadows
         gl={{
-          antialias: true,
+          antialias: !isLowTierMobile,
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.5,
-          powerPreference: 'high-performance',
+          powerPreference: isLowTierMobile ? 'default' : 'high-performance',
           alpha: false,
           stencil: false,
-          logarithmicDepthBuffer: true,
+          logarithmicDepthBuffer: !isLowTierMobile,
           outputColorSpace: THREE.SRGBColorSpace,
         }}
-        dpr={isMobile ? [1, 1.5] : [1.5, 2]}
-        performance={{ min: 0.5 }}
+        dpr={isLowTierMobile ? [1, 1] : isMobile ? [1, 1.25] : [1.5, 2]}
+        performance={{ min: isLowTierMobile ? 0.35 : 0.5 }}
         onCreated={() => {
           recoveringContextRef.current = false;
         }}>
@@ -1425,7 +1428,7 @@ export default function SkyCanvas() {
         <PositionTransformGizmo />
         {!isMobile && <Rack3DView />}
         <TrajectoryPaths />
-        {!google3DTilesEnabled && <PyroSafetyZones />}
+        {!google3DTilesEnabled && !isLowTierMobile && <PyroSafetyZones />}
         <DroneChoreography />
         {!isMobile && <BoidsVisualizer />}
         {!isMobile && <CollisionAvoidanceOverlay config={DEFAULT_AVOIDANCE} />}
@@ -1434,16 +1437,16 @@ export default function SkyCanvas() {
           <LiveSFXEffects />
         </Suspense>
         <LaserPreviewBeams />
-        {!google3DTilesEnabled && <StageFixtures />}
-        {!google3DTilesEnabled && !isMobile && <DelayedMount delay={3000}><AudioSpectrumVisualizer /></DelayedMount>}
+        {!google3DTilesEnabled && !isLowTierMobile && <StageFixtures />}
+        {!google3DTilesEnabled && !isMobile && !isLowTierMobile && <DelayedMount delay={3000}><AudioSpectrumVisualizer /></DelayedMount>}
         <PlaybackClock />
         {!isMobile && <CameraAnimator />}
         {!isMobile && <CameraPathPreview />}
         {!google3DTilesEnabled && <ViewportRulers />}
         <CameraBookmarkSaver />
         {!isMobile && <PostProcessing activeBurstCount={_activeBurstCount} />}
-        <StressTestFireworks />
-        <PostExplosionSmokeManager />
+        {!isLowTierMobile && <StressTestFireworks />}
+        {!isLowTierMobile && <PostExplosionSmokeManager />}
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
 
