@@ -409,7 +409,7 @@ function Index() {
     return (
       <div className="h-[100dvh] w-screen relative overflow-hidden bg-background">
         <div className="absolute inset-0">
-          <CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas /></Suspense></CanvasErrorBoundary>
+          <CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas key="mobile-skycanvas" /></Suspense></CanvasErrorBoundary>
           <BoxSelectOverlay />
         </div>
         <MobileHUD onOpenPanel={handleMobileOpenPanel} onMenuOpen={() => { setMobileTab('more'); setMobilePanelHeight('full'); }} />
