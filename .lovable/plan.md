@@ -1,35 +1,53 @@
 
 
-# Fix Desktop Viewport — Stale Closure + Chrome Blocking
+## Quick Hardware Connect — Mobile-First Module
 
-## Bugs Found
+The existing EasyConnectPanel is buried deep in the panel menu system. This plan creates a quick-access hardware overview directly from the MobileHUD, showing all available hardware and their transmission modes at a glance.
 
-### BUG 1: `F` key shortcut has stale closure
-Line 232 references `activePanel` but the `useEffect` deps (line 242) only include `viewportMaximized`. When a panel opens/closes, the handler still reads the old `activePanel` value. Result: `F` key may not toggle maximize when expected.
+### What Gets Built
 
-### BUG 2: Toolbar is `relative` but should be `absolute`
-The Toolbar (line 545) renders as a normal flow child inside the root `div`. While the canvas is `absolute inset-0`, the Toolbar being `relative` creates unnecessary flow space at the top. All other UI layers (docks, timeline, panels) are `absolute` positioned. Toolbar should be too, for consistency and to prevent layout quirks.
+A new **QuickHardwarePanel** component — a compact, mobile-optimized overlay that shows:
+- All detected/simulated hardware grouped by **transport type** (BLE, USB, Art-Net, PBUS, WiFi, Radio)
+- Status indicators (online/offline/connecting) with signal bars and battery
+- Transport mode badges with color coding per protocol
+- One-tap SCAN ALL and per-device connect/test actions
+- Accessible via a new **hardware button** on the MobileHUD (replacing the small status dots)
 
-### BUG 3: GeoSetup always starts open
-`showGeoSetup` defaults to `true` (line 206). Every time the editor loads, the location picker overlay appears, obscuring the viewport. Should default to `false` (or only show on first visit).
+### Architecture
 
-## Solution
+```text
+MobileHUD
+  └─ [New HW button] ──► QuickHardwarePanel (sheet overlay)
+       ├─ Transport Summary Bar (BLE: 2, USB: 1, ArtNet: 3...)
+       ├─ Device List (grouped by transport)
+       │    ├─ Device card: name, status dot, RSSI bars, battery, latency
+       │    └─ Connect/Test button per device
+       └─ Footer: SCAN ALL + TEST ALL
+```
 
-### 1. Fix stale closure in F key handler
-Add `activePanel` to the `useEffect` dependency array so the handler always has the current value.
+### Files to Create/Modify
 
-### 2. Make Toolbar absolutely positioned
-Wrap the Toolbar render in an `absolute top-0 left-0 right-0 z-50` container so it overlays the canvas instead of pushing flow content. This matches all other UI layers.
+1. **`src/components/editor/QuickHardwarePanel.tsx`** (NEW)
+   - Compact mobile-first hardware overview
+   - Reuses the same hooks as EasyConnectPanel (`useFireOneHardware`, `usePBusHardware`, `useUSBDeviceStore`, `artnetModuleService`)
+   - Adds transport grouping with collapsible sections
+   - Transport summary bar at top showing count per protocol
+   - Includes radio devices from `useUSBDeviceStore` filtered by type
+   - SIM mode toggle for demo/field operation
+   - Large 48px touch targets for all interactive elements
 
-### 3. Default GeoSetup to closed
-Change `useState(true)` to `useState(false)` for `showGeoSetup`. The user can open it via the existing "open-geo-setup" event or toolbar button.
+2. **`src/components/editor/MobileHUD.tsx`** (MODIFY)
+   - Add a hardware status button (antenna/radio icon) that opens QuickHardwarePanel
+   - Replace the tiny 1.5px status dots with a proper touch target
+   - Show aggregate online count badge on the button
 
-### 4. Ensure maximize fully clears viewport
-When `viewportMaximized` is true, also hide the GeoSetup overlay and the SkyCanvas mini-dock (top-right utility buttons inside SkyCanvas) to give a truly clean fullscreen viewport.
+3. **`src/pages/Index.tsx`** (MODIFY)
+   - Add `quickhw` as a new panel option or handle it as a MobileHUD-local sheet
+   - Wire up the panel opening from MobileHUD
 
-## Files to Change
-
-| File | Changes |
-|------|---------|
-| `src/pages/Index.tsx` | Fix `useEffect` deps for F key; wrap Toolbar in absolute container; default `showGeoSetup` to `false`; hide GeoSetup when maximized |
+### Key Design Decisions
+- **Mobile-first**: Full-width bottom sheet with 48px min touch targets
+- **Grouped by transport**: Each transport type (BLE/USB/ArtNet/PBUS/WiFi/Radio) gets a collapsible section header showing protocol name + device count
+- **Instant access**: One tap from MobileHUD — no menu diving
+- **Reuses existing infrastructure**: Same hooks, stores, and artnet service — no new data layer needed
 
