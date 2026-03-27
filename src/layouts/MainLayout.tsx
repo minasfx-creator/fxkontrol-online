@@ -168,25 +168,32 @@ export default function MainLayout() {
             </header>
           )}
 
-          <main className={`${(isEditor || isCommand) ? 'flex-1 min-h-0' : 'flex-1 overflow-auto p-4 md:p-6'} relative`}
+          <main className={`${(isEditor || isCommand) ? 'flex-1 min-h-0 overflow-hidden' : 'flex-1 overflow-auto p-4 md:p-6'} relative`}
             style={showDock || showMobileDock ? { paddingBottom: '72px' } : undefined}>
-            {/* Holographic light sweep overlay during transition */}
-            {transitionPhase !== 'idle' && (
-              <div className="absolute inset-0 pointer-events-none z-50 animate-page-sweep" />
-            )}
-            {/* Content with dissolve/materialize phase transitions */}
-            <div
-              key={displayedPath}
-              className={`h-full ${
-                transitionPhase === 'dissolve-out'
-                  ? 'animate-page-dissolve-out'
-                  : transitionPhase === 'materialize-in'
-                    ? 'animate-page-materialize-in'
-                    : ''
-              }`}
-            >
+            {/* Immersive routes: direct render without transition wrapper */}
+            {(isEditor || isCommand) ? (
               <Outlet />
-            </div>
+            ) : (
+              <>
+                {/* Holographic light sweep overlay during transition */}
+                {transitionPhase !== 'idle' && (
+                  <div className="absolute inset-0 pointer-events-none z-50 animate-page-sweep" />
+                )}
+                {/* Content with dissolve/materialize phase transitions */}
+                <div
+                  key={displayedPath}
+                  className={`h-full ${
+                    transitionPhase === 'dissolve-out'
+                      ? 'animate-page-dissolve-out'
+                      : transitionPhase === 'materialize-in'
+                        ? 'animate-page-materialize-in'
+                        : ''
+                  }`}
+                >
+                  <Outlet />
+                </div>
+              </>
+            )}
           </main>
         </div>
 
