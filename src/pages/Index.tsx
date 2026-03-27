@@ -398,7 +398,7 @@ function Index() {
     const handleDismissPanel = () => { setMobileTab(null); setMobilePanelHeight('collapsed'); };
     if (operationMode === 'live') {
     return (
-      <div className="h-full w-full relative overflow-hidden bg-background">
+      <div className="absolute inset-0 overflow-hidden bg-background">
         <div className="absolute inset-0 br2049-atmosphere">
           <CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas /></Suspense></CanvasErrorBoundary>
         </div>
@@ -407,7 +407,7 @@ function Index() {
       );
     }
     return (
-    <div className="h-full w-full relative overflow-hidden bg-background">
+    <div className="absolute inset-0 overflow-hidden bg-background">
         <div className="absolute inset-0">
           <CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas key="mobile-skycanvas" /></Suspense></CanvasErrorBoundary>
           <BoxSelectOverlay />
@@ -447,7 +447,7 @@ function Index() {
 
   // ═══ DESKTOP LAYOUT — Full Immersive Viewport ═══
   return (
-    <div className="h-full w-full relative overflow-hidden bg-zinc-950">
+    <div className="absolute inset-0 overflow-hidden bg-zinc-950">
       {/* ─── Layer 0: Full-screen 3D Canvas ────────────── */}
       <div
         className="absolute inset-0 z-0 br2049-atmosphere"

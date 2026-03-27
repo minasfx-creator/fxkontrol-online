@@ -64,7 +64,9 @@ export default function MobileFloatingPanel({
 
   if (!activeTab || height === 'collapsed') return null;
 
-  const heightValue = height === 'full' ? '88dvh' : '50dvh';
+  const heightValue = height === 'full'
+    ? 'calc(100dvh - 64px - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 48px)'
+    : '50dvh';
 
   return (
     <div
