@@ -30,6 +30,9 @@ interface HWDevice {
   latencyMs?: number;
   channelCount?: number;
   label?: string;
+  addr?: number; // hardware address for actions
+  armed?: boolean;
+  source?: 'fireone' | 'pbus' | 'usb' | 'sim';
 }
 
 const TRANSPORT_META: Record<TransportGroup, { icon: typeof Radio; label: string; color: string }> = {
