@@ -17,6 +17,10 @@ import { format, differenceInDays } from 'date-fns';
 import { lazy, Suspense } from 'react';
 const CinematicIntro = lazy(() => import('@/components/editor/CinematicIntro'));
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
+import { usePBusHardware } from '@/hooks/usePBusHardware';
+import { bleService } from '@/services/bleService';
+import { Badge } from '@/components/ui/badge';
 
 /* ── Types ──────────────────────────────────────────── */
 interface Project {
