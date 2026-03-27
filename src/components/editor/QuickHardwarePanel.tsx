@@ -2,17 +2,20 @@
  * QuickHardwarePanel — Mobile-first bottom sheet for instant hardware overview
  * Groups all detected devices by transport type with status, signal, and battery info
  */
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   Radio, Usb, Wifi, Bluetooth, Globe, Cpu, Cable,
   Signal, SignalLow, SignalMedium, SignalHigh, SignalZero,
   Battery, BatteryLow, BatteryMedium, BatteryFull, BatteryWarning,
-  ChevronDown, ChevronRight, Search, Zap, X, ToggleLeft, ToggleRight
+  ChevronDown, ChevronRight, Search, Zap, X, ToggleLeft, ToggleRight,
+  Shield, ShieldAlert
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 import { Badge } from '@/components/ui/badge';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
+import { usePBusHardware } from '@/hooks/usePBusHardware';
 
 // ── Transport type definitions ──
 type TransportGroup = 'ble' | 'usb' | 'artnet' | 'pbus' | 'wifi' | 'radio';
