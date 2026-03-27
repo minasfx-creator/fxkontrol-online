@@ -420,6 +420,59 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* ── FIELD OPS — Quick access to hardware testing ──── */}
+      <div className="mb-6 animate-fxk-stagger" style={{ animationDelay: '0.14s' }}>
+        <div className="flex items-center gap-2 mb-3">
+          <div className="h-[1px] w-4" style={{ background: 'hsl(165 100% 42% / 0.4)' }} />
+          <span className="text-[9px] font-mono font-bold tracking-[0.3em] uppercase" style={{ color: 'hsl(165 100% 42% / 0.7)' }}>
+            FIELD OPS
+          </span>
+          <div className="h-[1px] flex-1" style={{ background: 'hsl(165 100% 42% / 0.1)' }} />
+          <span className="text-[8px] font-mono text-muted-foreground/30 tracking-wider">DIAGNOSTICS & CONNECT</span>
+        </div>
+        <div className={cn("grid gap-2", isMobile ? "grid-cols-1" : "grid-cols-2")}>
+          {/* Easy Connect Card */}
+          <button
+            onClick={() => navigate('/command?mode=hardware')}
+            className="group relative overflow-hidden rounded-lg border p-3 text-left transition-all duration-300 hover:scale-[1.02] active:scale-[0.97]"
+            style={{ borderColor: 'hsl(200 80% 48% / 0.2)', background: 'rgba(8, 10, 14, 0.8)', backdropFilter: 'blur(24px)' }}
+          >
+            <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(90deg, transparent, hsl(200 80% 48% / 0.5), transparent)' }} />
+            <div className="absolute top-0.5 left-0.5 w-2 h-2 border-t border-l pointer-events-none" style={{ borderColor: 'hsl(200 80% 48% / 0.3)' }} />
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'hsl(200 80% 48% / 0.1)', border: '1px solid hsl(200 80% 48% / 0.2)' }}>
+                <Zap className="h-5 w-5" style={{ color: 'hsl(200 80% 48%)' }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold font-display text-foreground tracking-wide uppercase">Easy Connect</p>
+                <p className="text-[9px] text-muted-foreground/60 mt-0.5 font-mono">USB · BLE · Art-Net · PBUS · Wi-Fi</p>
+              </div>
+              <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-foreground transition-colors shrink-0" />
+            </div>
+          </button>
+
+          {/* Field Test Card */}
+          <button
+            onClick={() => navigate('/field-test')}
+            className="group relative overflow-hidden rounded-lg border p-3 text-left transition-all duration-300 hover:scale-[1.02] active:scale-[0.97]"
+            style={{ borderColor: 'hsl(165 100% 42% / 0.2)', background: 'rgba(8, 10, 14, 0.8)', backdropFilter: 'blur(24px)' }}
+          >
+            <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(90deg, transparent, hsl(165 100% 42% / 0.5), transparent)' }} />
+            <div className="absolute top-0.5 left-0.5 w-2 h-2 border-t border-l pointer-events-none" style={{ borderColor: 'hsl(165 100% 42% / 0.3)' }} />
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'hsl(165 100% 42% / 0.1)', border: '1px solid hsl(165 100% 42% / 0.2)' }}>
+                <Activity className="h-5 w-5" style={{ color: 'hsl(165 100% 42%)' }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold font-display text-foreground tracking-wide uppercase">Field Test</p>
+                <p className="text-[9px] text-muted-foreground/60 mt-0.5 font-mono">CDS · Continuidade · Diagnóstico · SIM</p>
+              </div>
+              <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-foreground transition-colors shrink-0" />
+            </div>
+          </button>
+        </div>
+      </div>
+
       {/* ── Main Grid: Left (ops) + Center (feed) + Right ─ */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px_1fr] gap-6">
 
