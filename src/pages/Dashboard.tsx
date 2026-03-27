@@ -380,7 +380,7 @@ export default function Dashboard() {
               <button
                 key={console.key}
                 onClick={() => navigate(`/command?mode=${console.key}`)}
-                className={cn("group relative overflow-hidden rounded-lg border p-2.5 text-center transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-[1.08] active:scale-[0.95] animate-fxk-stagger", isMobile && "shrink-0 min-w-[72px]")}
+                className={cn("group relative overflow-hidden rounded-lg border p-2.5 text-center transition-all duration-300 ease-spring hover:scale-[1.08] active:scale-[0.95] animate-fxk-stagger", isMobile && "shrink-0 min-w-[72px]")}
                 style={{
                   animationDelay: `${0.1 + i * 0.04}s`,
                   borderColor: `${console.color}20`,

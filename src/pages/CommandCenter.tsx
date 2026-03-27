@@ -525,7 +525,7 @@ export default function CommandCenter() {
       {/* Sidebar — Apple glassmorphism dock */}
       <div
         className={cn(
-          "shrink-0 flex flex-col transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
+          "shrink-0 flex flex-col transition-all duration-500 ease-expo-out",
           sidebarCollapsed ? "w-[56px]" : "w-56"
         )}
         style={{
@@ -551,7 +551,7 @@ export default function CommandCenter() {
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
               className={cn(
-                "w-full rounded-lg border transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                "w-full rounded-lg border transition-all duration-500 ease-expo-out",
                 "hover:border-primary/15 active:scale-[0.97]",
                 sidebarCollapsed ? "p-2.5" : "px-3.5 py-2.5"
               )}
@@ -608,7 +608,7 @@ export default function CommandCenter() {
                         key={mode.key}
                         onClick={() => handleModeChange(mode.key)}
                         className={cn(
-                          "w-full flex items-center gap-2.5 rounded-lg transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] relative group",
+                          "w-full flex items-center gap-2.5 rounded-lg transition-all duration-300 ease-expo-out relative group",
                           sidebarCollapsed ? "justify-center p-2.5" : "px-3 py-2.5 min-h-[42px]",
                           isActive
                             ? "text-foreground"
