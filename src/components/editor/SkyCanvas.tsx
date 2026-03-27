@@ -1428,7 +1428,7 @@ export default function SkyCanvas() {
         <PositionTransformGizmo />
         {!isMobile && <Rack3DView />}
         <TrajectoryPaths />
-        {!google3DTilesEnabled && <PyroSafetyZones />}
+        {!google3DTilesEnabled && !isLowTierMobile && <PyroSafetyZones />}
         <DroneChoreography />
         {!isMobile && <BoidsVisualizer />}
         {!isMobile && <CollisionAvoidanceOverlay config={DEFAULT_AVOIDANCE} />}
@@ -1437,16 +1437,16 @@ export default function SkyCanvas() {
           <LiveSFXEffects />
         </Suspense>
         <LaserPreviewBeams />
-        {!google3DTilesEnabled && <StageFixtures />}
-        {!google3DTilesEnabled && !isMobile && <DelayedMount delay={3000}><AudioSpectrumVisualizer /></DelayedMount>}
+        {!google3DTilesEnabled && !isLowTierMobile && <StageFixtures />}
+        {!google3DTilesEnabled && !isMobile && !isLowTierMobile && <DelayedMount delay={3000}><AudioSpectrumVisualizer /></DelayedMount>}
         <PlaybackClock />
         {!isMobile && <CameraAnimator />}
         {!isMobile && <CameraPathPreview />}
         {!google3DTilesEnabled && <ViewportRulers />}
         <CameraBookmarkSaver />
         {!isMobile && <PostProcessing activeBurstCount={_activeBurstCount} />}
-        <StressTestFireworks />
-        <PostExplosionSmokeManager />
+        {!isLowTierMobile && <StressTestFireworks />}
+        {!isLowTierMobile && <PostExplosionSmokeManager />}
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
 
